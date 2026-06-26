@@ -42,14 +42,9 @@
 		return `${days} day${days > 1 ? 's' : ''} ago`;
 	}
 
-	function getChannelBadgeColor(channel: string): string {
-		const colors: Record<string, string> = {
-			push: 'bg-info/10 text-info',
-			email: 'bg-accent/10 text-accent',
-			sms: 'bg-success/10 text-success',
-			in_app: 'bg-muted text-muted-foreground'
-		};
-		return colors[channel] || 'bg-muted text-foreground';
+	function getChannelBadgeColor(_channel: string): string {
+		// Channel is a category, not a state — use a single neutral badge.
+		return 'bg-muted text-foreground dark:text-muted-foreground';
 	}
 </script>
 
@@ -68,8 +63,8 @@
 	{#if loading}
 		<div class="p-6 space-y-3">
 			{#each Array(3) as _}
-				<div class="animate-pulse">
-					<div class="h-16 bg-muted rounded"></div>
+				<div class="animate-pulse motion-reduce:animate-none">
+					<div class="h-16 bg-muted rounded-md"></div>
 				</div>
 			{/each}
 		</div>
@@ -141,7 +136,7 @@
 							<td class="px-3 py-2.5 text-sm max-w-xs">
 								<button
 									type="button"
-									class="text-destructive hover:text-destructive/80 underline decoration-dotted cursor-pointer text-left truncate block w-full"
+									class="rounded-sm text-destructive hover:text-destructive/80 underline decoration-dotted cursor-pointer text-left truncate block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									onclick={() => openErrorModal(delivery)}
 									title="Click to view full error"
 								>

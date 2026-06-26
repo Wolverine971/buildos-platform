@@ -1073,10 +1073,13 @@
 							/>
 						</div>
 						<div>
-							<p class="text-sm font-semibold text-foreground">Welcome to BuildOS!</p>
+							<p class="text-sm font-semibold text-foreground">
+								Get it out of your head.
+							</p>
 							<p class="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-								Create your first project and BuildOS will help you shape goals,
-								tasks, and milestones.
+								Brain-dump the messy version of what you're working on —
+								half-thoughts, voice memos, the 2am spiral. BuildOS turns it into a
+								project with structure and memory.
 							</p>
 						</div>
 						<Button
@@ -1084,7 +1087,7 @@
 							size="sm"
 							onclick={() => goto('/projects/create')}
 						>
-							Create your first project
+							Start a brain dump
 						</Button>
 					</div>
 				{:else if projectsToDisplay.length === 0}

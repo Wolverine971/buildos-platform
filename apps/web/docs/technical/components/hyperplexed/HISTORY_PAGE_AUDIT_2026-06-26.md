@@ -23,14 +23,14 @@
 
 ## Surfaces audited
 
-| #   | Surface                                            | File / region                                  |
-| --- | -------------------------------------------------- | ---------------------------------------------- |
-| 1   | Page header (micro-label, title, inline loader)    | `+page.svelte:427-443`                         |
-| 2   | Stats cards (Total · Captures · Chats · Done)      | `+page.svelte:448-487`                         |
-| 3   | Type filter tabs (All · Captures · Chats)          | `+page.svelte:490-540`                         |
-| 4   | Search + filters row (search, status, Go, clear)   | `+page.svelte:543-586`                         |
-| 5   | History card grid + skeleton                       | `+page.svelte:627-752`, `HistoryListSkeleton`  |
-| 6   | Empty / error / load-more / results states         | `+page.svelte:589-624, 754-769`                |
+| #   | Surface                                          | File / region                                 |
+| --- | ------------------------------------------------ | --------------------------------------------- |
+| 1   | Page header (micro-label, title, inline loader)  | `+page.svelte:427-443`                        |
+| 2   | Stats cards (Total · Captures · Chats · Done)    | `+page.svelte:448-487`                        |
+| 3   | Type filter tabs (All · Captures · Chats)        | `+page.svelte:490-540`                        |
+| 4   | Search + filters row (search, status, Go, clear) | `+page.svelte:543-586`                        |
+| 5   | History card grid + skeleton                     | `+page.svelte:627-752`, `HistoryListSkeleton` |
+| 6   | Empty / error / load-more / results states       | `+page.svelte:589-624, 754-769`               |
 
 ---
 
@@ -148,10 +148,10 @@ Severity: **High** = breaks layout/readability/behavior-legibility or blocks key
 
 ### Surface 1 — Page header
 
-| Sev | Region        | Defect                                                                                                   | Fix                         |
-| --- | ------------- | -------------------------------------------------------------------------------------------------------- | --------------------------- |
-| Low | Header `<header>` | `flex-1` on a `flex-col` whose parent (`space-y` block, not flex) gives it nothing to grow into (`:430`) | Drop the dead `flex-1`      |
-| Low | Inline loader | `animate-spin` ungated (→S5)                                                                             | `motion-reduce:animate-none`|
+| Sev | Region            | Defect                                                                                                   | Fix                          |
+| --- | ----------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| Low | Header `<header>` | `flex-1` on a `flex-col` whose parent (`space-y` block, not flex) gives it nothing to grow into (`:430`) | Drop the dead `flex-1`       |
+| Low | Inline loader     | `animate-spin` ungated (→S5)                                                                             | `motion-reduce:animate-none` |
 
 **Strengths:** clean micro-label → title → subtitle hierarchy (size/weight, no extra chrome); inline
 loader sits beside the title so "still loading" reads without a layout block; subtitle `hidden sm:block`
@@ -159,12 +159,12 @@ reclaims mobile height honestly.
 
 ### Surface 2 — Stats cards
 
-| Sev | Region          | Defect                                                                                                                                                  | Fix                                                 |
-| --- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| Med | Card structure  | Total & Done render the number bare; Captures & Chats wrap it in a `flex` row with an icon (`:460,471`). The number's vertical position differs between iconned/un-iconned cards → numbers don't share a baseline | Give all four the same number-row structure (icon slot present-but-empty, or no icon on any) |
-| Med | Number color    | Four stat numbers in four hues — foreground / info / accent / success (`:452,462,473,482`). Reads as a "color salad" (suspected — confirm live)         | Mute to `text-foreground`; let the label carry meaning, or keep color only where it maps to a tab |
-| Low | Grid density    | `grid-cols-4` at all widths + `text-[9px]` labels — four cards on a phone is dense (intentional per comment, noting for the live pass)                  | Confirm legibility on real device                   |
-| Low | Affordance      | Stat cards look like the clickable history cards (`rounded-lg border bg-card shadow-ink`) but aren't interactive — no filter-on-click                   | Either make them filter shortcuts or visually demote so they don't read as buttons |
+| Sev | Region         | Defect                                                                                                                                                                                                            | Fix                                                                                               |
+| --- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Med | Card structure | Total & Done render the number bare; Captures & Chats wrap it in a `flex` row with an icon (`:460,471`). The number's vertical position differs between iconned/un-iconned cards → numbers don't share a baseline | Give all four the same number-row structure (icon slot present-but-empty, or no icon on any)      |
+| Med | Number color   | Four stat numbers in four hues — foreground / info / accent / success (`:452,462,473,482`). Reads as a "color salad" (suspected — confirm live)                                                                   | Mute to `text-foreground`; let the label carry meaning, or keep color only where it maps to a tab |
+| Low | Grid density   | `grid-cols-4` at all widths + `text-[9px]` labels — four cards on a phone is dense (intentional per comment, noting for the live pass)                                                                            | Confirm legibility on real device                                                                 |
+| Low | Affordance     | Stat cards look like the clickable history cards (`rounded-lg border bg-card shadow-ink`) but aren't interactive — no filter-on-click                                                                             | Either make them filter shortcuts or visually demote so they don't read as buttons                |
 
 **Strengths:** uniform card shell (`rounded-lg border-border bg-card shadow-ink tx tx-frame tx-weak`);
 labels demoted by size/weight (hierarchy by type, not chrome); icons live in the card, hidden on mobile
@@ -172,26 +172,26 @@ to protect density.
 
 ### Surface 3 — Type filter tabs
 
-| Sev  | Region          | Defect                                                                                                                          | Fix                                          |
-| ---- | --------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| Med  | Active underline | Per-tab accent color (accent vs info) for the _same_ "is selected" signal (→S2)                                               | One underline color for all tabs             |
-| Med  | "Captures" label | Two responsive spans with **identical text** — `hidden sm:inline`>Captures< and `sm:hidden`>Captures< (`:511-512`). Dead duplicate (Chats uses one plain span, `:530`) | Collapse to one `<span>Captures</span>`      |
-| Med  | Tab semantics    | Styled as tabs (underline row) but are bare `<button>`s — no `role`, no `aria-pressed`/`aria-selected`; active state invisible to AT (`:491,503,522`) | Add `aria-pressed={typeFilter===…}` (filter-button semantics) or full tablist wiring |
-| Low  | Count badges     | Captures/Chats carry a count badge; "All" carries none — inconsistent slot across the three peers (`:513,531`)                | Show a total count on "All" too, or drop all three |
-| Low  | Buttons          | No `focus-visible` ring (→S3)                                                                                                 | Shared ring utility                          |
+| Sev | Region           | Defect                                                                                                                                                                 | Fix                                                                                  |
+| --- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Med | Active underline | Per-tab accent color (accent vs info) for the _same_ "is selected" signal (→S2)                                                                                        | One underline color for all tabs                                                     |
+| Med | "Captures" label | Two responsive spans with **identical text** — `hidden sm:inline`>Captures< and `sm:hidden`>Captures< (`:511-512`). Dead duplicate (Chats uses one plain span, `:530`) | Collapse to one `<span>Captures</span>`                                              |
+| Med | Tab semantics    | Styled as tabs (underline row) but are bare `<button>`s — no `role`, no `aria-pressed`/`aria-selected`; active state invisible to AT (`:491,503,522`)                  | Add `aria-pressed={typeFilter===…}` (filter-button semantics) or full tablist wiring |
+| Low | Count badges     | Captures/Chats carry a count badge; "All" carries none — inconsistent slot across the three peers (`:513,531`)                                                         | Show a total count on "All" too, or drop all three                                   |
+| Low | Buttons          | No `focus-visible` ring (→S3)                                                                                                                                          | Shared ring utility                                                                  |
 
 **Strengths:** active underline pattern is the right idiom (no width-jump, unlike Project Page tabs);
 `whitespace-nowrap` + `overflow-x-auto` keeps the row from wrapping; count badges color-keyed to type.
 
 ### Surface 4 — Search + filters
 
-| Sev  | Region        | Defect                                                                                                                            | Fix                                            |
-| ---- | ------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| Med  | Submit model  | `<select>` auto-applies, search needs Enter/Go — two behaviors in one cluster; changing status silently submits search too (→S-apply) | One submit model; likely debounce search, drop "Go" |
-| Med  | "Go" button   | Exists only to submit the input half the select doesn't need — a redundant path (Hyperplexed "merge duplicate paths")            | Remove once search auto-applies                |
-| Low  | Clear button  | Sizing diverges from siblings: `p-1.5 sm:px-3 sm:py-2` (icon-square) vs Go's `px-3 sm:px-4 py-1.5 sm:py-2` — slightly shorter box in the same row (`:580 vs :572`) | Give the row a shared `h-9`/`h-10`            |
-| Low  | Two "All"s    | Status `<select>` default "All" sits feet from the "All" _type tab_ — two unrelated "All" controls in view (`:565 vs :498`)      | Rename select default to "Any status"          |
-| Low  | Buttons       | Go / clear lack `focus-visible` ring (→S3)                                                                                       | Shared ring utility                            |
+| Sev | Region       | Defect                                                                                                                                                             | Fix                                                 |
+| --- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| Med | Submit model | `<select>` auto-applies, search needs Enter/Go — two behaviors in one cluster; changing status silently submits search too (→S-apply)                              | One submit model; likely debounce search, drop "Go" |
+| Med | "Go" button  | Exists only to submit the input half the select doesn't need — a redundant path (Hyperplexed "merge duplicate paths")                                              | Remove once search auto-applies                     |
+| Low | Clear button | Sizing diverges from siblings: `p-1.5 sm:px-3 sm:py-2` (icon-square) vs Go's `px-3 sm:px-4 py-1.5 sm:py-2` — slightly shorter box in the same row (`:580 vs :572`) | Give the row a shared `h-9`/`h-10`                  |
+| Low | Two "All"s   | Status `<select>` default "All" sits feet from the "All" _type tab_ — two unrelated "All" controls in view (`:565 vs :498`)                                        | Rename select default to "Any status"               |
+| Low | Buttons      | Go / clear lack `focus-visible` ring (→S3)                                                                                                                         | Shared ring utility                                 |
 
 **Strengths:** both true form controls have real focus rings (the rest of the page should copy this);
 search icon inset is intentional, not the asymmetric-padding tell; clear button conditionally rendered
@@ -199,14 +199,14 @@ only when a filter is active (no dead control).
 
 ### Surface 5 — History card grid + skeleton
 
-| Sev  | Region              | Defect                                                                                                                 | Fix                                              |
-| ---- | ------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| High | Skeleton parity     | Mobile preview hidden in skeleton but shown in card; radius `rounded-md sm:rounded-lg` vs card `rounded-lg` (→S-skel)  | Match skeleton to real card markup               |
-| High | Nested interactive  | Summarize `<button>` nested inside the card's `role="button"` (→S3)                                                    | Lift Summarize out of the button region          |
-| Med  | Card focus          | Rich hover (`border-accent/50` + `shadow-ink-strong`) with no `focus-visible` equivalent (→S3)                        | Mirror hover on `focus-visible`                  |
-| Low  | Summarize radius    | `rounded-md` button sitting among `rounded-full` badges in the card header (`:668 vs :649,681`)                       | `rounded-full` to match the badge row            |
-| Low  | Chevron affordance  | `ChevronRight` recolors on `group-hover` but not `group-focus-within` (`:745-746`)                                    | Add `group-focus-within:text-accent`             |
-| Low  | Empty-state copy    | Braindumps empty copy says "captured any notes" while the UI labels them "Captures" (`:615`)                          | Use the product noun ("Captures") consistently   |
+| Sev  | Region             | Defect                                                                                                                | Fix                                            |
+| ---- | ------------------ | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| High | Skeleton parity    | Mobile preview hidden in skeleton but shown in card; radius `rounded-md sm:rounded-lg` vs card `rounded-lg` (→S-skel) | Match skeleton to real card markup             |
+| High | Nested interactive | Summarize `<button>` nested inside the card's `role="button"` (→S3)                                                   | Lift Summarize out of the button region        |
+| Med  | Card focus         | Rich hover (`border-accent/50` + `shadow-ink-strong`) with no `focus-visible` equivalent (→S3)                        | Mirror hover on `focus-visible`                |
+| Low  | Summarize radius   | `rounded-md` button sitting among `rounded-full` badges in the card header (`:668 vs :649,681`)                       | `rounded-full` to match the badge row          |
+| Low  | Chevron affordance | `ChevronRight` recolors on `group-hover` but not `group-focus-within` (`:745-746`)                                    | Add `group-focus-within:text-accent`           |
+| Low  | Empty-state copy   | Braindumps empty copy says "captured any notes" while the UI labels them "Captures" (`:615`)                          | Use the product noun ("Captures") consistently |
 
 **Strengths:** overflow is exemplary — title `line-clamp-2`, preview clamped, topics `slice(0,2)` + `+N`,
 date `truncate`, every icon `flex-shrink-0`; cards are keyboard-openable (`role="button"` + Enter/Space,
@@ -215,10 +215,10 @@ just needs to follow it); status conveyed by icon+color when the text label is h
 
 ### Surface 6 — Empty / error / load-more / results
 
-| Sev | Region        | Defect                                                                                                          | Fix                                |
-| --- | ------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| Low | Load more     | No `focus-visible` ring (→S3); no in-flight/loading state — click triggers a full `goto` + fresh skeletons (`:757`) | Ring + optional pending state      |
-| Low | Outer wrapper | `min-h-screen bg-background rounded-md` — a corner radius on a full-bleed, full-height background does nothing (`:427`) | Drop the stray `rounded-md`        |
+| Sev | Region        | Defect                                                                                                                  | Fix                           |
+| --- | ------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| Low | Load more     | No `focus-visible` ring (→S3); no in-flight/loading state — click triggers a full `goto` + fresh skeletons (`:757`)     | Ring + optional pending state |
+| Low | Outer wrapper | `min-h-screen bg-background rounded-md` — a corner radius on a full-bleed, full-height background does nothing (`:427`) | Drop the stray `rounded-md`   |
 
 **Strengths:** error and empty states are fully realized (icon + heading + copy + retry/guidance), with
 type-aware empty copy; "Showing X of Y" gives honest pagination context; states are cleanly mutually
@@ -258,3 +258,44 @@ exclusive (`showSkeletons` → error → empty → grid).
 - **Limitation, again:** the color calls (stat "color salad," dark-mode badge contrast across seven
   status hues in `getStatusBadgeClass`) are _suspected_ from markup and want the live screenshot pass —
   the natural next step, ideally shooting mobile first to capture the S-skel shift on a real device.
+
+---
+
+## Part 5 — Fixes applied (2026-06-26)
+
+First polish pass shipped across `history/+page.svelte` and `HistoryListSkeleton.svelte`. ESLint clean
+(0 errors; one pre-existing `getBraindumpChatSessionId` unused-var warning, untouched). `svelte-check`
+could not be run to completion in this environment (a native esbuild `SIGABRT` during the project-wide
+scan, unrelated to these files); structural validity confirmed via the ESLint Svelte parser + a clean
+Prettier reformat (both reject unbalanced markup).
+
+**Systemic (Part 1) — all five done:**
+
+- **S-skel** ✅ Skeleton now matches the real card: mobile preview line rendered (1 bar mobile / 3
+  desktop, margins `mb-1.5 sm:mb-3`), card radius flattened to `rounded-lg`. The mobile layout shift the
+  page's headline feature was meant to prevent is gone.
+- **S2** ✅ One active-underline color (`accent`) across all three type tabs (Captures was `info`); the
+  four stat "big numbers" muted to `text-foreground` with type-color kept only on the Captures/Chats
+  icons.
+- **S3** ✅ Cards restructured to the stretched-`<button>` pattern: the whole card is now a real button
+  (native Enter/Space + `focus-visible` ring) and the Summarize action is a sibling (z-raised,
+  `pointer-events-auto`) rather than a button nested inside a `role="button"`. `focus-visible` rings +
+  `aria-pressed` added to the type tabs; rings added to clear / Load more / Retry / Summarize; chevron
+  now reacts to `group-focus-within`. Removed the now-dead `handleItemKeydown`.
+- **S4** ✅ Folded into S-skel (skeleton `rounded-lg`) + the stray outer `rounded-md` dropped; Summarize
+  chip moved to `rounded-full` to match the badge row.
+- **S5** ✅ `motion-reduce:animate-none` on the header + per-row processing spinners; skeleton pulse +
+  stagger gated behind a `prefers-reduced-motion` media query.
+- **S-apply** ✅ Search now auto-applies via a 400ms debounce (Enter still applies immediately), matching
+  the auto-applying status `<select>`; the redundant "Go" button removed.
+
+**Cleanups (Part 2):** duplicate "Captures" responsive span collapsed to one; stat cards normalized to a
+shared number-row structure; search-row clear button given matching height + `aria-label`; select default
+renamed "All" → "Any status"; dead header `flex-1` removed; empty-state copy noun aligned ("captured
+anything").
+
+**Deferred (lower-value / needs live screenshots):** stat-card density at `grid-cols-4` on phones and the
+"make stat cards clickable filter shortcuts" call (ergonomics/scope, not a taste defect); dark-mode
+contrast of the seven `getStatusBadgeClass` hues (suspected color call). Next step is the live dark-mode
+
+- mobile screenshot pass — shoot mobile first to confirm the S-skel shift is gone on a real device.

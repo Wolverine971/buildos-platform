@@ -140,8 +140,8 @@
 	{#if loading}
 		<div class="p-3 space-y-2">
 			{#each Array(10) as _}
-				<div class="animate-pulse">
-					<div class="h-12 bg-muted rounded"></div>
+				<div class="animate-pulse motion-reduce:animate-none">
+					<div class="h-12 bg-muted rounded-md"></div>
 				</div>
 			{/each}
 		</div>
@@ -196,8 +196,9 @@
 						>
 							<td class="px-4 py-3">
 								<button
+									type="button"
 									onclick={() => toggleRow(log.id)}
-									class="text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground"
+									class="rounded-md text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								>
 									{#if expandedRows.has(log.id)}
 										<ChevronDown class="w-4 h-4" />
@@ -216,7 +217,7 @@
 								<div class="flex items-center space-x-1">
 									<Level class="w-4 h-4 {getLevelTextColor(log.level)}" />
 									<span
-										class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {getLevelColor(
+										class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium {getLevelColor(
 											log.level
 										)}"
 									>
@@ -239,8 +240,9 @@
 							</td>
 							<td class="px-3 py-2.5 whitespace-nowrap">
 								<button
+									type="button"
 									onclick={() => copyToClipboard(log.correlation_id)}
-									class="font-mono text-xs text-info hover:underline"
+									class="rounded-sm font-mono text-xs text-info hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									title="Click to copy: {log.correlation_id}"
 								>
 									{truncateCorrelationId(log.correlation_id)}
@@ -354,7 +356,7 @@
 													Metadata:
 												</div>
 												<pre
-													class="bg-card border border-border rounded p-3 text-xs overflow-x-auto">{JSON.stringify(
+													class="bg-card border border-border rounded-md p-3 text-xs overflow-x-auto whitespace-pre-wrap break-all">{JSON.stringify(
 														log.metadata,
 														null,
 														2
@@ -371,7 +373,7 @@
 													Error Stack Trace:
 												</div>
 												<pre
-													class="bg-destructive/10 border border-destructive/30 rounded p-3 text-xs overflow-x-auto text-destructive">{log.error_stack}</pre>
+													class="bg-destructive/10 border border-destructive/30 rounded-md p-3 text-xs overflow-x-auto whitespace-pre-wrap break-all text-destructive">{log.error_stack}</pre>
 											</div>
 										{/if}
 									</div>

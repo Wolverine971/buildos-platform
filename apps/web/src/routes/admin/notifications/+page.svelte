@@ -20,6 +20,7 @@
 		type SMSStats
 	} from '$lib/services/notification-analytics.service';
 	import { notificationTestService } from '$lib/services/notification-test.service';
+	import { toastService } from '$lib/stores/toast.store';
 
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
@@ -93,9 +94,10 @@
 			await notificationTestService.retryDelivery(deliveryId);
 			// Reload failures
 			failures = await notificationAnalyticsService.getFailures(timeframe, 50);
+			toastService.success('Delivery retry queued');
 		} catch (err) {
 			console.error('Error retrying delivery:', err);
-			alert(err instanceof Error ? err.message : 'Failed to retry delivery');
+			toastService.error(err instanceof Error ? err.message : 'Failed to retry delivery');
 		}
 	}
 
@@ -104,9 +106,10 @@
 			await notificationTestService.resendDelivery(deliveryId);
 			// Reload failures
 			failures = await notificationAnalyticsService.getFailures(timeframe, 50);
+			toastService.success('Delivery resent');
 		} catch (err) {
 			console.error('Error resending delivery:', err);
-			alert(err instanceof Error ? err.message : 'Failed to resend delivery');
+			toastService.error(err instanceof Error ? err.message : 'Failed to resend delivery');
 		}
 	}
 </script>

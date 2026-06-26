@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	import { slide } from 'svelte/transition';
+	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import { briefPreferencesStore } from '$lib/stores/briefPreferences';
 	import { notificationPreferencesStore } from '$lib/stores/notificationPreferences';
 	import type { BriefPreferences } from '$lib/stores/briefPreferences';
@@ -353,7 +354,7 @@
 		{#if briefPreferencesState.isLoading}
 			<div class="text-center py-8">
 				<div
-					class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"
+					class="animate-spin motion-reduce:animate-none rounded-full h-8 w-8 border-b-2 border-accent mx-auto"
 				></div>
 				<p class="text-sm text-muted-foreground mt-4">Loading preferences...</p>
 			</div>
@@ -536,7 +537,7 @@
 		{:else}
 			<div class="space-y-3">
 				<label
-					class="flex items-start gap-3 p-3 rounded-lg border border-border bg-card hover:border-accent/40 hover:bg-muted/30 cursor-pointer transition-colors duration-200 {voiceNarrationSaving
+					class="flex items-start gap-3 p-3 rounded-lg border border-border bg-card hover:border-accent/40 hover:bg-muted/30 cursor-pointer transition-colors duration-200 motion-reduce:transition-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-inset {voiceNarrationSaving
 						? 'opacity-70 cursor-wait'
 						: ''}"
 				>
@@ -549,10 +550,10 @@
 								saveVoiceNarration(
 									(event.currentTarget as HTMLInputElement).checked
 								)}
-							class="peer appearance-none w-4 h-4 rounded border border-border bg-background checked:bg-accent checked:border-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-colors duration-200 disabled:opacity-50"
+							class="peer appearance-none w-4 h-4 rounded-md border border-border bg-background checked:bg-accent checked:border-accent focus:outline-none transition-colors duration-200 motion-reduce:transition-none disabled:opacity-50"
 						/>
 						<Check
-							class="w-3 h-3 text-accent-foreground absolute top-0.5 left-0.5 pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity duration-150"
+							class="w-3 h-3 text-accent-foreground absolute top-0.5 left-0.5 pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity duration-150 motion-reduce:transition-none"
 						/>
 					</span>
 					<span class="flex-1 min-w-0">
@@ -589,11 +590,13 @@
 				title="Refresh brief jobs"
 				class="pressable"
 			>
-				<RefreshCw class={`w-4 h-4 ${refreshingJobs ? 'animate-spin' : ''}`} />
+				<RefreshCw
+					class={`w-4 h-4 ${refreshingJobs ? 'animate-spin motion-reduce:animate-none' : ''}`}
+				/>
 			</Button>
 			<a
 				href="/projects?tab=briefs"
-				class="inline-flex items-center px-3 py-1.5 text-xs sm:text-sm text-accent hover:text-accent/80 font-medium rounded-lg hover:bg-accent/10 transition-colors pressable"
+				class="inline-flex items-center px-3 py-1.5 text-xs sm:text-sm text-accent hover:text-accent/80 font-medium rounded-md hover:bg-accent/10 transition-colors motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 			>
 				View All
 				<ExternalLink class="w-3.5 h-3.5 ml-1" />
@@ -603,7 +606,7 @@
 		{#if briefPreferencesState.isLoading}
 			<div class="text-center py-8">
 				<div
-					class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"
+					class="animate-spin motion-reduce:animate-none rounded-full h-8 w-8 border-b-2 border-accent mx-auto"
 				></div>
 				<p class="text-sm sm:text-base text-muted-foreground mt-4">
 					Loading scheduled briefs...
@@ -623,7 +626,7 @@
 				{#each upcomingJobs as job}
 					<div
 						class="flex items-center justify-between gap-3 p-3 bg-accent/10 border border-accent/30 rounded-lg tx tx-grain tx-weak"
-						transition:slide
+						transition:slide={slideMotion()}
 					>
 						<div class="flex items-center gap-2.5 min-w-0">
 							<Clock class="w-4 h-4 text-accent flex-shrink-0" />
@@ -645,7 +648,7 @@
 									onclick={() => (cancelJobTarget = job)}
 									variant="ghost"
 									size="sm"
-									class="p-1 text-destructive hover:text-destructive/80 rounded pressable"
+									class="p-2 text-destructive hover:text-destructive/80 rounded-md pressable"
 									title="Cancel job"
 								>
 									<XCircle class="w-4 h-4" />
@@ -659,7 +662,7 @@
 				{#each recentJobs as job}
 					<div
 						class="flex items-center justify-between gap-3 p-3 bg-muted border border-border rounded-lg"
-						transition:slide
+						transition:slide={slideMotion()}
 					>
 						<div class="flex items-center gap-2.5 min-w-0">
 							<Calendar class="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -678,7 +681,7 @@
 							</Badge>
 							{#if job.error_message}
 								<span
-									class="text-xs text-destructive truncate"
+									class="text-xs text-destructive truncate max-w-[8rem]"
 									title={job.error_message}
 								>
 									Error

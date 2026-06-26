@@ -288,6 +288,20 @@
 			.join(' · ');
 	}
 
+	// Humanize raw enum strings (e.g. "create_new" → "Create new") for the preview table.
+	function formatImportLabel(value: string): string {
+		if (!value) return '';
+		const spaced = value.replace(/_/g, ' ');
+		return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+	}
+
+	// Reserve color for state: ready = success, error = destructive, otherwise muted.
+	function importStatusClass(status: string): string {
+		if (status === 'ready') return 'text-success';
+		if (status === 'error' || status === 'errors') return 'text-destructive';
+		return 'text-muted-foreground';
+	}
+
 	function handleFileSelection(event: Event) {
 		const input = event.target as HTMLInputElement;
 		const file = input.files?.[0] ?? null;
@@ -531,7 +545,7 @@
 					type="file"
 					accept=".csv,text/csv"
 					onchange={handleFileSelection}
-					class="block w-full text-sm text-foreground file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-accent file:text-accent-foreground hover:file:bg-accent/90 file:cursor-pointer file:transition-colors file:shadow-ink"
+					class="block w-full text-sm text-foreground rounded-md file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-accent file:text-accent-foreground hover:file:bg-accent/90 file:cursor-pointer file:transition-colors file:shadow-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 				/>
 			</FormField>
 
@@ -570,8 +584,8 @@
 						{importPreview.summary.skipped} · Errors: {importPreview.summary.errors}
 					</p>
 					<div class="max-h-64 overflow-auto border border-border rounded-md">
-						<table class="w-full text-sm">
-							<thead class="bg-muted/60 text-left">
+						<table class="w-full min-w-[640px] text-sm">
+							<thead class="bg-muted/60 text-left sticky top-0">
 								<tr>
 									<th class="px-3 py-2">Row</th>
 									<th class="px-3 py-2">Contact</th>
@@ -591,8 +605,16 @@
 										<td class="px-3 py-2 text-muted-foreground">
 											{formatPreviewMethods(row)}
 										</td>
-										<td class="px-3 py-2">{row.status}</td>
-										<td class="px-3 py-2">{row.action}</td>
+										<td class="px-3 py-2">
+											<span
+												class="font-medium {importStatusClass(row.status)}"
+											>
+												{formatImportLabel(row.status)}
+											</span>
+										</td>
+										<td class="px-3 py-2 text-muted-foreground">
+											{formatImportLabel(row.action)}
+										</td>
 										<td class="px-3 py-2 text-muted-foreground">
 											{row.reason ??
 												(row.matched_contact_name
@@ -643,17 +665,17 @@
 					>
 						<div class="flex flex-wrap items-start justify-between gap-3">
 							<div class="min-w-0">
-								<p class="font-semibold text-sm text-foreground">
+								<p class="font-semibold text-sm text-foreground truncate">
 									{contact.display_name}
 								</p>
-								<p class="text-xs text-muted-foreground mt-0.5">
+								<p class="text-xs text-muted-foreground mt-0.5 truncate">
 									{contact.relationship_label || 'No relationship'} · {contact.organization ||
 										'No org'}
 								</p>
-								<p class="text-xs text-muted-foreground mt-0.5">
+								<p class="text-xs text-muted-foreground mt-0.5 truncate">
 									{formatMethods(contact)}
 								</p>
-								<p class="text-xs text-muted-foreground/70 mt-0.5">
+								<p class="text-xs text-muted-foreground/70 mt-0.5 truncate">
 									Updated {formatLastUpdated(contact.updated_at)}
 								</p>
 							</div>

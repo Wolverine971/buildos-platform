@@ -51,7 +51,9 @@
 	{#if isLoadingSessions}
 		<div class="p-2 space-y-2">
 			{#each Array(6) as _}
-				<div class="border border-border rounded-lg p-2.5 animate-pulse">
+				<div
+					class="border border-border rounded-lg p-2.5 animate-pulse motion-reduce:animate-none"
+				>
 					<div class="h-3 bg-muted rounded w-3/4 mb-2"></div>
 					<div class="h-2.5 bg-muted rounded w-1/2"></div>
 				</div>
@@ -71,7 +73,7 @@
 		<div class="flex-1 overflow-y-auto overscroll-contain p-2 space-y-1.5">
 			{#each sessions as session}
 				<button
-					class="w-full text-left rounded-lg border p-2.5 transition-all pressable {selectedSessionId ===
+					class="w-full text-left rounded-lg border p-2.5 transition-all motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {selectedSessionId ===
 					session.id
 						? 'border-accent/60 bg-accent/10 shadow-ink-strong'
 						: 'border-border bg-background hover:border-accent/40'}"

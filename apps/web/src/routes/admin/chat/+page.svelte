@@ -491,7 +491,7 @@
 					<input
 						type="checkbox"
 						bind:checked={autoRefresh}
-						class="h-4 w-4 rounded border-border bg-background text-accent focus:ring-ring focus:ring-2 cursor-pointer"
+						class="h-4 w-4 rounded border-border bg-background text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
 						aria-label="Enable auto refresh"
 					/>
 					<span class="text-sm text-muted-foreground">Auto Refresh</span>
@@ -553,7 +553,7 @@
 	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
 		<a
 			href="/admin/chat/sessions"
-			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all pressable focus:outline-none focus:ring-2 focus:ring-ring"
+			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 		>
 			<div class="flex items-center gap-3">
 				<MessageSquare class="h-7 w-7 text-info shrink-0" />
@@ -566,7 +566,7 @@
 
 		<a
 			href="/admin/chat/agents"
-			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all pressable focus:outline-none focus:ring-2 focus:ring-ring"
+			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 		>
 			<div class="flex items-center gap-3">
 				<Activity class="h-7 w-7 text-accent shrink-0" />
@@ -579,7 +579,7 @@
 
 		<a
 			href="/admin/chat/costs"
-			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all pressable focus:outline-none focus:ring-2 focus:ring-ring"
+			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 		>
 			<div class="flex items-center gap-3">
 				<DollarSign class="h-7 w-7 text-success shrink-0" />
@@ -592,7 +592,7 @@
 
 		<a
 			href="/admin/chat/tools"
-			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all pressable focus:outline-none focus:ring-2 focus:ring-ring"
+			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 		>
 			<div class="flex items-center gap-3">
 				<Zap class="h-7 w-7 text-warning shrink-0" />
@@ -605,7 +605,7 @@
 
 		<a
 			href="/admin/chat/domains"
-			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all pressable focus:outline-none focus:ring-2 focus:ring-ring"
+			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 		>
 			<div class="flex items-center gap-3">
 				<Network class="h-7 w-7 text-info shrink-0" />
@@ -618,7 +618,7 @@
 
 		<a
 			href="/admin/chat/timing"
-			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all pressable focus:outline-none focus:ring-2 focus:ring-ring"
+			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 		>
 			<div class="flex items-center gap-3">
 				<Clock class="h-7 w-7 text-info shrink-0" />
@@ -702,7 +702,9 @@
 	{#if isLoading}
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
 			{#each Array(8) as _}
-				<div class="bg-card border border-border rounded-lg p-4 shadow-ink animate-pulse">
+				<div
+					class="bg-card border border-border rounded-lg p-4 shadow-ink animate-pulse motion-reduce:animate-none"
+				>
 					<div class="h-4 bg-muted rounded w-3/4 mb-2"></div>
 					<div class="h-8 bg-muted rounded w-1/2"></div>
 				</div>
@@ -720,7 +722,7 @@
 						>
 							Chat Sessions
 						</p>
-						<p class="text-2xl font-bold text-info mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatNumber(dashboardKPIs.totalSessions)}
 						</p>
 					</div>
@@ -743,7 +745,7 @@
 						>
 							Active Users
 						</p>
-						<p class="text-2xl font-bold text-info mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatNumber(dashboardKPIs.uniqueUsers)}
 						</p>
 					</div>
@@ -766,7 +768,7 @@
 						>
 							Turns
 						</p>
-						<p class="text-2xl font-bold text-success mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatNumber(dashboardKPIs.totalTurns)}
 						</p>
 					</div>
@@ -803,7 +805,7 @@
 						>
 							{dashboardKPIs.isCostEstimated ? 'Estimated Cost' : 'Billable Cost'}
 						</p>
-						<p class="text-2xl font-bold text-warning mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatCurrency(dashboardKPIs.estimatedCost)}
 						</p>
 					</div>
@@ -838,7 +840,7 @@
 						>
 							Chat Tokens
 						</p>
-						<p class="text-2xl font-bold text-accent mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatCompact(dashboardKPIs.totalTokensUsed)}
 						</p>
 					</div>
@@ -869,7 +871,7 @@
 						>
 							Tool Calls
 						</p>
-						<p class="text-2xl font-bold text-info mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatNumber(dashboardKPIs.toolCalls)}
 						</p>
 					</div>
@@ -895,7 +897,7 @@
 						>
 							P95 Turn
 						</p>
-						<p class="text-2xl font-bold text-info mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatDuration(dashboardKPIs.p95TurnDurationMs)}
 						</p>
 					</div>
@@ -917,7 +919,7 @@
 						>
 							LLM Passes / Turn
 						</p>
-						<p class="text-2xl font-bold text-success mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{dashboardKPIs.avgLlmPassesPerTurn.toFixed(2)}x
 						</p>
 					</div>
@@ -1120,13 +1122,13 @@
 											success • p95 {formatDuration(route.p95_duration_ms)}
 										</div>
 									</div>
-									<span class="text-sm font-bold text-info shrink-0">
+									<span class="text-sm font-bold text-foreground shrink-0">
 										{formatNumber(route.count)}
 									</span>
 								</div>
 								<div class="w-full bg-muted rounded-full h-2.5">
 									<div
-										class="bg-info h-2.5 rounded-full transition-all duration-300"
+										class="bg-info h-2.5 rounded-full transition-all duration-300 motion-reduce:transition-none"
 										style="width: {distributionWidth(
 											route,
 											runtimeDistribution.first_actions

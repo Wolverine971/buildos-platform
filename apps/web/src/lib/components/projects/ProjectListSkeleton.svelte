@@ -13,7 +13,10 @@
 
 <div class="space-y-2 sm:space-y-3">
 	{#each Array(Math.max(count, 3)) as _, i (i)}
-		<div class="wt-paper p-3 sm:p-4 tx tx-frame tx-weak animate-pulse" aria-hidden="true">
+		<div
+			class="wt-paper p-3 sm:p-4 tx tx-frame tx-weak animate-pulse motion-reduce:animate-none"
+			aria-hidden="true"
+		>
 			<div class="flex items-center justify-between gap-3">
 				<div class="h-5 w-1/3 rounded-md bg-muted"></div>
 				<div class="h-4 w-28 rounded-md bg-muted"></div>

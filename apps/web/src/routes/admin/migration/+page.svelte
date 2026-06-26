@@ -333,7 +333,8 @@
 	<!-- Tab Navigation -->
 	<div class="flex border-b border-border overflow-x-auto">
 		<button
-			class="px-4 py-2 text-sm font-medium transition-colors {activeTab === 'overview'
+			class="px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring {activeTab ===
+			'overview'
 				? 'border-b-2 border-accent text-accent'
 				: 'text-muted-foreground hover:text-foreground dark:hover:text-foreground'}"
 			onclick={() => switchTab('overview')}
@@ -342,7 +343,8 @@
 			Overview
 		</button>
 		<button
-			class="px-4 py-2 text-sm font-medium transition-colors {activeTab === 'users'
+			class="px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring {activeTab ===
+			'users'
 				? 'border-b-2 border-accent text-accent'
 				: 'text-muted-foreground hover:text-foreground dark:hover:text-foreground'}"
 			onclick={() => switchTab('users')}
@@ -458,7 +460,7 @@
 			{:else if usersLoading}
 				<div class="flex items-center justify-center py-12">
 					<div
-						class="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent"
+						class="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent motion-reduce:animate-none"
 					></div>
 				</div>
 			{:else}

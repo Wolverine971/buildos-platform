@@ -13,6 +13,7 @@
 	import TextInput from '$components/ui/TextInput.svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import InfoModal from '$components/ui/InfoModal.svelte';
+	import ConfirmationModal from '$components/ui/ConfirmationModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import {
 		Check,
@@ -71,6 +72,7 @@
 	let resolveModalOpen = $state(false);
 	let currentErrorToResolve = $state<string | null>(null);
 	let bulkResolveModalOpen = $state(false);
+	let purgeConfirmOpen = $state(false);
 
 	// Filters - Default to showing only unresolved errors
 	let filterSeverity = $state<ErrorSeverity | ''>('');
@@ -212,11 +214,10 @@
 	}
 
 	async function purgeScannerNoise() {
-		const confirmed = confirm(
-			'Delete stored scanner/probe noise from error_logs? This removes known credential/config 404 probes and keeps actionable errors.'
-		);
-		if (!confirmed) return;
+		purgeConfirmOpen = true;
+	}
 
+	async function confirmPurgeScannerNoise() {
 		purgeProcessing = true;
 		try {
 			const response = await fetch('/api/admin/errors/purge-noise', {
@@ -232,6 +233,7 @@
 
 			await loadErrors();
 
+			purgeConfirmOpen = false;
 			const { deleted = 0, scanned = 0, stoppedAtLimit = false } = result.data || {};
 			infoModal = {
 				isOpen: true,
@@ -242,6 +244,7 @@
 			};
 		} catch (error) {
 			console.error('Failed to purge scanner noise:', error);
+			purgeConfirmOpen = false;
 			infoModal = {
 				isOpen: true,
 				title: 'Error',
@@ -293,9 +296,9 @@
 				};
 			case 'error':
 				return {
-					badge: 'bg-accent/15 text-accent border border-accent/30',
+					badge: 'bg-warning/15 text-warning border border-warning/30',
 					icon: Bug,
-					dot: 'bg-accent'
+					dot: 'bg-warning'
 				};
 			case 'warning':
 				return {
@@ -783,7 +786,7 @@
 										checked={selectAll}
 										indeterminate={selectSome}
 										onchange={toggleSelectAll}
-										class="h-4 w-4 rounded border-border text-accent focus:ring-ring focus:ring-offset-0 bg-background cursor-pointer"
+										class="h-4 w-4 rounded-md border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 bg-background cursor-pointer"
 										aria-label="Select all errors"
 									/>
 								</div>
@@ -839,7 +842,7 @@
 										type="checkbox"
 										checked={!!isSelected}
 										onchange={() => error.id && toggleErrorSelection(error.id)}
-										class="h-4 w-4 rounded border-border text-accent focus:ring-ring focus:ring-offset-0 bg-background cursor-pointer"
+										class="h-4 w-4 rounded-md border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 bg-background cursor-pointer"
 										aria-label="Select error {error.id}"
 									/>
 								</td>
@@ -912,7 +915,7 @@
 									<div class="flex items-center justify-end gap-1">
 										<button
 											onclick={() => (selectedError = error)}
-											class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors pressable"
+											class="p-2.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 											title="View details"
 										>
 											<Eye class="w-3.5 h-3.5" />
@@ -920,8 +923,9 @@
 										{#if !error.resolved && error.id}
 											<button
 												onclick={() => openResolveModal(error.id!)}
-												class="p-1.5 rounded-md text-success hover:bg-success/10 transition-colors pressable"
+												class="p-2.5 rounded-md text-success hover:bg-success/10 transition-colors pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 												title="Resolve"
+												aria-label="Resolve error"
 											>
 												<Check class="w-3.5 h-3.5" />
 											</button>
@@ -1048,7 +1052,7 @@
 				</div>
 				<button
 					onclick={() => (selectedError = null)}
-					class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors pressable"
+					class="p-2.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					aria-label="Close modal"
 				>
 					<X class="w-4 h-4" />
@@ -1294,7 +1298,7 @@
 								<div class="mt-2">
 									<span class="text-muted-foreground text-xs">Arguments:</span>
 									<pre
-										class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto text-foreground/80 max-h-40 leading-relaxed">{formatJson(
+										class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto whitespace-pre-wrap break-all text-foreground/80 max-h-40 leading-relaxed">{formatJson(
 											toolArgs
 										)}</pre>
 								</div>
@@ -1311,7 +1315,7 @@
 								Operation Payload
 							</p>
 							<pre
-								class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto text-foreground/80 max-h-40 leading-relaxed">{formatJson(
+								class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto whitespace-pre-wrap break-all text-foreground/80 max-h-40 leading-relaxed">{formatJson(
 									operationPayload
 								)}</pre>
 						</div>
@@ -1326,7 +1330,7 @@
 								Metadata
 							</p>
 							<pre
-								class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto text-foreground/80 max-h-48 leading-relaxed">{formatJson(
+								class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto whitespace-pre-wrap break-all text-foreground/80 max-h-48 leading-relaxed">{formatJson(
 									metadata
 								)}</pre>
 						</div>
@@ -1341,7 +1345,7 @@
 								Stack Trace
 							</p>
 							<pre
-								class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto text-foreground/80 max-h-40 leading-relaxed">{selectedError.error_stack ||
+								class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto whitespace-pre-wrap break-all text-foreground/80 max-h-40 leading-relaxed">{selectedError.error_stack ||
 									selectedError.error_stack}</pre>
 						</div>
 					{/if}
@@ -1466,6 +1470,27 @@
 >
 	<p class="text-sm text-muted-foreground">{infoModal.message}</p>
 </InfoModal>
+
+<!-- Purge scanner-noise confirmation -->
+<ConfirmationModal
+	bind:isOpen={purgeConfirmOpen}
+	title="Purge scanner noise?"
+	confirmText="Delete noise"
+	confirmVariant="danger"
+	icon="danger"
+	loading={purgeProcessing}
+	loadingText="Purging…"
+	onconfirm={confirmPurgeScannerNoise}
+	oncancel={() => (purgeConfirmOpen = false)}
+>
+	{#snippet content()}
+		<p class="text-sm text-muted-foreground">
+			This deletes stored scanner/probe noise from <code class="text-foreground"
+				>error_logs</code
+			> — known credential/config 404 probes — and keeps actionable errors. This can't be undone.
+		</p>
+	{/snippet}
+</ConfirmationModal>
 
 <!-- Resolve Error Modal -->
 <InfoModal

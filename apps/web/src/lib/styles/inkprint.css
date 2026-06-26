@@ -699,4 +699,15 @@
 	.wt-plate {
 		transition-duration: 0ms;
 	}
+
+	/* Hyperplexed audit S2: the tactile press transition is a comfort effect,
+	   not information — collapse it (and its active nudge) for opted-out users.
+	   Applies app-wide so every `.pressable` control is gated at the source. */
+	.pressable {
+		transition-duration: 0ms;
+	}
+
+	.pressable:active {
+		transform: translateY(0);
+	}
 }

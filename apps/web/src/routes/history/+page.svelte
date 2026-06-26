@@ -203,7 +203,7 @@
 			case 'done':
 				return 'text-success';
 			case 'processing':
-				return 'text-accent animate-spin';
+				return 'text-accent animate-spin motion-reduce:animate-none';
 			case 'queued':
 				return 'text-warning';
 			case 'recent':
@@ -382,16 +382,19 @@
 		}
 	}
 
-	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter') {
-			applyFilters();
-		}
+	// Debounced search so it auto-applies like the status <select>, instead of
+	// requiring a separate "Go" button (one submit model for the whole row).
+	let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function onSearchInput() {
+		clearTimeout(searchDebounceTimer);
+		searchDebounceTimer = setTimeout(() => applyFilters(), 400);
 	}
 
-	function handleItemKeydown(event: KeyboardEvent, item: HistoryItem) {
-		if (event.key === 'Enter' || event.key === ' ') {
-			event.preventDefault();
-			openItem(item);
+	function handleKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter') {
+			clearTimeout(searchDebounceTimer);
+			applyFilters();
 		}
 	}
 
@@ -424,17 +427,19 @@
 	<meta name="description" content="View and explore your captures and chat conversations" />
 </svelte:head>
 
-<div class="min-h-screen bg-background rounded-md">
+<div class="min-h-screen bg-background">
 	<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-3 sm:space-y-4">
 		<!-- Page Header - Inkprint design with micro-label pattern -->
-		<header class="flex flex-col gap-2 sm:gap-1.5 flex-1">
+		<header class="flex flex-col gap-2 sm:gap-1.5">
 			<p class="micro-label text-accent">YOUR ARCHIVE</p>
 			<div class="flex items-center gap-2.5">
 				<h1 class="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground">
 					History
 				</h1>
 				{#if historyLoading}
-					<LoaderCircle class="h-4 w-4 sm:h-5 sm:w-5 text-accent animate-spin" />
+					<LoaderCircle
+						class="h-4 w-4 sm:h-5 sm:w-5 text-accent animate-spin motion-reduce:animate-none"
+					/>
 				{/if}
 			</div>
 			<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
@@ -449,8 +454,10 @@
 				<div
 					class="rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
 				>
-					<div class="text-base sm:text-2xl font-bold text-foreground">
-						{stats.totalBraindumps + stats.totalChatSessions}
+					<div class="flex items-center gap-1 sm:gap-2">
+						<span class="text-base sm:text-2xl font-bold text-foreground">
+							{stats.totalBraindumps + stats.totalChatSessions}
+						</span>
 					</div>
 					<div class="text-[9px] sm:text-sm text-muted-foreground">Total</div>
 				</div>
@@ -459,7 +466,7 @@
 				>
 					<div class="flex items-center gap-1 sm:gap-2">
 						<Lightbulb class="h-3 w-3 sm:h-5 sm:w-5 text-info hidden sm:block" />
-						<span class="text-base sm:text-2xl font-bold text-info">
+						<span class="text-base sm:text-2xl font-bold text-foreground">
 							{stats.totalBraindumps}
 						</span>
 					</div>
@@ -470,7 +477,7 @@
 				>
 					<div class="flex items-center gap-1 sm:gap-2">
 						<MessagesSquare class="h-3 w-3 sm:h-5 sm:w-5 text-accent hidden sm:block" />
-						<span class="text-base sm:text-2xl font-bold text-accent">
+						<span class="text-base sm:text-2xl font-bold text-foreground">
 							{stats.totalChatSessions}
 						</span>
 					</div>
@@ -479,8 +486,10 @@
 				<div
 					class="rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
 				>
-					<div class="text-base sm:text-2xl font-bold text-success">
-						{stats.processedBraindumps + stats.chatSessionsWithSummary}
+					<div class="flex items-center gap-1 sm:gap-2">
+						<span class="text-base sm:text-2xl font-bold text-foreground">
+							{stats.processedBraindumps + stats.chatSessionsWithSummary}
+						</span>
 					</div>
 					<div class="text-[9px] sm:text-sm text-muted-foreground">Done</div>
 				</div>
@@ -490,7 +499,8 @@
 			<div class="mb-2 sm:mb-4 flex gap-0.5 sm:gap-2 border-b border-border overflow-x-auto">
 				<button
 					onclick={() => setTypeFilter('all')}
-					class="relative px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap {typeFilter ===
+					aria-pressed={typeFilter === 'all'}
+					class="relative px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {typeFilter ===
 					'all'
 						? 'text-foreground'
 						: 'text-muted-foreground hover:text-foreground'}"
@@ -502,26 +512,27 @@
 				</button>
 				<button
 					onclick={() => setTypeFilter('braindumps')}
-					class="relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap {typeFilter ===
+					aria-pressed={typeFilter === 'braindumps'}
+					class="relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {typeFilter ===
 					'braindumps'
 						? 'text-foreground'
 						: 'text-muted-foreground hover:text-foreground'}"
 				>
 					<Lightbulb class="h-3 w-3 sm:h-4 sm:w-4" />
-					<span class="hidden sm:inline">Captures</span>
-					<span class="sm:hidden">Captures</span>
+					<span>Captures</span>
 					<span
 						class="rounded-full bg-info/15 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-xs text-info"
 					>
 						{stats.totalBraindumps}
 					</span>
 					{#if typeFilter === 'braindumps'}
-						<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-info"></span>
+						<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></span>
 					{/if}
 				</button>
 				<button
 					onclick={() => setTypeFilter('chats')}
-					class="relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap {typeFilter ===
+					aria-pressed={typeFilter === 'chats'}
+					class="relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {typeFilter ===
 					'chats'
 						? 'text-foreground'
 						: 'text-muted-foreground hover:text-foreground'}"
@@ -549,6 +560,7 @@
 						type="text"
 						placeholder="Search..."
 						bind:value={searchInput}
+						oninput={onSearchInput}
 						onkeydown={handleKeydown}
 						class="w-full rounded-lg border border-border bg-background py-1.5 sm:py-2 pl-8 sm:pl-10 pr-3 sm:pr-4 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
 					/>
@@ -562,22 +574,17 @@
 						onchange={applyFilters}
 						class="flex-1 sm:flex-none rounded-lg border border-border bg-background px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
 					>
-						<option value="">All</option>
+						<option value="">Any status</option>
 						<option value="processed">Done</option>
 						<option value="pending">Pending</option>
 						<option value="processing">Processing</option>
 						<option value="failed">Failed</option>
 					</select>
-					<button
-						onclick={applyFilters}
-						class="rounded-lg bg-accent px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-accent-foreground hover:bg-accent/90 shadow-ink pressable"
-					>
-						Go
-					</button>
 					{#if searchInput || statusFilter || typeFilter !== 'all'}
 						<button
 							onclick={clearFilters}
-							class="rounded-lg border border-border p-1.5 sm:px-3 sm:py-2 text-sm text-muted-foreground hover:bg-muted pressable"
+							aria-label="Clear filters"
+							class="rounded-lg border border-border px-2 py-1.5 sm:px-3 sm:py-2 text-sm text-muted-foreground hover:bg-muted pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 						>
 							<X class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
 						</button>
@@ -599,7 +606,7 @@
 					<p class="mb-4 text-center text-sm text-muted-foreground">{historyError}</p>
 					<button
 						onclick={() => location.reload()}
-						class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent/90 shadow-ink pressable"
+						class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent/90 shadow-ink pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 					>
 						Retry
 					</button>
@@ -612,7 +619,7 @@
 					<h3 class="mb-2 text-lg font-medium text-foreground">No history found</h3>
 					<p class="mb-4 text-center text-sm text-muted-foreground">
 						{#if typeFilter === 'braindumps'}
-							You haven't captured any notes yet.<br />
+							You haven't captured anything yet.<br />
 							Start a conversation with BuildOS to get started.
 						{:else if typeFilter === 'chats'}
 							You haven't had any chat sessions yet.<br />
@@ -632,119 +639,131 @@
 						{@const statusLabel = getEffectiveStatusLabel(item, classifyStatus)}
 						{@const StatusIcon = getStatusIcon(displayStatus)}
 						<div
-							role="button"
-							tabindex="0"
-							onclick={() => openItem(item)}
-							onkeydown={(event) => handleItemKeydown(event, item)}
-							aria-busy={openingBraindumpId === item.id}
-							class={`group flex h-full flex-col rounded-lg border border-border bg-card p-2 text-left shadow-ink transition-all hover:border-accent/50 hover:shadow-ink-strong tx tx-frame tx-weak pressable sm:p-4 ${
+							class={`group relative flex h-full flex-col rounded-lg border border-border bg-card p-2 text-left shadow-ink transition-all hover:border-accent/50 hover:shadow-ink-strong focus-within:border-accent/50 tx tx-frame tx-weak pressable sm:p-4 ${
 								openingBraindumpId === item.id
 									? 'pointer-events-none opacity-70'
 									: ''
 							}`}
 						>
-							<!-- Header: Type badge and status -->
-							<div class="mb-1 sm:mb-2 flex items-center justify-between">
-								<span
-									class="inline-flex items-center gap-0.5 sm:gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-xs font-medium {getTypeColor(
-										item.type
-									)}"
-								>
-									<TypeIcon class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-									<span class="hidden sm:inline"
-										>{item.type === 'chat_session' ? 'Chat' : 'Capture'}</span
-									>
-								</span>
-								<div class="flex items-center gap-1 sm:gap-2">
-									{#if canQueueChatSummary(item, classifyStatus)}
-										<button
-											type="button"
-											onclick={(e) => {
-												e.stopPropagation();
-												classifyChatSession(item);
-											}}
-											disabled={classifyStatus === 'loading' ||
-												classifyStatus === 'queued'}
-											class="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground transition pressable hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-70"
-											aria-label="Summarize chat session"
-										>
-											{#if classifyStatus === 'error'}
-												<Sparkles class="h-2.5 w-2.5 text-destructive" />
-												<span class="hidden sm:inline">Retry</span>
-											{:else}
-												<Sparkles class="h-2.5 w-2.5" />
-												<span class="hidden sm:inline">Summarize</span>
-											{/if}
-										</button>
-									{/if}
+							<!-- Stretched primary action: makes the whole card a real
+							     <button> (native Enter/Space + focus ring) without nesting
+							     the Summarize button inside a button. -->
+							<button
+								type="button"
+								onclick={() => openItem(item)}
+								aria-busy={openingBraindumpId === item.id}
+								aria-label={`Open ${item.title}`}
+								class="absolute inset-0 z-0 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+							></button>
+
+							<!-- Content sits above the stretched button but is itself
+							     pointer-events-none so taps fall through to it; interactive
+							     children (Summarize) re-enable pointer events + raise z. -->
+							<div class="pointer-events-none relative z-[1] flex flex-1 flex-col">
+								<!-- Header: Type badge and status -->
+								<div class="mb-1 sm:mb-2 flex items-center justify-between">
 									<span
-										class="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium {getStatusBadgeClass(
-											displayStatus
+										class="inline-flex items-center gap-0.5 sm:gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-xs font-medium {getTypeColor(
+											item.type
 										)}"
 									>
-										<StatusIcon
-											class="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0 {getStatusColor(
-												displayStatus
-											)}"
-										/>
-										<span class="hidden sm:inline whitespace-nowrap"
-											>{statusLabel}</span
+										<TypeIcon class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+										<span class="hidden sm:inline"
+											>{item.type === 'chat_session'
+												? 'Chat'
+												: 'Capture'}</span
 										>
 									</span>
-								</div>
-							</div>
-
-							<!-- Title -->
-							<h3
-								class="mb-1 sm:mb-2 line-clamp-2 text-xs sm:text-base font-medium text-foreground"
-							>
-								{item.title}
-							</h3>
-
-							<!-- Preview / Summary - clamped to one line on mobile (compact,
-							     don't hide: this is the card's most informative field) -->
-							<p
-								class="mb-1.5 sm:mb-3 line-clamp-1 sm:line-clamp-3 flex-1 text-[11px] sm:text-sm text-muted-foreground"
-							>
-								{item.preview}
-							</p>
-
-							<!-- Topics (compact) - show fewer on mobile -->
-							{#if item.topics && item.topics.length > 0}
-								<div class="mb-1.5 sm:mb-3 flex flex-wrap gap-0.5 sm:gap-1">
-									{#each item.topics.slice(0, 2) as topic}
+									<div class="flex items-center gap-1 sm:gap-2">
+										{#if canQueueChatSummary(item, classifyStatus)}
+											<button
+												type="button"
+												onclick={() => classifyChatSession(item)}
+												disabled={classifyStatus === 'loading' ||
+													classifyStatus === 'queued'}
+												class="pointer-events-auto relative z-[2] inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground transition pressable hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-70"
+												aria-label="Summarize chat session"
+											>
+												{#if classifyStatus === 'error'}
+													<Sparkles
+														class="h-2.5 w-2.5 text-destructive"
+													/>
+													<span class="hidden sm:inline">Retry</span>
+												{:else}
+													<Sparkles class="h-2.5 w-2.5" />
+													<span class="hidden sm:inline">Summarize</span>
+												{/if}
+											</button>
+										{/if}
 										<span
-											class="inline-flex items-center rounded-full bg-muted px-1 sm:px-1.5 py-0.5 text-[10px] text-muted-foreground truncate max-w-[60px] sm:max-w-none"
+											class="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium {getStatusBadgeClass(
+												displayStatus
+											)}"
 										>
-											{topic}
+											<StatusIcon
+												class="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0 {getStatusColor(
+													displayStatus
+												)}"
+											/>
+											<span class="hidden sm:inline whitespace-nowrap"
+												>{statusLabel}</span
+											>
 										</span>
-									{/each}
-									{#if item.topics.length > 2}
-										<span class="text-[10px] text-muted-foreground">
-											+{item.topics.length - 2}
-										</span>
-									{/if}
+									</div>
 								</div>
-							{/if}
 
-							<!-- Footer: Metadata - compact on mobile -->
-							<div
-								class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3 text-[9px] sm:text-xs text-muted-foreground"
-							>
-								<span class="flex items-center gap-0.5 sm:gap-1 truncate">
-									<Clock class="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
-									<span class="truncate">{formatDate(item.createdAt)}</span>
-								</span>
-								<div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-									{#if item.type === 'chat_session' && item.messageCount}
-										<span class="flex items-center gap-0.5">
-											<MessageSquare class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-											{item.messageCount}
-										</span>
-									{/if}
-									<ChevronRight
-										class="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground transition-colors group-hover:text-accent"
-									/>
+								<!-- Title -->
+								<h3
+									class="mb-1 sm:mb-2 line-clamp-2 text-xs sm:text-base font-medium text-foreground"
+								>
+									{item.title}
+								</h3>
+
+								<!-- Preview / Summary - clamped to one line on mobile (compact,
+							     don't hide: this is the card's most informative field) -->
+								<p
+									class="mb-1.5 sm:mb-3 line-clamp-1 sm:line-clamp-3 flex-1 text-[11px] sm:text-sm text-muted-foreground"
+								>
+									{item.preview}
+								</p>
+
+								<!-- Topics (compact) - show fewer on mobile -->
+								{#if item.topics && item.topics.length > 0}
+									<div class="mb-1.5 sm:mb-3 flex flex-wrap gap-0.5 sm:gap-1">
+										{#each item.topics.slice(0, 2) as topic}
+											<span
+												class="inline-flex items-center rounded-full bg-muted px-1 sm:px-1.5 py-0.5 text-[10px] text-muted-foreground truncate max-w-[60px] sm:max-w-none"
+											>
+												{topic}
+											</span>
+										{/each}
+										{#if item.topics.length > 2}
+											<span class="text-[10px] text-muted-foreground">
+												+{item.topics.length - 2}
+											</span>
+										{/if}
+									</div>
+								{/if}
+
+								<!-- Footer: Metadata - compact on mobile -->
+								<div
+									class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3 text-[9px] sm:text-xs text-muted-foreground"
+								>
+									<span class="flex items-center gap-0.5 sm:gap-1 truncate">
+										<Clock class="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
+										<span class="truncate">{formatDate(item.createdAt)}</span>
+									</span>
+									<div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+										{#if item.type === 'chat_session' && item.messageCount}
+											<span class="flex items-center gap-0.5">
+												<MessageSquare class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+												{item.messageCount}
+											</span>
+										{/if}
+										<ChevronRight
+											class="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground transition-colors group-hover:text-accent group-focus-within:text-accent"
+										/>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -756,7 +775,7 @@
 					<div class="mt-6 flex justify-center">
 						<button
 							onclick={loadMore}
-							class="rounded-lg border border-border px-6 py-2 text-sm font-medium text-foreground hover:bg-muted pressable"
+							class="rounded-lg border border-border px-6 py-2 text-sm font-medium text-foreground hover:bg-muted pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 						>
 							Load more
 						</button>

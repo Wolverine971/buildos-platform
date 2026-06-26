@@ -10,6 +10,7 @@
 		Users,
 		LoaderCircle,
 		AlertCircle,
+		AlertTriangle,
 		CheckCircle,
 		XCircle,
 		Play,
@@ -365,7 +366,7 @@
 			<nav class="-mb-px flex space-x-6 overflow-x-auto sm:space-x-8">
 				<button
 					onclick={() => (activeTab = 'trigger')}
-					class="shrink-0 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors
+					class="shrink-0 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
 						{activeTab === 'trigger'
 						? 'border-info text-info'
 						: 'border-transparent text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground'}"
@@ -377,7 +378,7 @@
 				</button>
 				<button
 					onclick={() => (activeTab = 'results')}
-					class="shrink-0 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors
+					class="shrink-0 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
 						{activeTab === 'results'
 						? 'border-info text-info'
 						: 'border-transparent text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground'}"
@@ -389,7 +390,7 @@
 				</button>
 				<button
 					onclick={() => (activeTab = 'monitor')}
-					class="shrink-0 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors
+					class="shrink-0 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
 						{activeTab === 'monitor'
 						? 'border-info text-info'
 						: 'border-transparent text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground'}"
@@ -420,11 +421,13 @@
 							bind:value={userSearch}
 							onkeydown={(e) => e.key === 'Enter' && searchUsers()}
 							class="flex-1 px-4 py-2 border border-border rounded-lg
-								focus:ring-2 focus:ring-ring"
+								focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						/>
 						<Button onclick={searchUsers} disabled={isSearching} variant="ghost">
 							{#if isSearching}
-								<LoaderCircle class="h-4 w-4 animate-spin" />
+								<LoaderCircle
+									class="h-4 w-4 animate-spin motion-reduce:animate-none"
+								/>
 							{:else}
 								Search
 							{/if}
@@ -458,7 +461,7 @@
 										type="checkbox"
 										checked={selectedUsers.includes(user.id)}
 										onchange={() => toggleUser(user.id)}
-										class="h-4 w-4 rounded border-border text-accent"
+										class="h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									/>
 									<div class="flex-1">
 										<div class="font-medium text-sm text-foreground">
@@ -470,7 +473,7 @@
 										</div>
 									</div>
 									{#if user.sms_preferences}
-										<div class="text-xs px-2 py-1 bg-muted rounded">
+										<div class="text-xs px-2 py-1 bg-muted rounded-md">
 											{user.sms_preferences.daily_sms_count || 0}/{user
 												.sms_preferences.daily_sms_limit || 10} today
 										</div>
@@ -503,7 +506,7 @@
 							<input
 								type="checkbox"
 								bind:checked={dryRun}
-								class="mt-1 h-4 w-4 rounded border-border text-accent"
+								class="mt-1 h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							/>
 							<div>
 								<div class="font-medium text-foreground">Dry Run</div>
@@ -526,7 +529,7 @@
 								type="date"
 								bind:value={overrideDate}
 								class="w-64 px-4 py-2 border border-border rounded-lg
-									focus:ring-2 focus:ring-ring"
+									focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							/>
 							<p class="text-sm text-muted-foreground mt-1">
 								Process calendar events for this date (user's timezone)
@@ -538,7 +541,7 @@
 							<input
 								type="checkbox"
 								bind:checked={skipQuietHours}
-								class="mt-1 h-4 w-4 rounded border-border text-accent"
+								class="mt-1 h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							/>
 							<div>
 								<div class="font-medium text-foreground">
@@ -555,7 +558,7 @@
 							<input
 								type="checkbox"
 								bind:checked={skipDailyLimit}
-								class="mt-1 h-4 w-4 rounded border-border text-accent"
+								class="mt-1 h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							/>
 							<div>
 								<div class="font-medium text-foreground">Skip Daily SMS Limit</div>
@@ -574,7 +577,9 @@
 								class="w-full"
 							>
 								{#if isLoadingCalendarPreview}
-									<LoaderCircle class="h-4 w-4 mr-2 animate-spin" />
+									<LoaderCircle
+										class="h-4 w-4 mr-2 animate-spin motion-reduce:animate-none"
+									/>
 									Loading Calendar Info...
 								{:else}
 									<Calendar class="h-4 w-4 mr-2" />
@@ -598,8 +603,9 @@
 								Calendar Preview Results
 							</h3>
 							<button
+								type="button"
 								onclick={() => (showCalendarPreview = false)}
-								class="text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground"
+								class="rounded-md text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								<XCircle class="h-5 w-5" />
 							</button>
@@ -645,7 +651,7 @@
 									<!-- Stats Grid -->
 									{#if result.calendar_connected}
 										<div class="grid grid-cols-2 gap-3 mb-3 sm:grid-cols-4">
-											<div class="bg-muted p-3 rounded">
+											<div class="bg-muted p-3 rounded-md">
 												<div class="text-xs text-muted-foreground">
 													Total Events
 												</div>
@@ -653,7 +659,7 @@
 													{result.total_events}
 												</div>
 											</div>
-											<div class="bg-muted p-3 rounded">
+											<div class="bg-muted p-3 rounded-md">
 												<div class="text-xs text-muted-foreground">
 													Synced Events
 												</div>
@@ -661,7 +667,7 @@
 													{result.synced_events}
 												</div>
 											</div>
-											<div class="bg-success/10 p-3 rounded">
+											<div class="bg-success/10 p-3 rounded-md">
 												<div class="text-xs text-success font-medium">
 													Would Trigger SMS
 												</div>
@@ -669,7 +675,7 @@
 													{result.events_that_would_trigger_sms}
 												</div>
 											</div>
-											<div class="bg-muted p-3 rounded">
+											<div class="bg-muted p-3 rounded-md">
 												<div class="text-xs text-muted-foreground">
 													SMS Usage
 												</div>
@@ -692,7 +698,7 @@
 												<div class="flex flex-wrap gap-2">
 													{#if result.events_skipped.past_reminder_time > 0}
 														<span
-															class="text-xs px-2 py-1 bg-muted rounded"
+															class="text-xs px-2 py-1 bg-muted rounded-md"
 														>
 															Past time: {result.events_skipped
 																.past_reminder_time}
@@ -700,14 +706,14 @@
 													{/if}
 													{#if result.events_skipped.all_day > 0}
 														<span
-															class="text-xs px-2 py-1 bg-muted rounded"
+															class="text-xs px-2 py-1 bg-muted rounded-md"
 														>
 															All-day: {result.events_skipped.all_day}
 														</span>
 													{/if}
 													{#if result.events_skipped.quiet_hours > 0}
 														<span
-															class="text-xs px-2 py-1 bg-muted rounded"
+															class="text-xs px-2 py-1 bg-muted rounded-md"
 														>
 															Quiet hours: {result.events_skipped
 																.quiet_hours}
@@ -715,7 +721,7 @@
 													{/if}
 													{#if result.events_skipped.no_start_time > 0}
 														<span
-															class="text-xs px-2 py-1 bg-muted rounded"
+															class="text-xs px-2 py-1 bg-muted rounded-md"
 														>
 															No start time: {result.events_skipped
 																.no_start_time}
@@ -738,7 +744,7 @@
 												>
 													{#each result.event_details as event}
 														<div
-															class="text-sm p-2 rounded {event.would_trigger_sms
+															class="text-sm p-2 rounded-md {event.would_trigger_sms
 																? 'bg-success/10 border border-success/30'
 																: 'bg-muted border border-border'}"
 														>
@@ -781,7 +787,7 @@
 																		/>
 																	{:else}
 																		<span
-																			class="text-xs px-2 py-1 bg-muted rounded"
+																			class="text-xs px-2 py-1 bg-muted rounded-md"
 																		>
 																			{event.skip_reason}
 																		</span>
@@ -800,9 +806,10 @@
 										<div class="mt-3">
 											{#each result.errors as error}
 												<div
-													class="text-sm text-destructive bg-destructive/10 p-2 rounded"
+													class="text-sm text-destructive bg-destructive/10 p-2 rounded-md flex items-center gap-2"
 												>
-													⚠️ {error}
+													<AlertTriangle class="h-4 w-4 flex-shrink-0" />
+													{error}
 												</div>
 											{/each}
 										</div>
@@ -953,9 +960,11 @@
 								</div>
 								{#if isPolling}
 									<span
-										class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-info/10 text-info animate-pulse"
+										class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-info/10 text-info animate-pulse motion-reduce:animate-none"
 									>
-										<LoaderCircle class="h-3 w-3 mr-1 animate-spin" />
+										<LoaderCircle
+											class="h-3 w-3 mr-1 animate-spin motion-reduce:animate-none"
+										/>
 										Polling...
 									</span>
 								{/if}
@@ -989,7 +998,7 @@
 													</td>
 													<td class="p-2">
 														<span
-															class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium
+															class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium
 															{msg.status === 'sent'
 																? 'bg-success/10 text-success'
 																: msg.status === 'failed'

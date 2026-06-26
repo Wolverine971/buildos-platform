@@ -443,9 +443,9 @@ You already got something into BuildOS. Good.
 
 The next step is finishing the setup that keeps you from starting from zero again.
 
-When you come back to a project, the point is not to generate text once.
+When you come back to a project, you should not have to rebuild the context in your head first.
 
-The point is to keep context attached to the work so the next session starts with something real instead of another blank page.
+Finishing setup is what keeps that context attached to the work, so your next session starts with something real instead of another blank page.
 
 Finish onboarding, turn on one follow-through channel, and reopen the project you started.
 
@@ -462,8 +462,8 @@ DJ`,
 				<p>{{htmlGreeting}}</p>
 				<p>You already got something into BuildOS. Good.</p>
 				<p>The next step is finishing the setup that keeps you from starting from zero again.</p>
-				<p>When you come back to a project, the point is not to generate text once.</p>
-				<p>The point is to keep context attached to the work so the next session starts with something real instead of another blank page.</p>
+				<p>When you come back to a project, you should not have to rebuild the context in your head first.</p>
+				<p>Finishing setup is what keeps that context attached to the work, so your next session starts with something real instead of another blank page.</p>
 				<p>Finish onboarding, turn on one follow-through channel, and reopen the project you started.</p>
 			`,
 				{ htmlGreeting }
@@ -568,7 +568,7 @@ If you still have onboarding left, finish it now so the project you started does
 
 You do not need to set up everything at once.
 
-Just get to ready-state and give BuildOS one way to help you stay in motion after the first capture.
+Just get set up enough that BuildOS can keep showing up for the work after the first capture.
 
 {{ctaLabel}}: {{ctaUrl}}
 
@@ -585,7 +585,7 @@ DJ`,
 				<p>Making sure BuildOS can keep showing up for the work after that is step two.</p>
 				<p>If you still have onboarding left, finish it now so the project you started does not turn into another thing you have to remember on your own.</p>
 				<p>You do not need to set up everything at once.</p>
-				<p>Just get to ready-state and give BuildOS one way to help you stay in motion after the first capture.</p>
+				<p>Just get set up enough that BuildOS can keep showing up for the work after the first capture.</p>
 			`,
 				{ htmlGreeting }
 			),

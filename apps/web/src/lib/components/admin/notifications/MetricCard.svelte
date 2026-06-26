@@ -24,14 +24,17 @@
 		suffix = ''
 	}: Props = $props();
 
+	// Color discipline: decorative metric colors (blue/green/purple/orange) carry no
+	// state meaning, so neutralize the value + icon to the foreground tone. Genuine
+	// state colors (red/yellow) are preserved.
 	let colorClasses = $derived(
 		{
-			blue: 'text-info',
-			green: 'text-success',
+			blue: 'text-foreground',
+			green: 'text-foreground',
 			red: 'text-destructive',
 			yellow: 'text-warning',
-			purple: 'text-accent',
-			orange: 'text-accent'
+			purple: 'text-foreground',
+			orange: 'text-foreground'
 		}[color]
 	);
 
@@ -43,7 +46,7 @@
 <Card>
 	<CardBody padding="lg">
 		{#if loading}
-			<div class="animate-pulse">
+			<div class="animate-pulse motion-reduce:animate-none">
 				<div class="h-4 bg-muted rounded w-3/4 mb-2"></div>
 				<div class="h-8 bg-muted rounded w-1/2"></div>
 			</div>

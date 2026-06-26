@@ -66,3 +66,11 @@ export function handleRovingTabKeydown(
 export function slideMotion(duration = 140): { duration: number } {
 	return { duration: prefersReducedMotion.current ? 0 : duration };
 }
+
+/**
+ * Reduced-motion-aware params for `transition:fade`. Same idea as
+ * {@link slideMotion} — collapses to an instant fade when the user opted out.
+ */
+export function fadeMotion(duration = 150): { duration: number } {
+	return { duration: prefersReducedMotion.current ? 0 : duration };
+}

@@ -50,7 +50,7 @@
 					{@const Icon = option.icon}
 					<button
 						type="button"
-						class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition pressable
+						class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
 						{graphLibrary === option.value
 							? 'bg-accent text-accent-foreground shadow-ink'
 							: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"

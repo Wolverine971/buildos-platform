@@ -87,7 +87,7 @@
 >
 	<div class="max-w-7xl mx-auto">
 		{#if isAuthenticated}
-			<div class="px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+			<div class="px-2 sm:px-4 lg:px-6 py-3 sm:py-4">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 					<div
 						class="flex items-center justify-center gap-2 text-sm font-semibold tracking-tight text-muted-foreground"
@@ -129,7 +129,7 @@
 			</div>
 		{:else}
 			<!-- Non-authenticated User Footer -->
-			<div class="px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+			<div class="px-2 sm:px-4 lg:px-6 py-6 sm:py-8">
 				<!-- Mobile Layout -->
 				<div class="lg:hidden space-y-6">
 					<!-- Brand & CTA -->

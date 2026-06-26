@@ -308,9 +308,9 @@ describe('welcome sequence content', () => {
 
 			The next step is finishing the setup that keeps you from starting from zero again.
 
-			When you come back to a project, the point is not to generate text once.
+			When you come back to a project, you should not have to rebuild the context in your head first.
 
-			The point is to keep context attached to the work so the next session starts with something real instead of another blank page.
+			Finishing setup is what keeps that context attached to the work, so your next session starts with something real instead of another blank page.
 
 			Finish onboarding, turn on one follow-through channel, and reopen the project you started.
 
@@ -359,7 +359,7 @@ describe('welcome sequence content', () => {
 
 			You do not need to set up everything at once.
 
-			Just get to ready-state and give BuildOS one way to help you stay in motion after the first capture.
+			Just get set up enough that BuildOS can keep showing up for the work after the first capture.
 
 			Finish setup: https://build-os.com/onboarding
 

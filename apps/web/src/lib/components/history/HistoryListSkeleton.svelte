@@ -21,7 +21,7 @@
 <div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3">
 	{#each Array(count) as _, i (i)}
 		<div
-			class="group flex h-full flex-col rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-pulse tx-weak animate-pulse"
+			class="group flex h-full flex-col rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-pulse tx-weak animate-pulse"
 			aria-hidden="true"
 			style="animation-delay: {i * 50}ms"
 		>
@@ -29,8 +29,9 @@
 			<div class="mb-1 sm:mb-2 flex items-center justify-between">
 				<!-- Type badge skeleton - icon only on mobile -->
 				<div class="h-4 w-6 sm:h-5 sm:w-16 rounded-full bg-muted"></div>
-				<!-- Status icon skeleton -->
-				<div class="h-3 w-3 sm:h-4 sm:w-4 rounded-full bg-muted"></div>
+				<!-- Status pill skeleton - icon-only pill on mobile, labeled on desktop
+				     (matches the real bordered status badge, not a bare dot) -->
+				<div class="h-4 w-6 sm:h-5 sm:w-16 rounded-full bg-muted"></div>
 			</div>
 
 			<!-- Title skeleton -->
@@ -39,11 +40,12 @@
 				<div class="h-3 sm:hidden w-2/3 rounded bg-muted"></div>
 			</div>
 
-			<!-- Preview / Summary skeleton - hidden on mobile for density -->
-			<div class="hidden sm:block mb-3 flex-1 space-y-2">
-				<div class="h-4 w-full rounded bg-muted"></div>
-				<div class="h-4 w-full rounded bg-muted"></div>
-				<div class="h-4 w-3/4 rounded bg-muted"></div>
+			<!-- Preview / Summary skeleton - 1 line on mobile, 3 on desktop
+			     (matches the real card's line-clamp-1 sm:line-clamp-3 + margins) -->
+			<div class="mb-1.5 sm:mb-3 flex-1 space-y-1 sm:space-y-2">
+				<div class="h-3 sm:h-4 w-full rounded bg-muted"></div>
+				<div class="hidden sm:block h-4 w-full rounded bg-muted"></div>
+				<div class="hidden sm:block h-4 w-3/4 rounded bg-muted"></div>
 			</div>
 
 			<!-- Topics skeleton - compact on mobile -->
@@ -82,5 +84,14 @@
 
 	.animate-pulse {
 		animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+	}
+
+	/* Respect reduced-motion: hold a static dimmed state, drop the stagger */
+	@media (prefers-reduced-motion: reduce) {
+		.animate-pulse {
+			animation: none;
+			animation-delay: 0ms !important;
+			opacity: 0.6;
+		}
 	}
 </style>

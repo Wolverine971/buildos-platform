@@ -31,7 +31,7 @@
 		</div>
 		<button
 			type="button"
-			class="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+			class="text-xs font-medium text-muted-foreground transition-colors motion-reduce:transition-none hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
 			onclick={resetTimelineFilters}
 		>
 			Reset filters
@@ -42,7 +42,7 @@
 			{@const type = rawType as TimelineType}
 			<button
 				type="button"
-				class="px-2 py-1 rounded-full border text-xs font-medium transition-colors {eventTypeFilters[
+				class="px-2 py-1 rounded-full border text-xs font-medium transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {eventTypeFilters[
 					type
 				]
 					? 'border-accent bg-accent/15 text-foreground'
@@ -54,7 +54,7 @@
 		{/each}
 		<button
 			type="button"
-			class="px-2 py-1 rounded-full border text-xs font-medium transition-colors {showOnlyErrors
+			class="px-2 py-1 rounded-full border text-xs font-medium transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {showOnlyErrors
 				? 'border-destructive/60 bg-destructive/15 text-destructive'
 				: 'border-border bg-background text-foreground/50 hover:text-foreground/70'}"
 			onclick={() => (showOnlyErrors = !showOnlyErrors)}
@@ -70,7 +70,7 @@
 			type="text"
 			bind:value={timelineSearch}
 			placeholder="Search timeline events, payloads, tool names..."
-			class="w-full text-sm pl-8 pr-3 py-1.5 border border-border bg-background rounded-lg shadow-ink-inner focus:ring-2 focus:ring-ring focus:border-accent text-foreground"
+			class="w-full text-sm pl-8 pr-3 py-1.5 border border-border bg-background rounded-lg shadow-ink-inner focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-accent text-foreground"
 		/>
 	</div>
 </div>

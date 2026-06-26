@@ -38,14 +38,9 @@
 		return 'text-destructive';
 	}
 
-	function getChannelBadgeColor(channel: string): string {
-		const colors: Record<string, string> = {
-			push: 'bg-info/10 text-info',
-			email: 'bg-accent/10 text-accent',
-			sms: 'bg-success/10 text-success',
-			in_app: 'bg-muted text-muted-foreground'
-		};
-		return colors[channel] || 'bg-muted text-foreground dark:text-muted-foreground';
+	function getChannelBadgeColor(_channel: string): string {
+		// Channel is a category, not a state — use a single neutral badge.
+		return 'bg-muted text-foreground dark:text-muted-foreground';
 	}
 </script>
 
@@ -64,8 +59,8 @@
 	{#if loading}
 		<div class="p-3 space-y-2">
 			{#each Array(4) as _}
-				<div class="animate-pulse">
-					<div class="h-10 bg-muted rounded"></div>
+				<div class="animate-pulse motion-reduce:animate-none">
+					<div class="h-10 bg-muted rounded-md"></div>
 				</div>
 			{/each}
 		</div>

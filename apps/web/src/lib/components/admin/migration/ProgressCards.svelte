@@ -131,7 +131,7 @@
 					{formatNumber(stats.errors.recoverable)} recoverable
 				</span>
 				<span class="text-muted-foreground">|</span>
-				<span class="text-accent">
+				<span class="text-warning">
 					{formatNumber(stats.errors.dataErrors)} data
 				</span>
 				<span class="text-muted-foreground">|</span>

@@ -242,7 +242,9 @@
 	{#if isLoading}
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
 			{#each Array(8) as _}
-				<div class="bg-card border border-border rounded-lg p-4 shadow-ink animate-pulse">
+				<div
+					class="bg-card border border-border rounded-lg p-4 shadow-ink animate-pulse motion-reduce:animate-none"
+				>
 					<div class="h-4 bg-muted rounded w-3/4 mb-2"></div>
 					<div class="h-8 bg-muted rounded w-1/2"></div>
 				</div>
@@ -260,7 +262,7 @@
 						>
 							Turns
 						</p>
-						<p class="text-2xl font-bold text-info mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatNumber(kpis.totalTurns || 0)}
 						</p>
 					</div>
@@ -282,7 +284,7 @@
 						>
 							P95 Turn
 						</p>
-						<p class="text-2xl font-bold text-info mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatDuration(kpis.p95TurnDurationMs || 0)}
 						</p>
 					</div>
@@ -303,7 +305,7 @@
 						>
 							Tool Calls
 						</p>
-						<p class="text-2xl font-bold text-info mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatNumber(kpis.toolCalls || 0)}
 						</p>
 					</div>
@@ -325,7 +327,7 @@
 						>
 							{kpis.isCostEstimated ? 'Estimated Cost' : 'Billable Cost'}
 						</p>
-						<p class="text-2xl font-bold text-warning mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatCurrency(kpis.estimatedCost || 0)}
 						</p>
 					</div>
@@ -346,7 +348,7 @@
 						>
 							Tokens
 						</p>
-						<p class="text-2xl font-bold text-success mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatCompact(kpis.totalTokensUsed || 0)}
 						</p>
 					</div>
@@ -365,7 +367,7 @@
 						>
 							LLM Passes / Turn
 						</p>
-						<p class="text-2xl font-bold text-accent mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{(kpis.avgLlmPassesPerTurn || 0).toFixed(2)}x
 						</p>
 					</div>
@@ -384,7 +386,7 @@
 						>
 							Active Users
 						</p>
-						<p class="text-2xl font-bold text-info mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatNumber(kpis.uniqueUsers || 0)}
 						</p>
 					</div>
@@ -406,7 +408,7 @@
 						>
 							Runtime Signals
 						</p>
-						<p class="text-2xl font-bold text-success mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatPercentage(kpis.gatewayEnabledRate || 0)}
 						</p>
 					</div>
@@ -446,7 +448,7 @@
 								</div>
 								<div class="w-full bg-muted rounded-full h-2.5">
 									<div
-										class="bg-info h-2.5 rounded-full transition-all duration-300"
+										class="bg-info h-2.5 rounded-full transition-all duration-300 motion-reduce:transition-none"
 										style="width: {distributionWidth(route, firstActions)}"
 									></div>
 								</div>
@@ -484,7 +486,7 @@
 								</div>
 								<div class="w-full bg-muted rounded-full h-2.5">
 									<div
-										class="bg-info h-2.5 rounded-full transition-all duration-300"
+										class="bg-info h-2.5 rounded-full transition-all duration-300 motion-reduce:transition-none"
 										style="width: {distributionWidth(context, contextTypes)}"
 									></div>
 								</div>
@@ -516,7 +518,7 @@
 								</div>
 								<div class="w-full bg-muted rounded-full h-2.5">
 									<div
-										class="bg-success h-2.5 rounded-full transition-all duration-300"
+										class="bg-success h-2.5 rounded-full transition-all duration-300 motion-reduce:transition-none"
 										style="width: {distributionWidth(status, statuses)}"
 									></div>
 								</div>
@@ -546,7 +548,7 @@
 								</div>
 								<div class="w-full bg-muted rounded-full h-2.5">
 									<div
-										class="bg-accent h-2.5 rounded-full transition-all duration-300"
+										class="bg-accent h-2.5 rounded-full transition-all duration-300 motion-reduce:transition-none"
 										style="width: {distributionWidth(source, cacheSources)}"
 									></div>
 								</div>

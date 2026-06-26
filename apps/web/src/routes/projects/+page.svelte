@@ -28,7 +28,14 @@
 	} from '$lib/components/ontology/graph/lib/graph.filters';
 	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import { ontologyGraphStore } from '$lib/stores/ontology-graph.store';
-	import { LoaderCircle, Plus, SlidersHorizontal, ChevronDown } from 'lucide-svelte';
+	import {
+		LoaderCircle,
+		Plus,
+		SlidersHorizontal,
+		ChevronDown,
+		Search,
+		Folder
+	} from 'lucide-svelte';
 	import FilterGroup from '$lib/components/ui/FilterGroup.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
 	import PullToRefresh from '$lib/components/pwa/PullToRefresh.svelte';
@@ -206,12 +213,8 @@
 	});
 
 	const projects = $derived(projectSummaries);
-	const availableStates = $derived.by<readonly ProjectState[]>(() => {
-		const present = new Set(
-			(projects ?? []).map((project) => normalizeProjectState(project.state_key))
-		);
-		return PROJECT_STATE_ORDER.filter((state) => present.has(state));
-	});
+	// State filtering is owned by the always-visible status count strip
+	// (single-select quick-filter); the panel handles Context/Scale/Stage only.
 	const availableContexts = $derived(
 		Array.from(
 			new Set(
@@ -276,10 +279,7 @@
 
 	// Check if any filter options are available
 	const hasFilterOptions = $derived(
-		availableStates.length > 0 ||
-			availableContexts.length > 0 ||
-			availableScales.length > 0 ||
-			availableStages.length > 0
+		availableContexts.length > 0 || availableScales.length > 0 || availableStages.length > 0
 	);
 
 	// Apply every filter except the state filter. The status count strip uses
@@ -577,7 +577,9 @@
 						Projects
 					</h1>
 					{#if projectsLoading}
-						<LoaderCircle class="h-4 w-4 sm:h-5 sm:w-5 text-accent animate-spin" />
+						<LoaderCircle
+							class="h-4 w-4 sm:h-5 sm:w-5 text-accent animate-spin motion-reduce:animate-none"
+						/>
 					{/if}
 				</div>
 				<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
@@ -593,7 +595,7 @@
 				>
 					<button
 						type="button"
-						class={`relative rounded-md px-3 py-1.5 sm:px-4 sm:py-2 transition-all pressable ${
+						class={`relative rounded-md px-3 py-1.5 sm:px-4 sm:py-2 transition-all pressable motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${
 							activeTab === 'overview'
 								? 'bg-accent text-accent-foreground shadow-ink'
 								: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -605,7 +607,7 @@
 					</button>
 					<button
 						type="button"
-						class={`relative rounded-md px-3 py-1.5 sm:px-4 sm:py-2 transition-all pressable ${
+						class={`relative rounded-md px-3 py-1.5 sm:px-4 sm:py-2 transition-all pressable motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${
 							activeTab === 'graph'
 								? 'bg-accent text-accent-foreground shadow-ink'
 								: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -622,18 +624,10 @@
 		{#if activeTab === 'overview'}
 			<section class="space-y-4">
 				{#if projectsLoading && !showSkeletons}
-					<!-- Fallback loading state when projectCount is 0 or unknown -->
-					<div class="space-y-6">
-						<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-							{#each Array.from({ length: 3 }) as _}
-								<div class="wt-paper p-4 tx tx-frame tx-weak animate-pulse">
-									<div class="h-5 w-1/3 rounded bg-muted"></div>
-									<div class="mt-4 h-4 w-3/4 rounded bg-muted/80"></div>
-									<div class="mt-2 h-3 w-2/3 rounded bg-muted/80"></div>
-								</div>
-							{/each}
-						</div>
-					</div>
+					<!-- Fallback loading state when projectCount is 0 or unknown.
+					     Use the same vertical dossier-row skeleton as the real list so
+					     the loading shape matches what hydrates in (zero layout shift). -->
+					<ProjectListSkeleton count={3} />
 				{:else if projectsError}
 					<div class="wt-card p-6 text-center tx tx-static tx-weak">
 						<h2 class="text-base font-semibold text-foreground">
@@ -655,11 +649,11 @@
 				{:else}
 					<div class="flex justify-end">
 						<Button
-							variant="outline"
+							variant="accent"
 							size="sm"
 							icon={Plus}
 							onclick={handleCreateProject}
-							class="whitespace-nowrap border-accent/30 bg-card text-accent hover:border-accent/50 hover:bg-accent/10 hover:text-accent focus:ring-accent/40"
+							class="w-full sm:w-auto whitespace-nowrap"
 						>
 							<span>New Project</span>
 						</Button>
@@ -676,7 +670,7 @@
 							</p>
 							{#if showSkeletons}
 								<div
-									class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded mt-1 animate-pulse"
+									class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded-md mt-1 animate-pulse motion-reduce:animate-none"
 								></div>
 							{:else}
 								<p class="text-xl sm:text-2xl font-semibold text-foreground mt-1">
@@ -685,7 +679,7 @@
 							{/if}
 						</div>
 						<!-- Tasks across current work only -->
-						<div class="wt-paper p-3 sm:p-4 tx tx-grain tx-weak">
+						<div class="wt-paper p-3 sm:p-4 tx tx-frame tx-weak">
 							<p
 								class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground"
 							>
@@ -693,7 +687,7 @@
 							</p>
 							{#if showSkeletons}
 								<div
-									class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded mt-1 animate-pulse"
+									class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded-md mt-1 animate-pulse motion-reduce:animate-none"
 								></div>
 							{:else}
 								<p class="text-xl sm:text-2xl font-semibold text-foreground mt-1">
@@ -702,7 +696,7 @@
 							{/if}
 						</div>
 						<!-- Docs across current work only -->
-						<div class="wt-paper p-3 sm:p-4 tx tx-thread tx-weak">
+						<div class="wt-paper p-3 sm:p-4 tx tx-frame tx-weak">
 							<p
 								class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground"
 							>
@@ -710,7 +704,7 @@
 							</p>
 							{#if showSkeletons}
 								<div
-									class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded mt-1 animate-pulse"
+									class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded-md mt-1 animate-pulse motion-reduce:animate-none"
 								></div>
 							{:else}
 								<p class="text-xl sm:text-2xl font-semibold text-foreground mt-1">
@@ -727,7 +721,7 @@
 							</p>
 							{#if showSkeletons}
 								<div
-									class="h-6 sm:h-8 w-10 sm:w-14 bg-accent/20 rounded mt-1 animate-pulse"
+									class="h-6 sm:h-8 w-10 sm:w-14 bg-accent/20 rounded-md mt-1 animate-pulse motion-reduce:animate-none"
 								></div>
 							{:else}
 								<p class="text-xl sm:text-2xl font-semibold text-accent mt-1">
@@ -749,7 +743,7 @@
 									selectedStates.length === 1 && selectedStates[0] === state}
 								<button
 									type="button"
-									class="inline-flex items-center gap-1.5 rounded px-2 py-1 transition pressable {isSelected
+									class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-default {isSelected
 										? 'bg-accent/15 text-accent font-semibold'
 										: count === 0
 											? 'text-muted-foreground/60 hover:text-muted-foreground'
@@ -769,7 +763,7 @@
 					<div class="wt-paper overflow-hidden tx tx-frame tx-weak">
 						<button
 							type="button"
-							class="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition hover:bg-muted/30 pressable"
+							class="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition hover:bg-muted/30 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 							onclick={() => (filtersExpanded = !filtersExpanded)}
 							aria-expanded={filtersExpanded}
 							aria-controls="filter-panel-content"
@@ -788,7 +782,7 @@
 								{/if}
 							</div>
 							<ChevronDown
-								class="h-4 w-4 text-muted-foreground transition-transform duration-200 {filtersExpanded
+								class="h-4 w-4 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none {filtersExpanded
 									? 'rotate-180'
 									: ''}"
 							/>
@@ -796,7 +790,7 @@
 
 						<div
 							id="filter-panel-content"
-							class="grid transition-all duration-200 ease-out {filtersExpanded
+							class="grid transition-all duration-200 ease-out motion-reduce:transition-none {filtersExpanded
 								? 'grid-rows-[1fr] opacity-100'
 								: 'grid-rows-[0fr] opacity-0'}"
 						>
@@ -810,20 +804,9 @@
 										placeholder="Search projects by name or description..."
 										bind:value={searchQuery}
 									/>
-									<svg
+									<Search
 										class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"
-										/>
-									</svg>
+									/>
 								</div>
 
 								<!-- Ownership filter - available to all users -->
@@ -839,9 +822,9 @@
 										{#each OWNERSHIP_FILTER_OPTIONS as option (option)}
 											<button
 												type="button"
-												class="px-3 py-1 rounded transition pressable {selectedOwnership ===
+												class="px-3 py-1 rounded-md transition pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {selectedOwnership ===
 												option
-													? 'bg-card text-foreground shadow-ink'
+													? 'bg-accent text-accent-foreground shadow-ink'
 													: 'text-muted-foreground hover:text-foreground'}"
 												onclick={() => (selectedOwnership = option)}
 												aria-pressed={selectedOwnership === option}
@@ -857,17 +840,8 @@
 								</div>
 
 								{#if isAdmin && hasFilterOptions}
-									<FilterGroup
-										label="State"
-										options={[...availableStates]}
-										selected={selectedStates}
-										onToggle={(state) =>
-											(selectedStates = toggleValue(
-												selectedStates,
-												state as ProjectState
-											))}
-									/>
-
+									<!-- State is filtered via the status count strip above; the
+									     panel covers Context/Scale/Stage only. -->
 									<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
 										<FilterGroup
 											label="Context"
@@ -906,7 +880,7 @@
 									<div class="pt-1">
 										<button
 											type="button"
-											class="text-xs font-bold text-accent hover:text-accent/80 transition pressable"
+											class="rounded-md text-xs font-bold text-accent hover:text-accent/80 transition pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 											onclick={clearFilters}
 										>
 											Clear all filters
@@ -929,20 +903,7 @@
 					<div
 						class="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent sm:h-14 sm:w-14"
 					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-							class="h-6 w-6"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-							/>
-						</svg>
+						<Folder class="h-6 w-6" />
 					</div>
 					<h2 class="text-xl font-bold text-foreground">No projects yet</h2>
 					<p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground sm:text-base">

@@ -18,7 +18,8 @@
 		X,
 		Mail,
 		Table,
-		Download
+		Download,
+		Check
 	} from 'lucide-svelte';
 	import { browser } from '$app/environment';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
@@ -561,6 +562,7 @@
 					? 'border-info text-info'
 					: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}"
 				icon={UserPlus}
+				aria-label="Signups"
 			>
 				<span class="hidden xs:inline">Signups</span>
 			</Button>
@@ -573,6 +575,7 @@
 					? 'border-info text-info'
 					: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}"
 				icon={Table}
+				aria-label="Data View"
 			>
 				<span class="hidden xs:inline">Data View</span>
 			</Button>
@@ -585,6 +588,7 @@
 					? 'border-info text-info'
 					: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}"
 				icon={Users}
+				aria-label="Members"
 			>
 				<span class="hidden xs:inline">Members</span>
 			</Button>
@@ -597,6 +601,7 @@
 					? 'border-info text-info'
 					: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}"
 				icon={Mail}
+				aria-label="Emails"
 			>
 				<span class="hidden xs:inline">Emails</span>
 			</Button>
@@ -620,7 +625,7 @@
 						<input
 							type="checkbox"
 							bind:checked={dataViewFilters.showAllColumns}
-							class="mr-2 rounded border-border text-accent focus:ring-ring"
+							class="mr-2 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						/>
 						Show all columns
 					</div>
@@ -681,7 +686,9 @@
 		<div class="admin-panel overflow-hidden">
 			{#if isLoading}
 				<div class="p-6 sm:p-8 text-center">
-					<RefreshCw class="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
+					<RefreshCw
+						class="h-8 w-8 animate-spin motion-reduce:animate-none text-muted-foreground mx-auto mb-4"
+					/>
 					<p class="text-muted-foreground">Loading signup data...</p>
 				</div>
 			{:else if signups.length === 0}
@@ -695,8 +702,112 @@
 					</p>
 				</div>
 			{:else}
+				<!-- Mobile Card Fallback (table is too wide for small screens) -->
+				<ul class="divide-y divide-border lg:hidden">
+					{#each signups as signup}
+						<li class="p-4">
+							<div class="flex items-start justify-between gap-3">
+								<div class="min-w-0 flex-1">
+									<p class="font-medium text-foreground truncate">
+										{signup.full_name}
+									</p>
+									<p class="text-sm text-muted-foreground truncate">
+										{signup.email}
+									</p>
+								</div>
+								<span
+									class="inline-flex flex-shrink-0 px-2 py-1 text-xs font-semibold rounded-full {getStatusColor(
+										signup.signup_status
+									)}"
+								>
+									{signup.signup_status}
+								</span>
+							</div>
+
+							<dl class="mt-3 grid grid-cols-2 gap-2 text-xs">
+								<div class="min-w-0">
+									<dt class="text-muted-foreground">Source</dt>
+									<dd class="text-foreground truncate">
+										{signup.referral_source || 'Not specified'}
+									</dd>
+								</div>
+								<div class="min-w-0">
+									<dt class="text-muted-foreground">Applied</dt>
+									<dd class="text-foreground truncate">
+										{formatDate(signup.created_at)}
+									</dd>
+								</div>
+								{#if signup.company_name}
+									<div class="min-w-0">
+										<dt class="text-muted-foreground">Company</dt>
+										<dd class="text-foreground truncate">
+											{signup.company_name}
+										</dd>
+									</div>
+								{/if}
+								{#if signup.job_title}
+									<div class="min-w-0">
+										<dt class="text-muted-foreground">Job Title</dt>
+										<dd class="text-foreground truncate">
+											{signup.job_title}
+										</dd>
+									</div>
+								{/if}
+							</dl>
+
+							<div class="mt-3 flex flex-wrap items-center gap-2">
+								<Button
+									onclick={() => {
+										selectedItem = signup;
+										showModal = true;
+									}}
+									variant="ghost"
+									size="sm"
+									icon={Eye}
+									class="p-2 text-muted-foreground hover:text-info"
+									title="View full details"
+								></Button>
+								<Button
+									onclick={() => {
+										emailUserId = signup.user_id || '';
+										emailUserName = signup.full_name;
+										emailUserEmail = signup.email;
+										showEmailModal = true;
+									}}
+									variant="ghost"
+									size="sm"
+									icon={Mail}
+									class="p-2 text-muted-foreground hover:text-info"
+									title="Send email"
+								></Button>
+								{#if signup.signup_status === 'pending'}
+									<Button
+										onclick={() =>
+											updateSignupStatus(signup.id, 'approved', true)}
+										disabled={isUpdating}
+										variant="ghost"
+										size="sm"
+										icon={CheckCircle}
+										class="p-2 text-muted-foreground hover:text-success"
+										title="Approve and create member"
+									></Button>
+									<Button
+										onclick={() => updateSignupStatus(signup.id, 'declined')}
+										disabled={isUpdating}
+										variant="ghost"
+										size="sm"
+										icon={XCircle}
+										class="p-2 text-muted-foreground hover:text-destructive"
+										title="Decline"
+									></Button>
+								{/if}
+							</div>
+						</li>
+					{/each}
+				</ul>
+
 				<!-- Responsive Data Table with Clickable Headers -->
-				<div class="overflow-x-auto">
+				<div class="overflow-x-auto hidden lg:block">
 					<table class="min-w-full divide-y divide-border">
 						<thead class="bg-muted">
 							<tr>
@@ -709,11 +820,14 @@
 
 								<!-- Sortable Status Header -->
 								<th
-									class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-									onclick={() => handleSort('signup_status')}
+									class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted select-none"
 									title="Click to sort by status"
 								>
-									<div class="flex items-center space-x-1">
+									<button
+										type="button"
+										onclick={() => handleSort('signup_status')}
+										class="flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+									>
 										<span>Status</span>
 										{#if dataViewFilters.sortBy === 'signup_status'}
 											{#if dataViewFilters.sortOrder === 'asc'}
@@ -735,16 +849,19 @@
 												</svg>
 											</span>
 										{/if}
-									</div>
+									</button>
 								</th>
 
 								<!-- Sortable Referral Source Header -->
 								<th
-									class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-									onclick={() => handleSort('referral_source')}
+									class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted select-none"
 									title="Click to sort by referral source"
 								>
-									<div class="flex items-center space-x-1">
+									<button
+										type="button"
+										onclick={() => handleSort('referral_source')}
+										class="flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+									>
 										<span>Source</span>
 										{#if dataViewFilters.sortBy === 'referral_source'}
 											{#if dataViewFilters.sortOrder === 'asc'}
@@ -766,7 +883,7 @@
 												</svg>
 											</span>
 										{/if}
-									</div>
+									</button>
 								</th>
 
 								<!-- Why Interested (Non-sortable due to text length) -->
@@ -793,11 +910,14 @@
 								{#if dataViewFilters.showAllColumns}
 									<!-- Sortable Job Title -->
 									<th
-										class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-										onclick={() => handleSort('job_title')}
+										class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted select-none"
 										title="Click to sort by job title"
 									>
-										<div class="flex items-center space-x-1">
+										<button
+											type="button"
+											onclick={() => handleSort('job_title')}
+											class="flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+										>
 											<span>Job Title</span>
 											{#if dataViewFilters.sortBy === 'job_title'}
 												{#if dataViewFilters.sortOrder === 'asc'}
@@ -819,16 +939,19 @@
 													</svg>
 												</span>
 											{/if}
-										</div>
+										</button>
 									</th>
 
 									<!-- Sortable Company -->
 									<th
-										class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-										onclick={() => handleSort('company_name')}
+										class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted select-none"
 										title="Click to sort by company"
 									>
-										<div class="flex items-center space-x-1">
+										<button
+											type="button"
+											onclick={() => handleSort('company_name')}
+											class="flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+										>
 											<span>Company</span>
 											{#if dataViewFilters.sortBy === 'company_name'}
 												{#if dataViewFilters.sortOrder === 'asc'}
@@ -850,7 +973,7 @@
 													</svg>
 												</span>
 											{/if}
-										</div>
+										</button>
 									</th>
 
 									<!-- Preferences (Non-sortable) -->
@@ -862,11 +985,14 @@
 
 									<!-- Sortable Timezone -->
 									<th
-										class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-										onclick={() => handleSort('user_timezone')}
+										class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted select-none"
 										title="Click to sort by timezone"
 									>
-										<div class="flex items-center space-x-1">
+										<button
+											type="button"
+											onclick={() => handleSort('user_timezone')}
+											class="flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+										>
 											<span>Timezone</span>
 											{#if dataViewFilters.sortBy === 'user_timezone'}
 												{#if dataViewFilters.sortOrder === 'asc'}
@@ -888,17 +1014,20 @@
 													</svg>
 												</span>
 											{/if}
-										</div>
+										</button>
 									</th>
 								{/if}
 
 								<!-- Sortable Applied Date -->
 								<th
-									class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-									onclick={() => handleSort('created_at')}
+									class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted select-none"
 									title="Click to sort by application date"
 								>
-									<div class="flex items-center space-x-1">
+									<button
+										type="button"
+										onclick={() => handleSort('created_at')}
+										class="flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+									>
 										<span>Applied</span>
 										{#if dataViewFilters.sortBy === 'created_at'}
 											{#if dataViewFilters.sortOrder === 'asc'}
@@ -920,7 +1049,7 @@
 												</svg>
 											</span>
 										{/if}
-									</div>
+									</button>
 								</th>
 
 								<!-- Actions (Non-sortable) -->
@@ -964,7 +1093,7 @@
 										<div class="max-w-32">
 											{#if signup.referral_source}
 												<span
-													class="inline-flex px-2 py-1 text-xs bg-info/10 text-info rounded"
+													class="inline-flex px-2 py-1 text-xs bg-info/10 text-info rounded-md"
 												>
 													{signup.referral_source}
 												</span>
@@ -982,7 +1111,7 @@
 											{#if signup.why_interested && signup.why_interested.length > 100}
 												<button
 													type="button"
-													class="text-sm leading-relaxed cursor-pointer hover:bg-muted p-2 rounded text-left w-full"
+													class="text-sm leading-relaxed cursor-pointer hover:bg-muted p-2 rounded text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 													title={signup.why_interested}
 													aria-label="Click to view full text"
 													onclick={() => {
@@ -1011,7 +1140,7 @@
 											{#if signup.biggest_challenge && signup.biggest_challenge.length > 100}
 												<button
 													type="button"
-													class="text-sm leading-relaxed cursor-pointer hover:bg-muted p-2 rounded text-left w-full"
+													class="text-sm leading-relaxed cursor-pointer hover:bg-muted p-2 rounded text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 													title={signup.biggest_challenge}
 													aria-label="Click to view full text"
 													onclick={() => {
@@ -1045,14 +1174,14 @@
 												<div class="flex flex-wrap gap-1">
 													{#each signup.productivity_tools.slice(0, 3) as tool}
 														<span
-															class="inline-flex px-2 py-1 text-xs bg-muted text-foreground rounded dark:text-muted-foreground"
+															class="inline-flex px-2 py-1 text-xs bg-muted text-foreground rounded-md dark:text-muted-foreground"
 														>
 															{tool}
 														</span>
 													{/each}
 													{#if signup.productivity_tools.length > 3}
 														<span
-															class="inline-flex px-2 py-1 text-xs bg-muted text-muted-foreground rounded dark:text-muted-foreground"
+															class="inline-flex px-2 py-1 text-xs bg-muted text-muted-foreground rounded-md dark:text-muted-foreground"
 														>
 															+{signup.productivity_tools.length - 3} more
 														</span>
@@ -1081,12 +1210,18 @@
 										<td class="px-4 py-4 text-sm">
 											<div class="space-y-1">
 												{#if signup.wants_weekly_calls}
-													<div class="text-success text-xs">
-														✓ Weekly calls
+													<div
+														class="flex items-center gap-1 text-muted-foreground text-xs"
+													>
+														<Check class="h-3 w-3" /> Weekly calls
 													</div>
 												{/if}
 												{#if signup.wants_community_access}
-													<div class="text-info text-xs">✓ Community</div>
+													<div
+														class="flex items-center gap-1 text-muted-foreground text-xs"
+													>
+														<Check class="h-3 w-3" /> Community
+													</div>
 												{/if}
 												{#if !signup.wants_weekly_calls && !signup.wants_community_access}
 													<div class="text-muted-foreground text-xs">
@@ -1322,7 +1457,7 @@
 							<input
 								type="checkbox"
 								bind:checked={memberFilters.activeOnly}
-								class="rounded border-border text-accent focus:ring-ring"
+								class="rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							/>
 							<span class="text-sm text-foreground">Active Only</span>
 						</div>
@@ -1391,7 +1526,7 @@
 							<input
 								type="checkbox"
 								bind:checked={memberFilters.activeOnly}
-								class="rounded border-border text-accent focus:ring-ring"
+								class="rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							/>
 							<span class="text-sm text-muted-foreground">Active Only</span>
 						</div>
@@ -1410,7 +1545,9 @@
 		<div class="admin-panel overflow-hidden">
 			{#if isLoading}
 				<div class="p-6 sm:p-8 text-center">
-					<RefreshCw class="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
+					<RefreshCw
+						class="h-8 w-8 animate-spin motion-reduce:animate-none text-muted-foreground mx-auto mb-4"
+					/>
 					<p class="text-muted-foreground">Loading {activeTab}...</p>
 				</div>
 			{:else if (activeTab === 'signups' && signups.length === 0) || (activeTab === 'members' && members.length === 0)}
@@ -1611,11 +1748,14 @@
 								{#if activeTab === 'signups'}
 									<!-- Signups table headers -->
 									<th
-										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-										onclick={() => handleSignupSort('full_name')}
+										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted select-none"
 										title="Click to sort by name"
 									>
-										<div class="flex items-center space-x-1">
+										<button
+											type="button"
+											onclick={() => handleSignupSort('full_name')}
+											class="flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+										>
 											<span>Applicant</span>
 											{#if signupFilters.sortBy === 'full_name'}
 												{#if signupFilters.sortOrder === 'asc'}
@@ -1637,14 +1777,17 @@
 													</svg>
 												</span>
 											{/if}
-										</div>
+										</button>
 									</th>
 									<th
-										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-										onclick={() => handleSignupSort('company_name')}
+										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted select-none"
 										title="Click to sort by company"
 									>
-										<div class="flex items-center space-x-1">
+										<button
+											type="button"
+											onclick={() => handleSignupSort('company_name')}
+											class="flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+										>
 											<span>Company</span>
 											{#if signupFilters.sortBy === 'company_name'}
 												{#if signupFilters.sortOrder === 'asc'}
@@ -1666,14 +1809,17 @@
 													</svg>
 												</span>
 											{/if}
-										</div>
+										</button>
 									</th>
 									<th
-										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-										onclick={() => handleSignupSort('signup_status')}
+										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted select-none"
 										title="Click to sort by status"
 									>
-										<div class="flex items-center space-x-1">
+										<button
+											type="button"
+											onclick={() => handleSignupSort('signup_status')}
+											class="flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+										>
 											<span>Status</span>
 											{#if signupFilters.sortBy === 'signup_status'}
 												{#if signupFilters.sortOrder === 'asc'}
@@ -1695,14 +1841,17 @@
 													</svg>
 												</span>
 											{/if}
-										</div>
+										</button>
 									</th>
 									<th
-										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-										onclick={() => handleSignupSort('created_at')}
+										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted select-none"
 										title="Click to sort by date"
 									>
-										<div class="flex items-center space-x-1">
+										<button
+											type="button"
+											onclick={() => handleSignupSort('created_at')}
+											class="flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+										>
 											<span>Applied</span>
 											{#if signupFilters.sortBy === 'created_at'}
 												{#if signupFilters.sortOrder === 'asc'}
@@ -1724,16 +1873,19 @@
 													</svg>
 												</span>
 											{/if}
-										</div>
+										</button>
 									</th>
 								{:else}
 									<!-- Members table headers -->
 									<th
-										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-										onclick={() => handleMemberSort('full_name')}
+										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted select-none"
 										title="Click to sort by name"
 									>
-										<div class="flex items-center space-x-1">
+										<button
+											type="button"
+											onclick={() => handleMemberSort('full_name')}
+											class="flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+										>
 											<span>Member</span>
 											{#if memberFilters.sortBy === 'full_name'}
 												{#if memberFilters.sortOrder === 'asc'}
@@ -1755,14 +1907,17 @@
 													</svg>
 												</span>
 											{/if}
-										</div>
+										</button>
 									</th>
 									<th
-										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-										onclick={() => handleMemberSort('company_name')}
+										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted select-none"
 										title="Click to sort by company"
 									>
-										<div class="flex items-center space-x-1">
+										<button
+											type="button"
+											onclick={() => handleMemberSort('company_name')}
+											class="flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+										>
 											<span>Company</span>
 											{#if memberFilters.sortBy === 'company_name'}
 												{#if memberFilters.sortOrder === 'asc'}
@@ -1784,14 +1939,17 @@
 													</svg>
 												</span>
 											{/if}
-										</div>
+										</button>
 									</th>
 									<th
-										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-										onclick={() => handleMemberSort('beta_tier')}
+										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted select-none"
 										title="Click to sort by tier"
 									>
-										<div class="flex items-center space-x-1">
+										<button
+											type="button"
+											onclick={() => handleMemberSort('beta_tier')}
+											class="flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+										>
 											<span>Tier</span>
 											{#if memberFilters.sortBy === 'beta_tier'}
 												{#if memberFilters.sortOrder === 'asc'}
@@ -1813,14 +1971,17 @@
 													</svg>
 												</span>
 											{/if}
-										</div>
+										</button>
 									</th>
 									<th
-										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-										onclick={() => handleMemberSort('joined_at')}
+										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted select-none"
 										title="Click to sort by date"
 									>
-										<div class="flex items-center space-x-1">
+										<button
+											type="button"
+											onclick={() => handleMemberSort('joined_at')}
+											class="flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+										>
 											<span>Joined</span>
 											{#if memberFilters.sortBy === 'joined_at'}
 												{#if memberFilters.sortOrder === 'asc'}
@@ -1842,7 +2003,7 @@
 													</svg>
 												</span>
 											{/if}
-										</div>
+										</button>
 									</th>
 								{/if}
 								<th

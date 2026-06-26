@@ -95,10 +95,20 @@
 		'select a focus to begin'
 	]);
 
+	// Context-specific relief prompts. We lead with "brain-dump", not "chat with AI" —
+	// the input is a place to offload messy thinking, not another assistant to manage.
+	const CONTEXT_PLACEHOLDERS: Record<string, string> = {
+		'new project flow':
+			"Dump everything you're thinking about — messy is fine. BuildOS turns it into a structured project."
+	};
+
 	const placeholder = $derived.by(() => {
 		const label = displayContextLabel.trim().toLowerCase();
+		if (CONTEXT_PLACEHOLDERS[label]) {
+			return CONTEXT_PLACEHOLDERS[label];
+		}
 		if (!label || GENERIC_CONTEXT_LABELS.has(label)) {
-			return 'Ask BuildOS anything...';
+			return 'Brain-dump anything — messy is fine.';
 		}
 		return `Ask about ${label}...`;
 	});

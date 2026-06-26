@@ -48,25 +48,23 @@
 			labelledById="active-subscription-heading"
 		>
 			<div class="space-y-4">
-				<div class="flex items-baseline justify-between gap-3 flex-wrap">
-					<div>
-						<p class="text-2xl font-bold text-foreground">
-							${(
-								(subscriptionDetails.subscription.subscription_plans?.price_cents ??
-									0) / 100
-							).toFixed(2)}<span class="text-sm font-normal text-muted-foreground"
-								>/{subscriptionDetails.subscription.subscription_plans
-									?.billing_interval}</span
-							>
-						</p>
-						<p class="text-xs text-muted-foreground mt-0.5">
-							Next billing: {subscriptionDetails.subscription.current_period_end
-								? new Date(
-										subscriptionDetails.subscription.current_period_end
-									).toLocaleDateString()
-								: 'N/A'}
-						</p>
-					</div>
+				<div>
+					<p class="text-2xl font-bold text-foreground">
+						${(
+							(subscriptionDetails.subscription.subscription_plans?.price_cents ??
+								0) / 100
+						).toFixed(2)}<span class="text-sm font-normal text-muted-foreground"
+							>/{subscriptionDetails.subscription.subscription_plans
+								?.billing_interval}</span
+						>
+					</p>
+					<p class="text-xs text-muted-foreground mt-0.5">
+						Next billing: {subscriptionDetails.subscription.current_period_end
+							? new Date(
+									subscriptionDetails.subscription.current_period_end
+								).toLocaleDateString()
+							: 'N/A'}
+					</p>
 				</div>
 
 				<dl class="grid grid-cols-2 gap-4 pt-3 border-t border-border">
@@ -147,19 +145,18 @@
 										href={invoice.invoice_pdf}
 										target="_blank"
 										rel="noopener noreferrer"
-										class="text-xs text-accent hover:text-accent/80 transition-colors"
+										class="inline-flex items-center rounded-md px-2 py-1.5 text-xs font-medium text-accent hover:text-accent/80 hover:bg-accent/10 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 									>
 										Download PDF
 									</a>
 								{:else if invoice.stripe_invoice_id}
-									<Button
+									<button
+										type="button"
 										onclick={() => downloadInvoice(invoice.stripe_invoice_id)}
-										variant="ghost"
-										size="sm"
-										class="text-xs text-accent hover:text-accent/80 py-0"
+										class="inline-flex items-center rounded-md px-2 py-1.5 text-xs font-medium text-accent hover:text-accent/80 hover:bg-accent/10 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 									>
 										Generate PDF
-									</Button>
+									</button>
 								{/if}
 							</div>
 						</div>
@@ -211,7 +208,7 @@
 					</div>
 					<a
 						href="/pricing"
-						class="inline-flex items-center px-5 py-2.5 bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-sm rounded-lg shadow-ink pressable transition-all duration-200"
+						class="inline-flex items-center px-5 py-2.5 bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-sm rounded-lg shadow-ink pressable transition-all duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
 					>
 						<Rocket class="w-4 h-4 mr-2" />
 						Get Started — $20/month

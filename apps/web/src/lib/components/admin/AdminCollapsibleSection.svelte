@@ -13,6 +13,7 @@
 	import { untrack, type ComponentType, type Snippet } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { ChevronDown } from 'lucide-svelte';
+	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 
 	interface Props {
 		title: string;
@@ -96,7 +97,7 @@
 			{/if}
 			{#if !alwaysExpanded}
 				<ChevronDown
-					class="w-4 h-4 text-muted-foreground transition-transform duration-150 {expanded
+					class="w-4 h-4 text-muted-foreground transition-transform duration-150 motion-reduce:transition-none {expanded
 						? 'rotate-180'
 						: ''}"
 				/>
@@ -106,7 +107,7 @@
 
 	<!-- Expanded Content -->
 	{#if expanded || alwaysExpanded}
-		<div class="border-t border-border" transition:slide={{ duration: 150 }}>
+		<div class="border-t border-border" transition:slide={slideMotion(150)}>
 			{@render children()}
 		</div>
 	{/if}

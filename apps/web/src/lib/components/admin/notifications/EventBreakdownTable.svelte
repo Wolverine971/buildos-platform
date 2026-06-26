@@ -25,10 +25,8 @@
 			.join(' ');
 	}
 
-	function getEventTypeBadgeColor(eventType: string): string {
-		if (eventType.startsWith('user.')) return 'bg-info/10 text-info';
-		if (eventType.startsWith('brief.')) return 'bg-success/10 text-success';
-		if (eventType.startsWith('error.')) return 'bg-destructive/10 text-destructive';
+	function getEventTypeBadgeColor(_eventType: string): string {
+		// Event type is a category, not a state — use a single neutral badge.
 		return 'bg-muted text-foreground dark:text-muted-foreground';
 	}
 </script>
@@ -41,8 +39,8 @@
 	{#if loading}
 		<div class="p-3 space-y-2">
 			{#each Array(5) as _}
-				<div class="animate-pulse">
-					<div class="h-10 bg-muted rounded"></div>
+				<div class="animate-pulse motion-reduce:animate-none">
+					<div class="h-10 bg-muted rounded-md"></div>
 				</div>
 			{/each}
 		</div>

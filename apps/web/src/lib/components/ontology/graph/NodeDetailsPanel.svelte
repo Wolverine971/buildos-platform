@@ -420,7 +420,7 @@
 		</div>
 		<button
 			type="button"
-			class="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition pressable"
+			class="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			onclick={onClose}
 			aria-label="Close details panel"
 		>
@@ -854,7 +854,7 @@
 		<div class="px-4 py-3 border-t border-border bg-muted">
 			<a
 				href={detailUrl}
-				class="flex items-center justify-center gap-2 w-full h-9 text-sm font-semibold rounded-lg bg-accent text-accent-foreground hover:bg-accent/90 shadow-ink pressable transition"
+				class="flex items-center justify-center gap-2 w-full h-9 text-sm font-semibold rounded-lg bg-accent text-accent-foreground hover:bg-accent/90 shadow-ink pressable transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				<ExternalLink class="w-4 h-4" />
 				<span>View in Project</span>

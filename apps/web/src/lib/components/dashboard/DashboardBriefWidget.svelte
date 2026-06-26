@@ -347,7 +347,7 @@
 			<div class="flex-1 text-left min-w-0">
 				<h3 class="text-xs sm:text-sm font-semibold text-foreground">Generate Brief</h3>
 				<p class="text-[11px] sm:text-xs text-muted-foreground line-clamp-1">
-					Get your AI-powered daily overview
+					See what matters today — so nothing slips
 				</p>
 			</div>
 			<ChevronRight

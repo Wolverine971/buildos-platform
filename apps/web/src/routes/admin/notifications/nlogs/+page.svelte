@@ -253,7 +253,7 @@
 		<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
 			<a
 				href="/admin/notifications"
-				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow"
+				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				<div class="flex items-center">
 					<Bell class="h-8 w-8 text-info mr-3" />
@@ -266,7 +266,7 @@
 
 			<a
 				href="/admin/notifications/test-bed"
-				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow"
+				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				<div class="flex items-center">
 					<Send class="h-8 w-8 text-success mr-3" />
@@ -279,7 +279,7 @@
 
 			<a
 				href="/admin/notifications/nlogs"
-				class="bg-accent/10 border-2 border-accent/30 rounded-lg p-6 hover:shadow-ink-strong transition-shadow"
+				class="bg-accent/10 border-2 border-accent/30 rounded-lg p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				<div class="flex items-center">
 					<Eye class="h-8 w-8 text-accent mr-3" />
@@ -299,7 +299,7 @@
 						type="checkbox"
 						bind:checked={autoRefresh}
 						onchange={toggleAutoRefresh}
-						class="h-4 w-4 rounded border-border text-accent focus:ring-ring cursor-pointer"
+						class="h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
 					/>
 					<span class="text-sm text-muted-foreground">Auto Refresh (30s)</span>
 				</label>
@@ -326,9 +326,9 @@
 					<button
 						type="button"
 						onclick={() => handleTabChange('events')}
-						class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab ===
+						class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {activeTab ===
 						'events'
-							? 'border-info text-info'
+							? 'border-accent text-accent'
 							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
 						Event Log
@@ -336,9 +336,9 @@
 					<button
 						type="button"
 						onclick={() => handleTabChange('deliveries')}
-						class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab ===
+						class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {activeTab ===
 						'deliveries'
-							? 'border-info text-info'
+							? 'border-accent text-accent'
 							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
 						Delivery Log
@@ -346,9 +346,9 @@
 					<button
 						type="button"
 						onclick={() => handleTabChange('system')}
-						class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab ===
+						class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {activeTab ===
 						'system'
-							? 'border-info text-info'
+							? 'border-accent text-accent'
 							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
 						System Logs

@@ -89,7 +89,7 @@
 								id={fieldId(channel, 'title')}
 								type="text"
 								bind:value={channelPayloads.push.title}
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								placeholder="BuildOS Notification"
 							/>
 						</div>
@@ -105,7 +105,7 @@
 								id={fieldId(channel, 'body')}
 								bind:value={channelPayloads.push.body}
 								rows="3"
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								placeholder="Notification message"
 							></textarea>
 						</div>
@@ -121,7 +121,7 @@
 								<select
 									id={fieldId(channel, 'priority')}
 									bind:value={channelPayloads.push.priority}
-									class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+									class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								>
 									{#each priorityOptions as priority}
 										<option value={priority}>{priority}</option>
@@ -140,7 +140,7 @@
 									id={fieldId(channel, 'tag')}
 									type="text"
 									bind:value={channelPayloads.push.tag}
-									class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+									class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									placeholder="notification"
 								/>
 							</div>
@@ -157,7 +157,7 @@
 								id={fieldId(channel, 'action-url')}
 								type="url"
 								bind:value={channelPayloads.push.action_url}
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								placeholder="https://build-os.com/..."
 							/>
 						</div>
@@ -173,7 +173,7 @@
 								id={fieldId(channel, 'icon-url')}
 								type="url"
 								bind:value={channelPayloads.push.icon_url}
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								placeholder="/AppImages/android/android-launchericon-192-192.png"
 							/>
 						</div>
@@ -189,7 +189,7 @@
 								id={fieldId(channel, 'event-type')}
 								type="text"
 								bind:value={channelPayloads.push.event_type}
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								placeholder="brief.completed"
 							/>
 						</div>
@@ -208,7 +208,7 @@
 								<select
 									id={fieldId(channel, 'type')}
 									bind:value={channelPayloads.in_app.type}
-									class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+									class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								>
 									{#each inAppTypeOptions as type}
 										<option value={type}>{type}</option>
@@ -226,7 +226,7 @@
 								<select
 									id={fieldId(channel, 'priority')}
 									bind:value={channelPayloads.in_app.priority}
-									class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+									class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								>
 									{#each priorityOptions as priority}
 										<option value={priority}>{priority}</option>
@@ -246,7 +246,7 @@
 								id={fieldId(channel, 'title')}
 								type="text"
 								bind:value={channelPayloads.in_app.title}
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								placeholder="Notification"
 							/>
 						</div>
@@ -262,7 +262,7 @@
 								id={fieldId(channel, 'body')}
 								bind:value={channelPayloads.in_app.body}
 								rows="3"
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								placeholder="Notification message"
 							></textarea>
 						</div>
@@ -278,7 +278,7 @@
 								id={fieldId(channel, 'action-url')}
 								type="url"
 								bind:value={channelPayloads.in_app.action_url}
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								placeholder="https://build-os.com/..."
 							/>
 						</div>
@@ -294,7 +294,7 @@
 								id={fieldId(channel, 'expires-at')}
 								type="datetime-local"
 								bind:value={channelPayloads.in_app.expires_at}
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							/>
 						</div>
 					</div>
@@ -312,7 +312,7 @@
 								id={fieldId(channel, 'subject')}
 								type="text"
 								bind:value={channelPayloads.email.title}
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								placeholder="BuildOS Notification"
 							/>
 						</div>
@@ -328,7 +328,7 @@
 								id={fieldId(channel, 'body')}
 								bind:value={channelPayloads.email.body}
 								rows="5"
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								placeholder="Email content (HTML supported)"
 							></textarea>
 							<p class="text-xs text-muted-foreground mt-1">
@@ -347,7 +347,7 @@
 								id={fieldId(channel, 'action-url')}
 								type="url"
 								bind:value={channelPayloads.email.action_url}
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								placeholder="https://build-os.com/..."
 							/>
 						</div>
@@ -363,7 +363,7 @@
 								id={fieldId(channel, 'image-url')}
 								type="url"
 								bind:value={channelPayloads.email.image_url}
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								placeholder="https://..."
 							/>
 						</div>
@@ -379,7 +379,7 @@
 								id={fieldId(channel, 'event-type')}
 								type="text"
 								bind:value={channelPayloads.email.event_type}
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								placeholder="brief.completed"
 							/>
 						</div>
@@ -398,7 +398,7 @@
 								id={fieldId(channel, 'title')}
 								type="text"
 								bind:value={channelPayloads.sms.title}
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								placeholder="BuildOS Notification"
 							/>
 						</div>
@@ -415,7 +415,7 @@
 								bind:value={channelPayloads.sms.body}
 								rows="3"
 								maxlength="160"
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								placeholder="SMS message (max 160 characters)"
 							></textarea>
 							<p class="text-xs text-muted-foreground mt-1">
@@ -433,7 +433,7 @@
 							<select
 								id={fieldId(channel, 'priority')}
 								bind:value={channelPayloads.sms.priority}
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								{#each priorityOptions as priority}
 									<option value={priority}>{priority}</option>
@@ -452,7 +452,7 @@
 								id={fieldId(channel, 'event-type')}
 								type="text"
 								bind:value={channelPayloads.sms.event_type}
-								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full px-3 py-2 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								placeholder="brief.completed"
 							/>
 						</div>

@@ -20,7 +20,8 @@
 		Sun,
 		Moon,
 		Bell,
-		Inbox
+		Inbox,
+		CreditCard
 	} from 'lucide-svelte';
 	import { toggleMode } from 'mode-watcher';
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
@@ -167,7 +168,8 @@
 		{ href: '/history', label: 'History', icon: StickyNote }
 	];
 
-	const loadingAccentClass = 'animate-pulse-accent ring-1 ring-accent/60 shadow-ink-strong';
+	const loadingAccentClass =
+		'animate-pulse-accent motion-reduce:animate-none ring-1 ring-accent/60 shadow-ink-strong';
 
 	const needsOnboarding = $derived(user && (!completedOnboarding || onboardingProgress < 100));
 	const onboardingUrgent = $derived(user && onboardingProgress < 50);
@@ -451,11 +453,11 @@
 	aria-label="Main navigation"
 	data-fixed-element
 	bind:this={element}
-	class="sticky top-0 z-10 bg-card border-b border-border shadow-ink transition-all duration-200 {navHidden
+	class="sticky top-0 z-10 bg-card border-b border-border shadow-ink transition-all duration-200 motion-reduce:transition-none {navHidden
 		? '-translate-y-full'
 		: 'translate-y-0'}"
 >
-	<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 xl:px-8">
+	<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
 		<div class="flex justify-between items-center h-16 gap-2.5">
 			<!-- Left side - Logo and Navigation -->
 			<div class="flex items-center min-w-0">
@@ -525,7 +527,7 @@
 									? 'text-accent bg-muted'
 									: 'text-muted-foreground hover:text-foreground hover:bg-muted'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
-								{loadingLink === item.href ? 'animate-pulse' : ''}"
+								{loadingLink === item.href ? 'animate-pulse motion-reduce:animate-none' : ''}"
 							>
 								<!-- Underline indicator for active route -->
 								{#if currentPath === item.href}
@@ -628,7 +630,7 @@
 									<div class="relative">
 										<!-- Glow effect for zap -->
 										<div
-											class="absolute inset-0 bg-accent rounded-full blur-md opacity-60 animate-pulse"
+											class="absolute inset-0 bg-accent rounded-full blur-md opacity-60 animate-pulse motion-reduce:animate-none"
 											style="transform: scale(2.5);"
 										></div>
 										<Zap
@@ -665,13 +667,13 @@
 								onclick={() => handleMenuItemClick('/onboarding')}
 								class="inline-flex items-center px-2 md:px-3 lg:px-3.5 xl:px-4 py-1.5 md:py-2 lg:py-2.5 text-xs md:text-sm lg:text-sm font-bold tracking-tight rounded-lg shadow-ink pressable transition-all duration-200 whitespace-nowrap tx tx-bloom tx-weak
 								bg-accent text-accent-foreground hover:bg-accent/90 border border-accent/20
-								{isOnOnboarding ? '' : 'animate-pulse-glow'}
+								{isOnOnboarding ? '' : 'animate-pulse-glow motion-reduce:animate-none'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 								{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 							>
 								{#if isOnOnboarding}
 									<LoaderCircle
-										class="w-3.5 h-3.5 md:w-4 md:h-4 lg:w-4 lg:h-4 mr-1 md:mr-1.5 lg:mr-2 flex-shrink-0 animate-spin"
+										class="w-3.5 h-3.5 md:w-4 md:h-4 lg:w-4 lg:h-4 mr-1 md:mr-1.5 lg:mr-2 flex-shrink-0 animate-spin motion-reduce:animate-none"
 									/>
 									<span class="hidden lg:inline">Setup in Progress...</span>
 									<span class="lg:hidden">In Progress</span>
@@ -757,7 +759,7 @@
 						<!-- User dropdown -->
 						{#if showUserMenu}
 							<div
-								class="absolute right-0 mt-2 w-56 bg-card rounded-lg border border-border shadow-ink-strong z-50 tx tx-frame tx-weak ink-frame animate-ink-in"
+								class="absolute right-0 mt-2 w-56 bg-card rounded-lg border border-border shadow-ink-strong z-50 tx tx-frame tx-weak ink-frame animate-ink-in motion-reduce:animate-none"
 							>
 								<div class="pt-1">
 									<!-- User info -->
@@ -852,19 +854,7 @@
 											class="flex items-center w-full px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors
 											{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										>
-											<svg
-												class="w-4 h-4 mr-3"
-												fill="none"
-												stroke="currentColor"
-												viewBox="0 0 24 24"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-												/>
-											</svg>
+											<CreditCard class="w-4 h-4 mr-3" />
 											{subscription?.hasActiveSubscription
 												? 'Billing'
 												: 'Upgrade to Pro'}
@@ -910,7 +900,9 @@
 										class="justify-start w-full px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted min-h-0 transition-colors rounded-none font-bold"
 									>
 										{#if loggingOut}
-											<LoaderCircle class="w-4 h-4 mr-3 animate-spin" />
+											<LoaderCircle
+												class="w-4 h-4 mr-3 animate-spin motion-reduce:animate-none"
+											/>
 											Signing out...
 										{:else}
 											<LogOut class="w-4 h-4 mr-3" />
@@ -986,7 +978,7 @@
 			aria-label="Mobile navigation menu"
 			tabindex="-1"
 			onkeydown={handleMobileMenuKeydown}
-			class="md:hidden border-t border-border bg-card animate-ink-in"
+			class="md:hidden border-t border-border bg-card animate-ink-in motion-reduce:animate-none"
 			data-mobile-menu
 		>
 			{#if user}
@@ -1003,12 +995,14 @@
 							onclick={() => handleMenuItemClick('/onboarding')}
 							class="flex items-center px-3 py-2.5 text-base font-bold tracking-tight rounded-lg shadow-ink pressable transition-all duration-200 tx tx-bloom tx-weak
 							bg-accent text-accent-foreground hover:bg-accent/90 border border-accent/20
-							{isOnOnboarding ? '' : 'animate-pulse-glow'}
+							{isOnOnboarding ? '' : 'animate-pulse-glow motion-reduce:animate-none'}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 							{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 						>
 							{#if isOnOnboarding}
-								<LoaderCircle class="w-5 h-5 mr-3 animate-spin" />
+								<LoaderCircle
+									class="w-5 h-5 mr-3 animate-spin motion-reduce:animate-none"
+								/>
 								Setup in Progress ({onboardingProgress}%)
 							{:else if onboardingUrgent}
 								<AlertCircle class="w-5 h-5 mr-3" />
@@ -1031,7 +1025,7 @@
 								? 'text-accent bg-muted'
 								: 'text-muted-foreground hover:text-foreground hover:bg-muted'}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
-							{loadingLink === item.href ? 'animate-pulse' : ''}"
+							{loadingLink === item.href ? 'animate-pulse motion-reduce:animate-none' : ''}"
 						>
 							<!-- Underline indicator for active route -->
 							{#if currentPath === item.href}
@@ -1143,19 +1137,7 @@
 								class="flex items-center px-3 py-1.5 text-base font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							>
-								<svg
-									class="w-5 h-5 mr-3"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-									/>
-								</svg>
+								<CreditCard class="w-5 h-5 mr-3" />
 								{subscription?.hasActiveSubscription ? 'Billing' : 'Upgrade to Pro'}
 							</a>
 						{/if}
@@ -1277,6 +1259,17 @@
 {/if}
 
 <style>
+	/* Keyboard focus rings for the nav's raw <a>/<button> elements.
+	   Button-component controls ring themselves (focus-visible:ring-2); Svelte style
+	   scoping keeps this off their internal <button>, so there's no double-ring.
+	   Mirrors the Footer's a:focus-visible convention. */
+	a:focus-visible,
+	button:focus-visible {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: 2px;
+		border-radius: 0.375rem;
+	}
+
 	/* BuildOS Logo - Bloom effect on OS */
 	.logo-os {
 		position: relative;

@@ -347,7 +347,7 @@
 		<div class="border-b border-border">
 			<button
 				type="button"
-				class="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition pressable"
+				class="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				onclick={() => (statsExpanded = !statsExpanded)}
 				aria-expanded={statsExpanded}
 			>
@@ -363,7 +363,9 @@
 			</button>
 
 			{#if statsExpanded}
-				<div class="px-3 pb-3 grid grid-cols-3 gap-2 text-xs animate-ink-in">
+				<div
+					class="px-3 pb-3 grid grid-cols-3 gap-2 text-xs animate-ink-in motion-reduce:animate-none"
+				>
 					<div
 						class="flex flex-col items-center p-2 rounded-lg bg-muted border border-border"
 					>
@@ -448,7 +450,7 @@
 				<select
 					bind:value={viewMode}
 					aria-labelledby="view-label"
-					class="w-full h-8 px-2 text-xs font-bold rounded-lg border border-border bg-card text-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-1 focus:ring-ring transition"
+					class="w-full h-10 sm:h-8 px-2 text-xs font-bold rounded-lg border border-border bg-card text-foreground shadow-ink-inner focus:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition"
 				>
 					<option value="projects">Projects & Entities</option>
 					<option value="full">Complete (all edges)</option>
@@ -465,7 +467,7 @@
 					<select
 						bind:value={selectedLayout}
 						aria-labelledby="layout-label"
-						class="w-full h-8 px-2 text-xs font-bold rounded-lg border border-border bg-card text-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-1 focus:ring-ring transition"
+						class="w-full h-10 sm:h-8 px-2 text-xs font-bold rounded-lg border border-border bg-card text-foreground shadow-ink-inner focus:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition"
 					>
 						{#each layouts as layout}
 							<option value={layout.value}>{layout.label}</option>
@@ -480,7 +482,7 @@
 			<div class="border border-border rounded-lg overflow-hidden bg-card">
 				<button
 					type="button"
-					class="w-full flex items-center justify-between px-2.5 py-2 text-[0.65rem] uppercase tracking-wider font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition pressable"
+					class="w-full flex items-center justify-between px-2.5 py-2 text-[0.65rem] uppercase tracking-wider font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					onclick={() => (scopeExpanded = !scopeExpanded)}
 					aria-expanded={scopeExpanded}
 				>
@@ -493,7 +495,9 @@
 				</button>
 
 				{#if scopeExpanded}
-					<div class="border-t border-border p-2.5 space-y-2 animate-ink-in">
+					<div
+						class="border-t border-border p-2.5 space-y-2 animate-ink-in motion-reduce:animate-none"
+					>
 						<div>
 							<p
 								class="mb-1 text-[0.62rem] font-bold uppercase tracking-wider text-muted-foreground"
@@ -503,7 +507,7 @@
 							<div class="grid grid-cols-2 gap-1.5">
 								{#each taskScopeToggles as toggle}
 									<label
-										class="flex min-w-0 items-center gap-1.5 text-[0.65rem] text-muted-foreground hover:text-foreground"
+										class="flex min-h-11 sm:min-h-0 min-w-0 items-center gap-1.5 py-1 sm:py-0 text-[0.65rem] text-muted-foreground hover:text-foreground"
 										title={getScopeCountTitle(toggle)}
 									>
 										<input
@@ -514,12 +518,12 @@
 													toggle.key,
 													event.currentTarget.checked
 												)}
-											class="h-3 w-3 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0"
+											class="h-3 w-3 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:ring-offset-0"
 										/>
 										<span class="truncate">{toggle.label}</span>
 										{#if formatScopeCount(toggle.key)}
 											<span
-												class="ml-auto shrink-0 font-mono text-[0.58rem] text-muted-foreground/80"
+												class="ml-auto shrink-0 font-mono text-xs text-muted-foreground/80"
 												>{formatScopeCount(toggle.key)}</span
 											>
 										{/if}
@@ -537,7 +541,7 @@
 							<div class="grid grid-cols-2 gap-1.5">
 								{#each entityScopeToggles as toggle}
 									<label
-										class="flex min-w-0 items-center gap-1.5 text-[0.65rem] text-muted-foreground hover:text-foreground"
+										class="flex min-h-11 sm:min-h-0 min-w-0 items-center gap-1.5 py-1 sm:py-0 text-[0.65rem] text-muted-foreground hover:text-foreground"
 										title={getScopeCountTitle(toggle)}
 									>
 										<input
@@ -548,12 +552,12 @@
 													toggle.key,
 													event.currentTarget.checked
 												)}
-											class="h-3 w-3 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0"
+											class="h-3 w-3 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:ring-offset-0"
 										/>
 										<span class="truncate">{toggle.label}</span>
 										{#if formatScopeCount(toggle.key)}
 											<span
-												class="ml-auto shrink-0 font-mono text-[0.58rem] text-muted-foreground/80"
+												class="ml-auto shrink-0 font-mono text-xs text-muted-foreground/80"
 												>{formatScopeCount(toggle.key)}</span
 											>
 										{/if}
@@ -571,7 +575,7 @@
 							<div class="grid grid-cols-2 gap-1.5">
 								{#each structureScopeToggles as toggle}
 									<label
-										class="flex min-w-0 items-center gap-1.5 text-[0.65rem] text-muted-foreground hover:text-foreground"
+										class="flex min-h-11 sm:min-h-0 min-w-0 items-center gap-1.5 py-1 sm:py-0 text-[0.65rem] text-muted-foreground hover:text-foreground"
 										title={getScopeCountTitle(toggle)}
 									>
 										<input
@@ -582,12 +586,12 @@
 													toggle.key,
 													event.currentTarget.checked
 												)}
-											class="h-3 w-3 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0"
+											class="h-3 w-3 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:ring-offset-0"
 										/>
 										<span class="truncate">{toggle.label}</span>
 										{#if formatScopeCount(toggle.key)}
 											<span
-												class="ml-auto shrink-0 font-mono text-[0.58rem] text-muted-foreground/80"
+												class="ml-auto shrink-0 font-mono text-xs text-muted-foreground/80"
 												>{formatScopeCount(toggle.key)}</span
 											>
 										{/if}
@@ -613,7 +617,7 @@
 							bind:value={searchQuery}
 							oninput={handleSearch}
 							placeholder="Search nodes..."
-							class="w-full h-8 pl-8 pr-3 text-xs rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-1 focus:ring-ring transition"
+							class="w-full h-10 sm:h-8 pl-8 pr-3 text-xs rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground shadow-ink-inner focus:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition"
 						/>
 					</div>
 				{/if}
@@ -626,7 +630,7 @@
 							<select
 								bind:value={selectedFilter}
 								aria-label="Filter node type"
-								class="w-full h-8 pl-8 pr-2 text-xs font-bold rounded-lg border border-border bg-card text-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-1 focus:ring-ring transition appearance-none"
+								class="w-full h-10 sm:h-8 pl-8 pr-2 text-xs font-bold rounded-lg border border-border bg-card text-foreground shadow-ink-inner focus:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition appearance-none"
 							>
 								{#each filters as filter}
 									<option value={filter.value}>{filter.label}</option>
@@ -645,7 +649,7 @@
 					<button
 						type="button"
 						onclick={handleFitToView}
-						class="flex-1 flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-bold rounded-lg border border-border bg-card text-foreground hover:border-accent hover:bg-muted shadow-ink pressable transition"
+						class="flex-1 flex items-center justify-center gap-1.5 h-10 sm:h-8 px-3 text-xs font-bold rounded-lg border border-border bg-card text-foreground hover:border-accent hover:bg-muted shadow-ink pressable transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						<Maximize2 class="w-3.5 h-3.5 shrink-0" />
 						<span>Fit</span>
@@ -655,7 +659,7 @@
 					<button
 						type="button"
 						onclick={handleExport}
-						class="flex-1 flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-bold rounded-lg border border-border bg-card text-foreground hover:border-accent hover:bg-muted shadow-ink pressable transition"
+						class="flex-1 flex items-center justify-center gap-1.5 h-10 sm:h-8 px-3 text-xs font-bold rounded-lg border border-border bg-card text-foreground hover:border-accent hover:bg-muted shadow-ink pressable transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						<Download class="w-3.5 h-3.5 shrink-0" />
 						<span>Export</span>
@@ -668,7 +672,7 @@
 		<div class="border-t border-border pt-3">
 			<button
 				type="button"
-				class="w-full flex items-center justify-between text-[0.65rem] uppercase tracking-wider font-bold text-muted-foreground hover:text-foreground transition mb-2"
+				class="w-full flex items-center justify-between text-[0.65rem] uppercase tracking-wider font-bold text-muted-foreground hover:text-foreground transition motion-reduce:transition-none mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				onclick={() => (legendExpanded = !legendExpanded)}
 				aria-expanded={legendExpanded}
 			>
@@ -681,11 +685,11 @@
 			</button>
 
 			{#if legendExpanded}
-				<div class="space-y-2 animate-ink-in">
+				<div class="space-y-2 animate-ink-in motion-reduce:animate-none">
 					<!-- Node Types — shapes mirror the canvas -->
 					<div class="grid grid-cols-4 gap-x-2 gap-y-1.5">
 						{#each nodeLegend as item}
-							<div class="flex items-center gap-1.5 text-[0.6rem]" title={item.label}>
+							<div class="flex items-center gap-1.5 text-xs" title={item.label}>
 								<svg
 									viewBox="0 0 18 14"
 									class="w-4 h-3 flex-shrink-0"
@@ -784,12 +788,12 @@
 					<!-- Lifecycle (border style) — what dotted/dashed/solid means on the canvas -->
 					<div class="flex flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-border/50">
 						<span
-							class="text-[0.58rem] uppercase tracking-wider text-muted-foreground/80 self-center"
+							class="text-xs uppercase tracking-wider text-muted-foreground/80 self-center"
 						>
 							Lifecycle
 						</span>
 						{#each lifecycleLegend as item}
-							<div class="flex items-center gap-1.5 text-[0.6rem]">
+							<div class="flex items-center gap-1.5 text-xs">
 								<svg
 									viewBox="0 0 18 6"
 									class="w-4 h-1.5 flex-shrink-0"
@@ -820,7 +824,7 @@
 					<!-- Edge Types -->
 					<div class="flex flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-border/50">
 						{#each edgeLegend as item}
-							<div class="flex items-center gap-1.5 text-[0.6rem]">
+							<div class="flex items-center gap-1.5 text-xs">
 								<div class="w-4 h-0.5 rounded-full {item.color}"></div>
 								<span class="text-muted-foreground">{item.label}</span>
 							</div>

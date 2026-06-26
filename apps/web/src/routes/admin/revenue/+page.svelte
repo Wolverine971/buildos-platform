@@ -21,6 +21,7 @@
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import { toastService } from '$lib/stores/toast.store';
 
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
@@ -133,7 +134,7 @@
 			URL.revokeObjectURL(url);
 		} catch (err) {
 			console.error('Error exporting revenue:', err);
-			alert('Failed to export revenue data');
+			toastService.error('Failed to export revenue data');
 		}
 	}
 
@@ -232,7 +233,9 @@
 
 		{#if isLoading}
 			<div class="flex items-center justify-center py-12">
-				<RefreshCw class="h-8 w-8 animate-spin text-info" />
+				<RefreshCw
+					class="h-8 w-8 animate-spin motion-reduce:animate-none text-muted-foreground"
+				/>
 			</div>
 		{:else}
 			{@const change = calculateChange(
@@ -244,8 +247,8 @@
 				<!-- Recognized Revenue -->
 				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between mb-4">
-						<div class="p-2 bg-success/10 rounded-lg">
-							<DollarSign class="h-6 w-6 text-success" />
+						<div class="p-2 bg-muted rounded-lg">
+							<DollarSign class="h-6 w-6 text-foreground" />
 						</div>
 						<span class="text-sm text-muted-foreground">
 							{selectedPeriod === 'month'
@@ -277,8 +280,8 @@
 				<!-- Deferred Revenue -->
 				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between mb-4">
-						<div class="p-2 bg-info/10 rounded-lg">
-							<Calendar class="h-6 w-6 text-info" />
+						<div class="p-2 bg-muted rounded-lg">
+							<Calendar class="h-6 w-6 text-foreground" />
 						</div>
 						<span class="text-sm text-muted-foreground">Total</span>
 					</div>
@@ -311,8 +314,8 @@
 				<!-- Net Revenue -->
 				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between mb-4">
-						<div class="p-2 bg-accent/10 rounded-lg">
-							<BarChart class="h-6 w-6 text-accent" />
+						<div class="p-2 bg-muted rounded-lg">
+							<BarChart class="h-6 w-6 text-foreground" />
 						</div>
 						<span class="text-sm text-muted-foreground">Net</span>
 					</div>

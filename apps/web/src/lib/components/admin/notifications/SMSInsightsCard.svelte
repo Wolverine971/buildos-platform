@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/admin/notifications/SMSInsightsCard.svelte -->
 <script lang="ts">
-	import { Smartphone, CheckCircle, UserCheck, UserX, Clock } from 'lucide-svelte';
+	import { Smartphone, CheckCircle, Check, UserCheck, UserX, Clock } from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
@@ -49,8 +49,8 @@
 		{#if loading}
 			<div class="space-y-4">
 				{#each Array(3) as _}
-					<div class="animate-pulse">
-						<div class="h-20 bg-muted rounded"></div>
+					<div class="animate-pulse motion-reduce:animate-none">
+						<div class="h-20 bg-muted rounded-md"></div>
 					</div>
 				{/each}
 			</div>
@@ -114,14 +114,14 @@
 					<h4 class="text-sm font-medium text-foreground mb-3">SMS Notifications</h4>
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<!-- Users with SMS Enabled -->
-						<div class="bg-info/10 rounded-lg p-4 border border-info/30">
+						<div class="bg-muted rounded-lg p-4 border border-border">
 							<div class="flex items-center justify-between">
 								<div class="flex-1">
 									<p class="text-xs text-muted-foreground mb-2">
 										SMS Notifications Enabled
 									</p>
 									<div class="flex items-baseline gap-2">
-										<p class="text-2xl font-bold text-info">
+										<p class="text-2xl font-bold text-foreground">
 											{formatNumber(data.users_sms_enabled)}
 										</p>
 										<p class="text-sm text-muted-foreground">users</p>
@@ -137,7 +137,7 @@
 										</div>
 										<div class="w-full bg-muted rounded-full h-2">
 											<div
-												class="bg-info h-2 rounded-full transition-all"
+												class="bg-info h-2 rounded-full transition-all motion-reduce:transition-none"
 												style="width: {data.sms_adoption_rate ?? 0}%"
 											></div>
 										</div>
@@ -146,19 +146,19 @@
 										</p>
 									</div>
 								</div>
-								<UserCheck class="h-8 w-8 text-info ml-4" />
+								<UserCheck class="h-8 w-8 text-muted-foreground ml-4" />
 							</div>
 						</div>
 
 						<!-- Recent Performance -->
-						<div class="bg-accent/10 rounded-lg p-4 border border-accent/30">
+						<div class="bg-muted rounded-lg p-4 border border-border">
 							<div class="flex items-center justify-between">
 								<div class="flex-1">
 									<p class="text-xs text-muted-foreground mb-2">
 										Selected Period ({timeframeLabel})
 									</p>
 									<div class="flex items-baseline gap-2 mb-3">
-										<p class="text-2xl font-bold text-accent">
+										<p class="text-2xl font-bold text-foreground">
 											{formatNumber(data.total_sms_sent_24h)}
 										</p>
 										<p class="text-sm text-muted-foreground">sent</p>
@@ -187,7 +187,7 @@
 										</div>
 									</div>
 								</div>
-								<Clock class="h-8 w-8 text-accent ml-4" />
+								<Clock class="h-8 w-8 text-muted-foreground ml-4" />
 							</div>
 						</div>
 					</div>
@@ -195,7 +195,7 @@
 
 				<!-- Insights Summary -->
 				{#if data.users_phone_verified > 0}
-					<div class="bg-info/10 rounded-lg p-4 border border-info/30">
+					<div class="bg-muted rounded-lg p-4 border border-border">
 						<h4 class="text-sm font-semibold text-foreground mb-2">Key Insights</h4>
 						<ul class="space-y-1 text-sm text-foreground">
 							{#if data.sms_adoption_rate < 50}
@@ -230,7 +230,7 @@
 							{/if}
 							{#if data.sms_adoption_rate >= 70 && data.sms_delivery_rate_24h >= 95}
 								<li class="flex items-start">
-									<span class="mr-2 text-success">✓</span>
+									<Check class="h-4 w-4 mr-2 mt-0.5 flex-shrink-0 text-success" />
 									<span class="text-success"
 										>SMS channel is performing well with {formatPercentage(
 											data.sms_adoption_rate

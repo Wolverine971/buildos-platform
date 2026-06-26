@@ -6,6 +6,7 @@
 		| 'ghost'
 		| 'danger'
 		| 'outline'
+		| 'accent'
 		| 'success'
 		| 'warning';
 	export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl';
@@ -102,6 +103,14 @@
 			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
 			shadow-ink tx-button relative
 		`,
+		accent: `
+			bg-card text-accent border border-accent/30 font-semibold tracking-tight
+			hover:bg-accent/10 hover:border-accent/50 hover:text-accent
+			active:translate-y-[1px] active:shadow-ink-inner
+			focus:ring-2 focus:ring-ring focus:ring-offset-1
+			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
+			shadow-ink tx-button relative
+		`,
 		success: `
 			bg-success text-success-foreground border border-success font-semibold tracking-tight
 			hover:bg-success/90 hover:shadow-ink-strong
@@ -148,7 +157,9 @@
 	);
 
 	let iconClass = $derived(
-		[iconSizes[size], loading ? 'animate-spin' : ''].filter(Boolean).join(' ')
+		[iconSizes[size], loading ? 'animate-spin motion-reduce:animate-none' : '']
+			.filter(Boolean)
+			.join(' ')
 	);
 
 	let iconSpacingClass = $derived('gap-2'); // Consistent 8px spacing for all sizes

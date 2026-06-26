@@ -467,16 +467,18 @@
 	}
 
 	function statusClasses(status: string): string {
-		if (status === 'override' || status === 'ready' || status === 'active') {
+		// Only genuine good/bad/danger states get decorative color. Everything else
+		// (copy overrides, ready/active/processing/queued/etc.) stays neutral.
+		if (status === 'sent' || status === 'returned') {
 			return 'bg-success/10 text-success';
 		}
-		if (status === 'waiting' || status === 'paused' || status === 'processing') {
+		if (status === 'waiting' || status === 'paused' || status === 'pending') {
 			return 'bg-warning/10 text-warning';
 		}
 		if (status === 'blocked' || status === 'failed' || status === 'errored') {
 			return 'bg-destructive/10 text-destructive';
 		}
-		return 'bg-muted text-muted-foreground';
+		return 'bg-muted text-foreground';
 	}
 </script>
 
@@ -507,7 +509,7 @@
 		{#each data.sequences as sequence}
 			<a
 				href={`/admin/email-sequences?sequence=${sequence.key}`}
-				class="inline-flex min-h-10 items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors {selectedSequenceKey ===
+				class="inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {selectedSequenceKey ===
 				sequence.key
 					? 'border-accent bg-accent text-accent-foreground'
 					: 'border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground'}"
@@ -553,7 +555,7 @@
 					<span>Cohort</span>
 					<select
 						name="cohort_id"
-						class="h-10 rounded-md border border-border bg-background px-3 text-sm"
+						class="h-10 rounded-md border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						{#if (data.reactivation?.cohortOptions ?? []).length === 0}
 							<option value={data.reactivation?.selectedCohortId ?? 'founder-pilot'}>
@@ -575,14 +577,14 @@
 					<input
 						name="campaign_id"
 						value={data.reactivation?.selectedCampaignId}
-						class="h-10 rounded-md border border-border bg-background px-3 text-sm"
+						class="h-10 rounded-md border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					/>
 				</label>
 				<label class="grid gap-1 text-sm font-medium text-foreground">
 					<span>Batch</span>
 					<select
 						name="batch_id"
-						class="h-10 rounded-md border border-border bg-background px-3 text-sm"
+						class="h-10 rounded-md border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						<option value="" selected={!data.reactivation?.selectedBatchId}
 							>All batches</option
@@ -598,7 +600,7 @@
 				</label>
 				<button
 					type="submit"
-					class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+					class="inline-flex h-10 min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				>
 					<RefreshCw class="h-4 w-4" />
 					Load
@@ -629,10 +631,10 @@
 							type="button"
 							disabled={cohortLoading}
 							onclick={buildDormantAudience}
-							class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-50"
+							class="inline-flex h-10 min-h-11 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							{#if cohortLoading}
-								<Loader2 class="h-4 w-4 animate-spin" />
+								<Loader2 class="h-4 w-4 animate-spin motion-reduce:animate-none" />
 							{:else}
 								<Users class="h-4 w-4" />
 							{/if}
@@ -688,6 +690,7 @@
 								value="schedule"
 								checked={triggerMode === 'schedule'}
 								onchange={() => (triggerMode = 'schedule')}
+								class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							/>
 							Use flow cadence
 						</span>
@@ -704,6 +707,7 @@
 								value="send_now"
 								checked={triggerMode === 'send_now'}
 								onchange={() => (triggerMode = 'send_now')}
+								class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							/>
 							Override timing
 						</span>
@@ -714,7 +718,7 @@
 							type="datetime-local"
 							bind:value={scheduledFor}
 							disabled={triggerMode === 'send_now'}
-							class="h-10 rounded-md border border-border bg-background px-3 text-sm disabled:opacity-50"
+							class="h-10 rounded-md border border-border bg-background px-3 text-sm disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						/>
 					</label>
 					<label
@@ -724,7 +728,7 @@
 						<input
 							bind:value={demoUrl}
 							placeholder="https://..."
-							class="h-10 rounded-md border border-border bg-background px-3 text-sm"
+							class="h-10 rounded-md border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						/>
 					</label>
 				</div>
@@ -735,10 +739,10 @@
 							type="button"
 							disabled={triggerLoading || selectedMemberIds.size === 0}
 							onclick={() => runTrigger(true)}
-							class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+							class="inline-flex h-10 min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							{#if triggerLoading}
-								<Loader2 class="h-4 w-4 animate-spin" />
+								<Loader2 class="h-4 w-4 animate-spin motion-reduce:animate-none" />
 							{:else}
 								<Eye class="h-4 w-4" />
 							{/if}
@@ -748,10 +752,10 @@
 							type="button"
 							disabled={triggerLoading || selectedMemberIds.size === 0}
 							onclick={() => runTrigger(false)}
-							class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-50"
+							class="inline-flex h-10 min-h-11 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							{#if triggerLoading}
-								<Loader2 class="h-4 w-4 animate-spin" />
+								<Loader2 class="h-4 w-4 animate-spin motion-reduce:animate-none" />
 							{:else}
 								<Send class="h-4 w-4" />
 							{/if}
@@ -763,25 +767,25 @@
 					{/if}
 					{#if triggerResult}
 						<div class="mt-3 grid grid-cols-2 gap-2 text-center text-xs sm:grid-cols-4">
-							<div class="rounded border border-border bg-background p-2">
+							<div class="rounded-md border border-border bg-background p-2">
 								<p class="text-lg font-bold text-foreground">
 									{triggerResult.counts.queued}
 								</p>
 								<p class="text-muted-foreground">Queued</p>
 							</div>
-							<div class="rounded border border-border bg-background p-2">
+							<div class="rounded-md border border-border bg-background p-2">
 								<p class="text-lg font-bold text-foreground">
 									{triggerResult.counts.sent}
 								</p>
 								<p class="text-muted-foreground">Sent</p>
 							</div>
-							<div class="rounded border border-border bg-background p-2">
+							<div class="rounded-md border border-border bg-background p-2">
 								<p class="text-lg font-bold text-foreground">
 									{triggerResult.counts.skipped}
 								</p>
 								<p class="text-muted-foreground">Skipped</p>
 							</div>
-							<div class="rounded border border-border bg-background p-2">
+							<div class="rounded-md border border-border bg-background p-2">
 								<p class="text-lg font-bold text-foreground">
 									{triggerResult.counts.failed}
 								</p>
@@ -793,7 +797,39 @@
 			</div>
 
 			{#if triggerResult?.results?.length}
-				<div class="mt-4 max-h-72 overflow-auto rounded-md border border-border">
+				<ul class="mt-4 max-h-72 space-y-2 overflow-auto lg:hidden">
+					{#each triggerResult.results as result}
+						<li class="rounded-md border border-border bg-background p-3">
+							<div class="flex items-start justify-between gap-2">
+								<p class="min-w-0 truncate text-sm font-medium text-foreground">
+									{result.email}
+								</p>
+								<span
+									class="shrink-0 rounded-md px-2 py-1 text-xs font-semibold {statusClasses(
+										result.status
+									)}"
+								>
+									{result.status}
+								</span>
+							</div>
+							<div
+								class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground"
+							>
+								<p>
+									Next:
+									<span class="text-foreground">{result.step ?? 'none'}</span>
+								</p>
+								<p>{formatCompactDate(result.scheduledFor)}</p>
+							</div>
+							{#if result.reason}
+								<p class="mt-1 text-xs text-muted-foreground">{result.reason}</p>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+				<div
+					class="mt-4 hidden max-h-72 overflow-auto rounded-md border border-border lg:block"
+				>
 					<table class="min-w-full divide-y divide-border text-sm">
 						<thead
 							class="bg-muted/60 text-left text-xs uppercase text-muted-foreground"
@@ -873,7 +909,7 @@
 							<a
 								href={copyHref(option)}
 								onclick={(event) => openCopyModal(event, option)}
-								class="block rounded-lg border px-3 py-3 transition-colors {isActiveCopy(
+								class="block rounded-lg border px-3 py-3 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {isActiveCopy(
 									option
 								)
 									? 'border-accent bg-accent/10'
@@ -918,7 +954,110 @@
 				Current stage, next email, engagement, and return signals for the selected sequence.
 			</p>
 		</div>
-		<div class="overflow-x-auto">
+		<ul class="divide-y divide-border lg:hidden">
+			{#each recipients as recipient}
+				<li class="space-y-3 px-4 py-4">
+					<div class="flex items-start justify-between gap-3">
+						<div class="flex min-w-0 items-start gap-3">
+							{#if selectedSequenceKey === 'buildos_reactivation_founder_pilot'}
+								<input
+									type="checkbox"
+									checked={Boolean(
+										recipient.memberId &&
+											selectedMemberIds.has(recipient.memberId)
+									)}
+									onchange={() => toggleMember(recipient.memberId)}
+									aria-label={`Select ${recipient.email}`}
+									class="mt-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								/>
+							{/if}
+							<div class="min-w-0">
+								<p class="truncate font-medium text-foreground">
+									{recipient.email}
+								</p>
+								{#if recipient.name || recipient.batchId}
+									<p class="mt-0.5 truncate text-xs text-muted-foreground">
+										{recipient.name ?? recipient.batchId}
+										{#if recipient.name && recipient.batchId}
+											· {recipient.batchId}{/if}
+									</p>
+								{/if}
+							</div>
+						</div>
+						<span
+							class="shrink-0 rounded-md px-2 py-1 text-xs font-semibold {statusClasses(
+								recipient.status
+							)}"
+						>
+							{recipient.stageLabel ?? recipient.status}
+						</span>
+					</div>
+					<div class="grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-muted-foreground">
+						<div class="min-w-0">
+							<p class="text-[10px] font-semibold uppercase">Next</p>
+							<p class="truncate text-foreground">{recipient.stepKey ?? 'none'}</p>
+							{#if recipient.variantKey}
+								<p class="truncate">{recipient.variantKey}</p>
+							{/if}
+							<p>
+								{formatCompactDate(recipient.scheduledFor ?? recipient.nextSendAt)}
+							</p>
+						</div>
+						<div class="min-w-0">
+							<p class="text-[10px] font-semibold uppercase">Engagement</p>
+							<div class="flex flex-wrap gap-2 text-foreground">
+								<span class="inline-flex items-center gap-1">
+									<Eye class="h-3.5 w-3.5" />
+									{recipient.openCount}
+								</span>
+								<span class="inline-flex items-center gap-1">
+									<MousePointerClick class="h-3.5 w-3.5" />
+									{recipient.clickCount}
+								</span>
+							</div>
+							{#if recipient.returnedAt}
+								<p class="text-success">
+									Returned {formatCompactDate(recipient.returnedAt)}
+								</p>
+							{/if}
+						</div>
+						<div class="min-w-0">
+							<p class="text-[10px] font-semibold uppercase">Activity</p>
+							<p>{formatCompactDate(recipient.lastActivityAt)}</p>
+							{#if recipient.firstActionAt}
+								<p class="text-success">
+									Action {formatCompactDate(recipient.firstActionAt)}
+								</p>
+							{/if}
+						</div>
+						<div class="min-w-0">
+							<p class="text-[10px] font-semibold uppercase">Sent</p>
+							<p class="text-foreground">{recipient.sentCount} sent</p>
+						</div>
+					</div>
+					<p class="text-xs text-muted-foreground">{recipient.reason}</p>
+					{#if selectedSequenceKey === 'buildos_reactivation_founder_pilot'}
+						<button
+							type="button"
+							onclick={() => openActivity(recipient)}
+							class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							<Activity class="h-3.5 w-3.5" />
+							Activity
+						</button>
+					{/if}
+				</li>
+			{:else}
+				<li class="px-4 py-8 text-center text-sm text-muted-foreground">
+					{#if selectedSequenceKey === 'buildos_reactivation_founder_pilot' && (data.reactivation?.cohortOptions ?? []).length === 0}
+						Build a dormant audience above to pull in reactivation candidates.
+					{:else}
+						No people found for this selection.
+					{/if}
+				</li>
+			{/each}
+		</ul>
+		<div class="hidden overflow-x-auto lg:block">
 			<table class="min-w-full divide-y divide-border text-sm">
 				<thead class="bg-muted/60 text-left text-xs uppercase text-muted-foreground">
 					<tr>
@@ -934,6 +1073,7 @@
 										)}
 									onchange={toggleAllVisible}
 									aria-label="Select all visible reactivation members"
+									class="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								/>
 							</th>
 						{/if}
@@ -961,13 +1101,16 @@
 										)}
 										onchange={() => toggleMember(recipient.memberId)}
 										aria-label={`Select ${recipient.email}`}
+										class="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									/>
 								</td>
 							{/if}
-							<td class="px-4 py-3">
-								<p class="font-medium text-foreground">{recipient.email}</p>
+							<td class="max-w-[260px] px-4 py-3">
+								<p class="truncate font-medium text-foreground">
+									{recipient.email}
+								</p>
 								{#if recipient.name || recipient.batchId}
-									<p class="mt-1 text-xs text-muted-foreground">
+									<p class="mt-1 truncate text-xs text-muted-foreground">
 										{recipient.name ?? recipient.batchId}
 										{#if recipient.name && recipient.batchId}
 											· {recipient.batchId}{/if}
@@ -986,12 +1129,14 @@
 									{recipient.sentCount} sent
 								</p>
 							</td>
-							<td class="px-4 py-3 text-muted-foreground">
-								<p class="font-medium text-foreground">
+							<td class="max-w-[200px] px-4 py-3 text-muted-foreground">
+								<p class="truncate font-medium text-foreground">
 									{recipient.stepKey ?? 'none'}
 								</p>
 								{#if recipient.variantKey}
-									<span class="block text-xs">{recipient.variantKey}</span>
+									<span class="block truncate text-xs"
+										>{recipient.variantKey}</span
+									>
 								{/if}
 								<p class="mt-1 text-xs text-muted-foreground">
 									{formatCompactDate(
@@ -1032,7 +1177,7 @@
 									<button
 										type="button"
 										onclick={() => openActivity(recipient)}
-										class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+										class="inline-flex h-9 min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									>
 										<Activity class="h-3.5 w-3.5" />
 										Activity
@@ -1142,7 +1287,7 @@
 									name="subject"
 									value={modalCopy.subject}
 									required
-									class="h-11 rounded-md border border-border bg-background px-3 text-sm"
+									class="h-11 rounded-md border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								/>
 							</label>
 							<label class="grid gap-1 text-sm font-medium text-foreground">
@@ -1151,7 +1296,7 @@
 									name="body"
 									required
 									rows="24"
-									class="min-h-[520px] rounded-md border border-border bg-background px-3 py-3 font-mono text-xs leading-relaxed"
+									class="min-h-[520px] rounded-md border border-border bg-background px-3 py-3 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									value={modalCopy.body}
 								></textarea>
 							</label>
@@ -1164,7 +1309,7 @@
 								<div class="mt-2 flex flex-wrap gap-1.5">
 									{#each data.tokens as token}
 										<code
-											class="rounded bg-background px-2 py-1 text-[11px] text-foreground"
+											class="rounded-md bg-background px-2 py-1 text-[11px] text-foreground break-all"
 										>
 											{token}
 										</code>
@@ -1175,7 +1320,7 @@
 								<button
 									type="submit"
 									formaction={copyActionHref('saveCopy', modalCopy)}
-									class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-medium text-background transition-colors hover:bg-foreground/90"
+									class="inline-flex h-10 min-h-11 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-medium text-background transition-colors hover:bg-foreground/90 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								>
 									<CheckCircle2 class="h-4 w-4" />
 									Save Copy
@@ -1199,7 +1344,7 @@
 								<button
 									type="submit"
 									formaction={copyActionHref('clearCopy', modalCopy)}
-									class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+									class="inline-flex h-10 min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								>
 									<RotateCcw class="h-4 w-4" />
 									Restore Source Copy
@@ -1209,7 +1354,7 @@
 
 						<details class="mt-4 rounded-md border border-border bg-muted/40 p-3">
 							<summary
-								class="cursor-pointer text-xs font-semibold uppercase text-muted-foreground"
+								class="cursor-pointer rounded-sm text-xs font-semibold uppercase text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								Source Copy Reference
 							</summary>
@@ -1267,7 +1412,9 @@
 	<div class="space-y-4 p-4 sm:p-5">
 		{#if activityLoading}
 			<div class="flex items-center gap-3 rounded-md border border-border bg-muted/40 p-4">
-				<Loader2 class="h-5 w-5 animate-spin text-muted-foreground" />
+				<Loader2
+					class="h-5 w-5 animate-spin text-muted-foreground motion-reduce:animate-none"
+				/>
 				<p class="text-sm text-muted-foreground">Loading reactivation activity...</p>
 			</div>
 		{:else if activityError}

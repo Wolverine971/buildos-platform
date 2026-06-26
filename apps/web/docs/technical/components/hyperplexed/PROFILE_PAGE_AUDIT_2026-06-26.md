@@ -24,17 +24,17 @@
 
 ## Surfaces audited
 
-| #   | Surface                          | File                                                              |
-| --- | -------------------------------- | ---------------------------------------------------------------- |
-| 0   | Page shell (header, banners, tab nav, template modal) | `routes/profile/+page.svelte`, `ui/TabNav.svelte` |
-| 1   | Account tab                      | `profile/AccountTab.svelte`                                       |
-| 2   | Contacts tab                     | `profile/ContactsTab.svelte`                                      |
-| 3   | AI Preferences tab               | `profile/PreferencesTab.svelte`                                   |
-| 4   | Brief Settings tab               | `profile/BriefsTab.svelte`, `profile/ScheduledSMSList.svelte`     |
-| 5   | Calendar tab                     | `profile/CalendarTab.svelte`                                      |
-| 6   | Notifications tab                | `profile/NotificationsTab.svelte` (+ child preference components) |
-| 7   | Agents (API keys) tab            | `profile/AgentKeysTab.svelte`                                     |
-| 8   | Billing tab                      | `profile/BillingTab.svelte`                                       |
+| #   | Surface                                               | File                                                              |
+| --- | ----------------------------------------------------- | ----------------------------------------------------------------- |
+| 0   | Page shell (header, banners, tab nav, template modal) | `routes/profile/+page.svelte`, `ui/TabNav.svelte`                 |
+| 1   | Account tab                                           | `profile/AccountTab.svelte`                                       |
+| 2   | Contacts tab                                          | `profile/ContactsTab.svelte`                                      |
+| 3   | AI Preferences tab                                    | `profile/PreferencesTab.svelte`                                   |
+| 4   | Brief Settings tab                                    | `profile/BriefsTab.svelte`, `profile/ScheduledSMSList.svelte`     |
+| 5   | Calendar tab                                          | `profile/CalendarTab.svelte`                                      |
+| 6   | Notifications tab                                     | `profile/NotificationsTab.svelte` (+ child preference components) |
+| 7   | Agents (API keys) tab                                 | `profile/AgentKeysTab.svelte`                                     |
+| 8   | Billing tab                                           | `profile/BillingTab.svelte`                                       |
 
 ---
 
@@ -167,11 +167,11 @@ Severity: **High** = breaks alignment/readability/behavior-legibility or blocks 
 
 ### Surface 0 — Page shell + TabNav
 
-| Sev | Region | Defect | Fix |
-| --- | --- | --- | --- |
-| Med | Status banners | All three (`onboarding`, `saveSuccess`, `saveError`) animate `transition:slide` ungated (→S2) (`:269,282,305`) | Reduced-motion-aware slide |
-| Low | Template modal `<pre>` | Preview block has literal source indentation leaking into the rendered `whitespace-pre-wrap` content (`:459-462`) | Trim/template the content so stray leading whitespace isn't rendered |
-| Low | Onboarding success icon | `CircleCheck` lacks `flex-shrink-0` that the error banner has (`:272 vs :310`) | Add `flex-shrink-0` |
+| Sev | Region                  | Defect                                                                                                            | Fix                                                                  |
+| --- | ----------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Med | Status banners          | All three (`onboarding`, `saveSuccess`, `saveError`) animate `transition:slide` ungated (→S2) (`:269,282,305`)    | Reduced-motion-aware slide                                           |
+| Low | Template modal `<pre>`  | Preview block has literal source indentation leaking into the rendered `whitespace-pre-wrap` content (`:459-462`) | Trim/template the content so stray leading whitespace isn't rendered |
+| Low | Onboarding success icon | `CircleCheck` lacks `flex-shrink-0` that the error banner has (`:272 vs :310`)                                    | Add `flex-shrink-0`                                                  |
 
 **Strengths:** the profile header is alignment-safe (`min-w-0` + `truncate` title + `flex-shrink-0`
 avatar/CTA, `:331-358`); color is restrained (success/destructive/accent each used for one role); the
@@ -181,13 +181,13 @@ outline, 44px targets, reduced-motion block.
 
 ### Surface 1 — Account tab
 
-| Sev | Region | Defect | Fix |
-| --- | --- | --- | --- |
-| High | Password show/hide toggles | No `focus-visible` ring on the three eye buttons (→S1) (`:500,534,561`) | Ring + `p-1` hit box |
-| Med | Password fields | Eye button is `absolute right-3` but the input reserves no `pr-10`, so a revealed value runs under the icon (`:489-514`) | Pass `pr-10` to TextInput |
-| Med | Public-URL preview | Unbreakable `font-mono` username token, no `break-all` — overflows on mobile (→S6) (`:409`) | `break-all` |
-| Med | Clear-username button | No `focus-visible` ring (→S1) (`:448`) | Add ring |
-| Low | Success banner icon | `CircleCheck` missing `flex-shrink-0` the error variant has (`:318`) | Add `flex-shrink-0` |
+| Sev  | Region                     | Defect                                                                                                                   | Fix                       |
+| ---- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
+| High | Password show/hide toggles | No `focus-visible` ring on the three eye buttons (→S1) (`:500,534,561`)                                                  | Ring + `p-1` hit box      |
+| Med  | Password fields            | Eye button is `absolute right-3` but the input reserves no `pr-10`, so a revealed value runs under the icon (`:489-514`) | Pass `pr-10` to TextInput |
+| Med  | Public-URL preview         | Unbreakable `font-mono` username token, no `break-all` — overflows on mobile (→S6) (`:409`)                              | `break-all`               |
+| Med  | Clear-username button      | No `focus-visible` ring (→S1) (`:448`)                                                                                   | Add ring                  |
+| Low  | Success banner icon        | `CircleCheck` missing `flex-shrink-0` the error variant has (`:318`)                                                     | Add `flex-shrink-0`       |
 
 **Strengths:** two-radii language respected (`rounded-lg` alerts, `rounded-md` controls); uniform `w-4 h-4`
 icons; username group uses `flex-1 min-w-0` + group-level `focus-within:ring` so the prefix chip can't be
@@ -195,13 +195,13 @@ knocked out of alignment; color is state-purposed.
 
 ### Surface 2 — Contacts tab
 
-| Sev | Region | Defect | Fix |
-| --- | --- | --- | --- |
-| Med | Saved-contact name/meta | `min-w-0` set but no `truncate`/`line-clamp` — long names wrap (→S6) (`:645-653`) | `truncate` name, `line-clamp-1` meta |
-| Med | Import-preview status/action cells | Raw enum strings (`create_new`, `upsert_existing`) and identical styling for ready/skipped/errors — state not differentiated (`:594-595`) | Humanize + color by status |
-| Med | Import-preview scroll region | `max-h-64 overflow-auto` 6-col table, no `min-w`, no scroll fade — columns squish, scroll invisible (`:572`) | `min-w-[640px]` + edge fade |
-| Low | CSV file input | No `focus-visible` ring (→S1) (`:529-535`) | Add ring |
-| Low | Preview table header | `<thead>` not `sticky` under a `max-h-64` scroll (`:574`) | `sticky top-0` |
+| Sev | Region                             | Defect                                                                                                                                    | Fix                                  |
+| --- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Med | Saved-contact name/meta            | `min-w-0` set but no `truncate`/`line-clamp` — long names wrap (→S6) (`:645-653`)                                                         | `truncate` name, `line-clamp-1` meta |
+| Med | Import-preview status/action cells | Raw enum strings (`create_new`, `upsert_existing`) and identical styling for ready/skipped/errors — state not differentiated (`:594-595`) | Humanize + color by status           |
+| Med | Import-preview scroll region       | `max-h-64 overflow-auto` 6-col table, no `min-w`, no scroll fade — columns squish, scroll invisible (`:572`)                              | `min-w-[640px]` + edge fade          |
+| Low | CSV file input                     | No `focus-visible` ring (→S1) (`:529-535`)                                                                                                | Add ring                             |
+| Low | Preview table header               | `<thead>` not `sticky` under a `max-h-64` scroll (`:574`)                                                                                 | `sticky top-0`                       |
 
 **Strengths:** clean `rounded-md`-in-`rounded-lg` radius language; behavior-distinct actions correctly
 differentiated by variant (Edit = ghost, Archive = danger, `:661-676`); icons contained via Button `icon`
@@ -209,44 +209,44 @@ prop; symmetric grid/cell padding; explicit loading/empty states.
 
 ### Surface 3 — AI Preferences tab
 
-| Sev | Region | Defect | Fix |
-| --- | --- | --- | --- |
-| High | OptionCard buttons | The primary selectable controls (3 grids) have **no** `focus-visible` ring (→S1) (`:205-214`) | Add ring |
-| Med | OptionCard / Save | `transition-all duration-200 pressable` + Save spinner ungated for reduced-motion (→S2) (`:209,314`) | `motion-reduce:` guards |
-| Low | OptionCard radius | Inner selectable tiles use `rounded-lg` nested in a `rounded-lg` card (→S5) (`:209`) | `rounded-md` inner |
+| Sev  | Region             | Defect                                                                                               | Fix                     |
+| ---- | ------------------ | ---------------------------------------------------------------------------------------------------- | ----------------------- |
+| High | OptionCard buttons | The primary selectable controls (3 grids) have **no** `focus-visible` ring (→S1) (`:205-214`)        | Add ring                |
+| Med  | OptionCard / Save  | `transition-all duration-200 pressable` + Save spinner ungated for reduced-motion (→S2) (`:209,314`) | `motion-reduce:` guards |
+| Low  | OptionCard radius  | Inner selectable tiles use `rounded-lg` nested in a `rounded-lg` card (→S5) (`:209`)                 | `rounded-md` inner      |
 
 **Strengths:** selection state is a single restrained accent (`border-accent bg-accent/5`) used purely for
 state; `aria-pressed` set per option; symmetric `p-3`/`gap-3`; consistent card radius; legible disabled state.
 
 ### Surface 4 — Brief Settings (BriefsTab + ScheduledSMSList)
 
-| Sev | Region | Defect | Fix |
-| --- | --- | --- | --- |
-| High | SMS filter tabs | Four `<button>` tabs: no `focus-visible` ring, **no** `role=tablist`/`tab`/`aria-selected`, no roving arrow keys (→S1) (`ScheduledSMSList:186-221`) | Adopt the shared `TabNav` (or wire ARIA + keys) |
-| High | Spinners + slides | `animate-spin` and `transition:slide`/`fade` ungated across both files (→S2) (`BriefsTab:356,592,606,626,662`; `SMS:179,226,227,234,254,275,356`) | reduced-motion guards |
-| Med | Voice-narration toggle | `focus:ring-2` (always-on, not `focus-visible`) + ungated checkmark/wrapper transitions (`BriefsTab:539,552,555`) | `focus-visible:` + `motion-reduce:` |
-| Med | "View All" vs refresh Button | Co-located link + Button, different markup/behavior; link has asymmetric `px-3 py-1.5` + no ring (→S3/S1) (`BriefsTab:592-596`) | Normalize; even padding; ring |
-| Med | SMS status / AI-pill color | `accent` used for both "scheduled" state and "AI-generated" label (→S4) (`SMS:124-139,290`) | Split roles |
-| Med | SMS event title | No `truncate`/`min-w-0`; `Calendar` icon no `flex-shrink-0` (→S6) (`SMS:298-304`) | `min-w-0 truncate` + `shrink-0` |
-| Med | SMS message body | Full content, no `line-clamp`, bare `rounded` (→S5/S6) (`SMS:308-312`) | `line-clamp-3` + `rounded-md` |
-| Low | Cancel-job button | Bare `rounded` (→S5) + `p-1` ~24px target below 44px (`BriefsTab:648`) | `rounded-md` + bigger target |
-| Low | SMS destructive confirm | Native `confirm()` while BriefsTab uses `ConfirmationModal` — inconsistent (`SMS:88`) | Use `ConfirmationModal` |
-| Low | Briefs error text | `truncate` in a `flex-shrink-0` box with no `max-w` — never engages (→S6) (`:681`) | Add `max-w` or badge |
+| Sev  | Region                       | Defect                                                                                                                                              | Fix                                             |
+| ---- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| High | SMS filter tabs              | Four `<button>` tabs: no `focus-visible` ring, **no** `role=tablist`/`tab`/`aria-selected`, no roving arrow keys (→S1) (`ScheduledSMSList:186-221`) | Adopt the shared `TabNav` (or wire ARIA + keys) |
+| High | Spinners + slides            | `animate-spin` and `transition:slide`/`fade` ungated across both files (→S2) (`BriefsTab:356,592,606,626,662`; `SMS:179,226,227,234,254,275,356`)   | reduced-motion guards                           |
+| Med  | Voice-narration toggle       | `focus:ring-2` (always-on, not `focus-visible`) + ungated checkmark/wrapper transitions (`BriefsTab:539,552,555`)                                   | `focus-visible:` + `motion-reduce:`             |
+| Med  | "View All" vs refresh Button | Co-located link + Button, different markup/behavior; link has asymmetric `px-3 py-1.5` + no ring (→S3/S1) (`BriefsTab:592-596`)                     | Normalize; even padding; ring                   |
+| Med  | SMS status / AI-pill color   | `accent` used for both "scheduled" state and "AI-generated" label (→S4) (`SMS:124-139,290`)                                                         | Split roles                                     |
+| Med  | SMS event title              | No `truncate`/`min-w-0`; `Calendar` icon no `flex-shrink-0` (→S6) (`SMS:298-304`)                                                                   | `min-w-0 truncate` + `shrink-0`                 |
+| Med  | SMS message body             | Full content, no `line-clamp`, bare `rounded` (→S5/S6) (`SMS:308-312`)                                                                              | `line-clamp-3` + `rounded-md`                   |
+| Low  | Cancel-job button            | Bare `rounded` (→S5) + `p-1` ~24px target below 44px (`BriefsTab:648`)                                                                              | `rounded-md` + bigger target                    |
+| Low  | SMS destructive confirm      | Native `confirm()` while BriefsTab uses `ConfirmationModal` — inconsistent (`SMS:88`)                                                               | Use `ConfirmationModal`                         |
+| Low  | Briefs error text            | `truncate` in a `flex-shrink-0` box with no `max-w` — never engages (→S6) (`:681`)                                                                  | Add `max-w` or badge                            |
 
 **Strengths:** consistent `rounded-lg` cards; Badge-variant-driven state color; uniform boxed `w-4 h-4`
 icons with `flex-shrink-0`; `ConfirmationModal` for destructive brief actions; symmetric card padding.
 
 ### Surface 5 — Calendar tab
 
-| Sev | Region | Defect | Fix |
-| --- | --- | --- | --- |
-| High | Working-days checkboxes | `focus:ring` (always-on, not `focus-visible`), bare `rounded` (→S1/S5), and a stray newline inside the class string (`:686-687`) | `focus-visible:ring-2`, `rounded-md`, collapse class |
-| High | Refresh icon-button | Icon-only Button with empty children — verify it gets an `aria-label` (title alone may not map) (`:531-539`) | Explicit `aria-label="Refresh calendar"` |
-| Med | Calendar-project nav cards | Primary nav cards with hover affordance but no `focus-visible` ring; broad ungated `transition-all` (→S1/S2) (`:955-957`) | Ring + narrow/gated transition |
-| Med | Event-link anchors | No `focus-visible` ring (→S1); `p-1.5` ~30px target below 44px (`:867-875`) | Ring + bigger target |
-| Med | Decorative `Sun` | `text-warning` with no warning semantics (→S4) (`:809`) | `text-accent`/muted |
-| Med | Page loader | `animate-spin` ungated (→S2) (`:505`) | `motion-reduce:animate-none` |
-| Low | Eyebrow sizing | `text-[0.65rem]` (`:565`) vs `text-xs` (`:947`) for the same eyebrow role | Standardize `text-xs` |
+| Sev  | Region                     | Defect                                                                                                                           | Fix                                                  |
+| ---- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| High | Working-days checkboxes    | `focus:ring` (always-on, not `focus-visible`), bare `rounded` (→S1/S5), and a stray newline inside the class string (`:686-687`) | `focus-visible:ring-2`, `rounded-md`, collapse class |
+| High | Refresh icon-button        | Icon-only Button with empty children — verify it gets an `aria-label` (title alone may not map) (`:531-539`)                     | Explicit `aria-label="Refresh calendar"`             |
+| Med  | Calendar-project nav cards | Primary nav cards with hover affordance but no `focus-visible` ring; broad ungated `transition-all` (→S1/S2) (`:955-957`)        | Ring + narrow/gated transition                       |
+| Med  | Event-link anchors         | No `focus-visible` ring (→S1); `p-1.5` ~30px target below 44px (`:867-875`)                                                      | Ring + bigger target                                 |
+| Med  | Decorative `Sun`           | `text-warning` with no warning semantics (→S4) (`:809`)                                                                          | `text-accent`/muted                                  |
+| Med  | Page loader                | `animate-spin` ungated (→S2) (`:505`)                                                                                            | `motion-reduce:animate-none`                         |
+| Low  | Eyebrow sizing             | `text-[0.65rem]` (`:565`) vs `text-xs` (`:947`) for the same eyebrow role                                                        | Standardize `text-xs`                                |
 
 **Strengths:** strong alignment (`min-w-0` + `truncate`/`line-clamp-1` + `flex-shrink-0` icons on feature
 and task rows); consistent `rounded-lg` cards; `divide-y` task list; `success` reserved for the connected
@@ -254,9 +254,9 @@ state; proper `fieldset`/`legend`; `rel="noopener noreferrer"` on external links
 
 ### Surface 6 — Notifications tab
 
-| Sev | Region | Defect | Fix |
-| --- | --- | --- | --- |
-| — | Composition only | This file owns no interactive markup; correctness depends on `NotificationPreferences`/`SMSPreferences`/`ScheduledSMSList` (audit those for rings/overflow) | Audit children separately |
+| Sev | Region           | Defect                                                                                                                                                      | Fix                       |
+| --- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| —   | Composition only | This file owns no interactive markup; correctness depends on `NotificationPreferences`/`SMSPreferences`/`ScheduledSMSList` (audit those for rings/overflow) | Audit children separately |
 
 **Strengths:** clean, decluttered composition; the duplicate SMS-fetch path was already merged into one
 `loadSmsPreferences` fed to both children (exactly the rubric's "merge duplicate paths"); vertical rhythm
@@ -264,17 +264,17 @@ matches the other tabs; the Scheduled-SMS card is gated so it never flashes empt
 
 ### Surface 7 — Agents (API keys) tab
 
-| Sev | Region | Defect | Fix |
-| --- | --- | --- | --- |
-| High | Advanced-permissions toggle | Hover-only, no `focus-visible` ring — gates the entire write-op list (→S1) (`:1938-1942`) | Add ring |
-| Med | Form checkboxes/radios | `focus:ring-accent` with no `ring-2`/width — no ring renders (→S1) (`:1912,1964,1988,2057`) | `focus-visible:ring-2` |
-| Med | Inline doc links | `/docs/connect-agents` + `/integrations` hover-only, no ring (→S1) (`:1179,1803`) | Add ring |
-| Med | Caller metric badges | Three read-only stats in three Badge colors (info/accent/default) (→S4) (`:1484-1490`) | One neutral variant |
-| Med | Caller action row | Destructive **Revoke** co-located with safe actions, only color separates (→S3) (`:1541,1599-1607`) | `ml-auto`/divider |
-| Med | Sub-section disclosures | "Project Scope"/"Write Permissions" `<summary>` have no chevron while parent details do — read as static (`:1739,1771`) | Add rotating chevron |
-| Low | Code/`<pre>` panels | Bare `rounded` (third radius) on every code surface (→S5) (`:1173,1202,1232,1264,1289,1535,2224,2284,2314,2343,2373`) | `rounded-md` |
-| Low | Inner-control padding | Assorted asymmetric `px-3 py-2.5`/`px-2.5 py-1.5` + orphan `pt-2`/`pt-3` (`:1364,1905,1929,1960,1984,2053,1699,1738,1802`) | Even to `p-2.5`/`p-3` |
-| Low | Magic width | `sm:max-w-[48%]` arbitrary fraction (`:1482`) | Layout token |
+| Sev  | Region                      | Defect                                                                                                                     | Fix                    |
+| ---- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| High | Advanced-permissions toggle | Hover-only, no `focus-visible` ring — gates the entire write-op list (→S1) (`:1938-1942`)                                  | Add ring               |
+| Med  | Form checkboxes/radios      | `focus:ring-accent` with no `ring-2`/width — no ring renders (→S1) (`:1912,1964,1988,2057`)                                | `focus-visible:ring-2` |
+| Med  | Inline doc links            | `/docs/connect-agents` + `/integrations` hover-only, no ring (→S1) (`:1179,1803`)                                          | Add ring               |
+| Med  | Caller metric badges        | Three read-only stats in three Badge colors (info/accent/default) (→S4) (`:1484-1490`)                                     | One neutral variant    |
+| Med  | Caller action row           | Destructive **Revoke** co-located with safe actions, only color separates (→S3) (`:1541,1599-1607`)                        | `ml-auto`/divider      |
+| Med  | Sub-section disclosures     | "Project Scope"/"Write Permissions" `<summary>` have no chevron while parent details do — read as static (`:1739,1771`)    | Add rotating chevron   |
+| Low  | Code/`<pre>` panels         | Bare `rounded` (third radius) on every code surface (→S5) (`:1173,1202,1232,1264,1289,1535,2224,2284,2314,2343,2373`)      | `rounded-md`           |
+| Low  | Inner-control padding       | Assorted asymmetric `px-3 py-2.5`/`px-2.5 py-1.5` + orphan `pt-2`/`pt-3` (`:1364,1905,1929,1960,1984,2053,1699,1738,1802`) | Even to `p-2.5`/`p-3`  |
+| Low  | Magic width                 | `sm:max-w-[48%]` arbitrary fraction (`:1482`)                                                                              | Layout token           |
 
 **Strengths:** **copy affordances are exemplary** — every copy button swaps to `Copied`/`CircleCheck` on a
 2s timeout (`:1209-1218,1518-1532,2166-2174`); deliberate overflow handling (`break-all` on keys/prefixes,
@@ -284,13 +284,13 @@ clear active bundle state (`border-accent bg-accent/5`).
 
 ### Surface 8 — Billing tab
 
-| Sev | Region | Defect | Fix |
-| --- | --- | --- | --- |
+| Sev  | Region                  | Defect                                                                                                                                                              | Fix                               |
+| ---- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
 | High | Invoice PDF affordances | Visually identical, behaviorally different: raw `<a target="_blank">` ("Download PDF") vs `<Button>` ("Generate PDF"); the anchor has no ring (→S3/S1) (`:145-163`) | Normalize to one component + ring |
-| High | "Generate PDF" target | `py-0` collapses a billing action below 44px (`:159`) | Drop `py-0`; native `size="sm"` |
-| Med | No-subscription block | Hand-rolled card + hand-rolled `<a>` CTA instead of `SettingsCard`/`Button` — inconsistent radius/focus/motion (→S1/S2) (`:172-221`) | Use `SettingsCard` + `Button` |
-| Low | Active-sub price row | `justify-between flex-wrap` on a single child — dead layout intent (`:51`) | Drop the flex wrapper |
-| Low | Plan-name title | Piped into `SettingsCard title=` with no truncate guarantee at the call site (`:45`) | Verify `SettingsCard` truncates |
+| High | "Generate PDF" target   | `py-0` collapses a billing action below 44px (`:159`)                                                                                                               | Drop `py-0`; native `size="sm"`   |
+| Med  | No-subscription block   | Hand-rolled card + hand-rolled `<a>` CTA instead of `SettingsCard`/`Button` — inconsistent radius/focus/motion (→S1/S2) (`:172-221`)                                | Use `SettingsCard` + `Button`     |
+| Low  | Active-sub price row    | `justify-between flex-wrap` on a single child — dead layout intent (`:51`)                                                                                          | Drop the flex wrapper             |
+| Low  | Plan-name title         | Piped into `SettingsCard title=` with no truncate guarantee at the call site (`:45`)                                                                                | Verify `SettingsCard` truncates   |
 
 **Strengths:** disciplined `rounded-lg` everywhere (no drift); icons contained in fixed boxes
 (`w-12 h-12` chip, `w-4 h-4 flex-shrink-0` checks); invoice row uses `min-w-0` left + `flex-shrink-0`
@@ -337,6 +337,49 @@ fixes already shipped — reuse those helpers rather than re-inventing.
   the `text-warning` Sun, import-status contrast) are _suspected_ and want a live dark-mode screenshot
   pass to confirm.
 
-> **Status:** findings only — no fixes applied in this pass. Suggested first build target: the S1/S2
-> sweep (reusing the project page's `board-a11y.ts` helpers) since it clears the most High findings and
-> shares machinery already in the repo.
+---
+
+## Part 5 — Fixes applied (2026-06-26)
+
+Full polish pass shipped across the shell + all eight tabs. `svelte-check` clean (0 errors / 0 warnings);
+ESLint clean on the touched files (only three pre-existing unused-var warnings, untouched). The
+project-page `board-a11y.ts` helpers were reused, with one addition (`fadeMotion`) for fade transitions.
+
+**Systemic (Part 1) — all six addressed:**
+
+- **S1** ✅ Keyboard focus sweep. Added the shared `focus-visible:outline-none focus-visible:ring-2
+focus-visible:ring-ring focus-visible:ring-inset` to: password show/hide toggles + clear-username
+  (Account), CSV file input (Contacts), the three OptionCard grids (Preferences), invoice PDF links +
+  upgrade CTA (Billing), View-All + voice toggle (Briefs), the advanced-permissions toggle + 4
+  checkboxes/radios + 2 inline doc links (AgentKeys), working-days checkboxes + event links + project
+  nav cards (Calendar). Converted every `focus:ring-accent`-without-width and always-on `focus:ring` to
+  the `focus-visible` form.
+- **S2** ✅ Reduced-motion sweep. Page-shell banners + Briefs/SMS slide/fade panels now use
+  `slideMotion()`/`fadeMotion()`; `motion-reduce:animate-none` on every standalone spinner (incl. the
+  shared `Button` loading spinner, so it propagates app-wide); `motion-reduce:transition-none` on
+  pressables/chevrons/toggles touched.
+- **S3** ✅ Co-located behaviors separated. Billing invoice PDF controls normalized to one shared link
+  style (dropped the `<a>`-vs-`Button` divergence + the `py-0` collapse); Briefs View-All padding
+  evened; AgentKeys **Revoke** pushed to its own end of the row with `ml-auto`.
+- **S4** ✅ Color discipline. SMS "scheduled/pending" status moved off `accent` → `info` (accent no
+  longer collides with the AI-generated pill); AgentKeys three read-only metric badges unified to one
+  `default` variant; Calendar decorative `Sun` `text-warning` → `text-accent`.
+- **S5** ✅ Radius locked. Bare `rounded` → `rounded-md` on the SMS message body, Briefs cancel-job
+  button, Calendar working-days checkbox, and all 11 AgentKeys code/`<pre>` surfaces.
+- **S6** ✅ Overflow completed. `truncate` paired with the existing `min-w-0` on Contacts contact rows
+  and the SMS event title (+ `flex-shrink-0` on its icon); `break-all` on the Account public-URL token;
+  `max-w` so the Briefs error `truncate` engages; `line-clamp-3` on the SMS message body.
+
+**Cleanups (Part 2):** ScheduledSMS filter tabs replaced with the shared `TabNav` (gains full ARIA +
+arrow-key roving + focus + reduced-motion); native `confirm()` for SMS cancel replaced with
+`ConfirmationModal` for parity; Contacts import-preview gained `min-w-[640px]` + `sticky` header +
+state-colored/humanized status & action cells; Account password inputs reserve `pr-10`; Billing
+single-child price flex unwrapped; template-modal `<pre>` stray-indentation collapsed; banner icons given
+`flex-shrink-0`; Calendar "Calendar Features" eyebrow normalized to `text-xs`; Calendar refresh
+icon-button given an explicit `aria-label`.
+
+**Deferred (lower-value / needs live screenshots):** the assorted AgentKeys asymmetric-padding even-out
+and the `sm:max-w-[48%]` magic-width nitpick; the Billing no-subscription hero was kept as a bespoke
+card (declined the `SettingsCard` wrap — a centered upgrade hero is a legitimately different component
+than a titled settings card) with only its CTA focus/motion fixed. Next step: the live dark-mode
+screenshot pass to confirm the S4 color calls and SMS `info` status contrast.

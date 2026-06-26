@@ -20,7 +20,7 @@
 	<button
 		type="button"
 		onclick={() => toggleEventExpansion(eventId)}
-		class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+		class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
 	>
 		{#if expandedEventIds.has(eventId)}
 			<ChevronDown class="h-3 w-3" />

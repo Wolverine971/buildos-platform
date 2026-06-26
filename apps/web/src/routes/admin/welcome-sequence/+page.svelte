@@ -525,7 +525,7 @@
 							<td class="px-4 py-3 text-muted-foreground">{step.status}</td>
 							<td class="px-4 py-3">
 								<span
-									class="rounded-md bg-success/10 px-2 py-1 text-xs font-medium text-success"
+									class="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground"
 								>
 									No
 								</span>
@@ -547,7 +547,7 @@
 					<span>Step</span>
 					<select
 						name="preview_step"
-						class="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+						class="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						{#each ['email_1', 'email_2', 'email_3', 'email_4', 'email_5'] as step}
 							<option value={step} selected={sandbox.input.step === step}
@@ -561,14 +561,14 @@
 					<input
 						name="preview_name"
 						value={sandbox.input.name}
-						class="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+						class="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					/>
 				</label>
 				<label class="grid gap-1 text-sm font-medium text-foreground">
 					<span>Intent</span>
 					<select
 						name="onboarding_intent"
-						class="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+						class="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						{#each ['plan', 'organize', 'unstuck', 'explore', 'none'] as intent}
 							<option
@@ -587,7 +587,7 @@
 						type="number"
 						min="0"
 						value={sandbox.input.projectCount}
-						class="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+						class="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					/>
 				</label>
 				<div class="grid gap-2 text-sm text-foreground">
@@ -597,6 +597,7 @@
 							name="onboarding_completed"
 							value="true"
 							checked={sandbox.input.onboardingCompleted}
+							class="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						/>
 						Onboarding complete
 					</label>
@@ -606,6 +607,7 @@
 							name="email_daily_brief_enabled"
 							value="true"
 							checked={sandbox.input.emailDailyBriefEnabled}
+							class="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						/>
 						Email daily brief enabled
 					</label>
@@ -615,6 +617,7 @@
 							name="sms_channel_enabled"
 							value="true"
 							checked={sandbox.input.smsChannelEnabled}
+							class="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						/>
 						SMS channel enabled
 					</label>
@@ -624,6 +627,7 @@
 							name="calendar_connected"
 							value="true"
 							checked={sandbox.input.calendarConnected}
+							class="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						/>
 						Calendar connected
 					</label>
@@ -633,13 +637,14 @@
 							name="returned"
 							value="true"
 							checked={sandbox.input.returned}
+							class="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						/>
 						Returned for another session
 					</label>
 				</div>
 				<button
 					type="submit"
-					class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+					class="inline-flex h-10 min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 				>
 					<RefreshCw class="h-4 w-4" />
 					Preview
@@ -692,7 +697,7 @@
 							type="email"
 							required
 							placeholder="you@example.com"
-							class="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+							class="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						/>
 					</label>
 					<div class="flex flex-wrap gap-2">
@@ -700,7 +705,7 @@
 							type="submit"
 							formaction="?/testSend"
 							disabled={!sandbox.preview.content || sandbox.preview.action !== 'send'}
-							class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+							class="inline-flex h-10 min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
 						>
 							<Mail class="h-4 w-4" />
 							Current Step
@@ -708,7 +713,7 @@
 						<button
 							type="submit"
 							formaction="?/testFullSequence"
-							class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-medium text-background transition-colors hover:bg-foreground/90"
+							class="inline-flex h-10 min-h-11 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-medium text-background transition-colors hover:bg-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 						>
 							<Send class="h-4 w-4" />
 							Full Sequence
@@ -792,7 +797,7 @@
 				{@const previewKey = `variant-${index}`}
 				{@const showHtml = openHtmlPreviews[previewKey] ?? false}
 				<div
-					class="flex flex-col rounded-lg border border-border bg-background/50 p-4 transition-colors hover:bg-background"
+					class="flex flex-col rounded-lg border border-border bg-background/50 p-4 transition-colors hover:bg-background motion-reduce:transition-none"
 				>
 					<div class="flex flex-wrap items-start justify-between gap-2">
 						<div class="min-w-0">
@@ -866,12 +871,12 @@
 						<button
 							type="button"
 							onclick={() => toggleHtmlPreview(previewKey)}
-							class="mt-3 inline-flex items-center gap-1.5 self-start rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+							class="mt-3 inline-flex min-h-11 items-center gap-1.5 self-start rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 						>
 							<Eye class="h-3.5 w-3.5" />
 							{showHtml ? 'Hide HTML preview' : 'Show HTML preview'}
 							<ChevronDown
-								class="h-3 w-3 transition-transform duration-150 {showHtml
+								class="h-3 w-3 transition-transform duration-150 motion-reduce:transition-none {showHtml
 									? 'rotate-180'
 									: ''}"
 							/>
@@ -907,7 +912,88 @@
 				First 100 sequence enrollments sorted by next send time.
 			</p>
 		</div>
-		<div class="overflow-x-auto">
+
+		<!-- Mobile card list -->
+		<ul class="divide-y divide-border lg:hidden">
+			{#each queueRows as row}
+				<li class={`space-y-3 p-4 ${row.status === 'errored' ? 'bg-destructive/5' : ''}`}>
+					<div class="flex items-start justify-between gap-2">
+						<div class="min-w-0">
+							<div class="max-w-full truncate font-medium text-foreground">
+								{row.recipient_email}
+							</div>
+							<div class="mt-1 break-all font-mono text-xs text-muted-foreground">
+								{row.user_id}
+							</div>
+						</div>
+						<span
+							class="shrink-0 rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground"
+						>
+							{row.status}
+						</span>
+					</div>
+
+					{#if row.exit_reason}
+						<div class="text-xs text-muted-foreground">Exit: {row.exit_reason}</div>
+					{/if}
+
+					<dl class="grid grid-cols-2 gap-2 text-sm">
+						<div>
+							<dt class="text-xs text-muted-foreground">Next Step</dt>
+							<dd class="text-foreground">
+								{#if row.next_step_number}
+									{row.next_step_number}. email_{row.next_step_number}
+								{:else}
+									none
+								{/if}
+								<span class="block text-xs text-muted-foreground">
+									Current: {row.current_step_number}
+								</span>
+							</dd>
+						</div>
+						<div>
+							<dt class="text-xs text-muted-foreground">Next Send</dt>
+							<dd class="text-foreground">{formatValue(row.next_send_at)}</dd>
+						</div>
+						<div>
+							<dt class="text-xs text-muted-foreground">Failures</dt>
+							<dd class="text-foreground">{row.failure_count ?? 0}</dd>
+						</div>
+						<div>
+							<dt class="text-xs text-muted-foreground">Branch</dt>
+							<dd class="break-all text-foreground">{row.branchPreview ?? 'none'}</dd>
+						</div>
+					</dl>
+
+					{#if row.last_error}
+						<div
+							class="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-xs text-destructive"
+						>
+							{row.last_error}
+						</div>
+					{/if}
+
+					<form method="POST" action="?/sendNextNow">
+						<input type="hidden" name="enrollment_id" value={row.id} />
+						<button
+							type="submit"
+							disabled={!canSendNextNow(row)}
+							class="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
+						>
+							Send next now
+						</button>
+					</form>
+				</li>
+			{/each}
+
+			{#if queueRows.length === 0}
+				<li class="px-4 py-10 text-center text-sm text-muted-foreground">
+					No welcome sequence enrollments found.
+				</li>
+			{/if}
+		</ul>
+
+		<div class="hidden overflow-x-auto lg:block">
 			<table class="min-w-full divide-y divide-border text-sm">
 				<thead class="bg-muted/60 text-left text-xs uppercase text-muted-foreground">
 					<tr>
@@ -924,8 +1010,10 @@
 					{#each queueRows as row}
 						<tr class={row.status === 'errored' ? 'bg-destructive/5' : ''}>
 							<td class="px-4 py-3 align-top">
-								<div class="font-medium text-foreground">{row.recipient_email}</div>
-								<div class="mt-1 font-mono text-xs text-muted-foreground">
+								<div class="max-w-[220px] truncate font-medium text-foreground">
+									{row.recipient_email}
+								</div>
+								<div class="mt-1 break-all font-mono text-xs text-muted-foreground">
 									{row.user_id}
 								</div>
 							</td>
@@ -980,7 +1068,7 @@
 									<button
 										type="submit"
 										disabled={!canSendNextNow(row)}
-										class="inline-flex h-9 items-center justify-center rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+										class="inline-flex h-9 min-h-11 items-center justify-center rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
 									>
 										Send next now
 									</button>
@@ -1067,7 +1155,7 @@
 							min="1"
 							max="500"
 							value={data.limit}
-							class="h-10 w-28 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+							class="h-10 w-28 rounded-md border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						/>
 					</label>
 					<label class="flex flex-col gap-1 text-sm font-medium text-foreground">
@@ -1078,12 +1166,12 @@
 							min="1"
 							max="365"
 							value={data.days}
-							class="h-10 w-28 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+							class="h-10 w-28 rounded-md border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						/>
 					</label>
 					<button
 						type="submit"
-						class="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+						class="inline-flex h-10 min-h-11 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 					>
 						<RefreshCw class="h-4 w-4" />
 						Refresh
@@ -1109,10 +1197,14 @@
 							{#each rows as row}
 								<tr class={row.diffCount > 0 ? 'bg-warning/5' : ''}>
 									<td class="px-4 py-3 align-top">
-										<div class="font-medium text-foreground">
+										<div
+											class="max-w-[220px] truncate font-medium text-foreground"
+										>
 											{row.email || 'No email'}
 										</div>
-										<div class="mt-1 font-mono text-xs text-muted-foreground">
+										<div
+											class="mt-1 break-all font-mono text-xs text-muted-foreground"
+										>
 											{row.userId}
 										</div>
 										<div class="mt-1 text-xs text-muted-foreground">

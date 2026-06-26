@@ -187,7 +187,7 @@
 				</p>
 				<input
 					type="text"
-					class="w-full rounded-lg border border-border px-3 py-2 text-center text-sm focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
+					class="w-full rounded-lg border border-border px-3 py-2 text-center text-sm focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					placeholder={confirmText}
 					bind:value={inputValue}
 					onkeydown={(e) => e.key === 'Enter' && handleConfirm()}

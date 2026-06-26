@@ -16,21 +16,6 @@
 			"components": ["AgentChatModal", "GraphControls", "OntologyGraph", "NodeDetailsPanel"]
 		},
 		{
-			"file": "src/routes/dashboard/calendar/+page.svelte",
-			"type": "page",
-			"components": ["TaskEditModal", "EventEditModal"]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal", "ProjectModalsHost"]
-		},
-		{
 			"file": "src/lib/components/dashboard/AnalyticsDashboard.svelte",
 			"type": "component",
 			"components": [
@@ -46,14 +31,14 @@
 			"components": ["AgentChatModal"]
 		},
 		{
-			"file": "src/lib/components/layout/Navigation.svelte",
-			"type": "component",
-			"components": ["AgentChatModal", "WorkPanel"]
-		},
-		{
 			"file": "src/lib/components/landing/HomepageV2.svelte",
 			"type": "component",
 			"components": ["PublicProjectView"]
+		},
+		{
+			"file": "src/lib/components/layout/Navigation.svelte",
+			"type": "component",
+			"components": ["AgentChatModal", "WorkPanel"]
 		},
 		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
@@ -170,6 +155,31 @@
 			]
 		},
 		{
+			"file": "src/routes/dashboard/calendar/+page.svelte",
+			"type": "page",
+			"components": ["TaskEditModal", "EventEditModal"]
+		},
+		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal", "ProjectModalsHost"]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
+			"type": "component",
+			"components": ["OntologyGraph", "NodeDetailsPanel"]
+		},
+		{
+			"file": "src/lib/components/project/v2/EntityTabStrip.svelte",
+			"type": "component",
+			"components": ["BriefChatModal"]
+		},
+		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
 			"type": "page",
 			"components": ["SvelteFlowGraph", "G6Graph"]
@@ -183,16 +193,6 @@
 				"ProjectInsightRail",
 				"ProjectModalsHost"
 			]
-		},
-		{
-			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
-			"type": "component",
-			"components": ["OntologyGraph", "NodeDetailsPanel"]
-		},
-		{
-			"file": "src/lib/components/project/v2/EntityTabStrip.svelte",
-			"type": "component",
-			"components": ["BriefChatModal"]
 		},
 		{
 			"file": "src/routes/projects/[id]/tasks/[task_id]/+page.svelte",
@@ -976,12 +976,6 @@
 			"exports": ["createDragDropState"]
 		},
 		{
-			"file": "src/lib/components/project/v2/board-a11y.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["handleRovingTabKeydown", "slideMotion"]
-		},
-		{
 			"file": "src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 			"type": "component",
 			"components": [],
@@ -1070,6 +1064,12 @@
 				"formatRelationshipLabel",
 				"getFilteredSections"
 			]
+		},
+		{
+			"file": "src/lib/components/project/v2/board-a11y.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
 		},
 		{
 			"file": "src/lib/components/ui/codemirror/extensions.ts",
@@ -1165,13 +1165,6 @@
 		}
 	],
 	"dependencies": {
-		"src/routes/dashboard/calendar/+page.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/EventEditModal.svelte"
-		],
-		"src/routes/projects/[id]/+page.svelte": [
-			"src/lib/components/project/ProjectModalsHost.svelte"
-		],
 		"src/lib/components/dashboard/AnalyticsDashboard.svelte": [
 			"src/lib/components/dashboard/DashboardInboxModal.svelte"
 		],
@@ -1204,6 +1197,13 @@
 			"src/lib/components/project/ProjectCalendarSettingsModal.svelte",
 			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
 		],
+		"src/routes/dashboard/calendar/+page.svelte": [
+			"src/lib/components/ontology/TaskEditModal.svelte",
+			"src/lib/components/ontology/EventEditModal.svelte"
+		],
+		"src/routes/projects/[id]/+page.svelte": [
+			"src/lib/components/project/ProjectModalsHost.svelte"
+		],
 		"src/routes/projects/[id]/old/+page.svelte": [
 			"src/lib/components/project/ProjectInsightRail.svelte",
 			"src/lib/components/project/ProjectModalsHost.svelte"
@@ -1218,8 +1218,8 @@
 	},
 	"unusedComponents": [
 		"src/lib/components/dashboard/AnalyticsDashboard.svelte",
-		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/landing/HomepageV2.svelte",
+		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
 		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
@@ -1252,13 +1252,13 @@
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/admin/chat/session-audit-ui.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
-		"src/lib/components/project/v2/board-a11y.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",
 		"src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
 		"src/lib/components/ontology/insight-panels/task-person-relevance.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
+		"src/lib/components/project/v2/board-a11y.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",

@@ -125,7 +125,7 @@
 				<input
 					type="text"
 					placeholder="Search users by email or name..."
-					class="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30 dark:text-foreground dark:placeholder:text-muted-foreground"
+					class="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-foreground dark:placeholder:text-muted-foreground"
 					bind:value={searchQuery}
 					onkeydown={(e) => e.key === 'Enter' && handleSearch()}
 				/>
@@ -145,7 +145,7 @@
 		<div class="hidden flex-wrap gap-2 sm:flex">
 			{#each statusOptions as option}
 				<button
-					class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedStatus ===
+					class="rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {selectedStatus ===
 					option.value
 						? 'bg-accent text-accent-foreground'
 						: 'bg-muted text-foreground hover:bg-muted dark:text-muted-foreground'}"
@@ -163,7 +163,7 @@
 		<div class="flex flex-wrap gap-2 sm:hidden">
 			{#each statusOptions as option}
 				<button
-					class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedStatus ===
+					class="rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {selectedStatus ===
 					option.value
 						? 'bg-accent text-accent-foreground'
 						: 'bg-muted text-foreground hover:bg-muted dark:text-muted-foreground'}"
@@ -179,7 +179,7 @@
 	{#if isLoading}
 		<div class="flex items-center justify-center py-12">
 			<div
-				class="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent"
+				class="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent motion-reduce:animate-none"
 			></div>
 		</div>
 	{:else if users.length === 0}
@@ -321,7 +321,7 @@
 								<div class="flex items-center gap-2">
 									<div class="h-2 w-16 overflow-hidden rounded-full bg-muted">
 										<div
-											class="h-full bg-success transition-all"
+											class="h-full bg-success transition-all motion-reduce:transition-none"
 											style="width: {user.stats.percentComplete}%"
 										></div>
 									</div>

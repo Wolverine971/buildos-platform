@@ -18,7 +18,9 @@
 		Calendar,
 		ChevronUp,
 		ChevronDown,
-		Mail
+		Mail,
+		SlidersHorizontal,
+		X
 	} from 'lucide-svelte';
 	import { browser } from '$app/environment';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
@@ -28,6 +30,10 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
+	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import { toastService } from '$lib/stores/toast.store';
+	import { slide } from 'svelte/transition';
+	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 
 	let users = $state<any[]>([]);
 	let isLoading = $state(true);
@@ -56,6 +62,53 @@
 	let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	let rawUsers = $state<any[]>([]); // Store raw data for client-side sorting
 	let initialFiltersReady = $state(false);
+
+	// Collapsible filter panel + admin-toggle confirmation
+	let showFilters = $state(false);
+	let adminConfirm = $state<{ userId: string; currentStatus: boolean; label: string } | null>(
+		null
+	);
+	let adminConfirmLoading = $state(false);
+
+	const SORT_LABELS: Record<string, string> = {
+		last_visit: 'Last Visit',
+		created_at: 'Join Date',
+		project_count: 'Projects',
+		agentic_session_count: 'Agentic Sessions',
+		agentic_message_count: 'Agentic Messages',
+		daily_brief_count: 'Daily Briefs',
+		daily_brief_opt_in: 'Daily Brief Opt-in',
+		calendar_connected: 'Calendar Connected',
+		ontology_entity_total: 'Ontology Entities',
+		email: 'Email',
+		name: 'Name',
+		onboarding_completed_at: 'Onboarding Status',
+		is_admin: 'Admin Status'
+	};
+
+	const ADMIN_LABELS: Record<string, string> = {
+		admin: 'Admins only',
+		regular: 'Regular users'
+	};
+	const ONBOARDING_LABELS: Record<string, string> = {
+		completed: 'Onboarding: Complete',
+		pending: 'Onboarding: Pending'
+	};
+
+	// Count only the true filters (not sort) for the toggle badge.
+	let activeFilterCount = $derived(
+		(filterByAdmin !== 'all' ? 1 : 0) + (filterByOnboarding !== 'all' ? 1 : 0)
+	);
+	let isDefaultSort = $derived(sortBy === 'last_visit' && sortOrder === 'desc');
+
+	function clearFilters() {
+		filterByAdmin = 'all';
+		filterByOnboarding = 'all';
+	}
+
+	function toggleSortOrder() {
+		sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+	}
 
 	const clientSortableFields = [
 		'project_count',
@@ -222,12 +275,23 @@
 		showEmailModal = true;
 	}
 
-	async function toggleAdminStatus(userId: string, currentStatus: boolean) {
-		if (
-			!confirm(`${currentStatus ? 'Remove admin' : 'Grant admin'} privileges for this user?`)
-		) {
-			return;
-		}
+	function requestToggleAdmin(user: {
+		id: string;
+		is_admin: boolean;
+		name?: string;
+		email: string;
+	}) {
+		adminConfirm = {
+			userId: user.id,
+			currentStatus: user.is_admin,
+			label: user.name || user.email
+		};
+	}
+
+	async function confirmToggleAdmin() {
+		if (!adminConfirm) return;
+		const { userId, currentStatus } = adminConfirm;
+		adminConfirmLoading = true;
 
 		try {
 			const response = await fetch('/api/admin/users', {
@@ -240,14 +304,17 @@
 			});
 
 			const result = await response.json();
-			if (result.success) {
-				await loadUsers();
-			} else {
+			if (!result.success) {
 				throw new Error(result.error || 'Failed to update user');
 			}
+			await loadUsers();
+			toastService.success(currentStatus ? 'Admin access removed' : 'Admin access granted');
+			adminConfirm = null;
 		} catch (err) {
 			console.error('Error updating user:', err);
-			error = err instanceof Error ? err.message : 'Failed to update user';
+			toastService.error(err instanceof Error ? err.message : 'Failed to update user');
+		} finally {
+			adminConfirmLoading = false;
 		}
 	}
 
@@ -278,16 +345,9 @@
 	}
 
 	function getLastVisitColor(dateString: string | null): string {
+		// Recency is informational, not a good/bad state — keep it neutral.
 		if (!dateString) return 'text-muted-foreground/50';
-
-		const date = new Date(dateString);
-		const now = new Date();
-		const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-
-		if (diffDays <= 1) return 'text-success';
-		if (diffDays <= 7) return 'text-warning';
-		if (diffDays <= 30) return 'text-accent';
-		return 'text-destructive';
+		return 'text-muted-foreground';
 	}
 
 	function nextPage() {
@@ -338,7 +398,9 @@
 					variant="primary"
 					size="sm"
 					icon={RefreshCw}
-					class={isLoading ? '[&_svg]:animate-spin' : ''}
+					class={isLoading
+						? '[&_svg]:animate-spin motion-reduce:[&_svg]:animate-none'
+						: ''}
 				>
 					Refresh
 				</Button>
@@ -347,55 +409,152 @@
 	</AdminPageHeader>
 
 	<!-- Filters and Search -->
-	<div class="admin-panel p-4">
-		<div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-			<!-- Search -->
-			<div class="md:col-span-2">
+	<div class="admin-panel p-3 sm:p-4">
+		<!-- Primary row: search stays visible (thumb-reachable); filters collapse behind a toggle -->
+		<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+			<div class="min-w-0 flex-1">
 				<TextInput
 					type="text"
 					bind:value={searchQuery}
-					placeholder="Search users by email, name, or ID..."
+					placeholder="Search by email, name, or ID..."
 					size="md"
 				/>
 			</div>
-
-			<!-- Admin Filter -->
-			<div>
-				<Select bind:value={filterByAdmin} size="md" placeholder="All Users">
-					<option value="all">All Users</option>
-					<option value="admin">Admins Only</option>
-					<option value="regular">Regular Users</option>
-				</Select>
-			</div>
-
-			<!-- Onboarding Filter -->
-			<div>
-				<Select bind:value={filterByOnboarding} size="md" placeholder="All Onboarding">
-					<option value="all">All Onboarding</option>
-					<option value="completed">Completed</option>
-					<option value="pending">Pending</option>
-				</Select>
-			</div>
-
-			<!-- Sort -->
-			<div>
-				<Select bind:value={sortBy} size="md" placeholder="Last Visit">
-					<option value="last_visit">Last Visit</option>
-					<option value="created_at">Join Date</option>
-					<option value="project_count">Projects</option>
-					<option value="agentic_session_count">Agentic Sessions</option>
-					<option value="agentic_message_count">Agentic Messages</option>
-					<option value="daily_brief_count">Daily Briefs Generated</option>
-					<option value="daily_brief_opt_in">Daily Brief Opt-in</option>
-					<option value="calendar_connected">Calendar Connected</option>
-					<option value="ontology_entity_total">Ontology Entities</option>
-					<option value="email">Email</option>
-					<option value="name">Name</option>
-					<option value="onboarding_completed_at">Onboarding Status</option>
-					<option value="is_admin">Admin Status</option>
-				</Select>
-			</div>
+			<Button
+				onclick={() => (showFilters = !showFilters)}
+				variant={showFilters || activeFilterCount > 0 ? 'secondary' : 'outline'}
+				size="md"
+				icon={SlidersHorizontal}
+				aria-expanded={showFilters}
+				aria-controls="user-filter-panel"
+				class="shrink-0 justify-center"
+			>
+				<span>Filters &amp; Sort</span>
+				{#if activeFilterCount > 0}
+					<span
+						class="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[0.65rem] font-semibold text-accent-foreground"
+					>
+						{activeFilterCount}
+					</span>
+				{/if}
+			</Button>
 		</div>
+
+		<!-- Collapsible filter + sort panel -->
+		{#if showFilters}
+			<div
+				id="user-filter-panel"
+				class="mt-3 grid grid-cols-1 gap-3 border-t border-border pt-3 sm:grid-cols-2 lg:grid-cols-3"
+				transition:slide={slideMotion()}
+			>
+				<label class="block">
+					<span class="mb-1 block text-xs font-medium text-muted-foreground"
+						>User type</span
+					>
+					<Select bind:value={filterByAdmin} size="md">
+						<option value="all">All users</option>
+						<option value="admin">Admins only</option>
+						<option value="regular">Regular users</option>
+					</Select>
+				</label>
+
+				<label class="block">
+					<span class="mb-1 block text-xs font-medium text-muted-foreground"
+						>Onboarding</span
+					>
+					<Select bind:value={filterByOnboarding} size="md">
+						<option value="all">All onboarding</option>
+						<option value="completed">Completed</option>
+						<option value="pending">Pending</option>
+					</Select>
+				</label>
+
+				<label class="block">
+					<span class="mb-1 block text-xs font-medium text-muted-foreground">Sort by</span
+					>
+					<div class="flex items-center gap-2">
+						<div class="min-w-0 flex-1">
+							<Select bind:value={sortBy} size="md">
+								<option value="last_visit">Last Visit</option>
+								<option value="created_at">Join Date</option>
+								<option value="project_count">Projects</option>
+								<option value="agentic_session_count">Agentic Sessions</option>
+								<option value="agentic_message_count">Agentic Messages</option>
+								<option value="daily_brief_count">Daily Briefs Generated</option>
+								<option value="daily_brief_opt_in">Daily Brief Opt-in</option>
+								<option value="calendar_connected">Calendar Connected</option>
+								<option value="ontology_entity_total">Ontology Entities</option>
+								<option value="email">Email</option>
+								<option value="name">Name</option>
+								<option value="onboarding_completed_at">Onboarding Status</option>
+								<option value="is_admin">Admin Status</option>
+							</Select>
+						</div>
+						<Button
+							onclick={toggleSortOrder}
+							variant="outline"
+							size="md"
+							btnType="container"
+							icon={sortOrder === 'asc' ? ChevronUp : ChevronDown}
+							class="shrink-0"
+							title={sortOrder === 'asc'
+								? 'Ascending — tap for descending'
+								: 'Descending — tap for ascending'}
+							aria-label={`Sort order: ${sortOrder === 'asc' ? 'ascending' : 'descending'}`}
+						/>
+					</div>
+				</label>
+			</div>
+		{/if}
+
+		<!-- Active filter chips — keep filter state visible even when the panel is collapsed -->
+		{#if activeFilterCount > 0 || !isDefaultSort}
+			<div class="mt-3 flex flex-wrap items-center gap-2">
+				{#if filterByAdmin !== 'all'}
+					<button
+						type="button"
+						onclick={() => (filterByAdmin = 'all')}
+						class="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground transition-colors motion-reduce:transition-none hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					>
+						{ADMIN_LABELS[filterByAdmin]}
+						<X class="h-3 w-3" />
+					</button>
+				{/if}
+				{#if filterByOnboarding !== 'all'}
+					<button
+						type="button"
+						onclick={() => (filterByOnboarding = 'all')}
+						class="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground transition-colors motion-reduce:transition-none hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					>
+						{ONBOARDING_LABELS[filterByOnboarding]}
+						<X class="h-3 w-3" />
+					</button>
+				{/if}
+				{#if !isDefaultSort}
+					<button
+						type="button"
+						onclick={() => {
+							sortBy = 'last_visit';
+							sortOrder = 'desc';
+						}}
+						class="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground transition-colors motion-reduce:transition-none hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					>
+						Sort: {SORT_LABELS[sortBy]}
+						{sortOrder === 'asc' ? '↑' : '↓'}
+						<X class="h-3 w-3" />
+					</button>
+				{/if}
+				{#if activeFilterCount > 0}
+					<button
+						type="button"
+						onclick={clearFilters}
+						class="rounded-sm px-1 text-xs font-medium text-muted-foreground transition-colors motion-reduce:transition-none hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					>
+						Clear filters
+					</button>
+				{/if}
+			</div>
+		{/if}
 	</div>
 
 	{#if error}
@@ -408,7 +567,9 @@
 	<div class="admin-panel overflow-hidden">
 		{#if isLoading}
 			<div class="p-6 text-center">
-				<RefreshCw class="h-6 w-6 animate-spin text-muted-foreground mx-auto mb-3" />
+				<RefreshCw
+					class="h-6 w-6 animate-spin motion-reduce:animate-none text-muted-foreground mx-auto mb-3"
+				/>
 				<p class="text-sm text-muted-foreground">Loading users...</p>
 			</div>
 		{:else if users.length === 0}
@@ -440,7 +601,7 @@
 										{user.name || 'No name'}
 									</span>
 									{#if user.is_admin}
-										<Shield class="h-3.5 w-3.5 shrink-0 text-destructive" />
+										<Shield class="h-3.5 w-3.5 shrink-0 text-accent" />
 									{/if}
 								</div>
 								<div class="truncate text-xs text-muted-foreground">
@@ -477,19 +638,19 @@
 						<div class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
 							<div class="flex items-center justify-between gap-2">
 								<span class="text-muted-foreground">Projects</span>
-								<span class="font-medium text-accent">
+								<span class="font-medium text-foreground">
 									{user.project_count || 0}
 								</span>
 							</div>
 							<div class="flex items-center justify-between gap-2">
 								<span class="text-muted-foreground">Sessions</span>
-								<span class="font-medium text-accent">
+								<span class="font-medium text-foreground">
 									{user.agentic_session_count || 0}
 								</span>
 							</div>
 							<div class="flex items-center justify-between gap-2">
 								<span class="text-muted-foreground">Chat msgs</span>
-								<span class="font-medium text-info">
+								<span class="font-medium text-foreground">
 									{user.agentic_message_count || 0}
 								</span>
 							</div>
@@ -512,7 +673,7 @@
 							</div>
 							<div class="flex items-center justify-between gap-2">
 								<span class="text-muted-foreground">Ontology</span>
-								<span class="font-medium text-info">
+								<span class="font-medium text-foreground">
 									{user.ontology_entity_total || 0}
 								</span>
 							</div>
@@ -546,7 +707,7 @@
 								title="View activity details"
 							/>
 							<Button
-								onclick={() => toggleAdminStatus(user.id, user.is_admin)}
+								onclick={() => requestToggleAdmin(user)}
 								variant="ghost"
 								size="sm"
 								icon={user.is_admin ? ShieldOff : Shield}
@@ -563,11 +724,14 @@
 					<thead class="bg-muted/50">
 						<tr>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-								onclick={() => handleSort('email')}
-								title="Click to sort by email"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
-								<div class="flex items-center space-x-1">
+								<button
+									type="button"
+									onclick={() => handleSort('email')}
+									title="Click to sort by email"
+									class="flex w-full items-center space-x-1 cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+								>
 									<span>User</span>
 									{#if sortBy === 'email'}
 										{#if sortOrder === 'asc'}
@@ -589,14 +753,17 @@
 											</svg>
 										</span>
 									{/if}
-								</div>
+								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-								onclick={() => handleSort('last_visit')}
-								title="Click to sort by last visit"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
-								<div class="flex items-center space-x-1">
+								<button
+									type="button"
+									onclick={() => handleSort('last_visit')}
+									title="Click to sort by last visit"
+									class="flex w-full items-center space-x-1 cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+								>
 									<span>Last Visit</span>
 									{#if sortBy === 'last_visit'}
 										{#if sortOrder === 'asc'}
@@ -618,14 +785,17 @@
 											</svg>
 										</span>
 									{/if}
-								</div>
+								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-								onclick={() => handleSort('created_at')}
-								title="Click to sort by join date"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
-								<div class="flex items-center space-x-1">
+								<button
+									type="button"
+									onclick={() => handleSort('created_at')}
+									title="Click to sort by join date"
+									class="flex w-full items-center space-x-1 cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+								>
 									<span>Joined</span>
 									{#if sortBy === 'created_at'}
 										{#if sortOrder === 'asc'}
@@ -647,14 +817,17 @@
 											</svg>
 										</span>
 									{/if}
-								</div>
+								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-								onclick={() => handleSort('project_count')}
-								title="Click to sort by projects"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
-								<div class="flex items-center space-x-1">
+								<button
+									type="button"
+									onclick={() => handleSort('project_count')}
+									title="Click to sort by projects"
+									class="flex w-full items-center space-x-1 cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+								>
 									<span>Projects</span>
 									{#if sortBy === 'project_count'}
 										{#if sortOrder === 'asc'}
@@ -676,14 +849,17 @@
 											</svg>
 										</span>
 									{/if}
-								</div>
+								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-								onclick={() => handleSort('agentic_session_count')}
-								title="Click to sort by agentic sessions"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
-								<div class="flex items-center space-x-1">
+								<button
+									type="button"
+									onclick={() => handleSort('agentic_session_count')}
+									title="Click to sort by agentic sessions"
+									class="flex w-full items-center space-x-1 cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+								>
 									<span>Agentic Sessions</span>
 									{#if sortBy === 'agentic_session_count'}
 										{#if sortOrder === 'asc'}
@@ -705,14 +881,17 @@
 											</svg>
 										</span>
 									{/if}
-								</div>
+								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-								onclick={() => handleSort('agentic_message_count')}
-								title="Click to sort by agentic chat messages"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
-								<div class="flex items-center space-x-1">
+								<button
+									type="button"
+									onclick={() => handleSort('agentic_message_count')}
+									title="Click to sort by agentic chat messages"
+									class="flex w-full items-center space-x-1 cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+								>
 									<span>Agentic Chat</span>
 									{#if sortBy === 'agentic_message_count'}
 										{#if sortOrder === 'asc'}
@@ -734,14 +913,17 @@
 											</svg>
 										</span>
 									{/if}
-								</div>
+								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-								onclick={() => handleSort('daily_brief_count')}
-								title="Click to sort by daily briefs"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
-								<div class="flex items-center space-x-1">
+								<button
+									type="button"
+									onclick={() => handleSort('daily_brief_count')}
+									title="Click to sort by daily briefs"
+									class="flex w-full items-center space-x-1 cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+								>
 									<span>Daily Briefs</span>
 									{#if sortBy === 'daily_brief_count'}
 										{#if sortOrder === 'asc'}
@@ -763,14 +945,17 @@
 											</svg>
 										</span>
 									{/if}
-								</div>
+								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-								onclick={() => handleSort('calendar_connected')}
-								title="Click to sort by calendar connection"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
-								<div class="flex items-center space-x-1">
+								<button
+									type="button"
+									onclick={() => handleSort('calendar_connected')}
+									title="Click to sort by calendar connection"
+									class="flex w-full items-center space-x-1 cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+								>
 									<span>Calendar</span>
 									{#if sortBy === 'calendar_connected'}
 										{#if sortOrder === 'asc'}
@@ -792,14 +977,17 @@
 											</svg>
 										</span>
 									{/if}
-								</div>
+								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-								onclick={() => handleSort('ontology_entity_total')}
-								title="Click to sort by ontology entities created"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
-								<div class="flex items-center space-x-1">
+								<button
+									type="button"
+									onclick={() => handleSort('ontology_entity_total')}
+									title="Click to sort by ontology entities created"
+									class="flex w-full items-center space-x-1 cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+								>
 									<span>Ontology</span>
 									{#if sortBy === 'ontology_entity_total'}
 										{#if sortOrder === 'asc'}
@@ -821,14 +1009,17 @@
 											</svg>
 										</span>
 									{/if}
-								</div>
+								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-								onclick={() => handleSort('onboarding_completed_at')}
-								title="Click to sort by onboarding status"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
-								<div class="flex items-center space-x-1">
+								<button
+									type="button"
+									onclick={() => handleSort('onboarding_completed_at')}
+									title="Click to sort by onboarding status"
+									class="flex w-full items-center space-x-1 cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+								>
 									<span>Onboarding</span>
 									{#if sortBy === 'onboarding_completed_at'}
 										{#if sortOrder === 'asc'}
@@ -850,7 +1041,7 @@
 											</svg>
 										</span>
 									{/if}
-								</div>
+								</button>
 							</th>
 							<th
 								class="px-3 py-2 text-right text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider"
@@ -884,7 +1075,7 @@
 												>
 												{#if user.is_admin}
 													<Shield
-														class="h-3.5 w-3.5 text-destructive flex-shrink-0"
+														class="h-3.5 w-3.5 text-accent flex-shrink-0"
 													/>
 												{/if}
 											</div>
@@ -912,22 +1103,22 @@
 									{formatDate(user.created_at)}
 								</td>
 								<td class="px-3 py-2 whitespace-nowrap text-xs">
-									<span class="font-medium text-accent">
+									<span class="font-medium text-foreground">
 										{user.project_count || 0}
 									</span>
 								</td>
 								<td class="px-3 py-2 whitespace-nowrap text-xs">
 									<div class="flex items-center gap-1">
-										<Activity class="h-3.5 w-3.5 text-accent" />
-										<span class="font-medium text-accent">
+										<Activity class="h-3.5 w-3.5 text-muted-foreground" />
+										<span class="font-medium text-foreground">
 											{user.agentic_session_count || 0}
 										</span>
 									</div>
 								</td>
 								<td class="px-3 py-2 whitespace-nowrap">
 									<div class="flex items-center gap-1">
-										<MessageSquare class="h-3.5 w-3.5 text-info" />
-										<span class="text-xs font-medium text-info">
+										<MessageSquare class="h-3.5 w-3.5 text-muted-foreground" />
+										<span class="text-xs font-medium text-foreground">
 											{user.agentic_message_count || 0}
 										</span>
 									</div>
@@ -962,7 +1153,7 @@
 								</td>
 								<td class="px-3 py-2 whitespace-nowrap">
 									<div class="text-xs">
-										<div class="font-medium text-info">
+										<div class="font-medium text-foreground">
 											{user.ontology_entity_total || 0} total
 										</div>
 										<div class="text-[0.65rem] text-muted-foreground">
@@ -1014,8 +1205,7 @@
 
 										<!-- Toggle Admin Status -->
 										<Button
-											onclick={() =>
-												toggleAdminStatus(user.id, user.is_admin)}
+											onclick={() => requestToggleAdmin(user)}
 											variant="ghost"
 											size="sm"
 											icon={user.is_admin ? ShieldOff : Shield}
@@ -1262,8 +1452,7 @@
 							Close
 						</Button>
 						<Button
-							onclick={() =>
-								toggleAdminStatus(selectedUser.id, selectedUser.is_admin)}
+							onclick={() => requestToggleAdmin(selectedUser)}
 							variant="primary"
 							size="sm"
 							class="pressable"
@@ -1307,3 +1496,30 @@
 		// Optionally refresh user list or show success message
 	}}
 />
+
+<!-- Admin privilege toggle confirmation -->
+<ConfirmationModal
+	isOpen={adminConfirm !== null}
+	title={adminConfirm?.currentStatus ? 'Remove admin access?' : 'Grant admin access?'}
+	confirmText={adminConfirm?.currentStatus ? 'Remove admin' : 'Grant admin'}
+	confirmVariant={adminConfirm?.currentStatus ? 'danger' : 'primary'}
+	icon={adminConfirm?.currentStatus ? 'danger' : 'warning'}
+	loading={adminConfirmLoading}
+	loadingText="Updating…"
+	onconfirm={confirmToggleAdmin}
+	oncancel={() => (adminConfirm = null)}
+>
+	{#snippet content()}
+		<p class="text-sm text-muted-foreground">
+			{#if adminConfirm?.currentStatus}
+				Remove admin privileges from <span class="font-medium text-foreground"
+					>{adminConfirm?.label}</span
+				>? They'll lose access to the admin console.
+			{:else}
+				Grant admin privileges to <span class="font-medium text-foreground"
+					>{adminConfirm?.label}</span
+				>? They'll gain full access to the admin console.
+			{/if}
+		</p>
+	{/snippet}
+</ConfirmationModal>

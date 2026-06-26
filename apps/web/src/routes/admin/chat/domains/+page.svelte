@@ -449,7 +449,9 @@
 	{#if isInitialLoading}
 		<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
 			{#each Array(8) as _}
-				<div class="animate-pulse rounded-lg border border-border bg-card p-4 shadow-ink">
+				<div
+					class="animate-pulse motion-reduce:animate-none rounded-lg border border-border bg-card p-4 shadow-ink"
+				>
 					<div class="mb-3 h-4 w-2/3 rounded bg-muted"></div>
 					<div class="mb-2 h-8 w-1/2 rounded bg-muted"></div>
 					<div class="h-3 w-3/4 rounded bg-muted"></div>
@@ -568,7 +570,8 @@
 								<tr class="align-top">
 									<td class="max-w-xl px-4 py-4">
 										<div class="flex flex-wrap items-center gap-2">
-											<span class="font-mono text-xs text-muted-foreground"
+											<span
+												class="font-mono text-xs text-muted-foreground break-all"
 												>{row.queue_key}</span
 											>
 											<span
@@ -587,7 +590,7 @@
 											<div class="mt-2 flex flex-wrap gap-1">
 												{#each row.domain_ids as domainId}
 													<span
-														class="rounded bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground"
+														class="rounded-md bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground break-all"
 													>
 														{domainId}
 													</span>
@@ -621,13 +624,6 @@
 												<option value="medium">Medium</option>
 												<option value="low">Low</option>
 											</Select>
-											<span
-												class="w-fit rounded border px-2 py-0.5 text-xs font-semibold {priorityClass(
-													row.priority
-												)}"
-											>
-												{formatLabel(row.priority)}
-											</span>
 										</div>
 									</td>
 									<td class="px-4 py-4 text-xs text-muted-foreground">
@@ -753,7 +749,7 @@
 					{#each topCandidates as candidate}
 						<div class="p-4">
 							<div class="flex flex-wrap items-center gap-2">
-								<span class="font-mono text-xs text-muted-foreground"
+								<span class="font-mono text-xs text-muted-foreground break-all"
 									>{candidate.queue_key}</span
 								>
 								<span
@@ -793,7 +789,7 @@
 					{#each topBacklog as backlog}
 						<div class="p-4">
 							<div class="flex flex-wrap items-center gap-2">
-								<span class="font-mono text-xs text-muted-foreground"
+								<span class="font-mono text-xs text-muted-foreground break-all"
 									>{backlog.id}</span
 								>
 								<span

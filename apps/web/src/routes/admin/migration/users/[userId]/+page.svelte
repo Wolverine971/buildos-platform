@@ -445,7 +445,7 @@
 									<div class="flex items-center gap-2">
 										<div class="h-2 w-16 overflow-hidden rounded-full bg-muted">
 											<div
-												class="h-full bg-success transition-all"
+												class="h-full bg-success transition-all motion-reduce:transition-none"
 												style="width: {project.taskCount > 0
 													? (project.migratedTaskCount /
 															project.taskCount) *
@@ -578,7 +578,7 @@
 	<div class="p-4">
 		{#if previewData}
 			<pre
-				class="max-h-96 overflow-auto rounded-lg bg-gray-900 p-4 text-xs text-gray-100">{JSON.stringify(
+				class="max-h-96 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-muted p-4 text-xs text-foreground/80">{JSON.stringify(
 					previewData,
 					null,
 					2

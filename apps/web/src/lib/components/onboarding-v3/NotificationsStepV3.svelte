@@ -100,7 +100,8 @@
 		</div>
 		<h1 class="text-3xl sm:text-4xl font-bold text-foreground mb-3">Want daily check-ins?</h1>
 		<p class="text-lg text-muted-foreground">
-			Stay on track with a morning summary. You can change this anytime.
+			One brief each morning with what actually matters today — so nothing falls through.
+			Change this anytime.
 		</p>
 	</div>
 
@@ -122,7 +123,7 @@
 			<div class="flex-1">
 				<div class="font-semibold text-foreground">Email Daily Brief</div>
 				<p class="text-sm text-muted-foreground">
-					A morning email with your tasks, events, and priorities
+					A morning email with what matters today — even on the projects you forgot about
 				</p>
 			</div>
 			<input

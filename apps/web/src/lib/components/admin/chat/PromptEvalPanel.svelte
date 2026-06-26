@@ -104,12 +104,12 @@
 					</summary>
 					<div class="mt-2 space-y-2">
 						<pre
-							class="whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground bg-background border border-border rounded p-2">{prettyJson(
+							class="whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground bg-background border border-border rounded-md p-2">{prettyJson(
 								evalRun.summary
 							)}</pre>
 						{#if evalRun.assertions.length > 0}
 							<pre
-								class="whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground bg-background border border-border rounded p-2">{prettyJson(
+								class="whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground bg-background border border-border rounded-md p-2">{prettyJson(
 									evalRun.assertions
 								)}</pre>
 						{/if}

@@ -213,7 +213,7 @@
 			onchange={handleChange}
 			class="w-full px-3 py-2 border border-border rounded-lg
 				   bg-card text-foreground
-				   focus:ring-2 focus:ring-ring focus:border-transparent"
+				   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-transparent"
 		>
 			<optgroup label="Admin Events" class="text-destructive">
 				{#each adminEvents as event}
@@ -267,7 +267,7 @@
 			<div class="space-y-2 text-xs">
 				<div class="flex items-center space-x-2">
 					<span class="text-muted-foreground">Event Type:</span>
-					<code class="px-2 py-0.5 bg-muted rounded text-foreground">
+					<code class="px-2 py-0.5 bg-muted rounded-md text-foreground">
 						{selectedEvent.value}
 					</code>
 				</div>
@@ -281,7 +281,8 @@
 							{#if userIsSubscribed}
 								<span class="text-success font-medium">subscribed</span>
 							{:else}
-								<span class="text-accent font-medium">not subscribed</span>
+								<span class="text-muted-foreground font-medium">not subscribed</span
+								>
 							{/if}
 							to this event type
 						</span>

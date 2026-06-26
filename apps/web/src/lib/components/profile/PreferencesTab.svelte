@@ -206,7 +206,7 @@
 		type="button"
 		onclick={onSelect}
 		disabled={isDisabled}
-		class="text-left p-3 rounded-lg border transition-all duration-200 pressable {isSelected
+		class="text-left p-3 rounded-md border transition-all duration-200 motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {isSelected
 			? 'border-accent bg-accent/5 shadow-ink'
 			: 'border-border bg-card hover:border-accent/50 hover:shadow-ink'} {isDisabled
 			? 'opacity-60 cursor-not-allowed'

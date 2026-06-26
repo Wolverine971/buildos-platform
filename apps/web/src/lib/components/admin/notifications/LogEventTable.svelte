@@ -53,13 +53,9 @@
 			.join(' ');
 	}
 
-	function getEventTypeBadgeColor(eventType: string): string {
-		if (eventType.includes('brief')) return 'bg-success/10 text-success';
-		if (eventType.includes('task')) return 'bg-info/10 text-info';
-		if (eventType.includes('project')) return 'bg-accent/10 text-accent';
-		if (eventType.includes('system'))
-			return 'bg-muted text-foreground dark:text-muted-foreground';
-		return 'bg-info/10 text-info';
+	function getEventTypeBadgeColor(_eventType: string): string {
+		// Event type is a category, not a state — use a single neutral badge.
+		return 'bg-muted text-foreground dark:text-muted-foreground';
 	}
 
 	function getStatusBadgeColor(status: string): string {
@@ -80,8 +76,8 @@
 	{#if loading}
 		<div class="p-3 space-y-2">
 			{#each Array(5) as _}
-				<div class="animate-pulse">
-					<div class="h-16 bg-muted rounded"></div>
+				<div class="animate-pulse motion-reduce:animate-none">
+					<div class="h-16 bg-muted rounded-md"></div>
 				</div>
 			{/each}
 		</div>
@@ -130,8 +126,9 @@
 						<tr class="hover:bg-muted transition-colors">
 							<td class="px-3 py-2.5">
 								<button
+									type="button"
 									onclick={() => toggleRow(event.id)}
-									class="text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground"
+									class="rounded-md text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								>
 									{#if expandedRows.has(event.id)}
 										<ChevronDown class="w-4 h-4" />
@@ -172,7 +169,7 @@
 								<div class="flex flex-wrap gap-1">
 									{#each Object.entries(event.status_breakdown) as [status, count]}
 										<span
-											class="inline-flex items-center px-2 py-0.5 rounded text-xs {getStatusBadgeColor(
+											class="inline-flex items-center px-2 py-0.5 rounded-md text-xs {getStatusBadgeColor(
 												status
 											)}"
 										>
@@ -221,7 +218,7 @@
 											Payload:
 										</div>
 										<pre
-											class="bg-card border border-border rounded p-3 text-xs overflow-x-auto">{JSON.stringify(
+											class="bg-card border border-border rounded-md p-3 text-xs overflow-x-auto whitespace-pre-wrap break-all">{JSON.stringify(
 												event.payload,
 												null,
 												2
@@ -231,7 +228,7 @@
 												Metadata:
 											</div>
 											<pre
-												class="bg-card border border-border rounded p-3 text-xs overflow-x-auto">{JSON.stringify(
+												class="bg-card border border-border rounded-md p-3 text-xs overflow-x-auto whitespace-pre-wrap break-all">{JSON.stringify(
 													event.metadata,
 													null,
 													2

@@ -475,7 +475,7 @@
 				label: 'Active Users · 7d',
 				value: systemOverview.active_users_7d,
 				icon: Activity,
-				tone: 'success' as const,
+				tone: 'muted' as const,
 				footnote:
 					systemOverview.total_users > 0
 						? `${formatPercentage(
@@ -487,21 +487,21 @@
 				label: `Agent Conversations · ${timeframeRangeLabel}`,
 				value: agentChatUsage.totalSessions,
 				icon: MessageSquare,
-				tone: 'info' as const,
+				tone: 'muted' as const,
 				footnote: `Avg ${formatNumber(agentChatUsage.avgMessagesPerSession)} msgs/session`
 			},
 			{
 				label: `Tokens · ${timeframeRangeLabel}`,
 				value: agentChatUsage.totalTokens,
 				icon: Zap,
-				tone: 'brand' as const,
+				tone: 'muted' as const,
 				footnote: `Avg ${formatNumber(agentChatUsage.avgTokensPerSession)} per session`
 			},
 			{
 				label: `Briefs Generated · ${timeframeRangeLabel}`,
 				value: briefDelivery.briefsGenerated,
 				icon: BarChart3,
-				tone: 'warning' as const,
+				tone: 'muted' as const,
 				footnote: `${formatNumber(briefDelivery.emailSent)} email / ${formatNumber(briefDelivery.smsSent)} sms`
 			},
 			{
@@ -521,7 +521,7 @@
 				label: `Agent Conversations · ${timeframeRangeLabel}`,
 				value: agentChatUsage.totalSessions,
 				icon: MessageSquare,
-				tone: 'info' as const,
+				tone: 'muted' as const,
 				footnote: timeframeRelativeLabel
 			},
 			{
@@ -535,21 +535,21 @@
 				label: `Tokens · ${timeframeRangeLabel}`,
 				value: agentChatUsage.totalTokens,
 				icon: Zap,
-				tone: 'brand' as const,
+				tone: 'muted' as const,
 				footnote: `Avg ${formatNumber(agentChatUsage.avgTokensPerSession)} per session`
 			},
 			{
 				label: `Active Users · ${timeframeRangeLabel}`,
 				value: agentChatUsage.uniqueUsers,
 				icon: Users,
-				tone: 'success' as const,
+				tone: 'muted' as const,
 				footnote: 'Users with chat activity'
 			},
 			{
 				label: `Tools / Failed`,
 				value: `${formatNumber(agentChatUsage.toolSessions)} / ${formatNumber(agentChatUsage.failedSessions)}`,
 				icon: Workflow,
-				tone: 'warning' as const,
+				tone: 'muted' as const,
 				footnote: `${formatPercentage(agentChatUsage.failureRate)} failure rate`
 			}
 		];
@@ -573,31 +573,31 @@
 			key: 'agentChats',
 			title: 'Agent Chats Started',
 			icon: MessageSquare,
-			accent: 'text-info'
+			accent: 'text-foreground'
 		},
 		{
 			key: 'agentMessages',
 			title: 'Most Agent Chat Messages',
 			icon: Eye,
-			accent: 'text-accent'
+			accent: 'text-foreground'
 		},
 		{
 			key: 'projectUpdates',
 			title: 'Top Project Updaters',
 			icon: RefreshCw,
-			accent: 'text-accent'
+			accent: 'text-foreground'
 		},
 		{
 			key: 'tasksCreated',
 			title: 'Top Task Creators',
 			icon: Activity,
-			accent: 'text-success'
+			accent: 'text-foreground'
 		},
 		{
 			key: 'tasksScheduled',
 			title: 'Top Task Schedulers',
 			icon: Globe,
-			accent: 'text-accent'
+			accent: 'text-foreground'
 		}
 	];
 
@@ -977,7 +977,7 @@
 					<input
 						type="checkbox"
 						bind:checked={autoRefresh}
-						class="h-4 w-4 rounded border-border text-accent focus:ring-ring cursor-pointer bg-background"
+						class="h-4 w-4 rounded-md border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer bg-background"
 					/>
 					<span>Auto Refresh</span>
 				</label>
@@ -1012,9 +1012,13 @@
 		{#if isLoading}
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
 				{#each Array(12) as _}
-					<AdminCard padding="lg" class="animate-pulse space-y-3" aria-hidden="true">
-						<div class="h-4 bg-muted rounded w-3/4"></div>
-						<div class="h-6 sm:h-8 bg-muted rounded w-1/2"></div>
+					<AdminCard
+						padding="lg"
+						class="animate-pulse motion-reduce:animate-none space-y-3"
+						aria-hidden="true"
+					>
+						<div class="h-4 bg-muted rounded-md w-3/4"></div>
+						<div class="h-6 sm:h-8 bg-muted rounded-md w-1/2"></div>
 					</AdminCard>
 				{/each}
 			</div>
@@ -1024,7 +1028,7 @@
 				<AdminCard tone="danger" padding="md" class="mb-4">
 					<div class="flex items-start gap-4">
 						<span
-							class="flex h-10 w-10 items-center justify-center rounded-2xl bg-card/40 text-destructive/30"
+							class="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10 text-destructive"
 						>
 							<AlertTriangle class="h-5 w-5" />
 						</span>
@@ -1053,7 +1057,7 @@
 							</div>
 							<a
 								href="/admin/errors"
-								class="mt-3 inline-flex items-center text-sm font-semibold text-destructive underline-offset-4 hover:underline"
+								class="mt-3 inline-flex items-center text-sm font-semibold text-destructive underline-offset-4 hover:underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								View error logs
 								<ExternalLink class="w-3.5 h-3.5 ml-1" />
@@ -1281,7 +1285,7 @@
 									</p>
 									<a
 										href="/admin/subscriptions"
-										class="inline-flex items-center text-sm font-medium text-destructive hover:text-destructive mt-2"
+										class="inline-flex items-center text-sm font-medium text-destructive hover:text-destructive mt-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									>
 										View details
 										<ExternalLink class="w-3 h-3 ml-1" />
@@ -1351,7 +1355,7 @@
 							<div class="mt-4">
 								<a
 									href="/admin/subscriptions"
-									class="text-sm text-accent hover:text-accent/80"
+									class="text-sm text-accent hover:text-accent/80 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								>
 									View all subscription activity →
 								</a>
@@ -1466,7 +1470,7 @@
 							</div>
 							<a
 								href="/admin/feedback"
-								class="inline-flex items-center text-sm font-medium text-accent hover:text-accent/80"
+								class="inline-flex items-center text-sm font-medium text-accent hover:text-accent/80 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								View all
 								<ExternalLink class="ml-1 h-4 w-4" />
@@ -1728,7 +1732,7 @@
 										<div class="flex items-center ml-2">
 											<div class="w-32 bg-muted rounded-full h-2 mr-3">
 												<div
-													class="bg-accent h-2 rounded-full transition-all duration-300"
+													class="bg-accent h-2 rounded-full transition-all motion-reduce:transition-none duration-300"
 													style="width: {Math.min(
 														(day.active_users /
 															Math.max(
@@ -1759,7 +1763,7 @@
 							<h3 class="text-lg font-semibold text-foreground">Brief Delivery</h3>
 							<a
 								href="/admin/notifications"
-								class="text-accent hover:text-accent/80 text-sm flex items-center"
+								class="text-accent hover:text-accent/80 text-sm flex items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								View notifications
 								<ExternalLink class="ml-1 h-4 w-4" />
@@ -1877,7 +1881,7 @@
 							</h3>
 							<a
 								href="/admin/beta"
-								class="text-accent hover:text-accent/80 text-sm flex items-center"
+								class="text-accent hover:text-accent/80 text-sm flex items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								Manage <ExternalLink class="ml-1 h-4 w-4" />
 							</a>
@@ -2035,7 +2039,7 @@
 								{#each systemOverview.top_active_users.slice(0, 6) as user, idx (idx)}
 									{@const typedUser = user as any}
 									<div
-										class="flex items-center justify-between py-1 px-1.5 rounded bg-muted/30"
+										class="flex items-center justify-between py-1 px-1.5 rounded-md bg-muted/30"
 									>
 										<div class="flex-1 min-w-0">
 											<div
@@ -2061,7 +2065,7 @@
 							</div>
 							<a
 								href="/admin/users"
-								class="mt-2 text-[10px] text-accent hover:text-accent/80 flex items-center justify-center gap-1"
+								class="mt-2 text-[10px] text-accent hover:text-accent/80 flex items-center justify-center gap-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								View All <ExternalLink class="h-2.5 w-2.5" />
 							</a>
@@ -2087,7 +2091,7 @@
 										activity.action
 									)}
 									<div
-										class="flex items-start gap-1.5 py-1 px-1.5 rounded bg-muted/30"
+										class="flex items-start gap-1.5 py-1 px-1.5 rounded-md bg-muted/30"
 									>
 										<ActivityIcon
 											class="h-3 w-3 text-muted-foreground flex-shrink-0 mt-0.5"
@@ -2136,7 +2140,7 @@
 						</h3>
 						<a
 							href="/admin/users"
-							class="text-accent hover:text-accent/80 text-sm flex items-center"
+							class="text-accent hover:text-accent/80 text-sm flex items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							<span class="hidden sm:inline">View All</span>
 							<ExternalLink class="ml-1 h-4 w-4" />

@@ -60,7 +60,7 @@
 	>
 		<button
 			type="button"
-			class="w-full flex items-center justify-between gap-3 text-left transition pressable"
+			class="w-full flex items-center justify-between gap-3 rounded-md text-left transition pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 			class:cursor-default={!isCollapsible}
 			onclick={toggle}
 			aria-expanded={isCollapsible ? !collapsed : undefined}
@@ -84,7 +84,7 @@
 			</div>
 			{#if isCollapsible}
 				<ChevronDown
-					class="h-4 w-4 text-muted-foreground transition-transform duration-200 {collapsed
+					class="h-4 w-4 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none {collapsed
 						? '-rotate-90'
 						: ''}"
 				/>

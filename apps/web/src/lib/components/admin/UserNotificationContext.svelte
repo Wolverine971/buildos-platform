@@ -67,7 +67,7 @@
 	<button
 		type="button"
 		onclick={() => (expanded = !expanded)}
-		class="w-full px-4 py-3 bg-muted flex items-center justify-between hover:bg-muted transition-colors"
+		class="w-full px-4 py-3 bg-muted flex items-center justify-between hover:bg-muted transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 	>
 		<div class="flex items-center space-x-2">
 			<Bell class="w-5 h-5 text-info" />
@@ -88,7 +88,7 @@
 				<h4 class="text-xs font-semibold text-foreground uppercase mb-2">
 					Basic Information
 				</h4>
-				<div class="grid grid-cols-2 gap-2 text-sm">
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
 					<div>
 						<span class="text-muted-foreground">Name:</span>
 						<span class="ml-1 text-foreground"
@@ -119,7 +119,7 @@
 				<h4 class="text-xs font-semibold text-foreground uppercase mb-2">
 					Channel Availability
 				</h4>
-				<div class="grid grid-cols-2 gap-2">
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
 					{#each context.channels as capability}
 						{@const Icon = getChannelIcon(capability.channel)}
 						<div class="flex items-center space-x-2">

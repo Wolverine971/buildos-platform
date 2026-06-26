@@ -221,7 +221,7 @@
 				<input
 					type="text"
 					placeholder="Search error messages..."
-					class="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30 dark:text-foreground dark:placeholder:text-muted-foreground"
+					class="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-foreground dark:placeholder:text-muted-foreground"
 					bind:value={searchQuery}
 					onkeydown={(e) => e.key === 'Enter' && handleSearch()}
 				/>
@@ -239,8 +239,8 @@
 
 		<!-- Bulk Actions -->
 		{#if totalSelected > 0}
-			<div class="flex items-center gap-2">
-				<span class="text-sm text-muted-foreground">
+			<div class="flex flex-wrap items-center gap-2">
+				<span class="w-full text-sm text-muted-foreground sm:w-auto">
 					{totalSelected} selected
 				</span>
 				<Button
@@ -248,6 +248,7 @@
 					size="sm"
 					onclick={handleRetrySelected}
 					disabled={!canRetrySelected}
+					class="flex-1 sm:flex-none"
 				>
 					<RotateCcw class="h-3 w-3" />
 					Retry
@@ -257,10 +258,16 @@
 					size="sm"
 					onclick={handleRetryWithFallbackSelected}
 					disabled={!canRetrySelected}
+					class="flex-1 sm:flex-none"
 				>
 					Retry with Fallback
 				</Button>
-				<Button variant="danger" size="sm" onclick={handleDeleteSelected}>
+				<Button
+					variant="danger"
+					size="sm"
+					onclick={handleDeleteSelected}
+					class="flex-1 sm:flex-none"
+				>
 					<Trash2 class="h-3 w-3" />
 					Delete
 				</Button>
@@ -268,41 +275,45 @@
 		{/if}
 	</div>
 
-	<!-- Category Filter Pills -->
-	<div class="flex flex-wrap items-center gap-2">
-		<span class="text-xs font-medium text-muted-foreground">Category:</span>
-		{#each categoryOptions as option}
-			<button
-				class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedCategory ===
-				option.value
-					? 'bg-accent text-accent-foreground'
-					: 'bg-muted text-foreground hover:bg-muted dark:text-muted-foreground'}"
-				onclick={() => handleCategoryFilter(option.value)}
-			>
-				{option.label}
-				<span class="ml-1 opacity-70">({option.count})</span>
-			</button>
-		{/each}
-
-		<span class="mx-2 text-muted-foreground">|</span>
-
-		<span class="text-xs font-medium text-muted-foreground">Type:</span>
-		<select
-			class="rounded-lg border border-border bg-card px-2 py-1 text-xs"
-			bind:value={selectedEntityType}
-			onchange={() => handleEntityTypeFilter(selectedEntityType)}
-		>
-			{#each entityTypeOptions as option}
-				<option value={option.value}>{option.label}</option>
+	<!-- Category + Type Filters -->
+	<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+		<div class="flex flex-wrap items-center gap-2">
+			<span class="text-xs font-medium text-muted-foreground">Category:</span>
+			{#each categoryOptions as option}
+				<button
+					class="rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {selectedCategory ===
+					option.value
+						? 'bg-accent text-accent-foreground'
+						: 'bg-muted text-foreground hover:bg-muted dark:text-muted-foreground'}"
+					onclick={() => handleCategoryFilter(option.value)}
+				>
+					{option.label}
+					<span class="ml-1 opacity-70">({option.count})</span>
+				</button>
 			{/each}
-		</select>
+		</div>
+
+		<span class="mx-2 hidden text-muted-foreground sm:inline">|</span>
+
+		<div class="flex items-center gap-2">
+			<span class="text-xs font-medium text-muted-foreground">Type:</span>
+			<select
+				class="rounded-lg border border-border bg-card px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				bind:value={selectedEntityType}
+				onchange={() => handleEntityTypeFilter(selectedEntityType)}
+			>
+				{#each entityTypeOptions as option}
+					<option value={option.value}>{option.label}</option>
+				{/each}
+			</select>
+		</div>
 	</div>
 
 	<!-- Error List -->
 	{#if isLoading}
 		<div class="flex items-center justify-center py-12">
 			<div
-				class="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent"
+				class="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent motion-reduce:animate-none"
 			></div>
 		</div>
 	{:else if errors.length === 0}
@@ -311,7 +322,80 @@
 			<p class="mt-2 text-muted-foreground">No errors found matching your criteria.</p>
 		</div>
 	{:else}
-		<div class="overflow-x-auto rounded-lg border border-border">
+		<!-- Mobile Card View -->
+		<div class="space-y-3 lg:hidden">
+			{#each errors as error}
+				{@const CategoryIcon = getCategoryIcon(error.errorCategory)}
+				<div class="rounded-lg border border-border bg-card p-4">
+					<div class="flex items-start justify-between gap-3">
+						<div class="flex min-w-0 items-start gap-3">
+							<input
+								type="checkbox"
+								class="mt-0.5 rounded-md border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								checked={localSelectedIds.has(error.id)}
+								onchange={() => toggleSelection(error.id)}
+								aria-label="Select {error.entityName}"
+							/>
+							<div class="min-w-0">
+								<p class="font-medium text-foreground">{error.entityName}</p>
+								<p class="text-xs text-muted-foreground">
+									<span class="capitalize">{error.entityType}</span>
+									<span class="text-muted-foreground">•</span>
+									{error.projectName}
+								</p>
+							</div>
+						</div>
+						<Badge size="sm" variant={getCategoryBadgeVariant(error.errorCategory)}>
+							<CategoryIcon class="mr-1 h-3 w-3" />
+							{error.errorCategory ?? 'unknown'}
+						</Badge>
+					</div>
+					<p class="mt-3 break-words text-sm text-foreground">
+						{error.errorMessage}
+					</p>
+					<p class="mt-1 text-xs text-muted-foreground">
+						{error.suggestedActionDescription}
+					</p>
+					<div class="mt-3 flex items-center justify-between gap-2">
+						<span class="text-xs text-muted-foreground">
+							Retries {error.retryCount}/3
+						</span>
+						<div class="flex items-center gap-1">
+							{#if error.canRetry}
+								<Button
+									variant="outline"
+									size="sm"
+									onclick={() => onRetry([error.id])}
+								>
+									<RotateCcw class="h-3 w-3" />
+									Retry
+								</Button>
+							{/if}
+							<Button
+								variant="ghost"
+								size="sm"
+								onclick={() => onViewDetails(error)}
+								title="View details"
+							>
+								<ExternalLink class="h-3 w-3" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="sm"
+								onclick={() => onDelete([error.id])}
+								title="Delete"
+								class="text-destructive hover:text-destructive/80 hover:bg-destructive/10"
+							>
+								<Trash2 class="h-3 w-3" />
+							</Button>
+						</div>
+					</div>
+				</div>
+			{/each}
+		</div>
+
+		<!-- Desktop Table View -->
+		<div class="hidden overflow-x-auto rounded-lg border border-border lg:block">
 			<table class="min-w-full divide-y divide-border text-sm">
 				<thead class="bg-muted/50">
 					<tr
@@ -341,7 +425,7 @@
 							<td class="px-3 py-3">
 								<input
 									type="checkbox"
-									class="rounded border-border"
+									class="rounded-md border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									checked={localSelectedIds.has(error.id)}
 									onchange={() => toggleSelection(error.id)}
 								/>

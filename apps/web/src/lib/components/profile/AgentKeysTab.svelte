@@ -1170,7 +1170,7 @@
 				<p class="max-w-3xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
 					Generate a BuildOS Agent Key, store it in the client config, then authenticate
 					with
-					<code class="rounded bg-muted px-1 py-0.5 text-[0.72rem] text-foreground"
+					<code class="rounded-md bg-muted px-1 py-0.5 text-[0.72rem] text-foreground"
 						>Authorization: Bearer &lt;BUILDOS_AGENT_TOKEN&gt;</code
 					>. Use one key per tool so you can rotate or revoke access without touching
 					other agents.
@@ -1178,7 +1178,7 @@
 			</div>
 			<a
 				href="/docs/connect-agents"
-				class="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-accent"
+				class="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-accent rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 			>
 				Full setup docs
 				<ExternalLink class="h-3.5 w-3.5" />
@@ -1199,7 +1199,7 @@
 					modal can copy this command with the key filled in.
 				</p>
 				<pre
-					class="overflow-x-auto rounded border border-border bg-muted/30 p-2.5 text-[0.7rem] text-foreground whitespace-pre-wrap"><code
+					class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-[0.7rem] text-foreground whitespace-pre-wrap"><code
 						>{claudeCodeAuthSnippet()}</code
 					></pre>
 				<div class="flex justify-end">
@@ -1230,7 +1230,7 @@
 					connector uses the token against the MCP endpoint or JSON-RPC gateway.
 				</p>
 				<pre
-					class="overflow-x-auto rounded border border-border bg-muted/30 p-2.5 text-[0.7rem] text-foreground whitespace-pre-wrap"><code
+					class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-[0.7rem] text-foreground whitespace-pre-wrap"><code
 						>{openClawAuthSnippet()}</code
 					></pre>
 				<div class="flex justify-end">
@@ -1262,7 +1262,7 @@
 					bearer token into chat.
 				</p>
 				<pre
-					class="overflow-x-auto rounded border border-border bg-muted/30 p-2.5 text-[0.7rem] text-foreground whitespace-pre-wrap"><code
+					class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-[0.7rem] text-foreground whitespace-pre-wrap"><code
 						>{mcpEndpointUrl()}</code
 					></pre>
 				<div class="flex justify-end">
@@ -1286,7 +1286,7 @@
 		<div class="border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-5">
 			<span class="font-medium text-foreground">Connection check:</span>
 			Ask the agent to connect to BuildOS, list your projects, and call
-			<code class="rounded bg-muted px-1 py-0.5 text-[0.72rem] text-foreground"
+			<code class="rounded-md bg-muted px-1 py-0.5 text-[0.72rem] text-foreground"
 				>get_onto_project_status</code
 			>
 			before changing an existing project.
@@ -1305,7 +1305,7 @@
 				What is this?
 			</span>
 			<ChevronDown
-				class="h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+				class="h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none group-open:rotate-180"
 			/>
 		</summary>
 		<div
@@ -1449,7 +1449,7 @@
 							>
 								<div class="flex min-w-0 items-start gap-2.5">
 									<ChevronDown
-										class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+										class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none group-open:rotate-180"
 									/>
 									<div class="min-w-0 space-y-1.5">
 										<div class="flex flex-wrap items-center gap-2">
@@ -1481,10 +1481,10 @@
 								<div
 									class="flex min-w-0 flex-wrap gap-1.5 sm:max-w-[48%] sm:justify-end"
 								>
-									<Badge variant="info" size="sm">
+									<Badge variant="default" size="sm">
 										{recentSessionCount(caller, 'week')} sessions / 7d
 									</Badge>
-									<Badge variant="accent" size="sm">
+									<Badge variant="default" size="sm">
 										{recentWriteCount(caller, 'week')} writes / 7d
 									</Badge>
 									<Badge variant="default" size="sm">
@@ -1532,7 +1532,7 @@
 										</Button>
 									</div>
 									<pre
-										class="overflow-x-auto rounded border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+										class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
 											>{mcpQuickConnectForCaller(caller).value}</code
 										></pre>
 								</div>
@@ -1600,6 +1600,7 @@
 										variant="danger"
 										size="sm"
 										icon={Trash2}
+										class="ml-auto"
 										disabled={revokingCallerId === caller.id}
 										onclick={() => (pendingRevokeCaller = caller)}
 									>
@@ -1802,7 +1803,7 @@
 		<div class="pt-2 border-t border-border">
 			<a
 				href="/integrations"
-				class="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-accent transition-colors"
+				class="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-accent transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 			>
 				Integration docs
 				<ExternalLink class="w-3.5 h-3.5" />
@@ -1909,7 +1910,7 @@
 								<input
 									type="radio"
 									name="agent-permission-bundle"
-									class="mt-1 h-3.5 w-3.5 border-border text-accent focus:ring-accent"
+									class="mt-1 h-3.5 w-3.5 border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 									value={bundle.id}
 									checked={isActive}
 									onchange={() => applyBundle(bundle)}
@@ -1937,7 +1938,7 @@
 				<div class="space-y-2">
 					<button
 						type="button"
-						class="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+						class="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 						onclick={() => (showAdvancedPermissions = !showAdvancedPermissions)}
 					>
 						{#if showAdvancedPermissions}
@@ -1961,7 +1962,7 @@
 							>
 								<input
 									type="checkbox"
-									class="mt-0.5 h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
+									class="mt-0.5 h-3.5 w-3.5 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 									checked={scopeMode === 'read_write'}
 									onchange={() =>
 										(scopeMode =
@@ -1985,7 +1986,7 @@
 									>
 										<input
 											type="checkbox"
-											class="mt-0.5 h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
+											class="mt-0.5 h-3.5 w-3.5 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 											checked={selectedWriteOps.includes(option.op)}
 											onchange={() => toggleWriteOp(option.op)}
 										/>
@@ -2054,7 +2055,7 @@
 								>
 									<input
 										type="checkbox"
-										class="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
+										class="h-3.5 w-3.5 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 										checked={selectedProjectIds.includes(project.id)}
 										onchange={() => toggleProject(project.id)}
 									/>
@@ -2221,7 +2222,7 @@
 						</div>
 					</div>
 					<pre
-						class="overflow-x-auto rounded border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+						class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
 							>{mcpQuickConnect(latestProvisioned, false).value}</code
 						></pre>
 				</div>
@@ -2281,7 +2282,7 @@
 						</div>
 					</div>
 					<pre
-						class="overflow-x-auto rounded border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+						class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
 							>{agentConnectionPromptForProvisioned(latestProvisioned, false)}</code
 						></pre>
 				</div>
@@ -2311,7 +2312,7 @@
 						).label}.
 					</p>
 					<pre
-						class="overflow-x-auto rounded border border-border bg-card p-2.5 text-xs text-foreground"><code
+						class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground"><code
 							>{envSnippet(latestProvisioned)}</code
 						></pre>
 				</div>
@@ -2340,7 +2341,7 @@
 							{bootstrapProfile(latestProvisioned).setupUrlDescription}
 						</p>
 						<pre
-							class="overflow-x-auto rounded border border-border bg-card p-2.5 text-xs text-foreground"><code
+							class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground"><code
 								>{bootstrapUrl(latestProvisioned)}</code
 							></pre>
 					</div>
@@ -2371,7 +2372,7 @@
 							profile-specific storage path, and then connect to BuildOS.
 						</p>
 						<pre
-							class="overflow-x-auto rounded border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+							class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
 								>{bootstrapPrompt(latestProvisioned)}</code
 							></pre>
 					</div>

@@ -67,14 +67,9 @@
 		return `${(ms / 60000).toFixed(1)}m`;
 	}
 
-	function getChannelBadgeColor(channel: NotificationChannel): string {
-		const colors: Record<NotificationChannel, string> = {
-			push: 'bg-info/10 text-info',
-			email: 'bg-accent/10 text-accent',
-			sms: 'bg-success/10 text-success',
-			in_app: 'bg-muted text-foreground dark:text-muted-foreground'
-		};
-		return colors[channel] || 'bg-muted text-foreground';
+	function getChannelBadgeColor(_channel: NotificationChannel): string {
+		// Channel is a category, not a state — use a single neutral badge.
+		return 'bg-muted text-foreground dark:text-muted-foreground';
 	}
 
 	function getStatusBadgeColor(status: string): string {
@@ -131,8 +126,8 @@
 	{#if loading}
 		<div class="p-3 space-y-2">
 			{#each Array(5) as _}
-				<div class="animate-pulse">
-					<div class="h-20 bg-muted rounded"></div>
+				<div class="animate-pulse motion-reduce:animate-none">
+					<div class="h-20 bg-muted rounded-md"></div>
 				</div>
 			{/each}
 		</div>
@@ -201,13 +196,13 @@
 									{delivery.channel.toUpperCase()}
 								</span>
 							</td>
-							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 text-sm text-foreground max-w-[200px]">
 								{#if delivery.users}
-									<div>
-										<div class="font-medium">
+									<div class="min-w-0">
+										<div class="font-medium truncate">
 											{delivery.users.name || 'N/A'}
 										</div>
-										<div class="text-xs text-muted-foreground">
+										<div class="text-xs text-muted-foreground truncate">
 											{delivery.users.email}
 										</div>
 									</div>

@@ -8,7 +8,11 @@
 		LoaderCircle,
 		Database,
 		RotateCw,
-		Calendar
+		Calendar,
+		Smartphone,
+		Phone,
+		Check,
+		X
 	} from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -172,10 +176,10 @@
 		/>
 
 		<!-- Navigation Cards -->
-		<div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
 			<a
 				href="/admin/notifications"
-				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow"
+				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				<div class="flex items-center">
 					<Bell class="h-8 w-8 text-info mr-3" />
@@ -188,7 +192,7 @@
 
 			<a
 				href="/admin/notifications/test-bed"
-				class="bg-success/10 border-2 border-success/30 rounded-lg p-6 hover:shadow-ink-strong transition-shadow"
+				class="bg-success/10 border-2 border-success/30 rounded-lg p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				<div class="flex items-center">
 					<Send class="h-8 w-8 text-success mr-3" />
@@ -201,7 +205,7 @@
 
 			<a
 				href="/admin/notifications/sms-scheduler"
-				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow"
+				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				<div class="flex items-center">
 					<Calendar class="h-8 w-8 text-accent mr-3" />
@@ -214,7 +218,7 @@
 
 			<a
 				href="/admin/notifications/nlogs"
-				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow"
+				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				<div class="flex items-center">
 					<Eye class="h-8 w-8 text-accent mr-3" />
@@ -254,11 +258,13 @@
 								type="text"
 								bind:value={recipientSearch}
 								placeholder="Search users by email or name..."
-								class="w-full pl-10 pr-10 py-3 border border-border rounded-lg focus:ring-2 focus:ring-ring"
+								class="w-full pl-10 pr-10 py-3 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							/>
 							{#if isSearching}
 								<div class="absolute right-3 top-1/2 transform -translate-y-1/2">
-									<LoaderCircle class="w-5 h-5 animate-spin text-info" />
+									<LoaderCircle
+										class="w-5 h-5 animate-spin motion-reduce:animate-none text-info"
+									/>
 								</div>
 							{/if}
 						</div>
@@ -272,7 +278,7 @@
 									<button
 										type="button"
 										onclick={() => selectUser(result)}
-										class="w-full px-4 py-3 text-left hover:bg-muted transition-colors border-b border-border last:border-0"
+										class="w-full px-4 py-3 text-left hover:bg-muted transition-colors motion-reduce:transition-none border-b border-border last:border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									>
 										<div class="text-sm font-medium text-foreground">
 											{result.email}
@@ -282,9 +288,19 @@
 												{result.name}
 											</div>
 										{/if}
-										<div class="text-xs text-muted-foreground mt-1">
-											{result.has_push_subscription ? '📱 Push' : ''}
-											{result.has_phone ? '📞 SMS' : ''}
+										<div
+											class="flex items-center gap-2 text-xs text-muted-foreground mt-1"
+										>
+											{#if result.has_push_subscription}
+												<span class="inline-flex items-center gap-1">
+													<Smartphone class="h-3 w-3" /> Push
+												</span>
+											{/if}
+											{#if result.has_phone}
+												<span class="inline-flex items-center gap-1">
+													<Phone class="h-3 w-3" /> SMS
+												</span>
+											{/if}
 										</div>
 									</button>
 								{/each}
@@ -315,7 +331,9 @@
 			{#if selectedUser}
 				{#if contextLoading}
 					<div class="admin-panel p-8 text-center">
-						<LoaderCircle class="w-8 h-8 animate-spin text-info mx-auto mb-4" />
+						<LoaderCircle
+							class="w-8 h-8 animate-spin motion-reduce:animate-none text-info mx-auto mb-4"
+						/>
 						<p class="text-muted-foreground">Loading user notification context...</p>
 					</div>
 				{:else if userContext}
@@ -349,7 +367,7 @@
 										value={capability.channel}
 										bind:group={selectedChannels}
 										disabled={!capability.available}
-										class="h-4 w-4 rounded border-border text-accent focus:ring-ring disabled:opacity-50"
+										class="h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 									/>
 									<div class="flex-1">
 										<div class="flex items-center space-x-2">
@@ -357,12 +375,17 @@
 												{capability.channel}
 											</div>
 											{#if capability.available}
-												<span class="text-xs text-success">✓ Available</span
+												<span
+													class="inline-flex items-center gap-1 text-xs text-success"
 												>
+													<Check class="h-3 w-3" /> Available
+												</span>
 											{:else}
-												<span class="text-xs text-muted-foreground"
-													>✗ Not available</span
+												<span
+													class="inline-flex items-center gap-1 text-xs text-muted-foreground"
 												>
+													<X class="h-3 w-3" /> Not available
+												</span>
 											{/if}
 										</div>
 										<p class="text-sm text-muted-foreground">

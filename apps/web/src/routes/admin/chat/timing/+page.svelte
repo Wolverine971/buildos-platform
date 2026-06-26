@@ -326,7 +326,7 @@
 	<div class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6">
 		<button
 			onclick={() => (showFilters = !showFilters)}
-			class="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring rounded"
+			class="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
 			aria-expanded={showFilters}
 		>
 			<Filter class="h-4 w-4" />
@@ -446,7 +446,9 @@
 	{#if isLoading}
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
 			{#each Array(8) as _}
-				<div class="bg-card border border-border rounded-lg p-4 shadow-ink animate-pulse">
+				<div
+					class="bg-card border border-border rounded-lg p-4 shadow-ink animate-pulse motion-reduce:animate-none"
+				>
 					<div class="h-4 bg-muted rounded w-3/4 mb-2"></div>
 					<div class="h-8 bg-muted rounded w-1/2"></div>
 				</div>
@@ -464,7 +466,7 @@
 						>
 							TTFR p50
 						</p>
-						<p class="text-2xl font-bold text-info mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatMs(timingData.percentiles.ttfr.p50)}
 						</p>
 					</div>
@@ -484,7 +486,7 @@
 						>
 							TTFE p50
 						</p>
-						<p class="text-2xl font-bold text-info mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatMs(timingData.percentiles.ttfe.p50)}
 						</p>
 					</div>
@@ -504,7 +506,7 @@
 						>
 							Plan Invoked
 						</p>
-						<p class="text-2xl font-bold text-accent mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatPercent(timingData.summary.percent_plan_invoked)}
 						</p>
 					</div>
@@ -524,7 +526,7 @@
 						>
 							Clarification
 						</p>
-						<p class="text-2xl font-bold text-warning mt-1">
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{formatPercent(timingData.summary.percent_clarification)}
 						</p>
 					</div>
@@ -627,7 +629,9 @@
 						</thead>
 						<tbody class="divide-y divide-border">
 							{#each timingData.cache_source_performance as source}
-								<tr class="hover:bg-muted/30 transition-colors">
+								<tr
+									class="hover:bg-muted/30 transition-colors motion-reduce:transition-none"
+								>
 									<td class="px-3 py-2">
 										<span class="font-medium text-foreground">
 											{formatCacheSource(source.cache_source)}
@@ -744,7 +748,7 @@
 						</div>
 						<div class="w-full bg-muted rounded-full h-2">
 							<div
-								class="bg-info h-2 rounded-full transition-all duration-300"
+								class="bg-info h-2 rounded-full transition-all duration-300 motion-reduce:transition-none"
 								style="width: {getLatencyPercent(
 									timingData.latency_breakdown.context_build_ms
 								)}"
@@ -772,7 +776,7 @@
 						</div>
 						<div class="w-full bg-muted rounded-full h-2">
 							<div
-								class="bg-info h-2 rounded-full transition-all duration-300"
+								class="bg-info h-2 rounded-full transition-all duration-300 motion-reduce:transition-none"
 								style="width: {getLatencyPercent(
 									timingData.latency_breakdown.tool_selection_ms
 								)}"
@@ -790,7 +794,7 @@
 						</div>
 						<div class="w-full bg-muted rounded-full h-2">
 							<div
-								class="bg-warning h-2 rounded-full transition-all duration-300"
+								class="bg-warning h-2 rounded-full transition-all duration-300 motion-reduce:transition-none"
 								style="width: {getLatencyPercent(
 									timingData.latency_breakdown.clarification_ms
 								)}"
@@ -808,7 +812,7 @@
 						</div>
 						<div class="w-full bg-muted rounded-full h-2">
 							<div
-								class="bg-accent h-2 rounded-full transition-all duration-300"
+								class="bg-accent h-2 rounded-full transition-all duration-300 motion-reduce:transition-none"
 								style="width: {getLatencyPercent(
 									timingData.latency_breakdown.plan_creation_ms
 								)}"
@@ -836,7 +840,7 @@
 						</div>
 						<div class="w-full bg-muted rounded-full h-2">
 							<div
-								class="bg-success h-2 rounded-full transition-all duration-300"
+								class="bg-success h-2 rounded-full transition-all duration-300 motion-reduce:transition-none"
 								style="width: {getLatencyPercent(
 									timingData.latency_breakdown.plan_execution_ms
 								)}"
@@ -918,7 +922,7 @@
 								title="{bucket.min}-{bucket.max}ms: {bucket.count} requests"
 							>
 								<div
-									class="w-full bg-info rounded-t transition-all duration-300"
+									class="w-full bg-info rounded-t transition-all duration-300 motion-reduce:transition-none"
 									style="height: {height}%"
 								></div>
 							</div>
@@ -1023,11 +1027,13 @@
 						</thead>
 						<tbody class="divide-y divide-border">
 							{#each timingData.slow_sessions as session}
-								<tr class="hover:bg-muted/30 transition-colors">
+								<tr
+									class="hover:bg-muted/30 transition-colors motion-reduce:transition-none"
+								>
 									<td class="px-4 py-2">
 										<a
 											href="/admin/chat/sessions?search={session.session_id}"
-											class="text-info hover:underline font-mono text-xs"
+											class="text-info hover:underline font-mono text-xs rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 										>
 											{session.session_id?.slice(0, 8)}...
 										</a>
@@ -1072,7 +1078,7 @@
 													? 'bg-success/10 text-success'
 													: session.plan_status === 'failed'
 														? 'bg-destructive/10 text-destructive'
-														: 'bg-muted text-foreground/30 dark:text-muted-foreground'}"
+														: 'bg-muted text-muted-foreground'}"
 											>
 												{session.plan_status}
 												{#if session.plan_steps}

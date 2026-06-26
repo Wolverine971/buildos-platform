@@ -283,12 +283,12 @@
 			<div class="flex items-center justify-between">
 				<div>
 					<p class="text-sm text-muted-foreground">Data Issues</p>
-					<p class="text-2xl font-bold text-accent">
+					<p class="text-2xl font-bold text-warning">
 						{data.categoryCounts.data}
 					</p>
 				</div>
-				<div class="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center">
-					<TriangleAlert class="h-5 w-5 text-accent" />
+				<div class="h-10 w-10 rounded-full bg-warning/10 flex items-center justify-center">
+					<TriangleAlert class="h-5 w-5 text-warning" />
 				</div>
 			</div>
 		</AdminCard>
@@ -425,7 +425,7 @@
 				<div>
 					<p class="text-xs font-medium uppercase text-muted-foreground">Metadata</p>
 					<pre
-						class="mt-1 max-h-48 overflow-auto rounded-lg bg-gray-900 p-3 text-xs text-gray-100">{JSON.stringify(
+						class="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-muted p-3 text-xs text-foreground/80">{JSON.stringify(
 							selectedError.metadata,
 							null,
 							2

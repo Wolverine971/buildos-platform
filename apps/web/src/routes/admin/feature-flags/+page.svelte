@@ -96,7 +96,72 @@
 	{/if}
 
 	<AdminCard padding="none" class="overflow-hidden">
-		<div class="overflow-x-auto">
+		<!-- Mobile Card View -->
+		<div class="space-y-3 p-4 lg:hidden">
+			{#each data.users as user}
+				<div class="rounded-lg border border-border bg-card p-4">
+					<div class="flex items-start justify-between gap-3">
+						<div class="min-w-0">
+							<p class="text-sm font-semibold text-foreground">
+								{user.name ?? 'No name'}
+							</p>
+							<p class="truncate text-xs text-muted-foreground">{user.email}</p>
+						</div>
+						{#if user.id === pendingUserId}
+							<Badge size="sm" variant="info">Updating...</Badge>
+						{/if}
+					</div>
+					<div class="mt-3 space-y-4 border-t border-border pt-3">
+						{#each featureColumns as column}
+							{@const flag = getFlag(user, column.feature)}
+							<div class="space-y-2">
+								<div class="flex items-center justify-between gap-2">
+									<span class="text-sm font-medium text-foreground">
+										{column.label}
+									</span>
+									{#if flag?.enabled}
+										<Badge size="sm" variant="success">Enabled</Badge>
+									{:else}
+										<Badge size="sm" variant="default">Disabled</Badge>
+									{/if}
+								</div>
+								<p class="text-xs leading-snug text-muted-foreground">
+									{column.description}
+								</p>
+								<div class="text-xs text-muted-foreground">
+									{#if flag?.updated_at}
+										<time datetime={flag.updated_at}>
+											Last updated {new Date(
+												flag.updated_at
+											).toLocaleString()}
+										</time>
+									{:else}
+										<span>Not set</span>
+									{/if}
+								</div>
+								<Button
+									size="sm"
+									variant={flag?.enabled ? 'secondary' : 'primary'}
+									loading={pendingUserId === user.id &&
+										pendingFeature === column.feature}
+									onclick={() =>
+										toggleFeature(
+											user.id,
+											column.feature,
+											flag?.enabled ?? false
+										)}
+									class="w-full"
+								>
+									{flag?.enabled ? 'Disable' : 'Enable'}
+								</Button>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/each}
+		</div>
+
+		<div class="hidden overflow-x-auto lg:block">
 			<table class="min-w-full divide-y divide-border text-sm">
 				<thead class="bg-muted/60">
 					<tr
@@ -135,13 +200,7 @@
 											{#if flag?.enabled}
 												<Badge size="sm" variant="success">Enabled</Badge>
 											{:else}
-												<Badge
-													size="sm"
-													variant="info"
-													class="bg-muted text-muted-foreground border-border dark:text-muted-foreground"
-												>
-													Disabled
-												</Badge>
+												<Badge size="sm" variant="default">Disabled</Badge>
 											{/if}
 										</div>
 										<p class="text-xs text-muted-foreground leading-snug">

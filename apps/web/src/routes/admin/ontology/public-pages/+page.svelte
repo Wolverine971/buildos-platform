@@ -185,7 +185,129 @@
 				</Button>
 			</div>
 		</div>
-		<div class="overflow-x-auto">
+		<!-- Mobile card list — keeps the decide-form usable without a cramped horizontal scroll. -->
+		<div class="space-y-3 p-3 lg:hidden">
+			{#if filteredReviews.length === 0}
+				<p class="px-1 py-6 text-center text-sm text-muted-foreground">
+					No review attempts for this filter.
+				</p>
+			{:else}
+				{#each filteredReviews as review}
+					<div class="space-y-3 rounded-lg border border-border bg-background/40 p-3">
+						<!-- Result + When -->
+						<div class="flex items-start justify-between gap-2">
+							<div>
+								<span
+									class={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${statusTone(review.status)}`}
+								>
+									{review.status}
+								</span>
+								<p class="mt-1 text-xs text-muted-foreground">{review.source}</p>
+							</div>
+							<p class="shrink-0 text-xs text-muted-foreground">
+								{formatDate(review.created_at)}
+							</p>
+						</div>
+
+						<!-- Page -->
+						<div>
+							<p class="font-mono text-xs text-foreground break-all">
+								{review.page_url_path || 'Draft/Unpublished'}
+							</p>
+							<p class="text-xs text-muted-foreground">
+								policy: {review.policy_version}
+							</p>
+						</div>
+
+						<!-- Project / Document -->
+						<div>
+							<p class="text-sm text-foreground">{review.project_name}</p>
+							<p class="text-xs text-muted-foreground">{review.document_title}</p>
+							<p class="text-xs text-muted-foreground">by {review.created_by_name}</p>
+						</div>
+
+						<!-- Summary -->
+						<div>
+							<p class="text-sm text-foreground">{review.summary || 'No summary'}</p>
+							{#if review.reasons.length > 0}
+								<ul
+									class="mt-1 list-disc pl-4 text-xs text-muted-foreground space-y-0.5"
+								>
+									{#each review.reasons.slice(0, 2) as reason}
+										<li>{reason}</li>
+									{/each}
+								</ul>
+							{/if}
+							<p class="mt-1 text-xs text-muted-foreground">
+								Text findings: {review.text_findings_count} | Image findings:
+								{review.image_findings_count}
+							</p>
+						</div>
+
+						<!-- Admin Review -->
+						<div class="border-t border-border pt-3">
+							<span
+								class={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${decisionTone(review.admin_decision)}`}
+							>
+								{review.admin_decision === 'approved'
+									? 'OK to Publish'
+									: review.admin_decision === 'rejected'
+										? 'Not OK'
+										: 'Pending'}
+							</span>
+							{#if review.admin_decision_at}
+								<p class="mt-1 text-xs text-muted-foreground">
+									{formatDate(review.admin_decision_at)}
+								</p>
+							{/if}
+							{#if review.admin_decision_by_name}
+								<p class="text-xs text-muted-foreground">
+									by {review.admin_decision_by_name}
+								</p>
+							{/if}
+							{#if review.admin_decision_reason}
+								<p class="mt-1 text-xs text-muted-foreground">
+									{review.admin_decision_reason}
+								</p>
+							{/if}
+							{#if review.status === 'flagged'}
+								<form method="POST" action="?/decide" class="mt-3 space-y-2">
+									<input type="hidden" name="review_id" value={review.id} />
+									<input
+										type="text"
+										name="decision_note"
+										placeholder="Optional decision note"
+										class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									/>
+									<div class="flex gap-2">
+										<Button
+											type="submit"
+											name="decision"
+											value="approved"
+											variant="success"
+											class="flex-1 min-h-11"
+										>
+											Mark OK
+										</Button>
+										<Button
+											type="submit"
+											name="decision"
+											value="rejected"
+											variant="danger"
+											class="flex-1 min-h-11"
+										>
+											Mark Not OK
+										</Button>
+									</div>
+								</form>
+							{/if}
+						</div>
+					</div>
+				{/each}
+			{/if}
+		</div>
+
+		<div class="hidden overflow-x-auto lg:block">
 			<table class="min-w-full text-sm">
 				<thead class="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
 					<tr>
@@ -292,7 +414,7 @@
 												type="text"
 												name="decision_note"
 												placeholder="Optional decision note"
-												class="w-full rounded-md border border-border bg-background px-2 py-1 text-xs"
+												class="w-full rounded-md border border-border bg-background px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 											/>
 											<div class="flex gap-2">
 												<Button

@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { slide } from 'svelte/transition';
+	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import { userContextStore } from '$lib/stores/userContext';
 	import { page } from '$app/stores';
@@ -266,7 +267,7 @@
 		{#if showOnboardingComplete}
 			<div
 				class="mb-4 p-3 bg-success/10 border border-success/30 rounded-lg shadow-ink tx tx-grain tx-weak"
-				transition:slide
+				transition:slide={slideMotion()}
 			>
 				<div class="flex items-center gap-2">
 					<CircleCheck class="w-4 h-4 text-success flex-shrink-0" />
@@ -280,11 +281,11 @@
 		{#if saveSuccess}
 			<div
 				class="mb-4 p-3 bg-success/10 border border-success/30 rounded-lg shadow-ink tx tx-grain tx-weak"
-				transition:slide
+				transition:slide={slideMotion()}
 			>
 				<div class="flex items-center justify-between gap-2">
 					<div class="flex items-center gap-2">
-						<CircleCheck class="w-4 h-4 text-success" />
+						<CircleCheck class="w-4 h-4 text-success flex-shrink-0" />
 						<p class="text-sm text-foreground font-medium">
 							{successMessage}
 						</p>
@@ -303,11 +304,11 @@
 		{#if saveError}
 			<div
 				class="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg shadow-ink tx tx-static tx-weak"
-				transition:slide
+				transition:slide={slideMotion()}
 			>
 				<div class="flex items-center justify-between gap-2">
 					<div class="flex items-center gap-2">
-						<AlertCircle class="w-4 h-4 text-destructive" />
+						<AlertCircle class="w-4 h-4 text-destructive flex-shrink-0" />
 						<p class="text-sm text-foreground font-medium">
 							{errorMessage || 'An error occurred'}
 						</p>
@@ -457,9 +458,7 @@
 									Template Content
 								</h4>
 								<pre
-									class="bg-muted p-4 rounded-lg text-sm font-mono whitespace-pre-wrap overflow-x-auto border border-border text-foreground">
-{editingTemplate.template_content}
-									</pre>
+									class="bg-muted p-4 rounded-lg text-sm font-mono whitespace-pre-wrap overflow-x-auto border border-border text-foreground">{editingTemplate.template_content}</pre>
 							</div>
 						</div>
 					</div>

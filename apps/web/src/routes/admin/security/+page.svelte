@@ -978,9 +978,14 @@
 							{#if metadataRows(access.metadata).length}
 								<div class="mt-3 flex flex-wrap gap-2">
 									{#each metadataRows(access.metadata) as meta}
-										<Badge size="sm" variant="default"
-											>{meta.key}: {meta.value}</Badge
+										<Badge
+											size="sm"
+											variant="default"
+											class="max-w-[220px] truncate"
+											title={`${meta.key}: ${meta.value}`}
 										>
+											{meta.key}: {meta.value}
+										</Badge>
 									{/each}
 								</div>
 							{/if}
@@ -1210,7 +1215,14 @@
 						<p class="text-sm font-semibold text-foreground">Sanitized metadata</p>
 						<div class="mt-2 flex flex-wrap gap-2">
 							{#each metadataRows(selectedSecurityEvent.metadata) as meta}
-								<Badge size="sm" variant="default">{meta.key}: {meta.value}</Badge>
+								<Badge
+									size="sm"
+									variant="default"
+									class="max-w-[220px] truncate"
+									title={`${meta.key}: ${meta.value}`}
+								>
+									{meta.key}: {meta.value}
+								</Badge>
 							{/each}
 						</div>
 					</div>

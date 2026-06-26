@@ -405,7 +405,9 @@
 	{#if isLoading}
 		<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
 			{#each Array(8) as _}
-				<div class="rounded-lg border border-border bg-card p-4 shadow-ink animate-pulse">
+				<div
+					class="rounded-lg border border-border bg-card p-4 shadow-ink animate-pulse motion-reduce:animate-none"
+				>
 					<div class="mb-3 h-4 w-2/3 rounded bg-muted"></div>
 					<div class="mb-2 h-8 w-1/2 rounded bg-muted"></div>
 					<div class="h-3 w-3/4 rounded bg-muted"></div>
@@ -526,7 +528,7 @@
 					<div class="space-y-3">
 						{#each toolData.trends as trend}
 							<div
-								class="grid grid-cols-[5.5rem_1fr_4rem_5rem] items-center gap-3 text-xs sm:grid-cols-[7rem_1fr_5rem_6rem]"
+								class="grid grid-cols-[4.5rem_1fr_4rem] items-center gap-3 text-xs sm:grid-cols-[7rem_1fr_5rem_6rem]"
 							>
 								<div class="text-muted-foreground">{formatBucket(trend)}</div>
 								<div class="h-2 rounded-full bg-muted">
@@ -538,7 +540,7 @@
 								<div class="text-right font-medium text-foreground">
 									{formatNumber(trend.total_executions)}
 								</div>
-								<div class="text-right text-muted-foreground">
+								<div class="hidden text-right text-muted-foreground sm:block">
 									{trend.failed_executions > 0
 										? `${formatNumber(trend.failed_executions)} failed`
 										: formatDuration(trend.p95_execution_time_ms)}
@@ -936,7 +938,7 @@
 										<td class="px-4 py-3 text-right text-sm">
 											<a
 												href={sessionHref(failure.session_id)}
-												class="inline-flex items-center justify-end gap-1 text-accent hover:underline"
+												class="inline-flex items-center justify-end gap-1 rounded text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 											>
 												Open
 												<ExternalLink class="h-3.5 w-3.5" />

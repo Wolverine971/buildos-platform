@@ -315,7 +315,7 @@
 			class="bg-success/10 border border-success/30 rounded-lg p-3 shadow-ink tx tx-grain tx-weak"
 		>
 			<div class="flex items-center gap-2">
-				<CircleCheck class="w-4 h-4 text-success" />
+				<CircleCheck class="w-4 h-4 text-success flex-shrink-0" />
 				<p class="text-sm text-foreground">{successMessage}</p>
 			</div>
 		</div>
@@ -406,7 +406,7 @@
 			<div class="space-y-4">
 				<p class="text-xs text-muted-foreground leading-relaxed">
 					Currently published at
-					<span class="font-mono text-foreground"
+					<span class="font-mono text-foreground break-all"
 						>build-os.com/p/{usernameValue || derivedFallback}/…</span
 					>
 				</p>
@@ -449,7 +449,7 @@
 							type="button"
 							onclick={clearUsername}
 							disabled={usernameLoading}
-							class="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 disabled:opacity-50 mr-auto"
+							class="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 disabled:opacity-50 mr-auto rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 						>
 							Clear (revert to derived)
 						</button>
@@ -496,11 +496,12 @@
 							placeholder="Enter current password"
 							disabled={loading}
 							size="md"
+							class="pr-10"
 						/>
 						<button
 							type="button"
 							onclick={() => (showCurrentPassword = !showCurrentPassword)}
-							class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+							class="absolute inset-y-0 right-1 flex items-center px-2 rounded-md text-muted-foreground hover:text-foreground transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 							aria-label={showCurrentPassword
 								? 'Hide current password'
 								: 'Show current password'}
@@ -530,11 +531,12 @@
 							placeholder="Enter new password"
 							disabled={loading}
 							size="md"
+							class="pr-10"
 						/>
 						<button
 							type="button"
 							onclick={() => (showNewPassword = !showNewPassword)}
-							class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+							class="absolute inset-y-0 right-1 flex items-center px-2 rounded-md text-muted-foreground hover:text-foreground transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 							aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
 						>
 							{#if showNewPassword}
@@ -557,11 +559,12 @@
 							placeholder="Confirm new password"
 							disabled={loading}
 							size="md"
+							class="pr-10"
 						/>
 						<button
 							type="button"
 							onclick={() => (showConfirmPassword = !showConfirmPassword)}
-							class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+							class="absolute inset-y-0 right-1 flex items-center px-2 rounded-md text-muted-foreground hover:text-foreground transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 							aria-label={showConfirmPassword
 								? 'Hide password confirmation'
 								: 'Show password confirmation'}

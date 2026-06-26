@@ -14,6 +14,10 @@
 	import { format, parseISO, isFuture } from 'date-fns';
 	import { formatInTimeZone } from 'date-fns-tz';
 	import Button from '$lib/components/ui/Button.svelte';
+	import TabNav from '$lib/components/ui/TabNav.svelte';
+	import type { Tab as TabNavTab } from '$lib/components/ui/TabNav.svelte';
+	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import { slideMotion, fadeMotion } from '$lib/components/project/v2/board-a11y';
 	import { requireApiData, requireApiSuccess } from '$lib/utils/api-client-helpers';
 	import { toastService } from '$lib/stores/toast.store';
 
@@ -45,8 +49,17 @@
 	let scheduledMessages = $state<ScheduledSMS[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
-	let filterStatus = $state<'all' | 'scheduled' | 'sent' | 'cancelled'>('all');
+	type SmsFilter = 'all' | 'scheduled' | 'sent' | 'cancelled';
+	let filterStatus = $state<SmsFilter>('all');
 	let cancelling = $state<Set<string>>(new Set());
+	let cancelTargetId = $state<string | null>(null);
+
+	const smsFilterTabs: TabNavTab[] = [
+		{ id: 'all', label: 'All' },
+		{ id: 'scheduled', label: 'Scheduled' },
+		{ id: 'sent', label: 'Sent' },
+		{ id: 'cancelled', label: 'Cancelled' }
+	];
 
 	// Derived
 	let filteredMessages = $derived.by(() => {
@@ -84,11 +97,19 @@
 		}
 	}
 
-	async function cancelMessage(messageId: string) {
-		if (!confirm('Are you sure you want to cancel this scheduled SMS?')) {
-			return;
-		}
+	function requestCancel(messageId: string) {
+		cancelTargetId = messageId;
+	}
 
+	async function confirmCancel() {
+		const messageId = cancelTargetId;
+		cancelTargetId = null;
+		if (messageId) {
+			await cancelMessage(messageId);
+		}
+	}
+
+	async function cancelMessage(messageId: string) {
 		try {
 			cancelling = new Set([...cancelling, messageId]);
 
@@ -125,7 +146,7 @@
 		switch (status) {
 			case 'scheduled':
 			case 'pending':
-				return 'text-accent bg-accent/10 border border-accent/30';
+				return 'text-info bg-info/10 border border-info/30';
 			case 'sent':
 			case 'delivered':
 				return 'text-success bg-success/10 border border-success/30';
@@ -176,62 +197,32 @@
 			disabled={loading}
 			class="pressable"
 		>
-			<RefreshCw class="w-4 h-4 {loading ? 'animate-spin' : ''}" />
+			<RefreshCw class="w-4 h-4 motion-reduce:animate-none {loading ? 'animate-spin' : ''}" />
 			<span class="ml-2">Refresh</span>
 		</Button>
 	</div>
 
 	<!-- Filter Tabs -->
-	<div class="flex gap-2 border-b border-border">
-		<button
-			onclick={() => (filterStatus = 'all')}
-			class="px-4 py-2 text-sm font-medium border-b-2 transition-colors {filterStatus ===
-			'all'
-				? 'border-accent text-accent'
-				: 'border-transparent text-muted-foreground hover:text-foreground'}"
-		>
-			All
-		</button>
-		<button
-			onclick={() => (filterStatus = 'scheduled')}
-			class="px-4 py-2 text-sm font-medium border-b-2 transition-colors {filterStatus ===
-			'scheduled'
-				? 'border-accent text-accent'
-				: 'border-transparent text-muted-foreground hover:text-foreground'}"
-		>
-			Scheduled
-		</button>
-		<button
-			onclick={() => (filterStatus = 'sent')}
-			class="px-4 py-2 text-sm font-medium border-b-2 transition-colors {filterStatus ===
-			'sent'
-				? 'border-accent text-accent'
-				: 'border-transparent text-muted-foreground hover:text-foreground'}"
-		>
-			Sent
-		</button>
-		<button
-			onclick={() => (filterStatus = 'cancelled')}
-			class="px-4 py-2 text-sm font-medium border-b-2 transition-colors {filterStatus ===
-			'cancelled'
-				? 'border-accent text-accent'
-				: 'border-transparent text-muted-foreground hover:text-foreground'}"
-		>
-			Cancelled
-		</button>
-	</div>
+	<TabNav
+		tabs={smsFilterTabs}
+		activeTab={filterStatus}
+		onchange={(id) => (filterStatus = id as SmsFilter)}
+		ariaLabel="Filter scheduled messages"
+	/>
 
 	<!-- Loading State -->
 	{#if loading}
-		<div class="text-center py-12" transition:fade>
-			<RefreshCw class="w-8 h-8 mx-auto text-muted-foreground animate-spin" />
+		<div class="text-center py-12" transition:fade={fadeMotion()}>
+			<RefreshCw
+				class="w-8 h-8 mx-auto text-muted-foreground animate-spin motion-reduce:animate-none"
+			/>
 			<p class="text-sm text-muted-foreground mt-2">Loading messages...</p>
 		</div>
 	{:else if error}
 		<!-- Error State -->
 		<div
 			class="bg-destructive/10 border border-destructive/30 rounded-lg p-4 shadow-ink tx tx-static tx-weak"
-			transition:slide
+			transition:slide={slideMotion()}
 		>
 			<div class="flex items-start gap-3">
 				<AlertCircle class="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
@@ -251,7 +242,10 @@
 		</div>
 	{:else if filteredMessages.length === 0}
 		<!-- Empty State -->
-		<div class="text-center py-12 bg-muted rounded-lg tx tx-bloom tx-weak" transition:fade>
+		<div
+			class="text-center py-12 bg-muted rounded-lg tx tx-bloom tx-weak"
+			transition:fade={fadeMotion()}
+		>
 			<MessageSquare class="w-12 h-12 mx-auto text-muted-foreground" />
 			<p class="text-sm text-muted-foreground mt-3">
 				{#if filterStatus === 'all'}
@@ -270,8 +264,8 @@
 			{#each filteredMessages as message (message.id)}
 				{@const StatusIcon = getStatusIcon(message.status)}
 				<div
-					class="bg-card border border-border rounded-lg p-4 hover:border-accent/50 transition-colors shadow-ink tx tx-frame tx-weak"
-					transition:slide
+					class="bg-card border border-border rounded-lg p-4 hover:border-accent/50 transition-colors motion-reduce:transition-none shadow-ink tx tx-frame tx-weak"
+					transition:slide={slideMotion()}
 				>
 					<div class="flex items-start justify-between gap-4">
 						<div class="flex-1 min-w-0">
@@ -282,7 +276,7 @@
 										message.status
 									)}"
 								>
-									<StatusIcon class="w-3 h-3" />
+									<StatusIcon class="w-3 h-3 flex-shrink-0" />
 									{message.status}
 								</span>
 								{#if message.generated_via === 'llm'}
@@ -297,16 +291,16 @@
 							<!-- Event Title -->
 							{#if message.event_title}
 								<div
-									class="flex items-center gap-2 text-sm text-foreground font-medium mb-1"
+									class="flex items-center gap-2 text-sm text-foreground font-medium mb-1 min-w-0"
 								>
-									<Calendar class="w-4 h-4 text-muted-foreground" />
-									<span>{message.event_title}</span>
+									<Calendar class="w-4 h-4 text-muted-foreground flex-shrink-0" />
+									<span class="truncate">{message.event_title}</span>
 								</div>
 							{/if}
 
 							<!-- Message Content -->
 							<p
-								class="text-sm text-foreground bg-muted rounded p-2.5 mt-2 font-mono border border-border"
+								class="text-sm text-foreground bg-muted rounded-md p-2.5 mt-2 font-mono border border-border line-clamp-3"
 							>
 								{message.message_content}
 							</p>
@@ -314,7 +308,7 @@
 							<!-- Timing Info -->
 							<div class="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
 								<div class="flex items-center gap-1.5">
-									<Clock class="w-3.5 h-3.5" />
+									<Clock class="w-3.5 h-3.5 flex-shrink-0" />
 									<span>
 										{#if message.status === 'scheduled' || message.status === 'pending'}
 											Sends {formatSendTime(message.scheduled_for)}
@@ -329,7 +323,7 @@
 								</div>
 								{#if message.event_start}
 									<div class="flex items-center gap-1.5">
-										<Calendar class="w-3.5 h-3.5" />
+										<Calendar class="w-3.5 h-3.5 flex-shrink-0" />
 										<span>Event: {formatSendTime(message.event_start)}</span>
 									</div>
 								{/if}
@@ -348,12 +342,14 @@
 							<Button
 								variant="ghost"
 								size="sm"
-								onclick={() => cancelMessage(message.id)}
+								onclick={() => requestCancel(message.id)}
 								disabled={cancelling.has(message.id)}
 								class="flex-shrink-0 pressable"
 							>
 								{#if cancelling.has(message.id)}
-									<RefreshCw class="w-4 h-4 animate-spin" />
+									<RefreshCw
+										class="w-4 h-4 animate-spin motion-reduce:animate-none"
+									/>
 								{:else}
 									<X class="w-4 h-4" />
 								{/if}
@@ -366,3 +362,15 @@
 		</div>
 	{/if}
 </div>
+
+<ConfirmationModal
+	isOpen={cancelTargetId !== null}
+	title="Cancel scheduled SMS"
+	confirmText="Cancel message"
+	cancelText="Keep"
+	confirmVariant="danger"
+	onconfirm={confirmCancel}
+	oncancel={() => (cancelTargetId = null)}
+>
+	Are you sure you want to cancel this scheduled SMS? This can't be undone.
+</ConfirmationModal>

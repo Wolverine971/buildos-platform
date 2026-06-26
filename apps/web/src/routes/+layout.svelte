@@ -278,7 +278,7 @@
 	let mainContentClasses = $derived(
 		isAdminRoute
 			? 'relative flex flex-1 w-full min-h-0'
-			: `rounded-md relative mx-auto my-3 sm:my-4 flex-1 w-full max-w-[1200px] p-px ${
+			: `rounded-md relative mx-auto my-3 sm:my-4 flex-1 w-full max-w-7xl p-px ${
 					showNavigation ? '' : 'min-h-screen'
 				}`
 	);
@@ -745,6 +745,10 @@
 		// Skip if View Transitions API is not supported
 		if (!document.startViewTransition) return;
 
+		// Respect reduced-motion: skip page-morph animations entirely for users
+		// who asked for less motion (the transition still completes, just unanimated).
+		if (browser && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+
 		return new Promise((resolve) => {
 			document.startViewTransition(async () => {
 				resolve();
@@ -883,7 +887,7 @@
 	{/if}
 
 	{#if !isAdminRoute && !billingLoading && paymentWarnings.length > 0 && PaymentWarning}
-		<div class="container mx-auto px-3 sm:px-6 lg:px-8 mt-3 sm:mt-4">
+		<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 mt-3 sm:mt-4">
 			{#each paymentWarnings as warning (warning.id)}
 				<PaymentWarning notification={warning} ondismiss={handlePaymentWarningDismiss} />
 			{/each}
@@ -891,7 +895,7 @@
 	{/if}
 
 	{#if !isAdminRoute && !billingLoading && isConsumptionFrozen}
-		<div class="container mx-auto px-3 sm:px-6 lg:px-8 mt-3 sm:mt-4">
+		<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 mt-3 sm:mt-4">
 			<section
 				class="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 sm:px-5 sm:py-4 shadow-ink"
 				aria-live="polite"

@@ -177,14 +177,9 @@
 		return icons[status as keyof typeof icons] || AlertCircle;
 	}
 
-	function getCategoryColor(category: string): string {
-		const colors = {
-			feature: 'text-info',
-			bug: 'text-destructive',
-			improvement: 'text-success',
-			general: 'text-muted-foreground'
-		};
-		return colors[category as keyof typeof colors] || 'text-muted-foreground';
+	function getCategoryColor(_category: string): string {
+		// Category is a neutral classification, not a good/bad state — keep it neutral.
+		return 'text-foreground';
 	}
 
 	function nextPage() {
@@ -355,7 +350,9 @@
 	<div class="admin-panel overflow-hidden">
 		{#if isLoading}
 			<div class="p-6 sm:p-8 text-center">
-				<RefreshCw class="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
+				<RefreshCw
+					class="h-8 w-8 animate-spin motion-reduce:animate-none text-muted-foreground mx-auto mb-4"
+				/>
 				<p class="text-muted-foreground">Loading feedback...</p>
 			</div>
 		{:else if feedback.length === 0}
@@ -380,7 +377,7 @@
 								<p class="text-sm text-foreground line-clamp-2 mb-1">
 									{item.feedback_text}
 								</p>
-								<p class="text-xs text-muted-foreground">
+								<p class="text-xs text-muted-foreground truncate">
 									{item.user_email || 'Anonymous'}
 								</p>
 							</div>
@@ -518,7 +515,7 @@
 										<p class="text-sm text-foreground line-clamp-2">
 											{item.feedback_text}
 										</p>
-										<p class="text-xs text-muted-foreground mt-1">
+										<p class="text-xs text-muted-foreground mt-1 truncate">
 											{item.user_email || 'Anonymous'}
 										</p>
 									</div>

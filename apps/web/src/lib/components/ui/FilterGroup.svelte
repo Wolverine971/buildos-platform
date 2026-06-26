@@ -35,9 +35,11 @@
 
 	function getButtonClasses(value: string): string {
 		const base =
-			'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-bold transition pressable';
+			'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-bold transition pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset';
+		// Filter-selection tier: accent-tint (matches the status count strip), kept
+		// distinct from the solid-accent fill used by mode toggles (view/ownership).
 		return isSelected(value)
-			? `${base} border-accent bg-accent text-accent-foreground shadow-ink`
+			? `${base} border-accent/40 bg-accent/15 text-accent`
 			: `${base} border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground`;
 	}
 </script>

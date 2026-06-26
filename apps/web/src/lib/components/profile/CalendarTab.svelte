@@ -502,7 +502,9 @@
 
 	{#if loadingCalendar}
 		<div class="text-center py-12">
-			<LoaderCircle class="w-8 h-8 animate-spin text-accent mx-auto mb-4" />
+			<LoaderCircle
+				class="w-8 h-8 animate-spin motion-reduce:animate-none text-accent mx-auto mb-4"
+			/>
 			<p class="text-sm text-muted-foreground">Loading calendar settings...</p>
 		</div>
 	{:else if calendarData}
@@ -534,6 +536,7 @@
 						variant="ghost"
 						size="sm"
 						title="Refresh calendar data"
+						aria-label="Refresh calendar"
 						icon={RefreshCw}
 						loading={refreshingCalendar}
 					></Button>
@@ -562,9 +565,7 @@
 			{/snippet}
 
 			<!-- Features List -->
-			<h4
-				class="text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider mb-2"
-			>
+			<h4 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
 				Calendar Features
 			</h4>
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -683,8 +684,7 @@
 											checked={calendarPreferences.working_days.includes(
 												index
 											)}
-											class="w-4 h-4 text-accent border-border rounded focus:ring-accent
-                                            bg-muted checked:bg-accent cursor-pointer"
+											class="w-4 h-4 text-accent border-border rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset bg-muted checked:bg-accent cursor-pointer"
 										/>
 										<span class="text-sm text-foreground">{day}</span>
 									</label>
@@ -806,7 +806,7 @@
 							>
 								{#snippet labelHtml()}
 									<span class="flex items-center">
-										<Sun class="w-4 h-4 mr-1 text-warning" />
+										<Sun class="w-4 h-4 mr-1 text-accent" />
 										Schedule important tasks in the morning
 									</span>
 								{/snippet}
@@ -869,7 +869,7 @@
 											href={task.task_calendar_events[0].event_link}
 											target="_blank"
 											rel="noopener noreferrer"
-											class="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors pressable flex-shrink-0"
+											class="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset pressable flex-shrink-0"
 										>
 											<ChevronRight class="w-4 h-4" />
 										</a>
@@ -954,7 +954,7 @@
 								{#each calendarProjects.slice(0, 5) as project}
 									<a
 										href="/projects/{project.id}"
-										class="block p-3 bg-card border border-border rounded-lg hover:shadow-ink transition-all hover:border-accent/50 pressable"
+										class="block p-3 bg-card border border-border rounded-lg hover:shadow-ink transition-all motion-reduce:transition-none hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset pressable"
 									>
 										<div class="flex items-center justify-between gap-3">
 											<div class="flex-1 min-w-0">

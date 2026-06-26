@@ -28,6 +28,9 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import FormModal from '$lib/components/ui/FormModal.svelte';
+	import { toastService } from '$lib/stores/toast.store';
+	import type { FormConfig } from '$lib/types/form';
 
 	type BillingActor = { id: string; email: string | null; name: string | null };
 	type BillingOpsAlert = {
@@ -102,6 +105,61 @@
 	let selectedUser = $state<any>(null);
 	let showActionMenu = $state<string | null>(null);
 	let processingAction = $state(false);
+
+	// Input-collecting action prompts (replaces native prompt() dialogs).
+	type ActionPromptKind = 'cancel' | 'add_discount' | 'manual_unfreeze';
+	let actionPrompt = $state<{
+		kind: ActionPromptKind;
+		userId: string;
+		subscriptionId?: string;
+	} | null>(null);
+
+	const ACTION_PROMPTS: Record<
+		ActionPromptKind,
+		{ title: string; submitText: string; loadingText: string; config: FormConfig }
+	> = {
+		cancel: {
+			title: 'Cancel Subscription',
+			submitText: 'Cancel Subscription',
+			loadingText: 'Cancelling…',
+			config: {
+				reason: {
+					type: 'textarea',
+					label: 'Cancellation reason',
+					required: true,
+					rows: 3,
+					placeholder: 'Why is this subscription being cancelled?'
+				}
+			}
+		},
+		add_discount: {
+			title: 'Apply Discount',
+			submitText: 'Apply Discount',
+			loadingText: 'Applying…',
+			config: {
+				discountCode: {
+					type: 'text',
+					label: 'Discount code',
+					required: true,
+					placeholder: 'e.g. WELCOME20'
+				}
+			}
+		},
+		manual_unfreeze: {
+			title: 'Manual Unfreeze',
+			submitText: 'Unfreeze Account',
+			loadingText: 'Unfreezing…',
+			config: {
+				note: {
+					type: 'textarea',
+					label: 'Audit note (optional)',
+					required: false,
+					rows: 2,
+					placeholder: 'Optional note for the billing audit timeline'
+				}
+			}
+		}
+	};
 	let showEmailModal = $state(false);
 	let emailUserId = $state('');
 	let emailUserName = $state('');
@@ -280,7 +338,7 @@
 			case 'pro_active':
 				return 'bg-info/10 text-info';
 			case 'power_active':
-				return 'bg-info/10 text-info';
+				return 'bg-accent/10 text-accent';
 			case 'explorer_active':
 				return 'bg-muted text-foreground dark:text-muted-foreground';
 			default:
@@ -294,45 +352,61 @@
 		return actor.name || actor.email || actor.id;
 	}
 
-	async function performAction(action: string, userId: string, subscriptionId: string) {
-		if (processingAction) return;
-		processingAction = true;
+	// Actions that need extra input (cancel reason, discount code, unfreeze note)
+	// open a FormModal instead of a native prompt(). The rest run immediately.
+	function openActionPrompt(kind: ActionPromptKind, userId: string, subscriptionId?: string) {
 		showActionMenu = null;
+		actionPrompt = { kind, userId, subscriptionId };
+	}
 
-		try {
-			let body: any = { action, userId, subscriptionId };
+	async function submitActionPrompt(data: Record<string, any>) {
+		if (!actionPrompt) return;
+		const { kind, userId, subscriptionId } = actionPrompt;
 
-			if (action === 'cancel') {
-				const reason = prompt('Please provide a reason for cancellation:');
-				if (!reason) {
-					processingAction = false;
-					return;
-				}
-				body.reason = reason;
-			}
-
-			if (action === 'add_discount') {
-				const discountCode = prompt('Enter discount code to apply:');
-				if (!discountCode) {
-					processingAction = false;
-					return;
-				}
-				body.discountCode = discountCode;
-			}
+		if (kind === 'manual_unfreeze') {
+			await runManualUnfreeze(userId, data.note?.trim() || undefined);
+		} else {
+			const body: any = { action: kind, userId, subscriptionId };
+			if (kind === 'cancel') body.reason = data.reason?.trim();
+			if (kind === 'add_discount') body.discountCode = data.discountCode?.trim();
 
 			const response = await fetch('/api/admin/subscriptions/users', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(body)
 			});
+			const result = await response.json().catch(() => null);
+			if (!response.ok || result?.success === false) {
+				// Thrown errors are surfaced inline by FormModal; the modal stays open.
+				throw new Error(result?.error || 'Action failed. Please try again.');
+			}
+			await loadUsers();
+			toastService.success(kind === 'cancel' ? 'Subscription cancelled' : 'Discount applied');
+		}
+
+		actionPrompt = null;
+	}
+
+	async function performAction(action: string, userId: string, subscriptionId: string) {
+		if (processingAction) return;
+		processingAction = true;
+		showActionMenu = null;
+
+		try {
+			const response = await fetch('/api/admin/subscriptions/users', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ action, userId, subscriptionId })
+			});
 
 			if (!response.ok) throw new Error('Action failed');
 
 			// Reload users after action
 			await loadUsers();
+			toastService.success('Action completed');
 		} catch (err) {
 			console.error('Error performing action:', err);
-			alert('Failed to perform action. Please try again.');
+			toastService.error('Failed to perform action. Please try again.');
 		} finally {
 			processingAction = false;
 		}
@@ -401,39 +475,29 @@
 		await loadBillingTimeline(selectedUser.id);
 	}
 
-	async function manualUnfreeze(userId: string) {
-		if (processingAction) return;
-		processingAction = true;
-		showActionMenu = null;
+	async function runManualUnfreeze(userId: string, note?: string) {
+		const response = await fetch('/api/admin/subscriptions/billing', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				action: 'manual_unfreeze',
+				userId,
+				note
+			})
+		});
 
-		try {
-			const note = prompt('Optional note for audit timeline (optional):') || undefined;
-
-			const response = await fetch('/api/admin/subscriptions/billing', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					action: 'manual_unfreeze',
-					userId,
-					note
-				})
-			});
-
-			if (!response.ok) throw new Error('Manual unfreeze failed');
-			const result = await response.json();
-			if (!result.success) throw new Error(result.error || 'Manual unfreeze failed');
-
-			await loadUsers();
-			await loadOpsMetrics();
-			if (selectedUser?.id === userId) {
-				await loadBillingTimeline(userId);
-			}
-		} catch (err) {
-			console.error('Error running manual unfreeze:', err);
-			alert(err instanceof Error ? err.message : 'Failed to unfreeze billing account');
-		} finally {
-			processingAction = false;
+		const result = await response.json().catch(() => null);
+		if (!response.ok || result?.success === false) {
+			// Surfaced inline by FormModal; the modal stays open for a retry.
+			throw new Error(result?.error || 'Failed to unfreeze billing account');
 		}
+
+		await loadUsers();
+		await loadOpsMetrics();
+		if (selectedUser?.id === userId) {
+			await loadBillingTimeline(userId);
+		}
+		toastService.success('Billing account unfrozen');
 	}
 
 	function toggleActionMenu(userId: string) {
@@ -496,7 +560,7 @@
 		<div class="admin-panel p-4">
 			<div class="flex items-center justify-between mb-2">
 				<p class="text-sm text-muted-foreground">
-					Auto Pro->Power Rate ({opsMetrics.windowDays}d)
+					Auto Pro→Power Rate ({opsMetrics.windowDays}d)
 				</p>
 				<TrendingUp class="h-4 w-4 text-muted-foreground" />
 			</div>
@@ -550,7 +614,35 @@
 			<h3 class="text-sm font-semibold text-foreground mb-3">
 				Recent Snapshot Trend ({opsMetrics.windowDays}d Window)
 			</h3>
-			<div class="overflow-x-auto">
+			<!-- Mobile card list -->
+			<ul class="space-y-2 lg:hidden">
+				{#each opsTrends as trend}
+					<li class="rounded-md border border-border bg-card px-3 py-2">
+						<p class="text-sm font-medium text-foreground">
+							{new Date(`${trend.snapshot_date}T00:00:00Z`).toLocaleDateString()}
+						</p>
+						<dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+							<dt class="text-muted-foreground">Frozen</dt>
+							<dd class="text-right text-foreground">{trend.frozen_active_count}</dd>
+							<dt class="text-muted-foreground">Manual Unfreeze</dt>
+							<dd class="text-right text-foreground">
+								{formatPercent(trend.manual_unfreeze_rate)}
+							</dd>
+							<dt class="text-muted-foreground">Auto Pro→Power</dt>
+							<dd class="text-right text-foreground">
+								{formatPercent(trend.auto_pro_to_power_escalation_rate)}
+							</dd>
+							<dt class="text-muted-foreground">Power Share</dt>
+							<dd class="text-right text-foreground">
+								{formatPercent(trend.current_power_share)}
+							</dd>
+							<dt class="text-muted-foreground">Anomalies</dt>
+							<dd class="text-right text-foreground">{trend.anomaly_count}</dd>
+						</dl>
+					</li>
+				{/each}
+			</ul>
+			<div class="hidden lg:block overflow-x-auto">
 				<table class="min-w-full divide-y divide-border">
 					<thead class="bg-muted">
 						<tr>
@@ -568,7 +660,7 @@
 							>
 							<th
 								class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase"
-								>Auto Pro->Power</th
+								>Auto Pro→Power</th
 							>
 							<th
 								class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase"
@@ -656,7 +748,9 @@
 				variant="secondary"
 				size="md"
 				icon={RefreshCw}
-				class={isLoading || opsMetricsLoading ? 'animate-spin' : ''}
+				class={isLoading || opsMetricsLoading
+					? 'animate-spin motion-reduce:animate-none'
+					: ''}
 			/>
 		</div>
 	</div>
@@ -682,7 +776,7 @@
 					size="sm"
 					icon={MoreVertical}
 					btnType="container"
-					class="!p-1"
+					class="!p-2.5 min-h-11 min-w-11"
 				/>
 
 				{#if showActionMenu === user.id}
@@ -693,14 +787,15 @@
 							{#if subscription?.status === 'active'}
 								<Button
 									onclick={() =>
-										performAction('cancel', user.id, subscription.id)}
+										openActionPrompt('cancel', user.id, subscription.id)}
 									variant="ghost"
 									size="sm"
 									icon={Ban}
-									class="w-full justify-start text-left"
+									class="w-full justify-start text-left text-destructive"
 								>
 									Cancel Subscription
 								</Button>
+								<div class="my-1 border-t border-border"></div>
 							{/if}
 
 							{#if subscription?.status === 'trialing'}
@@ -719,7 +814,7 @@
 							{#if subscription}
 								<Button
 									onclick={() =>
-										performAction('add_discount', user.id, subscription.id)}
+										openActionPrompt('add_discount', user.id, subscription.id)}
 									variant="ghost"
 									size="sm"
 									icon={Gift}
@@ -730,7 +825,7 @@
 							{/if}
 
 							<Button
-								onclick={() => manualUnfreeze(user.id)}
+								onclick={() => openActionPrompt('manual_unfreeze', user.id)}
 								variant="ghost"
 								size="sm"
 								icon={Unlock}
@@ -767,7 +862,7 @@
 
 							<a
 								href="/admin/users/{user.id}"
-								class="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-muted"
+								class="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								<User class="w-4 h-4 mr-2" />
 								View User Details
@@ -783,7 +878,9 @@
 	<div class="admin-panel overflow-hidden">
 		{#if isLoading}
 			<div class="p-8 text-center">
-				<RefreshCw class="h-8 w-8 animate-spin text-info mx-auto mb-4" />
+				<RefreshCw
+					class="h-8 w-8 animate-spin motion-reduce:animate-none text-muted-foreground mx-auto mb-4"
+				/>
 				<p class="text-muted-foreground">Loading users...</p>
 			</div>
 		{:else if users.length === 0}
@@ -1074,7 +1171,7 @@
 					variant="secondary"
 					size="sm"
 					icon={RefreshCw}
-					class={billingTimelineLoading ? 'animate-spin' : ''}
+					class={billingTimelineLoading ? 'animate-spin motion-reduce:animate-none' : ''}
 				>
 					Refresh
 				</Button>
@@ -1174,3 +1271,17 @@
 		showEmailModal = false;
 	}}
 />
+
+<!-- Action input prompt (cancel reason / discount code / unfreeze note) -->
+{#if actionPrompt}
+	<FormModal
+		isOpen={true}
+		size="sm"
+		title={ACTION_PROMPTS[actionPrompt.kind].title}
+		submitText={ACTION_PROMPTS[actionPrompt.kind].submitText}
+		loadingText={ACTION_PROMPTS[actionPrompt.kind].loadingText}
+		formConfig={ACTION_PROMPTS[actionPrompt.kind].config}
+		onSubmit={submitActionPrompt}
+		onClose={() => (actionPrompt = null)}
+	/>
+{/if}
