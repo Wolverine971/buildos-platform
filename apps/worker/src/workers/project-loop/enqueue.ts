@@ -7,6 +7,7 @@
 import type { Json, ProjectLoopTriggerReason } from '@buildos/shared-types';
 import { supabase } from '../../lib/supabase';
 import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
+import { mapProjectLoopOwnerUserIds } from './ownerResolution';
 
 const AUTO_TRIGGER_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -140,6 +141,7 @@ export async function enqueueProjectLoop(params: {
 export async function enqueueEndOfDayProjectLoops(): Promise<{
 	enqueued: number;
 	scanned: number;
+	skippedInvalidOwner?: number;
 }> {
 	if (!PROJECT_LOOPS_ENABLED) return { enqueued: 0, scanned: 0 };
 
@@ -158,16 +160,63 @@ export async function enqueueEndOfDayProjectLoops(): Promise<{
 		return { enqueued: 0, scanned: 0 };
 	}
 
+	const ownerUserIdsByProjectId = await resolveProjectLoopOwnerUserIds(projects ?? []);
 	let enqueued = 0;
+	let skippedInvalidOwner = 0;
 	for (const project of projects ?? []) {
-		if (!project.id || !project.created_by) continue;
+		if (!project.id) continue;
+		const userId = ownerUserIdsByProjectId.get(project.id);
+		if (!userId) {
+			skippedInvalidOwner += 1;
+			continue;
+		}
 		const result = await enqueueProjectLoop({
 			projectId: project.id,
-			userId: project.created_by,
+			userId,
 			triggerReason: 'end_of_day'
 		});
 		if (result.queued) enqueued += 1;
 	}
 
-	return { enqueued, scanned: projects?.length ?? 0 };
+	return { enqueued, scanned: projects?.length ?? 0, skippedInvalidOwner };
+}
+
+async function resolveProjectLoopOwnerUserIds(
+	projects: Array<{ id: string | null; created_by: string | null }>
+): Promise<Map<string, string>> {
+	const createdByIds = [
+		...new Set(
+			projects.map((project) => project.created_by).filter((id): id is string => Boolean(id))
+		)
+	];
+	if (createdByIds.length === 0) return new Map();
+
+	const { data: actorRows, error: actorError } = await supabase
+		.from('onto_actors')
+		.select('id, user_id')
+		.in('id', createdByIds);
+	if (actorError) {
+		console.error('[ProjectLoops] failed to resolve project owner actors:', actorError.message);
+	}
+
+	const actorUserIds = [
+		...new Set(
+			(actorRows ?? [])
+				.map((actor) => actor.user_id)
+				.filter((id): id is string => Boolean(id))
+		)
+	];
+	const candidateUserIds = [...new Set([...createdByIds, ...actorUserIds])];
+	if (candidateUserIds.length === 0) return new Map();
+
+	const { data: userRows, error: userError } = await supabase
+		.from('users')
+		.select('id')
+		.in('id', candidateUserIds);
+	if (userError) {
+		console.error('[ProjectLoops] failed to validate project owner users:', userError.message);
+		return new Map();
+	}
+
+	return mapProjectLoopOwnerUserIds(projects, actorRows ?? [], userRows ?? []);
 }

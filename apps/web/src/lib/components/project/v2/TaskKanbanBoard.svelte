@@ -557,7 +557,7 @@
 	>
 		<div class="flex items-center gap-2">
 			<div
-				class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-muted/60 flex items-center justify-center"
+				class="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-muted/60 flex items-center justify-center"
 			>
 				<ListChecks class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground" />
 			</div>
@@ -573,7 +573,7 @@
 			<button
 				type="button"
 				onclick={onCreateTask}
-				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-foreground text-background text-xs font-medium hover:opacity-90 transition pressable"
+				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-foreground text-background text-xs font-medium hover:opacity-90 transition pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
 			>
 				<Plus class="w-3.5 h-3.5" />
 				New task
@@ -589,7 +589,9 @@
 		{@const isArchive = col.key === 'archived'}
 		<div
 			class="flex flex-col rounded-md border bg-background/60 min-h-[220px] transition-colors
-				{isOver ? 'border-foreground/40 bg-foreground/[0.03]' : 'border-border/60'}
+				{isOver
+				? 'border-foreground/60 bg-foreground/[0.06] ring-1 ring-foreground/20'
+				: 'border-border/60'}
 				{isViewOnly ? 'border-dashed' : ''}
 				{isDanger && items.length > 0 ? 'border-destructive/40 bg-destructive/5' : ''}"
 			ondragover={(e) => handleDragOver(e, col)}
@@ -628,10 +630,12 @@
 						type="button"
 						onclick={loadArchived}
 						disabled={archivedLoading}
-						class="w-full inline-flex items-center justify-center gap-1.5 text-[11px] font-medium text-foreground/80 hover:text-foreground bg-muted/30 hover:bg-muted/60 border border-border/60 rounded-md px-2 py-1.5 transition-colors pressable disabled:opacity-50"
+						class="w-full inline-flex items-center justify-center gap-1.5 text-[11px] font-medium text-foreground/80 hover:text-foreground bg-muted/30 hover:bg-muted/60 border border-border/60 rounded-md px-2 py-1.5 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-50"
 					>
 						{#if archivedLoading}
-							<LoaderCircle class="w-3.5 h-3.5 animate-spin" /> Loading…
+							<LoaderCircle
+								class="w-3.5 h-3.5 animate-spin motion-reduce:animate-none"
+							/> Loading…
 						{:else}
 							<RefreshCw class="w-3.5 h-3.5" /> Load archived from server
 						{/if}
@@ -675,7 +679,7 @@
 							ondragend={handleDragEnd}
 							onclick={() => onEditTask(task.id)}
 							title={isArchivedCard ? 'Drag to a state column to restore' : undefined}
-							class="group w-full text-left bg-card border border-border rounded-md px-3 py-2.5 shadow-sm hover:shadow-ink hover:border-foreground/20 transition-all pressable
+							class="group w-full text-left bg-card border border-border rounded-md px-3 py-2.5 shadow-sm hover:shadow-ink hover:border-foreground/20 transition-all pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset
 								{isDragging ? 'opacity-40' : ''}
 								{isPending ? 'opacity-70' : ''}
 								{isArchivedCard ? 'opacity-70' : ''}
@@ -743,13 +747,21 @@
 	{/snippet}
 
 	<!-- Board: single horizontally-scrollable row. Columns get a generous
-	     ~300px min width so cards have breathing room; the row scrolls. -->
-	<div class="overflow-x-auto p-3 sm:p-4">
-		<div class="grid grid-flow-col auto-cols-[300px] gap-3 sm:gap-4">
-			{#each COLUMNS as col (col.key)}
-				{@render columnView(col)}
-			{/each}
+	     ~300px min width so cards have breathing room; the row scrolls. The
+	     right-edge fade makes "more columns" obvious when macOS hides the
+	     scrollbar (Hyperplexed: make scrollability visible). -->
+	<div class="relative">
+		<div class="overflow-x-auto p-3 sm:p-4">
+			<div class="grid grid-flow-col auto-cols-[300px] gap-3 sm:gap-4">
+				{#each COLUMNS as col (col.key)}
+					{@render columnView(col)}
+				{/each}
+			</div>
 		</div>
+		<div
+			class="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card to-transparent"
+			aria-hidden="true"
+		></div>
 	</div>
 </section>
 

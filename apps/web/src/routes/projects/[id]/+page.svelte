@@ -64,7 +64,7 @@
 		type ProjectNotificationSettings
 	} from '$lib/components/project/project-page-data-controller';
 	import { resolveEntityOpenAction } from '$lib/components/project/project-page-interactions';
-	import { Bell, BellOff, Calendar, GitBranch, Pencil, Trash2, Users } from 'lucide-svelte';
+	import { Bell, BellOff, Calendar, Pencil, Trash2, Users } from 'lucide-svelte';
 	import type {
 		Project,
 		Task,
@@ -258,6 +258,57 @@
 
 	let showSettingsMenu = $state(false);
 	let settingsMenuPos = $state({ top: 0, right: 0 });
+	let settingsMenuRef = $state<HTMLDivElement | null>(null);
+	// Element that opened the menu, so Escape/close can restore focus to it
+	// (keyboard menu pattern — the trigger lives in ProjectHeaderCard).
+	let settingsMenuTrigger: HTMLElement | null = null;
+
+	function settingsMenuItems(): HTMLElement[] {
+		if (!settingsMenuRef) return [];
+		return Array.from(
+			settingsMenuRef.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])')
+		);
+	}
+
+	function closeSettingsMenu() {
+		showSettingsMenu = false;
+		settingsMenuTrigger?.focus?.();
+	}
+
+	function handleSettingsMenuKeydown(event: KeyboardEvent) {
+		const items = settingsMenuItems();
+		if (items.length === 0) return;
+		const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+		switch (event.key) {
+			case 'ArrowDown':
+				event.preventDefault();
+				items[(currentIndex + 1 + items.length) % items.length]?.focus();
+				break;
+			case 'ArrowUp':
+				event.preventDefault();
+				items[(currentIndex - 1 + items.length) % items.length]?.focus();
+				break;
+			case 'Home':
+				event.preventDefault();
+				items[0]?.focus();
+				break;
+			case 'End':
+				event.preventDefault();
+				items[items.length - 1]?.focus();
+				break;
+			case 'Escape':
+				event.preventDefault();
+				closeSettingsMenu();
+				break;
+		}
+	}
+
+	// Move focus into the menu when it opens so it's keyboard-operable.
+	$effect(() => {
+		if (showSettingsMenu && settingsMenuRef) {
+			settingsMenuItems()[0]?.focus();
+		}
+	});
 
 	let projectNotificationSettings = $state<ProjectNotificationSettings | null>(null);
 	let isNotificationSettingsLoading = $state(false);
@@ -593,6 +644,8 @@
 
 	function handleHeaderMenuOpen(position: { top: number; right: number }) {
 		settingsMenuPos = position;
+		settingsMenuTrigger =
+			typeof document !== 'undefined' ? (document.activeElement as HTMLElement) : null;
 		showSettingsMenu = true;
 		if (canOpenCollabModal) {
 			void ensureProjectNotificationSettingsLoaded();
@@ -1150,9 +1203,9 @@
 		{#if isHydrating}
 			<div class="mb-2 sm:mb-3">
 				<div
-					class="h-14 rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak p-2 sm:p-2.5"
+					class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak p-2 sm:p-2.5"
 				>
-					<div class="h-10 rounded-md bg-muted/40 animate-pulse"></div>
+					<div class="h-10 rounded-lg bg-muted/40 animate-pulse"></div>
 				</div>
 			</div>
 		{:else}
@@ -1238,7 +1291,7 @@
 						{#each Array(4) as _, i (i)}
 							<div class="space-y-2">
 								<div class="h-4 w-20 bg-muted rounded animate-pulse"></div>
-								<div class="h-16 bg-muted/40 rounded animate-pulse"></div>
+								<div class="h-16 bg-muted/40 rounded-md animate-pulse"></div>
 							</div>
 						{/each}
 					</div>
@@ -1278,6 +1331,24 @@
 						docTreeViewRef = ref;
 					}}
 				/>
+			</div>
+		{:else}
+			<!-- Documents header skeleton so the section fades in with its
+				 siblings instead of popping into empty space (Hyperplexed S6). -->
+			<div class="mt-2 sm:mt-3">
+				<div
+					class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+				>
+					<div class="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-3">
+						<div
+							class="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-muted/40 animate-pulse shrink-0"
+						></div>
+						<div class="space-y-1.5">
+							<div class="h-3.5 w-24 bg-muted rounded animate-pulse"></div>
+							<div class="h-2.5 w-16 bg-muted/40 rounded animate-pulse"></div>
+						</div>
+					</div>
+				</div>
 			</div>
 		{/if}
 	</main>
@@ -1406,23 +1477,34 @@
 
 <!-- Header settings menu portal -->
 {#if showSettingsMenu}
+	<!-- Backdrop: tabindex=-1 + aria-hidden so it never sits in the keyboard
+		 tab order (Hyperplexed S3 — the full-screen close target was a real
+		 tab stop). Click anywhere outside to dismiss. -->
 	<button
 		type="button"
+		tabindex="-1"
+		aria-hidden="true"
 		class="fixed inset-0 z-[9998] bg-transparent"
-		onclick={() => (showSettingsMenu = false)}
-		aria-label="Close menu"
+		onclick={closeSettingsMenu}
 	></button>
 	<div
+		bind:this={settingsMenuRef}
+		role="menu"
+		aria-label="Project options"
+		tabindex="-1"
+		onkeydown={handleSettingsMenuKeydown}
 		class="fixed z-[9999] w-56 rounded-lg border border-border bg-card shadow-ink-strong py-1"
 		style="top: {settingsMenuPos.top}px; right: {settingsMenuPos.right}px;"
 	>
 		{#if canOpenCollabModal}
 			<button
+				role="menuitem"
+				tabindex="-1"
 				onclick={() => {
 					showSettingsMenu = false;
 					void handleProjectNotificationQuickToggle();
 				}}
-				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors pressable disabled:opacity-60 disabled:cursor-not-allowed"
+				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-60 disabled:cursor-not-allowed"
 				disabled={isNotificationSettingsSaving ||
 					isNotificationSettingsLoading ||
 					!projectNotificationSettings}
@@ -1441,44 +1523,40 @@
 		{/if}
 		{#if canOpenCollabModal}
 			<button
+				role="menuitem"
+				tabindex="-1"
 				onclick={() => {
 					showSettingsMenu = false;
 					void ensureProjectNotificationSettingsLoaded();
 					showCollabModal = true;
 				}}
-				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors pressable"
+				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 			>
 				<Users class="w-4 h-4 text-muted-foreground" />
 				Collaboration settings
 			</button>
 		{/if}
-		<button
-			onclick={() => {
-				showSettingsMenu = false;
-				showGraphModal = true;
-			}}
-			class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors pressable"
-		>
-			<GitBranch class="w-4 h-4 text-muted-foreground" />
-			Open graph
-		</button>
 		{#if canEdit}
 			<button
+				role="menuitem"
+				tabindex="-1"
 				onclick={() => {
 					showSettingsMenu = false;
 					showProjectEditModal = true;
 				}}
-				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors pressable"
+				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 			>
 				<Pencil class="w-4 h-4 text-muted-foreground" />
 				Edit project
 			</button>
 			<button
+				role="menuitem"
+				tabindex="-1"
 				onclick={() => {
 					showSettingsMenu = false;
 					showProjectCalendarModal = true;
 				}}
-				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors pressable"
+				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 			>
 				<Calendar class="w-4 h-4 text-muted-foreground" />
 				Calendar
@@ -1487,11 +1565,13 @@
 		{#if canDeleteProject}
 			<hr class="my-1 border-border" />
 			<button
+				role="menuitem"
+				tabindex="-1"
 				onclick={() => {
 					showSettingsMenu = false;
 					showDeleteProjectModal = true;
 				}}
-				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-destructive hover:bg-destructive/10 transition-colors pressable"
+				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-destructive hover:bg-destructive/10 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 			>
 				<Trash2 class="w-4 h-4" />
 				Delete project

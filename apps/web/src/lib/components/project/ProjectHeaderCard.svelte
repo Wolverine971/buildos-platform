@@ -93,27 +93,28 @@
 					<a
 						href={viewToggle.href}
 						title={viewToggle.title ?? viewToggle.label}
-						class="hidden sm:inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/60 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/40 transition-colors pressable"
+						class="hidden sm:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-border/60 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/40 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
-						<ArrowLeftRight class="w-3 h-3" />
+						<ArrowLeftRight class="w-4 h-4" />
 						{viewToggle.label}
 					</a>
 					<a
 						href={viewToggle.href}
 						title={viewToggle.title ?? viewToggle.label}
 						aria-label={viewToggle.title ?? viewToggle.label}
-						class="sm:hidden p-1.5 rounded-lg hover:bg-muted transition-colors pressable text-muted-foreground"
+						class="sm:hidden inline-flex items-center justify-center h-8 w-8 rounded-lg hover:bg-muted transition-colors pressable text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						<ArrowLeftRight class="w-4 h-4" />
 					</a>
 				{/if}
 				<button
 					onclick={handleOpenMenu}
-					class="p-1.5 rounded-lg hover:bg-muted transition-colors pressable"
+					class="inline-flex items-center justify-center h-8 w-8 rounded-lg hover:bg-muted transition-colors pressable text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					aria-label="Project options"
+					aria-haspopup="menu"
 					aria-expanded={showMobileMenu}
 				>
-					<MoreHorizontal class="w-5 h-5 text-muted-foreground" />
+					<MoreHorizontal class="w-4 h-4" />
 				</button>
 			</div>
 		</div>

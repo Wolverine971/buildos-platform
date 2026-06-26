@@ -276,3 +276,42 @@ The rubric **worked as an audit instrument**. Three concrete signs:
 radius, motion, a11y) from markup alone, but the color/contrast calls (S2 dark-mode legibility, the icon
 "color salad," drop-target visibility) are flagged as _suspected_ and want a live screenshot pass to
 confirm. That's the natural next step — and the first surface to shoot is the Entity Tab Strip, post-S1.
+
+---
+
+## Part 5 — Fixes applied (2026-06-26)
+
+First polish pass shipped. New shared helper `lib/components/project/v2/board-a11y.ts`
+(`handleRovingTabKeydown` + reduced-motion-aware `slideMotion`) backs S3/S5 as single conventions.
+`svelte-check` clean (0/0); ESLint clean (only two pre-existing unused-var warnings, untouched).
+
+**Systemic (Part 1) — all five done:**
+
+- **S1** ✅ EntityTabStrip pills now read at rest: action pills carry a persistent top-right `↗`
+  (`ArrowUpRight`), inline pills a persistent `ChevronDown` that rotates on expand. Counts moved to a
+  fixed-width (`min-w-[1.1rem]`, `tabular-nums`) slot; pill padding evened to `px-2.5 py-1.5`.
+- **S2** ✅ One active treatment: expanded EntityTab pill gets `border-accent/50 ring-1 ring-accent/20`
+    - tinted header; both PulseStrip mobile tabs use an accent underline + foreground text (warning no
+      longer doubles as "selected"); MobileTaskBoard active tab is `text-foreground` + tinted bg + a
+      bucket-colored bar (`activeBar()`), so Backlog/Archived are no longer invisible when selected.
+- **S3** ✅ Shared roving-tab keydown on both tablists (PulseStrip, MobileTaskBoard); `focus-visible`
+  rings added to header buttons, kanban cards + New-task/Load-archived, mobile cards, and every
+  expanded-panel row in EntityTabStrip; settings dropdown rewired as a real `role="menu"` (menuitems,
+  arrow/Home/End/Escape, focus-in on open, focus restored to trigger on close, backdrop pulled out of
+  the tab order).
+- **S4** ✅ Two radii locked. Swept: header view-toggle, search input, Documents/Mobile/Kanban header
+  icon chips (`rounded-md sm:rounded-lg` flip → `rounded-lg`), kanban skeleton card, NextStepDisplay
+  chips/empty button.
+- **S5** ✅ `slideMotion()` gates the four `transition:slide` panels; `motion-reduce:animate-none` on
+  every spinner; `motion-reduce:transition-none` on the rotating chevrons.
+
+**Cleanups (Part 2):** Documents loading skeleton added; search skeleton shape matched to the real
+control; PulseStrip desktop meta row clamped (`line-clamp-1`); kanban right-edge scroll fade + stronger
+drop-target (`bg-foreground/[0.06]` + ring); combobox loader/clear insets pinned + clear button properly
+centered; header action cluster normalized to a shared `h-8`/`w-8` box at one icon size.
+
+**Deferred (lower-value or needs live screenshots):** Pulse "View all (N)" footer / true-total badge
+(needs count semantics), mobile sticky Add-task FAB (ergonomics change, not a taste defect), Pulse row
+icon "color salad" + Kanban Backlog/Archived tone twin + in-progress `Flame` glyph (suspected color
+calls — confirm on the live screenshot pass), EntityTab scroll-panel bottom fade, doc-tree `max-h`, and
+the assorted Low nitpicks. Next step remains the live dark-mode screenshot pass on the Entity Tab Strip.

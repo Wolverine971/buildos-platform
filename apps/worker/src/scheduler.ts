@@ -201,8 +201,14 @@ export function startScheduler() {
 		if (!PROJECT_LOOPS_ENABLED) return;
 		console.log('🔁 Enqueuing end-of-day project loops...');
 		try {
-			const { enqueued, scanned } = await enqueueEndOfDayProjectLoops();
-			console.log(`🔁 Project loops: enqueued ${enqueued}/${scanned} active projects`);
+			const {
+				enqueued,
+				scanned,
+				skippedInvalidOwner = 0
+			} = await enqueueEndOfDayProjectLoops();
+			console.log(
+				`🔁 Project loops: enqueued ${enqueued}/${scanned} active projects, skipped invalid owner=${skippedInvalidOwner}`
+			);
 		} catch (error) {
 			console.error('🔁 Project loop scheduling failed:', error);
 		}

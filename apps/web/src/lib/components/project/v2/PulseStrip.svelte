@@ -31,6 +31,7 @@
 	import type { Goal, Milestone, OntoEvent, Task } from '$lib/types/onto';
 	import { fetchProjectLogs } from '$lib/components/project/project-page-data-controller';
 	import { getEventStartMs, isEventPast } from '$lib/components/project/project-event-filters';
+	import { handleRovingTabKeydown } from '$lib/components/project/v2/board-a11y';
 
 	type UpcomingKind = 'task' | 'milestone' | 'goal' | 'event';
 
@@ -64,6 +65,20 @@
 	let logsError = $state<string | null>(null);
 
 	let mobileTab = $state<'next' | 'recent'>('recent');
+
+	// Roving-tabindex order must match the rendered tab order (recent, next).
+	const MOBILE_TAB_ORDER = ['recent', 'next'] as const;
+	let mobileTabButtons = $state<HTMLButtonElement[]>([]);
+
+	function onMobileTabKeydown(event: KeyboardEvent, index: number) {
+		handleRovingTabKeydown(
+			event,
+			index,
+			MOBILE_TAB_ORDER.length,
+			(target) => (mobileTab = MOBILE_TAB_ORDER[target]!),
+			(target) => mobileTabButtons[target]?.focus()
+		);
+	}
 
 	async function loadLogs() {
 		logsLoading = true;
@@ -333,6 +348,7 @@
 >
 	<div role="tablist" aria-label="Project pulse views" class="flex border-b border-border/60">
 		<button
+			bind:this={mobileTabButtons[0]}
 			role="tab"
 			type="button"
 			id="pulse-tab-recent"
@@ -340,10 +356,11 @@
 			aria-controls="pulse-panel-recent"
 			tabindex={mobileTab === 'recent' ? 0 : -1}
 			onclick={() => (mobileTab = 'recent')}
+			onkeydown={(e) => onMobileTabKeydown(e, 0)}
 			class="flex-1 px-3 py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {mobileTab ===
 			'recent'
-				? 'text-foreground bg-muted/40 border-b-2 border-foreground/50 -mb-px'
-				: 'text-muted-foreground hover:text-foreground hover:bg-muted/40'}"
+				? 'text-foreground bg-muted/40 border-b-2 border-accent -mb-px'
+				: 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-b-2 border-transparent'}"
 		>
 			<History
 				class="w-3.5 h-3.5 {mobileTab === 'recent'
@@ -356,6 +373,7 @@
 			{/if}
 		</button>
 		<button
+			bind:this={mobileTabButtons[1]}
 			role="tab"
 			type="button"
 			id="pulse-tab-next"
@@ -363,14 +381,15 @@
 			aria-controls="pulse-panel-next"
 			tabindex={mobileTab === 'next' ? 0 : -1}
 			onclick={() => (mobileTab = 'next')}
+			onkeydown={(e) => onMobileTabKeydown(e, 1)}
 			class="flex-1 px-3 py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {mobileTab ===
 			'next'
-				? 'text-foreground bg-warning/5 border-b-2 border-warning -mb-px'
-				: 'text-muted-foreground hover:text-foreground hover:bg-muted/40'}"
+				? 'text-foreground bg-muted/40 border-b-2 border-accent -mb-px'
+				: 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-b-2 border-transparent'}"
 		>
 			<ArrowRight
 				class="w-3.5 h-3.5 {mobileTab === 'next'
-					? 'text-warning'
+					? 'text-foreground'
 					: 'text-muted-foreground'}"
 			/>
 			<span>Up next</span>
@@ -389,7 +408,8 @@
 		>
 			{#if upcomingItems.length === 0}
 				<p class="text-xs text-muted-foreground px-2 py-4 text-center italic">
-					Nothing scheduled. Add a date to a task, milestone, goal, or event.
+					Nothing scheduled. Add a date to a task, milestone, goal, or event to see it
+					here.
 				</p>
 			{:else}
 				{#each upcomingItems as item (item.id)}
@@ -542,7 +562,9 @@
 								>
 									{tile.name}
 								</p>
-								<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+								<p
+									class="text-[10px] sm:text-xs text-muted-foreground mt-0.5 line-clamp-1"
+								>
 									<span>{activityActorPhrase(tile)}</span>
 									<span class="mx-1 text-muted-foreground/50">·</span>
 									<span class="capitalize">{tile.entityType}</span>

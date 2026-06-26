@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
 	import { ChevronDown, FileText, Plus } from 'lucide-svelte';
+	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import { DocTreeView } from '$lib/components/ontology/doc-tree';
 	import type { Document } from '$lib/types/onto';
 	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
@@ -63,7 +64,7 @@
 			class="flex items-center gap-2 flex-1 text-left hover:bg-muted/60 rounded-lg transition-colors pressable"
 		>
 			<div
-				class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
+				class="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-accent/10 flex items-center justify-center"
 			>
 				<FileText class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
 			</div>
@@ -91,7 +92,7 @@
 				aria-label={documentsExpanded ? 'Collapse documents' : 'Expand documents'}
 			>
 				<ChevronDown
-					class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {documentsExpanded
+					class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] motion-reduce:transition-none {documentsExpanded
 						? 'rotate-180'
 						: ''}"
 				/>
@@ -100,7 +101,7 @@
 	</div>
 
 	{#if documentsExpanded}
-		<div class="border-t border-border" transition:slide={{ duration: 120 }}>
+		<div class="border-t border-border" transition:slide={slideMotion(120)}>
 			<DocTreeView
 				bind:this={docTreeViewRef}
 				{projectId}

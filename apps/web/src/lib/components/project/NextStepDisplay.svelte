@@ -17,6 +17,7 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
 	import { ChevronDown, Zap, RefreshCw, LoaderCircle } from 'lucide-svelte';
+	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import { parseEntityReferences } from '$lib/utils/entity-reference-parser';
 	import { generateProjectNextStep } from '$lib/components/project/project-page-data-controller';
 	import type { EntityReference } from '@buildos/shared-types';
@@ -155,7 +156,7 @@
 			const safeText = escapeHtml(displayText);
 
 			return `<button
-				class="inline-flex items-center px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors text-sm font-medium cursor-pointer"
+				class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-accent/10 text-accent hover:bg-accent/20 transition-colors text-sm font-medium cursor-pointer"
 				data-entity-type="${safeType}"
 				data-entity-id="${safeId}"
 			>${safeText}</button>`;
@@ -214,7 +215,9 @@
 				aria-label="Regenerate next step"
 			>
 				{#if isGenerating}
-					<LoaderCircle class="w-3 h-3 text-muted-foreground animate-spin" />
+					<LoaderCircle
+						class="w-3 h-3 text-muted-foreground animate-spin motion-reduce:animate-none"
+					/>
 				{:else}
 					<RefreshCw class="w-3 h-3 text-muted-foreground" />
 				{/if}
@@ -229,11 +232,13 @@
 				class="flex w-full cursor-pointer items-start gap-1.5 text-left focus:outline-none focus:ring-2 focus:ring-ring"
 				aria-expanded={isExpanded}
 			>
-				<p class="text-sm font-medium text-foreground leading-snug flex-1 min-w-0">
+				<p
+					class="text-sm font-medium text-foreground leading-snug flex-1 min-w-0 line-clamp-2"
+				>
 					{nextStepShort}
 				</p>
 				<div
-					class="shrink-0 mt-0.5 text-muted-foreground transition-transform duration-[120ms]"
+					class="shrink-0 mt-0.5 text-muted-foreground transition-transform duration-[120ms] motion-reduce:transition-none"
 					class:rotate-180={isExpanded}
 				>
 					<ChevronDown class="w-3.5 h-3.5" />
@@ -241,7 +246,9 @@
 			</button>
 		{:else}
 			<div class="flex cursor-default items-start gap-1.5">
-				<p class="text-sm font-medium text-foreground leading-snug flex-1 min-w-0">
+				<p
+					class="text-sm font-medium text-foreground leading-snug flex-1 min-w-0 line-clamp-2"
+				>
 					{nextStepShort}
 				</p>
 			</div>
@@ -249,7 +256,7 @@
 
 		<!-- Expanded content -->
 		{#if isExpanded && hasLongVersion}
-			<div class="pt-1.5" transition:slide={{ duration: 120 }}>
+			<div class="pt-1.5" transition:slide={slideMotion(120)}>
 				<div class="h-px bg-border/50 mb-1.5"></div>
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 				<div
@@ -273,7 +280,7 @@
 			type="button"
 			onclick={handleGenerateNextStep}
 			disabled={isGenerating}
-			class="w-full flex items-center gap-1.5 hover:bg-muted/30 active:bg-muted/50 -mx-1 px-1 py-1 rounded transition-colors disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-ring pressable"
+			class="w-full flex items-center gap-1.5 hover:bg-muted/30 active:bg-muted/50 -mx-1 px-1 py-1 rounded-md transition-colors disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-ring pressable"
 		>
 			<Zap class="w-3 h-3 text-muted-foreground shrink-0" />
 			<span class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -282,7 +289,7 @@
 			<span class="text-xs text-muted-foreground">
 				{#if isGenerating}
 					<span class="inline-flex items-center gap-1">
-						<LoaderCircle class="w-3 h-3 animate-spin" />
+						<LoaderCircle class="w-3 h-3 animate-spin motion-reduce:animate-none" />
 						Generating…
 					</span>
 				{:else}

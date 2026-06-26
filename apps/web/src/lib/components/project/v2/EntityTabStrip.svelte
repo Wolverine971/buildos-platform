@@ -25,6 +25,7 @@
 	import { slide } from 'svelte/transition';
 	import {
 		AlertTriangle,
+		ArrowUpRight,
 		Calendar,
 		ChevronDown,
 		Clock,
@@ -39,6 +40,7 @@
 		Sparkles,
 		Target
 	} from 'lucide-svelte';
+	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import {
 		fetchProjectBriefs,
 		type ProjectBriefSummary
@@ -485,18 +487,20 @@
 	{#each tabs as tab (tab.key)}
 		{@const isExpanded = !tab.action && expanded === tab.key}
 		<div
-			class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden transition-all duration-[140ms] ease-out {isExpanded
-				? 'w-full'
-				: 'min-w-[88px] flex-1 sm:flex-none'}"
+			class="bg-card border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden transition-all duration-[140ms] ease-out {isExpanded
+				? 'w-full border-accent/50 ring-1 ring-accent/20'
+				: 'min-w-[88px] flex-1 sm:flex-none border-border'}"
 		>
-			<!-- Pill header (compact: small icon, label, optional count, no chevron when collapsed) -->
+			<!-- Pill header. Two persistent affordances tell behavior apart at rest
+				 (Hyperplexed S1): action pills carry a top-right ↗ glyph (opens an
+				 overlay), inline pills carry a chevron that rotates when expanded. -->
 			{#if tab.action}
 				<button
 					type="button"
 					onclick={() => handleAction(tab.key as TabActionKey)}
-					class="w-full flex items-center justify-between gap-1.5 px-2 py-1.5 hover:bg-muted/50 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+					class="w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 hover:bg-muted/50 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 					aria-haspopup="dialog"
-					title={tab.label}
+					title="{tab.label} (opens panel)"
 				>
 					<div class="flex items-center gap-1.5 min-w-0">
 						<tab.icon class="w-3.5 h-3.5 shrink-0 {tab.accent}" />
@@ -504,17 +508,22 @@
 							{tab.label}
 						</span>
 						{#if tab.count !== null}
-							<span class="text-[10px] text-muted-foreground shrink-0">
+							<span
+								class="text-[10px] tabular-nums text-muted-foreground shrink-0 min-w-[1.1rem] text-center"
+							>
 								{tab.count}
 							</span>
 						{/if}
 					</div>
+					<ArrowUpRight class="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
 				</button>
 			{:else}
 				<button
 					type="button"
 					onclick={() => toggle(tab.key as TabKey)}
-					class="w-full flex items-center justify-between gap-1.5 px-2 py-1.5 hover:bg-muted/50 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+					class="w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {isExpanded
+						? 'bg-accent/5'
+						: 'hover:bg-muted/50'}"
 					aria-expanded={isExpanded}
 					aria-controls="entity-tab-{tab.key}"
 					title={tab.label}
@@ -525,16 +534,18 @@
 							{tab.label}
 						</span>
 						{#if tab.count !== null}
-							<span class="text-[10px] text-muted-foreground shrink-0">
+							<span
+								class="text-[10px] tabular-nums text-muted-foreground shrink-0 min-w-[1.1rem] text-center"
+							>
 								{tab.count}
 							</span>
 						{/if}
 					</div>
-					{#if isExpanded}
-						<ChevronDown
-							class="w-3 h-3 text-muted-foreground shrink-0 rotate-180 transition-transform duration-[140ms]"
-						/>
-					{/if}
+					<ChevronDown
+						class="w-3 h-3 text-muted-foreground shrink-0 transition-transform duration-[140ms] motion-reduce:transition-none {isExpanded
+							? 'rotate-180'
+							: ''}"
+					/>
 				</button>
 			{/if}
 
@@ -543,14 +554,14 @@
 				<div
 					id="entity-tab-{tab.key}"
 					class="border-t border-border"
-					transition:slide={{ duration: 140 }}
+					transition:slide={slideMotion(140)}
 				>
 					{#if tab.key === 'briefs'}
 						<div class="p-2 sm:p-3 space-y-2 max-h-[60vh] overflow-y-auto">
 							{#if briefsLoading && briefs.length === 0}
 								<div class="flex items-center justify-center py-6">
 									<LoaderCircle
-										class="w-4 h-4 animate-spin text-muted-foreground"
+										class="w-4 h-4 animate-spin motion-reduce:animate-none text-muted-foreground"
 									/>
 								</div>
 							{:else if briefsError}
@@ -568,7 +579,7 @@
 											type="button"
 											onclick={() => openBriefChat(brief)}
 											disabled={openingBriefId === brief.id}
-											class="w-full text-left px-3 py-2 flex items-center justify-between gap-2 hover:bg-muted/40 transition-colors pressable"
+											class="w-full text-left px-3 py-2 flex items-center justify-between gap-2 hover:bg-muted/40 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 											aria-haspopup="dialog"
 										>
 											<div class="min-w-0 flex-1">
@@ -587,7 +598,7 @@
 											</div>
 											{#if openingBriefId === brief.id}
 												<LoaderCircle
-													class="w-3.5 h-3.5 text-muted-foreground shrink-0 animate-spin"
+													class="w-3.5 h-3.5 text-muted-foreground shrink-0 animate-spin motion-reduce:animate-none"
 												/>
 											{:else}
 												<MessageCircle
@@ -602,7 +613,7 @@
 										type="button"
 										onclick={() => loadBriefs(false)}
 										disabled={briefsLoading}
-										class="w-full text-xs font-medium text-foreground/80 hover:text-foreground py-2 rounded-md hover:bg-muted/40 transition-colors pressable disabled:opacity-50"
+										class="w-full text-xs font-medium text-foreground/80 hover:text-foreground py-2 rounded-md hover:bg-muted/40 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-50"
 									>
 										{briefsLoading ? 'Loading…' : 'Load more briefs'}
 									</button>
@@ -627,7 +638,7 @@
 									<button
 										type="button"
 										onclick={onAddGoal}
-										class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-foreground/80 hover:bg-muted/50 pressable"
+										class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-foreground/80 hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 									>
 										<Plus class="w-3 h-3" /> New goal
 									</button>
@@ -655,7 +666,7 @@
 										<button
 											type="button"
 											onclick={() => onEditGoal(goal.id)}
-											class="w-full text-left px-3 py-2 hover:bg-muted/40 transition-colors pressable"
+											class="w-full text-left px-3 py-2 hover:bg-muted/40 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 										>
 											<div
 												class="flex items-start justify-between gap-2 min-w-0"
@@ -725,7 +736,7 @@
 													<button
 														type="button"
 														onclick={() => onEditMilestone(m.id)}
-														class="w-full text-left px-3 py-1.5 flex items-center justify-between gap-2 hover:bg-muted/40 border-t border-border/40 first:border-t-0 transition-colors pressable"
+														class="w-full text-left px-3 py-1.5 flex items-center justify-between gap-2 hover:bg-muted/40 border-t border-border/40 first:border-t-0 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 													>
 														<div
 															class="flex items-center gap-2 min-w-0"
@@ -771,7 +782,7 @@
 																goal.id,
 																goal.name
 															)}
-														class="w-full text-left px-3 py-1.5 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/40 border-t border-border/40 transition-colors pressable inline-flex items-center gap-1"
+														class="w-full text-left px-3 py-1.5 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/40 border-t border-border/40 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset inline-flex items-center gap-1"
 													>
 														<Plus class="w-2.5 h-2.5" /> Add milestone
 													</button>
@@ -802,7 +813,7 @@
 									<button
 										type="button"
 										onclick={() => onEditMilestone(m.id)}
-										class="w-full text-left rounded-md border border-border bg-background hover:bg-muted/40 px-3 py-2 transition-colors pressable {justCreated
+										class="w-full text-left rounded-md border border-border bg-background hover:bg-muted/40 px-3 py-2 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {justCreated
 											? 'entity-just-created'
 											: ''}"
 									>
@@ -861,7 +872,7 @@
 									<button
 										type="button"
 										onclick={onAddPlan}
-										class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-foreground/80 hover:bg-muted/50 pressable"
+										class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-foreground/80 hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 									>
 										<Plus class="w-3 h-3" /> New plan
 									</button>
@@ -878,7 +889,7 @@
 									<button
 										type="button"
 										onclick={() => onEditPlan(plan.id)}
-										class="w-full text-left rounded-md border border-border bg-background hover:bg-muted/40 px-3 py-2 transition-colors pressable {justCreated
+										class="w-full text-left rounded-md border border-border bg-background hover:bg-muted/40 px-3 py-2 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {justCreated
 											? 'entity-just-created'
 											: ''}"
 									>
@@ -922,7 +933,7 @@
 									<button
 										type="button"
 										onclick={onAddRisk}
-										class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-foreground/80 hover:bg-muted/50 pressable"
+										class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-foreground/80 hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 									>
 										<Plus class="w-3 h-3" /> New risk
 									</button>
@@ -940,7 +951,7 @@
 									<button
 										type="button"
 										onclick={() => onEditRisk(risk.id)}
-										class="w-full text-left rounded-md border border-border bg-background hover:bg-muted/40 px-3 py-2 transition-colors pressable {justCreated
+										class="w-full text-left rounded-md border border-border bg-background hover:bg-muted/40 px-3 py-2 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {justCreated
 											? 'entity-just-created'
 											: ''}"
 									>

@@ -37,6 +37,7 @@
 	import { slide } from 'svelte/transition';
 	import { toastService } from '$lib/stores/toast.store';
 	import { getRecentlyCreatedContext } from '$lib/stores/recentlyCreatedContext';
+	import { handleRovingTabKeydown, slideMotion } from '$lib/components/project/v2/board-a11y';
 	import type { Task } from '$lib/types/onto';
 
 	const recentlyCreated = getRecentlyCreatedContext();
@@ -145,6 +146,7 @@
 
 	let activeTab = $state<BucketKey>('in_progress');
 	let isExpanded = $state(true);
+	let tabButtons = $state<HTMLButtonElement[]>([]);
 
 	function toggleExpanded() {
 		isExpanded = !isExpanded;
@@ -154,6 +156,36 @@
 		activeTab = key;
 		if (key === 'archived' && !archivedLoaded && !archivedLoading) {
 			void loadArchived();
+		}
+	}
+
+	function onTabKeydown(event: KeyboardEvent, index: number) {
+		handleRovingTabKeydown(
+			event,
+			index,
+			BUCKETS.length,
+			(target) => selectTab(BUCKETS[target]!.key),
+			(target) => tabButtons[target]?.focus()
+		);
+	}
+
+	// Active-tab bottom bar: derive a border color from the bucket's text
+	// accent so colored buckets keep their semantic hue and the two neutral
+	// buckets (backlog/archived) still get a clearly-visible foreground bar.
+	function activeBar(accent: string): string {
+		switch (accent) {
+			case 'text-destructive':
+				return 'border-destructive';
+			case 'text-info':
+				return 'border-info';
+			case 'text-accent':
+				return 'border-accent';
+			case 'text-warning':
+				return 'border-warning';
+			case 'text-success':
+				return 'border-success';
+			default:
+				return 'border-foreground/50';
 		}
 	}
 
@@ -366,7 +398,7 @@
 			class="flex items-center gap-2 flex-1 min-w-0 text-left hover:bg-muted/60 rounded-lg transition-colors pressable"
 		>
 			<div
-				class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center shrink-0"
+				class="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-accent/10 flex items-center justify-center shrink-0"
 			>
 				<ListChecks class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
 			</div>
@@ -395,7 +427,7 @@
 				aria-label={isExpanded ? 'Collapse tasks' : 'Expand tasks'}
 			>
 				<ChevronDown
-					class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {isExpanded
+					class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] motion-reduce:transition-none {isExpanded
 						? 'rotate-180'
 						: ''}"
 				/>
@@ -404,18 +436,19 @@
 	</header>
 
 	{#if isExpanded}
-		<div id="mob-task-body" transition:slide={{ duration: 140 }}>
+		<div id="mob-task-body" transition:slide={slideMotion(140)}>
 			<!-- Status tabs: dedicated scroll viewport so the flex strip can grow
 		 wider than the card and scroll horizontally on touch. Edge fade
 		 hints at scrollability. -->
 			<div class="relative border-b border-border/60 bg-muted/15">
 				<div class="overflow-x-auto overscroll-x-contain no-scrollbar">
 					<div role="tablist" aria-label="Task status" class="flex w-max min-w-full">
-						{#each BUCKETS as bucket (bucket.key)}
+						{#each BUCKETS as bucket, index (bucket.key)}
 							{@const count = countFor(bucket)}
 							{@const isActive = activeTab === bucket.key}
 							{@const isPopulated = count > 0}
 							<button
+								bind:this={tabButtons[index]}
 								role="tab"
 								type="button"
 								id="task-tab-{bucket.key}"
@@ -423,9 +456,10 @@
 								aria-controls="task-panel-{bucket.key}"
 								tabindex={isActive ? 0 : -1}
 								onclick={() => selectTab(bucket.key)}
+								onkeydown={(e) => onTabKeydown(e, index)}
 								class="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold whitespace-nowrap transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-b-2 min-h-[44px]
 							{isActive
-									? `${bucket.accent} ${bucket.activeBg ?? bucket.bg} border-current`
+									? `text-foreground ${bucket.activeBg ?? 'bg-muted/60'} ${activeBar(bucket.accent)}`
 									: 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-transparent'}"
 							>
 								<bucket.icon
@@ -456,7 +490,7 @@
 			 on the rightmost scroll position via the pointer-events-none
 			 wrapper; the fade itself doesn't intercept touches. -->
 				<div
-					class="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-card to-transparent"
+					class="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-muted/15 to-transparent"
 					aria-hidden="true"
 				></div>
 			</div>
@@ -476,7 +510,9 @@
 							<div
 								class="flex items-center justify-center gap-2 py-8 text-xs text-muted-foreground"
 							>
-								<LoaderCircle class="w-3.5 h-3.5 animate-spin" />
+								<LoaderCircle
+									class="w-3.5 h-3.5 animate-spin motion-reduce:animate-none"
+								/>
 								Loading archived…
 							</div>
 						{:else if isArchive && archivedError && !archivedLoaded}
@@ -514,7 +550,7 @@
 								<button
 									type="button"
 									onclick={() => onEditTask(task.id)}
-									class="w-full min-w-0 text-left bg-background hover:bg-muted/50 active:bg-muted border border-border/60 rounded-md px-3 py-2.5 transition-colors pressable min-h-[44px]
+									class="w-full min-w-0 text-left bg-background hover:bg-muted/50 active:bg-muted border border-border/60 rounded-md px-3 py-2.5 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset min-h-[44px]
 										{justCreated ? 'entity-just-created' : ''}"
 								>
 									<p

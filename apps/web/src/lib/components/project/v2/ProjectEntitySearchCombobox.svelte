@@ -356,7 +356,7 @@
 				aria-expanded={showPanel}
 				aria-activedescendant={highlightedResultId}
 				placeholder="Search docs, tasks, goals, plans, events..."
-				class="h-10 w-full rounded-md border border-border bg-background pl-9 pr-10 text-sm text-foreground shadow-ink-inner transition-colors placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+				class="h-10 w-full rounded-lg border border-border bg-background pl-9 pr-10 text-sm text-foreground shadow-ink-inner transition-colors placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
 				bind:value={query}
 				{disabled}
 				onfocus={handleFocus}
@@ -365,12 +365,12 @@
 			/>
 			{#if loading}
 				<LoaderCircle
-					class="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground"
+					class="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin motion-reduce:animate-none text-muted-foreground"
 				/>
 			{:else if normalizedQuery}
 				<button
 					type="button"
-					class="absolute right-2 top-1/2 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					aria-label="Clear project search"
 					onclick={clearSearch}
 				>
@@ -384,7 +384,7 @@
 		<div
 			id={listboxId}
 			role="listbox"
-			class="absolute left-0 right-0 top-full z-50 mt-1 max-h-96 overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak"
+			class="absolute left-0 right-0 top-full z-50 mt-1 max-h-[50vh] overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak"
 		>
 			{#if errorMessage}
 				<div class="px-3 py-3 text-sm text-destructive" role="alert">
@@ -392,7 +392,7 @@
 				</div>
 			{:else if loading && results.length === 0}
 				<div class="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
-					<LoaderCircle class="h-4 w-4 animate-spin" />
+					<LoaderCircle class="h-4 w-4 animate-spin motion-reduce:animate-none" />
 					Searching project...
 				</div>
 			{:else if results.length === 0}
