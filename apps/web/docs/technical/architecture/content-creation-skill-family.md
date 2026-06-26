@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/architecture/content-creation-skill-family.md -->
+
 # Content Creation Skill Family — How It Works
 
 > One-pager. The agentic-chat skill system that walks an agent from a raw idea to a
@@ -171,21 +173,21 @@ sequenceDiagram
 
 ## File index
 
-| Role | Skill id | Path |
-| --- | --- | --- |
-| Spine | `content_creation_pipeline` | `definitions/content_creation_pipeline/SKILL.md` |
-| Lens (claim) | `idea_expansion_lens` | `definitions/idea_expansion_lens/SKILL.md` |
-| Lens (story) | `storyboard_journey_lens` | `definitions/storyboard_journey_lens/SKILL.md` |
-| Lens (conviction) | `lived_conviction_lens` | `definitions/lived_conviction_lens/SKILL.md` |
-| Lens (method) | `framework_extraction_lens` | `definitions/framework_extraction_lens/SKILL.md` |
-| Enhance | `sensory_double_tap` | `definitions/sensory_double_tap/SKILL.md` |
-| Tailor | `medium_tailoring` (+ `references/*.md`) | `definitions/medium_tailoring/SKILL.md` |
-| Craft (story) | `story_driven_content_craft` | `definitions/story_driven_content_craft/SKILL.md` |
-| Craft (essay) | `nonfiction_writing_from_lived_conviction` | `definitions/nonfiction_writing_from_lived_conviction/SKILL.md` |
-| Craft (opening) | `hook_craft_short_form` | `definitions/hook_craft_short_form/SKILL.md` |
-| Craft (video) | `viral_video_script_structure` | `definitions/viral_video_script_structure/SKILL.md` |
-| Strategy (channel) | `content_strategy_beyond_blogging` | `definitions/content_strategy_beyond_blogging/SKILL.md` |
-| Strategy (publish) | `algorithm_aware_publishing` (+ refs) | `definitions/algorithm_aware_publishing/SKILL.md` |
+| Role               | Skill id                                   | Path                                                            |
+| ------------------ | ------------------------------------------ | --------------------------------------------------------------- |
+| Spine              | `content_creation_pipeline`                | `definitions/content_creation_pipeline/SKILL.md`                |
+| Lens (claim)       | `idea_expansion_lens`                      | `definitions/idea_expansion_lens/SKILL.md`                      |
+| Lens (story)       | `storyboard_journey_lens`                  | `definitions/storyboard_journey_lens/SKILL.md`                  |
+| Lens (conviction)  | `lived_conviction_lens`                    | `definitions/lived_conviction_lens/SKILL.md`                    |
+| Lens (method)      | `framework_extraction_lens`                | `definitions/framework_extraction_lens/SKILL.md`                |
+| Enhance            | `sensory_double_tap`                       | `definitions/sensory_double_tap/SKILL.md`                       |
+| Tailor             | `medium_tailoring` (+ `references/*.md`)   | `definitions/medium_tailoring/SKILL.md`                         |
+| Craft (story)      | `story_driven_content_craft`               | `definitions/story_driven_content_craft/SKILL.md`               |
+| Craft (essay)      | `nonfiction_writing_from_lived_conviction` | `definitions/nonfiction_writing_from_lived_conviction/SKILL.md` |
+| Craft (opening)    | `hook_craft_short_form`                    | `definitions/hook_craft_short_form/SKILL.md`                    |
+| Craft (video)      | `viral_video_script_structure`             | `definitions/viral_video_script_structure/SKILL.md`             |
+| Strategy (channel) | `content_strategy_beyond_blogging`         | `definitions/content_strategy_beyond_blogging/SKILL.md`         |
+| Strategy (publish) | `algorithm_aware_publishing` (+ refs)      | `definitions/algorithm_aware_publishing/SKILL.md`               |
 
 Wiring: `skills/registry.ts` (`ALL_SKILLS`) · discovery `tools/domains/catalog.ts` · wrapper
 `skills/marketing-content.skill.ts`.

@@ -141,6 +141,7 @@
 		"@codemirror/state": "6.5.4",
 		"@codemirror/view": "6.39.12",
 		"@dagrejs/dagre": "^1.1.8",
+		"@lezer/common": "1.5.1",
 		"@lezer/highlight": "^1.2.3",
 		"@supabase/supabase-js": "^2.89.0",
 		"@tiptap/core": "^3.0.9",

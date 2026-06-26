@@ -27,6 +27,7 @@ export type ProjectLoopRiskTier = 1 | 2 | 3;
 export type ProjectSuggestionStatus =
 	| 'pending'
 	| 'approved'
+	| 'delegated'
 	| 'applied'
 	| 'rejected'
 	| 'superseded'
@@ -107,6 +108,8 @@ export interface ProjectSuggestion {
 	id: string;
 	run_id: string;
 	project_id: string;
+	chat_session_id: string | null;
+	agent_run_id: string | null;
 	kind: ProjectSuggestionKind;
 	risk_tier: ProjectLoopRiskTier;
 	title: string;

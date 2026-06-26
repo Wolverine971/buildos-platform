@@ -7,6 +7,7 @@
 		FileText,
 		Inbox,
 		LoaderCircle,
+		MessageCircle,
 		Sparkles,
 		X
 	} from 'lucide-svelte';
@@ -24,6 +25,9 @@
 	type InboxSourceType = 'agent_run' | 'project_suggestion' | 'calendar_suggestion';
 	type InboxItemStatus = 'pending' | 'deciding' | 'decided' | 'blocked' | 'expired' | 'snoozed';
 	type CloseSummary = { hasChanges: boolean; changedCount: number; remainingCount: number };
+	type AgentChatModalLazy =
+		| typeof import('$lib/components/agent/AgentChatModal.svelte').default
+		| null;
 
 	type InboxItem = {
 		id: string;
@@ -40,6 +44,9 @@
 		can_decide?: boolean;
 		decision_disabled_reason?: string | null;
 		source_payload?: Record<string, unknown> | null;
+		source_context?: {
+			project_loop_run?: ProjectLoopRunContext | null;
+		} | null;
 	};
 
 	type AgentRunPayload = {
@@ -75,6 +82,17 @@
 		tags?: string[];
 	};
 
+	type ProjectLoopRunContext = {
+		id: string;
+		trigger_reason: string | null;
+		status: string | null;
+		summary: string | null;
+		brief: Record<string, unknown> | null;
+		suggestion_count: number | null;
+		created_at: string | null;
+		finished_at: string | null;
+	};
+
 	let {
 		isOpen,
 		onClose
@@ -90,6 +108,11 @@
 	let changedCount = $state(0);
 	let wasOpen = $state(false);
 	let activeGroupKey = $state<string | null>(null);
+	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
+	let discussionChatSessionId = $state<string | null>(null);
+	let discussionProjectId = $state<string | null>(null);
+	let openingDiscussionIds = $state<Set<string>>(new Set());
+	let clarificationById = $state<Record<string, string>>({});
 
 	const accountGroupKey = 'account';
 
@@ -168,6 +191,10 @@
 		return sourcePayload<CalendarSuggestionPayload & Record<string, unknown>>(item);
 	}
 
+	function projectLoopRunContext(item: InboxItem): ProjectLoopRunContext | null {
+		return item.source_context?.project_loop_run ?? null;
+	}
+
 	function agentChangeSet(item: InboxItem): ChangeSet | null {
 		if (item.source_type !== 'agent_run') return null;
 		const changeSet = agentRun(item)?.change_set;
@@ -242,6 +269,20 @@
 		return `${Math.round(value * 100)}% confidence`;
 	}
 
+	function reviewRunLabel(run: ProjectLoopRunContext | null): string | null {
+		if (!run) return null;
+		const trigger =
+			run.trigger_reason === 'manual'
+				? 'Manual review'
+				: run.trigger_reason === 'burst'
+					? 'Burst review'
+					: run.trigger_reason === 'end_of_day'
+						? 'Scheduled review'
+						: 'Project review';
+		const date = formatShortDate(run.finished_at ?? run.created_at ?? undefined);
+		return date ? `${trigger} · ${date}` : trigger;
+	}
+
 	function tierFor(value: number | null | undefined): TierMeta {
 		if (!value) return fallbackTier;
 		return tierMeta[value] ?? fallbackTier;
@@ -279,11 +320,72 @@
 			return action === 'approve' ? 'Apply all' : 'Reject all';
 		if (item.source_type === 'calendar_suggestion')
 			return action === 'approve' ? 'Accept' : 'Reject';
+		if (item.source_type === 'project_suggestion' && clarificationFor(item)) {
+			return action === 'approve' ? 'Apply + note' : 'Dismiss + note';
+		}
 		return action === 'approve' ? 'Apply' : 'Dismiss';
+	}
+
+	function clarificationFor(item: InboxItem): string {
+		return item.source_type === 'project_suggestion'
+			? (clarificationById[item.id] ?? '').trim()
+			: '';
+	}
+
+	function setClarification(itemId: string, value: string) {
+		clarificationById = { ...clarificationById, [itemId]: value };
 	}
 
 	function canDecide(item: InboxItem): boolean {
 		return item.status === 'pending' && item.can_decide === true;
+	}
+
+	function canDiscuss(item: InboxItem): boolean {
+		return (
+			item.source_type === 'project_suggestion' && Boolean(item.project_id) && canDecide(item)
+		);
+	}
+
+	function isOpeningDiscussion(item: InboxItem): boolean {
+		return openingDiscussionIds.has(item.id);
+	}
+
+	async function loadAgentChatModal(): Promise<NonNullable<AgentChatModalLazy>> {
+		if (AgentChatModalComponent) return AgentChatModalComponent;
+		const module = await import('$lib/components/agent/AgentChatModal.svelte');
+		AgentChatModalComponent = module.default;
+		return module.default;
+	}
+
+	async function openDiscussion(item: InboxItem) {
+		if (!canDiscuss(item) || !item.project_id || isOpeningDiscussion(item)) return;
+		openingDiscussionIds = new Set(openingDiscussionIds).add(item.id);
+		try {
+			await loadAgentChatModal();
+			const res = await fetch(
+				`/api/onto/projects/${item.project_id}/suggestions/${item.source_ref_id}/chat-session`,
+				{ method: 'POST' }
+			);
+			const json = await res.json();
+			if (!res.ok) throw new Error(json?.error ?? 'Failed to open discussion');
+			const chatSessionId = json.data?.chat_session_id ?? json.data?.session?.id;
+			if (typeof chatSessionId !== 'string' || !chatSessionId) {
+				throw new Error('Discussion session was not returned');
+			}
+			discussionProjectId = item.project_id;
+			discussionChatSessionId = chatSessionId;
+		} catch (err) {
+			toastService.error(err instanceof Error ? err.message : 'Failed to open discussion');
+		} finally {
+			const next = new Set(openingDiscussionIds);
+			next.delete(item.id);
+			openingDiscussionIds = next;
+		}
+	}
+
+	function closeDiscussion() {
+		discussionChatSessionId = null;
+		discussionProjectId = null;
 	}
 
 	async function loadInbox() {
@@ -309,17 +411,28 @@
 		if (pendingIds.has(item.id)) return;
 		pendingIds = new Set(pendingIds).add(item.id);
 		try {
+			const clarification = clarificationFor(item);
 			const res = await fetch('/api/inbox/decide', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ item_id: item.id, action })
+				body: JSON.stringify({
+					item_id: item.id,
+					action,
+					...(item.source_type === 'project_suggestion' && clarification
+						? { clarification }
+						: {})
+				})
 			});
 			const json = await res.json();
 			if (!res.ok) throw new Error(json?.error ?? 'Action failed');
 
 			const result = json.data?.result as ProjectSuggestionResult | undefined;
-			if (action === 'approve' && result && result.ok === false) {
+			if (json.data?.delegated) {
+				toastService.success('Clarified decision started.');
+			} else if (action === 'approve' && result && result.ok === false) {
 				toastService.error('Some changes could not be applied.');
+			} else if (json.data?.degraded) {
+				toastService.info('Agent queue is full; handled directly.');
 			} else if (action === 'approve') {
 				toastService.success('Review item applied.');
 			} else {
@@ -343,6 +456,7 @@
 	}
 
 	function close() {
+		closeDiscussion();
 		onClose({
 			hasChanges: changedCount > 0,
 			changedCount,
@@ -505,6 +619,8 @@
 								{@const agent = agentRun(item)}
 								{@const changeSet = agentChangeSet(item)}
 								{@const calendar = calendarSuggestion(item)}
+								{@const reviewRun = projectLoopRunContext(item)}
+								{@const reviewRunText = reviewRunLabel(reviewRun)}
 								{@const taskPreview = calendarTasks(item)}
 								{@const eventPattern = calendarEventPattern(item)}
 								{@const dateRange = formatCalendarDateRange(eventPattern)}
@@ -537,6 +653,13 @@
 														class="text-[10px] font-medium uppercase text-muted-foreground"
 													>
 														{kindLabel[payload.kind] ?? payload.kind}
+													</span>
+												{/if}
+												{#if reviewRunText}
+													<span
+														class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+													>
+														{reviewRunText}
 													</span>
 												{/if}
 											</div>
@@ -702,31 +825,72 @@
 										</div>
 
 										{#if canDecide(item) && !changeSet}
-											<div class="flex shrink-0 items-center gap-2">
-												<button
-													type="button"
-													class="pressable inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-2.5 py-1.5 text-[12px] font-semibold text-success hover:bg-success/15 disabled:opacity-50"
-													onclick={() => decide(item, 'approve')}
-													disabled={pendingIds.has(item.id)}
+											<div
+												class="flex shrink-0 flex-col items-stretch gap-2 sm:w-56 sm:items-end"
+											>
+												{#if item.source_type === 'project_suggestion'}
+													<input
+														class="h-8 w-full rounded-md border border-border bg-card px-2 text-[11px] text-foreground placeholder:text-muted-foreground"
+														value={clarificationById[item.id] ?? ''}
+														oninput={(event) =>
+															setClarification(
+																item.id,
+																(
+																	event.currentTarget as HTMLInputElement
+																).value
+															)}
+														placeholder="Optional clarification"
+														aria-label="Clarification"
+													/>
+												{/if}
+												<div
+													class="flex flex-wrap items-center justify-end gap-2"
 												>
-													{#if pendingIds.has(item.id)}
-														<LoaderCircle
-															class="h-3.5 w-3.5 animate-spin"
-														/>
-													{:else}
-														<Check class="h-3.5 w-3.5" />
+													{#if canDiscuss(item)}
+														<button
+															type="button"
+															class="pressable inline-flex items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2.5 py-1.5 text-[12px] font-semibold text-accent hover:bg-accent/15 disabled:opacity-50"
+															onclick={() => openDiscussion(item)}
+															disabled={pendingIds.has(item.id) ||
+																isOpeningDiscussion(item)}
+														>
+															{#if isOpeningDiscussion(item)}
+																<LoaderCircle
+																	class="h-3.5 w-3.5 animate-spin"
+																/>
+															{:else}
+																<MessageCircle
+																	class="h-3.5 w-3.5"
+																/>
+															{/if}
+															Discuss
+														</button>
 													{/if}
-													{actionLabel(item, 'approve')}
-												</button>
-												<button
-													type="button"
-													class="pressable inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-[12px] font-semibold text-muted-foreground hover:bg-muted disabled:opacity-50"
-													onclick={() => decide(item, 'reject')}
-													disabled={pendingIds.has(item.id)}
-												>
-													<X class="h-3.5 w-3.5" />
-													{actionLabel(item, 'reject')}
-												</button>
+													<button
+														type="button"
+														class="pressable inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-2.5 py-1.5 text-center text-[12px] font-semibold leading-tight text-success hover:bg-success/15 disabled:opacity-50"
+														onclick={() => decide(item, 'approve')}
+														disabled={pendingIds.has(item.id)}
+													>
+														{#if pendingIds.has(item.id)}
+															<LoaderCircle
+																class="h-3.5 w-3.5 animate-spin"
+															/>
+														{:else}
+															<Check class="h-3.5 w-3.5" />
+														{/if}
+														{actionLabel(item, 'approve')}
+													</button>
+													<button
+														type="button"
+														class="pressable inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-center text-[12px] font-semibold leading-tight text-muted-foreground hover:bg-muted disabled:opacity-50"
+														onclick={() => decide(item, 'reject')}
+														disabled={pendingIds.has(item.id)}
+													>
+														<X class="h-3.5 w-3.5" />
+														{actionLabel(item, 'reject')}
+													</button>
+												</div>
 											</div>
 										{:else if !canDecide(item)}
 											<div
@@ -745,3 +909,13 @@
 		{/if}
 	</div>
 </Modal>
+
+{#if AgentChatModalComponent && discussionChatSessionId && discussionProjectId}
+	<AgentChatModalComponent
+		isOpen={Boolean(discussionChatSessionId)}
+		contextType="project"
+		entityId={discussionProjectId}
+		initialChatSessionId={discussionChatSessionId}
+		onClose={closeDiscussion}
+	/>
+{/if}

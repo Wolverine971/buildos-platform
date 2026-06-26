@@ -24,7 +24,8 @@ import {
 	type AgentOpScope,
 	executeAgentOp,
 	isWriteOp,
-	syncInboxItemForAgentRun
+	syncInboxItemForAgentRun,
+	syncInboxItemForProjectSuggestion
 } from '@buildos/shared-agent-ops';
 import {
 	buildGatewayEntityUrl,
@@ -222,6 +223,115 @@ async function injectChatCompletionMessage(
 	});
 	if (error) {
 		console.error('[agentRunWorker] failed to inject chat completion message', error.message);
+	}
+}
+
+function readNonEmptyString(value: unknown): string | null {
+	return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function readStringArray(value: unknown): string[] {
+	return Array.isArray(value)
+		? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+		: [];
+}
+
+function buildSourceSuggestionResult(params: {
+	run: AgentRunRow;
+	finalStatus: AgentRunRow['status'];
+	sourceDecision: 'approve' | 'dismiss';
+	result: Record<string, unknown>;
+}): Record<string, unknown> {
+	const entitiesTouched = normalizeEntityTouches(params.result.entities_touched);
+	const summary = readNonEmptyString(params.result.summary);
+	const answer = readNonEmptyString(params.result.answer);
+	const openQuestions = readStringArray(params.result.open_questions);
+	const error =
+		readNonEmptyString(params.result.error) ??
+		(params.finalStatus === 'cancelled'
+			? 'Clarified decision run was cancelled.'
+			: params.finalStatus === 'needs_input'
+				? 'Clarified decision run needs input.'
+				: params.finalStatus === 'partial'
+					? 'Clarified decision run finished partially.'
+					: params.finalStatus === 'failed'
+						? 'Clarified decision run failed.'
+						: null);
+	const ok = params.finalStatus === 'completed';
+
+	return {
+		ok,
+		applied_operations: ok ? entitiesTouched.length : 0,
+		agent_run_id: params.run.id,
+		agent_run_status: params.finalStatus,
+		source_decision: params.sourceDecision,
+		...(summary ? { summary } : {}),
+		...(answer ? { answer } : {}),
+		...(openQuestions.length ? { open_questions: openQuestions } : {}),
+		...(entitiesTouched.length ? { entities_touched: entitiesTouched } : {}),
+		...(!ok && error ? { errors: [{ tool: 'agent_run', error }] } : {})
+	};
+}
+
+async function reconcileSourceProjectSuggestion(params: {
+	run: AgentRunRow;
+	finalStatus: AgentRunRow['status'];
+	result: Record<string, unknown>;
+	completedAt: string;
+}): Promise<void> {
+	const suggestionId = readNonEmptyString(params.run.source_suggestion_id);
+	const sourceDecision = params.run.source_decision;
+	if (!suggestionId || (sourceDecision !== 'approve' && sourceDecision !== 'dismiss')) return;
+
+	const suggestionResult = buildSourceSuggestionResult({
+		run: params.run,
+		finalStatus: params.finalStatus,
+		sourceDecision,
+		result: params.result
+	});
+	const succeeded = params.finalStatus === 'completed';
+	const nextStatus = succeeded
+		? sourceDecision === 'approve'
+			? 'applied'
+			: 'rejected'
+		: 'failed';
+	const patch: Record<string, unknown> = {
+		status: nextStatus,
+		result: suggestionResult as never,
+		agent_run_id: params.run.id,
+		updated_at: params.completedAt
+	};
+	if (succeeded && sourceDecision === 'approve') {
+		patch.applied_at = params.completedAt;
+	}
+
+	const { data: updated, error } = await supabase
+		.from('project_suggestions')
+		.update(patch as never)
+		.eq('id', suggestionId)
+		.eq('status', 'delegated')
+		.select('*')
+		.maybeSingle();
+
+	if (error) {
+		console.warn(
+			`⚠️ Failed to reconcile project suggestion ${suggestionId} from agent run ${params.run.id}:`,
+			error.message
+		);
+		return;
+	}
+
+	try {
+		await syncInboxItemForProjectSuggestion({
+			supabase: supabase as any,
+			suggestion: (updated as unknown as Record<string, unknown> | null) ?? undefined,
+			suggestionId
+		});
+	} catch (syncError) {
+		console.warn(
+			`⚠️ Failed to sync AI Inbox item for project suggestion ${suggestionId}:`,
+			syncError instanceof Error ? syncError.message : syncError
+		);
 	}
 }
 
@@ -647,6 +757,12 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 				completed_at: completedAt
 			})
 			.eq('id', runId);
+		await reconcileSourceProjectSuggestion({
+			run,
+			finalStatus,
+			result: resultWithProposal,
+			completedAt
+		});
 		if (changeSet) {
 			try {
 				await syncInboxItemForAgentRun({

@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-06-25T05:56:20.284Z
+// Generated on: 2026-06-26T16:45:51.176Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -268,6 +268,8 @@ export type DatabaseSchema = {
 		result: Json | null;
 		review_required: boolean;
 		scope_mode: string;
+		source_decision: string | null;
+		source_suggestion_id: string | null;
 		started_at: string | null;
 		status: string;
 		trigger: string;
@@ -2483,7 +2485,9 @@ export type DatabaseSchema = {
 		user_id: string;
 	};
 	project_suggestions: {
+		agent_run_id: string | null;
 		applied_at: string | null;
+		chat_session_id: string | null;
 		confidence: number | null;
 		created_at: string;
 		decided_at: string | null;

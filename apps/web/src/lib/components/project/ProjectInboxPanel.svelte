@@ -7,6 +7,7 @@
 		FileText,
 		Inbox,
 		LoaderCircle,
+		MessageCircle,
 		RefreshCw,
 		Sparkles,
 		X
@@ -26,6 +27,9 @@
 
 	type InboxSourceType = 'agent_run' | 'project_suggestion' | 'calendar_suggestion';
 	type InboxItemStatus = 'pending' | 'deciding' | 'decided' | 'blocked' | 'expired' | 'snoozed';
+	type AgentChatModalLazy =
+		| typeof import('$lib/components/agent/AgentChatModal.svelte').default
+		| null;
 
 	type InboxItem = {
 		id: string;
@@ -40,6 +44,9 @@
 		can_decide?: boolean;
 		decision_disabled_reason?: string | null;
 		source_payload?: Record<string, unknown> | null;
+		source_context?: {
+			project_loop_run?: ProjectLoopRunContext | null;
+		} | null;
 	};
 
 	type InboxPayload = {
@@ -57,6 +64,17 @@
 		goal?: string | null;
 		label?: string | null;
 		change_set?: ChangeSet | null;
+	};
+
+	type ProjectLoopRunContext = {
+		id: string;
+		trigger_reason: string | null;
+		status: string | null;
+		summary: string | null;
+		brief: ProjectLoopRun['brief'] | null;
+		suggestion_count: number | null;
+		created_at: string | null;
+		finished_at: string | null;
 	};
 
 	let {
@@ -79,6 +97,9 @@
 	let selectedIds = $state<Set<string>>(new Set());
 	let dismissReasonById = $state<Record<string, string>>({});
 	let dismissNoteById = $state<Record<string, string>>({});
+	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
+	let discussionChatSessionId = $state<string | null>(null);
+	let openingDiscussionIds = $state<Set<string>>(new Set());
 
 	const POLL_INTERVAL_MS = 2500;
 	const MAX_POLL_MS = 2 * 60 * 1000;
@@ -195,6 +216,10 @@
 		return sourcePayload<AgentRunPayload & Record<string, unknown>>(item);
 	}
 
+	function projectLoopRunContext(item: InboxItem): ProjectLoopRunContext | null {
+		return item.source_context?.project_loop_run ?? null;
+	}
+
 	function agentChangeSet(item: InboxItem): ChangeSet | null {
 		if (item.source_type !== 'agent_run') return null;
 		const changeSet = agentRun(item)?.change_set;
@@ -206,6 +231,27 @@
 
 	function evidenceLabel(ref: ProjectSuggestionEvidenceRef): string {
 		return `${evidenceTypeLabel[ref.entity_type] ?? 'Source'}: ${ref.title}`;
+	}
+
+	function formatShortDate(value: string | null | undefined): string | null {
+		if (!value) return null;
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return null;
+		return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+	}
+
+	function reviewRunLabel(run: ProjectLoopRunContext | null): string | null {
+		if (!run) return null;
+		const trigger =
+			run.trigger_reason === 'manual'
+				? 'Manual review'
+				: run.trigger_reason === 'burst'
+					? 'Burst review'
+					: run.trigger_reason === 'end_of_day'
+						? 'Scheduled review'
+						: 'Project review';
+		const date = formatShortDate(run.finished_at ?? run.created_at);
+		return date ? `${trigger} · ${date}` : trigger;
 	}
 
 	function sourceLabel(item: InboxItem): string {
@@ -236,6 +282,7 @@
 
 	function canBatchApprove(item: InboxItem): boolean {
 		if (!canDecide(item) || item.source_type !== 'project_suggestion') return false;
+		if (clarificationFor(item)) return false;
 		const payload = projectSuggestion(item);
 		const riskTier = payload?.risk_tier ?? item.risk_tier ?? 3;
 		const operations = arrayValue<{ tool?: string }>(payload?.operations);
@@ -260,6 +307,58 @@
 
 	function setDismissNote(itemId: string, note: string) {
 		dismissNoteById = { ...dismissNoteById, [itemId]: note };
+	}
+
+	function clarificationFor(item: InboxItem): string {
+		return item.source_type === 'project_suggestion'
+			? (dismissNoteById[item.id] ?? '').trim()
+			: '';
+	}
+
+	async function loadAgentChatModal(): Promise<NonNullable<AgentChatModalLazy>> {
+		if (AgentChatModalComponent) return AgentChatModalComponent;
+		const module = await import('$lib/components/agent/AgentChatModal.svelte');
+		AgentChatModalComponent = module.default;
+		return module.default;
+	}
+
+	function canDiscuss(item: InboxItem): boolean {
+		return item.source_type === 'project_suggestion' && canDecide(item);
+	}
+
+	function isOpeningDiscussion(item: InboxItem): boolean {
+		return openingDiscussionIds.has(item.id);
+	}
+
+	async function openDiscussion(item: InboxItem) {
+		if (!canDiscuss(item) || isOpeningDiscussion(item)) return;
+		openingDiscussionIds = new Set(openingDiscussionIds).add(item.id);
+		try {
+			await loadAgentChatModal();
+			const res = await fetch(
+				`/api/onto/projects/${projectId}/suggestions/${item.source_ref_id}/chat-session`,
+				{ method: 'POST' }
+			);
+			const json = await res.json();
+			if (!res.ok) throw new Error(json?.error ?? 'Failed to open discussion');
+			const chatSessionId = json.data?.chat_session_id ?? json.data?.session?.id;
+			if (typeof chatSessionId !== 'string' || !chatSessionId) {
+				throw new Error('Discussion session was not returned');
+			}
+			discussionChatSessionId = chatSessionId;
+		} catch (error) {
+			toastService.error(
+				error instanceof Error ? error.message : 'Failed to open discussion'
+			);
+		} finally {
+			const next = new Set(openingDiscussionIds);
+			next.delete(item.id);
+			openingDiscussionIds = next;
+		}
+	}
+
+	function closeDiscussion() {
+		discussionChatSessionId = null;
 	}
 
 	function completionMessage(run: ProjectLoopRun, itemCount: number): string {
@@ -393,6 +492,9 @@
 			return action === 'approve' ? 'Apply all' : 'Reject all';
 		if (item.source_type === 'calendar_suggestion')
 			return action === 'approve' ? 'Accept' : 'Reject';
+		if (item.source_type === 'project_suggestion' && clarificationFor(item)) {
+			return action === 'approve' ? 'Apply + note' : 'Dismiss + note';
+		}
 		return action === 'approve' ? (changeCount(item) ? 'Apply' : 'Acknowledge') : 'Dismiss';
 	}
 
@@ -400,12 +502,16 @@
 		if (pendingIds.has(item.id)) return;
 		pendingIds = new Set(pendingIds).add(item.id);
 		try {
+			const clarification = clarificationFor(item);
 			const res = await fetch('/api/inbox/decide', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					item_id: item.id,
 					action,
+					...(item.source_type === 'project_suggestion' && clarification
+						? { clarification }
+						: {}),
 					...(action === 'reject' && item.source_type === 'project_suggestion'
 						? {
 								reason: dismissReasonById[item.id] || 'other',
@@ -420,8 +526,12 @@
 			const result = json.data?.result as ProjectSuggestionResult | undefined;
 			if (json.data?.superseded) {
 				toastService.error('Review item changed. Rerun Project Review.');
+			} else if (json.data?.delegated) {
+				toastService.success('Clarified decision started.');
 			} else if (action === 'approve' && result && result.ok === false) {
 				toastService.error('Some changes could not be applied.');
+			} else if (json.data?.degraded) {
+				toastService.info('Agent queue is full; handled directly.');
 			} else if (action === 'approve') {
 				toastService.success(
 					changeCount(item) ? 'Review item applied.' : 'Review item acknowledged.'
@@ -642,6 +752,8 @@
 				{#each group.items as item (item.id)}
 					{@const payload = projectSuggestion(item)}
 					{@const agent = agentRun(item)}
+					{@const reviewRun = projectLoopRunContext(item)}
+					{@const reviewRunText = reviewRunLabel(reviewRun)}
 					{@const changeSet = agentChangeSet(item)}
 					{@const tier = tierFor(item.risk_tier ?? payload?.risk_tier)}
 					{@const Icon = sourceIcon(item)}
@@ -685,6 +797,13 @@
 											class="text-[10px] font-medium uppercase text-muted-foreground"
 										>
 											{kindLabel[payload.kind] ?? payload.kind}
+										</span>
+									{/if}
+									{#if reviewRunText}
+										<span
+											class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+										>
+											{reviewRunText}
 										</span>
 									{/if}
 								</div>
@@ -747,7 +866,7 @@
 									<div class="flex items-center gap-2">
 										<button
 											type="button"
-											class="pressable inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-success/30 bg-success/10 px-2.5 py-1.5 text-[12px] font-semibold text-success hover:bg-success/15 disabled:opacity-50"
+											class="pressable inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-success/30 bg-success/10 px-2.5 py-1.5 text-center text-[12px] font-semibold leading-tight text-success hover:bg-success/15 disabled:opacity-50"
 											onclick={() => decide(item, 'approve')}
 											disabled={pendingIds.has(item.id)}
 										>
@@ -760,7 +879,7 @@
 										</button>
 										<button
 											type="button"
-											class="pressable inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-[12px] font-semibold text-muted-foreground hover:bg-muted disabled:opacity-50"
+											class="pressable inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-center text-[12px] font-semibold leading-tight text-muted-foreground hover:bg-muted disabled:opacity-50"
 											onclick={() => decide(item, 'reject')}
 											disabled={pendingIds.has(item.id)}
 										>
@@ -769,6 +888,24 @@
 										</button>
 									</div>
 									{#if item.source_type === 'project_suggestion'}
+										{#if canDiscuss(item)}
+											<button
+												type="button"
+												class="pressable inline-flex h-8 items-center justify-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2 text-[12px] font-semibold text-accent hover:bg-accent/15 disabled:opacity-50"
+												onclick={() => openDiscussion(item)}
+												disabled={pendingIds.has(item.id) ||
+													isOpeningDiscussion(item)}
+											>
+												{#if isOpeningDiscussion(item)}
+													<LoaderCircle
+														class="h-3.5 w-3.5 animate-spin"
+													/>
+												{:else}
+													<MessageCircle class="h-3.5 w-3.5" />
+												{/if}
+												Discuss
+											</button>
+										{/if}
 										<select
 											class="h-8 rounded-md border border-border bg-card px-2 text-[11px] text-foreground"
 											value={dismissReasonById[item.id] || 'other'}
@@ -791,8 +928,8 @@
 													item.id,
 													(event.currentTarget as HTMLInputElement).value
 												)}
-											placeholder="Optional note"
-											aria-label="Dismiss note"
+											placeholder="Optional clarification"
+											aria-label="Clarification or dismiss note"
 										/>
 									{/if}
 								</div>
@@ -810,3 +947,13 @@
 		</div>
 	{/if}
 </div>
+
+{#if AgentChatModalComponent && discussionChatSessionId}
+	<AgentChatModalComponent
+		isOpen={Boolean(discussionChatSessionId)}
+		contextType="project"
+		entityId={projectId}
+		initialChatSessionId={discussionChatSessionId}
+		onClose={closeDiscussion}
+	/>
+{/if}

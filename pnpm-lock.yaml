@@ -124,6 +124,9 @@ importers:
       '@dagrejs/dagre':
         specifier: ^1.1.8
         version: 1.1.8
+      '@lezer/common':
+        specifier: 1.5.1
+        version: 1.5.1
       '@lezer/highlight':
         specifier: ^1.2.3
         version: 1.2.3

@@ -13,6 +13,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
+import { decideProjectSuggestionWithClarification } from '$lib/server/clarified-decision.service';
 import { decideProjectSuggestion } from '$lib/server/project-suggestion-actions.service';
 
 export const POST: RequestHandler = async ({ params, locals, request }) => {
@@ -25,7 +26,13 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 	});
 	if (!access.ok) return access.response;
 
-	let body: { action?: string; reason?: unknown; note?: unknown; feedback?: unknown };
+	let body: {
+		action?: string;
+		reason?: unknown;
+		note?: unknown;
+		feedback?: unknown;
+		clarification?: unknown;
+	};
 	try {
 		body = await request.json();
 	} catch {
@@ -37,22 +44,46 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 		return ApiResponse.badRequest("action must be 'approve' or 'dismiss'");
 	}
 
-	const outcome = await decideProjectSuggestion({
-		supabase: locals.supabase,
-		userId: access.userId,
-		projectId: access.projectId,
-		suggestionId: params.suggestion_id,
-		action,
-		feedback: body.feedback ?? { reason: body.reason, note: body.note }
-	});
+	const clarification =
+		typeof body.clarification === 'string' && body.clarification.trim()
+			? body.clarification
+			: null;
+	const outcome = clarification
+		? await decideProjectSuggestionWithClarification({
+				supabase: locals.supabase,
+				userId: access.userId,
+				projectId: access.projectId,
+				suggestionId: params.suggestion_id,
+				action,
+				clarification,
+				reason: body.reason
+			})
+		: await decideProjectSuggestion({
+				supabase: locals.supabase,
+				userId: access.userId,
+				projectId: access.projectId,
+				suggestionId: params.suggestion_id,
+				action,
+				feedback: body.feedback ?? { reason: body.reason, note: body.note }
+			});
 
 	if (!outcome.ok) {
 		return ApiResponse.error(outcome.message, outcome.status);
 	}
+	const extendedOutcome = outcome as typeof outcome & {
+		agentRun?: Record<string, unknown>;
+		agent_run_id?: string;
+		delegated?: boolean;
+		degraded?: boolean;
+	};
 
 	return ApiResponse.success({
 		suggestion: outcome.suggestion,
 		result: outcome.result,
+		agentRun: extendedOutcome.agentRun,
+		agent_run_id: extendedOutcome.agent_run_id,
+		delegated: extendedOutcome.delegated ?? false,
+		degraded: extendedOutcome.degraded ?? false,
 		alreadyDecided: outcome.alreadyDecided ?? false,
 		superseded: outcome.superseded ?? false
 	});

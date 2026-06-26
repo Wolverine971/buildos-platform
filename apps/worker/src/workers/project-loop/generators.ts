@@ -33,8 +33,18 @@ export interface LoopDocument {
 export interface LoopTask {
 	id: string;
 	title: string;
+	description: string | null;
 	state_key: string | null;
 	updated_at: string | null;
+}
+
+export interface LoopPriorDecision {
+	title: string;
+	kind: string;
+	status: string;
+	reason?: string | null;
+	note?: string | null;
+	decided_at?: string | null;
 }
 
 export interface LoopContext {
@@ -45,6 +55,7 @@ export interface LoopContext {
 	documents: LoopDocument[];
 	docStructureSummary: string;
 	tasks: LoopTask[];
+	priorDecisions: LoopPriorDecision[];
 }
 
 interface RawSuggestion {
@@ -293,11 +304,32 @@ function describeDocuments(documents: LoopDocument[]): string {
 function describeTasks(tasks: LoopTask[]): string {
 	if (!tasks.length) return '(none)';
 	return tasks
-		.map(
-			(t) =>
-				`- [${t.id}] "${t.title}" (state=${t.state_key ?? 'n/a'}, updated=${t.updated_at ?? 'n/a'})`
-		)
+		.map((t) => {
+			const desc = t.description ? ` — ${t.description.slice(0, 160)}` : '';
+			return `- [${t.id}] "${t.title}" (state=${t.state_key ?? 'n/a'}, updated=${t.updated_at ?? 'n/a'})${desc}`;
+		})
 		.join('\n');
+}
+
+function describePriorDecisions(decisions: LoopPriorDecision[] | undefined): string {
+	if (!decisions?.length) return '(none)';
+	return decisions
+		.map((decision) => {
+			const note = truncate(decision.note, 180);
+			const reason = truncate(decision.reason, 80);
+			const feedback = [
+				reason ? `reason=${reason}` : null,
+				note ? `note=${note}` : null
+			].filter(Boolean);
+			const suffix = feedback.length ? ` — ${feedback.join('; ')}` : '';
+			const decidedAt = decision.decided_at ? `, decided=${decision.decided_at}` : '';
+			return `- ${decision.kind}: "${decision.title}" (${decision.status}${decidedAt})${suffix}`;
+		})
+		.join('\n');
+}
+
+function priorDecisionContext(ctx: LoopContext): string {
+	return `Previously reviewed decisions:\n${describePriorDecisions(ctx.priorDecisions)}`;
 }
 
 function docMoveUndoOperations(operations: LoopOperation[], ctx: LoopContext): LoopOperation[] {
@@ -415,6 +447,7 @@ export async function generateProjectBrief(params: {
 		'You write a compact BuildOS Project Review brief.',
 		'Use only the project evidence provided. Be specific, cautious, and concise.',
 		'Do not invent dates, documents, tasks, or facts.',
+		'Respect previously reviewed decisions; do not present dismissed/applied items as new unless current evidence materially changes them.',
 		'',
 		'Return ONLY JSON: { "brief": {',
 		'  "current_goal": string|null,',
@@ -426,7 +459,7 @@ export async function generateProjectBrief(params: {
 		'} }'
 	].join('\n');
 
-	const userPrompt = `${PROJECT_HEADER(ctx)}\n\nCurrent document tree:\n${ctx.docStructureSummary}\n\nDocuments:\n${describeDocuments(ctx.documents)}\n\nOpen tasks:\n${describeTasks(ctx.tasks)}`;
+	const userPrompt = `${PROJECT_HEADER(ctx)}\n\nCurrent document tree:\n${ctx.docStructureSummary}\n\nDocuments:\n${describeDocuments(ctx.documents)}\n\nOpen tasks:\n${describeTasks(ctx.tasks)}\n\n${priorDecisionContext(ctx)}`;
 
 	try {
 		const raw = await callBriefGenerator({
@@ -475,6 +508,7 @@ export async function generateDocOrganization(params: {
 		'- A parent must be one of the existing document ids provided.',
 		'- Prefer shallow trees (1-2 levels). Group only when there is a clear theme.',
 		'- Do NOT propose a move that keeps a document exactly where it already is.',
+		'- Do NOT re-raise a previously reviewed decision unless materially new evidence changes the recommendation.',
 		'- Each suggestion = one coherent grouping, with its move operations.',
 		'',
 		'The only tool you may emit is move_document_in_tree with args:',
@@ -493,7 +527,7 @@ export async function generateDocOrganization(params: {
 		'If the documents are already well organized, return { "suggestions": [] }.'
 	].join('\n');
 
-	const userPrompt = `${PROJECT_HEADER(ctx)}\n\nCurrent document tree:\n${ctx.docStructureSummary}\n\nDocuments:\n${describeDocuments(ctx.documents)}`;
+	const userPrompt = `${PROJECT_HEADER(ctx)}\n\nCurrent document tree:\n${ctx.docStructureSummary}\n\nDocuments:\n${describeDocuments(ctx.documents)}\n\n${priorDecisionContext(ctx)}`;
 
 	const raw = await callGenerator({
 		llm: params.llm,
@@ -555,6 +589,7 @@ export async function generateOutdatedDocs(params: {
 		'or SUPERSEDED relative to the project goals and recent activity (e.g. old plans,',
 		'drafts overtaken by newer docs, notes whose subject is clearly done).',
 		'Be conservative — only flag documents you are reasonably confident are stale.',
+		'Do not re-raise documents that were previously dismissed/applied unless materially new evidence changes the stale/outdated judgment.',
 		'',
 		'For each flagged document emit ONE suggestion whose single operation marks the',
 		'document with a non-destructive props flag using update_onto_document:',
@@ -578,11 +613,11 @@ export async function generateOutdatedDocs(params: {
 			? ctx.tasks
 					.map(
 						(t) =>
-							`- "${t.title}" (state=${t.state_key ?? 'n/a'}, updated=${t.updated_at ?? 'n/a'})`
+							`- "${t.title}" (state=${t.state_key ?? 'n/a'}, updated=${t.updated_at ?? 'n/a'})${t.description ? ` — ${t.description.slice(0, 160)}` : ''}`
 					)
 					.join('\n')
 			: '(none)'
-	}`;
+	}\n\n${priorDecisionContext(ctx)}`;
 
 	const raw = await callGenerator({
 		llm: params.llm,
@@ -652,6 +687,7 @@ export async function generateDrift(params: {
 		'- Do NOT propose writes. Drift items are informational review decisions.',
 		'- Prefer 0-3 high-signal items.',
 		'- Attach evidence_refs from documents, tasks, goals, or project.',
+		'- Do NOT re-raise previously reviewed drift unless materially new evidence changes the assessment.',
 		'',
 		'Return ONLY JSON: { "suggestions": [ {',
 		'  "title": string,',
@@ -665,7 +701,7 @@ export async function generateDrift(params: {
 		'If no clear drift exists, return { "suggestions": [] }.'
 	].join('\n');
 
-	const userPrompt = `${PROJECT_HEADER(ctx)}\n\nDocuments:\n${describeDocuments(ctx.documents)}\n\nOpen tasks:\n${describeTasks(ctx.tasks)}`;
+	const userPrompt = `${PROJECT_HEADER(ctx)}\n\nDocuments:\n${describeDocuments(ctx.documents)}\n\nOpen tasks:\n${describeTasks(ctx.tasks)}\n\n${priorDecisionContext(ctx)}`;
 
 	const raw = await callGenerator({
 		llm: params.llm,
@@ -723,6 +759,7 @@ export async function generateTaskConflicts(params: {
 		'Rules:',
 		'- Be conservative. Prefer no suggestion over a weak match.',
 		'- Do not delete, merge, or mark tasks done.',
+		'- Do NOT re-raise a task conflict that was already reviewed unless materially new evidence changes the conflict.',
 		'- For each conflict, emit one non-destructive update_onto_task operation',
 		'  that flags ONE task with props:',
 		'  { "loop_flagged_conflict": true, "loop_conflict_kind": "duplicate|contradiction|blocked_by", "loop_conflict_with_task_id": "<other task id>", "loop_conflict_reason": "<short reason>" }',
@@ -740,7 +777,7 @@ export async function generateTaskConflicts(params: {
 		'If no clear conflicts exist, return { "suggestions": [] }.'
 	].join('\n');
 
-	const userPrompt = `${PROJECT_HEADER(ctx)}\n\nOpen tasks:\n${describeTasks(ctx.tasks)}`;
+	const userPrompt = `${PROJECT_HEADER(ctx)}\n\nOpen tasks:\n${describeTasks(ctx.tasks)}\n\n${priorDecisionContext(ctx)}`;
 
 	const raw = await callGenerator({
 		llm: params.llm,

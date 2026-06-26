@@ -132,6 +132,36 @@
 		</div>
 	</section>
 
+	<!-- Why we made it (skeptical-why hook, Nest-style) -->
+	<section class="py-12 sm:py-16 bg-background" aria-labelledby="why-heading">
+		<div class="max-w-3xl mx-auto px-4 sm:px-6">
+			<p class="text-xs sm:text-sm font-semibold text-accent mb-4 text-center">
+				Why we made it
+			</p>
+			<h2
+				id="why-heading"
+				class="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-6 text-pretty leading-[1.1] text-center"
+			>
+				We didn't think the world needed another AI app either.
+			</h2>
+			<div class="space-y-4 text-base sm:text-lg leading-8 text-muted-foreground">
+				<p>
+					Then we caught ourselves doing the same thing every single day: opening a fresh
+					chat, re-explaining the same project from scratch, watching good thinking
+					evaporate the moment the tab closed.
+				</p>
+				<p>
+					The tools were never the problem. The problem was that none of them remembered.
+					Every session started at zero, so the work never compounded — it just reset.
+				</p>
+				<p class="text-foreground font-medium">
+					So we built the thing we actually needed: a place that holds your thinking, so
+					you — and your agents — never start from scratch again.
+				</p>
+			</div>
+		</div>
+	</section>
+
 	<!-- Before / After -->
 	<section class="py-10 sm:py-12 bg-background" aria-labelledby="problem-heading">
 		<div class="max-w-5xl mx-auto px-4 sm:px-6">
@@ -313,6 +343,37 @@
 		</div>
 	</section>
 
+	<!-- Mission / Vision -->
+	<section class="py-10 sm:py-12 bg-background" aria-labelledby="mission-heading">
+		<div class="max-w-3xl mx-auto px-4 sm:px-6">
+			<header class="text-center mb-6">
+				<p class="text-xs sm:text-sm font-semibold text-accent mb-3">What we're building</p>
+				<h2
+					id="mission-heading"
+					class="text-2xl sm:text-3xl font-bold text-foreground mb-3"
+				>
+					A thinking environment, not another chatbot
+				</h2>
+			</header>
+			<div class="space-y-4 text-sm sm:text-base leading-7 text-muted-foreground">
+				<p>
+					Most AI tools hand you a chat box and call it a product. But a chat box
+					collapses everything — capturing, planning, deciding, remembering — into one
+					cramped primitive. It's a meeting you can never leave.
+				</p>
+				<p>
+					BuildOS is the opposite bet. It's a thinking environment with real primitives:
+					projects, tasks, documents, and a memory that persists. You bring the messy
+					thinking; BuildOS gives it a place to live and grow.
+				</p>
+				<p class="text-foreground font-medium">
+					For people making complex things, that's the difference between starting over
+					every day and building something that compounds.
+				</p>
+			</div>
+		</div>
+	</section>
+
 	<!-- Founder Story -->
 	<section
 		id="founder-story"
@@ -404,6 +465,94 @@
 			</div>
 		</div>
 	</section>
+
+	<!-- Proof / receipts -->
+	<section class="py-10 sm:py-12 bg-background" aria-labelledby="proof-heading">
+		<div class="max-w-5xl mx-auto px-4 sm:px-6">
+			<header class="text-center mb-6">
+				<p class="text-xs sm:text-sm font-semibold text-accent mb-3">Receipts</p>
+				<h2 id="proof-heading" class="text-2xl sm:text-3xl font-bold text-foreground mb-2">
+					We run BuildOS on BuildOS
+				</h2>
+				<p class="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
+					This isn't a demo we dress up for the homepage. The company's real work lives
+					inside the product.
+				</p>
+			</header>
+
+			<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+				<article class="p-5 tx tx-grain tx-weak wt-card sp-block">
+					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">
+						The product builds itself
+					</h3>
+					<p class="text-sm text-muted-foreground">
+						Roadmap, features, and bugs are captured, structured, and planned in BuildOS
+						— the same flow we ship to you.
+					</p>
+				</article>
+
+				<article class="p-5 tx tx-grain tx-weak wt-card sp-block">
+					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">
+						Marketing runs here too
+					</h3>
+					<p class="text-sm text-muted-foreground">
+						This site's positioning, the content calendar, and outreach all live as real
+						projects with real context.
+					</p>
+				</article>
+
+				<article class="p-5 tx tx-grain tx-weak wt-card sp-block">
+					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">
+						Daily, not occasionally
+					</h3>
+					<p class="text-sm text-muted-foreground">
+						The day starts from a BuildOS brief, not a blank page. If it can't survive
+						daily use, it doesn't ship.
+					</p>
+				</article>
+			</div>
+		</div>
+	</section>
+
+	<!-- ─────────────────────────────────────────────────────────────────────
+	     TESTIMONIALS — hidden until real creator quotes exist.
+	     Do NOT ship placeholder or fabricated quotes on this page.
+	     To enable:
+	       1. Replace each "REAL QUOTE HERE" + attribution with a real, permissioned quote.
+	       2. Delete the surrounding comment markers to render the section.
+	     Per the Messaging Activation Matrix (5.4.2), testimonials belong on:
+	     Homepage, Demo, LinkedIn, Twitter, Instagram — and here (About).
+	──────────────────────────────────────────────────────────────────────── -->
+	<!--
+	<section class="py-10 sm:py-12 bg-muted" aria-labelledby="testimonials-heading">
+		<div class="max-w-5xl mx-auto px-4 sm:px-6">
+			<header class="text-center mb-6">
+				<p class="text-xs sm:text-sm font-semibold text-accent mb-3">What people are saying</p>
+				<h2 id="testimonials-heading" class="text-2xl sm:text-3xl font-bold text-foreground mb-2">
+					From the people using it
+				</h2>
+			</header>
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+				<figure class="p-5 sm:p-6 tx tx-frame tx-weak wt-card sp-block">
+					<blockquote class="text-sm sm:text-base leading-7 text-muted-foreground italic mb-3">
+						"REAL QUOTE HERE"
+					</blockquote>
+					<figcaption class="text-sm text-muted-foreground">
+						<cite>— Name, role / @handle</cite>
+					</figcaption>
+				</figure>
+				<figure class="p-5 sm:p-6 tx tx-frame tx-weak wt-card sp-block">
+					<blockquote class="text-sm sm:text-base leading-7 text-muted-foreground italic mb-3">
+						"REAL QUOTE HERE"
+					</blockquote>
+					<figcaption class="text-sm text-muted-foreground">
+						<cite>— Name, role / @handle</cite>
+					</figcaption>
+				</figure>
+			</div>
+		</div>
+	</section>
+	-->
 
 	<!-- Current Status -->
 	<section class="py-10 sm:py-12 bg-muted" aria-labelledby="status-heading">

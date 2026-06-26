@@ -202,7 +202,7 @@ export function mapProjectSuggestionToInboxItem(
 	const inboxStatus: InboxItemStatus =
 		status === 'pending'
 			? 'pending'
-			: status === 'approved'
+			: status === 'approved' || status === 'delegated'
 				? 'deciding'
 				: status === 'failed'
 					? 'blocked'

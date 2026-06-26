@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
 import { CalendarAnalysisService } from '$lib/services/calendar-analysis.service';
+import { decideProjectSuggestionWithClarification } from '$lib/server/clarified-decision.service';
 import { decideProjectSuggestion } from '$lib/server/project-suggestion-actions.service';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
@@ -146,17 +147,32 @@ async function decideLoadedInboxItem(params: {
 			return { ok: false, message: 'Project access denied', response: access.response };
 		}
 
-		const outcome = await decideProjectSuggestion({
-			supabase: locals.supabase as any,
-			userId: user.id,
-			projectId: access.projectId,
-			suggestionId: item.source_ref_id,
-			action: action === 'approve' ? 'approve' : 'dismiss',
-			feedback: {
-				reason: typeof body.reason === 'string' ? body.reason : undefined,
-				note: typeof body.note === 'string' ? body.note : undefined
-			}
-		});
+		const clarification =
+			typeof body.clarification === 'string' && body.clarification.trim()
+				? body.clarification
+				: null;
+		const suggestionAction = action === 'approve' ? 'approve' : 'dismiss';
+		const outcome = clarification
+			? await decideProjectSuggestionWithClarification({
+					supabase: locals.supabase as any,
+					userId: user.id,
+					projectId: access.projectId,
+					suggestionId: item.source_ref_id,
+					action: suggestionAction,
+					clarification,
+					reason: typeof body.reason === 'string' ? body.reason : undefined
+				})
+			: await decideProjectSuggestion({
+					supabase: locals.supabase as any,
+					userId: user.id,
+					projectId: access.projectId,
+					suggestionId: item.source_ref_id,
+					action: suggestionAction,
+					feedback: {
+						reason: typeof body.reason === 'string' ? body.reason : undefined,
+						note: typeof body.note === 'string' ? body.note : undefined
+					}
+				});
 		if (!outcome.ok) {
 			return {
 				ok: false,
@@ -164,6 +180,12 @@ async function decideLoadedInboxItem(params: {
 				response: ApiResponse.error(outcome.message, outcome.status)
 			};
 		}
+		const extendedOutcome = outcome as typeof outcome & {
+			agentRun?: Record<string, unknown>;
+			agent_run_id?: string;
+			delegated?: boolean;
+			degraded?: boolean;
+		};
 
 		return {
 			ok: true,
@@ -171,6 +193,10 @@ async function decideLoadedInboxItem(params: {
 				item: await syncResultItem(admin as any, item),
 				suggestion: outcome.suggestion,
 				result: outcome.result,
+				agentRun: extendedOutcome.agentRun,
+				agent_run_id: extendedOutcome.agent_run_id,
+				delegated: extendedOutcome.delegated ?? false,
+				degraded: extendedOutcome.degraded ?? false,
 				alreadyDecided: outcome.alreadyDecided ?? false,
 				superseded: outcome.superseded ?? false
 			}

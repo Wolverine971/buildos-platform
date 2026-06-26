@@ -72,7 +72,8 @@ describe('Authenticated Pages', () => {
 
 			expect(result).toEqual({
 				user: null,
-				dashboard: null
+				dashboard: null,
+				pendingInvites: []
 			});
 			expect(depends).toHaveBeenCalledWith('app:auth');
 			expect(depends).toHaveBeenCalledWith('dashboard:analytics');
@@ -89,7 +90,8 @@ describe('Authenticated Pages', () => {
 					if (table === 'onto_project_members') return createCountQuery(1);
 					if (table === 'onto_projects') return createCountQuery(0);
 					return createCountQuery(0);
-				})
+				}),
+				rpc: vi.fn().mockResolvedValue({ data: [], error: null })
 			};
 
 			const result = await load({
@@ -101,9 +103,11 @@ describe('Authenticated Pages', () => {
 				depends
 			} as any);
 
+			expect(supabase.rpc).toHaveBeenCalledWith('list_pending_project_invites');
 			expect(result).toEqual({
 				user: mockUser,
-				dashboard: dashboardPayload
+				dashboard: dashboardPayload,
+				pendingInvites: []
 			});
 		});
 	});

@@ -82,10 +82,10 @@
 				<h1
 					class="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight leading-[1.02]"
 				>
-					Talk to BuildOS,<br />
-					see your thoughts
+					Get it out of your head.<br />
+					We'll make it
 					<span class="relative">
-						organized.
+						make sense.
 						<span
 							class="absolute inset-x-0 bottom-1 -z-10 h-[0.65em] tx tx-bloom tx-med rounded"
 						></span>
@@ -93,9 +93,8 @@
 				</h1>
 
 				<p class="text-base sm:text-lg text-muted-foreground max-w-xl leading-relaxed">
-					A thinking environment where you and your agents work the same project, off the
-					same context. You stay in the work. Your agents stay useful. Both of you make
-					progress in parallel.
+					Brain-dump everything — half-thoughts, voice memos, the 2am spiral. BuildOS
+					turns it into projects, tasks, and a plan you can actually move on.
 				</p>
 
 				<div class="flex flex-wrap gap-3 items-center pt-1">

@@ -77,7 +77,14 @@ describe('tool surface size report', () => {
 
 		// 2026-04-18: budget bumped from 5000 → 5500 after adding `kind` enum
 		// constraints to relationship endpoints (regression bc05e6ac fix).
-		expect(createProject?.chars).toBeLessThanOrEqual(5500);
+		// 2026-06-26: budget bumped from 5500 → 6200. create_onto_project now spells
+		// out the valid `state_key` values (planning/active/paused/completed/cancelled)
+		// and the distinct `props.facets.stage` lifecycle values
+		// (discovery/planning/execution/launch/maintenance/complete), plus explicit
+		// guidance never to confuse the two. This is deliberate creation guidance for
+		// weaker routed models, not description-bloat. Serializes to ~5772 chars; 6200
+		// keeps ~428 chars of headroom.
+		expect(createProject?.chars).toBeLessThanOrEqual(6200);
 		expect(createTask?.chars).toBeLessThanOrEqual(2500);
 	});
 

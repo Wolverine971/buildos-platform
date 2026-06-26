@@ -1198,6 +1198,8 @@ export type Database = {
           result: Json | null
           review_required: boolean
           scope_mode: string
+          source_decision: string | null
+          source_suggestion_id: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["agent_run_status"]
           trigger: Database["public"]["Enums"]["agent_run_trigger"]
@@ -1227,6 +1229,8 @@ export type Database = {
           result?: Json | null
           review_required?: boolean
           scope_mode?: string
+          source_decision?: string | null
+          source_suggestion_id?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["agent_run_status"]
           trigger: Database["public"]["Enums"]["agent_run_trigger"]
@@ -1256,6 +1260,8 @@ export type Database = {
           result?: Json | null
           review_required?: boolean
           scope_mode?: string
+          source_decision?: string | null
+          source_suggestion_id?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["agent_run_status"]
           trigger?: Database["public"]["Enums"]["agent_run_trigger"]
@@ -1275,6 +1281,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_runs_source_suggestion_id_fkey"
+            columns: ["source_suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "project_suggestions"
             referencedColumns: ["id"]
           },
           {
@@ -10415,7 +10428,9 @@ export type Database = {
       }
       project_suggestions: {
         Row: {
+          agent_run_id: string | null
           applied_at: string | null
+          chat_session_id: string | null
           confidence: number | null
           created_at: string
           decided_at: string | null
@@ -10442,7 +10457,9 @@ export type Database = {
           why_now: string | null
         }
         Insert: {
+          agent_run_id?: string | null
           applied_at?: string | null
+          chat_session_id?: string | null
           confidence?: number | null
           created_at?: string
           decided_at?: string | null
@@ -10469,7 +10486,9 @@ export type Database = {
           why_now?: string | null
         }
         Update: {
+          agent_run_id?: string | null
           applied_at?: string | null
+          chat_session_id?: string | null
           confidence?: number | null
           created_at?: string
           decided_at?: string | null
@@ -10497,6 +10516,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "project_suggestions_agent_run_id_fkey"
+            columns: ["agent_run_id"]
+            isOneToOne: false
+            referencedRelation: "agent_runs"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "project_suggestions_depends_on_fkey"
             columns: ["depends_on"]
             isOneToOne: false
@@ -10508,6 +10534,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_suggestions_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
             referencedColumns: ["id"]
           },
           {

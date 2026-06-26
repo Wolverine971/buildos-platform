@@ -19,6 +19,7 @@ import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
 import {
 	type LoopContext,
 	type LoopDocument,
+	type LoopPriorDecision,
 	type LoopTask,
 	generateDrift,
 	generateDocOrganization,
@@ -35,9 +36,72 @@ import {
 
 const MAX_SUGGESTIONS = 25;
 const PROJECT_LOOP_COST_CAP_USD = 0.35;
+const PRIOR_DECISION_LOOKBACK_DAYS = 60;
 
 function nowIso(): string {
 	return new Date().toISOString();
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+	return value && typeof value === 'object' && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: null;
+}
+
+function asString(value: unknown): string | null {
+	return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function parseDecisionFeedback(value: unknown): {
+	reason?: string | null;
+	note?: string | null;
+} {
+	const record = asRecord(value);
+	return {
+		reason: asString(record?.reason),
+		note: asString(record?.note)
+	};
+}
+
+async function loadPriorDecisions(projectId: string): Promise<LoopPriorDecision[]> {
+	const since = new Date(
+		Date.now() - PRIOR_DECISION_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
+	).toISOString();
+	const { data, error } = await supabase
+		.from('project_suggestions')
+		.select('title, kind, status, user_feedback, decided_at, updated_at')
+		.eq('project_id', projectId)
+		.in('status', ['rejected', 'applied', 'delegated', 'superseded'])
+		.not('user_feedback', 'is', null)
+		.gte('updated_at', since)
+		.order('updated_at', { ascending: false })
+		.limit(30);
+
+	if (error) {
+		console.warn(
+			`[ProjectLoops] Failed to load prior decisions for project ${projectId}:`,
+			error.message
+		);
+		return [];
+	}
+
+	return ((data ?? []) as Record<string, unknown>[])
+		.map((row): LoopPriorDecision | null => {
+			const title = asString(row.title);
+			const kind = asString(row.kind);
+			const status = asString(row.status);
+			if (!title || !kind || !status) return null;
+			const feedback = parseDecisionFeedback(row.user_feedback);
+			return {
+				title,
+				kind,
+				status,
+				reason: feedback.reason,
+				note: feedback.note,
+				decided_at: asString(row.decided_at) ?? asString(row.updated_at)
+			};
+		})
+		.filter((decision): decision is LoopPriorDecision => Boolean(decision));
 }
 
 async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
@@ -60,6 +124,7 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 	const rawDocs: any[] = Array.isArray(payload?.documents) ? payload.documents : [];
 	const rawTasks: any[] = Array.isArray(payload?.tasks) ? payload.tasks : [];
 	const rawGoals: any[] = Array.isArray(payload?.goals) ? payload.goals : [];
+	const priorDecisions = await loadPriorDecisions(projectId);
 
 	const parentMap = buildProjectLoopParentMap(projectRow.doc_structure);
 	const titleById = new Map<string, string>(
@@ -82,6 +147,7 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 		.map((t) => ({
 			id: t.id,
 			title: t.title ?? 'Untitled',
+			description: t.description ?? null,
 			state_key: t.state_key ?? null,
 			updated_at: t.updated_at ?? t.created_at ?? null
 		}));
@@ -96,7 +162,8 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 		})),
 		documents,
 		docStructureSummary: summarizeProjectLoopDocTree(projectRow.doc_structure, titleById),
-		tasks
+		tasks,
+		priorDecisions
 	};
 }
 

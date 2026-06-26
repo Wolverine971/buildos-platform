@@ -20,11 +20,27 @@ export type InboxDecisionCapability = {
 	decision_disabled_reason: string | null;
 };
 
+export type InboxProjectLoopRunContext = {
+	id: string;
+	trigger_reason: string | null;
+	status: string | null;
+	summary: string | null;
+	brief: Record<string, unknown> | null;
+	suggestion_count: number | null;
+	created_at: string | null;
+	finished_at: string | null;
+};
+
+export type InboxSourceContext = {
+	project_loop_run?: InboxProjectLoopRunContext | null;
+};
+
 export type InboxItemWithPayload = InboxIndexRow & {
 	project?: InboxProjectMeta | null;
 	can_decide?: boolean;
 	decision_disabled_reason?: string | null;
 	source_payload?: Record<string, unknown> | null;
+	source_context?: InboxSourceContext | null;
 };
 
 export type ListInboxItemsResult = {
@@ -73,6 +89,20 @@ function sourceKey(sourceType: string, sourceRefId: string): string {
 
 function rowKey(row: InboxIndexRow): string {
 	return row.id ?? sourceKey(row.source_type, row.source_ref_id);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+	return value && typeof value === 'object' && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: null;
+}
+
+function asString(value: unknown): string | null {
+	return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function asNumber(value: unknown): number | null {
+	return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
 export function isInboxSourceType(value: string | null): value is InboxSourceType {
@@ -258,6 +288,65 @@ async function loadSourcePayloads(params: {
 	return payloads;
 }
 
+function mapProjectLoopRunContext(row: Record<string, unknown>): InboxProjectLoopRunContext | null {
+	const id = asString(row.id);
+	if (!id) return null;
+	return {
+		id,
+		trigger_reason: asString(row.trigger_reason),
+		status: asString(row.status),
+		summary: asString(row.summary),
+		brief: asRecord(row.brief),
+		suggestion_count: asNumber(row.suggestion_count),
+		created_at: asString(row.created_at),
+		finished_at: asString(row.finished_at)
+	};
+}
+
+async function loadSourceContexts(params: {
+	admin: AnySupabase;
+	rows: InboxIndexRow[];
+	payloads: Map<string, Record<string, unknown>>;
+}): Promise<Map<string, InboxSourceContext>> {
+	const runIds = new Set<string>();
+
+	for (const row of params.rows) {
+		if (row.source_type !== 'project_suggestion') continue;
+		const payload = params.payloads.get(sourceKey(row.source_type, row.source_ref_id));
+		const runId = asString(payload?.run_id);
+		if (runId) runIds.add(runId);
+	}
+
+	const contexts = new Map<string, InboxSourceContext>();
+	if (runIds.size === 0) return contexts;
+
+	const { data, error } = await params.admin
+		.from('project_loop_runs')
+		.select(
+			'id, trigger_reason, status, summary, brief, suggestion_count, created_at, finished_at'
+		)
+		.in('id', [...runIds]);
+	if (error) throw error;
+
+	const runsById = new Map<string, InboxProjectLoopRunContext>();
+	for (const row of (data ?? []) as Record<string, unknown>[]) {
+		const context = mapProjectLoopRunContext(row);
+		if (context) runsById.set(context.id, context);
+	}
+
+	for (const row of params.rows) {
+		if (row.source_type !== 'project_suggestion') continue;
+		const payload = params.payloads.get(sourceKey(row.source_type, row.source_ref_id));
+		const runId = asString(payload?.run_id);
+		if (!runId) continue;
+		contexts.set(sourceKey(row.source_type, row.source_ref_id), {
+			project_loop_run: runsById.get(runId) ?? null
+		});
+	}
+
+	return contexts;
+}
+
 async function loadProjectMetadata(params: {
 	supabase: AnySupabase;
 	rows: InboxIndexRow[];
@@ -411,7 +500,7 @@ async function backfillVisibleSourceRows(params: {
 		let query = params.supabase
 			.from('project_suggestions')
 			.select('*')
-			.in('status', ['pending', 'approved'])
+			.in('status', ['pending', 'approved', 'delegated'])
 			.order('created_at', { ascending: false })
 			.limit(limit);
 		if (params.projectId) query = query.eq('project_id', params.projectId);
@@ -520,6 +609,11 @@ export async function listInboxItems(params: {
 		userId: params.userId
 	});
 	const payloads = await loadSourcePayloads({ admin: params.admin, rows: visibleRows });
+	const contexts = await loadSourceContexts({
+		admin: params.admin,
+		rows: visibleRows,
+		payloads
+	});
 	return {
 		items: visibleRows.map((row) => ({
 			...row,
@@ -528,7 +622,8 @@ export async function listInboxItems(params: {
 			decision_disabled_reason:
 				capabilities.get(rowKey(row))?.decision_disabled_reason ??
 				'Unsupported inbox source',
-			source_payload: payloads.get(sourceKey(row.source_type, row.source_ref_id)) ?? null
+			source_payload: payloads.get(sourceKey(row.source_type, row.source_ref_id)) ?? null,
+			source_context: contexts.get(sourceKey(row.source_type, row.source_ref_id)) ?? null
 		})),
 		repairedCount: totalRepairedCount,
 		backfilledCount

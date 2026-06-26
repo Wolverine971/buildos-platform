@@ -52,6 +52,7 @@ export * from './inbox-index';
 
 // Project Review Loop helpers
 export * from './project-loops';
+export * from './proposal-context';
 
 // Document outline extraction (pure; used by versioning)
 export * from './utils/document-outline';

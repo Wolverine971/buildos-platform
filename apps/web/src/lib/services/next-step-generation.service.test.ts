@@ -1,6 +1,10 @@
 // apps/web/src/lib/services/next-step-generation.service.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ACTIVE_EXPERIMENT_MODEL, DEEPSEEK_V4_FLASH_MODEL } from '@buildos/smart-llm';
+import {
+	ACTIVE_EXPERIMENT_MODEL,
+	DEEPSEEK_V4_FLASH_MODEL,
+	PROJECT_NEXT_STEP_MODELS
+} from '@buildos/smart-llm';
 
 vi.mock('$env/static/private', () => ({
 	PRIVATE_OPENROUTER_API_KEY: 'openrouter-test-key'
@@ -90,9 +94,20 @@ describe('next-step generation model fallback', () => {
 			long: 'Work on [[task:t1|the draft]] next.'
 		});
 		expect(fetchMock).toHaveBeenCalledTimes(2);
+		// First request: primary candidate + an OpenRouter fallback list. The exact
+		// list is shaped by lane resolution (dedupe/capability filter), so assert the
+		// mechanism structurally rather than pinning the transformed array: it leads
+		// with the experiment model and never re-includes the rate-limited primary.
 		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
-		expect(requestBodies[0]?.models).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(requestBodies[0]?.model).toBe(PROJECT_NEXT_STEP_MODELS[0]);
+		expect(Array.isArray(requestBodies[0]?.models)).toBe(true);
+		expect((requestBodies[0]?.models as string[])?.[0]).toBe(ACTIVE_EXPERIMENT_MODEL);
+		expect(requestBodies[0]?.models).not.toContain(DEEPSEEK_V4_FLASH_MODEL);
+		// After the primary is rate-limited, the retry advances through the chain:
+		// it pins the next model and forwards the remaining fallbacks, never
+		// re-attempting the rate-limited primary or repeating the now-pinned model.
 		expect(requestBodies[1]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
-		expect(requestBodies[1]?.models).toBeUndefined();
+		expect(requestBodies[1]?.models).not.toContain(DEEPSEEK_V4_FLASH_MODEL);
+		expect(requestBodies[1]?.models).not.toContain(ACTIVE_EXPERIMENT_MODEL);
 	});
 });

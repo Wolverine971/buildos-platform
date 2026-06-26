@@ -26,6 +26,11 @@
 			]
 		},
 		{
+			"file": "src/lib/components/dashboard/DashboardInboxModal.svelte",
+			"type": "component",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/lib/components/landing/HomepageV2.svelte",
 			"type": "component",
 			"components": ["PublicProjectView"]
@@ -117,6 +122,11 @@
 			"components": ["ProjectBriefsPanel", "ProjectActivityLogPanel"]
 		},
 		{
+			"file": "src/lib/components/project/ProjectInboxPanel.svelte",
+			"type": "component",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/lib/components/project/ProjectInsightRail.svelte",
 			"type": "component",
 			"components": ["ImageAssetsPanel"]
@@ -150,14 +160,14 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal", "ProjectModalsHost"]
-		},
-		{
 			"file": "src/routes/projects/create/+page.svelte",
 			"type": "page",
 			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal", "ProjectModalsHost"]
 		},
 		{
 			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
@@ -931,6 +941,18 @@
 			]
 		},
 		{
+			"file": "src/lib/components/admin/chat/session-audit-ui.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"eventIcon",
+				"eventSeverityClasses",
+				"timelineDotClasses",
+				"statusBadge",
+				"libriStatusClasses"
+			]
+		},
+		{
 			"file": "src/lib/components/ui/live-transcript-preview.ts",
 			"type": "component",
 			"components": [],
@@ -945,18 +967,6 @@
 				"preserveInsertedVoiceSpacing",
 				"canReplaceInsertedVoiceRange",
 				"shouldInsertCapturedVoiceFallback"
-			]
-		},
-		{
-			"file": "src/lib/components/admin/chat/session-audit-ui.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"eventIcon",
-				"eventSeverityClasses",
-				"timelineDotClasses",
-				"statusBadge",
-				"libriStatusClasses"
 			]
 		},
 		{
@@ -1149,6 +1159,9 @@
 		}
 	],
 	"dependencies": {
+		"src/lib/components/dashboard/AnalyticsDashboard.svelte": [
+			"src/lib/components/dashboard/DashboardInboxModal.svelte"
+		],
 		"src/lib/components/ontology/EventEditModal.svelte": [
 			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/ontology/GoalEditModal.svelte",
@@ -1205,6 +1218,7 @@
 		"src/lib/components/notifications/NotificationModal.svelte",
 		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
 		"src/lib/components/project/ProjectHistorySection.svelte",
+		"src/lib/components/project/ProjectInboxPanel.svelte",
 		"src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
 		"src/lib/components/project/v2/EntityTabStrip.svelte",
 		"src/lib/components/admin/adminRoutes.ts",
@@ -1228,9 +1242,9 @@
 		"src/lib/components/project/project-event-filters.ts",
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",
+		"src/lib/components/admin/chat/session-audit-ui.ts",
 		"src/lib/components/ui/live-transcript-preview.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
-		"src/lib/components/admin/chat/session-audit-ui.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",
