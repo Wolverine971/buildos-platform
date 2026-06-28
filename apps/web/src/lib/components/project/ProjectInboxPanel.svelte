@@ -1,22 +1,19 @@
 <!-- apps/web/src/lib/components/project/ProjectInboxPanel.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import {
-		Check,
-		ClipboardCheck,
-		FileText,
-		Inbox,
-		LoaderCircle,
-		MessageCircle,
-		RefreshCw,
-		Sparkles,
-		X
-	} from 'lucide-svelte';
+	import { Check, ClipboardCheck, FileText, Inbox, RefreshCw, Sparkles } from 'lucide-svelte';
 	import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
 	import { toastService } from '$lib/stores/toast.store';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ChangeSetReview from '$lib/components/notifications/types/agent-run/ChangeSetReview.svelte';
 	import InboxChangeDetails from '$lib/components/inbox/InboxChangeDetails.svelte';
+	import InboxDecisionControls from '$lib/components/inbox/InboxDecisionControls.svelte';
+	import {
+		completeInboxDecisionNotification,
+		failInboxDecisionNotification,
+		startInboxBatchDecisionNotification,
+		startInboxDecisionNotification
+	} from '$lib/services/inbox-decision-notification.service';
 	import type {
 		ChangeSet,
 		ProjectLoopRun,
@@ -98,8 +95,8 @@
 	let dismissReasonById = $state<Record<string, string>>({});
 	let dismissNoteById = $state<Record<string, string>>({});
 	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
-	let discussionChatSessionId = $state<string | null>(null);
-	let openingDiscussionIds = $state<Set<string>>(new Set());
+	let chatSessionId = $state<string | null>(null);
+	let openingChatIds = $state<Set<string>>(new Set());
 
 	const POLL_INTERVAL_MS = 2500;
 	const MAX_POLL_MS = 2 * 60 * 1000;
@@ -138,14 +135,6 @@
 		external: 'Source',
 		unknown: 'Source'
 	};
-
-	const dismissReasons = [
-		{ value: 'not_relevant', label: 'Not relevant' },
-		{ value: 'wrong_evidence', label: 'Wrong evidence' },
-		{ value: 'intentional', label: 'Intentional' },
-		{ value: 'too_risky', label: 'Too risky' },
-		{ value: 'other', label: 'Other' }
-	];
 
 	const groupedItems = $derived.by(() => {
 		const safe = { key: 'safe', label: 'Safe cleanup', items: [] as InboxItem[] };
@@ -301,12 +290,12 @@
 		selectedIds = next;
 	}
 
-	function setDismissReason(itemId: string, reason: string) {
-		dismissReasonById = { ...dismissReasonById, [itemId]: reason };
-	}
-
-	function setDismissNote(itemId: string, note: string) {
-		dismissNoteById = { ...dismissNoteById, [itemId]: note };
+	function removeItemsFromInbox(itemIds: Iterable<string>) {
+		const ids = new Set(itemIds);
+		if (ids.size === 0) return;
+		items = items.filter((item) => !ids.has(item.id));
+		selectedIds = new Set([...selectedIds].filter((id) => !ids.has(id)));
+		onCountChange?.(items.length);
 	}
 
 	function clarificationFor(item: InboxItem): string {
@@ -322,43 +311,38 @@
 		return module.default;
 	}
 
-	function canDiscuss(item: InboxItem): boolean {
-		return item.source_type === 'project_suggestion' && canDecide(item);
+	function canChat(item: InboxItem): boolean {
+		return canDecide(item);
 	}
 
-	function isOpeningDiscussion(item: InboxItem): boolean {
-		return openingDiscussionIds.has(item.id);
+	function isOpeningChat(item: InboxItem): boolean {
+		return openingChatIds.has(item.id);
 	}
 
-	async function openDiscussion(item: InboxItem) {
-		if (!canDiscuss(item) || isOpeningDiscussion(item)) return;
-		openingDiscussionIds = new Set(openingDiscussionIds).add(item.id);
+	async function openChat(item: InboxItem) {
+		if (!canChat(item) || isOpeningChat(item)) return;
+		openingChatIds = new Set(openingChatIds).add(item.id);
 		try {
 			await loadAgentChatModal();
-			const res = await fetch(
-				`/api/onto/projects/${projectId}/suggestions/${item.source_ref_id}/chat-session`,
-				{ method: 'POST' }
-			);
+			const res = await fetch(`/api/inbox/${item.id}/chat-session`, { method: 'POST' });
 			const json = await res.json();
-			if (!res.ok) throw new Error(json?.error ?? 'Failed to open discussion');
-			const chatSessionId = json.data?.chat_session_id ?? json.data?.session?.id;
-			if (typeof chatSessionId !== 'string' || !chatSessionId) {
-				throw new Error('Discussion session was not returned');
+			if (!res.ok) throw new Error(json?.error ?? 'Failed to open chat');
+			const nextChatSessionId = json.data?.chat_session_id ?? json.data?.session?.id;
+			if (typeof nextChatSessionId !== 'string' || !nextChatSessionId) {
+				throw new Error('Chat session was not returned');
 			}
-			discussionChatSessionId = chatSessionId;
+			chatSessionId = nextChatSessionId;
 		} catch (error) {
-			toastService.error(
-				error instanceof Error ? error.message : 'Failed to open discussion'
-			);
+			toastService.error(error instanceof Error ? error.message : 'Failed to open chat');
 		} finally {
-			const next = new Set(openingDiscussionIds);
+			const next = new Set(openingChatIds);
 			next.delete(item.id);
-			openingDiscussionIds = next;
+			openingChatIds = next;
 		}
 	}
 
-	function closeDiscussion() {
-		discussionChatSessionId = null;
+	function closeChat() {
+		chatSessionId = null;
 	}
 
 	function completionMessage(run: ProjectLoopRun, itemCount: number): string {
@@ -487,20 +471,11 @@
 		}
 	}
 
-	function actionLabel(item: InboxItem, action: 'approve' | 'reject'): string {
-		if (item.source_type === 'agent_run')
-			return action === 'approve' ? 'Apply all' : 'Reject all';
-		if (item.source_type === 'calendar_suggestion')
-			return action === 'approve' ? 'Accept' : 'Reject';
-		if (item.source_type === 'project_suggestion' && clarificationFor(item)) {
-			return action === 'approve' ? 'Apply + note' : 'Dismiss + note';
-		}
-		return action === 'approve' ? (changeCount(item) ? 'Apply' : 'Acknowledge') : 'Dismiss';
-	}
-
 	async function decide(item: InboxItem, action: 'approve' | 'reject') {
 		if (pendingIds.has(item.id)) return;
 		pendingIds = new Set(pendingIds).add(item.id);
+		const notificationId = startInboxDecisionNotification(item, action);
+		removeItemsFromInbox([item.id]);
 		try {
 			const clarification = clarificationFor(item);
 			const res = await fetch('/api/inbox/decide', {
@@ -523,30 +498,42 @@
 			const json = await res.json();
 			if (!res.ok) throw new Error(json?.error ?? 'Action failed');
 
-			const result = json.data?.result as ProjectSuggestionResult | undefined;
+			const result = json.data?.result as
+				| (ProjectSuggestionResult & { inProgress?: boolean })
+				| undefined;
+			let message = action === 'approve' ? 'Review item applied.' : 'Review item dismissed.';
+			let title = action === 'approve' ? 'Review item applied' : 'Review item dismissed';
+			let toastKind: 'success' | 'info' | 'error' = 'success';
 			if (json.data?.superseded) {
-				toastService.error('Review item changed. Rerun Project Review.');
+				message = 'Review item changed. Rerun Project Review.';
+				title = 'Review item changed';
+				toastKind = 'error';
 			} else if (json.data?.delegated) {
-				toastService.success('Clarified decision started.');
+				message = 'Clarified decision started.';
+				title = 'Clarified decision started';
+			} else if (result?.inProgress) {
+				message = 'Review item is already processing.';
+				title = 'Review item processing';
+				toastKind = 'info';
 			} else if (action === 'approve' && result && result.ok === false) {
-				toastService.error('Some changes could not be applied.');
+				message = 'Some changes could not be applied.';
+				title = 'Review item failed';
+				toastKind = 'error';
 			} else if (json.data?.degraded) {
-				toastService.info('Agent queue is full; handled directly.');
+				message = 'Agent queue is full; handled directly.';
+				title = 'Handled directly';
+				toastKind = 'info';
 			} else if (action === 'approve') {
-				toastService.success(
-					changeCount(item) ? 'Review item applied.' : 'Review item acknowledged.'
-				);
-			} else {
-				toastService.success('Review item dismissed.');
+				message = changeCount(item) ? 'Review item applied.' : 'Review item acknowledged.';
+				title = changeCount(item) ? 'Review item applied' : 'Review item acknowledged';
 			}
-
-			items = items.filter((candidate) => candidate.id !== item.id);
-			const nextSelected = new Set(selectedIds);
-			nextSelected.delete(item.id);
-			selectedIds = nextSelected;
-			onCountChange?.(items.length);
+			completeInboxDecisionNotification(notificationId, message, { toastKind, title });
 		} catch (error) {
-			toastService.error(error instanceof Error ? error.message : 'Action failed');
+			failInboxDecisionNotification(
+				notificationId,
+				error instanceof Error ? error.message : 'Action failed'
+			);
+			void load({ silent: true });
 		} finally {
 			const next = new Set(pendingIds);
 			next.delete(item.id);
@@ -555,14 +542,15 @@
 	}
 
 	function handleAgentRunApplied(item: InboxItem) {
-		items = items.filter((candidate) => candidate.id !== item.id);
-		onCountChange?.(items.length);
+		removeItemsFromInbox([item.id]);
 	}
 
 	async function batchApproveSelected() {
 		const ids = selectedBatchIds;
 		if (ids.length === 0) return;
 		for (const id of ids) pendingIds = new Set(pendingIds).add(id);
+		const notificationId = startInboxBatchDecisionNotification(ids.length);
+		removeItemsFromInbox(ids);
 		try {
 			const res = await fetch('/api/inbox/decide', {
 				method: 'POST',
@@ -580,24 +568,29 @@
 			const superseded = results.filter(
 				(result: { superseded?: unknown }) => result.superseded === true
 			).length;
-			const appliedCount = appliedIds.size - superseded;
-			items = items.filter((item) => !appliedIds.has(item.id));
-			selectedIds = new Set([...selectedIds].filter((id) => !appliedIds.has(id)));
-			onCountChange?.(items.length);
+			const appliedCount = Math.max(0, appliedIds.size - superseded);
 			const failed = Number(json.data?.failed ?? 0);
+			const itemLabel = appliedCount === 1 ? 'review item' : 'review items';
+			let message = `${appliedCount} ${itemLabel} applied.`;
+			let title = 'Review items applied';
+			let toastKind: 'success' | 'info' | 'error' = 'success';
 			if (failed > 0) {
-				toastService.error(
-					`${appliedCount} applied, ${superseded} changed, ${failed} failed.`
-				);
+				message = `${appliedCount} applied, ${superseded} changed, ${failed} failed.`;
+				title = 'Batch apply incomplete';
+				toastKind = 'error';
+				void load({ silent: true });
 			} else if (superseded > 0) {
-				toastService.error(
-					`${appliedCount} applied, ${superseded} changed. Rerun Project Review.`
-				);
-			} else {
-				toastService.success(`${appliedCount} review items applied.`);
+				message = `${appliedCount} applied, ${superseded} changed. Rerun Project Review.`;
+				title = 'Review items changed';
+				toastKind = 'error';
 			}
+			completeInboxDecisionNotification(notificationId, message, { toastKind, title });
 		} catch (error) {
-			toastService.error(error instanceof Error ? error.message : 'Batch apply failed');
+			failInboxDecisionNotification(
+				notificationId,
+				error instanceof Error ? error.message : 'Batch apply failed'
+			);
+			void load({ silent: true });
 		} finally {
 			const next = new Set(pendingIds);
 			for (const id of ids) next.delete(id);
@@ -708,14 +701,14 @@
 			</div>
 			{#if latestRun.brief.stale_assumptions?.length || latestRun.brief.contradictions_or_drift?.length}
 				<div class="mt-2 flex flex-wrap gap-1.5">
-					{#each latestRun.brief.stale_assumptions.slice(0, 3) as item}
+					{#each (latestRun.brief.stale_assumptions ?? []).slice(0, 3) as item}
 						<span
 							class="rounded border border-warning/30 bg-warning/10 px-1.5 py-0.5 text-[10px] text-warning"
 						>
 							{item}
 						</span>
 					{/each}
-					{#each latestRun.brief.contradictions_or_drift.slice(0, 3) as item}
+					{#each (latestRun.brief.contradictions_or_drift ?? []).slice(0, 3) as item}
 						<span
 							class="rounded border border-border bg-card px-1.5 py-0.5 text-[10px] text-muted-foreground"
 						>
@@ -856,83 +849,29 @@
 										<ChangeSetReview
 											runId={item.source_ref_id}
 											{changeSet}
+											acceptLabel="Accept"
+											dismissLabel="Dismiss"
+											approveAllLabel="Accept"
+											rejectAllLabel="Dismiss"
+											openingChat={isOpeningChat(item)}
 											onApplied={() => handleAgentRunApplied(item)}
+											onChat={canChat(item)
+												? () => openChat(item)
+												: undefined}
 										/>
 									</div>
 								{/if}
 							</div>
 							{#if canDecide(item) && !changeSet}
-								<div class="flex shrink-0 flex-col items-stretch gap-2 sm:w-44">
-									<div class="flex items-center gap-2">
-										<button
-											type="button"
-											class="pressable inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-success/30 bg-success/10 px-2.5 py-1.5 text-center text-[12px] font-semibold leading-tight text-success hover:bg-success/15 disabled:opacity-50"
-											onclick={() => decide(item, 'approve')}
-											disabled={pendingIds.has(item.id)}
-										>
-											{#if pendingIds.has(item.id)}
-												<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
-											{:else}
-												<Check class="h-3.5 w-3.5" />
-											{/if}
-											{actionLabel(item, 'approve')}
-										</button>
-										<button
-											type="button"
-											class="pressable inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-center text-[12px] font-semibold leading-tight text-muted-foreground hover:bg-muted disabled:opacity-50"
-											onclick={() => decide(item, 'reject')}
-											disabled={pendingIds.has(item.id)}
-										>
-											<X class="h-3.5 w-3.5" />
-											{actionLabel(item, 'reject')}
-										</button>
-									</div>
-									{#if item.source_type === 'project_suggestion'}
-										{#if canDiscuss(item)}
-											<button
-												type="button"
-												class="pressable inline-flex h-8 items-center justify-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2 text-[12px] font-semibold text-accent hover:bg-accent/15 disabled:opacity-50"
-												onclick={() => openDiscussion(item)}
-												disabled={pendingIds.has(item.id) ||
-													isOpeningDiscussion(item)}
-											>
-												{#if isOpeningDiscussion(item)}
-													<LoaderCircle
-														class="h-3.5 w-3.5 animate-spin"
-													/>
-												{:else}
-													<MessageCircle class="h-3.5 w-3.5" />
-												{/if}
-												Discuss
-											</button>
-										{/if}
-										<select
-											class="h-8 rounded-md border border-border bg-card px-2 text-[11px] text-foreground"
-											value={dismissReasonById[item.id] || 'other'}
-											onchange={(event) =>
-												setDismissReason(
-													item.id,
-													(event.currentTarget as HTMLSelectElement).value
-												)}
-											aria-label="Dismiss reason"
-										>
-											{#each dismissReasons as reason}
-												<option value={reason.value}>{reason.label}</option>
-											{/each}
-										</select>
-										<input
-											class="h-8 rounded-md border border-border bg-card px-2 text-[11px] text-foreground placeholder:text-muted-foreground"
-											value={dismissNoteById[item.id] ?? ''}
-											oninput={(event) =>
-												setDismissNote(
-													item.id,
-													(event.currentTarget as HTMLInputElement).value
-												)}
-											placeholder="Optional clarification"
-											aria-label="Clarification or dismiss note"
-										/>
-									{/if}
-								</div>
+								<InboxDecisionControls
+									pending={pendingIds.has(item.id)}
+									canChat={canChat(item)}
+									openingChat={isOpeningChat(item)}
+									layout="project"
+									onApprove={() => decide(item, 'approve')}
+									onReject={() => decide(item, 'reject')}
+									onChat={() => openChat(item)}
+								/>
 							{:else if item.decision_disabled_reason}
 								<div
 									class="shrink-0 rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground"
@@ -948,12 +887,12 @@
 	{/if}
 </div>
 
-{#if AgentChatModalComponent && discussionChatSessionId}
+{#if AgentChatModalComponent && chatSessionId}
 	<AgentChatModalComponent
-		isOpen={Boolean(discussionChatSessionId)}
+		isOpen={Boolean(chatSessionId)}
 		contextType="project"
 		entityId={projectId}
-		initialChatSessionId={discussionChatSessionId}
-		onClose={closeDiscussion}
+		initialChatSessionId={chatSessionId}
+		onClose={closeChat}
 	/>
 {/if}

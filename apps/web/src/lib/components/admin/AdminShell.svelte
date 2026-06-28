@@ -488,7 +488,12 @@
 
 				<!-- Mobile Navigation -->
 				<div class="flex-1 overflow-y-auto">
-					<AdminSidebar groups={navGroups} {pathname} onNavigate={handleMobileNavigate} />
+					<AdminSidebar
+						groups={navGroups}
+						{pathname}
+						onNavigate={handleMobileNavigate}
+						expandable
+					/>
 				</div>
 
 				<!-- Mobile User Profile -->

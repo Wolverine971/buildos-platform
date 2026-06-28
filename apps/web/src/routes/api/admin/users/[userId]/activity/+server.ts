@@ -34,10 +34,11 @@ type ProjectDocumentRow = {
 
 type ProjectLogRow = {
 	project_id: string | null;
+	entity_id: string;
 	entity_type: string;
 	action: string;
-	before_data: Record<string, unknown> | null;
-	after_data: Record<string, unknown> | null;
+	before_data: unknown | null;
+	after_data: unknown | null;
 	created_at: string;
 };
 
@@ -79,22 +80,250 @@ const buildChatSessionTitle = (session: ChatSessionRow): string => {
 const getChatSessionLastActivityAt = (session: ChatSessionRow): string | null =>
 	session.last_message_at ?? session.updated_at ?? session.created_at ?? null;
 
+const ACTIVITY_LABEL_FIELDS = [
+	'title',
+	'name',
+	'rel',
+	'text',
+	'uri',
+	'description',
+	'summary',
+	'event_title'
+] as const;
+
+const ACTIVITY_DETAIL_FIELDS = [
+	'description',
+	'state_key',
+	'type_key',
+	'impact',
+	'status',
+	'text',
+	'uri'
+] as const;
+
+const ENTITY_LOOKUP_CONFIG: Record<
+	string,
+	{
+		table: string;
+		select: string;
+		labelFields: readonly string[];
+	}
+> = {
+	project: { table: 'onto_projects', select: 'id, name', labelFields: ['name'] },
+	task: { table: 'onto_tasks', select: 'id, title, project_id', labelFields: ['title'] },
+	document: {
+		table: 'onto_documents',
+		select: 'id, title, project_id',
+		labelFields: ['title']
+	},
+	note: { table: 'onto_documents', select: 'id, title, project_id', labelFields: ['title'] },
+	goal: { table: 'onto_goals', select: 'id, name, project_id', labelFields: ['name'] },
+	milestone: {
+		table: 'onto_milestones',
+		select: 'id, title, project_id',
+		labelFields: ['title']
+	},
+	risk: { table: 'onto_risks', select: 'id, title, project_id', labelFields: ['title'] },
+	plan: { table: 'onto_plans', select: 'id, name, project_id', labelFields: ['name'] },
+	event: { table: 'onto_events', select: 'id, title, project_id', labelFields: ['title'] },
+	requirement: {
+		table: 'onto_requirements',
+		select: 'id, text, project_id',
+		labelFields: ['text']
+	},
+	metric: { table: 'onto_metrics', select: 'id, name, project_id', labelFields: ['name'] },
+	source: { table: 'onto_sources', select: 'id, uri, project_id', labelFields: ['uri'] },
+	edge: { table: 'onto_edges', select: 'id, rel, project_id', labelFields: ['rel'] }
+};
+
+const normalizeDisplayText = (value: unknown): string | null => {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	if (!trimmed) return null;
+	const lower = trimmed.toLowerCase();
+	if (lower === 'undefined' || lower === 'null' || lower === '[object object]') return null;
+	return trimmed;
+};
+
+const isPlaceholderDisplayText = (value: string | null | undefined): boolean => {
+	if (!value) return true;
+	const normalized = value.trim().toLowerCase();
+	return (
+		normalized === 'untitled' ||
+		normalized === 'untitled project' ||
+		normalized === 'untitled task' ||
+		normalized === 'untitled goal' ||
+		normalized === 'untitled document'
+	);
+};
+
+const chooseDisplayText = (candidates: Array<string | null | undefined>): string => {
+	const normalized = candidates
+		.map(normalizeDisplayText)
+		.filter((value): value is string => Boolean(value));
+	return (
+		normalized.find((value) => !isPlaceholderDisplayText(value)) ?? normalized[0] ?? 'Untitled'
+	);
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const firstDisplayText = (
+	record: Record<string, unknown> | null | undefined,
+	fields: readonly string[]
+): string | null => {
+	if (!record) return null;
+	for (const field of fields) {
+		const value = normalizeDisplayText(record[field]);
+		if (value) return value;
+	}
+	return null;
+};
+
+const getPayloadCandidates = (payload: unknown): Record<string, unknown>[] => {
+	if (!isRecord(payload)) return [];
+	const candidates: Record<string, unknown>[] = [payload];
+	const nestedKeys = [
+		'entity',
+		'data',
+		'record',
+		'row',
+		'new',
+		'old',
+		'payload',
+		'result',
+		'project',
+		'task',
+		'document',
+		'note',
+		'goal',
+		'milestone',
+		'risk',
+		'plan',
+		'event',
+		'requirement',
+		'source',
+		'edge'
+	];
+
+	for (const key of nestedKeys) {
+		const nested = payload[key];
+		if (isRecord(nested)) {
+			candidates.push(nested);
+		}
+	}
+
+	return candidates;
+};
+
+const getLogPayloadText = (log: ProjectLogRow, fields: readonly string[]): string | null => {
+	const payloads = [log.after_data, log.before_data];
+	for (const payload of payloads) {
+		for (const candidate of getPayloadCandidates(payload)) {
+			const value = firstDisplayText(candidate, fields);
+			if (value) return value;
+		}
+	}
+	return null;
+};
+
+const getEntityKey = (entityType: string, entityId: string | null | undefined): string | null =>
+	entityId ? `${entityType}:${entityId}` : null;
+
+const setEntityLabel = (
+	entityLabelByKey: Map<string, string>,
+	entityType: string,
+	entityId: string | null | undefined,
+	label: unknown
+): void => {
+	const key = getEntityKey(entityType, entityId);
+	const normalized = normalizeDisplayText(label);
+	if (!key || !normalized) return;
+	const existing = entityLabelByKey.get(key);
+	if (existing && !isPlaceholderDisplayText(existing) && isPlaceholderDisplayText(normalized)) {
+		return;
+	}
+	if (existing && !isPlaceholderDisplayText(existing) && !isPlaceholderDisplayText(normalized)) {
+		return;
+	}
+	entityLabelByKey.set(key, normalized);
+};
+
+const hydrateActivityEntityLabels = async ({
+	supabase,
+	projectIds,
+	projectLogs,
+	entityLabelByKey
+}: {
+	supabase: any;
+	projectIds: string[];
+	projectLogs: ProjectLogRow[];
+	entityLabelByKey: Map<string, string>;
+}): Promise<void> => {
+	if (projectLogs.length === 0) return;
+
+	const idsByType = new Map<string, Set<string>>();
+	for (const log of projectLogs) {
+		const key = getEntityKey(log.entity_type, log.entity_id);
+		const existing = key ? entityLabelByKey.get(key) : null;
+		if (!key || (existing && !isPlaceholderDisplayText(existing))) continue;
+
+		const ids = idsByType.get(log.entity_type) ?? new Set<string>();
+		ids.add(log.entity_id);
+		idsByType.set(log.entity_type, ids);
+	}
+
+	await Promise.all(
+		Array.from(idsByType.entries()).map(async ([entityType, ids]) => {
+			const config = ENTITY_LOOKUP_CONFIG[entityType];
+			if (!config || ids.size === 0) return;
+
+			let query = supabase.from(config.table).select(config.select).in('id', Array.from(ids));
+			if (projectIds.length > 0 && config.table !== 'onto_projects') {
+				query = query.in('project_id', projectIds);
+			}
+
+			const { data, error } = await query;
+			if (error) {
+				console.warn('[AdminUserActivity] Failed to hydrate entity labels:', {
+					entityType,
+					error
+				});
+				return;
+			}
+
+			for (const row of data || []) {
+				if (!isRecord(row)) continue;
+				setEntityLabel(
+					entityLabelByKey,
+					entityType,
+					normalizeDisplayText(row.id),
+					firstDisplayText(row, config.labelFields)
+				);
+			}
+		})
+	);
+};
+
 const getProjectLogDetails = (
-	log: ProjectLogRow
+	log: ProjectLogRow,
+	entityLabelByKey: Map<string, string>
 ): {
 	objectName: string;
 	details: string | null;
 } => {
-	const payload = (log.after_data ?? log.before_data ?? {}) as Record<string, unknown>;
-	const objectName =
-		(typeof payload.title === 'string' && payload.title) ||
-		(typeof payload.name === 'string' && payload.name) ||
-		(typeof payload.rel === 'string' && payload.rel) ||
-		'Untitled';
-	const details =
-		(typeof payload.description === 'string' && payload.description) ||
-		(typeof payload.state_key === 'string' && payload.state_key) ||
-		null;
+	const entityKey = getEntityKey(log.entity_type, log.entity_id);
+	const projectEntityKey =
+		log.entity_type === 'project' && log.project_id
+			? getEntityKey('project', log.project_id)
+			: null;
+	const objectName = chooseDisplayText([
+		entityKey ? entityLabelByKey.get(entityKey) : null,
+		projectEntityKey ? entityLabelByKey.get(projectEntityKey) : null,
+		getLogPayloadText(log, ACTIVITY_LABEL_FIELDS)
+	]);
+	const details = getLogPayloadText(log, ACTIVITY_DETAIL_FIELDS);
 
 	return { objectName, details };
 };
@@ -142,6 +371,14 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			throw actorError || new Error('Failed to resolve actor');
 		}
 
+		const ownerIds = Array.from(
+			new Set(
+				[actorId, userId].filter(
+					(id): id is string => typeof id === 'string' && id.length > 0
+				)
+			)
+		);
+
 		const [
 			{ data: memberRows, error: memberError },
 			{ data: ownedProjects, error: ownedProjectsError }
@@ -154,7 +391,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			supabase
 				.from('onto_projects')
 				.select('*')
-				.eq('created_by', actorId)
+				.in('created_by', ownerIds)
 				.is('deleted_at', null)
 				.order('updated_at', { ascending: false })
 		]);
@@ -217,7 +454,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				? supabase
 						.from('onto_project_logs')
 						.select(
-							'project_id, entity_type, action, before_data, after_data, created_at'
+							'project_id, entity_id, entity_type, action, before_data, after_data, created_at'
 						)
 						.in('project_id', projectIds)
 						.order('created_at', { ascending: false })
@@ -252,6 +489,33 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		const projectLogs = (projectLogsResult.data || []) as ProjectLogRow[];
 		const scheduledBriefs = scheduledBriefsResult.data || [];
 		const rawChatSessions = (chatSessionsResult.data || []) as ChatSessionRow[];
+
+		const entityLabelByKey = new Map<string, string>();
+		for (const project of projects) {
+			setEntityLabel(entityLabelByKey, 'project', project.id, project.name);
+		}
+		for (const task of tasks) {
+			setEntityLabel(entityLabelByKey, 'task', task.id, task.title);
+		}
+		for (const document of documents) {
+			setEntityLabel(entityLabelByKey, 'document', document.id, document.title);
+			setEntityLabel(entityLabelByKey, 'note', document.id, document.title);
+		}
+		for (const log of projectLogs) {
+			setEntityLabel(
+				entityLabelByKey,
+				log.entity_type,
+				log.entity_id,
+				getLogPayloadText(log, ACTIVITY_LABEL_FIELDS)
+			);
+		}
+
+		await hydrateActivityEntityLabels({
+			supabase,
+			projectIds,
+			projectLogs,
+			entityLabelByKey
+		});
 
 		const processedChatSessions = sortByTimestampDesc(
 			rawChatSessions.map((session) => ({
@@ -367,7 +631,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				return {
 					...project,
 					status: project.state_key,
-					access_type: project.created_by === actorId ? 'owned' : 'shared',
+					access_type: ownerIds.includes(project.created_by) ? 'owned' : 'shared',
 					task_count: projectTasks.length,
 					open_task_count: openTaskCount,
 					completed_task_count: completedTaskCount,
@@ -387,8 +651,9 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 						updated_at: document.updated_at
 					})),
 					recent_activity: projectActivityLogs.slice(0, 4).map((log) => {
-						const details = getProjectLogDetails(log);
+						const details = getProjectLogDetails(log, entityLabelByKey);
 						return {
+							entity_id: log.entity_id,
 							entity_type: log.entity_type,
 							action: log.action,
 							created_at: log.created_at,
@@ -406,6 +671,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			.sort((a, b) => asTime(b.last_activity_at) - asTime(a.last_activity_at));
 
 		const activities: Array<{
+			entity_id?: string;
 			entity_type: string;
 			action: string;
 			created_at: string;
@@ -415,8 +681,9 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		}> = [];
 
 		for (const log of projectLogs) {
-			const details = getProjectLogDetails(log);
+			const details = getProjectLogDetails(log, entityLabelByKey);
 			activities.push({
+				entity_id: log.entity_id,
 				entity_type: log.entity_type,
 				action: log.action,
 				created_at: log.created_at,

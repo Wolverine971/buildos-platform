@@ -153,6 +153,7 @@ const CALENDAR_ANALYSIS_DEBUG_ENV = process.env.CALENDAR_ANALYSIS_DEBUG;
 const DEBUG_LOGGING =
 	CALENDAR_ANALYSIS_DEBUG_ENV === 'true' ||
 	(CALENDAR_ANALYSIS_DEBUG_ENV !== 'false' && process.env.NODE_ENV !== 'production');
+const CALENDAR_SUGGESTION_PROCESSING_STALE_MS = 2 * 60 * 1000;
 
 type CalendarSuggestionModifications = {
 	name?: string;
@@ -177,6 +178,14 @@ function parseJsonValue<T>(value: unknown): T | null {
 		return value as T;
 	}
 	return null;
+}
+
+function isStaleProcessingSuggestion(suggestion: CalendarProjectSuggestion): boolean {
+	if (suggestion.status !== 'processing') return false;
+	if (!suggestion.status_changed_at) return true;
+	const changedAt = new Date(suggestion.status_changed_at).getTime();
+	if (!Number.isFinite(changedAt)) return true;
+	return Date.now() - changedAt > CALENDAR_SUGGESTION_PROCESSING_STALE_MS;
 }
 
 function prepareCalendarTasks(
@@ -1085,7 +1094,7 @@ When an event has a "recurrence" field with RRULE:
 		let claimed = false;
 		let instantiatedProjectId: string | null = null;
 		try {
-			const suggestion = await this.claimSuggestion(suggestionId, userId);
+			let suggestion = await this.claimSuggestion(suggestionId, userId);
 			if (!suggestion) {
 				const current = await this.getSuggestion(suggestionId, userId);
 				if (!current) throw new Error('Suggestion not found');
@@ -1100,7 +1109,54 @@ When an event has a "recurrence" field with RRULE:
 						}
 					};
 				}
-				throw new Error(`Suggestion already ${current.status ?? 'processed'}`);
+				if (current.status === 'processing') {
+					if (current.created_project_id) {
+						await this.updateSuggestionStatus(
+							suggestionId,
+							userId,
+							'accepted',
+							current.created_project_id,
+							undefined,
+							['processing']
+						);
+						return {
+							success: true,
+							data: {
+								projectId: current.created_project_id,
+								counts: null,
+								alreadyProcessed: true,
+								repaired: true
+							}
+						};
+					}
+
+					if (!isStaleProcessingSuggestion(current)) {
+						await this.syncSuggestionToInbox(current);
+						return {
+							success: true,
+							data: {
+								inProgress: true,
+								alreadyProcessing: true
+							}
+						};
+					}
+
+					suggestion = await this.claimStaleProcessingSuggestion(current, userId);
+					if (!suggestion) {
+						const latest = await this.getSuggestion(suggestionId, userId);
+						if (latest) await this.syncSuggestionToInbox(latest);
+						return {
+							success: true,
+							data: {
+								inProgress: true,
+								alreadyProcessing: true
+							}
+						};
+					}
+				}
+				if (!suggestion) {
+					throw new Error(`Suggestion already ${current.status ?? 'processed'}`);
+				}
 			}
 			claimed = true;
 
@@ -1146,7 +1202,14 @@ When an event has a "recurrence" field with RRULE:
 				force: true
 			});
 
-			await this.updateSuggestionStatus(suggestionId, 'accepted', project_id);
+			await this.updateSuggestionStatus(
+				suggestionId,
+				userId,
+				'accepted',
+				project_id,
+				undefined,
+				['processing']
+			);
 
 			return {
 				success: true,
@@ -1514,7 +1577,38 @@ When an event has a "recurrence" field with RRULE:
 			.maybeSingle();
 
 		if (error) {
-			throw new Error('Failed to claim suggestion');
+			throw new Error(`Failed to claim suggestion: ${error.message}`);
+		}
+		if (data) {
+			await this.syncSuggestionToInbox(data);
+		}
+		return data;
+	}
+
+	private async claimStaleProcessingSuggestion(
+		suggestion: CalendarProjectSuggestion,
+		userId: string
+	): Promise<CalendarProjectSuggestion | null> {
+		const now = new Date().toISOString();
+		let query = this.supabase
+			.from('calendar_project_suggestions')
+			.update({
+				status: 'processing',
+				status_changed_at: now,
+				updated_at: now
+			})
+			.eq('id', suggestion.id)
+			.eq('user_id', userId)
+			.eq('status', 'processing');
+
+		if (suggestion.status_changed_at) {
+			query = query.eq('status_changed_at', suggestion.status_changed_at);
+		}
+
+		const { data, error } = await query.select('*').maybeSingle();
+
+		if (error) {
+			throw new Error(`Failed to reclaim processing suggestion: ${error.message}`);
 		}
 		if (data) {
 			await this.syncSuggestionToInbox(data);
@@ -1572,7 +1666,7 @@ When an event has a "recurrence" field with RRULE:
 			.maybeSingle();
 
 		if (error) {
-			throw new Error('Failed to reject suggestion');
+			throw new Error(`Failed to reject suggestion: ${error.message}`);
 		}
 		if (data) {
 			await this.syncSuggestionToInbox(data);
@@ -1582,10 +1676,12 @@ When an event has a "recurrence" field with RRULE:
 
 	private async updateSuggestionStatus(
 		suggestionId: string,
+		userId: string,
 		status: CalendarSuggestionStatus,
 		projectId?: string | null,
-		reason?: string
-	): Promise<void> {
+		reason?: string,
+		allowedCurrentStatuses: CalendarSuggestionStatus[] = []
+	): Promise<CalendarProjectSuggestion> {
 		const updates: {
 			status: CalendarSuggestionStatus;
 			status_changed_at: string;
@@ -1606,19 +1702,30 @@ When an event has a "recurrence" field with RRULE:
 			updates.rejection_reason = reason;
 		}
 
-		const { data, error } = await this.supabase
+		let query = this.supabase
 			.from('calendar_project_suggestions')
 			.update(updates)
 			.eq('id', suggestionId)
-			.select('*')
-			.single();
+			.eq('user_id', userId);
+
+		if (allowedCurrentStatuses.length) {
+			query = query.in('status', allowedCurrentStatuses);
+		}
+
+		const { data, error } = await query.select('*').maybeSingle();
 
 		if (error) {
-			throw new Error('Failed to update suggestion status');
+			throw new Error(`Failed to update suggestion status: ${error.message}`);
 		}
-		if (data) {
-			await this.syncSuggestionToInbox(data);
+		if (!data) {
+			const latest = await this.getSuggestion(suggestionId, userId);
+			if (latest) await this.syncSuggestionToInbox(latest);
+			throw new Error(
+				`Failed to update suggestion status: suggestion is ${latest?.status ?? 'missing'}`
+			);
 		}
+		await this.syncSuggestionToInbox(data);
+		return data;
 	}
 
 	private async syncSuggestionToInbox(suggestion: CalendarProjectSuggestion): Promise<void> {

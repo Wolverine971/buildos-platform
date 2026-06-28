@@ -2734,7 +2734,7 @@ export type Database = {
             foreignKeyName: "calendar_project_suggestions_created_project_id_fkey"
             columns: ["created_project_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "onto_projects"
             referencedColumns: ["id"]
           },
           {

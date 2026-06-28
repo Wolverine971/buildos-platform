@@ -284,8 +284,16 @@ export type Template = z.infer<typeof TemplateSchema>;
 // PROJECT SPEC (for instantiation)
 // ============================================
 
+const DisplayTextSchema = z
+	.string()
+	.trim()
+	.min(1)
+	.refine((value) => !['undefined', 'null'].includes(value.toLowerCase()), {
+		message: 'must be a real label, not "undefined" or "null"'
+	});
+
 const ProjectSpecProjectSchema = z.object({
-	name: z.string().min(1),
+	name: DisplayTextSchema,
 	description: z.string().optional(),
 	type_key: z
 		.string()
@@ -327,7 +335,7 @@ const ProjectSpecEntityBaseSchema = z.object({
 const ProjectSpecEntitySchema = z.discriminatedUnion('kind', [
 	ProjectSpecEntityBaseSchema.extend({
 		kind: z.literal('goal'),
-		name: z.string().min(1),
+		name: DisplayTextSchema,
 		description: z.string().optional(),
 		target_date: z.string().datetime().optional(),
 		measurement_criteria: z.string().optional(),
@@ -335,20 +343,20 @@ const ProjectSpecEntitySchema = z.discriminatedUnion('kind', [
 	}),
 	ProjectSpecEntityBaseSchema.extend({
 		kind: z.literal('milestone'),
-		title: z.string().min(1),
+		title: DisplayTextSchema,
 		due_at: z.string().datetime(),
 		description: z.string().optional()
 	}),
 	ProjectSpecEntityBaseSchema.extend({
 		kind: z.literal('plan'),
-		name: z.string().min(1),
+		name: DisplayTextSchema,
 		description: z.string().optional(),
 		start_date: z.string().datetime().optional(),
 		end_date: z.string().datetime().optional()
 	}),
 	ProjectSpecEntityBaseSchema.extend({
 		kind: z.literal('task'),
-		title: z.string().min(1),
+		title: DisplayTextSchema,
 		description: z.string().optional(),
 		priority: z.number().int().min(1).max(5).optional(),
 		start_at: z.string().datetime().optional(),
@@ -356,26 +364,26 @@ const ProjectSpecEntitySchema = z.discriminatedUnion('kind', [
 	}),
 	ProjectSpecEntityBaseSchema.extend({
 		kind: z.literal('document'),
-		title: z.string().min(1),
+		title: DisplayTextSchema,
 		content: z.string().optional(),
 		body_markdown: z.string().optional(),
 		description: z.string().optional()
 	}),
 	ProjectSpecEntityBaseSchema.extend({
 		kind: z.literal('risk'),
-		title: z.string().min(1),
+		title: DisplayTextSchema,
 		impact: RiskImpactSchema.optional(),
 		probability: z.number().min(0).max(1).optional(),
 		content: z.string().optional()
 	}),
 	ProjectSpecEntityBaseSchema.extend({
 		kind: z.literal('requirement'),
-		text: z.string().min(1)
+		text: DisplayTextSchema
 	}),
 	ProjectSpecEntityBaseSchema.extend({
 		kind: z.literal('metric'),
-		name: z.string().min(1),
-		unit: z.string(),
+		name: DisplayTextSchema,
+		unit: DisplayTextSchema,
 		definition: z.string().optional(),
 		target_value: z.number().optional()
 	}),
@@ -403,7 +411,7 @@ const ProjectSpecRelationshipSchema = z.union([
 ]);
 
 const ContextDocumentSchema = z.object({
-	title: z.string().min(1),
+	title: DisplayTextSchema,
 	body_markdown: z.string().min(1),
 	type_key: z.string().optional(),
 	state_key: z.string().optional(),

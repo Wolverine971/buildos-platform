@@ -3,7 +3,7 @@
 
 <script lang="ts">
 	import Button from '$components/ui/Button.svelte';
-	import { Plus, Pencil, Trash2, Check, X } from 'lucide-svelte';
+	import { Plus, Pencil, Trash2, Check, X, MessageCircle, LoaderCircle } from 'lucide-svelte';
 	import DocumentProposalDiff from './DocumentProposalDiff.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { notifyDataMutation } from '$lib/stores/projectDataMutations';
@@ -12,11 +12,23 @@
 	let {
 		runId,
 		changeSet,
-		onApplied
+		onApplied,
+		acceptLabel = 'Apply',
+		dismissLabel = 'Reject',
+		approveAllLabel = 'Approve',
+		rejectAllLabel = 'Reject',
+		openingChat = false,
+		onChat
 	}: {
 		runId: string;
 		changeSet: ChangeSet;
 		onApplied?: () => void;
+		acceptLabel?: string;
+		dismissLabel?: string;
+		approveAllLabel?: string;
+		rejectAllLabel?: string;
+		openingChat?: boolean;
+		onChat?: () => void;
 	} = $props();
 
 	// Per-change decision overrides; absent = the default ('approved'). Keeping an
@@ -171,14 +183,14 @@
 				type="button"
 				class="text-xs text-muted-foreground hover:text-foreground underline"
 				onclick={() => setAll('approved')}
-				disabled={applying}>Approve all</button
+				disabled={applying}>{approveAllLabel} all</button
 			>
 			<span class="text-muted-foreground text-xs">·</span>
 			<button
 				type="button"
 				class="text-xs text-muted-foreground hover:text-foreground underline"
 				onclick={() => setAll('rejected')}
-				disabled={applying}>Reject all</button
+				disabled={applying}>{rejectAllLabel} all</button
 			>
 		</div>
 	</div>
@@ -246,12 +258,27 @@
 	</div>
 
 	<div class="flex items-center justify-end gap-2">
+		{#if onChat}
+			<button
+				type="button"
+				class="pressable inline-flex items-center justify-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2.5 py-1.5 text-[12px] font-semibold text-accent hover:bg-accent/15 disabled:opacity-50"
+				onclick={() => onChat?.()}
+				disabled={applying || openingChat}
+			>
+				{#if openingChat}
+					<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
+				{:else}
+					<MessageCircle class="h-3.5 w-3.5" />
+				{/if}
+				Chat
+			</button>
+		{/if}
 		<Button onclick={apply} variant="primary" size="md" disabled={applying}>
 			{applying
 				? 'Applying…'
 				: approvedCount === 0
-					? 'Reject all & finish'
-					: `Apply ${approvedCount} change${approvedCount === 1 ? '' : 's'}`}
+					? `${dismissLabel} all & finish`
+					: `${acceptLabel} ${approvedCount} change${approvedCount === 1 ? '' : 's'}`}
 		</Button>
 	</div>
 </div>

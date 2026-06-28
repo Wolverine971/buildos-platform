@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
 	createAdminSupabaseClient: vi.fn(),
 	loadProjectLoopSourceFingerprint: vi.fn(),
-	decideProjectSuggestion: vi.fn(),
 	countActiveAgentRuns: vi.fn(),
 	dispatchAgentRun: vi.fn(),
 	buildProjectSuggestionProposalContext: vi.fn(),
@@ -17,10 +16,6 @@ vi.mock('$lib/supabase/admin', () => ({
 
 vi.mock('$lib/server/project-loop-snapshot.service', () => ({
 	loadProjectLoopSourceFingerprint: mocks.loadProjectLoopSourceFingerprint
-}));
-
-vi.mock('$lib/server/project-suggestion-actions.service', () => ({
-	decideProjectSuggestion: mocks.decideProjectSuggestion
 }));
 
 vi.mock('$lib/server/agent-runs/dispatch', () => ({
@@ -154,13 +149,8 @@ describe('decideProjectSuggestionWithClarification', () => {
 		);
 	});
 
-	it('falls back to the direct decision path when the agent queue is full', async () => {
+	it('returns 429 and leaves the suggestion pending when the agent queue is full', async () => {
 		mocks.countActiveAgentRuns.mockResolvedValue({ ok: true, count: 3 });
-		mocks.decideProjectSuggestion.mockResolvedValue({
-			ok: true,
-			suggestion: pendingSuggestion({ status: 'applied' }),
-			result: { ok: true, applied_operations: 0 }
-		});
 		const { supabase, updates } = makeSupabase({
 			project_suggestions: [{ data: pendingSuggestion(), error: null }]
 		});
@@ -175,23 +165,49 @@ describe('decideProjectSuggestionWithClarification', () => {
 			reason: 'intentional'
 		});
 
-		expect(outcome).toMatchObject({ ok: true, degraded: true });
+		expect(outcome).toMatchObject({ ok: false, status: 429 });
 		expect(mocks.dispatchAgentRun).not.toHaveBeenCalled();
-		expect(mocks.decideProjectSuggestion).toHaveBeenCalledWith(
-			expect.objectContaining({
-				action: 'dismiss',
-				feedback: expect.objectContaining({
-					reason: 'intentional',
-					note: 'This is intentional.'
-				})
-			})
-		);
-		expect(updates[0].payload).toMatchObject({
-			user_feedback: expect.objectContaining({
-				reason: 'intentional',
-				note: 'This is intentional.'
-			})
+		expect(updates).toEqual([]);
+	});
+
+	it('restores the suggestion to pending when dispatch later returns 429', async () => {
+		mocks.dispatchAgentRun.mockResolvedValue({
+			ok: false,
+			status: 429,
+			code: 'RATE_LIMITED',
+			message: 'You already have 3 active agent runs.'
 		});
+		const delegated = pendingSuggestion({ status: 'delegated' });
+		const { supabase, updates } = makeSupabase({
+			project_suggestions: [
+				{ data: pendingSuggestion(), error: null },
+				{ data: delegated, error: null }
+			],
+			onto_projects: [{ data: { name: 'Launch project' }, error: null }],
+			project_loop_runs: [
+				{ data: { id: 'loop-run-1', chat_session_id: 'chat-1' }, error: null }
+			]
+		});
+
+		const outcome = await decideProjectSuggestionWithClarification({
+			supabase,
+			userId: 'user-1',
+			projectId: 'project-1',
+			suggestionId: 'suggestion-1',
+			action: 'approve',
+			clarification: 'Only merge the duplicate launch tasks.'
+		});
+
+		expect(outcome).toMatchObject({ ok: false, status: 429 });
+		expect(updates.map((update) => update.payload)).toEqual([
+			expect.objectContaining({
+				status: 'delegated',
+				user_feedback: expect.objectContaining({
+					note: 'Only merge the duplicate launch tasks.'
+				})
+			}),
+			expect.objectContaining({ status: 'pending' })
+		]);
 	});
 
 	it('supersedes stale clarified approvals before dispatching a child run', async () => {

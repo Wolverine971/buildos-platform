@@ -2389,7 +2389,7 @@
 										type="number"
 										min="1"
 										max="50"
-										class="w-16 rounded-lg border border-border bg-background px-2 py-1 text-[0.65rem] font-semibold text-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-ring"
+										class="w-16 rounded-lg border border-border bg-background px-2 py-1 text-[0.65rem] font-semibold text-foreground shadow-ink-inner focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 										value={shellRouter.agentTurnBudget}
 										disabled={shellRouter.agentLoopActive ||
 											shellRouter.agentMessageLoading ||
@@ -2464,54 +2464,6 @@
 	@media (min-width: 640px) {
 		:global(.agent-chat-keyboard-modal) {
 			margin-bottom: 1rem !important;
-		}
-	}
-
-	.agent-resp-div p {
-		margin-bottom: 0.2rem;
-	}
-
-	/* INKPRINT Scrollbar Styling - Ink on Paper aesthetic */
-	.agent-chat-scroll {
-		scrollbar-gutter: stable;
-		scrollbar-width: thin;
-		scrollbar-color: hsl(var(--muted-foreground) / 0.3) hsl(var(--muted));
-	}
-
-	:global(.agent-chat-scroll::-webkit-scrollbar) {
-		width: 8px;
-	}
-
-	:global(.agent-chat-scroll::-webkit-scrollbar-track) {
-		background: hsl(var(--muted));
-		border-radius: 0.5rem; /* 8px - rounded-md */
-	}
-
-	:global(.agent-chat-scroll::-webkit-scrollbar-thumb) {
-		background: hsl(var(--muted-foreground) / 0.3);
-		border-radius: 0.5rem; /* 8px - rounded-md */
-	}
-
-	:global(.agent-chat-scroll::-webkit-scrollbar-thumb:hover) {
-		background: hsl(var(--muted-foreground) / 0.5);
-	}
-
-	:global(.dark .agent-chat-scroll::-webkit-scrollbar-track) {
-		background: hsl(var(--muted));
-	}
-
-	:global(.dark .agent-chat-scroll::-webkit-scrollbar-thumb) {
-		background: hsl(var(--muted-foreground) / 0.4);
-	}
-
-	:global(.dark .agent-chat-scroll::-webkit-scrollbar-thumb:hover) {
-		background: hsl(var(--accent));
-	}
-
-	/* Compact spacing for landscape mobile (short viewport) */
-	@media (orientation: landscape) and (max-height: 500px) {
-		:global(.agent-chat-scroll::-webkit-scrollbar) {
-			width: 4px;
 		}
 	}
 </style>

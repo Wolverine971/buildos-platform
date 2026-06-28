@@ -3,6 +3,7 @@
 	import { browser } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import UserContextPanel from './UserContextPanel.svelte';
 	import EmailHistoryViewerModal from './EmailHistoryViewerModal.svelte';
@@ -58,6 +59,7 @@
 	let tone = $state<EmailGenerationContext['tone']>('friendly');
 	let isGenerating = $state(false);
 	let isSending = $state(false);
+	let showSendConfirm = $state(false);
 	let userContext = $state<EmailGenerationContext['userInfo'] | null>(null);
 	let contextLoading = $state(true);
 	let contextPanelExpanded = $state(false); // Start collapsed on mobile
@@ -419,15 +421,21 @@ Guidelines:
 		}
 	}
 
+	function requestSend() {
+		const finalEmail = getFinalEmail();
+		if (!finalEmail) {
+			toastService.error('Please write or generate an email first');
+			return;
+		}
+		showSendConfirm = true;
+	}
+
 	async function sendEmail() {
 		const finalEmail = getFinalEmail();
 		if (!finalEmail) {
 			toastService.error('Please write or generate an email first');
 			return;
 		}
-
-		const confirmed = confirm(`Send this email to ${userEmail}?`);
-		if (!confirmed) return;
 
 		isSending = true;
 		try {
@@ -459,6 +467,7 @@ Guidelines:
 			toastService.error(error instanceof Error ? error.message : 'Failed to send email');
 		} finally {
 			isSending = false;
+			showSendConfirm = false;
 		}
 	}
 
@@ -503,6 +512,27 @@ Guidelines:
 </script>
 
 <EmailHistoryViewerModal bind:isOpen={EmailHistoryViewerModalOpen} email={selectedEmailForViewer} />
+
+<!-- Send confirmation -->
+<ConfirmationModal
+	bind:isOpen={showSendConfirm}
+	title="Send this email?"
+	confirmText="Send email"
+	confirmVariant="primary"
+	icon="info"
+	loading={isSending}
+	loadingText="Sending…"
+	onconfirm={sendEmail}
+	oncancel={() => (showSendConfirm = false)}
+>
+	{#snippet content()}
+		<p class="text-sm text-muted-foreground">
+			This sends the email to <span class="font-medium text-foreground break-all"
+				>{userEmail}</span
+			>.
+		</p>
+	{/snippet}
+</ConfirmationModal>
 
 <Modal {isOpen} onClose={closeModal} size="xl">
 	<div class="flex flex-col h-full max-h-[90vh]">
@@ -886,7 +916,7 @@ Guidelines:
 							<span class="hidden sm:inline">Copy</span>
 						</Button>
 						<Button
-							onclick={sendEmail}
+							onclick={requestSend}
 							disabled={isSending}
 							loading={isSending}
 							variant="primary"

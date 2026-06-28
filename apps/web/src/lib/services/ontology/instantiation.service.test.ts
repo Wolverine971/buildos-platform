@@ -152,6 +152,38 @@ describe('validateProjectSpec', () => {
 		expect(errors).toHaveLength(0);
 	});
 
+	it('rejects literal undefined labels before instantiation', () => {
+		const { valid, errors } = validateProjectSpec({
+			project: {
+				name: 'Undefined Label Test',
+				type_key: 'project.creative.book'
+			},
+			entities: [
+				{ temp_id: 'goal-1', kind: 'goal', name: 'undefined' },
+				{ temp_id: 'task-1', kind: 'task', title: 'null' }
+			],
+			relationships: []
+		});
+
+		expect(valid).toBe(false);
+		expect(errors.some((error) => error.includes('must be a real label'))).toBe(true);
+	});
+
+	it('trims display labels when parsing project specs', () => {
+		const parsed = ProjectSpecSchema.parse({
+			project: {
+				name: '  Trimmed Project  ',
+				type_key: 'project.creative.book'
+			},
+			entities: [{ temp_id: 'task-1', kind: 'task', title: '  Trimmed Task  ' }],
+			relationships: []
+		});
+
+		expect(parsed.project.name).toBe('Trimmed Project');
+		expect(parsed.entities[0]?.kind).toBe('task');
+		expect(parsed.entities[0]?.title).toBe('Trimmed Task');
+	});
+
 	it('accepts and normalizes capitalized risk impact values', () => {
 		const spec = {
 			project: {

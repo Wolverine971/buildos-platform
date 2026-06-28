@@ -128,7 +128,7 @@
 
 	function handleSubmit(event: Event) {
 		event.preventDefault();
-		if (disabled) return;
+		if (disabled || isSendDisabled) return;
 		onSend?.();
 	}
 
@@ -162,11 +162,12 @@
 	}
 
 	function handleDrop(event: DragEvent) {
+		// Always clear the drag overlay, even on the early-return paths below.
+		dragDepth = 0;
 		if (disabled || isStreaming) return;
 		const files = filesFromList(event.dataTransfer?.files);
 		if (!files.length) return;
 		event.preventDefault();
-		dragDepth = 0;
 		onAttachmentFiles?.(files);
 	}
 

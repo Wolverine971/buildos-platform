@@ -160,14 +160,14 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal", "ProjectModalsHost"]
-		},
-		{
 			"file": "src/routes/projects/create/+page.svelte",
 			"type": "page",
 			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal", "ProjectModalsHost"]
 		},
 		{
 			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
@@ -337,6 +337,17 @@
 			"type": "service",
 			"components": [],
 			"exports": ["GoogleOAuthConnectionError", "GoogleOAuthService"]
+		},
+		{
+			"file": "src/lib/services/inbox-decision-notification.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": [
+				"startInboxDecisionNotification",
+				"startInboxBatchDecisionNotification",
+				"completeInboxDecisionNotification",
+				"failInboxDecisionNotification"
+			]
 		},
 		{
 			"file": "src/lib/services/linked-entity-context-formatter.ts",

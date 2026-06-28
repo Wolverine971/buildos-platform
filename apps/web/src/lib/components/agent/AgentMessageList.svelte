@@ -187,6 +187,7 @@
 								onclick={() => onSelectSuggestion?.(suggestion)}
 							>
 								<span
+									aria-hidden="true"
 									class="mt-0.5 text-accent transition-transform group-hover:translate-x-0.5"
 									>▸</span
 								>
@@ -307,7 +308,9 @@
 						/>
 					</div>
 					{#if shouldRenderAsMarkdown(message.content)}
-						<div class="agent-markdown {proseClasses} min-w-0 break-words">
+						<div
+							class="agent-markdown {proseClasses} min-w-0 overflow-x-auto break-words"
+						>
 							{@html renderMarkdown(message.content)}
 						</div>
 					{:else}
@@ -460,6 +463,54 @@
 	.agent-chat-scroll > :global(*) {
 		content-visibility: auto;
 		contain-intrinsic-size: auto 120px;
+	}
+
+	.agent-resp-div :global(p) {
+		margin-bottom: 0.2rem;
+	}
+
+	/* INKPRINT Scrollbar Styling - Ink on Paper aesthetic */
+	.agent-chat-scroll {
+		scrollbar-gutter: stable;
+		scrollbar-width: thin;
+		scrollbar-color: hsl(var(--muted-foreground) / 0.3) hsl(var(--muted));
+	}
+
+	:global(.agent-chat-scroll::-webkit-scrollbar) {
+		width: 8px;
+	}
+
+	:global(.agent-chat-scroll::-webkit-scrollbar-track) {
+		background: hsl(var(--muted));
+		border-radius: 0.5rem; /* 8px - rounded-md */
+	}
+
+	:global(.agent-chat-scroll::-webkit-scrollbar-thumb) {
+		background: hsl(var(--muted-foreground) / 0.3);
+		border-radius: 0.5rem; /* 8px - rounded-md */
+	}
+
+	:global(.agent-chat-scroll::-webkit-scrollbar-thumb:hover) {
+		background: hsl(var(--muted-foreground) / 0.5);
+	}
+
+	:global(.dark .agent-chat-scroll::-webkit-scrollbar-track) {
+		background: hsl(var(--muted));
+	}
+
+	:global(.dark .agent-chat-scroll::-webkit-scrollbar-thumb) {
+		background: hsl(var(--muted-foreground) / 0.4);
+	}
+
+	:global(.dark .agent-chat-scroll::-webkit-scrollbar-thumb:hover) {
+		background: hsl(var(--accent));
+	}
+
+	/* Compact spacing for landscape mobile (short viewport) */
+	@media (orientation: landscape) and (max-height: 500px) {
+		:global(.agent-chat-scroll::-webkit-scrollbar) {
+			width: 4px;
+		}
 	}
 
 	.user-message-content-collapsed {

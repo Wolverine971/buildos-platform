@@ -1,7 +1,6 @@
 // apps/web/src/lib/server/clarified-decision.service.ts
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { loadProjectLoopSourceFingerprint } from '$lib/server/project-loop-snapshot.service';
-import { decideProjectSuggestion } from '$lib/server/project-suggestion-actions.service';
 import {
 	countActiveAgentRuns,
 	dispatchAgentRun,
@@ -228,33 +227,13 @@ async function markSuggestionFailed(params: {
 	return data ?? null;
 }
 
-async function runDegradedInline(params: {
-	supabase: AnySupabase;
-	admin: AnySupabase;
-	userId: string;
-	projectId: string;
-	suggestionId: string;
-	action: ClarifiedProjectSuggestionAction;
-	feedback: ProjectSuggestionFeedback;
-}): Promise<ClarifiedProjectSuggestionDecisionOutcome> {
-	await params.supabase
-		.from('project_suggestions')
-		.update({ user_feedback: params.feedback as unknown as Json })
-		.eq('id', params.suggestionId)
-		.eq('project_id', params.projectId)
-		.eq('status', 'pending');
-
-	const outcome = await decideProjectSuggestion({
-		supabase: params.supabase,
-		userId: params.userId,
-		projectId: params.projectId,
-		suggestionId: params.suggestionId,
-		action: params.action,
-		feedback: params.feedback
-	});
-	if (!outcome.ok) return outcome;
-	await syncProjectSuggestionInboxItem(params.admin, outcome.suggestion);
-	return { ...outcome, degraded: true };
+function queueFullClarifiedDecisionResponse(): ClarifiedProjectSuggestionDecisionOutcome {
+	return {
+		ok: false,
+		status: 429,
+		message:
+			'Clarified decisions require agent-run capacity right now. Try again after active agent runs finish.'
+	};
 }
 
 export async function decideProjectSuggestionWithClarification(params: {
@@ -369,15 +348,7 @@ export async function decideProjectSuggestionWithClarification(params: {
 	const active = await countActiveAgentRuns({ admin, userId: params.userId });
 	if (!active.ok) return active;
 	if (active.count >= MAX_CONCURRENT_AGENT_RUNS) {
-		return runDegradedInline({
-			supabase: params.supabase,
-			admin,
-			userId: params.userId,
-			projectId: params.projectId,
-			suggestionId: params.suggestionId,
-			action: params.action,
-			feedback
-		});
+		return queueFullClarifiedDecisionResponse();
 	}
 
 	const { data: claimed, error: claimError } = await params.supabase
@@ -478,15 +449,7 @@ export async function decideProjectSuggestionWithClarification(params: {
 				.eq('id', params.suggestionId)
 				.eq('project_id', params.projectId)
 				.eq('status', 'delegated');
-			return runDegradedInline({
-				supabase: params.supabase,
-				admin,
-				userId: params.userId,
-				projectId: params.projectId,
-				suggestionId: params.suggestionId,
-				action: params.action,
-				feedback
-			});
+			return queueFullClarifiedDecisionResponse();
 		}
 
 		try {

@@ -275,6 +275,15 @@ export async function instantiateProject(
 	};
 
 	const counts: InstantiationCounts = { ...INITIAL_COUNTS };
+	const activityDataByEntityKey = new Map<string, Record<string, unknown>>();
+	const setActivityData = (
+		kind: string,
+		id: string | null | undefined,
+		data: Record<string, unknown>
+	): void => {
+		if (!id) return;
+		activityDataByEntityKey.set(`${kind}:${id}`, data);
+	};
 
 	// Resolve actor ID from the current auth context to satisfy RLS
 	// (created_by must equal current_actor_id()).
@@ -327,6 +336,12 @@ export async function instantiateProject(
 
 		projectId = newProjectId;
 		inserted.projectId = projectId;
+		setActivityData('project', projectId, {
+			name: parsed.project.name,
+			type_key: parsed.project.type_key,
+			state_key: projectState,
+			description: parsed.project.description ?? null
+		});
 
 		// Type guard: Ensure projectId is string for all subsequent operations
 		if (!projectId) {
@@ -368,6 +383,11 @@ export async function instantiateProject(
 			});
 
 			inserted.documents.push(contextDocId);
+			setActivityData('document', contextDocId, {
+				title: contextDocument.title,
+				type_key: contextDocument.type_key,
+				state_key: contextDocument.state_key
+			});
 			counts.documents += 1;
 			await addDocumentToDocStructure(client, typedProjectId, contextDocId, actorId, {
 				title: contextDocument.title
@@ -421,6 +441,12 @@ export async function instantiateProject(
 
 					entityIdByTempId.set(entity.temp_id, { kind: 'goal', id: data.id });
 					inserted.goals.push(data.id);
+					setActivityData('goal', data.id, {
+						name: entity.name,
+						type_key: entity.type_key ?? 'goal.default',
+						state_key: normalizedState,
+						description: entity.description ?? null
+					});
 					counts.goals += 1;
 					break;
 				}
@@ -458,6 +484,12 @@ export async function instantiateProject(
 
 					entityIdByTempId.set(entity.temp_id, { kind: 'milestone', id: data.id });
 					inserted.milestones.push(data.id);
+					setActivityData('milestone', data.id, {
+						title: entity.title,
+						type_key: entity.type_key ?? 'milestone.default',
+						state_key: normalizedState,
+						description: entity.description ?? null
+					});
 					counts.milestones += 1;
 					break;
 				}
@@ -510,6 +542,12 @@ export async function instantiateProject(
 
 					entityIdByTempId.set(entity.temp_id, { kind: 'plan', id: data.id });
 					inserted.plans.push(data.id);
+					setActivityData('plan', data.id, {
+						name: entity.name,
+						type_key: entity.type_key ?? 'plan.default',
+						state_key: normalizedPlanState,
+						description: entity.description ?? null
+					});
 					counts.plans += 1;
 					break;
 				}
@@ -565,6 +603,12 @@ export async function instantiateProject(
 
 					entityIdByTempId.set(entity.temp_id, { kind: 'task', id: data.id });
 					inserted.tasks.push(data.id);
+					setActivityData('task', data.id, {
+						title: entity.title,
+						type_key: entity.type_key ?? 'task.default',
+						state_key: normalizedState,
+						description: entity.description ?? null
+					});
 					counts.tasks += 1;
 					break;
 				}
@@ -586,6 +630,12 @@ export async function instantiateProject(
 
 					entityIdByTempId.set(entity.temp_id, { kind: 'document', id: docId });
 					inserted.documents.push(docId);
+					setActivityData('document', docId, {
+						title: entity.title,
+						type_key: entity.type_key ?? 'document.default',
+						state_key: normalizedState,
+						description: entity.description ?? null
+					});
 					counts.documents += 1;
 					await addDocumentToDocStructure(client, typedProjectId, docId, actorId, {
 						title: entity.title,
@@ -626,6 +676,12 @@ export async function instantiateProject(
 
 					entityIdByTempId.set(entity.temp_id, { kind: 'risk', id: data.id });
 					inserted.risks.push(data.id);
+					setActivityData('risk', data.id, {
+						title: entity.title,
+						type_key: entity.type_key ?? 'risk.default',
+						state_key: normalizedState,
+						impact: entity.impact ?? 'medium'
+					});
 					counts.risks += 1;
 					break;
 				}
@@ -652,6 +708,10 @@ export async function instantiateProject(
 
 					entityIdByTempId.set(entity.temp_id, { kind: 'requirement', id: data.id });
 					inserted.requirements.push(data.id);
+					setActivityData('requirement', data.id, {
+						text: entity.text,
+						type_key: entity.type_key ?? 'requirement.general'
+					});
 					counts.requirements += 1;
 					break;
 				}
@@ -682,6 +742,12 @@ export async function instantiateProject(
 
 					entityIdByTempId.set(entity.temp_id, { kind: 'metric', id: data.id });
 					inserted.metrics.push(data.id);
+					setActivityData('metric', data.id, {
+						name: entity.name,
+						type_key: entity.type_key ?? null,
+						unit: entity.unit,
+						definition: entity.definition ?? null
+					});
 					counts.metrics += 1;
 					break;
 				}
@@ -710,6 +776,11 @@ export async function instantiateProject(
 
 					entityIdByTempId.set(entity.temp_id, { kind: 'source', id: data.id });
 					inserted.sources.push(data.id);
+					setActivityData('source', data.id, {
+						name: entity.name ?? null,
+						uri: entity.uri,
+						snapshot_uri: entity.snapshot_uri ?? null
+					});
 					counts.sources += 1;
 					break;
 				}
@@ -877,6 +948,7 @@ export async function instantiateProject(
 					action: 'created' as const,
 					changedBy: userId,
 					changedByActorId: options.activityLog?.actorContext?.changedByActorId,
+					afterData: activityDataByEntityKey.get(`${entityType}:${entityId}`),
 					changeSource: options.activityLog?.changeSource ?? 'api',
 					chatSessionId: options.activityLog?.chatSessionId,
 					externalAgentCallerId: options.activityLog?.actorContext?.externalAgentCallerId,

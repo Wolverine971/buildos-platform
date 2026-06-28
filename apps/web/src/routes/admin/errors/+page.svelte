@@ -511,505 +511,491 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="min-h-screen bg-background">
-	<div class="max-w-[1600px] mx-auto px-3 py-3 sm:px-4 sm:py-4">
-		<!-- Header -->
-		{#snippet headerActions()}
-			<div class="flex items-center gap-2">
-				<Button
-					onclick={() => {
-						filterResolvedRaw = filterResolved === false ? 'null' : 'false';
-						loadErrors();
-					}}
-					variant="outline"
-					size="sm"
-				>
-					{filterResolved === false ? 'All' : 'Unresolved'}
-				</Button>
-				<Button
-					onclick={purgeScannerNoise}
-					disabled={purgeProcessing}
-					variant="danger"
-					size="sm"
-					icon={Trash2}
-					loading={purgeProcessing}
-				>
-					<span class="hidden sm:inline">Purge noise</span>
-				</Button>
-				<Button
-					onclick={loadErrors}
-					disabled={loading}
-					variant="outline"
-					size="sm"
-					icon={RefreshCw}
-					{loading}
-				>
-					<span class="hidden sm:inline">Refresh</span>
-				</Button>
-			</div>
-		{/snippet}
-
-		<AdminPageHeader
-			title="Error Logs"
-			description="Monitor and resolve actionable system errors"
-			icon={TriangleAlert}
-			showBack={true}
-			actions={headerActions}
-		/>
-
-		<!-- Summary Cards -->
-		<div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-3 sm:mb-4">
-			<div class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak">
-				<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5">
-					Visible Errors
-				</p>
-				<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
-					{summary.total_errors}
-				</p>
-				<p class="mt-1.5 text-xs text-muted-foreground">Noise-filtered actionable logs</p>
-			</div>
-
-			<div class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak">
-				<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5">
-					Open Errors
-				</p>
-				<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
-					{summary.unresolved_errors}
-				</p>
-				<div class="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
-					<CircleAlert class="w-3 h-3 text-destructive" />
-					<span>Currently unresolved</span>
-				</div>
-			</div>
-
-			<div class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak">
-				<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5">
-					Critical Open
-				</p>
-				<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
-					{summary.critical_errors}
-				</p>
-				<div class="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
-					<Bug class="w-3 h-3 text-accent" />
-					<span>Needs immediate attention</span>
-				</div>
-			</div>
-
-			<div class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak">
-				<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5">
-					Last 24 Hours
-				</p>
-				<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
-					{summary.errors_last_24h}
-				</p>
-				<p class="mt-1.5 text-xs text-muted-foreground">
-					{summary.error_trend > 0 ? '+' : ''}{summary.error_trend}% vs previous week avg
-				</p>
-			</div>
-		</div>
-
-		<!-- Filters -->
-		<div
-			class="bg-card border border-border rounded-lg shadow-ink mb-3 sm:mb-4 tx tx-grain tx-weak"
-		>
-			<div class="px-3 py-2 border-b border-border flex items-center gap-2">
-				<ListFilter class="w-4 h-4 text-muted-foreground" />
-				<span class="text-sm font-medium text-foreground">Filters</span>
-			</div>
-			<div class="p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
-				<div class="space-y-1">
-					<label
-						class="text-xs font-medium text-muted-foreground"
-						for="errors-filter-severity">Severity</label
-					>
-					<Select
-						id="errors-filter-severity"
-						bind:value={filterSeverity}
-						onchange={loadErrors}
-						size="sm"
-						placeholder="All"
-					>
-						<option value="">All</option>
-						<option value="critical">Critical</option>
-						<option value="error">Error</option>
-						<option value="warning">Warning</option>
-						<option value="info">Info</option>
-					</Select>
-				</div>
-
-				<div class="space-y-1">
-					<label
-						class="text-xs font-medium text-muted-foreground"
-						for="errors-filter-type">Type</label
-					>
-					<Select
-						id="errors-filter-type"
-						bind:value={filterType}
-						onchange={loadErrors}
-						size="sm"
-						placeholder="All"
-					>
-						<option value="">All</option>
-						<option value="llm_error">LLM Error</option>
-						<option value="tool_execution">Tool Execution</option>
-						<option value="database_error">Database</option>
-						<option value="api_error">API</option>
-						<option value="validation_error">Validation</option>
-					</Select>
-				</div>
-
-				<div class="space-y-1">
-					<label
-						class="text-xs font-medium text-muted-foreground"
-						for="errors-filter-status">Status</label
-					>
-					<Select
-						id="errors-filter-status"
-						bind:value={filterResolvedRaw}
-						onchange={loadErrors}
-						size="sm"
-					>
-						<option value="false">Unresolved</option>
-						<option value="true">Resolved</option>
-						<option value="null">All</option>
-					</Select>
-				</div>
-
-				<div class="space-y-1">
-					<label
-						class="text-xs font-medium text-muted-foreground"
-						for="errors-filter-user">User</label
-					>
-					<TextInput
-						id="errors-filter-user"
-						type="text"
-						bind:value={filterUserId}
-						onblur={loadErrors}
-						placeholder="Email or ID..."
-						size="sm"
-					/>
-				</div>
-
-				<div class="space-y-1">
-					<label
-						class="text-xs font-medium text-muted-foreground"
-						for="errors-filter-project">Project</label
-					>
-					<TextInput
-						id="errors-filter-project"
-						type="text"
-						bind:value={filterProjectId}
-						onblur={loadErrors}
-						placeholder="Project ID..."
-						size="sm"
-					/>
-				</div>
-			</div>
-		</div>
-
-		<!-- Selection Action Bar -->
-		{#if selectedErrorIds.length > 0}
-			<div
-				class="bg-accent/10 border border-accent/30 rounded-lg p-3 mb-3 sm:mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+<div class="admin-page">
+	<!-- Header -->
+	{#snippet headerActions()}
+		<div class="flex items-center gap-2">
+			<Button
+				onclick={() => {
+					filterResolvedRaw = filterResolved === false ? 'null' : 'false';
+					loadErrors();
+				}}
+				variant="outline"
+				size="sm"
 			>
-				<div class="flex items-center gap-3">
-					<div class="flex items-center gap-2">
-						<div
-							class="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center"
-						>
-							<Check class="w-4 h-4 text-accent" />
-						</div>
-						<div>
-							<p class="text-sm font-semibold text-foreground">
-								{selectedErrorIds.length} error{selectedErrorIds.length === 1
-									? ''
-									: 's'} selected
-							</p>
-							<p class="text-xs text-muted-foreground">
-								{#if selectAll}
-									All on this page
-								{:else}
-									of {errors.length} visible
-								{/if}
-							</p>
-						</div>
+				{filterResolved === false ? 'All' : 'Unresolved'}
+			</Button>
+			<Button
+				onclick={purgeScannerNoise}
+				disabled={purgeProcessing}
+				variant="danger"
+				size="sm"
+				icon={Trash2}
+				loading={purgeProcessing}
+			>
+				<span class="hidden sm:inline">Purge noise</span>
+			</Button>
+			<Button
+				onclick={loadErrors}
+				disabled={loading}
+				variant="outline"
+				size="sm"
+				icon={RefreshCw}
+				{loading}
+			>
+				<span class="hidden sm:inline">Refresh</span>
+			</Button>
+		</div>
+	{/snippet}
+
+	<AdminPageHeader
+		title="Error Logs"
+		description="Monitor and resolve actionable system errors"
+		icon={TriangleAlert}
+		showBack={true}
+		actions={headerActions}
+	/>
+
+	<!-- Summary Cards -->
+	<div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+		<div class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak">
+			<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5">
+				Visible Errors
+			</p>
+			<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
+				{summary.total_errors}
+			</p>
+			<p class="mt-1.5 text-xs text-muted-foreground">Noise-filtered actionable logs</p>
+		</div>
+
+		<div class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak">
+			<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5">
+				Open Errors
+			</p>
+			<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
+				{summary.unresolved_errors}
+			</p>
+			<div class="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
+				<CircleAlert class="w-3 h-3 text-destructive" />
+				<span>Currently unresolved</span>
+			</div>
+		</div>
+
+		<div class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak">
+			<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5">
+				Critical Open
+			</p>
+			<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
+				{summary.critical_errors}
+			</p>
+			<div class="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
+				<Bug class="w-3 h-3 text-accent" />
+				<span>Needs immediate attention</span>
+			</div>
+		</div>
+
+		<div class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak">
+			<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5">
+				Last 24 Hours
+			</p>
+			<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
+				{summary.errors_last_24h}
+			</p>
+			<p class="mt-1.5 text-xs text-muted-foreground">
+				{summary.error_trend > 0 ? '+' : ''}{summary.error_trend}% vs previous week avg
+			</p>
+		</div>
+	</div>
+
+	<!-- Filters -->
+	<div class="bg-card border border-border rounded-lg shadow-ink tx tx-grain tx-weak">
+		<div class="px-3 py-2 border-b border-border flex items-center gap-2">
+			<ListFilter class="w-4 h-4 text-muted-foreground" />
+			<span class="text-sm font-medium text-foreground">Filters</span>
+		</div>
+		<div class="p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+			<div class="space-y-1">
+				<label
+					class="text-xs font-medium text-muted-foreground"
+					for="errors-filter-severity">Severity</label
+				>
+				<Select
+					id="errors-filter-severity"
+					bind:value={filterSeverity}
+					onchange={loadErrors}
+					size="sm"
+					placeholder="All"
+				>
+					<option value="">All</option>
+					<option value="critical">Critical</option>
+					<option value="error">Error</option>
+					<option value="warning">Warning</option>
+					<option value="info">Info</option>
+				</Select>
+			</div>
+
+			<div class="space-y-1">
+				<label class="text-xs font-medium text-muted-foreground" for="errors-filter-type"
+					>Type</label
+				>
+				<Select
+					id="errors-filter-type"
+					bind:value={filterType}
+					onchange={loadErrors}
+					size="sm"
+					placeholder="All"
+				>
+					<option value="">All</option>
+					<option value="llm_error">LLM Error</option>
+					<option value="tool_execution">Tool Execution</option>
+					<option value="database_error">Database</option>
+					<option value="api_error">API</option>
+					<option value="validation_error">Validation</option>
+				</Select>
+			</div>
+
+			<div class="space-y-1">
+				<label class="text-xs font-medium text-muted-foreground" for="errors-filter-status"
+					>Status</label
+				>
+				<Select
+					id="errors-filter-status"
+					bind:value={filterResolvedRaw}
+					onchange={loadErrors}
+					size="sm"
+				>
+					<option value="false">Unresolved</option>
+					<option value="true">Resolved</option>
+					<option value="null">All</option>
+				</Select>
+			</div>
+
+			<div class="space-y-1">
+				<label class="text-xs font-medium text-muted-foreground" for="errors-filter-user"
+					>User</label
+				>
+				<TextInput
+					id="errors-filter-user"
+					type="text"
+					bind:value={filterUserId}
+					onblur={loadErrors}
+					placeholder="Email or ID..."
+					size="sm"
+				/>
+			</div>
+
+			<div class="space-y-1">
+				<label class="text-xs font-medium text-muted-foreground" for="errors-filter-project"
+					>Project</label
+				>
+				<TextInput
+					id="errors-filter-project"
+					type="text"
+					bind:value={filterProjectId}
+					onblur={loadErrors}
+					placeholder="Project ID..."
+					size="sm"
+				/>
+			</div>
+		</div>
+	</div>
+
+	<!-- Selection Action Bar -->
+	{#if selectedErrorIds.length > 0}
+		<div
+			class="bg-accent/10 border border-accent/30 rounded-lg p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+		>
+			<div class="flex items-center gap-3">
+				<div class="flex items-center gap-2">
+					<div class="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">
+						<Check class="w-4 h-4 text-accent" />
+					</div>
+					<div>
+						<p class="text-sm font-semibold text-foreground">
+							{selectedErrorIds.length} error{selectedErrorIds.length === 1
+								? ''
+								: 's'} selected
+						</p>
+						<p class="text-xs text-muted-foreground">
+							{#if selectAll}
+								All on this page
+							{:else}
+								of {errors.length} visible
+							{/if}
+						</p>
 					</div>
 				</div>
+			</div>
 
-				<div class="flex items-center gap-2 w-full sm:w-auto">
-					{#if unresolvedCount > 0 && selectedErrorIds.length !== unresolvedCount}
-						<Button
-							onclick={selectAllUnresolved}
-							variant="outline"
-							size="sm"
-							class="flex-1 sm:flex-none"
+			<div class="flex items-center gap-2 w-full sm:w-auto">
+				{#if unresolvedCount > 0 && selectedErrorIds.length !== unresolvedCount}
+					<Button
+						onclick={selectAllUnresolved}
+						variant="outline"
+						size="sm"
+						class="flex-1 sm:flex-none"
+					>
+						Select all unresolved ({unresolvedCount})
+					</Button>
+				{/if}
+				<Button
+					onclick={clearSelection}
+					variant="ghost"
+					size="sm"
+					icon={X}
+					class="flex-1 sm:flex-none"
+				>
+					Clear
+				</Button>
+				<Button
+					onclick={openBulkResolveModal}
+					disabled={bulkProcessing}
+					variant="primary"
+					size="sm"
+					icon={Check}
+					loading={bulkProcessing}
+					class="flex-1 sm:flex-none"
+				>
+					Resolve {selectedErrorIds.length}
+				</Button>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Error Table -->
+	<div
+		class="bg-card border border-border rounded-lg shadow-ink overflow-hidden tx tx-frame tx-weak"
+	>
+		<div class="overflow-x-auto">
+			<table class="w-full text-sm">
+				<thead>
+					<tr class="border-b border-border bg-muted/50">
+						<th class="px-3 py-2 text-left w-10">
+							<div class="relative">
+								<input
+									type="checkbox"
+									checked={selectAll}
+									indeterminate={selectSome}
+									onchange={toggleSelectAll}
+									class="h-4 w-4 rounded-md border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 bg-background cursor-pointer"
+									aria-label="Select all errors"
+								/>
+							</div>
+						</th>
+						<th
+							class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider"
 						>
-							Select all unresolved ({unresolvedCount})
-						</Button>
-					{/if}
-					<Button
-						onclick={clearSelection}
-						variant="ghost"
-						size="sm"
-						icon={X}
-						class="flex-1 sm:flex-none"
-					>
-						Clear
-					</Button>
-					<Button
-						onclick={openBulkResolveModal}
-						disabled={bulkProcessing}
-						variant="primary"
-						size="sm"
-						icon={Check}
-						loading={bulkProcessing}
-						class="flex-1 sm:flex-none"
-					>
-						Resolve {selectedErrorIds.length}
-					</Button>
-				</div>
-			</div>
-		{/if}
-
-		<!-- Error Table -->
-		<div
-			class="bg-card border border-border rounded-lg shadow-ink overflow-hidden tx tx-frame tx-weak"
-		>
-			<div class="overflow-x-auto">
-				<table class="w-full text-sm">
-					<thead>
-						<tr class="border-b border-border bg-muted/50">
-							<th class="px-3 py-2 text-left w-10">
-								<div class="relative">
-									<input
-										type="checkbox"
-										checked={selectAll}
-										indeterminate={selectSome}
-										onchange={toggleSelectAll}
-										class="h-4 w-4 rounded-md border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 bg-background cursor-pointer"
-										aria-label="Select all errors"
-									/>
+							Time
+						</th>
+						<th
+							class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider"
+						>
+							Severity
+						</th>
+						<th
+							class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider hidden sm:table-cell"
+						>
+							Type
+						</th>
+						<th
+							class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider"
+						>
+							Message
+						</th>
+						<th
+							class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell"
+						>
+							User
+						</th>
+						<th
+							class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider w-16"
+						>
+							Status
+						</th>
+						<th
+							class="px-3 py-2 text-right text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider w-20"
+						>
+							Actions
+						</th>
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-border">
+					{#each errors as error}
+						{@const styles = getSeverityStyles(error.severity)}
+						{@const isSelected = error.id && selectedErrorIds.includes(error.id)}
+						<tr
+							class="transition-colors hover:bg-muted/30 {isSelected
+								? 'bg-accent/10'
+								: ''}"
+						>
+							<td class="px-3 py-2">
+								<input
+									type="checkbox"
+									checked={!!isSelected}
+									onchange={() => error.id && toggleErrorSelection(error.id)}
+									class="h-4 w-4 rounded-md border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 bg-background cursor-pointer"
+									aria-label="Select error {error.id}"
+								/>
+							</td>
+							<td class="px-3 py-2 whitespace-nowrap">
+								<div class="flex items-center gap-1.5 text-foreground">
+									<Clock class="w-3 h-3 text-muted-foreground shrink-0" />
+									<span class="text-xs tabular-nums">
+										{formatDate(error.created_at)}
+									</span>
 								</div>
-							</th>
-							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider"
-							>
-								Time
-							</th>
-							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider"
-							>
-								Severity
-							</th>
-							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider hidden sm:table-cell"
-							>
-								Type
-							</th>
-							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider"
-							>
-								Message
-							</th>
-							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell"
-							>
-								User
-							</th>
-							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider w-16"
-							>
-								Status
-							</th>
-							<th
-								class="px-3 py-2 text-right text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider w-20"
-							>
-								Actions
-							</th>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-border">
-						{#each errors as error}
-							{@const styles = getSeverityStyles(error.severity)}
-							{@const isSelected = error.id && selectedErrorIds.includes(error.id)}
-							<tr
-								class="transition-colors hover:bg-muted/30 {isSelected
-									? 'bg-accent/10'
-									: ''}"
-							>
-								<td class="px-3 py-2">
-									<input
-										type="checkbox"
-										checked={!!isSelected}
-										onchange={() => error.id && toggleErrorSelection(error.id)}
-										class="h-4 w-4 rounded-md border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 bg-background cursor-pointer"
-										aria-label="Select error {error.id}"
-									/>
-								</td>
-								<td class="px-3 py-2 whitespace-nowrap">
-									<div class="flex items-center gap-1.5 text-foreground">
-										<Clock class="w-3 h-3 text-muted-foreground shrink-0" />
-										<span class="text-xs tabular-nums">
-											{formatDate(error.created_at)}
-										</span>
+							</td>
+							<td class="px-3 py-2">
+								<span
+									class="{styles.badge} inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[0.65rem] font-medium"
+								>
+									<span class="w-1.5 h-1.5 rounded-full {styles.dot}"></span>
+									{error.severity}
+								</span>
+							</td>
+							<td class="px-3 py-2 hidden sm:table-cell">
+								<span class="text-xs text-muted-foreground">
+									{error.error_type?.replace(/_/g, ' ')}
+								</span>
+							</td>
+							<td class="px-3 py-2 max-w-[200px] sm:max-w-xs lg:max-w-md">
+								<p
+									class="text-xs text-foreground truncate"
+									title={error.error_message}
+								>
+									{truncate(error.error_message, 80)}
+								</p>
+							</td>
+							<td class="px-3 py-2 hidden md:table-cell">
+								{#if error.user}
+									<div class="text-xs">
+										<p
+											class="text-foreground font-medium truncate max-w-[120px]"
+										>
+											{error.user.email}
+										</p>
 									</div>
-								</td>
-								<td class="px-3 py-2">
+								{:else if error.user_id}
+									<span class="font-mono text-[0.65rem] text-muted-foreground">
+										{truncate(error.user_id, 8)}
+									</span>
+								{:else}
+									<span class="text-muted-foreground">-</span>
+								{/if}
+							</td>
+							<td class="px-3 py-2">
+								{#if error.resolved}
 									<span
-										class="{styles.badge} inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[0.65rem] font-medium"
+										class="inline-flex items-center gap-1 text-success text-xs font-medium"
 									>
-										<span class="w-1.5 h-1.5 rounded-full {styles.dot}"></span>
-										{error.severity}
+										<CircleCheck class="w-3 h-3" />
+										<span class="hidden lg:inline">Done</span>
 									</span>
-								</td>
-								<td class="px-3 py-2 hidden sm:table-cell">
-									<span class="text-xs text-muted-foreground">
-										{error.error_type?.replace(/_/g, ' ')}
-									</span>
-								</td>
-								<td class="px-3 py-2 max-w-[200px] sm:max-w-xs lg:max-w-md">
-									<p
-										class="text-xs text-foreground truncate"
-										title={error.error_message}
+								{:else}
+									<span
+										class="inline-flex items-center gap-1 text-destructive text-xs font-medium"
 									>
-										{truncate(error.error_message, 80)}
-									</p>
-								</td>
-								<td class="px-3 py-2 hidden md:table-cell">
-									{#if error.user}
-										<div class="text-xs">
-											<p
-												class="text-foreground font-medium truncate max-w-[120px]"
-											>
-												{error.user.email}
-											</p>
-										</div>
-									{:else if error.user_id}
-										<span
-											class="font-mono text-[0.65rem] text-muted-foreground"
-										>
-											{truncate(error.user_id, 8)}
-										</span>
-									{:else}
-										<span class="text-muted-foreground">-</span>
-									{/if}
-								</td>
-								<td class="px-3 py-2">
-									{#if error.resolved}
-										<span
-											class="inline-flex items-center gap-1 text-success text-xs font-medium"
-										>
-											<CircleCheck class="w-3 h-3" />
-											<span class="hidden lg:inline">Done</span>
-										</span>
-									{:else}
-										<span
-											class="inline-flex items-center gap-1 text-destructive text-xs font-medium"
-										>
-											<CircleAlert class="w-3 h-3" />
-											<span class="hidden lg:inline">Open</span>
-										</span>
-									{/if}
-								</td>
-								<td class="px-3 py-2 text-right">
-									<div class="flex items-center justify-end gap-1">
+										<CircleAlert class="w-3 h-3" />
+										<span class="hidden lg:inline">Open</span>
+									</span>
+								{/if}
+							</td>
+							<td class="px-3 py-2 text-right">
+								<div class="flex items-center justify-end gap-1">
+									<button
+										onclick={() => (selectedError = error)}
+										class="p-2.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										title="View details"
+									>
+										<Eye class="w-3.5 h-3.5" />
+									</button>
+									{#if !error.resolved && error.id}
 										<button
-											onclick={() => (selectedError = error)}
-											class="p-2.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-											title="View details"
+											onclick={() => openResolveModal(error.id!)}
+											class="p-2.5 rounded-md text-success hover:bg-success/10 transition-colors pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											title="Resolve"
+											aria-label="Resolve error"
 										>
-											<Eye class="w-3.5 h-3.5" />
+											<Check class="w-3.5 h-3.5" />
 										</button>
-										{#if !error.resolved && error.id}
-											<button
-												onclick={() => openResolveModal(error.id!)}
-												class="p-2.5 rounded-md text-success hover:bg-success/10 transition-colors pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-												title="Resolve"
-												aria-label="Resolve error"
-											>
-												<Check class="w-3.5 h-3.5" />
-											</button>
-										{/if}
-									</div>
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-
-			{#if errors.length === 0}
-				<div class="text-center py-8 px-4">
-					<CircleCheck class="w-8 h-8 text-success mx-auto mb-2" />
-					<p class="text-sm text-muted-foreground">No actionable errors found</p>
-					<p class="text-xs text-muted-foreground mt-1">
-						The visible error log is clear for this filter set.
-					</p>
-				</div>
-			{/if}
+									{/if}
+								</div>
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
 		</div>
 
-		<!-- Pagination -->
-		{#if errors.length > 0 || currentPage > 1}
-			<div class="mt-3 flex flex-col sm:flex-row items-center justify-between gap-3 px-1">
-				<div class="flex items-center gap-2">
-					<Button
-						onclick={() => changePage(1)}
-						disabled={currentPage === 1 || loading}
-						variant="outline"
-						size="sm"
-					>
-						First
-					</Button>
-					<Button
-						onclick={() => changePage(Math.max(1, currentPage - 1))}
-						disabled={currentPage === 1 || loading}
-						variant="outline"
-						size="sm"
-						icon={ChevronLeft}
-					>
-						<span class="hidden sm:inline">Prev</span>
-					</Button>
-				</div>
-
-				<div class="flex items-center gap-3 text-xs text-muted-foreground">
-					<span
-						>Page <span class="font-semibold text-foreground">{currentPage}</span></span
-					>
-					{#if errors.length > 0}
-						<span class="text-border">|</span>
-						<span>{errors.length} error{errors.length === 1 ? '' : 's'}</span>
-					{/if}
-				</div>
-
-				<div class="flex items-center gap-2">
-					<Button
-						onclick={() => changePage(currentPage + 1)}
-						disabled={!hasMore || loading}
-						variant="outline"
-						size="sm"
-						icon={ChevronRight}
-						iconPosition="right"
-					>
-						<span class="hidden sm:inline">Next</span>
-					</Button>
-					<Select
-						bind:value={itemsPerPage}
-						onchange={() => {
-							currentPage = 1;
-							loadErrors();
-						}}
-						size="sm"
-						class="w-16"
-					>
-						<option value={25}>25</option>
-						<option value={50}>50</option>
-						<option value={100}>100</option>
-					</Select>
-				</div>
+		{#if errors.length === 0}
+			<div class="text-center py-8 px-4">
+				<CircleCheck class="w-8 h-8 text-success mx-auto mb-2" />
+				<p class="text-sm text-muted-foreground">No actionable errors found</p>
+				<p class="text-xs text-muted-foreground mt-1">
+					The visible error log is clear for this filter set.
+				</p>
 			</div>
 		{/if}
 	</div>
+
+	<!-- Pagination -->
+	{#if errors.length > 0 || currentPage > 1}
+		<div class="mt-3 flex flex-col sm:flex-row items-center justify-between gap-3 px-1">
+			<div class="flex items-center gap-2">
+				<Button
+					onclick={() => changePage(1)}
+					disabled={currentPage === 1 || loading}
+					variant="outline"
+					size="sm"
+				>
+					First
+				</Button>
+				<Button
+					onclick={() => changePage(Math.max(1, currentPage - 1))}
+					disabled={currentPage === 1 || loading}
+					variant="outline"
+					size="sm"
+					icon={ChevronLeft}
+				>
+					<span class="hidden sm:inline">Prev</span>
+				</Button>
+			</div>
+
+			<div class="flex items-center gap-3 text-xs text-muted-foreground">
+				<span>Page <span class="font-semibold text-foreground">{currentPage}</span></span>
+				{#if errors.length > 0}
+					<span class="text-border">|</span>
+					<span>{errors.length} error{errors.length === 1 ? '' : 's'}</span>
+				{/if}
+			</div>
+
+			<div class="flex items-center gap-2">
+				<Button
+					onclick={() => changePage(currentPage + 1)}
+					disabled={!hasMore || loading}
+					variant="outline"
+					size="sm"
+					icon={ChevronRight}
+					iconPosition="right"
+				>
+					<span class="hidden sm:inline">Next</span>
+				</Button>
+				<Select
+					bind:value={itemsPerPage}
+					onchange={() => {
+						currentPage = 1;
+						loadErrors();
+					}}
+					size="sm"
+					class="w-16"
+				>
+					<option value={25}>25</option>
+					<option value={50}>50</option>
+					<option value={100}>100</option>
+				</Select>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <!-- Error Detail Modal -->

@@ -4,6 +4,7 @@
 </script>
 
 <script lang="ts">
+	import { ChevronDown } from 'lucide-svelte';
 	import type { AdminNavGroup, AdminNavItem } from './adminNav.types';
 
 	interface Props {
@@ -11,9 +12,44 @@
 		pathname: string;
 		onNavigate?: () => void;
 		collapsed?: boolean;
+		// When true (mobile drawer), parent items with children become a tappable
+		// accordion so every sub-page is reachable and inactive sections stay
+		// collapsed. Desktop leaves this off and keeps the active-only behavior.
+		expandable?: boolean;
 	}
 
-	let { groups, pathname, onNavigate, collapsed = false }: Props = $props();
+	let { groups, pathname, onNavigate, collapsed = false, expandable = false }: Props = $props();
+
+	// Accordion open-state (by item href) for the mobile drawer.
+	let expandedHrefs = $state<Set<string>>(new Set());
+	let expandedInitializedFor = '';
+
+	// Default-open the section that matches the current route; re-run only when
+	// the route changes so manual toggles persist while the drawer is open.
+	$effect(() => {
+		if (!expandable) return;
+		if (expandedInitializedFor === pathname) return;
+		expandedInitializedFor = pathname;
+		const next = new Set<string>();
+		for (const group of groups) {
+			for (const item of group.items) {
+				if (item.children?.length && isActive(item, pathname)) {
+					next.add(item.href);
+				}
+			}
+		}
+		expandedHrefs = next;
+	});
+
+	function toggleExpand(href: string) {
+		const next = new Set(expandedHrefs);
+		if (next.has(href)) {
+			next.delete(href);
+		} else {
+			next.add(href);
+		}
+		expandedHrefs = next;
+	}
 
 	const normalizePath = (path: string): string => {
 		if (path === '/') return path;
@@ -168,71 +204,92 @@
 									{/if}
 								</div>
 							{:else}
-								<a
-									href={item.href}
-									class={`group relative flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 pressable ${
-										active
-											? 'bg-accent/10 text-accent'
-											: 'text-muted-foreground hover:bg-muted hover:text-foreground'
-									}`}
-									aria-current={active && !item.children?.length
-										? 'page'
-										: undefined}
-									onclick={handleNavigate}
-								>
-									{#if active}
-										<div
-											class="absolute inset-y-0 left-0 w-1 rounded-r-full bg-accent"
-										></div>
-									{/if}
-
-									<span
-										class={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 ${
+								{@const hasChildren = Boolean(item.children?.length)}
+								{@const childrenOpen =
+									expandable && hasChildren
+										? expandedHrefs.has(item.href)
+										: active}
+								<div class="relative flex items-stretch">
+									<a
+										href={item.href}
+										class={`group relative flex min-w-0 flex-1 items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 pressable ${
 											active
-												? 'bg-accent text-accent-foreground shadow-ink'
-												: 'bg-muted text-muted-foreground group-hover:bg-muted group-hover:text-foreground'
+												? 'bg-accent/10 text-accent'
+												: 'text-muted-foreground hover:bg-muted hover:text-foreground'
 										}`}
+										aria-current={active && !hasChildren ? 'page' : undefined}
+										onclick={handleNavigate}
 									>
-										<Icon class="h-4 w-4" />
-									</span>
-
-									<div class="ml-3 flex flex-1 flex-col">
-										<span class="leading-tight">{item.title}</span>
-										{#if item.description}
-											<span
-												class={`mt-0.5 text-[0.7rem] leading-tight transition-colors ${
-													active
-														? 'text-accent/80'
-														: 'text-muted-foreground/70 group-hover:text-muted-foreground'
-												}`}
-											>
-												{item.description}
-											</span>
+										{#if active}
+											<div
+												class="absolute inset-y-0 left-0 w-1 rounded-r-full bg-accent"
+											></div>
 										{/if}
-									</div>
 
-									{#if item.badge}
 										<span
-											class={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[0.65rem] font-bold ${
+											class={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
 												active
-													? 'bg-accent/20 text-accent'
-													: 'bg-muted text-muted-foreground'
+													? 'bg-accent text-accent-foreground shadow-ink'
+													: 'bg-muted text-muted-foreground group-hover:bg-muted group-hover:text-foreground'
 											}`}
 										>
-											{item.badge}
+											<Icon class="h-4 w-4" />
 										</span>
-									{/if}
-								</a>
 
-								{#if item.children?.length && active}
-									<ul class="mt-1 ml-11 space-y-0.5">
-										{#each item.children as child (child.href)}
+										<div class="ml-3 flex min-w-0 flex-1 flex-col">
+											<span class="truncate leading-tight">{item.title}</span>
+											{#if item.description}
+												<span
+													class={`mt-0.5 truncate text-[0.7rem] leading-tight transition-colors ${
+														active
+															? 'text-accent/80'
+															: 'text-muted-foreground/70 group-hover:text-muted-foreground'
+													}`}
+												>
+													{item.description}
+												</span>
+											{/if}
+										</div>
+
+										{#if item.badge}
+											<span
+												class={`ml-2 inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[0.65rem] font-bold ${
+													active
+														? 'bg-accent/20 text-accent'
+														: 'bg-muted text-muted-foreground'
+												}`}
+											>
+												{item.badge}
+											</span>
+										{/if}
+									</a>
+
+									{#if expandable && hasChildren}
+										<button
+											type="button"
+											onclick={() => toggleExpand(item.href)}
+											class="ml-1 flex w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors motion-reduce:transition-none hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											aria-label={`${childrenOpen ? 'Collapse' : 'Expand'} ${item.title}`}
+											aria-expanded={childrenOpen}
+										>
+											<ChevronDown
+												class={`h-4 w-4 transition-transform duration-200 motion-reduce:transition-none ${
+													childrenOpen ? 'rotate-180' : ''
+												}`}
+											/>
+										</button>
+									{/if}
+								</div>
+
+								{#if hasChildren && childrenOpen}
+									<ul class="mt-1 ml-7 space-y-0.5 border-l border-border pl-3">
+										{#each item.children ?? [] as child (child.href)}
 											{@const childActive = isActive(child, pathname)}
 											{@const ChildIcon = child.icon}
 											<li>
 												<a
 													href={child.href}
-													class={`flex items-center rounded-lg px-3 py-2 text-[0.8rem] font-medium transition-all duration-200 pressable ${
+													class={`flex items-center rounded-lg px-2.5 py-2 text-[0.8rem] font-medium transition-all duration-200 pressable ${
 														childActive
 															? 'bg-accent/10 text-accent'
 															: 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -241,7 +298,7 @@
 													onclick={handleNavigate}
 												>
 													<span
-														class={`mr-2.5 flex h-6 w-6 items-center justify-center rounded-md transition-colors ${
+														class={`mr-2.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors ${
 															childActive
 																? 'bg-accent/20 text-accent'
 																: 'bg-muted text-muted-foreground'
@@ -249,7 +306,7 @@
 													>
 														<ChildIcon class="h-3.5 w-3.5" />
 													</span>
-													<span>{child.title}</span>
+													<span class="truncate">{child.title}</span>
 												</a>
 											</li>
 										{/each}

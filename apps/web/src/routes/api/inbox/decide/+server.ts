@@ -14,11 +14,26 @@ import type { ChangeSetDecision } from '@buildos/shared-types';
 import type { InboxIndexRow, InboxSourceType } from '@buildos/shared-agent-ops/inbox-index';
 
 type DecisionAction = 'approve' | 'reject';
+type DecisionPayload = Record<string, unknown>;
 
 function normalizeAction(value: unknown): DecisionAction | null {
 	if (value === 'approve' || value === 'accept' || value === 'apply') return 'approve';
 	if (value === 'reject' || value === 'dismiss' || value === 'decline') return 'reject';
 	return null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+	return value && typeof value === 'object' && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: null;
+}
+
+function asString(value: unknown): string | null {
+	return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function isNonPendingInboxStatus(status: string | null | undefined): boolean {
+	return !!status && status !== 'pending' && status !== 'snoozed';
 }
 
 function parseDecisions(value: unknown): ChangeSetDecision[] {
@@ -56,13 +71,115 @@ async function loadInboxItem(params: {
 	return (data ?? null) as InboxIndexRow | null;
 }
 
-async function syncResultItem(admin: any, item: InboxIndexRow): Promise<InboxIndexRow> {
-	const repaired = await syncInboxItemForSource({
-		supabase: admin,
-		sourceType: item.source_type,
-		sourceRefId: item.source_ref_id
+function fallbackSourceStatus(
+	item: InboxIndexRow,
+	action: DecisionAction,
+	payload: DecisionPayload
+): string {
+	if (item.source_type === 'project_suggestion') {
+		const suggestionStatus = asString(asRecord(payload.suggestion)?.status);
+		if (suggestionStatus) return suggestionStatus;
+		if (payload.superseded === true) return 'superseded';
+		if (payload.delegated === true) return 'delegated';
+		if (action === 'reject') return 'rejected';
+		if (asRecord(payload.result)?.ok === false) return 'failed';
+		return 'applied';
+	}
+
+	if (item.source_type === 'calendar_suggestion') {
+		if (asRecord(payload.result)?.inProgress === true) return 'processing';
+		return action === 'reject' ? 'rejected' : 'accepted';
+	}
+
+	if (item.source_type === 'agent_run') {
+		return 'completed';
+	}
+
+	return action === 'reject' ? 'rejected' : 'applied';
+}
+
+function fallbackInboxStatus(item: InboxIndexRow, sourceStatus: string): InboxIndexRow['status'] {
+	if (item.source_type === 'project_suggestion') {
+		if (sourceStatus === 'approved' || sourceStatus === 'delegated') return 'deciding';
+		if (sourceStatus === 'failed') return 'blocked';
+		if (sourceStatus === 'pending') return 'decided';
+		return 'decided';
+	}
+
+	if (item.source_type === 'calendar_suggestion') {
+		if (sourceStatus === 'processing') return 'deciding';
+		if (sourceStatus === 'pending') return 'decided';
+		return 'decided';
+	}
+
+	if (item.source_type === 'agent_run') {
+		if (sourceStatus === 'running') return 'deciding';
+		if (sourceStatus === 'failed' || sourceStatus === 'cancelled') return 'blocked';
+		if (sourceStatus === 'proposal_ready') return 'decided';
+		return 'decided';
+	}
+
+	return 'decided';
+}
+
+async function forceDecisionInboxStatus(params: {
+	admin: any;
+	item: InboxIndexRow;
+	action: DecisionAction;
+	payload: DecisionPayload;
+}): Promise<InboxIndexRow> {
+	const sourceStatus = fallbackSourceStatus(params.item, params.action, params.payload);
+	const status = fallbackInboxStatus(params.item, sourceStatus);
+	const patch: Partial<InboxIndexRow> = {
+		status,
+		source_status: sourceStatus,
+		decided_at: status === 'deciding' ? null : new Date().toISOString(),
+		blocked_reason:
+			status === 'blocked' ? (params.item.blocked_reason ?? 'Decision failed') : null
+	};
+
+	let query = params.admin.from('inbox_items').update(patch);
+	if (params.item.id) {
+		query = query.eq('id', params.item.id);
+	} else {
+		query = query
+			.eq('source_type', params.item.source_type)
+			.eq('source_ref_id', params.item.source_ref_id);
+	}
+
+	const { data, error } = await query.select('*').maybeSingle();
+	if (error) throw error;
+	return (data ?? { ...params.item, ...patch }) as InboxIndexRow;
+}
+
+async function syncResultItem(
+	admin: any,
+	item: InboxIndexRow,
+	action: DecisionAction,
+	payload: DecisionPayload
+): Promise<InboxIndexRow> {
+	let repaired: InboxIndexRow | null = null;
+	try {
+		repaired = await syncInboxItemForSource({
+			supabase: admin,
+			sourceType: item.source_type,
+			sourceRefId: item.source_ref_id
+		});
+	} catch (error) {
+		console.warn('[AI Inbox] Decision source sync failed; forcing index status', {
+			source_type: item.source_type,
+			source_ref_id: item.source_ref_id,
+			error: error instanceof Error ? error.message : error
+		});
+	}
+	if (repaired && isNonPendingInboxStatus(repaired.status)) return repaired;
+
+	return forceDecisionInboxStatus({
+		admin,
+		item: repaired ?? item,
+		action,
+		payload
 	});
-	return repaired ?? item;
 }
 
 function statusForCommitError(code: string): number {
@@ -112,13 +229,11 @@ async function decideLoadedInboxItem(params: {
 			};
 		}
 
-		return {
-			ok: true,
-			payload: {
-				item: await syncResultItem(admin as any, item),
-				result: outcome.result
-			}
+		const payload: DecisionPayload = {
+			result: outcome.result
 		};
+		payload.item = await syncResultItem(admin as any, item, action, payload);
+		return { ok: true, payload };
 	}
 
 	if (item.source_type === 'project_suggestion') {
@@ -187,20 +302,18 @@ async function decideLoadedInboxItem(params: {
 			degraded?: boolean;
 		};
 
-		return {
-			ok: true,
-			payload: {
-				item: await syncResultItem(admin as any, item),
-				suggestion: outcome.suggestion,
-				result: outcome.result,
-				agentRun: extendedOutcome.agentRun,
-				agent_run_id: extendedOutcome.agent_run_id,
-				delegated: extendedOutcome.delegated ?? false,
-				degraded: extendedOutcome.degraded ?? false,
-				alreadyDecided: outcome.alreadyDecided ?? false,
-				superseded: outcome.superseded ?? false
-			}
+		const payload: DecisionPayload = {
+			suggestion: outcome.suggestion,
+			result: outcome.result,
+			agentRun: extendedOutcome.agentRun,
+			agent_run_id: extendedOutcome.agent_run_id,
+			delegated: extendedOutcome.delegated ?? false,
+			degraded: extendedOutcome.degraded ?? false,
+			alreadyDecided: outcome.alreadyDecided ?? false,
+			superseded: outcome.superseded ?? false
 		};
+		payload.item = await syncResultItem(admin as any, item, action, payload);
+		return { ok: true, payload };
 	}
 
 	if (item.source_type === 'calendar_suggestion') {
@@ -227,13 +340,11 @@ async function decideLoadedInboxItem(params: {
 			};
 		}
 
-		return {
-			ok: true,
-			payload: {
-				item: await syncResultItem(admin as any, item),
-				result: result.data ?? null
-			}
+		const payload: DecisionPayload = {
+			result: result.data ?? null
 		};
+		payload.item = await syncResultItem(admin as any, item, action, payload);
+		return { ok: true, payload };
 	}
 
 	return {
