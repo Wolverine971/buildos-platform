@@ -99,12 +99,12 @@
 				{@const StatusIcon = ic.icon}
 				<button
 					type="button"
-					class="w-full flex items-center gap-2 rounded-md bg-card border border-border px-2 py-1.5 text-left hover:shadow-ink transition-shadow"
+					class="w-full flex items-center gap-2 rounded-lg bg-card border border-border px-2 py-1.5 text-left shadow-ink transition pressable"
 					onclick={() => onOpen?.(run.id)}
 				>
 					<StatusIcon class="w-4 h-4 flex-shrink-0 {ic.cls}" />
 					<span class="flex-1 min-w-0 truncate text-xs text-foreground">{run.label}</span>
-					<span class="flex-shrink-0 text-[11px] text-muted-foreground"
+					<span class="flex-shrink-0 text-[0.7rem] text-muted-foreground"
 						>{statusLabel(run.status)}</span
 					>
 					<ChevronRight class="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground" />

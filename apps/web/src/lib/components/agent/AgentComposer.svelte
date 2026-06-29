@@ -206,7 +206,7 @@
 <!-- INKPRINT composer: Grid texture marks this surface as editable/writable (§3.4). -->
 <form
 	class="relative"
-	class:rounded-xl={isDropActive}
+	class:rounded-lg={isDropActive}
 	class:ring-2={isDropActive}
 	class:ring-accent={isDropActive}
 	class:ring-offset-2={isDropActive}
@@ -220,7 +220,7 @@
 >
 	{#if isDropActive}
 		<div
-			class="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl border-2 border-dashed border-accent bg-background/85 shadow-ink backdrop-blur-sm"
+			class="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-lg border-2 border-dashed border-accent bg-background/85 shadow-ink backdrop-blur-sm"
 		>
 			<div
 				class="flex items-center gap-3 rounded-full border border-accent/40 bg-card px-4 py-2 text-sm font-semibold text-accent shadow-ink tx tx-grid tx-weak"
@@ -233,17 +233,17 @@
 
 	{#if imageAttachments.length > 0}
 		<div
-			class="mb-2 overflow-hidden rounded-xl border border-border bg-card/95 shadow-ink tx tx-grid tx-weak"
+			class="mb-2 overflow-hidden rounded-lg border border-border bg-card/95 shadow-ink tx tx-grid tx-weak"
 			aria-label="Attached images"
 		>
 			<div class="flex items-center justify-between border-b border-border/70 px-3 py-2">
 				<div
-					class="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground"
+					class="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground"
 				>
 					<FileImage class="h-3.5 w-3.5" />
 					Images {imageAttachments.length}/{attachmentLimit}
 				</div>
-				<span class="text-[0.68rem] font-medium text-muted-foreground">
+				<span class="text-[0.7rem] font-medium text-muted-foreground">
 					OCR starts after upload
 				</span>
 			</div>
@@ -266,7 +266,7 @@
 									<p class="truncate text-xs font-semibold text-foreground">
 										{attachment.fileName}
 									</p>
-									<p class="mt-0.5 text-[0.68rem] text-muted-foreground">
+									<p class="mt-0.5 text-[0.7rem] text-muted-foreground">
 										{Math.max(1, Math.round(attachment.fileSizeBytes / 1024))} KB
 									</p>
 								</div>
@@ -280,7 +280,7 @@
 								</button>
 							</div>
 							<div
-								class={`mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2 py-0.5 text-[0.68rem] font-semibold ${attachmentStatusClass(attachment)}`}
+								class={`mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold ${attachmentStatusClass(attachment)}`}
 							>
 								<StatusIcon
 									class={`h-3 w-3 ${attachment.status === 'hashing' || attachment.status === 'uploading' || attachment.status === 'processing' ? 'animate-spin' : ''}`}

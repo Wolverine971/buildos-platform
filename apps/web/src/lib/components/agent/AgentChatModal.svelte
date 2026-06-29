@@ -2158,7 +2158,7 @@
 	>
 		{#if showExistingImagePicker && attachmentProjectId}
 			<div
-				class="mb-2 max-h-72 overflow-y-auto rounded-xl border border-border bg-card p-3 shadow-ink tx tx-grid tx-weak"
+				class="mb-2 max-h-72 overflow-y-auto rounded-lg border border-border bg-card p-3 shadow-ink tx tx-grid tx-weak"
 				aria-label="Attach existing project image"
 			>
 				<ProjectImageLibrary
@@ -2364,7 +2364,7 @@
 									<div class="space-y-0.5">
 										<div class="flex min-w-0 items-baseline gap-1.5">
 											<span
-												class="agent-micro-label flex-shrink-0 text-muted-foreground"
+												class="micro-label flex-shrink-0 text-muted-foreground"
 												>Helper</span
 											>
 											<span
@@ -2374,7 +2374,7 @@
 										</div>
 										<div class="flex min-w-0 items-baseline gap-1.5">
 											<span
-												class="agent-micro-label flex-shrink-0 text-muted-foreground"
+												class="micro-label flex-shrink-0 text-muted-foreground"
 												>Project</span
 											>
 											<span
@@ -2385,7 +2385,7 @@
 										</div>
 										<div class="flex min-w-0 items-baseline gap-1.5">
 											<span
-												class="agent-micro-label flex-shrink-0 text-muted-foreground"
+												class="micro-label flex-shrink-0 text-muted-foreground"
 												>Goal</span
 											>
 											<span
@@ -2395,7 +2395,7 @@
 										</div>
 										<div class="flex items-baseline gap-1.5">
 											<span
-												class="agent-micro-label flex-shrink-0 text-muted-foreground"
+												class="micro-label flex-shrink-0 text-muted-foreground"
 												>Turns left</span
 											>
 											<span
@@ -2409,7 +2409,7 @@
 								<div class="flex flex-wrap items-center gap-2">
 									<button
 										type="button"
-										class="agent-micro-label inline-flex items-center justify-center rounded-lg bg-accent px-3 py-2 font-bold text-accent-foreground shadow-ink transition pressable disabled:cursor-not-allowed disabled:opacity-60"
+										class="micro-label inline-flex items-center justify-center rounded-lg bg-accent px-3 py-2 font-bold text-accent-foreground shadow-ink transition pressable disabled:cursor-not-allowed disabled:opacity-60"
 										disabled={stream.isStreaming ||
 											shellRouter.agentMessageLoading ||
 											shellRouter.agentTurnsRemaining <= 0}
@@ -2424,7 +2424,7 @@
 									</button>
 									<button
 										type="button"
-										class="agent-micro-label inline-flex items-center justify-center rounded-lg border border-border bg-transparent px-3 py-2 font-semibold text-muted-foreground transition pressable hover:border-accent hover:bg-card hover:text-foreground"
+										class="micro-label inline-flex items-center justify-center rounded-lg border border-border bg-transparent px-3 py-2 font-semibold text-muted-foreground transition pressable hover:border-accent hover:bg-card hover:text-foreground"
 										onclick={stopAgentLoop}
 									>
 										Stop
@@ -2433,7 +2433,7 @@
 							</div>
 							<!-- INKPRINT micro-label controls -->
 							<div
-								class="agent-micro-label mt-1.5 flex flex-wrap items-center gap-2 text-muted-foreground"
+								class="micro-label mt-1.5 flex flex-wrap items-center gap-2 text-muted-foreground"
 							>
 								<label class="flex items-center gap-1.5">
 									<span class="font-bold">Turn limit</span>
@@ -2462,7 +2462,7 @@
 								{/if}
 							</div>
 							{#if shellRouter.agentMessageLoading}
-								<p class="agent-micro-label mt-1 text-muted-foreground">
+								<p class="micro-label mt-1 text-muted-foreground">
 									Fetching the next update...
 								</p>
 							{/if}
@@ -2478,15 +2478,6 @@
 {/if}
 
 <style>
-	/* INKPRINT micro-label: the 0.65rem uppercase tracked label scale used across
-	   the agent-chat surfaces. Centralized here so the size lives in one place. */
-	.agent-micro-label {
-		font-size: 0.65rem;
-		line-height: 1.1;
-		text-transform: uppercase;
-		letter-spacing: 0.15em;
-	}
-
 	@media (max-width: 639px) {
 		:global(.agent-chat-keyboard-modal) {
 			height: calc(100dvh - var(--keyboard-height, 0px)) !important;

@@ -168,7 +168,7 @@
 		>
 			<div class="space-y-2.5">
 				<!-- INKPRINT micro-label heading -->
-				<p class="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-accent">
+				<p class="micro-label font-semibold text-accent">
 					New chat · {displayContextLabel}
 				</p>
 				<!-- Body text -->
@@ -235,7 +235,7 @@
 												{attachment.file_name ?? 'Attached image'}
 											</p>
 											<p
-												class="mt-1 truncate text-[0.68rem] text-muted-foreground"
+												class="mt-1 truncate text-[0.7rem] text-muted-foreground"
 											>
 												{attachment.attachment_kind === 'temporary_file'
 													? 'Ready for visual analysis'
@@ -322,7 +322,7 @@
 					{/if}
 					{#if message.metadata?.interrupted}
 						<div
-							class="clear-both mt-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-warning"
+							class="clear-both mt-1 micro-label font-semibold text-warning"
 							role="status"
 							aria-live="polite"
 						>
@@ -339,7 +339,7 @@
 				<!-- INKPRINT agent peer: neutral palette + round avatar (amber reserved for warnings) -->
 				<div class="flex min-w-0 gap-2 sm:gap-3">
 					<div
-						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground shadow-ink tx tx-thread tx-weak sm:h-9 sm:w-9"
+						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted micro-label font-semibold text-muted-foreground shadow-ink tx tx-thread tx-weak sm:h-9 sm:w-9"
 					>
 						AI↔
 					</div>
@@ -371,7 +371,7 @@
 				<!-- INKPRINT clarification: accent palette ("your turn" kin to user bubble) -->
 				<div class="flex min-w-0 gap-2 sm:gap-3">
 					<div
-						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-accent shadow-ink tx tx-bloom tx-weak sm:h-9 sm:w-9"
+						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 micro-label font-semibold text-accent shadow-ink tx tx-bloom tx-weak sm:h-9 sm:w-9"
 					>
 						AI
 					</div>
@@ -379,9 +379,7 @@
 						class="max-w-[90%] min-w-0 overflow-hidden rounded-lg border border-accent/20 bg-accent/5 p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-bloom tx-weak sm:max-w-[88%] sm:p-4"
 					>
 						<!-- INKPRINT micro-label heading -->
-						<p
-							class="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-foreground"
-						>
+						<p class="micro-label font-semibold text-foreground">
 							{message.content}
 						</p>
 
@@ -403,9 +401,7 @@
 						{/if}
 
 						<!-- INKPRINT hint -->
-						<p
-							class="mt-3 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
-						>
+						<p class="mt-3 micro-label font-semibold text-muted-foreground">
 							Share the answers in your next message to continue
 						</p>
 						<span
@@ -422,7 +418,7 @@
 			{:else if message.type === 'activity'}
 				{#if dev}
 					<div
-						class="rounded-lg border border-warning/30 bg-warning/10 px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-warning tx tx-static tx-weak"
+						class="rounded-lg border border-warning/30 bg-warning/10 px-2.5 py-1.5 micro-label font-semibold text-warning tx tx-static tx-weak"
 					>
 						⚠️ Dev Warning: Legacy activity message
 					</div>

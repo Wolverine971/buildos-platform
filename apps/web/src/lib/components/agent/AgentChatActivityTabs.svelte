@@ -197,9 +197,7 @@
 				{/if}
 				<span>{panelTitle(activeTab)}</span>
 			</div>
-			<span
-				class="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
-			>
+			<span class="micro-label font-semibold text-muted-foreground">
 				{visibleItems.length} entries
 			</span>
 		</div>
@@ -245,7 +243,7 @@
 										{#if onAskAboutItem}
 											<button
 												type="button"
-												class="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-background/70 px-2 py-1 text-[0.68rem] font-semibold text-muted-foreground transition hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+												class="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-background/70 px-2 py-1 text-[0.7rem] font-semibold text-muted-foreground transition hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 												title={`Ask about ${item.title}`}
 												aria-label={`Ask about ${item.title}`}
 												onclick={() => onAskAboutItem?.(item)}
@@ -299,7 +297,7 @@
 												{#if item.tool?.argsPreview}
 													<div>
 														<div
-															class="mb-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+															class="mb-1 micro-label font-semibold text-muted-foreground"
 														>
 															Args preview
 														</div>
@@ -311,7 +309,7 @@
 																class="mt-2 rounded-md border border-border bg-card"
 															>
 																<summary
-																	class="cursor-pointer px-2.5 py-1.5 text-[0.68rem] font-semibold text-muted-foreground hover:text-foreground"
+																	class="cursor-pointer px-2.5 py-1.5 text-[0.7rem] font-semibold text-muted-foreground hover:text-foreground"
 																>
 																	Full JSON
 																</summary>
@@ -325,7 +323,7 @@
 												{#if item.tool?.resultPreview || item.detailPreview}
 													<div>
 														<div
-															class="mb-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+															class="mb-1 micro-label font-semibold text-muted-foreground"
 														>
 															Result preview
 														</div>
@@ -338,7 +336,7 @@
 																class="mt-2 rounded-md border border-border bg-card"
 															>
 																<summary
-																	class="cursor-pointer px-2.5 py-1.5 text-[0.68rem] font-semibold text-muted-foreground hover:text-foreground"
+																	class="cursor-pointer px-2.5 py-1.5 text-[0.7rem] font-semibold text-muted-foreground hover:text-foreground"
 																>
 																	Full JSON
 																</summary>

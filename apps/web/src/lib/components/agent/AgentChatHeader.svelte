@@ -247,7 +247,7 @@
 				{#if sessionStatusLabel}
 					<!-- Mobile: spinner only. sm+: spinner + text -->
 					<span
-						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted px-1.5 py-1.5 sm:px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted px-1.5 py-1.5 sm:px-2.5 micro-label font-semibold text-muted-foreground"
 						title={sessionStatusLabel}
 					>
 						<LoaderCircle class="h-3 w-3 animate-spin" />
@@ -293,7 +293,7 @@
 				href={projectUrl}
 				target="_blank"
 				rel="noopener noreferrer"
-				class="hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 micro-label font-semibold text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				style="-webkit-tap-highlight-color: transparent;"
 				title="Open project in new tab"
 			>
@@ -307,7 +307,7 @@
 				type="button"
 				onclick={onExportSteps}
 				disabled={!canExportSteps}
-				class="hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-muted-foreground"
+				class="hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 micro-label font-semibold text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-muted-foreground"
 				style="-webkit-tap-highlight-color: transparent;"
 				title={exportStepsTitle}
 				aria-label={exportStepsTitle}
@@ -322,7 +322,7 @@
 				type="button"
 				onclick={onExportSupportPacket}
 				disabled={!canExportSupportPacket}
-				class="hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-muted-foreground"
+				class="hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 micro-label font-semibold text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-muted-foreground"
 				style="-webkit-tap-highlight-color: transparent;"
 				title={exportSupportPacketTitle}
 				aria-label={exportSupportPacketTitle}
@@ -368,7 +368,7 @@
 								href={projectUrl}
 								target="_blank"
 								rel="noopener noreferrer"
-								class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none"
+								class="flex w-full items-center gap-2 px-3 py-2 text-left micro-label font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none"
 								role="menuitem"
 								onclick={() => (mobileMenuOpen = false)}
 							>
@@ -385,7 +385,7 @@
 									onExportSteps?.();
 								}}
 								disabled={!canExportSteps}
-								class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+								class="flex w-full items-center gap-2 px-3 py-2 text-left micro-label font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 								role="menuitem"
 								title={exportStepsTitle}
 							>
@@ -402,7 +402,7 @@
 									onExportSupportPacket?.();
 								}}
 								disabled={!canExportSupportPacket}
-								class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+								class="flex w-full items-center gap-2 px-3 py-2 text-left micro-label font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 								role="menuitem"
 								title={exportSupportPacketTitle}
 							>

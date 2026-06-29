@@ -29,6 +29,7 @@
 	import AgentRunSteerControl from './AgentRunSteerControl.svelte';
 	import ChangeSetFailureSummary from './ChangeSetFailureSummary.svelte';
 	import ChangeSetReview from './ChangeSetReview.svelte';
+	import { prepareAgentRunChatEventDetail } from './agent-run-chat-session.client';
 
 	const proseClasses = getProseClasses('sm');
 
@@ -64,13 +65,7 @@
 		runStatus === 'needs_input' ||
 			(runStatus === 'partial' && Boolean(result?.open_questions?.length))
 	);
-	let canOpenChat = $derived(
-		Boolean(
-			notification?.data.parentSessionId ||
-				notification?.data.projectId ||
-				notification?.data.contextType
-		)
-	);
+	let canOpenChat = $derived(Boolean(runId));
 	let isActive = $derived(
 		runStatus === 'queued' ||
 			runStatus === 'running' ||
@@ -81,6 +76,7 @@
 
 	let events = $state<AgentRunEventRow[]>([]);
 	let loadingEvents = $state(true);
+	let openingChat = $state(false);
 	let channel: RealtimeChannel | null = null;
 
 	let appliedSteerMessages = $derived(
@@ -376,21 +372,26 @@
 		}
 	}
 
-	function handleOpenChat() {
-		if (!notification || typeof window === 'undefined') return;
-		window.dispatchEvent(
-			new CustomEvent('buildos:open-agent-chat', {
-				detail: {
-					sessionId: notification.data.parentSessionId ?? null,
-					contextType: notification.data.contextType,
-					entityId: notification.data.projectId ?? null,
-					projectId: notification.data.projectId ?? null,
-					source: 'agent_run',
-					runId
-				}
-			})
-		);
-		handleMinimize();
+	async function handleOpenChat() {
+		if (!notification || !runId || typeof window === 'undefined' || openingChat) return;
+		openingChat = true;
+		try {
+			const detail = await prepareAgentRunChatEventDetail({
+				runId,
+				notificationData: notification.data
+			});
+			window.dispatchEvent(
+				new CustomEvent('buildos:open-agent-chat', {
+					detail
+				})
+			);
+			handleMinimize();
+		} catch (error) {
+			console.error('[AgentRunModal] Failed to open chat', error);
+			toastService.error(error instanceof Error ? error.message : 'Could not open chat');
+		} finally {
+			openingChat = false;
+		}
 	}
 </script>
 
@@ -454,11 +455,13 @@
 						{runId}
 						changeSet={proposedChangeSet}
 						onChat={canOpenChat ? handleOpenChat : undefined}
+						{openingChat}
 					/>
 				{:else if failedChangeSet}
 					<ChangeSetFailureSummary
 						changeSet={failedChangeSet}
 						onChat={canOpenChat ? handleOpenChat : undefined}
+						{openingChat}
 					/>
 				{/if}
 
@@ -672,9 +675,19 @@
 			>
 				{#if isActive}
 					{#if canOpenChat}
-						<Button onclick={handleOpenChat} variant="primary" size="md">
-							<MessageSquare class="h-4 w-4" />
-							Chat
+						<Button
+							onclick={handleOpenChat}
+							variant="primary"
+							size="md"
+							disabled={openingChat}
+						>
+							{#if openingChat}
+								<LoaderCircle class="h-4 w-4 animate-spin" />
+								Opening…
+							{:else}
+								<MessageSquare class="h-4 w-4" />
+								Chat
+							{/if}
 						</Button>
 					{/if}
 					<Button onclick={handleCancel} variant="outline" size="md">Stop</Button>
@@ -684,9 +697,19 @@
 						<Button onclick={handleRetry} variant="primary" size="md">Retry</Button>
 					{/if}
 					{#if canOpenChat}
-						<Button onclick={handleOpenChat} variant="primary" size="md">
-							<MessageSquare class="h-4 w-4" />
-							Chat
+						<Button
+							onclick={handleOpenChat}
+							variant="primary"
+							size="md"
+							disabled={openingChat}
+						>
+							{#if openingChat}
+								<LoaderCircle class="h-4 w-4 animate-spin" />
+								Opening…
+							{:else}
+								<MessageSquare class="h-4 w-4" />
+								Chat
+							{/if}
 						</Button>
 					{/if}
 					<Button onclick={handleDismiss} variant="outline" size="md">Dismiss</Button>

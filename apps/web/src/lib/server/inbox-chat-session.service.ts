@@ -3,6 +3,7 @@ import {
 	buildProjectSuggestionProposalContext,
 	type ProposalContextLoopRun
 } from '@buildos/shared-agent-ops/proposal-context';
+import { createAgentRunChatSession } from './agent-run-chat-session.service';
 import type { InboxIndexRow, InboxSourceType } from '@buildos/shared-agent-ops/inbox-index';
 import type { Json } from '@buildos/shared-types';
 
@@ -83,17 +84,6 @@ function formatPercent(value: unknown): string | null {
 	return `${Math.round(score * 100)}% confidence`;
 }
 
-function formatValue(value: unknown): string {
-	if (value === null || value === undefined) return 'empty';
-	if (typeof value === 'string') return compactText(value, 140) ?? 'empty';
-	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-	try {
-		return compactText(JSON.stringify(value), 140) ?? 'object';
-	} catch {
-		return 'object';
-	}
-}
-
 function appendSection(
 	lines: string[],
 	title: string,
@@ -108,65 +98,6 @@ function normalizeArray(value: unknown): Record<string, unknown>[] {
 	return Array.isArray(value)
 		? value.filter((item): item is Record<string, unknown> => isRecord(item))
 		: [];
-}
-
-function summarizeChange(change: Record<string, unknown>, index: number): string {
-	const action = readString(change.action) ?? readString(change.op) ?? 'change';
-	const entityType = readString(change.entity_type) ?? 'entity';
-	const entityId = readString(change.entity_id);
-	const rationale = compactText(change.rationale, 220);
-	const error = compactText(change.error, 240);
-	const before = isRecord(change.before) ? change.before : {};
-	const after = isRecord(change.after) ? change.after : {};
-	const fieldLines = Object.keys(after)
-		.filter((key) => !key.endsWith('_id') && key !== 'project_id')
-		.slice(0, 6)
-		.map((key) => `   - ${key}: ${formatValue(before[key])} -> ${formatValue(after[key])}`);
-	const header = [
-		`${index + 1}. ${action} ${entityType}`,
-		entityId ? ` (${entityId})` : '',
-		rationale ? ` - ${rationale}` : '',
-		error ? `\n   - Failed: ${error}` : ''
-	].join('');
-	return fieldLines.length ? [header, ...fieldLines].join('\n') : header;
-}
-
-function buildAgentRunContext(
-	item: InboxIndexRow,
-	run: Record<string, unknown> | null
-): SourceContext {
-	const changeSet = isRecord(run?.change_set) ? run?.change_set : null;
-	const changes = normalizeArray(changeSet?.changes);
-	const result = isRecord(run?.result) ? run?.result : null;
-	const resultSummary = compactText(result?.summary, 700) ?? compactText(result?.answer, 700);
-	const changeSummaries = changes.map(summarizeChange);
-	const lines = [
-		'AI Inbox item ready to chat about.',
-		'',
-		`# ${item.title || readString(run?.label) || 'Agent proposal'}`,
-		'Source: Agent proposal',
-		readString(run?.status) ? `Status: ${readString(run?.status)}` : null,
-		readString(run?.goal) ? `Goal: ${readString(run?.goal)}` : null,
-		item.summary ? `Inbox summary: ${item.summary}` : null
-	].filter((line): line is string => Boolean(line));
-
-	appendSection(lines, 'Instructions', compactText(run?.instructions, 700));
-	appendSection(lines, 'Proposed changes', changeSummaries);
-	appendSection(lines, 'Run result', resultSummary);
-	lines.push(
-		'',
-		'I can help you inspect the proposed changes, compare alternatives, or decide whether to accept or dismiss this inbox item.'
-	);
-
-	return {
-		humanText: lines.join('\n'),
-		llmText: [
-			'You are discussing a BuildOS AI Inbox agent proposal with the user.',
-			'Use the seeded proposal context as source material. Applying or dismissing the inbox item remains a separate decision unless the user clearly asks you to make a change.',
-			'',
-			...lines
-		].join('\n')
-	};
 }
 
 function summarizeCalendarTask(task: Record<string, unknown>, index: number): string {
@@ -445,6 +376,32 @@ export async function createInboxChatSession(params: {
 		throw new Error('Inbox source not found');
 	}
 
+	if (params.item.source_type === 'agent_run') {
+		const result = await createAgentRunChatSession({
+			supabase: params.supabase,
+			run: sourcePayload,
+			userId: params.userId,
+			origin: 'ai_inbox',
+			inbox: {
+				id: params.item.id ?? null,
+				title: params.item.title,
+				summary: params.item.summary ?? null,
+				source_status: params.item.source_status ?? null,
+				project_id: params.item.project_id ?? null
+			}
+		});
+		return {
+			created: result.created,
+			session: result.session,
+			chat_session_id: result.chat_session_id,
+			item: params.item,
+			source_payload: sourcePayload,
+			context_type: result.context_type as SessionScope['contextType'],
+			entity_id: result.entity_id,
+			project_id: result.project_id
+		};
+	}
+
 	const projectName = await loadProjectName(params.supabase, params.item.project_id ?? null);
 	const scope = resolveSessionScope({
 		item: params.item,
@@ -478,9 +435,7 @@ export async function createInboxChatSession(params: {
 					suggestion: sourcePayload,
 					projectName
 				})
-			: params.item.source_type === 'calendar_suggestion'
-				? buildCalendarSuggestionContext(params.item, sourcePayload)
-				: buildAgentRunContext(params.item, sourcePayload);
+			: buildCalendarSuggestionContext(params.item, sourcePayload);
 
 	const now = new Date().toISOString();
 	const sessionMetadata: Record<string, unknown> = {

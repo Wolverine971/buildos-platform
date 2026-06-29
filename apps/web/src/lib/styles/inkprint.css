@@ -527,9 +527,12 @@
    Utility Classes
    ============================================ */
 
-/* Micro-label pattern for metadata */
+/* Micro-label pattern for metadata: the 0.65rem uppercase tracked label scale.
+   Single source of truth — components compose `micro-label` + an optional
+   `text-*` color override + `font-*` weight rather than re-inlining the longhand. */
 .micro-label {
 	font-size: 0.65rem;
+	line-height: 1.1;
 	text-transform: uppercase;
 	letter-spacing: 0.15em;
 	color: hsl(var(--muted-foreground));

@@ -3,9 +3,9 @@
 # AI Inbox - Design / Shaping Doc
 
 **Date:** 2026-06-24
-**Status:** Shaping, audit-revised 2026-06-24, loop/audit alignment revised 2026-06-26, project-suggestion clarified decisions and shared decision controls implemented 2026-06-26, decision notification handoff implemented 2026-06-27, inbox chat resolution hook implemented 2026-06-28
+**Status:** Shaping, audit-revised 2026-06-24, loop/audit alignment revised 2026-06-26, project-suggestion clarified decisions and shared decision controls implemented 2026-06-26, decision notification handoff implemented 2026-06-27, inbox chat resolution hook implemented 2026-06-28, agent-run shared chat context service/API/inbox delegation/status-modal UI wiring implemented 2026-06-29; manual smoke next
 **Author:** DJ + Claude + Codex audit pass
-**Related:** `HANDOFF_2026-06-19.md` (Agent Work / change sets), `PROJECT_START_HERE_DOC_DESIGN_2026-06-23.md`, project-loops, `docs/research/project-review-loop-audit-suggestion-families-2026-06-25.md`
+**Related:** `HANDOFF_2026-06-19.md` (Agent Work / change sets), `PROJECT_START_HERE_DOC_DESIGN_2026-06-23.md`, project-loops, `docs/research/project-review-loop-audit-suggestion-families-2026-06-25.md`, `AGENT_RUN_CHAT_CONTEXT_BRIDGE_PLAN_2026-06-29.md`
 
 ---
 

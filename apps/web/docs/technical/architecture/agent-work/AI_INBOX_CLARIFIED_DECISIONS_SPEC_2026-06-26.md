@@ -2,10 +2,10 @@
 
 # SPEC — AI Inbox v2: Clarified Decisions & Chat
 
-**Status:** seeded Chat, project-suggestion clarified decision backend, shared Accept/Dismiss/Chat controls, worker reconciliation, and recurrence prompt memory implemented; agent-run clarified-decision convergence remains future
+**Status:** seeded Chat, project-suggestion clarified decision backend, shared Accept/Dismiss/Chat controls, worker reconciliation, and recurrence prompt memory implemented; agent-run shared chat context service/API/inbox delegation/status-modal UI wiring implemented 2026-06-29 with manual smoke next; agent-run clarified-decision convergence remains future
 **Date:** 2026-06-26
 **Author:** DJ + Claude
-**Related:** `AI_INBOX_DESIGN_2026-06-24.md`, `HANDOFF_2026-06-19.md` (Agent Work / change sets), `docs/research/project-review-loop-audit-suggestion-families-2026-06-25.md`
+**Related:** `AI_INBOX_DESIGN_2026-06-24.md`, `HANDOFF_2026-06-19.md` (Agent Work / change sets), `docs/research/project-review-loop-audit-suggestion-families-2026-06-25.md`, `AGENT_RUN_CHAT_CONTEXT_BRIDGE_PLAN_2026-06-29.md`
 
 ---
 
@@ -155,7 +155,7 @@ Implications:
 
 ### 5.6 agent_run convergence (DESIGN ONLY — not built in v1)
 
-Bring `agent_run` `proposal_ready` change sets into the same model. Since commit is frozen approve/reject and `proposal_ready ∉ STEERABLE_STATUSES`: a clarified decision on an agent-run proposal → **dispatch a fresh seeded run** (seed from a change-set context builder — generalize `buildProposalContext` to accept `ChangeSet`/`ProposedChange[]` — plus the clarification), then mark the original change set rejected via `commitChangeSet(defaultDecision:'rejected')`. Chat is now implemented through `/api/inbox/[item_id]/chat-session`; the future convergence work is specifically about clarified background-agent decisions, not opening a conversation. The generalized builder is the convergence seam.
+Bring `agent_run` `proposal_ready` change sets into the same model. Since commit is frozen approve/reject and `proposal_ready ∉ STEERABLE_STATUSES`: a clarified decision on an agent-run proposal → **dispatch a fresh seeded run** (seed from a change-set context builder — generalize `buildProposalContext` to accept `ChangeSet`/`ProposedChange[]` — plus the clarification), then mark the original change set rejected via `commitChangeSet(defaultDecision:'rejected')`. Chat is implemented for inbox cards through `/api/inbox/[item_id]/chat-session`; status-modal Chat for agent runs should use the run-to-chat bridge in `AGENT_RUN_CHAT_CONTEXT_BRIDGE_PLAN_2026-06-29.md` so notification stack and Work Panel modals get the same change-set context seeding. The future convergence work is specifically about clarified background-agent decisions, not opening a conversation. The generalized builder is the convergence seam.
 
 ---
 
