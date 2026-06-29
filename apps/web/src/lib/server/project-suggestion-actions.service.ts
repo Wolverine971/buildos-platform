@@ -106,6 +106,7 @@ export async function decideProjectSuggestion(params: {
 	suggestionId: string;
 	action: ProjectSuggestionDecisionAction;
 	feedback?: unknown;
+	fetchFn?: typeof fetch;
 }): Promise<ProjectSuggestionDecisionOutcome> {
 	const { supabase, userId, projectId, suggestionId, action } = params;
 	const nowIso = new Date().toISOString();
@@ -236,14 +237,15 @@ export async function decideProjectSuggestion(params: {
 			error instanceof Error ? error.message : error
 		);
 	}
-	const projectLoopFetch: typeof fetch = (input, init = {}) =>
-		fetch(input, {
+	const baseFetch = params.fetchFn ?? fetch;
+	const projectLoopFetch: typeof fetch = (input, init = {}) => {
+		const headers = new Headers(init.headers);
+		headers.set('X-Skip-Project-Loop-Burst', 'true');
+		return baseFetch(input, {
 			...init,
-			headers: {
-				...(init.headers ?? {}),
-				'X-Skip-Project-Loop-Burst': 'true'
-			}
+			headers
 		});
+	};
 	const executor = new ChatToolExecutor(
 		supabase,
 		userId,

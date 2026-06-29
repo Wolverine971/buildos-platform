@@ -149,8 +149,8 @@ export class ContextGatheringLedger {
 		const reasons: string[] = [];
 		const roundsRemaining = params.maxToolRounds - params.toolRounds;
 		const contextStatus = params.liveContextUsage?.status;
-		if (roundsRemaining <= 1) {
-			reasons.push('only one tool round remains');
+		if (roundsRemaining <= 2) {
+			reasons.push(`${roundsRemaining} tool rounds remain`);
 		}
 		if (contextStatus === 'over_budget') {
 			reasons.push('context window is over budget');
@@ -168,7 +168,7 @@ export class ContextGatheringLedger {
 		}
 
 		if (
-			roundsRemaining <= 1 ||
+			roundsRemaining <= 2 ||
 			contextStatus === 'over_budget' ||
 			this.lowNoveltyRounds >= 3 ||
 			this.repeatedSearchRounds >= 3

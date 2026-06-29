@@ -148,7 +148,181 @@
 	{:else if logs.length === 0}
 		<div class="p-4 text-center text-sm text-muted-foreground">No system logs found</div>
 	{:else}
-		<div class="overflow-x-auto">
+		<!-- Mobile card list -->
+		<div class="block lg:hidden divide-y divide-border">
+			{#each logs as log (log.id)}
+				{@const Level = getLevelIcon(log.level)}
+				<div
+					class="p-3 space-y-3 {log.level === 'error' || log.level === 'fatal'
+						? 'bg-destructive/10'
+						: ''}"
+				>
+					<div class="flex items-start justify-between gap-2">
+						<div class="flex items-center space-x-1">
+							<Level class="w-4 h-4 {getLevelTextColor(log.level)}" />
+							<span
+								class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium {getLevelColor(
+									log.level
+								)}"
+							>
+								{log.level.toUpperCase()}
+							</span>
+						</div>
+						<button
+							type="button"
+							onclick={() => toggleRow(log.id)}
+							class="rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring flex-shrink-0"
+							aria-label={expandedRows.has(log.id)
+								? 'Collapse details'
+								: 'Expand details'}
+						>
+							{#if expandedRows.has(log.id)}
+								<ChevronDown class="w-5 h-5" />
+							{:else}
+								<ChevronRight class="w-5 h-5" />
+							{/if}
+						</button>
+					</div>
+					<div class="text-sm text-foreground">
+						{log.message}
+					</div>
+					{#if log.error_stack}
+						<div class="text-xs text-destructive">
+							Error: expand to view stack trace
+						</div>
+					{/if}
+					<div class="grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Time
+							</div>
+							<div
+								class="text-xs text-muted-foreground"
+								title={formatDate(log.created_at)}
+							>
+								{formatShortDate(log.created_at)}
+							</div>
+						</div>
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Namespace
+							</div>
+							<div class="text-xs font-mono text-muted-foreground">
+								{log.namespace || 'N/A'}
+							</div>
+						</div>
+						<div class="col-span-2">
+							<div
+								class="text-xs text-muted-foreground uppercase tracking-wider mb-1"
+							>
+								Correlation ID
+							</div>
+							<button
+								type="button"
+								onclick={() => copyToClipboard(log.correlation_id)}
+								class="rounded-sm font-mono text-xs text-info hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								title="Click to copy: {log.correlation_id}"
+							>
+								{truncateCorrelationId(log.correlation_id)}
+							</button>
+						</div>
+					</div>
+					{#if expandedRows.has(log.id)}
+						<div class="space-y-3">
+							<div>
+								<div class="text-xs font-medium text-foreground mb-1">Message:</div>
+								<div class="text-sm text-foreground">
+									{log.message}
+								</div>
+							</div>
+							<div class="grid grid-cols-2 gap-4">
+								<div>
+									<div class="text-xs font-medium text-foreground mb-1">
+										User:
+									</div>
+									<div class="text-xs text-muted-foreground">
+										{log.users?.name || log.users?.email || 'N/A'}
+									</div>
+								</div>
+								<div>
+									<div class="text-xs font-medium text-foreground mb-1">
+										Event ID:
+									</div>
+									<div class="text-xs font-mono text-muted-foreground">
+										{log.notification_event_id
+											? truncateCorrelationId(log.notification_event_id)
+											: 'N/A'}
+									</div>
+								</div>
+								<div>
+									<div class="text-xs font-medium text-foreground mb-1">
+										Delivery ID:
+									</div>
+									<div class="text-xs font-mono text-muted-foreground">
+										{log.notification_delivery_id
+											? truncateCorrelationId(log.notification_delivery_id)
+											: 'N/A'}
+									</div>
+								</div>
+								<div>
+									<div class="text-xs font-medium text-foreground mb-1">
+										Request ID:
+									</div>
+									<div class="text-xs font-mono text-muted-foreground">
+										{log.request_id || 'N/A'}
+									</div>
+								</div>
+							</div>
+							{#if log.metadata && Object.keys(log.metadata).length > 0}
+								<div>
+									<div class="text-xs font-medium text-foreground mb-1">
+										Metadata:
+									</div>
+									<pre
+										class="bg-card border border-border rounded-md p-3 text-xs overflow-x-auto whitespace-pre-wrap break-all">{JSON.stringify(
+											log.metadata,
+											null,
+											2
+										)}</pre>
+								</div>
+							{/if}
+							{#if log.error_stack}
+								<div>
+									<div class="text-xs font-medium text-destructive mb-1">
+										Error Stack Trace:
+									</div>
+									<pre
+										class="bg-destructive/10 border border-destructive/30 rounded-md p-3 text-xs overflow-x-auto whitespace-pre-wrap break-all text-destructive">{log.error_stack}</pre>
+								</div>
+							{/if}
+						</div>
+					{/if}
+					<div class="flex flex-wrap gap-2">
+						{#if onViewCorrelation}
+							<Button
+								size="sm"
+								variant="ghost"
+								onclick={() => onViewCorrelation?.(log.correlation_id)}
+								icon={Eye}
+							>
+								View
+							</Button>
+						{/if}
+						<Button
+							size="sm"
+							variant="ghost"
+							onclick={() => copyToClipboard(log.correlation_id)}
+							icon={Copy}
+						>
+							Copy
+						</Button>
+					</div>
+				</div>
+			{/each}
+		</div>
+
+		<!-- Desktop table -->
+		<div class="hidden lg:block overflow-x-auto">
 			<table class="min-w-full divide-y divide-border">
 				<thead class="bg-muted">
 					<tr>
@@ -186,7 +360,7 @@
 					</tr>
 				</thead>
 				<tbody class="bg-card divide-y divide-border">
-					{#each logs as log}
+					{#each logs as log (log.id)}
 						{@const Level = getLevelIcon(log.level)}
 						<tr
 							class="hover:bg-muted transition-colors {log.level === 'error' ||
@@ -198,7 +372,7 @@
 								<button
 									type="button"
 									onclick={() => toggleRow(log.id)}
-									class="rounded-md text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									class="rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								>
 									{#if expandedRows.has(log.id)}
 										<ChevronDown class="w-4 h-4" />

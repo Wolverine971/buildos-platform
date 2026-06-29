@@ -27,6 +27,7 @@
 	import AdminCard from '$lib/components/admin/AdminCard.svelte';
 	import UserActivityModal from '$lib/components/admin/UserActivityModal.svelte';
 	import EmailComposerModal from '$lib/components/admin/EmailComposerModal.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -1292,89 +1293,106 @@
 </div>
 
 <!-- Basic User Details Modal -->
-{#if showUserModal && selectedUser}
-	<div
-		class="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50"
-	>
-		<div
-			class="bg-card border border-border rounded-lg shadow-ink-strong max-w-md w-full mx-4 tx tx-frame tx-weak"
-		>
-			<div class="p-4">
-				<div class="flex items-center justify-between mb-3">
-					<h3 class="text-sm font-semibold text-foreground">User Details</h3>
-					<Button
-						onclick={() => (showUserModal = false)}
-						variant="ghost"
-						size="sm"
-						class="!p-1 text-lg leading-none text-muted-foreground hover:text-foreground"
+<Modal
+	bind:isOpen={showUserModal}
+	onClose={() => (showUserModal = false)}
+	title="User Details"
+	size="md"
+>
+	{#if selectedUser}
+		<div class="p-4">
+			<div class="space-y-3">
+				<div>
+					<div
+						class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
 					>
-						×
-					</Button>
+						Email
+					</div>
+					<p class="text-sm text-foreground">{selectedUser.email}</p>
 				</div>
 
-				<div class="space-y-3">
-					<div>
-						<div
-							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
-						>
-							Email
-						</div>
-						<p class="text-sm text-foreground">{selectedUser.email}</p>
+				<div>
+					<div
+						class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+					>
+						Name
 					</div>
+					<p class="text-sm text-foreground">
+						{selectedUser.name || 'Not provided'}
+					</p>
+				</div>
 
-					<div>
-						<div
-							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
-						>
-							Name
-						</div>
-						<p class="text-sm text-foreground">
-							{selectedUser.name || 'Not provided'}
-						</p>
+				<div>
+					<div
+						class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+					>
+						Admin Status
 					</div>
+					<span
+						class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full {selectedUser.is_admin
+							? 'bg-destructive/10 text-destructive'
+							: 'bg-success/10 text-success'}"
+					>
+						{selectedUser.is_admin ? 'Admin' : 'Regular User'}
+					</span>
+				</div>
 
-					<div>
-						<div
-							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
-						>
-							Admin Status
-						</div>
-						<span
-							class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full {selectedUser.is_admin
-								? 'bg-destructive/10 text-destructive'
-								: 'bg-success/10 text-success'}"
-						>
-							{selectedUser.is_admin ? 'Admin' : 'Regular User'}
-						</span>
+				<div>
+					<div
+						class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+					>
+						Onboarding
 					</div>
-
-					<div>
-						<div
-							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
-						>
-							Onboarding
-						</div>
-						<div class="flex items-center gap-1.5 mt-0.5">
-							{#if selectedUser.onboarding_completed_at}
-								<CheckCircle class="h-3.5 w-3.5 text-success" />
-								<span class="text-xs text-success">Completed</span>
-							{:else}
-								<XCircle class="h-3.5 w-3.5 text-destructive" />
-								<span class="text-xs text-destructive">Not completed</span>
-							{/if}
-						</div>
+					<div class="flex items-center gap-1.5 mt-0.5">
+						{#if selectedUser.onboarding_completed_at}
+							<CheckCircle class="h-3.5 w-3.5 text-success" />
+							<span class="text-xs text-success">Completed</span>
+						{:else}
+							<XCircle class="h-3.5 w-3.5 text-destructive" />
+							<span class="text-xs text-destructive">Not completed</span>
+						{/if}
 					</div>
+				</div>
 
+				<div>
+					<div
+						class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+					>
+						Activity
+					</div>
+					<p class="text-xs text-foreground">
+						{selectedUser.project_count || 0} projects ·{' '}
+						{selectedUser.agentic_session_count || 0} agentic sessions ·{' '}
+						{selectedUser.daily_brief_count || 0} daily briefs
+					</p>
+				</div>
+
+				<div>
+					<div
+						class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+					>
+						Calendar
+					</div>
+					<div class="flex items-center gap-1.5 mt-0.5">
+						{#if selectedUser.calendar_connected}
+							<Calendar class="h-3.5 w-3.5 text-success" />
+							<span class="text-xs text-success">Connected</span>
+						{:else}
+							<Calendar class="h-3.5 w-3.5 text-muted-foreground/50" />
+							<span class="text-xs text-muted-foreground">Not connected</span>
+						{/if}
+					</div>
+				</div>
+
+				<div class="grid grid-cols-2 gap-3">
 					<div>
 						<div
 							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
 						>
-							Activity
+							Last Visit
 						</div>
 						<p class="text-xs text-foreground">
-							{selectedUser.project_count || 0} projects ·{' '}
-							{selectedUser.agentic_session_count || 0} agentic sessions ·{' '}
-							{selectedUser.daily_brief_count || 0} daily briefs
+							{formatLastVisit(selectedUser.last_visit)}
 						</p>
 					</div>
 
@@ -1382,89 +1400,55 @@
 						<div
 							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
 						>
-							Calendar
+							Joined
 						</div>
-						<div class="flex items-center gap-1.5 mt-0.5">
-							{#if selectedUser.calendar_connected}
-								<Calendar class="h-3.5 w-3.5 text-success" />
-								<span class="text-xs text-success">Connected</span>
-							{:else}
-								<Calendar class="h-3.5 w-3.5 text-muted-foreground/50" />
-								<span class="text-xs text-muted-foreground">Not connected</span>
-							{/if}
-						</div>
+						<p class="text-xs text-foreground">
+							{formatDate(selectedUser.created_at)}
+						</p>
 					</div>
-
-					<div class="grid grid-cols-2 gap-3">
-						<div>
-							<div
-								class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
-							>
-								Last Visit
-							</div>
-							<p class="text-xs text-foreground">
-								{formatLastVisit(selectedUser.last_visit)}
-							</p>
-						</div>
-
-						<div>
-							<div
-								class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
-							>
-								Joined
-							</div>
-							<p class="text-xs text-foreground">
-								{formatDate(selectedUser.created_at)}
-							</p>
-						</div>
-					</div>
-
-					{#if selectedUser.bio}
-						<div>
-							<div
-								class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
-							>
-								Bio
-							</div>
-							<p class="text-xs text-foreground">{selectedUser.bio}</p>
-						</div>
-					{/if}
 				</div>
 
-				<div class="mt-4 flex justify-between gap-2">
+				{#if selectedUser.bio}
+					<div>
+						<div
+							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+						>
+							Bio
+						</div>
+						<p class="text-xs text-foreground">{selectedUser.bio}</p>
+					</div>
+				{/if}
+			</div>
+
+			<div class="mt-4 flex justify-between gap-2">
+				<Button
+					onclick={() => {
+						showUserModal = false;
+						loadUserActivity(selectedUser.id);
+					}}
+					variant="primary"
+					size="sm"
+					class="bg-accent hover:bg-accent/90 pressable"
+				>
+					View Activity
+				</Button>
+				<div class="flex gap-2">
+					<Button onclick={() => (showUserModal = false)} variant="secondary" size="sm">
+						Close
+					</Button>
 					<Button
-						onclick={() => {
-							showUserModal = false;
-							loadUserActivity(selectedUser.id);
-						}}
+						onclick={() => requestToggleAdmin(selectedUser)}
 						variant="primary"
 						size="sm"
-						class="bg-accent hover:bg-accent/90 pressable"
+						class="pressable"
 					>
-						View Activity
+						{selectedUser.is_admin ? 'Remove Admin' : 'Make Admin'}
 					</Button>
-					<div class="flex gap-2">
-						<Button
-							onclick={() => (showUserModal = false)}
-							variant="secondary"
-							size="sm"
-						>
-							Close
-						</Button>
-						<Button
-							onclick={() => requestToggleAdmin(selectedUser)}
-							variant="primary"
-							size="sm"
-							class="pressable"
-						>
-							{selectedUser.is_admin ? 'Remove Admin' : 'Make Admin'}
-						</Button>
-					</div>
 				</div>
 			</div>
 		</div>
-	</div>
-{/if}
+	{/if}
+</Modal>
 
 <!-- User Activity Modal -->
 {#if showActivityModal && selectedUser}

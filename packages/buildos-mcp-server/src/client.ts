@@ -45,6 +45,18 @@ export class BuildosRemoteMcpClient {
 		return result ?? {};
 	}
 
+	async listResources(): Promise<{ resources: unknown[] }> {
+		const result = (await this.rpc('resources/list')) as { resources?: unknown[] } | undefined;
+		return { resources: Array.isArray(result?.resources) ? result!.resources : [] };
+	}
+
+	async readResource(uri: string): Promise<Record<string, unknown>> {
+		const result = (await this.rpc('resources/read', { uri })) as
+			| Record<string, unknown>
+			| undefined;
+		return result ?? {};
+	}
+
 	private async rpc(method: string, params?: Record<string, unknown>): Promise<unknown> {
 		const response = await this.fetchFn(this.endpoint(), {
 			method: 'POST',

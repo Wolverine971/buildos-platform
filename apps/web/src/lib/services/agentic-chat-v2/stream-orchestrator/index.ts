@@ -131,6 +131,33 @@ type FastChatModelMessage = Omit<FastChatHistoryMessage, 'content'> & {
 	reasoning_details?: unknown[];
 };
 
+function buildRuntimeToolBudgetMessage(params: {
+	toolRounds: number;
+	maxToolRounds: number;
+	toolCallsMade: number;
+	maxToolCalls: number;
+	noToolSynthesisPass: boolean;
+}): string {
+	const roundsRemaining = Math.max(0, params.maxToolRounds - params.toolRounds);
+	const callsRemaining = Math.max(0, params.maxToolCalls - params.toolCallsMade);
+	if (params.noToolSynthesisPass) {
+		return [
+			`Runtime tool budget: tools are unavailable for this synthesis pass. ${roundsRemaining} of ${params.maxToolRounds} tool rounds remain in the turn budget, but the supervisor has asked for an answer from loaded evidence.`,
+			'Do not request tools in this response. Write the final user-facing answer from the tool results already loaded.'
+		].join(' ');
+	}
+
+	const pressureLine =
+		roundsRemaining <= 2
+			? 'With two or fewer tool rounds remaining, answer from loaded evidence unless one specific missing fact is required.'
+			: 'Before calling tools, choose the smallest set of tool calls needed to answer and avoid broad keyword probes.';
+	return [
+		`Runtime tool budget: ${roundsRemaining} of ${params.maxToolRounds} tool rounds remain; ${callsRemaining} of ${params.maxToolCalls} tool calls remain.`,
+		'A tool round is one assistant response that emits one or more tool calls. Batch independent read calls in the same response when all are needed.',
+		pressureLine
+	].join(' ');
+}
+
 export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	assistantText: string;
 	finalAssistantText: string;
@@ -758,11 +785,24 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				llmPassMeta.forcedNoToolSynthesis = true;
 			}
 			let llmDoneReceived = false;
+			const passMessages: FastChatModelMessage[] = [
+				...messages,
+				{
+					role: 'system',
+					content: buildRuntimeToolBudgetMessage({
+						toolRounds,
+						maxToolRounds,
+						toolCallsMade,
+						maxToolCalls,
+						noToolSynthesisPass
+					})
+				}
+			];
 
 			const clearLlmHeartbeat = startLongRunningOperationHeartbeat('llm_stream');
 			try {
 				for await (const event of llm.streamText({
-					messages,
+					messages: passMessages,
 					tools: noToolSynthesisPass ? undefined : hasTools ? tools : undefined,
 					tool_choice: noToolSynthesisPass ? undefined : hasTools ? 'auto' : undefined,
 					temperature: noToolSynthesisPass ? undefined : hasTools ? 0.2 : undefined,

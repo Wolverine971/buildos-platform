@@ -93,6 +93,69 @@ export function normalizeProjectSelectionSearch(value?: string | null): string {
 	return typeof value === 'string' ? value.trim() : '';
 }
 
+const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
+// Recency bucket thresholds (in days) shared by grouping + the section labels.
+export const PROJECT_RECENCY_RECENT_MAX_DAYS = 7;
+export const PROJECT_RECENCY_OLDER_MAX_DAYS = 30;
+
+export type ProjectRecencyGroups = {
+	recent: ProjectSelectionSummary[];
+	olderThan7Days: ProjectSelectionSummary[];
+	olderThan30Days: ProjectSelectionSummary[];
+};
+
+export function parseProjectUpdatedAt(project: ProjectSelectionSummary): number {
+	if (!project.updatedAt) return 0;
+	const timestamp = Date.parse(project.updatedAt);
+	return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+export function formatRelativeProjectUpdate(value: string | null | undefined): string {
+	if (!value) return 'Updated recently';
+	const ms = Date.parse(value);
+	if (Number.isNaN(ms)) return 'Updated recently';
+
+	const diffMs = Date.now() - ms;
+	if (diffMs < 60_000) return 'Just now';
+
+	const diffMin = Math.floor(diffMs / 60_000);
+	if (diffMin < 60) return `${diffMin}m ago`;
+
+	const diffHr = Math.floor(diffMin / 60);
+	if (diffHr < 24) return `${diffHr}h ago`;
+
+	const diffDay = Math.floor(diffHr / 24);
+	if (diffDay < 7) return `${diffDay}d ago`;
+
+	const diffWk = Math.floor(diffDay / 7);
+	if (diffWk < 5) return `${diffWk}w ago`;
+
+	const diffMo = Math.floor(diffDay / 30);
+	if (diffMo < 12) return `${diffMo}mo ago`;
+
+	const diffYr = Math.floor(diffDay / 365);
+	return `${diffYr}y ago`;
+}
+
+export function groupProjectsByRecency(items: ProjectSelectionSummary[]): ProjectRecencyGroups {
+	const now = Date.now();
+	const recent: ProjectSelectionSummary[] = [];
+	const olderThan7Days: ProjectSelectionSummary[] = [];
+	const olderThan30Days: ProjectSelectionSummary[] = [];
+
+	const sorted = [...items].sort((a, b) => parseProjectUpdatedAt(b) - parseProjectUpdatedAt(a));
+
+	for (const project of sorted) {
+		const ts = parseProjectUpdatedAt(project);
+		const ageDays = ts > 0 ? (now - ts) / MILLIS_PER_DAY : Number.POSITIVE_INFINITY;
+		if (ageDays >= PROJECT_RECENCY_OLDER_MAX_DAYS) olderThan30Days.push(project);
+		else if (ageDays >= PROJECT_RECENCY_RECENT_MAX_DAYS) olderThan7Days.push(project);
+		else recent.push(project);
+	}
+
+	return { recent, olderThan7Days, olderThan30Days };
+}
+
 export function normalizeProjectSelectionLimit(value?: number | null): number {
 	if (!Number.isFinite(value)) {
 		return DEFAULT_PROJECT_SELECTOR_LIMIT;

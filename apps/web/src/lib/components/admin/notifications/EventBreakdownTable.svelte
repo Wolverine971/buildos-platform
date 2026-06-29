@@ -47,7 +47,71 @@
 	{:else if data.length === 0}
 		<div class="p-4 text-center text-sm text-muted-foreground">No event data available</div>
 	{:else}
-		<div class="overflow-x-auto">
+		<!-- Mobile card list -->
+		<div class="block lg:hidden divide-y divide-border">
+			{#each data as event (event.event_type)}
+				<div class="p-3 space-y-3">
+					<span
+						class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getEventTypeBadgeColor(
+							event.event_type
+						)}"
+					>
+						{formatEventType(event.event_type)}
+					</span>
+					<div class="grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Events
+							</div>
+							<div class="font-medium text-foreground">
+								{formatNumber(event.total_events)}
+							</div>
+						</div>
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Deliveries
+							</div>
+							<div class="text-foreground">
+								{formatNumber(event.total_deliveries)}
+							</div>
+						</div>
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Recipients
+							</div>
+							<div class="text-foreground">
+								{formatNumber(event.unique_subscribers)}
+							</div>
+						</div>
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Avg Delivery Time
+							</div>
+							<div class="text-foreground">
+								{event.avg_delivery_time_seconds != null
+									? `${event.avg_delivery_time_seconds.toFixed(2)}s`
+									: 'N/A'}
+							</div>
+						</div>
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Open Rate
+							</div>
+							<div class="text-foreground">{formatPercentage(event.open_rate)}</div>
+						</div>
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Click Rate
+							</div>
+							<div class="text-foreground">{formatPercentage(event.click_rate)}</div>
+						</div>
+					</div>
+				</div>
+			{/each}
+		</div>
+
+		<!-- Desktop table -->
+		<div class="hidden lg:block overflow-x-auto">
 			<table class="min-w-full divide-y divide-border">
 				<thead class="bg-muted">
 					<tr>
@@ -89,7 +153,7 @@
 					</tr>
 				</thead>
 				<tbody class="bg-card divide-y divide-border">
-					{#each data as event}
+					{#each data as event (event.event_type)}
 						<tr class="hover:bg-muted transition-colors">
 							<td class="px-3 py-2.5 whitespace-nowrap">
 								<span

@@ -129,6 +129,68 @@ describe('applyFinalizationGuard', () => {
 		expect(guard.text).not.toContain('I gathered the requested context');
 	});
 
+	it('summarizes workspace overview status when a workspace read-heavy turn has no final text', () => {
+		const call = toolCall('get_workspace_overview', { project_limit: 20 });
+		const guard = applyFinalizationGuard({
+			finalAssistantText: '',
+			assistantText: '',
+			toolExecutions: [
+				{
+					toolCall: call,
+					result: toolResult(call, true, {
+						scope: 'workspace',
+						projects_returned: 3,
+						maybe_more: true,
+						snapshot: {
+							returned_projects: 3,
+							total_accessible_projects: 36,
+							project_limit: 20,
+							has_more_projects: true,
+							totals_scope: 'returned_projects'
+						},
+						projects: [
+							{
+								name: 'BuildOS CEO Training Sprint',
+								counts: {
+									overdue_tasks: 12,
+									due_soon_tasks: 0,
+									blocked_tasks: 0
+								},
+								recent_activity: [{ title: 'Created' }],
+								next_step_short: 'Review the Calendar-Based Plan'
+							},
+							{
+								name: 'BuildOS CEO Training Sprint',
+								counts: {
+									overdue_tasks: 5,
+									due_soon_tasks: 0,
+									blocked_tasks: 0
+								},
+								recent_activity: []
+							},
+							{
+								name: '9takes',
+								counts: {
+									overdue_tasks: 11,
+									due_soon_tasks: 4,
+									blocked_tasks: 2
+								},
+								recent_activity: []
+							}
+						]
+					})
+				}
+			]
+		});
+
+		expect(guard.applied).toBe(true);
+		expect(guard.reason).toBe('empty_after_reads');
+		expect(guard.text).toContain('showing 3 of 36 accessible projects');
+		expect(guard.text).toContain('Snapshot totals cover only the returned projects');
+		expect(guard.text).toContain('BuildOS CEO Training Sprint (2 copies) - 17 overdue');
+		expect(guard.text).toContain('9takes - 11 overdue, 4 due soon, 2 blocked');
+	});
+
 	it('says the change was not made when a mutation was requested but never ran', () => {
 		// Reproduces the "did you update it?" pattern: the turn spent its budget on
 		// reads, never executed the requested write, and previously emitted the soothing

@@ -78,6 +78,13 @@ interface RawBriefEnvelope {
 	brief?: Partial<ProjectLoopBrief>;
 }
 
+type ProjectLoopOperationType =
+	| 'project_loop_brief'
+	| 'project_loop_doc_organization'
+	| 'project_loop_outdated_docs'
+	| 'project_loop_drift'
+	| 'project_loop_task_conflicts';
+
 interface RawEvidenceRef {
 	entity_type?: string;
 	entity_id?: string;
@@ -245,6 +252,8 @@ async function callGenerator(params: {
 	userId: string;
 	chatSessionId?: string;
 	projectId: string;
+	runId?: string;
+	generator: Exclude<ProjectLoopOperationType, 'project_loop_brief'>;
 	systemPrompt: string;
 	userPrompt: string;
 	onUsage: (event: UsageEvent) => Promise<void>;
@@ -255,9 +264,15 @@ async function callGenerator(params: {
 		userId: params.userId,
 		profile: 'balanced',
 		validation: { retryOnParseError: true, maxRetries: 2 },
-		operationType: 'other',
+		operationType: params.generator,
+		projectId: params.projectId,
 		chatSessionId: params.chatSessionId,
-		metadata: { project_loop: true, onto_project_id: params.projectId },
+		metadata: {
+			project_loop: true,
+			project_loop_run_id: params.runId ?? null,
+			project_loop_generator: params.generator,
+			onto_project_id: params.projectId
+		},
 		onUsage: params.onUsage
 	});
 	return Array.isArray(result?.suggestions) ? result.suggestions : [];
@@ -268,6 +283,7 @@ async function callBriefGenerator(params: {
 	userId: string;
 	chatSessionId?: string;
 	projectId: string;
+	runId?: string;
 	systemPrompt: string;
 	userPrompt: string;
 	onUsage: (event: UsageEvent) => Promise<void>;
@@ -278,11 +294,14 @@ async function callBriefGenerator(params: {
 		userId: params.userId,
 		profile: 'balanced',
 		validation: { retryOnParseError: true, maxRetries: 2 },
-		operationType: 'other',
+		operationType: 'project_loop_brief',
+		projectId: params.projectId,
 		chatSessionId: params.chatSessionId,
 		metadata: {
 			project_loop: true,
 			project_loop_brief: true,
+			project_loop_run_id: params.runId ?? null,
+			project_loop_generator: 'project_loop_brief',
 			onto_project_id: params.projectId
 		},
 		onUsage: params.onUsage
@@ -440,6 +459,7 @@ export async function generateProjectBrief(params: {
 	ctx: LoopContext;
 	userId: string;
 	chatSessionId?: string;
+	runId?: string;
 	onUsage: (event: UsageEvent) => Promise<void>;
 }): Promise<ProjectLoopBrief> {
 	const { ctx } = params;
@@ -467,6 +487,7 @@ export async function generateProjectBrief(params: {
 			userId: params.userId,
 			chatSessionId: params.chatSessionId,
 			projectId: ctx.projectId,
+			runId: params.runId,
 			systemPrompt,
 			userPrompt,
 			onUsage: params.onUsage
@@ -493,6 +514,7 @@ export async function generateDocOrganization(params: {
 	ctx: LoopContext;
 	userId: string;
 	chatSessionId?: string;
+	runId?: string;
 	onUsage: (event: UsageEvent) => Promise<void>;
 }): Promise<ProposedSuggestion[]> {
 	const { ctx } = params;
@@ -534,6 +556,8 @@ export async function generateDocOrganization(params: {
 		userId: params.userId,
 		chatSessionId: params.chatSessionId,
 		projectId: ctx.projectId,
+		runId: params.runId,
+		generator: 'project_loop_doc_organization',
 		systemPrompt,
 		userPrompt,
 		onUsage: params.onUsage
@@ -579,6 +603,7 @@ export async function generateOutdatedDocs(params: {
 	ctx: LoopContext;
 	userId: string;
 	chatSessionId?: string;
+	runId?: string;
 	onUsage: (event: UsageEvent) => Promise<void>;
 }): Promise<ProposedSuggestion[]> {
 	const { ctx } = params;
@@ -624,6 +649,8 @@ export async function generateOutdatedDocs(params: {
 		userId: params.userId,
 		chatSessionId: params.chatSessionId,
 		projectId: ctx.projectId,
+		runId: params.runId,
+		generator: 'project_loop_outdated_docs',
 		systemPrompt,
 		userPrompt,
 		onUsage: params.onUsage
@@ -671,6 +698,7 @@ export async function generateDrift(params: {
 	ctx: LoopContext;
 	userId: string;
 	chatSessionId?: string;
+	runId?: string;
 	onUsage: (event: UsageEvent) => Promise<void>;
 }): Promise<ProposedSuggestion[]> {
 	const { ctx } = params;
@@ -708,6 +736,8 @@ export async function generateDrift(params: {
 		userId: params.userId,
 		chatSessionId: params.chatSessionId,
 		projectId: ctx.projectId,
+		runId: params.runId,
+		generator: 'project_loop_drift',
 		systemPrompt,
 		userPrompt,
 		onUsage: params.onUsage
@@ -746,6 +776,7 @@ export async function generateTaskConflicts(params: {
 	ctx: LoopContext;
 	userId: string;
 	chatSessionId?: string;
+	runId?: string;
 	onUsage: (event: UsageEvent) => Promise<void>;
 }): Promise<ProposedSuggestion[]> {
 	const { ctx } = params;
@@ -784,6 +815,8 @@ export async function generateTaskConflicts(params: {
 		userId: params.userId,
 		chatSessionId: params.chatSessionId,
 		projectId: ctx.projectId,
+		runId: params.runId,
+		generator: 'project_loop_task_conflicts',
 		systemPrompt,
 		userPrompt,
 		onUsage: params.onUsage

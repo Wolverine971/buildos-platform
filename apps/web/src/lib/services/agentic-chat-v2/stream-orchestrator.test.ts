@@ -23,6 +23,60 @@ function toolCall(name: string, args: Record<string, unknown>, id = name): ChatT
 }
 
 describe('streamFastChat direct tool orchestration', () => {
+	it('adds dynamic tool budget guidance to each LLM pass', async () => {
+		let streamInvocation = 0;
+		const passMessages: FastChatHistoryMessage[][] = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: { messages: FastChatHistoryMessage[] }) {
+				streamInvocation += 1;
+				passMessages.push(params.messages);
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'search_onto_projects',
+							{ query: 'BuildOS' },
+							'search:buildos'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'I found the BuildOS project.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(
+			async (call: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: call.id,
+				result: { projects: [{ id: 'project-1', type: 'project', name: 'BuildOS' }] },
+				success: true
+			})
+		);
+
+		await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'What is happening with my projects?',
+			tools: tools(['search_onto_projects']),
+			toolExecutor,
+			onDelta: async () => {},
+			maxToolRounds: 3,
+			maxToolCalls: 5
+		});
+
+		const firstBudgetMessage = passMessages[0]?.at(-1)?.content;
+		const secondBudgetMessage = passMessages[1]?.at(-1)?.content;
+		expect(firstBudgetMessage).toContain('Runtime tool budget: 3 of 3 tool rounds remain');
+		expect(firstBudgetMessage).toContain('Batch independent read calls');
+		expect(secondBudgetMessage).toContain('Runtime tool budget: 2 of 3 tool rounds remain');
+		expect(secondBudgetMessage).toContain('With two or fewer tool rounds remaining');
+	});
+
 	it('passes dynamically materialized direct tools to the executor after discovery', async () => {
 		let streamInvocation = 0;
 		const llm = {
@@ -1427,7 +1481,7 @@ describe('streamFastChat direct tool orchestration', () => {
 			onSupervisorDecision: async ({ decision, source, trigger }) => {
 				supervisorRecords.push({ action: decision.action, source, trigger });
 			},
-			maxToolRounds: 3
+			maxToolRounds: 4
 		});
 
 		expect(llm.streamText).toHaveBeenCalledTimes(3);
@@ -1439,13 +1493,7 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(result.finalAssistantText).toBe('Rod meeting prep answer from gathered context.');
 		expect(result.finalAssistantText).not.toContain('safety limit');
 		expect(result.llmPasses?.[2]?.forcedNoToolSynthesis).toBe(true);
-		expect(supervisorRecords).toEqual([
-			{
-				action: 'force_synthesis',
-				source: 'monitor',
-				trigger: 'near_tool_budget'
-			}
-		]);
+		expect(supervisorRecords).toEqual([]);
 	});
 
 	it('re-injects read-loop repair instructions with escalating guidance', async () => {
@@ -1475,6 +1523,16 @@ describe('streamFastChat direct tool orchestration', () => {
 				'get_onto_project_details',
 				{ project_id: projectId },
 				'get_onto_project_details:project-2'
+			),
+			toolCall(
+				'search_project',
+				{ project_id: projectId, query: 'Rod Chamberlin compliance', limit: 5 },
+				'search_project:compliance'
+			),
+			toolCall(
+				'get_onto_project_details',
+				{ project_id: projectId },
+				'get_onto_project_details:project-3'
 			)
 		];
 		const llm = {
@@ -1539,24 +1597,24 @@ describe('streamFastChat direct tool orchestration', () => {
 			]),
 			toolExecutor,
 			onDelta: async () => {},
-			maxToolRounds: 8
+			maxToolRounds: 10
 		});
 
-		const passThreeSystemText = (streamParams[2]?.messages ?? [])
+		const passFourSystemText = (streamParams[3]?.messages ?? [])
 			.filter((message) => message.role === 'system')
 			.map((message) => message.content)
 			.join('\n');
-		const passFiveSystemText = (streamParams[4]?.messages ?? [])
+		const passSevenSystemText = (streamParams[6]?.messages ?? [])
 			.filter((message) => message.role === 'system')
 			.map((message) => message.content)
 			.join('\n');
 
-		expect(llm.streamText).toHaveBeenCalledTimes(5);
-		expect(passThreeSystemText).toContain('Read-loop nudge');
-		expect(passFiveSystemText).toContain('Read-loop nudge');
-		expect(passFiveSystemText).toContain('Read-loop escalation');
-		expect(passFiveSystemText).toContain('Tool rounds remaining before the safety cap: 4.');
-		expect(streamParams[4]?.toolChoice).toBe('auto');
+		expect(llm.streamText).toHaveBeenCalledTimes(7);
+		expect(passFourSystemText).toContain('Read-loop nudge');
+		expect(passSevenSystemText).toContain('Read-loop nudge');
+		expect(passSevenSystemText).toContain('Read-loop escalation');
+		expect(passSevenSystemText).toContain('Tool rounds remaining before the safety cap: 4.');
+		expect(streamParams[6]?.toolChoice).toBe('auto');
 		expect(result.finalAssistantText).toBe('Final answer from the accumulated reads.');
 	});
 

@@ -70,6 +70,9 @@
 	let chatOpenedWithContext = $state<ChatContextType | null>(null);
 	let chatInitialSessionId = $state<string | null>(null);
 	let chatInitialBrainDumpContext = $state<AgentBrainDumpContext | null>(null);
+	let chatOverrideContextType = $state<ChatContextType | null>(null);
+	let chatOverrideEntityId = $state<string | undefined>(undefined);
+	let chatUsePageFocus = $state(true);
 	let isOpeningBrainDumpChat = $state(false);
 
 	// Mobile-menu accessibility: drawer ref for the focus trap, and the element to restore
@@ -135,14 +138,20 @@
 		};
 	});
 
+	const effectiveChatInitialProjectFocus = $derived(
+		chatUsePageFocus ? chatInitialProjectFocus : null
+	);
 	const chatModalContextType = $derived.by(
-		(): ChatContextType => (chatInitialProjectFocus ? 'global' : chatContextType)
+		(): ChatContextType =>
+			effectiveChatInitialProjectFocus
+				? 'global'
+				: (chatOverrideContextType ?? chatContextType)
 	);
 	const chatModalEntityId = $derived.by(() =>
-		chatInitialProjectFocus ? undefined : chatEntityId
+		effectiveChatInitialProjectFocus ? undefined : (chatOverrideEntityId ?? chatEntityId)
 	);
 	const chatModalAutoInitProject = $derived.by(() =>
-		chatInitialProjectFocus ? null : chatAutoInitProject
+		effectiveChatInitialProjectFocus || chatOverrideContextType ? null : chatAutoInitProject
 	);
 	const selectedHistoryBrainDumpId = $derived.by(() => {
 		if (currentPath !== '/history') return null;
@@ -362,6 +371,9 @@
 		closeAllMenus();
 		chatInitialSessionId = null;
 		chatInitialBrainDumpContext = null;
+		chatOverrideContextType = null;
+		chatOverrideEntityId = undefined;
+		chatUsePageFocus = true;
 		if (selectedHistoryBrainDumpId) {
 			void openSelectedHistoryBrainDumpChat(selectedHistoryBrainDumpId);
 			return;
@@ -372,12 +384,42 @@
 		// If detailOrEvent has projectId, it's the detail object we need
 	}
 
+	function handleOpenAgentChatEvent(event: Event) {
+		const detail = (
+			event as CustomEvent<{
+				sessionId?: string | null;
+				contextType?: ChatContextType | null;
+				entityId?: string | null;
+				projectId?: string | null;
+			}>
+		).detail;
+		closeAllMenus();
+		chatInitialBrainDumpContext = null;
+		chatUsePageFocus = false;
+		chatInitialSessionId =
+			typeof detail?.sessionId === 'string' && detail.sessionId.trim()
+				? detail.sessionId.trim()
+				: null;
+		chatOverrideContextType = detail?.contextType ?? null;
+		chatOverrideEntityId =
+			typeof detail?.entityId === 'string' && detail.entityId.trim()
+				? detail.entityId.trim()
+				: typeof detail?.projectId === 'string' && detail.projectId.trim()
+					? detail.projectId.trim()
+					: undefined;
+		chatOpenedWithContext = chatOverrideContextType ?? chatContextType;
+		showChatModal = true;
+	}
+
 	function handleChatClose(summary?: DataMutationSummary) {
 		const wasProjectCreate = chatOpenedWithContext === 'project_create';
 		showChatModal = false;
 		chatOpenedWithContext = null;
 		chatInitialSessionId = null;
 		chatInitialBrainDumpContext = null;
+		chatOverrideContextType = null;
+		chatOverrideEntityId = undefined;
+		chatUsePageFocus = true;
 
 		if (summary?.hasChanges && summary.affectedProjectIds.length > 0) {
 			if (wasProjectCreate) {
@@ -439,12 +481,14 @@
 		document.addEventListener('keydown', handleKeydown);
 		document.addEventListener('click', handleClickOutside);
 		window.addEventListener('scroll', handleScroll, { passive: true });
+		window.addEventListener('buildos:open-agent-chat', handleOpenAgentChatEvent);
 
 		return () => {
 			themeObserver.disconnect();
 			document.removeEventListener('keydown', handleKeydown);
 			document.removeEventListener('click', handleClickOutside);
 			window.removeEventListener('scroll', handleScroll);
+			window.removeEventListener('buildos:open-agent-chat', handleOpenAgentChatEvent);
 		};
 	});
 </script>
@@ -1246,7 +1290,7 @@
 			autoInitProject={chatModalAutoInitProject}
 			initialChatSessionId={chatInitialSessionId}
 			initialBrainDumpContext={chatInitialBrainDumpContext}
-			initialProjectFocus={chatInitialProjectFocus}
+			initialProjectFocus={effectiveChatInitialProjectFocus}
 			onClose={handleChatClose}
 		/>
 	{/await}

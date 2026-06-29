@@ -547,7 +547,8 @@ Guidelines:
 						onclick={() => (showEmailHistory = !showEmailHistory)}
 						class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded
 								 bg-muted text-muted-foreground border border-border
-								 hover:bg-accent/10 hover:text-accent transition-colors pressable"
+								 hover:bg-accent/10 hover:text-accent transition-colors pressable
+								 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						<History class="w-3.5 h-3.5" />
 						<span class="hidden sm:inline">History</span> ({emailHistory.length})
@@ -565,7 +566,7 @@ Guidelines:
 						{#each emailHistory as email (email.id)}
 							<button
 								onclick={() => openEmailViewer(email)}
-								class="w-full text-left px-2 py-1.5 rounded hover:bg-accent/10 transition-colors text-xs pressable"
+								class="w-full text-left px-2 py-1.5 rounded hover:bg-accent/10 transition-colors text-xs pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								<div class="flex items-center gap-2">
 									<Eye class="w-3.5 h-3.5 text-accent flex-shrink-0" />
@@ -597,7 +598,7 @@ Guidelines:
 					class="w-full px-2 py-1.5 text-xs border border-border rounded
 							 bg-background text-foreground shadow-ink-inner
 							 placeholder:text-muted-foreground
-							 focus:border-accent focus:ring-1 focus:ring-ring"
+							 focus:border-accent focus-visible:ring-2 focus-visible:ring-ring"
 				/>
 			</div>
 
@@ -605,7 +606,7 @@ Guidelines:
 			<div class="flex gap-1 pb-2 border-b border-border">
 				<button
 					onclick={() => (editMode = 'manual')}
-					class="px-2 py-1 text-xs rounded flex items-center gap-1 transition-colors pressable
+					class="px-2 py-1 text-xs rounded flex items-center gap-1 transition-colors pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
 						{editMode === 'manual'
 						? 'bg-accent text-accent-foreground'
 						: 'bg-muted text-muted-foreground hover:text-foreground'}"
@@ -615,7 +616,7 @@ Guidelines:
 				</button>
 				<button
 					onclick={() => (editMode = 'split')}
-					class="px-2 py-1 text-xs rounded flex items-center gap-1 transition-colors pressable
+					class="px-2 py-1 text-xs rounded flex items-center gap-1 transition-colors pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
 						{editMode === 'split'
 						? 'bg-accent text-accent-foreground'
 						: 'bg-muted text-muted-foreground hover:text-foreground'}"
@@ -625,7 +626,7 @@ Guidelines:
 				</button>
 				<button
 					onclick={() => (editMode = 'ai')}
-					class="px-2 py-1 text-xs rounded flex items-center gap-1 transition-colors pressable
+					class="px-2 py-1 text-xs rounded flex items-center gap-1 transition-colors pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
 						{editMode === 'ai'
 						? 'bg-accent text-accent-foreground'
 						: 'bg-muted text-muted-foreground hover:text-foreground'}"
@@ -687,7 +688,7 @@ Guidelines:
 							id="email-template"
 							class="w-full px-2 py-1.5 text-xs border border-border rounded
 									 bg-background text-foreground shadow-ink-inner
-									 focus:border-accent focus:ring-1 focus:ring-ring"
+									 focus:border-accent focus-visible:ring-2 focus-visible:ring-ring"
 							bind:value={emailType}
 							onchange={handleTemplateChange}
 						>
@@ -706,7 +707,7 @@ Guidelines:
 							id="email-tone"
 							class="w-full px-2 py-1.5 text-xs border border-border rounded
 									 bg-background text-foreground shadow-ink-inner
-									 focus:border-accent focus:ring-1 focus:ring-ring"
+									 focus:border-accent focus-visible:ring-2 focus-visible:ring-ring"
 							bind:value={tone}
 							onchange={() => {
 								defaultSystemPrompt = generateDefaultSystemPrompt();
@@ -747,7 +748,7 @@ Guidelines:
 								class="w-full px-2 py-1.5 text-xs border border-border rounded
 										 bg-background text-foreground shadow-ink-inner
 										 placeholder:text-muted-foreground
-										 focus:border-accent focus:ring-1 focus:ring-ring resize-none"
+										 focus:border-accent focus-visible:ring-2 focus-visible:ring-ring resize-none"
 							></textarea>
 						</div>
 
@@ -790,7 +791,7 @@ Guidelines:
 									class="w-full px-2 py-1.5 text-xs border border-border rounded
 											 bg-background text-foreground shadow-ink-inner
 											 placeholder:text-muted-foreground font-mono
-											 focus:border-accent focus:ring-1 focus:ring-ring resize-y"
+											 focus:border-accent focus-visible:ring-2 focus-visible:ring-ring resize-y"
 								></textarea>
 							</div>
 						{/if}
@@ -810,7 +811,8 @@ Guidelines:
 								onclick={generateEmail}
 								disabled={!instructions.trim() || isGenerating || !userContext}
 								class="px-3 py-1.5 text-xs rounded bg-accent text-accent-foreground
-									   shadow-ink pressable disabled:opacity-50 flex items-center gap-1.5"
+									   shadow-ink pressable disabled:opacity-50 flex items-center gap-1.5
+									   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								{#if isGenerating}
 									<LoaderCircle class="w-3.5 h-3.5 animate-spin" />
@@ -871,7 +873,7 @@ Guidelines:
 									class="w-full px-2 py-1.5 text-xs border border-border rounded
 											 bg-background text-foreground shadow-ink-inner
 											 placeholder:text-muted-foreground
-											 focus:border-accent focus:ring-1 focus:ring-ring resize-y"
+											 focus:border-accent focus-visible:ring-2 focus-visible:ring-ring resize-y"
 								></textarea>
 							</div>
 						{/if}
@@ -896,7 +898,7 @@ Guidelines:
 									class="w-full px-2 py-1.5 text-xs border border-border rounded
 											 bg-background text-foreground shadow-ink-inner
 											 placeholder:text-muted-foreground
-											 focus:border-accent focus:ring-1 focus:ring-ring resize-y"
+											 focus:border-accent focus-visible:ring-2 focus-visible:ring-ring resize-y"
 								></textarea>
 							</div>
 						{/if}

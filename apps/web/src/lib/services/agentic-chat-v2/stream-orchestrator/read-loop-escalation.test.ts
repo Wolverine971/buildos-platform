@@ -7,35 +7,38 @@ import {
 } from './read-loop-escalation';
 
 describe('selectReadLoopRepairEscalation', () => {
-	it('returns null before two read-only rounds', () => {
+	it('returns null before three read-only rounds', () => {
 		expect(
 			selectReadLoopRepairEscalation({ readOnlyRoundCount: 0, roundsRemaining: 10 })
 		).toBeNull();
 		expect(
 			selectReadLoopRepairEscalation({ readOnlyRoundCount: 1, roundsRemaining: 10 })
 		).toBeNull();
+		expect(
+			selectReadLoopRepairEscalation({ readOnlyRoundCount: 2, roundsRemaining: 10 })
+		).toBeNull();
 	});
 
-	it('returns nudge at the lower threshold (2 read-only rounds)', () => {
-		expect(selectReadLoopRepairEscalation({ readOnlyRoundCount: 2, roundsRemaining: 10 })).toBe(
-			'nudge'
-		);
+	it('returns nudge at the lower threshold (3 read-only rounds)', () => {
 		expect(selectReadLoopRepairEscalation({ readOnlyRoundCount: 3, roundsRemaining: 10 })).toBe(
 			'nudge'
 		);
-	});
-
-	it('returns stop_and_answer at 4 read-only rounds', () => {
-		expect(selectReadLoopRepairEscalation({ readOnlyRoundCount: 4, roundsRemaining: 10 })).toBe(
-			'stop_and_answer'
-		);
 		expect(selectReadLoopRepairEscalation({ readOnlyRoundCount: 5, roundsRemaining: 10 })).toBe(
+			'nudge'
+		);
+	});
+
+	it('returns stop_and_answer at 6 read-only rounds', () => {
+		expect(selectReadLoopRepairEscalation({ readOnlyRoundCount: 6, roundsRemaining: 10 })).toBe(
+			'stop_and_answer'
+		);
+		expect(selectReadLoopRepairEscalation({ readOnlyRoundCount: 7, roundsRemaining: 10 })).toBe(
 			'stop_and_answer'
 		);
 	});
 
-	it('returns must_synthesize at 6 read-only rounds', () => {
-		expect(selectReadLoopRepairEscalation({ readOnlyRoundCount: 6, roundsRemaining: 10 })).toBe(
+	it('returns must_synthesize at 8 read-only rounds', () => {
+		expect(selectReadLoopRepairEscalation({ readOnlyRoundCount: 8, roundsRemaining: 10 })).toBe(
 			'must_synthesize'
 		);
 		expect(
@@ -43,8 +46,8 @@ describe('selectReadLoopRepairEscalation', () => {
 		).toBe('must_synthesize');
 	});
 
-	it('returns must_synthesize when only one round remains, regardless of read count', () => {
-		expect(selectReadLoopRepairEscalation({ readOnlyRoundCount: 2, roundsRemaining: 1 })).toBe(
+	it('returns must_synthesize when two or fewer rounds remain, regardless of read count', () => {
+		expect(selectReadLoopRepairEscalation({ readOnlyRoundCount: 2, roundsRemaining: 2 })).toBe(
 			'must_synthesize'
 		);
 		expect(selectReadLoopRepairEscalation({ readOnlyRoundCount: 0, roundsRemaining: 0 })).toBe(

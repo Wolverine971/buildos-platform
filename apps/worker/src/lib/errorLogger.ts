@@ -17,14 +17,22 @@ type ErrorType =
 
 type WorkerErrorContext = {
 	userId?: string;
+	projectId?: string;
+	brainDumpId?: string;
 	endpoint?: string;
 	httpMethod?: string;
 	operationType?: string;
 	tableName?: string;
 	recordId?: string;
+	operationPayload?: ErrorLogInsert['operation_payload'];
 	llmProvider?: string;
 	llmModel?: string;
+	llmPromptTokens?: number;
+	llmCompletionTokens?: number;
+	llmTotalTokens?: number;
 	responseTimeMs?: number;
+	llmTemperature?: number;
+	llmMaxTokens?: number;
 	errorType?: ErrorType;
 	severity?: ErrorSeverity;
 	metadata?: Record<string, unknown>;
@@ -145,20 +153,42 @@ export async function logWorkerError(error: unknown, context?: WorkerErrorContex
 			error_stack: errorInfo.stack,
 			severity,
 			user_id: context?.userId,
+			project_id: context?.projectId,
+			brain_dump_id: context?.brainDumpId,
 			endpoint: context?.endpoint,
 			http_method: context?.httpMethod,
 			operation_type: context?.operationType,
 			table_name: context?.tableName,
 			record_id: context?.recordId,
+			operation_payload: context?.operationPayload,
 			llm_provider: context?.llmProvider,
 			llm_model: context?.llmModel,
+			prompt_tokens: context?.llmPromptTokens,
+			completion_tokens: context?.llmCompletionTokens,
+			total_tokens: context?.llmTotalTokens,
 			response_time_ms: context?.responseTimeMs,
+			llm_temperature: context?.llmTemperature,
+			llm_max_tokens: context?.llmMaxTokens,
 			metadata,
 			environment: resolveEnvironment()
 		};
 
 		const { error: insertError } = await supabase.from('error_logs').insert(errorEntry);
 		if (insertError) {
+			if (insertError.code === '23503' && errorEntry.project_id) {
+				const { error: retryError } = await supabase.from('error_logs').insert({
+					...errorEntry,
+					project_id: null,
+					metadata: {
+						...metadata,
+						project_id_fk_retry: true,
+						invalid_project_id: errorEntry.project_id
+					}
+				});
+				if (!retryError) return;
+				console.error('Failed to log worker error after project_id retry:', retryError);
+				return;
+			}
 			console.error('Failed to log worker error:', insertError);
 		}
 	} catch (logError) {

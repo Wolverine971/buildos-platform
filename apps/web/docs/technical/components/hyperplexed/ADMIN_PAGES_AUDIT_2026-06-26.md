@@ -287,12 +287,23 @@ selects/buttons `h-8`→`h-10 sm:h-8` with the checkbox **label** as the ≥44px
 buttons to default size. test-bed/UserNotificationContext rigid 2/4-col grids given a `grid-cols-1`
 intermediate.
 
-**Deferred (lower-value / structural — flagged, logic untouched):**
+**Native dialogs → modals/toasts (follow-up pass, shipped 2026-06-26):** every remaining `confirm()`/
+`prompt()`/`alert()` in admin replaced with the design-system equivalents. `prompt()` → `FormModal`
+(subscriptions cancel-reason / discount-code / unfreeze-note, each a validated field with inline error +
+retry); `confirm()` → `ConfirmationModal` (users admin-toggle with grant/remove copy + danger/primary
+variant; errors bulk noise-purge as a `danger` confirm that stays open showing "Purging…"; EmailComposer
+send-confirm); `alert()` → `toastService` (subscriptions/revenue/notifications failures + success
+confirmations). `svelte-check` clean; the three refactored pages carry zero lint warnings.
 
-- **Native dialogs → modals.** Subscriptions `prompt()`/`alert()` (cancel reason, discount code, export
-  error), users `confirm()` (admin toggle), errors `confirm()` (bulk noise-purge). Functional and safe;
-  swapping to `ConfirmationModal`/`EmailComposerModal` is a behavior-touching change better done as its own
-  reviewed pass.
+**Admin users page redesign (shipped 2026-06-26):** filters are now **toggleable** — search stays visible
+(thumb-reachable) with a "Filters & Sort" button carrying an active-count badge; the User-type / Onboarding /
+Sort controls collapse into a reduced-motion-aware `slide` panel, with a new asc/desc sort-direction toggle
+(mobile had no way to flip sort before). Active filters render as removable chips so state stays visible when
+the panel is collapsed, plus a "Clear filters" action. Replaces the old 5-control grid that stacked into a
+tall clumsy column on phones.
+
+**Deferred (structural — flagged, logic untouched):**
+
 - **Security event-detail modal** (`security/+page.svelte:1105-1224`) — hand-rolled overlay with no ESC /
   focus-trap; should reuse `$lib/components/ui/Modal.svelte` (as migration does) but that's a structural
   rewrite, deferred.

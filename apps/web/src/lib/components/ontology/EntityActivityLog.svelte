@@ -188,29 +188,21 @@
 		}
 	}
 
-	function formatTimestamp(dateString: string): string {
+	function formatExactLocalTimestamp(dateString: string): string | null {
 		const date = new Date(dateString);
-		const now = new Date();
-		const diffMs = now.getTime() - date.getTime();
-		const diffMins = Math.floor(diffMs / (1000 * 60));
-		const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-		const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-		// Ultra compact for sidebar
-		if (diffMins < 1) {
-			return 'now';
-		} else if (diffMins < 60) {
-			return `${diffMins}m`;
-		} else if (diffHours < 24) {
-			return `${diffHours}h`;
-		} else if (diffDays < 7) {
-			return `${diffDays}d`;
-		} else {
-			return date.toLocaleDateString(undefined, {
-				month: 'short',
-				day: 'numeric'
-			});
+		if (Number.isNaN(date.getTime())) {
+			return null;
 		}
+
+		return new Intl.DateTimeFormat(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit',
+			second: '2-digit',
+			timeZoneName: 'short'
+		}).format(date);
 	}
 
 	function getSourceBadge(source: string | null): string {
@@ -292,14 +284,11 @@
 
 								<!-- Content -->
 								<div class="flex-1 min-w-0">
-									<div class="flex items-baseline justify-between gap-2">
-										<span class="text-xs font-medium text-foreground truncate">
-											{summary.title}
-										</span>
+									<div class="min-w-0">
 										<span
-											class="text-[10px] text-muted-foreground/70 shrink-0 tabular-nums"
+											class="block text-xs font-medium text-foreground truncate"
 										>
-											{formatTimestamp(log.created_at)}
+											{summary.title}
 										</span>
 									</div>
 									<div class="flex items-center gap-1.5 mt-0.5">
@@ -328,7 +317,21 @@
 							</div>
 						</button>
 						{#if expandedLogId === log.id}
+							{@const exactTimestamp = formatExactLocalTimestamp(log.created_at)}
 							<div class="px-8 pb-2 pr-3 text-[10px] text-muted-foreground">
+								{#if exactTimestamp}
+									<div
+										class="mb-2 flex max-w-full flex-wrap items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-1 shadow-sm"
+									>
+										<Clock class="h-3 w-3 shrink-0 text-muted-foreground/70" />
+										<span class="shrink-0 font-medium text-muted-foreground/80">
+											Local time
+										</span>
+										<span class="tabular-nums text-foreground/80">
+											{exactTimestamp}
+										</span>
+									</div>
+								{/if}
 								<p class="leading-relaxed">{summary.description}</p>
 								{#if summary.changes.length > 0}
 									<div class="mt-2 space-y-1">

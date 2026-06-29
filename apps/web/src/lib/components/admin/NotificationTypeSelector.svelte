@@ -267,7 +267,7 @@
 			<div class="space-y-2 text-xs">
 				<div class="flex items-center space-x-2">
 					<span class="text-muted-foreground">Event Type:</span>
-					<code class="px-2 py-0.5 bg-muted rounded-md text-foreground">
+					<code class="px-2 py-0.5 bg-background rounded-md text-foreground">
 						{selectedEvent.value}
 					</code>
 				</div>

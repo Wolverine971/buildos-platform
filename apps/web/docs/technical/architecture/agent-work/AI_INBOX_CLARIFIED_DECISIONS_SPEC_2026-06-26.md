@@ -1,8 +1,8 @@
 <!-- apps/web/docs/technical/architecture/agent-work/AI_INBOX_CLARIFIED_DECISIONS_SPEC_2026-06-26.md -->
 
-# SPEC — AI Inbox v2: Clarified Decisions & Discuss
+# SPEC — AI Inbox v2: Clarified Decisions & Chat
 
-**Status:** Discuss, project-suggestion clarified decisions, worker reconciliation, and recurrence prompt memory implemented; shared controls and agent-run convergence remain future
+**Status:** seeded Chat, project-suggestion clarified decision backend, shared Accept/Dismiss/Chat controls, worker reconciliation, and recurrence prompt memory implemented; agent-run clarified-decision convergence remains future
 **Date:** 2026-06-26
 **Author:** DJ + Claude
 **Related:** `AI_INBOX_DESIGN_2026-06-24.md`, `HANDOFF_2026-06-19.md` (Agent Work / change sets), `docs/research/project-review-loop-audit-suggestion-families-2026-06-25.md`
@@ -19,9 +19,9 @@ When the AI proposes merging two tasks and the user knows they're intentionally 
 - That store is a **dead end**: the project-loop worker never reads it (`loadLoopContext` builds context only from the project, docs, tasks, goals). So the same suggestion is re-proposed on the next run. The "dismissing teaches later runs" comment in `generators.ts` is aspirational.
 - `agent_run` and `calendar_suggestion` capture no clarification at all.
 
-**Decision (from the user):** a clarified decision should not be a static stored note. It should spin up a **context-aware agent** that already sees the project + the proposed change + the user's message, then **decides and acts** — including encoding the reasoning durably enough that the next review won't re-raise it. Plus a **Discuss** affordance that opens the full agentic chat seeded with the proposal for live back-and-forth.
+**Decision (from the user):** a clarified decision should not be a static stored note. It should spin up a **context-aware agent** that already sees the project + the proposed change + the user's message, then **decides and acts** — including encoding the reasoning durably enough that the next review won't re-raise it. The current visible inbox action model is **Accept / Dismiss / Chat**; Chat opens the full agentic chat seeded with the proposal/source context for live back-and-forth and guidance.
 
-**Intended outcome:** the user can Approve, Dismiss, Approve-with-clarification, Dismiss-with-clarification, or Discuss — and the system gets smarter from every clarified decision.
+**Intended outcome:** the user can Accept, Dismiss, or Chat about any inbox item that requests a change. Project-suggestion clarification remains supported by `/api/inbox/decide` for compatible callers, but inline note capture is no longer the primary UI path.
 
 ---
 
@@ -29,10 +29,10 @@ When the AI proposes merging two tasks and the user knows they're intentionally 
 
 **Goals**
 
-- Capture free-text clarification on both approve and dismiss.
+- Keep the project-suggestion clarified-decision backend available for callers that send `clarification`.
 - Make a clarified decision a **seeded background agent run** that has project + proposal + user-message context and acts (apply/adjust on approve; record + encode on dismiss).
 - **Stop recurrence**: a dismissed-with-reason suggestion must not be re-proposed by the next loop.
-- A **Discuss** button that opens the real agentic chat, seeded with an opening AI message explaining the proposal and why.
+- A **Chat** button that opens the real agentic chat, seeded with an opening AI message explaining the proposal/source context and why.
 - Reuse existing infrastructure (agent-runs dispatch/worker, the braindump→chat seeding precedent, the inbox index).
 
 **Non-Goals (this iteration)**
@@ -48,15 +48,15 @@ When the AI proposes merging two tasks and the user knows they're intentionally 
 
 ## 3. Concepts & Mental Model
 
-Three decision tiers per inbox card:
+Three capability tiers exist, but the visible card UI is intentionally simpler:
 
-1. **Fast path** — Approve / Dismiss, no text. Deterministic, unchanged. Approve replays operations; Dismiss marks rejected.
-2. **Clarified path** — Approve-with-note / Dismiss-with-note. One click → an **async background agent run** seeded with the proposal + the user's note. The agent decides and acts. This is the user's "fire one message and the AI does it or not" model.
-3. **Discuss path** — opens the full agentic chat modal, seeded with the proposal context, for live conversation. The in-chat agent has the write tools to act.
+1. **Accept / Dismiss** — deterministic fast path, no text. Accept replays or accepts the source mutation; Dismiss marks the source rejected/dismissed.
+2. **Chat** — opens the full agentic chat modal, seeded with proposal/source context, for live conversation. The in-chat agent has the normal tools for that context.
+3. **Clarified API path** — project-suggestion callers may still send `clarification` to `/api/inbox/decide`; that dispatches the seeded background agent run. This is backend-supported but not currently exposed as inline card text input.
 
-The unifying idea: **clarified decisions = seeded agents; Discuss = seeded chat.** Both are fed by one shared "proposal context builder."
+The unifying idea: **clarified decisions = seeded agents; Chat = seeded conversation.** Project suggestions use one shared proposal context builder; other inbox sources use source-specific seed context.
 
-v1 scope: `project_suggestion` items (rich rationale/evidence + replayable operations — the user's exact use case). `agent_run` convergence is designed but deferred.
+v1 clarified-decision scope: `project_suggestion` items (rich rationale/evidence + replayable operations — the user's exact use case). `agent_run` clarified-decision convergence is designed but deferred. v1 Chat scope is broader: writable `project_suggestion`, user-owned `agent_run`, and user-owned `calendar_suggestion`.
 
 ### 3.1 Alignment With Project Loops, Inbox, And Audit Packets
 
@@ -105,16 +105,18 @@ Implications:
 - **Implemented `packages/shared-agent-ops/src/proposal-context/build-proposal-context.ts`** — `buildProjectSuggestionProposalContext({ suggestion, projectName, loopRun }): { humanText, llmText, operationSummaries, evidenceSummaries }`. Assembles title/kind/risk + `rationale` + `why_now` + decoded operations + `preview` + `evidence_refs` + loop-run context. `humanText` = markdown for the assistant seed message; `llmText` = compact block for future agent-run `instructions`.
 - **Implemented package subpath** `@buildos/shared-agent-ops/proposal-context` and updated `InboxChangeDetails.svelte` to import the shared decoder.
 
-### 5.2 Discuss (seeded chat)
+### 5.2 Chat (seeded chat)
 
 - **Implemented `apps/web/src/routes/api/onto/projects/[id]/suggestions/[suggestion_id]/chat-session/+server.ts`** — mirrors the braindump precedent:
     1. `requireProjectMemberAccess({ requiredAccess: 'write' })`; load suggestion (404 if missing/not in project).
     2. Idempotent: if `project_suggestions.chat_session_id` set and session exists → return it.
-    3. Create a **fresh** project-scoped `chat_sessions` row (`chat_type:'project_suggestion'`, title `Discuss: <title>`, `agent_metadata:{ source:'project_suggestion', source_id, source_kind:'project_review_item', focus:{…projectId,projectName} }`) + `chat_sessions_projects` junction. (Not the shared loop chat shell — one Discuss thread per change.)
+    3. Create a **fresh** project-scoped `chat_sessions` row (`chat_type:'project_suggestion'`, `agent_metadata:{ source:'project_suggestion', source_id, source_kind:'project_review_item', focus:{…projectId,projectName} }`) + `chat_sessions_projects` junction. (Not the shared loop chat shell — one chat thread per change.)
     4. Insert a `role:'assistant'` seed message = `buildProjectSuggestionProposalContext(...).humanText`.
     5. Persist `project_suggestions.chat_session_id`. Clean up on failure. Return `{ created, session, chat_session_id }`.
-- **Implemented UI:** "Discuss" button in `ProjectInboxPanel.svelte` and `DashboardInboxModal.svelte` → POST → open `AgentChatModal` with `initialChatSessionId`. The in-chat agent already has write tools + `commit_change_set`.
-- **v1 limitation (documented):** Discuss does not auto-resolve the suggestion; the card stays pending until the user Approves/Dismisses or the chat applies it. (Future: mark handled when the chat applies the change.)
+- **Implemented `apps/web/src/routes/api/inbox/[item_id]/chat-session/+server.ts`** — UI-facing generic route. It loads the `inbox_items` row, enforces project write access for `project_suggestion` and user ownership for `agent_run`/`calendar_suggestion`, creates/reuses a seeded chat session, and returns `{ created, session, chat_session_id, context_type, entity_id, project_id }`.
+- **Implemented source seed contexts:** project suggestions reuse `buildProjectSuggestionProposalContext`; agent-run cards seed label/goal/instructions/result/change-set summaries; calendar suggestions seed suggested project details, reasoning, event counts/patterns, and task previews.
+- **Implemented UI:** `Chat` button in `ProjectInboxPanel.svelte` and `DashboardInboxModal.svelte` → `POST /api/inbox/[item_id]/chat-session` → open `AgentChatModal` with `initialChatSessionId`. Agent-run change-set cards expose Chat through the existing `ChangeSetReview` surface with inbox-specific Accept/Dismiss labels.
+- **Implemented 2026-06-28: conservative chat resolution.** Discussion-only Chat leaves the inbox item pending. When an inbox-origin chat closes with successful data mutations, the UI calls `POST /api/inbox/[item_id]/resolve-from-chat`, validates that the chat session belongs to that inbox source, then settles the source through the adapter: project suggestions are marked `applied` with `result.handled_in_chat = true`, original agent-run proposals are rejected after replacement chat writes, and calendar suggestions are accepted only when the mutation summary includes an affected/created project id.
 
 ### 5.3 Clarified decision = seeded background agent run
 
@@ -147,12 +149,13 @@ Implications:
 
 ### 5.5 UI (shared decision controls)
 
-- **Implemented inline v1 controls** in `ProjectInboxPanel.svelte` and `DashboardInboxModal.svelte`. A non-empty project-suggestion clarification changes the primary actions to the clarified flow (`Apply + note` / `Dismiss + note`) and sends `clarification` through `/api/inbox/decide`. Discuss still opens the seeded chat-session flow.
-- **Deferred cleanup:** a shared `InboxDecisionControls.svelte` remains a follow-up refactor. The current duplicated inline controls are intentionally small and source-specific while the clarified decision behavior settles.
+- **Implemented `InboxDecisionControls.svelte`** and wired it into `ProjectInboxPanel.svelte` and `DashboardInboxModal.svelte`. The shared control owns the visible `Accept`, `Dismiss`, and `Chat` buttons plus pending/opening spinners.
+- **Updated 2026-06-28:** inline project-suggestion clarification and dismiss-reason controls were removed from the inbox cards. Guidance now starts through Chat; `/api/inbox/decide` still supports `clarification` for compatible callers and tests.
+- The component remains intentionally callback-driven: source-specific decision behavior stays in the existing inbox surfaces and server endpoints, while duplicated button UI is centralized.
 
 ### 5.6 agent_run convergence (DESIGN ONLY — not built in v1)
 
-Bring `agent_run` `proposal_ready` change sets into the same model. Since commit is frozen approve/reject and `proposal_ready ∉ STEERABLE_STATUSES`: a clarified decision on an agent_run proposal → **dispatch a fresh seeded run** (seed from a change-set context builder — generalize `buildProposalContext` to accept `ChangeSet`/`ProposedChange[]` — plus the clarification), then mark the original change set rejected via `commitChangeSet(defaultDecision:'rejected')`. Discuss → seed a chat from `run.parent_session_id`. The generalized builder is the convergence seam.
+Bring `agent_run` `proposal_ready` change sets into the same model. Since commit is frozen approve/reject and `proposal_ready ∉ STEERABLE_STATUSES`: a clarified decision on an agent-run proposal → **dispatch a fresh seeded run** (seed from a change-set context builder — generalize `buildProposalContext` to accept `ChangeSet`/`ProposedChange[]` — plus the clarification), then mark the original change set rejected via `commitChangeSet(defaultDecision:'rejected')`. Chat is now implemented through `/api/inbox/[item_id]/chat-session`; the future convergence work is specifically about clarified background-agent decisions, not opening a conversation. The generalized builder is the convergence seam.
 
 ---
 
@@ -180,7 +183,8 @@ Bring `agent_run` `proposal_ready` change sets into the same model. Since commit
 ## 7. API Contracts
 
 - `POST /api/inbox/decide` — extend `project_suggestion` branch: optional `clarification: string`. Present ⇒ clarified path; absent ⇒ fast path. Response gains optional `degraded: boolean` and `agent_run_id`.
-- `POST /api/onto/projects/[id]/suggestions/[suggestion_id]/chat-session` — new. Returns `{ created, session, chat_session_id }`. Idempotent.
+- `POST /api/onto/projects/[id]/suggestions/[suggestion_id]/chat-session` — compatibility/source route. Returns `{ created, session, chat_session_id }`. Idempotent.
+- `POST /api/inbox/[item_id]/chat-session` — UI-facing route for supported inbox sources. Returns `{ created, session, chat_session_id, context_type, entity_id, project_id }`. Idempotent by linked project-suggestion session or `chat_sessions.agent_metadata` source metadata.
 - `POST /api/agent-runs` — unchanged externally; internally delegates to `dispatchAgentRun`.
 
 ---
@@ -208,18 +212,18 @@ The `delegated` claim removes the card from the pending list immediately; the de
 - **Orphaned `delegated` rows** (run cancelled/lost) → extend the existing reaper in `inbox.service.ts` `backfillVisibleSourceRows` to reconcile `delegated` rows whose `agent_run_id` is terminal/cancelled. (Flag as follow-up if not in v1.)
 - **Op-naming** → the agent re-derives gateway ops from intent; we never replay `operations[]` in the agent path.
 - **shared-agent-ops browser safety** → decoder is pure; no Svelte/browser imports.
-- **Discuss does not resolve the card** (v1) → documented limitation.
+- **Chat resolves too broadly** → resolver is mutation-gated and source-matched. Discussion-only chats leave cards pending; unsupported sources return `422`.
 
 ---
 
 ## 10. Phasing / Ship Order
 
-0. **Prerequisite: stabilize AI Inbox v1** — apply `inbox_items` and `project_loop_run_brief` migrations in target environments, run the manual smoke tests, and remove `ProjectSuggestionsPanel.svelte` after the new panel is verified.
+0. **Prerequisite: stabilize AI Inbox v1** — apply `inbox_items` and `project_loop_run_brief` migrations in target environments and run the manual smoke tests. The legacy `ProjectSuggestionsPanel.svelte` has been removed; Project Inbox is the only project-loop review panel.
 1. **Phase 1: loop parent context** — implemented first slice: `source_context.project_loop_run` payload/UI support in both Project Inbox and Dashboard Inbox.
-2. **Phase 2 + 2b: shared builder/decoder extraction + Discuss endpoint & UI** — implemented. No new background agent runs.
+2. **Phase 2 + 2b: shared builder/decoder extraction + Chat endpoint & UI** — implemented. No new background agent runs.
 3. **Phase 3: clarified agent runs + schema + worker reconcile** — implemented for `project_suggestion` source rows.
 4. **Phase 4: recurrence prevention** — implemented via `priorDecisions` prompt memory and task descriptions in loop context.
-5. **Phase 5: shared `InboxDecisionControls`.** Deferred refactor to replace duplicated inline button/reason/note clusters.
+5. **Phase 5: shared `InboxDecisionControls`.** Implemented to replace duplicated inline button/reason/note clusters across Project Inbox and Dashboard Inbox.
 6. **Phase 6: agent_run convergence (design only).**
 7. **Separate track: Complete Project Audit.** Design `project_audits` as a report artifact before writing migrations. Do not fold that work into clarified decisions.
 
@@ -229,8 +233,8 @@ The `delegated` claim removes the card from the pending list immediately; the de
 
 1. **Approve-with-note default action:** answered in implementation. Clarified runs use commit-by-default (`review:false`) because the user has already decided.
 2. **`allowed_ops` scope** for the clarified agent: answered for v1. The service allows scoped project read/write ops for tasks and documents, excludes delete and calendar operations.
-3. **Discuss resolution:** v1 leaves the card pending. Decide whether a later in-chat "apply" should mark the suggestion handled automatically.
-4. **Account/global items:** clarified path is project-scoped. Out of scope for non-project items this round — confirm.
+3. **Explicit in-chat resolution controls:** automatic resolution now exists only after successful chat mutations. Decide later whether Chat should expose explicit "resolve as dismissed" or "mark handled" controls for discussion-only outcomes.
+4. **Account/global items:** Chat supports user-owned non-project `agent_run` and `calendar_suggestion` items. Clarified background-agent decisions remain project-suggestion scoped.
 5. **Relationship to the project-audit research doc:** answered. Keep this iteration strictly about the _decision_ surface. Audit/suggestion-family expansion is a separate effort with `project_audits` as the likely durable report artifact.
 
 ---
@@ -238,6 +242,6 @@ The `delegated` claim removes the card from the pending list immediately; the de
 ## 12. Verification
 
 - **Phase 1/2 implemented checks:** `@buildos/shared-agent-ops typecheck`; `@buildos/shared-agent-ops build`; focused Vitest for `project-suggestion-actions.service.test.ts` and the new chat-session endpoint; `@buildos/web check` (`svelte-check found 0 errors and 0 warnings`).
-- **Manual Discuss smoke:** POST chat-session for a real suggestion → open `AgentChatModal` → confirm the assistant seed renders and project context is present; POST again → same session (idempotent).
-- **Phase 3/4 implemented checks:** focused Vitest coverage for `clarified-decision.service.ts` and the project-suggestion source endpoint; `@buildos/web check`; worker/shared typechecks. Manual smoke still recommended: Dismiss-with-clarification on a task-conflict suggestion → confirm `delegated`, child `agent_runs.source_suggestion_id/source_decision`, terminal suggestion `rejected`, inbox item settled, and future review prompt includes the prior decision. Approve-with-clarification → confirm suggestion `applied`. Force 3 active runs → confirm `degraded` inline path.
+- **Manual Chat smoke:** POST chat-session for a real inbox item → open `AgentChatModal` → confirm the assistant seed renders and the expected project/calendar/global context is present; POST again → same session when metadata/links allow reuse.
+- **Phase 3/4/5 implemented checks:** focused Vitest coverage for `clarified-decision.service.ts`, the project-suggestion source endpoint, and `/api/inbox/[item_id]/chat-session`; `@buildos/web check`; worker/shared typechecks; shared decision controls pass Svelte check through both inbox surfaces. Manual smoke still recommended: Chat for project suggestion, agent-run change set, and calendar suggestion; Dismiss-with-clarification through API-compatible caller → confirm `delegated`, child `agent_runs.source_suggestion_id/source_decision`, terminal suggestion `rejected`, inbox item settled, and future review prompt includes the prior decision. Approve-with-clarification → confirm suggestion `applied`. Force 3 active runs → confirm `degraded` inline path.
 - **Full:** `pnpm typecheck && pnpm lint`.

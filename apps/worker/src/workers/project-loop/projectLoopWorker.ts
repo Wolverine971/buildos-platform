@@ -16,6 +16,7 @@ import { supabase } from '../../lib/supabase';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import type { UsageEvent } from '../homework/engine/homeworkEngine';
 import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
+import { logWorkerError } from '../../lib/errorLogger';
 import {
 	type LoopContext,
 	type LoopDocument,
@@ -167,11 +168,21 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 	};
 }
 
-async function failRun(runId: string, message: string): Promise<void> {
-	await supabase
-		.from('project_loop_runs')
-		.update({ status: 'failed', error_message: message, finished_at: nowIso() })
-		.eq('id', runId);
+async function failRun(
+	runId: string,
+	message: string,
+	metrics?: { totalCost?: number }
+): Promise<void> {
+	const update: {
+		status: 'failed';
+		error_message: string;
+		finished_at: string;
+		cost_usd?: number;
+	} = { status: 'failed', error_message: message, finished_at: nowIso() };
+	if (metrics?.totalCost && metrics.totalCost > 0) {
+		update.cost_usd = metrics.totalCost;
+	}
+	await supabase.from('project_loop_runs').update(update).eq('id', runId);
 }
 
 export async function processProjectLoopJob(
@@ -206,6 +217,19 @@ export async function processProjectLoopJob(
 		.update({ status: 'running', started_at: nowIso() })
 		.eq('id', runId);
 
+	let totalCost = 0;
+	let totalPromptTokens = 0;
+	let totalCompletionTokens = 0;
+	let totalTokens = 0;
+	let lastUsage: UsageEvent | null = null;
+	const onUsage = async (event: UsageEvent) => {
+		totalCost += event.totalCost ?? 0;
+		totalPromptTokens += event.promptTokens ?? 0;
+		totalCompletionTokens += event.completionTokens ?? 0;
+		totalTokens += event.totalTokens ?? 0;
+		lastUsage = event;
+	};
+
 	try {
 		const ctx = await loadLoopContext(projectId);
 		if (!ctx) {
@@ -221,11 +245,6 @@ export async function processProjectLoopJob(
 				.eq('id', runId);
 			return { success: true, runId, suggestionCount: 0 };
 		}
-
-		let totalCost = 0;
-		const onUsage = async (event: UsageEvent) => {
-			totalCost += event.totalCost ?? 0;
-		};
 
 		const llm = new SmartLLMService({
 			supabase,
@@ -252,6 +271,7 @@ export async function processProjectLoopJob(
 			ctx,
 			userId: run.user_id,
 			chatSessionId: run.chat_session_id ?? undefined,
+			runId,
 			onUsage
 		});
 
@@ -261,6 +281,7 @@ export async function processProjectLoopJob(
 				ctx,
 				userId: run.user_id,
 				chatSessionId: run.chat_session_id ?? undefined,
+				runId,
 				onUsage
 			})
 		);
@@ -270,6 +291,7 @@ export async function processProjectLoopJob(
 				ctx,
 				userId: run.user_id,
 				chatSessionId: run.chat_session_id ?? undefined,
+				runId,
 				onUsage
 			})
 		);
@@ -279,6 +301,7 @@ export async function processProjectLoopJob(
 				ctx,
 				userId: run.user_id,
 				chatSessionId: run.chat_session_id ?? undefined,
+				runId,
 				onUsage
 			})
 		);
@@ -288,6 +311,7 @@ export async function processProjectLoopJob(
 				ctx,
 				userId: run.user_id,
 				chatSessionId: run.chat_session_id ?? undefined,
+				runId,
 				onUsage
 			})
 		);
@@ -363,8 +387,48 @@ export async function processProjectLoopJob(
 		return { success: true, runId, suggestionCount: proposed.length };
 	} catch (error: unknown) {
 		const message = error instanceof Error ? error.message : 'Unknown error';
+		const usageForError = lastUsage as UsageEvent | null;
 		await job.log(`Project loop failed: ${message}`);
-		await failRun(runId, message);
+		await failRun(runId, message, { totalCost });
+		await logWorkerError(error, {
+			userId: run.user_id,
+			projectId,
+			operationType: 'project_loop_run',
+			tableName: 'project_loop_runs',
+			recordId: runId,
+			llmProvider: usageForError?.model?.split('/')[0],
+			llmModel: usageForError?.model,
+			llmPromptTokens: totalPromptTokens,
+			llmCompletionTokens: totalCompletionTokens,
+			llmTotalTokens: totalTokens,
+			severity: 'error',
+			operationPayload: {
+				runId,
+				projectId,
+				queueJobId: job.id,
+				chatSessionId: run.chat_session_id,
+				triggerReason: run.trigger_reason,
+				totalCostUsd: totalCost,
+				totalPromptTokens,
+				totalCompletionTokens,
+				totalTokens,
+				lastModel: usageForError?.model ?? null
+			},
+			metadata: {
+				errorSource: 'project_loop_worker',
+				runId,
+				projectId,
+				queueJobId: job.id,
+				chatSessionId: run.chat_session_id,
+				triggerReason: run.trigger_reason,
+				totalCostUsd: totalCost,
+				costCapUsd: PROJECT_LOOP_COST_CAP_USD,
+				totalPromptTokens,
+				totalCompletionTokens,
+				totalTokens,
+				lastModel: usageForError?.model ?? null
+			}
+		});
 		throw error;
 	}
 }

@@ -179,8 +179,8 @@
 
 <div class="space-y-4">
 	<!-- Header -->
-	<div class="flex items-center justify-between">
-		<div>
+	<div class="flex items-center justify-between gap-3">
+		<div class="min-w-0">
 			<h3 class="text-lg font-semibold text-foreground">Scheduled Event Reminders</h3>
 			<p class="text-sm text-muted-foreground mt-1">
 				{#if upcomingCount > 0}
@@ -195,7 +195,7 @@
 			size="sm"
 			onclick={loadScheduledMessages}
 			disabled={loading}
-			class="pressable"
+			class="pressable flex-shrink-0"
 		>
 			<RefreshCw class="w-4 h-4 motion-reduce:animate-none {loading ? 'animate-spin' : ''}" />
 			<span class="ml-2">Refresh</span>
@@ -300,13 +300,15 @@
 
 							<!-- Message Content -->
 							<p
-								class="text-sm text-foreground bg-muted rounded-md p-2.5 mt-2 font-mono border border-border line-clamp-3"
+								class="text-sm text-foreground bg-muted rounded-md p-2.5 mt-2 font-mono border border-border line-clamp-3 break-words"
 							>
 								{message.message_content}
 							</p>
 
 							<!-- Timing Info -->
-							<div class="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+							<div
+								class="flex items-center gap-4 mt-3 text-xs text-muted-foreground flex-wrap"
+							>
 								<div class="flex items-center gap-1.5">
 									<Clock class="w-3.5 h-3.5 flex-shrink-0" />
 									<span>

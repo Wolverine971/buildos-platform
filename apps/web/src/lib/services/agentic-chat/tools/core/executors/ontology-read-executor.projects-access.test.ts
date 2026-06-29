@@ -121,4 +121,24 @@ describe('OntologyReadExecutor accessible project listing', () => {
 		expect(result.projects).toHaveLength(1);
 		expect(result.projects[0].id).toBe('shared-project');
 	});
+
+	it('rejects one-letter project searches as too broad and points to workspace overview', async () => {
+		const executor = new OntologyReadExecutor(context);
+		mockFetchProjectSummaries.mockClear();
+
+		const result = await executor.searchOntoProjects({
+			query: 'a',
+			limit: 10
+		});
+
+		expect(result).toMatchObject({
+			projects: [],
+			total: 0,
+			rejected_query: true,
+			materialized_tools: ['get_workspace_overview']
+		});
+		expect(result.message).toContain('too broad');
+		expect(result.message).toContain('get_workspace_overview');
+		expect(mockFetchProjectSummaries).not.toHaveBeenCalled();
+	});
 });

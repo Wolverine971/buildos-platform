@@ -196,11 +196,12 @@ async function decideLoadedInboxItem(params: {
 	locals: App.Locals;
 	user: NonNullable<Awaited<ReturnType<App.Locals['safeGetSession']>>['user']>;
 	admin: ReturnType<typeof createAdminSupabaseClient>;
+	fetchFn: typeof fetch;
 }): Promise<
 	| { ok: true; payload: Record<string, unknown> }
 	| { ok: false; response: Response; message: string }
 > {
-	const { item, action, body, locals, user, admin } = params;
+	const { item, action, body, locals, user, admin, fetchFn } = params;
 
 	if (item.source_type === 'agent_run') {
 		const defaultDecision: 'approved' | 'rejected' =
@@ -283,6 +284,7 @@ async function decideLoadedInboxItem(params: {
 					projectId: access.projectId,
 					suggestionId: item.source_ref_id,
 					action: suggestionAction,
+					fetchFn,
 					feedback: {
 						reason: typeof body.reason === 'string' ? body.reason : undefined,
 						note: typeof body.note === 'string' ? body.note : undefined
@@ -358,7 +360,7 @@ async function decideLoadedInboxItem(params: {
 	};
 }
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals, fetch }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) return ApiResponse.unauthorized();
 
@@ -419,7 +421,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				body: bodyRecord,
 				locals,
 				user,
-				admin
+				admin,
+				fetchFn: fetch
 			});
 			if (result.ok) {
 				results.push({ item_id: itemId, ...result.payload });
@@ -459,7 +462,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		body: bodyRecord,
 		locals,
 		user,
-		admin
+		admin,
+		fetchFn: fetch
 	});
 	return result.ok ? ApiResponse.success(result.payload) : result.response;
 };

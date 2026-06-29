@@ -8,7 +8,12 @@
 // All diagnostics go to stderr so they never corrupt the stdio JSON-RPC stream.
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+	CallToolRequestSchema,
+	ListResourcesRequestSchema,
+	ListToolsRequestSchema,
+	ReadResourceRequestSchema
+} from '@modelcontextprotocol/sdk/types.js';
 import { loadConfig, BRIDGE_VERSION } from './config';
 import { BuildosRemoteMcpClient } from './client';
 
@@ -18,7 +23,7 @@ async function main(): Promise<void> {
 
 	const server = new Server(
 		{ name: 'buildos', version: BRIDGE_VERSION },
-		{ capabilities: { tools: {} } }
+		{ capabilities: { tools: {}, resources: {} } }
 	);
 
 	server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -28,6 +33,15 @@ async function main(): Promise<void> {
 
 	server.setRequestHandler(CallToolRequestSchema, async (request) => {
 		return client.callTool(request.params.name, request.params.arguments ?? {});
+	});
+
+	server.setRequestHandler(ListResourcesRequestSchema, async () => {
+		const { resources } = await client.listResources();
+		return { resources } as Awaited<ReturnType<typeof client.listResources>>;
+	});
+
+	server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+		return client.readResource(request.params.uri);
 	});
 
 	const transport = new StdioServerTransport();

@@ -615,7 +615,85 @@
 						</div>
 					</div>
 				</div>
-				<div class="overflow-x-auto">
+				<!-- Mobile card list -->
+				<div class="block space-y-2 p-3 lg:hidden">
+					{#each sortedTools as tool}
+						<div class="rounded-lg border border-border bg-background p-3">
+							<div class="min-w-0">
+								<div class="text-sm font-medium text-foreground line-clamp-2">
+									{tool.tool_name}
+								</div>
+								<div class="mt-1 flex flex-wrap items-center gap-1.5">
+									<span
+										class="rounded border px-2 py-0.5 text-xs font-medium {categoryClass(
+											tool.tool_category
+										)}"
+									>
+										{tool.tool_category}
+									</span>
+									{#if tool.top_gateway_op}
+										<span
+											class="rounded border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+										>
+											{tool.top_gateway_op}
+										</span>
+									{/if}
+									{#if tool.top_help_path}
+										<span
+											class="max-w-[14rem] truncate rounded border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+										>
+											{tool.top_help_path}
+										</span>
+									{/if}
+								</div>
+							</div>
+							<div class="mt-3 grid grid-cols-3 gap-2 text-xs">
+								<div>
+									<p class="text-muted-foreground">Calls</p>
+									<p class="font-medium text-foreground">
+										{formatNumber(tool.total_executions)}
+									</p>
+								</div>
+								<div>
+									<p class="text-muted-foreground">Share</p>
+									<p class="font-medium text-foreground">
+										{formatPercentage(tool.share_of_calls)}
+									</p>
+								</div>
+								<div>
+									<p class="text-muted-foreground">Success</p>
+									<p class="font-medium {successClass(tool.success_rate)}">
+										{formatPercentage(tool.success_rate)}
+									</p>
+								</div>
+								<div>
+									<p class="text-muted-foreground">P95</p>
+									<p class="font-medium text-foreground">
+										{formatDuration(tool.p95_execution_time_ms)}
+									</p>
+								</div>
+								<div>
+									<p class="text-muted-foreground">Avg</p>
+									<p class="font-medium text-foreground">
+										{formatDuration(tool.avg_execution_time_ms)}
+									</p>
+								</div>
+								<div>
+									<p class="text-muted-foreground">Sessions</p>
+									<p class="font-medium text-foreground">
+										{formatNumber(tool.unique_sessions)}
+									</p>
+								</div>
+							</div>
+							<p class="mt-2 text-xs text-muted-foreground">
+								Last used {formatDateTime(tool.last_used_at)}
+							</p>
+						</div>
+					{/each}
+				</div>
+
+				<!-- Desktop table -->
+				<div class="hidden overflow-x-auto lg:block">
 					<table class="min-w-full divide-y divide-border">
 						<thead class="bg-muted/50">
 							<tr>
@@ -872,7 +950,67 @@
 						No recent failures in this view.
 					</div>
 				{:else}
-					<div class="overflow-x-auto">
+					<!-- Mobile card list -->
+					<div class="block space-y-2 p-3 lg:hidden">
+						{#each toolData.reliability.recent_failures as failure}
+							<a
+								href={sessionHref(failure.session_id)}
+								class="block rounded-lg border border-border bg-background p-3 transition-colors hover:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>
+								<div class="flex items-start justify-between gap-2">
+									<div class="min-w-0">
+										<div
+											class="text-sm font-medium text-foreground line-clamp-2"
+										>
+											{failure.tool_name}
+										</div>
+										<div class="mt-1 flex flex-wrap items-center gap-1.5">
+											<span
+												class="rounded border px-2 py-0.5 text-xs font-medium {categoryClass(
+													failure.tool_category
+												)}"
+											>
+												{failure.tool_category}
+											</span>
+											{#if failure.gateway_op}
+												<span
+													class="rounded border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+												>
+													{failure.gateway_op}
+												</span>
+											{/if}
+										</div>
+									</div>
+									<span
+										class="inline-flex shrink-0 items-center gap-1 text-xs text-accent"
+									>
+										Open
+										<ExternalLink class="h-3.5 w-3.5" />
+									</span>
+								</div>
+								<p class="mt-2 line-clamp-3 text-sm text-foreground">
+									{failure.error_message}
+								</p>
+								<div class="mt-2 grid grid-cols-2 gap-2 text-xs">
+									<div>
+										<p class="text-muted-foreground">Context</p>
+										<p class="font-medium text-foreground">
+											{failure.context_type ?? '-'}
+										</p>
+									</div>
+									<div>
+										<p class="text-muted-foreground">Time</p>
+										<p class="font-medium text-foreground">
+											{formatDateTime(failure.created_at)}
+										</p>
+									</div>
+								</div>
+							</a>
+						{/each}
+					</div>
+
+					<!-- Desktop table -->
+					<div class="hidden overflow-x-auto lg:block">
 						<table class="min-w-full divide-y divide-border">
 							<thead class="bg-muted/50">
 								<tr>

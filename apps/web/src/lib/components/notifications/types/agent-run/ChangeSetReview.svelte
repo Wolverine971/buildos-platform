@@ -45,8 +45,8 @@
 		changeSet.changes.filter((c) => decisionFor(c.id) !== 'rejected').length
 	);
 
-	function toggle(id: string) {
-		overrides[id] = decisionFor(id) === 'rejected' ? 'approved' : 'rejected';
+	function setDecision(id: string, decision: 'approved' | 'rejected') {
+		overrides[id] = decision;
 	}
 	function setAll(decision: 'approved' | 'rejected') {
 		overrides = Object.fromEntries(changeSet.changes.map((c) => [c.id, decision]));
@@ -209,20 +209,30 @@
 						<span class="text-xs font-medium text-foreground">{meta.label}</span>
 						<span class="text-xs text-muted-foreground">{change.entity_type}</span>
 					</div>
-					<button
-						type="button"
-						onclick={() => toggle(change.id)}
-						disabled={applying}
-						class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs border {rejected
-							? 'border-border text-muted-foreground'
-							: 'border-success/40 text-success bg-success/5'}"
-					>
-						{#if rejected}
-							<X class="w-3 h-3" /> Rejected
-						{:else}
-							<Check class="w-3 h-3" /> Approved
-						{/if}
-					</button>
+					<div class="inline-flex overflow-hidden rounded border border-border">
+						<button
+							type="button"
+							onclick={() => setDecision(change.id, 'approved')}
+							disabled={applying}
+							class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs {rejected
+								? 'text-muted-foreground hover:bg-muted'
+								: 'bg-success/10 text-success'}"
+						>
+							<Check class="w-3 h-3" />
+							{acceptLabel}
+						</button>
+						<button
+							type="button"
+							onclick={() => setDecision(change.id, 'rejected')}
+							disabled={applying}
+							class="inline-flex items-center gap-1 border-l border-border px-1.5 py-0.5 text-xs {rejected
+								? 'bg-muted text-foreground'
+								: 'text-muted-foreground hover:bg-muted'}"
+						>
+							<X class="w-3 h-3" />
+							{dismissLabel}
+						</button>
+					</div>
 				</div>
 
 				{#if change.rationale}

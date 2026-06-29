@@ -48,9 +48,9 @@ const DEFAULT_CONFIG: Required<TurnSupervisorConfig> = {
 	repeatedStatusIntervalMs: 15_000,
 	maxStatusUpdates: 3,
 	toolRunningStatusMs: 12_000,
-	forceSynthesisAfterToolCalls: 6,
-	forceSynthesisAfterReadRounds: 6,
-	maxToolRounds: 8,
+	forceSynthesisAfterToolCalls: 10,
+	forceSynthesisAfterReadRounds: 8,
+	maxToolRounds: 16,
 	askUserAfterRepeatedValidationFailures: 2
 };
 

@@ -355,13 +355,89 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 		it('returns -32601 for an authenticated unknown method', async () => {
 			const response = await mcpPost(
 				staticKeyAdmin({ scope_mode: 'read_only' }),
-				{ jsonrpc: '2.0', id: 14, method: 'resources/list' },
+				{ jsonrpc: '2.0', id: 14, method: 'buildos/not_a_real_method' },
 				STATIC_KEY_HEADER
 			);
 
 			expect(response.status).toBe(400);
 			const body = await response.json();
 			expect(body.error.code).toBe(-32601);
+		});
+
+		it('echoes a supported requested protocolVersion on initialize', async () => {
+			const response = await mcpPost(
+				staticKeyAdmin({ scope_mode: 'read_only' }),
+				{
+					jsonrpc: '2.0',
+					id: 20,
+					method: 'initialize',
+					params: { protocolVersion: '2025-03-26' }
+				},
+				STATIC_KEY_HEADER
+			);
+
+			expect(response.status).toBe(200);
+			const body = await response.json();
+			expect(body.result.protocolVersion).toBe('2025-03-26');
+			expect(body.result.capabilities.resources).toEqual({ listChanged: false });
+		});
+
+		it('falls back to the server protocolVersion when the requested one is unsupported', async () => {
+			const response = await mcpPost(
+				staticKeyAdmin({ scope_mode: 'read_only' }),
+				{
+					jsonrpc: '2.0',
+					id: 21,
+					method: 'initialize',
+					params: { protocolVersion: '1999-01-01' }
+				},
+				STATIC_KEY_HEADER
+			);
+
+			expect(response.status).toBe(200);
+			const body = await response.json();
+			expect(body.result.protocolVersion).toBe('2025-06-18');
+		});
+
+		it('answers ping with an empty result', async () => {
+			const response = await mcpPost(
+				staticKeyAdmin({ scope_mode: 'read_only' }),
+				{ jsonrpc: '2.0', id: 22, method: 'ping' },
+				STATIC_KEY_HEADER
+			);
+
+			expect(response.status).toBe(200);
+			const body = await response.json();
+			expect(body.result).toEqual({});
+		});
+
+		it('answers resources/templates/list with an empty list', async () => {
+			const response = await mcpPost(
+				staticKeyAdmin({ scope_mode: 'read_only' }),
+				{ jsonrpc: '2.0', id: 23, method: 'resources/templates/list' },
+				STATIC_KEY_HEADER
+			);
+
+			expect(response.status).toBe(200);
+			const body = await response.json();
+			expect(body.result.resourceTemplates).toEqual([]);
+		});
+
+		it('rejects an invalid tools/list cursor with -32602', async () => {
+			const response = await mcpPost(
+				staticKeyAdmin({ scope_mode: 'read_only' }),
+				{
+					jsonrpc: '2.0',
+					id: 24,
+					method: 'tools/list',
+					params: { cursor: '!!!not-base64!!!' }
+				},
+				STATIC_KEY_HEADER
+			);
+
+			expect(response.status).toBe(400);
+			const body = await response.json();
+			expect(body.error.code).toBe(-32602);
 		});
 
 		it('accepts notifications/initialized with 202 and an empty body before auth', async () => {

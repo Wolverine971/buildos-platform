@@ -16,7 +16,7 @@ import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
 import { decideProjectSuggestionWithClarification } from '$lib/server/clarified-decision.service';
 import { decideProjectSuggestion } from '$lib/server/project-suggestion-actions.service';
 
-export const POST: RequestHandler = async ({ params, locals, request }) => {
+export const POST: RequestHandler = async ({ params, locals, request, fetch }) => {
 	if (!PROJECT_LOOPS_ENABLED) return ApiResponse.notFound('Not found');
 
 	const access = await requireProjectMemberAccess({
@@ -64,6 +64,7 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 				projectId: access.projectId,
 				suggestionId: params.suggestion_id,
 				action,
+				fetchFn: fetch,
 				feedback: body.feedback ?? { reason: body.reason, note: body.note }
 			});
 

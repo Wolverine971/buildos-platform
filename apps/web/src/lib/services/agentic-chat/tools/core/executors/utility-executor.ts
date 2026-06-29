@@ -445,7 +445,7 @@ export class UtilityExecutor extends BaseExecutor {
 		projectLimit: number;
 		query?: string;
 		projectId?: string;
-	}): Promise<{ projects: ProjectRow[]; maybeMore: boolean }> {
+	}): Promise<{ projects: ProjectRow[]; maybeMore: boolean; totalProjects: number }> {
 		const actorId = await this.getActorId();
 		const projectSummaries = await fetchProjectSummaries(this.supabase as any, actorId);
 		const visibleSummaries = params.projectId
@@ -463,7 +463,8 @@ export class UtilityExecutor extends BaseExecutor {
 			const project = sortedProjects.find((row) => row.id === params.projectId);
 			return {
 				projects: project ? [project] : [],
-				maybeMore: false
+				maybeMore: false,
+				totalProjects: project ? 1 : 0
 			};
 		}
 
@@ -477,7 +478,8 @@ export class UtilityExecutor extends BaseExecutor {
 
 		return {
 			projects: rows.slice(0, params.projectLimit),
-			maybeMore: rows.length > params.projectLimit
+			maybeMore: rows.length > params.projectLimit,
+			totalProjects: rows.length
 		};
 	}
 
@@ -582,7 +584,9 @@ export class UtilityExecutor extends BaseExecutor {
 
 	async getWorkspaceOverview(args: GetWorkspaceOverviewArgs = {}): Promise<Record<string, any>> {
 		const projectLimit = Math.max(1, Math.min(20, Math.floor(args.project_limit ?? 8)));
-		const { projects, maybeMore } = await this.loadOverviewProjectRows({ projectLimit });
+		const { projects, maybeMore, totalProjects } = await this.loadOverviewProjectRows({
+			projectLimit
+		});
 		if (projects.length === 0) {
 			return buildWorkspaceOverviewPayload({
 				projects: [],
@@ -593,7 +597,9 @@ export class UtilityExecutor extends BaseExecutor {
 				events: [],
 				projectLogs: [],
 				members: [],
-				maybeMore: false
+				maybeMore: false,
+				totalProjects,
+				projectLimit
 			});
 		}
 
@@ -608,7 +614,9 @@ export class UtilityExecutor extends BaseExecutor {
 			events: related.events,
 			projectLogs: related.projectLogs,
 			members: related.members,
-			maybeMore
+			maybeMore,
+			totalProjects,
+			projectLimit
 		});
 	}
 
@@ -1394,7 +1402,10 @@ export class UtilityExecutor extends BaseExecutor {
 					.filter((d) => d && typeof d.change_id === 'string')
 					.map((d) => ({
 						change_id: d.change_id,
-						decision: d.decision === 'rejected' ? ('rejected' as const) : ('approved' as const)
+						decision:
+							d.decision === 'rejected'
+								? ('rejected' as const)
+								: ('approved' as const)
 					}))
 			: [];
 		const defaultDecision: 'approved' | 'rejected' =

@@ -458,7 +458,7 @@
 									Template Content
 								</h4>
 								<pre
-									class="bg-muted p-4 rounded-lg text-sm font-mono whitespace-pre-wrap overflow-x-auto border border-border text-foreground">{editingTemplate.template_content}</pre>
+									class="bg-muted p-4 rounded-lg text-sm font-mono whitespace-pre-wrap break-words overflow-x-auto border border-border text-foreground">{editingTemplate.template_content}</pre>
 							</div>
 						</div>
 					</div>
@@ -510,14 +510,16 @@
 										rows={12}
 										size="md"
 										required
-										class="font-mono text-sm"
+										class="font-mono text-base sm:text-sm"
 										placeholder="Enter your template content."
 									/>
 								</FormField>
 							</div>
 						</div>
 
-						<div class="px-4 py-3 border-t border-border flex justify-end space-x-3">
+						<div
+							class="sticky bottom-0 bg-card px-4 py-3 border-t border-border flex justify-end space-x-3"
+						>
 							<Button
 								type="button"
 								onclick={closeTemplateEditor}

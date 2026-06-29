@@ -120,6 +120,7 @@ export function buildAgentRunNotificationData(run: AgentRunRow): AgentRunNotific
 		trigger: run.trigger,
 		contextType: run.context_type as AgentRunContextType,
 		projectId: run.project_id,
+		parentSessionId: run.parent_session_id,
 		scopeMode: run.scope_mode as AgentRunScopeMode,
 		reviewRequired: run.review_required,
 		runCreatedAt: run.created_at,

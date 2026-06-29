@@ -497,8 +497,8 @@
 						class="bg-accent/10 border border-accent/30 rounded-lg p-4 tx tx-grain tx-weak"
 					>
 						<div class="flex items-center">
-							<Clock class="w-5 h-5 text-accent mr-2" />
-							<p class="text-sm text-foreground">
+							<Clock class="w-5 h-5 text-accent mr-2 flex-shrink-0" />
+							<p class="text-sm text-foreground min-w-0">
 								<strong>Preview:</strong> Next brief will be scheduled for {briefPreferencesForm.frequency ===
 								'daily'
 									? 'daily'
@@ -596,7 +596,7 @@
 			</Button>
 			<a
 				href="/projects?tab=briefs"
-				class="inline-flex items-center px-3 py-1.5 text-xs sm:text-sm text-accent hover:text-accent/80 font-medium rounded-md hover:bg-accent/10 transition-colors motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+				class="inline-flex items-center px-3 py-1.5 text-xs sm:text-sm text-accent hover:text-accent/80 font-medium rounded-md hover:bg-accent/10 transition-colors motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset min-h-[44px]"
 			>
 				View All
 				<ExternalLink class="w-3.5 h-3.5 ml-1" />

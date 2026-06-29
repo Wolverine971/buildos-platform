@@ -124,7 +124,7 @@
 				</span>
 				<button
 					onclick={() => copyToClipboard(correlationId)}
-					class="flex-shrink-0 p-2 text-info hover:bg-info/10 rounded-lg transition-colors"
+					class="flex-shrink-0 p-2 text-info hover:bg-info/10 rounded-lg transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					aria-label="Copy correlation ID"
 				>
 					<Copy class="w-4 h-4" />
@@ -255,7 +255,7 @@
 											<div
 												class="p-3 {getLevelBgColor(
 													log.level
-												)} hover:bg-opacity-75 transition-colors"
+												)} transition-colors motion-reduce:transition-none"
 											>
 												<div class="flex items-start justify-between">
 													<div class="flex-1">
@@ -278,7 +278,7 @@
 														</p>
 														{#if log.metadata && Object.keys(log.metadata).length > 0}
 															<pre
-																class="mt-2 text-xs bg-card border border-border rounded p-2 overflow-x-auto">{JSON.stringify(
+																class="mt-2 text-xs bg-card border border-border rounded p-2 overflow-x-auto whitespace-pre-wrap break-all">{JSON.stringify(
 																	log.metadata,
 																	null,
 																	2
@@ -286,7 +286,7 @@
 														{/if}
 														{#if log.error_stack}
 															<pre
-																class="mt-2 text-xs bg-destructive/10 text-destructive border border-destructive/30 rounded p-2 overflow-x-auto">{log.error_stack}</pre>
+																class="mt-2 text-xs bg-destructive/10 text-destructive border border-destructive/30 rounded p-2 overflow-x-auto whitespace-pre-wrap break-all">{log.error_stack}</pre>
 														{/if}
 													</div>
 												</div>

@@ -276,6 +276,7 @@ export interface AgentRunNotification extends BaseNotification {
 		trigger: AgentRunTrigger;
 		contextType: AgentRunContextType;
 		projectId?: string | null;
+		parentSessionId?: string | null;
 		scopeMode: AgentRunScopeMode;
 		reviewRequired: boolean;
 		/** Run row timestamps (ISO) — distinct from the base numeric createdAt. */

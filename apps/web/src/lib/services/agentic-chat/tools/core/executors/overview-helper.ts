@@ -153,6 +153,13 @@ type WorkspaceOverviewPayload = {
 	scope: 'workspace';
 	projects_returned: number;
 	maybe_more: boolean;
+	snapshot: {
+		returned_projects: number;
+		total_accessible_projects: number;
+		project_limit: number;
+		has_more_projects: boolean;
+		totals_scope: 'returned_projects';
+	};
 	totals: OverviewProjectCounts & { projects: number };
 	entity_totals: OverviewEntityTotals;
 	projects: OverviewProjectSummary[];
@@ -232,6 +239,8 @@ type BuildWorkspaceOverviewParams = {
 	projectLogs: ProjectLogRow[];
 	members?: ProjectMemberRow[];
 	maybeMore: boolean;
+	totalProjects?: number;
+	projectLimit?: number;
 	now?: Date;
 };
 
@@ -675,18 +684,28 @@ export function buildWorkspaceOverviewPayload(
 	);
 
 	const projectLabel = projects.length === 1 ? 'project' : 'projects';
+	const totalProjects = Math.max(params.totalProjects ?? projects.length, projects.length);
+	const projectLimit = Math.max(params.projectLimit ?? projects.length, projects.length);
+	const snapshotMessage =
+		projects.length === 0
+			? `Workspace overview prepared for 0 of ${totalProjects} accessible ${totalProjects === 1 ? 'project' : 'projects'}. Returned snapshot totals cover no projects.`
+			: `Workspace overview prepared for ${projects.length} of ${totalProjects} accessible ${totalProjects === 1 ? 'project' : 'projects'}. Returned snapshot totals cover these ${projectLabel}.`;
 	return {
 		generated_at: now.toISOString(),
 		scope: 'workspace',
 		projects_returned: projects.length,
 		maybe_more: params.maybeMore,
+		snapshot: {
+			returned_projects: projects.length,
+			total_accessible_projects: totalProjects,
+			project_limit: projectLimit,
+			has_more_projects: params.maybeMore,
+			totals_scope: 'returned_projects'
+		},
 		totals,
 		entity_totals: entityTotals,
 		projects,
-		message:
-			projects.length === 0
-				? 'No accessible BuildOS projects were found.'
-				: `Workspace overview prepared for ${projects.length} ${projectLabel}.`
+		message: snapshotMessage
 	};
 }
 

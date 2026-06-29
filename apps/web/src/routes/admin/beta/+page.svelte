@@ -7,6 +7,7 @@
 		ChevronRight,
 		ChevronUp,
 		ChevronDown,
+		ChevronsUpDown,
 		RefreshCw,
 		Eye,
 		CheckCircle,
@@ -15,7 +16,6 @@
 		Users,
 		Shield,
 		ShieldOff,
-		X,
 		Mail,
 		Table,
 		Download,
@@ -27,6 +27,7 @@
 	import EmailManager from '$lib/components/email/EmailManager.svelte';
 	import EmailComposerModal from '$lib/components/admin/EmailComposerModal.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
@@ -836,18 +837,9 @@
 												<ChevronDown class="h-4 w-4" />
 											{/if}
 										{:else}
-											<span
-												class="h-4 w-4 flex items-center justify-center text-muted-foreground"
-											>
-												<svg
-													class="h-3 w-3"
-													fill="currentColor"
-													viewBox="0 0 20 20"
-												>
-													<path d="M5 8l5-5 5 5H5z" />
-													<path d="M5 12l5 5 5-5H5z" />
-												</svg>
-											</span>
+											<ChevronsUpDown
+												class="h-3.5 w-3.5 text-muted-foreground"
+											/>
 										{/if}
 									</button>
 								</th>
@@ -870,18 +862,9 @@
 												<ChevronDown class="h-4 w-4" />
 											{/if}
 										{:else}
-											<span
-												class="h-4 w-4 flex items-center justify-center text-muted-foreground"
-											>
-												<svg
-													class="h-3 w-3"
-													fill="currentColor"
-													viewBox="0 0 20 20"
-												>
-													<path d="M5 8l5-5 5 5H5z" />
-													<path d="M5 12l5 5 5-5H5z" />
-												</svg>
-											</span>
+											<ChevronsUpDown
+												class="h-3.5 w-3.5 text-muted-foreground"
+											/>
 										{/if}
 									</button>
 								</th>
@@ -926,18 +909,9 @@
 													<ChevronDown class="h-4 w-4" />
 												{/if}
 											{:else}
-												<span
-													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
-												>
-													<svg
-														class="h-3 w-3"
-														fill="currentColor"
-														viewBox="0 0 20 20"
-													>
-														<path d="M5 8l5-5 5 5H5z" />
-														<path d="M5 12l5 5 5-5H5z" />
-													</svg>
-												</span>
+												<ChevronsUpDown
+													class="h-3.5 w-3.5 text-muted-foreground"
+												/>
 											{/if}
 										</button>
 									</th>
@@ -960,18 +934,9 @@
 													<ChevronDown class="h-4 w-4" />
 												{/if}
 											{:else}
-												<span
-													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
-												>
-													<svg
-														class="h-3 w-3"
-														fill="currentColor"
-														viewBox="0 0 20 20"
-													>
-														<path d="M5 8l5-5 5 5H5z" />
-														<path d="M5 12l5 5 5-5H5z" />
-													</svg>
-												</span>
+												<ChevronsUpDown
+													class="h-3.5 w-3.5 text-muted-foreground"
+												/>
 											{/if}
 										</button>
 									</th>
@@ -1001,18 +966,9 @@
 													<ChevronDown class="h-4 w-4" />
 												{/if}
 											{:else}
-												<span
-													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
-												>
-													<svg
-														class="h-3 w-3"
-														fill="currentColor"
-														viewBox="0 0 20 20"
-													>
-														<path d="M5 8l5-5 5 5H5z" />
-														<path d="M5 12l5 5 5-5H5z" />
-													</svg>
-												</span>
+												<ChevronsUpDown
+													class="h-3.5 w-3.5 text-muted-foreground"
+												/>
 											{/if}
 										</button>
 									</th>
@@ -1036,18 +992,9 @@
 												<ChevronDown class="h-4 w-4" />
 											{/if}
 										{:else}
-											<span
-												class="h-4 w-4 flex items-center justify-center text-muted-foreground"
-											>
-												<svg
-													class="h-3 w-3"
-													fill="currentColor"
-													viewBox="0 0 20 20"
-												>
-													<path d="M5 8l5-5 5 5H5z" />
-													<path d="M5 12l5 5 5-5H5z" />
-												</svg>
-											</span>
+											<ChevronsUpDown
+												class="h-3.5 w-3.5 text-muted-foreground"
+											/>
 										{/if}
 									</button>
 								</th>
@@ -1093,7 +1040,7 @@
 										<div class="max-w-32">
 											{#if signup.referral_source}
 												<span
-													class="inline-flex px-2 py-1 text-xs bg-info/10 text-info rounded-md"
+													class="inline-flex px-2 py-1 text-xs bg-info/10 text-info rounded-full"
 												>
 													{signup.referral_source}
 												</span>
@@ -1174,14 +1121,14 @@
 												<div class="flex flex-wrap gap-1">
 													{#each signup.productivity_tools.slice(0, 3) as tool}
 														<span
-															class="inline-flex px-2 py-1 text-xs bg-muted text-foreground rounded-md dark:text-muted-foreground"
+															class="inline-flex px-2 py-1 text-xs bg-muted text-foreground rounded-full dark:text-muted-foreground"
 														>
 															{tool}
 														</span>
 													{/each}
 													{#if signup.productivity_tools.length > 3}
 														<span
-															class="inline-flex px-2 py-1 text-xs bg-muted text-muted-foreground rounded-md dark:text-muted-foreground"
+															class="inline-flex px-2 py-1 text-xs bg-muted text-muted-foreground rounded-full dark:text-muted-foreground"
 														>
 															+{signup.productivity_tools.length - 3} more
 														</span>
@@ -1764,18 +1711,9 @@
 													<ChevronDown class="h-4 w-4" />
 												{/if}
 											{:else}
-												<span
-													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
-												>
-													<svg
-														class="h-3 w-3"
-														fill="currentColor"
-														viewBox="0 0 20 20"
-													>
-														<path d="M5 8l5-5 5 5H5z" />
-														<path d="M5 12l5 5 5-5H5z" />
-													</svg>
-												</span>
+												<ChevronsUpDown
+													class="h-3.5 w-3.5 text-muted-foreground"
+												/>
 											{/if}
 										</button>
 									</th>
@@ -1796,18 +1734,9 @@
 													<ChevronDown class="h-4 w-4" />
 												{/if}
 											{:else}
-												<span
-													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
-												>
-													<svg
-														class="h-3 w-3"
-														fill="currentColor"
-														viewBox="0 0 20 20"
-													>
-														<path d="M5 8l5-5 5 5H5z" />
-														<path d="M5 12l5 5 5-5H5z" />
-													</svg>
-												</span>
+												<ChevronsUpDown
+													class="h-3.5 w-3.5 text-muted-foreground"
+												/>
 											{/if}
 										</button>
 									</th>
@@ -1828,18 +1757,9 @@
 													<ChevronDown class="h-4 w-4" />
 												{/if}
 											{:else}
-												<span
-													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
-												>
-													<svg
-														class="h-3 w-3"
-														fill="currentColor"
-														viewBox="0 0 20 20"
-													>
-														<path d="M5 8l5-5 5 5H5z" />
-														<path d="M5 12l5 5 5-5H5z" />
-													</svg>
-												</span>
+												<ChevronsUpDown
+													class="h-3.5 w-3.5 text-muted-foreground"
+												/>
 											{/if}
 										</button>
 									</th>
@@ -1860,18 +1780,9 @@
 													<ChevronDown class="h-4 w-4" />
 												{/if}
 											{:else}
-												<span
-													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
-												>
-													<svg
-														class="h-3 w-3"
-														fill="currentColor"
-														viewBox="0 0 20 20"
-													>
-														<path d="M5 8l5-5 5 5H5z" />
-														<path d="M5 12l5 5 5-5H5z" />
-													</svg>
-												</span>
+												<ChevronsUpDown
+													class="h-3.5 w-3.5 text-muted-foreground"
+												/>
 											{/if}
 										</button>
 									</th>
@@ -1894,18 +1805,9 @@
 													<ChevronDown class="h-4 w-4" />
 												{/if}
 											{:else}
-												<span
-													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
-												>
-													<svg
-														class="h-3 w-3"
-														fill="currentColor"
-														viewBox="0 0 20 20"
-													>
-														<path d="M5 8l5-5 5 5H5z" />
-														<path d="M5 12l5 5 5-5H5z" />
-													</svg>
-												</span>
+												<ChevronsUpDown
+													class="h-3.5 w-3.5 text-muted-foreground"
+												/>
 											{/if}
 										</button>
 									</th>
@@ -1926,18 +1828,9 @@
 													<ChevronDown class="h-4 w-4" />
 												{/if}
 											{:else}
-												<span
-													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
-												>
-													<svg
-														class="h-3 w-3"
-														fill="currentColor"
-														viewBox="0 0 20 20"
-													>
-														<path d="M5 8l5-5 5 5H5z" />
-														<path d="M5 12l5 5 5-5H5z" />
-													</svg>
-												</span>
+												<ChevronsUpDown
+													class="h-3.5 w-3.5 text-muted-foreground"
+												/>
 											{/if}
 										</button>
 									</th>
@@ -1958,18 +1851,9 @@
 													<ChevronDown class="h-4 w-4" />
 												{/if}
 											{:else}
-												<span
-													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
-												>
-													<svg
-														class="h-3 w-3"
-														fill="currentColor"
-														viewBox="0 0 20 20"
-													>
-														<path d="M5 8l5-5 5 5H5z" />
-														<path d="M5 12l5 5 5-5H5z" />
-													</svg>
-												</span>
+												<ChevronsUpDown
+													class="h-3.5 w-3.5 text-muted-foreground"
+												/>
 											{/if}
 										</button>
 									</th>
@@ -1990,18 +1874,9 @@
 													<ChevronDown class="h-4 w-4" />
 												{/if}
 											{:else}
-												<span
-													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
-												>
-													<svg
-														class="h-3 w-3"
-														fill="currentColor"
-														viewBox="0 0 20 20"
-													>
-														<path d="M5 8l5-5 5 5H5z" />
-														<path d="M5 12l5 5 5-5H5z" />
-													</svg>
-												</span>
+												<ChevronsUpDown
+													class="h-3.5 w-3.5 text-muted-foreground"
+												/>
 											{/if}
 										</button>
 									</th>
@@ -2356,443 +2231,421 @@
 	{/snippet}
 </ConfirmationModal>
 
-<!-- Details Modal - Keep your existing modal content -->
-{#if showModal && selectedItem}
-	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-		<div class="admin-panel-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-			<div class="p-4 sm:p-6">
-				<div class="flex items-center justify-between mb-4">
-					<h3 class="text-lg font-semibold text-foreground">
-						{activeTab === 'signups' || activeTab === 'dataview'
-							? 'Signup Details'
-							: 'Member Details'}
-					</h3>
-					<Button
-						onclick={() => (showModal = false)}
-						variant="ghost"
-						size="sm"
-						icon={X}
-						iconPosition="left"
-						class="text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground p-1"
-						title="Close"
-					/>
+<!-- Details Modal -->
+<Modal
+	bind:isOpen={showModal}
+	onClose={() => (showModal = false)}
+	title={activeTab === 'signups' || activeTab === 'dataview'
+		? 'Signup Details'
+		: 'Member Details'}
+	size="xl"
+>
+	{#if selectedItem}
+		<div class="p-4 sm:p-6">
+			<div class="space-y-6">
+				<!-- Basic Info -->
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+					<div>
+						<div class="block text-sm font-medium text-foreground mb-1">Name</div>
+						<p class="text-sm text-foreground">
+							{selectedItem.full_name}
+						</p>
+					</div>
+					<div>
+						<div class="block text-sm font-medium text-foreground mb-1">Email</div>
+						<p class="text-sm text-foreground break-all">
+							{selectedItem.email}
+						</p>
+					</div>
 				</div>
 
-				<div class="space-y-6">
-					<!-- Basic Info -->
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+					<div>
+						<div class="block text-sm font-medium text-foreground mb-1">Job Title</div>
+						<p class="text-sm text-foreground">
+							{selectedItem.job_title || 'Not provided'}
+						</p>
+					</div>
+					<div>
+						<div class="block text-sm font-medium text-foreground mb-1">Company</div>
+						<p class="text-sm text-foreground">
+							{selectedItem.company_name || 'Not provided'}
+						</p>
+					</div>
+				</div>
+
+				{#if activeTab === 'signups' || activeTab === 'dataview'}
+					<!-- Signup specific fields -->
+					{#if selectedItem.why_interested}
+						<div>
+							<div class="block text-sm font-medium text-foreground mb-2">
+								Why Interested
+							</div>
+							<div class="mt-1 p-4 bg-muted rounded-lg border">
+								<p
+									class="text-sm text-foreground whitespace-pre-wrap leading-relaxed"
+								>
+									{selectedItem.why_interested}
+								</p>
+							</div>
+						</div>
+					{/if}
+
+					{#if selectedItem.biggest_challenge}
+						<div>
+							<div class="block text-sm font-medium text-foreground mb-2">
+								Biggest Challenge
+							</div>
+							<div class="mt-1 p-4 bg-muted rounded-lg border">
+								<p
+									class="text-sm text-foreground whitespace-pre-wrap leading-relaxed"
+								>
+									{selectedItem.biggest_challenge}
+								</p>
+							</div>
+						</div>
+					{/if}
+
+					{#if selectedItem.productivity_tools && selectedItem.productivity_tools.length > 0}
+						<div>
+							<div class="block text-sm font-medium text-foreground mb-2">
+								Current Tools
+							</div>
+							<div class="mt-1 flex flex-wrap gap-2">
+								{#each selectedItem.productivity_tools as tool}
+									<span
+										class="inline-flex px-3 py-1 text-sm font-medium bg-info/10 text-info rounded-full"
+									>
+										{tool}
+									</span>
+								{/each}
+							</div>
+						</div>
+					{/if}
+
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<div>
-							<div class="block text-sm font-medium text-foreground mb-1">Name</div>
+							<div class="block text-sm font-medium text-foreground mb-1">Status</div>
+							<span
+								class="inline-flex px-3 py-1 text-sm font-semibold rounded-full {getStatusColor(
+									selectedItem.signup_status
+								)}"
+							>
+								{selectedItem.signup_status}
+							</span>
+						</div>
+						<div>
+							<div class="block text-sm font-medium text-foreground mb-1">
+								Applied
+							</div>
 							<p class="text-sm text-foreground">
-								{selectedItem.full_name}
+								{formatDate(selectedItem.created_at)}
+							</p>
+						</div>
+					</div>
+
+					{#if selectedItem.referral_source}
+						<div>
+							<div class="block text-sm font-medium text-foreground mb-1">
+								How they heard about us
+							</div>
+							<p class="text-sm text-foreground">
+								{selectedItem.referral_source}
+							</p>
+						</div>
+					{/if}
+
+					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+						<div>
+							<div class="block text-sm font-medium text-foreground mb-1">
+								Wants Weekly Calls
+							</div>
+							<p class="text-sm text-foreground">
+								{selectedItem.wants_weekly_calls ? 'Yes' : 'No'}
 							</p>
 						</div>
 						<div>
-							<div class="block text-sm font-medium text-foreground mb-1">Email</div>
-							<p class="text-sm text-foreground break-all">
-								{selectedItem.email}
+							<div class="block text-sm font-medium text-foreground mb-1">
+								Wants Community Access
+							</div>
+							<p class="text-sm text-foreground">
+								{selectedItem.wants_community_access ? 'Yes' : 'No'}
 							</p>
+						</div>
+					</div>
+
+					{#if selectedItem.user_timezone}
+						<div>
+							<div class="block text-sm font-medium text-foreground mb-1">
+								Timezone
+							</div>
+							<p class="text-sm text-foreground">
+								{selectedItem.user_timezone}
+							</p>
+						</div>
+					{/if}
+				{:else}
+					<!-- Member specific fields (keep existing member modal content) -->
+					<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+						<div>
+							<div class="block text-sm font-medium text-foreground mb-1">
+								Beta Tier
+							</div>
+							<span
+								class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {getTierColor(
+									selectedItem.beta_tier
+								)}"
+							>
+								{selectedItem.beta_tier}
+							</span>
+						</div>
+						<div>
+							<div class="block text-sm font-medium text-foreground mb-1">
+								Access Level
+							</div>
+							<p class="text-sm text-foreground capitalize">
+								{selectedItem.access_level}
+							</p>
+						</div>
+						<div>
+							<div class="block text-sm font-medium text-foreground mb-1">Status</div>
+							<span
+								class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {selectedItem.is_active
+									? 'bg-success/10 text-success'
+									: 'bg-destructive/10 text-destructive'}"
+							>
+								{selectedItem.is_active ? 'Active' : 'Inactive'}
+							</span>
 						</div>
 					</div>
 
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<div>
+							<div class="block text-sm font-medium text-foreground mb-1">Joined</div>
+							<p class="text-sm text-foreground">
+								{formatDate(selectedItem.joined_at)}
+							</p>
+						</div>
+						{#if selectedItem.last_active_at}
+							<div>
+								<div class="block text-sm font-medium text-foreground mb-1">
+									Last Active
+								</div>
+								<p class="text-sm text-foreground">
+									{formatDate(selectedItem.last_active_at)}
+								</p>
+							</div>
+						{/if}
+					</div>
+
+					<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+						<div>
 							<div class="block text-sm font-medium text-foreground mb-1">
-								Job Title
+								Feedback Submitted
 							</div>
 							<p class="text-sm text-foreground">
-								{selectedItem.job_title || 'Not provided'}
+								{selectedItem.total_feedback_submitted || 0}
 							</p>
 						</div>
 						<div>
 							<div class="block text-sm font-medium text-foreground mb-1">
-								Company
+								Features Requested
 							</div>
 							<p class="text-sm text-foreground">
-								{selectedItem.company_name || 'Not provided'}
+								{selectedItem.total_features_requested || 0}
+							</p>
+						</div>
+						<div>
+							<div class="block text-sm font-medium text-foreground mb-1">
+								Calls Attended
+							</div>
+							<p class="text-sm text-foreground">
+								{selectedItem.total_calls_attended || 0}
 							</p>
 						</div>
 					</div>
 
-					{#if activeTab === 'signups' || activeTab === 'dataview'}
-						<!-- Signup specific fields -->
-						{#if selectedItem.why_interested}
+					{#if selectedItem.has_lifetime_pricing}
+						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<div>
-								<div class="block text-sm font-medium text-foreground mb-2">
-									Why Interested
+								<div class="block text-sm font-medium text-foreground mb-1">
+									Lifetime Pricing
 								</div>
-								<div class="mt-1 p-4 bg-muted rounded-lg border">
-									<p
-										class="text-sm text-foreground whitespace-pre-wrap leading-relaxed"
-									>
-										{selectedItem.why_interested}
-									</p>
-								</div>
+								<span
+									class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-accent/10 text-accent"
+								>
+									Enabled
+								</span>
 							</div>
-						{/if}
-
-						{#if selectedItem.biggest_challenge}
 							<div>
-								<div class="block text-sm font-medium text-foreground mb-2">
-									Biggest Challenge
+								<div class="block text-sm font-medium text-foreground mb-1">
+									Discount
 								</div>
-								<div class="mt-1 p-4 bg-muted rounded-lg border">
-									<p
-										class="text-sm text-foreground whitespace-pre-wrap leading-relaxed"
-									>
-										{selectedItem.biggest_challenge}
-									</p>
-								</div>
+								<p class="text-sm text-foreground">
+									{selectedItem.discount_percentage}%
+								</p>
 							</div>
-						{/if}
+						</div>
+					{/if}
 
-						{#if selectedItem.productivity_tools && selectedItem.productivity_tools.length > 0}
-							<div>
-								<div class="block text-sm font-medium text-foreground mb-2">
-									Current Tools
-								</div>
-								<div class="mt-1 flex flex-wrap gap-2">
-									{#each selectedItem.productivity_tools as tool}
-										<span
-											class="inline-flex px-3 py-1 text-sm font-medium bg-info/10 text-info rounded-md"
+					<!-- Original Beta Application Responses -->
+					{#if selectedItem.beta_signups}
+						<div class="pt-4 mt-4 border-t border-border">
+							<h4 class="text-sm font-semibold text-foreground mb-4">
+								Original Beta Application
+							</h4>
+
+							{#if selectedItem.beta_signups.why_interested}
+								<div class="mb-4">
+									<div class="block text-sm font-medium text-foreground mb-2">
+										Why They're Interested
+									</div>
+									<div class="mt-1 p-4 bg-muted rounded-lg border">
+										<p
+											class="text-sm text-foreground whitespace-pre-wrap leading-relaxed"
 										>
-											{tool}
-										</span>
-									{/each}
+											{selectedItem.beta_signups.why_interested}
+										</p>
+									</div>
 								</div>
-							</div>
-						{/if}
+							{/if}
 
-						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-							<div>
-								<div class="block text-sm font-medium text-foreground mb-1">
-									Status
+							{#if selectedItem.beta_signups.biggest_challenge}
+								<div class="mb-4">
+									<div class="block text-sm font-medium text-foreground mb-2">
+										Biggest Challenge
+									</div>
+									<div class="mt-1 p-4 bg-muted rounded-lg border">
+										<p
+											class="text-sm text-foreground whitespace-pre-wrap leading-relaxed"
+										>
+											{selectedItem.beta_signups.biggest_challenge}
+										</p>
+									</div>
 								</div>
-								<span
-									class="inline-flex px-3 py-1 text-sm font-semibold rounded-full {getStatusColor(
-										selectedItem.signup_status
-									)}"
-								>
-									{selectedItem.signup_status}
-								</span>
-							</div>
-							<div>
-								<div class="block text-sm font-medium text-foreground mb-1">
-									Applied
-								</div>
-								<p class="text-sm text-foreground">
-									{formatDate(selectedItem.created_at)}
-								</p>
-							</div>
-						</div>
+							{/if}
 
-						{#if selectedItem.referral_source}
-							<div>
-								<div class="block text-sm font-medium text-foreground mb-1">
-									How they heard about us
+							{#if selectedItem.beta_signups.productivity_tools && selectedItem.beta_signups.productivity_tools.length > 0}
+								<div class="mb-4">
+									<div class="block text-sm font-medium text-foreground mb-2">
+										Current Tools
+									</div>
+									<div class="mt-1 flex flex-wrap gap-2">
+										{#each selectedItem.beta_signups.productivity_tools as tool}
+											<span
+												class="inline-flex px-3 py-1 text-sm font-medium bg-info/10 text-info rounded-full"
+											>
+												{tool}
+											</span>
+										{/each}
+									</div>
 								</div>
-								<p class="text-sm text-foreground">
-									{selectedItem.referral_source}
-								</p>
-							</div>
-						{/if}
+							{/if}
 
-						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-							<div>
-								<div class="block text-sm font-medium text-foreground mb-1">
-									Wants Weekly Calls
-								</div>
-								<p class="text-sm text-foreground">
-									{selectedItem.wants_weekly_calls ? 'Yes' : 'No'}
-								</p>
-							</div>
-							<div>
-								<div class="block text-sm font-medium text-foreground mb-1">
-									Wants Community Access
-								</div>
-								<p class="text-sm text-foreground">
-									{selectedItem.wants_community_access ? 'Yes' : 'No'}
-								</p>
-							</div>
-						</div>
-
-						{#if selectedItem.user_timezone}
-							<div>
-								<div class="block text-sm font-medium text-foreground mb-1">
-									Timezone
-								</div>
-								<p class="text-sm text-foreground">
-									{selectedItem.user_timezone}
-								</p>
-							</div>
-						{/if}
-					{:else}
-						<!-- Member specific fields (keep existing member modal content) -->
-						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-							<div>
-								<div class="block text-sm font-medium text-foreground mb-1">
-									Beta Tier
-								</div>
-								<span
-									class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {getTierColor(
-										selectedItem.beta_tier
-									)}"
-								>
-									{selectedItem.beta_tier}
-								</span>
-							</div>
-							<div>
-								<div class="block text-sm font-medium text-foreground mb-1">
-									Access Level
-								</div>
-								<p class="text-sm text-foreground capitalize">
-									{selectedItem.access_level}
-								</p>
-							</div>
-							<div>
-								<div class="block text-sm font-medium text-foreground mb-1">
-									Status
-								</div>
-								<span
-									class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {selectedItem.is_active
-										? 'bg-success/10 text-success'
-										: 'bg-destructive/10 text-destructive'}"
-								>
-									{selectedItem.is_active ? 'Active' : 'Inactive'}
-								</span>
-							</div>
-						</div>
-
-						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-							<div>
-								<div class="block text-sm font-medium text-foreground mb-1">
-									Joined
-								</div>
-								<p class="text-sm text-foreground">
-									{formatDate(selectedItem.joined_at)}
-								</p>
-							</div>
-							{#if selectedItem.last_active_at}
-								<div>
+							{#if selectedItem.beta_signups.referral_source}
+								<div class="mb-4">
 									<div class="block text-sm font-medium text-foreground mb-1">
-										Last Active
+										How they heard about us
 									</div>
 									<p class="text-sm text-foreground">
-										{formatDate(selectedItem.last_active_at)}
+										{selectedItem.beta_signups.referral_source}
 									</p>
 								</div>
 							{/if}
-						</div>
 
-						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-							<div>
-								<div class="block text-sm font-medium text-foreground mb-1">
-									Feedback Submitted
-								</div>
-								<p class="text-sm text-foreground">
-									{selectedItem.total_feedback_submitted || 0}
-								</p>
-							</div>
-							<div>
-								<div class="block text-sm font-medium text-foreground mb-1">
-									Features Requested
-								</div>
-								<p class="text-sm text-foreground">
-									{selectedItem.total_features_requested || 0}
-								</p>
-							</div>
-							<div>
-								<div class="block text-sm font-medium text-foreground mb-1">
-									Calls Attended
-								</div>
-								<p class="text-sm text-foreground">
-									{selectedItem.total_calls_attended || 0}
-								</p>
-							</div>
-						</div>
-
-						{#if selectedItem.has_lifetime_pricing}
 							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 								<div>
 									<div class="block text-sm font-medium text-foreground mb-1">
-										Lifetime Pricing
+										Wants Weekly Calls
 									</div>
-									<span
-										class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-accent/10 text-accent"
-									>
-										Enabled
-									</span>
+									<p class="text-sm text-foreground">
+										{selectedItem.beta_signups.wants_weekly_calls
+											? 'Yes'
+											: 'No'}
+									</p>
 								</div>
 								<div>
 									<div class="block text-sm font-medium text-foreground mb-1">
-										Discount
+										Wants Community Access
 									</div>
 									<p class="text-sm text-foreground">
-										{selectedItem.discount_percentage}%
+										{selectedItem.beta_signups.wants_community_access
+											? 'Yes'
+											: 'No'}
 									</p>
 								</div>
 							</div>
-						{/if}
-
-						<!-- Original Beta Application Responses -->
-						{#if selectedItem.beta_signups}
-							<div class="pt-4 mt-4 border-t border-border">
-								<h4 class="text-sm font-semibold text-foreground mb-4">
-									Original Beta Application
-								</h4>
-
-								{#if selectedItem.beta_signups.why_interested}
-									<div class="mb-4">
-										<div class="block text-sm font-medium text-foreground mb-2">
-											Why They're Interested
-										</div>
-										<div class="mt-1 p-4 bg-muted rounded-lg border">
-											<p
-												class="text-sm text-foreground whitespace-pre-wrap leading-relaxed"
-											>
-												{selectedItem.beta_signups.why_interested}
-											</p>
-										</div>
-									</div>
-								{/if}
-
-								{#if selectedItem.beta_signups.biggest_challenge}
-									<div class="mb-4">
-										<div class="block text-sm font-medium text-foreground mb-2">
-											Biggest Challenge
-										</div>
-										<div class="mt-1 p-4 bg-muted rounded-lg border">
-											<p
-												class="text-sm text-foreground whitespace-pre-wrap leading-relaxed"
-											>
-												{selectedItem.beta_signups.biggest_challenge}
-											</p>
-										</div>
-									</div>
-								{/if}
-
-								{#if selectedItem.beta_signups.productivity_tools && selectedItem.beta_signups.productivity_tools.length > 0}
-									<div class="mb-4">
-										<div class="block text-sm font-medium text-foreground mb-2">
-											Current Tools
-										</div>
-										<div class="mt-1 flex flex-wrap gap-2">
-											{#each selectedItem.beta_signups.productivity_tools as tool}
-												<span
-													class="inline-flex px-3 py-1 text-sm font-medium bg-info/10 text-info rounded-md"
-												>
-													{tool}
-												</span>
-											{/each}
-										</div>
-									</div>
-								{/if}
-
-								{#if selectedItem.beta_signups.referral_source}
-									<div class="mb-4">
-										<div class="block text-sm font-medium text-foreground mb-1">
-											How they heard about us
-										</div>
-										<p class="text-sm text-foreground">
-											{selectedItem.beta_signups.referral_source}
-										</p>
-									</div>
-								{/if}
-
-								<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-									<div>
-										<div class="block text-sm font-medium text-foreground mb-1">
-											Wants Weekly Calls
-										</div>
-										<p class="text-sm text-foreground">
-											{selectedItem.beta_signups.wants_weekly_calls
-												? 'Yes'
-												: 'No'}
-										</p>
-									</div>
-									<div>
-										<div class="block text-sm font-medium text-foreground mb-1">
-											Wants Community Access
-										</div>
-										<p class="text-sm text-foreground">
-											{selectedItem.beta_signups.wants_community_access
-												? 'Yes'
-												: 'No'}
-										</p>
-									</div>
-								</div>
-							</div>
-						{/if}
+						</div>
 					{/if}
-				</div>
+				{/if}
+			</div>
 
-				<!-- Action Buttons - Mobile Responsive -->
-				<div class="mt-6 flex flex-wrap gap-2">
-					<Button onclick={() => (showModal = false)} variant="secondary" size="md">
-						Close
+			<!-- Action Buttons - Mobile Responsive -->
+			<div class="mt-6 flex flex-wrap gap-2">
+				<Button onclick={() => (showModal = false)} variant="secondary" size="md">
+					Close
+				</Button>
+
+				{#if (activeTab === 'signups' || activeTab === 'dataview') && selectedItem.signup_status === 'pending'}
+					<Button
+						onclick={() => {
+							showApprovalConfirmation(selectedItem);
+							// updateSignupStatus(selectedItem.id, 'approved', true);
+							// showModal = false;
+						}}
+						disabled={isUpdating}
+						variant="primary"
+						size="md"
+						class="bg-success hover:bg-success/90"
+					>
+						Approve & Create Member
 					</Button>
+					<Button
+						onclick={() => {
+							updateSignupStatus(selectedItem.id, 'waitlist');
+							selectedItem.signup_status = 'waitlist';
+						}}
+						disabled={isUpdating}
+						variant="primary"
+						size="md"
+					>
+						Move to Waitlist
+					</Button>
+					<Button
+						onclick={() => {
+							updateSignupStatus(selectedItem.id, 'declined');
+							selectedItem.signup_status = 'declined';
+						}}
+						disabled={isUpdating}
+						variant="danger"
+						size="md"
+					>
+						Decline
+					</Button>
+				{/if}
 
-					{#if (activeTab === 'signups' || activeTab === 'dataview') && selectedItem.signup_status === 'pending'}
-						<Button
-							onclick={() => {
-								showApprovalConfirmation(selectedItem);
-								// updateSignupStatus(selectedItem.id, 'approved', true);
-								// showModal = false;
-							}}
-							disabled={isUpdating}
-							variant="primary"
-							size="md"
-							class="bg-success hover:bg-success/90"
-						>
-							Approve & Create Member
-						</Button>
-						<Button
-							onclick={() => {
-								updateSignupStatus(selectedItem.id, 'waitlist');
-								selectedItem.signup_status = 'waitlist';
-							}}
-							disabled={isUpdating}
-							variant="primary"
-							size="md"
-						>
-							Move to Waitlist
-						</Button>
-						<Button
-							onclick={() => {
-								updateSignupStatus(selectedItem.id, 'declined');
-								selectedItem.signup_status = 'declined';
-							}}
-							disabled={isUpdating}
-							variant="danger"
-							size="md"
-						>
-							Decline
-						</Button>
-					{/if}
-
-					{#if activeTab === 'members'}
-						<Button
-							onclick={() => {
-								updateMember(selectedItem.id, {
-									is_active: !selectedItem.is_active
-								});
-								selectedItem.is_active = !selectedItem.is_active;
-							}}
-							disabled={isUpdating}
-							variant={selectedItem.is_active ? 'danger' : 'primary'}
-							size="md"
-							class={selectedItem.is_active
-								? 'bg-destructive hover:bg-destructive/90'
-								: 'bg-success hover:bg-success/90'}
-						>
-							{selectedItem.is_active ? 'Deactivate' : 'Activate'} Member
-						</Button>
-					{/if}
-				</div>
+				{#if activeTab === 'members'}
+					<Button
+						onclick={() => {
+							updateMember(selectedItem.id, {
+								is_active: !selectedItem.is_active
+							});
+							selectedItem.is_active = !selectedItem.is_active;
+						}}
+						disabled={isUpdating}
+						variant={selectedItem.is_active ? 'danger' : 'primary'}
+						size="md"
+						class={selectedItem.is_active
+							? 'bg-destructive hover:bg-destructive/90'
+							: 'bg-success hover:bg-success/90'}
+					>
+						{selectedItem.is_active ? 'Deactivate' : 'Activate'} Member
+					</Button>
+				{/if}
 			</div>
 		</div>
-	</div>
-{/if}
+	{/if}
+</Modal>
 
 <!-- Email Composer Modal -->
 <EmailComposerModal

@@ -52,10 +52,6 @@
 </script>
 
 <div class={cardClasses} {...rest}>
-	<div
-		class="pointer-events-none absolute inset-0 opacity-40 blur-xl"
-		class:opacity-0={tone === 'default' || tone === 'muted'}
-	></div>
 	<div class="relative">
 		{@render children?.()}
 	</div>

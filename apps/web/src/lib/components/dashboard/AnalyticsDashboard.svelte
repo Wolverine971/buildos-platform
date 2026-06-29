@@ -24,6 +24,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import DashboardBriefWidget from './DashboardBriefWidget.svelte';
 	import ProjectOverdueIndicator from './ProjectOverdueIndicator.svelte';
+	import AttentionBanner from './AttentionBanner.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
 	import { getTaskStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 	import { getDashboardGreeting } from '$lib/utils/dashboard-greeting';
@@ -732,7 +733,7 @@
 		showOverdueTaskTriageModal ||
 		showDashboardInboxModal}
 >
-	<main class="min-h-screen bg-background transition-colors rounded-md">
+	<main class="min-h-screen bg-background transition-colors">
 		<div
 			class="container mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 max-w-7xl space-y-3 sm:space-y-4"
 		>
@@ -765,7 +766,9 @@
 						title="Calendar"
 					>
 						{#if isOpeningCalendar}
-							<LoaderCircle class="h-3.5 w-3.5 sm:mr-1.5 animate-spin" />
+							<LoaderCircle
+								class="h-3.5 w-3.5 sm:mr-1.5 animate-spin motion-reduce:animate-none"
+							/>
 							<span class="hidden sm:inline">Opening...</span>
 						{:else}
 							<Calendar class="h-3.5 w-3.5 sm:mr-1.5" />
@@ -782,7 +785,9 @@
 						title="Refresh"
 					>
 						{#if isRefreshing}
-							<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
+							<LoaderCircle
+								class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+							/>
 						{:else}
 							<RefreshCcw class="h-3.5 w-3.5" />
 						{/if}
@@ -796,112 +801,51 @@
 			</section>
 
 			{#if dashboardInboxCount > 0 || dashboardInboxCountError}
-				<section class="border border-border bg-card shadow-ink wt-card overflow-hidden">
-					<div class="flex flex-wrap items-start justify-between gap-3 px-3 py-3">
-						<div class="min-w-0 flex items-start gap-2.5">
-							<div
-								class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-warning/10"
-							>
-								<Inbox class="h-4 w-4 text-warning" />
-							</div>
-							<div class="min-w-0">
-								<p class="text-sm font-semibold text-foreground">AI Inbox</p>
-								<p class="mt-0.5 text-xs text-muted-foreground">
-									{#if dashboardInboxCountError}
-										Inbox count unavailable
-									{:else}
-										{dashboardInboxSummary}
-									{/if}
-								</p>
-							</div>
-						</div>
-						<div class="flex items-center gap-1.5 shrink-0">
-							{#if dashboardInboxCountError}
-								<button
-									type="button"
-									class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground shadow-ink pressable hover:bg-muted"
-									onclick={loadDashboardInboxCount}
-									disabled={isLoadingDashboardInboxCount}
-								>
-									Retry
-								</button>
-							{:else}
-								<button
-									type="button"
-									onclick={openDashboardInbox}
-									disabled={isOpeningDashboardInbox}
-									class="inline-flex items-center gap-1 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning shadow-ink pressable transition-colors hover:border-warning/50 hover:bg-warning/15 disabled:opacity-60"
-								>
-									{#if isOpeningDashboardInbox}
-										<LoaderCircle class="h-3 w-3 animate-spin" />
-										<span class="hidden sm:inline">Opening...</span>
-									{:else}
-										Review inbox
-										<ArrowRight class="h-3 w-3" />
-									{/if}
-								</button>
-							{/if}
-						</div>
-					</div>
-				</section>
+				<AttentionBanner
+					tone="accent"
+					icon={Inbox}
+					title="AI Inbox"
+					subtext={dashboardInboxCountError
+						? 'Inbox count unavailable'
+						: dashboardInboxSummary}
+					action={dashboardInboxCountError
+						? {
+								label: 'Retry',
+								onClick: loadDashboardInboxCount,
+								disabled: isLoadingDashboardInboxCount,
+								tone: 'neutral',
+								showArrow: false
+							}
+						: {
+								label: 'Review inbox',
+								onClick: openDashboardInbox,
+								loading: isOpeningDashboardInbox,
+								disabled: isOpeningDashboardInbox
+							}}
+				/>
 			{/if}
 
 			{#if showAgentConnectionCta}
-				<section class="border border-accent/25 bg-accent/5 shadow-ink wt-card">
-					<div
-						class="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
-					>
-						<div class="min-w-0 flex items-start gap-2.5">
-							<div
-								class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent/10"
-							>
-								<Sparkles class="h-4 w-4 text-accent" />
-							</div>
-							<div class="min-w-0">
-								<p class="text-sm font-semibold text-foreground">
-									Do you have agents?
-								</p>
-								<p class="mt-0.5 text-xs text-muted-foreground">
-									ChatGPT Codex, Claude Code, Open Claw.
-								</p>
-							</div>
-						</div>
-						<a
-							href="/profile?tab=agent-keys"
-							class="inline-flex items-center justify-center gap-1 rounded-md border border-accent/25 bg-card px-2.5 py-2 text-xs font-semibold text-accent shadow-ink pressable transition-colors hover:bg-accent/10"
-						>
-							Connect your agents here.
-							<ArrowRight class="h-3 w-3" />
-						</a>
-					</div>
-				</section>
+				<AttentionBanner
+					tone="accent"
+					icon={Sparkles}
+					title="Do you have agents?"
+					subtext="ChatGPT Codex, Claude Code, Open Claw."
+					action={{
+						label: 'Connect your agents here.',
+						href: '/profile?tab=agent-keys'
+					}}
+				/>
 			{/if}
 
 			{#if actionableInvites.length > 0}
-				<section
-					class="border border-accent/25 bg-accent/5 shadow-ink wt-card overflow-hidden"
+				<AttentionBanner
+					tone="accent"
+					icon={UserPlus}
+					title="Project invites"
+					subtext={inviteSummary}
+					action={{ label: 'Review all', href: '/invites' }}
 				>
-					<div class="flex flex-wrap items-start justify-between gap-3 px-3 py-3">
-						<div class="min-w-0 flex items-start gap-2.5">
-							<div
-								class="flex items-center justify-center h-8 w-8 rounded-md bg-accent/10 shrink-0"
-							>
-								<UserPlus class="h-4 w-4 text-accent" />
-							</div>
-							<div class="min-w-0">
-								<p class="text-sm font-semibold text-foreground">Project invites</p>
-								<p class="text-xs text-muted-foreground mt-0.5">{inviteSummary}</p>
-							</div>
-						</div>
-						<a
-							href="/invites"
-							class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md border border-accent/25 bg-card text-accent shadow-ink pressable hover:bg-accent/10 transition-colors"
-						>
-							Review all
-							<ArrowRight class="h-3 w-3" />
-						</a>
-					</div>
-
 					{#if inviteActionError}
 						<div class="border-t border-accent/15 bg-background/60 px-3 py-2">
 							<p class="text-xs text-destructive">{inviteActionError}</p>
@@ -911,9 +855,7 @@
 					<div class="border-t border-accent/15 bg-background/40">
 						<div class="grid gap-2 p-3 lg:grid-cols-2">
 							{#each actionableInvites.slice(0, 4) as invite (invite.invite_id)}
-								<div
-									class="rounded-lg border border-border bg-card px-3 py-2.5 shadow-ink"
-								>
+								<div class="wt-paper px-3 py-2.5">
 									<div class="flex items-start justify-between gap-2">
 										<div class="min-w-0">
 											<p
@@ -953,7 +895,7 @@
 												type="button"
 												onclick={() => acceptInvite(invite)}
 												disabled={inviteActionId === invite.invite_id}
-												class="inline-flex items-center gap-1 rounded-md bg-accent px-2.5 py-1 text-xs font-semibold text-accent-foreground shadow-ink pressable hover:bg-accent/90 transition-colors disabled:opacity-60"
+												class="inline-flex items-center gap-1 rounded-md bg-accent px-2.5 py-1 text-xs font-semibold text-accent-foreground shadow-ink pressable hover:bg-accent/90 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-60"
 											>
 												<CheckCircle2 class="h-3 w-3" />
 												{invite.status === 'declined'
@@ -965,7 +907,7 @@
 													type="button"
 													onclick={() => declineInvite(invite)}
 													disabled={inviteActionId === invite.invite_id}
-													class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground shadow-ink pressable hover:bg-muted transition-colors disabled:opacity-60"
+													class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground shadow-ink pressable hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-60"
 												>
 													<XCircle class="h-3 w-3" />
 													Decline
@@ -977,48 +919,23 @@
 							{/each}
 						</div>
 					</div>
-				</section>
+				</AttentionBanner>
 			{/if}
 
 			{#if overdueTasks > 0}
-				<section class="border border-border bg-card shadow-ink wt-card overflow-hidden">
-					<div class="flex flex-wrap items-start justify-between gap-3 px-3 py-3">
-						<div class="min-w-0 flex items-start gap-2.5">
-							<div
-								class="flex items-center justify-center h-8 w-8 rounded-md bg-warning/10 shrink-0"
-							>
-								<AlertTriangle class="h-4 w-4 text-warning" />
-							</div>
-							<div class="min-w-0">
-								<p class="text-sm font-semibold text-foreground">
-									Overdue tasks need review
-								</p>
-								<p class="text-xs text-muted-foreground mt-0.5">
-									{overdueProjectBatchSummary}
-								</p>
-							</div>
-						</div>
-						<div class="flex items-center gap-1.5 shrink-0">
-							<button
-								type="button"
-								onclick={() => openOverdueTaskTriage()}
-								disabled={isOpeningOverdueTriage}
-								class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold
-								rounded-md border border-warning/30 bg-warning/10 text-warning shadow-ink pressable
-								hover:bg-warning/15 hover:border-warning/50 transition-colors
-								disabled:opacity-60 disabled:pointer-events-none
-								focus:outline-none focus:ring-1 focus:ring-ring"
-							>
-								{#if isOpeningOverdueTriage}
-									<LoaderCircle class="h-3 w-3 animate-spin" />
-									<span class="hidden sm:inline">Opening...</span>
-								{:else}
-									Review overdue
-								{/if}
-							</button>
-						</div>
-					</div>
-
+				<AttentionBanner
+					tone="warning"
+					icon={AlertTriangle}
+					title="Overdue tasks need review"
+					subtext={overdueProjectBatchSummary}
+					action={{
+						label: 'Review overdue',
+						onClick: () => openOverdueTaskTriage(),
+						loading: isOpeningOverdueTriage,
+						disabled: isOpeningOverdueTriage,
+						showArrow: false
+					}}
+				>
 					{#if isLoadingOverdueProjectBatches || overdueProjectBatchError}
 						<div
 							class="border-t border-border bg-background/40 px-3 py-2.5 flex flex-wrap items-center justify-between gap-2"
@@ -1033,7 +950,7 @@
 								</p>
 								<button
 									type="button"
-									class="text-xs font-medium text-accent hover:underline underline-offset-2"
+									class="rounded-sm text-xs font-medium text-accent hover:underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
 									onclick={loadOverdueProjectBatches}
 								>
 									Retry
@@ -1041,7 +958,7 @@
 							{/if}
 						</div>
 					{/if}
-				</section>
+				</AttentionBanner>
 			{/if}
 
 			<!-- Active Projects -->
@@ -1091,7 +1008,7 @@
 						</Button>
 					</div>
 				{:else if projectsToDisplay.length === 0}
-					<div class="wt-paper p-4 tx tx-frame tx-weak border border-border text-center">
+					<div class="wt-paper p-4 tx tx-frame tx-weak text-center">
 						<p class="text-sm text-muted-foreground">No projects to show right now.</p>
 						<Button
 							variant="outline"
@@ -1114,17 +1031,16 @@
 							<a
 								href={resolveProjectHref(project)}
 								onclick={(event) => handleProjectCardClick(event, project)}
-								class="group relative block wt-paper border border-border bg-card px-3 py-2.5
-								hover:border-accent/40 transition-colors pressable"
+								class="group relative block wt-paper px-3 py-2.5
+								hover:border-accent/40 transition-colors pressable
+								focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 							>
 								<div class="flex items-center justify-between gap-2">
 									<div class="flex items-center gap-2 min-w-0">
 										<FolderKanban
 											class="h-3.5 w-3.5 shrink-0 {project.is_shared
 												? 'text-accent'
-												: isActiveProjectState(project.state_key)
-													? 'text-success'
-													: 'text-muted-foreground'}"
+												: 'text-muted-foreground'}"
 										/>
 										<p class="text-sm font-semibold text-foreground truncate">
 											{project.name}
@@ -1204,8 +1120,9 @@
 							<a
 								href={resolveProjectHref(project)}
 								onclick={(event) => handleProjectCardClick(event, project)}
-								class="group relative block wt-paper border border-border bg-card px-3 py-2.5
-								hover:border-accent/40 transition-colors pressable"
+								class="group relative block wt-paper px-3 py-2.5
+								hover:border-accent/40 transition-colors pressable
+								focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 							>
 								<div class="flex items-center justify-between gap-2">
 									<div class="flex items-center gap-2 min-w-0">
@@ -1259,25 +1176,23 @@
 					</h2>
 
 					{#if unifiedFeed.length === 0}
-						<div
-							class="wt-paper p-4 tx tx-frame tx-weak border border-border text-center"
-						>
+						<div class="wt-paper p-4 tx tx-frame tx-weak text-center">
 							<p class="text-sm text-muted-foreground">No recent activity yet.</p>
 						</div>
 					{:else}
-						<div class="wt-paper border border-border divide-y divide-border">
+						<div class="wt-paper divide-y divide-border overflow-hidden">
 							{#each unifiedFeed as item (item.kind + '-' + item.id)}
 								<a
 									href={item.href}
-									class="group flex items-start gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors first:rounded-t-lg last:rounded-b-lg"
+									class="group flex items-start gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 								>
 									<div class="shrink-0 mt-0.5">
 										{#if item.kind === 'task'}
 											<ListChecks class="h-3.5 w-3.5 text-muted-foreground" />
 										{:else if item.kind === 'document'}
-											<FileText class="h-3.5 w-3.5 text-info" />
+											<FileText class="h-3.5 w-3.5 text-muted-foreground" />
 										{:else}
-											<Target class="h-3.5 w-3.5 text-warning" />
+											<Target class="h-3.5 w-3.5 text-muted-foreground" />
 										{/if}
 									</div>
 
@@ -1356,17 +1271,15 @@
 					</div>
 
 					{#if recentChats.length === 0}
-						<div
-							class="wt-paper p-4 tx tx-frame tx-weak border border-border text-center"
-						>
+						<div class="wt-paper p-4 tx tx-frame tx-weak text-center">
 							<p class="text-sm text-muted-foreground">No recent chats.</p>
 						</div>
 					{:else}
-						<div class="wt-paper border border-border divide-y divide-border">
+						<div class="wt-paper divide-y divide-border overflow-hidden">
 							{#each recentChats as session (session.id)}
 								<a
 									href="/history?type=chats&id={session.id}&itemType=chat_session"
-									class="group block px-3 py-2.5 hover:bg-muted/50 transition-colors first:rounded-t-lg last:rounded-b-lg"
+									class="group block px-3 py-2.5 hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 								>
 									<div class="flex items-start justify-between gap-2">
 										<div class="flex items-start gap-2 min-w-0">

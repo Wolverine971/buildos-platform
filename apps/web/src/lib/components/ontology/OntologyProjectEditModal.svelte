@@ -35,7 +35,9 @@
 		Sparkles,
 		RefreshCw,
 		LoaderCircle,
-		Tag as TagIcon
+		Tag as TagIcon,
+		Eye,
+		Edit
 	} from 'lucide-svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
@@ -117,6 +119,11 @@
 	let showDeleteConfirm = $state(false);
 	let error = $state<string | null>(null);
 	let showChatModal = $state(false);
+
+	// Edit/preview toggles for the markdown fields (driven from the section headers
+	// so the toggle no longer eats a wasted full-width row above each field).
+	let descriptionEditMode = $state(false);
+	let contextEditMode = $state(false);
 
 	function formatProjectStateLabel(state: string): string {
 		switch (state) {
@@ -218,6 +225,8 @@
 		contextDocumentBody = initialContextBody;
 		nextStepShort = initialNextStepShort;
 		nextStepLong = initialNextStepLong;
+		descriptionEditMode = false;
+		contextEditMode = false;
 		error = null;
 	});
 
@@ -674,17 +683,35 @@
 						>
 							<!-- Description -->
 							<div>
-								<label
-									for="project-description"
-									class="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5"
-								>
-									Description
-								</label>
+								<div class="flex items-center justify-between mb-1.5">
+									<label
+										for="project-description"
+										class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+									>
+										Description
+									</label>
+									<button
+										type="button"
+										onclick={() => (descriptionEditMode = !descriptionEditMode)}
+										disabled={isSaving}
+										class="inline-flex items-center gap-1.5 h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground rounded-md transition-colors disabled:opacity-50 pressable"
+									>
+										{#if descriptionEditMode}
+											<Eye class="w-3.5 h-3.5" />
+											<span class="hidden sm:inline">Preview</span>
+										{:else}
+											<Edit class="w-3.5 h-3.5" />
+											<span class="hidden sm:inline">Edit</span>
+										{/if}
+									</button>
+								</div>
 								<MarkdownToggleField
 									value={description}
 									onUpdate={(newValue) => (description = newValue)}
 									placeholder="One-line summary of what this project achieves"
 									rows={3}
+									hideToggle
+									bind:isEditMode={descriptionEditMode}
 								/>
 							</div>
 
@@ -813,16 +840,32 @@
 												Context Document
 											</label>
 										</div>
-										<Button
-											type="button"
-											onclick={copyContext}
-											variant="ghost"
-											size="sm"
-											class="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-										>
-											<Copy class="w-3.5 h-3.5" />
-											<span class="hidden sm:inline">Copy</span>
-										</Button>
+										<div class="flex items-center gap-1">
+											<button
+												type="button"
+												onclick={() => (contextEditMode = !contextEditMode)}
+												disabled={isSaving}
+												class="inline-flex items-center gap-1.5 h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground rounded-md transition-colors disabled:opacity-50 pressable"
+											>
+												{#if contextEditMode}
+													<Eye class="w-3.5 h-3.5" />
+													<span class="hidden sm:inline">Preview</span>
+												{:else}
+													<Edit class="w-3.5 h-3.5" />
+													<span class="hidden sm:inline">Edit</span>
+												{/if}
+											</button>
+											<Button
+												type="button"
+												onclick={copyContext}
+												variant="ghost"
+												size="sm"
+												class="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+											>
+												<Copy class="w-3.5 h-3.5" />
+												<span class="hidden sm:inline">Copy</span>
+											</Button>
+										</div>
 									</div>
 									<div class="flex-1 flex flex-col">
 										<MarkdownToggleField
@@ -831,6 +874,8 @@
 												(contextDocumentBody = newValue)}
 											placeholder="## Background\nWhy this project exists and its importance\n\n## Key Notes\nImportant technical and business context\n\n## Resources\nTools, documentation, and dependencies\n\n## Challenges\nCurrent blockers or areas needing attention"
 											rows={10}
+											hideToggle
+											bind:isEditMode={contextEditMode}
 										/>
 									</div>
 								</div>

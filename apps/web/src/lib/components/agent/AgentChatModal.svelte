@@ -536,6 +536,21 @@
 		if (shellRouter.showContextSelection && shellRouter.contextSelectionView === 'primary') {
 			return false;
 		}
+		// Sub-selectors (project action / focus / automation wizard) keep their
+		// back affordance so users can return to the step before them.
+		if (
+			shellRouter.showProjectActionSelector ||
+			shellRouter.showFocusSelector ||
+			shellRouter.agentToAgentMode
+		) {
+			return true;
+		}
+		// Once the conversation is underway there's no "back" within a live chat —
+		// users exit via the close button instead. The header gracefully collapses
+		// the back button away to reclaim the space.
+		if (stream.hasSentMessage || messages.length > 0) {
+			return false;
+		}
 		return true;
 	});
 
@@ -2043,7 +2058,7 @@
 			<div class="max-w-sm space-y-3">
 				<div class="flex justify-center">
 					<span
-						class="inline-flex h-8 w-8 animate-spin rounded-full border-[3px] border-muted-foreground/30 border-t-accent"
+						class="inline-flex h-8 w-8 animate-spin rounded-full border-[3px] border-muted-foreground/30 border-t-accent motion-reduce:animate-none"
 					></span>
 				</div>
 				<p class="text-sm font-semibold text-foreground">
@@ -2089,18 +2104,25 @@
 					onAskAboutItem={handleAskAboutTimelineItem}
 				/>
 				{#if activeChatTab === 'chat'}
-					<AgentMessageList
-						{messages}
-						{displayContextLabel}
-						selectedContextType={shellRouter.selectedContextType}
-						{resolvedProjectFocus}
-						onToggleThinkingBlock={toggleThinkingBlockCollapse}
-						bind:container={messagesContainer}
-						onScroll={handleScroll}
-						voiceNotesByGroupId={voice.notesByGroupId}
-						onDeleteVoiceNote={voice.removeNoteFromGroup.bind(voice)}
-						onSelectSuggestion={handleSelectSuggestion}
-					/>
+					<div
+						class="flex min-h-0 flex-1 flex-col"
+						role="tabpanel"
+						id="agent-chat-panel-chat"
+						aria-labelledby="agent-chat-tab-chat"
+					>
+						<AgentMessageList
+							{messages}
+							{displayContextLabel}
+							selectedContextType={shellRouter.selectedContextType}
+							{resolvedProjectFocus}
+							onToggleThinkingBlock={toggleThinkingBlockCollapse}
+							bind:container={messagesContainer}
+							onScroll={handleScroll}
+							voiceNotesByGroupId={voice.notesByGroupId}
+							onDeleteVoiceNote={voice.removeNoteFromGroup.bind(voice)}
+							onSelectSuggestion={handleSelectSuggestion}
+						/>
+					</div>
 				{/if}
 			</div>
 			{#if brainDumpContext}
@@ -2265,7 +2287,6 @@
 				>
 					<ContextSelectionScreen
 						bind:this={shellRouter.contextSelectionRef}
-						inModal
 						onSelect={handleContextSelect}
 						onNavigationChange={handleContextSelectionNavChange}
 					/>
@@ -2332,32 +2353,63 @@
 							class="border-t border-border bg-muted px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] tx tx-thread tx-weak sm:px-4 sm:py-2.5"
 						>
 							<div
-								class="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2"
+								class="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3"
 							>
-								<div class="space-y-0.5">
+								<div class="min-w-0 space-y-1">
 									<p class="text-xs font-semibold text-foreground">
 										Automation loop is {shellRouter.agentLoopActive
 											? 'active'
 											: 'paused'}.
 									</p>
-									<p
-										class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
-									>
-										Helper: {shellRouter.selectedAgentLabel} • Project: {shellRouter.selectedContextLabel ??
-											'Select a project'} • Goal: {shellRouter.agentGoal ||
-											'Add a goal'}
-									</p>
-									<p
-										class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
-									>
-										Turns remaining: {shellRouter.agentTurnsRemaining} / {shellRouter.agentTurnBudget}
-									</p>
+									<div class="space-y-0.5">
+										<div class="flex min-w-0 items-baseline gap-1.5">
+											<span
+												class="agent-micro-label flex-shrink-0 text-muted-foreground"
+												>Helper</span
+											>
+											<span
+												class="min-w-0 flex-1 truncate text-xs font-medium text-foreground"
+												>{shellRouter.selectedAgentLabel}</span
+											>
+										</div>
+										<div class="flex min-w-0 items-baseline gap-1.5">
+											<span
+												class="agent-micro-label flex-shrink-0 text-muted-foreground"
+												>Project</span
+											>
+											<span
+												class="min-w-0 flex-1 truncate text-xs font-medium text-foreground"
+												>{shellRouter.selectedContextLabel ??
+													'Select a project'}</span
+											>
+										</div>
+										<div class="flex min-w-0 items-baseline gap-1.5">
+											<span
+												class="agent-micro-label flex-shrink-0 text-muted-foreground"
+												>Goal</span
+											>
+											<span
+												class="min-w-0 flex-1 truncate text-xs font-medium text-foreground"
+												>{shellRouter.agentGoal || 'Add a goal'}</span
+											>
+										</div>
+										<div class="flex items-baseline gap-1.5">
+											<span
+												class="agent-micro-label flex-shrink-0 text-muted-foreground"
+												>Turns left</span
+											>
+											<span
+												class="text-xs font-semibold tabular-nums text-foreground"
+												>{shellRouter.agentTurnsRemaining} / {shellRouter.agentTurnBudget}</span
+											>
+										</div>
+									</div>
 								</div>
 								<!-- INKPRINT tactile buttons -->
 								<div class="flex flex-wrap items-center gap-2">
 									<button
 										type="button"
-										class="inline-flex items-center justify-center rounded-lg bg-accent px-3 py-2 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-accent-foreground shadow-ink transition pressable disabled:cursor-not-allowed disabled:opacity-60"
+										class="agent-micro-label inline-flex items-center justify-center rounded-lg bg-accent px-3 py-2 font-bold text-accent-foreground shadow-ink transition pressable disabled:cursor-not-allowed disabled:opacity-60"
 										disabled={stream.isStreaming ||
 											shellRouter.agentMessageLoading ||
 											shellRouter.agentTurnsRemaining <= 0}
@@ -2372,7 +2424,7 @@
 									</button>
 									<button
 										type="button"
-										class="inline-flex items-center justify-center rounded-lg border border-border bg-transparent px-3 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground transition pressable hover:border-accent hover:bg-card hover:text-foreground"
+										class="agent-micro-label inline-flex items-center justify-center rounded-lg border border-border bg-transparent px-3 py-2 font-semibold text-muted-foreground transition pressable hover:border-accent hover:bg-card hover:text-foreground"
 										onclick={stopAgentLoop}
 									>
 										Stop
@@ -2381,7 +2433,7 @@
 							</div>
 							<!-- INKPRINT micro-label controls -->
 							<div
-								class="mt-1.5 flex flex-wrap items-center gap-2 text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+								class="agent-micro-label mt-1.5 flex flex-wrap items-center gap-2 text-muted-foreground"
 							>
 								<label class="flex items-center gap-1.5">
 									<span class="font-bold">Turn limit</span>
@@ -2410,9 +2462,7 @@
 								{/if}
 							</div>
 							{#if shellRouter.agentMessageLoading}
-								<p
-									class="mt-1 text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
-								>
+								<p class="agent-micro-label mt-1 text-muted-foreground">
 									Fetching the next update...
 								</p>
 							{/if}
@@ -2428,6 +2478,15 @@
 {/if}
 
 <style>
+	/* INKPRINT micro-label: the 0.65rem uppercase tracked label scale used across
+	   the agent-chat surfaces. Centralized here so the size lives in one place. */
+	.agent-micro-label {
+		font-size: 0.65rem;
+		line-height: 1.1;
+		text-transform: uppercase;
+		letter-spacing: 0.15em;
+	}
+
 	@media (max-width: 639px) {
 		:global(.agent-chat-keyboard-modal) {
 			height: calc(100dvh - var(--keyboard-height, 0px)) !important;

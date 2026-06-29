@@ -676,7 +676,9 @@
 							</legend>
 							<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
 								{#each DAY_NAMES as day, index}
-									<label class="flex items-center space-x-2 cursor-pointer">
+									<label
+										class="flex items-center space-x-2 cursor-pointer min-h-[44px] py-1"
+									>
 										<input
 											type="checkbox"
 											name="working_days"
@@ -869,7 +871,7 @@
 											href={task.task_calendar_events[0].event_link}
 											target="_blank"
 											rel="noopener noreferrer"
-											class="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset pressable flex-shrink-0"
+											class="inline-flex items-center justify-center p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset pressable flex-shrink-0 min-h-[44px] min-w-[44px]"
 										>
 											<ChevronRight class="w-4 h-4" />
 										</a>

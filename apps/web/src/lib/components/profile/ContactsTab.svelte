@@ -545,7 +545,7 @@
 					type="file"
 					accept=".csv,text/csv"
 					onchange={handleFileSelection}
-					class="block w-full text-sm text-foreground rounded-md file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-accent file:text-accent-foreground hover:file:bg-accent/90 file:cursor-pointer file:transition-colors file:shadow-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+					class="block w-full text-sm text-foreground rounded-md file:mr-3 file:py-2.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-accent file:text-accent-foreground hover:file:bg-accent/90 file:cursor-pointer file:transition-colors file:shadow-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 				/>
 			</FormField>
 
@@ -679,7 +679,7 @@
 									Updated {formatLastUpdated(contact.updated_at)}
 								</p>
 							</div>
-							<div class="flex items-center gap-1.5">
+							<div class="flex items-center gap-2">
 								<Button
 									variant="ghost"
 									size="sm"

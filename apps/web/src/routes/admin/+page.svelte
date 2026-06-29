@@ -985,688 +985,183 @@
 		{/snippet}
 	</AdminPageHeader>
 
-	<div class="admin-page">
-		<!-- Navigation Cards - Ultra-compact grid on mobile -->
-		<div
-			class="grid grid-cols-2 gap-1.5 sm:grid-cols-2 sm:gap-2 md:grid-cols-3 lg:grid-cols-4 mb-3 sm:mb-5"
-		>
-			{#each navCards as card (card.href)}
-				<div class="sm:hidden">
-					<AdminNavCard {...card} ultraCompact />
-				</div>
-				<div class="hidden sm:block">
-					<AdminNavCard {...card} dense />
-				</div>
+	<!-- Navigation Cards - Ultra-compact grid on mobile -->
+	<div
+		class="grid grid-cols-2 gap-1.5 sm:grid-cols-2 sm:gap-2 md:grid-cols-3 lg:grid-cols-4 mb-3 sm:mb-5"
+	>
+		{#each navCards as card (card.href)}
+			<div class="sm:hidden">
+				<AdminNavCard {...card} ultraCompact />
+			</div>
+			<div class="hidden sm:block">
+				<AdminNavCard {...card} dense />
+			</div>
+		{/each}
+	</div>
+
+	{#if error}
+		<AdminCard tone="danger" padding="md" class="mb-4">
+			<div class="flex items-center gap-3 text-sm">
+				<AlertCircle class="h-5 w-5" />
+				<p class="text-destructive">{error}</p>
+			</div>
+		</AdminCard>
+	{/if}
+
+	{#if isLoading}
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
+			{#each Array(12) as _}
+				<AdminCard
+					padding="lg"
+					class="animate-pulse motion-reduce:animate-none space-y-3"
+					aria-hidden="true"
+				>
+					<div class="h-4 bg-muted rounded-md w-3/4"></div>
+					<div class="h-6 sm:h-8 bg-muted rounded-md w-1/2"></div>
+				</AdminCard>
 			{/each}
 		</div>
-
-		{#if error}
+	{:else}
+		<!-- Errors Alert (if there are critical/unresolved errors) -->
+		{#if errorsData.critical_errors > 0 || errorsData.unresolved_errors > 10}
 			<AdminCard tone="danger" padding="md" class="mb-4">
-				<div class="flex items-center gap-3 text-sm">
-					<AlertCircle class="h-5 w-5" />
-					<p class="text-destructive">{error}</p>
+				<div class="flex items-start gap-4">
+					<span
+						class="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10 text-destructive"
+					>
+						<AlertTriangle class="h-5 w-5" />
+					</span>
+					<div class="flex-1">
+						<h3 class="text-base font-semibold text-destructive">
+							System Errors Need Attention
+						</h3>
+						<div class="mt-2 text-sm text-destructive space-y-1">
+							{#if errorsData.critical_errors > 0}
+								<p>
+									{errorsData.critical_errors} critical error{errorsData.critical_errors >
+									1
+										? 's'
+										: ''} detected
+								</p>
+							{/if}
+							<p>
+								{errorsData.unresolved_errors} unresolved error{errorsData.unresolved_errors >
+								1
+									? 's'
+									: ''} total
+							</p>
+							{#if errorsData.recent_errors_24h > 0}
+								<p>{errorsData.recent_errors_24h} new in last 24 hours</p>
+							{/if}
+						</div>
+						<a
+							href="/admin/errors"
+							class="mt-3 inline-flex items-center text-sm font-semibold text-destructive underline-offset-4 hover:underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							View error logs
+							<ExternalLink class="w-3.5 h-3.5 ml-1" />
+						</a>
+					</div>
 				</div>
 			</AdminCard>
 		{/if}
 
-		{#if isLoading}
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
-				{#each Array(12) as _}
-					<AdminCard
-						padding="lg"
-						class="animate-pulse motion-reduce:animate-none space-y-3"
-						aria-hidden="true"
-					>
-						<div class="h-4 bg-muted rounded-md w-3/4"></div>
-						<div class="h-6 sm:h-8 bg-muted rounded-md w-1/2"></div>
-					</AdminCard>
-				{/each}
-			</div>
-		{:else}
-			<!-- Errors Alert (if there are critical/unresolved errors) -->
-			{#if errorsData.critical_errors > 0 || errorsData.unresolved_errors > 10}
-				<AdminCard tone="danger" padding="md" class="mb-4">
-					<div class="flex items-start gap-4">
-						<span
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10 text-destructive"
-						>
-							<AlertTriangle class="h-5 w-5" />
-						</span>
-						<div class="flex-1">
-							<h3 class="text-base font-semibold text-destructive">
-								System Errors Need Attention
-							</h3>
-							<div class="mt-2 text-sm text-destructive space-y-1">
-								{#if errorsData.critical_errors > 0}
-									<p>
-										{errorsData.critical_errors} critical error{errorsData.critical_errors >
-										1
-											? 's'
-											: ''} detected
-									</p>
-								{/if}
-								<p>
-									{errorsData.unresolved_errors} unresolved error{errorsData.unresolved_errors >
-									1
-										? 's'
-										: ''} total
-								</p>
-								{#if errorsData.recent_errors_24h > 0}
-									<p>{errorsData.recent_errors_24h} new in last 24 hours</p>
-								{/if}
-							</div>
-							<a
-								href="/admin/errors"
-								class="mt-3 inline-flex items-center text-sm font-semibold text-destructive underline-offset-4 hover:underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							>
-								View error logs
-								<ExternalLink class="w-3.5 h-3.5 ml-1" />
-							</a>
-						</div>
-					</div>
-				</AdminCard>
-			{/if}
-
-			<!-- Key Metrics Cards - Ultra-compact 2-col grid on mobile -->
-			<div class="grid grid-cols-2 gap-1.5 sm:hidden mb-3">
-				{#each primaryMetrics as metric (metric.label)}
-					<AdminStatCard
-						label={metric.label}
-						value={metric.value}
-						icon={metric.icon}
-						tone={metric.tone}
-						footnote={metric.footnote}
-						ultraCompact
-					/>
-				{/each}
-			</div>
-			<div class="hidden sm:grid sm:grid-cols-3 sm:gap-3 lg:grid-cols-5 mb-5">
-				{#each primaryMetrics as metric (metric.label)}
-					<AdminStatCard
-						label={metric.label}
-						value={metric.value}
-						icon={metric.icon}
-						tone={metric.tone}
-						footnote={metric.footnote}
-						compact
-					/>
-				{/each}
-			</div>
-
-			<!-- Daily Visitors Chart -->
-			<div class="mb-4 sm:mb-6">
-				<VisitorContributionChart
-					visitors={dailyVisitors}
-					signups={dailySignups}
-					{isLoading}
+		<!-- Key Metrics Cards - Ultra-compact 2-col grid on mobile -->
+		<div class="grid grid-cols-2 gap-1.5 sm:hidden mb-3">
+			{#each primaryMetrics as metric (metric.label)}
+				<AdminStatCard
+					label={metric.label}
+					value={metric.value}
+					icon={metric.icon}
+					tone={metric.tone}
+					footnote={metric.footnote}
+					ultraCompact
 				/>
-			</div>
+			{/each}
+		</div>
+		<div class="hidden sm:grid sm:grid-cols-3 sm:gap-3 lg:grid-cols-5 mb-5">
+			{#each primaryMetrics as metric (metric.label)}
+				<AdminStatCard
+					label={metric.label}
+					value={metric.value}
+					icon={metric.icon}
+					tone={metric.tone}
+					footnote={metric.footnote}
+					compact
+				/>
+			{/each}
+		</div>
 
-			<!-- Agent Chat Analytics Section - Collapsible on mobile -->
-			<div class="mb-3 sm:mb-6">
-				<!-- Mobile: Collapsible -->
-				<div class="sm:hidden">
-					<AdminCollapsibleSection
-						title="Agent Chat"
-						subtitle={timeframeRangeLabel}
-						icon={MessageSquare}
-						iconColor="text-info"
-						badge={agentChatUsage.totalSessions}
-					>
-						<div class="grid grid-cols-2 gap-1.5 p-2">
-							{#each agentUsageCards as card (card.label)}
-								<AdminStatCard {...card} ultraCompact />
-							{/each}
-						</div>
-					</AdminCollapsibleSection>
-				</div>
-				<!-- Desktop: Always expanded -->
-				<div class="hidden sm:block">
-					<h2 class="text-lg sm:text-xl font-bold text-foreground mb-4">
-						Agent Chat Analytics
-						<span class="text-sm font-normal text-muted-foreground">
-							({timeframeRangeLabel})
-						</span>
-					</h2>
-					<div class="admin-stat-grid grid sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+		<!-- Daily Visitors Chart -->
+		<div class="mb-4 sm:mb-6">
+			<VisitorContributionChart visitors={dailyVisitors} signups={dailySignups} {isLoading} />
+		</div>
+
+		<!-- Agent Chat Analytics Section - Collapsible on mobile -->
+		<div class="mb-3 sm:mb-6">
+			<!-- Mobile: Collapsible -->
+			<div class="sm:hidden">
+				<AdminCollapsibleSection
+					title="Agent Chat"
+					subtitle={timeframeRangeLabel}
+					icon={MessageSquare}
+					iconColor="text-info"
+					badge={agentChatUsage.totalSessions}
+				>
+					<div class="grid grid-cols-2 gap-1.5 p-2">
 						{#each agentUsageCards as card (card.label)}
-							<AdminStatCard {...card} compact />
+							<AdminStatCard {...card} ultraCompact />
 						{/each}
 					</div>
-				</div>
+				</AdminCollapsibleSection>
 			</div>
-
-			<!-- User Leaderboards - Compact collapsible on mobile -->
-			<div class="mb-3 sm:mb-6">
-				<!-- Mobile: Compact collapsible leaderboards -->
-				<div class="sm:hidden space-y-1.5">
-					{#each leaderboardConfigs as board (board.key)}
-						{@const rows = (comprehensiveAnalytics.leaderboards[board.key] ??
-							[]) as LeaderboardEntry[]}
-						{@const Icon = board.icon}
-						<AdminCollapsibleSection
-							title={board.title.replace('Top ', '')}
-							icon={Icon}
-							iconColor={board.accent}
-							badge={rows.length > 0 ? rows[0]?.count : 0}
-						>
-							{#if rows.length > 0}
-								<div class="divide-y divide-border/50">
-									{#each rows.slice(0, 5) as user, index}
-										<div
-											class="flex items-center justify-between px-2.5 py-1.5"
-										>
-											<div class="flex items-center gap-2 min-w-0">
-												<span
-													class="text-[10px] font-bold text-muted-foreground w-4"
-												>
-													{index + 1}
-												</span>
-												<span class="text-xs text-foreground truncate">
-													{user.email.split('@')[0]}
-												</span>
-											</div>
-											<span class={`text-xs font-bold ${board.accent}`}>
-												{user.count}
-											</span>
-										</div>
-									{/each}
-								</div>
-							{:else}
-								<p class="text-muted-foreground text-center py-3 text-xs">
-									No data
-								</p>
-							{/if}
-						</AdminCollapsibleSection>
+			<!-- Desktop: Always expanded -->
+			<div class="hidden sm:block">
+				<h2 class="text-lg sm:text-xl font-bold text-foreground mb-4">
+					Agent Chat Analytics
+					<span class="text-sm font-normal text-muted-foreground">
+						({timeframeRangeLabel})
+					</span>
+				</h2>
+				<div class="admin-stat-grid grid sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+					{#each agentUsageCards as card (card.label)}
+						<AdminStatCard {...card} compact />
 					{/each}
 				</div>
-				<!-- Desktop: Full leaderboard cards -->
-				<div class="hidden sm:block">
-					<h2 class="text-lg sm:text-xl font-bold text-foreground mb-4">
-						Current Activity Leaderboards
-						<span class="text-sm font-normal text-muted-foreground">
-							({timeframeRangeLabel})
-						</span>
-					</h2>
-					<div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-						{#each leaderboardConfigs as board (board.key)}
-							{@const rows = (comprehensiveAnalytics.leaderboards[board.key] ??
-								[]) as LeaderboardEntry[]}
-							{@const Icon = board.icon}
-							<AdminCard padding="lg" class="space-y-4">
-								<div class="flex items-center justify-between">
-									<h3 class="text-base font-semibold text-foreground">
-										{board.title}
-									</h3>
-									<Icon class={`h-5 w-5 ${board.accent}`} />
-								</div>
-
-								{#if rows.length > 0}
-									<div class="space-y-2">
-										{#each rows as user, index}
-											<div
-												class="flex items-center justify-between py-2 border-b border-border last:border-0"
-											>
-												<div class="flex items-center space-x-3">
-													<span
-														class="text-xs font-semibold text-muted-foreground w-6"
-													>
-														#{index + 1}
-													</span>
-													<span
-														class="text-sm text-foreground truncate max-w-[150px]"
-													>
-														{user.email}
-													</span>
-												</div>
-												<span class={`text-sm font-bold ${board.accent}`}>
-													{user.count}
-												</span>
-											</div>
-										{/each}
-									</div>
-								{:else}
-									<p class="text-muted-foreground text-center py-4 text-sm">
-										No data available
-									</p>
-								{/if}
-							</AdminCard>
-						{/each}
-					</div>
-				</div>
 			</div>
+		</div>
 
-			<!-- Subscription Overview (if Stripe is enabled) -->
-			{#if subscriptionData.stripeEnabled}
-				<div class="mb-3 sm:mb-6">
-					<!-- Mobile: Collapsible -->
-					<div class="sm:hidden">
-						<AdminCollapsibleSection
-							title="Subscriptions"
-							icon={CreditCard}
-							iconColor="text-success"
-							badge={formatCurrency(subscriptionData.revenue.current_mrr)}
-							badgeColor="success"
-						>
-							<div class="grid grid-cols-2 gap-1.5 p-2">
-								{#each subscriptionMetricCards as card (card.label)}
-									<AdminStatCard {...card} ultraCompact />
-								{/each}
-							</div>
-						</AdminCollapsibleSection>
-					</div>
-					<!-- Desktop -->
-					<div class="hidden sm:block space-y-4 sm:space-y-6">
-						<h2 class="text-lg sm:text-xl font-bold text-foreground">
-							Subscription Analytics
-						</h2>
-						<div
-							class="admin-stat-grid grid sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
-						>
-							{#each subscriptionMetricCards as card (card.label)}
-								<AdminStatCard {...card} compact />
-							{/each}
-						</div>
-					</div>
-
-					{#if subscriptionData.failedPayments.length > 0}
-						<AdminCard tone="danger" padding="md">
-							<div class="flex items-start gap-3">
-								<AlertTriangle class="h-5 w-5 flex-shrink-0" />
-								<div>
-									<h3 class="text-sm font-semibold text-destructive">
-										Failed Payments Require Attention
-									</h3>
-									<p class="text-sm text-destructive mt-1">
-										{subscriptionData.failedPayments.length} payment{subscriptionData
-											.failedPayments.length > 1
-											? 's'
-											: ''} failed in the last 30 days
-									</p>
-									<a
-										href="/admin/subscriptions"
-										class="inline-flex items-center text-sm font-medium text-destructive hover:text-destructive mt-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-									>
-										View details
-										<ExternalLink class="w-3 h-3 ml-1" />
-									</a>
-								</div>
-							</div>
-						</AdminCard>
-					{/if}
-
-					{#if subscriptionData.recentChanges.length > 0}
-						<AdminCard padding="lg">
-							<h3 class="text-base font-semibold text-foreground mb-4">
-								Recent Subscription Activity
-							</h3>
-							<div class="space-y-3">
-								{#each subscriptionData.recentChanges.slice(0, 5) as change, idx (idx)}
-									{@const typedChange = change as any}
-									<div
-										class="flex items-center justify-between py-2 border-b border-border last:border-0"
-									>
-										<div class="flex items-center space-x-3">
-											<div class="flex-shrink-0">
-												{#if typedChange.status === 'active'}
-													<div
-														class="w-2 h-2 bg-success rounded-full"
-													></div>
-												{:else if typedChange.status === 'canceled'}
-													<div
-														class="w-2 h-2 bg-destructive rounded-full"
-													></div>
-												{:else if typedChange.status === 'trialing'}
-													<div class="w-2 h-2 bg-info rounded-full"></div>
-												{:else}
-													<div
-														class="w-2 h-2 bg-muted-foreground rounded-full"
-													></div>
-												{/if}
-											</div>
-											<div>
-												<p class="text-sm font-medium text-foreground">
-													{typedChange.users?.email || 'Unknown User'}
-												</p>
-												<p class="text-xs text-muted-foreground">
-													{typedChange.subscription_plans?.name} · {typedChange.status}
-												</p>
-											</div>
-										</div>
-										<div class="text-right">
-											<p class="text-sm text-muted-foreground">
-												${(
-													(typedChange.subscription_plans?.price_cents ??
-														0) / 100
-												).toFixed(2)}/{typedChange.subscription_plans
-													?.billing_interval ?? 'N/A'}
-											</p>
-											<p class="text-xs text-muted-foreground">
-												{typedChange.updated_at
-													? new Date(
-															typedChange.updated_at
-														).toLocaleDateString()
-													: 'N/A'}
-											</p>
-										</div>
-									</div>
-								{/each}
-							</div>
-							<div class="mt-4">
-								<a
-									href="/admin/subscriptions"
-									class="text-sm text-accent hover:text-accent/80 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-								>
-									View all subscription activity →
-								</a>
-							</div>
-						</AdminCard>
-					{/if}
-				</div>
-			{/if}
-			<!-- Feedback - Metrics, categories, and latest submissions together -->
-			<div class="mb-3 sm:mb-6">
-				<div class="sm:hidden">
+		<!-- User Leaderboards - Compact collapsible on mobile -->
+		<div class="mb-3 sm:mb-6">
+			<!-- Mobile: Compact collapsible leaderboards -->
+			<div class="sm:hidden space-y-1.5">
+				{#each leaderboardConfigs as board (board.key)}
+					{@const rows = (comprehensiveAnalytics.leaderboards[board.key] ??
+						[]) as LeaderboardEntry[]}
+					{@const Icon = board.icon}
 					<AdminCollapsibleSection
-						title="Feedback"
-						icon={Star}
-						iconColor="text-warning"
-						badge={feedbackOverview.overview.unresolved_count}
-						badgeColor={feedbackOverview.overview.unresolved_count > 0
-							? 'warning'
-							: 'default'}
+						title={board.title.replace('Top ', '')}
+						icon={Icon}
+						iconColor={board.accent}
+						badge={rows.length > 0 ? rows[0]?.count : 0}
 					>
-						<div class="space-y-3 p-3">
-							<div
-								class="grid grid-cols-3 divide-x divide-border rounded-lg border border-border"
-							>
-								{#each feedbackStats as stat (stat.label)}
-									<div class="px-2 py-2 text-center">
-										<p
-											class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-										>
-											{stat.label}
-										</p>
-										<p class="mt-1 text-base font-bold text-foreground">
-											{stat.value}
-										</p>
-										<p
-											class="mt-0.5 truncate text-[10px] text-muted-foreground"
-										>
-											{stat.detail}
-										</p>
-									</div>
-								{/each}
-							</div>
-
-							{#if feedbackCategoryEntries.length > 0}
-								<div class="space-y-1.5">
-									<p
-										class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-									>
-										Categories
-									</p>
-									{#each feedbackCategoryEntries as [category, count]}
-										{@const typedCount = Number(count)}
-										<div class="flex items-center justify-between gap-2">
-											<span class="text-xs capitalize text-foreground">
-												{category}
-											</span>
-											<span class="text-xs font-semibold text-accent">
-												{typedCount}
-											</span>
-										</div>
-									{/each}
-								</div>
-							{/if}
-
-							{#if recentFeedbackPreview.length > 0}
-								<div
-									class="divide-y divide-border/60 rounded-lg border border-border"
-								>
-									{#each recentFeedbackPreview as feedback, idx (idx)}
-										<div class="px-2.5 py-2">
-											<div class="flex items-center justify-between gap-2">
-												<span
-													class="text-[10px] font-medium capitalize {getCategoryColor(
-														feedback.category
-													)}"
-												>
-													{feedback.category}
-												</span>
-												<span class="text-[10px] text-muted-foreground">
-													{feedback.rating
-														? `${feedback.rating}/5`
-														: feedback.status}
-												</span>
-											</div>
-											<p class="mt-1 line-clamp-2 text-xs text-foreground">
-												{truncateText(feedback.feedback_text, 80)}
-											</p>
-										</div>
-									{/each}
-								</div>
-							{:else}
-								<p class="py-3 text-center text-xs text-muted-foreground">
-									No recent feedback
-								</p>
-							{/if}
-						</div>
-					</AdminCollapsibleSection>
-				</div>
-
-				<div class="hidden sm:block">
-					<AdminCard padding="lg" class="space-y-6">
-						<div
-							class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
-						>
-							<div>
-								<h2 class="text-lg sm:text-xl font-bold text-foreground">
-									Feedback
-								</h2>
-								<p class="mt-1 text-sm text-muted-foreground">
-									Latest ratings, open items, and themes from user submissions.
-								</p>
-							</div>
-							<a
-								href="/admin/feedback"
-								class="inline-flex items-center text-sm font-medium text-accent hover:text-accent/80 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							>
-								View all
-								<ExternalLink class="ml-1 h-4 w-4" />
-							</a>
-						</div>
-
-						<div
-							class="grid grid-cols-3 divide-x divide-border rounded-lg border border-border"
-						>
-							{#each feedbackStats as stat (stat.label)}
-								<div class="px-4 py-3">
-									<p
-										class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-									>
-										{stat.label}
-									</p>
-									<p class="mt-2 text-2xl font-semibold text-foreground">
-										{stat.value}
-									</p>
-									<p class="mt-1 text-xs text-muted-foreground">
-										{stat.detail}
-									</p>
-								</div>
-							{/each}
-						</div>
-
-						<div class="grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-							<div class="space-y-5">
-								<div>
-									<h3 class="text-sm font-semibold text-foreground">
-										Categories
-									</h3>
-									{#if feedbackCategoryEntries.length > 0}
-										<div class="mt-3 space-y-3">
-											{#each feedbackCategoryEntries as [category, count]}
-												{@const typedCount = Number(count)}
-												<div>
-													<div
-														class="flex items-center justify-between text-sm"
-													>
-														<span
-															class="font-medium capitalize text-foreground"
-														>
-															{category}
-														</span>
-														<span class="text-muted-foreground">
-															{typedCount}
-														</span>
-													</div>
-													<div class="mt-1.5 h-2 rounded-full bg-muted">
-														<div
-															class="h-2 rounded-full bg-accent"
-															style="width: {Math.min(
-																(typedCount / feedbackCategoryMax) *
-																	100,
-																100
-															)}%"
-														></div>
-													</div>
-												</div>
-											{/each}
-										</div>
-									{:else}
-										<p class="mt-3 text-sm text-muted-foreground">
-											No category data yet.
-										</p>
-									{/if}
-								</div>
-
-								{#if feedbackStatusEntries.length > 0}
-									<div>
-										<h3 class="text-sm font-semibold text-foreground">
-											Status
-										</h3>
-										<div class="mt-3 flex flex-wrap gap-2">
-											{#each feedbackStatusEntries as [status, count]}
-												<span
-													class="rounded-lg border border-border px-2.5 py-1 text-xs capitalize text-muted-foreground"
-												>
-													{status}: {Number(count)}
-												</span>
-											{/each}
-										</div>
-									</div>
-								{/if}
-							</div>
-
-							<div>
-								<div class="flex items-center justify-between">
-									<h3 class="text-sm font-semibold text-foreground">
-										Recent Feedback
-									</h3>
-									<span class="text-xs text-muted-foreground">
-										{feedbackOverview.recent_feedback.length} latest
-									</span>
-								</div>
-								{#if recentFeedbackPreview.length > 0}
-									<div class="mt-3 divide-y divide-border">
-										{#each recentFeedbackPreview as feedback, idx (idx)}
-											<div class="py-3">
-												<div
-													class="flex items-center justify-between gap-3"
-												>
-													<div class="min-w-0">
-														<span
-															class="text-sm font-medium capitalize {getCategoryColor(
-																feedback.category
-															)}"
-														>
-															{feedback.category}
-														</span>
-														<span
-															class="ml-2 text-xs text-muted-foreground"
-														>
-															{feedback.user_email || 'Anonymous'}
-														</span>
-													</div>
-													<div
-														class="flex shrink-0 items-center gap-2 text-xs text-muted-foreground"
-													>
-														{#if feedback.rating}
-															<span class="text-warning">
-																{feedback.rating}/5
-															</span>
-														{/if}
-														<span>
-															{new Date(
-																feedback.created_at
-															).toLocaleDateString()}
-														</span>
-													</div>
-												</div>
-												<p
-													class="mt-1 line-clamp-2 text-sm text-foreground"
-												>
-													{truncateText(feedback.feedback_text, 140)}
-												</p>
-											</div>
-										{/each}
-									</div>
-								{:else}
-									<p class="py-8 text-center text-sm text-muted-foreground">
-										No recent feedback
-									</p>
-								{/if}
-							</div>
-						</div>
-					</AdminCard>
-				</div>
-			</div>
-
-			<!-- Charts and Analytics - Collapsible on mobile -->
-			<div class="mb-3 sm:mb-6">
-				<!-- Mobile: Collapsible charts -->
-				<div class="sm:hidden space-y-1.5">
-					<AdminCollapsibleSection
-						title="Daily Active Users"
-						icon={Activity}
-						iconColor="text-accent"
-						badge={dailyActiveUsers.length > 0
-							? dailyActiveUsers[dailyActiveUsers.length - 1]?.active_users
-							: 0}
-					>
-						{#if dailyActiveUsers.length > 0}
+						{#if rows.length > 0}
 							<div class="divide-y divide-border/50">
-								{#each dailyActiveUsers.slice(-7) as day}
+								{#each rows.slice(0, 5) as user, index}
 									<div class="flex items-center justify-between px-2.5 py-1.5">
-										<span class="text-[10px] text-muted-foreground">
-											{new Date(day.date).toLocaleDateString('en-US', {
-												weekday: 'short',
-												month: 'short',
-												day: 'numeric'
-											})}
-										</span>
-										<div class="flex items-center gap-1.5">
-											<div class="w-12 bg-muted rounded-full h-1.5">
-												<div
-													class="bg-accent h-1.5 rounded-full"
-													style="width: {Math.min(
-														(day.active_users /
-															Math.max(
-																...dailyActiveUsers.map(
-																	(d) => d.active_users
-																)
-															)) *
-															100,
-														100
-													)}%"
-												></div>
-											</div>
+										<div class="flex items-center gap-2 min-w-0">
 											<span
-												class="text-[10px] font-bold text-foreground w-5 text-right"
+												class="text-[10px] font-bold text-muted-foreground w-4"
 											>
-												{day.active_users}
+												{index + 1}
+											</span>
+											<span class="text-xs text-foreground truncate">
+												{user.email.split('@')[0]}
 											</span>
 										</div>
+										<span class={`text-xs font-bold ${board.accent}`}>
+											{user.count}
+										</span>
 									</div>
 								{/each}
 							</div>
@@ -1674,553 +1169,1000 @@
 							<p class="text-muted-foreground text-center py-3 text-xs">No data</p>
 						{/if}
 					</AdminCollapsibleSection>
-
-					<AdminCollapsibleSection
-						title="Brief Delivery"
-						icon={Bell}
-						iconColor="text-success"
-						badge={briefDelivery.emailDelivered + briefDelivery.smsDelivered}
-					>
-						<div class="divide-y divide-border/50">
-							<div class="flex items-center justify-between px-2.5 py-1.5">
-								<span class="text-xs text-foreground">Generated</span>
-								<span class="text-xs font-bold text-accent">
-									{formatNumber(briefDelivery.briefsGenerated)}
-								</span>
-							</div>
-							<div class="flex items-center justify-between px-2.5 py-1.5">
-								<span class="text-xs text-foreground">Email delivered</span>
-								<span class="text-xs font-bold text-accent">
-									{formatNumber(briefDelivery.emailDelivered)}
-								</span>
-							</div>
-							<div class="flex items-center justify-between px-2.5 py-1.5">
-								<span class="text-xs text-foreground">SMS delivered</span>
-								<span class="text-xs font-bold text-accent">
-									{formatNumber(briefDelivery.smsDelivered)}
-								</span>
-							</div>
-							<div class="flex items-center justify-between px-2.5 py-1.5">
-								<span class="text-xs text-foreground">Email / SMS opt-in</span>
-								<span class="text-xs font-bold text-accent">
-									{formatNumber(briefDelivery.emailOptIn)} / {formatNumber(
-										briefDelivery.smsOptIn
-									)}
-								</span>
-							</div>
-						</div>
-					</AdminCollapsibleSection>
-				</div>
-
-				<!-- Desktop: Full charts side by side -->
-				<div class="hidden sm:grid sm:grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-					<!-- Daily Active Users Chart -->
-					<div class="admin-panel p-4 sm:p-6">
-						<h3 class="text-lg font-semibold text-foreground mb-4">
-							Daily Active Users
-							<span class="text-sm font-normal text-muted-foreground">
-								({timeframeRangeLabel})
-							</span>
-						</h3>
-						{#if dailyActiveUsers.length > 0}
-							<div class="space-y-2">
-								{#each dailyActiveUsers.slice(-10) as day}
-									<div class="flex items-center justify-between">
-										<span class="text-sm text-muted-foreground truncate">
-											{new Date(day.date).toLocaleDateString()}
-										</span>
-										<div class="flex items-center ml-2">
-											<div class="w-32 bg-muted rounded-full h-2 mr-3">
-												<div
-													class="bg-accent h-2 rounded-full transition-all motion-reduce:transition-none duration-300"
-													style="width: {Math.min(
-														(day.active_users /
-															Math.max(
-																...dailyActiveUsers.map(
-																	(d) => d.active_users
-																)
-															)) *
-															100,
-														100
-													)}%"
-												></div>
-											</div>
-											<span class="text-sm font-medium text-foreground">
-												{day.active_users}
-											</span>
-										</div>
-									</div>
-								{/each}
-							</div>
-						{:else}
-							<p class="text-muted-foreground text-center py-8">No data available</p>
-						{/if}
-					</div>
-
-					<!-- Brief Delivery Snapshot -->
-					<div class="admin-panel p-4 sm:p-6">
-						<div class="flex items-center justify-between mb-4">
-							<h3 class="text-lg font-semibold text-foreground">Brief Delivery</h3>
-							<a
-								href="/admin/notifications"
-								class="text-accent hover:text-accent/80 text-sm flex items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							>
-								View notifications
-								<ExternalLink class="ml-1 h-4 w-4" />
-							</a>
-						</div>
-						<div class="space-y-4">
-							<div class="grid grid-cols-2 gap-4">
-								<div>
-									<p
-										class="text-xs uppercase tracking-wide text-muted-foreground"
-									>
-										Generated
-									</p>
-									<p class="mt-1 text-2xl font-semibold text-foreground">
-										{formatNumber(briefDelivery.briefsGenerated)}
-									</p>
-								</div>
-								<div>
-									<p
-										class="text-xs uppercase tracking-wide text-muted-foreground"
-									>
-										Opted In
-									</p>
-									<p class="mt-1 text-2xl font-semibold text-foreground">
-										{formatNumber(
-											briefDelivery.emailOptIn + briefDelivery.smsOptIn
-										)}
-									</p>
-								</div>
-							</div>
-							<div class="divide-y divide-border">
-								<div class="flex items-center justify-between py-2">
-									<span class="text-sm text-foreground"
-										>Email sent / delivered</span
-									>
-									<span class="text-sm font-semibold text-foreground">
-										{formatNumber(briefDelivery.emailSent)} / {formatNumber(
-											briefDelivery.emailDelivered
-										)}
-									</span>
-								</div>
-								<div class="flex items-center justify-between py-2">
-									<span class="text-sm text-foreground">SMS sent / delivered</span
-									>
-									<span class="text-sm font-semibold text-foreground">
-										{formatNumber(briefDelivery.smsSent)} / {formatNumber(
-											briefDelivery.smsDelivered
-										)}
-									</span>
-								</div>
-								<div class="flex items-center justify-between py-2">
-									<span class="text-sm text-foreground">Ontology briefs</span>
-									<span class="text-sm font-semibold text-foreground">
-										{formatNumber(briefDelivery.ontologyBriefs)}
-									</span>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
+				{/each}
 			</div>
+			<!-- Desktop: Full leaderboard cards -->
+			<div class="hidden sm:block">
+				<h2 class="text-lg sm:text-xl font-bold text-foreground mb-4">
+					Current Activity Leaderboards
+					<span class="text-sm font-normal text-muted-foreground">
+						({timeframeRangeLabel})
+					</span>
+				</h2>
+				<div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+					{#each leaderboardConfigs as board (board.key)}
+						{@const rows = (comprehensiveAnalytics.leaderboards[board.key] ??
+							[]) as LeaderboardEntry[]}
+						{@const Icon = board.icon}
+						<AdminCard padding="lg" class="space-y-4">
+							<div class="flex items-center justify-between">
+								<h3 class="text-base font-semibold text-foreground">
+									{board.title}
+								</h3>
+								<Icon class={`h-5 w-5 ${board.accent}`} />
+							</div>
 
-			<!-- Beta Program Activity - Collapsible on mobile -->
-			<div class="mb-3 sm:mb-6">
-				<!-- Mobile: Collapsible panel -->
-				<div class="sm:hidden space-y-1.5">
-					<AdminCollapsibleSection
-						title="Beta Activity"
-						icon={UserPlus}
-						iconColor="text-info"
-						badge={betaOverview.recent_activity.length}
-					>
-						{#if betaOverview.recent_activity.length > 0}
-							<div class="divide-y divide-border/50">
-								{#each betaOverview.recent_activity.slice(0, 5) as activity, idx (idx)}
-									{@const typedActivity = activity as any}
-									<div class="flex items-center justify-between px-2.5 py-1.5">
-										<div class="flex items-center gap-1.5 min-w-0">
-											{#if typedActivity.type === 'signup'}
-												<UserPlus class="h-3 w-3 text-accent shrink-0" />
-											{:else}
-												<MessageSquare
-													class="h-3 w-3 text-success shrink-0"
-												/>
-											{/if}
-											<span class="text-xs text-foreground truncate">
-												{typedActivity.type === 'signup'
-													? typedActivity.user?.split('@')[0]
-													: typedActivity.feedback_type}
-											</span>
-										</div>
-										<span
-											class="text-[10px] text-muted-foreground capitalize shrink-0"
+							{#if rows.length > 0}
+								<div class="space-y-2">
+									{#each rows as user, index}
+										<div
+											class="flex items-center justify-between py-2 border-b border-border last:border-0"
 										>
-											{typedActivity.status}
-										</span>
-									</div>
-								{/each}
-							</div>
-						{:else}
-							<p class="text-muted-foreground text-center py-3 text-xs">
-								No activity
-							</p>
-						{/if}
-					</AdminCollapsibleSection>
-				</div>
-
-				<!-- Desktop: Full panel -->
-				<div class="hidden sm:block">
-					<!-- Beta Program Activity -->
-					<div class="admin-panel p-4 sm:p-6">
-						<div class="flex items-center justify-between mb-4">
-							<h3 class="text-lg font-semibold text-foreground">
-								Beta Program Activity
-							</h3>
-							<a
-								href="/admin/beta"
-								class="text-accent hover:text-accent/80 text-sm flex items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							>
-								Manage <ExternalLink class="ml-1 h-4 w-4" />
-							</a>
-						</div>
-						{#if betaOverview.recent_activity.length > 0}
-							<div class="space-y-3">
-								{#each betaOverview.recent_activity as activity, idx (idx)}
-									{@const typedActivity = activity as any}
-									<div class="flex items-start space-x-3">
-										{#if typedActivity.type === 'signup'}
-											<UserPlus
-												class="h-4 w-4 text-accent flex-shrink-0 mt-1"
-											/>
-										{:else}
-											<MessageSquare
-												class="h-4 w-4 text-success flex-shrink-0 mt-1"
-											/>
-										{/if}
-										<div class="flex-1 min-w-0">
-											{#if typedActivity.type === 'signup'}
-												<div class="text-sm text-foreground">
-													<span class="font-medium truncate"
-														>{typedActivity.user}</span
-													> signed up for beta
-												</div>
-												<div
-													class="text-xs text-muted-foreground capitalize"
+											<div class="flex items-center space-x-3">
+												<span
+													class="text-xs font-semibold text-muted-foreground w-6"
 												>
-													Status: {typedActivity.status}
-												</div>
-											{:else}
-												<div class="text-sm text-foreground">
-													New {typedActivity.feedback_type} feedback
-												</div>
-												<div
-													class="text-xs text-muted-foreground capitalize"
+													#{index + 1}
+												</span>
+												<span
+													class="text-sm text-foreground truncate max-w-[150px]"
 												>
-													Status: {typedActivity.status}
-												</div>
-											{/if}
+													{user.email}
+												</span>
+											</div>
+											<span class={`text-sm font-bold ${board.accent}`}>
+												{user.count}
+											</span>
 										</div>
-										<div class="text-xs text-muted-foreground flex-shrink-0">
-											{new Date(
-												typedActivity.created_at
-											).toLocaleDateString()}
-										</div>
-									</div>
-								{/each}
-							</div>
-						{:else}
-							<p class="text-muted-foreground text-center py-8">
-								No recent beta activity
-							</p>
-						{/if}
-					</div>
+									{/each}
+								</div>
+							{:else}
+								<p class="text-muted-foreground text-center py-4 text-sm">
+									No data available
+								</p>
+							{/if}
+						</AdminCard>
+					{/each}
 				</div>
 			</div>
+		</div>
 
-			<!-- System Health Metrics - Collapsible on mobile -->
+		<!-- Subscription Overview (if Stripe is enabled) -->
+		{#if subscriptionData.stripeEnabled}
 			<div class="mb-3 sm:mb-6">
 				<!-- Mobile: Collapsible -->
 				<div class="sm:hidden">
 					<AdminCollapsibleSection
-						title="System Health"
-						icon={Zap}
-						iconColor="text-warning"
-						badge={systemMetrics.length}
+						title="Subscriptions"
+						icon={CreditCard}
+						iconColor="text-success"
+						badge={formatCurrency(subscriptionData.revenue.current_mrr)}
+						badgeColor="success"
 					>
-						{#if systemMetrics.length > 0}
-							<div class="divide-y divide-border/50">
-								{#each systemMetrics as metric}
-									<div class="flex items-center justify-between px-2.5 py-1.5">
-										<span class="text-xs text-foreground truncate">
-											{metric.metric_description || metric.metric_name}
-										</span>
-										<span
-											class="text-xs font-bold shrink-0 {getSystemHealthColor(
-												metric.metric_value,
-												metric.metric_unit
-											)}"
-										>
-											{#if metric.metric_unit === 'percentage'}
-												{metric.metric_value}%
-											{:else if metric.metric_unit === 'milliseconds'}
-												{formatMilliseconds(metric.metric_value)}
+						<div class="grid grid-cols-2 gap-1.5 p-2">
+							{#each subscriptionMetricCards as card (card.label)}
+								<AdminStatCard {...card} ultraCompact />
+							{/each}
+						</div>
+					</AdminCollapsibleSection>
+				</div>
+				<!-- Desktop -->
+				<div class="hidden sm:block space-y-4 sm:space-y-6">
+					<h2 class="text-lg sm:text-xl font-bold text-foreground">
+						Subscription Analytics
+					</h2>
+					<div class="admin-stat-grid grid sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+						{#each subscriptionMetricCards as card (card.label)}
+							<AdminStatCard {...card} compact />
+						{/each}
+					</div>
+				</div>
+
+				{#if subscriptionData.failedPayments.length > 0}
+					<AdminCard tone="danger" padding="md">
+						<div class="flex items-start gap-3">
+							<AlertTriangle class="h-5 w-5 flex-shrink-0" />
+							<div>
+								<h3 class="text-sm font-semibold text-destructive">
+									Failed Payments Require Attention
+								</h3>
+								<p class="text-sm text-destructive mt-1">
+									{subscriptionData.failedPayments.length} payment{subscriptionData
+										.failedPayments.length > 1
+										? 's'
+										: ''} failed in the last 30 days
+								</p>
+								<a
+									href="/admin/subscriptions"
+									class="inline-flex items-center text-sm font-medium text-destructive hover:text-destructive mt-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								>
+									View details
+									<ExternalLink class="w-3 h-3 ml-1" />
+								</a>
+							</div>
+						</div>
+					</AdminCard>
+				{/if}
+
+				{#if subscriptionData.recentChanges.length > 0}
+					<AdminCard padding="lg">
+						<h3 class="text-base font-semibold text-foreground mb-4">
+							Recent Subscription Activity
+						</h3>
+						<div class="space-y-3">
+							{#each subscriptionData.recentChanges.slice(0, 5) as change, idx (idx)}
+								{@const typedChange = change as any}
+								<div
+									class="flex items-center justify-between py-2 border-b border-border last:border-0"
+								>
+									<div class="flex items-center space-x-3">
+										<div class="flex-shrink-0">
+											{#if typedChange.status === 'active'}
+												<div class="w-2 h-2 bg-success rounded-full"></div>
+											{:else if typedChange.status === 'canceled'}
+												<div
+													class="w-2 h-2 bg-destructive rounded-full"
+												></div>
+											{:else if typedChange.status === 'trialing'}
+												<div class="w-2 h-2 bg-info rounded-full"></div>
 											{:else}
-												{metric.metric_value}
+												<div
+													class="w-2 h-2 bg-muted-foreground rounded-full"
+												></div>
 											{/if}
+										</div>
+										<div>
+											<p class="text-sm font-medium text-foreground">
+												{typedChange.users?.email || 'Unknown User'}
+											</p>
+											<p class="text-xs text-muted-foreground">
+												{typedChange.subscription_plans?.name} · {typedChange.status}
+											</p>
+										</div>
+									</div>
+									<div class="text-right">
+										<p class="text-sm text-muted-foreground">
+											${(
+												(typedChange.subscription_plans?.price_cents ?? 0) /
+												100
+											).toFixed(2)}/{typedChange.subscription_plans
+												?.billing_interval ?? 'N/A'}
+										</p>
+										<p class="text-xs text-muted-foreground">
+											{typedChange.updated_at
+												? new Date(
+														typedChange.updated_at
+													).toLocaleDateString()
+												: 'N/A'}
+										</p>
+									</div>
+								</div>
+							{/each}
+						</div>
+						<div class="mt-4">
+							<a
+								href="/admin/subscriptions"
+								class="text-sm text-accent hover:text-accent/80 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>
+								View all subscription activity →
+							</a>
+						</div>
+					</AdminCard>
+				{/if}
+			</div>
+		{/if}
+		<!-- Feedback - Metrics, categories, and latest submissions together -->
+		<div class="mb-3 sm:mb-6">
+			<div class="sm:hidden">
+				<AdminCollapsibleSection
+					title="Feedback"
+					icon={Star}
+					iconColor="text-warning"
+					badge={feedbackOverview.overview.unresolved_count}
+					badgeColor={feedbackOverview.overview.unresolved_count > 0
+						? 'warning'
+						: 'default'}
+				>
+					<div class="space-y-3 p-3">
+						<div
+							class="grid grid-cols-3 divide-x divide-border rounded-lg border border-border"
+						>
+							{#each feedbackStats as stat (stat.label)}
+								<div class="px-2 py-2 text-center">
+									<p
+										class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+									>
+										{stat.label}
+									</p>
+									<p class="mt-1 text-base font-bold text-foreground">
+										{stat.value}
+									</p>
+									<p class="mt-0.5 truncate text-[10px] text-muted-foreground">
+										{stat.detail}
+									</p>
+								</div>
+							{/each}
+						</div>
+
+						{#if feedbackCategoryEntries.length > 0}
+							<div class="space-y-1.5">
+								<p
+									class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+								>
+									Categories
+								</p>
+								{#each feedbackCategoryEntries as [category, count]}
+									{@const typedCount = Number(count)}
+									<div class="flex items-center justify-between gap-2">
+										<span class="text-xs capitalize text-foreground">
+											{category}
+										</span>
+										<span class="text-xs font-semibold text-accent">
+											{typedCount}
 										</span>
 									</div>
 								{/each}
 							</div>
-						{:else}
-							<p class="text-muted-foreground text-center py-3 text-xs">No metrics</p>
 						{/if}
-					</AdminCollapsibleSection>
-				</div>
-				<!-- Desktop: Full panel -->
-				<div class="hidden sm:block admin-panel p-4 sm:p-6">
-					<h3 class="text-lg font-semibold text-foreground mb-4 flex items-center">
-						<Zap class="mr-2 h-5 w-5 text-warning" />
-						System Health
-					</h3>
-					{#if systemMetrics.length > 0}
-						<div class="space-y-4">
-							{#each systemMetrics as metric}
-								<div class="flex items-center justify-between">
-									<div class="flex-1 min-w-0">
-										<div class="text-sm font-medium text-foreground truncate">
-											{metric.metric_description || metric.metric_name}
+
+						{#if recentFeedbackPreview.length > 0}
+							<div class="divide-y divide-border/60 rounded-lg border border-border">
+								{#each recentFeedbackPreview as feedback, idx (idx)}
+									<div class="px-2.5 py-2">
+										<div class="flex items-center justify-between gap-2">
+											<span
+												class="text-[10px] font-medium capitalize {getCategoryColor(
+													feedback.category
+												)}"
+											>
+												{feedback.category}
+											</span>
+											<span class="text-[10px] text-muted-foreground">
+												{feedback.rating
+													? `${feedback.rating}/5`
+													: feedback.status}
+											</span>
 										</div>
-										<div class="text-xs text-muted-foreground">
-											Last updated: {metric.recorded_at
-												? new Date(metric.recorded_at).toLocaleString()
-												: 'N/A'}
-										</div>
+										<p class="mt-1 line-clamp-2 text-xs text-foreground">
+											{truncateText(feedback.feedback_text, 80)}
+										</p>
 									</div>
-									<div class="text-right ml-2">
-										<div
-											class="text-lg font-bold {getSystemHealthColor(
-												metric.metric_value,
-												metric.metric_unit
-											)}"
-										>
-											{#if metric.metric_unit === 'percentage'}
-												{metric.metric_value}%
-											{:else if metric.metric_unit === 'milliseconds'}
-												{formatMilliseconds(metric.metric_value)}
-											{:else}
-												{metric.metric_value}
-											{/if}
+								{/each}
+							</div>
+						{:else}
+							<p class="py-3 text-center text-xs text-muted-foreground">
+								No recent feedback
+							</p>
+						{/if}
+					</div>
+				</AdminCollapsibleSection>
+			</div>
+
+			<div class="hidden sm:block">
+				<AdminCard padding="lg" class="space-y-6">
+					<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+						<div>
+							<h2 class="text-lg sm:text-xl font-bold text-foreground">Feedback</h2>
+							<p class="mt-1 text-sm text-muted-foreground">
+								Latest ratings, open items, and themes from user submissions.
+							</p>
+						</div>
+						<a
+							href="/admin/feedback"
+							class="inline-flex items-center text-sm font-medium text-accent hover:text-accent/80 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							View all
+							<ExternalLink class="ml-1 h-4 w-4" />
+						</a>
+					</div>
+
+					<div
+						class="grid grid-cols-3 divide-x divide-border rounded-lg border border-border"
+					>
+						{#each feedbackStats as stat (stat.label)}
+							<div class="px-4 py-3">
+								<p
+									class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+								>
+									{stat.label}
+								</p>
+								<p class="mt-2 text-2xl font-semibold text-foreground">
+									{stat.value}
+								</p>
+								<p class="mt-1 text-xs text-muted-foreground">
+									{stat.detail}
+								</p>
+							</div>
+						{/each}
+					</div>
+
+					<div class="grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+						<div class="space-y-5">
+							<div>
+								<h3 class="text-sm font-semibold text-foreground">Categories</h3>
+								{#if feedbackCategoryEntries.length > 0}
+									<div class="mt-3 space-y-3">
+										{#each feedbackCategoryEntries as [category, count]}
+											{@const typedCount = Number(count)}
+											<div>
+												<div
+													class="flex items-center justify-between text-sm"
+												>
+													<span
+														class="font-medium capitalize text-foreground"
+													>
+														{category}
+													</span>
+													<span class="text-muted-foreground">
+														{typedCount}
+													</span>
+												</div>
+												<div class="mt-1.5 h-2 rounded-full bg-muted">
+													<div
+														class="h-2 rounded-full bg-accent"
+														style="width: {Math.min(
+															(typedCount / feedbackCategoryMax) *
+																100,
+															100
+														)}%"
+													></div>
+												</div>
+											</div>
+										{/each}
+									</div>
+								{:else}
+									<p class="mt-3 text-sm text-muted-foreground">
+										No category data yet.
+									</p>
+								{/if}
+							</div>
+
+							{#if feedbackStatusEntries.length > 0}
+								<div>
+									<h3 class="text-sm font-semibold text-foreground">Status</h3>
+									<div class="mt-3 flex flex-wrap gap-2">
+										{#each feedbackStatusEntries as [status, count]}
+											<span
+												class="rounded-lg border border-border px-2.5 py-1 text-xs capitalize text-muted-foreground"
+											>
+												{status}: {Number(count)}
+											</span>
+										{/each}
+									</div>
+								</div>
+							{/if}
+						</div>
+
+						<div>
+							<div class="flex items-center justify-between">
+								<h3 class="text-sm font-semibold text-foreground">
+									Recent Feedback
+								</h3>
+								<span class="text-xs text-muted-foreground">
+									{feedbackOverview.recent_feedback.length} latest
+								</span>
+							</div>
+							{#if recentFeedbackPreview.length > 0}
+								<div class="mt-3 divide-y divide-border">
+									{#each recentFeedbackPreview as feedback, idx (idx)}
+										<div class="py-3">
+											<div class="flex items-center justify-between gap-3">
+												<div class="min-w-0">
+													<span
+														class="text-sm font-medium capitalize {getCategoryColor(
+															feedback.category
+														)}"
+													>
+														{feedback.category}
+													</span>
+													<span
+														class="ml-2 text-xs text-muted-foreground"
+													>
+														{feedback.user_email || 'Anonymous'}
+													</span>
+												</div>
+												<div
+													class="flex shrink-0 items-center gap-2 text-xs text-muted-foreground"
+												>
+													{#if feedback.rating}
+														<span class="text-warning">
+															{feedback.rating}/5
+														</span>
+													{/if}
+													<span>
+														{new Date(
+															feedback.created_at
+														).toLocaleDateString()}
+													</span>
+												</div>
+											</div>
+											<p class="mt-1 line-clamp-2 text-sm text-foreground">
+												{truncateText(feedback.feedback_text, 140)}
+											</p>
 										</div>
+									{/each}
+								</div>
+							{:else}
+								<p class="py-8 text-center text-sm text-muted-foreground">
+									No recent feedback
+								</p>
+							{/if}
+						</div>
+					</div>
+				</AdminCard>
+			</div>
+		</div>
+
+		<!-- Charts and Analytics - Collapsible on mobile -->
+		<div class="mb-3 sm:mb-6">
+			<!-- Mobile: Collapsible charts -->
+			<div class="sm:hidden space-y-1.5">
+				<AdminCollapsibleSection
+					title="Daily Active Users"
+					icon={Activity}
+					iconColor="text-accent"
+					badge={dailyActiveUsers.length > 0
+						? dailyActiveUsers[dailyActiveUsers.length - 1]?.active_users
+						: 0}
+				>
+					{#if dailyActiveUsers.length > 0}
+						<div class="divide-y divide-border/50">
+							{#each dailyActiveUsers.slice(-7) as day}
+								<div class="flex items-center justify-between px-2.5 py-1.5">
+									<span class="text-[10px] text-muted-foreground">
+										{new Date(day.date).toLocaleDateString('en-US', {
+											weekday: 'short',
+											month: 'short',
+											day: 'numeric'
+										})}
+									</span>
+									<div class="flex items-center gap-1.5">
+										<div class="w-12 bg-muted rounded-full h-1.5">
+											<div
+												class="bg-accent h-1.5 rounded-full"
+												style="width: {Math.min(
+													(day.active_users /
+														Math.max(
+															...dailyActiveUsers.map(
+																(d) => d.active_users
+															)
+														)) *
+														100,
+													100
+												)}%"
+											></div>
+										</div>
+										<span
+											class="text-[10px] font-bold text-foreground w-5 text-right"
+										>
+											{day.active_users}
+										</span>
 									</div>
 								</div>
 							{/each}
 						</div>
 					{:else}
-						<p class="text-muted-foreground text-center py-8">No metrics available</p>
+						<p class="text-muted-foreground text-center py-3 text-xs">No data</p>
+					{/if}
+				</AdminCollapsibleSection>
+
+				<AdminCollapsibleSection
+					title="Brief Delivery"
+					icon={Bell}
+					iconColor="text-success"
+					badge={briefDelivery.emailDelivered + briefDelivery.smsDelivered}
+				>
+					<div class="divide-y divide-border/50">
+						<div class="flex items-center justify-between px-2.5 py-1.5">
+							<span class="text-xs text-foreground">Generated</span>
+							<span class="text-xs font-bold text-accent">
+								{formatNumber(briefDelivery.briefsGenerated)}
+							</span>
+						</div>
+						<div class="flex items-center justify-between px-2.5 py-1.5">
+							<span class="text-xs text-foreground">Email delivered</span>
+							<span class="text-xs font-bold text-accent">
+								{formatNumber(briefDelivery.emailDelivered)}
+							</span>
+						</div>
+						<div class="flex items-center justify-between px-2.5 py-1.5">
+							<span class="text-xs text-foreground">SMS delivered</span>
+							<span class="text-xs font-bold text-accent">
+								{formatNumber(briefDelivery.smsDelivered)}
+							</span>
+						</div>
+						<div class="flex items-center justify-between px-2.5 py-1.5">
+							<span class="text-xs text-foreground">Email / SMS opt-in</span>
+							<span class="text-xs font-bold text-accent">
+								{formatNumber(briefDelivery.emailOptIn)} / {formatNumber(
+									briefDelivery.smsOptIn
+								)}
+							</span>
+						</div>
+					</div>
+				</AdminCollapsibleSection>
+			</div>
+
+			<!-- Desktop: Full charts side by side -->
+			<div class="hidden sm:grid sm:grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+				<!-- Daily Active Users Chart -->
+				<div class="admin-panel p-4 sm:p-6">
+					<h3 class="text-lg font-semibold text-foreground mb-4">
+						Daily Active Users
+						<span class="text-sm font-normal text-muted-foreground">
+							({timeframeRangeLabel})
+						</span>
+					</h3>
+					{#if dailyActiveUsers.length > 0}
+						<div class="space-y-2">
+							{#each dailyActiveUsers.slice(-10) as day}
+								<div class="flex items-center justify-between">
+									<span class="text-sm text-muted-foreground truncate">
+										{new Date(day.date).toLocaleDateString()}
+									</span>
+									<div class="flex items-center ml-2">
+										<div class="w-32 bg-muted rounded-full h-2 mr-3">
+											<div
+												class="bg-accent h-2 rounded-full transition-all motion-reduce:transition-none duration-300"
+												style="width: {Math.min(
+													(day.active_users /
+														Math.max(
+															...dailyActiveUsers.map(
+																(d) => d.active_users
+															)
+														)) *
+														100,
+													100
+												)}%"
+											></div>
+										</div>
+										<span class="text-sm font-medium text-foreground">
+											{day.active_users}
+										</span>
+									</div>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-muted-foreground text-center py-8">No data available</p>
 					{/if}
 				</div>
-			</div>
 
-			<!-- Top Active Users and Recent Activity -->
-			<!-- Mobile: Collapsible sections in single column -->
-			<div class="sm:hidden space-y-2">
-				<AdminCollapsibleSection
-					title="Top Users"
-					subtitle={timeframeRangeLabel}
-					icon={Users}
-					badge={systemOverview.top_active_users?.length || 0}
-				>
-					<div class="p-2">
-						{#if systemOverview.top_active_users && systemOverview.top_active_users.length > 0}
-							<div class="space-y-1.5">
-								{#each systemOverview.top_active_users.slice(0, 6) as user, idx (idx)}
-									{@const typedUser = user as any}
-									<div
-										class="flex items-center justify-between py-1 px-1.5 rounded-md bg-muted/30"
-									>
-										<div class="flex-1 min-w-0">
-											<div
-												class="text-[11px] font-medium text-foreground truncate"
-											>
-												{typedUser.email}
-											</div>
-											<div class="text-[10px] text-muted-foreground">
-												{typedUser.last_activity
-													? new Date(
-															typedUser.last_activity
-														).toLocaleDateString()
-													: 'Never'}
-											</div>
-										</div>
-										<div
-											class="text-[10px] font-bold text-accent ml-2 shrink-0"
-										>
-											{typedUser.activity_count}
-										</div>
-									</div>
-								{/each}
-							</div>
-							<a
-								href="/admin/users"
-								class="mt-2 text-[10px] text-accent hover:text-accent/80 flex items-center justify-center gap-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							>
-								View All <ExternalLink class="h-2.5 w-2.5" />
-							</a>
-						{:else}
-							<p class="text-muted-foreground text-center py-4 text-xs">
-								No active users
-							</p>
-						{/if}
-					</div>
-				</AdminCollapsibleSection>
-
-				<AdminCollapsibleSection
-					title="Recent Activity"
-					icon={Activity}
-					badge={recentActivity.length}
-				>
-					<div class="p-2">
-						{#if recentActivity.length > 0}
-							<div class="space-y-1.5">
-								{#each recentActivity.slice(0, 6) as activity}
-									{@const ActivityIcon = getActivityIcon(
-										activity.entity_type,
-										activity.action
-									)}
-									<div
-										class="flex items-start gap-1.5 py-1 px-1.5 rounded-md bg-muted/30"
-									>
-										<ActivityIcon
-											class="h-3 w-3 text-muted-foreground flex-shrink-0 mt-0.5"
-										/>
-										<div class="flex-1 min-w-0">
-											<div class="text-[10px] text-foreground">
-												<span class="font-medium"
-													>{activity.user_email?.split('@')[0]}</span
-												>
-												<span class="text-muted-foreground ml-1">
-													{formatActivityLabel(
-														activity.entity_type,
-														activity.action
-													)}
-												</span>
-											</div>
-											<div class="text-[9px] text-muted-foreground">
-												{new Date(activity.created_at).toLocaleTimeString(
-													[],
-													{ hour: '2-digit', minute: '2-digit' }
-												)}
-											</div>
-										</div>
-									</div>
-								{/each}
-							</div>
-						{:else}
-							<p class="text-muted-foreground text-center py-4 text-xs">
-								No recent activity
-							</p>
-						{/if}
-					</div>
-				</AdminCollapsibleSection>
-			</div>
-
-			<!-- Desktop: Original side-by-side layout -->
-			<div class="hidden sm:grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-				<!-- Top Active Users -->
+				<!-- Brief Delivery Snapshot -->
 				<div class="admin-panel p-4 sm:p-6">
 					<div class="flex items-center justify-between mb-4">
-						<h3 class="text-lg font-semibold text-foreground">
-							Top Active Users
-							<span class="text-sm font-normal text-muted-foreground">
-								({timeframeRangeLabel})
-							</span>
-						</h3>
+						<h3 class="text-lg font-semibold text-foreground">Brief Delivery</h3>
 						<a
-							href="/admin/users"
+							href="/admin/notifications"
 							class="text-accent hover:text-accent/80 text-sm flex items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
-							<span class="hidden sm:inline">View All</span>
+							View notifications
 							<ExternalLink class="ml-1 h-4 w-4" />
 						</a>
 					</div>
-					{#if systemOverview.top_active_users && systemOverview.top_active_users.length > 0}
+					<div class="space-y-4">
+						<div class="grid grid-cols-2 gap-4">
+							<div>
+								<p class="text-xs uppercase tracking-wide text-muted-foreground">
+									Generated
+								</p>
+								<p class="mt-1 text-2xl font-semibold text-foreground">
+									{formatNumber(briefDelivery.briefsGenerated)}
+								</p>
+							</div>
+							<div>
+								<p class="text-xs uppercase tracking-wide text-muted-foreground">
+									Opted In
+								</p>
+								<p class="mt-1 text-2xl font-semibold text-foreground">
+									{formatNumber(
+										briefDelivery.emailOptIn + briefDelivery.smsOptIn
+									)}
+								</p>
+							</div>
+						</div>
+						<div class="divide-y divide-border">
+							<div class="flex items-center justify-between py-2">
+								<span class="text-sm text-foreground">Email sent / delivered</span>
+								<span class="text-sm font-semibold text-foreground">
+									{formatNumber(briefDelivery.emailSent)} / {formatNumber(
+										briefDelivery.emailDelivered
+									)}
+								</span>
+							</div>
+							<div class="flex items-center justify-between py-2">
+								<span class="text-sm text-foreground">SMS sent / delivered</span>
+								<span class="text-sm font-semibold text-foreground">
+									{formatNumber(briefDelivery.smsSent)} / {formatNumber(
+										briefDelivery.smsDelivered
+									)}
+								</span>
+							</div>
+							<div class="flex items-center justify-between py-2">
+								<span class="text-sm text-foreground">Ontology briefs</span>
+								<span class="text-sm font-semibold text-foreground">
+									{formatNumber(briefDelivery.ontologyBriefs)}
+								</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Beta Program Activity - Collapsible on mobile -->
+		<div class="mb-3 sm:mb-6">
+			<!-- Mobile: Collapsible panel -->
+			<div class="sm:hidden space-y-1.5">
+				<AdminCollapsibleSection
+					title="Beta Activity"
+					icon={UserPlus}
+					iconColor="text-info"
+					badge={betaOverview.recent_activity.length}
+				>
+					{#if betaOverview.recent_activity.length > 0}
+						<div class="divide-y divide-border/50">
+							{#each betaOverview.recent_activity.slice(0, 5) as activity, idx (idx)}
+								{@const typedActivity = activity as any}
+								<div class="flex items-center justify-between px-2.5 py-1.5">
+									<div class="flex items-center gap-1.5 min-w-0">
+										{#if typedActivity.type === 'signup'}
+											<UserPlus class="h-3 w-3 text-accent shrink-0" />
+										{:else}
+											<MessageSquare class="h-3 w-3 text-success shrink-0" />
+										{/if}
+										<span class="text-xs text-foreground truncate">
+											{typedActivity.type === 'signup'
+												? typedActivity.user?.split('@')[0]
+												: typedActivity.feedback_type}
+										</span>
+									</div>
+									<span
+										class="text-[10px] text-muted-foreground capitalize shrink-0"
+									>
+										{typedActivity.status}
+									</span>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-muted-foreground text-center py-3 text-xs">No activity</p>
+					{/if}
+				</AdminCollapsibleSection>
+			</div>
+
+			<!-- Desktop: Full panel -->
+			<div class="hidden sm:block">
+				<!-- Beta Program Activity -->
+				<div class="admin-panel p-4 sm:p-6">
+					<div class="flex items-center justify-between mb-4">
+						<h3 class="text-lg font-semibold text-foreground">Beta Program Activity</h3>
+						<a
+							href="/admin/beta"
+							class="text-accent hover:text-accent/80 text-sm flex items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							Manage <ExternalLink class="ml-1 h-4 w-4" />
+						</a>
+					</div>
+					{#if betaOverview.recent_activity.length > 0}
 						<div class="space-y-3">
-							{#each systemOverview.top_active_users.slice(0, 8) as user, idx (idx)}
+							{#each betaOverview.recent_activity as activity, idx (idx)}
+								{@const typedActivity = activity as any}
+								<div class="flex items-start space-x-3">
+									{#if typedActivity.type === 'signup'}
+										<UserPlus class="h-4 w-4 text-accent flex-shrink-0 mt-1" />
+									{:else}
+										<MessageSquare
+											class="h-4 w-4 text-success flex-shrink-0 mt-1"
+										/>
+									{/if}
+									<div class="flex-1 min-w-0">
+										{#if typedActivity.type === 'signup'}
+											<div class="text-sm text-foreground">
+												<span class="font-medium truncate"
+													>{typedActivity.user}</span
+												> signed up for beta
+											</div>
+											<div class="text-xs text-muted-foreground capitalize">
+												Status: {typedActivity.status}
+											</div>
+										{:else}
+											<div class="text-sm text-foreground">
+												New {typedActivity.feedback_type} feedback
+											</div>
+											<div class="text-xs text-muted-foreground capitalize">
+												Status: {typedActivity.status}
+											</div>
+										{/if}
+									</div>
+									<div class="text-xs text-muted-foreground flex-shrink-0">
+										{new Date(typedActivity.created_at).toLocaleDateString()}
+									</div>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-muted-foreground text-center py-8">
+							No recent beta activity
+						</p>
+					{/if}
+				</div>
+			</div>
+		</div>
+
+		<!-- System Health Metrics - Collapsible on mobile -->
+		<div class="mb-3 sm:mb-6">
+			<!-- Mobile: Collapsible -->
+			<div class="sm:hidden">
+				<AdminCollapsibleSection
+					title="System Health"
+					icon={Zap}
+					iconColor="text-warning"
+					badge={systemMetrics.length}
+				>
+					{#if systemMetrics.length > 0}
+						<div class="divide-y divide-border/50">
+							{#each systemMetrics as metric}
+								<div class="flex items-center justify-between px-2.5 py-1.5">
+									<span class="text-xs text-foreground truncate">
+										{metric.metric_description || metric.metric_name}
+									</span>
+									<span
+										class="text-xs font-bold shrink-0 {getSystemHealthColor(
+											metric.metric_value,
+											metric.metric_unit
+										)}"
+									>
+										{#if metric.metric_unit === 'percentage'}
+											{metric.metric_value}%
+										{:else if metric.metric_unit === 'milliseconds'}
+											{formatMilliseconds(metric.metric_value)}
+										{:else}
+											{metric.metric_value}
+										{/if}
+									</span>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-muted-foreground text-center py-3 text-xs">No metrics</p>
+					{/if}
+				</AdminCollapsibleSection>
+			</div>
+			<!-- Desktop: Full panel -->
+			<div class="hidden sm:block admin-panel p-4 sm:p-6">
+				<h3 class="text-lg font-semibold text-foreground mb-4 flex items-center">
+					<Zap class="mr-2 h-5 w-5 text-warning" />
+					System Health
+				</h3>
+				{#if systemMetrics.length > 0}
+					<div class="space-y-4">
+						{#each systemMetrics as metric}
+							<div class="flex items-center justify-between">
+								<div class="flex-1 min-w-0">
+									<div class="text-sm font-medium text-foreground truncate">
+										{metric.metric_description || metric.metric_name}
+									</div>
+									<div class="text-xs text-muted-foreground">
+										Last updated: {metric.recorded_at
+											? new Date(metric.recorded_at).toLocaleString()
+											: 'N/A'}
+									</div>
+								</div>
+								<div class="text-right ml-2">
+									<div
+										class="text-lg font-bold {getSystemHealthColor(
+											metric.metric_value,
+											metric.metric_unit
+										)}"
+									>
+										{#if metric.metric_unit === 'percentage'}
+											{metric.metric_value}%
+										{:else if metric.metric_unit === 'milliseconds'}
+											{formatMilliseconds(metric.metric_value)}
+										{:else}
+											{metric.metric_value}
+										{/if}
+									</div>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<p class="text-muted-foreground text-center py-8">No metrics available</p>
+				{/if}
+			</div>
+		</div>
+
+		<!-- Top Active Users and Recent Activity -->
+		<!-- Mobile: Collapsible sections in single column -->
+		<div class="sm:hidden space-y-2">
+			<AdminCollapsibleSection
+				title="Top Users"
+				subtitle={timeframeRangeLabel}
+				icon={Users}
+				badge={systemOverview.top_active_users?.length || 0}
+			>
+				<div class="p-2">
+					{#if systemOverview.top_active_users && systemOverview.top_active_users.length > 0}
+						<div class="space-y-1.5">
+							{#each systemOverview.top_active_users.slice(0, 6) as user, idx (idx)}
 								{@const typedUser = user as any}
-								<div class="flex items-center justify-between">
+								<div
+									class="flex items-center justify-between py-1 px-1.5 rounded-md bg-muted/30"
+								>
 									<div class="flex-1 min-w-0">
 										<div
-											class="text-xs sm:text-sm font-medium text-foreground truncate"
+											class="text-[11px] font-medium text-foreground truncate"
 										>
 											{typedUser.email}
 										</div>
-										<div class="text-xs text-muted-foreground">
-											Last activity: {typedUser.last_activity
+										<div class="text-[10px] text-muted-foreground">
+											{typedUser.last_activity
 												? new Date(
 														typedUser.last_activity
 													).toLocaleDateString()
 												: 'Never'}
 										</div>
 									</div>
-									<div class="text-xs sm:text-sm font-medium text-accent ml-2">
-										{typedUser.activity_count} events
+									<div class="text-[10px] font-bold text-accent ml-2 shrink-0">
+										{typedUser.activity_count}
 									</div>
 								</div>
 							{/each}
 						</div>
+						<a
+							href="/admin/users"
+							class="mt-2 text-[10px] text-accent hover:text-accent/80 flex items-center justify-center gap-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							View All <ExternalLink class="h-2.5 w-2.5" />
+						</a>
 					{:else}
-						<p class="text-muted-foreground text-center py-8">No active users data</p>
+						<p class="text-muted-foreground text-center py-4 text-xs">
+							No active users
+						</p>
 					{/if}
 				</div>
+			</AdminCollapsibleSection>
 
-				<!-- Recent Activity -->
-				<div class="admin-panel p-4 sm:p-6">
-					<h3 class="text-lg font-semibold text-foreground mb-4">Recent Activity</h3>
+			<AdminCollapsibleSection
+				title="Recent Activity"
+				icon={Activity}
+				badge={recentActivity.length}
+			>
+				<div class="p-2">
 					{#if recentActivity.length > 0}
-						<div class="space-y-3">
-							{#each recentActivity.slice(0, 8) as activity}
+						<div class="space-y-1.5">
+							{#each recentActivity.slice(0, 6) as activity}
 								{@const ActivityIcon = getActivityIcon(
 									activity.entity_type,
 									activity.action
 								)}
-								<div class="flex items-start space-x-3">
+								<div
+									class="flex items-start gap-1.5 py-1 px-1.5 rounded-md bg-muted/30"
+								>
 									<ActivityIcon
-										class="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1"
+										class="h-3 w-3 text-muted-foreground flex-shrink-0 mt-0.5"
 									/>
 									<div class="flex-1 min-w-0">
-										<div class="text-xs sm:text-sm text-foreground">
-											<span class="font-medium truncate"
-												>{activity.user_email}</span
+										<div class="text-[10px] text-foreground">
+											<span class="font-medium"
+												>{activity.user_email?.split('@')[0]}</span
 											>
-											{formatActivityLabel(
-												activity.entity_type,
-												activity.action
-											)}
-											{#if activity.entity_name}
-												<span class="text-muted-foreground">
-													• {activity.entity_name}
-												</span>
-											{:else if activity.project_name}
-												<span class="text-muted-foreground">
-													• {activity.project_name}
-												</span>
-											{/if}
+											<span class="text-muted-foreground ml-1">
+												{formatActivityLabel(
+													activity.entity_type,
+													activity.action
+												)}
+											</span>
 										</div>
-										<div class="text-xs text-muted-foreground">
-											{new Date(activity.created_at).toLocaleString()}
+										<div class="text-[9px] text-muted-foreground">
+											{new Date(activity.created_at).toLocaleTimeString([], {
+												hour: '2-digit',
+												minute: '2-digit'
+											})}
 										</div>
 									</div>
 								</div>
 							{/each}
 						</div>
 					{:else}
-						<p class="text-muted-foreground text-center py-8">No recent activity</p>
+						<p class="text-muted-foreground text-center py-4 text-xs">
+							No recent activity
+						</p>
 					{/if}
 				</div>
+			</AdminCollapsibleSection>
+		</div>
+
+		<!-- Desktop: Original side-by-side layout -->
+		<div class="hidden sm:grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+			<!-- Top Active Users -->
+			<div class="admin-panel p-4 sm:p-6">
+				<div class="flex items-center justify-between mb-4">
+					<h3 class="text-lg font-semibold text-foreground">
+						Top Active Users
+						<span class="text-sm font-normal text-muted-foreground">
+							({timeframeRangeLabel})
+						</span>
+					</h3>
+					<a
+						href="/admin/users"
+						class="text-accent hover:text-accent/80 text-sm flex items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					>
+						<span class="hidden sm:inline">View All</span>
+						<ExternalLink class="ml-1 h-4 w-4" />
+					</a>
+				</div>
+				{#if systemOverview.top_active_users && systemOverview.top_active_users.length > 0}
+					<div class="space-y-3">
+						{#each systemOverview.top_active_users.slice(0, 8) as user, idx (idx)}
+							{@const typedUser = user as any}
+							<div class="flex items-center justify-between">
+								<div class="flex-1 min-w-0">
+									<div
+										class="text-xs sm:text-sm font-medium text-foreground truncate"
+									>
+										{typedUser.email}
+									</div>
+									<div class="text-xs text-muted-foreground">
+										Last activity: {typedUser.last_activity
+											? new Date(typedUser.last_activity).toLocaleDateString()
+											: 'Never'}
+									</div>
+								</div>
+								<div class="text-xs sm:text-sm font-medium text-accent ml-2">
+									{typedUser.activity_count} events
+								</div>
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<p class="text-muted-foreground text-center py-8">No active users data</p>
+				{/if}
 			</div>
-		{/if}
-	</div>
+
+			<!-- Recent Activity -->
+			<div class="admin-panel p-4 sm:p-6">
+				<h3 class="text-lg font-semibold text-foreground mb-4">Recent Activity</h3>
+				{#if recentActivity.length > 0}
+					<div class="space-y-3">
+						{#each recentActivity.slice(0, 8) as activity}
+							{@const ActivityIcon = getActivityIcon(
+								activity.entity_type,
+								activity.action
+							)}
+							<div class="flex items-start space-x-3">
+								<ActivityIcon
+									class="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1"
+								/>
+								<div class="flex-1 min-w-0">
+									<div class="text-xs sm:text-sm text-foreground">
+										<span class="font-medium truncate"
+											>{activity.user_email}</span
+										>
+										{formatActivityLabel(activity.entity_type, activity.action)}
+										{#if activity.entity_name}
+											<span class="text-muted-foreground">
+												• {activity.entity_name}
+											</span>
+										{:else if activity.project_name}
+											<span class="text-muted-foreground">
+												• {activity.project_name}
+											</span>
+										{/if}
+									</div>
+									<div class="text-xs text-muted-foreground">
+										{new Date(activity.created_at).toLocaleString()}
+									</div>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<p class="text-muted-foreground text-center py-8">No recent activity</p>
+				{/if}
+			</div>
+		</div>
+	{/if}
 </div>

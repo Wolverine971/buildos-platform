@@ -296,6 +296,15 @@ describe('UtilityExecutor overview scoping', () => {
 
 		expect(payload.scope).toBe('workspace');
 		expect(payload.projects_returned).toBe(2);
+		expect(payload.snapshot).toMatchObject({
+			returned_projects: 2,
+			total_accessible_projects: 2,
+			project_limit: 10,
+			has_more_projects: false,
+			totals_scope: 'returned_projects'
+		});
+		expect(payload.message).toContain('2 of 2 accessible projects');
+		expect(payload.message).toContain('Returned snapshot totals cover these projects');
 		expect(
 			payload.projects.map((project: { project_id: string }) => project.project_id)
 		).toEqual(['proj-owned', 'proj-shared']);

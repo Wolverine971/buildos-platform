@@ -28,6 +28,10 @@
 		autoFocus?: boolean;
 		ariaLabelledby?: string;
 		class?: string;
+		/** Hide the built-in Edit/Preview toggle so a parent can render its own (control via bind:isEditMode). */
+		hideToggle?: boolean;
+		/** Bindable edit-mode state, lets a parent drive the toggle from outside. */
+		isEditMode?: boolean;
 	}
 
 	let {
@@ -40,14 +44,15 @@
 		size = 'sm',
 		autoFocus = false,
 		ariaLabelledby,
-		class: className = ''
+		class: className = '',
+		hideToggle = false,
+		isEditMode = $bindable(false)
 	}: Props = $props();
 
 	function getInitialValue(): string {
 		return value;
 	}
 
-	let isEditMode = $state(false);
 	let textareaElement = $state<TextareaHandle | null>(null);
 	let internalValue = $state(getInitialValue());
 
@@ -60,17 +65,24 @@
 		}
 	});
 
-	async function toggleMode() {
-		if (disabled) return;
-
-		isEditMode = !isEditMode;
-
-		// Focus textarea after Svelte re-renders the edit-mode markup.
-		if (isEditMode) {
-			await tick();
-			textareaElement?.focus();
-			textareaElement?.setSelectionRange(internalValue.length, internalValue.length);
+	// Focus the textarea whenever we transition into edit mode — works for both the
+	// built-in toggle and a parent driving `isEditMode` via binding. Plain (non-$state)
+	// tracker so this only fires on the false→true edge, never on keystrokes.
+	let wasEditMode = false;
+	$effect(() => {
+		const entering = isEditMode && !wasEditMode;
+		wasEditMode = isEditMode;
+		if (entering) {
+			tick().then(() => {
+				textareaElement?.focus();
+				textareaElement?.setSelectionRange(internalValue.length, internalValue.length);
+			});
 		}
+	});
+
+	function toggleMode() {
+		if (disabled) return;
+		isEditMode = !isEditMode;
 	}
 
 	function handleInput(event: Event) {
@@ -107,7 +119,7 @@
 
 <div class="markdown-toggle-field {className}">
 	<!-- Toggle Button - responsive sizing -->
-	{#if showToggle}
+	{#if showToggle && !hideToggle}
 		<div class="flex justify-end mb-1.5 sm:mb-2">
 			<Button
 				type="button"

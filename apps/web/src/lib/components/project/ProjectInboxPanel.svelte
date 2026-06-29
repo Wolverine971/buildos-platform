@@ -8,6 +8,7 @@
 	import ChangeSetReview from '$lib/components/notifications/types/agent-run/ChangeSetReview.svelte';
 	import InboxChangeDetails from '$lib/components/inbox/InboxChangeDetails.svelte';
 	import InboxDecisionControls from '$lib/components/inbox/InboxDecisionControls.svelte';
+	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import {
 		completeInboxDecisionNotification,
 		failInboxDecisionNotification,
@@ -96,6 +97,7 @@
 	let dismissNoteById = $state<Record<string, string>>({});
 	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
 	let chatSessionId = $state<string | null>(null);
+	let chatItemId = $state<string | null>(null);
 	let openingChatIds = $state<Set<string>>(new Set());
 
 	const POLL_INTERVAL_MS = 2500;
@@ -332,6 +334,7 @@
 				throw new Error('Chat session was not returned');
 			}
 			chatSessionId = nextChatSessionId;
+			chatItemId = item.id;
 		} catch (error) {
 			toastService.error(error instanceof Error ? error.message : 'Failed to open chat');
 		} finally {
@@ -341,8 +344,37 @@
 		}
 	}
 
-	function closeChat() {
+	async function resolveChatItem(itemId: string, summary: DataMutationSummary) {
+		if (!summary.hasChanges || !summary.sessionId) return;
+		try {
+			const response = await fetch(`/api/inbox/${itemId}/resolve-from-chat`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					session_id: summary.sessionId,
+					has_changes: summary.hasChanges,
+					total_mutations: summary.totalMutations,
+					affected_project_ids: summary.affectedProjectIds
+				})
+			});
+			const json = await response.json().catch(() => null);
+			if (!response.ok) throw new Error(json?.error ?? 'Failed to resolve inbox item');
+			if (json?.data?.resolved) {
+				removeItemsFromInbox([itemId]);
+				toastService.success('Inbox item handled from chat.');
+			}
+		} catch (error) {
+			console.warn('[AI Inbox] Failed to resolve inbox item from chat:', error);
+		}
+	}
+
+	function closeChat(summary?: DataMutationSummary) {
+		const itemId = chatItemId;
 		chatSessionId = null;
+		chatItemId = null;
+		if (itemId && summary?.hasChanges) {
+			void resolveChatItem(itemId, summary);
+		}
 	}
 
 	function completionMessage(run: ProjectLoopRun, itemCount: number): string {

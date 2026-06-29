@@ -40,11 +40,12 @@ function request(body: Record<string, unknown>) {
 	});
 }
 
-async function callPost(body: Record<string, unknown>) {
+async function callPost(body: Record<string, unknown>, routeFetch = vi.fn()) {
 	return POST({
 		params: { id: 'project-1', suggestion_id: 'suggestion-1' },
 		locals: { supabase: { from: vi.fn() } },
-		request: request(body)
+		request: request(body),
+		fetch: routeFetch
 	} as any);
 }
 
@@ -90,7 +91,8 @@ describe('POST /api/onto/projects/[id]/suggestions/[suggestion_id]', () => {
 	});
 
 	it('keeps the direct decision path when no clarification is supplied', async () => {
-		const response = await callPost({ action: 'dismiss', reason: 'not_relevant' });
+		const routeFetch = vi.fn();
+		const response = await callPost({ action: 'dismiss', reason: 'not_relevant' }, routeFetch);
 		const payload = await response.json();
 
 		expect(response.status).toBe(200);
@@ -98,6 +100,7 @@ describe('POST /api/onto/projects/[id]/suggestions/[suggestion_id]', () => {
 		expect(mocks.decideProjectSuggestion).toHaveBeenCalledWith(
 			expect.objectContaining({
 				action: 'dismiss',
+				fetchFn: routeFetch,
 				feedback: { reason: 'not_relevant', note: undefined }
 			})
 		);

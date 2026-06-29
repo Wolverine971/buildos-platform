@@ -91,7 +91,60 @@
 				<p class="text-xs text-muted-foreground">Current public page inventory.</p>
 			</div>
 		</div>
-		<div class="overflow-x-auto">
+		<!-- Mobile card list — mirrors the Content Review Attempts treatment below. -->
+		<div class="space-y-3 p-3 lg:hidden">
+			{#if data.pages.length === 0}
+				<p class="px-1 py-6 text-center text-sm text-muted-foreground">
+					No public pages found.
+				</p>
+			{:else}
+				{#each data.pages as page}
+					<div class="space-y-3 rounded-lg border border-border bg-background/40 p-3">
+						<!-- Page -->
+						<div>
+							<p class="font-medium text-foreground">
+								{page.title || 'Untitled'}
+							</p>
+							<p class="font-mono text-xs text-muted-foreground break-all">
+								{page.url_path}
+							</p>
+						</div>
+
+						<!-- Project / Document -->
+						<div>
+							<p class="text-sm text-foreground">{page.project_name}</p>
+							<p class="text-xs text-muted-foreground">{page.document_title}</p>
+						</div>
+
+						<!-- Status + Live Sync -->
+						<div class="flex flex-wrap items-start justify-between gap-2">
+							<div>
+								<p class="text-sm text-foreground">{page.status}</p>
+								<p class="text-xs text-muted-foreground">{page.public_status}</p>
+							</div>
+							<div class="text-right">
+								<p class="text-sm text-foreground">
+									{page.live_sync_enabled ? 'Enabled' : 'Paused'}
+								</p>
+								{#if page.last_live_sync_error}
+									<p class="text-xs text-warning">
+										{page.last_live_sync_error}
+									</p>
+								{/if}
+							</div>
+						</div>
+
+						<!-- Updated -->
+						<div class="border-t border-border pt-3 text-xs text-muted-foreground">
+							<p>Updated: {formatDate(page.updated_at)}</p>
+							<p>Published: {formatDate(page.published_at)}</p>
+						</div>
+					</div>
+				{/each}
+			{/if}
+		</div>
+
+		<div class="hidden overflow-x-auto lg:block">
 			<table class="min-w-full text-sm">
 				<thead class="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
 					<tr>

@@ -25,13 +25,13 @@ export function selectReadLoopRepairEscalation(params: {
 	readOnlyRoundCount: number;
 	roundsRemaining: number;
 }): ReadLoopRepairEscalation | null {
-	if (params.roundsRemaining <= 1 || params.readOnlyRoundCount >= 6) {
+	if (params.roundsRemaining <= 2 || params.readOnlyRoundCount >= 8) {
 		return 'must_synthesize';
 	}
-	if (params.readOnlyRoundCount >= 4) {
+	if (params.readOnlyRoundCount >= 6) {
 		return 'stop_and_answer';
 	}
-	if (params.readOnlyRoundCount >= 2) {
+	if (params.readOnlyRoundCount >= 3) {
 		return 'nudge';
 	}
 	return null;

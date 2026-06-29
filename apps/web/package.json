@@ -56,6 +56,7 @@
 		"docs:api": "pnpm run gen:api-docs && pnpm run gen:route-docs",
 		"docs:serve": "vite preview --open /docs/api",
 		"report:agentic-tools": "node --import tsx scripts/report-agentic-tool-surface-sizes.ts",
+		"mcp:repro": "node scripts/mcp-connector-repro.mjs",
 		"generate-configs": "node --import tsx scripts/generate-field-configs.ts",
 		"deps:check": "pnpm outdated",
 		"deps:update": "pnpm update --interactive",

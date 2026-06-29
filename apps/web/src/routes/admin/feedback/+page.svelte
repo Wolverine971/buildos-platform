@@ -16,13 +16,13 @@
 		AlertCircle,
 		XCircle,
 		ExternalLink,
-		X,
 		Mail
 	} from 'lucide-svelte';
 	import { browser } from '$app/environment';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import AdminCard from '$lib/components/admin/AdminCard.svelte';
 	import EmailComposerModal from '$lib/components/admin/EmailComposerModal.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
@@ -684,205 +684,186 @@
 	</div>
 </div>
 
-<!-- Feedback Details Modal - Mobile Responsive -->
-{#if showFeedbackModal && selectedFeedback}
-	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-		<div class="admin-panel-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-			<div class="p-4 sm:p-6">
-				<div class="flex items-center justify-between mb-4">
-					<h3 class="text-lg font-semibold text-foreground">Feedback Details</h3>
-					<Button
-						onclick={() => (showFeedbackModal = false)}
-						variant="ghost"
-						size="sm"
-						class="p-1"
-						icon={X}
-					></Button>
-				</div>
-
-				<div class="space-y-4">
-					<!-- Category and Rating -->
-					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-						<div>
-							<div class="block text-sm font-medium text-foreground mb-1">
-								Category
-							</div>
-							<span
-								class="text-sm font-medium {getCategoryColor(
-									selectedFeedback.category
-								)} capitalize"
-							>
-								{selectedFeedback.category}
-							</span>
-						</div>
-						<div>
-							<div class="block text-sm font-medium text-foreground mb-1">Rating</div>
-							{#if selectedFeedback.rating}
-								<div class="flex items-center">
-									{#each Array(5) as _, i}
-										<Star
-											class="h-4 w-4 {i < selectedFeedback.rating
-												? 'text-warning'
-												: 'text-muted-foreground'}"
-										/>
-									{/each}
-									<span class="ml-2 text-sm text-muted-foreground">
-										({selectedFeedback.rating}/5)
-									</span>
-								</div>
-							{:else}
-								<span class="text-sm text-muted-foreground">No rating provided</span
-								>
-							{/if}
-						</div>
-					</div>
-
-					<!-- User Info -->
+<!-- Feedback Details Modal -->
+<Modal
+	bind:isOpen={showFeedbackModal}
+	onClose={() => (showFeedbackModal = false)}
+	title="Feedback Details"
+	size="md"
+>
+	{#if selectedFeedback}
+		<div class="p-4 sm:p-6">
+			<div class="space-y-4">
+				<!-- Category and Rating -->
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<div>
-						<div class="block text-sm font-medium text-foreground mb-1">User</div>
-						<p class="text-sm text-foreground">
-							{selectedFeedback.user_email || 'Anonymous'}
-						</p>
-					</div>
-
-					<!-- Feedback Text -->
-					<div>
-						<div class="block text-sm font-medium text-foreground mb-1">Feedback</div>
-						<div class="mt-1 p-3 bg-muted rounded-lg">
-							<p class="text-sm text-foreground whitespace-pre-wrap">
-								{selectedFeedback.feedback_text}
-							</p>
-						</div>
-					</div>
-
-					<!-- Status -->
-					<div>
-						<div class="block text-sm font-medium text-foreground mb-1">
-							Current Status
-						</div>
+						<div class="block text-sm font-medium text-foreground mb-1">Category</div>
 						<span
-							class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {getStatusColor(
-								selectedFeedback.status
-							)}"
+							class="text-sm font-medium {getCategoryColor(
+								selectedFeedback.category
+							)} capitalize"
 						>
-							{selectedFeedback.status?.replace('_', ' ') || 'new'}
+							{selectedFeedback.category}
 						</span>
 					</div>
-
-					<!-- Timestamps -->
-					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-						<div>
-							<div class="block text-sm font-medium text-foreground mb-1">
-								Created
+					<div>
+						<div class="block text-sm font-medium text-foreground mb-1">Rating</div>
+						{#if selectedFeedback.rating}
+							<div class="flex items-center">
+								{#each Array(5) as _, i}
+									<Star
+										class="h-4 w-4 {i < selectedFeedback.rating
+											? 'text-warning'
+											: 'text-muted-foreground'}"
+									/>
+								{/each}
+								<span class="ml-2 text-sm text-muted-foreground">
+									({selectedFeedback.rating}/5)
+								</span>
 							</div>
-							<p class="text-sm text-foreground">
-								{formatDate(selectedFeedback.created_at)}
-							</p>
-						</div>
-						{#if selectedFeedback.updated_at !== selectedFeedback.created_at}
-							<div>
-								<div class="block text-sm font-medium text-foreground mb-1">
-									Updated
-								</div>
-								<p class="text-sm text-foreground">
-									{formatDate(selectedFeedback.updated_at)}
-								</p>
-							</div>
+						{:else}
+							<span class="text-sm text-muted-foreground">No rating provided</span>
 						{/if}
 					</div>
+				</div>
 
-					<!-- Technical Info -->
-					{#if selectedFeedback.user_agent || selectedFeedback.user_ip}
+				<!-- User Info -->
+				<div>
+					<div class="block text-sm font-medium text-foreground mb-1">User</div>
+					<p class="text-sm text-foreground">
+						{selectedFeedback.user_email || 'Anonymous'}
+					</p>
+				</div>
+
+				<!-- Feedback Text -->
+				<div>
+					<div class="block text-sm font-medium text-foreground mb-1">Feedback</div>
+					<div class="mt-1 p-3 bg-muted rounded-lg">
+						<p class="text-sm text-foreground whitespace-pre-wrap">
+							{selectedFeedback.feedback_text}
+						</p>
+					</div>
+				</div>
+
+				<!-- Status -->
+				<div>
+					<div class="block text-sm font-medium text-foreground mb-1">Current Status</div>
+					<span
+						class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {getStatusColor(
+							selectedFeedback.status
+						)}"
+					>
+						{selectedFeedback.status?.replace('_', ' ') || 'new'}
+					</span>
+				</div>
+
+				<!-- Timestamps -->
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+					<div>
+						<div class="block text-sm font-medium text-foreground mb-1">Created</div>
+						<p class="text-sm text-foreground">
+							{formatDate(selectedFeedback.created_at)}
+						</p>
+					</div>
+					{#if selectedFeedback.updated_at !== selectedFeedback.created_at}
 						<div>
 							<div class="block text-sm font-medium text-foreground mb-1">
-								Technical Info
+								Updated
 							</div>
-							<div class="text-xs text-muted-foreground space-y-1">
-								{#if selectedFeedback.user_agent}
-									<p class="break-all">
-										User Agent: {selectedFeedback.user_agent}
-									</p>
-								{/if}
-								{#if selectedFeedback.user_ip}
-									<p>IP: {selectedFeedback.user_ip}</p>
-								{/if}
-							</div>
+							<p class="text-sm text-foreground">
+								{formatDate(selectedFeedback.updated_at)}
+							</p>
 						</div>
 					{/if}
 				</div>
 
-				<!-- Action Buttons - Mobile Responsive -->
-				<div class="mt-6 flex flex-wrap gap-2">
+				<!-- Technical Info -->
+				{#if selectedFeedback.user_agent || selectedFeedback.user_ip}
+					<div>
+						<div class="block text-sm font-medium text-foreground mb-1">
+							Technical Info
+						</div>
+						<div class="text-xs text-muted-foreground space-y-1">
+							{#if selectedFeedback.user_agent}
+								<p class="break-all">
+									User Agent: {selectedFeedback.user_agent}
+								</p>
+							{/if}
+							{#if selectedFeedback.user_ip}
+								<p>IP: {selectedFeedback.user_ip}</p>
+							{/if}
+						</div>
+					</div>
+				{/if}
+			</div>
+
+			<!-- Action Buttons - Mobile Responsive -->
+			<div class="mt-6 flex flex-wrap gap-2">
+				<Button onclick={() => (showFeedbackModal = false)} variant="secondary" size="sm">
+					Close
+				</Button>
+
+				{#if selectedFeedback.status === 'new'}
 					<Button
-						onclick={() => (showFeedbackModal = false)}
+						onclick={() => {
+							updateFeedbackStatus(selectedFeedback.id, 'reviewed');
+							selectedFeedback.status = 'reviewed';
+						}}
+						disabled={isUpdating}
+						variant="primary"
+						size="sm"
+						class="bg-warning hover:bg-warning/90"
+					>
+						Mark as Reviewed
+					</Button>
+				{/if}
+
+				{#if selectedFeedback.status === 'reviewed'}
+					<Button
+						onclick={() => {
+							updateFeedbackStatus(selectedFeedback.id, 'in_progress');
+							selectedFeedback.status = 'in_progress';
+						}}
+						disabled={isUpdating}
+						variant="primary"
+						size="sm"
+					>
+						Start Progress
+					</Button>
+				{/if}
+
+				{#if selectedFeedback.status !== 'resolved'}
+					<Button
+						onclick={() => {
+							updateFeedbackStatus(selectedFeedback.id, 'resolved');
+							selectedFeedback.status = 'resolved';
+						}}
+						disabled={isUpdating}
+						variant="primary"
+						size="sm"
+						class="bg-success hover:bg-success/90"
+					>
+						Mark as Resolved
+					</Button>
+				{/if}
+
+				{#if selectedFeedback.status !== 'closed'}
+					<Button
+						onclick={() => {
+							updateFeedbackStatus(selectedFeedback.id, 'closed');
+							selectedFeedback.status = 'closed';
+						}}
+						disabled={isUpdating}
 						variant="secondary"
 						size="sm"
 					>
 						Close
 					</Button>
-
-					{#if selectedFeedback.status === 'new'}
-						<Button
-							onclick={() => {
-								updateFeedbackStatus(selectedFeedback.id, 'reviewed');
-								selectedFeedback.status = 'reviewed';
-							}}
-							disabled={isUpdating}
-							variant="primary"
-							size="sm"
-							class="bg-warning hover:bg-warning/90"
-						>
-							Mark as Reviewed
-						</Button>
-					{/if}
-
-					{#if selectedFeedback.status === 'reviewed'}
-						<Button
-							onclick={() => {
-								updateFeedbackStatus(selectedFeedback.id, 'in_progress');
-								selectedFeedback.status = 'in_progress';
-							}}
-							disabled={isUpdating}
-							variant="primary"
-							size="sm"
-						>
-							Start Progress
-						</Button>
-					{/if}
-
-					{#if selectedFeedback.status !== 'resolved'}
-						<Button
-							onclick={() => {
-								updateFeedbackStatus(selectedFeedback.id, 'resolved');
-								selectedFeedback.status = 'resolved';
-							}}
-							disabled={isUpdating}
-							variant="primary"
-							size="sm"
-							class="bg-success hover:bg-success/90"
-						>
-							Mark as Resolved
-						</Button>
-					{/if}
-
-					{#if selectedFeedback.status !== 'closed'}
-						<Button
-							onclick={() => {
-								updateFeedbackStatus(selectedFeedback.id, 'closed');
-								selectedFeedback.status = 'closed';
-							}}
-							disabled={isUpdating}
-							variant="secondary"
-							size="sm"
-						>
-							Close
-						</Button>
-					{/if}
-				</div>
+				{/if}
 			</div>
 		</div>
-	</div>
-{/if}
+	{/if}
+</Modal>
 
 <!-- Email Composer Modal -->
 <EmailComposerModal

@@ -319,7 +319,7 @@
 <div class="space-y-6">
 	{#if isLoading}
 		<div class="flex flex-col items-center justify-center py-8 gap-2">
-			<Loader class="animate-spin h-6 w-6 text-accent" />
+			<Loader class="animate-spin motion-reduce:animate-none h-6 w-6 text-accent" />
 			<p class="text-sm text-muted-foreground">Loading notification preferences...</p>
 		</div>
 	{:else if loadError}
@@ -383,7 +383,7 @@
 							</p>
 						</div>
 					</div>
-					<label class="relative inline-flex items-center cursor-pointer">
+					<label class="relative inline-flex items-center cursor-pointer min-h-[44px]">
 						<input
 							type="checkbox"
 							id="daily-brief-email"
@@ -425,7 +425,7 @@
 							{/if}
 						</div>
 					</div>
-					<label class="relative inline-flex items-center cursor-pointer">
+					<label class="relative inline-flex items-center cursor-pointer min-h-[44px]">
 						<input
 							type="checkbox"
 							id="daily-brief-sms"
@@ -520,7 +520,7 @@
 							{/if}
 						</div>
 					</div>
-					<label class="relative inline-flex items-center cursor-pointer">
+					<label class="relative inline-flex items-center cursor-pointer min-h-[44px]">
 						<input
 							type="checkbox"
 							id="push-notifications"
@@ -553,7 +553,7 @@
 							</p>
 						</div>
 					</div>
-					<label class="relative inline-flex items-center cursor-pointer">
+					<label class="relative inline-flex items-center cursor-pointer min-h-[44px]">
 						<input
 							type="checkbox"
 							id="in-app-notifications"
@@ -591,7 +591,9 @@
 										Don't send push notifications during these hours
 									</p>
 								</div>
-								<label class="relative inline-flex items-center cursor-pointer">
+								<label
+									class="relative inline-flex items-center cursor-pointer min-h-[44px]"
+								>
 									<input
 										type="checkbox"
 										id="quiet-hours-enabled"
@@ -607,15 +609,19 @@
 					</div>
 					{#if quietHoursEnabled}
 						<div class="grid grid-cols-2 gap-3 ml-8">
-							<FormField label="Start Time" labelFor="quiet-start">
+							<FormField label="Start Time" labelFor="nf-quiet-start">
 								<TextInput
-									id="quiet-start"
+									id="nf-quiet-start"
 									type="time"
 									bind:value={quietHoursStart}
 								/>
 							</FormField>
-							<FormField label="End Time" labelFor="quiet-end">
-								<TextInput id="quiet-end" type="time" bind:value={quietHoursEnd} />
+							<FormField label="End Time" labelFor="nf-quiet-end">
+								<TextInput
+									id="nf-quiet-end"
+									type="time"
+									bind:value={quietHoursEnd}
+								/>
 							</FormField>
 						</div>
 					{/if}

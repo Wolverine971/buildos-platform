@@ -11,6 +11,7 @@ import {
 	BUILDOS_CONNECTOR_PUBLIC_NAME,
 	BUILDOS_MCP_SERVER_NAME,
 	createMcpCallSession,
+	loadVisibleProjectsForOAuth,
 	mcpResourceUrl,
 	OAuthConnectorError,
 	protectedResourceMetadataUrl
@@ -253,6 +254,10 @@ function toMcpTool(tool: ReturnType<typeof getPublicBuildosAgentTools>[number]) 
 		title,
 		description: tool.description,
 		inputSchema: tool.inputSchema,
+		// Every tool returns a JSON object as structuredContent (success or error
+		// envelope), so we declare a permissive object output schema. Per
+		// MCP 2025-06-18, a tool returning structuredContent should advertise one.
+		outputSchema: { type: 'object' },
 		annotations: {
 			title,
 			readOnlyHint: !write,
@@ -391,6 +396,23 @@ const MCP_SEARCH_FETCH_TOOLS = [
 				query: { type: 'string', description: 'Free-text search query.' }
 			}
 		},
+		outputSchema: {
+			type: 'object',
+			properties: {
+				results: {
+					type: 'array',
+					items: {
+						type: 'object',
+						properties: {
+							id: { type: 'string' },
+							title: { type: 'string' },
+							url: { type: 'string' },
+							text: { type: 'string' }
+						}
+					}
+				}
+			}
+		},
 		annotations: {
 			title: 'Search',
 			readOnlyHint: true,
@@ -413,6 +435,16 @@ const MCP_SEARCH_FETCH_TOOLS = [
 					type: 'string',
 					description: 'Record id from search results, formatted as "<type>:<uuid>".'
 				}
+			}
+		},
+		outputSchema: {
+			type: 'object',
+			properties: {
+				id: { type: 'string' },
+				title: { type: 'string' },
+				text: { type: 'string' },
+				url: { type: 'string' },
+				metadata: { type: 'object' }
 			}
 		},
 		annotations: {
@@ -584,6 +616,101 @@ async function runMcpFetch(params: {
 	};
 }
 
+// ---------------------------------------------------------------------------
+// Cursor pagination for list methods (tools/list, resources/list).
+// Opaque cursor = base64url-encoded integer offset. Invalid cursor → -32602.
+// ---------------------------------------------------------------------------
+
+const MCP_LIST_PAGE_SIZE = 100;
+
+function decodeMcpCursor(rawParams: unknown): number {
+	if (!isRecord(rawParams) || rawParams.cursor === undefined || rawParams.cursor === null) {
+		return 0;
+	}
+	if (typeof rawParams.cursor !== 'string') {
+		throw new Error('cursor must be a string');
+	}
+	let decoded: string;
+	try {
+		decoded = Buffer.from(rawParams.cursor, 'base64url').toString('utf8');
+	} catch {
+		throw new Error('Invalid pagination cursor');
+	}
+	const offset = Number.parseInt(decoded, 10);
+	if (!Number.isInteger(offset) || offset < 0 || String(offset) !== decoded) {
+		throw new Error('Invalid pagination cursor');
+	}
+	return offset;
+}
+
+function encodeMcpCursor(offset: number): string {
+	return Buffer.from(String(offset), 'utf8').toString('base64url');
+}
+
+function paginateMcpList<T>(
+	items: T[],
+	rawParams: unknown,
+	key: 'tools' | 'resources'
+): Record<string, unknown> {
+	const offset = decodeMcpCursor(rawParams);
+	const page = items.slice(offset, offset + MCP_LIST_PAGE_SIZE);
+	const nextOffset = offset + MCP_LIST_PAGE_SIZE;
+	return {
+		[key]: page,
+		...(nextOffset < items.length ? { nextCursor: encodeMcpCursor(nextOffset) } : {})
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5: MCP resources. Read-only, scope-enforced. Each in-scope project is
+// exposed as a START HERE orientation resource; resources/read also accepts any
+// project or document URI and reuses the read-only fetch path.
+// ---------------------------------------------------------------------------
+
+const MCP_RESOURCE_SCHEME = 'buildos';
+const MCP_RESOURCE_FETCHABLE_TYPES = new Set(['project', 'document']);
+
+function resourceUriFor(type: string, id: string): string {
+	return `${MCP_RESOURCE_SCHEME}://${type}/${id}`;
+}
+
+function parseResourceUri(uri: string): { type: string; id: string } | null {
+	let parsed: URL;
+	try {
+		parsed = new URL(uri);
+	} catch {
+		return null;
+	}
+	if (parsed.protocol !== `${MCP_RESOURCE_SCHEME}:`) return null;
+	// buildos://<type>/<id> → hostname = type, pathname = /<id>
+	const type = parsed.hostname;
+	const id = decodeURIComponent(parsed.pathname.replace(/^\/+/, ''));
+	if (!MCP_RESOURCE_FETCHABLE_TYPES.has(type) || !id) return null;
+	return { type, id };
+}
+
+async function listMcpResourcesForCaller(params: {
+	admin: any;
+	caller: ExternalAgentCallerRecord;
+	scope: AgentCallScope;
+}): Promise<Array<Record<string, unknown>>> {
+	const projects = await loadVisibleProjectsForOAuth(params.admin, params.caller.user_id);
+	const allowedProjectIds = Array.isArray(params.scope.project_ids)
+		? new Set(params.scope.project_ids)
+		: null;
+	return projects
+		.filter((project) => !allowedProjectIds || allowedProjectIds.has(project.id))
+		.map((project) => ({
+			uri: resourceUriFor('project', project.id),
+			name: `${project.name} — project context`,
+			description:
+				typeof project.description === 'string' && project.description
+					? project.description
+					: 'BuildOS project START HERE orientation.',
+			mimeType: 'text/markdown'
+		}));
+}
+
 async function dispatchMcpMethod(params: {
 	admin: any;
 	request: Request;
@@ -600,13 +727,24 @@ async function dispatchMcpMethod(params: {
 	});
 
 	switch (params.method) {
-		case 'initialize':
+		case 'initialize': {
+			// Echo the client's requested protocol version when we support it
+			// (MCP spec: a server MUST respond with the same version if supported,
+			// otherwise its own latest). Fall back to our latest when the request
+			// omits a version or asks for one we don't speak.
+			const requestedVersion =
+				isRecord(params.rawParams) && typeof params.rawParams.protocolVersion === 'string'
+					? params.rawParams.protocolVersion.trim()
+					: null;
+			const negotiatedVersion =
+				requestedVersion && SUPPORTED_MCP_PROTOCOL_VERSIONS.has(requestedVersion)
+					? requestedVersion
+					: MCP_PROTOCOL_VERSION;
 			return {
-				protocolVersion: MCP_PROTOCOL_VERSION,
+				protocolVersion: negotiatedVersion,
 				capabilities: {
-					tools: {
-						listChanged: false
-					}
+					tools: { listChanged: false },
+					resources: { listChanged: false }
 				},
 				serverInfo: {
 					name: 'buildos',
@@ -616,17 +754,75 @@ async function dispatchMcpMethod(params: {
 				instructions:
 					'Use BuildOS tools to read scoped project context. Write tools are available only when the user approved write access.'
 			};
+		}
+
+		case 'ping':
+			// MCP utility: a ping response is an empty result.
+			return {};
 
 		case 'tools/list': {
 			const profile = parseMcpProfile(params.url);
+			let tools: ReturnType<typeof toMcpTool>[] | typeof MCP_SEARCH_FETCH_TOOLS;
 			if (profile === 'chatgpt_data_app') {
-				return { tools: MCP_SEARCH_FETCH_TOOLS };
+				tools = MCP_SEARCH_FETCH_TOOLS;
+			} else {
+				let scoped = getPublicBuildosAgentTools(auth.scope);
+				if (profile === 'general') {
+					scoped = scoped.filter((tool) => !DISCOVERY_TOOL_NAMES.has(tool.name));
+				}
+				tools = scoped.map(toMcpTool);
 			}
-			let tools = getPublicBuildosAgentTools(auth.scope);
-			if (profile === 'general') {
-				tools = tools.filter((tool) => !DISCOVERY_TOOL_NAMES.has(tool.name));
+			return paginateMcpList([...tools], params.rawParams, 'tools');
+		}
+
+		case 'resources/list': {
+			const resources = await listMcpResourcesForCaller({
+				admin: params.admin,
+				caller: auth.caller,
+				scope: auth.scope
+			});
+			return paginateMcpList(resources, params.rawParams, 'resources');
+		}
+
+		case 'resources/templates/list':
+			// No URI templates in v1, but answer the method so clients don't error.
+			return { resourceTemplates: [] };
+
+		case 'resources/read': {
+			const uri =
+				isRecord(params.rawParams) && typeof params.rawParams.uri === 'string'
+					? params.rawParams.uri.trim()
+					: '';
+			const parsedResource = parseResourceUri(uri);
+			if (!parsedResource) {
+				throw new Error(
+					`Unsupported resource uri "${uri}". Expected "buildos://project/<id>" or "buildos://document/<id>".`
+				);
 			}
-			return { tools: tools.map(toMcpTool) };
+			const result = await runMcpFetch({
+				admin: params.admin,
+				caller: auth.caller,
+				scope: auth.scope,
+				origin: params.url.origin,
+				id: `${parsedResource.type}:${parsedResource.id}`,
+				securityEventOptions: params.securityEventOptions
+			});
+			if (result.ok === false || result.error) {
+				const message =
+					isRecord(result.error) && typeof result.error.message === 'string'
+						? result.error.message
+						: 'Resource not found or outside the granted scope';
+				throw new OAuthConnectorError(message, 404, 'not_found');
+			}
+			return {
+				contents: [
+					{
+						uri,
+						mimeType: 'text/markdown',
+						text: typeof result.text === 'string' ? result.text : ''
+					}
+				]
+			};
 		}
 
 		case 'tools/call': {

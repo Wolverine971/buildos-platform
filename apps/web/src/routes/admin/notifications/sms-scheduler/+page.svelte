@@ -340,700 +340,791 @@
 </svelte:head>
 
 <div class="admin-page">
-	<div class="admin-page">
-		<!-- Header -->
-		<AdminPageHeader
-			title="SMS Scheduler Manual Trigger"
-			description="Manually trigger the daily SMS scheduling job that runs at 12:00 AM UTC"
-			icon={Calendar}
-			showBack={true}
-		/>
+	<!-- Header -->
+	<AdminPageHeader
+		title="SMS Scheduler Manual Trigger"
+		description="Manually trigger the daily SMS scheduling job that runs at 12:00 AM UTC"
+		icon={Calendar}
+		showBack={true}
+	/>
 
-		<!-- Info Alert -->
-		<div class="bg-info/10 border border-info/30 rounded-lg p-4 mb-6">
-			<div class="flex items-start">
-				<AlertCircle class="h-5 w-5 text-info mt-0.5 mr-3 flex-shrink-0" />
-				<div class="text-sm text-info">
-					This tool manually triggers the daily SMS scheduling job that normally runs at
-					12:00 AM UTC. The same code flow is executed, but you can override settings for
-					testing.
-				</div>
+	<!-- Info Alert -->
+	<div class="bg-info/10 border border-info/30 rounded-lg p-4 mb-6">
+		<div class="flex items-start">
+			<AlertCircle class="h-5 w-5 text-info mt-0.5 mr-3 flex-shrink-0" />
+			<div class="text-sm text-info">
+				This tool manually triggers the daily SMS scheduling job that normally runs at 12:00
+				AM UTC. The same code flow is executed, but you can override settings for testing.
 			</div>
 		</div>
+	</div>
 
-		<!-- Tabs -->
-		<div class="border-b border-border mb-6">
-			<nav class="-mb-px flex space-x-6 overflow-x-auto sm:space-x-8">
-				<button
-					onclick={() => (activeTab = 'trigger')}
-					class="shrink-0 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
+	<!-- Tabs -->
+	<div class="border-b border-border mb-6">
+		<nav class="-mb-px flex space-x-6 overflow-x-auto sm:space-x-8">
+			<button
+				onclick={() => (activeTab = 'trigger')}
+				class="shrink-0 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
 						{activeTab === 'trigger'
-						? 'border-info text-info'
-						: 'border-transparent text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground'}"
-				>
-					<div class="flex items-center">
-						<Send class="h-4 w-4 mr-2" />
-						Trigger Settings
-					</div>
-				</button>
-				<button
-					onclick={() => (activeTab = 'results')}
-					class="shrink-0 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
+					? 'border-info text-info'
+					: 'border-transparent text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground'}"
+			>
+				<div class="flex items-center">
+					<Send class="h-4 w-4 mr-2" />
+					Trigger Settings
+				</div>
+			</button>
+			<button
+				onclick={() => (activeTab = 'results')}
+				class="shrink-0 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
 						{activeTab === 'results'
-						? 'border-info text-info'
-						: 'border-transparent text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground'}"
-				>
-					<div class="flex items-center">
-						<CheckCircle class="h-4 w-4 mr-2" />
-						Last Results
-					</div>
-				</button>
-				<button
-					onclick={() => (activeTab = 'monitor')}
-					class="shrink-0 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
+					? 'border-info text-info'
+					: 'border-transparent text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground'}"
+			>
+				<div class="flex items-center">
+					<CheckCircle class="h-4 w-4 mr-2" />
+					Last Results
+				</div>
+			</button>
+			<button
+				onclick={() => (activeTab = 'monitor')}
+				class="shrink-0 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
 						{activeTab === 'monitor'
-						? 'border-info text-info'
-						: 'border-transparent text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground'}"
-				>
-					<div class="flex items-center">
-						<Eye class="h-4 w-4 mr-2" />
-						Job Monitor
-					</div>
-				</button>
-			</nav>
-		</div>
+					? 'border-info text-info'
+					: 'border-transparent text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground'}"
+			>
+				<div class="flex items-center">
+					<Eye class="h-4 w-4 mr-2" />
+					Job Monitor
+				</div>
+			</button>
+		</nav>
+	</div>
 
-		<!-- Tab Content -->
-		{#if activeTab === 'trigger'}
-			<div class="space-y-6">
-				<!-- User Selection -->
-				<div class="admin-panel p-6">
-					<h3 class="text-lg font-semibold text-foreground mb-4 flex items-center">
-						<Users class="h-5 w-5 mr-2" />
-						User Selection
-					</h3>
+	<!-- Tab Content -->
+	{#if activeTab === 'trigger'}
+		<div class="space-y-6">
+			<!-- User Selection -->
+			<div class="admin-panel p-6">
+				<h3 class="text-lg font-semibold text-foreground mb-4 flex items-center">
+					<Users class="h-5 w-5 mr-2" />
+					User Selection
+				</h3>
 
-					<!-- Search -->
-					<div class="flex flex-wrap gap-2 mb-4">
-						<input
-							type="text"
-							placeholder="Search users by email or name..."
-							bind:value={userSearch}
-							onkeydown={(e) => e.key === 'Enter' && searchUsers()}
-							class="flex-1 px-4 py-2 border border-border rounded-lg
+				<!-- Search -->
+				<div class="flex flex-wrap gap-2 mb-4">
+					<input
+						type="text"
+						placeholder="Search users by email or name..."
+						bind:value={userSearch}
+						onkeydown={(e) => e.key === 'Enter' && searchUsers()}
+						class="flex-1 px-4 py-2 border border-border rounded-lg
 								focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-						/>
-						<Button onclick={searchUsers} disabled={isSearching} variant="ghost">
-							{#if isSearching}
-								<LoaderCircle
-									class="h-4 w-4 animate-spin motion-reduce:animate-none"
-								/>
-							{:else}
-								Search
-							{/if}
-						</Button>
-						<Button onclick={loadAllSmsUsers} variant="ghost">
-							Load All SMS Users
-						</Button>
-					</div>
-
-					<!-- Results -->
-					{#if searchResults.length > 0}
-						<div class="border rounded-lg p-4 max-h-64 overflow-y-auto">
-							<div class="flex items-center justify-between mb-2">
-								<div class="text-sm text-muted-foreground">
-									{selectedUsers.length} of {searchResults.length} users selected
-								</div>
-								<div class="flex gap-2">
-									<Button size="sm" variant="ghost" onclick={selectAll}>
-										Select All
-									</Button>
-									<Button size="sm" variant="ghost" onclick={selectNone}>
-										Clear
-									</Button>
-								</div>
-							</div>
-							{#each searchResults as user}
-								<label
-									class="flex items-center gap-3 p-2 hover:bg-muted rounded cursor-pointer"
-								>
-									<input
-										type="checkbox"
-										checked={selectedUsers.includes(user.id)}
-										onchange={() => toggleUser(user.id)}
-										class="h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-									/>
-									<div class="flex-1">
-										<div class="font-medium text-sm text-foreground">
-											{user.email}
-										</div>
-										<div class="text-xs text-muted-foreground">
-											{user.name || user.full_name || 'No name'} · {user.timezone ||
-												'UTC'}
-										</div>
-									</div>
-									{#if user.sms_preferences}
-										<div class="text-xs px-2 py-1 bg-muted rounded-md">
-											{user.sms_preferences.daily_sms_count || 0}/{user
-												.sms_preferences.daily_sms_limit || 10} today
-										</div>
-									{/if}
-								</label>
-							{/each}
-						</div>
-					{/if}
-
-					{#if selectedUsers.length > 0}
-						<div class="mt-4 p-3 bg-info/10 border border-info/30 rounded-lg">
-							<div class="text-sm text-info">
-								{selectedUsers.length} user{selectedUsers.length !== 1 ? 's' : ''} selected.
-								Leave empty to process ALL SMS-enabled users.
-							</div>
-						</div>
-					{/if}
+					/>
+					<Button onclick={searchUsers} disabled={isSearching} variant="ghost">
+						{#if isSearching}
+							<LoaderCircle class="h-4 w-4 animate-spin motion-reduce:animate-none" />
+						{:else}
+							Search
+						{/if}
+					</Button>
+					<Button onclick={loadAllSmsUsers} variant="ghost">Load All SMS Users</Button>
 				</div>
 
-				<!-- Trigger Options -->
-				<div class="admin-panel p-6">
-					<h3 class="text-lg font-semibold text-foreground mb-4 flex items-center">
-						<Clock class="h-5 w-5 mr-2" />
-						Trigger Options
-					</h3>
-
-					<div class="space-y-4">
-						<!-- Dry Run -->
-						<label class="flex items-start gap-3">
-							<input
-								type="checkbox"
-								bind:checked={dryRun}
-								class="mt-1 h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							/>
-							<div>
-								<div class="font-medium text-foreground">Dry Run</div>
-								<div class="text-sm text-muted-foreground">
-									Preview what would happen without actually queueing jobs
-								</div>
+				<!-- Results -->
+				{#if searchResults.length > 0}
+					<div class="border border-border rounded-lg p-4 max-h-64 overflow-y-auto">
+						<div class="flex items-center justify-between mb-2">
+							<div class="text-sm text-muted-foreground">
+								{selectedUsers.length} of {searchResults.length} users selected
 							</div>
-						</label>
-
-						<!-- Date Override -->
-						<div>
+							<div class="flex gap-2">
+								<Button size="sm" variant="ghost" onclick={selectAll}>
+									Select All
+								</Button>
+								<Button size="sm" variant="ghost" onclick={selectNone}>
+									Clear
+								</Button>
+							</div>
+						</div>
+						{#each searchResults as user}
 							<label
-								for="override-date"
-								class="block text-sm font-medium text-foreground mb-1"
+								class="flex items-center gap-3 p-2 hover:bg-muted rounded cursor-pointer"
 							>
-								Override Date
-							</label>
-							<input
-								id="override-date"
-								type="date"
-								bind:value={overrideDate}
-								class="w-64 px-4 py-2 border border-border rounded-lg
-									focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							/>
-							<p class="text-sm text-muted-foreground mt-1">
-								Process calendar events for this date (user's timezone)
-							</p>
-						</div>
-
-						<!-- Skip Quiet Hours -->
-						<label class="flex items-start gap-3">
-							<input
-								type="checkbox"
-								bind:checked={skipQuietHours}
-								class="mt-1 h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							/>
-							<div>
-								<div class="font-medium text-foreground">
-									Skip Quiet Hours Check
-								</div>
-								<div class="text-sm text-muted-foreground">
-									Send messages even during user's quiet hours (testing only)
-								</div>
-							</div>
-						</label>
-
-						<!-- Skip Daily Limit -->
-						<label class="flex items-start gap-3">
-							<input
-								type="checkbox"
-								bind:checked={skipDailyLimit}
-								class="mt-1 h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							/>
-							<div>
-								<div class="font-medium text-foreground">Skip Daily SMS Limit</div>
-								<div class="text-sm text-muted-foreground">
-									Ignore user's daily SMS limit (testing only)
-								</div>
-							</div>
-						</label>
-
-						<!-- Calendar Preview Button -->
-						<div class="pt-4 border-t">
-							<Button
-								onclick={fetchCalendarPreview}
-								disabled={isLoadingCalendarPreview || selectedUsers.length === 0}
-								variant="secondary"
-								class="w-full"
-							>
-								{#if isLoadingCalendarPreview}
-									<LoaderCircle
-										class="h-4 w-4 mr-2 animate-spin motion-reduce:animate-none"
-									/>
-									Loading Calendar Info...
-								{:else}
-									<Calendar class="h-4 w-4 mr-2" />
-									Check Calendar Info for Selected Users
-								{/if}
-							</Button>
-							{#if selectedUsers.length === 0}
-								<p class="text-xs text-muted-foreground mt-2 text-center">
-									Select users above to check their calendar info
-								</p>
-							{/if}
-						</div>
-					</div>
-				</div>
-
-				<!-- Calendar Preview Results -->
-				{#if showCalendarPreview && calendarPreviewResults.length > 0}
-					<div class="admin-panel p-6">
-						<div class="flex items-center justify-between mb-4">
-							<h3 class="text-lg font-semibold text-foreground">
-								Calendar Preview Results
-							</h3>
-							<button
-								type="button"
-								onclick={() => (showCalendarPreview = false)}
-								class="rounded-md text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							>
-								<XCircle class="h-5 w-5" />
-							</button>
-						</div>
-
-						<div class="space-y-4">
-							{#each calendarPreviewResults as result}
-								<div class="border rounded-lg p-4 hover:bg-muted/50">
-									<!-- User Header -->
-									<div class="flex items-start justify-between mb-3">
-										<div>
-											<div class="font-medium text-foreground">
-												{result.user_email}
-											</div>
-											{#if result.user_name}
-												<div class="text-sm text-muted-foreground">
-													{result.user_name}
-												</div>
-											{/if}
-											<div class="text-xs text-muted-foreground mt-1">
-												Timezone: {result.timezone}
-											</div>
-										</div>
-										<div class="flex gap-2">
-											{#if result.calendar_connected}
-												<span
-													class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-success/10 text-success"
-												>
-													<CheckCircle class="h-3 w-3 mr-1" />
-													Calendar Connected
-												</span>
-											{:else}
-												<span
-													class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive"
-												>
-													<XCircle class="h-3 w-3 mr-1" />
-													No Calendar
-												</span>
-											{/if}
-										</div>
+								<input
+									type="checkbox"
+									checked={selectedUsers.includes(user.id)}
+									onchange={() => toggleUser(user.id)}
+									class="h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								/>
+								<div class="flex-1">
+									<div class="font-medium text-sm text-foreground">
+										{user.email}
 									</div>
-
-									<!-- Stats Grid -->
-									{#if result.calendar_connected}
-										<div class="grid grid-cols-2 gap-3 mb-3 sm:grid-cols-4">
-											<div class="bg-muted p-3 rounded-md">
-												<div class="text-xs text-muted-foreground">
-													Total Events
-												</div>
-												<div class="text-lg font-semibold text-foreground">
-													{result.total_events}
-												</div>
-											</div>
-											<div class="bg-muted p-3 rounded-md">
-												<div class="text-xs text-muted-foreground">
-													Synced Events
-												</div>
-												<div class="text-lg font-semibold text-foreground">
-													{result.synced_events}
-												</div>
-											</div>
-											<div class="bg-success/10 p-3 rounded-md">
-												<div class="text-xs text-success font-medium">
-													Would Trigger SMS
-												</div>
-												<div class="text-lg font-semibold text-success">
-													{result.events_that_would_trigger_sms}
-												</div>
-											</div>
-											<div class="bg-muted p-3 rounded-md">
-												<div class="text-xs text-muted-foreground">
-													SMS Usage
-												</div>
-												<div class="text-lg font-semibold text-foreground">
-													{result.sms_preferences?.daily_sms_count ||
-														0}/{result.sms_preferences
-														?.daily_sms_limit || 10}
-												</div>
-											</div>
-										</div>
-
-										<!-- Events Skipped -->
-										{#if result.events_skipped.past_reminder_time > 0 || result.events_skipped.all_day > 0 || result.events_skipped.quiet_hours > 0 || result.events_skipped.no_start_time > 0}
-											<div class="mb-3">
-												<div
-													class="text-sm font-medium text-foreground mb-2"
-												>
-													Events Skipped:
-												</div>
-												<div class="flex flex-wrap gap-2">
-													{#if result.events_skipped.past_reminder_time > 0}
-														<span
-															class="text-xs px-2 py-1 bg-muted rounded-md"
-														>
-															Past time: {result.events_skipped
-																.past_reminder_time}
-														</span>
-													{/if}
-													{#if result.events_skipped.all_day > 0}
-														<span
-															class="text-xs px-2 py-1 bg-muted rounded-md"
-														>
-															All-day: {result.events_skipped.all_day}
-														</span>
-													{/if}
-													{#if result.events_skipped.quiet_hours > 0}
-														<span
-															class="text-xs px-2 py-1 bg-muted rounded-md"
-														>
-															Quiet hours: {result.events_skipped
-																.quiet_hours}
-														</span>
-													{/if}
-													{#if result.events_skipped.no_start_time > 0}
-														<span
-															class="text-xs px-2 py-1 bg-muted rounded-md"
-														>
-															No start time: {result.events_skipped
-																.no_start_time}
-														</span>
-													{/if}
-												</div>
-											</div>
-										{/if}
-
-										<!-- Event Details -->
-										{#if result.event_details.length > 0}
-											<details class="mt-3">
-												<summary
-													class="text-sm font-medium text-info cursor-pointer hover:underline"
-												>
-													View {result.event_details.length} Event Details
-												</summary>
-												<div
-													class="mt-2 space-y-2 max-h-64 overflow-y-auto"
-												>
-													{#each result.event_details as event}
-														<div
-															class="text-sm p-2 rounded-md {event.would_trigger_sms
-																? 'bg-success/10 border border-success/30'
-																: 'bg-muted border border-border'}"
-														>
-															<div
-																class="flex items-start justify-between gap-2"
-															>
-																<div class="flex-1">
-																	<div
-																		class="font-medium text-foreground"
-																	>
-																		{event.event_title}
-																	</div>
-																	<div
-																		class="text-xs text-muted-foreground"
-																	>
-																		{format(
-																			new Date(
-																				event.event_start
-																			),
-																			'MMM d, yyyy h:mm a'
-																		)}
-																	</div>
-																	{#if event.reminder_time}
-																		<div
-																			class="text-xs text-success"
-																		>
-																			SMS would send at: {format(
-																				new Date(
-																					event.reminder_time
-																				),
-																				'h:mm a'
-																			)}
-																		</div>
-																	{/if}
-																</div>
-																<div>
-																	{#if event.would_trigger_sms}
-																		<CheckCircle
-																			class="h-4 w-4 text-success"
-																		/>
-																	{:else}
-																		<span
-																			class="text-xs px-2 py-1 bg-muted rounded-md"
-																		>
-																			{event.skip_reason}
-																		</span>
-																	{/if}
-																</div>
-															</div>
-														</div>
-													{/each}
-												</div>
-											</details>
-										{/if}
-									{/if}
-
-									<!-- Errors -->
-									{#if result.errors.length > 0}
-										<div class="mt-3">
-											{#each result.errors as error}
-												<div
-													class="text-sm text-destructive bg-destructive/10 p-2 rounded-md flex items-center gap-2"
-												>
-													<AlertTriangle class="h-4 w-4 flex-shrink-0" />
-													{error}
-												</div>
-											{/each}
-										</div>
-									{/if}
+									<div class="text-xs text-muted-foreground">
+										{user.name || user.full_name || 'No name'} · {user.timezone ||
+											'UTC'}
+									</div>
 								</div>
-							{/each}
-						</div>
+								{#if user.sms_preferences}
+									<div class="text-xs px-2 py-1 bg-muted rounded-md">
+										{user.sms_preferences.daily_sms_count || 0}/{user
+											.sms_preferences.daily_sms_limit || 10} today
+									</div>
+								{/if}
+							</label>
+						{/each}
 					</div>
 				{/if}
 
-				<!-- Action Buttons -->
-				<div class="flex justify-end gap-4">
-					<Button variant="ghost" onclick={resetOptions}>Reset Options</Button>
-					<Button
-						onclick={triggerScheduler}
-						disabled={isTriggering}
-						variant={dryRun ? 'secondary' : 'primary'}
-						icon={Play}
-						loading={isTriggering}
-					>
-						{#if isTriggering}
-							Triggering...
-						{:else if dryRun}
-							Run Dry Test
-						{:else}
-							Execute Trigger
-						{/if}
-					</Button>
-				</div>
-			</div>
-		{:else if activeTab === 'results'}
-			<!-- Results Tab -->
-			{#if lastTriggerResult}
-				<div class="admin-panel p-6">
-					<h3 class="text-lg font-semibold text-foreground mb-4">Trigger Results</h3>
-
-					<!-- Summary -->
-					<div class="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-3">
-						<div class="p-4 bg-muted rounded-lg">
-							<div class="text-sm text-muted-foreground">Mode</div>
-							<div class="text-lg font-semibold text-foreground">
-								{lastTriggerResult.dry_run ? 'Dry Run' : 'Executed'}
-							</div>
-						</div>
-						<div class="p-4 bg-muted rounded-lg">
-							<div class="text-sm text-muted-foreground">Users Processed</div>
-							<div class="text-lg font-semibold text-foreground">
-								{lastTriggerResult.users_processed}
-							</div>
-						</div>
-						<div class="p-4 bg-muted rounded-lg">
-							<div class="text-sm text-muted-foreground">Jobs Queued</div>
-							<div class="text-lg font-semibold text-foreground">
-								{lastTriggerResult.jobs_queued || 0}
-							</div>
+				{#if selectedUsers.length > 0}
+					<div class="mt-4 p-3 bg-info/10 border border-info/30 rounded-lg">
+						<div class="text-sm text-info">
+							{selectedUsers.length} user{selectedUsers.length !== 1 ? 's' : ''} selected.
+							Leave empty to process ALL SMS-enabled users.
 						</div>
 					</div>
+				{/if}
+			</div>
 
-					<!-- Details -->
-					{#if lastTriggerResult.details?.length > 0}
+			<!-- Trigger Options -->
+			<div class="admin-panel p-6">
+				<h3 class="text-lg font-semibold text-foreground mb-4 flex items-center">
+					<Clock class="h-5 w-5 mr-2" />
+					Trigger Options
+				</h3>
+
+				<div class="space-y-4">
+					<!-- Dry Run -->
+					<label class="flex items-start gap-3">
+						<input
+							type="checkbox"
+							bind:checked={dryRun}
+							class="mt-1 h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						/>
 						<div>
-							<h4 class="font-medium text-foreground mb-2">User Details</h4>
-							<div class="border rounded-lg overflow-x-auto">
-								<table class="w-full text-sm">
+							<div class="font-medium text-foreground">Dry Run</div>
+							<div class="text-sm text-muted-foreground">
+								Preview what would happen without actually queueing jobs
+							</div>
+						</div>
+					</label>
+
+					<!-- Date Override -->
+					<div>
+						<label
+							for="override-date"
+							class="block text-sm font-medium text-foreground mb-1"
+						>
+							Override Date
+						</label>
+						<input
+							id="override-date"
+							type="date"
+							bind:value={overrideDate}
+							class="w-64 px-4 py-2 border border-border rounded-lg
+									focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						/>
+						<p class="text-sm text-muted-foreground mt-1">
+							Process calendar events for this date (user's timezone)
+						</p>
+					</div>
+
+					<!-- Skip Quiet Hours -->
+					<label class="flex items-start gap-3">
+						<input
+							type="checkbox"
+							bind:checked={skipQuietHours}
+							class="mt-1 h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						/>
+						<div>
+							<div class="font-medium text-foreground">Skip Quiet Hours Check</div>
+							<div class="text-sm text-muted-foreground">
+								Send messages even during user's quiet hours (testing only)
+							</div>
+						</div>
+					</label>
+
+					<!-- Skip Daily Limit -->
+					<label class="flex items-start gap-3">
+						<input
+							type="checkbox"
+							bind:checked={skipDailyLimit}
+							class="mt-1 h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						/>
+						<div>
+							<div class="font-medium text-foreground">Skip Daily SMS Limit</div>
+							<div class="text-sm text-muted-foreground">
+								Ignore user's daily SMS limit (testing only)
+							</div>
+						</div>
+					</label>
+
+					<!-- Calendar Preview Button -->
+					<div class="pt-4 border-t border-border">
+						<Button
+							onclick={fetchCalendarPreview}
+							disabled={isLoadingCalendarPreview || selectedUsers.length === 0}
+							variant="secondary"
+							class="w-full"
+						>
+							{#if isLoadingCalendarPreview}
+								<LoaderCircle
+									class="h-4 w-4 mr-2 animate-spin motion-reduce:animate-none"
+								/>
+								Loading Calendar Info...
+							{:else}
+								<Calendar class="h-4 w-4 mr-2" />
+								Check Calendar Info for Selected Users
+							{/if}
+						</Button>
+						{#if selectedUsers.length === 0}
+							<p class="text-xs text-muted-foreground mt-2 text-center">
+								Select users above to check their calendar info
+							</p>
+						{/if}
+					</div>
+				</div>
+			</div>
+
+			<!-- Calendar Preview Results -->
+			{#if showCalendarPreview && calendarPreviewResults.length > 0}
+				<div class="admin-panel p-6">
+					<div class="flex items-center justify-between mb-4">
+						<h3 class="text-lg font-semibold text-foreground">
+							Calendar Preview Results
+						</h3>
+						<button
+							type="button"
+							onclick={() => (showCalendarPreview = false)}
+							class="rounded-md text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							<XCircle class="h-5 w-5" />
+						</button>
+					</div>
+
+					<div class="space-y-4">
+						{#each calendarPreviewResults as result}
+							<div class="border border-border rounded-lg p-4 hover:bg-muted/50">
+								<!-- User Header -->
+								<div class="flex items-start justify-between mb-3">
+									<div>
+										<div class="font-medium text-foreground">
+											{result.user_email}
+										</div>
+										{#if result.user_name}
+											<div class="text-sm text-muted-foreground">
+												{result.user_name}
+											</div>
+										{/if}
+										<div class="text-xs text-muted-foreground mt-1">
+											Timezone: {result.timezone}
+										</div>
+									</div>
+									<div class="flex gap-2">
+										{#if result.calendar_connected}
+											<span
+												class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-success/10 text-success"
+											>
+												<CheckCircle class="h-3 w-3 mr-1" />
+												Calendar Connected
+											</span>
+										{:else}
+											<span
+												class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive"
+											>
+												<XCircle class="h-3 w-3 mr-1" />
+												No Calendar
+											</span>
+										{/if}
+									</div>
+								</div>
+
+								<!-- Stats Grid -->
+								{#if result.calendar_connected}
+									<div class="grid grid-cols-2 gap-3 mb-3 sm:grid-cols-4">
+										<div class="bg-muted p-3 rounded-md">
+											<div class="text-xs text-muted-foreground">
+												Total Events
+											</div>
+											<div class="text-lg font-semibold text-foreground">
+												{result.total_events}
+											</div>
+										</div>
+										<div class="bg-muted p-3 rounded-md">
+											<div class="text-xs text-muted-foreground">
+												Synced Events
+											</div>
+											<div class="text-lg font-semibold text-foreground">
+												{result.synced_events}
+											</div>
+										</div>
+										<div class="bg-success/10 p-3 rounded-md">
+											<div class="text-xs text-success font-medium">
+												Would Trigger SMS
+											</div>
+											<div class="text-lg font-semibold text-success">
+												{result.events_that_would_trigger_sms}
+											</div>
+										</div>
+										<div class="bg-muted p-3 rounded-md">
+											<div class="text-xs text-muted-foreground">
+												SMS Usage
+											</div>
+											<div class="text-lg font-semibold text-foreground">
+												{result.sms_preferences?.daily_sms_count ||
+													0}/{result.sms_preferences?.daily_sms_limit ||
+													10}
+											</div>
+										</div>
+									</div>
+
+									<!-- Events Skipped -->
+									{#if result.events_skipped.past_reminder_time > 0 || result.events_skipped.all_day > 0 || result.events_skipped.quiet_hours > 0 || result.events_skipped.no_start_time > 0}
+										<div class="mb-3">
+											<div class="text-sm font-medium text-foreground mb-2">
+												Events Skipped:
+											</div>
+											<div class="flex flex-wrap gap-2">
+												{#if result.events_skipped.past_reminder_time > 0}
+													<span
+														class="text-xs px-2 py-1 bg-muted rounded-md"
+													>
+														Past time: {result.events_skipped
+															.past_reminder_time}
+													</span>
+												{/if}
+												{#if result.events_skipped.all_day > 0}
+													<span
+														class="text-xs px-2 py-1 bg-muted rounded-md"
+													>
+														All-day: {result.events_skipped.all_day}
+													</span>
+												{/if}
+												{#if result.events_skipped.quiet_hours > 0}
+													<span
+														class="text-xs px-2 py-1 bg-muted rounded-md"
+													>
+														Quiet hours: {result.events_skipped
+															.quiet_hours}
+													</span>
+												{/if}
+												{#if result.events_skipped.no_start_time > 0}
+													<span
+														class="text-xs px-2 py-1 bg-muted rounded-md"
+													>
+														No start time: {result.events_skipped
+															.no_start_time}
+													</span>
+												{/if}
+											</div>
+										</div>
+									{/if}
+
+									<!-- Event Details -->
+									{#if result.event_details.length > 0}
+										<details class="mt-3">
+											<summary
+												class="text-sm font-medium text-info cursor-pointer hover:underline"
+											>
+												View {result.event_details.length} Event Details
+											</summary>
+											<div class="mt-2 space-y-2 max-h-64 overflow-y-auto">
+												{#each result.event_details as event}
+													<div
+														class="text-sm p-2 rounded-md {event.would_trigger_sms
+															? 'bg-success/10 border border-success/30'
+															: 'bg-muted border border-border'}"
+													>
+														<div
+															class="flex items-start justify-between gap-2"
+														>
+															<div class="flex-1">
+																<div
+																	class="font-medium text-foreground"
+																>
+																	{event.event_title}
+																</div>
+																<div
+																	class="text-xs text-muted-foreground"
+																>
+																	{format(
+																		new Date(event.event_start),
+																		'MMM d, yyyy h:mm a'
+																	)}
+																</div>
+																{#if event.reminder_time}
+																	<div
+																		class="text-xs text-success"
+																	>
+																		SMS would send at: {format(
+																			new Date(
+																				event.reminder_time
+																			),
+																			'h:mm a'
+																		)}
+																	</div>
+																{/if}
+															</div>
+															<div>
+																{#if event.would_trigger_sms}
+																	<CheckCircle
+																		class="h-4 w-4 text-success"
+																	/>
+																{:else}
+																	<span
+																		class="text-xs px-2 py-1 bg-muted rounded-md"
+																	>
+																		{event.skip_reason}
+																	</span>
+																{/if}
+															</div>
+														</div>
+													</div>
+												{/each}
+											</div>
+										</details>
+									{/if}
+								{/if}
+
+								<!-- Errors -->
+								{#if result.errors.length > 0}
+									<div class="mt-3">
+										{#each result.errors as error}
+											<div
+												class="text-sm text-destructive bg-destructive/10 p-2 rounded-md flex items-center gap-2"
+											>
+												<AlertTriangle class="h-4 w-4 flex-shrink-0" />
+												{error}
+											</div>
+										{/each}
+									</div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			<!-- Action Buttons -->
+			<div class="flex justify-end gap-4">
+				<Button variant="ghost" onclick={resetOptions}>Reset Options</Button>
+				<Button
+					onclick={triggerScheduler}
+					disabled={isTriggering}
+					variant={dryRun ? 'secondary' : 'primary'}
+					icon={Play}
+					loading={isTriggering}
+				>
+					{#if isTriggering}
+						Triggering...
+					{:else if dryRun}
+						Run Dry Test
+					{:else}
+						Execute Trigger
+					{/if}
+				</Button>
+			</div>
+		</div>
+	{:else if activeTab === 'results'}
+		<!-- Results Tab -->
+		{#if lastTriggerResult}
+			<div class="admin-panel p-6">
+				<h3 class="text-lg font-semibold text-foreground mb-4">Trigger Results</h3>
+
+				<!-- Summary -->
+				<div class="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-3">
+					<div class="p-4 bg-muted rounded-lg">
+						<div class="text-sm text-muted-foreground">Mode</div>
+						<div class="text-lg font-semibold text-foreground">
+							{lastTriggerResult.dry_run ? 'Dry Run' : 'Executed'}
+						</div>
+					</div>
+					<div class="p-4 bg-muted rounded-lg">
+						<div class="text-sm text-muted-foreground">Users Processed</div>
+						<div class="text-lg font-semibold text-foreground">
+							{lastTriggerResult.users_processed}
+						</div>
+					</div>
+					<div class="p-4 bg-muted rounded-lg">
+						<div class="text-sm text-muted-foreground">Jobs Queued</div>
+						<div class="text-lg font-semibold text-foreground">
+							{lastTriggerResult.jobs_queued || 0}
+						</div>
+					</div>
+				</div>
+
+				<!-- Details -->
+				{#if lastTriggerResult.details?.length > 0}
+					<div>
+						<h4 class="font-medium text-foreground mb-2">User Details</h4>
+
+						<!-- Mobile card list -->
+						<div
+							class="block lg:hidden border border-border rounded-lg divide-y divide-border"
+						>
+							{#each lastTriggerResult.details as detail}
+								<div class="p-3 space-y-3">
+									<div class="flex items-start justify-between gap-2">
+										<div class="font-mono text-xs text-foreground">
+											{detail.user_id.slice(0, 8)}...
+										</div>
+										{#if detail.queued}
+											<span
+												class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-success/10 text-success flex-shrink-0"
+											>
+												<CheckCircle class="h-3 w-3 mr-1" />
+												Queued
+											</span>
+										{:else if detail.would_queue}
+											<span
+												class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-foreground dark:text-muted-foreground flex-shrink-0"
+											>
+												Would Queue
+											</span>
+										{:else if detail.error}
+											<span
+												class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive flex-shrink-0"
+											>
+												<XCircle class="h-3 w-3 mr-1" />
+												Failed
+											</span>
+										{/if}
+									</div>
+									<div class="grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
+										<div>
+											<div
+												class="text-xs text-muted-foreground uppercase tracking-wider"
+											>
+												Timezone
+											</div>
+											<div class="text-foreground">{detail.timezone}</div>
+										</div>
+										<div>
+											<div
+												class="text-xs text-muted-foreground uppercase tracking-wider"
+											>
+												Lead Time
+											</div>
+											<div class="text-foreground">
+												{detail.lead_time_minutes} min
+											</div>
+										</div>
+									</div>
+								</div>
+							{/each}
+						</div>
+
+						<!-- Desktop table -->
+						<div
+							class="hidden lg:block border border-border rounded-lg overflow-x-auto"
+						>
+							<table class="w-full text-sm">
+								<thead class="bg-muted">
+									<tr>
+										<th class="text-left p-3 font-medium text-foreground">
+											User ID
+										</th>
+										<th class="text-left p-3 font-medium text-foreground">
+											Timezone
+										</th>
+										<th class="text-left p-3 font-medium text-foreground">
+											Lead Time
+										</th>
+										<th class="text-left p-3 font-medium text-foreground">
+											Status
+										</th>
+									</tr>
+								</thead>
+								<tbody class="divide-y divide-border">
+									{#each lastTriggerResult.details as detail}
+										<tr class="hover:bg-muted/50">
+											<td class="p-3 font-mono text-xs text-foreground">
+												{detail.user_id.slice(0, 8)}...
+											</td>
+											<td class="p-3 text-foreground">
+												{detail.timezone}
+											</td>
+											<td class="p-3 text-foreground">
+												{detail.lead_time_minutes} min
+											</td>
+											<td class="p-3">
+												{#if detail.queued}
+													<span
+														class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-success/10 text-success"
+													>
+														<CheckCircle class="h-3 w-3 mr-1" />
+														Queued
+													</span>
+												{:else if detail.would_queue}
+													<span
+														class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-foreground dark:text-muted-foreground"
+													>
+														Would Queue
+													</span>
+												{:else if detail.error}
+													<span
+														class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive"
+													>
+														<XCircle class="h-3 w-3 mr-1" />
+														Failed
+													</span>
+												{/if}
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				{/if}
+			</div>
+		{:else}
+			<div class="bg-muted rounded-lg p-8 text-center">
+				<AlertCircle class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+				<p class="text-muted-foreground">
+					No trigger results yet. Run a trigger to see results here.
+				</p>
+			</div>
+		{/if}
+	{:else if activeTab === 'monitor'}
+		<!-- Monitor Tab -->
+		{#if jobStatuses.size > 0}
+			<div class="space-y-4">
+				{#each Array.from(jobStatuses.entries()) as [userId, status]}
+					<div class="admin-panel p-4">
+						<div class="flex items-start justify-between mb-3">
+							<div>
+								<div class="font-mono text-xs text-muted-foreground">
+									User: {userId.slice(0, 8)}...
+								</div>
+								<div class="text-sm font-medium text-foreground">
+									{status.message_count} message{status.message_count !== 1
+										? 's'
+										: ''} scheduled
+								</div>
+							</div>
+							{#if isPolling}
+								<span
+									class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-info/10 text-info animate-pulse motion-reduce:animate-none"
+								>
+									<LoaderCircle
+										class="h-3 w-3 mr-1 animate-spin motion-reduce:animate-none"
+									/>
+									Polling...
+								</span>
+							{/if}
+						</div>
+
+						{#if status.messages && status.messages.length > 0}
+							<!-- Mobile card list -->
+							<div
+								class="block lg:hidden border border-border rounded-lg divide-y divide-border"
+							>
+								{#each status.messages as msg}
+									<div class="p-3 space-y-3">
+										<div class="flex items-start justify-between gap-2">
+											<div class="text-xs text-muted-foreground">
+												{format(new Date(msg.scheduled_for), 'HH:mm')}
+											</div>
+											<span
+												class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium flex-shrink-0
+													{msg.status === 'sent'
+													? 'bg-success/10 text-success'
+													: msg.status === 'failed'
+														? 'bg-destructive/10 text-destructive'
+														: msg.status === 'cancelled'
+															? 'bg-muted text-foreground dark:text-muted-foreground'
+															: 'bg-warning/10 text-warning'}"
+											>
+												{msg.status}
+											</span>
+										</div>
+										<div>
+											<div
+												class="text-xs text-muted-foreground uppercase tracking-wider"
+											>
+												Event
+											</div>
+											<div class="text-xs text-foreground break-words">
+												{msg.event_title}
+											</div>
+										</div>
+										<div>
+											<div
+												class="text-xs text-muted-foreground uppercase tracking-wider"
+											>
+												Message
+											</div>
+											<div class="text-xs text-foreground break-words">
+												{msg.message_content}
+											</div>
+										</div>
+									</div>
+								{/each}
+							</div>
+
+							<!-- Desktop table -->
+							<div
+								class="hidden lg:block border border-border rounded-lg overflow-x-auto"
+							>
+								<table class="w-full text-xs">
 									<thead class="bg-muted">
 										<tr>
-											<th class="text-left p-3 font-medium text-foreground">
-												User ID
-											</th>
-											<th class="text-left p-3 font-medium text-foreground">
-												Timezone
-											</th>
-											<th class="text-left p-3 font-medium text-foreground">
-												Lead Time
-											</th>
-											<th class="text-left p-3 font-medium text-foreground">
-												Status
-											</th>
+											<th class="text-left p-2 font-medium">Time</th>
+											<th class="text-left p-2 font-medium">Event</th>
+											<th class="text-left p-2 font-medium">Message</th>
+											<th class="text-left p-2 font-medium">Status</th>
 										</tr>
 									</thead>
 									<tbody class="divide-y divide-border">
-										{#each lastTriggerResult.details as detail}
-											<tr class="hover:bg-muted/50">
-												<td class="p-3 font-mono text-xs text-foreground">
-													{detail.user_id.slice(0, 8)}...
+										{#each status.messages as msg}
+											<tr>
+												<td class="p-2">
+													{format(new Date(msg.scheduled_for), 'HH:mm')}
 												</td>
-												<td class="p-3 text-foreground">
-													{detail.timezone}
+												<td class="p-2 max-w-[200px] truncate">
+													{msg.event_title}
 												</td>
-												<td class="p-3 text-foreground">
-													{detail.lead_time_minutes} min
+												<td class="p-2 max-w-[300px] truncate">
+													{msg.message_content}
 												</td>
-												<td class="p-3">
-													{#if detail.queued}
-														<span
-															class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-success/10 text-success"
-														>
-															<CheckCircle class="h-3 w-3 mr-1" />
-															Queued
-														</span>
-													{:else if detail.would_queue}
-														<span
-															class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-foreground dark:text-muted-foreground"
-														>
-															Would Queue
-														</span>
-													{:else if detail.error}
-														<span
-															class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive"
-														>
-															<XCircle class="h-3 w-3 mr-1" />
-															Failed
-														</span>
-													{/if}
+												<td class="p-2">
+													<span
+														class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium
+															{msg.status === 'sent'
+															? 'bg-success/10 text-success'
+															: msg.status === 'failed'
+																? 'bg-destructive/10 text-destructive'
+																: msg.status === 'cancelled'
+																	? 'bg-muted text-foreground dark:text-muted-foreground'
+																	: 'bg-warning/10 text-warning'}"
+													>
+														{msg.status}
+													</span>
 												</td>
 											</tr>
 										{/each}
 									</tbody>
 								</table>
 							</div>
-						</div>
-					{/if}
-				</div>
-			{:else}
-				<div class="bg-muted rounded-lg p-8 text-center">
-					<AlertCircle class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-					<p class="text-muted-foreground">
-						No trigger results yet. Run a trigger to see results here.
-					</p>
-				</div>
-			{/if}
-		{:else if activeTab === 'monitor'}
-			<!-- Monitor Tab -->
-			{#if jobStatuses.size > 0}
-				<div class="space-y-4">
-					{#each Array.from(jobStatuses.entries()) as [userId, status]}
-						<div class="admin-panel p-4">
-							<div class="flex items-start justify-between mb-3">
-								<div>
-									<div class="font-mono text-xs text-muted-foreground">
-										User: {userId.slice(0, 8)}...
-									</div>
-									<div class="text-sm font-medium text-foreground">
-										{status.message_count} message{status.message_count !== 1
-											? 's'
-											: ''} scheduled
-									</div>
-								</div>
-								{#if isPolling}
-									<span
-										class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-info/10 text-info animate-pulse motion-reduce:animate-none"
-									>
-										<LoaderCircle
-											class="h-3 w-3 mr-1 animate-spin motion-reduce:animate-none"
-										/>
-										Polling...
-									</span>
-								{/if}
-							</div>
-
-							{#if status.messages && status.messages.length > 0}
-								<div class="border rounded-lg overflow-x-auto">
-									<table class="w-full text-xs">
-										<thead class="bg-muted">
-											<tr>
-												<th class="text-left p-2 font-medium">Time</th>
-												<th class="text-left p-2 font-medium">Event</th>
-												<th class="text-left p-2 font-medium">Message</th>
-												<th class="text-left p-2 font-medium">Status</th>
-											</tr>
-										</thead>
-										<tbody class="divide-y divide-border">
-											{#each status.messages as msg}
-												<tr>
-													<td class="p-2">
-														{format(
-															new Date(msg.scheduled_for),
-															'HH:mm'
-														)}
-													</td>
-													<td class="p-2 max-w-[200px] truncate">
-														{msg.event_title}
-													</td>
-													<td class="p-2 max-w-[300px] truncate">
-														{msg.message_content}
-													</td>
-													<td class="p-2">
-														<span
-															class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium
-															{msg.status === 'sent'
-																? 'bg-success/10 text-success'
-																: msg.status === 'failed'
-																	? 'bg-destructive/10 text-destructive'
-																	: msg.status === 'cancelled'
-																		? 'bg-muted text-foreground dark:text-muted-foreground'
-																		: 'bg-warning/10 text-warning'}"
-														>
-															{msg.status}
-														</span>
-													</td>
-												</tr>
-											{/each}
-										</tbody>
-									</table>
-								</div>
-							{/if}
-						</div>
-					{/each}
-				</div>
-
-				{#if isPolling}
-					<div class="flex justify-center mt-4">
-						<Button variant="ghost" onclick={stopPollingJobStatus}>Stop Polling</Button>
+						{/if}
 					</div>
-				{/if}
-			{:else}
-				<div class="bg-muted rounded-lg p-8 text-center">
-					<Eye class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-					<p class="text-muted-foreground">
-						No jobs being monitored. Execute a trigger (not dry run) to see live job
-						status.
-					</p>
+				{/each}
+			</div>
+
+			{#if isPolling}
+				<div class="flex justify-center mt-4">
+					<Button variant="ghost" onclick={stopPollingJobStatus}>Stop Polling</Button>
 				</div>
 			{/if}
+		{:else}
+			<div class="bg-muted rounded-lg p-8 text-center">
+				<Eye class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+				<p class="text-muted-foreground">
+					No jobs being monitored. Execute a trigger (not dry run) to see live job status.
+				</p>
+			</div>
 		{/if}
-	</div>
+	{/if}
 </div>

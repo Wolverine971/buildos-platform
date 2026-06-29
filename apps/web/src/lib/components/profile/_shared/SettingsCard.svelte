@@ -43,12 +43,12 @@
 			<div class="flex-1 min-w-0">
 				<h3
 					id={labelledById || undefined}
-					class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
+					class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2 min-w-0"
 				>
 					{#if Icon}
 						<Icon class="w-4 h-4 {iconClass} flex-shrink-0" />
 					{/if}
-					{title}
+					<span class="truncate">{title}</span>
 				</h3>
 				{#if description}
 					<p class="text-xs text-muted-foreground mt-0.5">{description}</p>

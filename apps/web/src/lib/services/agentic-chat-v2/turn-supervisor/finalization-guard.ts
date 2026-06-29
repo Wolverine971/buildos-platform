@@ -167,6 +167,10 @@ function buildReadEvidenceFallbackText(params: {
 	toolExecutions?: FastToolExecution[] | null;
 }): string {
 	const executions = params.toolExecutions ?? [];
+	const workspaceText = buildWorkspaceOverviewFallbackText(executions);
+	if (workspaceText) {
+		return workspaceText;
+	}
 	const evidence = collectEvidenceItems(executions).slice(0, 5);
 	const notes = collectReadFailureNotes(executions).slice(0, 2);
 	if (evidence.length === 0 && notes.length === 0) {
@@ -181,6 +185,124 @@ function buildReadEvidenceFallbackText(params: {
 		parts.push(`Also: ${notes.join('; ')}.`);
 	}
 	return parts.join(' ');
+}
+
+type WorkspaceProjectFallback = {
+	name: string;
+	copies: number;
+	overdue: number;
+	dueSoon: number;
+	blocked: number;
+	recent: number;
+	nextStep: string | null;
+	firstIndex: number;
+};
+
+function buildWorkspaceOverviewFallbackText(executions: FastToolExecution[]): string {
+	const payload = [...executions]
+		.reverse()
+		.map((execution) => execution.result.result)
+		.find(
+			(result): result is Record<string, unknown> =>
+				Boolean(result) &&
+				typeof result === 'object' &&
+				!Array.isArray(result) &&
+				(result as Record<string, unknown>).scope === 'workspace' &&
+				Array.isArray((result as Record<string, unknown>).projects)
+		);
+	if (!payload) return '';
+
+	const projects = Array.isArray(payload.projects) ? payload.projects : [];
+	const snapshot =
+		payload.snapshot && typeof payload.snapshot === 'object' && !Array.isArray(payload.snapshot)
+			? (payload.snapshot as Record<string, unknown>)
+			: null;
+	const returnedProjects =
+		typeof payload.projects_returned === 'number'
+			? payload.projects_returned
+			: typeof snapshot?.returned_projects === 'number'
+				? snapshot.returned_projects
+				: projects.length;
+	const totalProjects =
+		typeof snapshot?.total_accessible_projects === 'number'
+			? snapshot.total_accessible_projects
+			: returnedProjects;
+	const maybeMore =
+		typeof payload.maybe_more === 'boolean'
+			? payload.maybe_more
+			: Boolean(snapshot?.has_more_projects);
+
+	const grouped = new Map<string, WorkspaceProjectFallback>();
+	projects.forEach((project, index) => {
+		if (!project || typeof project !== 'object' || Array.isArray(project)) return;
+		const record = project as Record<string, unknown>;
+		const name = typeof record.name === 'string' ? record.name.trim() : '';
+		if (!name) return;
+		const counts =
+			record.counts && typeof record.counts === 'object' && !Array.isArray(record.counts)
+				? (record.counts as Record<string, unknown>)
+				: {};
+		const existing = grouped.get(name) ?? {
+			name,
+			copies: 0,
+			overdue: 0,
+			dueSoon: 0,
+			blocked: 0,
+			recent: 0,
+			nextStep: null,
+			firstIndex: index
+		};
+		existing.copies += 1;
+		existing.overdue += numberValue(counts.overdue_tasks);
+		existing.dueSoon += numberValue(counts.due_soon_tasks);
+		existing.blocked += numberValue(counts.blocked_tasks);
+		existing.recent += Array.isArray(record.recent_activity)
+			? record.recent_activity.length
+			: 0;
+		if (!existing.nextStep && typeof record.next_step_short === 'string') {
+			const nextStep = record.next_step_short.trim();
+			existing.nextStep = nextStep || null;
+		}
+		grouped.set(name, existing);
+	});
+
+	const topProjects = Array.from(grouped.values())
+		.sort((a, b) => {
+			const aScore = a.overdue * 5 + a.dueSoon * 4 + a.blocked * 3 + a.recent;
+			const bScore = b.overdue * 5 + b.dueSoon * 4 + b.blocked * 3 + b.recent;
+			return bScore - aScore || a.firstIndex - b.firstIndex;
+		})
+		.slice(0, 6)
+		.map(formatWorkspaceProjectFallback)
+		.filter(Boolean);
+
+	const snapshotText = maybeMore
+		? `showing ${returnedProjects} of ${totalProjects} accessible projects`
+		: `showing ${returnedProjects} accessible ${returnedProjects === 1 ? 'project' : 'projects'}`;
+	const parts = [
+		`I loaded a workspace overview before the turn ended: ${snapshotText}. Snapshot totals cover only the returned projects.`
+	];
+	if (topProjects.length > 0) {
+		parts.push(`Top signals: ${topProjects.join('; ')}.`);
+	}
+	return parts.join(' ');
+}
+
+function numberValue(value: unknown): number {
+	return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function formatWorkspaceProjectFallback(project: WorkspaceProjectFallback): string {
+	const signals = [
+		project.overdue > 0 ? `${project.overdue} overdue` : null,
+		project.dueSoon > 0 ? `${project.dueSoon} due soon` : null,
+		project.blocked > 0 ? `${project.blocked} blocked` : null,
+		project.recent > 0 ? `${project.recent} recent changes` : null
+	].filter(Boolean);
+	const copyText = project.copies > 1 ? ` (${project.copies} copies)` : '';
+	const signalText = signals.length > 0 ? signals.join(', ') : 'no urgent counts in snapshot';
+	const nextStep = project.nextStep ? `, next: ${project.nextStep}` : '';
+	return `${project.name}${copyText} - ${signalText}${nextStep}`;
 }
 
 function collectEvidenceItems(executions: FastToolExecution[]): EvidenceItem[] {

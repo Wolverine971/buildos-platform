@@ -121,7 +121,6 @@ describe('decideProjectSuggestion', () => {
 				{ data: pendingSuggestion({ status: 'superseded' }), error: null }
 			]
 		});
-
 		const outcome = await decideProjectSuggestion({
 			supabase,
 			userId: 'user-1',
@@ -171,13 +170,20 @@ describe('decideProjectSuggestion', () => {
 			],
 			project_loop_runs: [{ data: { chat_session_id: 'chat-1' }, error: null }]
 		});
+		const routeFetchMock = vi.fn().mockResolvedValue(
+			new Response(JSON.stringify({ data: { ok: true } }), {
+				status: 200,
+				headers: { 'content-type': 'application/json' }
+			})
+		);
 
 		const outcome = await decideProjectSuggestion({
 			supabase,
 			userId: 'user-1',
 			projectId: 'project-1',
 			suggestionId: 'suggestion-1',
-			action: 'approve'
+			action: 'approve',
+			fetchFn: routeFetchMock
 		});
 
 		expect(outcome).toMatchObject({
@@ -197,24 +203,13 @@ describe('decideProjectSuggestion', () => {
 			})
 		);
 
-		const fetchMock = vi.fn().mockResolvedValue(
-			new Response(JSON.stringify({ data: { ok: true } }), {
-				status: 200,
-				headers: { 'content-type': 'application/json' }
-			})
-		);
-		vi.stubGlobal('fetch', fetchMock);
 		const fetchFn = mocks.chatExecutorConstructor.mock.calls[0][3] as typeof fetch;
 		await fetchFn('/api/test', { headers: { 'Content-Type': 'application/json' } });
 
-		expect(fetchMock).toHaveBeenCalledWith(
-			'/api/test',
-			expect.objectContaining({
-				headers: expect.objectContaining({
-					'Content-Type': 'application/json',
-					'X-Skip-Project-Loop-Burst': 'true'
-				})
-			})
-		);
+		expect(routeFetchMock).toHaveBeenCalledWith('/api/test', expect.any(Object));
+		const replayInit = routeFetchMock.mock.calls[0][1] as RequestInit;
+		const replayHeaders = new Headers(replayInit.headers);
+		expect(replayHeaders.get('Content-Type')).toBe('application/json');
+		expect(replayHeaders.get('X-Skip-Project-Loop-Burst')).toBe('true');
 	});
 });

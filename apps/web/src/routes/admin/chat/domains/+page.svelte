@@ -552,7 +552,145 @@
 					</p>
 				</div>
 			{:else}
-				<div class="overflow-x-auto">
+				<!-- Mobile card list -->
+				<div class="block space-y-3 p-4 lg:hidden">
+					{#each queueRows as row}
+						<div class="rounded-lg border border-border bg-background p-3">
+							<div class="flex flex-wrap items-center gap-2">
+								<span class="font-mono text-xs text-muted-foreground break-all"
+									>{row.queue_key}</span
+								>
+								<span
+									class="rounded border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+								>
+									{formatLabel(row.kind)}
+								</span>
+								<span
+									class="rounded border px-2 py-0.5 text-xs font-semibold {statusClass(
+										row.status
+									)}"
+								>
+									{formatLabel(row.status)}
+								</span>
+							</div>
+							<p class="mt-2 font-medium text-foreground">{row.summary}</p>
+							<p class="mt-1 line-clamp-2 text-xs text-muted-foreground">
+								{row.user_need}
+							</p>
+							{#if row.domain_ids.length > 0}
+								<div class="mt-2 flex flex-wrap gap-1">
+									{#each row.domain_ids as domainId}
+										<span
+											class="rounded-md bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground break-all"
+										>
+											{domainId}
+										</span>
+									{/each}
+								</div>
+							{/if}
+							<p class="mt-2 text-xs text-muted-foreground">
+								<span class="font-semibold text-foreground"
+									>{formatNumber(row.occurrences)}</span
+								>
+								occurrences ·
+								<span class="font-semibold text-foreground"
+									>{formatNumber(row.source_user_count)}</span
+								>
+								users ·
+								<span class="font-semibold text-foreground"
+									>{formatNumber(row.source_session_ids.length)}</span
+								> sessions
+							</p>
+							<p class="mt-1 text-xs text-muted-foreground">
+								{formatDateTime(row.last_seen_at)}
+								{#if row.claimed_by}· Claimed by {row.claimed_by}{/if}
+							</p>
+							<div class="mt-3 flex flex-wrap items-center gap-2">
+								<Select
+									value={row.priority}
+									onchange={(value) =>
+										updateQueueItem(row, {
+											priority: String(value) as DomainResearchQueuePriority
+										})}
+									size="sm"
+									disabled={updatingId === row.id}
+									aria-label="Update priority"
+									class="min-w-32"
+								>
+									<option value="high">High</option>
+									<option value="medium">Medium</option>
+									<option value="low">Low</option>
+								</Select>
+								{#if row.status === 'queued'}
+									<Button
+										onclick={() =>
+											updateQueueItem(row, { status: 'researching' })}
+										disabled={updatingId === row.id}
+										variant="outline"
+										size="sm"
+										icon={PlayCircle}
+										loading={updatingId === row.id}
+									>
+										Claim
+									</Button>
+								{/if}
+								{#if row.status === 'researching'}
+									<Button
+										onclick={() =>
+											updateQueueItem(row, { status: 'draft_ready' })}
+										disabled={updatingId === row.id}
+										variant="outline"
+										size="sm"
+										icon={FileText}
+										loading={updatingId === row.id}
+									>
+										Draft
+									</Button>
+								{/if}
+								{#if row.status === 'draft_ready'}
+									<Button
+										onclick={() =>
+											updateQueueItem(row, { status: 'reviewing' })}
+										disabled={updatingId === row.id}
+										variant="outline"
+										size="sm"
+										icon={Eye}
+										loading={updatingId === row.id}
+									>
+										Review
+									</Button>
+								{/if}
+								{#if row.status === 'reviewing'}
+									<Button
+										onclick={() => updateQueueItem(row, { status: 'approved' })}
+										disabled={updatingId === row.id}
+										variant="success"
+										size="sm"
+										icon={CheckCircle}
+										loading={updatingId === row.id}
+									>
+										Approve
+									</Button>
+								{/if}
+								{#if row.status !== 'archived' && row.status !== 'approved'}
+									<Button
+										onclick={() => updateQueueItem(row, { status: 'archived' })}
+										disabled={updatingId === row.id}
+										variant="secondary"
+										size="sm"
+										icon={Archive}
+										loading={updatingId === row.id}
+									>
+										Archive
+									</Button>
+								{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
+
+				<!-- Desktop table -->
+				<div class="hidden overflow-x-auto lg:block">
 					<table class="min-w-full divide-y divide-border text-sm">
 						<thead class="bg-muted/40">
 							<tr

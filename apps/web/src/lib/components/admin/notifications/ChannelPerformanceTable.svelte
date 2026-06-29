@@ -67,7 +67,117 @@
 	{:else if data.length === 0}
 		<div class="p-4 text-center text-sm text-muted-foreground">No channel data available</div>
 	{:else}
-		<div class="overflow-x-auto">
+		<!-- Mobile card list -->
+		<div class="block lg:hidden divide-y divide-border">
+			{#each data as channel (channel.channel)}
+				<div class="p-3 space-y-3">
+					<span
+						class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getChannelBadgeColor(
+							channel.channel
+						)}"
+					>
+						{channel.channel}
+					</span>
+					<div class="grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Total
+							</div>
+							<div class="font-medium text-foreground">
+								{formatNumber(channel.total_sent)}
+							</div>
+							<div class="text-xs text-muted-foreground">
+								{formatNumber(channel.failed)} failed
+							</div>
+						</div>
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Sent
+							</div>
+							<div class="font-medium text-foreground">
+								{formatNumber(channel.sent)}
+							</div>
+						</div>
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Delivered
+							</div>
+							<div class="font-medium text-foreground">
+								{formatNumber(channel.delivered)}
+							</div>
+							<div class="text-xs text-muted-foreground">confirmed</div>
+						</div>
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Avg Time
+							</div>
+							<div class="text-foreground">
+								{formatTime(channel.avg_delivery_time_ms)}
+							</div>
+						</div>
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Success Rate
+							</div>
+							<div
+								class="text-sm font-medium {getSuccessRateColor(
+									channel.success_rate
+								)}"
+							>
+								{formatPercentage(channel.success_rate)}
+							</div>
+							<div class="w-16 bg-muted rounded-full h-1.5 mt-1">
+								<div
+									class="bg-info h-1.5 rounded-full"
+									style="width: {channel.success_rate ?? 0}%"
+								></div>
+							</div>
+						</div>
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Delivery Rate
+							</div>
+							<div
+								class="text-sm font-medium {getDeliveryRateColor(
+									channel.delivery_rate
+								)}"
+							>
+								{formatPercentage(channel.delivery_rate)}
+							</div>
+							<div class="w-16 bg-muted rounded-full h-1.5 mt-1">
+								<div
+									class="bg-success h-1.5 rounded-full"
+									style="width: {channel.delivery_rate ?? 0}%"
+								></div>
+							</div>
+						</div>
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Open Rate
+							</div>
+							<div class="text-foreground">{formatPercentage(channel.open_rate)}</div>
+							<div class="text-xs text-muted-foreground">
+								{formatNumber(channel.opened)} opened
+							</div>
+						</div>
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Click Rate
+							</div>
+							<div class="text-foreground">
+								{formatPercentage(channel.click_rate)}
+							</div>
+							<div class="text-xs text-muted-foreground">
+								{formatNumber(channel.clicked)} clicked
+							</div>
+						</div>
+					</div>
+				</div>
+			{/each}
+		</div>
+
+		<!-- Desktop table -->
+		<div class="hidden lg:block overflow-x-auto">
 			<table class="min-w-full divide-y divide-border">
 				<thead class="bg-muted">
 					<tr>
@@ -119,7 +229,7 @@
 					</tr>
 				</thead>
 				<tbody class="bg-card divide-y divide-border">
-					{#each data as channel}
+					{#each data as channel (channel.channel)}
 						<tr class="hover:bg-muted transition-colors">
 							<!-- Channel -->
 							<td class="px-3 py-2.5 whitespace-nowrap">

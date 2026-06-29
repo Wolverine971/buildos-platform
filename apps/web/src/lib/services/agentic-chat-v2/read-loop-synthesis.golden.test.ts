@@ -185,7 +185,7 @@ describe('force-synthesis golden behavior (Tier 3 item 8 baseline)', () => {
 		});
 
 		expect(out.forcedSynthesisPassIndex).toBeGreaterThanOrEqual(0);
-		expect(out.toolRounds).toBe(6);
+		expect(out.toolRounds).toBe(8);
 		expect(out.finalText).toBe('Final synthesized answer.');
 	});
 
@@ -198,7 +198,7 @@ describe('force-synthesis golden behavior (Tier 3 item 8 baseline)', () => {
 		});
 
 		expect(out.forcedSynthesisPassIndex).toBeGreaterThanOrEqual(0);
-		expect(out.toolRounds).toBe(6);
+		expect(out.toolRounds).toBe(8);
 		expect(out.finalText).toBe('Final synthesized answer.');
 	});
 
@@ -223,11 +223,11 @@ describe('force-synthesis golden behavior (Tier 3 item 8 baseline)', () => {
 			}
 		});
 
-		// Fires much later than the pure read loop (6): the write at round 3 reset the
+		// Fires much later than the pure read loop (8): the write at round 3 reset the
 		// counters and sticky-disabled the gateway read-loop block, so only the
 		// always-on supervisor remains to force synthesis.
 		expect(out.forcedSynthesisPassIndex).toBeGreaterThanOrEqual(0);
-		expect(out.toolRounds).toBe(11);
+		expect(out.toolRounds).toBe(15);
 		expect(out.finalText).toBe('Final synthesized answer.');
 	});
 });

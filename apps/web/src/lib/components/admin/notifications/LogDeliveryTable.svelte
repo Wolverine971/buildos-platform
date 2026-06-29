@@ -55,6 +55,8 @@
 
 	let { deliveries, loading = false, onViewDetails, onRetry, onResend }: Props = $props();
 
+	let hasActions = $derived(!!(onViewDetails || onRetry || onResend));
+
 	function formatDate(dateString: string | null): string {
 		if (!dateString) return 'N/A';
 		return new Date(dateString).toLocaleString();
@@ -134,7 +136,126 @@
 	{:else if deliveries.length === 0}
 		<div class="p-4 text-center text-sm text-muted-foreground">No deliveries found</div>
 	{:else}
-		<div class="overflow-x-auto">
+		<!-- Mobile card list -->
+		<div class="block lg:hidden divide-y divide-border">
+			{#each deliveries as delivery (delivery.id)}
+				<div class="p-3 space-y-3">
+					<div class="flex items-start justify-between gap-2">
+						<div class="min-w-0">
+							<div class="font-medium text-foreground">
+								{#if delivery.notification_events}
+									{delivery.notification_events.event_type
+										.replace(/_/g, ' ')
+										.replace(/\b\w/g, (l) => l.toUpperCase())}
+								{:else}
+									N/A
+								{/if}
+							</div>
+							{#if delivery.users}
+								<div class="text-xs text-muted-foreground truncate">
+									{delivery.users.name || 'N/A'} · {delivery.users.email}
+								</div>
+							{:else}
+								<div class="text-xs text-muted-foreground">N/A</div>
+							{/if}
+						</div>
+						<div class="flex flex-col items-end gap-1 flex-shrink-0">
+							<span
+								class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getChannelBadgeColor(
+									delivery.channel
+								)}"
+							>
+								{delivery.channel.toUpperCase()}
+							</span>
+							<span
+								class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getStatusBadgeColor(
+									delivery.status
+								)}"
+							>
+								{delivery.status.toUpperCase()}
+							</span>
+						</div>
+					</div>
+					{#if delivery.last_error}
+						<div class="text-xs text-destructive">
+							{delivery.last_error}
+						</div>
+					{/if}
+					<div>
+						<div class="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+							Timeline
+						</div>
+						<div class="flex items-center space-x-2">
+							{#each Object.entries(delivery.timeline) as [stage, timestamp]}
+								{#if stage !== 'created'}
+									{@const GetTimelineIconstage = getTimelineIcon(stage)}
+									<div
+										class="flex flex-col items-center"
+										title="{stage}: {formatDate(timestamp)}"
+									>
+										<GetTimelineIconstage
+											class="w-4 h-4 {getTimelineColor(stage, !!timestamp)}"
+										/>
+										<span class="text-xs text-muted-foreground mt-0.5"
+											>{stage}</span
+										>
+									</div>
+								{/if}
+							{/each}
+						</div>
+					</div>
+					<div>
+						<div class="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+							Performance
+						</div>
+						<div class="text-xs text-muted-foreground space-y-1">
+							<div>Send: {formatDuration(delivery.durations.to_send)}</div>
+							<div>Deliver: {formatDuration(delivery.durations.to_deliver)}</div>
+							{#if delivery.durations.to_open}
+								<div>Open: {formatDuration(delivery.durations.to_open)}</div>
+							{/if}
+						</div>
+					</div>
+					{#if hasActions}
+						<div class="flex flex-wrap gap-2">
+							{#if onViewDetails}
+								<Button
+									size="sm"
+									variant="ghost"
+									onclick={() => onViewDetails?.(delivery.id)}
+									icon={Eye}
+								>
+									View
+								</Button>
+							{/if}
+							{#if onRetry && delivery.status === 'failed'}
+								<Button
+									size="sm"
+									variant="ghost"
+									onclick={() => onRetry?.(delivery.id)}
+									icon={RotateCw}
+								>
+									Retry
+								</Button>
+							{/if}
+							{#if onResend}
+								<Button
+									size="sm"
+									variant="ghost"
+									onclick={() => onResend?.(delivery.id)}
+									icon={Send}
+								>
+									Resend
+								</Button>
+							{/if}
+						</div>
+					{/if}
+				</div>
+			{/each}
+		</div>
+
+		<!-- Desktop table -->
+		<div class="hidden lg:block overflow-x-auto">
 			<table class="min-w-full divide-y divide-border">
 				<thead class="bg-muted">
 					<tr>
@@ -168,15 +289,17 @@
 						>
 							Performance
 						</th>
-						<th
-							class="px-3 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
-						>
-							Actions
-						</th>
+						{#if hasActions}
+							<th
+								class="px-3 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							>
+								Actions
+							</th>
+						{/if}
 					</tr>
 				</thead>
 				<tbody class="bg-card divide-y divide-border">
-					{#each deliveries as delivery}
+					{#each deliveries as delivery (delivery.id)}
 						<tr class="hover:bg-muted transition-colors">
 							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								{#if delivery.notification_events}
@@ -260,42 +383,44 @@
 									{/if}
 								</div>
 							</td>
-							<td
-								class="px-3 py-2.5 whitespace-nowrap text-right text-sm font-medium"
-							>
-								<div class="flex justify-end space-x-2">
-									{#if onViewDetails}
-										<Button
-											size="sm"
-											variant="ghost"
-											onclick={() => onViewDetails?.(delivery.id)}
-											icon={Eye}
-										>
-											View
-										</Button>
-									{/if}
-									{#if onRetry && delivery.status === 'failed'}
-										<Button
-											size="sm"
-											variant="ghost"
-											onclick={() => onRetry?.(delivery.id)}
-											icon={RotateCw}
-										>
-											Retry
-										</Button>
-									{/if}
-									{#if onResend}
-										<Button
-											size="sm"
-											variant="ghost"
-											onclick={() => onResend?.(delivery.id)}
-											icon={Send}
-										>
-											Resend
-										</Button>
-									{/if}
-								</div>
-							</td>
+							{#if hasActions}
+								<td
+									class="px-3 py-2.5 whitespace-nowrap text-right text-sm font-medium"
+								>
+									<div class="flex justify-end space-x-2">
+										{#if onViewDetails}
+											<Button
+												size="sm"
+												variant="ghost"
+												onclick={() => onViewDetails?.(delivery.id)}
+												icon={Eye}
+											>
+												View
+											</Button>
+										{/if}
+										{#if onRetry && delivery.status === 'failed'}
+											<Button
+												size="sm"
+												variant="ghost"
+												onclick={() => onRetry?.(delivery.id)}
+												icon={RotateCw}
+											>
+												Retry
+											</Button>
+										{/if}
+										{#if onResend}
+											<Button
+												size="sm"
+												variant="ghost"
+												onclick={() => onResend?.(delivery.id)}
+												icon={Send}
+											>
+												Resend
+											</Button>
+										{/if}
+									</div>
+								</td>
+							{/if}
 						</tr>
 					{/each}
 				</tbody>

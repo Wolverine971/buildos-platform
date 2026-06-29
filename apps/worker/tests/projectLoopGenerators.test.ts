@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	generateDrift,
+	generateProjectBrief,
 	generateTaskConflicts,
 	type LoopContext
 } from '../src/workers/project-loop/generators';
@@ -48,9 +49,86 @@ function makeLlm(response: unknown): SmartLLMService {
 	} as unknown as SmartLLMService;
 }
 
+function makeTrackedLlm(response: unknown): {
+	llm: SmartLLMService;
+	getJSONResponse: ReturnType<typeof vi.fn>;
+} {
+	const getJSONResponse = vi.fn().mockResolvedValue(response);
+	return {
+		llm: { getJSONResponse } as unknown as SmartLLMService,
+		getJSONResponse
+	};
+}
+
 const onUsage = vi.fn(async () => undefined);
 
 describe('project loop generators', () => {
+	it('passes project loop attribution to suggestion LLM calls', async () => {
+		const { llm, getJSONResponse } = makeTrackedLlm({ suggestions: [] });
+
+		await generateTaskConflicts({
+			llm,
+			ctx: makeContext(),
+			userId: 'user-1',
+			chatSessionId: 'chat-1',
+			runId: 'run-1',
+			onUsage
+		});
+
+		expect(getJSONResponse).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userId: 'user-1',
+				operationType: 'project_loop_task_conflicts',
+				projectId: 'project-1',
+				chatSessionId: 'chat-1',
+				metadata: expect.objectContaining({
+					project_loop: true,
+					project_loop_run_id: 'run-1',
+					project_loop_generator: 'project_loop_task_conflicts',
+					onto_project_id: 'project-1'
+				})
+			})
+		);
+	});
+
+	it('passes project loop attribution to brief LLM calls', async () => {
+		const { llm, getJSONResponse } = makeTrackedLlm({
+			brief: {
+				current_goal: 'Ship v1',
+				recent_changes: ['Launch plan updated'],
+				open_decisions: [],
+				stale_assumptions: [],
+				contradictions_or_drift: [],
+				next_best_action: 'Publish the announcement'
+			}
+		});
+
+		await generateProjectBrief({
+			llm,
+			ctx: makeContext(),
+			userId: 'user-1',
+			chatSessionId: 'chat-1',
+			runId: 'run-1',
+			onUsage
+		});
+
+		expect(getJSONResponse).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userId: 'user-1',
+				operationType: 'project_loop_brief',
+				projectId: 'project-1',
+				chatSessionId: 'chat-1',
+				metadata: expect.objectContaining({
+					project_loop: true,
+					project_loop_brief: true,
+					project_loop_run_id: 'run-1',
+					project_loop_generator: 'project_loop_brief',
+					onto_project_id: 'project-1'
+				})
+			})
+		);
+	});
+
 	it('turns task conflicts into reversible non-destructive task flags', async () => {
 		const suggestions = await generateTaskConflicts({
 			llm: makeLlm({

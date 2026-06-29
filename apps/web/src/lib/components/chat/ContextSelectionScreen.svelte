@@ -24,6 +24,8 @@
 		MAX_PROJECT_SELECTOR_LIMIT,
 		PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS,
 		fetchProjectSelectionSummaries,
+		formatRelativeProjectUpdate,
+		groupProjectsByRecency,
 		normalizeProjectSelectionSearch,
 		type ProjectSelectionSummary
 	} from './project-selector-browser';
@@ -35,13 +37,12 @@
 	}
 
 	interface Props {
-		inModal?: boolean;
 		onNavigationChange?: (view: 'primary' | 'project-selection') => void;
 		onSelect?: (selection: ContextSelection) => void;
 	}
 
 	// Props - Svelte 5 callback pattern
-	let { inModal = true, onNavigationChange, onSelect }: Props = $props();
+	let { onNavigationChange, onSelect }: Props = $props();
 
 	// State
 	let selectedView: 'primary' | 'project-selection' = $state('primary');
@@ -60,7 +61,6 @@
 	const INACTIVE_PROJECT_STATE_KEYS = new Set(['archived', 'cancelled', 'paused']);
 	const PROJECT_LIST_LIMIT = DEFAULT_PROJECT_SELECTOR_LIMIT;
 	const PROJECT_SEARCH_LIMIT = MAX_PROJECT_SELECTOR_LIMIT;
-	const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
 	const normalizedProjectSearch = $derived(normalizeProjectSelectionSearch(projectSearchTerm));
 	const isProjectSearchActive = $derived(normalizedProjectSearch.length > 0);
 
@@ -211,66 +211,6 @@
 		})
 	);
 	const hasProjects = $derived(projects.length > 0);
-
-	function parseProjectUpdatedAt(project: ProjectSelectionSummary): number {
-		if (!project.updatedAt) return 0;
-		const timestamp = Date.parse(project.updatedAt);
-		return Number.isNaN(timestamp) ? 0 : timestamp;
-	}
-
-	function formatRelativeUpdate(value: string | null | undefined): string {
-		if (!value) return 'Updated recently';
-		const ms = Date.parse(value);
-		if (Number.isNaN(ms)) return 'Updated recently';
-
-		const diffMs = Date.now() - ms;
-		if (diffMs < 60_000) return 'Just now';
-
-		const diffMin = Math.floor(diffMs / 60_000);
-		if (diffMin < 60) return `${diffMin}m ago`;
-
-		const diffHr = Math.floor(diffMin / 60);
-		if (diffHr < 24) return `${diffHr}h ago`;
-
-		const diffDay = Math.floor(diffHr / 24);
-		if (diffDay < 7) return `${diffDay}d ago`;
-
-		const diffWk = Math.floor(diffDay / 7);
-		if (diffWk < 5) return `${diffWk}w ago`;
-
-		const diffMo = Math.floor(diffDay / 30);
-		if (diffMo < 12) return `${diffMo}mo ago`;
-
-		const diffYr = Math.floor(diffDay / 365);
-		return `${diffYr}y ago`;
-	}
-
-	type ProjectRecencyGroups = {
-		recent: ProjectSelectionSummary[];
-		olderThan7Days: ProjectSelectionSummary[];
-		olderThan30Days: ProjectSelectionSummary[];
-	};
-
-	function groupProjectsByRecency(items: ProjectSelectionSummary[]): ProjectRecencyGroups {
-		const now = Date.now();
-		const recent: ProjectSelectionSummary[] = [];
-		const olderThan7Days: ProjectSelectionSummary[] = [];
-		const olderThan30Days: ProjectSelectionSummary[] = [];
-
-		const sorted = [...items].sort(
-			(a, b) => parseProjectUpdatedAt(b) - parseProjectUpdatedAt(a)
-		);
-
-		for (const project of sorted) {
-			const ts = parseProjectUpdatedAt(project);
-			const ageDays = ts > 0 ? (now - ts) / MILLIS_PER_DAY : Number.POSITIVE_INFINITY;
-			if (ageDays >= 30) olderThan30Days.push(project);
-			else if (ageDays >= 7) olderThan7Days.push(project);
-			else recent.push(project);
-		}
-
-		return { recent, olderThan7Days, olderThan30Days };
-	}
 
 	const activeProjectsByRecency = $derived(groupProjectsByRecency(activeProjects));
 	const isNewUser = $derived(
@@ -574,7 +514,7 @@
 				{:else if activeProjects.length > 0}
 					{#snippet projectCard(project: ProjectSelectionSummary)}
 						{@const facetSummary = getFacetSummary(project)}
-						{@const relativeUpdated = formatRelativeUpdate(project.updatedAt)}
+						{@const relativeUpdated = formatRelativeProjectUpdate(project.updatedAt)}
 						{@const absoluteUpdated = project.updatedAt
 							? new Date(project.updatedAt).toLocaleString(undefined, {
 									month: 'short',

@@ -152,7 +152,7 @@
 <div class="space-y-6">
 	{#if isLoading}
 		<div class="flex flex-col items-center justify-center py-8 gap-2">
-			<Loader class="animate-spin h-6 w-6 text-accent" />
+			<Loader class="animate-spin motion-reduce:animate-none h-6 w-6 text-accent" />
 			<p class="text-sm text-muted-foreground">Loading SMS preferences...</p>
 		</div>
 	{:else}
@@ -244,7 +244,9 @@
 									</p>
 								</div>
 							</div>
-							<label class="relative inline-flex items-center cursor-pointer">
+							<label
+								class="relative inline-flex items-center cursor-pointer min-h-[44px]"
+							>
 								<input
 									type="checkbox"
 									id="event-reminders"
@@ -264,7 +266,7 @@
 										id="event-lead-time"
 										bind:value={eventReminderLeadTime}
 										disabled={isOptedOut}
-										class="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-ring focus:border-accent disabled:opacity-50 shadow-ink-inner"
+										class="w-full px-3 py-2.5 min-h-[44px] text-sm border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-ring focus:border-accent disabled:opacity-50 shadow-ink-inner"
 									>
 										<option value={5}>5 minutes before</option>
 										<option value={10}>10 minutes before</option>
@@ -296,7 +298,9 @@
 									</p>
 								</div>
 							</div>
-							<label class="relative inline-flex items-center cursor-pointer">
+							<label
+								class="relative inline-flex items-center cursor-pointer min-h-[44px]"
+							>
 								<input
 									type="checkbox"
 									id="morning-kickoff"
@@ -343,7 +347,9 @@
 								</p>
 							</div>
 						</div>
-						<label class="relative inline-flex items-center cursor-pointer">
+						<label
+							class="relative inline-flex items-center cursor-pointer min-h-[44px]"
+						>
 							<input
 								type="checkbox"
 								id="evening-recap"
@@ -375,7 +381,9 @@
 								</p>
 							</div>
 						</div>
-						<label class="relative inline-flex items-center cursor-pointer">
+						<label
+							class="relative inline-flex items-center cursor-pointer min-h-[44px]"
+						>
 							<input
 								type="checkbox"
 								id="urgent-alerts"
@@ -402,9 +410,9 @@
 							</div>
 						</div>
 						<div class="grid grid-cols-2 gap-3 ml-8">
-							<FormField label="Start Time" labelFor="quiet-start">
+							<FormField label="Start Time" labelFor="sms-quiet-start">
 								<TextInput
-									id="quiet-start"
+									id="sms-quiet-start"
 									type="time"
 									inputmode="numeric"
 									enterkeyhint="next"
@@ -412,9 +420,9 @@
 									disabled={isOptedOut}
 								/>
 							</FormField>
-							<FormField label="End Time" labelFor="quiet-end">
+							<FormField label="End Time" labelFor="sms-quiet-end">
 								<TextInput
-									id="quiet-end"
+									id="sms-quiet-end"
 									type="time"
 									inputmode="numeric"
 									enterkeyhint="done"
@@ -426,7 +434,9 @@
 					</div>
 
 					<!-- Save Button -->
-					<div class="flex justify-between items-center pt-4 border-t border-border">
+					<div
+						class="flex flex-wrap gap-3 justify-between items-center pt-4 border-t border-border"
+					>
 						<Button
 							onclick={savePreferences}
 							disabled={isSaving || isOptedOut}

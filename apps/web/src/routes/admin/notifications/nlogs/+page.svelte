@@ -240,271 +240,266 @@
 </svelte:head>
 
 <div class="admin-page">
-	<div class="admin-page">
-		<!-- Header -->
-		<AdminPageHeader
-			title="Notification Logs"
-			description="View event and delivery logs for all notifications"
-			icon={Eye}
-			showBack={true}
-		/>
+	<!-- Header -->
+	<AdminPageHeader
+		title="Notification Logs"
+		description="View event and delivery logs for all notifications"
+		icon={Eye}
+		showBack={true}
+	/>
 
-		<!-- Navigation Cards -->
-		<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-			<a
-				href="/admin/notifications"
-				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-			>
-				<div class="flex items-center">
-					<Bell class="h-8 w-8 text-info mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-foreground">Analytics</h3>
-						<p class="text-sm text-muted-foreground">View dashboard</p>
-					</div>
+	<!-- Navigation Cards -->
+	<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+		<a
+			href="/admin/notifications"
+			class="admin-panel p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		>
+			<div class="flex items-center">
+				<Bell class="h-8 w-8 text-info mr-3" />
+				<div>
+					<h3 class="text-lg font-semibold text-foreground">Analytics</h3>
+					<p class="text-sm text-muted-foreground">View dashboard</p>
 				</div>
-			</a>
-
-			<a
-				href="/admin/notifications/test-bed"
-				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-			>
-				<div class="flex items-center">
-					<Send class="h-8 w-8 text-success mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-foreground">Test Bed</h3>
-						<p class="text-sm text-muted-foreground">Send test notifications</p>
-					</div>
-				</div>
-			</a>
-
-			<a
-				href="/admin/notifications/nlogs"
-				class="bg-accent/10 border-2 border-accent/30 rounded-lg p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-			>
-				<div class="flex items-center">
-					<Eye class="h-8 w-8 text-accent mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-foreground">Logs</h3>
-						<p class="text-sm text-muted-foreground">Current page</p>
-					</div>
-				</div>
-			</a>
-		</div>
-
-		<!-- Auto Refresh Controls -->
-		<div class="mb-4 flex items-center justify-between">
-			<div class="flex items-center space-x-4">
-				<label class="flex items-center space-x-2 cursor-pointer">
-					<input
-						type="checkbox"
-						bind:checked={autoRefresh}
-						onchange={toggleAutoRefresh}
-						class="h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
-					/>
-					<span class="text-sm text-muted-foreground">Auto Refresh (30s)</span>
-				</label>
 			</div>
-			<Button
-				onclick={handleRefresh}
-				disabled={loading}
-				variant="secondary"
-				size="sm"
-				icon={RefreshCw}
-				{loading}
-			>
-				Refresh
-			</Button>
-		</div>
+		</a>
 
-		<!-- Tabs -->
-		<div class="admin-panel">
-			<div class="border-b border-border">
-				<nav
-					class="flex space-x-6 overflow-x-auto px-4 sm:space-x-8 sm:px-6"
-					aria-label="Tabs"
+		<a
+			href="/admin/notifications/test-bed"
+			class="admin-panel p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		>
+			<div class="flex items-center">
+				<Send class="h-8 w-8 text-success mr-3" />
+				<div>
+					<h3 class="text-lg font-semibold text-foreground">Test Bed</h3>
+					<p class="text-sm text-muted-foreground">Send test notifications</p>
+				</div>
+			</div>
+		</a>
+
+		<a
+			href="/admin/notifications/nlogs"
+			class="bg-accent/10 border-2 border-accent/30 rounded-lg p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		>
+			<div class="flex items-center">
+				<Eye class="h-8 w-8 text-accent mr-3" />
+				<div>
+					<h3 class="text-lg font-semibold text-foreground">Logs</h3>
+					<p class="text-sm text-muted-foreground">Current page</p>
+				</div>
+			</div>
+		</a>
+	</div>
+
+	<!-- Auto Refresh Controls -->
+	<div class="mb-4 flex items-center justify-between">
+		<div class="flex items-center space-x-4">
+			<label class="flex items-center space-x-2 cursor-pointer">
+				<input
+					type="checkbox"
+					bind:checked={autoRefresh}
+					onchange={toggleAutoRefresh}
+					class="h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+				/>
+				<span class="text-sm text-muted-foreground">Auto Refresh (30s)</span>
+			</label>
+		</div>
+		<Button
+			onclick={handleRefresh}
+			disabled={loading}
+			variant="secondary"
+			size="sm"
+			icon={RefreshCw}
+			{loading}
+		>
+			Refresh
+		</Button>
+	</div>
+
+	<!-- Tabs -->
+	<div class="admin-panel">
+		<div class="border-b border-border">
+			<nav class="flex space-x-6 overflow-x-auto px-4 sm:space-x-8 sm:px-6" aria-label="Tabs">
+				<button
+					type="button"
+					onclick={() => handleTabChange('events')}
+					class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {activeTab ===
+					'events'
+						? 'border-accent text-accent'
+						: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 				>
-					<button
-						type="button"
-						onclick={() => handleTabChange('events')}
-						class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {activeTab ===
-						'events'
-							? 'border-accent text-accent'
-							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
-					>
-						Event Log
-					</button>
-					<button
-						type="button"
-						onclick={() => handleTabChange('deliveries')}
-						class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {activeTab ===
-						'deliveries'
-							? 'border-accent text-accent'
-							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
-					>
-						Delivery Log
-					</button>
-					<button
-						type="button"
-						onclick={() => handleTabChange('system')}
-						class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {activeTab ===
-						'system'
-							? 'border-accent text-accent'
-							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
-					>
-						System Logs
-					</button>
-				</nav>
-			</div>
+					Event Log
+				</button>
+				<button
+					type="button"
+					onclick={() => handleTabChange('deliveries')}
+					class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {activeTab ===
+					'deliveries'
+						? 'border-accent text-accent'
+						: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
+				>
+					Delivery Log
+				</button>
+				<button
+					type="button"
+					onclick={() => handleTabChange('system')}
+					class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {activeTab ===
+					'system'
+						? 'border-accent text-accent'
+						: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
+				>
+					System Logs
+				</button>
+			</nav>
+		</div>
 
-			<div class="p-6 space-y-6">
-				<!-- Filters -->
-				{#if activeTab === 'events'}
-					<LogFilters
-						bind:filters={eventFilters}
-						config={{
-							showEventType: true,
-							showDateRange: true,
-							showSearch: false
-						}}
-						onFilterChange={handleFilterChange}
-						onClear={handleClearFilters}
-					/>
-				{:else if activeTab === 'deliveries'}
-					<LogFilters
-						bind:filters={deliveryFilters}
-						config={{
-							showChannel: true,
-							showStatus: true,
-							showDateRange: true,
-							showSearch: false
-						}}
-						onFilterChange={handleFilterChange}
-						onClear={handleClearFilters}
-					/>
-				{:else if activeTab === 'system'}
-					<LogFilters
-						bind:filters={systemFilters}
-						config={{
-							showLevel: true,
-							showNamespace: true,
-							showDateRange: true,
-							showSearch: true
-						}}
-						onFilterChange={handleFilterChange}
-						onClear={handleClearFilters}
-					/>
-				{/if}
+		<div class="p-6 space-y-6">
+			<!-- Filters -->
+			{#if activeTab === 'events'}
+				<LogFilters
+					bind:filters={eventFilters}
+					config={{
+						showEventType: true,
+						showDateRange: true,
+						showSearch: false
+					}}
+					onFilterChange={handleFilterChange}
+					onClear={handleClearFilters}
+				/>
+			{:else if activeTab === 'deliveries'}
+				<LogFilters
+					bind:filters={deliveryFilters}
+					config={{
+						showChannel: true,
+						showStatus: true,
+						showDateRange: true,
+						showSearch: false
+					}}
+					onFilterChange={handleFilterChange}
+					onClear={handleClearFilters}
+				/>
+			{:else if activeTab === 'system'}
+				<LogFilters
+					bind:filters={systemFilters}
+					config={{
+						showLevel: true,
+						showNamespace: true,
+						showDateRange: true,
+						showSearch: true
+					}}
+					onFilterChange={handleFilterChange}
+					onClear={handleClearFilters}
+				/>
+			{/if}
 
-				<!-- Tables -->
-				{#if activeTab === 'events'}
-					<LogEventTable {events} {loading} />
-				{:else if activeTab === 'deliveries'}
-					<LogDeliveryTable {deliveries} {loading} />
-				{:else if activeTab === 'system'}
-					<LogSystemTable
-						logs={systemLogs}
-						{loading}
-						onViewCorrelation={handleViewCorrelation}
-						onCopyCorrelationId={handleCopyCorrelationId}
-					/>
-				{/if}
+			<!-- Tables -->
+			{#if activeTab === 'events'}
+				<LogEventTable {events} {loading} />
+			{:else if activeTab === 'deliveries'}
+				<LogDeliveryTable {deliveries} {loading} />
+			{:else if activeTab === 'system'}
+				<LogSystemTable
+					logs={systemLogs}
+					{loading}
+					onViewCorrelation={handleViewCorrelation}
+					onCopyCorrelationId={handleCopyCorrelationId}
+				/>
+			{/if}
 
-				<!-- Pagination -->
-				{#if activeTab === 'events' && eventPagination.total_pages > 1}
-					<div class="flex items-center justify-between">
-						<div class="text-sm text-muted-foreground">
-							Showing page {eventPagination.page} of {eventPagination.total_pages} ({eventPagination.total}
-							total)
-						</div>
-						<div class="flex space-x-2">
-							<Button
-								disabled={eventPagination.page === 1}
-								onclick={() => {
-									eventPagination.page--;
-									loadEvents();
-								}}
-								variant="secondary"
-								size="sm"
-							>
-								Previous
-							</Button>
-							<Button
-								disabled={eventPagination.page >= eventPagination.total_pages}
-								onclick={() => {
-									eventPagination.page++;
-									loadEvents();
-								}}
-								variant="secondary"
-								size="sm"
-							>
-								Next
-							</Button>
-						</div>
+			<!-- Pagination -->
+			{#if activeTab === 'events' && eventPagination.total_pages > 1}
+				<div class="flex items-center justify-between">
+					<div class="text-sm text-muted-foreground">
+						Showing page {eventPagination.page} of {eventPagination.total_pages} ({eventPagination.total}
+						total)
 					</div>
-				{:else if activeTab === 'deliveries' && deliveryPagination.total_pages > 1}
-					<div class="flex items-center justify-between">
-						<div class="text-sm text-muted-foreground">
-							Showing page {deliveryPagination.page} of {deliveryPagination.total_pages}
-							({deliveryPagination.total} total)
-						</div>
-						<div class="flex space-x-2">
-							<Button
-								disabled={deliveryPagination.page === 1}
-								onclick={() => {
-									deliveryPagination.page--;
-									loadDeliveries();
-								}}
-								variant="secondary"
-								size="sm"
-							>
-								Previous
-							</Button>
-							<Button
-								disabled={deliveryPagination.page >= deliveryPagination.total_pages}
-								onclick={() => {
-									deliveryPagination.page++;
-									loadDeliveries();
-								}}
-								variant="secondary"
-								size="sm"
-							>
-								Next
-							</Button>
-						</div>
+					<div class="flex space-x-2">
+						<Button
+							disabled={eventPagination.page === 1}
+							onclick={() => {
+								eventPagination.page--;
+								loadEvents();
+							}}
+							variant="secondary"
+							size="sm"
+						>
+							Previous
+						</Button>
+						<Button
+							disabled={eventPagination.page >= eventPagination.total_pages}
+							onclick={() => {
+								eventPagination.page++;
+								loadEvents();
+							}}
+							variant="secondary"
+							size="sm"
+						>
+							Next
+						</Button>
 					</div>
-				{:else if activeTab === 'system' && systemPagination.total_pages > 1}
-					<div class="flex items-center justify-between">
-						<div class="text-sm text-muted-foreground">
-							Showing page {systemPagination.page} of {systemPagination.total_pages} ({systemPagination.total}
-							total)
-						</div>
-						<div class="flex space-x-2">
-							<Button
-								disabled={systemPagination.page === 1}
-								onclick={() => {
-									systemPagination.page--;
-									loadSystemLogs();
-								}}
-								variant="secondary"
-								size="sm"
-							>
-								Previous
-							</Button>
-							<Button
-								disabled={systemPagination.page >= systemPagination.total_pages}
-								onclick={() => {
-									systemPagination.page++;
-									loadSystemLogs();
-								}}
-								variant="secondary"
-								size="sm"
-							>
-								Next
-							</Button>
-						</div>
+				</div>
+			{:else if activeTab === 'deliveries' && deliveryPagination.total_pages > 1}
+				<div class="flex items-center justify-between">
+					<div class="text-sm text-muted-foreground">
+						Showing page {deliveryPagination.page} of {deliveryPagination.total_pages}
+						({deliveryPagination.total} total)
 					</div>
-				{/if}
-			</div>
+					<div class="flex space-x-2">
+						<Button
+							disabled={deliveryPagination.page === 1}
+							onclick={() => {
+								deliveryPagination.page--;
+								loadDeliveries();
+							}}
+							variant="secondary"
+							size="sm"
+						>
+							Previous
+						</Button>
+						<Button
+							disabled={deliveryPagination.page >= deliveryPagination.total_pages}
+							onclick={() => {
+								deliveryPagination.page++;
+								loadDeliveries();
+							}}
+							variant="secondary"
+							size="sm"
+						>
+							Next
+						</Button>
+					</div>
+				</div>
+			{:else if activeTab === 'system' && systemPagination.total_pages > 1}
+				<div class="flex items-center justify-between">
+					<div class="text-sm text-muted-foreground">
+						Showing page {systemPagination.page} of {systemPagination.total_pages} ({systemPagination.total}
+						total)
+					</div>
+					<div class="flex space-x-2">
+						<Button
+							disabled={systemPagination.page === 1}
+							onclick={() => {
+								systemPagination.page--;
+								loadSystemLogs();
+							}}
+							variant="secondary"
+							size="sm"
+						>
+							Previous
+						</Button>
+						<Button
+							disabled={systemPagination.page >= systemPagination.total_pages}
+							onclick={() => {
+								systemPagination.page++;
+								loadSystemLogs();
+							}}
+							variant="secondary"
+							size="sm"
+						>
+							Next
+						</Button>
+					</div>
+				</div>
+			{/if}
 		</div>
 	</div>
 </div>

@@ -1199,7 +1199,7 @@
 					modal can copy this command with the key filled in.
 				</p>
 				<pre
-					class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-[0.7rem] text-foreground whitespace-pre-wrap"><code
+					class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
 						>{claudeCodeAuthSnippet()}</code
 					></pre>
 				<div class="flex justify-end">
@@ -1230,7 +1230,7 @@
 					connector uses the token against the MCP endpoint or JSON-RPC gateway.
 				</p>
 				<pre
-					class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-[0.7rem] text-foreground whitespace-pre-wrap"><code
+					class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
 						>{openClawAuthSnippet()}</code
 					></pre>
 				<div class="flex justify-end">
@@ -1262,7 +1262,7 @@
 					bearer token into chat.
 				</p>
 				<pre
-					class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-[0.7rem] text-foreground whitespace-pre-wrap"><code
+					class="overflow-x-auto rounded-md border border-border bg-muted/30 p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
 						>{mcpEndpointUrl()}</code
 					></pre>
 				<div class="flex justify-end">
@@ -1600,7 +1600,7 @@
 										variant="danger"
 										size="sm"
 										icon={Trash2}
-										class="ml-auto"
+										class="ml-0 sm:ml-auto"
 										disabled={revokingCallerId === caller.id}
 										onclick={() => (pendingRevokeCaller = caller)}
 									>
@@ -1738,7 +1738,7 @@
 
 							<details class="border-t border-border pt-3">
 								<summary
-									class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground"
+									class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground min-h-[44px] py-2"
 								>
 									<span>Project Scope</span>
 									<span class="text-[0.7rem] normal-case tracking-normal">
@@ -1770,7 +1770,7 @@
 
 							<details class="border-t border-border pt-3">
 								<summary
-									class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground"
+									class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground min-h-[44px] py-2"
 								>
 									<span>Write Permissions</span>
 									<span class="text-[0.7rem] normal-case tracking-normal">
@@ -1938,7 +1938,7 @@
 				<div class="space-y-2">
 					<button
 						type="button"
-						class="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+						class="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset py-2 min-h-[44px]"
 						onclick={() => (showAdvancedPermissions = !showAdvancedPermissions)}
 					>
 						{#if showAdvancedPermissions}
@@ -2312,7 +2312,7 @@
 						).label}.
 					</p>
 					<pre
-						class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground"><code
+						class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
 							>{envSnippet(latestProvisioned)}</code
 						></pre>
 				</div>
@@ -2341,7 +2341,7 @@
 							{bootstrapProfile(latestProvisioned).setupUrlDescription}
 						</p>
 						<pre
-							class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground"><code
+							class="overflow-x-auto rounded-md border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
 								>{bootstrapUrl(latestProvisioned)}</code
 							></pre>
 					</div>

@@ -8,6 +8,7 @@ import {
 	exchangeOAuthRefreshToken,
 	OAuthConnectorError
 } from '$lib/server/agent-call/oauth-connector.service';
+import { checkOAuthRateLimit, OAUTH_RATE_LIMITS } from '$lib/server/agent-call/oauth-rate-limit';
 
 function tokenError(error: unknown) {
 	if (error instanceof OAuthConnectorError) {
@@ -78,7 +79,15 @@ export const OPTIONS: RequestHandler = async () =>
 		}
 	});
 
-export const POST: RequestHandler = async ({ request, platform }) => {
+export const POST: RequestHandler = async ({ request, platform, getClientAddress }) => {
+	const rateLimit = checkOAuthRateLimit(
+		`oauth:token:${getClientAddress()}`,
+		OAUTH_RATE_LIMITS.token
+	);
+	if (!rateLimit.allowed) {
+		return rateLimit.response;
+	}
+
 	try {
 		const form = new URLSearchParams(await request.text());
 		const grantType = form.get('grant_type');

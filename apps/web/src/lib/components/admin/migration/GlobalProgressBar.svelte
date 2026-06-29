@@ -52,14 +52,14 @@
 	>
 		<!-- Migrated (green) -->
 		<div
-			class="absolute left-0 top-0 h-full bg-success transition-all duration-500"
+			class="absolute left-0 top-0 h-full bg-success transition-all duration-500 motion-reduce:transition-none"
 			style="width: {migratedPercent}%"
 		></div>
 
 		<!-- Failed (red) -->
 		{#if failedPercent > 0}
 			<div
-				class="absolute top-0 h-full bg-destructive transition-all duration-500"
+				class="absolute top-0 h-full bg-destructive transition-all duration-500 motion-reduce:transition-none"
 				style="left: {migratedPercent}%; width: {failedPercent}%"
 			></div>
 		{/if}

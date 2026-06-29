@@ -432,7 +432,7 @@
 							minlength="3"
 							maxlength="24"
 							pattern={'^[a-z0-9]+(-[a-z0-9]+)*$'}
-							class="flex-1 min-w-0 bg-transparent px-3 py-2 text-sm font-mono focus:outline-none disabled:opacity-50"
+							class="flex-1 min-w-0 bg-transparent px-3 py-2 text-base font-mono focus:outline-none disabled:opacity-50 min-h-[44px]"
 							disabled={usernameLoading}
 							aria-label="Public username"
 						/>

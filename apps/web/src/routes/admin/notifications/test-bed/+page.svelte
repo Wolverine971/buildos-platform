@@ -166,264 +166,260 @@
 </svelte:head>
 
 <div class="admin-page">
-	<div class="admin-page">
-		<!-- Header -->
-		<AdminPageHeader
-			title="Notification Test Bed"
-			description="Test notifications with full user context and multi-channel preview"
-			icon={Send}
-			showBack={true}
-		/>
+	<!-- Header -->
+	<AdminPageHeader
+		title="Notification Test Bed"
+		description="Test notifications with full user context and multi-channel preview"
+		icon={Send}
+		showBack={true}
+	/>
 
-		<!-- Navigation Cards -->
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-			<a
-				href="/admin/notifications"
-				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-			>
-				<div class="flex items-center">
-					<Bell class="h-8 w-8 text-info mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-foreground">Analytics</h3>
-						<p class="text-sm text-muted-foreground">View dashboard</p>
-					</div>
+	<!-- Navigation Cards -->
+	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+		<a
+			href="/admin/notifications"
+			class="admin-panel p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		>
+			<div class="flex items-center">
+				<Bell class="h-8 w-8 text-info mr-3" />
+				<div>
+					<h3 class="text-lg font-semibold text-foreground">Analytics</h3>
+					<p class="text-sm text-muted-foreground">View dashboard</p>
 				</div>
-			</a>
+			</div>
+		</a>
 
-			<a
-				href="/admin/notifications/test-bed"
-				class="bg-success/10 border-2 border-success/30 rounded-lg p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-			>
-				<div class="flex items-center">
-					<Send class="h-8 w-8 text-success mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-foreground">Test Bed</h3>
-						<p class="text-sm text-muted-foreground">Current page</p>
-					</div>
+		<a
+			href="/admin/notifications/test-bed"
+			class="bg-success/10 border-2 border-success/30 rounded-lg p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		>
+			<div class="flex items-center">
+				<Send class="h-8 w-8 text-success mr-3" />
+				<div>
+					<h3 class="text-lg font-semibold text-foreground">Test Bed</h3>
+					<p class="text-sm text-muted-foreground">Current page</p>
 				</div>
-			</a>
+			</div>
+		</a>
 
-			<a
-				href="/admin/notifications/sms-scheduler"
-				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-			>
-				<div class="flex items-center">
-					<Calendar class="h-8 w-8 text-accent mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-foreground">SMS Scheduler</h3>
-						<p class="text-sm text-muted-foreground">Manual trigger</p>
-					</div>
+		<a
+			href="/admin/notifications/sms-scheduler"
+			class="admin-panel p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		>
+			<div class="flex items-center">
+				<Calendar class="h-8 w-8 text-accent mr-3" />
+				<div>
+					<h3 class="text-lg font-semibold text-foreground">SMS Scheduler</h3>
+					<p class="text-sm text-muted-foreground">Manual trigger</p>
 				</div>
-			</a>
+			</div>
+		</a>
 
-			<a
-				href="/admin/notifications/nlogs"
-				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-			>
-				<div class="flex items-center">
-					<Eye class="h-8 w-8 text-accent mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-foreground">Logs</h3>
-						<p class="text-sm text-muted-foreground">Event & delivery logs</p>
-					</div>
+		<a
+			href="/admin/notifications/nlogs"
+			class="admin-panel p-6 hover:shadow-ink-strong transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		>
+			<div class="flex items-center">
+				<Eye class="h-8 w-8 text-accent mr-3" />
+				<div>
+					<h3 class="text-lg font-semibold text-foreground">Logs</h3>
+					<p class="text-sm text-muted-foreground">Event & delivery logs</p>
 				</div>
-			</a>
+			</div>
+		</a>
+	</div>
+
+	{#if error}
+		<div class="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-4">
+			<p class="text-destructive">{error}</p>
 		</div>
+	{/if}
 
-		{#if error}
-			<div class="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-4">
-				<p class="text-destructive">{error}</p>
-			</div>
-		{/if}
+	{#if successMessage}
+		<div class="bg-success/10 border border-success/30 rounded-lg p-4 mb-4">
+			<p class="text-success">{successMessage}</p>
+		</div>
+	{/if}
 
-		{#if successMessage}
-			<div class="bg-success/10 border border-success/30 rounded-lg p-4 mb-4">
-				<p class="text-success">{successMessage}</p>
-			</div>
-		{/if}
+	<div class="space-y-6">
+		<!-- Step 1: User Search & Selection -->
+		<div class="admin-panel p-6">
+			<h2 class="text-xl font-semibold text-foreground mb-4">Step 1: Select User</h2>
 
-		<div class="space-y-6">
-			<!-- Step 1: User Search & Selection -->
-			<div class="admin-panel p-6">
-				<h2 class="text-xl font-semibold text-foreground mb-4">Step 1: Select User</h2>
-
-				{#if !selectedUser}
-					<!-- Search Input -->
+			{#if !selectedUser}
+				<!-- Search Input -->
+				<div class="relative">
 					<div class="relative">
-						<div class="relative">
-							<Search
-								class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground"
-							/>
-							<input
-								type="text"
-								bind:value={recipientSearch}
-								placeholder="Search users by email or name..."
-								class="w-full pl-10 pr-10 py-3 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							/>
-							{#if isSearching}
-								<div class="absolute right-3 top-1/2 transform -translate-y-1/2">
-									<LoaderCircle
-										class="w-5 h-5 animate-spin motion-reduce:animate-none text-info"
-									/>
-								</div>
-							{/if}
-						</div>
-
-						<!-- Search Results Dropdown -->
-						{#if searchResults.length > 0}
-							<div
-								class="absolute z-10 w-full mt-2 bg-card border border-border rounded-lg shadow-ink-strong max-h-60 overflow-y-auto"
-							>
-								{#each searchResults as result}
-									<button
-										type="button"
-										onclick={() => selectUser(result)}
-										class="w-full px-4 py-3 text-left hover:bg-muted transition-colors motion-reduce:transition-none border-b border-border last:border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-									>
-										<div class="text-sm font-medium text-foreground">
-											{result.email}
-										</div>
-										{#if result.name}
-											<div class="text-xs text-muted-foreground">
-												{result.name}
-											</div>
-										{/if}
-										<div
-											class="flex items-center gap-2 text-xs text-muted-foreground mt-1"
-										>
-											{#if result.has_push_subscription}
-												<span class="inline-flex items-center gap-1">
-													<Smartphone class="h-3 w-3" /> Push
-												</span>
-											{/if}
-											{#if result.has_phone}
-												<span class="inline-flex items-center gap-1">
-													<Phone class="h-3 w-3" /> SMS
-												</span>
-											{/if}
-										</div>
-									</button>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				{:else}
-					<!-- Selected User Display -->
-					<div
-						class="flex items-center justify-between p-4 bg-info/10 border border-info/30 rounded-lg"
-					>
-						<div>
-							<div class="text-sm font-medium text-foreground">
-								{selectedUser.email}
-							</div>
-							{#if selectedUser.name}
-								<div class="text-xs text-muted-foreground">{selectedUser.name}</div>
-							{/if}
-						</div>
-						<Button variant="ghost" size="sm" onclick={clearUserSelection}>
-							Change User
-						</Button>
-					</div>
-				{/if}
-			</div>
-
-			<!-- User Notification Context (shown after user is selected) -->
-			{#if selectedUser}
-				{#if contextLoading}
-					<div class="admin-panel p-8 text-center">
-						<LoaderCircle
-							class="w-8 h-8 animate-spin motion-reduce:animate-none text-info mx-auto mb-4"
+						<Search
+							class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground"
 						/>
-						<p class="text-muted-foreground">Loading user notification context...</p>
-					</div>
-				{:else if userContext}
-					<UserNotificationContext context={userContext} />
-				{/if}
-
-				<!-- Step 2: Select Notification Type -->
-				<div class="admin-panel p-6">
-					<h2 class="text-xl font-semibold text-foreground mb-4">
-						Step 2: Select Notification Type
-					</h2>
-					<NotificationTypeSelector
-						value={selectedEventType}
-						{userIsSubscribed}
-						onchange={handleEventTypeChange}
-					/>
-				</div>
-
-				<!-- Step 3: Select Channels -->
-				<div class="admin-panel p-6">
-					<h2 class="text-xl font-semibold text-foreground mb-4">
-						Step 3: Select Channels
-					</h2>
-
-					<div class="space-y-3">
-						{#if userContext}
-							{#each userContext.channels as capability}
-								<label class="flex items-center space-x-3 cursor-pointer">
-									<input
-										type="checkbox"
-										value={capability.channel}
-										bind:group={selectedChannels}
-										disabled={!capability.available}
-										class="h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-									/>
-									<div class="flex-1">
-										<div class="flex items-center space-x-2">
-											<div class="font-medium text-foreground capitalize">
-												{capability.channel}
-											</div>
-											{#if capability.available}
-												<span
-													class="inline-flex items-center gap-1 text-xs text-success"
-												>
-													<Check class="h-3 w-3" /> Available
-												</span>
-											{:else}
-												<span
-													class="inline-flex items-center gap-1 text-xs text-muted-foreground"
-												>
-													<X class="h-3 w-3" /> Not available
-												</span>
-											{/if}
-										</div>
-										<p class="text-sm text-muted-foreground">
-											{capability.details}
-										</p>
-									</div>
-								</label>
-							{/each}
-						{:else}
-							<p class="text-sm text-muted-foreground">
-								Select a user to see available channels
-							</p>
+						<input
+							type="text"
+							bind:value={recipientSearch}
+							placeholder="Search users by email or name..."
+							class="w-full pl-10 pr-10 py-3 border border-border rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						/>
+						{#if isSearching}
+							<div class="absolute right-3 top-1/2 transform -translate-y-1/2">
+								<LoaderCircle
+									class="w-5 h-5 animate-spin motion-reduce:animate-none text-info"
+								/>
+							</div>
 						{/if}
 					</div>
-				</div>
 
-				<!-- Step 4: Configure Payload -->
-				<div class="admin-panel p-6">
-					<h2 class="text-xl font-semibold text-foreground mb-4">
-						Step 4: Configure Channel Payloads
-					</h2>
-					<ChannelPayloadEditor {selectedChannels} bind:channelPayloads />
+					<!-- Search Results Dropdown -->
+					{#if searchResults.length > 0}
+						<div
+							class="absolute z-10 w-full mt-2 bg-card border border-border rounded-lg shadow-ink-strong max-h-60 overflow-y-auto"
+						>
+							{#each searchResults as result}
+								<button
+									type="button"
+									onclick={() => selectUser(result)}
+									class="w-full px-4 py-3 text-left hover:bg-muted transition-colors motion-reduce:transition-none border-b border-border last:border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								>
+									<div class="text-sm font-medium text-foreground">
+										{result.email}
+									</div>
+									{#if result.name}
+										<div class="text-xs text-muted-foreground">
+											{result.name}
+										</div>
+									{/if}
+									<div
+										class="flex items-center gap-2 text-xs text-muted-foreground mt-1"
+									>
+										{#if result.has_push_subscription}
+											<span class="inline-flex items-center gap-1">
+												<Smartphone class="h-3 w-3" /> Push
+											</span>
+										{/if}
+										{#if result.has_phone}
+											<span class="inline-flex items-center gap-1">
+												<Phone class="h-3 w-3" /> SMS
+											</span>
+										{/if}
+									</div>
+								</button>
+							{/each}
+						</div>
+					{/if}
 				</div>
-
-				<!-- Send Button -->
-				<div class="flex justify-center">
-					<Button
-						onclick={sendTestNotification}
-						disabled={isLoading || !selectedUser || selectedChannels.length === 0}
-						variant="primary"
-						size="lg"
-						icon={Send}
-						loading={isLoading}
-					>
-						Send Test Notification
+			{:else}
+				<!-- Selected User Display -->
+				<div
+					class="flex items-center justify-between p-4 bg-info/10 border border-info/30 rounded-lg"
+				>
+					<div>
+						<div class="text-sm font-medium text-foreground">
+							{selectedUser.email}
+						</div>
+						{#if selectedUser.name}
+							<div class="text-xs text-muted-foreground">{selectedUser.name}</div>
+						{/if}
+					</div>
+					<Button variant="ghost" size="sm" onclick={clearUserSelection}>
+						Change User
 					</Button>
 				</div>
 			{/if}
 		</div>
+
+		<!-- User Notification Context (shown after user is selected) -->
+		{#if selectedUser}
+			{#if contextLoading}
+				<div class="admin-panel p-8 text-center">
+					<LoaderCircle
+						class="w-8 h-8 animate-spin motion-reduce:animate-none text-info mx-auto mb-4"
+					/>
+					<p class="text-muted-foreground">Loading user notification context...</p>
+				</div>
+			{:else if userContext}
+				<UserNotificationContext context={userContext} />
+			{/if}
+
+			<!-- Step 2: Select Notification Type -->
+			<div class="admin-panel p-6">
+				<h2 class="text-xl font-semibold text-foreground mb-4">
+					Step 2: Select Notification Type
+				</h2>
+				<NotificationTypeSelector
+					value={selectedEventType}
+					{userIsSubscribed}
+					onchange={handleEventTypeChange}
+				/>
+			</div>
+
+			<!-- Step 3: Select Channels -->
+			<div class="admin-panel p-6">
+				<h2 class="text-xl font-semibold text-foreground mb-4">Step 3: Select Channels</h2>
+
+				<div class="space-y-3">
+					{#if userContext}
+						{#each userContext.channels as capability}
+							<label class="flex items-center space-x-3 cursor-pointer">
+								<input
+									type="checkbox"
+									value={capability.channel}
+									bind:group={selectedChannels}
+									disabled={!capability.available}
+									class="h-4 w-4 rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+								/>
+								<div class="flex-1">
+									<div class="flex items-center space-x-2">
+										<div class="font-medium text-foreground capitalize">
+											{capability.channel}
+										</div>
+										{#if capability.available}
+											<span
+												class="inline-flex items-center gap-1 text-xs text-success"
+											>
+												<Check class="h-3 w-3" /> Available
+											</span>
+										{:else}
+											<span
+												class="inline-flex items-center gap-1 text-xs text-muted-foreground"
+											>
+												<X class="h-3 w-3" /> Not available
+											</span>
+										{/if}
+									</div>
+									<p class="text-sm text-muted-foreground">
+										{capability.details}
+									</p>
+								</div>
+							</label>
+						{/each}
+					{:else}
+						<p class="text-sm text-muted-foreground">
+							Select a user to see available channels
+						</p>
+					{/if}
+				</div>
+			</div>
+
+			<!-- Step 4: Configure Payload -->
+			<div class="admin-panel p-6">
+				<h2 class="text-xl font-semibold text-foreground mb-4">
+					Step 4: Configure Channel Payloads
+				</h2>
+				<ChannelPayloadEditor {selectedChannels} bind:channelPayloads />
+			</div>
+
+			<!-- Send Button -->
+			<div class="flex justify-center">
+				<Button
+					onclick={sendTestNotification}
+					disabled={isLoading || !selectedUser || selectedChannels.length === 0}
+					variant="primary"
+					size="lg"
+					icon={Send}
+					loading={isLoading}
+				>
+					Send Test Notification
+				</Button>
+			</div>
+		{/if}
 	</div>
 </div>

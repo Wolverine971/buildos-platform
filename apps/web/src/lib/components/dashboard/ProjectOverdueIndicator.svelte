@@ -97,4 +97,11 @@
 		margin-right: 0.25rem;
 		opacity: 1;
 	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.overdue-project-indicator,
+		.overdue-project-indicator__label {
+			transition: none;
+		}
+	}
 </style>

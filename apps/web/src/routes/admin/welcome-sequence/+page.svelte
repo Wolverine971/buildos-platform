@@ -418,7 +418,42 @@
 					Last {data.days} day{data.days === 1 ? '' : 's'} from queue events and email logs.
 				</p>
 			</div>
-			<div class="overflow-x-auto">
+			<!-- Mobile card list -->
+			<ul class="divide-y divide-border lg:hidden">
+				{#each stats?.stepStats ?? [] as step}
+					<li class="space-y-3 p-4">
+						<div class="font-medium text-foreground">
+							{step.stepNumber}. {step.step}
+						</div>
+						<dl class="grid grid-cols-2 gap-2 text-sm">
+							<div>
+								<dt class="text-xs text-muted-foreground">Sent</dt>
+								<dd class="text-foreground">{step.sent}</dd>
+							</div>
+							<div>
+								<dt class="text-xs text-muted-foreground">Skipped</dt>
+								<dd class="text-foreground">{step.skipped}</dd>
+							</div>
+							<div>
+								<dt class="text-xs text-muted-foreground">Failed</dt>
+								<dd class="text-foreground">{step.failed}</dd>
+							</div>
+							<div>
+								<dt class="text-xs text-muted-foreground">Retried</dt>
+								<dd class="text-foreground">{step.retried}</dd>
+							</div>
+							<div class="col-span-2">
+								<dt class="text-xs text-muted-foreground">Email Logs</dt>
+								<dd class="text-foreground">
+									{step.loggedSent} sent / {step.loggedFailed} failed
+								</dd>
+							</div>
+						</dl>
+					</li>
+				{/each}
+			</ul>
+
+			<div class="hidden overflow-x-auto lg:block">
 				<table class="min-w-full divide-y divide-border text-sm">
 					<thead class="bg-muted/60 text-left text-xs uppercase text-muted-foreground">
 						<tr>
@@ -499,7 +534,44 @@
 				No subject, body, or HTML columns are stored in Supabase.
 			</p>
 		</div>
-		<div class="overflow-x-auto">
+		<!-- Mobile card list -->
+		<ul class="divide-y divide-border lg:hidden">
+			{#each steps as step}
+				<li class="space-y-3 p-4">
+					<div class="font-medium text-foreground">
+						{step.step_number}. {step.step_key}
+					</div>
+					<dl class="grid grid-cols-2 gap-2 text-sm">
+						<div>
+							<dt class="text-xs text-muted-foreground">Offset</dt>
+							<dd class="text-foreground">Day {step.absolute_day_offset}</dd>
+						</div>
+						<div>
+							<dt class="text-xs text-muted-foreground">Window</dt>
+							<dd class="text-foreground">
+								{step.send_window_start_hour}:00-{step.send_window_end_hour}:00
+							</dd>
+						</div>
+						<div>
+							<dt class="text-xs text-muted-foreground">Status</dt>
+							<dd class="text-foreground">{step.status}</dd>
+						</div>
+						<div>
+							<dt class="text-xs text-muted-foreground">Copy in DB</dt>
+							<dd>
+								<span
+									class="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground"
+								>
+									No
+								</span>
+							</dd>
+						</div>
+					</dl>
+				</li>
+			{/each}
+		</ul>
+
+		<div class="hidden overflow-x-auto lg:block">
 			<table class="min-w-full divide-y divide-border text-sm">
 				<thead class="bg-muted/60 text-left text-xs uppercase text-muted-foreground">
 					<tr>
@@ -1180,7 +1252,96 @@
 			</AdminCard>
 
 			<AdminCard padding="none" class="overflow-hidden">
-				<div class="overflow-x-auto">
+				<!-- Mobile card list -->
+				<ul class="divide-y divide-border lg:hidden">
+					{#each rows as row}
+						<li class={`space-y-3 p-4 ${row.diffCount > 0 ? 'bg-warning/5' : ''}`}>
+							<div class="min-w-0">
+								<div class="max-w-full truncate font-medium text-foreground">
+									{row.email || 'No email'}
+								</div>
+								<div class="mt-1 break-all font-mono text-xs text-muted-foreground">
+									{row.userId}
+								</div>
+								<div class="mt-1 text-xs text-muted-foreground">
+									Started {formatValue(row.legacyStartedAt)}
+								</div>
+							</div>
+
+							<dl class="grid grid-cols-2 gap-2 text-sm">
+								<div>
+									<dt class="text-xs text-muted-foreground">Legacy</dt>
+									<dd class="font-medium text-foreground">{row.legacyStatus}</dd>
+								</div>
+								<div>
+									<dt class="text-xs text-muted-foreground">Shadow</dt>
+									<dd class="font-medium text-foreground">
+										{row.actualStatus ?? 'missing'}
+										{#if row.expectedStatus !== row.actualStatus}
+											<span
+												class="block text-xs font-normal text-muted-foreground"
+											>
+												Expected {row.expectedStatus ?? 'null'}
+											</span>
+										{/if}
+									</dd>
+								</div>
+								<div>
+									<dt class="text-xs text-muted-foreground">Next Step</dt>
+									<dd class="font-medium text-foreground">
+										{row.actualNextStep ?? 'null'}
+										{#if row.expectedNextStep !== row.actualNextStep}
+											<span
+												class="block text-xs font-normal text-muted-foreground"
+											>
+												Expected {row.expectedNextStep ?? 'null'}
+											</span>
+										{/if}
+									</dd>
+								</div>
+							</dl>
+
+							{#if row.diffCount === 0}
+								<div
+									class="inline-flex items-center gap-2 rounded-md bg-success/10 px-2 py-1 text-xs font-medium text-success"
+								>
+									<CheckCircle2 class="h-3.5 w-3.5" />
+									Matched
+								</div>
+							{:else}
+								<div class="space-y-2">
+									<div
+										class="inline-flex items-center gap-2 rounded-md bg-warning/10 px-2 py-1 text-xs font-medium text-warning"
+									>
+										<TriangleAlert class="h-3.5 w-3.5" />
+										{row.diffCount} difference{row.diffCount === 1 ? '' : 's'}
+									</div>
+									<div class="space-y-1">
+										{#each row.diffs as diff}
+											<div
+												class="rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground"
+											>
+												<span class="font-medium text-foreground"
+													>{diff.field}</span
+												>: expected {formatValue(diff.expected)}, actual {formatValue(
+													diff.actual
+												)}
+											</div>
+										{/each}
+									</div>
+								</div>
+							{/if}
+						</li>
+					{/each}
+
+					{#if rows.length === 0}
+						<li class="px-4 py-10 text-center text-sm text-muted-foreground">
+							No legacy welcome rows found.
+						</li>
+					{/if}
+				</ul>
+
+				<div class="hidden overflow-x-auto lg:block">
 					<table class="min-w-full divide-y divide-border text-sm">
 						<thead
 							class="bg-muted/60 text-left text-xs uppercase text-muted-foreground"

@@ -11,6 +11,7 @@ import { PRIVATE_CRON_SECRET } from '$env/static/private';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
 import { isAuthorizedCronRequest } from '$lib/utils/security';
+import { reapExpiredOAuthArtifacts } from '$lib/server/agent-call/oauth-connector.service';
 
 const DEFAULT_LOW_SIGNAL_RETENTION_DAYS = 180;
 const DEFAULT_HIGH_SIGNAL_RETENTION_DAYS = 400;
@@ -97,16 +98,25 @@ export const GET: RequestHandler = async ({ request, url }) => {
 		const lowSignalCandidates = Number(cleanupSummary?.low_signal_candidate_count ?? 0);
 		const highSignalCandidates = Number(cleanupSummary?.high_signal_candidate_count ?? 0);
 
+		// Bound OAuth artifact growth alongside security-event cleanup. Skipped on
+		// dry runs so the cron stays read-only when asked to.
+		const oauthReap = dryRun
+			? { authorization_codes: 0, access_tokens: 0, refresh_tokens: 0 }
+			: await reapExpiredOAuthArtifacts(supabase);
+		const oauthReapTotal =
+			oauthReap.authorization_codes + oauthReap.access_tokens + oauthReap.refresh_tokens;
+
 		await supabase.from('cron_logs').insert({
 			job_name: 'security_events_retention',
 			status: 'success',
-			message: `Rolled up ${rollupSummary?.rolled_event_count ?? 0} security event(s); cleanup ${dryRun ? 'dry run found' : 'deleted'} ${dryRun ? lowSignalCandidates + highSignalCandidates : deletedCount} event(s).`,
+			message: `Rolled up ${rollupSummary?.rolled_event_count ?? 0} security event(s); cleanup ${dryRun ? 'dry run found' : 'deleted'} ${dryRun ? lowSignalCandidates + highSignalCandidates : deletedCount} event(s); reaped ${oauthReapTotal} expired OAuth artifact(s).`,
 			executed_at: now
 		});
 
 		return ApiResponse.success({
 			rollup: rollupSummary,
 			cleanup: cleanupSummary,
+			oauthReap,
 			retention: {
 				lowSignalRetentionDays,
 				highSignalRetentionDays,

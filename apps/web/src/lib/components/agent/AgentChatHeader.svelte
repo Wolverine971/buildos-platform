@@ -8,8 +8,10 @@
 		LoaderCircle,
 		AlertTriangle,
 		Download,
-		FileArchive
+		FileArchive,
+		MoreHorizontal
 	} from 'lucide-svelte';
+	import { cubicOut } from 'svelte/easing';
 	import { dev } from '$app/environment';
 	import ProjectFocusIndicator from './ProjectFocusIndicator.svelte';
 	import ChatSessionAuditActions from './ChatSessionAuditActions.svelte';
@@ -72,6 +74,28 @@
 
 	const isProjectContext = $derived.by(() => selectedContextType === 'project');
 
+	// Mobile overflow menu — folds the secondary header actions (View / Steps /
+	// Support) behind a single "..." control so the mobile header stays clean.
+	let mobileMenuOpen = $state(false);
+
+	// Horizontal collapse for the back button: when it's removed (e.g. once a chat
+	// is underway) it shrinks its width + the parent gap to nothing instead of
+	// snapping away, so the title slides left into the reclaimed space.
+	function collapseX(node: HTMLElement, { duration = 220 } = {}) {
+		const width = node.offsetWidth;
+		const gap = 8; // parent uses gap-2 (0.5rem)
+		return {
+			duration,
+			easing: cubicOut,
+			css: (t: number) => `
+				width: ${t * width}px;
+				margin-right: ${(t - 1) * gap}px;
+				opacity: ${t};
+				transform: scale(${0.9 + 0.1 * t});
+			`
+		};
+	}
+
 	// One-shot glimmer when the project context shifts. We key the title on the
 	// pulse so the CSS animation re-fires on every transition, and gate it on
 	// `glimmer` so it never plays on first mount (pulse starts at 0).
@@ -109,6 +133,12 @@
 		return 'Export support packet';
 	});
 
+	// Whether the mobile "..." menu has anything to show (its admin audit rows are
+	// gated inside ChatSessionAuditActions, so they don't count here).
+	const hasMobileOverflowItems = $derived(
+		Boolean((isProjectContext && projectUrl) || onExportSteps || onExportSupportPacket)
+	);
+
 	const contextUsageCounter = $derived.by(() => {
 		if (!dev || !contextUsage) {
 			return null;
@@ -141,18 +171,21 @@
 
 <!-- INKPRINT compact header: fixed 48px height with Frame texture for structural hierarchy -->
 <div class="flex h-12 items-center gap-2 px-3 sm:px-4 tx tx-frame tx-weak">
-	<!-- Back button with INKPRINT outline style -->
+	<!-- Back button with INKPRINT outline style. Collapses away (width + gap) once
+	     the chat is underway so it never lingers as dead space. -->
 	{#if showBackButton}
-		<button
-			type="button"
-			class="inline-flex h-9 w-9 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition touch-manipulation pressable hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-			style="-webkit-tap-highlight-color: transparent;"
-			onclick={onBack}
-			disabled={isStreaming}
-			aria-label="Go back"
-		>
-			<ArrowLeft class="h-4 w-4" strokeWidth={2.5} />
-		</button>
+		<div class="shrink-0 overflow-hidden" out:collapseX>
+			<button
+				type="button"
+				class="inline-flex h-9 w-9 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition touch-manipulation pressable hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				style="-webkit-tap-highlight-color: transparent;"
+				onclick={onBack}
+				disabled={isStreaming}
+				aria-label="Go back"
+			>
+				<ArrowLeft class="h-4 w-4" strokeWidth={2.5} />
+			</button>
+		</div>
 	{/if}
 
 	<!-- Title & Focus Section -->
@@ -253,18 +286,19 @@
 			</div>
 		{/if}
 
+		<!-- Secondary actions: full buttons on sm+, folded into the mobile "..." menu below -->
 		<!-- INKPRINT project link button -->
 		{#if isProjectContext && projectUrl}
 			<a
 				href={projectUrl}
 				target="_blank"
 				rel="noopener noreferrer"
-				class="flex h-9 sm:h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				style="-webkit-tap-highlight-color: transparent;"
 				title="Open project in new tab"
 			>
 				<ExternalLink class="h-3.5 w-3.5 shrink-0" />
-				<span class="hidden sm:inline">View</span>
+				<span>View</span>
 			</a>
 		{/if}
 
@@ -273,13 +307,13 @@
 				type="button"
 				onclick={onExportSteps}
 				disabled={!canExportSteps}
-				class="flex h-9 sm:h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-muted-foreground"
+				class="hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-muted-foreground"
 				style="-webkit-tap-highlight-color: transparent;"
 				title={exportStepsTitle}
 				aria-label={exportStepsTitle}
 			>
 				<Download class="h-3.5 w-3.5 shrink-0" />
-				<span class="hidden sm:inline">Steps</span>
+				<span>Steps</span>
 			</button>
 		{/if}
 
@@ -288,17 +322,105 @@
 				type="button"
 				onclick={onExportSupportPacket}
 				disabled={!canExportSupportPacket}
-				class="flex h-9 sm:h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-muted-foreground"
+				class="hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-muted-foreground"
 				style="-webkit-tap-highlight-color: transparent;"
 				title={exportSupportPacketTitle}
 				aria-label={exportSupportPacketTitle}
 			>
 				<FileArchive class="h-3.5 w-3.5 shrink-0" />
-				<span class="hidden sm:inline">Support</span>
+				<span>Support</span>
 			</button>
 		{/if}
 
-		<ChatSessionAuditActions {sessionId} />
+		<!-- Admin audit actions: desktop row only here (its mobile rows live in the unified menu) -->
+		<ChatSessionAuditActions {sessionId} variant="desktop" />
+
+		<!-- Mobile-only unified overflow menu -->
+		{#if hasMobileOverflowItems || sessionId}
+			<div class="relative sm:hidden">
+				<button
+					type="button"
+					onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
+					class="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					style="-webkit-tap-highlight-color: transparent;"
+					aria-label="More actions"
+					aria-haspopup="menu"
+					aria-expanded={mobileMenuOpen}
+				>
+					<MoreHorizontal class="h-4 w-4" />
+				</button>
+
+				{#if mobileMenuOpen}
+					<!-- Click-away backdrop -->
+					<button
+						type="button"
+						class="fixed inset-0 z-40 cursor-default"
+						aria-label="Close actions menu"
+						tabindex="-1"
+						onclick={() => (mobileMenuOpen = false)}
+					></button>
+					<div
+						class="absolute right-0 top-[calc(100%+0.35rem)] z-50 min-w-52 overflow-hidden rounded-lg border border-border bg-card py-1 shadow-ink tx tx-frame tx-weak"
+						role="menu"
+					>
+						{#if isProjectContext && projectUrl}
+							<a
+								href={projectUrl}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none"
+								role="menuitem"
+								onclick={() => (mobileMenuOpen = false)}
+							>
+								<ExternalLink class="h-3.5 w-3.5 shrink-0" />
+								<span>View project</span>
+							</a>
+						{/if}
+
+						{#if onExportSteps}
+							<button
+								type="button"
+								onclick={() => {
+									mobileMenuOpen = false;
+									onExportSteps?.();
+								}}
+								disabled={!canExportSteps}
+								class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+								role="menuitem"
+								title={exportStepsTitle}
+							>
+								<Download class="h-3.5 w-3.5 shrink-0" />
+								<span>Export steps</span>
+							</button>
+						{/if}
+
+						{#if onExportSupportPacket}
+							<button
+								type="button"
+								onclick={() => {
+									mobileMenuOpen = false;
+									onExportSupportPacket?.();
+								}}
+								disabled={!canExportSupportPacket}
+								class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+								role="menuitem"
+								title={exportSupportPacketTitle}
+							>
+								<FileArchive class="h-3.5 w-3.5 shrink-0" />
+								<span>Export support packet</span>
+							</button>
+						{/if}
+
+						<!-- Admin audit rows (render nothing for non-admins) -->
+						<ChatSessionAuditActions
+							{sessionId}
+							variant="menu"
+							onItemClick={() => (mobileMenuOpen = false)}
+						/>
+					</div>
+				{/if}
+			</div>
+		{/if}
 
 		<!-- INKPRINT close button -->
 		{#if onClose}

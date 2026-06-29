@@ -145,7 +145,7 @@
 										href={invoice.invoice_pdf}
 										target="_blank"
 										rel="noopener noreferrer"
-										class="inline-flex items-center rounded-md px-2 py-1.5 text-xs font-medium text-accent hover:text-accent/80 hover:bg-accent/10 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+										class="inline-flex items-center rounded-md px-2 py-1.5 text-xs font-medium text-accent hover:text-accent/80 hover:bg-accent/10 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset min-h-[44px]"
 									>
 										Download PDF
 									</a>
@@ -153,7 +153,7 @@
 									<button
 										type="button"
 										onclick={() => downloadInvoice(invoice.stripe_invoice_id)}
-										class="inline-flex items-center rounded-md px-2 py-1.5 text-xs font-medium text-accent hover:text-accent/80 hover:bg-accent/10 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+										class="inline-flex items-center rounded-md px-2 py-1.5 text-xs font-medium text-accent hover:text-accent/80 hover:bg-accent/10 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset min-h-[44px]"
 									>
 										Generate PDF
 									</button>

@@ -3,9 +3,9 @@
 # AI Inbox - Design / Shaping Doc
 
 **Date:** 2026-06-24
-**Status:** Shaping, audit-revised 2026-06-24, loop/audit alignment revised 2026-06-26, project-suggestion clarified decisions implemented 2026-06-26
+**Status:** Shaping, audit-revised 2026-06-24, loop/audit alignment revised 2026-06-26, project-suggestion clarified decisions and shared decision controls implemented 2026-06-26, decision notification handoff implemented 2026-06-27, inbox chat resolution hook implemented 2026-06-28
 **Author:** DJ + Claude + Codex audit pass
-**Related:** `HANDOFF_2026-06-19.md` (Agent Work / change sets), `PROJECT_START_HERE_DOC_DESIGN_2026-06-23.md`, `ProjectSuggestionsPanel.svelte`, project-loops, `docs/research/project-review-loop-audit-suggestion-families-2026-06-25.md`
+**Related:** `HANDOFF_2026-06-19.md` (Agent Work / change sets), `PROJECT_START_HERE_DOC_DESIGN_2026-06-23.md`, project-loops, `docs/research/project-review-loop-audit-suggestion-families-2026-06-25.md`
 
 ---
 
@@ -31,16 +31,16 @@ The strongest substrate is Agent Work Phase 4: staged mutations with per-change 
 
 ### Producers Of Reviewable Items
 
-| Producer                                    | Real storage                                                                                                                                                 | Approval shape today                                                                                                                                                                                | Surfaced today                                                                                            | Inbox handling                                                                                                           |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **Agent Runs** (durable runs, review mode)  | `agent_runs.change_set`, `status='proposal_ready'`                                                                                                           | True `ChangeSet`; per-change approve/reject                                                                                                                                                         | Notification stack, Work Panel, `ChangeSetReview`                                                         | Primary; direct `agent_run` source adapter                                                                               |
-| **Chat-close capture** (Start Here updates) | Inserts an `agent_runs` row with `trigger='chat'`, `status='proposal_ready'`                                                                                 | True single-change `ChangeSet`                                                                                                                                                                      | Work Panel / agent-run surfaces, but not project Inbox                                                    | Primary; same `agent_run` adapter                                                                                        |
-| **Project Loops**                           | Parent review event in `project_loop_runs`; actionable child findings in `project_suggestions`, `status='pending'`; feature-gated by `PROJECT_LOOPS_ENABLED` | Whole-suggestion Apply/Dismiss fast path; Approve/Dismiss with clarification delegates to a source-linked child `agent_run`; freshness guard supersedes stale approvals; no per-operation decisions | Project Inbox (`ProjectInboxPanel`), Dashboard Inbox, with legacy `ProjectSuggestionsPanel` still present | Primary through `project_suggestion` adapter; `project_loop_runs.brief` is contextual parent metadata, not an inbox item |
-| **Calendar Analysis**                       | `calendar_project_suggestions`, initially `status='pending'`                                                                                                 | Accept creates a project/tasks; reject marks rejected; current `defer` route maps to reject-with-reason and is not real snooze                                                                      | Calendar-analysis notification modal                                                                      | Primary through `calendar_suggestion` adapter; not a true `ChangeSet` until Option C                                     |
-| **Daily Brief next-steps**                  | Auto-writes `onto_projects.next_step_*`                                                                                                                      | No approval decision; orientation output                                                                                                                                                            | Email/SMS/in-app brief                                                                                    | Out of scope; not an inbox item                                                                                          |
-| **Profile fragments**                       | `profile_fragments`, especially `status='needs_review'`                                                                                                      | API can list and status-flip fragments, but there is no safe user-triggered merge/apply endpoint; worker merge only processes `pending` fragments                                                   | No dedicated review UI                                                                                    | Gated. Do not include until a real profile-fragment apply/dismiss handler exists                                         |
-| **Contact merge candidates**                | `user_contact_merge_candidates`, `status='pending'`; raw `user_contact_observations` auto-resolve to applied/needs_confirmation/dismissed                    | Existing API supports `confirmed_merge`, `rejected`, `snoozed`, with sensitive-value exposure gates                                                                                                 | Contact candidate API; no unified Inbox UI                                                                | Include only merge candidates, not raw observations; requires a sensitive-data-aware card                                |
-| **Context Snapshot worker**                 | `project_context_snapshot` cache + Start Here managed regions                                                                                                | Machine-owned cache refresh                                                                                                                                                                         | n/a                                                                                                       | Out of scope; never approvable                                                                                           |
+| Producer                                    | Real storage                                                                                                                                                 | Approval shape today                                                                                                                                                                                                         | Surfaced today                                          | Inbox handling                                                                                                           |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **Agent Runs** (durable runs, review mode)  | `agent_runs.change_set`, `status='proposal_ready'`                                                                                                           | True `ChangeSet`; per-change approve/reject                                                                                                                                                                                  | Notification stack, Work Panel, `ChangeSetReview`       | Primary; direct `agent_run` source adapter                                                                               |
+| **Chat-close capture** (Start Here updates) | Inserts an `agent_runs` row with `trigger='chat'`, `status='proposal_ready'`                                                                                 | True single-change `ChangeSet`                                                                                                                                                                                               | Work Panel / agent-run surfaces, but not project Inbox  | Primary; same `agent_run` adapter                                                                                        |
+| **Project Loops**                           | Parent review event in `project_loop_runs`; actionable child findings in `project_suggestions`, `status='pending'`; feature-gated by `PROJECT_LOOPS_ENABLED` | Whole-suggestion Accept/Dismiss fast path; project-suggestion clarification remains API-supported and delegates to a source-linked child `agent_run`; freshness guard supersedes stale approvals; no per-operation decisions | Project Inbox (`ProjectInboxPanel`) and Dashboard Inbox | Primary through `project_suggestion` adapter; `project_loop_runs.brief` is contextual parent metadata, not an inbox item |
+| **Calendar Analysis**                       | `calendar_project_suggestions`, initially `status='pending'`                                                                                                 | Accept creates a project/tasks; dismiss marks rejected; current `defer` route maps to reject-with-reason and is not real snooze                                                                                              | Calendar-analysis notification modal                    | Primary through `calendar_suggestion` adapter; not a true `ChangeSet` until Option C                                     |
+| **Daily Brief next-steps**                  | Auto-writes `onto_projects.next_step_*`                                                                                                                      | No approval decision; orientation output                                                                                                                                                                                     | Email/SMS/in-app brief                                  | Out of scope; not an inbox item                                                                                          |
+| **Profile fragments**                       | `profile_fragments`, especially `status='needs_review'`                                                                                                      | API can list and status-flip fragments, but there is no safe user-triggered merge/apply endpoint; worker merge only processes `pending` fragments                                                                            | No dedicated review UI                                  | Gated. Do not include until a real profile-fragment apply/dismiss handler exists                                         |
+| **Contact merge candidates**                | `user_contact_merge_candidates`, `status='pending'`; raw `user_contact_observations` auto-resolve to applied/needs_confirmation/dismissed                    | Existing API supports `confirmed_merge`, `rejected`, `snoozed`, with sensitive-value exposure gates                                                                                                                          | Contact candidate API; no unified Inbox UI              | Include only merge candidates, not raw observations; requires a sensitive-data-aware card                                |
+| **Context Snapshot worker**                 | `project_context_snapshot` cache + Start Here managed regions                                                                                                | Machine-owned cache refresh                                                                                                                                                                                                  | n/a                                                     | Out of scope; never approvable                                                                                           |
 
 ### Canonical Change-Set Machinery
 
@@ -57,7 +57,7 @@ This is the canonical long-term mutation-review shape. V1 source adapters must m
 ### Existing Inbox-Like Surfaces To Respect
 
 - **Work Panel** already exists as the durable agent-run inbox/history/control panel. AI Inbox must coexist with it or explicitly absorb its proposal subset. Do not add another global nav item named "Inbox" without a naming/navigation decision.
-- **ProjectSuggestionsPanel** is legacy project-loop review UI. Project Inbox has replaced it for project-loop items; remove the old component once smoke tests confirm no fallback mount is needed.
+- The legacy `ProjectSuggestionsPanel.svelte` project-loop review UI has been retired; Project Inbox is the project-scoped review surface.
 - **OverdueTaskTriageModal** provides the dashboard triage chrome: full-screen modal, per-project grouping, project navigator, card stack, progress count, keyboard navigation.
 - **EntityTabStrip** currently has Briefs, Chats, Graph, Goals, Milestones, Plans, Risks, and Events; there is no Activity tab. Any new Project Inbox tab should be added to the current strip reality, not to stale tab naming.
 
@@ -127,17 +127,17 @@ Sync contract:
 
 1. **Source remains truth.** `inbox_items` is a cache/index, not an authority.
 2. **All list/count endpoints reconcile source status.** If the index says `pending` but source is terminal, repair or suppress it.
-3. **All decision endpoints mutate the source first, then update the index.** Never mark an inbox item decided before the source action succeeds.
+3. **All decision endpoints mutate the source first, then update the index.** Never mark an inbox item decided before the source action succeeds. Once the source action succeeds, `POST /api/inbox/decide` must return an index row whose status is no longer `pending`; if normal source sync returns a stale row or throws, the endpoint must force the index to `deciding`, `decided`, or `blocked` from the successful decision payload.
 4. **Every source adapter owns a status mapper.**
     - `agent_run`: `proposal_ready` + pending change set => `pending`; completed/partial with non-pending change set => `decided`; failed/cancelled => `blocked` or `decided` depending on proposal state.
     - `project_suggestion`: `pending` => `pending`; `approved|delegated` => `deciding`; `applied|rejected|superseded` => `decided`; `failed` => `blocked`.
-    - `calendar_suggestion`: `pending` => `pending`; `accepted|rejected` => `decided`; current `deferred` is not generic snooze unless it has `snoozed_until`.
+    - `calendar_suggestion`: `pending` => `pending`; `processing` => `deciding`; `accepted|rejected|modified|deferred` => `decided`; current `deferred` is not generic snooze unless it has `snoozed_until`.
     - `profile_fragment`: `needs_review` => `pending`; `accepted|dismissed` => `decided`, but only after a real apply/dismiss handler exists.
     - `contact_merge_candidate`: `pending` => `pending`; `confirmed_merge|rejected` => `decided`; `snoozed` => `snoozed` if a re-surface rule exists.
 5. **Decision handlers must be idempotent and claim source rows.**
     - `agent_run` already claims `proposal_ready -> running`.
     - `project_suggestion` needs an atomic source claim before replaying operations, using an allowed source status such as `approved` or a new explicit in-progress status.
-    - `calendar_suggestion` needs an atomic pending claim before instantiating a project/tasks; add an allowed in-progress/claim status if needed.
+    - `calendar_suggestion` uses an atomic `pending -> processing` claim before instantiating a project/tasks; `20260627000000_calendar_suggestion_processing_status.sql` ensures the source table allows that claim state. `20260627001000_calendar_suggestion_created_project_fk.sql` realigns `created_project_id` to `onto_projects`, matching the ontology project instantiator. Repeated accepts on fresh `processing` rows are idempotent and sync the inbox item to `deciding`; stale `processing` rows can be reclaimed by matching the previous `status_changed_at`.
     - Signal handlers need equivalent source-state checks before merge/apply.
 
 ### Option C - Everything Emits Agent-Run Change Sets
@@ -215,7 +215,7 @@ Do not force audit packets through `agent_runs.change_set`. Use true `ChangeSet`
 
 - Add an **Inbox** tab to the current `EntityTabStrip` on the project page.
 - The Project Inbox shows project-scoped `pending` items only.
-- It replaces `ProjectSuggestionsPanel` for `project_suggestion` items once shipped.
+- It replaced the legacy `ProjectSuggestionsPanel` for `project_suggestion` items; the old component has been removed.
 - It should not show account/global profile/contact items unless a source adapter can confidently associate them with the project.
 - It may load the latest `project_loop_runs.brief` as contextual parent metadata, but pending decisions should still come from `/api/inbox`.
 - Future complete audits should render as report packets linked from this surface, not as long lists of disconnected cards.
@@ -235,6 +235,8 @@ The notification stack stays the transient toast surface. When a producer create
 
 Do not require every producer to create duplicate toasts before it is wired into Inbox. The durable queue is the source of pending state.
 
+Decision handoff rule: once a user approves, accepts, rejects, or dismisses an inbox card, the card should leave the current inbox surface immediately. The source action may still be processing, but that state belongs in the bottom-right notification stack as a minimized processing item. On completion, the stack item resolves to success/info/error, emits the final toast, and then removes itself. If the request itself fails, the inbox surface silently reloads so unresolved items can reappear from source truth.
+
 ### Card Atom
 
 **One card = one review artifact, not necessarily one `ChangeSet`.**
@@ -242,9 +244,9 @@ Do not require every producer to create duplicate toasts before it is wired into
 Card variants:
 
 - `agent_run`: one true `ChangeSet`, expandable to per-change controls and diffs.
-- `project_suggestion`: one project-loop suggestion, showing operation count, evidence, preview, risk tier, and whole-item Apply/Dismiss.
-- `project_audit` (future): one consultant-style audit packet, showing delivery confidence, audit dimensions, evidence, and generated follow-up findings. It should not expose Apply/Dismiss unless there is a clear user decision over the packet itself.
-- `calendar_suggestion`: one suggested project/task creation, showing calendar evidence, project/task preview, and whole-item Accept/Reject.
+- `project_suggestion`: one project-loop suggestion, showing operation count, evidence, preview, risk tier, and whole-item Accept/Dismiss/Chat.
+- `project_audit` (future): one consultant-style audit packet, showing delivery confidence, audit dimensions, evidence, and generated follow-up findings. It should not expose Accept/Dismiss unless there is a clear user decision over the packet itself.
+- `calendar_suggestion`: one suggested project/task creation, showing calendar evidence, project/task preview, and whole-item Accept/Dismiss/Chat.
 - `profile_fragment`: one profile fragment needing review, only after a real apply handler exists.
 - `contact_merge_candidate`: one merge candidate, showing both contacts with sensitive-value controls.
 
@@ -261,7 +263,7 @@ Generic actions:
 
 1. **Index schema** - add `inbox_items` with source identity, nullable `user_id`/`project_id`, `audience`, status, metadata, unique source key, and read/count indexes.
 2. **Source adapter contract** - each source must provide `mapToInboxItem(sourceRow)`, `loadPayload(sourceRef)`, `decide(sourceRef, action, options)`, and `syncIndex(sourceRef)`.
-3. **Safety fixes before unified actions** - `project_suggestions` now claims `pending -> approved -> applied|failed`, supersedes stale approvals before replay, and treats already-decided responses idempotently. `calendar_project_suggestions` still need equivalent claim verification before broader batching.
+3. **Safety fixes before unified actions** - `project_suggestions` now claims `pending -> approved -> applied|failed`, supersedes stale approvals before replay, and treats already-decided responses idempotently. `calendar_project_suggestions` now claims `pending -> processing -> accepted|rejected`, maps `processing` to Inbox `deciding`, has a migration-backed status constraint that permits the claim state, links accepted suggestions to `onto_projects`, and handles retry/stale-processing recovery.
 4. **Producer wiring** - write/sync index rows when:
     - agent runs reach `proposal_ready`,
     - chat-close capture inserts its proposal run,
@@ -269,20 +271,22 @@ Generic actions:
     - calendar suggestions are inserted,
     - later signal adapters create reviewable rows.
 5. **Read endpoints** - `GET /api/inbox` with filters for project/status/source/group and `GET /api/inbox/count`; both reconcile stale index rows against source state.
-6. **Decision endpoint** - `POST /api/inbox/decide` dispatches by `source_type`, mutates source first, then syncs the index. It must return source-specific result detail.
+6. **Decision endpoint** - `POST /api/inbox/decide` dispatches by `source_type`, mutates source first, then syncs the index. It returns source-specific result detail and enforces the persisted index status handoff so approved/rejected items cannot reload from `/api/inbox?status=pending`.
 7. **Card components** - shared inbox card shell plus source-specific payload renderers. Reuse `ChangeSetReview`/`DocumentProposalDiff` only for true agent-run change sets.
-8. **Project Inbox tab** - shipped in `EntityTabStrip` with project-loop brief, grouped sections, feedback controls, and safe batch apply. Retire `ProjectSuggestionsPanel` once no legacy mount sites depend on it.
+8. **Project Inbox tab** - shipped in `EntityTabStrip` with project-loop brief, grouped sections, feedback controls, and safe batch apply. The old `ProjectSuggestionsPanel` fallback has been removed after confirming it had no live imports.
 9. **Dashboard triage modal** - reuse the Overdue Task Triage navigation/progress chrome for cross-project items and account/global grouping.
 10. **Loop parent context** - implemented first slice: `/api/inbox?include_payload=1` returns `source_context.project_loop_run` for project-loop items, and both project/dashboard inbox surfaces show the originating review run label.
-11. **Project-suggestion Discuss** - implemented first slice: shared proposal decoder/context builder, `project_suggestions.chat_session_id`, `POST /api/onto/projects/[id]/suggestions/[suggestion_id]/chat-session`, and Discuss buttons in Project Inbox + Dashboard Inbox.
+11. **Inbox Chat** - implemented first project-suggestion slice with shared proposal decoder/context builder, `project_suggestions.chat_session_id`, and `POST /api/onto/projects/[id]/suggestions/[suggestion_id]/chat-session`; expanded 2026-06-28 to `POST /api/inbox/[item_id]/chat-session` so writable `project_suggestion`, user-owned `agent_run`, and user-owned `calendar_suggestion` items can all open seeded chat from Project Inbox/Dashboard Inbox.
 12. **Project-suggestion clarified decisions** - implemented for project-loop suggestions: `project_suggestions.status='delegated'`, `agent_runs.source_suggestion_id/source_decision`, child-run worker reconciliation, queue-full degraded fallback, and prior-decision loop prompt memory to reduce repeated suggestions.
-13. **Shared decision controls** - future refactor. Current behavior is implemented inline in `ProjectInboxPanel` and `DashboardInboxModal`; extract only after the source-specific behavior is stable.
-14. **Audit packet readiness** - add a future `project_audits` artifact only when the Complete Project Audit family is implemented. Do not overload `project_suggestions.kind` for full reports.
-15. **Signal readiness work** - before signals enter Inbox:
+13. **Shared decision controls** - implemented in `InboxDecisionControls.svelte` and wired into `ProjectInboxPanel` and `DashboardInboxModal`. Source-specific behavior remains in the parent surfaces/endpoints; the visible action model is now `Accept`, `Dismiss`, `Chat`. Inline clarification/dismiss-note UI is no longer shown; guidance moves through the seeded Chat path while `/api/inbox/decide` still supports project-suggestion clarification for compatible callers.
+14. **Decision notification handoff** - implemented in `inbox-decision-notification.service.ts`, `ProjectInboxPanel`, and `DashboardInboxModal`: cards are optimistically removed on approve/reject/dismiss, processing is shown in the bottom-right notification stack, completion/error toasts resolve through that stack, and failed requests trigger a silent inbox reload.
+15. **Decision index status enforcement** - implemented in `POST /api/inbox/decide`: after a successful source decision, stale or failed source sync is repaired by forcing the matching `inbox_items` row out of `pending`, with route-level regression coverage for project dismiss, clarified approve, sync failure, and calendar accept.
+16. **Audit packet readiness** - add a future `project_audits` artifact only when the Complete Project Audit family is implemented. Do not overload `project_suggestions.kind` for full reports.
+17. **Signal readiness work** - before signals enter Inbox:
     - profile fragments need an apply endpoint that performs the same merge work as the worker path: append/merge into a profile document, create a version, create source mapping, mark accepted, regenerate summary;
     - profile reject maps to dismissed;
     - contact Inbox includes only `user_contact_merge_candidates`, not raw observations, and must preserve sensitive-value exposure warnings.
-16. **Lifecycle** - add expiration for stale source rows and blocked/error handling. Snooze is future work unless a real re-surface model is implemented.
+18. **Lifecycle** - add expiration for stale source rows and blocked/error handling. Snooze is future work unless a real re-surface model is implemented.
 
 Out of scope:
 
@@ -306,7 +310,7 @@ Locked:
 8. **Work Panel:** remains the agent-run history/control surface. AI Inbox is the mutation-review queue.
 9. **Loop hierarchy:** `project_loop_runs` is the parent review event; `project_suggestions` are actionable findings; `inbox_items` indexes only reviewable items.
 10. **Audit shape:** Complete Project Audit should become a durable audit/report artifact, not merely another `project_suggestions.kind`.
-11. **Clarified project-suggestion decisions:** approve/dismiss with text creates a child agent run linked to the source suggestion; fast approve/dismiss remains deterministic.
+11. **Visible decision actions:** inbox cards that request a change expose `Accept`, `Dismiss`, and `Chat`. Fast accept/dismiss remains deterministic. Project-suggestion clarified decisions remain supported by the API, but inline note capture is not part of the current inbox UI.
 
 Closed from audit:
 
@@ -326,25 +330,25 @@ Still open:
 ## 7. Suggested Phasing
 
 - **Phase 0 - Read model and adapter contract:** implemented for v1 sources. Continue hardening source-action safety for calendar suggestions before broad batch actions.
-- **Phase 1 - Project Inbox tab:** implemented for project-scoped pending items with source-adapter approve/reject, project-loop brief, grouped sections, dismissal feedback, and safe batch apply. `ProjectSuggestionsPanel` remains as legacy code pending removal.
+- **Phase 1 - Project Inbox tab:** implemented for project-scoped pending items with source-adapter approve/reject, project-loop brief, grouped sections, dismissal feedback, and safe batch apply. The legacy `ProjectSuggestionsPanel` has been removed.
 - **Phase 2 - Dashboard Inbox triage:** implemented as a dashboard card/modal with project/account grouping; still needs smoke-test evidence and any final interaction polish.
 - **Phase 3 - Signals:** add profile-fragment apply/dismiss and contact-merge candidate cards after sensitive-data UX is ready.
 - **Phase 4 - Run/report alignment:** loop-run parent context is now visible across Project Inbox and Dashboard Inbox. Add `project_audits` only when the Complete Project Audit family ships.
-- **Phase 5 - Project suggestion discussion/clarification:** Discuss is implemented as seeded chat. Clarified decisions and recurrence prevention remain next.
+- **Phase 5 - Inbox Chat and project-suggestion clarification:** seeded Chat is implemented for writable `project_suggestion` items and user-owned `agent_run`/`calendar_suggestion` items; project-suggestion clarified decisions, recurrence prevention, shared `Accept`/`Dismiss`/`Chat` controls, notification-stack decision handoff, and conservative chat-origin resolution are implemented. Remaining follow-up: add explicit in-chat controls if we want users to resolve/dismiss without requiring a successful data mutation.
 - **Phase 6 - Mutation convergence:** migrate narrow mutating producers toward true `ChangeSet`s where per-change review is valuable. Calendar Analysis is the likely first candidate; mutating Project Loop suggestions can follow. Audit packets should not become `ChangeSet`s.
 
 ---
 
 ## 8. 2026-06-26 Alignment Next Steps
 
-The codebase is directionally aligned: `inbox_items` is the review queue, `project_suggestions` feed it, `project_loop_runs.brief` provides parent context, and project suggestions can now open seeded discussion chats. The remaining work is clarified decisions, recurrence prevention, and the separate audit artifact track.
+The codebase is directionally aligned: `inbox_items` is the review queue, `project_suggestions` feed it, `project_loop_runs.brief` provides parent context, project suggestions can open seeded discussion chats, and project-suggestion clarified decisions now delegate to linked child agent runs. The remaining work is stabilization, legacy cleanup, chat-resolution policy, calendar/source safety hardening, mutation convergence, and the separate audit artifact track.
 
 Recommended sequence:
 
 1. **Verify and stabilize v1.**
-    - Apply `20260624010000_ai_inbox_items.sql` and `20260625000000_project_loop_run_brief.sql` in target environments.
+    - Apply `20260624010000_ai_inbox_items.sql`, `20260625000000_project_loop_run_brief.sql`, `20260626000000_project_suggestion_chat_link.sql`, and `20260626010000_clarified_project_suggestion_decisions.sql` in target environments.
     - Run `docs/testing/MANUAL_AI_INBOX_SMOKE_TESTS_2026-06-25.md`.
-    - Remove `ProjectSuggestionsPanel.svelte` after smoke tests confirm `ProjectInboxPanel` covers the project-loop path.
+    - 2026-06-28 cleanup: removed the unmounted legacy `ProjectSuggestionsPanel.svelte`; `ProjectInboxPanel` is the only project-loop review panel.
 
 2. **Make loop parent context first-class.**
     - Add `run_id` / parent review metadata to project-suggestion inbox payloads or a small grouped response shape.
@@ -352,16 +356,21 @@ Recommended sequence:
     - Avoid loading loop runs through a parallel endpoint when the data is only needed to explain pending inbox items.
     - 2026-06-26 first slice: `GET /api/inbox?include_payload=1` returns `source_context.project_loop_run` for `project_suggestion` items, and both Project Inbox and Dashboard Inbox render the originating review run label.
 
-3. **Discuss project suggestions in chat.**
+3. **Chat about inbox items.**
     - 2026-06-26 first slice: shared proposal context utilities live in `@buildos/shared-agent-ops/proposal-context`.
     - `POST /api/onto/projects/[id]/suggestions/[suggestion_id]/chat-session` creates/reuses a project-scoped `chat_sessions` row, inserts an assistant seed message, links `project_suggestions.chat_session_id`, and cleans up on creation failure.
-    - Project Inbox and Dashboard Inbox show a Discuss button for writable `project_suggestion` cards and open `AgentChatModal` with `initialChatSessionId`.
-    - V1 Discuss does not auto-resolve the inbox card; the user still applies/dismisses from the inbox unless a later chat action explicitly handles it.
+    - 2026-06-28 update: `POST /api/inbox/[item_id]/chat-session` is the UI-facing route. It creates/reuses a seeded `chat_sessions` row from the inbox item, enforces the same ownership/project-write access rules as decisions, preserves the full project-suggestion proposal context, and adds compact seed context for `agent_run` and `calendar_suggestion` cards.
+    - Project Inbox and Dashboard Inbox show `Chat` for decidable items and open `AgentChatModal` with `initialChatSessionId`.
+    - 2026-06-28 update: `POST /api/inbox/[item_id]/resolve-from-chat` lets inbox-origin Chat close resolve the source item when the chat reports successful data mutations. Discussion-only chats leave the inbox card pending.
+        - `project_suggestion`: pending source row becomes `applied` with `result.handled_in_chat = true`, then the index row is synced.
+        - `agent_run`: the original proposal is rejected after replacement chat writes, then the index row is synced.
+        - `calendar_suggestion`: pending source row becomes `accepted` only when chat mutations include a created/affected project id.
 
-4. **Implement clarified decisions and recurrence prevention.**
-    - Add child `agent_runs` for approve/dismiss-with-clarification.
-    - Feed prior decided suggestions/user feedback into project-loop context and prompts so dismissed rationale prevents recurrence.
-    - Add the shared `InboxDecisionControls` component when clarification UI is introduced.
+4. **Harden clarified decisions and shared controls.**
+    - Implemented 2026-06-26: approve/dismiss-with-clarification dispatches linked child `agent_runs`; worker finalize reconciles the source suggestion; prior decided suggestions/user feedback enter project-loop context and prompts; shared `InboxDecisionControls` is wired into both inbox surfaces.
+    - Implemented 2026-06-28: visible inbox controls are normalized to `Accept`, `Dismiss`, and `Chat`; guidance now starts in Chat rather than an inline note field.
+    - Next: smoke-test Chat for project suggestions, agent-run change sets, and calendar suggestions; smoke-test queue-full degraded fallback, stale-approval superseding, and the `delegated -> applied|rejected|failed` reconciliation path in a migrated environment.
+    - Decide whether explicit discussion-only Chat outcomes should support "mark handled" or "dismiss from chat" without a data mutation.
 
 5. **Clarify informational vs mutating findings.**
     - Keep no-op drift findings as acknowledgement-style `project_suggestion` rows.

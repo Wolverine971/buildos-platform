@@ -903,6 +903,11 @@
 				"MAX_PROJECT_SELECTOR_LIMIT",
 				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
 				"normalizeProjectSelectionSearch",
+				"PROJECT_RECENCY_RECENT_MAX_DAYS",
+				"PROJECT_RECENCY_OLDER_MAX_DAYS",
+				"parseProjectUpdatedAt",
+				"formatRelativeProjectUpdate",
+				"groupProjectsByRecency",
 				"normalizeProjectSelectionLimit",
 				"clearProjectSelectionBrowserCache",
 				"fetchProjectSelectionSummaries"

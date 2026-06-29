@@ -294,6 +294,14 @@ export class OntologyReadExecutor extends BaseExecutor {
 		return tokens.every((token) => haystack.includes(token.toLowerCase()));
 	}
 
+	private isPlainSearchTermTooBroad(term: string): boolean {
+		const normalized = term.trim();
+		if (!normalized) return true;
+		const hasExplicitOr = /\s+\bOR\b\s+/i.test(normalized) || normalized.includes('|');
+		if (hasExplicitOr) return false;
+		return this.tokenizeForKeywordSearch(normalized).length === 0;
+	}
+
 	private normalizeAgenticSearchTypes(types?: string[]): string[] | undefined {
 		if (!Array.isArray(types) || types.length === 0) {
 			return undefined;
@@ -425,16 +433,16 @@ export class OntologyReadExecutor extends BaseExecutor {
 				.is('archived_at', null)
 				.order('updated_at', { ascending: false })
 				.limit(8),
-				supabase
-					.from('onto_documents')
-					.select(
-						'id, project_id, title, description, type_key, state_key, props, created_at, updated_at, archived_at'
-					)
-					.eq('project_id', projectId)
-					.eq('type_key', 'document.context.project')
-					.is('deleted_at', null)
-					.order('updated_at', { ascending: false })
-					.limit(20)
+			supabase
+				.from('onto_documents')
+				.select(
+					'id, project_id, title, description, type_key, state_key, props, created_at, updated_at, archived_at'
+				)
+				.eq('project_id', projectId)
+				.eq('type_key', 'document.context.project')
+				.is('deleted_at', null)
+				.order('updated_at', { ascending: false })
+				.limit(20)
 		]);
 
 		this.throwFirstQueryError([
@@ -454,10 +462,10 @@ export class OntologyReadExecutor extends BaseExecutor {
 			return null;
 		}
 
-			const contextDocumentRaw = contextDocResult.data ?? null;
-			const contextDocument = Array.isArray(contextDocumentRaw)
-				? pickStartHereDocument(contextDocumentRaw)
-				: contextDocumentRaw;
+		const contextDocumentRaw = contextDocResult.data ?? null;
+		const contextDocument = Array.isArray(contextDocumentRaw)
+			? pickStartHereDocument(contextDocumentRaw)
+			: contextDocumentRaw;
 
 		return this.stripInternalPayloadFields({
 			project,
@@ -1094,10 +1102,21 @@ export class OntologyReadExecutor extends BaseExecutor {
 		projects: any[];
 		total: number;
 		message: string;
+		rejected_query?: boolean;
+		materialized_tools?: string[];
 	}> {
 		const searchTerm = this.resolveSearchTerm(args);
 		if (!searchTerm) {
 			throw new Error('Search term is required for search_onto_projects');
+		}
+		if (this.isPlainSearchTermTooBroad(searchTerm)) {
+			return {
+				projects: [],
+				total: 0,
+				rejected_query: true,
+				materialized_tools: ['get_workspace_overview'],
+				message: `Project search query "${searchTerm}" is too broad. Use get_workspace_overview for project inventory/status, or search with a specific project keyword of at least two non-stopword characters.`
+			};
 		}
 
 		let projects = (await this.loadAccessibleProjectSummaries()).filter((project) =>

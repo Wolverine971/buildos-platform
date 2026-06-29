@@ -71,7 +71,80 @@
 	{:else if data.length === 0}
 		<div class="p-6 text-center text-muted-foreground">No failed deliveries</div>
 	{:else}
-		<div class="overflow-x-auto">
+		<!-- Mobile card list -->
+		<div class="block lg:hidden divide-y divide-border">
+			{#each data as delivery (delivery.delivery_id)}
+				<div class="p-3 space-y-3">
+					<div class="flex items-start justify-between gap-2">
+						<div class="min-w-0">
+							<div class="font-medium text-foreground truncate">
+								{delivery.recipient_email}
+							</div>
+							<div class="text-xs text-muted-foreground">
+								{formatDate(delivery.created_at)}
+							</div>
+						</div>
+						<span
+							class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium flex-shrink-0 {getChannelBadgeColor(
+								delivery.channel
+							)}"
+						>
+							{delivery.channel}
+						</span>
+					</div>
+					<div class="grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
+						<div>
+							<div class="text-xs text-destructive uppercase tracking-wider">
+								Event Type
+							</div>
+							<div class="text-foreground">{delivery.event_type}</div>
+						</div>
+						<div>
+							<div class="text-xs text-destructive uppercase tracking-wider">
+								Attempts
+							</div>
+							<div class="text-foreground">
+								{delivery.attempts}/{delivery.max_attempts}
+							</div>
+						</div>
+					</div>
+					<div>
+						<div class="text-xs text-destructive uppercase tracking-wider mb-1">
+							Error
+						</div>
+						<button
+							type="button"
+							class="rounded-sm text-destructive hover:text-destructive/80 underline decoration-dotted cursor-pointer text-left truncate block w-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							onclick={() => openErrorModal(delivery)}
+							title="Click to view full error"
+						>
+							{delivery.last_error}
+						</button>
+					</div>
+					<div class="flex flex-wrap gap-2">
+						{#if delivery.attempts < delivery.max_attempts}
+							<Button
+								size="sm"
+								variant="secondary"
+								onclick={() => onRetry?.(delivery.delivery_id)}
+							>
+								Retry
+							</Button>
+						{/if}
+						<Button
+							size="sm"
+							variant="secondary"
+							onclick={() => onResend?.(delivery.delivery_id)}
+						>
+							Resend
+						</Button>
+					</div>
+				</div>
+			{/each}
+		</div>
+
+		<!-- Desktop table -->
+		<div class="hidden lg:block overflow-x-auto">
 			<table class="min-w-full divide-y divide-border">
 				<thead class="bg-muted">
 					<tr>
@@ -113,7 +186,7 @@
 					</tr>
 				</thead>
 				<tbody class="bg-card divide-y divide-border">
-					{#each data as delivery}
+					{#each data as delivery (delivery.delivery_id)}
 						<tr class="hover:bg-destructive/10 transition-colors">
 							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								{formatDate(delivery.created_at)}

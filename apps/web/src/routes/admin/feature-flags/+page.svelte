@@ -5,6 +5,7 @@
 	import AdminCard from '$lib/components/admin/AdminCard.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import { invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { FeatureName } from '@buildos/shared-types';
 
@@ -64,7 +65,7 @@
 			}
 
 			// Refresh page data after successful toggle
-			window.location.reload();
+			await invalidateAll();
 		} catch (error) {
 			console.error('[FeatureFlags] Toggle request failed:', error);
 			errorMessage = 'Unexpected error while updating feature flag';

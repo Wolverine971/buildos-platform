@@ -21,11 +21,14 @@
 	// Derive if thinking is complete (check for completion phrases in content)
 	const isThinkingComplete = $derived.by(() => {
 		if (block.status !== 'active') return true;
-		// Check for completion phrases in content
+		// Prefer the explicit loop signal; fall back to completion phrases in content.
+		// `\bcomplete` matches "complete"/"completed" without false-positiving on
+		// "incomplete" (no word boundary before the inner "complete").
+		if (block.agentState === 'waiting_on_user') return true;
 		const content = block.content?.toLowerCase() || '';
 		return (
 			content.includes('ready for your response') ||
-			content.includes('complete') ||
+			/\bcomplete/.test(content) ||
 			content.includes('waiting on your')
 		);
 	});

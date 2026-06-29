@@ -76,7 +76,7 @@
 							y1={40 + i * 35}
 							x2="450"
 							y2={40 + i * 35}
-							stroke="#e5e7eb"
+							stroke="hsl(var(--border))"
 							stroke-width="1"
 							stroke-dasharray="2,2"
 						/>
@@ -85,7 +85,7 @@
 							y={45 + i * 35}
 							text-anchor="end"
 							font-size="10"
-							fill="#6b7280"
+							fill="hsl(var(--muted-foreground))"
 						>
 							{Math.round(((5 - i) * maxValue) / 5)}
 						</text>
@@ -102,7 +102,7 @@
 							y={215 - openTasksHeight}
 							width={barWidth / 3 - 2}
 							height={openTasksHeight}
-							fill="#0ea5e9"
+							fill="hsl(var(--info))"
 							rx="2"
 							class="hover:opacity-80 cursor-pointer"
 							role="button"
@@ -132,7 +132,7 @@
 							y={215 - completedTasksHeight}
 							width={barWidth / 3 - 2}
 							height={completedTasksHeight}
-							fill="#10b981"
+							fill="hsl(var(--success))"
 							rx="2"
 							class="hover:opacity-80 cursor-pointer"
 							role="button"
@@ -162,7 +162,7 @@
 							y={215 - chatSessionsHeight}
 							width={barWidth / 3 - 2}
 							height={chatSessionsHeight}
-							fill="#f59e0b"
+							fill="hsl(var(--warning))"
 							rx="2"
 							class="hover:opacity-80 cursor-pointer"
 							role="button"
@@ -192,7 +192,7 @@
 							y="235"
 							text-anchor="middle"
 							font-size="10"
-							fill="#6b7280"
+							fill="hsl(var(--muted-foreground))"
 							transform="rotate(-45, {x + barWidth / 2}, 235)"
 						>
 							{project.name}

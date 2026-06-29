@@ -1,5 +1,5 @@
 // apps/web/src/lib/server/agent-call/oauth-connector.service.ts
-import { createHash, randomBytes, randomUUID } from 'crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
 import type {
 	AgentCallScope,
 	AgentOAuthAccessTokenRecord,
@@ -101,6 +101,21 @@ function randomToken(prefix: string): string {
 
 function hashSecret(value: string): string {
 	return createHash('sha256').update(value).digest('hex');
+}
+
+/**
+ * Constant-time string comparison for secret material (hashed client secrets,
+ * PKCE challenges). Falls back to `false` on length mismatch — for the
+ * fixed-length digests we compare this leaks nothing useful, and it avoids the
+ * early-exit timing signal of `===`/`!==`.
+ */
+function timingSafeStringEqual(a: string, b: string): boolean {
+	const bufferA = Buffer.from(a);
+	const bufferB = Buffer.from(b);
+	if (bufferA.length !== bufferB.length) {
+		return false;
+	}
+	return timingSafeEqual(bufferA, bufferB);
 }
 
 function pkceChallenge(verifier: string): string {
@@ -873,7 +888,7 @@ async function validateTokenEndpointClient(
 
 	if (client.client_secret_hash) {
 		const secret = extractClientSecret(request, form);
-		if (!secret || hashSecret(secret) !== client.client_secret_hash) {
+		if (!secret || !timingSafeStringEqual(hashSecret(secret), client.client_secret_hash)) {
 			throw new OAuthConnectorError('Invalid client secret', 401, 'invalid_client');
 		}
 	}
@@ -975,7 +990,7 @@ export async function exchangeOAuthAuthorizationCode(params: {
 	if (new Date(authCode.expires_at).getTime() <= Date.now()) {
 		throw new OAuthConnectorError('Authorization code expired', 400, 'invalid_grant');
 	}
-	if (pkceChallenge(codeVerifier) !== authCode.code_challenge) {
+	if (!timingSafeStringEqual(pkceChallenge(codeVerifier), authCode.code_challenge)) {
 		throw new OAuthConnectorError('Invalid PKCE code verifier', 400, 'invalid_grant');
 	}
 
@@ -1056,11 +1071,41 @@ export async function exchangeOAuthRefreshToken(params: {
 	if (current.client_id !== client.client_id) {
 		throw new OAuthConnectorError('Refresh token does not match client', 400, 'invalid_grant');
 	}
-	if (
-		current.revoked_at ||
-		current.used_at ||
-		new Date(current.expires_at).getTime() <= Date.now()
-	) {
+
+	// Reuse detection: a refresh token that was already rotated (`used_at`) or
+	// explicitly revoked is being presented again — a theft signal. Burn the
+	// whole family + grant + caller (RFC 9700 §4.14.2) and surface it loudly.
+	// NOTE: plain expiry below is NOT reuse and must not nuke the family.
+	if (current.used_at || current.revoked_at) {
+		await revokeRefreshTokenFamily({
+			admin: params.admin,
+			familyId: current.family_id,
+			grantId: current.grant_id,
+			externalAgentCallerId: current.external_agent_caller_id
+		});
+		await logSecurityEvent(
+			{
+				eventType: 'agent.oauth.refresh.reuse_detected',
+				category: 'agent',
+				outcome: 'blocked',
+				severity: 'high',
+				actorType: 'external_agent',
+				actorUserId: current.user_id,
+				externalAgentCallerId: current.external_agent_caller_id,
+				reason: 'refresh_token_reuse',
+				metadata: {
+					client_id: current.client_id,
+					grant_id: current.grant_id,
+					family_id: current.family_id,
+					token_prefix: current.token_prefix
+				}
+			},
+			{ ...(params.securityEventOptions ?? {}), supabase: params.admin }
+		);
+		throw new OAuthConnectorError('Refresh token is no longer valid', 400, 'invalid_grant');
+	}
+
+	if (new Date(current.expires_at).getTime() <= Date.now()) {
 		throw new OAuthConnectorError('Refresh token is no longer valid', 400, 'invalid_grant');
 	}
 
@@ -1098,6 +1143,43 @@ export async function exchangeOAuthRefreshToken(params: {
 		includeRefreshToken: true,
 		rotatedFromRefreshToken: current
 	});
+}
+
+/**
+ * Refresh-token reuse response. Presenting a refresh token that was already
+ * rotated (`used_at`) or revoked signals theft (OAuth 2.1 / RFC 9700 §4.14.2):
+ * revoke the ENTIRE token family plus the grant, its outstanding access tokens,
+ * and the external caller — not just the single replayed token. This forces the
+ * legitimate client to re-authorize, which is the correct fail-safe when we
+ * cannot distinguish the real client from an attacker.
+ */
+async function revokeRefreshTokenFamily(params: {
+	admin: any;
+	familyId: string;
+	grantId: string;
+	externalAgentCallerId: string;
+}): Promise<void> {
+	const now = new Date().toISOString();
+	await Promise.all([
+		params.admin
+			.from('agent_oauth_refresh_tokens')
+			.update({ revoked_at: now })
+			.eq('family_id', params.familyId)
+			.is('revoked_at', null),
+		params.admin
+			.from('agent_oauth_access_tokens')
+			.update({ revoked_at: now })
+			.eq('grant_id', params.grantId)
+			.is('revoked_at', null),
+		params.admin
+			.from('agent_oauth_grants')
+			.update({ status: 'revoked' })
+			.eq('id', params.grantId),
+		params.admin
+			.from('external_agent_callers')
+			.update({ status: 'revoked' })
+			.eq('id', params.externalAgentCallerId)
+	]);
 }
 
 export async function revokeOAuthToken(params: {
@@ -1270,4 +1352,39 @@ export async function createMcpCallSession(params: {
 	}
 
 	return data.id as string;
+}
+
+/**
+ * Housekeeping: delete OAuth artifacts that are past their expiry. Lookups
+ * already reject expired rows, so this only bounds table growth — it changes no
+ * behavior. Meant to be called from the daily security-events-retention cron.
+ *
+ * IMPORTANT: refresh tokens are deleted ONLY when expired, never merely
+ * used/revoked, so refresh-token reuse detection (family burn) keeps working for
+ * the full lifetime of a token. Grants/clients are never reaped (audit trail).
+ */
+export async function reapExpiredOAuthArtifacts(admin: any): Promise<{
+	authorization_codes: number;
+	access_tokens: number;
+	refresh_tokens: number;
+}> {
+	const nowIso = new Date().toISOString();
+	const countOf = (result: { data?: unknown[] | null }): number =>
+		Array.isArray(result?.data) ? result.data.length : 0;
+
+	const [codes, accessTokens, refreshTokens] = await Promise.all([
+		admin
+			.from('agent_oauth_authorization_codes')
+			.delete()
+			.lt('expires_at', nowIso)
+			.select('id'),
+		admin.from('agent_oauth_access_tokens').delete().lt('expires_at', nowIso).select('id'),
+		admin.from('agent_oauth_refresh_tokens').delete().lt('expires_at', nowIso).select('id')
+	]);
+
+	return {
+		authorization_codes: countOf(codes),
+		access_tokens: countOf(accessTokens),
+		refresh_tokens: countOf(refreshTokens)
+	};
 }

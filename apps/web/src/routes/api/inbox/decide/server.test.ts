@@ -170,14 +170,19 @@ describe('POST /api/inbox/decide', () => {
 			suggestion: { id: 'suggestion-1', status: 'rejected' },
 			result: { ok: true }
 		});
+		const routeFetch = vi.fn();
 
 		const response = await POST({
 			request: makeRequest({ item_id: 'inbox-1', action: 'reject' }),
-			locals: makeLocals(supabase)
+			locals: makeLocals(supabase),
+			fetch: routeFetch
 		} as any);
 		const json = await response.json();
 
 		expect(response.status).toBe(200);
+		expect(mocks.decideProjectSuggestion).toHaveBeenCalledWith(
+			expect.objectContaining({ fetchFn: routeFetch })
+		);
 		expect(json.data.item).toMatchObject({
 			status: 'decided',
 			source_status: 'rejected'

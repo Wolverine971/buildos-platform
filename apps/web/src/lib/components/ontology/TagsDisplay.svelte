@@ -66,11 +66,7 @@
 		{/if}
 		<div class="flex flex-wrap gap-1.5">
 			{#each displayTags as tag}
-				<Badge
-					variant="secondary"
-					{size}
-					class="font-normal bg-accent/10 text-accent-foreground/80 border-accent/20"
-				>
+				<Badge variant="accent" {size} class="font-normal">
 					{tag}
 				</Badge>
 			{/each}

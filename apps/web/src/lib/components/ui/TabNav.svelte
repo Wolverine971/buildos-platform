@@ -70,6 +70,14 @@
 			targetButton.focus();
 		}
 	}
+
+	// Keep the active tab visible in the horizontal-scroll strip on mobile. When the
+	// active tab changes via URL/programmatic selection (not just keyboard focus), a
+	// deep-linked tab can otherwise load off-screen. `nearest` avoids vertical jumps.
+	$effect(() => {
+		const index = tabs.findIndex((tab) => tab.id === activeTab);
+		tabButtons[index]?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+	});
 </script>
 
 <div class="tab-container {containerClass}">

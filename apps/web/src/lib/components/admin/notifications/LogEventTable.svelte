@@ -29,6 +29,8 @@
 
 	let { events, loading = false, onViewDetails, onRetry }: Props = $props();
 
+	let hasActions = $derived(!!(onViewDetails || onRetry));
+
 	let expandedRows = $state<Set<string>>(new Set());
 
 	function toggleRow(eventId: string) {
@@ -84,7 +86,130 @@
 	{:else if events.length === 0}
 		<div class="p-4 text-center text-sm text-muted-foreground">No events found</div>
 	{:else}
-		<div class="overflow-x-auto">
+		<!-- Mobile card list -->
+		<div class="block lg:hidden divide-y divide-border">
+			{#each events as event (event.id)}
+				<div class="p-3 space-y-3">
+					<div class="flex items-start justify-between gap-2">
+						<span
+							class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getEventTypeBadgeColor(
+								event.event_type
+							)}"
+						>
+							{formatEventType(event.event_type)}
+						</span>
+						<button
+							type="button"
+							onclick={() => toggleRow(event.id)}
+							class="rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring flex-shrink-0"
+							aria-label={expandedRows.has(event.id)
+								? 'Collapse payload'
+								: 'Expand payload'}
+						>
+							{#if expandedRows.has(event.id)}
+								<ChevronDown class="w-5 h-5" />
+							{:else}
+								<ChevronRight class="w-5 h-5" />
+							{/if}
+						</button>
+					</div>
+					<div class="grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								User
+							</div>
+							{#if event.users}
+								<div class="font-medium text-foreground">
+									{event.users.name || 'N/A'}
+								</div>
+								<div class="text-xs text-muted-foreground truncate">
+									{event.users.email}
+								</div>
+							{:else}
+								<div class="text-muted-foreground">N/A</div>
+							{/if}
+						</div>
+						<div>
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Deliveries
+							</div>
+							<div class="font-medium text-foreground">{event.delivery_count}</div>
+						</div>
+						<div class="col-span-2">
+							<div
+								class="text-xs text-muted-foreground uppercase tracking-wider mb-1"
+							>
+								Status Breakdown
+							</div>
+							<div class="flex flex-wrap gap-1">
+								{#each Object.entries(event.status_breakdown) as [status, count]}
+									<span
+										class="inline-flex items-center px-2 py-0.5 rounded-md text-xs {getStatusBadgeColor(
+											status
+										)}"
+									>
+										{status}: {count}
+									</span>
+								{/each}
+							</div>
+						</div>
+						<div class="col-span-2">
+							<div class="text-xs text-muted-foreground uppercase tracking-wider">
+								Created At
+							</div>
+							<div class="text-muted-foreground">{formatDate(event.created_at)}</div>
+						</div>
+					</div>
+					{#if expandedRows.has(event.id)}
+						<div class="space-y-2">
+							<div class="text-sm font-medium text-foreground">Payload:</div>
+							<pre
+								class="bg-card border border-border rounded-md p-3 text-xs overflow-x-auto whitespace-pre-wrap break-all">{JSON.stringify(
+									event.payload,
+									null,
+									2
+								)}</pre>
+							{#if event.metadata && Object.keys(event.metadata).length > 0}
+								<div class="text-sm font-medium text-foreground">Metadata:</div>
+								<pre
+									class="bg-card border border-border rounded-md p-3 text-xs overflow-x-auto whitespace-pre-wrap break-all">{JSON.stringify(
+										event.metadata,
+										null,
+										2
+									)}</pre>
+							{/if}
+						</div>
+					{/if}
+					{#if hasActions}
+						<div class="flex flex-wrap gap-2">
+							{#if onViewDetails}
+								<Button
+									size="sm"
+									variant="ghost"
+									onclick={() => onViewDetails?.(event.id)}
+									icon={Eye}
+								>
+									View
+								</Button>
+							{/if}
+							{#if onRetry}
+								<Button
+									size="sm"
+									variant="ghost"
+									onclick={() => onRetry?.(event.id)}
+									icon={RotateCw}
+								>
+									Retry
+								</Button>
+							{/if}
+						</div>
+					{/if}
+				</div>
+			{/each}
+		</div>
+
+		<!-- Desktop table -->
+		<div class="hidden lg:block overflow-x-auto">
 			<table class="min-w-full divide-y divide-border">
 				<thead class="bg-muted">
 					<tr>
@@ -114,21 +239,23 @@
 						>
 							Created At
 						</th>
-						<th
-							class="px-3 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
-						>
-							Actions
-						</th>
+						{#if hasActions}
+							<th
+								class="px-3 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							>
+								Actions
+							</th>
+						{/if}
 					</tr>
 				</thead>
 				<tbody class="bg-card divide-y divide-border">
-					{#each events as event}
+					{#each events as event (event.id)}
 						<tr class="hover:bg-muted transition-colors">
 							<td class="px-3 py-2.5">
 								<button
 									type="button"
 									onclick={() => toggleRow(event.id)}
-									class="rounded-md text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									class="rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								>
 									{#if expandedRows.has(event.id)}
 										<ChevronDown class="w-4 h-4" />
@@ -181,32 +308,34 @@
 							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-muted-foreground">
 								{formatDate(event.created_at)}
 							</td>
-							<td
-								class="px-3 py-2.5 whitespace-nowrap text-right text-sm font-medium"
-							>
-								<div class="flex justify-end space-x-2">
-									{#if onViewDetails}
-										<Button
-											size="sm"
-											variant="ghost"
-											onclick={() => onViewDetails?.(event.id)}
-											icon={Eye}
-										>
-											View
-										</Button>
-									{/if}
-									{#if onRetry}
-										<Button
-											size="sm"
-											variant="ghost"
-											onclick={() => onRetry?.(event.id)}
-											icon={RotateCw}
-										>
-											Retry
-										</Button>
-									{/if}
-								</div>
-							</td>
+							{#if hasActions}
+								<td
+									class="px-3 py-2.5 whitespace-nowrap text-right text-sm font-medium"
+								>
+									<div class="flex justify-end space-x-2">
+										{#if onViewDetails}
+											<Button
+												size="sm"
+												variant="ghost"
+												onclick={() => onViewDetails?.(event.id)}
+												icon={Eye}
+											>
+												View
+											</Button>
+										{/if}
+										{#if onRetry}
+											<Button
+												size="sm"
+												variant="ghost"
+												onclick={() => onRetry?.(event.id)}
+												icon={RotateCw}
+											>
+												Retry
+											</Button>
+										{/if}
+									</div>
+								</td>
+							{/if}
 						</tr>
 
 						<!-- Expanded Row - Payload Details -->

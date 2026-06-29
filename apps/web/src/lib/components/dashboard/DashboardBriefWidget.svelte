@@ -221,10 +221,10 @@
 	{#if isLoading}
 		<!-- Skeleton Loading State - ghost weight for ephemeral state -->
 		<div
-			class="flex items-center gap-2 sm:gap-3 wt-ghost p-2 sm:p-3 animate-pulse"
+			class="flex items-center gap-2 sm:gap-3 wt-ghost p-2 sm:p-3 animate-pulse motion-reduce:animate-none"
 			aria-hidden="true"
 		>
-			<div class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-muted">
+			<div class="p-1.5 sm:p-2 rounded-md bg-muted">
 				<div class="h-3 w-3 sm:h-4 sm:w-4 bg-muted-foreground/20 rounded"></div>
 			</div>
 			<div class="flex-1 space-y-1.5 sm:space-y-2">
@@ -236,10 +236,10 @@
 		<!-- Generating State - paper weight with pulse texture -->
 		<div class="wt-paper p-2 sm:p-3 border-accent/30 bg-accent/5 tx tx-pulse tx-weak">
 			<div class="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
-				<div
-					class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-accent/10 border border-accent/20"
-				>
-					<LoaderCircle class="h-3 w-3 sm:h-4 sm:w-4 text-accent animate-spin" />
+				<div class="p-1.5 sm:p-2 rounded-md bg-accent/10 border border-accent/20">
+					<LoaderCircle
+						class="h-3 w-3 sm:h-4 sm:w-4 text-accent animate-spin motion-reduce:animate-none"
+					/>
 				</div>
 				<div class="flex-1 min-w-0">
 					<p class="text-xs sm:text-sm font-medium text-foreground">Generating brief</p>
@@ -260,7 +260,7 @@
 	{:else if error}
 		<!-- Error State - paper weight with static texture -->
 		<div class="flex items-center gap-2 sm:gap-3 wt-paper p-2 sm:p-3 tx tx-static tx-weak">
-			<div class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-destructive/10">
+			<div class="p-1.5 sm:p-2 rounded-md bg-destructive/10">
 				<AlertCircle class="h-3 w-3 sm:h-4 sm:w-4 text-destructive" />
 			</div>
 			<div class="flex-1">
@@ -268,7 +268,7 @@
 			</div>
 			<button
 				onclick={generateBrief}
-				class="text-[10px] sm:text-xs font-medium text-accent hover:underline"
+				class="rounded-sm text-[10px] sm:text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
 			>
 				Retry
 			</button>
@@ -277,11 +277,11 @@
 		<!-- Brief Available - paper weight with frame texture -->
 		<button
 			onclick={handleClick}
-			class="w-full text-left wt-paper p-2 sm:p-3 hover:border-accent pressable tx tx-frame tx-weak group"
+			class="w-full text-left wt-paper p-2 sm:p-3 hover:border-accent pressable tx tx-frame tx-weak group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 		>
 			<div class="flex items-center sm:items-start gap-2 sm:gap-3">
 				<div
-					class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-warning/10 border border-warning/20 group-hover:bg-warning/20 transition-colors flex-shrink-0"
+					class="p-1.5 sm:p-2 rounded-md bg-warning/10 border border-warning/20 group-hover:bg-warning/20 transition-colors flex-shrink-0"
 				>
 					<Sun class="h-3 w-3 sm:h-4 sm:w-4 text-warning" />
 				</div>
@@ -335,10 +335,10 @@
 		<button
 			onclick={generateBrief}
 			disabled={isGenerating}
-			class="w-full flex items-center gap-2 sm:gap-3 wt-ghost border-dashed border-accent/50 p-2 sm:p-3 hover:border-accent hover:bg-accent/10 pressable group"
+			class="w-full flex items-center gap-2 sm:gap-3 wt-ghost border-dashed border-accent/50 p-2 sm:p-3 hover:border-accent hover:bg-accent/10 pressable group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 		>
 			<div
-				class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-accent/10 border border-accent/20 group-hover:bg-accent group-hover:border-accent transition-colors flex-shrink-0"
+				class="p-1.5 sm:p-2 rounded-md bg-accent/10 border border-accent/20 group-hover:bg-accent group-hover:border-accent transition-colors flex-shrink-0"
 			>
 				<Sparkles
 					class="h-3 w-3 sm:h-4 sm:w-4 text-accent group-hover:text-accent-foreground transition-colors"

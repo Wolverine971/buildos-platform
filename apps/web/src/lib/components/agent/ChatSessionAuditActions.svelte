@@ -32,9 +32,17 @@
 
 	interface Props {
 		sessionId?: string | null;
+		/**
+		 * - `standalone` (default): desktop row + self-contained mobile "..." menu.
+		 * - `desktop`: desktop row only (mobile rows are expected to live in a host menu).
+		 * - `menu`: bare menu-item rows for embedding inside a host dropdown.
+		 */
+		variant?: 'standalone' | 'desktop' | 'menu';
+		/** Called after a menu item is activated (lets a host close its dropdown). */
+		onItemClick?: () => void;
 	}
 
-	let { sessionId = null }: Props = $props();
+	let { sessionId = null, variant = 'standalone', onItemClick }: Props = $props();
 
 	let exportMenuOpen = $state(false);
 	let mobileMenuOpen = $state(false);
@@ -104,7 +112,57 @@
 	}
 </script>
 
-{#if visible}
+{#snippet auditMenuItems()}
+	{#if adminSessionHref}
+		<a
+			href={adminSessionHref}
+			target="_blank"
+			rel="noopener noreferrer"
+			class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none"
+			role="menuitem"
+			onclick={() => {
+				mobileMenuOpen = false;
+				onItemClick?.();
+			}}
+		>
+			<ExternalLink class="h-3.5 w-3.5 shrink-0" />
+			<span>Logs</span>
+		</a>
+	{/if}
+	<button
+		type="button"
+		onclick={() => {
+			mobileMenuOpen = false;
+			onItemClick?.();
+			void exportAudit('markdown');
+		}}
+		disabled={isExporting}
+		class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+		role="menuitem"
+	>
+		<Download class="h-3.5 w-3.5 shrink-0" />
+		<span>Export as markdown</span>
+	</button>
+	<button
+		type="button"
+		onclick={() => {
+			mobileMenuOpen = false;
+			onItemClick?.();
+			void exportAudit('bundle');
+		}}
+		disabled={isExporting}
+		class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+		role="menuitem"
+	>
+		<FileArchive class="h-3.5 w-3.5 shrink-0" />
+		<span>Export as separate files</span>
+	</button>
+{/snippet}
+
+{#if visible && variant === 'menu'}
+	<!-- Bare menu rows for embedding inside a host dropdown -->
+	{@render auditMenuItems()}
+{:else if visible}
 	<!-- Desktop: Logs link + Export dropdown -->
 	<div class="hidden items-center gap-1.5 sm:flex">
 		{#if adminSessionHref}
@@ -191,77 +249,41 @@
 		</div>
 	</div>
 
-	<!-- Mobile: single "..." menu -->
-	<div class="relative sm:hidden">
-		<button
-			type="button"
-			onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
-			class="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-			style="-webkit-tap-highlight-color: transparent;"
-			aria-label="Open session actions"
-			aria-haspopup="menu"
-			aria-expanded={mobileMenuOpen}
-		>
-			{#if isExporting}
-				<LoaderCircle class="h-4 w-4 animate-spin" />
-			{:else}
-				<MoreHorizontal class="h-4 w-4" />
-			{/if}
-		</button>
-
-		{#if mobileMenuOpen}
-			<!-- Click-away backdrop -->
+	<!-- Mobile: single "..." menu (standalone hosts only) -->
+	{#if variant === 'standalone'}
+		<div class="relative sm:hidden">
 			<button
 				type="button"
-				class="fixed inset-0 z-40 cursor-default"
-				aria-label="Close session actions menu"
-				tabindex="-1"
-				onclick={() => (mobileMenuOpen = false)}
-			></button>
-			<div
-				class="absolute right-0 top-[calc(100%+0.35rem)] z-50 min-w-52 overflow-hidden rounded-lg border border-border bg-card py-1 shadow-ink tx tx-frame tx-weak"
-				role="menu"
+				onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
+				class="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				style="-webkit-tap-highlight-color: transparent;"
+				aria-label="Open session actions"
+				aria-haspopup="menu"
+				aria-expanded={mobileMenuOpen}
 			>
-				{#if adminSessionHref}
-					<a
-						href={adminSessionHref}
-						target="_blank"
-						rel="noopener noreferrer"
-						class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none"
-						role="menuitem"
-						onclick={() => (mobileMenuOpen = false)}
-					>
-						<ExternalLink class="h-3.5 w-3.5 shrink-0" />
-						<span>Logs</span>
-					</a>
+				{#if isExporting}
+					<LoaderCircle class="h-4 w-4 animate-spin" />
+				{:else}
+					<MoreHorizontal class="h-4 w-4" />
 				{/if}
+			</button>
+
+			{#if mobileMenuOpen}
+				<!-- Click-away backdrop -->
 				<button
 					type="button"
-					onclick={() => {
-						mobileMenuOpen = false;
-						void exportAudit('markdown');
-					}}
-					disabled={isExporting}
-					class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-					role="menuitem"
+					class="fixed inset-0 z-40 cursor-default"
+					aria-label="Close session actions menu"
+					tabindex="-1"
+					onclick={() => (mobileMenuOpen = false)}
+				></button>
+				<div
+					class="absolute right-0 top-[calc(100%+0.35rem)] z-50 min-w-52 overflow-hidden rounded-lg border border-border bg-card py-1 shadow-ink tx tx-frame tx-weak"
+					role="menu"
 				>
-					<Download class="h-3.5 w-3.5 shrink-0" />
-					<span>Export as markdown</span>
-				</button>
-				<button
-					type="button"
-					onclick={() => {
-						mobileMenuOpen = false;
-						void exportAudit('bundle');
-					}}
-					disabled={isExporting}
-					class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-					role="menuitem"
-				>
-					<FileArchive class="h-3.5 w-3.5 shrink-0" />
-					<span>Export as separate files</span>
-				</button>
-			</div>
-		{/if}
-	</div>
+					{@render auditMenuItems()}
+				</div>
+			{/if}
+		</div>
+	{/if}
 {/if}

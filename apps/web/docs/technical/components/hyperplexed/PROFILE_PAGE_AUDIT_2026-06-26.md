@@ -383,3 +383,61 @@ and the `sm:max-w-[48%]` magic-width nitpick; the Billing no-subscription hero w
 card (declined the `SettingsCard` wrap — a centered upgrade hero is a legitimately different component
 than a titled settings card) with only its CTA focus/motion fixed. Next step: the live dark-mode
 screenshot pass to confirm the S4 color calls and SMS `info` status contrast.
+
+---
+
+## Part 6 — Deep mobile pass (2026-06-28)
+
+A second, **mobile-specific** audit of the _entire_ page (all tabs + their child components +
+modals), against a phone rubric the static taste pass doesn't cover: **iOS input-zoom (font-size
+<16px), real touch-target sizes, horizontal overflow from grids/flex/tables, modal sizing/scroll, and
+duplicate DOM ids.** This caught real bugs, not just polish. `svelte-check` clean (0/0); ESLint clean
+(only pre-existing unused-var warnings).
+
+**Mobile bugs fixed (these were genuine defects, not taste):**
+
+- **M1 — iOS input zoom (HIGH).** Two text-entry fields rendered at 14px, which auto-zooms the viewport
+  on focus in iOS Safari: the Account username raw `<input>` (`text-sm` → `text-base` + `min-h-[44px]`)
+  and the template-editor `<Textarea>` (`text-sm` → `text-base sm:text-sm`). _Every other input on the
+  page already routes through `TextInput`/`Textarea` at `size="md"` = 16px, so the rest was clean._
+- **M2 — duplicate DOM ids (HIGH).** `quiet-start`/`quiet-end` were used by **both**
+  `NotificationPreferences` and `SMSPreferences`, which render on the same Notifications tab — so a
+  `<label for>` tap could focus the wrong (offscreen) component's input. Namespaced to
+  `nf-quiet-*` / `sms-quiet-*`.
+- **M3 — button row overflow at 320px (HIGH).** SMSPreferences' Save / Opt-Out row had no `flex-wrap`
+  and overflowed on an iPhone SE. Added `flex-wrap gap-3`.
+- **M4 — horizontal overflow from long tokens.** SMS message body (`line-clamp-3` only bounds height)
+  and the template preview `<pre>` could be blown out by a long unbroken URL/token → added
+  `break-words`. AgentKeys env/bootstrap-URL `<pre>` blocks gained `whitespace-pre-wrap` for parity.
+
+**Touch targets brought to ~44px:** all 9 notification/SMS toggle switches (`w-11 h-6` track → label
+`min-h-[44px]`, track stays centered); Account password show/hide toggles (now full input-height tap
+strips); Calendar working-days checkboxes + scheduled-task external link; Briefs View-All link; Billing
+PDF links; the shared `Modal` close button (`h-7` → `h-9`); AgentKeys nested disclosure summaries +
+advanced-permissions toggle; SMS lead-time `<select>`; Contacts CSV file button + Edit/Archive gap
+(`gap-1.5` → `gap-2`).
+
+**Other mobile fixes:** `TabNav` now `scrollIntoView`s the active tab (a deep-linked `?tab=billing`
+no longer loads off-screen in the scroll strip); `SettingsCard` title now `truncate`s (fixes the
+connected-calendar email forcing the header wide — handled at the shared-component level rather than
+per-tab); ScheduledSMS timing row `flex-wrap` + header `min-w-0`/`shrink-0`; Briefs preview `Clock`
+`flex-shrink-0`; AgentKeys Revoke `ml-auto` → `ml-0 sm:ml-auto` so it doesn't strand on a wrapped
+mobile row; AgentKeys setup `<pre>` `text-[0.7rem]` → `text-xs`; template-modal action bar made
+`sticky bottom-0` so Cancel/Save stay reachable below a tall textarea.
+
+**Confirmed already-correct for mobile (no change needed):** the shared `Modal` is genuinely
+hardened — `100dvh` + `env(safe-area-inset-*)` max-height, `visualViewport` keyboard avoidance,
+internal scroll with a sticky `flex-shrink-0` footer, full-width on small screens, body-scroll-lock +
+`overscroll-contain`. `ConfirmationModal` stacks buttons `flex-col sm:flex-row` full-width. The
+`PhoneVerification` OTP flow is exemplary (18px code input + `inputmode="numeric"` +
+`autocomplete="one-time-code"`). All form grids use a `grid-cols-1` base. Every primary Save button is
+bottom-aligned (good thumb reach), none top-right.
+
+**Deferred:** a `TabNav` right-edge scroll-fade affordance (the `scrollIntoView` + cut-off edge cover
+discoverability; a global always-on fade risks regressing 2-tab bars elsewhere); collapsing the very
+tall AgentKeys Key-Created modal's advanced sections behind `<details>` (usable today via internal
+scroll + sticky footer). Both want the live-device pass to prioritize.
+
+> **Method note:** still a static audit (markup + responsive classes + known iOS behaviors). The two
+> things only a real device confirms: wrap behavior of the dense AgentKeys 5-button action row, and the
+> Contacts import-table horizontal scroll. Those remain the top candidates for a live mobile glance.

@@ -33,6 +33,38 @@
 		{ id: 'changes', label: 'Changes' }
 	];
 
+	// Button refs for roving-tabindex keyboard navigation (WAI-ARIA tablist).
+	let tabButtons = $state<(HTMLButtonElement | null)[]>([]);
+
+	function handleTabKeydown(event: KeyboardEvent, index: number) {
+		const lastIndex = tabs.length - 1;
+		let nextIndex: number;
+		switch (event.key) {
+			case 'ArrowRight':
+			case 'ArrowDown':
+				nextIndex = index === lastIndex ? 0 : index + 1;
+				break;
+			case 'ArrowLeft':
+			case 'ArrowUp':
+				nextIndex = index === 0 ? lastIndex : index - 1;
+				break;
+			case 'Home':
+				nextIndex = 0;
+				break;
+			case 'End':
+				nextIndex = lastIndex;
+				break;
+			default:
+				return;
+		}
+		event.preventDefault();
+		const nextTab = tabs[nextIndex];
+		if (!nextTab) return;
+		// Automatic activation: moving focus selects the tab.
+		onTabChange(nextTab.id);
+		tabButtons[nextIndex]?.focus();
+	}
+
 	const stepItems = $derived(
 		timelineItems.filter((item) => item.kind === 'step' || item.kind === 'status')
 	);
@@ -108,18 +140,23 @@
 
 <div class="border-b border-border bg-card px-3 py-2 tx tx-frame tx-weak sm:px-4">
 	<div class="flex gap-1 overflow-x-auto" role="tablist" aria-label="Agent chat views">
-		{#each tabs as tab (tab.id)}
+		{#each tabs as tab, index (tab.id)}
 			{@const count = countFor(tab.id)}
 			<button
+				bind:this={tabButtons[index]}
 				type="button"
 				role="tab"
+				id={`agent-chat-tab-${tab.id}`}
 				aria-selected={activeTab === tab.id}
+				aria-controls={`agent-chat-panel-${tab.id}`}
+				tabindex={activeTab === tab.id ? 0 : -1}
 				class={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
 					activeTab === tab.id
 						? 'border-accent bg-accent text-accent-foreground shadow-ink'
 						: 'border-border bg-background/70 text-muted-foreground hover:border-accent hover:text-foreground'
 				}`}
 				onclick={() => onTabChange(tab.id)}
+				onkeydown={(event) => handleTabKeydown(event, index)}
 			>
 				<span>{tab.label}</span>
 				{#if count !== null}
@@ -139,7 +176,14 @@
 </div>
 
 {#if activeTab !== 'chat'}
-	<section class="flex min-h-0 flex-1 flex-col bg-muted/40" aria-label={panelTitle(activeTab)}>
+	<div
+		class="flex min-h-0 flex-1 flex-col bg-muted/40 focus-visible:outline-none"
+		role="tabpanel"
+		id={`agent-chat-panel-${activeTab}`}
+		tabindex="0"
+		aria-labelledby={`agent-chat-tab-${activeTab}`}
+		aria-label={panelTitle(activeTab)}
+	>
 		<div
 			class="flex items-center justify-between border-b border-border bg-card/70 px-4 py-2 text-xs"
 		>
@@ -355,5 +399,5 @@
 				</div>
 			{/if}
 		</div>
-	</section>
+	</div>
 {/if}

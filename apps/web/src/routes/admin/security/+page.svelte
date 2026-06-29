@@ -24,6 +24,7 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import type { PageData } from './$types';
 
 	type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'accent';
@@ -1107,30 +1108,17 @@
 		</AdminCard>
 	{/if}
 
-	{#if selectedSecurityEvent}
-		<div
-			class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur"
-		>
-			<div class="admin-panel max-h-[90vh] w-full max-w-3xl overflow-y-auto p-6">
-				<div class="flex items-start justify-between gap-4">
-					<div>
-						<p
-							class="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
-						>
-							Prompt-Injection Event
-						</p>
-						<h3 class="mt-1 text-lg font-semibold text-foreground">
-							{formatEventType(selectedSecurityEvent.eventType)}
-						</h3>
-					</div>
-					<Button
-						variant="ghost"
-						size="sm"
-						onclick={() => (selectedSecurityEvent = null)}
-					>
-						Close
-					</Button>
-				</div>
+	<Modal
+		isOpen={!!selectedSecurityEvent}
+		title="Prompt-Injection Event"
+		size="lg"
+		onClose={() => (selectedSecurityEvent = null)}
+	>
+		{#if selectedSecurityEvent}
+			<div class="p-6">
+				<h3 class="text-lg font-semibold text-foreground">
+					{formatEventType(selectedSecurityEvent.eventType)}
+				</h3>
 
 				<div class="mt-5 grid gap-3 sm:grid-cols-3">
 					<div class="rounded-lg border border-border p-3">
@@ -1232,6 +1220,6 @@
 					Raw prompt content is not returned to this browser view.
 				</p>
 			</div>
-		</div>
-	{/if}
+		{/if}
+	</Modal>
 </div>

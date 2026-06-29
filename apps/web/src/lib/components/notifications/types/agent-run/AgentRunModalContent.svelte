@@ -55,6 +55,13 @@
 		runStatus === 'needs_input' ||
 			(runStatus === 'partial' && Boolean(result?.open_questions?.length))
 	);
+	let canOpenChat = $derived(
+		Boolean(
+			notification?.data.parentSessionId ||
+				notification?.data.projectId ||
+				notification?.data.contextType
+		)
+	);
 	let isActive = $derived(
 		runStatus === 'queued' ||
 			runStatus === 'running' ||
@@ -359,6 +366,23 @@
 			answering = false;
 		}
 	}
+
+	function handleOpenChat() {
+		if (!notification || typeof window === 'undefined') return;
+		window.dispatchEvent(
+			new CustomEvent('buildos:open-agent-chat', {
+				detail: {
+					sessionId: notification.data.parentSessionId ?? null,
+					contextType: notification.data.contextType,
+					entityId: notification.data.projectId ?? null,
+					projectId: notification.data.projectId ?? null,
+					source: 'agent_run',
+					runId
+				}
+			})
+		);
+		handleMinimize();
+	}
 </script>
 
 {#if notification}
@@ -629,11 +653,23 @@
 				class="flex items-center justify-end gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
 			>
 				{#if isActive}
+					{#if canOpenChat}
+						<Button onclick={handleOpenChat} variant="primary" size="md">
+							<MessageSquare class="h-4 w-4" />
+							Chat
+						</Button>
+					{/if}
 					<Button onclick={handleCancel} variant="outline" size="md">Stop</Button>
 					<Button onclick={handleMinimize} variant="ghost" size="md">Minimize</Button>
 				{:else}
 					{#if runStatus === 'failed'}
 						<Button onclick={handleRetry} variant="primary" size="md">Retry</Button>
+					{/if}
+					{#if canOpenChat}
+						<Button onclick={handleOpenChat} variant="primary" size="md">
+							<MessageSquare class="h-4 w-4" />
+							Chat
+						</Button>
 					{/if}
 					<Button onclick={handleDismiss} variant="outline" size="md">Dismiss</Button>
 				{/if}

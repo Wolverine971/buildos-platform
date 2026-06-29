@@ -597,7 +597,64 @@
 					</div>
 				{/if}
 
-				<div class="overflow-x-auto">
+				<!-- Mobile card list -->
+				<div class="block space-y-2 lg:hidden">
+					{#each timingData.cache_source_performance as source}
+						<div class="rounded-lg border border-border bg-background p-3">
+							<div class="text-sm font-medium text-foreground">
+								{formatCacheSource(source.cache_source)}
+							</div>
+							<div class="mt-2 grid grid-cols-2 gap-2 text-xs">
+								<div>
+									<p class="text-muted-foreground">Requests</p>
+									<p class="font-medium text-foreground">
+										{source.count}
+										<span class="text-muted-foreground">
+											({formatPercent(source.share_percent)})
+										</span>
+									</p>
+								</div>
+								<div>
+									<p class="text-muted-foreground">TTFR p50 / p95</p>
+									<p class="font-medium text-foreground">
+										{formatMs(source.ttfr.p50)} / {formatMs(source.ttfr.p95)}
+									</p>
+								</div>
+								<div>
+									<p class="text-muted-foreground">Context p50 / p95</p>
+									<p class="font-medium text-foreground">
+										{formatMs(source.context_build.p50)} / {formatMs(
+											source.context_build.p95
+										)}
+									</p>
+								</div>
+								<div>
+									<p class="text-muted-foreground">TTFR Gain</p>
+									<p
+										class="font-medium {getGainClass(
+											source.ttfr_gain_vs_fresh_load_ms
+										)}"
+									>
+										{formatGain(source.ttfr_gain_vs_fresh_load_ms)}
+									</p>
+								</div>
+								<div>
+									<p class="text-muted-foreground">Context Gain</p>
+									<p
+										class="font-medium {getGainClass(
+											source.context_build_gain_vs_fresh_load_ms
+										)}"
+									>
+										{formatGain(source.context_build_gain_vs_fresh_load_ms)}
+									</p>
+								</div>
+							</div>
+						</div>
+					{/each}
+				</div>
+
+				<!-- Desktop table -->
+				<div class="hidden overflow-x-auto lg:block">
 					<table class="w-full text-sm">
 						<thead class="bg-muted/50">
 							<tr>
@@ -991,7 +1048,84 @@
 			</div>
 
 			{#if timingData.slow_sessions.length > 0}
-				<div class="overflow-x-auto">
+				<!-- Mobile card list -->
+				<div class="block space-y-2 p-4 lg:hidden">
+					{#each timingData.slow_sessions as session}
+						<a
+							href="/admin/chat/sessions?search={session.session_id}"
+							class="block rounded-lg border border-border bg-background p-3 transition-colors hover:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							<div class="flex items-start justify-between gap-2">
+								<span class="font-mono text-xs font-medium text-info">
+									{session.session_id?.slice(0, 8)}...
+								</span>
+								{#if session.plan_status}
+									<span
+										class="inline-flex shrink-0 items-center px-2 py-0.5 rounded-full text-xs font-medium
+										{session.plan_status === 'completed'
+											? 'bg-success/10 text-success'
+											: session.plan_status === 'failed'
+												? 'bg-destructive/10 text-destructive'
+												: 'bg-muted text-muted-foreground'}"
+									>
+										{session.plan_status}
+										{#if session.plan_steps}
+											({session.plan_steps})
+										{/if}
+									</span>
+								{/if}
+							</div>
+							<div class="mt-2 grid grid-cols-2 gap-2 text-xs">
+								<div>
+									<p class="text-muted-foreground">TTFR</p>
+									<p
+										class="font-medium {getTtfrWarning(session.ttfr_ms) ===
+										'critical'
+											? 'text-destructive'
+											: getTtfrWarning(session.ttfr_ms) === 'warning'
+												? 'text-warning'
+												: 'text-foreground'}"
+									>
+										{formatMs(session.ttfr_ms)}
+									</p>
+								</div>
+								<div>
+									<p class="text-muted-foreground">TTFE</p>
+									<p class="font-medium text-foreground">
+										{formatMs(session.ttfe_ms)}
+									</p>
+								</div>
+								<div>
+									<p class="text-muted-foreground">Context</p>
+									<p class="font-medium text-foreground capitalize">
+										{session.context_type || '-'}
+									</p>
+								</div>
+								<div>
+									<p class="text-muted-foreground">Created</p>
+									<p class="font-medium text-foreground">
+										{formatDate(session.created_at)}
+									</p>
+								</div>
+							</div>
+							<div class="mt-2 flex flex-wrap items-center gap-1.5">
+								<span
+									class="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded"
+								>
+									{formatCacheSource(session.cache_source)}
+								</span>
+								{#if session.prepared_prompt_miss_reason}
+									<span class="text-xs text-warning">
+										{formatCacheSource(session.prepared_prompt_miss_reason)}
+									</span>
+								{/if}
+							</div>
+						</a>
+					{/each}
+				</div>
+
+				<!-- Desktop table -->
+				<div class="hidden overflow-x-auto lg:block">
 					<table class="w-full text-sm">
 						<thead class="bg-muted/50">
 							<tr>

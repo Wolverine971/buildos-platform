@@ -530,10 +530,18 @@
 						>
 							<Card variant="elevated" class="wt-paper">
 								<CardHeader variant="accent" texture="strip">
-									<div
-										class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end"
-									>
-										<div class="flex flex-wrap items-center gap-1.5">
+									<div class="flex items-center justify-between gap-3">
+										<div class="flex items-center gap-2">
+											<Target class="h-4 w-4 text-muted-foreground" />
+											<p
+												class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+											>
+												Goal
+											</p>
+										</div>
+										<div
+											class="flex flex-wrap items-center justify-end gap-1.5"
+										>
 											<Badge variant={stateMeta.variant} size="sm"
 												>{stateMeta.label}</Badge
 											>

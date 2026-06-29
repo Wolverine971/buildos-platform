@@ -6,6 +6,7 @@ import {
 	OAuthConnectorError,
 	registerDynamicOAuthClient
 } from '$lib/server/agent-call/oauth-connector.service';
+import { checkOAuthRateLimit, OAUTH_RATE_LIMITS } from '$lib/server/agent-call/oauth-rate-limit';
 
 function errorResponse(error: unknown) {
 	if (error instanceof OAuthConnectorError) {
@@ -50,7 +51,15 @@ export const OPTIONS: RequestHandler = async () =>
 		}
 	});
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, getClientAddress }) => {
+	const rateLimit = checkOAuthRateLimit(
+		`oauth:register:${getClientAddress()}`,
+		OAUTH_RATE_LIMITS.register
+	);
+	if (!rateLimit.allowed) {
+		return rateLimit.response;
+	}
+
 	try {
 		const body = await request.json();
 		const client = await registerDynamicOAuthClient(createAdminSupabaseClient(), body);
