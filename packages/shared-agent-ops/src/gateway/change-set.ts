@@ -164,6 +164,12 @@ function subsetToSnapshotKeys(
 	return subset;
 }
 
+function omitVolatileSnapshotFields(snapshot: Record<string, unknown>): Record<string, unknown> {
+	const stableSnapshot = { ...snapshot };
+	delete stableSnapshot.updated_at;
+	return stableSnapshot;
+}
+
 async function verifyStagedChangeFreshness(params: {
 	admin: SupabaseClient<Database>;
 	change: ProposedChange;
@@ -214,7 +220,12 @@ async function verifyStagedChangeFreshness(params: {
 		before,
 		currentSubset
 	);
-	if (!sameSnapshot(currentForCompare, beforeForCompare)) {
+	if (
+		!sameSnapshot(
+			omitVolatileSnapshotFields(currentForCompare),
+			omitVolatileSnapshotFields(beforeForCompare)
+		)
+	) {
 		return {
 			ok: false,
 			message: `Staged ${change.entity_type} change is stale: current data no longer matches the reviewed before snapshot`
@@ -236,8 +247,18 @@ function normalizeStartHereDriftSnapshots(
 	}
 
 	const stripContent = (snapshot: Record<string, unknown>): Record<string, unknown> => {
-		if (typeof snapshot.content !== 'string') return snapshot;
-		return { ...snapshot, content: stripStartHereManagedRegions(snapshot.content) };
+		const next = { ...snapshot };
+		if (typeof next.content === 'string') {
+			next.content = stripStartHereManagedRegions(next.content);
+		}
+		if (next.props && typeof next.props === 'object' && !Array.isArray(next.props)) {
+			const props = { ...(next.props as Record<string, unknown>) };
+			if (typeof props.body_markdown === 'string') {
+				props.body_markdown = stripStartHereManagedRegions(props.body_markdown);
+			}
+			next.props = props;
+		}
+		return next;
 	};
 
 	return [stripContent(before), stripContent(current)];

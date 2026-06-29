@@ -9,6 +9,7 @@
 		Sparkles
 	} from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import ChangeSetFailureSummary from '$lib/components/notifications/types/agent-run/ChangeSetFailureSummary.svelte';
 	import ChangeSetReview from '$lib/components/notifications/types/agent-run/ChangeSetReview.svelte';
 	import InboxChangeDetails from '$lib/components/inbox/InboxChangeDetails.svelte';
 	import InboxDecisionControls from '$lib/components/inbox/InboxDecisionControls.svelte';
@@ -209,6 +210,19 @@
 		return changeSet;
 	}
 
+	function hasFailedChanges(changeSet: ChangeSet | null): boolean {
+		return Boolean(
+			changeSet?.changes.some(
+				(change) => typeof change.error === 'string' && change.error.trim()
+			)
+		);
+	}
+
+	function agentFailedChangeSet(item: InboxItem): ChangeSet | null {
+		const changeSet = agentChangeSet(item);
+		return hasFailedChanges(changeSet) ? changeSet : null;
+	}
+
 	function arrayValue<T>(value: unknown): T[] {
 		return Array.isArray(value) ? (value as T[]) : [];
 	}
@@ -335,7 +349,7 @@
 	}
 
 	function canChat(item: InboxItem): boolean {
-		return canDecide(item);
+		return canDecide(item) || Boolean(agentFailedChangeSet(item));
 	}
 
 	function isOpeningChat(item: InboxItem): boolean {
@@ -690,6 +704,7 @@
 								{@const payload = projectSuggestion(item)}
 								{@const agent = agentRun(item)}
 								{@const changeSet = agentChangeSet(item)}
+								{@const failedChangeSet = agentFailedChangeSet(item)}
 								{@const calendar = calendarSuggestion(item)}
 								{@const reviewRun = projectLoopRunContext(item)}
 								{@const reviewRunText = reviewRunLabel(reviewRun)}
@@ -896,6 +911,16 @@
 														openingChat={isOpeningChat(item)}
 														onApplied={() =>
 															handleAgentRunApplied(item)}
+														onChat={canChat(item)
+															? () => openChat(item)
+															: undefined}
+													/>
+												</div>
+											{:else if failedChangeSet}
+												<div class="mt-3">
+													<ChangeSetFailureSummary
+														changeSet={failedChangeSet}
+														openingChat={isOpeningChat(item)}
 														onChat={canChat(item)
 															? () => openChat(item)
 															: undefined}

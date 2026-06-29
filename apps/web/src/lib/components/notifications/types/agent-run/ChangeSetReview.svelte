@@ -28,7 +28,7 @@
 		approveAllLabel?: string;
 		rejectAllLabel?: string;
 		openingChat?: boolean;
-		onChat?: () => void;
+		onChat?: () => void | Promise<void>;
 	} = $props();
 
 	// Per-change decision overrides; absent = the default ('approved'). Keeping an
@@ -153,6 +153,11 @@
 				toastService.warning(
 					`Applied ${r.applied}, ${failed} failed, ${r.rejected} rejected`
 				);
+				if (onChat) {
+					await onChat();
+				}
+				onApplied?.();
+				return;
 			}
 			// Tell the rest of the app to refetch so the applied changes show up live.
 			const applied = r?.applied ?? 0;

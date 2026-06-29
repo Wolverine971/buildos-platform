@@ -115,6 +115,7 @@ function summarizeChange(change: Record<string, unknown>, index: number): string
 	const entityType = readString(change.entity_type) ?? 'entity';
 	const entityId = readString(change.entity_id);
 	const rationale = compactText(change.rationale, 220);
+	const error = compactText(change.error, 240);
 	const before = isRecord(change.before) ? change.before : {};
 	const after = isRecord(change.after) ? change.after : {};
 	const fieldLines = Object.keys(after)
@@ -124,7 +125,8 @@ function summarizeChange(change: Record<string, unknown>, index: number): string
 	const header = [
 		`${index + 1}. ${action} ${entityType}`,
 		entityId ? ` (${entityId})` : '',
-		rationale ? ` - ${rationale}` : ''
+		rationale ? ` - ${rationale}` : '',
+		error ? `\n   - Failed: ${error}` : ''
 	].join('');
 	return fieldLines.length ? [header, ...fieldLines].join('\n') : header;
 }

@@ -5,8 +5,8 @@
 
 # Agentic Chat Skills System - Design Spec
 
-**Status:** Draft  
-**Date:** 2026-03-11  
+**Status:** Superseded historical design; do not use as current gateway guidance
+**Date:** 2026-03-11
 **Author:** AI-assisted (updated by Codex)
 
 ---

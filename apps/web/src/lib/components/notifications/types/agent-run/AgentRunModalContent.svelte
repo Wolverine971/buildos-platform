@@ -20,13 +20,14 @@
 	} from 'lucide-svelte';
 	import { formatDistanceToNow } from 'date-fns';
 	import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
-	import type { Database, AgentRunStatus } from '@buildos/shared-types';
+	import type { Database, AgentRunStatus, ChangeSet } from '@buildos/shared-types';
 	import type { AgentRunNotification } from '$lib/types/notification.types';
 	import { toastService } from '$lib/stores/toast.store';
 	import { notificationStore } from '$lib/stores/notification.store';
 	import { agentRunsStore } from '$lib/services/agentRunsRealtime.service';
 	import { renderMarkdown, getProseClasses } from '$lib/utils/markdown';
 	import AgentRunSteerControl from './AgentRunSteerControl.svelte';
+	import ChangeSetFailureSummary from './ChangeSetFailureSummary.svelte';
 	import ChangeSetReview from './ChangeSetReview.svelte';
 
 	const proseClasses = getProseClasses('sm');
@@ -51,6 +52,14 @@
 	let runStatus = $derived<AgentRunStatus>(notification?.data.runStatus ?? 'cancelled');
 	let result = $derived(notification?.data.result ?? null);
 	let metrics = $derived(notification?.data.metrics ?? null);
+	let proposedChangeSet = $derived((result?.proposed_changes ?? null) as ChangeSet | null);
+	let failedChangeSet = $derived(
+		proposedChangeSet?.changes.some(
+			(change) => typeof change.error === 'string' && change.error.trim()
+		)
+			? proposedChangeSet
+			: null
+	);
 	let canAnswerRun = $derived(
 		runStatus === 'needs_input' ||
 			(runStatus === 'partial' && Boolean(result?.open_questions?.length))
@@ -390,7 +399,7 @@
 		isOpen={true}
 		onClose={handleClose}
 		title={notification.data.label}
-		size={runStatus === 'proposal_ready' ? 'xl' : 'lg'}
+		size={runStatus === 'proposal_ready' || failedChangeSet ? 'xl' : 'lg'}
 		showCloseButton={true}
 	>
 		{#snippet children()}
@@ -440,8 +449,17 @@
 				{/if}
 
 				<!-- Proposal review — the run staged changes for your approval (review run) -->
-				{#if runStatus === 'proposal_ready' && result?.proposed_changes?.changes?.length}
-					<ChangeSetReview {runId} changeSet={result.proposed_changes} />
+				{#if runStatus === 'proposal_ready' && proposedChangeSet?.changes?.length}
+					<ChangeSetReview
+						{runId}
+						changeSet={proposedChangeSet}
+						onChat={canOpenChat ? handleOpenChat : undefined}
+					/>
+				{:else if failedChangeSet}
+					<ChangeSetFailureSummary
+						changeSet={failedChangeSet}
+						onChat={canOpenChat ? handleOpenChat : undefined}
+					/>
 				{/if}
 
 				<!-- Answer box — the run is blocked or can continue from a partial result -->
