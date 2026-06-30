@@ -270,7 +270,7 @@ function resolveNewSessionScope(params: {
 	projectName: string | null;
 }): SessionScope {
 	const projectId = readString(params.run.project_id);
-	if (projectId && readString(params.run.context_type) === 'project') {
+	if (projectId) {
 		return {
 			contextType: 'project',
 			entityId: projectId,
@@ -287,6 +287,17 @@ function resolveNewSessionScope(params: {
 		projectName: null,
 		chatType: 'global'
 	};
+}
+
+function sessionMatchesProjectScope(
+	session: Record<string, unknown>,
+	projectId: string | null
+): boolean {
+	if (!projectId) return true;
+	return (
+		readString(session.context_type) === 'project' &&
+		resolveProjectIdFromSession(session) === projectId
+	);
 }
 
 function resolveProjectIdFromSession(session: Record<string, unknown>): string | null {
@@ -363,25 +374,31 @@ async function findReusableSession(params: {
 	userId: string;
 }): Promise<Record<string, unknown> | null> {
 	const runId = resolveRunId(params.run);
+	const runProjectId = readString(params.run.project_id);
 	const parent = await loadSessionById({
 		supabase: params.supabase,
 		sessionId: readString(params.run.parent_session_id),
 		userId: params.userId
 	});
-	if (parent) return parent;
+	if (parent && sessionMatchesProjectScope(parent, runProjectId)) return parent;
 
 	const inboxSession = await findSessionByMetadata({
 		supabase: params.supabase,
 		userId: params.userId,
 		metadata: { source: 'ai_inbox', source_type: 'agent_run', source_ref_id: runId }
 	});
-	if (inboxSession) return inboxSession;
+	if (inboxSession && sessionMatchesProjectScope(inboxSession, runProjectId)) {
+		return inboxSession;
+	}
 
-	return findSessionByMetadata({
+	const contextSession = await findSessionByMetadata({
 		supabase: params.supabase,
 		userId: params.userId,
 		metadata: { source: 'agent_run_context', agent_run_id: runId }
 	});
+	return contextSession && sessionMatchesProjectScope(contextSession, runProjectId)
+		? contextSession
+		: null;
 }
 
 function sessionMetadata(params: {
@@ -576,7 +593,7 @@ async function ensureSeedMessage(params: {
 		user_id: params.userId,
 		role: 'assistant',
 		content: params.context.humanText,
-		message_type: 'text',
+		message_type: 'assistant_message',
 		created_at: params.now,
 		metadata: seedMessageMetadata({
 			run: params.run,

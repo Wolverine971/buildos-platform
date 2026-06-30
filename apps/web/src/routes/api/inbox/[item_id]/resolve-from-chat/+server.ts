@@ -18,12 +18,20 @@ type ChatResolutionBody = {
 	has_changes?: unknown;
 	total_mutations?: unknown;
 	affected_project_ids?: unknown;
+	resolution?: unknown;
+	note?: unknown;
 };
 
 type ChatMutationSummary = {
 	sessionId: string;
 	totalMutations: number;
 	affectedProjectIds: string[];
+};
+
+type ExplicitChatResolution = {
+	sessionId: string;
+	resolution: 'handled' | 'dismissed';
+	note: string | null;
 };
 
 const SUPPORTED_SOURCE_TYPES = new Set<InboxSourceType>([
@@ -59,6 +67,27 @@ function parseMutationSummary(body: ChatResolutionBody): ChatMutationSummary | n
 				)
 			: []
 	};
+}
+
+function parseExplicitResolution(body: ChatResolutionBody): ExplicitChatResolution | null {
+	const resolution = readString(body.resolution);
+	if (resolution !== 'handled' && resolution !== 'dismissed') return null;
+	const sessionId = readString(body.session_id);
+	if (!sessionId) return null;
+	const note = readString(body.note);
+	return {
+		sessionId,
+		resolution,
+		note: note ? note.slice(0, 1000) : null
+	};
+}
+
+function explicitResolutionNote(resolution: ExplicitChatResolution): string {
+	const base =
+		resolution.resolution === 'handled'
+			? 'Marked handled from chat without applying the original suggestion.'
+			: 'Dismissed from chat.';
+	return resolution.note ? `${base} ${resolution.note}` : base;
 }
 
 function isTerminalInboxStatus(status: InboxIndexRow['status'] | string | null | undefined) {
@@ -153,10 +182,51 @@ async function resolveProjectSuggestionFromChat(params: {
 	};
 }
 
+async function resolveProjectSuggestionExplicitlyFromChat(params: {
+	admin: any;
+	item: InboxIndexRow;
+	resolution: ExplicitChatResolution;
+}): Promise<{ resolved: boolean; item: InboxIndexRow | null; reason?: string }> {
+	if (!params.item.project_id) {
+		return { resolved: false, item: params.item, reason: 'missing_project' };
+	}
+
+	const now = new Date().toISOString();
+	const { data: updated, error } = await params.admin
+		.from('project_suggestions')
+		.update({
+			status: 'rejected',
+			decided_at: now,
+			user_feedback: {
+				reason: 'other',
+				note: explicitResolutionNote(params.resolution),
+				created_at: now
+			},
+			updated_at: now
+		})
+		.eq('id', params.item.source_ref_id)
+		.eq('project_id', params.item.project_id)
+		.eq('status', 'pending')
+		.select('*')
+		.maybeSingle();
+
+	if (error) throw error;
+	const synced = updated ? await syncResolvedItem(params.admin, params.item) : null;
+	if (updated) return { resolved: true, item: synced };
+
+	const repaired = await syncResolvedItem(params.admin, params.item);
+	return {
+		resolved: isTerminalInboxStatus(repaired?.status),
+		item: repaired,
+		reason: 'source_not_pending'
+	};
+}
+
 async function resolveCalendarSuggestionFromChat(params: {
 	admin: any;
 	item: InboxIndexRow;
 	summary: ChatMutationSummary;
+	userId: string;
 }): Promise<{ resolved: boolean; item: InboxIndexRow | null; reason?: string }> {
 	const createdProjectId = params.summary.affectedProjectIds[0] ?? null;
 	if (!createdProjectId) {
@@ -173,6 +243,40 @@ async function resolveCalendarSuggestionFromChat(params: {
 			updated_at: now
 		})
 		.eq('id', params.item.source_ref_id)
+		.eq('user_id', params.userId)
+		.eq('status', 'pending')
+		.select('*')
+		.maybeSingle();
+
+	if (error) throw error;
+	const synced = updated ? await syncResolvedItem(params.admin, params.item) : null;
+	if (updated) return { resolved: true, item: synced };
+
+	const repaired = await syncResolvedItem(params.admin, params.item);
+	return {
+		resolved: isTerminalInboxStatus(repaired?.status),
+		item: repaired,
+		reason: 'source_not_pending'
+	};
+}
+
+async function resolveCalendarSuggestionExplicitlyFromChat(params: {
+	admin: any;
+	item: InboxIndexRow;
+	resolution: ExplicitChatResolution;
+	userId: string;
+}): Promise<{ resolved: boolean; item: InboxIndexRow | null; reason?: string }> {
+	const now = new Date().toISOString();
+	const { data: updated, error } = await params.admin
+		.from('calendar_project_suggestions')
+		.update({
+			status: 'rejected',
+			rejection_reason: explicitResolutionNote(params.resolution),
+			status_changed_at: now,
+			updated_at: now
+		})
+		.eq('id', params.item.source_ref_id)
+		.eq('user_id', params.userId)
 		.eq('status', 'pending')
 		.select('*')
 		.maybeSingle();
@@ -222,6 +326,62 @@ async function resolveAgentRunFromChat(params: {
 	return { resolved: true, item: synced };
 }
 
+async function resolveInboxItemWithMutations(params: {
+	admin: any;
+	item: InboxIndexRow;
+	summary: ChatMutationSummary;
+	userId: string;
+}): Promise<{ resolved: boolean; item: InboxIndexRow | null; reason?: string }> {
+	if (params.item.source_type === 'project_suggestion') {
+		return resolveProjectSuggestionFromChat({
+			admin: params.admin,
+			item: params.item,
+			summary: params.summary
+		});
+	}
+	if (params.item.source_type === 'calendar_suggestion') {
+		return resolveCalendarSuggestionFromChat({
+			admin: params.admin,
+			item: params.item,
+			summary: params.summary,
+			userId: params.userId
+		});
+	}
+	return resolveAgentRunFromChat({
+		admin: params.admin,
+		item: params.item,
+		userId: params.userId
+	});
+}
+
+async function resolveInboxItemExplicitly(params: {
+	admin: any;
+	item: InboxIndexRow;
+	resolution: ExplicitChatResolution;
+	userId: string;
+}): Promise<{ resolved: boolean; item: InboxIndexRow | null; reason?: string }> {
+	if (params.item.source_type === 'project_suggestion') {
+		return resolveProjectSuggestionExplicitlyFromChat({
+			admin: params.admin,
+			item: params.item,
+			resolution: params.resolution
+		});
+	}
+	if (params.item.source_type === 'calendar_suggestion') {
+		return resolveCalendarSuggestionExplicitlyFromChat({
+			admin: params.admin,
+			item: params.item,
+			resolution: params.resolution,
+			userId: params.userId
+		});
+	}
+	return resolveAgentRunFromChat({
+		admin: params.admin,
+		item: params.item,
+		userId: params.userId
+	});
+}
+
 export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user?.id) return ApiResponse.unauthorized('Authentication required');
@@ -231,7 +391,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 	const body = (await request.json().catch(() => ({}))) as ChatResolutionBody;
 	const summary = parseMutationSummary(body);
-	if (!summary) {
+	const explicitResolution = parseExplicitResolution(body);
+	if (readString(body.resolution) && !explicitResolution) {
+		return ApiResponse.badRequest('Invalid chat resolution');
+	}
+	const sessionId = summary?.sessionId ?? explicitResolution?.sessionId;
+	if (!sessionId) {
 		return ApiResponse.success({ resolved: false, reason: 'no_chat_mutations' });
 	}
 
@@ -241,7 +406,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		item = await loadInboxItem({ supabase: locals.supabase as any, itemId });
 		session = await loadChatSession({
 			supabase: locals.supabase as any,
-			sessionId: summary.sessionId,
+			sessionId,
 			userId: user.id
 		});
 	} catch (error) {
@@ -277,12 +442,40 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 	const admin = createAdminSupabaseClient();
 	try {
-		const result =
-			item.source_type === 'project_suggestion'
-				? await resolveProjectSuggestionFromChat({ admin, item, summary })
-				: item.source_type === 'calendar_suggestion'
-					? await resolveCalendarSuggestionFromChat({ admin, item, summary })
-					: await resolveAgentRunFromChat({ admin, item, userId: user.id });
+		let result: { resolved: boolean; item: InboxIndexRow | null; reason?: string };
+		if (explicitResolution?.resolution === 'dismissed') {
+			result = await resolveInboxItemExplicitly({
+				admin,
+				item,
+				resolution: explicitResolution,
+				userId: user.id
+			});
+		} else if (summary) {
+			const mutationResult = await resolveInboxItemWithMutations({
+				admin,
+				item,
+				summary,
+				userId: user.id
+			});
+			result =
+				mutationResult.resolved || !explicitResolution
+					? mutationResult
+					: await resolveInboxItemExplicitly({
+							admin,
+							item,
+							resolution: explicitResolution,
+							userId: user.id
+						});
+		} else if (explicitResolution) {
+			result = await resolveInboxItemExplicitly({
+				admin,
+				item,
+				resolution: explicitResolution,
+				userId: user.id
+			});
+		} else {
+			result = { resolved: false, item, reason: 'no_chat_mutations' };
+		}
 
 		return ApiResponse.success({
 			...result,

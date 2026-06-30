@@ -1051,15 +1051,17 @@ export function buildAgentChatSessionSnapshot(
 	const turnRuns = Array.isArray(loadedTurnRuns) ? loadedTurnRuns : [];
 	const contextType = normalizeSessionContextType(session.context_type);
 	const selectedEntityId = session.entity_id || undefined;
-	const selectedContextLabel = deriveSessionTitle(session) || 'Resumed Chat';
+	const sessionTitle = deriveSessionTitle(session) || 'Resumed Chat';
 	const metadataFocus = normalizeProjectFocusClient(
 		(session.agent_metadata as { focus?: ProjectFocus | null })?.focus
 	);
 
 	let projectFocus: ProjectFocus | null = null;
+	let selectedContextLabel = sessionTitle;
 	if (isProjectContext(contextType)) {
 		if (metadataFocus) {
 			projectFocus = metadataFocus;
+			selectedContextLabel = metadataFocus.projectName?.trim() || sessionTitle;
 		} else if (selectedEntityId) {
 			projectFocus = buildProjectWideFocus(selectedEntityId, selectedContextLabel);
 		}

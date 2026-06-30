@@ -35,11 +35,16 @@ The fixes are almost all **find-and-replace consolidations**, not redesigns.
 ## Status
 
 - **Tier 0 — SHIPPED 2026-06-29** across the six audited region files + the global `.micro-label`
-  source. Details per item below. Adjacent non-region files (`ThinkingBlock`, `WorkPanel`,
-  `ProjectFocusSelector`, `ProjectActionSelector`, `ProjectEntityList`) still carry the same
-  `text-[11px]` / `rounded-xl` / `tracking-wide` strays and want the same sweep — see "Adjacent
-  follow-up" at the end.
-- **Tier 1 / Tier 2 — open.**
+  source. Details per item below.
+- **Tier 0.5 (adjacent files) — SHIPPED 2026-06-29.** Same sweep applied to `ThinkingBlock`,
+  `WorkPanel`, `ProjectFocusSelector`, `ProjectActionSelector`, `ProjectEntityList`. One deliberate
+  carve-out: the bare `rounded` (0.25rem) state/priority badges in `ProjectEntityList` were left
+  as-is (outside the four documented transforms) — see "Adjacent follow-up".
+- **Tier 2 · T2-2 (mobile-menu keyboard/Escape) — SHIPPED 2026-06-29.** Escape closes + returns focus
+  to the trigger; arrow/Home/End roving across menu items; first item focused on open.
+- **Tier 1 + remaining Tier 2 (T2-1, T2-3) — open.**
+- Verified: `svelte-check` clean (0 errors / 0 warnings); Prettier-formatted; cascade + line-height
+  impact confirmed safe.
 
 ---
 
@@ -69,12 +74,12 @@ that got it right.)
 
 Counts in the agent dir for what is visually the _same_ uppercase micro-caps element:
 
-| tracking | uses |
-| --- | --- |
-| `tracking-[0.15em]` | 19 |
-| `tracking-[0.12em]` | 18 |
-| `tracking-[0.1em]` | 7 |
-| `tracking-wide` | 7 |
+| tracking            | uses |
+| ------------------- | ---- |
+| `tracking-[0.15em]` | 19   |
+| `tracking-[0.12em]` | 18   |
+| `tracking-[0.1em]`  | 7    |
+| `tracking-wide`     | 7    |
 
 Four tracking values for one element. `AgentChatActivityTabs` leans on `0.12em`, the header/modal on
 `0.15em`, message avatars on `0.1em`. **Fix:** standardize uppercase micro-labels to a single tracking
@@ -180,7 +185,7 @@ one. **Fix:** decide once — keep essential loading spinners, gate the decorati
 dots — and apply it uniformly. (`.pressable` is already gated app-wide at `inkprint.css:706`, so press
 feedback is fine.)
 
-### T2-2 · Mobile overflow menu lacks keyboard/escape affordances
+### T2-2 · Mobile overflow menu lacks keyboard/escape affordances — ✅ SHIPPED 2026-06-29
 
 `AgentChatHeader.svelte:353–420`: the `…` menu opens with `role="menu"` and a click-away backdrop, but
 has **no Escape-to-close, no focus return, and no arrow-key roving** between items. Playbook §2 weights
@@ -222,17 +227,20 @@ spacing fixes here don't re-litigate decisions already tracked there.
 
 ---
 
-## Adjacent follow-up (same strays, outside the audited regions)
+## Adjacent follow-up (Tier 0.5) — ✅ SHIPPED 2026-06-29
 
-The Tier 0 sweep was scoped to the six primary regions. These sibling agent-surface files render inside
-the same modal experience (`ThinkingBlock` is a chat message type; the selectors are modal sub-screens)
-and still carry the identical token strays the sweep just eliminated:
+The four documented transforms (`.micro-label` consolidation, `text-[11px]/[10px]/0.6rem/0.68rem/0.72rem`
+→ the 2-step `0.65`/`0.7` scale, `rounded-xl → rounded-lg`, `tracking-wide/wider/normal → 0.15em` on
+uppercase labels) were applied to `ThinkingBlock`, `WorkPanel`, `ProjectFocusSelector`,
+`ProjectActionSelector`, and `ProjectEntityList`. The agentic-chat surface is now token-consistent
+end to end.
 
-- `text-[11px]` → `ThinkingBlock`, `WorkPanel`, `ProjectFocusSelector`, `ProjectActionSelector`
-- `rounded-xl` → `ProjectActionSelector`, `ProjectFocusSelector`
-- `tracking-wide` → `ProjectActionSelector`, `ProjectEntityList`, `ProjectFocusSelector`, `WorkPanel`
-- inline `text-[0.65rem] uppercase tracking-[…]` micro-label longhand likely present too
+**Deliberate carve-outs (left as-is, by design):**
 
-Running the same find-and-replace (`.micro-label` consolidation, `text-[11px]/0.68rem → 0.7rem`,
-`rounded-xl → rounded-lg`, `tracking-* → 0.15em`) across these would make the whole agentic-chat
-surface token-consistent end to end. Recommended as a fast Tier 0.5 sweep.
+- **`ProjectEntityList` state/priority/impact badges** keep their bare `rounded` (0.25rem) radius. They
+  are `capitalize` value chips (not uppercase labels), and bumping bare `rounded → rounded-md` is a 5th
+  transform outside the documented sweep. Their `text-[10px]` was still normalized to `text-[0.65rem]`.
+  If we want a fully-locked radius language, fold these into the `rounded-md` small-chip tier in a
+  follow-up — but that's a new decision, not part of this sweep.
+- **`ThinkingBlock` font-mono header** keeps `tracking-normal` — the monospace activity log is a
+  deliberately distinct lane (same call as the mono timestamps in `AgentMessageList`).

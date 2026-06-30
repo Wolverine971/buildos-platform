@@ -216,7 +216,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			context_type: 'project',
 			entity_id: access.projectId,
 			status: 'active',
-			chat_type: 'project_suggestion',
+			chat_type: 'project',
 			title: `Discuss: ${compactTitle(suggestionRow.title)}`,
 			summary: suggestionRow.rationale ?? suggestionRow.why_now ?? null,
 			message_count: 1,
@@ -255,7 +255,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		user_id: access.userId,
 		role: 'assistant',
 		content: proposalContext.humanText,
-		message_type: 'text',
+		message_type: 'assistant_message',
 		created_at: now,
 		metadata: {
 			source: 'project_suggestion',

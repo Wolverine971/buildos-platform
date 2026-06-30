@@ -162,7 +162,7 @@
 				{/if}
 
 				<span
-					class="min-w-0 truncate font-mono text-[0.72rem] font-semibold tracking-normal text-foreground {hasDisplayedActivities
+					class="min-w-0 truncate font-mono text-[0.7rem] font-semibold tracking-normal text-foreground {hasDisplayedActivities
 						? 'uppercase sm:text-xs'
 						: ''}"
 				>
@@ -202,7 +202,7 @@
 		>
 			<div class="p-2 sm:p-2.5">
 				<div
-					class="thinking-log thinking-log-height space-y-0.5 overflow-y-auto rounded-md bg-background/55 p-1.5 font-mono text-[0.65rem] shadow-ink-inner sm:text-[11px]"
+					class="thinking-log thinking-log-height space-y-0.5 overflow-y-auto rounded-md bg-background/55 p-1.5 font-mono text-[0.65rem] shadow-ink-inner sm:text-[0.7rem]"
 					class:thinking-log-expanded={isExpanded}
 					role="log"
 					aria-label="BuildOS thinking log"
@@ -249,7 +249,7 @@
 					<button
 						type="button"
 						onclick={toggleExpand}
-						class="mt-1 w-full text-center text-[0.6rem] font-semibold uppercase tracking-normal text-muted-foreground transition-colors hover:text-foreground"
+						class="mt-1 w-full text-center micro-label font-semibold text-muted-foreground transition-colors hover:text-foreground"
 						aria-label={isExpanded ? 'Show less activity' : 'Show more activity'}
 					>
 						{isExpanded ? '▲ Show less' : '▼ Show more'}

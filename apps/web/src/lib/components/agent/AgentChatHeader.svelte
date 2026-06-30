@@ -9,7 +9,9 @@
 		AlertTriangle,
 		Download,
 		FileArchive,
-		MoreHorizontal
+		MoreHorizontal,
+		CheckCircle2,
+		CircleSlash
 	} from 'lucide-svelte';
 	import { cubicOut } from 'svelte/easing';
 	import { dev } from '$app/environment';
@@ -17,6 +19,7 @@
 	import ChatSessionAuditActions from './ChatSessionAuditActions.svelte';
 	import type { ChatContextType, ContextUsageSnapshot } from '@buildos/shared-types';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
+	import type { AgentChatHeaderAction } from './agent-chat.types';
 	import { formatTokensEstimate } from './agent-chat-formatters';
 
 	interface Props {
@@ -42,6 +45,7 @@
 		exportableStepCount?: number;
 		onExportSupportPacket?: () => void;
 		canExportSupportPacket?: boolean;
+		headerActions?: AgentChatHeaderAction[];
 		/** Bumped each time we shift into a (new) project context — triggers the title glimmer. */
 		contextShiftPulse?: number;
 	}
@@ -69,6 +73,7 @@
 		exportableStepCount = 0,
 		onExportSupportPacket,
 		canExportSupportPacket = false,
+		headerActions = [],
 		contextShiftPulse = 0
 	}: Props = $props();
 
@@ -77,6 +82,63 @@
 	// Mobile overflow menu — folds the secondary header actions (View / Steps /
 	// Support) behind a single "..." control so the mobile header stays clean.
 	let mobileMenuOpen = $state(false);
+	let mobileMenuButton = $state<HTMLButtonElement | null>(null);
+	let mobileMenuEl = $state<HTMLDivElement | null>(null);
+
+	function closeMobileMenu(returnFocus = false) {
+		mobileMenuOpen = false;
+		if (returnFocus) mobileMenuButton?.focus();
+	}
+
+	// All interactive rows inside the menu, in DOM order — covers the conditional
+	// export rows and any admin audit rows rendered by ChatSessionAuditActions.
+	function mobileMenuItems(): HTMLElement[] {
+		if (!mobileMenuEl) return [];
+		return Array.from(
+			mobileMenuEl.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')
+		);
+	}
+
+	// Roving arrow-key nav + Escape, per the WAI-ARIA menu pattern. Escape is kept
+	// from bubbling so it closes the menu without also closing the surrounding modal.
+	function handleMobileMenuKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			event.stopPropagation();
+			closeMobileMenu(true);
+			return;
+		}
+		const items = mobileMenuItems();
+		if (!items.length) return;
+		const current = items.indexOf(document.activeElement as HTMLElement);
+		let next: number;
+		switch (event.key) {
+			case 'ArrowDown':
+				next = current < 0 ? 0 : (current + 1) % items.length;
+				break;
+			case 'ArrowUp':
+				next = current < 0 ? items.length - 1 : (current - 1 + items.length) % items.length;
+				break;
+			case 'Home':
+				next = 0;
+				break;
+			case 'End':
+				next = items.length - 1;
+				break;
+			default:
+				return;
+		}
+		event.preventDefault();
+		items[next]?.focus();
+	}
+
+	// When the menu opens, drop focus onto its first item so keyboard users land
+	// inside it; closing is handled by Escape (focus returns to the trigger).
+	$effect(() => {
+		if (mobileMenuOpen && mobileMenuEl) {
+			mobileMenuItems()[0]?.focus();
+		}
+	});
 
 	// Horizontal collapse for the back button: when it's removed (e.g. once a chat
 	// is underway) it shrinks its width + the parent gap to nothing instead of
@@ -136,8 +198,33 @@
 	// Whether the mobile "..." menu has anything to show (its admin audit rows are
 	// gated inside ChatSessionAuditActions, so they don't count here).
 	const hasMobileOverflowItems = $derived(
-		Boolean((isProjectContext && projectUrl) || onExportSteps || onExportSupportPacket)
+		Boolean(
+			headerActions.length ||
+				(isProjectContext && projectUrl) ||
+				onExportSteps ||
+				onExportSupportPacket
+		)
 	);
+
+	function headerActionClass(action: AgentChatHeaderAction): string {
+		if (action.intent === 'primary') {
+			return 'border-success/40 bg-success/10 text-success hover:border-success hover:bg-success/15 hover:text-success';
+		}
+		if (action.intent === 'danger') {
+			return 'border-destructive/30 bg-destructive/10 text-destructive hover:border-destructive hover:bg-destructive/15 hover:text-destructive';
+		}
+		return 'border-border bg-card text-muted-foreground hover:border-accent hover:text-accent';
+	}
+
+	function headerMenuActionClass(action: AgentChatHeaderAction): string {
+		if (action.intent === 'primary') {
+			return 'text-success hover:bg-success/10 hover:text-success focus-visible:bg-success/10 focus-visible:text-success';
+		}
+		if (action.intent === 'danger') {
+			return 'text-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive';
+		}
+		return 'text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground';
+	}
 
 	const contextUsageCounter = $derived.by(() => {
 		if (!dev || !contextUsage) {
@@ -287,6 +374,27 @@
 		{/if}
 
 		<!-- Secondary actions: full buttons on sm+, folded into the mobile "..." menu below -->
+		{#each headerActions as action (action.id)}
+			<button
+				type="button"
+				onclick={() => void action.onClick()}
+				disabled={action.disabled || action.loading}
+				class={`hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border px-2.5 micro-label font-semibold shadow-ink transition-all touch-manipulation pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${headerActionClass(action)}`}
+				style="-webkit-tap-highlight-color: transparent;"
+				title={action.title ?? action.label}
+				aria-label={action.title ?? action.label}
+			>
+				{#if action.loading}
+					<LoaderCircle class="h-3.5 w-3.5 shrink-0 animate-spin" />
+				{:else if action.intent === 'danger'}
+					<CircleSlash class="h-3.5 w-3.5 shrink-0" />
+				{:else}
+					<CheckCircle2 class="h-3.5 w-3.5 shrink-0" />
+				{/if}
+				<span>{action.label}</span>
+			</button>
+		{/each}
+
 		<!-- INKPRINT project link button -->
 		{#if isProjectContext && projectUrl}
 			<a
@@ -339,8 +447,9 @@
 		{#if hasMobileOverflowItems || sessionId}
 			<div class="relative sm:hidden">
 				<button
+					bind:this={mobileMenuButton}
 					type="button"
-					onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
+					onclick={() => (mobileMenuOpen ? closeMobileMenu() : (mobileMenuOpen = true))}
 					class="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					style="-webkit-tap-highlight-color: transparent;"
 					aria-label="More actions"
@@ -357,11 +466,14 @@
 						class="fixed inset-0 z-40 cursor-default"
 						aria-label="Close actions menu"
 						tabindex="-1"
-						onclick={() => (mobileMenuOpen = false)}
+						onclick={() => closeMobileMenu()}
 					></button>
 					<div
+						bind:this={mobileMenuEl}
 						class="absolute right-0 top-[calc(100%+0.35rem)] z-50 min-w-52 overflow-hidden rounded-lg border border-border bg-card py-1 shadow-ink tx tx-frame tx-weak"
 						role="menu"
+						tabindex="-1"
+						onkeydown={handleMobileMenuKeydown}
 					>
 						{#if isProjectContext && projectUrl}
 							<a
@@ -376,6 +488,29 @@
 								<span>View project</span>
 							</a>
 						{/if}
+
+						{#each headerActions as action (action.id)}
+							<button
+								type="button"
+								onclick={() => {
+									mobileMenuOpen = false;
+									void action.onClick();
+								}}
+								disabled={action.disabled || action.loading}
+								class={`flex w-full items-center gap-2 px-3 py-2 text-left micro-label font-semibold transition-colors focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${headerMenuActionClass(action)}`}
+								role="menuitem"
+								title={action.title ?? action.label}
+							>
+								{#if action.loading}
+									<LoaderCircle class="h-3.5 w-3.5 shrink-0 animate-spin" />
+								{:else if action.intent === 'danger'}
+									<CircleSlash class="h-3.5 w-3.5 shrink-0" />
+								{:else}
+									<CheckCircle2 class="h-3.5 w-3.5 shrink-0" />
+								{/if}
+								<span>{action.label}</span>
+							</button>
+						{/each}
 
 						{#if onExportSteps}
 							<button

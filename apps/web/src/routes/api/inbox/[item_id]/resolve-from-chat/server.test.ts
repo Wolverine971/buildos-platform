@@ -78,6 +78,21 @@ function agentRunItem(): InboxItemFixture {
 	};
 }
 
+function calendarSuggestionItem(): InboxItemFixture {
+	return {
+		id: 'inbox-3',
+		source_type: 'calendar_suggestion',
+		source_ref_id: 'calendar-suggestion-1',
+		source_status: 'pending',
+		status: 'pending',
+		user_id: USER_ID,
+		project_id: null,
+		audience: 'user',
+		title: 'Create project from calendar',
+		action_kinds: ['approve', 'reject']
+	};
+}
+
 function chatSessionFor(item: InboxItemFixture, metadataPatch: Record<string, unknown> = {}) {
 	return {
 		id: 'session-1',
@@ -96,6 +111,7 @@ function createSupabaseMock(params: {
 	item: InboxItemFixture | null;
 	session: Record<string, unknown> | null;
 	projectSuggestionUpdate?: Record<string, unknown> | null;
+	calendarSuggestionUpdate?: Record<string, unknown> | null;
 }) {
 	const operations: Operation[] = [];
 	const supabase = {
@@ -127,6 +143,9 @@ function createSupabaseMock(params: {
 					}
 					if (table === 'project_suggestions' && state.action === 'update') {
 						return { data: params.projectSuggestionUpdate ?? null, error: null };
+					}
+					if (table === 'calendar_project_suggestions' && state.action === 'update') {
+						return { data: params.calendarSuggestionUpdate ?? null, error: null };
 					}
 					return { data: null, error: null };
 				})
@@ -277,6 +296,160 @@ describe('POST /api/inbox/[item_id]/resolve-from-chat', () => {
 		);
 	});
 
+	it('marks a project suggestion handled from chat without requiring mutations', async () => {
+		const item = projectSuggestionItem();
+		const local = createSupabaseMock({ item, session: chatSessionFor(item) });
+		const admin = createSupabaseMock({
+			item: null,
+			session: null,
+			projectSuggestionUpdate: { id: item.source_ref_id, status: 'rejected' }
+		});
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.supabase);
+
+		const response = await POST({
+			params: { item_id: item.id },
+			request: makeRequest({
+				session_id: 'session-1',
+				has_changes: false,
+				resolution: 'handled'
+			}),
+			locals: makeLocals(local.supabase)
+		} as any);
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(json.data.resolved).toBe(true);
+		const update = admin.operations.find(
+			(operation) => operation.table === 'project_suggestions'
+		);
+		expect(update?.payload).toMatchObject({
+			status: 'rejected',
+			user_feedback: expect.objectContaining({
+				reason: 'other',
+				note: expect.stringContaining('Marked handled from chat')
+			})
+		});
+		expect(mocks.syncInboxItemForSource).toHaveBeenCalledWith(
+			expect.objectContaining({
+				sourceType: 'project_suggestion',
+				sourceRefId: item.source_ref_id
+			})
+		);
+	});
+
+	it('dismisses a calendar suggestion from chat without requiring mutations', async () => {
+		const item = calendarSuggestionItem();
+		const local = createSupabaseMock({ item, session: chatSessionFor(item) });
+		const admin = createSupabaseMock({
+			item: null,
+			session: null,
+			calendarSuggestionUpdate: { id: item.source_ref_id, status: 'rejected' }
+		});
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.supabase);
+
+		const response = await POST({
+			params: { item_id: item.id },
+			request: makeRequest({
+				session_id: 'session-1',
+				has_changes: false,
+				resolution: 'dismissed'
+			}),
+			locals: makeLocals(local.supabase)
+		} as any);
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(json.data.resolved).toBe(true);
+		const update = admin.operations.find(
+			(operation) => operation.table === 'calendar_project_suggestions'
+		);
+		expect(update?.payload).toMatchObject({
+			status: 'rejected',
+			rejection_reason: expect.stringContaining('Dismissed from chat')
+		});
+		expect(update?.filters).toEqual(
+			expect.arrayContaining([
+				['id', item.source_ref_id],
+				['user_id', USER_ID],
+				['status', 'pending']
+			])
+		);
+	});
+
+	it('marks a pending calendar suggestion accepted from chat with an owned source-row guard', async () => {
+		const item = calendarSuggestionItem();
+		const local = createSupabaseMock({ item, session: chatSessionFor(item) });
+		const admin = createSupabaseMock({
+			item: null,
+			session: null,
+			calendarSuggestionUpdate: { id: item.source_ref_id, status: 'accepted' }
+		});
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.supabase);
+
+		const response = await POST({
+			params: { item_id: item.id },
+			request: makeRequest({
+				session_id: 'session-1',
+				has_changes: true,
+				total_mutations: 2,
+				affected_project_ids: ['project-1']
+			}),
+			locals: makeLocals(local.supabase)
+		} as any);
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(json.data.resolved).toBe(true);
+		const update = admin.operations.find(
+			(operation) => operation.table === 'calendar_project_suggestions'
+		);
+		expect(update?.payload).toMatchObject({
+			status: 'accepted',
+			created_project_id: 'project-1'
+		});
+		expect(update?.filters).toEqual(
+			expect.arrayContaining([
+				['id', item.source_ref_id],
+				['user_id', USER_ID],
+				['status', 'pending']
+			])
+		);
+	});
+
+	it('falls back to explicit handled resolution when calendar chat mutations do not create a project', async () => {
+		const item = calendarSuggestionItem();
+		const local = createSupabaseMock({ item, session: chatSessionFor(item) });
+		const admin = createSupabaseMock({
+			item: null,
+			session: null,
+			calendarSuggestionUpdate: { id: item.source_ref_id, status: 'rejected' }
+		});
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.supabase);
+
+		const response = await POST({
+			params: { item_id: item.id },
+			request: makeRequest({
+				session_id: 'session-1',
+				has_changes: true,
+				total_mutations: 1,
+				affected_project_ids: [],
+				resolution: 'handled'
+			}),
+			locals: makeLocals(local.supabase)
+		} as any);
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(json.data.resolved).toBe(true);
+		const update = admin.operations.find(
+			(operation) => operation.table === 'calendar_project_suggestions'
+		);
+		expect(update?.payload).toMatchObject({
+			status: 'rejected',
+			rejection_reason: expect.stringContaining('Marked handled from chat')
+		});
+	});
+
 	it('rejects the original agent-run change set after chat made replacement changes', async () => {
 		const item = agentRunItem();
 		const local = createSupabaseMock({ item, session: chatSessionFor(item) });
@@ -294,6 +467,38 @@ describe('POST /api/inbox/[item_id]/resolve-from-chat', () => {
 				has_changes: true,
 				total_mutations: 1,
 				affected_project_ids: ['project-1']
+			}),
+			locals: makeLocals(local.supabase)
+		} as any);
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(json.data.resolved).toBe(true);
+		expect(mocks.commitChangeSet).toHaveBeenCalledWith(
+			expect.objectContaining({
+				runId: item.source_ref_id,
+				userId: USER_ID,
+				defaultDecision: 'rejected'
+			})
+		);
+	});
+
+	it('dismisses an agent-run change set from chat without requiring mutations', async () => {
+		const item = agentRunItem();
+		const local = createSupabaseMock({ item, session: chatSessionFor(item) });
+		mocks.createAdminSupabaseClient.mockReturnValue(
+			createSupabaseMock({ item: null, session: null }).supabase
+		);
+		mocks.syncInboxItemForSource
+			.mockResolvedValueOnce({ ...item, status: 'pending' })
+			.mockResolvedValueOnce({ ...item, status: 'decided', source_status: 'completed' });
+
+		const response = await POST({
+			params: { item_id: item.id },
+			request: makeRequest({
+				session_id: 'session-1',
+				has_changes: false,
+				resolution: 'dismissed'
 			}),
 			locals: makeLocals(local.supabase)
 		} as any);

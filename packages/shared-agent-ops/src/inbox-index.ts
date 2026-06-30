@@ -54,6 +54,20 @@ function asString(value: unknown): string | null {
 	return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function formatCalendarSuggestionTitle(value: unknown): string {
+	const raw = asString(value) ?? 'Calendar project suggestion';
+	const withoutGenericSuffix = raw.replace(/\s+project$/i, '').trim() || raw;
+	const spaced = withoutGenericSuffix.replace(/\b(\d+)([A-Za-z])/g, '$1 $2');
+	return spaced
+		.split(/\s+/)
+		.map((part) =>
+			part === part.toLowerCase() && /[a-z]/.test(part)
+				? `${part.charAt(0).toUpperCase()}${part.slice(1)}`
+				: part
+		)
+		.join(' ');
+}
+
 function changeCount(changeSet: unknown): number {
 	const record = asRecord(changeSet);
 	const changes = record?.changes;
@@ -262,7 +276,7 @@ export function mapCalendarSuggestionToInboxItem(
 		project_id: asString(suggestion.created_project_id),
 		audience: 'user',
 		status: inboxStatus,
-		title: asString(suggestion.suggested_name) ?? 'Calendar project suggestion',
+		title: formatCalendarSuggestionTitle(suggestion.suggested_name),
 		summary: asString(suggestion.ai_reasoning) ?? (summaryParts.join(' - ') || null),
 		risk_tier: 1,
 		action_kinds: ['approve', 'reject'],

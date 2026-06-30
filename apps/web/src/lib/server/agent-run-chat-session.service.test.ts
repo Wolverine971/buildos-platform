@@ -366,6 +366,74 @@ describe('agent-run chat session service', () => {
 		expect(state.tables.chat_messages[0].metadata).not.toHaveProperty('agent_run_id');
 	});
 
+	it('uses project_id to scope a project run even when context_type is stale', async () => {
+		const { supabase, state } = createSupabaseMock({
+			chat_sessions: [],
+			chat_messages: [],
+			chat_sessions_projects: [],
+			onto_projects: [{ id: 'project-1', name: 'Launch Project' }]
+		});
+
+		const result = await createAgentRunChatSession({
+			supabase,
+			run: agentRun({ context_type: 'global' }),
+			userId: 'user-1'
+		});
+
+		expect(result).toMatchObject({
+			created: true,
+			context_type: 'project',
+			entity_id: 'project-1',
+			project_id: 'project-1'
+		});
+		expect(state.tables.chat_sessions[0]).toMatchObject({
+			context_type: 'project',
+			entity_id: 'project-1'
+		});
+		expect(state.tables.chat_sessions[0].agent_metadata.focus).toMatchObject({
+			projectId: 'project-1',
+			projectName: 'Launch Project'
+		});
+	});
+
+	it('does not reuse a global parent session for a project-scoped run', async () => {
+		const { supabase, state } = createSupabaseMock({
+			chat_sessions: [
+				{
+					id: 'parent-session',
+					user_id: 'user-1',
+					status: 'active',
+					context_type: 'global',
+					entity_id: null,
+					message_count: 2,
+					agent_metadata: {}
+				}
+			],
+			chat_messages: [],
+			chat_sessions_projects: [],
+			onto_projects: [{ id: 'project-1', name: 'Launch Project' }]
+		});
+
+		const result = await createAgentRunChatSession({
+			supabase,
+			run: agentRun({ parent_session_id: 'parent-session' }),
+			userId: 'user-1'
+		});
+
+		expect(result).toMatchObject({
+			created: true,
+			context_type: 'project',
+			entity_id: 'project-1',
+			project_id: 'project-1'
+		});
+		expect(result.chat_session_id).not.toBe('parent-session');
+		expect(state.tables.chat_sessions).toHaveLength(2);
+		expect(state.tables.chat_sessions[1]).toMatchObject({
+			context_type: 'project',
+			entity_id: 'project-1'
+		});
+	});
+
 	it('does not insert a duplicate seed message when the idempotency key already exists', async () => {
 		const { supabase, state } = createSupabaseMock({
 			chat_sessions: [

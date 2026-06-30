@@ -68,7 +68,7 @@ function createSupabaseMock(
 		context_type: 'project',
 		entity_id: PROJECT_ID,
 		status: 'active',
-		chat_type: 'project_suggestion',
+		chat_type: 'project',
 		title: 'Discuss: Clarify project direction'
 	};
 
@@ -265,7 +265,7 @@ describe('POST /api/onto/projects/[id]/suggestions/[suggestion_id]/chat-session'
 			user_id: USER_ID,
 			context_type: 'project',
 			entity_id: PROJECT_ID,
-			chat_type: 'project_suggestion',
+			chat_type: 'project',
 			message_count: 1,
 			agent_metadata: expect.objectContaining({
 				source: 'project_suggestion',
@@ -286,7 +286,7 @@ describe('POST /api/onto/projects/[id]/suggestions/[suggestion_id]/chat-session'
 			session_id: SESSION_ID,
 			user_id: USER_ID,
 			role: 'assistant',
-			message_type: 'text',
+			message_type: 'assistant_message',
 			metadata: expect.objectContaining({
 				source: 'project_suggestion',
 				suggestion_id: SUGGESTION_ID,

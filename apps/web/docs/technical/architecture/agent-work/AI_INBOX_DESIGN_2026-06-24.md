@@ -3,7 +3,7 @@
 # AI Inbox - Design / Shaping Doc
 
 **Date:** 2026-06-24
-**Status:** Shaping, audit-revised 2026-06-24, loop/audit alignment revised 2026-06-26, project-suggestion clarified decisions and shared decision controls implemented 2026-06-26, decision notification handoff implemented 2026-06-27, inbox chat resolution hook implemented 2026-06-28, agent-run shared chat context service/API/inbox delegation/status-modal UI wiring implemented 2026-06-29; manual smoke next
+**Status:** Shaping, audit-revised 2026-06-24, loop/audit alignment revised 2026-06-26, project-suggestion clarified decisions and shared decision controls implemented 2026-06-26, decision notification handoff implemented 2026-06-27, inbox chat resolution hook implemented 2026-06-28, agent-run shared chat context service/API/inbox delegation/status-modal UI wiring implemented 2026-06-29, proposal-focus grounding and explicit in-chat inbox resolution implemented 2026-06-30; manual smoke next
 **Author:** DJ + Claude + Codex audit pass
 **Related:** `HANDOFF_2026-06-19.md` (Agent Work / change sets), `PROJECT_START_HERE_DOC_DESIGN_2026-06-23.md`, project-loops, `docs/research/project-review-loop-audit-suggestion-families-2026-06-25.md`, `AGENT_RUN_CHAT_CONTEXT_BRIDGE_PLAN_2026-06-29.md`
 
@@ -263,21 +263,21 @@ Generic actions:
 
 1. **Index schema** - add `inbox_items` with source identity, nullable `user_id`/`project_id`, `audience`, status, metadata, unique source key, and read/count indexes.
 2. **Source adapter contract** - each source must provide `mapToInboxItem(sourceRow)`, `loadPayload(sourceRef)`, `decide(sourceRef, action, options)`, and `syncIndex(sourceRef)`.
-3. **Safety fixes before unified actions** - `project_suggestions` now claims `pending -> approved -> applied|failed`, supersedes stale approvals before replay, and treats already-decided responses idempotently. `calendar_project_suggestions` now claims `pending -> processing -> accepted|rejected`, maps `processing` to Inbox `deciding`, has a migration-backed status constraint that permits the claim state, links accepted suggestions to `onto_projects`, and handles retry/stale-processing recovery.
+3. **Safety fixes before unified actions** - `project_suggestions` now claims `pending -> approved -> applied|failed`, supersedes stale approvals before replay, and treats already-decided responses idempotently. `calendar_project_suggestions` now claims `pending -> processing -> accepted|rejected`, maps `processing` to Inbox `deciding`, has a migration-backed status constraint that permits the claim state, links accepted suggestions to `onto_projects`, handles retry/stale-processing recovery, and guards chat-resolution source updates by the owning `user_id`.
 4. **Producer wiring** - write/sync index rows when:
     - agent runs reach `proposal_ready`,
     - chat-close capture inserts its proposal run,
     - project-loop suggestions are inserted,
     - calendar suggestions are inserted,
     - later signal adapters create reviewable rows.
-5. **Read endpoints** - `GET /api/inbox` with filters for project/status/source/group and `GET /api/inbox/count`; both reconcile stale index rows against source state.
+5. **Read endpoints** - `GET /api/inbox` with filters for project/status/source/group and `GET /api/inbox/count`; both reconcile stale index rows against source state. As of 2026-06-30, project-suggestion backfill also repairs stale `delegated` source rows when their linked child `agent_run` is terminal before syncing the inbox index.
 6. **Decision endpoint** - `POST /api/inbox/decide` dispatches by `source_type`, mutates source first, then syncs the index. It returns source-specific result detail and enforces the persisted index status handoff so approved/rejected items cannot reload from `/api/inbox?status=pending`.
 7. **Card components** - shared inbox card shell plus source-specific payload renderers. Reuse `ChangeSetReview`/`DocumentProposalDiff` only for true agent-run change sets.
 8. **Project Inbox tab** - shipped in `EntityTabStrip` with project-loop brief, grouped sections, feedback controls, and safe batch apply. The old `ProjectSuggestionsPanel` fallback has been removed after confirming it had no live imports.
 9. **Dashboard triage modal** - reuse the Overdue Task Triage navigation/progress chrome for cross-project items and account/global grouping.
 10. **Loop parent context** - implemented first slice: `/api/inbox?include_payload=1` returns `source_context.project_loop_run` for project-loop items, and both project/dashboard inbox surfaces show the originating review run label.
 11. **Inbox Chat** - implemented first project-suggestion slice with shared proposal decoder/context builder, `project_suggestions.chat_session_id`, and `POST /api/onto/projects/[id]/suggestions/[suggestion_id]/chat-session`; expanded 2026-06-28 to `POST /api/inbox/[item_id]/chat-session` so writable `project_suggestion`, user-owned `agent_run`, and user-owned `calendar_suggestion` items can all open seeded chat from Project Inbox/Dashboard Inbox.
-12. **Project-suggestion clarified decisions** - implemented for project-loop suggestions: `project_suggestions.status='delegated'`, `agent_runs.source_suggestion_id/source_decision`, child-run worker reconciliation, queue-full degraded fallback, and prior-decision loop prompt memory to reduce repeated suggestions.
+12. **Project-suggestion clarified decisions** - implemented for project-loop suggestions: `project_suggestions.status='delegated'`, `agent_runs.source_suggestion_id/source_decision`, child-run worker reconciliation, read-time delegated-row repair, queue-full degraded fallback, and prior-decision loop prompt memory to reduce repeated suggestions.
 13. **Shared decision controls** - implemented in `InboxDecisionControls.svelte` and wired into `ProjectInboxPanel` and `DashboardInboxModal`. Source-specific behavior remains in the parent surfaces/endpoints; the visible action model is now `Accept`, `Dismiss`, `Chat`. Inline clarification/dismiss-note UI is no longer shown; guidance moves through the seeded Chat path while `/api/inbox/decide` still supports project-suggestion clarification for compatible callers.
 14. **Decision notification handoff** - implemented in `inbox-decision-notification.service.ts`, `ProjectInboxPanel`, and `DashboardInboxModal`: cards are optimistically removed on approve/reject/dismiss, processing is shown in the bottom-right notification stack, completion/error toasts resolve through that stack, and failed requests trigger a silent inbox reload.
 15. **Decision index status enforcement** - implemented in `POST /api/inbox/decide`: after a successful source decision, stale or failed source sync is repaired by forcing the matching `inbox_items` row out of `pending`, with route-level regression coverage for project dismiss, clarified approve, sync failure, and calendar accept.
@@ -334,7 +334,7 @@ Still open:
 - **Phase 2 - Dashboard Inbox triage:** implemented as a dashboard card/modal with project/account grouping; still needs smoke-test evidence and any final interaction polish.
 - **Phase 3 - Signals:** add profile-fragment apply/dismiss and contact-merge candidate cards after sensitive-data UX is ready.
 - **Phase 4 - Run/report alignment:** loop-run parent context is now visible across Project Inbox and Dashboard Inbox. Add `project_audits` only when the Complete Project Audit family ships.
-- **Phase 5 - Inbox Chat and project-suggestion clarification:** seeded Chat is implemented for writable `project_suggestion` items and user-owned `agent_run`/`calendar_suggestion` items; project-suggestion clarified decisions, recurrence prevention, shared `Accept`/`Dismiss`/`Chat` controls, notification-stack decision handoff, and conservative chat-origin resolution are implemented. Remaining follow-up: add explicit in-chat controls if we want users to resolve/dismiss without requiring a successful data mutation.
+- **Phase 5 - Inbox Chat and project-suggestion clarification:** seeded Chat is implemented for writable `project_suggestion` items and user-owned `agent_run`/`calendar_suggestion` items; project-suggestion clarified decisions, recurrence prevention, shared `Accept`/`Dismiss`/`Chat` controls, notification-stack decision handoff, proposal-focus grounding, conservative mutation-backed chat resolution, and explicit discussion-only in-chat resolution are implemented.
 - **Phase 6 - Mutation convergence:** migrate narrow mutating producers toward true `ChangeSet`s where per-change review is valuable. Calendar Analysis is the likely first candidate; mutating Project Loop suggestions can follow. Audit packets should not become `ChangeSet`s.
 
 ---
@@ -359,18 +359,26 @@ Recommended sequence:
 3. **Chat about inbox items.**
     - 2026-06-26 first slice: shared proposal context utilities live in `@buildos/shared-agent-ops/proposal-context`.
     - `POST /api/onto/projects/[id]/suggestions/[suggestion_id]/chat-session` creates/reuses a project-scoped `chat_sessions` row, inserts an assistant seed message, links `project_suggestions.chat_session_id`, and cleans up on creation failure.
+    - Project-suggestion and project-loop discussion sessions must use database-safe `chat_sessions.chat_type = 'project'`; the source identity belongs in `agent_metadata` and the `project_suggestions` / `project_loop_runs` link rows. `project_suggestion` and `project_loop` are not valid `chat_sessions.chat_type` values under the current DB constraint.
+    - The generic AI Inbox chat route treats `project_suggestions.chat_session_id` as a best-effort backlink: if the session, project link, and seed message are created successfully, a backlink update failure should not block opening Chat because session reuse can fall back to `chat_sessions.agent_metadata`.
     - 2026-06-28 update: `POST /api/inbox/[item_id]/chat-session` is the UI-facing route. It creates/reuses a seeded `chat_sessions` row from the inbox item, enforces the same ownership/project-write access rules as decisions, preserves the full project-suggestion proposal context, and adds compact seed context for `agent_run` and `calendar_suggestion` cards.
+    - 2026-06-30 update: proposal context now has two carriers. The visible assistant seed keeps the user oriented in the restored chat, and the stream endpoint injects `chat_sessions.agent_metadata.proposal_context.llm_text` as a transient system history message for `source:'ai_inbox'` sessions so the model is anchored to the active proposal even when ordinary project/calendar context is sparse. New calendar-suggestion seeds also include source `calendar_event_ids` when present so follow-up turns can inspect evidence with calendar tools.
+    - 2026-06-30 update: project-scoped proposal chats keep a proposal-specific session title but restore the chat header/model context from project scope. `agent_metadata.focus.projectName` is the header/context label for project sessions, and `agent_run.project_id` is authoritative for agent-run chat scope even when the run's `context_type` is stale or missing.
     - Project Inbox and Dashboard Inbox show `Chat` for decidable items and open `AgentChatModal` with `initialChatSessionId`.
-    - 2026-06-28 update: `POST /api/inbox/[item_id]/resolve-from-chat` lets inbox-origin Chat close resolve the source item when the chat reports successful data mutations. Discussion-only chats leave the inbox card pending.
+    - 2026-06-28 update: `POST /api/inbox/[item_id]/resolve-from-chat` lets inbox-origin Chat close resolve the source item when the chat reports successful data mutations.
         - `project_suggestion`: pending source row becomes `applied` with `result.handled_in_chat = true`, then the index row is synced.
         - `agent_run`: the original proposal is rejected after replacement chat writes, then the index row is synced.
-        - `calendar_suggestion`: pending source row becomes `accepted` only when chat mutations include a created/affected project id.
+        - `calendar_suggestion`: pending source row becomes `accepted` only when chat mutations include a created/affected project id; the source update is guarded by `user_id` as well as suggestion id/status.
+    - 2026-06-30 update: inbox-origin chats can also render `Mark handled` and `Dismiss` in the chat header. The modal builds the current mutation summary, calls `POST /api/inbox/[item_id]/resolve-from-chat` with `resolution:'handled'|'dismissed'`, then closes only after the source adapter confirms resolution.
+        - `handled` with successful mutations keeps the mutation-backed behavior above.
+        - `handled` without mutations, or with a mutation summary that cannot satisfy the source adapter, marks project/calendar suggestions terminal with feedback/rejection metadata rather than claiming a data change was applied.
+        - `dismissed` rejects/dismisses the original source item even without chat mutations; `agent_run` dismissal uses `commitChangeSet(... defaultDecision:'rejected')`.
 
 4. **Harden clarified decisions and shared controls.**
     - Implemented 2026-06-26: approve/dismiss-with-clarification dispatches linked child `agent_runs`; worker finalize reconciles the source suggestion; prior decided suggestions/user feedback enter project-loop context and prompts; shared `InboxDecisionControls` is wired into both inbox surfaces.
     - Implemented 2026-06-28: visible inbox controls are normalized to `Accept`, `Dismiss`, and `Chat`; guidance now starts in Chat rather than an inline note field.
-    - Next: smoke-test Chat for project suggestions, agent-run change sets, and calendar suggestions; smoke-test queue-full degraded fallback, stale-approval superseding, and the `delegated -> applied|rejected|failed` reconciliation path in a migrated environment.
-    - Decide whether explicit discussion-only Chat outcomes should support "mark handled" or "dismiss from chat" without a data mutation.
+    - 2026-06-30 update: explicit discussion-only Chat outcomes are implemented through `Mark handled` / `Dismiss` header controls in `AgentChatModal`, wired from both Project Inbox and Dashboard Inbox.
+    - Next: smoke-test Chat for project suggestions, agent-run change sets, and calendar suggestions; smoke-test queue-full degraded fallback, stale-approval superseding, explicit in-chat resolution, and the `delegated -> applied|rejected|failed` reconciliation path in a migrated environment.
 
 5. **Clarify informational vs mutating findings.**
     - Keep no-op drift findings as acknowledgement-style `project_suggestion` rows.

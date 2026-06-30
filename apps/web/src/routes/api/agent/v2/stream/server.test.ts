@@ -626,6 +626,159 @@ describe('/api/agent/v2/stream', () => {
 		);
 	});
 
+	it('injects AI Inbox proposal context into the model history', async () => {
+		const supabase = createStreamingSupabase();
+		let capturedHistory: Row[] = [];
+
+		mocks.resolveSession.mockResolvedValueOnce({
+			session: {
+				id: 'session-1',
+				summary: 'Review proposed Start Here updates.',
+				agent_metadata: {
+					source: 'ai_inbox',
+					source_type: 'agent_run',
+					source_label: 'Agent proposal',
+					source_status: 'partial',
+					inbox_item_id: 'inbox-1',
+					source_ref_id: 'run-1',
+					project_id: 'project-1',
+					project_name: 'BuildOS',
+					proposal_context: {
+						llm_text:
+							'You are discussing an AI Inbox proposal.\n# Update project START HERE\nThe agent wanted to revise the project orientation document.'
+					}
+				}
+			}
+		});
+		mocks.streamFastChat.mockImplementationOnce(async ({ history, onDelta }: Row) => {
+			capturedHistory = history;
+			await onDelta('We are reviewing the START HERE proposal.');
+			return {
+				assistantText: 'We are reviewing the START HERE proposal.',
+				finalAssistantText: 'We are reviewing the START HERE proposal.',
+				usage: { total_tokens: 10 },
+				finishedReason: 'stop',
+				toolExecutions: [],
+				llmPasses: [],
+				toolRounds: 0,
+				toolCallsMade: 0,
+				supervisorDecisions: [],
+				finalizationGuard: undefined,
+				cancelled: false,
+				peakPromptTokens: undefined,
+				finalContextUsage: undefined
+			};
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'What are we trying to do?',
+					context_type: 'project',
+					entity_id: 'project-1',
+					stream_run_id: 'stream-run-inbox',
+					client_turn_id: 'client-turn-inbox'
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		await response.text();
+
+		expect(capturedHistory[0]).toEqual(
+			expect.objectContaining({
+				role: 'system',
+				content: expect.stringContaining('## Proposal Focus')
+			})
+		);
+		expect(capturedHistory[0]?.content).toContain('Update project START HERE');
+		expect(capturedHistory[0]?.content).toContain('Source type: agent_run');
+		expect(capturedHistory[0]?.content).toContain(
+			'Do not accept, dismiss, apply, create, move, or update anything merely because this brief exists'
+		);
+	});
+
+	it('injects agent-run bridge context into the model history', async () => {
+		const supabase = createStreamingSupabase();
+		let capturedHistory: Row[] = [];
+
+		mocks.resolveSession.mockResolvedValueOnce({
+			session: {
+				id: 'session-1',
+				summary: 'Review proposed Start Here updates.',
+				agent_metadata: {
+					source: 'agent_run_context',
+					agent_run_id: 'run-1',
+					run_id: 'run-1',
+					project_id: 'project-1',
+					project_name: 'BuildOS',
+					agent_run_context: {
+						run_id: 'run-1',
+						run_status: 'proposal_ready',
+						llm_text:
+							'Agent run proposal ready to chat about.\n# Update project START HERE\nReview the staged orientation document edits.'
+					}
+				}
+			}
+		});
+		mocks.streamFastChat.mockImplementationOnce(async ({ history, onDelta }: Row) => {
+			capturedHistory = history;
+			await onDelta('This run proposed START HERE edits.');
+			return {
+				assistantText: 'This run proposed START HERE edits.',
+				finalAssistantText: 'This run proposed START HERE edits.',
+				usage: { total_tokens: 10 },
+				finishedReason: 'stop',
+				toolExecutions: [],
+				llmPasses: [],
+				toolRounds: 0,
+				toolCallsMade: 0,
+				supervisorDecisions: [],
+				finalizationGuard: undefined,
+				cancelled: false,
+				peakPromptTokens: undefined,
+				finalContextUsage: undefined
+			};
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'What is this run trying to do?',
+					context_type: 'project',
+					entity_id: 'project-1',
+					stream_run_id: 'stream-run-agent-run-context',
+					client_turn_id: 'client-turn-agent-run-context'
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		await response.text();
+
+		expect(capturedHistory[0]).toEqual(
+			expect.objectContaining({
+				role: 'system',
+				content: expect.stringContaining('## Proposal Focus')
+			})
+		);
+		expect(capturedHistory[0]?.content).toContain('Agent run context');
+		expect(capturedHistory[0]?.content).toContain('Source ref id: run-1');
+		expect(capturedHistory[0]?.content).toContain('Update project START HERE');
+	});
+
 	it('persists a supervisor question checkpoint and finishes the stream as supervisor_question', async () => {
 		const supabase = createStreamingSupabase();
 		const question = 'Which exact task should I update?';

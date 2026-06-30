@@ -29,7 +29,7 @@ async function createLoopChatSession(
 			context_type: 'project',
 			entity_id: params.projectId,
 			status: 'active',
-			chat_type: 'project_loop',
+			chat_type: 'project',
 			title:
 				params.triggerReason === 'manual'
 					? 'Manual Project Review'

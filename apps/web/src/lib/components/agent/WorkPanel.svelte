@@ -329,13 +329,15 @@
 							>
 							{#if needsYou(run.status)}
 								<span
-									class="flex-shrink-0 rounded-full bg-warning/15 px-1.5 py-0.5 text-[10px] font-medium text-warning"
+									class="flex-shrink-0 rounded-full bg-warning/15 px-1.5 py-0.5 text-[0.65rem] font-medium text-warning"
 									>needs you</span
 								>
 							{/if}
 						</div>
 						<div class="mt-0.5 truncate text-xs text-muted-foreground">{run.goal}</div>
-						<div class="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+						<div
+							class="mt-1 flex items-center gap-2 text-[0.7rem] text-muted-foreground"
+						>
 							<span class="capitalize">{run.trigger}</span>
 							<span>·</span>
 							<span>{relTime(run)}</span>
@@ -352,9 +354,7 @@
 				{/snippet}
 
 				{#if activeRuns.length}
-					<div
-						class="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
-					>
+					<div class="mb-1 px-1 micro-label font-semibold text-muted-foreground">
 						Active
 					</div>
 					<div class="mb-4 space-y-1.5">
@@ -365,9 +365,7 @@
 				{/if}
 
 				{#if historyRuns.length}
-					<div
-						class="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
-					>
+					<div class="mb-1 px-1 micro-label font-semibold text-muted-foreground">
 						History
 					</div>
 					<div class="space-y-1.5">
@@ -408,7 +406,7 @@
 										{operative.goal}
 									</div>
 									<div
-										class="mt-1 flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground"
+										class="mt-1 flex min-w-0 items-center gap-2 text-[0.7rem] text-muted-foreground"
 									>
 										<span class="capitalize"
 											>{operative.scope_mode.replace('_', ' ')}</span
@@ -419,7 +417,7 @@
 										>
 									</div>
 									{#if operative.schedule_error}
-										<div class="mt-1 truncate text-[11px] text-destructive">
+										<div class="mt-1 truncate text-[0.7rem] text-destructive">
 											{operative.schedule_error}
 										</div>
 									{/if}

@@ -105,6 +105,16 @@ function asNumber(value: unknown): number | null {
 	return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
+function readTerminalAgentRunStatus(value: unknown): string | null {
+	const status = asString(value);
+	return status === 'completed' ||
+		status === 'partial' ||
+		status === 'failed' ||
+		status === 'cancelled'
+		? status
+		: null;
+}
+
 export function isInboxSourceType(value: string | null): value is InboxSourceType {
 	return !!value && INBOX_SOURCE_TYPES.has(value as InboxSourceType);
 }
@@ -457,6 +467,126 @@ async function syncRows(params: {
 	return synced;
 }
 
+function buildClarifiedSuggestionRepairResult(params: {
+	run: Record<string, unknown>;
+	finalStatus: string;
+	sourceDecision: 'approve' | 'dismiss';
+}): Record<string, unknown> {
+	const runResult = asRecord(params.run.result);
+	const summary = asString(runResult?.summary);
+	const answer = asString(runResult?.answer);
+	const ok = params.finalStatus === 'completed';
+	const entitiesTouched = Array.isArray(runResult?.entities_touched)
+		? runResult.entities_touched.length
+		: 0;
+	const error =
+		asString(runResult?.error) ??
+		(params.finalStatus === 'cancelled'
+			? 'Clarified decision run was cancelled.'
+			: params.finalStatus === 'partial'
+				? 'Clarified decision run finished partially.'
+				: 'Clarified decision run failed.');
+
+	return {
+		ok,
+		applied_operations: ok ? entitiesTouched : 0,
+		agent_run_id: asString(params.run.id),
+		agent_run_status: params.finalStatus,
+		source_decision: params.sourceDecision,
+		repaired_by: 'ai_inbox_backfill',
+		...(summary ? { summary } : {}),
+		...(answer ? { answer } : {}),
+		...(!ok && error ? { errors: [{ tool: 'agent_run', error }] } : {})
+	};
+}
+
+async function repairDelegatedProjectSuggestions(params: {
+	admin: AnySupabase;
+	rows: Record<string, unknown>[];
+	now?: Date;
+}): Promise<Record<string, unknown>[]> {
+	const delegatedRows = params.rows.filter(
+		(row) => asString(row.status) === 'delegated' && asString(row.agent_run_id)
+	);
+	if (delegatedRows.length === 0) return params.rows;
+
+	const runIds = [
+		...new Set(
+			delegatedRows
+				.map((row) => asString(row.agent_run_id))
+				.filter((id): id is string => !!id)
+		)
+	];
+	if (runIds.length === 0) return params.rows;
+
+	const { data: runRows, error } = await params.admin
+		.from('agent_runs')
+		.select('id, status, source_decision, result, completed_at, updated_at')
+		.in('id', runIds);
+	if (error) throw error;
+
+	const runsById = new Map<string, Record<string, unknown>>();
+	for (const run of (runRows ?? []) as Record<string, unknown>[]) {
+		const id = asString(run.id);
+		if (id) runsById.set(id, run);
+	}
+
+	const repairedById = new Map<string, Record<string, unknown>>();
+	const nowIso = (params.now ?? new Date()).toISOString();
+	for (const row of delegatedRows) {
+		const rowId = asString(row.id);
+		const runId = asString(row.agent_run_id);
+		if (!rowId || !runId) continue;
+		const run = runsById.get(runId);
+		const finalStatus = readTerminalAgentRunStatus(run?.status);
+		const sourceDecision = asString(run?.source_decision);
+		if (
+			!run ||
+			!finalStatus ||
+			(sourceDecision !== 'approve' && sourceDecision !== 'dismiss')
+		) {
+			continue;
+		}
+
+		const succeeded = finalStatus === 'completed';
+		const nextStatus = succeeded
+			? sourceDecision === 'approve'
+				? 'applied'
+				: 'rejected'
+			: 'failed';
+		const completedAt = asString(run.completed_at) ?? asString(run.updated_at) ?? nowIso;
+		const patch: Record<string, unknown> = {
+			status: nextStatus,
+			result: buildClarifiedSuggestionRepairResult({
+				run,
+				finalStatus,
+				sourceDecision
+			}),
+			agent_run_id: runId,
+			updated_at: completedAt
+		};
+		if (succeeded && sourceDecision === 'approve') {
+			patch.applied_at = completedAt;
+		}
+
+		const { data: updated, error: updateError } = await params.admin
+			.from('project_suggestions')
+			.update(patch)
+			.eq('id', rowId)
+			.eq('status', 'delegated')
+			.select('*')
+			.maybeSingle();
+		if (updateError) throw updateError;
+		if (updated) repairedById.set(rowId, updated as Record<string, unknown>);
+	}
+
+	if (repairedById.size === 0) return params.rows;
+	return params.rows.map((row) => {
+		const id = asString(row.id);
+		return id ? (repairedById.get(id) ?? row) : row;
+	});
+}
+
 async function backfillVisibleSourceRows(params: {
 	supabase: AnySupabase;
 	admin: AnySupabase;
@@ -506,10 +636,14 @@ async function backfillVisibleSourceRows(params: {
 		if (params.projectId) query = query.eq('project_id', params.projectId);
 		const { data, error } = await query;
 		if (error) throw error;
+		const rows = await repairDelegatedProjectSuggestions({
+			admin: params.admin,
+			rows: (data ?? []) as Record<string, unknown>[]
+		});
 		synced += await syncRows({
 			admin: params.admin,
 			sourceType: 'project_suggestion',
-			rows: (data ?? []) as Record<string, unknown>[]
+			rows
 		});
 	}
 

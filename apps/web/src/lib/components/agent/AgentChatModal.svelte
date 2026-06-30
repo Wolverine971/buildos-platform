@@ -51,9 +51,11 @@
 		type ActivityEntry,
 		type ActivityType,
 		type AgentBrainDumpContext,
+		type AgentChatHeaderAction,
 		type AgentLoopState,
 		type AgentChatPanelTab,
 		type AgentProjectSummary,
+		type AgentChatResolutionAction,
 		type AgentTimelineItem,
 		type CreatedEntityRef,
 		type DataMutationSummary,
@@ -123,6 +125,7 @@
 		initialBrainDumpContext?: AgentBrainDumpContext | null;
 		initialProjectFocus?: ProjectFocus | null;
 		embedded?: boolean;
+		inboxResolutionActions?: AgentChatResolutionAction[];
 		/** Reports the active chat session id so embedding surfaces can render
 		 * session-level chrome (e.g. ChatSessionAuditActions) in their own header. */
 		onSessionChange?: (sessionId: string | null) => void;
@@ -138,6 +141,7 @@
 		initialBrainDumpContext = null,
 		initialProjectFocus = null,
 		embedded = false,
+		inboxResolutionActions = [],
 		onSessionChange
 	}: Props = $props();
 
@@ -517,6 +521,13 @@
 	let sessionBootstrapController: AbortController | null = null;
 	let sessionBootstrapPromise: Promise<ChatSession | null> | null = null;
 	const isSessionBusy = $derived(isLoadingSession || isPreparingSession);
+	const inboxHeaderActions = $derived.by<AgentChatHeaderAction[]>(() =>
+		inboxResolutionActions.map((action) => ({
+			...action,
+			disabled: action.disabled || isSessionBusy || stream.isStreaming,
+			onClick: () => handleInboxResolutionAction(action)
+		}))
+	);
 	const canAttachExistingProjectImages = $derived(
 		Boolean(attachmentProjectId) && !isSessionBusy && !stream.isStreaming
 	);
@@ -1669,6 +1680,18 @@
 		if (onClose) onClose(summary);
 	}
 
+	async function handleInboxResolutionAction(action: AgentChatResolutionAction) {
+		if (action.disabled || action.loading || stream.isStreaming || isSessionBusy) return;
+		const summary = presenter.buildMutationSummary({
+			hasMessagesSent: stream.hasSentMessage,
+			sessionId: currentSession?.id ?? null
+		});
+		const shouldClose = await action.onResolve(summary);
+		if (shouldClose !== false) {
+			handleClose();
+		}
+	}
+
 	function handleImageAttachmentFiles(files: File[]) {
 		attachments.handleFiles(files);
 	}
@@ -2273,6 +2296,7 @@
 					{exportableStepCount}
 					onExportSupportPacket={handleExportSupportPacket}
 					{canExportSupportPacket}
+					headerActions={inboxHeaderActions}
 				/>
 			</div>
 		{/snippet}

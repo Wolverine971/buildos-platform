@@ -13,7 +13,10 @@
 	import ChangeSetReview from '$lib/components/notifications/types/agent-run/ChangeSetReview.svelte';
 	import InboxChangeDetails from '$lib/components/inbox/InboxChangeDetails.svelte';
 	import InboxDecisionControls from '$lib/components/inbox/InboxDecisionControls.svelte';
-	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
+	import type {
+		AgentChatResolutionAction,
+		DataMutationSummary
+	} from '$lib/components/agent/agent-chat.types';
 	import {
 		completeInboxDecisionNotification,
 		failInboxDecisionNotification,
@@ -34,6 +37,7 @@
 	type AgentChatModalLazy =
 		| typeof import('$lib/components/agent/AgentChatModal.svelte').default
 		| null;
+	type ChatResolutionAction = 'handled' | 'dismissed';
 
 	type InboxItem = {
 		id: string;
@@ -118,7 +122,33 @@
 	let chatSessionId = $state<string | null>(null);
 	let chatItemId = $state<string | null>(null);
 	let chatContext = $state<{ contextType: ChatContextType; entityId?: string } | null>(null);
+	let resolvingChatAction = $state<ChatResolutionAction | null>(null);
+	let explicitlyResolvedChatItemId = $state<string | null>(null);
 	let openingChatIds = $state<Set<string>>(new Set());
+
+	const inboxResolutionActions = $derived.by<AgentChatResolutionAction[]>(() => {
+		if (!chatItemId || !chatSessionId) return [];
+		return [
+			{
+				id: 'mark-handled-from-chat',
+				label: 'Mark handled',
+				title: 'Remove this inbox item after this chat',
+				intent: 'primary',
+				disabled: Boolean(resolvingChatAction),
+				loading: resolvingChatAction === 'handled',
+				onResolve: (summary) => resolveOpenChatItem('handled', summary)
+			},
+			{
+				id: 'dismiss-from-chat',
+				label: 'Dismiss',
+				title: 'Dismiss this inbox item after this chat',
+				intent: 'danger',
+				disabled: Boolean(resolvingChatAction),
+				loading: resolvingChatAction === 'dismissed',
+				onResolve: (summary) => resolveOpenChatItem('dismissed', summary)
+			}
+		];
+	});
 
 	const accountGroupKey = 'account';
 
@@ -365,9 +395,10 @@
 
 	function contextTypeForChat(
 		item: InboxItem,
+		result: Record<string, unknown> | null,
 		session: Record<string, unknown> | null
 	): ChatContextType {
-		const contextType = session?.context_type;
+		const contextType = result?.context_type ?? session?.context_type;
 		if (
 			contextType === 'project' ||
 			contextType === 'calendar' ||
@@ -385,6 +416,10 @@
 		return 'global';
 	}
 
+	function readString(value: unknown): string | null {
+		return typeof value === 'string' && value.trim() ? value.trim() : null;
+	}
+
 	async function openChat(item: InboxItem) {
 		if (!canChat(item) || isOpeningChat(item)) return;
 		openingChatIds = new Set(openingChatIds).add(item.id);
@@ -397,15 +432,16 @@
 			if (typeof nextChatSessionId !== 'string' || !nextChatSessionId) {
 				throw new Error('Chat session was not returned');
 			}
+			const result = (json.data ?? null) as Record<string, unknown> | null;
 			const session = (json.data?.session ?? null) as Record<string, unknown> | null;
 			const entityId =
-				typeof session?.entity_id === 'string'
-					? session.entity_id
-					: typeof json.data?.entity_id === 'string'
-						? json.data.entity_id
-						: (item.project_id ?? undefined);
+				readString(result?.entity_id) ??
+				readString(session?.entity_id) ??
+				readString(result?.project_id) ??
+				item.project_id ??
+				undefined;
 			chatContext = {
-				contextType: contextTypeForChat(item, session),
+				contextType: contextTypeForChat(item, result, session),
 				entityId: entityId ?? undefined
 			};
 			chatSessionId = nextChatSessionId;
@@ -419,17 +455,29 @@
 		}
 	}
 
-	async function resolveChatItem(itemId: string, summary: DataMutationSummary) {
-		if (!summary.hasChanges || !summary.sessionId) return;
+	async function resolveChatItem(
+		itemId: string,
+		options: {
+			summary?: DataMutationSummary;
+			resolution?: ChatResolutionAction;
+			sessionId?: string | null;
+			showErrors?: boolean;
+		}
+	): Promise<boolean> {
+		const summary = options.summary;
+		const sessionId = summary?.sessionId ?? options.sessionId;
+		const hasChanges = summary?.hasChanges === true;
+		if (!sessionId || (!hasChanges && !options.resolution)) return false;
 		try {
 			const response = await fetch(`/api/inbox/${itemId}/resolve-from-chat`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					session_id: summary.sessionId,
-					has_changes: summary.hasChanges,
-					total_mutations: summary.totalMutations,
-					affected_project_ids: summary.affectedProjectIds
+					session_id: sessionId,
+					has_changes: hasChanges,
+					total_mutations: summary?.totalMutations ?? 0,
+					affected_project_ids: summary?.affectedProjectIds ?? [],
+					...(options.resolution ? { resolution: options.resolution } : {})
 				})
 			});
 			const json = await response.json().catch(() => null);
@@ -437,20 +485,61 @@
 			if (json?.data?.resolved) {
 				const removed = removeItemById(itemId);
 				if (removed) changedCount += 1;
-				toastService.success('Inbox item handled from chat.');
+				toastService.success(
+					options.resolution === 'dismissed'
+						? 'Inbox item dismissed.'
+						: options.resolution === 'handled'
+							? 'Inbox item marked handled.'
+							: 'Inbox item handled from chat.'
+				);
+				return true;
 			}
 		} catch (error) {
+			if (options.showErrors) {
+				toastService.error(
+					error instanceof Error ? error.message : 'Failed to resolve inbox item'
+				);
+			}
 			console.warn('[AI Inbox] Failed to resolve inbox item from chat:', error);
+		}
+		return false;
+	}
+
+	async function resolveOpenChatItem(
+		resolution: ChatResolutionAction,
+		summary: DataMutationSummary
+	): Promise<boolean> {
+		const itemId = chatItemId;
+		const sessionId = chatSessionId;
+		if (!itemId || !sessionId || resolvingChatAction) return false;
+		resolvingChatAction = resolution;
+		try {
+			const resolved = await resolveChatItem(itemId, {
+				summary,
+				resolution,
+				sessionId,
+				showErrors: true
+			});
+			if (resolved) explicitlyResolvedChatItemId = itemId;
+			return resolved;
+		} finally {
+			resolvingChatAction = null;
 		}
 	}
 
 	function closeChat(summary?: DataMutationSummary) {
 		const itemId = chatItemId;
+		const wasExplicitlyResolved = !!itemId && explicitlyResolvedChatItemId === itemId;
 		chatSessionId = null;
 		chatItemId = null;
 		chatContext = null;
+		resolvingChatAction = null;
+		if (wasExplicitlyResolved) {
+			explicitlyResolvedChatItemId = null;
+			return;
+		}
 		if (itemId && summary?.hasChanges) {
-			void resolveChatItem(itemId, summary);
+			void resolveChatItem(itemId, { summary });
 		}
 	}
 
@@ -963,6 +1052,7 @@
 		contextType={chatContext?.contextType ?? 'global'}
 		entityId={chatContext?.entityId}
 		initialChatSessionId={chatSessionId}
+		{inboxResolutionActions}
 		onClose={closeChat}
 	/>
 {/if}

@@ -392,7 +392,7 @@
 								<!-- State badge -->
 								{#if entity.metadata?.state_key}
 									<span
-										class={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold capitalize ${stateClasses(entity.metadata.state_key)}`}
+										class={`inline-flex items-center rounded border px-1.5 py-0.5 text-[0.65rem] font-semibold capitalize ${stateClasses(entity.metadata.state_key)}`}
 									>
 										{formatState(entity.metadata.state_key)}
 									</span>
@@ -401,7 +401,7 @@
 								<!-- Task: priority -->
 								{#if selectedType === 'task' && entity.metadata?.priority != null}
 									<span
-										class={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold ${priorityClasses(entity.metadata.priority)}`}
+										class={`inline-flex items-center rounded border px-1.5 py-0.5 text-[0.65rem] font-semibold ${priorityClasses(entity.metadata.priority)}`}
 									>
 										P{entity.metadata.priority}
 									</span>
@@ -410,7 +410,7 @@
 								<!-- Risk: impact level -->
 								{#if selectedType === 'risk' && entity.metadata?.impact}
 									<span
-										class={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold capitalize ${impactClasses(entity.metadata.impact)}`}
+										class={`inline-flex items-center rounded border px-1.5 py-0.5 text-[0.65rem] font-semibold capitalize ${impactClasses(entity.metadata.impact)}`}
 									>
 										{entity.metadata.impact}
 									</span>
@@ -419,7 +419,7 @@
 								<!-- Goal/Plan: type family -->
 								{#if (selectedType === 'goal' || selectedType === 'plan') && entity.metadata?.type_key}
 									<span
-										class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+										class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium text-muted-foreground"
 									>
 										{formatTypeFamily(entity.metadata.type_key)}
 									</span>
@@ -427,7 +427,7 @@
 
 								<!-- Due date (tasks, milestones, goals) -->
 								{#if entity.metadata?.due_at}
-									<span class="text-[10px] font-medium text-muted-foreground">
+									<span class="text-[0.65rem] font-medium text-muted-foreground">
 										Due {new Date(entity.metadata.due_at).toLocaleDateString(
 											'en-US',
 											{
@@ -444,7 +444,7 @@
 						<CircleCheck class="h-4 w-4 shrink-0 text-accent" />
 					{:else}
 						<span
-							class="hidden shrink-0 items-center gap-1 rounded-full border border-border bg-background px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground transition-all group-hover:border-accent group-hover:bg-accent/10 group-hover:text-accent sm:inline-flex"
+							class="hidden shrink-0 items-center gap-1 rounded-full border border-border bg-background px-2 py-1 micro-label font-semibold text-muted-foreground transition-all group-hover:border-accent group-hover:bg-accent/10 group-hover:text-accent sm:inline-flex"
 						>
 							Focus
 							<ChevronRight class="h-3 w-3" />

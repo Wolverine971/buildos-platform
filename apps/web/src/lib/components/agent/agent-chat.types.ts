@@ -207,6 +207,22 @@ export interface DataMutationSummary {
 	entityId?: string | null;
 }
 
+export type AgentChatHeaderActionIntent = 'primary' | 'secondary' | 'danger';
+
+export interface AgentChatHeaderAction {
+	id: string;
+	label: string;
+	title?: string;
+	intent?: AgentChatHeaderActionIntent;
+	disabled?: boolean;
+	loading?: boolean;
+	onClick: () => void | Promise<void>;
+}
+
+export interface AgentChatResolutionAction extends Omit<AgentChatHeaderAction, 'onClick'> {
+	onResolve: (summary: DataMutationSummary) => boolean | void | Promise<boolean | void>;
+}
+
 export function isThinkingBlockMessage(message: UIMessage): message is ThinkingBlockMessage {
 	return message.type === 'thinking_block';
 }

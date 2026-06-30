@@ -17,8 +17,16 @@ type SupportedInboxSourceType = Extract<
 type SourceContext = {
 	humanText: string;
 	llmText: string;
+	displayTitle?: string;
 	operationSummaries?: string[];
 	evidenceSummaries?: string[];
+};
+
+type CalendarEvidenceEvent = {
+	calendar_event_id?: unknown;
+	event_title?: unknown;
+	event_start?: unknown;
+	event_end?: unknown;
 };
 
 type SessionScope = {
@@ -73,9 +81,31 @@ function compactText(value: unknown, maxLength: number): string | null {
 		: `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
 }
 
+function compactVisibleText(value: unknown, maxLength: number): string | null {
+	if (typeof value !== 'string') return null;
+	const withoutHeadingMarkers = value
+		.replace(/(^|\n)\s{0,3}#{1,6}\s+/g, '$1')
+		.replace(/\s+#{1,6}\s+/g, '. ');
+	return compactText(withoutHeadingMarkers, maxLength);
+}
+
 function compactTitle(value: string | null | undefined): string {
 	const title = value?.trim() || 'Inbox item';
 	return title.length <= 80 ? title : `${title.slice(0, 77)}...`;
+}
+
+function formatCalendarProjectDisplayName(value: unknown): string {
+	const raw = readString(value) ?? 'Calendar project suggestion';
+	const withoutGenericSuffix = raw.replace(/\s+project$/i, '').trim() || raw;
+	const spaced = withoutGenericSuffix.replace(/\b(\d+)([A-Za-z])/g, '$1 $2');
+	return spaced
+		.split(/\s+/)
+		.map((part) =>
+			part === part.toLowerCase() && /[a-z]/.test(part)
+				? `${part.charAt(0).toUpperCase()}${part.slice(1)}`
+				: part
+		)
+		.join(' ');
 }
 
 function formatPercent(value: unknown): string | null {
@@ -114,54 +144,140 @@ function summarizeCalendarTask(task: Record<string, unknown>, index: number): st
 	return parts.join(' - ');
 }
 
+function summarizeCalendarEventIds(value: unknown): string[] {
+	if (!Array.isArray(value)) return [];
+	const ids = value
+		.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+		.map((item) => item.trim());
+	const shown = ids.slice(0, 12);
+	const lines = shown.map((id, index) => `${index + 1}. ${id}`);
+	if (ids.length > shown.length) {
+		lines.push(`...and ${ids.length - shown.length} more event ids.`);
+	}
+	return lines;
+}
+
+function formatCalendarEvidenceDate(value: unknown): string | null {
+	const raw = readString(value);
+	if (!raw) return null;
+	const date = raw.slice(0, 10);
+	const time = raw.match(/T(\d{2}:\d{2})/)?.[1] ?? null;
+	return time ? `${date} ${time}` : date;
+}
+
+function summarizeCalendarEvidenceEvents(
+	events: CalendarEvidenceEvent[],
+	maxEvents: number
+): string[] {
+	return events.slice(0, maxEvents).map((event, index) => {
+		const title =
+			readString(event.event_title) ?? readString(event.calendar_event_id) ?? 'Event';
+		const startsAt = formatCalendarEvidenceDate(event.event_start);
+		return `${index + 1}. ${title}${startsAt ? ` (${startsAt})` : ''}`;
+	});
+}
+
+function summarizeCalendarPattern(pattern: Record<string, unknown> | null): string | null {
+	if (!pattern) return null;
+	const parts = [
+		readString(pattern.start_date) ? `starts ${readString(pattern.start_date)}` : null,
+		readString(pattern.end_date) ? `ends ${readString(pattern.end_date)}` : null,
+		Array.isArray(pattern.tags) && pattern.tags.length
+			? `tags: ${pattern.tags.filter((tag) => typeof tag === 'string').join(', ')}`
+			: null
+	].filter((part): part is string => Boolean(part));
+	return parts.length ? parts.join('; ') : null;
+}
+
 function buildCalendarSuggestionContext(
 	item: InboxIndexRow,
-	suggestion: Record<string, unknown> | null
+	suggestion: Record<string, unknown> | null,
+	evidenceEvents: CalendarEvidenceEvent[] = []
 ): SourceContext {
-	const tasks = normalizeArray(suggestion?.suggested_tasks)
-		.slice(0, 8)
-		.map(summarizeCalendarTask);
+	const allTasks = normalizeArray(suggestion?.suggested_tasks);
+	const visibleTasks = allTasks
+		.slice(0, 3)
+		.map((task, index) => `${index + 1}. ${readString(task.title) ?? 'Untitled task'}`);
+	const llmTasks = allTasks.slice(0, 8).map(summarizeCalendarTask);
+	const eventIdLines = summarizeCalendarEventIds(suggestion?.calendar_event_ids);
 	const pattern = isRecord(suggestion?.event_patterns) ? suggestion?.event_patterns : null;
-	const patternLines = [
-		readString(pattern?.start_date) ? `Start: ${readString(pattern?.start_date)}` : null,
-		readString(pattern?.end_date) ? `End: ${readString(pattern?.end_date)}` : null,
-		Array.isArray(pattern?.tags) ? `Tags: ${pattern.tags.join(', ')}` : null
-	].filter((line): line is string => Boolean(line));
-	const lines = [
-		'Calendar project suggestion ready to chat about.',
+	const patternSummary = summarizeCalendarPattern(pattern);
+	const eventCount = readNumber(suggestion?.event_count);
+	const displayTitle = formatCalendarProjectDisplayName(
+		readString(suggestion?.suggested_name) ?? item.title
+	);
+	const visibleEvidence = summarizeCalendarEvidenceEvents(evidenceEvents, 4);
+	const visibleLines = [
+		`Calendar found a possible project: ${displayTitle}.`,
 		'',
-		`# ${readString(suggestion?.suggested_name) ?? item.title ?? 'Calendar project suggestion'}`,
-		'Source: Calendar analysis',
-		readString(suggestion?.status) ? `Status: ${readString(suggestion?.status)}` : null,
+		`This inbox item is asking whether to create a new project from related calendar activity${eventCount !== null ? ` (${eventCount} events)` : ''}.`,
+		allTasks.length
+			? `If accepted, it will create the project and seed ${allTasks.length} suggested task${allTasks.length === 1 ? '' : 's'}.`
+			: 'If accepted, it will create the project from the calendar analysis.',
+		'',
 		formatPercent(suggestion?.confidence_score),
-		readNumber(suggestion?.event_count) !== null
-			? `${readNumber(suggestion?.event_count)} calendar events`
+		item.summary ? `Why it was suggested: ${compactVisibleText(item.summary, 280)}` : null,
+		compactVisibleText(suggestion?.suggested_description, 360)
+			? `Suggested description: ${compactVisibleText(suggestion?.suggested_description, 360)}`
 			: null,
+		compactVisibleText(suggestion?.suggested_context, 420)
+			? `Draft project context: ${compactVisibleText(suggestion?.suggested_context, 420)}`
+			: null,
+		patternSummary ? `Calendar pattern: ${patternSummary}` : null
+	].filter((line): line is string => Boolean(line));
+
+	appendSection(visibleLines, 'Suggested tasks', visibleTasks);
+	appendSection(
+		visibleLines,
+		'Calendar evidence',
+		visibleEvidence.length
+			? visibleEvidence
+			: eventCount !== null
+				? `${eventCount} related calendar events. Event IDs are available to the agent in the background.`
+				: null
+	);
+	visibleLines.push(
+		'',
+		'You can ask me to inspect the evidence, adjust the project name/description/tasks, accept it, or dismiss it.'
+	);
+
+	const evidenceSummaries = summarizeCalendarEvidenceEvents(evidenceEvents, 20);
+	const llmLines = [
+		'You are discussing a BuildOS AI Inbox calendar project suggestion with the user.',
+		'This suggestion proposes creating a new project from related calendar events and seeding its initial tasks.',
+		'Accepting or dismissing the inbox item remains a separate decision unless the user clearly asks you to take that action.',
+		'When the user asks for evidence detail beyond the visible summary, use the calendar event ids below with the available calendar tools instead of inventing event details.',
+		'',
+		`Suggested project display name: ${displayTitle}`,
+		readString(suggestion?.suggested_name)
+			? `Raw suggested project name: ${readString(suggestion?.suggested_name)}`
+			: null,
+		readString(suggestion?.status) ? `Source status: ${readString(suggestion?.status)}` : null,
+		formatPercent(suggestion?.confidence_score),
+		eventCount !== null ? `${eventCount} calendar events` : null,
 		item.summary ? `Inbox summary: ${item.summary}` : null
 	].filter((line): line is string => Boolean(line));
-
 	appendSection(
-		lines,
+		llmLines,
 		'Suggested description',
-		compactText(suggestion?.suggested_description, 700)
+		compactText(suggestion?.suggested_description, 1200)
 	);
-	appendSection(lines, 'Suggested context', compactText(suggestion?.suggested_context, 900));
-	appendSection(lines, 'AI reasoning', compactText(suggestion?.ai_reasoning, 900));
-	appendSection(lines, 'Suggested tasks', tasks);
-	appendSection(lines, 'Event pattern', patternLines);
-	lines.push(
-		'',
-		'I can help you inspect the calendar evidence, adjust the project idea, or decide whether to accept or dismiss this inbox item.'
+	appendSection(
+		llmLines,
+		'Suggested context',
+		compactVisibleText(suggestion?.suggested_context, 1600)
 	);
+	appendSection(llmLines, 'AI reasoning', compactText(suggestion?.ai_reasoning, 1200));
+	appendSection(llmLines, 'Suggested tasks', llmTasks);
+	appendSection(llmLines, 'Event pattern', patternSummary);
+	appendSection(llmLines, 'Calendar evidence event summaries', evidenceSummaries);
+	appendSection(llmLines, 'Calendar evidence event ids', eventIdLines);
 
 	return {
-		humanText: lines.join('\n'),
-		llmText: [
-			'You are discussing a BuildOS AI Inbox calendar project suggestion with the user.',
-			'Use the seeded calendar context as source material. Accepting or dismissing the inbox item remains a separate decision unless the user clearly asks you to make a change.',
-			'',
-			...lines
-		].join('\n')
+		humanText: visibleLines.join('\n'),
+		llmText: llmLines.join('\n'),
+		displayTitle,
+		evidenceSummaries
 	};
 }
 
@@ -207,6 +323,43 @@ async function loadProjectSuggestionLoopRun(
 		.eq('project_id', projectId)
 		.maybeSingle();
 	return (data ?? null) as ProposalContextLoopRun | null;
+}
+
+async function loadCalendarEvidenceEvents(
+	supabase: AnySupabase,
+	suggestion: Record<string, unknown> | null
+): Promise<CalendarEvidenceEvent[]> {
+	const analysisId = readString(suggestion?.analysis_id);
+	const eventIds = Array.isArray(suggestion?.calendar_event_ids)
+		? suggestion.calendar_event_ids.filter(
+				(eventId): eventId is string =>
+					typeof eventId === 'string' && eventId.trim().length > 0
+			)
+		: [];
+	if (!analysisId || eventIds.length === 0) return [];
+
+	const { data, error } = await supabase
+		.from('calendar_analysis_events')
+		.select('calendar_event_id, event_title, event_start, event_end')
+		.eq('analysis_id', analysisId)
+		.in('calendar_event_id', eventIds.slice(0, 50));
+	if (error) {
+		console.warn('Failed to load calendar evidence events for inbox chat', {
+			analysisId,
+			error
+		});
+		return [];
+	}
+
+	const rows = Array.isArray(data) ? (data as CalendarEvidenceEvent[]) : [];
+	const rowsById = new Map<string, CalendarEvidenceEvent>();
+	for (const row of rows) {
+		const id = readString(row.calendar_event_id);
+		if (id) rowsById.set(id, row);
+	}
+	return eventIds
+		.map((id) => rowsById.get(id))
+		.filter((row): row is CalendarEvidenceEvent => !!row);
 }
 
 async function buildProjectSuggestionContext(params: {
@@ -270,8 +423,7 @@ function resolveSessionScope(params: {
 			entityId: projectId,
 			projectId,
 			projectName: params.projectName ?? 'Project',
-			chatType:
-				params.item.source_type === 'project_suggestion' ? 'project_suggestion' : 'project'
+			chatType: 'project'
 		};
 	}
 
@@ -291,6 +443,55 @@ function resolveSessionScope(params: {
 		projectId: null,
 		projectName: null,
 		chatType: 'global'
+	};
+}
+
+function buildInboxSessionMetadata(params: {
+	item: InboxIndexRow;
+	scope: SessionScope;
+	context: SourceContext;
+}): Record<string, unknown> {
+	return {
+		source: 'ai_inbox',
+		inbox_item_id: params.item.id ?? null,
+		source_type: params.item.source_type,
+		source_ref_id: params.item.source_ref_id,
+		source_status: params.item.source_status ?? null,
+		source_label: SOURCE_LABEL_BY_TYPE[params.item.source_type as SupportedInboxSourceType],
+		project_id: params.scope.projectId,
+		project_name: params.scope.projectName,
+		focus: params.scope.projectId
+			? {
+					focusType: 'project-wide',
+					focusEntityId: null,
+					focusEntityName: null,
+					projectId: params.scope.projectId,
+					projectName: params.scope.projectName ?? 'Project'
+				}
+			: undefined,
+		proposal_context: {
+			llm_text: params.context.llmText,
+			operation_summaries: params.context.operationSummaries ?? [],
+			evidence_summaries: params.context.evidenceSummaries ?? []
+		}
+	};
+}
+
+function buildInboxSeedMessageMetadata(params: {
+	item: InboxIndexRow;
+	scope: SessionScope;
+	context: SourceContext;
+}): Record<string, unknown> {
+	return {
+		source: 'ai_inbox',
+		inbox_item_id: params.item.id ?? null,
+		source_type: params.item.source_type,
+		source_ref_id: params.item.source_ref_id,
+		project_id: params.scope.projectId,
+		seed_message: true,
+		proposal_context: {
+			llm_text: params.context.llmText
+		}
 	};
 }
 
@@ -335,6 +536,80 @@ async function findExistingChatSession(params: {
 	}
 
 	return null;
+}
+
+async function refreshExistingInboxChatSession(params: {
+	supabase: AnySupabase;
+	session: Record<string, unknown>;
+	item: InboxIndexRow;
+	scope: SessionScope;
+	context: SourceContext;
+	sessionMetadata: Record<string, unknown>;
+	userId: string;
+}): Promise<Record<string, unknown>> {
+	const sessionId = readString(params.session.id);
+	if (!sessionId) return params.session;
+	const existingMetadata = isRecord(params.session.agent_metadata)
+		? params.session.agent_metadata
+		: {};
+	const mergedMetadata = {
+		...existingMetadata,
+		...params.sessionMetadata
+	};
+
+	const { data: updatedSession, error: sessionUpdateError } = await params.supabase
+		.from('chat_sessions')
+		.update({
+			title: `Chat: ${compactTitle(params.context.displayTitle ?? params.item.title)}`,
+			summary: params.item.summary ?? null,
+			agent_metadata: mergedMetadata as Json
+		})
+		.eq('id', sessionId)
+		.eq('user_id', params.userId)
+		.select('*')
+		.maybeSingle();
+	if (sessionUpdateError) {
+		console.warn('Failed to refresh inbox chat session metadata', {
+			sessionId,
+			inboxItemId: params.item.id ?? null,
+			error: sessionUpdateError
+		});
+	}
+
+	const { error: seedUpdateError } = await params.supabase
+		.from('chat_messages')
+		.update({
+			content: params.context.humanText,
+			metadata: buildInboxSeedMessageMetadata({
+				item: params.item,
+				scope: params.scope,
+				context: params.context
+			}) as Json
+		})
+		.eq('session_id', sessionId)
+		.eq('user_id', params.userId)
+		.contains('metadata', {
+			source: 'ai_inbox',
+			source_type: params.item.source_type,
+			source_ref_id: params.item.source_ref_id,
+			seed_message: true
+		});
+	if (seedUpdateError) {
+		console.warn('Failed to refresh inbox chat seed message', {
+			sessionId,
+			inboxItemId: params.item.id ?? null,
+			error: seedUpdateError
+		});
+	}
+
+	return (
+		(updatedSession as Record<string, unknown> | null) ?? {
+			...params.session,
+			title: `Chat: ${compactTitle(params.context.displayTitle ?? params.item.title)}`,
+			summary: params.item.summary ?? null,
+			agent_metadata: mergedMetadata
+		}
+	);
 }
 
 async function cleanupCreatedInboxChatSession(
@@ -408,24 +683,6 @@ export async function createInboxChatSession(params: {
 		sourcePayload,
 		projectName
 	});
-	const existingSession = await findExistingChatSession({
-		supabase: params.supabase,
-		item: params.item,
-		sourcePayload,
-		userId: params.userId
-	});
-	if (existingSession) {
-		return {
-			created: false,
-			session: existingSession,
-			chat_session_id: readString(existingSession.id) ?? '',
-			item: params.item,
-			source_payload: sourcePayload,
-			context_type: scope.contextType,
-			entity_id: scope.entityId,
-			project_id: scope.projectId
-		};
-	}
 
 	const context =
 		params.item.source_type === 'project_suggestion'
@@ -435,33 +692,47 @@ export async function createInboxChatSession(params: {
 					suggestion: sourcePayload,
 					projectName
 				})
-			: buildCalendarSuggestionContext(params.item, sourcePayload);
+			: buildCalendarSuggestionContext(
+					params.item,
+					sourcePayload,
+					await loadCalendarEvidenceEvents(params.supabase, sourcePayload)
+				);
+	const sessionMetadata = buildInboxSessionMetadata({
+		item: params.item,
+		scope,
+		context
+	});
+
+	const existingSession = await findExistingChatSession({
+		supabase: params.supabase,
+		item: params.item,
+		sourcePayload,
+		userId: params.userId
+	});
+	if (existingSession) {
+		const refreshedSession = await refreshExistingInboxChatSession({
+			supabase: params.supabase,
+			session: existingSession,
+			item: params.item,
+			scope,
+			context,
+			sessionMetadata,
+			userId: params.userId
+		});
+		return {
+			created: false,
+			session: refreshedSession,
+			chat_session_id:
+				readString(refreshedSession.id) ?? readString(existingSession.id) ?? '',
+			item: params.item,
+			source_payload: sourcePayload,
+			context_type: scope.contextType,
+			entity_id: scope.entityId,
+			project_id: scope.projectId
+		};
+	}
 
 	const now = new Date().toISOString();
-	const sessionMetadata: Record<string, unknown> = {
-		source: 'ai_inbox',
-		inbox_item_id: params.item.id ?? null,
-		source_type: params.item.source_type,
-		source_ref_id: params.item.source_ref_id,
-		source_status: params.item.source_status ?? null,
-		source_label: SOURCE_LABEL_BY_TYPE[params.item.source_type as SupportedInboxSourceType],
-		project_id: scope.projectId,
-		project_name: scope.projectName,
-		focus: scope.projectId
-			? {
-					focusType: 'project-wide',
-					focusEntityId: null,
-					focusEntityName: null,
-					projectId: scope.projectId,
-					projectName: scope.projectName ?? 'Project'
-				}
-			: undefined,
-		proposal_context: {
-			llm_text: context.llmText,
-			operation_summaries: context.operationSummaries ?? [],
-			evidence_summaries: context.evidenceSummaries ?? []
-		}
-	};
 
 	const { data: session, error: sessionError } = await params.supabase
 		.from('chat_sessions')
@@ -471,7 +742,7 @@ export async function createInboxChatSession(params: {
 			entity_id: scope.entityId,
 			status: 'active',
 			chat_type: scope.chatType,
-			title: `Chat: ${compactTitle(params.item.title)}`,
+			title: `Chat: ${compactTitle(context.displayTitle ?? params.item.title)}`,
 			summary: params.item.summary ?? null,
 			message_count: 1,
 			last_message_at: now,
@@ -513,18 +784,14 @@ export async function createInboxChatSession(params: {
 		user_id: params.userId,
 		role: 'assistant',
 		content: context.humanText,
-		message_type: 'text',
+		message_type: 'assistant_message',
 		created_at: now,
 		metadata: {
-			source: 'ai_inbox',
-			inbox_item_id: params.item.id ?? null,
-			source_type: params.item.source_type,
-			source_ref_id: params.item.source_ref_id,
-			project_id: scope.projectId,
-			seed_message: true,
-			proposal_context: {
-				llm_text: context.llmText
-			}
+			...buildInboxSeedMessageMetadata({
+				item: params.item,
+				scope,
+				context
+			})
 		} as Json
 	});
 
@@ -550,15 +817,12 @@ export async function createInboxChatSession(params: {
 			.select('id')
 			.maybeSingle();
 		if (updateError || !updatedSuggestion) {
-			await cleanupCreatedInboxChatSession(params.supabase, {
+			console.warn('Failed to persist project suggestion chat session link', {
+				suggestionId: params.item.source_ref_id,
+				inboxItemId: params.item.id ?? null,
 				sessionId,
-				userId: params.userId,
-				projectId: scope.projectId,
-				reason: 'project_suggestion_link_update_failed'
+				error: updateError ?? 'No project_suggestions row returned'
 			});
-			throw (
-				updateError ?? new Error('Failed to link inbox chat session to project suggestion')
-			);
 		}
 	}
 

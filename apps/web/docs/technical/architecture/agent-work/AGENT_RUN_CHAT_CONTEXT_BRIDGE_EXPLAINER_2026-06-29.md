@@ -6,7 +6,7 @@
 **Audience:** Anyone touching the agent-run status modal, the agentic chat, or
 the AI Inbox chat path.
 **Companion to:** `AGENT_RUN_CHAT_CONTEXT_BRIDGE_PLAN_2026-06-29.md` (the
-implementation plan). This doc explains the *flow* and the *why* behind the six
+implementation plan). This doc explains the _flow_ and the _why_ behind the six
 corrections folded into that plan after a codebase stress-test audit.
 
 ---
@@ -26,7 +26,8 @@ with that context before the modal opens.
 Before any of the fixes make sense, you need to understand the single trick this
 whole feature rides on:
 
-> **An assistant chat message is the durable context carrier.**
+> **Proposal context has two carriers: a visible seed message and a transient
+> model-focus injection.**
 
 Here is the verified chain of why that works:
 
@@ -50,20 +51,33 @@ User types the next message → fast-chat stream
    → the seed's CONTENT is in the prompt the model sees
 ```
 
-So a plain assistant message does double duty: the **user reads it** in the UI,
-and the **model reads it** on the next turn. No new table, no special prompt
-plumbing. This is exactly the pattern the AI Inbox chat already uses, which is
-why we are copying it.
+So a plain assistant message still does double duty: the **user reads it** in
+the UI, and the **model reads it** on the next turn. This is exactly the
+pattern the AI Inbox chat already uses, which is why we copied it.
+
+**2026-06-30 correction:** visible seed content is necessary but not sufficient
+for proposal chats. `POST /api/agent/v2/stream` now also reads proposal context
+from `chat_sessions.agent_metadata` and injects it as a non-persisted system
+history message titled `Proposal Focus` before the model call:
+
+- `source:'ai_inbox'` → `proposal_context.llm_text`
+- `source:'agent_run_context'` → `agent_run_context.llm_text`
+
+That keeps vague follow-ups like "what are we trying to do?" anchored to the
+active proposal even when the regular project/calendar context cache is sparse.
 
 ### The critical subtlety (Fix #3 lives here)
 
-The model history is built from message **content only**. The loader
-(`FastChatHistoryMessage`) **throws away metadata** before sending to the model.
+The normal chat-history loader is built from message **content only**. The
+loader (`FastChatHistoryMessage`) does not send message metadata to the model.
 
 That means:
 
-- Anything in `metadata.proposal_context.llm_text` → **the model never sees it.**
-- Only what we put in the visible `content` (`humanText`) → reaches the model.
+- Per-message `metadata.proposal_context.llm_text` is not enough by itself.
+- Session-level proposal metadata is now model-facing because the stream route
+  explicitly bridges it into transient system history.
+- The visible `content` (`humanText`) still needs enough substance for the UI,
+  audit exports, and ordinary history continuity.
 
 This is counter-intuitive and is the root of Fix #3 below.
 
@@ -116,12 +130,12 @@ changed**.
 ### Fix #1 — Do not put `agent_run_id` on the seed message (the real bug)
 
 **What the audit found.** `AgentChatModal.appendInjectedAgentMessage()` dedupes
-*live, realtime-injected* assistant messages by `metadata.agent_run_id`:
+_live, realtime-injected_ assistant messages by `metadata.agent_run_id`:
 
 ```js
 // AgentChatModal.svelte (~line 249)
 function messageHasAgentRun(runId) {
-  return messages.some((m) => m.metadata?.agent_run_id === runId);
+	return messages.some((m) => m.metadata?.agent_run_id === runId);
 }
 // when a new message arrives over realtime:
 if (messages.some((m) => m.id === row.id) || messageHasAgentRun(agentRunId)) return; // dropped
@@ -160,10 +174,10 @@ fighting.
 **What the audit found.** The plan's stated goal is "Inbox Chat and status-modal
 Chat share the same chat." But the two paths key their sessions **differently**:
 
-| Path | `agent_metadata.source` | run identifier field |
-| --- | --- | --- |
-| AI Inbox (`inbox-chat-session.service.ts`) | `'ai_inbox'` | `source_ref_id = run.id` |
-| This bridge (original draft) | `'agent_run_context'` | `agent_run_id = run.id` |
+| Path                                       | `agent_metadata.source` | run identifier field     |
+| ------------------------------------------ | ----------------------- | ------------------------ |
+| AI Inbox (`inbox-chat-session.service.ts`) | `'ai_inbox'`            | `source_ref_id = run.id` |
+| This bridge (original draft)               | `'agent_run_context'`   | `agent_run_id = run.id`  |
 
 **Why it bites.** Suppose a run has no `parent_session_id` (it was not started
 from a chat). The user opens **Inbox Chat** first → a session is created keyed
@@ -181,8 +195,8 @@ path. Its lookup order is:
 3. a prior **bridge** session: `source='agent_run_context'` AND `agent_run_id=run.id`,
 4. otherwise create new.
 
-Sharing the *formatter* was never enough; the two surfaces have to share session
-*identity*.
+Sharing the _formatter_ was never enough; the two surfaces have to share session
+_identity_.
 
 **Extra stress-test finding.** The reverse order matters too. If the status
 modal opens the parent session first, the current inbox chat service would not
@@ -193,7 +207,7 @@ only teach the status route to recognize inbox sessions; it should route
 
 ---
 
-### Fix #3 — Put model-facing detail in `humanText`, not `llmText`
+### Fix #3 — Put core detail in `humanText`, and bridge `llmText` at stream time
 
 **What the audit found.** See §2's subtlety. The fast-chat history loader passes
 assistant **content** to the model and **drops metadata**. Nothing in the stream
@@ -201,19 +215,20 @@ reads `metadata.proposal_context.llm_text`.
 
 **Why it bites.** The original framing was "`humanText` = friendly visible
 summary; `llmText` = the detailed source block (in metadata) for the model."
-That is backwards from reality: the model reads the *visible* text and never
-sees the metadata. If we put the before/after change detail in `llmText`, the
-model is blind to exactly the context this feature exists to provide.
+That was backwards until the stream bridge existed: the model read the visible
+text and ignored metadata. If before/after change detail only lived in
+`llmText`, the model was blind to exactly the context this feature exists to
+provide.
 
-**What we changed.** `humanText` (the visible content) must carry the
-model-relevant substance — including truncated before/after change diffs.
-`llmText` in metadata is kept only as forward-compat for a *future* enhancement
-where the stream explicitly reads it; it must not hold context the model needs
-today.
+**What we changed.** `humanText` (the visible content) must still carry the
+model-relevant substance — including truncated before/after change diffs — so
+the UI and chat export remain intelligible. `llmText` in session metadata is no
+longer merely forward-compat: the stream endpoint now injects it into model
+history as `Proposal Focus` for `ai_inbox` and `agent_run_context` sessions.
 
 ---
 
-### Fix #4 — Return the *session's* scope, not the *run's* scope
+### Fix #4 — Return the _session's_ scope, not the _run's_ scope
 
 **What the audit found.** The route returns `context_type` / `entity_id` /
 `project_id` to the modal so it knows how to set up. The draft derived those
@@ -221,13 +236,22 @@ from the run.
 
 **Why it bites.** A run can target a project while its **parent session is
 global** (the user kicked it off from a global chat). If we reuse that global
-session but return the run's *project* scope, the modal will try to apply
-project focus to a session that is actually global — a mismatch that confuses
-focus derivation (`session.agent_metadata.focus`).
+session but return the run's _project_ scope, the modal will try to apply
+project focus to a session that is actually global. If we return the global
+scope, the proposal chat loses the project context the user expects.
 
-**What we changed.** When a session is **reused**, the returned scope comes from
-that session's stored scope. Only **newly created** sessions take their scope
-from the run.
+**What we changed.** When a compatible session is **reused**, the returned scope
+comes from that session's stored scope. A project-scoped run now treats
+`project_id` as authoritative and does not reuse a global parent session; it
+creates or reuses a project-scoped bridge session. Only newly created sessions
+take their scope from the run.
+
+**2026-06-30 header/context correction.** `AgentChatModal` still lets proposal
+sessions keep proposal-specific titles such as `Chat: Update project START
+HERE`, but project-session restore now uses `agent_metadata.focus.projectName`
+for the selected context label. That makes the header and follow-up stream
+context read as the actual project, while the proposal seed remains the visible
+thread context.
 
 ---
 
@@ -243,7 +267,7 @@ from the run.
    and reach `proposal_ready` through `agentRunWorker.finalize()`.
 2. **"Run was already accepted/dismissed."** `accepted`/`dismissed` are not
    `agent_run_status` values. The enum is `queued | running | paused |
-   needs_input | proposal_ready | completed | partial | failed | cancelled`.
+needs_input | proposal_ready | completed | partial | failed | cancelled`.
    Accept/dismiss is a decision recorded on **`change_set.status`**
    (`applied` / `rejected`), while the run stays `proposal_ready`/`completed`.
 
@@ -283,9 +307,9 @@ explicitly bump `last_message_at` and increment `message_count`.
 - **The seed-as-context mechanism** works exactly as the plan assumed (§2).
 - **Schema is fine.** Every column the route reads off `agent_runs` exists:
   `project_id, context_type, change_set, result, status, label, goal,
-  instructions, expected_output, scope_mode, allowed_ops, parent_session_id`.
+instructions, expected_output, scope_mode, allowed_ops, parent_session_id`.
   (An early audit note worried about `entity_id`/`agent_metadata` on
-  `agent_runs` — false alarm: `entity_id` is a derived *output* of the route,
+  `agent_runs` — false alarm: `entity_id` is a derived _output_ of the route,
   and `agent_metadata.focus` lives on `chat_sessions`, not the run.)
 - **Idempotency convention** matches `persistMessage()` —
   `(session_id, user_id, role, metadata.idempotency_key)`.

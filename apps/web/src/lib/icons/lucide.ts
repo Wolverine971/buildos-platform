@@ -54,6 +54,7 @@ export { default as CircleCheck } from 'lucide-svelte/icons/circle-check';
 export { default as CircleDashed } from 'lucide-svelte/icons/circle-dashed';
 export { default as CircleDot } from 'lucide-svelte/icons/circle-dot';
 export { default as CircleHelp } from 'lucide-svelte/icons/circle-help';
+export { default as CircleSlash } from 'lucide-svelte/icons/circle-slash';
 export { default as CircleX } from 'lucide-svelte/icons/circle-x';
 export { default as ClipboardCheck } from 'lucide-svelte/icons/clipboard-check';
 export { default as Clock } from 'lucide-svelte/icons/clock';

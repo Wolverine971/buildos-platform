@@ -101,7 +101,7 @@ describe('agent-chat-session helpers', () => {
 		});
 
 		expect(snapshot.contextType).toBe('project');
-		expect(snapshot.selectedContextLabel).toBe('Website refresh thread');
+		expect(snapshot.selectedContextLabel).toBe('Website refresh');
 		expect(snapshot.selectedEntityId).toBe('project-1');
 		expect(snapshot.projectFocus).toEqual(focus);
 		expect(snapshot.messages).toHaveLength(2);
@@ -111,6 +111,36 @@ describe('agent-chat-session helpers', () => {
 			'note-1',
 			'note-2'
 		]);
+	});
+
+	it('buildAgentChatSessionSnapshot keeps inbox proposal sessions in project context', () => {
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession({
+				context_type: 'project',
+				entity_id: 'project-1',
+				title: 'Chat: Looks outdated: Project launch notes',
+				agent_metadata: {
+					source: 'ai_inbox',
+					focus: {
+						focusType: 'project-wide',
+						focusEntityId: null,
+						focusEntityName: null,
+						projectId: 'project-1',
+						projectName: 'CEO Training Sprint'
+					}
+				}
+			}),
+			messages: []
+		});
+
+		expect(snapshot.contextType).toBe('project');
+		expect(snapshot.selectedContextLabel).toBe('CEO Training Sprint');
+		expect(snapshot.selectedEntityId).toBe('project-1');
+		expect(snapshot.projectFocus).toMatchObject({
+			focusType: 'project-wide',
+			projectId: 'project-1',
+			projectName: 'CEO Training Sprint'
+		});
 	});
 
 	it('buildAgentChatSessionSnapshot restores persisted tool executions before assistant replies', () => {

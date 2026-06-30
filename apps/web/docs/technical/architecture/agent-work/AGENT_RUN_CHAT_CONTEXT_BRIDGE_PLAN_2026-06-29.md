@@ -64,11 +64,18 @@ Implemented 2026-06-29:
   `apps/web/src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts`
   and
   `apps/web/src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.test.ts`
+- Automated status-modal UI smoke test:
+  `apps/web/src/lib/components/notifications/types/agent-run/AgentRunModalContent.test.ts`
+  verifies the Chat button prepares the shared session before dispatching
+  `buildos:open-agent-chat`, and verifies backend failures do not open chat.
 
 Still next:
 
 - Run manual smoke coverage for status-modal Chat from live notifications,
-  Work Panel history, and AI Inbox opening order reuse.
+  Work Panel history, and AI Inbox opening-order reuse in an authenticated
+  localhost browser session. A 2026-06-29 attempt against
+  `http://localhost:5175` reached the public landing page, so live app smoke
+  still needs a signed-in browser session.
 
 ## Researched Current State
 
@@ -121,8 +128,14 @@ source-specific context builders:
   instructions.
 
 It creates or reuses a chat session, then inserts a visible assistant seed
-message with proposal context. This seed is important because both the user and
-the model can see it.
+message with proposal context. This seed is important because the user sees it
+when the chat restores and the model sees it as normal conversation history.
+As of 2026-06-30, the stream endpoint also reads proposal metadata from
+`chat_sessions.agent_metadata`: `source:'ai_inbox'` uses
+`proposal_context.llm_text`, and `source:'agent_run_context'` uses
+`agent_run_context.llm_text`. It injects that text as a transient system
+history message named "Proposal Focus" so proposal context is not dependent on a
+prior assistant message alone.
 
 ### Chat session restore and model history
 
@@ -133,10 +146,10 @@ The restore endpoint returns user-facing `user` and `assistant` messages.
 The fast chat stream later calls `sessionService.loadRecentMessages()` and uses
 those saved messages as model history.
 
-Implication: a `role: 'assistant'` seed message is the durable context carrier.
-A hidden metadata-only context packet is not sufficient unless the stream
-endpoint is also taught to read it, which it currently is not for
-`proposal_context`.
+Implication: a `role: 'assistant'` seed message remains the durable visible
+context carrier, but model-critical proposal context should also be stored in
+session metadata. The stream now explicitly bridges that metadata into the
+model prompt for inbox and agent-run proposal sessions.
 
 ### Worker-injected run summaries
 
@@ -246,11 +259,12 @@ Route behavior:
 2. Load `agent_runs` by `id` and `user_id`.
 3. Return 404 if missing.
 4. Resolve chat scope:
-    - If `run.context_type === 'project'` and `run.project_id`, use project chat
-      scope.
+    - If `run.project_id` is present, use project chat scope. `project_id` is
+      authoritative even when `run.context_type` is stale or missing.
     - Otherwise use the run context type when supported, falling back to global.
 5. Try to reuse a session, in this priority order:
-    - Prefer `run.parent_session_id` if it exists and belongs to the user.
+    - Prefer `run.parent_session_id` if it exists, belongs to the user, and its
+      stored scope matches the project scope required by `run.project_id`.
     - **[AUDIT FIX — unify with inbox]** Otherwise look for a session the **inbox**
       already created for this run. The inbox keys those sessions as
       `agent_metadata.source = 'ai_inbox'` with
@@ -262,12 +276,12 @@ Route behavior:
       `agent_metadata.source = 'agent_run_context'` with
       `agent_metadata.agent_run_id = run.id`.
     - Otherwise create a new chat session.
-6. **[AUDIT FIX — scope from session, not run]** When a session is reused (parent
-   or inbox), resolve the returned `context_type`/`entity_id`/`project_id` from
-   the **reused session's** stored scope, not from the run. A run can target a
-   project while its parent session is global; returning run-derived scope would
-   make the modal apply project focus to a global session. Only newly created
-   sessions take their scope from the run.
+6. **[AUDIT FIX — scope from session, not run]** When a compatible session is
+   reused (parent or inbox), resolve the returned
+   `context_type`/`entity_id`/`project_id` from the **reused session's** stored
+   scope, not from the run. A project-scoped run no longer reuses a global parent
+   session; it creates/reuses a project-scoped bridge session instead. Only newly
+   created sessions take their scope from the run.
 7. Ensure the seed message exists.
 8. Return:
 
@@ -483,8 +497,10 @@ are not guaranteed to include the staged proposal details.
 7. **Done:** Add focused client-helper tests for the modal-to-route response
    contract.
 8. **Done:** Update manual smoke docs with the shared seeded-session behavior.
-9. **Next:** Run manual smoke in the browser against live data for notification
-   stack, Work Panel history, and AI Inbox opening-order reuse.
+9. **Done:** Add automated status-modal UI smoke for the endpoint-backed Chat
+   handoff and failure handling.
+10. **Next:** Run manual smoke in the browser against live data for notification
+    stack, Work Panel history, and AI Inbox opening-order reuse.
 
 ## Test Plan
 
@@ -512,6 +528,11 @@ are not guaranteed to include the staged proposal details.
 
 ### UI/manual smoke
 
+- Automated component smoke now verifies `AgentRunModalContent` calls
+  `/api/agent-runs/[id]/chat-session`, dispatches
+  `buildos:open-agent-chat` with the server-returned session/context, minimizes
+  the modal after success, and shows an error without opening chat when session
+  preparation fails.
 - Open failed agent-run modal, click Chat, verify chat opens and first visible
   context references the failed run/change.
 - Open Start Here proposal, click Chat, verify context mentions the Start Here

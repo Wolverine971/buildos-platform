@@ -52,7 +52,7 @@
 		<button
 			type="button"
 			onclick={() => onSelectAction('workspace')}
-			class="group relative flex w-full items-center gap-3 rounded-xl border-2 border-accent/60 bg-accent/5 p-3.5 text-left shadow-ink tx tx-frame tx-weak transition-all duration-200 hover:border-accent hover:bg-accent/10 hover:shadow-ink-strong active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-4 sm:p-4"
+			class="group relative flex w-full items-center gap-3 rounded-lg border-2 border-accent/60 bg-accent/5 p-3.5 text-left shadow-ink tx tx-frame tx-weak transition-all duration-200 hover:border-accent hover:bg-accent/10 hover:shadow-ink-strong active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-4 sm:p-4"
 		>
 			<div
 				class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground shadow-ink sm:h-11 sm:w-11"
@@ -65,7 +65,7 @@
 						Project-wide chat
 					</h3>
 					<span
-						class="inline-flex items-center rounded-full border border-accent/30 bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent"
+						class="inline-flex items-center rounded-full border border-accent/30 bg-accent/15 px-1.5 py-0.5 micro-label font-bold text-accent"
 					>
 						Recommended
 					</span>
@@ -75,7 +75,7 @@
 				</p>
 			</div>
 			<span
-				class="hidden shrink-0 items-center gap-1 rounded-full bg-accent px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-accent-foreground shadow-ink transition-all group-hover:bg-accent/90 sm:inline-flex"
+				class="hidden shrink-0 items-center gap-1 rounded-full bg-accent px-3 py-1.5 micro-label font-bold text-accent-foreground shadow-ink transition-all group-hover:bg-accent/90 sm:inline-flex"
 			>
 				Start chat
 				<ChevronRight class="h-3.5 w-3.5" />
@@ -88,14 +88,12 @@
 		<!-- Section divider: "Or focus on one item" -->
 		<div class="mt-5 mb-3 flex items-center gap-3 sm:mt-6">
 			<span class="h-px flex-1 bg-border"></span>
-			<span
-				class="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
-			>
+			<span class="micro-label font-semibold text-muted-foreground">
 				Or focus on one item
 			</span>
 			<span class="h-px flex-1 bg-border"></span>
 		</div>
-		<p class="mb-3 text-[11px] text-muted-foreground sm:text-xs">
+		<p class="mb-3 text-[0.7rem] text-muted-foreground sm:text-xs">
 			Scope the chat to a specific task, goal, plan, document, milestone, or risk.
 		</p>
 
