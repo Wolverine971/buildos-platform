@@ -388,7 +388,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			queueProjectLoopBurstAsync({
 				projectId: project_id as string,
 				userId: session.user.id,
-				source: 'document_create'
+				source: 'document_create',
+				entityType: 'document',
+				entityId: document.id,
+				action: 'created'
 			});
 		}
 

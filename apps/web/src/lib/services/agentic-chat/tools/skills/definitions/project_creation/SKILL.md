@@ -1,6 +1,10 @@
 ---
 name: Project Creation
 description: Project creation playbook for turning a user idea into the smallest valid BuildOS project payload with inferred name, type_key, props, and only the initial structure the user actually described.
+skill_type: procedure # procedure | reference | strategy | resource | policy | orchestration
+altitude: task # task | domain | meta
+activation: progressive # always_on | progressive | invoked
+preserve_markdown: true
 legacy_paths:
     - onto.project.create.skill
 path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/project_creation/SKILL.md
@@ -8,16 +12,31 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/project_cr
 
 # Project Creation
 
-Project creation playbook for turning a user idea into the smallest valid BuildOS project payload with inferred name, type_key, props, and only the initial structure the user actually described.
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Contract → Policy → Knowledge → Related Tools → Examples → Provenance.
+  This file is skill_type: procedure at task altitude — the Workflow is the spine, so Procedure carries the weight;
+  Judgment holds the two minimality heuristics; Knowledge holds the per-type props taxonomies. It routes to no sibling
+  skill (standalone root, no dependencies), so there is no Routing block.
+-->
 
-## When to Use
+## Identity
+
+Project creation playbook for turning a user idea into the smallest valid BuildOS project payload with inferred name, type_key, props, and only the initial structure the user actually described. This is a **procedure** skill at **task** altitude: an ordered runbook for emitting the create payload, with a small judgment layer for minimality calls and a per-type props taxonomy in Knowledge.
+
+## Activation
 
 - The chat is in project_create mode
 - The user wants to start a new project from scratch
 - You need to infer project name, type_key, and a minimal initial graph from a rough idea
 - If the chat is already inside a project and the user asks to create/start another project, ask: "You're already in this project. Are you sure you want to create a new project?" Do not call `change_chat_context` or `create_onto_project` until they confirm.
 
-## Workflow
+## Judgment
+
+- Project creation is a minimality exercise. Good first payloads are usually smaller than the model expects.
+- The most common failure is omitting entities and relationships or leaving project fields empty after the user already provided enough context.
+
+## Procedure
 
 1. Start from the smallest valid project payload: project { name, type_key }, entities: [], relationships: [].
 2. Infer project.name from the user message when it is reasonably clear. Do not ask for the name if the user already implied it.
@@ -29,11 +48,7 @@ Project creation playbook for turning a user idea into the smallest valid BuildO
 8. Use clarifications[] only when critical information cannot be reasonably inferred. If clarification is needed, still send the project skeleton instead of abandoning the create call.
 9. After creation succeeds, summarize the new project briefly and continue in the created project context.
 
-## Related Tools
-
-- `onto.project.create`
-
-## Output
+## Contract
 
 The create payload always has this shape:
 
@@ -46,7 +61,7 @@ After creation succeeds, briefly summarize the new project (name, type, and what
 
 Stop conditions before replying: `project`, `entities`, and `relationships` are all present even when the arrays are empty; `name` and `type_key` are not blank when inferable; no goals/tasks/plans/milestones were added that the user did not mention; relationships use `{ temp_id, kind }`, never raw id strings; from inside an existing project, the second-project confirmation was asked before any create.
 
-## Guardrails
+## Policy
 
 - Do not call `create_onto_project({})` or omit the required project payload.
 - Do not omit project, entities, or relationships from the payload.
@@ -55,6 +70,17 @@ Stop conditions before replying: `project`, `entities`, and `relationships` are 
 - Do not encode relationships as raw temp_id strings like ["g1", "t1"]. Include temp_id and kind for both sides.
 - Do not over-structure a new project just because the schema allows it.
 - Do not silently create a second project from inside an existing project chat; ask the confirmation warning first.
+
+## Knowledge
+
+- Software app props can include tech_stack, deployment_target, is_mvp, and target_users. (internal-default)
+- Business launch props can include launch_date, budget, target_customers, and channels. (internal-default)
+- Event props can include venue, guest_count, budget, and key dates. (internal-default)
+- Creative writing props can include genre, audience, target_word_count, and deadline_date. (internal-default)
+
+## Related Tools
+
+- `onto.project.create`
 
 ## Examples
 
@@ -76,12 +102,3 @@ Stop conditions before replying: `project`, `entities`, and `relationships` are 
 - If the user gave enough signal to classify the project, still send the project skeleton.
 - Use clarifications[] for only the missing critical points.
 - Do not wait for perfect detail before creating the project.
-
-## Notes
-
-- Project creation is a minimality exercise. Good first payloads are usually smaller than the model expects.
-- The most common failure is omitting entities and relationships or leaving project fields empty after the user already provided enough context.
-- Software app props can include tech_stack, deployment_target, is_mvp, and target_users.
-- Business launch props can include launch_date, budget, target_customers, and channels.
-- Event props can include venue, guest_count, budget, and key dates.
-- Creative writing props can include genre, audience, target_word_count, and deadline_date.

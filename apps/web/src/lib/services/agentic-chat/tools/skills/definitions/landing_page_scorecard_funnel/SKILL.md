@@ -2,6 +2,9 @@
 name: Landing Page Scorecard Funnel
 description: >-
     Design an assessment-driven landing page that converts visitors into qualified, segmented leads. Use for quizzes, scorecards, diagnostic funnels, lead magnets, and dynamic results pages for consulting, coaching, SaaS, education, agencies, or services — including a setup-layered mode that wraps the scorecard in a positioning layer (market insight, alternatives, perfect-world scenario) for B2B and considered purchases.
+skill_type: procedure # procedure | reference | strategy | resource | policy | orchestration
+altitude: domain # task | domain | meta
+activation: progressive # always_on | progressive | invoked
 preserve_markdown: true
 legacy_paths:
     - landing-page-scorecard-funnel
@@ -26,6 +29,16 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/landing_pa
 
 # Landing Page Scorecard Funnel
 
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Contract → Policy → Knowledge → Provenance.
+  This file is skill_type: procedure, so Procedure carries the weight; Judgment holds the mode-selection
+  decision. Durable build specs, thresholds, and questionnaire taxonomy are already extracted into the two
+  reference modules (setup_layer_positioning, funnel_build_specs), so Knowledge here is deliberately thin.
+-->
+
+## Identity
+
 Use this skill to turn a landing page into a qualified lead-generation funnel. The page should sell the assessment, not the entire product. The assessment gives value first, then routes each lead to the right next step.
 
 The funnel is one conversion system:
@@ -36,7 +49,9 @@ The funnel is one conversion system:
 4. Dynamic results page gives a score, insights, and a tailored next step.
 5. Follow-up uses answers to route leads instead of blasting everyone the same offer.
 
-## When to Use
+## Activation
+
+**Use this skill to:**
 
 - Build an online assessment or diagnostic quiz.
 - Replace a generic lead magnet with a scorecard.
@@ -47,19 +62,24 @@ The funnel is one conversion system:
 
 Do not use this skill for a simple product homepage, a blog CTA, or a survey with no conversion path. For general marketing-page persuasion review, use `marketing_site_design_review`.
 
-## Workflow
+## Judgment
 
-1. **Mode selection (run this first).** Two modes of this skill exist; pick one before drafting.
-    - **Standalone scorecard.** Use when the buyer already feels the pain (info-product, coaching, fitness, services with self-evident category). The hook can name the frustration directly. The assessment carries most of the conversion work.
-    - **Setup-layered scorecard.** Use when the buyer needs the category framed before they will engage with an assessment. Common for B2B SaaS, considered-purchase tools, and any product where "why pick us over the alternatives" is non-obvious.
-    - Diagnostic: if the audience can answer "yes, I have this problem and I want to solve it" before they hit your page, use standalone. If they need to be taught how to evaluate the category first, use the setup-layered mode.
+**Mode selection is the decision spine.** Two modes of this skill exist; pick one before drafting.
+
+- **Standalone scorecard.** Use when the buyer already feels the pain (info-product, coaching, fitness, services with self-evident category). The hook can name the frustration directly. The assessment carries most of the conversion work.
+- **Setup-layered scorecard.** Use when the buyer needs the category framed before they will engage with an assessment. Common for B2B SaaS, considered-purchase tools, and any product where "why pick us over the alternatives" is non-obvious.
+- Diagnostic: if the audience can answer "yes, I have this problem and I want to solve it" before they hit your page, use standalone. If they need to be taught how to evaluate the category first, use the setup-layered mode.
+
+## Procedure
+
+1. **Mode selection (run this first).** Pick a mode before drafting — see **Judgment** for the standalone vs. setup-layered decision and its diagnostic.
 2. If setup-layered, load `landing_page_scorecard_funnel.setup_layer_positioning` and draft the four-part positioning layer (market insight → alternatives analysis → perfect-world scenario → then the scorecard) before writing any scorecard copy.
 3. Load `landing_page_scorecard_funnel.funnel_build_specs` and build the five landing-page sections in order: hook (form chosen by mode), assessment promise, differentiated-value proposition, credibility, CTA stack.
 4. Design the questionnaire to the 15-question spec in the same reference: contact capture, 10 best-practice scoring questions, Big 5 qualification questions.
 5. Design the dynamic results page and the high-fit / middle-fit / low-fit routing per the same reference.
-6. Assemble the deliverable using the Output contract below.
+6. Assemble the deliverable using the **Contract** below.
 
-## Output
+## Contract
 
 Return:
 
@@ -82,7 +102,31 @@ Stop conditions before returning:
 - Each lead segment routes to a different next step; no two segments share the same CTA.
 - The CTA stacks action, time cost, price, and payoff — with no scarcity or FOMO line anywhere in the copy.
 
-## Worked Example
+## Policy
+
+- Do not ask for more data than needed.
+- Do not make phone mandatory unless the funnel truly depends on phone contact.
+- Do not sell the product before the assessment promise is clear.
+- Do not route every respondent to the same CTA.
+- Do not call the results personalized if the page ignores the answers.
+- Do not hide the payoff behind vague "learn more" language.
+- **Do not use FOMO, scarcity, or urgency stunts in the CTA.** Manufactured urgency converts on the first taking but breaks the trust the segmentation step depends on. The scorecard's value comes from honest qualification; FOMO contradicts that posture.
+- **Do not skip the Setup layer for B2B / considered purchases.** A scorecard that opens with a frustration hook on a buyer who hasn't accepted the category framing yet bounces hard. Either prime the buyer with the four-part Setup beforehand or use a Market Insight hook in mode-aware fashion.
+- **Do not write feature-list value propositions.** The value-proposition section names the three measured areas in terms that imply a comparison to alternatives, not in terms that recite the product's capabilities.
+- Do not draft landing-page sections, the questionnaire, or results-page outputs without loading `landing_page_scorecard_funnel.funnel_build_specs` first — and do not draft the setup layer without loading `landing_page_scorecard_funnel.setup_layer_positioning`.
+
+## Knowledge
+
+Deliberately thin. This is a procedure skill; the durable declarative grounding — the five-section landing-page spec, three hook forms, CTA stack and variants, the 15-question questionnaire taxonomy, the dynamic results page, high/middle/low-fit routing, and the funnel KPI / scale-gate layer (LAPS dashboard, allowable cost per sale and per lead, paid-traffic ratchet, traffic prerequisites) — is **already extracted** into the two reference modules and carries its thresholds there:
+
+- `landing_page_scorecard_funnel.funnel_build_specs` — Priestley funnel mechanics and build thresholds.
+- `landing_page_scorecard_funnel.setup_layer_positioning` — Dunford four-part positioning layer for setup-layered mode.
+
+Load the matching module before emitting spec-level guidance. See **Policy**.
+
+## Examples
+
+### Worked Example
 
 Condensed from a full from-scratch funnel design for a solo operations consultant selling a $5,000 "Agency Ops Reset" (6 weeks) to owners of 10–25-person agencies drowning in client-delivery chaos; the input is in `evals.md` Task 1. Match this shape and rigor.
 
@@ -126,21 +170,8 @@ Condensed from a full from-scratch funnel design for a solo operations consultan
 - **Ads verdict: not yet.** The scale gate requires tracked CPL ≤ $22.50 and tracked cost per sale ≤ $750; with no LAPS history both are unknown, so paid traffic waits. When the gate opens, ratchet spend stepwise ($1k → $1.5k → $2k), re-verifying ACPL/ACPS at each step. ~$22.50/lead is attainable on Meta/LinkedIn; assessment IP often pulls leads under $10.
 - **Traffic prerequisites:** _Noticed_ — 11 short-form impressions within 90 days; 3 LinkedIn posts/week clears the window with little slack, so protect the cadence. _Known_ — the ~12 podcast spots satisfy the 2–7 hours of long-form depth. _Rated_ — audit which ~4 names/brands appear around the funnel; they must match a $5k niche-expert price band.
 
-## Guardrails
+## Provenance
 
-- Do not ask for more data than needed.
-- Do not make phone mandatory unless the funnel truly depends on phone contact.
-- Do not sell the product before the assessment promise is clear.
-- Do not route every respondent to the same CTA.
-- Do not call the results personalized if the page ignores the answers.
-- Do not hide the payoff behind vague "learn more" language.
-- **Do not use FOMO, scarcity, or urgency stunts in the CTA.** Manufactured urgency converts on the first taking but breaks the trust the segmentation step depends on. The scorecard's value comes from honest qualification; FOMO contradicts that posture.
-- **Do not skip the Setup layer for B2B / considered purchases.** A scorecard that opens with a frustration hook on a buyer who hasn't accepted the category framing yet bounces hard. Either prime the buyer with the four-part Setup beforehand or use a Market Insight hook in mode-aware fashion.
-- **Do not write feature-list value propositions.** The value-proposition section names the three measured areas in terms that imply a comparison to alternatives, not in terms that recite the product's capabilities.
-- Do not draft landing-page sections, the questionnaire, or results-page outputs without loading `landing_page_scorecard_funnel.funnel_build_specs` first — and do not draft the setup layer without loading `landing_page_scorecard_funnel.setup_layer_positioning`.
-
-## Notes
-
-- Reference modules: `landing_page_scorecard_funnel.setup_layer_positioning` (Dunford positioning layer), `landing_page_scorecard_funnel.funnel_build_specs` (Priestley funnel mechanics).
-- Primary sources: Daniel Priestley, "The $1 Million Landing Page" (five-section page, 15-question structure, dynamic results page, segmentation); Daniel Priestley, "Everyone Who Uses This Playbook Makes $1 Million" (LAPS dashboard, allowable cost per sale/lead, scale gates, traffic prerequisites); April Dunford's sales-pitch framework on Lenny's Podcast (Setup → Follow-Through structure, differentiated value, anti-FOMO posture). Priestley supplies _what to build_ and _how to measure and scale it_; Dunford supplies _what to write at each stage_ and _whether to wrap it in a Setup layer_.
-- Maintainers: the canonical research draft with full claim-level lineage (`lineage.yaml`) lives at `docs/research/youtube-library/skill-drafts/landing-page-scorecard-funnel/` (not available at runtime).
+- **Reference modules:** `landing_page_scorecard_funnel.setup_layer_positioning` (Dunford positioning layer), `landing_page_scorecard_funnel.funnel_build_specs` (Priestley funnel mechanics).
+- **Primary sources:** Daniel Priestley, "The $1 Million Landing Page" _(PRIMARY)_ (five-section page, 15-question structure, dynamic results page, segmentation); Daniel Priestley, "Everyone Who Uses This Playbook Makes $1 Million" _(PRIMARY)_ (LAPS dashboard, allowable cost per sale/lead, scale gates, traffic prerequisites); April Dunford's sales-pitch framework on Lenny's Podcast _(PRIMARY)_ (Setup → Follow-Through structure, differentiated value, anti-FOMO posture). Priestley supplies _what to build_ and _how to measure and scale it_; Dunford supplies _what to write at each stage_ and _whether to wrap it in a Setup layer_.
+- **Maintainers:** the canonical research draft with full claim-level lineage (`lineage.yaml`) lives at `docs/research/youtube-library/skill-drafts/landing-page-scorecard-funnel/` (not available at runtime).

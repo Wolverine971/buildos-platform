@@ -1,6 +1,10 @@
 ---
 name: Plan Management
 description: BuildOS plan workflow playbook for turning a goal or milestone into a durable execution source of truth with scope, timeline, tasks, dependencies, owners, risks, and update rules.
+skill_type: procedure # procedure | reference | strategy | resource | policy | orchestration
+altitude: domain # task | domain | meta
+activation: progressive # always_on | progressive | invoked
+preserve_markdown: true
 legacy_paths:
     - onto.plan.skill
 path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/plan_management/SKILL.md
@@ -8,9 +12,22 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/plan_manag
 
 # Plan Management
 
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Related Tools → Examples → Provenance.
+  This file is skill_type: procedure, so the ordered Procedure (the 13-step plan runbook) carries the weight.
+  Judgment holds the standalone scoping/quality heuristics; Knowledge holds the BuildOS entity taxonomy and
+  plan-family vocabulary. There is no Routing block: this skill does not delegate to sibling skills (its
+  Related Tools are ontology tools, not routed skills).
+-->
+
+## Identity
+
 BuildOS plan workflow playbook for turning a goal or milestone into a durable execution source of truth with scope, timeline, tasks, dependencies, owners, risks, and update rules.
 
-## When to Use
+This is a **procedure** skill at **domain** altitude. The ordered plan runbook is its spine; the decision heuristics and BuildOS entity taxonomy support that runbook rather than replacing it.
+
+## Activation
 
 - The user asks to create, improve, review, or execute a plan
 - A goal needs an execution structure before tasks are created
@@ -19,7 +36,15 @@ BuildOS plan workflow playbook for turning a goal or milestone into a durable ex
 - Dates, dependencies, owners, risks, or resources need to be coordinated across multiple tasks
 - A plan has drifted and needs to become the current source of truth again
 
-## Workflow
+## Judgment
+
+- Plan scope should usually be smaller than the whole goal when a goal has milestones. The default shape is goal -> milestone -> plan -> tasks.
+- The plan body should be readable by a future agent that needs to continue execution without the original conversation. Include enough rationale, assumptions, dependencies, and task intent for adaptation.
+- A useful task breakdown names owner, timing, dependency, and completion signal when known. Missing fields can remain TBD if they do not block starting.
+- For plans with many tasks, create the immediate/critical tasks first and leave later candidate tasks in the plan body until they become actionable.
+- For updates, prefer preserving the plan as one current source of truth over creating a second plan with overlapping scope.
+
+## Procedure
 
 1. Load the relevant project context before writing: project, candidate goal, existing milestones, existing plans, current tasks, risks, and any documents that materially shape execution. Reuse exact IDs from current context when already known; otherwise use list/search/get tools first.
 2. Decide whether a plan is warranted. Use direct tasks for trivial one-step work. Use a plan when work spans multiple tasks, people, dependencies, dates, milestones, or decisions.
@@ -34,6 +59,35 @@ BuildOS plan workflow playbook for turning a goal or milestone into a durable ex
 11. Link supporting documents, risks, or references when they materially affect execution. Use documents for source context and risks for things that could derail the plan; do not bury critical constraints only in prose.
 12. Treat the plan as living state. When tasks are completed, dates move, blockers appear, or scope changes, update the plan body with append or merge_llm rather than leaving an obsolete plan beside newer tasks.
 13. After writes, summarize what changed in user-facing terms: the plan scope, the target goal/milestone, task count, important dates, and any unresolved assumptions.
+
+## Contract
+
+After a plan write, summarize in user-facing terms:
+
+- Plan scope and the goal or milestone it executes toward.
+- The plan body anatomy you wrote or revised (Objective, Scope, Success Criteria, Timeline, Task Breakdown, Dependencies, Risks, Review Cadence) — note any section deliberately left TBD.
+- Task count created or updated under the plan, plus the important dates.
+- Unresolved assumptions or open questions that still block execution.
+
+Stop conditions before replying: the detailed plan lives in `plan`, not only `description`; the plan references goals/milestones rather than redefining them; no exact owners, dates, or dependencies were invented (TBD instead); tasks are linked to the plan rather than left floating; you have not reported the plan as written until the tool call returned success.
+
+## Policy
+
+- Do not create a plan for vague brainstorming unless the user explicitly asks to structure it.
+- Do not duplicate the definitions of goals or milestones inside the plan as separate competing outcomes. Reference them and execute toward them.
+- Do not create a project-wide mega-plan when a goal or milestone-scoped plan would be clearer.
+- Do not create multiple plans for the same milestone unless they are genuinely separate lanes of work with separate owners or cadences.
+- Do not store the detailed execution plan only in description. description is the synopsis; plan is the detailed body.
+- Do not invent exact owners, dates, budgets, or dependencies. Mark them TBD in the plan body or ask if the missing detail blocks execution.
+- Do not create tasks that the agent can complete immediately in chat. Tasks are for future human or external work.
+- Do not leave tasks floating if they are clearly part of the plan.
+- Do not use invalid states. Plans use draft, active, completed. Tasks use todo, in_progress, blocked, done. Milestones use pending, in_progress, completed, missed.
+- Do not flatten a milestone into a task or a task list into a plan when the user is asking for a real checkpoint or outcome structure.
+
+## Knowledge
+
+- A BuildOS plan is the execution bridge between intent and tracked work. Project = broad container and why. Goal = outcome. Milestone = checkpoint toward a goal. Plan = how and when to reach one checkpoint or small goal scope. Task = who does what next. — [internal-default]
+- Use plan families intentionally: timebox for fixed windows, pipeline for stage flows, campaign for coordinated pushes, roadmap for longer directional sequencing, process for repeatable workflows, phase for large project phases. — [internal-default]
 
 ## Related Tools
 
@@ -53,30 +107,6 @@ BuildOS plan workflow playbook for turning a goal or milestone into a durable ex
 - `onto.milestone.list`
 - `onto.document.get`
 - `onto.edge.link`
-
-## Output
-
-After a plan write, summarize in user-facing terms:
-
-- Plan scope and the goal or milestone it executes toward.
-- The plan body anatomy you wrote or revised (Objective, Scope, Success Criteria, Timeline, Task Breakdown, Dependencies, Risks, Review Cadence) — note any section deliberately left TBD.
-- Task count created or updated under the plan, plus the important dates.
-- Unresolved assumptions or open questions that still block execution.
-
-Stop conditions before replying: the detailed plan lives in `plan`, not only `description`; the plan references goals/milestones rather than redefining them; no exact owners, dates, or dependencies were invented (TBD instead); tasks are linked to the plan rather than left floating; you have not reported the plan as written until the tool call returned success.
-
-## Guardrails
-
-- Do not create a plan for vague brainstorming unless the user explicitly asks to structure it.
-- Do not duplicate the definitions of goals or milestones inside the plan as separate competing outcomes. Reference them and execute toward them.
-- Do not create a project-wide mega-plan when a goal or milestone-scoped plan would be clearer.
-- Do not create multiple plans for the same milestone unless they are genuinely separate lanes of work with separate owners or cadences.
-- Do not store the detailed execution plan only in description. description is the synopsis; plan is the detailed body.
-- Do not invent exact owners, dates, budgets, or dependencies. Mark them TBD in the plan body or ask if the missing detail blocks execution.
-- Do not create tasks that the agent can complete immediately in chat. Tasks are for future human or external work.
-- Do not leave tasks floating if they are clearly part of the plan.
-- Do not use invalid states. Plans use draft, active, completed. Tasks use todo, in_progress, blocked, done. Milestones use pending, in_progress, completed, missed.
-- Do not flatten a milestone into a task or a task list into a plan when the user is asking for a real checkpoint or outcome structure.
 
 ## Examples
 
@@ -110,12 +140,7 @@ Stop conditions before replying: the detailed plan lives in `plan`, not only `de
 - If the user gave only a broad goal, create or use the goal first, then create a focused goal-scoped plan and suggest milestones only if they would clarify execution.
 - Create tasks only for concrete follow-up work. Keep uncertain items as assumptions or open questions in the plan body.
 
-## Notes
+## Provenance
 
-- A BuildOS plan is the execution bridge between intent and tracked work. Project = broad container and why. Goal = outcome. Milestone = checkpoint toward a goal. Plan = how and when to reach one checkpoint or small goal scope. Task = who does what next.
-- Plan scope should usually be smaller than the whole goal when a goal has milestones. The default shape is goal -> milestone -> plan -> tasks.
-- Use plan families intentionally: timebox for fixed windows, pipeline for stage flows, campaign for coordinated pushes, roadmap for longer directional sequencing, process for repeatable workflows, phase for large project phases.
-- The plan body should be readable by a future agent that needs to continue execution without the original conversation. Include enough rationale, assumptions, dependencies, and task intent for adaptation.
-- A useful task breakdown names owner, timing, dependency, and completion signal when known. Missing fields can remain TBD if they do not block starting.
-- For plans with many tasks, create the immediate/critical tasks first and leave later candidate tasks in the plan body until they become actionable.
-- For updates, prefer preserving the plan as one current source of truth over creating a second plan with overlapping scope.
+- This skill is BuildOS-internal execution doctrine; all claims are [internal-default] (no external creator or official source cited).
+- Legacy id: `onto.plan.skill` (see `legacy_paths`).

@@ -191,7 +191,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			queueProjectLoopBurstAsync({
 				projectId: id,
 				userId: session.user.id,
-				source: 'doc_tree_move'
+				source: 'doc_tree_move',
+				entityType: 'document',
+				entityId: documentId,
+				action: 'updated'
 			});
 		}
 

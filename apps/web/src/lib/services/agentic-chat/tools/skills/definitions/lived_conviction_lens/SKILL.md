@@ -1,6 +1,9 @@
 ---
 name: Lived Conviction Lens
 description: Find the angle for a piece by mining the creator's own lived experience for an earned belief, the proof behind it, and the bridge to the reader. Use when the user has a hard-won opinion or personal stake and wants content that carries authority — not for drafting the essay (that is nonfiction_writing_from_lived_conviction) or mapping a narrative arc (storyboard_journey_lens).
+skill_type: strategy # procedure | reference | strategy | resource | policy | orchestration
+altitude: task # task | domain | meta
+activation: progressive # always_on | progressive | invoked
 parent_id: content_creation_pipeline
 depth: 1
 preserve_markdown: true
@@ -12,11 +15,22 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/lived_conv
 
 # Lived Conviction Lens
 
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Related Tools → Examples → Provenance.
+  This file is skill_type: strategy, so Judgment carries the weight (the boundaries, the precondition branch, and the
+  lookup thresholds). Procedure holds the ordered extraction + runbook; Routing declares the two sibling hand-offs.
+-->
+
+## Identity
+
 Mine the creator's own experience for a belief they _earned_ — one that cost something to learn — and the proof that gives them standing to say it. This is an ideation framework at the pipeline's Expand stage. Its output is an **earned claim + proof + a bridge to the reader**, not prose and not a story arc.
 
-Use this lens when the power of the piece is _authority_: the reader should believe it because of who is saying it and what they went through. Use `idea_expansion_lens` for breadth of angles on a neutral claim, and `storyboard_journey_lens` when the piece is carried by a narrative arc.
+This is a **strategy** skill at **task** altitude.
 
-## When to Use
+## Activation
+
+Use this lens when the power of the piece is _authority_: the reader should believe it because of who is saying it and what they went through. Use `idea_expansion_lens` for breadth of angles on a neutral claim, and `storyboard_journey_lens` when the piece is carried by a narrative arc.
 
 - The user has a strong opinion they came to the hard way and wants to say it with weight.
 - A take would be generic from anyone else but is credible from _this_ person because of their experience.
@@ -24,16 +38,27 @@ Use this lens when the power of the piece is _authority_: the reader should beli
 
 Do not use for: a claim the creator has no personal stake in (`idea_expansion_lens`); a narrative arc (`storyboard_journey_lens`); executing the essay/thought-leadership draft (`nonfiction_writing_from_lived_conviction`); or channel strategy (`content_strategy_beyond_blogging`).
 
-## Boundary vs neighbors
+## Judgment
+
+### Boundary vs neighbors
 
 - **vs `nonfiction_writing_from_lived_conviction`** — that skill _executes_ the essay at draft time (structure, prose, rhythm). This lens _finds_ the earned claim and proof before drafting. Find it here; write it there.
 - **vs `storyboard_journey_lens`** — that maps a journey into a narrative shape. This extracts a defensible belief and the receipts behind it; the output can be a flat strong-opinion piece with no arc at all.
 
-## Precondition
+### Precondition
 
 Frame must be done, and the creator must have a **real personal stake** in this idea. If the belief is borrowed or untested — something they read, not something they lived — stop and route to `idea_expansion_lens`. Manufactured conviction is the most detectable fake in content.
 
-## The Conviction Extraction (6 steps)
+### Thresholds (replace judgment with lookup)
+
+- Exactly **one earned claim** (the thesis). More than one means more than one piece.
+- At least **one concrete scar** (a real, specific moment) — abstract "I've struggled with this" does not count.
+- At least **one receipt** beyond the story, or an explicit register downgrade in step 4.
+- The universal translation must be present — a piece with a scar but no bridge to the reader is a journal entry, not content.
+
+## Procedure
+
+### The Conviction Extraction (6 steps)
 
 1. **The earned belief.** What does the creator believe _now_ that they didn't before? The version that cost time, money, failure, or pride to learn. State it as a sentence.
 2. **The scar.** The specific moment or experience that taught it. Concrete: a date, a project, a number, a thing that went wrong. This is the proof they lived it.
@@ -42,30 +67,24 @@ Frame must be done, and the creator must have a **real personal stake** in this 
 5. **The universal translation.** Map the creator's specific scar to the reader's general pain. Without this the piece is a diary; with it, the reader sees themselves in the creator's experience.
 6. **The claim.** Write the one earned sentence the creator can defend under pushback — the thesis the whole piece exists to land.
 
-## Thresholds (replace judgment with lookup)
+### Workflow
 
-- Exactly **one earned claim** (the thesis). More than one means more than one piece.
-- At least **one concrete scar** (a real, specific moment) — abstract "I've struggled with this" does not count.
-- At least **one receipt** beyond the story, or an explicit register downgrade in step 4.
-- The universal translation must be present — a piece with a scar but no bridge to the reader is a journal entry, not content.
-
-## Workflow
-
-1. Confirm Frame is done and the stake is real. If borrowed, route to `idea_expansion_lens`.
+1. Confirm Frame is done and the stake is real. If borrowed, route to `idea_expansion_lens`. → `idea_expansion_lens`
 2. Run the 6-step extraction. Be ruthless about steps 2–3 (scar + receipts) — that is the whole differentiator.
 3. Apply the permission check; downgrade register if the standing is thin.
 4. Write the universal translation explicitly.
-5. Return the earned claim + scar + receipts + bridge, and hand to Curate → Draft (execute via `nonfiction_writing_from_lived_conviction`). Do not write the essay.
+5. Return the earned claim + scar + receipts + bridge, and hand to Curate → Draft (execute via `nonfiction_writing_from_lived_conviction`). Do not write the essay. → `nonfiction_writing_from_lived_conviction`
 
-## Guardrails
+## Routing
 
-- Do not manufacture vulnerability or invent a scar. No real stake → route to `idea_expansion_lens` and say why.
-- Do not over-claim authority. Thin experience → downgrade to "learning in public," never inflate to "the definitive answer."
-- Do not return a diary. If there is a scar but no universal translation, the lens is incomplete — finish step 5.
-- Do not return prose. Output the claim + proof + bridge; hand drafting to `nonfiction_writing_from_lived_conviction`.
-- Do not stack multiple earned claims; one thesis per piece.
+Where the Procedure hands off. One concept, one owner — this lens finds the earned claim; the targets below own the rest.
 
-## Output
+| When Procedure routes                          | Target skill                               | What it owns                                                |
+| ---------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------- |
+| Stake is borrowed / untested (Workflow step 1) | `idea_expansion_lens`                      | breadth of angles on a neutral claim                        |
+| Hand to Curate → Draft (Workflow step 5)       | `nonfiction_writing_from_lived_conviction` | executes the essay at draft time (structure, prose, rhythm) |
+
+## Contract
 
 Return the conviction shape:
 
@@ -80,7 +99,15 @@ Bridge:       <the creator's specific scar → the reader's general pain>
 Next: hand to Draft (execute via nonfiction_writing_from_lived_conviction).
 ```
 
-## Worked Example
+## Policy
+
+- Do not manufacture vulnerability or invent a scar. No real stake → route to `idea_expansion_lens` and say why.
+- Do not over-claim authority. Thin experience → downgrade to "learning in public," never inflate to "the definitive answer."
+- Do not return a diary. If there is a scar but no universal translation, the lens is incomplete — finish step 5.
+- Do not return prose. Output the claim + proof + bridge; hand drafting to `nonfiction_writing_from_lived_conviction`.
+- Do not stack multiple earned claims; one thesis per piece.
+
+## Examples
 
 Framed idea: "Founders over-trust AI agents on real work."
 

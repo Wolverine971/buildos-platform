@@ -730,7 +730,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			queueProjectLoopBurstAsync({
 				projectId: existingTask.project_id,
 				userId: session.user.id,
-				source: 'task_update'
+				source: 'task_update',
+				entityType: 'task',
+				entityId: params.id,
+				action: 'updated'
 			});
 		}
 

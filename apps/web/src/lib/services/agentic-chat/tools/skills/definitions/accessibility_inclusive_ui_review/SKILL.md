@@ -2,6 +2,9 @@
 name: Accessibility and Inclusive UI Review
 description: >-
     Child skill under Build Quality UI/UX for accessibility and inclusive component behavior: semantics, keyboard support, focus, ARIA restraint, reduced motion, dynamic regions, charts, and forms. Use when the user asks for an accessibility audit, WCAG check, screen-reader or keyboard review, focus/tab-order debugging, or an inclusive-design pass on a screen or component. Returns WCAG-cited findings with evidence, blocker-to-minor severity, and code-level fixes, split into a screen-level pass and a component-pattern pass.
+skill_type: procedure # procedure | reference | strategy | resource | policy | orchestration
+altitude: domain # task | domain | meta
+activation: progressive # always_on | progressive | invoked
 parent_id: build_quality_ui_ux
 depth: 1
 preserve_markdown: true
@@ -35,11 +38,23 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/accessibil
 
 # Accessibility and Inclusive UI Review
 
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Provenance.
+  This file is skill_type: procedure — the discipline is two ordered passes (per-screen, then per-component).
+  The durable declarative knowledge (per-screen checklist, component patterns, failure modes) already lives
+  in the three reference modules, loaded on demand, so the body carries the sequence, the severity rubric,
+  the output contract, and the escalation map — not the rules themselves. Knowledge is intentionally absent
+  from the body by design (see Provenance).
+-->
+
+## Identity
+
 Accessibility-floor child. The discipline this skill enforces is **two passes, semantic HTML first**: a per-screen audit (does this screen ship broken?) and a per-component pattern audit (does each primitive match its canonical accessible pattern?). ARIA is a last resort — if you're reaching for `role="button"`, use a `<button>`. The leverage point is the design system: a primitive fixed once is fixed everywhere.
 
 The deep rules live in reference modules. The skill body holds the sequence, the output contract, and the escalation map; load the references before producing findings.
 
-## When to Use
+## Activation
 
 - Auditing a screen, route, form, dialog, menu, tabs, table, chart, or custom control for accessibility before ship.
 - The user mentions WCAG, screen readers, keyboard navigation, focus, tab order, ARIA, color contrast, reduced motion, or inclusive design.
@@ -47,18 +62,41 @@ The deep rules live in reference modules. The skill body holds the sequence, the
 - Reviewing a design-system primitive (Button, Input, Dialog, Tabs, Toggle) before it propagates.
 - Auditing AI-generated UI fragments or dynamic screens (streaming content, toasts, live updates) for accessibility regressions.
 
-## Workflow
+## Judgment
+
+Severity rubric — how to classify each finding:
+
+- **blocker** — AT users cannot complete a core flow: no keyboard reachability, no accessible name on a primary action, modal focus broken, route-change silent for screen readers.
+- **serious** — the flow is technically completable but degraded: missing live region for async updates, contrast below 4.5:1, missing error association.
+- **moderate** — inconvenience, not a blocker: suboptimal heading order, redundant ARIA, mouse-only nice-to-have.
+- **minor** — polish: focus indicator slightly off-brand, decorative SVG missing `focusable="false"`.
+
+## Procedure
+
+Ordered sequence and intent; the reference module to load for each step is named inline by its backticked id.
 
 1. Preflight. Confirm the scope in one sentence: full screen/route, single component, or a specific reported bug. Capture the markup or component code, both light and dark modes, and the list of interactive primitives present.
-2. For a reported bug, load `accessibility_inclusive_ui_review.failure_modes_spa_pitfalls` first and try to name the anti-pattern; then widen to the relevant checklist section.
-3. For a screen or route, load `accessibility_inclusive_ui_review.screen_audit_checklist` and walk it top-to-bottom: foundation, semantics & ARIA, keyboard, focus management, hiding techniques, screen reader, visual & motion, forms. Cite the WCAG criterion on every finding.
-4. For every interactive primitive on the surface, load `accessibility_inclusive_ui_review.component_patterns` and verify the canonical pattern. Report these separately — primitive-level fixes propagate and outrank one-off page fixes.
-5. If the surface is an SPA view with dynamic behavior (route changes, modals, streaming, toasts, `$effect`-driven updates) or AI-generated UI, also load `accessibility_inclusive_ui_review.failure_modes_spa_pitfalls` and run the SPA pitfalls list.
+2. For a reported bug, load → `accessibility_inclusive_ui_review.failure_modes_spa_pitfalls` first and try to name the anti-pattern; then widen to the relevant checklist section.
+3. For a screen or route, load → `accessibility_inclusive_ui_review.screen_audit_checklist` and walk it top-to-bottom: foundation, semantics & ARIA, keyboard, focus management, hiding techniques, screen reader, visual & motion, forms. Cite the WCAG criterion on every finding.
+4. For every interactive primitive on the surface, load → `accessibility_inclusive_ui_review.component_patterns` and verify the canonical pattern. Report these separately — primitive-level fixes propagate and outrank one-off page fixes.
+5. If the surface is an SPA view with dynamic behavior (route changes, modals, streaming, toasts, `$effect`-driven updates) or AI-generated UI, also load → `accessibility_inclusive_ui_review.failure_modes_spa_pitfalls` and run the SPA pitfalls list.
 6. For a targeted question (for example "is this dialog accessible?"), load only the matching reference and run just those checks — but still flag any blocker you notice in passing.
-7. Tag out-of-scope findings for escalation instead of dropping them: general visual hierarchy, spacing, or state polish → `ui_ux_quality_review`; typography/color craft beyond the contrast floor → `visual_craft_fundamentals`; navigation structure or labeling confusion → `information_architecture_review`; landing-page persuasion → `marketing_site_design_review`; delight ideas once the floor is met → `delightful_product_review`.
+7. Tag out-of-scope findings for escalation instead of dropping them — see **Routing**.
 8. Assemble the report using the Output contract: screen-level findings, then component-pattern findings, then the roll-up.
 
-## Output
+## Routing
+
+Tag out-of-scope findings for escalation instead of dropping them:
+
+| Out-of-scope concern                               | Escalate to                       |
+| -------------------------------------------------- | --------------------------------- |
+| general visual hierarchy, spacing, or state polish | `ui_ux_quality_review`            |
+| typography/color craft beyond the contrast floor   | `visual_craft_fundamentals`       |
+| navigation structure or labeling confusion         | `information_architecture_review` |
+| landing-page persuasion                            | `marketing_site_design_review`    |
+| delight ideas once the floor is met                | `delightful_product_review`       |
+
+## Contract
 
 Every finding follows this canonical shape:
 
@@ -72,18 +110,11 @@ Fix: <code-level fix naming the canonical pattern or technique>
 Delegated: <optional sibling skill id if the fix is out of this skill's scope>
 ```
 
-Severity rubric:
-
-- **blocker** — AT users cannot complete a core flow: no keyboard reachability, no accessible name on a primary action, modal focus broken, route-change silent for screen readers.
-- **serious** — the flow is technically completable but degraded: missing live region for async updates, contrast below 4.5:1, missing error association.
-- **moderate** — inconvenience, not a blocker: suboptimal heading order, redundant ARIA, mouse-only nice-to-have.
-- **minor** — polish: focus indicator slightly off-brand, decorative SVG missing `focusable="false"`.
-
 End with a roll-up: top 5 highest-impact fixes ranked by leverage (primitive-level fixes outrank one-off page fixes); primitives needing design-system-level fixes; severity distribution; and "items requiring human review" for judgment calls (for example "does this need to be a dialog at all?").
 
 Stop conditions before returning: every applicable category has at least one finding or an explicit "no issues"; screen-level and component-level passes are documented separately; every finding carries WCAG, Evidence, and Severity; judgment calls are surfaced, not asserted pass/fail; out-of-scope concerns are tagged Delegated, not dropped.
 
-## Guardrails
+## Policy
 
 - A finding without evidence is not a finding — tie it to a specific element, selector, component, or observed behavior, or leave it out.
 - Do not produce findings without loading the matching reference module first.
@@ -95,8 +126,8 @@ Stop conditions before returning: every applicable category has at least one fin
 - Do not assume mouse-only interaction — every drag, hover, and click needs a keyboard equivalent.
 - Do not declare a screen "accessible" — accessibility is a gradient; report "more inclusive / less inclusive" and rank fixes by leverage.
 
-## Notes
+## Provenance
 
-- Reference modules: `accessibility_inclusive_ui_review.screen_audit_checklist` (per-screen pass), `accessibility_inclusive_ui_review.component_patterns` (per-component pass), `accessibility_inclusive_ui_review.failure_modes_spa_pitfalls` (named anti-patterns + SPA/dynamic pitfalls).
-- Primary sources: Heydon Pickering (Inclusive Components — the per-component canon), Sara Soueidan (Applied Accessibility — the per-screen audit and hiding-techniques taxonomy), WCAG 2.2 / WAI-ARIA.
+- Reference modules (the durable declarative knowledge — externalized by design, loaded on demand): `accessibility_inclusive_ui_review.screen_audit_checklist` (per-screen pass), `accessibility_inclusive_ui_review.component_patterns` (per-component pass), `accessibility_inclusive_ui_review.failure_modes_spa_pitfalls` (named anti-patterns + SPA/dynamic pitfalls).
+- Primary sources: Heydon Pickering (Inclusive Components — the per-component canon) — PRIMARY; Sara Soueidan (Applied Accessibility — the per-screen audit and hiding-techniques taxonomy) — PRIMARY; WCAG 2.2 / WAI-ARIA — PRIMARY.
 - Maintainers: the canonical research draft with full lineage lives at `docs/research/youtube-library/skill-drafts/accessibility-and-inclusive-ui-review/` (not available at runtime).

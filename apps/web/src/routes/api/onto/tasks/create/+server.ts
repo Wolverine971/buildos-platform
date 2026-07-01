@@ -395,7 +395,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			queueProjectLoopBurstAsync({
 				projectId,
 				userId: user.id,
-				source: 'task_create'
+				source: 'task_create',
+				entityType: 'task',
+				entityId: task.id,
+				action: 'created'
 			});
 		}
 		return ApiResponse.created({ task: taskWithAssignees });

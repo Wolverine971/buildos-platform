@@ -78,15 +78,20 @@ Tactics from Kane's "18 Psychology Tricks," tagged for BuildOS use. Use this as 
 | 13  | Create a Hunt   | Front-load the best stuff (respect for viewer's time) — yes. "Wait for the end, the last one is killer" gimmick — only with a real long-loop payoff, never to inflate watch time on weak content. |
 | 14  | Rehooking       | Re-orient to real stakes — yes. "If you don't figure out this next one, you lose forever" escalation — no. Use re-hooks to remind, not to threaten.                                               |
 
-### Reject (1 — out of scope for BuildOS publishing)
+### Reject (4 — out of scope for BuildOS publishing)
 
-| #   | Tactic                                                             | Why rejected                                                                                                                                                                                               |
-| --- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 16  | Close the Loop (re-stoke pain → "but if you want speed, buy this") | Re-stoking pain immediately after claiming you've solved it is the manipulative core. The honest version: "Here's everything I'd do. If BuildOS helps, here it is — try free." Trust the viewer to choose. |
+The manipulation core: any lever that manufactures a reaction the content hasn't earned. All four corrupt the next
+piece's targeting even when they win the current one's metrics.
 
-### Out of scope (comment-driver stack from "Social Algorithms")
+| #    | Tactic                                                                                                                    | Source               | Why rejected                                                                                                                                                                                               |
+| ---- | ------------------------------------------------------------------------------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 16   | Close the Loop — re-stoke pain at close to drive paid action ("but if you want speed, buy this")                          | 18 Psychology Tricks | Re-stoking pain immediately after claiming you've solved it is the manipulative core. The honest version: "Here's everything I'd do. If BuildOS helps, here it is — try free." Trust the viewer to choose. |
+| SA-1 | Manufactured contrarianism / comment-bait — "pick the contrarian side," ratchet up stance language, "create more enemies" | Social Algorithms    | Extracts comments by staging a fight the creator doesn't believe in. Real stances from real conviction generate real engagement; the comment-bait ladder trains the algorithm on the wrong audience.       |
+| SA-2 | Rage-bait / fear / drama as engagement levers                                                                             | Social Algorithms    | Weaponised negative emotion travels but poisons the brand and the matching signal. The anti-feed positioning cannot survive feed-style manipulation even when it works.                                    |
+| SA-3 | Audience-poaching — build topics around cult-loved brands to siphon their audience                                        | Social Algorithms    | Borrowed audiences don't match the avatar; the spillover corrupts the next several pieces' targeting the same way an off-target viral hit does.                                                            |
 
-Kane's comment-driver tactics ("pick the contrarian side," "ratchet up the stance language," "create more enemies," "build topics around cult-loved brands to siphon their audience") are explicitly out of scope for BuildOS publishing. Take real stances from real conviction; skip the comment-bait ladder.
+Take real stances from real conviction; skip the comment-bait ladder. (Reject rows tagged `SA-*` come from Kane's
+"Social Algorithms" comment-driver stack; #16 from "18 Psychology Tricks.")
 
 ## Workflow: Score A Specific Piece Before Publishing
 

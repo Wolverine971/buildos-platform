@@ -419,7 +419,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				queueProjectLoopBurstAsync({
 					projectId: document.project_id,
 					userId: session.user.id,
-					source: 'document_archive'
+					source: 'document_archive',
+					entityType: 'document',
+					entityId: document.id,
+					action: 'updated'
 				});
 			}
 
@@ -523,7 +526,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				queueProjectLoopBurstAsync({
 					projectId: document.project_id,
 					userId: session.user.id,
-					source: 'document_restore'
+					source: 'document_restore',
+					entityType: 'document',
+					entityId: document.id,
+					action: 'updated'
 				});
 			}
 
@@ -898,7 +904,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			queueProjectLoopBurstAsync({
 				projectId: document.project_id,
 				userId,
-				source: 'document_update'
+				source: 'document_update',
+				entityType: 'document',
+				entityId: document.id,
+				action: 'updated'
 			});
 		}
 

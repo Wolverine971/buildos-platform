@@ -1,6 +1,9 @@
 ---
 name: Cold Email Outreach Compiler
 description: Child skill for compiling prepared mode, segment, anchor, offer, proof, and sender constraints into a finished cold outreach bundle — seven mode scaffolds, a subject/preview packaging pass, a 9-point body lint, and a mode-keyed cadence map. Also executes full rebuilds routed from cold_email_taste_review; for judging or tightening an existing draft, use taste review first.
+skill_type: procedure # procedure | strategy | reference | resource | policy | orchestration
+altitude: domain # task | domain | meta
+activation: progressive # always_on | progressive | invoked
 parent_id: cold_email_engagement_first_outreach
 depth: 1
 preserve_markdown: true
@@ -21,44 +24,41 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email
 
 # Cold Email Outreach Compiler
 
-Use this child skill when the core inputs are ready and the user wants the finished email, sequence, or audit rewrite. The north star is qualified conversations started per unit of market trust consumed: the compiler's job is to spend prepared inputs well, never to paper over missing ones.
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Examples → Provenance.
+  This file is skill_type: procedure, so Procedure carries the weight. Judgment holds the subject/preview
+  rubric and the 9-point body lint; Routing holds the refuse-and-route map to the six siblings; Knowledge
+  holds the volatile vendor tables (subject table, assumptive-language table, cadence map) — flagged as a
+  reference-extraction candidate. Related Tools is absent (this skill routes to sibling skills, not tools).
+-->
+
+## Identity
+
+Child skill that compiles prepared inputs into a finished cold outreach bundle — the drafting/packaging end of the cold-email family. Use this child skill when the core inputs are ready and the user wants the finished email, sequence, or audit rewrite. The north star is qualified conversations started per unit of market trust consumed: the compiler's job is to spend prepared inputs well, never to paper over missing ones.
+
+This is a **procedure** skill at **domain** altitude. The ordered compile sequence is the spine; the subject/preview and body-lint rubrics under **Judgment** are the decision criteria it runs, the **Routing** block holds the refuse-and-route map to the sibling skills that produce missing ingredients, and **Knowledge** holds the volatile vendor tables the compile reads.
+
+## Activation
 
 The seven mode scaffolds live in the `mode_templates` reference — load it before drafting the body. Everything else a compile needs is in this shell: the sequence, the routing rules, the subject/preview packaging rules, the 9-point lint, the cadence map, the refusal triggers, and the output contract.
 
-## When to Use
+**Use this skill when:**
 
 - Mode, target/segment, offer, and sender constraints are already known
 - The user asks to draft, rewrite, or package the outreach
 - The user wants a campaign bundle or per-email bundle
 - The root skill has routed weak inputs to other child skills already
 
-## Workflow
+## Judgment
 
-1. Confirm the ingredient chain exists: person, moment, reason (anchor + bridge for relationship-sensitive modes), artifact offer, proof status, sender constraints. Refuse to compile around a missing critical ingredient — route it instead: vague segment/persona → `cold_email_icp_signal_design`; missing or meeting-first offer → `cold_email_offer_lab`; anchor below Level 3 for strategic/single-target → `cold_email_research_anchors`; unverified sender at volume → `cold_email_deliverability_readiness`.
-2. Pick exactly one mode (volume casual, volume/enterprise formal, strategic anchor-led, investor, recruiting, PR/podcast, founder-to-founder — partnership and customer research as flagged thin variants) and restate why it is the right mode.
-3. Confirm the offer is artifact-first, buyer-progress-oriented, and alternatives-aware. A meeting-first ask is allowed only where the mode sanctions it (strategic sales, recruiting) — never in investor or PR modes.
-4. Load `cold_email_outreach_compiler.mode_templates` and draft the body in that mode's scaffold, length cap, and register. Add proof only if credible, relevant, approved, and claim-matched. For PR/podcast, package beat fit, audience reason, and the topic-angle menu. For strategic B2B, package the artifact so a Mobilizer could forward it internally.
-5. Run the subject/preview pass per `## Subject and Preview Rules (Packaging Pass)` below: mode-keyed subject, rejection-list sweep, register resolution (title case for formal modes, lowercase for casual volume), and deliberate first-two-sentences preview that extends the subject and surfaces the anchor.
-6. Run the 9-point lint per `## Body Lint, Cadence, and Refusal Triggers` below. Fix every failure or name it in the bundle; the passive-to-assumptive sweep and single-CTA rule are non-negotiable.
-7. Attach the mode's cadence from the cadence map in that same section, with follow-up content per the follow-up rules (follow-up #1 reformats, #2 restates the CTA, #3 breaks up; volume stops at two touches; PR follows up exactly once).
-8. Define reply routes (yes / no / objection / silence — hand objection and revival handling to `cold_email_reply_os`) and tracking targets per stage. Targets come from `cold_email_learning_review`'s benchmark bands and gate tree — set positive-reply-per-send and bounce/complaint ceilings there; do not invent target numbers here. Note: low opens in 2026 are more likely a compliance/placement failure than a copy failure.
-9. Return the bundle with refusal notes for any precondition that remains weak.
+The decision criteria the compile runs at the subject/preview pass and the body lint. All percentage deltas below are vendor data — treat as directional, not governing thresholds. Sourced tables the rubric reads (Mode-Keyed Subject Table, Assumptive-Language Replacement Table, Cadence Map) live in **Knowledge**.
 
-## Subject and Preview Rules (Packaging Pass)
+### Subject and Preview Rules (Packaging Pass)
 
-Subject plus preview is the first conversion point — never leave either to chance. All percentage deltas below are Lavender vendor data (231,818-email Feb-2026 benchmark across ~50k inboxes; sample stated, selection bias not characterized) — treat as directional, not governing thresholds.
+Subject plus preview is the first conversion point — never leave either to chance. All percentage deltas below are Lavender vendor data (231,818-email Feb-2026 benchmark across ~50k inboxes; sample stated, selection bias not characterized) — treat as directional, not governing thresholds. The per-mode subject rules and examples are the Mode-Keyed Subject Table in **Knowledge**.
 
-### Mode-Keyed Subject Table
-
-| Mode                  | Subject rule                                                                                                                                                           | Examples                                                                                                                                                            |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Volume outbound       | 2–5 words; internal-looking; no marketing language. Shepherd variant: 2–3 words, lowercase, no punctuation, curiosity not summary                                      | "quick question" (Shepherd subject use only — banned as a body opener), "book positioning"; Lavender good list: "Template Revisions," "Ramp," "Reply Rate Question" |
-| Strategic account     | 3–8 words; a specific noun, initiative, or direct-report names; still internal-looking                                                                                 | "enterprise ramp," "Mark and Larry," "north america expansion"                                                                                                      |
-| Single-target / SMYKM | May run longer if the recipient will recognize the hyper-specific hook instantly                                                                                       | Sam McKenna's CEO-of-LinkedIn public-phrase subject                                                                                                                 |
-| Recruiting            | ≤30 characters; candidate first name OK (+16% opens, Recruiterflow 50k dataset — vendor, methodology unstated); location/remote mention helps; CTA at front if present | "[First Name], about your LinkedIn post"; "Remote [Job Title], [Company]" (Greenhouse)                                                                              |
-| PR / podcast          | Upfront and clear on what the pitch is about; no cleverness                                                                                                            | Muck Rack checklist                                                                                                                                                 |
-
-### Universal Rejection List
+#### Universal Rejection List
 
 Reject the subject and rewrite when it contains:
 
@@ -74,7 +74,7 @@ Reject the subject and rewrite when it contains:
 - A generic trigger everyone else will use, or a personal hook with no business bridge (McKenna)
 - "[Company] x [Company]" and "Loved your post" framings
 
-### Title-Case vs Lowercase Resolution
+#### Title-Case vs Lowercase Resolution
 
 Lavender found subjects without title case lost **−30% opens**; Aaron Shepherd's casual volume register deliberately uses lowercase. These conflict, and the conflict is resolved editorially by register, not by data:
 
@@ -82,7 +82,7 @@ Lavender found subjects without title case lost **−30% opens**; Aaron Shepherd
 - Casual-founder volume mode: lowercase.
 - Never mix registers within one campaign.
 
-### Preview Text Rules
+#### Preview Text Rules
 
 The first two sentences of the body ARE the preview — write them deliberately (Florin Tatulea / Jason Bay).
 
@@ -91,27 +91,113 @@ The first two sentences of the body ARE the preview — write them deliberately 
 - Never let a tracking-pixel disclaimer, unsubscribe text, or "view in browser" leak into the preview.
 - Preview can carry the whole follow-up: Connor Murray's highest-reply follow-up of all time runs entirely on the preview line "Please give me your thoughts on this."
 
-### 2026 Open-Rate Context
-
-If opens are low in 2026, suspect a compliance/placement failure before a copy failure: Google rejects non-compliant bulk mail at the server level (since Nov 2025) and Microsoft enforces SPF/DKIM/DMARC for high-volume senders. Route sender-health questions to `cold_email_deliverability_readiness` — do not keep rewriting subjects for a blocked sender.
-
-## Body Lint, Cadence, and Refusal Triggers
+### Body Lint Rubric
 
 Run this after drafting, before bundling. Every email ships with a cadence and reply routes attached; every lint failure is fixed or named in the bundle. The framing metric is qualified conversations started per unit of market trust consumed.
 
-### 9-Point Body Lint Checklist
+#### 9-Point Body Lint Checklist
 
-1. **Passive→assumptive sweep** (Connor Murray table below): "I was hoping…" → "I'm looking…"; "If you're interested…" → a date question; "Worth a chat?" → banned (root guardrail).
+1. **Passive→assumptive sweep** (see the Assumptive-Language Replacement Table in **Knowledge**): "I was hoping…" → "I'm looking…"; "If you're interested…" → a date question; "Worth a chat?" → banned (root guardrail).
 2. **Cliché sweep**: "I hope this finds you well," "hope all is well," "just checking in," "quick question" as a _body_ opener (Lavender 101, Greenhouse, Jackson).
 3. **One CTA only**; the CTA is a Call-to-Conversation — easy to answer, not a booking demand (Lavender 101 CTC rule) — except modes where a time-ask is sanctioned (Murray strategic, recruiting).
 4. **You:we ratio ≥3:1** (RecruitingDaily golden ratio).
 5. **Word count and reading level** per the mode table in `mode-templates.md` (3rd–5th grade reading level: +67% replies — Lavender, directional).
 6. **Proof claim-matched and permissioned** (Dunford; root guardrail). No vague "teams like yours," no unsupported outcomes.
 7. **Follow-up content rules**: no attachment on follow-ups; follow-up #1 = same message, different format (long→2-sentence or the reverse); follow-up #2 = CTA restatement only; follow-up #3 = breakup/loss-aversion (Close follow-up plan).
-8. **Subject/preview pass** per `## Subject and Preview Rules (Packaging Pass)` above.
+8. **Subject/preview pass** per the subject and preview rubric above.
 9. **Mobile render**: no paragraph longer than 2 lines on a phone (Lavender; Murray's one-screen rule). Line-length specifics are unsourced — keep this qualitative.
 
+## Procedure
+
+Ordered compile sequence and intent. Routed steps carry a `→ `id`` marker; ownership and the refuse-and-route conditions are resolved once in **Routing**.
+
+1. Confirm the ingredient chain exists: person, moment, reason (anchor + bridge for relationship-sensitive modes), artifact offer, proof status, sender constraints. Refuse to compile around a missing critical ingredient — route it instead: vague segment/persona → `cold_email_icp_signal_design`; missing or meeting-first offer → `cold_email_offer_lab`; anchor below Level 3 for strategic/single-target → `cold_email_research_anchors`; unverified sender at volume → `cold_email_deliverability_readiness`. (Refuse-and-route conditions consolidated in **Routing**.)
+2. Pick exactly one mode (volume casual, volume/enterprise formal, strategic anchor-led, investor, recruiting, PR/podcast, founder-to-founder — partnership and customer research as flagged thin variants) and restate why it is the right mode.
+3. Confirm the offer is artifact-first, buyer-progress-oriented, and alternatives-aware. A meeting-first ask is allowed only where the mode sanctions it (strategic sales, recruiting) — never in investor or PR modes.
+4. Load `cold_email_outreach_compiler.mode_templates` and draft the body in that mode's scaffold, length cap, and register. Add proof only if credible, relevant, approved, and claim-matched. For PR/podcast, package beat fit, audience reason, and the topic-angle menu. For strategic B2B, package the artifact so a Mobilizer could forward it internally.
+5. Run the subject/preview pass per the subject/preview rubric in **Judgment** (and the Mode-Keyed Subject Table in **Knowledge**): mode-keyed subject, rejection-list sweep, register resolution (title case for formal modes, lowercase for casual volume), and deliberate first-two-sentences preview that extends the subject and surfaces the anchor.
+6. Run the 9-point lint per the 9-Point Body Lint Checklist in **Judgment**. Fix every failure or name it in the bundle; the passive-to-assumptive sweep and single-CTA rule are non-negotiable.
+7. Attach the mode's cadence from the Cadence Map by Mode in **Knowledge**, with follow-up content per the follow-up rules (follow-up #1 reformats, #2 restates the CTA, #3 breaks up; volume stops at two touches; PR follows up exactly once).
+8. Define reply routes (yes / no / objection / silence — hand objection and revival handling to `cold_email_reply_os`) and tracking targets per stage. Targets come from `cold_email_learning_review`'s benchmark bands and gate tree — set positive-reply-per-send and bounce/complaint ceilings there; do not invent target numbers here. Note: low opens in 2026 are more likely a compliance/placement failure than a copy failure.
+9. Return the bundle with refusal notes for any precondition that remains weak.
+
+## Routing
+
+Who owns what: the compile refuses around a missing ingredient and routes to the sibling that produces it. The mode scaffolds are loaded from the `mode_templates` reference (see Activation), not routed to a sibling.
+
+| Sibling                               | Single owner of                       | Route / refuse when                                             |
+| ------------------------------------- | ------------------------------------- | --------------------------------------------------------------- |
+| `cold_email_icp_signal_design`        | segment / persona / ICP signal design | vague segment/persona, or mixed personas in one campaign        |
+| `cold_email_offer_lab`                | the offer artifact                    | missing offer, or a meeting-first ask in a mode that forbids it |
+| `cold_email_research_anchors`         | anchor research                       | anchor below Level 3 for strategic/single-target                |
+| `cold_email_deliverability_readiness` | sender health / deliverability        | sender unverified at volume                                     |
+| `cold_email_reply_os`                 | objection + revival handling          | reply objection, or post-cadence silence/revival                |
+| `cold_email_learning_review`          | benchmark bands + tracking targets    | target numbers needed (never invented here)                     |
+
+### Compile-Time Refusal Triggers
+
+Refuse or flag instead of compiling when:
+
+- Mixed personas in one campaign (route to `cold_email_icp_signal_design`).
+- No artifact and the mode forbids meeting-first (route to `cold_email_offer_lab`).
+- Anchor below Level 3 for strategic/single-target — Level 3 = specific post/article/hire/initiative; Level 4 = quote from a talk; Level 5 = real mutual (route to `cold_email_research_anchors`).
+- Sender health unverified at volume (route to `cold_email_deliverability_readiness`). 2026 context: Google rejects non-compliant bulk mail at the SMTP level since Nov 2025; Microsoft returns 550 5.7.515 for unauthenticated high-volume senders — compiling great copy for a blocked sender is waste.
+- Proof unapproved or not claim-matched.
+- PR pitch without named beat fit verified against the recipient's recent work.
+
+## Contract
+
+- Mode and why it fits
+- Subject and one alternate
+- Preview text (the first two sentences, written deliberately)
+- Email body (plus follow-up bodies for a campaign bundle)
+- Proof slot or named proof gap
+- CTA and why it is the smallest useful yes
+- Buyer progress / alternative being addressed
+- Lint results (9-point pass/fail with fixes applied)
+- Cadence map for the mode
+- Reply routes
+- Tracking targets (sourced from `cold_email_learning_review` benchmark bands — never invented)
+- Refusal or risk notes
+
+## Policy
+
+- Do not compile around missing critical inputs — name the gap and route to the sibling that produces it (`cold_email_icp_signal_design`, `cold_email_offer_lab`, `cold_email_research_anchors`).
+- Do not compile for an unverified sender at volume — name the deliverability gap and route to `cold_email_deliverability_readiness` instead.
+- Do not use multiple CTAs.
+- Do not leave preview text to chance.
+- Do not turn an artifact offer into a meeting-first ask.
+- Do not compile PR/podcast outreach without verified audience/beat fit.
+- Do not compile strategic B2B outreach without a recipient or internal-consensus logic.
+- Do not let mode allowances leak across modes: time-asks stay in strategic/recruiting; recruiting and PR benchmarks stay in their modes; never mix registers in one campaign.
+- Do not treat vendor numbers (Lavender, Recruiterflow, Greenhouse, Schneider) as governing thresholds — they are directional patterns.
+- Do not import opt-in newsletter or list-email tactics as cold-email advice.
+
+## Knowledge
+
+Volatile, sourced reference tables the compile reads. Provenance is vendor/operator directional data unless tagged otherwise; every claim keeps its inline citation. **Extraction candidate:** these tables are large and volatile (dated vendor benchmarks) — a future DJ-gated pass may relocate them into a `references/` module.
+
+### Mode-Keyed Subject Table
+
+[practitioner — Lavender/Recruiterflow/Greenhouse/McKenna/Muck Rack vendor + operator data, directional]
+
+| Mode                  | Subject rule                                                                                                                                                           | Examples                                                                                                                                                            |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Volume outbound       | 2–5 words; internal-looking; no marketing language. Shepherd variant: 2–3 words, lowercase, no punctuation, curiosity not summary                                      | "quick question" (Shepherd subject use only — banned as a body opener), "book positioning"; Lavender good list: "Template Revisions," "Ramp," "Reply Rate Question" |
+| Strategic account     | 3–8 words; a specific noun, initiative, or direct-report names; still internal-looking                                                                                 | "enterprise ramp," "Mark and Larry," "north america expansion"                                                                                                      |
+| Single-target / SMYKM | May run longer if the recipient will recognize the hyper-specific hook instantly                                                                                       | Sam McKenna's CEO-of-LinkedIn public-phrase subject                                                                                                                 |
+| Recruiting            | ≤30 characters; candidate first name OK (+16% opens, Recruiterflow 50k dataset — vendor, methodology unstated); location/remote mention helps; CTA at front if present | "[First Name], about your LinkedIn post"; "Remote [Job Title], [Company]" (Greenhouse)                                                                              |
+| PR / podcast          | Upfront and clear on what the pitch is about; no cleverness                                                                                                            | Muck Rack checklist                                                                                                                                                 |
+
+### 2026 Open-Rate Context
+
+[PRIMARY — Google / Microsoft provider policy, dated Nov 2025]
+
+If opens are low in 2026, suspect a compliance/placement failure before a copy failure: Google rejects non-compliant bulk mail at the server level (since Nov 2025) and Microsoft enforces SPF/DKIM/DMARC for high-volume senders. Route sender-health questions to `cold_email_deliverability_readiness` — do not keep rewriting subjects for a blocked sender.
+
 ### Assumptive-Language Replacement Table (Murray)
+
+[practitioner — Connor Murray]
 
 Passive language is the single biggest reply-rate killer. The goal of every email is a response — yes, no, or objection — because you can book from any reply but never from silence.
 
@@ -126,6 +212,8 @@ Passive language is the single biggest reply-rate killer. The goal of every emai
 Time-ask phrasing is sanctioned only in strategic/enterprise sales and recruiting. It is banned in investor and PR modes — mode allowances never leak across modes.
 
 ### Cadence Map by Mode (attach to every bundle)
+
+[practitioner — Schneider/Murray/McKenna/Seibel/Greenhouse/Muck Rack/Close·Efti vendor + operator data, directional]
 
 | Mode                    | Cadence                                                                                                                                                                                                                                                            | Source                                                                                                                                                  |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -145,33 +233,7 @@ Murray's three follow-up moves for the strategic cadence, in order:
 
 Cadence hygiene: do not import opt-in newsletter or list-email cadence advice (e.g., 3x/week sends, reward-loop framing) into cold outreach — list-email tactics are banned across this suite. Recruiting and PR cadence numbers stay in their modes.
 
-### Compile-Time Refusal Triggers
-
-Refuse or flag instead of compiling when:
-
-- Mixed personas in one campaign (route to `cold_email_icp_signal_design`).
-- No artifact and the mode forbids meeting-first (route to `cold_email_offer_lab`).
-- Anchor below Level 3 for strategic/single-target — Level 3 = specific post/article/hire/initiative; Level 4 = quote from a talk; Level 5 = real mutual (route to `cold_email_research_anchors`).
-- Sender health unverified at volume (route to `cold_email_deliverability_readiness`). 2026 context: Google rejects non-compliant bulk mail at the SMTP level since Nov 2025; Microsoft returns 550 5.7.515 for unauthenticated high-volume senders — compiling great copy for a blocked sender is waste.
-- Proof unapproved or not claim-matched.
-- PR pitch without named beat fit verified against the recipient's recent work.
-
-## Output Contract
-
-- Mode and why it fits
-- Subject and one alternate
-- Preview text (the first two sentences, written deliberately)
-- Email body (plus follow-up bodies for a campaign bundle)
-- Proof slot or named proof gap
-- CTA and why it is the smallest useful yes
-- Buyer progress / alternative being addressed
-- Lint results (9-point pass/fail with fixes applied)
-- Cadence map for the mode
-- Reply routes
-- Tracking targets (sourced from `cold_email_learning_review` benchmark bands — never invented)
-- Refusal or risk notes
-
-## Worked Examples
+## Examples
 
 ### Full compile (strategic mode)
 
@@ -239,20 +301,7 @@ Manufactured from the evals.md Task 2 fixture (FlowKit, ~200 ops leaders, meetin
 
 **Refusal/risk notes:** the only open gap is the offer. Compiling "punchy" copy around it would spend market trust on an ask the mode forbids.
 
-## Guardrails
-
-- Do not compile around missing critical inputs — name the gap and route to the sibling that produces it (`cold_email_icp_signal_design`, `cold_email_offer_lab`, `cold_email_research_anchors`).
-- Do not compile for an unverified sender at volume — name the deliverability gap and route to `cold_email_deliverability_readiness` instead.
-- Do not use multiple CTAs.
-- Do not leave preview text to chance.
-- Do not turn an artifact offer into a meeting-first ask.
-- Do not compile PR/podcast outreach without verified audience/beat fit.
-- Do not compile strategic B2B outreach without a recipient or internal-consensus logic.
-- Do not let mode allowances leak across modes: time-asks stay in strategic/recruiting; recruiting and PR benchmarks stay in their modes; never mix registers in one campaign.
-- Do not treat vendor numbers (Lavender, Recruiterflow, Greenhouse, Schneider) as governing thresholds — they are directional patterns.
-- Do not import opt-in newsletter or list-email tactics as cold-email advice.
-
-## Notes
+## Provenance
 
 - Reference modules: `cold_email_outreach_compiler.mode_templates` (seven scaffolds, length/register table) — the only remaining reference, loaded once per task for the chosen mode's scaffold.
 - The former `packaging_rules` and `lint_and_cadence` references were folded into this shell on 2026-06-11 (`## Subject and Preview Rules (Packaging Pass)` and `## Body Lint, Cadence, and Refusal Triggers`): their when_to_load fired on every standard compile (workflow steps 5–8), making them shell body in disguise.

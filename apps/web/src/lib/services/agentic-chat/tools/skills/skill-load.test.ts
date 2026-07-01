@@ -69,7 +69,8 @@ describe('skill loading', () => {
 		expect(result.id).toBe('project_creation');
 		expect(typeof result.markdown).toBe('string');
 		expect(result.markdown).toContain('# Project Creation');
-		expect(result.markdown).toContain('## Workflow');
+		// Canonical block ontology renamed Workflow -> Procedure.
+		expect(result.markdown).toContain('## Procedure');
 		expect(result.markdown).toContain('## Related Tools');
 		expect(result.markdown).toContain('`onto.project.create`');
 		expect(result.markdown).toContain('tech_stack');
@@ -308,8 +309,8 @@ describe('skill loading', () => {
 
 		expect(rootPayload.type).toBe('skill');
 		expect(rootPayload.id).toBe('content_strategy_beyond_blogging');
-		expect(rootPayload.markdown).toContain('## Core Principles');
-		expect(rootPayload.markdown).toContain('## Strategy Workflow');
+		expect(rootPayload.markdown).toContain('## Judgment');
+		expect(rootPayload.markdown).toContain('## Procedure');
 		expect(rootPayload.markdown).toContain('## Child Skills');
 		expect(rootPayload.markdown).toContain('hook_craft_short_form');
 

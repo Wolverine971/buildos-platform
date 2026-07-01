@@ -200,12 +200,29 @@ function parseRelatedOps(lines: string[]): string[] {
 		.filter((item) => item.length > 0);
 }
 
+// Canonical block ontology (see skill-update-refactor-tasker.md §8.5) renames several
+// H2 headers. Accept both the legacy header and its canonical-block alias so pre- and
+// post-refactor skills parse identically during the rollout.
+function pickSection(sections: Record<string, string[]>, headings: string[]): string[] {
+	for (const heading of headings) {
+		const lines = sections[heading];
+		if (lines && lines.length > 0) return lines;
+	}
+	return [];
+}
+
 function parseWorkflowSections(sections: Record<string, string[]>): string[] {
-	const directWorkflow = parseOrderedList(sections['workflow'] ?? []);
+	// Legacy "Workflow" and canonical "Procedure" both hold the ordered step list.
+	const directWorkflow = parseOrderedList(pickSection(sections, ['workflow', 'procedure']));
 	if (directWorkflow.length > 0) return directWorkflow;
 
 	return Object.entries(sections).flatMap(([heading, lines]) => {
-		if (!heading.startsWith('workflow') && !heading.endsWith('workflow')) return [];
+		if (
+			!heading.startsWith('workflow') &&
+			!heading.endsWith('workflow') &&
+			heading !== 'procedure'
+		)
+			return [];
 		return parseOrderedList(lines);
 	});
 }
@@ -289,10 +306,11 @@ export function defineMarkdownSkill({ id, markdown }: MarkdownSkillOptions): Ski
 		throw new Error(`Skill "${id}" is missing a valid frontmatter description.`);
 	}
 
-	const guardrails = parseBulletList(sections['guardrails'] ?? []);
+	// Legacy header ?? canonical-block alias (Guardrails→Policy, Notes→Provenance, Output→Contract).
+	const guardrails = parseBulletList(pickSection(sections, ['guardrails', 'policy']));
 	const examples = parseExamples(sections['examples'] ?? []);
-	const notes = parseBulletList(sections['notes'] ?? []);
-	const outputContract = (sections['output'] ?? sections['output contract'] ?? [])
+	const notes = parseBulletList(pickSection(sections, ['notes', 'provenance']));
+	const outputContract = pickSection(sections, ['output', 'output contract', 'contract'])
 		.join('\n')
 		.trim();
 	const parentId = parseOptionalString(frontmatter.parent_id);
@@ -310,7 +328,7 @@ export function defineMarkdownSkill({ id, markdown }: MarkdownSkillOptions): Ski
 		preserveMarkdown: parseOptionalBoolean(frontmatter.preserve_markdown),
 		legacyPaths: parseStringArray(frontmatter.legacy_paths),
 		relatedOps: parseRelatedOps(sections['related tools'] ?? []),
-		whenToUse: parseBulletList(sections['when to use'] ?? []),
+		whenToUse: parseBulletList(pickSection(sections, ['when to use', 'activation'])),
 		workflow: parseWorkflowSections(sections),
 		guardrails: guardrails.length > 0 ? guardrails : undefined,
 		examples: examples.length > 0 ? examples : undefined,

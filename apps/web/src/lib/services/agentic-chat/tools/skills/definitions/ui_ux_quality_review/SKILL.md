@@ -2,6 +2,9 @@
 name: UI/UX Quality Review
 description: >-
     Child skill under Build Quality UI/UX for foundational screen and flow review across hierarchy, clarity, spacing, type, color, consistency, states, charts, and responsive fit. Returns evidence-backed findings with severity and concrete fixes; includes an AI-generated-UI smoke test.
+skill_type: procedure # procedure | reference | strategy | resource | policy | orchestration
+altitude: domain # task | domain | meta
+activation: progressive # always_on | progressive | invoked
 parent_id: build_quality_ui_ux
 depth: 1
 preserve_markdown: true
@@ -35,11 +38,23 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/ui_ux_qual
 
 # UI/UX Quality Review
 
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Related Tools → Examples → Provenance.
+  This file is skill_type: procedure. The Procedure carries the weight; Contract holds the finding shape and
+  severity rubric, Routing holds the escalation ownership map, and the threshold-bearing rules live in the
+  reference modules.
+-->
+
+## Identity
+
+This is a **procedure** skill at **domain** altitude.
+
 General-purpose UI review child. The discipline this skill enforces is **sequencing**: do not ask whether the interface is pretty until you have answered whether the user can complete the job, whether the screen has a visible hierarchy, whether components behave consistently, and whether the UI responds to user action.
 
 The deep rules live in reference modules. The skill body holds the sequence, the output contract, and the escalation map; load the references before producing findings.
 
-## When to Use
+## Activation
 
 - Reviewing an app screen, dashboard, mobile flow, product workflow, modal, form, table, or chart.
 - Reviewing AI-generated UI from v0, Lovable, Cursor, or Bolt before it ships.
@@ -47,17 +62,31 @@ The deep rules live in reference modules. The skill body holds the sequence, the
 - Diagnosing why a UI feels amateur, cluttered, or hard to trust.
 - You need a compact findings list with severity, evidence, and concrete fixes.
 
-## Workflow
+## Procedure
+
+Ordered sequence and intent only. Out-of-scope findings are escalated to sibling skills whose ownership is declared once in **Routing**, referenced by the `→` marker — never re-taught here.
 
 1. Preflight. Confirm the user task on this surface in one sentence — if unclear, ask before reviewing. Capture or request: screenshots at mobile (375px), tablet (768px), desktop (1280px); light and dark mode if supported; interactive states (hover, focus, active, disabled, loading, error, empty) for primary controls; the design tokens in play (Inkprint for BuildOS surfaces) so fixes can be expressed in tokens, not arbitrary values. When only markup or code is available, reason directly from it — note unverifiable items (rendered contrast, real breakpoint behavior) instead of stalling on missing screenshots.
 2. If the UI is AI-generated or looks generic, load `ui_ux_quality_review.ai_ui_smoke_test` and run the fingerprint scan first.
 3. Load `ui_ux_quality_review.foundation_checks` and review areas 1–6 in order: flow & states, visual hierarchy, spacing & layout, typography, color & contrast, component consistency. Flow problems outrank pixel problems — if the user cannot complete the job, lead with that and keep cosmetic findings brief.
 4. Load `ui_ux_quality_review.polish_and_fit_checks` and review areas 7–11 in order: visual noise, icons & affordances, feedback & states, charts & data clarity, responsive fit. Skip chart checks when no data viz is present.
 5. For a targeted question (for example "fix my typography"), load only the reference covering that area and run just those checks — but still flag any blocking flow issue you notice.
-6. Tag out-of-scope findings for escalation instead of dropping them: conceptual confusion → `information_architecture_review`; works-but-lacks-polish craft fixes → `visual_craft_fundamentals`; semantics, focus, keyboard, or screen-reader behavior → `accessibility_inclusive_ui_review`; landing-page persuasion structure → `marketing_site_design_review`; delight opportunities once foundations are clean → `delightful_product_review`.
-7. Assemble the findings report using the Output contract below, ordered by severity then user impact, ending with the top 3 fixes.
+6. Tag out-of-scope findings for escalation instead of dropping them — route each by finding type to the owning sibling per **Routing**.
+7. Assemble the findings report using the **Contract** below, ordered by severity then user impact, ending with the top 3 fixes.
 
-## Output
+## Routing
+
+Out-of-scope findings are tagged for escalation instead of dropped; each type routes to the sibling that owns it.
+
+| Out-of-scope finding                                  | Escalate to                           |
+| ----------------------------------------------------- | ------------------------------------- |
+| conceptual confusion                                  | → `information_architecture_review`   |
+| works-but-lacks-polish craft fixes                    | → `visual_craft_fundamentals`         |
+| semantics, focus, keyboard, or screen-reader behavior | → `accessibility_inclusive_ui_review` |
+| landing-page persuasion structure                     | → `marketing_site_design_review`      |
+| delight opportunities once foundations are clean      | → `delightful_product_review`         |
+
+## Contract
 
 Every finding follows this canonical shape:
 
@@ -70,15 +99,26 @@ Fix: <concrete tokens or named technique>
 Delegated: <optional sibling skill id if the fix is out of this skill's scope>
 ```
 
+Stop conditions before returning: every applicable area has at least one finding or an explicit "no issues"; the top 3 high-severity fixes are ranked by impact; every finding carries Evidence and Severity; out-of-scope concerns are tagged Delegated, not dropped.
+
 Severity rubric:
 
 - **high** — blocks task completion, breaks the accessibility floor (body text contrast < 4.5:1), or creates inclusion risk.
 - **medium** — significantly degrades polish or readability; consistency drift; off-scale spacing.
 - **low** — stylistic preference, minor decorative noise.
 
-Stop conditions before returning: every applicable area has at least one finding or an explicit "no issues"; the top 3 high-severity fixes are ranked by impact; every finding carries Evidence and Severity; out-of-scope concerns are tagged Delegated, not dropped.
+## Policy
 
-## Worked Example
+- A finding without evidence is not a finding — if it cannot be tied to a specific component, class, region, or coordinate, do not include it.
+- Do not assign severity without referencing the rubric.
+- Do not over-index on personal taste. Tie each issue to comprehension, task completion, confidence, accessibility, or maintainability.
+- Do not recommend decorative gradients, extra cards, or ornamental effects as the first fix — subtraction beats addition.
+- Do not make every element the same visual weight, and do not stack contrast levers to make everything important.
+- Do not allow off-scale spacing or font-size values, and do not assume desktop spacing works on mobile.
+- Do not remove labels from unfamiliar icon-only controls without adding tooltips.
+- Do not produce findings for areas 1–11 without loading the matching reference module first.
+
+## Examples
 
 Condensed from a full review of a v0-generated analytics dashboard; the input is in `evals.md` Task 1. Match this shape and rigor.
 
@@ -131,18 +171,7 @@ _(…12 further findings in the same shape across hierarchy, typography, color, 
 2. Make export real: one clearly primary "Export report" action with a loading state for the 3s call and visible success confirmation; kill or demote the three ambiguous per-card gradient buttons; bring the button to ≥ 44px.
 3. Fix the color foundation: neutral page background (60/30/10) and raise all `text-gray-400` text to ≥ 4.5:1 (`text-gray-600`+ on white; same-hue light tint, not grey, on any colored surface).
 
-## Guardrails
-
-- A finding without evidence is not a finding — if it cannot be tied to a specific component, class, region, or coordinate, do not include it.
-- Do not assign severity without referencing the rubric.
-- Do not over-index on personal taste. Tie each issue to comprehension, task completion, confidence, accessibility, or maintainability.
-- Do not recommend decorative gradients, extra cards, or ornamental effects as the first fix — subtraction beats addition.
-- Do not make every element the same visual weight, and do not stack contrast levers to make everything important.
-- Do not allow off-scale spacing or font-size values, and do not assume desktop spacing works on mobile.
-- Do not remove labels from unfamiliar icon-only controls without adding tooltips.
-- Do not produce findings for areas 1–11 without loading the matching reference module first.
-
-## Notes
+## Provenance
 
 - Reference modules: `ui_ux_quality_review.foundation_checks` (areas 1–6), `ui_ux_quality_review.polish_and_fit_checks` (areas 7–11), `ui_ux_quality_review.ai_ui_smoke_test` (AI-slop fingerprints).
 - Primary sources: Kole Jain (beginner mistakes, UI/UX concepts), DesignSpo (visual hierarchy, typography, color theory, 4-pixel golden rule), Nesrine Changuel (delight framework, consumed via `delightful_product_review`).

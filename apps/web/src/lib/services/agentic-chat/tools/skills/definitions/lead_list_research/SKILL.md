@@ -6,6 +6,9 @@ description: >-
     prospect fit with explained reasons, finding buyer personas, enriching contacts, or
     cleaning a noisy list into a repeatable outbound campaign source. Feeds the cold email
     outreach suite.
+skill_type: procedure # procedure | strategy | reference | resource | policy | orchestration
+altitude: domain # task | domain | meta
+activation: progressive # always_on | progressive | invoked
 preserve_markdown: true
 legacy_paths:
     - lead-list-research-with-claude-code
@@ -16,11 +19,20 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/lead_list_
 
 # Lead List Research
 
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Provenance.
+  This file is skill_type: procedure, so the Procedure (the annealing loop) carries the weight; Judgment
+  holds the scoring/persona/human-in-the-loop rubrics; Routing is a thin downstream handoff map.
+-->
+
+## Identity
+
 Use this skill to build a qualified lead list through iterative agentic research, scoring, exclusions, and contact sourcing. The goal is not to automate judgment away. The goal is to coordinate research passes, tools, and human review until the list reflects a real market opinion. The technique is tool-agnostic: it works with web search, CRM exports, enrichment tools, or spreadsheets.
 
-This skill produces the list. It does not write the outreach — segment and signal grading escalates to `cold_email_icp_signal_design`, and per-contact research for high-value targets escalates to `cold_email_research_anchors`.
+This is a **procedure** skill at **domain** altitude. This skill produces the list. It does not write the outreach — downstream ownership (segment/signal grading, per-contact research) is declared in **Routing**.
 
-## When to Use
+## Activation
 
 - Build an account list from a target market or lookalike customer
 - Turn closed-won customers into an ICP search pattern
@@ -31,17 +43,37 @@ This skill produces the list. It does not write the outreach — segment and sig
 
 Do not use this skill when the user only needs a simple contact lookup, a generic scraping job, or a list with no qualification criteria.
 
-## Inputs
+## Judgment
 
-- Offer or product being sold
-- Target market hypothesis
-- Closed-won examples or ideal customer URLs if available
-- Firmographic limits such as geography, employee count, stage, industry, or budget
-- Exclusion patterns from prior bad lists
-- Contact persona assumptions
-- Source tools available, such as search, CRM export, enrichment CLI, or spreadsheet
+### ICP Scoring Rules
 
-## Workflow
+- Score the account, not just the industry label.
+- Require a short reason for every score.
+- Treat 7+ as qualified only if the user agrees.
+- Track false positives and update exclusions.
+- Use homepage evidence when categories are ambiguous.
+- Watch for agencies, resellers, consultants, media sites, marketplaces, wholesalers, and enterprises that exceed the intended segment.
+- Do not use employee count as a universal budget proxy; some small companies are high-intent when the niche is capital-intensive.
+
+### Persona Rules
+
+- Identify likely buyers from actual company patterns, not generic title lists.
+- Split personas into tiers such as owner/founder, operator, technical lead, revenue leader, or department head.
+- Account for company size: founder at small orgs, VP or director at larger orgs.
+- Avoid seniority as the only selector. Titles vary by market.
+- Always get at least one plausible contact per qualified account when possible.
+
+### Human In The Loop
+
+Ask for user judgment when:
+
+- The exclusion rule could remove valid accounts
+- The market has several plausible subsegments
+- The account fit depends on hidden budget or timing
+- The scoring prompt returns high confidence for examples the user dislikes
+- The list is being used for paid sending or high-volume outbound
+
+## Procedure
 
 1. **Start from the market thesis.** Restate what the user believes is true about the target market and why those accounts may buy.
 2. **Find candidate accounts.** Use lookalikes, category search, domain search, directories, maps, or CRM patterns. Keep the first pull broad enough to expose noise.
@@ -52,37 +84,19 @@ Do not use this skill when the user only needs a simple contact lookup, a generi
 7. **Source contacts by persona tier.** Identify likely titles by inspecting real companies. Use role tiers instead of seniority alone.
 8. **Make enrichments durable.** Save progress as rows are found so partial failures do not erase the run.
 9. **Review the finished list.** Summarize total accounts, qualified accounts, contacts found, reasons for qualification, and remaining noise risks.
-10. **Hand off.** If the list feeds cold outreach, route the segment to `cold_email_icp_signal_design` for signal grading, MVS, and committee mapping before anything is sent.
+10. **Hand off.** If the list feeds cold outreach, route the segment to `cold_email_icp_signal_design` for signal grading, MVS, and committee mapping before anything is sent. → `cold_email_icp_signal_design`
 
-## ICP Scoring Rules
+## Routing
 
-- Score the account, not just the industry label.
-- Require a short reason for every score.
-- Treat 7+ as qualified only if the user agrees.
-- Track false positives and update exclusions.
-- Use homepage evidence when categories are ambiguous.
-- Watch for agencies, resellers, consultants, media sites, marketplaces, wholesalers, and enterprises that exceed the intended segment.
-- Do not use employee count as a universal budget proxy; some small companies are high-intent when the niche is capital-intensive.
+This skill produces the list, then routes downstream — it does not own the outreach layer. One concept, one owner.
 
-## Persona Rules
+| Handoff                                          | Downstream owner                       | Owns                                  |
+| ------------------------------------------------ | -------------------------------------- | ------------------------------------- |
+| Segment / signal grading before anything is sent | `cold_email_icp_signal_design`         | signal scoring, MVS, buying committee |
+| Per-contact research for high-value targets      | `cold_email_research_anchors`          | single-target research anchors        |
+| Root outreach workflow                           | `cold_email_engagement_first_outreach` | root outreach workflow                |
 
-- Identify likely buyers from actual company patterns, not generic title lists.
-- Split personas into tiers such as owner/founder, operator, technical lead, revenue leader, or department head.
-- Account for company size: founder at small orgs, VP or director at larger orgs.
-- Avoid seniority as the only selector. Titles vary by market.
-- Always get at least one plausible contact per qualified account when possible.
-
-## Human In The Loop
-
-Ask for user judgment when:
-
-- The exclusion rule could remove valid accounts
-- The market has several plausible subsegments
-- The account fit depends on hidden budget or timing
-- The scoring prompt returns high confidence for examples the user dislikes
-- The list is being used for paid sending or high-volume outbound
-
-## Output
+## Contract
 
 Return:
 
@@ -97,7 +111,7 @@ Return:
 - examples of accepted and rejected accounts
 - recommended next test
 
-## Guardrails
+## Policy
 
 - Do not scale a scoring prompt that has not been spot-checked on a small sample.
 - Do not present an account as qualified without a stated reason.
@@ -107,8 +121,19 @@ Return:
 - Do not draft outreach copy or grade buying signals here — escalate to the `cold_email_engagement_first_outreach` suite (`cold_email_icp_signal_design` for segment/signal/committee, `cold_email_research_anchors` for per-contact anchors).
 - Do not ship a list for paid sending or high-volume outbound without explicit user sign-off.
 
-## Notes
+## Knowledge
 
-- Downstream skills: `cold_email_icp_signal_design` (signal scoring, MVS, buying committee), `cold_email_research_anchors` (single-target research anchors), `cold_email_engagement_first_outreach` (root outreach workflow).
-- Primary source: Mitchell Keller, "Building Perfect Lead Lists With Claude Code" — the agentic annealing loop (broad pull → inspect → tighten → score → spot-check → scale) generalizes to any capable research agent.
-- Maintainers: the canonical research draft with full lineage lives at `docs/research/youtube-library/skill-drafts/lead-list-research-with-claude-code/` (not available at runtime).
+### Inputs
+
+- Offer or product being sold
+- Target market hypothesis
+- Closed-won examples or ideal customer URLs if available
+- Firmographic limits such as geography, employee count, stage, industry, or budget
+- Exclusion patterns from prior bad lists
+- Contact persona assumptions
+- Source tools available, such as search, CRM export, enrichment CLI, or spreadsheet
+
+## Provenance
+
+- **Primary source:** [PRIMARY] Mitchell Keller, "Building Perfect Lead Lists With Claude Code" — the agentic annealing loop (broad pull → inspect → tighten → score → spot-check → scale) generalizes to any capable research agent.
+- **Maintainers:** the canonical research draft with full lineage lives at `docs/research/youtube-library/skill-drafts/lead-list-research-with-claude-code/` (not available at runtime).

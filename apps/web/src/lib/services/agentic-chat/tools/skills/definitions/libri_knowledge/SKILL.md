@@ -1,6 +1,10 @@
 ---
 name: Libri Knowledge
 description: Libri is BuildOS's connected durable library and enrichment system; use this playbook for Libri access questions, stable people or author knowledge, books, categories, authors, and ingested YouTube videos before generic web search.
+skill_type: procedure # procedure | strategy | reference | resource | policy | orchestration
+altitude: domain # task | domain | meta
+activation: progressive # always_on | progressive | invoked
+preserve_markdown: true
 legacy_paths:
     - libri
     - libri.skill
@@ -12,9 +16,24 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/libri_know
 
 # Libri Knowledge
 
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Related Tools → Examples → Provenance.
+  This file is skill_type: procedure. The inventory suggested `reference`, but the body's status-handling
+  Workflow is a genuine ordered runbook, and the reference matrix forbids Procedure/Judgment/Routing. The
+  dominant verb is *do* (answer-this-way, call-this-tool, handle-this-status), so the legal type is procedure.
+  The reference flavor survives as the Knowledge block (the Query Patterns tool-call catalog). This skill
+  routes only to TOOLS (resolve_libri_resource, query_libri_library, web_search), not to sibling skills, so
+  there is no Routing block — tool calls stay inline in Procedure as the actions the runbook performs.
+-->
+
+## Identity
+
 Libri is the durable library and enrichment system connected to BuildOS. BuildOS owns project context and agent orchestration; Libri owns library entities, enrichment state, research jobs, transcripts, book data, and librarian workflows.
 
-## When to Use
+This is a **procedure** skill at **domain** altitude: a runbook for answering Libri access, stable people/author, and library-inventory questions using Libri's resolver and library-query tools.
+
+## Activation
 
 - The user asks whether BuildOS has access to Libri or what Libri is.
 - The user asks for stable information about a person, author, or thinker.
@@ -23,7 +42,7 @@ Libri is the durable library and enrichment system connected to BuildOS. BuildOS
 - The user asks for top books in a category, books by genre/domain, or a structured Libri inventory/list.
 - A project conversation needs durable background knowledge about a person without making BuildOS store a copy of Libri data.
 
-## Workflow
+## Procedure
 
 1. For "Do you have access to Libri?" or "What is Libri?", answer directly that Libri is BuildOS's connected library/enrichment system when the integration is enabled.
 2. For stable person or author questions where Libri may need to create/enrich a missing person, call `resolve_libri_resource` before generic `web_search`.
@@ -34,7 +53,22 @@ Libri is the durable library and enrichment system connected to BuildOS. BuildOS
 7. If Libri returns `configuration_error`, `resolver_unavailable`, or `error`, explain the structured status without exposing secrets or falling back into legacy enqueue behavior.
 8. Use `web_search` first for latest/current/news/live facts, prices, laws, schedules, scores, or facts that depend on today's web.
 
-## Query Patterns
+## Contract
+
+- BuildOS should treat Libri responses as structured tool results and let the final response layer choose user-facing phrasing.
+
+## Policy
+
+- `resolve_libri_resource` is enqueue-capable for people/authors. `query_libri_library` is read-only and should not be described as starting research.
+- Do not expose Libri through the external agent-call gateway in this slice.
+- Do not silently fall back to legacy Libri search-plus-ingestion behavior.
+- Do not wait for enrichment jobs to finish.
+- Never include `LIBRI_API_KEY` or raw configuration errors in model-visible text.
+- If the Libri integration is disabled, say BuildOS does not currently have Libri enabled in this environment.
+
+## Knowledge
+
+Query patterns — the `query_libri_library` tool-call catalog. _Source: BuildOS-internal tool API conventions (`internal-default`); no external source._
 
 - Library overview: `query_libri_library({ action: "overview" })`
 - Search across library: `query_libri_library({ action: "search", query: "<text>", types: ["book", "author", "youtubeVideo"] })`
@@ -50,15 +84,6 @@ Libri is the durable library and enrichment system connected to BuildOS. BuildOS
 
 - `libri.resource.resolve`
 - `libri.library.query`
-
-## Guardrails
-
-- `resolve_libri_resource` is enqueue-capable for people/authors. `query_libri_library` is read-only and should not be described as starting research.
-- Do not expose Libri through the external agent-call gateway in this slice.
-- Do not silently fall back to legacy Libri search-plus-ingestion behavior.
-- Do not wait for enrichment jobs to finish.
-- Never include `LIBRI_API_KEY` or raw configuration errors in model-visible text.
-- If the Libri integration is disabled, say BuildOS does not currently have Libri enabled in this environment.
 
 ## Examples
 
@@ -85,7 +110,6 @@ Libri is the durable library and enrichment system connected to BuildOS. BuildOS
 - Call `query_libri_library({ action: "list_videos", limit: 25 })`.
 - Prefer title, channel, watch URL, analysis summary, topics, and transcript segment count when present.
 
-## Notes
+## Provenance
 
-- Libri is a specialized durable knowledge source, not a general replacement for web search.
-- BuildOS should treat Libri responses as structured tool results and let the final response layer choose user-facing phrasing.
+- Libri is a specialized durable knowledge source, not a general replacement for web search. (`internal-default`)

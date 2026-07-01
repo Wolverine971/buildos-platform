@@ -1,6 +1,10 @@
 ---
 name: Task Management
 description: Task workflow playbook for deciding when work should become a task and how to manage task scope, ownership, schedule, and relationships safely.
+skill_type: procedure # procedure | reference | strategy | resource | policy | orchestration
+altitude: domain # task | domain | meta
+activation: progressive # always_on | progressive | invoked
+preserve_markdown: true
 legacy_paths:
     - onto.task.skill
     - task.skill
@@ -24,9 +28,23 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/task_manag
 
 # Task Management
 
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Related Tools → Examples → Provenance.
+  This file is skill_type: procedure. Procedure carries the weight (task workflow + direct tool packaging).
+  The task-vs-do-now decision spine lives in Activation + Procedure step 1 + Policy + Examples, so no separate
+  Judgment block is broken out. The task_state_updates child is declared in frontmatter (surfaced as Child Skills),
+  so no separate Routing block is broken out. There is no external source material; Provenance holds the
+  internal-default operating principles.
+-->
+
+## Identity
+
 Task workflow playbook for deciding when work should become a task and how to manage task scope, ownership, schedule, and relationships safely.
 
-## When to Use
+This is a **procedure** skill at **domain** altitude: an operational runbook for BuildOS task operations (create, update, ownership, scheduling, containment). The deep state-mapping cases — turning progress language into safe state updates — are owned by the child skill `task_state_updates` (declared in frontmatter `child_skills`), which loads when state mapping is the main risk.
+
+## Activation
 
 - Decide whether a user request should become a task at all
 - Create a task for future human work
@@ -34,7 +52,9 @@ Task workflow playbook for deciding when work should become a task and how to ma
 - Update task state, dates, or priority
 - Place a task under the right plan, goal, or milestone
 
-## Workflow
+Escalate to the child skill `task_state_updates` when the user reports task progress, completion, or blocking and state mapping is the main risk.
+
+## Procedure
 
 1. Decide first whether this should be a tracked task or whether the work should just be done in the conversation now.
 2. If it should be a task, choose the project and the right parent context: plan, goal, milestone, or direct project scope.
@@ -46,21 +66,40 @@ Task workflow playbook for deciding when work should become a task and how to ma
 8. **State coverage.** When the user reports that real-world task work advanced (started, in progress, blocked, or finished), include `state_key` in the `update_onto_task` call alongside any description change. Do not update only the description when the task state should also move.
 9. After execution, tell the user what changed and call out any missing owner, due date, or parent relationship that still matters.
 
-## Direct Tool Packaging
+### Direct tool packaging
 
-### Part 1: Choose the dynamic op first
+#### Part 1: Choose the dynamic op first
 
 - Treat task work as two separate decisions: first choose the canonical op, then package the call.
 - Examples: use `onto.task.create` for a new tracked task, `onto.task.update` for changing an existing task, and `onto.task.list` or `onto.task.search` when the exact `task_id` is still unknown.
 - If the write shape is uncertain, call `tool_schema({ op: "<exact op>" })` before any execution attempt.
 
-### Part 2: Package the direct tool call correctly
+#### Part 2: Package the direct tool call correctly
 
 - Use the direct tool named by the op schema, for example `create_onto_task({ ... })` or `update_onto_task({ ... })`.
 - Put `task_id`, `project_id`, `title`, `state_key`, `priority`, and `description` directly in the tool arguments.
 - Correct pattern: `update_onto_task({ task_id: "<uuid>", state_key: "done" })`
 - Incorrect pattern: `update_onto_task({})`
 - If the arguments would be missing a required field, stop and resolve it with context, a read op, or one concise question instead of sending a partial write.
+
+## Contract
+
+After a task write, report in user-facing terms:
+
+- What changed: the task title and the specific fields you set (state, dates, owner, parent, priority).
+- The parent context the task now sits under (plan, goal, milestone, or direct project scope), or that it is intentionally unparented.
+- Any still-missing field that matters — owner, due date, or parent relationship — named explicitly rather than left silently blank.
+- When you decided NOT to create a task because the work is doable now in chat, say so and do the work instead.
+
+Stop conditions before replying: no write was emitted without an exact `task_id` (updates) or a concrete `title` (creates); `state_key` was included whenever real task progress moved; you have not claimed a task was created or updated until the tool call returned success.
+
+## Policy
+
+- Do not create tasks for research, analysis, brainstorming, or drafting that the agent can do now in chat.
+- Do not invent assignee IDs, handles, or project membership.
+- Do not use invalid task states such as open.
+- Do not emit update calls without an exact task_id.
+- If the request is really a goal, milestone, or plan, do not flatten it into a task just because task creation is easy.
 
 ## Related Tools
 
@@ -72,25 +111,6 @@ Task workflow playbook for deciding when work should become a task and how to ma
 - `onto.plan.get`
 - `onto.goal.get`
 - `onto.milestone.get`
-
-## Output
-
-After a task write, report in user-facing terms:
-
-- What changed: the task title and the specific fields you set (state, dates, owner, parent, priority).
-- The parent context the task now sits under (plan, goal, milestone, or direct project scope), or that it is intentionally unparented.
-- Any still-missing field that matters — owner, due date, or parent relationship — named explicitly rather than left silently blank.
-- When you decided NOT to create a task because the work is doable now in chat, say so and do the work instead.
-
-Stop conditions before replying: no write was emitted without an exact `task_id` (updates) or a concrete `title` (creates); `state_key` was included whenever real task progress moved; you have not claimed a task was created or updated until the tool call returned success.
-
-## Guardrails
-
-- Do not create tasks for research, analysis, brainstorming, or drafting that the agent can do now in chat.
-- Do not invent assignee IDs, handles, or project membership.
-- Do not use invalid task states such as open.
-- Do not emit update calls without an exact task_id.
-- If the request is really a goal, milestone, or plan, do not flatten it into a task just because task creation is easy.
 
 ## Examples
 
@@ -130,7 +150,7 @@ Stop conditions before replying: no write was emitted without an exact `task_id`
 - If you know the task from context, copy its exact `task_id` into the update call.
 - If you do not know the exact `task_id`, resolve it first or ask one concise clarifying question.
 
-## Notes
+## Provenance
 
 - Tasks are for future human work, not a transcript of what happened in chat.
 - Containment and task relationships matter. A well-placed task is usually better than a floating task with no parent context.

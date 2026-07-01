@@ -1,6 +1,9 @@
 ---
 name: Cold Email ICP and Signal Design
 description: Child skill for defining the right person, right moment, segment, buying signal, timing thesis, buying committee map, and disqualifiers before cold outreach. Returns a persona×signal×reason-now row, a graded signal scorecard, disqualifier kill-list results, and a committee map ready for the outreach compiler.
+skill_type: strategy # procedure | reference | strategy | resource | policy | orchestration
+altitude: domain # task | domain | meta
+activation: progressive # always_on | progressive | invoked
 parent_id: cold_email_engagement_first_outreach
 depth: 1
 preserve_markdown: true
@@ -47,11 +50,27 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email
 
 # Cold Email ICP and Signal Design
 
-Use this child skill when the root cold email workflow has a weak "right person" or "right moment."
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Examples → Provenance.
+  skill_type: strategy — the weight is in Judgment (the signal scorecard + disqualifier kill-list are the decision
+  spine). It also carries a strong procedural runbook (secondary: procedure). The Persona × Signal × Reason-Now
+  schema is stable declarative grounding → Knowledge. Volatile deep-dives (signal taxonomy, buying-committee map,
+  segment examples) already live in the reference modules, each self-provenanced.
+-->
+
+## Identity
+
+This is a **strategy** skill at **domain** altitude (secondary: a procedural runbook): it supplies the decision
+criteria — the graded signal scorecard, disqualifier kill-lists, and segment tiering — for qualifying a
+cold-outreach segment before any draft work, while its Procedure sequences those decisions and its reference
+modules hold the deep taxonomies.
 
 The job: turn a broad target idea into one persona × one narrowing signal with a verified timing thesis, an MVS-passing segment, a buying committee map, and a clean disqualifier run — before any anchor, offer, or draft work begins. Every approved segment ships the four artifacts named in the output contract.
 
-## When to Use
+## Activation
+
+Use this child skill when the root cold email workflow has a weak "right person" or "right moment."
 
 - The target list is broad, mixed, or based only on job titles.
 - The user cannot explain why this person should receive outreach now.
@@ -60,37 +79,11 @@ The job: turn a broad target idea into one persona × one narrowing signal with 
 - A B2B segment has no committee map and a single-contact strategy.
 - The signal is a static filter (firmographic / demographic only).
 
-## Workflow
+## Judgment
 
-1. **Fill one row of the `## Persona × Signal × Reason-Now Schema` below.** One persona, one narrowing signal, one reason-now sentence. Reject mixed-persona lists at this step — a second persona or second signal is a second row, which is a separate campaign.
-2. **Score the signal with the inline `## Signal Scoring Rubric`.** If the signal is trigger-based, or two candidate signals compete, load `cold_email_icp_signal_design.signal_scoring_rubric` to sub-classify (Holland sub-type, Elias family, Maurya switching type) before scoring. Do not start list-building below a total of 5.
-3. **Run the MVS check** — Common Needs, Dominability, Viability with MVP (Underscore VC / Skok). Reject segments that fail any of the three.
-4. **Map the buying committee.** For multi-stakeholder B2B, load `cold_email_icp_signal_design.buying_committee_map` and return the role map table: Champion, Economic Buyer, User, Blocker, Adamson class tags, Golden Path, first outreach target. For single-stakeholder modes (founder-to-founder, recruiting, PR, customer research) use the collapsed shapes in that reference's mode table — no full map needed.
-5. **Verify the timing thesis.** Cross-check the trigger with the three-taxonomy rule in the signal taxonomy reference (Holland sub-type vs Elias family vs Maurya switching type). If they disagree, the trigger is ambiguous — re-test before approving.
-6. **Name the buyer-progress thesis** (Moesta): what struggle, current workaround, or desired progress makes this signal matter now. This is the substance behind the reason-now column.
-7. **Tier the segment** (Mark Roberge): Green (PMF measured), Yellow (experiment only), Red (do not write). Reject Red segments. Run Yellow segments only as one-variable experiments.
-8. **Run the inline `## Disqualifier Kill-List`.** Any NO in the hard-kill table blocks campaign mode and sends the segment back to research. Any NO in the downgrade table converts the campaign to a low-volume one-variable experiment.
-9. **Return the four artifacts and the verdict** per the output contract: persona×signal×reason-now row, signal scorecard, kill-list results, committee map.
+The decision spine. When the Procedure branches, this is what you reason with.
 
-## Persona × Signal × Reason-Now Schema
-
-The skill's core deliverable. Fill in one row per campaign — one row = one campaign, always.
-
-Template (every cell is required; an empty cell blocks the segment):
-
-| Column     | Fill in                                                                                     | Validity rule                                                                                                       |
-| ---------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Persona    | One role + seniority + tenure band + company filters                                        | More than one persona → split into separate rows/campaigns.                                                         |
-| Signal     | One observable event + at least one verifiable external source + date observed              | No verifiable source → row invalid. Static filters (industry, title) are not signals.                               |
-| Reason-Now | Complete the sentence: "[signal] means [pain] means [action] is on the table this quarter." | If the sentence cannot be completed honestly, the segment is not approved. No stacked inferences (one hop maximum). |
-
-Completed example row:
-
-| Persona                                                                         | Signal                                                                                                               | Reason-Now                                                                                                                                                                                                         |
-| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| CTO, hired in last 30–60 days, at Series A B2B SaaS, 30–150 employees, US-based | CTO joined within the last 30–60 days — source: LinkedIn job-change notification + press release, observed this week | New-in-role exec window (~70% of budget spent in first 100 days — Florin Tatulea, practitioner data) means they are auditing the stack with a political mandate, so a tooling change is on the table this quarter. |
-
-## Signal Scoring Rubric
+### Signal Scoring Rubric
 
 Score the row's signal before any list-building. Two layers: type strength, then the four-dimension scorecard.
 
@@ -118,7 +111,7 @@ Score the row's signal before any list-building. Two layers: type strength, then
 - 5–6 → `volume_approved`. List-building may begin.
 - 7–8 → `high_conviction`. Manual per-account outreach and a Mafia-Offer-quality hook; do not waste it on volume automation.
 
-## Disqualifier Kill-List
+### Disqualifier Kill-List
 
 Binary kill-questions. Run every candidate segment through both tables after scoring.
 
@@ -157,7 +150,27 @@ Binary kill-questions. Run every candidate segment through both tables after sco
 | 24  | Persona | Does the segment lead with a switching trigger and desired outcome rather than demographics (Maurya)?       |
 | 25  | Persona | Are the current solution and its pet peeves / workarounds / struggling moments named?                       |
 
-## Output Contract
+## Procedure
+
+1. **Fill one row of the `## Persona × Signal × Reason-Now Schema` below.** One persona, one narrowing signal, one reason-now sentence. Reject mixed-persona lists at this step — a second persona or second signal is a second row, which is a separate campaign.
+2. **Score the signal with the inline `## Signal Scoring Rubric`.** If the signal is trigger-based, or two candidate signals compete, load `cold_email_icp_signal_design.signal_scoring_rubric` to sub-classify (Holland sub-type, Elias family, Maurya switching type) before scoring. Do not start list-building below a total of 5.
+3. **Run the MVS check** — Common Needs, Dominability, Viability with MVP (Underscore VC / Skok). Reject segments that fail any of the three.
+4. **Map the buying committee.** For multi-stakeholder B2B, load `cold_email_icp_signal_design.buying_committee_map` and return the role map table: Champion, Economic Buyer, User, Blocker, Adamson class tags, Golden Path, first outreach target. For single-stakeholder modes (founder-to-founder, recruiting, PR, customer research) use the collapsed shapes in that reference's mode table — no full map needed.
+5. **Verify the timing thesis.** Cross-check the trigger with the three-taxonomy rule in the signal taxonomy reference (Holland sub-type vs Elias family vs Maurya switching type). If they disagree, the trigger is ambiguous — re-test before approving.
+6. **Name the buyer-progress thesis** (Moesta): what struggle, current workaround, or desired progress makes this signal matter now. This is the substance behind the reason-now column.
+7. **Tier the segment** (Mark Roberge): Green (PMF measured), Yellow (experiment only), Red (do not write). Reject Red segments. Run Yellow segments only as one-variable experiments.
+8. **Run the inline `## Disqualifier Kill-List`.** Any NO in the hard-kill table blocks campaign mode and sends the segment back to research. Any NO in the downgrade table converts the campaign to a low-volume one-variable experiment.
+9. **Return the four artifacts and the verdict** per the output contract: persona×signal×reason-now row, signal scorecard, kill-list results, committee map.
+
+## Routing
+
+When this skill returns, the root cold email workflow should pick up at the next stage:
+
+- If the segment passes with `volume_approved` or `high_conviction`: route to `cold_email_offer_lab` (if offer is weak) or `cold_email_outreach_compiler` (if offer is ready).
+- If the segment passes with `low_volume_test_only`: route to `cold_email_outreach_compiler` with mode set to single-variable experiment.
+- If the segment fails: return the kill-list results and open questions to the user. Do not pretend the segment is shippable.
+
+## Contract
 
 Deliverables — every approved segment returns all four artifacts: (1) the completed persona×signal×reason-now row, (2) the signal scorecard with total and verdict, (3) the disqualifier kill-list results, (4) the buying committee map (full for multi-stakeholder B2B; collapsed shape otherwise).
 
@@ -205,7 +218,7 @@ offerlab_prompt: optional follow-up if the offer is still unclear
 
 Stop conditions: stop and return immediately when (a) the persona×signal×reason-now row cannot be completed, (b) the scorecard total is ≤ 2, or (c) any hard-kill question fails — do not continue polishing a dead segment.
 
-## Guardrails
+## Policy
 
 - Do not approve a mixed-persona list.
 - Do not treat title match as timing.
@@ -219,13 +232,25 @@ Stop conditions: stop and return immediately when (a) the persona×signal×reaso
 - Do not run a campaign-mode plan on a Yellow segment — convert to a one-variable experiment.
 - Do not skip the McMahon three-test on the champion role for high-value strategic outreach.
 
-## Routing Back to the Root
+## Knowledge
 
-When this skill returns, the root cold email workflow should pick up at the next stage:
+### Persona × Signal × Reason-Now Schema
 
-- If the segment passes with `volume_approved` or `high_conviction`: route to `cold_email_offer_lab` (if offer is weak) or `cold_email_outreach_compiler` (if offer is ready).
-- If the segment passes with `low_volume_test_only`: route to `cold_email_outreach_compiler` with mode set to single-variable experiment.
-- If the segment fails: return the kill-list results and open questions to the user. Do not pretend the segment is shippable.
+The skill's core deliverable. Fill in one row per campaign — one row = one campaign, always.
+
+Template (every cell is required; an empty cell blocks the segment):
+
+| Column     | Fill in                                                                                     | Validity rule                                                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Persona    | One role + seniority + tenure band + company filters                                        | More than one persona → split into separate rows/campaigns.                                                         |
+| Signal     | One observable event + at least one verifiable external source + date observed              | No verifiable source → row invalid. Static filters (industry, title) are not signals.                               |
+| Reason-Now | Complete the sentence: "[signal] means [pain] means [action] is on the table this quarter." | If the sentence cannot be completed honestly, the segment is not approved. No stacked inferences (one hop maximum). |
+
+Completed example row:
+
+| Persona                                                                         | Signal                                                                                                               | Reason-Now                                                                                                                                                                                                         |
+| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| CTO, hired in last 30–60 days, at Series A B2B SaaS, 30–150 employees, US-based | CTO joined within the last 30–60 days — source: LinkedIn job-change notification + press release, observed this week | New-in-role exec window (~70% of budget spent in first 100 days — Florin Tatulea, practitioner data) means they are auditing the stack with a political mandate, so a tooling change is on the table this quarter. |
 
 ## Examples
 
@@ -253,20 +278,20 @@ When this skill returns, the root cold email workflow should pick up at the next
 - Recommend manual outreach per account, not volume automation.
 - Suggest a Mafia-Offer-quality hook and Top-Down Golden Path.
 
-## Source Lineage
+## Provenance
 
 This skill draws from:
 
-- **Ash Maurya** — switching-trigger taxonomy (bad experience / change in circumstance / awareness event), job-based ICP (trigger × outcome × current solution), three-bucket interview extraction.
-- **Craig Elias** — A/B/C trigger families, first-in 75% win advantage, three-event buying model, monitoring surfaces.
-- **Becc Holland** — four-type relevance taxonomy (firmographic / demographic / technographic / trigger-based), three trigger sub-types (inbound / postbound / bridgebound), "send to two people" test.
-- **Lincoln Murphy** — seven ICP dimensions (Ready / Willing / Able / Success Potential / Acquisition / Ascension / Advocacy), six fit types.
-- **Mark Roberge** — Leading Indicator of Retention formula, Green/Yellow/Red segment tiering, Quality × Engagement grid.
-- **Underscore VC / Michael Skok** — Minimum Viable Segment (Common Needs / Dominability / Viability).
-- **30MPC + Brent Adamson + John McMahon + Gartner** — buying committee map, Golden Path, Mobilizer/Talker/Blocker, McMahon Champion test, 6.8-buyer committee data.
-- **Jen Abel** — no-mid-market rule, tier-1 logos as early adopters, discounting as inverted disqualifier signal.
-- **April Dunford** — alternatives-naming, trade-off-led positioning as input to segment definition.
-- **Bob Moesta** — buyer progress, struggling moments, current workaround, and demand-side timing.
-- **Rob Fitzpatrick** — false-positive avoidance and past-behavior evidence for research-mode outreach.
+- `[PRIMARY]` **Ash Maurya** — switching-trigger taxonomy (bad experience / change in circumstance / awareness event), job-based ICP (trigger × outcome × current solution), three-bucket interview extraction.
+- `[PRIMARY]` **Craig Elias** — A/B/C trigger families, first-in 75% win advantage, three-event buying model, monitoring surfaces.
+- `[PRIMARY]` **Becc Holland** — four-type relevance taxonomy (firmographic / demographic / technographic / trigger-based), three trigger sub-types (inbound / postbound / bridgebound), "send to two people" test.
+- `[PRIMARY]` **Lincoln Murphy** — seven ICP dimensions (Ready / Willing / Able / Success Potential / Acquisition / Ascension / Advocacy), six fit types.
+- `[PRIMARY]` **Mark Roberge** — Leading Indicator of Retention formula, Green/Yellow/Red segment tiering, Quality × Engagement grid.
+- `[PRIMARY]` **Underscore VC / Michael Skok** — Minimum Viable Segment (Common Needs / Dominability / Viability).
+- `[PRIMARY]` **30MPC + Brent Adamson + John McMahon + Gartner** — buying committee map, Golden Path, Mobilizer/Talker/Blocker, McMahon Champion test, 6.8-buyer committee data.
+- `[PRIMARY]` **Jen Abel** — no-mid-market rule, tier-1 logos as early adopters, discounting as inverted disqualifier signal.
+- `[PRIMARY]` **April Dunford** — alternatives-naming, trade-off-led positioning as input to segment definition.
+- `[PRIMARY]` **Bob Moesta** — buyer progress, struggling moments, current workaround, and demand-side timing.
+- `[PRIMARY]` **Rob Fitzpatrick** — false-positive avoidance and past-behavior evidence for research-mode outreach.
 
-Scorecard point bands, the ≥5 list-building threshold, and freshness day-windows are internal defaults (assembled, not sourced). Full provenance is in the source analyses under `apps/web/src/content/blogs/source-analyses/` and the root [source-map.md](../cold_email_engagement_first_outreach/references/source-map.md).
+Scorecard point bands, the ≥5 list-building threshold, and freshness day-windows are internal defaults (assembled, not sourced). `[internal-default]` Full provenance is in the source analyses under `apps/web/src/content/blogs/source-analyses/` and the root [source-map.md](../cold_email_engagement_first_outreach/references/source-map.md).

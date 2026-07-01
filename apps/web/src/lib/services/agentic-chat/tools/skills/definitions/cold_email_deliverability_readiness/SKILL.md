@@ -1,6 +1,10 @@
 ---
 name: Cold Email Deliverability Readiness
 description: Child skill for checking sender trust, cold-domain readiness, inbox caps, warmup, bounce risk, and complaint safeguards before scaled cold outreach.
+skill_type: procedure # procedure | reference | strategy | resource | policy | orchestration
+altitude: task # task | domain | meta
+activation: progressive # always_on | progressive | invoked
+preserve_markdown: true
 parent_id: cold_email_engagement_first_outreach
 depth: 1
 legacy_paths:
@@ -19,9 +23,23 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email
 
 # Cold Email Deliverability Readiness
 
-Use this child skill when scaled sending, cold domains, inbox health, or low opens matter.
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Provenance.
+  This file is skill_type: procedure, so Procedure carries the weight; Activation, Contract, and Policy
+  round it out. No siblings are routed to, so there is no Routing block; volatile provider/compliance gates
+  live in the reference module (references/provider-requirement-matrix.md), not in this file.
+-->
 
-## When to Use
+## Identity
+
+Sender-trust and deliverability gate run before scaled cold outreach. This is a **procedure** skill at **task**
+altitude, operating as a child of `cold_email_engagement_first_outreach`. Use this child skill when scaled
+sending, cold domains, inbox health, or low opens matter. It checks sender trust, cold-domain readiness, inbox
+caps, warmup, bounce risk, and complaint safeguards, then returns a pass / blocked / manual-only readiness
+decision with the required fixes before scale.
+
+## Activation
 
 - The user wants to send at volume
 - Sending domains or inboxes are new
@@ -29,7 +47,7 @@ Use this child skill when scaled sending, cold domains, inbox health, or low ope
 - Open rate dropped or replies disappeared
 - The campaign may exceed manual one-off sending
 
-## Workflow
+## Procedure
 
 1. Identify sender identity, domains, inboxes, and planned volume.
 2. Load `references/provider-requirement-matrix.md` when making a scaled-send readiness decision.
@@ -38,7 +56,7 @@ Use this child skill when scaled sending, cold domains, inbox health, or low ope
 5. Decide status: pass, blocked, or manual-only.
 6. Return required fixes before scale.
 
-## Output Contract
+## Contract
 
 - Status
 - Domain/inbox inventory
@@ -49,7 +67,7 @@ Use this child skill when scaled sending, cold domains, inbox health, or low ope
 - Required fixes
 - Manual-only recommendation if needed
 
-## Guardrails
+## Policy
 
 - Do not recommend volume sending without verified sender health.
 - Do not increase volume to fix low replies.

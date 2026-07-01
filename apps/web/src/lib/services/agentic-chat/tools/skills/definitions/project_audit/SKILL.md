@@ -1,6 +1,10 @@
 ---
 name: Project Audit
 description: Project-scoped audit playbook for evaluating structure, documentation, timeline realism, velocity, loose work, duplication, blockers, and strategic gaps while staying in project context.
+skill_type: strategy # procedure | strategy | reference | resource | policy | orchestration
+altitude: domain # task | domain | meta
+activation: progressive # always_on | progressive | invoked
+preserve_markdown: true # serve the raw body so Identity/Judgment reach the model verbatim (§8.5)
 legacy_paths:
     - project.audit.skill
     - project.audit
@@ -12,9 +16,25 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/project_au
 
 # Project Audit
 
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Related Tools → Examples → Provenance.
+  This file is skill_type: strategy: Judgment holds the decision spine, Procedure the ordered audit read, and the
+  Contract the required readout shape. Routing is omitted (no named sibling owner — post-audit fixes escalate
+  generically to "the appropriate write skill"). Knowledge is omitted here: the ideal project → goal →
+  milestone → plan → task chain stays embedded in Activation/Procedure and is a shared reference-extraction
+  candidate (cluster AC), not duplicated into a standalone block.
+-->
+
+## Identity
+
 Project-scoped audit playbook for evaluating structure, documentation, timeline realism, velocity, loose work, duplication, blockers, and strategic gaps while staying in project context.
 
-## When to Use
+This is a **strategy** skill at **domain** altitude. An audit is fundamentally evaluative — it decides what is healthy, thin, stale, duplicated, or at risk, and ranks findings by severity — so its weight sits in **Judgment** and the **Contract**, with the **Procedure** supplying the ordered read.
+
+<!-- Secondary type: procedure — it carries a real ordered audit workflow, which the strategy matrix permits as an optional block. Not a split. -->
+
+## Activation
 
 - The context type is `project` and the user asks to audit, review, stress-test, inspect health, find gaps, or look for blockers
 - You need to assess whether the ideal project structure is being maintained: project -> goals -> milestones/sub-goals -> plans -> linked tasks, with documents supporting the strategy and knowledge layer
@@ -22,7 +42,15 @@ Project-scoped audit playbook for evaluating structure, documentation, timeline 
 - The user asks for a critical read without immediately asking you to change project data
 - You need evidence-based recommendations before deciding whether any cleanup work is warranted
 
-## Workflow
+## Judgment
+
+The decision spine for reading a project critically.
+
+- A project audit is an analysis workflow, not a separate chat context.
+- Context snapshots can be intentionally limited. Fetch more before making strong "all clear" or "nothing exists" claims.
+- The best audits synthesize the whole project, not just a list of defects. Explain the shape of the project and why the issues matter.
+
+## Procedure
 
 1. Keep the chat in `project` context. Do not switch to a `project_audit` context type.
 2. Start from the current project scope and reuse the in-context project_id when available.
@@ -39,19 +67,7 @@ Project-scoped audit playbook for evaluating structure, documentation, timeline 
 13. Separate observations from recommendations: first report what is true, then suggest what should change.
 14. If the user asks you to fix issues after the audit, switch from analysis to the appropriate write skill, then use `tool_schema` before uncertain writes.
 
-## Related Tools
-
-- `util.project.overview`
-- `onto.project.graph.get`
-- `onto.task.list`
-- `onto.goal.list`
-- `onto.plan.list`
-- `onto.milestone.list`
-- `onto.risk.list`
-- `onto.document.tree.get`
-- `cal.event.list`
-
-## Output
+## Contract
 
 Return the audit as a structured readout, not a flat defect list:
 
@@ -64,7 +80,9 @@ Return the audit as a structured readout, not a flat defect list:
 
 Stop conditions before replying: every material finding cites visible evidence, not generic project-management advice; confirmed blockers are separated from inferred risks; no "all clear" or "nothing exists" claim is made without having fetched enough data to support it; observations are reported before recommendations.
 
-## Guardrails
+Good audit output usually has: executive readout, strongest findings, evidence, timeline/velocity assessment, structural gaps, documentation gaps, and prioritized next corrections.
+
+## Policy
 
 - Do not claim an audit is exhaustive unless you actually fetched enough targeted data to support that claim.
 - Do not mutate project data by default during an audit.
@@ -74,6 +92,18 @@ Stop conditions before replying: every material finding cites visible evidence, 
 - Do not force every task into a hierarchy. Some one-off tasks are legitimate, but name them as one-off work and explain whether that helps or hurts project clarity.
 - Do not treat missing documentation as automatically bad. Explain what decision, strategy, or execution risk the missing document creates.
 - Do not overstate velocity if completion history, update history, or reschedule history is unavailable.
+
+## Related Tools
+
+- `util.project.overview`
+- `onto.project.graph.get`
+- `onto.task.list`
+- `onto.goal.list`
+- `onto.plan.list`
+- `onto.milestone.list`
+- `onto.risk.list`
+- `onto.document.tree.get`
+- `cal.event.list`
 
 ## Examples
 
@@ -103,9 +133,6 @@ Stop conditions before replying: every material finding cites visible evidence, 
 - Flag goals that need a strategy, research, brief, requirements, or decision document before execution can improve.
 - Prioritize documentation gaps that block action or create repeated confusion.
 
-## Notes
+## Provenance
 
-- A project audit is an analysis workflow, not a separate chat context.
-- Context snapshots can be intentionally limited. Fetch more before making strong "all clear" or "nothing exists" claims.
-- The best audits synthesize the whole project, not just a list of defects. Explain the shape of the project and why the issues matter.
-- Good audit output usually has: executive readout, strongest findings, evidence, timeline/velocity assessment, structural gaps, documentation gaps, and prioritized next corrections.
+- **internal-default** — BuildOS's own project-audit playbook; no external source is cited by this skill. No REMOVED/CORRECTED audit trail exists for it.

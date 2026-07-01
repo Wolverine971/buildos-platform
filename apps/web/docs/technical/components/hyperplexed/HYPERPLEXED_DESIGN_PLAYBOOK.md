@@ -76,6 +76,32 @@ Each item is a recurring, named complaint from the redesign videos. These are th
       into one **"Filters" button that expands**, with **selected-state chips** below it.
 - [ ] **Merge duplicate paths.** Two buttons that go to the same screen → one. Remove redundant tabs/text/labels.
 - [ ] **Chips beat tabs+scroll-arrows** for filter sets — "a lot cleaner."
+- [ ] **Hiding it admits it doesn't fit.** Don't tuck primary actions into a drawer/menu when they'd fit in the
+      layout: "by default you hide your quick actions in a drawer… you are literally saying these items don't
+      fit here normally but we're gonna stuff them in anyways" (Costco). If it's important enough to exist,
+      find it a home in the flow — the drawer is for genuine overflow, not for dodging a layout problem.
+- [ ] **Right component, wrong context is still a defect.** A well-designed section can fail purely by placement:
+      "I appreciate your welcome sign… but I'm not on your home page, nor am I at the top of your page — this
+      just feels out of place." Grade every element against _where it appears_, not just how it looks.
+
+### Labels & microcopy (copy is part of the UI)
+
+He treats copy as a design surface in nearly every redesign — rename before you restyle.
+
+- [ ] **A label says exactly what the thing is, in the fewest unambiguous words.** "Call it like it is — it's a
+      where, a how, and a when… keep it stupid simple" (Domino's section renames). "RT Podcast" → "Podcast",
+      "TV Shows" → "TV" — shorten until just before ambiguity.
+- [ ] **Vague friendliness loses to plain naming.** "Welcome" section → "My Account" (Costco). If a user can't
+      predict what's inside from the label, the label failed.
+- [ ] **Show the identifying information, not the incidental.** Google shortcut labels: the useful content is
+      the bare domain (`twitter.com`) plus the page name — not a truncated `https://…` page title. Pick what
+      the user actually scans for and display that.
+- [ ] **Watch accidental adjacency readings.** Neighboring text can concatenate into something unintended:
+      "spend and get" next to "extended" reads "spend and get extended" — off-putting. Read every label in
+      context with its neighbors.
+- [ ] **Renaming can dissolve a layout problem.** Several of his "redesigns" are really renames — a clearer,
+      shorter label removed the wrap, the crowding, or the need for an explanatory element entirely. Try the
+      copy fix before the CSS fix.
 
 ### Color & icons
 
@@ -90,6 +116,10 @@ Each item is a recurring, named complaint from the redesign videos. These are th
 - [ ] **Contrast for overlaid text.** Text on an image needs a darken/scrim behind it.
 - [ ] **No too-bright text on a clashing background** ("extraordinarily bright and difficult to read").
 - [ ] **Let images own their space**, overlap info on a scrim, and carve out space for action buttons within the image.
+- [ ] **Cards carry data in a fixed priority order, and cap the noise.** His Steam card: title → **max three
+      tags** → price → rating; everything else has to earn its space. Ragged, cut-off text at varying lengths
+      plus a centered price with discount noise above/below it = the "cluttered" feel. Decide the order once,
+      cap list-y metadata, and enforce it across every card of that type.
 
 ### Overflow & responsiveness (never leave it to chance)
 
@@ -115,6 +145,18 @@ From the effect tutorials and his most mature (2026) bad-UI/UX videos.
   `getBoundingClientRect()` on `mousemove` into CSS custom props, opacity transitioned in/out (~500ms). The
   **1px lit border** is faked by exposing a sliver around opaque content via z-index — and **neighboring cards
   react too**, driven by a single listener on the wrapper.
+- **The "magic slider" — his most reusable interaction primitive.** Convert the pointer's position into a
+  0→1 percentage of a container (`(x - rect.left) / rect.width`), then map that percentage onto _any_
+  property range: wand rotation (−10°→+10°), reveal opacity (0→1), blur (1→0). "We've converted our entire
+  screen to a range slider without actually requiring a range slider." One listener, one percentage, N
+  properties — this is the skeleton under the wand, the glow, and the reveal effects.
+- **Layout decision rule: flexbox for one dimension, grid for two.** His stated adage — a row or a column is
+  flex; rows _and_ columns together are grid. He applies it per-region, including nested regions inside one card.
+- **Surface a snapshot of a deeper page where the user already is.** The Domino's order-tracker gets a live
+  snapshot version right inside the menu — the full page still exists, but the glanceable state comes to you.
+  (Same instinct as selected-filter chips: show the state without the trip.)
+- **Transitions earn the polish label too.** Menu open on Domino's: blur the background content and scale it
+  up slightly behind the panel — depth without an opaque overlay. Cheap, and it makes the surface feel layered.
 - **Polish = the unglamorous states.** Even his _joke_ bad-UI project ships a success screen, a "generate new
   code" action, and a hint affordance. His bar: "passable on sites known for exceptional UI such as Linear, Vercel."
 
@@ -154,11 +196,22 @@ texture-as-accent. The playbook adds _precision_ to the things Inkprint leaves t
    custom-interaction surface; remove any always-on overlay that has an easy alternative.
 7. **One signature delight, done well** — if BuildOS wants a "premium" moment, the cursor-glow card grid is the
    canonical Linear/Vercel-tier effect, but it must degrade to fade-ins under reduced-motion.
+8. **Labels before layout** — sweep button labels, section headers, tab names, and empty states against the
+   Labels & microcopy block: does each say exactly what it is, in the fewest unambiguous words? Try the
+   rename before the redesign.
 
-**Next step (separate session): the live audit.** This playbook is the rubric; the audit needs real screens.
-Run the web app (`pnpm dev --filter=web`, localhost:5173), capture the key surfaces, and grade each region
-against §1–§2. Cross-reference the existing `DESIGN_AUDIT_2026-06-12.md` and `MOBILE_EXPERIENCE_AUDIT_2026-06-12.md`
-so findings stack instead of duplicate.
+**The workflow around this playbook:**
+
+- **[`HYPERPLEXED_AUDIT_TRACKER.md`](./HYPERPLEXED_AUDIT_TRACKER.md)** — the rollup: which surfaces are
+  audited, what shipped, what's still unaudited, and the verification (before/after screenshot) status.
+  Start there to pick the next surface; every new audit gets a row.
+- **[`HYPERPLEXED_FIX_PATTERNS.md`](./HYPERPLEXED_FIX_PATTERNS.md)** — the fix side of the rubric: each
+  recurring finding mapped to its BuildOS-native recipe (Inkprint tokens, shared helpers, Svelte 5), so
+  audits link to a pattern instead of re-deriving the fix.
+- **Audit method:** grade the rendered markup region by region against §1–§2 (static pass), then confirm
+  color/contrast and real-device behavior with a live pass (`pnpm dev --filter=web`, localhost:5173).
+  Cross-reference `DESIGN_AUDIT_2026-06-12.md` and `MOBILE_EXPERIENCE_AUDIT_2026-06-12.md` so findings
+  stack instead of duplicate.
 
 ---
 
@@ -178,7 +231,9 @@ so findings stack instead of duplicate.
   `website-feature-demands` (lagging blurred blob follower).
 
 **Not yet transcribed** (~7 Tier-2 effect tutorials) — deferred when the YouTube timed-text endpoint
-rate-limited the batch; re-pull later with the `youtube-transcript` skill (sequential, ≤2 parallel):
+rate-limited the batch. **Pickup doc with resolved video IDs + analysis plan:
+[`TRANSCRIPT_BACKLOG_TASK_2026-07-01.md`](./TRANSCRIPT_BACKLOG_TASK_2026-07-01.md).**
+Re-pull with the `youtube-transcript` skill (sequential, ≤2 parallel):
 `frontend-skills-to-the-moon`, `how-to-slay-with-css`, `extraordinary-from-ordinary`,
 `unfiltered-frontend-thought`, `mouse-trailer-intelligent`, `explosive-hover-effect`, `effect-shouldnt-be-possible`.
 The 1hr polyrhythm visualizers, particle-art, AI-tracker, and parody videos were intentionally skipped

@@ -26,6 +26,15 @@ function normalizeReference(value: string): string {
 	return value.trim();
 }
 
+// Reference modules may carry lightweight YAML frontmatter (reference_id / parent_skill /
+// provenance_required / updated — see skill-update-refactor-tasker.md §8.2). It is metadata for
+// the build-time validator, not content for the model, so strip it before serving. A no-op for
+// modules without frontmatter. Kept deliberately simple: leading `---` fenced block only.
+function stripReferenceFrontmatter(raw: string): string {
+	const match = raw.match(/^﻿?\s*---\s*\n[\s\S]*?\n---\s*(?:\n|$)/);
+	return match ? raw.slice(match[0].length).replace(/^\s+/, '') : raw;
+}
+
 function isSafeRelativeReferencePath(path: string): boolean {
 	if (!path || path.startsWith('/') || path.startsWith('\\')) return false;
 	if (path.includes('\0')) return false;
@@ -101,7 +110,7 @@ export function loadSkillReference(
 		when_to_load: module.whenToLoad,
 		path: module.path,
 		version: registry.version,
-		content
+		content: stripReferenceFrontmatter(content)
 	};
 	if (module.name) payload.name = module.name;
 	if (module.visibility) payload.visibility = module.visibility;

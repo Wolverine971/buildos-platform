@@ -1,6 +1,9 @@
 ---
 name: Content Creation Pipeline
 description: Take one chosen idea from raw thought to a ship-ready draft. Use when the user says "I have an idea, help me turn it into a post / video / essay", wants to expand a half-formed thought into content, or needs a step-by-step path from idea to drafted piece. Not for broad channel/format/distribution strategy — route that to content_strategy_beyond_blogging.
+skill_type: orchestration # procedure | strategy | reference | resource | policy | orchestration
+altitude: domain # task | domain | meta
+activation: progressive # always_on | progressive | invoked
 preserve_markdown: true
 legacy_paths:
     - content-creation-pipeline
@@ -48,16 +51,54 @@ child_skills:
           - When the draft is written and you are fitting it to a specific medium.
           - When the user says "format this for X", "turn this into a thread", or "make it a carousel".
       path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/medium_tailoring/SKILL.md
+dependencies:
+    - id: idea_expansion_lens
+      owns: Breadth of angles from one idea — a labeled spread to curate before drafting.
+    - id: storyboard_journey_lens
+      owns: Story shape + entry point (before drafting) — the journey map.
+    - id: lived_conviction_lens
+      owns: Earned belief + proof from lived experience.
+    - id: framework_extraction_lens
+      owns: Naming a framework or tearing down an example.
+    - id: story_driven_content_craft
+      owns: Executing narrative craft in the draft (storyboarded shape).
+    - id: nonfiction_writing_from_lived_conviction
+      owns: Executing an essay from lived conviction (conviction-shaped draft).
+    - id: hook_craft_short_form
+      owns: The opening / hook / first line.
+    - id: viral_video_script_structure
+      owns: Video body / retention structure.
+    - id: sensory_double_tap
+      owns: Adding visuals / demos / examples (the Enhance stage).
+    - id: medium_tailoring
+      owns: Fitting a draft to a specific medium's native format (the Tailor stage).
+    - id: algorithm_aware_publishing
+      owns: Platform fit, cadence, algorithm strategy (upstream of formatting).
+    - id: content_strategy_beyond_blogging
+      owns: Channel / format / distribution strategy.
 path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/content_creation_pipeline/SKILL.md
 ---
 
 # Content Creation Pipeline
 
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Examples.
+  This file is skill_type: orchestration, so Judgment + Procedure + Routing carry the weight. The pipeline
+  branches in exactly two places (Expand, Draft); Judgment holds the branch reasoning, Routing holds the
+  ownership map, and Knowledge is thin (only the per-medium length defaults, which are owned nowhere else).
+  No Provenance block: the source content carried no source-attribution notes to preserve.
+-->
+
+## Identity
+
 Take **one chosen idea** from raw thought to a draft that is ready to tailor and ship. This skill owns the _process_ — the ordered path and the human gates — and routes craft work to the specialist content skills. It does not pick channels (that is `content_strategy_beyond_blogging`) and it does not post.
+
+This is an **orchestration** skill at **domain** altitude — thin on its own craft, heavy on sequencing the siblings; the one thing owned _only_ here is the pipeline itself: the fixed ordered path and its three human gates.
 
 The pipeline is fixed; only two things vary: the **lens** you pick at Expand, and the **target medium** you carry from the start. Run the stages in order. Do not skip a gate.
 
-## When to Use
+## Activation
 
 - The user has an idea, take, or half-formed thought and wants it turned into a concrete piece.
 - The user asks "help me write/make a post / thread / essay / video / newsletter about X".
@@ -66,9 +107,41 @@ The pipeline is fixed; only two things vary: the **lens** you pick at Expand, an
 
 Do not use when: the user needs a channel/format/distribution decision (route to `content_strategy_beyond_blogging`); only needs an opening rewritten (route to `hook_craft_short_form`); or only needs a finished draft edited for voice (that is an edit pass, not this pipeline).
 
-## The Pipeline
+## Judgment
 
-Eight stages, three human gates (🚦). Frame is inline here because it fires on every run. Expand routes to a framework, Enhance routes to `sensory_double_tap`, Tailor routes to `medium_tailoring`; Ship hands off.
+The decision spine. The pipeline branches in exactly two places — at **Expand** (which framework) and at **Draft** (which spine, which executor) — and this is what you reason with there.
+
+### Choosing a framework (Expand)
+
+A **framework** is a way to find the piece's shape from the framed idea. Pick by the _shape of the idea_, or combine.
+
+| If the idea is…                                                            | Use framework                       | Output                                  |
+| -------------------------------------------------------------------------- | ----------------------------------- | --------------------------------------- |
+| A claim or insight; you want breadth of angles                             | `idea_expansion_lens` (child)       | a labeled spread of angles              |
+| Carried by a person, moment, or arc; you want the journey + an entry point | `storyboard_journey_lens` (child)   | a journey map + chosen entry point      |
+| An earned belief the creator lived; the power is authority                 | `lived_conviction_lens` (child)     | an earned claim + proof + reader bridge |
+| A repeatable practice or an example worth dissecting                       | `framework_extraction_lens` (child) | a named framework or a teardown         |
+
+If unsure which framework fits, ask: _is this a point to argue, a story to walk through, a belief I've earned, or a method to teach?_
+
+### Translating a shape into a spine (Draft)
+
+The framework finds the shape; **execution happens at Draft**. A storyboarded shape is usually executed via `story_driven_content_craft`; a lived-conviction shape via `nonfiction_writing_from_lived_conviction`.
+
+**Translate the lens output into a spine.** Each Expand lens produces a different shape; each shape implies a different spine and (where one exists) a different craft skill to execute it.
+
+| Curated shape (from Expand)                         | Spine structure to write                                                   | Execute via                                                                                                |
+| --------------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Chosen angle — a claim/insight (`idea_expansion`)   | claim → support → counter-turn → so-what (argument shape)                  | ⚠️ no specialist skill — draft inline; escalate the opening to `hook_craft_short_form`. _(gap, see below)_ |
+| Journey map + entry point (`storyboard_journey`)    | open at the chosen entry point → situation → wrong path → turn → new state | `story_driven_content_craft`                                                                               |
+| Earned claim + scar + bridge (`lived_conviction`)   | scar → earned claim → receipts → universal bridge                          | `nonfiction_writing_from_lived_conviction`                                                                 |
+| Named framework / teardown (`framework_extraction`) | name it → sequence the steps (or causal moves → principle) → apply-to-you  | ⚠️ no specialist skill — draft inline; escalate the opening to `hook_craft_short_form`. _(gap, see below)_ |
+
+> **Known gap — missing draft executors.** Story-shaped and conviction-shaped drafts each have a dedicated craft skill (`story_driven_content_craft`, `nonfiction_writing_from_lived_conviction`). Claim/argument-shaped and framework/teaching-shaped drafts do **not** — today they are drafted inline with only `hook_craft_short_form` for the opening. Two craft skills should be built to close this: an **argument / POV craft** skill (execute a curated angle into a persuasive piece) and a **teaching / how-to craft** skill (execute a framework or teardown into a instructional piece). Until they exist, draft these two shapes inline and say so.
+
+## Procedure
+
+Eight stages, three human gates (🚦). Frame is inline here because it fires on every run. Expand routes to a framework, Enhance routes to `sensory_double_tap`, Tailor routes to `medium_tailoring`; Ship hands off. Routed steps carry a `→` marker; who owns each is resolved in **Routing**.
 
 ```
 1. FRAME      Who exactly, what pain, the ONE idea, the target medium.   🚦 confirm
@@ -81,7 +154,7 @@ Eight stages, three human gates (🚦). Frame is inline here because it fires on
 8. SHIP       Post / save / schedule.                                    → hand off
 ```
 
-## Stage 1 — Frame (inline, mandatory)
+### Stage 1 — Frame (inline, mandatory)
 
 Lock four things before generating anything. Do not pass the gate with vague answers — every downstream stage inherits this specificity.
 
@@ -92,66 +165,40 @@ Lock four things before generating anything. Do not pass the gate with vague ans
 
 🚦 Read all four back and get a yes before expanding.
 
-## Stage 2 — Expand (choose a framework)
+### Stage 2 — Expand (choose a framework) → `idea_expansion_lens` / `storyboard_journey_lens` / `lived_conviction_lens` / `framework_extraction_lens`
 
-A **framework** is a way to find the piece's shape from the framed idea. Pick by the _shape of the idea_, or combine. All frameworks assume Frame is done and share one rule: get specific on the person and the real story before drafting. Produce a shape — a spread of angles or a journey map — and **do not draft yet**.
+All frameworks assume Frame is done and share one rule: get specific on the person and the real story before drafting. Produce a shape — a spread of angles or a journey map — and **do not draft yet**. Choose the framework by the _shape of the idea_ → see **Judgment** (Choosing a framework).
 
-| If the idea is…                                                            | Use framework                       | Output                                  |
-| -------------------------------------------------------------------------- | ----------------------------------- | --------------------------------------- |
-| A claim or insight; you want breadth of angles                             | `idea_expansion_lens` (child)       | a labeled spread of angles              |
-| Carried by a person, moment, or arc; you want the journey + an entry point | `storyboard_journey_lens` (child)   | a journey map + chosen entry point      |
-| An earned belief the creator lived; the power is authority                 | `lived_conviction_lens` (child)     | an earned claim + proof + reader bridge |
-| A repeatable practice or an example worth dissecting                       | `framework_extraction_lens` (child) | a named framework or a teardown         |
-
-The framework finds the shape; **execution happens at Draft**. A storyboarded shape is usually executed via `story_driven_content_craft`; a lived-conviction shape via `nonfiction_writing_from_lived_conviction`. If unsure which framework fits, ask: _is this a point to argue, a story to walk through, a belief I've earned, or a method to teach?_
-
-## Stage 3 — Curate (gate)
+### Stage 3 — Curate (gate)
 
 From the spread, choose **one path**. Name what you are killing or **banking** (banked angles are future pieces — say so explicitly so they are not lost). A great piece is one axis done deep, not all of them stapled together.
 
 🚦 Confirm the chosen angle and intended structure before drafting.
 
-## Stage 4 — Draft
+### Stage 4 — Draft → `story_driven_content_craft` / `nonfiction_writing_from_lived_conviction` / `hook_craft_short_form` / `viral_video_script_structure`
 
 This is the hinge of the pipeline: every lens converges here, and the curated shape becomes prose. Write the core **spine** in the structure the chosen lens implies — plain prose, no platform formatting, no hook-polish yet. Match the user's voice if samples exist; otherwise write clean and flag that a voice pass is needed.
 
-**Translate the lens output into a spine.** Each Expand lens produces a different shape; each shape implies a different spine and (where one exists) a different craft skill to execute it.
-
-| Curated shape (from Expand)                        | Spine structure to write                                              | Execute via                                                                       |
-| -------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Chosen angle — a claim/insight (`idea_expansion`)  | claim → support → counter-turn → so-what (argument shape)            | ⚠️ no specialist skill — draft inline; escalate the opening to `hook_craft_short_form`. _(gap, see below)_ |
-| Journey map + entry point (`storyboard_journey`)   | open at the chosen entry point → situation → wrong path → turn → new state | `story_driven_content_craft`                                                  |
-| Earned claim + scar + bridge (`lived_conviction`)  | scar → earned claim → receipts → universal bridge                    | `nonfiction_writing_from_lived_conviction`                                         |
-| Named framework / teardown (`framework_extraction`)| name it → sequence the steps (or causal moves → principle) → apply-to-you | ⚠️ no specialist skill — draft inline; escalate the opening to `hook_craft_short_form`. _(gap, see below)_ |
-
-**Set a length budget from the carried medium.** The Frame medium is a length constraint here, not just at Tailor. Draft the spine to roughly **70%** of the medium's budget — Enhance and Tailor add the rest. Rough budgets:
-
-- **X / Twitter:** single post 1–3 sentences; thread ~5–9 beats.
-- **LinkedIn:** ~150–250 words (~900–1,500 chars).
-- **Instagram carousel:** 6–10 slides, one beat per slide.
-- **YouTube:** Short ~120–150 spoken words (~60s); long-form as ordered segments.
-- **Blog:** 800–2,000 words. **Newsletter:** 300–800 words.
+Translate the curated shape into a spine → see **Judgment** (Translating a shape into a spine). Set a length budget from the carried medium → see **Knowledge** (length budgets).
 
 **Craft escalations:**
 
 - If the opening is the hard part, escalate to `hook_craft_short_form`.
 - If it is a video and the body structure is the work, escalate to `viral_video_script_structure`.
 
-> **Known gap — missing draft executors.** Story-shaped and conviction-shaped drafts each have a dedicated craft skill (`story_driven_content_craft`, `nonfiction_writing_from_lived_conviction`). Claim/argument-shaped and framework/teaching-shaped drafts do **not** — today they are drafted inline with only `hook_craft_short_form` for the opening. Two craft skills should be built to close this: an **argument / POV craft** skill (execute a curated angle into a persuasive piece) and a **teaching / how-to craft** skill (execute a framework or teardown into a instructional piece). Until they exist, draft these two shapes inline and say so.
-
-## Stage 5 — Approve (gate)
+### Stage 5 — Approve (gate)
 
 Show the spine. 🚦 This is the cheapest place to change direction — get sign-off before investing in enhancement and tailoring.
 
-## Stage 6 — Enhance (route)
+### Stage 6 — Enhance (route) → `sensory_double_tap`
 
 Load `sensory_double_tap`. Reinforce the 2–4 load-bearing beats through a second channel the medium can carry (visual cue, demo, diagram, concrete example). Restraint is the rule: enhancing everything emphasizes nothing.
 
-## Stage 7 — Tailor (route)
+### Stage 7 — Tailor (route) → `medium_tailoring` (strategy → `algorithm_aware_publishing`)
 
 Load `medium_tailoring` and load the one reference module for the target medium (LinkedIn, Instagram, X, YouTube, blog, newsletter). It reshapes the approved + enhanced draft into that medium's native format, places the hook in the attention slot, lands the enhancement cues in the medium's asset slots, and sets one CTA. For _strategic_ publishing decisions (which channel, cadence, algorithm fit), escalate to `algorithm_aware_publishing` — that is upstream of formatting.
 
-## Stage 8 — Ship (hand off)
+### Stage 8 — Ship (hand off) → `content_strategy_beyond_blogging`
 
 This skill stops owning the work here. Hand off cleanly:
 
@@ -161,7 +208,9 @@ This skill stops owning the work here. Hand off cleanly:
 
 State plainly what is done and what is handed off, e.g. "Tailored LinkedIn post ready — handing to your voice pass, then publish."
 
-## Escalation Map
+## Routing
+
+Ownership map. The Procedure sequences; this table assigns. Escalations are tags, not loads — name the skill and move; only load when that lens becomes the active work.
 
 | Need                                        | Route to                                   |
 | ------------------------------------------- | ------------------------------------------ |
@@ -178,18 +227,7 @@ State plainly what is done and what is handed off, e.g. "Tailored LinkedIn post 
 | Platform fit, cadence, algorithm strategy   | `algorithm_aware_publishing`               |
 | Channel / format / distribution strategy    | `content_strategy_beyond_blogging`         |
 
-Escalations are tags, not loads — name the skill and move; only load when that lens becomes the active work.
-
-## Guardrails
-
-- Do not skip Frame. A draft built on "founders" with no specific person and no one-sentence idea will be generic — refuse to draft until the four Frame fields are concrete.
-- Do not generate a draft at the Expand stage. Expand produces a spread of angles to choose from; drafting before Curate wastes the gate.
-- Do not staple multiple angles into one piece. One path per piece; bank the rest by name.
-- Do not enhance an unapproved spine. Polish before sign-off is rework waiting to happen.
-- Do not silently re-implement craft that a specialist skill owns. Escalate to `hook_craft_short_form`, `story_driven_content_craft`, `viral_video_script_structure`, or `algorithm_aware_publishing` by name.
-- Do not pick the channel for the user. Medium is an input to Frame; channel _strategy_ belongs to `content_strategy_beyond_blogging`.
-
-## Output
+## Contract
 
 Return, in order:
 
@@ -201,7 +239,28 @@ Return, in order:
 
 Stop after the hand-off line. Do not tailor for a platform or post — those are downstream skills.
 
-## Worked Example
+## Policy
+
+- Do not skip Frame. A draft built on "founders" with no specific person and no one-sentence idea will be generic — refuse to draft until the four Frame fields are concrete.
+- Do not generate a draft at the Expand stage. Expand produces a spread of angles to choose from; drafting before Curate wastes the gate.
+- Do not staple multiple angles into one piece. One path per piece; bank the rest by name.
+- Do not enhance an unapproved spine. Polish before sign-off is rework waiting to happen.
+- Do not silently re-implement craft that a specialist skill owns. Escalate to `hook_craft_short_form`, `story_driven_content_craft`, `viral_video_script_structure`, or `algorithm_aware_publishing` by name.
+- Do not pick the channel for the user. Medium is an input to Frame; channel _strategy_ belongs to `content_strategy_beyond_blogging`.
+
+## Knowledge
+
+_The length budgets below are BuildOS internal defaults (internal-default) — reasoned drafting heuristics, no external source. Owned only here._
+
+**Set a length budget from the carried medium.** The Frame medium is a length constraint here, not just at Tailor. Draft the spine to roughly **70%** of the medium's budget — Enhance and Tailor add the rest. Rough budgets:
+
+- **X / Twitter:** single post 1–3 sentences; thread ~5–9 beats.
+- **LinkedIn:** ~150–250 words (~900–1,500 chars).
+- **Instagram carousel:** 6–10 slides, one beat per slide.
+- **YouTube:** Short ~120–150 spoken words (~60s); long-form as ordered segments.
+- **Blog:** 800–2,000 words. **Newsletter:** 300–800 words.
+
+## Examples
 
 User: "I keep thinking about how agents are bad at long tasks. I want to post about it on LinkedIn."
 

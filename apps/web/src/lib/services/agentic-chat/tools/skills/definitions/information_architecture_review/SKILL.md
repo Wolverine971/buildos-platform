@@ -2,6 +2,9 @@
 name: Information Architecture Review
 description: >-
     Child skill under Build Quality UI/UX for the structure-first lens: map the user's goal, the system's conceptual model, the primary flows, navigation and wayfinding, labels and grouping, feedback, and error recovery — before visual polish. Returns a structural map plus evidence-backed findings.
+skill_type: strategy # procedure | strategy | reference | resource | policy | orchestration
+altitude: domain # task | domain | meta
+activation: progressive # always_on | progressive | invoked
 parent_id: build_quality_ui_ux
 depth: 1
 preserve_markdown: true
@@ -21,11 +24,21 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/informatio
 
 # Information Architecture Review
 
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Examples → Provenance.
+  This file is skill_type: strategy. Judgment carries the decision weight (the named lenses + severity rubric);
+  Procedure is the ordered structure-first pass; Routing hands residual out-of-scope findings to the sibling
+  review skills. The deep heuristic canon lives in the ia_heuristics reference module, loaded before findings.
+-->
+
+## Identity
+
 The structure-first lens. Before anyone asks whether a screen is _pretty_, this skill asks whether the user can understand it: do they know **where they are**, **what things mean**, **what is actionable**, **what just happened**, and **how to get back**. Run this lens first when a feature, flow, or workspace feels confusing — visual polish on a broken conceptual model just makes the confusion look nicer.
 
-This is the holistic pass: build a map of the system's structure and the user's path through it, then report structural fixes before cosmetic ones. The deep heuristics live in the `information_architecture_review.ia_heuristics` reference module — load it before producing findings.
+This is a **strategy** skill at **domain** altitude. This is the holistic pass: build a map of the system's structure and the user's path through it, then report structural fixes before cosmetic ones. The deep heuristics live in the `information_architecture_review.ia_heuristics` reference module — load it before producing findings.
 
-## When to Use
+## Activation
 
 - Reviewing a feature, flow, navigation model, dashboard, workspace, settings area, builder, or multi-step task that feels confusing, even when the individual screens look acceptable.
 - The user asks about information architecture, labels, affordances, signifiers, conceptual models, navigation, wayfinding, feedback, or error recovery.
@@ -33,21 +46,54 @@ This is the holistic pass: build a map of the system's structure and the user's 
 - `ui_ux_quality_review` (or the parent router) escalated a "conceptual confusion" finding here.
 - You need to understand the whole structure before a redesign, not just audit one screen's pixels.
 
-## Workflow
+## Judgment
+
+The decision spine. When the pass surfaces something, this is what you reason with.
+
+### The named lenses
+
+Apply these named lenses rather than generic intuition (deep canon in `information_architecture_review.ia_heuristics`):
+
+- **Gulfs (Norman):** is the gulf of execution bridged (can the user see how to act?) and the gulf of evaluation bridged (can the user tell what the system did?).
+- **Model gap (Cooper):** is the interface presenting a clean conceptual model, or is it leaking the implementation model (database tables, internal states, system jargon)?
+- **Labels & grouping:** do labels use the user's words, carry information scent, and group by user task rather than internal structure?
+- **Affordances & signifiers:** does what _looks_ actionable match what _is_ actionable, and does each action signify its result?
+- **Wayfinding triad (Morville):** can the user always answer _Where am I? Where can I go? How do I get back?_
+- **Feedback & recovery (Nielsen):** is system status visible, are errors prevented where possible, and is there an obvious undo / recovery path for every consequential action?
+
+### Scope boundary (structural vs. polish)
+
+Anything about comprehension, model, flow, labels, wayfinding, feedback, or recovery is in scope here. Pure visual-craft, accessibility-semantics, or persuasion-copy issues get tagged for the sibling skill, not solved here (route per **Routing**).
+
+### Severity rubric
+
+- **high** — the user cannot understand the model, find the path, or recover from a consequential action; the task is blocked or data loss is possible.
+- **medium** — the user can get through it but with avoidable confusion, recall burden, or wrong-turn risk.
+- **low** — minor label, grouping, or feedback refinement.
+
+## Procedure
+
+Ordered sequence and intent only. Lens definitions live in **Judgment**; ownership of out-of-scope residue lives in **Routing**.
 
 1. **State the goal and the conceptual model in plain language.** What is the user trying to accomplish here, and what is the system's model of this domain (its objects, their relationships, the verbs that act on them)? If you cannot state both in one sentence each, that gap is your first finding.
 2. **Map the primary flow.** Walk the path from entry to goal completion as the user experiences it: each step, the decision required, and what carries the user forward. Note dead ends, hidden steps, and points where the next action is unclear.
-3. **Load `information_architecture_review.ia_heuristics`** and apply the named lenses rather than generic intuition:
-    - **Gulfs (Norman):** is the gulf of execution bridged (can the user see how to act?) and the gulf of evaluation bridged (can the user tell what the system did?).
-    - **Model gap (Cooper):** is the interface presenting a clean conceptual model, or is it leaking the implementation model (database tables, internal states, system jargon)?
-    - **Labels & grouping:** do labels use the user's words, carry information scent, and group by user task rather than internal structure?
-    - **Affordances & signifiers:** does what _looks_ actionable match what _is_ actionable, and does each action signify its result?
-    - **Wayfinding triad (Morville):** can the user always answer _Where am I? Where can I go? How do I get back?_
-    - **Feedback & recovery (Nielsen):** is system status visible, are errors prevented where possible, and is there an obvious undo / recovery path for every consequential action?
-4. **Separate structural findings from polish.** Anything about comprehension, model, flow, labels, wayfinding, feedback, or recovery is in scope here. Pure visual-craft, accessibility-semantics, or persuasion-copy issues get tagged for the sibling skill, not solved here.
-5. **Return the structural map and findings using the Output contract**, leading with the fixes that unblock comprehension and task completion.
+3. **Load `information_architecture_review.ia_heuristics` and apply the named lenses** (see **Judgment**) rather than generic intuition.
+4. **Separate structural findings from polish.** In-scope concerns stay here; pure visual-craft, accessibility-semantics, or persuasion-copy residue gets tagged for the sibling skill → **Routing**, not solved here. (Boundary in **Judgment**.)
+5. **Return the structural map and findings using the Contract**, leading with the fixes that unblock comprehension and task completion.
 
-## Output
+## Routing
+
+Residual concerns that surface during the pass but are owned by a sibling skill — route the residue there, don't solve it here.
+
+| Residual concern (surfaces here, owned elsewhere)                | Owner — route the residue there     |
+| ---------------------------------------------------------------- | ----------------------------------- |
+| Build-quality craft — the "is it well-built" half of the review  | `ui_ux_quality_review`              |
+| Accessibility semantics floor                                    | `accessibility_inclusive_ui_review` |
+| Exact visual-craft styling decisions (e.g. active-state styling) | `visual_craft_fundamentals`         |
+
+Persuasion-copy residue also delegates to the sibling skills (see **Policy**).
+
+## Contract
 
 Return two parts.
 
@@ -60,7 +106,7 @@ Primary flow: <entry → … → goal, as the user experiences it>
 Wayfinding: <how the user knows where they are / where they can go / how to get back>
 ```
 
-**Part 2 — Structural findings**, each in this shape:
+**Part 2 — Structural findings**, each in this shape (severity per the rubric in **Judgment**):
 
 ```
 Lens: <model | flow | labels | affordances | wayfinding | feedback | recovery>
@@ -71,15 +117,22 @@ Fix: <concrete structural change — relabel, regroup, add feedback, add recover
 Delegated: <optional sibling skill id when the residual fix is out of scope>
 ```
 
-Severity rubric:
-
-- **high** — the user cannot understand the model, find the path, or recover from a consequential action; the task is blocked or data loss is possible.
-- **medium** — the user can get through it but with avoidable confusion, recall burden, or wrong-turn risk.
-- **low** — minor label, grouping, or feedback refinement.
-
 Stop conditions before returning: the structural map is filled in (or its missing pieces are themselves named as findings); every finding cites specific evidence and a severity; structural fixes lead, with cosmetic ones held back or delegated; out-of-scope concerns are tagged `Delegated`, not dropped.
 
-## Worked Example
+## Policy
+
+- Do not start with color, typography, or spacing when the user cannot understand the model, find the path, or recover. Structure outranks polish here by definition.
+- Do not invent novel interaction patterns where an established convention would lower cognitive load — recognition beats recall.
+- Do not flag a database/implementation term as fine just because it is accurate; accurate-but-internal labels are a model leak.
+- Do not assign severity without the rubric, and do not include a finding you cannot tie to a specific screen, control, label, step, or state.
+- Tag visual-craft, accessibility-semantics, and persuasion-copy residue for the sibling skills instead of solving them here.
+- Apply the named heuristics from the reference module rather than generic UX opinion; cite the principle when the user pushes back.
+
+## Knowledge
+
+Deliberately thin. The named lenses are summarized in **Judgment**; the deep heuristics, checklists, and thresholds live in `information_architecture_review.ia_heuristics` — load it before producing findings. [internal-default]
+
+## Examples
 
 **Input (summary):** A project "Settings" area with three tabs — _General_, _Members_, _Records_. The "Records" tab lists rows labeled `entity_id`, `created_ts`, and `status_enum`; a primary button reads "Commit". Saving a change flips the button to "Commit" again with no message. There is no breadcrumb; the only way out of an editing sub-panel is the browser back button. User goal: rename the project and add a teammate.
 
@@ -135,18 +188,8 @@ Delegated: visual_craft_fundamentals (the exact active-state styling is a craft 
 
 **Top fixes (ranked by impact on the stated goal):** (1) relabel/restructure "Records" so the Settings model matches a user concept; (2) add save feedback so the rename visibly takes effect; (3) make the invite and rename locations unambiguous and add an in-product exit.
 
-## Guardrails
+## Provenance
 
-- Do not start with color, typography, or spacing when the user cannot understand the model, find the path, or recover. Structure outranks polish here by definition.
-- Do not invent novel interaction patterns where an established convention would lower cognitive load — recognition beats recall.
-- Do not flag a database/implementation term as fine just because it is accurate; accurate-but-internal labels are a model leak.
-- Do not assign severity without the rubric, and do not include a finding you cannot tie to a specific screen, control, label, step, or state.
-- Tag visual-craft, accessibility-semantics, and persuasion-copy residue for the sibling skills instead of solving them here.
-- Apply the named heuristics from the reference module rather than generic UX opinion; cite the principle when the user pushes back.
-
-## Notes
-
-- Primary sources: Don Norman (_The Design of Everyday Things_ — gulfs, stages of action, affordances/signifiers), Alan Cooper (_About Face_ — conceptual vs implementation models), Jakob Nielsen (usability heuristics), and Peter Morville / Abby Covert (findability, wayfinding, information architecture).
-- The deep heuristics, checklists, and thresholds live in `information_architecture_review.ia_heuristics`; load it before producing findings.
-- Source backing is canonical book/article analysis. A future pass should add long-form transcript material (Abby Covert, Jared Spool, long-form Norman) to deepen the wayfinding and labeling checklists.
+- **Primary sources [PRIMARY]:** Don Norman (_The Design of Everyday Things_ — gulfs, stages of action, affordances/signifiers), Alan Cooper (_About Face_ — conceptual vs implementation models), Jakob Nielsen (usability heuristics), and Peter Morville / Abby Covert (findability, wayfinding, information architecture).
+- Source backing is canonical book/article analysis. A future pass should add long-form transcript material (Abby Covert, Jared Spool, long-form Norman) to deepen the wayfinding and labeling checklists. [internal-default]
 - This skill is the structure-first half of a review; pair it with `ui_ux_quality_review` for the build-quality half and `accessibility_inclusive_ui_review` for the semantics floor.

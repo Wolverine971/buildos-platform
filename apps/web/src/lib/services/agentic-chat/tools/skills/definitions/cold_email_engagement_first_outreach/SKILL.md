@@ -1,6 +1,27 @@
 ---
 name: Cold Email Engagement-First Outreach
 description: Root skill for planning, drafting, auditing, and routing cold outreach to strangers across B2B sales, founder-led outreach, investor fundraising, recruiting, partnerships, PR, podcasts, and customer research. Use when the user needs a campaign bundle, one targeted email, reply handling, or a trust-preserving outreach operating workflow.
+skill_type: orchestration # procedure | strategy | reference | resource | policy | orchestration
+altitude: domain # task | domain | meta
+activation: progressive # always_on | progressive | invoked
+preserve_markdown: true # serve the raw body so Identity/Judgment/Routing/Knowledge reach the model (matches all 8 children; see report)
+dependencies: # REQUIRED for orchestration — machine-readable routing to the eight child skills
+    - id: cold_email_icp_signal_design
+      owns: The right person, persona, timing signal, and disqualifier set; the segment definition and signal rubric before outreach.
+    - id: cold_email_offer_lab
+      owns: Creating or repairing the artifact offer and the smallest useful yes.
+    - id: cold_email_research_anchors
+      owns: Mining one specific, real, recent anchor and bridge for strategic or single-target outreach.
+    - id: cold_email_outreach_compiler
+      owns: Compiling prepared mode, segment, anchor, offer, proof, and sender constraints into a finished outreach bundle.
+    - id: cold_email_taste_review
+      owns: Reputation-risk review, bridge quality, proof integrity, and whether a serious person should send the draft.
+    - id: cold_email_deliverability_readiness
+      owns: Sender trust, cold-domain readiness, volume caps, warmup, bounce risk, and complaint safeguards.
+    - id: cold_email_reply_os
+      owns: Classifying replies, routing objections, reviving silence, and preserving trust after response.
+    - id: cold_email_learning_review
+      owns: Turning campaign metrics, objections, and buyer language into next tests.
 legacy_paths:
     - cold_email_outreach
     - cold-email-engagement-first-outreach
@@ -105,15 +126,22 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email
 
 # Cold Email Engagement-First Outreach
 
-Root skill for trust-preserving cold outreach. The operating sequence is:
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Examples → Provenance.
+  This file is skill_type: orchestration — a family root. Judgment holds the operating sequence + north-star metric;
+  Procedure is the root's own send-workflow with `→` markers; Routing declares which of the eight child skills owns
+  each weak input, declared once. Knowledge is thin (only the stable mode taxonomy).
+-->
 
-```text
-right person -> right moment -> right reason -> right offer -> right ask -> right follow-up
-```
+## Identity
 
-The north star is qualified conversations started per unit of market trust consumed.
+Root skill for trust-preserving cold outreach. This is an **orchestration** skill at **domain** altitude: it chooses
+the send-mode, runs the operating sequence, and routes weak inputs to eight deep child skills — it does not re-teach
+their mechanics. What lives _only_ here, owned nowhere else, is the operating sequence, the north-star metric, the mode
+taxonomy, and the trust-preserving guardrails.
 
-## When to Use
+## Activation
 
 - Plan or audit a cold email campaign
 - Draft one high-value targeted cold email
@@ -122,40 +150,57 @@ The north star is qualified conversations started per unit of market trust consu
 - Design the outreach operating workflow before sending
 - Decide which child skill should handle a weak input such as ICP, signal, offer, research, taste, deliverability, reply handling, or learning review
 
-## Workflow
+## Judgment
 
-1. Choose exactly one mode: high-volume offer test, strategic-account sales, single-target relationship, reply revival, investor fundraising, recruiting, PR/podcast, partnership, or customer research.
-2. Check the prime flow in order: right person, right moment, right reason, right offer, right ask, right follow-up.
-3. Route to a child skill only if a specific input is missing or weak. Do not load children automatically.
-4. Verify sender trust before any scaled sending. If deliverability is unknown, recommend manual or low-volume sending only.
-5. Segment volume campaigns to one persona x one narrowing signal. Reject mixed lists.
-6. Require a specific research anchor and bridge for strategic, single-target, investor, recruiting, PR, podcast, partnership, and relationship-sensitive outreach.
-7. Prefer a useful artifact offer over a meeting ask: note, teardown, benchmark, signal report, sample, snapshot, deck, topic angles, or candidate slate.
-8. Draft subject and preview before the body. Reject promotional, vague, money-word, or generic packaging.
-9. Draft the body by mode and use one CTA: the smallest useful yes.
-10. Add proof only when true, relevant, and approved.
-11. Plan cadence by mode and define reply routes before sending.
-12. Return a campaign bundle, per-email bundle, audit report, or child-skill routing plan.
+The operating sequence is:
 
-## Child Skill Routing
+```text
+right person -> right moment -> right reason -> right offer -> right ask -> right follow-up
+```
 
-- Use `cold_email_icp_signal_design` when the target, persona, timing signal, or disqualifier set is vague.
-- Use `cold_email_offer_lab` when the offer is missing, meeting-first, too large, or not artifact-shaped.
-- Use `cold_email_research_anchors` when a high-value email needs a better anchor or bridge.
-- Use `cold_email_outreach_compiler` when inputs are ready and the user needs the finished bundle.
-- Use `cold_email_taste_review` when reputation risk, weak specificity, or fake personalization is the main concern.
-- Use `cold_email_deliverability_readiness` when scaled sending, cold domains, or inbox health matters.
-- Use `cold_email_reply_os` when replies arrive, silence needs revival, or objections need routing.
-- Use `cold_email_learning_review` after a test produces metrics, replies, objections, or buyer language.
+The north star is qualified conversations started per unit of market trust consumed.
 
-## Output Contracts
+## Procedure
+
+Ordered sequence and intent only. _Who owns each routed step's deep mechanics is in **Routing**, referenced by the `→`
+marker._ Steps marked **[here]** are owned by this skill.
+
+1. Choose exactly one mode from the mode taxonomy (see **Knowledge**). **[here]**
+2. Check the prime flow in order: right person, right moment, right reason, right offer, right ask, right follow-up (see **Judgment**). **[here]**
+3. Route to a child skill only if a specific input is missing or weak (see **Routing**). Do not load children automatically. **[here]**
+4. Verify sender trust before any scaled sending. If deliverability is unknown, recommend manual or low-volume sending only. → `cold_email_deliverability_readiness`
+5. Segment volume campaigns to one persona x one narrowing signal. Reject mixed lists. → `cold_email_icp_signal_design`
+6. Require a specific research anchor and bridge for strategic, single-target, investor, recruiting, PR, podcast, partnership, and relationship-sensitive outreach. → `cold_email_research_anchors`
+7. Prefer a useful artifact offer over a meeting ask: note, teardown, benchmark, signal report, sample, snapshot, deck, topic angles, or candidate slate. → `cold_email_offer_lab`
+8. Draft subject and preview before the body. Reject promotional, vague, money-word, or generic packaging. → `cold_email_outreach_compiler`
+9. Draft the body by mode and use one CTA: the smallest useful yes. → `cold_email_outreach_compiler`
+10. Add proof only when true, relevant, and approved. → `cold_email_taste_review`
+11. Plan cadence by mode and define reply routes before sending. → `cold_email_reply_os`
+12. Return a campaign bundle, per-email bundle, audit report, or child-skill routing plan (see **Contract**). **[here]**
+
+## Routing
+
+Ownership map. The Procedure sequences; this table assigns. One concept, one owner — everyone else routes here.
+
+| Child skill (single owner)            | Route here when                                                                |
+| ------------------------------------- | ------------------------------------------------------------------------------ |
+| `cold_email_icp_signal_design`        | the target, persona, timing signal, or disqualifier set is vague               |
+| `cold_email_offer_lab`                | the offer is missing, meeting-first, too large, or not artifact-shaped         |
+| `cold_email_research_anchors`         | a high-value email needs a better anchor or bridge                             |
+| `cold_email_outreach_compiler`        | inputs are ready and the user needs the finished bundle                        |
+| `cold_email_taste_review`             | reputation risk, weak specificity, or fake personalization is the main concern |
+| `cold_email_deliverability_readiness` | scaled sending, cold domains, or inbox health matters                          |
+| `cold_email_reply_os`                 | replies arrive, silence needs revival, or objections need routing              |
+| `cold_email_learning_review`          | a test produces metrics, replies, objections, or buyer language                |
+
+## Contract
 
 - Campaign bundle: mode, segment, sender check, offer, subject, preview, body, proof slot, CTA, cadence, reply routes, tracking targets, and refusal note if needed.
 - Per-email bundle: mode, anchor, bridge, subject, preview, body, CTA, proof, specificity grade, taste review, and follow-up plan.
 - Audit report: mode mismatch, sender gap, subject/preview issue, segment/research gap, offer gap, passive language, missing bridge, proof issue, cadence violation, reply-routing gap, and 3 rewrite candidates.
 - Routing plan: which child skill to load, why, and what artifact it should return to the root.
 
-## Guardrails
+## Policy
 
 - Do not send, schedule, or publish outreach without human confirmation.
 - Do not fabricate research, proof, metrics, mutual contacts, customer names, or buyer-language claims.
@@ -169,6 +214,10 @@ The north star is qualified conversations started per unit of market trust consu
 - Do not stack multiple offers or CTAs.
 - Do not exceed mode cadence limits.
 - Do not spend market trust casually.
+
+## Knowledge
+
+- **Mode taxonomy** (`internal-default`) — the send-modes this root chooses between in **Procedure** step 1: high-volume offer test, strategic-account sales, single-target relationship, reply revival, investor fundraising, recruiting, PR/podcast, partnership, or customer research.
 
 ## Examples
 
@@ -186,7 +235,7 @@ The north star is qualified conversations started per unit of market trust consu
 
 - Load `cold_email_taste_review` if the risk is reputation/tone, or `cold_email_outreach_compiler` if the goal is a full rewrite.
 
-## Notes
+## Provenance
 
 - This is the runtime BuildOS skill. Public blog content may paraphrase it, but should point back to this file as the core skill source.
 - Deeper research lineage and public source analysis live under `docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/`.

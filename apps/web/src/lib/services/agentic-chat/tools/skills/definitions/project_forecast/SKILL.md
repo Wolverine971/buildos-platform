@@ -1,6 +1,10 @@
 ---
 name: Project Forecast
 description: Project-scoped forecasting playbook for projecting trajectory, goal attainment, emerging work, schedule risk, assumptions, and next strategic moves while staying in project context.
+skill_type: strategy # procedure | strategy | reference | resource | policy | orchestration
+altitude: domain # task | domain | meta
+activation: progressive # always_on | progressive | invoked
+preserve_markdown: true
 legacy_paths:
     - project.forecast.skill
     - project.forecast
@@ -12,9 +16,22 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/project_fo
 
 # Project Forecast
 
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Provenance.
+  This file is skill_type: strategy, so Judgment carries the decision spine and Procedure holds the forecasting
+  sequence. It is standalone — no sibling routing — so there is no Routing block or dependencies. Knowledge is
+  empty by design: the ontology entities it reads (tasks, plans, milestones, goals, risks, docs, calendar) are
+  defined elsewhere, not re-taught here.
+-->
+
+## Identity
+
 Project-scoped forecasting playbook for projecting trajectory, goal attainment, emerging work, schedule risk, assumptions, and next strategic moves while staying in project context.
 
-## When to Use
+This is a **strategy** skill at **domain** altitude. A project forecast is a forward-looking project skill, not a separate chat context.
+
+## Activation
 
 - The context type is `project` and the user asks to forecast, predict, scenario-plan, estimate timing, or assess whether the project is on track
 - You need to determine where the project is headed, whether current trajectory reaches the goals, and what future milestones, goals, plans, or tasks are likely to emerge
@@ -22,7 +39,12 @@ Project-scoped forecasting playbook for projecting trajectory, goal attainment, 
 - The forecast may benefit from light research about the domain, market, creative constraints, technical path, or comparable work
 - The answer depends on assumptions and uncertainty rather than a static status summary
 
-## Workflow
+## Judgment
+
+- When evidence is thin, a narrow, honest forecast is better than a precise but fabricated one.
+- A useful forecast can create new strategic clarity: what goals should be added, what milestones should be planned, what tasks will likely be needed, and what documentation would change the odds.
+
+## Procedure
 
 1. Keep the chat in `project` context. Do not switch to a `project_forecast` context type.
 2. Start from a concrete project scope and reuse the in-context project_id when available.
@@ -40,6 +62,22 @@ Project-scoped forecasting playbook for projecting trajectory, goal attainment, 
 14. Separate what is likely to happen, what might happen if conditions change, and what should be done next.
 15. End with the smallest set of actions that would improve the forecast materially.
 
+## Contract
+
+Good forecast output usually has: current trajectory, on-track assessment, likely outcome, emerging work, hidden risks, assumptions, confidence, and next moves.
+
+## Policy
+
+- Do not invent dates, durations, dependencies, or capacity that were not observed or clearly inferred.
+- Do not present a forecast as certainty when the schedule data is thin.
+- Keep confidence proportional to evidence.
+- Forecasting is analysis by default; do not make write changes unless the user explicitly asks for them.
+- Make uncertainty useful: say what evidence would raise confidence.
+- Do not frame the forecast as only a deadline estimate. Forecast trajectory, emerging work, future decisions, and goal pathing.
+- Do not invent future tasks as if they already exist. Label them as likely next tasks, candidate tasks, or possible missing work.
+- Do not research everything by default. Research only when external context would change the forecast.
+- Do not ignore project ambition. A forecast should help the user see where the project is going, not merely summarize current status.
+
 ## Related Tools
 
 - `util.project.overview`
@@ -53,18 +91,6 @@ Project-scoped forecasting playbook for projecting trajectory, goal attainment, 
 - `onto.document.tree.get`
 - `util.web.search`
 - `util.web.visit`
-
-## Guardrails
-
-- Do not invent dates, durations, dependencies, or capacity that were not observed or clearly inferred.
-- Do not present a forecast as certainty when the schedule data is thin.
-- Keep confidence proportional to evidence.
-- Forecasting is analysis by default; do not make write changes unless the user explicitly asks for them.
-- Make uncertainty useful: say what evidence would raise confidence.
-- Do not frame the forecast as only a deadline estimate. Forecast trajectory, emerging work, future decisions, and goal pathing.
-- Do not invent future tasks as if they already exist. Label them as likely next tasks, candidate tasks, or possible missing work.
-- Do not research everything by default. Research only when external context would change the forecast.
-- Do not ignore project ambition. A forecast should help the user see where the project is going, not merely summarize current status.
 
 ## Examples
 
@@ -98,10 +124,3 @@ Project-scoped forecasting playbook for projecting trajectory, goal attainment, 
 - Use research when project context alone cannot answer feasibility, market timing, technical approach, or audience expectations.
 - Connect research back to concrete project choices.
 - Keep the forecast grounded in the user's project, not a generic industry report.
-
-## Notes
-
-- A project forecast is a forward-looking project skill, not a separate chat context.
-- When evidence is thin, a narrow, honest forecast is better than a precise but fabricated one.
-- Good forecast output usually has: current trajectory, on-track assessment, likely outcome, emerging work, hidden risks, assumptions, confidence, and next moves.
-- A useful forecast can create new strategic clarity: what goals should be added, what milestones should be planned, what tasks will likely be needed, and what documentation would change the odds.

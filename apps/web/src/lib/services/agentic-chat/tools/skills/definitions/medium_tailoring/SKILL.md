@@ -1,6 +1,9 @@
 ---
 name: Medium Tailoring
 description: Reshape an approved, enhanced draft into one target medium's native format and apply that medium's amplification levers. Use at the Tailor stage when the piece is written and you are fitting it to LinkedIn, Instagram, X, YouTube, a blog, or a newsletter. Not for choosing the channel or platform strategy — that is algorithm_aware_publishing.
+skill_type: procedure # procedure | reference | strategy | resource | policy | orchestration
+altitude: task # task | domain | meta
+activation: progressive # always_on | progressive | invoked
 parent_id: content_creation_pipeline
 depth: 1
 preserve_markdown: true
@@ -55,11 +58,19 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/medium_tai
 
 # Medium Tailoring
 
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Examples → Provenance.
+  This file is skill_type: procedure, so Procedure carries the weight; Judgment holds the preconditions,
+  thresholds, and the boundary vs algorithm_aware_publishing; the volatile per-medium format facts live in
+  the six reference modules, loaded exactly one at a time.
+-->
+
+## Identity
+
 Take a draft that is already written and enhanced, and reshape it into **one** target medium's native format — plus the amplification levers that medium rewards. This is the tactical transform at the pipeline's Tailor stage. It does not choose the channel and it does not decide platform strategy.
 
-Each medium has a dedicated reference module. Load **exactly one** — the one you are targeting. Loading more than one is wasted context.
-
-## When to Use
+## Activation
 
 - A draft spine is approved and enhanced, and now needs to fit a specific medium.
 - The user says "format this for LinkedIn", "turn this into a thread", "make it a carousel", "write the YouTube version".
@@ -67,15 +78,26 @@ Each medium has a dedicated reference module. Load **exactly one** — the one y
 
 Do not use for: choosing which channel to publish on, cadence, or algorithm strategy (`algorithm_aware_publishing`); writing the draft (`content_creation_pipeline` Stage 4); or the opening hook in isolation (`hook_craft_short_form`).
 
-## Boundary vs algorithm_aware_publishing
+## Judgment
+
+### Boundary vs algorithm_aware_publishing
 
 `algorithm_aware_publishing` answers _where and whether_ to publish — platform choice, topic discipline, rented-vs-owned, brand safety. **Medium Tailoring** answers _how to shape this one piece_ once the medium is chosen — character limits, line breaks, slide count, hook placement, CTA. Strategy upstream; format downstream. If the user has not chosen a medium yet, route to `algorithm_aware_publishing` first.
 
-## Precondition
+### Precondition
 
 The draft must be approved (Stage 5) and ideally enhanced (Stage 6, `sensory_double_tap`). Tailoring an unapproved draft bakes format work into prose that may still change.
 
-## Universal Tailoring Procedure
+### Thresholds (replace judgment with lookup)
+
+- Load **one** medium reference per piece. Re-cutting to a second medium is a second pass, not a merge.
+- **One primary CTA.** Additional asks dilute conversion — cut them.
+- Respect the reference's hard limits (character counts, slide counts, title length). When the draft overflows, cut, do not shrink the font of the idea.
+- Do not introduce a new argument during tailoring. New claims belong back in Draft.
+
+## Procedure
+
+### Universal Tailoring Procedure
 
 Run this regardless of medium; the loaded reference supplies the medium-specific numbers and templates.
 
@@ -86,14 +108,7 @@ Run this regardless of medium; the loaded reference supplies the medium-specific
 5. **Set exactly one primary CTA.** One ask per piece; the reference says which CTA the medium rewards.
 6. **Amplification pass.** Apply the reference's levers (e.g. first-line curiosity gap, save-bait, reply-prompt) without violating the piece's integrity.
 
-## Thresholds (replace judgment with lookup)
-
-- Load **one** medium reference per piece. Re-cutting to a second medium is a second pass, not a merge.
-- **One primary CTA.** Additional asks dilute conversion — cut them.
-- Respect the reference's hard limits (character counts, slide counts, title length). When the draft overflows, cut, do not shrink the font of the idea.
-- Do not introduce a new argument during tailoring. New claims belong back in Draft.
-
-## Workflow
+### Workflow
 
 1. Confirm the medium and that the draft is approved + enhanced.
 2. Load the matching `medium_tailoring.<medium>` reference module.
@@ -101,15 +116,20 @@ Run this regardless of medium; the loaded reference supplies the medium-specific
 4. Return the medium-native piece plus a short amplification note.
 5. Hand to Ship (post / save / schedule). For platform strategy questions, escalate to `algorithm_aware_publishing`.
 
-## Guardrails
+## Routing
 
-- Do not pick the channel for the user. Medium is an input; if it is unset, route to `algorithm_aware_publishing`.
-- Do not load multiple medium references at once — one per piece.
-- Do not rewrite the argument while formatting. Preserve the approved spine; flag any needed claim change as a Draft-stage change.
-- Do not stack CTAs. One primary ask.
-- Do not fabricate platform metrics or "best time to post" claims; the references carry format rules, not performance guarantees.
+Ownership map. This skill owns the format transform; upstream strategy and adjacent craft route out.
 
-## Output
+| Concern (what)                                         | Owner (who)                                  |
+| ------------------------------------------------------ | -------------------------------------------- |
+| Channel choice, cadence, platform / algorithm strategy | `algorithm_aware_publishing`                 |
+| Writing the draft spine (Stage 4)                      | `content_creation_pipeline`                  |
+| Opening hook in isolation                              | `hook_craft_short_form`                      |
+| Stage 6 enhancement (sensory cues)                     | `sensory_double_tap`                         |
+| Per-medium format numbers, templates, and levers       | `medium_tailoring.<medium>` reference module |
+| Ship the piece (post / save / schedule)                | downstream Ship stage                        |
+
+## Contract
 
 Return:
 
@@ -119,7 +139,23 @@ Return:
 - **Primary CTA**: the one ask.
 - **Amplification note**: 1–3 levers applied, and the hand-off to Ship.
 
-## Worked Example
+## Policy
+
+- Do not pick the channel for the user. Medium is an input; if it is unset, route to `algorithm_aware_publishing`.
+- Do not load multiple medium references at once — one per piece.
+- Do not rewrite the argument while formatting. Preserve the approved spine; flag any needed claim change as a Draft-stage change.
+- Do not stack CTAs. One primary ask.
+- Do not fabricate platform metrics or "best time to post" claims; the references carry format rules, not performance guarantees.
+
+## Knowledge
+
+Deliberately thin. Each medium has a dedicated reference module. Load **exactly one** — the one you are targeting. Loading more than one is wasted context. Everything medium-specific — character limits, line breaks, slide count, hook placement, CTA, and amplification levers — lives in the six reference modules (`medium_tailoring.linkedin`, `.instagram`, `.x_twitter`, `.youtube`, `.blog`, `.newsletter`), each loaded on demand.
+
+> **Extraction / DRY flag (§12.3, inventory seam AA):** per-medium format facts here overlap with the platform reference modules under `going_viral`. Possible shared platform-facts module — flag for DJ. No new reference modules created in this pass.
+
+## Examples
+
+### Worked Example
 
 Input: an approved + enhanced LinkedIn-targeted draft arguing agents fail because of the chat-box container.
 
@@ -141,3 +177,8 @@ Asset slots: [VISUAL: annotated screenshot of the looping steps] as the single i
 Primary CTA: "What's the longest an agent has looped on you?" (reply-prompt — LinkedIn rewards comments).
 Amplification note: first line is a 4-word pattern-break with a curiosity gap; one image; one reply-prompt CTA. Hand to Ship.
 ```
+
+## Provenance
+
+- **Reference modules:** `medium_tailoring.linkedin`, `medium_tailoring.instagram`, `medium_tailoring.x_twitter`, `medium_tailoring.youtube`, `medium_tailoring.blog`, `medium_tailoring.newsletter` — one per medium, each holding that medium's format rules, structure templates, and amplification levers. _(internal-default)_
+- **Parent pipeline:** `content_creation_pipeline` (this skill runs at the Tailor stage). _(internal-default)_

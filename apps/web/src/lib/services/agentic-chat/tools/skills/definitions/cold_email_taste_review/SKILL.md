@@ -1,6 +1,9 @@
 ---
 name: Cold Email Taste Review
 description: Child skill for scoring whether a cold email draft is specific, proportionate, credible, and reputation-safe enough for a serious sender to send — including "tighten this up" or "is this good?" requests on an existing draft. 8-dimension scorecard, auto-fails, screenshot test, and named rewrite moves per failure; routes structural failures to the compiler instead of line-editing.
+skill_type: strategy # procedure | strategy | reference | resource | policy | orchestration
+altitude: domain # task | domain | meta
+activation: progressive # always_on | progressive | invoked
 parent_id: cold_email_engagement_first_outreach
 depth: 1
 preserve_markdown: true
@@ -21,9 +24,22 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email
 
 # Cold Email Taste Review
 
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Related Tools → Examples → Provenance.
+  This file is skill_type: strategy, so Identity + Activation + Judgment are required; the scorecard, auto-fails,
+  screenshot test, and verdict mapping are the Judgment spine (the "decide" verb). Procedure + Routing are optional
+  but retained: the review runs an ordered pass and routes structural failures to sibling skills. The Governing
+  Sources list is dated/volatile vendor data kept inline under Provenance — flagged as a reference-extraction candidate.
+-->
+
+## Identity
+
 Use this child skill when reputation risk is the main question. The north star is qualified conversations started per unit of market trust consumed — never emails sent. A score without a named fix is not a review.
 
-## When to Use
+This is a **strategy** skill at **domain** altitude: its job is to _decide_ — grade a draft against a sourced rubric and return a verdict with a named fix — not to compose or rebuild the email. Structural rebuilds are handed to sibling skills (see **Routing**).
+
+## Activation
 
 - The draft may sound generic, pushy, automated, or fake-warm
 - The personalization may be decorative
@@ -31,18 +47,11 @@ Use this child skill when reputation risk is the main question. The north star i
 - Proof, claims, or tone may embarrass the sender if screenshotted
 - The user asks whether the email is good, tasteful, or safe to send
 
-## Workflow
+## Judgment
 
-1. Identify the mode (volume, strategic, investor, recruiting, PR/podcast, research) and trust level — the scorecard's readability limits, ask ceilings, and subject rules are mode-keyed. Trust ladder shorthand (full T0–T3 rubric lives in `cold_email_offer_lab`): T0 = cold first touch, T1 = they replied or engaged once, T2 = ongoing thread or referral, T3 = prior relationship. First-touch cold = T0 unless evidence says otherwise.
-2. Score all 8 dimensions using the Taste Scorecard section below (0–2 each): two-people test, bridge integrity, them>you ratio, readability, ask/trust proportion, proof integrity, voice/automation smell, mode dignity.
-3. Check the auto-fail list. Any auto-fail → verdict is do-not-send regardless of total score; name the auto-fail and stop polishing.
-4. Run the screenshot test on the full draft: would a serious operator be embarrassed if the recipient screenshotted this and posted it?
-5. Map score to verdict per the scorecard cut lines (pass / revise / do-not-send) and say that the cut lines are internal defaults, not industry standards.
-6. If dimensions 1, 2, 7, or 8 failed — or any auto-fail fired — load `cold_email_taste_review.fake_warmth_and_rewrites` and attach the matching named rewrite move to each failure (artifact-first, progress-first, causal bridge, assumptive, numbered fork).
-7. For do-not-send verdicts with structural causes, route instead of line-editing: offer problem → `cold_email_offer_lab`, anchor/bridge problem → `cold_email_research_anchors`, full rebuild → `cold_email_outreach_compiler`.
-8. Return the highest-risk line and its smallest fix.
+The decision spine. Score all eight dimensions, then check auto-fails, then run the screenshot test, then map to a verdict. A score without a named fix is not a review.
 
-## Taste Scorecard
+### Taste Scorecard
 
 When grading any draft: score all eight dimensions, then check auto-fails, then run the screenshot test, then map to a verdict. A score without a named fix is not a review.
 
@@ -53,21 +62,6 @@ qualified conversations started per unit of market trust consumed
 ```
 
 Never grade an email on whether it will get sent or opened at volume. Grade it on whether it starts a qualified conversation without burning trust the sender cannot recover.
-
-### Governing Sources
-
-- Becc Holland — personalization vs. relevance (`source-analyses/becc-holland-personalization-to-relevance.md`).
-- Sam McKenna — Show Me You Know Me, authenticity bridge, semantic-fit failures (`source-analyses/sam-mckenna-show-me-you-know-me-ai-era.md`).
-- Connor Murray — assumptive language, one-phone-screen rule (`source-analyses/connor-murray-cold-email-assumptive-cadence.md`).
-- Austin Schneider / Instantly — artifact-over-call, 2026 filter context (`source-analyses/austin-schneider-engagement-first-cold-email-2026.md`).
-- Aaron Shepherd — follow-up don'ts, guilt language (`source-analyses/aaron-shepherd-volume-front-end-offer.md`).
-- Jason Bay / Florin Tatulea — word counts, mobile-shaped bodies (`source-analyses/florin-tatulea-reply-method-cold-email-showdown.md`).
-- Justin Jackson — small asks, screenshot behavior, fake-warmth clichés.
-- April Dunford — proof reserved for the specific differentiated claim.
-- Mailshake State of Cold Email 2025 — robot-register rule (508-respondent survey, methodology stated, self-reported).
-- Lavender Cold Email 101 + benchmark — readability and length lifts (231,818 emails / ~50k inboxes; sample stated, selection bias not characterized: treat all Lavender numbers as **directional-vendor**, never as governing thresholds).
-- Muck Rack pitching guide + checklist, Mom Test (Fitzpatrick), Michael Seibel / YC — mode dignity.
-- RecruitingDaily/Recruiterflow — 3:1 them>you ratio (50k-email claim, methodology not stated: named-practitioner pattern, not a governing threshold).
 
 ### The Scorecard (8 dimensions, 0–2 each, 16 max)
 
@@ -84,7 +78,7 @@ Score 2 = pass, 1 = partial, 0 = fail. Every 0 or 1 must be reported with the fa
 | 7   | **Voice / automation smell**                  | Reads like a person typed it; no "I hope this finds you well," no "just checking in," no theatric prepositioning; opener is hand-written, not AI-generated | Marketing-automation register; AI-template fingerprint; AI-generated opening line; fake-casual        | Mailshake: "If your email could've been written by a robot, it's getting deleted by a human"; Jackson on "I trust this email finds you well" ×5; Shepherd follow-up don'ts; Greenhouse: "hope all is well… doesn't sound sincere"; Instantly 2026: AI-generated openers are now detectable — recipients pattern-match the shared format and inbox providers flag the common skeleton as mass-send |
 | 8   | **Mode dignity**                              | PR: serves the recipient's audience; recruiting: candidate-centered with honest constraints; research: discloses intent; investor: factual, non-hype       | Audience-irrelevant pitch; hidden sales motive in a research ask; hype                                | Muck Rack ("don't try to dazzle them, give it to them straight"); Mom Test; Seibel/YC                                                                                                                                                                                                                                                                                                             |
 
-## Auto-Fails (any one → do-not-send, regardless of total score)
+### Auto-Fails (any one → do-not-send, regardless of total score)
 
 Auto-fails are non-negotiable. A 15/16 draft with one auto-fail is still do-not-send.
 
@@ -94,8 +88,6 @@ Auto-fails are non-negotiable. A 15/16 draft with one auto-fail is still do-not-
 4. Misleading subject — "Re:"/"Fwd:" on a first touch (Greenhouse).
 5. Fake warmth (see the fake-warmth detector module) — manufactured familiarity is a dishonest frame, not a style problem.
 6. Any claim that would embarrass the sender if screenshotted.
-
-## Screenshot Test and Verdict Mapping
 
 ### The Screenshot Test (named test — keep the name)
 
@@ -121,7 +113,30 @@ Verdict-reporting rules:
 - Always include the single highest-risk line in the draft and its smallest fix.
 - When the failure is in dimensions 1, 2, 7, or 8, load the fake-warmth and rewrites module for the pattern library and worked examples.
 
-## Output Contract
+## Procedure
+
+Ordered pass; intent + sequence only. Routed steps carry a `→ <id>` marker and defer ownership to **Routing**.
+
+1. Identify the mode (volume, strategic, investor, recruiting, PR/podcast, research) and trust level — the scorecard's readability limits, ask ceilings, and subject rules are mode-keyed. Trust ladder shorthand (full T0–T3 rubric lives in `cold_email_offer_lab`): T0 = cold first touch, T1 = they replied or engaged once, T2 = ongoing thread or referral, T3 = prior relationship. First-touch cold = T0 unless evidence says otherwise.
+2. Score all 8 dimensions using the Taste Scorecard section above (0–2 each): two-people test, bridge integrity, them>you ratio, readability, ask/trust proportion, proof integrity, voice/automation smell, mode dignity.
+3. Check the auto-fail list. Any auto-fail → verdict is do-not-send regardless of total score; name the auto-fail and stop polishing.
+4. Run the screenshot test on the full draft: would a serious operator be embarrassed if the recipient screenshotted this and posted it?
+5. Map score to verdict per the scorecard cut lines (pass / revise / do-not-send) and say that the cut lines are internal defaults, not industry standards.
+6. If dimensions 1, 2, 7, or 8 failed — or any auto-fail fired — load `cold_email_taste_review.fake_warmth_and_rewrites` and attach the matching named rewrite move to each failure (artifact-first, progress-first, causal bridge, assumptive, numbered fork).
+7. For do-not-send verdicts with structural causes, route instead of line-editing: offer problem → `cold_email_offer_lab`, anchor/bridge problem → `cold_email_research_anchors`, full rebuild → `cold_email_outreach_compiler`.
+8. Return the highest-risk line and its smallest fix.
+
+## Routing
+
+Structural failures are routed, not line-edited. One concern, one owner — this skill scores and names the fix, then hands rebuilds to the owner.
+
+| Concern (what)                                      | Owner (who)                    | This skill retains                             |
+| --------------------------------------------------- | ------------------------------ | ---------------------------------------------- |
+| Trust-ladder full T0–T3 rubric + offer construction | `cold_email_offer_lab`         | mode + trust identification for scoring        |
+| Anchor / bridge problem (rebuild the hook)          | `cold_email_research_anchors`  | scoring bridge integrity (dimension 2)         |
+| Full rebuild of a do-not-send draft                 | `cold_email_outreach_compiler` | the verdict + highest-risk line + smallest fix |
+
+## Contract
 
 - Per-dimension scores: all 8, each 0–2, failed dimensions named
 - Auto-fail flags: which (if any) fired, quoted from the draft
@@ -131,7 +146,22 @@ Verdict-reporting rules:
 - Highest-risk line and its smallest fix
 - Routing recommendation when the failure is structural
 
-## Worked Example
+## Policy
+
+- Do not polish a fundamentally dishonest frame.
+- Auto-fails are non-negotiable — a high total score never overrides an auto-fail.
+- Fake warmth is an auto-fail, not a style note. Do not let fake personalization survive because the copy is fluent.
+- Flag AI-generated opening lines under dimension #7. As of 2026 these are not merely synthetic-sounding — they are detectable: recipients pattern-match the shared format and inbox providers flag the common skeleton as mass-send. AI is for research and enrichment; a human writes the opener.
+- A score without a named fix is not a review.
+- Do not approve unsupported metrics or customer claims.
+- Do not ignore the recipient's dignity when they say no.
+- Do not approve media outreach that serves the sender but not the recipient's audience.
+- Do not approve feature-first copy when the stated offer is a buyer-choice artifact.
+- Do not cross-apply mode benchmarks (recruiting subject norms vs. sales subject norms).
+- Never optimize for emails sent — the north star is qualified conversations started per unit of market trust consumed.
+- Scorecard cut lines are internal defaults — say so when reporting a verdict.
+
+## Examples
 
 Condensed from a full review of a fake-warmth first-touch sales email sent as variants to ~80 marketing leads; the input is in `evals.md` Task 1. Match this shape and rigor.
 
@@ -180,22 +210,24 @@ _(…remaining failed dimensions handled the same way — dimension 6 gets "cut 
 
 **Routing (structural failure — do not line-edit):** full rebuild → `cold_email_outreach_compiler` (recommended); offer problem → `cold_email_offer_lab`; anchor/bridge problem → `cold_email_research_anchors`.
 
-## Guardrails
+## Provenance
 
-- Do not polish a fundamentally dishonest frame.
-- Auto-fails are non-negotiable — a high total score never overrides an auto-fail.
-- Fake warmth is an auto-fail, not a style note. Do not let fake personalization survive because the copy is fluent.
-- Flag AI-generated opening lines under dimension #7. As of 2026 these are not merely synthetic-sounding — they are detectable: recipients pattern-match the shared format and inbox providers flag the common skeleton as mass-send. AI is for research and enrichment; a human writes the opener.
-- A score without a named fix is not a review.
-- Do not approve unsupported metrics or customer claims.
-- Do not ignore the recipient's dignity when they say no.
-- Do not approve media outreach that serves the sender but not the recipient's audience.
-- Do not approve feature-first copy when the stated offer is a buyer-choice artifact.
-- Do not cross-apply mode benchmarks (recruiting subject norms vs. sales subject norms).
-- Never optimize for emails sent — the north star is qualified conversations started per unit of market trust consumed.
-- Scorecard cut lines are internal defaults — say so when reporting a verdict.
+### Governing Sources
 
-## Notes
+- Becc Holland — personalization vs. relevance (`source-analyses/becc-holland-personalization-to-relevance.md`). [PRIMARY]
+- Sam McKenna — Show Me You Know Me, authenticity bridge, semantic-fit failures (`source-analyses/sam-mckenna-show-me-you-know-me-ai-era.md`). [PRIMARY]
+- Connor Murray — assumptive language, one-phone-screen rule (`source-analyses/connor-murray-cold-email-assumptive-cadence.md`). [PRIMARY]
+- Austin Schneider / Instantly — artifact-over-call, 2026 filter context (`source-analyses/austin-schneider-engagement-first-cold-email-2026.md`). [PRIMARY]
+- Aaron Shepherd — follow-up don'ts, guilt language (`source-analyses/aaron-shepherd-volume-front-end-offer.md`). [PRIMARY]
+- Jason Bay / Florin Tatulea — word counts, mobile-shaped bodies (`source-analyses/florin-tatulea-reply-method-cold-email-showdown.md`). [PRIMARY]
+- Justin Jackson — small asks, screenshot behavior, fake-warmth clichés. [PRIMARY]
+- April Dunford — proof reserved for the specific differentiated claim. [PRIMARY]
+- Mailshake State of Cold Email 2025 — robot-register rule (508-respondent survey, methodology stated, self-reported). [PRIMARY]
+- Lavender Cold Email 101 + benchmark — readability and length lifts (231,818 emails / ~50k inboxes; sample stated, selection bias not characterized: treat all Lavender numbers as **directional-vendor**, never as governing thresholds). [practitioner]
+- Muck Rack pitching guide + checklist, Mom Test (Fitzpatrick), Michael Seibel / YC — mode dignity. [PRIMARY]
+- RecruitingDaily/Recruiterflow — 3:1 them>you ratio (50k-email claim, methodology not stated: named-practitioner pattern, not a governing threshold). [practitioner]
+
+### Notes
 
 - Reference modules: `cold_email_taste_review.fake_warmth_and_rewrites` (explain and fix failures in dimensions 1, 2, 7, 8). The taste scorecard, auto-fails, screenshot test, and verdict mapping are inline above (folded into the shell 2026-06-11).
 - Dimension sources: Becc Holland, Sam McKenna, Connor Murray, Austin Schneider, Aaron Shepherd, Jason Bay/Florin Tatulea, Justin Jackson, April Dunford, Mailshake 2025, Lavender (directional-vendor), Muck Rack, Mom Test, Seibel/YC. Full citations live in the Governing Sources section above and the fake-warmth reference module.

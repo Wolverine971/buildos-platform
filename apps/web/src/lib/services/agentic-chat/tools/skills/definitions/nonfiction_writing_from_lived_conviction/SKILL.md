@@ -5,6 +5,9 @@ description: >-
     drafting a personal essay or blog post from the user's own experience, making a generic
     or aggregated-take draft less generic, developing voice, shaping hermit-crab or braided
     essays, or grounding an opinionated piece in contradiction and lived conviction.
+skill_type: strategy # procedure | reference | strategy | resource | policy | orchestration
+altitude: domain # task | domain | meta
+activation: progressive # always_on | progressive | invoked
 preserve_markdown: true
 legacy_paths:
     - nonfiction-writing-from-lived-conviction
@@ -14,9 +17,22 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/nonfiction
 
 # Nonfiction Writing From Lived Conviction
 
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Contract → Policy → Provenance.
+  This file is skill_type: strategy, so Judgment carries the weight (the mental model, craft rules, and
+  diagnostic prompts that decide how the piece is built). Secondary flavor is procedure: a light drafting
+  sequence lives in Procedure. No Routing (standalone skill — routes to no siblings). Knowledge stays out:
+  there are no volatile declarative facts to hold; the essay forms live inline in the Procedure step that uses them.
+-->
+
+## Identity
+
 Use this skill to turn real experience, observation, or memory into creative nonfiction. The goal is not to report facts. The goal is to reveal a particular mind trying to make sense of the world. This is the antidote to generic content: write from what the speaker actually lived and believes, not from aggregated takes.
 
-## When to Use
+This is a **strategy** skill at **domain** altitude: it supplies the decision spine and craft heuristics for creative-nonfiction drafting, not a deterministic runbook. Its secondary flavor is procedure — a light drafting sequence lives in **Procedure** — but the weight is in **Judgment**.
+
+## Activation
 
 - Draft a personal essay or reflective blog post
 - Turn a mundane experience into a meaningful essay
@@ -28,13 +44,34 @@ Use this skill to turn real experience, observation, or memory into creative non
 
 Do not use this skill for objective research reports, SEO explainers, technical docs, or fictional short stories.
 
-## Core Mental Model
+## Judgment
+
+### Core mental model
 
 Creative nonfiction is a constructed speaker thinking through real material. The writer on the page is not the full private person. It is a selected, sharpened persona built to carry the essay's inquiry.
 
 The strongest material is often not the biggest event. It is the place where a small event exposes a contradiction, pressure, longing, embarrassment, belief, or change in the speaker.
 
-## Workflow
+### Craft rules
+
+- Treat "I" as a character with a job.
+- Prefer specific scenes over generalized life lessons.
+- Use research only when it deepens the speaker's encounter with reality.
+- Let mundane subjects stay mundane; make the rendering interesting.
+- Use voice as the hook.
+- Do not explain every implication. Leave room for the reader to meet the mind at work.
+
+### Diagnostic prompts
+
+- What ordinary thing keeps bothering the speaker?
+- What does the speaker know now that they did not know then?
+- What is the speaker embarrassed to admit?
+- What contradiction makes this piece alive?
+- What would be lost if the speaker were removed?
+- What form would make the thinking stranger or more precise?
+- What one scene can carry the whole inquiry?
+
+## Procedure
 
 1. **Choose the real material.** Start with an experience, memory, object, place, person, routine, obsession, irritation, question, or tiny scene.
 2. **Find the inquiry.** Ask what the piece is trying to understand. An essay should attempt something, not merely recount something.
@@ -45,26 +82,7 @@ The strongest material is often not the biggest event. It is the place where a s
 7. **Let style carry thought.** Nonfiction can tolerate digression, sentence personality, tonal shifts, and direct address when they reveal the speaker's mind.
 8. **End with earned movement.** The piece does not need a clean lesson, but it should leave the reader with changed pressure, sharper perception, or a more honest question.
 
-## Prompts
-
-- What ordinary thing keeps bothering the speaker?
-- What does the speaker know now that they did not know then?
-- What is the speaker embarrassed to admit?
-- What contradiction makes this piece alive?
-- What would be lost if the speaker were removed?
-- What form would make the thinking stranger or more precise?
-- What one scene can carry the whole inquiry?
-
-## Craft Rules
-
-- Treat "I" as a character with a job.
-- Prefer specific scenes over generalized life lessons.
-- Use research only when it deepens the speaker's encounter with reality.
-- Let mundane subjects stay mundane; make the rendering interesting.
-- Use voice as the hook.
-- Do not explain every implication. Leave room for the reader to meet the mind at work.
-
-## Output
+## Contract
 
 When helping draft, return:
 
@@ -78,7 +96,7 @@ When helping draft, return:
 - strongest lines or images to preserve
 - revision risks
 
-## Guardrails
+## Policy
 
 - Do not turn the essay into confession without craft.
 - Do not use trauma, family history, or another person's private story casually.
@@ -87,8 +105,8 @@ When helping draft, return:
 - Do not sand off ambivalence to make the essay more agreeable.
 - Do not fabricate lived experience for the speaker; work only from material the user actually provides.
 
-## Notes
+## Provenance
 
-- BuildOS alignment: this skill operationalizes the founder-voice content doctrine — write from lived experience and specific scenes, not aggregated takes. Useful for blog drafts, founder posts, and "make this less generic" revision passes.
-- Primary source: Writing with Andrew, "I'm Politely Begging You to Write Nonfiction."
-- Maintainers: the canonical research draft with full lineage lives at `docs/research/youtube-library/skill-drafts/nonfiction-writing-from-lived-conviction/` (not available at runtime).
+- **BuildOS alignment:** this skill operationalizes the founder-voice content doctrine — write from lived experience and specific scenes, not aggregated takes. Useful for blog drafts, founder posts, and "make this less generic" revision passes. `internal-default`
+- **Primary source:** Writing with Andrew, "I'm Politely Begging You to Write Nonfiction." `PRIMARY`
+- **Maintainers:** the canonical research draft with full lineage lives at `docs/research/youtube-library/skill-drafts/nonfiction-writing-from-lived-conviction/` (not available at runtime).

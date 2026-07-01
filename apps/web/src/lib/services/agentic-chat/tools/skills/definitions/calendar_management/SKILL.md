@@ -1,6 +1,10 @@
 ---
 name: Calendar Operations
 description: Calendar workflow playbook for BuildOS agentic chat. Use for event reads/writes, scope decisions, and project calendar mapping.
+skill_type: procedure # procedure | strategy | reference | resource | policy | orchestration
+altitude: task # task | domain | meta
+activation: progressive # always_on | progressive | invoked
+preserve_markdown: true
 legacy_paths:
     - cal.skill
     - calendar.skill
@@ -11,9 +15,19 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/calendar_m
 
 # Calendar Operations
 
-Calendar workflow playbook for BuildOS agentic chat. Use for event reads/writes, scope decisions, and project calendar mapping.
+<!--
+  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
+  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Related Tools → Examples → Provenance.
+  This file is skill_type: procedure at task altitude, so Procedure carries the weight (the ordered
+  calendar runbook); Contract states what to report; Policy holds the guardrails. It routes to no sibling
+  skills, so there is no Routing block; there are no external sources, so Provenance holds operational notes.
+-->
 
-## When to Use
+## Identity
+
+Calendar workflow playbook for BuildOS agentic chat. Use for event reads/writes, scope decisions, and project calendar mapping. This is a **procedure** skill at **task** altitude: a runbook of ordered steps for operating the calendar tools, with checkpoints, an output contract, and guardrails.
+
+## Activation
 
 - Read events in a time window
 - Create, reschedule, or cancel events
@@ -21,7 +35,7 @@ Calendar workflow playbook for BuildOS agentic chat. Use for event reads/writes,
 - Manage project calendar mapping
 - Link work sessions to tasks
 
-## Workflow
+## Procedure
 
 1. Choose scope first: user, project, or explicit calendar_id.
 2. For project scope, include exact project_id.
@@ -30,6 +44,23 @@ Calendar workflow playbook for BuildOS agentic chat. Use for event reads/writes,
 5. For update/delete, discover and pass exact onto_event_id or event_id.
 6. For first-time or complex writes, inspect the exact tool schema with `tool_schema` before calling the direct calendar tool.
 7. After execution, tell the user what changed and mention sync implications when they matter.
+
+## Contract
+
+After a calendar write, tell the user:
+
+- What changed: event title, the resolved time window (with timezone), scope (user, project, or explicit calendar_id), and any task link.
+- Sync implications when they matter — for example that a synced event will propagate to the connected calendar.
+- For reads: the events in the requested window, stated in the user's terms, plus the exact window you queried.
+
+Stop conditions before replying: scope was chosen explicitly before the write; start/end times are timezone-safe; update/delete used an exact `onto_event_id` or `event_id` discovered from a read rather than guessed; you have not claimed an event was created, moved, or cancelled until the tool call returned success.
+
+## Policy
+
+- Prefer onto_event_id when available for update/delete.
+- If sync status matters, verify with calendar ops instead of guessing.
+- If a task is clearly the subject of the event, include task_id.
+- If only start_at is known, the backend may default duration; still prefer explicit end_at when the user gave enough detail.
 
 ## Related Tools
 
@@ -40,23 +71,6 @@ Calendar workflow playbook for BuildOS agentic chat. Use for event reads/writes,
 - `cal.event.delete`
 - `cal.project.get`
 - `cal.project.set`
-
-## Output
-
-After a calendar write, tell the user:
-
-- What changed: event title, the resolved time window (with timezone), scope (user, project, or explicit calendar_id), and any task link.
-- Sync implications when they matter — for example that a synced event will propagate to the connected calendar.
-- For reads: the events in the requested window, stated in the user's terms, plus the exact window you queried.
-
-Stop conditions before replying: scope was chosen explicitly before the write; start/end times are timezone-safe; update/delete used an exact `onto_event_id` or `event_id` discovered from a read rather than guessed; you have not claimed an event was created, moved, or cancelled until the tool call returned success.
-
-## Guardrails
-
-- Prefer onto_event_id when available for update/delete.
-- If sync status matters, verify with calendar ops instead of guessing.
-- If a task is clearly the subject of the event, include task_id.
-- If only start_at is known, the backend may default duration; still prefer explicit end_at when the user gave enough detail.
 
 ## Examples
 
@@ -71,7 +85,7 @@ Stop conditions before replying: scope was chosen explicitly before the write; s
 - If the update shape is unclear, call `tool_schema({ op: "cal.event.update" })`.
 - Then call `update_calendar_event({ ... })` with the exact identifier and updated fields.
 
-## Notes
+## Provenance
 
 - Calendar reads and writes are often sensitive to scope, time zone normalization, and exact event identifiers.
 - Use `tool_schema` if the request depends on less common fields such as sync_to_calendar or calendar_id.
