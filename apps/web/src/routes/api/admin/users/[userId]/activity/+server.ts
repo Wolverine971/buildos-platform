@@ -32,6 +32,29 @@ type ProjectDocumentRow = {
 	updated_at: string;
 };
 
+type ProjectGoalRow = {
+	id: string;
+	project_id: string;
+	name: string;
+	state_key: string | null;
+	type_key: string | null;
+	target_date: string | null;
+	completed_at: string | null;
+	created_at: string;
+	updated_at: string | null;
+};
+
+type ProjectPlanRow = {
+	id: string;
+	project_id: string;
+	name: string;
+	state_key: string | null;
+	type_key: string | null;
+	facet_stage: string | null;
+	created_at: string;
+	updated_at: string | null;
+};
+
 type ProjectLogRow = {
 	project_id: string | null;
 	entity_id: string;
@@ -58,6 +81,43 @@ type ChatSessionRow = {
 	last_message_at: string | null;
 };
 
+type ChatMessageRow = {
+	id: string;
+	session_id: string;
+	role: string;
+	content: string;
+	created_at: string | null;
+	message_type: string | null;
+	error_message: string | null;
+};
+
+type AgentChatSessionRow = {
+	id: string;
+	parent_session_id: string;
+	session_type: string;
+	status: string;
+	context_type: string | null;
+	entity_id: string | null;
+	message_count: number | null;
+	created_at: string;
+	completed_at: string | null;
+};
+
+type AgentChatMessageRow = {
+	id: string;
+	agent_session_id: string;
+	parent_user_session_id: string;
+	role: string;
+	sender_type: string;
+	content: string;
+	created_at: string;
+};
+
+type ChatSessionProjectLinkRow = {
+	chat_session_id: string;
+	project_id: string;
+};
+
 const asTime = (value: string | null | undefined): number => {
 	if (!value) return 0;
 	const parsed = new Date(value).getTime();
@@ -79,6 +139,17 @@ const buildChatSessionTitle = (session: ChatSessionRow): string => {
 
 const getChatSessionLastActivityAt = (session: ChatSessionRow): string | null =>
 	session.last_message_at ?? session.updated_at ?? session.created_at ?? null;
+
+const humanizeLabel = (value: string | null | undefined): string => {
+	if (!value) return 'Unknown';
+	return value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const summarizeMessageContent = (content: string | null | undefined): string => {
+	const normalized = (content || '').replace(/\s+/g, ' ').trim();
+	if (!normalized) return 'No message content';
+	return normalized.length <= 180 ? normalized : `${normalized.slice(0, 180).trim()}...`;
+};
 
 const ACTIVITY_LABEL_FIELDS = [
 	'title',
@@ -421,10 +492,16 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		const [
 			tasksResult,
 			documentsResult,
+			goalsResult,
+			plansResult,
 			dailyBriefsResult,
 			projectLogsResult,
 			scheduledBriefsResult,
-			chatSessionsResult
+			chatSessionsResult,
+			chatMessagesResult,
+			agentChatSessionsResult,
+			agentChatMessagesResult,
+			chatSessionProjectLinksResult
 		] = await Promise.all([
 			projectIds.length
 				? supabase
@@ -440,6 +517,24 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 						.from('onto_documents')
 						.select(
 							'id, project_id, title, type_key, state_key, created_at, updated_at'
+						)
+						.in('project_id', projectIds)
+						.is('deleted_at', null)
+				: Promise.resolve({ data: [], error: null }),
+			projectIds.length
+				? supabase
+						.from('onto_goals')
+						.select(
+							'id, project_id, name, state_key, type_key, target_date, completed_at, created_at, updated_at'
+						)
+						.in('project_id', projectIds)
+						.is('deleted_at', null)
+				: Promise.resolve({ data: [], error: null }),
+			projectIds.length
+				? supabase
+						.from('onto_plans')
+						.select(
+							'id, project_id, name, state_key, type_key, facet_stage, created_at, updated_at'
 						)
 						.in('project_id', projectIds)
 						.is('deleted_at', null)
@@ -473,22 +568,63 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				)
 				.eq('user_id', userId)
 				.order('updated_at', { ascending: false })
-				.limit(100)
+				.limit(100),
+			supabase
+				.from('chat_messages')
+				.select('id, session_id, role, content, created_at, message_type, error_message')
+				.eq('user_id', userId)
+				.order('created_at', { ascending: false })
+				.limit(500),
+			supabase
+				.from('agent_chat_sessions')
+				.select(
+					'id, parent_session_id, session_type, status, context_type, entity_id, message_count, created_at, completed_at'
+				)
+				.eq('user_id', userId)
+				.order('created_at', { ascending: false })
+				.limit(100),
+			supabase
+				.from('agent_chat_messages')
+				.select(
+					'id, agent_session_id, parent_user_session_id, role, sender_type, content, created_at'
+				)
+				.eq('user_id', userId)
+				.order('created_at', { ascending: false })
+				.limit(500),
+			projectIds.length
+				? supabase
+						.from('chat_sessions_projects')
+						.select('chat_session_id, project_id')
+						.in('project_id', projectIds)
+				: Promise.resolve({ data: [], error: null })
 		]);
 
 		if (tasksResult.error) throw tasksResult.error;
 		if (documentsResult.error) throw documentsResult.error;
+		if (goalsResult.error) throw goalsResult.error;
+		if (plansResult.error) throw plansResult.error;
 		if (dailyBriefsResult.error) throw dailyBriefsResult.error;
 		if (projectLogsResult.error) throw projectLogsResult.error;
 		if (scheduledBriefsResult.error) throw scheduledBriefsResult.error;
 		if (chatSessionsResult.error) throw chatSessionsResult.error;
+		if (chatMessagesResult.error) throw chatMessagesResult.error;
+		if (agentChatSessionsResult.error) throw agentChatSessionsResult.error;
+		if (agentChatMessagesResult.error) throw agentChatMessagesResult.error;
+		if (chatSessionProjectLinksResult.error) throw chatSessionProjectLinksResult.error;
 
 		const tasks = (tasksResult.data || []) as ProjectTaskRow[];
 		const documents = (documentsResult.data || []) as ProjectDocumentRow[];
+		const goals = (goalsResult.data || []) as ProjectGoalRow[];
+		const plans = (plansResult.data || []) as ProjectPlanRow[];
 		const dailyBriefs = dailyBriefsResult.data || [];
 		const projectLogs = (projectLogsResult.data || []) as ProjectLogRow[];
 		const scheduledBriefs = scheduledBriefsResult.data || [];
 		const rawChatSessions = (chatSessionsResult.data || []) as ChatSessionRow[];
+		const chatMessages = (chatMessagesResult.data || []) as ChatMessageRow[];
+		const rawAgentChatSessions = (agentChatSessionsResult.data || []) as AgentChatSessionRow[];
+		const agentChatMessages = (agentChatMessagesResult.data || []) as AgentChatMessageRow[];
+		const chatSessionProjectLinks = (chatSessionProjectLinksResult.data ||
+			[]) as ChatSessionProjectLinkRow[];
 
 		const entityLabelByKey = new Map<string, string>();
 		for (const project of projects) {
@@ -500,6 +636,12 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		for (const document of documents) {
 			setEntityLabel(entityLabelByKey, 'document', document.id, document.title);
 			setEntityLabel(entityLabelByKey, 'note', document.id, document.title);
+		}
+		for (const goal of goals) {
+			setEntityLabel(entityLabelByKey, 'goal', goal.id, goal.name);
+		}
+		for (const plan of plans) {
+			setEntityLabel(entityLabelByKey, 'plan', plan.id, plan.name);
 		}
 		for (const log of projectLogs) {
 			setEntityLabel(
@@ -517,30 +659,152 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			entityLabelByKey
 		});
 
-		const processedChatSessions = sortByTimestampDesc(
-			rawChatSessions.map((session) => ({
+		const chatMessagesBySession = new Map<string, ChatMessageRow[]>();
+		for (const message of chatMessages) {
+			if (!chatMessagesBySession.has(message.session_id)) {
+				chatMessagesBySession.set(message.session_id, []);
+			}
+			chatMessagesBySession.get(message.session_id)?.push(message);
+		}
+		for (const [sessionId, messages] of chatMessagesBySession.entries()) {
+			chatMessagesBySession.set(
+				sessionId,
+				sortByTimestampDesc(messages, (message) => message.created_at)
+			);
+		}
+
+		const agentMessagesBySession = new Map<string, AgentChatMessageRow[]>();
+		for (const message of agentChatMessages) {
+			if (!agentMessagesBySession.has(message.agent_session_id)) {
+				agentMessagesBySession.set(message.agent_session_id, []);
+			}
+			agentMessagesBySession.get(message.agent_session_id)?.push(message);
+		}
+		for (const [sessionId, messages] of agentMessagesBySession.entries()) {
+			agentMessagesBySession.set(
+				sessionId,
+				sortByTimestampDesc(messages, (message) => message.created_at)
+			);
+		}
+
+		const linkedProjectIdsBySession = new Map<string, Set<string>>();
+		for (const link of chatSessionProjectLinks) {
+			const linkedIds =
+				linkedProjectIdsBySession.get(link.chat_session_id) ?? new Set<string>();
+			linkedIds.add(link.project_id);
+			linkedProjectIdsBySession.set(link.chat_session_id, linkedIds);
+		}
+
+		const rawChatSessionById = new Map(rawChatSessions.map((session) => [session.id, session]));
+
+		const getProjectIdsForCurrentChatSession = (session: ChatSessionRow): string[] => {
+			const projectIdsForSession = new Set<string>(
+				Array.from(linkedProjectIdsBySession.get(session.id) || [])
+			);
+			if (session.context_type === 'project' && session.entity_id) {
+				projectIdsForSession.add(session.entity_id);
+			}
+			return Array.from(projectIdsForSession);
+		};
+
+		const processedCurrentChatSessions = rawChatSessions.map((session) => {
+			const sessionMessages = chatMessagesBySession.get(session.id) || [];
+			const projectIdsForSessionList = getProjectIdsForCurrentChatSession(session);
+			const lastMessageAt = sessionMessages[0]?.created_at ?? session.last_message_at ?? null;
+
+			return {
 				id: session.id,
+				source: 'current',
+				source_label: 'Current chat',
 				title: buildChatSessionTitle(session),
 				status: session.status ?? 'active',
 				context_type: session.context_type ?? 'global',
 				entity_id: session.entity_id ?? null,
-				project_id:
-					session.context_type === 'project' && session.entity_id
-						? session.entity_id
-						: null,
-				project_name:
-					session.context_type === 'project' && session.entity_id
-						? projectNameById.get(session.entity_id) || null
-						: null,
-				message_count: session.message_count || 0,
+				project_ids: projectIdsForSessionList,
+				project_id: projectIdsForSessionList[0] ?? null,
+				project_name: projectIdsForSessionList[0]
+					? projectNameById.get(projectIdsForSessionList[0]) || null
+					: null,
+				project_names: projectIdsForSessionList
+					.map((projectId) => projectNameById.get(projectId))
+					.filter((name): name is string => Boolean(name)),
+				message_count: Math.max(session.message_count || 0, sessionMessages.length),
 				tool_call_count: session.tool_call_count || 0,
 				total_tokens_used: session.total_tokens_used || 0,
 				created_at: session.created_at,
 				updated_at: session.updated_at,
-				last_message_at: session.last_message_at,
-				last_activity_at: getChatSessionLastActivityAt(session),
-				admin_url: `/admin/chat/sessions?chat_session_id=${session.id}`
-			})),
+				last_message_at: lastMessageAt,
+				last_activity_at: lastMessageAt ?? getChatSessionLastActivityAt(session),
+				admin_url: `/admin/chat/sessions?chat_session_id=${session.id}`,
+				recent_messages: sessionMessages.slice(0, 3).map((message) => ({
+					id: message.id,
+					role: message.role,
+					content: summarizeMessageContent(message.content),
+					created_at: message.created_at,
+					message_type: message.message_type,
+					error_message: message.error_message
+				}))
+			};
+		});
+
+		const processedLegacyAgentChatSessions = rawAgentChatSessions.map((session) => {
+			const sessionMessages = agentMessagesBySession.get(session.id) || [];
+			const projectIdsForSession = new Set<string>();
+			if (session.context_type === 'project' && session.entity_id) {
+				projectIdsForSession.add(session.entity_id);
+			}
+			const parentSession = rawChatSessionById.get(session.parent_session_id);
+			if (parentSession) {
+				for (const projectId of getProjectIdsForCurrentChatSession(parentSession)) {
+					projectIdsForSession.add(projectId);
+				}
+			}
+			for (const projectId of linkedProjectIdsBySession.get(session.parent_session_id) ||
+				[]) {
+				projectIdsForSession.add(projectId);
+			}
+			const projectIdsForSessionList = Array.from(projectIdsForSession);
+			const latestMessageAt = sessionMessages[0]?.created_at ?? null;
+			const lastActivityAt = latestMessageAt ?? session.completed_at ?? session.created_at;
+
+			return {
+				id: `legacy:${session.id}`,
+				source: 'legacy_agent',
+				source_label: 'Legacy agent chat',
+				raw_session_id: session.id,
+				title: `Legacy ${humanizeLabel(session.session_type || 'agent chat')}`,
+				status: session.status ?? 'active',
+				context_type: session.context_type ?? 'agent',
+				entity_id: session.entity_id ?? null,
+				project_ids: projectIdsForSessionList,
+				project_id: projectIdsForSessionList[0] ?? null,
+				project_name: projectIdsForSessionList[0]
+					? projectNameById.get(projectIdsForSessionList[0]) || null
+					: null,
+				project_names: projectIdsForSessionList
+					.map((projectId) => projectNameById.get(projectId))
+					.filter((name): name is string => Boolean(name)),
+				message_count: Math.max(session.message_count || 0, sessionMessages.length),
+				tool_call_count: 0,
+				total_tokens_used: 0,
+				created_at: session.created_at,
+				updated_at: session.completed_at,
+				last_message_at: latestMessageAt,
+				last_activity_at: lastActivityAt,
+				admin_url: null,
+				recent_messages: sessionMessages.slice(0, 3).map((message) => ({
+					id: message.id,
+					role: message.sender_type || message.role,
+					content: summarizeMessageContent(message.content),
+					created_at: message.created_at,
+					message_type: null,
+					error_message: null
+				}))
+			};
+		});
+
+		const processedChatSessions = sortByTimestampDesc(
+			[...processedCurrentChatSessions, ...processedLegacyAgentChatSessions],
 			(session) => session.last_activity_at
 		);
 
@@ -560,6 +824,22 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			documentsByProject.get(document.project_id)?.push(document);
 		}
 
+		const goalsByProject = new Map<string, ProjectGoalRow[]>();
+		for (const goal of goals) {
+			if (!goalsByProject.has(goal.project_id)) {
+				goalsByProject.set(goal.project_id, []);
+			}
+			goalsByProject.get(goal.project_id)?.push(goal);
+		}
+
+		const plansByProject = new Map<string, ProjectPlanRow[]>();
+		for (const plan of plans) {
+			if (!plansByProject.has(plan.project_id)) {
+				plansByProject.set(plan.project_id, []);
+			}
+			plansByProject.get(plan.project_id)?.push(plan);
+		}
+
 		const logsByProject = new Map<string, ProjectLogRow[]>();
 		for (const log of projectLogs) {
 			if (!log.project_id) continue;
@@ -571,11 +851,18 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 
 		const chatsByProject = new Map<string, typeof processedChatSessions>();
 		for (const session of processedChatSessions) {
-			if (!session.project_id) continue;
-			if (!chatsByProject.has(session.project_id)) {
-				chatsByProject.set(session.project_id, []);
+			const projectIdsForSession =
+				session.project_ids.length > 0
+					? session.project_ids
+					: session.project_id
+						? [session.project_id]
+						: [];
+			for (const projectId of projectIdsForSession) {
+				if (!chatsByProject.has(projectId)) {
+					chatsByProject.set(projectId, []);
+				}
+				chatsByProject.get(projectId)?.push(session);
 			}
-			chatsByProject.get(session.project_id)?.push(session);
 		}
 
 		const processedProjects = projects
@@ -587,6 +874,14 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				const projectDocuments = sortByTimestampDesc(
 					documentsByProject.get(project.id) || [],
 					(document) => document.updated_at || document.created_at
+				);
+				const projectGoals = sortByTimestampDesc(
+					goalsByProject.get(project.id) || [],
+					(goal) => goal.updated_at || goal.created_at
+				);
+				const projectPlans = sortByTimestampDesc(
+					plansByProject.get(project.id) || [],
+					(plan) => plan.updated_at || plan.created_at
 				);
 				const projectActivityLogs = sortByTimestampDesc(
 					logsByProject.get(project.id) || [],
@@ -607,6 +902,32 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				);
 				const completedTaskCount = taskStateCounts.done || 0;
 				const openTaskCount = projectTasks.length - completedTaskCount;
+				const goalStateCounts = projectGoals.reduce<Record<string, number>>(
+					(counts, goal) => {
+						const key = goal.state_key || 'unknown';
+						counts[key] = (counts[key] || 0) + 1;
+						return counts;
+					},
+					{}
+				);
+				const completedGoalCount = projectGoals.filter(
+					(goal) =>
+						Boolean(goal.completed_at) ||
+						goal.state_key === 'done' ||
+						goal.state_key === 'completed'
+				).length;
+				const openGoalCount = projectGoals.length - completedGoalCount;
+				const planStateCounts = projectPlans.reduce<Record<string, number>>(
+					(counts, plan) => {
+						const key = plan.state_key || 'unknown';
+						counts[key] = (counts[key] || 0) + 1;
+						return counts;
+					},
+					{}
+				);
+				const activePlanCount = projectPlans.filter(
+					(plan) => !['done', 'completed', 'archived'].includes(plan.state_key || '')
+				).length;
 				const chatMessageCount = projectChats.reduce(
 					(sum, session) => sum + (session.message_count || 0),
 					0
@@ -622,6 +943,8 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 									projectDocuments[0]?.updated_at ||
 									projectDocuments[0]?.created_at
 							},
+							{ value: projectGoals[0]?.updated_at || projectGoals[0]?.created_at },
+							{ value: projectPlans[0]?.updated_at || projectPlans[0]?.created_at },
 							{ value: projectActivityLogs[0]?.created_at },
 							{ value: projectChats[0]?.last_activity_at }
 						],
@@ -637,9 +960,16 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 					completed_task_count: completedTaskCount,
 					document_count: projectDocuments.length,
 					notes_count: projectDocuments.length,
+					goal_count: projectGoals.length,
+					open_goal_count: openGoalCount,
+					completed_goal_count: completedGoalCount,
+					plan_count: projectPlans.length,
+					active_plan_count: activePlanCount,
 					chat_session_count: projectChats.length,
 					chat_message_count: chatMessageCount,
 					task_state_counts: taskStateCounts,
+					goal_state_counts: goalStateCounts,
+					plan_state_counts: planStateCounts,
 					last_activity_at: lastActivityAt,
 					recent_tasks: projectTasks.slice(0, 4),
 					recent_documents: projectDocuments.slice(0, 4).map((document) => ({
@@ -649,6 +979,25 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 						state_key: document.state_key,
 						created_at: document.created_at,
 						updated_at: document.updated_at
+					})),
+					recent_goals: projectGoals.slice(0, 4).map((goal) => ({
+						id: goal.id,
+						name: goal.name,
+						state_key: goal.state_key,
+						type_key: goal.type_key,
+						target_date: goal.target_date,
+						completed_at: goal.completed_at,
+						created_at: goal.created_at,
+						updated_at: goal.updated_at
+					})),
+					recent_plans: projectPlans.slice(0, 4).map((plan) => ({
+						id: plan.id,
+						name: plan.name,
+						state_key: plan.state_key,
+						type_key: plan.type_key,
+						facet_stage: plan.facet_stage,
+						created_at: plan.created_at,
+						updated_at: plan.updated_at
 					})),
 					recent_activity: projectActivityLogs.slice(0, 4).map((log) => {
 						const details = getProjectLogDetails(log, entityLabelByKey);
@@ -727,7 +1076,9 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				created_at: session.last_activity_at,
 				object_name: session.title,
 				project_name: session.project_name || undefined,
-				details: `${session.message_count} messages · ${(session.context_type || 'global').replaceAll('_', ' ')}`
+				details: `${session.message_count} messages · ${session.source_label} · ${(
+					session.context_type || 'global'
+				).replaceAll('_', ' ')}`
 			});
 		}
 
@@ -747,12 +1098,14 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			completed_tasks: completedTasks,
 			total_documents: documents.length,
 			total_notes: documents.length,
+			total_goals: goals.length,
+			total_plans: plans.length,
 			total_briefs: dailyBriefs.length,
 			scheduled_briefs: scheduledBriefs.length,
 			total_chat_sessions: processedChatSessions.length,
 			total_chat_messages: totalChatMessages,
 			total_project_chat_sessions: processedChatSessions.filter(
-				(session) => session.context_type === 'project'
+				(session) => session.project_ids.length > 0
 			).length,
 			total_agentic_sessions: processedChatSessions.length,
 			total_agentic_messages: totalChatMessages,
@@ -770,6 +1123,8 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			tasks,
 			documents,
 			notes: documents,
+			goals,
+			plans,
 			daily_briefs: dailyBriefs,
 			scheduled_briefs: scheduledBriefs,
 			chat_sessions: processedChatSessions,

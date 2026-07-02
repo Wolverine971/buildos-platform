@@ -139,7 +139,8 @@ type SectionDraft = Omit<LitePromptSection, 'chars' | 'estimatedTokens'>;
 export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvelope {
 	const focus = buildFocus(input);
 	const dataSummary = summarizeData(input.data);
-	const projectDigest = buildProjectDigest(input.data, focus, normalizeTime(input.now));
+	const nowIso = normalizeTime(input.now);
+	const projectDigest = buildProjectDigest(input.data, focus, nowIso);
 	const timeline = buildTimelineSummary(input, focus, dataSummary, projectDigest);
 	const retrievalMap = buildRetrievalMap(input.retrievalMap ?? null, focus, dataSummary);
 	const toolsSummary = buildToolsSummary(input.contextType, input.tools ?? null);
@@ -166,7 +167,10 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 		buildOperatingStrategySection(),
 		buildSafetyDataRulesSection(input.data ?? null),
 		...(startHereSection ? [startHereSection] : []),
-		buildFocusPurposeSection(focus, projectDigest, input.data ?? null),
+		buildFocusPurposeSection(focus, projectDigest, input.data ?? null, {
+			nowIso,
+			timezone: input.timezone ?? DEFAULT_TIMEZONE
+		}),
 		buildLocationLoadedContextSection(focus, input.data),
 		...(knowledgeMapSection ? [knowledgeMapSection] : []),
 		...(timelineSection ? [timelineSection] : []),
@@ -204,7 +208,8 @@ function buildIdentityMissionSection(): LitePromptSection {
 function buildFocusPurposeSection(
 	focus: LitePromptFocus,
 	projectDigest: LitePromptProjectDigest | null,
-	data: LitePromptInput['data']
+	data: LitePromptInput['data'],
+	clock: { nowIso: string; timezone: string }
 ): LitePromptSection {
 	const workflowBlock = FOCUS_WORKFLOW_GUIDANCE[focus.contextType] ?? null;
 	const isBriefContext =
@@ -218,9 +223,14 @@ function buildFocusPurposeSection(
 	);
 
 	if (focus.contextType === 'project_create') {
+		// The Timeline section (the only other carrier of "Current time") is
+		// skipped for project_create, so this line is what anchors relative
+		// dates like "end of July". Date-only granularity keeps the section
+		// stable across prepared-prompt reuse within a day.
 		const coreContent = [
 			'Current focus:',
 			'- The user is trying to create a new BuildOS project right now.',
+			`- Current date: ${clock.nowIso.slice(0, 10)} (timezone ${clock.timezone}). Resolve relative or year-less dates ("end of July", "March 15") forward from this date; never resolve them into the past.`,
 			'- No existing project or focus entity exists yet; treat the user message as the source of truth for the initial project.',
 			'- Project creation guidance is already preloaded in this prompt; do not call skill_load or tool_schema before creating when the payload can be inferred.',
 			'',
@@ -611,7 +621,8 @@ function buildOperatingStrategySection(): LitePromptSection {
 			'- After a loaded domain exposes outcome_card_ids and outcome_card_load, load an outcome card when the user needs a pre-assembled skill stack, output contract, or quality bar before choosing skills.',
 			'- Use skill_search when the active domain is known but the exact skill is unclear; pass domain when available. Prefer root skills unless a child skill is clearly the needed narrow lens.',
 			'- Use resource_search only after it is exposed by a loaded domain, outcome card, or skill-linked resource path. Use resource_load only for a matched resource when source detail, examples, templates, or provenance would materially improve the answer.',
-			"- Load a skill with skill_load only when the workflow is two or more related writes or required fields are uncertain; default to format: short and request include_examples: true only after a prior failure on the same op. Skill choice follows from the outcome card, domain, or runtime capability that matches the user's intent.",
+			'- Call skill_load before answering whenever the request is skill-covered work: multi-step or related writes, uncertain required fields, or craft/judgment work a registered skill covers (content drafting, video scripts and hooks, UI/UX or design review, usability research, cold outreach, project audits and forecasts, channel or content strategy). Producing that work from base knowledge without loading the matching skill is a routing failure, not a shortcut.',
+			"- When Active Domain Signals reports the skill-load gate as ACTIVE, loading the best-matching skill before the final answer is required, not optional; a skill already in the loaded-skills ledger counts as loaded. Default to format: short and request include_examples: true only after a prior failure on the same op. Skill choice follows from the outcome card, domain, or runtime capability that matches the user's intent.",
 			'- If history includes a previously loaded skills ledger, treat those skills as already discovered. Do not reload the same skill just to recover its summary, child index, or related tools; reload only when the full markdown/examples are needed for this turn.',
 			'- Root skills are the default. Do not load child skills or reference modules automatically after loading a root skill; load deeper material only when the current request needs niche, mode-specific, or high-context guidance.',
 			'- Use skill_reference_load only for a reference_modules entry returned by skill_load. Do not use it to browse arbitrary files or as a substitute for loading a registered child skill.',
@@ -1086,7 +1097,7 @@ function defaultRetrievalMap(
 	const notes = [
 		'Prefer loaded context first.',
 		'Use direct tools for missing current data or actions.',
-		'Use skill_load only for workflows that need the full playbook.'
+		'Load the matching skill before answering skill-covered work (see Operating Strategy).'
 	];
 
 	switch (focus.contextType) {

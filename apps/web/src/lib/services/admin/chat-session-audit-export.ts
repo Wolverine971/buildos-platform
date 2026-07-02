@@ -26,6 +26,13 @@ import {
 	metricLine,
 	toJson
 } from './chat-session-audit-gist';
+import {
+	buildCapabilityManifest,
+	buildCompactTimeline,
+	buildCompactTurnRuns,
+	buildPromptSnapshotRecords,
+	compactPromptSnapshot
+} from './chat-session-audit-compact';
 import type { AuditTurnRun, ChatSessionAuditPayload } from './chat-session-audit-types';
 export type {
 	AuditPromptEvalRun,
@@ -42,13 +49,92 @@ type ChatSessionAuditResponse = {
 	data?: ChatSessionAuditPayload;
 };
 
-const sanitizeFilenamePart = (value: string): string =>
+const sanitizeFilenamePart = (value: string, maxLength = 48): string =>
 	value
 		.toLowerCase()
 		.trim()
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-+|-+$/g, '')
-		.slice(0, 48) || 'session';
+		.slice(0, maxLength) || 'session';
+
+const FILENAME_STOP_WORDS = new Set([
+	'a',
+	'an',
+	'and',
+	'are',
+	'as',
+	'at',
+	'be',
+	'but',
+	'can',
+	'chat',
+	'could',
+	'for',
+	'from',
+	'happening',
+	'help',
+	'how',
+	'i',
+	'im',
+	'in',
+	'is',
+	'it',
+	'me',
+	'my',
+	'of',
+	'on',
+	'or',
+	'please',
+	'session',
+	'that',
+	'the',
+	'this',
+	'to',
+	'wa',
+	'want',
+	'we',
+	'what',
+	'when',
+	'where',
+	'with',
+	'would',
+	'why',
+	'you'
+]);
+
+const stripStarterPhrase = (value: string): string =>
+	value
+		.replace(
+			/^\s*(i['’]?m|i am|we['’]?re|we are)\s+(launching|starting|creating|building)\s+(a|an|the)\s+/i,
+			''
+		)
+		.replace(/^\s*(help me|can you|could you|please)\s+/i, '')
+		.trim();
+
+const firstUserMessage = (payload: ChatSessionAuditPayload): string | null => {
+	const message = payload.messages.find((entry) => entry.role === 'user');
+	return typeof message?.content === 'string' && message.content.trim()
+		? message.content.trim()
+		: null;
+};
+
+const buildTopicSlug = (payload: ChatSessionAuditPayload): string => {
+	const source = stripStarterPhrase(firstUserMessage(payload) ?? payload.session.title);
+	const words = source.toLowerCase().match(/[a-z0-9]+/g) ?? [];
+	const significant = words.filter((word) => word.length >= 3 && !FILENAME_STOP_WORDS.has(word));
+	const selected = significant.slice(0, 4);
+	if (selected.length > 0) return sanitizeFilenamePart(selected.join('-'), 40);
+	return sanitizeFilenamePart(payload.session.title, 40);
+};
+
+const timestampPart = (date = new Date()): string =>
+	date
+		.toISOString()
+		.replace(/[-:]/g, '')
+		.replace(/\.\d{3}Z$/, 'Z');
+
+export const buildChatSessionAuditBaseName = (payload: ChatSessionAuditPayload): string =>
+	`csa-${buildTopicSlug(payload)}-${timestampPart()}`;
 
 const optionalString = (value: unknown): string | null => {
 	if (typeof value !== 'string') return null;
@@ -191,15 +277,22 @@ export const buildRawAppendixSection = (payload: ChatSessionAuditPayload): strin
 	const lines = [
 		'## Appendix: Raw Data',
 		'',
-		'_Full records for deep inspection. Collapsed by default — the sections above are the readable summary._',
+		'_Compact records for deep inspection. Null fields and duplicate prompt blobs are removed; the sections above are the readable summary._',
 		''
 	];
 	lines.push(...collapsedRaw('Messages', payload.messages));
 	lines.push(...collapsedRaw('Tool Executions', payload.tool_executions));
 	lines.push(...collapsedRaw('LLM Calls', payload.llm_calls));
 	lines.push(...collapsedRaw('Operations', payload.operations));
-	lines.push(...collapsedRaw('Timeline', payload.timeline));
-	lines.push(...collapsedRaw('Turn Runs', payload.turn_runs));
+	lines.push(...collapsedRaw('Timeline', buildCompactTimeline(payload.timeline)));
+	lines.push(...collapsedRaw('Turn Runs', buildCompactTurnRuns(payload.turn_runs)));
+	lines.push(
+		...collapsedRaw(
+			'Prompt Snapshot Summaries',
+			buildPromptSnapshotRecords(payload).map(compactPromptSnapshot)
+		)
+	);
+	lines.push(...collapsedRaw('Capabilities', buildCapabilityManifest(payload)));
 	lines.push(...collapsedRaw('Timing Metrics', payload.timing_metrics));
 	lines.push(...collapsedRaw('Agent Metadata', payload.session.agent_metadata));
 	lines.push(...collapsedRaw('Extracted Entities', payload.session.extracted_entities));
@@ -242,10 +335,7 @@ const buildSummarySection = (payload: ChatSessionAuditPayload): string[] => [
 ];
 
 export const buildChatSessionAuditFilename = (payload: ChatSessionAuditPayload): string => {
-	const safeTitle = sanitizeFilenamePart(payload.session.title);
-	const safeId = sanitizeFilenamePart(payload.session.id).slice(0, 16);
-	const date = new Date().toISOString().slice(0, 10);
-	return `chat-session-audit-${safeTitle}-${safeId}-${date}.md`;
+	return `${buildChatSessionAuditBaseName(payload)}.md`;
 };
 
 export const buildChatSessionAuditMarkdown = (payload: ChatSessionAuditPayload): string => {

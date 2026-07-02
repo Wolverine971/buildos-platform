@@ -188,6 +188,24 @@ function formatLoadedSkillSummaryLine(skill: LoadedSkillSummary): string {
 	return `- \`${skill.id}\` (${details.join('; ')}):${summary}${tools}`;
 }
 
+export const LOADED_SKILLS_LEDGER_PREFIX = 'Previously loaded skills in this session:';
+
+/**
+ * Whether composed history already carries the loaded-skills ledger — i.e. a
+ * skill was loaded earlier in this session. The skill-load gate (stream
+ * orchestrator) treats ledger skills as loaded and does not force a re-load.
+ */
+export function historyIncludesLoadedSkillsLedger(
+	messages: Array<Pick<FastChatHistoryMessage, 'role' | 'content'>>
+): boolean {
+	return messages.some(
+		(message) =>
+			message.role === 'system' &&
+			typeof message.content === 'string' &&
+			message.content.startsWith(LOADED_SKILLS_LEDGER_PREFIX)
+	);
+}
+
 export function buildLoadedSkillHistorySummary(
 	executions: LoadedSkillExecutionSummaryRow[],
 	maxSkills = 8
@@ -206,7 +224,7 @@ export function buildLoadedSkillHistorySummary(
 	if (loadedSkills.length === 0) return null;
 
 	const lines = [
-		'Previously loaded skills in this session:',
+		LOADED_SKILLS_LEDGER_PREFIX,
 		...loadedSkills.map(formatLoadedSkillSummaryLine),
 		[
 			'Use this as a skill-continuity ledger.',

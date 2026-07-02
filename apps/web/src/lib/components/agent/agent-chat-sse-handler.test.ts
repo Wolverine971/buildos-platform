@@ -199,6 +199,7 @@ interface HandlerHarness {
 			toolCallId: string;
 			status: string;
 			errorMessage?: string;
+			toolResult?: Record<string, any>;
 			result: ActivityUpdateResult;
 		}>;
 		upsertSkillActivity: number;
@@ -322,9 +323,15 @@ function createHarness(
 		upsertOperationActivity() {
 			calls.upsertOperationActivity += 1;
 		},
-		updateActivityStatus(toolCallId, status, errorMessage) {
+		updateActivityStatus(toolCallId, status, errorMessage, toolResult) {
 			const result = nextActivityUpdateResult;
-			calls.updateActivityStatus.push({ toolCallId, status, errorMessage, result });
+			calls.updateActivityStatus.push({
+				toolCallId,
+				status,
+				errorMessage,
+				toolResult,
+				result
+			});
 			return result;
 		},
 		finalize(status, note) {
@@ -568,7 +575,17 @@ describe('createSSEHandler — routing', () => {
 describe('createSSEHandler — tool call + result', () => {
 	it('adds a pending tool_call activity and consumes a prior pending result', () => {
 		const h = createHarness();
-		h.pendingToolResults.set('call-1', { status: 'completed' });
+		h.pendingToolResults.set('call-1', {
+			status: 'completed',
+			toolResult: {
+				result: {
+					task: {
+						id: 'task-1',
+						title: 'Hi'
+					}
+				}
+			}
+		});
 		h.handler({
 			type: 'tool_call',
 			tool_call: {
@@ -582,6 +599,7 @@ describe('createSSEHandler — tool call + result', () => {
 		});
 		expect(h.calls.updateActivityStatus).toHaveLength(1);
 		expect(h.calls.updateActivityStatus[0]?.status).toBe('completed');
+		expect(h.calls.updateActivityStatus[0]?.toolResult?.result?.task?.id).toBe('task-1');
 		expect(h.pendingToolResults.has('call-1')).toBe(false);
 	});
 
@@ -599,10 +617,17 @@ describe('createSSEHandler — tool call + result', () => {
 			result: {
 				tool_call_id: 'call-1',
 				success: true,
-				toolName: 'create_onto_task'
+				toolName: 'create_onto_task',
+				result: {
+					task: {
+						id: 'task-1',
+						title: 'x'
+					}
+				}
 			}
 		});
 		expect(h.calls.updateActivityStatus).toHaveLength(1);
+		expect(h.calls.updateActivityStatus[0]?.toolResult?.result?.task?.id).toBe('task-1');
 		expect(toastSpy).toHaveBeenCalledWith('create_onto_task', { title: 'x' }, true);
 		expect(mutationSpy).toHaveBeenCalled();
 	});
@@ -618,9 +643,14 @@ describe('createSSEHandler — tool call + result', () => {
 				error: 'Boom'
 			}
 		});
-		expect(h.pendingToolResults.get('call-late')).toEqual({
+		expect(h.pendingToolResults.get('call-late')).toMatchObject({
 			status: 'failed',
-			errorMessage: 'Boom'
+			errorMessage: 'Boom',
+			toolResult: {
+				tool_call_id: 'call-late',
+				success: false,
+				error: 'Boom'
+			}
 		});
 	});
 

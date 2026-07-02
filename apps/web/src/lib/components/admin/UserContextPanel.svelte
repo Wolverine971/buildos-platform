@@ -33,6 +33,11 @@
 
 	let copyButtonState = $state<'idle' | 'success'>('idle');
 	let expandedSections = $state<Set<string>>(new Set(['basic', 'activity']));
+	const emailStyleBlockPattern = new RegExp('<' + 'style[\\s\\S]*?</' + 'style>', 'gi');
+	const emailScriptBlockPattern = new RegExp('<' + 'script[\\s\\S]*?</' + 'script>', 'gi');
+	const emailTrackingImagePattern =
+		/<img\b[^>]*\bsrc=["'][^"']*\/api\/email-tracking\/[^"']*["'][^>]*>/gi;
+	const emailTrackingHrefPattern = /\s+href=(["'])[^"']*\/api\/email-tracking\/[^"']*\1/gi;
 
 	// Computed user health score and signals
 	let userHealth = $derived(computeUserHealth());
@@ -271,8 +276,11 @@
 	 * Strip HTML tags and convert to readable plain text
 	 */
 	function stripHtmlToText(html: string): string {
-		// Replace common block elements with newlines
+		// Email HTML contains full CSS blocks; remove them before stripping tags.
 		let text = html
+			.replace(emailStyleBlockPattern, '')
+			.replace(emailScriptBlockPattern, '')
+			.replace(/<!--[\s\S]*?-->/g, '')
 			.replace(/<br\s*\/?>/gi, '\n')
 			.replace(/<\/p>/gi, '\n\n')
 			.replace(/<\/div>/gi, '\n')
@@ -310,6 +318,55 @@
 			.trim();
 
 		return text;
+	}
+
+	function escapeHtml(value: string): string {
+		return value
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;');
+	}
+
+	function hasHtmlMarkup(content: string): boolean {
+		return /<\/?(?:html|head|body|style|table|div|p|br|a|span|h[1-6]|img|ul|ol|li)\b/i.test(
+			content
+		);
+	}
+
+	function buildPlainTextEmailPreview(content: string): string {
+		return `<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+	</head>
+	<body style="margin: 0; background: #f7f5f1; color: #222222; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
+		<div style="box-sizing: border-box; min-height: 100vh; max-width: 680px; margin: 0 auto; background: #ffffff; padding: 32px;">
+			<pre style="margin: 0; white-space: pre-wrap; word-break: break-word; font: inherit; line-height: 1.6;">${escapeHtml(stripHtmlToText(content))}</pre>
+		</div>
+	</body>
+</html>`;
+	}
+
+	function removeEmailTrackingArtifacts(content: string): string {
+		return content
+			.replace(emailTrackingImagePattern, '')
+			.replace(emailTrackingHrefPattern, ' href="#"');
+	}
+
+	function getEmailPreviewSrcdoc(content: string): string {
+		const trimmedContent = content.trim();
+		if (!trimmedContent) {
+			return buildPlainTextEmailPreview('No email content available.');
+		}
+
+		const previewContent = removeEmailTrackingArtifacts(trimmedContent);
+
+		return hasHtmlMarkup(previewContent)
+			? previewContent
+			: buildPlainTextEmailPreview(previewContent);
 	}
 
 	function getEmailStatusBadge(status: string): { class: string; label: string } {
@@ -737,31 +794,6 @@
 							</div>
 						{/if}
 
-						<!-- Recent Projects -->
-						{#if userContext.activity.recent_projects.length > 0}
-							<div>
-								<div
-									class="text-[0.65rem] uppercase tracking-wide text-muted-foreground mb-1"
-								>
-									Recent Projects
-								</div>
-								<div class="space-y-1">
-									{#each userContext.activity.recent_projects.slice(0, 3) as project}
-										<div
-											class="flex items-center justify-between text-xs p-1.5 rounded-md bg-muted"
-										>
-											<span class="text-foreground truncate flex-1"
-												>{project.title}</span
-											>
-											<span class="text-muted-foreground ml-2 shrink-0"
-												>{formatRelativeDate(project.updated_at)}</span
-											>
-										</div>
-									{/each}
-								</div>
-							</div>
-						{/if}
-
 						<!-- Extra Metrics -->
 						<div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
 							<div class="flex justify-between">
@@ -1022,7 +1054,7 @@
 												<div class="flex items-center justify-between mb-2">
 													<span
 														class="text-[0.65rem] uppercase tracking-wide text-muted-foreground"
-														>Content</span
+														>Preview</span
 													>
 													<button
 														onclick={() =>
@@ -1030,13 +1062,21 @@
 														class="px-1.5 py-0.5 text-[0.65rem] rounded bg-muted hover:bg-muted text-muted-foreground transition-colors pressable flex items-center gap-1"
 													>
 														<Copy class="w-3 h-3" />
-														Copy
+														Copy text
 													</button>
 												</div>
 												<div
-													class="p-3 rounded-md bg-muted border border-border text-xs text-foreground whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto"
+													class="rounded-md border border-border bg-white shadow-ink overflow-hidden"
 												>
-													{stripHtmlToText(email.content)}
+													<iframe
+														title={`Email preview: ${email.subject}`}
+														srcdoc={getEmailPreviewSrcdoc(
+															email.content
+														)}
+														sandbox="allow-popups allow-popups-to-escape-sandbox"
+														referrerpolicy="no-referrer"
+														class="h-[460px] w-full bg-white"
+													></iframe>
 												</div>
 											</div>
 

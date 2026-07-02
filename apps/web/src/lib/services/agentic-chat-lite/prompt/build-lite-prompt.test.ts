@@ -232,6 +232,19 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).toContain('## Active Domain Signals');
 	});
 
+	it('renders the skill-load gate inside Active Domain Signals for skill-covered asks', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project',
+			entityId: 'project-1',
+			currentUserMessage: 'Just give me 10 opening-hook options for the launch video.'
+		});
+
+		const section = envelope.sections.find((item) => item.id === 'active_domain_signals');
+		expect(section?.content).toContain('Skill-load gate: ACTIVE.');
+		expect(section?.content).toContain('Skill-load gate is ACTIVE');
+		expect(envelope.systemPrompt).toContain('Skill-load gate: ACTIVE.');
+	});
+
 	it('uses prior domain ids for ambiguous follow-up turns', () => {
 		const envelope = buildLitePromptEnvelope({
 			contextType: 'global',
@@ -741,6 +754,11 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).toContain(
 			'The user is trying to create a new BuildOS project right now.'
 		);
+		// 2026-07-02 fix: with the Timeline section skipped, project_create had no
+		// "current time" anywhere, so relative deadlines ("end of July") resolved
+		// into the past (2025-07-31 observed in a live 2026-07-02 session).
+		expect(envelope.systemPrompt).toContain('Current date: 2026-04-16 (timezone UTC)');
+		expect(envelope.systemPrompt).toContain('never resolve them into the past');
 		expect(envelope.systemPrompt).toContain(
 			'Project creation scope:\n- This chat is in project_create mode before a project exists.'
 		);
@@ -1001,7 +1019,12 @@ describe('buildLitePromptEnvelope', () => {
 		expect(strategy?.content).toContain('Resolve entity targets');
 		expect(strategy?.content).toContain('reuse exact IDs');
 		expect(strategy?.content).toContain('skill_load');
-		expect(strategy?.content).toContain('two or more related writes');
+		// 2026-07-02 routing fix: the old "two or more related writes" rule made
+		// skill loading look write-only, so craft/review/research prompts were
+		// answered from base knowledge without loading the skill.
+		expect(strategy?.content).not.toContain('two or more related writes');
+		expect(strategy?.content).toContain('craft/judgment work a registered skill covers');
+		expect(strategy?.content).toContain('skill-load gate as ACTIVE');
 		expect(strategy?.content).toContain(
 			'never a plan, checklist, or paraphrase of these instructions'
 		);

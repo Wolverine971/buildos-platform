@@ -172,6 +172,7 @@ export interface ActivityUpdateResult {
 export interface PendingToolStatus {
 	status: 'completed' | 'failed';
 	errorMessage?: string;
+	toolResult?: Record<string, any>;
 }
 
 /** Thinking block manipulation surface the handler needs. */
@@ -196,7 +197,8 @@ export interface ThinkingBlockDeps {
 	updateActivityStatus(
 		toolCallId: string,
 		status: 'completed' | 'failed',
-		errorMessage?: string
+		errorMessage?: string,
+		toolResult?: Record<string, any>
 	): ActivityUpdateResult;
 	finalize(status?: 'completed' | 'interrupted' | 'cancelled' | 'error', note?: string): void;
 	getCurrentBlockId(): string | null;
@@ -352,7 +354,8 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 				thinking.updateActivityStatus(
 					result.toolCallId,
 					pendingStatus.status,
-					pendingStatus.errorMessage
+					pendingStatus.errorMessage,
+					pendingStatus.toolResult
 				);
 			}
 			deps.pendingToolResults.delete(result.toolCallId);
@@ -386,13 +389,15 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 			const result = thinking.updateActivityStatus(
 				info.resultToolCallId,
 				info.success ? 'completed' : 'failed',
-				info.toolErrorMessage
+				info.toolErrorMessage,
+				toolResult
 			);
 
 			if (!result.matched) {
 				deps.pendingToolResults.set(info.resultToolCallId, {
 					status: info.success ? 'completed' : 'failed',
-					errorMessage: info.toolErrorMessage
+					errorMessage: info.toolErrorMessage,
+					toolResult
 				});
 			} else if (result.toolName && result.args !== undefined) {
 				presenter.showToolResultToast(result.toolName, result.args, info.success);

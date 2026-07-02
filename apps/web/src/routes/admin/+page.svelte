@@ -37,7 +37,10 @@
 	import Button from '$lib/components/ui/Button.svelte';
 
 	import { browser } from '$app/environment';
-	import type { DashboardAnalyticsPayload } from '$lib/services/admin/dashboard-analytics.service';
+	import type {
+		DashboardAnalyticsPartialPayload,
+		DashboardAnalyticsPayload
+	} from '$lib/services/admin/dashboard-analytics.service';
 	import { onDestroy, untrack, type ComponentType } from 'svelte';
 
 	// Type definitions for better type safety
@@ -106,6 +109,7 @@
 
 	let selectedTimeframe = $state<Timeframe>(defaultTimeframe);
 	let autoRefresh = $state(false);
+	let detailsLoading = $state(false);
 
 	let refreshTimer: ReturnType<typeof setInterval> | null = null;
 	let currentRequest: AbortController | null = null;
@@ -679,29 +683,36 @@
 	);
 	let recentFeedbackPreview = $derived(feedbackOverview.recent_feedback.slice(0, 5));
 
-	function applyDashboardPayload(payload: DashboardAnalyticsPayload) {
-		systemOverview = payload.systemOverview;
-		visitorOverview = payload.visitorOverview;
-		dailyVisitors = payload.dailyVisitors ?? [];
-		dailySignups = payload.dailySignups ?? [];
-		dailyActiveUsers = payload.dailyActiveUsers ?? [];
-		briefGenerationStats = payload.briefGenerationStats ?? [];
-		systemMetrics = payload.systemMetrics ?? [];
-		recentActivity = payload.recentActivity ?? [];
-		feedbackOverview = payload.feedbackOverview;
-		betaOverview = payload.betaOverview;
-		comprehensiveAnalytics = payload.comprehensiveAnalytics;
-		errorsData = payload.errorsData;
-		agentChatUsage = payload.agentChatUsage ?? agentChatUsage;
-		briefDelivery = payload.briefDelivery ?? briefDelivery;
-		systemHealth = payload.systemHealth ?? systemHealth;
-		if (payload.subscriptionData) {
-			subscriptionData = payload.subscriptionData;
-		} else {
-			subscriptionData = {
-				...subscriptionData,
-				stripeEnabled: false
+	function applyDashboardPayload(payload: DashboardAnalyticsPartialPayload) {
+		if (payload.systemOverview) {
+			systemOverview = {
+				...systemOverview,
+				...payload.systemOverview,
+				top_active_users:
+					payload.systemOverview.top_active_users ?? systemOverview.top_active_users
 			};
+		}
+		if (payload.visitorOverview) visitorOverview = payload.visitorOverview;
+		if (payload.dailyVisitors) dailyVisitors = payload.dailyVisitors;
+		if (payload.dailySignups) dailySignups = payload.dailySignups;
+		if (payload.dailyActiveUsers) dailyActiveUsers = payload.dailyActiveUsers;
+		if (payload.briefGenerationStats) briefGenerationStats = payload.briefGenerationStats;
+		if (payload.systemMetrics) systemMetrics = payload.systemMetrics;
+		if (payload.recentActivity) recentActivity = payload.recentActivity;
+		if (payload.feedbackOverview) feedbackOverview = payload.feedbackOverview;
+		if (payload.betaOverview) betaOverview = payload.betaOverview;
+		if (payload.comprehensiveAnalytics) comprehensiveAnalytics = payload.comprehensiveAnalytics;
+		if (payload.errorsData) errorsData = payload.errorsData;
+		if (payload.agentChatUsage) agentChatUsage = payload.agentChatUsage;
+		if (payload.briefDelivery) briefDelivery = payload.briefDelivery;
+		if (payload.systemHealth) systemHealth = payload.systemHealth;
+		if (payload.subscriptionData !== undefined) {
+			subscriptionData =
+				payload.subscriptionData ??
+				({
+					...subscriptionData,
+					stripeEnabled: false
+				} as typeof subscriptionData);
 		}
 	}
 
@@ -743,6 +754,30 @@
 		}
 	});
 
+	async function fetchDashboardScope(
+		scope: 'summary' | 'details',
+		controller: AbortController,
+		options: { fresh?: boolean } = {}
+	): Promise<DashboardAnalyticsPartialPayload> {
+		const params = new URLSearchParams({ timeframe: selectedTimeframe, scope });
+		if (options.fresh) {
+			params.set('fresh', '1');
+		}
+
+		const response = await fetch(`/api/admin/analytics/dashboard?${params.toString()}`, {
+			signal: controller.signal
+		});
+
+		if (!response.ok) throw new Error('Failed to load analytics dashboard');
+
+		const json = await response.json();
+		if (!json.success || !json.data) {
+			throw new Error(json.error || 'Failed to load analytics dashboard');
+		}
+
+		return json.data as DashboardAnalyticsPartialPayload;
+	}
+
 	async function loadAnalytics(options: { skipSpinner?: boolean; fresh?: boolean } = {}) {
 		if (!browser) return;
 		if (currentRequest) {
@@ -754,26 +789,36 @@
 		if (!skipSpinner) {
 			isLoading = true;
 		}
+		detailsLoading = false;
 		error = null;
 
 		try {
-			const params = new URLSearchParams({ timeframe: selectedTimeframe });
-			if (options.fresh) {
-				params.set('fresh', '1');
-			}
-
-			const response = await fetch(`/api/admin/analytics/dashboard?${params.toString()}`, {
-				signal: controller.signal
+			const summary = await fetchDashboardScope('summary', controller, {
+				fresh: options.fresh
 			});
+			applyDashboardPayload(summary);
+			isLoading = false;
 
-			if (!response.ok) throw new Error('Failed to load analytics dashboard');
-
-			const json = await response.json();
-			if (!json.success || !json.data) {
-				throw new Error(json.error || 'Failed to load analytics dashboard');
+			detailsLoading = true;
+			try {
+				const details = await fetchDashboardScope('details', controller, {
+					fresh: options.fresh
+				});
+				applyDashboardPayload(details);
+			} catch (detailsErr) {
+				if ((detailsErr as DOMException)?.name === 'AbortError') {
+					return;
+				}
+				console.error('Error loading dashboard details:', detailsErr);
+				error =
+					detailsErr instanceof Error
+						? `Some dashboard sections failed to load: ${detailsErr.message}`
+						: 'Some dashboard sections failed to load';
+			} finally {
+				if (currentRequest === controller) {
+					detailsLoading = false;
+				}
 			}
-
-			applyDashboardPayload(json.data as DashboardAnalyticsPayload);
 		} catch (err) {
 			if ((err as DOMException)?.name === 'AbortError') {
 				return;
@@ -786,6 +831,7 @@
 			}
 			if (!controller.signal.aborted) {
 				isLoading = false;
+				detailsLoading = false;
 			}
 		}
 	}
@@ -937,7 +983,7 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="admin-page">
+<div class="admin-page" aria-busy={isLoading || detailsLoading}>
 	<AdminPageHeader
 		title="Admin Dashboard"
 		description="System overview and user analytics"

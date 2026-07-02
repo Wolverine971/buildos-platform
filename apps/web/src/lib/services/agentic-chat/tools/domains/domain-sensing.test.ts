@@ -67,3 +67,119 @@ describe('domain sensing', () => {
 		expect(senseDomains({ currentUserMessage: 'Okay, do the next thing.' })).toBeNull();
 	});
 });
+
+// 2026-07-02 routing regression: a live test session answered script/hook/UI
+// prompts from base knowledge with zero skill_load calls because domain sensing
+// was advisory-only. The gate binds the WHETHER (a skill must load before the
+// final answer); skill CHOICE stays with the model because card confidences
+// saturate at 0.95 and tie across candidates.
+describe('skill-load gate', () => {
+	const gatedCases: Array<{ label: string; message: string; expectedSkill: string }> = [
+		{
+			label: 'script draft',
+			message:
+				'Draft the script for the 90-second launch video. People do not have a productivity problem, they have a "where do my thoughts go" problem. Keep me hooked the whole way through.',
+			expectedSkill: 'viral_video_script_structure'
+		},
+		{
+			label: 'hook options',
+			message: 'Just give me 10 opening-hook options for the launch video.',
+			expectedSkill: 'hook_craft_short_form'
+		},
+		{
+			label: 'channel diagnosis',
+			message:
+				'The BuildOS YouTube channel has 9 videos and almost no views. Why are my videos not getting views, and what 3 videos should I make next?',
+			expectedSkill: 'youtube_channel_craft_for_founders'
+		},
+		{
+			label: 'UI audit',
+			message:
+				'Here is the landing page the video links to. It feels amateur and I cannot tell why. Give me a UI/UX audit.',
+			expectedSkill: 'ui_ux_quality_review'
+		},
+		{
+			label: 'quick research plan',
+			message:
+				'Before the video sends traffic, I want to know if people actually understand the landing page. I do not want a big research program — what is the lightest way to find out, and when do I stop?',
+			expectedSkill: 'usability_quick_research'
+		}
+	];
+
+	for (const { label, message, expectedSkill } of gatedCases) {
+		it(`requires a skill load for ${label} prompts and surfaces the expected skill`, () => {
+			const result = senseDomains({ currentUserMessage: message });
+			expect(result?.skill_load_required).toBe(true);
+			expect(result?.next_step).toContain('Skill-load gate is ACTIVE');
+			const surfacedSkillIds = [
+				...(result?.recommended_skill_ids ?? []),
+				...(result?.active_domains.flatMap((domain) => domain.skill_ids) ?? []),
+				...(result?.candidate_outcome_cards.flatMap((card) => card.skill_ids) ?? [])
+			];
+			expect(surfacedSkillIds).toContain(expectedSkill);
+		});
+	}
+
+	it('renders the gate directive at the top of the prompt block when active', () => {
+		const block = renderDomainSensingPromptBlock(
+			senseDomains({
+				currentUserMessage: 'Just give me 10 opening-hook options for the launch video.'
+			})
+		);
+		expect(block).toContain('Skill-load gate: ACTIVE.');
+		expect(block).toContain('Answering skill-covered work from base knowledge');
+	});
+
+	it('does not gate session-state fallbacks from prior domains', () => {
+		const result = senseDomains({
+			currentUserMessage: 'Ok, make the plan.',
+			priorDomainIds: ['marketing.youtube_growth']
+		});
+		expect(result?.source).toBe('session_state');
+		expect(result?.skill_load_required).toBe(false);
+		expect(result?.next_step).not.toContain('Skill-load gate is ACTIVE');
+	});
+
+	it('stays quiet for direct-tool asks with no domain signal', () => {
+		expect(
+			senseDomains({ currentUserMessage: 'Can you add a task to buy milk tomorrow?' })
+		).toBeNull();
+	});
+
+	// 2026-07-02 rerun turn 5: this exact prompt misrouted to product/design and
+	// the story family never surfaced. Two causes, both fixed: alias "ui"
+	// substring-matched inside "build", and the video domain had no
+	// narrative/story recall terms.
+	it('routes narrative-arc video revisions to the short-form video family', () => {
+		const result = senseDomains({
+			currentUserMessage:
+				"The video draft feels emotionally flat — the story doesn't build. Fix the narrative arc."
+		});
+
+		expect(result?.skill_load_required).toBe(true);
+		expect(result?.active_domains[0]).toMatchObject({ id: 'marketing.short_form_video' });
+		expect(result?.recommended_skill_ids).toContain('story_driven_content_craft');
+		expect(result?.active_domains.map((domain) => domain.id)).not.toContain(
+			'product_and_design'
+		);
+	});
+
+	// Alias matching must be whole-token: alias "ui" previously substring-matched
+	// every message containing "build" or "BuildOS", so the product name itself
+	// falsely sensed product_and_design (and gated) on ordinary messages.
+	it('does not sense product_and_design from the word BuildOS', () => {
+		expect(
+			senseDomains({
+				currentUserMessage: 'BuildOS demo video campaign status update please.'
+			})
+		).toBeNull();
+	});
+
+	it('still senses product_and_design from real ui/ux tokens', () => {
+		const result = senseDomains({
+			currentUserMessage:
+				'Here is the landing page the video links to. It feels amateur and I cannot tell why. Give me a UI/UX audit.'
+		});
+		expect(result?.active_domains.map((domain) => domain.id)).toContain('product_and_design');
+	});
+});

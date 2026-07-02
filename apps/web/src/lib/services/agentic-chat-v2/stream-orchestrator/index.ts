@@ -58,6 +58,7 @@ import {
 	buildGatewayMutationNoExecutionRepairInstruction,
 	buildGatewayRequiredFieldRepairInstruction,
 	buildProjectCreateNoExecutionRepairInstruction,
+	buildSkillGateNoLoadRepairInstruction,
 	buildReadLoopRepairInstruction,
 	buildToolRoundBudgetSynthesisInstruction,
 	buildToolValidationRepairInstruction,
@@ -66,7 +67,8 @@ import {
 	hasGatewayCreateFieldNoProgressFailure,
 	looksLikeExplicitMutationRequest,
 	shouldRepairGatewayMutationNoExecution,
-	shouldRepairProjectCreateNoExecution
+	shouldRepairProjectCreateNoExecution,
+	shouldRepairSkillGateNoLoad
 } from './repair-instructions';
 import {
 	buildRoundToolPattern,
@@ -123,6 +125,17 @@ type StreamFastChatParams = {
 	maxToolCalls?: number;
 	allowAutonomousRecovery?: boolean;
 	debugContext?: FastChatDebugContext;
+	/**
+	 * Deterministic skill-load enforcement (2026-07-02). When domain sensing
+	 * marked the turn skill-covered (`required`), the first finalization attempt
+	 * with no skill_load this turn — and no loaded-skills ledger in history —
+	 * gets one repair round demanding the load.
+	 */
+	skillGate?: {
+		required: boolean;
+		recommendedSkillIds: string[];
+		historyHasLoadedSkillsLedger: boolean;
+	} | null;
 };
 
 type FastChatModelMessage = Omit<FastChatHistoryMessage, 'content'> & {
@@ -241,6 +254,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let hasWriteAttempt = false;
 	let projectCreateStopRepairInjected = false;
 	let gatewayMutationStopRepairInjected = false;
+	let skillGateStopRepairInjected = false;
 	let readOnlyRoundCount = 0;
 	let lastReadOpSetKey: string | null = null;
 	let repeatedReadOpSetCount = 0;
@@ -1149,6 +1163,31 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					gatewayMutationStopRepairInjected = true;
 					queueRepairInstruction(
 						buildGatewayMutationNoExecutionRepairInstruction(toolExecutions)
+					);
+					flushRepairInstructions();
+					continue;
+				}
+				if (
+					shouldRepairSkillGateNoLoad({
+						skillLoadRequired: params.skillGate?.required === true,
+						historyHasLoadedSkillsLedger:
+							params.skillGate?.historyHasLoadedSkillsLedger === true,
+						finalText: candidateFinalText,
+						toolExecutions,
+						repairAlreadyInjected: skillGateStopRepairInjected
+					})
+				) {
+					skillGateStopRepairInjected = true;
+					console.info(
+						'[stream-orchestrator] skill-load gate active with no skill loaded; injecting repair round',
+						{
+							recommendedSkillIds: params.skillGate?.recommendedSkillIds ?? []
+						}
+					);
+					queueRepairInstruction(
+						buildSkillGateNoLoadRepairInstruction(
+							params.skillGate?.recommendedSkillIds ?? []
+						)
 					);
 					flushRepairInstructions();
 					continue;

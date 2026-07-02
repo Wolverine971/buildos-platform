@@ -325,9 +325,7 @@ describe('chat-session-audit-export', () => {
 
 	it('builds a stable markdown filename', () => {
 		const filename = buildChatSessionAuditFilename(buildFixturePayload());
-		expect(filename).toMatch(
-			/^chat-session-audit-test-session-session-1-\d{4}-\d{2}-\d{2}\.md$/
-		);
+		expect(filename).toMatch(/^csa-project-\d{8}T\d{6}Z\.md$/);
 	});
 
 	it('loads a session audit payload from the admin session detail endpoint', async () => {
@@ -462,12 +460,16 @@ describe('chat-session-audit-bundle', () => {
 				'timeline.md',
 				'turns.md',
 				'diagnostics.md',
+				'capabilities.md',
 				'raw/session.json',
 				'raw/messages.json',
 				'raw/tool_executions.json',
 				'raw/llm_calls.json',
 				'raw/timeline.json',
-				'raw/turn_runs.json'
+				'raw/turn_runs.json',
+				'raw/turn_events.json',
+				'raw/prompt_snapshots.json',
+				'raw/capabilities.json'
 			])
 		);
 
@@ -475,10 +477,25 @@ describe('chat-session-audit-bundle', () => {
 		expect(files['README.md']).toContain('**Outcome:** COMPLETED');
 		expect(files['README.md']).toContain('## Files');
 		expect(files['tool-calls.md']).toContain('## Call detail');
+		expect(files['capabilities.md']).toContain('### Tools Available / Loaded');
+		expect(files['capabilities.md']).toContain('get_project_overview');
 
 		// Raw lives as real parseable JSON, not markdown-fenced.
 		const toolExecRaw = JSON.parse(files['raw/tool_executions.json']);
 		expect(toolExecRaw[0].tool_name).toBe('get_project_overview');
+
+		const timelineRaw = JSON.parse(files['raw/timeline.json']);
+		expect(JSON.stringify(timelineRaw)).not.toContain('FASTCHAT V2 PROMPT SNAPSHOT');
+
+		const turnRunsRaw = JSON.parse(files['raw/turn_runs.json']);
+		expect(turnRunsRaw[0].prompt_snapshot_id).toBe('snapshot-1');
+		expect(turnRunsRaw[0].events).toBeUndefined();
+
+		const promptSnapshotsRaw = JSON.parse(files['raw/prompt_snapshots.json']);
+		expect(promptSnapshotsRaw[0].rendered_dump_text).toBe('FASTCHAT V2 PROMPT SNAPSHOT');
+
+		const capabilitiesRaw = JSON.parse(files['raw/capabilities.json']);
+		expect(capabilitiesRaw.tools.loaded[0].id).toBe('get_project_overview');
 	});
 
 	it('produces a valid zip that round-trips back to the source files', () => {

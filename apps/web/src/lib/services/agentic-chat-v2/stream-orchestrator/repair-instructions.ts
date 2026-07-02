@@ -45,6 +45,53 @@ export function buildProjectCreateNoExecutionRepairInstruction(): string {
 	].join(' ');
 }
 
+// Skill-load gate enforcement (2026-07-02): the prompt-level gate alone proved
+// insufficient — a live turn had "Skill-load gate: ACTIVE" in its prompt and the
+// model still rewrote a document with zero skill_load calls. When domain sensing
+// marked the turn skill-covered and nothing satisfied the gate, block the first
+// finalization attempt and demand the load. Fires at most once per turn.
+export function shouldRepairSkillGateNoLoad(params: {
+	skillLoadRequired: boolean;
+	historyHasLoadedSkillsLedger: boolean;
+	finalText: string;
+	toolExecutions: FastToolExecution[];
+	repairAlreadyInjected: boolean;
+}): boolean {
+	if (!params.skillLoadRequired) return false;
+	if (params.repairAlreadyInjected) return false;
+	// Skills loaded earlier in the session satisfy the gate: the prompt ledger
+	// explicitly tells the model not to reload them.
+	if (params.historyHasLoadedSkillsLedger) return false;
+	if (didSuccessfulSkillLoadExecute(params.toolExecutions)) return false;
+	const finalText = params.finalText.trim();
+	if (!finalText) return true;
+	// A pure clarifying question produces no work product; the gate allows it.
+	if (looksLikePureClarifyingQuestion(finalText)) return false;
+	return true;
+}
+
+function didSuccessfulSkillLoadExecute(toolExecutions: FastToolExecution[]): boolean {
+	return toolExecutions.some(
+		(execution) =>
+			execution.toolCall.function?.name?.trim() === 'skill_load' &&
+			execution.result.success === true
+	);
+}
+
+export function buildSkillGateNoLoadRepairInstruction(recommendedSkillIds: string[]): string {
+	const candidates = recommendedSkillIds.slice(0, 6);
+	return [
+		'The skill-load gate for this turn is ACTIVE and no skill has been loaded in this turn or earlier in this session.',
+		'This request matches skill-covered work; do not finalize an answer from base knowledge.',
+		candidates.length > 0
+			? `Your next response must call skill_load for the best-matching skill among: ${candidates.join(', ')}.`
+			: 'Your next response must call skill_load for the best-matching skill from the Active Domain Signals section.',
+		"If none of those candidates fits the user's actual ask, call skill_search to find the right skill and then skill_load it.",
+		"After the skill is loaded, write the final answer by applying that skill's playbook and output contract.",
+		"If you already created or updated an entity this turn (for example a document rewrite), re-apply the loaded skill's contract to that content and update the entity again before finalizing — do not leave un-skill-grounded content as the persisted result."
+	].join(' ');
+}
+
 export function buildToolRoundBudgetSynthesisInstruction(): string {
 	return [
 		'The tool-round budget for this turn is exhausted.',

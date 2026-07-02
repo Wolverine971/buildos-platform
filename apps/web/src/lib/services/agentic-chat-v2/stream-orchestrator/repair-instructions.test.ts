@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import {
 	buildGatewayMutationNoExecutionRepairInstruction,
+	buildSkillGateNoLoadRepairInstruction,
 	buildToolValidationRepairInstruction,
 	enforceMutationOutcomeIntegrity,
 	shouldRepairGatewayMutationNoExecution,
-	shouldRepairProjectCreateNoExecution
+	shouldRepairProjectCreateNoExecution,
+	shouldRepairSkillGateNoLoad
 } from './repair-instructions';
 import type { FastToolExecution } from './shared';
 import type { ToolValidationIssue } from './tool-validation';
@@ -522,5 +524,109 @@ describe('repair instruction policy', () => {
 				toolExecutions
 			})
 		).toBe('I moved the document into the research area.');
+	});
+});
+
+// 2026-07-02 live rerun: a turn had "Skill-load gate: ACTIVE" in its prompt and
+// the model still rewrote a document with zero skill_load calls. This guard is
+// the deterministic backstop the prompt-level gate lacked.
+describe('skill-load gate repair', () => {
+	const baseParams = {
+		skillLoadRequired: true,
+		historyHasLoadedSkillsLedger: false,
+		finalText: 'Here is the improved narrative arc for the video script...',
+		toolExecutions: [] as FastToolExecution[],
+		repairAlreadyInjected: false
+	};
+
+	it('blocks finalization when the gate is active and nothing satisfied it', () => {
+		expect(shouldRepairSkillGateNoLoad(baseParams)).toBe(true);
+	});
+
+	it('blocks finalization when the model produced no text at all', () => {
+		expect(shouldRepairSkillGateNoLoad({ ...baseParams, finalText: '' })).toBe(true);
+	});
+
+	it('does not fire when the gate is inactive', () => {
+		expect(shouldRepairSkillGateNoLoad({ ...baseParams, skillLoadRequired: false })).toBe(
+			false
+		);
+	});
+
+	it('is satisfied by a successful skill_load this turn', () => {
+		const toolExecutions = [
+			createExecution({
+				name: 'skill_load',
+				args: { skill: 'story_driven_content_craft' },
+				result: { type: 'skill', skill: 'story_driven_content_craft' }
+			})
+		];
+		expect(shouldRepairSkillGateNoLoad({ ...baseParams, toolExecutions })).toBe(false);
+	});
+
+	it('is not satisfied by a failed skill_load', () => {
+		const toolExecutions = [
+			createExecution({
+				name: 'skill_load',
+				args: { skill: 'story_driven_content_craft' },
+				success: false,
+				error: 'skill not found'
+			})
+		];
+		expect(shouldRepairSkillGateNoLoad({ ...baseParams, toolExecutions })).toBe(true);
+	});
+
+	it('is satisfied by document reads only when a prior-session ledger exists', () => {
+		const toolExecutions = [
+			createExecution({
+				name: 'get_document_outline',
+				args: { document_id: 'doc-1' },
+				result: { outline: [] }
+			})
+		];
+		expect(shouldRepairSkillGateNoLoad({ ...baseParams, toolExecutions })).toBe(true);
+		expect(
+			shouldRepairSkillGateNoLoad({
+				...baseParams,
+				toolExecutions,
+				historyHasLoadedSkillsLedger: true
+			})
+		).toBe(false);
+	});
+
+	it('fires at most once per turn', () => {
+		expect(shouldRepairSkillGateNoLoad({ ...baseParams, repairAlreadyInjected: true })).toBe(
+			false
+		);
+	});
+
+	it('allows a pure clarifying question through without a load', () => {
+		expect(
+			shouldRepairSkillGateNoLoad({
+				...baseParams,
+				finalText:
+					'Which video draft do you want me to rework — the 90-second launch cut or the long-form one?'
+			})
+		).toBe(false);
+	});
+
+	it('names the candidate skills and the skill_search fallback in the instruction', () => {
+		const instruction = buildSkillGateNoLoadRepairInstruction([
+			'story_driven_content_craft',
+			'viral_video_script_structure'
+		]);
+		expect(instruction).toContain('skill_load');
+		expect(instruction).toContain('story_driven_content_craft, viral_video_script_structure');
+		expect(instruction).toContain('skill_search');
+		// The rerun failure wrote the document BEFORE finalizing, so the repair
+		// fires after the write; the instruction must demand re-applying the
+		// skill to already-persisted content, not just to the final prose.
+		expect(instruction).toContain('update the entity again before finalizing');
+	});
+
+	it('still demands a load when no candidates were surfaced', () => {
+		const instruction = buildSkillGateNoLoadRepairInstruction([]);
+		expect(instruction).toContain('skill_load');
+		expect(instruction).toContain('Active Domain Signals');
 	});
 });

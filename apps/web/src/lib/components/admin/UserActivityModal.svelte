@@ -10,7 +10,9 @@
 		ChevronDown,
 		ChevronRight,
 		ExternalLink,
-		FileText
+		FileText,
+		Target,
+		ClipboardList
 	} from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -142,6 +144,15 @@
 		});
 	}
 
+	function formatDateOnly(dateString: string | null | undefined): string {
+		if (!dateString) return 'No target';
+		return new Date(dateString).toLocaleDateString('en-US', {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
+	}
+
 	function getProjectBadgeClass(status: string | null | undefined): string {
 		switch (status) {
 			case 'active':
@@ -169,6 +180,68 @@
 			default:
 				return 'bg-muted text-muted-foreground border-border';
 		}
+	}
+
+	function getEntityStateBadgeClass(state: string | null | undefined): string {
+		switch (state) {
+			case 'done':
+			case 'completed':
+				return 'bg-success/10 text-success border-success/30';
+			case 'active':
+			case 'in_progress':
+				return 'bg-info/10 text-info border-info/30';
+			case 'blocked':
+			case 'paused':
+				return 'bg-warning/10 text-warning border-warning/30';
+			default:
+				return 'bg-muted text-muted-foreground border-border';
+		}
+	}
+
+	function getProjectSummaryMetrics(project: any) {
+		const taskCount = project.task_count || 0;
+		const openTasks = project.open_task_count || 0;
+		const completedTasks = project.completed_task_count || 0;
+		const documentCount = project.document_count || project.notes_count || 0;
+		const goalCount = project.goal_count || 0;
+		const openGoals = project.open_goal_count || 0;
+		const planCount = project.plan_count || 0;
+		const activePlans = project.active_plan_count || 0;
+		const chatCount = project.chat_session_count || 0;
+		const chatMessages = project.chat_message_count || 0;
+
+		return [
+			{
+				label: 'Tasks',
+				value: taskCount,
+				detail: `${openTasks} open / ${completedTasks} done`,
+				valueClass: 'text-foreground'
+			},
+			{
+				label: 'Docs',
+				value: documentCount,
+				detail: 'documents',
+				valueClass: 'text-amber-700'
+			},
+			{
+				label: 'Goals',
+				value: goalCount,
+				detail: `${openGoals} open`,
+				valueClass: 'text-rose-700'
+			},
+			{
+				label: 'Plans',
+				value: planCount,
+				detail: `${activePlans} active`,
+				valueClass: 'text-cyan-700'
+			},
+			{
+				label: 'Chats',
+				value: chatCount,
+				detail: `${chatMessages} msgs`,
+				valueClass: 'text-zinc-700'
+			}
+		];
 	}
 
 	function getErrorSeverityClass(severity: string | null | undefined): string {
@@ -200,8 +273,18 @@
 		}
 	}
 
+	function getChatSourceClass(source: string | null | undefined): string {
+		switch (source) {
+			case 'current':
+				return 'bg-info/10 text-info border-info/30';
+			case 'legacy_agent':
+				return 'bg-cyan-50 text-cyan-700 border-cyan-200';
+			default:
+				return 'bg-muted text-muted-foreground border-border';
+		}
+	}
+
 	let projects = $derived(user.projects || []);
-	let recentProject = $derived.by(() => user.recent_project || projects[0] || null);
 	let recentActivity = $derived(user.recent_activity || []);
 	let activityStats = $derived(user.activity_stats || {});
 	let chatSessions = $derived(user.chat_sessions || []);
@@ -350,100 +433,6 @@
 				</div>
 
 				<div class="p-2 space-y-2">
-					{#if recentProject}
-						<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
-							<div class="flex items-start justify-between gap-2">
-								<div class="min-w-0">
-									<p
-										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-									>
-										Most Recent Project
-									</p>
-									<h4 class="text-sm font-semibold text-foreground truncate">
-										{recentProject.name}
-									</h4>
-								</div>
-								<div class="text-right shrink-0">
-									<span
-										class="inline-flex px-1.5 py-0.5 rounded border text-[0.6rem] {getProjectBadgeClass(
-											recentProject.status
-										)}"
-									>
-										{humanizeLabel(recentProject.status)}
-									</span>
-									<p class="text-[0.65rem] text-muted-foreground mt-1">
-										{formatRelativeDate(recentProject.last_activity_at)}
-									</p>
-								</div>
-							</div>
-
-							{#if recentProject.description_preview}
-								<p class="text-xs text-muted-foreground">
-									{recentProject.description_preview}
-								</p>
-							{/if}
-
-							<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-								<div class="rounded border border-border bg-card px-2 py-1.5">
-									<div class="text-sm font-semibold text-foreground">
-										{recentProject.open_task_count || 0}
-									</div>
-									<div
-										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-									>
-										Open Tasks
-									</div>
-								</div>
-								<div class="rounded border border-border bg-card px-2 py-1.5">
-									<div class="text-sm font-semibold text-success">
-										{recentProject.completed_task_count || 0}
-									</div>
-									<div
-										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-									>
-										Done
-									</div>
-								</div>
-								<div class="rounded border border-border bg-card px-2 py-1.5">
-									<div class="text-sm font-semibold text-foreground">
-										{recentProject.document_count ||
-											recentProject.notes_count ||
-											0}
-									</div>
-									<div
-										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-									>
-										Docs
-									</div>
-								</div>
-								<div class="rounded border border-border bg-card px-2 py-1.5">
-									<div class="text-sm font-semibold text-foreground">
-										{recentProject.chat_session_count || 0}
-									</div>
-									<div
-										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-									>
-										BuildOS Chats
-									</div>
-								</div>
-							</div>
-
-							{#if recentProject.next_step_short || recentProject.next_step_long}
-								<div class="rounded border border-border bg-card px-2 py-1.5">
-									<div
-										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-									>
-										Next Step
-									</div>
-									<p class="text-xs text-foreground mt-1">
-										{recentProject.next_step_short ||
-											recentProject.next_step_long}
-									</p>
-								</div>
-							{/if}
-						</div>
-					{/if}
-
 					<div>
 						<h4
 							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground mb-1.5 flex items-center gap-1"
@@ -456,62 +445,98 @@
 
 					{#if projects.length > 0}
 						<div class="space-y-2">
-							{#each projects as project}
+							{#each projects as project, index}
 								{@const isExpanded = expandedProjectIds.has(project.id)}
+								{@const summaryMetrics = getProjectSummaryMetrics(project)}
 								<div class="rounded-lg border border-border overflow-hidden">
 									<button
 										type="button"
 										onclick={() => toggleProjectExpansion(project.id)}
-										class="w-full px-3 py-2 bg-card hover:bg-muted/30 transition-colors flex items-center justify-between gap-3 text-left"
+										class="w-full px-3 py-3 bg-card hover:bg-muted/30 transition-colors text-left"
 										aria-expanded={isExpanded}
 									>
-										<div class="min-w-0 flex-1">
-											<div class="flex items-center gap-2 flex-wrap">
+										<div class="flex items-start justify-between gap-3">
+											<div class="min-w-0 flex-1">
+												<div class="flex items-center gap-2 flex-wrap">
+													<p
+														class="text-sm font-semibold text-foreground truncate"
+													>
+														{project.name}
+													</p>
+													{#if index === 0}
+														<span
+															class="px-1.5 py-0.5 rounded border text-[0.6rem] bg-accent/10 text-accent border-accent/30"
+														>
+															Most recent
+														</span>
+													{/if}
+													<span
+														class="px-1.5 py-0.5 rounded border text-[0.6rem] {getProjectBadgeClass(
+															project.status
+														)}"
+													>
+														{humanizeLabel(project.status)}
+													</span>
+													<span
+														class="px-1.5 py-0.5 rounded border text-[0.6rem] bg-muted text-muted-foreground border-border"
+													>
+														{project.access_type === 'owned'
+															? 'Owned'
+															: 'Shared'}
+													</span>
+												</div>
 												<p
-													class="text-sm font-medium text-foreground truncate"
+													class="text-[0.65rem] text-muted-foreground mt-1"
 												>
-													{project.name}
+													Last active {formatRelativeDate(
+														project.last_activity_at
+													)}
 												</p>
-												<span
-													class="px-1.5 py-0.5 rounded border text-[0.6rem] {getProjectBadgeClass(
-														project.status
-													)}"
-												>
-													{humanizeLabel(project.status)}
-												</span>
-												<span
-													class="px-1.5 py-0.5 rounded border text-[0.6rem] bg-muted text-muted-foreground border-border"
-												>
-													{project.access_type === 'owned'
-														? 'Owned'
-														: 'Shared'}
-												</span>
 											</div>
-											<p class="text-[0.65rem] text-muted-foreground mt-1">
-												Last active {formatRelativeDate(
-													project.last_activity_at
-												)}
-											</p>
+
+											<div class="pt-1 shrink-0">
+												{#if isExpanded}
+													<ChevronDown
+														class="w-4 h-4 text-muted-foreground"
+													/>
+												{:else}
+													<ChevronRight
+														class="w-4 h-4 text-muted-foreground"
+													/>
+												{/if}
+											</div>
 										</div>
 
-										<div class="flex items-center gap-2 shrink-0">
-											<div
-												class="hidden sm:flex items-center gap-1.5 text-[0.6rem] text-muted-foreground"
+										{#if project.description_preview}
+											<p
+												class="mt-2 line-clamp-2 text-xs text-muted-foreground"
 											>
-												<span>{project.open_task_count || 0} open</span>
-												<span>{project.completed_task_count || 0} done</span
+												{project.description_preview}
+											</p>
+										{/if}
+
+										<div class="mt-2 grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+											{#each summaryMetrics as metric}
+												<div
+													class="rounded border border-border bg-background px-2 py-1.5"
 												>
-												<span>{project.chat_session_count || 0} chats</span>
-											</div>
-											{#if isExpanded}
-												<ChevronDown
-													class="w-4 h-4 text-muted-foreground"
-												/>
-											{:else}
-												<ChevronRight
-													class="w-4 h-4 text-muted-foreground"
-												/>
-											{/if}
+													<div
+														class="text-sm font-semibold {metric.valueClass}"
+													>
+														{metric.value}
+													</div>
+													<div
+														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+													>
+														{metric.label}
+													</div>
+													<div
+														class="truncate text-[0.6rem] text-muted-foreground"
+													>
+														{metric.detail}
+													</div>
+												</div>
+											{/each}
 										</div>
 									</button>
 
@@ -533,74 +558,27 @@
 											{/if}
 
 											<div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
-												<div
-													class="rounded border border-border bg-card px-2 py-1.5"
-												>
+												{#each summaryMetrics as metric}
 													<div
-														class="text-sm font-semibold text-foreground"
+														class="rounded border border-border bg-card px-2 py-1.5"
 													>
-														{project.task_count || 0}
+														<div
+															class="text-sm font-semibold {metric.valueClass}"
+														>
+															{metric.value}
+														</div>
+														<div
+															class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+														>
+															{metric.label}
+														</div>
+														<div
+															class="truncate text-[0.6rem] text-muted-foreground"
+														>
+															{metric.detail}
+														</div>
 													</div>
-													<div
-														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-													>
-														Tasks
-													</div>
-												</div>
-												<div
-													class="rounded border border-border bg-card px-2 py-1.5"
-												>
-													<div class="text-sm font-semibold text-info">
-														{project.open_task_count || 0}
-													</div>
-													<div
-														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-													>
-														Open
-													</div>
-												</div>
-												<div
-													class="rounded border border-border bg-card px-2 py-1.5"
-												>
-													<div class="text-sm font-semibold text-success">
-														{project.completed_task_count || 0}
-													</div>
-													<div
-														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-													>
-														Done
-													</div>
-												</div>
-												<div
-													class="rounded border border-border bg-card px-2 py-1.5"
-												>
-													<div
-														class="text-sm font-semibold text-foreground"
-													>
-														{project.document_count ||
-															project.notes_count ||
-															0}
-													</div>
-													<div
-														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-													>
-														Docs
-													</div>
-												</div>
-												<div
-													class="rounded border border-border bg-card px-2 py-1.5"
-												>
-													<div
-														class="text-sm font-semibold text-foreground"
-													>
-														{project.chat_session_count || 0}
-													</div>
-													<div
-														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-													>
-														Chats
-													</div>
-												</div>
+												{/each}
 											</div>
 
 											{#if project.next_step_short || project.next_step_long}
@@ -722,6 +700,125 @@
 													<div
 														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
 													>
+														Goals
+													</div>
+													{#if project.recent_goals?.length > 0}
+														<div class="space-y-1.5">
+															{#each project.recent_goals as goal}
+																<div
+																	class="rounded border border-border bg-card px-2 py-1.5"
+																>
+																	<div
+																		class="flex items-start justify-between gap-2"
+																	>
+																		<div
+																			class="flex min-w-0 flex-1 items-start gap-2"
+																		>
+																			<Target
+																				class="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-600"
+																			/>
+																			<div class="min-w-0">
+																				<p
+																					class="truncate text-xs font-medium text-foreground"
+																				>
+																					{goal.name}
+																				</p>
+																				<p
+																					class="mt-0.5 text-[0.65rem] text-muted-foreground"
+																				>
+																					Target {formatDateOnly(
+																						goal.target_date
+																					)}
+																				</p>
+																			</div>
+																		</div>
+																		<span
+																			class="shrink-0 rounded border px-1.5 py-0.5 text-[0.6rem] {getEntityStateBadgeClass(
+																				goal.state_key
+																			)}"
+																		>
+																			{humanizeLabel(
+																				goal.state_key
+																			)}
+																		</span>
+																	</div>
+																</div>
+															{/each}
+														</div>
+													{:else}
+														<p class="text-xs text-muted-foreground">
+															No goals linked to this project.
+														</p>
+													{/if}
+												</div>
+
+												<div class="space-y-2">
+													<div
+														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+													>
+														Plans
+													</div>
+													{#if project.recent_plans?.length > 0}
+														<div class="space-y-1.5">
+															{#each project.recent_plans as plan}
+																<div
+																	class="rounded border border-border bg-card px-2 py-1.5"
+																>
+																	<div
+																		class="flex items-start justify-between gap-2"
+																	>
+																		<div
+																			class="flex min-w-0 flex-1 items-start gap-2"
+																		>
+																			<ClipboardList
+																				class="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-700"
+																			/>
+																			<div class="min-w-0">
+																				<p
+																					class="truncate text-xs font-medium text-foreground"
+																				>
+																					{plan.name}
+																				</p>
+																				<p
+																					class="mt-0.5 text-[0.65rem] text-muted-foreground"
+																				>
+																					{humanizeLabel(
+																						plan.facet_stage ||
+																							plan.type_key
+																					)}
+																					/ Updated {formatRelativeDate(
+																						plan.updated_at ||
+																							plan.created_at
+																					)}
+																				</p>
+																			</div>
+																		</div>
+																		<span
+																			class="shrink-0 rounded border px-1.5 py-0.5 text-[0.6rem] {getEntityStateBadgeClass(
+																				plan.state_key
+																			)}"
+																		>
+																			{humanizeLabel(
+																				plan.state_key
+																			)}
+																		</span>
+																	</div>
+																</div>
+															{/each}
+														</div>
+													{:else}
+														<p class="text-xs text-muted-foreground">
+															No plans linked to this project.
+														</p>
+													{/if}
+												</div>
+											</div>
+
+											<div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+												<div class="space-y-2">
+													<div
+														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+													>
 														Recent BuildOS Chats
 													</div>
 													{#if project.recent_chat_sessions?.length > 0}
@@ -734,11 +831,23 @@
 																		class="flex items-start justify-between gap-2"
 																	>
 																		<div class="min-w-0 flex-1">
-																			<p
-																				class="text-xs font-medium text-foreground truncate"
+																			<div
+																				class="flex flex-wrap items-center gap-1.5"
 																			>
-																				{session.title}
-																			</p>
+																				<p
+																					class="truncate text-xs font-medium text-foreground"
+																				>
+																					{session.title}
+																				</p>
+																				<span
+																					class="rounded border px-1.5 py-0.5 text-[0.58rem] {getChatSourceClass(
+																						session.source
+																					)}"
+																				>
+																					{session.source_label ||
+																						'Chat'}
+																				</span>
+																			</div>
 																			<p
 																				class="text-[0.65rem] text-muted-foreground mt-0.5"
 																			>
@@ -748,16 +857,60 @@
 																				)}
 																			</p>
 																		</div>
-																		<a
-																			href={session.admin_url}
-																			class="inline-flex items-center gap-1 text-[0.65rem] text-accent hover:underline shrink-0"
-																		>
-																			Open
-																			<ExternalLink
-																				class="w-3 h-3"
-																			/>
-																		</a>
+																		{#if session.admin_url}
+																			<a
+																				href={session.admin_url}
+																				class="inline-flex items-center gap-1 text-[0.65rem] text-accent hover:underline shrink-0"
+																			>
+																				Open
+																				<ExternalLink
+																					class="w-3 h-3"
+																				/>
+																			</a>
+																		{/if}
 																	</div>
+																	{#if session.recent_messages?.length > 0}
+																		<div
+																			class="mt-2 space-y-1.5 border-t border-border/70 pt-2"
+																		>
+																			{#each session.recent_messages.slice(0, 2) as message}
+																				<div
+																					class="rounded bg-muted/35 px-2 py-1.5"
+																				>
+																					<div
+																						class="mb-0.5 flex items-center justify-between gap-2"
+																					>
+																						<span
+																							class="text-[0.58rem] font-medium uppercase tracking-wide text-muted-foreground"
+																						>
+																							{humanizeLabel(
+																								message.role
+																							)}
+																						</span>
+																						<span
+																							class="shrink-0 text-[0.58rem] text-muted-foreground"
+																						>
+																							{formatRelativeDate(
+																								message.created_at
+																							)}
+																						</span>
+																					</div>
+																					<p
+																						class="line-clamp-2 text-[0.68rem] leading-snug text-foreground"
+																					>
+																						{message.content}
+																					</p>
+																				</div>
+																			{/each}
+																		</div>
+																	{:else}
+																		<p
+																			class="mt-2 rounded border border-dashed border-border px-2 py-1.5 text-[0.65rem] text-muted-foreground"
+																		>
+																			No message rows found
+																			for this chat session.
+																		</p>
+																	{/if}
 																</div>
 															{/each}
 														</div>
@@ -891,50 +1044,99 @@
 					{#if chatSessions.length > 0}
 						<div class="space-y-1.5">
 							{#each chatSessions.slice(0, 8) as session}
-								<div
-									class="rounded-lg border border-border bg-card px-3 py-2 flex items-start justify-between gap-3"
-								>
-									<div class="min-w-0 flex-1">
-										<div class="flex items-center gap-2 flex-wrap">
-											<p class="text-sm font-medium text-foreground truncate">
-												{session.title}
-											</p>
-											<span
-												class="px-1.5 py-0.5 rounded border text-[0.6rem] {getSessionStatusClass(
-													session.status
-												)}"
-											>
-												{humanizeLabel(session.status)}
-											</span>
-											<span
-												class="px-1.5 py-0.5 rounded border text-[0.6rem] bg-muted text-muted-foreground border-border"
-											>
-												{humanizeLabel(session.context_type)}
-											</span>
-											{#if session.project_name}
+								<div class="rounded-lg border border-border bg-card px-3 py-2">
+									<div class="flex items-start justify-between gap-3">
+										<div class="min-w-0 flex-1">
+											<div class="flex items-center gap-2 flex-wrap">
+												<p
+													class="min-w-0 max-w-full text-sm font-medium text-foreground truncate"
+												>
+													{session.title}
+												</p>
+												<span
+													class="px-1.5 py-0.5 rounded border text-[0.6rem] {getChatSourceClass(
+														session.source
+													)}"
+												>
+													{session.source_label || 'Chat'}
+												</span>
+												<span
+													class="px-1.5 py-0.5 rounded border text-[0.6rem] {getSessionStatusClass(
+														session.status
+													)}"
+												>
+													{humanizeLabel(session.status)}
+												</span>
 												<span
 													class="px-1.5 py-0.5 rounded border text-[0.6rem] bg-muted text-muted-foreground border-border"
 												>
-													{session.project_name}
+													{humanizeLabel(session.context_type)}
 												</span>
-											{/if}
+												{#if session.project_name}
+													<span
+														class="px-1.5 py-0.5 rounded border text-[0.6rem] bg-muted text-muted-foreground border-border"
+													>
+														{session.project_name}
+													</span>
+												{/if}
+											</div>
+											<p class="text-[0.7rem] text-muted-foreground mt-1">
+												{session.message_count} messages
+												{#if session.tool_call_count}
+													· {session.tool_call_count} tool calls
+												{/if}
+												· Last active {formatDateTime(
+													session.last_activity_at
+												)}
+											</p>
 										</div>
-										<p class="text-[0.7rem] text-muted-foreground mt-1">
-											{session.message_count} messages
-											{#if session.tool_call_count}
-												· {session.tool_call_count} tool calls
-											{/if}
-											· Last active {formatDateTime(session.last_activity_at)}
-										</p>
+
+										{#if session.admin_url}
+											<a
+												href={session.admin_url}
+												class="inline-flex items-center gap-1 px-2 py-1 rounded border border-border text-[0.7rem] text-foreground hover:bg-muted transition-colors shrink-0"
+											>
+												Open session
+												<ExternalLink class="w-3 h-3" />
+											</a>
+										{/if}
 									</div>
 
-									<a
-										href={session.admin_url}
-										class="inline-flex items-center gap-1 px-2 py-1 rounded border border-border text-[0.7rem] text-foreground hover:bg-muted transition-colors shrink-0"
-									>
-										Open session
-										<ExternalLink class="w-3 h-3" />
-									</a>
+									{#if session.recent_messages?.length > 0}
+										<div
+											class="mt-2 space-y-1.5 border-t border-border/70 pt-2"
+										>
+											{#each session.recent_messages.slice(0, 3) as message}
+												<div class="rounded bg-muted/35 px-2.5 py-2">
+													<div
+														class="mb-1 flex items-center justify-between gap-2"
+													>
+														<span
+															class="text-[0.6rem] font-medium uppercase tracking-wide text-muted-foreground"
+														>
+															{humanizeLabel(message.role)}
+														</span>
+														<span
+															class="shrink-0 text-[0.6rem] text-muted-foreground"
+														>
+															{formatRelativeDate(message.created_at)}
+														</span>
+													</div>
+													<p
+														class="line-clamp-2 text-[0.72rem] leading-snug text-foreground"
+													>
+														{message.content}
+													</p>
+												</div>
+											{/each}
+										</div>
+									{:else}
+										<div
+											class="mt-2 rounded border border-dashed border-border px-2.5 py-2 text-[0.7rem] text-muted-foreground"
+										>
+											No message rows found for this chat session.
+										</div>
+									{/if}
 								</div>
 							{/each}
 						</div>

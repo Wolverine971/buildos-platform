@@ -146,7 +146,33 @@ describe('GET /api/admin/users/[userId]/activity', () => {
 			],
 			task_calendar_events: [],
 			chat_sessions: [],
-			onto_goals: [{ id: 'goal-1', project_id: 'project-1', name: 'Launch prototype' }]
+			onto_goals: [
+				{
+					id: 'goal-1',
+					project_id: 'project-1',
+					name: 'Launch prototype',
+					state_key: 'active',
+					type_key: 'outcome',
+					target_date: '2026-07-31T00:00:00.000Z',
+					completed_at: null,
+					created_at: '2026-06-24T12:10:00.000Z',
+					updated_at: '2026-06-24T12:20:00.000Z',
+					deleted_at: null
+				}
+			],
+			onto_plans: [
+				{
+					id: 'plan-1',
+					project_id: 'project-1',
+					name: 'Prototype build plan',
+					state_key: 'active',
+					type_key: 'execution',
+					facet_stage: 'build',
+					created_at: '2026-06-24T12:15:00.000Z',
+					updated_at: '2026-06-24T12:25:00.000Z',
+					deleted_at: null
+				}
+			]
 		};
 		const supabase = createSupabase(rowsByTable);
 
@@ -164,6 +190,26 @@ describe('GET /api/admin/users/[userId]/activity', () => {
 		expect(response.status).toBe(200);
 		expect(payload.success).toBe(true);
 		expect(payload.data.projects[0].access_type).toBe('owned');
+		expect(payload.data.projects[0]).toMatchObject({
+			goal_count: 1,
+			open_goal_count: 1,
+			plan_count: 1,
+			active_plan_count: 1
+		});
+		expect(payload.data.projects[0].recent_goals[0]).toMatchObject({
+			id: 'goal-1',
+			name: 'Launch prototype',
+			state_key: 'active'
+		});
+		expect(payload.data.projects[0].recent_plans[0]).toMatchObject({
+			id: 'plan-1',
+			name: 'Prototype build plan',
+			facet_stage: 'build'
+		});
+		expect(payload.data.activity_stats).toMatchObject({
+			total_goals: 1,
+			total_plans: 1
+		});
 		expect(payload.data.recent_activity[0]).toMatchObject({
 			entity_id: 'goal-1',
 			entity_type: 'goal',
@@ -278,6 +324,163 @@ describe('GET /api/admin/users/[userId]/activity', () => {
 		expect(createdProjectActivity).toMatchObject({
 			object_name: 'Pico Keypad Controller',
 			project_name: 'Pico Keypad Controller'
+		});
+	});
+
+	it('hydrates current and legacy project chats with recent message snippets', async () => {
+		const rowsByTable: Record<string, Row[]> = {
+			users: [{ id: 'user-1', email: 'lysander@example.com', name: 'Lysander' }],
+			user_context: [{ user_id: 'user-1' }],
+			onto_project_members: [],
+			onto_projects: [
+				{
+					id: 'project-1',
+					name: 'Pico Keypad Controller',
+					created_by: 'actor-1',
+					deleted_at: null,
+					state_key: 'active',
+					description: null,
+					next_step_long: null,
+					next_step_short: null,
+					created_at: '2026-06-27T01:00:00.000Z',
+					updated_at: '2026-06-27T01:30:00.000Z'
+				}
+			],
+			onto_tasks: [],
+			onto_documents: [],
+			onto_goals: [],
+			onto_plans: [],
+			ontology_daily_briefs: [],
+			onto_project_logs: [],
+			task_calendar_events: [],
+			chat_sessions: [
+				{
+					id: 'chat-1',
+					user_id: 'user-1',
+					title: 'Create Pico project',
+					auto_title: null,
+					summary: null,
+					status: 'active',
+					context_type: 'project',
+					entity_id: 'project-1',
+					message_count: 0,
+					tool_call_count: 1,
+					total_tokens_used: 120,
+					created_at: '2026-06-27T01:01:00.000Z',
+					updated_at: '2026-06-27T01:02:00.000Z',
+					last_message_at: null
+				}
+			],
+			chat_messages: [
+				{
+					id: 'message-2',
+					session_id: 'chat-1',
+					user_id: 'user-1',
+					role: 'assistant',
+					content:
+						'I created the Pico Keypad Controller project and outlined the first tasks.',
+					created_at: '2026-06-27T01:03:00.000Z',
+					message_type: 'assistant',
+					error_message: null
+				},
+				{
+					id: 'message-1',
+					session_id: 'chat-1',
+					user_id: 'user-1',
+					role: 'user',
+					content: 'Create a project for a Pico keypad controller.',
+					created_at: '2026-06-27T01:01:00.000Z',
+					message_type: 'user',
+					error_message: null
+				}
+			],
+			agent_chat_sessions: [
+				{
+					id: 'agent-session-1',
+					user_id: 'user-1',
+					parent_session_id: 'chat-1',
+					session_type: 'planner',
+					status: 'completed',
+					context_type: null,
+					entity_id: null,
+					message_count: 0,
+					created_at: '2026-06-27T01:03:30.000Z',
+					completed_at: '2026-06-27T01:04:30.000Z'
+				}
+			],
+			agent_chat_messages: [
+				{
+					id: 'agent-message-1',
+					agent_session_id: 'agent-session-1',
+					parent_user_session_id: 'chat-1',
+					user_id: 'user-1',
+					role: 'assistant',
+					sender_type: 'planner',
+					content:
+						'Plan includes tasks, documents, goals, and a first implementation pass.',
+					created_at: '2026-06-27T01:04:00.000Z'
+				}
+			],
+			chat_sessions_projects: [
+				{
+					chat_session_id: 'chat-1',
+					project_id: 'project-1'
+				}
+			]
+		};
+		const supabase = createSupabase(rowsByTable);
+
+		const response = await GET({
+			params: { userId: 'user-1' },
+			locals: {
+				supabase,
+				safeGetSession: vi
+					.fn()
+					.mockResolvedValue({ user: { id: 'admin-1', is_admin: true } })
+			}
+		} as any);
+		const payload = await response.json();
+		const currentChat = payload.data.chat_sessions.find(
+			(session: any) => session.id === 'chat-1'
+		);
+		const legacyChat = payload.data.chat_sessions.find(
+			(session: any) => session.source === 'legacy_agent'
+		);
+
+		expect(response.status).toBe(200);
+		expect(payload.data.activity_stats).toMatchObject({
+			total_chat_sessions: 2,
+			total_chat_messages: 3,
+			total_project_chat_sessions: 2
+		});
+		expect(currentChat).toMatchObject({
+			id: 'chat-1',
+			source: 'current',
+			project_id: 'project-1',
+			message_count: 2,
+			last_activity_at: '2026-06-27T01:03:00.000Z'
+		});
+		expect(currentChat.recent_messages[0]).toMatchObject({
+			role: 'assistant',
+			content: 'I created the Pico Keypad Controller project and outlined the first tasks.'
+		});
+		expect(legacyChat).toMatchObject({
+			source: 'legacy_agent',
+			project_id: 'project-1',
+			message_count: 1,
+			admin_url: null
+		});
+		expect(legacyChat.recent_messages[0]).toMatchObject({
+			role: 'planner',
+			content: 'Plan includes tasks, documents, goals, and a first implementation pass.'
+		});
+		expect(payload.data.projects[0]).toMatchObject({
+			chat_session_count: 2,
+			chat_message_count: 3
+		});
+		expect(payload.data.projects[0].recent_chat_sessions[0]).toMatchObject({
+			source: 'legacy_agent',
+			project_id: 'project-1'
 		});
 	});
 });

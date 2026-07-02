@@ -13,9 +13,13 @@
 //     timeline.md      compact turn-grouped table
 //     turns.md         turn-run detail + prompt-variant comparison
 //     diagnostics.md   outcome, flags, notable LLM passes
-//     raw/*.json       full records
+//     capabilities.md  loaded/available tools, skills, domains
+//     raw/*.json       compact primary records + split prompt snapshots
 import { zipSync, strToU8 } from 'fflate';
-import { buildPromptVariantComparisonSection } from './chat-session-audit-export';
+import {
+	buildChatSessionAuditBaseName,
+	buildPromptVariantComparisonSection
+} from './chat-session-audit-export';
 import {
 	buildConversationSection,
 	buildDiagnosticsSection,
@@ -28,23 +32,21 @@ import {
 	deriveAuditGist,
 	metricLine,
 	stringOrDash,
+	tableCell,
 	toJson
 } from './chat-session-audit-gist';
+import {
+	buildCapabilityManifest,
+	buildCompactTimeline,
+	buildCompactTurnEvents,
+	buildCompactTurnRuns,
+	buildPromptSnapshotRecords,
+	type AuditCapabilityManifest
+} from './chat-session-audit-compact';
 import type { ChatSessionAuditPayload } from './chat-session-audit-types';
 
-const sanitizeFilenamePart = (value: string): string =>
-	value
-		.toLowerCase()
-		.trim()
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-+|-+$/g, '')
-		.slice(0, 48) || 'session';
-
 export const buildChatSessionAuditBundleName = (payload: ChatSessionAuditPayload): string => {
-	const safeTitle = sanitizeFilenamePart(payload.session.title);
-	const safeId = sanitizeFilenamePart(payload.session.id).slice(0, 16);
-	const date = new Date().toISOString().slice(0, 10);
-	return `chat-session-audit-${safeTitle}-${safeId}-${date}`;
+	return buildChatSessionAuditBaseName(payload);
 };
 
 const section = (lines: string[]): string => lines.join('\n').trimEnd() + '\n';
@@ -92,7 +94,8 @@ const buildReadme = (
 		'- [`timeline.md`](./timeline.md) — compact ordered timeline',
 		'- [`turns.md`](./turns.md) — turn-run detail + prompt-variant comparison',
 		'- [`diagnostics.md`](./diagnostics.md) — outcome, flags, notable LLM passes',
-		'- [`raw/`](./raw/) — full JSON records (messages, tool_executions, llm_calls, operations, timeline, turn_runs, timing_metrics, session)',
+		'- [`capabilities.md`](./capabilities.md) — available/loaded tools, skills, domains, and outcome cards',
+		'- [`raw/`](./raw/) — JSON records. `timeline.json` and `turn_runs.json` are compact; full prompt snapshots are split into `prompt_snapshots.json`.',
 		''
 	);
 	return section(lines);
@@ -141,6 +144,88 @@ const buildDiagnosticsFile = (
 	gist: ReturnType<typeof deriveAuditGist>
 ) => section(buildDiagnosticsSection(payload, gist));
 
+const capabilityRows = (entries: Array<{ id: string; description?: string; source?: string }>) =>
+	entries.length > 0
+		? entries.map(
+				(entry) =>
+					`| ${tableCell(entry.id, 44)} | ${tableCell(entry.source, 28)} | ${tableCell(
+						entry.description
+					)} |`
+			)
+		: ['| - | - | - |'];
+
+const loadedRows = (entries: Array<{ id: string; source?: string; turn_index?: number | null }>) =>
+	entries.length > 0
+		? entries.map(
+				(entry) =>
+					`| ${tableCell(entry.id, 44)} | ${tableCell(entry.source, 28)} | ${tableCell(
+						entry.turn_index
+					)} |`
+			)
+		: ['| - | - | - |'];
+
+const buildCapabilitiesFile = (manifest: AuditCapabilityManifest) => {
+	const lines = [
+		'## Capabilities',
+		'',
+		'### Tools Available / Loaded',
+		'',
+		'| Tool | Source | Description |',
+		'| --- | --- | --- |',
+		...capabilityRows(manifest.tools.loaded),
+		'',
+		'### Tools Used',
+		'',
+		'| Tool | Source | Turn |',
+		'| --- | --- | --- |',
+		...loadedRows(manifest.tools.used),
+		'',
+		'### Skills Available',
+		'',
+		'| Skill | Source | Description |',
+		'| --- | --- | --- |',
+		...capabilityRows(manifest.skills.available),
+		'',
+		'### Skills Loaded',
+		'',
+		'| Skill | Source | Turn |',
+		'| --- | --- | --- |',
+		...loadedRows(manifest.skills.loaded),
+		'',
+		'### Skills Recommended By Domain Sensing',
+		'',
+		'| Skill | Source | Turn |',
+		'| --- | --- | --- |',
+		...loadedRows(manifest.skills.recommended),
+		'',
+		'### Domains Included',
+		'',
+		'| Domain | Source | Description |',
+		'| --- | --- | --- |',
+		...capabilityRows(manifest.domains.included),
+		'',
+		'### Domains Loaded',
+		'',
+		'| Domain | Source | Turn |',
+		'| --- | --- | --- |',
+		...loadedRows(manifest.domains.loaded),
+		'',
+		'### Outcome Cards Included',
+		'',
+		'| Outcome card | Source | Description |',
+		'| --- | --- | --- |',
+		...capabilityRows(manifest.outcome_cards.included),
+		'',
+		'### Outcome Cards Loaded',
+		'',
+		'| Outcome card | Source | Turn |',
+		'| --- | --- | --- |',
+		...loadedRows(manifest.outcome_cards.loaded),
+		''
+	];
+	return section(lines);
+};
+
 /**
  * Build the full set of bundle files keyed by their in-zip path (without the
  * top-level folder prefix). Exported so it can be unit-tested without zipping.
@@ -149,6 +234,7 @@ export const buildChatSessionAuditBundleFiles = (
 	payload: ChatSessionAuditPayload
 ): Record<string, string> => {
 	const gist = deriveAuditGist(payload);
+	const capabilityManifest = buildCapabilityManifest(payload);
 	return {
 		'README.md': buildReadme(payload, gist),
 		'transcript.md': buildTranscriptFile(payload),
@@ -157,13 +243,17 @@ export const buildChatSessionAuditBundleFiles = (
 		'timeline.md': buildTimelineFile(payload),
 		'turns.md': buildTurnsFile(payload),
 		'diagnostics.md': buildDiagnosticsFile(payload, gist),
+		'capabilities.md': buildCapabilitiesFile(capabilityManifest),
 		'raw/session.json': `${toJson(payload.session)}\n`,
 		'raw/messages.json': `${toJson(payload.messages)}\n`,
 		'raw/tool_executions.json': `${toJson(payload.tool_executions)}\n`,
 		'raw/llm_calls.json': `${toJson(payload.llm_calls)}\n`,
 		'raw/operations.json': `${toJson(payload.operations)}\n`,
-		'raw/timeline.json': `${toJson(payload.timeline)}\n`,
-		'raw/turn_runs.json': `${toJson(payload.turn_runs)}\n`,
+		'raw/timeline.json': `${toJson(buildCompactTimeline(payload.timeline))}\n`,
+		'raw/turn_runs.json': `${toJson(buildCompactTurnRuns(payload.turn_runs))}\n`,
+		'raw/turn_events.json': `${toJson(buildCompactTurnEvents(payload))}\n`,
+		'raw/prompt_snapshots.json': `${toJson(buildPromptSnapshotRecords(payload))}\n`,
+		'raw/capabilities.json': `${toJson(capabilityManifest)}\n`,
 		'raw/timing_metrics.json': `${toJson(payload.timing_metrics)}\n`
 	};
 };

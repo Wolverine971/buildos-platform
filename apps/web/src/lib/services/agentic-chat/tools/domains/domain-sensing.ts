@@ -61,11 +61,41 @@ export type DomainSensingResult = {
 	recommended_skill_ids: string[];
 	coverage_gap_skill_ids: string[];
 	coverage_gap_resource_ids: string[];
+	/**
+	 * True when the current message matched skill-covered work strongly enough
+	 * that the model must call skill_load before drafting the final answer.
+	 * The gate binds the WHETHER, not the WHICH: confidence scores saturate and
+	 * tie across candidate cards, so skill choice stays with the model.
+	 */
+	skill_load_required: boolean;
 	next_step: string;
 };
 
 const MAX_QUERY_CHARS = 800;
 const MIN_DOMAIN_CONFIDENCE = 0.45;
+// Gate threshold: live prompts that should load a skill matched skill-bearing
+// domains at >= 0.56 confidence, while trivial follow-ups and direct-tool asks
+// returned no sensing result at all (2026-07-02 routing investigation).
+const SKILL_GATE_MIN_CONFIDENCE = 0.55;
+
+const ADVISORY_NEXT_STEP =
+	'Use these domains and outcome cards as routing hints. Load an outcome card when output contract or quality criteria would help; load a skill only when the user needs workflow depth.';
+const GATED_NEXT_STEP =
+	"Skill-load gate is ACTIVE for this turn: the request matches skill-covered work. Before drafting the final answer, pick the best-matching skill for the user's actual ask (outcome-card default_skill_id first, then the recommended skill ids) and call skill_load for it. Skip the load only when that skill is already in the loaded-skills ledger, or the message is a clarification/acknowledgment that produces no new work product.";
+
+function shouldRequireSkillLoad(
+	source: DomainSensingResult['source'],
+	activeDomains: SensedDomain[]
+): boolean {
+	// session_state means the current turn had no signal of its own and we fell
+	// back to prior domains; do not force a load off a stale signal.
+	if (source === 'session_state') return false;
+	return activeDomains.some(
+		(domain) =>
+			domain.skill_ids.length > 0 &&
+			(domain.confidence >= SKILL_GATE_MIN_CONFIDENCE || domain.aliases_hit.length > 0)
+	);
+}
 
 function normalizeText(value: string | null | undefined): string {
 	return (value ?? '').trim().replace(/\s+/g, ' ');
@@ -243,6 +273,8 @@ export function senseDomains(input: DomainSensingInput): DomainSensingResult | n
 		activeDomains.flatMap((domain) => domain.gap_resource_ids)
 	).slice(0, 8);
 
+	const skillLoadRequired = shouldRequireSkillLoad(source, activeDomains);
+
 	return {
 		type: 'domain_sensing',
 		source,
@@ -253,8 +285,8 @@ export function senseDomains(input: DomainSensingInput): DomainSensingResult | n
 		recommended_skill_ids: recommendedSkillIds,
 		coverage_gap_skill_ids: coverageGapSkillIds,
 		coverage_gap_resource_ids: coverageGapResourceIds,
-		next_step:
-			'Use these domains and outcome cards as routing hints. Load an outcome card when output contract or quality criteria would help; load a skill only when the user needs workflow depth.'
+		skill_load_required: skillLoadRequired,
+		next_step: skillLoadRequired ? GATED_NEXT_STEP : ADVISORY_NEXT_STEP
 	};
 }
 
@@ -295,6 +327,12 @@ export function renderDomainSensingPromptContent(
 
 	return [
 		`Source: ${result.source}.`,
+		...(result.skill_load_required
+			? [
+					'',
+					'Skill-load gate: ACTIVE. Do not draft the final answer until you have called skill_load for the best-matching skill below or confirmed it is already in the loaded-skills ledger. Answering skill-covered work from base knowledge is a routing failure.'
+				]
+			: []),
 		'',
 		'Candidate domains:',
 		...domainLines,

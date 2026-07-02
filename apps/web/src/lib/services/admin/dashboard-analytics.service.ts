@@ -4,10 +4,7 @@
  */
 
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@buildos/shared-types';
 import { StripeService } from '$lib/services/stripe-service';
-import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 
 export type AnalyticsTimeframe = '7d' | '30d' | '90d';
 
@@ -248,9 +245,27 @@ type AdminDashboardChatUsageRpcRow = {
 	failure_rate?: unknown;
 };
 
+type AdminDashboardComprehensiveRpcRow = {
+	total_users?: unknown;
+	total_beta_users?: unknown;
+	new_users_last_24h?: unknown;
+	new_beta_signups_last_24h?: unknown;
+	agent_chat_sessions?: unknown;
+	agent_chat_messages?: unknown;
+	agent_chat_unique_users?: unknown;
+	new_projects?: unknown;
+	updated_projects?: unknown;
+	project_unique_users?: unknown;
+	calendar_connections?: unknown;
+	leaderboards?: unknown;
+	top_active_users?: unknown;
+};
+
 const PAGE_SIZE = 1000;
 const MAX_ADMIN_ANALYTICS_ROWS = 50_000;
 let warnedAdminChatUsageRpcFallback = false;
+let warnedAdminComprehensiveRpcFallback = false;
+let warnedAdminTopUsersRpcFallback = false;
 
 async function fetchPaginatedRows<T>(
 	buildQuery: (from: number, to: number) => unknown,
@@ -469,10 +484,135 @@ function resolveTrailingDateTimeRange(timeframe: AnalyticsTimeframe) {
 	};
 }
 
+function normalizeLeaderboardEntries(value: unknown): Array<{ email: string; count: number }> {
+	if (!Array.isArray(value)) {
+		return [];
+	}
+
+	return value
+		.map((entry) => {
+			if (!entry || typeof entry !== 'object') return null;
+			const row = entry as Record<string, unknown>;
+			return {
+				email: typeof row.email === 'string' && row.email ? row.email : 'Unknown',
+				count: coerceNumber(row.count)
+			};
+		})
+		.filter((entry): entry is { email: string; count: number } => Boolean(entry));
+}
+
+function normalizeTopActiveUsers(
+	value: unknown
+): Array<{ email: string; last_activity: string | null; activity_count: number }> {
+	if (!Array.isArray(value)) {
+		return [];
+	}
+
+	return value
+		.map((entry) => {
+			if (!entry || typeof entry !== 'object') return null;
+			const row = entry as Record<string, unknown>;
+			return {
+				email: typeof row.email === 'string' && row.email ? row.email : 'Unknown',
+				last_activity: typeof row.last_activity === 'string' ? row.last_activity : null,
+				activity_count: coerceNumber(row.activity_count)
+			};
+		})
+		.filter(
+			(
+				entry
+			): entry is {
+				email: string;
+				last_activity: string | null;
+				activity_count: number;
+			} => Boolean(entry)
+		);
+}
+
+function normalizeComprehensiveAnalyticsFromRpc(
+	value:
+		| AdminDashboardComprehensiveRpcRow[]
+		| AdminDashboardComprehensiveRpcRow
+		| null
+		| undefined
+): typeof DEFAULT_COMPREHENSIVE_ANALYTICS {
+	const source = Array.isArray(value) ? value[0] : value;
+	if (!source || typeof source !== 'object') {
+		return clone(DEFAULT_COMPREHENSIVE_ANALYTICS);
+	}
+
+	const leaderboards =
+		source.leaderboards && typeof source.leaderboards === 'object'
+			? (source.leaderboards as Record<string, unknown>)
+			: {};
+
+	return {
+		userMetrics: {
+			totalUsers: coerceNumber(source.total_users),
+			totalBetaUsers: coerceNumber(source.total_beta_users),
+			newUsersLast24h: coerceNumber(source.new_users_last_24h),
+			newBetaSignupsLast24h: coerceNumber(source.new_beta_signups_last_24h)
+		},
+		agentChatMetrics: {
+			totalSessions: coerceNumber(source.agent_chat_sessions),
+			totalMessages: coerceNumber(source.agent_chat_messages),
+			uniqueUsers: coerceNumber(source.agent_chat_unique_users)
+		},
+		projectMetrics: {
+			newProjects: coerceNumber(source.new_projects),
+			updatedProjects: coerceNumber(source.updated_projects),
+			uniqueUsers: coerceNumber(source.project_unique_users)
+		},
+		calendarConnections: coerceNumber(source.calendar_connections),
+		leaderboards: {
+			agentChats: normalizeLeaderboardEntries(leaderboards.agentChats),
+			agentMessages: normalizeLeaderboardEntries(leaderboards.agentMessages),
+			projectUpdates: normalizeLeaderboardEntries(leaderboards.projectUpdates),
+			tasksCreated: normalizeLeaderboardEntries(leaderboards.tasksCreated),
+			tasksScheduled: normalizeLeaderboardEntries(leaderboards.tasksScheduled)
+		}
+	};
+}
+
+async function getAdminDashboardComprehensiveAnalyticsRpc(
+	client: TypedSupabaseClient,
+	timeframe: AnalyticsTimeframe
+): Promise<AdminDashboardComprehensiveRpcRow | null> {
+	const { startDateTime, endDateTime } = resolveTrailingDateTimeRange(timeframe);
+	const last24hDateTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+	const { data, error } = await (client as any).rpc(
+		'get_admin_dashboard_comprehensive_analytics',
+		{
+			start_ts: startDateTime,
+			end_ts: endDateTime,
+			last_24h_ts: last24hDateTime
+		}
+	);
+
+	if (error) {
+		throw error;
+	}
+
+	return Array.isArray(data) ? (data[0] ?? null) : data;
+}
+
 async function getTopActiveUsers(
 	client: TypedSupabaseClient,
 	timeframe: AnalyticsTimeframe
 ): Promise<Array<{ email: string; last_activity: string | null; activity_count: number }>> {
+	try {
+		const data = await getAdminDashboardComprehensiveAnalyticsRpc(client, timeframe);
+		return normalizeTopActiveUsers(data?.top_active_users);
+	} catch (err) {
+		if (!warnedAdminTopUsersRpcFallback) {
+			console.warn(
+				'[Admin Analytics] get_admin_dashboard_comprehensive_analytics top users unavailable; falling back to row scans',
+				err
+			);
+			warnedAdminTopUsersRpcFallback = true;
+		}
+	}
+
 	const dateRange = resolveDateRange(timeframe);
 	const { startDateTime, endDateTime } = buildDateTimeRange(dateRange);
 
@@ -583,7 +723,8 @@ async function getTopActiveUsers(
 
 export async function getSystemOverview(
 	client: TypedSupabaseClient,
-	timeframe: AnalyticsTimeframe = '30d'
+	timeframe: AnalyticsTimeframe = '30d',
+	options: { includeTopActiveUsers?: boolean } = {}
 ): Promise<typeof DEFAULT_SYSTEM_OVERVIEW> {
 	const { data, error } = await client.rpc('get_user_engagement_metrics');
 
@@ -593,7 +734,8 @@ export async function getSystemOverview(
 
 	const baseOverview =
 		(data?.[0] as typeof DEFAULT_SYSTEM_OVERVIEW | undefined) ?? DEFAULT_SYSTEM_OVERVIEW;
-	const topActiveUsers = await getTopActiveUsers(client, timeframe);
+	const topActiveUsers =
+		options.includeTopActiveUsers === false ? [] : await getTopActiveUsers(client, timeframe);
 
 	return {
 		...baseOverview,
@@ -1039,6 +1181,10 @@ export async function getBetaOverview(
 }
 
 export async function getSubscriptionOverview(client: TypedSupabaseClient) {
+	if (!StripeService.isEnabled()) {
+		return clone(DEFAULT_SUBSCRIPTION_OVERVIEW);
+	}
+
 	const { data: rawOverview, error: overviewError } = await client.rpc(
 		'get_subscription_overview'
 	);
@@ -1113,10 +1259,76 @@ export async function getSubscriptionOverview(client: TypedSupabaseClient) {
 	};
 }
 
+async function getDashboardSummaryComprehensiveMetrics(
+	client: TypedSupabaseClient
+): Promise<typeof DEFAULT_COMPREHENSIVE_ANALYTICS> {
+	const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+	const [
+		userCounts,
+		betaUserCounts,
+		newUsersLast24h,
+		newBetaSignupsLast24h,
+		calendarConnections
+	] = await Promise.all([
+		client.from('users').select('id', { count: 'exact', head: true }),
+		client
+			.from('beta_signups')
+			.select('id', { count: 'exact', head: true })
+			.eq('signup_status', 'approved'),
+		client
+			.from('users')
+			.select('id', { count: 'exact', head: true })
+			.gte('created_at', twentyFourHoursAgo),
+		client
+			.from('beta_signups')
+			.select('id', { count: 'exact', head: true })
+			.gte('created_at', twentyFourHoursAgo),
+		client
+			.from('user_calendar_tokens')
+			.select('user_id', { count: 'exact', head: true })
+			.not('access_token', 'is', null)
+	]);
+
+	const error =
+		userCounts.error ||
+		betaUserCounts.error ||
+		newUsersLast24h.error ||
+		newBetaSignupsLast24h.error ||
+		calendarConnections.error;
+
+	if (error) {
+		throw new Error(error.message);
+	}
+
+	return {
+		...clone(DEFAULT_COMPREHENSIVE_ANALYTICS),
+		userMetrics: {
+			totalUsers: userCounts.count || 0,
+			totalBetaUsers: betaUserCounts.count || 0,
+			newUsersLast24h: newUsersLast24h.count || 0,
+			newBetaSignupsLast24h: newBetaSignupsLast24h.count || 0
+		},
+		calendarConnections: calendarConnections.count || 0
+	};
+}
+
 export async function getComprehensiveAnalytics(
 	client: TypedSupabaseClient,
 	timeframe: AnalyticsTimeframe
 ) {
+	try {
+		const data = await getAdminDashboardComprehensiveAnalyticsRpc(client, timeframe);
+		return normalizeComprehensiveAnalyticsFromRpc(data);
+	} catch (err) {
+		if (!warnedAdminComprehensiveRpcFallback) {
+			console.warn(
+				'[Admin Analytics] get_admin_dashboard_comprehensive_analytics RPC unavailable; falling back to row scans',
+				err
+			);
+			warnedAdminComprehensiveRpcFallback = true;
+		}
+	}
+
 	const endDate = new Date();
 	const startDate = new Date();
 	switch (timeframe) {
@@ -1373,16 +1585,58 @@ export async function getComprehensiveAnalytics(
 }
 
 export async function getErrorSummary(client: TypedSupabaseClient) {
-	// Type assertion needed due to module resolution differences between TypedSupabaseClient and SupabaseClient<Database>
-	const errorLogger = ErrorLoggerService.getInstance(client as SupabaseClient<Database>);
-	const summary = await errorLogger.getErrorSummary();
+	const now = new Date();
+	const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+	const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+	const unresolvedFilter = 'resolved.is.null,resolved.eq.false';
+
+	const [totalErrors, unresolvedErrors, criticalErrors, errorsLast24h, errorsPreviousWeek] =
+		await Promise.all([
+			client.from('error_logs').select('id', { count: 'exact', head: true }),
+			(client.from('error_logs').select('id', { count: 'exact', head: true }) as any).or(
+				unresolvedFilter
+			),
+			(
+				client
+					.from('error_logs')
+					.select('id', { count: 'exact', head: true })
+					.eq('severity', 'critical') as any
+			).or(unresolvedFilter),
+			client
+				.from('error_logs')
+				.select('id', { count: 'exact', head: true })
+				.gte('created_at', yesterday),
+			client
+				.from('error_logs')
+				.select('id', { count: 'exact', head: true })
+				.gte('created_at', lastWeek)
+				.lt('created_at', yesterday)
+		]);
+
+	const error =
+		totalErrors.error ||
+		unresolvedErrors.error ||
+		criticalErrors.error ||
+		errorsLast24h.error ||
+		errorsPreviousWeek.error;
+
+	if (error) {
+		throw new Error(error.message);
+	}
+
+	const previousWeekAverage = (errorsPreviousWeek.count || 0) / 7;
+	const recentErrors = errorsLast24h.count || 0;
+	const errorTrend =
+		previousWeekAverage > 0
+			? Math.round(((recentErrors - previousWeekAverage) / previousWeekAverage) * 100)
+			: 0;
 
 	return {
-		total_errors: summary.total_errors || 0,
-		unresolved_errors: summary.unresolved_errors || 0,
-		critical_errors: summary.critical_errors || 0,
-		recent_errors_24h: summary.errors_last_24h || 0,
-		error_trend: summary.error_trend || 0
+		total_errors: totalErrors.count || 0,
+		unresolved_errors: unresolvedErrors.count || 0,
+		critical_errors: criticalErrors.count || 0,
+		recent_errors_24h: recentErrors,
+		error_trend: errorTrend
 	};
 }
 
@@ -1488,20 +1742,45 @@ export async function getBriefDeliveryStats(
 	const dateRange = resolveDateRange(timeframe);
 	const { startDateTime, endDateTime } = buildDateTimeRange(dateRange);
 
-	const { data: ontologyBriefs, error: ontologyBriefsError } = await client
-		.from('ontology_daily_briefs')
-		.select('id, created_at')
-		.eq('generation_status', 'completed')
-		.gte('created_at', startDateTime)
-		.lte('created_at', endDateTime);
+	const [ontologyBriefsResult, notificationPrefsResult, emailRecipientsResult, smsResult] =
+		await Promise.all([
+			client
+				.from('ontology_daily_briefs')
+				.select('id, created_at')
+				.eq('generation_status', 'completed')
+				.gte('created_at', startDateTime)
+				.lte('created_at', endDateTime),
+			client
+				.from('user_notification_preferences')
+				.select('should_email_daily_brief, should_sms_daily_brief'),
+			client
+				.from('email_recipients')
+				.select(
+					`
+			sent_at,
+			delivered_at,
+			status,
+			emails!inner(category)
+		`
+				)
+				.eq('emails.category', 'daily_brief')
+				.gte('sent_at', startDateTime)
+				.lte('sent_at', endDateTime),
+			client
+				.from('sms_messages')
+				.select('sent_at, delivered_at, metadata')
+				.contains('metadata', { type: 'daily_brief' })
+				.gte('created_at', startDateTime)
+				.lte('created_at', endDateTime)
+		]);
+
+	const { data: ontologyBriefs, error: ontologyBriefsError } = ontologyBriefsResult;
 
 	if (ontologyBriefsError) {
 		throw new Error(ontologyBriefsError.message);
 	}
 
-	const { data: notificationPrefs, error: prefsError } = await client
-		.from('user_notification_preferences')
-		.select('should_email_daily_brief, should_sms_daily_brief');
+	const { data: notificationPrefs, error: prefsError } = notificationPrefsResult;
 
 	if (prefsError) {
 		throw new Error(prefsError.message);
@@ -1512,19 +1791,7 @@ export async function getBriefDeliveryStats(
 	const smsOptIn =
 		notificationPrefs?.filter((pref) => pref.should_sms_daily_brief === true).length || 0;
 
-	const { data: emailRecipients, error: emailRecipientsError } = await client
-		.from('email_recipients')
-		.select(
-			`
-			sent_at,
-			delivered_at,
-			status,
-			emails!inner(category)
-		`
-		)
-		.eq('emails.category', 'daily_brief')
-		.gte('sent_at', startDateTime)
-		.lte('sent_at', endDateTime);
+	const { data: emailRecipients, error: emailRecipientsError } = emailRecipientsResult;
 
 	if (emailRecipientsError) {
 		throw new Error(emailRecipientsError.message);
@@ -1535,12 +1802,7 @@ export async function getBriefDeliveryStats(
 		emailRecipients?.filter((rec) => rec.delivered_at || rec.status === 'delivered').length ||
 		0;
 
-	const { data: smsMessages, error: smsError } = await client
-		.from('sms_messages')
-		.select('sent_at, delivered_at, metadata')
-		.contains('metadata', { type: 'daily_brief' })
-		.gte('created_at', startDateTime)
-		.lte('created_at', endDateTime);
+	const { data: smsMessages, error: smsError } = smsResult;
 
 	if (smsError) {
 		throw new Error(smsError.message);
@@ -1665,6 +1927,8 @@ export interface DashboardAnalyticsPayload {
 	systemHealth: Awaited<ReturnType<typeof getSystemHealth>>;
 }
 
+export type DashboardAnalyticsPartialPayload = Partial<DashboardAnalyticsPayload>;
+
 async function safeFetch<T>(label: string, fallback: () => T, fn: () => Promise<T>): Promise<T> {
 	try {
 		return await fn();
@@ -1672,6 +1936,160 @@ async function safeFetch<T>(label: string, fallback: () => T, fn: () => Promise<
 		console.error(`[Admin Analytics] ${label} failed`, err);
 		return fallback();
 	}
+}
+
+export async function getDashboardAnalyticsSummary(
+	client: TypedSupabaseClient,
+	timeframe: AnalyticsTimeframe
+): Promise<DashboardAnalyticsPartialPayload> {
+	const [
+		systemOverview,
+		visitorOverview,
+		dailyVisitors,
+		dailySignups,
+		comprehensiveAnalytics,
+		errorsData,
+		agentChatUsage,
+		briefDelivery,
+		systemHealth
+	] = await Promise.all([
+		safeFetch(
+			'system overview',
+			() => clone(DEFAULT_SYSTEM_OVERVIEW),
+			() => getSystemOverview(client, timeframe, { includeTopActiveUsers: false })
+		),
+		safeFetch(
+			'visitor overview',
+			() => clone(DEFAULT_VISITOR_OVERVIEW),
+			() => getVisitorOverview(client)
+		),
+		safeFetch(
+			'daily visitors',
+			() => [],
+			() => getDailyVisitors(client, timeframe)
+		),
+		safeFetch(
+			'daily signups',
+			() => [],
+			() => getDailySignups(client, timeframe)
+		),
+		safeFetch(
+			'comprehensive analytics',
+			() => clone(DEFAULT_COMPREHENSIVE_ANALYTICS),
+			() => getDashboardSummaryComprehensiveMetrics(client)
+		),
+		safeFetch(
+			'error summary',
+			() => clone(DEFAULT_ERROR_SUMMARY),
+			() => getErrorSummary(client)
+		),
+		safeFetch(
+			'agent chat usage',
+			() => clone(DEFAULT_AGENT_CHAT_USAGE),
+			() => getAgentChatUsage(client, timeframe)
+		),
+		safeFetch(
+			'brief delivery',
+			() => clone(DEFAULT_BRIEF_DELIVERY),
+			() => getBriefDeliveryStats(client, timeframe)
+		),
+		safeFetch(
+			'system health',
+			() => clone(DEFAULT_SYSTEM_HEALTH),
+			() => getSystemHealth(client)
+		)
+	]);
+
+	return {
+		systemOverview,
+		visitorOverview,
+		dailyVisitors,
+		dailySignups,
+		comprehensiveAnalytics,
+		errorsData,
+		agentChatUsage,
+		briefDelivery,
+		systemHealth,
+		subscriptionData: clone(DEFAULT_SUBSCRIPTION_OVERVIEW)
+	};
+}
+
+export async function getDashboardAnalyticsDetails(
+	client: TypedSupabaseClient,
+	timeframe: AnalyticsTimeframe
+): Promise<DashboardAnalyticsPartialPayload> {
+	const [
+		topActiveUsers,
+		dailyActiveUsers,
+		briefGenerationStats,
+		systemMetrics,
+		recentActivity,
+		feedbackOverview,
+		betaOverview,
+		subscriptionData,
+		comprehensiveAnalytics
+	] = await Promise.all([
+		safeFetch(
+			'top active users',
+			() => [],
+			() => getTopActiveUsers(client, timeframe)
+		),
+		safeFetch(
+			'daily active users',
+			() => [],
+			() => getDailyActiveUsers(client, timeframe)
+		),
+		safeFetch(
+			'brief stats',
+			() => [],
+			() => getBriefGenerationStats(client, timeframe)
+		),
+		safeFetch(
+			'system metrics',
+			() => [],
+			() => getSystemMetrics(client)
+		),
+		safeFetch(
+			'recent activity',
+			() => [],
+			() => getRecentActivity(client)
+		),
+		safeFetch(
+			'feedback overview',
+			() => clone(DEFAULT_FEEDBACK_OVERVIEW),
+			() => getFeedbackOverview(client)
+		),
+		safeFetch(
+			'beta overview',
+			() => clone(DEFAULT_BETA_OVERVIEW),
+			() => getBetaOverview(client)
+		),
+		safeFetch(
+			'subscription overview',
+			() => clone(DEFAULT_SUBSCRIPTION_OVERVIEW),
+			() => getSubscriptionOverview(client)
+		),
+		safeFetch(
+			'comprehensive analytics',
+			() => clone(DEFAULT_COMPREHENSIVE_ANALYTICS),
+			() => getComprehensiveAnalytics(client, timeframe)
+		)
+	]);
+
+	return {
+		systemOverview: {
+			...clone(DEFAULT_SYSTEM_OVERVIEW),
+			top_active_users: topActiveUsers
+		},
+		dailyActiveUsers,
+		briefGenerationStats,
+		systemMetrics,
+		recentActivity,
+		feedbackOverview,
+		betaOverview,
+		subscriptionData,
+		comprehensiveAnalytics
+	};
 }
 
 export async function getDashboardAnalytics(

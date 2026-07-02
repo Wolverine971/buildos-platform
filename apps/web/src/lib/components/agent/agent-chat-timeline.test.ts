@@ -1,7 +1,11 @@
 // apps/web/src/lib/components/agent/agent-chat-timeline.test.ts
 import { describe, expect, it } from 'vitest';
 import type { AgentTimelineItem } from './agent-chat.types';
-import { buildAgentTimeline, buildTimelineItemQuestionDraft } from './agent-chat-timeline';
+import {
+	buildAgentTimeline,
+	buildTimelineItemQuestionDraft,
+	timelineItemsFromMessages
+} from './agent-chat-timeline';
 
 function timelineItem(overrides: Partial<AgentTimelineItem> = {}): AgentTimelineItem {
 	return {
@@ -134,5 +138,143 @@ describe('agent-chat-timeline safe JSON expansion', () => {
 		expect(toolItem?.tool?.resultFullJson).toBeNull();
 		expect(toolItem?.redaction?.argsRedacted).toBe(true);
 		expect(toolItem?.redaction?.resultRedacted).toBe(true);
+	});
+});
+
+describe('agent-chat-timeline live messages', () => {
+	it('creates a live change item from completed tool result metadata', () => {
+		const items = timelineItemsFromMessages('session-1', [
+			{
+				id: 'block-1',
+				type: 'thinking_block',
+				content: 'Complete',
+				timestamp: new Date('2026-06-20T12:00:00.000Z'),
+				status: 'completed',
+				activities: [
+					{
+						id: 'activity-1',
+						content: 'Created document',
+						timestamp: new Date('2026-06-20T12:00:00.000Z'),
+						activityType: 'tool_call',
+						status: 'completed',
+						toolCallId: 'call-1',
+						metadata: {
+							toolName: 'create_onto_document',
+							gatewayOp: 'onto.document.create',
+							arguments: {
+								title: 'Video Script',
+								project_id: 'project-1'
+							},
+							result: {
+								document: {
+									id: 'doc-1',
+									title: 'Video Script',
+									project_id: 'project-1'
+								}
+							}
+						}
+					}
+				]
+			} as any
+		]);
+
+		const changeItem = items.find((item) => item.kind === 'change');
+
+		expect(changeItem?.title).toBe('Created Document');
+		expect(changeItem?.summary).toBe('Video Script');
+		expect(changeItem?.entityRefs[0]).toMatchObject({
+			kind: 'document',
+			id: 'doc-1',
+			title: 'Video Script',
+			projectId: 'project-1',
+			operation: 'created'
+		});
+	});
+
+	it('uses live created-entity card messages as a fallback change source', () => {
+		const items = timelineItemsFromMessages('session-1', [
+			{
+				id: 'created-1',
+				type: 'created_entities',
+				content: '',
+				timestamp: new Date('2026-06-20T12:00:01.000Z'),
+				data: {
+					entities: [
+						{
+							kind: 'task',
+							id: 'task-1',
+							name: 'Draft launch hook',
+							projectId: 'project-1'
+						}
+					]
+				}
+			} as any
+		]);
+
+		const changeItem = items.find((item) => item.kind === 'change');
+
+		expect(changeItem?.title).toBe('Created Task');
+		expect(changeItem?.summary).toBe('Draft launch hook');
+		expect(changeItem?.entityRefs[0]).toMatchObject({
+			kind: 'task',
+			id: 'task-1',
+			projectId: 'project-1',
+			operation: 'created'
+		});
+	});
+
+	it('does not double-count a created entity from a tool result and its created card', () => {
+		const items = timelineItemsFromMessages('session-1', [
+			{
+				id: 'block-1',
+				type: 'thinking_block',
+				content: 'Complete',
+				timestamp: new Date('2026-06-20T12:00:00.000Z'),
+				status: 'completed',
+				activities: [
+					{
+						id: 'activity-1',
+						content: 'Created document',
+						timestamp: new Date('2026-06-20T12:00:00.000Z'),
+						activityType: 'tool_call',
+						status: 'completed',
+						toolCallId: 'call-1',
+						metadata: {
+							toolName: 'create_onto_document',
+							gatewayOp: 'onto.document.create',
+							arguments: {
+								title: 'Video Script',
+								project_id: 'project-1'
+							},
+							result: {
+								document: {
+									id: 'doc-1',
+									title: 'Video Script',
+									project_id: 'project-1'
+								}
+							}
+						}
+					}
+				]
+			} as any,
+			{
+				id: 'created-1',
+				type: 'created_entities',
+				content: '',
+				timestamp: new Date('2026-06-20T12:00:01.000Z'),
+				data: {
+					entities: [
+						{
+							kind: 'document',
+							id: 'doc-1',
+							name: 'Video Script',
+							projectId: 'project-1'
+						}
+					]
+				}
+			} as any
+		]);
+
+		expect(items.filter((item) => item.kind === 'change')).toHaveLength(1);
 	});
 });

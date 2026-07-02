@@ -1518,7 +1518,8 @@
 	function updateActivityStatus(
 		toolCallId: string,
 		status: 'completed' | 'failed',
-		errorMessage?: string
+		errorMessage?: string,
+		toolResult?: Record<string, any>
 	): ActivityUpdateResult {
 		if (!currentThinkingBlockId) return { matched: false };
 
@@ -1549,6 +1550,20 @@
 				toolName === 'skill_load' && status === 'completed'
 					? buildSkillLoadActivityEvent('loaded', args)
 					: null;
+			const resultPayload =
+				toolResult?.result ?? toolResult?.data ?? toolResult?.tool_result ?? toolResult;
+			const durationMs =
+				typeof toolResult?.duration_ms === 'number'
+					? toolResult.duration_ms
+					: typeof toolResult?.durationMs === 'number'
+						? toolResult.durationMs
+						: undefined;
+			const tokensConsumed =
+				typeof toolResult?.tokens_consumed === 'number'
+					? toolResult.tokens_consumed
+					: typeof toolResult?.tokensConsumed === 'number'
+						? toolResult.tokensConsumed
+						: undefined;
 
 			const updatedActivity: ActivityEntry = {
 				...activity,
@@ -1561,6 +1576,14 @@
 					...activity.metadata,
 					status,
 					...(errorMessage ? { error: errorMessage } : {}),
+					...(toolResult !== undefined
+						? {
+								result: resultPayload,
+								response: toolResult
+							}
+						: {}),
+					...(durationMs !== undefined ? { durationMs } : {}),
+					...(tokensConsumed !== undefined ? { tokensConsumed } : {}),
 					...(skillActivity
 						? {
 								skillActivity,

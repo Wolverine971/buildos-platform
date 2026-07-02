@@ -153,7 +153,17 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 			'vertical video',
 			'viral video',
 			'hooks',
-			'video scripts'
+			'video scripts',
+			// Story/retention craft recall (2026-07-02): "fix the narrative arc" of a
+			// video draft sensed zero content-family domains and misrouted to
+			// product/design. story_driven_content_craft lives in this domain's
+			// skill list, so these terms must land here.
+			'video draft',
+			'narrative arc',
+			'story arc',
+			'story structure',
+			'storytelling',
+			'story'
 		],
 		summary:
 			'Planning, drafting, auditing, and improving short-form video ideas, hooks, scripts, retention paths, and publishing fit.',

@@ -590,6 +590,49 @@ function buildChangeTimelineItem(toolItem: AgentTimelineItem): AgentTimelineItem
 	};
 }
 
+function buildCreatedEntityChangeTimelineItem(
+	sessionId: string,
+	message: UIMessage,
+	entity: unknown,
+	index: number
+): AgentTimelineItem | null {
+	if (!isRecord(entity)) return null;
+	const kind = normalizeEntityKind(stringValue(entity.kind) ?? stringValue(entity.entity_type));
+	const id = stringValue(entity.id) ?? stringValue(entity.entity_id);
+	if (!kind || !id) return null;
+	const title =
+		stringValue(entity.name) ?? stringValue(entity.title) ?? stringValue(entity.label);
+	const projectId =
+		kind === 'project'
+			? id
+			: stringValue(entity.projectId) || stringValue(entity.project_id) || null;
+	const entityRef: AgentTimelineEntityRef = {
+		kind,
+		id,
+		title,
+		projectId,
+		operation: 'created'
+	};
+	entityRef.url = buildEntityUrl(entityRef);
+	const label = title || id;
+
+	return {
+		id: `entity_change:${message.id}:${kind}:${id}`,
+		sessionId,
+		messageId: message.id,
+		source: 'entity_change',
+		kind: 'change',
+		status: 'completed',
+		timestamp: fallbackTimestamp(message.created_at, message.timestamp?.toISOString()),
+		sequenceIndex: index,
+		title: `${humanizeIdentifier('created')} ${humanizeIdentifier(kind)}`,
+		summary: label,
+		detailPreview: `Created ${kind}: ${label}`,
+		projectRef: projectRefFromEntity(entityRef),
+		entityRefs: [entityRef]
+	};
+}
+
 function buildMessageTimelineItem(
 	sessionId: string,
 	message: TimelineChatMessageRow
@@ -743,6 +786,28 @@ function compareTimelineItems(left: AgentTimelineItem, right: AgentTimelineItem)
 	return left.id.localeCompare(right.id);
 }
 
+function createdChangeSemanticKey(item: AgentTimelineItem): string | null {
+	if (item.kind !== 'change') return null;
+	const entityRef = item.entityRefs.find((ref) => ref.operation === 'created');
+	if (!entityRef?.id || !entityRef.kind) return null;
+	return `created:${entityRef.kind}:${entityRef.id}`;
+}
+
+function sortAndDedupeTimelineItems(items: AgentTimelineItem[]): AgentTimelineItem[] {
+	const seenIds = new Set<string>();
+	const seenCreatedChanges = new Set<string>();
+	return items.sort(compareTimelineItems).filter((item) => {
+		if (seenIds.has(item.id)) return false;
+		const createdKey = createdChangeSemanticKey(item);
+		if (createdKey) {
+			if (seenCreatedChanges.has(createdKey)) return false;
+			seenCreatedChanges.add(createdKey);
+		}
+		seenIds.add(item.id);
+		return true;
+	});
+}
+
 export function buildAgentTimeline(params: BuildAgentTimelineParams): AgentTimelineItem[] {
 	const items: AgentTimelineItem[] = [];
 
@@ -769,12 +834,7 @@ export function buildAgentTimeline(params: BuildAgentTimelineParams): AgentTimel
 		if (item) items.push(item);
 	}
 
-	const seen = new Set<string>();
-	return items.sort(compareTimelineItems).filter((item) => {
-		if (seen.has(item.id)) return false;
-		seen.add(item.id);
-		return true;
-	});
+	return sortAndDedupeTimelineItems(items);
 }
 
 export function mergeAgentTimelineItems(
@@ -782,10 +842,16 @@ export function mergeAgentTimelineItems(
 	liveItems: AgentTimelineItem[]
 ): AgentTimelineItem[] {
 	const byId = new Map<string, AgentTimelineItem>();
+	const seenCreatedChanges = new Set<string>();
 	for (const item of persistedItems) {
+		const createdKey = createdChangeSemanticKey(item);
+		if (createdKey) seenCreatedChanges.add(createdKey);
 		byId.set(item.id, item);
 	}
 	for (const item of liveItems) {
+		const createdKey = createdChangeSemanticKey(item);
+		if (createdKey && seenCreatedChanges.has(createdKey)) continue;
+		if (createdKey) seenCreatedChanges.add(createdKey);
 		if (!byId.has(item.id)) {
 			byId.set(item.id, item);
 		}
@@ -841,6 +907,21 @@ export function timelineItemsFromMessages(
 ): AgentTimelineItem[] {
 	const items: AgentTimelineItem[] = [];
 	for (const message of messages) {
+		if (message.type === 'created_entities') {
+			const entities: unknown[] = Array.isArray(message.data?.entities)
+				? message.data.entities
+				: [];
+			entities.forEach((entity: unknown, index: number) => {
+				const item = buildCreatedEntityChangeTimelineItem(
+					sessionId,
+					message,
+					entity,
+					index
+				);
+				if (item) items.push(item);
+			});
+			continue;
+		}
 		if (message.type === 'thinking_block' && Array.isArray((message as any).activities)) {
 			for (const activity of (message as any).activities) {
 				const metadata = activity.metadata ?? {};
@@ -908,5 +989,5 @@ export function timelineItemsFromMessages(
 		});
 		if (item) items.push(item);
 	}
-	return items.sort(compareTimelineItems);
+	return sortAndDedupeTimelineItems(items);
 }

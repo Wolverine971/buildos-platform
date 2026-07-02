@@ -32,6 +32,16 @@ function getSkillIds(domain: DomainDefinition): string[] {
 	return unique(domain.skills.map((skill) => skill.id)).sort((a, b) => a.localeCompare(b));
 }
 
+// Aliases must match on whole-token boundaries, not substrings. The substring
+// version made alias "ui" hit every message containing "build" or "BuildOS"
+// (u-i inside b-u-i-l-d), which routed ordinary product mentions — and a
+// narrative-arc craft prompt — to product_and_design (2026-07-02 rerun, turn 5).
+function aliasMatchesQuery(alias: string, queryTokenText: string): boolean {
+	const aliasTokenText = tokenize(alias).join(' ');
+	if (!aliasTokenText) return false;
+	return ` ${queryTokenText} `.includes(` ${aliasTokenText} `);
+}
+
 function computeScore(
 	domain: DomainDefinition,
 	query: string
@@ -40,7 +50,8 @@ function computeScore(
 
 	const normalizedQuery = normalize(query);
 	const tokens = tokenize(query);
-	const aliasesHit = domain.aliases.filter((alias) => normalizedQuery.includes(normalize(alias)));
+	const queryTokenText = tokens.join(' ');
+	const aliasesHit = domain.aliases.filter((alias) => aliasMatchesQuery(alias, queryTokenText));
 	const skillIds = getSkillIds(domain);
 	const haystack = [
 		domain.id,

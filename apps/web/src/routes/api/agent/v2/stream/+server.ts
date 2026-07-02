@@ -76,6 +76,7 @@ import {
 } from '$lib/services/agentic-chat/state/agent-state-reconciliation-service';
 import {
 	createFastChatSessionService,
+	historyIncludesLoadedSkillsLedger,
 	appendAttachmentContextToMessage,
 	buildAttachmentOnlyDisplayText,
 	buildLiveVisionContentParts,
@@ -3232,6 +3233,14 @@ export const POST: RequestHandler = async ({
 				systemPrompt,
 				maxToolRounds: Math.max(1, gatewayRoundCap),
 				allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
+				skillGate: turnDomainSensing
+					? {
+							required: turnDomainSensing.skill_load_required === true,
+							recommendedSkillIds: turnDomainSensing.recommended_skill_ids ?? [],
+							historyHasLoadedSkillsLedger:
+								historyIncludesLoadedSkillsLedger(historyForModel)
+						}
+					: null,
 				tools,
 				// Live orchestration-budget snapshot from provider-reported tokens.
 				// Not re-emitted to the UI badge because the UI uses a different
