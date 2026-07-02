@@ -1,0 +1,276 @@
+<!-- docs/marketing/strategy/buildos-messaging-activation-matrix-2026-06-26.html -->
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<style>
+			:root {
+				--ink: #1a1a1a;
+				--muted: #6b6b6b;
+				--line: #cfcabf;
+				--paper: #faf8f3;
+				--accent: #b3541e;
+				--hero: #b3541e;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			html,
+			body {
+				margin: 0;
+				padding: 0;
+				background: #ffffff;
+			}
+			body {
+				font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+				color: var(--ink);
+				-webkit-font-smoothing: antialiased;
+			}
+			.page {
+				width: 1300px;
+				padding: 64px 70px 54px;
+				background: var(--paper);
+			}
+			.kicker {
+				font-size: 13px;
+				letter-spacing: 0.28em;
+				text-transform: uppercase;
+				color: var(--accent);
+				font-weight: 700;
+				margin: 0 0 14px;
+			}
+			h1 {
+				font-size: 34px;
+				line-height: 1.1;
+				margin: 0 0 8px;
+				font-weight: 700;
+				letter-spacing: 0.01em;
+				text-transform: uppercase;
+			}
+			.sub {
+				font-size: 16px;
+				color: var(--muted);
+				margin: 0 0 30px;
+				max-width: 1000px;
+				line-height: 1.5;
+			}
+			table.grid {
+				border-collapse: collapse;
+				margin: 0 auto;
+			}
+			table.grid th.col {
+				font-size: 14px;
+				font-weight: 600;
+				color: var(--ink);
+				height: 150px;
+				vertical-align: bottom;
+				padding-bottom: 12px;
+				width: 70px;
+			}
+			table.grid th.col .v {
+				writing-mode: vertical-rl;
+				transform: rotate(180deg);
+				white-space: nowrap;
+				letter-spacing: 0.02em;
+			}
+			table.grid th.col.hero .v {
+				color: var(--hero);
+				font-weight: 700;
+			}
+			table.grid th.rowlabel {
+				text-align: right;
+				font-size: 15.5px;
+				font-weight: 500;
+				color: var(--ink);
+				padding: 0 22px 0 0;
+				white-space: nowrap;
+				height: 50px;
+			}
+			table.grid th.rowlabel .tag {
+				display: block;
+				font-size: 11px;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--muted);
+				font-weight: 600;
+				margin-top: 2px;
+			}
+			table.grid td.cell {
+				width: 70px;
+				height: 50px;
+				border: 1px solid var(--line);
+				text-align: center;
+				vertical-align: middle;
+			}
+			tr.hero td.cell {
+				background: rgba(179, 84, 30, 0.06);
+			}
+			tr.hero th.rowlabel {
+				color: var(--hero);
+				font-weight: 700;
+			}
+			.ck {
+				display: inline-block;
+				line-height: 0;
+			}
+			.ck svg {
+				width: 26px;
+				height: 26px;
+			}
+			.ck path {
+				stroke: var(--ink);
+			}
+			tr.hero .ck path {
+				stroke: var(--hero);
+			}
+			.corner {
+				border: none !important;
+			}
+			.footer {
+				margin-top: 34px;
+				padding-top: 22px;
+				border-top: 1px solid var(--line);
+				display: flex;
+				gap: 28px;
+				align-items: flex-start;
+			}
+			.fig {
+				font-size: 30px;
+				font-weight: 300;
+				letter-spacing: 0.1em;
+				color: var(--accent);
+				font-style: italic;
+				white-space: nowrap;
+			}
+			.figcap {
+				font-size: 14px;
+				color: var(--muted);
+				line-height: 1.55;
+				max-width: 1000px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="page">
+			<p class="kicker">BuildOS · Distribution</p>
+			<h1>Messaging Activation Matrix</h1>
+			<p class="sub">
+				Where each message shows up — so we don't dump everything everywhere. One hero line
+				runs across every touchpoint; everything else is metered to the moment in the
+				journey. Read down a column to brief a channel; read across a row to see how far a
+				message travels.
+			</p>
+
+			<table class="grid">
+				<thead>
+					<tr>
+						<th class="corner"></th>
+						<th class="col"><span class="v">Homepage</span></th>
+						<th class="col"><span class="v">About page</span></th>
+						<th class="col"><span class="v">Blog / Essay</span></th>
+						<th class="col"><span class="v">Demo / Sales</span></th>
+						<th class="col"><span class="v">Email / Daily Brief</span></th>
+						<th class="col"><span class="v">LinkedIn</span></th>
+						<th class="col"><span class="v">Twitter / X</span></th>
+						<th class="col"><span class="v">Instagram</span></th>
+					</tr>
+				</thead>
+				<tbody>
+					<!-- rows injected -->
+				</tbody>
+			</table>
+
+			<div class="footer">
+				<div class="fig">5.4.2</div>
+				<div class="figcap">
+					Adapted from Tony Fadell's messaging activation matrix in <i>Build</i>. The hero
+					row — <i>turn messy thinking into structured work</i> — is the only message that
+					travels everywhere. Deep proof and mechanics stay on owned, high-intent surfaces
+					(Homepage, Blog, Demo); social carries the hook, the personas, and the receipts.
+				</div>
+			</div>
+		</div>
+
+		<script>
+			var cols = [
+				'Homepage',
+				'About',
+				'Blog',
+				'Demo',
+				'Email',
+				'LinkedIn',
+				'Twitter',
+				'Instagram'
+			];
+			var rows = [
+				{
+					label: 'Mission / Vision',
+					tag: 'thinking environment',
+					checks: [1, 1, 1, 1, 0, 1, 0, 0]
+				},
+				{
+					label: 'Relief promise',
+					tag: 'messy thinking → structured work',
+					hero: true,
+					checks: [1, 1, 1, 1, 1, 1, 1, 1]
+				},
+				{
+					label: 'Brain dump → structure',
+					tag: 'feature / benefit',
+					checks: [1, 0, 1, 1, 0, 1, 1, 1]
+				},
+				{
+					label: 'Daily brief',
+					tag: 'feature / benefit',
+					checks: [1, 0, 0, 1, 1, 0, 1, 1]
+				},
+				{
+					label: 'Project context / continuity',
+					tag: 'feature / benefit',
+					checks: [1, 0, 1, 1, 0, 1, 0, 0]
+				},
+				{
+					label: 'Calendar + planning',
+					tag: 'feature / benefit',
+					checks: [1, 0, 0, 1, 0, 0, 0, 0]
+				},
+				{
+					label: 'How it works (AI behind the curtain)',
+					tag: 'technology',
+					checks: [1, 0, 1, 1, 0, 1, 0, 0]
+				},
+				{ label: "Who it's for", tag: 'applications', checks: [1, 0, 0, 1, 0, 1, 1, 1] },
+				{
+					label: 'Pricing / trial',
+					tag: 'product specs',
+					checks: [1, 0, 0, 1, 1, 0, 0, 0]
+				},
+				{
+					label: 'Proof / receipts',
+					tag: 'case studies',
+					checks: [1, 1, 1, 1, 0, 1, 1, 0]
+				},
+				{ label: 'Testimonials', tag: 'social proof', checks: [1, 0, 0, 1, 0, 1, 1, 1] },
+				{ label: 'Founder story', tag: 'about us', checks: [0, 1, 1, 0, 0, 1, 1, 1] }
+			];
+			var checkSVG =
+				'<span class="ck"><svg viewBox="0 0 24 24" fill="none"><path d="M4 13 L9.5 18.5 L20 5.5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+			var tbody = document.querySelector('table.grid tbody');
+			var html = '';
+			rows.forEach(function (r) {
+				html += '<tr class="' + (r.hero ? 'hero' : '') + '">';
+				html +=
+					'<th class="rowlabel">' +
+					r.label +
+					'<span class="tag">' +
+					r.tag +
+					'</span></th>';
+				r.checks.forEach(function (c) {
+					html += '<td class="cell">' + (c ? checkSVG : '') + '</td>';
+				});
+				html += '</tr>';
+			});
+			tbody.innerHTML = html;
+		</script>
+	</body>
+</html>

@@ -27,6 +27,8 @@ The goal is not to make domains the new prompt dump. The goal is to give the age
 
 Phase 1 is now operational for routing, progressive discovery, demand capture, and admin queue management. This does not mean domains are fully researched or broadly populated yet. It means BuildOS has the infrastructure needed to start using domains safely and to queue missing coverage.
 
+2026-06-22 clarification: active domain signals are consumed by the prompt and admin/research-queue surfaces. The remaining decision is route strength: keep domain/work-capability routing advisory and admin-visible, or make it product-critical by nudging skill/tool selection more forcefully. Do not change the route strength without measuring domain signal frequency, prompt-injected domain usage, backlog promotion, downstream skill/tool usage by domain, and TTFR/prompt-token deltas for domain-active turns.
+
 Implemented:
 
 - File-backed `Domain` catalog with `domain_search` and `domain_load`.
@@ -49,7 +51,6 @@ Still pending:
 - Draft artifact model for proposed domain/work-capability/skill/resource updates.
 - Human approval flow that promotes reviewed research drafts into runtime catalogs.
 - Routing evals and latency/token telemetry before removing always-on root/child skill metadata.
-- Generated Supabase database types that include `domain_research_queue`, if the project wants compile-time DB type coverage for the new table.
 - Broader 10-20 domain seed map beyond the current hand-authored catalog. See `docs/specs/buildos-domain-candidate-map-2026-05-19.md`.
 
 ## Working Thesis

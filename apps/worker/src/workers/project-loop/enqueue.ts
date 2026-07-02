@@ -11,6 +11,28 @@ import { mapProjectLoopOwnerUserIds } from './ownerResolution';
 
 const AUTO_TRIGGER_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 
+// A `running` run whose worker died before failRun could persist a terminal
+// status would block this project's loops forever via the active-run guard
+// below (the status-fenced claim in projectLoopWorker means retries skip it
+// rather than re-run it). Real runs finish in minutes (cost-capped, ~5 LLM
+// calls), so anything past these ages is an orphan we can safely fail and
+// replace. `queued` gets a longer window to tolerate nightly queue backlogs.
+const STALE_RUNNING_RUN_MS = 60 * 60 * 1000; // 1 hour
+const STALE_QUEUED_RUN_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+/**
+ * Stable queue dedup key for a project's loop within a single cadence window
+ * (one UTC calendar day). Deliberately excludes the run id and trigger reason
+ * so a manual web trigger racing the end-of-day cron collapses onto the same
+ * `add_queue_job` dedup slot instead of double-running. add_queue_job only
+ * dedups against pending/processing jobs, so a fresh run later the same day
+ * (after the prior job completes) is still allowed.
+ */
+export function projectLoopDedupKey(projectId: string, at: Date = new Date()): string {
+	const day = at.toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+	return `project-loop:${projectId}:${day}`;
+}
+
 async function createLoopChatSession(params: {
 	projectId: string;
 	userId: string;
@@ -57,12 +79,44 @@ export async function enqueueProjectLoop(params: {
 	// Don't stack on an active run.
 	const { data: active } = await supabase
 		.from('project_loop_runs')
-		.select('id')
+		.select('id, status, created_at, started_at')
 		.eq('project_id', params.projectId)
 		.in('status', ['queued', 'running'])
 		.limit(1)
 		.maybeSingle();
-	if (active?.id) return { queued: false, runId: active.id, reason: 'already_running' };
+	if (active?.id) {
+		const referenceIso =
+			active.status === 'running'
+				? (active.started_at ?? active.created_at)
+				: active.created_at;
+		const referenceMs = referenceIso ? Date.parse(referenceIso) : NaN;
+		const staleAfterMs =
+			active.status === 'running' ? STALE_RUNNING_RUN_MS : STALE_QUEUED_RUN_MS;
+		const isStale = !Number.isNaN(referenceMs) && Date.now() - referenceMs > staleAfterMs;
+		if (!isStale) {
+			return { queued: false, runId: active.id, reason: 'already_running' };
+		}
+		// Guarded update: only the caller that flips the orphan out of its
+		// active status proceeds; a concurrent enqueue loses the race and hits
+		// the active-run guard on its own attempt.
+		const { data: reclaimed, error: reclaimError } = await supabase
+			.from('project_loop_runs')
+			.update({
+				status: 'failed',
+				error_message: `Marked stale by enqueue: stuck in '${active.status}' since ${referenceIso}`,
+				finished_at: new Date().toISOString()
+			})
+			.eq('id', active.id)
+			.eq('status', active.status)
+			.select('id')
+			.maybeSingle();
+		if (reclaimError || !reclaimed?.id) {
+			return { queued: false, runId: active.id, reason: 'already_running' };
+		}
+		console.warn(
+			`[ProjectLoops] Failed stale ${active.status} run ${active.id} for project ${params.projectId}; enqueueing a fresh run.`
+		);
+	}
 
 	if (params.triggerReason !== 'manual') {
 		const { data: lastRun } = await supabase
@@ -116,7 +170,7 @@ export async function enqueueProjectLoop(params: {
 		} as unknown as Json,
 		p_priority: 7,
 		p_scheduled_for: new Date().toISOString(),
-		p_dedup_key: `project-loop:${params.projectId}:${runRow.id}`
+		p_dedup_key: projectLoopDedupKey(params.projectId)
 	});
 
 	if (queueError) {

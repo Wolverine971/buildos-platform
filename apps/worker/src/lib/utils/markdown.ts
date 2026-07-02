@@ -82,22 +82,6 @@ export function renderMarkdown(text: string | null | undefined): string {
 	}
 }
 
-// Add a function to get the appropriate prose classes
-export function getProseClasses(
-	size: 'sm' | 'base' | 'lg' = 'base',
-	removeMaxWidth = true
-): string {
-	const sizeClass = size === 'base' ? 'prose' : `prose-${size}`;
-	const maxWidth = removeMaxWidth ? 'max-w-none' : '';
-
-	return `${sizeClass} prose-gray dark:prose-invert max-w-none
-				prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700
-				prose-strong:text-gray-900 prose-a:text-blue-600 prose-blockquote:text-gray-700
-				dark:prose-headings:text-white dark:prose-p:text-gray-300 dark:prose-li:text-gray-300
-				dark:prose-strong:text-white dark:prose-a:text-blue-400 dark:prose-blockquote:text-gray-300
-				dark:prose-hr:border-gray-700 ${maxWidth}`.trim();
-}
-
 /**
  * Escape HTML characters for server environment
  */
@@ -132,40 +116,4 @@ export function stripMarkdown(text: string | null | undefined): string {
 		console.error('Error stripping markdown:', error);
 		return text;
 	}
-}
-
-/**
- * Get a preview of markdown content (first N characters, stripped of formatting)
- */
-export function getMarkdownPreview(
-	text: string | null | undefined,
-	maxLength: number = 150
-): string {
-	if (!text) return '';
-
-	const stripped = stripMarkdown(text);
-	if (stripped.length <= maxLength) return stripped;
-
-	return stripped.substring(0, maxLength).trim() + '...';
-}
-
-/**
- * Check if text contains markdown formatting
- */
-export function hasMarkdownFormatting(text: string | null | undefined): boolean {
-	if (!text || typeof text !== 'string') return false;
-
-	const markdownPatterns = [
-		/\*\*.*?\*\*/, // Bold
-		/\*.*?\*/, // Italic
-		/`.*?`/, // Inline code
-		/#+\s/, // Headers
-		/>\s/, // Blockquotes
-		/\[.*?\]\(.*?\)/, // Links
-		/!\[.*?\]\(.*?\)/, // Images
-		/^\s*[-*+]\s/m, // Lists
-		/^\s*\d+\.\s/m // Numbered lists
-	];
-
-	return markdownPatterns.some((pattern) => pattern.test(text));
 }

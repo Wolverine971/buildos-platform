@@ -38,7 +38,6 @@ const AI_MUTATION_PREFIXES_WHEN_FROZEN = [
 	'/api/agentic-chat/',
 	'/api/chat/',
 	'/api/daily-briefs/generate',
-	'/api/tree-agent/',
 	'/api/transcribe'
 ];
 

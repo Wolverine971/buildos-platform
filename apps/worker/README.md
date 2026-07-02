@@ -181,7 +181,6 @@ LIMIT 10;
 - [Worker docs hub](./docs/README.md)
 - [Worker jobs & flows](./docs/WORKER_JOBS_AND_FLOWS.md)
 - [Worker structure overview](./docs/WORKER_STRUCTURE_OVERVIEW.md)
-- [Email setup](./docs/EMAIL_SETUP.md)
 - [Quick reference](./docs/QUICK_REFERENCE.md)
 - [Adding a worker](./src/workers/README.md)
 - [Queue system flow (repo root)](../../docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md)

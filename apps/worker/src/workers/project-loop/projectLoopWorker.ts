@@ -14,7 +14,6 @@ import type {
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
-import type { UsageEvent } from '../homework/engine/homeworkEngine';
 import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
 import { logWorkerError } from '../../lib/errorLogger';
 import {
@@ -22,6 +21,7 @@ import {
 	type LoopDocument,
 	type LoopPriorDecision,
 	type LoopTask,
+	type UsageEvent,
 	generateDrift,
 	generateDocOrganization,
 	generateOutdatedDocs,
@@ -182,7 +182,12 @@ async function failRun(
 	if (metrics?.totalCost && metrics.totalCost > 0) {
 		update.cost_usd = metrics.totalCost;
 	}
-	await supabase.from('project_loop_runs').update(update).eq('id', runId);
+	const { error } = await supabase.from('project_loop_runs').update(update).eq('id', runId);
+	if (error) {
+		console.error(
+			`[ProjectLoops] Failed to persist failed status for run ${runId}: ${error.message}`
+		);
+	}
 }
 
 export async function processProjectLoopJob(
@@ -202,20 +207,53 @@ export async function processProjectLoopJob(
 
 	await job.log(`Project loop started for project ${projectId} (run ${runId})`);
 
-	const { data: runRow, error: runError } = await supabase
-		.from('project_loop_runs')
-		.select('*')
-		.eq('id', runId)
-		.maybeSingle();
-
-	if (runError) throw new Error(`Failed to load loop run: ${runError.message}`);
-	if (!runRow) throw new Error(`Loop run ${runId} not found`);
-	const run = runRow as ProjectLoopRun;
-
-	await supabase
+	// Status-fenced claim: atomically move the run from `queued` → `running`.
+	// The stall sweeper (reset_stalled_jobs) can requeue a slow `processing`
+	// queue job and start a SECOND concurrent execution of this same runId. Only
+	// the execution that flips the row out of `queued` owns the work; any other
+	// execution updates 0 rows here and returns without side effects, preventing
+	// duplicate project_suggestions / inbox items. Mirrors agentRunWorker's
+	// conditional-status claim.
+	const { data: claimedRun, error: claimError } = await supabase
 		.from('project_loop_runs')
 		.update({ status: 'running', started_at: nowIso() })
-		.eq('id', runId);
+		.eq('id', runId)
+		.eq('status', 'queued')
+		.select('*')
+		.maybeSingle();
+
+	if (claimError) throw new Error(`Failed to claim loop run: ${claimError.message}`);
+	if (!claimedRun) {
+		await job.log(
+			`Project loop run ${runId} not claimed (already running/terminal); skipping to avoid duplicate execution.`
+		);
+		return { success: true, runId, skipped: true };
+	}
+	const run = claimedRun as ProjectLoopRun;
+
+	// Heartbeat touches queue_jobs.updated_at so the 5-min stall sweeper never
+	// sees this job as idle across the ~5 sequential LLM calls below. updateProgress
+	// swallows its own failures, but guard defensively so a heartbeat never crashes
+	// the loop.
+	let heartbeatStep = 0;
+	const HEARTBEAT_TOTAL = 8;
+	const heartbeat = async (message: string): Promise<void> => {
+		heartbeatStep += 1;
+		try {
+			await job.updateProgress({
+				current: Math.min(heartbeatStep, HEARTBEAT_TOTAL),
+				total: HEARTBEAT_TOTAL,
+				message
+			});
+		} catch (progressError) {
+			console.warn(
+				`[ProjectLoops] Heartbeat failed for run ${runId}:`,
+				progressError instanceof Error ? progressError.message : progressError
+			);
+		}
+	};
+
+	await heartbeat('Loading project context');
 
 	let totalCost = 0;
 	let totalPromptTokens = 0;
@@ -234,7 +272,7 @@ export async function processProjectLoopJob(
 		const ctx = await loadLoopContext(projectId);
 		if (!ctx) {
 			await job.log('Project inactive/archived; nothing to reconcile.');
-			await supabase
+			const { error: inactiveError } = await supabase
 				.from('project_loop_runs')
 				.update({
 					status: 'completed',
@@ -243,6 +281,14 @@ export async function processProjectLoopJob(
 					finished_at: nowIso()
 				})
 				.eq('id', runId);
+			if (inactiveError) {
+				console.error(
+					`[ProjectLoops] Failed to persist completed status for inactive run ${runId}: ${inactiveError.message}`
+				);
+				throw new Error(
+					`Failed to persist completed status for run ${runId}: ${inactiveError.message}`
+				);
+			}
 			return { success: true, runId, suggestionCount: 0 };
 		}
 
@@ -263,9 +309,13 @@ export async function processProjectLoopJob(
 				);
 				return [];
 			}
+			// Heartbeat before each LLM generator so the stall sweeper never
+			// reclaims this job mid-run.
+			await heartbeat(`Generating ${label}`);
 			return generator();
 		};
 
+		await heartbeat('Generating project brief');
 		const brief: ProjectLoopBrief = await generateProjectBrief({
 			llm,
 			ctx,
@@ -324,6 +374,7 @@ export async function processProjectLoopJob(
 		].slice(0, MAX_SUGGESTIONS);
 
 		if (proposed.length) {
+			await heartbeat('Writing suggestions');
 			const rows = proposed.map((s, index) => ({
 				run_id: runId,
 				project_id: projectId,
@@ -371,7 +422,7 @@ export async function processProjectLoopJob(
 			? `${summaryBase} Skipped ${skippedGenerators.join(', ')} after cost cap.`
 			: summaryBase;
 
-		await supabase
+		const { error: terminalError } = await supabase
 			.from('project_loop_runs')
 			.update({
 				status: proposed.length ? 'waiting_review' : 'completed',
@@ -382,6 +433,17 @@ export async function processProjectLoopJob(
 				finished_at: nowIso()
 			})
 			.eq('id', runId);
+		if (terminalError) {
+			// The suggestions were written but the run row is still `running`.
+			// Fail loudly and surface it through the catch path so the job does
+			// NOT report success against a run row stuck in a non-terminal state.
+			console.error(
+				`[ProjectLoops] Failed to persist terminal status for run ${runId}: ${terminalError.message}`
+			);
+			throw new Error(
+				`Failed to persist terminal status for run ${runId}: ${terminalError.message}`
+			);
+		}
 
 		await job.log(`Project loop completed: ${summary}`);
 		return { success: true, runId, suggestionCount: proposed.length };

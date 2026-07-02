@@ -2,7 +2,7 @@
 title: 'ANALYSIS: Steph Ango (Obsidian CEO) — File Over App, Durable Tools, and Preserving User Agency'
 source_type: youtube_analysis
 source_video: 'https://www.youtube.com/watch?v=TDP8qzVK5XQ'
-source_transcript: '../../../../research-library/transcripts/podcast-steph-ango-obsidian.md'
+source_transcript: '../../../research-library/transcripts/podcast-steph-ango-obsidian.md'
 video_id: 'TDP8qzVK5XQ'
 channel: 'Dialectic (Jackson Dahl)'
 library_category: psychology-agency-philosophy
@@ -190,5 +190,5 @@ Ango is _not_ a pure malleability maximalist, and the transcript proves it — u
 
 - **Primary:** Steph Ango (Kepano), CEO of Obsidian — _Dialectic_ podcast Ep. 8, host Jackson Dahl.
 - **Video:** https://www.youtube.com/watch?v=TDP8qzVK5XQ
-- **Raw transcript:** [`../../../../research-library/transcripts/podcast-steph-ango-obsidian.md`](../../../../research-library/transcripts/podcast-steph-ango-obsidian.md) (~140K chars, single-line dump)
+- **Raw transcript:** [`../../../research-library/transcripts/podcast-steph-ango-obsidian.md`](../../../research-library/transcripts/podcast-steph-ango-obsidian.md) (~140K chars, single-line dump)
 - **Ango's own canon cited in the conversation:** Ivan Illich, _Tools for Conviviality_; Samuel Butler, _Erewhon_ / "The Book of the Machines"; David Deutsch, _The Beginning of Infinity_; Buckminster Fuller ("spaceship Earth"). His essays referenced: "File over app," "Don't delegate understanding," "What can we remove?," "In good hands," "Caloric energy is precious," "Buy wisely," "Quality software deserves your hard-earned cash," "Nibble and your appetite will grow," "Earth is becoming sentient," "Chaos agents."

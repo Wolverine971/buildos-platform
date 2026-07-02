@@ -229,3 +229,25 @@ Fresh 3-agent staleness pass after Tiers 1–5. **99 more files archived** via `
 ## Totals if all tiers executed
 
 ~35 PURGE · ~13 MOVE · ~140 ARCHIVE · 4 in-place edits. (Tier 1 = 32 purged + 5 ref fixes, complete.)
+
+---
+
+## 📦 Addendum — 2026-07-02 root-hygiene pass (devops cleanup)
+
+New root clutter accumulated after 6/22 was moved (all `git mv`, inbound links updated, 0 stale refs):
+
+| From (root)                              | To                                                                    | Notes                                                        |
+| ---------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `linkedin-edits.md`                      | `docs/marketing/social-media/linkedin-profile-rewrite-2026-06-28.md` | Renamed for accuracy (paste-ready LinkedIn rewrite)          |
+| `sugarman-copywriting-handbook-guide.md` | `docs/marketing/research/sugarman-adweek-copywriting-handbook-guide.md` | Book distillation → marketing research                     |
+| `clay/`                                  | `docs/marketing/outreach/clay/`                                        | Clay outreach lists + strategy (0 inbound refs)              |
+| `social-warmup-template/`                | `docs/marketing/social-warmup-template/`                               | Template source for other repos; 1 inbound ref updated       |
+| `research-library/`                      | `docs/research-library/`                                               | ~43 inbound refs rewritten; fixed 1 previously-broken 4-up ref in `skill-drafts/calm-software-design-review/SKILL.md` |
+
+Honored 6/22 decisions: `buildos-strat.md`, `buildos-strat-tasks.md`, `growth-agent.md` stay at root.
+`thoughts/` (214 refs, convention dir) and `tasker/` (active working dir) left in place.
+
+Also pruned `apps/web/scripts/` (archive/, PowerShell scripts, completed one-off migrations/SQL, dead
+docs-generation family, legacy `extract-database-schema.ts`) and trimmed `apps/web/package.json` script
+aliases (dev/build/test variants, `deps:*` wrappers, `migrate:*`); `docs/MONOREPO_GUIDE.md` +
+`docs/testing/*` updated to match.

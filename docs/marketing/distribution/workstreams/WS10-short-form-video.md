@@ -53,7 +53,7 @@ Before drafting any TikTok for this work stream, load:
 - [WS09 anti-feed cluster](./WS09-anti-feed-cluster.md) — the blog calendar each script is tied to
 - [Anti-feed skill TikTok references](../../../../.claude/skills/anti-feed/references/tiktok-scripts.md) — 30–45s + 60–90s templates + rejection rubric
 - [Founder context](../../social-media/FOUNDER_CONTEXT.md) — DJ's voice, lived experience
-- YouTube source: `youtube-transcripts/2026-04-16-exposing-the-new-manufactured-viral-content-economy.md`
+- YouTube source: `docs/research/youtube-library/transcripts/2026-04-16-exposing-the-new-manufactured-viral-content-economy.md`
 
 ## Scope
 

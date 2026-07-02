@@ -3,11 +3,9 @@ import type {
 	AgentRunJobMetadata,
 	AssetOcrJobMetadata,
 	GenerateBriefAudioJobMetadata,
-	HomeworkJobMetadata,
 	ProjectContextSnapshotJobMetadata,
 	ProjectIconGenerationJobMetadata,
 	ProjectLoopJobMetadata,
-	TreeAgentJobMetadata,
 	VoiceNoteTranscriptionJobMetadata
 } from '@buildos/shared-types';
 import { ProcessingJob, SupabaseQueue } from './lib/supabaseQueue';
@@ -31,8 +29,6 @@ import type {
 } from './workers/shared/queueUtils';
 import { processVoiceNoteTranscriptionJob } from './workers/voice-notes/voiceNoteTranscriptionWorker';
 import { processAssetOcrJob } from './workers/assets/assetOcrWorker';
-import { processHomeworkJob } from './workers/homework/homeworkWorker';
-import { processTreeAgentJob } from './workers/tree-agent/treeAgentWorker';
 import { processAgentRunJob } from './workers/agent-run/agentRunWorker';
 import { processProjectContextSnapshotJob } from './workers/ontology/projectContextSnapshotWorker';
 import { processProjectIconJob } from './workers/project-icon/projectIconWorker';
@@ -60,6 +56,9 @@ const queue = new SupabaseQueue({
 	batchSize: config.batchSize,
 	stalledTimeout: config.stalledTimeout
 });
+
+// Health-stats logging interval; stored so graceful shutdown can clear it.
+let statsInterval: NodeJS.Timeout | null = null;
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -308,38 +307,6 @@ async function processAssetOcr(job: ProcessingJob<AssetOcrJobMetadata>) {
 	}
 }
 
-/**
- * Homework (long-running task) processor
- */
-async function processHomework(job: ProcessingJob<HomeworkJobMetadata>) {
-	await job.log('Homework job received');
-
-	try {
-		const result = await processHomeworkJob(job);
-		await job.log('Homework job completed');
-		return result;
-	} catch (error) {
-		await job.log(`Homework job failed: ${getErrorMessage(error)}`);
-		throw error;
-	}
-}
-
-/**
- * Tree Agent orchestration processor
- */
-async function processTreeAgent(job: ProcessingJob<TreeAgentJobMetadata>) {
-	await job.log('Tree Agent job received');
-
-	try {
-		const result = await processTreeAgentJob(job);
-		await job.log('Tree Agent job completed');
-		return result;
-	} catch (error) {
-		await job.log(`Tree Agent job failed: ${getErrorMessage(error)}`);
-		throw error;
-	}
-}
-
 async function processAgentRun(job: ProcessingJob<AgentRunJobMetadata>) {
 	await job.log('Agent Run job received');
 
@@ -452,12 +419,6 @@ export async function startWorker() {
 	// Register ontology asset OCR processor
 	queue.process('extract_onto_asset_ocr', processAssetOcr);
 
-	// Register homework (long-running task) processor
-	queue.process('buildos_homework', processHomework);
-
-	// Register Tree Agent processor
-	queue.process('buildos_tree_agent', processTreeAgent);
-
 	// Register Agent Run processor
 	queue.process('agent_run', processAgentRun);
 
@@ -514,7 +475,7 @@ export async function startWorker() {
 
 	// Log queue stats based on configuration
 	if (config.enableHealthChecks) {
-		setInterval(async () => {
+		statsInterval = setInterval(async () => {
 			const stats = await queue.getStats();
 			if (stats && stats.length > 0) {
 				console.log('📊 Queue Statistics:');
@@ -529,43 +490,31 @@ export async function startWorker() {
 		console.log(`📈 Health monitoring enabled (stats every ${config.statsUpdateInterval}ms)`);
 	}
 
-	// Handle graceful shutdown
-	process.on('SIGTERM', () => {
-		console.log('📛 SIGTERM received, stopping worker...');
-		queue.stop();
-		process.exit(0);
-	});
-
-	process.on('SIGINT', () => {
-		console.log('📛 SIGINT received, stopping worker...');
-		queue.stop();
-		process.exit(0);
-	});
+	// NOTE: signal handling lives in index.ts (single shutdown path). See
+	// shutdownWorker() below, which index.ts's SIGTERM/SIGINT handler awaits.
 
 	console.log('✅ Worker started successfully');
 
-	// List enabled job types
-	const jobTypes = [
-		'generate_daily_brief',
-		'onboarding_analysis',
-		'send_notification',
-		'sync_calendar',
-		'project_activity_batch_flush',
-		'classify_chat_session',
-		'process_onto_braindump',
-		'generate_brief_audio',
-		'buildos_tree_agent'
-	];
-
-	jobTypes.push('generate_project_icon');
-
-	if (twilioEnabled) {
-		jobTypes.push('send_sms');
-	}
+	// List enabled job types (derived from the processors actually registered above)
+	const jobTypes = queue.getRegisteredJobTypes();
 
 	console.log(`📋 Processing job types: ${jobTypes.join(', ')}`);
 
 	return queue;
+}
+
+/**
+ * Gracefully shut the worker down: stop the health-stats logger and drain the
+ * queue (stop claiming, then wait for the in-flight batch up to the drain
+ * timeout). Called from index.ts's single SIGTERM/SIGINT handler. Safe to call
+ * more than once — queue.stop() is idempotent.
+ */
+export async function shutdownWorker(): Promise<void> {
+	if (statsInterval) {
+		clearInterval(statsInterval);
+		statsInterval = null;
+	}
+	await queue.stop();
 }
 
 // Export queue instance for use in other modules

@@ -20,8 +20,6 @@ import type {
 	ProjectIconGenerationJobMetadata,
 	ProjectActivityBatchFlushJobMetadata,
 	AssetOcrJobMetadata,
-	HomeworkJobMetadata,
-	TreeAgentJobMetadata,
 	AgentRunJobMetadata,
 	ProjectContextSnapshotJobMetadata,
 	OntoBraindumpProcessingJobMetadata
@@ -747,73 +745,6 @@ export function validateAssetOcrMetadata(metadata: unknown): AssetOcrJobMetadata
 	return meta as unknown as AssetOcrJobMetadata;
 }
 
-export function validateHomeworkMetadata(metadata: unknown): HomeworkJobMetadata {
-	if (!metadata || typeof metadata !== 'object') {
-		throw new ValidationError('metadata', metadata, 'object');
-	}
-	const meta = metadata as Record<string, unknown>;
-
-	if (typeof meta.run_id !== 'string' || !isValidUUID(meta.run_id)) {
-		throw new ValidationError('run_id', meta.run_id, 'valid UUID');
-	}
-
-	if (typeof meta.iteration !== 'number' || !Number.isInteger(meta.iteration)) {
-		throw new ValidationError('iteration', meta.iteration, 'integer');
-	}
-
-	if (!meta.budgets || typeof meta.budgets !== 'object') {
-		throw new ValidationError('budgets', meta.budgets, 'object');
-	}
-	const budgets = meta.budgets as Record<string, unknown>;
-	if (typeof budgets.max_wall_clock_ms !== 'number') {
-		throw new ValidationError('budgets.max_wall_clock_ms', budgets.max_wall_clock_ms, 'number');
-	}
-
-	if (!meta.permissions || typeof meta.permissions !== 'object') {
-		throw new ValidationError('permissions', meta.permissions, 'object');
-	}
-	const permissions = meta.permissions as Record<string, unknown>;
-	const writeMode = permissions.write_mode;
-	if (writeMode !== 'autopilot' && writeMode !== 'approve_plan' && writeMode !== 'per_write') {
-		throw new ValidationError(
-			'permissions.write_mode',
-			writeMode,
-			"'autopilot' | 'approve_plan' | 'per_write'"
-		);
-	}
-
-	return meta as unknown as HomeworkJobMetadata;
-}
-
-export function validateTreeAgentMetadata(metadata: unknown): TreeAgentJobMetadata {
-	if (!metadata || typeof metadata !== 'object') {
-		throw new ValidationError('metadata', metadata, 'object');
-	}
-	const meta = metadata as Record<string, unknown>;
-
-	if (typeof meta.run_id !== 'string' || !isValidUUID(meta.run_id)) {
-		throw new ValidationError('run_id', meta.run_id, 'valid UUID');
-	}
-
-	if (typeof meta.root_node_id !== 'string' || !isValidUUID(meta.root_node_id)) {
-		throw new ValidationError('root_node_id', meta.root_node_id, 'valid UUID');
-	}
-
-	if (typeof meta.workspace_project_id !== 'string' || !isValidUUID(meta.workspace_project_id)) {
-		throw new ValidationError('workspace_project_id', meta.workspace_project_id, 'valid UUID');
-	}
-
-	if (!meta.budgets || typeof meta.budgets !== 'object') {
-		throw new ValidationError('budgets', meta.budgets, 'object');
-	}
-	const budgets = meta.budgets as Record<string, unknown>;
-	if (typeof budgets.max_wall_clock_ms !== 'number') {
-		throw new ValidationError('budgets.max_wall_clock_ms', budgets.max_wall_clock_ms, 'number');
-	}
-
-	return meta as unknown as TreeAgentJobMetadata;
-}
-
 export function validateAgentRunMetadata(metadata: unknown): AgentRunJobMetadata {
 	if (!metadata || typeof metadata !== 'object') {
 		throw new ValidationError('metadata', metadata, 'object');
@@ -996,10 +927,6 @@ export function validateJobMetadata<T extends QueueJobType>(
 			return validateAssetOcrMetadata(metadata) as JobMetadataMap[T];
 		case 'project_activity_batch_flush':
 			return validateProjectActivityBatchFlushMetadata(metadata) as JobMetadataMap[T];
-		case 'buildos_homework':
-			return validateHomeworkMetadata(metadata) as JobMetadataMap[T];
-		case 'buildos_tree_agent':
-			return validateTreeAgentMetadata(metadata) as JobMetadataMap[T];
 		case 'agent_run':
 			return validateAgentRunMetadata(metadata) as JobMetadataMap[T];
 		case 'build_project_context_snapshot':

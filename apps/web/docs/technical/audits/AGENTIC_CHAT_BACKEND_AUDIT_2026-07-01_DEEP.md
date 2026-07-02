@@ -12,7 +12,7 @@
 - `timing_metrics` has no RLS — create migration `20260130_235900` + the only other migration touching it (`20260428000015`, adds a column) confirm no `ENABLE ROW LEVEL SECURITY`. ✅
 - `prompt_cache_key` is never sent on the streaming path — `openrouter-v2-service.ts:1576-1588` omits it; it appears only on JSON/text/moonshot paths (`:905, :1226, :1432, :1681`). ✅
 
-**Status:** Pure audit. Nothing fixed. This is the expanded fix backlog.
+**Status:** Wave 1 implemented 2026-07-02 (in the working tree, uncommitted — see "Fix waves" at the end). The rest is the expanded fix backlog. Findings marked **FIXED** below carry a one-line note on what shipped.
 
 ---
 
@@ -30,34 +30,34 @@ The auth/scope _core_ is genuinely well-built (fail-closed op allowlists, grant-
 
 ## Severity summary (new findings only)
 
-| #   | Finding                                                                                                                               | Severity     | Status                           |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------ | -------------------------------- |
-| D1  | Document append/merge silently degrades to full REPLACE on read failure                                                               | **CRITICAL** | CONFIRMED ✅                     |
-| D2  | `merge_llm` merge capped at 2000 tokens → long docs truncated on merge                                                                | HIGH         | CONFIRMED cap / SUSPECTED impact |
-| D3  | Abort never threaded into tool execution → write-after-cancel + duplicate on retry                                                    | HIGH         | CONFIRMED (×3 passes)            |
-| D4  | Tool-execution rows + assistant msg persisted only at end-of-turn → killed lambda leaves applied writes with no record                | HIGH         | CONFIRMED                        |
-| D5  | Three writers full-overwrite `agent_metadata` JSONB → cancel hint clobbered, stop button no-ops                                       | HIGH         | CONFIRMED                        |
-| D6  | Finalization guard counts `ok:false` gateway writes as success → false "I completed the change"                                       | HIGH         | CONFIRMED                        |
-| D7  | Multi-entity creates non-transactional (task+edges+assignees, project instantiate) → partial state reported as failure → dup on retry | HIGH         | CONFIRMED                        |
-| D8  | Every chat pass capped at 2000 completion tokens; `finish_reason:'length'` unhandled; truncated tool calls silently dropped           | HIGH         | CONFIRMED                        |
-| D9  | `prompt_cache_key` never forwarded on the primary streaming path (dead)                                                               | HIGH         | CONFIRMED ✅                     |
-| D10 | Cancelled/errored streams never log usage → billing undercount                                                                        | HIGH         | CONFIRMED                        |
-| D11 | Mid-stream OpenRouter `error` frames swallowed → truncated answer shipped as complete success                                         | HIGH         | CONFIRMED (code)                 |
-| S1  | Prompt-injection → immediate data mutation, no human approval (commit-by-default in chat)                                             | **CRITICAL** | CONFIRMED                        |
-| S2  | Markdown `<img>` renders remote URLs → zero-click exfiltration                                                                        | HIGH         | CONFIRMED                        |
-| S3  | On-demand tool materialization has no read/write gate; auto-executes destructive ops same-round                                       | HIGH         | CONFIRMED                        |
-| S4  | `timing_metrics` table has no RLS → cross-tenant metadata read/write                                                                  | HIGH         | CONFIRMED ✅                     |
-| S5  | Bootstrap link stores plaintext bearer token at rest, never reaped                                                                    | HIGH         | CONFIRMED                        |
-| C1  | Ontology-context chats bypass the member-access gate → hydrate public projects you're not a member of                                 | HIGH         | CONFIRMED                        |
-| C2  | Client-supplied prewarm context trusted verbatim into system prompt + persisted (session poisoning)                                   | HIGH         | CONFIRMED (×2 passes)            |
-| O2  | `looksLikeExplicitMutationRequest` misfires both ways ("update me on…" nukes correct answers; "assign/postpone/merge" slip through)   | MEDIUM-HIGH  | CONFIRMED                        |
-| …   | (full set below, grouped by theme)                                                                                                    |              |                                  |
+| #   | Finding                                                                                                                               | Severity     | Status                                       |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------ | -------------------------------------------- |
+| D1  | Document append/merge silently degrades to full REPLACE on read failure                                                               | **CRITICAL** | **FIXED (W1)** — throws on read fail         |
+| D2  | `merge_llm` merge capped at 2000 tokens → long docs truncated on merge                                                                | HIGH         | CONFIRMED cap / SUSPECTED impact             |
+| D3  | Abort never threaded into tool execution → write-after-cancel + duplicate on retry                                                    | HIGH         | CONFIRMED (×3 passes)                        |
+| D4  | Tool-execution rows + assistant msg persisted only at end-of-turn → killed lambda leaves applied writes with no record                | HIGH         | CONFIRMED                                    |
+| D5  | Three writers full-overwrite `agent_metadata` JSONB → cancel hint clobbered, stop button no-ops                                       | HIGH         | CONFIRMED                                    |
+| D6  | Finalization guard counts `ok:false` gateway writes as success → false "I completed the change"                                       | HIGH         | **FIXED (W1)** — ok-aware in 4 spots         |
+| D7  | Multi-entity creates non-transactional (task+edges+assignees, project instantiate) → partial state reported as failure → dup on retry | HIGH         | CONFIRMED                                    |
+| D8  | Every chat pass capped at 2000 completion tokens; `finish_reason:'length'` unhandled; truncated tool calls silently dropped           | HIGH         | CONFIRMED                                    |
+| D9  | `prompt_cache_key` never forwarded on the primary streaming path (dead)                                                               | HIGH         | **FIXED (W1)** — `session_id`+key wired      |
+| D10 | Cancelled/errored streams never log usage → billing undercount                                                                        | HIGH         | **FIXED (W1)** — logs `failure` row          |
+| D11 | Mid-stream OpenRouter `error` frames swallowed → truncated answer shipped as complete success                                         | HIGH         | CONFIRMED (code)                             |
+| S1  | Prompt-injection → immediate data mutation, no human approval (commit-by-default in chat)                                             | **CRITICAL** | CONFIRMED                                    |
+| S2  | Markdown `<img>` renders remote URLs → zero-click exfiltration                                                                        | HIGH         | CONFIRMED                                    |
+| S3  | On-demand tool materialization has no read/write gate; auto-executes destructive ops same-round                                       | HIGH         | CONFIRMED                                    |
+| S4  | `timing_metrics` table has no RLS → cross-tenant metadata read/write                                                                  | HIGH         | **FIXED (W1)** — RLS migration (verify live) |
+| S5  | Bootstrap link stores plaintext bearer token at rest, never reaped                                                                    | HIGH         | CONFIRMED                                    |
+| C1  | Ontology-context chats bypass the member-access gate → hydrate public projects you're not a member of                                 | HIGH         | CONFIRMED                                    |
+| C2  | Client-supplied prewarm context trusted verbatim into system prompt + persisted (session poisoning)                                   | HIGH         | CONFIRMED (×2 passes)                        |
+| O2  | `looksLikeExplicitMutationRequest` misfires both ways ("update me on…" nukes correct answers; "assign/postpone/merge" slip through)   | MEDIUM-HIGH  | CONFIRMED                                    |
+| …   | (full set below, grouped by theme)                                                                                                    |              |                                              |
 
 ---
 
 ## Theme 1 — Silent data loss & false success (fix first)
 
-### D1. Document append/merge silently degrades to full REPLACE on read failure — CRITICAL, CONFIRMED ✅
+### D1. Document append/merge silently degrades to full REPLACE on read failure — CRITICAL, CONFIRMED ✅ — FIXED (W1)
 
 `apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-write-executor.ts:2012-2024` (`resolveTextWithStrategy`), used by `updateOntoDocument` at `:1500-1522`.
 
@@ -71,7 +71,7 @@ On `update_strategy: "append"` or `"merge_llm"`, the code loads existing content
 
 **Fix:** scale `maxTokens` to existing length (or chunk); reject/flag on `length` finish or when merge output is materially shorter than the source.
 
-### D6. Finalization guard counts `ok:false` gateway writes as success → false "I completed the change" — HIGH, CONFIRMED
+### D6. Finalization guard counts `ok:false` gateway writes as success → false "I completed the change" — HIGH, CONFIRMED — FIXED (W1)
 
 `turn-supervisor/finalization-guard.ts:441-454` classifies success via `execution.result.success === true`; same raw flag at `stream-orchestrator/index.ts:1769-1775` (`turnHadUnfulfilledMutationIntent`) and `:1515` (supervisor `successfulWrites`). But the executor returns `success:true` whenever the handler doesn't throw (`tool-executor.ts:226-233`) — a gateway envelope can carry `{ok:false}` inside a `success:true` result. That's exactly why `didGatewayExecSucceed` (`round-analysis.ts:269-278`) exists and re-checks `payload.ok === true`, and why the 2026-06-24 repair layer is `ok`-aware (`repair-instructions.ts:879-883`) — **but the finalization guard, the mutation-intent check, and the supervisor counter are not.**
 
@@ -87,13 +87,13 @@ Result: an op-level write failure (`success:true, ok:false`) → guard synthesiz
 
 **Fix:** wrap task-create (task + edges + assignees) in an RPC like the update path; for instantiate, single RPC transaction or insert the project row last / flag incomplete until finalized.
 
-### D14. Task→event edge write errors discarded → link-failure reported as full success — MEDIUM, CONFIRMED
+### D14. Task→event edge write errors discarded → link-failure reported as full success — MEDIUM, CONFIRMED — FIXED (W1)
 
 `executors/calendar-executor.ts:855-875` (create) & `:943-962` (update): the `onto_edges` select and insert never destructure `{ error }`. Supabase clients don't throw — a failed `has_event` edge insert (RLS/FK) is silently dropped; the tool returns the created event and the model reports full success, but the task↔event link never exists. The ignored select error also risks a duplicate-insert.
 
 **Fix:** check `error` on both calls; surface `link_created: false` at minimum.
 
-### D15. Invalid `state_key` on `update_onto_task` silently dropped → no-op PATCH reported as "Updated" — MEDIUM, CONFIRMED
+### D15. Invalid `state_key` on `update_onto_task` silently dropped → no-op PATCH reported as "Updated" — MEDIUM, CONFIRMED — FIXED (W1)
 
 `base-executor.ts:341-373` — `normalizeTaskState('cancelled' | 'wont_do' | unmapped)` returns `undefined` (warn only). `ontology-write-executor.ts:1358-1360` assigns that `undefined`; the `Object.keys(updateData).length === 0` guard (`:1391`) passes because the key exists; `JSON.stringify` (`:1395-1397`) then drops it → empty `{}` PATCH → route bumps `updated_at` only and 200s. Tool result: _"Updated ontology task…"_ for a state change that never happened. (Looks like the "unfinished turn" symptom but is a distinct bug — the route's own 400 at `tasks/[id]/+server.ts:467-473` never fires because the key is stripped before serialization.)
 
@@ -199,7 +199,7 @@ Assistant messages render via `{@html renderMarkdown(...)}` (`AgentMessageList.s
 
 **Fix:** enforce a write-op allowlist in materialization keyed to the turn's scope; require confirmation before executing a just-materialized destructive op.
 
-### S4. `timing_metrics` table has no RLS → cross-tenant metadata read/write — HIGH, CONFIRMED ✅
+### S4. `timing_metrics` table has no RLS → cross-tenant metadata read/write — HIGH, CONFIRMED ✅ — FIXED (W1, verify live)
 
 `supabase/migrations/20260130_235900_add_timing_metrics.sql:4-47` creates the table with no `ENABLE ROW LEVEL SECURITY` and no policy; the only later migration touching it (`20260428000015`) adds a column. With RLS off, default PostgREST grants let any authenticated user `SELECT/INSERT/UPDATE` every user's rows (session/project/entity UUIDs, message lengths, prepared-prompt IDs, timing metadata — no message bodies).
 
@@ -243,13 +243,13 @@ The stream endpoint accepts `prewarmedContext` (loose object), shape-checks only
 
 **Fix:** pass explicit `maxTokens` (≥8k for synthesis) from the orchestrator; on `length` with dropped tool calls inject a repair message instead of finalizing; log dropped-invalid-tool-call events.
 
-### D9. `prompt_cache_key` never forwarded on the primary streaming path (dead) — HIGH, CONFIRMED ✅
+### D9. `prompt_cache_key` never forwarded on the primary streaming path (dead) — HIGH, CONFIRMED ✅ — FIXED (W1)
 
 The orchestrator passes `chatSessionId` (`index.ts:811`) and `streamText` accepts it — but the streaming request body omits it (`openrouter-v2-service.ts:1576-1588`, verified). It's attached only on JSON/text paths (`:1226, :1432`) and the direct-Moonshot fallback (`:905, :1681`), gated `provider === 'moonshot'` — so even the direct-OpenAI fallback doesn't get it. On a tool loop that re-sends a growing prefix 5-16× per turn, cache-aware routing is forfeited on the path that actually runs.
 
 **Fix:** thread `prompt_cache_key` through `buildOpenRouterChatCompletionBody` for the primary path; drop the moonshot-only gate for the OpenAI direct route.
 
-### D10. Cancelled/errored streams never log usage → billing undercount — HIGH, CONFIRMED
+### D10. Cancelled/errored streams never log usage → billing undercount — HIGH, CONFIRMED — FIXED (W1)
 
 `streamText` calls `logUsage` only on the two happy paths (`:1857, :1966`); the catch/abort paths return/yield without logging and there is no `status:'failure'` insert (v2 hardcodes `status:'success'`, `:1786`). Billing credits = `ceil(total_tokens/1000)` straight from `llm_usage_logs` (`20260425000005:135-139`), so every gap is a billing gap. Since **abort is a normal end state** for chat turns, this is a structural undercount, not an edge case. Same in `getJSONResponse` parse-retries.
 
@@ -323,20 +323,63 @@ Estimator = chars/4. The rendered prompt is **well-bounded** (~11-15K tokens/tur
 
 ---
 
-## Recommended fix waves
+## Fix waves
 
-**Wave 1 — Data integrity & money (ship first, mostly small diffs):**
+### Wave 1 — Data integrity & money — SHIPPED 2026-07-02 (working tree, uncommitted)
 
-1. D1 (append→replace data loss) — throw on loader failure. _One-line-ish, highest-severity._
-2. D6 (guard counts `ok:false` as success) — swap to `didGatewayExecSucceed` in 3 spots.
-3. D15 / D14 (silent no-op state update; discarded edge errors) — validation throw + error checks.
-4. S4 (`timing_metrics` RLS) — one migration. Verify live first.
-5. D10 + D9 (bill cancelled turns; forward `prompt_cache_key`) — direct cost recovery.
+Implemented in three parallel tracks, all validated (51 targeted tests pass, `svelte-check` 0 errors, ESLint/Prettier clean), left uncommitted for review. What shipped:
 
-**Wave 2 — Cancellation & durability (the correctness backbone):** 6. D3 + D5 (thread abort into tool exec; stop clobbering `agent_metadata`) — kills the write-after-cancel + duplicate-mutation class. Do together. 7. D4 + D4c (incremental tool-exec persistence + `last_progress_at`; `await flush()`) — bounds partial state. 8. D8 (raise per-pass `maxTokens`; handle `finish_reason:'length'`) — likely also fixes real "never updated" reports. 9. D7 (transactional task-create RPC) + idempotency keys on create routes.
+1. **D1** (append→replace data loss) — `resolveTextWithStrategy` now **throws** on existing-content loader failure instead of returning new-content-as-full-replace. Files: `ontology-write-executor.ts`.
+2. **D6** (guard counts `ok:false` as success) — routed the write-success judgment through `didGatewayExecSucceed` in all four spots (`finalization-guard.ts`, `turnHadUnfulfilledMutationIntent`, two `observeSupervisor` flags); hardened the helper so non-gateway writes still judge correctly. Files: `finalization-guard.ts`, `stream-orchestrator/index.ts`, `round-analysis.ts`.
+3. **D14 / D15** — calendar task↔event edge errors now checked + surfaced (`task_link_created: false`); an unmapped `state_key` now throws a validation error instead of an empty PATCH reported as "Updated." Files: `calendar-executor.ts`, `ontology-write-executor.ts`.
+4. **S4** (`timing_metrics` RLS) — new migration `20260701020000_enable_rls_timing_metrics.sql` (insert/self-select/admin-select/service-role, mirroring `chat_turn_runs`). **Open:** live `pg_class.relrowsecurity` before/after verification not yet done (no DB access in-session).
+5. **D9 / D10** — cache-affinity threaded through the streaming path via OpenRouter's `session_id` (correct mechanism) + `prompt_cache_key` (OpenAI upstream); cancelled/errored streams now log a `failure` usage row (real frame or char/4 estimate). Files: `openrouter-v2-service.ts`, `openrouter-v2/{client,types}.ts`, `packages/smart-llm/openrouter-request.ts`.
 
-**Wave 3 — Security hardening:** 10. S1 + S3 (route chat writes through `policy.ts`; write-op gate on materialization; confirm destructive ops) — one problem. 11. S2 (block/proxy remote images) — cheap, closes the exfil half. 12. S5/S8 (bootstrap token: encrypt + single-use + reap), S6 (rate limiting), C1 (ontology access gate), C2 (drop client-context trust).
+**Carry-over from Wave 1 (do at commit/deploy time):** verify S4 live; ensure CI rebuilds `@buildos/smart-llm` (dist is gitignored, web imports the new builder fields); decide whether to keep `prompt_cache_key` on the OpenRouter path or `session_id`-only; decide whether D14 should hard-fail vs surface `link_created:false`.
 
-**Wave 4 — Correctness polish & cost:** 13. O2/O3 (mutation-request heuristic; guard vs supervisor questions), O4/O5 (skill payload truncation), O9/O10 (repetition + sticky write-attempt). 14. C3/C4/C5 (RPC-fallback parity; bounded fallback fetches; prepared-prompt amplification), retention jobs (S10/S12), the original doc's tool-surface trim + `+server.ts` decomposition.
+---
 
-**Wave 5 — Observability (do early enough to measure the rest):** 15. Original doc's prewarm hit-rate dashboard + `cache_source` logging, plus `context_load_source` (C3) and D11 error-frame surfacing — so you can actually see cancellation loss, fallback usage, and cache hits before/after the fixes above.
+### Wave 2 — Cancellation & durability backbone (NEXT — not started)
+
+**Theme:** close the "cancel is cosmetic + lambda-death loses state" class. This is the correctness backbone and the highest-severity remaining cluster. Unlike Wave 1, several items need **schema migrations, a new RPC, and a cron sweeper**, so this wave is larger and riskier — plan it as its own set of PRs, and sequence the infra piece (E3) last. Proposed three tracks (parallelizable except where noted):
+
+**Track D — Cancellation correctness** (kills write-after-cancel + duplicate-mutation). Do D3 and D5 together; they interlock.
+
+- **D5** — stop full-overwriting `chat_sessions.agent_metadata`. Route the cancel endpoint, `resolveSession`, and the inbox refresh through `merge_chat_session_agent_metadata` (or move the cancel hint to a dedicated `chat_stream_cancel_signals` table keyed by `(user_id, stream_run_id)` — cleaner, and decouples cancel from the JSONB entirely). _Prereq for D3 to actually stop turns._
+- **D3** — thread an `AbortSignal` from `executeWithTimeout`/the abort race into `toolExecutor` → `apiRequest` → `fetch`, so a cancelled tool write is truly cancelled, not abandoned. Add an **idempotency key** (per `tool_call` id) honored by the create routes so any surviving retry can't double-write. Also give `attemptDocOrganizationRecovery` a per-iteration `signal?.aborted` check.
+- **O8** — require `signal?.aborted === true` (not substring matching) before classifying an error as "cancelled," so real provider timeouts/socket drops surface as errors instead of silent cancels.
+- _Migration needed:_ idempotency-key column/constraint on `onto_tasks`/create routes (or an app-level dedup table). _Risk:_ medium — touches the tool-execution hot path; needs a cancel end-to-end test.
+
+**Track E — Durability under lambda death** (bounds partial state; makes detached turns real).
+
+- **D4c** (quick win, do first) — `await observabilityWriter.flush()` before `close()` (bounded by a timeout) so tool-execution rows / timing / attachment links aren't lost when the lambda freezes.
+- **D4** — persist each tool execution incrementally right after `onToolResult` (callback already exists), keyed idempotently by `(turn_run_id, sequence)`; add a `last_progress_at` heartbeat column on `chat_turn_runs`. _Migration needed:_ `last_progress_at` column (+ index).
+- **D9b** — make change-set commit crash-safe: persist per-change results incrementally (or a `commit_started_at` + a stalled-commit reconciler that reads the `agent_tool_executions` rows already written per change). Prevents the permanent "Run is running, not awaiting proposal review" lock.
+- **D4b** (do LAST — infra) — register the detached IIFE with `event.platform?.context?.waitUntil`; close the stream even when detached; add a Vercel cron sweeper that fails turns stuck `running` past `last_progress_at + N`. _Needs:_ a cron entry in `vercel.json` + a sweeper route. _Risk:_ higher — changes lambda lifecycle behavior; validate `waitUntil` availability on the pinned runtime first.
+
+**Track F — LLM robustness + finish write-integrity** (independent of D/E; can run in parallel).
+
+- **D8** — pass an explicit `maxTokens` (≥8k for synthesis passes) from the orchestrator; handle `finish_reason:'length'` by injecting a repair message instead of shipping truncated text; log dropped-invalid-tool-call events. _Likely also resolves real "searched but never updated" reports — highest user-visible payoff in this wave._
+- **D11** — surface mid-stream OpenRouter `error` frames: treat `chunk.error` as a yielded error (or trigger fallback if no text emitted), and route `finished_reason:'error'` into the repair/retry path instead of the final-answer path.
+- **D2** — scale the `merge_llm` `maxTokens` to existing-content length (or chunk); reject/flag on a `length` finish or when merge output is materially shorter than the source. _Same file as the shipped D1 fix — cheap to fold in._
+- **D7** — wrap `create_onto_task` (task + edges + assignees) in an RPC transaction mirroring `onto_task_update_atomic`; for project instantiate, single-RPC or insert the project row last / flag incomplete. _Migration needed:_ new `onto_task_create_atomic` RPC. _Risk:_ medium-high — new transactional RPC on a core write path.
+
+**Suggested Wave 2 sequencing:** D4c → (Track D + Track F in parallel) → D4/D9b → D4b (infra last). Ship Track D and Track F as separate PRs; keep each migration in its own reviewable change.
+
+---
+
+### Wave 3 — Security hardening (not started)
+
+- **S1 + S3** (one problem) — route chat writes through `policy.ts` scope enforcement; add a write-op/destructive-op gate to tool materialization; require confirmation before executing a just-materialized destructive op; default to commit-review for any turn that ingested external/third-party content.
+- **S2** — block/proxy remote `<img>` in assistant-rendered markdown (or CSP `img-src`) — cheap, closes the exfiltration half of the injection chain.
+- **S5/S8** (bootstrap token: encrypt + single-use consume + reap), **S6** (per-user stream concurrency cap + rate limiting on gateway/bootstrap), **C1** (ontology-context member-access gate + UUID validation), **C2** (drop client-supplied-context trust; re-derive server-side or HMAC it).
+- Lower: S7, S9–S17 (log/PII/retention/error-leak hygiene) as a hardening sweep.
+
+### Wave 4 — Correctness polish & cost (not started)
+
+- **O2/O3** (mutation-request heuristic false pos/neg; guard clobbering supervisor questions), **O4/O5** (skill payload double-truncation), **O9/O10** (alternating-loop repetition guard; sticky `hasWriteAttempt`), **O11–O16** (force-synthesis write carve-out; dangling tool_call events; alias dead-end; unguarded callback).
+- **C3/C4/C5** (RPC-fallback parity; bounded fallback fetches; prepared-prompt write amplification), retention jobs (S10/S12), and the original doc's tool-surface trim (now the #1 prompt-size lever) + `+server.ts` decomposition.
+
+### Wave 5 — Observability (do early enough to measure Waves 2–4)
+
+- Original doc's prewarm hit-rate dashboard + `cache_source` logging, plus `context_load_source` (C3) and D11 error-frame surfacing — so cancellation loss, fallback usage, and cache-hit rate are visible before/after each wave. Consider pulling this forward to run alongside Wave 2 so D8/D10/D9 impact is measurable.

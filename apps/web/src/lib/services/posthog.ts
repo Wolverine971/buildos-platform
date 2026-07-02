@@ -7,6 +7,16 @@ import { browser, dev } from '$app/environment';
 import { env } from '$env/dynamic/public';
 
 const FIRST_TOUCH_STORAGE_KEY = 'buildos_first_touch';
+const FUNNEL_EVENTS = new Set([
+	'signup',
+	'onboarding_started',
+	'onboarding_completed',
+	'brain_dump_created',
+	'project_created',
+	'brief_generated',
+	'brief_viewed',
+	'task_completed'
+]);
 
 export interface FirstTouchAttribution {
 	utm_source: string | null;
@@ -18,6 +28,20 @@ export interface FirstTouchAttribution {
 }
 
 let initialized = false;
+
+function logHealth(
+	status: 'captured' | 'skipped' | 'error',
+	event: string,
+	details?: Record<string, unknown>
+): void {
+	if (!FUNNEL_EVENTS.has(event)) return;
+	console.info('[posthog-health]', {
+		runtime: 'web-client',
+		status,
+		event,
+		...details
+	});
+}
 
 function isEnabled(): boolean {
 	if (!browser || !env.PUBLIC_POSTHOG_KEY) return false;
@@ -61,8 +85,19 @@ export function resetPostHogUser(): void {
 }
 
 export function captureEvent(event: string, properties?: Record<string, unknown>): void {
-	if (!initialized) return;
-	posthog.capture(event, properties);
+	if (!initialized) {
+		logHealth('skipped', event, { reason: 'not_initialized' });
+		return;
+	}
+	try {
+		posthog.capture(event, properties);
+		logHealth('captured', event);
+	} catch (error) {
+		logHealth('error', event, {
+			message: error instanceof Error ? error.message : String(error)
+		});
+		console.error(`[posthog] failed to capture ${event}:`, error);
+	}
 }
 
 /**

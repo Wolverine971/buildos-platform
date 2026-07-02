@@ -14,11 +14,14 @@ path: docs/marketing/outreach/creator-outreach-drafts-2026-05-13.md
 
 Drafts for the first batch. Voice follows DJ's cold-outreach rules: short paragraphs, casual phrasing welcome, no recruiter cliches, bridge sentence non-negotiable, sign "DJ".
 
+> **Offer note (updated 2026-06-22):** these drafts all use the **free-seat** offer. Per the updated playbook (`cold-email-principles-instantly-2026-06-22.md`, principle #6 "the offer is the ceiling") the stronger play is a **pre-built BuildOS workspace** — "I spun up a project for you based on your last N posts; here's the link, no signup" — because that's _experienced value before commitment_, where a free seat is only access. The faker strategy treats this pre-built artifact as the canonical first touch. Trade-off: each workspace is real build effort (~2–4 hrs), so it's a deliberate per-target choice, not a blind copy swap. Recommendation: use the pre-built workspace for the strongest-fit targets (Susan, Atrocity, Courtney) and keep the free seat as the fallback. Say the word and I'll swap the offer line per target.
+
 **Before sending — sweep:**
 
 - Replace `buildos.com` with whatever landing-page URL you actually want them on (e.g. `buildos.com/landing-v2`).
 - Each email is plain text — no signature block, no banner image, no HTML, no UTM-laden link unless you want one.
-- These all offer a free seat. If you'd rather offer "I'll spin up a project for you and send the link" instead of a self-serve free seat, tell me and I'll swap that line in all seven.
+- Decide the offer per the Offer note above (free seat vs. pre-built workspace) before sending.
+- Openers are relevance-anchored (they open on the target's problem, not flattery) — keep them that way; don't let any edit drift into "loved your work" compliment-theatre.
 
 ---
 

@@ -41,6 +41,11 @@
 			"components": ["AgentChatModal", "WorkPanel"]
 		},
 		{
+			"file": "src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
+			"type": "component",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
 			"type": "component",
 			"components": [
@@ -59,11 +64,6 @@
 				"TimeBlockModalContent",
 				"AgentRunModalContent"
 			]
-		},
-		{
-			"file": "src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/ontology/DocumentModal.svelte",
@@ -561,12 +561,6 @@
 			"exports": ["TimeBlockService"]
 		},
 		{
-			"file": "src/lib/services/treeAgentRealtime.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["TreeAgentRealtimeService"]
-		},
-		{
 			"file": "src/lib/services/visitor.service.ts",
 			"type": "service",
 			"components": [],
@@ -688,12 +682,6 @@
 			"type": "store",
 			"components": [],
 			"exports": ["TOAST_DURATION", "toasts", "toastService"]
-		},
-		{
-			"file": "src/lib/stores/treeAgentGraph.store.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["treeAgentGraphStore"]
 		},
 		{
 			"file": "src/lib/stores/unifiedBriefGeneration.store.ts",
@@ -1004,42 +992,6 @@
 			"exports": ["createDragDropState"]
 		},
 		{
-			"file": "src/lib/components/project/v2/board-a11y.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
-		},
-		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"fetchLinkedEntities",
-				"fetchAvailableEntities",
-				"createEdges",
-				"linkEntities",
-				"deleteEdge",
-				"unlinkEntity",
-				"filterEntities"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"ALLOWED_LINKS",
-				"canLink",
-				"RELATIONSHIP_MAP",
-				"getRelationship",
-				"getAllowedTargetKinds",
-				"ENTITY_SECTIONS",
-				"getEntityDisplayName",
-				"formatRelationshipLabel",
-				"getFilteredSections"
-			]
-		},
-		{
 			"file": "src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 			"type": "component",
 			"components": [],
@@ -1100,6 +1052,42 @@
 			]
 		},
 		{
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"fetchLinkedEntities",
+				"fetchAvailableEntities",
+				"createEdges",
+				"linkEntities",
+				"deleteEdge",
+				"unlinkEntity",
+				"filterEntities"
+			]
+		},
+		{
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"ALLOWED_LINKS",
+				"canLink",
+				"RELATIONSHIP_MAP",
+				"getRelationship",
+				"getAllowedTargetKinds",
+				"ENTITY_SECTIONS",
+				"getEntityDisplayName",
+				"formatRelationshipLabel",
+				"getFilteredSections"
+			]
+		},
+		{
+			"file": "src/lib/components/project/v2/board-a11y.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
+		},
+		{
 			"file": "src/lib/components/ui/codemirror/extensions.ts",
 			"type": "component",
 			"components": [],
@@ -1148,6 +1136,12 @@
 			]
 		},
 		{
+			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["prepareAgentRunChatEventDetail"]
+		},
+		{
 			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 			"type": "component",
 			"components": [],
@@ -1190,12 +1184,6 @@
 			"type": "component",
 			"components": [],
 			"exports": ["SvelteFlowGraphService"]
-		},
-		{
-			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["prepareAgentRunChatEventDetail"]
 		}
 	],
 	"dependencies": {
@@ -1254,9 +1242,9 @@
 		"src/lib/components/dashboard/AnalyticsDashboard.svelte",
 		"src/lib/components/landing/HomepageV2.svelte",
 		"src/lib/components/layout/Navigation.svelte",
+		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
-		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
 		"src/lib/components/project/ProjectHistorySection.svelte",
 		"src/lib/components/project/ProjectInboxPanel.svelte",
 		"src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
@@ -1286,22 +1274,22 @@
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/admin/chat/session-audit-ui.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
-		"src/lib/components/project/v2/board-a11y.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",
 		"src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
 		"src/lib/components/ontology/insight-panels/task-person-relevance.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
+		"src/lib/components/project/v2/board-a11y.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",
 		"src/lib/components/ui/codemirror/voice-widget.ts",
+		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
 		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/ontology/graph/lib/g6.service.ts",
 		"src/lib/components/ontology/graph/lib/graph.filters.ts",
 		"src/lib/components/ontology/graph/lib/graph.service.ts",
-		"src/lib/components/ontology/graph/lib/svelteflow.service.ts",
-		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts"
+		"src/lib/components/ontology/graph/lib/svelteflow.service.ts"
 	]
 }

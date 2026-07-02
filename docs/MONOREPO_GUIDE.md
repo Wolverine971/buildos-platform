@@ -49,8 +49,8 @@ pnpm dev --filter=worker   # Worker only
 
 # Web app fast modes
 cd apps/web
-pnpm dev:split    # Dev with type checking (recommended)
-pnpm dev:fast     # Quick dev without type checking
+pnpm dev:split    # Dev + type checking side by side (recommended)
+pnpm dev          # Dev server only
 ```
 
 ### Building

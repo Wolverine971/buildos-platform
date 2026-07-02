@@ -458,9 +458,6 @@ importers:
       node-cron:
         specifier: ^3.0.3
         version: 3.0.3
-      nodemailer:
-        specifier: ^8.0.5
-        version: 8.0.5
       posthog-node:
         specifier: ^5.39.2
         version: 5.39.2(rxjs@7.8.2)
@@ -486,9 +483,6 @@ importers:
       '@types/node-cron':
         specifier: ^3.0.11
         version: 3.0.11
-      '@types/nodemailer':
-        specifier: ^7.0.1
-        version: 7.0.1
       '@types/sanitize-html':
         specifier: ^2.16.0
         version: 2.16.0

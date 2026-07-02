@@ -14,7 +14,7 @@ This directory contains worker processors for queue job types handled by `apps/w
 - `chat/` - Chat session classification jobs
 - `braindump/` - Ontology braindump processing jobs
 - `voice-notes/` - Voice note transcription jobs
-- `homework/`, `tree-agent/` - Agent runtime jobs
+- `agent-run/`, `project-loop/` - Agent runtime jobs
 - `shared/` - Adapters and shared worker helpers
 
 ## Adding a New Worker

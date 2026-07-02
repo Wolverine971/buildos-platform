@@ -120,7 +120,7 @@ Navigation organized by **what you want to do**, not just what exists.
 | Deployment guides   | `/**/operations/deployment/` | [Deployment Topology](DEPLOYMENT_TOPOLOGY.md) |
 | Business strategy   | `/docs/business/`            | Business README.md                            |
 | Marketing materials | `/docs/marketing/`           | Marketing INDEX.md                            |
-| Research library    | `/research-library/`         | Research Library README.md                    |
+| Research library    | `/docs/research-library/`         | Research Library README.md                    |
 
 ## Quick Reference
 

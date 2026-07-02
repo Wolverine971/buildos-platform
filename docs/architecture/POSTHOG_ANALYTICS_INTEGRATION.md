@@ -35,6 +35,17 @@ Identify/reset lifecycle lives in `apps/web/src/routes/+layout.svelte`: `identif
 | `brief_viewed`         | `apps/web/src/routes/briefs/+page.svelte` on mount when a brief renders                                                                                                                             |
 | `task_completed`       | `apps/web/src/routes/api/onto/tasks/[id]/+server.ts` on the not-done → done transition only. (Agent-driven task completion via shared ops is NOT yet instrumented.)                                 |
 
+## Runtime health logs
+
+The wrappers emit a structured `[posthog-health]` log for the eight funnel events
+only. Server/shared captures log `status: "captured"` after `captureImmediate`;
+worker captures log `status: "queued"` after enqueueing into the PostHog batch;
+missing config logs `status: "skipped"` with `reason: "missing_key"`. Web server
+and worker capture failures are also persisted to `error_logs` with
+`operation_type = 'posthog_capture'` and `metadata.analyticsEvent = <event>`.
+Use [`docs/marketing/growth/posthog-analytics-health-log-2026-07-02.md`](../marketing/growth/posthog-analytics-health-log-2026-07-02.md)
+for the July 2026 dashboard verification pass.
+
 ## First-touch UTM attribution
 
 1. `initPostHog()` (root layout) stashes `utm_source/medium/campaign` + external `document.referrer` + landing page in `localStorage` (`buildos_first_touch`) on first landing; never overwritten. Runs even when capture is disabled.

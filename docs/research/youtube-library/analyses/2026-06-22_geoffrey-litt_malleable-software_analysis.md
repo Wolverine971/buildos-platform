@@ -2,7 +2,7 @@
 title: 'ANALYSIS: Geoffrey Litt (Ink & Switch) — Malleable Software, LLMs, and Agency'
 source_type: youtube_analysis
 source_video: 'https://www.youtube.com/watch?v=RromJIXfYyI'
-source_transcript: '../../../../research-library/transcripts/podcast-geoffrey-litt-malleable-software.md'
+source_transcript: '../../../research-library/transcripts/podcast-geoffrey-litt-malleable-software.md'
 video_id: RromJIXfYyI
 channel: 'Dialectic'
 library_category: psychology-agency-philosophy
@@ -151,5 +151,5 @@ How this keeps BuildOS from degrading into a generic automation product:
 
 ## Source
 
-- **Raw transcript:** [`podcast-geoffrey-litt-malleable-software.md`](../../../../research-library/transcripts/podcast-geoffrey-litt-malleable-software.md) (~140K chars, single-line dump; Dialectic episode 21)
+- **Raw transcript:** [`podcast-geoffrey-litt-malleable-software.md`](../../../research-library/transcripts/podcast-geoffrey-litt-malleable-software.md) (~140K chars, single-line dump; Dialectic episode 21)
 - **Video:** Geoffrey Litt — "Software You Can Shape: Malleable Software, LLMs and Agency, Editing Your Tools" — https://www.youtube.com/watch?v=RromJIXfYyI

@@ -4,6 +4,7 @@
 
 > **Date:** 2026-04-10
 > **Use with:** the hero asset (screen recording of author brain dump → structured revision plan) and the before/after screenshot pair.
+> **Visual assets (built 2026-07-01):** Asset 1 before/after — [`asset1-beforeafter-light.png` (4:5)](../../visual-assets/renders/author-workflow-teardown/asset1-beforeafter-light.png), [`asset1-beforeafter-square.png` (1:1)](../../visual-assets/renders/author-workflow-teardown/asset1-beforeafter-square.png); Asset 2 pain-list — [`asset2-painlist-light.png`](../../visual-assets/renders/author-workflow-teardown/asset2-painlist-light.png). Asset 3 (video) still to record. Status + remaining work: [renders HANDOFF](../../visual-assets/renders/author-workflow-teardown/HANDOFF.md).
 
 ## Campaign Suite
 
@@ -83,7 +84,7 @@ You're also holding:
 
 These live in five different tools, on paper, in your head, and in the silence between work sessions. Every time you sit down to revise, the first 20 minutes are trying to remember what you already figured out.
 
-This is what "the muddy middle" actually feels like. It is not a craft problem. It is a memory problem. The project should be holding all of this for you.
+This is what "the muddy middle" actually feels like. It's not a craft problem. It's a memory problem. The project should be holding all of this for you.
 
 Yesterday I dumped a messy revision pass into one place. The scattered notes, the continuity issues, the scene-level tasks. Two minutes later I had a structured revision plan with the problems flagged and the next moves obvious. I didn't have to organize anything -- I just talked through the mess.
 

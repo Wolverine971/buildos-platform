@@ -18,7 +18,21 @@ import type {
 } from '@buildos/shared-types';
 import { buildHeuristicProjectLoopBrief } from '@buildos/shared-agent-ops';
 import type { SmartLLMService } from '../../lib/services/smart-llm-service';
-import type { UsageEvent } from '../homework/engine/homeworkEngine';
+
+/**
+ * LLM usage/cost event emitted by the smart-llm service on each call. Relocated
+ * here (previously imported from the now-removed homework engine) so the
+ * project-loop worker owns its own dependency surface.
+ */
+export interface UsageEvent {
+	model: string;
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+	inputCost: number;
+	outputCost: number;
+	totalCost: number;
+}
 
 export interface LoopDocument {
 	id: string;

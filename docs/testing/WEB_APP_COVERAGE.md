@@ -118,14 +118,10 @@ export default defineConfig({
 pnpm test              # Run once
 pnpm test:watch        # Watch mode
 pnpm test:ui           # Interactive UI
-pnpm test:quiet        # Dot reporter (less noise)
-pnpm test:silent       # Completely silent
 
 # LLM tests (⚠️ COSTS MONEY)
 pnpm test:llm          # Run once
 pnpm test:llm:watch    # Watch mode
-pnpm test:llm:verbose  # Verbose output
-pnpm test:llm:fast     # Dot reporter
 
 # Full validation
 pnpm pre-push          # typecheck + test + lint + build

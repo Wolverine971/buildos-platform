@@ -6,7 +6,7 @@
 
 - **Status**: Draft → Implementing
 - **Owner**: AI Agent / Eng
-- **Last Updated**: 2025-12-24
+- **Last Updated**: 2026-06-17
 - **Scope**: Agentic chat search across ontology entities (tasks, plans, goals, milestones, documents, outputs, requirements)
 
 ## Problem & Goal
@@ -96,3 +96,6 @@ create index if not exists idx_onto_tasks_props_trgm on onto_tasks using gin ((p
 
 - 2025-12-24: Authored spec; added search vectors/indexes and `onto_search_entities` RPC (`supabase/migrations/20251224000000_ontology_search_vectors.sql`).
 - 2025-12-24: Implemented `/api/onto/search` and wired the `search_ontology` tool (definitions, config, executor) for global/project contexts.
+- 2026-06-17: Search audit + hardening pass. Findings: this RPC path (now also fronted by `search_all_projects` / `search_project`) is FTS+trigram, **not** semantic — embeddings remain unused. Fixed the sibling per-entity `ILIKE` tools (`search_onto_*`): plain multi-word queries now match in any word order (AND across significant tokens / OR across fields, stopwords dropped) instead of contiguous-substring; `search_onto_documents` now matches body `content`, not title-only; `search_onto_projects` in-memory match uses the same tokenized logic. Tool descriptions reworded to prefer the smart RPC tools. Added search telemetry (`chat_tool_executions.result_count` / `zero_result`, migration `20260617000000`) so zero-result recall — the "residual risk: semantic recall" noted above — is now measurable. Semantic/pgvector path still deferred.
+- 2026-06-17: Verified the multi-token AND-combination against the real postgrest-js builder (`ontology-read-executor.search-url.test.ts`): each chained `.or()` appends a separate `or=(...)` param, which PostgREST AND-combines. Confirmed correct, no fix needed there.
+- 2026-06-17: **Fixed a latent gap in the smart path** (migration `20260617010000`): the document body lives in the canonical `onto_documents.content` column but the `search_vector` only indexed `title` + `props`, so document-body search worked _only_ through the legacy `props.body_markdown` mirror. Rebuilt the generated `search_vector` to index `content` directly (title A / content B / props C), matching the projects/risks pattern. Strict superset of prior coverage; rewrites the table (generated-column change).

@@ -171,41 +171,6 @@ export interface GenerateBriefAudioJobMetadata {
 	briefId: string;
 }
 
-export interface HomeworkJobMetadata {
-	run_id: string;
-	iteration: number;
-	chat_session_id?: string | null;
-	context_type?: string;
-	entity_id?: string;
-	scope?: 'global' | 'project' | 'multi_project';
-	project_ids?: string[];
-	budgets: {
-		max_iterations?: number;
-		max_wall_clock_ms: number;
-		max_cost_usd?: number;
-		max_total_tokens?: number;
-	};
-	permissions: {
-		write_mode: 'autopilot' | 'approve_plan' | 'per_write';
-		allowed_tools?: string[];
-	};
-}
-
-export interface TreeAgentJobMetadata {
-	run_id: string;
-	root_node_id: string;
-	workspace_project_id: string;
-	budgets: {
-		max_wall_clock_ms: number;
-	};
-	// Context fields - priority over metrics.context
-	context_type?: 'global' | 'project';
-	context_project_id?: string | null;
-	// Optional: future support for multi-project scope
-	scope?: 'global' | 'project' | 'multi_project';
-	project_ids?: string[] | null;
-}
-
 export interface AgentRunJobMetadata {
 	run_id: string;
 	trigger: 'chat' | 'manual' | 'scheduled' | 'event';
@@ -261,6 +226,9 @@ export interface AssetOcrJobMetadata {
 
 // Map job types to their metadata
 export interface JobMetadataMap {
+	// Allow indexing by queue job types that are not explicitly listed (e.g. retired
+	// pipelines whose enum values remain in the DB, like buildos_homework/buildos_tree_agent).
+	[key: string]: unknown;
 	generate_daily_brief: DailyBriefJobMetadata;
 	generate_phases: PhaseGenerationJobMetadata;
 	onboarding_analysis: OnboardingAnalysisJobMetadata;
@@ -276,8 +244,6 @@ export interface JobMetadataMap {
 	process_onto_braindump: OntoBraindumpProcessingJobMetadata;
 	transcribe_voice_note: VoiceNoteTranscriptionJobMetadata;
 	generate_brief_audio: GenerateBriefAudioJobMetadata;
-	buildos_homework: HomeworkJobMetadata;
-	buildos_tree_agent: TreeAgentJobMetadata;
 	agent_run: AgentRunJobMetadata;
 	build_project_context_snapshot: ProjectContextSnapshotJobMetadata;
 	buildos_project_loop: ProjectLoopJobMetadata;
@@ -335,21 +301,6 @@ export interface GenerateBriefAudioResult {
 	error?: string;
 }
 
-export interface HomeworkJobResult {
-	success: boolean;
-	run_id: string;
-	iteration: number;
-	status?:
-		| 'queued'
-		| 'running'
-		| 'waiting_on_user'
-		| 'completed'
-		| 'stopped'
-		| 'canceled'
-		| 'failed';
-	message?: string;
-}
-
 export interface ProjectContextSnapshotResult {
 	success: boolean;
 	projectId: string;
@@ -386,13 +337,6 @@ export interface AssetOcrResult {
 	error?: string;
 }
 
-export interface TreeAgentJobResult {
-	success: boolean;
-	runId: string;
-	message?: string;
-	rootResult?: unknown;
-}
-
 export interface AgentRunJobResult {
 	success: boolean;
 	run_id: string;
@@ -427,8 +371,6 @@ export interface JobResultMap {
 	process_onto_braindump: OntoBraindumpProcessingResult;
 	transcribe_voice_note: VoiceNoteTranscriptionResult;
 	generate_brief_audio: GenerateBriefAudioResult;
-	buildos_homework: HomeworkJobResult;
-	buildos_tree_agent: TreeAgentJobResult;
 	agent_run: AgentRunJobResult;
 	build_project_context_snapshot: ProjectContextSnapshotResult;
 	generate_project_icon: ProjectIconGenerationResult;
@@ -575,10 +517,6 @@ export function isValidJobMetadata<T extends QueueJobType>(
 			return isVoiceNoteTranscriptionMetadata(metadata);
 		case 'generate_brief_audio':
 			return isGenerateBriefAudioMetadata(metadata);
-		case 'buildos_homework':
-			return isHomeworkMetadata(metadata);
-		case 'buildos_tree_agent':
-			return isTreeAgentMetadata(metadata);
 		case 'build_project_context_snapshot':
 			return isProjectContextSnapshotMetadata(metadata);
 		case 'extract_onto_asset_ocr':
@@ -723,34 +661,6 @@ function isGenerateBriefAudioMetadata(obj: unknown): obj is GenerateBriefAudioJo
 	if (!obj || typeof obj !== 'object') return false;
 	const meta = obj as Record<string, unknown>;
 	return typeof meta.briefId === 'string';
-}
-
-function isHomeworkMetadata(obj: unknown): obj is HomeworkJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	if (typeof meta.run_id !== 'string') return false;
-	if (typeof meta.iteration !== 'number') return false;
-	if (!meta.budgets || typeof meta.budgets !== 'object') return false;
-	const budgets = meta.budgets as Record<string, unknown>;
-	if (typeof budgets.max_wall_clock_ms !== 'number') return false;
-	if (!meta.permissions || typeof meta.permissions !== 'object') return false;
-	const permissions = meta.permissions as Record<string, unknown>;
-	return (
-		permissions.write_mode === 'autopilot' ||
-		permissions.write_mode === 'approve_plan' ||
-		permissions.write_mode === 'per_write'
-	);
-}
-
-function isTreeAgentMetadata(obj: unknown): obj is TreeAgentJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	if (typeof meta.run_id !== 'string') return false;
-	if (typeof meta.root_node_id !== 'string') return false;
-	if (typeof meta.workspace_project_id !== 'string') return false;
-	if (!meta.budgets || typeof meta.budgets !== 'object') return false;
-	const budgets = meta.budgets as Record<string, unknown>;
-	return typeof budgets.max_wall_clock_ms === 'number';
 }
 
 function isProjectContextSnapshotMetadata(obj: unknown): obj is ProjectContextSnapshotJobMetadata {

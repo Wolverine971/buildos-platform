@@ -48,10 +48,25 @@ export class SupabaseQueue {
 	private stalledJobRetryCount = 0;
 	private readonly MAX_STALLED_RETRIES = 3;
 
-	constructor(options?: { pollInterval?: number; batchSize?: number; stalledTimeout?: number }) {
+	// Graceful-shutdown drain tracking
+	private inFlightBatch: Promise<void> | null = null;
+	private inFlightJobTypes: string[] = [];
+	private drainTimeout: number;
+	private stopping: Promise<void> | null = null;
+
+	constructor(options?: {
+		pollInterval?: number;
+		batchSize?: number;
+		stalledTimeout?: number;
+		drainTimeout?: number;
+	}) {
 		this.pollInterval = options?.pollInterval ?? 5000; // 5 seconds
 		this.batchSize = options?.batchSize ?? 5;
 		this.stalledTimeout = options?.stalledTimeout ?? 300000; // 5 minutes
+		// Bounded drain window on shutdown. Stay under Railway's ~30s
+		// SIGTERM→SIGKILL grace so we always return before the hard kill.
+		this.drainTimeout =
+			options?.drainTimeout ?? (Number(process.env.QUEUE_DRAIN_TIMEOUT_MS) || 25000);
 	}
 
 	/**
@@ -106,6 +121,13 @@ export class SupabaseQueue {
 	}
 
 	/**
+	 * Return the list of job types that currently have a registered processor.
+	 */
+	getRegisteredJobTypes(): JobType[] {
+		return Array.from(this.processors.keys());
+	}
+
+	/**
 	 * Start processing jobs
 	 */
 	async start(): Promise<void> {
@@ -139,9 +161,23 @@ export class SupabaseQueue {
 	}
 
 	/**
-	 * Stop processing jobs
+	 * Stop processing jobs.
+	 *
+	 * Stops the poll/stall intervals immediately (no new claims), then awaits
+	 * the current in-flight batch up to `drainTimeout` so running jobs finish
+	 * cleanly instead of being killed mid-execution. Idempotent — repeat calls
+	 * return the same drain promise.
 	 */
-	stop(): void {
+	stop(): Promise<void> {
+		if (this.stopping) {
+			return this.stopping;
+		}
+		this.stopping = this.drain();
+		return this.stopping;
+	}
+
+	private async drain(): Promise<void> {
+		// Stop accepting new work first so no fresh batch is claimed while draining.
 		if (this.processingInterval) {
 			clearInterval(this.processingInterval);
 			this.processingInterval = null;
@@ -150,6 +186,40 @@ export class SupabaseQueue {
 			clearInterval(this.stalledJobInterval);
 			this.stalledJobInterval = null;
 		}
+
+		const inFlight = this.inFlightBatch;
+		if (inFlight) {
+			console.log(
+				`🛑 Queue stopping — draining in-flight jobs (timeout ${this.drainTimeout}ms)`
+			);
+
+			let timer: NodeJS.Timeout | null = null;
+			const timedOut = Symbol('drain-timeout');
+			const timeoutPromise = new Promise<typeof timedOut>((resolve) => {
+				timer = setTimeout(() => resolve(timedOut), this.drainTimeout);
+			});
+
+			try {
+				const outcome = await Promise.race([
+					inFlight.then(() => 'drained' as const),
+					timeoutPromise
+				]);
+
+				if (outcome === timedOut) {
+					const stillRunning = this.inFlightJobTypes.join(', ') || 'unknown';
+					console.warn(
+						`⚠️ Queue drain timed out after ${this.drainTimeout}ms; still running: ${stillRunning}`
+					);
+				} else {
+					console.log('✅ Queue drained in-flight jobs');
+				}
+			} finally {
+				if (timer) {
+					clearTimeout(timer);
+				}
+			}
+		}
+
 		console.log('🛑 Queue processor stopped');
 	}
 
@@ -180,10 +250,15 @@ export class SupabaseQueue {
 
 			console.log(`🎯 Claimed ${jobs.length} job(s) for processing`);
 
+			// Track the in-flight batch so graceful shutdown can drain it.
+			this.inFlightJobTypes = jobs.map((job) => job.job_type);
+
 			// Process jobs concurrently with proper error isolation
-			const results = await Promise.allSettled(
+			const batch = Promise.allSettled(
 				jobs.map((job) => this.processJob(job as ClaimedQueueJob))
 			);
+			this.inFlightBatch = batch.then(() => undefined);
+			const results = await batch;
 
 			// Log any failed job results for monitoring
 			const failedJobs = results
@@ -209,6 +284,8 @@ export class SupabaseQueue {
 			console.error('❌ Error in job processing loop:', error);
 		} finally {
 			this.isProcessing = false;
+			this.inFlightBatch = null;
+			this.inFlightJobTypes = [];
 		}
 	}
 

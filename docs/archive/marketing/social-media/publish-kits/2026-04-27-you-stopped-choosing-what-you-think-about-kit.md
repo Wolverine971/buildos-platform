@@ -266,7 +266,7 @@ Ship in this sequence:
 
 ## Status dashboard
 
-- [ ] Blog published on build-os.com
+- [x] Blog published on build-os.com (live 2026-04-27; quality-pass edits applied 2026-07-01, pending deploy)
 - [ ] X thread drafted (this kit)
 - [ ] X thread posted (URL: )
 - [ ] LinkedIn post drafted (this kit)

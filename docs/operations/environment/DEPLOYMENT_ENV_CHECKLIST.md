@@ -21,6 +21,15 @@ PRIVATE_BUILDOS_WEBHOOK_SECRET=<generate with: openssl rand -hex 32>
 PRIVATE_OPENROUTER_API_KEY=sk-or-YOUR_KEY
 ```
 
+**PostHog Product Analytics (added 2026-07-01):**
+
+```bash
+# Project API key from PostHog Settings → Project (public write-only key).
+# All capture code no-ops if these are unset.
+PUBLIC_POSTHOG_KEY=phc_YOUR_PROJECT_KEY
+PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+```
+
 ### For Railway (Worker)
 
 **ALL Variables Need to be Added (Different Names!):**
@@ -30,6 +39,11 @@ PRIVATE_OPENROUTER_API_KEY=sk-or-YOUR_KEY
 PUBLIC_SUPABASE_URL=<copy from PUBLIC_SUPABASE_URL in Vercel>
 PRIVATE_SUPABASE_SERVICE_KEY=<copy from PRIVATE_SUPABASE_SERVICE_KEY in Vercel>
 
+# Required once worker Agent Runs can use Google Calendar
+PRIVATE_GOOGLE_CLIENT_ID=<copy from PRIVATE_GOOGLE_CLIENT_ID in Vercel>
+PRIVATE_GOOGLE_CLIENT_SECRET=<copy from PRIVATE_GOOGLE_CLIENT_SECRET in Vercel>
+PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY=<copy from Vercel; must match for existing encrypted tokens>
+
 # Railway specific
 NODE_ENV=production
 PORT=${{PORT}}  # Railway auto-provides
@@ -37,12 +51,16 @@ PORT=${{PORT}}  # Railway auto-provides
 # Webhook config (for emails)
 USE_WEBHOOK_EMAIL=true
 BUILDOS_WEBHOOK_URL=https://YOUR-VERCEL-URL.vercel.app/webhooks/daily-brief-email
-BUILDOS_WEBHOOK_SECRET=<same as PRIVATE_BUILDOS_WEBHOOK_SECRET in Vercel>
+PRIVATE_BUILDOS_WEBHOOK_SECRET=<same as PRIVATE_BUILDOS_WEBHOOK_SECRET in Vercel>
 WEBHOOK_TIMEOUT=30000
 
 # Optional queue settings (can skip - uses defaults)
 QUEUE_POLL_INTERVAL=5000
 QUEUE_BATCH_SIZE=10
+
+# PostHog product analytics (same values as Vercel; worker fires brief_generated etc.)
+PUBLIC_POSTHOG_KEY=<same as PUBLIC_POSTHOG_KEY in Vercel>
+PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 ```
 
 ## ✅ Variables That Should Already Exist (No Change)
@@ -58,12 +76,11 @@ PUBLIC_GOOGLE_CLIENT_ID
 PRIVATE_GOOGLE_CLIENT_ID
 PRIVATE_GOOGLE_CLIENT_SECRET
 GOOGLE_CLIENT_SECRET
+PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY
 PRIVATE_DJ_GMAIL_APP_PASSWORD
-PRIVATE_ZACH_GMAIL_APP_PASSWORD
 PRIVATE_CRON_SECRET
 PUBLIC_APP_URL
 PRIVATE_OPENAI_API_KEY  # Keep as fallback
-PRIVATE_ANTHROPIC_API_KEY  # Keep as fallback if you have it
 ```
 
 ## 🔄 Order of Operations
@@ -89,7 +106,7 @@ openssl rand -hex 32
 Use this value for:
 
 - `PRIVATE_BUILDOS_WEBHOOK_SECRET` in Vercel
-- `BUILDOS_WEBHOOK_SECRET` in Railway
+- `PRIVATE_BUILDOS_WEBHOOK_SECRET` in Railway
 
 ## ⚠️ Common Mistakes to Avoid
 

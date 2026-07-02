@@ -1,0 +1,21 @@
+<!-- docs/marketing/strategy/buildos-want-need-painkiller-2026-06-26.md -->
+
+# BuildOS — Want / Need / Pain-Killer Matrix
+
+> Adapted from Tony Fadell's positioning template in _Build: An Unorthodox Guide to Making Things Worth Making_ (the "5.4.1" table). Fadell led the iPod and co-created the iPhone at Apple, then founded Nest — the template originated there and has been reused on everything from medical diagnostics to shrimp-farm sensors. Here it's filled in for BuildOS.
+>
+> **How to read it:** _Why I want it_ is the emotional pull (a one-word craving). _Why I need it_ is the rational justification, split into the real pain underneath (with a pain name) and the line we can defend as the fix (with a painkiller name). Each row is a different person who shows up at the door.
+
+---
+
+| WHY I WANT IT                                                             |                   | WHAT'S MY PAIN                                                                                                                                                                            | PAIN-KILLER                                                                                                                                                     |              |
+| ------------------------------------------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| My head is too full. I crave **CLARITY**.                                 | `OVERFLOW`        | My thinking lives in twelve places — notes, voice memos, browser tabs, my brain at 2am. The good ideas leak out and I re-think the same thought twice.                                    | I dump everything in one stream and BuildOS turns it into projects, tasks, and context I can actually see. The mess becomes a map.                              | `STRUCTURE`  |
+| I can't get started. I want **MOMENTUM**.                                 | `STALL`           | Every project tool makes me set it up before I can use it. Configuring the system is more work than the work — so I quit and fall back to a to-do list that forgets why anything matters. | I just talk. BuildOS builds the plan around me and hands back the next step, not a blank template. I'm moving before I've finished thinking.                    | `TRACTION`   |
+| I'm sick of chatbots. I want **RELIEF**, not another assistant to manage. | `AGENT FATIGUE`   | Every app wants me to "chat with my AI." I don't want a meeting with a robot or a prompt to babysit. I want my stuff handled and my head quiet.                                           | BuildOS doesn't make me run an agent. I dump, it organizes, I get a daily brief. The AI stays behind the curtain and does the boring part.                      | `CALM`       |
+| I run too many things at once. I want **CONTROL**.                        | `DROPPED THREADS` | Every time I switch projects I pay a tax re-loading where I was. Context dies in the gap between sessions — and between me and anyone I hand the work to.                                 | BuildOS holds the context for every project, so I pick up exactly where I left off — and so does any agent or teammate. The thread never drops, even when I do. | `CONTINUITY` |
+| I have the ideas. I lose the **FOLLOW-THROUGH**.                          | `LEAK`            | Remembering is the hard part. The second something shinier shows up, today's plan falls out of my head and I don't notice until it's late.                                                | BuildOS remembers for me and sends one daily brief with what actually matters today. Nothing leaks while I'm not looking.                                       | `RECALL`     |
+
+---
+
+_This is Fadell's template, filled for BuildOS — one row per person who walks in. The **want** is what pulls them; the **pain** is what's actually wrong; the **pain-killer** is the one sentence we have to be able to defend. If a row's pain-killer isn't true yet in the product, that's a roadmap item, not a tagline._

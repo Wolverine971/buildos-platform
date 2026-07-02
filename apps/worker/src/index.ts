@@ -13,7 +13,8 @@ import { registerEmailTrackingRoute } from './routes/email-tracking';
 import smsScheduledRoutes from './routes/sms/scheduled';
 import { startScheduler } from './scheduler';
 import { queueConfig } from './config/queueConfig';
-import { queue, startWorker } from './worker';
+import { queue, shutdownWorker, startWorker } from './worker';
+import type { Server } from 'node:http';
 import { classifyOntologyEntity } from './workers/ontology/ontologyClassifier';
 
 dotenv.config();
@@ -30,6 +31,9 @@ console.log(`   → SMTP configured: ${process.env.SMTP_HOST ? 'YES' : 'NO'}`);
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
+
+// HTTP server handle, assigned in start(); used by graceful shutdown.
+let server: Server | null = null;
 
 // Define allowed origins
 const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
@@ -756,9 +760,9 @@ async function start() {
 					source: 'process.on'
 				}
 			}).finally(() => {
-				// Gracefully shutdown queue
+				// Gracefully shutdown queue (fire-and-forget; we exit right after)
 				try {
-					queue.stop();
+					void queue.stop();
 				} catch (e) {
 					console.error('Failed to stop queue:', e);
 				}
@@ -778,9 +782,9 @@ async function start() {
 					source: 'process.on'
 				}
 			}).finally(() => {
-				// Gracefully shutdown queue
+				// Gracefully shutdown queue (fire-and-forget; we exit right after)
 				try {
-					queue.stop();
+					void queue.stop();
 				} catch (e) {
 					console.error('Failed to stop queue:', e);
 				}
@@ -796,7 +800,7 @@ async function start() {
 		startScheduler();
 
 		// Start the API server
-		app.listen(PORT, '0.0.0.0', () => {
+		server = app.listen(PORT, '0.0.0.0', () => {
 			console.log(`🚀 API server running on port ${PORT}`);
 			console.log(`📊 Queue dashboard: http://localhost:${PORT}/queue/stats`);
 			console.log(`❤️ Health check: http://localhost:${PORT}/health`);
@@ -814,18 +818,59 @@ async function start() {
 	}
 }
 
-// Handle shutdown gracefully
-process.on('SIGTERM', () => {
-	console.log('SIGTERM received, shutting down gracefully...');
-	queue.stop();
-	void shutdownPostHog().finally(() => process.exit(0));
-});
+// Handle shutdown gracefully — single orchestrated path.
+// Order: stop accepting HTTP → drain in-flight jobs → flush PostHog → exit.
+let shuttingDown = false;
 
-process.on('SIGINT', () => {
-	console.log('SIGINT received, shutting down gracefully...');
-	queue.stop();
-	void shutdownPostHog().finally(() => process.exit(0));
-});
+async function gracefulShutdown(signal: string): Promise<void> {
+	if (shuttingDown) {
+		// Second signal while already draining — operator wants out now.
+		console.log(`⏩ ${signal} received again, forcing exit`);
+		process.exit(0);
+	}
+	shuttingDown = true;
+	console.log(`${signal} received, shutting down gracefully...`);
+
+	// Hard-kill safety net so shutdown can never hang past Railway's SIGKILL
+	// grace window (~30s). Unref'd so it never keeps the process alive on its own.
+	const hardKill = setTimeout(() => {
+		console.error('⛔ Graceful shutdown timed out after 28000ms, forcing exit');
+		process.exit(1);
+	}, 28000);
+	hardKill.unref();
+
+	try {
+		// 1. Stop accepting new HTTP requests. Bounded: server.close() waits for
+		// ALL connections including idle keep-alive sockets (e.g. Railway health
+		// checks), which would otherwise eat the whole drain window and let the
+		// 28s hard-kill fire before jobs drain. Close idle sockets explicitly and
+		// move on after 2s either way — in-flight requests keep running.
+		await new Promise<void>((resolve) => {
+			if (!server) return resolve();
+			const httpCloseTimeout = setTimeout(() => resolve(), 2000);
+			httpCloseTimeout.unref();
+			server.closeIdleConnections();
+			server.close(() => {
+				clearTimeout(httpCloseTimeout);
+				resolve();
+			});
+		});
+
+		// 2. Drain in-flight queue jobs (bounded by QUEUE_DRAIN_TIMEOUT_MS)
+		await shutdownWorker();
+
+		// 3. Flush buffered analytics events
+		await shutdownPostHog();
+	} catch (error) {
+		console.error('❌ Error during graceful shutdown:', error);
+	} finally {
+		clearTimeout(hardKill);
+		process.exit(0);
+	}
+}
+
+process.on('SIGTERM', () => void gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => void gracefulShutdown('SIGINT'));
 
 // Start the application
 start();

@@ -12,6 +12,8 @@ This document captures the original domain/skill direction and remains useful fo
 
 As of 2026-05-19, Phase 1 infrastructure is implemented in the work-capability architecture: domain/work-capability tools, compact domain prompt index, session domain state, demand capture, and the admin-managed `domain_research_queue`. The broader candidate map for 10-20 future domain packs lives in `docs/specs/buildos-domain-candidate-map-2026-05-19.md`.
 
+2026-06-22 clarification: the original "domain as routing map" thesis remains, but the implementation-facing question is now route strength, not whether sensing has consumers. Active domain signals feed the prompt and admin queue flow. Future work should decide whether to keep this advisory/admin-visible or make it product-critical, using domain signal frequency, prompt-injected usage, backlog promotion, and downstream skill/tool usage by domain as the measurement set.
+
 ## Purpose
 
 BuildOS needs a first-class domain layer that lets agentic chat understand the subject territory of a conversation before choosing skills, resources, tools, or future research.

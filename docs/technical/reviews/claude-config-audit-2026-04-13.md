@@ -201,5 +201,5 @@ This first batch is intentionally small and should not remove files:
 ## Open Decisions
 
 - Should `create_plan.md` be deleted, archived, or converted to a command?
-- Should `social-warmup-template/.claude/skills/*.skill.md` be migrated too, or left as template source material?
+- Should `docs/marketing/social-warmup-template/.claude/skills/*.skill.md` be migrated too, or left as template source material?
 - Should permission hardening happen in this same cleanup branch, or as a separate pass to avoid changing development workflow unexpectedly?

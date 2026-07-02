@@ -2,7 +2,7 @@
 title: 'ANALYSIS: Linus Lee — Engineering for Aliveness (Instrumental vs Engaged Interfaces, Agency, Tools for Thought)'
 source_type: youtube_analysis
 source_video: 'https://www.youtube.com/watch?v=IaUYbNnOYUM'
-source_transcript: '../../../../research-library/transcripts/podcast-linus-lee-aliveness.md'
+source_transcript: '../../../research-library/transcripts/podcast-linus-lee-aliveness.md'
 video_id: 'IaUYbNnOYUM'
 channel: 'Dialectic (ep 24)'
 library_category: psychology-agency-philosophy
@@ -149,6 +149,6 @@ Keeping BuildOS from becoming generic automation, grounded in what Lee actually 
 
 ## Source
 
-- **Raw transcript:** [`research-library/transcripts/podcast-linus-lee-aliveness.md`](../../../../research-library/transcripts/podcast-linus-lee-aliveness.md)
+- **Raw transcript:** [`docs/research-library/transcripts/podcast-linus-lee-aliveness.md`](../../../research-library/transcripts/podcast-linus-lee-aliveness.md)
 - **Video:** Linus Lee — "Engineering for Aliveness: LLMs, Agency, Tools for Thought, Thrive Capital" — Dialectic ep 24 — https://www.youtube.com/watch?v=IaUYbNnOYUM
 - **Speaker:** Linus Lee (thesephist) — researcher/engineer at Thrive Capital; previously Notion, Betaworks, Replit; "instruments for super agency," instrumental-vs-engaged interfaces, tools for thought, notation/representation.

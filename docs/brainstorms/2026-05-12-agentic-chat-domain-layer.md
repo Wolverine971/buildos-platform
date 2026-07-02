@@ -2,9 +2,25 @@
 
 # Agentic Chat Domain Layer Brainstorm
 
-Status: raw architecture brainstorm
+Status: historical brainstorm; Phase 1 infrastructure is now partially implemented
 Date: 2026-05-12
 Context: Follow-up from discussion about connecting BuildOS blog-derived agent skills into Agentic Chat.
+
+2026-06-22 current status:
+
+- Domain sensing is live in `/api/agent/v2/stream`.
+- Active domain signals are injected into the lite prompt and persisted in `chat_sessions.agent_metadata.fastchat_domain_state`.
+- Domain/work-capability search/load tools, domain demand capture, and the admin-managed `domain_research_queue` flow exist.
+- The admin domain page reads backlog candidates, and `/api/admin/chat/domains/research-queue/promote` can promote session backlog into durable queue records.
+- The open question is no longer "is domain sensing consumed?" It is whether domain routing should remain advisory/admin-visible or become product-critical by nudging skill/tool selection more forcefully.
+
+Suggested measurement before increasing route strength:
+
+- domain signal frequency by context type
+- prompt-injected active-domain usage and follow-up continuity
+- research backlog candidate creation and promotion rate
+- downstream skill/tool usage by sensed domain/work capability
+- TTFR and prompt-token delta for domain-active vs routine BuildOS turns
 
 ## Why This Exists
 

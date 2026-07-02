@@ -74,7 +74,7 @@ See [Task Index](TASK_INDEX.md) for navigation by "what you want to do"
 
 ### Research & Design
 
-- **Research Library**: `/research-library/` - Transcripts, blogs, papers, insights, and design thinking
+- **Research Library**: `/docs/research-library/` - Transcripts, blogs, papers, insights, and design thinking
 - **Technical Notes**: `/docs/technical/` - Cross-cutting technical research and implementation notes
 - **Reports**: `/docs/reports/` - Audit reports, assessments, and review artifacts
 - **Example Projects**: `/docs/example-projects/` - Seed project research, guides, and migration reviews

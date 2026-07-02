@@ -76,7 +76,7 @@ Synthesis of four YouTube transcripts on lead-gen with Claude Code, SaaS social 
 ### Applies to BuildOS
 
 - **Strongest single takeaway**: Brain-dump processing, ontology classification, daily briefs — every one has a "harness" that exists because earlier models were dumber. Schedule a periodic prompt audit (every model release in `packages/smart-llm/model-config.ts`) where prompts get re-read and crutches deleted. Real engineering task, not just hygiene.
-- **Research preview branding** is gold. Agentic chat (`AGENTIC_CHAT_BEHAVIORAL_PROFILE_MODE`), the tree agent, the homework worker — all could ship faster as visibly-labeled previews. Trust through _visible_ speed, not perfection.
+- **Research preview branding** is gold. Agentic chat behavioral-profile experiments, the tree agent, the homework worker — all could ship faster as visibly-labeled previews. Trust through _visible_ speed, not perfection.
 - **Build at the edge of model capability.** What in BuildOS "almost works"? Probably ontology classification, project icon generation, behavioral profile injection. Keep them prototyped behind flags so a Sonnet/Opus jump flips a switch.
 - **10 evals > polished features.** `pnpm test:llm` is the right place. Identify the 10 most important user-visible LLM behaviors (brain dump → tasks accuracy, brief tone, classification correctness) and run them on every model swap.
 - **"Build apps you use every day"** is **literally the BuildOS thesis**. The strongest social proof is daily founder usage. Marketing surface should show real usage, not staged demos.

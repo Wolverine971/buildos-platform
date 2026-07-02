@@ -13,6 +13,20 @@
 
 ---
 
+## Implementation Status (2026-06-17)
+
+What is actually shipped today (this spec remains the forward-looking target):
+
+- **Search is keyword-based, not vector/semantic.** The embedding-similarity component below (`0.20` weight) is **not** wired up — `embedding` columns and a `search_similar_items` RPC exist but are unused by agentic chat. Live ranking is Postgres full-text (`websearch_to_tsquery` over weighted `search_vector`) + `pg_trgm` trigram fuzzy only.
+- **The two primary tools exist** as `search_all_projects` (this spec's `search_buildos`) and `search_project`, both backed by `POST /api/onto/search` → `onto_search_entities` RPC. The gateway preloads them, so they are the default path.
+- **Legacy per-entity `ILIKE` tools were hardened, not yet removed** (`search_onto_*`). Plain multi-word queries now match in any word order (AND across significant tokens, OR across fields, stopwords dropped); explicit `OR`/`|` keeps OR semantics. `search_onto_documents` now matches body content, not title-only. Their tool descriptions steer the agent to prefer the smart tools.
+- **Search telemetry landed.** `chat_tool_executions.result_count` + `zero_result` (search-only columns) make zero-result rate queryable — the primary signal for whether retrieval is failing the agent. See `apps/web/src/lib/services/agentic-chat/tools/core/search-telemetry.ts` and migration `20260617000000_search_tool_telemetry.sql`.
+- **Document bodies are now indexed from the canonical column.** Migration `20260617010000` rebuilds `onto_documents.search_vector` to include the top-level `content` column (was `title` + `props` only, so body search relied on the legacy `props.body_markdown` mirror). The multi-token AND behavior of the per-entity ILIKE tools is verified against the real postgrest-js URL builder in `ontology-read-executor.search-url.test.ts`.
+
+Still open vs. this spec: unified `onto_search_index`/`onto_search_chunks`, embedding/semantic recall, and removing the legacy per-entity tools. See `docs/technical/implementation/ONTOLOGY_SEARCH_TOOL_SPEC.md` for per-entity RPC detail.
+
+---
+
 ## Summary
 
 This spec defines an agent-first search system for BuildOS.

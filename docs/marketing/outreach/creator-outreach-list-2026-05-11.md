@@ -290,23 +290,35 @@ The other 15 are real targets too — these five just have the tightest opener a
 
 ## Email playbook
 
+> **Updated 2026-06-22** with principles from the Instantly cold-email video synthesis — see `docs/marketing/outreach/cold-email-principles-instantly-2026-06-22.md`. The big shifts: **relevance over compliment** in line 1, **offer is the ceiling** (prefer a pre-built artifact over a "free seat"), and a real **new-angle follow-up sequence** (the original playbook had none).
+
 **Structure for every send:**
 
-1. **Line 1 — the proof you read them.** Quote or paraphrase the exact pain signal captured above. Reference a specific post/episode/cohort. No "I love your work" generic openers.
+1. **Line 1 — relevance, not compliment.** Name _their problem in their own words_, using the exact pain signal captured above. The goal is "this is the most relevant cold email I've gotten all month," not "this person likes me." Avoid the soft-compliment opener ("loved your take on X") — at this point it's a _tell_ that screams cold email. Quote the signal because it proves the fit, not to flatter.
 2. **Line 2 — the BuildOS slot in one sentence.** Use the _how-to-explain-buildos-2026-05-11_ fallback: _"It's the system of record for what you're working on, that your AI tools can also read from."_ Adjust to author/YouTuber/podcaster/course-creator framing.
-3. **Line 3 — the specific offer.** Free seat. No demo call. Just: _"Want me to set you up?"_ If they bite, send a Loom walking through how it'd map to their actual workflow.
-4. **Line 4 — sign DJ.** No corporate signature block. Plain email.
+3. **Line 3 — the offer (this is the ceiling, not the copy).** Lead with a **pre-built BuildOS workspace built for them** wherever feasible (see the faker playbook's artifact strategy) — that's "experienced value before any call," which beats a bare "free seat." A free seat is the fallback when a workspace isn't pre-built. Never a demo call as the ask. Run the offer through the 4-part check: specific outcome + timeframe + reason to act now + a free deliverable they'd normally pay for. Gut-check: _if they said yes today, would the offer survive the first real conversation?_
+4. **Line 4 — sign DJ.** No corporate signature block. Plain email. Written by a human — never an AI-generated opener.
 
 **Don't:**
 
 - Pitch them on being a guest, joining a webinar, or doing an interview. The pitch is product-first.
 - Send the same email to all 20. Personalize the opener each time using the angle captured per-target.
 - Mention "we" or "the BuildOS team." It's a founder reaching out personally.
+- Use an AI-generated first line. AI may help you _research_ them; the message is hand-written. Synthetic openers pattern-match to noise and break the brand.
+- Import high-volume cold-email tactics (sending domains, warm-up farms, AI-at-scale). This is a tiny, hand-sent, founder-from-a-real-inbox lane — those mechanics don't apply and would hurt.
+
+**Follow-up sequence (3 touches max, then disengage gracefully):**
+
+Most positive replies come from touches 2 and 3 — but only if each is a _new angle_, not a nudge. Never "bumping this up," never "did you see my last email."
+
+- **Touch 1:** the email above (or the pre-built workspace link).
+- **Touch 2 (~1–2 weeks later):** a _different_ artifact or angle — e.g. a short analysis of their workflow, a comparison to a peer's stack, or a genuinely useful question only they can answer. It should stand alone as if it were the first message.
+- **Touch 3 (~2–3 weeks after that):** one more distinct angle or artifact. After this, disengage gracefully; re-engage in ~6 months only with a genuinely new reason.
 
 **Voice rules** (cribbed from your cold-outreach memory):
 
 - Short. Human. Not corporate.
-- Bridge sentence between the proof-of-reading and the pitch is non-negotiable.
+- Bridge sentence between the relevance line and the pitch is non-negotiable.
 - Sign "DJ."
 
 ---

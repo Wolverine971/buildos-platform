@@ -143,11 +143,6 @@ pnpm test:ui           # Interactive UI
 # LLM tests (⚠️ COSTS MONEY - uses real OpenAI API)
 pnpm test:llm          # Run once
 pnpm test:llm:watch    # Watch mode
-pnpm test:llm:verbose  # Verbose output
-
-# Silent mode (for CI)
-pnpm test:quiet        # Dot reporter
-pnpm test:silent       # Completely silent
 
 # Pre-push validation
 pnpm pre-push          # typecheck + test + lint + build

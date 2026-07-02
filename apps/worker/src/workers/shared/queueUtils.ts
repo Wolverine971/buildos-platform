@@ -42,10 +42,6 @@ export interface OnboardingAnalysisJobData {
 	};
 }
 
-export interface EmailBriefJobData {
-	emailId: string; // ID from emails table
-}
-
 export interface SMSJobData {
 	message_id: string; // ID from sms_messages table
 	phone_number: string; // E.164 formatted phone number

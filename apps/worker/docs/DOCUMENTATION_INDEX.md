@@ -322,7 +322,6 @@ See **CLAUDE.md** - Original development guide with:
 ### Feature-Specific Docs (in this directory)
 
 - **[features/EMAIL_TRACKING.md](features/EMAIL_TRACKING.md)** - Email tracking implementation
-- **[features/EMAIL_SYSTEM_OVERVIEW.md](features/EMAIL_SYSTEM_OVERVIEW.md)** - Email system architecture
 - **[features/daily-briefs/](features/daily-briefs/)** - Daily brief generation
 - **[deployment/RAILWAY_DEPLOYMENT.md](deployment/RAILWAY_DEPLOYMENT.md)** - Railway deployment guide
 - **[SCHEDULER_ANALYSIS_AND_BUGS.md](SCHEDULER_ANALYSIS_AND_BUGS.md)** - Scheduler bug analysis
