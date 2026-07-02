@@ -40,6 +40,10 @@ function fail(name, detail = '') {
 	console.log(`  \x1b[31mFAIL\x1b[0m ${name}${detail ? `  ${detail}` : ''}`);
 }
 
+function skip(name, detail = '') {
+	console.log(`  \x1b[33mSKIP\x1b[0m ${name}${detail ? `  ${detail}` : ''}`);
+}
+
 function check(name, condition, detail = '') {
 	if (condition) ok(name, detail);
 	else fail(name, detail);
@@ -189,16 +193,40 @@ async function checkNegativeProbes() {
 		fail('protocol-version probe reachable', String(error));
 	}
 
-	// JSON-RPC batch arrays are rejected (removed in 2025-06-18) → 400.
+	// JSON-RPC batch arrays are rejected (removed in 2025-06-18) → 400 with the
+	// dedicated guard's message, not the generic invalid-request fallback.
 	try {
 		const res = await fetch(MCP_URL, {
 			method: 'POST',
 			headers: jsonHeaders(),
 			body: JSON.stringify([{ jsonrpc: '2.0', id: 1, method: 'initialize' }])
 		});
-		check('batch array → 400', res.status === 400, `(got ${res.status})`);
+		const body = await safeJson(res);
+		check(
+			'batch array → 400 with explicit batch rejection',
+			res.status === 400 && /batch/i.test(body?.error?.message ?? ''),
+			`(got ${res.status}: ${body?.error?.message ?? 'no message'})`
+		);
 	} catch (error) {
 		fail('batch probe reachable', String(error));
+	}
+
+	// Client notifications (no id) must be accepted with 202 and no body — even
+	// before auth (Streamable HTTP transport requirement).
+	try {
+		const res = await fetch(MCP_URL, {
+			method: 'POST',
+			headers: jsonHeaders(),
+			body: JSON.stringify({ jsonrpc: '2.0', method: 'notifications/cancelled' })
+		});
+		const text = await res.text();
+		check(
+			'notification (no id) → 202 with empty body',
+			res.status === 202 && text === '',
+			`(got ${res.status}, body ${JSON.stringify(text.slice(0, 40))})`
+		);
+	} catch (error) {
+		fail('notification probe reachable', String(error));
 	}
 
 	// GET is not a server→client stream in v1: unauthenticated GET → 401 challenge.
@@ -252,10 +280,13 @@ async function checkAuthenticatedFlow() {
 			`(${Array.isArray(tools) ? tools.length : 0} tools)`
 		);
 		if (Array.isArray(tools)) {
+			// Only ever invoke a confirmed read-only tool. This script runs with
+			// real tokens against live accounts; never fall back to an arbitrary
+			// (possibly write) tool.
 			firstReadTool =
 				tools.find((t) => t?.name === 'list_onto_projects') ||
 				tools.find((t) => t?.annotations?.readOnlyHint === true) ||
-				tools[0];
+				null;
 		}
 	} catch (error) {
 		fail('tools/list reachable', String(error));
@@ -279,7 +310,22 @@ async function checkAuthenticatedFlow() {
 			fail('tools/call reachable', String(error));
 		}
 	} else {
-		fail('tools/call has a tool to invoke', '(no tool from tools/list)');
+		skip('tools/call', '(no read-only tool exposed by this grant; refusing to call a write tool)');
+	}
+
+	// Authenticated GET → 405: v1 offers no server→client SSE stream.
+	try {
+		const res = await fetch(MCP_URL, {
+			method: 'GET',
+			headers: { Authorization: `Bearer ${TOKEN}` }
+		});
+		check(
+			'authenticated GET → 405 with Allow header',
+			res.status === 405 && /POST/.test(res.headers.get('allow') ?? ''),
+			`(got ${res.status}, Allow: ${res.headers.get('allow') ?? 'none'})`
+		);
+	} catch (error) {
+		fail('authenticated GET probe reachable', String(error));
 	}
 
 	// ping → empty result

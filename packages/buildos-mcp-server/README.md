@@ -16,8 +16,10 @@ local MCP client  ⇄ (stdio)  buildos-mcp-server  ⇄ (HTTPS + Bearer)  /mcp/bu
 ```
 
 - `initialize` is answered locally by the bridge.
-- `tools/list` and `tools/call` are forwarded to the remote connector.
+- `tools/list`, `tools/call`, `resources/list`, and `resources/read` are forwarded to the remote
+  connector.
 - Auth is a single `Authorization: Bearer <token>` header — your BuildOS **agent key** (`boca_…`).
+  `https` is required for any non-localhost `BUILDOS_BASE_URL`.
 - The bridge never prompts for secrets and writes diagnostics to **stderr only**, so the stdio
   JSON-RPC stream stays clean.
 
@@ -33,14 +35,24 @@ Environment variables:
 
 ## Client setup
 
+> **Not yet on npm.** The package is currently `private`, so `npx -y @buildos/mcp-server` will
+> not resolve. Build it locally and point your client at the bundled entrypoint:
+
+```bash
+git clone https://github.com/buildos/buildos-platform   # or use your existing checkout
+cd buildos-platform
+pnpm install
+pnpm --filter @buildos/mcp-server build                  # produces packages/buildos-mcp-server/dist/index.js
+```
+
 ### Claude Desktop / Cursor / generic MCP client
 
 ```json
 {
 	"mcpServers": {
 		"buildos": {
-			"command": "npx",
-			"args": ["-y", "@buildos/mcp-server"],
+			"command": "node",
+			"args": ["/absolute/path/to/buildos-platform/packages/buildos-mcp-server/dist/index.js"],
 			"env": {
 				"BUILDOS_BASE_URL": "https://build-os.com",
 				"BUILDOS_AGENT_TOKEN": "boca_your_agent_key"
@@ -52,9 +64,11 @@ Environment variables:
 
 ### Codex / other clients
 
-Same shape — point the client's MCP server config at `npx -y @buildos/mcp-server` with the two
-`env` values above. Set `BUILDOS_MCP_PROFILE=chatgpt_data_app` for a read-only `search`/`fetch`
-surface.
+Same shape — point the client's MCP server config at `node …/dist/index.js` with the two `env`
+values above. Set `BUILDOS_MCP_PROFILE=chatgpt_data_app` for a read-only `search`/`fetch` surface.
+
+Once the package is published to npm, `"command": "npx", "args": ["-y", "@buildos/mcp-server"]`
+will work as a zero-install alternative.
 
 ## Development
 

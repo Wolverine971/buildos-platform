@@ -12,10 +12,13 @@ type JsonRpcResponse = {
 
 export type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 
+const REQUEST_TIMEOUT_MS = 60_000;
+
 /**
  * Thin JSON-RPC proxy to the remote BuildOS connector (`/mcp/buildos`). The local
- * SDK server handles `initialize` itself and forwards only `tools/list` and
- * `tools/call` through here. Auth is a single bearer header; nothing is logged.
+ * SDK server handles `initialize` itself and forwards `tools/list`, `tools/call`,
+ * `resources/list`, and `resources/read` through here. Auth is a single bearer
+ * header; nothing is logged.
  */
 export class BuildosRemoteMcpClient {
 	private nextId = 1;
@@ -58,21 +61,33 @@ export class BuildosRemoteMcpClient {
 	}
 
 	private async rpc(method: string, params?: Record<string, unknown>): Promise<unknown> {
-		const response = await this.fetchFn(this.endpoint(), {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Accept: 'application/json, text/event-stream',
-				Authorization: `Bearer ${this.config.token}`,
-				'MCP-Protocol-Version': MCP_PROTOCOL_VERSION
-			},
-			body: JSON.stringify({
-				jsonrpc: '2.0',
-				id: this.nextId++,
-				method,
-				...(params ? { params } : {})
-			})
-		});
+		let response: Response;
+		try {
+			response = await this.fetchFn(this.endpoint(), {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'application/json, text/event-stream',
+					Authorization: `Bearer ${this.config.token}`,
+					'MCP-Protocol-Version': MCP_PROTOCOL_VERSION
+				},
+				body: JSON.stringify({
+					jsonrpc: '2.0',
+					id: this.nextId++,
+					method,
+					...(params ? { params } : {})
+				}),
+				// A hung remote must not hang the local client's tool call forever.
+				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+			});
+		} catch (error) {
+			if (error instanceof Error && error.name === 'TimeoutError') {
+				throw new Error(
+					`BuildOS MCP request timed out after ${REQUEST_TIMEOUT_MS / 1000}s for ${method}`
+				);
+			}
+			throw error;
+		}
 
 		const text = await response.text();
 		let payload: JsonRpcResponse;

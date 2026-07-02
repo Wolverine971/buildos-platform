@@ -139,12 +139,29 @@ export function extractAllowedOpsFromPolicy(
 		return defaultAllowedOpsForMode(mode);
 	}
 
-	try {
-		const normalized = normalizeAllowedOps(policy.allowed_ops, 'policy.allowed_ops', mode);
-		return normalized ?? defaultAllowedOpsForMode(mode);
-	} catch {
+	const raw = policy.allowed_ops;
+	if (raw === undefined || raw === null) {
 		return defaultAllowedOpsForMode(mode);
 	}
+
+	// A recorded allowlist must never widen at read time. A malformed value or an
+	// entry we no longer recognize (e.g. a renamed/removed op) drops just that
+	// entry — never the whole list — because falling back to the mode default
+	// would silently grant a narrowly-scoped caller the full op surface.
+	if (!Array.isArray(raw)) {
+		return [];
+	}
+
+	const normalized: BuildosAgentAllowedOp[] = [];
+	const seen = new Set<string>();
+	for (const entry of raw) {
+		if (typeof entry !== 'string' || !isSupportedOp(entry)) continue;
+		if (mode === 'read_only' && isWriteOp(entry)) continue;
+		if (seen.has(entry)) continue;
+		seen.add(entry);
+		normalized.push(entry);
+	}
+	return normalized;
 }
 
 export function buildCallerPolicy(params: {

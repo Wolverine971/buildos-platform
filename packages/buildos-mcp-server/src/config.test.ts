@@ -26,6 +26,21 @@ describe('loadConfig', () => {
 		).toThrow(/must be an http\(s\) URL/);
 	});
 
+	it('allows plain http only for loopback hosts', () => {
+		expect(
+			loadConfig({ BUILDOS_AGENT_TOKEN: 'boca_x', BUILDOS_BASE_URL: 'http://localhost:5173' })
+				.baseUrl
+		).toBe('http://localhost:5173');
+		expect(
+			loadConfig({ BUILDOS_AGENT_TOKEN: 'boca_x', BUILDOS_BASE_URL: 'http://127.0.0.1:5173' })
+				.baseUrl
+		).toBe('http://127.0.0.1:5173');
+		// A typo'd http URL to a real host would send the agent key in cleartext.
+		expect(() =>
+			loadConfig({ BUILDOS_AGENT_TOKEN: 'boca_x', BUILDOS_BASE_URL: 'http://build-os.com' })
+		).toThrow(/must use https for non-localhost hosts/);
+	});
+
 	it('accepts a known profile and rejects an unknown one', () => {
 		expect(
 			loadConfig({ BUILDOS_AGENT_TOKEN: 'boca_x', BUILDOS_MCP_PROFILE: 'chatgpt_data_app' })

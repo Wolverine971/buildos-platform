@@ -42,6 +42,15 @@ export function hashAgentCallerToken(token: string): string {
 	return createHash('sha256').update(token).digest('hex');
 }
 
+/**
+ * Loggable identifier for a presented credential: only the scheme prefix up to
+ * the first underscore (e.g. "boca_", "bo_"), never secret body characters.
+ */
+function credentialPrefixForLog(token: string): string {
+	const underscore = token.indexOf('_');
+	return underscore === -1 ? token.slice(0, 5) : token.slice(0, underscore + 1);
+}
+
 export async function authenticateExternalAgentCaller(
 	admin: any,
 	request: Request,
@@ -84,7 +93,7 @@ export async function authenticateExternalAgentCaller(
 				reason: 'caller_lookup_failed',
 				...getSecurityRequestContext(request),
 				metadata: {
-					credentialPrefix: token.slice(0, 12)
+					credentialPrefix: credentialPrefixForLog(token)
 				}
 			},
 			{ ...securityEventOptions, supabase: admin }
@@ -103,7 +112,7 @@ export async function authenticateExternalAgentCaller(
 				reason: 'unknown_caller',
 				...getSecurityRequestContext(request),
 				metadata: {
-					credentialPrefix: token.slice(0, 12)
+					credentialPrefix: credentialPrefixForLog(token)
 				}
 			},
 			{ ...securityEventOptions, supabase: admin }

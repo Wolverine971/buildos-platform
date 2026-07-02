@@ -2,9 +2,12 @@
 
 # BuildOS MCP Hardening — Status & Execution Plan
 
-**Date:** 2026-06-12
+**Date:** 2026-06-12 (status refreshed 2026-07-01)
 **Owner:** BuildOS (DJ)
-**Status:** Active plan — Phases 0–3 done; lethal-trifecta self-audit + one-command repro next (Simon path)
+**Status:** Phases 0–3 done. Self-audit + one-command repro shipped 2026-06-28 (see
+`buildos-mcp-audit-fixes-2026-06-28.md`), plus `ping`/pagination/resources and OAuth lifecycle
+fixes. Second audit round 2026-07-01 fixed scope-binding + spec-compliance findings. Simon/Hamel
+outreach is unblocked.
 **Supersedes the status sections of:** `docs/specs/buildos-mcp-server-spec-2026-05-21.md` (§4.2, §9)
 **Closes loose end:** `docs/reports/buildos-loose-ends-inventory-2026-06-11.md` §4, §17 (rec to add an "MCP public-readiness" status doc)
 
@@ -30,13 +33,13 @@ origin-validated, self-audited, with a one-command repro. We are at the former, 
 | Phase 1    | Remote MCP hardening (hand-rolled) | **DONE (2026-06-12)** | Validated-origin CORS, origin allow-list (403), GET→405/401, Content-Type/Accept/protocol-version checks, security events. 25 connector tests green.       |
 | Phase 2    | Productized tool surface           | **DONE (2026-06-13)** | Connector profiles (general/chatgpt_data_app/local_admin via `?profile=`), read-only `search`/`fetch`, discovery off by default. 32 connector tests green. |
 | Phase 3    | Local stdio bridge package         | **DONE (2026-06-13)** | `packages/buildos-mcp-server` (`@buildos/mcp-server`) ships: SDK-free core + stdio entrypoint. 12 tests, typecheck + build + stdio smoke all green.        |
-| Self-audit | Lethal-trifecta threat model       | **0% — NEXT**         | Doc does not exist. Required before Simon/Hamel.                                                                                                           |
-| Repro      | One-command repro                  | **0% — NEXT**         | No script/harness yet.                                                                                                                                     |
+| Self-audit | Lethal-trifecta threat model       | **DONE (2026-06-28)** | `buildos-mcp-lethal-trifecta-self-audit-2026-06-28.md`.                                                                                                           |
+| Repro      | One-command repro                  | **DONE (2026-06-28)** | `apps/web/scripts/mcp-connector-repro.mjs` (`pnpm --filter @buildos/web mcp:repro`).                                                                                                                                     |
 
 ### What is actually true in code today
 
 - `apps/web/src/routes/mcp/buildos/+server.ts` — thin route delegating to the connector service.
-- `mcp-connector.service.ts` supports `initialize`, `tools/list`, `tools/call`, `notifications/initialized`.
+- `mcp-connector.service.ts` supports `initialize`, `ping`, `tools/list`, `tools/call`, `resources/list`, `resources/templates/list`, `resources/read`, and accepts all id-less `notifications/*` with 202.
 - OAuth challenge on unauthenticated requests ✅
 - Static BuildOS agent key (`boca_`) fallback auth ✅ — the only net-new code since the 2026-05-21 spec.
 - Tool annotations derived from read/write policy ✅
@@ -112,23 +115,39 @@ These don't block Phase 0/1. Defaults chosen so work can proceed; override anyti
 
 ## 7. Critical Path to "Break this MCP server" (Simon/Hamel)
 
-Phases 2–3 are scoped in but **not** on the outreach critical path. The Simon unlock is:
+Phases 2–3 are scoped in but **not** on the outreach critical path. The Simon unlock was:
 
 1. ~~**Phase 0** compliance tests (foundation).~~ ✅ done.
 2. ~~**Phase 1** hardening (the real security work).~~ ✅ done.
-3. **Lethal-trifecta self-audit** doc — explicit threat model for untrusted brain dumps + private project data + outbound tools. (New doc, not yet started.)
-4. **One-command repro** — script that boots the route + runs an authenticated `initialize`/`tools/list`/`tools/call` + the negative protocol probes (bad origin, bad content-type, unsupported protocol version, unauth challenge). Most of these assertions already exist as Phase 0/1 tests — the repro packages them for an outside reviewer.
+3. ~~**Lethal-trifecta self-audit** doc.~~ ✅ done 2026-06-28 — `buildos-mcp-lethal-trifecta-self-audit-2026-06-28.md`.
+4. ~~**One-command repro**.~~ ✅ done 2026-06-28 — `apps/web/scripts/mcp-connector-repro.mjs` (`pnpm --filter @buildos/web mcp:repro`).
 
-Only after 3–4 exist should Simon/Hamel be contacted, and the ask is "break this," not "look at BuildOS."
+All four exist. The ask to Simon/Hamel is "break this," not "look at BuildOS."
 
-## 8. Immediate Next Action
+Note on D7: MCP **resources** shipped 2026-06-28 (ahead of the original Phase 5 deferral) —
+`resources/list` / `resources/read` over START HERE project docs, scope-enforced via the read-only
+fetch path. `prompts` remain out of scope.
 
-Phases 0–3 complete (§3, §4, §5). Remote route is protocol/transport-hardened, the tool surface is
-productized (profiles + search/fetch), and the local stdio bridge ships. Two things remain on the
-**critical path to Simon/Hamel** (§7):
+## 8. Status 2026-07-01 — second audit round
 
-1. **Lethal-trifecta self-audit doc** — explicit threat model for untrusted brain dumps + private project data + outbound tools reachable through the connector. New doc; not started.
-2. **One-command repro** — a script that boots the route and runs authenticated `initialize`/`tools/list`/`tools/call` plus the negative probes (bad origin, bad content-type, unsupported protocol version, unauth challenge). Turns the test assertions into something an outside reviewer can run.
+A full re-audit (auth chain, gateway scope enforcement, bridge, repro) confirmed the core
+properties hold and fixed:
 
-After those, the outreach is unblocked. Phases 2 (productized tool surface) and 3 (stdio bridge)
-are scoped but **off** the outreach critical path — sequence them after the self-audit if desired.
+- **Fail-closed `allowed_ops`**: a malformed/stale stored allowlist now narrows instead of falling
+  back to the full mode-default op surface (`shared-agent-ops/policy.ts`).
+- **Grant-bound token scope**: OAuth MCP auth now derives scope from the grant the token was
+  minted under, clamped by the token's immutable scope string — re-consent no longer silently
+  widens outstanding tokens (`oauth-connector.service.ts`).
+- **Transport spec compliance**: all client notifications (not just `notifications/initialized`)
+  → 202; `resources/read` miss → `-32002`; `general`-profile discovery tools blocked at call time,
+  not just hidden from `tools/list`.
+- **Bridge**: 60s request timeout; `https` required for non-loopback base URLs; README setup now
+  matches the unpublished (private) package reality.
+- **Repro**: probes notifications→202, authenticated GET→405, explicit batch-rejection body; never
+  invokes a non-read tool with a live token.
+- Auth-failure security events no longer log secret key characters (`credentialPrefix`).
+
+Remaining (deferred, tracked in `buildos-mcp-audit-fixes-2026-06-28.md` §Still deferred): npm
+publish of the bridge, durable rate limiter, HMAC-pepper token hashes, calendar-invitee exfil
+guard, per-grant profile binding, FORBIDDEN/NOT_FOUND existence-oracle normalization,
+paused-project visibility semantics, rate limiting on `/mcp/buildos` itself.

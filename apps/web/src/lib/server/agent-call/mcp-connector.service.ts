@@ -867,6 +867,18 @@ async function dispatchMcpMethod(params: {
 				});
 			}
 
+			// The general profile hides discovery tools from tools/list; enforce the
+			// same boundary at call time so the filter is a surface, not a veneer.
+			if (profile === 'general' && DISCOVERY_TOOL_NAMES.has(toolName)) {
+				return wrapMcpToolResult({
+					ok: false,
+					error: {
+						code: 'FORBIDDEN',
+						message: `Tool "${toolName}" is not available in this profile.`
+					}
+				});
+			}
+
 			const callSessionId = await createMcpCallSession({
 				admin: params.admin,
 				caller: auth.caller,
@@ -993,7 +1005,11 @@ export async function handleBuildosMcpPost(params: {
 	}
 
 	const id = rpcRequest.id ?? null;
-	if (rpcRequest.method === 'notifications/initialized' && rpcRequest.id === undefined) {
+	// Streamable HTTP: any accepted client notification (no id) gets a 202 with
+	// no body — not just notifications/initialized. Clients send e.g.
+	// notifications/cancelled and notifications/progress; answering those with a
+	// JSON-RPC error violates the transport spec.
+	if (rpcRequest.id === undefined && rpcRequest.method?.startsWith('notifications/')) {
 		return new Response(null, { status: 202, headers: cors });
 	}
 
@@ -1020,6 +1036,11 @@ export async function handleBuildosMcpPost(params: {
 
 		if (error instanceof OAuthConnectorError && error.code === 'method_not_found') {
 			return respond(jsonRpcError(id, -32601, error.description), 400);
+		}
+
+		// MCP reserves -32002 for "resource not found" (resources/read misses).
+		if (error instanceof OAuthConnectorError && error.code === 'not_found') {
+			return respond(jsonRpcError(id, -32002, error.description), error.status);
 		}
 
 		if (error instanceof OAuthConnectorError) {

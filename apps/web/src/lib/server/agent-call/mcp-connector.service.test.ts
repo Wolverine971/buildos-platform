@@ -696,6 +696,105 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 	});
 });
 
+describe('MCP spec compliance fixes', () => {
+	beforeEach(() => {
+		gatewayMocks.executeBuildosAgentGatewayTool.mockReset();
+		sessionMocks.createMcpCallSession.mockReset();
+		sessionMocks.createMcpCallSession.mockResolvedValue('session-test');
+	});
+
+	it('accepts any client notification (no id) with 202 and no body', async () => {
+		for (const method of ['notifications/cancelled', 'notifications/progress']) {
+			const response = await mcpPost(missAdmin(), { jsonrpc: '2.0', method });
+			expect(response.status).toBe(202);
+			expect(await response.text()).toBe('');
+		}
+		expect(gatewayMocks.executeBuildosAgentGatewayTool).not.toHaveBeenCalled();
+	});
+
+	it('still treats a notifications-named request WITH an id as a normal request', async () => {
+		const response = await mcpPost(missAdmin(), {
+			jsonrpc: '2.0',
+			id: 7,
+			method: 'notifications/cancelled'
+		});
+		// Authenticated dispatch path → this stub has no credentials → 401 challenge.
+		expect(response.status).toBe(401);
+	});
+
+	it('maps a resources/read miss to JSON-RPC -32002 (resource not found)', async () => {
+		gatewayMocks.executeBuildosAgentGatewayTool.mockResolvedValue({
+			ok: false,
+			error: { code: 'NOT_FOUND', message: 'Document not found' }
+		});
+		const admin = staticKeyAdmin({
+			scope_mode: 'read_only',
+			allowed_ops: null,
+			allowed_project_ids: null
+		});
+		const response = await mcpPost(
+			admin,
+			{
+				jsonrpc: '2.0',
+				id: 3,
+				method: 'resources/read',
+				params: { uri: 'buildos://document/11111111-1111-1111-1111-111111111111' }
+			},
+			STATIC_KEY_HEADER
+		);
+		expect(response.status).toBe(404);
+		const payload = await response.json();
+		expect(payload.error.code).toBe(-32002);
+	});
+
+	it('blocks discovery tools at call time in the general profile', async () => {
+		const admin = staticKeyAdmin({
+			scope_mode: 'read_write',
+			allowed_ops: null,
+			allowed_project_ids: null
+		});
+		const response = await mcpPost(
+			admin,
+			{
+				jsonrpc: '2.0',
+				id: 4,
+				method: 'tools/call',
+				params: { name: 'tool_search', arguments: { query: 'tasks' } }
+			},
+			STATIC_KEY_HEADER
+		);
+		expect(response.status).toBe(200);
+		const payload = await response.json();
+		expect(payload.result.isError).toBe(true);
+		expect(payload.result.structuredContent.error.code).toBe('FORBIDDEN');
+		expect(gatewayMocks.executeBuildosAgentGatewayTool).not.toHaveBeenCalled();
+	});
+
+	it('still allows discovery tools at call time in the local_admin profile', async () => {
+		gatewayMocks.executeBuildosAgentGatewayTool.mockResolvedValue({ ok: true, tools: [] });
+		const admin = staticKeyAdmin({
+			scope_mode: 'read_write',
+			allowed_ops: null,
+			allowed_project_ids: null
+		});
+		const response = await mcpPostProfile(
+			admin,
+			{
+				jsonrpc: '2.0',
+				id: 5,
+				method: 'tools/call',
+				params: { name: 'tool_search', arguments: { query: 'tasks' } }
+			},
+			'local_admin',
+			STATIC_KEY_HEADER
+		);
+		expect(response.status).toBe(200);
+		const payload = await response.json();
+		expect(payload.result.isError).toBeUndefined();
+		expect(gatewayMocks.executeBuildosAgentGatewayTool).toHaveBeenCalledTimes(1);
+	});
+});
+
 describe('isAllowedMcpOrigin', () => {
 	const server = 'https://build-os.com';
 

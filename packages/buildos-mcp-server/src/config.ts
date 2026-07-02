@@ -20,12 +20,34 @@ export type BridgeConfig = {
  *  - `BUILDOS_AGENT_TOKEN` required — a BuildOS agent key (`boca_...`) or OAuth token
  *  - `BUILDOS_MCP_PROFILE` optional — general | chatgpt_data_app | local_admin
  */
+function isLoopbackHost(hostname: string): boolean {
+	return (
+		hostname === 'localhost' ||
+		hostname === '127.0.0.1' ||
+		hostname === '::1' ||
+		hostname === '[::1]'
+	);
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv): BridgeConfig {
 	const baseUrlRaw = (env.BUILDOS_BASE_URL ?? DEFAULT_BASE_URL).trim();
 	const baseUrl = baseUrlRaw.replace(/\/+$/, '');
-	if (!/^https?:\/\//.test(baseUrl)) {
+	let parsed: URL | null = null;
+	try {
+		parsed = new URL(baseUrl);
+	} catch {
+		parsed = null;
+	}
+	if (!parsed || (parsed.protocol !== 'https:' && parsed.protocol !== 'http:')) {
 		throw new Error(
 			`BUILDOS_BASE_URL must be an http(s) URL (got "${baseUrlRaw || '<empty>'}")`
+		);
+	}
+	// Plain http is allowed only against loopback (local dev). Anywhere else it
+	// would send the agent token in cleartext.
+	if (parsed.protocol === 'http:' && !isLoopbackHost(parsed.hostname)) {
+		throw new Error(
+			`BUILDOS_BASE_URL must use https for non-localhost hosts (got "${baseUrlRaw}")`
 		);
 	}
 

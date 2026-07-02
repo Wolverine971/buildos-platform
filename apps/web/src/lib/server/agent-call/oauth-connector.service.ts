@@ -17,11 +17,7 @@ import {
 	fetchProjectSummaries
 } from '$lib/services/ontology/ontology-projects.service';
 import { logSecurityEvent, type SecurityEventLogOptions } from '$lib/server/security-event-logger';
-import {
-	buildCallerPolicy,
-	extractAllowedOpsFromPolicy,
-	extractScopeModeFromPolicy
-} from './agent-call-policy';
+import { buildCallerPolicy, isWriteOp } from './agent-call-policy';
 import { ensureUserBuildosAgent } from './callee-resolution';
 import { hashAgentCallerToken } from './caller-auth';
 
@@ -1294,16 +1290,29 @@ export async function authenticateOAuthMcpRequest(params: {
 		throw new OAuthConnectorError('OAuth grant is revoked', 403, 'insufficient_scope');
 	}
 
-	const scopeMode = extractScopeModeFromPolicy(caller.policy);
+	// Effective scope binds to the grant the token was minted under, clamped by
+	// the token's own immutable scope string — NOT the caller row's policy. The
+	// caller row is shared per client and overwritten on every re-consent, so
+	// deriving scope from it would let an outstanding token silently assume a
+	// later, broader consent (a read-only-era token becoming read_write). The
+	// grant can still narrow live (revocation semantics), but a token can never
+	// exceed the mode it was minted with.
+	const tokenMode: AgentCallScope['mode'] = accessToken.scope
+		.split(/\s+/)
+		.includes('buildos.write')
+		? 'read_write'
+		: 'read_only';
+	const scopeMode: AgentCallScope['mode'] =
+		tokenMode === 'read_write' && grant.scope_mode === 'read_write'
+			? 'read_write'
+			: 'read_only';
 	const scope: AgentCallScope = {
 		mode: scopeMode,
-		allowed_ops: extractAllowedOpsFromPolicy(caller.policy, scopeMode),
-		...(Array.isArray(caller.policy?.allowed_project_ids)
-			? {
-					project_ids: caller.policy.allowed_project_ids.filter(
-						(id: unknown): id is string => typeof id === 'string'
-					)
-				}
+		allowed_ops: grant.allowed_ops.filter(
+			(op) => scopeMode === 'read_write' || !isWriteOp(op)
+		),
+		...(Array.isArray(grant.allowed_project_ids)
+			? { project_ids: grant.allowed_project_ids }
 			: {})
 	};
 	const now = new Date().toISOString();

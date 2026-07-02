@@ -1,6 +1,8 @@
 // apps/web/src/lib/server/agent-call/oauth-connector.service.test.ts
+import { createHash } from 'crypto';
 import { describe, expect, it } from 'vitest';
 import {
+	authenticateOAuthMcpRequest,
 	BUILDOS_OAUTH_READ_WRITE_OPS,
 	isOAuthRedirectUriAllowed,
 	mcpResourceUrl,
@@ -65,5 +67,178 @@ describe('OAuth connector helpers', () => {
 		expect(
 			isOAuthRedirectUriAllowed(['http://localhost/callback'], 'http://localhost:58233/other')
 		).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Token-authentication scope binding. The scope handed to the gateway must come
+// from the grant the token was minted under, clamped by the token's immutable
+// scope string — never from the shared caller row's policy, which is
+// overwritten on every re-consent for the same client.
+// ---------------------------------------------------------------------------
+
+const RESOURCE = 'https://build-os.com/mcp/buildos';
+const TOKEN = 'bo_at_test_token_value';
+
+function sha256(value: string): string {
+	return createHash('sha256').update(value).digest('hex');
+}
+
+function fakeOAuthAdmin(rows: {
+	token: Record<string, unknown>;
+	grant: Record<string, unknown>;
+	caller: Record<string, unknown>;
+}) {
+	return {
+		from(table: string) {
+			const data =
+				table === 'agent_oauth_access_tokens'
+					? rows.token
+					: table === 'agent_oauth_grants'
+						? rows.grant
+						: rows.caller;
+			const builder = {
+				select: () => builder,
+				update: () => builder,
+				eq: () => builder,
+				maybeSingle: async () => ({ data, error: null }),
+				// Update chains are awaited directly; make the builder thenable.
+				then: (resolve: (value: { data: null; error: null }) => void) =>
+					resolve({ data: null, error: null })
+			};
+			return builder;
+		}
+	};
+}
+
+function baseRows(overrides: {
+	tokenScope: string;
+	grant?: Record<string, unknown>;
+	callerPolicy?: Record<string, unknown>;
+}) {
+	const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+	return {
+		token: {
+			id: 'token-1',
+			grant_id: 'grant-1',
+			external_agent_caller_id: 'caller-1',
+			token_hash: sha256(TOKEN),
+			resource: RESOURCE,
+			scope: overrides.tokenScope,
+			expires_at: future,
+			revoked_at: null
+		},
+		grant: {
+			id: 'grant-1',
+			status: 'active',
+			scope_mode: 'read_only',
+			allowed_ops: ['onto.task.get', 'onto.task.list'],
+			allowed_project_ids: ['project-a'],
+			...(overrides.grant ?? {})
+		},
+		caller: {
+			id: 'caller-1',
+			user_id: 'user-1',
+			status: 'trusted',
+			policy: overrides.callerPolicy ?? {
+				scope_mode: 'read_write',
+				allowed_ops: ['onto.task.create'],
+				allowed_project_ids: null
+			}
+		}
+	};
+}
+
+function requestWithToken(): Request {
+	return new Request(RESOURCE, {
+		method: 'POST',
+		headers: { authorization: `Bearer ${TOKEN}` }
+	});
+}
+
+describe('authenticateOAuthMcpRequest scope binding', () => {
+	it('derives scope from the grant, ignoring a broader caller policy', async () => {
+		// Caller policy says read_write/unscoped (as after a later re-consent);
+		// the grant this token belongs to is read-only on one project.
+		const admin = fakeOAuthAdmin(baseRows({ tokenScope: 'buildos.read offline_access' }));
+
+		const auth = await authenticateOAuthMcpRequest({
+			admin,
+			request: requestWithToken(),
+			resource: RESOURCE
+		});
+
+		expect(auth.scope.mode).toBe('read_only');
+		expect(auth.scope.allowed_ops).toEqual(['onto.task.get', 'onto.task.list']);
+		expect(auth.scope.project_ids).toEqual(['project-a']);
+	});
+
+	it('never grants write mode to a token minted without buildos.write', async () => {
+		// Grant later widened to read_write, but this token predates the widening.
+		const admin = fakeOAuthAdmin(
+			baseRows({
+				tokenScope: 'buildos.read offline_access',
+				grant: {
+					scope_mode: 'read_write',
+					allowed_ops: ['onto.task.get', 'onto.task.create'],
+					allowed_project_ids: null
+				}
+			})
+		);
+
+		const auth = await authenticateOAuthMcpRequest({
+			admin,
+			request: requestWithToken(),
+			resource: RESOURCE
+		});
+
+		expect(auth.scope.mode).toBe('read_only');
+		expect(auth.scope.allowed_ops).toEqual(['onto.task.get']);
+		expect(auth.scope.project_ids).toBeUndefined();
+	});
+
+	it('clamps a write-minted token when the grant has been narrowed to read-only', async () => {
+		const admin = fakeOAuthAdmin(
+			baseRows({
+				tokenScope: 'buildos.read buildos.write offline_access',
+				grant: {
+					scope_mode: 'read_only',
+					allowed_ops: ['onto.task.get', 'onto.task.create'],
+					allowed_project_ids: null
+				}
+			})
+		);
+
+		const auth = await authenticateOAuthMcpRequest({
+			admin,
+			request: requestWithToken(),
+			resource: RESOURCE
+		});
+
+		expect(auth.scope.mode).toBe('read_only');
+		expect(auth.scope.allowed_ops).toEqual(['onto.task.get']);
+	});
+
+	it('keeps write mode when both the token and the grant allow it', async () => {
+		const admin = fakeOAuthAdmin(
+			baseRows({
+				tokenScope: 'buildos.read buildos.write offline_access',
+				grant: {
+					scope_mode: 'read_write',
+					allowed_ops: ['onto.task.get', 'onto.task.create'],
+					allowed_project_ids: ['project-a']
+				}
+			})
+		);
+
+		const auth = await authenticateOAuthMcpRequest({
+			admin,
+			request: requestWithToken(),
+			resource: RESOURCE
+		});
+
+		expect(auth.scope.mode).toBe('read_write');
+		expect(auth.scope.allowed_ops).toEqual(['onto.task.get', 'onto.task.create']);
+		expect(auth.scope.project_ids).toEqual(['project-a']);
 	});
 });
