@@ -4,10 +4,10 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { createLogger } from '$lib/utils/logger';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import {
+	buildFastChatCancelHintsPatch,
 	createFastChatCancelHint,
 	isFastChatCancelReason,
 	listFastChatCorrelationIds,
-	mergeFastChatCancelHintIntoMetadata,
 	normalizeFastChatStreamRunId,
 	recordTransientFastChatCancelHint
 } from '$lib/services/agentic-chat-v2/cancel-reason-channel';
@@ -42,6 +42,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 	if (!isFastChatCancelReason(body.reason)) {
 		return ApiResponse.badRequest('reason must be user_cancelled or superseded');
 	}
+	// Capture the narrowed reason: TS discards `body.reason` narrowing across the
+	// awaits below, so hold it in a local that keeps the FastChatCancelReason type.
+	const reason = body.reason;
 
 	const sessionId =
 		typeof body.session_id === 'string' && body.session_id.trim().length > 0
@@ -60,7 +63,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		recordTransientFastChatCancelHint({
 			userId: user.id,
 			streamRunId: correlationId,
-			reason: body.reason,
+			reason,
 			clientTurnId
 		});
 	}
@@ -94,27 +97,29 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		return ApiResponse.success({ accepted: true, persisted: false });
 	}
 
-	let nextMetadata = session.agent_metadata;
-	for (const correlationId of correlationIds) {
-		nextMetadata = mergeFastChatCancelHintIntoMetadata({
-			agentMetadata: nextMetadata,
+	// Shallow-merge only the cancel-hints key so we never clobber concurrently
+	// written agent_metadata (e.g. `focus`). The hints object is rebuilt from the
+	// row we just read, preserving hints for other stream runs. NOTE: because the
+	// RPC merges at the top level only, the hints sub-object is replaced wholesale,
+	// so two cancels for different stream runs racing within the same read/write
+	// window could clobber each other's hint (rare; hints are also carried via the
+	// transient in-memory channel, which is the primary same-process cancel path).
+	const hintPatch = buildFastChatCancelHintsPatch({
+		agentMetadata: session.agent_metadata,
+		hints: correlationIds.map((correlationId) => ({
 			streamRunId: correlationId,
 			hint: createFastChatCancelHint({
-				reason: body.reason,
+				reason,
 				streamRunId: correlationId,
 				clientTurnId
 			})
-		});
-	}
+		}))
+	});
 
-	const { error: updateError } = await supabase
-		.from('chat_sessions')
-		.update({
-			agent_metadata: nextMetadata,
-			updated_at: new Date().toISOString()
-		})
-		.eq('id', sessionId)
-		.eq('user_id', user.id);
+	const { error: updateError } = await supabase.rpc('merge_chat_session_agent_metadata', {
+		p_session_id: sessionId,
+		p_patch: hintPatch
+	});
 
 	if (updateError) {
 		logger.warn('Failed to persist stream cancel hint', {

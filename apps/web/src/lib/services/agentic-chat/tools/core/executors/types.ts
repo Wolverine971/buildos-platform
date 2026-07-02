@@ -28,6 +28,12 @@ export interface ExecutorContext {
 	getAdminSupabase: () => TypedSupabaseClient;
 	getAuthHeaders: () => Promise<HeadersInit>;
 	activityLogActorContext?: ActivityLogActorContext;
+	/**
+	 * Turn-scoped abort signal. When the turn is cancelled (user stop / disconnect /
+	 * supersede) this fires so in-flight tool HTTP requests are aborted instead of
+	 * abandoned, preventing writes from landing after a cancel.
+	 */
+	abortSignal?: AbortSignal;
 }
 
 /**

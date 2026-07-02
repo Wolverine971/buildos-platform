@@ -218,6 +218,42 @@ describe('TurnObservabilityWriter', () => {
 		await writer.flush();
 	});
 
+	it('flushWithBudget awaits detached tasks and reports completion', async () => {
+		const { writer, supabase } = createWriter();
+		let resolveDetached!: () => void;
+		let detachedRan = false;
+		const detachedTask = new Promise<void>((resolve) => {
+			resolveDetached = () => {
+				detachedRan = true;
+				resolve();
+			};
+		});
+
+		writer.trackDetachedTask(detachedTask, 'slow_detached_write');
+		writer.recordEvent('prompt', 'prompt_snapshot_created', { prompt_snapshot_id: 'snap-1' });
+
+		// Resolve the detached task on the next tick so flushWithBudget has to await it.
+		setTimeout(() => resolveDetached(), 0);
+		const result = await writer.flushWithBudget(1_000);
+
+		expect(result.completed).toBe(true);
+		expect(detachedRan).toBe(true);
+		expect(supabase.insertedRows.chat_turn_events).toHaveLength(1);
+	});
+
+	it('flushWithBudget reports incompletion when a detached task hangs past the budget', async () => {
+		const { writer, supabase } = createWriter();
+		// A detached task that never resolves within the budget.
+		writer.trackDetachedTask(new Promise<void>(() => {}), 'hung_detached_write');
+		writer.recordEvent('prompt', 'prompt_snapshot_created', { prompt_snapshot_id: 'snap-1' });
+
+		const result = await writer.flushWithBudget(10);
+
+		expect(result.completed).toBe(false);
+		// Turn events still flush (flush() flushes them before awaiting the detached set).
+		expect(supabase.insertedRows.chat_turn_events).toHaveLength(1);
+	});
+
 	it('tracks first help, skill, and canonical op markers', async () => {
 		const { writer } = createWriter();
 

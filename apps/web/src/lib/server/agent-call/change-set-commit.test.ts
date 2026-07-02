@@ -27,7 +27,14 @@ vi.mock('@buildos/shared-agent-ops/inbox-index', () => ({
 
 type QueryResult = { data: unknown; error: null | { message: string } };
 
-function createSupabaseMock(results: Record<string, QueryResult[]>) {
+function createSupabaseMock(
+	results: Record<string, QueryResult[]>,
+	// Result returned when a query builder is awaited directly (no maybeSingle/single),
+	// e.g. the D9b re-entry load of prior applied executions and the per-change
+	// heartbeat / final update. Reads chain.data / chain.error, matching how the
+	// production code destructures `await admin.from(...)...`.
+	directData: Record<string, QueryResult> = {}
+) {
 	const updates: Array<{ table: string; payload: Record<string, unknown> }> = [];
 	const inserts: Array<{ table: string; payload: Record<string, unknown> }> = [];
 
@@ -36,8 +43,10 @@ function createSupabaseMock(results: Record<string, QueryResult[]>) {
 		inserts,
 		client: {
 			from: vi.fn((table: string) => {
+				const direct = directData[table];
 				const chain = {
-					error: null,
+					data: direct?.data ?? null,
+					error: direct?.error ?? null,
 					select: vi.fn(() => chain),
 					update: vi.fn((payload: Record<string, unknown>) => {
 						updates.push({ table, payload });
@@ -48,6 +57,8 @@ function createSupabaseMock(results: Record<string, QueryResult[]>) {
 						return { data: null, error: null };
 					}),
 					eq: vi.fn(() => chain),
+					is: vi.fn(() => chain),
+					in: vi.fn(() => chain),
 					maybeSingle: vi.fn(async () => {
 						const next = results[table]?.shift();
 						return next ?? { data: null, error: null };
@@ -199,5 +210,126 @@ describe('commitChangeSet', () => {
 				})
 			})
 		);
+	});
+
+	function buildStagedRun(overrides: Record<string, unknown> = {}) {
+		const change: ProposedChange = {
+			id: 'change-1',
+			op: 'onto.document.update',
+			entity_type: 'document',
+			entity_id: 'document-1',
+			action: 'update',
+			after: { document_id: 'document-1', content: 'new' },
+			rationale: 'Update doc',
+			decision: 'pending'
+		};
+		const changeSet: ChangeSet = {
+			run_id: 'run-1',
+			status: 'pending',
+			changes: [change],
+			created_at: '2026-07-02T00:00:00.000Z'
+		};
+		return {
+			id: 'run-1',
+			user_id: 'user-1',
+			status: 'running',
+			change_set: changeSet,
+			allowed_ops: ['onto.document.update'],
+			context_type: 'project',
+			project_id: 'project-1',
+			label: 'Commit doc',
+			goal: 'Commit',
+			result: { summary: 'Commit' },
+			...overrides
+		};
+	}
+
+	it('re-enters a stalled commit and skips already-applied changes (no re-apply)', async () => {
+		const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+		const run = buildStagedRun({ status: 'running', commit_started_at: tenMinutesAgo });
+		const supabase = createSupabaseMock(
+			{
+				agent_runs: [
+					{ data: run, error: null },
+					// re-entry CAS claim wins
+					{ data: { id: 'run-1' }, error: null }
+				]
+			},
+			{
+				// prior crashed attempt already applied change-1
+				agent_tool_executions: {
+					data: [
+						{
+							proposed_change_id: 'change-1',
+							entity_id: 'document-1',
+							entity_kind: 'document',
+							success: true
+						}
+					],
+					error: null
+				}
+			}
+		);
+
+		const outcome = await commitChangeSet({
+			admin: supabase.client as any,
+			runId: 'run-1',
+			userId: 'user-1',
+			decisions: [{ change_id: 'change-1', decision: 'approved' }]
+		});
+
+		expect(outcome).toMatchObject({
+			ok: true,
+			result: {
+				change_set_status: 'applied',
+				run_status: 'completed',
+				applied: 1,
+				failed: 0
+			}
+		});
+		// The already-applied write is NOT re-run.
+		expect(gatewayMocks.runGatewayWriteOp).not.toHaveBeenCalled();
+		// The rebuilt EntityTouch is carried into the run result.
+		expect((outcome as any).result.entities_touched).toContainEqual(
+			expect.objectContaining({ type: 'document', id: 'document-1' })
+		);
+		// The claim compare-and-swaps commit_started_at (re-entry), not status.
+		expect(supabase.updates).toContainEqual(
+			expect.objectContaining({
+				table: 'agent_runs',
+				payload: expect.objectContaining({ commit_started_at: expect.any(String) })
+			})
+		);
+	});
+
+	it('rejects a concurrent commit while a fresh commit is still in-flight (double-commit guard)', async () => {
+		const justNow = new Date().toISOString();
+		const run = buildStagedRun({ status: 'running', commit_started_at: justNow });
+		const supabase = createSupabaseMock({ agent_runs: [{ data: run, error: null }] });
+
+		const outcome = await commitChangeSet({
+			admin: supabase.client as any,
+			runId: 'run-1',
+			userId: 'user-1'
+		});
+
+		expect(outcome.ok).toBe(false);
+		expect((outcome as any).error.code).toBe('CONFLICT');
+		expect(gatewayMocks.runGatewayWriteOp).not.toHaveBeenCalled();
+	});
+
+	it('does not re-enter a running run that never recorded commit_started_at', async () => {
+		const run = buildStagedRun({ status: 'running', commit_started_at: null });
+		const supabase = createSupabaseMock({ agent_runs: [{ data: run, error: null }] });
+
+		const outcome = await commitChangeSet({
+			admin: supabase.client as any,
+			runId: 'run-1',
+			userId: 'user-1'
+		});
+
+		expect(outcome.ok).toBe(false);
+		expect((outcome as any).error.code).toBe('CONFLICT');
+		expect(gatewayMocks.runGatewayWriteOp).not.toHaveBeenCalled();
 	});
 });

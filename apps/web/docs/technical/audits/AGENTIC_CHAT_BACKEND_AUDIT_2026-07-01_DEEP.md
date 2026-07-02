@@ -30,28 +30,28 @@ The auth/scope _core_ is genuinely well-built (fail-closed op allowlists, grant-
 
 ## Severity summary (new findings only)
 
-| #   | Finding                                                                                                                               | Severity     | Status                                       |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------ | -------------------------------------------- |
-| D1  | Document append/merge silently degrades to full REPLACE on read failure                                                               | **CRITICAL** | **FIXED (W1)** — throws on read fail         |
-| D2  | `merge_llm` merge capped at 2000 tokens → long docs truncated on merge                                                                | HIGH         | CONFIRMED cap / SUSPECTED impact             |
-| D3  | Abort never threaded into tool execution → write-after-cancel + duplicate on retry                                                    | HIGH         | CONFIRMED (×3 passes)                        |
-| D4  | Tool-execution rows + assistant msg persisted only at end-of-turn → killed lambda leaves applied writes with no record                | HIGH         | CONFIRMED                                    |
-| D5  | Three writers full-overwrite `agent_metadata` JSONB → cancel hint clobbered, stop button no-ops                                       | HIGH         | CONFIRMED                                    |
-| D6  | Finalization guard counts `ok:false` gateway writes as success → false "I completed the change"                                       | HIGH         | **FIXED (W1)** — ok-aware in 4 spots         |
-| D7  | Multi-entity creates non-transactional (task+edges+assignees, project instantiate) → partial state reported as failure → dup on retry | HIGH         | CONFIRMED                                    |
-| D8  | Every chat pass capped at 2000 completion tokens; `finish_reason:'length'` unhandled; truncated tool calls silently dropped           | HIGH         | CONFIRMED                                    |
-| D9  | `prompt_cache_key` never forwarded on the primary streaming path (dead)                                                               | HIGH         | **FIXED (W1)** — `session_id`+key wired      |
-| D10 | Cancelled/errored streams never log usage → billing undercount                                                                        | HIGH         | **FIXED (W1)** — logs `failure` row          |
-| D11 | Mid-stream OpenRouter `error` frames swallowed → truncated answer shipped as complete success                                         | HIGH         | CONFIRMED (code)                             |
-| S1  | Prompt-injection → immediate data mutation, no human approval (commit-by-default in chat)                                             | **CRITICAL** | CONFIRMED                                    |
-| S2  | Markdown `<img>` renders remote URLs → zero-click exfiltration                                                                        | HIGH         | CONFIRMED                                    |
-| S3  | On-demand tool materialization has no read/write gate; auto-executes destructive ops same-round                                       | HIGH         | CONFIRMED                                    |
-| S4  | `timing_metrics` table has no RLS → cross-tenant metadata read/write                                                                  | HIGH         | **FIXED (W1)** — RLS migration (verify live) |
-| S5  | Bootstrap link stores plaintext bearer token at rest, never reaped                                                                    | HIGH         | CONFIRMED                                    |
-| C1  | Ontology-context chats bypass the member-access gate → hydrate public projects you're not a member of                                 | HIGH         | CONFIRMED                                    |
-| C2  | Client-supplied prewarm context trusted verbatim into system prompt + persisted (session poisoning)                                   | HIGH         | CONFIRMED (×2 passes)                        |
-| O2  | `looksLikeExplicitMutationRequest` misfires both ways ("update me on…" nukes correct answers; "assign/postpone/merge" slip through)   | MEDIUM-HIGH  | CONFIRMED                                    |
-| …   | (full set below, grouped by theme)                                                                                                    |              |                                              |
+| #   | Finding                                                                                                                               | Severity     | Status                                           |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------ |
+| D1  | Document append/merge silently degrades to full REPLACE on read failure                                                               | **CRITICAL** | **FIXED (W1)** — throws on read fail             |
+| D2  | `merge_llm` merge capped at 2000 tokens → long docs truncated on merge                                                                | HIGH         | **FIXED (W2)** — scales tokens + safe fallback   |
+| D3  | Abort never threaded into tool execution → write-after-cancel + duplicate on retry                                                    | HIGH         | **FIXED (W2)** — signal wired; idempotency→W3    |
+| D4  | Tool-execution rows + assistant msg persisted only at end-of-turn → killed lambda leaves applied writes with no record                | HIGH         | **FIXED (W2)** — incremental persist + heartbeat |
+| D5  | Three writers full-overwrite `agent_metadata` JSONB → cancel hint clobbered, stop button no-ops                                       | HIGH         | **FIXED (W2)** — all 3 via merge RPC             |
+| D6  | Finalization guard counts `ok:false` gateway writes as success → false "I completed the change"                                       | HIGH         | **FIXED (W1)** — ok-aware in 4 spots             |
+| D7  | Multi-entity creates non-transactional (task+edges+assignees, project instantiate) → partial state reported as failure → dup on retry | HIGH         | CONFIRMED                                        |
+| D8  | Every chat pass capped at 2000 completion tokens; `finish_reason:'length'` unhandled; truncated tool calls silently dropped           | HIGH         | **FIXED (W2)** — 8k cap + length continuation    |
+| D9  | `prompt_cache_key` never forwarded on the primary streaming path (dead)                                                               | HIGH         | **FIXED (W1)** — `session_id`+key wired          |
+| D10 | Cancelled/errored streams never log usage → billing undercount                                                                        | HIGH         | **FIXED (W1)** — logs `failure` row              |
+| D11 | Mid-stream OpenRouter `error` frames swallowed → truncated answer shipped as complete success                                         | HIGH         | **FIXED (W2)** — error frames throw              |
+| S1  | Prompt-injection → immediate data mutation, no human approval (commit-by-default in chat)                                             | **CRITICAL** | CONFIRMED                                        |
+| S2  | Markdown `<img>` renders remote URLs → zero-click exfiltration                                                                        | HIGH         | CONFIRMED                                        |
+| S3  | On-demand tool materialization has no read/write gate; auto-executes destructive ops same-round                                       | HIGH         | CONFIRMED                                        |
+| S4  | `timing_metrics` table has no RLS → cross-tenant metadata read/write                                                                  | HIGH         | **FIXED (W1)** — RLS migration (verify live)     |
+| S5  | Bootstrap link stores plaintext bearer token at rest, never reaped                                                                    | HIGH         | CONFIRMED                                        |
+| C1  | Ontology-context chats bypass the member-access gate → hydrate public projects you're not a member of                                 | HIGH         | CONFIRMED                                        |
+| C2  | Client-supplied prewarm context trusted verbatim into system prompt + persisted (session poisoning)                                   | HIGH         | CONFIRMED (×2 passes)                            |
+| O2  | `looksLikeExplicitMutationRequest` misfires both ways ("update me on…" nukes correct answers; "assign/postpone/merge" slip through)   | MEDIUM-HIGH  | CONFIRMED                                        |
+| …   | (full set below, grouped by theme)                                                                                                    |              |                                                  |
 
 ---
 
@@ -65,7 +65,7 @@ On `update_strategy: "append"` or `"merge_llm"`, the code loads existing content
 
 **Fix:** on loader failure under append/merge, **throw** — a failed read must abort a strategy-dependent write, never silently convert it to replace.
 
-### D2. `merge_llm` merge capped at 2000 tokens → long documents truncated on merge — HIGH, CONFIRMED cap
+### D2. `merge_llm` merge capped at 2000 tokens → long documents truncated on merge — HIGH, CONFIRMED cap — FIXED (W2)
 
 `ontology-write-executor.ts:2094-2106` (`composeContentUpdateWithLLM`, `maxTokens: 2000`); output used verbatim as the new full `content` (`:2038-2043` → `:1521`). A document over ~6-8KB being `merge_llm`-updated forces the merge model to re-emit the whole doc under a 2000-token ceiling → `length` stop truncates it → truncated text replaces the whole document. No `finish_reason:'length'` guard in `generateTextDetailed`. Secondary: merge-LLM failure silently falls back to append (`:2044-2056`) — different semantics, reported as success.
 
@@ -109,7 +109,7 @@ Result: an op-level write failure (`success:true, ok:false`) → guard synthesiz
 
 ## Theme 2 — Cancellation is cosmetic on the write path
 
-### D3. Abort never threaded into tool execution → write-after-cancel + duplicate on retry — HIGH, CONFIRMED (three independent passes)
+### D3. Abort never threaded into tool execution → write-after-cancel + duplicate on retry — HIGH, CONFIRMED (three independent passes) — FIXED (W2)
 
 `agentic-chat/execution/tool-execution-service.ts:1589-1599` (`executeWithTimeout`) and `:510-529` (abort race) are bare `Promise.race`s — the losing `execPromise` (`this.toolExecutor(...)`) **keeps running**; no signal reaches the underlying `fetch`/Supabase call (`base-executor.ts:153-237` sends no abort signal). Orchestrator also confirms: `params.toolExecutor` takes no signal (`stream-orchestrator/index.ts:110-113, 1448, 1487`).
 
@@ -119,7 +119,7 @@ Worse (orchestrator #7): `attemptDocOrganizationRecovery` (`index.ts:425-577`) h
 
 **Fix:** thread `AbortSignal` into the tool executor and into `apiRequest`'s `fetch`; add an idempotency key (per `tool_call` id) honored by create routes; check `signal?.aborted` at the top of `executeSyntheticDirectTool` and per move-loop iteration.
 
-### D5. Three writers full-overwrite `chat_sessions.agent_metadata` JSONB → cancel hint clobbered, stop button no-ops — HIGH, CONFIRMED
+### D5. Three writers full-overwrite `chat_sessions.agent_metadata` JSONB → cancel hint clobbered, stop button no-ops — HIGH, CONFIRMED — FIXED (W2)
 
 An atomic merge RPC exists (`merge_chat_session_agent_metadata`, migration `20260428000005`) and most stream writers use it — but three paths do read-modify-write of the **whole column**:
 
@@ -131,7 +131,7 @@ The client's supersede flow waits **≤120ms** for the cancel ack before sending
 
 **Fix:** route every writer through `merge_chat_session_agent_metadata`; for the cancel hint use a key-level merge or a dedicated `chat_stream_cancel_signals` table keyed by `(user_id, stream_run_id)`; in `resolveSession` merge `{focus}` via RPC and only when focus changed.
 
-### O8. `isAbortLikeError` substring-matches real provider failures into silent "cancelled" turns — MEDIUM, CONFIRMED
+### O8. `isAbortLikeError` substring-matches real provider failures into silent "cancelled" turns — MEDIUM, CONFIRMED — FIXED (W2)
 
 `stream-orchestrator/index.ts:322-333` treats any error whose message contains `aborted` / `request aborted` / `stream closed` as cancellation **even when `signal?.aborted` is false** (`:1725` is an OR). Undici/fetch timeouts ("The operation was aborted") and provider socket drops ("stream closed") therefore end the turn as `cancelled:true` — no error surfaced, no retry, persisted as user-interrupted.
 
@@ -141,7 +141,7 @@ The client's supersede flow waits **≤120ms** for the cancel ack before sending
 
 ## Theme 3 — Durability under lambda death
 
-### D4. Tool-execution rows + assistant message persisted only at end-of-turn → killed lambda leaves applied writes with no record — HIGH, CONFIRMED
+### D4. Tool-execution rows + assistant message persisted only at end-of-turn → killed lambda leaves applied writes with no record — HIGH, CONFIRMED — FIXED (W2)
 
 `persistToolExecutionRows` runs only _after_ `streamFastChat` returns (`stream/+server.ts:3799-3811` cancelled, `:4004-4015` completed); the assistant message likewise (`:3785-3796` / `:3981-3992`). A mid-turn lambda kill (freeze at `maxDuration`, OOM, deploy) leaves: user message row exists, **no** assistant message, **no** `chat_tool_executions` rows, `chat_turn_runs` stuck `running` — but every tool side effect already applied. The interrupted-turn recovery machinery keys off an interrupted assistant message + execution rows, neither of which exists → the next turn's model has zero evidence the writes happened → "create 3 tasks" + death + retry = 6 tasks. No reconciliation job exists (the only stale-`running` sweep is inline in the next POST _for the same session_, `:2137-2191`; nothing in the worker touches `chat_turn_runs`).
 
@@ -153,13 +153,13 @@ The turn runs in `void (async ()=>{})()` (`stream/+server.ts:1913`) after `retur
 
 **Fix:** register the IIFE promise with `event.platform?.context?.waitUntil`; close the stream even when detached; add a cron sweeper keyed off the D4 heartbeat.
 
-### D4c. `TurnObservabilityWriter.flush()` is dead code on the live path → nondeterministic loss of the rows D4's recovery depends on — MEDIUM, CONFIRMED
+### D4c. `TurnObservabilityWriter.flush()` is dead code on the live path → nondeterministic loss of the rows D4's recovery depends on — MEDIUM, CONFIRMED — FIXED (W2)
 
 The `finally` awaits only `flushTurnEvents()` (`stream/+server.ts:4336`), never `flush()` (the method that awaits `detachedTasks`, `turn-observability-writer.ts:413-419`). Un-awaited at close: `chat_tool_executions` inserts, user-message finalize + attachment links, session context sync, `timing_metrics` insert, `chat_turn_runs` patches, and a post-done `agent_state` reconciliation (an LLM call). Once `close()` resolves the instance can freeze with these pending.
 
 **Fix:** `await observabilityWriter.flush()` before `close()` (bounded by a timeout), or hand `detachedTasks` to `waitUntil`.
 
-### D9b. Commit-mid-crash leaves the run stuck `running` with a partially-applied change set and no recovery — MEDIUM, CONFIRMED
+### D9b. Commit-mid-crash leaves the run stuck `running` with a partially-applied change set and no recovery — MEDIUM, CONFIRMED — FIXED (W2)
 
 `change-set.ts:339-359` atomically claims `proposal_ready → running` (good, prevents double-commit), then applies changes **sequentially with no transaction** (`:382-493`), then writes terminal status (`:525-539`). A process death between claim and final update applies some changes, never updates the change-set JSON, and every future commit hits `status !== 'proposal_ready'` → permanent CONFLICT. Nothing resets it (not a queue job, so stalled-job recovery doesn't apply).
 
@@ -237,7 +237,7 @@ The stream endpoint accepts `prewarmedContext` (loose object), shape-checks only
 
 ## Theme 6 — LLM integration robustness & cost
 
-### D8. Every chat pass capped at 2000 completion tokens; `finish_reason:'length'` unhandled; truncated tool calls silently dropped — HIGH, CONFIRMED ✅
+### D8. Every chat pass capped at 2000 completion tokens; `finish_reason:'length'` unhandled; truncated tool calls silently dropped — HIGH, CONFIRMED ✅ — FIXED (W2)
 
 `openrouter-v2-service.ts:1583` (`max_tokens: options.maxTokens ?? 2000`); the orchestrator call site passes no `maxTokens` (`stream-orchestrator/index.ts:804-821`). The tool lane also requests reasoning (counts against the same cap). If the cap hits mid tool-call arguments, the half-built call fails `isValidJsonObject` and is **silently dropped** (`openrouter-v2-service.ts:1958-1961`); the orchestrator has zero `finish_reason:'length'` handling and ships the truncated buffer as the final answer. This is a plausible contributor to the "searched a lot but never updated" class: a big `document.update` with a long `body_markdown` gets its args truncated and silently never happens.
 
@@ -255,7 +255,7 @@ The orchestrator passes `chatSessionId` (`index.ts:811`) and `streamText` accept
 
 **Fix:** log a `status:'failure'|'cancelled'` row using the usage frame if seen, else an estimate from emitted text; same for JSON parse-retries.
 
-### D11. Mid-stream OpenRouter `error` frames swallowed → truncated answer shipped as complete success — HIGH, CONFIRMED (code)
+### D11. Mid-stream OpenRouter `error` frames swallowed → truncated answer shipped as complete success — HIGH, CONFIRMED (code) — FIXED (W2)
 
 The chunk parser never checks `chunk.error` (`openrouter-v2-service.ts:1876-1913`) — an upstream `{error}` frame has no `choices` → `continue` (`:1909`); `finish_reason:'error'` is captured but the `done` event still yields and usage logs `success`. The orchestrator's `done` handler doesn't inspect `finished_reason === 'error'` and takes the final-answer path (`index.ts:1044`). An upstream provider dying 40% into a synthesis ships mid-sentence text as complete, logged as `stop`/success. (Distinct from the known "non-abort error kills the turn" — here the error never surfaces.)
 
@@ -339,32 +339,32 @@ Implemented in three parallel tracks, all validated (51 targeted tests pass, `sv
 
 ---
 
-### Wave 2 — Cancellation & durability backbone (NEXT — not started)
+### Wave 2 — Cancellation & durability backbone (Batches 1–2 SHIPPED 2026-07-02, uncommitted; Batch 3 remaining)
 
-**Theme:** close the "cancel is cosmetic + lambda-death loses state" class. This is the correctness backbone and the highest-severity remaining cluster. Unlike Wave 1, several items need **schema migrations, a new RPC, and a cron sweeper**, so this wave is larger and riskier — plan it as its own set of PRs, and sequence the infra piece (E3) last. Proposed three tracks (parallelizable except where noted):
+**Theme:** close the "cancel is cosmetic + lambda-death loses state" class. Run in collision-free batches because these findings share `stream-orchestrator/index.ts` and `stream/+server.ts` (unlike Wave 1's disjoint tracks). Migration added: `20260702000000_agentic_chat_crash_recovery_progress.sql` (`chat_turn_runs.last_progress_at`, `agent_runs.commit_started_at`, partial indexes).
 
-**Track D — Cancellation correctness** (kills write-after-cancel + duplicate-mutation). Do D3 and D5 together; they interlock.
+**Batch 1 — SHIPPED (LLM/orchestrator + durability, parallel disjoint files):**
 
-- **D5** — stop full-overwriting `chat_sessions.agent_metadata`. Route the cancel endpoint, `resolveSession`, and the inbox refresh through `merge_chat_session_agent_metadata` (or move the cancel hint to a dedicated `chat_stream_cancel_signals` table keyed by `(user_id, stream_run_id)` — cleaner, and decouples cancel from the JSONB entirely). _Prereq for D3 to actually stop turns._
-- **D3** — thread an `AbortSignal` from `executeWithTimeout`/the abort race into `toolExecutor` → `apiRequest` → `fetch`, so a cancelled tool write is truly cancelled, not abandoned. Add an **idempotency key** (per `tool_call` id) honored by the create routes so any surviving retry can't double-write. Also give `attemptDocOrganizationRecovery` a per-iteration `signal?.aborted` check.
-- **O8** — require `signal?.aborted === true` (not substring matching) before classifying an error as "cancelled," so real provider timeouts/socket drops surface as errors instead of silent cancels.
-- _Migration needed:_ idempotency-key column/constraint on `onto_tasks`/create routes (or an app-level dedup table). _Risk:_ medium — touches the tool-execution hot path; needs a cancel end-to-end test.
+- **O8** — replaced substring abort-matching with a purely signal-driven `isUserCancellation()` (`index.ts`); real provider timeouts/socket drops now surface as errors. _Note: a duplicate `isAbortLikeError` still lives in `+server.ts:355` (outer handler) — same bug, not yet fixed; follow-up._
+- **D8** — added `SYNTHESIS_MAX_TOKENS` (8000) + `MAX_LENGTH_CONTINUATIONS` (2) in `limits.ts`; a `finish_reason:'length'` pass now carries partial text forward and continues (bounded), and forces `finishedReason='length'` when exhausted so truncated text is never reported as clean `stop`. Dropped-invalid-tool-call now logged.
+- **D11** — `chunk.error` and `finish_reason:'error'` now throw instead of yielding a success `done`; composes with O8 (a real error surfaces, not a silent cancel).
+- **D2** — `merge_llm` `maxTokens` scales to input size; a materially-shorter merge falls back to a safe append (preserving existing content).
+- **D4c** — `+server.ts` finally now `await`s `flushWithBudget(5s)` so detached persistence isn't lost at close.
+- **D4** — each tool execution persisted incrementally in `onToolResult` (idempotent `(turn_run_id, sequence_index)`; end-of-turn upserts `message_id`), plus a `last_progress_at` heartbeat. _Open latency note: currently persists **all** executions incl. reads; scope to mutations-only as a follow-up (reads don't need crash-recovery)._
+- **D9b** — commit claim now stamps `commit_started_at`; a stalled `running` commit (older than threshold, non-null timestamp) can be safely re-entered via CAS and skips already-applied changes. Double-commit protection intact.
 
-**Track E — Durability under lambda death** (bounds partial state; makes detached turns real).
+**Batch 2 — SHIPPED (cancellation; single agent — needed both shared files):**
 
-- **D4c** (quick win, do first) — `await observabilityWriter.flush()` before `close()` (bounded by a timeout) so tool-execution rows / timing / attachment links aren't lost when the lambda freezes.
-- **D4** — persist each tool execution incrementally right after `onToolResult` (callback already exists), keyed idempotently by `(turn_run_id, sequence)`; add a `last_progress_at` heartbeat column on `chat_turn_runs`. _Migration needed:_ `last_progress_at` column (+ index).
-- **D9b** — make change-set commit crash-safe: persist per-change results incrementally (or a `commit_started_at` + a stalled-commit reconciler that reads the `agent_tool_executions` rows already written per change). Prevents the permanent "Run is running, not awaiting proposal review" lock.
-- **D4b** (do LAST — infra) — register the detached IIFE with `event.platform?.context?.waitUntil`; close the stream even when detached; add a Vercel cron sweeper that fails turns stuck `running` past `last_progress_at + N`. _Needs:_ a cron entry in `vercel.json` + a sweeper route. _Risk:_ higher — changes lambda lifecycle behavior; validate `waitUntil` availability on the pinned runtime first.
+- **D5** — cancel endpoint, `resolveSession`, and inbox refresh all route through `merge_chat_session_agent_metadata` instead of full-column overwrites; `resolveSession` only writes when focus changed. Cancel hints can no longer be clobbered. _(Shallow RPC merge means the whole `fastchat_cancel_hints_v1` key is replaced — acceptable; noted in code.)_
+- **D3 (signal-threading portion)** — `AbortSignal` wired end-to-end: `+server.ts` turn signal → `tool-executor` context → `base-executor` `fetch({ signal })` (fail-fast if already aborted) + `attemptDocOrganizationRecovery` per-iteration abort checks. A cancelled tool's HTTP request is now actually aborted. New test: `base-executor.abort.test.ts`.
+- _Recovered from a mid-run agent stall: finished the implementation, fixed a `body.reason` narrowing type error the stall left behind, and updated the inbox test to assert the metadata now flows through the RPC. Full validation: 91 related tests + svelte-check 0 errors._
 
-**Track F — LLM robustness + finish write-integrity** (independent of D/E; can run in parallel).
+**Batch 3 — REMAINING (riskiest; sequenced, NOT started):**
 
-- **D8** — pass an explicit `maxTokens` (≥8k for synthesis passes) from the orchestrator; handle `finish_reason:'length'` by injecting a repair message instead of shipping truncated text; log dropped-invalid-tool-call events. _Likely also resolves real "searched but never updated" reports — highest user-visible payoff in this wave._
-- **D11** — surface mid-stream OpenRouter `error` frames: treat `chunk.error` as a yielded error (or trigger fallback if no text emitted), and route `finished_reason:'error'` into the repair/retry path instead of the final-answer path.
-- **D2** — scale the `merge_llm` `maxTokens` to existing-content length (or chunk); reject/flag on a `length` finish or when merge output is materially shorter than the source. _Same file as the shipped D1 fix — cheap to fold in._
-- **D7** — wrap `create_onto_task` (task + edges + assignees) in an RPC transaction mirroring `onto_task_update_atomic`; for project instantiate, single-RPC or insert the project row last / flag incomplete. _Migration needed:_ new `onto_task_create_atomic` RPC. _Risk:_ medium-high — new transactional RPC on a core write path.
-
-**Suggested Wave 2 sequencing:** D4c → (Track D + Track F in parallel) → D4/D9b → D4b (infra last). Ship Track D and Track F as separate PRs; keep each migration in its own reviewable change.
+- **D7** — wrap `create_onto_task` (task + edges + assignees) in an RPC transaction mirroring `onto_task_update_atomic`; for project instantiate, single-RPC or insert the project row last / flag incomplete. _Migration:_ new `onto_task_create_atomic` RPC. _Risk:_ medium-high — new transactional RPC on a core write path.
+- **D3 (idempotency-key portion)** — add a per-`tool_call` idempotency key honored by the create routes so any surviving retry can't double-write. Do WITH D7 (both touch the create routes). _Migration:_ idempotency column/constraint or dedup table.
+- **D4b** (do LAST — infra, **CHECKPOINT before starting**) — register the detached IIFE with `event.platform?.context?.waitUntil`; close the stream even when detached; add a Vercel cron sweeper that fails turns stuck `running` past `last_progress_at + N`. _Needs:_ cron entry in `vercel.json` + sweeper route. _Risk:_ higher — changes lambda lifecycle; validate `waitUntil` on the pinned runtime first.
+- **Batch 1/2 carry-overs:** scope D4 incremental persistence to mutations-only (latency); fix the duplicate `isAbortLikeError` in `+server.ts:355` (O8); apply the D9b/D4 migration before deploy + `pnpm gen:types` (then tighten the `as never` casts in `change-set.ts`); rebuild `@buildos/shared-agent-ops` dist in CI.
 
 ---
 

@@ -229,6 +229,20 @@ export function mergeFastChatCancelHintIntoMetadata(params: {
 	return baseMetadata;
 }
 
+export function buildFastChatCancelHintsPatch(params: {
+	agentMetadata: unknown;
+	hints: Array<{ streamRunId: string; hint: FastChatCancelHint }>;
+	nowMs?: number;
+}): Record<string, Json> {
+	const nowMs = getNowMs(params.nowMs);
+	const hints = readHintsFromMetadata(params.agentMetadata);
+	for (const entry of params.hints) {
+		hints[entry.streamRunId] = entry.hint;
+	}
+	const prunedHints = pruneMetadataHints(hints, nowMs);
+	return { [FASTCHAT_CANCEL_HINTS_KEY]: prunedHints as unknown as Json };
+}
+
 export function readFastChatCancelReasonFromMetadata(params: {
 	agentMetadata: unknown;
 	streamRunId: string;

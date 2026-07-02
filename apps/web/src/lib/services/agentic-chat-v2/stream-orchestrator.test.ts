@@ -1726,4 +1726,140 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(result.finishedReason).toBe('stop');
 		expect(result.finalAssistantText).toBe('Synthesized answer from saturated context.');
 	});
+
+	it('surfaces a provider abort-message error as a real failure when the signal never fired (O8)', async () => {
+		const llm = {
+			// Real provider timeout: the message contains "aborted" but the user
+			// never cancelled. Pre-fix this was swallowed as a cancellation.
+			streamText: vi.fn(async function* () {
+				throw new Error('The operation was aborted');
+			})
+		} as any;
+		const toolExecutor = vi.fn(async (): Promise<ChatToolResult> => {
+			throw new Error('Tool executor should not run');
+		});
+
+		await expect(
+			streamFastChat({
+				llm,
+				userId: 'user_1',
+				sessionId: 'session_1',
+				contextType: 'global',
+				history: [],
+				message: 'What is happening with my projects?',
+				tools: tools(['search_onto_projects']),
+				toolExecutor,
+				onDelta: async () => {}
+			})
+		).rejects.toThrow('The operation was aborted');
+	});
+
+	it('classifies a genuinely aborted signal as cancelled (O8)', async () => {
+		const controller = new AbortController();
+		controller.abort();
+		const llm = {
+			streamText: vi.fn(async function* () {
+				yield { type: 'text', content: 'should not run' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(async (): Promise<ChatToolResult> => {
+			throw new Error('Tool executor should not run');
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'Cancel this turn.',
+			tools: tools(['search_onto_projects']),
+			toolExecutor,
+			onDelta: async () => {},
+			signal: controller.signal
+		});
+
+		expect(result.cancelled).toBe(true);
+		expect(result.finishedReason).toBe('cancelled');
+		expect(llm.streamText).not.toHaveBeenCalled();
+	});
+
+	it('continues a length-truncated answer and assembles the full text (D8)', async () => {
+		let streamInvocation = 0;
+		const passMessages: FastChatHistoryMessage[][] = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: { messages: FastChatHistoryMessage[] }) {
+				streamInvocation += 1;
+				passMessages.push(params.messages);
+				if (streamInvocation === 1) {
+					yield { type: 'text', content: 'Part one of the answer.' };
+					yield { type: 'done', finished_reason: 'length' };
+					return;
+				}
+				yield { type: 'text', content: ' Part two finishes it.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(async (): Promise<ChatToolResult> => {
+			throw new Error('Tool executor should not run');
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'Give me the long answer.',
+			tools: tools(['search_onto_projects']),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(2);
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalAssistantText).toContain('Part one of the answer.');
+		expect(result.finalAssistantText).toContain('Part two finishes it.');
+
+		const firstCallArgs = (llm.streamText as any).mock.calls[0][0];
+		expect(firstCallArgs.maxTokens).toBeGreaterThanOrEqual(8000);
+
+		const secondPassSystem = (passMessages[1] ?? [])
+			.filter((message) => message.role === 'system')
+			.map((message) => message.content)
+			.join('\n');
+		expect(secondPassSystem).toContain('cut off');
+	});
+
+	it('flags the turn as truncated when length continuations are exhausted (D8)', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				yield { type: 'text', content: `chunk ${streamInvocation}.` };
+				yield { type: 'done', finished_reason: 'length' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(async (): Promise<ChatToolResult> => {
+			throw new Error('Tool executor should not run');
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'Keep going forever.',
+			tools: tools(['search_onto_projects']),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		// 1 initial pass + MAX_LENGTH_CONTINUATIONS (default 2) continuations.
+		expect(llm.streamText).toHaveBeenCalledTimes(3);
+		expect(result.finishedReason).toBe('length');
+		expect(result.finalAssistantText).toContain('chunk 1.');
+	});
 });

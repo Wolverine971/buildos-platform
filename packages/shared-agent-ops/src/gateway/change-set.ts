@@ -264,11 +264,59 @@ function normalizeStartHereDriftSnapshots(
 	return [stripContent(before), stripContent(current)];
 }
 
+// D9b: a commit that claimed proposal_ready -> running but never wrote a terminal
+// status (crash / lambda kill between claim and final update) is considered stalled
+// once its commit_started_at heartbeat is older than this. A live commit heartbeats
+// after every applied change, so this threshold only ever fires on a genuinely dead
+// commit — a concurrent live commit keeps the timestamp fresh and stays protected.
+const STALE_COMMIT_MS = 2 * 60 * 1000;
+
+function readCommitStartedAt(run: unknown): string | null {
+	if (!run || typeof run !== 'object') return null;
+	const value = (run as { commit_started_at?: unknown }).commit_started_at;
+	return typeof value === 'string' ? value : null;
+}
+
+// Rebuild an EntityTouch for a change we know applied in a prior (crashed) commit
+// attempt, from the change + the entity_id recorded on its agent_tool_executions row.
+// Mirrors the fallback branch of the live apply loop (which prefers the gateway
+// result but falls back to change-derived values).
+function entityTouchFromAppliedChange(
+	change: ProposedChange,
+	appliedEntityId: string,
+	entityKind: string | null,
+	runProjectId: string | null
+): EntityTouch {
+	const projectId =
+		(typeof change.after?.project_id === 'string' ? change.after.project_id : null) ??
+		(typeof change.before?.project_id === 'string' ? change.before.project_id : null) ??
+		runProjectId ??
+		null;
+	const touchType = entityKind ?? change.entity_type;
+	return {
+		type: touchType,
+		id: appliedEntityId,
+		action: entityActionFromProposedChangeAction(change.action),
+		description: change.rationale,
+		project_id: projectId,
+		title: titleFromGatewayChange(change),
+		url: buildGatewayEntityUrl(touchType, appliedEntityId, projectId),
+		project_url: buildGatewayProjectUrl(projectId)
+	};
+}
+
 /**
  * Apply a run's staged Change Set. `decisions` carries per-change approve/reject;
  * any change not named defaults to `defaultDecision` ('approved' unless set). The
  * run must currently be 'proposal_ready' (the caller should gate on this; we also
  * verify to avoid double-apply).
+ *
+ * Crash recovery (D9b): the claim (proposal_ready -> running) records
+ * commit_started_at, heartbeated after each applied change. If a commit crashes
+ * mid-apply the run stays 'running'; a later commit whose commit_started_at is stale
+ * re-enters via an atomic compare-and-swap on commit_started_at, then skips changes
+ * that already have a successful agent_tool_executions row so applied writes are not
+ * duplicated. The atomic claim / CAS keeps two concurrent commits from both applying.
  */
 export async function commitChangeSet(params: {
 	admin: SupabaseClient<Database>;
@@ -293,6 +341,12 @@ export async function commitChangeSet(params: {
 	if (!run) {
 		return { ok: false, error: { code: 'NOT_FOUND', message: 'Agent run not found' } };
 	}
+	// D9b: distinguish a fresh commit (proposal_ready) from re-entering a stalled
+	// commit (running with a stale commit_started_at). A run that is 'running' for any
+	// other reason — an in-flight commit whose heartbeat is still fresh, or original
+	// run execution (which never sets commit_started_at) — stays protected.
+	let isStalledCommitReentry = false;
+	const staleCommitStartedAt = readCommitStartedAt(run);
 	if (run.status !== 'proposal_ready') {
 		if (run.status === 'completed' || run.status === 'partial') {
 			const committedChangeSet = asChangeSet(run.change_set, runId);
@@ -319,13 +373,21 @@ export async function commitChangeSet(params: {
 				};
 			}
 		}
-		return {
-			ok: false,
-			error: {
-				code: 'CONFLICT',
-				message: `Run is ${run.status}, not awaiting proposal review`
-			}
-		};
+		const startedAtMs = staleCommitStartedAt ? Date.parse(staleCommitStartedAt) : NaN;
+		const isStalled =
+			run.status === 'running' &&
+			Number.isFinite(startedAtMs) &&
+			Date.now() - startedAtMs > STALE_COMMIT_MS;
+		if (!isStalled) {
+			return {
+				ok: false,
+				error: {
+					code: 'CONFLICT',
+					message: `Run is ${run.status}, not awaiting proposal review`
+				}
+			};
+		}
+		isStalledCommitReentry = true;
 	}
 
 	const changeSet = asChangeSet(run.change_set, runId);
@@ -336,18 +398,33 @@ export async function commitChangeSet(params: {
 		};
 	}
 
+	const commitHeartbeat = new Date().toISOString();
+
 	// Atomically CLAIM the run before applying anything. Two concurrent commit
 	// requests would otherwise both pass the status check above and both apply
 	// the (non-idempotent) writes, duplicating creates. Flipping
-	// proposal_ready -> running here means the loser's claim affects 0 rows.
-	const { data: claimed, error: claimError } = await admin
+	// proposal_ready -> running here means the loser's claim affects 0 rows. A
+	// stalled-commit re-entry instead compare-and-swaps on commit_started_at so two
+	// concurrent re-entries can't both proceed.
+	// Typed as any so the commit_started_at CAS filters (a column absent from the
+	// generated types until gen:types runs) don't trip the compiler.
+	let claimQuery: any = admin
 		.from('agent_runs')
-		.update({ status: 'running' })
+		.update(
+			(isStalledCommitReentry
+				? { commit_started_at: commitHeartbeat }
+				: { status: 'running', commit_started_at: commitHeartbeat }) as never
+		)
 		.eq('id', runId)
 		.eq('user_id', userId)
-		.eq('status', 'proposal_ready')
-		.select('id')
-		.maybeSingle();
+		.eq('status', isStalledCommitReentry ? 'running' : 'proposal_ready');
+	if (isStalledCommitReentry) {
+		// CAS: only re-claim if commit_started_at is still the stale value we read.
+		claimQuery = staleCommitStartedAt
+			? claimQuery.eq('commit_started_at', staleCommitStartedAt)
+			: claimQuery.is('commit_started_at', null);
+	}
+	const { data: claimed, error: claimError } = await claimQuery.select('id').maybeSingle();
 	if (claimError) {
 		return { ok: false, error: { code: 'INTERNAL', message: claimError.message } };
 	}
@@ -356,6 +433,36 @@ export async function commitChangeSet(params: {
 			ok: false,
 			error: { code: 'CONFLICT', message: 'Change set is already being committed' }
 		};
+	}
+
+	// On re-entry, load the changes a prior (crashed) attempt already applied so we
+	// never re-run a non-idempotent write. agent_tool_executions is written per change
+	// right after the mutation, so a success row is the durable "already applied"
+	// signal.
+	const alreadyAppliedByChangeId = new Map<
+		string,
+		{ entityId: string | null; entityKind: string | null }
+	>();
+	if (isStalledCommitReentry) {
+		const { data: priorExecs, error: priorExecsError } = await admin
+			.from('agent_tool_executions')
+			.select('proposed_change_id, entity_id, entity_kind, success')
+			.eq('agent_run_id', runId)
+			.eq('user_id', userId)
+			.eq('mutation_mode', 'commit')
+			.eq('success', true);
+		if (priorExecsError) {
+			return { ok: false, error: { code: 'INTERNAL', message: priorExecsError.message } };
+		}
+		for (const row of priorExecs ?? []) {
+			const changeId = (row as { proposed_change_id?: unknown }).proposed_change_id;
+			if (typeof changeId === 'string') {
+				alreadyAppliedByChangeId.set(changeId, {
+					entityId: (row as { entity_id?: string | null }).entity_id ?? null,
+					entityKind: (row as { entity_kind?: string | null }).entity_kind ?? null
+				});
+			}
+		}
 	}
 
 	// Defense-in-depth: a staged op must still be within the run's granted scope.
@@ -387,6 +494,27 @@ export async function commitChangeSet(params: {
 
 		if (decision === 'rejected') {
 			rejected += 1;
+			continue;
+		}
+
+		// D9b: a prior crashed commit already applied this change — count it, rebuild
+		// its EntityTouch, and skip re-running the (non-idempotent) write.
+		const priorApplied = alreadyAppliedByChangeId.get(change.id);
+		if (priorApplied) {
+			applied += 1;
+			const appliedId = priorApplied.entityId ?? change.entity_id ?? undefined;
+			change.applied_entity_id = appliedId;
+			change.error = undefined;
+			if (appliedId) {
+				entitiesTouched.push(
+					entityTouchFromAppliedChange(
+						change,
+						appliedId,
+						priorApplied.entityKind,
+						run.project_id ?? null
+					)
+				);
+			}
 			continue;
 		}
 
@@ -490,6 +618,16 @@ export async function commitChangeSet(params: {
 				entity_kind: change.entity_type
 			});
 		}
+
+		// D9b: heartbeat progress after each applied change so a concurrent commit
+		// request sees a fresh commit_started_at and stays out (CONFLICT) while this
+		// commit is live — only a genuinely dead commit goes stale and is re-entered.
+		await admin
+			.from('agent_runs')
+			.update({ commit_started_at: new Date().toISOString() } as never)
+			.eq('id', runId)
+			.eq('user_id', userId)
+			.eq('status', 'running');
 	}
 
 	const approved = applied + failed;

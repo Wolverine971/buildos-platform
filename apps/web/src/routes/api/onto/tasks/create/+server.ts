@@ -34,7 +34,6 @@ import {
 	fetchTaskAssigneesMap,
 	notifyTaskAssignmentAdded,
 	parseAssigneeActorIds,
-	syncTaskAssignees,
 	validateAssigneesAreProjectEligible
 } from '$lib/server/task-assignment.service';
 import {
@@ -46,6 +45,26 @@ import {
 	shouldSkipProjectLoopBurst
 } from '$lib/server/project-loop-burst.service';
 const ALLOWED_PARENT_KINDS = new Set(Object.keys(ENTITY_TABLES));
+
+/**
+ * Compensating cleanup for D7: if edge auto-organization fails after the task
+ * row committed, remove the orphan so a retry does not accumulate connectionless
+ * tasks. Edges are polymorphic (no FK to onto_tasks) so they are deleted
+ * explicitly; assignee links cascade via the task FK.
+ */
+async function cleanupOrphanTask(supabase: App.Locals['supabase'], taskId: string): Promise<void> {
+	try {
+		await supabase.from('onto_edges').delete().eq('src_id', taskId);
+		await supabase.from('onto_edges').delete().eq('dst_id', taskId);
+		await supabase.from('onto_tasks').delete().eq('id', taskId);
+	} catch (cleanupError) {
+		console.error(
+			'[Task Create] Failed to clean up orphan task after edge failure:',
+			cleanupError
+		);
+	}
+}
+
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
 	const { user } = await locals.safeGetSession();
@@ -54,6 +73,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 	const supabase = locals.supabase;
 	const chatSessionId = getChatSessionIdFromRequest(request);
+	// D3: optional per-call idempotency key. When present a retried create with
+	// the same key returns the already-created row instead of a duplicate.
+	// Absent header => no-op (backwards compatible for non-chat callers).
+	const idempotencyKey = request.headers.get('Idempotency-Key')?.trim() || null;
 	let requestProjectId: string | undefined;
 	let requestTitle: string | undefined;
 	let requestStateKey: string | undefined;
@@ -278,16 +301,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			// Auto-set completed_at when creating a task as done
 			...(finalState === 'done' ? { completed_at: new Date().toISOString() } : {})
 		};
-		const { data: task, error: createError } = await supabase
-			.from('onto_tasks')
-			.insert(taskData)
-			.select('*')
-			.single();
-		if (createError) {
-			console.error('Error creating task:', createError);
+		// Atomic create: the task row + its assignee links are written inside a
+		// single RPC transaction (mirrors onto_task_update_atomic). Edge
+		// auto-organization stays post-commit — exactly as the update path does —
+		// and is compensated below if it fails so no orphan task survives (D7).
+		const { data: atomicResult, error: atomicError } = await supabase.rpc(
+			'onto_task_create_atomic' as any,
+			{
+				p_task: taskData,
+				p_sync_assignees: hasAssigneeInput,
+				p_assignee_actor_ids: hasAssigneeInput ? assigneeActorIds : null,
+				p_assigned_by_actor_id: hasAssigneeInput ? actorId : null,
+				p_source: 'manual',
+				p_idempotency_key: idempotencyKey
+			} as any
+		);
+		if (atomicError || !atomicResult) {
+			console.error('Error creating task:', atomicError);
 			await logOntologyApiError({
 				supabase,
-				error: createError,
+				error: atomicError ?? new Error('onto_task_create_atomic returned no data'),
 				endpoint: '/api/onto/tasks/create',
 				method: 'POST',
 				userId: user.id,
@@ -296,15 +329,55 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				operation: 'task_create',
 				tableName: 'onto_tasks'
 			});
-			return ApiResponse.databaseError(createError);
+			const message = atomicError?.message ?? '';
+			if (message.includes('access_denied')) {
+				return ApiResponse.forbidden(
+					'You do not have permission to create tasks in this project'
+				);
+			}
+			if (message.includes('invalid_state_key')) {
+				return ApiResponse.badRequest(message);
+			}
+			return ApiResponse.databaseError(
+				atomicError ?? new Error('onto_task_create_atomic returned no data')
+			);
 		}
-		await autoOrganizeConnections({
-			supabase,
-			projectId,
-			entity: { kind: 'task', id: task.id },
-			connections: connectionList,
-			options: { mode: 'replace' }
-		});
+		const task = (atomicResult as { task: any }).task;
+		const isIdempotentReplay = Boolean(
+			(atomicResult as { idempotent_replay?: boolean }).idempotent_replay
+		);
+		// On an idempotency replay the row already existed with its edges,
+		// assignees, and notifications from the original request. Re-running the
+		// post-commit side effects would double-fire them, so return the existing
+		// task directly (with assignees) and skip the rest.
+		if (isIdempotentReplay) {
+			let replayTask = { ...task, assignees: [] as unknown[] };
+			try {
+				const assigneeMap = await fetchTaskAssigneesMap({ supabase, taskIds: [task.id] });
+				replayTask = attachAssigneesToTask(task, assigneeMap);
+			} catch (assigneeError) {
+				console.warn(
+					'[Task Create] Failed to enrich assignees on idempotent replay:',
+					assigneeError
+				);
+			}
+			return ApiResponse.created({ task: replayTask });
+		}
+		try {
+			await autoOrganizeConnections({
+				supabase,
+				projectId,
+				entity: { kind: 'task', id: task.id },
+				connections: connectionList,
+				options: { mode: 'replace' }
+			});
+		} catch (organizeError) {
+			// D7: the task committed but edge creation failed. Delete the orphan
+			// (its edges + assignee links + row) so the caller can retry cleanly
+			// instead of accumulating tasks with no connections.
+			await cleanupOrphanTask(supabase, task.id);
+			throw organizeError;
+		}
 		const actorDisplayName =
 			(typeof user.name === 'string' && user.name) ||
 			user.email?.split('@')[0] ||
@@ -318,13 +391,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		});
 		let assignmentRecipientUserIds: string[] = [];
 		if (hasAssigneeInput) {
-			const { addedActorIds } = await syncTaskAssignees({
-				supabase,
-				projectId,
-				taskId: task.id,
-				assigneeActorIds,
-				assignedByActorId: actorId
-			});
+			// Assignees were already inserted inside onto_task_create_atomic above;
+			// `addedActorIds` came back with the RPC result. Notifications stay
+			// outside the transaction because they fan out via external channels.
+			const addedActorIds = ((atomicResult as { added_actor_ids?: string[] })
+				.added_actor_ids ?? []) as string[];
 			const { recipientUserIds } = await notifyTaskAssignmentAdded({
 				supabase,
 				projectId,

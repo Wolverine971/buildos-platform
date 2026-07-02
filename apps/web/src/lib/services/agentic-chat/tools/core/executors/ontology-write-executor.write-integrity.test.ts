@@ -174,6 +174,61 @@ describe('OntologyWriteExecutor write-path integrity', () => {
 		});
 	});
 
+	describe('D2 — merge_llm scales tokens and rejects a truncated merge', () => {
+		const longExisting = 'E'.repeat(8000);
+
+		it('scales the merge token cap above the old 2000 default for long documents', async () => {
+			const generateTextDetailed = vi.fn(async () => ({
+				text: `MERGED ${'M'.repeat(8500)}`
+			}));
+			context.llmService = { generateTextDetailed } as any;
+			const executor = new OntologyWriteExecutor(context);
+
+			await executor.updateOntoDocument(
+				{
+					document_id: 'doc-1',
+					content: 'New paragraph to weave in.',
+					update_strategy: 'merge_llm'
+				},
+				async () => ({
+					document: { id: 'doc-1', content: longExisting, project_id: 'project-1' }
+				})
+			);
+
+			expect(generateTextDetailed).toHaveBeenCalledTimes(1);
+			const mergeArgs = generateTextDetailed.mock.calls[0][0] as { maxTokens?: number };
+			expect(mergeArgs.maxTokens).toBeGreaterThan(2000);
+
+			// A merge at least as long as the existing body is accepted and PATCHed.
+			expect(patchBodies).toHaveLength(1);
+			expect(patchBodies[0].body.content).toContain('MERGED');
+		});
+
+		it('falls back to a safe append when the merge comes back materially shorter', async () => {
+			const generateTextDetailed = vi.fn(async () => ({ text: 'short merged output' }));
+			context.llmService = { generateTextDetailed } as any;
+			const executor = new OntologyWriteExecutor(context);
+
+			await executor.updateOntoDocument(
+				{
+					document_id: 'doc-1',
+					content: 'New paragraph to weave in.',
+					update_strategy: 'merge_llm'
+				},
+				async () => ({
+					document: { id: 'doc-1', content: longExisting, project_id: 'project-1' }
+				})
+			);
+
+			// The truncated merge must NOT replace the long document.
+			expect(patchBodies).toHaveLength(1);
+			expect(patchBodies[0].body.content).not.toBe('short merged output');
+			expect(patchBodies[0].body.content).toBe(
+				`${longExisting}\n\nNew paragraph to weave in.`
+			);
+		});
+	});
+
 	describe('D15 — invalid task state_key throws instead of a no-op PATCH', () => {
 		it('throws for an unmapped state such as "cancelled" and sends no PATCH', async () => {
 			const executor = new OntologyWriteExecutor(context);

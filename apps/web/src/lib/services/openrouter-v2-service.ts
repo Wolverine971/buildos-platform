@@ -1876,9 +1876,29 @@ export class OpenRouterV2Service extends SmartLLMService {
 					const payload = line.slice(5).trimStart();
 
 					if (payload === '[DONE]') {
+						// D11: a stream that terminated with finish_reason=error must not
+						// be reported as a successful `done` — surface it as an error so the
+						// orchestrator routes into repair/retry instead of shipping the
+						// truncated buffer as a complete answer.
+						if (terminalFinishReason === 'error') {
+							throw new Error('OpenRouter stream ended with finish_reason=error');
+						}
 						for (const pending of assembler.drain()) {
 							if (!pending.function.name) continue;
-							if (!isValidJsonObject(pending.function.arguments)) continue;
+							if (!isValidJsonObject(pending.function.arguments)) {
+								// D8: a tool call whose arguments never became valid JSON was
+								// truncated mid-stream (usually the output-token cap). Log it so
+								// the silent drop is observable instead of vanishing.
+								console.warn(
+									'[openrouter-v2] dropping tool call with invalid/truncated arguments',
+									{
+										toolName: pending.function.name,
+										argsLength: pending.function.arguments?.length ?? 0,
+										finishReason: terminalFinishReason ?? 'stop'
+									}
+								);
+								continue;
+							}
 							yield { type: 'tool_call', tool_call: pending };
 						}
 
@@ -1908,6 +1928,23 @@ export class OpenRouterV2Service extends SmartLLMService {
 						chunk = JSON.parse(payload);
 					} catch {
 						continue;
+					}
+
+					// D11: OpenRouter can emit a mid-stream error frame (`{ error: ... }`)
+					// with no `choices`. Previously this fell through and was `continue`d,
+					// so an upstream failure was silently ignored and the truncated buffer
+					// shipped as a complete answer. Treat it as a real error.
+					if (chunk?.error) {
+						const errPayload = chunk.error;
+						const errMessage =
+							typeof errPayload === 'string'
+								? errPayload
+								: errPayload &&
+									  typeof errPayload === 'object' &&
+									  typeof errPayload.message === 'string'
+									? errPayload.message
+									: 'OpenRouter stream returned an error frame';
+						throw new Error(errMessage);
 					}
 
 					if (typeof chunk?.id === 'string' && chunk.id.trim().length > 0) {
@@ -1986,9 +2023,25 @@ export class OpenRouterV2Service extends SmartLLMService {
 				}
 			}
 
+			// D11: same guard on the natural end-of-stream path (no explicit [DONE]).
+			if (terminalFinishReason === 'error') {
+				throw new Error('OpenRouter stream ended with finish_reason=error');
+			}
+
 			for (const pending of assembler.drain()) {
 				if (!pending.function.name) continue;
-				if (!isValidJsonObject(pending.function.arguments)) continue;
+				if (!isValidJsonObject(pending.function.arguments)) {
+					// D8: truncated tool-call arguments dropped silently — make it observable.
+					console.warn(
+						'[openrouter-v2] dropping tool call with invalid/truncated arguments',
+						{
+							toolName: pending.function.name,
+							argsLength: pending.function.arguments?.length ?? 0,
+							finishReason: terminalFinishReason ?? 'stop'
+						}
+					);
+					continue;
+				}
 				yield { type: 'tool_call', tool_call: pending };
 			}
 

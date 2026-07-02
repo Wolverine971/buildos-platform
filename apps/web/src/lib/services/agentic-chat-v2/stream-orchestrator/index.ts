@@ -247,6 +247,16 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let readLoopRepairRank = 0;
 	let forceNoToolSynthesisPass = false;
 	let noToolSynthesisRetryCount = 0;
+	// D8: recovery state for answers that hit the output-token cap
+	// (finish_reason === 'length'). `lengthContinuationCount` bounds how many
+	// times we ask the model to keep going; `carriedTruncatedText` accumulates the
+	// confirmed partial text from earlier truncated passes so the final answer is
+	// the whole thing, not just the last continuation; `answerTruncated` flags the
+	// turn when we exhaust continuations so we never present a cut-off answer as a
+	// clean `stop`.
+	let lengthContinuationCount = 0;
+	let carriedTruncatedText = '';
+	let answerTruncated = false;
 	const gatewayRequiredFieldFailureCounts = new Map<string, number>();
 	let docOrganizationRecoveryEligible = false;
 	let gatewaySchemaRepairInjected = false;
@@ -320,17 +330,19 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 		}
 	};
-	const isAbortLikeError = (error: unknown): boolean => {
-		if (!error || typeof error !== 'object') return false;
-		const maybeError = error as { name?: string; message?: string };
-		const name = maybeError.name?.toLowerCase() ?? '';
-		const message = maybeError.message?.toLowerCase() ?? '';
-		return (
-			name === 'aborterror' ||
-			message.includes('aborted') ||
-			message.includes('request aborted') ||
-			message.includes('stream closed')
-		);
+	// O8: A turn is only a *user cancellation* when the abort signal actually
+	// fired. Message-substring matches like "The operation was aborted"
+	// (provider timeouts) or "stream closed" (socket drops) also occur on real
+	// failures — classifying those as cancellations silently swallows the error
+	// and presents an incomplete turn as if the user stopped it. So we require
+	// `signal.aborted === true` (which is set synchronously by the AbortController
+	// before the AbortError ever reaches us) rather than trusting the message.
+	const isUserCancellation = (): boolean => {
+		// A user cancellation is defined solely by the abort signal firing. An
+		// AbortError with no aborted signal (e.g. a provider-internal timeout
+		// implemented via its own AbortController) is NOT a user cancellation and
+		// must surface as a real error.
+		return signal?.aborted === true;
 	};
 
 	const markToolLimitReached = (kind: 'round' | 'call' | 'repetition'): void => {
@@ -428,6 +440,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		args: Record<string, any>
 	): Promise<FastToolExecution | null> => {
 		if (!allowAutonomousRecovery || !params.toolExecutor) return null;
+		// Stop issuing synthetic tool calls (which commit writes) once the turn is cancelled.
+		if (signal?.aborted) return null;
 
 		toolCallsMade += 1;
 		if (toolCallsMade > maxToolCalls) {
@@ -507,7 +521,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			!gatewayModeActive ||
 			typeof params.toolExecutor !== 'function' ||
 			!docOrganizationRecoveryEligible ||
-			docOrganizationRecoveryAttempted
+			docOrganizationRecoveryAttempted ||
+			// Never start recovery writes on a cancelled turn.
+			signal?.aborted
 		) {
 			return false;
 		}
@@ -547,6 +563,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		let movedCount = 0;
 		let failedMoves = 0;
 		for (let index = 0; index < unlinkedDocIds.length; index += 1) {
+			// Stop mid-loop the moment the turn is cancelled so we don't keep
+			// committing document moves after a stop.
+			if (signal?.aborted) break;
 			const documentId = unlinkedDocIds[index];
 			const moveExecution = await executeSyntheticDirectTool('onto.document.tree.move', {
 				project_id: candidateProjectId,
@@ -817,6 +836,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					streamRunId: params.streamRunId ?? undefined,
 					clientTurnId: params.clientTurnId ?? undefined,
 					profile: 'balanced',
+					// D8: raise the per-pass output cap well above the service default
+					// (2000). A 2000-token cap truncated real answers and half-built
+					// tool-call arguments mid-stream, and the truncated buffer was
+					// shipped as the final answer.
+					maxTokens: FASTCHAT_LIMITS.SYNTHESIS_MAX_TOKENS,
 					operationType: 'agentic_chat_v2_stream',
 					contextType: normalizedContext,
 					entityId: entityId ?? undefined,
@@ -998,8 +1022,58 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				break;
 			}
 
+			// D8: A pass that ended because it hit the output-token cap
+			// (finish_reason === 'length') has a truncated buffer — never finalize
+			// it as a complete answer. Ask the model to continue from exactly where
+			// it stopped (bounded by MAX_LENGTH_CONTINUATIONS), carrying the
+			// confirmed partial text forward so the assembled answer is whole. When
+			// continuations are exhausted, keep the accumulated text but flag the
+			// turn as truncated so it is not presented as a clean `stop`.
+			if (
+				llmDoneReceived &&
+				llmPassMeta.finishedReason === 'length' &&
+				pendingToolCalls.length === 0
+			) {
+				if (lengthContinuationCount < FASTCHAT_LIMITS.MAX_LENGTH_CONTINUATIONS) {
+					lengthContinuationCount += 1;
+					console.warn(
+						'[stream-orchestrator] answer hit output-token cap; requesting continuation',
+						{
+							pass: llmPassMeta.pass,
+							continuation: lengthContinuationCount,
+							maxContinuations: FASTCHAT_LIMITS.MAX_LENGTH_CONTINUATIONS,
+							noToolSynthesisPass
+						}
+					);
+					carriedTruncatedText += assistantBuffer;
+					const partial = sanitizeAssistantFinalText(assistantBuffer);
+					if (partial) {
+						messages.push({ role: 'assistant', content: partial });
+					}
+					messages.push({
+						role: 'system',
+						content:
+							'Your previous message was cut off because it reached the output length limit. Continue the answer from exactly where it stopped. Do not repeat text you already wrote, do not restart, and do not call any tools — just finish the answer.'
+					});
+					if (noToolSynthesisPass) {
+						forceNoToolSynthesisPass = true;
+					}
+					continue;
+				}
+				console.warn(
+					'[stream-orchestrator] answer still truncated after continuation budget; flagging turn',
+					{
+						pass: llmPassMeta.pass,
+						continuations: lengthContinuationCount
+					}
+				);
+				answerTruncated = true;
+			}
+
 			if (noToolSynthesisPass) {
-				const candidateFinalText = sanitizeAssistantFinalText(assistantBuffer);
+				const candidateFinalText = sanitizeAssistantFinalText(
+					carriedTruncatedText + assistantBuffer
+				);
 				// Retry the withheld-tools synthesis once when it failed to produce a
 				// usable answer. Two failure modes qualify: the model kept trying to
 				// call tools (suppressed), or it returned no visible text at all
@@ -1046,7 +1120,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 
 			if (pendingToolCalls.length === 0) {
-				const candidateFinalText = sanitizeAssistantFinalText(assistantBuffer);
+				const candidateFinalText = sanitizeAssistantFinalText(
+					carriedTruncatedText + assistantBuffer
+				);
 				if (
 					shouldRepairProjectCreateNoExecution({
 						contextType: normalizedContext,
@@ -1730,7 +1806,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 		}
 	} catch (error) {
-		if (signal?.aborted || isAbortLikeError(error)) {
+		if (isUserCancellation()) {
 			finishedReason = 'cancelled';
 			if (activePendingToolCallCount === 0) {
 				const partialAssistantText = sanitizeAssistantFinalText(activeAssistantBuffer);
@@ -1825,6 +1901,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		if (finalAssistantText && finalAssistantText !== assistantText.trim()) {
 			await emitAssistantRemainder(finalAssistantText);
 		}
+	}
+
+	// D8: if we ran out of continuation budget on a truncated answer, keep the
+	// accumulated text but never report a clean `stop` — a finalize branch may
+	// have overwritten finishedReason (e.g. the synthesis pass). Preserve the
+	// `length` signal so downstream telemetry/UX knows the answer was cut off.
+	if (answerTruncated && (finishedReason === 'stop' || finishedReason === undefined)) {
+		finishedReason = 'length';
 	}
 
 	if (dev) {

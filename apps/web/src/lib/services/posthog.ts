@@ -61,7 +61,7 @@ export function initPostHog(): void {
 
 	posthog.init(env.PUBLIC_POSTHOG_KEY!, {
 		api_host: env.PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
-		defaults: '2025-05-24', // history_change pageviews — SPA navigations tracked automatically
+		defaults: '2026-05-30', // history_change pageviews — SPA navigations tracked automatically
 		person_profiles: 'identified_only',
 		capture_pageleave: true
 	});

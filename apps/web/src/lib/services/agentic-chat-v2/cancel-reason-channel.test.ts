@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/cancel-reason-channel.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	buildFastChatCancelHintsPatch,
 	consumeTransientFastChatCancelHint,
 	createFastChatCancelHint,
 	isLegacyFastChatStreamRunId,
@@ -127,6 +128,53 @@ describe('cancel reason channel', () => {
 				nowMs
 			})
 		).toBe('user_cancelled');
+	});
+
+	it('builds a shallow cancel-hints patch that preserves other run hints and omits non-hint keys', () => {
+		const nowMs = Date.parse('2026-02-27T18:00:00.000Z');
+		const patch = buildFastChatCancelHintsPatch({
+			agentMetadata: {
+				focus: { projectId: 'proj_1' },
+				fastchat_cancel_hints_v1: {
+					other_run: {
+						reason: 'superseded',
+						stream_run_id: 'other_run',
+						created_at: '2026-02-27T17:59:55.000Z',
+						source: 'client_cancel_endpoint'
+					}
+				}
+			},
+			hints: [
+				{
+					streamRunId: 'run-123',
+					hint: createFastChatCancelHint({
+						reason: 'user_cancelled',
+						streamRunId: 'run-123',
+						createdAt: '2026-02-27T17:59:58.000Z'
+					})
+				}
+			],
+			nowMs
+		});
+
+		// Patch only carries the hints key (so the RPC never clobbers `focus`).
+		expect(Object.keys(patch)).toEqual(['fastchat_cancel_hints_v1']);
+
+		// The reader still finds both the newly written hint and the pre-existing one.
+		expect(
+			readFastChatCancelReasonFromMetadata({
+				agentMetadata: patch,
+				streamRunId: 'run-123',
+				nowMs
+			})
+		).toBe('user_cancelled');
+		expect(
+			readFastChatCancelReasonFromMetadata({
+				agentMetadata: patch,
+				streamRunId: 'other_run',
+				nowMs
+			})
+		).toBe('superseded');
 	});
 
 	it('stores and consumes transient cancel hints once', () => {

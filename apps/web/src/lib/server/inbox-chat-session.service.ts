@@ -549,20 +549,30 @@ async function refreshExistingInboxChatSession(params: {
 }): Promise<Record<string, unknown>> {
 	const sessionId = readString(params.session.id);
 	if (!sessionId) return params.session;
-	const existingMetadata = isRecord(params.session.agent_metadata)
-		? params.session.agent_metadata
-		: {};
-	const mergedMetadata = {
-		...existingMetadata,
-		...params.sessionMetadata
-	};
+
+	// Merge only the inbox session metadata keys through the atomic shallow-merge
+	// RPC so we never clobber cancel hints (`fastchat_cancel_hints_v1`) or `focus`
+	// written concurrently by the stream/cancel writers from a stale snapshot.
+	const { data: mergedMetadata, error: metadataMergeError } = await params.supabase.rpc(
+		'merge_chat_session_agent_metadata',
+		{
+			p_session_id: sessionId,
+			p_patch: params.sessionMetadata as Json
+		}
+	);
+	if (metadataMergeError) {
+		console.warn('Failed to merge inbox chat session metadata', {
+			sessionId,
+			inboxItemId: params.item.id ?? null,
+			error: metadataMergeError
+		});
+	}
 
 	const { data: updatedSession, error: sessionUpdateError } = await params.supabase
 		.from('chat_sessions')
 		.update({
 			title: `Chat: ${compactTitle(params.context.displayTitle ?? params.item.title)}`,
-			summary: params.item.summary ?? null,
-			agent_metadata: mergedMetadata as Json
+			summary: params.item.summary ?? null
 		})
 		.eq('id', sessionId)
 		.eq('user_id', params.userId)

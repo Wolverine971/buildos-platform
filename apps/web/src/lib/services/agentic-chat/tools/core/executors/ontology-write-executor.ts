@@ -893,7 +893,10 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		};
 	}
 
-	async createOntoTask(args: CreateOntoTaskArgs): Promise<{
+	async createOntoTask(
+		args: CreateOntoTaskArgs,
+		opts: { toolCallId?: string } = {}
+	): Promise<{
 		task: any;
 		message: string;
 	}> {
@@ -937,10 +940,21 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			payload.assignee_actor_ids = assigneeResolution.assigneeActorIds;
 		}
 
-		const data = await this.apiRequest('/api/onto/tasks/create', {
-			method: 'POST',
-			body: JSON.stringify(payload)
-		});
+		// D3: derive a stable idempotency key from the tool_call id (unique per
+		// model call) scoped by session, so a retried/aborted-then-committed create
+		// returns the existing task instead of a duplicate. No id => no key => no dedup.
+		const idempotencyKey = opts.toolCallId
+			? `chat:${this.sessionId ?? 'nosession'}:${opts.toolCallId}`
+			: undefined;
+
+		const data = await this.apiRequest(
+			'/api/onto/tasks/create',
+			{
+				method: 'POST',
+				body: JSON.stringify(payload)
+			},
+			{ idempotencyKey }
+		);
 
 		return {
 			task: data.task,
@@ -2114,18 +2128,45 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			'- Integrate new details; avoid duplicating sections.'
 		].join('\n\n');
 
+		// D2: The merge output REPLACES the full document body, so a fixed 2000-token
+		// cap silently truncated any document longer than ~2000 output tokens. Scale
+		// the cap to the combined input length (merged output is roughly existing +
+		// new) with headroom for restructuring, clamped to a sane floor/ceiling.
+		const existingContent = params.existingContent ?? '';
+		const approxInputChars = existingContent.length + (params.newContent?.length ?? 0);
+		const scaledMaxTokens = Math.min(
+			16000,
+			Math.max(2000, Math.ceil(approxInputChars / 4) + 1000)
+		);
+
 		const result = await this.llmService.generateTextDetailed({
 			prompt,
 			systemPrompt,
 			userId: this.userId,
 			profile: 'balanced',
-			maxTokens: 2000,
+			maxTokens: scaledMaxTokens,
 			temperature: 0.4,
 			operationType: 'agentic_chat_content_merge',
 			chatSessionId: this.sessionId,
 			projectId: params.projectId
 		});
 
-		return result.text.trim();
+		const mergedText = result.text.trim();
+
+		// D2: Guard against a truncated/dropped merge silently destroying a long
+		// document. The merge is expected to PRESERVE existing material and weave in
+		// the new content, so the output should be at least as long as the existing
+		// body. If it comes back materially shorter, treat it as a failed merge and
+		// throw — the caller (resolveTextWithStrategy) catches this, logs it, and
+		// falls back to a safe append that preserves the existing content.
+		const existingLength = existingContent.trim().length;
+		if (existingLength > 200 && mergedText.length < existingLength * 0.5) {
+			throw new Error(
+				`Merge output (${mergedText.length} chars) is materially shorter than the existing content ` +
+					`(${existingLength} chars); refusing to replace the document with a likely-truncated merge.`
+			);
+		}
+
+		return mergedText;
 	}
 }

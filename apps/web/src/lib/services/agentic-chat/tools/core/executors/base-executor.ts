@@ -77,6 +77,7 @@ export class BaseExecutor {
 	protected readonly fetchFn: typeof fetch;
 	protected readonly llmService?: SmartLLMService;
 	protected readonly activityLogActorContext?: ActivityLogActorContext;
+	protected readonly abortSignal?: AbortSignal;
 
 	private _actorId?: string;
 	private _adminSupabase?: TypedSupabaseClient;
@@ -88,6 +89,7 @@ export class BaseExecutor {
 		this.fetchFn = context.fetchFn;
 		this.llmService = context.llmService;
 		this.activityLogActorContext = context.activityLogActorContext;
+		this.abortSignal = context.abortSignal;
 	}
 
 	// ============================================
@@ -147,17 +149,35 @@ export class BaseExecutor {
 	 *
 	 * @param path - API endpoint path
 	 * @param options - Fetch options
+	 * @param extra - Optional per-call extras. `idempotencyKey` attaches an
+	 *   `Idempotency-Key` header so create routes can dedupe a retried write
+	 *   (see D3). Omitting it is a no-op (backwards compatible).
 	 * @returns Parsed response data
 	 * @throws Error with detailed message on failure
 	 */
-	protected async apiRequest<T = any>(path: string, options: RequestInit = {}): Promise<T> {
+	protected async apiRequest<T = any>(
+		path: string,
+		options: RequestInit = {},
+		extra: { idempotencyKey?: string } = {}
+	): Promise<T> {
 		const headers = await this.getAuthHeaders();
 		const method = options.method || 'GET';
 
+		// If the turn was already cancelled before the request left, fail fast with an
+		// abort so no write is issued at all.
+		if (this.abortSignal?.aborted) {
+			throw new DOMException('Tool execution aborted', 'AbortError');
+		}
+
 		const response = await this.fetchFn(path, {
 			...options,
+			// Thread the turn-scoped abort signal into fetch so a cancel actually aborts
+			// the in-flight request (and its write) instead of leaving it to complete.
+			// An explicit per-call signal on options still wins if provided.
+			signal: options.signal ?? this.abortSignal,
 			headers: {
 				...headers,
+				...(extra.idempotencyKey ? { 'Idempotency-Key': extra.idempotencyKey } : {}),
 				...(options.headers || {})
 			}
 		});

@@ -1642,4 +1642,73 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		expect(logged?.completion_tokens).toBeGreaterThan(0);
 		expect(logged?.prompt_tokens).toBeGreaterThan(0);
 	});
+
+	it('surfaces a mid-stream OpenRouter error frame as an error event (D11)', async () => {
+		// D11: an upstream `{ error }` frame has no `choices`, so it used to be
+		// silently skipped and the stream ended as a successful `done`, shipping the
+		// truncated buffer as a complete answer. It must now surface as an error.
+		const insertMock = vi.fn(async () => ({ error: null }));
+		const encoder = new TextEncoder();
+		const fetchMock = vi.fn(async () => {
+			let stage = 0;
+			const stream = new ReadableStream({
+				pull(controller) {
+					if (stage === 0) {
+						stage = 1;
+						controller.enqueue(
+							encoder.encode(
+								`data: ${JSON.stringify({
+									id: 'stream-errframe',
+									model: ACTIVE_EXPERIMENT_MODEL,
+									choices: [{ delta: { content: 'Partial answer' } }]
+								})}\n\n`
+							)
+						);
+						return;
+					}
+					if (stage === 1) {
+						stage = 2;
+						controller.enqueue(
+							encoder.encode(
+								`data: ${JSON.stringify({
+									error: { message: 'upstream rate limited', code: 429 }
+								})}\n\n`
+							)
+						);
+						return;
+					}
+					controller.close();
+				}
+			});
+			return new Response(stream, {
+				status: 200,
+				headers: { 'content-type': 'text/event-stream' }
+			});
+		});
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createServiceWithUsageLogger(insertMock);
+		const events = [];
+		for await (const event of service.streamText({
+			messages: [{ role: 'user', content: 'hello' }],
+			userId: '11111111-1111-4111-8111-111111111111',
+			model: ACTIVE_EXPERIMENT_MODEL,
+			models: [ACTIVE_EXPERIMENT_MODEL],
+			chatSessionId: '22222222-2222-4222-8222-222222222222',
+			operationType: 'agentic_chat_v2_stream'
+		})) {
+			events.push(event);
+		}
+
+		const errorEvent = events.find((event) => event.type === 'error') as
+			| { type: 'error'; error?: string }
+			| undefined;
+		expect(errorEvent).toBeDefined();
+		expect(errorEvent?.error).toContain('upstream rate limited');
+		// It must NOT terminate as a successful done.
+		expect(events.some((event) => event.type === 'done')).toBe(false);
+		await vi.waitFor(() => expect(insertMock).toHaveBeenCalledTimes(1));
+		expect(insertMock.mock.calls[0]?.[0]).toMatchObject({ status: 'failure' });
+	});
 });

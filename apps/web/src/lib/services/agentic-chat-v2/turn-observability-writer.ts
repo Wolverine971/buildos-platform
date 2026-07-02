@@ -418,6 +418,27 @@ export class TurnObservabilityWriter {
 		}
 	}
 
+	// Flush pending turn events AND the detached-task set, bounded by a timeout so a
+	// hung detached write can never block the SSE stream from closing (which, on a
+	// serverless lambda, would otherwise let the runtime freeze mid-flush and drop
+	// the detached persistence entirely). Returns `completed: false` when the budget
+	// elapsed before flush settled so the caller can log the drop.
+	async flushWithBudget(timeoutMs: number): Promise<{ completed: boolean }> {
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const timeout = new Promise<'timeout'>((resolve) => {
+			timer = setTimeout(() => resolve('timeout'), timeoutMs);
+		});
+		try {
+			const outcome = await Promise.race([
+				this.flush().then(() => 'flushed' as const),
+				timeout
+			]);
+			return { completed: outcome === 'flushed' };
+		} finally {
+			if (timer) clearTimeout(timer);
+		}
+	}
+
 	async flushTurnEvents(): Promise<void> {
 		const events = this.pendingTurnEvents.splice(0);
 		if (events.length === 0) return;

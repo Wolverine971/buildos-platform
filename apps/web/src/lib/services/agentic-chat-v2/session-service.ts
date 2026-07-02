@@ -431,13 +431,14 @@ export function createFastChatSessionService(
 			if (entityId !== undefined && session.entity_id !== entityId) {
 				updates.entity_id = entityId ?? null;
 			}
-			if (projectFocus) {
-				const currentMeta = (session.agent_metadata ?? {}) as Record<string, unknown>;
-				updates.agent_metadata = {
-					...currentMeta,
-					focus: projectFocus
-				} as unknown as typeof updates.agent_metadata;
-			}
+
+			// Only merge `focus` when it actually changed. This path fires on nearly
+			// every project-context turn and prewarm; writing the whole agent_metadata
+			// column here (as it did previously) clobbers cancel hints or other keys
+			// merged concurrently by the stream/cancel writers.
+			const currentFocus = ((session.agent_metadata ?? {}) as Record<string, unknown>).focus;
+			const focusChanged =
+				!!projectFocus && JSON.stringify(currentFocus) !== JSON.stringify(projectFocus);
 
 			if (Object.keys(updates).length > 0) {
 				const { data, error } = await supabase
@@ -465,6 +466,36 @@ export function createFastChatSessionService(
 					});
 				} else if (data) {
 					session = data;
+				}
+			}
+
+			if (focusChanged) {
+				const { data, error } = await supabase.rpc('merge_chat_session_agent_metadata', {
+					p_session_id: session.id,
+					p_patch: { focus: projectFocus } as unknown as Json
+				});
+
+				if (error) {
+					logger.warn('Failed to merge chat session focus', { error, sessionId });
+					logFastChatSessionError({
+						error,
+						operationType: 'fastchat_session_update_context',
+						userId,
+						projectId: projectFocus?.projectId ?? undefined,
+						tableName: 'chat_sessions',
+						recordId: session.id,
+						metadata: {
+							sessionId: session.id,
+							contextType,
+							entityId,
+							stage: 'focus_merge_rpc'
+						}
+					});
+				} else if (data) {
+					session = {
+						...session,
+						agent_metadata: data as ChatSession['agent_metadata']
+					};
 				}
 			}
 

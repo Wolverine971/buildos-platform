@@ -68,6 +68,7 @@ export class ChatToolExecutor {
 	private llmService?: SmartLLMService;
 	private errorLogger: ErrorLoggerService;
 	private logExecutions: boolean;
+	private abortSignal?: AbortSignal;
 
 	// Cached values
 	private _actorId?: string;
@@ -86,17 +87,29 @@ export class ChatToolExecutor {
 		sessionId?: string,
 		fetchFn?: typeof fetch,
 		llmService?: SmartLLMService,
-		options?: { logExecutions?: boolean }
+		options?: { logExecutions?: boolean; abortSignal?: AbortSignal }
 	) {
 		this.sessionId = sessionId;
 		this.fetchFn = fetchFn || fetch;
 		this.llmService = llmService;
 		this.errorLogger = ErrorLoggerService.getInstance(supabase as any);
 		this.logExecutions = options?.logExecutions ?? true;
+		this.abortSignal = options?.abortSignal;
 	}
 
 	setSessionId(sessionId: string): void {
 		this.sessionId = sessionId;
+	}
+
+	setAbortSignal(signal?: AbortSignal): void {
+		this.abortSignal = signal;
+		// Executors are lazily constructed and cache the context snapshot, so drop
+		// any that were built before the signal was set to force a rebuild.
+		this._readExecutor = undefined;
+		this._writeExecutor = undefined;
+		this._utilityExecutor = undefined;
+		this._externalExecutor = undefined;
+		this._calendarExecutor = undefined;
 	}
 
 	// ============================================
@@ -112,7 +125,8 @@ export class ChatToolExecutor {
 			llmService: this.llmService,
 			getActorId: () => this.getActorId(),
 			getAdminSupabase: () => this.getAdminSupabase(),
-			getAuthHeaders: () => this.getAuthHeaders()
+			getAuthHeaders: () => this.getAuthHeaders(),
+			abortSignal: this.abortSignal
 		};
 	}
 

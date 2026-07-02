@@ -169,6 +169,7 @@ import { parseFastAgentStreamRequestBody } from '$lib/services/agentic-chat-v2/s
 import { isRunningTurnUniqueViolation } from '$lib/services/agentic-chat-v2/turn-run-conflicts';
 import { TurnObservabilityWriter } from '$lib/services/agentic-chat-v2/turn-observability-writer';
 import { sanitizeAssistantFinalText } from '$lib/services/agentic-chat-v2/stream-orchestrator/assistant-text-sanitization';
+import { buildRoundToolPattern } from '$lib/services/agentic-chat-v2/stream-orchestrator/round-analysis';
 import {
 	buildCheckpointResumeSystemMessage,
 	createTurnCheckpoint,
@@ -261,6 +262,13 @@ const FASTCHAT_SUPERVISOR_RESUMING_STALE_AFTER_MS = parsePositiveInt(
 	process.env.FASTCHAT_SUPERVISOR_RESUMING_STALE_AFTER_MS,
 	15 * 60 * 1000
 );
+// D4c: upper bound on how long stream close waits for detached persistence to
+// settle. Long enough for straggling inserts; short enough that a genuinely hung
+// task can't pin the connection open.
+const OBSERVABILITY_FLUSH_BUDGET_MS = parsePositiveInt(
+	process.env.FASTCHAT_OBSERVABILITY_FLUSH_BUDGET_MS,
+	5000
+);
 const FASTCHAT_CANCEL_WATCH_INTERVAL_MS = parsePositiveInt(
 	process.env.FASTCHAT_CANCEL_WATCH_INTERVAL_MS,
 	750
@@ -343,20 +351,6 @@ function resolvePersistableAssistantContent(params: {
 		}
 	}
 	return params.fallback === undefined ? FASTCHAT_CLEAN_RESPONSE_FALLBACK : params.fallback;
-}
-
-function isAbortLikeError(error: unknown): boolean {
-	if (!error || typeof error !== 'object') return false;
-	const maybeError = error as { name?: string; message?: string };
-	const name = maybeError.name?.toLowerCase() ?? '';
-	const message = maybeError.message?.toLowerCase() ?? '';
-	return (
-		name === 'aborterror' ||
-		message.includes('aborted') ||
-		message.includes('request aborted') ||
-		message.includes('stream closed') ||
-		message.includes('cancelled')
-	);
 }
 
 class FastChatRequestValidationError extends Error {
@@ -1509,6 +1503,41 @@ function buildToolExecutionInsertRows(params: {
 	});
 }
 
+// D4: persist a single tool execution the moment it completes (called from the
+// orchestrator's onToolResult). The row is written with a null message_id (the
+// assistant message doesn't exist until end-of-turn); the end-of-turn bulk persist
+// later attaches message_id to these rows via `persistToolExecutionRows` using the
+// (turn_run_id, sequence_index) key, so nothing is double-inserted. Returns true when
+// the row was written so the caller can record the sequence as already-persisted.
+async function persistIncrementalToolExecutionRow(params: {
+	supabase: FastChatSupabaseClient;
+	sessionId: string;
+	turnRunId: string;
+	streamRunId?: string | null;
+	clientTurnId?: string | null;
+	toolCall: ChatToolCall;
+	result: ChatToolResult;
+	sequenceIndex: number;
+}): Promise<boolean> {
+	const rows = buildToolExecutionInsertRows({
+		sessionId: params.sessionId,
+		messageId: null,
+		turnRunId: params.turnRunId,
+		streamRunId: params.streamRunId,
+		clientTurnId: params.clientTurnId,
+		executions: [{ toolCall: params.toolCall, result: params.result }]
+	});
+	const row = rows[0];
+	if (!row) return false;
+	// Single-row batch: buildToolExecutionInsertRows always assigns sequence_index=1;
+	// override with the turn-global sequence so it lines up with the end-of-turn bulk
+	// persist and the idempotency key.
+	row.sequence_index = params.sequenceIndex;
+	const { error } = await params.supabase.from('chat_tool_executions').insert(rows);
+	if (error) throw error;
+	return true;
+}
+
 async function persistToolExecutionRows(params: {
 	supabase: FastChatSupabaseClient;
 	sessionId: string;
@@ -1520,6 +1549,11 @@ async function persistToolExecutionRows(params: {
 	projectId?: string;
 	contextType: ChatContextType;
 	interrupted?: boolean;
+	// Sequence indices already written incrementally via
+	// persistIncrementalToolExecutionRow. Those rows are UPDATEd to attach the
+	// assistant message_id rather than re-inserted, so recovery (which reads
+	// executions by message_id) still resolves them.
+	persistedSequenceIndices?: ReadonlySet<number>;
 	logError?: (params: {
 		error: unknown;
 		operationType: string;
@@ -1537,7 +1571,58 @@ async function persistToolExecutionRows(params: {
 	});
 	if (rows.length === 0) return;
 
-	const { error } = await params.supabase.from('chat_tool_executions').insert(rows);
+	const persisted = params.persistedSequenceIndices;
+	const hasPersisted = Boolean(persisted && persisted.size > 0);
+
+	// Attach the assistant message_id to rows already written incrementally (they were
+	// inserted with message_id=null). Keyed by turn_run_id + sequence_index, which is
+	// unique per turn.
+	if (hasPersisted && params.messageId && params.turnRunId) {
+		const attachSequences = rows
+			.map((row) => row.sequence_index)
+			.filter(
+				(seq): seq is number =>
+					typeof seq === 'number' && (persisted as ReadonlySet<number>).has(seq)
+			);
+		if (attachSequences.length > 0) {
+			const { error: attachError } = await params.supabase
+				.from('chat_tool_executions')
+				.update({ message_id: params.messageId })
+				.eq('turn_run_id', params.turnRunId)
+				.eq('session_id', params.sessionId)
+				.in('sequence_index', attachSequences);
+			if (attachError) {
+				logger.warn('Failed to attach assistant message to incremental tool executions', {
+					error: attachError,
+					sessionId: params.sessionId
+				});
+				params.logError?.({
+					error: attachError,
+					operationType: 'fastchat_attach_tool_execution_message',
+					projectId: params.projectId,
+					metadata: {
+						sessionId: params.sessionId,
+						messageId: params.messageId,
+						turnRunId: params.turnRunId,
+						attachCount: attachSequences.length,
+						contextType: params.contextType
+					}
+				});
+			}
+		}
+	}
+
+	// Only insert rows that were NOT already persisted incrementally.
+	const rowsToInsert = hasPersisted
+		? rows.filter(
+				(row) =>
+					row.sequence_index == null ||
+					!(persisted as ReadonlySet<number>).has(row.sequence_index)
+			)
+		: rows;
+	if (rowsToInsert.length === 0) return;
+
+	const { error } = await params.supabase.from('chat_tool_executions').insert(rowsToInsert);
 	if (!error) return;
 
 	logger.warn(
@@ -1556,7 +1641,7 @@ async function persistToolExecutionRows(params: {
 		metadata: {
 			sessionId: params.sessionId,
 			messageId: params.messageId,
-			toolExecutionCount: rows.length,
+			toolExecutionCount: rowsToInsert.length,
 			contextType: params.contextType,
 			...(params.interrupted ? { interrupted: true } : {})
 		}
@@ -1793,6 +1878,15 @@ export const POST: RequestHandler = async ({
 	let turnRunId: string | null = null;
 	let promptSnapshotId: string | null = null;
 	let streamDetached = false;
+	// D4: incremental tool-execution persistence. `onToolResult` fires exactly once
+	// per execution pushed to the orchestrator's toolExecutions array, in order, so a
+	// simple counter yields a sequence_index that matches the end-of-turn bulk persist
+	// (buildToolExecutionInsertRows uses index+1). Rows are written as each tool
+	// completes so a mid-turn lambda kill still leaves a record of applied writes; the
+	// end-of-turn persist then attaches the assistant message_id to those rows instead
+	// of re-inserting them (keyed by turn_run_id + sequence_index).
+	let incrementalToolSequence = 0;
+	const incrementallyPersistedToolSequences = new Set<number>();
 
 	const markStreamEventSent = (eventType: string): void => {
 		const now = Date.now();
@@ -2584,7 +2678,10 @@ export const POST: RequestHandler = async ({
 			const toolExecutorInstance =
 				tools.length > 0
 					? new ChatToolExecutor(supabase, userId, session.id, fetch, llm, {
-							logExecutions: false
+							logExecutions: false,
+							// Thread the turn signal so a cancel aborts in-flight tool HTTP
+							// requests (writes) instead of letting them land after the turn ends.
+							abortSignal: turnAbortController.signal
 						})
 					: undefined;
 			const sharedToolExecutor =
@@ -3286,6 +3383,65 @@ export const POST: RequestHandler = async ({
 					try {
 						const patchedCall = patchToolCall(toolCall);
 						const toolCallMeta = extractFastChatToolCallMeta(patchedCall);
+						// D4: persist this execution incrementally (before the next tool runs)
+						// so a mid-turn lambda kill still leaves a record of applied writes.
+						// Uses the raw `toolCall` (same object the end-of-turn persist reads
+						// from normalizedExecutions) so the incremental row matches the final
+						// row byte-for-byte apart from message_id.
+						if (turnRunId) {
+							// Advance the sequence counter for EVERY execution (read or write)
+							// so it stays aligned with the end-of-turn bulk persist, which
+							// assigns sequence_index by array index over all executions. Skipping
+							// reads here would drift the counter and break the incremental/
+							// end-of-turn reconciliation keyed on (turn_run_id, sequence_index).
+							const sequenceIndex = ++incrementalToolSequence;
+							// D4: only WRITES need incremental crash-recovery persistence — reads
+							// are re-derivable, so we skip the per-read DB round-trip on the hot
+							// path. Write-detection mirrors the orchestrator's round
+							// classification (registry `kind` + op-name heuristics); ambiguous
+							// tools fall through as writes there, so we err toward persisting.
+							const isMutationExecution = buildRoundToolPattern([
+								patchedCall
+							]).hasWriteOps;
+							if (isMutationExecution) {
+								try {
+									await persistIncrementalToolExecutionRow({
+										supabase,
+										sessionId: session.id,
+										turnRunId,
+										streamRunId,
+										clientTurnId,
+										toolCall,
+										result,
+										sequenceIndex
+									});
+									incrementallyPersistedToolSequences.add(sequenceIndex);
+								} catch (error) {
+									// Non-fatal: the end-of-turn bulk persist is the safety net for
+									// a turn that completes. Log and keep streaming.
+									logFastChatError({
+										error,
+										operationType:
+											'fastchat_persist_tool_execution_incremental',
+										projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+										metadata: {
+											sessionId: session.id,
+											contextType: effectiveContextType,
+											toolName: toolCall.function.name,
+											sequenceIndex
+										}
+									});
+								}
+							}
+							// D4: heartbeat turn progress so a future sweeper can distinguish a
+							// dead turn from a slow one. Fires on every execution (read or write —
+							// progress is progress) and is cheap/detached, so it stays outside the
+							// write gate above. Best-effort (detached).
+							observabilityWriter.queueTurnRunUpdate(
+								{ last_progress_at: new Date().toISOString() },
+								'turn_progress_heartbeat'
+							);
+						}
 						// Dev-only: surface exactly what the agent's search is doing so we can
 						// watch tool choice (smart vs legacy family), the query, scope, and
 						// result/zero-result counts live while smoke-testing. Gated on `dev`
@@ -3807,6 +3963,7 @@ export const POST: RequestHandler = async ({
 					projectId: effectiveProjectIdForTools ?? projectIdForLogs,
 					contextType: effectiveContextType,
 					interrupted: true,
+					persistedSequenceIndices: incrementallyPersistedToolSequences,
 					logError: logFastChatError
 				});
 				observabilityWriter.trackDetachedTask(
@@ -4011,6 +4168,7 @@ export const POST: RequestHandler = async ({
 				executions: normalizedExecutions,
 				projectId: effectiveProjectIdForTools ?? projectIdForLogs,
 				contextType: effectiveContextType,
+				persistedSequenceIndices: incrementallyPersistedToolSequences,
 				logError: logFastChatError
 			});
 			observabilityWriter.trackDetachedTask(
@@ -4218,7 +4376,13 @@ export const POST: RequestHandler = async ({
 				}
 			}
 		} catch (error) {
-			if (turnAbortController.signal.aborted || isAbortLikeError(error)) {
+			// O8: a turn is a *user cancellation* only when the abort signal actually
+			// fired. The signal is set synchronously by the AbortController before any
+			// AbortError reaches us, so it is the source of truth. Message-substring
+			// matching (e.g. "aborted", "stream closed") also fires on real provider
+			// timeouts / socket drops and would misclassify genuine errors as cancels,
+			// silently swallowing them — so we trust the signal, not the message.
+			if (turnAbortController.signal.aborted) {
 				const interruptedReason = turnAbortReason ?? 'cancelled';
 				doneEmittedAtMs = doneEmittedAtMs ?? Date.now();
 				observabilityWriter.queueTimingMetric(interruptedReason);
@@ -4333,7 +4497,37 @@ export const POST: RequestHandler = async ({
 		} finally {
 			clearTimeout(turnTimeoutId);
 			stopCancelWatcher?.();
-			await observabilityWriter.flushTurnEvents();
+			// D4c: flush the detached persistence set (chat_tool_executions,
+			// timing_metrics, chat_turn_runs patches, agent_state, attachment links)
+			// AND the buffered turn events before the stream closes. Awaiting only
+			// flushTurnEvents() here left the detached set to race the lambda freeze,
+			// dropping tool-execution rows / timing on close. Bounded so a hung
+			// detached task cannot block close forever.
+			try {
+				const flushResult = await observabilityWriter.flushWithBudget(
+					OBSERVABILITY_FLUSH_BUDGET_MS
+				);
+				if (!flushResult.completed) {
+					logger.warn(
+						'FastChat observability flush exceeded budget before stream close',
+						{
+							sessionId: streamRequest.session_id ?? null,
+							budgetMs: OBSERVABILITY_FLUSH_BUDGET_MS
+						}
+					);
+				}
+			} catch (error) {
+				logFastChatError({
+					error,
+					operationType: 'fastchat_observability_flush',
+					projectId: projectIdForLogs,
+					metadata: {
+						contextType,
+						entityId,
+						sessionId: streamRequest.session_id
+					}
+				});
+			}
 			if (streamDetached) {
 				return;
 			}

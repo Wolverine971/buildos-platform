@@ -214,7 +214,24 @@ function createProjectSuggestionSupabaseMock(options: { suggestionUpdateError?: 
 	}
 
 	const supabase = {
-		from: vi.fn((table: string) => new QueryBuilderMock(table))
+		from: vi.fn((table: string) => new QueryBuilderMock(table)),
+		rpc: vi.fn((fn: string, args: Record<string, unknown>) => {
+			// Record the metadata merge RPC so tests can assert the merged patch
+			// (recorded under the RPC name with a synthetic 'update' action).
+			operations.push({
+				table: fn,
+				action: 'update',
+				payload: args,
+				filters: [],
+				inFilters: [],
+				containsFilters: []
+			});
+			const existingMeta =
+				((options as { existingSession?: Record<string, unknown> }).existingSession
+					?.agent_metadata as Record<string, unknown> | undefined) ?? {};
+			const patch = (args?.p_patch as Record<string, unknown> | undefined) ?? {};
+			return Promise.resolve({ data: { ...existingMeta, ...patch }, error: null });
+		})
 	};
 
 	return { supabase, operations, suggestion, session };
@@ -388,7 +405,24 @@ function createCalendarSuggestionSupabaseMock(
 	}
 
 	const supabase = {
-		from: vi.fn((table: string) => new QueryBuilderMock(table))
+		from: vi.fn((table: string) => new QueryBuilderMock(table)),
+		rpc: vi.fn((fn: string, args: Record<string, unknown>) => {
+			// Record the metadata merge RPC so tests can assert the merged patch
+			// (recorded under the RPC name with a synthetic 'update' action).
+			operations.push({
+				table: fn,
+				action: 'update',
+				payload: args,
+				filters: [],
+				inFilters: [],
+				containsFilters: []
+			});
+			const existingMeta =
+				((options as { existingSession?: Record<string, unknown> }).existingSession
+					?.agent_metadata as Record<string, unknown> | undefined) ?? {};
+			const patch = (args?.p_patch as Record<string, unknown> | undefined) ?? {};
+			return Promise.resolve({ data: { ...existingMeta, ...patch }, error: null });
+		})
 	};
 
 	return { supabase, operations, suggestion, session };
@@ -682,8 +716,18 @@ describe('createInboxChatSession', () => {
 		expect(findOperation(operations, 'chat_sessions', 'insert')).toBeUndefined();
 		const sessionUpdate = findOperation(operations, 'chat_sessions', 'update')?.payload as any;
 		expect(sessionUpdate).toMatchObject({
-			title: 'Chat: 9 Takes',
-			agent_metadata: expect.objectContaining({
+			title: 'Chat: 9 Takes'
+		});
+		// agent_metadata is now merged via the atomic RPC (not the chat_sessions
+		// update) so concurrent cancel-hint / focus writes are never clobbered (D5).
+		const metadataMerge = findOperation(
+			operations,
+			'merge_chat_session_agent_metadata',
+			'update'
+		)?.payload as any;
+		expect(metadataMerge?.p_session_id).toBe(SESSION_ID);
+		expect(metadataMerge?.p_patch).toEqual(
+			expect.objectContaining({
 				source: 'ai_inbox',
 				source_type: 'calendar_suggestion',
 				source_ref_id: 'calendar-suggestion-1',
@@ -691,7 +735,7 @@ describe('createInboxChatSession', () => {
 					llm_text: expect.stringContaining('Calendar evidence event ids')
 				})
 			})
-		});
+		);
 
 		const messageUpdate = findOperation(operations, 'chat_messages', 'update')?.payload as any;
 		expect(messageUpdate.content).toContain('Calendar found a possible project: 9 Takes.');
