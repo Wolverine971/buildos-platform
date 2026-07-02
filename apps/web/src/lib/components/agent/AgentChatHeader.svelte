@@ -5,6 +5,7 @@
 		X,
 		ExternalLink,
 		ArrowLeft,
+		ChevronDown,
 		LoaderCircle,
 		AlertTriangle,
 		Download,
@@ -140,6 +141,61 @@
 		}
 	});
 
+	// Desktop overflow menu — folds the Steps/Support export actions behind a
+	// single "Export" control on sm+ (mirrors the mobile "..." menu below).
+	let desktopExportMenuOpen = $state(false);
+	let desktopExportMenuButton = $state<HTMLButtonElement | null>(null);
+	let desktopExportMenuEl = $state<HTMLDivElement | null>(null);
+
+	function closeDesktopExportMenu(returnFocus = false) {
+		desktopExportMenuOpen = false;
+		if (returnFocus) desktopExportMenuButton?.focus();
+	}
+
+	function desktopExportMenuItems(): HTMLElement[] {
+		if (!desktopExportMenuEl) return [];
+		return Array.from(
+			desktopExportMenuEl.querySelectorAll<HTMLElement>('button:not([disabled])')
+		);
+	}
+
+	function handleDesktopExportMenuKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			event.stopPropagation();
+			closeDesktopExportMenu(true);
+			return;
+		}
+		const items = desktopExportMenuItems();
+		if (!items.length) return;
+		const current = items.indexOf(document.activeElement as HTMLElement);
+		let next: number;
+		switch (event.key) {
+			case 'ArrowDown':
+				next = current < 0 ? 0 : (current + 1) % items.length;
+				break;
+			case 'ArrowUp':
+				next = current < 0 ? items.length - 1 : (current - 1 + items.length) % items.length;
+				break;
+			case 'Home':
+				next = 0;
+				break;
+			case 'End':
+				next = items.length - 1;
+				break;
+			default:
+				return;
+		}
+		event.preventDefault();
+		items[next]?.focus();
+	}
+
+	$effect(() => {
+		if (desktopExportMenuOpen && desktopExportMenuEl) {
+			desktopExportMenuItems()[0]?.focus();
+		}
+	});
+
 	// Horizontal collapse for the back button: when it's removed (e.g. once a chat
 	// is underway) it shrinks its width + the parent gap to nothing instead of
 	// snapping away, so the title slides left into the reclaimed space.
@@ -270,7 +326,7 @@
 				disabled={isStreaming}
 				aria-label="Go back"
 			>
-				<ArrowLeft class="h-4 w-4" strokeWidth={2.5} />
+				<ArrowLeft class="h-4 w-4" />
 			</button>
 		</div>
 	{/if}
@@ -334,17 +390,17 @@
 				{#if sessionStatusLabel}
 					<!-- Mobile: spinner only. sm+: spinner + text -->
 					<span
-						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted px-1.5 py-1.5 sm:px-2.5 micro-label font-semibold text-muted-foreground"
+						class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-muted px-1.5 sm:px-2.5 micro-label font-semibold text-muted-foreground"
 						title={sessionStatusLabel}
 					>
-						<LoaderCircle class="h-3 w-3 animate-spin" />
+						<LoaderCircle class="h-3 w-3 animate-spin motion-reduce:animate-none" />
 						<span class="hidden sm:inline">{sessionStatusLabel}</span>
 					</span>
 				{/if}
 
 				{#if contextUsageCounter}
 					<span
-						class={`inline-flex items-center gap-1 rounded-lg border px-1.5 py-1.5 sm:px-2.5 text-[0.65rem] font-semibold ${contextUsageCounter.className}`}
+						class={`inline-flex h-7 items-center gap-1 rounded-lg border px-1.5 sm:px-2.5 text-[0.65rem] font-semibold ${contextUsageCounter.className}`}
 						title={contextUsageCounter.title}
 					>
 						{#if contextUsageCounter.showWarningIcon}
@@ -358,7 +414,7 @@
 				{#if ontologyLoaded}
 					<!-- Hidden on mobile, visible on sm+ -->
 					<span
-						class="micro-label hidden rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1.5 text-accent tx tx-thread tx-weak sm:inline-flex"
+						class="micro-label hidden h-7 items-center rounded-lg border border-accent/30 bg-accent/10 px-2.5 text-accent tx tx-thread tx-weak sm:inline-flex"
 					>
 						ONTO
 					</span>
@@ -366,9 +422,13 @@
 
 				{#if currentActivity && !hasActiveThinkingBlock}
 					<span
-						class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-success"
+						class="inline-flex h-4 w-4 items-center justify-center"
 						title={currentActivity}
-					></span>
+					>
+						<span
+							class="h-1.5 w-1.5 animate-pulse rounded-full bg-success motion-reduce:animate-none"
+						></span>
+					</span>
 				{/if}
 			</div>
 		{/if}
@@ -385,7 +445,9 @@
 				aria-label={action.title ?? action.label}
 			>
 				{#if action.loading}
-					<LoaderCircle class="h-3.5 w-3.5 shrink-0 animate-spin" />
+					<LoaderCircle
+						class="h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none"
+					/>
 				{:else if action.intent === 'danger'}
 					<CircleSlash class="h-3.5 w-3.5 shrink-0" />
 				{:else}
@@ -410,34 +472,76 @@
 			</a>
 		{/if}
 
-		{#if onExportSteps}
-			<button
-				type="button"
-				onclick={onExportSteps}
-				disabled={!canExportSteps}
-				class="hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 micro-label font-semibold text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-muted-foreground"
-				style="-webkit-tap-highlight-color: transparent;"
-				title={exportStepsTitle}
-				aria-label={exportStepsTitle}
-			>
-				<Download class="h-3.5 w-3.5 shrink-0" />
-				<span>Steps</span>
-			</button>
-		{/if}
+		{#if onExportSteps || onExportSupportPacket}
+			<div class="relative hidden sm:block">
+				<button
+					bind:this={desktopExportMenuButton}
+					type="button"
+					onclick={() =>
+						desktopExportMenuOpen
+							? closeDesktopExportMenu()
+							: (desktopExportMenuOpen = true)}
+					class="flex h-7 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 micro-label font-semibold text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					style="-webkit-tap-highlight-color: transparent;"
+					aria-haspopup="menu"
+					aria-expanded={desktopExportMenuOpen}
+				>
+					<span>Export</span>
+					<ChevronDown class="h-3.5 w-3.5 shrink-0" />
+				</button>
 
-		{#if onExportSupportPacket}
-			<button
-				type="button"
-				onclick={onExportSupportPacket}
-				disabled={!canExportSupportPacket}
-				class="hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 micro-label font-semibold text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-muted-foreground"
-				style="-webkit-tap-highlight-color: transparent;"
-				title={exportSupportPacketTitle}
-				aria-label={exportSupportPacketTitle}
-			>
-				<FileArchive class="h-3.5 w-3.5 shrink-0" />
-				<span>Support</span>
-			</button>
+				{#if desktopExportMenuOpen}
+					<!-- Click-away backdrop -->
+					<button
+						type="button"
+						class="fixed inset-0 z-40 cursor-default"
+						aria-label="Close export menu"
+						tabindex="-1"
+						onclick={() => closeDesktopExportMenu()}
+					></button>
+					<div
+						bind:this={desktopExportMenuEl}
+						class="absolute right-0 top-[calc(100%+0.35rem)] z-50 min-w-52 overflow-hidden rounded-lg border border-border bg-card py-1 shadow-ink tx tx-frame tx-weak"
+						role="menu"
+						tabindex="-1"
+						onkeydown={handleDesktopExportMenuKeydown}
+					>
+						{#if onExportSteps}
+							<button
+								type="button"
+								onclick={() => {
+									closeDesktopExportMenu();
+									onExportSteps?.();
+								}}
+								disabled={!canExportSteps}
+								class="flex w-full items-center gap-2 px-3 py-2 text-left micro-label font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+								role="menuitem"
+								title={exportStepsTitle}
+							>
+								<Download class="h-3.5 w-3.5 shrink-0" />
+								<span>Export steps</span>
+							</button>
+						{/if}
+
+						{#if onExportSupportPacket}
+							<button
+								type="button"
+								onclick={() => {
+									closeDesktopExportMenu();
+									onExportSupportPacket?.();
+								}}
+								disabled={!canExportSupportPacket}
+								class="flex w-full items-center gap-2 px-3 py-2 text-left micro-label font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+								role="menuitem"
+								title={exportSupportPacketTitle}
+							>
+								<FileArchive class="h-3.5 w-3.5 shrink-0" />
+								<span>Export support packet</span>
+							</button>
+						{/if}
+					</div>
+				{/if}
+			</div>
 		{/if}
 
 		<!-- Admin audit actions: desktop row only here (its mobile rows live in the unified menu) -->
@@ -502,7 +606,9 @@
 								title={action.title ?? action.label}
 							>
 								{#if action.loading}
-									<LoaderCircle class="h-3.5 w-3.5 shrink-0 animate-spin" />
+									<LoaderCircle
+										class="h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none"
+									/>
 								{:else if action.intent === 'danger'}
 									<CircleSlash class="h-3.5 w-3.5 shrink-0" />
 								{:else}

@@ -2,6 +2,7 @@
 import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { OnboardingServerService } from '$lib/server/onboarding.service';
+import { captureServerEvent } from '$lib/server/posthog';
 
 const VALID_INTENTS = new Set(['organize', 'plan', 'unstuck', 'explore']);
 const VALID_STAKES = new Set(['high', 'medium', 'low']);
@@ -103,6 +104,15 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 					emailEnabled,
 					timeSpentSeconds
 				});
+				await captureServerEvent(user.id, 'onboarding_completed', {
+					version: 'v3',
+					intent,
+					stakes,
+					projects_created: projectsCreated,
+					tasks_created: tasksCreated,
+					goals_created: goalsCreated,
+					time_spent_seconds: timeSpentSeconds ?? null
+				});
 				return ApiResponse.success({ success: true }, 'Onboarding V3 complete');
 			}
 
@@ -144,6 +154,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			case 'complete': {
 				// Mark onboarding as complete and queue analysis
 				await onboardingService.completeOnboarding(user as any);
+				await captureServerEvent(user.id, 'onboarding_completed', { version: 'legacy' });
 				return ApiResponse.success({ success: true }, 'Onboarding complete');
 			}
 

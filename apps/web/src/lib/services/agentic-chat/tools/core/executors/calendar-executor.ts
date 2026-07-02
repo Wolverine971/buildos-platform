@@ -15,6 +15,9 @@ import {
 	type NormalizedCalendarDateTime
 } from './calendar-datetime';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('CalendarExecutor');
 
 type CalendarScope = 'user' | 'project' | 'calendar_id';
 
@@ -852,29 +855,87 @@ export class CalendarExecutor extends BaseExecutor {
 		});
 
 		if (taskMetadata && projectId) {
-			const { data: existingEdge } = await this.supabase
-				.from('onto_edges')
-				.select('id')
-				.eq('src_id', taskMetadata.taskId)
-				.eq('src_kind', 'task')
-				.eq('dst_id', result.event.id)
-				.eq('dst_kind', 'event')
-				.eq('rel', 'has_event')
-				.maybeSingle();
-
-			if (!existingEdge) {
-				await this.supabase.from('onto_edges').insert({
-					project_id: projectId,
-					src_id: taskMetadata.taskId,
-					src_kind: 'task',
-					dst_id: result.event.id,
-					dst_kind: 'event',
-					rel: 'has_event'
-				});
+			// D14: The Supabase client does not throw — a failed edge read/insert (RLS/FK)
+			// would otherwise be silently dropped while the tool reports full success even
+			// though the task↔event link never exists. Check errors and surface the outcome.
+			const link = await this.ensureTaskEventEdge({
+				projectId,
+				taskId: taskMetadata.taskId,
+				eventId: result.event.id
+			});
+			if (!link.created) {
+				return { ...result, task_link_created: false, task_link_error: link.error };
 			}
+			return { ...result, task_link_created: true };
 		}
 
 		return result;
+	}
+
+	/**
+	 * Ensure a `task -> has_event -> event` edge exists, surfacing read/insert failures.
+	 *
+	 * Supabase clients never throw, so a failed select or insert must be inspected
+	 * explicitly. On a read failure we do NOT attempt the insert (we cannot tell whether
+	 * an edge already exists, and inserting anyway could create a duplicate).
+	 */
+	private async ensureTaskEventEdge(params: {
+		projectId: string;
+		taskId: string;
+		eventId: string;
+	}): Promise<{ created: boolean; error?: string }> {
+		const { projectId, taskId, eventId } = params;
+
+		const { data: existingEdge, error: selectError } = await this.supabase
+			.from('onto_edges')
+			.select('id')
+			.eq('src_id', taskId)
+			.eq('src_kind', 'task')
+			.eq('dst_id', eventId)
+			.eq('dst_kind', 'event')
+			.eq('rel', 'has_event')
+			.maybeSingle();
+
+		if (selectError) {
+			logger.warn('Failed to check for existing task↔event edge; skipping insert', {
+				taskId,
+				eventId,
+				projectId,
+				error: selectError.message
+			});
+			return {
+				created: false,
+				error: `Could not verify task↔event link (read failed: ${selectError.message}); link was not created to avoid duplicates.`
+			};
+		}
+
+		if (existingEdge) {
+			return { created: true };
+		}
+
+		const { error: insertError } = await this.supabase.from('onto_edges').insert({
+			project_id: projectId,
+			src_id: taskId,
+			src_kind: 'task',
+			dst_id: eventId,
+			dst_kind: 'event',
+			rel: 'has_event'
+		});
+
+		if (insertError) {
+			logger.warn('Failed to insert task↔event edge; event exists but link is missing', {
+				taskId,
+				eventId,
+				projectId,
+				error: insertError.message
+			});
+			return {
+				created: false,
+				error: `Task↔event link could not be created (${insertError.message}); the event was created but is not linked to the task.`
+			};
+		}
+
+		return { created: true };
 	}
 
 	async updateCalendarEvent(args: UpdateCalendarEventArgs) {
@@ -923,6 +984,7 @@ export class CalendarExecutor extends BaseExecutor {
 				args.timezone !== undefined || inferredTimezoneUsed ? resolvedTimezone : undefined;
 
 			let nextProps: Record<string, unknown> | undefined;
+			let linkResult: { created: boolean; error?: string } | undefined;
 			if (existing.owner_entity_type === 'task' && existing.owner_entity_id) {
 				const existingProps = (existing.props as Record<string, unknown>) ?? {};
 				const taskMetadata = await this.resolveTaskMetadata(
@@ -940,26 +1002,12 @@ export class CalendarExecutor extends BaseExecutor {
 					};
 				}
 
-				const { data: existingEdge } = await this.supabase
-					.from('onto_edges')
-					.select('id')
-					.eq('src_id', taskMetadata.taskId)
-					.eq('src_kind', 'task')
-					.eq('dst_id', existing.id)
-					.eq('dst_kind', 'event')
-					.eq('rel', 'has_event')
-					.maybeSingle();
-
-				if (!existingEdge) {
-					await this.supabase.from('onto_edges').insert({
-						project_id: taskMetadata.projectId,
-						src_id: taskMetadata.taskId,
-						src_kind: 'task',
-						dst_id: existing.id,
-						dst_kind: 'event',
-						rel: 'has_event'
-					});
-				}
+				// D14: check read/insert errors instead of silently dropping a failed link.
+				linkResult = await this.ensureTaskEventEdge({
+					projectId: taskMetadata.projectId,
+					taskId: taskMetadata.taskId,
+					eventId: existing.id
+				});
 			}
 
 			const actorId = await this.getActorId();
@@ -982,6 +1030,14 @@ export class CalendarExecutor extends BaseExecutor {
 				syncToCalendar: args.sync_to_calendar,
 				activityLog: this.buildEventActivityLog(actorId)
 			});
+			if (linkResult && !linkResult.created) {
+				return {
+					source: 'ontology',
+					event: updated,
+					task_link_created: false,
+					task_link_error: linkResult.error
+				};
+			}
 			return { source: 'ontology', event: updated };
 		}
 

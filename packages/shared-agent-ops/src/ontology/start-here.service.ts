@@ -38,11 +38,21 @@ export type EnsureProjectStartHereParams = {
 	addToTree?: boolean;
 };
 
+export type StartHereCreateSkipReason = 'project_not_found' | 'project_inactive';
+
 export type EnsureProjectStartHereResult =
 	| {
 			ok: true;
 			created: boolean;
+			skipped?: false;
 			document: StartHereDocumentRecord;
+	  }
+	| {
+			ok: true;
+			created: false;
+			skipped: true;
+			reason: StartHereCreateSkipReason;
+			document: null;
 	  }
 	| {
 			ok: false;
@@ -58,7 +68,16 @@ export type RefreshProjectStartHereManagedRegionsResult =
 			ok: true;
 			created: boolean;
 			updated: boolean;
+			skipped?: false;
 			documentId: string;
+	  }
+	| {
+			ok: true;
+			created: false;
+			updated: false;
+			skipped: true;
+			reason: StartHereCreateSkipReason;
+			documentId: null;
 	  }
 	| {
 			ok: false;
@@ -143,13 +162,24 @@ export async function loadProjectStartHereExcerpt(params: {
 	}
 }
 
-async function loadProjectFallback(
+// States whose projects should never get a Start Here doc seeded. 'archived'
+// is not a canonical PROJECT_STATES member (archival is `archived_at`), but is
+// included defensively in case a row carries it as a state.
+const START_HERE_CREATE_BLOCKED_STATE_KEYS = new Set(['cancelled', 'archived']);
+
+async function loadProjectForCreation(
 	supabase: Supabase,
 	projectId: string
-): Promise<{ name: string | null; description: string | null } | null> {
+): Promise<{
+	name: string | null;
+	description: string | null;
+	state_key: string | null;
+	deleted_at: string | null;
+	archived_at: string | null;
+} | null> {
 	const { data, error } = await supabase
 		.from('onto_projects')
-		.select('name, description')
+		.select('name, description, state_key, deleted_at, archived_at')
 		.eq('id', projectId)
 		.maybeSingle();
 
@@ -157,7 +187,7 @@ async function loadProjectFallback(
 		throw error;
 	}
 
-	return data ? { name: data.name ?? null, description: data.description ?? null } : null;
+	return data ?? null;
 }
 
 async function addStartHereToTree(params: {
@@ -196,12 +226,35 @@ export async function ensureProjectStartHereDocument(
 			return { ok: true, created: false, document: existing };
 		}
 
-		const fallback =
-			params.projectName || params.projectDescription
-				? null
-				: await loadProjectFallback(params.supabase, params.projectId);
-		const projectName = params.projectName ?? fallback?.name ?? 'Project';
-		const projectDescription = params.projectDescription ?? fallback?.description ?? null;
+		// Creation gate: never seed a Start Here doc for a project that is
+		// deleted, archived, or cancelled. Existing docs above are still
+		// returned so read paths keep working on inactive projects.
+		const project = await loadProjectForCreation(params.supabase, params.projectId);
+		if (!project) {
+			return {
+				ok: true,
+				created: false,
+				skipped: true,
+				reason: 'project_not_found',
+				document: null
+			};
+		}
+		if (
+			project.deleted_at ||
+			project.archived_at ||
+			START_HERE_CREATE_BLOCKED_STATE_KEYS.has(project.state_key ?? '')
+		) {
+			return {
+				ok: true,
+				created: false,
+				skipped: true,
+				reason: 'project_inactive',
+				document: null
+			};
+		}
+
+		const projectName = params.projectName ?? project.name ?? 'Project';
+		const projectDescription = params.projectDescription ?? project.description ?? null;
 		const title = buildStartHereTitle(projectName);
 		const content = buildStartHereTemplate({
 			projectName,
@@ -257,6 +310,16 @@ export async function refreshProjectStartHereManagedRegions(
 ): Promise<RefreshProjectStartHereManagedRegionsResult> {
 	const ensured = await ensureProjectStartHereDocument(params);
 	if (!ensured.ok) return ensured;
+	if (ensured.skipped) {
+		return {
+			ok: true,
+			created: false,
+			updated: false,
+			skipped: true,
+			reason: ensured.reason,
+			documentId: null
+		};
+	}
 
 	const currentContent =
 		ensured.document.content ??

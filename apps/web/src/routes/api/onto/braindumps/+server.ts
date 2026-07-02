@@ -16,6 +16,7 @@ import type { RequestHandler } from './$types';
 import type { Database } from '@buildos/shared-types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { queueBraindumpProcessing } from '$lib/server/braindump-processing.service';
+import { captureServerEvent } from '$lib/server/posthog';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -72,6 +73,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		queueBraindumpProcessing({ braindumpId: braindump.id, userId: user.id }).catch((err) => {
 			// Silently log - processing is optional enhancement
 			console.warn('Failed to queue captured context processing:', err);
+		});
+
+		await captureServerEvent(user.id, 'brain_dump_created', {
+			braindump_id: braindump.id,
+			content_length: trimmedContent.length,
+			source: braindumpData.metadata.source
 		});
 
 		return ApiResponse.created({

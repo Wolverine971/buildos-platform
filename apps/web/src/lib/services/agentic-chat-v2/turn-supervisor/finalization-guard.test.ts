@@ -253,6 +253,47 @@ describe('applyFinalizationGuard', () => {
 		expect(guard.text).toBe('I completed the requested change.');
 	});
 
+	it('does not count a gateway write that returned ok:false as a successful write', () => {
+		// The executor returns success:true whenever the handler didn't throw, but the
+		// gateway envelope can carry ok:false. The guard must not claim completion.
+		const call = toolCall('update_onto_task', { task_id: 'task_1', state_key: 'done' });
+		const guard = applyFinalizationGuard({
+			finalAssistantText: '',
+			assistantText: '',
+			toolExecutions: [
+				{
+					toolCall: call,
+					result: toolResult(call, true, { op: 'onto.task.update', ok: false })
+				}
+			]
+		});
+
+		expect(guard.applied).toBe(true);
+		expect(guard.reason).toBe('empty_after_failed_writes');
+		expect(guard.text).toContain('nothing was changed');
+		expect(guard.text).not.toContain('I completed');
+	});
+
+	it('does not claim completion for an ok:false gateway write when a mutation was requested', () => {
+		const call = toolCall('update_onto_task', { task_id: 'task_1', state_key: 'done' });
+		const guard = applyFinalizationGuard({
+			finalAssistantText: '',
+			assistantText: '',
+			mutationRequested: true,
+			toolExecutions: [
+				{
+					toolCall: call,
+					result: toolResult(call, true, { op: 'onto.task.update', ok: false })
+				}
+			]
+		});
+
+		expect(guard.applied).toBe(true);
+		expect(guard.reason).toBe('empty_after_failed_writes');
+		expect(guard.text).toContain('nothing was changed');
+		expect(guard.text).not.toContain('I completed');
+	});
+
 	it('replaces a read-only lead-in after successful reads with evidence', () => {
 		const call = toolCall('search_project', { query: 'user guide suite' });
 		const guard = applyFinalizationGuard({

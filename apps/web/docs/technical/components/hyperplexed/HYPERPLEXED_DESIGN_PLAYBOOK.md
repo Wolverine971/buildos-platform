@@ -5,9 +5,9 @@
 > Distilled UI/UX taste and method extracted from the [Hyperplexed](https://www.youtube.com/@Hyperplexed)
 > YouTube channel, for use when auditing and polishing BuildOS surfaces.
 >
-> **Source:** 13 transcribed videos (the design-judgment "I Redesigned Popular Websites" series, the
+> **Source:** 20 transcribed videos (the design-judgment "I Redesigned Popular Websites" series, the
 > bad-UI/good-UX commentary videos, and the signature interaction-effect tutorials) plus frame review
-> of two videos. Raw transcripts live in `./transcripts/`.
+> of two videos. Raw transcripts live in `./transcripts/`. Corpus completed 2026-07-01.
 >
 > **Why this exists:** Hyperplexed is the clearest working demonstration of _front-end taste_ on YouTube —
 > not "here's a framework," but "here's exactly why this looks wrong and here's the small change that fixes it."
@@ -26,12 +26,19 @@ These four habits matter more than any single rule. They're how he _finds_ the p
 2. **"All big problems are just small problems in disguise."** Build the crudest working version first (a white
    square that follows the mouse), then layer refinements one at a time. Every polished effect is a stack of
    tiny, individually-obvious steps. _When something feels too broken to fix, you haven't decomposed it yet._
+   And don't over-engineer the invariant: fixed slot counts get hardcoded position values, and hand-placed
+   tiles beat an algorithm you don't need ("perhaps they algorithmically determine the sizes and positions,
+   but that seems unnecessary — let's just take 10 minutes to randomly size and position some divs").
 3. **Steal taste from the best, on purpose.** He doesn't invent aesthetics — he keeps a reference library and
    adapts. Named references: **Linear, Vercel, Superlist, Mobbin, Google's Android app-drawer rounding,
    YouTube Music's subtle background gradients, Discord's vertical nav, Vercel's gradient-in-text/border.**
    He treats **Linear and Vercel as the explicit bar for "exceptional UI."**
 4. **Two goals held together: "make it look good AND make it easy to use."** He refuses to optimize one at the
    expense of the other. Decluttering is in service of usability, not just minimalism.
+5. **His named practice loop: Inspiration → Appreciation → Analyzation → Deconstruction → Reconstruction,
+   rinse & repeat.** Interfaces everywhere (not just websites) can inspire; engage with _why_ something drew
+   you in before dissecting it; turn "how the heck do I do this" into small questions ("how do I get some
+   rectangles on the screen"); then solve them one at a time. This is habits 2–3 formalized as a training loop.
 
 ---
 
@@ -110,6 +117,9 @@ He treats copy as a design surface in nearly every redesign — rename before yo
       fade-out overlapping a seam). **Red + bold + caps promo text = off-putting.**
 - [ ] **Icons: one uniform set, meaningful, contained.** "It's crazy how much of a difference better icons can
       make." Keep icons inside a fixed container so layout never depends on icon size/shape. Thin, consistent style.
+- [ ] **Tint imagery toward the surface palette.** A photo shouldn't fight the surface's color story — when an
+      image has "too much variation in the color," mute the saturation, hue-rotate toward the accent, and knock
+      the opacity down until it reads as part of the surface rather than a rectangle pasted on top.
 
 ### Readability & images
 
@@ -159,6 +169,44 @@ From the effect tutorials and his most mature (2026) bad-UI/UX videos.
   up slightly behind the panel — depth without an opaque overlay. Cheap, and it makes the surface feel layered.
 - **Polish = the unglamorous states.** Even his _joke_ bad-UI project ships a success screen, a "generate new
   code" action, and a hint affordance. His bar: "passable on sites known for exceptional UI such as Linear, Vercel."
+- **Forgiving hover: delay the exit, never the entry.** When a shared indicator moves between fixed targets
+  (the card-picker arm; same shape as a tab underline or nav pill), set transition-delay to zero while _any_
+  target is hovered and a short delay only on full de-hover — passing the cursor between targets never snaps
+  the indicator home. "We really only need the delay on dehover, not on rehover." (→ P17)
+- **Anticipation easing for showpiece motion.** Default `ease` is "typically fine for basic interactions" but
+  feels unnatural on a hero move; drag the cubic-bezier into negative progression at the start so the element
+  visibly winds up before takeoff — "what the brain perceives as anticipation." And tune durations downward by
+  feel: his hovers start at 1s and land around 600ms.
+- **One timing owner.** Never split one cycle between a CSS animation and a JS interval — "all sorts of timing
+  issues that just ended up making it look plain bad." If JS owns repositioning, let JS own the stagger and
+  loop too. Restarting a finished CSS animation from JS requires the DOM-reflow trick (set `animation: none`,
+  read a layout property, restore) — use sparingly; reflow is expensive.
+- **Pivot the representation until it can animate.** When a property won't animate, rebuild the same visual
+  from one that will: a repeating-linear-gradient's position can't animate → a _normal_ gradient tiled by a
+  tiny `background-size` produces the identical pattern and pans freely; `object-fit` takes no percentage →
+  swap the `<img>` for a `background-image` so `background-size`/`position` can move.
+- **JS writes state; CSS renders it.** Across every tutorial the JS converges on setting a data attribute
+  (`data-selected`, `data-type`, `data-hidden`) or a CSS custom prop, with the stylesheet owning all
+  presentation. Keeps handlers tiny and makes reduced-motion gating a pure-CSS concern.
+- **Hidden ≠ inert.** Anything animated out of view is still clickable and tabbable — set `disabled` (or
+  `inert`) at the same moment you translate it away.
+- **A cursor ornament must communicate, and must never intercept.** His "intelligent" trailer rules: always
+  `position: fixed`, top z-index, `pointer-events: none`; and make it earn its existence by reacting to
+  context — `e.target.closest('.interactable')` answers "am I over something," a `data-type` attribute picks
+  the icon. Weigh any such ornament against his own gratuitous-overlay rule below.
+- **Spotlight the hovered item by dimming the set.** CSS-only via `:has()`: when the group contains a hovered
+  highlight item, drop the opacity of everything except that item — focus without moving anything. (→ P16)
+- **Micro-interactions "that barely make a difference functionally" are what make it enjoyable.** His stated
+  philosophy while building the card selector: scale up slightly on hover, down on active, and sweat the exit
+  timing curve. In-repo this is exactly what `.pressable` encodes — audits should check every interactive
+  element either uses it or has a deliberate reason not to.
+- **Per-letter control: split display text into spans.** The explosive-hover skeleton: wrap each letter in its
+  own `inline-block` span (generated by a function, never hand-authored) so letters can transform
+  independently. Display/marketing text only — and the wrapper must keep an `aria-label` with the original
+  string, since span-splitting shreds the accessible name.
+- **The seamless gradient-text loop** (Linear's "magic text"): `background-clip: text` + transparent fill,
+  `background-size: 200%`, pan the position on infinite repeat — and make the gradient's **start and end
+  colors identical** so the loop has no visible seam. (→ P18)
 
 ### Accessibility & restraint (his most mature take — weight these heavily)
 
@@ -202,6 +250,10 @@ texture-as-accent. The playbook adds _precision_ to the things Inkprint leaves t
 
 **The workflow around this playbook:**
 
+- **`/hyperplexed-audit <surface>`** (`.claude/commands/hyperplexed-audit.md`) — the entry point.
+  Runs the whole loop: locate + prior art → region-by-region static audit → tiered findings with
+  `→ P#` citations → **stop for DJ's approval** → apply approved fixes → verify → update the
+  tracker and audit doc. Prefer invoking this over running an audit ad hoc.
 - **[`HYPERPLEXED_AUDIT_TRACKER.md`](./HYPERPLEXED_AUDIT_TRACKER.md)** — the rollup: which surfaces are
   audited, what shipped, what's still unaudited, and the verification (before/after screenshot) status.
   Start there to pick the next surface; every new audit gets a row.
@@ -229,12 +281,15 @@ texture-as-accent. The playbook adds _precision_ to the things Inkprint leaves t
 
 - `hover-effect-asap` (signature multi-card cursor glow), `addicting-interactivity` (mouse-trail gallery),
   `website-feature-demands` (lagging blurred blob follower).
+- `how-to-slay-with-css` (card-select interface: forgiving hover delay, anticipation easing, hidden ≠ inert),
+  `frontend-skills-to-the-moon` (the 5-step practice loop + pannable gallery),
+  `extraordinary-from-ordinary` (animated scan-lines + Ken Burns pan; representation pivots),
+  `unfiltered-frontend-thought` (narrated raw method: gradient link underline, duration tuning by feel),
+  `mouse-trailer-intelligent` (context-aware cursor trailer),
+  `explosive-hover-effect` (per-letter scatter + `:has()` spotlight dimming),
+  `effect-shouldnt-be-possible` (Linear magic gradient text: one timing owner, DOM-reflow restart).
+  _Pulled 2026-07-01; nothing remains deferred._ (Optional watchlist of 4 further effect videos lives in
+  [`TRANSCRIPT_BACKLOG_TASK_2026-07-01.md`](./TRANSCRIPT_BACKLOG_TASK_2026-07-01.md) §1.)
 
-**Not yet transcribed** (~7 Tier-2 effect tutorials) — deferred when the YouTube timed-text endpoint
-rate-limited the batch. **Pickup doc with resolved video IDs + analysis plan:
-[`TRANSCRIPT_BACKLOG_TASK_2026-07-01.md`](./TRANSCRIPT_BACKLOG_TASK_2026-07-01.md).**
-Re-pull with the `youtube-transcript` skill (sequential, ≤2 parallel):
-`frontend-skills-to-the-moon`, `how-to-slay-with-css`, `extraordinary-from-ordinary`,
-`unfiltered-frontend-thought`, `mouse-trailer-intelligent`, `explosive-hover-effect`, `effect-shouldnt-be-possible`.
 The 1hr polyrhythm visualizers, particle-art, AI-tracker, and parody videos were intentionally skipped
 (entertainment, not design lessons).

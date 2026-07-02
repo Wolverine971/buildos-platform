@@ -1,4 +1,4 @@
-<!-- docs/founder/resumes/David_Wayne_Resume_General.md -->
+<!-- docs/founder/resumes/David_Wayne_Resume.md -->
 <!-- Tailored for: General senior full-stack roles — React/TypeScript, AI systems, integrations -->
 
 # David Wayne

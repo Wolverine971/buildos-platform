@@ -902,7 +902,9 @@ export class OpenRouterV2Service extends SmartLLMService {
 		if (params.stream_options) body.stream_options = params.stream_options;
 		if (Array.isArray(params.tools) && params.tools.length > 0) body.tools = params.tools;
 		if (params.tool_choice) body.tool_choice = params.tool_choice;
-		if (params.prompt_cache_key && params.route.provider === 'moonshot') {
+		// Both direct fallback providers (moonshot, openai) natively accept a top-level
+		// prompt_cache_key for cache-hit routing (D9). Previously gated to moonshot only.
+		if (params.prompt_cache_key) {
 			body.prompt_cache_key = params.prompt_cache_key;
 		}
 
@@ -1584,7 +1586,12 @@ export class OpenRouterV2Service extends SmartLLMService {
 					reasoning: resolveLaneReasoning(lane),
 					provider: this.resolveOpenRouterProviderConfig(lane),
 					timeoutMs: this.resolveTimeout(undefined),
-					signal: options.signal
+					signal: options.signal,
+					// Restore cache affinity on the primary streaming path (D9). OpenRouter's
+					// documented mechanism is `session_id`; `prompt_cache_key` is forwarded to
+					// OpenAI-compatible upstreams. Both are additive/optional.
+					session_id: options.chatSessionId || options.sessionId,
+					prompt_cache_key: options.chatSessionId || options.sessionId
 				});
 				requestModelForStartedStream = model;
 				routingModelsForStartedStream = models;
@@ -1753,8 +1760,30 @@ export class OpenRouterV2Service extends SmartLLMService {
 		let streamRequestId = requestId;
 		let streamSystemFingerprint = responseSystemFingerprint;
 		let usageLogged = false;
-		const logUsage = (usageForLog: OpenRouterUsage | undefined): void => {
-			if (!usageForLog || usageLogged || !this.hasUsageLoggingBackend()) return;
+		let emittedTextChars = 0;
+		const logUsage = (
+			usageFrame: OpenRouterUsage | undefined,
+			status:
+				| 'success'
+				| 'failure'
+				| 'timeout'
+				| 'rate_limited'
+				| 'invalid_response' = 'success',
+			errorMessage?: string
+		): void => {
+			if (usageLogged || !this.hasUsageLoggingBackend()) return;
+			// Success turns require a real usage frame. Failure/cancelled turns still
+			// record a row for billing accuracy (credits are computed from
+			// llm_usage_logs), falling back to a char/4 estimate when the provider
+			// never sent a usage frame — so aborted/errored turns are not undercounted.
+			if (!usageFrame && status === 'success') return;
+			const usageForLog: OpenRouterUsage =
+				usageFrame ??
+				({
+					prompt_tokens: Math.ceil(totalInputLength / 4),
+					completion_tokens: Math.ceil(emittedTextChars / 4),
+					total_tokens: Math.ceil((totalInputLength + emittedTextChars) / 4)
+				} as OpenRouterUsage);
 			usageLogged = true;
 			const actualModel = resolvedModel || requestModelForStartedStream;
 			const pricing = resolveModelPricingProfile(actualModel, [
@@ -1783,7 +1812,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 				responseTimeMs: Math.round(performance.now() - startTime),
 				requestStartedAt,
 				requestCompletedAt,
-				status: 'success',
+				status,
+				errorMessage,
 				temperature: options.temperature,
 				maxTokens: options.maxTokens,
 				profile: options.profile,
@@ -1932,6 +1962,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 						inThinkingBlock = normalizedChunk.inThinkingBlock;
 						const text = normalizedChunk.text;
 						if (text.length > 0) {
+							emittedTextChars += text.length;
 							yield { type: 'text', content: text };
 						}
 					}
@@ -1980,8 +2011,21 @@ export class OpenRouterV2Service extends SmartLLMService {
 				cacheStatus: cacheStatus
 			};
 		} catch (error) {
+			// Abort is a normal end state for chat turns; both abort and error must still
+			// record token usage (billing credits are computed from llm_usage_logs).
+			// Wrapped so a logging failure never masks the original abort/error (D10).
 			if (isAbortError(error)) {
+				try {
+					logUsage(usage, 'failure', 'stream aborted');
+				} catch (logError) {
+					console.error('Failed to log OpenRouter V2 usage on abort:', logError);
+				}
 				return;
+			}
+			try {
+				logUsage(usage, 'failure', error instanceof Error ? error.message : String(error));
+			} catch (logError) {
+				console.error('Failed to log OpenRouter V2 usage on error:', logError);
 			}
 			yield {
 				type: 'error',

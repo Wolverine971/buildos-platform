@@ -572,7 +572,7 @@ describe('ChatToolExecutor - Update Behavior', () => {
 			expect(mockFetch).not.toHaveBeenCalled();
 		});
 
-		it('should handle fetch errors gracefully', async () => {
+		it('fails closed when existing content cannot be loaded', async () => {
 			mockChain.maybeSingle.mockResolvedValueOnce({
 				data: null,
 				error: new Error('Document read failed')
@@ -596,8 +596,6 @@ describe('ChatToolExecutor - Update Behavior', () => {
 				mockLLMService
 			);
 
-			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
 			const toolCall: ChatToolCall = {
 				id: 'call-9',
 				type: 'function',
@@ -613,23 +611,15 @@ describe('ChatToolExecutor - Update Behavior', () => {
 
 			const result = await executor.execute(toolCall);
 
-			expect(result.success).toBe(true);
-			expect(consoleSpy).toHaveBeenCalledWith(
-				expect.stringContaining('Failed to load existing content'),
-				expect.objectContaining({
-					error: expect.any(String)
-				})
-			);
-			// Should use the new content when fetch fails
-			expect(mockFetch).toHaveBeenCalledWith(
+			// D1: a failed existing-content read must abort a strategy-dependent write —
+			// degrading to the new content alone would PATCH it as the FULL body and
+			// destroy the existing document while reporting success.
+			expect(result.success).toBe(false);
+			expect(result.error).toContain('existing content could not be loaded');
+			expect(mockFetch).not.toHaveBeenCalledWith(
 				expect.stringContaining('/api/onto/documents/doc-123'),
-				expect.objectContaining({
-					method: 'PATCH',
-					body: expect.stringContaining('"content":"New content"')
-				})
+				expect.objectContaining({ method: 'PATCH' })
 			);
-
-			consoleSpy.mockRestore();
 		});
 
 		it('should work without LLM service for non-merge strategies', async () => {

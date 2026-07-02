@@ -42,9 +42,48 @@ The fixes are almost all **find-and-replace consolidations**, not redesigns.
   as-is (outside the four documented transforms) — see "Adjacent follow-up".
 - **Tier 2 · T2-2 (mobile-menu keyboard/Escape) — SHIPPED 2026-06-29.** Escape closes + returns focus
   to the trigger; arrow/Home/End roving across menu items; first item focused on open.
-- **Tier 1 + remaining Tier 2 (T2-1, T2-3) — open.**
-- Verified: `svelte-check` clean (0 errors / 0 warnings); Prettier-formatted; cascade + line-height
-  impact confirmed safe.
+- **T1-6 (AgentRunDock off-house styling) — found already fixed as of 2026-07-01** (not attributed to
+  a dated pass in this doc). Rows are now `rounded-lg` + `.pressable`, matching the timeline/suggestion
+  card family. No further action.
+- **T1-1, T1-3, T1-5 — SHIPPED 2026-07-01.** Panel header `px-4 py-2` → `px-3 py-2 sm:px-4` (matches
+  tab strip/body edge); `ArrowLeft` `strokeWidth={2.5}` override dropped (matches default-weight icons
+  app-wide); composer footer bottom padding floored to `pb-[max(0.75rem,...)]` (matches the `pt-3` top).
+  Verified: Prettier clean; scoped `svelte-check` clean on the three touched files (a full-repo
+  `svelte-check` run hit an unrelated esbuild/Go crash in this environment, unconnected to these
+  one-line class edits).
+- **T1-2, T1-4, T2-1 — SHIPPED 2026-07-01.**
+    - T1-2: status pills (`sessionStatusLabel`, `contextUsageCounter`, `ONTO`) now share `h-7` (padding
+      changed from `py-1.5` to height-driven); the activity dot moved into a fixed `h-4 w-4`
+      flex-centered box so it can no longer float relative to its neighbors.
+    - T1-4: desktop `Steps` + `Support` buttons replaced with a single `Export ▾` menu
+      (`aria-haspopup="menu"`, click-away backdrop, Escape-to-close + focus return, arrow/Home/End
+      roving — same contract as the existing mobile "..." menu, built by duplicating that pattern
+      rather than sharing state across two triggers that are never open at once). `View` and the audit
+      actions stay always-visible chrome, unchanged. The mobile "..." menu's own `Export steps` /
+      `Export support packet` rows are untouched (still needed since the desktop button is
+      `hidden` below `sm`).
+    - T2-1: decision made — gate **every** `animate-spin` / `animate-pulse` on this surface with
+      `motion-reduce:animate-none`, matching the established in-repo model
+      (`ui/Button.svelte`'s spinner, per fix-patterns P11) rather than carving out an "essential
+      loading spinner" exception. Applied to `AgentChatHeader` (session-status spinner, header-action
+      spinners ×2, activity pulse dot), `AgentRunDock` (both `iconFor` spinner variants), and
+      `AgentComposer` (attachment hashing/uploading/processing spinner). The one already-gated
+      full-pane session spinner in `AgentChatModal.svelte` was left as-is (already correct).
+- **T2-3 — half-shipped 2026-07-01.** Column minimums in `AgentMessageList.svelte` now scale with
+  viewport (`clamp()` instead of fixed `rem` floors: general cells `clamp(4.5rem,24vw,7rem)`, first
+  column `clamp(6rem,32vw,14rem)`, second column `clamp(7rem,38vw,18rem)`), and the blanket
+  `min-width: 46rem` table floor was removed, so a narrow 2-column table no longer forces the same
+  scroll as a wide one. **Not done:** the "visible scroll-edge affordance." The scroll container is
+  `.agent-markdown` itself (`overflow-x-auto` on the whole message body, not a table-specific
+  wrapper), and it renders inside differently-colored bubbles (user vs. assistant vs. system), so a
+  background-matched scroll-shadow risks a color mismatch that can't be confirmed without a live
+  render pass in this environment. Left as an explicit open item rather than shipped-unverified —
+  needs either a dedicated table-wrapper (rehype plugin) or a live design pass to pick a safe
+  affordance.
+- Verified (T1-2/T1-4/T2-1/T2-3): Prettier clean; app-wide `svelte-check --diagnostic-sources svelte`
+  clean (0 errors, 1 pre-existing unrelated warning on `onboarding/+page.svelte`). Full TS-inclusive
+  `svelte-check` OOMs in this environment independent of these changes (confirmed it did so before
+  this pass too) — not a signal on these edits specifically.
 
 ---
 

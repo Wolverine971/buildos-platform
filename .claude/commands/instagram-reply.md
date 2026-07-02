@@ -121,41 +121,89 @@ If the warmup doc and the actual post context disagree, default to the more cons
 
 ## Comment Crafting Rules
 
+### The Register: DJ Leads With Energy or Insight (Enneagram 8)
+
+DJ is an Enneagram 8. His authentic register is direct, declarative, high-conviction,
+blunt-warm. He walked into a Marine recruiter's office with "why should I join the
+Marines? aren't they a bunch of roided-out jocks?" — and respected the Gunny who
+challenged him right back. His comments are his **real reaction stated with force**,
+not a crafted artifact.
+
+The two prior failure modes, both flagged by DJ, sit on either side of the target:
+
+- **Failure mode 1 (thought leader):** polished reframes, aphorisms, "most people miss" —
+  banned below.
+- **Failure mode 2 (careful diplomat):** hedged, over-qualified, "genuinely curious —"
+  permission-slip openers, performed humility, balanced either/or questions engineered
+  to look thoughtful. Just as fake. Also banned below.
+
+The target is the middle DJ actually occupies: says the thing plainly, cheers hard when
+he means it, asks bluntly when he wants to know, and is fine disagreeing — 8s bond
+through challenge.
+
 ### Core Principles
 
 1. Most comments should not mention BuildOS.
 2. Be a community member first, not a marketer in the comments.
-3. **Match the comment posture to the relationship state.** A stranger gets a real question or a genuine cheer — not a founder lesson. Lived moments only earn their place when there's already some relationship or when the lived moment is genuinely small and not wrapped in a takeaway.
-4. Sound like a real person texting on their phone — lowercase-friendly, short, specific to one thing in the post.
-5. Match the author's tone, vocabulary, and emotional energy.
-6. Add one sharp observation OR one real question OR one specific cheer — never a mini-essay, never a thesis.
+3. **One move per comment.** React OR take OR ask. Never reaction + self-context +
+   question stacked into one comment. If a draft does two moves, cut one.
+4. **Full conviction, minimal hedging.** At most one softener per comment ("maybe,"
+   "kind of," "feels like," "i think"); zero is better. A declarative that might be
+   wrong beats a hedge that can't be.
+5. Sound like a real person typing on their phone — lowercase-friendly, short, specific
+   to one thing in the post.
+6. **Match the author's topic, never their dialect.** No UK-isms to a Brit, no
+   mindset-speak to a coach, no flat-essay cosplay for Justin Welsh. DJ reacts to their
+   thing in his own voice.
 
-### Mode Selection (relationship-driven)
+### The Three Moves (pick ONE per option)
 
-The mode you pick depends on the relationship state, not on a "mix it up" quota.
+- **Energy (the real cheer):** conviction and specificity, "hell yes" energy even when
+  those aren't the words. Example: _"you can tell you'd run this thing even if nobody
+  was paying you for it."_ Not admiration-from-a-distance analysis — a direct hit on
+  the one thing that actually impressed him.
+- **Insight (the blunt take):** one plain declarative from lived experience. No wrapper,
+  no aphorism cap, no crafted symmetry. It can push back on the post — respectful
+  disagreement is more DJ than agreement-with-garnish. Example: _"cut two entire
+  feature areas out of my product this year. hated it. only reason the core got good."_
+- **Blunt question:** only when DJ actually wants the answer, and asked the way he'd
+  say it out loud. No "genuinely curious —" or "curious how —" throat-clearing.
+  Example: _"how do you keep the chats from drifting apart? that's where it always
+  breaks for me."_
 
-**No relationship / first-ever touch (most common case for new accounts):**
+### Relationship State (modulates topic and product talk, NOT energy)
 
-The strongest opener is almost always one of:
+A stranger gets full-energy DJ — he just doesn't get overfamiliarity, a founder lesson,
+or a product mention.
 
-- **Real question:** Something you genuinely want to know about how they think or what they actually said. Questions invite a response, which is the actual goal of a first touch. Example: _"genuinely curious — do you optimize for your own taste or for what your audience seems to want? feel like those pull in opposite directions"_
-- **Specific cheer:** Short, specific, no thesis attached. Example: _"11 films, 100+ awards, none compromised. quietly insane résumé."_
-- **Tiny lived moment, no takeaway:** Only if the moment is small, specific, and doesn't end in a wrapped lesson. Example: _"rewrote my onboarding flow 5 times last year. each version felt right when i shipped it. only the 5th made people actually finish."_ — works because there's no "this is what most people miss" cap on it.
+- **No relationship / first-ever touch:** any of the three moves at full conviction.
+  Questions and energy are the most likely to start a conversation. No lessons, no bio.
+- **Some relationship:** continuity is welcome — build on (without mirroring) what
+  you've talked about before. Soft "context" / "thinking environment" language earns
+  room at Level 1+.
+- **Commenter mining (watering hole):** reaction + blunt question at the commenter
+  ("same here — [their specific thing]. what's actually working for you?"). Never relay
+  the principal's framing back. Never mention BuildOS on a first mining pass.
 
-**Some relationship (already commented, exchanged a like/reply, or DJ has a documented past touchpoint):**
+### Banned Patterns — Diplomat Posture (flagged by DJ 2026-07-01)
 
-- Lived moments and soft "thinking environment" / "context" / "project memory" language earn more room.
-- Continuity is welcome — reference (without mirroring) what you've talked about before.
-- Still no thesis wrappers, still no founder bio dumps.
+Do not write any of these constructions:
 
-**Commenter mining (replying to a commenter on a watering hole, not the principal):**
+- **"genuinely curious —" / "curious —" / "curious how/what/whether" as an opener.**
+  This became the house formula (9 of 19 options in one session). A question doesn't
+  need a permission slip — delete the opener and start at the question itself.
+- **Hedge stacks:** two or more of "maybe / kind of / sort of / i think / feels like /
+  if i'm honest" in one comment.
+- **Performed humility / strategic self-deprecation:** "neither has fully worked for
+  me," "still does, if i'm honest," "the rest is just tuesday." Smallness as a bid for
+  relatability is as fake as bigness as a bid for authority.
+- **Crafted symmetry:** balanced either/or questions and mirrored sentence pairs
+  engineered to look thoughtful ("X, or Y — feels like those pull in opposite
+  directions"). If the shape is prettier than the thought, cut the shape.
+- **Dialect cosplay:** adopting the creator's vocabulary or national register ("proper
+  lovely," flat-essay Welsh voice). React in DJ's voice, always.
 
-- Lead with a real reaction + question whenever possible. The question earns elaboration, which is the mining signal.
-- Or: a warm peer reaction ("oh same, this got me too — anything actually helping for you?")
-- Never relay the principal's framing back at the commenter.
-- Never mention BuildOS on a first mining pass.
-
-### Banned Patterns (these read as thought-leader posture, hated by user)
+### Banned Patterns — Thought-Leader Posture (flagged by DJ 2026-05-07)
 
 Do not write any of these constructions:
 
@@ -179,11 +227,17 @@ If a draft uses any of those constructions, it's wrong — rewrite it.
 
 Before recording any draft, ask:
 
-1. **Does this sound like a doc?** If yes, cut. Real comments are typed on a phone.
-2. **Am I dropping a founder lesson on a stranger?** If there's no relationship and the comment ends in a wrapped takeaway, replace it with a real question or a genuine cheer.
-3. **Did I co-sign the creator first, or did I jump straight to my reframe?** Validate or react first. Then add one real thing if you have one. Then stop.
-4. **Is there a banned pattern in here?** (See list above.) If so, rewrite.
-5. **Could a brand account have written this?** If yes, cut.
+1. **Would DJ say this sentence out loud, to their face, at this energy?** If the draft
+   is more careful than his actual reaction would be, turn the conviction up — don't
+   sand it down.
+2. **Does it open with a hedge or a "curious" permission slip?** Delete the opener and
+   start at the content.
+3. **Is it more than one move?** (reaction + context + question) Cut to one.
+4. **Is there a banned pattern in here?** (Both lists above.) If so, rewrite.
+5. **Am I dropping a founder lesson on a stranger?** If there's no relationship and the
+   comment ends in a wrapped takeaway, replace it with a blunt question or real energy.
+6. **Could a brand account — or a careful diplomat — have written this?** If yes, cut.
+   It should only be writable by a guy who means it.
 
 ### Constraints
 
@@ -248,7 +302,7 @@ For each queued item:
 3. **Determine the relationship state** explicitly: _no relationship_, _some relationship_, or _commenter mining_. Record it in the draft so the mode selection is auditable.
 4. Check `comment-log.md` for duplicate pending or posted touches.
 5. Note repetition risks.
-6. Draft 2-3 comment options using the mode picker rules. For _no relationship_ items, **at least one option must be a real question**.
+6. Draft 2-3 comment options using the Three Moves — each option is exactly one move (energy, insight, or blunt question) in DJ's register.
 7. Run the **Pre-Send Gut Check** on every option before recording it. If a draft uses any banned pattern, rewrite it before saving — do not record bad drafts and "let the user pick."
 8. Update the replies doc immediately.
 9. Add a `Drafted` row to the account profile history if one does not already exist for this post.
@@ -322,24 +376,25 @@ Use this structure:
 
 - [previous angle or phrasing to avoid]
 
-**Suggested Comment Option 1 (mode: [question | lived moment | cheer] - [angle]):**
+**Suggested Comment Option 1 (mode: [energy | insight | question] - [angle]):**
 
 > [comment]
 
-**Suggested Comment Option 2 (mode: [question | lived moment | cheer] - [angle]):**
+**Suggested Comment Option 2 (mode: [energy | insight | question] - [angle]):**
 
 > [comment]
 
-**Suggested Comment Option 3 (mode: [question | lived moment | cheer] - [angle]):**
+**Suggested Comment Option 3 (mode: [energy | insight | question] - [angle]):**
 
 > [comment]
 
 > **Mode picker:**
 >
-> - **No relationship:** lead with at least one **question** option. Add a small **lived moment** without a takeaway and/or a specific **cheer**.
-> - **Some relationship:** lived moments earn more room; continuity is welcome.
-> - **Commenter mining:** lead with reaction + question. Never relay the principal's framing back.
-> - Never produce three "lived moment with a takeaway wrapper" options. That's the failure mode.
+> - Every option is ONE move — **energy**, **insight**, or **blunt question** — at full conviction.
+> - **No relationship:** any move works; no lessons, no bio, no product. Full energy anyway.
+> - **Some relationship:** continuity welcome; soft context language earns room at Level 1+.
+> - **Commenter mining:** reaction + blunt question at the commenter. Never relay the principal's framing back.
+> - Never produce three careful-diplomat options ("genuinely curious —" openers, hedge stacks, performed humility). That's the current failure mode.
 
 **Product mention?** [Yes/No]
 **Story reply opportunity?** [Yes/No]

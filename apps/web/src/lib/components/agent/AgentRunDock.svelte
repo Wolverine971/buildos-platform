@@ -49,9 +49,15 @@
 			case 'paused':
 				return { icon: Pause, cls: 'text-muted-foreground' };
 			case 'queued':
-				return { icon: LoaderCircle, cls: 'text-muted-foreground animate-spin' };
+				return {
+					icon: LoaderCircle,
+					cls: 'text-muted-foreground animate-spin motion-reduce:animate-none'
+				};
 			default:
-				return { icon: LoaderCircle, cls: 'text-info animate-spin' };
+				return {
+					icon: LoaderCircle,
+					cls: 'text-info animate-spin motion-reduce:animate-none'
+				};
 		}
 	}
 

@@ -13,6 +13,7 @@
 	import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
 	import { logAuthClientError } from '$lib/utils/auth-client-logger';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
+	import { getFirstTouchAttribution } from '$lib/services/posthog';
 
 	let loading = $state(false);
 	let googleLoading = $state(false);
@@ -215,7 +216,8 @@
 				body: JSON.stringify({
 					email: email.trim(),
 					password,
-					name: name || undefined
+					name: name || undefined,
+					attribution: getFirstTouchAttribution() || undefined
 				})
 			});
 

@@ -2177,7 +2177,7 @@
 {#snippet chatComposerFooter()}
 	<div
 		bind:this={composerContainer}
-		class="flex-shrink-0 overflow-visible bg-background/60 px-4 pt-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-5 sm:pt-3"
+		class="flex-shrink-0 overflow-visible bg-background/60 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:pt-3"
 	>
 		{#if showExistingImagePicker && attachmentProjectId}
 			<div

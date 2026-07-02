@@ -287,6 +287,11 @@ export async function processStartHereCaptureProposals(params: {
 		if (!ensured.ok) {
 			throw new Error(ensured.error);
 		}
+		if (ensured.skipped) {
+			// Project is deleted/archived/cancelled (or gone) — don't seed a
+			// Start Here doc just to stage a capture against it.
+			return { proposed: false, runId: null, updateCount: 0 };
+		}
 
 		const sectionUpdates: StartHereAuthoredSectionUpdate[] = updates.map((update) => ({
 			section: update.section,

@@ -44,6 +44,7 @@ import {
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 import { normalizeTaskStateInput } from '../../shared/task-state';
+import { captureServerEvent } from '$lib/server/posthog';
 import { TaskEventSyncService } from '$lib/services/ontology/task-event-sync.service';
 import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
 import {
@@ -646,6 +647,13 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			} catch (eventError) {
 				console.warn('[Task Update] Failed to sync task events:', eventError);
 			}
+		}
+
+		if (isTransitioningToDone) {
+			await captureServerEvent(session.user.id, 'task_completed', {
+				task_id: params.id,
+				project_id: existingTask.project_id
+			});
 		}
 
 		const actorDisplayName =

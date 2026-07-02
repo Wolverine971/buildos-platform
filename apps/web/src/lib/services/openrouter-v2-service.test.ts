@@ -1522,4 +1522,124 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			attempts: 1
 		});
 	});
+
+	it('logs a failure usage row with the real usage frame when the stream errors mid-flight', async () => {
+		// D10: abort/error is a normal end state for chat turns and must still record
+		// token usage — billing credits are computed from llm_usage_logs.
+		const insertMock = vi.fn(async () => ({ error: null }));
+		const encoder = new TextEncoder();
+		const fetchMock = vi.fn(async () => {
+			let stage = 0;
+			const stream = new ReadableStream({
+				// pull so the chunk is delivered before the error; error() in start()
+				// would reset the queue and discard the pending chunk.
+				pull(controller) {
+					if (stage === 0) {
+						stage = 1;
+						controller.enqueue(
+							encoder.encode(
+								`data: ${JSON.stringify({
+									id: 'stream-fail',
+									model: ACTIVE_EXPERIMENT_MODEL,
+									choices: [{ delta: { content: 'Partial answer' } }],
+									usage: {
+										prompt_tokens: 20,
+										completion_tokens: 5,
+										total_tokens: 25
+									}
+								})}\n\n`
+							)
+						);
+						return;
+					}
+					controller.error(new Error('upstream exploded'));
+				}
+			});
+			return new Response(stream, {
+				status: 200,
+				headers: { 'content-type': 'text/event-stream' }
+			});
+		});
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createServiceWithUsageLogger(insertMock);
+		const events = [];
+		for await (const event of service.streamText({
+			messages: [{ role: 'user', content: 'hello' }],
+			userId: '11111111-1111-4111-8111-111111111111',
+			model: ACTIVE_EXPERIMENT_MODEL,
+			models: [ACTIVE_EXPERIMENT_MODEL],
+			chatSessionId: '22222222-2222-4222-8222-222222222222',
+			operationType: 'agentic_chat_v2_stream'
+		})) {
+			events.push(event);
+		}
+
+		await vi.waitFor(() => expect(insertMock).toHaveBeenCalledTimes(1));
+		expect(events.some((event) => event.type === 'error')).toBe(true);
+		expect(insertMock.mock.calls[0]?.[0]).toMatchObject({
+			status: 'failure',
+			error_message: 'upstream exploded',
+			streaming: true,
+			prompt_tokens: 20,
+			completion_tokens: 5,
+			total_tokens: 25
+		});
+	});
+
+	it('estimates token usage on a failed stream when no usage frame arrived', async () => {
+		// D10: when the provider never sent a usage frame, fall back to a char/4 estimate
+		// so cancelled/errored turns are still billed rather than undercounted at zero.
+		const insertMock = vi.fn(async () => ({ error: null }));
+		const encoder = new TextEncoder();
+		const fetchMock = vi.fn(async () => {
+			let stage = 0;
+			const stream = new ReadableStream({
+				pull(controller) {
+					if (stage === 0) {
+						stage = 1;
+						controller.enqueue(
+							encoder.encode(
+								`data: ${JSON.stringify({
+									id: 'stream-fail-nousage',
+									model: ACTIVE_EXPERIMENT_MODEL,
+									choices: [{ delta: { content: 'Partial answer' } }]
+								})}\n\n`
+							)
+						);
+						return;
+					}
+					controller.error(new Error('boom'));
+				}
+			});
+			return new Response(stream, {
+				status: 200,
+				headers: { 'content-type': 'text/event-stream' }
+			});
+		});
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createServiceWithUsageLogger(insertMock);
+		const events = [];
+		for await (const event of service.streamText({
+			messages: [{ role: 'user', content: 'hello' }],
+			userId: '11111111-1111-4111-8111-111111111111',
+			model: ACTIVE_EXPERIMENT_MODEL,
+			models: [ACTIVE_EXPERIMENT_MODEL],
+			chatSessionId: '22222222-2222-4222-8222-222222222222',
+			operationType: 'agentic_chat_v2_stream'
+		})) {
+			events.push(event);
+		}
+
+		await vi.waitFor(() => expect(insertMock).toHaveBeenCalledTimes(1));
+		const logged = insertMock.mock.calls[0]?.[0];
+		expect(logged?.status).toBe('failure');
+		expect(logged?.error_message).toBe('boom');
+		// char/4 estimate from emitted text ('Partial answer' -> 4) + prompt ('hello' -> 2).
+		expect(logged?.completion_tokens).toBeGreaterThan(0);
+		expect(logged?.prompt_tokens).toBeGreaterThan(0);
+	});
 });

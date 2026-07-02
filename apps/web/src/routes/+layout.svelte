@@ -49,6 +49,7 @@
 
 	// Vercel Analytics & Speed Insights
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
+	import { initPostHog, identifyUser, resetPostHogUser } from '$lib/services/posthog';
 	import type { Snippet } from 'svelte';
 	import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 	import { LOGOUT_REDIRECT_STORAGE_KEY } from '$lib/utils/auth';
@@ -57,6 +58,9 @@
 	if (browser && !dev) {
 		injectSpeedInsights();
 	}
+
+	// PostHog product analytics (no-op without PUBLIC_POSTHOG_KEY)
+	initPostHog();
 
 	// FIXED: Convert to $props() for Svelte 5 runes mode compatibility
 	let { data, children }: { data: LayoutData; children?: Snippet } = $props();
@@ -94,6 +98,20 @@
 	// PERFORMANCE: Reactive data with memoization - converted to $derived runes
 	let user = $derived(data.user);
 	let completedOnboarding = $derived(data.completedOnboarding);
+
+	// PostHog identify — once per user id; reset on sign-out merges are handled
+	// in handleAuthSignedOut.
+	let posthogIdentifiedUserId: string | null = null;
+	$effect(() => {
+		const uid = user?.id ?? null;
+		if (uid && uid !== posthogIdentifiedUserId) {
+			posthogIdentifiedUserId = uid;
+			identifyUser(uid, {
+				email: user.email,
+				completed_onboarding: untrack(() => completedOnboarding)
+			});
+		}
+	});
 	let hasConnectedAgents = $derived(Boolean(data.hasConnectedAgents));
 	type BillingContext = {
 		subscription: any | null;
@@ -450,6 +468,9 @@
 	async function handleAuthSignedOut() {
 		// Clear tracked auth state
 		previousAuthUserId = null;
+
+		resetPostHogUser();
+		posthogIdentifiedUserId = null;
 
 		resetResourceLoaders();
 		forceOnboardingActive = false;

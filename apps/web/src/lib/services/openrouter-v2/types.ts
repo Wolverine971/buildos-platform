@@ -185,6 +185,10 @@ export type OpenRouterChatRequest = {
 	stream?: boolean;
 	timeoutMs?: number;
 	signal?: AbortSignal;
+	// OpenRouter sticky-routing / cache-affinity key (top-level, max 256 chars).
+	session_id?: string;
+	// OpenAI-compatible prompt-cache routing hint forwarded to upstream providers.
+	prompt_cache_key?: string;
 };
 
 export type OpenRouterV2Config = {

@@ -8,6 +8,7 @@ async function main() {
 	let offset = 0;
 	let created = 0;
 	let existing = 0;
+	let skipped = 0;
 	let failed = 0;
 
 	for (;;) {
@@ -48,6 +49,12 @@ async function main() {
 				continue;
 			}
 
+			if (result.skipped) {
+				skipped += 1;
+				console.warn(`[start-here-backfill] ${project.id}: skipped (${result.reason})`);
+				continue;
+			}
+
 			if (result.created) {
 				created += 1;
 				console.log(
@@ -62,7 +69,7 @@ async function main() {
 	}
 
 	console.log(
-		`[start-here-backfill] complete: created=${created}, existing=${existing}, failed=${failed}`
+		`[start-here-backfill] complete: created=${created}, existing=${existing}, skipped=${skipped}, failed=${failed}`
 	);
 }
 

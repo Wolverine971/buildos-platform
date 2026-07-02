@@ -14,7 +14,7 @@
 		"format": "prettier --write .",
 		"format:changed": "node --import tsx scripts/formatChanged.ts",
 		"clean": "turbo clean",
-		"pre-push": "turbo pre-push",
+		"pre-push": "turbo typecheck test:run lint build",
 		"gen:types": "node --import tsx scripts/generate-types.ts",
 		"gen:schema": "node --import tsx scripts/extract-database-schema.ts",
 		"gen:web": "pnpm --filter=web gen:web",

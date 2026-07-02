@@ -58,7 +58,7 @@ function metadataNumber(
 }
 
 function jsonPayload(value: unknown): Json | null {
-	return value == null ? null : (value as Json);
+	return value === null || value === undefined ? null : (value as Json);
 }
 
 function createWorkerSmartLlmErrorLogger(): NonNullable<SmartLLMConfig['errorLogger']> {

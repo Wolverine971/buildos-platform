@@ -3,7 +3,7 @@
 # Agentic Chat Tool Surface Refactor Plan
 
 Date: 2026-04-10
-Status: Phase 1 implemented and verified
+Status: Phase 1 implemented and verified; rechecked 2026-06-22
 Owner: BuildOS Agentic Chat
 
 Related:
@@ -21,6 +21,13 @@ Phase 1 has been implemented. Gateway mode now uses the OpenClaw-style hybrid su
 - `tool_schema` for exact op/schema inspection,
 - no model-facing `execute_op` in the gateway tool surface.
 
+2026-06-22 doc review: a live-code search found no exact references to
+`tool_help`, `tool_exec`, `buildos_call`, or `execute_op` in the current
+agentic-chat runtime. The legacy compatibility cleanup called out below should
+be treated as historical/completed unless replay/admin tooling later proves
+otherwise. The remaining live work from this plan is the repair-policy cleanup
+and the optional admin/control-plane gateway decision.
+
 The important implementation files are:
 
 - [gateway-surface.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/gateway-surface.ts)
@@ -31,7 +38,11 @@ The important implementation files are:
 - [repair-instructions.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/repair-instructions.ts)
 - [agent-chat-orchestrator.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts)
 
-The first implementation deliberately keeps internal legacy compatibility shims for `tool_exec`, `tool_help`, `buildos_call`, and `execute_op` so old persisted traces/tests and non-gateway paths do not break abruptly. Those shims are not part of the new model-facing gateway contract.
+The first implementation deliberately kept internal legacy compatibility shims
+for `tool_exec`, `tool_help`, `buildos_call`, and `execute_op` so old persisted
+traces/tests and non-gateway paths would not break abruptly. Those shims were
+not part of the new model-facing gateway contract and no longer appear in the
+current live agentic-chat code search.
 
 Focused verification:
 
@@ -338,14 +349,17 @@ This preserves the progressive-disclosure benefit without collapsing execution i
 
 ## 4.5 `execute_op` is not model-facing in gateway mode
 
-`execute_op` remains temporarily as an internal/legacy compatibility path for:
+Historical implementation note: `execute_op` temporarily remained as an
+internal/legacy compatibility path for:
 
 - compatibility during migration,
 - persisted traces and tests that still exercise old tool calls,
 - old non-gateway paths that have not been migrated yet,
 - internal eval comparison while this refactor is stabilized.
 
-It should not be exposed in the provider-facing gateway tool list. Normal reads and writes should end in direct tools.
+It should not be exposed in the provider-facing gateway tool list. Normal reads
+and writes should end in direct tools. As of the 2026-06-22 review, the
+compatibility names no longer appear in the live agentic-chat code search.
 
 ## 5. Repair and self-healing redesign
 
@@ -453,7 +467,7 @@ Outcome:
 Status:
 
 - Partially complete. Model-facing prompt and skill docs now use `skill_load`, `tool_search`, `tool_schema`, and direct tools.
-- Internal legacy helper and test paths still reference `tool_help`, `tool_exec`, and `execute_op` for compatibility.
+- The internal legacy helper/test references called out in April no longer appear in the current live-code search.
 
 ## Phase 1: Re-enable context-aware tool surfacing in gateway mode
 
@@ -540,8 +554,8 @@ These are the next concrete steps I would take in the repo.
     - when long-tail tools are materialized,
     - which repair classes fire most often.
 2. Replace remaining prose repair branches with typed recovery classes.
-3. Update or retire legacy `tool_help` / `tool_exec` / `execute_op` compatibility paths once persisted/eval coverage no longer depends on them.
-4. Decide whether the old [tool-help.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/registry/tool-help.ts) payloads should be rewritten directly or continue to be adapted through [tool-schema.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/registry/tool-schema.ts).
+3. Completed by the 2026-06-22 doc review/code search: retire legacy `tool_help` / `tool_exec` / `execute_op` compatibility references from the live agentic-chat code path.
+4. Obsolete after cleanup: the old `tool-help.ts` helper no longer exists; any future schema inspection work should start from [tool-schema.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/registry/tool-schema.ts).
 5. Design the separate admin/control-plane gateway if runtime config repair is still desired.
 
 ## 9. Bottom line

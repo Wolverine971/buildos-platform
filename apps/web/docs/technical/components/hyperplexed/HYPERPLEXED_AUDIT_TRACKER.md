@@ -12,29 +12,34 @@
 > Stack with the pre-playbook audits so findings don't duplicate:
 > `DESIGN_AUDIT_2026-06-12.md` (Inkprint tokens) and `MOBILE_EXPERIENCE_AUDIT_2026-06-12.md`
 > (tiers 4–5 still open).
+>
+> **To audit a surface, run `/hyperplexed-audit <surface>`** (`.claude/commands/hyperplexed-audit.md`) —
+> it drives the full loop (audit → tiered findings → DJ approval → fix → verify → update this tracker)
+> and keeps this doc current as a side effect.
 
 ---
 
 ## 1. Audited surfaces
 
-| Surface                              | Audit doc                                                                                  | Audited    | Fix status                                                                                                                                                             | Live verify |
-| ------------------------------------ | ------------------------------------------------------------------------------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| Project detail page (v2)             | [`PROJECT_PAGE_AUDIT_2026-06-26.md`](./PROJECT_PAGE_AUDIT_2026-06-26.md)                   | 2026-06-26 | ✅ Polish pass shipped; created shared `board-a11y.ts` + locked the two-radius rule                                                                                    | ⬜ pending  |
-| Projects list page                   | [`PROJECTS_LIST_PAGE_AUDIT_2026-06-26.md`](./PROJECTS_LIST_PAGE_AUDIT_2026-06-26.md)       | 2026-06-26 | ✅ Full pass shipped (svelte-check + Prettier clean)                                                                                                                   | ⬜ pending  |
-| Home dashboard (authed `/`)          | [`DASHBOARD_AUDIT_2026-06-26.md`](./DASHBOARD_AUDIT_2026-06-26.md)                         | 2026-06-26 | ✅ Systemic D1–D5 shipped; created shared `AttentionBanner.svelte`. Dashboard **modals were out of scope** → backlog row below                                         | ⬜ pending  |
-| History page                         | [`HISTORY_PAGE_AUDIT_2026-06-26.md`](./HISTORY_PAGE_AUDIT_2026-06-26.md)                   | 2026-06-26 | ✅ Polish pass shipped                                                                                                                                                 | ⬜ pending  |
-| Profile & settings (shell + 8 tabs)  | [`PROFILE_PAGE_AUDIT_2026-06-26.md`](./PROFILE_PAGE_AUDIT_2026-06-26.md)                   | 2026-06-26 | ✅ Full pass shipped across shell + all eight tabs                                                                                                                     | ⬜ pending  |
-| App shell (nav, root layout, footer) | [`NAVIGATION_AND_LAYOUT_AUDIT_2026-06-26.md`](./NAVIGATION_AND_LAYOUT_AUDIT_2026-06-26.md) | 2026-06-26 | ✅ Shipped incl. A1 one-width/one-padding unification. **Deferred:** mobile bottom tab bar; chat-launcher img stack; S4 radius drift on onboarding CTA                 | ⬜ pending  |
-| Admin console (~27 surfaces)         | [`ADMIN_PAGES_AUDIT_2026-06-26.md`](./ADMIN_PAGES_AUDIT_2026-06-26.md)                     | 2026-06-26 | ✅ Full S1–S6 pass + native dialogs→modals + users-page filter redesign shipped. **Deferred:** security event-detail modal a11y rewrite; 38 pre-existing lint warnings | ⬜ pending  |
-| Agent chat modal (6 regions)         | [`AGENT_CHAT_MODAL_AUDIT_2026-06-28.md`](./AGENT_CHAT_MODAL_AUDIT_2026-06-28.md)           | 2026-06-28 | 🔶 Tier 0 + Tier 0.5 + T2-2 shipped 2026-06-29. **Open: Tier 1, T2-1, T2-3**                                                                                           | ⬜ pending  |
+| Surface                              | Audit doc                                                                                  | Audited    | Fix status                                                                                                                                                                                                                              | Live verify |
+| ------------------------------------ | ------------------------------------------------------------------------------------------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| Project detail page (v2)             | [`PROJECT_PAGE_AUDIT_2026-06-26.md`](./PROJECT_PAGE_AUDIT_2026-06-26.md)                   | 2026-06-26 | ✅ Polish pass shipped; created shared `board-a11y.ts` + locked the two-radius rule                                                                                                                                                     | ⬜ pending  |
+| Projects list page                   | [`PROJECTS_LIST_PAGE_AUDIT_2026-06-26.md`](./PROJECTS_LIST_PAGE_AUDIT_2026-06-26.md)       | 2026-06-26 | ✅ Full pass shipped (svelte-check + Prettier clean)                                                                                                                                                                                    | ⬜ pending  |
+| Home dashboard (authed `/`)          | [`DASHBOARD_AUDIT_2026-06-26.md`](./DASHBOARD_AUDIT_2026-06-26.md)                         | 2026-06-26 | ✅ Systemic D1–D5 shipped; created shared `AttentionBanner.svelte`. Dashboard **modals were out of scope** → backlog row below                                                                                                          | ⬜ pending  |
+| History page                         | [`HISTORY_PAGE_AUDIT_2026-06-26.md`](./HISTORY_PAGE_AUDIT_2026-06-26.md)                   | 2026-06-26 | ✅ Polish pass shipped                                                                                                                                                                                                                  | ⬜ pending  |
+| Profile & settings (shell + 8 tabs)  | [`PROFILE_PAGE_AUDIT_2026-06-26.md`](./PROFILE_PAGE_AUDIT_2026-06-26.md)                   | 2026-06-26 | ✅ Full pass shipped across shell + all eight tabs                                                                                                                                                                                      | ⬜ pending  |
+| App shell (nav, root layout, footer) | [`NAVIGATION_AND_LAYOUT_AUDIT_2026-06-26.md`](./NAVIGATION_AND_LAYOUT_AUDIT_2026-06-26.md) | 2026-06-26 | ✅ Shipped incl. A1 one-width/one-padding unification. **Deferred:** mobile bottom tab bar; chat-launcher img stack; S4 radius drift on onboarding CTA                                                                                  | ⬜ pending  |
+| Admin console (~27 surfaces)         | [`ADMIN_PAGES_AUDIT_2026-06-26.md`](./ADMIN_PAGES_AUDIT_2026-06-26.md)                     | 2026-06-26 | ✅ Full S1–S6 pass + native dialogs→modals + users-page filter redesign shipped. **Deferred:** security event-detail modal a11y rewrite; 38 pre-existing lint warnings                                                                  | ⬜ pending  |
+| Agent chat modal (6 regions)         | [`AGENT_CHAT_MODAL_AUDIT_2026-06-28.md`](./AGENT_CHAT_MODAL_AUDIT_2026-06-28.md)           | 2026-06-28 | ✅ Tier 0 + Tier 0.5 + all Tier 1 + Tier 2 shipped 2026-06-29→07-01 (T1-6 found already fixed). **Open: T2-3's scroll-edge affordance half** (min-widths shipped; the visible-scroll-cue half needs a live design pass — see audit doc) | ⬜ pending  |
 
 **Legend:** ✅ shipped · 🔶 partially shipped · ⬜ not started.
 
 ### Open fix work, in priority order
 
-1. **Agent chat modal Tier 1 + T2-1/T2-3** — the only audited surface with open primary-tier items.
-2. **Admin security event-detail modal** — hand-rolled overlay, no ESC/focus-trap; reuse `ui/Modal.svelte`.
-3. **Shell mobile bottom tab bar** — structural; matches the open Tier 4–5 items in the mobile audit.
+1. **Admin security event-detail modal** — hand-rolled overlay, no ESC/focus-trap; reuse `ui/Modal.svelte`.
+2. **Shell mobile bottom tab bar** — structural; matches the open Tier 4–5 items in the mobile audit.
+3. **Agent chat modal T2-3 scroll-edge affordance** — small, deferred pending a live design pass
+   (needs a table-specific scroll wrapper or a color-safe scroll-shadow; see audit doc).
 
 ---
 

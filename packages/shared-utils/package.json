@@ -23,7 +23,6 @@
 		"test:run": "vitest run"
 	},
 	"dependencies": {
-		"@buildos/shared-types": "workspace:*",
 		"@buildos/supabase-client": "workspace:*",
 		"date-fns": "^2.30.0"
 	},

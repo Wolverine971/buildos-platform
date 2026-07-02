@@ -52,6 +52,7 @@ import {
 } from '$lib/services/agentic-chat/shared/update-value-validation';
 import { assertNoDurableTextViolations } from '$lib/services/agentic-chat/shared/durable-text-validation';
 import { normalizeProjectCreateArgs, validateProjectCreateArgs } from '../project-create-args';
+import { TASK_STATES } from '$lib/types/onto';
 
 const logger = createLogger('OntologyWriteExecutor');
 
@@ -1356,7 +1357,18 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		if (args.description !== undefined) updateData.description = args.description;
 		if (args.type_key !== undefined) updateData.type_key = args.type_key;
 		if (args.state_key !== undefined) {
-			updateData.state_key = this.normalizeTaskState(args.state_key);
+			// D15: A state change was explicitly requested. If it does not normalize to a
+			// valid state, normalizeTaskState returns undefined; assigning that here would
+			// produce an empty PATCH after JSON.stringify drops the undefined value, so the
+			// route bumps updated_at only and we'd falsely report "Updated". Throw instead,
+			// mirroring the route's own 400 (routes/api/onto/tasks/[id]/+server.ts).
+			const normalizedState = this.normalizeTaskState(args.state_key);
+			if (normalizedState === undefined) {
+				throw new Error(
+					`Invalid task state_key "${args.state_key}". Must be one of: ${TASK_STATES.join(', ')}.`
+				);
+			}
+			updateData.state_key = normalizedState;
 		}
 		if (args.priority !== undefined) updateData.priority = args.priority;
 		if (args.goal_id !== undefined) updateData.goal_id = args.goal_id;
@@ -2016,11 +2028,22 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			existingText = existing?.text ?? '';
 			projectId = existing?.projectId;
 		} catch (error) {
-			logger.warn('Failed to load existing content, using provided content', {
+			// D1: A failed existing-content read must abort a strategy-dependent write.
+			// Silently degrading to `sanitizedNew` here would cause the caller to PATCH
+			// the new content as the document's FULL body, destroying the existing body
+			// while reporting success. Throw instead so the tool surfaces a real error.
+			const message = error instanceof Error ? error.message : String(error);
+			logger.error('Failed to load existing content for strategy-dependent update', {
 				entityLabel: entityLabel || 'entity',
-				error: error instanceof Error ? error.message : String(error)
+				strategy,
+				error: message
 			});
-			return sanitizedNew;
+			const action = strategy === 'append' ? 'append to' : 'merge into';
+			throw new Error(
+				`Cannot ${action} ${entityLabel || 'entity'}: existing content could not be loaded (${message}). ` +
+					`Aborting to avoid overwriting the existing body. Retry once the entity is readable, ` +
+					`or pass update_strategy: 'replace' if you intend to overwrite the full content.`
+			);
 		}
 
 		const hasNewContent = sanitizedNew.trim().length > 0;

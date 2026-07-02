@@ -9,6 +9,43 @@ import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { WelcomeSequenceService } from '$lib/server/welcome-sequence.service';
+import { captureServerEvent } from '$lib/server/posthog';
+
+interface SignupAttribution {
+	utm_source: string | null;
+	utm_medium: string | null;
+	utm_campaign: string | null;
+	referrer: string | null;
+	landing_page: string | null;
+}
+
+function sanitizeAttribution(raw: unknown): SignupAttribution | null {
+	if (!raw || typeof raw !== 'object') return null;
+	const pick = (key: string): string | null => {
+		const value = (raw as Record<string, unknown>)[key];
+		return typeof value === 'string' && value.trim() ? value.trim().slice(0, 500) : null;
+	};
+	const attribution: SignupAttribution = {
+		utm_source: pick('utm_source'),
+		utm_medium: pick('utm_medium'),
+		utm_campaign: pick('utm_campaign'),
+		referrer: pick('referrer'),
+		landing_page: pick('landing_page')
+	};
+	return attribution.utm_source || attribution.referrer ? attribution : null;
+}
+
+function deriveSignupSource(attribution: SignupAttribution | null): string {
+	if (attribution?.utm_source) return attribution.utm_source;
+	if (attribution?.referrer) {
+		try {
+			return new URL(attribution.referrer).hostname;
+		} catch {
+			return 'referral';
+		}
+	}
+	return 'direct';
+}
 
 function getEmailDomain(value: string): string | null {
 	const trimmed = value.trim().toLowerCase();
@@ -83,7 +120,7 @@ async function ensureUserProfileForRegistration({
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	let payload: { email?: string; password?: string; name?: string };
+	let payload: { email?: string; password?: string; name?: string; attribution?: unknown };
 
 	try {
 		payload = await request.json();
@@ -244,6 +281,45 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				emailDomain,
 				hasSession,
 				accessToken: data.session?.access_token
+			});
+		}
+
+		// Signup analytics + durable first-touch attribution (both best-effort)
+		if (data.user) {
+			const attribution = sanitizeAttribution(payload?.attribution);
+			const signupSource = deriveSignupSource(attribution);
+
+			if (profileUser?.id) {
+				try {
+					const adminClient = createAdminSupabaseClient();
+					await adminClient
+						.from('users')
+						.update({
+							signup_source: signupSource,
+							utm_source: attribution?.utm_source ?? null,
+							utm_medium: attribution?.utm_medium ?? null,
+							utm_campaign: attribution?.utm_campaign ?? null,
+							referrer: attribution?.referrer ?? null
+							// Cast: columns land with migration 20260701010000; remove after gen:types
+						} as any)
+						.eq('id', profileUser.id);
+				} catch (attributionError) {
+					console.error('Failed to persist signup attribution:', attributionError);
+				}
+			}
+
+			await captureServerEvent(data.user.id, 'signup', {
+				signup_method: 'email',
+				email_domain: emailDomain,
+				signup_source: signupSource,
+				landing_page: attribution?.landing_page ?? null,
+				$set_once: {
+					signup_source: signupSource,
+					utm_source: attribution?.utm_source ?? null,
+					utm_medium: attribution?.utm_medium ?? null,
+					utm_campaign: attribution?.utm_campaign ?? null,
+					referrer: attribution?.referrer ?? null
+				}
 			});
 		}
 

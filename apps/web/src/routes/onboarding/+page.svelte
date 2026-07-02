@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { browser } from '$app/environment';
+	import { captureEvent } from '$lib/services/posthog';
 	import type { PageData } from './$types';
 	import type { OnboardingIntent, OnboardingStakes } from '$lib/config/onboarding.config';
 
@@ -105,6 +106,11 @@
 		// They already completed step 0, jump to step 1
 		currentStep = 1;
 		maxStepReached = 1;
+	}
+
+	// Fresh start only — OAuth-redirect restores and resumed sessions don't re-fire
+	if (browser && !savedSession && currentStep === 0) {
+		captureEvent('onboarding_started');
 	}
 
 	type OntologyCounts = {

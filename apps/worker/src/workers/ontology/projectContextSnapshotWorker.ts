@@ -574,6 +574,11 @@ async function refreshProjectStartHereDocument(params: {
 			return;
 		}
 
+		if (result.skipped) {
+			await params.job.log(`Start Here creation skipped (${result.reason})`);
+			return;
+		}
+
 		if (result.created || result.updated) {
 			await params.job.log(
 				`Start Here ${result.created ? 'created' : 'refreshed'} (${result.documentId})`

@@ -1869,10 +1869,10 @@
 				},
 				"you-stopped-choosing-what-you-think-about": {
 					"title": "You Stopped Choosing What You Think About",
-					"description": "AI is about to make the public internet far more synthetic. The people who keep their mind intact will share one habit: a chosen-input practice and a thinking environment.",
+					"description": "You stopped choosing what you think about. Three feelings nobody named — curiosity collapse, feed paranoia, algorithm-shaped thoughts — and the small daily act that takes the choosing back.",
 					"author": "DJ Wayne",
 					"date": "2026-04-27",
-					"lastmod": "2026-04-27",
+					"lastmod": "2026-07-01",
 					"changefreq": "monthly",
 					"priority": "0.9",
 					"published": true,
@@ -1888,7 +1888,7 @@
 						"build-os"
 					],
 					"readingTime": 11,
-					"excerpt": "The public internet is about to get an order of magnitude more synthetic, fast. The people who keep their minds intact through that will share one habit, organized around a thinking environment most people don't have yet. This post names the habit, names the three feelings (curiosity collapse, feed paranoia, algorithm-shaped thoughts) you have when you've stopped doing it, and ends with a 60-second test that tells you how far gone it is for you.",
+					"excerpt": "You stopped choosing what you think about, and the loss has three faces: curiosity collapse, feed paranoia, algorithm-shaped thoughts. This post names the habit that takes the choosing back and ends with a 60-second test that tells you how far gone it is for you.",
 					"pic": "chosen-input-direction-of-the-arrow",
 					"path": "apps/web/src/content/blogs/philosophy/you-stopped-choosing-what-you-think-about.md",
 					"slug": "you-stopped-choosing-what-you-think-about",
@@ -3934,7 +3934,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-07-01T22:40:14.836Z",
+	"generatedAt": "2026-07-02T03:58:42.815Z",
 	"totalPosts": 104,
 	"totalCategories": 9
 }

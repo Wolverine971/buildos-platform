@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/turn-supervisor/finalization-guard.ts
 import type { FastToolExecution } from '../stream-orchestrator/shared';
 import { sanitizeAssistantFinalText } from '../stream-orchestrator/assistant-text-sanitization';
+import { didGatewayExecSucceed } from '../stream-orchestrator/round-analysis';
 import { classifyToolExecution } from './digest';
 
 export type FinalizationGuardReason =
@@ -439,7 +440,10 @@ export function applyFinalizationGuard(
 
 	for (const execution of toolExecutions) {
 		const category = classifyToolExecution(execution);
-		const success = execution.result.success === true;
+		// Gateway writes return `success: true` whenever the handler didn't throw,
+		// even when the envelope carries `ok: false`. Judge success on the ok-aware
+		// check so an `{ ok: false }` write is not counted as completed.
+		const success = didGatewayExecSucceed(execution);
 		if (category === 'write') {
 			if (success) successfulWrites += 1;
 			else failedWrites += 1;

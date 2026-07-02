@@ -76,7 +76,8 @@
 	// deep-linked tab can otherwise load off-screen. `nearest` avoids vertical jumps.
 	$effect(() => {
 		const index = tabs.findIndex((tab) => tab.id === activeTab);
-		tabButtons[index]?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+		// Optional call: scrollIntoView is missing in jsdom test environments.
+		tabButtons[index]?.scrollIntoView?.({ inline: 'nearest', block: 'nearest' });
 	});
 </script>
 

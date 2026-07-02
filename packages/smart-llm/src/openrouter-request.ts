@@ -14,6 +14,13 @@ export type OpenRouterChatCompletionBodyParams = {
 	tool_choice?: unknown;
 	stream_options?: Record<string, unknown>;
 	transforms?: string[];
+	// OpenRouter's documented sticky-routing / cache-affinity key (top-level field,
+	// max 256 chars). See https://openrouter.ai/docs/guides/best-practices/prompt-caching
+	session_id?: string;
+	// OpenAI-compatible prompt-cache routing hint. OpenRouter does not document this
+	// field itself, but forwards pass-through params to OpenAI-compatible upstreams,
+	// where it improves cache-hit routing. Additive/optional — safe when unsupported.
+	prompt_cache_key?: string;
 };
 
 export const OPENROUTER_MAX_FALLBACK_MODELS = 3;
@@ -50,6 +57,12 @@ export function buildOpenRouterChatCompletionBody(
 	if (params.stream_options) body.stream_options = params.stream_options;
 	if (Array.isArray(params.transforms) && params.transforms.length > 0) {
 		body.transforms = params.transforms;
+	}
+	if (typeof params.session_id === 'string' && params.session_id.trim().length > 0) {
+		body.session_id = params.session_id.trim().slice(0, 256);
+	}
+	if (typeof params.prompt_cache_key === 'string' && params.prompt_cache_key.trim().length > 0) {
+		body.prompt_cache_key = params.prompt_cache_key.trim();
 	}
 
 	const fallbackModels = resolveOpenRouterFallbackModels(params.model, params.models);

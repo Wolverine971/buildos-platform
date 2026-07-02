@@ -19,7 +19,16 @@
 ## The Philosophy: Interesting Guy + Cheerleader
 
 > **NOT a thought leader.** Everyone is doing that. It's overdone and inauthentic.
+> **NOT a careful diplomat either.** Hedged, over-qualified, "genuinely curious —" openers read just as fake.
 > **The goal:** Interesting person with interesting things to say, OR genuine supporter.
+
+### The Register (added 2026-07-01)
+
+DJ is an Enneagram 8 — he leads with **energy or insight**, direct and declarative,
+full conviction, one move per comment. A comment is his real reaction typed fast, not
+a crafted artifact. If it's more careful than how he'd say it out loud, turn it up.
+Blunt questions are great; permission-slip openers ("genuinely curious —") are banned.
+Respectful pushback is more DJ than agreement-with-garnish.
 
 ### Two Modes of Engagement
 
@@ -60,7 +69,7 @@ Instagram sits between Twitter's casual brevity and LinkedIn's professional dept
 
 ### DO
 
-- Reference specific things in their post/reel ("that part about X hit different")
+- Reference specific things in their post/reel — name the exact moment that got you
 - Ask genuine questions about their experience
 - Share a quick relevant anecdote from your own journey
 - Use natural emoji (fire, 100, brain, clap) when genuine
@@ -121,17 +130,19 @@ Instagram sits between Twitter's casual brevity and LinkedIn's professional dept
 **Good:**
 
 - "yo this is so real - [specific thing that resonated]"
-- "the part about [X] is exactly what I keep running into"
-- "genuinely curious - how do you handle [specific aspect]?"
-- "this is the content I needed today"
 - "hell yes. [specific praise about what they shared]"
+- "how do you handle [specific aspect]? that's where it always breaks for me"
+- "[blunt declarative from lived experience — one sentence, no wrapper]"
+- "this is the content I needed today"
 
 **Bad:**
 
 - "amazing content!" (generic)
 - "so inspiring!" (hollow)
+- "genuinely curious - ..." (permission-slip opener — became a formula, banned 2026-07-01)
 - "check out my page!" (spammy)
 - "most people don't realize..." (preachy)
+- Hedge stacks: "maybe / kind of / feels like / if i'm honest" (diplomat posture)
 - Just emojis with no words (low effort)
 
 ---

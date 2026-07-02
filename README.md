@@ -18,7 +18,9 @@ buildos-platform/
 │   ├── shared-utils/         # Logging, metrics, shared utilities
 │   ├── smart-llm/            # LLM abstraction (OpenRouter + fallbacks)
 │   ├── supabase-client/      # Shared Supabase client configuration
-│   └── twilio-service/       # SMS / Twilio integration
+│   ├── twilio-service/       # SMS / Twilio integration
+│   ├── shared-agent-ops/     # Agent op layer shared by web gateway + worker Agent Run runner
+│   └── buildos-mcp-server/   # Local stdio MCP bridge to the remote BuildOS connector
 ├── docs/                     # Cross-cutting docs (architecture, marketing, ops)
 ├── scripts/                  # Type generation, schema extraction, tooling
 └── supabase/                 # Migrations and local Supabase config
@@ -83,6 +85,10 @@ PRIVATE_RAILWAY_WORKER_TOKEN=
 
 # Stripe (optional)
 PRIVATE_ENABLE_STRIPE=false
+
+# PostHog analytics (optional — no-ops without a key)
+PUBLIC_POSTHOG_KEY=
+PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 ```
 
 Naming convention: `PUBLIC_*` for client-accessible, `PRIVATE_*` for server-only.
@@ -119,7 +125,7 @@ Always use `pnpm`. Never `npm` or `yarn`.
 
 ## Deployment
 
-- **Web** → Vercel. Config in `vercel.json`. Cron jobs for dunning, trial reminders, billing ops, welcome sequence, and security retention run from Vercel.
+- **Web** → Vercel. Config in `vercel.json`. Cron jobs for dunning, trial reminders, billing ops, welcome sequence, reactivation sequence, and security retention run from Vercel.
 - **Worker** → Railway. Config in `railway.toml` + `nixpacks.toml`. Healthcheck at `/health`.
 
 See `docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md` for the full topology.

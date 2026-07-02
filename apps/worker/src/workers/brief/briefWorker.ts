@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { getTimezoneOffset, toZonedTime } from 'date-fns-tz';
 
 import { supabase } from '../../lib/supabase';
+import { captureWorkerEvent } from '../../lib/posthog';
 import { createServiceClient } from '@buildos/supabase-client';
 import {
 	BriefJobData,
@@ -200,6 +201,12 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 		}
 
 		await updateJobStatus(job.id, 'completed', 'brief', undefined, job.processingToken);
+
+		captureWorkerEvent(job.data.userId, 'brief_generated', {
+			brief_id: brief.id,
+			brief_date: validatedBriefDate,
+			timezone
+		});
 
 		// Emit notification event for brief completion
 		try {

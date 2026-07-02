@@ -14,7 +14,7 @@
 		"dev:split": "concurrently \"pnpm run dev:fast\" \"pnpm run check:watch\"",
 		"dev:profile": "NODE_OPTIONS='--inspect' pnpm run dev",
 		"build:deps": "pnpm --filter @buildos/web^... build",
-		"build": "pnpm run gen:blog-context && pnpm run gen:sitemap && svelte-kit sync && pnpm run build:deps && vite build",
+		"build": "pnpm run gen:blog-context && pnpm run gen:sitemap && svelte-kit sync && vite build",
 		"build:prod": "svelte-kit sync && NODE_ENV=production vite build",
 		"build:analyze": "ANALYZE=true vite build",
 		"build:log": "node scripts/build-logger.js",
@@ -24,6 +24,7 @@
 		"preview:host": "vite preview --host",
 		"check": "svelte-kit sync && NODE_OPTIONS='--max-old-space-size=8192' svelte-check",
 		"check:watch": "svelte-kit sync && NODE_OPTIONS='--max-old-space-size=8192' svelte-check --watch",
+		"typecheck": "pnpm run check",
 		"format": "prettier --write .",
 		"guardrails:server-routes": "node ./scripts/check-server-route-size.cjs",
 		"guardrails:onto-project-columns": "node ./scripts/check-onto-project-select-columns.cjs",
@@ -45,7 +46,6 @@
 		"test:llm:verbose": "vitest run --config vitest.config.llm.ts --reporter=verbose",
 		"test:llm:fast": "vitest run --config vitest.config.llm.ts --reporter=dot",
 		"gen:embeddings": "node --import tsx scripts/generate-embeddings.ts",
-		"gen:ctx": "node --import tsx generateProjectContext.ts . -o ./project-context.json",
 		"gen:sctx": "node --import tsx scripts/generateStreamlinedProjectContext.ts . -o ./docs/development/sproject-context.json",
 		"gen:blog-context": "node --import tsx scripts/generate-blog-context.ts",
 		"gen:sitemap": "node --import tsx scripts/generate-sitemap.ts",
@@ -64,11 +64,8 @@
 		"deps:fix": "pnpm audit --fix",
 		"clean": "rm -rf .svelte-kit build node_modules/.vite .tsbuildinfo",
 		"clean:all": "pnpm run clean && rm -rf node_modules",
-		"pre-push": "concurrently \"pnpm run check\" \"pnpm run test\" \"pnpm run lint\" && pnpm run build:prod",
-		"prepare": "husky",
 		"migrate:context": "node --import tsx scripts/migrate-project-context.ts",
-		"migrate:usercontext": "node --import tsx scripts/migrate-parsed-to-input.js",
-		"test:security": "node scripts/test-security.js"
+		"migrate:usercontext": "node --import tsx scripts/migrate-parsed-to-input.js"
 	},
 	"devDependencies": {
 		"@babel/parser": "^7.28.0",
@@ -100,8 +97,6 @@
 		"eslint-plugin-svelte": "^3.11.0",
 		"fast-glob": "^3.3.3",
 		"globals": "^16.3.0",
-		"husky": "^9.0.0",
-		"lint-staged": "^16.1.2",
 		"mdsvex": "^0.12.6",
 		"postcss": "^8.5.6",
 		"prettier": "^3.6.2",
@@ -115,7 +110,6 @@
 		"svelte-check": "^4.3.0",
 		"svelte-eslint-parser": "^1.4.1",
 		"tailwindcss": "^3.4.0",
-		"ts-morph": "^27.0.0",
 		"tsx": "^4.20.3",
 		"typescript": "^5.9.2",
 		"vite": "^7.3.2",
@@ -177,6 +171,8 @@
 		"mode-watcher": "^1.1.0",
 		"nodemailer": "^8.0.5",
 		"openai": "^5.11.0",
+		"posthog-js": "^1.396.4",
+		"posthog-node": "^5.39.2",
 		"rrule": "^2.7.2",
 		"sanitize-html": "^2.17.0",
 		"sharp": "^0.34.3",
@@ -186,14 +182,5 @@
 		"twilio": "^4.23.0",
 		"uuid": "^11.1.0",
 		"zod": "^3.23.0"
-	},
-	"lint-staged": {
-		"*.{js,ts,svelte}": [
-			"eslint --fix",
-			"prettier --write"
-		],
-		"*.{json,md,css}": [
-			"prettier --write"
-		]
 	}
 }

@@ -22,6 +22,7 @@ import {
 import type { Json, ProjectLogChangeSource, ProjectLogEntityType } from '@buildos/shared-types';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import { logActivitiesAsync, type ActivityLogActorContext } from '../ops/async-activity-logger';
+import { captureProductEvent } from '../analytics/posthog';
 import { autoOrganizeConnections } from './auto-organizer.service';
 import { addDocumentToTree, type AddDocumentOptions } from './doc-structure.service';
 import {
@@ -960,6 +961,16 @@ export async function instantiateProject(
 		if (activityLogs.length > 0) {
 			await logActivitiesAsync(client as any, { logs: activityLogs });
 		}
+
+		// AHA-moment funnel event — this is the single point every project
+		// creation path (API, agentic chat, braindump, calendar analysis)
+		// funnels through.
+		await captureProductEvent(userId, 'project_created', {
+			project_id: typedProjectId,
+			type_key: parsed.project.type_key,
+			task_count: counts.tasks,
+			change_source: options.activityLog?.changeSource ?? 'api'
+		});
 
 		return {
 			project_id: typedProjectId,

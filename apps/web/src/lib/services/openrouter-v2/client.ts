@@ -131,6 +131,8 @@ export class OpenRouterV2Client {
 			provider: request.provider,
 			tools: request.tools,
 			tool_choice: request.tool_choice,
+			session_id: request.session_id,
+			prompt_cache_key: request.prompt_cache_key,
 			stream: request.stream === true,
 			stream_options:
 				request.stream === true

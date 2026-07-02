@@ -71,6 +71,7 @@ import {
 import {
 	buildRoundToolPattern,
 	buildToolRoundFingerprint,
+	didGatewayExecSucceed,
 	extractGatewayExecResultData,
 	extractGatewayRequiredFieldFailures,
 	extractGatewayRequiredFieldFailuresFromValidationIssues,
@@ -482,7 +483,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			type: 'tool_result_received',
 			toolName: toolCall.function.name,
 			toolCallId: toolCall.id,
-			success: result.success === true,
+			// ok-aware: a gateway envelope with `ok: false` rides in on `success: true`,
+			// so judge on didGatewayExecSucceed to keep the supervisor's write/failure
+			// counts honest. Falls back to raw success for non-gateway tools.
+			success: didGatewayExecSucceed(execution),
 			error: result.error ?? null,
 			resultSummary: summarizeToolResult(result)
 		});
@@ -1512,7 +1516,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					type: 'tool_result_received',
 					toolName: originalToolCall.function.name,
 					toolCallId: originalToolCall.id,
-					success: result.success === true,
+					// ok-aware: a gateway envelope with `ok: false` rides in on
+					// `success: true`, so judge on didGatewayExecSucceed to keep the
+					// supervisor's write/failure counts honest. Falls back to raw
+					// success for non-gateway tools.
+					success: didGatewayExecSucceed(execution),
 					error: result.error ?? null,
 					resultSummary: summarizeToolResult(result)
 				});
@@ -1771,7 +1779,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			collectGatewayWriteIntentOps(toolExecutions).length > 0) &&
 		!toolExecutions.some(
 			(execution) =>
-				classifyToolExecution(execution) === 'write' && execution.result.success === true
+				classifyToolExecution(execution) === 'write' && didGatewayExecSucceed(execution)
 		);
 
 	if (toolLimitNotice) {

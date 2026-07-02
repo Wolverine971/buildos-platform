@@ -271,10 +271,14 @@ export function didGatewayExecSucceed(execution: FastToolExecution | null): bool
 		return false;
 	}
 	const payload = extractGatewayExecResultData(execution.result.result);
-	if (!payload) {
-		return true;
+	// Only a gateway envelope that explicitly reports `ok: false` counts as a
+	// failure. Non-gateway tools — and gateway-ish payloads that never set an
+	// explicit boolean `ok` — fall back to the raw `success` flag already
+	// checked above, so this stays correct for reads and non-gateway writes.
+	if (payload && typeof payload.ok === 'boolean') {
+		return payload.ok;
 	}
-	return payload.ok === true;
+	return true;
 }
 
 export function getGatewayExecOp(execution: FastToolExecution): string | null {

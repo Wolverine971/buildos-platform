@@ -404,7 +404,7 @@ export function validateReferenceModuleProvenance(
 	rawContent: string
 ): SkillAuthoringIssue[] {
 	const issues: SkillAuthoringIssue[] = [];
-	const trimmed = rawContent.replace(/^﻿/, '').trimStart();
+	const trimmed = rawContent.replace(/^\uFEFF/, '').trimStart();
 	const fenceMatch = trimmed.match(/^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/);
 	if (!fenceMatch || typeof fenceMatch[1] !== 'string') return issues;
 

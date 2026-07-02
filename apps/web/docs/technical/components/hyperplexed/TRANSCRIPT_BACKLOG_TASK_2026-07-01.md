@@ -2,6 +2,10 @@
 
 # Task: Pull + Analyze the 7 Missing Tier-2 Transcripts
 
+> **STATUS 2026-07-01: §1–§3 DONE.** All 7 transcripts pulled (no IP block), playbook §0/§1/§2/§4
+> updated, P16 (spotlight `:has()`) + P17 (forgiving shared indicator) added, P15 extended with the
+> context-aware trailer variant, memory updated. §4 command: see `.claude/commands/hyperplexed-audit.md`.
+
 > Self-contained pickup doc. Goal: finish the Hyperplexed source corpus by transcribing the 7
 > deferred Tier-2 effect tutorials, fold what they teach into the
 > [playbook](./HYPERPLEXED_DESIGN_PLAYBOOK.md) §2 and

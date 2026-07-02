@@ -1,0 +1,47 @@
+# .github/workflows/ci.yml
+name: CI
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    checks:
+        name: Typecheck, lint, test
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        steps:
+            - uses: actions/checkout@v4
+
+            # Reads the pnpm version from the packageManager field in package.json
+            - uses: pnpm/action-setup@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version-file: .nvmrc
+                  cache: pnpm
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            # SvelteKit $env/static modules need values present at build/test time.
+            # CI has no real secrets; the example files provide placeholder values.
+            - name: Provide placeholder env
+              run: |
+                  cp .env.example .env
+                  cp apps/web/.env.example apps/web/.env
+                  cp apps/worker/.env.example apps/worker/.env
+
+            - name: Typecheck
+              run: pnpm turbo typecheck
+
+            - name: Lint
+              run: pnpm turbo lint
+
+            - name: Test
+              run: pnpm turbo test:run

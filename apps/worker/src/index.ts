@@ -8,6 +8,7 @@ import express from 'express';
 
 import { supabase } from './lib/supabase';
 import { logWorkerError } from './lib/errorLogger';
+import { shutdownPostHog } from './lib/posthog';
 import { registerEmailTrackingRoute } from './routes/email-tracking';
 import smsScheduledRoutes from './routes/sms/scheduled';
 import { startScheduler } from './scheduler';
@@ -817,13 +818,13 @@ async function start() {
 process.on('SIGTERM', () => {
 	console.log('SIGTERM received, shutting down gracefully...');
 	queue.stop();
-	process.exit(0);
+	void shutdownPostHog().finally(() => process.exit(0));
 });
 
 process.on('SIGINT', () => {
 	console.log('SIGINT received, shutting down gracefully...');
 	queue.stop();
-	process.exit(0);
+	void shutdownPostHog().finally(() => process.exit(0));
 });
 
 // Start the application

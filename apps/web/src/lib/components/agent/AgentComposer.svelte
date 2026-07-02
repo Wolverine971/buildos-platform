@@ -283,7 +283,7 @@
 								class={`mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold ${attachmentStatusClass(attachment)}`}
 							>
 								<StatusIcon
-									class={`h-3 w-3 ${attachment.status === 'hashing' || attachment.status === 'uploading' || attachment.status === 'processing' ? 'animate-spin' : ''}`}
+									class={`h-3 w-3 ${attachment.status === 'hashing' || attachment.status === 'uploading' || attachment.status === 'processing' ? 'animate-spin motion-reduce:animate-none' : ''}`}
 								/>
 								<span class="truncate">{attachment.statusLabel}</span>
 							</div>

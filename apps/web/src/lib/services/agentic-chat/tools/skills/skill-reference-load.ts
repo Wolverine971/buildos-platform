@@ -31,7 +31,7 @@ function normalizeReference(value: string): string {
 // the build-time validator, not content for the model, so strip it before serving. A no-op for
 // modules without frontmatter. Kept deliberately simple: leading `---` fenced block only.
 function stripReferenceFrontmatter(raw: string): string {
-	const match = raw.match(/^﻿?\s*---\s*\n[\s\S]*?\n---\s*(?:\n|$)/);
+	const match = raw.match(/^\uFEFF?\s*---\s*\n[\s\S]*?\n---\s*(?:\n|$)/);
 	return match ? raw.slice(match[0].length).replace(/^\s+/, '') : raw;
 }
 

@@ -48,4 +48,31 @@ describe('buildOpenRouterChatCompletionBody', () => {
 		});
 		expect(Object.keys(body)).not.toContain('extra_body');
 	});
+
+	it('forwards session_id and prompt_cache_key when a session id is supplied', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: 'qwen/qwen3.7-plus',
+			messages: [{ role: 'user', content: 'Stream this.' }],
+			stream: true,
+			session_id: 'chat-session-123',
+			prompt_cache_key: 'chat-session-123'
+		});
+
+		expect(body.session_id).toBe('chat-session-123');
+		expect(body.prompt_cache_key).toBe('chat-session-123');
+	});
+
+	it('truncates an over-long session_id to 256 chars and omits empty cache keys', () => {
+		const longId = 'x'.repeat(300);
+		const body = buildOpenRouterChatCompletionBody({
+			model: 'qwen/qwen3.7-plus',
+			messages: [{ role: 'user', content: 'Stream this.' }],
+			stream: true,
+			session_id: longId,
+			prompt_cache_key: '   '
+		});
+
+		expect((body.session_id as string).length).toBe(256);
+		expect(Object.keys(body)).not.toContain('prompt_cache_key');
+	});
 });

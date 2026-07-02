@@ -617,7 +617,6 @@
 
 	.agent-markdown :global(table) {
 		width: 100%;
-		min-width: 46rem;
 		margin-top: 0.75rem;
 		margin-bottom: 0.75rem;
 		border-collapse: separate;
@@ -630,11 +629,14 @@
 		table-layout: auto;
 	}
 
+	/* Column minimums scale with the viewport instead of a fixed rem floor, so a
+	 narrow 2-column table doesn't force the same horizontal scroll as a wide one
+	 inside the 85%-width message bubble. */
 	.agent-markdown :global(th),
 	.agent-markdown :global(td) {
 		border-right: 1px solid hsl(var(--border));
 		border-bottom: 1px solid hsl(var(--border));
-		min-width: 7rem;
+		min-width: clamp(4.5rem, 24vw, 7rem);
 		padding: 0.65rem 0.9rem;
 		text-align: left;
 		vertical-align: top;
@@ -643,12 +645,12 @@
 
 	.agent-markdown :global(th:first-child),
 	.agent-markdown :global(td:first-child) {
-		min-width: 14rem;
+		min-width: clamp(6rem, 32vw, 14rem);
 	}
 
 	.agent-markdown :global(th:nth-child(2)),
 	.agent-markdown :global(td:nth-child(2)) {
-		min-width: 18rem;
+		min-width: clamp(7rem, 38vw, 18rem);
 	}
 
 	.agent-markdown :global(th) {

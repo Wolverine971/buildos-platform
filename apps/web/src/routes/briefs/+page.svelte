@@ -4,6 +4,7 @@
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
 	import { replaceState } from '$app/navigation';
+	import { captureEvent } from '$lib/services/posthog';
 	import {
 		Calendar,
 		Clock,
@@ -355,6 +356,13 @@
 
 		// Fetch initial data with proper timezone
 		await fetchBriefData(currentDate, selectedView, activeBriefId);
+
+		if (dailyBrief) {
+			captureEvent('brief_viewed', {
+				brief_id: dailyBrief.id,
+				brief_date: currentDate
+			});
+		}
 
 		// Fetch next scheduled brief time
 		await fetchNextScheduledBrief();

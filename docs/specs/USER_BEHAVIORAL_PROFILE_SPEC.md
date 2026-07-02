@@ -1107,8 +1107,7 @@ Behavioral profiling must not slow down chat request handling.
 
 Recommended runtime switches:
 
-- `AGENTIC_CHAT_BEHAVIORAL_PROFILE_MODE=off|shadow|inject`
-- `AGENTIC_CHAT_BEHAVIORAL_PROFILE_TIMEOUT_MS=25`
+- Retired behavioral-profile rollout mode and timeout flags were removed from active env config.
 
 **Operational targets:**
 

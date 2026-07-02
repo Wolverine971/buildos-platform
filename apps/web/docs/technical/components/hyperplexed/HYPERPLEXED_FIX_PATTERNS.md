@@ -263,6 +263,123 @@ Constrain, don't mirror: amplify or clamp per-axis and add a short `element.anim
 (playbook §2 "chills out and lags behind") so motion feels designed rather than literal. Gate the
 whole listener behind the reduced-motion check as in P14.
 
+**Context-aware trailer variant** (the "intelligent mouse trailer"): same skeleton, but the follower
+element also communicates what's under it — `e.target.closest('[data-interactable]')` answers "am I
+over something," and a `data-type` attribute on the trailer drives which icon shows (CSS owns the
+opacity/scale per type; JS only sets the attribute). Non-negotiables: `position: fixed`, top
+z-index, `pointer-events: none`, and full removal under reduced motion. This fights the playbook's
+gratuitous-overlay rule — reserve it for a genuinely canvas-like surface, not general chrome.
+
+### P16 · Spotlight hover — dim the set via `:has()`
+
+**Finding:** a set of peer items (card grid, nav list, link cluster) where hover feedback on one item
+doesn't visually prioritize it — or where the fix was attempted by moving/scaling things.
+
+CSS-only: when the group contains a hovered item, fade every item except the hovered one. Focus
+without layout motion (playbook §2 "spotlight the hovered item").
+
+```svelte
+<div class="spotlight-group">
+	{#each items as item}
+		<a class="spotlight-item …">…</a>
+	{/each}
+</div>
+
+<style>
+	.spotlight-group:has(.spotlight-item:hover) .spotlight-item:not(:hover) {
+		opacity: 0.45;
+	}
+	.spotlight-item {
+		transition: opacity 300ms ease;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.spotlight-item {
+			transition: none; /* dim state still applies — it's not motion — but instantly */
+		}
+	}
+</style>
+```
+
+Keep the dim ≥ 0.4 opacity so unhovered items stay readable, and pair with a `:focus-within` clause
+(`_:has(.spotlight-item:focus-visible)`) so keyboard focus gets the same spotlight. Because the
+effect is opacity-only it survives reduced motion as an instant state change, not a no-op.
+
+### P17 · Forgiving shared indicator (delay the exit, never the entry)
+
+**Finding:** a shared moving indicator (tab underline, active-nav pill, hover highlight that slides
+between fixed targets) that snaps back to its resting state the instant the cursor leaves one
+target — flickering while the user travels between targets.
+
+The asymmetric-delay contract from playbook §2 ("we really only need the delay on dehover, not on
+rehover"): zero `transition-delay` while _any_ target is hovered; a short delay only on full
+de-hover, which absorbs the gap while the cursor crosses between targets.
+
+```css
+.indicator {
+	transition:
+		left 250ms ease,
+		top 250ms ease;
+	transition-delay: 300ms; /* default: applies on full de-hover */
+}
+.group:has(.target:hover) .indicator {
+	transition-delay: 0ms; /* while anything is hovered: move immediately */
+}
+@media (prefers-reduced-motion: reduce) {
+	.indicator {
+		transition: none;
+	}
+}
+```
+
+Position the indicator per-target with hardcoded values when the target count is fixed (playbook §0:
+don't over-engineer the invariant) or from `getBoundingClientRect()` when it isn't. Under reduced
+motion the indicator jumps instantly — state is preserved, motion is not.
+
+### P18 · Seamless gradient-text accent (Linear's "magic text")
+
+**Finding:** a hero/marketing headline that wants a premium accent moment — or a gradient-text
+attempt that visibly "jumps" when its animation loops.
+
+Playbook §2's seamless-loop contract: clip a gradient to the text, oversize the background, pan it —
+and make the gradient's **first and last color stops identical** so the loop has no seam. Public
+marketing surfaces only (the backlog's home/about/pricing rows); never app chrome, and at most one
+per surface.
+
+```svelte
+<span class="magic-text">turn messy thinking into structured work</span>
+
+<style>
+	.magic-text {
+		background: linear-gradient(
+			90deg,
+			hsl(var(--accent)),
+			hsl(var(--accent) / 0.55),
+			hsl(var(--accent))
+		); /* first stop == last stop — that's the whole trick */
+		background-size: 200%;
+		background-clip: text;
+		-webkit-background-clip: text;
+		color: transparent;
+		animation: magic-pan 6s linear infinite;
+	}
+	@keyframes magic-pan {
+		to {
+			background-position: -200% center;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.magic-text {
+			animation: none; /* gradient stays as a static accent — color, not motion */
+		}
+	}
+</style>
+```
+
+Check dark-mode contrast of every stop against the page background — clipped gradients dodge the
+usual text-color tokens, so this is exactly the kind of call the live verify pass must confirm.
+Skip Linear's sparkle-stars layer unless the surface really earns it; if added, JS owns the whole
+cycle (playbook §2 "one timing owner") and the stars are `aria-hidden`.
+
 ---
 
 ## Using this doc in an audit

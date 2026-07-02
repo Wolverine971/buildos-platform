@@ -9,6 +9,7 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { WelcomeSequenceService } from '$lib/server/welcome-sequence.service';
 import { getAuthUserCreatedAt, inferAuthUserJustCreated } from '$lib/utils/auth-profile';
 import { logSecurityEvent, type SecurityEventLogOptions } from '$lib/server/security-event-logger';
+import { captureServerEvent } from '$lib/server/posthog';
 
 export interface GoogleOAuthConfig {
 	redirectUri: string;
@@ -536,6 +537,12 @@ export class GoogleOAuthHandler {
 		}
 
 		if (config.isRegistration && authResult.isNewUser) {
+			// UTM attribution can't ride the OAuth redirect; the client-side
+			// identify() attaches first-touch person properties after login.
+			await captureServerEvent(authResult.user.id, 'signup', {
+				signup_method: 'google_oauth'
+			});
+
 			try {
 				const adminClient = createAdminSupabaseClient();
 				await new WelcomeSequenceService(adminClient).startSequenceForUser({
