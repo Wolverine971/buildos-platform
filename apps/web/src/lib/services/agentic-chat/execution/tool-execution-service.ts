@@ -30,7 +30,11 @@ import type {
 } from '../shared/types';
 import { normalizeToolError } from '../shared/error-utils';
 import type { ChatMessage, ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
-import { CHAT_TOOL_DEFINITIONS, TOOL_METADATA } from '../tools/core/definitions';
+import {
+	CHAT_TOOL_DEFINITIONS,
+	GATEWAY_TOOL_DEFINITIONS,
+	TOOL_METADATA
+} from '../tools/core/definitions';
 import { searchToolRegistry } from '../tools/registry/tool-search';
 import { getToolSchema } from '../tools/registry/tool-schema';
 import { loadDomain, searchDomains } from '../tools/domains/domain-load';
@@ -353,21 +357,7 @@ export class ToolExecutionService implements BaseService {
 				toolCallId: toolCall.id
 			});
 		}
-
-		if (GATEWAY_TOOL_NAMES.has(toolName)) {
-			const gatewayResult = await this.executeGatewayTool(
-				toolName,
-				args,
-				context,
-				availableTools,
-				options
-			);
-			return finalizeResult({
-				...gatewayResult,
-				toolName,
-				toolCallId: toolCall.id
-			});
-		}
+		const validationTools = this.getValidationToolDefinitions(toolName, availableTools);
 
 		if (toolName === 'create_onto_document') {
 			if (typeof rawArguments === 'string') {
@@ -424,15 +414,15 @@ export class ToolExecutionService implements BaseService {
 			});
 		}
 
-		args = this.applySchemaDefaults(toolName, args, availableTools);
-		args = this.applyContextDefaults(toolName, args, context, availableTools);
-		args = this.applyArgumentAliases(toolName, args, availableTools);
+		args = this.applySchemaDefaults(toolName, args, validationTools);
+		args = this.applyContextDefaults(toolName, args, context, validationTools);
+		args = this.applyArgumentAliases(toolName, args, validationTools);
 		args = this.normalizeIdFields(args);
 		const projectScopeGuard = this.guardProjectIdMatchesContextScope(
 			toolName,
 			args,
 			context,
-			availableTools,
+			validationTools,
 			toolCall.id
 		);
 		if (projectScopeGuard) {
@@ -524,6 +514,65 @@ export class ToolExecutionService implements BaseService {
 			});
 		}
 
+		if (GATEWAY_TOOL_NAMES.has(toolName)) {
+			const validation = this.validateToolCall(toolName, args, validationTools);
+			if (!validation.isValid) {
+				const isToolNotLoaded = validation.errors.some((err) =>
+					err.startsWith('Unknown tool:')
+				);
+				return finalizeResult({
+					success: false,
+					error: validation.errors.join('; '),
+					errorType: isToolNotLoaded ? 'tool_not_loaded' : 'validation_error',
+					toolName,
+					toolCallId: toolCall.id
+				});
+			}
+
+			try {
+				const timeout = this.resolveTimeoutMs(toolName, options.timeout);
+				resolvedTimeoutMs = timeout;
+				const gatewayPromise = this.executeWithTimeout(
+					() => this.executeGatewayTool(toolName, args),
+					timeout
+				);
+
+				let gatewayResult: ToolExecutionResult;
+				if (options.abortSignal) {
+					gatewayResult = await this.raceWithAbort(gatewayPromise, options.abortSignal);
+				} else {
+					gatewayResult = await gatewayPromise;
+				}
+
+				return finalizeResult({
+					...gatewayResult,
+					toolName,
+					toolCallId: toolCall.id
+				});
+			} catch (error) {
+				if (error instanceof DOMException && error.name === 'AbortError') {
+					return finalizeResult({
+						success: false,
+						error: 'Operation cancelled',
+						errorType: 'cancelled',
+						toolName,
+						toolCallId: toolCall.id
+					});
+				}
+				const normalizedError = this.normalizeExecutionError(error, toolName, args);
+				const isTimeout =
+					normalizedError.includes('timed out') ||
+					(error instanceof Error && error.message.includes('timeout'));
+				return finalizeResult({
+					success: false,
+					error: normalizedError,
+					errorType: isTimeout ? 'timeout' : 'execution_error',
+					toolName,
+					toolCallId: toolCall.id
+				});
+			}
+		}
+
 		if (virtualHandler) {
 			try {
 				const result = await virtualHandler({
@@ -554,7 +603,7 @@ export class ToolExecutionService implements BaseService {
 		}
 
 		// Validate the tool call
-		const validation = this.validateToolCall(toolName, args, availableTools);
+		const validation = this.validateToolCall(toolName, args, validationTools);
 		if (!validation.isValid) {
 			// Detect if this is a "tool not loaded" error for telemetry/fallback handling
 			const isToolNotLoaded = validation.errors.some((err) =>
@@ -569,8 +618,6 @@ export class ToolExecutionService implements BaseService {
 			});
 		}
 
-		let abortListener: (() => void) | undefined;
-
 		try {
 			// Execute with timeout if specified or configured per tool
 			const timeout = this.resolveTimeoutMs(toolName, options.timeout);
@@ -582,19 +629,7 @@ export class ToolExecutionService implements BaseService {
 
 			let execution: ToolExecutorResponse;
 			if (options.abortSignal) {
-				execution = await Promise.race([
-					execPromise,
-					new Promise<never>((_, reject) => {
-						const onAbort = () =>
-							reject(new DOMException('Tool execution aborted', 'AbortError'));
-						options.abortSignal?.addEventListener('abort', onAbort);
-						abortListener = () =>
-							options.abortSignal?.removeEventListener('abort', onAbort);
-						if (options.abortSignal?.aborted) {
-							onAbort();
-						}
-					})
-				]);
+				execution = await this.raceWithAbort(execPromise, options.abortSignal);
 			} else {
 				execution = await execPromise;
 			}
@@ -623,9 +658,6 @@ export class ToolExecutionService implements BaseService {
 				metadata: executionMetadata
 			});
 		} catch (error) {
-			if (abortListener) {
-				abortListener();
-			}
 			if (error instanceof DOMException && error.name === 'AbortError') {
 				return finalizeResult({
 					success: false,
@@ -654,10 +686,6 @@ export class ToolExecutionService implements BaseService {
 				toolName,
 				toolCallId: toolCall.id
 			});
-		} finally {
-			if (abortListener) {
-				abortListener();
-			}
 		}
 	}
 
@@ -885,10 +913,7 @@ export class ToolExecutionService implements BaseService {
 
 	private async executeGatewayTool(
 		toolName: string,
-		args: Record<string, any>,
-		context: ServiceContext,
-		availableTools: ChatToolDefinition[],
-		options: ToolExecutionOptions
+		args: Record<string, any>
 	): Promise<ToolExecutionResult> {
 		if (toolName === 'domain_search') {
 			const result = searchDomains({
@@ -1125,10 +1150,15 @@ export class ToolExecutionService implements BaseService {
 		}
 
 		const errors: string[] = [];
+		toolDefs = this.getValidationToolDefinitions(toolName, toolDefs ?? []);
 		const getActualType = (value: unknown): string => {
 			if (value === null) return 'null';
 			if (Array.isArray(value)) return 'array';
 			return typeof value;
+		};
+		const formatSchemaValue = (value: unknown): string => {
+			if (typeof value === 'string') return `"${value}"`;
+			return String(value);
 		};
 		const collectTypes = (schema: Record<string, any> | undefined, types: Set<string>) => {
 			if (!schema || typeof schema !== 'object') return;
@@ -1202,13 +1232,26 @@ export class ToolExecutionService implements BaseService {
 
 				const allowedTypes = getAllowedTypes(paramDef);
 				const actualType = getActualType(value);
+				const matchesInteger =
+					actualType === 'number' &&
+					allowedTypes?.has('integer') &&
+					Number.isInteger(value);
 
 				// Basic type checking with union support
-				if (allowedTypes && !allowedTypes.has(actualType)) {
+				if (allowedTypes && !allowedTypes.has(actualType) && !matchesInteger) {
 					const expectedList = Array.from(allowedTypes).join(' | ');
 					errors.push(
 						`Invalid type for parameter ${key}: expected ${expectedList}, got ${actualType}`
 					);
+				}
+
+				if (Array.isArray((paramDef as any).enum) && value !== undefined) {
+					const enumValues = (paramDef as any).enum as unknown[];
+					if (!enumValues.includes(value)) {
+						errors.push(
+							`Invalid value for parameter ${key}: expected one of ${enumValues.map(formatSchemaValue).join(', ')}, got ${formatSchemaValue(value)}`
+						);
+					}
 				}
 
 				if (typeof value === 'string' && typeof (paramDef as any).minLength === 'number') {
@@ -1529,6 +1572,31 @@ export class ToolExecutionService implements BaseService {
 	 * Get tool definition by name
 	 * Handles both { name, parameters } and { function: { name, parameters } } formats
 	 */
+	private getValidationToolDefinitions(
+		toolName: string,
+		availableTools: ChatToolDefinition[]
+	): ChatToolDefinition[] {
+		if (!GATEWAY_TOOL_NAMES.has(toolName)) {
+			return availableTools;
+		}
+
+		const resolved = [...GATEWAY_TOOL_DEFINITIONS];
+		const providedTools = Array.isArray(availableTools) ? availableTools : [];
+		for (const providedTool of providedTools) {
+			const providedAny = providedTool as any;
+			const providedName = providedAny?.name ?? providedAny?.function?.name ?? undefined;
+			if (typeof providedName !== 'string') {
+				resolved.push(providedTool);
+				continue;
+			}
+			if (!GATEWAY_TOOL_NAMES.has(providedName)) {
+				resolved.push(providedTool);
+			}
+		}
+
+		return resolved;
+	}
+
 	getToolDefinition(
 		toolName: string,
 		availableTools: ChatToolDefinition[] | undefined
@@ -1655,15 +1723,69 @@ export class ToolExecutionService implements BaseService {
 	 * Execute with timeout
 	 */
 	private async executeWithTimeout<T>(fn: () => Promise<T>, timeout: number): Promise<T> {
-		return Promise.race([
-			fn(),
-			new Promise<T>((_, reject) =>
-				setTimeout(
-					() => reject(new Error(`Tool execution timeout after ${timeout}ms`)),
-					timeout
-				)
-			)
-		]);
+		if (!Number.isFinite(timeout) || timeout <= 0) {
+			return fn();
+		}
+
+		let timeoutId: ReturnType<typeof setTimeout> | undefined;
+		try {
+			return await Promise.race([
+				fn(),
+				new Promise<T>((_, reject) => {
+					timeoutId = setTimeout(
+						() => reject(new Error(`Tool execution timeout after ${timeout}ms`)),
+						timeout
+					);
+				})
+			]);
+		} finally {
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+			}
+		}
+	}
+
+	private async raceWithAbort<T>(promise: Promise<T>, abortSignal: AbortSignal): Promise<T> {
+		if (abortSignal.aborted) {
+			void promise.catch(() => undefined);
+			throw new DOMException('Tool execution aborted', 'AbortError');
+		}
+
+		let abortListener: (() => void) | undefined;
+		try {
+			return await Promise.race([
+				promise,
+				new Promise<never>((_, reject) => {
+					const onAbort = () =>
+						reject(new DOMException('Tool execution aborted', 'AbortError'));
+					abortSignal.addEventListener('abort', onAbort, { once: true });
+					abortListener = () => abortSignal.removeEventListener('abort', onAbort);
+				})
+			]);
+		} finally {
+			abortListener?.();
+		}
+	}
+
+	private async waitForRetryDelay(ms: number, abortSignal?: AbortSignal): Promise<void> {
+		if (!Number.isFinite(ms) || ms <= 0) {
+			return;
+		}
+		let timeoutId: ReturnType<typeof setTimeout> | undefined;
+		const delay = new Promise<void>((resolve) => {
+			timeoutId = setTimeout(resolve, ms);
+		});
+		try {
+			if (abortSignal) {
+				await this.raceWithAbort(delay, abortSignal);
+			} else {
+				await delay;
+			}
+		} finally {
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+			}
+		}
 	}
 
 	private resolveTimeoutMs(toolName: string, override?: number): number {
@@ -1734,17 +1856,49 @@ export class ToolExecutionService implements BaseService {
 		const retryCount = options.retryCount ?? ToolExecutionService.DEFAULT_RETRY_COUNT;
 		const retryDelay = options.retryDelay ?? ToolExecutionService.DEFAULT_RETRY_DELAY;
 		const { name: toolName } = this.resolveToolCall(toolCall);
+		const cancelledResult = (): ToolExecutionResult => ({
+			success: false,
+			error: 'Operation cancelled',
+			errorType: 'cancelled',
+			toolName: toolName || 'unknown',
+			toolCallId: toolCall.id
+		});
+		const isAbortError = (error: unknown): boolean =>
+			error instanceof DOMException && error.name === 'AbortError';
+		const waitBeforeNextAttempt = async (
+			attempt: number
+		): Promise<ToolExecutionResult | null> => {
+			if (attempt >= retryCount) {
+				return null;
+			}
+			try {
+				await this.waitForRetryDelay(retryDelay * (attempt + 1), options.abortSignal);
+				return null;
+			} catch (error) {
+				if (isAbortError(error)) {
+					return cancelledResult();
+				}
+				throw error;
+			}
+		};
 
 		let lastError: Error | undefined;
 
 		for (let attempt = 0; attempt <= retryCount; attempt++) {
+			if (options.abortSignal?.aborted) {
+				return cancelledResult();
+			}
 			try {
 				const result = await this.executeTool(toolCall, context, availableTools, options);
 
 				// If successful or validation error, return immediately
 				const errorStr =
 					typeof result.error === 'string' ? result.error : String(result.error);
-				if (result.success || errorStr?.includes('Missing required')) {
+				if (
+					result.success ||
+					isToolCancellationResult(result) ||
+					errorStr?.includes('Missing required')
+				) {
 					return result;
 				}
 
@@ -1752,15 +1906,20 @@ export class ToolExecutionService implements BaseService {
 				lastError = new Error(errorStr || 'Unknown error');
 
 				// Wait before retry
-				if (attempt < retryCount) {
-					await new Promise((resolve) => setTimeout(resolve, retryDelay * (attempt + 1)));
+				const cancelled = await waitBeforeNextAttempt(attempt);
+				if (cancelled) {
+					return cancelled;
 				}
 			} catch (error) {
+				if (isAbortError(error)) {
+					return cancelledResult();
+				}
 				lastError = error instanceof Error ? error : new Error(String(error));
 
 				// Wait before retry
-				if (attempt < retryCount) {
-					await new Promise((resolve) => setTimeout(resolve, retryDelay * (attempt + 1)));
+				const cancelled = await waitBeforeNextAttempt(attempt);
+				if (cancelled) {
+					return cancelled;
 				}
 			}
 		}
@@ -2113,9 +2272,6 @@ export class ToolExecutionService implements BaseService {
 		}
 
 		if (toolName === 'get_document_tree') {
-			if (resolved.include_documents === undefined) {
-				resolved.include_documents = true;
-			}
 			if (resolved.include_documents === true && resolved.include_content === undefined) {
 				resolved.include_content = false;
 			}
@@ -2547,6 +2703,49 @@ export class ToolExecutionService implements BaseService {
 					'event.id',
 					'external_event.id'
 				]);
+				break;
+			case 'domain_load':
+				mapAlias('domain', ['domain_id', 'id']);
+				break;
+			case 'outcome_card_search':
+			case 'work_capability_search':
+				mapAlias('buildosCapability', ['buildos_capability', 'capability']);
+				break;
+			case 'outcome_card_load':
+				mapAlias('outcomeCard', [
+					'outcome_card',
+					'workCapability',
+					'work_capability',
+					'id'
+				]);
+				break;
+			case 'work_capability_load':
+				mapAlias('workCapability', [
+					'outcomeCard',
+					'outcome_card',
+					'work_capability',
+					'id'
+				]);
+				break;
+			case 'resource_load':
+				mapAlias('resource', ['resource_id', 'id']);
+				break;
+			case 'skill_load':
+				mapAlias('skill', ['skill_id', 'id', 'path']);
+				break;
+			case 'skill_reference_load':
+				mapAlias('skill', ['skill_id', 'id', 'path']);
+				mapAlias('reference', ['reference_id', 'module', 'reference.path']);
+				break;
+			case 'tool_schema':
+				mapAlias('op', ['path']);
+				break;
+			case 'libri_overview':
+				mapAlias('includeDomains', ['include_domains'], { allowNonString: true });
+				break;
+			case 'libri_get_capability_schema':
+				mapAlias('op', ['path']);
+				mapAlias('includeExamples', ['include_examples'], { allowNonString: true });
 				break;
 			default:
 				break;

@@ -174,7 +174,7 @@ Regenerate types: `pnpm gen:all`. Do **not** rewrite migration history — clean
 **Phase 8 — Docs + blog decisions (non-code).**
 Status: partially implemented. Shipping product pages, lifecycle emails, registration/login metadata, admin filters, and default SEO copy no longer advertise the legacy feature. Technical docs and public blog content remain for a deliberate archive/SEO pass.
 
-- Technical docs (`apps/web/docs/features/braindump-context/**`, `apps/web/docs/technical/api/endpoints/braindumps.md`, `apps/web/docs/technical/services/brain-dump-service.md`, `apps/web/docs/prompts/brain-dump/**`, `apps/web/docs/technical/audits/BRAINDUMP_FLOW_AUDIT_2025.md`): move to `docs/archive/` with a short header noting the deprecation date.
+- Technical docs (`apps/web/docs/features/braindump-context/**`, `apps/web/docs/technical/api/endpoints/braindumps.md`, `apps/web/docs/technical/services/brain-dump-service.md`, `apps/web/docs/prompts/brain-dump/**`, archived `docs/archive/apps-web/docs/technical/audits/BRAINDUMP_FLOW_AUDIT_2025.md`): move to `docs/archive/` with a short header noting the deprecation date.
 - Public blog content (`apps/web/src/content/blogs/getting-started/effective-brain-dumping.md`, `docs/blogs/getting-started/effective-brain-dumping.md`, `docs/philosophy/braindump-psychology.md`): do **not** delete without a separate SEO/backlink review. Default to retain + add a top-of-post "updated for agentic chat" note.
 - Product/legal/public pages (`/docs`, `/about`, `/help`, `/privacy`, `/terms`, `/contact`, registration metadata, SEO helpers, roadmap copy) must be searched and updated so shipping product copy no longer advertises Brain Dump.
 

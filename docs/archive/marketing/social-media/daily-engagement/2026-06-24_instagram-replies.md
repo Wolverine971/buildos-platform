@@ -1,4 +1,4 @@
-<!-- docs/marketing/social-media/daily-engagement/2026-06-24_instagram-replies.md -->
+<!-- docs/archive/marketing/social-media/daily-engagement/2026-06-24_instagram-replies.md -->
 
 # Instagram Replies - June 24, 2026
 

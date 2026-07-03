@@ -475,6 +475,157 @@ describe('ToolExecutionService', () => {
 			);
 		});
 
+		it('should validate gateway tools against canonical gateway schemas', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_gateway_missing_op',
+				name: 'tool_schema',
+				arguments: { include_examples: true }
+			};
+			const permissiveSuppliedDefinition: ChatToolDefinition = {
+				name: 'tool_schema',
+				description: 'Permissive stale schema',
+				parameters: {
+					type: 'object',
+					properties: {
+						include_examples: { type: 'boolean' }
+					}
+				}
+			};
+
+			const result = await service.executeTool(toolCall, mockContext, [
+				permissiveSuppliedDefinition
+			]);
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining('Missing required parameter: op')
+			});
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+
+			const directValidation = service.validateToolCall(
+				'tool_schema',
+				{ include_examples: true },
+				[permissiveSuppliedDefinition]
+			);
+			expect(directValidation).toMatchObject({
+				isValid: false,
+				errors: expect.arrayContaining(['Missing required parameter: op'])
+			});
+		});
+
+		it('should execute gateway tools with canonical schemas outside the selected tool list', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_gateway_search',
+				name: 'tool_search',
+				arguments: { query: 'update task', kind: 'write', limit: 1 }
+			};
+
+			const result = await service.executeTool(toolCall, mockContext, []);
+
+			expect(result.success).toBe(true);
+			expect(result.toolName).toBe('tool_search');
+			expect(result.data).toMatchObject({
+				type: 'tool_search_results'
+			});
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
+		it('should apply gateway aliases before canonical schema validation', async () => {
+			const toolCalls: Array<{
+				call: ChatToolCall;
+				expectedData: Record<string, unknown>;
+			}> = [
+				{
+					call: {
+						id: 'call_gateway_domain_alias',
+						name: 'domain_load',
+						arguments: { id: 'sales_and_growth.cold_email' }
+					},
+					expectedData: { type: 'domain', domain_id: 'sales_and_growth.cold_email' }
+				},
+				{
+					call: {
+						id: 'call_gateway_schema_alias',
+						name: 'tool_schema',
+						arguments: { path: 'onto.task.update' }
+					},
+					expectedData: { type: 'tool_schema', op: 'onto.task.update' }
+				},
+				{
+					call: {
+						id: 'call_gateway_skill_alias',
+						name: 'skill_load',
+						arguments: { id: 'google_calendar', include_examples: false }
+					},
+					expectedData: { type: 'skill', id: 'google_calendar' }
+				},
+				{
+					call: {
+						id: 'call_gateway_reference_alias',
+						name: 'skill_reference_load',
+						arguments: {
+							path: 'google_calendar',
+							module: 'google_calendar.public_safe_write_rules'
+						}
+					},
+					expectedData: {
+						type: 'skill_reference',
+						skill_id: 'google_calendar',
+						reference_id: 'google_calendar.public_safe_write_rules'
+					}
+				}
+			];
+
+			for (const { call, expectedData } of toolCalls) {
+				const result = await service.executeTool(call, mockContext, []);
+
+				expect(result.success).toBe(true);
+				expect(result.data).toMatchObject(expectedData);
+			}
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
+		it('should reject invalid gateway enum values before execution', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_gateway_enum',
+				name: 'tool_search',
+				arguments: { query: 'update task', kind: 'delete' }
+			};
+
+			const result = await service.executeTool(toolCall, mockContext, []);
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining(
+					'Invalid value for parameter kind: expected one of "read", "write", got "delete"'
+				)
+			});
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
+		it('should cancel gateway tools before execution when aborted', async () => {
+			const controller = new AbortController();
+			controller.abort();
+			const toolCall: ChatToolCall = {
+				id: 'call_gateway_aborted',
+				name: 'tool_schema',
+				arguments: { op: 'onto.task.update' }
+			};
+
+			const result = await service.executeTool(toolCall, mockContext, [], {
+				abortSignal: controller.signal
+			});
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'cancelled',
+				error: 'Operation cancelled'
+			});
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
 		it('should warn before creating a second project from an existing project turn', async () => {
 			const projectId = '06691c72-8c01-4f77-a79f-d0ef7f40124a';
 			const guardedContext: ServiceContext = {
@@ -894,7 +1045,7 @@ describe('ToolExecutionService', () => {
 			);
 		});
 
-		it('should default include_documents=true for get_document_tree', async () => {
+		it('should preserve schema defaults for get_document_tree', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_get_tree_defaults',
 				name: 'get_document_tree',
@@ -909,8 +1060,8 @@ describe('ToolExecutionService', () => {
 					type: 'object',
 					properties: {
 						project_id: { type: 'string' },
-						include_documents: { type: 'boolean' },
-						include_content: { type: 'boolean' }
+						include_documents: { type: 'boolean', default: false },
+						include_content: { type: 'boolean', default: false }
 					},
 					required: ['project_id']
 				}
@@ -925,7 +1076,7 @@ describe('ToolExecutionService', () => {
 				'get_document_tree',
 				expect.objectContaining({
 					project_id: 'proj_123',
-					include_documents: true,
+					include_documents: false,
 					include_content: false
 				}),
 				mockContext
@@ -1589,6 +1740,63 @@ describe('ToolExecutionService', () => {
 			expect(validation.errors[0]).toContain('Invalid type for parameter project_id');
 		});
 
+		it('should accept integer schema values and reject non-integers', () => {
+			const toolDefs: ChatToolDefinition[] = [
+				{
+					name: 'search_things',
+					description: 'Search things',
+					parameters: {
+						type: 'object',
+						properties: {
+							limit: { type: 'integer' }
+						}
+					}
+				}
+			];
+
+			expect(
+				service.validateToolCall(
+					{ id: 'call_integer_ok', name: 'search_things', arguments: { limit: 3 } },
+					toolDefs
+				).isValid
+			).toBe(true);
+
+			const validation = service.validateToolCall(
+				{ id: 'call_integer_bad', name: 'search_things', arguments: { limit: 2.5 } },
+				toolDefs
+			);
+
+			expect(validation.isValid).toBe(false);
+			expect(validation.errors).toContain(
+				'Invalid type for parameter limit: expected integer, got number'
+			);
+		});
+
+		it('should reject values outside schema enums', () => {
+			const toolDefs: ChatToolDefinition[] = [
+				{
+					name: 'filter_things',
+					description: 'Filter things',
+					parameters: {
+						type: 'object',
+						properties: {
+							kind: { type: 'string', enum: ['read', 'write'] }
+						}
+					}
+				}
+			];
+
+			const validation = service.validateToolCall(
+				{ id: 'call_enum_bad', name: 'filter_things', arguments: { kind: 'delete' } },
+				toolDefs
+			);
+
+			expect(validation.isValid).toBe(false);
+			expect(validation.errors).toContain(
+				'Invalid value for parameter kind: expected one of "read", "write", got "delete"'
+			);
+		});
+
 		it('should reject invalid project_id for create_calendar_event', () => {
 			const toolDefs: ChatToolDefinition[] = [
 				{
@@ -1803,6 +2011,38 @@ describe('ToolExecutionService', () => {
 				success: false,
 				error: expect.stringContaining('timeout')
 			});
+		});
+
+		it('should cancel retry waits without starting another attempt', async () => {
+			const controller = new AbortController();
+			const toolCall: ChatToolCall = {
+				id: 'call_retry_abort',
+				name: 'list_onto_tasks',
+				arguments: { project_id: 'proj_123' }
+			};
+
+			mockToolExecutor.mockImplementationOnce(async () => {
+				controller.abort();
+				throw new Error('Transient failure');
+			});
+
+			const result = await service.executeWithRetry(
+				toolCall,
+				mockContext,
+				mockToolDefinitions,
+				{
+					retryCount: 2,
+					retryDelay: 1000,
+					abortSignal: controller.signal
+				}
+			);
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'cancelled',
+				error: 'Operation cancelled'
+			});
+			expect(mockToolExecutor).toHaveBeenCalledTimes(1);
 		});
 	});
 });

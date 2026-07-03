@@ -1,4 +1,6 @@
-<!-- apps/web/docs/technical/audits/PROJECT_PAGE_ID_ROUTE_AUDIT_2026-02-27.md -->
+<!-- docs/archive/apps-web/docs/technical/audits/PROJECT_PAGE_ID_ROUTE_AUDIT_2026-02-27.md -->
+
+> Archived 2026-07-03: superseded historical audit retained for reference; active docs should not link to this report.
 
 # Project Page Audit: `/projects/[id]` (`+page.svelte`)
 

@@ -7,8 +7,9 @@
 		Inbox,
 		LoaderCircle,
 		Sparkles
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	import ChangeSetFailureSummary from '$lib/components/notifications/types/agent-run/ChangeSetFailureSummary.svelte';
 	import ChangeSetReview from '$lib/components/notifications/types/agent-run/ChangeSetReview.svelte';
 	import InboxChangeDetails from '$lib/components/inbox/InboxChangeDetails.svelte';
@@ -662,8 +663,10 @@
 	});
 </script>
 
-<Modal {isOpen} onClose={close} title="AI Inbox" size="xl">
-	<div class="flex min-h-[55vh] flex-col overflow-hidden">
+<Modal {isOpen} onClose={close} title="AI Inbox" size="xl" variant="bottom-sheet">
+	<div
+		class="flex h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden sm:h-auto sm:min-h-[55vh]"
+	>
 		<div class="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5">
 			<div class="min-w-0">
 				<p class="text-sm font-semibold text-foreground">
@@ -685,15 +688,17 @@
 					</p>
 				{/if}
 			</div>
-			<button
-				type="button"
+			<Button
+				variant="outline"
+				size="sm"
 				onclick={() => loadInbox()}
 				disabled={loading}
-				class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:bg-muted disabled:opacity-50"
+				class="h-11 w-11 p-0"
 				title="Refresh inbox"
+				aria-label="Refresh inbox"
 			>
 				<LoaderCircle class="h-3.5 w-3.5 {loading ? 'animate-spin' : ''}" />
-			</button>
+			</Button>
 		</div>
 
 		{#if loading}
@@ -707,13 +712,9 @@
 		{:else if error}
 			<div class="p-4">
 				<p class="text-sm text-destructive">{error}</p>
-				<button
-					type="button"
-					onclick={() => loadInbox()}
-					class="mt-3 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted"
-				>
+				<Button variant="outline" size="sm" onclick={() => loadInbox()} class="mt-3">
 					Retry
-				</button>
+				</Button>
 			</div>
 		{:else if items.length === 0}
 			<div class="flex flex-1 flex-col items-center justify-center px-4 py-12 text-center">
@@ -820,15 +821,11 @@
 													<Icon class="h-3 w-3" />
 													{tier.label}
 												</span>
-												<span
-													class="text-[10px] font-medium uppercase text-muted-foreground"
-												>
+												<span class="micro-label text-muted-foreground">
 													{sourceLabel(item)}
 												</span>
 												{#if payload?.kind}
-													<span
-														class="text-[10px] font-medium uppercase text-muted-foreground"
-													>
+													<span class="micro-label text-muted-foreground">
 														{kindLabel[payload.kind] ?? payload.kind}
 													</span>
 												{/if}
@@ -919,7 +916,7 @@
 															class="rounded-md border border-border bg-muted/20 p-2"
 														>
 															<p
-																class="text-[10px] font-semibold uppercase text-muted-foreground"
+																class="micro-label text-muted-foreground"
 															>
 																Suggested tasks
 															</p>

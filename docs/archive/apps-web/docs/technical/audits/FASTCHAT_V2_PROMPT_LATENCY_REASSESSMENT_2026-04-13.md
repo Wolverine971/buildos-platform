@@ -1,4 +1,6 @@
-<!-- apps/web/docs/technical/audits/FASTCHAT_V2_PROMPT_LATENCY_REASSESSMENT_2026-04-13.md -->
+<!-- docs/archive/apps-web/docs/technical/audits/FASTCHAT_V2_PROMPT_LATENCY_REASSESSMENT_2026-04-13.md -->
+
+> Archived 2026-07-03: superseded historical audit retained for reference; active docs should not link to this report.
 
 # FastChat V2 Prompt Latency Reassessment (2026-04-13)
 

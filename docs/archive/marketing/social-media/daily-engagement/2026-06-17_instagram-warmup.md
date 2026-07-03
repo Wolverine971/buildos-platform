@@ -1,4 +1,4 @@
-<!-- docs/marketing/social-media/daily-engagement/2026-06-17_instagram-warmup.md -->
+<!-- docs/archive/marketing/social-media/daily-engagement/2026-06-17_instagram-warmup.md -->
 
 # Instagram Warmup - June 17, 2026
 

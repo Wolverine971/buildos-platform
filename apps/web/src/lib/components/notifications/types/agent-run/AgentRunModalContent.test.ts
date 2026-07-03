@@ -103,7 +103,7 @@ describe('AgentRunModalContent Chat bridge', () => {
 		vi.clearAllMocks();
 	});
 
-	it('prepares the shared run chat session before opening the agentic chat modal', async () => {
+	it('prepares the shared run chat session without minimizing the review modal', async () => {
 		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
 			const url = String(input);
 			if (url === '/api/agent-runs/run-1') {
@@ -154,9 +154,8 @@ describe('AgentRunModalContent Chat bridge', () => {
 			source: 'agent_run',
 			runId: 'run-1'
 		});
-		await waitFor(() =>
-			expect(notificationMinimizeMock).toHaveBeenCalledWith('notification-1')
-		);
+		expect(notificationMinimizeMock).not.toHaveBeenCalled();
+		expect(notificationRemoveMock).not.toHaveBeenCalled();
 
 		window.removeEventListener('buildos:open-agent-chat', opened);
 	});

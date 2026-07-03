@@ -1,4 +1,6 @@
-<!-- apps/web/docs/technical/audits/AGENTIC_CHAT_TOOL_GATEWAY_PROMPT_REMEDIATION_2026-02-16.md -->
+<!-- docs/archive/apps-web/docs/technical/audits/AGENTIC_CHAT_TOOL_GATEWAY_PROMPT_REMEDIATION_2026-02-16.md -->
+
+> Archived 2026-07-03: superseded historical audit retained for reference; active docs should not link to this report.
 
 # Agentic Chat Tool Gateway Prompt Remediation (2026-02-16)
 

@@ -1,4 +1,6 @@
-<!-- apps/web/docs/technical/audits/BRAINDUMP_FLOW_AUDIT_2025.md -->
+<!-- docs/archive/apps-web/docs/technical/audits/BRAINDUMP_FLOW_AUDIT_2025.md -->
+
+> Archived 2026-07-03: deprecated Brain Dump audit retained for historical reference after the 2026-04-17 deprecation decision.
 
 # Brain Dump Flow Audit Report
 

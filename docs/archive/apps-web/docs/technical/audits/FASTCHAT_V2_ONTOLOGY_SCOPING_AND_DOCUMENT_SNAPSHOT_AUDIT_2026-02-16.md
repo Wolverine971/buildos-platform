@@ -1,4 +1,6 @@
-<!-- apps/web/docs/technical/audits/FASTCHAT_V2_ONTOLOGY_SCOPING_AND_DOCUMENT_SNAPSHOT_AUDIT_2026-02-16.md -->
+<!-- docs/archive/apps-web/docs/technical/audits/FASTCHAT_V2_ONTOLOGY_SCOPING_AND_DOCUMENT_SNAPSHOT_AUDIT_2026-02-16.md -->
+
+> Archived 2026-07-03: superseded historical audit retained for reference; active docs should not link to this report.
 
 # FastChat V2 Ontology Scoping + Document Snapshot Audit
 

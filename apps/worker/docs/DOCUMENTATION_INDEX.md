@@ -192,8 +192,8 @@ See **CLAUDE.md** - Original development guide with:
 #### Understand Email Delivery
 
 1. Check **QUICK_REFERENCE.md** (section "Email Transport")
-2. See full flow in **WORKER_JOBS_AND_FLOWS.md** (section "Email Brief Delivery Flow")
-3. Review `lib/services/email-service.ts` for implementation
+2. Review `workers/notification/emailAdapter.ts` for the live notification email path
+3. Check **WORKER_FLOW_AUDIT_2026-07-01.md** before relying on older email-flow notes
 
 #### Learn About SMS
 
@@ -269,8 +269,8 @@ See **CLAUDE.md** - Original development guide with:
 ### Email Delivery
 
 - **Types:** QUICK_REFERENCE.md → "Email Transport"
-- **Architecture:** WORKER_STRUCTURE_OVERVIEW.md → "Email Service"
-- **Flow:** WORKER_JOBS_AND_FLOWS.md → "Email Brief Delivery Flow"
+- **Implementation:** `workers/notification/emailAdapter.ts`
+- **Current audit:** WORKER_FLOW_AUDIT_2026-07-01.md
 
 ### SMS & Notifications
 
@@ -324,7 +324,7 @@ See **CLAUDE.md** - Original development guide with:
 - **[features/EMAIL_TRACKING.md](features/EMAIL_TRACKING.md)** - Email tracking implementation
 - **[features/daily-briefs/](features/daily-briefs/)** - Daily brief generation
 - **[deployment/RAILWAY_DEPLOYMENT.md](deployment/RAILWAY_DEPLOYMENT.md)** - Railway deployment guide
-- **[SCHEDULER_ANALYSIS_AND_BUGS.md](SCHEDULER_ANALYSIS_AND_BUGS.md)** - Scheduler bug analysis
+- **[WORKER_FLOW_AUDIT_2026-07-01.md](WORKER_FLOW_AUDIT_2026-07-01.md)** - Current worker flow audit and dead-code inventory
 
 ### Web App Integration
 

@@ -20,7 +20,7 @@
 		PlusCircle,
 		MinusCircle,
 		Edit2
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import type {
 		ProjectSynthesisNotification,
 		StepsProgress
@@ -127,15 +127,16 @@
 <Modal
 	isOpen={true}
 	size="xl"
+	variant="bottom-sheet"
 	title="Project Synthesis — {notification.data.projectName}"
 	onClose={handleClose}
 	showCloseButton={true}
 >
 	{#snippet children()}
-		<div class="px-4 sm:px-6 py-6">
-			<div class="space-y-6">
+		<div class="px-3 py-4 sm:px-6 sm:py-6">
+			<div class="space-y-4 sm:space-y-6">
 				<!-- Overview -->
-				<section class="rounded-xl border border-border bg-card p-6 shadow-ink/70">
+				<section class="rounded-lg border border-border bg-card p-4 shadow-ink/70 sm:p-6">
 					<div class="flex flex-wrap items-center gap-3">
 						<div
 							class="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10"
@@ -180,15 +181,13 @@
 				</section>
 
 				<!-- Configuration Summary -->
-				<section class="rounded-xl border border-border bg-muted p-4/50">
-					<h3 class="text-sm font-semibold uppercase tracking-wide text-foreground mb-3">
-						Configuration
-					</h3>
+				<section class="rounded-lg border border-border bg-muted/50 p-4">
+					<h3 class="micro-label mb-3 text-foreground">Configuration</h3>
 					<div class="flex flex-wrap gap-2">
 						{#each notification.data.selectedModules as module}
 							{@const meta = MODULE_METADATA[module]}
 							<div
-								class="flex items-center gap-2 bg-accent/10 text-accent px-3 py-1.5 rounded-full text-xs font-medium"
+								class="flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent"
 							>
 								{#if meta?.icon}
 									{@const MetaIcon = meta.icon}
@@ -203,13 +202,9 @@
 				</section>
 
 				<!-- Progress timeline -->
-				<section class="rounded-xl border border-border bg-card p-6 shadow-ink/70">
+				<section class="rounded-lg border border-border bg-card p-4 shadow-ink/70 sm:p-6">
 					<header class="mb-4 flex items-center justify-between">
-						<h3
-							class="text-sm font-semibold uppercase tracking-wide text-muted-foreground"
-						>
-							Progress
-						</h3>
+						<h3 class="micro-label text-muted-foreground">Progress</h3>
 						{#if stepsProgress}
 							<span class="text-xs text-muted-foreground">
 								{completedSteps}/{totalSteps} steps complete
@@ -275,13 +270,11 @@
 				{#if notification.status === 'success' && result}
 					<!-- Insights Card -->
 					<section
-						class="rounded-xl border border-success/30 bg-success/10 p-6 shadow-ink"
+						class="rounded-lg border border-success/30 bg-success/10 p-4 shadow-ink sm:p-6"
 					>
 						<header class="mb-4 flex items-center gap-3 text-success">
 							<Lightbulb class="h-5 w-5" />
-							<h3 class="text-sm font-semibold uppercase tracking-wide">
-								Key Insights
-							</h3>
+							<h3 class="micro-label">Key Insights</h3>
 						</header>
 
 						<div class="space-y-3 text-sm text-foreground">
@@ -290,14 +283,12 @@
 					</section>
 
 					<!-- Operations Summary -->
-					<section class="rounded-xl border border-border bg-card p-6 shadow-ink/70">
-						<h3
-							class="text-sm font-semibold uppercase tracking-wide text-foreground mb-4"
-						>
-							Operations Summary
-						</h3>
+					<section
+						class="rounded-lg border border-border bg-card p-4 shadow-ink/70 sm:p-6"
+					>
+						<h3 class="micro-label mb-4 text-foreground">Operations Summary</h3>
 						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-							<div class="text-center p-4 bg-info/10 rounded-lg">
+							<div class="rounded-lg bg-info/10 p-4 text-center">
 								<div class="flex items-center justify-center gap-2 mb-2">
 									<Edit2 class="h-5 w-5 text-info" />
 									<div class="text-2xl font-bold text-info">
@@ -306,7 +297,7 @@
 								</div>
 								<div class="text-xs text-muted-foreground">Consolidations</div>
 							</div>
-							<div class="text-center p-4 bg-success/10 rounded-lg">
+							<div class="rounded-lg bg-success/10 p-4 text-center">
 								<div class="flex items-center justify-center gap-2 mb-2">
 									<PlusCircle class="h-5 w-5 text-success" />
 									<div class="text-2xl font-bold text-success">
@@ -315,7 +306,7 @@
 								</div>
 								<div class="text-xs text-muted-foreground">New Tasks</div>
 							</div>
-							<div class="text-center p-4 bg-destructive/10 rounded-lg">
+							<div class="rounded-lg bg-destructive/10 p-4 text-center">
 								<div class="flex items-center justify-center gap-2 mb-2">
 									<MinusCircle class="h-5 w-5 text-destructive" />
 									<div class="text-2xl font-bold text-destructive">
@@ -329,10 +320,10 @@
 
 					<!-- Task Comparison Preview -->
 					{#if result.comparison && result.comparison.length > 0}
-						<section class="rounded-xl border border-border bg-card p-6 shadow-ink/70">
-							<h3
-								class="text-sm font-semibold uppercase tracking-wide text-foreground mb-4"
-							>
+						<section
+							class="rounded-lg border border-border bg-card p-4 shadow-ink/70 sm:p-6"
+						>
+							<h3 class="micro-label mb-4 text-foreground">
 								Task Comparisons
 								<span class="text-muted-foreground font-normal text-xs">
 									(Showing first {Math.min(3, result.comparison.length)} of {result
@@ -342,7 +333,7 @@
 
 							<div class="space-y-3">
 								{#each result.comparison.slice(0, 3) as item}
-									<div class="p-3 bg-muted/50 rounded-lg border border-border">
+									<div class="rounded-lg border border-border bg-muted/50 p-3">
 										<div class="flex items-start gap-2 mb-2">
 											<span
 												class={`px-2 py-0.5 rounded text-xs font-medium ${
@@ -380,7 +371,7 @@
 	{#snippet footer()}
 		<!-- Footer actions -->
 		<div
-			class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-4 border-t border-border bg-muted/40"
+			class="flex flex-col gap-4 border-t border-border bg-muted/40 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between sm:px-6"
 		>
 			<div class="text-xs text-muted-foreground">
 				{#if duration}
@@ -388,7 +379,7 @@
 				{/if}
 			</div>
 
-			<div class="flex flex-col sm:flex-row sm:justify-end gap-2 w-full sm:w-auto">
+			<div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-end">
 				<Button variant="ghost" onclick={handleMinimize} class="w-full sm:w-auto">
 					Minimize
 				</Button>

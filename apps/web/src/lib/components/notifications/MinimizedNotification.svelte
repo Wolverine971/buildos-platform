@@ -12,7 +12,7 @@
 	 * - Delegates to type-specific views when available
 	 */
 
-	import { LoaderCircle, CheckCircle, AlertCircle, XCircle, ChevronUp } from 'lucide-svelte';
+	import { LoaderCircle, CheckCircle, AlertCircle, XCircle, ChevronUp } from '$lib/icons/lucide';
 	import { notificationStore } from '$lib/stores/notification.store';
 	import type { Notification } from '$lib/types/notification.types';
 
@@ -190,7 +190,7 @@
 
 <div
 	class="bg-card rounded-lg shadow-ink-strong border border-border
-         cursor-pointer hover:shadow-ink-strong transition-all duration-200 min-w-[320px] max-w-[400px]
+         cursor-pointer hover:shadow-ink-strong transition-all duration-200 w-full min-w-0 sm:min-w-[320px] sm:max-w-[400px]
          pointer-events-auto
          {notification.status === 'success'
 		? 'ring-2 ring-success/50'

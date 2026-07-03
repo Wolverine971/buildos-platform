@@ -200,9 +200,9 @@ function parseRelatedOps(lines: string[]): string[] {
 		.filter((item) => item.length > 0);
 }
 
-// Canonical block ontology (see skill-update-refactor-tasker.md §8.5) renames several
-// H2 headers. Accept both the legacy header and its canonical-block alias so pre- and
-// post-refactor skills parse identically during the rollout.
+// Canonical block ontology renames several H2 headers. Accept both the legacy
+// header and its canonical-block alias so pre- and post-refactor skills parse
+// identically during the rollout.
 function pickSection(sections: Record<string, string[]>, headings: string[]): string[] {
 	for (const heading of headings) {
 		const lines = sections[heading];

@@ -29,15 +29,15 @@ This is **worker service-specific** documentation (`/apps/worker`).
 
 ## Documentation Structure
 
-| Document / Folder                                                    | Contents                               |
-| -------------------------------------------------------------------- | -------------------------------------- |
-| **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)**                 | Complete navigation guide (start here) |
-| **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)**                         | Quick reference (8-min read)           |
-| **[WORKER_STRUCTURE_OVERVIEW.md](WORKER_STRUCTURE_OVERVIEW.md)**     | Full architecture deep dive            |
-| **[WORKER_JOBS_AND_FLOWS.md](WORKER_JOBS_AND_FLOWS.md)**             | Job types, data flows & API ref        |
-| **[SCHEDULER_ANALYSIS_AND_BUGS.md](SCHEDULER_ANALYSIS_AND_BUGS.md)** | Scheduler analysis & known bugs        |
-| `/features/`                                                         | Feature docs (daily-briefs, email)     |
-| `/deployment/`                                                       | Deployment guides (Railway)            |
+| Document / Folder                                                      | Contents                                          |
+| ---------------------------------------------------------------------- | ------------------------------------------------- |
+| **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)**                   | Complete navigation guide (start here)            |
+| **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)**                           | Quick reference (8-min read)                      |
+| **[WORKER_STRUCTURE_OVERVIEW.md](WORKER_STRUCTURE_OVERVIEW.md)**       | Full architecture deep dive                       |
+| **[WORKER_JOBS_AND_FLOWS.md](WORKER_JOBS_AND_FLOWS.md)**               | Job types, data flows & API ref                   |
+| **[WORKER_FLOW_AUDIT_2026-07-01.md](WORKER_FLOW_AUDIT_2026-07-01.md)** | Current worker flow audit and dead-code inventory |
+| `/features/`                                                           | Feature docs (daily-briefs, email)                |
+| `/deployment/`                                                         | Deployment guides (Railway)                       |
 
 ## Quick Start for LLM Agents
 

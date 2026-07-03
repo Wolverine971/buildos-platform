@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/agentic-chat/tools/skills/skill.schema.ts
 //
-// Canonical SKILL.md frontmatter contract (see skill-update-refactor-tasker.md §3.1, §6.1).
+// Canonical SKILL.md frontmatter contract.
 // This module owns the *frontmatter* half of the build-time skill-ontology validator; the body
 // block linter lives in ./skill-authoring-validation.ts. Keep the two in lockstep.
 //
@@ -10,7 +10,7 @@
 //   - `reference_modules` shape is validated where present.
 //   - Every pre-existing frontmatter key is ALLOWED (passthrough): parent_id, depth,
 //     preserve_markdown, legacy_paths, path, child_skills, reference_modules, name, description.
-//     We only assert the *typed* keys — unknown keys are never rejected (§6.1, §8).
+//     We only assert the typed keys; unknown keys are never rejected.
 import { z } from 'zod';
 
 export const SKILL_TYPES = [

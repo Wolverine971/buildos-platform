@@ -1,4 +1,6 @@
-<!-- apps/web/docs/technical/audits/AGENTIC_CHAT_TOOL_GATEWAY_ARGUMENT_RELIABILITY_AUDIT_2026-02-21.md -->
+<!-- docs/archive/apps-web/docs/technical/audits/AGENTIC_CHAT_TOOL_GATEWAY_ARGUMENT_RELIABILITY_AUDIT_2026-02-21.md -->
+
+> Archived 2026-07-03: superseded historical audit retained for reference; active docs should not link to this report.
 
 # Agentic Chat Tool Gateway Argument Reliability Audit (2026-02-21)
 

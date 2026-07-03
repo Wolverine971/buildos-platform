@@ -27,25 +27,26 @@ The BuildOS Worker is a background job processing service that runs on Railway. 
 
 ### Core Services
 
-| Service  | File                                  | Purpose                       |
-| -------- | ------------------------------------- | ----------------------------- |
-| Queue    | `lib/supabaseQueue.ts`                | Job storage & atomic claiming |
-| LLM      | `lib/services/smart-llm-service.ts`   | DeepSeek/GPT-4o/Claude AI     |
-| Email    | `lib/services/email-service.ts`       | Webhook/SMTP transport        |
-| Progress | `lib/progressTracker.ts`              | Real-time job updates         |
-| SMS      | `lib/services/smsMessageGenerator.ts` | SMS message templates         |
+| Service  | File                                   | Purpose                       |
+| -------- | -------------------------------------- | ----------------------------- |
+| Queue    | `lib/supabaseQueue.ts`                 | Job storage & atomic claiming |
+| LLM      | `lib/services/smart-llm-service.ts`    | DeepSeek/GPT-4o/Claude AI     |
+| Email    | `workers/notification/emailAdapter.ts` | Notification email delivery   |
+| Progress | `lib/progressTracker.ts`               | Real-time job updates         |
+| SMS      | `lib/services/smsMessageGenerator.ts`  | SMS message templates         |
 
 ### Job Processors
 
 | Job Type               | File                                         | Entry Point              |
 | ---------------------- | -------------------------------------------- | ------------------------ |
 | `generate_daily_brief` | `workers/brief/briefWorker.ts`               | POST `/queue/brief`      |
-| `generate_brief_email` | `workers/brief/emailWorker.ts`               | Internal (Phase 2)       |
-| `generate_phases`      | `workers/phases/phasesWorker.ts`             | POST `/queue/phases`     |
 | `onboarding_analysis`  | `workers/onboarding/onboardingWorker.ts`     | POST `/queue/onboarding` |
 | `send_sms`             | `workers/smsWorker.ts`                       | Internal queuing         |
 | `schedule_daily_sms`   | `workers/dailySmsWorker.ts`                  | Cron midnight            |
 | `send_notification`    | `workers/notification/notificationWorker.ts` | Internal queuing         |
+| `agent_run`            | `workers/agent-run/agentRunWorker.ts`        | Internal queuing         |
+| `buildos_project_loop` | `workers/project-loop/projectLoopWorker.ts`  | Internal queuing         |
+| `sync_calendar`        | `workers/calendar/calendarSyncWorker.ts`     | Internal queuing         |
 
 ---
 
@@ -350,16 +351,16 @@ Set via `USE_WEBHOOK_EMAIL` environment variable.
 
 All worker docs are in `apps/worker/docs/`:
 
-| File                                                               | Purpose                                    |
-| ------------------------------------------------------------------ | ------------------------------------------ |
-| [`../CLAUDE.md`](../CLAUDE.md)                                     | Development guide & architecture           |
-| [`DOCUMENTATION_INDEX.md`](DOCUMENTATION_INDEX.md)                 | Complete navigation & cross-references     |
-| [`WORKER_STRUCTURE_OVERVIEW.md`](WORKER_STRUCTURE_OVERVIEW.md)     | Complete directory & component overview    |
-| [`WORKER_JOBS_AND_FLOWS.md`](WORKER_JOBS_AND_FLOWS.md)             | Job types, data flows & API reference      |
-| [`QUICK_REFERENCE.md`](QUICK_REFERENCE.md)                         | This file                                  |
-| [`SCHEDULER_ANALYSIS_AND_BUGS.md`](SCHEDULER_ANALYSIS_AND_BUGS.md) | Scheduler bug analysis                     |
-| [`features/`](features/)                                           | Email tracking, email system, daily briefs |
-| [`deployment/`](deployment/)                                       | Railway deployment guide                   |
+| File                                                                 | Purpose                                      |
+| -------------------------------------------------------------------- | -------------------------------------------- |
+| [`../CLAUDE.md`](../CLAUDE.md)                                       | Development guide & architecture             |
+| [`DOCUMENTATION_INDEX.md`](DOCUMENTATION_INDEX.md)                   | Complete navigation & cross-references       |
+| [`WORKER_STRUCTURE_OVERVIEW.md`](WORKER_STRUCTURE_OVERVIEW.md)       | Complete directory & component overview      |
+| [`WORKER_JOBS_AND_FLOWS.md`](WORKER_JOBS_AND_FLOWS.md)               | Job types, data flows & API reference        |
+| [`QUICK_REFERENCE.md`](QUICK_REFERENCE.md)                           | This file                                    |
+| [`WORKER_FLOW_AUDIT_2026-07-01.md`](WORKER_FLOW_AUDIT_2026-07-01.md) | Current worker audit and dead-code inventory |
+| [`features/`](features/)                                             | Email tracking, email system, daily briefs   |
+| [`deployment/`](deployment/)                                         | Railway deployment guide                     |
 
 ---
 

@@ -3,7 +3,7 @@
 
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
-	import Button from '$components/ui/Button.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	import { getContext, onDestroy, onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import {
@@ -17,7 +17,7 @@
 		ArrowRight,
 		MessageSquare,
 		Activity
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import { formatDistanceToNow } from 'date-fns';
 	import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 	import type { Database, AgentRunStatus, ChangeSet } from '@buildos/shared-types';
@@ -385,7 +385,6 @@
 					detail
 				})
 			);
-			handleMinimize();
 		} catch (error) {
 			console.error('[AgentRunModal] Failed to open chat', error);
 			toastService.error(error instanceof Error ? error.message : 'Could not open chat');
@@ -401,6 +400,7 @@
 		onClose={handleClose}
 		title={notification.data.label}
 		size={runStatus === 'proposal_ready' || failedChangeSet ? 'xl' : 'lg'}
+		variant="bottom-sheet"
 		showCloseButton={true}
 	>
 		{#snippet children()}
@@ -454,6 +454,11 @@
 					<ChangeSetReview
 						{runId}
 						changeSet={proposedChangeSet}
+						acceptLabel="Accept"
+						dismissLabel="Dismiss"
+						approveAllLabel="Accept"
+						rejectAllLabel="Dismiss"
+						onApplied={handleDismiss}
 						onChat={canOpenChat ? handleOpenChat : undefined}
 						{openingChat}
 					/>
@@ -467,8 +472,8 @@
 
 				<!-- Answer box — the run is blocked or can continue from a partial result -->
 				{#if canAnswerRun}
-					<div class="rounded-lg border border-warning/40 bg-warning/5 p-3 space-y-2">
-						<div class="text-xs font-medium text-warning uppercase tracking-wide">
+					<div class="space-y-2 rounded-lg border border-warning/40 bg-warning/5 p-3">
+						<div class="micro-label text-warning">
 							{runStatus === 'partial'
 								? 'Continue this partial run'
 								: 'The agent needs your input'}
@@ -480,7 +485,7 @@
 								{/each}
 							</ul>
 						{/if}
-						<div class="flex items-end gap-2">
+						<div class="flex flex-col gap-2 sm:flex-row sm:items-end">
 							<textarea
 								bind:value={answerText}
 								rows="2"
@@ -488,13 +493,14 @@
 								placeholder={runStatus === 'partial'
 									? 'Tell the agent what to do next…'
 									: 'Type your answer…'}
-								class="flex-1 resize-none rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
+								class="min-h-[4.5rem] flex-1 resize-none rounded-md border border-border bg-background px-2.5 py-2 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50 sm:min-h-0 sm:text-sm"
 							></textarea>
 							<Button
 								onclick={submitAnswer}
 								variant="primary"
 								size="md"
 								disabled={answering || !answerText.trim()}
+								class="w-full sm:w-auto"
 							>
 								{runStatus === 'partial' ? 'Continue' : 'Answer'}
 							</Button>
@@ -504,14 +510,10 @@
 
 				<!-- Result summary / answer -->
 				{#if result?.summary || result?.answer}
-					<div class="rounded-lg border border-border bg-muted/40 p-3 space-y-2">
+					<div class="space-y-2 rounded-lg border border-border bg-muted/40 p-3">
 						{#if result.summary}
 							<div>
-								<div
-									class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
-								>
-									Summary
-								</div>
+								<div class="micro-label text-muted-foreground">Summary</div>
 								<div class="agent-run-prose {proseClasses} mt-0.5 break-words">
 									{@html renderMarkdown(result.summary)}
 								</div>
@@ -519,11 +521,7 @@
 						{/if}
 						{#if result.answer && result.answer !== result.summary}
 							<div>
-								<div
-									class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
-								>
-									Answer
-								</div>
+								<div class="micro-label text-muted-foreground">Answer</div>
 								<div class="agent-run-prose {proseClasses} mt-0.5 break-words">
 									{@html renderMarkdown(result.answer)}
 								</div>
@@ -535,9 +533,7 @@
 				<!-- Error -->
 				{#if runStatus === 'failed' && notification.data.error}
 					<div class="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-						<div class="text-xs font-medium text-destructive uppercase tracking-wide">
-							Error
-						</div>
+						<div class="micro-label text-destructive">Error</div>
 						<p class="text-sm text-destructive mt-0.5 whitespace-pre-wrap">
 							{notification.data.error}
 						</p>
@@ -547,9 +543,7 @@
 				<!-- Entities touched -->
 				{#if result?.entities_touched?.length}
 					<div>
-						<div
-							class="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5"
-						>
+						<div class="micro-label mb-1.5 text-muted-foreground">
 							Changes ({result.entities_touched.length})
 						</div>
 						<div class="flex flex-wrap gap-1.5">
@@ -581,11 +575,7 @@
 				<!-- Open questions (continuable runs render them in the answer box above) -->
 				{#if result?.open_questions?.length && !canAnswerRun}
 					<div>
-						<div
-							class="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5"
-						>
-							Open questions
-						</div>
+						<div class="micro-label mb-1.5 text-muted-foreground">Open questions</div>
 						<ul class="list-disc list-inside space-y-0.5">
 							{#each result.open_questions as q}
 								<li class="text-sm text-foreground">{q}</li>
@@ -596,11 +586,7 @@
 
 				<!-- Narration / event log -->
 				<div>
-					<div
-						class="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5"
-					>
-						Activity
-					</div>
+					<div class="micro-label mb-1.5 text-muted-foreground">Activity</div>
 					<div
 						class="rounded-lg border border-border bg-card max-h-64 overflow-y-auto divide-y divide-border/60"
 					>
@@ -631,38 +617,30 @@
 
 				<!-- Metrics -->
 				{#if metrics}
-					<div class="grid grid-cols-4 gap-2 text-center">
+					<div class="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
 						<div class="rounded-lg bg-muted/40 p-2">
 							<div class="text-sm font-medium text-foreground">
 								{metrics.tool_calls ?? 0}
 							</div>
-							<div class="text-[10px] text-muted-foreground uppercase tracking-wide">
-								Tools
-							</div>
+							<div class="micro-label text-muted-foreground">Tools</div>
 						</div>
 						<div class="rounded-lg bg-muted/40 p-2">
 							<div class="text-sm font-medium text-foreground">
 								{(metrics.tokens ?? 0).toLocaleString()}
 							</div>
-							<div class="text-[10px] text-muted-foreground uppercase tracking-wide">
-								Tokens
-							</div>
+							<div class="micro-label text-muted-foreground">Tokens</div>
 						</div>
 						<div class="rounded-lg bg-muted/40 p-2">
 							<div class="text-sm font-medium text-foreground">
 								${(metrics.cost_usd ?? 0).toFixed(3)}
 							</div>
-							<div class="text-[10px] text-muted-foreground uppercase tracking-wide">
-								Cost
-							</div>
+							<div class="micro-label text-muted-foreground">Cost</div>
 						</div>
 						<div class="rounded-lg bg-muted/40 p-2">
 							<div class="text-sm font-medium text-foreground">
 								{formatDuration(metrics.duration_ms)}
 							</div>
-							<div class="text-[10px] text-muted-foreground uppercase tracking-wide">
-								Time
-							</div>
+							<div class="micro-label text-muted-foreground">Time</div>
 						</div>
 					</div>
 				{/if}
@@ -671,7 +649,7 @@
 
 		{#snippet footer()}
 			<div
-				class="flex items-center justify-end gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
+				class="flex flex-col-reverse gap-2 border-t border-border bg-muted/50 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-end sm:px-4"
 			>
 				{#if isActive}
 					{#if canOpenChat}
@@ -680,6 +658,7 @@
 							variant="primary"
 							size="md"
 							disabled={openingChat}
+							class="w-full sm:w-auto"
 						>
 							{#if openingChat}
 								<LoaderCircle class="h-4 w-4 animate-spin" />
@@ -690,11 +669,26 @@
 							{/if}
 						</Button>
 					{/if}
-					<Button onclick={handleCancel} variant="outline" size="md">Stop</Button>
-					<Button onclick={handleMinimize} variant="ghost" size="md">Minimize</Button>
+					<Button
+						onclick={handleCancel}
+						variant="outline"
+						size="md"
+						class="w-full sm:w-auto">Stop</Button
+					>
+					<Button
+						onclick={handleMinimize}
+						variant="ghost"
+						size="md"
+						class="w-full sm:w-auto">Minimize</Button
+					>
 				{:else}
 					{#if runStatus === 'failed'}
-						<Button onclick={handleRetry} variant="primary" size="md">Retry</Button>
+						<Button
+							onclick={handleRetry}
+							variant="primary"
+							size="md"
+							class="w-full sm:w-auto">Retry</Button
+						>
 					{/if}
 					{#if canOpenChat}
 						<Button
@@ -702,6 +696,7 @@
 							variant="primary"
 							size="md"
 							disabled={openingChat}
+							class="w-full sm:w-auto"
 						>
 							{#if openingChat}
 								<LoaderCircle class="h-4 w-4 animate-spin" />
@@ -712,7 +707,12 @@
 							{/if}
 						</Button>
 					{/if}
-					<Button onclick={handleDismiss} variant="outline" size="md">Dismiss</Button>
+					<Button
+						onclick={handleDismiss}
+						variant="outline"
+						size="md"
+						class="w-full sm:w-auto">Dismiss</Button
+					>
 				{/if}
 			</div>
 		{/snippet}

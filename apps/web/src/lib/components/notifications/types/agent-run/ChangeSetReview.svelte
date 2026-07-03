@@ -2,8 +2,8 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-	import Button from '$components/ui/Button.svelte';
-	import { Plus, Pencil, Trash2, Check, X, MessageCircle, LoaderCircle } from 'lucide-svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import { Plus, Pencil, Trash2, Check, X, MessageCircle } from '$lib/icons/lucide';
 	import DocumentProposalDiff from './DocumentProposalDiff.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { notifyDataMutation } from '$lib/stores/projectDataMutations';
@@ -151,11 +151,8 @@
 			const failed = r?.failed ?? 0;
 			if (failed > 0) {
 				toastService.warning(
-					`Applied ${r.applied}, ${failed} failed, ${r.rejected} rejected`
+					`Applied ${r.applied}, ${failed} failed, ${r.rejected} rejected. Use Chat for follow-up.`
 				);
-				if (onChat) {
-					await onChat();
-				}
 				onApplied?.();
 				return;
 			}
@@ -178,9 +175,9 @@
 	}
 </script>
 
-<div class="rounded-lg border border-info/40 bg-info/5 p-3 space-y-3">
+<div class="space-y-3 rounded-lg border border-info/40 bg-info/5 p-3">
 	<div class="flex items-center justify-between gap-2 flex-wrap">
-		<div class="text-xs font-medium text-info uppercase tracking-wide">
+		<div class="micro-label text-info">
 			Proposed changes ({changeSet.changes.length}) — review before applying
 		</div>
 		<div class="flex items-center gap-2">
@@ -208,18 +205,20 @@
 			<div
 				class="rounded-md border border-border bg-card p-2.5 {rejected ? 'opacity-50' : ''}"
 			>
-				<div class="flex items-start justify-between gap-2">
+				<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 					<div class="flex items-center gap-1.5 min-w-0">
 						<ActionIcon class="w-3.5 h-3.5 flex-shrink-0 {meta.cls}" />
 						<span class="text-xs font-medium text-foreground">{meta.label}</span>
 						<span class="text-xs text-muted-foreground">{change.entity_type}</span>
 					</div>
-					<div class="inline-flex overflow-hidden rounded border border-border">
+					<div
+						class="inline-flex min-h-9 overflow-hidden rounded-md border border-border"
+					>
 						<button
 							type="button"
 							onclick={() => setDecision(change.id, 'approved')}
 							disabled={applying}
-							class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs {rejected
+							class="inline-flex min-w-0 flex-1 items-center justify-center gap-1 px-2.5 py-1.5 text-xs sm:flex-none {rejected
 								? 'text-muted-foreground hover:bg-muted'
 								: 'bg-success/10 text-success'}"
 						>
@@ -230,7 +229,7 @@
 							type="button"
 							onclick={() => setDecision(change.id, 'rejected')}
 							disabled={applying}
-							class="inline-flex items-center gap-1 border-l border-border px-1.5 py-0.5 text-xs {rejected
+							class="inline-flex min-w-0 flex-1 items-center justify-center gap-1 border-l border-border px-2.5 py-1.5 text-xs sm:flex-none {rejected
 								? 'bg-muted text-foreground'
 								: 'text-muted-foreground hover:bg-muted'}"
 						>
@@ -272,23 +271,27 @@
 		{/each}
 	</div>
 
-	<div class="flex items-center justify-end gap-2">
+	<div class="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
 		{#if onChat}
-			<button
-				type="button"
-				class="pressable inline-flex items-center justify-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2.5 py-1.5 text-[12px] font-semibold text-accent hover:bg-accent/15 disabled:opacity-50"
+			<Button
+				variant="accent"
+				size="sm"
+				icon={MessageCircle}
 				onclick={() => onChat?.()}
 				disabled={applying || openingChat}
+				loading={openingChat}
+				class="w-full text-xs sm:w-auto"
 			>
-				{#if openingChat}
-					<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
-				{:else}
-					<MessageCircle class="h-3.5 w-3.5" />
-				{/if}
 				Chat
-			</button>
+			</Button>
 		{/if}
-		<Button onclick={apply} variant="primary" size="md" disabled={applying}>
+		<Button
+			onclick={apply}
+			variant="primary"
+			size="md"
+			disabled={applying}
+			class="w-full sm:w-auto"
+		>
 			{applying
 				? 'Applying…'
 				: approvedCount === 0

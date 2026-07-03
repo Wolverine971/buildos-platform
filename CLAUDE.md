@@ -97,7 +97,7 @@ Routes through **OpenRouter** as the primary provider with model selection based
 
 ### Database
 
-**Supabase (PostgreSQL + RLS).** Generated types live in `packages/shared-types/src/database.types.ts`; the schema snapshot lives alongside as `database.schema.ts`. Full OpenAPI specs are at `supabase.openapi.json` (v2) and `supabase.openapi3.json` (v3). Migrations are in `supabase/migrations/`.
+**Supabase (PostgreSQL + RLS).** Generated types live in `packages/shared-types/src/database.types.ts`; the schema snapshot lives alongside as `database.schema.ts`. Large Supabase OpenAPI dumps match `supabase.openapi*.json` and are ignored local artifacts, not checked-in source. Migrations are in `supabase/migrations/`.
 
 API routes access Supabase via `locals.supabase` (user-scoped, respects RLS). Admin operations use `createAdminSupabaseClient()` from `$lib/supabase/admin`. Regenerate types + schema + web assets with `pnpm gen:all`.
 

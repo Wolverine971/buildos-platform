@@ -23,7 +23,7 @@ export type SkillAuthoringIssueCode =
 	| 'linked_resource_self_reference'
 	| 'unsafe_reference_path'
 	| 'oversized_root_skill'
-	// Block-ontology linter (skill-update-refactor-tasker.md §6.2, §12.1, §12.2)
+	// Block-ontology linter
 	| 'invalid_frontmatter'
 	| 'pending_migration_invalid_skill_type'
 	| 'migrated_requires_preserve_markdown'
@@ -159,10 +159,10 @@ function validateParentCycles(
 }
 
 // ---------------------------------------------------------------------------
-// Block-ontology linter (skill-update-refactor-tasker.md §3.2, §3.3, §6.2, §12)
+// Block-ontology linter
 // ---------------------------------------------------------------------------
 
-// Canonical block order (§3.2 + §12.2). Related Tools + Examples are OPTIONAL and loader-coupled.
+// Related Tools + Examples are optional and loader-coupled.
 const CANONICAL_BLOCKS = [
 	'identity',
 	'activation',

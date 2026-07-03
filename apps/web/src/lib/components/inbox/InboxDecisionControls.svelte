@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/inbox/InboxDecisionControls.svelte -->
 <script lang="ts">
-	import { Check, LoaderCircle, MessageCircle, X } from 'lucide-svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import { Check, MessageCircle, X } from '$lib/icons/lucide';
 
 	type Layout = 'project' | 'dashboard';
 
@@ -31,42 +32,39 @@
 
 <div class={containerClass}>
 	<div class="flex flex-wrap items-center justify-end gap-2">
-		<button
-			type="button"
-			class="pressable inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-success/30 bg-success/10 px-2.5 py-1.5 text-center text-[12px] font-semibold leading-tight text-success hover:bg-success/15 disabled:opacity-50"
+		<Button
+			variant="success"
+			size="sm"
+			icon={Check}
+			loading={pending}
 			onclick={() => onApprove?.()}
 			disabled={pending}
+			class="min-w-[6.5rem] flex-1 text-xs"
 		>
-			{#if pending}
-				<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
-			{:else}
-				<Check class="h-3.5 w-3.5" />
-			{/if}
 			Accept
-		</button>
-		<button
-			type="button"
-			class="pressable inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-center text-[12px] font-semibold leading-tight text-muted-foreground hover:bg-muted disabled:opacity-50"
+		</Button>
+		<Button
+			variant="outline"
+			size="sm"
+			icon={X}
 			onclick={() => onReject?.()}
 			disabled={pending}
+			class="min-w-[6.5rem] flex-1 text-xs"
 		>
-			<X class="h-3.5 w-3.5" />
 			Dismiss
-		</button>
+		</Button>
 		{#if canChat}
-			<button
-				type="button"
-				class="pressable inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2.5 py-1.5 text-[12px] font-semibold text-accent hover:bg-accent/15 disabled:opacity-50"
+			<Button
+				variant="accent"
+				size="sm"
+				icon={MessageCircle}
+				loading={openingChat}
 				onclick={() => onChat?.()}
 				disabled={pending || openingChat}
+				class="min-w-[6.5rem] flex-1 text-xs"
 			>
-				{#if openingChat}
-					<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
-				{:else}
-					<MessageCircle class="h-3.5 w-3.5" />
-				{/if}
 				Chat
-			</button>
+			</Button>
 		{/if}
 	</div>
 </div>

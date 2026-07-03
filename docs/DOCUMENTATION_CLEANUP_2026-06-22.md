@@ -211,7 +211,7 @@ Fresh 3-agent staleness pass after Tiers 1–5. **99 more files archived** via `
 ### Second-pass decisions (NOT touched)
 
 - **YouTube transcripts** (`docs/marketing/growth/research/youtube-transcripts/`, 87) — **KEEP**. New `docs/research/youtube-library/` is canonical but its INDEX still points back to these as a live migration staging ground. Don't force-consolidate mid-migration.
-- **`ENNEAGRAM_PROJECT_COUNCIL_SPEC.md`** — abandoned (0 code) but left in place (not called out).
+- **`ENNEAGRAM_PROJECT_COUNCIL_SPEC.md`** — abandoned (0 code); resolved in 2026-07-03 cleanup addendum.
 - **OpenClaw specs** — verified **37 source files** reference OpenClaw; actively integrated → KEEP (agent was wrong).
 - **`agent-work/HANDOFF_2026-06-18.md`** — active work, referenced for landmines → KEEP (agent was wrong).
 - The engineering agent's broader "64-file" list over-flagged the **Inkprint design-system + modal + component docs** — those are living reference, left in place.
@@ -236,13 +236,13 @@ Fresh 3-agent staleness pass after Tiers 1–5. **99 more files archived** via `
 
 New root clutter accumulated after 6/22 was moved (all `git mv`, inbound links updated, 0 stale refs):
 
-| From (root)                              | To                                                                    | Notes                                                        |
-| ---------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `linkedin-edits.md`                      | `docs/marketing/social-media/linkedin-profile-rewrite-2026-06-28.md` | Renamed for accuracy (paste-ready LinkedIn rewrite)          |
-| `sugarman-copywriting-handbook-guide.md` | `docs/marketing/research/sugarman-adweek-copywriting-handbook-guide.md` | Book distillation → marketing research                     |
-| `clay/`                                  | `docs/marketing/outreach/clay/`                                        | Clay outreach lists + strategy (0 inbound refs)              |
-| `social-warmup-template/`                | `docs/marketing/social-warmup-template/`                               | Template source for other repos; 1 inbound ref updated       |
-| `research-library/`                      | `docs/research-library/`                                               | ~43 inbound refs rewritten; fixed 1 previously-broken 4-up ref in `skill-drafts/calm-software-design-review/SKILL.md` |
+| From (root)                              | To                                                                      | Notes                                                                                                                 |
+| ---------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `linkedin-edits.md`                      | `docs/marketing/social-media/linkedin-profile-rewrite-2026-06-28.md`    | Renamed for accuracy (paste-ready LinkedIn rewrite)                                                                   |
+| `sugarman-copywriting-handbook-guide.md` | `docs/marketing/research/sugarman-adweek-copywriting-handbook-guide.md` | Book distillation → marketing research                                                                                |
+| `clay/`                                  | `docs/marketing/outreach/clay/`                                         | Clay outreach lists + strategy (0 inbound refs)                                                                       |
+| `social-warmup-template/`                | `docs/marketing/social-warmup-template/`                                | Template source for other repos; 1 inbound ref updated                                                                |
+| `research-library/`                      | `docs/research-library/`                                                | ~43 inbound refs rewritten; fixed 1 previously-broken 4-up ref in `skill-drafts/calm-software-design-review/SKILL.md` |
 
 Honored 6/22 decisions: `buildos-strat.md`, `buildos-strat-tasks.md`, `growth-agent.md` stay at root.
 `thoughts/` (214 refs, convention dir) and `tasker/` (active working dir) left in place.
@@ -251,3 +251,57 @@ Also pruned `apps/web/scripts/` (archive/, PowerShell scripts, completed one-off
 docs-generation family, legacy `extract-database-schema.ts`) and trimmed `apps/web/package.json` script
 aliases (dev/build/test variants, `deps:*` wrappers, `migrate:*`); `docs/MONOREPO_GUIDE.md` +
 `docs/testing/*` updated to match.
+
+---
+
+## 📦 Addendum — 2026-07-03 stale docs/spec cleanup
+
+Inventory pass focused on docs/specs that are self-marked superseded, abandoned, empty, or contradicted by newer
+canonical docs. Cleanup avoided dirty/untracked marketing and tasker work except for the dated daily-engagement
+archive rule.
+
+### Tier 1 — deleted now
+
+- `docs/specs/ENNEAGRAM_PROJECT_COUNCIL_SPEC.md` — prior cleanup identified it as abandoned with 0 code; current scan found no implementation references.
+- `docs/specs/agentic-chat-instructions-rewrite-2026-04-10.md` — self-marked superseded by `agentic-chat-tool-surface-refactor-plan.md`; no inbound refs.
+- `apps/web/docs/features/ontology/TASK_LINKED_ENTITIES_SPEC.md` — self-marked complete and superseded by `LINKED_ENTITIES_COMPONENT.md`; no inbound refs.
+- `packages/twilio-service/docs/implementation/twillio-integration-plan.md` — misspelled duplicate superseded by `twilio-integration-plan-updated.md`; already called out by archived prune report.
+- `docs/marketing/growth/research/youtube-transcripts/2026-04-24-lucky-saini-1000-hours-marketing-funnels.txt` — 0-byte transcript; linked library entries use the retained `-ANALYSIS.md` file.
+- `apps/worker/docs/SCHEDULER_ANALYSIS_AND_BUGS.md` — stale 2025 scheduler/email analysis for a legacy email chain decommissioned by `20260426000009`; referenced removed worker files. Current source is `WORKER_FLOW_AUDIT_2026-07-01.md`.
+
+### Tier 1 — moved out of active working set
+
+- Archived 13 dated social warmup/reply logs from `docs/marketing/social-media/daily-engagement/` to
+  `docs/archive/marketing/social-media/daily-engagement/`: 2026-06-15, 06-16, 06-17, 06-19, 06-21, 06-22, 06-23,
+  06-24 replies, 06-24 warmup, 06-25, 06-26, 06-27, and 06-28. This follows that folder's own "current week only"
+  rule. Current week files (2026-06-29 onward), the dirty rollup, and the untracked 2026-07-03 file were left alone.
+- Archived 6 superseded or historical audits from `apps/web/docs/technical/audits/` to
+  `docs/archive/apps-web/docs/technical/audits/`: the 2025 Brain Dump flow audit, two February 2026 agentic chat tool
+  gateway audits, two FastChat v2 audits, and the February 2026 project-page route audit. These have no active inbound
+  documentation references beyond historical notes, and the Brain Dump ADR already classifies that audit as archive
+  material.
+
+### Reference fixes
+
+- `apps/worker/docs/README.md`, `apps/worker/docs/QUICK_REFERENCE.md`, and `apps/worker/docs/DOCUMENTATION_INDEX.md`
+  now point to `WORKER_FLOW_AUDIT_2026-07-01.md` instead of the deleted scheduler analysis.
+- `apps/worker/docs/QUICK_REFERENCE.md` no longer lists removed `generate_brief_email` / `generate_phases` processors
+  and points email delivery at `workers/notification/emailAdapter.ts`.
+
+### Tier 2 — needs owner approval
+
+- `apps/web/docs/features/chat-system/` — superseded by `features/agentic-chat/`, but deliberately retained for
+  historical context on Progressive Disclosure and the older API-mutation approach.
+- `apps/web/docs/technical/architecture/AGENTIC_CHAT_SUBAGENTS_DESIGN_2026-06-15.md` — superseded by `agent-work/`,
+  but the canonical overview still links it as the v1 decision trail.
+- `docs/specs/agentic-chat-skill-tool-architecture-v2.md` and `docs/specs/agentic-chat-skills-system.md` — both
+  self-marked historical/superseded, but still linked by operating-model and tool-surface docs as historical context.
+- `docs/specs/buildos-domain-skill-architecture-2026-05-18.md` — superseded for implementation by the work-capability
+  architecture, but its own header says the domain catalog/session-state/research-queue ideas remain useful.
+- `apps/worker/docs/WORKER_STRUCTURE_OVERVIEW.md` and `apps/worker/docs/WORKER_JOBS_AND_FLOWS.md` — still used as
+  worker reference docs, but they contain stale legacy email/phase job sections. Needs a rewrite or replacement, not
+  blind deletion.
+- `apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md` — banner says superseded by Inkprint, but it still has
+  inbound references and may contain useful historical/UI guidance.
+- Whole `docs/archive/` purge — possible if the repo should stop carrying historical records, but this would reverse
+  the prior preservation policy and should be an explicit owner decision.
