@@ -26,27 +26,6 @@
 	// Static import: TrialBanner must be in the SSR pass to prevent layout shift
 	import TrialBannerStatic from '$lib/components/trial/TrialBanner.svelte';
 
-	// Notification system integration
-	import NotificationStackManager from '$lib/components/notifications/NotificationStackManager.svelte';
-	import {
-		initCalendarAnalysisNotificationBridge,
-		cleanupCalendarAnalysisNotificationBridge
-	} from '$lib/services/calendar-analysis-notification.bridge';
-	import {
-		initProjectSynthesisNotificationBridge,
-		cleanupProjectSynthesisNotificationBridge
-	} from '$lib/services/project-synthesis-notification.bridge';
-	import {
-		initTimeBlockNotificationBridge,
-		destroyTimeBlockNotificationBridge
-	} from '$lib/services/time-block-notification.bridge';
-	import {
-		initAgentRunNotificationBridge,
-		destroyAgentRunNotificationBridge
-	} from '$lib/services/agent-run-notification.bridge';
-	import { AgentRunsRealtimeService } from '$lib/services/agentRunsRealtime.service';
-	import { timeBlocksStore } from '$lib/stores/timeBlocksStore';
-
 	// Vercel Analytics & Speed Insights
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 	import { initPostHog, identifyUser, resetPostHogUser } from '$lib/services/posthog';
@@ -71,6 +50,7 @@
 	let ToastContainer = $state<any>(undefined);
 	let toastService = $state<any>(undefined);
 	let PaymentWarning = $state<any>(undefined);
+	let NotificationStackManager = $state<any>(undefined);
 
 	// PERFORMANCE: Memoize route calculations to prevent unnecessary recalculations
 	let currentRouteId = $state('');
@@ -89,10 +69,11 @@
 	let pwaCleanup = $state<(() => void) | void>(undefined);
 	let installPromptCleanup = $state<(() => void) | void>(undefined);
 
+	const initialSupabase = initialData.supabase;
 	// Use the Supabase client from +layout.ts (avoids duplicate clients and auth listeners)
-	const supabase = initialData.supabase;
-	if (supabase) {
-		setContext('supabase', supabase);
+	let supabase = $state<any>(initialSupabase);
+	if (initialSupabase) {
+		setContext('supabase', initialSupabase);
 	}
 
 	// PERFORMANCE: Reactive data with memoization - converted to $derived runes
@@ -103,11 +84,11 @@
 	// in handleAuthSignedOut.
 	let posthogIdentifiedUserId: string | null = null;
 	$effect(() => {
-		const uid = user?.id ?? null;
-		if (uid && uid !== posthogIdentifiedUserId) {
-			posthogIdentifiedUserId = uid;
-			identifyUser(uid, {
-				email: user.email,
+		const currentUser = user;
+		if (currentUser?.id && currentUser.id !== posthogIdentifiedUserId) {
+			posthogIdentifiedUserId = currentUser.id;
+			identifyUser(currentUser.id, {
+				email: currentUser.email,
 				completed_onboarding: untrack(() => completedOnboarding)
 			});
 		}
@@ -311,14 +292,32 @@
 	// PERFORMANCE: Load authenticated resources with better caching
 	let resourcesLoadPromise = $state<Promise<void> | undefined>(undefined);
 	let resourcesLoaded = $state(false);
+	let notificationResourcesLoadPromise = $state<Promise<void> | undefined>(undefined);
+	let notificationResourcesLoaded = $state(false);
 	let authSyncInProgress = $state(false);
 	let authSubscriptionCleanup = $state<(() => void) | null>(null);
+	let notificationBridgeCleanup = $state<(() => void) | null>(null);
+	let agentRunsRealtimeService = $state<any>(null);
+	let agentRunsRealtimeLoadPromise: Promise<any> | undefined;
 
 	// Track previous auth state to prevent unnecessary reloads on visibility change.
 	// When tab becomes visible, Supabase may emit SIGNED_IN even if user was already signed in.
 	// Initialize from SSR user data so SIGNED_IN after INITIAL_SESSION(null) is recognized
 	// as the same user and skipped — preventing two redundant __data.json re-fetches.
 	let previousAuthUserId = $state<string | null>(initialData.user?.id ?? null);
+
+	$effect(() => {
+		const nextSupabase = data.supabase;
+		if (nextSupabase && nextSupabase !== untrack(() => supabase)) {
+			untrack(() => {
+				supabase = nextSupabase;
+			});
+		}
+	});
+
+	$effect(() => {
+		setupAuthSubscription();
+	});
 
 	// Convert to $effect - load resources when user becomes available
 	$effect(() => {
@@ -330,8 +329,43 @@
 		}
 	});
 
+	$effect(() => {
+		if (browser && user && !notificationResourcesLoaded && !notificationResourcesLoadPromise) {
+			untrack(() => {
+				notificationResourcesLoadPromise = scheduleAuthenticatedBackgroundResources();
+			});
+		}
+	});
+
+	$effect(() => {
+		if (browser && user && supabase && notificationResourcesLoaded) {
+			initAgentRunsRealtime();
+		}
+	});
+
+	function setupAuthSubscription() {
+		if (!browser || !supabase || authSubscriptionCleanup) return;
+
+		const {
+			data: { subscription }
+		} = supabase.auth.onAuthStateChange(
+			async (event: AuthChangeEvent, session: Session | null) => {
+				try {
+					await handleAuthStateChange(event, session);
+				} catch (error) {
+					console.error('Auth state change listener error:', error);
+				}
+			}
+		);
+
+		authSubscriptionCleanup = () => subscription.unsubscribe();
+	}
+
 	async function loadAuthenticatedResources(): Promise<void> {
 		if (resourcesLoaded) return;
+
+		const resourceUserId = user?.id;
+		if (!browser || !resourceUserId) return;
 
 		try {
 			// Load all authenticated resources in parallel with timeout
@@ -353,6 +387,8 @@
 				paymentWarningModule
 			] = (await Promise.race([loadPromise, timeoutPromise])) as any;
 
+			if (user?.id !== resourceUserId) return;
+
 			toastService = toastServiceModule.toastService;
 			OnboardingModal = onboardingModalModule.default;
 			ToastContainer = toastContainerModule.default;
@@ -363,9 +399,6 @@
 				resourcesLoaded = true;
 				resourcesLoadPromise = undefined;
 			});
-
-			// Ensure the Agent Run Stack listener is live for authenticated users.
-			initAgentRunsRealtime();
 		} catch (error) {
 			console.error('Failed to load authenticated resources:', error);
 			// Use untrack to allow retry without triggering effects immediately
@@ -375,19 +408,154 @@
 		}
 	}
 
+	function scheduleAuthenticatedBackgroundResources(): Promise<void> {
+		if (!browser) return Promise.resolve();
+
+		return new Promise((resolve) => {
+			const start = () => {
+				void loadAuthenticatedBackgroundResources().finally(resolve);
+			};
+
+			if ('requestIdleCallback' in window) {
+				window.requestIdleCallback(start, { timeout: 2500 });
+			} else {
+				setTimeout(start, 750);
+			}
+		});
+	}
+
+	async function loadAuthenticatedBackgroundResources(): Promise<void> {
+		if (notificationResourcesLoaded) return;
+
+		const resourceUserId = user?.id;
+		if (!browser || !resourceUserId) return;
+
+		try {
+			const [
+				notificationStackModule,
+				calendarAnalysisBridgeModule,
+				projectSynthesisBridgeModule,
+				timeBlockBridgeModule,
+				agentRunBridgeModule,
+				timeBlocksStoreModule,
+				agentRunsRealtimeModule
+			] = await Promise.all([
+				import('$lib/components/notifications/NotificationStackManager.svelte'),
+				import('$lib/services/calendar-analysis-notification.bridge'),
+				import('$lib/services/project-synthesis-notification.bridge'),
+				import('$lib/services/time-block-notification.bridge'),
+				import('$lib/services/agent-run-notification.bridge'),
+				import('$lib/stores/timeBlocksStore'),
+				import('$lib/services/agentRunsRealtime.service')
+			]);
+
+			if (user?.id !== resourceUserId) return;
+
+			NotificationStackManager = notificationStackModule.default;
+			agentRunsRealtimeService = agentRunsRealtimeModule.AgentRunsRealtimeService;
+
+			initNotificationBridges({
+				calendarAnalysisBridgeModule,
+				projectSynthesisBridgeModule,
+				timeBlockBridgeModule,
+				agentRunBridgeModule,
+				timeBlocksStoreModule
+			});
+
+			untrack(() => {
+				notificationResourcesLoaded = true;
+			});
+
+			initAgentRunsRealtime();
+		} catch (error) {
+			console.error('Failed to load authenticated background resources:', error);
+		} finally {
+			untrack(() => {
+				notificationResourcesLoadPromise = undefined;
+			});
+		}
+	}
+
+	function initNotificationBridges(modules: {
+		calendarAnalysisBridgeModule: any;
+		projectSynthesisBridgeModule: any;
+		timeBlockBridgeModule: any;
+		agentRunBridgeModule: any;
+		timeBlocksStoreModule: any;
+	}) {
+		if (notificationBridgeCleanup) return;
+
+		modules.calendarAnalysisBridgeModule.initCalendarAnalysisNotificationBridge();
+		modules.projectSynthesisBridgeModule.initProjectSynthesisNotificationBridge();
+		modules.timeBlockBridgeModule.initTimeBlockNotificationBridge();
+		modules.agentRunBridgeModule.initAgentRunNotificationBridge();
+
+		notificationBridgeCleanup = () => {
+			modules.timeBlockBridgeModule.destroyTimeBlockNotificationBridge();
+			modules.timeBlocksStoreModule.timeBlocksStore.destroy?.();
+			modules.calendarAnalysisBridgeModule.cleanupCalendarAnalysisNotificationBridge();
+			modules.projectSynthesisBridgeModule.cleanupProjectSynthesisNotificationBridge();
+			modules.agentRunBridgeModule.destroyAgentRunNotificationBridge();
+		};
+	}
+
+	function cleanupNotificationBridges() {
+		const cleanup = notificationBridgeCleanup;
+		notificationBridgeCleanup = null;
+		NotificationStackManager = undefined;
+
+		if (!cleanup) return;
+
+		try {
+			cleanup();
+		} catch (error) {
+			console.error('Failed to clean up notification bridges:', error);
+		}
+	}
+
+	async function getAgentRunsRealtimeService() {
+		if (agentRunsRealtimeService) return agentRunsRealtimeService;
+
+		if (!agentRunsRealtimeLoadPromise) {
+			agentRunsRealtimeLoadPromise = import('$lib/services/agentRunsRealtime.service')
+				.then((module) => {
+					agentRunsRealtimeService = module.AgentRunsRealtimeService;
+					return agentRunsRealtimeService;
+				})
+				.catch((error) => {
+					agentRunsRealtimeLoadPromise = undefined;
+					console.error('Failed to load agent realtime service:', error);
+					return null;
+				});
+		}
+
+		return agentRunsRealtimeLoadPromise;
+	}
+
 	// Passive global listener for background Agent Runs → Run Stack cards.
 	// Idempotent for the same user; safe to call from multiple entry points.
 	function initAgentRunsRealtime() {
 		if (!browser || !supabase) return;
 		const uid = user?.id;
 		if (!uid) return;
-		void AgentRunsRealtimeService.initialize(uid, supabase);
+		void getAgentRunsRealtimeService().then((service) => {
+			if (!service || user?.id !== uid) return;
+			void service.initialize(uid, supabase);
+		});
+	}
+
+	function cleanupAgentRunsRealtime() {
+		if (!agentRunsRealtimeService) return;
+		void agentRunsRealtimeService.cleanup();
 	}
 
 	function resetResourceLoaders() {
 		resourcesLoadPromise = undefined;
 		resourcesLoaded = false;
-		void AgentRunsRealtimeService.cleanup();
+		notificationResourcesLoadPromise = undefined;
+		notificationResourcesLoaded = false;
+		cleanupNotificationBridges();
+		cleanupAgentRunsRealtime();
 	}
 
 	function consumeLogoutRedirect(): string | null {
@@ -626,36 +794,18 @@
 	onMount(() => {
 		if (!browser) return;
 
-		if (supabase) {
-			const {
-				data: { subscription }
-			} = supabase.auth.onAuthStateChange(
-				async (event: AuthChangeEvent, session: Session | null) => {
-					try {
-						await handleAuthStateChange(event, session);
-					} catch (error) {
-						console.error('Auth state change listener error:', error);
-					}
-				}
-			);
-
-			authSubscriptionCleanup = () => subscription.unsubscribe();
-		}
+		setupAuthSubscription();
 
 		// FIXED: Store cleanup functions to prevent memory leaks
 		pwaCleanup = initializePWAEnhancements();
 		installPromptCleanup = setupInstallPrompt();
 
-		// Initialize notification bridges
-		initCalendarAnalysisNotificationBridge();
-		initProjectSynthesisNotificationBridge();
-		initTimeBlockNotificationBridge();
-		initAgentRunNotificationBridge();
-
 		// Pre-load authenticated resources if user is already available
-		if (user) {
-			loadAuthenticatedResources();
-			initAgentRunsRealtime();
+		if (user && !resourcesLoaded && !resourcesLoadPromise) {
+			resourcesLoadPromise = loadAuthenticatedResources();
+		}
+		if (user && !notificationResourcesLoaded && !notificationResourcesLoadPromise) {
+			notificationResourcesLoadPromise = scheduleAuthenticatedBackgroundResources();
 		}
 
 		// Subscribe to navigation store for global navigation handling
@@ -729,15 +879,9 @@
 				authSubscriptionCleanup = null;
 			}
 
-			// FIXED: Destroy stores to prevent subscription leaks
-			destroyTimeBlockNotificationBridge();
-			timeBlocksStore.destroy?.();
-
-			// Cleanup notification bridges
-			cleanupCalendarAnalysisNotificationBridge();
-			cleanupProjectSynthesisNotificationBridge();
-			destroyAgentRunNotificationBridge();
-			void AgentRunsRealtimeService.cleanup();
+			// FIXED: Destroy authenticated resources to prevent subscription leaks
+			cleanupNotificationBridges();
+			cleanupAgentRunsRealtime();
 
 			// Clear any pending timeouts
 			if (briefCompleteTimeout) {
@@ -752,6 +896,8 @@
 			// Reset promises and state
 			resourcesLoadPromise = undefined;
 			resourcesLoaded = false;
+			notificationResourcesLoadPromise = undefined;
+			notificationResourcesLoaded = false;
 			visitorTrackingInitialized = false;
 		}
 	});
@@ -964,8 +1110,9 @@
 		</div>
 	{/if}
 
-	<!-- Notification System -->
-	<NotificationStackManager />
+	{#if user && NotificationStackManager}
+		<NotificationStackManager />
+	{/if}
 </div>
 
 <style>

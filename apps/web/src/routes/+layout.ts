@@ -1,19 +1,22 @@
 // apps/web/src/routes/+layout.ts
-import { browser } from '$app/environment';
-import { createSupabaseBrowser } from '$lib/supabase';
-import { dev } from '$app/environment';
+import { browser, dev } from '$app/environment';
 import { injectAnalytics } from '@vercel/analytics/sveltekit';
+import type { LayoutLoad } from './$types';
 
 // Note: Speed Insights is injected in +layout.svelte with browser/dev guards
 injectAnalytics({ mode: dev ? 'development' : 'production' });
 
-export const load = async ({ data, depends }: { data: any; depends: (dep: string) => void }) => {
+export const load: LayoutLoad = async ({ data, depends, url }) => {
 	depends('supabase:auth');
+
+	const shouldCreateBrowserClient = browser && (Boolean(data.user) || url.pathname !== '/');
+	const supabase = shouldCreateBrowserClient
+		? (await import('$lib/supabase')).createSupabaseBrowser()
+		: null;
 
 	// Pass through server data
 	return {
 		...data,
-		// Create browser client if needed
-		supabase: browser ? createSupabaseBrowser() : null
+		supabase
 	};
 };

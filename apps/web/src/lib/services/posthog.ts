@@ -2,7 +2,6 @@
 // Client-side PostHog wrapper. Every export is a safe no-op when PostHog is not
 // configured (no PUBLIC_POSTHOG_KEY) or when running on the server, so callers
 // never need to guard. See docs/marketing/growth/posthog-analytics-workflow.md.
-import posthog from 'posthog-js';
 import { browser, dev } from '$app/environment';
 import { env } from '$env/dynamic/public';
 
@@ -28,6 +27,12 @@ export interface FirstTouchAttribution {
 }
 
 let initialized = false;
+let initPromise: Promise<any | null> | null = null;
+let posthogClient: any = null;
+let pendingIdentify: {
+	userId: string;
+	properties?: Record<string, unknown>;
+} | null = null;
 
 function logHealth(
 	status: 'captured' | 'skipped' | 'error',
@@ -50,6 +55,49 @@ function isEnabled(): boolean {
 	return true;
 }
 
+function applyPendingIdentify(): void {
+	if (!posthogClient || !pendingIdentify) return;
+
+	const { userId, properties } = pendingIdentify;
+	pendingIdentify = null;
+	const firstTouch = getFirstTouchAttribution();
+	posthogClient.identify(userId, properties, firstTouch ? { ...firstTouch } : undefined);
+}
+
+function ensurePostHogInitialized(): Promise<any | null> {
+	if (initialized && posthogClient) return Promise.resolve(posthogClient);
+	if (!isEnabled()) return Promise.resolve(null);
+
+	if (!initPromise) {
+		initPromise = import('posthog-js')
+			.then(({ default: posthog }) => {
+				posthogClient = posthog;
+
+				if (!initialized) {
+					posthog.init(env.PUBLIC_POSTHOG_KEY!, {
+						api_host: env.PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
+						defaults: '2026-05-30', // history_change pageviews — SPA navigations tracked automatically
+						person_profiles: 'identified_only',
+						capture_pageleave: true
+					});
+					initialized = true;
+				}
+
+				applyPendingIdentify();
+				return posthogClient;
+			})
+			.catch((error) => {
+				initPromise = null;
+				posthogClient = null;
+				initialized = false;
+				console.error('[posthog] failed to initialize:', error);
+				return null;
+			});
+	}
+
+	return initPromise;
+}
+
 /**
  * Initialize PostHog. Call once from the root layout. Also stashes first-touch
  * attribution (which runs even when capture is disabled, so UTM data survives
@@ -57,15 +105,17 @@ function isEnabled(): boolean {
  */
 export function initPostHog(): void {
 	if (browser) captureFirstTouchAttribution();
-	if (initialized || !isEnabled()) return;
+	if (initialized || initPromise || !isEnabled()) return;
 
-	posthog.init(env.PUBLIC_POSTHOG_KEY!, {
-		api_host: env.PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
-		defaults: '2026-05-30', // history_change pageviews — SPA navigations tracked automatically
-		person_profiles: 'identified_only',
-		capture_pageleave: true
-	});
-	initialized = true;
+	const start = () => {
+		void ensurePostHogInitialized();
+	};
+
+	if (browser && 'requestIdleCallback' in window) {
+		window.requestIdleCallback(start, { timeout: 3000 });
+	} else {
+		setTimeout(start, 0);
+	}
 }
 
 /**
@@ -73,31 +123,46 @@ export function initPostHog(): void {
  * $set_once so it never overwrites the original acquisition source.
  */
 export function identifyUser(userId: string, properties?: Record<string, unknown>): void {
-	if (!initialized) return;
-	const firstTouch = getFirstTouchAttribution();
-	posthog.identify(userId, properties, firstTouch ? { ...firstTouch } : undefined);
+	if (!isEnabled()) return;
+	pendingIdentify = { userId, properties };
+
+	if (initialized && posthogClient) {
+		applyPendingIdentify();
+		return;
+	}
+
+	void ensurePostHogInitialized();
 }
 
 /** Call on logout so the next login isn't merged into the previous identity. */
 export function resetPostHogUser(): void {
-	if (!initialized) return;
-	posthog.reset();
+	pendingIdentify = null;
+	if (!initialized || !posthogClient) return;
+	posthogClient.reset();
 }
 
 export function captureEvent(event: string, properties?: Record<string, unknown>): void {
-	if (!initialized) {
+	if (!isEnabled()) {
 		logHealth('skipped', event, { reason: 'not_initialized' });
 		return;
 	}
-	try {
-		posthog.capture(event, properties);
-		logHealth('captured', event);
-	} catch (error) {
-		logHealth('error', event, {
-			message: error instanceof Error ? error.message : String(error)
-		});
-		console.error(`[posthog] failed to capture ${event}:`, error);
-	}
+
+	void ensurePostHogInitialized().then((client) => {
+		if (!client || !initialized) {
+			logHealth('skipped', event, { reason: 'not_initialized' });
+			return;
+		}
+
+		try {
+			client.capture(event, properties);
+			logHealth('captured', event);
+		} catch (error) {
+			logHealth('error', event, {
+				message: error instanceof Error ? error.message : String(error)
+			});
+			console.error(`[posthog] failed to capture ${event}:`, error);
+		}
+	});
 }
 
 /**

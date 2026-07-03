@@ -72,8 +72,7 @@ describe('Authenticated Pages', () => {
 
 			expect(result).toEqual({
 				user: null,
-				dashboard: null,
-				pendingInvites: []
+				dashboard: null
 			});
 			expect(depends).toHaveBeenCalledWith('app:auth');
 			expect(depends).toHaveBeenCalledWith('dashboard:analytics');
@@ -103,11 +102,9 @@ describe('Authenticated Pages', () => {
 				depends
 			} as any);
 
-			expect(supabase.rpc).toHaveBeenCalledWith('list_pending_project_invites');
 			expect(result).toEqual({
 				user: mockUser,
-				dashboard: dashboardPayload,
-				pendingInvites: []
+				dashboard: dashboardPayload
 			});
 		});
 	});

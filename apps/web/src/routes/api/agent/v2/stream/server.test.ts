@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
 	persistMessageAttachments: vi.fn(),
 	reconcile: vi.fn(),
 	resolveSession: vi.fn(),
+	selectFastChatTools: vi.fn(),
 	streamFastChat: vi.fn(),
 	updateSessionContext: vi.fn()
 }));
@@ -124,7 +125,7 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 	normalizeFastContextType: (value?: string) => value ?? 'global',
 	resolveFastChatSurfaceProfileForTurn: () => 'general',
 	sanitizeAttachmentRefsForMetadata: () => [],
-	selectFastChatTools: () => [],
+	selectFastChatTools: mocks.selectFastChatTools,
 	shouldUseLiveVisionForTurn: () => false,
 	streamFastChat: mocks.streamFastChat
 }));
@@ -485,6 +486,7 @@ beforeEach(() => {
 		conversationSummary: null,
 		data: {}
 	});
+	mocks.selectFastChatTools.mockReturnValue([]);
 	mocks.persistMessage.mockImplementation(
 		async ({ role, content, metadata }: { role: string; content: string; metadata?: Row }) => ({
 			id: `${role}-message-1`,
@@ -713,6 +715,103 @@ describe('/api/agent/v2/stream', () => {
 						message: 'searched project'
 					}
 				]
+			})
+		);
+	});
+
+	it('passes prompt entity ownership context into tool execution', async () => {
+		const supabase = createStreamingSupabase();
+		const currentProjectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+		const otherProjectId = '972064c0-c2aa-4c74-a735-313802ffd456';
+		const taskId = 'f914f9dc-a7a7-4f9e-9a3e-477c6975f259';
+		const updateTaskDefinition = {
+			name: 'update_onto_task',
+			description: 'Update task',
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: { type: 'string' },
+					task_id: { type: 'string' },
+					title: { type: 'string' }
+				},
+				required: ['task_id']
+			}
+		};
+		let capturedToolResult: Row | null = null;
+
+		mocks.selectFastChatTools.mockReturnValueOnce([updateTaskDefinition]);
+		mocks.loadPromptContext.mockResolvedValueOnce({
+			contextType: 'project',
+			entityId: currentProjectId,
+			projectId: currentProjectId,
+			projectName: 'Current Project',
+			focusEntityType: null,
+			focusEntityId: null,
+			focusEntityName: null,
+			conversationSummary: null,
+			data: {
+				project: { id: currentProjectId, name: 'Current Project' },
+				tasks: [
+					{
+						id: taskId,
+						title: 'Cross-project task',
+						project_id: otherProjectId
+					}
+				]
+			}
+		});
+		mocks.streamFastChat.mockImplementationOnce(async ({ toolExecutor, onDelta }: Row) => {
+			capturedToolResult = await toolExecutor(
+				{
+					id: 'call-update-task',
+					name: 'update_onto_task',
+					arguments: { task_id: taskId, title: 'Rename task' }
+				},
+				[updateTaskDefinition]
+			);
+			await onDelta('Checked tool context.');
+			return {
+				assistantText: 'Checked tool context.',
+				finalAssistantText: 'Checked tool context.',
+				usage: { total_tokens: 8 },
+				finishedReason: 'stop',
+				toolExecutions: [],
+				llmPasses: [],
+				toolRounds: 1,
+				toolCallsMade: 1,
+				supervisorDecisions: [],
+				finalizationGuard: undefined,
+				cancelled: false,
+				peakPromptTokens: undefined,
+				finalContextUsage: undefined
+			};
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Update that task',
+					context_type: 'project',
+					entity_id: currentProjectId,
+					stream_run_id: 'stream-run-tool-context',
+					client_turn_id: 'client-turn-tool-context'
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		await response.text();
+
+		expect(capturedToolResult).toEqual(
+			expect.objectContaining({
+				success: false,
+				error: expect.stringContaining('task_id belongs to a different project')
 			})
 		);
 	});

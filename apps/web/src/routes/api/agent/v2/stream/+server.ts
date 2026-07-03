@@ -314,6 +314,60 @@ const FASTCHAT_CHAT_ATTACHMENT_STORAGE_BUCKET = 'onto-assets';
 const FASTCHAT_TEMP_ATTACHMENT_PATH_PREFIX = 'users';
 
 type FastChatTurnAbortReason = FastChatCancelReason | 'timeout';
+type FastChatResolvedPromptContext = {
+	contextType: ChatContextType;
+	entityId?: string | null;
+	projectId?: string | null;
+	projectName?: string | null;
+	focusEntityType?: string | null;
+	focusEntityId?: string | null;
+	focusEntityName?: string | null;
+	conversationSummary?: string | null;
+	entityResolutionHint?: string | null;
+	data?: Record<string, unknown> | string | null;
+};
+
+type ToolExecutionEntityKind =
+	| 'project'
+	| 'task'
+	| 'goal'
+	| 'plan'
+	| 'document'
+	| 'milestone'
+	| 'risk'
+	| 'requirement';
+
+const TOOL_EXECUTION_ENTITY_KIND_ALIASES: Record<string, ToolExecutionEntityKind> = {
+	project: 'project',
+	projects: 'project',
+	task: 'task',
+	tasks: 'task',
+	goal: 'goal',
+	goals: 'goal',
+	plan: 'plan',
+	plans: 'plan',
+	document: 'document',
+	documents: 'document',
+	doc: 'document',
+	docs: 'document',
+	milestone: 'milestone',
+	milestones: 'milestone',
+	risk: 'risk',
+	risks: 'risk',
+	requirement: 'requirement',
+	requirements: 'requirement'
+};
+
+const TOOL_EXECUTION_ENTITY_COLLECTION_KEYS: Partial<Record<ToolExecutionEntityKind, string>> = {
+	project: 'projects',
+	task: 'tasks',
+	goal: 'goals',
+	plan: 'plans',
+	document: 'documents',
+	milestone: 'milestones',
+	risk: 'risks',
+	requirement: 'requirements'
+};
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
 	if (!value) return fallback;
@@ -385,6 +439,187 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 
 function readMetadataString(value: unknown): string | null {
 	return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function normalizeToolExecutionEntityKind(value: unknown): ToolExecutionEntityKind | null {
+	if (typeof value !== 'string') return null;
+	const normalized = value.trim().toLowerCase();
+	return TOOL_EXECUTION_ENTITY_KIND_ALIASES[normalized] ?? null;
+}
+
+function addToolExecutionEntityRecord(
+	entities: Record<string, any>,
+	kind: ToolExecutionEntityKind,
+	record: Record<string, unknown>
+): void {
+	const id = readMetadataString(record.id);
+	if (!id) return;
+
+	if (kind === 'project') {
+		entities.project = entities.project ?? record;
+	} else {
+		entities[kind] = entities[kind] ?? record;
+	}
+
+	const collectionKey = TOOL_EXECUTION_ENTITY_COLLECTION_KEYS[kind];
+	if (!collectionKey) return;
+	const collection = Array.isArray(entities[collectionKey]) ? entities[collectionKey] : [];
+	if (!collection.some((item: unknown) => isPlainRecord(item) && item.id === id)) {
+		collection.push(record);
+	}
+	entities[collectionKey] = collection;
+}
+
+function addToolExecutionEntityCollection(
+	entities: Record<string, any>,
+	kind: ToolExecutionEntityKind,
+	value: unknown
+): void {
+	if (!Array.isArray(value)) return;
+	for (const item of value) {
+		if (isPlainRecord(item)) {
+			addToolExecutionEntityRecord(entities, kind, item);
+		}
+	}
+}
+
+function buildToolExecutionContextScope(params: {
+	projectId?: string | null;
+	projectName?: string | null;
+	projectFocus?: ProjectFocus | null;
+	promptContext?: FastChatResolvedPromptContext;
+}): ServiceContext['contextScope'] {
+	const projectId = readMetadataString(params.projectId ?? params.promptContext?.projectId);
+	if (!projectId) return undefined;
+
+	const projectName =
+		readMetadataString(params.projectName) ??
+		readMetadataString(params.promptContext?.projectName) ??
+		undefined;
+	const focusKind = normalizeToolExecutionEntityKind(
+		params.projectFocus?.focusType === 'project-wide'
+			? null
+			: (params.projectFocus?.focusType ?? params.promptContext?.focusEntityType)
+	);
+	const focusId = readMetadataString(
+		params.projectFocus?.focusEntityId ?? params.promptContext?.focusEntityId
+	);
+	const focusName =
+		readMetadataString(params.projectFocus?.focusEntityName) ??
+		readMetadataString(params.promptContext?.focusEntityName) ??
+		undefined;
+
+	return {
+		projectId,
+		projectName,
+		...(focusKind && focusKind !== 'project' && focusId
+			? {
+					focus: {
+						type: focusKind as Exclude<ToolExecutionEntityKind, 'project'>,
+						id: focusId,
+						name: focusName
+					}
+				}
+			: {})
+	};
+}
+
+function countToolExecutionDocumentTreeNodes(nodes: unknown): number {
+	if (!Array.isArray(nodes)) return 0;
+	let count = 0;
+	for (const node of nodes) {
+		if (!isPlainRecord(node)) continue;
+		count += 1;
+		count += countToolExecutionDocumentTreeNodes(node.children);
+	}
+	return count;
+}
+
+function buildToolExecutionOntologyContext(params: {
+	promptContext?: FastChatResolvedPromptContext;
+	contextScope?: ServiceContext['contextScope'];
+}): ServiceContext['ontologyContext'] | undefined {
+	const projectId = readMetadataString(
+		params.promptContext?.projectId ?? params.contextScope?.projectId
+	);
+	if (!projectId) return undefined;
+
+	const data = isPlainRecord(params.promptContext?.data) ? params.promptContext.data : null;
+	const entities: Record<string, any> = {};
+	const projectName =
+		readMetadataString(params.promptContext?.projectName ?? params.contextScope?.projectName) ??
+		'Project';
+
+	if (data) {
+		if (isPlainRecord(data.project)) {
+			addToolExecutionEntityRecord(entities, 'project', {
+				...data.project,
+				id: readMetadataString(data.project.id) ?? projectId
+			});
+		}
+		addToolExecutionEntityCollection(entities, 'goal', data.goals);
+		addToolExecutionEntityCollection(entities, 'milestone', data.milestones);
+		addToolExecutionEntityCollection(entities, 'plan', data.plans);
+		addToolExecutionEntityCollection(entities, 'task', data.tasks);
+		addToolExecutionEntityCollection(entities, 'document', data.documents);
+		addToolExecutionEntityCollection(entities, 'risk', data.risks);
+
+		const linkedEntities = isPlainRecord(data.linked_entities) ? data.linked_entities : null;
+		if (linkedEntities) {
+			for (const [key, value] of Object.entries(linkedEntities)) {
+				const kind = normalizeToolExecutionEntityKind(key);
+				if (kind) {
+					addToolExecutionEntityCollection(entities, kind, value);
+				}
+			}
+		}
+
+		const focusKind = normalizeToolExecutionEntityKind(
+			data.focus_entity_type ?? params.promptContext?.focusEntityType
+		);
+		const focusId = readMetadataString(
+			data.focus_entity_id ?? params.promptContext?.focusEntityId
+		);
+		if (focusKind && focusId) {
+			const focusFull = isPlainRecord(data.focus_entity_full) ? data.focus_entity_full : {};
+			addToolExecutionEntityRecord(entities, focusKind, {
+				...focusFull,
+				id: readMetadataString(focusFull.id) ?? focusId
+			});
+		}
+	}
+
+	if (!entities.project) {
+		addToolExecutionEntityRecord(entities, 'project', {
+			id: projectId,
+			name: projectName
+		});
+	}
+
+	const docStructure = data && isPlainRecord(data.doc_structure) ? data.doc_structure : null;
+	const documentRoot = docStructure?.root;
+	const metadata =
+		docStructure && Array.isArray(documentRoot)
+			? {
+					document_tree: {
+						version:
+							typeof docStructure.version === 'number' ? docStructure.version : 1,
+						root: documentRoot,
+						total_nodes: countToolExecutionDocumentTreeNodes(documentRoot)
+					}
+				}
+			: {};
+
+	return {
+		type: 'project',
+		entities: entities as NonNullable<ServiceContext['ontologyContext']>['entities'],
+		metadata: metadata as NonNullable<ServiceContext['ontologyContext']>['metadata'],
+		scope: {
+			projectId,
+			projectName,
+			focus: params.contextScope?.focus
+		}
+	};
 }
 
 function truncatePromptBlock(
@@ -2777,20 +3012,7 @@ export const POST: RequestHandler = async ({
 				failedAssetIds: [] as string[]
 			};
 			let contextCacheAgeSeconds = 0;
-			let promptContext:
-				| {
-						contextType: ChatContextType;
-						entityId?: string | null;
-						projectId?: string | null;
-						projectName?: string | null;
-						focusEntityType?: string | null;
-						focusEntityId?: string | null;
-						focusEntityName?: string | null;
-						conversationSummary?: string | null;
-						entityResolutionHint?: string | null;
-						data?: Record<string, unknown> | string | null;
-				  }
-				| undefined;
+			let promptContext: FastChatResolvedPromptContext | undefined;
 			contextBuildStartedAtMs = Date.now();
 			try {
 				const hasFreshRequestPrewarmCache =
@@ -3288,12 +3510,12 @@ export const POST: RequestHandler = async ({
 				},
 				toolExecutor: toolExecutionService
 					? async (toolCall, availableToolsForExecution = tools) => {
-							const contextScope = effectiveProjectIdForTools
-								? {
-										projectId: effectiveProjectIdForTools,
-										projectName: promptContext?.projectName ?? undefined
-									}
-								: undefined;
+							const contextScope = buildToolExecutionContextScope({
+								projectId: effectiveProjectIdForTools,
+								projectName: promptContext?.projectName ?? undefined,
+								projectFocus,
+								promptContext
+							});
 							const serviceContext: ServiceContext = {
 								sessionId: session.id,
 								userId,
@@ -3305,6 +3527,12 @@ export const POST: RequestHandler = async ({
 									entityName: promptContext?.projectName ?? null
 								},
 								conversationHistory: conversationHistoryForTools,
+								ontologyContext: buildToolExecutionOntologyContext({
+									promptContext,
+									contextScope
+								}),
+								lastTurnContext: requestLastTurnContext ?? undefined,
+								projectFocus: projectFocus ?? null,
 								contextScope
 							};
 							const result = await toolExecutionService.executeTool(

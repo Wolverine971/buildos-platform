@@ -101,10 +101,10 @@
 	const initialDashboard = (initialData?.initialDashboard ??
 		null) as DashboardAnalyticsPayload | null;
 	const defaultTimeframe = (initialData?.defaultTimeframe ?? '30d') as '7d' | '30d' | '90d';
-	const loadErrorFromServer = initialData?.loadError as string | undefined;
+	const loadErrorFromServer = initialData?.loadError ?? null;
 
 	let isLoading = $state(initialDashboard ? false : true);
-	let error = $state<string | null>(loadErrorFromServer ?? null);
+	let error = $state<string | null>(loadErrorFromServer);
 	type Timeframe = '7d' | '30d' | '90d';
 
 	let selectedTimeframe = $state<Timeframe>(defaultTimeframe);

@@ -20,6 +20,22 @@ const clampProgress = (progress?: number | null) => {
 
 type BillingContext = CachedBillingContext;
 
+type PendingProjectInvite = {
+	invite_id: string;
+	project_id: string | null;
+	project_name: string;
+	role_key: string | null;
+	access: string | null;
+	status: string;
+	expires_at: string | null;
+	created_at: string | null;
+	declined_at?: string | null;
+	recoverable_until?: string | null;
+	can_accept?: boolean | null;
+	invited_by_name?: string | null;
+	invited_by_email?: string | null;
+};
+
 const createEmptyBillingContext = (loading: boolean): BillingContext => ({
 	subscription: null,
 	trialStatus: null,
@@ -38,7 +54,7 @@ const PENDING_INVITES_TTL_MS = 20_000;
 const ONBOARDING_PROGRESS_TTL_MS = 60_000;
 const WEBHOOK_CHECK_TTL_MS = 5 * 60_000;
 
-const pendingInvitesCache = new Map<string, CacheEntry<unknown[]>>();
+const pendingInvitesCache = new Map<string, CacheEntry<PendingProjectInvite[]>>();
 const onboardingProgressCache = new Map<string, CacheEntry<number>>();
 const webhookCheckThrottle = new Map<string, number>();
 
@@ -157,9 +173,11 @@ export const load: LayoutServerLoad = async ({
 					const { data, error } = await supabase.rpc('list_pending_project_invites');
 					if (error) {
 						console.warn('[Layout] Failed to load pending invites:', error);
-						return [] as unknown[];
+						return [] as PendingProjectInvite[];
 					}
-					const invites = Array.isArray(data) ? (data as unknown[]) : ([] as unknown[]);
+					const invites = Array.isArray(data)
+						? (data as PendingProjectInvite[])
+						: ([] as PendingProjectInvite[]);
 					setCached(
 						pendingInvitesCache,
 						cacheKey,
@@ -170,7 +188,7 @@ export const load: LayoutServerLoad = async ({
 					return invites;
 				} catch (error) {
 					console.warn('[Layout] Failed to load pending invites:', error);
-					return [] as unknown[];
+					return [] as PendingProjectInvite[];
 				}
 			}),
 

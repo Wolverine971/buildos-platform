@@ -79,6 +79,22 @@ const GATEWAY_TOOL_NAMES = new Set([
 	'libri_get_capability_schema'
 ]);
 
+type ProjectScopedEntityKind =
+	| 'project'
+	| 'task'
+	| 'goal'
+	| 'plan'
+	| 'document'
+	| 'milestone'
+	| 'risk'
+	| 'requirement';
+
+interface EntityScopeCheck {
+	argKey: string;
+	kind: ProjectScopedEntityKind;
+	id: string;
+}
+
 function isToolCancellationResult(result: ToolExecutionResult): boolean {
 	if (result.errorType === 'cancelled') return true;
 	const message = typeof result.error === 'string' ? result.error.trim().toLowerCase() : '';
@@ -193,6 +209,49 @@ export class ToolExecutionService implements BaseService {
 		'new_parent_id',
 		'supporting_milestone_id'
 	]);
+	private static readonly PROJECT_SCOPED_ID_ARG_KINDS: Record<string, ProjectScopedEntityKind> = {
+		project_id: 'project',
+		task_id: 'task',
+		goal_id: 'goal',
+		plan_id: 'plan',
+		document_id: 'document',
+		milestone_id: 'milestone',
+		risk_id: 'risk',
+		parent_id: 'document',
+		parent_document_id: 'document',
+		new_parent_id: 'document',
+		supporting_milestone_id: 'milestone'
+	};
+	private static readonly ENTITY_KIND_ALIASES: Record<string, ProjectScopedEntityKind> = {
+		project: 'project',
+		projects: 'project',
+		task: 'task',
+		tasks: 'task',
+		goal: 'goal',
+		goals: 'goal',
+		plan: 'plan',
+		plans: 'plan',
+		document: 'document',
+		documents: 'document',
+		doc: 'document',
+		docs: 'document',
+		milestone: 'milestone',
+		milestones: 'milestone',
+		risk: 'risk',
+		risks: 'risk',
+		requirement: 'requirement',
+		requirements: 'requirement'
+	};
+	private static readonly ENTITY_PLURAL_KEYS: Partial<Record<ProjectScopedEntityKind, string>> = {
+		project: 'projects',
+		task: 'tasks',
+		goal: 'goals',
+		plan: 'plans',
+		document: 'documents',
+		milestone: 'milestones',
+		risk: 'risks',
+		requirement: 'requirements'
+	};
 
 	constructor(
 		private toolExecutor: ToolExecutorFunction,
@@ -378,6 +437,15 @@ export class ToolExecutionService implements BaseService {
 		);
 		if (projectScopeGuard) {
 			return finalizeResult(projectScopeGuard);
+		}
+		const entityScopeGuard = this.guardEntityIdsMatchContextScope(
+			toolName,
+			args,
+			context,
+			toolCall.id
+		);
+		if (entityScopeGuard) {
+			return finalizeResult(entityScopeGuard);
 		}
 		if (toolName === 'create_onto_project') {
 			args = normalizeProjectCreateArgs(args);
@@ -2019,20 +2087,24 @@ export class ToolExecutionService implements BaseService {
 		const resolved = { ...args };
 
 		if (this.toolSupportsProjectId(toolName, availableTools)) {
+			let shouldInjectProjectId =
+				!Object.prototype.hasOwnProperty.call(resolved, 'project_id') ||
+				resolved.project_id === undefined;
+
 			if (typeof resolved.project_id === 'string') {
 				const trimmed = resolved.project_id.trim();
 				if (trimmed) {
 					resolved.project_id = trimmed;
+					shouldInjectProjectId = false;
 				} else {
 					delete resolved.project_id;
+					shouldInjectProjectId = true;
 				}
-			} else if ('project_id' in resolved) {
-				delete resolved.project_id;
+			} else if (Object.prototype.hasOwnProperty.call(resolved, 'project_id')) {
+				shouldInjectProjectId = false;
 			}
 
-			const hasValidProjectId =
-				typeof resolved.project_id === 'string' && isValidUUID(resolved.project_id);
-			if (!hasValidProjectId) {
+			if (shouldInjectProjectId) {
 				const projectId = this.resolveProjectIdFromContext(context);
 				if (projectId) {
 					resolved.project_id = projectId;
@@ -2620,8 +2692,17 @@ export class ToolExecutionService implements BaseService {
 		if (!scopedProjectId || !isValidUUID(scopedProjectId)) {
 			return null;
 		}
-		if (!requestedProjectId || !isValidUUID(requestedProjectId)) {
+		if (!requestedProjectId) {
 			return null;
+		}
+		if (!isValidUUID(requestedProjectId)) {
+			return {
+				success: false,
+				error: 'Tool project_id must be a valid UUID in the current project focus.',
+				errorType: 'validation_error',
+				toolName,
+				toolCallId
+			};
 		}
 		if (requestedProjectId === scopedProjectId) {
 			return null;
@@ -2634,6 +2715,286 @@ export class ToolExecutionService implements BaseService {
 			toolName,
 			toolCallId
 		};
+	}
+
+	private guardEntityIdsMatchContextScope(
+		toolName: string,
+		args: Record<string, any>,
+		context: ServiceContext,
+		toolCallId: string
+	): ToolExecutionResult | null {
+		const scopedProjectId = this.resolveProjectIdFromContext(context);
+		if (!scopedProjectId || !isValidUUID(scopedProjectId)) {
+			return null;
+		}
+
+		const checks = this.collectEntityScopeChecks(args);
+		const requiresKnownProject = this.requiresKnownProjectForEntityIdMutation(toolName);
+		const seen = new Set<string>();
+		for (const check of checks) {
+			const key = `${check.kind}:${check.id}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+
+			const knownProjectId = this.resolveKnownEntityProjectIdFromContext(
+				context,
+				check.kind,
+				check.id
+			);
+			if (!knownProjectId) {
+				if (requiresKnownProject && check.kind !== 'project') {
+					return {
+						success: false,
+						error: `Tool ${check.argKey} is not known to belong to the current project focus. Load or resolve the entity in the current project before mutating it.`,
+						errorType: 'validation_error',
+						toolName,
+						toolCallId
+					};
+				}
+				continue;
+			}
+			if (knownProjectId === scopedProjectId) {
+				continue;
+			}
+
+			return {
+				success: false,
+				error: `Tool ${check.argKey} belongs to a different project than the current project focus. Switch focus or ask for explicit cross-project confirmation before using another project.`,
+				errorType: 'validation_error',
+				toolName,
+				toolCallId
+			};
+		}
+
+		return null;
+	}
+
+	private requiresKnownProjectForEntityIdMutation(toolName: string): boolean {
+		if (toolName.startsWith(ToolExecutionService.UPDATE_TOOL_PREFIX)) {
+			return true;
+		}
+		if (toolName.startsWith('delete_onto_')) {
+			return true;
+		}
+		if (toolName.startsWith('create_onto_') && toolName !== 'create_onto_project') {
+			return true;
+		}
+		return (
+			toolName === 'create_task_document' ||
+			toolName === 'link_onto_entities' ||
+			toolName === 'move_document_in_tree' ||
+			toolName === 'tag_onto_entity'
+		);
+	}
+
+	private collectEntityScopeChecks(args: Record<string, any>): EntityScopeCheck[] {
+		const checks: EntityScopeCheck[] = [];
+		const addCheck = (
+			argKey: string,
+			kind: ProjectScopedEntityKind | undefined,
+			value: unknown
+		): void => {
+			if (!kind || typeof value !== 'string') return;
+			const id = value.trim();
+			if (!id || !isValidUUID(id)) return;
+			checks.push({ argKey, kind, id });
+		};
+
+		for (const [argKey, kind] of Object.entries(
+			ToolExecutionService.PROJECT_SCOPED_ID_ARG_KINDS
+		)) {
+			addCheck(argKey, kind, args[argKey]);
+		}
+
+		addCheck(
+			'entity_id',
+			this.normalizeProjectScopedEntityKind(
+				args.entity_kind ?? args.entity_type ?? args.entityType ?? args.kind
+			),
+			args.entity_id
+		);
+		addCheck('src_id', this.normalizeProjectScopedEntityKind(args.src_kind), args.src_id);
+		addCheck('dst_id', this.normalizeProjectScopedEntityKind(args.dst_kind), args.dst_id);
+
+		return checks;
+	}
+
+	private normalizeProjectScopedEntityKind(value: unknown): ProjectScopedEntityKind | undefined {
+		if (typeof value !== 'string') return undefined;
+		const normalized = value.trim().toLowerCase().replace(/_/g, '-');
+		return ToolExecutionService.ENTITY_KIND_ALIASES[normalized];
+	}
+
+	private resolveKnownEntityProjectIdFromContext(
+		context: ServiceContext,
+		kind: ProjectScopedEntityKind,
+		entityId: string
+	): string | undefined {
+		if (kind === 'project') {
+			return isValidUUID(entityId) ? entityId : undefined;
+		}
+
+		const focusProjectId = this.resolveProjectIdFromProjectFocus(context, kind, entityId);
+		if (focusProjectId) {
+			return focusProjectId;
+		}
+
+		const contextScopeProjectId = this.resolveProjectIdFromScope(
+			context.contextScope,
+			kind,
+			entityId
+		);
+		if (contextScopeProjectId) {
+			return contextScopeProjectId;
+		}
+
+		const ontologyScopeProjectId = this.resolveProjectIdFromScope(
+			context.ontologyContext?.scope,
+			kind,
+			entityId
+		);
+		if (ontologyScopeProjectId) {
+			return ontologyScopeProjectId;
+		}
+
+		return this.resolveProjectIdFromOntologyContext(context, kind, entityId);
+	}
+
+	private resolveProjectIdFromProjectFocus(
+		context: ServiceContext,
+		kind: ProjectScopedEntityKind,
+		entityId: string
+	): string | undefined {
+		const focus = context.projectFocus;
+		if (!focus || focus.focusType !== kind || focus.focusEntityId !== entityId) {
+			return undefined;
+		}
+		return typeof focus.projectId === 'string' && isValidUUID(focus.projectId)
+			? focus.projectId
+			: undefined;
+	}
+
+	private resolveProjectIdFromScope(
+		scope: ServiceContext['contextScope'],
+		kind: ProjectScopedEntityKind,
+		entityId: string
+	): string | undefined {
+		if (scope?.focus?.type !== kind || scope.focus.id !== entityId) {
+			return undefined;
+		}
+		return typeof scope.projectId === 'string' && isValidUUID(scope.projectId)
+			? scope.projectId
+			: undefined;
+	}
+
+	private resolveProjectIdFromOntologyContext(
+		context: ServiceContext,
+		kind: ProjectScopedEntityKind,
+		entityId: string
+	): string | undefined {
+		const ontologyContext = context.ontologyContext;
+		const entities = ontologyContext?.entities;
+		if (!entities) return undefined;
+
+		const scopedProjectId = ontologyContext.scope?.projectId;
+		const fallbackProjectId =
+			typeof scopedProjectId === 'string' && isValidUUID(scopedProjectId)
+				? scopedProjectId
+				: undefined;
+
+		const directEntity = (entities as Record<string, any>)[kind];
+		const directProjectId = this.resolveProjectIdFromEntityRecord(
+			directEntity,
+			kind,
+			entityId,
+			fallbackProjectId
+		);
+		if (directProjectId) {
+			return directProjectId;
+		}
+
+		const pluralKey = ToolExecutionService.ENTITY_PLURAL_KEYS[kind];
+		const collection = pluralKey ? (entities as Record<string, any>)[pluralKey] : undefined;
+		if (Array.isArray(collection)) {
+			for (const item of collection) {
+				const itemProjectId = this.resolveProjectIdFromEntityRecord(
+					item,
+					kind,
+					entityId,
+					fallbackProjectId
+				);
+				if (itemProjectId) {
+					return itemProjectId;
+				}
+			}
+		}
+
+		if (this.ontologyGraphContainsEntity(context, kind, entityId)) {
+			return fallbackProjectId;
+		}
+
+		if (kind === 'document' && this.documentTreeContainsEntity(context, entityId)) {
+			return fallbackProjectId;
+		}
+
+		return undefined;
+	}
+
+	private resolveProjectIdFromEntityRecord(
+		record: unknown,
+		kind: ProjectScopedEntityKind,
+		entityId: string,
+		fallbackProjectId?: string
+	): string | undefined {
+		if (!record || typeof record !== 'object' || Array.isArray(record)) {
+			return undefined;
+		}
+
+		const item = record as Record<string, unknown>;
+		if (item.id !== entityId) {
+			return undefined;
+		}
+		if (kind === 'project') {
+			return isValidUUID(entityId) ? entityId : undefined;
+		}
+
+		const projectId = item.project_id ?? item.projectId;
+		if (typeof projectId === 'string' && isValidUUID(projectId)) {
+			return projectId;
+		}
+
+		return fallbackProjectId;
+	}
+
+	private ontologyGraphContainsEntity(
+		context: ServiceContext,
+		kind: ProjectScopedEntityKind,
+		entityId: string
+	): boolean {
+		const graph = context.ontologyContext?.metadata?.graph_snapshot;
+		if (!graph || !Array.isArray(graph.nodes)) {
+			return false;
+		}
+		return graph.nodes.some((node) => node?.id === entityId && node.kind === kind);
+	}
+
+	private documentTreeContainsEntity(context: ServiceContext, entityId: string): boolean {
+		const tree = context.ontologyContext?.metadata?.document_tree;
+		if (!tree || !Array.isArray(tree.root)) {
+			return false;
+		}
+
+		const contains = (nodes: Array<Record<string, any>>): boolean => {
+			for (const node of nodes) {
+				if (node?.id === entityId) return true;
+				if (Array.isArray(node?.children) && contains(node.children)) {
+					return true;
+				}
+			}
+			return false;
+		};
+
+		return contains(tree.root as Array<Record<string, any>>);
 	}
 
 	private inferDocumentTitle(history: ChatMessage[]): string | undefined {

@@ -12,6 +12,7 @@ import {
 	recordProjectAuditTriggerEvaluation
 } from '@buildos/shared-agent-ops/project-audits';
 import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
+import { captureWorkerEvent } from '../../lib/posthog';
 import { supabase } from '../../lib/supabase';
 import { resolveProjectLoopOwnerUserIds } from './enqueue';
 
@@ -40,6 +41,32 @@ function projectAuditTriggerEvaluationDedupKey(params: {
 	scheduledFor: string;
 }): string {
 	return `project-audit-trigger:${params.projectId}:${params.triggerReason}:${params.scheduledFor.slice(0, 16)}`;
+}
+
+function captureAuditTriggerMetric(params: {
+	userId: string;
+	event: 'project_audit_queued' | 'project_audit_skipped' | 'project_audit_queue_failed';
+	projectId: string;
+	triggerReason: ProjectAuditTriggerReason;
+	auditDepth: ProjectAuditDepth;
+	decision?: string | null;
+	reason?: string | null;
+	auditId?: string | null;
+	runId?: string | null;
+	evaluationId?: string | null;
+	projectSizeClass?: string | null;
+}): void {
+	captureWorkerEvent(params.userId, params.event, {
+		project_id: params.projectId,
+		trigger_reason: params.triggerReason,
+		audit_depth: params.auditDepth,
+		decision: params.decision ?? null,
+		reason: params.reason ?? null,
+		audit_id: params.auditId ?? null,
+		run_id: params.runId ?? null,
+		evaluation_id: params.evaluationId ?? null,
+		project_size_class: params.projectSizeClass ?? null
+	});
 }
 
 async function resolveQueueJobPublicId(queueRecordId: string): Promise<string | undefined> {
@@ -164,6 +191,17 @@ export async function queueProjectAuditFromWorker(params: {
 				triggerEvaluationId: evaluationId
 			});
 		}
+		captureAuditTriggerMetric({
+			userId: params.userId,
+			event: 'project_audit_skipped',
+			projectId: params.projectId,
+			triggerReason: params.triggerReason,
+			auditDepth,
+			decision: evaluated.evaluation.decision,
+			reason: evaluated.evaluation.reason_summary,
+			evaluationId,
+			projectSizeClass: evaluated.evaluation.project_size_class
+		});
 		return {
 			queued: false,
 			evaluationId: evaluationId ?? undefined,
@@ -183,6 +221,16 @@ export async function queueProjectAuditFromWorker(params: {
 		const message =
 			error instanceof Error ? error.message : 'Failed to create project audit chat session';
 		console.error('[ProjectAudits] create audit chat session failed:', message);
+		captureAuditTriggerMetric({
+			userId: params.userId,
+			event: 'project_audit_queue_failed',
+			projectId: params.projectId,
+			triggerReason: params.triggerReason,
+			auditDepth,
+			decision: evaluated.evaluation.decision,
+			reason: message,
+			projectSizeClass: evaluated.evaluation.project_size_class
+		});
 		return {
 			queued: false,
 			decision: evaluated.evaluation.decision,
@@ -206,6 +254,16 @@ export async function queueProjectAuditFromWorker(params: {
 	if (runError || !runRow?.id) {
 		const message = runError?.message ?? 'Failed to create audit loop run';
 		console.error('[ProjectAudits] create audit loop run failed:', message);
+		captureAuditTriggerMetric({
+			userId: params.userId,
+			event: 'project_audit_queue_failed',
+			projectId: params.projectId,
+			triggerReason: params.triggerReason,
+			auditDepth,
+			decision: evaluated.evaluation.decision,
+			reason: message,
+			projectSizeClass: evaluated.evaluation.project_size_class
+		});
 		return {
 			queued: false,
 			decision: evaluated.evaluation.decision,
@@ -247,6 +305,17 @@ export async function queueProjectAuditFromWorker(params: {
 				finished_at: new Date().toISOString()
 			})
 			.eq('id', runRow.id);
+		captureAuditTriggerMetric({
+			userId: params.userId,
+			event: 'project_audit_queue_failed',
+			projectId: params.projectId,
+			triggerReason: params.triggerReason,
+			auditDepth,
+			decision: evaluated.evaluation.decision,
+			reason: message,
+			runId: runRow.id as string,
+			projectSizeClass: evaluated.evaluation.project_size_class
+		});
 		return {
 			queued: false,
 			runId: runRow.id as string,
@@ -294,6 +363,19 @@ export async function queueProjectAuditFromWorker(params: {
 				.update({ status: 'failed', error_message: message, finished_at: now })
 				.eq('id', auditRow.id)
 		]);
+		captureAuditTriggerMetric({
+			userId: params.userId,
+			event: 'project_audit_queue_failed',
+			projectId: params.projectId,
+			triggerReason: params.triggerReason,
+			auditDepth,
+			decision: evaluated.evaluation.decision,
+			reason: message,
+			auditId: auditRow.id as string,
+			runId: runRow.id as string,
+			evaluationId: evaluationId ?? undefined,
+			projectSizeClass: evaluated.evaluation.project_size_class
+		});
 		return {
 			queued: false,
 			auditId: auditRow.id as string,
@@ -312,6 +394,19 @@ export async function queueProjectAuditFromWorker(params: {
 			.eq('id', runRow.id);
 	}
 
+	captureAuditTriggerMetric({
+		userId: params.userId,
+		event: 'project_audit_queued',
+		projectId: params.projectId,
+		triggerReason: params.triggerReason,
+		auditDepth,
+		decision: 'queued',
+		reason: evaluated.evaluation.reason_summary,
+		auditId: auditRow.id as string,
+		runId: runRow.id as string,
+		evaluationId: evaluationId ?? undefined,
+		projectSizeClass: evaluated.evaluation.project_size_class
+	});
 	return {
 		queued: true,
 		auditId: auditRow.id as string,

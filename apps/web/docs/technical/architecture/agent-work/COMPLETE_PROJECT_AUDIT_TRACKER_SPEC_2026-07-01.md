@@ -10,7 +10,7 @@
 - `AI_INBOX_DESIGN_2026-06-24.md`
 - `AI_INBOX_CLARIFIED_DECISIONS_SPEC_2026-06-26.md`
 - `docs/research/project-review-loop-audit-suggestion-families-2026-06-25.md`
-- `tasker/04-project-review-loops.md`
+- Former Tasker project-loop tracker; residual work now lives in `tasker/13-ai-inbox-verify-and-cleanup.md` and `tasker/14-complete-project-audit-build.md`.
 
 ---
 

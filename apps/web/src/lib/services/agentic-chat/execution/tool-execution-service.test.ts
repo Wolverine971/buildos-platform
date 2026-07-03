@@ -146,6 +146,183 @@ describe('ToolExecutionService', () => {
 			expect(mockToolExecutor).not.toHaveBeenCalled();
 		});
 
+		it('rejects an invalid explicit project_id instead of replacing it with scoped context', async () => {
+			const scopedProjectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const toolCall: ChatToolCall = {
+				id: 'call_invalid_scoped_project',
+				name: 'list_onto_tasks',
+				arguments: { project_id: 'not-a-uuid' }
+			};
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextScope: { projectId: scopedProjectId }
+			};
+
+			const result = await service.executeTool(toolCall, scopedContext, mockToolDefinitions);
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining('project_id must be a valid UUID')
+			});
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
+		it('rejects a known task_id from a different project when project_id is context-injected', async () => {
+			const scopedProjectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const otherProjectId = '972064c0-c2aa-4c74-a735-313802ffd456';
+			const taskId = 'f914f9dc-a7a7-4f9e-9a3e-477c6975f259';
+			const updateTaskDefinition: ChatToolDefinition = {
+				name: 'update_onto_task',
+				description: 'Update task',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						task_id: { type: 'string' },
+						title: { type: 'string' }
+					},
+					required: ['task_id']
+				}
+			};
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextScope: { projectId: scopedProjectId },
+				ontologyContext: {
+					type: 'project',
+					entities: {
+						tasks: [
+							{
+								id: taskId,
+								title: 'Task from another project',
+								project_id: otherProjectId
+							}
+						]
+					},
+					metadata: {},
+					scope: { projectId: otherProjectId }
+				} as any
+			};
+			const toolCall: ChatToolCall = {
+				id: 'call_cross_project_task',
+				name: 'update_onto_task',
+				arguments: { task_id: taskId, title: 'Rename task' }
+			};
+
+			const result = await service.executeTool(toolCall, scopedContext, [
+				updateTaskDefinition
+			]);
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining('task_id belongs to a different project')
+			});
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
+		it('rejects an unknown task_id mutation in a project-scoped turn', async () => {
+			const scopedProjectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const taskId = 'f914f9dc-a7a7-4f9e-9a3e-477c6975f259';
+			const updateTaskDefinition: ChatToolDefinition = {
+				name: 'update_onto_task',
+				description: 'Update task',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						task_id: { type: 'string' },
+						title: { type: 'string' }
+					},
+					required: ['task_id']
+				}
+			};
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextScope: { projectId: scopedProjectId },
+				ontologyContext: {
+					type: 'project',
+					entities: { tasks: [] },
+					metadata: {},
+					scope: { projectId: scopedProjectId }
+				} as any
+			};
+			const toolCall: ChatToolCall = {
+				id: 'call_unknown_project_task',
+				name: 'update_onto_task',
+				arguments: { task_id: taskId, title: 'Rename task' }
+			};
+
+			const result = await service.executeTool(toolCall, scopedContext, [
+				updateTaskDefinition
+			]);
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining('task_id is not known to belong')
+			});
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
+		it('allows a known task_id from the current project after injecting project_id', async () => {
+			const scopedProjectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const taskId = 'f914f9dc-a7a7-4f9e-9a3e-477c6975f259';
+			const updateTaskDefinition: ChatToolDefinition = {
+				name: 'update_onto_task',
+				description: 'Update task',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						task_id: { type: 'string' },
+						title: { type: 'string' }
+					},
+					required: ['task_id']
+				}
+			};
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextScope: { projectId: scopedProjectId },
+				ontologyContext: {
+					type: 'project',
+					entities: {
+						tasks: [
+							{
+								id: taskId,
+								title: 'Task from current project',
+								project_id: scopedProjectId
+							}
+						]
+					},
+					metadata: {},
+					scope: { projectId: scopedProjectId }
+				} as any
+			};
+			const toolCall: ChatToolCall = {
+				id: 'call_current_project_task',
+				name: 'update_onto_task',
+				arguments: { task_id: taskId, title: 'Rename task' }
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ data: { task: { id: taskId } } });
+
+			const result = await service.executeTool(toolCall, scopedContext, [
+				updateTaskDefinition
+			]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'update_onto_task',
+				expect.objectContaining({
+					project_id: scopedProjectId,
+					task_id: taskId,
+					title: 'Rename task'
+				}),
+				scopedContext
+			);
+		});
+
 		it('should coerce raw string arguments for web_search into query', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_web_search',

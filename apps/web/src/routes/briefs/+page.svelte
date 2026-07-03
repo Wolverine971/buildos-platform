@@ -64,6 +64,19 @@
 		// We can still generate briefs without realtime updates
 	}
 
+	async function resolveSupabaseClient() {
+		if (supabaseClient || !browser) return supabaseClient;
+
+		try {
+			const { createSupabaseBrowser } = await import('$lib/supabase');
+			supabaseClient = createSupabaseBrowser();
+		} catch (error) {
+			console.warn('Unable to create Supabase browser client for briefs:', error);
+		}
+
+		return supabaseClient;
+	}
+
 	// Initialize with minimal data from server
 	let currentDate = $state('');
 	let selectedView = $state<'single' | 'list' | 'analytics'>('single');
@@ -338,6 +351,8 @@
 
 	// Initialize on mount
 	onMount(async () => {
+		await resolveSupabaseClient();
+
 		// Get user's timezone from browser
 		userTimezone = getUserTimezone();
 

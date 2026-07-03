@@ -1,6 +1,15 @@
 // apps/web/src/routes/admin/+page.server.ts
 import type { PageServerLoad } from './$types';
-import type { AnalyticsTimeframe } from '$lib/services/admin/dashboard-analytics.service';
+import type {
+	AnalyticsTimeframe,
+	DashboardAnalyticsPayload
+} from '$lib/services/admin/dashboard-analytics.service';
+
+type AdminPageServerData = {
+	initialDashboard: DashboardAnalyticsPayload | null;
+	defaultTimeframe: AnalyticsTimeframe;
+	loadError: string | null;
+};
 
 export const load: PageServerLoad = async ({ url }) => {
 	const timeframeParam = url.searchParams.get('timeframe') as AnalyticsTimeframe | null;
@@ -9,6 +18,7 @@ export const load: PageServerLoad = async ({ url }) => {
 
 	return {
 		initialDashboard: null,
-		defaultTimeframe: timeframe
-	};
+		defaultTimeframe: timeframe,
+		loadError: null
+	} satisfies AdminPageServerData;
 };
