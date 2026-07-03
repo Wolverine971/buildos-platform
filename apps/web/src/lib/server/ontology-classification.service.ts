@@ -1,6 +1,8 @@
 // apps/web/src/lib/server/ontology-classification.service.ts
-import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
-import { PRIVATE_RAILWAY_WORKER_TOKEN } from '$env/static/private';
+import {
+	PRIVATE_RAILWAY_WORKER_TOKEN,
+	PUBLIC_RAILWAY_WORKER_URL
+} from '$lib/server/railway-worker-env';
 import type { OntologyClassificationRequest } from '@buildos/shared-types';
 
 const WORKER_URL = PUBLIC_RAILWAY_WORKER_URL;

@@ -1,9 +1,33 @@
 // apps/web/src/routes/api/admin/emails/generate/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { EmailGenerationService } from '$lib/services/email-generation-service';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EmailGenerationContext } from '$lib/services/email-generation-service';
 import { validateEmail } from '$lib/utils/email-validation';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const emailGenerationUserInfoSchema = z
+	.object({
+		basic: z
+			.object({
+				email: z.string().optional()
+			})
+			.passthrough(),
+		activity: z.record(z.unknown())
+	})
+	.passthrough();
+
+const generateAdminEmailSchema = z
+	.object({
+		userId: z.string().min(1),
+		instructions: z.string().min(1).max(5000),
+		emailType: z.enum(['welcome', 'follow-up', 'feature', 'feedback', 'custom']).optional(),
+		tone: z.enum(['professional', 'friendly', 'casual']).optional(),
+		userInfo: emailGenerationUserInfoSchema,
+		customSystemPrompt: z.string().optional()
+	})
+	.strict();
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
@@ -14,8 +38,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		// Parse request body
-		const body = await request.json();
-		const { userId, instructions, emailType, tone, userInfo, customSystemPrompt } = body;
+		const parsed = await parseJsonRequest(request, generateAdminEmailSchema);
+		if (!parsed.ok) return parsed.response;
+		const { userId, instructions, emailType, tone, userInfo, customSystemPrompt } = parsed.data;
 
 		// Validate required fields
 		if (!userId || !instructions || !userInfo) {
@@ -48,7 +73,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		// Generate email with optional custom system prompt
 		const context: EmailGenerationContext = {
-			userInfo,
+			userInfo: userInfo as unknown as EmailGenerationContext['userInfo'],
 			instructions,
 			emailType: emailType || 'custom',
 			tone: tone || 'friendly'
@@ -61,9 +86,10 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		// Log the generation (use admin user ID if beta member without account)
 		const logUserId = userId === 'beta-only' ? user.id : userId;
+		const userEmail = typeof userInfo.basic.email === 'string' ? userInfo.basic.email : '';
 		await emailService.logGeneratedEmail(
 			logUserId,
-			userInfo.basic.email,
+			userEmail,
 			generatedEmail,
 			instructions,
 			false

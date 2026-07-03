@@ -1,7 +1,16 @@
 // apps/web/src/routes/api/calendar/remove-task/+server.ts
+import { z } from 'zod';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const removeCalendarTaskSchema = z
+	.object({
+		event_id: z.string().min(1),
+		calendar_id: z.string().optional()
+	})
+	.strict();
 
 export const POST: RequestHandler = async ({ request, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
@@ -11,7 +20,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 	}
 
 	try {
-		const { event_id, calendar_id } = await request.json();
+		const parsed = await parseJsonRequest(request, removeCalendarTaskSchema);
+		if (!parsed.ok) return parsed.response;
+		const { event_id, calendar_id } = parsed.data;
 
 		if (!event_id) {
 			return ApiResponse.badRequest('Event ID is required');

@@ -1,8 +1,19 @@
 // apps/web/src/routes/api/admin/emails/send/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { EmailService } from '$lib/services/email-service';
 import { validateEmail } from '$lib/utils/email-validation';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const sendAdminEmailSchema = z
+	.object({
+		to: z.string().min(1),
+		subject: z.string().min(1),
+		body: z.string().min(1),
+		userId: z.string().nullable().optional()
+	})
+	.strict();
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
@@ -13,8 +24,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		// Parse request body
-		const body = await request.json();
-		const { to, subject, body: emailBody, userId } = body;
+		const parsed = await parseJsonRequest(request, sendAdminEmailSchema);
+		if (!parsed.ok) return parsed.response;
+		const { to, subject, body: emailBody, userId } = parsed.data;
 
 		// Validate required fields
 		if (!to || !subject || !emailBody) {

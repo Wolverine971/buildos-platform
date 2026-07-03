@@ -3,7 +3,8 @@
 // Worker-facing adapters over the shared gateway handler catalog. Agent Runs use
 // this lean path so the worker records its own telemetry while reusing the same
 // operation handlers as the external gateway.
-import type { AgentCallScope, BuildosAgentAllowedOp } from '@buildos/shared-types';
+import type { AgentCallScope, BuildosAgentAllowedOp, Database } from '@buildos/shared-types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeGatewayOpName } from '../ops/gateway-op-aliases';
 import { isReadOp, isWriteOp } from '../policy';
 import {
@@ -15,6 +16,8 @@ import {
 	type ToolExecutionContext
 } from './op-execution-gateway.core';
 import { normalizeAndValidateGatewayWriteArgs } from './op-execution-gateway.validation';
+
+type GatewaySupabaseClient = SupabaseClient<Database>;
 
 // Worker gateway adapter catalogs
 
@@ -74,7 +77,7 @@ export interface GatewayReadOpResult {
  * worker.
  */
 export async function runGatewayReadOp(params: {
-	admin: any;
+	admin: GatewaySupabaseClient;
 	userId: string;
 	scope: AgentCallScope;
 	op: string;
@@ -141,9 +144,7 @@ export async function runGatewayReadOp(params: {
  * task-event syncing while other side effects continue.
  */
 export async function runGatewayWriteOp(params: {
-	// `any` matches ToolExecutionContext.admin (the whole handler map is typed
-	// this way); callers pass a real SupabaseClient<Database>.
-	admin: any;
+	admin: GatewaySupabaseClient;
 	userId: string;
 	scope: AgentCallScope;
 	op: string;

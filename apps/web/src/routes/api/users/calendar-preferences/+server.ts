@@ -1,6 +1,27 @@
 // apps/web/src/routes/api/users/calendar-preferences/+server.ts
 import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const calendarPreferenceUpdateSchema = z
+	.object({
+		work_start_time: z.string().optional(),
+		work_end_time: z.string().optional(),
+		working_days: z.array(z.number().int().min(0).max(6)).optional(),
+		default_task_duration_minutes: z.number().int().positive().optional(),
+		min_task_duration_minutes: z.number().int().positive().optional(),
+		max_task_duration_minutes: z.number().int().positive().optional(),
+		exclude_holidays: z.boolean().optional(),
+		holiday_country_code: z.string().optional(),
+		timezone: z.string().optional(),
+		prefer_morning_for_important_tasks: z.boolean().optional(),
+		show_events: z.boolean().optional(),
+		show_task_scheduled: z.boolean().optional(),
+		show_task_start: z.boolean().optional(),
+		show_task_due: z.boolean().optional()
+	})
+	.strict();
 
 export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	try {
@@ -71,7 +92,9 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 			return ApiResponse.unauthorized('Unauthorized');
 		}
 
-		const updates = await request.json();
+		const parsed = await parseJsonRequest(request, calendarPreferenceUpdateSchema);
+		if (!parsed.ok) return parsed.response;
+		const updates = parsed.data;
 
 		// Validate working days
 		if (updates.working_days && !Array.isArray(updates.working_days)) {

@@ -79,6 +79,9 @@ export class BaseExecutor {
 	protected readonly activityLogActorContext?: ActivityLogActorContext;
 	protected readonly abortSignal?: AbortSignal;
 
+	private readonly actorIdProvider?: ExecutorContext['getActorId'];
+	private readonly adminSupabaseProvider?: ExecutorContext['getAdminSupabase'];
+	private readonly authHeadersProvider?: ExecutorContext['getAuthHeaders'];
 	private _actorId?: string;
 	private _adminSupabase?: TypedSupabaseClient;
 
@@ -90,6 +93,9 @@ export class BaseExecutor {
 		this.llmService = context.llmService;
 		this.activityLogActorContext = context.activityLogActorContext;
 		this.abortSignal = context.abortSignal;
+		this.actorIdProvider = context.getActorId;
+		this.adminSupabaseProvider = context.getAdminSupabase;
+		this.authHeadersProvider = context.getAuthHeaders;
 	}
 
 	// ============================================
@@ -101,6 +107,11 @@ export class BaseExecutor {
 	 * Cached after first resolution.
 	 */
 	protected async getActorId(): Promise<string> {
+		const providedActorId = await this.actorIdProvider?.();
+		if (providedActorId) {
+			return providedActorId;
+		}
+
 		if (!this._actorId) {
 			this._actorId = await ensureActorId(this.supabase as any, this.userId);
 		}
@@ -112,6 +123,11 @@ export class BaseExecutor {
 	 * Used for privileged operations.
 	 */
 	protected getAdminSupabase(): TypedSupabaseClient {
+		const providedAdmin = this.adminSupabaseProvider?.();
+		if (providedAdmin) {
+			return providedAdmin;
+		}
+
 		if (!this._adminSupabase) {
 			this._adminSupabase = createAdminSupabaseClient();
 		}
@@ -123,21 +139,32 @@ export class BaseExecutor {
 	 * Includes X-Change-Source header to identify agentic chat operations.
 	 */
 	protected async getAuthHeaders(): Promise<HeadersInit> {
-		const {
-			data: { session }
-		} = await this.supabase.auth.getSession();
+		const providedHeaders = await this.authHeadersProvider?.();
+		const headers = new Headers(providedHeaders ?? undefined);
 
-		const headers: Record<string, string> = {
-			'Content-Type': 'application/json',
-			Authorization: session?.access_token ? `Bearer ${session.access_token}` : '',
-			'X-Change-Source': 'chat'
-		};
-
-		if (this.sessionId) {
-			headers['X-Chat-Session-Id'] = this.sessionId;
+		if (!headers.has('Authorization')) {
+			const {
+				data: { session }
+			} = await this.supabase.auth.getSession();
+			headers.set(
+				'Authorization',
+				session?.access_token ? `Bearer ${session.access_token}` : ''
+			);
 		}
 
-		return headers;
+		if (!headers.has('Content-Type')) {
+			headers.set('Content-Type', 'application/json');
+		}
+
+		if (!headers.has('X-Change-Source')) {
+			headers.set('X-Change-Source', 'chat');
+		}
+
+		if (this.sessionId && !headers.has('X-Chat-Session-Id')) {
+			headers.set('X-Chat-Session-Id', this.sessionId);
+		}
+
+		return Object.fromEntries(headers.entries());
 	}
 
 	// ============================================

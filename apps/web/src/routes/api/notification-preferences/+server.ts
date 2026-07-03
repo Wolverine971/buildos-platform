@@ -1,6 +1,27 @@
 // apps/web/src/routes/api/notification-preferences/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const notificationPreferencesUpdateSchema = z
+	.object({
+		should_email_daily_brief: z.boolean().optional(),
+		should_sms_daily_brief: z.boolean().optional(),
+		push_enabled: z.boolean().optional(),
+		email_enabled: z.boolean().optional(),
+		sms_enabled: z.boolean().optional(),
+		in_app_enabled: z.boolean().optional(),
+		batch_enabled: z.boolean().optional(),
+		batch_interval_minutes: z.number().int().positive().nullable().optional(),
+		max_per_day: z.number().int().positive().nullable().optional(),
+		max_per_hour: z.number().int().positive().nullable().optional(),
+		priority: z.string().min(1).optional(),
+		quiet_hours_enabled: z.boolean().optional(),
+		quiet_hours_start: z.string().nullable().optional(),
+		quiet_hours_end: z.string().nullable().optional()
+	})
+	.strict();
 
 /**
  * GET: Get user notification preferences
@@ -62,7 +83,9 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 	}
 
 	try {
-		const body = await request.json();
+		const parsed = await parseJsonRequest(request, notificationPreferencesUpdateSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data;
 		const { should_email_daily_brief, should_sms_daily_brief, ...updates } = body;
 
 		// Validate phone number if enabling SMS (either daily brief or general SMS)

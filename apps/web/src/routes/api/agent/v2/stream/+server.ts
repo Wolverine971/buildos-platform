@@ -1112,8 +1112,25 @@ function emitToolCall(
 // dropped 2026-06-10; the SSE handler and tool presenter read tool_name,
 // tool_call_id, and result.
 function buildToolResultEventPayload(toolCall: ChatToolCall, result: ChatToolResult) {
+	const meta = extractFastChatToolCallMeta(toolCall);
+	const searchTelemetry = searchTelemetryColumns({
+		toolName: toolCall.function.name,
+		success: result.success === true,
+		result: result.result
+	});
+	const toolCategory = getToolCategory(toolCall.function.name) ?? null;
+
 	return {
 		...result,
+		...(searchTelemetry.result_count !== null
+			? {
+					result_count: searchTelemetry.result_count,
+					zero_result: searchTelemetry.zero_result
+				}
+			: {}),
+		...(toolCategory ? { tool_category: toolCategory } : {}),
+		...(meta.canonicalOp ? { gateway_op: meta.canonicalOp } : {}),
+		...(meta.helpPath ? { help_path: meta.helpPath } : {}),
 		tool_name: toolCall.function.name,
 		tool_call_id: result.tool_call_id ?? toolCall.id
 	};
@@ -2710,12 +2727,18 @@ export const POST: RequestHandler = async ({
 						(result as any)?.usage ??
 						(result.result as any)?.usage ??
 						(result.result as any)?.usage_metrics;
+					const directTokensConsumed =
+						typeof (result as any)?.tokens_consumed === 'number' &&
+						Number.isFinite((result as any).tokens_consumed)
+							? (result as any).tokens_consumed
+							: undefined;
 					const tokensUsed =
-						usage && typeof usage.total_tokens === 'number'
+						directTokensConsumed ??
+						(usage && typeof usage.total_tokens === 'number'
 							? usage.total_tokens
 							: typeof usage?.totalTokens === 'number'
 								? usage.totalTokens
-								: undefined;
+								: undefined);
 					if (typeof tokensUsed === 'number') {
 						metadata.tokensUsed = tokensUsed;
 					}
@@ -3311,6 +3334,9 @@ export const POST: RequestHandler = async ({
 								...(durationMs !== undefined ? { duration_ms: durationMs } : {}),
 								...(tokensConsumed !== undefined
 									? { tokens_consumed: tokensConsumed }
+									: {}),
+								...(Array.isArray(result.streamEvents)
+									? { stream_events: result.streamEvents }
 									: {})
 							};
 						}

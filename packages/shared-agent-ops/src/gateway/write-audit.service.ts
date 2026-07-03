@@ -6,6 +6,7 @@
 import type { BuildosAgentAllowedOp } from '@buildos/shared-types';
 import { logSecurityEvent, type SecurityEventLogOptions } from '../ops/security-event-logger';
 import { maybeLogAgentCallProjectActivity } from './agent-call-project-activity.service';
+import { AGENT_CALL_TOOL_EXECUTION_SELECT } from './op-execution-gateway.config';
 
 export type AgentCallWriteExecutionStatus = 'pending' | 'succeeded' | 'failed';
 
@@ -50,7 +51,7 @@ async function loadExistingExecution(params: {
 }): Promise<AgentCallWriteExecutionRecord | null> {
 	const { data, error } = await params.admin
 		.from('agent_call_tool_executions')
-		.select('*')
+		.select(AGENT_CALL_TOOL_EXECUTION_SELECT)
 		.eq('external_agent_caller_id', params.callerId)
 		.eq('op', params.op)
 		.eq('idempotency_key', params.idempotencyKey)
@@ -93,7 +94,7 @@ export async function reserveWriteExecution(params: {
 			started_at: now,
 			updated_at: now
 		})
-		.select('*')
+		.select(AGENT_CALL_TOOL_EXECUTION_SELECT)
 		.single();
 
 	if (!error && data) {

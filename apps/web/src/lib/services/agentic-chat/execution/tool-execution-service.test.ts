@@ -105,6 +105,24 @@ describe('ToolExecutionService', () => {
 			);
 		});
 
+		it('propagates canonical token counts from executor responses', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_tokens',
+				name: 'list_onto_tasks',
+				arguments: { project_id: 'proj_123' }
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({
+				data: { tasks: [] },
+				tokens_consumed: 17
+			});
+
+			const result = await service.executeTool(toolCall, mockContext, mockToolDefinitions);
+
+			expect(result.success).toBe(true);
+			expect(result.tokensUsed).toBe(17);
+		});
+
 		it('rejects a different UUID project_id when the turn is project-scoped', async () => {
 			const scopedProjectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
 			const otherProjectId = '972064c0-c2aa-4c74-a735-313802ffd456';

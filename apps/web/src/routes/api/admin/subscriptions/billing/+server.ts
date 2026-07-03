@@ -1,11 +1,13 @@
 // apps/web/src/routes/api/admin/subscriptions/billing/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import {
 	BILLING_OPS_DEFAULT_WINDOW_DAYS,
 	BILLING_OPS_MAX_WINDOW_DAYS,
 	fetchBillingOpsMetrics
 } from '$lib/server/billing-ops-monitoring';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 type BillingAction = 'manual_unfreeze' | 'set_billing_state';
 type BillingTransitionSource = 'system' | 'admin' | 'user' | 'authenticated' | 'migration';
@@ -20,6 +22,18 @@ const BILLING_TRANSITION_SOURCES = new Set<BillingTransitionSource>([
 
 const DEFAULT_TIMELINE_LIMIT = 100;
 const MAX_TIMELINE_LIMIT = 500;
+
+const billingStateUpdateSchema = z
+	.object({
+		action: z.enum(['manual_unfreeze', 'set_billing_state']),
+		userId: z.string().min(1),
+		targetTier: z.enum(['explorer', 'pro', 'power']).optional(),
+		targetState: z
+			.enum(['explorer_active', 'upgrade_required_frozen', 'pro_active', 'power_active'])
+			.optional(),
+		note: z.string().optional()
+	})
+	.strict();
 
 function normalizeTargetState(targetTier: string): string {
 	if (targetTier === 'power') return 'power_active';
@@ -238,17 +252,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	}
 
 	try {
-		const body = (await request.json()) as {
-			action?: BillingAction;
-			userId?: string;
-			targetTier?: 'explorer' | 'pro' | 'power';
-			targetState?:
-				| 'explorer_active'
-				| 'upgrade_required_frozen'
-				| 'pro_active'
-				| 'power_active';
-			note?: string;
-		};
+		const parsed = await parseJsonRequest(request, billingStateUpdateSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data;
 
 		const action = body.action;
 		const userId = body.userId;

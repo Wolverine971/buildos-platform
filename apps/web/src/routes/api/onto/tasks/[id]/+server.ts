@@ -35,6 +35,7 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 import { resolveLinkedEntities } from '../task-linked-helpers';
 import { TASK_STATES } from '$lib/types/onto';
 import {
@@ -224,7 +225,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
-		const body = (await request.json()) as Record<string, unknown>;
+		const parsed = await parseJsonRequest(request, jsonObjectSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data;
 		const {
 			title,
 			description,

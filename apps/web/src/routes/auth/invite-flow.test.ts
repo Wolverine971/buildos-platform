@@ -50,8 +50,10 @@ vi.mock('$app/navigation', () => ({
 	replaceState: replaceStateMock
 }));
 
-vi.mock('$env/static/public', () => ({
-	PUBLIC_GOOGLE_CLIENT_ID: 'google-client-id'
+vi.mock('$env/dynamic/public', () => ({
+	env: {
+		PUBLIC_GOOGLE_CLIENT_ID: 'google-client-id'
+	}
 }));
 
 vi.mock('$lib/stores/toast.store', () => ({

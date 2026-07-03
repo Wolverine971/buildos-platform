@@ -2,9 +2,33 @@
 import type { RequestHandler } from './$types';
 
 import { PUBLIC_GMAIL_USER } from '$env/static/public';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 const GMAIL_USER = PUBLIC_GMAIL_USER || 'dj@build-os.com';
+
+const emailRecipientSchema = z
+	.object({
+		email: z.string().email(),
+		name: z.string().nullable().optional(),
+		type: z.string().min(1).optional(),
+		id: z.string().nullable().optional()
+	})
+	.strict();
+
+const createAdminEmailSchema = z
+	.object({
+		subject: z.string().min(1),
+		content: z.string().min(1),
+		from_email: z.string().email().optional(),
+		from_name: z.string().min(1).optional(),
+		category: z.string().min(1).optional(),
+		template_data: z.record(z.unknown()).optional(),
+		recipients: z.array(emailRecipientSchema).optional(),
+		scheduled_at: z.string().min(1).nullable().optional()
+	})
+	.strict();
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -97,6 +121,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	}
 
 	try {
+		const parsed = await parseJsonRequest(request, createAdminEmailSchema);
+		if (!parsed.ok) return parsed.response;
 		const {
 			subject,
 			content,
@@ -106,7 +132,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			template_data,
 			recipients,
 			scheduled_at
-		} = await request.json();
+		} = parsed.data;
 
 		if (!subject || !content) {
 			return ApiResponse.badRequest('Subject and content are required');
@@ -124,7 +150,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				from_email: from_email || GMAIL_USER,
 				from_name: from_name || 'BuildOS Team',
 				category: category || 'general',
-				template_data: template_data || {},
+				template_data: (template_data || {}) as any,
 				status: scheduled_at ? 'scheduled' : 'draft',
 				scheduled_at: scheduled_at || null,
 				created_by: user.id,

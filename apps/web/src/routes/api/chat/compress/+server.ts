@@ -6,8 +6,17 @@
  */
 
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ChatCompressionService } from '$lib/services/chat-compression-service';
 import { ApiResponse } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const compressChatSchema = z
+	.object({
+		session_id: z.string().min(1),
+		target_tokens: z.number().int().positive().optional().default(2000)
+	})
+	.strict();
 
 /**
  * POST /api/chat/compress
@@ -23,8 +32,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	const userId = user.id;
 
 	try {
-		const body = await request.json();
-		const { session_id, target_tokens = 2000 } = body;
+		const parsed = await parseJsonRequest(request, compressChatSchema);
+		if (!parsed.ok) return parsed.response;
+		const { session_id, target_tokens } = parsed.data;
 
 		if (!session_id) {
 			return ApiResponse.badRequest('Session ID is required');

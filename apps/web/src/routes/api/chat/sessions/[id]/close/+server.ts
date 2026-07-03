@@ -1,9 +1,21 @@
 // apps/web/src/routes/api/chat/sessions/[id]/close/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import type { ChatSessionUpdate } from '@buildos/shared-types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { normalizeContextType } from '$lib/services/agentic-chat/shared/context-utils';
 import { queueChatSessionClassification } from '$lib/server/chat-classification.service';
+import { parseOptionalJsonRequest } from '$lib/utils/request-validation';
+
+const closeChatSessionSchema = z
+	.object({
+		context_type: z.string().optional(),
+		entity_id: z.string().nullable().optional(),
+		reason: z.string().optional(),
+		has_messages_sent: z.boolean().optional(),
+		hasMessagesSent: z.boolean().optional()
+	})
+	.strict();
 
 export const POST: RequestHandler = async ({
 	params,
@@ -21,18 +33,9 @@ export const POST: RequestHandler = async ({
 		return ApiResponse.badRequest('Session id is required');
 	}
 
-	let payload: {
-		context_type?: string;
-		entity_id?: string | null;
-		reason?: string;
-		has_messages_sent?: boolean;
-		hasMessagesSent?: boolean;
-	} = {};
-	try {
-		payload = (await request.json()) as typeof payload;
-	} catch {
-		payload = {};
-	}
+	const parsed = await parseOptionalJsonRequest(request, closeChatSessionSchema, {});
+	if (!parsed.ok) return parsed.response;
+	const payload = parsed.data;
 
 	const { data: session, error: sessionError } = await supabase
 		.from('chat_sessions')

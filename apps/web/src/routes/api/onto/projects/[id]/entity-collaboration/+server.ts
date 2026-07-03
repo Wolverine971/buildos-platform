@@ -2,6 +2,7 @@
 import { dev } from '$app/environment';
 import { PUBLIC_APP_URL } from '$env/static/public';
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { EmailService } from '$lib/services/email-service';
 import { createTrackedInAppNotification } from '$lib/server/tracked-in-app-notification.service';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
@@ -9,6 +10,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { logOntologyApiError } from '../../../shared/error-logging';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 type EntityType = 'task' | 'document' | 'goal' | 'plan';
 type EntitySummary = {
@@ -27,6 +29,20 @@ type CollaborationAction = 'ping' | 'assign';
 
 const ENTITY_TYPES = new Set<EntityType>(['task', 'document', 'goal', 'plan']);
 const MAX_MESSAGE_LENGTH = 1000;
+
+const entityCollaborationSchema = z
+	.object({
+		entity_type: z.string().optional(),
+		entityType: z.string().optional(),
+		entity_id: z.string().optional(),
+		entityId: z.string().optional(),
+		actor_id: z.string().optional(),
+		actorId: z.string().optional(),
+		action: z.string(),
+		channel: z.string().optional(),
+		message: z.string().optional()
+	})
+	.strict();
 
 function normalizeEntityType(value: unknown): EntityType | null {
 	if (typeof value !== 'string') return null;
@@ -485,7 +501,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	if (!access.ok) return access.response;
 
 	try {
-		const body = (await request.json()) as Record<string, unknown>;
+		const parsed = await parseJsonRequest(request, entityCollaborationSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data;
 		const entityType = normalizeEntityType(body.entity_type ?? body.entityType);
 		const entityId =
 			typeof (body.entity_id ?? body.entityId) === 'string'

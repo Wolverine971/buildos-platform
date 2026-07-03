@@ -1,6 +1,8 @@
 // apps/web/src/routes/api/brief-preferences/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 // Default preferences
 // NOTE: Brief preferences control WHEN briefs are generated.
@@ -12,6 +14,16 @@ const DEFAULT_PREFERENCES = {
 	time_of_day: '09:00:00',
 	is_active: true
 };
+
+const briefPreferencesUpdateSchema = z
+	.object({
+		frequency: z.enum(['daily', 'weekly']),
+		day_of_week: z.number().int().min(0).max(6).nullable().optional(),
+		time_of_day: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/),
+		timezone: z.string().trim().min(1),
+		is_active: z.boolean().optional()
+	})
+	.strict();
 
 export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -74,8 +86,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	}
 
 	try {
-		const body = await request.json();
-		const { frequency, day_of_week, time_of_day, timezone, is_active } = body;
+		const parsed = await parseJsonRequest(request, briefPreferencesUpdateSchema);
+		if (!parsed.ok) return parsed.response;
+		const { frequency, day_of_week, time_of_day, timezone, is_active } = parsed.data;
 
 		// Validate input
 		if (!frequency || !['daily', 'weekly'].includes(frequency)) {

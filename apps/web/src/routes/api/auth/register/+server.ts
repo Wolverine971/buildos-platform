@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/auth/register/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import {
 	ensureUserProfileWithAuthenticatedSession,
 	ensureUserProfileWithClient
@@ -10,6 +11,16 @@ import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { WelcomeSequenceService } from '$lib/server/welcome-sequence.service';
 import { captureServerEvent } from '$lib/server/posthog';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const registerRequestSchema = z
+	.object({
+		email: z.string(),
+		password: z.string(),
+		name: z.string().nullable().optional(),
+		attribution: z.unknown().optional()
+	})
+	.strict();
 
 interface SignupAttribution {
 	utm_source: string | null;
@@ -120,17 +131,9 @@ async function ensureUserProfileForRegistration({
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	let payload: { email?: string; password?: string; name?: string; attribution?: unknown };
-
-	try {
-		payload = await request.json();
-	} catch {
-		return ApiResponse.error(
-			'Invalid request body',
-			HttpStatus.BAD_REQUEST,
-			ErrorCode.INVALID_REQUEST
-		);
-	}
+	const parsed = await parseJsonRequest(request, registerRequestSchema);
+	if (!parsed.ok) return parsed.response;
+	const payload = parsed.data;
 
 	const { email, password, name } = payload ?? {};
 	const { supabase, safeGetSession } = locals;

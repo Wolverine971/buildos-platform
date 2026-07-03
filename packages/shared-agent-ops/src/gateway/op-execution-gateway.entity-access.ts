@@ -2,6 +2,7 @@
 import { ensureActorId, type OntologyProjectSummary } from '../ontology/ontology-projects.service';
 import {
 	ARCHIVABLE_ENTITY_KINDS,
+	LINK_ENTITY_SELECTS,
 	LINK_ENTITY_TABLES,
 	type ExternalEntityKind,
 	type ExternalLinkEntityKind
@@ -118,9 +119,10 @@ export async function loadEntityForAccess(
 ): Promise<EntityAccessResult> {
 	const entityId = assertValidId(id, `${kind}_id`);
 	const table = LINK_ENTITY_TABLES[kind];
+	const selectColumns = LINK_ENTITY_SELECTS[kind];
 	const visible = await loadVisibleProjects(context);
 
-	let query = context.admin.from(table).select('*').eq('id', entityId);
+	let query = context.admin.from(table).select(selectColumns).eq('id', entityId);
 	if (ARCHIVABLE_ENTITY_KINDS.has(kind) && !options.includeArchived) {
 		query = applyArchivedFilter(query, options.archived ?? false);
 	} else if (kind !== 'metric' && kind !== 'source' && !ARCHIVABLE_ENTITY_KINDS.has(kind)) {

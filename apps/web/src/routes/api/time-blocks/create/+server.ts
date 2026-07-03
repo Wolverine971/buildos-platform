@@ -1,8 +1,20 @@
 // apps/web/src/routes/api/time-blocks/create/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { TimeBlockService } from '$lib/services/time-block.service';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ApiResponse } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const createTimeBlockSchema = z
+	.object({
+		block_type: z.enum(['project', 'build']),
+		project_id: z.string().nullable().optional(),
+		start_time: z.string().min(1),
+		end_time: z.string().min(1),
+		timezone: z.string().optional()
+	})
+	.strict();
 
 export const POST: RequestHandler = async ({ request, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
@@ -11,13 +23,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		return ApiResponse.unauthorized();
 	}
 
-	let payload: any;
-	try {
-		payload = await request.json();
-	} catch (err) {
-		console.error('[TimeBlocks] Invalid JSON payload:', err);
-		return ApiResponse.badRequest('Invalid JSON payload');
-	}
+	const parsed = await parseJsonRequest(request, createTimeBlockSchema);
+	if (!parsed.ok) return parsed.response;
+	const payload = parsed.data;
 
 	const { block_type, project_id, start_time, end_time, timezone } = payload ?? {};
 

@@ -1,9 +1,21 @@
 // apps/web/src/routes/api/admin/subscriptions/users/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 const MAX_LIMIT = 100;
+
+const subscriptionAdminActionSchema = z
+	.object({
+		action: z.enum(['cancel', 'extend_trial', 'add_discount']),
+		userId: z.string().min(1),
+		subscriptionId: z.string().min(1),
+		reason: z.string().optional(),
+		discountCode: z.string().optional()
+	})
+	.strict();
 
 const parsePositiveInt = (value: string | null, fallback: number): number => {
 	const parsed = Number.parseInt(value ?? '', 10);
@@ -79,7 +91,9 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 				new Set(
 					(subscriptionRows ?? [])
 						.map((subscription: any) => subscription.user_id)
-						.filter((id: unknown): id is string => typeof id === 'string' && id.length > 0)
+						.filter(
+							(id: unknown): id is string => typeof id === 'string' && id.length > 0
+						)
 				)
 			);
 
@@ -186,7 +200,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	}
 
 	try {
-		const { action, userId, subscriptionId, reason, discountCode } = await request.json();
+		const parsed = await parseJsonRequest(request, subscriptionAdminActionSchema);
+		if (!parsed.ok) return parsed.response;
+		const { action, userId, subscriptionId, reason, discountCode } = parsed.data;
 
 		switch (action) {
 			case 'cancel': {

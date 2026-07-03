@@ -83,6 +83,7 @@
 
 	// Try to restore from sessionStorage first (OAuth redirect scenario)
 	const savedSession = loadStateFromSession();
+	const hasSavedOnboardingSeed = Boolean(initialData.savedIntent || initialData.savedStakes);
 
 	let currentStep = $state(savedSession?.currentStep ?? 0);
 	let maxStepReached = $state(savedSession?.maxStepReached ?? savedSession?.currentStep ?? 0);
@@ -100,7 +101,7 @@
 
 	// If no session state, check if intent/stakes were saved to the database
 	// (user completed step 0, then got redirected by OAuth)
-	if (!savedSession && (initialData.savedIntent || initialData.savedStakes)) {
+	if (!savedSession && hasSavedOnboardingSeed) {
 		v3Data.intent = (initialData.savedIntent as OnboardingIntent) ?? null;
 		v3Data.stakes = (initialData.savedStakes as OnboardingStakes) ?? null;
 		// They already completed step 0, jump to step 1
@@ -109,7 +110,7 @@
 	}
 
 	// Fresh start only — OAuth-redirect restores and resumed sessions don't re-fire
-	if (browser && !savedSession && currentStep === 0) {
+	if (browser && !savedSession && !hasSavedOnboardingSeed) {
 		captureEvent('onboarding_started');
 	}
 

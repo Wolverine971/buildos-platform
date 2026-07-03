@@ -1564,6 +1564,47 @@
 					: typeof toolResult?.tokensConsumed === 'number'
 						? toolResult.tokensConsumed
 						: undefined;
+			const resultCount =
+				typeof toolResult?.result_count === 'number'
+					? toolResult.result_count
+					: typeof toolResult?.resultCount === 'number'
+						? toolResult.resultCount
+						: undefined;
+			const zeroResult =
+				typeof toolResult?.zero_result === 'boolean'
+					? toolResult.zero_result
+					: typeof toolResult?.zeroResult === 'boolean'
+						? toolResult.zeroResult
+						: undefined;
+			const requiresUserAction =
+				typeof toolResult?.requires_user_action === 'boolean'
+					? toolResult.requires_user_action
+					: typeof toolResult?.requiresUserAction === 'boolean'
+						? toolResult.requiresUserAction
+						: undefined;
+			const streamEvents = Array.isArray(toolResult?.stream_events)
+				? toolResult.stream_events
+				: Array.isArray(toolResult?.streamEvents)
+					? toolResult.streamEvents
+					: undefined;
+			const toolCategory =
+				typeof toolResult?.tool_category === 'string'
+					? toolResult.tool_category
+					: typeof toolResult?.toolCategory === 'string'
+						? toolResult.toolCategory
+						: undefined;
+			const gatewayOp =
+				typeof toolResult?.gateway_op === 'string'
+					? toolResult.gateway_op
+					: typeof toolResult?.gatewayOp === 'string'
+						? toolResult.gatewayOp
+						: undefined;
+			const helpPath =
+				typeof toolResult?.help_path === 'string'
+					? toolResult.help_path
+					: typeof toolResult?.helpPath === 'string'
+						? toolResult.helpPath
+						: undefined;
 
 			const updatedActivity: ActivityEntry = {
 				...activity,
@@ -1584,6 +1625,13 @@
 						: {}),
 					...(durationMs !== undefined ? { durationMs } : {}),
 					...(tokensConsumed !== undefined ? { tokensConsumed } : {}),
+					...(resultCount !== undefined ? { resultCount } : {}),
+					...(zeroResult !== undefined ? { zeroResult } : {}),
+					...(requiresUserAction !== undefined ? { requiresUserAction } : {}),
+					...(streamEvents !== undefined ? { streamEvents } : {}),
+					...(toolCategory !== undefined ? { toolCategory } : {}),
+					...(gatewayOp !== undefined ? { gatewayOp } : {}),
+					...(helpPath !== undefined ? { helpPath } : {}),
 					...(skillActivity
 						? {
 								skillActivity,

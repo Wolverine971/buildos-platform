@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/voice-note-groups/[id]/attach/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 
 const GROUP_STATUSES = new Set(['draft', 'attached', 'orphaned']);
 
@@ -30,12 +31,9 @@ export const PATCH: RequestHandler = async ({
 		return ApiResponse.badRequest('Group id is required');
 	}
 
-	let payload: Record<string, unknown> = {};
-	try {
-		payload = (await request.json()) as Record<string, unknown>;
-	} catch {
-		return ApiResponse.badRequest('Invalid request payload');
-	}
+	const parsed = await parseJsonRequest(request, jsonObjectSchema);
+	if (!parsed.ok) return parsed.response;
+	const payload = parsed.data;
 
 	const linkedEntityType = parseOptionalString(payload.linkedEntityType);
 	const linkedEntityId = parseOptionalString(payload.linkedEntityId);

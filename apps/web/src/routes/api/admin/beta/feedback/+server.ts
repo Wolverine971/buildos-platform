@@ -1,6 +1,35 @@
 // apps/web/src/routes/api/admin/beta/feedback/+server.ts
 import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const betaFeedbackUpdatesSchema = z
+	.object({
+		declined_reason: z.string().nullable().optional(),
+		feature_area: z.string().nullable().optional(),
+		feedback_description: z.string().min(1).optional(),
+		feedback_priority: z.string().nullable().optional(),
+		feedback_status: z.string().nullable().optional(),
+		feedback_tags: z.array(z.string()).nullable().optional(),
+		feedback_title: z.string().min(1).optional(),
+		feedback_type: z.string().nullable().optional(),
+		founder_responded_at: z.string().nullable().optional(),
+		founder_response: z.string().nullable().optional(),
+		implemented_at: z.string().nullable().optional(),
+		upvotes: z.number().int().nullable().optional()
+	})
+	.strict()
+	.refine((updates) => Object.keys(updates).length > 0, {
+		message: 'At least one update field is required'
+	});
+
+const betaFeedbackPatchSchema = z
+	.object({
+		feedback_id: z.string().min(1),
+		updates: betaFeedbackUpdatesSchema
+	})
+	.strict();
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -82,7 +111,9 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 	}
 
 	try {
-		const { feedback_id, updates } = await request.json();
+		const parsed = await parseJsonRequest(request, betaFeedbackPatchSchema);
+		if (!parsed.ok) return parsed.response;
+		const { feedback_id, updates } = parsed.data;
 
 		if (!feedback_id) {
 			return ApiResponse.badRequest('Feedback ID is required');

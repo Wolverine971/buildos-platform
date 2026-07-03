@@ -14,9 +14,19 @@
  */
 import type { RequestHandler } from './$types';
 import type { Database } from '@buildos/shared-types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { queueBraindumpProcessing } from '$lib/server/braindump-processing.service';
 import { captureServerEvent } from '$lib/server/posthog';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const createBraindumpSchema = z
+	.object({
+		content: z.string().trim().min(1).max(50000),
+		metadata: z.record(z.unknown()).optional().default({}),
+		chat_session_id: z.string().nullable().optional()
+	})
+	.strict();
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -29,8 +39,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	try {
 		// Parse request body
-		const body = await request.json();
-		const { content, metadata = {}, chat_session_id } = body;
+		const parsed = await parseJsonRequest(request, createBraindumpSchema);
+		if (!parsed.ok) return parsed.response;
+		const { content, metadata, chat_session_id } = parsed.data;
 
 		// Validate required fields
 		if (!content || typeof content !== 'string' || content.trim().length === 0) {

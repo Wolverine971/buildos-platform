@@ -99,12 +99,17 @@ export class ChatToolExecutor {
 
 	setSessionId(sessionId: string): void {
 		this.sessionId = sessionId;
+		this.resetDomainExecutors();
 	}
 
 	setAbortSignal(signal?: AbortSignal): void {
 		this.abortSignal = signal;
 		// Executors are lazily constructed and cache the context snapshot, so drop
 		// any that were built before the signal was set to force a rebuild.
+		this.resetDomainExecutors();
+	}
+
+	private resetDomainExecutors(): void {
 		this._readExecutor = undefined;
 		this._writeExecutor = undefined;
 		this._utilityExecutor = undefined;
@@ -190,7 +195,9 @@ export class ChatToolExecutor {
 
 		return {
 			'Content-Type': 'application/json',
-			Authorization: session?.access_token ? `Bearer ${session.access_token}` : ''
+			Authorization: session?.access_token ? `Bearer ${session.access_token}` : '',
+			'X-Change-Source': 'chat',
+			...(this.sessionId ? { 'X-Chat-Session-Id': this.sessionId } : {})
 		};
 	}
 
@@ -243,6 +250,7 @@ export class ChatToolExecutor {
 				result: payload,
 				success: true,
 				duration_ms: duration,
+				...(tokensConsumed !== undefined ? { tokens_consumed: tokensConsumed } : {}),
 				stream_events: streamEvents
 			};
 		} catch (error: any) {
@@ -596,6 +604,7 @@ export class ChatToolExecutor {
 			delete (payload as Record<string, any>)._tokens_used;
 			delete (payload as Record<string, any>)._tokens_consumed;
 			delete (payload as Record<string, any>).tokens_used;
+			delete (payload as Record<string, any>).tokens_consumed;
 			delete (payload as Record<string, any>).usage;
 		}
 		return { payload, streamEvents: events, tokensConsumed };

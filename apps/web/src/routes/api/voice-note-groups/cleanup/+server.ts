@@ -1,9 +1,18 @@
 // apps/web/src/routes/api/voice-note-groups/cleanup/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
+import { parseOptionalJsonRequest } from '$lib/utils/request-validation';
 
 const DEFAULT_MAX_AGE_HOURS = 24;
 const DEFAULT_GROUP_LIMIT = 50;
+
+const cleanupVoiceNoteGroupsSchema = z
+	.object({
+		maxAgeHours: z.number().positive().optional(),
+		limit: z.number().positive().optional()
+	})
+	.strict();
 
 export const POST: RequestHandler = async ({ request, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
@@ -11,12 +20,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		return ApiResponse.unauthorized();
 	}
 
-	let payload: { maxAgeHours?: number; limit?: number } = {};
-	try {
-		payload = (await request.json()) as { maxAgeHours?: number; limit?: number };
-	} catch {
-		payload = {};
-	}
+	const parsed = await parseOptionalJsonRequest(request, cleanupVoiceNoteGroupsSchema, {});
+	if (!parsed.ok) return parsed.response;
+	const payload = parsed.data;
 
 	const maxAgeHours =
 		typeof payload.maxAgeHours === 'number' && payload.maxAgeHours > 0

@@ -199,7 +199,11 @@ export interface ProjectLoopJobMetadata {
 	runId: string;
 	projectId: string;
 	userId: string;
-	triggerReason: 'end_of_day' | 'burst' | 'manual';
+	triggerReason: 'end_of_day' | 'scheduled' | 'burst' | 'critical_change' | 'manual';
+	mode?: 'light_loop' | 'complete_audit';
+	auditId?: string;
+	auditDepth?: 'standard' | 'deep';
+	triggerEvaluationId?: string;
 }
 
 export interface ProjectIconGenerationJobMetadata {

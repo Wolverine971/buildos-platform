@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/brief-templates/project/[id]/+server.ts
 import { ApiResponse } from '$lib/utils/api-response';
+import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
@@ -35,7 +36,9 @@ export const PUT: RequestHandler = async ({
 	}
 
 	try {
-		const updates = await request.json();
+		const parsed = await parseJsonRequest(request, jsonObjectSchema);
+		if (!parsed.ok) return parsed.response;
+		const updates = parsed.data;
 
 		const { data, error } = await supabase
 			.from('project_brief_templates')

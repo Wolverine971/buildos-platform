@@ -5,7 +5,12 @@
 // suggestions; the web app (apps/web) EXECUTES them on approval by replaying
 // each suggestion's declarative `operations` through the ChatToolExecutor.
 
-export type ProjectLoopTriggerReason = 'end_of_day' | 'burst' | 'manual';
+export type ProjectLoopTriggerReason =
+	| 'end_of_day'
+	| 'scheduled'
+	| 'burst'
+	| 'critical_change'
+	| 'manual';
 
 export type ProjectLoopRunStatus =
 	| 'queued'

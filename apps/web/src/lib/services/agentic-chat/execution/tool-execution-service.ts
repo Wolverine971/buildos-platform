@@ -1638,6 +1638,7 @@ export class ToolExecutionService implements BaseService {
 			metadata?.usage?.totalTokens,
 			(execution as any)?.tokensUsed,
 			(execution as any)?.tokens_used,
+			(execution as any)?.tokens_consumed,
 			(execution as any)?.usage?.total_tokens,
 			(execution as any)?.usage?.totalTokens,
 			(execution as any)?.data?.usage?.total_tokens,

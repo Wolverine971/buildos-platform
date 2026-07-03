@@ -5,7 +5,8 @@
 // such as discovery tools, concrete calendar/task-sync services, and the web
 // tool registry are supplied through ports and explicit parameters.
 import { isValidUUID } from '@buildos/shared-types';
-import type { AgentCallScope, BuildosAgentAllowedOp } from '@buildos/shared-types';
+import type { AgentCallScope, BuildosAgentAllowedOp, Database } from '@buildos/shared-types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { logCreateAsync, logUpdateAsync } from '../ops/async-activity-logger';
 import { ensureActorId, type OntologyProjectSummary } from '../ontology/ontology-projects.service';
 import { resolveGatewayOpAlias } from '../ops/gateway-op-aliases';
@@ -58,7 +59,10 @@ import {
 	CORE_ENTITY_CONFIG,
 	EXTERNAL_CUSTOM_OPS,
 	EXTERNAL_WRITE_OP_SCHEMAS,
+	LINK_ENTITY_SELECTS,
 	LINK_ENTITY_TABLES,
+	ONTO_DOCUMENT_SELECT,
+	ONTO_EDGE_SELECT,
 	withExternalArchiveUpdateParameter,
 	type ExternalEntityKind,
 	type ExternalLinkEntityKind
@@ -172,6 +176,9 @@ import {
 	serializeProjectGraphData
 } from './op-execution-gateway.serializers';
 import { truncateText } from './op-execution-gateway.text';
+
+type GatewaySupabaseClient = SupabaseClient<Database>;
+
 export {
 	EXTERNAL_CUSTOM_OPS,
 	EXTERNAL_WRITE_OP_SCHEMAS,
@@ -320,7 +327,7 @@ function ensureWriteExecutionContext(
 }
 
 async function logGatewayCompatibilityAliasUsage(params: {
-	admin: any;
+	admin: GatewaySupabaseClient;
 	userId: string;
 	callerId?: string;
 	callSessionId?: string;
@@ -518,7 +525,7 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 	const { data, error } = await context.admin
 		.from('onto_documents')
 		.insert(insertPayload)
-		.select('*')
+		.select(ONTO_DOCUMENT_SELECT)
 		.single();
 
 	if (error || !data) {
@@ -627,7 +634,7 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 	const archivedAtUpdate = normalizeArchivedUpdate(args.archived);
 	let existingDocumentQuery = context.admin
 		.from('onto_documents')
-		.select('*')
+		.select(ONTO_DOCUMENT_SELECT)
 		.eq('id', documentId)
 		.in(
 			'project_id',
@@ -784,7 +791,7 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 		.from('onto_documents')
 		.update(updateData)
 		.eq('id', documentId)
-		.select('*')
+		.select(ONTO_DOCUMENT_SELECT)
 		.single();
 
 	if (error || !data) {
@@ -1107,7 +1114,7 @@ async function createTaskDocument(context: ToolExecutionContext, args: Record<st
 				},
 				created_by: actorId
 			})
-			.select('*')
+			.select(ONTO_DOCUMENT_SELECT)
 			.single();
 
 		if (error || !data) {
@@ -1472,7 +1479,7 @@ async function listTaskDocuments(context: ToolExecutionContext, args: Record<str
 	const taskAccess = await loadCoreEntityForAccess(context, 'task', args.task_id, 'read');
 	const { data: edges, error: edgeError } = await context.admin
 		.from('onto_edges')
-		.select('*')
+		.select(ONTO_EDGE_SELECT)
 		.eq('src_kind', 'task')
 		.eq('src_id', String(taskAccess.entity.id))
 		.eq('rel', TASK_DOCUMENT_REL)
@@ -1499,7 +1506,7 @@ async function listTaskDocuments(context: ToolExecutionContext, args: Record<str
 		.filter((id): id is string => typeof id === 'string' && isValidUUID(id));
 	const { data: documents, error: documentError } = await context.admin
 		.from('onto_documents')
-		.select('*')
+		.select(ONTO_DOCUMENT_SELECT)
 		.in('id', documentIds)
 		.eq('project_id', taskAccess.project.id)
 		.is('archived_at', null);
@@ -1600,7 +1607,7 @@ async function getEntityRelationships(
 	if (direction === 'outgoing' || direction === 'both') {
 		const { data, error } = await context.admin
 			.from('onto_edges')
-			.select('*')
+			.select(ONTO_EDGE_SELECT)
 			.eq('project_id', entity.project.id)
 			.eq('src_id', String(entity.entity.id))
 			.limit(50);
@@ -1621,7 +1628,7 @@ async function getEntityRelationships(
 	if (direction === 'incoming' || direction === 'both') {
 		const { data, error } = await context.admin
 			.from('onto_edges')
-			.select('*')
+			.select(ONTO_EDGE_SELECT)
 			.eq('project_id', entity.project.id)
 			.eq('dst_id', String(entity.entity.id))
 			.limit(50);
@@ -1695,8 +1702,9 @@ async function getLinkedEntities(context: ToolExecutionContext, args: Record<str
 	const linkedEntities: Record<string, Array<Record<string, unknown>>> = {};
 	for (const [kind, refs] of Object.entries(linkedByKind)) {
 		const table = LINK_ENTITY_TABLES[kind as ExternalLinkEntityKind];
+		const selectColumns = LINK_ENTITY_SELECTS[kind as ExternalLinkEntityKind];
 		const ids = refs.map((ref) => ref.id);
-		const { data, error } = await context.admin.from(table).select('*').in('id', ids);
+		const { data, error } = await context.admin.from(table).select(selectColumns).in('id', ids);
 		if (error) {
 			throw new ExternalToolGatewayError(
 				'INTERNAL',
@@ -1771,7 +1779,7 @@ export function buildExternalGatewayRegistry(
 }
 
 export async function executeGatewayOp(params: {
-	admin: any;
+	admin: GatewaySupabaseClient;
 	userId: string;
 	callerId?: string;
 	callSessionId?: string;

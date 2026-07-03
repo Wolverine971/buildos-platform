@@ -1,21 +1,53 @@
 // apps/web/src/routes/api/admin/notifications/test/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EventType, NotificationChannel } from '@buildos/shared-types';
 import { transformEventPayload, validateNotificationPayload } from '@buildos/shared-types';
 import { generateCorrelationId } from '@buildos/shared-utils';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 // Rate limiting constants
 const MAX_RECIPIENTS_PER_TEST = 20;
 const MAX_TESTS_PER_HOUR = 50;
 
-interface TestNotificationRequest {
-	event_type: EventType;
-	payload: Record<string, any>;
-	recipient_user_ids: string[];
-	channels: NotificationChannel[];
-	test_mode?: boolean;
-}
+const eventTypeSchema = z.enum([
+	'user.signup',
+	'user.trial_expired',
+	'payment.failed',
+	'error.critical',
+	'brief.completed',
+	'brief.failed',
+	'task.due_soon',
+	'task.assigned',
+	'entity.tagged',
+	'comment.mentioned',
+	'project.activity.changed',
+	'project.activity.batched',
+	'project.invite.accepted',
+	'project.phase_scheduled',
+	'calendar.sync_failed',
+	'payment.warning',
+	'user.trial_reminder',
+	'billing_ops_anomaly',
+	'homework.run_completed',
+	'homework.run_stopped',
+	'homework.run_failed',
+	'homework.run_canceled',
+	'homework.run_updated'
+]);
+
+const notificationChannelSchema = z.enum(['push', 'email', 'sms', 'in_app']);
+
+const testNotificationSchema = z
+	.object({
+		event_type: eventTypeSchema,
+		payload: z.record(z.unknown()),
+		recipient_user_ids: z.array(z.string().min(1)),
+		channels: z.array(notificationChannelSchema),
+		test_mode: z.boolean().optional().default(true)
+	})
+	.strict();
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -28,8 +60,11 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	}
 
 	try {
-		const body = (await request.json()) as TestNotificationRequest;
-		const { event_type, payload, recipient_user_ids, channels, test_mode = true } = body;
+		const parsed = await parseJsonRequest(request, testNotificationSchema);
+		if (!parsed.ok) return parsed.response;
+		const { event_type, payload, recipient_user_ids, channels, test_mode } = parsed.data;
+		const typedEventType = event_type as EventType;
+		const typedChannels = channels as NotificationChannel[];
 
 		// Validation
 		if (!event_type || !payload || !recipient_user_ids || !channels) {
@@ -55,11 +90,11 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		// Validate or transform payload
 		// If payload doesn't have title/body, try to transform from event payload
 		// If it does have title/body, validate them
-		let notificationPayload = payload;
+		let notificationPayload: any = payload;
 		if (!validateNotificationPayload(payload as any)) {
 			console.log('[TestNotification] Payload missing title/body, attempting transformation');
 			try {
-				notificationPayload = transformEventPayload(event_type, payload);
+				notificationPayload = transformEventPayload(typedEventType, payload);
 				console.log('[TestNotification] Transformed payload:', notificationPayload);
 			} catch (error: any) {
 				return ApiResponse.badRequest(
@@ -97,7 +132,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					test_mode: true,
 					test_sent_by: user.id,
 					test_recipients: recipient_user_ids,
-					test_channels: channels,
+					test_channels: typedChannels,
 					correlationId // Add correlation ID for tracking
 				}
 			: {
@@ -117,7 +152,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					event_type,
 					event_source: 'api_action',
 					actor_user_id: user.id,
-					payload, // Keep original event payload
+					payload: payload as any, // Keep original event payload
 					metadata,
 					correlation_id: correlationId
 				})
@@ -133,7 +168,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 			// Create deliveries for each recipient and channel
 			for (const recipientId of recipient_user_ids) {
-				for (const channel of channels) {
+				for (const channel of typedChannels) {
 					// Get channel identifier based on channel type
 					let channelIdentifier: string | null = null;
 
@@ -178,7 +213,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 							recipient_user_id: recipientId,
 							channel,
 							channel_identifier: channelIdentifier,
-							payload: notificationPayload, // Use transformed payload with title/body
+							payload: notificationPayload as any, // Use transformed payload with title/body
 							status: 'pending',
 							correlation_id: correlationId
 						})

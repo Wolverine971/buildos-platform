@@ -10,6 +10,7 @@ import {
 } from '$lib/services/ontology/migration-error.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { z } from 'zod';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -83,13 +84,8 @@ export const DELETE: RequestHandler = async ({ request, locals: { safeGetSession
 	}
 
 	try {
-		const body = await request.json();
-		const parsed = deleteSchema.safeParse(body);
-
-		if (!parsed.success) {
-			return ApiResponse.badRequest('Invalid request body');
-		}
-
+		const parsed = await parseJsonRequest(request, deleteSchema);
+		if (!parsed.ok) return parsed.response;
 		const { errorIds, deleteAll, errorCategory, entityType } = parsed.data;
 
 		const supabase = createAdminSupabaseClient();

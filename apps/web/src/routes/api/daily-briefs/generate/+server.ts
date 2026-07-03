@@ -1,8 +1,10 @@
 // apps/web/src/routes/api/daily-briefs/generate/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse, HttpStatus, parseRequestBody } from '$lib/utils/api-response';
-import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
-import { PRIVATE_RAILWAY_WORKER_TOKEN } from '$env/static/private';
+import {
+	PRIVATE_RAILWAY_WORKER_TOKEN,
+	PUBLIC_RAILWAY_WORKER_URL
+} from '$lib/server/railway-worker-env';
 
 export const POST: RequestHandler = async ({ request, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();

@@ -730,5 +730,27 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		],
 		contexts: ['base', 'global', 'project_create', 'project'],
 		category: 'utility'
+	},
+	delegate_task: {
+		summary: 'Dispatch a self-contained task to a background Agent Run.',
+		capabilities: [
+			'Creates and queues an agent run without blocking the chat turn',
+			'Supports read-only or explicitly requested read-write scope',
+			'Can stage read-write changes for later review before commit'
+		],
+		contexts: ['global', 'project'],
+		timeoutMs: 30000,
+		category: 'write'
+	},
+	commit_change_set: {
+		summary: 'Apply or reject staged changes from a review Agent Run.',
+		capabilities: [
+			'Applies approved staged changes after user confirmation',
+			'Supports per-change approve/reject decisions',
+			'Returns applied, failed, and rejected change counts'
+		],
+		contexts: ['global', 'project'],
+		timeoutMs: 60000,
+		category: 'write'
 	}
 };

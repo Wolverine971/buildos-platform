@@ -1,10 +1,18 @@
 // apps/web/src/routes/api/onto/comments/[id]/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../shared/error-logging';
 import { handleCommentMentions } from '../comment-mentions';
 import { resolveCommentEntityOwnerActorId } from '$lib/server/comment-public-access';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const updateCommentSchema = z
+	.object({
+		body: z.string().min(1).max(10000)
+	})
+	.strict();
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	const supabase = locals.supabase;
@@ -15,8 +23,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	try {
-		const payload = await request.json();
-		const bodyText = (payload?.body || '').toString().trim();
+		const parsed = await parseJsonRequest(request, updateCommentSchema);
+		if (!parsed.ok) return parsed.response;
+		const bodyText = parsed.data.body.trim();
 
 		if (!bodyText) {
 			return ApiResponse.badRequest('Comment body is required');

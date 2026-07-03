@@ -17,7 +17,7 @@ import {
 import { assertValidId } from './op-execution-gateway.ids';
 import { normalizeProps, requireTrimmedString } from './op-execution-gateway.normalization';
 import { ExternalToolGatewayError } from './op-execution-gateway.responses';
-import type { ExternalLinkEntityKind } from './op-execution-gateway.config';
+import { ONTO_EDGE_SELECT, type ExternalLinkEntityKind } from './op-execution-gateway.config';
 import type { ToolExecutionContext } from './op-execution-gateway.types';
 
 export const TASK_DOCUMENT_REL = 'task_has_document';
@@ -124,7 +124,7 @@ export async function createEdge(
 
 	const { data: existing, error: existingError } = await context.admin
 		.from('onto_edges')
-		.select('id, src_kind, src_id, dst_kind, dst_id, rel, props, project_id, created_at')
+		.select(ONTO_EDGE_SELECT)
 		.eq('src_id', normalized.src_id)
 		.eq('dst_id', normalized.dst_id)
 		.eq('rel', normalized.rel)
@@ -154,7 +154,7 @@ export async function createEdge(
 			rel: normalized.rel,
 			props: normalized.props
 		})
-		.select('id, src_kind, src_id, dst_kind, dst_id, rel, props, project_id, created_at')
+		.select(ONTO_EDGE_SELECT)
 		.single();
 
 	if (error || !data) {
@@ -197,7 +197,7 @@ export async function unlinkOntoEdge(context: ToolExecutionContext, args: Record
 	const edgeId = assertValidId(args.edge_id, 'edge_id');
 	const { data: edge, error: edgeError } = await context.admin
 		.from('onto_edges')
-		.select('*')
+		.select(ONTO_EDGE_SELECT)
 		.eq('id', edgeId)
 		.maybeSingle();
 

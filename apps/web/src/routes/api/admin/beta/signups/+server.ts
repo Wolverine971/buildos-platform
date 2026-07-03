@@ -1,9 +1,20 @@
 // apps/web/src/routes/api/admin/beta/signups/+server.ts
 import { ApiResponse } from '$lib/utils/api-response';
+import { z } from 'zod';
 
 import type { RequestHandler } from './$types';
 import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate.js';
 import { createGmailTransporter, getDefaultSender } from '$lib/utils/email-config';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const betaSignupPatchSchema = z
+	.object({
+		signup_id: z.string().min(1),
+		status: z.enum(['pending', 'approved', 'waitlist', 'declined']),
+		create_member: z.boolean().optional(),
+		send_approval_email: z.boolean().optional()
+	})
+	.strict();
 
 // Beta approval email function
 async function sendBetaApprovalEmail(signupData: any) {
@@ -276,7 +287,9 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 	}
 
 	try {
-		const { signup_id, status, create_member, send_approval_email } = await request.json();
+		const parsed = await parseJsonRequest(request, betaSignupPatchSchema);
+		if (!parsed.ok) return parsed.response;
+		const { signup_id, status, create_member, send_approval_email } = parsed.data;
 
 		if (!signup_id || !status) {
 			return ApiResponse.badRequest('Signup ID and status are required');

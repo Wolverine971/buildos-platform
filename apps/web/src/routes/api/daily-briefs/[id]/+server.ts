@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { mapOntologyDailyBriefRow } from '$lib/services/dailyBrief/ontology-mappers';
+import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 
 export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -37,7 +38,9 @@ export const PUT: RequestHandler = async ({
 	}
 
 	try {
-		const updates = await request.json();
+		const parsed = await parseJsonRequest(request, jsonObjectSchema);
+		if (!parsed.ok) return parsed.response;
+		const updates = parsed.data;
 
 		const { data, error } = await supabase
 			.from('ontology_daily_briefs')

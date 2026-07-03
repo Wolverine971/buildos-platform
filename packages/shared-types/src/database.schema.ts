@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-07-02T23:24:52.083Z
+// Generated on: 2026-07-03T02:46:30.822Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -2427,6 +2427,70 @@ export type DatabaseSchema = {
 		updated_at: string | null;
 		user_id: string;
 	};
+	project_audit_suggestions: {
+		audit_id: string;
+		created_at: string;
+		id: string;
+		role: string;
+		suggestion_id: string;
+	};
+	project_audit_trigger_evaluations: {
+		burst_score: number | null;
+		changed_entity_count: number | null;
+		cooldown_until: string | null;
+		created_at: string;
+		created_audit_id: string | null;
+		created_loop_run_id: string | null;
+		decision: string;
+		eligible: boolean;
+		evaluated_at: string;
+		id: string;
+		last_audit_id: string | null;
+		major_change_count: number | null;
+		maturity_snapshot: Json;
+		project_id: string;
+		project_size_class: string;
+		quiet_until: string | null;
+		reason_summary: string;
+		trigger_reason: string;
+		user_id: string;
+	};
+	project_audits: {
+		archived_at: string | null;
+		audit_depth: string;
+		change_summary: Json;
+		chat_session_id: string | null;
+		cost_usd: number | null;
+		created_at: string;
+		delivery_confidence: string;
+		dimensions: Json;
+		error_message: string | null;
+		evidence_refs: Json;
+		finished_at: string | null;
+		generated_suggestion_count: number;
+		id: string;
+		loop_run_id: string | null;
+		model_used: string | null;
+		open_questions: Json;
+		project_id: string;
+		project_size_class: string;
+		project_snapshot_fingerprint: string | null;
+		project_thesis: string | null;
+		recommendations: Json;
+		reviewed_at: string | null;
+		risks: Json;
+		started_at: string | null;
+		status: string;
+		summary: string;
+		superseded_by: string | null;
+		top_actions: Json;
+		top_findings: Json;
+		trigger_reason: string;
+		trigger_snapshot: Json;
+		unresolved_suggestion_count: number;
+		updated_at: string;
+		user_id: string;
+	};
 	project_loop_runs: {
 		brief: Json | null;
 		chat_session_id: string | null;
@@ -3689,6 +3753,9 @@ export const tableNames = [
 	'project_context_snapshot_metrics',
 	'project_daily_briefs',
 	'project_drafts',
+	'project_audit_suggestions',
+	'project_audit_trigger_evaluations',
+	'project_audits',
 	'project_loop_runs',
 	'project_notification_batches',
 	'project_questions',

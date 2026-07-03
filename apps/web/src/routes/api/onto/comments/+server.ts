@@ -1,13 +1,25 @@
 // apps/web/src/routes/api/onto/comments/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../shared/error-logging';
 import { handleCommentMentions } from './comment-mentions';
 import { canAccessPublicComments } from '$lib/server/comment-public-access';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
+
+const createCommentSchema = z
+	.object({
+		project_id: z.string().min(1),
+		entity_type: z.string().min(1),
+		entity_id: z.string().min(1),
+		parent_id: z.string().nullable().optional(),
+		body: z.string().min(1).max(10000)
+	})
+	.strict();
 
 export const GET: RequestHandler = async ({ request, locals }) => {
 	const supabase = locals.supabase;
@@ -252,12 +264,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	let entityId: string | undefined;
 
 	try {
-		const payload = await request.json();
-		projectId = payload?.project_id;
-		entityType = (payload?.entity_type || '').toString().toLowerCase();
-		entityId = payload?.entity_id;
-		const parentId = payload?.parent_id ?? null;
-		const bodyText = (payload?.body || '').toString().trim();
+		const parsed = await parseJsonRequest(request, createCommentSchema);
+		if (!parsed.ok) return parsed.response;
+		const payload = parsed.data;
+		projectId = payload.project_id;
+		entityType = payload.entity_type.toLowerCase();
+		entityId = payload.entity_id;
+		const parentId = payload.parent_id ?? null;
+		const bodyText = payload.body.trim();
 
 		if (!projectId || !entityType || !entityId) {
 			return ApiResponse.badRequest('project_id, entity_type, and entity_id are required');

@@ -23,6 +23,7 @@ import {
 	runGatewayWriteOp,
 	titleFromGatewayChange
 } from './op-execution-gateway';
+import { AGENT_RUN_CHANGE_SET_SELECT } from './op-execution-gateway.config';
 import { START_HERE_DOCUMENT_TYPE_KEY, stripStartHereManagedRegions } from '../ontology/start-here';
 import { syncInboxItemForAgentRun } from '../inbox-index';
 
@@ -330,7 +331,7 @@ export async function commitChangeSet(params: {
 
 	const { data: run, error: runError } = await admin
 		.from('agent_runs')
-		.select('*')
+		.select(AGENT_RUN_CHANGE_SET_SELECT as '*')
 		.eq('id', runId)
 		.eq('user_id', userId)
 		.maybeSingle();

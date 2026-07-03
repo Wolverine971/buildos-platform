@@ -50,16 +50,19 @@
 		if (block.status === 'error') return 'BuildOS hit an issue';
 		if (block.status === 'interrupted' || block.status === 'cancelled')
 			return 'BuildOS stopped';
-		if (block.status === 'completed') return 'BuildOS thought';
 		if (block.agentState === 'waiting_on_user') return 'Waiting on your direction';
+		if (block.status === 'completed') return 'BuildOS thought';
 		return 'BuildOS is thinking';
 	});
 	const compactDetail = $derived.by(() => {
-		if (block.status === 'completed') return 'No tools needed';
 		if (block.status === 'error') return block.content || 'Try again when you are ready';
 		if (block.status === 'interrupted' || block.status === 'cancelled') {
 			return block.content || 'Stopped';
 		}
+		if (block.agentState === 'waiting_on_user') {
+			return block.content || 'Waiting on your direction';
+		}
+		if (block.status === 'completed') return 'No tools needed';
 		return block.content || 'Preparing the next response';
 	});
 	const activitySummary = $derived(

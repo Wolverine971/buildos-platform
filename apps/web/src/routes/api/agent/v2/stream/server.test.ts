@@ -626,6 +626,97 @@ describe('/api/agent/v2/stream', () => {
 		);
 	});
 
+	it('emits live tool_result payloads with search telemetry and stream events', async () => {
+		const supabase = createStreamingSupabase();
+		const toolCall = {
+			id: 'call-search',
+			type: 'function',
+			function: {
+				name: 'search_project',
+				arguments: JSON.stringify({
+					query: 'missing launch notes',
+					project_id: 'project-1'
+				})
+			}
+		};
+		const toolResult = {
+			tool_call_id: 'call-search',
+			result: {
+				results: []
+			},
+			success: true,
+			duration_ms: 12,
+			tokens_consumed: 9,
+			stream_events: [
+				{
+					type: 'progress',
+					message: 'searched project'
+				}
+			]
+		};
+
+		mocks.streamFastChat.mockImplementationOnce(
+			async ({ onToolCall, onToolResult, onDelta }: Row) => {
+				await onToolCall?.(toolCall);
+				await onToolResult?.({ toolCall, result: toolResult });
+				await onDelta('No matches.');
+				return {
+					assistantText: 'No matches.',
+					finalAssistantText: 'No matches.',
+					usage: { total_tokens: 8 },
+					finishedReason: 'stop',
+					toolExecutions: [{ toolCall, result: toolResult }],
+					llmPasses: [],
+					toolRounds: 1,
+					toolCallsMade: 1,
+					supervisorDecisions: [],
+					finalizationGuard: undefined,
+					cancelled: false,
+					peakPromptTokens: undefined,
+					finalContextUsage: undefined
+				};
+			}
+		);
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Search for launch notes',
+					context_type: 'global',
+					stream_run_id: 'stream-run-search',
+					client_turn_id: 'client-turn-search'
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		const events = parseSseEvents(await response.text());
+		const liveToolResult = events.find((event) => event.type === 'tool_result');
+
+		expect(liveToolResult?.result).toEqual(
+			expect.objectContaining({
+				tool_call_id: 'call-search',
+				tool_name: 'search_project',
+				tool_category: 'ontology',
+				result_count: 0,
+				zero_result: true,
+				tokens_consumed: 9,
+				stream_events: [
+					{
+						type: 'progress',
+						message: 'searched project'
+					}
+				]
+			})
+		);
+	});
+
 	it('injects AI Inbox proposal context into the model history', async () => {
 		const supabase = createStreamingSupabase();
 		let capturedHistory: Row[] = [];

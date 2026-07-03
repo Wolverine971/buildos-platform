@@ -1,11 +1,19 @@
 // apps/web/src/routes/api/chat/sessions/[id]/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 import { buildAgentTimeline } from '$lib/components/agent/agent-chat-timeline';
 import type {
 	AgentTimelineEntityRef,
 	AgentTimelineItem
 } from '$lib/components/agent/agent-chat.types';
+
+const chatSessionTitleUpdateSchema = z
+	.object({
+		title: z.string()
+	})
+	.strict();
 
 type ChatMessageAttachmentRow = {
 	message_id?: string | null;
@@ -609,13 +617,9 @@ export const PATCH: RequestHandler = async ({
 		return ApiResponse.badRequest('Session id is required');
 	}
 
-	let payload: { title?: string } = {};
-
-	try {
-		payload = (await request.json()) as { title?: string };
-	} catch {
-		return ApiResponse.badRequest('Invalid request payload');
-	}
+	const parsed = await parseJsonRequest(request, chatSessionTitleUpdateSchema);
+	if (!parsed.ok) return parsed.response;
+	const payload = parsed.data;
 
 	const title = payload.title?.trim();
 	if (!title) {

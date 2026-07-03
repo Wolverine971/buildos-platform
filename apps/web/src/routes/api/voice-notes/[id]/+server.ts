@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/voice-notes/[id]/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 
 const TRANSCRIPTION_STATUSES = new Set(['pending', 'complete', 'failed', 'skipped']);
 
@@ -70,12 +71,9 @@ export const PATCH: RequestHandler = async ({
 		return ApiResponse.badRequest('Voice note id is required');
 	}
 
-	let payload: Record<string, unknown> = {};
-	try {
-		payload = (await request.json()) as Record<string, unknown>;
-	} catch {
-		return ApiResponse.badRequest('Invalid request payload');
-	}
+	const parsed = await parseJsonRequest(request, jsonObjectSchema);
+	if (!parsed.ok) return parsed.response;
+	const payload = parsed.data;
 
 	const transcript = parseOptionalString(payload.transcript);
 	const transcriptionStatus = parseOptionalString(payload.transcriptionStatus);

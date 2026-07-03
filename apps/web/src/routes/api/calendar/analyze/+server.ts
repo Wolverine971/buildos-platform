@@ -1,9 +1,19 @@
 // apps/web/src/routes/api/calendar/analyze/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { CalendarAnalysisService } from '$lib/services/calendar-analysis.service';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const calendarAnalyzeSchema = z
+	.object({
+		daysBack: z.number().optional().default(30),
+		daysForward: z.number().optional().default(60),
+		calendarsToAnalyze: z.array(z.string()).optional()
+	})
+	.strict();
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
@@ -25,8 +35,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			);
 		}
 
-		const body = await request.json();
-		const { daysBack = 30, daysForward = 60, calendarsToAnalyze } = body;
+		const parsed = await parseJsonRequest(request, calendarAnalyzeSchema);
+		if (!parsed.ok) return parsed.response;
+		const { daysBack, daysForward, calendarsToAnalyze } = parsed.data;
 
 		// Validate input
 		if (daysBack < 0 || daysBack > 365) {

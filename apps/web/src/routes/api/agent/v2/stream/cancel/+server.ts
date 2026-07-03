@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/agent/v2/stream/cancel/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { createLogger } from '$lib/utils/logger';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
@@ -11,6 +12,7 @@ import {
 	normalizeFastChatStreamRunId,
 	recordTransientFastChatCancelHint
 } from '$lib/services/agentic-chat-v2/cancel-reason-channel';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 const logger = createLogger('API:AgentStreamV2Cancel');
 
@@ -21,19 +23,27 @@ type FastChatCancelRequest = {
 	reason?: string;
 };
 
+const fastChatCancelSchema = z
+	.object({
+		session_id: z.string().optional(),
+		stream_run_id: z.union([z.string(), z.number()]),
+		client_turn_id: z.string().optional(),
+		reason: z.string()
+	})
+	.strict();
+
 export const POST: RequestHandler = async ({ request, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
 	if (!user?.id) {
 		return ApiResponse.unauthorized();
 	}
 
-	let body: FastChatCancelRequest;
-	try {
-		body = (await request.json()) as FastChatCancelRequest;
-	} catch (error) {
-		logger.warn('Failed to parse stream cancel request', { error });
-		return ApiResponse.badRequest('Invalid request body');
+	const parsed = await parseJsonRequest(request, fastChatCancelSchema);
+	if (!parsed.ok) {
+		logger.warn('Failed to parse stream cancel request');
+		return parsed.response;
 	}
+	const body: FastChatCancelRequest = parsed.data;
 
 	const streamRunId = normalizeFastChatStreamRunId(body.stream_run_id);
 	if (!streamRunId) {

@@ -2,13 +2,22 @@
 // Direct proxy endpoint for CalendarService methods
 
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ApiResponse, requireAuth } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 interface CalendarRequest {
 	method: string;
 	params?: any;
 }
+
+const calendarRequestSchema = z
+	.object({
+		method: z.string().min(1),
+		params: z.record(z.unknown()).optional().default({})
+	})
+	.strict();
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -18,7 +27,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 		const { user } = authResult;
 
-		const body = (await request.json()) as CalendarRequest;
+		const parsed = await parseJsonRequest(request, calendarRequestSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data as CalendarRequest;
 		const { method, params = {} } = body;
 
 		const calendarService = new CalendarService(locals.supabase);

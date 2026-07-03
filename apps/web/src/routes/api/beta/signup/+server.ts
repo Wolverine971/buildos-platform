@@ -1,9 +1,11 @@
 // apps/web/src/routes/api/beta/signup/+server.ts
 import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate.js';
 import { createGmailTransporter, getDefaultSender } from '$lib/utils/email-config';
 import { validateEmail } from '$lib/utils/email-validation';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 interface BetaSignupRequest {
 	email: string;
@@ -33,6 +35,23 @@ interface NormalizedBetaSignupRequest {
 	wants_community_access: boolean;
 	user_timezone: string;
 }
+
+const betaSignupSchema = z
+	.object({
+		email: z.string(),
+		full_name: z.string().optional(),
+		job_title: z.string().optional(),
+		company_name: z.string().optional(),
+		why_interested: z.string().optional(),
+		productivity_tools: z.array(z.string()).optional(),
+		biggest_challenge: z.string().optional(),
+		referral_source: z.string().optional(),
+		wants_weekly_calls: z.boolean().optional(),
+		wants_community_access: z.boolean().optional(),
+		user_timezone: z.string().optional(),
+		honeypot: z.string().optional()
+	})
+	.strict();
 
 function normalizeSingleLine(value?: string | null): string | null {
 	if (!value) return null;
@@ -358,7 +377,9 @@ async function sendBetaSignupNotification(signupData: any) {
 
 export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
 	try {
-		const data: BetaSignupRequest = await request.json();
+		const parsed = await parseJsonRequest(request, betaSignupSchema);
+		if (!parsed.ok) return parsed.response;
+		const data: BetaSignupRequest = parsed.data;
 		const clientIP = getClientIP(request);
 		const normalized = normalizeSignupData(data);
 		if (normalized.error || !normalized.data) {

@@ -1,7 +1,26 @@
 // apps/web/src/routes/api/admin/emails/recipients/+server.ts
 
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const emailRecipientSchema = z
+	.object({
+		email: z.string().email(),
+		name: z.string().nullable().optional(),
+		type: z.string().min(1).optional(),
+		id: z.string().nullable().optional()
+	})
+	.strict();
+
+const updateEmailRecipientsSchema = z
+	.object({
+		email_id: z.string().min(1),
+		recipients: z.array(emailRecipientSchema)
+	})
+	.strict();
+
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 
@@ -80,7 +99,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	}
 
 	try {
-		const { email_id, recipients } = await request.json();
+		const parsed = await parseJsonRequest(request, updateEmailRecipientsSchema);
+		if (!parsed.ok) return parsed.response;
+		const { email_id, recipients } = parsed.data;
 
 		if (!email_id || !recipients || !Array.isArray(recipients)) {
 			return ApiResponse.badRequest('Email ID and recipients array required');

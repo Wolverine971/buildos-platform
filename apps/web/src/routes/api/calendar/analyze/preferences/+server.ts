@@ -1,8 +1,19 @@
 // apps/web/src/routes/api/calendar/analyze/preferences/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { CalendarAnalysisService } from '$lib/services/calendar-analysis.service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const calendarAnalysisPreferencesSchema = z
+	.object({
+		minimum_confidence_to_show: z.number().min(0).max(1).optional(),
+		auto_accept_confidence: z.number().min(0).max(1).optional(),
+		analysis_frequency: z.enum(['manual', 'weekly', 'monthly']).optional(),
+		minimum_attendees: z.number().min(0).max(100).optional()
+	})
+	.strict();
 
 /**
  * Get user's calendar analysis preferences
@@ -61,7 +72,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			return ApiResponse.unauthorized();
 		}
 
-		const body = await request.json();
+		const parsed = await parseJsonRequest(request, calendarAnalysisPreferencesSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data;
 
 		// Validate preference values
 		if (body.minimum_confidence_to_show !== undefined) {

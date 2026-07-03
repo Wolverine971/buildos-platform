@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/onto/mentions/ping/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
@@ -10,6 +11,7 @@ import {
 	resolveEligibleProjectMentionUserIds,
 	type EntityMentionNotificationSource
 } from '$lib/server/entity-mention-notification.service';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 const ALLOWED_ENTITY_TYPES = new Set(['task', 'goal', 'document']);
 const MAX_MENTIONED_USERS = 25;
@@ -20,6 +22,16 @@ const ENTITY_TITLE_COLUMN: Record<string, 'title' | 'name'> = {
 	goal: 'name',
 	document: 'title'
 };
+
+const mentionPingSchema = z
+	.object({
+		project_id: z.string().min(1),
+		entity_type: z.string().min(1),
+		entity_id: z.string().min(1),
+		message: z.string().optional(),
+		mentioned_user_ids: z.array(z.string())
+	})
+	.strict();
 
 function normalizeMentionedUserIds(rawValue: unknown): string[] | null {
 	if (!Array.isArray(rawValue)) return null;
@@ -57,7 +69,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const supabase = locals.supabase;
 
 	try {
-		const body = (await request.json()) as Record<string, unknown>;
+		const parsed = await parseJsonRequest(request, mentionPingSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data;
 		const projectId = typeof body.project_id === 'string' ? body.project_id.trim() : '';
 		const entityType =
 			typeof body.entity_type === 'string' ? body.entity_type.trim().toLowerCase() : '';

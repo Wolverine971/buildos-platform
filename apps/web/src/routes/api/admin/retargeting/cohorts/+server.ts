@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/admin/retargeting/cohorts/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
@@ -8,6 +9,22 @@ import {
 	getRetargetingValidationMessage
 } from '$lib/server/retargeting-pilot.errors';
 import { RetargetingPilotService } from '$lib/server/retargeting-pilot.service';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const retargetingNumericInputSchema = z.union([z.string(), z.number(), z.null()]).optional();
+
+const freezeRetargetingCohortSchema = z
+	.object({
+		campaign_id: z.string().optional(),
+		cohort_id: z.string().min(1),
+		cohort_frozen_at: z.string().optional(),
+		batch_size: retargetingNumericInputSchema,
+		holdout_users_if_small: retargetingNumericInputSchema,
+		holdout_pct_if_large: retargetingNumericInputSchema,
+		conversion_window_days: retargetingNumericInputSchema,
+		replace_existing: z.boolean().optional()
+	})
+	.strict();
 
 function parseBoolean(value: string | null): boolean | undefined {
 	if (value === null) {
@@ -89,26 +106,23 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		return ApiResponse.forbidden('Admin access required');
 	}
 
-	let body: Record<string, unknown>;
-	try {
-		body = (await request.json()) as Record<string, unknown>;
-	} catch {
-		return ApiResponse.badRequest('Invalid request body');
-	}
+	const parsed = await parseJsonRequest(request, freezeRetargetingCohortSchema);
+	if (!parsed.ok) return parsed.response;
+	const body = parsed.data;
 
 	const invalidNumericField = [
 		'batch_size',
 		'holdout_users_if_small',
 		'holdout_pct_if_large',
 		'conversion_window_days'
-	].find((field) => hasInvalidNumericInput(body?.[field]));
+	].find((field) => hasInvalidNumericInput((body as Record<string, unknown>)[field]));
 	if (invalidNumericField) {
 		return ApiResponse.badRequest(`${invalidNumericField} must be a number`);
 	}
 
 	let errorLogger: ErrorLoggerService | null = null;
 	try {
-		const cohortId = typeof body?.cohort_id === 'string' ? body.cohort_id.trim() : '';
+		const cohortId = body.cohort_id.trim();
 		if (!cohortId) {
 			return ApiResponse.badRequest('cohort_id is required');
 		}
@@ -117,15 +131,14 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		errorLogger = ErrorLoggerService.getInstance(adminSupabase);
 		const service = new RetargetingPilotService(adminSupabase);
 		const payload = await service.freezeCohort({
-			campaignId: typeof body?.campaign_id === 'string' ? body.campaign_id.trim() : undefined,
+			campaignId: body.campaign_id?.trim() || undefined,
 			cohortId,
-			cohortFrozenAt:
-				typeof body?.cohort_frozen_at === 'string' ? body.cohort_frozen_at : undefined,
+			cohortFrozenAt: body.cohort_frozen_at,
 			batchSize: parseNumber(body?.batch_size),
 			holdoutUsersIfSmall: parseNumber(body?.holdout_users_if_small),
 			holdoutPctIfLarge: parseNumber(body?.holdout_pct_if_large),
 			conversionWindowDays: parseNumber(body?.conversion_window_days),
-			replaceExisting: body?.replace_existing === true
+			replaceExisting: body.replace_existing === true
 		});
 
 		return ApiResponse.created(payload);
@@ -141,9 +154,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		}
 
 		await errorLogger?.logAPIError(error, '/api/admin/retargeting/cohorts', 'POST', user.id, {
-			campaignId: typeof body?.campaign_id === 'string' ? body.campaign_id.trim() : null,
-			cohortId: typeof body?.cohort_id === 'string' ? body.cohort_id.trim() : null,
-			replaceExisting: body?.replace_existing === true
+			campaignId: body.campaign_id?.trim() || null,
+			cohortId: body.cohort_id.trim() || null,
+			replaceExisting: body.replace_existing === true
 		});
 		return ApiResponse.internalError(error, 'Failed to freeze retargeting cohort');
 	}

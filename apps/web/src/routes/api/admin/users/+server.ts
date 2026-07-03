@@ -1,7 +1,9 @@
 // apps/web/src/routes/api/admin/users/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const METRIC_PAGE_SIZE = 1000;
@@ -25,6 +27,20 @@ const EMPTY_ONTOLOGY_COUNTS: OntologyCounts = {
 	risks: 0,
 	requirements: 0
 };
+
+const adminUserUpdatesSchema = z
+	.object({
+		name: z.string().trim().min(1).nullable().optional(),
+		bio: z.string().nullable().optional(),
+		is_admin: z.boolean().optional(),
+		onboarding_completed_at: z.string().datetime().nullable().optional()
+	})
+	.strict();
+
+const adminUserPatchSchema = z.object({
+	userId: z.string().uuid(),
+	updates: adminUserUpdatesSchema
+});
 
 type ChatSessionMetricRow = {
 	id: string;
@@ -480,17 +496,11 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 	}
 
 	try {
-		const { userId, updates } = await request.json();
+		const parsed = await parseJsonRequest(request, adminUserPatchSchema);
+		if (!parsed.ok) return parsed.response;
+		const { userId, updates } = parsed.data;
 
-		if (!userId) {
-			return ApiResponse.badRequest('User ID is required');
-		}
-
-		// Whitelist allowed fields to prevent privilege escalation
-		const ALLOWED_FIELDS = ['name', 'bio', 'is_admin', 'onboarding_completed_at'];
-		const sanitizedUpdates = Object.keys(updates)
-			.filter((key) => ALLOWED_FIELDS.includes(key))
-			.reduce((obj, key) => ({ ...obj, [key]: updates[key] }), {});
+		const sanitizedUpdates = updates;
 
 		// Ensure we have at least one field to update
 		if (Object.keys(sanitizedUpdates).length === 0) {

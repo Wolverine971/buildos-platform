@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
+import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
 import {
 	logCreateAsync,
@@ -86,7 +87,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	let requestConnections: ConnectionRef[] | undefined;
 	let requestAssigneeActorIds: string[] | undefined;
 	try {
-		const body = (await request.json()) as Record<string, unknown>;
+		const parsed = await parseJsonRequest(request, jsonObjectSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data;
 		const {
 			project_id,
 			title,

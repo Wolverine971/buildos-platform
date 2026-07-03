@@ -2,7 +2,13 @@
 //
 // Review-mode staging for gateway writes. This validates and snapshots proposed
 // mutations without applying them; commit still flows through runGatewayWriteOp.
-import type { AgentCallScope, BuildosAgentAllowedOp, ProposedChange } from '@buildos/shared-types';
+import type {
+	AgentCallScope,
+	BuildosAgentAllowedOp,
+	Database,
+	ProposedChange
+} from '@buildos/shared-types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeGatewayOpName } from '../ops/gateway-op-aliases';
 import {
 	EXTERNAL_OP_HANDLERS,
@@ -14,6 +20,8 @@ import {
 	proposedChangeActionForGatewayOp
 } from './op-execution-gateway.mutations';
 import { normalizeAndValidateGatewayWriteArgs } from './op-execution-gateway.validation';
+
+type GatewaySupabaseClient = SupabaseClient<Database>;
 
 // Staged write ops for review-before-commit
 
@@ -40,9 +48,7 @@ export type StageWriteOpResult =
  * telemetry against it.
  */
 export async function stageGatewayWriteOp(params: {
-	// `any` matches ToolExecutionContext.admin (see runGatewayWriteOp); callers
-	// pass a real SupabaseClient<Database>.
-	admin: any;
+	admin: GatewaySupabaseClient;
 	userId: string;
 	scope: AgentCallScope;
 	op: string;

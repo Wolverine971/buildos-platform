@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/onboarding/+server.ts
 import { ApiResponse } from '$lib/utils/api-response';
+import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 import type { RequestHandler } from './$types';
 import { OnboardingServerService } from '$lib/server/onboarding.service';
 import { captureServerEvent } from '$lib/server/posthog';
@@ -15,7 +16,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 	}
 
 	try {
-		const body = await request.json();
+		const parsed = await parseJsonRequest(request, jsonObjectSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data as Record<string, any>;
 		const { action, voiceInput, category, updates } = body;
 
 		if (!action) {

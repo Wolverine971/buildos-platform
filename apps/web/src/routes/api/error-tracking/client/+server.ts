@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { getRequestIdFromHeaders, logServerError } from '$lib/server/error-tracking';
 import { shouldPersistGenericErrorEvent } from '$lib/utils/error-observability';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
+import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 
 type ClientErrorPayload = {
 	kind?: unknown;
@@ -78,13 +79,9 @@ function buildClientError(
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	let payload: ClientErrorPayload;
-
-	try {
-		payload = (await request.json()) as ClientErrorPayload;
-	} catch {
-		return new Response(null, { status: 400 });
-	}
+	const parsed = await parseJsonRequest(request, jsonObjectSchema);
+	if (!parsed.ok) return parsed.response;
+	const payload = parsed.data as ClientErrorPayload;
 
 	const kind = normalizeKind(payload.kind);
 	const endpoint = normalizeEndpoint(payload.endpoint);

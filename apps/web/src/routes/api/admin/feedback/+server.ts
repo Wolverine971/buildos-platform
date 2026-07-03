@@ -1,6 +1,28 @@
 // apps/web/src/routes/api/admin/feedback/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const adminFeedbackUpdateSchema = z
+	.object({
+		category: z.string().min(1).optional(),
+		feedback_text: z.string().min(1).optional(),
+		rating: z.number().int().min(1).max(5).nullable().optional(),
+		status: z.string().min(1).nullable().optional(),
+		user_email: z.string().email().nullable().optional()
+	})
+	.strict()
+	.refine((updates) => Object.keys(updates).length > 0, {
+		message: 'At least one update field is required'
+	});
+
+const adminFeedbackPatchSchema = z
+	.object({
+		feedback_id: z.string().min(1),
+		updates: adminFeedbackUpdateSchema
+	})
+	.strict();
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -69,7 +91,9 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 	}
 
 	try {
-		const { feedback_id, updates } = await request.json();
+		const parsed = await parseJsonRequest(request, adminFeedbackPatchSchema);
+		if (!parsed.ok) return parsed.response;
+		const { feedback_id, updates } = parsed.data;
 
 		if (!feedback_id) {
 			return ApiResponse.badRequest('Feedback ID is required');

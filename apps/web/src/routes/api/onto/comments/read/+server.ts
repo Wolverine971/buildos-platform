@@ -1,9 +1,21 @@
 // apps/web/src/routes/api/onto/comments/read/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../shared/error-logging';
 import { canAccessPublicComments } from '$lib/server/comment-public-access';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const markCommentsReadSchema = z
+	.object({
+		project_id: z.string().min(1),
+		entity_type: z.string().min(1),
+		entity_id: z.string().min(1),
+		root_id: z.string().min(1),
+		last_read_comment_id: z.string().nullable().optional()
+	})
+	.strict();
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const supabase = locals.supabase;
@@ -19,12 +31,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	let rootId: string | undefined;
 
 	try {
-		const payload = await request.json();
-		projectId = payload?.project_id;
-		entityType = payload?.entity_type;
-		entityId = payload?.entity_id;
-		rootId = payload?.root_id;
-		const lastReadCommentId = payload?.last_read_comment_id ?? null;
+		const parsed = await parseJsonRequest(request, markCommentsReadSchema);
+		if (!parsed.ok) return parsed.response;
+		const payload = parsed.data;
+		projectId = payload.project_id;
+		entityType = payload.entity_type;
+		entityId = payload.entity_id;
+		rootId = payload.root_id;
+		const lastReadCommentId = payload.last_read_comment_id ?? null;
 
 		if (!projectId || !entityType || !entityId || !rootId) {
 			return ApiResponse.badRequest(

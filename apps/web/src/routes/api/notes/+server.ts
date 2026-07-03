@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { cleanDataForTable, validateRequiredFields } from '$lib/utils/data-cleaner';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -11,7 +12,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	}
 
 	try {
-		const data = await request.json();
+		const parsed = await parseJsonRequest(request, jsonObjectSchema);
+		if (!parsed.ok) return parsed.response;
+		const data = parsed.data;
 		const actorId = await ensureActorId(supabase, user.id);
 
 		// Clean the note data

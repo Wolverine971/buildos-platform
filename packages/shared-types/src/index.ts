@@ -39,3 +39,4 @@ export * from './agent-call.types';
 
 // Export Project Loops (reconciliation suggestions) types
 export * from './project-loops.types';
+export * from './project-audits.types';

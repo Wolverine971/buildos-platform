@@ -4,6 +4,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import type { ProjectSpec } from '$lib/types/onto';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 import {
 	instantiateProject,
 	validateProjectSpec,
@@ -18,7 +19,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			return ApiResponse.unauthorized('Authentication required');
 		}
 
-		const body = (await request.json()) as unknown;
+		const parsed = await parseJsonRequest(request, jsonObjectSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data;
 
 		const validation = validateProjectSpec(body);
 		if (!validation.valid) {

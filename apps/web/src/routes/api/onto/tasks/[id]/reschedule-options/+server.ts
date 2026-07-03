@@ -1,10 +1,19 @@
 // apps/web/src/routes/api/onto/tasks/[id]/reschedule-options/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { OverdueTaskRescheduleService } from '$lib/services/overdue-task-reschedule.service';
 import type { OverdueReschedulePreset } from '$lib/utils/overdue-reschedule';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 const VALID_PRESETS: OverdueReschedulePreset[] = ['today', 'tomorrow', 'plus3', 'nextWeek'];
+
+const rescheduleOptionsSchema = z
+	.object({
+		preset: z.enum(['today', 'tomorrow', 'plus3', 'nextWeek']),
+		limit: z.number().optional()
+	})
+	.strict();
 
 function isPreset(value: unknown): value is OverdueReschedulePreset {
 	return typeof value === 'string' && VALID_PRESETS.includes(value as OverdueReschedulePreset);
@@ -17,10 +26,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	try {
-		const body = (await request.json()) as {
-			preset?: OverdueReschedulePreset;
-			limit?: number;
-		};
+		const parsed = await parseJsonRequest(request, rescheduleOptionsSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data;
 		if (!isPreset(body?.preset)) {
 			return ApiResponse.badRequest(
 				'preset must be one of: today, tomorrow, plus3, nextWeek'

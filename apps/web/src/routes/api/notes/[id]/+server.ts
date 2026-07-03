@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { cleanDataForTable, validateRequiredFields } from '$lib/utils/data-cleaner';
 import { ApiResponse } from '$lib/utils/api-response';
+import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 
 export const PUT: RequestHandler = async ({
 	params,
@@ -14,7 +15,9 @@ export const PUT: RequestHandler = async ({
 	}
 
 	try {
-		const data = await request.json();
+		const parsed = await parseJsonRequest(request, jsonObjectSchema);
+		if (!parsed.ok) return parsed.response;
+		const data = parsed.data;
 
 		// Clean the note data
 		const cleanedData = cleanDataForTable('notes', {

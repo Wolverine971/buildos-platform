@@ -159,6 +159,27 @@ export function computeToolResultInfo(
 	return { resultToolCallId, rawResultToolName, success, toolError, toolErrorMessage };
 }
 
+export function resolveDoneFinalization(finishedReason: string | null | undefined): {
+	status?: 'completed' | 'interrupted' | 'cancelled' | 'error';
+	note?: string;
+} {
+	const normalized =
+		typeof finishedReason === 'string' ? finishedReason.trim().toLowerCase() : '';
+	switch (normalized) {
+		case 'cancelled':
+		case 'canceled':
+		case 'aborted':
+		case 'user_cancelled':
+			return { status: 'cancelled' };
+		case 'length':
+			return { status: 'interrupted', note: 'Response truncated' };
+		case 'error':
+			return { status: 'error' };
+		default:
+			return {};
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Handler factory
 // ---------------------------------------------------------------------------
@@ -426,10 +447,11 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 		}
 	}
 
-	function handleDone(): void {
+	function handleDone(event: Extract<AgentSSEMessage, { type: 'done' }>): void {
+		const finalization = resolveDoneFinalization(event.finished_reason);
 		state.setCurrentActivity('');
 		deps.finalizeAssistantMessage();
-		thinking.finalize();
+		thinking.finalize(finalization.status, finalization.note);
 		// Surface any entities created this turn as inline chips, then reset.
 		if (createdEntitiesBuffer.length > 0) {
 			deps.addCreatedEntitiesMessage(createdEntitiesBuffer);
@@ -587,7 +609,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 				return;
 
 			case 'done':
-				handleDone();
+				handleDone(event);
 				return;
 
 			case 'error':

@@ -1,8 +1,10 @@
 // apps/web/src/routes/api/sms/scheduled/[id]/+server.ts
 import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
-import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
-import { PRIVATE_RAILWAY_WORKER_TOKEN } from '$env/static/private';
+import {
+	PRIVATE_RAILWAY_WORKER_TOKEN,
+	PUBLIC_RAILWAY_WORKER_URL
+} from '$lib/server/railway-worker-env';
 
 /**
  * DELETE /api/sms/scheduled/:id
@@ -12,6 +14,10 @@ export const DELETE: RequestHandler = async ({ params, locals: { safeGetSession,
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized('Unauthorized');
+	}
+
+	if (!PUBLIC_RAILWAY_WORKER_URL) {
+		return ApiResponse.error('Worker URL not configured', 503);
 	}
 
 	const { id } = params;

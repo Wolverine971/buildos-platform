@@ -34,6 +34,7 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 import { MILESTONE_STATES } from '$lib/types/onto';
 import {
 	logUpdateAsync,
@@ -165,7 +166,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
-		const body = await request.json();
+		const parsed = await parseJsonRequest(request, jsonObjectSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data as Record<string, any>;
 		const {
 			title,
 			due_at,

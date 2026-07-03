@@ -212,7 +212,7 @@ export async function createGoal(context: ToolExecutionContext, args: Record<str
 	const { data, error } = await context.admin
 		.from('onto_goals')
 		.insert(insertPayload)
-		.select('*')
+		.select(CORE_ENTITY_CONFIG.goal.select)
 		.single();
 
 	if (error || !data) {
@@ -317,7 +317,7 @@ export async function createPlan(context: ToolExecutionContext, args: Record<str
 	const { data, error } = await context.admin
 		.from('onto_plans')
 		.insert(insertPayload)
-		.select('*')
+		.select(CORE_ENTITY_CONFIG.plan.select)
 		.single();
 
 	if (error || !data) {
@@ -432,7 +432,7 @@ export async function createMilestone(
 			props,
 			created_by: actorId
 		})
-		.select('*')
+		.select(CORE_ENTITY_CONFIG.milestone.select)
 		.single();
 
 	if (error || !data) {
@@ -549,7 +549,7 @@ export async function createRisk(context: ToolExecutionContext, args: Record<str
 			...(stateKey === 'mitigated' ? { mitigated_at: new Date().toISOString() } : {}),
 			created_by: actorId
 		})
-		.select('*')
+		.select(CORE_ENTITY_CONFIG.risk.select)
 		.single();
 
 	if (error || !data) {
@@ -676,7 +676,7 @@ async function updateCoreEntity(
 		.from(config.table)
 		.update(updateData)
 		.eq('id', String(access.entity.id))
-		.select('*')
+		.select(config.select)
 		.single();
 
 	if (error || !data) {

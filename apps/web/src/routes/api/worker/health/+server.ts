@@ -1,8 +1,10 @@
 // apps/web/src/routes/api/worker/health/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
-import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
-import { PRIVATE_RAILWAY_WORKER_TOKEN } from '$env/static/private';
+import {
+	PRIVATE_RAILWAY_WORKER_TOKEN,
+	PUBLIC_RAILWAY_WORKER_URL
+} from '$lib/server/railway-worker-env';
 
 const HEALTH_TIMEOUT_MS = 5000;
 

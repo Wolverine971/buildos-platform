@@ -8,6 +8,7 @@ export const config = {
 };
 
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { buildActionableInsightSystemPrompt } from '$lib/services/agentic-chat/prompts/actionable-insight-agent';
@@ -16,6 +17,7 @@ import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createLogger } from '$lib/utils/logger';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
 import type { ErrorSeverity } from '$lib/types/error-logging';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 type HistoryItem = { role: 'agent' | 'buildos'; content: string };
 
@@ -25,6 +27,24 @@ interface AgentMessageRequest {
 	agentId: string;
 	history?: HistoryItem[];
 }
+
+const agentMessageRequestSchema = z
+	.object({
+		goal: z.string(),
+		projectId: z.string(),
+		agentId: z.string(),
+		history: z
+			.array(
+				z
+					.object({
+						role: z.enum(['agent', 'buildos']),
+						content: z.string()
+					})
+					.strict()
+			)
+			.optional()
+	})
+	.strict();
 
 type AgentMessageOperationType =
 	| 'agent_message_parse'
@@ -100,17 +120,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 	const errorLogger = ErrorLoggerService.getInstance(locals.supabase);
 
-	let body: AgentMessageRequest;
-	try {
-		body = await request.json();
-	} catch (error) {
+	const parsed = await parseJsonRequest(request, agentMessageRequestSchema);
+	if (!parsed.ok) {
 		logger.warn('Invalid JSON body for agent message request', {
-			userId: user.id,
-			error
+			userId: user.id
 		});
 		await logAgentMessageError({
 			errorLogger,
-			error,
+			error: new Error('Invalid agent message request body'),
 			userId: user.id,
 			operationType: 'agent_message_parse',
 			severity: 'warning',
@@ -118,8 +135,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				parseStage: 'request_json'
 			}
 		});
-		return ApiResponse.badRequest('Invalid JSON body');
+		return parsed.response;
 	}
+	const body: AgentMessageRequest = parsed.data;
 
 	const goal = body?.goal?.trim();
 	const projectId = body?.projectId?.trim();

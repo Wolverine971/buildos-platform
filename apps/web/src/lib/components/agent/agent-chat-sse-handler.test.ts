@@ -9,6 +9,7 @@ import {
 	computeToolResultInfo,
 	createSSEHandler,
 	normalizeContextShiftContext,
+	resolveDoneFinalization,
 	type ActivityUpdateResult,
 	type PendingToolStatus,
 	type SSEHandlerDeps,
@@ -177,6 +178,26 @@ describe('computeToolResultInfo', () => {
 		);
 		expect(info.success).toBe(false);
 		expect(info.toolErrorMessage).toBe('Not found');
+	});
+});
+
+describe('resolveDoneFinalization', () => {
+	it('maps user cancellation reasons to cancelled', () => {
+		expect(resolveDoneFinalization('cancelled')).toEqual({ status: 'cancelled' });
+		expect(resolveDoneFinalization('user_cancelled')).toEqual({ status: 'cancelled' });
+	});
+
+	it('maps length truncation to an interrupted thinking block note', () => {
+		expect(resolveDoneFinalization('length')).toEqual({
+			status: 'interrupted',
+			note: 'Response truncated'
+		});
+	});
+
+	it('leaves normal and supervisor-question finishes as normal completion', () => {
+		expect(resolveDoneFinalization('stop')).toEqual({});
+		expect(resolveDoneFinalization('supervisor_question')).toEqual({});
+		expect(resolveDoneFinalization(undefined)).toEqual({});
 	});
 });
 
@@ -732,6 +753,22 @@ describe('createSSEHandler — done + error', () => {
 		expect(h.snapshot.agentTurnsRemaining).toBe(0);
 		expect(h.snapshot.agentLoopActive).toBe(false);
 		expect(h.snapshot.currentActivity).toBe('Turn limit reached');
+	});
+
+	it('uses done.finished_reason when finalizing abnormal stream endings', () => {
+		const cancelled = createHarness();
+		cancelled.handler({ type: 'done', finished_reason: 'cancelled' } as any);
+		expect(cancelled.calls.finalize[0]).toEqual({
+			status: 'cancelled',
+			note: undefined
+		});
+
+		const truncated = createHarness();
+		truncated.handler({ type: 'done', finished_reason: 'length' } as any);
+		expect(truncated.calls.finalize[0]).toEqual({
+			status: 'interrupted',
+			note: 'Response truncated'
+		});
 	});
 
 	it('sets error and finalizes thinking block with error status', () => {

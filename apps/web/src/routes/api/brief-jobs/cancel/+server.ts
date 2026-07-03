@@ -1,6 +1,15 @@
 // apps/web/src/routes/api/brief-jobs/cancel/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const cancelBriefJobsSchema = z
+	.object({
+		briefDate: z.string().min(1),
+		jobType: z.string().optional().default('generate_daily_brief')
+	})
+	.strict();
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -9,7 +18,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	}
 
 	try {
-		const { briefDate, jobType = 'generate_daily_brief' } = await request.json();
+		const parsed = await parseJsonRequest(request, cancelBriefJobsSchema);
+		if (!parsed.ok) return parsed.response;
+		const { briefDate, jobType } = parsed.data;
 
 		if (!briefDate) {
 			return ApiResponse.error(
@@ -54,7 +65,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				processed_at: new Date().toISOString()
 			})
 			.eq('user_id', user.id)
-			.eq('job_type', jobType)
+			.eq('job_type', jobType as any)
 			.in('status', ['pending', 'processing'])
 			.gte('scheduled_for', startOfDay.toISOString())
 			.lt('scheduled_for', startOfNextDay.toISOString())

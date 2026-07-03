@@ -5,6 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ChatToolExecutor } from './tool-executor';
+import { getToolCategory, isWriteToolName } from './tools.config';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, ChatToolCall } from '@buildos/shared-types';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
@@ -189,6 +190,66 @@ describe('ChatToolExecutor - Update Behavior', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('Stream metadata', () => {
+		it('returns tokens_consumed while scrubbing internal token fields from the payload', async () => {
+			const dispatchSpy = vi
+				.spyOn(toolExecutor as any, 'dispatchTool')
+				.mockResolvedValueOnce({
+					ok: true,
+					tokens_consumed: 23,
+					_stream_events: [{ type: 'progress', message: 'done' }]
+				});
+
+			const result = await toolExecutor.execute({
+				id: 'call-tokens',
+				type: 'function',
+				function: {
+					name: 'web_search',
+					arguments: JSON.stringify({ query: 'buildos' })
+				}
+			} as ChatToolCall);
+
+			dispatchSpy.mockRestore();
+
+			expect(result.success).toBe(true);
+			expect(result.tokens_consumed).toBe(23);
+			expect(result.stream_events).toEqual([{ type: 'progress', message: 'done' }]);
+			expect(result.result).toEqual({ ok: true });
+		});
+	});
+
+	describe('Executor context state', () => {
+		it('rebuilds cached domain executors when the session id changes', () => {
+			void (toolExecutor as any).readExecutor;
+			void (toolExecutor as any).writeExecutor;
+			void (toolExecutor as any).utilityExecutor;
+
+			expect((toolExecutor as any)._readExecutor).toBeDefined();
+			expect((toolExecutor as any)._writeExecutor).toBeDefined();
+			expect((toolExecutor as any)._utilityExecutor).toBeDefined();
+
+			toolExecutor.setSessionId('test-session-updated');
+
+			expect((toolExecutor as any)._readExecutor).toBeUndefined();
+			expect((toolExecutor as any)._writeExecutor).toBeUndefined();
+			expect((toolExecutor as any)._utilityExecutor).toBeUndefined();
+		});
+	});
+
+	describe('Tool metadata alignment', () => {
+		it('categorizes dispatched compatibility and agent-run tools', () => {
+			expect(getToolCategory('search_ontology')).toBe('ontology');
+			expect(getToolCategory('search_buildos')).toBe('ontology');
+			expect(getToolCategory('delegate_task')).toBe('utility');
+			expect(getToolCategory('commit_change_set')).toBe('utility');
+		});
+
+		it('marks agent-run mutation tools as writes', () => {
+			expect(isWriteToolName('delegate_task')).toBe(true);
+			expect(isWriteToolName('commit_change_set')).toBe(true);
+		});
 	});
 
 	describe('Document Update Strategies', () => {

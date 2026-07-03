@@ -297,6 +297,7 @@ export interface ChatToolResult {
 	result: any;
 	success: boolean;
 	duration_ms?: number;
+	tokens_consumed?: number;
 	error?: string;
 	requires_user_action?: boolean;
 	stream_events?: any[];

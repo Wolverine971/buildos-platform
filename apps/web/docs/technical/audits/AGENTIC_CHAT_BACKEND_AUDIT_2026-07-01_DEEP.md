@@ -12,7 +12,7 @@
 - `timing_metrics` has no RLS — create migration `20260130_235900` + the only other migration touching it (`20260428000015`, adds a column) confirm no `ENABLE ROW LEVEL SECURITY`. ✅
 - `prompt_cache_key` is never sent on the streaming path — `openrouter-v2-service.ts:1576-1588` omits it; it appears only on JSON/text/moonshot paths (`:905, :1226, :1432, :1681`). ✅
 
-**Status:** Wave 1 implemented 2026-07-02 (in the working tree, uncommitted — see "Fix waves" at the end). The rest is the expanded fix backlog. Findings marked **FIXED** below carry a one-line note on what shipped.
+**Status (2026-07-02):** Waves 1 and 2 (all batches) implemented **and committed** (commits `734b291a`, `c95d3f5b`, `00631df2`). 18 of the ~60 new findings are FIXED — the entire data-integrity / false-success / cancellation / durability / LLM-robustness / transactional-create cluster. One Wave 2 tail item (D4b, lambda lifecycle) is intentionally held for a go/no-go. **The next pass is Wave 3 — Security hardening** (highest-severity remaining: the two injection chains + access/trust boundaries); it is planned in detail under "Fix waves." Findings marked **FIXED** carry a one-line note on what shipped.
 
 ---
 
@@ -30,28 +30,28 @@ The auth/scope _core_ is genuinely well-built (fail-closed op allowlists, grant-
 
 ## Severity summary (new findings only)
 
-| #   | Finding                                                                                                                               | Severity     | Status                                           |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------ |
-| D1  | Document append/merge silently degrades to full REPLACE on read failure                                                               | **CRITICAL** | **FIXED (W1)** — throws on read fail             |
-| D2  | `merge_llm` merge capped at 2000 tokens → long docs truncated on merge                                                                | HIGH         | **FIXED (W2)** — scales tokens + safe fallback   |
-| D3  | Abort never threaded into tool execution → write-after-cancel + duplicate on retry                                                    | HIGH         | **FIXED (W2)** — signal wired; idempotency→W3    |
-| D4  | Tool-execution rows + assistant msg persisted only at end-of-turn → killed lambda leaves applied writes with no record                | HIGH         | **FIXED (W2)** — incremental persist + heartbeat |
-| D5  | Three writers full-overwrite `agent_metadata` JSONB → cancel hint clobbered, stop button no-ops                                       | HIGH         | **FIXED (W2)** — all 3 via merge RPC             |
-| D6  | Finalization guard counts `ok:false` gateway writes as success → false "I completed the change"                                       | HIGH         | **FIXED (W1)** — ok-aware in 4 spots             |
-| D7  | Multi-entity creates non-transactional (task+edges+assignees, project instantiate) → partial state reported as failure → dup on retry | HIGH         | CONFIRMED                                        |
-| D8  | Every chat pass capped at 2000 completion tokens; `finish_reason:'length'` unhandled; truncated tool calls silently dropped           | HIGH         | **FIXED (W2)** — 8k cap + length continuation    |
-| D9  | `prompt_cache_key` never forwarded on the primary streaming path (dead)                                                               | HIGH         | **FIXED (W1)** — `session_id`+key wired          |
-| D10 | Cancelled/errored streams never log usage → billing undercount                                                                        | HIGH         | **FIXED (W1)** — logs `failure` row              |
-| D11 | Mid-stream OpenRouter `error` frames swallowed → truncated answer shipped as complete success                                         | HIGH         | **FIXED (W2)** — error frames throw              |
-| S1  | Prompt-injection → immediate data mutation, no human approval (commit-by-default in chat)                                             | **CRITICAL** | CONFIRMED                                        |
-| S2  | Markdown `<img>` renders remote URLs → zero-click exfiltration                                                                        | HIGH         | CONFIRMED                                        |
-| S3  | On-demand tool materialization has no read/write gate; auto-executes destructive ops same-round                                       | HIGH         | CONFIRMED                                        |
-| S4  | `timing_metrics` table has no RLS → cross-tenant metadata read/write                                                                  | HIGH         | **FIXED (W1)** — RLS migration (verify live)     |
-| S5  | Bootstrap link stores plaintext bearer token at rest, never reaped                                                                    | HIGH         | CONFIRMED                                        |
-| C1  | Ontology-context chats bypass the member-access gate → hydrate public projects you're not a member of                                 | HIGH         | CONFIRMED                                        |
-| C2  | Client-supplied prewarm context trusted verbatim into system prompt + persisted (session poisoning)                                   | HIGH         | CONFIRMED (×2 passes)                            |
-| O2  | `looksLikeExplicitMutationRequest` misfires both ways ("update me on…" nukes correct answers; "assign/postpone/merge" slip through)   | MEDIUM-HIGH  | CONFIRMED                                        |
-| …   | (full set below, grouped by theme)                                                                                                    |              |                                                  |
+| #   | Finding                                                                                                                               | Severity     | Status                                                                 |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------- |
+| D1  | Document append/merge silently degrades to full REPLACE on read failure                                                               | **CRITICAL** | **FIXED (W1)** — throws on read fail                                   |
+| D2  | `merge_llm` merge capped at 2000 tokens → long docs truncated on merge                                                                | HIGH         | **FIXED (W2)** — scales tokens + safe fallback                         |
+| D3  | Abort never threaded into tool execution → write-after-cancel + duplicate on retry                                                    | HIGH         | **FIXED (W2)** — signal wired; idempotency→W3                          |
+| D4  | Tool-execution rows + assistant msg persisted only at end-of-turn → killed lambda leaves applied writes with no record                | HIGH         | **FIXED (W2)** — incremental persist + heartbeat                       |
+| D5  | Three writers full-overwrite `agent_metadata` JSONB → cancel hint clobbered, stop button no-ops                                       | HIGH         | **FIXED (W2)** — all 3 via merge RPC                                   |
+| D6  | Finalization guard counts `ok:false` gateway writes as success → false "I completed the change"                                       | HIGH         | **FIXED (W1)** — ok-aware in 4 spots                                   |
+| D7  | Multi-entity creates non-transactional (task+edges+assignees, project instantiate) → partial state reported as failure → dup on retry | HIGH         | **FIXED (W2)** — atomic create RPC + idempotency; instantiate deferred |
+| D8  | Every chat pass capped at 2000 completion tokens; `finish_reason:'length'` unhandled; truncated tool calls silently dropped           | HIGH         | **FIXED (W2)** — 8k cap + length continuation                          |
+| D9  | `prompt_cache_key` never forwarded on the primary streaming path (dead)                                                               | HIGH         | **FIXED (W1)** — `session_id`+key wired                                |
+| D10 | Cancelled/errored streams never log usage → billing undercount                                                                        | HIGH         | **FIXED (W1)** — logs `failure` row                                    |
+| D11 | Mid-stream OpenRouter `error` frames swallowed → truncated answer shipped as complete success                                         | HIGH         | **FIXED (W2)** — error frames throw                                    |
+| S1  | Prompt-injection → immediate data mutation, no human approval (commit-by-default in chat)                                             | **CRITICAL** | CONFIRMED                                                              |
+| S2  | Markdown `<img>` renders remote URLs → zero-click exfiltration                                                                        | HIGH         | CONFIRMED                                                              |
+| S3  | On-demand tool materialization has no read/write gate; auto-executes destructive ops same-round                                       | HIGH         | CONFIRMED                                                              |
+| S4  | `timing_metrics` table has no RLS → cross-tenant metadata read/write                                                                  | HIGH         | **FIXED (W1)** — RLS migration (verify live)                           |
+| S5  | Bootstrap link stores plaintext bearer token at rest, never reaped                                                                    | HIGH         | CONFIRMED                                                              |
+| C1  | Ontology-context chats bypass the member-access gate → hydrate public projects you're not a member of                                 | HIGH         | CONFIRMED                                                              |
+| C2  | Client-supplied prewarm context trusted verbatim into system prompt + persisted (session poisoning)                                   | HIGH         | CONFIRMED (×2 passes)                                                  |
+| O2  | `looksLikeExplicitMutationRequest` misfires both ways ("update me on…" nukes correct answers; "assign/postpone/merge" slip through)   | MEDIUM-HIGH  | CONFIRMED                                                              |
+| …   | (full set below, grouped by theme)                                                                                                    |              |                                                                        |
 
 ---
 
@@ -79,7 +79,7 @@ Result: an op-level write failure (`success:true, ok:false`) → guard synthesiz
 
 **Fix:** use `didGatewayExecSucceed(execution)` everywhere success is judged (`finalization-guard.ts:442`, `index.ts:1774`, `:1515`).
 
-### D7. Multi-entity creates are non-transactional → partial state reported as failure → duplicates on retry — HIGH, CONFIRMED
+### D7. Multi-entity creates are non-transactional → partial state reported as failure → duplicates on retry — HIGH, CONFIRMED — FIXED (W2, task-create; instantiate deferred; tests pending)
 
 - **`create_onto_task`** — `routes/api/onto/tasks/create/+server.ts:281-307`: task row inserted first, then `autoOrganizeConnections` (`:301-307`) + assignee sync (`:320-340`). An `AutoOrganizeError`/`TaskAssignmentValidationError` is caught (`:405-435`) and returned as an **error** — but the task row persists (no cleanup). Model told "failed" → retries → duplicate tasks, each missing plan/goal edges. (The _update_ path was fixed with `onto_task_update_atomic`, `tasks/[id]/+server.ts:525-560` — create was not.)
 - **`create_onto_project` (instantiate)** — `packages/shared-agent-ops/src/ontology/instantiation.service.ts:316-339`: project row inserted first, then goals/plans/tasks/docs/edges sequentially; compensation (`cleanupPartialInstantiation:1125-1163`) is best-effort and relies on FK cascade; a mid-way lambda death leaves a fully-visible half-built project.
@@ -359,21 +359,47 @@ Implemented in three parallel tracks, all validated (51 targeted tests pass, `sv
 - **D3 (signal-threading portion)** — `AbortSignal` wired end-to-end: `+server.ts` turn signal → `tool-executor` context → `base-executor` `fetch({ signal })` (fail-fast if already aborted) + `attemptDocOrganizationRecovery` per-iteration abort checks. A cancelled tool's HTTP request is now actually aborted. New test: `base-executor.abort.test.ts`.
 - _Recovered from a mid-run agent stall: finished the implementation, fixed a `body.reason` narrowing type error the stall left behind, and updated the inbox test to assert the metadata now flows through the RPC. Full validation: 91 related tests + svelte-check 0 errors._
 
-**Batch 3 — REMAINING (riskiest; sequenced, NOT started):**
+**Batch 3 — SHIPPED (committed), with two named gaps:**
 
-- **D7** — wrap `create_onto_task` (task + edges + assignees) in an RPC transaction mirroring `onto_task_update_atomic`; for project instantiate, single-RPC or insert the project row last / flag incomplete. _Migration:_ new `onto_task_create_atomic` RPC. _Risk:_ medium-high — new transactional RPC on a core write path.
-- **D3 (idempotency-key portion)** — add a per-`tool_call` idempotency key honored by the create routes so any surviving retry can't double-write. Do WITH D7 (both touch the create routes). _Migration:_ idempotency column/constraint or dedup table.
-- **D4b** (do LAST — infra, **CHECKPOINT before starting**) — register the detached IIFE with `event.platform?.context?.waitUntil`; close the stream even when detached; add a Vercel cron sweeper that fails turns stuck `running` past `last_progress_at + N`. _Needs:_ cron entry in `vercel.json` + sweeper route. _Risk:_ higher — changes lambda lifecycle; validate `waitUntil` on the pinned runtime first.
-- **Batch 1/2 carry-overs:** scope D4 incremental persistence to mutations-only (latency); fix the duplicate `isAbortLikeError` in `+server.ts:355` (O8); apply the D9b/D4 migration before deploy + `pnpm gen:types` (then tighten the `as never` casts in `change-set.ts`); rebuild `@buildos/shared-agent-ops` dist in CI.
+- **D7 + D3-idempotency — SHIPPED.** New `onto_task_create_atomic` RPC (migration `20260702010000`) mirrors `onto_task_update_atomic`: task + edges + assignees in one transaction; the create route calls it so a failure rolls back (no orphan task). Idempotency: a nullable `idempotency_key` column + partial unique index; the RPC returns the existing row on key match, and `base-executor.apiRequest` attaches an `Idempotency-Key` header. No key ⇒ no dedup ⇒ non-chat callers unaffected.
+    - **Gap 1:** no dedicated D7 tests (the agent hit a session limit before writing them) — the RPC-rollback and idempotency-replay paths are unverified by tests. **Add these in the next pass.**
+    - **Gap 2:** the **project-instantiate** mitigation (`instantiation.service.ts` — project-row-last / finalize-flag) was **deferred**, not done. A mid-way crash there can still leave a visible half-built project.
+- **Carry-overs — SHIPPED.** D4 incremental persistence now gated on `buildRoundToolPattern([...]).hasWriteOps` (mutations only; per-read round-trip removed); the duplicate substring `isAbortLikeError` in `+server.ts` is deleted (outer handler relies on `signal.aborted`).
+- **D4b — NOT done (held for go/no-go).** Register the detached IIFE with `event.platform?.context?.waitUntil`; close the stream even when detached; Vercel cron sweeper that fails turns stuck `running` past `last_progress_at + N`. _Needs:_ cron entry in `vercel.json` + sweeper route. _Risk:_ higher — changes lambda lifecycle; validate `waitUntil` on the pinned runtime first. This is the only unstarted Wave 2 item.
+
+**Wave 2 tail to close before/with the next pass (small, do first):**
+
+1. `pnpm gen:types` for the three migrations (`timing_metrics` RLS, `last_progress_at`/`commit_started_at`, `idempotency_key` + `onto_task_create_atomic`), then tighten the `as never`/`as any` casts in `change-set.ts` and the create route.
+2. Verify S4 live: `select relrowsecurity from pg_class where relname='timing_metrics';` (expect true post-migrate).
+3. Add the missing D7 tests (RPC-rollback rolls back the task; duplicate idempotency key returns the existing row).
+4. Ensure CI rebuilds `@buildos/shared-agent-ops` + `@buildos/smart-llm` dist (gitignored).
 
 ---
 
-### Wave 3 — Security hardening (not started)
+### Wave 3 — Security hardening (THE NEXT PASS — not started)
 
-- **S1 + S3** (one problem) — route chat writes through `policy.ts` scope enforcement; add a write-op/destructive-op gate to tool materialization; require confirmation before executing a just-materialized destructive op; default to commit-review for any turn that ingested external/third-party content.
-- **S2** — block/proxy remote `<img>` in assistant-rendered markdown (or CSP `img-src`) — cheap, closes the exfiltration half of the injection chain.
-- **S5/S8** (bootstrap token: encrypt + single-use consume + reap), **S6** (per-user stream concurrency cap + rate limiting on gateway/bootstrap), **C1** (ontology-context member-access gate + UUID validation), **C2** (drop client-supplied-context trust; re-derive server-side or HMAC it).
-- Lower: S7, S9–S17 (log/PII/retention/error-leak hygiene) as a hardening sweep.
+**Why this is next:** with the data-integrity/durability cluster done, the highest-severity remaining findings are all security — including the only two remaining **CRITICALs** (S1) and the zero-click exfiltration (S2). The theme: _the action side of interactive chat lacks the policy layer that Agent Runs already have._ Run as three tracks. Track G (the injection chain) is the flagship and should be designed as one piece; Tracks H and I can parallelize once G's approach is set.
+
+**Track G — Close the prompt-injection → mutation/exfiltration chain (flagship; S1 + S3 + S2 are one problem).**
+
+- **S1 (CRITICAL)** — route chat writes through `packages/shared-agent-ops/src/policy.ts` scope enforcement (the gateway/Agent-Run path already uses it; the interactive chat path does not). Gate destructive/bulk ops (delete, graph reorg) behind explicit confirmation. Default any turn that **ingested external/third-party content** (calendar descriptions, shared docs, MCP/web*visit results) to commit-**review** instead of commit-by-default. \_Design note:* decide the policy-injection point (tool-execution-service vs the executor construction) and how "this turn ingested external content" is tracked across rounds.
+- **S3 (HIGH)** — add a read/write (and destructive) gate to on-demand tool **materialization** (`gateway-surface.ts materializeGatewayTools` + the on-miss auto-execute path in `stream-orchestrator/index.ts`). A nominally read-only turn must not be able to load-and-run `delete_calendar_event` mid-round without confirmation. The lean surface is a latency optimization, not a security boundary — make write materialization explicit.
+- **S2 (HIGH, cheap — do first, ships value immediately)** — block/proxy remote `<img>` in assistant-rendered markdown (`AgentMessageList.svelte` → `utils/markdown.ts sanitizeOptions`: drop remote `img` or restrict `src` to same-origin/`data:`), or add a chat-surface CSP `img-src`. Closes the exfiltration half of the chain on its own.
+- _Sequence:_ S2 first (self-contained, immediate), then S1+S3 together (shared design: the policy layer + a per-turn "external content ingested" flag that both the write gate and the materialization gate consult).
+
+**Track H — Access & trust boundaries (parallel with G once its design is set).**
+
+- **C1 (HIGH)** — run `checkProjectAccess` for any resolved projectId regardless of `contextType` (the `ontology` context currently skips the member gate); treat RPC-null on the project path as terminal instead of falling back to RLS-public reads; UUID-validate `focusEntityId`/`projectId` at the request boundary.
+- **C2 (HIGH)** — stop trusting client-supplied `prewarmedContext.context` verbatim: re-derive server-side (the `else` branch already does), or HMAC/nonce it like prepared-prompts; never persist a client-origin cache into `agent_metadata`; ignore client `created_at` for freshness.
+- **S7 (MEDIUM)** — archived/out-of-scope project fence bypass on `onto.project.update`: require `scope.project_ids` membership in the archived fallback; re-apply `deleted_at IS NULL` under `includeArchived`.
+
+**Track I — Abuse limits & secrets/PII hygiene (parallel; mostly independent).**
+
+- **S6 (MEDIUM)** — re-enable rate limiting: per-user concurrent-stream cap on the v2 stream + token-bucket; reuse `checkOAuthRateLimit` on the gateway/bootstrap routes (unauthenticated flood + `security_events` write amplification).
+- **S5 / S8 (HIGH/MEDIUM)** — bootstrap token: encrypt at rest (reuse `calendar-token-crypto`), single-use atomic consume, reap expired rows in the retention cron.
+- **Hygiene sweep** — S9/S14 (stop logging full tool args / search text; use `previewToolArguments`), S13 (strip Postgres `details`/`hint` from model-facing errors), S10/S11/S12 (retention jobs for `chat_prompt_snapshots` / tool-exec rows / prepared prompts; drop `rendered_dump_text`), S15–S17 (observability INSERT ownership check; scope `web_page_visits` cache per user; remove the prod prompt-dump escape hatch).
+
+**Suggested Wave 3 sequencing:** close the Wave 2 tail (above) → **S2** (immediate) → design + build **S1+S3** (flagship, one PR or a tight set) → Tracks H and I in parallel. Keep S1's policy-layer change and each migration in their own reviewable PRs. Consider pulling **Wave 5 observability** forward to run alongside, so the injection-defense and rate-limit changes are measurable.
 
 ### Wave 4 — Correctness polish & cost (not started)
 

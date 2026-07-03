@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/auth/login/+server.ts
 import type { RequestHandler } from './$types';
 import type { User } from '@supabase/supabase-js';
+import { z } from 'zod';
 import {
 	buildUserProfilePayload,
 	ensureUserProfileWithAuthenticatedSession
@@ -13,6 +14,14 @@ import {
 	getSecurityRequestContext,
 	logSecurityEvent
 } from '$lib/server/security-event-logger';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const loginRequestSchema = z
+	.object({
+		email: z.string(),
+		password: z.string()
+	})
+	.strict();
 
 function isEmailNotConfirmedError(error: { message?: string } | null | undefined): boolean {
 	const message = (error?.message || '').toLowerCase();
@@ -28,17 +37,9 @@ function buildFallbackUser(authUser: User) {
 
 export const POST: RequestHandler = async ({ request, platform, locals }) => {
 	const { supabase } = locals;
-	let payload: { email?: string; password?: string };
-
-	try {
-		payload = await request.json();
-	} catch {
-		return ApiResponse.error(
-			'Invalid request body',
-			HttpStatus.BAD_REQUEST,
-			ErrorCode.INVALID_REQUEST
-		);
-	}
+	const parsed = await parseJsonRequest(request, loginRequestSchema);
+	if (!parsed.ok) return parsed.response;
+	const payload = parsed.data;
 
 	const { email, password } = payload ?? {};
 

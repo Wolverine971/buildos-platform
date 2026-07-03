@@ -1,7 +1,15 @@
 // apps/web/src/routes/api/sms/metrics/alerts/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { smsAlertsService } from '@buildos/shared-utils';
 import { ApiResponse } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const resolveSmsAlertSchema = z
+	.object({
+		alert_id: z.string().min(1)
+	})
+	.strict();
 
 /**
  * GET /api/sms/metrics/alerts
@@ -99,7 +107,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.forbidden('Admin access required');
 		}
 
-		const { alert_id } = await request.json();
+		const parsed = await parseJsonRequest(request, resolveSmsAlertSchema);
+		if (!parsed.ok) return parsed.response;
+		const { alert_id } = parsed.data;
 
 		if (!alert_id) {
 			return ApiResponse.badRequest('alert_id is required');

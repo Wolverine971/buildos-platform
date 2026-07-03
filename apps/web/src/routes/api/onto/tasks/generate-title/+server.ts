@@ -1,12 +1,20 @@
 // apps/web/src/routes/api/onto/tasks/generate-title/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { OpenRouterV2Service } from '$lib/services/openrouter-v2-service';
 import { GEMINI_31_FLASH_LITE_MODEL, DEEPSEEK_V4_FLASH_MODEL } from '@buildos/smart-llm';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 const DESCRIPTION_MIN = 4;
 const DESCRIPTION_MAX = 4000;
 const TITLE_MAX_CHARS = 80;
+
+const titleGenerationSchema = z
+	.object({
+		description: z.string()
+	})
+	.strict();
 
 function trimTitle(raw: string): string {
 	let title = raw.trim();
@@ -28,15 +36,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!user) return ApiResponse.unauthorized('Authentication required');
 
 	let description: string;
-	try {
-		const body = (await request.json()) as { description?: unknown };
-		if (typeof body.description !== 'string') {
-			return ApiResponse.badRequest('description is required');
-		}
-		description = body.description.trim();
-	} catch {
-		return ApiResponse.badRequest('Invalid JSON body');
-	}
+	const parsed = await parseJsonRequest(request, titleGenerationSchema);
+	if (!parsed.ok) return parsed.response;
+	description = parsed.data.description.trim();
 
 	if (description.length < DESCRIPTION_MIN) {
 		return ApiResponse.badRequest(`description must be at least ${DESCRIPTION_MIN} characters`);

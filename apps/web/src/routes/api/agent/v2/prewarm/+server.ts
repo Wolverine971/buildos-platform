@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import type { ChatContextType, ChatSession, Json, ProjectFocus } from '@buildos/shared-types';
 import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { createLogger } from '$lib/utils/logger';
 import {
@@ -40,8 +41,20 @@ import {
 	type PreparedPromptResponse,
 	type PreparedPromptSurface
 } from '$lib/services/agentic-chat-v2/prepared-prompt-cache';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 const logger = createLogger('API:AgentPrewarmV2');
+const fastAgentPrewarmRequestSchema = z
+	.object({
+		context_type: z.string().optional(),
+		projectFocus: z.record(z.unknown()).nullable().optional(),
+		entity_id: z.string().nullable().optional(),
+		prepare_prompt: z.boolean().optional(),
+		session_id: z.string().optional(),
+		ensure_session: z.boolean().optional()
+	})
+	.strict();
+
 const FASTCHAT_HISTORY_LOOKBACK_MESSAGES = parsePositiveInt(
 	process.env.FASTCHAT_HISTORY_LOOKBACK_MESSAGES,
 	10
@@ -263,12 +276,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		return ApiResponse.unauthorized();
 	}
 
-	let body: FastAgentPrewarmRequest;
-	try {
-		body = (await request.json()) as FastAgentPrewarmRequest;
-	} catch (_error) {
-		return ApiResponse.badRequest('Invalid request body');
-	}
+	const parsed = await parseJsonRequest(request, fastAgentPrewarmRequestSchema);
+	if (!parsed.ok) return parsed.response;
+	const body = parsed.data as FastAgentPrewarmRequest;
 
 	const contextType = normalizeFastContextType(body.context_type);
 	const projectFocus = body.projectFocus ?? null;

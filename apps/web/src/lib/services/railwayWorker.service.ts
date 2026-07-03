@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/railwayWorker.service.ts
 import { browser } from '$app/environment';
-import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
+import { env as publicEnv } from '$env/dynamic/public';
 import type {
 	QueueJob,
 	DailyBriefQueueJob,
@@ -44,7 +44,7 @@ export interface UserQuestion {
 }
 
 export class RailwayWorkerService {
-	private static readonly WORKER_URL = PUBLIC_RAILWAY_WORKER_URL;
+	private static readonly WORKER_URL = publicEnv.PUBLIC_RAILWAY_WORKER_URL;
 	private static readonly TIMEOUT = 10000; // 10 seconds
 
 	/**

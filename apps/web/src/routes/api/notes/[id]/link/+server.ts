@@ -1,8 +1,16 @@
 // apps/web/src/routes/api/notes/[id]/link/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ActivityLogger } from '$lib/utils/activityLogger';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const linkNoteSchema = z
+	.object({
+		project_id: z.string().min(1)
+	})
+	.strict();
 
 export const PATCH: RequestHandler = async ({
 	params,
@@ -15,7 +23,9 @@ export const PATCH: RequestHandler = async ({
 	}
 
 	try {
-		const { project_id } = await request.json();
+		const parsed = await parseJsonRequest(request, linkNoteSchema);
+		if (!parsed.ok) return parsed.response;
+		const { project_id } = parsed.data;
 		const actorId = await ensureActorId(supabase, user.id);
 
 		// Validate project_id

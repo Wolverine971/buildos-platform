@@ -277,4 +277,59 @@ describe('agent-chat-timeline live messages', () => {
 
 		expect(items.filter((item) => item.kind === 'change')).toHaveLength(1);
 	});
+
+	it('preserves live tool telemetry metadata for the changes and tools views', () => {
+		const items = timelineItemsFromMessages('session-1', [
+			{
+				id: 'block-1',
+				type: 'thinking_block',
+				content: 'Search finished',
+				timestamp: new Date('2026-06-20T12:00:00.000Z'),
+				status: 'completed',
+				activities: [
+					{
+						id: 'activity-1',
+						content: 'Searched project',
+						timestamp: new Date('2026-06-20T12:00:00.000Z'),
+						activityType: 'tool_call',
+						status: 'completed',
+						toolCallId: 'call-search',
+						metadata: {
+							toolName: 'search_project',
+							toolCategory: 'ontology',
+							gatewayOp: 'x.search.project',
+							helpPath: 'help/search-project',
+							arguments: {
+								query: 'missing',
+								project_id: 'project-1'
+							},
+							result: {
+								results: []
+							},
+							durationMs: 123,
+							tokensConsumed: 45,
+							resultCount: 0,
+							zeroResult: true,
+							requiresUserAction: true
+						}
+					}
+				]
+			} as any
+		]);
+
+		const toolItem = items.find((item) => item.kind === 'tool');
+
+		expect(toolItem?.status).toBe('needs_input');
+		expect(toolItem?.summary).toBe('0 results');
+		expect(toolItem?.tool).toMatchObject({
+			name: 'search_project',
+			category: 'ontology',
+			gatewayOp: 'x.search.project',
+			helpPath: 'help/search-project',
+			durationMs: 123,
+			tokensConsumed: 45,
+			resultCount: 0,
+			zeroResult: true
+		});
+	});
 });

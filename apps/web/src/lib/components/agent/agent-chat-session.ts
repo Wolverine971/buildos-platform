@@ -85,13 +85,20 @@ type LoadedChatToolExecution = Pick<
 	| 'message_id'
 	| 'client_turn_id'
 	| 'tool_name'
+	| 'tool_category'
 	| 'gateway_op'
+	| 'help_path'
 	| 'sequence_index'
 	| 'arguments'
 	| 'result'
+	| 'result_count'
+	| 'zero_result'
 	| 'execution_time_ms'
+	| 'tokens_consumed'
 	| 'success'
 	| 'error_message'
+	| 'requires_user_action'
+	| 'affected_entities'
 	| 'created_at'
 >;
 
@@ -101,15 +108,22 @@ type RestoredToolActivitySource = {
 	messageId?: string | null;
 	clientTurnId?: string | null;
 	toolName: string;
+	toolCategory?: string | null;
 	gatewayOp?: string | null;
+	helpPath?: string | null;
 	sequenceIndex?: number | null;
 	arguments?: unknown;
 	argumentPreview?: string | null;
 	result?: unknown;
 	resultPreview?: string | null;
+	resultCount?: number | null;
+	zeroResult?: boolean | null;
 	success: boolean;
 	errorMessage?: string | null;
+	requiresUserAction?: boolean | null;
+	affectedEntities?: unknown;
 	durationMs?: number | null;
+	tokensConsumed?: number | null;
 	createdAt?: string | null;
 };
 
@@ -766,13 +780,20 @@ function mapToolExecutionsToSources(
 			messageId: execution.message_id,
 			clientTurnId: execution.client_turn_id,
 			toolName: execution.tool_name,
+			toolCategory: execution.tool_category,
 			gatewayOp: execution.gateway_op,
+			helpPath: execution.help_path,
 			sequenceIndex: execution.sequence_index,
 			arguments: execution.arguments,
 			result: execution.result,
+			resultCount: execution.result_count,
+			zeroResult: execution.zero_result,
 			success: execution.success === true,
 			errorMessage: execution.error_message,
+			requiresUserAction: execution.requires_user_action,
+			affectedEntities: execution.affected_entities,
 			durationMs: execution.execution_time_ms,
+			tokensConsumed: execution.tokens_consumed,
 			createdAt: execution.created_at
 		}));
 }
@@ -849,14 +870,21 @@ function buildRestoredToolBlock(params: {
 			restored: true,
 			source: source.source,
 			toolName: source.toolName,
+			toolCategory: source.toolCategory ?? undefined,
 			gatewayOp: source.gatewayOp ?? undefined,
+			helpPath: source.helpPath ?? undefined,
 			toolExecutionId: source.source === 'tool_execution' ? source.id : undefined,
 			toolCallId: source.source === 'metadata_trace' ? source.id : undefined,
 			arguments: source.arguments ?? source.argumentPreview,
 			result: source.result ?? source.resultPreview,
+			resultCount: source.resultCount ?? undefined,
+			zeroResult: source.zeroResult ?? undefined,
+			requiresUserAction: source.requiresUserAction ?? undefined,
+			affectedEntities: source.affectedEntities ?? undefined,
 			error: source.errorMessage ?? undefined,
 			status: source.success ? 'completed' : 'failed',
-			durationMs: source.durationMs ?? undefined
+			durationMs: source.durationMs ?? undefined,
+			tokensConsumed: source.tokensConsumed ?? undefined
 		}
 	}));
 	const timestamp = params.timestamp ?? sortedSources[0]?.createdAt ?? new Date().toISOString();

@@ -34,6 +34,7 @@
 import type { RequestHandler } from './$types';
 import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
+import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
 import { RISK_STATES } from '$lib/types/onto';
 import {
@@ -66,7 +67,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	try {
 		// Parse request body
-		const body = await request.json();
+		const parsed = await parseJsonRequest(request, jsonObjectSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data as Record<string, any>;
 		const {
 			project_id,
 			title,

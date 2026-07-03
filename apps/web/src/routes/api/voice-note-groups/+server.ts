@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/voice-note-groups/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 
 const GROUP_STATUSES = new Set(['draft', 'attached', 'orphaned']);
 
@@ -79,12 +80,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		return ApiResponse.unauthorized();
 	}
 
-	let payload: Record<string, unknown> = {};
-	try {
-		payload = (await request.json()) as Record<string, unknown>;
-	} catch {
-		return ApiResponse.badRequest('Invalid request payload');
-	}
+	const parsed = await parseJsonRequest(request, jsonObjectSchema);
+	if (!parsed.ok) return parsed.response;
+	const payload = parsed.data;
 
 	const id = parseOptionalString(payload.id);
 	const linkedEntityType = parseOptionalString(payload.linkedEntityType);

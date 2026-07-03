@@ -1,11 +1,19 @@
 // apps/web/src/routes/api/admin/emails/[id]/send/+server.ts
 import type { RequestHandler } from './$types';
 import { dev } from '$app/environment';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate';
 import { createGmailTransporterByEmail, getSenderByEmail } from '$lib/utils/email-config';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 const baseUrl = dev ? 'http://localhost:5173' : 'https://build-os.com'; // Adjust this to your actual base URL
+
+const sendStoredEmailSchema = z
+	.object({
+		send_now: z.boolean().optional().default(false)
+	})
+	.strict();
 
 export const POST: RequestHandler = async ({
 	params,
@@ -19,7 +27,9 @@ export const POST: RequestHandler = async ({
 	}
 
 	try {
-		const { send_now = false } = await request.json();
+		const parsed = await parseJsonRequest(request, sendStoredEmailSchema);
+		if (!parsed.ok) return parsed.response;
+		const { send_now } = parsed.data;
 
 		// Get email details
 		const { data: email, error: fetchError } = await supabase

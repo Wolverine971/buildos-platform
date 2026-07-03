@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/projects/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { validatePagination } from '$lib/utils/api-helpers';
 import {
@@ -7,6 +8,20 @@ import {
 	fetchProjectSummaries,
 	type OntologyProjectSummary
 } from '$lib/services/ontology/ontology-projects.service';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const createProjectSchema = z
+	.object({
+		name: z.string(),
+		description: z.string().nullable().optional(),
+		status: z.string().optional(),
+		type_key: z.string().optional(),
+		start_date: z.string().nullable().optional(),
+		end_date: z.string().nullable().optional(),
+		calendar_color_id: z.string().optional(),
+		props: z.record(z.unknown()).optional()
+	})
+	.strict();
 
 function toLegacyStatus(stateKey: string): 'active' | 'paused' | 'completed' | 'archived' {
 	switch (stateKey) {
@@ -134,7 +149,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	}
 
 	try {
-		const payload = await request.json();
+		const parsed = await parseJsonRequest(request, createProjectSchema);
+		if (!parsed.ok) return parsed.response;
+		const payload = parsed.data;
 		const name = typeof payload?.name === 'string' ? payload.name.trim() : '';
 		if (!name) {
 			return ApiResponse.badRequest('Project name is required');

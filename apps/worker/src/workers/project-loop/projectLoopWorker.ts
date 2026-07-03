@@ -6,6 +6,10 @@
 
 import type {
 	Json,
+	ProjectAuditDeliveryConfidence,
+	ProjectAuditDimension,
+	ProjectAuditDimensionKey,
+	ProjectAuditEvidenceRef,
 	ProjectLoopBrief,
 	ProjectLoopJobMetadata,
 	ProjectLoopRun,
@@ -38,6 +42,7 @@ import {
 const MAX_SUGGESTIONS = 25;
 const PROJECT_LOOP_COST_CAP_USD = 0.35;
 const PRIOR_DECISION_LOOKBACK_DAYS = 60;
+const COMPLETE_AUDIT_ACTIVITY_LOOKBACK_DAYS = 30;
 
 function nowIso(): string {
 	return new Date().toISOString();
@@ -190,9 +195,505 @@ async function failRun(
 	}
 }
 
-export async function processProjectLoopJob(
+type AuditActivityRow = {
+	entity_type: string | null;
+	entity_id: string | null;
+	action: string | null;
+	created_at: string | null;
+};
+
+type AuditMetricSummary = {
+	documentCount: number;
+	taskCount: number;
+	goalCount: number;
+	openTaskCount: number;
+	blockedTaskCount: number;
+	staleDocumentCount: number;
+	recentActivityCount: number;
+};
+
+function parseDateMs(value: string | null | undefined): number | null {
+	if (!value) return null;
+	const parsed = Date.parse(value);
+	return Number.isFinite(parsed) ? parsed : null;
+}
+
+function compactAuditText(value: string | null | undefined, maxLength: number): string | null {
+	const normalized = value?.replace(/\s+/g, ' ').trim();
+	if (!normalized) return null;
+	return normalized.length <= maxLength
+		? normalized
+		: `${normalized.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+}
+
+function auditEvidenceRef(params: {
+	entity_type: ProjectAuditEvidenceRef['entity_type'];
+	entity_id?: string | null;
+	label: string;
+	reason?: string;
+	updated_at?: string | null;
+}): ProjectAuditEvidenceRef {
+	return {
+		entity_type: params.entity_type,
+		...(params.entity_id ? { entity_id: params.entity_id } : {}),
+		label: params.label,
+		...(params.reason ? { reason: params.reason } : {}),
+		...(params.updated_at ? { updated_at: params.updated_at } : {})
+	};
+}
+
+async function loadAuditRecentActivity(projectId: string): Promise<AuditActivityRow[]> {
+	const since = new Date(
+		Date.now() - COMPLETE_AUDIT_ACTIVITY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
+	).toISOString();
+	const { data, error } = await supabase
+		.from('onto_project_logs')
+		.select('entity_type, entity_id, action, created_at')
+		.eq('project_id', projectId)
+		.gte('created_at', since)
+		.order('created_at', { ascending: false })
+		.limit(100);
+	if (error) {
+		console.warn(
+			`[ProjectAudits] Failed to load recent activity for ${projectId}:`,
+			error.message
+		);
+		return [];
+	}
+	return (data ?? []) as AuditActivityRow[];
+}
+
+function computeAuditMetrics(
+	ctx: LoopContext,
+	recentActivity: AuditActivityRow[]
+): AuditMetricSummary {
+	const nowMs = Date.now();
+	const staleDocumentCount = ctx.documents.filter((doc) => {
+		const updatedMs = parseDateMs(doc.updated_at);
+		if (updatedMs === null) return true;
+		return nowMs - updatedMs > 30 * 24 * 60 * 60 * 1000;
+	}).length;
+	const openTasks = ctx.tasks.filter((task) => task.state_key !== 'done');
+	return {
+		documentCount: ctx.documents.length,
+		taskCount: ctx.tasks.length,
+		goalCount: ctx.goals.length,
+		openTaskCount: openTasks.length,
+		blockedTaskCount: openTasks.filter((task) => task.state_key === 'blocked').length,
+		staleDocumentCount,
+		recentActivityCount: recentActivity.length
+	};
+}
+
+function dimension(params: {
+	key: ProjectAuditDimensionKey;
+	name: string;
+	rating: ProjectAuditDimension['rating'];
+	summary: string;
+	evidence_refs?: ReturnType<typeof auditEvidenceRef>[];
+	recommendations?: string[];
+	uncertainty?: string | null;
+}): ProjectAuditDimension {
+	return {
+		key: params.key,
+		name: params.name,
+		rating: params.rating,
+		summary: params.summary,
+		evidence_refs: params.evidence_refs ?? [],
+		...(params.recommendations?.length ? { recommendations: params.recommendations } : {}),
+		...(params.uncertainty ? { uncertainty: params.uncertainty } : {})
+	};
+}
+
+function buildCompleteAuditPacket(params: {
+	ctx: LoopContext;
+	recentActivity: AuditActivityRow[];
+	triggerReason: string;
+}): {
+	deliveryConfidence: ProjectAuditDeliveryConfidence;
+	projectThesis: string | null;
+	summary: string;
+	topFindings: Record<string, unknown>[];
+	topActions: Record<string, unknown>[];
+	changeSummary: Record<string, unknown>;
+	dimensions: ProjectAuditDimension[];
+	risks: Record<string, unknown>[];
+	openQuestions: Record<string, unknown>[];
+	evidenceRefs: ReturnType<typeof auditEvidenceRef>[];
+	recommendations: Record<string, unknown>[];
+} {
+	const { ctx, recentActivity } = params;
+	const metrics = computeAuditMetrics(ctx, recentActivity);
+	const projectEvidence = [
+		auditEvidenceRef({
+			entity_type: 'project',
+			entity_id: ctx.projectId,
+			label: ctx.projectName,
+			reason: 'Project record'
+		})
+	];
+	const goalEvidence = ctx.goals.slice(0, 3).map((goal) =>
+		auditEvidenceRef({
+			entity_type: 'goal',
+			label: goal.name,
+			reason: goal.description ?? 'Project goal'
+		})
+	);
+	const docEvidence = ctx.documents.slice(0, 5).map((doc) =>
+		auditEvidenceRef({
+			entity_type: 'document',
+			entity_id: doc.id,
+			label: doc.title,
+			reason: doc.state_key ? `Document state: ${doc.state_key}` : 'Project document',
+			updated_at: doc.updated_at
+		})
+	);
+	const taskEvidence = ctx.tasks.slice(0, 5).map((task) =>
+		auditEvidenceRef({
+			entity_type: 'task',
+			entity_id: task.id,
+			label: task.title,
+			reason: task.state_key ? `Task state: ${task.state_key}` : 'Project task',
+			updated_at: task.updated_at
+		})
+	);
+
+	const dimensions: ProjectAuditDimension[] = [
+		dimension({
+			key: 'intent_clarity',
+			name: 'Intent clarity',
+			rating: ctx.goals.length || ctx.projectDescription ? 'green' : 'yellow',
+			summary:
+				ctx.goals.length || ctx.projectDescription
+					? 'The project has a stated goal or description to anchor review.'
+					: 'The project needs a clearer stated goal before a high-confidence audit.',
+			evidence_refs: [...projectEvidence, ...goalEvidence].slice(0, 4),
+			recommendations:
+				ctx.goals.length || ctx.projectDescription
+					? []
+					: ['Add a short project thesis or primary goal.']
+		}),
+		dimension({
+			key: 'documentation_quality',
+			name: 'Documentation quality',
+			rating:
+				metrics.documentCount >= 5
+					? 'green'
+					: metrics.documentCount > 0
+						? 'yellow'
+						: 'unknown',
+			summary:
+				metrics.documentCount >= 5
+					? 'The project has enough active documents for a collaborator to inspect.'
+					: metrics.documentCount > 0
+						? 'The project has some documentation, but the document set is still thin.'
+						: 'No project documents were available in the audit context.',
+			evidence_refs: docEvidence,
+			recommendations:
+				metrics.documentCount >= 5 ? [] : ['Expand or consolidate project documentation.']
+		}),
+		dimension({
+			key: 'plan_integrity',
+			name: 'Plan integrity',
+			rating:
+				metrics.goalCount > 0 && metrics.taskCount > 0
+					? 'green'
+					: metrics.goalCount > 0 || metrics.taskCount > 0
+						? 'yellow'
+						: 'unknown',
+			summary:
+				metrics.goalCount > 0 && metrics.taskCount > 0
+					? 'Goals and tasks are both present, so the plan has checkable structure.'
+					: 'The audit needs both goals and task-level work to verify plan integrity.',
+			evidence_refs: [...goalEvidence, ...taskEvidence].slice(0, 6),
+			recommendations:
+				metrics.goalCount > 0 && metrics.taskCount > 0
+					? []
+					: ['Connect the project goal to concrete tasks or milestones.']
+		}),
+		dimension({
+			key: 'execution_health',
+			name: 'Execution health',
+			rating:
+				metrics.blockedTaskCount >= 3
+					? 'red'
+					: metrics.openTaskCount > 0
+						? 'green'
+						: metrics.taskCount > 0
+							? 'yellow'
+							: 'unknown',
+			summary:
+				metrics.blockedTaskCount >= 3
+					? `${metrics.blockedTaskCount} open tasks appear blocked.`
+					: metrics.openTaskCount > 0
+						? `${metrics.openTaskCount} open tasks are available for execution.`
+						: 'No active task flow was visible in the audit context.',
+			evidence_refs: taskEvidence,
+			recommendations:
+				metrics.blockedTaskCount >= 3
+					? ['Resolve or re-scope blocked tasks before adding more work.']
+					: metrics.openTaskCount > 0
+						? []
+						: ['Create or refresh the next execution tasks.']
+		}),
+		dimension({
+			key: 'drift_scope_control',
+			name: 'Drift and scope control',
+			rating: metrics.recentActivityCount >= 20 ? 'yellow' : 'green',
+			summary:
+				metrics.recentActivityCount >= 20
+					? 'Recent project activity is high enough that scope drift should be checked explicitly.'
+					: 'Recent activity volume does not indicate obvious scope churn.',
+			evidence_refs: recentActivity.slice(0, 5).map((row) =>
+				auditEvidenceRef({
+					entity_type: 'project_log',
+					entity_id: row.entity_id,
+					label: `${row.entity_type ?? 'entity'} ${row.action ?? 'changed'}`,
+					reason: row.created_at ?? undefined
+				})
+			),
+			recommendations:
+				metrics.recentActivityCount >= 20
+					? ['Review recent changes against the current project thesis.']
+					: []
+		}),
+		dimension({
+			key: 'risk_decision_quality',
+			name: 'Risk and decision quality',
+			rating: 'unknown',
+			summary:
+				'The basic audit packet does not yet load a dedicated risk and decision register.',
+			evidence_refs: projectEvidence,
+			uncertainty:
+				'The next audit generation stage should include risks, decisions, and blockers explicitly.',
+			recommendations: ['Add explicit risks, blockers, or decision points where they exist.']
+		}),
+		dimension({
+			key: 'dependency_readiness',
+			name: 'Dependency readiness',
+			rating: 'unknown',
+			summary:
+				'The basic audit packet cannot yet verify stakeholders, handoffs, and calendar commitments.',
+			evidence_refs: projectEvidence,
+			uncertainty:
+				'Calendar and dependency context should be added to the complete audit snapshot loader.',
+			recommendations: ['Make external dependencies or handoffs visible in the project.']
+		}),
+		dimension({
+			key: 'evidence_freshness',
+			name: 'Evidence freshness',
+			rating:
+				metrics.staleDocumentCount === 0
+					? 'green'
+					: metrics.staleDocumentCount >= Math.max(3, metrics.documentCount / 2)
+						? 'yellow'
+						: 'green',
+			summary:
+				metrics.staleDocumentCount === 0
+					? 'Visible documents appear recently touched or newly created.'
+					: `${metrics.staleDocumentCount} documents look stale based on updated_at timestamps.`,
+			evidence_refs: docEvidence,
+			recommendations:
+				metrics.staleDocumentCount === 0
+					? []
+					: ['Refresh stale core documents or mark them intentionally archival.']
+		})
+	];
+
+	const nonGreen = dimensions.filter((item) => item.rating !== 'green');
+	const redCount = dimensions.filter((item) => item.rating === 'red').length;
+	const yellowCount = dimensions.filter((item) => item.rating === 'yellow').length;
+	const unknownCount = dimensions.filter((item) => item.rating === 'unknown').length;
+	const deliveryConfidence: ProjectAuditDeliveryConfidence =
+		redCount > 0 ? 'red' : yellowCount > 0 ? 'yellow' : unknownCount >= 3 ? 'unknown' : 'green';
+	const projectThesis =
+		compactAuditText(ctx.projectDescription, 500) ??
+		(ctx.goals[0]
+			? compactAuditText(`${ctx.goals[0].name}: ${ctx.goals[0].description ?? ''}`, 500)
+			: null);
+	const topFindings = nonGreen.slice(0, 5).map((item) => ({
+		dimension: item.key,
+		rating: item.rating,
+		title: item.name,
+		summary: item.summary
+	}));
+	const recommendations = nonGreen.flatMap((item) =>
+		(item.recommendations ?? []).slice(0, 2).map((recommendation) => ({
+			title: recommendation,
+			summary: item.summary,
+			priority: item.rating === 'red' ? 'high' : item.rating === 'yellow' ? 'medium' : 'low',
+			dimension: item.key
+		}))
+	);
+	const topActions = recommendations.slice(0, 5);
+	const summary =
+		nonGreen.length > 0
+			? `Complete audit generated ${nonGreen.length} non-green dimension${nonGreen.length === 1 ? '' : 's'} for ${ctx.projectName}.`
+			: `Complete audit found no immediate non-green dimensions for ${ctx.projectName}.`;
+
+	return {
+		deliveryConfidence,
+		projectThesis,
+		summary,
+		topFindings,
+		topActions,
+		changeSummary: {
+			trigger_reason: params.triggerReason,
+			recent_activity_count: metrics.recentActivityCount,
+			recent_activity_window_days: COMPLETE_AUDIT_ACTIVITY_LOOKBACK_DAYS,
+			document_count: metrics.documentCount,
+			task_count: metrics.taskCount,
+			goal_count: metrics.goalCount
+		},
+		dimensions,
+		risks: [],
+		openQuestions: dimensions
+			.filter((item) => item.rating === 'unknown')
+			.map((item) => ({
+				dimension: item.key,
+				question: item.uncertainty ?? `More evidence needed for ${item.name}.`
+			})),
+		evidenceRefs: [...projectEvidence, ...goalEvidence, ...docEvidence, ...taskEvidence],
+		recommendations
+	};
+}
+
+async function processCompleteProjectAuditJob(
 	job: ProcessingJob<ProjectLoopJobMetadata>
-): Promise<{ success: boolean; runId?: string; suggestionCount?: number; skipped?: boolean }> {
+): Promise<{ success: boolean; runId?: string; auditId?: string; skipped?: boolean }> {
+	const { runId, projectId, auditId, triggerReason } = job.data;
+	if (!runId || !projectId || !auditId) {
+		throw new Error('runId, projectId, and auditId are required for complete audit jobs');
+	}
+
+	await job.log(`Complete project audit started for project ${projectId} (audit ${auditId})`);
+
+	const { data: claimedRun, error: claimRunError } = await supabase
+		.from('project_loop_runs')
+		.update({ status: 'running', started_at: nowIso() })
+		.eq('id', runId)
+		.eq('status', 'queued')
+		.select('*')
+		.maybeSingle();
+	if (claimRunError) throw new Error(`Failed to claim audit loop run: ${claimRunError.message}`);
+	if (!claimedRun) {
+		await job.log(`Audit loop run ${runId} not claimed; skipping duplicate execution.`);
+		return { success: true, runId, auditId, skipped: true };
+	}
+
+	const { data: claimedAudit, error: claimAuditError } = await supabase
+		.from('project_audits')
+		.update({ status: 'running', started_at: nowIso() })
+		.eq('id', auditId)
+		.eq('status', 'queued')
+		.select('id')
+		.maybeSingle();
+	if (claimAuditError) {
+		await failRun(runId, `Failed to claim project audit: ${claimAuditError.message}`);
+		throw new Error(`Failed to claim project audit: ${claimAuditError.message}`);
+	}
+	if (!claimedAudit) {
+		await job.log(`Project audit ${auditId} not claimed; skipping duplicate execution.`);
+		return { success: true, runId, auditId, skipped: true };
+	}
+
+	try {
+		await job.updateProgress({ current: 1, total: 4, message: 'Loading audit context' });
+		const ctx = await loadLoopContext(projectId);
+		if (!ctx) {
+			const message = 'Project inactive or archived; complete audit skipped.';
+			const now = nowIso();
+			await Promise.all([
+				supabase
+					.from('project_audits')
+					.update({ status: 'failed', error_message: message, finished_at: now })
+					.eq('id', auditId),
+				supabase
+					.from('project_loop_runs')
+					.update({ status: 'failed', error_message: message, finished_at: now })
+					.eq('id', runId)
+			]);
+			return { success: true, runId, auditId, skipped: true };
+		}
+
+		await job.updateProgress({ current: 2, total: 4, message: 'Computing audit metrics' });
+		const recentActivity = await loadAuditRecentActivity(projectId);
+
+		await job.updateProgress({ current: 3, total: 4, message: 'Building audit packet' });
+		const packet = buildCompleteAuditPacket({
+			ctx,
+			recentActivity,
+			triggerReason
+		});
+		const now = nowIso();
+
+		await job.updateProgress({ current: 4, total: 4, message: 'Persisting audit packet' });
+		const { error: auditUpdateError } = await supabase
+			.from('project_audits')
+			.update({
+				status: 'ready',
+				delivery_confidence: packet.deliveryConfidence,
+				project_thesis: packet.projectThesis,
+				summary: packet.summary,
+				top_findings: packet.topFindings as unknown as Json,
+				top_actions: packet.topActions as unknown as Json,
+				change_summary: packet.changeSummary as Json,
+				dimensions: packet.dimensions as unknown as Json,
+				risks: packet.risks as unknown as Json,
+				open_questions: packet.openQuestions as unknown as Json,
+				evidence_refs: packet.evidenceRefs as unknown as Json,
+				recommendations: packet.recommendations as unknown as Json,
+				generated_suggestion_count: 0,
+				unresolved_suggestion_count: 0,
+				model_used: 'deterministic-audit-v0',
+				cost_usd: 0,
+				finished_at: now
+			})
+			.eq('id', auditId);
+		if (auditUpdateError) {
+			throw new Error(`Failed to persist project audit: ${auditUpdateError.message}`);
+		}
+
+		const { error: runUpdateError } = await supabase
+			.from('project_loop_runs')
+			.update({
+				status: 'completed',
+				summary: packet.summary,
+				suggestion_count: 0,
+				cost_usd: 0,
+				finished_at: now
+			})
+			.eq('id', runId);
+		if (runUpdateError) {
+			throw new Error(`Failed to complete audit loop run: ${runUpdateError.message}`);
+		}
+
+		await job.log(`Complete project audit ${auditId} is ready.`);
+		return { success: true, runId, auditId };
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Complete project audit failed';
+		const now = nowIso();
+		await Promise.all([
+			supabase
+				.from('project_audits')
+				.update({ status: 'failed', error_message: message, finished_at: now })
+				.eq('id', auditId),
+			supabase
+				.from('project_loop_runs')
+				.update({ status: 'failed', error_message: message, finished_at: now })
+				.eq('id', runId)
+		]);
+		throw error;
+	}
+}
+
+export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMetadata>): Promise<{
+	success: boolean;
+	runId?: string;
+	auditId?: string;
+	suggestionCount?: number;
+	skipped?: boolean;
+}> {
 	const { runId, projectId } = job.data;
 
 	if (!PROJECT_LOOPS_ENABLED) {
@@ -203,6 +704,10 @@ export async function processProjectLoopJob(
 
 	if (!runId || !projectId) {
 		throw new Error('runId and projectId are required');
+	}
+
+	if (job.data.mode === 'complete_audit') {
+		return processCompleteProjectAuditJob(job);
 	}
 
 	await job.log(`Project loop started for project ${projectId} (run ${runId})`);

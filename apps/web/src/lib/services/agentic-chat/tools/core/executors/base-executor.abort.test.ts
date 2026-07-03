@@ -8,6 +8,18 @@ class TestExecutor extends BaseExecutor {
 	callApiRequest(path: string, options?: RequestInit) {
 		return this.apiRequest(path, options);
 	}
+
+	callActorId() {
+		return this.getActorId();
+	}
+
+	callAdminSupabase() {
+		return this.getAdminSupabase();
+	}
+
+	callAuthHeaders() {
+		return this.getAuthHeaders();
+	}
 }
 
 function makeContext(overrides: Partial<ExecutorContext>): ExecutorContext {
@@ -79,5 +91,30 @@ describe('BaseExecutor abort signal threading', () => {
 
 		const [, init] = fetchFn.mock.calls[0];
 		expect(init.signal).toBe(callController.signal);
+	});
+
+	it('uses context infrastructure providers with standard chat headers', async () => {
+		const admin = { from: vi.fn() };
+		const executor = new TestExecutor(
+			makeContext({
+				sessionId: 'session-1',
+				getActorId: vi.fn().mockResolvedValue('actor-from-context'),
+				getAdminSupabase: vi.fn().mockReturnValue(admin),
+				getAuthHeaders: vi.fn().mockResolvedValue({
+					Authorization: 'Bearer provided-token',
+					'X-Custom': 'custom'
+				})
+			})
+		);
+
+		await expect(executor.callActorId()).resolves.toBe('actor-from-context');
+		expect(executor.callAdminSupabase()).toBe(admin);
+		await expect(executor.callAuthHeaders()).resolves.toMatchObject({
+			authorization: 'Bearer provided-token',
+			'content-type': 'application/json',
+			'x-change-source': 'chat',
+			'x-chat-session-id': 'session-1',
+			'x-custom': 'custom'
+		});
 	});
 });

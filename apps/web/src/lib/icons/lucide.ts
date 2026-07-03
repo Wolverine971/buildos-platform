@@ -57,6 +57,7 @@ export { default as CircleHelp } from 'lucide-svelte/icons/circle-help';
 export { default as CircleSlash } from 'lucide-svelte/icons/circle-slash';
 export { default as CircleX } from 'lucide-svelte/icons/circle-x';
 export { default as ClipboardCheck } from 'lucide-svelte/icons/clipboard-check';
+export { default as ClipboardList } from 'lucide-svelte/icons/clipboard-list';
 export { default as Clock } from 'lucide-svelte/icons/clock';
 export { default as Clock3 } from 'lucide-svelte/icons/clock-3';
 export { default as Code } from 'lucide-svelte/icons/code';

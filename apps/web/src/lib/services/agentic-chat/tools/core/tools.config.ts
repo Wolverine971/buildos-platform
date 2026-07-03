@@ -73,6 +73,8 @@ export const TOOL_CATEGORIES = {
 		tools: [
 			'search_all_projects',
 			'search_project',
+			'search_buildos',
+			'search_ontology',
 			'list_onto_tasks',
 			'search_onto_tasks',
 			'search_onto_goals',
@@ -150,7 +152,9 @@ export const TOOL_CATEGORIES = {
 			'upsert_user_contact',
 			'list_user_contact_candidates',
 			'resolve_user_contact_candidate',
-			'link_user_contact'
+			'link_user_contact',
+			'delegate_task',
+			'commit_change_set'
 		],
 		averageTokens: 80,
 		costTier: 'low'

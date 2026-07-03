@@ -1,6 +1,45 @@
 // apps/web/src/routes/api/admin/beta/members/+server.ts
 import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const betaMemberUpdatesSchema = z
+	.object({
+		access_level: z.string().nullable().optional(),
+		beta_tier: z.string().nullable().optional(),
+		company_name: z.string().nullable().optional(),
+		deactivated_at: z.string().nullable().optional(),
+		deactivation_reason: z.string().nullable().optional(),
+		discount_percentage: z.number().nullable().optional(),
+		early_access_features: z.array(z.string()).nullable().optional(),
+		email: z.string().email().optional(),
+		full_name: z.string().min(1).optional(),
+		has_lifetime_pricing: z.boolean().nullable().optional(),
+		is_active: z.boolean().nullable().optional(),
+		job_title: z.string().nullable().optional(),
+		last_active_at: z.string().nullable().optional(),
+		total_calls_attended: z.number().int().nullable().optional(),
+		total_features_requested: z.number().int().nullable().optional(),
+		total_feedback_submitted: z.number().int().nullable().optional(),
+		updated_at: z.string().nullable().optional(),
+		user_id: z.string().nullable().optional(),
+		user_timezone: z.string().nullable().optional(),
+		wants_community_access: z.boolean().nullable().optional(),
+		wants_feature_updates: z.boolean().nullable().optional(),
+		wants_weekly_calls: z.boolean().nullable().optional()
+	})
+	.strict()
+	.refine((updates) => Object.keys(updates).length > 0, {
+		message: 'At least one update field is required'
+	});
+
+const betaMemberPatchSchema = z
+	.object({
+		member_id: z.string().min(1),
+		updates: betaMemberUpdatesSchema
+	})
+	.strict();
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -85,7 +124,9 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 	}
 
 	try {
-		const { member_id, updates } = await request.json();
+		const parsed = await parseJsonRequest(request, betaMemberPatchSchema);
+		if (!parsed.ok) return parsed.response;
+		const { member_id, updates } = parsed.data;
 
 		if (!member_id) {
 			return ApiResponse.badRequest('Member ID is required');

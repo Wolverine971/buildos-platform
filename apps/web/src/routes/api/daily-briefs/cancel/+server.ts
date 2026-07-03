@@ -1,6 +1,14 @@
 // apps/web/src/routes/api/daily-briefs/cancel/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const cancelDailyBriefSchema = z
+	.object({
+		briefDate: z.string().optional()
+	})
+	.strict();
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -8,9 +16,11 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		return ApiResponse.unauthorized();
 	}
 
-	const { briefDate } = await request.json();
+	const parsed = await parseJsonRequest(request, cancelDailyBriefSchema);
+	if (!parsed.ok) return parsed.response;
+	const { briefDate } = parsed.data;
 	const userId = user.id;
-	const targetDate = briefDate || new Date().toISOString().split('T')[0];
+	const targetDate = briefDate || new Date().toISOString().slice(0, 10);
 
 	try {
 		const { data: processingBrief } = await supabase

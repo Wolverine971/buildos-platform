@@ -4,6 +4,7 @@ import { CalendarService } from '$lib/services/calendar-service';
 import { TimeBlockService } from '$lib/services/time-block.service';
 import type { UpdateTimeBlockParams } from '@buildos/shared-types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 
 export const PATCH: RequestHandler = async ({
 	params,
@@ -21,12 +22,9 @@ export const PATCH: RequestHandler = async ({
 		return ApiResponse.badRequest('Missing time block id');
 	}
 
-	let body: UpdateTimeBlockParams;
-	try {
-		body = await request.json();
-	} catch (error) {
-		return ApiResponse.badRequest('Invalid request body');
-	}
+	const parsed = await parseJsonRequest(request, jsonObjectSchema);
+	if (!parsed.ok) return parsed.response;
+	const body = parsed.data as UpdateTimeBlockParams;
 
 	// Parse dates if provided
 	const updateParams: UpdateTimeBlockParams = {

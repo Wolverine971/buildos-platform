@@ -1,6 +1,21 @@
 // apps/web/src/routes/api/sms/preferences/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const smsPreferencesUpdateSchema = z
+	.object({
+		event_reminders_enabled: z.boolean().optional(),
+		event_reminder_lead_time_minutes: z.number().int().positive().optional(),
+		morning_kickoff_enabled: z.boolean().optional(),
+		evening_recap_enabled: z.boolean().optional(),
+		morning_kickoff_time: z.string().optional(),
+		urgent_alerts: z.boolean().optional(),
+		quiet_hours_start: z.string().optional(),
+		quiet_hours_end: z.string().optional()
+	})
+	.strict();
 
 // Default preferences structure
 // Note: timezone removed - now centralized in users table (ADR-002-timezone-centralization)
@@ -76,7 +91,9 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 	}
 
 	try {
-		const body = await request.json();
+		const parsed = await parseJsonRequest(request, smsPreferencesUpdateSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data;
 		const {
 			event_reminders_enabled,
 			event_reminder_lead_time_minutes,

@@ -1,8 +1,16 @@
 // apps/web/src/routes/api/time-blocks/generate-suggestions/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { CalendarService } from '$lib/services/calendar-service';
 import { TimeBlockService } from '$lib/services/time-block.service';
 import { ApiResponse } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const generateTimeBlockSuggestionsSchema = z
+	.object({
+		time_block_id: z.string().min(1)
+	})
+	.strict();
 
 export const POST: RequestHandler = async ({ request, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
@@ -11,13 +19,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		return ApiResponse.unauthorized();
 	}
 
-	let payload: any;
-	try {
-		payload = await request.json();
-	} catch (error) {
-		console.error('[TimeBlockSuggestions] Invalid JSON payload:', error);
-		return ApiResponse.badRequest('Invalid JSON payload');
-	}
+	const parsed = await parseJsonRequest(request, generateTimeBlockSuggestionsSchema);
+	if (!parsed.ok) return parsed.response;
+	const payload = parsed.data;
 
 	const timeBlockId = payload?.time_block_id;
 

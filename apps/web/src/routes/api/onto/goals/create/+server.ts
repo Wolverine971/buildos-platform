@@ -33,6 +33,7 @@
 import type { RequestHandler } from './$types';
 import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
+import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
 import { GOAL_STATES } from '$lib/types/onto';
 import {
@@ -71,7 +72,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	try {
 		// Parse request body
-		const body = await request.json();
+		const parsed = await parseJsonRequest(request, jsonObjectSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data;
 		const {
 			project_id,
 			type_key,
@@ -204,7 +207,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				description: goalDescription ?? null,
 				target_date: goalTargetDate,
 				measurement_criteria: goalMeasurementCriteria ?? null,
-				priority: priority || null
+				priority:
+					typeof priority === 'string' || typeof priority === 'number' ? priority : null
 			}
 		};
 

@@ -30,6 +30,35 @@ export type CoreEntityConfig = {
 	select: string;
 };
 
+export const ONTO_PROJECT_SELECT =
+	'id, name, description, type_key, state_key, props, start_at, end_at, created_by, created_at, updated_at, archived_at, deleted_at';
+export const ONTO_TASK_SELECT =
+	'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at, archived_at, deleted_at';
+export const ONTO_DOCUMENT_SELECT =
+	'id, project_id, title, description, type_key, state_key, content, props, children, created_by, created_at, updated_at, archived_at, deleted_at';
+export const ONTO_GOAL_SELECT =
+	'id, project_id, name, goal, description, type_key, state_key, target_date, completed_at, props, created_by, created_at, updated_at, archived_at, deleted_at';
+export const ONTO_PLAN_SELECT =
+	'id, project_id, name, description, plan, type_key, state_key, props, created_by, created_at, updated_at, archived_at, deleted_at';
+export const ONTO_MILESTONE_SELECT =
+	'id, project_id, title, milestone, description, type_key, state_key, due_at, completed_at, props, created_by, created_at, updated_at, archived_at, deleted_at';
+export const ONTO_RISK_SELECT =
+	'id, project_id, title, impact, probability, state_key, content, type_key, props, mitigated_at, created_by, created_at, updated_at, archived_at, deleted_at';
+export const ONTO_EDGE_SELECT =
+	'id, project_id, src_kind, src_id, dst_kind, dst_id, rel, props, created_at';
+export const ONTO_EVENT_SELECT =
+	'id, project_id, owner_entity_type, owner_entity_id, title, description, type_key, state_key, start_at, end_at, all_day, timezone, location, external_link, props, recurrence, sync_status, sync_error, last_synced_at, created_by, created_at, updated_at, deleted_at';
+export const ONTO_REQUIREMENT_SELECT =
+	'id, project_id, text, type_key, priority, props, created_by, created_at, updated_at, deleted_at';
+export const ONTO_METRIC_SELECT =
+	'id, project_id, name, definition, unit, type_key, props, created_by, created_at';
+export const ONTO_SOURCE_SELECT =
+	'id, project_id, uri, snapshot_uri, captured_at, props, created_by, created_at';
+export const AGENT_CALL_TOOL_EXECUTION_SELECT =
+	'id, agent_call_session_id, external_agent_caller_id, user_id, op, idempotency_key, status, args, response_payload, error_payload, entity_kind, entity_id, started_at, completed_at, created_at, updated_at';
+export const AGENT_RUN_CHANGE_SET_SELECT =
+	'id, user_id, project_id, context_type, status, allowed_ops, change_set, result, commit_started_at';
+
 export const EXTERNAL_ASSET_TEXT_PREVIEW_MAX_CHARS = 2000;
 export const EXTERNAL_ASSET_SUMMARY_MAX_CHARS = 700;
 export const EXTERNAL_ASSET_SELECT =
@@ -186,49 +215,49 @@ export const CORE_ENTITY_CONFIG: Record<ExternalEntityKind, CoreEntityConfig> = 
 		idArg: 'project_id',
 		resultKey: 'project',
 		displayField: 'name',
-		select: 'id, name, description, type_key, state_key, props, start_at, end_at, created_by, created_at, updated_at, archived_at, deleted_at'
+		select: ONTO_PROJECT_SELECT
 	},
 	task: {
 		table: 'onto_tasks',
 		idArg: 'task_id',
 		resultKey: 'task',
 		displayField: 'title',
-		select: 'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at, archived_at, deleted_at'
+		select: ONTO_TASK_SELECT
 	},
 	document: {
 		table: 'onto_documents',
 		idArg: 'document_id',
 		resultKey: 'document',
 		displayField: 'title',
-		select: 'id, project_id, title, description, type_key, state_key, content, props, children, created_at, updated_at, archived_at, deleted_at'
+		select: ONTO_DOCUMENT_SELECT
 	},
 	goal: {
 		table: 'onto_goals',
 		idArg: 'goal_id',
 		resultKey: 'goal',
 		displayField: 'name',
-		select: 'id, project_id, name, goal, description, type_key, state_key, target_date, completed_at, props, created_at, updated_at, archived_at, deleted_at'
+		select: ONTO_GOAL_SELECT
 	},
 	plan: {
 		table: 'onto_plans',
 		idArg: 'plan_id',
 		resultKey: 'plan',
 		displayField: 'name',
-		select: 'id, project_id, name, description, plan, type_key, state_key, props, created_at, updated_at, archived_at, deleted_at'
+		select: ONTO_PLAN_SELECT
 	},
 	milestone: {
 		table: 'onto_milestones',
 		idArg: 'milestone_id',
 		resultKey: 'milestone',
 		displayField: 'title',
-		select: 'id, project_id, title, milestone, description, type_key, state_key, due_at, props, created_at, updated_at, archived_at, deleted_at'
+		select: ONTO_MILESTONE_SELECT
 	},
 	risk: {
 		table: 'onto_risks',
 		idArg: 'risk_id',
 		resultKey: 'risk',
 		displayField: 'title',
-		select: 'id, project_id, title, impact, probability, state_key, content, type_key, props, mitigated_at, created_at, updated_at, archived_at, deleted_at'
+		select: ONTO_RISK_SELECT
 	}
 };
 
@@ -244,6 +273,20 @@ export const LINK_ENTITY_TABLES: Record<ExternalLinkEntityKind, string> = {
 	requirement: 'onto_requirements',
 	metric: 'onto_metrics',
 	source: 'onto_sources'
+};
+
+export const LINK_ENTITY_SELECTS: Record<ExternalLinkEntityKind, string> = {
+	project: ONTO_PROJECT_SELECT,
+	task: ONTO_TASK_SELECT,
+	document: ONTO_DOCUMENT_SELECT,
+	goal: ONTO_GOAL_SELECT,
+	plan: ONTO_PLAN_SELECT,
+	milestone: ONTO_MILESTONE_SELECT,
+	risk: ONTO_RISK_SELECT,
+	event: ONTO_EVENT_SELECT,
+	requirement: ONTO_REQUIREMENT_SELECT,
+	metric: ONTO_METRIC_SELECT,
+	source: ONTO_SOURCE_SELECT
 };
 
 export const ARCHIVABLE_ENTITY_KINDS = new Set<ExternalLinkEntityKind>([

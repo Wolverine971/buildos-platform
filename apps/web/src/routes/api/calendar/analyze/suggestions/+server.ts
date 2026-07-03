@@ -1,8 +1,25 @@
 // apps/web/src/routes/api/calendar/analyze/suggestions/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { CalendarAnalysisService } from '$lib/services/calendar-analysis.service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const suggestionActionSchema = z
+	.object({
+		suggestionId: z.string().min(1),
+		action: z.enum(['accept', 'reject', 'defer']),
+		modifications: z.record(z.unknown()).optional(),
+		reason: z.string().optional()
+	})
+	.strict();
+
+const suggestionBatchActionSchema = z
+	.object({
+		suggestions: z.array(suggestionActionSchema).min(1)
+	})
+	.strict();
 
 /**
  * Accept or reject a calendar analysis suggestion
@@ -14,8 +31,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			return ApiResponse.unauthorized();
 		}
 
-		const body = await request.json();
-		const { suggestionId, action, modifications, reason } = body;
+		const parsed = await parseJsonRequest(request, suggestionActionSchema);
+		if (!parsed.ok) return parsed.response;
+		const { suggestionId, action, modifications, reason } = parsed.data;
 
 		// Validate input
 		if (!suggestionId) {
@@ -93,8 +111,9 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 			return ApiResponse.unauthorized();
 		}
 
-		const body = await request.json();
-		const { suggestions } = body;
+		const parsed = await parseJsonRequest(request, suggestionBatchActionSchema);
+		if (!parsed.ok) return parsed.response;
+		const { suggestions } = parsed.data;
 
 		if (!Array.isArray(suggestions) || suggestions.length === 0) {
 			return ApiResponse.validationError('suggestions', 'must be a non-empty array');

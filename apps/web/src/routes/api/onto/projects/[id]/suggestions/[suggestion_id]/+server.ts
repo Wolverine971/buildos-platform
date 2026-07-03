@@ -10,11 +10,23 @@
 // Gated by PROJECT_LOOPS_ENABLED.
 
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
 import { decideProjectSuggestionWithClarification } from '$lib/server/clarified-decision.service';
 import { decideProjectSuggestion } from '$lib/server/project-suggestion-actions.service';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const projectSuggestionDecisionSchema = z
+	.object({
+		action: z.enum(['approve', 'dismiss']),
+		reason: z.unknown().optional(),
+		note: z.unknown().optional(),
+		feedback: z.unknown().optional(),
+		clarification: z.unknown().optional()
+	})
+	.strict();
 
 export const POST: RequestHandler = async ({ params, locals, request, fetch }) => {
 	if (!PROJECT_LOOPS_ENABLED) return ApiResponse.notFound('Not found');
@@ -26,18 +38,9 @@ export const POST: RequestHandler = async ({ params, locals, request, fetch }) =
 	});
 	if (!access.ok) return access.response;
 
-	let body: {
-		action?: string;
-		reason?: unknown;
-		note?: unknown;
-		feedback?: unknown;
-		clarification?: unknown;
-	};
-	try {
-		body = await request.json();
-	} catch {
-		return ApiResponse.badRequest('Invalid JSON body');
-	}
+	const parsed = await parseJsonRequest(request, projectSuggestionDecisionSchema);
+	if (!parsed.ok) return parsed.response;
+	const body = parsed.data;
 
 	const action = body.action;
 	if (action !== 'approve' && action !== 'dismiss') {

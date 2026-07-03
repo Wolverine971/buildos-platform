@@ -1,7 +1,14 @@
 // apps/web/src/routes/api/account/password/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { createSupabaseServer } from '$lib/supabase/index';
 import { ApiResponse } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const passwordUpdateSchema = z.object({
+	currentPassword: z.string(),
+	newPassword: z.string()
+});
 
 export const PUT: RequestHandler = async ({ request, cookies, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -11,7 +18,9 @@ export const PUT: RequestHandler = async ({ request, cookies, locals: { safeGetS
 	}
 
 	try {
-		const body = await request.json();
+		const parsed = await parseJsonRequest(request, passwordUpdateSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data;
 		const { currentPassword, newPassword } = body;
 
 		// Validate input

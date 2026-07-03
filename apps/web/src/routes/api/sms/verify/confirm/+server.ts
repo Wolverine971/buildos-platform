@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/sms/verify/confirm/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { TwilioClient } from '@buildos/twilio-service';
 import {
@@ -8,6 +9,14 @@ import {
 	PRIVATE_TWILIO_MESSAGING_SERVICE_SID,
 	PRIVATE_TWILIO_VERIFY_SERVICE_SID
 } from '$env/static/private';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const smsVerifyConfirmSchema = z
+	.object({
+		phoneNumber: z.string().min(1),
+		code: z.string().min(1)
+	})
+	.strict();
 
 const twilioClient = new TwilioClient({
 	accountSid: PRIVATE_TWILIO_ACCOUNT_SID,
@@ -22,7 +31,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return ApiResponse.unauthorized();
 	}
 
-	const { phoneNumber, code } = await request.json();
+	const parsed = await parseJsonRequest(request, smsVerifyConfirmSchema);
+	if (!parsed.ok) return parsed.response;
+	const { phoneNumber, code } = parsed.data;
 
 	if (!phoneNumber || !code) {
 		return ApiResponse.badRequest('Phone number and code are required');

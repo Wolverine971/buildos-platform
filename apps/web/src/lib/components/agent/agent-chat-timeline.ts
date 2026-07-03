@@ -135,6 +135,16 @@ function numberValue(value: unknown): number | null {
 	return null;
 }
 
+function booleanValue(value: unknown): boolean | null {
+	if (typeof value === 'boolean') return value;
+	if (typeof value === 'string') {
+		const normalized = value.trim().toLowerCase();
+		if (normalized === 'true') return true;
+		if (normalized === 'false') return false;
+	}
+	return null;
+}
+
 function normalizeStatus(value: string | boolean | null | undefined): AgentTimelineItemStatus {
 	if (value === true) return 'completed';
 	if (value === false) return 'failed';
@@ -944,13 +954,29 @@ export function timelineItemsFromMessages(
 						message_id: message.id,
 						client_turn_id: stringValue(metadata.clientTurnId),
 						tool_name: toolName,
-						gateway_op: stringValue(metadata.gatewayOp),
+						tool_category:
+							stringValue(metadata.toolCategory) ??
+							stringValue(metadata.tool_category),
+						gateway_op:
+							stringValue(metadata.gatewayOp) ?? stringValue(metadata.gateway_op),
+						help_path:
+							stringValue(metadata.helpPath) ?? stringValue(metadata.help_path),
 						sequence_index: numberValue(metadata.sequenceIndex),
 						arguments: metadata.arguments ?? metadata.rawArguments ?? metadata.args,
 						result: metadata.result ?? metadata.response,
+						result_count:
+							numberValue(metadata.resultCount) ?? numberValue(metadata.result_count),
+						zero_result:
+							booleanValue(metadata.zeroResult) ?? booleanValue(metadata.zero_result),
 						execution_time_ms: numberValue(metadata.durationMs),
+						tokens_consumed:
+							numberValue(metadata.tokensConsumed) ??
+							numberValue(metadata.tokens_consumed),
 						success: activity.status !== 'failed',
 						error_message: stringValue(metadata.error),
+						requires_user_action:
+							booleanValue(metadata.requiresUserAction) ??
+							booleanValue(metadata.requires_user_action),
 						created_at: timestamp
 					});
 					if (toolItem) {

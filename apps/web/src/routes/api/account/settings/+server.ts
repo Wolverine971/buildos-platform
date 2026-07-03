@@ -1,7 +1,14 @@
 // apps/web/src/routes/api/account/settings/+server.ts
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { createSupabaseServer } from '$lib/supabase/index';
 import { ApiResponse } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const accountSettingsSchema = z.object({
+	name: z.string().optional(),
+	email: z.string().optional()
+});
 
 export const PUT: RequestHandler = async ({ request, cookies, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -11,7 +18,9 @@ export const PUT: RequestHandler = async ({ request, cookies, locals: { safeGetS
 	}
 
 	try {
-		const body = await request.json();
+		const parsed = await parseJsonRequest(request, accountSettingsSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data;
 		const { name, email } = body;
 
 		// Validate input
@@ -26,7 +35,7 @@ export const PUT: RequestHandler = async ({ request, cookies, locals: { safeGetS
 		const supabase = createSupabaseServer(cookies);
 
 		// Update user metadata and email if provided
-		const updateData: any = {};
+		const updateData: { data?: { name: string }; email?: string } = {};
 
 		if (name?.trim()) {
 			updateData.data = {

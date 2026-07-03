@@ -10194,6 +10194,294 @@ export type Database = {
           },
         ]
       }
+      project_audit_suggestions: {
+        Row: {
+          audit_id: string
+          created_at: string
+          id: string
+          role: string
+          suggestion_id: string
+        }
+        Insert: {
+          audit_id: string
+          created_at?: string
+          id?: string
+          role: string
+          suggestion_id: string
+        }
+        Update: {
+          audit_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          suggestion_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_audit_suggestions_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "project_audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audit_suggestions_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "project_suggestions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_audit_trigger_evaluations: {
+        Row: {
+          burst_score: number | null
+          changed_entity_count: number | null
+          cooldown_until: string | null
+          created_at: string
+          created_audit_id: string | null
+          created_loop_run_id: string | null
+          decision: string
+          eligible: boolean
+          evaluated_at: string
+          id: string
+          last_audit_id: string | null
+          major_change_count: number | null
+          maturity_snapshot: Json
+          project_id: string
+          project_size_class: string
+          quiet_until: string | null
+          reason_summary: string
+          trigger_reason: string
+          user_id: string
+        }
+        Insert: {
+          burst_score?: number | null
+          changed_entity_count?: number | null
+          cooldown_until?: string | null
+          created_at?: string
+          created_audit_id?: string | null
+          created_loop_run_id?: string | null
+          decision: string
+          eligible?: boolean
+          evaluated_at?: string
+          id?: string
+          last_audit_id?: string | null
+          major_change_count?: number | null
+          maturity_snapshot?: Json
+          project_id: string
+          project_size_class?: string
+          quiet_until?: string | null
+          reason_summary?: string
+          trigger_reason: string
+          user_id: string
+        }
+        Update: {
+          burst_score?: number | null
+          changed_entity_count?: number | null
+          cooldown_until?: string | null
+          created_at?: string
+          created_audit_id?: string | null
+          created_loop_run_id?: string | null
+          decision?: string
+          eligible?: boolean
+          evaluated_at?: string
+          id?: string
+          last_audit_id?: string | null
+          major_change_count?: number | null
+          maturity_snapshot?: Json
+          project_id?: string
+          project_size_class?: string
+          quiet_until?: string | null
+          reason_summary?: string
+          trigger_reason?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_audit_trigger_evaluations_created_audit_id_fkey"
+            columns: ["created_audit_id"]
+            isOneToOne: false
+            referencedRelation: "project_audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audit_trigger_evaluations_created_loop_run_id_fkey"
+            columns: ["created_loop_run_id"]
+            isOneToOne: false
+            referencedRelation: "project_loop_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audit_trigger_evaluations_last_audit_id_fkey"
+            columns: ["last_audit_id"]
+            isOneToOne: false
+            referencedRelation: "project_audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audit_trigger_evaluations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audit_trigger_evaluations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_audits: {
+        Row: {
+          archived_at: string | null
+          audit_depth: string
+          change_summary: Json
+          chat_session_id: string | null
+          cost_usd: number | null
+          created_at: string
+          delivery_confidence: string
+          dimensions: Json
+          error_message: string | null
+          evidence_refs: Json
+          finished_at: string | null
+          generated_suggestion_count: number
+          id: string
+          loop_run_id: string | null
+          model_used: string | null
+          open_questions: Json
+          project_id: string
+          project_size_class: string
+          project_snapshot_fingerprint: string | null
+          project_thesis: string | null
+          recommendations: Json
+          reviewed_at: string | null
+          risks: Json
+          started_at: string | null
+          status: string
+          summary: string
+          superseded_by: string | null
+          top_actions: Json
+          top_findings: Json
+          trigger_reason: string
+          trigger_snapshot: Json
+          unresolved_suggestion_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          audit_depth?: string
+          change_summary?: Json
+          chat_session_id?: string | null
+          cost_usd?: number | null
+          created_at?: string
+          delivery_confidence?: string
+          dimensions?: Json
+          error_message?: string | null
+          evidence_refs?: Json
+          finished_at?: string | null
+          generated_suggestion_count?: number
+          id?: string
+          loop_run_id?: string | null
+          model_used?: string | null
+          open_questions?: Json
+          project_id: string
+          project_size_class?: string
+          project_snapshot_fingerprint?: string | null
+          project_thesis?: string | null
+          recommendations?: Json
+          reviewed_at?: string | null
+          risks?: Json
+          started_at?: string | null
+          status?: string
+          summary?: string
+          superseded_by?: string | null
+          top_actions?: Json
+          top_findings?: Json
+          trigger_reason: string
+          trigger_snapshot?: Json
+          unresolved_suggestion_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          audit_depth?: string
+          change_summary?: Json
+          chat_session_id?: string | null
+          cost_usd?: number | null
+          created_at?: string
+          delivery_confidence?: string
+          dimensions?: Json
+          error_message?: string | null
+          evidence_refs?: Json
+          finished_at?: string | null
+          generated_suggestion_count?: number
+          id?: string
+          loop_run_id?: string | null
+          model_used?: string | null
+          open_questions?: Json
+          project_id?: string
+          project_size_class?: string
+          project_snapshot_fingerprint?: string | null
+          project_thesis?: string | null
+          recommendations?: Json
+          reviewed_at?: string | null
+          risks?: Json
+          started_at?: string | null
+          status?: string
+          summary?: string
+          superseded_by?: string | null
+          top_actions?: Json
+          top_findings?: Json
+          trigger_reason?: string
+          trigger_snapshot?: Json
+          unresolved_suggestion_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_audits_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audits_loop_run_id_fkey"
+            columns: ["loop_run_id"]
+            isOneToOne: false
+            referencedRelation: "project_loop_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audits_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audits_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "project_audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_loop_runs: {
         Row: {
           brief: Json | null

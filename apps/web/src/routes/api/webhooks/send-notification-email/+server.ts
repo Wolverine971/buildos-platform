@@ -1,9 +1,11 @@
 // apps/web/src/routes/api/webhooks/send-notification-email/+server.ts
 import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import { PRIVATE_BUILDOS_WEBHOOK_SECRET } from '$env/static/private';
 import { EmailService } from '$lib/services/email-service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
 /**
  * Webhook endpoint for worker to send notification emails
@@ -26,6 +28,22 @@ interface NotificationEmailRequest {
 	eventType?: string;
 }
 
+const notificationEmailRequestSchema = z
+	.object({
+		recipientEmail: z.string().email(),
+		recipientName: z.string().optional(),
+		recipientUserId: z.string().min(1),
+		subject: z.string().min(1),
+		htmlContent: z.string(),
+		textContent: z.string(),
+		trackingId: z.string().optional(),
+		emailRecordId: z.string().optional(),
+		deliveryId: z.string().min(1),
+		eventId: z.string().min(1),
+		eventType: z.string().optional()
+	})
+	.strict();
+
 export const POST: RequestHandler = async ({ request }) => {
 	const startTime = Date.now();
 
@@ -47,7 +65,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Parse request body
-		const body = (await request.json()) as NotificationEmailRequest;
+		const parsed = await parseJsonRequest(request, notificationEmailRequestSchema);
+		if (!parsed.ok) return parsed.response;
+		const body = parsed.data as NotificationEmailRequest;
 
 		// Validate required fields
 		if (!body.recipientEmail || !body.recipientUserId || !body.subject) {
