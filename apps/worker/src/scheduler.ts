@@ -19,6 +19,7 @@ import { cleanupStaleJobs } from './lib/utils/queueCleanup';
 import { queue } from './worker';
 import { PROJECT_LOOPS_ENABLED } from './config/projectLoops';
 import { enqueueEndOfDayProjectLoops } from './workers/project-loop/enqueue';
+import { enqueueScheduledProjectAudits } from './workers/project-loop/auditEnqueue';
 import {
 	validateAgentRunMetadata,
 	type AgentOperativeRowShape,
@@ -196,7 +197,8 @@ export function startScheduler() {
 	});
 
 	// End-of-day project loops: reconcile active projects touched in the last
-	// 24h. No-ops unless ENABLE_PROJECT_LOOPS is set (off in prod by default).
+	// 24h and evaluate complete-audit cadence. No-ops unless
+	// ENABLE_PROJECT_LOOPS is set (off in prod by default).
 	cron.schedule('0 4 * * *', async () => {
 		if (!PROJECT_LOOPS_ENABLED) return;
 		console.log('🔁 Enqueuing end-of-day project loops...');
@@ -208,6 +210,10 @@ export function startScheduler() {
 			} = await enqueueEndOfDayProjectLoops();
 			console.log(
 				`🔁 Project loops: enqueued ${enqueued}/${scanned} active projects, skipped invalid owner=${skippedInvalidOwner}`
+			);
+			const audits = await enqueueScheduledProjectAudits();
+			console.log(
+				`🔎 Project audits: queued ${audits.queued}/${audits.scanned}, skipped=${audits.skipped}, deferred=${audits.deferred}, failed=${audits.failed}, skipped invalid owner=${audits.skippedInvalidOwner}`
 			);
 		} catch (error) {
 			console.error('🔁 Project loop scheduling failed:', error);

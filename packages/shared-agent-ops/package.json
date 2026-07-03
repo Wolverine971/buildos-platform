@@ -156,6 +156,11 @@
 			"import": "./dist/inbox-index.mjs",
 			"require": "./dist/inbox-index.js"
 		},
+		"./project-audits": {
+			"types": "./dist/project-audits.d.ts",
+			"import": "./dist/project-audits.mjs",
+			"require": "./dist/project-audits.js"
+		},
 		"./proposal-context": {
 			"types": "./dist/proposal-context/index.d.ts",
 			"import": "./dist/proposal-context/index.mjs",

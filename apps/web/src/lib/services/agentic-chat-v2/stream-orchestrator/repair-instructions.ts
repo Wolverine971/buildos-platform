@@ -9,6 +9,7 @@ import {
 	didSuccessfulGatewayOpExecute,
 	extractGatewayRequiredFieldFailuresFromValidationIssues,
 	getGatewayExecOp,
+	isDuplicateWriteSkippedExecution,
 	isWriteLikeOperation
 } from './round-analysis';
 import {
@@ -581,6 +582,7 @@ export function collectGatewayWriteIntentOps(toolExecutions: FastToolExecution[]
 	const ops = new Set<string>();
 
 	for (const execution of toolExecutions) {
+		if (isDuplicateWriteSkippedExecution(execution)) continue;
 		const toolName = execution.toolCall.function?.name?.trim();
 		if (!toolName) continue;
 
@@ -781,6 +783,7 @@ function summarizeMutationOutcomes(toolExecutions: FastToolExecution[]): Mutatio
 	let failed = 0;
 
 	for (const execution of toolExecutions) {
+		if (isDuplicateWriteSkippedExecution(execution)) continue;
 		const writeOp = getWriteOperationName(execution);
 		if (!writeOp) continue;
 		writeOps.push(writeOp);
@@ -812,6 +815,7 @@ function collectUnrepairedFailedWrites(
 	for (let index = 0; index < toolExecutions.length; index += 1) {
 		const execution = toolExecutions[index];
 		if (!execution) continue;
+		if (isDuplicateWriteSkippedExecution(execution)) continue;
 		const writeOp = getWriteOperationName(execution);
 		if (!writeOp || didWriteExecutionSucceed(execution)) continue;
 		if (hasLaterSuccessfulRetry(toolExecutions, index, execution, writeOp)) continue;
@@ -918,6 +922,7 @@ function getPrimaryMutationTargetId(execution: FastToolExecution): string | null
 function getWriteOperationName(execution: FastToolExecution): string | null {
 	const toolName = execution.toolCall.function?.name?.trim();
 	if (!toolName) return null;
+	if (isDuplicateWriteSkippedExecution(execution)) return null;
 
 	const op = getGatewayExecOp(execution) ?? toolName;
 	return isWriteLikeOperation(op) ? op : null;
@@ -926,6 +931,7 @@ function getWriteOperationName(execution: FastToolExecution): string | null {
 function didWriteExecutionSucceed(execution: FastToolExecution): boolean {
 	const toolName = execution.toolCall.function?.name?.trim();
 	if (!toolName) return false;
+	if (isDuplicateWriteSkippedExecution(execution)) return false;
 	return didGatewayExecSucceed(execution);
 }
 

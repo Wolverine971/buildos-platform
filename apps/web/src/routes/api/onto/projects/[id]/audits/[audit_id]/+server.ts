@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
+import { captureServerEvent } from '$lib/server/posthog';
 import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -30,6 +31,17 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	if (auditRes.error) return ApiResponse.databaseError(auditRes.error);
 	if (suggestionsRes.error) return ApiResponse.databaseError(suggestionsRes.error);
 	if (!auditRes.data) return ApiResponse.notFound('Project audit');
+
+	await captureServerEvent(access.userId, 'project_audit_read', {
+		project_id: access.projectId,
+		audit_id: params.audit_id,
+		status: auditRes.data.status ?? null,
+		trigger_reason: auditRes.data.trigger_reason ?? null,
+		delivery_confidence: auditRes.data.delivery_confidence ?? null,
+		generated_suggestion_count: auditRes.data.generated_suggestion_count ?? null,
+		unresolved_suggestion_count: auditRes.data.unresolved_suggestion_count ?? null,
+		child_suggestion_count: suggestionsRes.data?.length ?? 0
+	});
 
 	return ApiResponse.success({
 		audit: auditRes.data,

@@ -170,7 +170,8 @@
 		doc_org: 'Organize',
 		doc_outdated: 'Outdated',
 		drift: 'Drift',
-		task_conflict: 'Conflict'
+		task_conflict: 'Conflict',
+		audit_recommendation: 'Audit'
 	};
 
 	const evidenceTypeLabel: Record<string, string> = {

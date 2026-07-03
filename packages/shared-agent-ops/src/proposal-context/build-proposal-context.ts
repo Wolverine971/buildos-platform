@@ -54,7 +54,8 @@ const kindLabel: Record<string, string> = {
 	doc_org: 'Document organization',
 	doc_outdated: 'Outdated documentation',
 	drift: 'Project drift',
-	task_conflict: 'Task conflict'
+	task_conflict: 'Task conflict',
+	audit_recommendation: 'Audit recommendation'
 };
 
 const riskLabel: Record<number, string> = {

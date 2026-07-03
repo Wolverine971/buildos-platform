@@ -80,6 +80,12 @@ const FEEDBACK_REASONS = new Set<ProjectSuggestionFeedback['reason']>([
 	'too_risky',
 	'other'
 ]);
+const UNRESOLVED_AUDIT_SUGGESTION_STATUSES = new Set([
+	'pending',
+	'approved',
+	'delegated',
+	'failed'
+]);
 
 function sanitizeFeedback(value: unknown): ProjectSuggestionFeedback | null {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -97,6 +103,79 @@ function sanitizeFeedback(value: unknown): ProjectSuggestionFeedback | null {
 		...(note ? { note } : {}),
 		created_at: new Date().toISOString()
 	};
+}
+
+function linkedSuggestionStatus(link: Record<string, unknown>): string | null {
+	const nested = link.project_suggestions;
+	if (Array.isArray(nested)) {
+		const first = nested[0];
+		return first && typeof first === 'object'
+			? typeof (first as Record<string, unknown>).status === 'string'
+				? ((first as Record<string, unknown>).status as string)
+				: null
+			: null;
+	}
+	if (nested && typeof nested === 'object') {
+		const status = (nested as Record<string, unknown>).status;
+		return typeof status === 'string' ? status : null;
+	}
+	return null;
+}
+
+async function refreshLinkedAuditSuggestionCounts(params: {
+	supabase: AnySupabase;
+	suggestionId: string;
+}): Promise<void> {
+	const { data: links, error: linksError } = await params.supabase
+		.from('project_audit_suggestions')
+		.select('audit_id')
+		.eq('suggestion_id', params.suggestionId);
+	if (linksError) {
+		console.warn(
+			`[ProjectSuggestions] Failed to load linked audits for suggestion ${params.suggestionId}:`,
+			linksError.message
+		);
+		return;
+	}
+
+	const auditIds = Array.from(
+		new Set(
+			((links ?? []) as Record<string, unknown>[])
+				.map((link) => (typeof link.audit_id === 'string' ? link.audit_id : null))
+				.filter((id): id is string => Boolean(id))
+		)
+	);
+	for (const auditId of auditIds) {
+		const { data: auditLinks, error: auditLinksError } = await params.supabase
+			.from('project_audit_suggestions')
+			.select('project_suggestions(status)')
+			.eq('audit_id', auditId);
+		if (auditLinksError) {
+			console.warn(
+				`[ProjectSuggestions] Failed to load audit suggestion statuses for audit ${auditId}:`,
+				auditLinksError.message
+			);
+			continue;
+		}
+
+		const rows = (auditLinks ?? []) as Record<string, unknown>[];
+		const unresolvedCount = rows.filter((link) =>
+			UNRESOLVED_AUDIT_SUGGESTION_STATUSES.has(linkedSuggestionStatus(link) ?? '')
+		).length;
+		const { error: updateError } = await params.supabase
+			.from('project_audits')
+			.update({
+				generated_suggestion_count: rows.length,
+				unresolved_suggestion_count: unresolvedCount
+			})
+			.eq('id', auditId);
+		if (updateError) {
+			console.warn(
+				`[ProjectSuggestions] Failed to refresh audit suggestion counts for audit ${auditId}:`,
+				updateError.message
+			);
+		}
+	}
 }
 
 export async function decideProjectSuggestion(params: {
@@ -153,6 +232,7 @@ export async function decideProjectSuggestion(params: {
 				: { ok: false, status: 404, message: 'Suggestion not found' };
 		}
 		await syncProjectSuggestionInboxItem(updated);
+		await refreshLinkedAuditSuggestionCounts({ supabase, suggestionId });
 		return { ok: true, suggestion: updated };
 	}
 
@@ -199,6 +279,7 @@ export async function decideProjectSuggestion(params: {
 			if (updateError) return { ok: false, status: 500, message: updateError.message };
 			if (updated) {
 				await syncProjectSuggestionInboxItem(updated);
+				await refreshLinkedAuditSuggestionCounts({ supabase, suggestionId });
 				return { ok: true, suggestion: updated, result, superseded: true };
 			}
 			const latest = await loadSuggestion({ supabase, projectId, suggestionId });
@@ -307,5 +388,6 @@ export async function decideProjectSuggestion(params: {
 	}
 
 	await syncProjectSuggestionInboxItem(updated);
+	await refreshLinkedAuditSuggestionCounts({ supabase, suggestionId });
 	return { ok: true, suggestion: updated, result };
 }

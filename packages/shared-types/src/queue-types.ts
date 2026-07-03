@@ -196,11 +196,11 @@ export interface ProjectContextSnapshotJobMetadata {
 }
 
 export interface ProjectLoopJobMetadata {
-	runId: string;
+	runId?: string;
 	projectId: string;
 	userId: string;
 	triggerReason: 'end_of_day' | 'scheduled' | 'burst' | 'critical_change' | 'manual';
-	mode?: 'light_loop' | 'complete_audit';
+	mode?: 'light_loop' | 'complete_audit' | 'complete_audit_trigger_evaluation';
 	auditId?: string;
 	auditDepth?: 'standard' | 'deep';
 	triggerEvaluationId?: string;

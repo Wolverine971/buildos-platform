@@ -1,0 +1,418 @@
+// apps/worker/src/workers/project-loop/auditEnqueue.ts
+import type {
+	Json,
+	ProjectAuditDepth,
+	ProjectAuditTriggerReason,
+	ProjectAuditTriggerSnapshot
+} from '@buildos/shared-types';
+import {
+	auditSizeClassForInsert,
+	buildProjectAuditTriggerSnapshot,
+	evaluateProjectAuditTrigger,
+	recordProjectAuditTriggerEvaluation
+} from '@buildos/shared-agent-ops/project-audits';
+import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
+import { supabase } from '../../lib/supabase';
+import { resolveProjectLoopOwnerUserIds } from './enqueue';
+
+type QueueProjectAuditResult = {
+	queued: boolean;
+	auditId?: string;
+	runId?: string;
+	jobId?: string;
+	evaluationId?: string;
+	decision?: string;
+	reason?: string;
+};
+
+type ScheduledAuditEnqueueResult = {
+	queued: number;
+	scanned: number;
+	skippedInvalidOwner: number;
+	skipped: number;
+	failed: number;
+	deferred: number;
+};
+
+function projectAuditTriggerEvaluationDedupKey(params: {
+	projectId: string;
+	triggerReason: ProjectAuditTriggerReason;
+	scheduledFor: string;
+}): string {
+	return `project-audit-trigger:${params.projectId}:${params.triggerReason}:${params.scheduledFor.slice(0, 16)}`;
+}
+
+async function resolveQueueJobPublicId(queueRecordId: string): Promise<string | undefined> {
+	const { data, error } = await supabase
+		.from('queue_jobs')
+		.select('queue_job_id')
+		.eq('id', queueRecordId)
+		.maybeSingle();
+	if (error) {
+		console.error('[ProjectAudits] failed to resolve queue job public id:', error.message);
+		return undefined;
+	}
+	return data?.queue_job_id ?? undefined;
+}
+
+async function createAuditChatSession(params: {
+	projectId: string;
+	userId: string;
+	triggerReason: ProjectAuditTriggerReason;
+}): Promise<string> {
+	const title =
+		params.triggerReason === 'manual'
+			? 'Manual Complete Project Audit'
+			: 'Complete Project Audit';
+	const { data: session, error: sessionError } = await supabase
+		.from('chat_sessions')
+		.insert({
+			user_id: params.userId,
+			context_type: 'project',
+			entity_id: params.projectId,
+			status: 'active',
+			chat_type: 'project_audit',
+			title,
+			agent_metadata: {
+				source: 'project_audit',
+				project_id: params.projectId,
+				trigger_reason: params.triggerReason
+			} as Json
+		})
+		.select('id')
+		.single();
+	if (sessionError || !session?.id) {
+		throw sessionError ?? new Error('Failed to create project audit chat session');
+	}
+
+	const { error: linkError } = await supabase.from('chat_sessions_projects').insert({
+		chat_session_id: session.id,
+		project_id: params.projectId
+	});
+	if (linkError) throw new Error(linkError.message);
+
+	return session.id as string;
+}
+
+async function scheduleProjectAuditTriggerEvaluation(params: {
+	projectId: string;
+	userId: string;
+	triggerReason: ProjectAuditTriggerReason;
+	auditDepth: ProjectAuditDepth;
+	scheduledFor: string | null;
+	triggerEvaluationId?: string | null;
+}): Promise<void> {
+	if (!params.scheduledFor) return;
+	const scheduledMs = Date.parse(params.scheduledFor);
+	if (!Number.isFinite(scheduledMs) || scheduledMs <= Date.now()) return;
+
+	const { error } = await supabase.rpc('add_queue_job', {
+		p_user_id: params.userId,
+		p_job_type: 'buildos_project_loop',
+		p_metadata: {
+			mode: 'complete_audit_trigger_evaluation',
+			projectId: params.projectId,
+			userId: params.userId,
+			triggerReason: params.triggerReason,
+			auditDepth: params.auditDepth,
+			triggerEvaluationId: params.triggerEvaluationId ?? undefined
+		} as unknown as Json,
+		p_priority: 8,
+		p_scheduled_for: params.scheduledFor,
+		p_dedup_key: projectAuditTriggerEvaluationDedupKey({
+			projectId: params.projectId,
+			triggerReason: params.triggerReason,
+			scheduledFor: params.scheduledFor
+		})
+	});
+
+	if (error) {
+		console.error('[ProjectAudits] failed to schedule trigger re-evaluation:', error.message);
+	}
+}
+
+export async function queueProjectAuditFromWorker(params: {
+	projectId: string;
+	userId: string;
+	triggerReason: ProjectAuditTriggerReason;
+	auditDepth?: ProjectAuditDepth;
+	now?: Date;
+}): Promise<QueueProjectAuditResult> {
+	if (!PROJECT_LOOPS_ENABLED) return { queued: false, reason: 'feature_disabled' };
+
+	const auditDepth = params.auditDepth ?? 'standard';
+	const evaluated = await evaluateProjectAuditTrigger({
+		supabase,
+		projectId: params.projectId,
+		userId: params.userId,
+		triggerReason: params.triggerReason,
+		now: params.now
+	});
+
+	if (evaluated.evaluation.decision !== 'queued' || !evaluated.snapshot) {
+		const evaluationId = await recordProjectAuditTriggerEvaluation({
+			supabase,
+			evaluation: evaluated.evaluation
+		});
+		if (evaluated.evaluation.decision === 'deferred_quiet_period') {
+			await scheduleProjectAuditTriggerEvaluation({
+				projectId: params.projectId,
+				userId: params.userId,
+				triggerReason: params.triggerReason,
+				auditDepth,
+				scheduledFor: evaluated.evaluation.quiet_until,
+				triggerEvaluationId: evaluationId
+			});
+		}
+		return {
+			queued: false,
+			evaluationId: evaluationId ?? undefined,
+			decision: evaluated.evaluation.decision,
+			reason: evaluated.evaluation.reason_summary
+		};
+	}
+
+	let chatSessionId: string;
+	try {
+		chatSessionId = await createAuditChatSession({
+			projectId: params.projectId,
+			userId: params.userId,
+			triggerReason: params.triggerReason
+		});
+	} catch (error) {
+		const message =
+			error instanceof Error ? error.message : 'Failed to create project audit chat session';
+		console.error('[ProjectAudits] create audit chat session failed:', message);
+		return {
+			queued: false,
+			decision: evaluated.evaluation.decision,
+			reason: message
+		};
+	}
+
+	const { data: runRow, error: runError } = await supabase
+		.from('project_loop_runs')
+		.insert({
+			project_id: params.projectId,
+			user_id: params.userId,
+			trigger_reason: params.triggerReason,
+			status: 'queued',
+			chat_session_id: chatSessionId,
+			summary: 'Complete project audit queued.'
+		})
+		.select('id')
+		.single();
+
+	if (runError || !runRow?.id) {
+		const message = runError?.message ?? 'Failed to create audit loop run';
+		console.error('[ProjectAudits] create audit loop run failed:', message);
+		return {
+			queued: false,
+			decision: evaluated.evaluation.decision,
+			reason: message
+		};
+	}
+
+	const triggerSnapshot: ProjectAuditTriggerSnapshot = buildProjectAuditTriggerSnapshot(
+		evaluated.evaluation
+	);
+
+	const { data: auditRow, error: auditError } = await supabase
+		.from('project_audits')
+		.insert({
+			project_id: params.projectId,
+			user_id: params.userId,
+			loop_run_id: runRow.id,
+			chat_session_id: chatSessionId,
+			status: 'queued',
+			trigger_reason: params.triggerReason,
+			audit_depth: auditDepth,
+			delivery_confidence: 'unknown',
+			project_size_class: auditSizeClassForInsert(evaluated.evaluation.project_size_class),
+			summary: 'Complete project audit queued.',
+			trigger_snapshot: triggerSnapshot as unknown as Json,
+			project_snapshot_fingerprint: evaluated.snapshot.fingerprint
+		})
+		.select('id')
+		.single();
+
+	if (auditError || !auditRow?.id) {
+		const message = auditError?.message ?? 'Failed to create project audit';
+		console.error('[ProjectAudits] create project audit failed:', message);
+		await supabase
+			.from('project_loop_runs')
+			.update({
+				status: 'failed',
+				error_message: message,
+				finished_at: new Date().toISOString()
+			})
+			.eq('id', runRow.id);
+		return {
+			queued: false,
+			runId: runRow.id as string,
+			decision: evaluated.evaluation.decision,
+			reason: message
+		};
+	}
+
+	const evaluationId = await recordProjectAuditTriggerEvaluation({
+		supabase,
+		evaluation: evaluated.evaluation,
+		createdAuditId: auditRow.id as string,
+		createdLoopRunId: runRow.id as string
+	});
+
+	const { data: queueRecordId, error: queueError } = await supabase.rpc('add_queue_job', {
+		p_user_id: params.userId,
+		p_job_type: 'buildos_project_loop',
+		p_metadata: {
+			mode: 'complete_audit',
+			runId: runRow.id,
+			auditId: auditRow.id,
+			projectId: params.projectId,
+			userId: params.userId,
+			triggerReason: params.triggerReason,
+			auditDepth,
+			triggerEvaluationId: evaluationId
+		} as unknown as Json,
+		p_priority: auditDepth === 'deep' ? 6 : 7,
+		p_scheduled_for: new Date().toISOString(),
+		p_dedup_key: `project-audit:${params.projectId}:${auditRow.id}`
+	});
+
+	if (queueError || typeof queueRecordId !== 'string') {
+		const message = queueError?.message ?? 'Queue RPC did not return a queue record id';
+		console.error('[ProjectAudits] queue audit job failed:', message);
+		const now = new Date().toISOString();
+		await Promise.all([
+			supabase
+				.from('project_loop_runs')
+				.update({ status: 'failed', error_message: message, finished_at: now })
+				.eq('id', runRow.id),
+			supabase
+				.from('project_audits')
+				.update({ status: 'failed', error_message: message, finished_at: now })
+				.eq('id', auditRow.id)
+		]);
+		return {
+			queued: false,
+			auditId: auditRow.id as string,
+			runId: runRow.id as string,
+			evaluationId: evaluationId ?? undefined,
+			decision: evaluated.evaluation.decision,
+			reason: message
+		};
+	}
+
+	const queueJobId = await resolveQueueJobPublicId(queueRecordId);
+	if (queueJobId) {
+		await supabase
+			.from('project_loop_runs')
+			.update({ queue_job_id: queueJobId })
+			.eq('id', runRow.id);
+	}
+
+	return {
+		queued: true,
+		auditId: auditRow.id as string,
+		runId: runRow.id as string,
+		jobId: queueJobId,
+		evaluationId: evaluationId ?? undefined,
+		decision: 'queued',
+		reason: evaluated.evaluation.reason_summary
+	};
+}
+
+export async function processProjectAuditTriggerEvaluationJob(params: {
+	projectId: string;
+	userId: string;
+	triggerReason: ProjectAuditTriggerReason;
+	auditDepth?: ProjectAuditDepth;
+}): Promise<QueueProjectAuditResult> {
+	return queueProjectAuditFromWorker({
+		projectId: params.projectId,
+		userId: params.userId,
+		triggerReason: params.triggerReason,
+		auditDepth: params.auditDepth
+	});
+}
+
+export async function enqueueScheduledProjectAudits(): Promise<ScheduledAuditEnqueueResult> {
+	if (!PROJECT_LOOPS_ENABLED) {
+		return {
+			queued: 0,
+			scanned: 0,
+			skippedInvalidOwner: 0,
+			skipped: 0,
+			failed: 0,
+			deferred: 0
+		};
+	}
+
+	const { data: projects, error } = await supabase
+		.from('onto_projects')
+		.select('id, created_by')
+		.in('state_key', ['active', 'planning'])
+		.is('deleted_at', null)
+		.is('archived_at', null)
+		.order('updated_at', { ascending: false })
+		.limit(500);
+
+	if (error) {
+		console.error('[ProjectAudits] scheduled scan failed:', error.message);
+		return {
+			queued: 0,
+			scanned: 0,
+			skippedInvalidOwner: 0,
+			skipped: 0,
+			failed: 0,
+			deferred: 0
+		};
+	}
+
+	const ownerUserIdsByProjectId = await resolveProjectLoopOwnerUserIds(projects ?? []);
+	let queued = 0;
+	let skipped = 0;
+	let failed = 0;
+	let deferred = 0;
+	let skippedInvalidOwner = 0;
+
+	for (const project of projects ?? []) {
+		if (!project.id) continue;
+		const userId = ownerUserIdsByProjectId.get(project.id);
+		if (!userId) {
+			skippedInvalidOwner += 1;
+			continue;
+		}
+
+		try {
+			const result = await queueProjectAuditFromWorker({
+				projectId: project.id,
+				userId,
+				triggerReason: 'scheduled'
+			});
+			if (result.queued) {
+				queued += 1;
+			} else if (result.decision === 'deferred_quiet_period') {
+				deferred += 1;
+			} else {
+				skipped += 1;
+			}
+		} catch (error) {
+			failed += 1;
+			console.error(
+				`[ProjectAudits] scheduled evaluation failed for project ${project.id}:`,
+				error
+			);
+		}
+	}
+
+	return {
+		queued,
+		scanned: projects?.length ?? 0,
+		skippedInvalidOwner,
+		skipped,
+		failed,
+		deferred
+	};
+}

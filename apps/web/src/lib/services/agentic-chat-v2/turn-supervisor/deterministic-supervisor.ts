@@ -136,6 +136,7 @@ class DeterministicTurnSupervisor implements TurnSupervisor {
 					argsFingerprint: argsSummary.fingerprint,
 					idArgs: argsSummary.idArgs,
 					success: null,
+					skipped: null,
 					errorClass: null,
 					resultSummary: null
 				};
@@ -159,10 +160,15 @@ class DeterministicTurnSupervisor implements TurnSupervisor {
 					canonicalOp: entry?.canonicalOp ?? null
 				});
 				const errorClass = classifyToolError(observation.error);
+				const skipped = observation.skipped === true;
 				if (entry) {
-					entry.success = observation.success;
-					entry.errorClass = errorClass;
+					entry.success = skipped ? null : observation.success;
+					entry.skipped = skipped;
+					entry.errorClass = skipped ? null : errorClass;
 					entry.resultSummary = observation.resultSummary ?? null;
+				}
+				if (skipped) {
+					break;
 				}
 				if (!observation.success) {
 					const failureKey = typedFailure
@@ -471,6 +477,7 @@ class DeterministicTurnSupervisor implements TurnSupervisor {
 				argsFingerprint: tool.argsFingerprint,
 				idArgs: tool.idArgs,
 				success: tool.success,
+				skipped: tool.skipped,
 				errorClass: tool.errorClass,
 				resultSummary: tool.resultSummary
 			})),

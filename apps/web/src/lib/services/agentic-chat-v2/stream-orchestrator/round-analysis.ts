@@ -281,6 +281,23 @@ export function didGatewayExecSucceed(execution: FastToolExecution | null): bool
 	return true;
 }
 
+export function isDuplicateWriteSkippedExecution(execution: FastToolExecution | null): boolean {
+	if (!execution || execution.result.success !== true) return false;
+	const payload = execution.result.result;
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return false;
+	const record = payload as Record<string, unknown>;
+	if (record.skipped_duplicate_write === true || record.status === 'duplicate_write_skipped') {
+		return true;
+	}
+	const nested = record.result;
+	if (!nested || typeof nested !== 'object' || Array.isArray(nested)) return false;
+	const nestedRecord = nested as Record<string, unknown>;
+	return (
+		nestedRecord.skipped_duplicate_write === true ||
+		nestedRecord.status === 'duplicate_write_skipped'
+	);
+}
+
 export function getGatewayExecOp(execution: FastToolExecution): string | null {
 	const toolName = execution.toolCall.function?.name?.trim();
 	if (!toolName) return null;

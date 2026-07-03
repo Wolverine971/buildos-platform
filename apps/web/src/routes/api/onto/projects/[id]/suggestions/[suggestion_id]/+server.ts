@@ -16,6 +16,7 @@ import { requireProjectMemberAccess } from '$lib/server/ontology-project-access'
 import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
 import { decideProjectSuggestionWithClarification } from '$lib/server/clarified-decision.service';
 import { decideProjectSuggestion } from '$lib/server/project-suggestion-actions.service';
+import { captureServerEvent } from '$lib/server/posthog';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 
 const projectSuggestionDecisionSchema = z
@@ -80,6 +81,33 @@ export const POST: RequestHandler = async ({ params, locals, request, fetch }) =
 		delegated?: boolean;
 		degraded?: boolean;
 	};
+	const suggestion = outcome.suggestion as Record<string, unknown>;
+	if (suggestion.kind === 'audit_recommendation' && !outcome.alreadyDecided) {
+		const resultOk = outcome.result?.ok === true;
+		const suggestionStatus =
+			typeof suggestion.status === 'string' ? suggestion.status : 'unknown';
+		const event =
+			action === 'dismiss'
+				? 'project_audit_child_suggestion_dismissed'
+				: outcome.superseded
+					? 'project_audit_child_suggestion_superseded'
+					: extendedOutcome.delegated
+						? 'project_audit_child_suggestion_delegated'
+						: resultOk
+							? 'project_audit_child_suggestion_applied'
+							: 'project_audit_child_suggestion_failed';
+		await captureServerEvent(access.userId, event, {
+			project_id: access.projectId,
+			suggestion_id: params.suggestion_id,
+			action,
+			status: suggestionStatus,
+			risk_tier: typeof suggestion.risk_tier === 'number' ? suggestion.risk_tier : null,
+			applied_operations: outcome.result?.applied_operations ?? null,
+			error_count: outcome.result?.errors?.length ?? 0,
+			delegated: extendedOutcome.delegated ?? false,
+			degraded: extendedOutcome.degraded ?? false
+		});
+	}
 
 	return ApiResponse.success({
 		suggestion: outcome.suggestion,

@@ -10,9 +10,12 @@ import type {
 	ProjectAuditDimension,
 	ProjectAuditDimensionKey,
 	ProjectAuditEvidenceRef,
+	ProjectAuditRecommendation,
+	ProjectAuditSuggestionRole,
 	ProjectLoopBrief,
 	ProjectLoopJobMetadata,
 	ProjectLoopRun,
+	ProjectSuggestionEvidenceRef,
 	ProposedSuggestion
 } from '@buildos/shared-types';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
@@ -20,6 +23,7 @@ import { supabase } from '../../lib/supabase';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
 import { logWorkerError } from '../../lib/errorLogger';
+import { captureWorkerEvent } from '../../lib/posthog';
 import {
 	type LoopContext,
 	type LoopDocument,
@@ -38,11 +42,25 @@ import {
 	summarizeProjectLoopDocTree,
 	syncInboxItemForProjectSuggestion
 } from '@buildos/shared-agent-ops';
+import { processProjectAuditTriggerEvaluationJob } from './auditEnqueue';
+
+function isProjectAuditTriggerReason(
+	value: ProjectLoopJobMetadata['triggerReason']
+): value is Exclude<ProjectLoopJobMetadata['triggerReason'], 'end_of_day'> {
+	return (
+		value === 'scheduled' ||
+		value === 'burst' ||
+		value === 'critical_change' ||
+		value === 'manual'
+	);
+}
 
 const MAX_SUGGESTIONS = 25;
+const MAX_AUDIT_CHILD_SUGGESTIONS = 8;
 const PROJECT_LOOP_COST_CAP_USD = 0.35;
 const PRIOR_DECISION_LOOKBACK_DAYS = 60;
 const COMPLETE_AUDIT_ACTIVITY_LOOKBACK_DAYS = 30;
+const AUDIT_MEMORY_LOOKBACK_DAYS = 90;
 
 function nowIso(): string {
 	return new Date().toISOString();
@@ -212,6 +230,60 @@ type AuditMetricSummary = {
 	recentActivityCount: number;
 };
 
+type AuditRecommendationDecision = {
+	title: string;
+	status: string;
+	reason?: string | null;
+	note?: string | null;
+	decided_at?: string | null;
+};
+
+type PriorAuditSummary = {
+	id: string;
+	status: string | null;
+	delivery_confidence: string | null;
+	summary: string | null;
+	finished_at: string | null;
+	created_at: string | null;
+	unresolved_suggestion_count: number | null;
+};
+
+type AuditMemory = {
+	priorAudits: PriorAuditSummary[];
+	priorRecommendationDecisions: AuditRecommendationDecision[];
+	unresolvedAuditRecommendationCount: number;
+	openInboxCount: number;
+};
+
+type AuditChildSuggestionDraft = {
+	role: ProjectAuditSuggestionRole;
+	row: {
+		run_id: string;
+		project_id: string;
+		kind: 'audit_recommendation';
+		risk_tier: 1 | 2;
+		title: string;
+		rationale: string | null;
+		why_now: string | null;
+		confidence: number;
+		evidence_refs: Json;
+		preview: Json;
+		operations: Json;
+		freshness_state: 'fresh';
+		reversible: false;
+		undo_operations: Json;
+		source_fingerprint: string;
+		status: 'pending';
+		sort_order: number;
+	};
+};
+
+type AuditChildSuggestionResult = {
+	generatedCount: number;
+	unresolvedCount: number;
+	warning?: string;
+};
+
 function parseDateMs(value: string | null | undefined): number | null {
 	if (!value) return null;
 	const parsed = Date.parse(value);
@@ -263,6 +335,103 @@ async function loadAuditRecentActivity(projectId: string): Promise<AuditActivity
 	return (data ?? []) as AuditActivityRow[];
 }
 
+async function loadAuditMemory(projectId: string): Promise<AuditMemory> {
+	const since = new Date(
+		Date.now() - AUDIT_MEMORY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
+	).toISOString();
+	const [priorAuditsRes, priorRecommendationsRes, unresolvedRecommendationsRes, inboxRes] =
+		await Promise.all([
+			supabase
+				.from('project_audits')
+				.select(
+					'id, status, delivery_confidence, summary, finished_at, created_at, unresolved_suggestion_count'
+				)
+				.eq('project_id', projectId)
+				.in('status', ['ready', 'reviewed', 'superseded'])
+				.order('created_at', { ascending: false })
+				.limit(5),
+			supabase
+				.from('project_suggestions')
+				.select('title, status, user_feedback, decided_at, updated_at')
+				.eq('project_id', projectId)
+				.eq('kind', 'audit_recommendation')
+				.in('status', ['rejected', 'applied'])
+				.gte('updated_at', since)
+				.order('updated_at', { ascending: false })
+				.limit(40),
+			supabase
+				.from('project_suggestions')
+				.select('id')
+				.eq('project_id', projectId)
+				.eq('kind', 'audit_recommendation')
+				.in('status', ['pending', 'delegated', 'failed'])
+				.limit(100),
+			supabase
+				.from('inbox_items')
+				.select('id')
+				.eq('project_id', projectId)
+				.in('status', ['pending', 'deciding', 'blocked'])
+				.limit(100)
+		]);
+
+	if (priorAuditsRes.error) {
+		console.warn(
+			`[ProjectAudits] Failed to load prior audit summaries for ${projectId}:`,
+			priorAuditsRes.error.message
+		);
+	}
+	if (priorRecommendationsRes.error) {
+		console.warn(
+			`[ProjectAudits] Failed to load prior audit recommendation decisions for ${projectId}:`,
+			priorRecommendationsRes.error.message
+		);
+	}
+	if (unresolvedRecommendationsRes.error) {
+		console.warn(
+			`[ProjectAudits] Failed to load unresolved audit recommendations for ${projectId}:`,
+			unresolvedRecommendationsRes.error.message
+		);
+	}
+	if (inboxRes.error) {
+		console.warn(
+			`[ProjectAudits] Failed to load open inbox count for ${projectId}:`,
+			inboxRes.error.message
+		);
+	}
+
+	const priorRecommendationDecisions = (
+		(priorRecommendationsRes.error ? [] : (priorRecommendationsRes.data ?? [])) as Record<
+			string,
+			unknown
+		>[]
+	)
+		.map((row): AuditRecommendationDecision | null => {
+			const title = asString(row.title);
+			const status = asString(row.status);
+			if (!title || !status) return null;
+			const feedback = parseDecisionFeedback(row.user_feedback);
+			return {
+				title,
+				status,
+				reason: feedback.reason,
+				note: feedback.note,
+				decided_at: asString(row.decided_at) ?? asString(row.updated_at)
+			};
+		})
+		.filter((item): item is AuditRecommendationDecision => Boolean(item));
+
+	return {
+		priorAudits: (priorAuditsRes.error
+			? []
+			: (priorAuditsRes.data ?? [])) as PriorAuditSummary[],
+		priorRecommendationDecisions,
+		unresolvedAuditRecommendationCount: unresolvedRecommendationsRes.error
+			? 0
+			: (unresolvedRecommendationsRes.data ?? []).length,
+		openInboxCount: inboxRes.error ? 0 : (inboxRes.data ?? []).length
+	};
+}
+
 function computeAuditMetrics(
 	ctx: LoopContext,
 	recentActivity: AuditActivityRow[]
@@ -305,10 +474,71 @@ function dimension(params: {
 	};
 }
 
+function withoutDimensionRecommendations(item: ProjectAuditDimension): ProjectAuditDimension {
+	const next = { ...item };
+	delete next.recommendations;
+	return next;
+}
+
+function auditRecommendationRole(
+	dimensionKey: string | undefined,
+	priority: ProjectAuditRecommendation['priority']
+): ProjectAuditSuggestionRole {
+	if (dimensionKey === 'risk_decision_quality') return 'risk_follow_up';
+	if (dimensionKey === 'documentation_quality' || dimensionKey === 'evidence_freshness') {
+		return 'cleanup';
+	}
+	if (priority === 'high' || dimensionKey === 'dependency_readiness') return 'decision_point';
+	return 'recommended_action';
+}
+
+function suggestionEvidenceType(
+	type: ProjectAuditEvidenceRef['entity_type']
+): ProjectSuggestionEvidenceRef['entity_type'] {
+	if (
+		type === 'project' ||
+		type === 'goal' ||
+		type === 'document' ||
+		type === 'task' ||
+		type === 'calendar_event' ||
+		type === 'external'
+	) {
+		return type;
+	}
+	return 'unknown';
+}
+
+function auditEvidenceToSuggestionEvidence(
+	ref: ProjectAuditEvidenceRef
+): ProjectSuggestionEvidenceRef {
+	return {
+		entity_type: suggestionEvidenceType(ref.entity_type),
+		...(ref.entity_id ? { entity_id: ref.entity_id } : {}),
+		title: ref.label,
+		...(ref.reason ? { reason: ref.reason } : {}),
+		...(ref.excerpt ? { excerpt: ref.excerpt } : {}),
+		...(ref.updated_at ? { updated_at: ref.updated_at } : {})
+	};
+}
+
+function recommendationRiskTier(recommendation: ProjectAuditRecommendation): 1 | 2 {
+	if (recommendation.priority === 'low') return 1;
+	return 2;
+}
+
+function recommendationMemoryKey(value: string | null | undefined): string | null {
+	const normalized = value
+		?.toLowerCase()
+		.replace(/[^a-z0-9]+/g, ' ')
+		.trim();
+	return normalized || null;
+}
+
 function buildCompleteAuditPacket(params: {
 	ctx: LoopContext;
 	recentActivity: AuditActivityRow[];
 	triggerReason: string;
+	auditMemory?: AuditMemory;
 }): {
 	deliveryConfidence: ProjectAuditDeliveryConfidence;
 	projectThesis: string | null;
@@ -320,7 +550,7 @@ function buildCompleteAuditPacket(params: {
 	risks: Record<string, unknown>[];
 	openQuestions: Record<string, unknown>[];
 	evidenceRefs: ReturnType<typeof auditEvidenceRef>[];
-	recommendations: Record<string, unknown>[];
+	recommendations: ProjectAuditRecommendation[];
 } {
 	const { ctx, recentActivity } = params;
 	const metrics = computeAuditMetrics(ctx, recentActivity);
@@ -500,10 +730,35 @@ function buildCompleteAuditPacket(params: {
 		})
 	];
 
-	const nonGreen = dimensions.filter((item) => item.rating !== 'green');
-	const redCount = dimensions.filter((item) => item.rating === 'red').length;
-	const yellowCount = dimensions.filter((item) => item.rating === 'yellow').length;
-	const unknownCount = dimensions.filter((item) => item.rating === 'unknown').length;
+	const suppressedRecommendationKeys = new Set(
+		(params.auditMemory?.priorRecommendationDecisions ?? [])
+			.map((decision) => recommendationMemoryKey(decision.title))
+			.filter((key): key is string => Boolean(key))
+	);
+	const suppressedRecommendations: string[] = [];
+	const memoryAdjustedDimensions = dimensions.map((item): ProjectAuditDimension => {
+		const recommendations = item.recommendations ?? [];
+		if (!recommendations.length) return item;
+		const kept = recommendations.filter((recommendation) => {
+			const key = recommendationMemoryKey(recommendation);
+			if (key && suppressedRecommendationKeys.has(key)) {
+				suppressedRecommendations.push(recommendation);
+				return false;
+			}
+			return true;
+		});
+		if (kept.length === recommendations.length) return item;
+		return kept.length
+			? { ...item, recommendations: kept }
+			: withoutDimensionRecommendations(item);
+	});
+
+	const nonGreen = memoryAdjustedDimensions.filter((item) => item.rating !== 'green');
+	const redCount = memoryAdjustedDimensions.filter((item) => item.rating === 'red').length;
+	const yellowCount = memoryAdjustedDimensions.filter((item) => item.rating === 'yellow').length;
+	const unknownCount = memoryAdjustedDimensions.filter(
+		(item) => item.rating === 'unknown'
+	).length;
 	const deliveryConfidence: ProjectAuditDeliveryConfidence =
 		redCount > 0 ? 'red' : yellowCount > 0 ? 'yellow' : unknownCount >= 3 ? 'unknown' : 'green';
 	const projectThesis =
@@ -518,12 +773,18 @@ function buildCompleteAuditPacket(params: {
 		summary: item.summary
 	}));
 	const recommendations = nonGreen.flatMap((item) =>
-		(item.recommendations ?? []).slice(0, 2).map((recommendation) => ({
-			title: recommendation,
-			summary: item.summary,
-			priority: item.rating === 'red' ? 'high' : item.rating === 'yellow' ? 'medium' : 'low',
-			dimension: item.key
-		}))
+		(item.recommendations ?? []).slice(0, 2).map((recommendation) => {
+			const priority: NonNullable<ProjectAuditRecommendation['priority']> =
+				item.rating === 'red' ? 'high' : item.rating === 'yellow' ? 'medium' : 'low';
+			return {
+				title: recommendation,
+				summary: item.summary,
+				priority,
+				role: auditRecommendationRole(item.key, priority),
+				evidence_refs: item.evidence_refs.slice(0, 4),
+				dimension: item.key
+			};
+		})
 	);
 	const topActions = recommendations.slice(0, 5);
 	const summary =
@@ -543,11 +804,30 @@ function buildCompleteAuditPacket(params: {
 			recent_activity_window_days: COMPLETE_AUDIT_ACTIVITY_LOOKBACK_DAYS,
 			document_count: metrics.documentCount,
 			task_count: metrics.taskCount,
-			goal_count: metrics.goalCount
+			goal_count: metrics.goalCount,
+			prior_audit_count: params.auditMemory?.priorAudits.length ?? 0,
+			prior_ready_audit_count:
+				params.auditMemory?.priorAudits.filter((audit) => audit.status === 'ready')
+					.length ?? 0,
+			unresolved_audit_recommendation_count:
+				params.auditMemory?.unresolvedAuditRecommendationCount ?? 0,
+			open_inbox_count: params.auditMemory?.openInboxCount ?? 0,
+			suppressed_recommendation_count: suppressedRecommendations.length,
+			...(suppressedRecommendations.length
+				? { suppressed_recommendations: suppressedRecommendations.slice(0, 8) }
+				: {}),
+			...(params.auditMemory?.priorAudits[0]?.summary
+				? {
+						previous_audit_summary: compactAuditText(
+							params.auditMemory.priorAudits[0].summary,
+							400
+						)
+					}
+				: {})
 		},
-		dimensions,
+		dimensions: memoryAdjustedDimensions,
 		risks: [],
-		openQuestions: dimensions
+		openQuestions: memoryAdjustedDimensions
 			.filter((item) => item.rating === 'unknown')
 			.map((item) => ({
 				dimension: item.key,
@@ -555,6 +835,251 @@ function buildCompleteAuditPacket(params: {
 			})),
 		evidenceRefs: [...projectEvidence, ...goalEvidence, ...docEvidence, ...taskEvidence],
 		recommendations
+	};
+}
+
+function buildAuditChildSuggestionDrafts(params: {
+	auditId: string;
+	runId: string;
+	projectId: string;
+	packet: ReturnType<typeof buildCompleteAuditPacket>;
+	sourceFingerprint: string;
+}): AuditChildSuggestionDraft[] {
+	const fallbackEvidence = params.packet.evidenceRefs
+		.slice(0, 4)
+		.map(auditEvidenceToSuggestionEvidence);
+	const seenTitles = new Set<string>();
+
+	return params.packet.recommendations
+		.slice(0, MAX_AUDIT_CHILD_SUGGESTIONS)
+		.map((recommendation, index): AuditChildSuggestionDraft | null => {
+			const title = compactAuditText(recommendation.title, 200);
+			if (!title) return null;
+			const titleKey = title.toLowerCase();
+			if (seenTitles.has(titleKey)) return null;
+			seenTitles.add(titleKey);
+
+			const role =
+				recommendation.role ??
+				auditRecommendationRole(recommendation.dimension, recommendation.priority);
+			const evidenceRefs = recommendation.evidence_refs?.length
+				? recommendation.evidence_refs.map(auditEvidenceToSuggestionEvidence)
+				: fallbackEvidence;
+			const summary =
+				compactAuditText(recommendation.summary, 600) ??
+				'This follow-up came from the latest complete project audit.';
+
+			return {
+				role,
+				row: {
+					run_id: params.runId,
+					project_id: params.projectId,
+					kind: 'audit_recommendation',
+					risk_tier: recommendationRiskTier(recommendation),
+					title,
+					rationale: summary,
+					why_now: `Complete audit follow-up${recommendation.dimension ? ` for ${recommendation.dimension}` : ''}.`,
+					confidence:
+						recommendation.priority === 'high'
+							? 0.78
+							: recommendation.priority === 'medium'
+								? 0.68
+								: 0.58,
+					evidence_refs: evidenceRefs as unknown as Json,
+					preview: {
+						kind: 'generic',
+						summary,
+						impact: 'Review this audit recommendation and decide whether it needs project work.'
+					} as unknown as Json,
+					operations: [] as unknown as Json,
+					freshness_state: 'fresh',
+					reversible: false,
+					undo_operations: [] as unknown as Json,
+					source_fingerprint: params.sourceFingerprint,
+					status: 'pending',
+					sort_order: index
+				}
+			};
+		})
+		.filter((draft): draft is AuditChildSuggestionDraft => Boolean(draft));
+}
+
+async function createAuditChildSuggestions(params: {
+	auditId: string;
+	runId: string;
+	projectId: string;
+	packet: ReturnType<typeof buildCompleteAuditPacket>;
+	sourceFingerprint: string;
+}): Promise<AuditChildSuggestionResult> {
+	const drafts = buildAuditChildSuggestionDrafts(params);
+	if (!drafts.length) return { generatedCount: 0, unresolvedCount: 0 };
+
+	const { data: insertedSuggestions, error: insertError } = await supabase
+		.from('project_suggestions')
+		.insert(drafts.map((draft) => draft.row))
+		.select('*');
+	if (insertError) {
+		throw new Error(`Failed to insert audit child suggestions: ${insertError.message}`);
+	}
+
+	const suggestions = insertedSuggestions ?? [];
+	if (!suggestions.length) return { generatedCount: 0, unresolvedCount: 0 };
+
+	const linkRows = suggestions.map((suggestion, index) => ({
+		audit_id: params.auditId,
+		suggestion_id: suggestion.id,
+		role: drafts[index]?.role ?? 'recommended_action'
+	}));
+	const { error: linkError } = await supabase.from('project_audit_suggestions').insert(linkRows);
+	if (linkError) {
+		const failedResult = {
+			ok: false,
+			applied_operations: 0,
+			errors: [{ tool: 'project_audit_suggestions', error: linkError.message }]
+		};
+		await supabase
+			.from('project_suggestions')
+			.update({
+				status: 'failed',
+				result: failedResult as unknown as Json
+			})
+			.in(
+				'id',
+				suggestions.map((suggestion) => suggestion.id)
+			);
+		throw new Error(`Failed to link audit child suggestions: ${linkError.message}`);
+	}
+
+	for (const suggestion of suggestions) {
+		try {
+			await syncInboxItemForProjectSuggestion({
+				supabase: supabase as any,
+				suggestion: suggestion as unknown as Record<string, unknown>
+			});
+		} catch (syncError) {
+			console.warn(
+				`⚠️ Failed to sync AI Inbox item for audit suggestion ${suggestion.id}:`,
+				syncError instanceof Error ? syncError.message : syncError
+			);
+		}
+	}
+
+	return {
+		generatedCount: suggestions.length,
+		unresolvedCount: suggestions.filter((suggestion) =>
+			['pending', 'delegated', 'failed'].includes(String(suggestion.status ?? 'pending'))
+		).length
+	};
+}
+
+async function supersedeOlderReadyAudits(params: {
+	projectId: string;
+	auditId: string;
+	now: string;
+}): Promise<{ supersededAuditCount: number; supersededSuggestionCount: number }> {
+	const { data: oldAudits, error: oldAuditsError } = await supabase
+		.from('project_audits')
+		.select('id')
+		.eq('project_id', params.projectId)
+		.neq('id', params.auditId)
+		.eq('status', 'ready');
+	if (oldAuditsError) {
+		console.warn(
+			`[ProjectAudits] Failed to load older ready audits for ${params.projectId}:`,
+			oldAuditsError.message
+		);
+		return { supersededAuditCount: 0, supersededSuggestionCount: 0 };
+	}
+
+	const oldAuditIds = ((oldAudits ?? []) as Record<string, unknown>[])
+		.map((audit) => asString(audit.id))
+		.filter((id): id is string => Boolean(id));
+	if (!oldAuditIds.length) return { supersededAuditCount: 0, supersededSuggestionCount: 0 };
+
+	const { error: auditUpdateError } = await supabase
+		.from('project_audits')
+		.update({
+			status: 'superseded',
+			superseded_by: params.auditId,
+			unresolved_suggestion_count: 0
+		})
+		.in('id', oldAuditIds);
+	if (auditUpdateError) {
+		console.warn(
+			`[ProjectAudits] Failed to supersede older audits for ${params.projectId}:`,
+			auditUpdateError.message
+		);
+		return { supersededAuditCount: 0, supersededSuggestionCount: 0 };
+	}
+
+	const { data: links, error: linksError } = await supabase
+		.from('project_audit_suggestions')
+		.select('suggestion_id')
+		.in('audit_id', oldAuditIds);
+	if (linksError) {
+		console.warn(
+			`[ProjectAudits] Failed to load child suggestions for superseded audits:`,
+			linksError.message
+		);
+		return { supersededAuditCount: oldAuditIds.length, supersededSuggestionCount: 0 };
+	}
+
+	const suggestionIds = Array.from(
+		new Set(
+			((links ?? []) as Record<string, unknown>[])
+				.map((link) => asString(link.suggestion_id))
+				.filter((id): id is string => Boolean(id))
+		)
+	);
+	if (!suggestionIds.length) {
+		return { supersededAuditCount: oldAuditIds.length, supersededSuggestionCount: 0 };
+	}
+
+	const result = {
+		ok: false,
+		applied_operations: 0,
+		errors: [
+			{
+				tool: 'project_audit_supersede',
+				error: 'Superseded by a newer complete project audit.'
+			}
+		]
+	};
+	const { data: updatedSuggestions, error: suggestionUpdateError } = await supabase
+		.from('project_suggestions')
+		.update({
+			status: 'superseded',
+			decided_at: params.now,
+			result: result as unknown as Json
+		})
+		.in('id', suggestionIds)
+		.eq('status', 'pending')
+		.select('*');
+	if (suggestionUpdateError) {
+		console.warn(
+			`[ProjectAudits] Failed to supersede child suggestions for older audits:`,
+			suggestionUpdateError.message
+		);
+		return { supersededAuditCount: oldAuditIds.length, supersededSuggestionCount: 0 };
+	}
+
+	for (const suggestion of updatedSuggestions ?? []) {
+		try {
+			await syncInboxItemForProjectSuggestion({
+				supabase: supabase as any,
+				suggestion: suggestion as unknown as Record<string, unknown>
+			});
+		} catch (syncError) {
+			console.warn(
+				`⚠️ Failed to sync AI Inbox item for superseded audit suggestion ${suggestion.id}:`,
+				syncError instanceof Error ? syncError.message : syncError
+			);
+		}
+	}
+
+	return {
+		supersededAuditCount: oldAuditIds.length,
+		supersededSuggestionCount: (updatedSuggestions ?? []).length
 	};
 }
 
@@ -598,7 +1123,7 @@ async function processCompleteProjectAuditJob(
 	}
 
 	try {
-		await job.updateProgress({ current: 1, total: 4, message: 'Loading audit context' });
+		await job.updateProgress({ current: 1, total: 5, message: 'Loading audit context' });
 		const ctx = await loadLoopContext(projectId);
 		if (!ctx) {
 			const message = 'Project inactive or archived; complete audit skipped.';
@@ -615,19 +1140,56 @@ async function processCompleteProjectAuditJob(
 			]);
 			return { success: true, runId, auditId, skipped: true };
 		}
+		const sourceFingerprint = buildProjectLoopSourceFingerprint(ctx);
 
-		await job.updateProgress({ current: 2, total: 4, message: 'Computing audit metrics' });
-		const recentActivity = await loadAuditRecentActivity(projectId);
+		await job.updateProgress({ current: 2, total: 5, message: 'Computing audit metrics' });
+		const [recentActivity, auditMemory] = await Promise.all([
+			loadAuditRecentActivity(projectId),
+			loadAuditMemory(projectId)
+		]);
 
-		await job.updateProgress({ current: 3, total: 4, message: 'Building audit packet' });
+		await job.updateProgress({ current: 3, total: 5, message: 'Building audit packet' });
 		const packet = buildCompleteAuditPacket({
 			ctx,
 			recentActivity,
-			triggerReason
+			triggerReason,
+			auditMemory
 		});
-		const now = nowIso();
 
-		await job.updateProgress({ current: 4, total: 4, message: 'Persisting audit packet' });
+		await job.updateProgress({ current: 4, total: 5, message: 'Creating audit follow-ups' });
+		let childSuggestions: AuditChildSuggestionResult = {
+			generatedCount: 0,
+			unresolvedCount: 0
+		};
+		try {
+			childSuggestions = await createAuditChildSuggestions({
+				auditId,
+				runId,
+				projectId,
+				packet,
+				sourceFingerprint
+			});
+		} catch (error) {
+			const warning =
+				error instanceof Error
+					? error.message
+					: 'Failed to create audit follow-up suggestions';
+			childSuggestions = { generatedCount: 0, unresolvedCount: 0, warning };
+			await job.log(`Complete audit follow-up creation failed: ${warning}`);
+			console.warn(
+				`[ProjectAudits] Complete audit ${auditId} follow-up creation failed:`,
+				warning
+			);
+		}
+
+		await job.updateProgress({ current: 5, total: 5, message: 'Persisting audit packet' });
+		const now = nowIso();
+		const changeSummary = {
+			...packet.changeSummary,
+			...(childSuggestions.warning
+				? { child_suggestion_warning: childSuggestions.warning }
+				: {})
+		};
 		const { error: auditUpdateError } = await supabase
 			.from('project_audits')
 			.update({
@@ -637,15 +1199,15 @@ async function processCompleteProjectAuditJob(
 				summary: packet.summary,
 				top_findings: packet.topFindings as unknown as Json,
 				top_actions: packet.topActions as unknown as Json,
-				change_summary: packet.changeSummary as Json,
+				change_summary: changeSummary as Json,
 				dimensions: packet.dimensions as unknown as Json,
 				risks: packet.risks as unknown as Json,
 				open_questions: packet.openQuestions as unknown as Json,
 				evidence_refs: packet.evidenceRefs as unknown as Json,
 				recommendations: packet.recommendations as unknown as Json,
-				generated_suggestion_count: 0,
-				unresolved_suggestion_count: 0,
-				model_used: 'deterministic-audit-v0',
+				generated_suggestion_count: childSuggestions.generatedCount,
+				unresolved_suggestion_count: childSuggestions.unresolvedCount,
+				model_used: 'deterministic-audit-v1',
 				cost_usd: 0,
 				finished_at: now
 			})
@@ -654,18 +1216,51 @@ async function processCompleteProjectAuditJob(
 			throw new Error(`Failed to persist project audit: ${auditUpdateError.message}`);
 		}
 
+		const superseded = await supersedeOlderReadyAudits({
+			projectId,
+			auditId,
+			now
+		});
+		if (superseded.supersededAuditCount > 0) {
+			await job.log(
+				`Superseded ${superseded.supersededAuditCount} older ready audit${superseded.supersededAuditCount === 1 ? '' : 's'} and ${superseded.supersededSuggestionCount} pending follow-up${superseded.supersededSuggestionCount === 1 ? '' : 's'}.`
+			);
+		}
+
 		const { error: runUpdateError } = await supabase
 			.from('project_loop_runs')
 			.update({
 				status: 'completed',
 				summary: packet.summary,
-				suggestion_count: 0,
+				suggestion_count: childSuggestions.generatedCount,
 				cost_usd: 0,
 				finished_at: now
 			})
 			.eq('id', runId);
 		if (runUpdateError) {
 			throw new Error(`Failed to complete audit loop run: ${runUpdateError.message}`);
+		}
+
+		const auditUserId =
+			asString((claimedRun as Record<string, unknown>).user_id) ?? asString(job.data.userId);
+		if (auditUserId) {
+			const changeSummaryRecord = changeSummary as Record<string, unknown>;
+			captureWorkerEvent(auditUserId, 'project_audit_ready', {
+				project_id: projectId,
+				audit_id: auditId,
+				run_id: runId,
+				trigger_reason: triggerReason,
+				audit_depth: job.data.auditDepth ?? 'standard',
+				delivery_confidence: packet.deliveryConfidence,
+				generated_suggestion_count: childSuggestions.generatedCount,
+				unresolved_suggestion_count: childSuggestions.unresolvedCount,
+				suppressed_recommendation_count:
+					typeof changeSummaryRecord.suppressed_recommendation_count === 'number'
+						? changeSummaryRecord.suppressed_recommendation_count
+						: 0,
+				superseded_audit_count: superseded.supersededAuditCount,
+				superseded_suggestion_count: superseded.supersededSuggestionCount
+			});
 		}
 
 		await job.log(`Complete project audit ${auditId} is ready.`);
@@ -700,6 +1295,35 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		await job.log('Project loops disabled (ENABLE_PROJECT_LOOPS); skipping.');
 		if (runId) await failRun(runId, 'feature_disabled');
 		return { success: true, skipped: true };
+	}
+
+	if (job.data.mode === 'complete_audit_trigger_evaluation') {
+		const { userId, triggerReason, auditDepth } = job.data;
+		if (!projectId || !userId || !triggerReason) {
+			throw new Error(
+				'projectId, userId, and triggerReason are required for audit trigger jobs'
+			);
+		}
+		if (!isProjectAuditTriggerReason(triggerReason)) {
+			throw new Error(`Unsupported complete audit trigger reason: ${triggerReason}`);
+		}
+		const result = await processProjectAuditTriggerEvaluationJob({
+			projectId,
+			userId,
+			triggerReason,
+			auditDepth
+		});
+		await job.log(
+			result.queued
+				? `Complete audit queued after delayed ${triggerReason} trigger evaluation.`
+				: `Complete audit trigger evaluation finished without queueing: ${result.reason ?? result.decision ?? 'no reason'}`
+		);
+		return {
+			success: true,
+			runId: result.runId,
+			auditId: result.auditId,
+			skipped: !result.queued
+		};
 	}
 
 	if (!runId || !projectId) {

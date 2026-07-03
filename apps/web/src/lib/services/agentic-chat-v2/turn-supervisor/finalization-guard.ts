@@ -1,7 +1,10 @@
 // apps/web/src/lib/services/agentic-chat-v2/turn-supervisor/finalization-guard.ts
 import type { FastToolExecution } from '../stream-orchestrator/shared';
 import { sanitizeAssistantFinalText } from '../stream-orchestrator/assistant-text-sanitization';
-import { didGatewayExecSucceed } from '../stream-orchestrator/round-analysis';
+import {
+	didGatewayExecSucceed,
+	isDuplicateWriteSkippedExecution
+} from '../stream-orchestrator/round-analysis';
 import { classifyToolExecution } from './digest';
 
 export type FinalizationGuardReason =
@@ -439,6 +442,7 @@ export function applyFinalizationGuard(
 	let otherFailures = 0;
 
 	for (const execution of toolExecutions) {
+		if (isDuplicateWriteSkippedExecution(execution)) continue;
 		const category = classifyToolExecution(execution);
 		// Gateway writes return `success: true` whenever the handler didn't throw,
 		// even when the envelope carries `ok: false`. Judge success on the ok-aware

@@ -20,7 +20,12 @@ export type ProjectLoopRunStatus =
 	| 'failed';
 
 /** The reconciliation jobs a project loop performs. */
-export type ProjectSuggestionKind = 'doc_org' | 'doc_outdated' | 'drift' | 'task_conflict';
+export type ProjectSuggestionKind =
+	| 'doc_org'
+	| 'doc_outdated'
+	| 'drift'
+	| 'task_conflict'
+	| 'audit_recommendation';
 
 /**
  * 1 = info/low (flags, tags) — one-click apply.

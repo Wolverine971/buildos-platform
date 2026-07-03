@@ -1,71 +1,55 @@
 // apps/web/src/lib/server/project-audit-trigger.service.ts
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
+import { captureServerEvent } from '$lib/server/posthog';
 import { createLogger } from '$lib/utils/logger';
 import type {
 	Json,
 	ProjectAuditDepth,
-	ProjectAuditMaturitySnapshot,
-	ProjectAuditSizeClass,
 	ProjectAuditTriggerDecision,
-	ProjectAuditTriggerReason,
-	ProjectAuditTriggerSnapshot
+	ProjectAuditTriggerReason
 } from '@buildos/shared-types';
 import {
-	isProjectAuditBaselineEligible,
-	loadProjectAuditSnapshot,
-	type ProjectAuditActivityRow,
-	type ProjectAuditSnapshot
-} from './project-audit-snapshot.service';
+	auditSizeClassForInsert,
+	buildProjectAuditTriggerSnapshot,
+	evaluateProjectAuditTrigger,
+	recordProjectAuditTriggerEvaluation,
+	type ProjectAuditTriggerEvaluationDraft,
+	type ProjectAuditTriggerEvaluationResult
+} from '@buildos/shared-agent-ops/project-audits';
+
+export { evaluateProjectAuditTrigger, recordProjectAuditTriggerEvaluation };
+export type { ProjectAuditTriggerEvaluationDraft, ProjectAuditTriggerEvaluationResult };
 
 type AnySupabase = any;
 
 const logger = createLogger('ProjectAuditTrigger');
 
-const SCHEDULED_AUDIT_INTERVAL_MS = 14 * 24 * 60 * 60 * 1000;
-const COMPLETE_AUDIT_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
-const BURST_QUIET_PERIOD_MS = 2 * 60 * 60 * 1000;
-
-type ActiveAuditRow = {
-	id: string;
-	status: string | null;
-	created_at: string | null;
-};
-
-type LastAuditRow = {
-	id: string;
-	status: string | null;
-	finished_at: string | null;
-	created_at: string | null;
-	project_snapshot_fingerprint?: string | null;
-};
-
-export type ProjectAuditTriggerEvaluationDraft = {
-	project_id: string;
-	user_id: string;
-	evaluated_at: string;
+async function captureAuditTriggerMetric(params: {
+	userId: string;
+	event: 'project_audit_queued' | 'project_audit_skipped' | 'project_audit_queue_failed';
+	projectId: string;
+	triggerReason: ProjectAuditTriggerReason;
+	auditDepth: ProjectAuditDepth;
 	decision: ProjectAuditTriggerDecision;
-	trigger_reason: ProjectAuditTriggerReason;
-	eligible: boolean;
-	project_size_class: ProjectAuditSizeClass;
-	maturity_snapshot: ProjectAuditMaturitySnapshot;
-	burst_score: number | null;
-	changed_entity_count: number | null;
-	major_change_count: number | null;
-	last_audit_id: string | null;
-	quiet_until: string | null;
-	cooldown_until: string | null;
-	reason_summary: string;
-	created_audit_id?: string | null;
-	created_loop_run_id?: string | null;
-};
-
-export type ProjectAuditTriggerEvaluationResult = {
-	evaluation: ProjectAuditTriggerEvaluationDraft;
-	snapshot: ProjectAuditSnapshot | null;
-	activeAuditId?: string | null;
-	lastAudit?: LastAuditRow | null;
-};
+	reason?: string | null;
+	auditId?: string | null;
+	runId?: string | null;
+	evaluationId?: string | null;
+	projectSizeClass?: string | null;
+}): Promise<void> {
+	await captureServerEvent(params.userId, params.event, {
+		project_id: params.projectId,
+		trigger_reason: params.triggerReason,
+		audit_depth: params.auditDepth,
+		decision: params.decision,
+		reason: params.reason ?? null,
+		audit_id: params.auditId ?? null,
+		run_id: params.runId ?? null,
+		evaluation_id: params.evaluationId ?? null,
+		project_size_class: params.projectSizeClass ?? null
+	});
+}
 
 export type QueueProjectAuditResult = {
 	queued: boolean;
@@ -77,437 +61,6 @@ export type QueueProjectAuditResult = {
 	reason: string;
 	evaluation: ProjectAuditTriggerEvaluationDraft;
 };
-
-type BurstMetrics = {
-	score72h: number;
-	score7d: number;
-	changedEntities72h: number;
-	changedEntities7d: number;
-	majorChanges72h: number;
-	lastMajorMutationAt: string | null;
-	quietUntil: string | null;
-};
-
-function parseDateMs(value: string | null | undefined): number | null {
-	if (!value) return null;
-	const parsed = Date.parse(value);
-	return Number.isFinite(parsed) ? parsed : null;
-}
-
-function addMsIso(value: string | null | undefined, ms: number): string | null {
-	const parsed = parseDateMs(value);
-	return parsed === null ? null : new Date(parsed + ms).toISOString();
-}
-
-function scoreAuditActivity(row: ProjectAuditActivityRow): number {
-	const action = row.action ?? '';
-	const entityType = row.entity_type ?? '';
-	const source = row.change_source ?? '';
-
-	if (entityType === 'project') return action === 'updated' ? 5 : 3;
-	if (entityType === 'goal') return 5;
-	if (entityType === 'milestone') return 5;
-	if (entityType === 'risk') return 4;
-	if (entityType === 'calendar_event' || entityType === 'event') return 2;
-	if (source === 'doc_tree_move') return 3;
-
-	if (entityType === 'document') {
-		if (action === 'created') return 2;
-		if (action === 'deleted') return 4;
-		if (action === 'updated') return 3;
-	}
-
-	if (entityType === 'task') {
-		if (action === 'created') return 1;
-		if (action === 'deleted') return 3;
-		if (action === 'updated') return 1;
-	}
-
-	if (action === 'created') return 2;
-	if (action === 'deleted') return 3;
-	if (action === 'updated') return 1;
-	return 1;
-}
-
-function isMajorAuditChange(row: ProjectAuditActivityRow): boolean {
-	const score = scoreAuditActivity(row);
-	if (score >= 5) return true;
-	const source = row.change_source ?? '';
-	return [
-		'project_scope_update',
-		'goal_rewrite',
-		'milestone_date_move',
-		'document_archive',
-		'bulk_task_update'
-	].includes(source);
-}
-
-function computeBurstMetrics(rows: ProjectAuditActivityRow[], now: Date): BurstMetrics {
-	const since72h = now.getTime() - 72 * 60 * 60 * 1000;
-	const since7d = now.getTime() - 7 * 24 * 60 * 60 * 1000;
-	const changed72h = new Set<string>();
-	const changed7d = new Set<string>();
-	let score72h = 0;
-	let score7d = 0;
-	let majorChanges72h = 0;
-	let lastMajorMutationMs: number | null = null;
-
-	for (const row of rows) {
-		const createdMs = parseDateMs(row.created_at);
-		if (createdMs === null) continue;
-		const entityKey = `${row.entity_type ?? 'unknown'}:${row.entity_id ?? row.id ?? createdMs}`;
-		const score = scoreAuditActivity(row);
-
-		if (createdMs >= since7d) {
-			score7d += score;
-			changed7d.add(entityKey);
-		}
-		if (createdMs >= since72h) {
-			score72h += score;
-			changed72h.add(entityKey);
-			if (isMajorAuditChange(row)) {
-				majorChanges72h += 1;
-				lastMajorMutationMs = Math.max(lastMajorMutationMs ?? 0, createdMs);
-			}
-		}
-	}
-
-	const lastMajorMutationAt =
-		lastMajorMutationMs === null ? null : new Date(lastMajorMutationMs).toISOString();
-	return {
-		score72h,
-		score7d,
-		changedEntities72h: changed72h.size,
-		changedEntities7d: changed7d.size,
-		majorChanges72h,
-		lastMajorMutationAt,
-		quietUntil: lastMajorMutationAt
-			? addMsIso(lastMajorMutationAt, BURST_QUIET_PERIOD_MS)
-			: null
-	};
-}
-
-function changedEntityCountSince(
-	rows: ProjectAuditActivityRow[],
-	sinceIso: string | null,
-	now: Date
-): number {
-	const sinceMs = parseDateMs(sinceIso) ?? now.getTime() - SCHEDULED_AUDIT_INTERVAL_MS;
-	const changed = new Set<string>();
-	for (const row of rows) {
-		const createdMs = parseDateMs(row.created_at);
-		if (createdMs === null || createdMs < sinceMs) continue;
-		changed.add(`${row.entity_type ?? 'unknown'}:${row.entity_id ?? row.id ?? createdMs}`);
-	}
-	return changed.size;
-}
-
-function latestAuditTimestamp(audit: LastAuditRow | null): string | null {
-	return audit?.finished_at ?? audit?.created_at ?? null;
-}
-
-function reasonForIneligible(snapshot: ProjectAuditSnapshot | null): string {
-	if (!snapshot) return 'Project is unavailable or archived.';
-	const reasons = snapshot.maturity.ineligible_reasons;
-	if (!reasons.length) return 'Project is eligible for a complete audit.';
-	return `Project is below complete-audit baseline: ${reasons.join(', ')}.`;
-}
-
-function isAutomatedReason(reason: ProjectAuditTriggerReason): boolean {
-	return reason !== 'manual';
-}
-
-function isMediumOrLarger(sizeClass: ProjectAuditSizeClass): boolean {
-	return sizeClass === 'medium' || sizeClass === 'large' || sizeClass === 'strategic';
-}
-
-function passesBurstThreshold(snapshot: ProjectAuditSnapshot, burst: BurstMetrics): boolean {
-	const total = Math.max(1, snapshot.maturity.entity_counts.total);
-	const touchedRatio7d = burst.changedEntities7d / total;
-
-	if (snapshot.sizeClass === 'small_eligible') {
-		return burst.score72h >= 10 && burst.changedEntities72h / total >= 0.25;
-	}
-	if (snapshot.sizeClass === 'medium') {
-		return burst.score72h >= 16 || burst.changedEntities7d >= 12;
-	}
-	if (snapshot.sizeClass === 'large') {
-		return burst.score7d >= 24 || touchedRatio7d >= 0.15;
-	}
-	if (snapshot.sizeClass === 'strategic') {
-		return burst.score7d >= 24 || touchedRatio7d >= 0.15 || burst.majorChanges72h >= 2;
-	}
-	return false;
-}
-
-function auditSizeClassForInsert(
-	sizeClass: ProjectAuditSizeClass
-): Exclude<ProjectAuditSizeClass, 'below_baseline'> {
-	return sizeClass === 'below_baseline' ? 'small_eligible' : sizeClass;
-}
-
-async function loadActiveAudit(
-	supabase: AnySupabase,
-	projectId: string
-): Promise<ActiveAuditRow | null> {
-	const { data, error } = await supabase
-		.from('project_audits')
-		.select('id, status, created_at')
-		.eq('project_id', projectId)
-		.in('status', ['queued', 'running'])
-		.order('created_at', { ascending: false })
-		.limit(1)
-		.maybeSingle();
-	if (error) throw error;
-	return (data ?? null) as ActiveAuditRow | null;
-}
-
-async function loadLastAudit(
-	supabase: AnySupabase,
-	projectId: string
-): Promise<LastAuditRow | null> {
-	const { data, error } = await supabase
-		.from('project_audits')
-		.select('id, status, finished_at, created_at, project_snapshot_fingerprint')
-		.eq('project_id', projectId)
-		.in('status', ['ready', 'reviewed', 'superseded'])
-		.order('created_at', { ascending: false })
-		.limit(1)
-		.maybeSingle();
-	if (error) throw error;
-	return (data ?? null) as LastAuditRow | null;
-}
-
-export async function evaluateProjectAuditTrigger(params: {
-	supabase: AnySupabase;
-	projectId: string;
-	userId: string;
-	triggerReason: ProjectAuditTriggerReason;
-	now?: Date;
-}): Promise<ProjectAuditTriggerEvaluationResult> {
-	const now = params.now ?? new Date();
-	const evaluatedAt = now.toISOString();
-	const manualBypass = params.triggerReason === 'manual';
-	const snapshot = await loadProjectAuditSnapshot({
-		supabase: params.supabase,
-		projectId: params.projectId,
-		manualBypass,
-		now
-	});
-	const burst = snapshot ? computeBurstMetrics(snapshot.recentActivity, now) : null;
-	const activeAudit = snapshot ? await loadActiveAudit(params.supabase, params.projectId) : null;
-	const lastAudit = snapshot ? await loadLastAudit(params.supabase, params.projectId) : null;
-	const baselineEligible = snapshot ? isProjectAuditBaselineEligible(snapshot.maturity) : false;
-	const eligible = manualBypass ? baselineEligible : Boolean(snapshot && baselineEligible);
-	const sizeClass = snapshot?.sizeClass ?? 'below_baseline';
-	const lastAuditAt = latestAuditTimestamp(lastAudit);
-	const cooldownUntil =
-		lastAuditAt && params.triggerReason !== 'critical_change'
-			? addMsIso(lastAuditAt, COMPLETE_AUDIT_COOLDOWN_MS)
-			: null;
-
-	const base = {
-		project_id: params.projectId,
-		user_id: params.userId,
-		evaluated_at: evaluatedAt,
-		trigger_reason: params.triggerReason,
-		eligible,
-		project_size_class: sizeClass,
-		maturity_snapshot:
-			snapshot?.maturity ??
-			({
-				project_age_days: null,
-				active_or_planning: false,
-				activity_day_count: 0,
-				has_goal_or_substantial_description: false,
-				content_thresholds_met: 0,
-				content_threshold_flags: {
-					active_documents: false,
-					substantial_document: false,
-					non_deleted_tasks: false,
-					goals_milestones_or_success_criteria: false,
-					dated_commitment: false,
-					total_entities: false
-				},
-				entity_counts: {
-					documents: 0,
-					tasks: 0,
-					goals: 0,
-					milestones: 0,
-					risks: 0,
-					plans: 0,
-					events: 0,
-					total: 0
-				},
-				ineligible_reasons: ['project_unavailable'],
-				manual_bypass: manualBypass
-			} satisfies ProjectAuditMaturitySnapshot),
-		burst_score: burst ? Math.max(burst.score72h, burst.score7d) : null,
-		changed_entity_count: burst
-			? Math.max(burst.changedEntities72h, burst.changedEntities7d)
-			: null,
-		major_change_count: burst?.majorChanges72h ?? null,
-		last_audit_id: lastAudit?.id ?? null,
-		quiet_until: burst?.quietUntil ?? null,
-		cooldown_until: cooldownUntil
-	};
-
-	const result = (
-		decision: ProjectAuditTriggerDecision,
-		reasonSummary: string,
-		overrides: Partial<ProjectAuditTriggerEvaluationDraft> = {}
-	): ProjectAuditTriggerEvaluationResult => ({
-		evaluation: {
-			...base,
-			...overrides,
-			decision,
-			reason_summary: reasonSummary
-		},
-		snapshot,
-		activeAuditId: activeAudit?.id ?? null,
-		lastAudit
-	});
-
-	if (!snapshot) {
-		return result('skipped_ineligible', reasonForIneligible(snapshot));
-	}
-
-	if (activeAudit?.id) {
-		return result('skipped_active_run', 'A complete audit is already queued or running.');
-	}
-
-	if (!manualBypass && !baselineEligible) {
-		return result('skipped_ineligible', reasonForIneligible(snapshot));
-	}
-
-	if (manualBypass) {
-		const suffix = baselineEligible
-			? 'Project meets the complete-audit baseline.'
-			: `Manual audit bypasses baseline gates: ${snapshot.maturity.ineligible_reasons.join(', ')}.`;
-		return result('queued', suffix);
-	}
-
-	const cooldownMs = parseDateMs(cooldownUntil);
-	if (
-		cooldownMs !== null &&
-		now.getTime() < cooldownMs &&
-		params.triggerReason !== 'critical_change'
-	) {
-		return result(
-			'skipped_cooldown',
-			`Last complete audit is too recent; cooldown ends ${cooldownUntil}.`
-		);
-	}
-
-	if (params.triggerReason === 'scheduled') {
-		if (!isMediumOrLarger(sizeClass)) {
-			return result(
-				'manual_required',
-				'Small eligible projects require a manual complete audit.'
-			);
-		}
-
-		if (lastAuditAt) {
-			const nextScheduledMs = (parseDateMs(lastAuditAt) ?? 0) + SCHEDULED_AUDIT_INTERVAL_MS;
-			if (now.getTime() < nextScheduledMs) {
-				const next = new Date(nextScheduledMs).toISOString();
-				return result(
-					'skipped_cooldown',
-					`Next scheduled complete audit is available after ${next}.`,
-					{ cooldown_until: next }
-				);
-			}
-		}
-
-		const changedSinceLastAudit = changedEntityCountSince(
-			snapshot.recentActivity,
-			lastAuditAt,
-			now
-		);
-		const threshold = sizeClass === 'medium' ? 3 : 6;
-		if (changedSinceLastAudit < threshold && (burst?.majorChanges72h ?? 0) === 0) {
-			return result(
-				'skipped_no_activity',
-				'No meaningful activity since the last complete audit.'
-			);
-		}
-
-		return result(
-			'queued',
-			`Scheduled audit queued after ${changedSinceLastAudit} changed entities.`
-		);
-	}
-
-	if (params.triggerReason === 'critical_change') {
-		if ((burst?.majorChanges72h ?? 0) < 2) {
-			return result('skipped_no_activity', 'Critical-change threshold was not met.');
-		}
-		return result('queued', 'Critical-change threshold met by recent major project changes.');
-	}
-
-	if (params.triggerReason === 'burst') {
-		if (!burst || !passesBurstThreshold(snapshot, burst)) {
-			return result(
-				'skipped_no_activity',
-				'Recent project activity is below complete-audit burst threshold.'
-			);
-		}
-
-		const quietUntilMs = parseDateMs(burst.quietUntil);
-		if (quietUntilMs !== null && now.getTime() < quietUntilMs) {
-			return result(
-				'deferred_quiet_period',
-				`Waiting for recent project activity to settle until ${burst.quietUntil}.`
-			);
-		}
-
-		return result(
-			'queued',
-			'Recent project activity crossed the complete-audit burst threshold.'
-		);
-	}
-
-	if (isAutomatedReason(params.triggerReason)) {
-		return result('skipped_no_activity', 'No complete-audit trigger matched this project.');
-	}
-
-	return result('queued', 'Manual complete audit queued.');
-}
-
-export async function recordProjectAuditTriggerEvaluation(params: {
-	supabase: AnySupabase;
-	evaluation: ProjectAuditTriggerEvaluationDraft;
-	createdAuditId?: string | null;
-	createdLoopRunId?: string | null;
-}): Promise<string | null> {
-	const { data, error } = await params.supabase
-		.from('project_audit_trigger_evaluations')
-		.insert({
-			project_id: params.evaluation.project_id,
-			user_id: params.evaluation.user_id,
-			evaluated_at: params.evaluation.evaluated_at,
-			decision: params.evaluation.decision,
-			trigger_reason: params.evaluation.trigger_reason,
-			eligible: params.evaluation.eligible,
-			project_size_class: params.evaluation.project_size_class,
-			maturity_snapshot: params.evaluation.maturity_snapshot as unknown as Json,
-			burst_score: params.evaluation.burst_score,
-			changed_entity_count: params.evaluation.changed_entity_count,
-			major_change_count: params.evaluation.major_change_count,
-			last_audit_id: params.evaluation.last_audit_id,
-			quiet_until: params.evaluation.quiet_until,
-			cooldown_until: params.evaluation.cooldown_until,
-			reason_summary: params.evaluation.reason_summary,
-			created_audit_id: params.createdAuditId ?? params.evaluation.created_audit_id ?? null,
-			created_loop_run_id:
-				params.createdLoopRunId ?? params.evaluation.created_loop_run_id ?? null
-		})
-		.select('id')
-		.single();
-
-	if (error) throw error;
-	return (data?.id as string | undefined) ?? null;
-}
 
 async function createAuditChatSession(params: {
 	supabase: AnySupabase;
@@ -551,6 +104,44 @@ async function createAuditChatSession(params: {
 	return session.id as string;
 }
 
+async function scheduleProjectAuditTriggerEvaluation(params: {
+	supabase: AnySupabase;
+	projectId: string;
+	userId: string;
+	triggerReason: ProjectAuditTriggerReason;
+	auditDepth: ProjectAuditDepth;
+	scheduledFor: string | null;
+	triggerEvaluationId?: string | null;
+}): Promise<void> {
+	if (!params.scheduledFor) return;
+	const scheduledMs = Date.parse(params.scheduledFor);
+	if (!Number.isFinite(scheduledMs) || scheduledMs <= Date.now()) return;
+
+	try {
+		await addQueueJobWithPublicId(params.supabase, {
+			p_user_id: params.userId,
+			p_job_type: 'buildos_project_loop',
+			p_metadata: {
+				mode: 'complete_audit_trigger_evaluation',
+				projectId: params.projectId,
+				userId: params.userId,
+				triggerReason: params.triggerReason,
+				auditDepth: params.auditDepth,
+				triggerEvaluationId: params.triggerEvaluationId ?? undefined
+			},
+			p_priority: 8,
+			p_scheduled_for: params.scheduledFor,
+			p_dedup_key: `project-audit-trigger:${params.projectId}:${params.triggerReason}:${params.scheduledFor.slice(0, 16)}`
+		});
+	} catch (error) {
+		logger.warn('Schedule audit trigger re-evaluation failed', {
+			projectId: params.projectId,
+			triggerReason: params.triggerReason,
+			error: error instanceof Error ? error.message : String(error)
+		});
+	}
+}
+
 export async function queueProjectAudit(params: {
 	projectId: string;
 	userId: string;
@@ -572,6 +163,28 @@ export async function queueProjectAudit(params: {
 		const evaluationId = await recordProjectAuditTriggerEvaluation({
 			supabase,
 			evaluation: evaluated.evaluation
+		});
+		if (evaluated.evaluation.decision === 'deferred_quiet_period') {
+			await scheduleProjectAuditTriggerEvaluation({
+				supabase,
+				projectId: params.projectId,
+				userId: params.userId,
+				triggerReason: params.triggerReason,
+				auditDepth,
+				scheduledFor: evaluated.evaluation.quiet_until,
+				triggerEvaluationId: evaluationId
+			});
+		}
+		await captureAuditTriggerMetric({
+			userId: params.userId,
+			event: 'project_audit_skipped',
+			projectId: params.projectId,
+			triggerReason: params.triggerReason,
+			auditDepth,
+			decision: evaluated.evaluation.decision,
+			reason: evaluated.evaluation.reason_summary,
+			evaluationId,
+			projectSizeClass: evaluated.evaluation.project_size_class
 		});
 		return {
 			queued: false,
@@ -597,6 +210,16 @@ export async function queueProjectAudit(params: {
 			projectId: params.projectId,
 			error: message
 		});
+		await captureAuditTriggerMetric({
+			userId: params.userId,
+			event: 'project_audit_queue_failed',
+			projectId: params.projectId,
+			triggerReason: params.triggerReason,
+			auditDepth,
+			decision: evaluated.evaluation.decision,
+			reason: message,
+			projectSizeClass: evaluated.evaluation.project_size_class
+		});
 		return {
 			queued: false,
 			decision: evaluated.evaluation.decision,
@@ -610,8 +233,7 @@ export async function queueProjectAudit(params: {
 		.insert({
 			project_id: params.projectId,
 			user_id: params.userId,
-			trigger_reason:
-				params.triggerReason === 'scheduled' ? 'scheduled' : params.triggerReason,
+			trigger_reason: params.triggerReason,
 			status: 'queued',
 			chat_session_id: chatSessionId,
 			summary: 'Complete project audit queued.'
@@ -625,6 +247,16 @@ export async function queueProjectAudit(params: {
 			projectId: params.projectId,
 			error: message
 		});
+		await captureAuditTriggerMetric({
+			userId: params.userId,
+			event: 'project_audit_queue_failed',
+			projectId: params.projectId,
+			triggerReason: params.triggerReason,
+			auditDepth,
+			decision: evaluated.evaluation.decision,
+			reason: message,
+			projectSizeClass: evaluated.evaluation.project_size_class
+		});
 		return {
 			queued: false,
 			decision: evaluated.evaluation.decision,
@@ -633,21 +265,7 @@ export async function queueProjectAudit(params: {
 		};
 	}
 
-	const triggerSnapshot: ProjectAuditTriggerSnapshot = {
-		trigger_reason: evaluated.evaluation.trigger_reason,
-		evaluated_at: evaluated.evaluation.evaluated_at,
-		eligible: evaluated.evaluation.eligible,
-		project_size_class: evaluated.evaluation.project_size_class,
-		maturity_snapshot: evaluated.evaluation.maturity_snapshot,
-		burst_score: evaluated.evaluation.burst_score,
-		changed_entity_count: evaluated.evaluation.changed_entity_count,
-		major_change_count: evaluated.evaluation.major_change_count,
-		quiet_until: evaluated.evaluation.quiet_until,
-		cooldown_until: evaluated.evaluation.cooldown_until,
-		last_audit_id: evaluated.evaluation.last_audit_id,
-		reason_summary: evaluated.evaluation.reason_summary
-	};
-
+	const triggerSnapshot = buildProjectAuditTriggerSnapshot(evaluated.evaluation);
 	const { data: auditRow, error: auditError } = await supabase
 		.from('project_audits')
 		.insert({
@@ -678,6 +296,17 @@ export async function queueProjectAudit(params: {
 				finished_at: new Date().toISOString()
 			})
 			.eq('id', runRow.id);
+		await captureAuditTriggerMetric({
+			userId: params.userId,
+			event: 'project_audit_queue_failed',
+			projectId: params.projectId,
+			triggerReason: params.triggerReason,
+			auditDepth,
+			decision: evaluated.evaluation.decision,
+			reason: message,
+			runId: runRow.id as string,
+			projectSizeClass: evaluated.evaluation.project_size_class
+		});
 		return {
 			queued: false,
 			runId: runRow.id as string,
@@ -718,6 +347,19 @@ export async function queueProjectAudit(params: {
 			.update({ queue_job_id: queueJobId })
 			.eq('id', runRow.id);
 
+		await captureAuditTriggerMetric({
+			userId: params.userId,
+			event: 'project_audit_queued',
+			projectId: params.projectId,
+			triggerReason: params.triggerReason,
+			auditDepth,
+			decision: 'queued',
+			reason: evaluated.evaluation.reason_summary,
+			auditId: auditRow.id as string,
+			runId: runRow.id as string,
+			evaluationId,
+			projectSizeClass: evaluated.evaluation.project_size_class
+		});
 		return {
 			queued: true,
 			auditId: auditRow.id as string,
@@ -746,6 +388,19 @@ export async function queueProjectAudit(params: {
 				.update({ status: 'failed', error_message: message, finished_at: now })
 				.eq('id', auditRow.id)
 		]);
+		await captureAuditTriggerMetric({
+			userId: params.userId,
+			event: 'project_audit_queue_failed',
+			projectId: params.projectId,
+			triggerReason: params.triggerReason,
+			auditDepth,
+			decision: evaluated.evaluation.decision,
+			reason: message,
+			auditId: auditRow.id as string,
+			runId: runRow.id as string,
+			evaluationId,
+			projectSizeClass: evaluated.evaluation.project_size_class
+		});
 		return {
 			queued: false,
 			auditId: auditRow.id as string,

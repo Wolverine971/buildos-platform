@@ -1,12 +1,12 @@
 // apps/web/src/routes/api/admin/emails/+server.ts
 import type { RequestHandler } from './$types';
 
-import { PUBLIC_GMAIL_USER } from '$env/static/public';
+import { env as publicEnv } from '$env/dynamic/public';
 import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 
-const GMAIL_USER = PUBLIC_GMAIL_USER || 'dj@build-os.com';
+const GMAIL_USER = publicEnv.PUBLIC_GMAIL_USER || 'dj@build-os.com';
 
 const emailRecipientSchema = z
 	.object({

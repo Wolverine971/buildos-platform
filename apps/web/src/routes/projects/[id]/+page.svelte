@@ -42,6 +42,7 @@
 		parseDocStructure
 	} from '$lib/services/ontology/doc-structure.service';
 	import ProjectHeaderCard from '$lib/components/project/ProjectHeaderCard.svelte';
+	import ProjectAuditTracker from '$lib/components/project/ProjectAuditTracker.svelte';
 	import ProjectDocumentsSection from '$lib/components/project/ProjectDocumentsSection.svelte';
 	import ProjectEventsModal from '$lib/components/project/ProjectEventsModal.svelte';
 	import RecentProjectChatsModal from '$lib/components/project/RecentProjectChatsModal.svelte';
@@ -1217,6 +1218,10 @@
 				/>
 			</div>
 		{/if}
+
+		<div class="mb-2 sm:mb-3">
+			<ProjectAuditTracker projectId={project.id} {canEdit} />
+		</div>
 
 		<!-- Entity tabs (shared mobile + desktop). All entity surfaces live
 			 here: Briefs · Chats · Graph · Goals · Milestones · Plans · Risks

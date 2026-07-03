@@ -46,7 +46,13 @@ function makeSupabase(script: Record<string, QueryResult[]>) {
 				maybeSingle: vi.fn(
 					async () => script[table]?.shift() ?? { data: null, error: null }
 				),
-				single: vi.fn(async () => script[table]?.shift() ?? { data: null, error: null })
+				single: vi.fn(async () => script[table]?.shift() ?? { data: null, error: null }),
+				then: vi.fn((resolve, reject) =>
+					Promise.resolve(script[table]?.shift() ?? { data: null, error: null }).then(
+						resolve,
+						reject
+					)
+				)
 			};
 			return builder;
 		})
@@ -111,6 +117,45 @@ describe('decideProjectSuggestion', () => {
 			}
 		});
 		expect(mocks.loadProjectLoopSourceFingerprint).not.toHaveBeenCalled();
+	});
+
+	it('refreshes linked audit follow-up counts after dismissing an audit child suggestion', async () => {
+		const { supabase, updates } = makeSupabase({
+			project_suggestions: [
+				{ data: pendingSuggestion({ kind: 'audit_recommendation' }), error: null },
+				{
+					data: pendingSuggestion({ kind: 'audit_recommendation', status: 'rejected' }),
+					error: null
+				}
+			],
+			project_audit_suggestions: [
+				{ data: [{ audit_id: 'audit-1' }], error: null },
+				{
+					data: [
+						{ project_suggestions: { status: 'rejected' } },
+						{ project_suggestions: { status: 'pending' } }
+					],
+					error: null
+				}
+			]
+		});
+
+		const outcome = await decideProjectSuggestion({
+			supabase,
+			userId: 'user-1',
+			projectId: 'project-1',
+			suggestionId: 'suggestion-1',
+			action: 'dismiss'
+		});
+
+		expect(outcome.ok).toBe(true);
+		expect(updates).toContainEqual({
+			table: 'project_audits',
+			payload: {
+				generated_suggestion_count: 2,
+				unresolved_suggestion_count: 1
+			}
+		});
 	});
 
 	it('supersedes stale approvals before replaying operations', async () => {

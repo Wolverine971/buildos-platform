@@ -34,6 +34,7 @@ export type TurnSupervisorObservation =
 			toolName: string;
 			toolCallId: string;
 			success: boolean;
+			skipped?: boolean;
 			error?: string | null;
 			resultSummary?: string | null;
 			at?: number;
@@ -77,6 +78,7 @@ export type TurnDigest = {
 		argsFingerprint?: string | null;
 		idArgs?: Record<string, string>;
 		success?: boolean | null;
+		skipped?: boolean | null;
 		errorClass?: string | null;
 		resultSummary?: string | null;
 	}>;

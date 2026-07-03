@@ -1,5 +1,5 @@
 // apps/web/src/lib/components/admin/adminRoutes.ts
-import { BarChart3, Bot, Clock, Coins, History, Network, Wrench } from 'lucide-svelte';
+import { BarChart3, Bot, Clock, Coins, History, Network, Users, Wrench } from 'lucide-svelte';
 import type { AdminNavItem } from './adminNav.types';
 
 export const CHAT_ADMIN_ROOT = '/admin/chat';
@@ -25,6 +25,11 @@ export const CHAT_ADMIN_NAV_ITEMS: AdminNavItem[] = [
 		title: 'Sessions',
 		href: `${CHAT_ADMIN_ROOT}/sessions`,
 		icon: History
+	},
+	{
+		title: 'User Performance',
+		href: `${CHAT_ADMIN_ROOT}/users`,
+		icon: Users
 	},
 	{
 		title: 'Tools',

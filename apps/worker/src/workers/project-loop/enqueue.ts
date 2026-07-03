@@ -235,7 +235,7 @@ export async function enqueueEndOfDayProjectLoops(): Promise<{
 	return { enqueued, scanned: projects?.length ?? 0, skippedInvalidOwner };
 }
 
-async function resolveProjectLoopOwnerUserIds(
+export async function resolveProjectLoopOwnerUserIds(
 	projects: Array<{ id: string | null; created_by: string | null }>
 ): Promise<Map<string, string>> {
 	const createdByIds = [

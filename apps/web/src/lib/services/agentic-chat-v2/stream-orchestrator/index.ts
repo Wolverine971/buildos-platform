@@ -80,7 +80,9 @@ import {
 	extractUnlinkedDocumentIds,
 	getDocumentTreeRootCount,
 	hasDocumentOrganizationFailureSignal,
-	hasDocumentOrganizationValidationIssue
+	hasDocumentOrganizationValidationIssue,
+	isDuplicateWriteSkippedExecution,
+	isWriteLikeOperation
 } from './round-analysis';
 import { validateToolCalls } from './tool-validation';
 import { buildWriteLedgerMessage } from './write-ledger';
@@ -286,8 +288,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	const supervisorBlockedToolCallIds = new Set<string>();
 	let finalizationGuardResult: FinalizationGuardResult | undefined;
 	const pendingRepairInstructions: string[] = [];
+	const pendingMaterializationNotices: string[] = [];
 	const contextGatheringLedger = new ContextGatheringLedger();
 	const knownEntitiesById = new Map<string, KnownEntity>();
+	const successfulWriteExecutionsByKey = new Map<string, FastToolExecution>();
 	const supervisor =
 		params.turnSupervisor ??
 		createDeterministicTurnSupervisor({
@@ -405,7 +409,18 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			forceNoToolSynthesisPass = true;
 		}
 	};
+	const flushMaterializationNotices = (): void => {
+		if (pendingMaterializationNotices.length === 0) return;
+		for (const content of pendingMaterializationNotices) {
+			messages.push({
+				role: 'system',
+				content
+			});
+		}
+		pendingMaterializationNotices.length = 0;
+	};
 	const flushRepairInstructions = (): void => {
+		flushMaterializationNotices();
 		if (pendingRepairInstructions.length === 0) return;
 		const combined = buildConsolidatedRepairInstruction(pendingRepairInstructions);
 		pendingRepairInstructions.length = 0;
@@ -425,11 +440,24 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		allowedToolNames = new Set(
 			tools.map((tool) => tool.function?.name).filter((name): name is string => Boolean(name))
 		);
-		messages.push({
-			role: 'system',
-			content: `${reason} Additional tools now available for the rest of this turn: ${materialized.addedToolNames.join(', ')}. Call them directly by name.`
-		});
+		const notice = `${reason} Additional tools now available for the rest of this turn: ${materialized.addedToolNames.join(', ')}. Call them directly by name.`;
+		if (!pendingMaterializationNotices.includes(notice)) {
+			pendingMaterializationNotices.push(notice);
+		}
 		return materialized.addedToolNames;
+	};
+	const findDuplicateSuccessfulWrite = (
+		toolCall: ChatToolCall
+	): FastToolExecution | undefined => {
+		const key = buildWriteDedupKey(toolCall);
+		return key ? successfulWriteExecutionsByKey.get(key) : undefined;
+	};
+	const rememberSuccessfulWriteForDedup = (execution: FastToolExecution): void => {
+		if (isDuplicateWriteSkippedExecution(execution)) return;
+		if (!didGatewayExecSucceed(execution)) return;
+		const key = buildWriteDedupKey(execution.toolCall);
+		if (!key || successfulWriteExecutionsByKey.has(key)) return;
+		successfulWriteExecutionsByKey.set(key, execution);
 	};
 	const recordGatewayRequiredFieldFailures = (
 		failures: GatewayRequiredFieldFailure[]
@@ -507,6 +535,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 		const execution: FastToolExecution = { toolCall, result };
 		toolExecutions.push(execution);
+		rememberSuccessfulWriteForDedup(execution);
 		await observeSupervisor({
 			type: 'tool_result_received',
 			toolName: toolCall.function.name,
@@ -536,6 +565,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			typeof params.toolExecutor !== 'function' ||
 			!docOrganizationRecoveryEligible ||
 			docOrganizationRecoveryAttempted ||
+			toolLimitNotice ||
 			// Never start recovery writes on a cancelled turn.
 			signal?.aborted
 		) {
@@ -577,9 +607,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		let movedCount = 0;
 		let failedMoves = 0;
 		for (let index = 0; index < unlinkedDocIds.length; index += 1) {
-			// Stop mid-loop the moment the turn is cancelled so we don't keep
-			// committing document moves after a stop.
-			if (signal?.aborted) break;
+			// Stop mid-loop the moment the turn is cancelled or a safety limit fires
+			// so recovery cannot continue committing writes after orchestration stops.
+			if (signal?.aborted || toolLimitNotice) break;
 			const documentId = unlinkedDocIds[index];
 			const moveExecution = await executeSyntheticDirectTool('onto.document.tree.move', {
 				project_id: candidateProjectId,
@@ -596,6 +626,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			failedMoves += 1;
 		}
 
+		if (toolLimitNotice) {
+			return false;
+		}
 		if (movedCount === 0) {
 			return false;
 		}
@@ -925,7 +958,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 							argsPreview: parseSupervisorToolArguments(normalizedToolCall)
 						});
 						if (params.onToolCall) {
-							await params.onToolCall(normalizedToolCall);
+							try {
+								await params.onToolCall(normalizedToolCall);
+							} catch {
+								// UI/logging callbacks must not crash tool orchestration.
+							}
 						}
 					} else if (event.type === 'done') {
 						llmDoneReceived = true;
@@ -1264,6 +1301,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						  normalizedContext === 'project'
 						? entityId
 						: null;
+			const allowedToolNamesAtRoundStart = new Set(allowedToolNames);
 			const validationIssues = validateToolCalls(pendingToolCalls, tools, {
 				projectId: validationProjectId
 			});
@@ -1469,7 +1507,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				}
 			}
 
-			for (const { original: originalToolCall, executable: toolCall } of toolCallsToExecute) {
+			for (
+				let executionIndex = 0;
+				executionIndex < toolCallsToExecute.length;
+				executionIndex += 1
+			) {
+				const pair = toolCallsToExecute[executionIndex];
+				if (!pair) continue;
+				const { original: originalToolCall, executable: toolCall } = pair;
 				if (signal?.aborted) {
 					throw new Error('Request aborted');
 				}
@@ -1477,10 +1522,50 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				toolCallsMade += 1;
 				if (toolCallsMade > maxToolCalls) {
 					markToolLimitReached('call');
+					const skippedCalls = toolCallsToExecute
+						.slice(executionIndex)
+						.map(({ original }) => original);
+					for (const skippedToolCall of skippedCalls) {
+						const skippedResult = buildToolCallLimitSkippedResult(skippedToolCall);
+						const skippedExecution: FastToolExecution = {
+							toolCall: skippedToolCall,
+							result: skippedResult
+						};
+						toolExecutions.push(skippedExecution);
+						roundExecutions.push(skippedExecution);
+						await observeSupervisor({
+							type: 'tool_result_received',
+							toolName: skippedToolCall.function.name,
+							toolCallId: skippedToolCall.id,
+							success: false,
+							error: skippedResult.error ?? null,
+							resultSummary: summarizeToolResult(skippedResult)
+						});
+						if (params.onToolResult) {
+							try {
+								await params.onToolResult(skippedExecution);
+							} catch {
+								// UI/logging callbacks must not crash tool orchestration.
+							}
+						}
+						const skippedPayload = buildToolPayloadForModel(
+							skippedToolCall,
+							skippedResult,
+							parseToolArguments
+						);
+						const skippedPayloadContent = JSON.stringify(skippedPayload);
+						roundModelPayloadChars += skippedPayloadContent.length;
+						messages.push({
+							role: 'tool',
+							content: skippedPayloadContent,
+							tool_call_id: skippedToolCall.id
+						});
+					}
 					break;
 				}
 
 				let result: ChatToolResult;
+				let executionToolCall = originalToolCall;
 				const entityKindRepairResult = buildWrongEntityKindRepairResult({
 					toolCall: originalToolCall,
 					knownEntitiesById
@@ -1521,18 +1606,23 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					// budget before any mutation ran — the agent would search, "load" the
 					// write tool, run out of rounds, and never actually update the
 					// task/doc. Materialize-then-run collapses that into one round.
-					const executableName = resolvedOpToolName ?? requestedName;
+					const materializedExecutableToolName =
+						addedToolNames.length === 1 ? (addedToolNames[0] ?? null) : null;
+					const executableName =
+						resolvedOpToolName ?? materializedExecutableToolName ?? requestedName;
 					const canAutoExecute =
 						addedToolNames.length > 0 &&
 						allowedToolNames.has(executableName) &&
 						Boolean(params.toolExecutor);
 					if (canAutoExecute) {
-						const directToolCall: ChatToolCall = resolvedOpToolName
-							? {
-									...toolCall,
-									function: { ...toolCall.function, name: resolvedOpToolName }
-								}
-							: toolCall;
+						const directToolCall: ChatToolCall =
+							executableName !== toolCall.function.name
+								? {
+										...toolCall,
+										function: { ...toolCall.function, name: executableName }
+									}
+								: toolCall;
+						executionToolCall = directToolCall;
 						// The earlier validateToolCalls pass (run before the tool was
 						// materialized) could not apply the provider-schema required-field
 						// check, because that check needs the tool's definition in `tools`.
@@ -1556,31 +1646,40 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 									.join(' ')}`
 							};
 						} else {
-							const clearAutoToolStatusTimer = startLongRunningOperationHeartbeat(
-								'tool_execution',
-								{
-									toolName: requestedName,
-									toolCallId: originalToolCall.id
+							const duplicateWrite = findDuplicateSuccessfulWrite(directToolCall);
+							if (duplicateWrite) {
+								result = buildDuplicateWriteSkippedResult({
+									originalToolCall,
+									executableToolCall: directToolCall,
+									priorExecution: duplicateWrite
+								});
+							} else {
+								const clearAutoToolStatusTimer = startLongRunningOperationHeartbeat(
+									'tool_execution',
+									{
+										toolName: directToolCall.function.name,
+										toolCallId: originalToolCall.id
+									}
+								);
+								try {
+									result = await params.toolExecutor!(directToolCall, tools);
+									if (result.tool_call_id !== originalToolCall.id) {
+										result = { ...result, tool_call_id: originalToolCall.id };
+									}
+								} catch (error) {
+									const messageText =
+										error instanceof Error
+											? error.message
+											: 'Tool execution failed';
+									result = {
+										tool_call_id: originalToolCall.id,
+										result: null,
+										success: false,
+										error: messageText
+									};
+								} finally {
+									clearAutoToolStatusTimer();
 								}
-							);
-							try {
-								result = await params.toolExecutor!(directToolCall, tools);
-								if (result.tool_call_id !== originalToolCall.id) {
-									result = { ...result, tool_call_id: originalToolCall.id };
-								}
-							} catch (error) {
-								const messageText =
-									error instanceof Error
-										? error.message
-										: 'Tool execution failed';
-								result = {
-									tool_call_id: originalToolCall.id,
-									result: null,
-									success: false,
-									error: messageText
-								};
-							} finally {
-								clearAutoToolStatusTimer();
 							}
 						}
 					} else {
@@ -1595,47 +1694,79 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						};
 					}
 				} else {
-					const clearToolStatusTimer = startLongRunningOperationHeartbeat(
-						'tool_execution',
-						{
-							toolName: originalToolCall.function.name,
-							toolCallId: originalToolCall.id
-						}
-					);
-					try {
-						result = await params.toolExecutor(toolCall, tools);
-						if (result.tool_call_id !== originalToolCall.id) {
-							result = {
-								...result,
-								tool_call_id: originalToolCall.id
-							};
-						}
-					} catch (error) {
-						const message =
-							error instanceof Error ? error.message : 'Tool execution failed';
+					const lateValidationIssues = allowedToolNamesAtRoundStart.has(
+						toolCall.function.name
+					)
+						? []
+						: validateToolCalls([toolCall], tools, {
+								projectId: validationProjectId
+							});
+					if (lateValidationIssues.length > 0) {
 						result = {
 							tool_call_id: originalToolCall.id,
 							result: null,
 							success: false,
-							error: message
+							error: `Tool validation failed: ${lateValidationIssues
+								.flatMap((issue) => issue.errors)
+								.join(' ')}`
 						};
-					} finally {
-						clearToolStatusTimer();
+					} else {
+						const duplicateWrite = findDuplicateSuccessfulWrite(toolCall);
+						if (duplicateWrite) {
+							result = buildDuplicateWriteSkippedResult({
+								originalToolCall,
+								executableToolCall: toolCall,
+								priorExecution: duplicateWrite
+							});
+						} else {
+							const clearToolStatusTimer = startLongRunningOperationHeartbeat(
+								'tool_execution',
+								{
+									toolName: originalToolCall.function.name,
+									toolCallId: originalToolCall.id
+								}
+							);
+							try {
+								result = await params.toolExecutor(toolCall, tools);
+								if (result.tool_call_id !== originalToolCall.id) {
+									result = {
+										...result,
+										tool_call_id: originalToolCall.id
+									};
+								}
+							} catch (error) {
+								const message =
+									error instanceof Error
+										? error.message
+										: 'Tool execution failed';
+								result = {
+									tool_call_id: originalToolCall.id,
+									result: null,
+									success: false,
+									error: message
+								};
+							} finally {
+								clearToolStatusTimer();
+							}
+						}
 					}
 				}
 
-				const execution: FastToolExecution = { toolCall: originalToolCall, result };
+				const execution: FastToolExecution = { toolCall: executionToolCall, result };
 				toolExecutions.push(execution);
 				roundExecutions.push(execution);
+				rememberSuccessfulWriteForDedup(execution);
+				const skippedDuplicateWrite = isDuplicateWriteSkippedExecution(execution);
 				await observeSupervisor({
 					type: 'tool_result_received',
-					toolName: originalToolCall.function.name,
+					toolName: executionToolCall.function.name,
 					toolCallId: originalToolCall.id,
 					// ok-aware: a gateway envelope with `ok: false` rides in on
 					// `success: true`, so judge on didGatewayExecSucceed to keep the
 					// supervisor's write/failure counts honest. Falls back to raw
 					// success for non-gateway tools.
 					success: didGatewayExecSucceed(execution),
+					skipped: skippedDuplicateWrite,
 					error: result.error ?? null,
 					resultSummary: summarizeToolResult(result)
 				});
@@ -1648,7 +1779,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				if (result.success) {
 					rememberKnownEntitiesFromToolResult({
 						knownEntitiesById,
-						toolName: originalToolCall.function.name,
+						toolName: executionToolCall.function.name,
 						payload: result.result
 					});
 				}
@@ -1661,7 +1792,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				}
 
 				const toolPayload = buildToolPayloadForModel(
-					originalToolCall,
+					executionToolCall,
 					result,
 					parseToolArguments
 				);
@@ -1674,6 +1805,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				});
 			}
 
+			flushMaterializationNotices();
 			if (toolLimitNotice) {
 				break;
 			}
@@ -1984,4 +2116,69 @@ function readStringMeta(value: unknown): string | undefined {
 
 function readNumberMeta(value: unknown): number | undefined {
 	return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function buildWriteDedupKey(toolCall: ChatToolCall): string | null {
+	const toolName = toolCall.function?.name?.trim() ?? '';
+	if (!toolName) return null;
+
+	const registryOp = getToolRegistry().byToolName[toolName]?.op;
+	const normalizedName = normalizeGatewayOpName(toolName);
+	const op = registryOp ?? normalizedName;
+	if (!isWriteLikeOperation(op)) return null;
+
+	const { args } = parseToolArguments(toolCall.function?.arguments);
+	return `${op}|${stableStringifyForDedup(args)}`;
+}
+
+function buildDuplicateWriteSkippedResult(params: {
+	originalToolCall: ChatToolCall;
+	executableToolCall: ChatToolCall;
+	priorExecution: FastToolExecution;
+}): ChatToolResult {
+	return {
+		tool_call_id: params.originalToolCall.id,
+		success: true,
+		result: {
+			ok: true,
+			status: 'duplicate_write_skipped',
+			skipped_duplicate_write: true,
+			message:
+				'This exact write already succeeded earlier in the turn, so the duplicate tool call was not executed again.',
+			tool_name: params.executableToolCall.function.name,
+			previous_tool_call_id:
+				params.priorExecution.result.tool_call_id ?? params.priorExecution.toolCall.id,
+			previous_tool_name: params.priorExecution.toolCall.function.name,
+			previous_result: params.priorExecution.result.result ?? null
+		}
+	};
+}
+
+function buildToolCallLimitSkippedResult(toolCall: ChatToolCall): ChatToolResult {
+	const message =
+		'Tool call skipped because the turn reached the tool-call safety limit before this call could run.';
+	return {
+		tool_call_id: toolCall.id,
+		success: false,
+		result: {
+			ok: false,
+			status: 'tool_call_limit_skipped',
+			error: message
+		},
+		error: message
+	};
+}
+
+function stableStringifyForDedup(value: unknown): string {
+	if (value === undefined) return 'undefined';
+	if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? String(value);
+	if (Array.isArray(value)) {
+		return `[${value.map((item) => stableStringifyForDedup(item)).join(',')}]`;
+	}
+
+	const record = value as Record<string, unknown>;
+	return `{${Object.keys(record)
+		.sort()
+		.map((key) => `${JSON.stringify(key)}:${stableStringifyForDedup(record[key])}`)
+		.join(',')}}`;
 }

@@ -54,6 +54,7 @@
 		'/admin/notifications/nlogs',
 		'/admin/migration',
 		'/admin/chat/sessions',
+		'/admin/chat/users',
 		'/admin/chat/costs',
 		'/admin/chat/timing',
 		'/admin/chat/domains',

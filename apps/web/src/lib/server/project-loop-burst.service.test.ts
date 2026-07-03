@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	createAdminSupabaseClient: vi.fn(),
-	queueProjectLoop: vi.fn()
+	queueProjectLoop: vi.fn(),
+	queueProjectAudit: vi.fn()
 }));
 
 vi.mock('$lib/supabase/admin', () => ({
@@ -12,6 +13,10 @@ vi.mock('$lib/supabase/admin', () => ({
 
 vi.mock('$lib/server/project-loops.service', () => ({
 	queueProjectLoop: mocks.queueProjectLoop
+}));
+
+vi.mock('$lib/server/project-audit-trigger.service', () => ({
+	queueProjectAudit: mocks.queueProjectAudit
 }));
 
 vi.mock('$lib/config/project-loops', () => ({
@@ -60,6 +65,12 @@ describe('project loop burst scoring', () => {
 			runId: 'loop-run-1',
 			jobId: 'queue-job-1'
 		});
+		mocks.queueProjectAudit.mockResolvedValue({
+			queued: false,
+			decision: 'skipped_no_activity',
+			reason: 'Recent project activity is below complete-audit burst threshold.',
+			evaluationId: 'audit-eval-1'
+		});
 	});
 
 	it('skips a single low-signal task update', async () => {
@@ -80,6 +91,7 @@ describe('project loop burst scoring', () => {
 			totalScore: 1
 		});
 		expect(mocks.queueProjectLoop).not.toHaveBeenCalled();
+		expect(mocks.queueProjectAudit).not.toHaveBeenCalled();
 	});
 
 	it('queues a structural document tree move without recent activity', async () => {
@@ -98,9 +110,20 @@ describe('project loop burst scoring', () => {
 			sourceScore: 4,
 			totalScore: 4,
 			runId: 'loop-run-1',
-			jobId: 'queue-job-1'
+			jobId: 'queue-job-1',
+			audit: {
+				evaluated: true,
+				queued: false,
+				decision: 'skipped_no_activity',
+				evaluationId: 'audit-eval-1'
+			}
 		});
 		expect(mocks.queueProjectLoop).toHaveBeenCalledWith({
+			projectId: 'project-1',
+			userId: 'user-1',
+			triggerReason: 'burst'
+		});
+		expect(mocks.queueProjectAudit).toHaveBeenCalledWith({
 			projectId: 'project-1',
 			userId: 'user-1',
 			triggerReason: 'burst'
@@ -133,7 +156,12 @@ describe('project loop burst scoring', () => {
 			queued: true,
 			sourceScore: 2,
 			recentScore: 2,
-			totalScore: 4
+			totalScore: 4,
+			audit: {
+				evaluated: true,
+				queued: false,
+				decision: 'skipped_no_activity'
+			}
 		});
 		expect(supabase.from).toHaveBeenCalledWith('onto_project_logs');
 		expect(query.select).toHaveBeenCalledWith(
@@ -175,6 +203,7 @@ describe('project loop burst scoring', () => {
 			totalScore: 2
 		});
 		expect(mocks.queueProjectLoop).not.toHaveBeenCalled();
+		expect(mocks.queueProjectAudit).not.toHaveBeenCalled();
 	});
 
 	it('counts repeated updates to the same recent entity only once', () => {
@@ -206,5 +235,28 @@ describe('project loop burst scoring', () => {
 			totalScore: 1
 		});
 		expect(mocks.queueProjectLoop).not.toHaveBeenCalled();
+		expect(mocks.queueProjectAudit).not.toHaveBeenCalled();
+	});
+
+	it('does not fail the light loop burst when complete audit evaluation fails', async () => {
+		const { supabase } = createActivitySupabaseMock();
+		mocks.createAdminSupabaseClient.mockReturnValue(supabase);
+		mocks.queueProjectAudit.mockRejectedValue(new Error('audit evaluator unavailable'));
+
+		const result = await queueProjectLoopBurst({
+			projectId: 'project-1',
+			userId: 'user-1',
+			source: 'doc_tree_move'
+		});
+
+		expect(result).toMatchObject({
+			queued: true,
+			reason: 'queued',
+			audit: {
+				evaluated: false,
+				queued: false,
+				reason: 'audit evaluator unavailable'
+			}
+		});
 	});
 });

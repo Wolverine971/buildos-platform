@@ -77,6 +77,125 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(secondBudgetMessage).toContain('With two or fewer tool rounds remaining');
 	});
 
+	it('emits terminal failed results for tool calls skipped by the call limit', async () => {
+		const onToolResult = vi.fn();
+		const llm = {
+			streamText: vi.fn(async function* () {
+				yield {
+					type: 'tool_call',
+					tool_call: toolCall(
+						'search_onto_projects',
+						{ query: 'first project' },
+						'search:first'
+					)
+				};
+				yield {
+					type: 'tool_call',
+					tool_call: toolCall(
+						'search_onto_projects',
+						{ query: 'second project' },
+						'search:second'
+					)
+				};
+				yield {
+					type: 'tool_call',
+					tool_call: toolCall(
+						'search_onto_projects',
+						{ query: 'third project' },
+						'search:third'
+					)
+				};
+				yield { type: 'done', finished_reason: 'tool_calls' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(
+			async (call: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: call.id,
+				result: { projects: [{ id: 'project-1', type: 'project', name: 'BuildOS' }] },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'Search several project names.',
+			tools: tools(['search_onto_projects']),
+			toolExecutor,
+			onToolResult,
+			onDelta: async () => {},
+			maxToolCalls: 1
+		});
+
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(toolExecutor.mock.calls[0]?.[0].id).toBe('search:first');
+		expect(onToolResult).toHaveBeenCalledTimes(3);
+		expect(result.finishedReason).toBe('tool_call_limit');
+		expect(result.toolExecutions).toHaveLength(3);
+		expect(result.toolExecutions?.[0]?.result.success).toBe(true);
+		expect(result.toolExecutions?.[1]?.toolCall.id).toBe('search:second');
+		expect(result.toolExecutions?.[1]?.result).toMatchObject({
+			success: false,
+			error: expect.stringContaining('tool-call safety limit')
+		});
+		expect(result.toolExecutions?.[2]?.toolCall.id).toBe('search:third');
+		expect(result.toolExecutions?.[2]?.result).toMatchObject({
+			success: false,
+			error: expect.stringContaining('tool-call safety limit')
+		});
+	});
+
+	it('does not let onToolCall callback failures crash orchestration', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'search_onto_projects',
+							{ query: 'BuildOS' },
+							'search:callback'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				yield { type: 'text', content: 'Found BuildOS.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(
+			async (call: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: call.id,
+				result: { projects: [{ id: 'project-1', type: 'project', name: 'BuildOS' }] },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'Find BuildOS.',
+			tools: tools(['search_onto_projects']),
+			toolExecutor,
+			onToolCall: async () => {
+				throw new Error('callback failed');
+			},
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(result.finalAssistantText).toBe('Found BuildOS.');
+	});
+
 	it('passes dynamically materialized direct tools to the executor after discovery', async () => {
 		let streamInvocation = 0;
 		const llm = {
@@ -254,16 +373,136 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(result.finalAssistantText).toBe('Loaded the task_management skill.');
 	});
 
-	// BUG-1 (2026-06-15): skill_load surfaces canonical op names (related_ops) such
-	// as "onto.milestone.create" alongside the callable tool name
-	// "create_onto_milestone". If the model calls the op name, the on-miss path must
-	// resolve op -> callable tool, materialize it, and instruct a retry with the real
-	// name — instead of dead-ending on "Tool not available in this context".
-	it('recovers when the model calls a canonical op name instead of the callable tool name', async () => {
-		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+	it('auto-executes materialized tool aliases through the actual callable tool name', async () => {
 		let streamInvocation = 0;
 		const llm = {
 			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'work_capability_search',
+							{ query: 'document writing' },
+							'alias-call'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				yield { type: 'text', content: 'Found the matching capability.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(
+			async (call: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: call.id,
+				result: { ok: true, matches: [] },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'Find a writing capability.',
+			tools: tools(['skill_search']),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(toolExecutor.mock.calls[0]?.[0].function.name).toBe('outcome_card_search');
+		expect(result.toolExecutions?.[0]?.toolCall.function.name).toBe('outcome_card_search');
+		expect(result.toolExecutions?.[0]?.result.tool_call_id).toBe('alias-call');
+		expect(result.finalAssistantText).toBe('Found the matching capability.');
+	});
+
+	it('validates tools that become available earlier in the same round before executing them', async () => {
+		let streamInvocation = 0;
+		const onToolResult = vi.fn();
+		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'skill_load',
+							{ skill: 'project_documents' },
+							'skill-load-call'
+						)
+					};
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'create_onto_document',
+							{ project_id: projectId, content: 'Missing title.' },
+							'create-doc-call'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				yield { type: 'text', content: 'I need a document title before creating it.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(
+			async (call: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: call.id,
+				result: {
+					ok: true,
+					materialized_tools:
+						call.function.name === 'skill_load' ? ['create_onto_document'] : []
+				},
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: projectId,
+			projectId,
+			history: [],
+			message: 'Create a document.',
+			tools: tools(['skill_load']),
+			toolExecutor,
+			onToolResult,
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(toolExecutor.mock.calls[0]?.[0].function.name).toBe('skill_load');
+		expect(onToolResult).toHaveBeenCalledTimes(2);
+		expect(result.toolExecutions?.[1]?.toolCall.function.name).toBe('create_onto_document');
+		expect(result.toolExecutions?.[1]?.result).toMatchObject({
+			success: false,
+			error: expect.stringContaining('Missing required parameter: title')
+		});
+		expect(result.finalAssistantText).toContain('I need a document title before creating it.');
+		expect(result.finalAssistantText).toContain('One write did not complete');
+	});
+
+	// BUG-1 (2026-06-15): skill_load surfaces canonical op names (related_ops) such
+	// as "onto.milestone.create" alongside the callable tool name
+	// "create_onto_milestone". The on-miss path resolves op -> callable tool and
+	// runs it in the same round. If the next pass still retries the direct tool,
+	// the orchestrator must close that retry without executing the write twice.
+	it('auto-executes canonical op names through the direct tool and skips exact duplicate retries', async () => {
+		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		let streamInvocation = 0;
+		const passMessages: FastChatHistoryMessage[][] = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: { messages: FastChatHistoryMessage[] }) {
+				passMessages.push(params.messages);
 				streamInvocation += 1;
 				if (streamInvocation === 1) {
 					// Model calls the op name, which is NOT a mounted tool.
@@ -279,7 +518,8 @@ describe('streamFastChat direct tool orchestration', () => {
 					return;
 				}
 				if (streamInvocation === 2) {
-					// Retry with the callable tool name the orchestrator surfaced.
+					// A stubborn model retries with the callable tool name even though
+					// the op-name call was already executed by the orchestrator.
 					yield {
 						type: 'tool_call',
 						tool_call: toolCall(
@@ -299,7 +539,13 @@ describe('streamFastChat direct tool orchestration', () => {
 		const toolExecutor = vi.fn(
 			async (call: ChatToolCall): Promise<ChatToolResult> => ({
 				tool_call_id: call.id,
-				result: { ok: true },
+				result: {
+					ok: true,
+					milestone: {
+						id: '66ff3a5d-6b08-424a-9135-7c33011d1084',
+						title: 'January: Complete chapters 1-10'
+					}
+				},
 				success: true
 			})
 		);
@@ -320,10 +566,29 @@ describe('streamFastChat direct tool orchestration', () => {
 		});
 
 		const executedNames = toolExecutor.mock.calls.map(([call]) => call.function.name);
-		// The op-name call is blocked at the allow-list and never reaches the executor;
-		// the orchestrator resolves it to the callable tool, which the retry executes.
+		// The op-name call never reaches the executor under its canonical-op name.
+		// It is executed once through the resolved direct tool, and the direct retry
+		// receives a terminal duplicate-skipped result without a second write.
 		expect(executedNames).not.toContain('onto.milestone.create');
-		expect(executedNames).toContain('create_onto_milestone');
+		expect(executedNames).toEqual(['create_onto_milestone']);
+		expect(result.toolExecutions?.[0]?.toolCall.function.name).toBe('create_onto_milestone');
+		expect(result.toolExecutions?.[0]?.toolCall.id).toBe('op-name-call');
+		expect(result.toolExecutions?.[0]?.result.tool_call_id).toBe('op-name-call');
+		expect(result.toolExecutions?.[1]?.toolCall.function.name).toBe('create_onto_milestone');
+		expect(result.toolExecutions?.[1]?.result.result).toMatchObject({
+			status: 'duplicate_write_skipped',
+			skipped_duplicate_write: true,
+			previous_tool_call_id: 'op-name-call'
+		});
+		const secondPassMessages = passMessages[1] ?? [];
+		const assistantToolCallIndex = secondPassMessages.findIndex(
+			(msg) =>
+				msg.role === 'assistant' &&
+				Array.isArray((msg as any).tool_calls) &&
+				(msg as any).tool_calls.some((call: ChatToolCall) => call.id === 'op-name-call')
+		);
+		expect(assistantToolCallIndex).toBeGreaterThanOrEqual(0);
+		expect(secondPassMessages[assistantToolCallIndex + 1]?.role).toBe('tool');
 		expect(result.finalAssistantText).toBe('Created the January milestone.');
 	});
 

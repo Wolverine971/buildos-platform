@@ -3,6 +3,8 @@ import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
 import { createLogger } from '$lib/utils/logger';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { queueProjectLoop } from '$lib/server/project-loops.service';
+import { queueProjectAudit } from '$lib/server/project-audit-trigger.service';
+import type { ProjectAuditTriggerDecision } from '@buildos/shared-types';
 
 const logger = createLogger('ProjectLoopBurst');
 
@@ -44,6 +46,18 @@ export type ProjectLoopBurstResult = {
 	recentActivityCount: number;
 	runId?: string;
 	jobId?: string;
+	audit?: ProjectLoopBurstAuditResult;
+};
+
+export type ProjectLoopBurstAuditResult = {
+	evaluated: boolean;
+	queued: boolean;
+	decision?: ProjectAuditTriggerDecision;
+	reason?: string;
+	auditId?: string;
+	runId?: string;
+	jobId?: string;
+	evaluationId?: string;
 };
 
 const CURRENT_SOURCE_SCORES: Record<string, number> = {
@@ -130,6 +144,7 @@ export async function queueProjectLoopBurst(
 		userId: params.userId,
 		triggerReason: 'burst'
 	});
+	const audit = await evaluateCompleteAuditBurst(params);
 
 	return {
 		queued: queueResult.queued,
@@ -140,7 +155,8 @@ export async function queueProjectLoopBurst(
 		threshold,
 		recentActivityCount: recentRows.length,
 		...(queueResult.runId ? { runId: queueResult.runId } : {}),
-		...(queueResult.jobId ? { jobId: queueResult.jobId } : {})
+		...(queueResult.jobId ? { jobId: queueResult.jobId } : {}),
+		...(audit ? { audit } : {})
 	};
 }
 
@@ -226,6 +242,43 @@ function mapQueueSkipReason(reason?: string): ProjectLoopBurstResult['reason'] {
 	if (reason === 'already_running' || reason === 'active_run') return 'active_run';
 	if (reason === 'cooldown_active' || reason === 'recent_run') return 'recent_run';
 	return 'queue_skipped';
+}
+
+async function evaluateCompleteAuditBurst(
+	params: ProjectLoopBurstParams
+): Promise<ProjectLoopBurstAuditResult | null> {
+	if (!params.projectId || !params.userId) return null;
+
+	try {
+		const result = await queueProjectAudit({
+			projectId: params.projectId,
+			userId: params.userId,
+			triggerReason: 'burst'
+		});
+		return {
+			evaluated: true,
+			queued: result.queued,
+			decision: result.decision,
+			reason: result.reason,
+			...(result.auditId ? { auditId: result.auditId } : {}),
+			...(result.runId ? { runId: result.runId } : {}),
+			...(result.jobId ? { jobId: result.jobId } : {}),
+			...(result.evaluationId ? { evaluationId: result.evaluationId } : {})
+		};
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		logger.warn('Failed to evaluate complete audit burst', {
+			projectId: params.projectId,
+			userId: params.userId,
+			source: params.source,
+			error: message
+		});
+		return {
+			evaluated: false,
+			queued: false,
+			reason: message
+		};
+	}
 }
 
 function omitCurrentActivityLog(

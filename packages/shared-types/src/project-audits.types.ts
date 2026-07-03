@@ -91,6 +91,7 @@ export interface ProjectAuditRecommendation {
 	summary: string;
 	role?: ProjectAuditSuggestionRole;
 	priority?: 'low' | 'medium' | 'high';
+	dimension?: ProjectAuditDimensionKey;
 	target_entity_type?: string;
 	target_entity_id?: string;
 	evidence_refs?: ProjectAuditEvidenceRef[];

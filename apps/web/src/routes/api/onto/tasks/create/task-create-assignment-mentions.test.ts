@@ -1,10 +1,10 @@
 // apps/web/src/routes/api/onto/tasks/create/task-create-assignment-mentions.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const syncTaskAssigneesMock = vi.fn();
 const notifyTaskAssignmentAddedMock = vi.fn();
 const resolveEntityMentionUserIdsMock = vi.fn();
 const notifyEntityMentionsAddedMock = vi.fn();
+const atomicCreateTaskMock = vi.fn();
 let capturedTaskInsertPayload: Record<string, unknown> | null = null;
 
 vi.mock('$lib/services/async-activity-logger', () => ({
@@ -57,7 +57,6 @@ vi.mock('$lib/server/task-assignment.service', () => ({
 		assigneeActorIds: ['actor-assignee']
 	})),
 	validateAssigneesAreProjectEligible: vi.fn(async () => {}),
-	syncTaskAssignees: syncTaskAssigneesMock,
 	notifyTaskAssignmentAdded: notifyTaskAssignmentAddedMock,
 	fetchTaskAssigneesMap: vi.fn(async () => new Map()),
 	attachAssigneesToTask: vi.fn((task: Record<string, unknown>) => ({
@@ -130,12 +129,15 @@ class QueryBuilderMock {
 
 function createSupabaseMock() {
 	return {
-		rpc: vi.fn(async (fn: string) => {
+		rpc: vi.fn(async (fn: string, args?: Record<string, unknown>) => {
 			if (fn === 'ensure_actor_for_user') {
 				return { data: 'actor-current', error: null };
 			}
 			if (fn === 'current_actor_has_project_member_access') {
 				return { data: true, error: null };
+			}
+			if (fn === 'onto_task_create_atomic') {
+				return atomicCreateTaskMock(args);
 			}
 			return { data: null, error: null };
 		}),
@@ -147,7 +149,30 @@ describe('POST /api/onto/tasks/create assignment + mention coalescing', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		capturedTaskInsertPayload = null;
-		syncTaskAssigneesMock.mockResolvedValue({ addedActorIds: ['actor-assignee'] });
+		atomicCreateTaskMock.mockImplementation(async (args: Record<string, unknown>) => {
+			const taskPayload = args.p_task as Record<string, unknown>;
+			capturedTaskInsertPayload = taskPayload;
+
+			return {
+				data: {
+					task: {
+						id: 'task-1',
+						project_id: taskPayload.project_id,
+						title: taskPayload.title,
+						description: taskPayload.description,
+						type_key: taskPayload.type_key ?? 'task.default',
+						state_key: taskPayload.state_key ?? 'todo',
+						priority: taskPayload.priority ?? 3,
+						start_at: taskPayload.start_at,
+						due_at: taskPayload.due_at,
+						props: taskPayload.props ?? {}
+					},
+					added_actor_ids: args.p_assignee_actor_ids ?? [],
+					idempotent_replay: false
+				},
+				error: null
+			};
+		});
 		notifyTaskAssignmentAddedMock.mockResolvedValue({ recipientUserIds: ['user-assignee'] });
 		resolveEntityMentionUserIdsMock.mockResolvedValue(['user-assignee', 'user-mentioned']);
 		notifyEntityMentionsAddedMock.mockResolvedValue({ notifiedUserIds: ['user-mentioned'] });
@@ -174,11 +199,15 @@ describe('POST /api/onto/tasks/create assignment + mention coalescing', () => {
 		} as any);
 
 		expect(response.status).toBe(201);
-		expect(syncTaskAssigneesMock).toHaveBeenCalledWith(
+		expect(atomicCreateTaskMock).toHaveBeenCalledWith(
 			expect.objectContaining({
-				projectId: 'project-1',
-				taskId: 'task-1',
-				assignedByActorId: 'actor-current'
+				p_sync_assignees: true,
+				p_assignee_actor_ids: ['actor-assignee'],
+				p_assigned_by_actor_id: 'actor-current',
+				p_task: expect.objectContaining({
+					project_id: 'project-1',
+					title: 'Task with mention'
+				})
 			})
 		);
 		expect(notifyTaskAssignmentAddedMock).toHaveBeenCalledWith(

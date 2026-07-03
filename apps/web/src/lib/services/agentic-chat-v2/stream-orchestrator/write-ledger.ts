@@ -16,6 +16,7 @@
 import type { ChatToolCall } from '@buildos/shared-types';
 import { parseToolArguments } from './tool-arguments';
 import type { FastToolExecution } from './shared';
+import { isDuplicateWriteSkippedExecution } from './round-analysis';
 
 export type WriteLedgerEntry = {
 	toolName: string;
@@ -162,6 +163,7 @@ function extractParentIdFromMove(args: ParsedArgs, result: ParsedArgs | null): s
 }
 
 function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry | null {
+	if (isDuplicateWriteSkippedExecution(execution)) return null;
 	const toolName = execution.toolCall.function?.name?.trim() ?? '';
 	if (classifyToolForLedger(toolName) === 'skip') return null;
 
