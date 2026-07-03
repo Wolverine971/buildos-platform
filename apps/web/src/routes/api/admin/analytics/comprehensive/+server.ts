@@ -5,8 +5,9 @@ import {
 	getComprehensiveAnalytics,
 	type AnalyticsTimeframe
 } from '$lib/services/admin/dashboard-analytics.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
-export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -23,7 +24,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			: '7d';
 
 	try {
-		const data = await getComprehensiveAnalytics(supabase, timeframe);
+		const adminSupabase = createAdminSupabaseClient();
+		const data = await getComprehensiveAnalytics(adminSupabase, timeframe);
 		return ApiResponse.success(data);
 	} catch (err) {
 		console.error('[Admin Analytics] Failed to compute comprehensive metrics:', err);

@@ -10,6 +10,7 @@
  */
 
 import type { RequestHandler } from './$types';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
 import {
 	buildTimingAnalytics,
@@ -60,8 +61,9 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	}
 
 	try {
+		const adminSupabase = createAdminSupabaseClient();
 		// Build the query
-		let query = supabase
+		let query = adminSupabase
 			.from('timing_metrics')
 			.select('*')
 			.gte('created_at', startDate.toISOString())
@@ -102,7 +104,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const turnRuns = new Map<string, ChatTurnRunTimingRow>();
 
 		if (turnRunIds.length > 0) {
-			const turnQuery = (supabase as any)
+			const turnQuery = (adminSupabase as any)
 				.from('chat_turn_runs')
 				.select(
 					'id, cache_source, request_prewarmed_context, prepared_prompt_hit, prepared_prompt_miss_reason, prepared_surface_profile, created_at'
@@ -111,7 +113,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 			let { data: turnRows, error: turnError } = await turnQuery;
 			if (turnError) {
-				const fallback = await (supabase as any)
+				const fallback = await (adminSupabase as any)
 					.from('chat_turn_runs')
 					.select('id, cache_source, request_prewarmed_context, created_at')
 					.in('id', turnRunIds);

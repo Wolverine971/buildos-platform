@@ -9,6 +9,7 @@
 
 import type { RequestHandler } from './$types';
 import { getAdminChatDashboardAnalytics } from '$lib/server/admin-chat-dashboard-analytics';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
@@ -29,7 +30,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 	try {
 		const timeframe = url.searchParams.get('timeframe') || '7d';
-		return ApiResponse.success(await getAdminChatDashboardAnalytics(supabase, timeframe));
+		const adminSupabase = createAdminSupabaseClient();
+		return ApiResponse.success(await getAdminChatDashboardAnalytics(adminSupabase, timeframe));
 	} catch (err) {
 		console.error('Chat dashboard error:', err);
 		return ApiResponse.internalError(err, 'Failed to load chat dashboard');

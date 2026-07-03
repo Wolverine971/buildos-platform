@@ -57,6 +57,9 @@ const asString = (value: unknown): string | null => {
 	return trimmed.length > 0 ? trimmed : null;
 };
 
+const isPresent = <T>(value: T | null | undefined): value is T =>
+	value !== null && value !== undefined;
+
 const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 
 const normalizeWhitespace = (value: string): string => value.replace(/\s+/g, ' ').trim();
@@ -105,7 +108,7 @@ const promptSnapshotId = (snapshot: AuditRecord | null | undefined): string | nu
 
 const summarizePromptSections = (snapshot: AuditRecord): unknown => {
 	const promptSections = asRecord(snapshot.prompt_sections);
-	const liteSections = asArray(promptSections?.lite_sections).map(asRecord).filter(Boolean);
+	const liteSections = asArray(promptSections?.lite_sections).map(asRecord).filter(isPresent);
 	if (liteSections.length === 0) return undefined;
 	return liteSections.map((section) =>
 		omitEmpty({
@@ -391,19 +394,21 @@ const toolName = (toolDefinition: AuditRecord): string | null => {
 };
 
 const collectAvailableTools = (snapshot: AuditRecord | null): CatalogEntry[] => {
-	const definitions = asArray(snapshot?.tool_definitions).map(asRecord).filter(Boolean);
-	return definitions
-		.map((definition) => {
-			const name = toolName(definition);
-			if (!name) return null;
-			return {
-				id: name,
-				name,
-				description: toolDescription(definition),
-				source: 'prompt_snapshot.tool_definitions'
-			};
-		})
-		.filter((entry): entry is CatalogEntry => entry !== null);
+	const definitions = asArray(snapshot?.tool_definitions).map(asRecord).filter(isPresent);
+	const entries: CatalogEntry[] = [];
+	for (const definition of definitions) {
+		const name = toolName(definition);
+		if (!name) continue;
+		const entry: CatalogEntry = {
+			id: name,
+			name,
+			source: 'prompt_snapshot.tool_definitions'
+		};
+		const description = toolDescription(definition);
+		if (description) entry.description = description;
+		entries.push(entry);
+	}
+	return entries;
 };
 
 const collectUsedTools = (payload: ChatSessionAuditPayload): LoadedEntry[] => {
@@ -434,7 +439,7 @@ const promptSectionContents = (payload: ChatSessionAuditPayload): string[] => {
 		const snapshot = asRecord(run.prompt_snapshot);
 		const liteSections = asArray(asRecord(snapshot?.prompt_sections)?.lite_sections)
 			.map(asRecord)
-			.filter(Boolean);
+			.filter(isPresent);
 		for (const section of liteSections) {
 			const content = asString(section.content);
 			if (content) sections.push(content);
@@ -482,7 +487,7 @@ const collectToolLoadedIds = (
 	for (const event of payload.timeline) {
 		const payloadRecord = asRecord(event.payload);
 		const name = asString(payloadRecord?.tool_name);
-		if (!name || !toolNames.has(name)) continue;
+		if (!payloadRecord || !name || !toolNames.has(name)) continue;
 		const args = asRecord(payloadRecord.arguments) ?? asRecord(payloadRecord.payload) ?? {};
 		const id = extract(args);
 		if (id) {
@@ -529,7 +534,7 @@ const collectRecommendedSkills = (payload: ChatSessionAuditPayload): LoadedEntry
 	for (const content of promptSectionContents(payload)) {
 		const block = content.match(/Recommended skill ids:\n((?:- .+\n?)+)/);
 		if (!block) continue;
-		for (const line of block[1].split('\n')) {
+		for (const line of (block[1] ?? '').split('\n')) {
 			const ids = line
 				.replace(/^- /, '')
 				.split(',')

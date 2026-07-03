@@ -1,8 +1,10 @@
 // apps/web/src/routes/api/admin/users/+server.ts
 import type { RequestHandler } from './$types';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const METRIC_PAGE_SIZE = 1000;
 
 type OntologyCounts = {
 	tasks: number;
@@ -24,7 +26,44 @@ const EMPTY_ONTOLOGY_COUNTS: OntologyCounts = {
 	requirements: 0
 };
 
-export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+type ChatSessionMetricRow = {
+	id: string;
+	user_id: string;
+	message_count: number | null;
+};
+
+type ChatMessageMetricRow = {
+	session_id: string;
+	user_id: string;
+};
+
+type AgentChatSessionMetricRow = {
+	id: string;
+	user_id: string;
+	message_count: number | null;
+};
+
+type AgentChatMessageMetricRow = {
+	agent_session_id: string;
+	user_id: string;
+};
+
+const fetchAllRows = async <T>(createQuery: () => any): Promise<T[]> => {
+	const rows: T[] = [];
+
+	for (let from = 0; ; from += METRIC_PAGE_SIZE) {
+		const { data, error } = await createQuery().range(from, from + METRIC_PAGE_SIZE - 1);
+		if (error) throw error;
+
+		const page = (data || []) as T[];
+		rows.push(...page);
+		if (page.length < METRIC_PAGE_SIZE) break;
+	}
+
+	return rows;
+};
+
+export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -45,7 +84,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const offset = (page - 1) * limit;
 
 	try {
-		let query = supabase.from('users').select(
+		const adminSupabase = createAdminSupabaseClient();
+		let query = adminSupabase.from('users').select(
 			`
                 id,
                 email,
@@ -119,7 +159,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const userIds = users?.map((u) => u.id) || [];
 
 		// Resolve ontology actors for these users (needed because ontology tables use actor ids)
-		const { data: actors, error: actorError } = await supabase
+		const { data: actors, error: actorError } = await adminSupabase
 			.from('onto_actors')
 			.select('id, user_id')
 			.in('user_id', userIds);
@@ -140,7 +180,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const [
 			{ data: projectCounts },
 			{ data: calendarTokens },
-			{ data: agentSessions },
+			chatSessions,
+			chatMessages,
+			agentSessions,
+			agentMessages,
 			{ data: userBriefPrefs },
 			{ data: dailyBriefs },
 			{ data: ontoTasks },
@@ -153,72 +196,92 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			{ data: smsPreferences }
 		] = await Promise.all([
 			actorIds.length
-				? supabase
+				? adminSupabase
 						.from('onto_projects')
 						.select('created_by')
 						.in('created_by', actorIds)
 						.is('deleted_at', null)
 				: Promise.resolve({ data: [], error: null }),
-			supabase.from('user_calendar_tokens').select('user_id').in('user_id', userIds),
-			supabase
-				.from('agent_chat_sessions')
-				.select('user_id, message_count')
-				.in('user_id', userIds),
-			supabase
+			adminSupabase.from('user_calendar_tokens').select('user_id').in('user_id', userIds),
+			fetchAllRows<ChatSessionMetricRow>(() =>
+				adminSupabase
+					.from('chat_sessions')
+					.select('id, user_id, message_count')
+					.in('user_id', userIds)
+			),
+			fetchAllRows<ChatMessageMetricRow>(() =>
+				adminSupabase
+					.from('chat_messages')
+					.select('session_id, user_id')
+					.in('user_id', userIds)
+			),
+			fetchAllRows<AgentChatSessionMetricRow>(() =>
+				adminSupabase
+					.from('agent_chat_sessions')
+					.select('id, user_id, message_count')
+					.in('user_id', userIds)
+			),
+			fetchAllRows<AgentChatMessageMetricRow>(() =>
+				adminSupabase
+					.from('agent_chat_messages')
+					.select('agent_session_id, user_id')
+					.in('user_id', userIds)
+			),
+			adminSupabase
 				.from('user_brief_preferences')
 				.select('user_id, is_active')
 				.in('user_id', userIds),
-			supabase.from('ontology_daily_briefs').select('user_id').in('user_id', userIds),
+			adminSupabase.from('ontology_daily_briefs').select('user_id').in('user_id', userIds),
 			actorIds.length
-				? supabase
+				? adminSupabase
 						.from('onto_tasks')
 						.select('created_by')
 						.in('created_by', actorIds)
 						.is('deleted_at', null)
 				: Promise.resolve({ data: [], error: null }),
 			actorIds.length
-				? supabase
+				? adminSupabase
 						.from('onto_goals')
 						.select('created_by')
 						.in('created_by', actorIds)
 						.is('deleted_at', null)
 				: Promise.resolve({ data: [], error: null }),
 			actorIds.length
-				? supabase
+				? adminSupabase
 						.from('onto_plans')
 						.select('created_by')
 						.in('created_by', actorIds)
 						.is('deleted_at', null)
 				: Promise.resolve({ data: [], error: null }),
 			actorIds.length
-				? supabase
+				? adminSupabase
 						.from('onto_documents')
 						.select('created_by')
 						.in('created_by', actorIds)
 						.is('deleted_at', null)
 				: Promise.resolve({ data: [], error: null }),
 			actorIds.length
-				? supabase
+				? adminSupabase
 						.from('onto_milestones')
 						.select('created_by')
 						.in('created_by', actorIds)
 						.is('deleted_at', null)
 				: Promise.resolve({ data: [], error: null }),
 			actorIds.length
-				? supabase
+				? adminSupabase
 						.from('onto_risks')
 						.select('created_by')
 						.in('created_by', actorIds)
 						.is('deleted_at', null)
 				: Promise.resolve({ data: [], error: null }),
 			actorIds.length
-				? supabase
+				? adminSupabase
 						.from('onto_requirements')
 						.select('created_by')
 						.in('created_by', actorIds)
 						.is('deleted_at', null)
 				: Promise.resolve({ data: [], error: null }),
-			supabase
+			adminSupabase
 				.from('user_sms_preferences')
 				.select(
 					'user_id, daily_sms_count, daily_sms_limit, event_reminders_enabled, phone_verified'
@@ -248,25 +311,59 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				{} as Record<string, boolean>
 			) || {};
 
-		// Agentic chat/session metrics
-		const agenticSessionCountMap =
-			agentSessions?.reduce(
-				(acc, session) => {
-					acc[session.user_id] = (acc[session.user_id] || 0) + 1;
-					return acc;
-				},
-				{} as Record<string, number>
-			) || {};
+		// Chat metrics combine the current user-facing chat tables with legacy
+		// agent chat tables. Message rows are authoritative when present, with
+		// session.message_count kept as a fallback for older/stale records.
+		const currentMessageRowsBySession = new Map<string, number>();
+		for (const message of chatMessages) {
+			currentMessageRowsBySession.set(
+				message.session_id,
+				(currentMessageRowsBySession.get(message.session_id) || 0) + 1
+			);
+		}
 
-		const agenticMessageCountMap =
-			agentSessions?.reduce(
-				(acc, session) => {
-					acc[session.user_id] =
-						(acc[session.user_id] || 0) + (session.message_count || 0);
-					return acc;
-				},
-				{} as Record<string, number>
-			) || {};
+		const legacyMessageRowsBySession = new Map<string, number>();
+		for (const message of agentMessages) {
+			legacyMessageRowsBySession.set(
+				message.agent_session_id,
+				(legacyMessageRowsBySession.get(message.agent_session_id) || 0) + 1
+			);
+		}
+
+		const chatSessionCountMap: Record<string, number> = {};
+		const chatMessageCountMap: Record<string, number> = {};
+
+		for (const session of chatSessions) {
+			chatSessionCountMap[session.user_id] = (chatSessionCountMap[session.user_id] || 0) + 1;
+			chatMessageCountMap[session.user_id] =
+				(chatMessageCountMap[session.user_id] || 0) +
+				Math.max(
+					session.message_count || 0,
+					currentMessageRowsBySession.get(session.id) || 0
+				);
+		}
+
+		for (const session of agentSessions) {
+			chatSessionCountMap[session.user_id] = (chatSessionCountMap[session.user_id] || 0) + 1;
+			chatMessageCountMap[session.user_id] =
+				(chatMessageCountMap[session.user_id] || 0) +
+				Math.max(
+					session.message_count || 0,
+					legacyMessageRowsBySession.get(session.id) || 0
+				);
+		}
+
+		const knownCurrentSessionIds = new Set(chatSessions.map((session) => session.id));
+		for (const message of chatMessages) {
+			if (knownCurrentSessionIds.has(message.session_id)) continue;
+			chatMessageCountMap[message.user_id] = (chatMessageCountMap[message.user_id] || 0) + 1;
+		}
+
+		const knownLegacySessionIds = new Set(agentSessions.map((session) => session.id));
+		for (const message of agentMessages) {
+			if (knownLegacySessionIds.has(message.agent_session_id)) continue;
+			chatMessageCountMap[message.user_id] = (chatMessageCountMap[message.user_id] || 0) + 1;
+		}
 
 		// Daily brief preferences and counts
 		const dailyBriefPreferenceMap =
@@ -345,8 +442,11 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				...user,
 				project_count: projectCountMap[user.id] || 0,
 				calendar_connected: calendarConnectedMap[user.id] || false,
-				agentic_session_count: agenticSessionCountMap[user.id] || 0,
-				agentic_message_count: agenticMessageCountMap[user.id] || 0,
+				chat_session_count: chatSessionCountMap[user.id] || 0,
+				chat_message_count: chatMessageCountMap[user.id] || 0,
+				// Legacy aliases for older admin clients. New code should use chat_*.
+				agentic_session_count: chatSessionCountMap[user.id] || 0,
+				agentic_message_count: chatMessageCountMap[user.id] || 0,
 				daily_brief_opt_in: dailyBriefPreferenceMap[user.id] || false,
 				daily_brief_count: dailyBriefCountMap[user.id] || 0,
 				ontology_counts: ontologyCounts,

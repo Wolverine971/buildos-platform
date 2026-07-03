@@ -405,7 +405,7 @@ const truncate = (value: string | null | undefined, limit: number): string | nul
 	return `${value.slice(0, limit).trim()}...`;
 };
 
-export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -428,9 +428,9 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			userErrors,
 			userErrorSummary
 		] = await Promise.all([
-			supabase.from('users').select('*').eq('id', userId).single(),
-			supabase.from('user_context').select('*').eq('user_id', userId).single(),
-			supabase.rpc('ensure_actor_for_user', {
+			adminSupabase.from('users').select('*').eq('id', userId).single(),
+			adminSupabase.from('user_context').select('*').eq('user_id', userId).single(),
+			adminSupabase.rpc('ensure_actor_for_user', {
 				p_user_id: userId
 			}),
 			errorLogger.getRecentErrors(12, { userId }),
@@ -454,12 +454,12 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			{ data: memberRows, error: memberError },
 			{ data: ownedProjects, error: ownedProjectsError }
 		] = await Promise.all([
-			supabase
+			adminSupabase
 				.from('onto_project_members')
 				.select('project_id')
 				.eq('actor_id', actorId)
 				.is('removed_at', null),
-			supabase
+			adminSupabase
 				.from('onto_projects')
 				.select('*')
 				.in('created_by', ownerIds)
@@ -476,7 +476,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 
 		const { data: sharedProjects, error: sharedProjectsError } =
 			sharedProjectIds.length > 0
-				? await supabase
+				? await adminSupabase
 						.from('onto_projects')
 						.select('*')
 						.in('id', sharedProjectIds)
@@ -504,7 +504,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			chatSessionProjectLinksResult
 		] = await Promise.all([
 			projectIds.length
-				? supabase
+				? adminSupabase
 						.from('onto_tasks')
 						.select(
 							'id, project_id, title, state_key, created_at, updated_at, due_at, completed_at'
@@ -513,7 +513,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 						.is('deleted_at', null)
 				: Promise.resolve({ data: [], error: null }),
 			projectIds.length
-				? supabase
+				? adminSupabase
 						.from('onto_documents')
 						.select(
 							'id, project_id, title, type_key, state_key, created_at, updated_at'
@@ -522,7 +522,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 						.is('deleted_at', null)
 				: Promise.resolve({ data: [], error: null }),
 			projectIds.length
-				? supabase
+				? adminSupabase
 						.from('onto_goals')
 						.select(
 							'id, project_id, name, state_key, type_key, target_date, completed_at, created_at, updated_at'
@@ -531,7 +531,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 						.is('deleted_at', null)
 				: Promise.resolve({ data: [], error: null }),
 			projectIds.length
-				? supabase
+				? adminSupabase
 						.from('onto_plans')
 						.select(
 							'id, project_id, name, state_key, type_key, facet_stage, created_at, updated_at'
@@ -539,14 +539,14 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 						.in('project_id', projectIds)
 						.is('deleted_at', null)
 				: Promise.resolve({ data: [], error: null }),
-			supabase
+			adminSupabase
 				.from('ontology_daily_briefs')
 				.select('id, actor_id, brief_date, created_at')
 				.eq('actor_id', actorId)
 				.order('created_at', { ascending: false })
 				.limit(100),
 			projectIds.length
-				? supabase
+				? adminSupabase
 						.from('onto_project_logs')
 						.select(
 							'project_id, entity_id, entity_type, action, before_data, after_data, created_at'
@@ -555,13 +555,13 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 						.order('created_at', { ascending: false })
 						.limit(300)
 				: Promise.resolve({ data: [], error: null }),
-			supabase
+			adminSupabase
 				.from('task_calendar_events')
 				.select('id, user_id, event_title, event_start, created_at')
 				.eq('user_id', userId)
 				.order('created_at', { ascending: false })
 				.limit(100),
-			supabase
+			adminSupabase
 				.from('chat_sessions')
 				.select(
 					'id, title, auto_title, summary, status, context_type, entity_id, message_count, tool_call_count, total_tokens_used, created_at, updated_at, last_message_at'
@@ -569,13 +569,13 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				.eq('user_id', userId)
 				.order('updated_at', { ascending: false })
 				.limit(100),
-			supabase
+			adminSupabase
 				.from('chat_messages')
 				.select('id, session_id, role, content, created_at, message_type, error_message')
 				.eq('user_id', userId)
 				.order('created_at', { ascending: false })
 				.limit(500),
-			supabase
+			adminSupabase
 				.from('agent_chat_sessions')
 				.select(
 					'id, parent_session_id, session_type, status, context_type, entity_id, message_count, created_at, completed_at'
@@ -583,7 +583,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				.eq('user_id', userId)
 				.order('created_at', { ascending: false })
 				.limit(100),
-			supabase
+			adminSupabase
 				.from('agent_chat_messages')
 				.select(
 					'id, agent_session_id, parent_user_session_id, role, sender_type, content, created_at'
@@ -592,7 +592,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				.order('created_at', { ascending: false })
 				.limit(500),
 			projectIds.length
-				? supabase
+				? adminSupabase
 						.from('chat_sessions_projects')
 						.select('chat_session_id, project_id')
 						.in('project_id', projectIds)
@@ -653,7 +653,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		}
 
 		await hydrateActivityEntityLabels({
-			supabase,
+			supabase: adminSupabase,
 			projectIds,
 			projectLogs,
 			entityLabelByKey
@@ -1107,6 +1107,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			total_project_chat_sessions: processedChatSessions.filter(
 				(session) => session.project_ids.length > 0
 			).length,
+			// Legacy aliases for older admin clients. New code should use total_chat_*.
 			total_agentic_sessions: processedChatSessions.length,
 			total_agentic_messages: totalChatMessages,
 			total_errors: userErrorSummary.total_errors,
@@ -1128,6 +1129,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			daily_briefs: dailyBriefs,
 			scheduled_briefs: scheduledBriefs,
 			chat_sessions: processedChatSessions,
+			// Legacy alias for older admin clients. New code should use chat_sessions.
 			agentic_sessions: processedChatSessions,
 			errors: userErrors,
 			error_summary: userErrorSummary

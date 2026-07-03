@@ -12,6 +12,7 @@ import {
 } from '$lib/server/admin-chat-dashboard-analytics';
 import { getAdminLlmUsageStats } from '$lib/server/admin-llm-usage-analytics';
 import { resolveUsageLogCostBreakdown } from '$lib/services/admin/llm-usage-costs';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
 
 type Timeframe = '24h' | '7d' | '30d' | '90d' | '365d';
@@ -163,6 +164,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const endIso = now.toISOString();
 
 	try {
+		const adminSupabase = createAdminSupabaseClient();
 		const [
 			dashboardAnalytics,
 			llmUsageStats,
@@ -175,10 +177,12 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			promptSnapshotResult,
 			evalRunResult
 		] = await Promise.all([
-			getAdminChatDashboardAnalytics(supabase, timeframe),
-			format === 'json' ? getAdminLlmUsageStats(supabase, timeframeToDays(timeframe)) : null,
+			getAdminChatDashboardAnalytics(adminSupabase, timeframe),
+			format === 'json'
+				? getAdminLlmUsageStats(adminSupabase, timeframeToDays(timeframe))
+				: null,
 			fetchAllRows<any>((from, to) =>
-				supabase
+				adminSupabase
 					.from('chat_sessions')
 					.select(
 						`
@@ -204,7 +208,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					.range(from, to)
 			),
 			fetchAllRows<any>((from, to) =>
-				supabase
+				adminSupabase
 					.from('chat_turn_runs')
 					.select('*')
 					.gte('started_at', startIso)
@@ -213,7 +217,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					.range(from, to)
 			),
 			fetchAllRows<any>((from, to) =>
-				supabase
+				adminSupabase
 					.from('chat_messages')
 					.select('*')
 					.gte('created_at', startIso)
@@ -222,7 +226,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					.range(from, to)
 			),
 			fetchAllRows<any>((from, to) =>
-				supabase
+				adminSupabase
 					.from('chat_tool_executions')
 					.select('*')
 					.gte('created_at', startIso)
@@ -231,7 +235,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					.range(from, to)
 			),
 			fetchAllRows<any>((from, to) =>
-				supabase
+				adminSupabase
 					.from('chat_turn_events')
 					.select('*')
 					.gte('created_at', startIso)
@@ -240,7 +244,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					.range(from, to)
 			),
 			fetchAllRows<any>((from, to) =>
-				supabase
+				adminSupabase
 					.from('llm_usage_logs')
 					.select('*')
 					.or(CHAT_USAGE_FILTER)
@@ -250,7 +254,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					.range(from, to)
 			),
 			fetchAllRows<any>((from, to) =>
-				supabase
+				adminSupabase
 					.from('chat_prompt_snapshots')
 					.select(
 						'id, turn_run_id, session_id, user_id, snapshot_version, prompt_variant, system_prompt_sha256, messages_sha256, tools_sha256, system_prompt_chars, message_chars, approx_prompt_tokens, created_at'
@@ -261,7 +265,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					.range(from, to)
 			),
 			fetchAllRows<any>((from, to) =>
-				supabase
+				adminSupabase
 					.from('chat_prompt_eval_runs')
 					.select('*')
 					.gte('created_at', startIso)
@@ -283,7 +287,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			...promptSnapshotResult.rows.map((row: any) => row.session_id)
 		]);
 		const missingSessionIds = sessionIds.filter((sessionId) => !sessionsById.has(sessionId));
-		const extraSessions = await fetchSessionsByIds(supabase, missingSessionIds);
+		const extraSessions = await fetchSessionsByIds(adminSupabase, missingSessionIds);
 		for (const session of extraSessions) {
 			sessionsById.set(session.id, session);
 		}

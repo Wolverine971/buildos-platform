@@ -1,6 +1,18 @@
 // apps/web/src/routes/api/admin/revenue/+server.ts
 import type { RequestHandler } from './$types';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
+
+async function queryRows<T = any>(
+	query: PromiseLike<{ data: unknown; error: { message?: string } | null }>,
+	label: string
+): Promise<T[]> {
+	const { data, error } = await query;
+	if (error) {
+		throw new Error(`${label}: ${error.message ?? 'query failed'}`);
+	}
+	return Array.isArray(data) ? (data as T[]) : [];
+}
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -24,6 +36,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const month = parseInt(url.searchParams.get('month') || (new Date().getMonth() + 1).toString());
 
 	try {
+		const adminSupabase = createAdminSupabaseClient();
 		// Calculate date ranges
 		let startDate: Date;
 		let endDate: Date;
@@ -49,50 +62,66 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		}
 
 		// Get recognized revenue
-		const { data: currentRevenue } = await supabase
-			.from('invoices')
-			.select('amount_paid')
-			.eq('status', 'paid')
-			.gte('created_at', startDate.toISOString())
-			.lte('created_at', endDate.toISOString());
+		const currentRevenue = await queryRows(
+			adminSupabase
+				.from('invoices')
+				.select('amount_paid')
+				.eq('status', 'paid')
+				.gte('created_at', startDate.toISOString())
+				.lte('created_at', endDate.toISOString()),
+			'current revenue'
+		);
 
-		const { data: previousRevenue } = await supabase
-			.from('invoices')
-			.select('amount_paid')
-			.eq('status', 'paid')
-			.gte('created_at', previousStartDate.toISOString())
-			.lte('created_at', previousEndDate.toISOString());
+		const previousRevenue = await queryRows(
+			adminSupabase
+				.from('invoices')
+				.select('amount_paid')
+				.eq('status', 'paid')
+				.gte('created_at', previousStartDate.toISOString())
+				.lte('created_at', previousEndDate.toISOString()),
+			'previous revenue'
+		);
 
-		const { data: yearRevenue } = await supabase
-			.from('invoices')
-			.select('amount_paid')
-			.eq('status', 'paid')
-			.gte('created_at', new Date(year, 0, 1).toISOString())
-			.lte('created_at', endDate.toISOString());
+		const yearRevenue = await queryRows(
+			adminSupabase
+				.from('invoices')
+				.select('amount_paid')
+				.eq('status', 'paid')
+				.gte('created_at', new Date(year, 0, 1).toISOString())
+				.lte('created_at', endDate.toISOString()),
+			'year revenue'
+		);
 
-		const { data: allTimeRevenue } = await supabase
-			.from('invoices')
-			.select('amount_paid')
-			.eq('status', 'paid');
+		const allTimeRevenue = await queryRows(
+			adminSupabase.from('invoices').select('amount_paid').eq('status', 'paid'),
+			'all-time revenue'
+		);
 
 		// Get refunds
-		const { data: currentRefunds } = await (supabase.from('invoices') as any)
-			.select('amount_refunded, metadata')
-			.gt('amount_refunded', 0)
-			.gte('created_at', startDate.toISOString())
-			.lte('created_at', endDate.toISOString());
+		const currentRefunds = await queryRows(
+			(adminSupabase.from('invoices') as any)
+				.select('amount_refunded, metadata')
+				.gt('amount_refunded', 0)
+				.gte('created_at', startDate.toISOString())
+				.lte('created_at', endDate.toISOString()),
+			'current refunds'
+		);
 
-		const { data: previousRefunds } = await (supabase.from('invoices') as any)
-			.select('amount_refunded')
-			.gt('amount_refunded', 0)
-			.gte('created_at', previousStartDate.toISOString())
-			.lte('created_at', previousEndDate.toISOString());
+		const previousRefunds = await queryRows(
+			(adminSupabase.from('invoices') as any)
+				.select('amount_refunded')
+				.gt('amount_refunded', 0)
+				.gte('created_at', previousStartDate.toISOString())
+				.lte('created_at', previousEndDate.toISOString()),
+			'previous refunds'
+		);
 
 		// Get active subscriptions for deferred revenue
-		const { data: activeSubscriptions } = await supabase
-			.from('customer_subscriptions')
-			.select(
-				`
+		const activeSubscriptions = await queryRows(
+			adminSupabase
+				.from('customer_subscriptions')
+				.select(
+					`
         *,
         subscription_plans!customer_subscriptions_plan_id_fkey (
           price_cents,
@@ -100,8 +129,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
           interval_count
         )
       `
-			)
-			.eq('status', 'active');
+				)
+				.eq('status', 'active'),
+			'active subscriptions'
+		);
 
 		// Calculate deferred revenue
 		let deferredTotal = 0;
@@ -134,17 +165,23 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		});
 
 		// Get prorations (simplified - look for subscription changes)
-		const { data: upgrades } = await (supabase.from('invoices') as any)
-			.select('amount_paid, metadata')
-			.eq('status', 'paid')
-			.gte('created_at', startDate.toISOString())
-			.lte('created_at', endDate.toISOString());
+		const upgrades = await queryRows(
+			(adminSupabase.from('invoices') as any)
+				.select('amount_paid, metadata')
+				.eq('status', 'paid')
+				.gte('created_at', startDate.toISOString())
+				.lte('created_at', endDate.toISOString()),
+			'upgrades'
+		);
 
-		const { data: downgrades } = await (supabase.from('invoices') as any)
-			.select('amount_refunded, metadata')
-			.gt('amount_refunded', 0)
-			.gte('created_at', startDate.toISOString())
-			.lte('created_at', endDate.toISOString());
+		const downgrades = await queryRows(
+			(adminSupabase.from('invoices') as any)
+				.select('amount_refunded, metadata')
+				.gt('amount_refunded', 0)
+				.gte('created_at', startDate.toISOString())
+				.lte('created_at', endDate.toISOString()),
+			'downgrades'
+		);
 
 		// Get chargebacks (would need separate tracking)
 		const chargebacks = {
@@ -155,7 +192,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		};
 
 		// Calculate metrics
-		const { data: revenueMetrics } = await supabase.rpc('get_revenue_metrics');
+		const revenueMetrics = await queryRows(
+			adminSupabase.rpc('get_revenue_metrics'),
+			'revenue metrics'
+		);
 
 		// Build response
 		const recognized = {

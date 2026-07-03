@@ -146,7 +146,9 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) =
       `,
 				{ count: 'exact' }
 			)
-			.gte('created_at', startDate.toISOString())
+			.or(
+				`last_message_at.gte.${startDate.toISOString()},updated_at.gte.${startDate.toISOString()},created_at.gte.${startDate.toISOString()}`
+			)
 			.order(sortBy, { ascending: sortOrder === 'asc', nullsFirst: sortOrder === 'asc' })
 			.range(offset, offset + limit - 1);
 

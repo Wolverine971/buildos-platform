@@ -174,12 +174,14 @@ describe('GET /api/admin/users/[userId]/activity', () => {
 				}
 			]
 		};
-		const supabase = createSupabase(rowsByTable);
+		const adminSupabase = createSupabase(rowsByTable);
+		const requestSupabase = { from: vi.fn(), rpc: vi.fn() };
+		createAdminSupabaseClientMock.mockReturnValue(adminSupabase);
 
 		const response = await GET({
 			params: { userId: 'user-1' },
 			locals: {
-				supabase,
+				supabase: requestSupabase,
 				safeGetSession: vi
 					.fn()
 					.mockResolvedValue({ user: { id: 'admin-1', is_admin: true } })
@@ -221,8 +223,12 @@ describe('GET /api/admin/users/[userId]/activity', () => {
 			entity_id: 'goal-1',
 			object_name: 'Launch prototype'
 		});
-		expect(supabase.from).toHaveBeenCalledWith('onto_goals');
-		expect(supabase.queriesByTable.get('onto_project_logs')?.[0].select).toHaveBeenCalledWith(
+		expect(requestSupabase.from).not.toHaveBeenCalled();
+		expect(requestSupabase.rpc).not.toHaveBeenCalled();
+		expect(adminSupabase.from).toHaveBeenCalledWith('onto_goals');
+		expect(
+			adminSupabase.queriesByTable.get('onto_project_logs')?.[0].select
+		).toHaveBeenCalledWith(
 			'project_id, entity_id, entity_type, action, before_data, after_data, created_at'
 		);
 	});
@@ -296,12 +302,14 @@ describe('GET /api/admin/users/[userId]/activity', () => {
 			task_calendar_events: [],
 			chat_sessions: []
 		};
-		const supabase = createSupabase(rowsByTable);
+		const adminSupabase = createSupabase(rowsByTable);
+		const requestSupabase = { from: vi.fn(), rpc: vi.fn() };
+		createAdminSupabaseClientMock.mockReturnValue(adminSupabase);
 
 		const response = await GET({
 			params: { userId: 'user-1' },
 			locals: {
-				supabase,
+				supabase: requestSupabase,
 				safeGetSession: vi
 					.fn()
 					.mockResolvedValue({ user: { id: 'admin-1', is_admin: true } })
@@ -325,6 +333,8 @@ describe('GET /api/admin/users/[userId]/activity', () => {
 			object_name: 'Pico Keypad Controller',
 			project_name: 'Pico Keypad Controller'
 		});
+		expect(requestSupabase.from).not.toHaveBeenCalled();
+		expect(requestSupabase.rpc).not.toHaveBeenCalled();
 	});
 
 	it('hydrates current and legacy project chats with recent message snippets', async () => {
@@ -428,12 +438,14 @@ describe('GET /api/admin/users/[userId]/activity', () => {
 				}
 			]
 		};
-		const supabase = createSupabase(rowsByTable);
+		const adminSupabase = createSupabase(rowsByTable);
+		const requestSupabase = { from: vi.fn(), rpc: vi.fn() };
+		createAdminSupabaseClientMock.mockReturnValue(adminSupabase);
 
 		const response = await GET({
 			params: { userId: 'user-1' },
 			locals: {
-				supabase,
+				supabase: requestSupabase,
 				safeGetSession: vi
 					.fn()
 					.mockResolvedValue({ user: { id: 'admin-1', is_admin: true } })
@@ -482,5 +494,9 @@ describe('GET /api/admin/users/[userId]/activity', () => {
 			source: 'legacy_agent',
 			project_id: 'project-1'
 		});
+		expect(requestSupabase.from).not.toHaveBeenCalled();
+		expect(requestSupabase.rpc).not.toHaveBeenCalled();
+		expect(adminSupabase.from).toHaveBeenCalledWith('chat_sessions');
+		expect(adminSupabase.from).toHaveBeenCalledWith('chat_messages');
 	});
 });

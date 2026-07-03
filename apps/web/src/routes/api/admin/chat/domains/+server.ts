@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/admin/chat/domains/+server.ts
 import type { RequestHandler } from './$types';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
 import {
 	buildDomainDemandAnalytics,
@@ -55,7 +56,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const startDate = calcStartDate(timeframe, now);
 
 	try {
-		const { data, error } = await supabase
+		const adminSupabase = createAdminSupabaseClient();
+		const { data, error } = await adminSupabase
 			.from('chat_sessions')
 			.select('id, user_id, created_at, updated_at, agent_metadata')
 			.gte('updated_at', startDate.toISOString())

@@ -9,6 +9,7 @@ import {
 	type DashboardAnalyticsPartialPayload,
 	type DashboardAnalyticsPayload
 } from '$lib/services/admin/dashboard-analytics.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 const DASHBOARD_CACHE_TTL_MS = 30_000;
 type DashboardAnalyticsScope = 'full' | 'summary' | 'details';
@@ -81,7 +82,7 @@ async function getCachedDashboardAnalytics(
 	return promise;
 }
 
-export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -100,7 +101,13 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const bypassCache = url.searchParams.get('fresh') === '1';
 
 	try {
-		const data = await getCachedDashboardAnalytics(supabase, timeframe, scope, bypassCache);
+		const adminSupabase = createAdminSupabaseClient();
+		const data = await getCachedDashboardAnalytics(
+			adminSupabase,
+			timeframe,
+			scope,
+			bypassCache
+		);
 		return ApiResponse.success(
 			data,
 			undefined,

@@ -8,6 +8,7 @@
  */
 
 import type { RequestHandler } from './$types';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
 import {
 	buildChatCostAnalytics,
@@ -64,7 +65,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const startDate = calcStartDate(timeframe, now);
 
 	try {
-		const { data: usageLogs, error: usageError } = await supabase
+		const adminSupabase = createAdminSupabaseClient();
+		const { data: usageLogs, error: usageError } = await adminSupabase
 			.from('llm_usage_logs')
 			.select(
 				`
@@ -107,7 +109,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const users: ChatCostUserRow[] = [];
 
 		for (const idChunk of chunks(sessionIds, CHUNK_SIZE)) {
-			const { data, error } = await supabase
+			const { data, error } = await adminSupabase
 				.from('chat_sessions')
 				.select(
 					`
@@ -131,7 +133,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		const sessionUserIds = uniqueStrings(sessions.map((session) => session.user_id));
 		for (const idChunk of chunks(uniqueStrings([...userIds, ...sessionUserIds]), CHUNK_SIZE)) {
-			const { data, error } = await supabase
+			const { data, error } = await adminSupabase
 				.from('users')
 				.select('id, email, name')
 				.in('id', idChunk);
@@ -141,7 +143,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		}
 
 		for (const idChunk of chunks(sessionIds, CHUNK_SIZE)) {
-			const { data, error } = await supabase
+			const { data, error } = await adminSupabase
 				.from('chat_turn_runs')
 				.select(
 					`

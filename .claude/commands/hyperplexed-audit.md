@@ -44,6 +44,7 @@ Per region, check in this order (his leverage order):
 5. Overflow — every user-supplied string clamped (P1)
 6. Icons, imagery, scrims (P9/P10)
 7. Motion & a11y — reduced-motion gating, keyboard, primitives (P11/P13, §2 a11y block)
+8. Signature delight (Tier 3 only) — at most one per surface, and only where it earns its place: cursor-glow grid (P14), magic slider (P15), spotlight-dim (P16), forgiving indicator (P17), gradient-text (P18). Every one must degrade to a fade-in under `prefers-reduced-motion` (P11).
 
 ### 3. Present findings and STOP
 
@@ -54,7 +55,7 @@ Report findings **tiered by leverage**, not by region:
 - [region] finding → P#
 ## Tier 2 — structural within the surface (declutter/hierarchy)
 - …
-## Tier 3 — polish/signature (motion, effects, at most one per surface)
+## Tier 3 — polish/signature (motion, effects, at most one per surface) → P14–P18
 - …
 ```
 

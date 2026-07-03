@@ -1,6 +1,41 @@
 // apps/web/src/routes/api/admin/subscriptions/users/+server.ts
 import type { RequestHandler } from './$types';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
+
+const MAX_LIMIT = 100;
+
+const parsePositiveInt = (value: string | null, fallback: number): number => {
+	const parsed = Number.parseInt(value ?? '', 10);
+	if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+	return parsed;
+};
+
+const normalizeUsers = (users: any[] | null | undefined) =>
+	users?.map((user: any) => {
+		const paymentMethods =
+			user.payment_methods?.map((method: any) => ({
+				...method,
+				last4: method.card_last4,
+				brand: method.card_brand
+			})) ?? [];
+
+		const subscriptions =
+			user.customer_subscriptions?.map((subscription: any) => ({
+				...subscription,
+				payment_methods: paymentMethods
+			})) ?? [];
+		const billingAccount = Array.isArray(user.billing_accounts)
+			? (user.billing_accounts[0] ?? null)
+			: (user.billing_accounts ?? null);
+
+		return {
+			...user,
+			payment_methods: paymentMethods,
+			billing_account: billingAccount,
+			customer_subscriptions: subscriptions
+		};
+	}) ?? [];
 
 export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }, url }) => {
 	const { user } = await safeGetSession();
@@ -20,14 +55,54 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 	}
 
 	try {
-		const page = parseInt(url.searchParams.get('page') || '1');
-		const limit = parseInt(url.searchParams.get('limit') || '50');
+		const page = parsePositiveInt(url.searchParams.get('page'), 1);
+		const limit = Math.min(parsePositiveInt(url.searchParams.get('limit'), 50), MAX_LIMIT);
 		const status = url.searchParams.get('status') || 'all';
 		const search = url.searchParams.get('search') || '';
 		const offset = (page - 1) * limit;
+		const adminSupabase = createAdminSupabaseClient();
+		let matchingUserIds: string[] | null = null;
+		let excludedUserIds: string[] = [];
+
+		if (status !== 'all') {
+			const subscriptionQuery = adminSupabase
+				.from('customer_subscriptions')
+				.select('user_id, status');
+			const { data: subscriptionRows, error: subscriptionError } =
+				status === 'none'
+					? await subscriptionQuery
+					: await subscriptionQuery.eq('status', status);
+
+			if (subscriptionError) throw subscriptionError;
+
+			const userIds = Array.from(
+				new Set(
+					(subscriptionRows ?? [])
+						.map((subscription: any) => subscription.user_id)
+						.filter((id: unknown): id is string => typeof id === 'string' && id.length > 0)
+				)
+			);
+
+			if (status === 'none') {
+				excludedUserIds = userIds;
+			} else {
+				matchingUserIds = userIds;
+				if (matchingUserIds.length === 0) {
+					return ApiResponse.success({
+						users: [],
+						pagination: {
+							page,
+							limit,
+							total: 0,
+							totalPages: 0
+						}
+					});
+				}
+			}
+		}
 
 		// Build query
-		let query: any = (supabase as any).from('users').select(
+		let query: any = (adminSupabase as any).from('users').select(
 			`
 				*,
 				payment_methods (
@@ -61,10 +136,12 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			query = query.or(`email.ilike.%${search}%,name.ilike.%${search}%`);
 		}
 
-		// Apply status filter via RPC if needed
-		if (status !== 'all') {
-			// We'll need to filter in JavaScript since Supabase doesn't support
-			// complex joins with conditions on related tables easily
+		if (matchingUserIds) {
+			query = query.in('id', matchingUserIds);
+		}
+
+		if (excludedUserIds.length > 0) {
+			query = query.not('id', 'in', `(${excludedUserIds.join(',')})`);
 		}
 
 		// Apply pagination
@@ -74,44 +151,10 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 
 		if (error) throw error;
 
-		const normalizedUsers =
-			users?.map((user: any) => {
-				const paymentMethods =
-					user.payment_methods?.map((method: any) => ({
-						...method,
-						last4: method.card_last4,
-						brand: method.card_brand
-					})) ?? [];
-
-				const subscriptions =
-					user.customer_subscriptions?.map((subscription: any) => ({
-						...subscription,
-						payment_methods: paymentMethods
-					})) ?? [];
-				const billingAccount = Array.isArray(user.billing_accounts)
-					? (user.billing_accounts[0] ?? null)
-					: (user.billing_accounts ?? null);
-
-				return {
-					...user,
-					payment_methods: paymentMethods,
-					billing_account: billingAccount,
-					customer_subscriptions: subscriptions
-				};
-			}) ?? [];
-
-		// Filter by subscription status if needed
-		let filteredUsers: any[] = normalizedUsers;
-		if (status !== 'all') {
-			filteredUsers = filteredUsers.filter((user: any) => {
-				const sub = user.customer_subscriptions?.[0];
-				if (!sub) return status === 'none';
-				return sub.status === status;
-			});
-		}
+		const normalizedUsers = normalizeUsers(users);
 
 		return ApiResponse.success({
-			users: filteredUsers,
+			users: normalizedUsers,
 			pagination: {
 				page,
 				limit,

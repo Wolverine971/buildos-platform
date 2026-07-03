@@ -8,6 +8,7 @@
  */
 
 import type { RequestHandler } from './$types';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
 import {
 	buildChatToolAnalytics,
@@ -218,8 +219,9 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const startDate = calcStartDate(timeframe, now);
 
 	try {
+		const adminSupabase = createAdminSupabaseClient();
 		const { rows, totalCount, truncated } = await fetchToolExecutions({
-			supabase,
+			supabase: adminSupabase,
 			startDate,
 			endDate: now
 		});
@@ -228,8 +230,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const sessionIds = uniqueNonEmpty(rows.map((row) => row.session_id));
 
 		const [turnRuns, sessions] = await Promise.all([
-			fetchTurnRunsByIds(supabase, turnRunIds),
-			fetchSessionsByIds(supabase, sessionIds)
+			fetchTurnRunsByIds(adminSupabase, turnRunIds),
+			fetchSessionsByIds(adminSupabase, sessionIds)
 		]);
 
 		const data = buildChatToolAnalytics(rows, turnRuns, sessions, {

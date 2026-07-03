@@ -1197,7 +1197,7 @@ export async function getSubscriptionOverview(client: TypedSupabaseClient) {
 		throw new Error(revenueError.message);
 	}
 
-	const { data: recentChanges } = await client
+	const { data: recentChanges, error: recentChangesError } = await client
 		.from('customer_subscriptions')
 		.select(
 			`
@@ -1215,8 +1215,11 @@ export async function getSubscriptionOverview(client: TypedSupabaseClient) {
 		)
 		.order('updated_at', { ascending: false })
 		.limit(10);
+	if (recentChangesError) {
+		throw new Error(recentChangesError.message);
+	}
 
-	const { data: failedPayments } = await client
+	const { data: failedPayments, error: failedPaymentsError } = await client
 		.from('invoices')
 		.select(
 			`
@@ -1232,8 +1235,11 @@ export async function getSubscriptionOverview(client: TypedSupabaseClient) {
 		.eq('status', 'failed')
 		.order('created_at', { ascending: false })
 		.limit(10);
+	if (failedPaymentsError) {
+		throw new Error(failedPaymentsError.message);
+	}
 
-	const { data: discountUsage } = await client
+	const { data: discountUsage, error: discountUsageError } = await client
 		.from('discount_codes')
 		.select(
 			`
@@ -1245,6 +1251,9 @@ export async function getSubscriptionOverview(client: TypedSupabaseClient) {
 		)
 		.order('usage_count', { ascending: false })
 		.limit(10);
+	if (discountUsageError) {
+		throw new Error(discountUsageError.message);
+	}
 
 	const overview = normalizeNumericRecord(DEFAULT_SUBSCRIPTION_OVERVIEW.overview, rawOverview);
 	const revenue = normalizeNumericRecord(DEFAULT_SUBSCRIPTION_OVERVIEW.revenue, rawRevenue);

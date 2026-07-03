@@ -123,6 +123,15 @@ describe('GET /api/admin/chat/sessions', () => {
 		expect(adminSupabase.from).toHaveBeenCalledWith('chat_messages');
 		expect(adminSupabase.from).toHaveBeenCalledWith('chat_tool_executions');
 		expect(adminSupabase.from).toHaveBeenCalledWith('llm_usage_logs');
+		expect(adminSupabase.queriesByTable.get('chat_sessions')?.[0].or).toHaveBeenCalledWith(
+			expect.stringContaining('last_message_at.gte.')
+		);
+		expect(adminSupabase.queriesByTable.get('chat_sessions')?.[0].or).toHaveBeenCalledWith(
+			expect.stringContaining('updated_at.gte.')
+		);
+		expect(adminSupabase.queriesByTable.get('chat_sessions')?.[0].or).toHaveBeenCalledWith(
+			expect.stringContaining('created_at.gte.')
+		);
 	});
 
 	it('does not create a service-role client for non-admin users', async () => {

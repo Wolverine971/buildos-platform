@@ -75,8 +75,8 @@
 		last_visit: 'Last Visit',
 		created_at: 'Join Date',
 		project_count: 'Projects',
-		agentic_session_count: 'Agentic Sessions',
-		agentic_message_count: 'Agentic Messages',
+		chat_session_count: 'Chat Sessions',
+		chat_message_count: 'Chat Messages',
 		daily_brief_count: 'Daily Briefs',
 		daily_brief_opt_in: 'Daily Brief Opt-in',
 		calendar_connected: 'Calendar Connected',
@@ -113,8 +113,8 @@
 
 	const clientSortableFields = [
 		'project_count',
-		'agentic_session_count',
-		'agentic_message_count',
+		'chat_session_count',
+		'chat_message_count',
 		'daily_brief_count',
 		'daily_brief_opt_in',
 		'calendar_connected',
@@ -172,6 +172,21 @@
 		totalUsers = sorted.length;
 	}
 
+	function normalizeAdminUser(user: any) {
+		const chatSessionCount = user.chat_session_count ?? user.agentic_session_count ?? 0;
+		const chatMessageCount = user.chat_message_count ?? user.agentic_message_count ?? 0;
+
+		return {
+			...user,
+			chat_session_count: chatSessionCount,
+			chat_message_count: chatMessageCount
+		};
+	}
+
+	function normalizeAdminUsers(rows: any[] | undefined) {
+		return rows?.map(normalizeAdminUser) ?? [];
+	}
+
 	onMount(() => {
 		timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 		searchQuery = $page.url.searchParams.get('search')?.trim() || '';
@@ -223,12 +238,13 @@
 
 			const result = await response.json();
 			if (result.success) {
+				const normalizedUsers = normalizeAdminUsers(result.data.users);
 				if (isClientSort) {
 					// Store all data for client-side sorting
-					rawUsers = result.data.users;
+					rawUsers = normalizedUsers;
 					sortUsersClientSide();
 				} else {
-					users = result.data.users;
+					users = normalizedUsers;
 					rawUsers = [];
 					totalPages = result.data.pagination.totalPages;
 					totalUsers = result.data.pagination.total;
@@ -479,8 +495,8 @@
 								<option value="last_visit">Last Visit</option>
 								<option value="created_at">Join Date</option>
 								<option value="project_count">Projects</option>
-								<option value="agentic_session_count">Agentic Sessions</option>
-								<option value="agentic_message_count">Agentic Messages</option>
+								<option value="chat_session_count">Chat Sessions</option>
+								<option value="chat_message_count">Chat Messages</option>
 								<option value="daily_brief_count">Daily Briefs Generated</option>
 								<option value="daily_brief_opt_in">Daily Brief Opt-in</option>
 								<option value="calendar_connected">Calendar Connected</option>
@@ -644,15 +660,15 @@
 								</span>
 							</div>
 							<div class="flex items-center justify-between gap-2">
-								<span class="text-muted-foreground">Sessions</span>
+								<span class="text-muted-foreground">Chat sessions</span>
 								<span class="font-medium text-foreground">
-									{user.agentic_session_count || 0}
+									{user.chat_session_count || 0}
 								</span>
 							</div>
 							<div class="flex items-center justify-between gap-2">
-								<span class="text-muted-foreground">Chat msgs</span>
+								<span class="text-muted-foreground">Chat messages</span>
 								<span class="font-medium text-foreground">
-									{user.agentic_message_count || 0}
+									{user.chat_message_count || 0}
 								</span>
 							</div>
 							<div class="flex items-center justify-between gap-2">
@@ -857,12 +873,12 @@
 							>
 								<button
 									type="button"
-									onclick={() => handleSort('agentic_session_count')}
-									title="Click to sort by agentic sessions"
+									onclick={() => handleSort('chat_session_count')}
+									title="Click to sort by chat sessions"
 									class="flex w-full items-center space-x-1 cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
 								>
-									<span>Agentic Sessions</span>
-									{#if sortBy === 'agentic_session_count'}
+									<span>Chat Sessions</span>
+									{#if sortBy === 'chat_session_count'}
 										{#if sortOrder === 'asc'}
 											<ChevronUp class="h-4 w-4" />
 										{:else}
@@ -889,12 +905,12 @@
 							>
 								<button
 									type="button"
-									onclick={() => handleSort('agentic_message_count')}
-									title="Click to sort by agentic chat messages"
+									onclick={() => handleSort('chat_message_count')}
+									title="Click to sort by chat messages"
 									class="flex w-full items-center space-x-1 cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
 								>
-									<span>Agentic Chat</span>
-									{#if sortBy === 'agentic_message_count'}
+									<span>Chat Messages</span>
+									{#if sortBy === 'chat_message_count'}
 										{#if sortOrder === 'asc'}
 											<ChevronUp class="h-4 w-4" />
 										{:else}
@@ -1112,7 +1128,7 @@
 									<div class="flex items-center gap-1">
 										<Activity class="h-3.5 w-3.5 text-muted-foreground" />
 										<span class="font-medium text-foreground">
-											{user.agentic_session_count || 0}
+											{user.chat_session_count || 0}
 										</span>
 									</div>
 								</td>
@@ -1120,7 +1136,7 @@
 									<div class="flex items-center gap-1">
 										<MessageSquare class="h-3.5 w-3.5 text-muted-foreground" />
 										<span class="text-xs font-medium text-foreground">
-											{user.agentic_message_count || 0}
+											{user.chat_message_count || 0}
 										</span>
 									</div>
 								</td>
@@ -1362,7 +1378,8 @@
 					</div>
 					<p class="text-xs text-foreground">
 						{selectedUser.project_count || 0} projects ·{' '}
-						{selectedUser.agentic_session_count || 0} agentic sessions ·{' '}
+						{selectedUser.chat_session_count || selectedUser.agentic_session_count || 0}
+						chat sessions ·{' '}
 						{selectedUser.daily_brief_count || 0} daily briefs
 					</p>
 				</div>
