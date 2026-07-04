@@ -325,8 +325,16 @@ export class AgentChatStreamController {
 			const requestContextType = selectedContextType;
 			const requestEntityId = this.#deps.getSelectedEntityId();
 			const requestProjectFocus = this.#deps.getResolvedProjectFocus();
+			const prewarm = this.#deps.getPrewarm();
+			const currentPrewarmKey = prewarm.resolveCurrentKey();
+			let matchingPrewarmedContext = prewarm.matchingFreshContext(currentPrewarmKey);
+			let matchingPreparedPrompt = prewarm.matchingFreshPreparedPrompt(currentPrewarmKey);
 			let sessionForTurn = this.#deps.getCurrentSession();
-			if (!sessionForTurn?.id) {
+			const canUseStreamCreatedSession =
+				senderType === 'user' &&
+				Boolean(matchingPreparedPrompt || matchingPrewarmedContext);
+
+			if (!sessionForTurn?.id && !canUseStreamCreatedSession) {
 				try {
 					sessionForTurn = await this.#deps.ensureSessionReady(
 						buildSessionBootstrapTarget(
@@ -345,9 +353,12 @@ export class AgentChatStreamController {
 							: 'Unable to prepare a chat session right now.';
 					return;
 				}
+
+				matchingPrewarmedContext = prewarm.matchingFreshContext(currentPrewarmKey);
+				matchingPreparedPrompt = prewarm.matchingFreshPreparedPrompt(currentPrewarmKey);
 			}
 
-			if (!sessionForTurn?.id) {
+			if (!sessionForTurn?.id && !matchingPreparedPrompt && !matchingPrewarmedContext) {
 				this.error = 'Unable to prepare a chat session right now.';
 				return;
 			}
@@ -358,7 +369,7 @@ export class AgentChatStreamController {
 
 			userMessage = {
 				id: crypto.randomUUID(),
-				session_id: sessionForTurn.id,
+				session_id: sessionForTurn?.id,
 				user_id: undefined,
 				type: senderType as UIMessage['type'],
 				role: 'user' as ChatRole,
@@ -428,11 +439,6 @@ export class AgentChatStreamController {
 			streamController = new AbortController();
 			this.#currentStreamController = streamController;
 			this.isStartingStream = false;
-
-			const prewarm = this.#deps.getPrewarm();
-			const currentPrewarmKey = prewarm.resolveCurrentKey();
-			const matchingPrewarmedContext = prewarm.matchingFreshContext(currentPrewarmKey);
-			const matchingPreparedPrompt = prewarm.matchingFreshPreparedPrompt(currentPrewarmKey);
 			prewarm.clearPreparedPrompt();
 
 			const response = await this.#fetch('/api/agent/v2/stream', {
@@ -443,7 +449,7 @@ export class AgentChatStreamController {
 				signal: streamController.signal,
 				body: JSON.stringify({
 					message: trimmed,
-					session_id: sessionForTurn.id,
+					session_id: sessionForTurn?.id,
 					context_type: requestContextType,
 					entity_id: requestEntityId,
 					attachments: streamAttachmentRefs,

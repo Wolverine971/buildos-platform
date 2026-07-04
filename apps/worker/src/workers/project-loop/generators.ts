@@ -135,6 +135,60 @@ const PREVIEW_KINDS = new Set<NonNullable<ProjectSuggestionPreview['kind']>>([
 	'generic'
 ]);
 
+function normalizeEntityIds(ids: Array<string | null | undefined>): string[] {
+	return Array.from(
+		new Set(ids.filter((id): id is string => typeof id === 'string' && id.length > 0))
+	).sort();
+}
+
+/**
+ * Stable, order-insensitive identity for a suggestion, derived from the entities
+ * its operations target — NOT its (regenerated-every-run) title. Two runs that
+ * flag the same task pair or the same document produce the same key, so a fresh
+ * proposal can be matched against already-open / already-decided suggestions and
+ * dropped before insert. Returns null when no deterministic key exists (drift is
+ * informational and operation-free), in which case prompt suppression is the only
+ * guard. See project-loops-flow-audit-2026-07-04 §3/§4.
+ */
+export function suggestionSuppressionKey(input: {
+	kind: string;
+	operations: LoopOperation[] | null | undefined;
+}): string | null {
+	const ops = Array.isArray(input.operations) ? input.operations : [];
+	switch (input.kind) {
+		case 'task_conflict': {
+			const taskIds: Array<string | null> = [];
+			for (const op of ops) {
+				const args = (op?.args ?? {}) as Record<string, unknown>;
+				taskIds.push(typeof args.task_id === 'string' ? args.task_id : null);
+				const props =
+					args.props && typeof args.props === 'object'
+						? (args.props as Record<string, unknown>)
+						: null;
+				taskIds.push(
+					props && typeof props.loop_conflict_with_task_id === 'string'
+						? props.loop_conflict_with_task_id
+						: null
+				);
+			}
+			const ids = normalizeEntityIds(taskIds);
+			return ids.length ? `task_conflict:${ids.join('|')}` : null;
+		}
+		case 'doc_org':
+		case 'doc_outdated': {
+			const docIds = normalizeEntityIds(
+				ops.map((op) => {
+					const args = (op?.args ?? {}) as Record<string, unknown>;
+					return typeof args.document_id === 'string' ? args.document_id : null;
+				})
+			);
+			return docIds.length ? `${input.kind}:${docIds.join('|')}` : null;
+		}
+		default:
+			return null;
+	}
+}
+
 function truncate(value: unknown, max = 240): string | undefined {
 	if (typeof value !== 'string') return undefined;
 	const text = value.trim();

@@ -152,7 +152,19 @@ export interface ProjectSuggestionResult {
 }
 
 export interface ProjectSuggestionFeedback {
-	reason?: 'not_relevant' | 'wrong_evidence' | 'intentional' | 'too_risky' | 'other';
+	/**
+	 * User-chosen reasons come from the review UI. `dismissed_without_note` is
+	 * synthesized server-side on any dismissal that carries no explicit reason
+	 * or note, so every rejected suggestion records feedback the loop can learn
+	 * from (see loadPriorDecisions).
+	 */
+	reason?:
+		| 'not_relevant'
+		| 'wrong_evidence'
+		| 'intentional'
+		| 'too_risky'
+		| 'other'
+		| 'dismissed_without_note';
 	note?: string;
 	created_at?: string;
 }

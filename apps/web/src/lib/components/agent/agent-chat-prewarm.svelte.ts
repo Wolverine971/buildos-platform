@@ -31,6 +31,8 @@ export interface PrewarmControllerDeps {
 	getSelectedEntityId(): string | undefined;
 	getResolvedProjectFocus(): ProjectFocus | null;
 	getIsPreparingSession(): boolean;
+	/** True while the current turn is starting, streaming, or being restored. */
+	getIsTurnActive(): boolean;
 	getCurrentSession(): ChatSession | null;
 	getCanPrimeActiveChatSession(): boolean;
 	getInputValue(): string;
@@ -72,14 +74,25 @@ export interface PrewarmControllerDeps {
 	logWarn?: (message: string, err: unknown) => void;
 }
 
+export interface PrewarmReadiness {
+	key: string | null;
+	contextCacheReady: boolean;
+	preparedPromptReady: boolean;
+	preparedPromptRetryBlocked: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Controller
 // ---------------------------------------------------------------------------
+
+const PREPARED_PROMPT_RETRY_DELAY_MS = 10_000;
 
 export class PrewarmController {
 	prewarmedContext = $state<FastChatContextCache | null>(null);
 	preparedPrompt = $state<PreparedPromptClient | null>(null);
 	#lastPrewarmKey: string | null = null;
+	#preparedPromptRetryKey: string | null = null;
+	#preparedPromptRetryAfterMs = 0;
 	#deps: PrewarmControllerDeps;
 
 	constructor(deps: PrewarmControllerDeps) {
@@ -124,6 +137,27 @@ export class PrewarmController {
 		return prepared;
 	}
 
+	resolveReadiness(key: string | null = this.resolveCurrentKey()): PrewarmReadiness {
+		if (!key) {
+			return {
+				key: null,
+				contextCacheReady: false,
+				preparedPromptReady: false,
+				preparedPromptRetryBlocked: false
+			};
+		}
+
+		const contextCacheReady = Boolean(this.matchingFreshContext(key));
+		const preparedPromptReady = Boolean(this.matchingFreshPreparedPrompt(key));
+		return {
+			key,
+			contextCacheReady,
+			preparedPromptReady,
+			preparedPromptRetryBlocked:
+				!preparedPromptReady && this.#isPreparedPromptRetryBlocked(key)
+		};
+	}
+
 	/**
 	 * Adopt a prewarmed-context payload returned by a non-orchestrator
 	 * code path (e.g. the session-bootstrap flow), storing it only if
@@ -136,12 +170,30 @@ export class PrewarmController {
 		this.#lastPrewarmKey = cache.key;
 	}
 
-	adoptPrepared(prepared: PreparedPromptClient | null | undefined): void {
-		if (!prepared?.key || !prepared.cache_key) return;
+	adoptPrepared(prepared: PreparedPromptClient | null | undefined): boolean {
+		if (!prepared?.key || !prepared.cache_key) return false;
 		const expiresAt = Date.parse(prepared.expires_at);
-		if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return;
+		if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return false;
 		this.preparedPrompt = prepared;
 		this.#lastPrewarmKey = prepared.cache_key;
+		this.#clearPreparedPromptRetry();
+		return true;
+	}
+
+	#clearPreparedPromptRetry(): void {
+		this.#preparedPromptRetryKey = null;
+		this.#preparedPromptRetryAfterMs = 0;
+	}
+
+	#isPreparedPromptRetryBlocked(key: string): boolean {
+		return (
+			this.#preparedPromptRetryKey === key && Date.now() < this.#preparedPromptRetryAfterMs
+		);
+	}
+
+	#markPreparedPromptRetry(key: string): void {
+		this.#preparedPromptRetryKey = key;
+		this.#preparedPromptRetryAfterMs = Date.now() + PREPARED_PROMPT_RETRY_DELAY_MS;
 	}
 
 	/**
@@ -172,6 +224,7 @@ export class PrewarmController {
 		const contextType = this.#deps.getSelectedContextType();
 		if (!contextType) return;
 		if (this.#deps.getIsPreparingSession()) return;
+		if (this.#deps.getIsTurnActive()) return;
 
 		const focus = this.#deps.getResolvedProjectFocus();
 		const prewarmEntityId = this.#deps.getSelectedEntityId() ?? focus?.projectId;
@@ -194,10 +247,14 @@ export class PrewarmController {
 			return;
 		}
 
-		const cache = this.prewarmedContext;
-		const hasFreshMatchingPrewarm =
-			cache && cache.key === key && isFastChatContextCacheFresh(cache);
-		if (key === this.#lastPrewarmKey && hasFreshMatchingPrewarm) return;
+		const readiness = this.resolveReadiness(key);
+		if (
+			key === this.#lastPrewarmKey &&
+			readiness.contextCacheReady &&
+			(readiness.preparedPromptReady || readiness.preparedPromptRetryBlocked)
+		) {
+			return;
+		}
 
 		this.#lastPrewarmKey = key;
 		const controller = new AbortController();
@@ -210,7 +267,7 @@ export class PrewarmController {
 						context_type: contextType,
 						entity_id: prewarmEntityId,
 						projectFocus: focus,
-						ensure_session: currentSession?.id ? undefined : false
+						...(currentSession?.id ? {} : { ensure_session: false })
 					},
 					{ signal: controller.signal }
 				);
@@ -226,8 +283,11 @@ export class PrewarmController {
 				) {
 					this.prewarmedContext = warmed.prewarmedContext;
 				}
-				if (warmed?.preparedPrompt?.cache_key === key) {
+				const adoptedPreparedPrompt =
+					warmed?.preparedPrompt?.cache_key === key &&
 					this.adoptPrepared(warmed.preparedPrompt);
+				if (!adoptedPreparedPrompt) {
+					this.#markPreparedPromptRetry(key);
 				}
 			} catch (err) {
 				if ((err as DOMException)?.name !== 'AbortError') {
@@ -265,6 +325,7 @@ export class PrewarmController {
 
 	clearPreparedPrompt(): void {
 		this.preparedPrompt = null;
+		this.#clearPreparedPromptRetry();
 	}
 
 	/** Called on modal close to clear all state. */
@@ -272,6 +333,7 @@ export class PrewarmController {
 		this.prewarmedContext = null;
 		this.preparedPrompt = null;
 		this.#lastPrewarmKey = null;
+		this.#clearPreparedPromptRetry();
 	}
 }
 

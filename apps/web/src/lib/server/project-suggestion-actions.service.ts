@@ -210,13 +210,20 @@ export async function decideProjectSuggestion(params: {
 	}
 
 	if (action === 'dismiss') {
-		const feedback = sanitizeFeedback(params.feedback);
+		// Always record feedback on a dismissal. When the surface sends no reason
+		// or note (e.g. the dashboard inbox modal), synthesize an implicit one so
+		// the row still qualifies for the loop's prior-decision memory instead of
+		// being an invisible bare rejection.
+		const feedback: ProjectSuggestionFeedback = sanitizeFeedback(params.feedback) ?? {
+			reason: 'dismissed_without_note',
+			created_at: nowIso
+		};
 		const { data: updated, error: updateError } = await supabase
 			.from('project_suggestions')
 			.update({
 				status: 'rejected',
 				decided_at: nowIso,
-				...(feedback ? { user_feedback: feedback as unknown as Json } : {})
+				user_feedback: feedback as unknown as Json
 			})
 			.eq('id', suggestionId)
 			.eq('project_id', projectId)

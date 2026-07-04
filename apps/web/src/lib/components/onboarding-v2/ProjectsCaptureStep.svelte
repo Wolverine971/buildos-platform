@@ -166,12 +166,14 @@
 			const redirectPath = '/onboarding?v2=true';
 			const encodedRedirect = encodeURIComponent(redirectPath);
 			const response = await fetch(`/profile/calendar?redirect=${encodedRedirect}`);
+			const payload = await response.json().catch(() => null);
+			const result = payload?.success === true && 'data' in payload ? payload.data : payload;
 
 			if (!response.ok) {
-				throw new Error('Failed to get calendar auth URL');
+				throw new Error(
+					payload?.error || payload?.message || 'Failed to get calendar auth URL'
+				);
 			}
-
-			const result = await response.json();
 
 			if (!result.calendarAuthUrl) {
 				throw new Error('No auth URL returned');

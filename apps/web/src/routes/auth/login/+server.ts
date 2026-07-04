@@ -1,20 +1,37 @@
 // apps/web/src/routes/auth/login/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { routeErrorResponse, getRouteRequestId } from '$lib/server/route-error';
 import {
 	getEmailDomain,
 	getSecurityEventLogOptions,
 	getSecurityRequestContext,
 	logSecurityEvent
 } from '$lib/server/security-event-logger';
+import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 
-export const POST: RequestHandler = async ({ request, platform, locals: { supabase } }) => {
-	const { email, password } = await request.json();
+export const POST: RequestHandler = async (event) => {
+	const { request, platform, locals } = event;
+	const { supabase } = locals;
+
+	let body: unknown;
+
+	try {
+		body = await request.json();
+	} catch {
+		return ApiResponse.badRequest('Request body must be valid JSON');
+	}
+
+	if (!body || typeof body !== 'object') {
+		return ApiResponse.badRequest('Request body must be an object');
+	}
+
+	const { email, password } = body as Record<string, unknown>;
 	const errorLogger = ErrorLoggerService.getInstance(supabase);
 	const emailDomain = typeof email === 'string' ? getEmailDomain(email) : null;
 	const requestContext = getSecurityRequestContext(request);
 	const securityEventOptions = getSecurityEventLogOptions(platform);
+	const requestId = getRouteRequestId(event);
 
 	if (!email || !password) {
 		await logSecurityEvent(
@@ -33,7 +50,23 @@ export const POST: RequestHandler = async ({ request, platform, locals: { supaba
 			},
 			securityEventOptions
 		);
-		return json({ error: 'Email and password are required' }, { status: 400 });
+		return ApiResponse.error(
+			'Email and password are required',
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.MISSING_FIELD,
+			{ fields: ['email', 'password'] },
+			{ requestId }
+		);
+	}
+
+	if (typeof email !== 'string' || typeof password !== 'string') {
+		return ApiResponse.error(
+			'Email and password must be strings',
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_FIELD,
+			{ fields: ['email', 'password'] },
+			{ requestId }
+		);
 	}
 
 	try {
@@ -68,6 +101,7 @@ export const POST: RequestHandler = async ({ request, platform, locals: { supaba
 					endpoint: '/auth/login',
 					httpMethod: 'POST',
 					operationType: 'auth_login',
+					requestId,
 					metadata: {
 						emailDomain,
 						flow: 'password'
@@ -75,7 +109,7 @@ export const POST: RequestHandler = async ({ request, platform, locals: { supaba
 				},
 				'warning'
 			);
-			return json({ error: error.message }, { status: 401 });
+			return ApiResponse.unauthorized(error.message);
 		}
 
 		if (!data.session) {
@@ -99,12 +133,19 @@ export const POST: RequestHandler = async ({ request, platform, locals: { supaba
 				endpoint: '/auth/login',
 				httpMethod: 'POST',
 				operationType: 'auth_login',
+				requestId,
 				metadata: {
 					emailDomain,
 					flow: 'password'
 				}
 			});
-			return json({ error: 'Login failed - no session created' }, { status: 401 });
+			return ApiResponse.error(
+				'Login failed - no session created',
+				HttpStatus.UNAUTHORIZED,
+				ErrorCode.OPERATION_FAILED,
+				undefined,
+				{ requestId }
+			);
 		}
 
 		await logSecurityEvent(
@@ -125,14 +166,16 @@ export const POST: RequestHandler = async ({ request, platform, locals: { supaba
 		);
 
 		// The server-side client automatically sets cookies
-		// Return success
-		return json({
-			success: true,
-			user: data.user,
-			redirectTo: '/?auth_success=true&message=' + encodeURIComponent('Welcome back!')
-		});
+		return ApiResponse.success(
+			{
+				user: data.user,
+				redirectTo: '/?auth_success=true&message=' + encodeURIComponent('Welcome back!')
+			},
+			'Logged in successfully',
+			undefined,
+			{ requestId }
+		);
 	} catch (err: unknown) {
-		console.error('Server login error:', err);
 		await logSecurityEvent(
 			{
 				eventType: 'auth.login.error',
@@ -149,15 +192,14 @@ export const POST: RequestHandler = async ({ request, platform, locals: { supaba
 			},
 			securityEventOptions
 		);
-		await errorLogger.logError(err, {
-			endpoint: '/auth/login',
-			httpMethod: 'POST',
-			operationType: 'auth_login',
+		return routeErrorResponse(event, err, {
+			operation: 'auth_login',
+			message: 'Login failed',
+			severity: 'error',
 			metadata: {
 				emailDomain,
 				flow: 'password'
 			}
 		});
-		return json({ error: 'Login failed' }, { status: 500 });
 	}
 };

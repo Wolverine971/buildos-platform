@@ -626,6 +626,19 @@ describe('/api/agent/v2/stream', () => {
 				prepared_prompt_id: preparedPrompt.row.id
 			})
 		);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(supabase.rpc).toHaveBeenCalledWith('merge_chat_session_agent_metadata', {
+			p_session_id: 'session-1',
+			p_patch: {
+				fastchat_context_cache: expect.objectContaining({
+					version: 2,
+					key: 'v2|global|none|none|none',
+					context: expect.objectContaining({
+						contextType: 'global'
+					})
+				})
+			}
+		});
 	});
 
 	it('emits live tool_result payloads with search telemetry and stream events', async () => {

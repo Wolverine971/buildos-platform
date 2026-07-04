@@ -100,6 +100,19 @@
 		return prefs;
 	}
 
+	function unwrapApiPayload<T = any>(payload: any): T {
+		if (payload?.success === true && 'data' in payload) {
+			return payload.data as T;
+		}
+
+		return payload as T;
+	}
+
+	function getApiErrorMessage(payload: any, fallback: string): string {
+		if (!payload || typeof payload !== 'object') return fallback;
+		return payload.error || payload.message || fallback;
+	}
+
 	function getCalendarReturnPath() {
 		const returnUrl = new URL($page.url);
 		returnUrl.searchParams.set('tab', 'calendar');
@@ -231,12 +244,16 @@
 		loadingCalendar = true;
 		try {
 			const response = await fetch(getCalendarSettingsUrl());
+			const payload = await response.json().catch(() => null);
 
 			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
+				const message = getApiErrorMessage(payload, 'Failed to load calendar settings');
+				console.error('Failed to load calendar settings:', message);
+				onerror?.({ message });
+				return;
 			}
 
-			const result = await response.json();
+			const result = unwrapApiPayload(payload);
 
 			if (result.error) {
 				console.error('Failed to load calendar settings:', result.error);
@@ -271,12 +288,16 @@
 					'Cache-Control': 'no-cache'
 				}
 			});
+			const payload = await response.json().catch(() => null);
 
 			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
+				const message = getApiErrorMessage(payload, 'Failed to refresh calendar settings');
+				console.error('Failed to refresh calendar settings:', message);
+				if (showErrors) onerror?.({ message });
+				return;
 			}
 
-			const result = await response.json();
+			const result = unwrapApiPayload(payload);
 
 			if (result.error) {
 				console.error('Failed to refresh calendar settings:', result.error);
@@ -304,7 +325,8 @@
 					throw new Error('Failed to get calendar authorization URL');
 				}
 
-				const result = await response.json();
+				const payload = await response.json();
+				const result = unwrapApiPayload(payload);
 				calendarAuthUrl = result.calendarAuthUrl;
 			}
 

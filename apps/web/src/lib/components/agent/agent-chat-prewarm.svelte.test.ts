@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ChatSession } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { FastChatContextCache } from '$lib/services/agentic-chat-v2/context-cache';
+import type { PreparedPromptClient } from './agent-chat-session';
 import { createPrewarmController, type PrewarmControllerDeps } from './agent-chat-prewarm.svelte';
 
 interface Flags {
@@ -17,6 +18,7 @@ interface Flags {
 	inputValue: string;
 	isVoiceBusy: boolean;
 	isVoicePending: boolean;
+	isTurnActive: boolean;
 }
 
 function defaultFlags(): Flags {
@@ -37,7 +39,8 @@ function defaultFlags(): Flags {
 		canPrimeActiveChatSession: false,
 		inputValue: '',
 		isVoiceBusy: false,
-		isVoicePending: false
+		isVoicePending: false,
+		isTurnActive: false
 	};
 }
 
@@ -59,6 +62,25 @@ function makeCache(params: { key: string; ageMs?: number }): FastChatContextCach
 	};
 }
 
+function makePreparedPrompt(params: {
+	cacheKey: string;
+	key?: string;
+	expiresInMs?: number;
+}): PreparedPromptClient {
+	return {
+		id: params.key ?? 'prepared-1',
+		key: params.key ?? 'prepared-key',
+		cache_key: params.cacheKey,
+		expires_at: new Date(Date.now() + (params.expiresInMs ?? 90_000)).toISOString()
+	};
+}
+
+async function flushMicrotasks(count = 4): Promise<void> {
+	for (let index = 0; index < count; index += 1) {
+		await Promise.resolve();
+	}
+}
+
 function createHarness(opts: Partial<Flags> = {}) {
 	const flags: Flags = { ...defaultFlags(), ...opts };
 	const prewarm = vi.fn().mockResolvedValue(null);
@@ -71,6 +93,7 @@ function createHarness(opts: Partial<Flags> = {}) {
 		getSelectedEntityId: () => flags.selectedEntityId,
 		getResolvedProjectFocus: () => flags.resolvedProjectFocus,
 		getIsPreparingSession: () => flags.isPreparingSession,
+		getIsTurnActive: () => flags.isTurnActive,
 		getCurrentSession: () => flags.currentSession,
 		getCanPrimeActiveChatSession: () => flags.canPrimeActiveChatSession,
 		getInputValue: () => flags.inputValue,
@@ -137,6 +160,47 @@ describe('PrewarmController — matchingFreshContext', () => {
 		h.controller.prewarmedContext = makeCache({ key: 'same' });
 		expect(h.controller.matchingFreshContext(null)).toBeNull();
 		expect(h.controller.matchingFreshContext(undefined)).toBeNull();
+	});
+});
+
+describe('PrewarmController — resolveReadiness', () => {
+	it('tracks context readiness independently from prepared prompt readiness', () => {
+		const h = createHarness();
+		const key = h.controller.resolveCurrentKey()!;
+		h.controller.prewarmedContext = makeCache({ key });
+
+		expect(h.controller.resolveReadiness(key)).toMatchObject({
+			key,
+			contextCacheReady: true,
+			preparedPromptReady: false,
+			preparedPromptRetryBlocked: false
+		});
+	});
+
+	it('tracks prepared prompt readiness independently from context readiness', () => {
+		const h = createHarness();
+		const key = h.controller.resolveCurrentKey()!;
+		h.controller.adoptPrepared(makePreparedPrompt({ cacheKey: key }));
+
+		expect(h.controller.resolveReadiness(key)).toMatchObject({
+			key,
+			contextCacheReady: false,
+			preparedPromptReady: true,
+			preparedPromptRetryBlocked: false
+		});
+	});
+
+	it('treats expired prepared prompts as not ready while preserving fresh context readiness', () => {
+		const h = createHarness();
+		const key = h.controller.resolveCurrentKey()!;
+		h.controller.prewarmedContext = makeCache({ key });
+		h.controller.preparedPrompt = makePreparedPrompt({ cacheKey: key, expiresInMs: -1_000 });
+
+		expect(h.controller.resolveReadiness(key)).toMatchObject({
+			key,
+			contextCacheReady: true,
+			preparedPromptReady: false
+		});
 	});
 });
 
@@ -260,12 +324,73 @@ describe('PrewarmController — orchestrate', () => {
 		expect(h.prewarm).toHaveBeenCalledTimes(1);
 	});
 
-	it('does not refire when the key hasnt changed and cache is fresh', () => {
+	it('skips while a turn is active', () => {
+		const h = createHarness({ isTurnActive: true });
+		h.controller.orchestrate();
+		expect(h.prewarm).not.toHaveBeenCalled();
+	});
+
+	it('does not refire when the key hasnt changed and cache plus prepared prompt are fresh', () => {
 		const h = createHarness();
 		h.controller.orchestrate();
 		const key = h.controller.resolveCurrentKey()!;
 		h.controller.prewarmedContext = makeCache({ key });
+		h.controller.adoptPrepared(makePreparedPrompt({ cacheKey: key }));
 		h.controller.orchestrate();
+		expect(h.prewarm).toHaveBeenCalledTimes(1);
+	});
+
+	it('rebuilds a prepared prompt after clear when context cache is still fresh', () => {
+		const h = createHarness();
+		const key = h.controller.resolveCurrentKey()!;
+		const cache = makeCache({ key });
+		h.controller.adopt(cache);
+		h.controller.adoptPrepared(makePreparedPrompt({ cacheKey: key }));
+
+		h.controller.clearPreparedPrompt();
+		h.controller.orchestrate();
+
+		expect(h.prewarm).toHaveBeenCalledTimes(1);
+		expect(h.prewarm.mock.calls[0]?.[0]).toMatchObject({
+			session_id: 'session-1',
+			context_type: 'project',
+			entity_id: 'project-1'
+		});
+		expect(h.prewarm.mock.calls[0]?.[0]).not.toHaveProperty('ensure_session');
+	});
+
+	it('waits until the active turn completes before rebuilding a prepared prompt', () => {
+		const h = createHarness({ isTurnActive: true });
+		const key = h.controller.resolveCurrentKey()!;
+		const cache = makeCache({ key });
+		h.controller.adopt(cache);
+		h.controller.adoptPrepared(makePreparedPrompt({ cacheKey: key }));
+		h.controller.clearPreparedPrompt();
+
+		h.controller.orchestrate();
+		expect(h.prewarm).not.toHaveBeenCalled();
+
+		h.flags.isTurnActive = false;
+		h.controller.orchestrate();
+		expect(h.prewarm).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not spin when prepared prompt creation returns empty while context stays fresh', async () => {
+		const h = createHarness();
+		const key = h.controller.resolveCurrentKey()!;
+		const cache = makeCache({ key });
+		h.controller.adopt(cache);
+		h.controller.clearPreparedPrompt();
+		h.prewarm.mockResolvedValue({
+			session: null,
+			prewarmedContext: cache,
+			preparedPrompt: null
+		});
+
+		h.controller.orchestrate();
+		await flushMicrotasks();
+		h.controller.orchestrate();
+
 		expect(h.prewarm).toHaveBeenCalledTimes(1);
 	});
 
@@ -321,6 +446,7 @@ describe('PrewarmController — reset', () => {
 		// Simulate the fetch resolving and caching a fresh entry
 		const key = h.controller.resolveCurrentKey()!;
 		h.controller.prewarmedContext = makeCache({ key });
+		h.controller.adoptPrepared(makePreparedPrompt({ cacheKey: key }));
 
 		// With the cache now present, second orchestrate is a no-op
 		h.controller.orchestrate();

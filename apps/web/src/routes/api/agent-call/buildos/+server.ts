@@ -9,6 +9,7 @@ import {
 	toBuildosAgentErrorResponse
 } from '$lib/server/agent-call/agent-call-service';
 import { getSecurityEventLogOptions } from '$lib/server/security-event-logger';
+import { logRouteError } from '$lib/server/route-error';
 
 function isBuildosAgentRequest(value: unknown): value is BuildosAgentRequest {
 	return (
@@ -34,7 +35,8 @@ async function readBuildosAgentRequest(request: Request): Promise<BuildosAgentRe
 	return body;
 }
 
-export const POST: RequestHandler = async ({ request, platform }) => {
+export const POST: RequestHandler = async (event) => {
+	const { request, platform } = event;
 	const service = new BuildosAgentCallService(
 		createAdminSupabaseClient(),
 		getSecurityEventLogOptions(platform)
@@ -67,7 +69,14 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		const { status, body } = toBuildosAgentErrorResponse(error);
 
 		if (status >= 500) {
-			console.error('BuildOS agent call gateway error:', error);
+			await logRouteError(event, error, {
+				operation: 'agent_call.gateway',
+				severity: 'error',
+				status,
+				metadata: {
+					protocol: 'buildos-agent-json-rpc'
+				}
+			});
 		}
 
 		return json(body, { status });

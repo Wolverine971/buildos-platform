@@ -12,10 +12,12 @@ import type {
 	ProjectAuditEvidenceRef,
 	ProjectAuditRecommendation,
 	ProjectAuditSuggestionRole,
+	LoopOperation,
 	ProjectLoopBrief,
 	ProjectLoopJobMetadata,
 	ProjectLoopRun,
 	ProjectSuggestionEvidenceRef,
+	ProjectSuggestionKind,
 	ProposedSuggestion
 } from '@buildos/shared-types';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
@@ -34,7 +36,8 @@ import {
 	generateDocOrganization,
 	generateOutdatedDocs,
 	generateProjectBrief,
-	generateTaskConflicts
+	generateTaskConflicts,
+	suggestionSuppressionKey
 } from './generators';
 import {
 	buildProjectLoopParentMap,
@@ -61,6 +64,12 @@ const PROJECT_LOOP_COST_CAP_USD = 0.35;
 const PRIOR_DECISION_LOOKBACK_DAYS = 60;
 const COMPLETE_AUDIT_ACTIVITY_LOOKBACK_DAYS = 30;
 const AUDIT_MEMORY_LOOKBACK_DAYS = 90;
+const SUGGESTION_SUPPRESSION_LOOKBACK_DAYS = 60;
+// Statuses whose suggestions should suppress a fresh duplicate: still-open items
+// (pending/delegated), user dismissals (rejected), and already-applied work.
+// 'superseded' and 'failed' are intentionally excluded — the user never got to
+// act on those, so re-surfacing them after a fresh run is desirable.
+const SUGGESTION_SUPPRESSION_STATUSES = ['pending', 'delegated', 'rejected', 'applied'];
 
 function nowIso(): string {
 	return new Date().toISOString();
@@ -91,12 +100,14 @@ async function loadPriorDecisions(projectId: string): Promise<LoopPriorDecision[
 	const since = new Date(
 		Date.now() - PRIOR_DECISION_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
 	).toISOString();
+	// No user_feedback filter: dismissals now always carry synthetic feedback,
+	// and applied cleanup carries none — but future runs still need to see that
+	// work was already done so the model does not re-propose it.
 	const { data, error } = await supabase
 		.from('project_suggestions')
 		.select('title, kind, status, user_feedback, decided_at, updated_at')
 		.eq('project_id', projectId)
 		.in('status', ['rejected', 'applied', 'delegated', 'superseded'])
-		.not('user_feedback', 'is', null)
 		.gte('updated_at', since)
 		.order('updated_at', { ascending: false })
 		.limit(30);
@@ -126,6 +137,42 @@ async function loadPriorDecisions(projectId: string): Promise<LoopPriorDecision[
 			};
 		})
 		.filter((decision): decision is LoopPriorDecision => Boolean(decision));
+}
+
+/**
+ * Suppression keys for the project's still-open and recently-decided suggestions,
+ * so a fresh run does not re-emit a duplicate the user is already looking at (or
+ * has already acted on).
+ */
+async function loadExistingSuggestionKeys(projectId: string): Promise<Set<string>> {
+	const since = new Date(
+		Date.now() - SUGGESTION_SUPPRESSION_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
+	).toISOString();
+	const { data, error } = await supabase
+		.from('project_suggestions')
+		.select('kind, operations')
+		.eq('project_id', projectId)
+		.in('status', SUGGESTION_SUPPRESSION_STATUSES)
+		.gte('created_at', since)
+		.limit(500);
+
+	if (error) {
+		console.warn(
+			`[ProjectLoops] Failed to load existing suggestion keys for project ${projectId}:`,
+			error.message
+		);
+		return new Set();
+	}
+
+	const keys = new Set<string>();
+	for (const row of (data ?? []) as Record<string, unknown>[]) {
+		const key = suggestionSuppressionKey({
+			kind: asString(row.kind) ?? '',
+			operations: (row.operations as LoopOperation[] | null) ?? []
+		});
+		if (key) keys.add(key);
+	}
+	return keys;
 }
 
 async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
@@ -1495,12 +1542,39 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			})
 		);
 
-		const proposed: ProposedSuggestion[] = [
+		// Deterministic pre-insert suppression: drop proposals that duplicate a
+		// suggestion the user is already looking at or has already decided, keyed
+		// on the entities they touch (not their regenerated titles). This is the
+		// only reliable guard against the loop re-flagging the same undecided task
+		// pair or doc every run — prompt suppression has never had feedback data to
+		// work with. See project-loops-flow-audit-2026-07-04 §3/§4.
+		const generated: ProposedSuggestion[] = [
 			...outdated,
 			...taskConflicts,
 			...docOrg,
 			...drift
-		].slice(0, MAX_SUGGESTIONS);
+		];
+		const existingKeys = await loadExistingSuggestionKeys(projectId);
+		const seenThisRunKeys = new Set<string>();
+		let suppressedCount = 0;
+		const proposed: ProposedSuggestion[] = [];
+		for (const suggestion of generated) {
+			if (proposed.length >= MAX_SUGGESTIONS) break;
+			const key = suggestionSuppressionKey(suggestion);
+			if (key && (existingKeys.has(key) || seenThisRunKeys.has(key))) {
+				suppressedCount += 1;
+				continue;
+			}
+			if (key) seenThisRunKeys.add(key);
+			proposed.push(suggestion);
+		}
+		if (suppressedCount) {
+			await job.log(
+				`Suppressed ${suppressedCount} duplicate suggestion${
+					suppressedCount === 1 ? '' : 's'
+				} already open or previously decided for this project.`
+			);
+		}
 
 		if (proposed.length) {
 			await heartbeat('Writing suggestions');
@@ -1544,12 +1618,17 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			}
 		}
 
+		const countKind = (kind: ProjectSuggestionKind): number =>
+			proposed.filter((s) => s.kind === kind).length;
 		const summaryBase = proposed.length
-			? `${proposed.length} suggestion${proposed.length === 1 ? '' : 's'}: ${docOrg.length} organization, ${outdated.length} outdated-doc, ${drift.length} drift, ${taskConflicts.length} task-conflict.`
+			? `${proposed.length} suggestion${proposed.length === 1 ? '' : 's'}: ${countKind('doc_org')} organization, ${countKind('doc_outdated')} outdated-doc, ${countKind('drift')} drift, ${countKind('task_conflict')} task-conflict.`
 			: 'No reconciliation suggestions — project looks tidy.';
-		const summary = skippedGenerators.length
-			? `${summaryBase} Skipped ${skippedGenerators.join(', ')} after cost cap.`
+		const summaryWithSuppressed = suppressedCount
+			? `${summaryBase} Suppressed ${suppressedCount} duplicate${suppressedCount === 1 ? '' : 's'}.`
 			: summaryBase;
+		const summary = skippedGenerators.length
+			? `${summaryWithSuppressed} Skipped ${skippedGenerators.join(', ')} after cost cap.`
+			: summaryWithSuppressed;
 
 		const { error: terminalError } = await supabase
 			.from('project_loop_runs')

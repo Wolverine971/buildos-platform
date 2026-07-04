@@ -28,6 +28,10 @@ export interface CacheConfig {
 	mustRevalidate?: boolean; // force revalidation
 }
 
+export interface ApiResponseMetadata {
+	requestId?: string;
+}
+
 // Common HTTP status codes
 export const HttpStatus = {
 	OK: 200,
@@ -107,14 +111,16 @@ function buildCacheControl(config: CacheConfig): string {
 function buildSuccessPayload<T = unknown>(
 	data?: T,
 	message?: string,
-	warnings?: ApiWarning[]
+	warnings?: ApiWarning[],
+	metadata?: ApiResponseMetadata
 ): SharedApiResponse<T> {
 	return {
 		success: true,
 		data,
 		message,
 		warnings,
-		timestamp: new Date().toISOString()
+		timestamp: new Date().toISOString(),
+		requestId: metadata?.requestId
 	};
 }
 
@@ -123,7 +129,8 @@ function buildErrorPayload(
 	status: number,
 	code?: string,
 	details?: unknown,
-	warnings?: ApiWarning[]
+	warnings?: ApiWarning[],
+	metadata?: ApiResponseMetadata
 ): SharedApiResponse<never> {
 	return {
 		success: false,
@@ -132,14 +139,20 @@ function buildErrorPayload(
 		code,
 		details,
 		warnings,
-		timestamp: new Date().toISOString()
+		timestamp: new Date().toISOString(),
+		requestId: metadata?.requestId
 	};
 }
 
 export class ApiResponse {
 	// Success responses with optional caching
-	static success<T = unknown>(data?: T, message?: string, cacheConfig?: CacheConfig) {
-		const response = json(buildSuccessPayload(data, message));
+	static success<T = unknown>(
+		data?: T,
+		message?: string,
+		cacheConfig?: CacheConfig,
+		metadata?: ApiResponseMetadata
+	) {
+		const response = json(buildSuccessPayload(data, message, undefined, metadata));
 
 		if (cacheConfig) {
 			response.headers.set('Cache-Control', buildCacheControl(cacheConfig));
@@ -148,17 +161,32 @@ export class ApiResponse {
 			}
 		}
 
+		if (metadata?.requestId) {
+			response.headers.set('X-Request-Id', metadata.requestId);
+		}
+
 		return response;
 	}
 
-	static created<T = unknown>(data?: T, message?: string, cacheConfig?: CacheConfig) {
-		const response = json(buildSuccessPayload(data, message), { status: HttpStatus.CREATED });
+	static created<T = unknown>(
+		data?: T,
+		message?: string,
+		cacheConfig?: CacheConfig,
+		metadata?: ApiResponseMetadata
+	) {
+		const response = json(buildSuccessPayload(data, message, undefined, metadata), {
+			status: HttpStatus.CREATED
+		});
 
 		if (cacheConfig) {
 			response.headers.set('Cache-Control', buildCacheControl(cacheConfig));
 			if (data) {
 				response.headers.set('ETag', generateETag(data));
 			}
+		}
+
+		if (metadata?.requestId) {
+			response.headers.set('X-Request-Id', metadata.requestId);
 		}
 
 		return response;
@@ -179,9 +207,21 @@ export class ApiResponse {
 		message: string,
 		status: number = HttpStatus.INTERNAL_SERVER_ERROR,
 		code?: string,
-		details?: unknown
+		details?: unknown,
+		metadata?: ApiResponseMetadata
 	) {
-		return json(buildErrorPayload(message, status, code, details), { status });
+		const response = json(
+			buildErrorPayload(message, status, code, details, undefined, metadata),
+			{
+				status
+			}
+		);
+
+		if (metadata?.requestId) {
+			response.headers.set('X-Request-Id', metadata.requestId);
+		}
+
+		return response;
 	}
 
 	// Common error responses

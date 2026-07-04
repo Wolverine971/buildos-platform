@@ -3024,6 +3024,26 @@ export const POST: RequestHandler = async ({
 					promptContext = normalizeFastChatContextSnapshot(
 						preparedPromptForTurn.row.context_payload
 					) ?? { contextType };
+					const preparedPromptContextCache = buildFastChatContextCacheEntry({
+						cacheKey,
+						context: promptContext,
+						createdAt:
+							typeof preparedPromptForTurn.row.created_at === 'string'
+								? preparedPromptForTurn.row.created_at
+								: undefined
+					});
+					void updateAgentMetadata(
+						supabase,
+						session.id,
+						{
+							fastchat_context_cache: preparedPromptContextCache
+						},
+						{
+							errorLogger,
+							userId,
+							projectId: projectIdForLogs
+						}
+					);
 					systemPrompt = preparedPromptForTurn.surface.system_prompt;
 					litePromptEnvelope = {
 						promptVariant: LITE_PROMPT_VARIANT,

@@ -1,8 +1,9 @@
 // apps/web/src/routes/profile/calendar/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+import { ApiResponse } from '$lib/utils/api-response';
+import { logRouteError, routeErrorResponse } from '$lib/server/route-error';
 
 // Removed - now using GoogleOAuthService.generateCalendarAuthUrl()
 
@@ -18,16 +19,18 @@ function getSafeRedirectPath(candidate: string | null, origin: string): string |
 	}
 }
 
-export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase }, url }) => {
+export const GET: RequestHandler = async (event) => {
+	const {
+		locals: { safeGetSession, supabase },
+		url
+	} = event;
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	try {
-		console.log('Loading calendar settings for user:', user.id);
-
 		// Create OAuth service instance
 		const oAuthService = new GoogleOAuthService(supabase);
 
@@ -45,7 +48,14 @@ export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase }
 				.single()
 				.then(({ data, error }) => {
 					if (error && error.code !== 'PGRST116') {
-						console.error('Error fetching calendar preferences:', error);
+						void logRouteError(event, error, {
+							operation: 'profile_calendar.preferences',
+							userId: user.id,
+							severity: 'warning',
+							metadata: {
+								resource: 'user_calendar_preferences'
+							}
+						});
 					}
 					return (
 						data || {
@@ -71,7 +81,11 @@ export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase }
 				try {
 					actorId = await ensureActorId(supabase, user.id);
 				} catch (error) {
-					console.error('Error resolving actor for scheduled tasks:', error);
+					void logRouteError(event, error, {
+						operation: 'profile_calendar.resolve_actor',
+						userId: user.id,
+						severity: 'warning'
+					});
 					return [];
 				}
 
@@ -89,7 +103,14 @@ export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase }
 
 				if (eventsError || !events?.length) {
 					if (eventsError) {
-						console.error('Error fetching scheduled ontology events:', eventsError);
+						void logRouteError(event, eventsError, {
+							operation: 'profile_calendar.scheduled_events',
+							userId: user.id,
+							severity: 'warning',
+							metadata: {
+								actorId
+							}
+						});
 					}
 					return [];
 				}
@@ -118,11 +139,26 @@ export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase }
 				]);
 
 				if (tasksError) {
-					console.error('Error fetching scheduled ontology tasks:', tasksError);
+					void logRouteError(event, tasksError, {
+						operation: 'profile_calendar.scheduled_tasks',
+						userId: user.id,
+						severity: 'warning',
+						metadata: {
+							actorId,
+							taskCount: taskIds.length
+						}
+					});
 					return [];
 				}
 				if (projectsError) {
-					console.error('Error fetching scheduled ontology projects:', projectsError);
+					void logRouteError(event, projectsError, {
+						operation: 'profile_calendar.scheduled_projects',
+						userId: user.id,
+						severity: 'warning',
+						metadata: {
+							projectCount: projectIds.length
+						}
+					});
 				}
 
 				const taskMap = new Map((tasks ?? []).map((task) => [task.id, task]));
@@ -167,21 +203,20 @@ export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase }
 			redirectPath
 		});
 
-		console.log('Calendar settings loaded successfully');
-
-		return json({
+		return ApiResponse.success({
 			calendarStatus,
 			calendarAuthUrl,
 			calendarPreferences,
 			scheduledTasks
 		});
 	} catch (error) {
-		console.error('Error loading calendar settings:', error);
-		return json(
-			{
-				error: error instanceof Error ? error.message : 'Failed to load calendar settings'
-			},
-			{ status: 500 }
-		);
+		return routeErrorResponse(event, error, {
+			operation: 'profile_calendar.load',
+			userId: user.id,
+			message: error instanceof Error ? error.message : 'Failed to load calendar settings',
+			metadata: {
+				redirect: url.searchParams.get('redirect')
+			}
+		});
 	}
 };

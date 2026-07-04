@@ -1,5 +1,6 @@
 // apps/web/src/routes/oauth/register/+server.ts
 import { json } from '@sveltejs/kit';
+import type { RequestEvent } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import {
@@ -7,8 +8,9 @@ import {
 	registerDynamicOAuthClient
 } from '$lib/server/agent-call/oauth-connector.service';
 import { checkOAuthRateLimit, OAUTH_RATE_LIMITS } from '$lib/server/agent-call/oauth-rate-limit';
+import { logRouteError } from '$lib/server/route-error';
 
-function errorResponse(error: unknown) {
+async function errorResponse(event: RequestEvent, error: unknown) {
 	if (error instanceof OAuthConnectorError) {
 		return json(
 			{
@@ -25,7 +27,10 @@ function errorResponse(error: unknown) {
 		);
 	}
 
-	console.error('[OAuth Register] Unhandled error:', error);
+	await logRouteError(event, error, {
+		operation: 'oauth.register',
+		severity: 'error'
+	});
 	return json(
 		{
 			error: 'server_error',
@@ -51,7 +56,8 @@ export const OPTIONS: RequestHandler = async () =>
 		}
 	});
 
-export const POST: RequestHandler = async ({ request, getClientAddress }) => {
+export const POST: RequestHandler = async (event) => {
+	const { request, getClientAddress } = event;
 	const rateLimit = checkOAuthRateLimit(
 		`oauth:register:${getClientAddress()}`,
 		OAUTH_RATE_LIMITS.register
@@ -86,6 +92,6 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			}
 		);
 	} catch (error) {
-		return errorResponse(error);
+		return errorResponse(event, error);
 	}
 };

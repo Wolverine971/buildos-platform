@@ -6,8 +6,10 @@ import {
 	AgentCallBootstrapLinkService,
 	serializeBootstrapDocumentAsText
 } from '$lib/server/agent-call/bootstrap-link.service';
+import { logRouteError } from '$lib/server/route-error';
 
-export const GET: RequestHandler = async ({ params, url }) => {
+export const GET: RequestHandler = async (event) => {
+	const { params, url } = event;
 	const service = new AgentCallBootstrapLinkService();
 	const baseUrl = url.origin;
 	const format = url.searchParams.get('format')?.toLowerCase() === 'json' ? 'json' : 'text';
@@ -58,7 +60,14 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			});
 		}
 
-		console.error('Failed to load agent call bootstrap link:', error);
+		await logRouteError(event, error, {
+			operation: 'agent_call.bootstrap',
+			severity: 'error',
+			status: 500,
+			metadata: {
+				format
+			}
+		});
 
 		if (format === 'json') {
 			return json(

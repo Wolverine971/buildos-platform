@@ -1,21 +1,23 @@
 // apps/web/src/routes/auth/logout/+server.ts
-import { json, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { dev } from '$app/environment';
-import { logServerError } from '$lib/server/error-tracking';
+import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
+import { logRouteError, routeErrorResponse } from '$lib/server/route-error';
 import {
 	getSecurityEventLogOptions,
 	getSecurityRequestContext,
 	logSecurityEvent
 } from '$lib/server/security-event-logger';
 
-export const POST: RequestHandler = async ({
-	locals: { supabase, safeGetSession },
-	cookies,
-	url,
-	platform,
-	request
-}) => {
+export const POST: RequestHandler = async (event) => {
+	const {
+		locals: { supabase, safeGetSession },
+		cookies,
+		url,
+		platform,
+		request
+	} = event;
 	const redirectTo = url.searchParams.get('redirect') || '/auth/login';
 	const isApiCall = url.searchParams.get('api') === 'true';
 	const { user } = await safeGetSession();
@@ -28,7 +30,6 @@ export const POST: RequestHandler = async ({
 		const { error } = await supabase.auth.signOut({ scope: 'global' });
 
 		if (error) {
-			console.error('Supabase signOut error:', error);
 			await logSecurityEvent(
 				{
 					eventType: 'auth.logout.failed',
@@ -48,10 +49,7 @@ export const POST: RequestHandler = async ({
 				},
 				securityEventOptions
 			);
-			await logServerError({
-				error,
-				endpoint: '/auth/logout',
-				method: 'POST',
+			await logRouteError(event, error, {
 				operation: 'auth_logout_signout',
 				userId,
 				severity: 'warning',
@@ -123,11 +121,7 @@ export const POST: RequestHandler = async ({
 
 		// For API calls, return JSON response
 		if (isApiCall) {
-			return json({
-				success: true,
-				redirectTo,
-				message: 'Logged out successfully'
-			});
+			return ApiResponse.success({ redirectTo }, 'Logged out successfully');
 		}
 
 		// For regular calls, redirect
@@ -138,7 +132,6 @@ export const POST: RequestHandler = async ({
 			throw error;
 		}
 
-		console.error('Logout error:', error);
 		await logSecurityEvent(
 			{
 				eventType: 'auth.logout.error',
@@ -156,28 +149,20 @@ export const POST: RequestHandler = async ({
 			},
 			securityEventOptions
 		);
-		await logServerError({
-			error,
-			endpoint: '/auth/logout',
-			method: 'POST',
-			operation: 'auth_logout',
-			userId,
-			severity: 'error',
-			metadata: {
-				redirectTo,
-				isApiCall
-			}
-		});
 
 		if (isApiCall) {
-			return json(
-				{
-					success: false,
-					error: 'Logout failed',
-					redirectTo
-				},
-				{ status: 500 }
-			);
+			return routeErrorResponse(event, error, {
+				operation: 'auth_logout',
+				userId,
+				message: 'Logout failed',
+				status: HttpStatus.INTERNAL_SERVER_ERROR,
+				code: ErrorCode.INTERNAL_ERROR,
+				details: { redirectTo },
+				metadata: {
+					redirectTo,
+					isApiCall
+				}
+			});
 		}
 
 		// Fallback redirect even on error

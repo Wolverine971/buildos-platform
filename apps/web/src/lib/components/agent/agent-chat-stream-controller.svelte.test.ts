@@ -124,6 +124,8 @@ function createHarness(
 		fetchImpl?: typeof fetch;
 		readyRefs?: ChatAttachmentRef[];
 		draftAttachments?: AgentChatImageAttachment[];
+		prewarmedContext?: unknown | null;
+		preparedPrompt?: PreparedPromptClient | null;
 	} = {}
 ) {
 	let inputValue = overrides.inputValue ?? 'hello';
@@ -139,12 +141,19 @@ function createHarness(
 	let lastTurnContext = null;
 	let readyRefs = overrides.readyRefs ?? [];
 	let draftAttachments = overrides.draftAttachments ?? [];
-	let preparedPrompt: PreparedPromptClient | null = {
-		id: 'prepared-1',
-		key: 'prepared-key',
-		cache_key: 'cache-key',
-		expires_at: '2099-01-01T00:00:00.000Z'
-	};
+	let prewarmedContext =
+		overrides.prewarmedContext === undefined
+			? { key: 'cache-key', hydrated: true }
+			: overrides.prewarmedContext;
+	let preparedPrompt: PreparedPromptClient | null =
+		overrides.preparedPrompt === undefined
+			? {
+					id: 'prepared-1',
+					key: 'prepared-key',
+					cache_key: 'cache-key',
+					expires_at: '2099-01-01T00:00:00.000Z'
+				}
+			: overrides.preparedPrompt;
 
 	const messages: UIMessage[] = [];
 	const sseEvents: AgentSSEMessage[] = [];
@@ -176,7 +185,7 @@ function createHarness(
 
 	const prewarm: StreamControllerPrewarmDeps = {
 		resolveCurrentKey: vi.fn(() => 'cache-key'),
-		matchingFreshContext: vi.fn(() => ({ key: 'cache-key', hydrated: true })),
+		matchingFreshContext: vi.fn(() => prewarmedContext),
 		matchingFreshPreparedPrompt: vi.fn(() => preparedPrompt),
 		clearPreparedPrompt: vi.fn(() => {
 			preparedPrompt = null;
@@ -298,6 +307,12 @@ function createHarness(
 		set draftAttachments(value: AgentChatImageAttachment[]) {
 			draftAttachments = value;
 		},
+		set prewarmedContext(value: unknown | null) {
+			prewarmedContext = value;
+		},
+		set preparedPrompt(value: PreparedPromptClient | null) {
+			preparedPrompt = value;
+		},
 		set currentSession(value: ChatSession | null) {
 			currentSession = value;
 		},
@@ -352,6 +367,90 @@ describe('AgentChatStreamController', () => {
 		expect(h.thinking.finalize).toHaveBeenCalledWith('completed');
 		expect(h.assistant.flushText).toHaveBeenCalled();
 		expect(h.assistant.finalizeMessage).toHaveBeenCalled();
+	});
+
+	it('uses draft prewarm on first send without bootstrapping a session', async () => {
+		const h = createHarness({ currentSession: null, inputValue: 'First turn' });
+
+		const sendPromise = h.controller.sendMessage();
+		await flushMicrotasks();
+
+		expect(h.ensureSessionReady).not.toHaveBeenCalled();
+		expect(h.messages).toHaveLength(1);
+		expect(h.messages[0]?.session_id).toBeUndefined();
+
+		const requestBody = parseBody(h.streamFetchCalls[0]!);
+		expect(requestBody).not.toHaveProperty('session_id');
+		expect(requestBody).toMatchObject({
+			message: 'First turn',
+			context_type: 'project',
+			entity_id: 'project-1',
+			preparedPromptKey: 'prepared-key'
+		});
+		expect(requestBody.prewarmedContext).toEqual({ key: 'cache-key', hydrated: true });
+
+		const run = h.streamProcessor.runs[0]!;
+		const streamCreatedSession = makeSession({ id: 'stream-created-session' });
+		run.progress({ type: 'session', session: streamCreatedSession } as AgentSSEMessage);
+		run.progress({ type: 'done' });
+		run.complete();
+		await sendPromise;
+
+		expect(h.sseEvents[0]).toMatchObject({
+			type: 'session',
+			session: expect.objectContaining({ id: 'stream-created-session' })
+		});
+		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('completed');
+	});
+
+	it('uses context-only draft prewarm on first send when no prepared prompt is available', async () => {
+		const h = createHarness({
+			currentSession: null,
+			inputValue: 'First turn',
+			preparedPrompt: null
+		});
+
+		const sendPromise = h.controller.sendMessage();
+		await flushMicrotasks();
+
+		expect(h.ensureSessionReady).not.toHaveBeenCalled();
+		expect(h.messages[0]?.session_id).toBeUndefined();
+
+		const requestBody = parseBody(h.streamFetchCalls[0]!);
+		expect(requestBody).not.toHaveProperty('session_id');
+		expect(requestBody.preparedPromptKey).toBeNull();
+		expect(requestBody.prewarmedContext).toEqual({ key: 'cache-key', hydrated: true });
+
+		h.streamProcessor.runs[0]!.progress({ type: 'done' });
+		h.streamProcessor.runs[0]!.complete();
+		await sendPromise;
+	});
+
+	it('bootstraps a session on first send when no reusable draft prewarm exists', async () => {
+		const h = createHarness({
+			currentSession: null,
+			inputValue: 'First turn',
+			prewarmedContext: null,
+			preparedPrompt: null
+		});
+
+		const sendPromise = h.controller.sendMessage();
+		await flushMicrotasks();
+
+		expect(h.ensureSessionReady).toHaveBeenCalledOnce();
+		expect(h.messages[0]?.session_id).toBe('ensured-session');
+
+		const requestBody = parseBody(h.streamFetchCalls[0]!);
+		expect(requestBody).toMatchObject({
+			message: 'First turn',
+			session_id: 'ensured-session',
+			preparedPromptKey: null,
+			prewarmedContext: null
+		});
+
+		h.streamProcessor.runs[0]!.progress({ type: 'done' });
+		h.streamProcessor.runs[0]!.complete();
+		await sendPromise;
 	});
 
 	it('rolls back the optimistic message and restores input/draft on HTTP errors', async () => {

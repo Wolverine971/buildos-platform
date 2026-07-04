@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/hyperplexed/AI_INBOX_NOTIFICATION_MODAL_FIX_2026-07-03.md -->
+
 # AI Inbox Notification Modal Fix — 2026-07-03
 
 ## Scope

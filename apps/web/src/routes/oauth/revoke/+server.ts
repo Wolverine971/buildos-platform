@@ -1,5 +1,6 @@
 // apps/web/src/routes/oauth/revoke/+server.ts
 import { json } from '@sveltejs/kit';
+import type { RequestEvent } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import {
@@ -7,6 +8,43 @@ import {
 	resolveOAuthClient,
 	revokeOAuthToken
 } from '$lib/server/agent-call/oauth-connector.service';
+import { logRouteError } from '$lib/server/route-error';
+
+async function revokeError(event: RequestEvent, error: unknown) {
+	if (error instanceof OAuthConnectorError) {
+		return json(
+			{
+				error: error.code,
+				error_description: error.description
+			},
+			{
+				status: error.status,
+				headers: {
+					'Access-Control-Allow-Origin': '*',
+					'Cache-Control': 'no-store'
+				}
+			}
+		);
+	}
+
+	await logRouteError(event, error, {
+		operation: 'oauth.revoke',
+		severity: 'error'
+	});
+	return json(
+		{
+			error: 'server_error',
+			error_description: 'OAuth revocation failed'
+		},
+		{
+			status: 500,
+			headers: {
+				'Access-Control-Allow-Origin': '*',
+				'Cache-Control': 'no-store'
+			}
+		}
+	);
+}
 
 export const OPTIONS: RequestHandler = async () =>
 	new Response(null, {
@@ -18,7 +56,8 @@ export const OPTIONS: RequestHandler = async () =>
 		}
 	});
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async (event) => {
+	const { request } = event;
 	try {
 		const form = new URLSearchParams(await request.text());
 		const token = form.get('token')?.trim();
@@ -42,35 +81,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 		});
 	} catch (error) {
-		if (error instanceof OAuthConnectorError) {
-			return json(
-				{
-					error: error.code,
-					error_description: error.description
-				},
-				{
-					status: error.status,
-					headers: {
-						'Access-Control-Allow-Origin': '*',
-						'Cache-Control': 'no-store'
-					}
-				}
-			);
-		}
-
-		console.error('[OAuth Revoke] Unhandled error:', error);
-		return json(
-			{
-				error: 'server_error',
-				error_description: 'OAuth revocation failed'
-			},
-			{
-				status: 500,
-				headers: {
-					'Access-Control-Allow-Origin': '*',
-					'Cache-Control': 'no-store'
-				}
-			}
-		);
+		return revokeError(event, error);
 	}
 };

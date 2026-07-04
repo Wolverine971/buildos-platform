@@ -5,7 +5,7 @@ import type { RequestHandler } from './$types';
 import { CalendarService, CalendarConnectionError } from '$lib/services/calendar-service';
 import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
-import { logServerError } from '$lib/server/error-tracking';
+import { logRouteError } from '$lib/server/route-error';
 // MCP-compatible request types
 interface MCPToolCallRequest {
 	method: 'tools/call';
@@ -21,7 +21,8 @@ interface MCPListToolsRequest {
 
 type MCPRequest = MCPToolCallRequest | MCPListToolsRequest;
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async (event) => {
+	const { request, locals } = event;
 	let userId: string | undefined;
 
 	try {
@@ -94,8 +95,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			{ status: 400 }
 		);
 	} catch (error: any) {
-		console.error('Calendar API error:', error);
-
 		// Provide user-friendly error messages
 		let message = 'Calendar operation failed. Please try again.';
 		let code = -32603;
@@ -111,14 +110,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			code = -32404;
 		}
 
-		await logServerError({
-			error,
-			endpoint: '/api/agent/google-calendar',
-			method: 'POST',
+		await logRouteError(event, error, {
 			operation: 'agent_google_calendar',
 			userId,
+			status: 500,
 			severity: code === -32429 ? 'warning' : 'error',
 			metadata: {
+				protocol: 'mcp',
 				mcpErrorCode: code,
 				responseMessage: message
 			}

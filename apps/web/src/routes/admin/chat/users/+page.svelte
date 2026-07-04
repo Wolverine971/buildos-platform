@@ -90,12 +90,16 @@
 		user_name: string | null;
 		title: string;
 		context_type: string;
+		entity_id: string | null;
+		project_ids: string[];
 		project_names: string[];
 		status: string;
 		created_at: string;
 		last_activity_at: string | null;
+		last_classified_at: string | null;
 		classification_state: 'classified' | 'missing' | 'stale';
 		topics: string[];
+		summary_preview: string | null;
 		turn_count: number;
 		message_count: number;
 		user_message_count: number;
@@ -197,6 +201,72 @@
 		}>;
 	};
 
+	type RedactedTurn = {
+		turn_run_id: string;
+		session_id: string;
+		turn_index: number;
+		status: string;
+		finished_reason: string | null;
+		started_at: string;
+		finished_at: string | null;
+		duration_ms: number | null;
+		ttfr_ms: number | null;
+		ttfe_ms: number | null;
+		tool_round_count: number;
+		tool_call_count: number;
+		tool_failure_count: number;
+		validation_failure_count: number;
+		llm_pass_count: number;
+		first_lane: string | null;
+		first_skill_path: string | null;
+		first_canonical_op: string | null;
+		cache_source: string | null;
+		prepared_prompt_hit: boolean | null;
+		error_summaries: Array<{
+			source: 'message' | 'tool' | 'llm' | 'turn' | 'validation';
+			message: string;
+		}>;
+		entity_changes: Array<{
+			action: string;
+			entity_type: string;
+			entity_id: string;
+			entity_title: string | null;
+			project_id: string | null;
+		}>;
+	};
+
+	type RedactedTimelineEvent = {
+		id: string;
+		timestamp: string;
+		type:
+			| 'session'
+			| 'turn'
+			| 'timing'
+			| 'tool'
+			| 'llm'
+			| 'entity_change'
+			| 'error'
+			| 'context_shift';
+		severity: 'info' | 'success' | 'warning' | 'error';
+		turn_index: number | null;
+		title: string;
+		summary: string;
+	};
+
+	type RedactedSession = {
+		session: SessionMetric;
+		turns: RedactedTurn[];
+		timeline: RedactedTimelineEvent[];
+		privacy: {
+			raw_message_content_returned: false;
+			raw_assistant_content_returned: false;
+			raw_request_message_returned: false;
+			raw_tool_arguments_returned: false;
+			raw_tool_results_returned: false;
+			prompt_snapshot_returned: false;
+		};
+	};
+
 	const PAGE_SIZE = 50;
 	const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
 		month: 'short',
@@ -233,6 +303,10 @@
 	let userDetail = $state<UserDetail | null>(null);
 	let isLoadingDetail = $state(false);
 	let detailError = $state<string | null>(null);
+	let selectedSessionId = $state<string | null>(null);
+	let redactedSession = $state<RedactedSession | null>(null);
+	let isLoadingSession = $state(false);
+	let sessionDetailError = $state<string | null>(null);
 
 	const truncatedSources = $derived(
 		Object.entries(data?.data_health.truncated ?? {})
@@ -261,8 +335,12 @@
 	$effect(() => {
 		if (!browser || !autoRefresh) return;
 		const timer = window.setInterval(() => {
-			loadUsers();
-			if (selectedUserId) loadUserDetail(selectedUserId);
+			void loadUsers();
+			if (selectedUserId) {
+				const currentSessionId = selectedSessionId;
+				void loadUserDetail(selectedUserId, false);
+				if (currentSessionId) void loadRedactedSession(currentSessionId);
+			}
 		}, 60_000);
 		return () => window.clearInterval(timer);
 	});
@@ -306,11 +384,19 @@
 		}
 	}
 
-	async function loadUserDetail(userId: string) {
+	function clearSelectedSession() {
+		selectedSessionId = null;
+		redactedSession = null;
+		isLoadingSession = false;
+		sessionDetailError = null;
+	}
+
+	async function loadUserDetail(userId: string, resetSession = true) {
 		selectedUserId = userId;
 		userDetail = null;
 		isLoadingDetail = true;
 		detailError = null;
+		if (resetSession) clearSelectedSession();
 		try {
 			const params = new URLSearchParams({
 				timeframe: selectedTimeframe,
@@ -331,6 +417,31 @@
 			detailError = err instanceof Error ? err.message : 'Failed to load user drilldown';
 		} finally {
 			isLoadingDetail = false;
+		}
+	}
+
+	async function loadRedactedSession(sessionId: string) {
+		const userId = selectedUserId;
+		if (!userId) return;
+		selectedSessionId = sessionId;
+		redactedSession = null;
+		isLoadingSession = true;
+		sessionDetailError = null;
+		try {
+			const response = await fetch(
+				`/api/admin/chat/users/${encodeURIComponent(userId)}/sessions/${encodeURIComponent(sessionId)}`
+			);
+			if (!response.ok) throw new Error('Failed to load redacted session timeline');
+			const result = await response.json();
+			if (!result.success)
+				throw new Error(result.message || 'Failed to load redacted session timeline');
+			redactedSession = result.data;
+		} catch (err) {
+			console.error('Failed loading redacted session timeline', err);
+			sessionDetailError =
+				err instanceof Error ? err.message : 'Failed to load redacted session timeline';
+		} finally {
+			isLoadingSession = false;
 		}
 	}
 
@@ -384,10 +495,22 @@
 		return Number.isFinite(parsed.getTime()) ? dateFormatter.format(parsed) : value;
 	}
 
+	function eventTypeLabel(value: string): string {
+		return value.replaceAll('_', ' ');
+	}
+
+	function severityClass(severity: RedactedTimelineEvent['severity']): string {
+		if (severity === 'error') return 'border-destructive/30 bg-destructive/10 text-destructive';
+		if (severity === 'warning') return 'border-warning/30 bg-warning/10 text-warning';
+		if (severity === 'success') return 'border-success/30 bg-success/10 text-success';
+		return 'border-border bg-muted text-muted-foreground';
+	}
+
 	function closeDrawer() {
 		selectedUserId = null;
 		userDetail = null;
 		detailError = null;
+		clearSelectedSession();
 	}
 </script>
 
@@ -1088,12 +1211,28 @@
 												· {session.classification_state}
 											</p>
 										</div>
-										<a
-											class="text-xs font-semibold text-accent hover:underline"
-											href={`/admin/chat/sessions?chat_session_id=${session.session_id}`}
-										>
-											Open full session audit
-										</a>
+										<div class="flex flex-wrap items-center justify-end gap-3">
+											<button
+												type="button"
+												class="text-xs font-semibold text-accent hover:underline disabled:cursor-wait disabled:opacity-60"
+												disabled={isLoadingSession &&
+													selectedSessionId === session.session_id}
+												onclick={() =>
+													loadRedactedSession(session.session_id)}
+											>
+												{selectedSessionId === session.session_id
+													? isLoadingSession
+														? 'Loading timeline'
+														: 'Timeline selected'
+													: 'Inspect redacted timeline'}
+											</button>
+											<a
+												class="text-xs font-semibold text-muted-foreground hover:text-accent hover:underline"
+												href={`/admin/chat/sessions?chat_session_id=${session.session_id}`}
+											>
+												Open full session audit
+											</a>
+										</div>
 									</div>
 									<div
 										class="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground md:grid-cols-5"
@@ -1110,6 +1249,288 @@
 							{/each}
 						</div>
 					</section>
+
+					{#if selectedSessionId || isLoadingSession || sessionDetailError || redactedSession}
+						<section>
+							<div class="flex flex-wrap items-end justify-between gap-3">
+								<div>
+									<h3
+										class="text-sm font-semibold uppercase tracking-wide text-muted-foreground"
+									>
+										Redacted Session Timeline
+									</h3>
+									{#if redactedSession}
+										<p class="mt-1 text-sm text-muted-foreground">
+											{redactedSession.session.title} · {formatDate(
+												redactedSession.session.last_activity_at
+											)}
+										</p>
+									{/if}
+								</div>
+								{#if redactedSession}
+									<a
+										class="text-xs font-semibold text-muted-foreground hover:text-accent hover:underline"
+										href={`/admin/chat/sessions?chat_session_id=${redactedSession.session.session_id}`}
+									>
+										Open full session audit
+									</a>
+								{/if}
+							</div>
+
+							{#if isLoadingSession}
+								<div class="mt-3 space-y-2">
+									{#each Array.from({ length: 4 }) as _}
+										<div class="h-10 animate-pulse rounded bg-muted"></div>
+									{/each}
+								</div>
+							{:else if sessionDetailError}
+								<div
+									class="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3"
+								>
+									<p class="text-sm text-destructive">{sessionDetailError}</p>
+								</div>
+							{:else if redactedSession}
+								<div class="mt-3 rounded-lg border border-border bg-card p-3">
+									<div class="grid grid-cols-2 gap-2 text-xs md:grid-cols-6">
+										<div>
+											<p class="text-muted-foreground">Turns</p>
+											<p class="text-sm font-semibold text-foreground">
+												{formatNumber(redactedSession.session.turn_count)}
+											</p>
+										</div>
+										<div>
+											<p class="text-muted-foreground">Messages</p>
+											<p class="text-sm font-semibold text-foreground">
+												{formatNumber(
+													redactedSession.session.message_count
+												)}
+											</p>
+										</div>
+										<div>
+											<p class="text-muted-foreground">Tools</p>
+											<p class="text-sm font-semibold text-foreground">
+												{formatNumber(
+													redactedSession.session.tool_call_count
+												)}
+											</p>
+										</div>
+										<div>
+											<p class="text-muted-foreground">LLM</p>
+											<p class="text-sm font-semibold text-foreground">
+												{formatNumber(
+													redactedSession.session.llm_call_count
+												)}
+											</p>
+										</div>
+										<div>
+											<p class="text-muted-foreground">p95 TTFR</p>
+											<p class="text-sm font-semibold text-foreground">
+												{formatMs(redactedSession.session.ttfr_p95_ms)}
+											</p>
+										</div>
+										<div>
+											<p class="text-muted-foreground">Entities</p>
+											<p class="text-sm font-semibold text-foreground">
+												{formatNumber(
+													redactedSession.session.created_entity_count +
+														redactedSession.session
+															.updated_entity_count +
+														redactedSession.session.deleted_entity_count
+												)}
+											</p>
+										</div>
+									</div>
+									<div class="mt-3 flex flex-wrap gap-2 text-[11px]">
+										<span
+											class="rounded border border-border bg-muted px-2 py-0.5 text-muted-foreground"
+											>Content hidden</span
+										>
+										<span
+											class="rounded border border-border bg-muted px-2 py-0.5 text-muted-foreground"
+											>Tool payloads hidden</span
+										>
+										<span
+											class="rounded border border-border bg-muted px-2 py-0.5 text-muted-foreground"
+											>Prompts hidden</span
+										>
+									</div>
+								</div>
+
+								<div class="mt-3 space-y-3">
+									{#if redactedSession.turns.length === 0}
+										<div
+											class="rounded-lg border border-border bg-card p-3 text-sm text-muted-foreground"
+										>
+											No turn runs were recorded for this session.
+										</div>
+									{:else}
+										{#each redactedSession.turns as turn (turn.turn_run_id)}
+											<div
+												class="rounded-lg border border-border bg-card p-3"
+											>
+												<div
+													class="flex flex-wrap items-start justify-between gap-3"
+												>
+													<div>
+														<p class="font-semibold text-foreground">
+															Turn {turn.turn_index} · {turn.status}
+														</p>
+														<p class="text-xs text-muted-foreground">
+															{formatDate(turn.started_at)} -> {formatDate(
+																turn.finished_at
+															)}
+														</p>
+													</div>
+													<span
+														class={`rounded border px-2 py-0.5 text-[11px] ${
+															turn.error_summaries.length > 0
+																? 'border-destructive/30 bg-destructive/10 text-destructive'
+																: 'border-success/30 bg-success/10 text-success'
+														}`}
+													>
+														{turn.error_summaries.length > 0
+															? `${formatNumber(turn.error_summaries.length)} issues`
+															: 'clean'}
+													</span>
+												</div>
+												<div
+													class="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground md:grid-cols-6"
+												>
+													<span>TTFR {formatMs(turn.ttfr_ms)}</span>
+													<span>TTFE {formatMs(turn.ttfe_ms)}</span>
+													<span
+														>{formatNumber(turn.tool_call_count)} tools</span
+													>
+													<span
+														>{formatNumber(turn.llm_pass_count)} LLM</span
+													>
+													<span
+														>{formatNumber(
+															turn.validation_failure_count
+														)} validation</span
+													>
+													<span
+														>{formatMs(turn.duration_ms)} duration</span
+													>
+												</div>
+												{#if turn.first_lane || turn.first_skill_path || turn.first_canonical_op || turn.cache_source || turn.prepared_prompt_hit !== null}
+													<div
+														class="mt-3 flex flex-wrap gap-1 text-[11px]"
+													>
+														{#if turn.first_lane}
+															<span
+																class="rounded border border-border bg-muted px-2 py-0.5 text-muted-foreground"
+																>lane {turn.first_lane}</span
+															>
+														{/if}
+														{#if turn.first_skill_path}
+															<span
+																class="rounded border border-border bg-muted px-2 py-0.5 text-muted-foreground"
+																>{turn.first_skill_path}</span
+															>
+														{/if}
+														{#if turn.first_canonical_op}
+															<span
+																class="rounded border border-border bg-muted px-2 py-0.5 text-muted-foreground"
+																>{turn.first_canonical_op}</span
+															>
+														{/if}
+														{#if turn.cache_source}
+															<span
+																class="rounded border border-border bg-muted px-2 py-0.5 text-muted-foreground"
+																>cache {turn.cache_source}</span
+															>
+														{/if}
+														{#if turn.prepared_prompt_hit !== null}
+															<span
+																class="rounded border border-border bg-muted px-2 py-0.5 text-muted-foreground"
+																>prepared {turn.prepared_prompt_hit
+																	? 'hit'
+																	: 'miss'}</span
+															>
+														{/if}
+													</div>
+												{/if}
+												{#if turn.error_summaries.length > 0}
+													<div class="mt-3 space-y-1">
+														<p
+															class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+														>
+															Errors
+														</p>
+														{#each turn.error_summaries as item}
+															<p
+																class="text-xs text-muted-foreground"
+															>
+																<span
+																	class="font-semibold text-foreground"
+																	>{item.source}</span
+																>
+																· {item.message}
+															</p>
+														{/each}
+													</div>
+												{/if}
+												{#if turn.entity_changes.length > 0}
+													<div class="mt-3 space-y-1">
+														<p
+															class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+														>
+															Entity Changes
+														</p>
+														<div class="flex flex-wrap gap-1">
+															{#each turn.entity_changes as change}
+																<span
+																	class="rounded border border-border bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
+																	>{change.action}
+																	{change.entity_type}
+																	{change.entity_title ??
+																		change.entity_id}</span
+																>
+															{/each}
+														</div>
+													</div>
+												{/if}
+											</div>
+										{/each}
+									{/if}
+								</div>
+
+								<div class="mt-4">
+									<h4
+										class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+									>
+										Events
+									</h4>
+									<div class="mt-2 space-y-2">
+										{#each redactedSession.timeline.slice(0, 60) as event (event.id)}
+											<div class="grid grid-cols-[88px_1fr] gap-3 text-xs">
+												<span class="pt-2 text-muted-foreground"
+													>{formatDate(event.timestamp)}</span
+												>
+												<div
+													class={`rounded-lg border px-3 py-2 ${severityClass(event.severity)}`}
+												>
+													<div
+														class="flex flex-wrap items-center justify-between gap-2"
+													>
+														<p class="font-semibold">{event.title}</p>
+														<span class="uppercase tracking-wide">
+															{eventTypeLabel(event.type)}
+															{#if event.turn_index}
+																· T{event.turn_index}
+															{/if}
+														</span>
+													</div>
+													<p class="mt-1">{event.summary}</p>
+												</div>
+											</div>
+										{/each}
+									</div>
+								</div>
+							{/if}
+						</section>
+					{/if}
 
 					<section class="grid gap-4 md:grid-cols-2">
 						<div>

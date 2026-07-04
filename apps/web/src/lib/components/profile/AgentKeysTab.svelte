@@ -312,6 +312,10 @@
 			throw new Error(getErrorMessage(payload));
 		}
 
+		if (payload?.success === true && 'data' in payload) {
+			return payload.data as T;
+		}
+
 		return payload as T;
 	}
 

@@ -172,6 +172,72 @@ export type AdminChatUserDetailResponse = {
 	}>;
 };
 
+export type AdminChatRedactedTurn = {
+	turn_run_id: string;
+	session_id: string;
+	turn_index: number;
+	status: string;
+	finished_reason: string | null;
+	started_at: string;
+	finished_at: string | null;
+	duration_ms: number | null;
+	ttfr_ms: number | null;
+	ttfe_ms: number | null;
+	tool_round_count: number;
+	tool_call_count: number;
+	tool_failure_count: number;
+	validation_failure_count: number;
+	llm_pass_count: number;
+	first_lane: string | null;
+	first_skill_path: string | null;
+	first_canonical_op: string | null;
+	cache_source: string | null;
+	prepared_prompt_hit: boolean | null;
+	error_summaries: Array<{
+		source: 'message' | 'tool' | 'llm' | 'turn' | 'validation';
+		message: string;
+	}>;
+	entity_changes: Array<{
+		action: string;
+		entity_type: string;
+		entity_id: string;
+		entity_title: string | null;
+		project_id: string | null;
+	}>;
+};
+
+export type AdminChatRedactedSessionTimelineEvent = {
+	id: string;
+	timestamp: string;
+	type:
+		| 'session'
+		| 'turn'
+		| 'timing'
+		| 'tool'
+		| 'llm'
+		| 'entity_change'
+		| 'error'
+		| 'context_shift';
+	severity: 'info' | 'success' | 'warning' | 'error';
+	turn_index: number | null;
+	title: string;
+	summary: string;
+};
+
+export type AdminChatRedactedSessionResponse = {
+	session: AdminChatSessionMetric;
+	turns: AdminChatRedactedTurn[];
+	timeline: AdminChatRedactedSessionTimelineEvent[];
+	privacy: {
+		raw_message_content_returned: false;
+		raw_assistant_content_returned: false;
+		raw_request_message_returned: false;
+		raw_tool_arguments_returned: false;
+		raw_tool_results_returned: false;
+		prompt_snapshot_returned: false;
+	};
+};
+
 export type AdminChatUserAnalyticsQuery = {
 	timeframe: AdminChatUserAnalyticsTimeframe;
 	page: number;
@@ -855,6 +921,53 @@ function extractAffectedEntityChanges(
 		});
 	}
 	return rows;
+}
+
+function extractRedactedEntityChanges(
+	value: unknown,
+	projectId: string | null
+): AdminChatRedactedTurn['entity_changes'] {
+	const changes: AdminChatRedactedTurn['entity_changes'] = [];
+	const candidates = Array.isArray(value)
+		? value
+		: value && typeof value === 'object'
+			? Object.values(value as Record<string, unknown>)
+			: [];
+
+	for (const candidate of candidates) {
+		if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) continue;
+		const record = candidate as Record<string, unknown>;
+		const entityId = textValue(record.entity_id) ?? textValue(record.id);
+		const entityType = textValue(record.entity_type) ?? textValue(record.type);
+		const action = textValue(record.action) ?? textValue(record.operation);
+		if (!entityId || !entityType || !action) continue;
+		changes.push({
+			action,
+			entity_type: entityType,
+			entity_id: entityId,
+			entity_title:
+				textValue(record.entity_title) ?? textValue(record.title) ?? textValue(record.name),
+			project_id: textValue(record.project_id) ?? projectId
+		});
+	}
+
+	return changes;
+}
+
+function formatDurationForSummary(value: number | null | undefined): string {
+	if (value === null || value === undefined) return '-';
+	if (value < 1000) return `${Math.round(value)}ms`;
+	return `${(value / 1000).toFixed(1)}s`;
+}
+
+function redactedEventSeverity(
+	status: string | null | undefined,
+	hasErrors = false
+): AdminChatRedactedSessionTimelineEvent['severity'] {
+	if (hasErrors || status === 'failed') return 'error';
+	if (status === 'cancelled') return 'warning';
+	if (status === 'completed' || status === 'success') return 'success';
+	return 'info';
 }
 
 function passesUserFilters(
@@ -1845,6 +1958,539 @@ export function buildAdminChatUserAnalytics(
 	return buildAdminChatUserAnalyticsCore(input, query).response;
 }
 
+export function buildAdminChatRedactedSession(
+	input: BuildAdminChatUserAnalyticsInput,
+	userId: string,
+	sessionId: string
+): AdminChatRedactedSessionResponse | null {
+	const scopedSessions = input.sessions.filter(
+		(session) => session.id === sessionId && textValue(session.user_id) === userId
+	);
+	if (scopedSessions.length === 0) return null;
+	const scopedTurnIds = new Set(
+		input.turnRuns
+			.filter((turn) => textValue(turn.session_id) === sessionId)
+			.map((turn) => turn.id)
+	);
+
+	const scopedInput: BuildAdminChatUserAnalyticsInput = {
+		sessions: scopedSessions,
+		users: input.users.filter((user) => user.id === userId),
+		sessionProjects: input.sessionProjects.filter(
+			(link) => textValue(link.chat_session_id) === sessionId
+		),
+		projects: input.projects,
+		messages: input.messages.filter((message) => textValue(message.session_id) === sessionId),
+		turnRuns: input.turnRuns.filter((turn) => scopedTurnIds.has(turn.id)),
+		timingRows: input.timingRows.filter((timing) => textValue(timing.session_id) === sessionId),
+		toolExecutions: input.toolExecutions.filter(
+			(tool) => textValue(tool.session_id) === sessionId
+		),
+		usageRows: input.usageRows.filter(
+			(usage) =>
+				textValue(usage.chat_session_id) === sessionId ||
+				scopedTurnIds.has(textValue(usage.turn_run_id) ?? '')
+		),
+		projectLogs: input.projectLogs.filter(
+			(log) => textValue(log.chat_session_id) === sessionId
+		),
+		appErrors: [],
+		truncated: input.truncated
+	};
+
+	const query: AdminChatUserAnalyticsQuery = {
+		timeframe: '7d',
+		page: 1,
+		limit: 1,
+		sort_by: 'last_activity_at',
+		sort_order: 'desc',
+		search: '',
+		user_id: userId,
+		project_id: null,
+		context_type: 'all',
+		topic: '',
+		slow_threshold_ms: DEFAULT_SLOW_THRESHOLD_MS,
+		errors: 'all',
+		tool_bucket: 'all',
+		entity_action: 'all',
+		classification: 'all'
+	};
+	const build = buildAdminChatUserAnalyticsCore(scopedInput, query);
+	const sessionMetric = build.allSessions.find(
+		(candidate) => candidate.session_id === sessionId && candidate.user_id === userId
+	);
+	if (!sessionMetric) return null;
+	const session: AdminChatSessionMetric = sessionMetric;
+
+	const turnRows = [...scopedInput.turnRuns].sort((a, b) => {
+		const aMs = dateMs(a.started_at ?? a.created_at) ?? 0;
+		const bMs = dateMs(b.started_at ?? b.created_at) ?? 0;
+		return aMs - bMs || a.id.localeCompare(b.id);
+	});
+	const turnRowsById = new Map(turnRows.map((turn) => [turn.id, turn]));
+	const events: AdminChatRedactedSessionTimelineEvent[] = [];
+	let eventSequence = 0;
+
+	function timestamp(value: string | null | undefined): string {
+		return isoOrNull(value) ?? session.created_at;
+	}
+
+	function addEvent(event: AdminChatRedactedSessionTimelineEvent): void {
+		events.push({ ...event, id: `${event.id}:${eventSequence}` });
+		eventSequence += 1;
+	}
+
+	function turnForTimestamp(value: string | null | undefined): AdminChatUserTurnRunRow | null {
+		if (turnRows.length === 0) return null;
+		const target = dateMs(value);
+		if (target === null) return turnRows.length === 1 ? (turnRows[0] ?? null) : null;
+		let selected: AdminChatUserTurnRunRow | null = null;
+		for (const turn of turnRows) {
+			const started = dateMs(turn.started_at ?? turn.created_at);
+			if (started === null) continue;
+			if (started <= target) selected = turn;
+			if (started > target) break;
+		}
+		return selected ?? turnRows[0] ?? null;
+	}
+
+	function resolveTurnId(
+		turnRunId: string | null | undefined,
+		createdAt: string | null | undefined
+	): string | null {
+		const explicit = textValue(turnRunId);
+		if (explicit && turnRowsById.has(explicit)) return explicit;
+		return turnForTimestamp(createdAt)?.id ?? null;
+	}
+
+	function pushGrouped<T>(
+		map: Map<string, T[]>,
+		ungrouped: T[],
+		turnId: string | null,
+		value: T
+	): void {
+		if (!turnId) {
+			ungrouped.push(value);
+			return;
+		}
+		const list = map.get(turnId) ?? [];
+		list.push(value);
+		map.set(turnId, list);
+	}
+
+	const timingByTurn = new Map<string, AdminChatUserTimingRow[]>();
+	const ungroupedTimings: AdminChatUserTimingRow[] = [];
+	for (const timing of scopedInput.timingRows) {
+		pushGrouped(
+			timingByTurn,
+			ungroupedTimings,
+			resolveTurnId(timing.turn_run_id, timing.created_at),
+			timing
+		);
+	}
+
+	const toolsByTurn = new Map<string, AdminChatUserToolExecutionRow[]>();
+	const ungroupedTools: AdminChatUserToolExecutionRow[] = [];
+	for (const tool of scopedInput.toolExecutions) {
+		pushGrouped(
+			toolsByTurn,
+			ungroupedTools,
+			resolveTurnId(tool.turn_run_id, tool.created_at),
+			tool
+		);
+	}
+
+	const usageByTurn = new Map<string, AdminChatUserUsageRow[]>();
+	const ungroupedUsageRows: AdminChatUserUsageRow[] = [];
+	for (const usage of scopedInput.usageRows) {
+		pushGrouped(
+			usageByTurn,
+			ungroupedUsageRows,
+			resolveTurnId(usage.turn_run_id, usage.created_at),
+			usage
+		);
+	}
+
+	const messageErrorsByTurn = new Map<
+		string,
+		Array<{ message: string; created_at: string | null | undefined }>
+	>();
+	const ungroupedMessageErrors: Array<{
+		message: string;
+		created_at: string | null | undefined;
+	}> = [];
+	for (const message of scopedInput.messages) {
+		const errorMessage = textValue(message.error_message) ?? textValue(message.error_code);
+		if (!errorMessage) continue;
+		pushGrouped(
+			messageErrorsByTurn,
+			ungroupedMessageErrors,
+			resolveTurnId(null, message.created_at),
+			{ message: errorMessage, created_at: message.created_at }
+		);
+	}
+
+	const logEntityChangesByTurn = new Map<
+		string,
+		Array<AdminChatRedactedTurn['entity_changes'][number] & { created_at?: string | null }>
+	>();
+	const ungroupedEntityChanges: Array<
+		AdminChatRedactedTurn['entity_changes'][number] & { created_at?: string | null }
+	> = [];
+	for (const log of scopedInput.projectLogs) {
+		const action = textValue(log.action);
+		const entityType = textValue(log.entity_type);
+		const entityId = textValue(log.entity_id);
+		if (!action || !entityType || !entityId) continue;
+		pushGrouped(
+			logEntityChangesByTurn,
+			ungroupedEntityChanges,
+			resolveTurnId(null, log.created_at),
+			{
+				action,
+				entity_type: entityType,
+				entity_id: entityId,
+				entity_title: null,
+				project_id: textValue(log.project_id),
+				created_at: log.created_at
+			}
+		);
+	}
+
+	const hasProjectLogs = scopedInput.projectLogs.length > 0;
+	if (!hasProjectLogs) {
+		for (const tool of scopedInput.toolExecutions) {
+			const changes = extractRedactedEntityChanges(
+				tool.affected_entities,
+				session.project_ids[0] ?? null
+			);
+			if (changes.length === 0) continue;
+			for (const change of changes) {
+				pushGrouped(
+					logEntityChangesByTurn,
+					ungroupedEntityChanges,
+					resolveTurnId(tool.turn_run_id, tool.created_at),
+					{ ...change, created_at: tool.created_at }
+				);
+			}
+		}
+	}
+
+	addEvent({
+		id: `session:${session.session_id}:start`,
+		timestamp: session.created_at,
+		type: 'session',
+		severity: 'info',
+		turn_index: null,
+		title: 'Session started',
+		summary: `${session.context_type} session · ${session.status}`
+	});
+
+	const turns = turnRows.map((turn, index): AdminChatRedactedTurn => {
+		const turnIndex = index + 1;
+		const startedAt = timestamp(turn.started_at ?? turn.created_at);
+		const finishedAt = isoOrNull(turn.finished_at);
+		const startMs = dateMs(startedAt);
+		const finishMs = dateMs(finishedAt);
+		const durationMs =
+			startMs !== null && finishMs !== null && finishMs >= startMs
+				? finishMs - startMs
+				: null;
+		const timings = timingByTurn.get(turn.id) ?? [];
+		const ttfrValues = timings
+			.map((timing) => numberValue(timing.time_to_first_response_ms))
+			.filter((value) => value > 0);
+		const ttfeValues = timings
+			.map((timing) => numberValue(timing.time_to_first_event_ms))
+			.filter((value) => value > 0);
+		const ttfrMs = ttfrValues.length ? Math.min(...ttfrValues) : null;
+		const ttfeMs = ttfeValues.length ? Math.min(...ttfeValues) : null;
+		const turnTools = toolsByTurn.get(turn.id) ?? [];
+		const turnUsageRows = usageByTurn.get(turn.id) ?? [];
+		const toolCallCount = Math.max(numberValue(turn.tool_call_count), turnTools.length);
+		const llmPassCount = Math.max(numberValue(turn.llm_pass_count), turnUsageRows.length);
+		const validationFailures = numberValue(turn.validation_failure_count);
+		const errorSummaries: AdminChatRedactedTurn['error_summaries'] = [];
+		const entityChanges = (logEntityChangesByTurn.get(turn.id) ?? []).map(
+			({ created_at: _createdAt, ...change }) => change
+		);
+		const status = turn.status ?? 'unknown';
+
+		if (status === 'failed' || status === 'cancelled') {
+			errorSummaries.push({
+				source: 'turn',
+				message: turn.finished_reason ?? `Turn ${status}`
+			});
+		}
+		if (validationFailures > 0) {
+			errorSummaries.push({
+				source: 'validation',
+				message: `${validationFailures} validation failure${validationFailures === 1 ? '' : 's'}`
+			});
+		}
+		for (const messageError of messageErrorsByTurn.get(turn.id) ?? []) {
+			errorSummaries.push({ source: 'message', message: messageError.message });
+		}
+		for (const tool of turnTools) {
+			const toolName = textValue(tool.tool_name) ?? 'Unknown tool';
+			if (tool.success === false || tool.error_message) {
+				errorSummaries.push({
+					source: 'tool',
+					message: tool.error_message ?? `${toolName} failed`
+				});
+			}
+		}
+		for (const usage of turnUsageRows) {
+			if (usage.status !== 'success' || usage.error_message) {
+				errorSummaries.push({
+					source: 'llm',
+					message: usage.error_message ?? `LLM status: ${usage.status ?? 'unknown'}`
+				});
+			}
+		}
+
+		addEvent({
+			id: `turn:${turn.id}`,
+			timestamp: startedAt,
+			type: 'turn',
+			severity: redactedEventSeverity(status, errorSummaries.length > 0),
+			turn_index: turnIndex,
+			title: `Turn ${turnIndex}: ${status}`,
+			summary: [
+				turn.finished_reason ? `reason ${turn.finished_reason}` : null,
+				`${numberValue(turn.tool_round_count)} tool rounds`,
+				`${llmPassCount} LLM passes`
+			]
+				.filter(Boolean)
+				.join(' · ')
+		});
+
+		if (turn.context_type && turn.context_type !== session.context_type) {
+			addEvent({
+				id: `context:${turn.id}`,
+				timestamp: startedAt,
+				type: 'context_shift',
+				severity: 'info',
+				turn_index: turnIndex,
+				title: 'Context changed',
+				summary: `${session.context_type} -> ${turn.context_type}`
+			});
+		}
+
+		if (ttfrMs !== null || ttfeMs !== null) {
+			addEvent({
+				id: `timing:${turn.id}`,
+				timestamp: timestamp(timings[0]?.created_at ?? startedAt),
+				type: 'timing',
+				severity:
+					ttfrMs !== null && ttfrMs > DEFAULT_SLOW_THRESHOLD_MS ? 'warning' : 'info',
+				turn_index: turnIndex,
+				title: 'First response timing',
+				summary: `TTFR ${formatDurationForSummary(ttfrMs)} · TTFE ${formatDurationForSummary(ttfeMs)}`
+			});
+		}
+
+		for (const tool of turnTools) {
+			const toolName = textValue(tool.tool_name) ?? 'Unknown tool';
+			const failed = tool.success === false || Boolean(tool.error_message);
+			const pieces = [
+				textValue(tool.gateway_op),
+				textValue(tool.help_path),
+				`${formatDurationForSummary(numberValue(tool.execution_time_ms))}`,
+				`${numberValue(tool.result_count)} result${numberValue(tool.result_count) === 1 ? '' : 's'}`,
+				tool.zero_result ? 'zero result' : null
+			].filter(Boolean);
+			addEvent({
+				id: `tool:${tool.id}`,
+				timestamp: timestamp(tool.created_at),
+				type: 'tool',
+				severity: failed ? 'error' : 'success',
+				turn_index: turnIndex,
+				title: toolName,
+				summary: pieces.join(' · ') || (failed ? 'Tool failed' : 'Tool completed')
+			});
+		}
+
+		for (const usage of turnUsageRows) {
+			const model = textValue(usage.model_used) ?? textValue(usage.model_requested) ?? 'LLM';
+			const failed = usage.status !== 'success' || Boolean(usage.error_message);
+			const cost = resolveUsageLogCostBreakdown(usage).totalCost;
+			addEvent({
+				id: `llm:${usage.id}`,
+				timestamp: timestamp(usage.created_at),
+				type: 'llm',
+				severity: failed ? 'error' : 'success',
+				turn_index: turnIndex,
+				title: model,
+				summary: `${usage.status ?? 'unknown'} · ${numberValue(usage.total_tokens)} tokens · $${cost.toFixed(4)}`
+			});
+		}
+
+		for (const change of logEntityChangesByTurn.get(turn.id) ?? []) {
+			addEvent({
+				id: `entity:${turn.id}:${change.entity_type}:${change.entity_id}:${change.action}`,
+				timestamp: timestamp(change.created_at ?? startedAt),
+				type: 'entity_change',
+				severity: 'info',
+				turn_index: turnIndex,
+				title: `${change.action} ${change.entity_type}`,
+				summary: `${change.entity_title ?? change.entity_id}${change.project_id ? ` · ${change.project_id}` : ''}`
+			});
+		}
+
+		errorSummaries.forEach((errorSummary, errorIndex) => {
+			addEvent({
+				id: `error:${turn.id}:${errorIndex}`,
+				timestamp: finishedAt ?? startedAt,
+				type: 'error',
+				severity: errorSummary.source === 'validation' ? 'warning' : 'error',
+				turn_index: turnIndex,
+				title: `${errorSummary.source} error`,
+				summary: errorSummary.message
+			});
+		});
+
+		return {
+			turn_run_id: turn.id,
+			session_id: session.session_id,
+			turn_index: turnIndex,
+			status,
+			finished_reason: turn.finished_reason ?? null,
+			started_at: startedAt,
+			finished_at: finishedAt,
+			duration_ms: durationMs,
+			ttfr_ms: ttfrMs,
+			ttfe_ms: ttfeMs,
+			tool_round_count: numberValue(turn.tool_round_count),
+			tool_call_count: toolCallCount,
+			tool_failure_count: turnTools.filter(
+				(tool) => tool.success === false || Boolean(tool.error_message)
+			).length,
+			validation_failure_count: validationFailures,
+			llm_pass_count: llmPassCount,
+			first_lane: turn.first_lane ?? null,
+			first_skill_path: turn.first_skill_path ?? null,
+			first_canonical_op: turn.first_canonical_op ?? null,
+			cache_source: turn.cache_source ?? null,
+			prepared_prompt_hit: turn.prepared_prompt_hit ?? null,
+			error_summaries: errorSummaries,
+			entity_changes: entityChanges
+		};
+	});
+
+	for (const timing of ungroupedTimings) {
+		const ttfr = numberValue(timing.time_to_first_response_ms);
+		const ttfe = numberValue(timing.time_to_first_event_ms);
+		addEvent({
+			id: `timing:${timing.id}`,
+			timestamp: timestamp(timing.created_at),
+			type: 'timing',
+			severity: ttfr > DEFAULT_SLOW_THRESHOLD_MS ? 'warning' : 'info',
+			turn_index: null,
+			title: 'Session timing',
+			summary: `TTFR ${formatDurationForSummary(ttfr || null)} · TTFE ${formatDurationForSummary(ttfe || null)}`
+		});
+	}
+
+	for (const tool of ungroupedTools) {
+		const toolName = textValue(tool.tool_name) ?? 'Unknown tool';
+		const failed = tool.success === false || Boolean(tool.error_message);
+		addEvent({
+			id: `tool:${tool.id}`,
+			timestamp: timestamp(tool.created_at),
+			type: 'tool',
+			severity: failed ? 'error' : 'success',
+			turn_index: null,
+			title: toolName,
+			summary:
+				textValue(tool.gateway_op) ??
+				textValue(tool.help_path) ??
+				(failed ? 'Tool failed' : 'Tool completed')
+		});
+		if (failed) {
+			addEvent({
+				id: `error:tool:${tool.id}`,
+				timestamp: timestamp(tool.created_at),
+				type: 'error',
+				severity: 'error',
+				turn_index: null,
+				title: 'tool error',
+				summary: tool.error_message ?? `${toolName} failed`
+			});
+		}
+	}
+
+	for (const usage of ungroupedUsageRows) {
+		const model = textValue(usage.model_used) ?? textValue(usage.model_requested) ?? 'LLM';
+		const failed = usage.status !== 'success' || Boolean(usage.error_message);
+		addEvent({
+			id: `llm:${usage.id}`,
+			timestamp: timestamp(usage.created_at),
+			type: 'llm',
+			severity: failed ? 'error' : 'success',
+			turn_index: null,
+			title: model,
+			summary: `${usage.status ?? 'unknown'} · ${numberValue(usage.total_tokens)} tokens`
+		});
+		if (failed) {
+			addEvent({
+				id: `error:llm:${usage.id}`,
+				timestamp: timestamp(usage.created_at),
+				type: 'error',
+				severity: 'error',
+				turn_index: null,
+				title: 'llm error',
+				summary: usage.error_message ?? `LLM status: ${usage.status ?? 'unknown'}`
+			});
+		}
+	}
+
+	for (const change of ungroupedEntityChanges) {
+		addEvent({
+			id: `entity:session:${change.entity_type}:${change.entity_id}:${change.action}`,
+			timestamp: timestamp(change.created_at),
+			type: 'entity_change',
+			severity: 'info',
+			turn_index: null,
+			title: `${change.action} ${change.entity_type}`,
+			summary: `${change.entity_title ?? change.entity_id}${change.project_id ? ` · ${change.project_id}` : ''}`
+		});
+	}
+
+	for (const error of ungroupedMessageErrors) {
+		addEvent({
+			id: `error:message:${events.length}`,
+			timestamp: timestamp(error.created_at),
+			type: 'error',
+			severity: 'error',
+			turn_index: null,
+			title: 'message error',
+			summary: error.message
+		});
+	}
+
+	const payload: AdminChatRedactedSessionResponse = {
+		session,
+		turns,
+		timeline: events.sort((a, b) => {
+			const diff = (dateMs(a.timestamp) ?? 0) - (dateMs(b.timestamp) ?? 0);
+			if (diff !== 0) return diff;
+			return a.id.localeCompare(b.id);
+		}),
+		privacy: {
+			raw_message_content_returned: false,
+			raw_assistant_content_returned: false,
+			raw_request_message_returned: false,
+			raw_tool_arguments_returned: false,
+			raw_tool_results_returned: false,
+			prompt_snapshot_returned: false
+		}
+	};
+
+	assertAdminChatUserAnalyticsRedacted(payload);
+	return payload;
+}
+
 export async function loadAdminChatUserAnalytics(
 	supabase: AnySupabase,
 	query: AdminChatUserAnalyticsQuery
@@ -1912,6 +2558,148 @@ export async function loadAdminChatUserDetail(
 	};
 	assertAdminChatUserAnalyticsRedacted(detail);
 	return detail;
+}
+
+export async function loadAdminChatRedactedSession(
+	supabase: AnySupabase,
+	userId: string,
+	sessionId: string
+): Promise<AdminChatRedactedSessionResponse | null> {
+	const { data: sessionData, error: sessionError } = await supabase
+		.from('chat_sessions')
+		.select(
+			'id,user_id,title,auto_title,chat_topics,context_type,entity_id,status,message_count,tool_call_count,total_tokens_used,created_at,updated_at,last_message_at,last_classified_at'
+		)
+		.eq('id', sessionId)
+		.eq('user_id', userId)
+		.maybeSingle();
+	if (sessionError) throw sessionError;
+	if (!sessionData) return null;
+
+	const session = sessionData as AdminChatUserSessionRow;
+	const sessionProjectsResult = await fetchPagedRows<AdminChatSessionProjectRow>(() =>
+		supabase
+			.from('chat_sessions_projects')
+			.select('chat_session_id,project_id')
+			.eq('chat_session_id', sessionId)
+	);
+	const directProjectId =
+		session.context_type === 'project' ? textValue(session.entity_id) : null;
+	const projectIds = [
+		...new Set(
+			[
+				directProjectId,
+				...sessionProjectsResult.rows.map((link) => textValue(link.project_id))
+			].filter(Boolean) as string[]
+		)
+	];
+
+	const [
+		usersResult,
+		projectsResult,
+		messagesResult,
+		turnsResult,
+		timingResult,
+		toolsResult,
+		usageResult,
+		logsResult
+	] = await Promise.all([
+		fetchPagedRows<AdminChatUserRow>(
+			() => supabase.from('users').select('id,email,name').eq('id', userId),
+			10
+		),
+		projectIds.length > 0
+			? fetchChunkedRows<AdminChatProjectRow>(projectIds, (chunk) =>
+					supabase.from('onto_projects').select('id,name').in('id', chunk)
+				)
+			: Promise.resolve({ rows: [], truncated: false }),
+		fetchPagedRows<AdminChatUserMessageRow>(() =>
+			supabase
+				.from('chat_messages')
+				.select(
+					'id,session_id,user_id,role,total_tokens,error_code,error_message,created_at'
+				)
+				.eq('session_id', sessionId)
+				.order('created_at', { ascending: true })
+		),
+		fetchPagedRows<AdminChatUserTurnRunRow>(() =>
+			supabase
+				.from('chat_turn_runs')
+				.select(
+					'id,session_id,user_id,status,finished_reason,context_type,entity_id,project_id,tool_round_count,tool_call_count,validation_failure_count,llm_pass_count,first_lane,first_skill_path,first_canonical_op,first_help_path,cache_source,prepared_prompt_hit,started_at,finished_at,created_at'
+				)
+				.eq('session_id', sessionId)
+				.order('started_at', { ascending: true, nullsFirst: false })
+				.order('created_at', { ascending: true })
+		),
+		fetchPagedRows<AdminChatUserTimingRow>(() =>
+			supabase
+				.from('timing_metrics')
+				.select(
+					'id,session_id,turn_run_id,user_id,context_type,time_to_first_response_ms,time_to_first_event_ms,created_at'
+				)
+				.eq('session_id', sessionId)
+				.order('created_at', { ascending: true })
+		),
+		fetchPagedRows<AdminChatUserToolExecutionRow>(() =>
+			supabase
+				.from('chat_tool_executions')
+				.select(
+					'id,session_id,turn_run_id,tool_name,tool_category,gateway_op,help_path,success,execution_time_ms,tokens_consumed,result_count,zero_result,error_message,affected_entities,created_at'
+				)
+				.eq('session_id', sessionId)
+				.order('created_at', { ascending: true })
+		),
+		fetchPagedRows<AdminChatUserUsageRow>(() =>
+			supabase
+				.from('llm_usage_logs')
+				.select(
+					'id,user_id,chat_session_id,turn_run_id,model_requested,model_used,provider,profile,prompt_tokens,completion_tokens,total_tokens,input_cost_usd,output_cost_usd,total_cost_usd,openrouter_usage_cost_usd,response_time_ms,status,error_message,openrouter_cache_status,created_at'
+				)
+				.eq('chat_session_id', sessionId)
+				.order('created_at', { ascending: true })
+		),
+		fetchPagedRows<AdminChatUserProjectLogRow>(() =>
+			supabase
+				.from('onto_project_logs')
+				.select(
+					'id,chat_session_id,project_id,entity_type,entity_id,action,change_source,changed_by,created_at'
+				)
+				.eq('chat_session_id', sessionId)
+				.order('created_at', { ascending: true })
+		)
+	]);
+
+	const payload = buildAdminChatRedactedSession(
+		{
+			sessions: [session],
+			users: usersResult.rows,
+			sessionProjects: sessionProjectsResult.rows,
+			projects: projectsResult.rows,
+			messages: messagesResult.rows,
+			turnRuns: turnsResult.rows,
+			timingRows: timingResult.rows,
+			toolExecutions: toolsResult.rows,
+			usageRows: usageResult.rows,
+			projectLogs: logsResult.rows,
+			appErrors: [],
+			truncated: {
+				sessionProjects: sessionProjectsResult.truncated,
+				users: usersResult.truncated,
+				projects: projectsResult.truncated,
+				messages: messagesResult.truncated,
+				turnRuns: turnsResult.truncated,
+				timingMetrics: timingResult.truncated,
+				toolExecutions: toolsResult.truncated,
+				llmUsageLogs: usageResult.truncated,
+				projectLogs: logsResult.truncated
+			}
+		},
+		userId,
+		sessionId
+	);
+	if (payload) assertAdminChatUserAnalyticsRedacted(payload);
+	return payload;
 }
 
 async function loadAnalyticsRows(

@@ -5,8 +5,10 @@ import { createCustomClient } from '@buildos/supabase-client';
 import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';
 import { PRIVATE_SUPABASE_SERVICE_KEY } from '$env/static/private';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { logRouteError } from '$lib/server/route-error';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async (event) => {
+	const { request } = event;
 	try {
 		// Create service role client for admin operations
 		const supabase = createCustomClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY);
@@ -33,7 +35,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		const token = headers['x-goog-channel-token'];
 
 		if (!channelId || !resourceId) {
-			console.error('Missing required webhook headers');
 			return json({ error: 'Invalid webhook headers' }, { status: 400 });
 		}
 
@@ -61,7 +62,11 @@ export const POST: RequestHandler = async ({ request }) => {
 			processed: result.processed
 		});
 	} catch (err) {
-		console.error('Webhook error:', err);
+		await logRouteError(event, err, {
+			operation: 'webhooks.calendar_events',
+			severity: 'error',
+			status: 500
+		});
 		return json({ error: 'Internal server error' }, { status: 500 });
 	}
 };

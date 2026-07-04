@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/agent-call/callers/+server.ts
-import { json } from '@sveltejs/kit';
+import type { RequestEvent } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { BuildosAgentCallerRevokeRequest } from '@buildos/shared-types';
 import {
@@ -7,6 +7,8 @@ import {
 	CallerProvisioningService
 } from '$lib/server/agent-call/caller-provisioning.service';
 import { getSecurityEventLogOptions } from '$lib/server/security-event-logger';
+import { ApiResponse, ErrorCode } from '$lib/utils/api-response';
+import { routeErrorResponse } from '$lib/server/route-error';
 
 function toErrorResponse(error: unknown) {
 	if (error instanceof CallerProvisioningError) {
@@ -27,28 +29,56 @@ function toErrorResponse(error: unknown) {
 	};
 }
 
-export const GET: RequestHandler = async ({ locals: { safeGetSession } }) => {
+function apiErrorCodeForStatus(status: number): string {
+	if (status === 401) return ErrorCode.UNAUTHORIZED;
+	if (status === 403) return ErrorCode.FORBIDDEN;
+	if (status === 404) return ErrorCode.NOT_FOUND;
+	if (status === 409) return ErrorCode.ALREADY_EXISTS;
+	if (status >= 500) return ErrorCode.INTERNAL_ERROR;
+	return ErrorCode.INVALID_REQUEST;
+}
+
+async function provisioningErrorResponse(event: RequestEvent, error: unknown, operation: string) {
+	const { status, body } = toErrorResponse(error);
+
+	if (status >= 500) {
+		return routeErrorResponse(event, error, {
+			operation,
+			message: body.error,
+			status,
+			details: body.data
+		});
+	}
+
+	return ApiResponse.error(body.error, status, apiErrorCodeForStatus(status), body.data);
+}
+
+export const GET: RequestHandler = async (event) => {
+	const {
+		locals: { safeGetSession }
+	} = event;
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Not authenticated' }, { status: 401 });
+		return ApiResponse.unauthorized('Not authenticated');
 	}
 
 	try {
 		const service = new CallerProvisioningService();
-		return json(await service.listForUser(user.id));
+		return ApiResponse.success(await service.listForUser(user.id));
 	} catch (error) {
-		const { status, body } = toErrorResponse(error);
-		if (status >= 500) {
-			console.error('Failed to list agent callers:', error);
-		}
-		return json(body, { status });
+		return provisioningErrorResponse(event, error, 'agent_call.callers.list');
 	}
 };
 
-export const POST: RequestHandler = async ({ request, platform, locals: { safeGetSession } }) => {
+export const POST: RequestHandler = async (event) => {
+	const {
+		request,
+		platform,
+		locals: { safeGetSession }
+	} = event;
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Not authenticated' }, { status: 401 });
+		return ApiResponse.unauthorized('Not authenticated');
 	}
 
 	let body: unknown;
@@ -56,7 +86,7 @@ export const POST: RequestHandler = async ({ request, platform, locals: { safeGe
 	try {
 		body = await request.json();
 	} catch {
-		return json({ error: 'Request body must be valid JSON' }, { status: 400 });
+		return ApiResponse.badRequest('Request body must be valid JSON');
 	}
 
 	try {
@@ -64,24 +94,25 @@ export const POST: RequestHandler = async ({ request, platform, locals: { safeGe
 			undefined,
 			getSecurityEventLogOptions(platform)
 		);
-		return json(
+		return ApiResponse.success(
 			await service.provisionForUser(user.id, body, {
 				baseUrl: new URL(request.url).origin
 			})
 		);
 	} catch (error) {
-		const { status, body: errorBody } = toErrorResponse(error);
-		if (status >= 500) {
-			console.error('Failed to provision agent caller:', error);
-		}
-		return json(errorBody, { status });
+		return provisioningErrorResponse(event, error, 'agent_call.callers.provision');
 	}
 };
 
-export const DELETE: RequestHandler = async ({ request, platform, locals: { safeGetSession } }) => {
+export const DELETE: RequestHandler = async (event) => {
+	const {
+		request,
+		platform,
+		locals: { safeGetSession }
+	} = event;
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Not authenticated' }, { status: 401 });
+		return ApiResponse.unauthorized('Not authenticated');
 	}
 
 	let body: unknown;
@@ -89,12 +120,12 @@ export const DELETE: RequestHandler = async ({ request, platform, locals: { safe
 	try {
 		body = await request.json();
 	} catch {
-		return json({ error: 'Request body must be valid JSON' }, { status: 400 });
+		return ApiResponse.badRequest('Request body must be valid JSON');
 	}
 
 	const callerId = (body as BuildosAgentCallerRevokeRequest | null)?.caller_id;
 	if (typeof callerId !== 'string') {
-		return json({ error: 'caller_id is required' }, { status: 400 });
+		return ApiResponse.badRequest('caller_id is required');
 	}
 
 	try {
@@ -102,12 +133,8 @@ export const DELETE: RequestHandler = async ({ request, platform, locals: { safe
 			undefined,
 			getSecurityEventLogOptions(platform)
 		);
-		return json(await service.revokeForUser(user.id, callerId));
+		return ApiResponse.success(await service.revokeForUser(user.id, callerId));
 	} catch (error) {
-		const { status, body: errorBody } = toErrorResponse(error);
-		if (status >= 500) {
-			console.error('Failed to revoke agent caller:', error);
-		}
-		return json(errorBody, { status });
+		return provisioningErrorResponse(event, error, 'agent_call.callers.revoke');
 	}
 };

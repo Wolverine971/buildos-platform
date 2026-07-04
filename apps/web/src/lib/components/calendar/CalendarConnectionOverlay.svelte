@@ -25,12 +25,14 @@
 		try {
 			// Fetch the calendar auth URL with redirect back to time-blocks
 			const response = await fetch('/profile/calendar?redirect=/time-blocks');
+			const payload = await response.json().catch(() => null);
+			const data = payload?.success === true && 'data' in payload ? payload.data : payload;
 
 			if (!response.ok) {
-				throw new Error('Failed to get calendar authorization URL');
+				throw new Error(
+					payload?.error || payload?.message || 'Failed to get calendar authorization URL'
+				);
 			}
-
-			const data = await response.json();
 
 			if (!data.calendarAuthUrl) {
 				throw new Error('No authorization URL received');

@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	assertAdminChatUserAnalyticsRedacted,
+	buildAdminChatRedactedSession,
 	buildAdminChatUserAnalytics,
 	type AdminChatUserAnalyticsQuery
 } from './admin-chat-user-analytics';
@@ -226,6 +227,205 @@ describe('admin chat user analytics', () => {
 
 		expect(analytics.data_health.classification_missing_sessions).toBe(1);
 		expect(analytics.users).toEqual([]);
+	});
+
+	it('builds a redacted per-session turn timeline without raw payloads', () => {
+		const redacted = buildAdminChatRedactedSession(
+			{
+				sessions: [
+					{
+						id: 'session-1',
+						user_id: 'user-1',
+						title: 'Launch planning',
+						auto_title: 'Auto launch plan',
+						chat_topics: ['launch video'],
+						context_type: 'project',
+						entity_id: 'project-1',
+						status: 'active',
+						created_at: '2026-07-01T10:00:00.000Z',
+						updated_at: '2026-07-01T10:04:00.000Z',
+						last_message_at: '2026-07-01T10:04:00.000Z',
+						last_classified_at: '2026-07-01T10:05:00.000Z',
+						summary: 'SECRET CLASSIFIER SUMMARY'
+					} as any
+				],
+				users: [{ id: 'user-1', email: 'founder@example.com', name: 'Founder' }],
+				sessionProjects: [{ chat_session_id: 'session-1', project_id: 'project-1' }],
+				projects: [{ id: 'project-1', name: 'BuildOS Demo Campaign' }],
+				messages: [
+					{
+						id: 'message-1',
+						session_id: 'session-1',
+						user_id: 'user-1',
+						role: 'user',
+						total_tokens: 20,
+						created_at: '2026-07-01T10:01:00.000Z',
+						content: 'SECRET USER TURN TEXT'
+					} as any,
+					{
+						id: 'message-2',
+						session_id: 'session-1',
+						user_id: 'user-1',
+						role: 'assistant',
+						total_tokens: 30,
+						error_message: 'stream interrupted',
+						created_at: '2026-07-01T10:02:00.000Z',
+						content: 'SECRET ASSISTANT TURN TEXT'
+					} as any
+				],
+				turnRuns: [
+					{
+						id: 'turn-1',
+						session_id: 'session-1',
+						user_id: 'user-1',
+						status: 'completed',
+						tool_round_count: 1,
+						tool_call_count: 1,
+						validation_failure_count: 1,
+						llm_pass_count: 1,
+						first_lane: 'ontology',
+						first_skill_path: 'projects.read',
+						first_canonical_op: 'onto.project.read',
+						cache_source: 'miss',
+						prepared_prompt_hit: true,
+						started_at: '2026-07-01T10:01:00.000Z',
+						finished_at: '2026-07-01T10:02:00.000Z',
+						request_message: 'SECRET REQUEST MESSAGE'
+					} as any
+				],
+				timingRows: [
+					{
+						id: 'timing-1',
+						session_id: 'session-1',
+						turn_run_id: 'turn-1',
+						user_id: 'user-1',
+						time_to_first_response_ms: 900,
+						time_to_first_event_ms: 400,
+						created_at: '2026-07-01T10:01:20.000Z'
+					}
+				],
+				toolExecutions: [
+					{
+						id: 'tool-1',
+						session_id: 'session-1',
+						turn_run_id: 'turn-1',
+						tool_name: 'ontology.read',
+						gateway_op: 'onto.project.read',
+						help_path: 'projects/read',
+						success: false,
+						execution_time_ms: 250,
+						result_count: 0,
+						zero_result: true,
+						error_message: 'Project not found',
+						affected_entities: [
+							{ entity_id: 'task-1', entity_type: 'task', action: 'created' }
+						],
+						created_at: '2026-07-01T10:01:30.000Z',
+						arguments: { query: 'SECRET TOOL ARGUMENT' },
+						result: { value: 'SECRET TOOL RESULT' }
+					} as any
+				],
+				usageRows: [
+					{
+						id: 'usage-1',
+						user_id: 'user-1',
+						chat_session_id: 'session-1',
+						turn_run_id: 'turn-1',
+						model_used: 'openai/gpt-4.1-mini',
+						provider: 'openai',
+						status: 'success',
+						total_tokens: 140,
+						total_cost_usd: 0.001,
+						created_at: '2026-07-01T10:01:45.000Z'
+					}
+				],
+				projectLogs: [
+					{
+						id: 'log-1',
+						chat_session_id: 'session-1',
+						project_id: 'project-1',
+						entity_type: 'task',
+						entity_id: 'task-1',
+						action: 'created',
+						change_source: 'chat',
+						changed_by: 'user-1',
+						created_at: '2026-07-01T10:02:10.000Z',
+						before_data: { title: 'SECRET BEFORE ENTITY' },
+						after_data: { title: 'SECRET AFTER ENTITY' }
+					} as any
+				],
+				appErrors: [],
+				truncated: {}
+			},
+			'user-1',
+			'session-1'
+		);
+
+		expect(redacted).not.toBeNull();
+		expect(redacted?.session).toMatchObject({
+			session_id: 'session-1',
+			user_id: 'user-1',
+			turn_count: 1,
+			message_count: 2,
+			tool_failure_count: 1,
+			validation_failure_count: 1,
+			created_entity_count: 1
+		});
+		expect(redacted?.privacy).toMatchObject({
+			raw_message_content_returned: false,
+			raw_assistant_content_returned: false,
+			raw_request_message_returned: false,
+			raw_tool_arguments_returned: false,
+			raw_tool_results_returned: false,
+			prompt_snapshot_returned: false
+		});
+		expect(redacted?.turns[0]).toMatchObject({
+			turn_run_id: 'turn-1',
+			turn_index: 1,
+			ttfr_ms: 900,
+			ttfe_ms: 400,
+			tool_call_count: 1,
+			tool_failure_count: 1,
+			validation_failure_count: 1,
+			llm_pass_count: 1,
+			entity_changes: [
+				{
+					action: 'created',
+					entity_type: 'task',
+					entity_id: 'task-1',
+					project_id: 'project-1'
+				}
+			]
+		});
+		expect(redacted?.turns[0].error_summaries).toEqual(
+			expect.arrayContaining([
+				{ source: 'validation', message: '1 validation failure' },
+				{ source: 'message', message: 'stream interrupted' },
+				{ source: 'tool', message: 'Project not found' }
+			])
+		);
+		expect(redacted?.timeline.map((event) => event.type)).toEqual(
+			expect.arrayContaining([
+				'session',
+				'turn',
+				'timing',
+				'tool',
+				'llm',
+				'entity_change',
+				'error'
+			])
+		);
+		assertAdminChatUserAnalyticsRedacted(redacted);
+
+		const payloadText = JSON.stringify(redacted);
+		expect(payloadText).not.toContain('SECRET USER TURN TEXT');
+		expect(payloadText).not.toContain('SECRET ASSISTANT TURN TEXT');
+		expect(payloadText).not.toContain('SECRET REQUEST MESSAGE');
+		expect(payloadText).not.toContain('SECRET TOOL ARGUMENT');
+		expect(payloadText).not.toContain('SECRET TOOL RESULT');
+		expect(payloadText).not.toContain('SECRET CLASSIFIER SUMMARY');
+		expect(payloadText).not.toContain('SECRET BEFORE ENTITY');
+		expect(payloadText).not.toContain('SECRET AFTER ENTITY');
 	});
 
 	it('rejects forbidden raw payload keys', () => {

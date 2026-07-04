@@ -1,5 +1,6 @@
 // apps/web/src/routes/oauth/token/+server.ts
 import { json } from '@sveltejs/kit';
+import type { RequestEvent } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { getSecurityEventLogOptions } from '$lib/server/security-event-logger';
@@ -9,8 +10,9 @@ import {
 	OAuthConnectorError
 } from '$lib/server/agent-call/oauth-connector.service';
 import { checkOAuthRateLimit, OAUTH_RATE_LIMITS } from '$lib/server/agent-call/oauth-rate-limit';
+import { logRouteError } from '$lib/server/route-error';
 
-function tokenError(error: unknown) {
+async function tokenError(event: RequestEvent, error: unknown) {
 	if (error instanceof OAuthConnectorError) {
 		return json(
 			{
@@ -28,7 +30,10 @@ function tokenError(error: unknown) {
 		);
 	}
 
-	console.error('[OAuth Token] Unhandled error:', error);
+	await logRouteError(event, error, {
+		operation: 'oauth.token',
+		severity: 'error'
+	});
 	return json(
 		{
 			error: 'server_error',
@@ -79,7 +84,8 @@ export const OPTIONS: RequestHandler = async () =>
 		}
 	});
 
-export const POST: RequestHandler = async ({ request, platform, getClientAddress }) => {
+export const POST: RequestHandler = async (event) => {
+	const { request, platform, getClientAddress } = event;
 	const rateLimit = checkOAuthRateLimit(
 		`oauth:token:${getClientAddress()}`,
 		OAUTH_RATE_LIMITS.token
@@ -108,9 +114,10 @@ export const POST: RequestHandler = async ({ request, platform, getClientAddress
 		}
 
 		return tokenError(
+			event,
 			new OAuthConnectorError('Unsupported grant_type', 400, 'unsupported_grant_type')
 		);
 	} catch (error) {
-		return tokenError(error);
+		return tokenError(event, error);
 	}
 };

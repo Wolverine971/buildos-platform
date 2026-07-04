@@ -618,6 +618,8 @@
 		getSelectedEntityId: () => shellRouter.selectedEntityId,
 		getResolvedProjectFocus: () => resolvedProjectFocus,
 		getIsPreparingSession: () => isPreparingSession,
+		getIsTurnActive: () =>
+			stream.isStartingStream || stream.isStreaming || activeRestoredTurnRunId !== null,
 		getCurrentSession: () => currentSession,
 		getCanPrimeActiveChatSession: () => canPrimeActiveChatSession,
 		getInputValue: () => inputValue,
