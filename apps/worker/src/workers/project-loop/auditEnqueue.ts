@@ -11,6 +11,7 @@ import {
 	evaluateProjectAuditTrigger,
 	recordProjectAuditTriggerEvaluation
 } from '@buildos/shared-agent-ops/project-audits';
+import { projectAuditDedupKey } from '@buildos/shared-agent-ops';
 import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
 import { captureWorkerEvent } from '../../lib/posthog';
 import { supabase } from '../../lib/supabase';
@@ -346,7 +347,9 @@ export async function queueProjectAuditFromWorker(params: {
 		} as unknown as Json,
 		p_priority: auditDepth === 'deep' ? 6 : 7,
 		p_scheduled_for: new Date().toISOString(),
-		p_dedup_key: `project-audit:${params.projectId}:${auditRow.id}`
+		// Stable per-project/day slot so concurrent audit triggers collapse onto
+		// one job instead of double-auditing (audit Tier 1 #5).
+		p_dedup_key: projectAuditDedupKey(params.projectId)
 	});
 
 	if (queueError || typeof queueRecordId !== 'string') {

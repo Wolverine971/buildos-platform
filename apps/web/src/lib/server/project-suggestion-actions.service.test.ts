@@ -6,7 +6,9 @@ const mocks = vi.hoisted(() => ({
 	executeTool: vi.fn(),
 	createAdminSupabaseClient: vi.fn(),
 	syncInboxItemForProjectSuggestion: vi.fn(),
-	loadProjectLoopSourceFingerprint: vi.fn()
+	isProjectSuggestionFresh: vi.fn(),
+	finalizeProjectLoopRunIfComplete: vi.fn(),
+	captureServerEvent: vi.fn()
 }));
 
 vi.mock('$lib/services/agentic-chat/tools/core/tool-executor', () => ({
@@ -25,7 +27,15 @@ vi.mock('@buildos/shared-agent-ops', () => ({
 }));
 
 vi.mock('$lib/server/project-loop-snapshot.service', () => ({
-	loadProjectLoopSourceFingerprint: mocks.loadProjectLoopSourceFingerprint
+	isProjectSuggestionFresh: mocks.isProjectSuggestionFresh
+}));
+
+vi.mock('$lib/server/project-loop-run.service', () => ({
+	finalizeProjectLoopRunIfComplete: mocks.finalizeProjectLoopRunIfComplete
+}));
+
+vi.mock('$lib/server/posthog', () => ({
+	captureServerEvent: mocks.captureServerEvent
 }));
 
 import { decideProjectSuggestion } from './project-suggestion-actions.service';
@@ -116,7 +126,7 @@ describe('decideProjectSuggestion', () => {
 				}
 			}
 		});
-		expect(mocks.loadProjectLoopSourceFingerprint).not.toHaveBeenCalled();
+		expect(mocks.isProjectSuggestionFresh).not.toHaveBeenCalled();
 	});
 
 	it('refreshes linked audit follow-up counts after dismissing an audit child suggestion', async () => {
@@ -159,7 +169,7 @@ describe('decideProjectSuggestion', () => {
 	});
 
 	it('supersedes stale approvals before replaying operations', async () => {
-		mocks.loadProjectLoopSourceFingerprint.mockResolvedValue('fp-new');
+		mocks.isProjectSuggestionFresh.mockResolvedValue(false);
 		const { supabase, updates } = makeSupabase({
 			project_suggestions: [
 				{ data: pendingSuggestion({ source_fingerprint: 'fp-old' }), error: null },
@@ -193,7 +203,7 @@ describe('decideProjectSuggestion', () => {
 	});
 
 	it('approves fresh suggestions with the run chat session and burst-skip fetch header', async () => {
-		mocks.loadProjectLoopSourceFingerprint.mockResolvedValue('fp-1');
+		mocks.isProjectSuggestionFresh.mockResolvedValue(true);
 		const operation = {
 			tool: 'update_onto_task',
 			args: {

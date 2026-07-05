@@ -3,6 +3,7 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
 import { createLogger } from '$lib/utils/logger';
 import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
+import { projectLoopDedupKey } from '@buildos/shared-agent-ops';
 import type { ProjectLoopTriggerReason } from '@buildos/shared-types';
 
 const logger = createLogger('ProjectLoops');
@@ -140,7 +141,10 @@ export async function queueProjectLoop(params: {
 			},
 			p_priority: 7,
 			p_scheduled_for: new Date().toISOString(),
-			p_dedup_key: `project-loop:${params.projectId}:${runRow.id}`
+			// Stable per-project/day slot (shared with the worker scheduler) so a
+			// manual trigger racing a burst or the end-of-day cron collapses onto
+			// one job instead of double-running (audit Tier 1 #5).
+			p_dedup_key: projectLoopDedupKey(params.projectId)
 		});
 
 		await supabase

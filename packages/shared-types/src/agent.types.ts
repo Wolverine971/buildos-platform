@@ -458,35 +458,51 @@ export interface AgentTimingSummary {
   };
 }
 
+export type AgentStreamEventPhase = 'prompt' | 'llm' | 'tool' | 'stream' | 'finalize';
+
+export interface AgentStreamEventMeta {
+  event_id?: string;
+  stream_run_id?: string;
+  client_turn_id?: string;
+  turn_run_id?: string | null;
+  sequence_index?: number;
+  phase?: AgentStreamEventPhase;
+  event_type?: string;
+  durable?: boolean;
+}
+
 export type AgentSSEMessage =
-  | { type: 'context_usage'; usage: ContextUsageSnapshot }
-  | { type: 'session'; session?: ChatSession; sessionId?: string }
-  | { type: 'ontology_loaded'; summary: string }
-  | { type: 'last_turn_context'; context: LastTurnContext }
-  | { type: 'focus_active'; focus: ProjectFocus }
-  | { type: 'focus_changed'; focus: ProjectFocus }
-  | {
-      type: 'agent_state';
-      state: 'thinking' | 'waiting_on_user';
-      contextType: ChatContextType;
-      details?: string;
-    }
-  | { type: 'clarifying_questions'; questions: string[] }
-  | { type: 'text'; content: string }
-  | { type: 'text_delta'; content: string }
-  | { type: 'tool_call'; tool_call: ChatToolCall }
-  | { type: 'tool_result'; result: Record<string, any> }
-  | SkillActivityEvent
-  | { type: 'context_shift'; context_shift: ContextShiftPayload }
-  | { type: 'timing'; timing: AgentTimingSummary }
-  | TemplateCreationEvent
-  | { type: 'error'; error: string }
-  | {
-      type: 'done';
-      usage?: { total_tokens?: number; prompt_tokens?: number; completion_tokens?: number };
-      finished_reason?: string;
-    }
-  | LegacyAgentSSEMessage;
+  AgentStreamEventMeta &
+    (
+      | { type: 'context_usage'; usage: ContextUsageSnapshot }
+      | { type: 'session'; session?: ChatSession; sessionId?: string }
+      | { type: 'ontology_loaded'; summary: string }
+      | { type: 'last_turn_context'; context: LastTurnContext }
+      | { type: 'focus_active'; focus: ProjectFocus }
+      | { type: 'focus_changed'; focus: ProjectFocus }
+      | {
+          type: 'agent_state';
+          state: 'thinking' | 'waiting_on_user';
+          contextType: ChatContextType;
+          details?: string;
+        }
+      | { type: 'clarifying_questions'; questions: string[] }
+      | { type: 'text'; content: string }
+      | { type: 'text_delta'; content: string }
+      | { type: 'tool_call'; tool_call: ChatToolCall }
+      | { type: 'tool_result'; result: Record<string, any> }
+      | SkillActivityEvent
+      | { type: 'context_shift'; context_shift: ContextShiftPayload }
+      | { type: 'timing'; timing: AgentTimingSummary }
+      | TemplateCreationEvent
+      | { type: 'error'; error: string }
+      | {
+          type: 'done';
+          usage?: { total_tokens?: number; prompt_tokens?: number; completion_tokens?: number };
+          finished_reason?: string;
+        }
+      | LegacyAgentSSEMessage
+    );
 
 // ============================================================================
 // Dimension Questions

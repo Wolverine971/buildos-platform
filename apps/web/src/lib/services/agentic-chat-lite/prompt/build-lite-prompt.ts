@@ -186,6 +186,47 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 	};
 }
 
+export function applyActiveDomainSignalsOverlay(
+	envelope: LitePromptEnvelope,
+	input: Pick<
+		LitePromptInput,
+		| 'currentUserMessage'
+		| 'conversationSummary'
+		| 'priorDomainIds'
+		| 'priorOutcomeCardIds'
+		| 'priorWorkCapabilityIds'
+		| 'domainSensingResult'
+	>
+): LitePromptEnvelope {
+	const domainSignalSection = buildActiveDomainSignalsSection(input as LitePromptInput);
+	const sectionsWithoutDomainSignals = envelope.sections.filter(
+		(section) => section.id !== 'active_domain_signals'
+	);
+	const sections = domainSignalSection
+		? insertSectionAfter(
+				sectionsWithoutDomainSignals,
+				domainSignalSection,
+				'tool_surface_dynamic'
+			)
+		: sectionsWithoutDomainSignals;
+
+	return {
+		...envelope,
+		sections,
+		systemPrompt: renderSystemPrompt(sections)
+	};
+}
+
+function insertSectionAfter(
+	sections: LitePromptSection[],
+	section: LitePromptSection,
+	anchorId: LitePromptSectionId
+): LitePromptSection[] {
+	const anchorIndex = sections.findIndex((item) => item.id === anchorId);
+	if (anchorIndex < 0) return [section, ...sections];
+	return [...sections.slice(0, anchorIndex + 1), section, ...sections.slice(anchorIndex + 1)];
+}
+
 function buildIdentityMissionSection(): LitePromptSection {
 	return makeSection({
 		id: 'identity_mission',

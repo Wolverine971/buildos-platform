@@ -40,8 +40,15 @@ import {
 	suggestionSuppressionKey
 } from './generators';
 import {
+	buildHeuristicProjectLoopBrief,
 	buildProjectLoopParentMap,
 	buildProjectLoopSourceFingerprint,
+	buildScopedSuggestionFingerprint,
+	extractProjectLoopSuggestionEntities,
+	loadProjectLoopSuggestionEntityStates,
+	MAX_PROJECT_LOOP_CONTEXT_DOCUMENTS,
+	projectLoopDocumentRecencyMs,
+	type ProjectLoopScopedEntity,
 	summarizeProjectLoopDocTree,
 	syncInboxItemForProjectSuggestion
 } from '@buildos/shared-agent-ops';
@@ -142,15 +149,19 @@ async function loadPriorDecisions(projectId: string): Promise<LoopPriorDecision[
 /**
  * Suppression keys for the project's still-open and recently-decided suggestions,
  * so a fresh run does not re-emit a duplicate the user is already looking at (or
- * has already acted on).
+ * has already acted on). `rejected` keys are tracked separately so the caller can
+ * count how often the model tries to re-surface something the user dismissed
+ * (repeated-after-dismissal telemetry — audit Tier 1 #6).
  */
-async function loadExistingSuggestionKeys(projectId: string): Promise<Set<string>> {
+async function loadExistingSuggestionKeys(
+	projectId: string
+): Promise<{ all: Set<string>; rejected: Set<string> }> {
 	const since = new Date(
 		Date.now() - SUGGESTION_SUPPRESSION_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
 	).toISOString();
 	const { data, error } = await supabase
 		.from('project_suggestions')
-		.select('kind, operations')
+		.select('kind, operations, status')
 		.eq('project_id', projectId)
 		.in('status', SUGGESTION_SUPPRESSION_STATUSES)
 		.gte('created_at', since)
@@ -161,18 +172,21 @@ async function loadExistingSuggestionKeys(projectId: string): Promise<Set<string
 			`[ProjectLoops] Failed to load existing suggestion keys for project ${projectId}:`,
 			error.message
 		);
-		return new Set();
+		return { all: new Set(), rejected: new Set() };
 	}
 
-	const keys = new Set<string>();
+	const all = new Set<string>();
+	const rejected = new Set<string>();
 	for (const row of (data ?? []) as Record<string, unknown>[]) {
 		const key = suggestionSuppressionKey({
 			kind: asString(row.kind) ?? '',
 			operations: (row.operations as LoopOperation[] | null) ?? []
 		});
-		if (key) keys.add(key);
+		if (!key) continue;
+		all.add(key);
+		if (asString(row.status) === 'rejected') rejected.add(key);
 	}
-	return keys;
+	return { all, rejected };
 }
 
 async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
@@ -192,15 +206,21 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 	if (graphError) throw new Error(`Failed to load project graph: ${graphError.message}`);
 
 	const payload = graphData as any;
-	const rawDocs: any[] = Array.isArray(payload?.documents) ? payload.documents : [];
+	const rawDocsAll: any[] = Array.isArray(payload?.documents) ? payload.documents : [];
 	const rawTasks: any[] = Array.isArray(payload?.tasks) ? payload.tasks : [];
 	const rawGoals: any[] = Array.isArray(payload?.goals) ? payload.goals : [];
 	const priorDecisions = await loadPriorDecisions(projectId);
 
 	const parentMap = buildProjectLoopParentMap(projectRow.doc_structure);
+	// Titles for the whole tree stay complete so the doc-tree summary never
+	// degrades to raw UUIDs, but the document list fed into generator prompts is
+	// capped to the most-recently-updated N (audit §6 / Tier 1 #8).
 	const titleById = new Map<string, string>(
-		rawDocs.map((d) => [d.id as string, (d.title as string) ?? 'Untitled'])
+		rawDocsAll.map((d) => [d.id as string, (d.title as string) ?? 'Untitled'])
 	);
+	const rawDocs = [...rawDocsAll]
+		.sort((a, b) => projectLoopDocumentRecencyMs(b) - projectLoopDocumentRecencyMs(a))
+		.slice(0, MAX_PROJECT_LOOP_CONTEXT_DOCUMENTS);
 
 	const documents: LoopDocument[] = rawDocs.map((d) => ({
 		id: d.id,
@@ -1472,7 +1492,8 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			supabase,
 			appName: 'BuildOS Project Loop Worker'
 		});
-		const sourceFingerprint = buildProjectLoopSourceFingerprint(ctx);
+		// Freshness fingerprints are now scoped per suggestion (see the stamp block
+		// below), so the whole-project fingerprint is no longer used on this path.
 		const skippedGenerators: string[] = [];
 		const runGenerator = async (
 			label: string,
@@ -1491,15 +1512,29 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			return generator();
 		};
 
-		await heartbeat('Generating project brief');
-		const brief: ProjectLoopBrief = await generateProjectBrief({
-			llm,
-			ctx,
-			userId: run.user_id,
-			chatSessionId: run.chat_session_id ?? undefined,
-			runId,
-			onUsage
-		});
+		// The brief is now under the same cost cap as the reconciliation
+		// generators. It runs first, so on a healthy run the cap is not yet
+		// reached and the LLM brief is produced; if a prior cost ever pushes past
+		// the cap we fall back to the zero-cost heuristic brief instead of
+		// starving the suggestion generators that follow (audit §3 / Tier 1 #8).
+		let brief: ProjectLoopBrief;
+		if (totalCost >= PROJECT_LOOP_COST_CAP_USD) {
+			skippedGenerators.push('project brief');
+			await job.log(
+				`Skipping LLM project brief; cost cap reached ($${totalCost.toFixed(4)}) — using heuristic brief.`
+			);
+			brief = buildHeuristicProjectLoopBrief(ctx);
+		} else {
+			await heartbeat('Generating project brief');
+			brief = await generateProjectBrief({
+				llm,
+				ctx,
+				userId: run.user_id,
+				chatSessionId: run.chat_session_id ?? undefined,
+				runId,
+				onUsage
+			});
+		}
 
 		const docOrg = await runGenerator('doc organization', () =>
 			generateDocOrganization({
@@ -1557,12 +1592,16 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		const existingKeys = await loadExistingSuggestionKeys(projectId);
 		const seenThisRunKeys = new Set<string>();
 		let suppressedCount = 0;
+		let repeatedAfterDismissalCount = 0;
 		const proposed: ProposedSuggestion[] = [];
 		for (const suggestion of generated) {
 			if (proposed.length >= MAX_SUGGESTIONS) break;
 			const key = suggestionSuppressionKey(suggestion);
-			if (key && (existingKeys.has(key) || seenThisRunKeys.has(key))) {
+			if (key && (existingKeys.all.has(key) || seenThisRunKeys.has(key))) {
 				suppressedCount += 1;
+				// The model re-proposed something the user already dismissed — the
+				// signal that prompt-only suppression is unreliable (audit Tier 1 #6).
+				if (existingKeys.rejected.has(key)) repeatedAfterDismissalCount += 1;
 				continue;
 			}
 			if (key) seenThisRunKeys.add(key);
@@ -1572,12 +1611,51 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			await job.log(
 				`Suppressed ${suppressedCount} duplicate suggestion${
 					suppressedCount === 1 ? '' : 's'
-				} already open or previously decided for this project.`
+				} already open or previously decided for this project${
+					repeatedAfterDismissalCount
+						? ` (${repeatedAfterDismissalCount} previously dismissed)`
+						: ''
+				}.`
 			);
 		}
 
 		if (proposed.length) {
 			await heartbeat('Writing suggestions');
+
+			// Stamp each suggestion with a freshness fingerprint scoped to just the
+			// entities its operations mutate (Tier 1 #4). Batch-load every referenced
+			// entity once, then hash each suggestion's subset. Suggestions that mutate
+			// nothing concrete (drift, audit follow-ups) get a null fingerprint and
+			// therefore no freshness guard. The web approval check recomputes this the
+			// same way, so the two are directly comparable.
+			const allTaskIds = new Set<string>();
+			const allDocIds = new Set<string>();
+			for (const s of proposed) {
+				const refs = extractProjectLoopSuggestionEntities(s.operations);
+				refs.taskIds.forEach((id) => allTaskIds.add(id));
+				refs.docIds.forEach((id) => allDocIds.add(id));
+			}
+			const scopedStates = await loadProjectLoopSuggestionEntityStates(supabase, projectId, {
+				taskIds: [...allTaskIds],
+				docIds: [...allDocIds]
+			});
+			const scopedStateByKey = new Map<string, ProjectLoopScopedEntity>(
+				scopedStates.map((e) => [`${e.kind}:${e.id}`, e])
+			);
+			const scopedFingerprintFor = (s: ProposedSuggestion): string | null => {
+				const refs = extractProjectLoopSuggestionEntities(s.operations);
+				const entities: ProjectLoopScopedEntity[] = [];
+				for (const id of refs.taskIds) {
+					const entity = scopedStateByKey.get(`task:${id}`);
+					if (entity) entities.push(entity);
+				}
+				for (const id of refs.docIds) {
+					const entity = scopedStateByKey.get(`document:${id}`);
+					if (entity) entities.push(entity);
+				}
+				return buildScopedSuggestionFingerprint(entities);
+			};
+
 			const rows = proposed.map((s, index) => ({
 				run_id: runId,
 				project_id: projectId,
@@ -1593,7 +1671,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 				freshness_state: s.freshness_state ?? 'fresh',
 				reversible: s.reversible ?? null,
 				undo_operations: (s.undo_operations ?? null) as unknown as Json | null,
-				source_fingerprint: s.source_fingerprint ?? sourceFingerprint,
+				source_fingerprint: scopedFingerprintFor(s),
 				status: 'pending' as const,
 				sort_order: s.sort_order ?? index
 			}));
@@ -1652,6 +1730,25 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 				`Failed to persist terminal status for run ${runId}: ${terminalError.message}`
 			);
 		}
+
+		// Suggestion-lifecycle telemetry: the "generated" end of the loop that the
+		// AI Inbox decide events complete on the web side (audit Tier 1 #6). Lets us
+		// tell whether the loop is helping or nagging.
+		captureWorkerEvent(run.user_id, 'project_suggestion_generated', {
+			project_id: projectId,
+			run_id: runId,
+			trigger_reason: run.trigger_reason,
+			generated_count: generated.length,
+			inserted_count: proposed.length,
+			suppressed_count: suppressedCount,
+			repeated_after_dismissal_count: repeatedAfterDismissalCount,
+			skipped_generators: skippedGenerators,
+			doc_org_count: countKind('doc_org'),
+			doc_outdated_count: countKind('doc_outdated'),
+			drift_count: countKind('drift'),
+			task_conflict_count: countKind('task_conflict'),
+			cost_usd: totalCost
+		});
 
 		await job.log(`Project loop completed: ${summary}`);
 		return { success: true, runId, suggestionCount: proposed.length };

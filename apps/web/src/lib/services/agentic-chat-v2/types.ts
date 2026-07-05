@@ -31,6 +31,7 @@ export type FastAgentStreamRequest = {
 	stream_run_id?: string | number;
 	client_turn_id?: string;
 	voiceNoteGroupId?: string;
+	/** Legacy accepted field. Stream route ignores unsigned client-carried context. */
 	prewarmedContext?: FastChatContextCache | null;
 	/** Trimmed; null when absent or empty. */
 	preparedPromptKey?: string | null;
@@ -47,7 +48,7 @@ export type FastAgentStreamRequestInput = Omit<FastAgentStreamRequest, 'voiceNot
 	last_turn_context?: LastTurnContext | null;
 	/** @deprecated Use `voiceNoteGroupId`. */
 	voice_note_group_id?: string | null;
-	/** @deprecated Use `prewarmedContext`. */
+	/** @deprecated Legacy compatibility only; stream route ignores unsigned context. */
 	prewarmed_context?: FastChatContextCache | null;
 	/** @deprecated Use `preparedPromptKey`. */
 	prepared_prompt_key?: string | null;

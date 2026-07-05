@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
 	buildProjectLoopParentMap,
 	buildProjectLoopSourceFingerprint,
+	buildScopedSuggestionFingerprint,
+	extractProjectLoopSuggestionEntities,
+	type ProjectLoopScopedEntity,
 	summarizeProjectLoopDocTree,
 	type ProjectLoopFingerprintContext
 } from '../../../packages/shared-agent-ops/src/project-loops';
@@ -91,6 +94,74 @@ describe('project loop shared helpers', () => {
 		expect(buildProjectLoopSourceFingerprint(renamedTask)).not.toBe(
 			buildProjectLoopSourceFingerprint(first)
 		);
+	});
+
+	it('extracts only the task/document ids a suggestion mutates', () => {
+		const taskConflict = extractProjectLoopSuggestionEntities([
+			{
+				tool: 'update_onto_task',
+				args: {
+					task_id: 'task-a',
+					props: { loop_flagged_conflict: true, loop_conflict_with_task_id: 'task-b' }
+				}
+			}
+		]);
+		expect(taskConflict).toEqual({ taskIds: ['task-a', 'task-b'], docIds: [] });
+
+		const docOp = extractProjectLoopSuggestionEntities([
+			{ tool: 'update_onto_document', args: { document_id: 'doc-a' } }
+		]);
+		expect(docOp).toEqual({ taskIds: [], docIds: ['doc-a'] });
+
+		// Informational suggestions (drift, audit follow-ups) carry no operations.
+		expect(extractProjectLoopSuggestionEntities([])).toEqual({ taskIds: [], docIds: [] });
+		expect(extractProjectLoopSuggestionEntities(null)).toEqual({ taskIds: [], docIds: [] });
+	});
+
+	it('scopes the freshness fingerprint to the referenced entities only', () => {
+		const taskA: ProjectLoopScopedEntity = {
+			kind: 'task',
+			id: 'task-a',
+			title: 'Finalize pricing',
+			state_key: 'in_progress',
+			updated_at: '2026-06-20T00:00:00.000Z',
+			parent_id: null
+		};
+		const taskB: ProjectLoopScopedEntity = {
+			kind: 'task',
+			id: 'task-b',
+			title: 'Publish announcement',
+			state_key: 'todo',
+			updated_at: '2026-06-21T00:00:00.000Z',
+			parent_id: null
+		};
+
+		// No concrete entities → no guard.
+		expect(buildScopedSuggestionFingerprint([])).toBeNull();
+
+		// Order-independent: the stamp and the approval-time check can load the two
+		// entities in either order and still agree.
+		const stamp = buildScopedSuggestionFingerprint([taskA, taskB]);
+		const check = buildScopedSuggestionFingerprint([taskB, taskA]);
+		expect(stamp).not.toBeNull();
+		expect(check).toBe(stamp);
+
+		// A change to a referenced entity supersedes the suggestion...
+		const taskAEdited = { ...taskA, updated_at: '2026-06-25T00:00:00.000Z' };
+		expect(buildScopedSuggestionFingerprint([taskAEdited, taskB])).not.toBe(stamp);
+
+		// ...but the fingerprint only spans the referenced pair, so editing an
+		// UNRELATED task never enters this hash — the core over-invalidation fix.
+		const taskCUnrelated: ProjectLoopScopedEntity = {
+			kind: 'task',
+			id: 'task-c',
+			title: 'Unrelated work',
+			state_key: 'todo',
+			updated_at: '2026-06-30T00:00:00.000Z',
+			parent_id: null
+		};
+		expect([taskA, taskB]).not.toContain(taskCUnrelated);
+		expect(buildScopedSuggestionFingerprint([taskA, taskB])).toBe(stamp);
 	});
 
 	it('summarizes root-wrapped document trees and exposes parent links', () => {

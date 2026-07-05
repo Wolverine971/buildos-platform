@@ -37,6 +37,7 @@ import type {
 	ContextUsageSnapshot,
 	Database,
 	Json,
+	AgentSSEMessage,
 	AgentTimingSummary
 } from '@buildos/shared-types';
 import type { ServiceContext } from '$lib/services/agentic-chat/shared/types';
@@ -108,15 +109,13 @@ import {
 import type { FastChatHistoryCompositionResult } from '$lib/services/agentic-chat-v2/history-composer';
 import type { LLMStreamPassMetadata } from '$lib/services/agentic-chat-v2/stream-orchestrator/shared';
 import {
+	applyActiveDomainSignalsOverlay,
 	buildLitePromptEnvelope,
 	LITE_PROMPT_VARIANT,
 	type LitePromptEnvelope,
 	type LitePromptVariant
 } from '$lib/services/agentic-chat-lite/prompt';
-import {
-	renderDomainSensingPromptBlock,
-	senseDomains
-} from '$lib/services/agentic-chat/tools/domains/domain-sensing';
+import { senseDomains } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
 import {
 	getActiveDomainIds,
 	getActiveOutcomeCardIds,
@@ -185,6 +184,7 @@ import {
 const logger = createLogger('API:AgentStreamV2');
 
 type FastChatSupabaseClient = SupabaseClient<Database>;
+type AgentStreamEventPhase = 'prompt' | 'llm' | 'tool' | 'stream' | 'finalize';
 
 const FASTCHAT_STREAM_ENDPOINT = '/api/agent/v2/stream';
 const FASTCHAT_STREAM_METHOD = 'POST';
@@ -1304,8 +1304,78 @@ async function updateAgentMetadata(
 	}
 }
 
+type AgentChatSSEStream = ReturnType<typeof SSEResponse.createChatStream>;
+
+function resolveAgentStreamEventPhase(eventType: string): AgentStreamEventPhase {
+	switch (eventType) {
+		case 'text':
+		case 'text_delta':
+		case 'clarifying_questions':
+			return 'llm';
+		case 'tool_call':
+		case 'tool_result':
+		case 'skill_activity':
+		case 'context_shift':
+		case 'operation':
+			return 'tool';
+		case 'timing':
+		case 'done':
+		case 'error':
+		case 'last_turn_context':
+			return 'finalize';
+		case 'context_usage':
+		case 'session':
+		case 'ontology_loaded':
+		case 'focus_active':
+		case 'focus_changed':
+		case 'agent_state':
+		case 'draft_update':
+		case 'dimension_update':
+		case 'phase_update':
+		case 'queue_update':
+		default:
+			return 'stream';
+	}
+}
+
+function createSequencedAgentStream(params: {
+	baseStream: AgentChatSSEStream;
+	streamRunId: string;
+	clientTurnId: string | null | undefined;
+	getTurnRunId: () => string | null;
+}): AgentChatSSEStream {
+	let sequenceIndex = 0;
+
+	return {
+		response: params.baseStream.response,
+		sendMessage: async (
+			payload: AgentSSEMessage | (Record<string, unknown> & { type: string })
+		) => {
+			const eventType = typeof payload.type === 'string' ? payload.type : 'message';
+			const nextSequenceIndex = ++sequenceIndex;
+			const turnRunId = params.getTurnRunId();
+			const eventId = `${params.streamRunId}:${nextSequenceIndex}`;
+			const sequencedPayload = {
+				...payload,
+				event_id: eventId,
+				stream_run_id: params.streamRunId,
+				client_turn_id: params.clientTurnId ?? undefined,
+				turn_run_id: turnRunId,
+				sequence_index: nextSequenceIndex,
+				phase: resolveAgentStreamEventPhase(eventType),
+				event_type: eventType,
+				durable: Boolean(turnRunId)
+			};
+			await params.baseStream.sendMessage(sequencedPayload);
+		},
+		close: async () => {
+			await params.baseStream.close();
+		}
+	};
+}
+
 function emitContextUsage(
-	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
+	agentStream: AgentChatSSEStream,
 	usage: ContextUsageSnapshot,
 	options: {
 		onError?: (error: unknown) => void;
@@ -1324,7 +1394,7 @@ function emitContextUsage(
 }
 
 function emitToolCall(
-	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
+	agentStream: AgentChatSSEStream,
 	toolCall: ChatToolCall,
 	options: {
 		onError?: (error: unknown) => void;
@@ -1372,7 +1442,7 @@ function buildToolResultEventPayload(toolCall: ChatToolCall, result: ChatToolRes
 }
 
 function emitToolResult(
-	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
+	agentStream: AgentChatSSEStream,
 	toolCall: ChatToolCall,
 	result: ChatToolResult,
 	options: {
@@ -1393,7 +1463,7 @@ function emitToolResult(
 }
 
 function emitSkillActivity(
-	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
+	agentStream: AgentChatSSEStream,
 	event: SkillActivityEvent,
 	options: {
 		onError?: (error: unknown) => void;
@@ -1493,7 +1563,7 @@ function extractContextShiftPayload(result: ChatToolResult): ContextShiftPayload
 }
 
 async function emitContextShift(
-	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
+	agentStream: AgentChatSSEStream,
 	contextShift: ContextShiftPayload,
 	options: {
 		onError?: (error: unknown) => void;
@@ -2024,10 +2094,10 @@ export const POST: RequestHandler = async ({
 		clientTurnId,
 		createFallbackId: uuidv4
 	});
-	// Both fields are normalized at parseRequest: prewarmedContext is a
-	// validated FastChatContextCache (or null) and preparedPromptKey is
-	// trimmed-or-null.
-	const requestPrewarmedContext = streamRequest.prewarmedContext ?? null;
+	// `prewarmedContext` is accepted at the request boundary for older clients,
+	// but the stream route must not trust unsigned client-carried prompt context.
+	// The fast path is the nonce-protected prepared prompt; otherwise we use the
+	// server-side session cache or reload context.
 	const requestPreparedPromptKey = streamRequest.preparedPromptKey ?? null;
 
 	const initialContextType = normalizeFastContextType(streamRequest.context_type);
@@ -2076,7 +2146,6 @@ export const POST: RequestHandler = async ({
 		}
 	}
 
-	const agentStream = SSEResponse.createChatStream();
 	const turnAbortController = new AbortController();
 	let turnAbortReason: FastChatTurnAbortReason | null = null;
 	const abortTurn = (reason: FastChatTurnAbortReason): void => {
@@ -2140,6 +2209,13 @@ export const POST: RequestHandler = async ({
 	// of re-inserting them (keyed by turn_run_id + sequence_index).
 	let incrementalToolSequence = 0;
 	const incrementallyPersistedToolSequences = new Set<number>();
+	const baseAgentStream = SSEResponse.createChatStream();
+	const agentStream = createSequencedAgentStream({
+		baseStream: baseAgentStream,
+		streamRunId,
+		clientTurnId,
+		getTurnRunId: () => turnRunId
+	});
 
 	const markStreamEventSent = (eventType: string): void => {
 		const now = Date.now();
@@ -2157,7 +2233,7 @@ export const POST: RequestHandler = async ({
 		clientTurnId: clientTurnId ?? null,
 		requestStartedAtMs,
 		messageLength: messageForModel.length,
-		requestPrewarmedContext: Boolean(requestPrewarmedContext),
+		requestPrewarmedContext: false,
 		logger,
 		logError: logFastChatError,
 		getTimingState: () => ({
@@ -2755,7 +2831,7 @@ export const POST: RequestHandler = async ({
 					history_compressed: historyCompressed,
 					raw_history_count: rawHistoryCount,
 					history_for_model_count: historyForModelCount,
-					request_prewarmed_context: Boolean(requestPrewarmedContext),
+					request_prewarmed_context: false,
 					started_at: new Date(requestStartedAtMs).toISOString()
 				});
 				if (turnRunError) {
@@ -3015,11 +3091,6 @@ export const POST: RequestHandler = async ({
 			let promptContext: FastChatResolvedPromptContext | undefined;
 			contextBuildStartedAtMs = Date.now();
 			try {
-				const hasFreshRequestPrewarmCache =
-					requestPrewarmedContext &&
-					requestPrewarmedContext.version === FASTCHAT_CONTEXT_CACHE_VERSION &&
-					requestPrewarmedContext.key === cacheKey &&
-					isCacheFresh(requestPrewarmedContext);
 				if (preparedPromptForTurn.hit) {
 					promptContext = normalizeFastChatContextSnapshot(
 						preparedPromptForTurn.row.context_payload
@@ -3068,24 +3139,6 @@ export const POST: RequestHandler = async ({
 					promptContext = { ...cachedContext.context };
 					contextCacheAgeSeconds = resolveCacheAgeSeconds(cachedContext.created_at);
 					contextCacheSource = 'session_cache';
-				} else if (hasFreshRequestPrewarmCache) {
-					promptContext = { ...requestPrewarmedContext.context };
-					contextCacheAgeSeconds = resolveCacheAgeSeconds(
-						requestPrewarmedContext.created_at
-					);
-					contextCacheSource = 'request_prewarm';
-					void updateAgentMetadata(
-						supabase,
-						session.id,
-						{
-							fastchat_context_cache: requestPrewarmedContext
-						},
-						{
-							errorLogger,
-							userId,
-							projectId: projectIdForLogs
-						}
-					);
 				} else {
 					promptContext = await loadFastChatPromptContext({
 						supabase,
@@ -3155,23 +3208,20 @@ export const POST: RequestHandler = async ({
 						tools,
 						productSurface: FASTCHAT_STREAM_ENDPOINT,
 						conversationPosition: `live stream turn ${streamRunId}`,
+						domainSensingResult: null
+					});
+					systemPrompt = litePromptEnvelope.systemPrompt;
+				}
+
+				if (litePromptEnvelope) {
+					litePromptEnvelope = applyActiveDomainSignalsOverlay(litePromptEnvelope, {
 						currentUserMessage: messageForModel,
+						conversationSummary,
 						priorDomainIds,
 						priorOutcomeCardIds,
 						domainSensingResult: turnDomainSensing
 					});
 					systemPrompt = litePromptEnvelope.systemPrompt;
-				} else {
-					const domainPromptBlock = renderDomainSensingPromptBlock(turnDomainSensing);
-					if (domainPromptBlock && !systemPrompt.includes('## Active Domain Signals')) {
-						systemPrompt = `${systemPrompt}\n\n${domainPromptBlock}`;
-						if (litePromptEnvelope) {
-							litePromptEnvelope = {
-								...litePromptEnvelope,
-								systemPrompt
-							};
-						}
-					}
 				}
 
 				if (turnDomainSensing) {

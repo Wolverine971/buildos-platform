@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	createAdminSupabaseClient: vi.fn(),
-	loadProjectLoopSourceFingerprint: vi.fn(),
+	isProjectSuggestionFresh: vi.fn(),
+	finalizeProjectLoopRunIfComplete: vi.fn(),
 	countActiveAgentRuns: vi.fn(),
 	dispatchAgentRun: vi.fn(),
 	buildProjectSuggestionProposalContext: vi.fn(),
@@ -15,7 +16,11 @@ vi.mock('$lib/supabase/admin', () => ({
 }));
 
 vi.mock('$lib/server/project-loop-snapshot.service', () => ({
-	loadProjectLoopSourceFingerprint: mocks.loadProjectLoopSourceFingerprint
+	isProjectSuggestionFresh: mocks.isProjectSuggestionFresh
+}));
+
+vi.mock('$lib/server/project-loop-run.service', () => ({
+	finalizeProjectLoopRunIfComplete: mocks.finalizeProjectLoopRunIfComplete
 }));
 
 vi.mock('$lib/server/agent-runs/dispatch', () => ({
@@ -211,7 +216,7 @@ describe('decideProjectSuggestionWithClarification', () => {
 	});
 
 	it('supersedes stale clarified approvals before dispatching a child run', async () => {
-		mocks.loadProjectLoopSourceFingerprint.mockResolvedValue('new-fingerprint');
+		mocks.isProjectSuggestionFresh.mockResolvedValue(false);
 		const { supabase, updates } = makeSupabase({
 			project_suggestions: [
 				{ data: pendingSuggestion({ source_fingerprint: 'old-fingerprint' }), error: null },

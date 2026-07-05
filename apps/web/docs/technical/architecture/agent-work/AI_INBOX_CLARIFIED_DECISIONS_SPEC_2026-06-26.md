@@ -143,10 +143,11 @@ Implications:
 
 **Implemented 2026-06-26.** Two layers (entity-note alone is insufficient — loop context is thin):
 
-- **(a) Widened loop context** — `projectLoopWorker.ts` `loadLoopContext` now queries recently decided suggestions (`status IN ('rejected','applied','delegated','superseded') AND user_feedback IS NOT NULL`, last 60 days/30 rows) → `LoopContext.priorDecisions[]` (`{ title, kind, status, reason?, note?, decided_at? }`). The task mapping now includes `description` so agent-written notes re-enter context.
+- **(a) Widened loop context** — `projectLoopWorker.ts` `loadLoopContext` queries recently decided suggestions (`status IN ('rejected','applied','delegated','superseded')`, last 60 days/30 rows) → `LoopContext.priorDecisions[]` (`{ title, kind, status, reason?, note?, decided_at? }`). The task mapping now includes `description` so agent-written notes re-enter context. **Updated 2026-07-04:** the `AND user_feedback IS NOT NULL` filter was dropped so `rejected`/`applied` rows re-enter context even without explicit feedback; every dismissal now writes at least synthetic `user_feedback` (`{ reason: 'dismissed_without_note' }`) anyway. See [`project-loops-flow-audit-2026-07-04.md`](../../../../../../docs/technical/reviews/project-loops-flow-audit-2026-07-04.md) Resolution Log.
 - **(b) Prompt block** — `generators.ts` now adds `priorDecisions` to `LoopContext` and appends a "Previously reviewed decisions" block to project brief, doc organization, outdated-doc, drift, and task-conflict prompts. Each generator explicitly says not to re-raise previously reviewed items unless materially new evidence changes the recommendation.
 - **(c) Entity-note backstop** — produced by the §5.3 dismiss agent; visible to the next run via (a). No extra schema.
-- _(Out of scope: per-suggestion `dedup_key` for exact-content dedup — noted as future.)_
+- **(d) Deterministic pre-insert suppression (2026-07-04)** — the promised exact-content dedup below is now built: `suggestionSuppressionKey()` (`generators.ts`) keys a suggestion on the entities its operations touch (task-pair for `task_conflict`; document set for `doc_org`/`doc_outdated`), and the worker drops fresh proposals that match an already-open or recently-decided suggestion before insert. Layers (a)–(c) remain the fallback for `drift` (no deterministic key).
+- _(Superseded: per-suggestion `dedup_key` for exact-content dedup was "noted as future" here — see (d).)_
 
 ### 5.5 UI (shared decision controls)
 

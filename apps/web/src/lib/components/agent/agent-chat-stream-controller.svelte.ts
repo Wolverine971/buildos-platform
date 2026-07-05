@@ -41,6 +41,14 @@ export interface ClientStreamTimingState {
 }
 
 export type StreamStopReason = 'user_cancelled' | 'superseded' | 'error';
+export type StreamTurnReconcileReason = 'transport_error' | 'detached';
+
+export interface StreamTurnReconcileRequest {
+	sessionId: string;
+	streamRunId: string;
+	clientTurnId: string | null;
+	reason: StreamTurnReconcileReason;
+}
 
 export interface StreamProcessorLike {
 	processStream(
@@ -70,7 +78,6 @@ export interface StreamControllerVoiceDeps {
 
 export interface StreamControllerPrewarmDeps {
 	resolveCurrentKey(): string | null;
-	matchingFreshContext(key: string | null | undefined): unknown;
 	matchingFreshPreparedPrompt(key: string | null | undefined): PreparedPromptClient | null;
 	clearPreparedPrompt(): void;
 }
@@ -106,6 +113,7 @@ export interface StreamControllerDeps {
 	clearPendingToolState(): void;
 	handleSSEMessage(event: AgentSSEMessage): void;
 	hydrateSessionFromEvent(session: ChatSession): void;
+	reconcileTurnFromSession?(request: StreamTurnReconcileRequest): void | Promise<void>;
 	setUserHasScrolled(value: boolean): void;
 	setExistingImagePickerOpen(value: boolean): void;
 	haptic?(style: 'light' | 'medium' | 'heavy'): void;
@@ -147,6 +155,30 @@ function diffMs(start: number | null, end: number | null): number | null {
 	return Math.max(0, end - start);
 }
 
+function normalizeStreamMetaString(value: unknown): string | null {
+	return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function normalizeStreamSequenceIndex(value: unknown): number | null {
+	if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) return null;
+	return value;
+}
+
+function buildStreamEventKey(
+	event: AgentSSEMessage,
+	activeStreamRunId: string | null
+): string | null {
+	const metadata = event as unknown as Record<string, unknown>;
+	const eventId = normalizeStreamMetaString(metadata.event_id);
+	if (eventId) return `event:${eventId}`;
+
+	const sequenceIndex = normalizeStreamSequenceIndex(metadata.sequence_index);
+	if (sequenceIndex === null) return null;
+
+	const streamRunId = normalizeStreamMetaString(metadata.stream_run_id) ?? activeStreamRunId;
+	return streamRunId ? `sequence:${streamRunId}:${sequenceIndex}` : null;
+}
+
 export function summarizeClientStreamTiming(timing: ClientStreamTimingState) {
 	return {
 		runId: timing.runId,
@@ -181,6 +213,7 @@ export class AgentChatStreamController {
 	#deps: StreamControllerDeps;
 	#fetch: typeof fetch;
 	#streamProcessor: StreamProcessorLike;
+	#processedStreamEventKeys = new Set<string>();
 
 	constructor(deps: StreamControllerDeps) {
 		this.#deps = deps;
@@ -224,6 +257,46 @@ export class AgentChatStreamController {
 		};
 	}
 
+	#clearStreamEventOrderingState(): void {
+		this.#processedStreamEventKeys.clear();
+	}
+
+	#shouldAcceptStreamEvent(event: AgentSSEMessage): boolean {
+		const metadata = event as unknown as Record<string, unknown>;
+		const eventStreamRunId = normalizeStreamMetaString(metadata.stream_run_id);
+		if (eventStreamRunId && eventStreamRunId !== this.activeTransportStreamRunId) {
+			this.#deps.logDebug?.('[AgentChat] Dropping stale stream event', {
+				type: event.type,
+				eventStreamRunId,
+				activeStreamRunId: this.activeTransportStreamRunId
+			});
+			return false;
+		}
+
+		const eventClientTurnId = normalizeStreamMetaString(metadata.client_turn_id);
+		if (eventClientTurnId && eventClientTurnId !== this.activeClientTurnId) {
+			this.#deps.logDebug?.('[AgentChat] Dropping stale client turn event', {
+				type: event.type,
+				eventClientTurnId,
+				activeClientTurnId: this.activeClientTurnId
+			});
+			return false;
+		}
+
+		const eventKey = buildStreamEventKey(event, this.activeTransportStreamRunId);
+		if (!eventKey) return true;
+		if (this.#processedStreamEventKeys.has(eventKey)) {
+			this.#deps.logDebug?.('[AgentChat] Dropping duplicate stream event', {
+				type: event.type,
+				eventKey
+			});
+			return false;
+		}
+
+		this.#processedStreamEventKeys.add(eventKey);
+		return true;
+	}
+
 	finalizeClientStreamTiming(
 		runId: number,
 		terminalState: ClientStreamTimingState['terminalState'],
@@ -239,6 +312,51 @@ export class AgentChatStreamController {
 		this.lastCompletedStreamTiming = finalized;
 		this.activeStreamTiming = null;
 		this.#deps.logDebug?.('[AgentChat] Stream timing', summarizeClientStreamTiming(finalized));
+	}
+
+	buildTurnReconcileRequest(
+		reason: StreamTurnReconcileReason
+	): StreamTurnReconcileRequest | null {
+		const sessionId = this.#deps.getCurrentSession()?.id;
+		const streamRunId = this.activeTransportStreamRunId;
+		if (!sessionId || !streamRunId) return null;
+		return {
+			sessionId,
+			streamRunId,
+			clientTurnId: this.activeClientTurnId,
+			reason
+		};
+	}
+
+	startTurnReconciliation(
+		runId: number,
+		request: StreamTurnReconcileRequest,
+		timingState: ClientStreamTimingState['terminalState'],
+		cancelReason: ClientStreamTimingState['cancelReason'] = null
+	): boolean {
+		const reconcile = this.#deps.reconcileTurnFromSession;
+		if (!reconcile) return false;
+
+		this.error = null;
+		this.isStreaming = false;
+		this.currentActivity = 'Restoring latest response...';
+		this.#currentStreamController = null;
+		this.activeTransportStreamRunId = null;
+		this.activeClientTurnId = null;
+		this.#clearStreamEventOrderingState();
+		this.#deps.thinking.finalize('interrupted', 'Restoring latest response');
+		this.#deps.assistant.flushText();
+		this.#deps.assistant.finalizeMessage();
+		this.finalizeClientStreamTiming(runId, timingState, cancelReason);
+		this.activeStreamRunId = this.activeStreamRunId + 1;
+
+		Promise.resolve(reconcile(request)).catch((err) => {
+			this.#deps.logError?.('[AgentChat] Failed to reconcile detached turn:', err);
+			this.error = 'Connection lost before the latest response could be restored.';
+			this.currentActivity = '';
+		});
+
+		return true;
 	}
 
 	async handleSendMessage(): Promise<void> {
@@ -316,6 +434,7 @@ export class AgentChatStreamController {
 		let userMessage: UIMessage | null = null;
 		let runId: number | null = null;
 		let streamController: AbortController | null = null;
+		let responseAccepted = false;
 
 		try {
 			if (this.isStreaming) {
@@ -327,12 +446,10 @@ export class AgentChatStreamController {
 			const requestProjectFocus = this.#deps.getResolvedProjectFocus();
 			const prewarm = this.#deps.getPrewarm();
 			const currentPrewarmKey = prewarm.resolveCurrentKey();
-			let matchingPrewarmedContext = prewarm.matchingFreshContext(currentPrewarmKey);
 			let matchingPreparedPrompt = prewarm.matchingFreshPreparedPrompt(currentPrewarmKey);
 			let sessionForTurn = this.#deps.getCurrentSession();
 			const canUseStreamCreatedSession =
-				senderType === 'user' &&
-				Boolean(matchingPreparedPrompt || matchingPrewarmedContext);
+				senderType === 'user' && Boolean(matchingPreparedPrompt);
 
 			if (!sessionForTurn?.id && !canUseStreamCreatedSession) {
 				try {
@@ -354,11 +471,10 @@ export class AgentChatStreamController {
 					return;
 				}
 
-				matchingPrewarmedContext = prewarm.matchingFreshContext(currentPrewarmKey);
 				matchingPreparedPrompt = prewarm.matchingFreshPreparedPrompt(currentPrewarmKey);
 			}
 
-			if (!sessionForTurn?.id && !matchingPreparedPrompt && !matchingPrewarmedContext) {
+			if (!sessionForTurn?.id && !matchingPreparedPrompt) {
 				this.error = 'Unable to prepare a chat session right now.';
 				return;
 			}
@@ -423,6 +539,7 @@ export class AgentChatStreamController {
 			runId = this.activeStreamRunId;
 			this.activeTransportStreamRunId = transportStreamRunId;
 			this.activeClientTurnId = clientTurnId;
+			this.#clearStreamEventOrderingState();
 			this.activeStreamTiming = buildClientStreamTimingState(runId);
 
 			this.isStreaming = true;
@@ -458,7 +575,6 @@ export class AgentChatStreamController {
 					stream_run_id: transportStreamRunId,
 					client_turn_id: clientTurnId,
 					voiceNoteGroupId: activeVoiceNoteGroupId,
-					prewarmedContext: matchingPrewarmedContext,
 					preparedPromptKey: matchingPreparedPrompt?.key ?? null
 				})
 			});
@@ -466,6 +582,7 @@ export class AgentChatStreamController {
 			if (!response.ok) {
 				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 			}
+			responseAccepted = true;
 
 			const callbacks: StreamCallbacks = {
 				onProgress: (data: any) => {
@@ -479,17 +596,26 @@ export class AgentChatStreamController {
 						}
 						return;
 					}
+					const event = data as AgentSSEMessage;
+					if (!this.#shouldAcceptStreamEvent(event)) return;
 					receivedStreamEvent = true;
 					this.recordClientStreamEvent(
 						runId,
-						(data?.type as AgentSSEMessage['type']) ?? 'text'
+						(event?.type as AgentSSEMessage['type']) ?? 'text'
 					);
-					this.#deps.handleSSEMessage(data as AgentSSEMessage);
+					this.#deps.handleSSEMessage(event);
 				},
 				onError: (err) => {
 					if (runId !== this.activeStreamRunId) return;
 					this.recordClientStreamEvent(runId, 'transport_error');
 					this.#deps.logError?.('SSE error:', err);
+					const reconcileRequest = this.buildTurnReconcileRequest('transport_error');
+					if (
+						reconcileRequest &&
+						this.startTurnReconciliation(runId, reconcileRequest, 'error', 'error')
+					) {
+						return;
+					}
 					this.error =
 						typeof err === 'string' ? err : 'Connection error occurred while streaming';
 					this.isStreaming = false;
@@ -497,6 +623,7 @@ export class AgentChatStreamController {
 					this.#currentStreamController = null;
 					this.activeTransportStreamRunId = null;
 					this.activeClientTurnId = null;
+					this.#clearStreamEventOrderingState();
 					this.#deps.thinking.finalize('error');
 					this.#deps.assistant.flushText();
 					this.#deps.assistant.finalizeMessage();
@@ -512,16 +639,19 @@ export class AgentChatStreamController {
 						this.error = 'BuildOS did not return a response. Please try again.';
 					}
 					this.activeTransportStreamRunId = null;
-					this.#deps.thinking.finalize('completed');
+					this.#clearStreamEventOrderingState();
+					const terminalState = this.error ? 'error' : 'completed';
+					this.#deps.thinking.finalize(terminalState);
 					this.#deps.assistant.flushText();
 					this.#deps.assistant.finalizeMessage();
-					this.finalizeClientStreamTiming(runId, this.error ? 'error' : 'completed');
+					this.finalizeClientStreamTiming(runId, terminalState);
 				}
 			};
 
 			await this.#streamProcessor.processStream(response, callbacks, {
 				timeout: 0,
 				parseJSON: true,
+				treatErrorEventsAsProgress: true,
 				signal: streamController.signal
 			});
 		} catch (err) {
@@ -534,19 +664,35 @@ export class AgentChatStreamController {
 				this.currentActivity = '';
 				this.activeTransportStreamRunId = null;
 				this.activeClientTurnId = null;
+				this.#clearStreamEventOrderingState();
 				this.#deps.thinking.finalize('interrupted', 'Stopped');
 				this.#deps.assistant.flushText();
 				this.#deps.assistant.finalizeMessage();
 				this.finalizeClientStreamTiming(runId, 'aborted');
 				return;
 			}
+			if (runId !== null && runId !== this.activeStreamRunId) {
+				return;
+			}
 
 			this.#deps.logError?.('Failed to send message:', err);
+			const reconcileRequest =
+				responseAccepted && runId !== null
+					? this.buildTurnReconcileRequest('transport_error')
+					: null;
+			if (
+				reconcileRequest &&
+				this.startTurnReconciliation(runId!, reconcileRequest, 'error', 'error')
+			) {
+				return;
+			}
+
 			this.error = 'Failed to send message. Please try again.';
 			this.isStreaming = false;
 			this.currentActivity = '';
 			this.activeTransportStreamRunId = null;
 			this.activeClientTurnId = null;
+			this.#clearStreamEventOrderingState();
 			this.#deps.thinking.finalize('error');
 			this.#deps.assistant.flushText();
 			this.#deps.assistant.finalizeMessage();
@@ -608,17 +754,20 @@ export class AgentChatStreamController {
 		]);
 	}
 
-	detachActiveStream(): void {
+	detachActiveStream(options: { reconcile?: boolean } = {}): void {
 		if (!this.#currentStreamController) return;
 
 		const runId = this.activeStreamRunId;
 		const streamController = this.#currentStreamController;
+		const reconcileRequest =
+			options.reconcile === false ? null : this.buildTurnReconcileRequest('detached');
 
 		this.#deps.assistant.flushText();
 		this.finalizeClientStreamTiming(runId, 'aborted');
 		this.activeStreamRunId = this.activeStreamRunId + 1;
 		this.activeTransportStreamRunId = null;
 		this.activeClientTurnId = null;
+		this.#clearStreamEventOrderingState();
 
 		try {
 			streamController.abort();
@@ -632,6 +781,13 @@ export class AgentChatStreamController {
 		this.#deps.assistant.finalizeMessage();
 		this.isStreaming = false;
 		this.currentActivity = '';
+		if (reconcileRequest) {
+			Promise.resolve(this.#deps.reconcileTurnFromSession?.(reconcileRequest)).catch(
+				(err) => {
+					this.#deps.logError?.('[AgentChat] Failed to reconcile detached turn:', err);
+				}
+			);
+		}
 	}
 
 	async stopGeneration(
@@ -664,6 +820,7 @@ export class AgentChatStreamController {
 		this.activeStreamRunId = this.activeStreamRunId + 1;
 		this.activeTransportStreamRunId = null;
 		this.activeClientTurnId = null;
+		this.#clearStreamEventOrderingState();
 
 		if (cancellationReasonPromise && options.awaitCancelHint) {
 			await cancellationReasonPromise;
@@ -690,9 +847,9 @@ export class AgentChatStreamController {
 		this.currentActivity = '';
 	}
 
-	disposeActiveStream(): void {
+	disposeActiveStream(options: { reconcile?: boolean } = {}): void {
 		if (this.#currentStreamController && this.isStreaming) {
-			this.detachActiveStream();
+			this.detachActiveStream(options);
 			return;
 		}
 
@@ -706,13 +863,15 @@ export class AgentChatStreamController {
 		this.#currentStreamController = null;
 		this.activeTransportStreamRunId = null;
 		this.activeClientTurnId = null;
+		this.#clearStreamEventOrderingState();
 	}
 
 	reset(): void {
-		this.disposeActiveStream();
+		this.disposeActiveStream({ reconcile: false });
 		this.activeStreamRunId = this.activeStreamRunId + 1;
 		this.activeTransportStreamRunId = null;
 		this.activeClientTurnId = null;
+		this.#clearStreamEventOrderingState();
 		this.isStreaming = false;
 		this.isStartingStream = false;
 		this.currentActivity = '';

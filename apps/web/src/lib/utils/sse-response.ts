@@ -2,6 +2,10 @@
 
 import type { RequestEvent } from '@sveltejs/kit';
 
+function sanitizeSSEFieldValue(value: string): string {
+	return value.replace(/[\r\n\0]/g, ' ');
+}
+
 export class SSEResponse {
 	/**
 	 * Create an SSE error response with consistent format matching ApiResponse
@@ -133,11 +137,15 @@ export class SSEResponse {
 		writer: WritableStreamDefaultWriter,
 		encoder: TextEncoder,
 		data: any,
-		event?: string
+		event?: string,
+		id?: string
 	): Promise<void> {
 		let message = '';
+		if (id) {
+			message += `id: ${sanitizeSSEFieldValue(id)}\n`;
+		}
 		if (event) {
-			message += `event: ${event}\n`;
+			message += `event: ${sanitizeSSEFieldValue(event)}\n`;
 		}
 		message += `data: ${JSON.stringify(data)}\n\n`;
 		await writer.write(encoder.encode(message));
@@ -164,7 +172,11 @@ export class SSEResponse {
 		return {
 			response,
 			sendMessage: async (data: any) => {
-				await SSEResponse.sendMessage(writer, encoder, data);
+				const id =
+					data && typeof data === 'object' && typeof data.event_id === 'string'
+						? data.event_id
+						: undefined;
+				await SSEResponse.sendMessage(writer, encoder, data, undefined, id);
 			},
 			close: async () => {
 				await SSEResponse.close(writer);

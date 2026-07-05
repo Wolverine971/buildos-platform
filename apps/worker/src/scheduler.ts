@@ -18,7 +18,10 @@ import { queueConfig } from './config/queueConfig';
 import { cleanupStaleJobs } from './lib/utils/queueCleanup';
 import { queue } from './worker';
 import { PROJECT_LOOPS_ENABLED } from './config/projectLoops';
-import { enqueueEndOfDayProjectLoops } from './workers/project-loop/enqueue';
+import {
+	enqueueEndOfDayProjectLoops,
+	reclaimStalledProjectLoopRuns
+} from './workers/project-loop/enqueue';
 import { enqueueScheduledProjectAudits } from './workers/project-loop/auditEnqueue';
 import {
 	validateAgentRunMetadata,
@@ -217,6 +220,24 @@ export function startScheduler() {
 			);
 		} catch (error) {
 			console.error('🔁 Project loop scheduling failed:', error);
+		}
+	});
+
+	// Proactively reclaim project-loop runs stuck running/queued and finalize
+	// waiting_review runs whose suggestions are all decided, independent of when
+	// the project is next enqueued (audit Tier 1 #7). No-ops unless loops are on.
+	cron.schedule('*/30 * * * *', async () => {
+		if (!PROJECT_LOOPS_ENABLED) return;
+		try {
+			const { failedRunning, failedQueued, finalizedReview } =
+				await reclaimStalledProjectLoopRuns();
+			if (failedRunning || failedQueued || finalizedReview) {
+				console.log(
+					`🔁 Project loop reclaim: failed running=${failedRunning}, queued=${failedQueued}, finalized review=${finalizedReview}`
+				);
+			}
+		} catch (error) {
+			console.error('🔁 Project loop reclaim failed:', error);
 		}
 	});
 
@@ -495,7 +516,28 @@ export async function checkAndScheduleAgentOperatives(now: Date = new Date()): P
 	}
 }
 
-async function runQueueRetentionCleanup() {
+async function runPreparedPromptRetentionCleanup(): Promise<void> {
+	try {
+		const { data, error } = await (supabase as any).rpc(
+			'cleanup_expired_agentic_chat_prepared_prompts'
+		);
+		if (error) {
+			console.warn('⚠️ Scheduled prepared prompt cleanup failed:', error);
+			return;
+		}
+
+		const deletedCount = typeof data === 'number' ? data : 0;
+		if (deletedCount > 0) {
+			console.log(
+				`✅ Scheduled prepared prompt cleanup removed ${deletedCount} expired prompt(s)`
+			);
+		}
+	} catch (error) {
+		console.error('❌ Scheduled prepared prompt cleanup failed:', error);
+	}
+}
+
+export async function runQueueRetentionCleanup() {
 	try {
 		console.log('🧹 Running scheduled queue retention cleanup...');
 		const result = await cleanupStaleJobs({
@@ -524,6 +566,8 @@ async function runQueueRetentionCleanup() {
 	} catch (error) {
 		console.error('❌ Scheduled queue retention cleanup failed:', error);
 	}
+
+	await runPreparedPromptRetentionCleanup();
 }
 
 /**

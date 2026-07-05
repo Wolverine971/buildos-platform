@@ -5,9 +5,14 @@
 // can't be imported here, so the run-row + add_queue_job logic is duplicated.
 
 import type { Json, ProjectLoopTriggerReason } from '@buildos/shared-types';
+import { projectLoopDedupKey } from '@buildos/shared-agent-ops';
 import { supabase } from '../../lib/supabase';
 import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
 import { mapProjectLoopOwnerUserIds } from './ownerResolution';
+
+// Re-exported so existing importers (and the enqueue tests) keep resolving it
+// from this module while the definition lives in @buildos/shared-agent-ops.
+export { projectLoopDedupKey };
 
 const AUTO_TRIGGER_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -19,19 +24,6 @@ const AUTO_TRIGGER_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 // replace. `queued` gets a longer window to tolerate nightly queue backlogs.
 const STALE_RUNNING_RUN_MS = 60 * 60 * 1000; // 1 hour
 const STALE_QUEUED_RUN_MS = 6 * 60 * 60 * 1000; // 6 hours
-
-/**
- * Stable queue dedup key for a project's loop within a single cadence window
- * (one UTC calendar day). Deliberately excludes the run id and trigger reason
- * so a manual web trigger racing the end-of-day cron collapses onto the same
- * `add_queue_job` dedup slot instead of double-running. add_queue_job only
- * dedups against pending/processing jobs, so a fresh run later the same day
- * (after the prior job completes) is still allowed.
- */
-export function projectLoopDedupKey(projectId: string, at: Date = new Date()): string {
-	const day = at.toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
-	return `project-loop:${projectId}:${day}`;
-}
 
 async function createLoopChatSession(params: {
 	projectId: string;
@@ -45,7 +37,11 @@ async function createLoopChatSession(params: {
 			context_type: 'project',
 			entity_id: params.projectId,
 			status: 'active',
-			chat_type: 'project_loop',
+			// 'project_loop' is NOT in the chat_sessions_chat_type_check allowlist —
+			// it would 23514 the moment the end-of-day loop runs with the flag on.
+			// The web manual/burst path already uses 'project'; match it. (Discovered
+			// during Tier 1 work; blocks the item #9 enable-and-validate step.)
+			chat_type: 'project',
 			title:
 				params.triggerReason === 'manual'
 					? 'Manual Project Review'
@@ -233,6 +229,104 @@ export async function enqueueEndOfDayProjectLoops(): Promise<{
 	}
 
 	return { enqueued, scanned: projects?.length ?? 0, skippedInvalidOwner };
+}
+
+/**
+ * Proactively reclaim runs that never reached a terminal state, independent of
+ * whether the project gets re-enqueued (audit Tier 1 #7). Two failure modes:
+ *
+ *  - `running`/`queued` orphans — a worker died after the status-fenced claim
+ *    (or before picking the job up). Previously only the NEXT enqueue for that
+ *    exact project cleared these; a project with no further activity stayed
+ *    stuck forever. Here we fail any past the same stale thresholds enqueue uses.
+ *  - `waiting_review` runs whose every child suggestion is already decided —
+ *    a backstop to the web-side finalizer for runs decided before this shipped.
+ *
+ * All updates are status-fenced so a run that changes state concurrently is left
+ * to whoever won the race.
+ */
+export async function reclaimStalledProjectLoopRuns(): Promise<{
+	failedRunning: number;
+	failedQueued: number;
+	finalizedReview: number;
+}> {
+	if (!PROJECT_LOOPS_ENABLED) {
+		return { failedRunning: 0, failedQueued: 0, finalizedReview: 0 };
+	}
+
+	const now = Date.now();
+	const nowIso = new Date(now).toISOString();
+	const runningCutoff = new Date(now - STALE_RUNNING_RUN_MS).toISOString();
+	const queuedCutoff = new Date(now - STALE_QUEUED_RUN_MS).toISOString();
+
+	const failStuck = async (
+		status: 'running' | 'queued',
+		cutoffColumn: 'started_at' | 'created_at',
+		cutoffIso: string
+	): Promise<number> => {
+		const { data: rows, error } = await supabase
+			.from('project_loop_runs')
+			.select('id')
+			.eq('status', status)
+			.lt(cutoffColumn, cutoffIso)
+			.limit(200);
+		if (error) {
+			console.error(`[ProjectLoops] reclaim scan (${status}) failed:`, error.message);
+			return 0;
+		}
+		let failed = 0;
+		for (const row of rows ?? []) {
+			if (!row.id) continue;
+			const { data: reclaimed } = await supabase
+				.from('project_loop_runs')
+				.update({
+					status: 'failed',
+					error_message: `Reclaimed: stuck in '${status}' past the stale threshold`,
+					finished_at: nowIso
+				})
+				.eq('id', row.id)
+				.eq('status', status)
+				.select('id')
+				.maybeSingle();
+			if (reclaimed?.id) failed += 1;
+		}
+		return failed;
+	};
+
+	const failedRunning = await failStuck('running', 'started_at', runningCutoff);
+	const failedQueued = await failStuck('queued', 'created_at', queuedCutoff);
+
+	// Finalize waiting_review runs with no undecided child suggestions.
+	let finalizedReview = 0;
+	const { data: reviewRuns, error: reviewError } = await supabase
+		.from('project_loop_runs')
+		.select('id')
+		.eq('status', 'waiting_review')
+		.limit(200);
+	if (reviewError) {
+		console.error('[ProjectLoops] reclaim scan (waiting_review) failed:', reviewError.message);
+	} else {
+		for (const row of reviewRuns ?? []) {
+			if (!row.id) continue;
+			const { data: pending, error: pendingError } = await supabase
+				.from('project_suggestions')
+				.select('id')
+				.eq('run_id', row.id)
+				.eq('status', 'pending')
+				.limit(1);
+			if (pendingError || pending?.length) continue;
+			const { data: finalized } = await supabase
+				.from('project_loop_runs')
+				.update({ status: 'completed' })
+				.eq('id', row.id)
+				.eq('status', 'waiting_review')
+				.select('id')
+				.maybeSingle();
+			if (finalized?.id) finalizedReview += 1;
+		}
+	}
+
+	return { failedRunning, failedQueued, finalizedReview };
 }
 
 export async function resolveProjectLoopOwnerUserIds(

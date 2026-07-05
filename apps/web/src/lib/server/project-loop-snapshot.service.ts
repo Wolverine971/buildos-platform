@@ -1,78 +1,32 @@
 // apps/web/src/lib/server/project-loop-snapshot.service.ts
-import {
-	buildProjectLoopParentMap,
-	buildProjectLoopSourceFingerprint,
-	type ProjectLoopFingerprintContext,
-	summarizeProjectLoopDocTree
-} from '@buildos/shared-agent-ops';
+import { computeProjectSuggestionFreshnessFingerprint } from '@buildos/shared-agent-ops';
+import type { LoopOperation } from '@buildos/shared-types';
 
 type AnySupabase = any;
 
-export type ProjectLoopSnapshotContext = ProjectLoopFingerprintContext & {
-	docStructureSummary: string;
-};
-
-export async function loadProjectLoopSnapshotContext(
+/**
+ * Freshness guard for a pending suggestion at approval time. Fresh (safe to
+ * apply) when the entities the suggestion's operations MUTATE are unchanged
+ * since it was generated. Scoped per suggestion, so an edit to an unrelated
+ * entity no longer supersedes the whole pending queue (audit Tier 1 #4). This
+ * replaced the old whole-project fingerprint (loadProjectLoopSourceFingerprint),
+ * which superseded every pending item on any edit — a 100% supersede rate in prod.
+ *
+ * Always fresh when the suggestion has no stored fingerprint, or when it mutates
+ * no concrete entity (informational suggestions like drift / audit follow-ups —
+ * there is nothing whose staleness could make applying them unsafe).
+ */
+export async function isProjectSuggestionFresh(
 	supabase: AnySupabase,
-	projectId: string
-): Promise<ProjectLoopSnapshotContext | null> {
-	const { data: projectRow, error: projectError } = await supabase
-		.from('onto_projects')
-		.select('id, name, description, doc_structure, deleted_at, archived_at')
-		.eq('id', projectId)
-		.maybeSingle();
-
-	if (projectError) throw projectError;
-	if (!projectRow || projectRow.deleted_at || projectRow.archived_at) return null;
-
-	const { data: graphData, error: graphError } = await supabase.rpc(
-		'load_project_graph_context',
-		{ p_project_id: projectId }
-	);
-	if (graphError) throw graphError;
-
-	const payload = graphData as any;
-	const rawDocs: any[] = Array.isArray(payload?.documents) ? payload.documents : [];
-	const rawTasks: any[] = Array.isArray(payload?.tasks) ? payload.tasks : [];
-	const rawGoals: any[] = Array.isArray(payload?.goals) ? payload.goals : [];
-
-	const parentMap = buildProjectLoopParentMap(projectRow.doc_structure);
-	const titleById = new Map<string, string>(
-		rawDocs.map((doc) => [doc.id as string, (doc.title as string) ?? 'Untitled'])
-	);
-
-	return {
+	projectId: string,
+	suggestion: { source_fingerprint?: string | null; operations?: LoopOperation[] | null }
+): Promise<boolean> {
+	if (!suggestion.source_fingerprint) return true;
+	const currentFingerprint = await computeProjectSuggestionFreshnessFingerprint(
+		supabase,
 		projectId,
-		projectName: projectRow.name ?? 'Untitled project',
-		projectDescription: projectRow.description ?? null,
-		goals: rawGoals.slice(0, 10).map((goal) => ({
-			name: goal.name ?? goal.goal ?? 'Untitled goal',
-			description: goal.description ?? null
-		})),
-		documents: rawDocs.map((doc) => ({
-			id: doc.id,
-			title: doc.title ?? 'Untitled',
-			state_key: doc.state_key ?? null,
-			updated_at: doc.updated_at ?? doc.created_at ?? null,
-			parent_id: parentMap.get(doc.id) ?? null
-		})),
-		tasks: rawTasks
-			.filter((task) => task.state_key !== 'done')
-			.slice(0, 20)
-			.map((task) => ({
-				id: task.id,
-				title: task.title ?? 'Untitled',
-				state_key: task.state_key ?? null,
-				updated_at: task.updated_at ?? task.created_at ?? null
-			})),
-		docStructureSummary: summarizeProjectLoopDocTree(projectRow.doc_structure, titleById)
-	};
-}
-
-export async function loadProjectLoopSourceFingerprint(
-	supabase: AnySupabase,
-	projectId: string
-): Promise<string | null> {
-	const ctx = await loadProjectLoopSnapshotContext(supabase, projectId);
-	return ctx ? buildProjectLoopSourceFingerprint(ctx) : null;
+		suggestion.operations ?? null
+	);
+	if (currentFingerprint === null) return true;
+	return currentFingerprint === suggestion.source_fingerprint;
 }

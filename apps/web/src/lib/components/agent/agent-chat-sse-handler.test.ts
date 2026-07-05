@@ -1,7 +1,7 @@
 // apps/web/src/lib/components/agent/agent-chat-sse-handler.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import type { AgentSSEMessage, ChatSession, ContextShiftPayload } from '@buildos/shared-types';
-import type { ThinkingBlockMessage, UIMessage } from './agent-chat.types';
+import type { CreatedEntityRef, ThinkingBlockMessage, UIMessage } from './agent-chat.types';
 import {
 	buildToolCallActivity,
 	computeAgentStateActivity,
@@ -232,7 +232,9 @@ interface HandlerHarness {
 		bufferAssistantText: string[];
 		finalizeAssistantMessage: number;
 		addClarifyingQuestionsMessage: number;
+		addCreatedEntitiesMessage: CreatedEntityRef[][];
 		logFocusActivity: Array<{ action: string }>;
+		updateBlocks: ThinkingBlockMessage[];
 	};
 	snapshot: {
 		currentActivity: string;
@@ -297,6 +299,8 @@ function createHarness(
 		bufferAssistantText: [],
 		finalizeAssistantMessage: 0,
 		addClarifyingQuestionsMessage: 0,
+		addCreatedEntitiesMessage: [],
+		updateBlocks: [],
 		logFocusActivity: []
 	};
 
@@ -330,7 +334,10 @@ function createHarness(
 				activities: [],
 				status: 'active'
 			};
-			updater(fake);
+			const updated = updater(fake);
+			if (updated) {
+				calls.updateBlocks.push(updated);
+			}
 		},
 		addActivity(content, activityType, metadata, status) {
 			calls.addActivity.push({ content, activityType, metadata, status });
@@ -415,6 +422,8 @@ function createHarness(
 
 	const hiddenToolCallIds = new Set<string>();
 	const pendingToolResults = new Map<string, PendingToolStatus>();
+	const processedToolCallIds = new Set<string>();
+	const processedToolResultIds = new Set<string>();
 
 	const deps: SSEHandlerDeps = {
 		presenter,
@@ -437,8 +446,13 @@ function createHarness(
 		},
 		hiddenToolCallIds,
 		pendingToolResults,
+		processedToolCallIds,
+		processedToolResultIds,
 		addClarifyingQuestionsMessage: () => {
 			calls.addClarifyingQuestionsMessage += 1;
+		},
+		addCreatedEntitiesMessage: (entities) => {
+			calls.addCreatedEntitiesMessage.push(entities);
 		},
 		logFocusActivity: (action) => {
 			calls.logFocusActivity.push({ action });
@@ -624,6 +638,28 @@ describe('createSSEHandler — tool call + result', () => {
 		expect(h.pendingToolResults.has('call-1')).toBe(false);
 	});
 
+	it('ignores duplicate tool_call events with the same id', () => {
+		const h = createHarness();
+		const event: Extract<AgentSSEMessage, { type: 'tool_call' }> = {
+			type: 'tool_call',
+			tool_call: {
+				id: 'call-1',
+				type: 'function',
+				function: {
+					name: 'create_onto_task',
+					arguments: JSON.stringify({ title: 'Hi' })
+				}
+			} as any
+		};
+
+		h.handler(event);
+		h.handler(event);
+
+		expect(h.calls.updateBlocks).toHaveLength(1);
+		expect(h.calls.updateBlocks[0]?.activities).toHaveLength(1);
+		expect(h.calls.updateBlocks[0]?.activities[0]?.toolCallId).toBe('call-1');
+	});
+
 	it('tool_result updates a matching activity and records mutation + toast', () => {
 		const h = createHarness();
 		const toastSpy = vi.spyOn(h.presenter, 'showToolResultToast');
@@ -653,6 +689,40 @@ describe('createSSEHandler — tool call + result', () => {
 		expect(mutationSpy).toHaveBeenCalled();
 	});
 
+	it('ignores duplicate tool_result events with the same tool_call_id', () => {
+		const h = createHarness();
+		const toastSpy = vi.spyOn(h.presenter, 'showToolResultToast');
+		const mutationSpy = vi.spyOn(h.presenter, 'recordDataMutation');
+		const indexSpy = vi.spyOn(h.presenter, 'indexEntitiesFromToolResult');
+		h.nextActivityUpdateResult({
+			matched: true,
+			toolName: 'create_onto_task',
+			args: { title: 'x' }
+		});
+		const event: Extract<AgentSSEMessage, { type: 'tool_result' }> = {
+			type: 'tool_result',
+			result: {
+				tool_call_id: 'call-1',
+				success: true,
+				toolName: 'create_onto_task',
+				result: {
+					task: {
+						id: 'task-1',
+						title: 'x'
+					}
+				}
+			}
+		};
+
+		h.handler(event);
+		h.handler(event);
+
+		expect(h.calls.updateActivityStatus).toHaveLength(1);
+		expect(indexSpy).toHaveBeenCalledTimes(1);
+		expect(toastSpy).toHaveBeenCalledTimes(1);
+		expect(mutationSpy).toHaveBeenCalledTimes(1);
+	});
+
 	it('tool_result buffers status when no matching activity exists yet', () => {
 		const h = createHarness();
 		h.nextActivityUpdateResult({ matched: false });
@@ -667,11 +737,102 @@ describe('createSSEHandler — tool call + result', () => {
 		expect(h.pendingToolResults.get('call-late')).toMatchObject({
 			status: 'failed',
 			errorMessage: 'Boom',
+			sideEffectsApplied: false,
 			toolResult: {
 				tool_call_id: 'call-late',
 				success: false,
 				error: 'Boom'
 			}
+		});
+	});
+
+	it('replays result-before-call side effects once after the matching tool_call arrives', () => {
+		const h = createHarness();
+		const toastSpy = vi.spyOn(h.presenter, 'showToolResultToast');
+		const mutationSpy = vi.spyOn(h.presenter, 'recordDataMutation');
+		h.nextActivityUpdateResult({ matched: false });
+		const resultEvent: Extract<AgentSSEMessage, { type: 'tool_result' }> = {
+			type: 'tool_result',
+			result: {
+				tool_call_id: 'call-late',
+				toolName: 'create_onto_task',
+				success: true,
+				result: {
+					task: {
+						id: 'task-late',
+						title: 'Late task'
+					}
+				}
+			}
+		};
+
+		h.handler(resultEvent);
+		h.handler(resultEvent);
+
+		expect(h.pendingToolResults.has('call-late')).toBe(true);
+		expect(toastSpy).not.toHaveBeenCalled();
+		expect(mutationSpy).not.toHaveBeenCalled();
+
+		h.nextActivityUpdateResult({
+			matched: true,
+			toolName: 'create_onto_task',
+			args: { title: 'Late task' }
+		});
+		h.handler({
+			type: 'tool_call',
+			tool_call: {
+				id: 'call-late',
+				type: 'function',
+				function: {
+					name: 'create_onto_task',
+					arguments: JSON.stringify({ title: 'Late task' })
+				}
+			} as any
+		});
+
+		expect(h.pendingToolResults.has('call-late')).toBe(false);
+		expect(toastSpy).toHaveBeenCalledTimes(1);
+		expect(toastSpy).toHaveBeenCalledWith('create_onto_task', { title: 'Late task' }, true);
+		expect(mutationSpy).toHaveBeenCalledTimes(1);
+
+		h.handler({ type: 'done' });
+		expect(h.calls.addCreatedEntitiesMessage).toHaveLength(1);
+		expect(h.calls.addCreatedEntitiesMessage[0]?.[0]).toMatchObject({
+			id: 'task-late',
+			name: 'Late task'
+		});
+	});
+
+	it('applies still-pending result side effects once on normal done', () => {
+		const h = createHarness();
+		const toastSpy = vi.spyOn(h.presenter, 'showToolResultToast');
+		const mutationSpy = vi.spyOn(h.presenter, 'recordDataMutation');
+		h.nextActivityUpdateResult({ matched: false });
+
+		h.handler({
+			type: 'tool_result',
+			result: {
+				tool_call_id: 'call-never-arrives',
+				toolName: 'create_onto_task',
+				success: true,
+				result: {
+					task: {
+						id: 'task-fallback',
+						title: 'Fallback task'
+					}
+				}
+			}
+		});
+
+		expect(mutationSpy).not.toHaveBeenCalled();
+		h.handler({ type: 'done' });
+
+		expect(toastSpy).not.toHaveBeenCalled();
+		expect(mutationSpy).toHaveBeenCalledTimes(1);
+		expect(h.pendingToolResults.has('call-never-arrives')).toBe(false);
+		expect(h.calls.addCreatedEntitiesMessage[0]?.[0]).toMatchObject({
+			id: 'task-fallback',
+			name: 'Fallback task'
 		});
 	});
 
@@ -769,6 +930,66 @@ describe('createSSEHandler — done + error', () => {
 			status: 'interrupted',
 			note: 'Response truncated'
 		});
+	});
+
+	it('flushes created entity chips on normal done', () => {
+		const h = createHarness();
+		h.nextActivityUpdateResult({
+			matched: true,
+			toolName: 'create_onto_task',
+			args: { title: 'Created task' }
+		});
+		h.handler({
+			type: 'tool_result',
+			result: {
+				tool_call_id: 'call-create',
+				success: true,
+				toolName: 'create_onto_task',
+				result: {
+					task: {
+						id: 'task-created',
+						title: 'Created task'
+					}
+				}
+			}
+		});
+
+		h.handler({ type: 'done' });
+
+		expect(h.calls.addCreatedEntitiesMessage).toHaveLength(1);
+		expect(h.calls.addCreatedEntitiesMessage[0]?.[0]).toMatchObject({
+			id: 'task-created',
+			name: 'Created task'
+		});
+	});
+
+	it('does not flush optimistic created entity chips on done(error) or done(cancelled)', () => {
+		for (const finished_reason of ['error', 'cancelled']) {
+			const h = createHarness();
+			h.nextActivityUpdateResult({
+				matched: true,
+				toolName: 'create_onto_task',
+				args: { title: 'Created task' }
+			});
+			h.handler({
+				type: 'tool_result',
+				result: {
+					tool_call_id: `call-create-${finished_reason}`,
+					success: true,
+					toolName: 'create_onto_task',
+					result: {
+						task: {
+							id: `task-created-${finished_reason}`,
+							title: 'Created task'
+						}
+					}
+				}
+			});
+
+			h.handler({ type: 'done', finished_reason } as any);
+
+			expect(h.calls.addCreatedEntitiesMessage).toEqual([]);
+		}
 	});
 
 	it('sets error and finalizes thinking block with error status', () => {

@@ -3,11 +3,11 @@
  * Boundary validation for POST /api/agent/v2/stream request bodies.
  *
  * Deliberately permissive: every field is optional, unknown keys pass
- * through, and nested payloads (projectFocus, lastTurnContext,
- * prewarmedContext) are only shape-checked here — their deeper validation
- * already lives in dedicated normalizers (`normalizeFastChatContextCache`,
- * entity-resolution heuristics). The goal is a clear 400 on malformed
- * shapes instead of defensive `typeof` checks scattered downstream.
+ * through, and nested payloads (projectFocus, lastTurnContext) are only
+ * shape-checked here — their deeper validation already lives in dedicated
+ * normalizers and entity-resolution heuristics. `prewarmedContext` remains in
+ * the schema as a legacy compatibility field, but the stream route does not
+ * trust unsigned client-carried prompt context.
  */
 import { z } from 'zod';
 import type { FastAgentStreamRequestInput } from './types';

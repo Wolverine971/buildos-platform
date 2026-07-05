@@ -5,7 +5,8 @@ const mocks = vi.hoisted(() => ({
 	createAdminSupabaseClient: vi.fn(),
 	requireProjectMemberAccess: vi.fn(),
 	commitChangeSet: vi.fn(),
-	syncInboxItemForSource: vi.fn()
+	syncInboxItemForSource: vi.fn(),
+	finalizeProjectLoopRunIfComplete: vi.fn()
 }));
 
 vi.mock('$lib/supabase/admin', () => ({
@@ -22,6 +23,10 @@ vi.mock('@buildos/shared-agent-ops', () => ({
 
 vi.mock('@buildos/shared-agent-ops/inbox-index', () => ({
 	syncInboxItemForSource: mocks.syncInboxItemForSource
+}));
+
+vi.mock('$lib/server/project-loop-run.service', () => ({
+	finalizeProjectLoopRunIfComplete: mocks.finalizeProjectLoopRunIfComplete
 }));
 
 import { POST } from './+server';

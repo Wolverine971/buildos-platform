@@ -66,6 +66,23 @@ describe('SSEProcessor', () => {
 		expect(onError).toHaveBeenCalledWith('boom');
 	});
 
+	it('can route semantic error events through the progress callback', async () => {
+		const onProgress = vi.fn();
+		const onError = vi.fn();
+
+		await SSEProcessor.processStream(
+			buildSseResponse([{ type: 'error', error: 'boom' }]),
+			{
+				onProgress,
+				onError
+			},
+			{ treatErrorEventsAsProgress: true }
+		);
+
+		expect(onProgress).toHaveBeenCalledWith({ type: 'error', error: 'boom' });
+		expect(onError).not.toHaveBeenCalled();
+	});
+
 	it('parses CRLF-delimited event blocks and data fields without a space', async () => {
 		const onProgress = vi.fn();
 		const onComplete = vi.fn();

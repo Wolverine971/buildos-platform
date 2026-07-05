@@ -206,7 +206,8 @@ async function buildPreparedPrompt(params: {
 			...promptContext,
 			tools,
 			productSurface: '/api/agent/v2/prewarm',
-			conversationPosition: `prepared prompt ${rowId}`
+			conversationPosition: `prepared prompt ${rowId}`,
+			domainSensingResult: null
 		});
 		preparedSurfaces[surfaceProfile] = buildPreparedPromptSurface({
 			surfaceProfile,

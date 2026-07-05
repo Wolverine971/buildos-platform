@@ -118,8 +118,9 @@ export class PrewarmController {
 
 	/**
 	 * Returns the prewarmed context that matches the provided key, or
-	 * null if no fresh match exists. Used by `sendMessage` to decide
-	 * whether to pass `prewarmedContext` in the stream request body.
+	 * null if no fresh match exists. This is controller-local readiness;
+	 * stream requests use nonce-protected prepared prompts instead of
+	 * client-carried context payloads.
 	 */
 	matchingFreshContext(key: string | null | undefined): FastChatContextCache | null {
 		if (!key) return null;

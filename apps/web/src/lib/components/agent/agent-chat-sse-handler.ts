@@ -194,6 +194,8 @@ export interface PendingToolStatus {
 	status: 'completed' | 'failed';
 	errorMessage?: string;
 	toolResult?: Record<string, any>;
+	rawToolName?: string;
+	sideEffectsApplied?: boolean;
 }
 
 /** Thinking block manipulation surface the handler needs. */
@@ -273,6 +275,8 @@ export interface SSEHandlerDeps {
 	// Pending tool state (mutable, owned by caller)
 	hiddenToolCallIds: Set<string>;
 	pendingToolResults: Map<string, PendingToolStatus>;
+	processedToolCallIds: Set<string>;
+	processedToolResultIds: Set<string>;
 
 	// Clarifications
 	addClarifyingQuestionsMessage(questions: unknown): void;
@@ -292,6 +296,43 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 
 	// Entities created during the current turn; flushed to a card message on `done`.
 	let createdEntitiesBuffer: CreatedEntityRef[] = [];
+
+	function applyToolResultSideEffects(params: {
+		toolName: string | undefined;
+		args: string | Record<string, unknown> | undefined;
+		success: boolean;
+		toolResult: Record<string, any> | undefined;
+		showToast?: boolean;
+	}): void {
+		const { toolName, args, success, toolResult, showToast = false } = params;
+		if (showToast && toolName && args !== undefined) {
+			presenter.showToolResultToast(toolName, args, success);
+		}
+
+		presenter.recordDataMutation(toolName, args, success, toolResult);
+
+		if (success) {
+			const created = presenter.extractCreatedEntity(toolName, args, toolResult);
+			if (created && !createdEntitiesBuffer.some((e) => e.id === created.id)) {
+				createdEntitiesBuffer.push(created);
+			}
+		}
+	}
+
+	function flushPendingToolResultSideEffects(): void {
+		for (const pendingStatus of deps.pendingToolResults.values()) {
+			if (pendingStatus.sideEffectsApplied) continue;
+			applyToolResultSideEffects({
+				toolName: pendingStatus.rawToolName,
+				args: undefined,
+				success: pendingStatus.status === 'completed',
+				toolResult: pendingStatus.toolResult,
+				showToast: false
+			});
+			pendingStatus.sideEffectsApplied = true;
+		}
+		deps.pendingToolResults.clear();
+	}
 
 	function handleContextShift(shift: ContextShiftPayload): void {
 		const normalizedContext = normalizeContextShiftContext(shift.new_context);
@@ -340,6 +381,15 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 
 	function handleToolCall(event: Extract<AgentSSEMessage, { type: 'tool_call' }>): void {
 		const result = buildToolCallActivity(event, presenter);
+		if (result.toolCallId) {
+			if (deps.processedToolCallIds.has(result.toolCallId)) {
+				if (isDev) {
+					console.debug('[AgentChat] Ignoring duplicate tool_call:', result.toolCallId);
+				}
+				return;
+			}
+			deps.processedToolCallIds.add(result.toolCallId);
+		}
 
 		if (result.hidden) {
 			if (result.toolCallId) {
@@ -372,12 +422,25 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 		if (result.toolCallId && deps.pendingToolResults.has(result.toolCallId)) {
 			const pendingStatus = deps.pendingToolResults.get(result.toolCallId);
 			if (pendingStatus) {
-				thinking.updateActivityStatus(
+				const updateResult = thinking.updateActivityStatus(
 					result.toolCallId,
 					pendingStatus.status,
 					pendingStatus.errorMessage,
 					pendingStatus.toolResult
 				);
+
+				if (!pendingStatus.sideEffectsApplied) {
+					const resolvedToolName = updateResult.toolName ?? pendingStatus.rawToolName;
+					const resolvedArgs = updateResult.args;
+					applyToolResultSideEffects({
+						toolName: resolvedToolName,
+						args: resolvedArgs,
+						success: pendingStatus.status === 'completed',
+						toolResult: pendingStatus.toolResult,
+						showToast: Boolean(updateResult.toolName && updateResult.args !== undefined)
+					});
+					pendingStatus.sideEffectsApplied = true;
+				}
 			}
 			deps.pendingToolResults.delete(result.toolCallId);
 		}
@@ -386,6 +449,17 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 	function handleToolResult(event: Extract<AgentSSEMessage, { type: 'tool_result' }>): void {
 		const toolResult = event.result;
 		const info = computeToolResultInfo(toolResult, presenter);
+		const resultKey = info.resultToolCallId;
+
+		if (resultKey) {
+			if (deps.processedToolResultIds.has(resultKey)) {
+				if (isDev) {
+					console.debug('[AgentChat] Ignoring duplicate tool_result:', resultKey);
+				}
+				return;
+			}
+			deps.processedToolResultIds.add(resultKey);
+		}
 
 		if (isDev) {
 			console.log('[AgentChat] Tool result:', {
@@ -418,10 +492,12 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 				deps.pendingToolResults.set(info.resultToolCallId, {
 					status: info.success ? 'completed' : 'failed',
 					errorMessage: info.toolErrorMessage,
-					toolResult
+					toolResult,
+					rawToolName: info.rawResultToolName,
+					sideEffectsApplied: false
 				});
+				return;
 			} else if (result.toolName && result.args !== undefined) {
-				presenter.showToolResultToast(result.toolName, result.args, info.success);
 				resolvedToolName = result.toolName;
 				resolvedArgs = result.args;
 			}
@@ -433,18 +509,13 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 			resolvedToolName = info.rawResultToolName;
 		}
 
-		presenter.recordDataMutation(resolvedToolName, resolvedArgs, info.success, toolResult);
-
-		if (info.success) {
-			const created = presenter.extractCreatedEntity(
-				resolvedToolName,
-				resolvedArgs,
-				toolResult
-			);
-			if (created && !createdEntitiesBuffer.some((e) => e.id === created.id)) {
-				createdEntitiesBuffer.push(created);
-			}
-		}
+		applyToolResultSideEffects({
+			toolName: resolvedToolName,
+			args: resolvedArgs,
+			success: info.success,
+			toolResult,
+			showToast: Boolean(resolvedToolName && resolvedArgs !== undefined)
+		});
 	}
 
 	function handleDone(event: Extract<AgentSSEMessage, { type: 'done' }>): void {
@@ -453,10 +524,15 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 		deps.finalizeAssistantMessage();
 		thinking.finalize(finalization.status, finalization.note);
 		// Surface any entities created this turn as inline chips, then reset.
-		if (createdEntitiesBuffer.length > 0) {
-			deps.addCreatedEntitiesMessage(createdEntitiesBuffer);
-			createdEntitiesBuffer = [];
+		const shouldFlushCreatedEntities =
+			finalization.status !== 'error' && finalization.status !== 'cancelled';
+		if (shouldFlushCreatedEntities) {
+			flushPendingToolResultSideEffects();
 		}
+		if (shouldFlushCreatedEntities && createdEntitiesBuffer.length > 0) {
+			deps.addCreatedEntitiesMessage(createdEntitiesBuffer);
+		}
+		createdEntitiesBuffer = [];
 		// Note: isStreaming is also set to false by onComplete; this is for immediate UI response
 		state.setIsStreaming(false);
 		if (state.isAgentToAgentMode() && state.getAgentLoopActive()) {

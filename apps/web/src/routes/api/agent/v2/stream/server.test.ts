@@ -11,7 +11,9 @@ const mocks = vi.hoisted(() => ({
 	reconcile: vi.fn(),
 	resolveSession: vi.fn(),
 	selectFastChatTools: vi.fn(),
+	senseDomains: vi.fn(),
 	streamFastChat: vi.fn(),
+	applyActiveDomainSignalsOverlay: vi.fn(),
 	updateSessionContext: vi.fn()
 }));
 const runtimeEnv = vi.hoisted(() => ({
@@ -48,8 +50,7 @@ vi.mock('$lib/services/agentic-chat/state/agent-state-reconciliation-service', (
 }));
 
 vi.mock('$lib/services/agentic-chat/tools/domains/domain-sensing', () => ({
-	renderDomainSensingPromptBlock: () => '',
-	senseDomains: () => null
+	senseDomains: mocks.senseDomains
 }));
 
 vi.mock('$lib/services/agentic-chat-lite/prompt', () => ({
@@ -60,7 +61,8 @@ vi.mock('$lib/services/agentic-chat-lite/prompt', () => ({
 		sections: [],
 		contextInventory: null,
 		toolsSummary: null
-	})
+	}),
+	applyActiveDomainSignalsOverlay: mocks.applyActiveDomainSignalsOverlay
 }));
 
 vi.mock('$lib/services/agentic-chat-v2/prompt-observability', () => ({
@@ -113,6 +115,7 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 		resolveSession: mocks.resolveSession,
 		updateSessionContext: mocks.updateSessionContext
 	}),
+	historyIncludesLoadedSkillsLedger: () => false,
 	loadFastChatPromptContext: mocks.loadPromptContext,
 	normalizeChatAttachmentRefs: () => ({ attachments: [], rejected: 0 }),
 	normalizeFastAgentStreamRequest: (input: Record<string, any>) => ({
@@ -475,6 +478,34 @@ beforeEach(() => {
 		}
 	});
 	mocks.loadRecentMessages.mockResolvedValue([]);
+	mocks.senseDomains.mockReturnValue(null);
+	mocks.applyActiveDomainSignalsOverlay.mockImplementation((envelope: Row, input: Row) => {
+		if (!input.domainSensingResult) {
+			return {
+				...envelope,
+				sections: (envelope.sections ?? []).filter(
+					(section: Row) => section.id !== 'active_domain_signals'
+				)
+			};
+		}
+		const sections = [
+			...(envelope.sections ?? []).filter(
+				(section: Row) => section.id !== 'active_domain_signals'
+			),
+			{
+				id: 'active_domain_signals',
+				title: 'Active Domain Signals',
+				content: 'Current turn domain overlay',
+				chars: 27,
+				estimatedTokens: 6
+			}
+		];
+		return {
+			...envelope,
+			sections,
+			systemPrompt: `${envelope.systemPrompt}\n\n## Active Domain Signals\n\nCurrent turn domain overlay`
+		};
+	});
 	mocks.loadPromptContext.mockResolvedValue({
 		contextType: 'global',
 		entityId: null,
@@ -599,7 +630,8 @@ describe('/api/agent/v2/stream', () => {
 		} as any);
 
 		expect(response.status).toBe(200);
-		const events = parseSseEvents(await response.text());
+		const rawStream = await response.text();
+		const events = parseSseEvents(rawStream);
 		expect(events).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
@@ -607,6 +639,33 @@ describe('/api/agent/v2/stream', () => {
 					finished_reason: 'stop'
 				})
 			])
+		);
+		expect(rawStream).toContain('id: stream-run-prepared:1\n');
+		expect(
+			events.every((event, index) => event.event_id === `stream-run-prepared:${index + 1}`)
+		).toBe(true);
+		expect(events.every((event, index) => event.sequence_index === index + 1)).toBe(true);
+		expect(
+			events.every(
+				(event) =>
+					event.stream_run_id === 'stream-run-prepared' &&
+					event.client_turn_id === 'client-turn-prepared' &&
+					event.event_type === event.type
+			)
+		).toBe(true);
+		expect(events.find((event) => event.type === 'text_delta')).toEqual(
+			expect.objectContaining({
+				phase: 'llm',
+				durable: true,
+				turn_run_id: expect.any(String)
+			})
+		);
+		expect(events.find((event) => event.type === 'done')).toEqual(
+			expect.objectContaining({
+				phase: 'finalize',
+				durable: true,
+				turn_run_id: expect.any(String)
+			})
 		);
 
 		expect(supabase.from).toHaveBeenCalledWith('agentic_chat_prepared_prompts');
@@ -626,6 +685,17 @@ describe('/api/agent/v2/stream', () => {
 				prepared_prompt_id: preparedPrompt.row.id
 			})
 		);
+		expect(mocks.applyActiveDomainSignalsOverlay).toHaveBeenCalledWith(
+			expect.objectContaining({
+				systemPrompt: 'System prompt',
+				sections: expect.any(Array)
+			}),
+			expect.objectContaining({
+				currentUserMessage: 'Hello',
+				domainSensingResult: null
+			})
+		);
+		expect(mocks.streamFastChat.mock.calls[0]?.[0]?.systemPrompt).toBe('System prompt');
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(supabase.rpc).toHaveBeenCalledWith('merge_chat_session_agent_metadata', {
 			p_session_id: 'session-1',
@@ -639,6 +709,214 @@ describe('/api/agent/v2/stream', () => {
 				})
 			}
 		});
+	});
+
+	it('ignores unsigned client-carried prewarmedContext and falls back to server context', async () => {
+		const supabase = createStreamingSupabase();
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Hello',
+					context_type: 'global',
+					stream_run_id: 'stream-run-unsigned-prewarm',
+					client_turn_id: 'client-turn-unsigned-prewarm',
+					prewarmedContext: {
+						version: 2,
+						key: 'v2|global|none|none|none',
+						created_at: new Date().toISOString(),
+						context: {
+							contextType: 'global',
+							data: {
+								injected: true
+							}
+						}
+					}
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		await response.text();
+
+		expect(mocks.loadPromptContext).toHaveBeenCalledOnce();
+		expect(
+			supabase.updatedRows.chat_turn_runs?.find((row) => row.status === 'completed')
+		).toEqual(
+			expect.objectContaining({
+				cache_source: 'fresh_load',
+				request_prewarmed_context: false,
+				prepared_prompt_hit: false,
+				prepared_prompt_miss_reason: 'missing_key'
+			})
+		);
+	});
+
+	it.each([
+		['user_mismatch', { user_id: 'other-user' }],
+		['session_mismatch', { session_id: 'other-session' }],
+		['scope_mismatch', { cache_key: 'v2|project|project-1|none|none' }],
+		['consumed', { consumed_at: '2026-06-22T00:00:00.000Z' }]
+	])(
+		'falls back cleanly when preparedPromptKey misses with %s',
+		async (expectedReason, rowOverrides) => {
+			const preparedPrompt = buildPreparedPromptRow(rowOverrides);
+			const supabase = createStreamingSupabase({
+				agentic_chat_prepared_prompts: [preparedPrompt.row]
+			});
+
+			const response = await POST({
+				request: new Request('http://localhost/api/agent/v2/stream', {
+					method: 'POST',
+					body: JSON.stringify({
+						message: 'Hello',
+						context_type: 'global',
+						stream_run_id: `stream-run-${expectedReason}`,
+						client_turn_id: `client-turn-${expectedReason}`,
+						preparedPromptKey: preparedPrompt.key
+					})
+				}),
+				locals: {
+					supabase,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				},
+				fetch: vi.fn()
+			} as any);
+
+			expect(response.status).toBe(200);
+			await response.text();
+
+			expect(mocks.loadRecentMessages).toHaveBeenCalledOnce();
+			expect(mocks.loadPromptContext).toHaveBeenCalledOnce();
+			expect(
+				supabase.updatedRows.chat_turn_runs?.find((row) => row.status === 'completed')
+			).toEqual(
+				expect.objectContaining({
+					cache_source: 'fresh_load',
+					prepared_prompt_hit: false,
+					prepared_prompt_miss_reason: expectedReason
+				})
+			);
+		}
+	);
+
+	it('overlays current turn domain signals on a prepared prompt with stale domain sections', async () => {
+		const preparedPrompt = buildPreparedPromptRow();
+		preparedPrompt.row.prepared_surfaces.general = {
+			...preparedPrompt.row.prepared_surfaces.general,
+			system_prompt: 'System prompt\n\n## Active Domain Signals\n\nStale turn signal',
+			sections: [
+				{
+					id: 'active_domain_signals',
+					title: 'Active Domain Signals',
+					content: 'Stale turn signal',
+					chars: 17,
+					estimatedTokens: 4
+				}
+			]
+		};
+		const domainSensingResult = {
+			type: 'domain_sensing',
+			source: 'current_user_message',
+			query: 'draft launch plan',
+			active_domains: [
+				{
+					id: 'go-to-market',
+					name: 'Go To Market',
+					confidence: 0.82,
+					coverage_status: 'strong',
+					parent_ids: [],
+					aliases_hit: ['launch'],
+					skill_ids: ['gtm-plan'],
+					outcome_card_ids: [],
+					recommended_skill_stack_ids: [],
+					gaps: [],
+					gap_skill_ids: [],
+					gap_resource_ids: []
+				}
+			],
+			candidate_outcome_cards: [],
+			candidate_outcome_card_ids: [],
+			recommended_skill_ids: ['gtm-plan'],
+			coverage_gap_skill_ids: [],
+			coverage_gap_resource_ids: [],
+			skill_load_required: false,
+			next_step: 'Use the current turn domains.'
+		};
+		mocks.senseDomains.mockReturnValueOnce(domainSensingResult);
+		mocks.applyActiveDomainSignalsOverlay.mockReturnValueOnce({
+			promptVariant: 'lite',
+			systemPrompt: 'System prompt\n\n## Active Domain Signals\n\nCurrent turn signal',
+			sections: [
+				{
+					id: 'active_domain_signals',
+					title: 'Active Domain Signals',
+					content: 'Current turn signal',
+					chars: 19,
+					estimatedTokens: 4
+				}
+			],
+			contextInventory: null,
+			toolsSummary: null
+		});
+		const supabase = createStreamingSupabase({
+			agentic_chat_prepared_prompts: [preparedPrompt.row]
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Draft the launch plan',
+					context_type: 'global',
+					stream_run_id: 'stream-run-domain-overlay',
+					client_turn_id: 'client-turn-domain-overlay',
+					preparedPromptKey: preparedPrompt.key
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		const events = parseSseEvents(await response.text());
+
+		expect(events).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'done',
+					finished_reason: 'stop'
+				})
+			])
+		);
+		expect(mocks.applyActiveDomainSignalsOverlay).toHaveBeenCalledWith(
+			expect.objectContaining({
+				systemPrompt: expect.stringContaining('Stale turn signal'),
+				sections: expect.arrayContaining([
+					expect.objectContaining({
+						id: 'active_domain_signals',
+						content: 'Stale turn signal'
+					})
+				])
+			}),
+			expect.objectContaining({
+				currentUserMessage: 'Draft the launch plan',
+				domainSensingResult
+			})
+		);
+		expect(mocks.streamFastChat).toHaveBeenCalledOnce();
+		const systemPrompt = mocks.streamFastChat.mock.calls[0]?.[0]?.systemPrompt;
+		expect(systemPrompt).toContain('Current turn signal');
+		expect(systemPrompt).not.toContain('Stale turn signal');
 	});
 
 	it('emits live tool_result payloads with search telemetry and stream events', async () => {

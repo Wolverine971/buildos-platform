@@ -1,6 +1,11 @@
 // apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { buildLitePhaseFrame, buildLitePromptEnvelope, LITE_PROMPT_SECTION_ORDER } from './index';
+import {
+	applyActiveDomainSignalsOverlay,
+	buildLitePhaseFrame,
+	buildLitePromptEnvelope,
+	LITE_PROMPT_SECTION_ORDER
+} from './index';
 
 afterEach(() => {
 	vi.unstubAllEnvs();
@@ -232,6 +237,21 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).toContain('## Active Domain Signals');
 	});
 
+	it('can suppress active-domain signals for prepared prompt surfaces', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			entityId: null,
+			currentUserMessage: 'I want to grow my YouTube audience.',
+			domainSensingResult: null
+		});
+
+		expect(envelope.sections.map((section) => section.id)).not.toContain(
+			'active_domain_signals'
+		);
+		expect(envelope.systemPrompt).not.toContain('## Active Domain Signals');
+		expect(envelope.systemPrompt).not.toContain('marketing.youtube_growth');
+	});
+
 	it('renders the skill-load gate inside Active Domain Signals for skill-covered asks', () => {
 		const envelope = buildLitePromptEnvelope({
 			contextType: 'project',
@@ -243,6 +263,67 @@ describe('buildLitePromptEnvelope', () => {
 		expect(section?.content).toContain('Skill-load gate: ACTIVE.');
 		expect(section?.content).toContain('Skill-load gate is ACTIVE');
 		expect(envelope.systemPrompt).toContain('Skill-load gate: ACTIVE.');
+	});
+
+	it('overlays current-turn domain signals into an envelope that has no domain section', () => {
+		const base = buildLitePromptEnvelope({
+			contextType: 'global',
+			entityId: null,
+			domainSensingResult: null
+		});
+
+		const overlaid = applyActiveDomainSignalsOverlay(base, {
+			currentUserMessage: 'Help me grow my YouTube channel.',
+			domainSensingResult: undefined
+		});
+
+		const sectionIds = overlaid.sections.map((section) => section.id);
+		expect(sectionIds).toContain('active_domain_signals');
+		expect(sectionIds.indexOf('active_domain_signals')).toBe(
+			sectionIds.indexOf('tool_surface_dynamic') + 1
+		);
+		expect(overlaid.systemPrompt).toContain('## Active Domain Signals');
+		expect(overlaid.systemPrompt).toContain('marketing.youtube_growth');
+	});
+
+	it('replaces stale active-domain signals in both sections and system prompt', () => {
+		const stale = buildLitePromptEnvelope({
+			contextType: 'global',
+			entityId: null,
+			currentUserMessage: 'Help me grow my YouTube channel.'
+		});
+
+		const overlaid = applyActiveDomainSignalsOverlay(stale, {
+			currentUserMessage: 'Review the UX of this checkout flow.',
+			domainSensingResult: undefined
+		});
+		const domainSections = overlaid.sections.filter(
+			(section) => section.id === 'active_domain_signals'
+		);
+
+		expect(domainSections).toHaveLength(1);
+		expect(domainSections[0]?.content).toContain('product_and_design');
+		expect(domainSections[0]?.content).not.toContain('marketing.youtube_growth');
+		expect(overlaid.systemPrompt).toContain('product_and_design');
+		expect(overlaid.systemPrompt).not.toContain('marketing.youtube_growth');
+	});
+
+	it('removes stale active-domain signals when the current turn has none', () => {
+		const stale = buildLitePromptEnvelope({
+			contextType: 'global',
+			entityId: null,
+			currentUserMessage: 'Help me grow my YouTube channel.'
+		});
+
+		const overlaid = applyActiveDomainSignalsOverlay(stale, {
+			domainSensingResult: null
+		});
+
+		expect(overlaid.sections.map((section) => section.id)).not.toContain(
+			'active_domain_signals'
+		);
+		expect(overlaid.systemPrompt).not.toContain('## Active Domain Signals');
+		expect(overlaid.systemPrompt).not.toContain('marketing.youtube_growth');
 	});
 
 	it('uses prior domain ids for ambiguous follow-up turns', () => {

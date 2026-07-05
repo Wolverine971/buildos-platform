@@ -1,5 +1,6 @@
 // apps/web/src/lib/server/admin-chat-user-analytics.ts
 import { resolveUsageLogCostBreakdown } from '$lib/services/admin/llm-usage-costs';
+import { resolveBillableTokenTotal } from '$lib/services/admin/chat-session-metrics';
 
 export type AdminChatUserAnalyticsTimeframe = '24h' | '7d' | '30d' | '90d';
 
@@ -169,6 +170,17 @@ export type AdminChatUserDetailResponse = {
 		entity_type: string;
 		action: string;
 		count: number;
+	}>;
+	entity_changes: Array<{
+		session_id: string;
+		project_id: string | null;
+		project_name: string | null;
+		entity_type: string;
+		entity_id: string | null;
+		entity_title: string | null;
+		action: string;
+		source: string | null;
+		created_at: string;
 	}>;
 };
 
@@ -490,6 +502,9 @@ type UserAccumulator = AdminChatUserMetric & {
 
 type SessionAccumulator = AdminChatSessionMetric & {
 	ttfrValues: number[];
+	messageTokenTotal: number;
+	sessionTokenTotal: number;
+	usageTokenTotal: number;
 	startMs: number | null;
 	endMs: number | null;
 	searchParts: string[];
@@ -504,6 +519,7 @@ type DetailBuild = {
 	errorsByUser: Map<string, AdminChatUserDetailResponse['errors']>;
 	toolsByUser: Map<string, AdminChatUserDetailResponse['tools']>;
 	entitiesByUser: Map<string, AdminChatUserDetailResponse['entities']>;
+	entityChangesByUser: Map<string, AdminChatUserDetailResponse['entity_changes']>;
 	timelineByUser: Map<string, AdminChatUserDetailResponse['timeline']>;
 };
 
@@ -1010,6 +1026,9 @@ function publicUserMetric(user: UserAccumulator): AdminChatUserMetric {
 function publicSessionMetric(session: SessionAccumulator): AdminChatSessionMetric {
 	const {
 		ttfrValues: _ttfrValues,
+		messageTokenTotal: _messageTokenTotal,
+		sessionTokenTotal: _sessionTokenTotal,
+		usageTokenTotal: _usageTokenTotal,
 		startMs: _startMs,
 		endMs: _endMs,
 		searchParts: _searchParts,
@@ -1205,6 +1224,7 @@ function buildAdminChatUserAnalyticsCore(
 		string,
 		Map<string, AdminChatUserDetailResponse['entities'][number]>
 	>();
+	const entityChangesByUser = new Map<string, AdminChatUserDetailResponse['entity_changes']>();
 
 	function ensureUser(userId: string): UserAccumulator {
 		const existing = userAccumulators.get(userId);
@@ -1302,6 +1322,9 @@ function buildAdminChatUserAnalyticsCore(
 			has_errors: false,
 			has_slow_response: false,
 			ttfrValues: [],
+			messageTokenTotal: 0,
+			sessionTokenTotal: numberValue(session.total_tokens_used),
+			usageTokenTotal: 0,
 			startMs: dateMs(session.created_at),
 			endMs: dateMs(lastActivityAt),
 			searchParts: [session.id, title, session.context_type ?? '', ...topics, ...projectNames]
@@ -1359,8 +1382,7 @@ function buildAdminChatUserAnalyticsCore(
 			user.assistant_message_count += 1;
 		}
 		const tokens = numberValue(message.total_tokens);
-		session.total_tokens += tokens;
-		user.total_tokens += tokens;
+		session.messageTokenTotal += tokens;
 		user.last_activity_at = maxIso(user.last_activity_at, message.created_at);
 		session.last_activity_at = maxIso(session.last_activity_at, message.created_at);
 		pushActivityDay(user, message.created_at);
@@ -1567,10 +1589,9 @@ function buildAdminChatUserAnalyticsCore(
 		const failed = usage.status !== 'success' || Boolean(usage.error_message);
 
 		session.llm_call_count += 1;
-		session.total_tokens += tokens;
+		session.usageTokenTotal += tokens;
 		session.total_cost_usd += cost;
 		user.llm_call_count += 1;
-		user.total_tokens += tokens;
 		user.total_cost_usd += cost;
 		if (failed) {
 			session.llm_failure_count += 1;
@@ -1592,7 +1613,10 @@ function buildAdminChatUserAnalyticsCore(
 			usage.provider,
 			usage.profile
 		]) {
-			if (part) user.searchParts.push(part);
+			if (part) {
+				user.searchParts.push(part);
+				session.searchParts.push(part);
+			}
 		}
 	}
 
@@ -1614,7 +1638,7 @@ function buildAdminChatUserAnalyticsCore(
 		const sessionId = textValue(log.chat_session_id);
 		const session = sessionId ? sessionAccumulators.get(sessionId) : null;
 		const userId = session?.user_id ?? textValue(log.changed_by);
-		if (!session || !userId) continue;
+		if (!sessionId || !session || !userId) continue;
 		const user = ensureUser(userId);
 		const action = (log.action ?? '').toLowerCase();
 		if (action.includes('create')) {
@@ -1634,6 +1658,7 @@ function buildAdminChatUserAnalyticsCore(
 			addCount(user.projectCounts, projectId);
 		}
 		user.searchParts.push(log.entity_type ?? '', log.entity_id ?? '', projectName ?? '');
+		session.searchParts.push(log.entity_type ?? '', log.entity_id ?? '', projectName ?? '');
 
 		const entityMap = entityGroupsByUser.get(userId) ?? new Map();
 		const key = `${projectId ?? 'unknown'}\u0000${log.entity_type ?? 'unknown'}\u0000${log.action ?? 'unknown'}`;
@@ -1647,6 +1672,20 @@ function buildAdminChatUserAnalyticsCore(
 		group.count += 1;
 		entityMap.set(key, group);
 		entityGroupsByUser.set(userId, entityMap);
+
+		const entityChangeList = entityChangesByUser.get(userId) ?? [];
+		entityChangeList.push({
+			session_id: sessionId,
+			project_id: projectId,
+			project_name: projectName,
+			entity_type: log.entity_type ?? 'unknown',
+			entity_id: textValue(log.entity_id),
+			entity_title: null,
+			action: log.action ?? 'unknown',
+			source: log.change_source ?? null,
+			created_at: isoOrNull(log.created_at) ?? new Date(0).toISOString()
+		});
+		entityChangesByUser.set(userId, entityChangeList);
 
 		const timelineDate = dayKey(log.created_at);
 		if (timelineDate) {
@@ -1686,6 +1725,11 @@ function buildAdminChatUserAnalyticsCore(
 	}
 
 	for (const session of sessionAccumulators.values()) {
+		session.total_tokens = resolveBillableTokenTotal({
+			usageTokenTotal: session.usageTokenTotal,
+			sessionTokenTotal: session.sessionTokenTotal,
+			messageTokenTotal: session.messageTokenTotal
+		});
 		session.ttfr_p50_ms = percentile(session.ttfrValues, 50);
 		session.ttfr_p95_ms = percentile(session.ttfrValues, 95);
 		session.ttfr_max_ms = session.ttfrValues.length ? Math.max(...session.ttfrValues) : null;
@@ -1703,6 +1747,7 @@ function buildAdminChatUserAnalyticsCore(
 			session.validation_failure_count > 0;
 		const user = userAccumulators.get(session.user_id);
 		if (user) {
+			user.total_tokens += session.total_tokens;
 			user.longest_session_turns = Math.max(user.longest_session_turns, session.turn_count);
 			user.longest_session_messages = Math.max(
 				user.longest_session_messages,
@@ -1915,6 +1960,13 @@ function buildAdminChatUserAnalyticsCore(
 		);
 	}
 
+	for (const [userId, changes] of entityChangesByUser.entries()) {
+		entityChangesByUser.set(
+			userId,
+			[...changes].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 200)
+		);
+	}
+
 	const timelineByUser = new Map<string, AdminChatUserDetailResponse['timeline']>();
 	for (const [userId, map] of timelineMapsByUser.entries()) {
 		const sets = timelineSetsByUser.get(userId) ?? new Map();
@@ -1947,6 +1999,7 @@ function buildAdminChatUserAnalyticsCore(
 		errorsByUser,
 		toolsByUser,
 		entitiesByUser,
+		entityChangesByUser,
 		timelineByUser
 	};
 }
@@ -2499,6 +2552,80 @@ export async function loadAdminChatUserAnalytics(
 	return buildAdminChatUserAnalytics(input, query);
 }
 
+export function buildAdminChatUserDetail(
+	input: BuildAdminChatUserAnalyticsInput,
+	userId: string,
+	query: AdminChatUserDetailQuery
+): AdminChatUserDetailResponse | null {
+	const listQuery: AdminChatUserAnalyticsQuery = {
+		timeframe: query.timeframe,
+		page: 1,
+		limit: 100,
+		sort_by: 'last_activity_at',
+		sort_order: 'desc',
+		search: query.search,
+		user_id: userId,
+		project_id: null,
+		context_type: 'all',
+		topic: '',
+		slow_threshold_ms: query.slow_threshold_ms,
+		errors: 'all',
+		tool_bucket: 'all',
+		entity_action: 'all',
+		classification: 'all'
+	};
+	const build = buildAdminChatUserAnalyticsCore(input, listQuery);
+	const summary = build.userAccumulators.get(userId);
+	if (!summary) return null;
+	const summaryMetric = publicUserMetric(summary);
+	const sessionDirection = query.session_sort_order === 'asc' ? 1 : -1;
+	const search = normalizeSearch(query.search);
+	const identityMatches =
+		search.length === 0 ||
+		[summary.user_id, summary.email, summary.name ?? ''].some((part) =>
+			part.toLowerCase().includes(search)
+		);
+	const sortedSessionAccumulators = [...build.sessionAccumulators.values()]
+		.filter((session) => session.user_id === userId)
+		.filter(
+			(session) =>
+				identityMatches ||
+				session.searchParts.some((part) => part.toLowerCase().includes(search))
+		)
+		.sort((a, b) => {
+			const diff =
+				sessionMetricNumber(a, query.session_sort_by) -
+				sessionMetricNumber(b, query.session_sort_by);
+			if (diff !== 0) return diff * sessionDirection;
+			return (b.last_activity_at ?? '').localeCompare(a.last_activity_at ?? '');
+		});
+	const sessions = sortedSessionAccumulators
+		.slice(
+			(query.session_page - 1) * query.session_limit,
+			query.session_page * query.session_limit
+		)
+		.map(publicSessionMetric);
+	const errors = (build.errorsByUser.get(userId) ?? [])
+		.sort((a, b) => b.created_at.localeCompare(a.created_at))
+		.slice(0, 100);
+	const detail: AdminChatUserDetailResponse = {
+		user: {
+			id: summaryMetric.user_id,
+			email: summaryMetric.email,
+			name: summaryMetric.name
+		},
+		summary: summaryMetric,
+		timeline: build.timelineByUser.get(userId) ?? [],
+		sessions,
+		errors,
+		tools: build.toolsByUser.get(userId) ?? [],
+		entities: build.entitiesByUser.get(userId) ?? [],
+		entity_changes: build.entityChangesByUser.get(userId) ?? []
+	};
+	assertAdminChatUserAnalyticsRedacted(detail);
+	return detail;
+}
+
 export async function loadAdminChatUserDetail(
 	supabase: AnySupabase,
 	userId: string,
@@ -2522,42 +2649,7 @@ export async function loadAdminChatUserDetail(
 		classification: 'all'
 	};
 	const input = await loadAnalyticsRows(supabase, listQuery);
-	const build = buildAdminChatUserAnalyticsCore(input, listQuery);
-	const summary = build.userAccumulators.get(userId);
-	if (!summary) return null;
-	const summaryMetric = publicUserMetric(summary);
-	const sessionDirection = query.session_sort_order === 'asc' ? 1 : -1;
-	const sortedSessions = build.allSessions
-		.filter((session) => session.user_id === userId)
-		.sort((a, b) => {
-			const diff =
-				sessionMetricNumber(a, query.session_sort_by) -
-				sessionMetricNumber(b, query.session_sort_by);
-			if (diff !== 0) return diff * sessionDirection;
-			return (b.last_activity_at ?? '').localeCompare(a.last_activity_at ?? '');
-		});
-	const sessions = sortedSessions.slice(
-		(query.session_page - 1) * query.session_limit,
-		query.session_page * query.session_limit
-	);
-	const errors = (build.errorsByUser.get(userId) ?? [])
-		.sort((a, b) => b.created_at.localeCompare(a.created_at))
-		.slice(0, 100);
-	const detail: AdminChatUserDetailResponse = {
-		user: {
-			id: summaryMetric.user_id,
-			email: summaryMetric.email,
-			name: summaryMetric.name
-		},
-		summary: summaryMetric,
-		timeline: build.timelineByUser.get(userId) ?? [],
-		sessions,
-		errors,
-		tools: build.toolsByUser.get(userId) ?? [],
-		entities: build.entitiesByUser.get(userId) ?? []
-	};
-	assertAdminChatUserAnalyticsRedacted(detail);
-	return detail;
+	return buildAdminChatUserDetail(input, userId, query);
 }
 
 export async function loadAdminChatRedactedSession(

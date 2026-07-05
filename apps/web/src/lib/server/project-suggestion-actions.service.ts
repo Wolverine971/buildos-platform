@@ -10,7 +10,9 @@ import type {
 } from '@buildos/shared-types';
 import type { ChatToolCall } from '@buildos/shared-types';
 import { syncInboxItemForProjectSuggestion } from '@buildos/shared-agent-ops';
-import { loadProjectLoopSourceFingerprint } from '$lib/server/project-loop-snapshot.service';
+import { isProjectSuggestionFresh } from '$lib/server/project-loop-snapshot.service';
+import { finalizeProjectLoopRunIfComplete } from '$lib/server/project-loop-run.service';
+import { captureServerEvent } from '$lib/server/posthog';
 
 type AnySupabase = any;
 
@@ -29,6 +31,31 @@ export type ProjectSuggestionDecisionOutcome =
 			status: number;
 			message: string;
 	  };
+
+/**
+ * Suggestion-lifecycle telemetry (audit Tier 1 #6). Pairs with the worker's
+ * `project_suggestion_generated` so we can see whether the loop's output is
+ * accepted, dismissed, superseded by staleness, or fails on apply. Never throws.
+ */
+function emitSuggestionDecisionEvent(
+	userId: string,
+	event:
+		| 'project_suggestion_accepted'
+		| 'project_suggestion_dismissed'
+		| 'project_suggestion_superseded_freshness'
+		| 'project_suggestion_application_failed',
+	suggestion: Record<string, unknown>,
+	extra?: Record<string, unknown>
+): void {
+	void captureServerEvent(userId, event, {
+		project_id: suggestion.project_id ?? null,
+		suggestion_id: suggestion.id ?? null,
+		run_id: suggestion.run_id ?? null,
+		kind: suggestion.kind ?? null,
+		risk_tier: suggestion.risk_tier ?? null,
+		...extra
+	});
+}
 
 async function syncProjectSuggestionInboxItem(suggestion: Record<string, unknown>): Promise<void> {
 	try {
@@ -240,14 +267,19 @@ export async function decideProjectSuggestion(params: {
 		}
 		await syncProjectSuggestionInboxItem(updated);
 		await refreshLinkedAuditSuggestionCounts({ supabase, suggestionId });
+		await finalizeProjectLoopRunIfComplete(supabase, (updated as { run_id?: string }).run_id);
+		emitSuggestionDecisionEvent(userId, 'project_suggestion_dismissed', updated, {
+			reason: feedback.reason ?? null,
+			has_note: Boolean(feedback.note)
+		});
 		return { ok: true, suggestion: updated };
 	}
 
 	const suggestionBeforeClaim = current as unknown as ProjectSuggestion;
 	if (suggestionBeforeClaim.source_fingerprint) {
-		let currentFingerprint: string | null = null;
+		let fresh: boolean;
 		try {
-			currentFingerprint = await loadProjectLoopSourceFingerprint(supabase, projectId);
+			fresh = await isProjectSuggestionFresh(supabase, projectId, suggestionBeforeClaim);
 		} catch (error) {
 			return {
 				ok: false,
@@ -259,7 +291,7 @@ export async function decideProjectSuggestion(params: {
 			};
 		}
 
-		if (currentFingerprint !== suggestionBeforeClaim.source_fingerprint) {
+		if (!fresh) {
 			const result: ProjectSuggestionResult = {
 				ok: false,
 				applied_operations: 0,
@@ -287,6 +319,15 @@ export async function decideProjectSuggestion(params: {
 			if (updated) {
 				await syncProjectSuggestionInboxItem(updated);
 				await refreshLinkedAuditSuggestionCounts({ supabase, suggestionId });
+				await finalizeProjectLoopRunIfComplete(
+					supabase,
+					(updated as { run_id?: string }).run_id
+				);
+				emitSuggestionDecisionEvent(
+					userId,
+					'project_suggestion_superseded_freshness',
+					updated
+				);
 				return { ok: true, suggestion: updated, result, superseded: true };
 			}
 			const latest = await loadSuggestion({ supabase, projectId, suggestionId });
@@ -396,5 +437,12 @@ export async function decideProjectSuggestion(params: {
 
 	await syncProjectSuggestionInboxItem(updated);
 	await refreshLinkedAuditSuggestionCounts({ supabase, suggestionId });
+	await finalizeProjectLoopRunIfComplete(supabase, (updated as { run_id?: string }).run_id);
+	emitSuggestionDecisionEvent(
+		userId,
+		result.ok ? 'project_suggestion_accepted' : 'project_suggestion_application_failed',
+		updated,
+		{ applied_operations: result.applied_operations, error_count: errors.length }
+	);
 	return { ok: true, suggestion: updated, result };
 }

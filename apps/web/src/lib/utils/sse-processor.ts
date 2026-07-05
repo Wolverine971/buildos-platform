@@ -16,6 +16,8 @@ export interface SSEProcessorOptions {
 	timeout?: number;
 	/** Whether to parse JSON in data events (default: true) */
 	parseJSON?: boolean;
+	/** Route semantic `{ type: 'error' }` frames through onProgress instead of onError. */
+	treatErrorEventsAsProgress?: boolean;
 	/** Custom error handler for parsing errors */
 	onParseError?: (error: Error, chunk: string) => void;
 	/** Optional abort signal to cancel the stream */
@@ -50,6 +52,7 @@ export class SSEProcessor {
 		const {
 			timeout = SSEProcessor.DEFAULT_TIMEOUT,
 			parseJSON = true,
+			treatErrorEventsAsProgress = false,
 			onParseError,
 			signal
 		} = options;
@@ -121,6 +124,7 @@ export class SSEProcessor {
 				safeCallbacks,
 				parseJSON,
 				onParseError,
+				treatErrorEventsAsProgress,
 				() => {
 					scheduleTimeout();
 				}
@@ -166,6 +170,7 @@ export class SSEProcessor {
 		callbacks: StreamCallbacks,
 		parseJSON: boolean,
 		onParseError?: (error: Error, chunk: string) => void,
+		treatErrorEventsAsProgress = false,
 		onActivity?: () => void
 	): Promise<void> {
 		let buffer = initialBuffer;
@@ -190,7 +195,13 @@ export class SSEProcessor {
 				buffer = events.pop() || '';
 
 				for (const event of events) {
-					this.processEventBlock(event, callbacks, parseJSON, onParseError);
+					this.processEventBlock(
+						event,
+						callbacks,
+						parseJSON,
+						onParseError,
+						treatErrorEventsAsProgress
+					);
 
 					linesSinceYield++;
 					if (
@@ -207,7 +218,13 @@ export class SSEProcessor {
 
 		// Process any remaining buffer
 		if (buffer.trim()) {
-			this.processEventBlock(buffer, callbacks, parseJSON, onParseError);
+			this.processEventBlock(
+				buffer,
+				callbacks,
+				parseJSON,
+				onParseError,
+				treatErrorEventsAsProgress
+			);
 		}
 	}
 
@@ -215,7 +232,8 @@ export class SSEProcessor {
 		block: string,
 		callbacks: StreamCallbacks,
 		parseJSON: boolean,
-		onParseError?: (error: Error, chunk: string) => void
+		onParseError?: (error: Error, chunk: string) => void,
+		treatErrorEventsAsProgress = false
 	): void {
 		const dataLines: string[] = [];
 
@@ -242,7 +260,7 @@ export class SSEProcessor {
 		try {
 			if (parseJSON) {
 				const parsed = JSON.parse(data);
-				this.handleParsedEvent(parsed, callbacks);
+				this.handleParsedEvent(parsed, callbacks, treatErrorEventsAsProgress);
 			} else {
 				callbacks.onProgress?.(data);
 			}
@@ -258,7 +276,11 @@ export class SSEProcessor {
 	/**
 	 * Handle parsed SSE events based on their type
 	 */
-	private static handleParsedEvent(data: any, callbacks: StreamCallbacks): void {
+	private static handleParsedEvent(
+		data: any,
+		callbacks: StreamCallbacks,
+		treatErrorEventsAsProgress = false
+	): void {
 		// Handle different event types based on common patterns
 		if (data.type === 'status' || data.status) {
 			callbacks.onStatus?.(data.status || data);
@@ -267,7 +289,11 @@ export class SSEProcessor {
 		} else if (data.type === 'complete' || data.complete) {
 			callbacks.onComplete?.(data.result || data);
 		} else if (data.type === 'error' || data.error) {
-			callbacks.onError?.(data.error || data.message || 'Unknown error');
+			if (treatErrorEventsAsProgress && data.type === 'error') {
+				callbacks.onProgress?.(data);
+			} else {
+				callbacks.onError?.(data.error || data.message || 'Unknown error');
+			}
 		} else if (data.result && data.done) {
 			// Final result pattern
 			callbacks.onComplete?.(data.result);

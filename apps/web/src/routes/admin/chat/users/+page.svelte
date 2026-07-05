@@ -7,6 +7,7 @@
 		ArrowUp,
 		Clock,
 		Database,
+		Download,
 		RefreshCw,
 		Search,
 		User,
@@ -199,6 +200,17 @@
 			action: string;
 			count: number;
 		}>;
+		entity_changes: Array<{
+			session_id: string;
+			project_id: string | null;
+			project_name: string | null;
+			entity_type: string;
+			entity_id: string | null;
+			entity_title: string | null;
+			action: string;
+			source: string | null;
+			created_at: string;
+		}>;
 	};
 
 	type RedactedTurn = {
@@ -307,6 +319,7 @@
 	let redactedSession = $state<RedactedSession | null>(null);
 	let isLoadingSession = $state(false);
 	let sessionDetailError = $state<string | null>(null);
+	let selectedEntityGroupKey = $state<string | null>(null);
 
 	const truncatedSources = $derived(
 		Object.entries(data?.data_health.truncated ?? {})
@@ -391,12 +404,19 @@
 		sessionDetailError = null;
 	}
 
+	function clearSelectedEntityGroup() {
+		selectedEntityGroupKey = null;
+	}
+
 	async function loadUserDetail(userId: string, resetSession = true) {
 		selectedUserId = userId;
 		userDetail = null;
 		isLoadingDetail = true;
 		detailError = null;
-		if (resetSession) clearSelectedSession();
+		if (resetSession) {
+			clearSelectedSession();
+			clearSelectedEntityGroup();
+		}
 		try {
 			const params = new URLSearchParams({
 				timeframe: selectedTimeframe,
@@ -474,6 +494,177 @@
 		slowThresholdMs = '10000';
 	}
 
+	function exportTimestamp(): string {
+		return new Date().toISOString().replace(/[:.]/g, '-');
+	}
+
+	function currentFilterExport() {
+		return {
+			timeframe: selectedTimeframe,
+			page,
+			limit: PAGE_SIZE,
+			sort_by: sortBy,
+			sort_order: sortOrder,
+			search: appliedSearch,
+			context_type: selectedContextType,
+			project_id: selectedProjectId,
+			topic: selectedTopic,
+			errors: selectedErrors,
+			tool_bucket: selectedToolBucket,
+			classification: selectedClassification,
+			entity_action: selectedEntityAction,
+			slow_threshold_ms: slowThresholdMs
+		};
+	}
+
+	function csvCell(value: string | number | boolean | null | undefined): string {
+		if (value === null || value === undefined) return '';
+		const text = String(value);
+		if (/[",\n\r]/.test(text)) return `"${text.replaceAll('"', '""')}"`;
+		return text;
+	}
+
+	function csvRows(
+		headers: string[],
+		rows: Array<Record<string, string | number | boolean | null | undefined>>
+	): string {
+		return [
+			headers.map(csvCell).join(','),
+			...rows.map((row) => headers.map((header) => csvCell(row[header])).join(','))
+		].join('\n');
+	}
+
+	function downloadTextFile(filename: string, mimeType: string, contents: string) {
+		if (!browser) return;
+		const blob = new Blob([contents], { type: mimeType });
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement('a');
+		link.href = url;
+		link.download = filename;
+		document.body.appendChild(link);
+		link.click();
+		link.remove();
+		URL.revokeObjectURL(url);
+	}
+
+	function exportUsersCsv() {
+		if (!data) return;
+		const headers = [
+			'user_id',
+			'email',
+			'name',
+			'last_activity_at',
+			'active_day_count',
+			'consecutive_day_streak',
+			'session_count',
+			'project_session_count',
+			'global_session_count',
+			'turn_count',
+			'message_count',
+			'user_message_count',
+			'assistant_message_count',
+			'ttfr_p50_ms',
+			'ttfr_p95_ms',
+			'ttfr_max_ms',
+			'slow_turn_count',
+			'tool_call_count',
+			'tool_failure_count',
+			'tool_failure_rate',
+			'llm_call_count',
+			'llm_failure_count',
+			'validation_failure_count',
+			'created_entity_count',
+			'updated_entity_count',
+			'deleted_entity_count',
+			'project_count',
+			'top_topics',
+			'top_projects',
+			'top_tools',
+			'preview'
+		];
+		const rows = data.users.map((user) => ({
+			user_id: user.user_id,
+			email: user.email,
+			name: user.name,
+			last_activity_at: user.last_activity_at,
+			active_day_count: user.active_day_count,
+			consecutive_day_streak: user.consecutive_day_streak,
+			session_count: user.session_count,
+			project_session_count: user.project_session_count,
+			global_session_count: user.global_session_count,
+			turn_count: user.turn_count,
+			message_count: user.message_count,
+			user_message_count: user.user_message_count,
+			assistant_message_count: user.assistant_message_count,
+			ttfr_p50_ms: user.ttfr_p50_ms,
+			ttfr_p95_ms: user.ttfr_p95_ms,
+			ttfr_max_ms: user.ttfr_max_ms,
+			slow_turn_count: user.slow_turn_count,
+			tool_call_count: user.tool_call_count,
+			tool_failure_count: user.tool_failure_count,
+			tool_failure_rate: user.tool_failure_rate,
+			llm_call_count: user.llm_call_count,
+			llm_failure_count: user.llm_failure_count,
+			validation_failure_count: user.validation_failure_count,
+			created_entity_count: user.created_entity_count,
+			updated_entity_count: user.updated_entity_count,
+			deleted_entity_count: user.deleted_entity_count,
+			project_count: user.project_count,
+			top_topics: user.top_topics
+				.map((topic) => `${topic.topic} (${topic.count})`)
+				.join('; '),
+			top_projects: user.top_projects
+				.map((project) => `${project.name ?? project.project_id} (${project.count})`)
+				.join('; '),
+			top_tools: user.top_tools
+				.map((tool) => `${tool.tool_name} (${tool.count}/${tool.failures} failed)`)
+				.join('; '),
+			preview: user.preview
+		}));
+		downloadTextFile(
+			`admin-chat-users-${selectedTimeframe}-${exportTimestamp()}.csv`,
+			'text/csv;charset=utf-8',
+			csvRows(headers, rows)
+		);
+	}
+
+	function exportUsersJson() {
+		if (!data) return;
+		downloadTextFile(
+			`admin-chat-users-${selectedTimeframe}-${exportTimestamp()}.json`,
+			'application/json;charset=utf-8',
+			JSON.stringify(
+				{
+					exported_at: new Date().toISOString(),
+					filters: currentFilterExport(),
+					data
+				},
+				null,
+				2
+			)
+		);
+	}
+
+	function exportUserDetailJson() {
+		if (!userDetail) return;
+		downloadTextFile(
+			`admin-chat-user-${userDetail.user.id}-${exportTimestamp()}.json`,
+			'application/json;charset=utf-8',
+			JSON.stringify(
+				{
+					exported_at: new Date().toISOString(),
+					filters: currentFilterExport(),
+					user_detail: userDetail,
+					selected_entity_group: selectedEntityGroup(),
+					visible_entity_changes: visibleEntityChanges(),
+					redacted_session: redactedSession
+				},
+				null,
+				2
+			)
+		);
+	}
+
 	function formatNumber(value: number | null | undefined): string {
 		return new Intl.NumberFormat('en-US').format(value ?? 0);
 	}
@@ -506,11 +697,45 @@
 		return 'border-border bg-muted text-muted-foreground';
 	}
 
+	function entityGroupKey(
+		projectId: string | null | undefined,
+		entityType: string,
+		action: string
+	): string {
+		return `${projectId ?? ''}\u0000${entityType}\u0000${action}`;
+	}
+
+	function entityGroupKeyForAggregate(entity: UserDetail['entities'][number]): string {
+		return entityGroupKey(entity.project_id, entity.entity_type, entity.action);
+	}
+
+	function entityGroupKeyForChange(change: UserDetail['entity_changes'][number]): string {
+		return entityGroupKey(change.project_id, change.entity_type, change.action);
+	}
+
+	function selectedEntityGroup(): UserDetail['entities'][number] | null {
+		if (!userDetail || !selectedEntityGroupKey) return null;
+		return (
+			userDetail.entities.find(
+				(entity) => entityGroupKeyForAggregate(entity) === selectedEntityGroupKey
+			) ?? null
+		);
+	}
+
+	function visibleEntityChanges(): UserDetail['entity_changes'] {
+		if (!userDetail) return [];
+		if (!selectedEntityGroupKey) return userDetail.entity_changes.slice(0, 12);
+		return userDetail.entity_changes
+			.filter((change) => entityGroupKeyForChange(change) === selectedEntityGroupKey)
+			.slice(0, 25);
+	}
+
 	function closeDrawer() {
 		selectedUserId = null;
 		userDetail = null;
 		detailError = null;
 		clearSelectedSession();
+		clearSelectedEntityGroup();
 	}
 </script>
 
@@ -572,6 +797,26 @@
 					class="pressable"
 				>
 					Refresh
+				</Button>
+				<Button
+					onclick={exportUsersCsv}
+					disabled={!data || isLoading}
+					variant="secondary"
+					size="sm"
+					icon={Download}
+					class="pressable"
+				>
+					CSV
+				</Button>
+				<Button
+					onclick={exportUsersJson}
+					disabled={!data || isLoading}
+					variant="secondary"
+					size="sm"
+					icon={Download}
+					class="pressable"
+				>
+					JSON
 				</Button>
 			</div>
 		{/snippet}
@@ -1112,13 +1357,25 @@
 				</h2>
 				<p class="mt-1 text-sm text-muted-foreground">{userDetail?.user.email ?? ''}</p>
 			</div>
-			<Button
-				onclick={closeDrawer}
-				variant="ghost"
-				size="sm"
-				icon={X}
-				aria-label="Close user drilldown"
-			/>
+			<div class="flex items-center gap-2">
+				<Button
+					onclick={exportUserDetailJson}
+					disabled={!userDetail}
+					variant="secondary"
+					size="sm"
+					icon={Download}
+					class="pressable"
+				>
+					JSON
+				</Button>
+				<Button
+					onclick={closeDrawer}
+					variant="ghost"
+					size="sm"
+					icon={X}
+					aria-label="Close user drilldown"
+				/>
+			</div>
 		</div>
 
 		<div class="flex-1 overflow-y-auto p-5">
@@ -1585,26 +1842,131 @@
 					</section>
 
 					<section>
-						<h3
-							class="text-sm font-semibold uppercase tracking-wide text-muted-foreground"
-						>
-							Entity Changes
-						</h3>
-						<div class="mt-3 grid gap-2 md:grid-cols-2">
-							{#each userDetail.entities.slice(0, 12) as entity}
-								<div class="rounded-lg border border-border bg-card p-3 text-sm">
-									<p class="font-semibold text-foreground">
-										{entity.entity_type} · {entity.action}
-									</p>
+						<div class="flex flex-wrap items-center justify-between gap-3">
+							<h3
+								class="text-sm font-semibold uppercase tracking-wide text-muted-foreground"
+							>
+								Entity Changes
+							</h3>
+							{#if selectedEntityGroupKey}
+								<Button
+									onclick={clearSelectedEntityGroup}
+									variant="ghost"
+									size="sm"
+									class="pressable"
+								>
+									Show Latest
+								</Button>
+							{/if}
+						</div>
+						{#if userDetail.entities.length === 0}
+							<div
+								class="mt-3 rounded-lg border border-border bg-card p-3 text-sm text-muted-foreground"
+							>
+								No chat-created project entity changes in this window.
+							</div>
+						{:else}
+							<div class="mt-3 grid gap-2 md:grid-cols-2">
+								{#each userDetail.entities.slice(0, 12) as entity (entityGroupKeyForAggregate(entity))}
+									<button
+										type="button"
+										class={`rounded-lg border p-3 text-left text-sm transition-colors hover:border-accent/50 hover:bg-muted/40 ${
+											selectedEntityGroupKey ===
+											entityGroupKeyForAggregate(entity)
+												? 'border-accent bg-accent/10'
+												: 'border-border bg-card'
+										}`}
+										onclick={() =>
+											(selectedEntityGroupKey =
+												entityGroupKeyForAggregate(entity))}
+									>
+										<p class="font-semibold text-foreground">
+											{entity.entity_type} · {entity.action}
+										</p>
+										<p class="text-xs text-muted-foreground">
+											{entity.project_name ??
+												(entity.project_id || 'Unknown project')} · {formatNumber(
+												entity.count
+											)} changes
+										</p>
+									</button>
+								{/each}
+							</div>
+
+							<div class="mt-4 rounded-lg border border-border bg-card p-3">
+								<div class="flex flex-wrap items-start justify-between gap-3">
+									<div>
+										<h4 class="text-sm font-semibold text-foreground">
+											{#if selectedEntityGroup()}
+												{selectedEntityGroup()?.entity_type} · {selectedEntityGroup()
+													?.action}
+											{:else}
+												Latest entity changes
+											{/if}
+										</h4>
+										<p class="text-xs text-muted-foreground">
+											{#if selectedEntityGroup()}
+												{selectedEntityGroup()?.project_name ??
+													selectedEntityGroup()?.project_id ??
+													'Unknown project'} · {formatNumber(
+													selectedEntityGroup()?.count
+												)} changes
+											{:else}
+												Most recent safe entity refs across this user.
+											{/if}
+										</p>
+									</div>
 									<p class="text-xs text-muted-foreground">
-										{entity.project_name ??
-											(entity.project_id || 'Unknown project')} · {formatNumber(
-											entity.count
-										)} changes
+										{formatNumber(visibleEntityChanges().length)} shown
 									</p>
 								</div>
-							{/each}
-						</div>
+								<div class="mt-3 space-y-2">
+									{#each visibleEntityChanges() as change, index (`${change.session_id}:${change.entity_type}:${change.entity_id ?? index}:${change.action}:${change.created_at}`)}
+										<div
+											class="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+										>
+											<div
+												class="flex flex-wrap items-start justify-between gap-3"
+											>
+												<div>
+													<p class="font-semibold text-foreground">
+														{change.action}
+														{change.entity_type}
+														{change.entity_title ??
+															change.entity_id ??
+															'unknown entity'}
+													</p>
+													<p class="text-xs text-muted-foreground">
+														{formatDate(change.created_at)} · {change.project_name ??
+															change.project_id ??
+															'Unknown project'} · {change.source ??
+															'unknown source'}
+													</p>
+												</div>
+												<div class="flex flex-wrap items-center gap-3">
+													<button
+														type="button"
+														class="text-xs font-semibold text-accent hover:underline disabled:cursor-wait disabled:opacity-60"
+														disabled={isLoadingSession &&
+															selectedSessionId === change.session_id}
+														onclick={() =>
+															loadRedactedSession(change.session_id)}
+													>
+														Inspect timeline
+													</button>
+													<a
+														class="text-xs font-semibold text-muted-foreground hover:text-accent hover:underline"
+														href={`/admin/chat/sessions?chat_session_id=${change.session_id}`}
+													>
+														Full audit
+													</a>
+												</div>
+											</div>
+										</div>
+									{/each}
+								</div>
+							</div>
+						{/if}
 					</section>
 				</div>
 			{/if}

@@ -3,6 +3,7 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
 import { captureServerEvent } from '$lib/server/posthog';
 import { createLogger } from '$lib/utils/logger';
+import { projectAuditDedupKey } from '@buildos/shared-agent-ops';
 import type {
 	Json,
 	ProjectAuditDepth,
@@ -339,7 +340,9 @@ export async function queueProjectAudit(params: {
 			},
 			p_priority: auditDepth === 'deep' ? 6 : 7,
 			p_scheduled_for: new Date().toISOString(),
-			p_dedup_key: `project-audit:${params.projectId}:${auditRow.id}`
+			// Stable per-project/day slot so concurrent audit triggers collapse
+			// onto one job instead of double-auditing (audit Tier 1 #5).
+			p_dedup_key: projectAuditDedupKey(params.projectId)
 		});
 
 		await supabase

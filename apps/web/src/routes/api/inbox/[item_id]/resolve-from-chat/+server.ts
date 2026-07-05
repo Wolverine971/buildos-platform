@@ -5,6 +5,7 @@ import { requireProjectMemberAccess } from '$lib/server/ontology-project-access'
 import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import { commitChangeSet } from '@buildos/shared-agent-ops';
 import { syncInboxItemForSource } from '@buildos/shared-agent-ops/inbox-index';
+import { finalizeProjectLoopRunIfComplete } from '$lib/server/project-loop-run.service';
 import type { InboxIndexRow, InboxSourceType } from '@buildos/shared-agent-ops/inbox-index';
 
 type ChatSessionRow = {
@@ -172,7 +173,13 @@ async function resolveProjectSuggestionFromChat(params: {
 
 	if (error) throw error;
 	const synced = updated ? await syncResolvedItem(params.admin, params.item) : null;
-	if (updated) return { resolved: true, item: synced };
+	if (updated) {
+		await finalizeProjectLoopRunIfComplete(
+			params.admin,
+			(updated as { run_id?: string }).run_id
+		);
+		return { resolved: true, item: synced };
+	}
 
 	const repaired = await syncResolvedItem(params.admin, params.item);
 	return {
@@ -212,7 +219,13 @@ async function resolveProjectSuggestionExplicitlyFromChat(params: {
 
 	if (error) throw error;
 	const synced = updated ? await syncResolvedItem(params.admin, params.item) : null;
-	if (updated) return { resolved: true, item: synced };
+	if (updated) {
+		await finalizeProjectLoopRunIfComplete(
+			params.admin,
+			(updated as { run_id?: string }).run_id
+		);
+		return { resolved: true, item: synced };
+	}
 
 	const repaired = await syncResolvedItem(params.admin, params.item);
 	return {

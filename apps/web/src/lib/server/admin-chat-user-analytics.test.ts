@@ -4,6 +4,7 @@ import {
 	assertAdminChatUserAnalyticsRedacted,
 	buildAdminChatRedactedSession,
 	buildAdminChatUserAnalytics,
+	buildAdminChatUserDetail,
 	type AdminChatUserAnalyticsQuery
 } from './admin-chat-user-analytics';
 
@@ -182,7 +183,8 @@ describe('admin chat user analytics', () => {
 			tool_call_count: 1,
 			tool_failure_count: 1,
 			validation_failure_count: 1,
-			created_entity_count: 1
+			created_entity_count: 1,
+			total_tokens: 140
 		});
 		const payloadText = JSON.stringify(analytics);
 		expect(payloadText).not.toContain('SECRET USER MESSAGE');
@@ -227,6 +229,148 @@ describe('admin chat user analytics', () => {
 
 		expect(analytics.data_health.classification_missing_sessions).toBe(1);
 		expect(analytics.users).toEqual([]);
+	});
+
+	it('returns safe entity-change drilldown details for a user', () => {
+		const detail = buildAdminChatUserDetail(
+			{
+				sessions: [
+					{
+						id: 'session-1',
+						user_id: 'user-1',
+						title: 'Launch planning',
+						chat_topics: ['launch video'],
+						context_type: 'project',
+						entity_id: 'project-1',
+						status: 'active',
+						created_at: '2026-07-01T10:00:00.000Z',
+						updated_at: '2026-07-01T10:20:00.000Z',
+						last_message_at: '2026-07-01T10:20:00.000Z',
+						last_classified_at: '2026-07-01T10:21:00.000Z'
+					}
+				],
+				users: [{ id: 'user-1', email: 'founder@example.com', name: 'Founder' }],
+				sessionProjects: [{ chat_session_id: 'session-1', project_id: 'project-1' }],
+				projects: [{ id: 'project-1', name: 'BuildOS Demo Campaign' }],
+				messages: [],
+				turnRuns: [],
+				timingRows: [],
+				toolExecutions: [],
+				usageRows: [],
+				projectLogs: [
+					{
+						id: 'log-1',
+						chat_session_id: 'session-1',
+						project_id: 'project-1',
+						entity_type: 'task',
+						entity_id: 'task-1',
+						action: 'created',
+						change_source: 'chat',
+						changed_by: 'user-1',
+						created_at: '2026-07-01T10:03:00.000Z',
+						before_data: { text: 'SECRET BEFORE DRILLDOWN' },
+						after_data: { text: 'SECRET AFTER DRILLDOWN' }
+					} as any
+				],
+				appErrors: [],
+				truncated: {}
+			},
+			'user-1',
+			{
+				timeframe: '7d',
+				session_page: 1,
+				session_limit: 25,
+				session_sort_by: 'last_activity_at',
+				session_sort_order: 'desc',
+				search: '',
+				slow_threshold_ms: 10_000
+			}
+		);
+
+		expect(detail?.entities).toEqual([
+			{
+				project_id: 'project-1',
+				project_name: 'BuildOS Demo Campaign',
+				entity_type: 'task',
+				action: 'created',
+				count: 1
+			}
+		]);
+		expect(detail?.entity_changes).toEqual([
+			{
+				session_id: 'session-1',
+				project_id: 'project-1',
+				project_name: 'BuildOS Demo Campaign',
+				entity_type: 'task',
+				entity_id: 'task-1',
+				entity_title: null,
+				action: 'created',
+				source: 'chat',
+				created_at: '2026-07-01T10:03:00.000Z'
+			}
+		]);
+		assertAdminChatUserAnalyticsRedacted(detail);
+
+		const payloadText = JSON.stringify(detail);
+		expect(payloadText).not.toContain('SECRET BEFORE DRILLDOWN');
+		expect(payloadText).not.toContain('SECRET AFTER DRILLDOWN');
+	});
+
+	it('filters user drilldown sessions by session-level search matches', () => {
+		const detail = buildAdminChatUserDetail(
+			{
+				sessions: [
+					{
+						id: 'session-launch',
+						user_id: 'user-1',
+						title: 'Launch planning',
+						chat_topics: ['launch'],
+						context_type: 'project',
+						entity_id: 'project-1',
+						status: 'active',
+						created_at: '2026-07-01T10:00:00.000Z',
+						updated_at: '2026-07-01T10:20:00.000Z',
+						last_message_at: '2026-07-01T10:20:00.000Z',
+						last_classified_at: '2026-07-01T10:21:00.000Z'
+					},
+					{
+						id: 'session-billing',
+						user_id: 'user-1',
+						title: 'Billing audit',
+						chat_topics: ['billing'],
+						context_type: 'global',
+						status: 'active',
+						created_at: '2026-07-02T10:00:00.000Z',
+						updated_at: '2026-07-02T10:20:00.000Z',
+						last_message_at: '2026-07-02T10:20:00.000Z',
+						last_classified_at: '2026-07-02T10:21:00.000Z'
+					}
+				],
+				users: [{ id: 'user-1', email: 'founder@example.com', name: 'Founder' }],
+				sessionProjects: [{ chat_session_id: 'session-launch', project_id: 'project-1' }],
+				projects: [{ id: 'project-1', name: 'Launch Project' }],
+				messages: [],
+				turnRuns: [],
+				timingRows: [],
+				toolExecutions: [],
+				usageRows: [],
+				projectLogs: [],
+				appErrors: [],
+				truncated: {}
+			},
+			'user-1',
+			{
+				timeframe: '7d',
+				session_page: 1,
+				session_limit: 25,
+				session_sort_by: 'last_activity_at',
+				session_sort_order: 'desc',
+				search: 'launch',
+				slow_threshold_ms: 10_000
+			}
+		);
+
+		expect(detail?.sessions.map((session) => session.session_id)).toEqual(['session-launch']);
 	});
 
 	it('builds a redacted per-session turn timeline without raw payloads', () => {
@@ -367,6 +511,7 @@ describe('admin chat user analytics', () => {
 			user_id: 'user-1',
 			turn_count: 1,
 			message_count: 2,
+			total_tokens: 140,
 			tool_failure_count: 1,
 			validation_failure_count: 1,
 			created_entity_count: 1

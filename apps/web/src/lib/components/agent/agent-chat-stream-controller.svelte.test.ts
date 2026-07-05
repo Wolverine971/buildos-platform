@@ -124,7 +124,6 @@ function createHarness(
 		fetchImpl?: typeof fetch;
 		readyRefs?: ChatAttachmentRef[];
 		draftAttachments?: AgentChatImageAttachment[];
-		prewarmedContext?: unknown | null;
 		preparedPrompt?: PreparedPromptClient | null;
 	} = {}
 ) {
@@ -141,10 +140,6 @@ function createHarness(
 	let lastTurnContext = null;
 	let readyRefs = overrides.readyRefs ?? [];
 	let draftAttachments = overrides.draftAttachments ?? [];
-	let prewarmedContext =
-		overrides.prewarmedContext === undefined
-			? { key: 'cache-key', hydrated: true }
-			: overrides.prewarmedContext;
 	let preparedPrompt: PreparedPromptClient | null =
 		overrides.preparedPrompt === undefined
 			? {
@@ -185,7 +180,6 @@ function createHarness(
 
 	const prewarm: StreamControllerPrewarmDeps = {
 		resolveCurrentKey: vi.fn(() => 'cache-key'),
-		matchingFreshContext: vi.fn(() => prewarmedContext),
 		matchingFreshPreparedPrompt: vi.fn(() => preparedPrompt),
 		clearPreparedPrompt: vi.fn(() => {
 			preparedPrompt = null;
@@ -206,6 +200,7 @@ function createHarness(
 	const hydrateSessionFromEvent = vi.fn((session: ChatSession) => {
 		currentSession = session;
 	});
+	const reconcileTurnFromSession = vi.fn(async () => {});
 	const ensureSessionReady = vi.fn(async () => {
 		const ensured = makeSession({ id: 'ensured-session' });
 		if (overrides.hydrateOnEnsure !== false) {
@@ -265,6 +260,7 @@ function createHarness(
 			sseEvents.push(event);
 		},
 		hydrateSessionFromEvent,
+		reconcileTurnFromSession,
 		setUserHasScrolled: vi.fn(),
 		setExistingImagePickerOpen: vi.fn(),
 		haptic,
@@ -291,6 +287,7 @@ function createHarness(
 		cancelFetchCalls,
 		defaultFetch,
 		hydrateSessionFromEvent,
+		reconcileTurnFromSession,
 		ensureSessionReady,
 		scheduleMessageOcrPoll,
 		clearDraft,
@@ -306,9 +303,6 @@ function createHarness(
 		},
 		set draftAttachments(value: AgentChatImageAttachment[]) {
 			draftAttachments = value;
-		},
-		set prewarmedContext(value: unknown | null) {
-			prewarmedContext = value;
 		},
 		set preparedPrompt(value: PreparedPromptClient | null) {
 			preparedPrompt = value;
@@ -331,7 +325,7 @@ describe('AgentChatStreamController', () => {
 		vi.useRealTimers();
 	});
 
-	it('sends a message, consumes prewarm data, routes SSE events, and completes', async () => {
+	it('sends a message with a prepared prompt key, routes SSE events, and completes', async () => {
 		const h = createHarness({ inputValue: 'Build the plan' });
 
 		const sendPromise = h.controller.sendMessage();
@@ -352,9 +346,14 @@ describe('AgentChatStreamController', () => {
 			entity_id: 'project-1',
 			preparedPromptKey: 'prepared-key'
 		});
-		expect(requestBody.prewarmedContext).toEqual({ key: 'cache-key', hydrated: true });
+		expect(requestBody).not.toHaveProperty('prewarmedContext');
 
 		const run = h.streamProcessor.runs[0]!;
+		expect(h.streamProcessor.processStream.mock.calls[0]?.[2]).toMatchObject({
+			timeout: 0,
+			parseJSON: true,
+			treatErrorEventsAsProgress: true
+		});
 		run.progress({ type: 'text_delta', content: 'Working' });
 		run.progress({ type: 'done' });
 		run.complete();
@@ -369,7 +368,124 @@ describe('AgentChatStreamController', () => {
 		expect(h.assistant.finalizeMessage).toHaveBeenCalled();
 	});
 
-	it('uses draft prewarm on first send without bootstrapping a session', async () => {
+	it('drops enveloped stream events from stale stream or client turns', async () => {
+		const h = createHarness({ inputValue: 'Build the plan' });
+
+		const sendPromise = h.controller.sendMessage();
+		await flushMicrotasks();
+
+		const requestBody = parseBody(h.streamFetchCalls[0]!);
+		const streamRunId = requestBody.stream_run_id as string;
+		const clientTurnId = requestBody.client_turn_id as string;
+		const run = h.streamProcessor.runs[0]!;
+
+		run.progress({
+			type: 'text_delta',
+			content: 'stale stream',
+			stream_run_id: 'other-stream',
+			client_turn_id: clientTurnId,
+			event_id: 'other-stream:1',
+			sequence_index: 1
+		});
+		run.progress({
+			type: 'text_delta',
+			content: 'stale client',
+			stream_run_id: streamRunId,
+			client_turn_id: 'other-client',
+			event_id: `${streamRunId}:2`,
+			sequence_index: 2
+		});
+		run.progress({
+			type: 'text_delta',
+			content: 'current',
+			stream_run_id: streamRunId,
+			client_turn_id: clientTurnId,
+			event_id: `${streamRunId}:3`,
+			sequence_index: 3
+		});
+		run.progress({
+			type: 'done',
+			stream_run_id: streamRunId,
+			client_turn_id: clientTurnId,
+			event_id: `${streamRunId}:4`,
+			sequence_index: 4
+		});
+		run.complete();
+		await sendPromise;
+
+		expect(h.sseEvents.map((event) => event.type)).toEqual(['text_delta', 'done']);
+		expect(h.sseEvents[0]).toMatchObject({ content: 'current' });
+	});
+
+	it('dedupes enveloped stream events by event id or stream sequence', async () => {
+		const h = createHarness({ inputValue: 'Build the plan' });
+
+		const sendPromise = h.controller.sendMessage();
+		await flushMicrotasks();
+
+		const requestBody = parseBody(h.streamFetchCalls[0]!);
+		const streamRunId = requestBody.stream_run_id as string;
+		const clientTurnId = requestBody.client_turn_id as string;
+		const run = h.streamProcessor.runs[0]!;
+
+		run.progress({
+			type: 'text_delta',
+			content: 'first',
+			stream_run_id: streamRunId,
+			client_turn_id: clientTurnId,
+			event_id: `${streamRunId}:1`,
+			sequence_index: 1
+		});
+		run.progress({
+			type: 'text_delta',
+			content: 'duplicate event id',
+			stream_run_id: streamRunId,
+			client_turn_id: clientTurnId,
+			event_id: `${streamRunId}:1`,
+			sequence_index: 1
+		});
+		run.progress({
+			type: 'text_delta',
+			content: 'second',
+			stream_run_id: streamRunId,
+			client_turn_id: clientTurnId,
+			sequence_index: 2
+		});
+		run.progress({
+			type: 'text_delta',
+			content: 'duplicate sequence',
+			stream_run_id: streamRunId,
+			client_turn_id: clientTurnId,
+			sequence_index: 2
+		});
+		run.progress({
+			type: 'done',
+			stream_run_id: streamRunId,
+			client_turn_id: clientTurnId,
+			event_id: `${streamRunId}:3`,
+			sequence_index: 3
+		});
+		run.progress({
+			type: 'done',
+			stream_run_id: streamRunId,
+			client_turn_id: clientTurnId,
+			event_id: `${streamRunId}:3`,
+			sequence_index: 3
+		});
+		run.complete();
+		await sendPromise;
+
+		expect(h.sseEvents.map((event) => event.type)).toEqual([
+			'text_delta',
+			'text_delta',
+			'done'
+		]);
+		expect(
+			h.sseEvents.slice(0, 2).map((event) => ('content' in event ? event.content : ''))
+		).toEqual(['first', 'second']);
+	});
+
+	it('uses a sessionless prepared prompt on first send without bootstrapping a session', async () => {
 		const h = createHarness({ currentSession: null, inputValue: 'First turn' });
 
 		const sendPromise = h.controller.sendMessage();
@@ -387,7 +503,7 @@ describe('AgentChatStreamController', () => {
 			entity_id: 'project-1',
 			preparedPromptKey: 'prepared-key'
 		});
-		expect(requestBody.prewarmedContext).toEqual({ key: 'cache-key', hydrated: true });
+		expect(requestBody).not.toHaveProperty('prewarmedContext');
 
 		const run = h.streamProcessor.runs[0]!;
 		const streamCreatedSession = makeSession({ id: 'stream-created-session' });
@@ -403,7 +519,7 @@ describe('AgentChatStreamController', () => {
 		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('completed');
 	});
 
-	it('uses context-only draft prewarm on first send when no prepared prompt is available', async () => {
+	it('bootstraps a session on first send when no prepared prompt is available', async () => {
 		const h = createHarness({
 			currentSession: null,
 			inputValue: 'First turn',
@@ -413,13 +529,13 @@ describe('AgentChatStreamController', () => {
 		const sendPromise = h.controller.sendMessage();
 		await flushMicrotasks();
 
-		expect(h.ensureSessionReady).not.toHaveBeenCalled();
-		expect(h.messages[0]?.session_id).toBeUndefined();
+		expect(h.ensureSessionReady).toHaveBeenCalledOnce();
+		expect(h.messages[0]?.session_id).toBe('ensured-session');
 
 		const requestBody = parseBody(h.streamFetchCalls[0]!);
-		expect(requestBody).not.toHaveProperty('session_id');
+		expect(requestBody.session_id).toBe('ensured-session');
 		expect(requestBody.preparedPromptKey).toBeNull();
-		expect(requestBody.prewarmedContext).toEqual({ key: 'cache-key', hydrated: true });
+		expect(requestBody).not.toHaveProperty('prewarmedContext');
 
 		h.streamProcessor.runs[0]!.progress({ type: 'done' });
 		h.streamProcessor.runs[0]!.complete();
@@ -430,7 +546,6 @@ describe('AgentChatStreamController', () => {
 		const h = createHarness({
 			currentSession: null,
 			inputValue: 'First turn',
-			prewarmedContext: null,
 			preparedPrompt: null
 		});
 
@@ -444,9 +559,9 @@ describe('AgentChatStreamController', () => {
 		expect(requestBody).toMatchObject({
 			message: 'First turn',
 			session_id: 'ensured-session',
-			preparedPromptKey: null,
-			prewarmedContext: null
+			preparedPromptKey: null
 		});
+		expect(requestBody).not.toHaveProperty('prewarmedContext');
 
 		h.streamProcessor.runs[0]!.progress({ type: 'done' });
 		h.streamProcessor.runs[0]!.complete();
@@ -475,21 +590,68 @@ describe('AgentChatStreamController', () => {
 		expect(h.streamProcessor.runs).toHaveLength(0);
 	});
 
-	it('handles transport-level stream errors without showing abort noise', async () => {
+	it('reconciles accepted streams after transport-level errors', async () => {
 		const h = createHarness();
 		const sendPromise = h.controller.sendMessage();
 		await flushMicrotasks();
 
 		const run = h.streamProcessor.runs[0]!;
+		const streamRunId = h.messages[0]?.metadata?.stream_run_id;
+		const clientTurnId = h.messages[0]?.metadata?.client_turn_id;
 		run.error('transport lost');
 		run.resolve();
 		await sendPromise;
 
-		expect(h.controller.error).toBe('transport lost');
+		expect(h.reconcileTurnFromSession).toHaveBeenCalledWith({
+			sessionId: 'session-1',
+			streamRunId,
+			clientTurnId,
+			reason: 'transport_error'
+		});
+		expect(h.controller.error).toBeNull();
 		expect(h.controller.isStreaming).toBe(false);
+		expect(h.controller.currentActivity).toBe('Restoring latest response...');
+		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('error');
+		expect(h.thinking.finalize).toHaveBeenCalledWith(
+			'interrupted',
+			'Restoring latest response'
+		);
+		expect(h.assistant.finalizeMessage).toHaveBeenCalled();
+	});
+
+	it('reconciles accepted streams when the stream processor rejects', async () => {
+		const h = createHarness();
+		const sendPromise = h.controller.sendMessage();
+		await flushMicrotasks();
+
+		const streamRunId = h.messages[0]?.metadata?.stream_run_id;
+		h.streamProcessor.runs[0]!.reject(new Error('reader failed'));
+		await sendPromise;
+
+		expect(h.reconcileTurnFromSession).toHaveBeenCalledWith(
+			expect.objectContaining({
+				sessionId: 'session-1',
+				streamRunId,
+				reason: 'transport_error'
+			})
+		);
+		expect(h.messages).toHaveLength(1);
+		expect(h.controller.error).toBeNull();
+		expect(h.inputValue).toBe('');
+		expect(h.restoreDraft).not.toHaveBeenCalled();
+	});
+
+	it('finalizes a normally closed empty stream as an error', async () => {
+		const h = createHarness();
+		const sendPromise = h.controller.sendMessage();
+		await flushMicrotasks();
+
+		h.streamProcessor.runs[0]!.complete();
+		await sendPromise;
+
+		expect(h.controller.error).toBe('BuildOS did not return a response. Please try again.');
 		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('error');
 		expect(h.thinking.finalize).toHaveBeenCalledWith('error');
-		expect(h.assistant.finalizeMessage).toHaveBeenCalled();
 	});
 
 	it('reports and aborts user cancellation', async () => {
@@ -517,6 +679,7 @@ describe('AgentChatStreamController', () => {
 		expect(h.controller.isStreaming).toBe(false);
 		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('cancelled');
 		expect(h.controller.lastCompletedStreamTiming?.cancelReason).toBe('user_cancelled');
+		expect(h.reconcileTurnFromSession).not.toHaveBeenCalled();
 	});
 
 	it('supersedes an active stream before sending a second message', async () => {
@@ -542,6 +705,28 @@ describe('AgentChatStreamController', () => {
 
 		expect(h.controller.isStreaming).toBe(false);
 		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('completed');
+	});
+
+	it('requests reconciliation when disposing an active stream without explicit cancellation', async () => {
+		const h = createHarness();
+		const sendPromise = h.controller.sendMessage();
+		await flushMicrotasks();
+		const run = h.streamProcessor.runs[0]!;
+		const streamRunId = h.messages[0]?.metadata?.stream_run_id;
+		const clientTurnId = h.messages[0]?.metadata?.client_turn_id;
+
+		h.controller.disposeActiveStream();
+		await sendPromise;
+
+		expect(run.signal?.aborted).toBe(true);
+		expect(h.reconcileTurnFromSession).toHaveBeenCalledWith({
+			sessionId: 'session-1',
+			streamRunId,
+			clientTurnId,
+			reason: 'detached'
+		});
+		expect(h.controller.isStreaming).toBe(false);
+		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('aborted');
 	});
 
 	it('stops recording and sends after transcription finishes', async () => {

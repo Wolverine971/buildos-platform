@@ -1,6 +1,7 @@
 // apps/web/src/lib/server/clarified-decision.service.ts
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
-import { loadProjectLoopSourceFingerprint } from '$lib/server/project-loop-snapshot.service';
+import { isProjectSuggestionFresh } from '$lib/server/project-loop-snapshot.service';
+import { finalizeProjectLoopRunIfComplete } from '$lib/server/project-loop-run.service';
 import {
 	countActiveAgentRuns,
 	dispatchAgentRun,
@@ -285,11 +286,12 @@ export async function decideProjectSuggestionWithClarification(params: {
 	if (params.action === 'approve') {
 		const suggestionBeforeClaim = current as unknown as ProjectSuggestion;
 		if (suggestionBeforeClaim.source_fingerprint) {
-			let currentFingerprint: string | null = null;
+			let fresh: boolean;
 			try {
-				currentFingerprint = await loadProjectLoopSourceFingerprint(
+				fresh = await isProjectSuggestionFresh(
 					params.supabase,
-					params.projectId
+					params.projectId,
+					suggestionBeforeClaim
 				);
 			} catch (error) {
 				return {
@@ -302,7 +304,7 @@ export async function decideProjectSuggestionWithClarification(params: {
 				};
 			}
 
-			if (currentFingerprint !== suggestionBeforeClaim.source_fingerprint) {
+			if (!fresh) {
 				const result: ProjectSuggestionResult = {
 					ok: false,
 					applied_operations: 0,
@@ -330,6 +332,10 @@ export async function decideProjectSuggestionWithClarification(params: {
 				if (updateError) return { ok: false, status: 500, message: updateError.message };
 				if (updated) {
 					await syncProjectSuggestionInboxItem(admin, updated);
+					await finalizeProjectLoopRunIfComplete(
+						params.supabase,
+						(updated as { run_id?: string }).run_id
+					);
 					return { ok: true, suggestion: updated, result, superseded: true };
 				}
 				const latest = await loadSuggestion({
@@ -492,6 +498,10 @@ export async function decideProjectSuggestionWithClarification(params: {
 
 	const suggestion = linked ?? claimed;
 	await syncProjectSuggestionInboxItem(admin, suggestion);
+	await finalizeProjectLoopRunIfComplete(
+		params.supabase,
+		(suggestion as { run_id?: string }).run_id
+	);
 	return {
 		ok: true,
 		suggestion,

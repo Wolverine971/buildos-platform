@@ -3,10 +3,28 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { addHours, addDays, setHours, setMinutes } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
+const schedulerMocks = vi.hoisted(() => ({
+	cleanupStaleJobs: vi.fn(),
+	supabaseFrom: vi.fn(),
+	supabaseRpc: vi.fn()
+}));
+
 // Mock the imports
-vi.mock('./lib/supabase', () => ({
+vi.mock('../src/lib/supabase', () => ({
 	supabase: {
-		from: vi.fn()
+		from: schedulerMocks.supabaseFrom,
+		rpc: schedulerMocks.supabaseRpc
+	}
+}));
+
+vi.mock('../src/lib/utils/queueCleanup', () => ({
+	cleanupStaleJobs: schedulerMocks.cleanupStaleJobs
+}));
+
+vi.mock('../src/worker', () => ({
+	queue: {
+		add: vi.fn(),
+		cancelBriefJobsForDate: vi.fn()
 	}
 }));
 
@@ -17,6 +35,7 @@ vi.mock('./queue', () => ({
 import {
 	calculateNextOperativeRunTime,
 	calculateNextRunTime,
+	runQueueRetentionCleanup,
 	UserBriefPreference,
 	validateUserPreference
 } from '../src/scheduler';
@@ -24,6 +43,13 @@ import {
 describe('Brief Scheduler', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		schedulerMocks.cleanupStaleJobs.mockResolvedValue({
+			staleCancelled: 0,
+			oldFailedCancelled: 0,
+			completedDeleted: 0,
+			errors: []
+		});
+		schedulerMocks.supabaseRpc.mockResolvedValue({ data: 2, error: null });
 	});
 
 	describe('calculateNextRunTime', () => {
@@ -177,6 +203,17 @@ describe('Brief Scheduler', () => {
 			);
 
 			expect(nextRun).toEqual(new Date('2024-01-22T09:00:00Z'));
+		});
+	});
+
+	describe('runQueueRetentionCleanup', () => {
+		it('runs the prepared prompt cleanup RPC on the queue retention path', async () => {
+			await runQueueRetentionCleanup();
+
+			expect(schedulerMocks.cleanupStaleJobs).toHaveBeenCalledOnce();
+			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
+				'cleanup_expired_agentic_chat_prepared_prompts'
+			);
 		});
 	});
 });

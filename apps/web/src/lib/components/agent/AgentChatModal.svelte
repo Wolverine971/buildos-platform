@@ -74,6 +74,7 @@
 	import { notifyDataMutation } from '$lib/stores/projectDataMutations';
 	import {
 		deriveSessionTitle,
+		type AgentChatSessionSnapshot,
 		isProjectContext,
 		loadAgentChatSessionSnapshot,
 		normalizeSessionContextType,
@@ -99,7 +100,8 @@
 	import { createPrewarmController } from './agent-chat-prewarm.svelte';
 	import {
 		createAgentChatStreamController,
-		type SessionBootstrapTarget
+		type SessionBootstrapTarget,
+		type StreamTurnReconcileRequest
 	} from './agent-chat-stream-controller.svelte';
 	import {
 		downloadAgentChatStepsMarkdown,
@@ -383,6 +385,8 @@
 	let currentThinkingBlockId = $state<string | null>(null);
 	const pendingToolResults = new Map<string, PendingToolStatus>(); // Tool results that arrive before tool_call
 	const hiddenToolCallIds = new Set<string>();
+	const processedToolCallIds = new Set<string>();
+	const processedToolResultIds = new Set<string>();
 
 	const selectedAttachmentAssetIds = $derived.by(() => attachments.selectedAttachmentAssetIds);
 
@@ -437,6 +441,9 @@
 	};
 
 	const ACTIVE_TURN_SESSION_REFRESH_MS = 2000;
+	const TURN_RECONCILE_RETRY_MS = 1200;
+	const TURN_RECONCILE_MAX_ATTEMPTS = 8;
+	let turnReconciliationRequestId = 0;
 
 	// Voice recording adapter — see agent-chat-voice.svelte.ts
 	const voice = createVoiceAdapter({
@@ -490,9 +497,12 @@
 		clearPendingToolState: () => {
 			pendingToolResults.clear();
 			hiddenToolCallIds.clear();
+			processedToolCallIds.clear();
+			processedToolResultIds.clear();
 		},
 		handleSSEMessage: (event) => handleSSEMessage(event),
 		hydrateSessionFromEvent: (session) => hydrateSessionFromEvent(session),
+		reconcileTurnFromSession: (request) => reconcileTurnFromSession(request),
 		setUserHasScrolled: (value) => {
 			userHasScrolled = value;
 		},
@@ -826,6 +836,7 @@
 
 		voice.stop();
 		cancelSessionBootstrap();
+		turnReconciliationRequestId += 1;
 
 		messages = [];
 		persistedTimelineItems = [];
@@ -848,6 +859,9 @@
 		contextUsage = null;
 		contextUsageOverheadTokens = 0;
 		pendingToolResults.clear();
+		hiddenToolCallIds.clear();
+		processedToolCallIds.clear();
+		processedToolResultIds.clear();
 		presenter.resetMutationTracking();
 		voice.reset();
 		shellRouter.resetConversationState({ preserveContext });
@@ -1150,6 +1164,117 @@
 		}
 	}
 
+	function applyChatSessionSnapshot(sessionId: string, snapshot: AgentChatSessionSnapshot): void {
+		const nextActiveTurnRun = snapshot.activeTurnRun ?? null;
+		currentSession = snapshot.session;
+		lastLoadedSessionId = sessionId;
+		contextUsage = null;
+		contextUsageOverheadTokens = 0;
+		shellRouter.hydrateFromSession({
+			contextType: snapshot.contextType,
+			entityId: snapshot.selectedEntityId,
+			label: snapshot.selectedContextLabel,
+			projectFocus: snapshot.projectFocus
+		});
+		messages = snapshot.messages;
+		persistedTimelineItems = snapshot.timelineItems;
+		if (initialBrainDumpContext?.id) {
+			brainDumpContext = initialBrainDumpContext;
+		} else {
+			void hydrateBrainDumpContextFromSession(snapshot.session);
+		}
+		voice.hydrateNotesByGroupId(snapshot.voiceNotesByGroupId);
+		activeRestoredTurnRunId = nextActiveTurnRun?.id ?? null;
+		if (nextActiveTurnRun) {
+			stream.currentActivity = 'BuildOS is still finishing the latest response...';
+			scheduleActiveTurnSessionRefresh(sessionId);
+		} else {
+			clearSessionRefreshTimeout();
+			stream.currentActivity = '';
+		}
+	}
+
+	function turnRunMatchesRequest(
+		run: { stream_run_id?: string | null; client_turn_id?: string | null },
+		request: StreamTurnReconcileRequest
+	): boolean {
+		return (
+			run.stream_run_id === request.streamRunId ||
+			(Boolean(request.clientTurnId) && run.client_turn_id === request.clientTurnId)
+		);
+	}
+
+	function messageMatchesReconciledTurn(
+		message: UIMessage,
+		request: StreamTurnReconcileRequest
+	): boolean {
+		const metadata = message.metadata as Record<string, unknown> | undefined;
+		return (
+			metadata?.stream_run_id === request.streamRunId ||
+			(Boolean(request.clientTurnId) && metadata?.client_turn_id === request.clientTurnId)
+		);
+	}
+
+	function snapshotHasReconciledTurnEvidence(
+		snapshot: AgentChatSessionSnapshot,
+		request: StreamTurnReconcileRequest
+	): boolean {
+		return snapshot.messages.some((message) => messageMatchesReconciledTurn(message, request));
+	}
+
+	async function reconcileTurnFromSession(
+		request: StreamTurnReconcileRequest,
+		attempt = 0,
+		requestId = ++turnReconciliationRequestId
+	): Promise<void> {
+		if (!browser || !isOpen) return;
+		if (requestId !== turnReconciliationRequestId) return;
+
+		activeRestoredTurnRunId = `reconcile:${request.streamRunId}`;
+		stream.error = null;
+		stream.currentActivity = 'Restoring latest response...';
+
+		try {
+			const snapshot = await loadAgentChatSessionSnapshot(request.sessionId);
+			if (requestId !== turnReconciliationRequestId || !isOpen) return;
+
+			const matchingTurnRun =
+				snapshot.turnRuns.find((run) => turnRunMatchesRequest(run, request)) ?? null;
+			const hasEvidence = snapshotHasReconciledTurnEvidence(snapshot, request);
+			const shouldHydrate = Boolean(matchingTurnRun || snapshot.activeTurnRun || hasEvidence);
+
+			if (!shouldHydrate && attempt < TURN_RECONCILE_MAX_ATTEMPTS) {
+				setTrackedTimeout(() => {
+					void reconcileTurnFromSession(request, attempt + 1, requestId);
+				}, TURN_RECONCILE_RETRY_MS);
+				return;
+			}
+
+			if (shouldHydrate) {
+				applyChatSessionSnapshot(request.sessionId, snapshot);
+				return;
+			}
+
+			activeRestoredTurnRunId = null;
+			stream.currentActivity = '';
+			stream.error = 'Connection lost before the latest response could be restored.';
+		} catch (err) {
+			if (requestId !== turnReconciliationRequestId || !isOpen) return;
+			if (attempt < TURN_RECONCILE_MAX_ATTEMPTS) {
+				setTrackedTimeout(() => {
+					void reconcileTurnFromSession(request, attempt + 1, requestId);
+				}, TURN_RECONCILE_RETRY_MS);
+				return;
+			}
+			activeRestoredTurnRunId = null;
+			stream.currentActivity = '';
+			stream.error =
+				err instanceof Error
+					? err.message
+					: 'Connection lost before the latest response could be restored.';
+		}
+	}
+
 	async function loadChatSession(
 		sessionId: string,
 		options: { backgroundRefresh?: boolean } = {}
@@ -1186,33 +1311,7 @@
 				return;
 			}
 
-			const nextActiveTurnRun = snapshot.activeTurnRun ?? null;
-			currentSession = snapshot.session;
-			lastLoadedSessionId = sessionId;
-			contextUsage = null;
-			contextUsageOverheadTokens = 0;
-			shellRouter.hydrateFromSession({
-				contextType: snapshot.contextType,
-				entityId: snapshot.selectedEntityId,
-				label: snapshot.selectedContextLabel,
-				projectFocus: snapshot.projectFocus
-			});
-			messages = snapshot.messages;
-			persistedTimelineItems = snapshot.timelineItems;
-			if (initialBrainDumpContext?.id) {
-				brainDumpContext = initialBrainDumpContext;
-			} else {
-				void hydrateBrainDumpContextFromSession(snapshot.session);
-			}
-			voice.hydrateNotesByGroupId(snapshot.voiceNotesByGroupId);
-			activeRestoredTurnRunId = nextActiveTurnRun?.id ?? null;
-			if (nextActiveTurnRun) {
-				stream.currentActivity = 'BuildOS is still finishing the latest response...';
-				scheduleActiveTurnSessionRefresh(sessionId);
-			} else {
-				clearSessionRefreshTimeout();
-				stream.currentActivity = '';
-			}
+			applyChatSessionSnapshot(sessionId, snapshot);
 		} catch (err: any) {
 			if (controller.signal.aborted || requestId !== sessionLoadRequestId) {
 				return;
@@ -1726,15 +1825,18 @@
 		finalizeSession('close');
 		voice.stop();
 		cancelSessionBootstrap();
+		turnReconciliationRequestId += 1;
 		clearSessionRefreshTimeout();
 		activeRestoredTurnRunId = null;
-		stream.disposeActiveStream();
+		stream.disposeActiveStream({ reconcile: false });
 		voice.cleanup();
 		attachments.cleanup();
 
 		// Clear any pending tool results to prevent memory leaks
 		pendingToolResults.clear();
 		hiddenToolCallIds.clear();
+		processedToolCallIds.clear();
+		processedToolResultIds.clear();
 
 		const summary = presenter.buildMutationSummary({
 			hasMessagesSent: stream.hasSentMessage,
@@ -1897,6 +1999,8 @@
 		finalizeAssistantMessage,
 		hiddenToolCallIds,
 		pendingToolResults,
+		processedToolCallIds,
+		processedToolResultIds,
 		addClarifyingQuestionsMessage,
 		addCreatedEntitiesMessage,
 		logFocusActivity,
@@ -2132,11 +2236,12 @@
 			sessionLoadController.abort();
 			sessionLoadController = null;
 		}
+		turnReconciliationRequestId += 1;
 		cancelSessionBootstrap();
 		clearSessionRefreshTimeout();
 		finalizeSession('destroy');
 		voice.stop();
-		stream.disposeActiveStream();
+		stream.disposeActiveStream({ reconcile: false });
 		voice.cleanup();
 		attachments.cleanup();
 	});
