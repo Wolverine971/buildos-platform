@@ -48,8 +48,13 @@ export interface LoopTask {
 	id: string;
 	title: string;
 	description: string | null;
+	type_key?: string | null;
 	state_key: string | null;
+	priority?: number | null;
+	start_at?: string | null;
+	due_at?: string | null;
 	updated_at: string | null;
+	goal_names?: string[];
 }
 
 export interface LoopPriorDecision {
@@ -135,10 +140,191 @@ const PREVIEW_KINDS = new Set<NonNullable<ProjectSuggestionPreview['kind']>>([
 	'generic'
 ]);
 
+const TASK_CONFLICT_KINDS = new Set(['duplicate', 'contradiction', 'blocked_by']);
+const TASK_PAIR_STOP_WORDS = new Set([
+	'a',
+	'an',
+	'and',
+	'are',
+	'as',
+	'at',
+	'be',
+	'by',
+	'for',
+	'from',
+	'in',
+	'into',
+	'is',
+	'of',
+	'on',
+	'or',
+	'our',
+	'the',
+	'to',
+	'with'
+]);
+const TASK_PAIR_OPPOSING_TERMS: Array<[string, string]> = [
+	['add', 'remove'],
+	['allow', 'block'],
+	['approve', 'reject'],
+	['build', 'delete'],
+	['create', 'delete'],
+	['enable', 'disable'],
+	['include', 'exclude'],
+	['launch', 'delay'],
+	['open', 'close'],
+	['publish', 'unpublish'],
+	['start', 'stop']
+];
+
+export interface TaskConflictCandidatePair {
+	taskAId: string;
+	taskBId: string;
+	score: number;
+	reasons: string[];
+}
+
 function normalizeEntityIds(ids: Array<string | null | undefined>): string[] {
 	return Array.from(
 		new Set(ids.filter((id): id is string => typeof id === 'string' && id.length > 0))
 	).sort();
+}
+
+function taskPairKey(a: string, b: string): string {
+	return [a, b].sort().join('|');
+}
+
+function tokenizeTaskText(value: string | null | undefined): string[] {
+	if (!value) return [];
+	return Array.from(
+		new Set(
+			value
+				.toLowerCase()
+				.replace(/[^a-z0-9\s-]/g, ' ')
+				.split(/[\s-]+/)
+				.map((token) => token.trim())
+				.filter((token) => token.length >= 3 && !TASK_PAIR_STOP_WORDS.has(token))
+		)
+	);
+}
+
+function normalizedTaskTitle(value: string): string {
+	return tokenizeTaskText(value).join(' ');
+}
+
+function overlapCount(a: string[], b: string[]): number {
+	const bSet = new Set(b);
+	return a.filter((token) => bSet.has(token)).length;
+}
+
+function jaccard(a: string[], b: string[]): number {
+	const union = new Set([...a, ...b]);
+	if (!union.size) return 0;
+	return overlapCount(a, b) / union.size;
+}
+
+function daysBetween(a: string | null | undefined, b: string | null | undefined): number | null {
+	if (!a || !b) return null;
+	const aMs = Date.parse(a);
+	const bMs = Date.parse(b);
+	if (!Number.isFinite(aMs) || !Number.isFinite(bMs)) return null;
+	return Math.abs(aMs - bMs) / (24 * 60 * 60 * 1000);
+}
+
+function hasOpposingAction(aTokens: string[], bTokens: string[]): boolean {
+	const aSet = new Set(aTokens);
+	const bSet = new Set(bTokens);
+	return TASK_PAIR_OPPOSING_TERMS.some(
+		([left, right]) =>
+			(aSet.has(left) && bSet.has(right)) || (aSet.has(right) && bSet.has(left))
+	);
+}
+
+/**
+ * Deterministic shortlist for task-conflict LLM classification. The model no
+ * longer scans all open tasks and invents pair coverage; it only classifies
+ * pairs with concrete signals (title overlap, same goal/date with overlap, or
+ * opposing action language). This keeps coverage auditable and reduces noise.
+ */
+export function buildTaskConflictCandidatePairs(
+	tasks: LoopTask[],
+	maxPairs = 20
+): TaskConflictCandidatePair[] {
+	const candidates: TaskConflictCandidatePair[] = [];
+	const prepared = tasks.map((task) => {
+		const titleTokens = tokenizeTaskText(task.title);
+		return {
+			task,
+			titleTokens,
+			descriptionTokens: tokenizeTaskText(task.description),
+			normalizedTitle: normalizedTaskTitle(task.title),
+			goalNames: new Set((task.goal_names ?? []).map((goal) => goal.toLowerCase()))
+		};
+	});
+
+	for (let i = 0; i < prepared.length; i += 1) {
+		for (let j = i + 1; j < prepared.length; j += 1) {
+			const left = prepared[i];
+			const right = prepared[j];
+			const titleOverlap = overlapCount(left.titleTokens, right.titleTokens);
+			const titleSimilarity = jaccard(left.titleTokens, right.titleTokens);
+			const descriptionOverlap = overlapCount(
+				left.descriptionTokens,
+				right.descriptionTokens
+			);
+			const sameGoal =
+				left.goalNames.size > 0 &&
+				Array.from(left.goalNames).some((goal) => right.goalNames.has(goal));
+			const dueDistanceDays = daysBetween(left.task.due_at, right.task.due_at);
+			const closeDueDates = dueDistanceDays !== null && dueDistanceDays <= 1;
+			const containsTitle =
+				Boolean(left.normalizedTitle && right.normalizedTitle) &&
+				(left.normalizedTitle.includes(right.normalizedTitle) ||
+					right.normalizedTitle.includes(left.normalizedTitle));
+			const opposingAction = hasOpposingAction(left.titleTokens, right.titleTokens);
+
+			let score = titleOverlap * 3 + titleSimilarity * 4 + Math.min(descriptionOverlap, 2);
+			const reasons: string[] = [];
+			if (titleOverlap >= 2 || titleSimilarity >= 0.34) {
+				reasons.push(
+					`title overlap (${titleOverlap} shared term${titleOverlap === 1 ? '' : 's'})`
+				);
+			}
+			if (containsTitle) {
+				score += 4;
+				reasons.push('one title contains the other');
+			}
+			if (sameGoal && titleOverlap >= 1) {
+				score += 2;
+				reasons.push('same goal linkage');
+			}
+			if (closeDueDates && titleOverlap >= 1) {
+				score += 1.5;
+				reasons.push('nearby due dates');
+			}
+			if (opposingAction && titleOverlap >= 1) {
+				score += 4;
+				reasons.push('opposing action words');
+			}
+
+			if (reasons.length && score >= 4) {
+				candidates.push({
+					taskAId: left.task.id,
+					taskBId: right.task.id,
+					score: Number(score.toFixed(3)),
+					reasons
+				});
+			}
+		}
+	}
+
+	return candidates
+		.sort(
+			(a, b) =>
+				b.score - a.score ||
+				taskPairKey(a.taskAId, a.taskBId).localeCompare(taskPairKey(b.taskAId, b.taskBId))
+		)
+		.slice(0, maxPairs);
 }
 
 /**
@@ -393,7 +579,31 @@ function describeTasks(tasks: LoopTask[]): string {
 	return tasks
 		.map((t) => {
 			const desc = t.description ? ` — ${t.description.slice(0, 160)}` : '';
-			return `- [${t.id}] "${t.title}" (state=${t.state_key ?? 'n/a'}, updated=${t.updated_at ?? 'n/a'})${desc}`;
+			const metadata = [
+				`state=${t.state_key ?? 'n/a'}`,
+				t.type_key ? `type=${t.type_key}` : null,
+				t.priority !== null && t.priority !== undefined ? `priority=${t.priority}` : null,
+				t.start_at ? `start=${t.start_at}` : null,
+				t.due_at ? `due=${t.due_at}` : null,
+				t.updated_at ? `updated=${t.updated_at}` : 'updated=n/a',
+				t.goal_names?.length ? `goals=${t.goal_names.join(', ')}` : null
+			].filter(Boolean);
+			return `- [${t.id}] "${t.title}" (${metadata.join(', ')})${desc}`;
+		})
+		.join('\n');
+}
+
+function describeTaskConflictCandidatePairs(
+	pairs: TaskConflictCandidatePair[],
+	ctx: LoopContext
+): string {
+	if (!pairs.length) return '(none)';
+	const taskById = new Map(ctx.tasks.map((task) => [task.id, task]));
+	return pairs
+		.map((pair, index) => {
+			const taskA = taskById.get(pair.taskAId);
+			const taskB = taskById.get(pair.taskBId);
+			return `- Pair ${index + 1}: [${pair.taskAId}] "${taskA?.title ?? 'Unknown'}" <-> [${pair.taskBId}] "${taskB?.title ?? 'Unknown'}" (signals=${pair.reasons.join('; ')}, score=${pair.score})`;
 		})
 		.join('\n');
 }
@@ -486,6 +696,52 @@ function taskConflictUndoOperations(
 			},
 			label: 'Remove task-conflict flag'
 		}));
+}
+
+function taskConflictPair(
+	operation: LoopOperation
+): { taskId: string; otherTaskId: string } | null {
+	if (operation.tool !== 'update_onto_task') return null;
+	const taskId = typeof operation.args.task_id === 'string' ? operation.args.task_id : null;
+	const props =
+		operation.args.props && typeof operation.args.props === 'object'
+			? (operation.args.props as Record<string, unknown>)
+			: null;
+	const otherTaskId =
+		props && typeof props.loop_conflict_with_task_id === 'string'
+			? props.loop_conflict_with_task_id
+			: null;
+	const kind =
+		props && typeof props.loop_conflict_kind === 'string' ? props.loop_conflict_kind : null;
+
+	if (!taskId || !otherTaskId || taskId === otherTaskId) return null;
+	if (kind && !TASK_CONFLICT_KINDS.has(kind)) return null;
+	return { taskId, otherTaskId };
+}
+
+function filterTaskConflictOperations(
+	operations: LoopOperation[],
+	params: {
+		knownTaskIds: Set<string>;
+		evidenceRefs: ProjectSuggestionEvidenceRef[];
+		candidatePairKeys: Set<string>;
+	}
+): LoopOperation[] {
+	const evidenceTaskIds = new Set(
+		params.evidenceRefs
+			.filter((ref) => ref.entity_type === 'task' && typeof ref.entity_id === 'string')
+			.map((ref) => ref.entity_id as string)
+	);
+
+	return operations.filter((operation) => {
+		const pair = taskConflictPair(operation);
+		if (!pair) return false;
+		if (!params.knownTaskIds.has(pair.taskId) || !params.knownTaskIds.has(pair.otherTaskId)) {
+			return false;
+		}
+		if (!params.candidatePairKeys.has(taskPairKey(pair.taskId, pair.otherTaskId))) return false;
+		return evidenceTaskIds.has(pair.taskId) && evidenceTaskIds.has(pair.otherTaskId);
+	});
 }
 
 function sanitizeBrief(raw: Partial<ProjectLoopBrief> | null, ctx: LoopContext): ProjectLoopBrief {
@@ -849,16 +1105,23 @@ export async function generateTaskConflicts(params: {
 }): Promise<ProposedSuggestion[]> {
 	const { ctx } = params;
 	if (ctx.tasks.length < 2) return [];
+	const candidatePairs = buildTaskConflictCandidatePairs(ctx.tasks);
+	if (!candidatePairs.length) return [];
+	const candidatePairKeys = new Set(
+		candidatePairs.map((pair) => taskPairKey(pair.taskAId, pair.taskBId))
+	);
 
 	const systemPrompt = [
 		'You are a BuildOS task reviewer. Find open tasks that appear duplicated,',
-		'contradictory, or mutually blocking based only on the provided task list',
-		'and project goals.',
+		'contradictory, or mutually blocking by classifying the provided candidate pairs',
+		'against the task list and project goals.',
 		'',
 		'Rules:',
 		'- Be conservative. Prefer no suggestion over a weak match.',
 		'- Do not delete, merge, or mark tasks done.',
 		'- Do NOT re-raise a task conflict that was already reviewed unless materially new evidence changes the conflict.',
+		'- Only raise conflicts from the candidate pairs listed in the prompt.',
+		'- Do not treat parent/subtask relationships or intentionally parallel work as duplicates.',
 		'- For each conflict, emit one non-destructive update_onto_task operation',
 		'  that flags ONE task with props:',
 		'  { "loop_flagged_conflict": true, "loop_conflict_kind": "duplicate|contradiction|blocked_by", "loop_conflict_with_task_id": "<other task id>", "loop_conflict_reason": "<short reason>" }',
@@ -876,7 +1139,7 @@ export async function generateTaskConflicts(params: {
 		'If no clear conflicts exist, return { "suggestions": [] }.'
 	].join('\n');
 
-	const userPrompt = `${PROJECT_HEADER(ctx)}\n\nOpen tasks:\n${describeTasks(ctx.tasks)}\n\n${priorDecisionContext(ctx)}`;
+	const userPrompt = `${PROJECT_HEADER(ctx)}\n\nOpen tasks:\n${describeTasks(ctx.tasks)}\n\nCandidate pairs to classify:\n${describeTaskConflictCandidatePairs(candidatePairs, ctx)}\n\n${priorDecisionContext(ctx)}`;
 
 	const raw = await callGenerator({
 		llm: params.llm,
@@ -895,14 +1158,19 @@ export async function generateTaskConflicts(params: {
 
 	const suggestions: ProposedSuggestion[] = [];
 	for (const s of raw) {
-		const operations = sanitizeOperations(s.operations, {
+		const sanitizedOperations = sanitizeOperations(s.operations, {
 			projectId: ctx.projectId,
 			allowedTools,
 			knownTaskIds
 		});
-		if (!operations.length || !s.title) continue;
 		const evidenceRefs = sanitizeEvidenceRefs(s.evidence_refs, ctx);
 		if (evidenceRefs.filter((ref) => ref.entity_type === 'task').length < 2) continue;
+		const operations = filterTaskConflictOperations(sanitizedOperations, {
+			knownTaskIds,
+			evidenceRefs,
+			candidatePairKeys
+		});
+		if (operations.length !== 1 || !s.title) continue;
 		suggestions.push({
 			kind: 'task_conflict',
 			risk_tier: 1,

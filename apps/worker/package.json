@@ -9,8 +9,8 @@
 		"dev": "tsx watch src/index.ts",
 		"worker": "tsx watch src/worker.ts",
 		"scheduler": "tsx watch src/scheduler.ts",
-		"lint": "eslint \"src/**/*.ts\"",
-		"lint:fix": "eslint \"src/**/*.ts\" --fix",
+		"lint": "eslint \"src/**/*.ts\" && pnpm run guardrails:http-modules",
+		"lint:fix": "eslint \"src/**/*.ts\" --fix && pnpm run guardrails:http-modules",
 		"typecheck": "tsc --noEmit",
 		"check": "pnpm run lint && pnpm run typecheck",
 		"clean": "rm -rf dist",
@@ -20,6 +20,7 @@
 		"test:coverage": "vitest run --coverage",
 		"test:scheduler": "vitest run tests/scheduler.test.ts",
 		"test:integration": "vitest run tests/integration",
+		"guardrails:http-modules": "node ./scripts/check-worker-http-module-size.cjs",
 		"backfill:start-here": "tsx src/scripts/backfillStartHereDocuments.ts"
 	},
 	"dependencies": {

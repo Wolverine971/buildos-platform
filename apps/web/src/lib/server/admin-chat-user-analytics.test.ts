@@ -573,6 +573,64 @@ describe('admin chat user analytics', () => {
 		expect(payloadText).not.toContain('SECRET AFTER ENTITY');
 	});
 
+	it('uses the requested slow threshold for redacted session timing severity', () => {
+		const input = {
+			sessions: [
+				{
+					id: 'session-1',
+					user_id: 'user-1',
+					title: 'Threshold check',
+					context_type: 'global',
+					status: 'active',
+					created_at: '2026-07-01T10:00:00.000Z',
+					updated_at: '2026-07-01T10:02:00.000Z',
+					last_message_at: '2026-07-01T10:02:00.000Z'
+				}
+			],
+			users: [{ id: 'user-1', email: 'founder@example.com', name: 'Founder' }],
+			sessionProjects: [],
+			projects: [],
+			messages: [],
+			turnRuns: [
+				{
+					id: 'turn-1',
+					session_id: 'session-1',
+					user_id: 'user-1',
+					status: 'completed',
+					started_at: '2026-07-01T10:01:00.000Z',
+					finished_at: '2026-07-01T10:02:00.000Z',
+					created_at: '2026-07-01T10:01:00.000Z'
+				}
+			],
+			timingRows: [
+				{
+					id: 'timing-1',
+					session_id: 'session-1',
+					turn_run_id: 'turn-1',
+					user_id: 'user-1',
+					time_to_first_response_ms: 9_000,
+					time_to_first_event_ms: 1_000,
+					created_at: '2026-07-01T10:01:20.000Z'
+				}
+			],
+			toolExecutions: [],
+			usageRows: [],
+			projectLogs: [],
+			appErrors: [],
+			truncated: {}
+		};
+
+		const strict = buildAdminChatRedactedSession(input, 'user-1', 'session-1', 5_000);
+		const relaxed = buildAdminChatRedactedSession(input, 'user-1', 'session-1', 20_000);
+		const strictTiming = strict?.timeline.find((event) => event.type === 'timing');
+		const relaxedTiming = relaxed?.timeline.find((event) => event.type === 'timing');
+
+		expect(strictTiming).toMatchObject({ severity: 'warning' });
+		expect(relaxedTiming).toMatchObject({ severity: 'info' });
+		expect(strict?.session.slow_turn_count).toBe(1);
+		expect(relaxed?.session.slow_turn_count).toBe(0);
+	});
+
 	it('rejects forbidden raw payload keys', () => {
 		expect(() =>
 			assertAdminChatUserAnalyticsRedacted({

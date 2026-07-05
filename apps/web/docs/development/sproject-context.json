@@ -729,25 +729,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/chat/project-selector-browser.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"DEFAULT_PROJECT_SELECTOR_LIMIT",
-				"MAX_PROJECT_SELECTOR_LIMIT",
-				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
-				"normalizeProjectSelectionSearch",
-				"PROJECT_RECENCY_RECENT_MAX_DAYS",
-				"PROJECT_RECENCY_OLDER_MAX_DAYS",
-				"parseProjectUpdatedAt",
-				"formatRelativeProjectUpdate",
-				"groupProjectsByRecency",
-				"normalizeProjectSelectionLimit",
-				"clearProjectSelectionBrowserCache",
-				"fetchProjectSelectionSummaries"
-			]
-		},
-		{
 			"file": "src/lib/components/agent/agent-chat-attachments.svelte.ts",
 			"type": "component",
 			"components": [],
@@ -841,6 +822,7 @@
 				"normalizeContextShiftContext",
 				"buildToolCallActivity",
 				"computeToolResultInfo",
+				"sanitizeToolResultForActivityMetadata",
 				"resolveDoneFinalization",
 				"createSSEHandler"
 			]
@@ -925,6 +907,25 @@
 			]
 		},
 		{
+			"file": "src/lib/components/chat/project-selector-browser.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"DEFAULT_PROJECT_SELECTOR_LIMIT",
+				"MAX_PROJECT_SELECTOR_LIMIT",
+				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
+				"normalizeProjectSelectionSearch",
+				"PROJECT_RECENCY_RECENT_MAX_DAYS",
+				"PROJECT_RECENCY_OLDER_MAX_DAYS",
+				"parseProjectUpdatedAt",
+				"formatRelativeProjectUpdate",
+				"groupProjectsByRecency",
+				"normalizeProjectSelectionLimit",
+				"clearProjectSelectionBrowserCache",
+				"fetchProjectSelectionSummaries"
+			]
+		},
+		{
 			"file": "src/lib/components/project/project-event-filters.ts",
 			"type": "component",
 			"components": [],
@@ -994,6 +995,36 @@
 				"timelineDotClasses",
 				"statusBadge",
 				"libriStatusClasses"
+			]
+		},
+		{
+			"file": "src/lib/components/admin/chat-users/chat-user-ui.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"formatNumber",
+				"formatAverageNumber",
+				"formatRate",
+				"formatMs",
+				"formatDate",
+				"formatDay",
+				"eventTypeLabel",
+				"severityClass",
+				"comparisonToneClass",
+				"comparisonDeltaClass",
+				"alertBadgeClass",
+				"finiteNumber",
+				"averageMetric",
+				"userErrorLoad",
+				"buildUserComparison",
+				"buildUserAlertBadges",
+				"buildSessionAlertBadges",
+				"buildIssueClusters",
+				"projectHref",
+				"entityHref",
+				"entityGroupKey",
+				"entityGroupKeyForAggregate",
+				"entityGroupKeyForChange"
 			]
 		},
 		{
@@ -1262,7 +1293,6 @@
 		"src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
 		"src/lib/components/project/v2/EntityTabStrip.svelte",
 		"src/lib/components/admin/adminRoutes.ts",
-		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/agent/agent-chat-attachments.svelte.ts",
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat-operation-activity.ts",
@@ -1279,12 +1309,14 @@
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",
 		"src/lib/components/agent/project-entity-browser.ts",
+		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/project/project-event-filters.ts",
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",
 		"src/lib/components/ui/live-transcript-preview.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/admin/chat/session-audit-ui.ts",
+		"src/lib/components/admin/chat-users/chat-user-ui.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",

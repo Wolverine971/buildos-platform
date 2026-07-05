@@ -685,8 +685,9 @@ Use Zod schemas for all request validation:
 ```typescript
 // src/lib/schemas/task.schema.ts
 import { z } from 'zod';
+import { parseJsonRequest } from '$lib/utils/request-validation';
 
-export const CreateTaskSchema = z.object({
+export const createTaskSchema = z.object({
 	title: z.string().min(1).max(500),
 	description: z.string().max(5000).optional(),
 	priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
@@ -698,19 +699,13 @@ export const CreateTaskSchema = z.object({
 
 // Usage in endpoints
 export const POST = async (event: RequestEvent) => {
-	const body = await event.request.json();
-
-	const result = CreateTaskSchema.safeParse(body);
-	if (!result.success) {
-		return ApiResponse.badRequest('Validation failed', {
-			errors: result.error.flatten()
-		});
-	}
-
-	const task = await createTask(result.data);
+	const body = await parseJsonRequest(event.request, createTaskSchema);
+	const task = await createTask(body);
 	return ApiResponse.success({ task });
 };
 ```
+
+`parseJsonRequest` returns 400 for malformed JSON and 422 for schema validation failures.
 
 **Benefits:**
 

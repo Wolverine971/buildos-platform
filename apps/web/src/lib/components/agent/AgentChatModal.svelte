@@ -93,6 +93,7 @@
 	} from './agent-chat-tool-presenter';
 	import {
 		createSSEHandler,
+		sanitizeToolResultForActivityMetadata,
 		type PendingToolStatus,
 		type SSEHandlerDeps
 	} from './agent-chat-sse-handler';
@@ -1653,6 +1654,9 @@
 					: null;
 			const resultPayload =
 				toolResult?.result ?? toolResult?.data ?? toolResult?.tool_result ?? toolResult;
+			const responsePayload = toolResult
+				? sanitizeToolResultForActivityMetadata(toolResult)
+				: undefined;
 			const durationMs =
 				typeof toolResult?.duration_ms === 'number'
 					? toolResult.duration_ms
@@ -1683,10 +1687,17 @@
 					: typeof toolResult?.requiresUserAction === 'boolean'
 						? toolResult.requiresUserAction
 						: undefined;
-			const streamEvents = Array.isArray(toolResult?.stream_events)
-				? toolResult.stream_events
-				: Array.isArray(toolResult?.streamEvents)
-					? toolResult.streamEvents
+			const streamEventCount =
+				typeof responsePayload?.stream_event_count === 'number'
+					? responsePayload.stream_event_count
+					: undefined;
+			const streamEventsPreview = Array.isArray(responsePayload?.stream_events_preview)
+				? responsePayload.stream_events_preview
+				: undefined;
+			const affectedEntities = Array.isArray(toolResult?.affected_entities)
+				? toolResult.affected_entities
+				: Array.isArray(toolResult?.affectedEntities)
+					? toolResult.affectedEntities
 					: undefined;
 			const toolCategory =
 				typeof toolResult?.tool_category === 'string'
@@ -1721,7 +1732,7 @@
 					...(toolResult !== undefined
 						? {
 								result: resultPayload,
-								response: toolResult
+								response: responsePayload
 							}
 						: {}),
 					...(durationMs !== undefined ? { durationMs } : {}),
@@ -1729,7 +1740,9 @@
 					...(resultCount !== undefined ? { resultCount } : {}),
 					...(zeroResult !== undefined ? { zeroResult } : {}),
 					...(requiresUserAction !== undefined ? { requiresUserAction } : {}),
-					...(streamEvents !== undefined ? { streamEvents } : {}),
+					...(affectedEntities !== undefined ? { affectedEntities } : {}),
+					...(streamEventCount !== undefined ? { streamEventCount } : {}),
+					...(streamEventsPreview !== undefined ? { streamEventsPreview } : {}),
 					...(toolCategory !== undefined ? { toolCategory } : {}),
 					...(gatewayOp !== undefined ? { gatewayOp } : {}),
 					...(helpPath !== undefined ? { helpPath } : {}),

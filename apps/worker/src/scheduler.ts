@@ -199,27 +199,40 @@ export function startScheduler() {
 		await refreshPublicPage30dViewCounts();
 	});
 
-	// End-of-day project loops: reconcile active projects touched in the last
-	// 24h and evaluate complete-audit cadence. No-ops unless
+	// End-of-day project loops: hourly check that only enqueues projects whose
+	// owner is in the first local hour after midnight. No-ops unless
 	// ENABLE_PROJECT_LOOPS is set (off in prod by default).
-	cron.schedule('0 4 * * *', async () => {
+	cron.schedule('0 * * * *', async () => {
 		if (!PROJECT_LOOPS_ENABLED) return;
 		console.log('🔁 Enqueuing end-of-day project loops...');
 		try {
 			const {
 				enqueued,
 				scanned,
-				skippedInvalidOwner = 0
+				skippedInvalidOwner = 0,
+				skippedTimezoneWindow = 0,
+				skippedOutsideLocalDay = 0,
+				skippedFanoutCap = 0
 			} = await enqueueEndOfDayProjectLoops();
 			console.log(
-				`🔁 Project loops: enqueued ${enqueued}/${scanned} active projects, skipped invalid owner=${skippedInvalidOwner}`
+				`🔁 Project loops: enqueued ${enqueued}/${scanned} active projects, skipped invalid owner=${skippedInvalidOwner}, outside timezone window=${skippedTimezoneWindow}, outside local day=${skippedOutsideLocalDay}, fanout cap=${skippedFanoutCap}`
 			);
+		} catch (error) {
+			console.error('🔁 Project loop scheduling failed:', error);
+		}
+	});
+
+	// Complete-audit cadence remains a single daily scan; the per-user timezone
+	// fan-out applies only to light end-of-day project loops.
+	cron.schedule('0 4 * * *', async () => {
+		if (!PROJECT_LOOPS_ENABLED) return;
+		try {
 			const audits = await enqueueScheduledProjectAudits();
 			console.log(
 				`🔎 Project audits: queued ${audits.queued}/${audits.scanned}, skipped=${audits.skipped}, deferred=${audits.deferred}, failed=${audits.failed}, skipped invalid owner=${audits.skippedInvalidOwner}`
 			);
 		} catch (error) {
-			console.error('🔁 Project loop scheduling failed:', error);
+			console.error('🔎 Project audit scheduling failed:', error);
 		}
 	});
 

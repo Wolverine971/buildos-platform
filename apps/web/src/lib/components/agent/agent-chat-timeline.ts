@@ -952,7 +952,14 @@ export function timelineItemsFromMessages(
 							activity.id,
 						session_id: sessionId,
 						message_id: message.id,
-						client_turn_id: stringValue(metadata.clientTurnId),
+						turn_run_id:
+							stringValue(metadata.turnRunId) ?? stringValue(metadata.turn_run_id),
+						stream_run_id:
+							stringValue(metadata.streamRunId) ??
+							stringValue(metadata.stream_run_id),
+						client_turn_id:
+							stringValue(metadata.clientTurnId) ??
+							stringValue(metadata.client_turn_id),
 						tool_name: toolName,
 						tool_category:
 							stringValue(metadata.toolCategory) ??
@@ -968,7 +975,8 @@ export function timelineItemsFromMessages(
 							numberValue(metadata.resultCount) ?? numberValue(metadata.result_count),
 						zero_result:
 							booleanValue(metadata.zeroResult) ?? booleanValue(metadata.zero_result),
-						execution_time_ms: numberValue(metadata.durationMs),
+						execution_time_ms:
+							numberValue(metadata.durationMs) ?? numberValue(metadata.duration_ms),
 						tokens_consumed:
 							numberValue(metadata.tokensConsumed) ??
 							numberValue(metadata.tokens_consumed),
@@ -977,6 +985,7 @@ export function timelineItemsFromMessages(
 						requires_user_action:
 							booleanValue(metadata.requiresUserAction) ??
 							booleanValue(metadata.requires_user_action),
+						affected_entities: metadata.affectedEntities ?? metadata.affected_entities,
 						created_at: timestamp
 					});
 					if (toolItem) {

@@ -14,6 +14,7 @@
 	import ChangeSetReview from '$lib/components/notifications/types/agent-run/ChangeSetReview.svelte';
 	import InboxChangeDetails from '$lib/components/inbox/InboxChangeDetails.svelte';
 	import InboxDecisionControls from '$lib/components/inbox/InboxDecisionControls.svelte';
+	import InboxDismissFeedbackFields from '$lib/components/inbox/InboxDismissFeedbackFields.svelte';
 	import type {
 		AgentChatResolutionAction,
 		DataMutationSummary
@@ -126,6 +127,8 @@
 	let resolvingChatAction = $state<ChatResolutionAction | null>(null);
 	let explicitlyResolvedChatItemId = $state<string | null>(null);
 	let openingChatIds = $state<Set<string>>(new Set());
+	let dismissReasonById = $state<Record<string, string>>({});
+	let dismissNoteById = $state<Record<string, string>>({});
 
 	const inboxResolutionActions = $derived.by<AgentChatResolutionAction[]>(() => {
 		if (!chatItemId || !chatSessionId) return [];
@@ -373,7 +376,23 @@
 	function removeItemById(itemId: string): boolean {
 		const before = items.length;
 		items = items.filter((candidate) => candidate.id !== itemId);
+		if (items.length !== before) {
+			dismissReasonById = Object.fromEntries(
+				Object.entries(dismissReasonById).filter(([id]) => id !== itemId)
+			);
+			dismissNoteById = Object.fromEntries(
+				Object.entries(dismissNoteById).filter(([id]) => id !== itemId)
+			);
+		}
 		return items.length !== before;
+	}
+
+	function updateDismissReason(item: InboxItem, reason: string) {
+		dismissReasonById = { ...dismissReasonById, [item.id]: reason };
+	}
+
+	function updateDismissNote(item: InboxItem, note: string) {
+		dismissNoteById = { ...dismissNoteById, [item.id]: note };
 	}
 
 	function canDecide(item: InboxItem): boolean {
@@ -578,7 +597,13 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					item_id: item.id,
-					action
+					action,
+					...(action === 'reject' && item.source_type === 'project_suggestion'
+						? {
+								reason: dismissReasonById[item.id] || 'other',
+								note: dismissNoteById[item.id] || undefined
+							}
+						: {})
 				})
 			});
 			const json = await res.json();
@@ -985,6 +1010,18 @@
 														? ''
 														: 's'}
 												</p>
+											{/if}
+											{#if item.source_type === 'project_suggestion' && canDecide(item)}
+												<InboxDismissFeedbackFields
+													idPrefix={`dashboard-inbox-${item.id}`}
+													reason={dismissReasonById[item.id] ?? ''}
+													note={dismissNoteById[item.id] ?? ''}
+													disabled={pendingIds.has(item.id)}
+													onReasonChange={(reason) =>
+														updateDismissReason(item, reason)}
+													onNoteChange={(note) =>
+														updateDismissNote(item, note)}
+												/>
 											{/if}
 											{#if changeSet && canDecide(item)}
 												<div class="mt-3">

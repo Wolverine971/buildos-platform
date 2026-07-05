@@ -1,21 +1,13 @@
 // apps/worker/src/lib/tts/textCleanup.ts
 import { stripMarkdown } from '../utils/markdown';
 
-const DEFAULT_MAX_NARRATION_CHARS = 1800;
+const MAX_NARRATION_CHARS = 1800;
 
 export interface BriefNarrationInput {
 	briefDate: string;
 	executiveSummary: string | null;
 	llmAnalysis: string | null;
 	priorityActions: string[] | null;
-}
-
-function getMaxNarrationChars(): number {
-	const configured = Number(process.env.BRIEF_AUDIO_MAX_CHARS);
-	if (Number.isFinite(configured) && configured > 500) {
-		return Math.floor(configured);
-	}
-	return DEFAULT_MAX_NARRATION_CHARS;
 }
 
 function normalizeForSpeech(text: string): string {
@@ -68,5 +60,5 @@ export function buildBriefNarrationText(input: BriefNarrationInput): string {
 		throw new Error('Brief has no narratable text');
 	}
 
-	return truncateAtSentence(text, getMaxNarrationChars());
+	return truncateAtSentence(text, MAX_NARRATION_CHARS);
 }

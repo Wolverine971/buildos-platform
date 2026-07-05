@@ -9,6 +9,10 @@ import express from 'express';
 import { supabase } from './lib/supabase';
 import { logWorkerError } from './lib/errorLogger';
 import { shutdownPostHog } from './lib/posthog';
+import { isWorkerAuthorized } from './http/auth';
+import { getErrorMessage } from './http/errors';
+import { getSafeTimezone } from './http/timezone';
+import { jsonParseErrorHandler } from './middleware/jsonError';
 import { registerEmailTrackingRoute } from './routes/email-tracking';
 import smsScheduledRoutes from './routes/sms/scheduled';
 import { startScheduler } from './scheduler';
@@ -65,6 +69,7 @@ app.use(
 );
 
 app.use(express.json());
+app.use(jsonParseErrorHandler);
 
 registerEmailTrackingRoute(app);
 
@@ -84,48 +89,6 @@ app.use((req, res, next) => {
 
 // Register SMS management routes
 app.use('/sms/scheduled', smsScheduledRoutes);
-
-/**
- * Validate timezone string using Intl API
- * Returns true if timezone is valid IANA timezone
- */
-function isValidTimezone(timezone: string): boolean {
-	try {
-		new Intl.DateTimeFormat('en-US', { timeZone: timezone });
-		return true;
-	} catch {
-		return false;
-	}
-}
-
-/**
- * Get safe timezone with validation and fallback
- * Falls back to UTC if timezone is invalid with warning log
- */
-function getSafeTimezone(timezone: string | null | undefined, userId: string): string {
-	if (!timezone) {
-		return 'UTC';
-	}
-
-	if (isValidTimezone(timezone)) {
-		return timezone;
-	}
-
-	console.warn(`⚠️ Invalid timezone "${timezone}" for user ${userId}, falling back to UTC`);
-	return 'UTC';
-}
-
-function isWorkerAuthorized(authHeader: string | undefined): boolean {
-	const token = process.env.PRIVATE_RAILWAY_WORKER_TOKEN;
-	if (!token) return false;
-	if (!authHeader) return false;
-	const [scheme, value] = authHeader.split(' ');
-	return scheme === 'Bearer' && value === token;
-}
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 // Health check endpoint
 app.get('/health', (_req, res) => {

@@ -17,10 +17,9 @@ export interface BriefAudioSynthesisResult {
 	voice: string;
 }
 
-const KOKORO_MODEL_ID =
-	process.env.BRIEF_AUDIO_KOKORO_MODEL || 'onnx-community/Kokoro-82M-v1.0-ONNX';
-const KOKORO_VOICE = process.env.BRIEF_AUDIO_KOKORO_VOICE || 'am_onyx';
-const KOKORO_SPEED = Number(process.env.BRIEF_AUDIO_KOKORO_SPEED || '1');
+const KOKORO_MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
+const KOKORO_VOICE = 'am_onyx';
+const KOKORO_SPEED = 1;
 const KOKORO_SPLIT_PATTERN = /(?<=[.!?])\s+/u;
 
 let ttsPromise: Promise<KokoroTTS> | null = null;

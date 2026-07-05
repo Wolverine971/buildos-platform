@@ -6,8 +6,11 @@
 
 import type { Json, ProjectLoopTriggerReason } from '@buildos/shared-types';
 import { projectLoopDedupKey } from '@buildos/shared-agent-ops';
+import { addDays } from 'date-fns';
+import { formatInTimeZone, fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { supabase } from '../../lib/supabase';
 import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
+import { getSafeTimezone } from '../../http/timezone';
 import { mapProjectLoopOwnerUserIds } from './ownerResolution';
 
 // Re-exported so existing importers (and the enqueue tests) keep resolving it
@@ -15,6 +18,9 @@ import { mapProjectLoopOwnerUserIds } from './ownerResolution';
 export { projectLoopDedupKey };
 
 const AUTO_TRIGGER_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+const END_OF_DAY_PROJECT_PAGE_SIZE = 500;
+const END_OF_DAY_SCAN_LOOKBACK_MS = 36 * 60 * 60 * 1000;
+const DEFAULT_END_OF_DAY_MAX_PROJECTS_PER_USER = 10;
 
 // A `running` run whose worker died before failRun could persist a terminal
 // status would block this project's loops forever via the active-run guard
@@ -184,51 +190,237 @@ export async function enqueueProjectLoop(params: {
 	return { queued: true, runId: runRow.id };
 }
 
-/**
- * End-of-day pass: enqueue loops for active projects touched in the last 24h.
- * Cooldown + active-run checks above keep this idempotent across reruns.
- */
-export async function enqueueEndOfDayProjectLoops(): Promise<{
-	enqueued: number;
-	scanned: number;
-	skippedInvalidOwner?: number;
-}> {
-	if (!PROJECT_LOOPS_ENABLED) return { enqueued: 0, scanned: 0 };
+export interface EndOfDayProjectLoopCandidateProject {
+	id: string | null;
+	created_by: string | null;
+	updated_at: string | null;
+}
 
-	const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-	const { data: projects, error } = await supabase
-		.from('onto_projects')
-		.select('id, created_by')
-		.in('state_key', ['active', 'planning'])
-		.is('deleted_at', null)
-		.is('archived_at', null)
-		.gte('updated_at', since)
-		.limit(500);
+export interface EndOfDayProjectLoopCandidate {
+	projectId: string;
+	userId: string;
+	timezone: string;
+	completedLocalDate: string;
+	updatedAt: string;
+}
 
-	if (error) {
-		console.error('[ProjectLoops] end-of-day scan failed:', error.message);
-		return { enqueued: 0, scanned: 0 };
-	}
+export interface EndOfDayProjectLoopSelection {
+	candidates: EndOfDayProjectLoopCandidate[];
+	skippedInvalidOwner: number;
+	skippedTimezoneWindow: number;
+	skippedOutsideLocalDay: number;
+	skippedFanoutCap: number;
+}
 
-	const ownerUserIdsByProjectId = await resolveProjectLoopOwnerUserIds(projects ?? []);
-	let enqueued = 0;
+function parseEndOfDayMaxProjectsPerUser(value: string | undefined): number {
+	const parsed = Number.parseInt(value ?? '', 10);
+	if (Number.isFinite(parsed) && parsed > 0) return parsed;
+	return DEFAULT_END_OF_DAY_MAX_PROJECTS_PER_USER;
+}
+
+function shiftLocalDate(dateStr: string, timezone: string, days: number): string {
+	const localNoonUtc = fromZonedTime(`${dateStr} 12:00:00`, timezone);
+	return formatInTimeZone(addDays(localNoonUtc, days), timezone, 'yyyy-MM-dd');
+}
+
+export function getProjectLoopEndOfDayWindow(
+	now: Date,
+	timezone: string
+): { completedLocalDate: string; start: Date; end: Date } | null {
+	const nowInTimezone = toZonedTime(now, timezone);
+	if (nowInTimezone.getHours() !== 0) return null;
+
+	const currentLocalDate = formatInTimeZone(now, timezone, 'yyyy-MM-dd');
+	const completedLocalDate = shiftLocalDate(currentLocalDate, timezone, -1);
+	const nextLocalDate = shiftLocalDate(completedLocalDate, timezone, 1);
+
+	return {
+		completedLocalDate,
+		start: fromZonedTime(`${completedLocalDate} 00:00:00`, timezone),
+		end: fromZonedTime(`${nextLocalDate} 00:00:00`, timezone)
+	};
+}
+
+export function selectEndOfDayProjectLoopCandidates(params: {
+	projects: EndOfDayProjectLoopCandidateProject[];
+	ownerUserIdsByProjectId: Map<string, string>;
+	timezoneByUserId: Map<string, string | null | undefined>;
+	now?: Date;
+	maxProjectsPerUser?: number;
+}): EndOfDayProjectLoopSelection {
+	const now = params.now ?? new Date();
+	const maxProjectsPerUser =
+		params.maxProjectsPerUser ?? DEFAULT_END_OF_DAY_MAX_PROJECTS_PER_USER;
+	const groupedByUserId = new Map<string, EndOfDayProjectLoopCandidate[]>();
 	let skippedInvalidOwner = 0;
-	for (const project of projects ?? []) {
+	let skippedTimezoneWindow = 0;
+	let skippedOutsideLocalDay = 0;
+
+	for (const project of params.projects) {
 		if (!project.id) continue;
-		const userId = ownerUserIdsByProjectId.get(project.id);
+		const userId = params.ownerUserIdsByProjectId.get(project.id);
 		if (!userId) {
 			skippedInvalidOwner += 1;
 			continue;
 		}
-		const result = await enqueueProjectLoop({
+		if (!project.updated_at) {
+			skippedOutsideLocalDay += 1;
+			continue;
+		}
+
+		const timezone = getSafeTimezone(params.timezoneByUserId.get(userId) ?? 'UTC', userId);
+		const window = getProjectLoopEndOfDayWindow(now, timezone);
+		if (!window) {
+			skippedTimezoneWindow += 1;
+			continue;
+		}
+
+		const updatedAtMs = Date.parse(project.updated_at);
+		if (
+			Number.isNaN(updatedAtMs) ||
+			updatedAtMs < window.start.getTime() ||
+			updatedAtMs >= window.end.getTime()
+		) {
+			skippedOutsideLocalDay += 1;
+			continue;
+		}
+
+		const candidates = groupedByUserId.get(userId) ?? [];
+		candidates.push({
 			projectId: project.id,
 			userId,
+			timezone,
+			completedLocalDate: window.completedLocalDate,
+			updatedAt: project.updated_at
+		});
+		groupedByUserId.set(userId, candidates);
+	}
+
+	const candidates: EndOfDayProjectLoopCandidate[] = [];
+	let skippedFanoutCap = 0;
+	for (const userCandidates of groupedByUserId.values()) {
+		userCandidates.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+		candidates.push(...userCandidates.slice(0, maxProjectsPerUser));
+		skippedFanoutCap += Math.max(0, userCandidates.length - maxProjectsPerUser);
+	}
+
+	return {
+		candidates,
+		skippedInvalidOwner,
+		skippedTimezoneWindow,
+		skippedOutsideLocalDay,
+		skippedFanoutCap
+	};
+}
+
+async function loadEndOfDayCandidateProjects(
+	sinceIso: string
+): Promise<{ projects: EndOfDayProjectLoopCandidateProject[]; errorMessage?: string }> {
+	const projects: EndOfDayProjectLoopCandidateProject[] = [];
+	let from = 0;
+
+	while (true) {
+		const to = from + END_OF_DAY_PROJECT_PAGE_SIZE - 1;
+		const { data, error } = await supabase
+			.from('onto_projects')
+			.select('id, created_by, updated_at')
+			.in('state_key', ['active', 'planning'])
+			.is('deleted_at', null)
+			.is('archived_at', null)
+			.gte('updated_at', sinceIso)
+			.order('updated_at', { ascending: false })
+			.range(from, to);
+
+		if (error) {
+			return { projects, errorMessage: error.message };
+		}
+
+		const page = (data ?? []) as EndOfDayProjectLoopCandidateProject[];
+		projects.push(...page);
+		if (page.length < END_OF_DAY_PROJECT_PAGE_SIZE) break;
+		from += END_OF_DAY_PROJECT_PAGE_SIZE;
+	}
+
+	return { projects };
+}
+
+async function loadUserTimezones(userIds: string[]): Promise<Map<string, string | null>> {
+	if (userIds.length === 0) return new Map();
+	const { data, error } = await supabase.from('users').select('id, timezone').in('id', userIds);
+	if (error) {
+		console.error('[ProjectLoops] failed to load project owner timezones:', error.message);
+		return new Map();
+	}
+	const timezoneByUserId = new Map<string, string | null>();
+	for (const user of data ?? []) {
+		if (user.id) timezoneByUserId.set(user.id, user.timezone ?? null);
+	}
+	return timezoneByUserId;
+}
+
+/**
+ * End-of-day pass: enqueue loops for active projects touched during the local
+ * day that just ended for each user. Cooldown + active-run checks above keep
+ * this idempotent across reruns.
+ */
+export async function enqueueEndOfDayProjectLoops(
+	options: {
+		now?: Date;
+		maxProjectsPerUser?: number;
+	} = {}
+): Promise<{
+	enqueued: number;
+	scanned: number;
+	skippedInvalidOwner?: number;
+	skippedTimezoneWindow?: number;
+	skippedOutsideLocalDay?: number;
+	skippedFanoutCap?: number;
+}> {
+	if (!PROJECT_LOOPS_ENABLED) return { enqueued: 0, scanned: 0 };
+
+	const now = options.now ?? new Date();
+	const since = new Date(now.getTime() - END_OF_DAY_SCAN_LOOKBACK_MS).toISOString();
+	const { projects, errorMessage } = await loadEndOfDayCandidateProjects(since);
+
+	if (errorMessage) {
+		console.error('[ProjectLoops] end-of-day scan failed:', errorMessage);
+		return { enqueued: 0, scanned: 0 };
+	}
+
+	const ownerUserIdsByProjectId = await resolveProjectLoopOwnerUserIds(projects);
+	const timezoneByUserId = await loadUserTimezones([
+		...new Set([...ownerUserIdsByProjectId.values()])
+	]);
+	const selection = selectEndOfDayProjectLoopCandidates({
+		projects,
+		ownerUserIdsByProjectId,
+		timezoneByUserId,
+		now,
+		maxProjectsPerUser:
+			options.maxProjectsPerUser ??
+			parseEndOfDayMaxProjectsPerUser(
+				process.env.PROJECT_LOOPS_END_OF_DAY_MAX_PROJECTS_PER_USER
+			)
+	});
+
+	let enqueued = 0;
+	for (const candidate of selection.candidates) {
+		const result = await enqueueProjectLoop({
+			projectId: candidate.projectId,
+			userId: candidate.userId,
 			triggerReason: 'end_of_day'
 		});
 		if (result.queued) enqueued += 1;
 	}
 
-	return { enqueued, scanned: projects?.length ?? 0, skippedInvalidOwner };
+	return {
+		enqueued,
+		scanned: projects.length,
+		skippedInvalidOwner: selection.skippedInvalidOwner,
+		skippedTimezoneWindow: selection.skippedTimezoneWindow,
+		skippedOutsideLocalDay: selection.skippedOutsideLocalDay,
+		skippedFanoutCap: selection.skippedFanoutCap
+	};
 }
 
 /**

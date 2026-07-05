@@ -405,13 +405,21 @@ Users can load real notification data for a specific event type to test with act
 ```typescript
 // File: /apps/web/src/routes/api/admin/sms/trigger-daily-limit-check/+server.ts
 
+import { z } from 'zod';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const triggerDailyLimitCheckSchema = z.object({
+	userId: z.string().uuid().optional(),
+	forceCheck: z.boolean().default(false)
+});
+
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	// 1. Admin auth
 	const { user } = await safeGetSession();
 	if (!user?.is_admin) return ApiResponse.forbidden('Admin access required');
 
 	// 2. Validate input
-	const body = await parseRequestBody(request);
+	const body = await parseJsonRequest(request, triggerDailyLimitCheckSchema);
 	const { userId, forceCheck = false } = body;
 
 	// 3. Rate limiting (if needed)

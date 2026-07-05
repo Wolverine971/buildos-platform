@@ -318,6 +318,10 @@ export type AdminChatUserDetailQuery = {
 	slow_threshold_ms: number;
 };
 
+export type AdminChatRedactedSessionQuery = {
+	slow_threshold_ms: number;
+};
+
 export type AdminChatUserSessionRow = {
 	id: string;
 	user_id?: string | null;
@@ -1113,6 +1117,14 @@ export function parseAdminChatUserDetailQuery(
 		session_sort_by: sessionSort,
 		session_sort_order: searchParams.get('session_sort_order') === 'asc' ? 'asc' : 'desc',
 		search: searchParams.get('search')?.trim() ?? '',
+		slow_threshold_ms: parseSlowThreshold(searchParams.get('slow_threshold_ms'))
+	};
+}
+
+export function parseAdminChatRedactedSessionQuery(
+	searchParams: URLSearchParams
+): AdminChatRedactedSessionQuery {
+	return {
 		slow_threshold_ms: parseSlowThreshold(searchParams.get('slow_threshold_ms'))
 	};
 }
@@ -2014,7 +2026,8 @@ export function buildAdminChatUserAnalytics(
 export function buildAdminChatRedactedSession(
 	input: BuildAdminChatUserAnalyticsInput,
 	userId: string,
-	sessionId: string
+	sessionId: string,
+	slowThresholdMs = DEFAULT_SLOW_THRESHOLD_MS
 ): AdminChatRedactedSessionResponse | null {
 	const scopedSessions = input.sessions.filter(
 		(session) => session.id === sessionId && textValue(session.user_id) === userId
@@ -2062,7 +2075,7 @@ export function buildAdminChatRedactedSession(
 		project_id: null,
 		context_type: 'all',
 		topic: '',
-		slow_threshold_ms: DEFAULT_SLOW_THRESHOLD_MS,
+		slow_threshold_ms: slowThresholdMs,
 		errors: 'all',
 		tool_bucket: 'all',
 		entity_action: 'all',
@@ -2335,8 +2348,7 @@ export function buildAdminChatRedactedSession(
 				id: `timing:${turn.id}`,
 				timestamp: timestamp(timings[0]?.created_at ?? startedAt),
 				type: 'timing',
-				severity:
-					ttfrMs !== null && ttfrMs > DEFAULT_SLOW_THRESHOLD_MS ? 'warning' : 'info',
+				severity: ttfrMs !== null && ttfrMs > slowThresholdMs ? 'warning' : 'info',
 				turn_index: turnIndex,
 				title: 'First response timing',
 				summary: `TTFR ${formatDurationForSummary(ttfrMs)} · TTFE ${formatDurationForSummary(ttfeMs)}`
@@ -2438,7 +2450,7 @@ export function buildAdminChatRedactedSession(
 			id: `timing:${timing.id}`,
 			timestamp: timestamp(timing.created_at),
 			type: 'timing',
-			severity: ttfr > DEFAULT_SLOW_THRESHOLD_MS ? 'warning' : 'info',
+			severity: ttfr > slowThresholdMs ? 'warning' : 'info',
 			turn_index: null,
 			title: 'Session timing',
 			summary: `TTFR ${formatDurationForSummary(ttfr || null)} · TTFE ${formatDurationForSummary(ttfe || null)}`
@@ -2655,7 +2667,8 @@ export async function loadAdminChatUserDetail(
 export async function loadAdminChatRedactedSession(
 	supabase: AnySupabase,
 	userId: string,
-	sessionId: string
+	sessionId: string,
+	slowThresholdMs = DEFAULT_SLOW_THRESHOLD_MS
 ): Promise<AdminChatRedactedSessionResponse | null> {
 	const { data: sessionData, error: sessionError } = await supabase
 		.from('chat_sessions')
@@ -2788,7 +2801,8 @@ export async function loadAdminChatRedactedSession(
 			}
 		},
 		userId,
-		sessionId
+		sessionId,
+		slowThresholdMs
 	);
 	if (payload) assertAdminChatUserAnalyticsRedacted(payload);
 	return payload;

@@ -4,7 +4,7 @@
 
 ## Goal
 
-Add a compact calendar section to the main ontology daily brief so the user can see what is on their calendar today and what is coming up, with each item labeled as Google Calendar or internal-only.
+Add a compact calendar section to the main ontology daily brief so the user can see what is on their calendar today and what is coming up, with each item labeled by confirmed Google, unconfirmed Google, internal-only, or sync-issue source.
 
 ## Product Shape
 
@@ -15,9 +15,11 @@ The section should show:
 - Today: relevant timed events, all-day events, and task-derived calendar markers for the brief date.
 - Upcoming: a small number of next calendar items after today.
 - Source labels:
-    - `Google Calendar` when the item has a synced Google mapping.
+    - `Google Calendar` when the current user has a confirmed synced Google mapping.
+    - `Google Calendar (legacy sync)` when an older null-user sync row confirms Google, but cannot be attributed to the current user.
+    - `Google Calendar (unconfirmed)` when Google metadata exists but the current user's Google calendar is not confirmed.
     - `Internal only` when it exists only in BuildOS.
-    - `Google sync issue` when the item appears intended for Google but sync failed.
+    - `Google sync issue` when the current-user sync failed.
 
 ## Prompt Budget Rule
 
@@ -37,7 +39,7 @@ Use internal BuildOS calendar data first, not direct Google API calls from the w
 Primary sources:
 
 - `onto_events` for real BuildOS calendar events
-- `onto_event_sync` for Google sync status on ontology events
+- `onto_event_sync` for current-user-scoped Google sync status on ontology events
 - `onto_tasks` `start_at` and `due_at` for internal task-derived calendar markers
 - `task_calendar_events` as a legacy fallback for older Google-scheduled task events
 
@@ -65,13 +67,13 @@ The worker runs with a service-role Supabase client, so it should query explicit
 - [x] Render `## Calendar` in the main brief markdown.
 - [x] Add summary-only calendar facts to LLM prompts.
 - [x] Add tests for relevance caps, source labels, and no raw prompt overload.
+- [x] Add current-user Google source labels, legacy/unconfirmed labels, stale sync counts, and failed sync labels.
+- [x] Link confirmed Google Calendar rows, task targets, and project targets in rendered markdown when safe.
 
 ## Review Notes and Expansion Recommendations
 
 - Add a pre-brief Google calendar refresh or cache-read step if the requirement is "actual Google Calendar right now" rather than "BuildOS-known calendar data." The current worker intentionally reads internal synced state.
-- Track sync freshness in the brief data, using `onto_event_sync.last_synced_at`, so the brief can distinguish "on Google Calendar" from "last synced 18 hours ago."
-- Tighten Google source labels for shared projects. Prefer a current-user `onto_event_sync.user_id` match before saying an item is on the user's Google Calendar.
-- Add database-backed integration coverage for `loadCalendarBriefData` query shape. Current tests cover selection, ordering, source counts, and prompt budget behavior.
+- Add database-backed integration coverage for `loadCalendarBriefData` query shape. Current tests cover selection, ordering, current-user labels, stale/failed sync handling, source counts, formatting links, and prompt budget behavior.
 - Add recurrence expansion if `onto_events.recurrence` can store unmaterialized recurring events. The brief should not rely on only stored event instances if recurring events are not expanded elsewhere.
 - Add a dense-day summary when more items are hidden, grouped by source and project, so the prompt stays compact but the user still sees why a day is packed.
 - Consider surfacing calendar conflicts, first commitment time, last commitment time, and open focus blocks as the next layer of calendar intelligence.

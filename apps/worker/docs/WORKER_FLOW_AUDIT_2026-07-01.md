@@ -136,7 +136,7 @@ Legend: 🔴 critical · 🟠 high · 🟡 medium · ⚪ low
 ## 4. Performance
 
 - **Head-of-line blocking** (above) is the biggest throughput issue.
-- Brief: `onto_tasks`/`onto_edges` fetched unbounded for all projects (thousands of old `done` tasks daily, discarded after categorization) (`ontologyBriefDataLoader.ts:1824-1831, 1885-1888`); exec summary + LLM analysis sequential but independent (`ontologyBriefGenerator.ts:1245-1340`); Kokoro 82M-param model loaded from scratch in a fresh fork per audio job — the in-child cache never survives `process.exit` (`audioSynthesisProcess.ts:70` + `tts/kokoro.ts:26-37`).
+- Brief: `onto_tasks`/`onto_edges` fetched unbounded for all projects (thousands of old `done` tasks daily, discarded after categorization) (`ontologyBriefDataLoader.ts:1824-1831, 1885-1888`); exec summary + LLM analysis sequential but independent (`ontologyBriefGenerator.ts:1245-1340`); audio now defaults to OpenRouter-hosted TTS, while local Kokoro fallback still loads the 82M-param model in a fresh fork when needed, so the in-child cache never survives `process.exit` (`audioSynthesisProcess.ts:70` + `tts/kokoro.ts:26-37`).
 - Scheduler: re-fetches each user's `users` row per queued brief despite the batch map already passed in (`scheduler.ts:72-76`).
 - SMS delivery does ~6-7 preference-shaped queries where 2 would do (worker + adapter double-check + safety-check refetches).
 - dailySmsWorker: one awaited LLM call per event, serial; then 3 sequential DB/queue writes per message (`dailySmsWorker.ts:192-326, 389-451`).

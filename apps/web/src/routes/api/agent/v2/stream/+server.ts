@@ -312,6 +312,9 @@ const FASTCHAT_LIVE_VISION_SIGNED_URL_TTL_SECONDS = parsePositiveInt(
 );
 const FASTCHAT_CHAT_ATTACHMENT_STORAGE_BUCKET = 'onto-assets';
 const FASTCHAT_TEMP_ATTACHMENT_PATH_PREFIX = 'users';
+const TOOL_RESULT_STREAM_EVENTS_PREVIEW_LIMIT = 8;
+const TOOL_RESULT_STREAM_EVENTS_PREVIEW_MAX_STRING_LENGTH = 240;
+const TOOL_RESULT_STREAM_EVENTS_PREVIEW_MAX_DEPTH = 3;
 
 type FastChatTurnAbortReason = FastChatCancelReason | 'timeout';
 type FastChatResolvedPromptContext = {
@@ -1412,30 +1415,136 @@ function emitToolCall(
 		});
 }
 
+function resolveToolResultRequiresUserAction(result: ChatToolResult): boolean | null {
+	const direct = result as ChatToolResult & Record<string, unknown>;
+	if (typeof direct.requires_user_action === 'boolean') return direct.requires_user_action;
+	if (typeof direct.requiresUserAction === 'boolean') return direct.requiresUserAction;
+	return inferPayloadRequiresUserAction(result.result);
+}
+
+function inferPayloadRequiresUserAction(value: unknown, depth = 0): boolean | null {
+	if (!isPlainRecord(value) || depth > 2) return null;
+
+	const direct = value.requires_user_action ?? value.requiresUserAction;
+	if (typeof direct === 'boolean') return direct;
+
+	const needsInput = value.needs_input ?? value.needsInput;
+	if (typeof needsInput === 'boolean') return needsInput;
+
+	const status = readMetadataString(value.status) ?? readMetadataString(value.state);
+	if (
+		status &&
+		[
+			'needs_input',
+			'needs input',
+			'requires_user_action',
+			'user_action_required',
+			'waiting_on_user'
+		].includes(status.toLowerCase())
+	) {
+		return true;
+	}
+
+	return (
+		inferPayloadRequiresUserAction(value.result, depth + 1) ??
+		inferPayloadRequiresUserAction(value.data, depth + 1) ??
+		null
+	);
+}
+
+function finiteTelemetryNumber(value: unknown): number | undefined {
+	return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function buildToolResultStreamEventsTelemetry(params: {
+	streamEvents?: unknown[];
+	streamEventsPreview?: unknown[];
+	streamEventCount?: unknown;
+}): {
+	stream_event_count?: number;
+	stream_events_preview?: unknown[];
+} {
+	const previewSource = params.streamEvents ?? params.streamEventsPreview;
+	const streamEventCount =
+		finiteTelemetryNumber(params.streamEventCount) ??
+		params.streamEvents?.length ??
+		params.streamEventsPreview?.length;
+	return {
+		...(streamEventCount !== undefined ? { stream_event_count: streamEventCount } : {}),
+		...(Array.isArray(previewSource)
+			? {
+					stream_events_preview: sanitizeLogData(previewSource, {
+						maxEntries: TOOL_RESULT_STREAM_EVENTS_PREVIEW_LIMIT,
+						maxStringLength: TOOL_RESULT_STREAM_EVENTS_PREVIEW_MAX_STRING_LENGTH,
+						maxDepth: TOOL_RESULT_STREAM_EVENTS_PREVIEW_MAX_DEPTH
+					}) as unknown[]
+				}
+			: {})
+	};
+}
+
 // Canonical tool_result wire shape: snake_case fields only. The camelCase
 // duplicates (toolName/toolCallId) and the `data` alias for `result` were
 // dropped 2026-06-10; the SSE handler and tool presenter read tool_name,
 // tool_call_id, and result.
 function buildToolResultEventPayload(toolCall: ChatToolCall, result: ChatToolResult) {
 	const meta = extractFastChatToolCallMeta(toolCall);
+	const argumentsPayload = parseToolArgumentsForPersistence(toolCall.function.arguments);
+	const resultPayload = result.success ? normalizeToolResultForPersistence(result.result) : null;
 	const searchTelemetry = searchTelemetryColumns({
 		toolName: toolCall.function.name,
 		success: result.success === true,
 		result: result.result
 	});
 	const toolCategory = getToolCategory(toolCall.function.name) ?? null;
+	const affectedEntities = extractAffectedEntitiesFromToolExecution({
+		id: result.tool_call_id ?? toolCall.id,
+		tool_name: toolCall.function.name,
+		gateway_op: meta.canonicalOp,
+		arguments: argumentsPayload,
+		result: resultPayload,
+		success: result.success === true
+	});
+	const requiresUserAction = resolveToolResultRequiresUserAction(result);
+	const resultRecord = result as ChatToolResult & Record<string, unknown>;
+	const {
+		stream_events: rawStreamEvents,
+		streamEvents: rawCamelStreamEvents,
+		stream_events_preview: rawStreamEventsPreview,
+		streamEventsPreview: rawCamelStreamEventsPreview,
+		stream_event_count: rawStreamEventCount,
+		streamEventCount: rawCamelStreamEventCount,
+		...resultWithoutRawStreamEvents
+	} = resultRecord;
+	const streamEvents = Array.isArray(rawStreamEvents)
+		? rawStreamEvents
+		: Array.isArray(rawCamelStreamEvents)
+			? rawCamelStreamEvents
+			: undefined;
+	const streamEventsPreview = Array.isArray(rawStreamEventsPreview)
+		? rawStreamEventsPreview
+		: Array.isArray(rawCamelStreamEventsPreview)
+			? rawCamelStreamEventsPreview
+			: undefined;
 
 	return {
-		...result,
+		...resultWithoutRawStreamEvents,
 		...(searchTelemetry.result_count !== null
 			? {
 					result_count: searchTelemetry.result_count,
 					zero_result: searchTelemetry.zero_result
 				}
 			: {}),
+		...(requiresUserAction !== null ? { requires_user_action: requiresUserAction } : {}),
 		...(toolCategory ? { tool_category: toolCategory } : {}),
 		...(meta.canonicalOp ? { gateway_op: meta.canonicalOp } : {}),
 		...(meta.helpPath ? { help_path: meta.helpPath } : {}),
+		affected_entities: affectedEntities,
+		...buildToolResultStreamEventsTelemetry({
+			streamEvents,
+			streamEventsPreview,
+			streamEventCount: rawStreamEventCount ?? rawCamelStreamEventCount
+		}),
 		tool_name: toolCall.function.name,
 		tool_call_id: result.tool_call_id ?? toolCall.id
 	};
@@ -1728,6 +1837,7 @@ type ToolExecutionInsertRow = {
 	tokens_consumed: number | null;
 	success: boolean;
 	error_message: string | null;
+	requires_user_action: boolean | null;
 	affected_entities: Json;
 };
 
@@ -1814,6 +1924,7 @@ function buildToolExecutionInsertRows(params: {
 					: null,
 			success: result.success === true,
 			error_message: typeof result.error === 'string' ? result.error : null,
+			requires_user_action: resolveToolResultRequiresUserAction(result),
 			affected_entities: extractAffectedEntitiesFromToolExecution({
 				id: (toolCall as { id?: string }).id ?? `${toolCall.function.name}-${index + 1}`,
 				tool_name: toolCall.function.name,

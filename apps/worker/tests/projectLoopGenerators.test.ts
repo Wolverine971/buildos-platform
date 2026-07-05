@@ -1,6 +1,7 @@
 // apps/worker/tests/projectLoopGenerators.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import {
+	buildTaskConflictCandidatePairs,
 	generateDrift,
 	generateProjectBrief,
 	generateTaskConflicts,
@@ -89,6 +90,80 @@ describe('project loop generators', () => {
 				})
 			})
 		);
+		expect(getJSONResponse.mock.calls[0]?.[0]?.userPrompt).toContain(
+			'Candidate pairs to classify:'
+		);
+		expect(getJSONResponse.mock.calls[0]?.[0]?.userPrompt).toContain('[task-1]');
+		expect(getJSONResponse.mock.calls[0]?.[0]?.userPrompt).toContain('[task-2]');
+	});
+
+	it('shortlists likely task-conflict candidate pairs deterministically', () => {
+		const pairs = buildTaskConflictCandidatePairs([
+			{
+				id: 'task-1',
+				title: 'Publish launch announcement',
+				description: null,
+				state_key: 'todo',
+				updated_at: '2026-06-22T00:00:00.000Z',
+				goal_names: ['Public launch']
+			},
+			{
+				id: 'task-2',
+				title: 'Publish announcement draft',
+				description: null,
+				state_key: 'todo',
+				updated_at: '2026-06-23T00:00:00.000Z',
+				goal_names: ['Public launch']
+			},
+			{
+				id: 'task-3',
+				title: 'Set up analytics dashboard',
+				description: null,
+				state_key: 'todo',
+				updated_at: '2026-06-24T00:00:00.000Z'
+			}
+		]);
+
+		expect(pairs).toEqual([
+			expect.objectContaining({
+				taskAId: 'task-1',
+				taskBId: 'task-2',
+				reasons: expect.arrayContaining(['same goal linkage'])
+			})
+		]);
+	});
+
+	it('skips the task-conflict LLM call when no deterministic candidate pairs exist', async () => {
+		const { llm, getJSONResponse } = makeTrackedLlm({ suggestions: [] });
+		const ctx: LoopContext = {
+			...makeContext(),
+			tasks: [
+				{
+					id: 'task-1',
+					title: 'Publish launch announcement',
+					description: null,
+					state_key: 'todo',
+					updated_at: '2026-06-22T00:00:00.000Z'
+				},
+				{
+					id: 'task-2',
+					title: 'Set up analytics dashboard',
+					description: null,
+					state_key: 'todo',
+					updated_at: '2026-06-23T00:00:00.000Z'
+				}
+			]
+		};
+
+		const suggestions = await generateTaskConflicts({
+			llm,
+			ctx,
+			userId: 'user-1',
+			onUsage
+		});
+
+		expect(suggestions).toEqual([]);
+		expect(getJSONResponse).not.toHaveBeenCalled();
 	});
 
 	it('passes project loop attribution to brief LLM calls', async () => {
@@ -231,6 +306,87 @@ describe('project loop generators', () => {
 				]
 			}),
 			ctx: makeContext(),
+			userId: 'user-1',
+			onUsage
+		});
+
+		expect(suggestions).toEqual([]);
+	});
+
+	it('drops task conflict suggestions with unknown paired task ids', async () => {
+		const suggestions = await generateTaskConflicts({
+			llm: makeLlm({
+				suggestions: [
+					{
+						title: 'Unknown paired task conflict',
+						evidence_refs: [
+							{ entity_type: 'task', entity_id: 'task-1', reason: 'Known' },
+							{ entity_type: 'task', entity_id: 'task-2', reason: 'Known' }
+						],
+						operations: [
+							{
+								tool: 'update_onto_task',
+								args: {
+									task_id: 'task-1',
+									props: {
+										loop_flagged_conflict: true,
+										loop_conflict_kind: 'duplicate',
+										loop_conflict_with_task_id: 'task-missing'
+									}
+								}
+							}
+						]
+					}
+				]
+			}),
+			ctx: makeContext(),
+			userId: 'user-1',
+			onUsage
+		});
+
+		expect(suggestions).toEqual([]);
+	});
+
+	it('drops task conflict suggestions when evidence does not match the flagged pair', async () => {
+		const ctx: LoopContext = {
+			...makeContext(),
+			tasks: [
+				...makeContext().tasks,
+				{
+					id: 'task-3',
+					title: 'Prepare launch metrics',
+					state_key: 'todo',
+					updated_at: '2026-06-24T00:00:00.000Z'
+				}
+			]
+		};
+
+		const suggestions = await generateTaskConflicts({
+			llm: makeLlm({
+				suggestions: [
+					{
+						title: 'Mismatched evidence conflict',
+						evidence_refs: [
+							{ entity_type: 'task', entity_id: 'task-1', reason: 'Known' },
+							{ entity_type: 'task', entity_id: 'task-2', reason: 'Known' }
+						],
+						operations: [
+							{
+								tool: 'update_onto_task',
+								args: {
+									task_id: 'task-1',
+									props: {
+										loop_flagged_conflict: true,
+										loop_conflict_kind: 'duplicate',
+										loop_conflict_with_task_id: 'task-3'
+									}
+								}
+							}
+						]
+					}
+				]
+			}),
+			ctx,
 			userId: 'user-1',
 			onUsage
 		});

@@ -935,7 +935,8 @@ describe('/api/agent/v2/stream', () => {
 		const toolResult = {
 			tool_call_id: 'call-search',
 			result: {
-				results: []
+				results: [],
+				status: 'needs_input'
 			},
 			success: true,
 			duration_ms: 12,
@@ -944,6 +945,12 @@ describe('/api/agent/v2/stream', () => {
 				{
 					type: 'progress',
 					message: 'searched project'
+				}
+			],
+			stream_events_preview: [
+				{
+					type: 'untrusted_preview',
+					message: 'this should not pass through'
 				}
 			]
 		};
@@ -1000,14 +1007,114 @@ describe('/api/agent/v2/stream', () => {
 				result_count: 0,
 				zero_result: true,
 				tokens_consumed: 9,
-				stream_events: [
+				requires_user_action: true,
+				affected_entities: [],
+				stream_event_count: 1,
+				stream_events_preview: [
 					{
 						type: 'progress',
-						message: 'searched project'
+						message: '[redacted]'
 					}
 				]
 			})
 		);
+		expect(liveToolResult?.result?.stream_events).toBeUndefined();
+		expect(JSON.stringify(liveToolResult?.result?.stream_events_preview)).not.toContain(
+			'untrusted_preview'
+		);
+		expect(supabase.insertedRows.chat_tool_executions?.[0]).toEqual(
+			expect.objectContaining({
+				tool_name: 'search_project',
+				result_count: 0,
+				zero_result: true,
+				tokens_consumed: 9,
+				requires_user_action: true
+			})
+		);
+	});
+
+	it('emits live tool_result payloads with affected entity refs matching persistence', async () => {
+		const supabase = createStreamingSupabase();
+		const toolCall = {
+			id: 'call-create-task',
+			type: 'function',
+			function: {
+				name: 'create_onto_task',
+				arguments: JSON.stringify({
+					title: 'Launch checklist',
+					project_id: 'project-1'
+				})
+			}
+		};
+		const toolResult = {
+			tool_call_id: 'call-create-task',
+			result: {
+				task: {
+					id: 'task-1',
+					title: 'Launch checklist',
+					project_id: 'project-1'
+				}
+			},
+			success: true,
+			duration_ms: 20
+		};
+
+		mocks.streamFastChat.mockImplementationOnce(
+			async ({ onToolCall, onToolResult, onDelta }: Row) => {
+				await onToolCall?.(toolCall);
+				await onToolResult?.({ toolCall, result: toolResult });
+				await onDelta('Created the task.');
+				return {
+					assistantText: 'Created the task.',
+					finalAssistantText: 'Created the task.',
+					usage: { total_tokens: 8 },
+					finishedReason: 'stop',
+					toolExecutions: [{ toolCall, result: toolResult }],
+					llmPasses: [],
+					toolRounds: 1,
+					toolCallsMade: 1,
+					supervisorDecisions: [],
+					finalizationGuard: undefined,
+					cancelled: false,
+					peakPromptTokens: undefined,
+					finalContextUsage: undefined
+				};
+			}
+		);
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Create a launch task',
+					context_type: 'global',
+					stream_run_id: 'stream-run-create',
+					client_turn_id: 'client-turn-create'
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		const events = parseSseEvents(await response.text());
+		const liveToolResult = events.find((event) => event.type === 'tool_result');
+		const expectedRef = expect.objectContaining({
+			kind: 'task',
+			id: 'task-1',
+			title: 'Launch checklist',
+			projectId: 'project-1',
+			operation: 'created',
+			url: '/projects/project-1?entity=task&entity_id=task-1'
+		});
+
+		expect(liveToolResult?.result?.affected_entities).toEqual([expectedRef]);
+		expect(supabase.insertedRows.chat_tool_executions?.[0]?.affected_entities).toEqual([
+			expectedRef
+		]);
 	});
 
 	it('passes prompt entity ownership context into tool execution', async () => {

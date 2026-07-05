@@ -6,7 +6,7 @@
 
 **Scope:** backend-to-frontend data propagation for the Agentic Chat modal: v2 stream route, tool execution services, SSE handler, thinking-block metadata, live timeline derivation, restored session hydration, activity tabs, and step/support exports.
 
-**Status:** research document only. No application code was changed in this pass.
+**Status:** research document. Original audit pass made no application-code changes; the L1 live/restored tool timeline parity finding was addressed in follow-up implementation on 2026-07-05.
 
 **Method:** traced each suspected contract from producer to consumer:
 
@@ -23,6 +23,40 @@ Every finding below is marked:
 - **CONTRACT GAP** - the protocol supports a field/event, but current production producers appear dormant or incomplete.
 - **DOWNGRADED** - initial assessment was too broad after checking current producers/consumers.
 - **NON-FINDING** - type drift or legacy support exists, but no active emitting path was found.
+
+---
+
+## Implementation Update - 2026-07-05
+
+The live/restored timeline parity work from Finding L1 is now implemented.
+
+What changed:
+
+- The v2 stream route emits richer live `tool_result` payloads: search result count, zero-result state, duration, tokens consumed, user-action state, affected entities, and bounded/redacted stream-event preview telemetry.
+- Raw stream-event arrays are not exposed to live activity metadata. They are converted to `stream_event_count` plus a sanitized `stream_events_preview`.
+- `AgentChatModal.updateActivityStatus()` stores the same meaningful telemetry in thinking-block activity metadata and uses a tested sanitizer for tool-result response metadata.
+- `timelineItemsFromMessages()` maps live activity metadata into the same `TimelineToolExecutionRow` shape used by restored persisted tool executions.
+- Route persistence now writes `requires_user_action`, so restored history can render the same `needs_input` status that live state renders.
+
+Verification added:
+
+- `agent-chat-sse-handler.test.ts` covers stream-envelope metadata and the tool-result activity sanitizer, including raw stream stripping, preview bounding, and redaction.
+- `agent-chat-timeline.test.ts` covers live affected-entity metadata mapping into the restored tool timeline shape.
+- `routes/api/agent/v2/stream/server.test.ts` covers actual SSE output for result-count/zero-result/user-action telemetry, bounded stream-event preview output, and affected-entity parity between live SSE and persisted rows.
+
+Latest verification, run from `apps/web` on 2026-07-05:
+
+```bash
+pnpm exec vitest run src/lib/components/agent/agent-chat-sse-handler.test.ts src/lib/components/agent/agent-chat-stream-controller.svelte.test.ts src/lib/components/agent/agent-chat-timeline.test.ts src/lib/components/agent/agent-chat-session.test.ts src/lib/utils/sse-processor.test.ts src/lib/utils/sse-response.test.ts src/routes/api/agent/v2/stream/server.test.ts
+```
+
+Result: 7 files passed, 114 tests passed.
+
+```bash
+pnpm check
+```
+
+Result: `svelte-check found 0 errors and 0 warnings`.
 
 ---
 
@@ -89,7 +123,7 @@ So "history will eventually fix it" is not a sufficient live-chat solution. Duri
 
 ## Finding L1 - live tool timeline drops persisted telemetry fields
 
-**Status:** CONFIRMED
+**Status:** FIXED in follow-up implementation on 2026-07-05. Historical finding details remain below for audit traceability.
 
 **Severity:** medium-high for live diagnostics and exports; medium for the visible tab UI.
 
@@ -647,10 +681,12 @@ Expected impact:
 
 Goal: keep dormant contracts from becoming future bugs.
 
-1. Preserve `stream_events` through the v2 route if present.
-2. Add a low-level test for stream event propagation.
-3. Defer UI rendering until a real producer appears.
-4. Treat requirement focus as a separate product-scope cleanup.
+2026-07-05 update: this was implemented with bounded telemetry rather than raw-event propagation. The v2 route strips raw `stream_events`, emits `stream_event_count` plus sanitized `stream_events_preview`, and tests assert untrusted previews do not pass through unchanged.
+
+Remaining optional items:
+
+1. Defer richer UI rendering until a real producer needs it.
+2. Treat requirement focus as a separate product-scope cleanup.
 
 ---
 

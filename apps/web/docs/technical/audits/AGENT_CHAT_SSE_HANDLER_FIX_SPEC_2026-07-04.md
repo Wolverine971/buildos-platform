@@ -2,7 +2,7 @@
 
 # Agent Chat SSE Handler Fix Spec - 2026-07-04
 
-**Status:** research and implementation spec. No application code was changed in this pass.
+**Status:** research and implementation spec. Original audit pass made no application-code changes; follow-up implementation through Phase 4 shipped on 2026-07-05.
 
 **Scope:** `apps/web/src/lib/components/agent/agent-chat-sse-handler.ts` and the upstream/downstream contracts that determine whether live client state stays equivalent to persisted turn state.
 
@@ -13,6 +13,51 @@
 - reconnect, detach, and resume behavior
 - partial tool-result display
 - divergence between live UI state and persisted turn/session state
+
+---
+
+## Implementation Update - 2026-07-05
+
+Phases 1-4 from this spec have been implemented and verified.
+
+| Phase                                        | Status   | Implementation summary                                                                                                                                                                                                                                                                                                           |
+| -------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 1 - Backward-Compatible Client Safety  | Complete | Agent-stream semantic `type:'error'` frames now reach the handler through an opt-in SSE processor option; created-entity chips are suppressed on error/cancel terminal states; tool calls/results are deduped; result-before-call side effects replay once after the matching call appears.                                      |
+| Phase 2 - Persistence-Backed Reconciliation  | Complete | Accepted streams that detach or error now preserve turn identifiers long enough to reload the session snapshot and reconcile against durable state, while explicit Stop remains a user-visible cancellation path.                                                                                                                |
+| Phase 3 - Stream Envelope And Ordering       | Complete | Agent SSE payloads now carry event envelope metadata (`event_id`, `stream_run_id`, `client_turn_id`, `turn_run_id`, `sequence_index`, `phase`, `event_type`, `durable`); the SSE response can emit `id:`; the client rejects stale stream/client-turn frames and duplicate event keys.                                           |
+| Phase 4 - Live/Restored Tool Timeline Parity | Complete | Live `tool_result` payloads now include the same meaningful telemetry restored timelines use: result count, zero-result, duration, tokens, user-action state, affected entities, and bounded/redacted stream-event previews. Live activity metadata is sanitized and mapped into the same row shape as restored tool executions. |
+
+Current implementation files:
+
+- `packages/shared-types/src/agent.types.ts`
+- `apps/web/src/lib/utils/sse-processor.ts`
+- `apps/web/src/lib/utils/sse-response.ts`
+- `apps/web/src/routes/api/agent/v2/stream/+server.ts`
+- `apps/web/src/lib/components/agent/AgentChatModal.svelte`
+- `apps/web/src/lib/components/agent/agent-chat-stream-controller.svelte.ts`
+- `apps/web/src/lib/components/agent/agent-chat-sse-handler.ts`
+- `apps/web/src/lib/components/agent/agent-chat-timeline.ts`
+- `apps/web/src/lib/components/agent/agent-chat-session.ts`
+
+Latest verification, run from `apps/web` on 2026-07-05:
+
+```bash
+pnpm exec vitest run src/lib/components/agent/agent-chat-sse-handler.test.ts src/lib/components/agent/agent-chat-stream-controller.svelte.test.ts src/lib/components/agent/agent-chat-timeline.test.ts src/lib/components/agent/agent-chat-session.test.ts src/lib/utils/sse-processor.test.ts src/lib/utils/sse-response.test.ts src/routes/api/agent/v2/stream/server.test.ts
+```
+
+Result: 7 files passed, 114 tests passed.
+
+```bash
+pnpm check
+```
+
+Result: `svelte-check found 0 errors and 0 warnings`.
+
+```bash
+git diff --check
+```
+
+Result: passed.
 
 ---
 
@@ -524,6 +569,8 @@ pnpm test:run
 ```
 
 ### Verification Performed For This Spec
+
+This subsection records the original 2026-07-04 research baseline. For the current implemented-state verification, see "Implementation Update - 2026-07-05" above.
 
 Run from `apps/web` on 2026-07-04:
 

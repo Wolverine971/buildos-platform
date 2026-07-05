@@ -8,7 +8,10 @@ import { uploadBriefAudio } from '../../lib/storage/briefAudio';
 import { supabase } from '../../lib/supabase';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { buildBriefNarrationText } from '../../lib/tts/textCleanup';
-import { synthesizeBriefAudioForWorker } from './briefAudioSynthesis';
+import {
+	resolveBriefAudioProviderForWorker,
+	synthesizeBriefAudioForWorker
+} from './briefAudioSynthesis';
 
 type BriefRecord = {
 	id: string;
@@ -33,14 +36,6 @@ let audioChain: Promise<unknown> = Promise.resolve();
 
 function truncateErrorMessage(message: string): string {
 	return message.length > 1000 ? `${message.slice(0, 997)}...` : message;
-}
-
-function getSynthesisTimeoutMs(): number {
-	const configured = Number(process.env.BRIEF_AUDIO_SYNTHESIS_TIMEOUT_MS);
-	if (Number.isFinite(configured) && configured >= 60_000) {
-		return Math.floor(configured);
-	}
-	return DEFAULT_SYNTHESIS_TIMEOUT_MS;
 }
 
 async function markAudioFailed(briefId: string, userId: string, message: string): Promise<void> {
@@ -150,6 +145,7 @@ async function processBriefAudioInner(
 	let stage: 'eligibility' | 'fetch' | 'mark_generating' | 'synthesize' | 'upload' | 'persist' =
 		'eligibility';
 	let model: string | undefined;
+	let provider: string | undefined;
 
 	try {
 		briefId =
@@ -240,6 +236,7 @@ async function processBriefAudioInner(
 		});
 
 		stage = 'synthesize';
+		provider = resolveBriefAudioProviderForWorker();
 		await job.updateProgress({
 			current: 40,
 			total: 100,
@@ -247,7 +244,7 @@ async function processBriefAudioInner(
 		});
 		const synthesis = await synthesizeBriefAudioForWorker(
 			narrationText,
-			getSynthesisTimeoutMs()
+			DEFAULT_SYNTHESIS_TIMEOUT_MS
 		);
 		model = synthesis.model;
 
@@ -319,7 +316,7 @@ async function processBriefAudioInner(
 			tableName: 'ontology_daily_briefs',
 			recordId: briefId ?? job.id,
 			operationType: 'generate_brief_audio',
-			llmProvider: 'kokoro',
+			llmProvider: provider ?? 'brief_audio',
 			llmModel: model,
 			errorType: 'llm_error',
 			metadata: {

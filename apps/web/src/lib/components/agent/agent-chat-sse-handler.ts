@@ -35,10 +35,15 @@ import { CONTEXT_DESCRIPTORS } from './agent-chat.constants';
 import { buildProjectWideFocus, isProjectContext } from './agent-chat-session';
 import { buildSkillLoadActivityEvent } from './agent-chat-skill-activity';
 import { deriveContextOverheadTokens } from './agent-chat-formatters';
+import { sanitizeLogData } from '$lib/utils/logging-helpers';
 
 // ---------------------------------------------------------------------------
 // Pure helpers — testable standalone
 // ---------------------------------------------------------------------------
+
+const TOOL_RESULT_ACTIVITY_STREAM_EVENTS_PREVIEW_LIMIT = 8;
+const TOOL_RESULT_ACTIVITY_STREAM_EVENTS_PREVIEW_MAX_STRING_LENGTH = 240;
+const TOOL_RESULT_ACTIVITY_STREAM_EVENTS_PREVIEW_MAX_DEPTH = 3;
 
 /** Compute the user-visible `currentActivity` label for an `agent_state` event. */
 export function computeAgentStateActivity(state: AgentLoopState, details?: string): string {
@@ -116,6 +121,11 @@ export function buildToolCallActivity(
 			rawArguments: args,
 			status: 'pending',
 			toolCall: event.tool_call,
+			eventId: event.event_id,
+			streamRunId: event.stream_run_id,
+			clientTurnId: event.client_turn_id,
+			turnRunId: event.turn_run_id,
+			streamSequenceIndex: event.sequence_index,
 			...(skillActivity
 				? {
 						skillActivity,
@@ -157,6 +167,52 @@ export function computeToolResultInfo(
 	const toolError = toolResult?.error;
 	const toolErrorMessage = success ? undefined : presenter.formatErrorMessage(toolError);
 	return { resultToolCallId, rawResultToolName, success, toolError, toolErrorMessage };
+}
+
+function finiteNumberValue(value: unknown): number | undefined {
+	return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+export function sanitizeToolResultForActivityMetadata(
+	toolResult: Record<string, any>
+): Record<string, any> {
+	const sanitized = { ...toolResult };
+	const rawStreamEvents = Array.isArray(sanitized.stream_events)
+		? sanitized.stream_events
+		: Array.isArray(sanitized.streamEvents)
+			? sanitized.streamEvents
+			: undefined;
+	const rawStreamEventsPreview = Array.isArray(sanitized.stream_events_preview)
+		? sanitized.stream_events_preview
+		: Array.isArray(sanitized.streamEventsPreview)
+			? sanitized.streamEventsPreview
+			: undefined;
+	const streamEventCount =
+		finiteNumberValue(sanitized.stream_event_count) ??
+		finiteNumberValue(sanitized.streamEventCount) ??
+		rawStreamEvents?.length ??
+		rawStreamEventsPreview?.length;
+	const streamEventsPreviewSource = rawStreamEvents ?? rawStreamEventsPreview;
+
+	delete sanitized.stream_events;
+	delete sanitized.streamEvents;
+	delete sanitized.stream_events_preview;
+	delete sanitized.streamEventsPreview;
+	delete sanitized.stream_event_count;
+	delete sanitized.streamEventCount;
+
+	if (streamEventCount !== undefined) {
+		sanitized.stream_event_count = streamEventCount;
+	}
+	if (Array.isArray(streamEventsPreviewSource)) {
+		sanitized.stream_events_preview = sanitizeLogData(streamEventsPreviewSource, {
+			maxEntries: TOOL_RESULT_ACTIVITY_STREAM_EVENTS_PREVIEW_LIMIT,
+			maxStringLength: TOOL_RESULT_ACTIVITY_STREAM_EVENTS_PREVIEW_MAX_STRING_LENGTH,
+			maxDepth: TOOL_RESULT_ACTIVITY_STREAM_EVENTS_PREVIEW_MAX_DEPTH
+		}) as unknown[];
+	}
+
+	return sanitized;
 }
 
 export function resolveDoneFinalization(finishedReason: string | null | undefined): {

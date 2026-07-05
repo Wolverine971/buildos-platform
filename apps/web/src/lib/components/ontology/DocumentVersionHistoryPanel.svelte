@@ -224,6 +224,13 @@
 	}
 
 	function handleVersionSelect(version: VersionListItem) {
+		if (onCompareRequested) {
+			selectedVersion = version;
+			const latestNum = versions[0]?.number ?? version.number;
+			onCompareRequested(version.number, latestNum);
+			return;
+		}
+
 		selectedVersion = selectedVersion?.id === version.id ? null : version;
 	}
 

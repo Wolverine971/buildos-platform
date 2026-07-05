@@ -10,6 +10,7 @@ import {
 	createSSEHandler,
 	normalizeContextShiftContext,
 	resolveDoneFinalization,
+	sanitizeToolResultForActivityMetadata,
 	type ActivityUpdateResult,
 	type PendingToolStatus,
 	type SSEHandlerDeps,
@@ -80,6 +81,11 @@ describe('buildToolCallActivity', () => {
 		const presenter = makePresenter();
 		const event: Extract<AgentSSEMessage, { type: 'tool_call' }> = {
 			type: 'tool_call',
+			event_id: 'stream-run-1:2',
+			stream_run_id: 'stream-run-1',
+			client_turn_id: 'client-turn-1',
+			turn_run_id: 'turn-run-1',
+			sequence_index: 2,
 			tool_call: {
 				id: 'call-1',
 				type: 'function',
@@ -98,6 +104,15 @@ describe('buildToolCallActivity', () => {
 		expect(result.activity?.content).toBe('Creating task: "Write tests"');
 		expect(result.activity?.metadata?.toolName).toBe('create_onto_task');
 		expect(result.activity?.metadata?.toolCallId).toBe('call-1');
+		expect(result.activity?.metadata).toEqual(
+			expect.objectContaining({
+				eventId: 'stream-run-1:2',
+				streamRunId: 'stream-run-1',
+				clientTurnId: 'client-turn-1',
+				turnRunId: 'turn-run-1',
+				streamSequenceIndex: 2
+			})
+		);
 	});
 
 	it('attaches skill-activity metadata when formatting a skill_load call', () => {
@@ -178,6 +193,61 @@ describe('computeToolResultInfo', () => {
 		);
 		expect(info.success).toBe(false);
 		expect(info.toolErrorMessage).toBe('Not found');
+	});
+});
+
+describe('sanitizeToolResultForActivityMetadata', () => {
+	it('strips raw stream events and stores a bounded redacted preview', () => {
+		const streamEvents = Array.from({ length: 12 }, (_, index) => ({
+			type: 'progress',
+			message: `raw progress message ${index}`,
+			detail: 'x'.repeat(500)
+		}));
+
+		const sanitized = sanitizeToolResultForActivityMetadata({
+			tool_call_id: 'call-1',
+			result: { ok: true },
+			stream_events: streamEvents
+		});
+
+		expect(sanitized.stream_events).toBeUndefined();
+		expect(sanitized.streamEvents).toBeUndefined();
+		expect(sanitized.stream_event_count).toBe(12);
+		expect(sanitized.stream_events_preview).toHaveLength(9);
+		expect(sanitized.stream_events_preview[0]).toEqual(
+			expect.objectContaining({
+				type: 'progress',
+				message: '[redacted]',
+				detail: expect.stringMatching(/\.{3}$/)
+			})
+		);
+		expect(sanitized.stream_events_preview.at(-1)).toBe('[4 more items truncated]');
+	});
+
+	it('re-bounds existing stream event previews instead of trusting them', () => {
+		const preview = Array.from({ length: 12 }, (_, index) => ({
+			type: 'preview',
+			message: `untrusted preview ${index}`,
+			content: 'raw content that should not be retained'
+		}));
+
+		const sanitized = sanitizeToolResultForActivityMetadata({
+			tool_call_id: 'call-1',
+			stream_event_count: 99,
+			stream_events_preview: preview
+		});
+
+		expect(sanitized.stream_event_count).toBe(99);
+		expect(sanitized.stream_events_preview).toHaveLength(9);
+		expect(sanitized.stream_events_preview[0]).toEqual(
+			expect.objectContaining({
+				type: 'preview',
+				message: '[redacted]',
+				content: '[redacted]'
+			})
+		);
+		expect(JSON.stringify(sanitized)).not.toContain('untrusted preview');
+		expect(JSON.stringify(sanitized)).not.toContain('raw content');
 	});
 });
 

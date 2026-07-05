@@ -10,6 +10,7 @@ import {
 	buildAgentRunOpCatalog,
 	type AgentOpContext
 } from '@buildos/shared-agent-ops';
+import { runGatewayWriteOp } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 
 // A supabase stub that throws if any handler actually touches the DB — the policy
 // paths under test must short-circuit before reaching a handler.
@@ -188,6 +189,76 @@ function stageUpdateCtx(params: {
 			mutationMode: 'stage'
 		}
 	};
+}
+
+function projectRestoreCtx(params: {
+	projects: Array<Record<string, unknown>>;
+	project: Record<string, unknown> | null;
+}): {
+	admin: AgentOpContext['admin'];
+	calls: Array<{ kind: string; table?: string; column?: string; value?: unknown }>;
+} {
+	const calls: Array<{ kind: string; table?: string; column?: string; value?: unknown }> = [];
+
+	class Query {
+		private id: unknown;
+		private deletedIsNull = false;
+
+		constructor(private readonly table: string) {}
+
+		select() {
+			calls.push({ kind: 'select', table: this.table });
+			return this;
+		}
+
+		update(value: unknown) {
+			calls.push({ kind: 'update', table: this.table, value });
+			return this;
+		}
+
+		eq(column: string, value: unknown) {
+			calls.push({ kind: 'eq', table: this.table, column, value });
+			if (column === 'id') this.id = value;
+			return this;
+		}
+
+		is(column: string, value: unknown) {
+			calls.push({ kind: 'is', table: this.table, column, value });
+			if (column === 'deleted_at' && value === null) this.deletedIsNull = true;
+			return this;
+		}
+
+		async maybeSingle() {
+			if (this.table !== 'onto_projects' || !params.project) {
+				return { data: null, error: null };
+			}
+			if (this.id !== params.project.id) {
+				return { data: null, error: null };
+			}
+			if (this.deletedIsNull && params.project.deleted_at !== null) {
+				return { data: null, error: null };
+			}
+			return { data: params.project, error: null };
+		}
+
+		async single() {
+			return { data: params.project, error: null };
+		}
+	}
+
+	const admin = {
+		rpc: async (fn: string) => {
+			calls.push({ kind: 'rpc', value: fn });
+			if (fn === 'ensure_actor_for_user') return { data: 'actor-1', error: null };
+			if (fn === 'get_onto_project_summaries_v1') {
+				return { data: params.projects, error: null };
+			}
+			throw new Error(`unexpected rpc: ${fn}`);
+		},
+		from: (table: string) => new Query(table)
+	} as AgentOpContext['admin'];
+
+	return { admin, calls };
 }
 
 describe('executeAgentOp policy + dispatch', () => {
@@ -499,6 +570,52 @@ describe('executeAgentOp policy + dispatch', () => {
 			task_id: TASK_ID,
 			title: 'Updated task'
 		});
+	});
+
+	it('rejects restoring an archived project outside an explicit gateway project scope', async () => {
+		const { admin, calls } = projectRestoreCtx({
+			projects: [projectSummaryRow(PROJECT_A_ID, { access_level: 'write' })],
+			project: {
+				id: PROJECT_B_ID,
+				name: 'Archived out-of-scope project',
+				description: null,
+				type_key: 'project.default',
+				state_key: 'active',
+				props: {},
+				start_at: null,
+				end_at: null,
+				created_by: 'actor-1',
+				created_at: '2026-06-01T00:00:00Z',
+				updated_at: '2026-06-01T00:00:00Z',
+				archived_at: '2026-06-02T00:00:00Z',
+				deleted_at: null
+			}
+		});
+
+		const r = await runGatewayWriteOp({
+			admin,
+			userId: '00000000-0000-4000-8000-000000000000',
+			scope: {
+				mode: 'read_write',
+				project_ids: [PROJECT_A_ID],
+				allowed_ops: ['onto.project.update']
+			},
+			op: 'onto.project.update',
+			args: {
+				project_id: PROJECT_B_ID,
+				archived: false
+			}
+		});
+
+		expect(r.ok).toBe(false);
+		expect(r.error?.code).toBe('FORBIDDEN');
+		expect(calls).toContainEqual({
+			kind: 'is',
+			table: 'onto_projects',
+			column: 'deleted_at',
+			value: null
+		});
+		expect(calls.some((call) => call.kind === 'update')).toBe(false);
 	});
 
 	it('fences a write op to its project-scoped run before any DB handler', async () => {

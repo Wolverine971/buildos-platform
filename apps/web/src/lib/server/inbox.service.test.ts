@@ -9,7 +9,7 @@ vi.mock('@buildos/shared-agent-ops/inbox-index', () => ({
 	syncInboxItemForSource: mocks.syncInboxItemForSource
 }));
 
-import { listInboxItems } from './inbox.service';
+import { listInboxItems, sortInboxRowsForReview } from './inbox.service';
 
 type Row = Record<string, any>;
 
@@ -265,5 +265,73 @@ describe('inbox service', () => {
 					operation.table === 'project_suggestions' && operation.action === 'update'
 			)
 		).toBe(false);
+	});
+
+	it('orders review rows by actionable status, risk tier, then recency', () => {
+		const rows = [
+			{
+				id: 'low-recent',
+				source_type: 'project_suggestion',
+				source_ref_id: 'source-1',
+				audience: 'project_members',
+				status: 'pending',
+				title: 'Low recent',
+				risk_tier: 1,
+				action_kinds: [],
+				created_at: '2026-07-04T16:00:00.000Z'
+			},
+			{
+				id: 'blocked-high',
+				source_type: 'project_suggestion',
+				source_ref_id: 'source-2',
+				audience: 'project_members',
+				status: 'blocked',
+				title: 'Blocked high',
+				risk_tier: 3,
+				action_kinds: [],
+				created_at: '2026-07-04T18:00:00.000Z'
+			},
+			{
+				id: 'high-older',
+				source_type: 'project_suggestion',
+				source_ref_id: 'source-3',
+				audience: 'project_members',
+				status: 'pending',
+				title: 'High older',
+				risk_tier: 3,
+				action_kinds: [],
+				created_at: '2026-07-04T12:00:00.000Z'
+			},
+			{
+				id: 'review-newest',
+				source_type: 'agent_run',
+				source_ref_id: 'source-4',
+				audience: 'user',
+				status: 'pending',
+				title: 'Review newest',
+				risk_tier: null,
+				action_kinds: [],
+				created_at: '2026-07-04T20:00:00.000Z'
+			},
+			{
+				id: 'high-newest',
+				source_type: 'project_suggestion',
+				source_ref_id: 'source-5',
+				audience: 'project_members',
+				status: 'pending',
+				title: 'High newest',
+				risk_tier: 3,
+				action_kinds: [],
+				created_at: '2026-07-04T19:00:00.000Z'
+			}
+		] as any[];
+
+		expect(sortInboxRowsForReview(rows).map((row) => row.id)).toEqual([
+			'high-newest',
+			'high-older',
+			'review-newest',
+			'low-recent',
+			'blocked-high'
+		]);
 	});
 });

@@ -3,11 +3,12 @@ import type { RequestHandler } from './$types';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import {
 	assertAdminChatUserAnalyticsRedacted,
-	loadAdminChatRedactedSession
+	loadAdminChatRedactedSession,
+	parseAdminChatRedactedSessionQuery
 } from '$lib/server/admin-chat-user-analytics';
 import { ApiResponse } from '$lib/utils/api-response';
 
-export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }) => {
+export const GET: RequestHandler = async ({ params, url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user?.id) {
 		return ApiResponse.unauthorized();
@@ -24,8 +25,14 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }
 			return ApiResponse.badRequest('User ID and session ID required');
 		}
 
+		const query = parseAdminChatRedactedSessionQuery(url.searchParams);
 		const adminSupabase = createAdminSupabaseClient();
-		const payload = await loadAdminChatRedactedSession(adminSupabase, userId, sessionId);
+		const payload = await loadAdminChatRedactedSession(
+			adminSupabase,
+			userId,
+			sessionId,
+			query.slow_threshold_ms
+		);
 		if (!payload) {
 			return ApiResponse.notFound('Chat session analytics');
 		}

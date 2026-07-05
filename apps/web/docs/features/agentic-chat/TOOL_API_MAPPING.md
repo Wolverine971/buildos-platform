@@ -2,7 +2,7 @@
 
 # Agentic Chat Tool -> Backend Mapping (Current)
 
-> Last updated: 2026-04-14
+> Last updated: 2026-07-05
 > Scope: Tool behavior in the current web runtime (`/api/agent/v2/stream` + shared tool stack)
 
 ## 1. Execution Surface
@@ -14,6 +14,38 @@ The runtime exposes one hybrid direct-tool surface:
 - `tool_search` and `tool_schema` inspect registry metadata and can materialize additional direct tools
 - Direct tool calls run canonical ops through `ToolExecutionService`
 - Domain execution is dispatched by `ChatToolExecutor`
+
+### 1.1 Execution validation and enrichment
+
+`ToolExecutionService` is the validation/enrichment boundary before
+`ChatToolExecutor`. For normal direct tools it:
+
+- normalizes raw model arguments into an object
+- applies schema defaults from the active tool definition
+- injects `project_id` from the current project/entity focus when the schema supports it
+- maps supported semantic aliases and entity ID aliases
+- normalizes UUID-like ID fields
+- rejects out-of-focus `project_id` or known entity IDs before execution
+- validates required fields, JSON Schema primitive types, `integer`, `enum`, `minLength`, and `minItems`
+- wraps execution in per-tool timeout handling and abort-aware cancellation
+
+Gateway tools use the same enrichment and validation pipeline. Their schemas are
+resolved from canonical `GATEWAY_TOOL_DEFINITIONS` even when the selected tool
+surface omits a gateway tool or supplies a stale/permissive gateway schema. After
+validation, gateway calls execute locally (`skill_load`, `skill_reference_load`,
+`tool_search`, `tool_schema`, domain/resource/outcome loaders, and Libri
+discovery) and do not call `ChatToolExecutor`.
+
+Gateway argument compatibility is intentionally preserved before validation:
+loader/schema aliases such as `id`, `path`, `domain_id`, `resource_id`,
+`reference_id`, and `module` are mapped to their canonical gateway parameters.
+
+`get_document_tree` follows its schema defaults. The service no longer forces
+`include_documents=true`; it only supplies `include_content=false` when
+`include_documents=true` and `include_content` is omitted.
+
+Retry waits are abort-aware. A cancelled tool result is returned immediately and
+does not start another retry attempt.
 
 ## 2. Source Files
 

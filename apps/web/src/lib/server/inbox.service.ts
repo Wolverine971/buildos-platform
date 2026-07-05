@@ -139,6 +139,47 @@ function parseTimestamp(value: string | null | undefined): number | null {
 	return Number.isFinite(parsed) ? parsed : null;
 }
 
+function statusReviewRank(status: InboxItemStatus): number {
+	switch (status) {
+		case 'pending':
+			return 0;
+		case 'deciding':
+			return 1;
+		case 'blocked':
+			return 2;
+		case 'snoozed':
+			return 3;
+		case 'expired':
+			return 4;
+		case 'decided':
+			return 5;
+		default:
+			return 6;
+	}
+}
+
+function reviewRiskTier(row: InboxIndexRow): number {
+	return typeof row.risk_tier === 'number' && row.risk_tier >= 1 && row.risk_tier <= 3
+		? row.risk_tier
+		: 2;
+}
+
+export function sortInboxRowsForReview<T extends InboxIndexRow>(rows: T[]): T[] {
+	return [...rows].sort((left, right) => {
+		const statusDiff = statusReviewRank(left.status) - statusReviewRank(right.status);
+		if (statusDiff !== 0) return statusDiff;
+
+		const riskDiff = reviewRiskTier(right) - reviewRiskTier(left);
+		if (riskDiff !== 0) return riskDiff;
+
+		const leftCreated = parseTimestamp(left.created_at) ?? 0;
+		const rightCreated = parseTimestamp(right.created_at) ?? 0;
+		if (leftCreated !== rightCreated) return rightCreated - leftCreated;
+
+		return rowKey(left).localeCompare(rowKey(right));
+	});
+}
+
 function shouldExpire(row: InboxIndexRow, nowMs: number): boolean {
 	const expiresAt = parseTimestamp(row.expires_at);
 	if (expiresAt === null || expiresAt > nowMs) return false;
@@ -723,9 +764,10 @@ export async function listInboxItems(params: {
 			rows: reconciledRows
 		});
 
+	const orderedRows = sortInboxRowsForReview(lifecycleRows);
 	const visibleRows = requestedStatus
-		? lifecycleRows.filter((row) => row.status === requestedStatus).slice(0, requestedLimit)
-		: lifecycleRows.slice(0, requestedLimit);
+		? orderedRows.filter((row) => row.status === requestedStatus).slice(0, requestedLimit)
+		: orderedRows.slice(0, requestedLimit);
 	const totalRepairedCount = repairedCount + lifecycleRepairedCount;
 
 	if (!params.includePayload) {

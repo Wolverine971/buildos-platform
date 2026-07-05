@@ -1,28 +1,21 @@
 // apps/worker/src/workers/briefAudio/briefAudioSynthesis.ts
 import type { BriefAudioSynthesisResult } from '../../lib/tts/kokoro';
-import { hasOpenAiTtsCredentials, synthesizeBriefAudioWithOpenAI } from '../../lib/tts/openai';
+import {
+	hasOpenRouterTtsCredentials,
+	synthesizeBriefAudioWithOpenRouter
+} from '../../lib/tts/openrouter';
 import { synthesizeBriefAudioInChild } from './audioSynthesisProcess';
 
-type BriefAudioProvider = 'openai' | 'kokoro' | 'auto';
+type BriefAudioProvider = 'openrouter' | 'kokoro';
 
-const DEFAULT_AUTO_KOKORO_TIMEOUT_MS = 45_000;
+const KOKORO_FALLBACK_TIMEOUT_MS = 45_000;
 
 function getProvider(): BriefAudioProvider {
-	const configured = process.env.BRIEF_AUDIO_TTS_PROVIDER?.trim().toLowerCase();
-	if (configured === 'openai' || configured === 'kokoro' || configured === 'auto') {
-		return configured;
-	}
-
-	return hasOpenAiTtsCredentials() ? 'openai' : 'kokoro';
+	return hasOpenRouterTtsCredentials() ? 'openrouter' : 'kokoro';
 }
 
-function getAutoKokoroTimeoutMs(): number {
-	const configured = Number(process.env.BRIEF_AUDIO_AUTO_KOKORO_TIMEOUT_MS);
-	if (Number.isFinite(configured) && configured >= 10_000) {
-		return Math.floor(configured);
-	}
-
-	return DEFAULT_AUTO_KOKORO_TIMEOUT_MS;
+export function resolveBriefAudioProviderForWorker(): BriefAudioProvider {
+	return getProvider();
 }
 
 export async function synthesizeBriefAudioForWorker(
@@ -31,25 +24,18 @@ export async function synthesizeBriefAudioForWorker(
 ): Promise<BriefAudioSynthesisResult> {
 	const provider = getProvider();
 
-	if (provider === 'openai') {
-		return synthesizeBriefAudioWithOpenAI(text);
-	}
-
-	if (provider === 'kokoro') {
-		return synthesizeBriefAudioInChild(text, timeoutMs);
-	}
-
-	try {
-		return await synthesizeBriefAudioInChild(
-			text,
-			Math.min(timeoutMs, getAutoKokoroTimeoutMs())
-		);
-	} catch (error) {
-		if (!hasOpenAiTtsCredentials()) {
-			throw error;
+	if (provider === 'openrouter') {
+		try {
+			return await synthesizeBriefAudioWithOpenRouter(text);
+		} catch (error) {
+			console.warn(
+				'OpenRouter brief audio synthesis failed; falling back to Kokoro TTS:',
+				error
+			);
 		}
-
-		console.warn('Kokoro brief audio synthesis failed; falling back to OpenAI TTS:', error);
-		return synthesizeBriefAudioWithOpenAI(text);
 	}
+
+	const kokoroTimeoutMs =
+		provider === 'openrouter' ? Math.min(timeoutMs, KOKORO_FALLBACK_TIMEOUT_MS) : timeoutMs;
+	return synthesizeBriefAudioInChild(text, kokoroTimeoutMs);
 }

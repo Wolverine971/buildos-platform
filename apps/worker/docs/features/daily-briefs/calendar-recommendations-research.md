@@ -15,6 +15,8 @@ This document is based on local codebase research, not external product research
 - The worker daily brief path now loads a compact calendar window from internal BuildOS data in `apps/worker/src/workers/brief/ontologyBriefDataLoader.ts`.
 - The main daily brief renders a `## Calendar` section in `apps/worker/src/workers/brief/ontologyBriefGenerator.ts`.
 - LLM prompts receive counts and a few next commitments in `apps/worker/src/workers/brief/ontologyPrompts.ts`, not a raw event dump.
+- Calendar source labels now distinguish confirmed current-user Google, legacy Google sync, unconfirmed Google metadata, internal-only rows, and sync issues.
+- Calendar items now carry `lastSyncedAt`, `syncAgeMinutes`, and `syncFreshness`; stale Google counts are included in compact prompt/source counts.
 - The worker has a `sync_calendar` processor, but `apps/worker/src/workers/calendar/calendarSyncWorker.ts` only forwards project event sync jobs to the web app webhook. It is not a general Google Calendar import or refresh.
 - Web-side calendar services already know how to call Google Calendar:
     - `apps/web/src/lib/services/calendar-service.ts` lists events with `singleEvents: true` and can call Google free/busy.
@@ -26,7 +28,7 @@ This document is based on local codebase research, not external product research
 
 ## Recommended Execution Order
 
-1. Tighten source labeling and sync freshness.
+1. Source labeling and sync freshness. **Done in the first implementation slice.**
 2. Add direct/current Google calendar refresh or cache-read.
 3. Add recurrence handling.
 4. Add dense-day hidden summaries.
@@ -124,7 +126,7 @@ Shared project events may have Google metadata from another user. The brief shou
     - `internal`: BuildOS-only.
     - `sync_issue`: intended current-user Google sync failed.
 - Render `Google Calendar` only for `google_current_user` and possibly `google_legacy`.
-- Render `Internal only` or `Shared Google link` for other-user sync depending on desired product language.
+- Render `Google Calendar (unconfirmed)` for Google metadata that is not confirmed for the current user's calendar.
 
 ### Definition Of Done
 
@@ -264,27 +266,27 @@ Only feed derived facts to prompts unless the item itself is one of the first fe
 - What freshness threshold should make a Google label look stale: 6 hours, 12 hours, or 24 hours?
     - Decision: start with 6 hours. Daily briefs are operational, so stale-but-silent calendar data is worse than a conservative stale label.
 - For shared projects, what user-facing wording should represent another collaborator's Google-synced event?
-    - Decision: use `Google link (unconfirmed)` for rows with Google metadata but no current-user Google confirmation. Use `Google Calendar (legacy sync)` for null-user legacy sync rows.
+    - Decision: use `Google Calendar (unconfirmed)` for rows with Google metadata but no current-user Google confirmation. Use `Google Calendar (legacy sync)` for null-user legacy sync rows.
 - Are recurring `onto_events` expected to be materialized before the brief worker runs?
     - Decision: do not assume that yet. Prefer direct Google reads with expanded events first; only add worker-side recurrence expansion if internal recurring events remain missing.
 - Should dense-day hidden summaries be rendered only in the main brief or also in project briefs?
     - Decision: start in the main global brief and prompt summary. Add project-brief hidden summaries only after the global section proves useful.
 
-## Proposed Next Implementation Slice
+## Completed Implementation Slice
 
-The first implementation slice is source-label correctness plus sync freshness:
+The first implementation slice was source-label correctness plus sync freshness:
 
 1. Add sync freshness fields to `CalendarBriefItem`.
 2. Tighten source classification around current-user `onto_event_sync.user_id`.
 3. Render stale/sync issue labels in the main brief.
 4. Add unit tests for current-user, other-user, legacy, stale, and failed sync cases.
 
-This is smaller than live Google refresh and reduces the chance that the current brief makes a misleading claim.
+This was smaller than live Google refresh and reduced the chance that the current brief makes a misleading claim.
 
 ## Implementation Notes: 2026-04-13
 
 - Added `lastSyncedAt`, `syncAgeMinutes`, and `syncFreshness` to calendar brief items.
-- Split Google source labels into confirmed current-user Google, legacy Google sync, unconfirmed Google link, internal-only, and sync issue.
+- Split Google source labels into confirmed current-user Google, legacy Google sync, unconfirmed Google Calendar, internal-only, and sync issue.
 - Added source counts for unconfirmed Google and stale Google items so prompts get compact calendar reliability context without raw event overload.
 - Stored unconfirmed/stale counts in brief metadata for later monitoring.
 - Set the initial stale threshold to 6 hours.

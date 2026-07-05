@@ -9,6 +9,7 @@
 	import ChangeSetReview from '$lib/components/notifications/types/agent-run/ChangeSetReview.svelte';
 	import InboxChangeDetails from '$lib/components/inbox/InboxChangeDetails.svelte';
 	import InboxDecisionControls from '$lib/components/inbox/InboxDecisionControls.svelte';
+	import InboxDismissFeedbackFields from '$lib/components/inbox/InboxDismissFeedbackFields.svelte';
 	import type {
 		AgentChatResolutionAction,
 		DataMutationSummary
@@ -337,11 +338,25 @@
 		selectedIds = next;
 	}
 
+	function updateDismissReason(item: InboxItem, reason: string) {
+		dismissReasonById = { ...dismissReasonById, [item.id]: reason };
+	}
+
+	function updateDismissNote(item: InboxItem, note: string) {
+		dismissNoteById = { ...dismissNoteById, [item.id]: note };
+	}
+
 	function removeItemsFromInbox(itemIds: Iterable<string>) {
 		const ids = new Set(itemIds);
 		if (ids.size === 0) return;
 		items = items.filter((item) => !ids.has(item.id));
 		selectedIds = new Set([...selectedIds].filter((id) => !ids.has(id)));
+		dismissReasonById = Object.fromEntries(
+			Object.entries(dismissReasonById).filter(([id]) => !ids.has(id))
+		);
+		dismissNoteById = Object.fromEntries(
+			Object.entries(dismissNoteById).filter(([id]) => !ids.has(id))
+		);
 		onCountChange?.(items.length);
 	}
 
@@ -607,7 +622,7 @@
 		const notificationId = startInboxDecisionNotification(item, action);
 		removeItemsFromInbox([item.id]);
 		try {
-			const clarification = clarificationFor(item);
+			const clarification = action === 'reject' ? clarificationFor(item) : '';
 			const res = await fetch('/api/inbox/decide', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -974,6 +989,17 @@
 									<p class="mt-1.5 text-[11px] text-muted-foreground">
 										{changes} proposed change{changes === 1 ? '' : 's'}
 									</p>
+								{/if}
+								{#if item.source_type === 'project_suggestion' && canDecide(item)}
+									<InboxDismissFeedbackFields
+										idPrefix={`project-inbox-${item.id}`}
+										reason={dismissReasonById[item.id] ?? ''}
+										note={dismissNoteById[item.id] ?? ''}
+										disabled={pendingIds.has(item.id)}
+										onReasonChange={(reason) =>
+											updateDismissReason(item, reason)}
+										onNoteChange={(note) => updateDismissNote(item, note)}
+									/>
 								{/if}
 								{#if changeSet && canDecide(item)}
 									<div class="mt-3">

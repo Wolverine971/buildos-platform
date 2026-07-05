@@ -2,7 +2,7 @@
 
 # Agentic Chat (Current Implementation)
 
-> Last updated: 2026-06-22
+> Last updated: 2026-07-05
 > Scope: Runtime behavior in `apps/web` (UI + APIs + tools + persistence)
 
 This is the canonical documentation for the chat system currently running in the web app.
@@ -51,7 +51,7 @@ Related APIs used by the modal:
 - `GET /api/chat/sessions/[id]` (resume existing session)
 - `POST /api/chat/sessions/[id]/close` (session finalize + classification trigger)
 - `POST /api/chat/sessions/[id]/classify` (fallback classification queue)
-- `POST /api/agent/v2/prewarm` (enabled in modal; warms prompt context and can ensure a session before first stream turn)
+- `POST /api/agent/v2/prewarm` (enabled in modal; warms prompt context, creates prepared prompt rows, and can bootstrap a session when needed)
 
 ## 3. V2 Request/Response Contract
 
@@ -68,7 +68,7 @@ Request body (current fields):
 - `stream_run_id`
 - `client_turn_id`
 - `voiceNoteGroupId` or `voice_note_group_id`
-- `prewarmedContext` or `prewarmed_context`
+- `prewarmedContext` or `prewarmed_context` (legacy accepted field; unsigned client-carried context is ignored by the live stream route)
 - `preparedPromptKey` or `prepared_prompt_key`
 - `attachments`
 
@@ -76,11 +76,12 @@ Behavior notes:
 
 - Sends `agent_state: thinking` immediately.
 - Validates access for project and daily brief contexts before doing heavy work.
-- Creates or resolves `chat_sessions`.
-- First-turn session identity is now stabilized by `POST /api/agent/v2/prewarm` with `ensure_session: true` before the modal opens a cancellable V2 stream when no session exists yet.
-- Prepared-prompt prewarm is default-on. A valid `preparedPromptKey` can supply the prepared prompt surface and prepared history; otherwise the route falls back through session cache, request prewarm, and fresh context load.
+- Creates or resolves `chat_sessions`. First send can be sessionless only when the client has a matching fresh prepared prompt; otherwise the client bootstraps a session through `/prewarm` with `ensure_session: true` before opening the stream.
+- Prepared-prompt prewarm is default-on. A valid `preparedPromptKey` can supply the prepared prompt surface and prepared history; otherwise the route falls back through session cache and fresh context load.
+- Unsigned request-carried `prewarmedContext` is not a stream cache source.
+- Current-turn Active Domain Signals are overlaid at stream time so prepared prompts do not carry stale turn-specific domain sections.
 - Image attachments are normalized at request parse, then validated by `stream-attachments.ts`; current-turn live vision signs eligible images only after storage/project checks pass.
-- Loads recent `chat_messages` (last N, default 10) and composes compressed history when needed.
+- Loads recent `chat_messages` (last N, default 10) and composes compressed history when needed. Prepared prompt hits reuse prepared history instead.
 - Streams text/tool events over SSE.
 - Persists user + assistant messages (idempotent by `client_turn_id` keys).
 - Emits a lightweight `timing` event before terminal `done` and asynchronously records turn metrics in `timing_metrics`.
@@ -95,12 +96,15 @@ Request body:
 - `entity_id`
 - `projectFocus`
 - `ensure_session` (optional)
+- `prepare_prompt` (optional; defaults to enabled when prepared-prompt prewarm is enabled)
 
 Behavior:
 
 - Warms prompt context for the active focus and returns `prewarmed_context`.
+- Creates a short-lived server-owned `prepared_prompt` by default when prepared-prompt prewarm is enabled.
 - Reuses a fresh session cache when available.
 - When `ensure_session: true`, resolves or creates the matching `chat_session` up front and returns it to the modal.
+- Builds prepared prompt surfaces without turn-specific Active Domain Signals; the stream route overlays those signals after it knows the current user message.
 
 ### 3.2 `POST /api/agent/v2/stream/cancel`
 
@@ -191,6 +195,11 @@ Prepared prompts live in `agentic_chat_prepared_prompts`, keyed by a
 nonce-protected `preparedPromptKey`. Consumption is one-shot: the stream route
 marks the row `consumed_at` before using its prompt surface.
 
+The client may still retain `prewarmed_context` locally after `/prewarm`, but it
+does not send that unsigned context as trusted stream input. Stream context
+comes from a consumed prepared prompt, fresh session metadata cache, or fresh
+server load.
+
 ### 6.4 History composition
 
 Defaults in `history-composer.ts`:
@@ -213,6 +222,15 @@ Tool execution paths:
 - Discovery tools inspect skills/tools.
 - Registry-backed direct tools execute the underlying canonical ops through `ToolExecutionService`.
 - `ChatToolExecutor` dispatches named tools to domain executors.
+
+`ToolExecutionService` is the validation/enrichment layer before
+`ChatToolExecutor`. It normalizes tool arguments, applies schema defaults and
+context-derived `project_id`, maps supported argument aliases, normalizes UUID
+fields, enforces project/entity scope guards, validates schemas, and wraps
+execution with timeout and abort handling. Gateway tools (`skill_load`,
+`tool_search`, `tool_schema`, domain/resource loaders, and Libri discovery)
+use the same enrichment/validation path, but execute locally from canonical
+gateway definitions instead of passing through `ChatToolExecutor`.
 
 Provider selection:
 

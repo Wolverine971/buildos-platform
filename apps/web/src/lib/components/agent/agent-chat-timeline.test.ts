@@ -332,4 +332,89 @@ describe('agent-chat-timeline live messages', () => {
 			zeroResult: true
 		});
 	});
+
+	it('maps live affected-entity metadata into the restored tool timeline shape', () => {
+		const items = timelineItemsFromMessages('session-1', [
+			{
+				id: 'block-1',
+				type: 'thinking_block',
+				content: 'Created task',
+				timestamp: new Date('2026-06-20T12:00:00.000Z'),
+				status: 'completed',
+				activities: [
+					{
+						id: 'activity-1',
+						content: 'Created task',
+						timestamp: new Date('2026-06-20T12:00:00.000Z'),
+						activityType: 'tool_call',
+						status: 'completed',
+						toolCallId: 'call-create',
+						metadata: {
+							toolName: 'create_onto_task',
+							toolCategory: 'ontology',
+							gateway_op: 'onto.task.create',
+							stream_run_id: 'stream-run-1',
+							client_turn_id: 'client-turn-1',
+							turn_run_id: 'turn-run-1',
+							arguments: {
+								title: 'Launch checklist',
+								project_id: 'project-1'
+							},
+							result: {
+								task: {
+									id: 'task-1',
+									title: 'Launch checklist',
+									project_id: 'project-1'
+								}
+							},
+							affected_entities: [
+								{
+									kind: 'task',
+									id: 'task-1',
+									title: 'Launch checklist',
+									project_id: 'project-1',
+									operation: 'created'
+								}
+							],
+							duration_ms: 33,
+							tokens_consumed: 12
+						}
+					}
+				]
+			} as any
+		]);
+
+		const toolItem = items.find((item) => item.kind === 'tool');
+		const changeItem = items.find((item) => item.kind === 'change');
+
+		expect(toolItem).toMatchObject({
+			status: 'completed',
+			turnRunId: 'turn-run-1',
+			streamRunId: 'stream-run-1',
+			clientTurnId: 'client-turn-1',
+			summary: 'Created task: Launch checklist',
+			tool: {
+				name: 'create_onto_task',
+				category: 'ontology',
+				gatewayOp: 'onto.task.create',
+				durationMs: 33,
+				tokensConsumed: 12
+			},
+			entityRefs: [
+				expect.objectContaining({
+					kind: 'task',
+					id: 'task-1',
+					title: 'Launch checklist',
+					projectId: 'project-1',
+					operation: 'created',
+					url: '/projects/project-1?entity=task&entity_id=task-1'
+				})
+			]
+		});
+		expect(changeItem).toMatchObject({
+			kind: 'change',
+			status: 'completed',
+			summary: 'Launch checklist'
+		});
+	});
 });

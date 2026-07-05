@@ -42,7 +42,6 @@ import {
 import {
 	buildHeuristicProjectLoopBrief,
 	buildProjectLoopParentMap,
-	buildProjectLoopSourceFingerprint,
 	buildScopedSuggestionFingerprint,
 	extractProjectLoopSuggestionEntities,
 	loadProjectLoopSuggestionEntityStates,
@@ -68,6 +67,9 @@ function isProjectAuditTriggerReason(
 const MAX_SUGGESTIONS = 25;
 const MAX_AUDIT_CHILD_SUGGESTIONS = 8;
 const PROJECT_LOOP_COST_CAP_USD = 0.35;
+const COMPLETE_AUDIT_SYNTHESIS_COST_CAP_USD = 0.35;
+const COMPLETE_AUDIT_SYNTHESIS_MODEL_USED = 'llm-audit-synthesis-v1';
+const COMPLETE_AUDIT_DETERMINISTIC_MODEL_USED = 'deterministic-audit-v1';
 const PRIOR_DECISION_LOOKBACK_DAYS = 60;
 const COMPLETE_AUDIT_ACTIVITY_LOOKBACK_DAYS = 30;
 const AUDIT_MEMORY_LOOKBACK_DAYS = 90;
@@ -209,6 +211,7 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 	const rawDocsAll: any[] = Array.isArray(payload?.documents) ? payload.documents : [];
 	const rawTasks: any[] = Array.isArray(payload?.tasks) ? payload.tasks : [];
 	const rawGoals: any[] = Array.isArray(payload?.goals) ? payload.goals : [];
+	const rawEdges: any[] = Array.isArray(payload?.edges) ? payload.edges : [];
 	const priorDecisions = await loadPriorDecisions(projectId);
 
 	const parentMap = buildProjectLoopParentMap(projectRow.doc_structure);
@@ -232,15 +235,46 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 		parent_id: parentMap.get(d.id) ?? null
 	}));
 
+	const goalNameById = new Map<string, string>(
+		rawGoals.map((goal) => [
+			goal.id as string,
+			(goal.name as string) ?? (goal.goal as string) ?? 'Untitled goal'
+		])
+	);
+	const goalNamesByTaskId = new Map<string, Set<string>>();
+	for (const edge of rawEdges) {
+		if (edge?.rel !== 'supports_goal') continue;
+		const taskId =
+			edge.src_kind === 'task' ? edge.src_id : edge.dst_kind === 'task' ? edge.dst_id : null;
+		const goalId =
+			edge.src_kind === 'goal' ? edge.src_id : edge.dst_kind === 'goal' ? edge.dst_id : null;
+		if (typeof taskId !== 'string' || typeof goalId !== 'string') continue;
+		const goalName = goalNameById.get(goalId);
+		if (!goalName) continue;
+		const next = goalNamesByTaskId.get(taskId) ?? new Set<string>();
+		next.add(goalName);
+		goalNamesByTaskId.set(taskId, next);
+	}
+
 	const tasks: LoopTask[] = rawTasks
 		.filter((t) => t.state_key !== 'done')
+		.sort((a, b) => {
+			const bMs = parseDateMs(b.updated_at ?? b.created_at) ?? 0;
+			const aMs = parseDateMs(a.updated_at ?? a.created_at) ?? 0;
+			return bMs - aMs || String(a.title ?? '').localeCompare(String(b.title ?? ''));
+		})
 		.slice(0, 20)
 		.map((t) => ({
 			id: t.id,
 			title: t.title ?? 'Untitled',
 			description: t.description ?? null,
+			type_key: t.type_key ?? null,
 			state_key: t.state_key ?? null,
-			updated_at: t.updated_at ?? t.created_at ?? null
+			priority: typeof t.priority === 'number' ? t.priority : null,
+			start_at: t.start_at ?? null,
+			due_at: t.due_at ?? null,
+			updated_at: t.updated_at ?? t.created_at ?? null,
+			goal_names: Array.from(goalNamesByTaskId.get(t.id) ?? []).sort()
 		}));
 
 	return {
@@ -276,6 +310,64 @@ async function failRun(
 	if (error) {
 		console.error(
 			`[ProjectLoops] Failed to persist failed status for run ${runId}: ${error.message}`
+		);
+	}
+}
+
+async function failQueuedRun(runId: string, message: string): Promise<void> {
+	const { error } = await supabase
+		.from('project_loop_runs')
+		.update({ status: 'failed', error_message: message, finished_at: nowIso() })
+		.eq('id', runId)
+		.eq('status', 'queued');
+	if (error) {
+		console.error(
+			`[ProjectLoops] Failed to persist failed status for queued run ${runId}: ${error.message}`
+		);
+	}
+}
+
+async function failCompleteAuditState({
+	runId,
+	auditId,
+	message,
+	runStatuses,
+	auditStatuses
+}: {
+	runId: string;
+	auditId: string;
+	message: string;
+	runStatuses?: string[];
+	auditStatuses?: string[];
+}): Promise<void> {
+	const now = nowIso();
+	const runUpdate = {
+		status: 'failed' as const,
+		error_message: message,
+		finished_at: now
+	};
+	const auditUpdate = {
+		status: 'failed' as const,
+		error_message: message,
+		finished_at: now
+	};
+
+	const runQuery = supabase.from('project_loop_runs').update(runUpdate).eq('id', runId);
+	const auditQuery = supabase.from('project_audits').update(auditUpdate).eq('id', auditId);
+
+	const [runResult, auditResult] = await Promise.all([
+		runStatuses?.length ? runQuery.in('status', runStatuses) : runQuery,
+		auditStatuses?.length ? auditQuery.in('status', auditStatuses) : auditQuery
+	]);
+
+	if (runResult.error) {
+		console.error(
+			`[ProjectAudits] Failed to persist failed status for run ${runId}: ${runResult.error.message}`
+		);
+	}
+	if (auditResult.error) {
+		console.error(
+			`[ProjectAudits] Failed to persist failed status for audit ${auditId}: ${auditResult.error.message}`
 		);
 	}
 }
@@ -339,7 +431,7 @@ type AuditChildSuggestionDraft = {
 		freshness_state: 'fresh';
 		reversible: false;
 		undo_operations: Json;
-		source_fingerprint: string;
+		source_fingerprint: string | null;
 		status: 'pending';
 		sort_order: number;
 	};
@@ -348,6 +440,80 @@ type AuditChildSuggestionDraft = {
 type AuditChildSuggestionResult = {
 	generatedCount: number;
 	unresolvedCount: number;
+	warning?: string;
+};
+
+type CompleteAuditPacket = ReturnType<typeof buildCompleteAuditPacket>;
+
+type RawAuditEvidenceRef = {
+	entity_type?: unknown;
+	entity_id?: unknown;
+	label?: unknown;
+	title?: unknown;
+	reason?: unknown;
+	excerpt?: unknown;
+	updated_at?: unknown;
+};
+
+type RawAuditFinding = {
+	title?: unknown;
+	summary?: unknown;
+	dimension?: unknown;
+	rating?: unknown;
+	evidence_refs?: unknown;
+};
+
+type RawAuditDimensionUpdate = {
+	key?: unknown;
+	rating?: unknown;
+	summary?: unknown;
+	uncertainty?: unknown;
+	recommendations?: unknown;
+	evidence_refs?: unknown;
+};
+
+type RawAuditRisk = {
+	title?: unknown;
+	summary?: unknown;
+	severity?: unknown;
+	dimension?: unknown;
+	evidence_refs?: unknown;
+};
+
+type RawAuditOpenQuestion = {
+	question?: unknown;
+	dimension?: unknown;
+	evidence_refs?: unknown;
+};
+
+type RawAuditRecommendation = {
+	title?: unknown;
+	summary?: unknown;
+	role?: unknown;
+	priority?: unknown;
+	dimension?: unknown;
+	target_entity_type?: unknown;
+	target_entity_id?: unknown;
+	evidence_refs?: unknown;
+};
+
+type RawAuditSynthesisEnvelope = {
+	audit?: {
+		delivery_confidence?: unknown;
+		project_thesis?: unknown;
+		summary?: unknown;
+		top_findings?: unknown;
+		dimension_updates?: unknown;
+		risks?: unknown;
+		open_questions?: unknown;
+		recommendations?: unknown;
+	};
+};
+
+type AuditSynthesisResult = {
+	packet: CompleteAuditPacket;
+	modelUsed: string;
+	costUsd: number;
 	warning?: string;
 };
 
@@ -599,6 +765,66 @@ function recommendationMemoryKey(value: string | null | undefined): string | nul
 		.replace(/[^a-z0-9]+/g, ' ')
 		.trim();
 	return normalized || null;
+}
+
+function asUnknownArray(value: unknown): unknown[] {
+	return Array.isArray(value) ? value : [];
+}
+
+const AUDIT_DIMENSION_KEYS = new Set<ProjectAuditDimensionKey>([
+	'intent_clarity',
+	'documentation_quality',
+	'plan_integrity',
+	'execution_health',
+	'drift_scope_control',
+	'risk_decision_quality',
+	'dependency_readiness',
+	'evidence_freshness'
+]);
+
+function asAuditDimensionKey(value: unknown): ProjectAuditDimensionKey | null {
+	const key = asString(value);
+	return key && AUDIT_DIMENSION_KEYS.has(key as ProjectAuditDimensionKey)
+		? (key as ProjectAuditDimensionKey)
+		: null;
+}
+
+function asAuditRating(value: unknown): ProjectAuditDimension['rating'] | null {
+	const rating = asString(value);
+	return rating === 'green' || rating === 'yellow' || rating === 'red' || rating === 'unknown'
+		? rating
+		: null;
+}
+
+function asDeliveryConfidence(value: unknown): ProjectAuditDeliveryConfidence | null {
+	const confidence = asString(value);
+	return confidence === 'green' ||
+		confidence === 'yellow' ||
+		confidence === 'red' ||
+		confidence === 'unknown'
+		? confidence
+		: null;
+}
+
+function asRecommendationRole(value: unknown): ProjectAuditSuggestionRole | null {
+	const role = asString(value);
+	return role === 'recommended_action' ||
+		role === 'risk_follow_up' ||
+		role === 'cleanup' ||
+		role === 'decision_point'
+		? role
+		: null;
+}
+
+function asRecommendationPriority(value: unknown): 'low' | 'medium' | 'high' | null {
+	const priority = asString(value);
+	return priority === 'low' || priority === 'medium' || priority === 'high' ? priority : null;
+}
+
+function auditEvidenceKey(
+	ref: Pick<ProjectAuditEvidenceRef, 'entity_type' | 'entity_id' | 'label'>
+): string {
+	return `${ref.entity_type}:${ref.entity_id ?? ref.label.toLowerCase()}`;
 }
 
 function buildCompleteAuditPacket(params: {
@@ -905,12 +1131,461 @@ function buildCompleteAuditPacket(params: {
 	};
 }
 
+function buildCompleteAuditEvidenceCatalog(params: {
+	ctx: LoopContext;
+	recentActivity: AuditActivityRow[];
+	packet: CompleteAuditPacket;
+}): ProjectAuditEvidenceRef[] {
+	const refs: ProjectAuditEvidenceRef[] = [
+		...params.packet.evidenceRefs,
+		auditEvidenceRef({
+			entity_type: 'project',
+			entity_id: params.ctx.projectId,
+			label: params.ctx.projectName,
+			reason: 'Project record'
+		}),
+		...params.ctx.goals.slice(0, 10).map((goal) =>
+			auditEvidenceRef({
+				entity_type: 'goal',
+				label: goal.name,
+				reason: goal.description ?? 'Project goal'
+			})
+		),
+		...params.ctx.documents.slice(0, MAX_PROJECT_LOOP_CONTEXT_DOCUMENTS).map((doc) =>
+			auditEvidenceRef({
+				entity_type: 'document',
+				entity_id: doc.id,
+				label: doc.title,
+				reason: doc.state_key ? `Document state: ${doc.state_key}` : 'Project document',
+				updated_at: doc.updated_at
+			})
+		),
+		...params.ctx.tasks.slice(0, 30).map((task) =>
+			auditEvidenceRef({
+				entity_type: 'task',
+				entity_id: task.id,
+				label: task.title,
+				reason: task.state_key ? `Task state: ${task.state_key}` : 'Project task',
+				updated_at: task.updated_at
+			})
+		),
+		...params.recentActivity.slice(0, 30).map((row) =>
+			auditEvidenceRef({
+				entity_type: 'project_log',
+				entity_id: row.entity_id,
+				label: `${row.entity_type ?? 'entity'} ${row.action ?? 'changed'}`,
+				reason: row.created_at ?? undefined
+			})
+		)
+	];
+
+	const seen = new Set<string>();
+	return refs.filter((ref) => {
+		const key = auditEvidenceKey(ref);
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
+}
+
+function describeAuditEvidenceCatalog(catalog: ProjectAuditEvidenceRef[]): string {
+	if (!catalog.length) return '(none)';
+	return catalog
+		.slice(0, 90)
+		.map((ref, index) => {
+			const id = ref.entity_id ? ` id=${ref.entity_id}` : '';
+			const reason = ref.reason ? ` — ${compactAuditText(ref.reason, 120)}` : '';
+			const updated = ref.updated_at ? ` updated=${ref.updated_at}` : '';
+			return `${index + 1}. ${ref.entity_type}${id}: "${ref.label}"${updated}${reason}`;
+		})
+		.join('\n');
+}
+
+function describeAuditScaffold(packet: CompleteAuditPacket): string {
+	return JSON.stringify(
+		{
+			delivery_confidence: packet.deliveryConfidence,
+			project_thesis: packet.projectThesis,
+			summary: packet.summary,
+			dimensions: packet.dimensions.map((dimension) => ({
+				key: dimension.key,
+				rating: dimension.rating,
+				summary: dimension.summary,
+				recommendations: dimension.recommendations ?? []
+			})),
+			top_findings: packet.topFindings,
+			recommendations: packet.recommendations.map((recommendation) => ({
+				title: recommendation.title,
+				priority: recommendation.priority,
+				dimension: recommendation.dimension
+			})),
+			open_questions: packet.openQuestions
+		},
+		null,
+		2
+	);
+}
+
+function sanitizeAuditEvidenceRefs(
+	value: unknown,
+	catalog: ProjectAuditEvidenceRef[]
+): ProjectAuditEvidenceRef[] {
+	const byId = new Map<string, ProjectAuditEvidenceRef>();
+	const byLabel = new Map<string, ProjectAuditEvidenceRef>();
+	for (const ref of catalog) {
+		if (ref.entity_id) byId.set(`${ref.entity_type}:${ref.entity_id}`, ref);
+		byLabel.set(`${ref.entity_type}:${ref.label.toLowerCase()}`, ref);
+	}
+
+	const refs: ProjectAuditEvidenceRef[] = [];
+	const seen = new Set<string>();
+	for (const raw of asUnknownArray(value)) {
+		const record = asRecord(raw) as RawAuditEvidenceRef | null;
+		if (!record) continue;
+		const entityType = asString(record.entity_type);
+		if (!entityType) continue;
+		const entityId = asString(record.entity_id);
+		const label = asString(record.label) ?? asString(record.title);
+		const match =
+			(entityId ? byId.get(`${entityType}:${entityId}`) : null) ??
+			(label ? byLabel.get(`${entityType}:${label.toLowerCase()}`) : null);
+		if (!match) continue;
+		const key = auditEvidenceKey(match);
+		if (seen.has(key)) continue;
+		seen.add(key);
+		refs.push({
+			...match,
+			...(asString(record.reason) ? { reason: asString(record.reason) as string } : {}),
+			...(asString(record.excerpt) ? { excerpt: asString(record.excerpt) as string } : {})
+		});
+	}
+	return refs.slice(0, 6);
+}
+
+function sanitizeAuditFindings(
+	value: unknown,
+	catalog: ProjectAuditEvidenceRef[]
+): Record<string, unknown>[] {
+	return asUnknownArray(value)
+		.map((raw): Record<string, unknown> | null => {
+			const record = asRecord(raw) as RawAuditFinding | null;
+			if (!record) return null;
+			const title = compactAuditText(asString(record.title), 180);
+			const summary = compactAuditText(asString(record.summary), 700);
+			const evidenceRefs = sanitizeAuditEvidenceRefs(record.evidence_refs, catalog);
+			if (!title || !summary || evidenceRefs.length === 0) return null;
+			const dimension = asAuditDimensionKey(record.dimension);
+			const rating = asAuditRating(record.rating);
+			return {
+				title,
+				summary,
+				...(dimension ? { dimension } : {}),
+				...(rating ? { rating } : {}),
+				evidence_refs: evidenceRefs
+			};
+		})
+		.filter((item): item is Record<string, unknown> => Boolean(item))
+		.slice(0, 8);
+}
+
+function sanitizeAuditDimensionUpdates(
+	value: unknown,
+	catalog: ProjectAuditEvidenceRef[]
+): Map<ProjectAuditDimensionKey, Partial<ProjectAuditDimension>> {
+	const updates = new Map<ProjectAuditDimensionKey, Partial<ProjectAuditDimension>>();
+	for (const raw of asUnknownArray(value)) {
+		const record = asRecord(raw) as RawAuditDimensionUpdate | null;
+		if (!record) continue;
+		const key = asAuditDimensionKey(record.key);
+		const summary = compactAuditText(asString(record.summary), 900);
+		const evidenceRefs = sanitizeAuditEvidenceRefs(record.evidence_refs, catalog);
+		if (!key || !summary || evidenceRefs.length === 0) continue;
+		const recommendations = asUnknownArray(record.recommendations)
+			.map((item) => compactAuditText(asString(item), 180))
+			.filter((item): item is string => Boolean(item))
+			.slice(0, 4);
+		updates.set(key, {
+			summary,
+			evidence_refs: evidenceRefs,
+			...(asAuditRating(record.rating) ? { rating: asAuditRating(record.rating)! } : {}),
+			...(compactAuditText(asString(record.uncertainty), 400)
+				? { uncertainty: compactAuditText(asString(record.uncertainty), 400) }
+				: {}),
+			...(recommendations.length ? { recommendations } : {})
+		});
+	}
+	return updates;
+}
+
+function sanitizeAuditRisks(
+	value: unknown,
+	catalog: ProjectAuditEvidenceRef[]
+): Record<string, unknown>[] {
+	return asUnknownArray(value)
+		.map((raw): Record<string, unknown> | null => {
+			const record = asRecord(raw) as RawAuditRisk | null;
+			if (!record) return null;
+			const title = compactAuditText(asString(record.title), 180);
+			const summary = compactAuditText(asString(record.summary), 700);
+			const evidenceRefs = sanitizeAuditEvidenceRefs(record.evidence_refs, catalog);
+			if (!title || !summary || evidenceRefs.length === 0) return null;
+			const severity = asString(record.severity);
+			const dimension = asAuditDimensionKey(record.dimension);
+			return {
+				title,
+				summary,
+				severity:
+					severity === 'low' || severity === 'medium' || severity === 'high'
+						? severity
+						: 'unknown',
+				...(dimension ? { dimension } : {}),
+				evidence_refs: evidenceRefs
+			};
+		})
+		.filter((item): item is Record<string, unknown> => Boolean(item))
+		.slice(0, 8);
+}
+
+function sanitizeAuditOpenQuestions(
+	value: unknown,
+	catalog: ProjectAuditEvidenceRef[]
+): Record<string, unknown>[] {
+	return asUnknownArray(value)
+		.map((raw): Record<string, unknown> | null => {
+			const record = asRecord(raw) as RawAuditOpenQuestion | null;
+			if (!record) return null;
+			const question = compactAuditText(asString(record.question), 260);
+			const evidenceRefs = sanitizeAuditEvidenceRefs(record.evidence_refs, catalog);
+			if (!question || evidenceRefs.length === 0) return null;
+			const dimension = asAuditDimensionKey(record.dimension);
+			return {
+				question,
+				...(dimension ? { dimension } : {}),
+				evidence_refs: evidenceRefs
+			};
+		})
+		.filter((item): item is Record<string, unknown> => Boolean(item))
+		.slice(0, 8);
+}
+
+function sanitizeAuditRecommendations(
+	value: unknown,
+	catalog: ProjectAuditEvidenceRef[]
+): ProjectAuditRecommendation[] {
+	return asUnknownArray(value)
+		.map((raw): ProjectAuditRecommendation | null => {
+			const record = asRecord(raw) as RawAuditRecommendation | null;
+			if (!record) return null;
+			const title = compactAuditText(asString(record.title), 180);
+			const summary = compactAuditText(asString(record.summary), 700);
+			const evidenceRefs = sanitizeAuditEvidenceRefs(record.evidence_refs, catalog);
+			if (!title || !summary || evidenceRefs.length === 0) return null;
+			return {
+				title,
+				summary,
+				evidence_refs: evidenceRefs,
+				...(asRecommendationRole(record.role)
+					? { role: asRecommendationRole(record.role)! }
+					: {}),
+				...(asRecommendationPriority(record.priority)
+					? { priority: asRecommendationPriority(record.priority)! }
+					: {}),
+				...(asAuditDimensionKey(record.dimension)
+					? { dimension: asAuditDimensionKey(record.dimension)! }
+					: {}),
+				...(asString(record.target_entity_type)
+					? { target_entity_type: asString(record.target_entity_type)! }
+					: {}),
+				...(asString(record.target_entity_id)
+					? { target_entity_id: asString(record.target_entity_id)! }
+					: {})
+			};
+		})
+		.filter((item): item is ProjectAuditRecommendation => Boolean(item))
+		.slice(0, 12);
+}
+
+function mergeAuditRecommendations(
+	synthesized: ProjectAuditRecommendation[],
+	deterministic: ProjectAuditRecommendation[]
+): ProjectAuditRecommendation[] {
+	const seen = new Set<string>();
+	const merged: ProjectAuditRecommendation[] = [];
+	for (const recommendation of [...synthesized, ...deterministic]) {
+		const key = recommendationMemoryKey(recommendation.title);
+		if (!key || seen.has(key)) continue;
+		seen.add(key);
+		merged.push(recommendation);
+		if (merged.length >= 12) break;
+	}
+	return merged;
+}
+
+export function applyCompleteAuditSynthesis(
+	packet: CompleteAuditPacket,
+	rawAudit: RawAuditSynthesisEnvelope['audit'],
+	evidenceCatalog: ProjectAuditEvidenceRef[]
+): CompleteAuditPacket {
+	const audit = asRecord(rawAudit);
+	if (!audit) return packet;
+
+	const dimensionUpdates = sanitizeAuditDimensionUpdates(
+		audit.dimension_updates,
+		evidenceCatalog
+	);
+	const dimensions = packet.dimensions.map((dimensionItem) => {
+		const update = dimensionUpdates.get(dimensionItem.key);
+		return update ? { ...dimensionItem, ...update } : dimensionItem;
+	});
+
+	const topFindings = sanitizeAuditFindings(audit.top_findings, evidenceCatalog);
+	const risks = sanitizeAuditRisks(audit.risks, evidenceCatalog);
+	const openQuestions = sanitizeAuditOpenQuestions(audit.open_questions, evidenceCatalog);
+	const recommendations = sanitizeAuditRecommendations(audit.recommendations, evidenceCatalog);
+	const summary = compactAuditText(asString(audit.summary), 1000);
+	const projectThesis = compactAuditText(asString(audit.project_thesis), 700);
+	const deliveryConfidence = asDeliveryConfidence(audit.delivery_confidence);
+	const synthesisCounts = {
+		finding_count: topFindings.length,
+		dimension_update_count: dimensionUpdates.size,
+		risk_count: risks.length,
+		open_question_count: openQuestions.length,
+		recommendation_count: recommendations.length
+	};
+	const hasGroundedSynthesis =
+		synthesisCounts.finding_count +
+			synthesisCounts.dimension_update_count +
+			synthesisCounts.risk_count +
+			synthesisCounts.open_question_count +
+			synthesisCounts.recommendation_count >
+		0;
+	if (!hasGroundedSynthesis) return packet;
+
+	return {
+		...packet,
+		...(deliveryConfidence ? { deliveryConfidence } : {}),
+		...(projectThesis ? { projectThesis } : {}),
+		...(summary ? { summary } : {}),
+		topFindings: topFindings.length ? topFindings : packet.topFindings,
+		dimensions,
+		risks,
+		openQuestions: openQuestions.length ? openQuestions : packet.openQuestions,
+		recommendations: mergeAuditRecommendations(recommendations, packet.recommendations),
+		topActions: mergeAuditRecommendations(recommendations, packet.recommendations).slice(
+			0,
+			5
+		) as unknown as Record<string, unknown>[],
+		changeSummary: {
+			...packet.changeSummary,
+			synthesis_model: COMPLETE_AUDIT_SYNTHESIS_MODEL_USED,
+			...synthesisCounts
+		}
+	};
+}
+
+async function synthesizeCompleteAuditPacket(params: {
+	llm: SmartLLMService;
+	ctx: LoopContext;
+	recentActivity: AuditActivityRow[];
+	packet: CompleteAuditPacket;
+	userId: string;
+	chatSessionId?: string | null;
+	runId: string;
+	auditId: string;
+	onUsage: (event: UsageEvent) => Promise<void>;
+}): Promise<AuditSynthesisResult> {
+	let costUsd = 0;
+	const onUsage = async (event: UsageEvent): Promise<void> => {
+		costUsd += event.totalCost ?? 0;
+		await params.onUsage(event);
+	};
+	const evidenceCatalog = buildCompleteAuditEvidenceCatalog({
+		ctx: params.ctx,
+		recentActivity: params.recentActivity,
+		packet: params.packet
+	});
+	const systemPrompt = [
+		'You are a BuildOS Complete Project Audit reviewer.',
+		'Use only the evidence catalog provided. Do not invent entities, dates, blockers, or decisions.',
+		'Every finding, dimension update, risk, open question, and recommendation MUST cite evidence_refs from the catalog.',
+		'Focus on coherence: duplicated work, missing decisions, overloaded scope, stale evidence, blockers, and unclear dependencies.',
+		'Do not create mutation operations. Recommendations should be review follow-ups, not direct writes.',
+		'If evidence is insufficient, say so as an open question with the closest supporting evidence.',
+		'',
+		'Return ONLY JSON:',
+		'{ "audit": {',
+		'  "delivery_confidence": "green"|"yellow"|"red"|"unknown",',
+		'  "project_thesis": string|null,',
+		'  "summary": string,',
+		'  "top_findings": [{"title": string, "summary": string, "dimension": string, "rating": "green"|"yellow"|"red"|"unknown", "evidence_refs": [{"entity_type": string, "entity_id": string|null, "label": string}]}],',
+		'  "dimension_updates": [{"key": string, "rating": "green"|"yellow"|"red"|"unknown", "summary": string, "uncertainty": string|null, "recommendations": string[], "evidence_refs": [{"entity_type": string, "entity_id": string|null, "label": string}]}],',
+		'  "risks": [{"title": string, "summary": string, "severity": "low"|"medium"|"high", "dimension": string, "evidence_refs": [{"entity_type": string, "entity_id": string|null, "label": string}]}],',
+		'  "open_questions": [{"question": string, "dimension": string, "evidence_refs": [{"entity_type": string, "entity_id": string|null, "label": string}]}],',
+		'  "recommendations": [{"title": string, "summary": string, "role": "recommended_action"|"risk_follow_up"|"cleanup"|"decision_point", "priority": "low"|"medium"|"high", "dimension": string, "target_entity_type": string|null, "target_entity_id": string|null, "evidence_refs": [{"entity_type": string, "entity_id": string|null, "label": string}]}]',
+		'} }'
+	].join('\n');
+	const userPrompt = [
+		`Project: ${params.ctx.projectName}`,
+		`Description: ${params.ctx.projectDescription ?? '(none)'}`,
+		'',
+		'Deterministic audit scaffold:',
+		describeAuditScaffold(params.packet),
+		'',
+		'Evidence catalog:',
+		describeAuditEvidenceCatalog(evidenceCatalog),
+		'',
+		'Recent activity:',
+		params.recentActivity.length
+			? params.recentActivity
+					.slice(0, 30)
+					.map(
+						(row) =>
+							`- ${row.created_at ?? 'unknown'} ${row.entity_type ?? 'entity'}:${row.entity_id ?? 'unknown'} ${row.action ?? 'changed'}`
+					)
+					.join('\n')
+			: '(none)'
+	].join('\n');
+
+	try {
+		const raw = await params.llm.getJSONResponse<RawAuditSynthesisEnvelope>({
+			systemPrompt,
+			userPrompt,
+			userId: params.userId,
+			profile: 'balanced',
+			validation: { retryOnParseError: true, maxRetries: 2 },
+			operationType: 'project_audit_synthesis',
+			projectId: params.ctx.projectId,
+			chatSessionId: params.chatSessionId ?? undefined,
+			metadata: {
+				project_loop: true,
+				project_audit: true,
+				project_loop_run_id: params.runId,
+				project_audit_id: params.auditId,
+				project_loop_generator: 'project_audit_synthesis',
+				onto_project_id: params.ctx.projectId
+			},
+			onUsage
+		});
+		return {
+			packet: applyCompleteAuditSynthesis(params.packet, raw?.audit, evidenceCatalog),
+			modelUsed: COMPLETE_AUDIT_SYNTHESIS_MODEL_USED,
+			costUsd
+		};
+	} catch (error) {
+		return {
+			packet: params.packet,
+			modelUsed: COMPLETE_AUDIT_DETERMINISTIC_MODEL_USED,
+			costUsd,
+			warning: error instanceof Error ? error.message : 'Complete audit LLM synthesis failed'
+		};
+	}
+}
+
 function buildAuditChildSuggestionDrafts(params: {
 	auditId: string;
 	runId: string;
 	projectId: string;
-	packet: ReturnType<typeof buildCompleteAuditPacket>;
-	sourceFingerprint: string;
+	packet: CompleteAuditPacket;
 }): AuditChildSuggestionDraft[] {
 	const fallbackEvidence = params.packet.evidenceRefs
 		.slice(0, 4)
@@ -962,7 +1637,7 @@ function buildAuditChildSuggestionDrafts(params: {
 					freshness_state: 'fresh',
 					reversible: false,
 					undo_operations: [] as unknown as Json,
-					source_fingerprint: params.sourceFingerprint,
+					source_fingerprint: null,
 					status: 'pending',
 					sort_order: index
 				}
@@ -975,8 +1650,7 @@ async function createAuditChildSuggestions(params: {
 	auditId: string;
 	runId: string;
 	projectId: string;
-	packet: ReturnType<typeof buildCompleteAuditPacket>;
-	sourceFingerprint: string;
+	packet: CompleteAuditPacket;
 }): Promise<AuditChildSuggestionResult> {
 	const drafts = buildAuditChildSuggestionDrafts(params);
 	if (!drafts.length) return { generatedCount: 0, unresolvedCount: 0 };
@@ -1160,37 +1834,53 @@ async function processCompleteProjectAuditJob(
 
 	await job.log(`Complete project audit started for project ${projectId} (audit ${auditId})`);
 
-	const { data: claimedRun, error: claimRunError } = await supabase
-		.from('project_loop_runs')
-		.update({ status: 'running', started_at: nowIso() })
-		.eq('id', runId)
-		.eq('status', 'queued')
-		.select('*')
-		.maybeSingle();
-	if (claimRunError) throw new Error(`Failed to claim audit loop run: ${claimRunError.message}`);
-	if (!claimedRun) {
-		await job.log(`Audit loop run ${runId} not claimed; skipping duplicate execution.`);
-		return { success: true, runId, auditId, skipped: true };
-	}
-
-	const { data: claimedAudit, error: claimAuditError } = await supabase
-		.from('project_audits')
-		.update({ status: 'running', started_at: nowIso() })
-		.eq('id', auditId)
-		.eq('status', 'queued')
-		.select('id')
-		.maybeSingle();
-	if (claimAuditError) {
-		await failRun(runId, `Failed to claim project audit: ${claimAuditError.message}`);
-		throw new Error(`Failed to claim project audit: ${claimAuditError.message}`);
-	}
-	if (!claimedAudit) {
-		await job.log(`Project audit ${auditId} not claimed; skipping duplicate execution.`);
-		return { success: true, runId, auditId, skipped: true };
-	}
-
 	try {
-		await job.updateProgress({ current: 1, total: 5, message: 'Loading audit context' });
+		const claimStartedAt = nowIso();
+		const { data: claimedAudit, error: claimAuditError } = await supabase
+			.from('project_audits')
+			.update({ status: 'running', started_at: claimStartedAt })
+			.eq('id', auditId)
+			.eq('loop_run_id', runId)
+			.eq('status', 'queued')
+			.select('id')
+			.maybeSingle();
+		if (claimAuditError) {
+			throw new Error(`Failed to claim project audit: ${claimAuditError.message}`);
+		}
+		if (!claimedAudit) {
+			const message = `Project audit ${auditId} was not queued for run ${runId}; skipping duplicate execution.`;
+			await job.log(message);
+			await failQueuedRun(runId, message);
+			return { success: true, runId, auditId, skipped: true };
+		}
+
+		const { data: claimedRun, error: claimRunError } = await supabase
+			.from('project_loop_runs')
+			.update({ status: 'running', started_at: claimStartedAt })
+			.eq('id', runId)
+			.eq('status', 'queued')
+			.select('*')
+			.maybeSingle();
+		if (claimRunError) {
+			throw new Error(`Failed to claim audit loop run: ${claimRunError.message}`);
+		}
+		if (!claimedRun) {
+			const message = `Project audit ${auditId} was claimed but loop run ${runId} was not queued; failing inconsistent audit/run state.`;
+			await job.log(message);
+			await failCompleteAuditState({
+				runId,
+				auditId,
+				message,
+				runStatuses: ['queued', 'running'],
+				auditStatuses: ['running']
+			});
+			return { success: true, runId, auditId, skipped: true };
+		}
+		const auditRun = claimedRun as Record<string, unknown>;
+		const auditUserId = asString(auditRun.user_id) ?? asString(job.data.userId);
+		const auditChatSessionId = asString(auditRun.chat_session_id);
+
+		await job.updateProgress({ current: 1, total: 6, message: 'Loading audit context' });
 		const ctx = await loadLoopContext(projectId);
 		if (!ctx) {
 			const message = 'Project inactive or archived; complete audit skipped.';
@@ -1207,23 +1897,61 @@ async function processCompleteProjectAuditJob(
 			]);
 			return { success: true, runId, auditId, skipped: true };
 		}
-		const sourceFingerprint = buildProjectLoopSourceFingerprint(ctx);
-
-		await job.updateProgress({ current: 2, total: 5, message: 'Computing audit metrics' });
+		await job.updateProgress({ current: 2, total: 6, message: 'Computing audit metrics' });
 		const [recentActivity, auditMemory] = await Promise.all([
 			loadAuditRecentActivity(projectId),
 			loadAuditMemory(projectId)
 		]);
 
-		await job.updateProgress({ current: 3, total: 5, message: 'Building audit packet' });
-		const packet = buildCompleteAuditPacket({
+		await job.updateProgress({ current: 3, total: 6, message: 'Building audit packet' });
+		const deterministicPacket = buildCompleteAuditPacket({
 			ctx,
 			recentActivity,
 			triggerReason,
 			auditMemory
 		});
+		let synthesisResult: AuditSynthesisResult = {
+			packet: deterministicPacket,
+			modelUsed: COMPLETE_AUDIT_DETERMINISTIC_MODEL_USED,
+			costUsd: 0
+		};
+		if (auditUserId) {
+			await job.updateProgress({ current: 4, total: 6, message: 'Synthesizing audit' });
+			const llm = new SmartLLMService({
+				supabase,
+				appName: 'BuildOS Complete Project Audit Worker'
+			});
+			synthesisResult = await synthesizeCompleteAuditPacket({
+				llm,
+				ctx,
+				recentActivity,
+				packet: deterministicPacket,
+				userId: auditUserId,
+				chatSessionId: auditChatSessionId,
+				runId,
+				auditId,
+				onUsage: async () => undefined
+			});
+			if (synthesisResult.warning) {
+				await job.log(
+					`Complete audit LLM synthesis failed; using deterministic packet: ${synthesisResult.warning}`
+				);
+				console.warn(
+					`[ProjectAudits] Complete audit ${auditId} synthesis failed:`,
+					synthesisResult.warning
+				);
+			}
+			if (synthesisResult.costUsd > COMPLETE_AUDIT_SYNTHESIS_COST_CAP_USD) {
+				await job.log(
+					`Complete audit synthesis cost $${synthesisResult.costUsd.toFixed(4)} exceeded the soft cap $${COMPLETE_AUDIT_SYNTHESIS_COST_CAP_USD.toFixed(2)}.`
+				);
+			}
+		} else {
+			await job.log('Complete audit synthesis skipped: missing audit user id.');
+		}
+		const packet = synthesisResult.packet;
 
-		await job.updateProgress({ current: 4, total: 5, message: 'Creating audit follow-ups' });
+		await job.updateProgress({ current: 5, total: 6, message: 'Creating audit follow-ups' });
 		let childSuggestions: AuditChildSuggestionResult = {
 			generatedCount: 0,
 			unresolvedCount: 0
@@ -1233,8 +1961,7 @@ async function processCompleteProjectAuditJob(
 				auditId,
 				runId,
 				projectId,
-				packet,
-				sourceFingerprint
+				packet
 			});
 		} catch (error) {
 			const warning =
@@ -1249,10 +1976,11 @@ async function processCompleteProjectAuditJob(
 			);
 		}
 
-		await job.updateProgress({ current: 5, total: 5, message: 'Persisting audit packet' });
+		await job.updateProgress({ current: 6, total: 6, message: 'Persisting audit packet' });
 		const now = nowIso();
 		const changeSummary = {
 			...packet.changeSummary,
+			...(synthesisResult.warning ? { synthesis_warning: synthesisResult.warning } : {}),
 			...(childSuggestions.warning
 				? { child_suggestion_warning: childSuggestions.warning }
 				: {})
@@ -1274,8 +2002,8 @@ async function processCompleteProjectAuditJob(
 				recommendations: packet.recommendations as unknown as Json,
 				generated_suggestion_count: childSuggestions.generatedCount,
 				unresolved_suggestion_count: childSuggestions.unresolvedCount,
-				model_used: 'deterministic-audit-v1',
-				cost_usd: 0,
+				model_used: synthesisResult.modelUsed,
+				cost_usd: synthesisResult.costUsd || 0,
 				finished_at: now
 			})
 			.eq('id', auditId);
@@ -1300,7 +2028,7 @@ async function processCompleteProjectAuditJob(
 				status: 'completed',
 				summary: packet.summary,
 				suggestion_count: childSuggestions.generatedCount,
-				cost_usd: 0,
+				cost_usd: synthesisResult.costUsd || 0,
 				finished_at: now
 			})
 			.eq('id', runId);
@@ -1308,8 +2036,6 @@ async function processCompleteProjectAuditJob(
 			throw new Error(`Failed to complete audit loop run: ${runUpdateError.message}`);
 		}
 
-		const auditUserId =
-			asString((claimedRun as Record<string, unknown>).user_id) ?? asString(job.data.userId);
 		if (auditUserId) {
 			const changeSummaryRecord = changeSummary as Record<string, unknown>;
 			captureWorkerEvent(auditUserId, 'project_audit_ready', {
@@ -1326,7 +2052,9 @@ async function processCompleteProjectAuditJob(
 						? changeSummaryRecord.suppressed_recommendation_count
 						: 0,
 				superseded_audit_count: superseded.supersededAuditCount,
-				superseded_suggestion_count: superseded.supersededSuggestionCount
+				superseded_suggestion_count: superseded.supersededSuggestionCount,
+				model_used: synthesisResult.modelUsed,
+				cost_usd: synthesisResult.costUsd
 			});
 		}
 
@@ -1334,17 +2062,7 @@ async function processCompleteProjectAuditJob(
 		return { success: true, runId, auditId };
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Complete project audit failed';
-		const now = nowIso();
-		await Promise.all([
-			supabase
-				.from('project_audits')
-				.update({ status: 'failed', error_message: message, finished_at: now })
-				.eq('id', auditId),
-			supabase
-				.from('project_loop_runs')
-				.update({ status: 'failed', error_message: message, finished_at: now })
-				.eq('id', runId)
-		]);
+		await failCompleteAuditState({ runId, auditId, message });
 		throw error;
 	}
 }

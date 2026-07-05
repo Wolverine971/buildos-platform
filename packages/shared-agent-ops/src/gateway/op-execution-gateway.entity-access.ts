@@ -96,6 +96,13 @@ async function resolveArchivedProjectAccessContext(
 	};
 }
 
+function isProjectInExplicitScope(context: ToolExecutionContext, projectId: string): boolean {
+	if (!Array.isArray(context.scope.project_ids)) {
+		return true;
+	}
+	return context.scope.project_ids.includes(projectId);
+}
+
 export function normalizeEntityKind(value: unknown, fieldName: string): ExternalLinkEntityKind {
 	if (typeof value !== 'string') {
 		throw new ExternalToolGatewayError('VALIDATION_ERROR', `${fieldName} must be a string`);
@@ -123,8 +130,10 @@ export async function loadEntityForAccess(
 	const visible = await loadVisibleProjects(context);
 
 	let query = context.admin.from(table).select(selectColumns).eq('id', entityId);
-	if (ARCHIVABLE_ENTITY_KINDS.has(kind) && !options.includeArchived) {
-		query = applyArchivedFilter(query, options.archived ?? false);
+	if (ARCHIVABLE_ENTITY_KINDS.has(kind)) {
+		query = options.includeArchived
+			? query.is('deleted_at', null)
+			: applyArchivedFilter(query, options.archived ?? false);
 	} else if (kind !== 'metric' && kind !== 'source' && !ARCHIVABLE_ENTITY_KINDS.has(kind)) {
 		query = query.is('deleted_at', null);
 	}
@@ -144,7 +153,11 @@ export async function loadEntityForAccess(
 	try {
 		project = assertVisibleEntityProject(visible.projectMap, projectId);
 	} catch (error) {
-		if (kind === 'project' && options.includeArchived) {
+		if (
+			kind === 'project' &&
+			options.includeArchived &&
+			isProjectInExplicitScope(context, entityId)
+		) {
 			project = await resolveArchivedProjectAccessContext(context, entity);
 		}
 		if (!project) throw error;
