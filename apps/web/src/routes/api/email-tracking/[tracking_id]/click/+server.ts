@@ -4,17 +4,68 @@ import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createLogger } from '@buildos/shared-utils';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { PUBLIC_APP_URL } from '$env/static/public';
+import { captureServerEvent } from '$lib/server/posthog';
+
+function getTemplateData(value: unknown): Record<string, unknown> {
+	return value && typeof value === 'object' && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: {};
+}
+
+function getStringMetadata(metadata: Record<string, unknown>, key: string): string | null {
+	const value = metadata[key];
+	return typeof value === 'string' && value.trim() ? value : null;
+}
+
+function getAllowedAppOrigin(): string {
+	try {
+		return new URL(PUBLIC_APP_URL || 'https://build-os.com').origin;
+	} catch {
+		return 'https://build-os.com';
+	}
+}
+
+function getSafeRedirectDestination(destination: string): string | null {
+	if (
+		destination.startsWith('/') &&
+		!destination.startsWith('//') &&
+		!destination.startsWith('/\\')
+	) {
+		return destination;
+	}
+
+	try {
+		const destinationUrl = new URL(destination);
+		if (destinationUrl.origin === getAllowedAppOrigin()) {
+			return destinationUrl.toString();
+		}
+	} catch {
+		return null;
+	}
+
+	return null;
+}
 
 export const GET: RequestHandler = async ({ params, url }) => {
 	const supabase = createAdminSupabaseClient();
 	const baseLogger = createLogger('web:api:email-tracking', supabase);
 	const tracking_id = params.tracking_id;
-	const destination = url.searchParams.get('url');
+	const requestedDestination = url.searchParams.get('url');
 
 	// If no destination URL provided, redirect to home
-	if (!destination) {
+	if (!requestedDestination) {
 		baseLogger.warn('No destination URL for click tracking', {
 			trackingId: tracking_id
+		});
+		throw redirect(302, '/');
+	}
+
+	const destination = getSafeRedirectDestination(requestedDestination);
+	if (!destination) {
+		baseLogger.warn('Blocked unsafe email click redirect destination', {
+			trackingId: tracking_id,
+			destination: requestedDestination.substring(0, 100)
 		});
 		throw redirect(302, '/');
 	}
@@ -29,8 +80,8 @@ export const GET: RequestHandler = async ({ params, url }) => {
 				template_data,
 				email_recipients (
 					id,
-					recipient_email,
-					clicked_at
+					recipient_id,
+					recipient_email
 				)
 			`
 			)
@@ -55,7 +106,8 @@ export const GET: RequestHandler = async ({ params, url }) => {
 
 		// Try to extract correlation ID from notification delivery
 		let correlationId: string | undefined;
-		const deliveryId = (email.template_data as any)?.delivery_id;
+		const templateData = getTemplateData(email.template_data);
+		const deliveryId = getStringMetadata(templateData, 'delivery_id');
 		if (deliveryId) {
 			const { data: delivery } = await supabase
 				.from('notification_deliveries')
@@ -97,30 +149,45 @@ export const GET: RequestHandler = async ({ params, url }) => {
 
 		logger.info('Email click tracking requested');
 
+		const recipients = Array.isArray(email.email_recipients) ? email.email_recipients : [];
+		const recipientIds = recipients
+			.map((recipient: { id?: string }) => recipient.id)
+			.filter((id: unknown): id is string => typeof id === 'string' && id.length > 0);
+		const clickedRecipientIds = new Set<string>();
+
+		if (recipientIds.length > 0) {
+			const { data: priorClicks, error: priorClicksError } = await (
+				supabase.from('email_tracking_events') as any
+			)
+				.select('recipient_id')
+				.eq('email_id', email.id)
+				.eq('event_type', 'clicked')
+				.in('recipient_id', recipientIds);
+
+			if (priorClicksError) {
+				logger.error('Failed to load prior click tracking events', priorClicksError, {
+					emailId: email.id
+				});
+			} else if (Array.isArray(priorClicks)) {
+				for (const click of priorClicks) {
+					if (typeof click.recipient_id === 'string') {
+						clickedRecipientIds.add(click.recipient_id);
+					}
+				}
+			}
+		}
+
 		// Update each recipient's click tracking
-		if (email.email_recipients && email.email_recipients.length > 0) {
-			for (const recipient of email.email_recipients) {
+		if (recipients.length > 0) {
+			for (const recipient of recipients) {
 				const now = new Date().toISOString();
-				const isFirstClick = !recipient.clicked_at;
+				const isFirstClick = !clickedRecipientIds.has(recipient.id);
 
 				logger.info('Tracking email click', {
 					recipientEmail: recipient.recipient_email,
 					recipientId: recipient.id,
 					isFirstClick
 				});
-
-				// Update recipient click tracking
-				const { error: updateError } = await (supabase.from('email_recipients') as any)
-					.update({
-						clicked_at: recipient.clicked_at || now
-					})
-					.eq('id', recipient.id);
-
-				if (updateError) {
-					logger.error('Failed to update recipient click tracking', updateError, {
-						recipientId: recipient.id
-					});
-				}
 
 				// Log tracking event
 				const { error: eventError } = await supabase.from('email_tracking_events').insert({
@@ -139,6 +206,27 @@ export const GET: RequestHandler = async ({ params, url }) => {
 						recipientId: recipient.id
 					});
 				}
+
+				await captureServerEvent(
+					recipient.recipient_id || recipient.recipient_email,
+					'email_clicked',
+					{
+						email_id: email.id,
+						email_recipient_id: recipient.id,
+						tracking_id: tracking_id,
+						delivery_id: deliveryId,
+						event_type: getStringMetadata(templateData, 'event_type'),
+						category: getStringMetadata(templateData, 'category'),
+						brief_id: getStringMetadata(templateData, 'brief_id'),
+						brief_date: getStringMetadata(templateData, 'brief_date'),
+						engagement_stage:
+							getStringMetadata(templateData, 'engagement_stage') ||
+							getStringMetadata(templateData, 'engagementStage') ||
+							'standard',
+						is_first_click: isFirstClick,
+						clicked_url: destination
+					}
+				);
 			}
 
 			// NEW: Update notification_deliveries if this email is tied to a notification

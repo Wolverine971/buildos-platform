@@ -2,7 +2,7 @@
 
 # Daily Brief Voice Narration - Spec
 
-**Status:** Draft, revised after code review
+**Status:** Implemented alpha, revised after OpenRouter TTS migration
 **Author:** DJ (with Claude), reviewed and revised by Codex
 **Date:** 2026-05-13
 **Target rollout:** Admin-gated alpha -> wider opt-in beta
@@ -11,7 +11,9 @@
 
 ## 1. Summary
 
-Add AI-narrated audio playback to BuildOS daily briefs. When an **ontology daily brief** is generated, the worker enqueues a separate `generate_brief_audio` job. That job generates an MP3 narration with Kokoro-TTS using the `am_onyx` voice, uploads it to private Supabase Storage, and writes audio metadata back to `ontology_daily_briefs`.
+Add AI-narrated audio playback to BuildOS daily briefs. When an **ontology daily brief** is generated, the worker enqueues a separate `generate_brief_audio` job. That job generates an MP3 narration through OpenRouter-hosted TTS by default, uploads it to private Supabase Storage, and writes audio metadata back to `ontology_daily_briefs`.
+
+Current production behavior uses the existing OpenRouter credential (`PRIVATE_OPENROUTER_API_KEY` or `OPENROUTER_API_KEY`) with fixed audio defaults: `openai/gpt-audio-mini`, voice `alloy`, MP3 output, and a 60s provider request timeout. If OpenRouter credentials are missing, or the OpenRouter synthesis call fails during a job, the worker falls back to local Kokoro/ONNX synthesis with fixed defaults (`onnx-community/Kokoro-82M-v1.0-ONNX`, voice `am_onyx`). Brief audio intentionally has no per-feature environment variables for provider, model, voice, format, text length, or timeout.
 
 For alpha, only admin users can opt in. Audio generation is opt-in per user, not automatic.
 
@@ -20,7 +22,7 @@ Important correction from review: the active daily brief flow uses `ontology_dai
 ## 2. Goals
 
 - Users can hear their daily brief read aloud in a high-quality AI voice.
-- Audio generation runs on BuildOS-controlled worker infra with no third-party TTS API spend.
+- Audio generation runs asynchronously from BuildOS worker infra using the existing OpenRouter provider account, with a bounded local Kokoro fallback.
 - Audio generation is async and does not block brief creation or notification delivery.
 - Audio is admin-gated for alpha so quality, memory, queue latency, and UX can be validated.
 - The Listen UI only appears when a ready audio file exists for the current brief content.
@@ -41,18 +43,18 @@ Important correction from review: the active daily brief flow uses `ontology_dai
 | --------------------- | ------------------------------------------------------------------------- |
 | Canonical brief table | `ontology_daily_briefs`                                                   |
 | Narrated text source  | `ontology_daily_briefs.executive_summary` fallback to `llm_analysis`      |
-| Engine                | `kokoro-js` alpha smoke test against Kokoro v1.0 ONNX                     |
-| Model                 | `onnx-community/Kokoro-82M-v1.0-ONNX`                                     |
-| Voice                 | `am_onyx`                                                                 |
-| Audio format          | MP3, 64 kbps mono                                                         |
+| Engine                | OpenRouter-hosted TTS default; local Kokoro/ONNX fallback                 |
+| Model                 | `openai/gpt-audio-mini`; fallback `onnx-community/Kokoro-82M-v1.0-ONNX`   |
+| Voice                 | `alloy`; fallback `am_onyx`                                               |
+| Audio format          | MP3                                                                       |
 | Storage bucket        | `briefs-audio`                                                            |
 | Storage path          | `{user_id}/{ontology_daily_brief_id}.mp3`                                 |
 | Auth on playback      | Server-created Supabase signed URL after row ownership check              |
 | Gating                | `users.is_admin = true` during alpha                                      |
 | Opt-in                | `users.voice_narration_enabled = true`, default `false`                   |
 | Generation timing     | Separate `generate_brief_audio` queue job after brief generation succeeds |
-| Audio concurrency     | One TTS synthesis at a time for alpha                                     |
-| Alpha deployment      | Existing worker, one Railway replica, in-process audio serialization      |
+| Audio concurrency     | Normal queue concurrency for OpenRouter; one local fallback synthesis     |
+| Alpha deployment      | Existing worker, one Railway replica, bounded local fallback              |
 | MP3 encoder           | `@breezystack/lamejs`; license accepted for alpha                         |
 
 ## 5. Current Repo Constraints
@@ -70,11 +72,13 @@ The implementation has to respect these current codebase facts:
 
 ## 6. Architecture
 
-### 6.1 Node vs Python
+### 6.1 OpenRouter vs Local Kokoro
 
-Use `kokoro-js` first. It keeps the worker in Node, avoids Python packaging in the alpha path, and supports `KokoroTTS.from_pretrained(...)` with Node `device: 'cpu'`.
+Use OpenRouter-hosted TTS first. It keeps the audio path on the same provider account already used by the app, avoids direct OpenAI billing/quota failures, and prevents the worker from loading a large ONNX model for the common path.
 
-The smoke test must verify:
+Use `kokoro-js` only as the local fallback. It keeps the worker in Node, avoids Python packaging in the fallback path, and supports `KokoroTTS.from_pretrained(...)` with Node `device: 'cpu'`. The fallback remains intentionally bounded because local synthesis can exceed the CPU/memory profile of small Railway workers.
+
+The local fallback smoke test must verify:
 
 - `tts.list_voices()` or the exposed voice metadata includes `am_onyx`.
 - `tts.generate(...)` returns a `RawAudio` object from `@huggingface/transformers`.
@@ -82,7 +86,7 @@ The smoke test must verify:
 - The generated voice quality is acceptable compared with the local Python sample.
 - Cold model download works in the same runtime family that Railway will use.
 
-Fallback remains a Python sidecar if `kokoro-js` quality, memory, model download behavior, or audio extraction is not reliable.
+A Python sidecar remains an option only if `kokoro-js` quality, memory, model download behavior, or audio extraction is not reliable enough for fallback use.
 
 ### 6.2 Component Diagram
 
@@ -590,9 +594,9 @@ Also add `generate_brief_audio` to the job type log list.
 
 Alpha must not let multiple Kokoro syntheses run at once.
 
-Implementation update for the Railway Hobby alpha: local Kokoro/ONNX synthesis can exceed the queue timeout and is not reliable enough as the default provider. The worker should support `BRIEF_AUDIO_TTS_PROVIDER=openai | kokoro | auto` and default to backend OpenAI TTS when `PRIVATE_OPENAI_API_KEY` or `OPENAI_API_KEY` is configured. Keep Kokoro available behind `BRIEF_AUDIO_TTS_PROVIDER=kokoro` for a larger worker or a later dedicated audio service.
+Implementation update: the worker uses OpenRouter-hosted TTS by default via the existing `PRIVATE_OPENROUTER_API_KEY`. Brief audio does not expose per-feature env knobs for model, voice, format, provider, or timeout. The current fixed defaults are OpenRouter `openai/gpt-audio-mini`, voice `alloy`, MP3 output, and a 60s request timeout.
 
-The OpenAI alpha path must still generate and upload a real MP3 from the worker, not use browser speech synthesis. Use `BRIEF_AUDIO_OPENAI_MODEL=gpt-4o-mini-tts` and `BRIEF_AUDIO_OPENAI_VOICE=onyx` by default. This is not the same voice embedding as Kokoro `am_onyx`, but it avoids the stuck "Generating audio narration" state on Hobby infrastructure and gives users a backend-generated play button immediately.
+If OpenRouter credentials are missing, or if OpenRouter synthesis fails during a job, the worker falls back to local Kokoro/ONNX with fixed defaults (`onnx-community/Kokoro-82M-v1.0-ONNX`, voice `am_onyx`). This fallback is bounded because local synthesis can exceed Railway Hobby limits.
 
 Locked alpha deployment:
 

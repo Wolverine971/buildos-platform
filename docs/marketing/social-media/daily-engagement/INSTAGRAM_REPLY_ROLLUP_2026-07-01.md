@@ -2,7 +2,7 @@
 
 # Instagram Reply Queue — Rollup (2026-07-01)
 
-**Supersedes:** `tasker/02-instagram-reply-queue.md` (closed 2026-07-01, rolled up here)
+**Supersedes:** former Tasker Instagram reply tracker (closed 2026-07-01, rolled up here)
 **Sources:** 6/24 replies doc, 6/25–7/01 warmups, `comment-log.md`
 **One-line status:** Sourcing is healthy; **nothing has posted since 2026-05-21 (~19 consecutive queues, zero touches)**, and as of 7/01 the @djwayne3 session is logged out — nothing CAN post until DJ re-logs in.
 

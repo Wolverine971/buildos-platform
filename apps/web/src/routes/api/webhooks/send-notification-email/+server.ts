@@ -26,6 +26,9 @@ interface NotificationEmailRequest {
 	deliveryId: string;
 	eventId: string;
 	eventType?: string;
+	briefId?: string | null;
+	briefDate?: string | null;
+	engagementStage?: string | null;
 }
 
 const notificationEmailRequestSchema = z
@@ -40,9 +43,69 @@ const notificationEmailRequestSchema = z
 		emailRecordId: z.string().optional(),
 		deliveryId: z.string().min(1),
 		eventId: z.string().min(1),
-		eventType: z.string().optional()
+		eventType: z.string().optional(),
+		briefId: z.string().nullable().optional(),
+		briefDate: z.string().nullable().optional(),
+		engagementStage: z.string().nullable().optional()
 	})
 	.strict();
+
+const SENT_EMAIL_STATUSES = ['sent', 'delivered', 'opened', 'clicked'] as const;
+
+type SentNotificationEmail = {
+	id: string;
+	status: string | null;
+	tracking_id: string | null;
+	sent_at: string | null;
+};
+
+function isSentEmailStatus(status: string | null | undefined): boolean {
+	return SENT_EMAIL_STATUSES.includes(status as (typeof SENT_EMAIL_STATUSES)[number]);
+}
+
+async function findSentEmailForDelivery(
+	supabase: ReturnType<typeof createAdminSupabaseClient>,
+	deliveryId: string,
+	emailRecordId?: string
+): Promise<SentNotificationEmail | null> {
+	if (emailRecordId) {
+		const { data, error } = await supabase
+			.from('emails')
+			.select('id, status, tracking_id, sent_at')
+			.eq('id', emailRecordId)
+			.maybeSingle();
+
+		if (error) {
+			console.error('[NotificationEmailWebhook] Failed to check email idempotency row', {
+				emailRecordId,
+				deliveryId,
+				error: error.message
+			});
+		}
+
+		if (data && isSentEmailStatus(data.status)) {
+			return data;
+		}
+	}
+
+	const { data, error } = await (supabase.from('emails') as any)
+		.select('id, status, tracking_id, sent_at')
+		.contains('template_data', { delivery_id: deliveryId })
+		.in('status', SENT_EMAIL_STATUSES)
+		.order('sent_at', { ascending: false, nullsFirst: false })
+		.limit(1);
+
+	if (error) {
+		console.error('[NotificationEmailWebhook] Failed to check delivery idempotency rows', {
+			deliveryId,
+			error: error.message
+		});
+		return null;
+	}
+
+	const firstRecord = Array.isArray(data) ? data[0] : data;
+	return firstRecord ?? null;
+}
 
 export const POST: RequestHandler = async ({ request }) => {
 	const startTime = Date.now();
@@ -87,6 +150,25 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Create Supabase client and EmailService
 		const supabase = createAdminSupabaseClient();
+
+		const existingSentEmail = await findSentEmailForDelivery(
+			supabase,
+			body.deliveryId,
+			body.emailRecordId
+		);
+		if (existingSentEmail) {
+			const duration = Date.now() - startTime;
+			console.log(
+				`[NotificationEmailWebhook] Email already sent for delivery ${body.deliveryId}; skipping Gmail send`
+			);
+			return ApiResponse.success({
+				success: true,
+				messageId: null,
+				emailId: existingSentEmail.id,
+				skipped: 'already_sent',
+				duration
+			});
+		}
 
 		// ✅ TRIPLE-CHECK USER PREFERENCES
 		// Final safety check before sending via SMTP
@@ -149,6 +231,9 @@ export const POST: RequestHandler = async ({ request }) => {
 				delivery_id: body.deliveryId,
 				event_id: body.eventId,
 				event_type: body.eventType,
+				brief_id: body.briefId,
+				brief_date: body.briefDate,
+				engagement_stage: body.engagementStage,
 				notification_type: 'system',
 				sent_via: 'webhook',
 				// Preserve worker-generated tracking ID so the webhook send path

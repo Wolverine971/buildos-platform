@@ -94,6 +94,18 @@ export interface SMSStats {
 	avg_sms_delivery_time_seconds: number;
 }
 
+export interface DailyBriefEngagementMetric {
+	week_start: string;
+	engagement_stage: 'standard' | 'reengagement' | 'dormant' | string;
+	sends: number;
+	opens: number;
+	clicks: number;
+	open_rate: number | null;
+	click_rate: number | null;
+	reactivated_7d: number;
+	reactivation_rate_7d: number | null;
+}
+
 export class NotificationAnalyticsService {
 	/**
 	 * Get overview metrics
@@ -214,6 +226,25 @@ export class NotificationAnalyticsService {
 
 		const data = await response.json();
 		return data.data;
+	}
+
+	/**
+	 * Get daily brief email engagement by week and engagement stage
+	 */
+	async getDailyBriefEngagement(
+		timeframe: Timeframe = '30d'
+	): Promise<DailyBriefEngagementMetric[]> {
+		const response = await fetch(
+			`/api/admin/notifications/analytics/daily-brief-engagement?timeframe=${timeframe}`
+		);
+
+		if (!response.ok) {
+			const error = await response.json();
+			throw new Error(error.message || 'Failed to fetch daily brief engagement');
+		}
+
+		const data = await response.json();
+		return data.data.metrics;
 	}
 }
 

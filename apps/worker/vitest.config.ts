@@ -1,5 +1,6 @@
 // apps/worker/vitest.config.ts
 import { defineConfig } from 'vitest/config';
+import { coverageConfig } from '../../vitest.coverage';
 
 export default defineConfig({
 	test: {
@@ -12,7 +13,8 @@ export default defineConfig({
 			'**/node_modules/**',
 			'**/dist/**',
 			'**/tests/integration/**' // Skip integration tests by default
-		]
+		],
+		coverage: coverageConfig(['src/**/*.ts'])
 	},
 	resolve: {
 		alias: {

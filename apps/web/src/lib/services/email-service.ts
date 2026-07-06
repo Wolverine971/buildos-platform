@@ -451,7 +451,7 @@ export class EmailService {
 		return `${textBody.trimEnd()}
 
 ${message}
-${unsubscribeUrl}`;
+${unsubscribeUrl}${this.getPostalAddressText()}`;
 	}
 
 	private rewriteLinksForTracking(html: string, trackingId: string): string {
@@ -506,6 +506,7 @@ ${unsubscribeUrl}`;
 			<p style="font-size: 12px; line-height: 1.5; color: #6B625C;">
 				${message}
 				<a href="${this.escapeHtml(unsubscribeUrl)}" style="color: #6B625C;">here</a>.
+				${this.getPostalAddressHtml()}
 			</p>
 		`;
 
@@ -577,6 +578,25 @@ ${unsubscribeUrl}`;
 		}
 
 		return null;
+	}
+
+	private getPostalAddress(): string | null {
+		const postalAddress = env.PRIVATE_POSTAL_ADDRESS?.trim();
+		return postalAddress || null;
+	}
+
+	private getPostalAddressText(): string {
+		const postalAddress = this.getPostalAddress();
+		return postalAddress ? `\n\nBuildOS mailing address:\n${postalAddress}` : '';
+	}
+
+	private getPostalAddressHtml(): string {
+		const postalAddress = this.getPostalAddress();
+		if (!postalAddress) {
+			return '';
+		}
+
+		return `<br /><span>BuildOS mailing address: ${this.escapeHtml(postalAddress)}</span>`;
 	}
 
 	private buildOptOutHeaders({

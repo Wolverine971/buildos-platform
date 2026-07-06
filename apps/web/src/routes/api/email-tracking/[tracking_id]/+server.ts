@@ -3,6 +3,18 @@
 import type { RequestHandler } from './$types';
 import { createLogger } from '@buildos/shared-utils';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { captureServerEvent } from '$lib/server/posthog';
+
+function getTemplateData(value: unknown): Record<string, unknown> {
+	return value && typeof value === 'object' && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: {};
+}
+
+function getStringMetadata(metadata: Record<string, unknown>, key: string): string | null {
+	const value = metadata[key];
+	return typeof value === 'string' && value.trim() ? value : null;
+}
 
 export const GET: RequestHandler = async ({ params, request }) => {
 	const supabase = createAdminSupabaseClient();
@@ -41,6 +53,7 @@ export const GET: RequestHandler = async ({ params, request }) => {
 				template_data,
 				email_recipients (
 					id,
+					recipient_id,
 					recipient_email,
 					opened_at,
 					open_count,
@@ -69,7 +82,8 @@ export const GET: RequestHandler = async ({ params, request }) => {
 
 		// Try to extract correlation ID from notification delivery
 		let correlationId: string | undefined;
-		const deliveryId = (email.template_data as any)?.delivery_id;
+		const templateData = getTemplateData(email.template_data);
+		const deliveryId = getStringMetadata(templateData, 'delivery_id');
 		if (deliveryId) {
 			const { data: delivery } = await supabase
 				.from('notification_deliveries')
@@ -156,6 +170,27 @@ export const GET: RequestHandler = async ({ params, request }) => {
 						recipientId: recipient.id
 					});
 				}
+
+				await captureServerEvent(
+					recipient.recipient_id || recipient.recipient_email,
+					'email_opened',
+					{
+						email_id: email.id,
+						email_recipient_id: recipient.id,
+						tracking_id: tracking_id,
+						delivery_id: deliveryId,
+						event_type: getStringMetadata(templateData, 'event_type'),
+						category: getStringMetadata(templateData, 'category'),
+						brief_id: getStringMetadata(templateData, 'brief_id'),
+						brief_date: getStringMetadata(templateData, 'brief_date'),
+						engagement_stage:
+							getStringMetadata(templateData, 'engagement_stage') ||
+							getStringMetadata(templateData, 'engagementStage') ||
+							'standard',
+						is_first_open: isFirstOpen,
+						open_count: (recipient.open_count || 0) + 1
+					}
+				);
 			}
 
 			// NEW: Update notification_deliveries if this email is tied to a notification

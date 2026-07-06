@@ -2,6 +2,7 @@
 import { defineConfig } from 'vitest/config';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { fileURLToPath } from 'node:url';
+import { coverageConfig } from '../../vitest.coverage';
 
 const sharedAgentOpsSrc = (sub: string) =>
 	fileURLToPath(new URL(`../../packages/shared-agent-ops/src/${sub}`, import.meta.url));
@@ -50,6 +51,7 @@ export default defineConfig({
 		// Suppress console output during tests for cleaner output
 		silent: false, // Set to true to suppress all console output
 		// Or use reporters for cleaner output
-		reporters: process.env.CI ? ['default'] : ['default']
+		reporters: process.env.CI ? ['default'] : ['default'],
+		coverage: coverageConfig(['src/**/*.{js,ts,svelte}'])
 	}
 });

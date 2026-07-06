@@ -206,6 +206,30 @@ describe('EmailService lifecycle compliance', () => {
 		expect(mailOptions.html).toContain('/unsubscribe');
 	});
 
+	it('adds the configured postal address to opt-out footers', async () => {
+		privateEnv.PRIVATE_POSTAL_ADDRESS = 'BuildOS, 123 Example St, New York, NY 10001';
+		const service = new EmailService(createSupabaseMock() as any);
+
+		const result = await service.sendEmail({
+			to: 'user@example.com',
+			subject: 'BuildOS Daily Brief',
+			body: 'Your brief is ready.',
+			html: '<p>Your brief is ready.</p>',
+			metadata: {
+				category: 'daily_brief',
+				event_type: 'brief.completed',
+				campaign_type: 'daily_brief'
+			}
+		});
+
+		expect(result.success).toBe(true);
+		const mailOptions = sendMailMock.mock.calls[0]?.[0];
+		expect(mailOptions.text).toContain('BuildOS, 123 Example St, New York, NY 10001');
+		expect(mailOptions.html).toContain(
+			'BuildOS mailing address: BuildOS, 123 Example St, New York, NY 10001'
+		);
+	});
+
 	it('routes lifecycle emails to the local log sink without calling Gmail', async () => {
 		privateEnv.PRIVATE_LIFECYCLE_EMAIL_SINK = 'log';
 		const consoleInfo = vi.spyOn(console, 'info').mockImplementation(() => undefined);

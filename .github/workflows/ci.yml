@@ -43,5 +43,17 @@ jobs:
             - name: Lint
               run: pnpm turbo lint
 
-            - name: Test
-              run: pnpm turbo test:run
+            - name: Test coverage
+              run: pnpm turbo test:coverage
+
+            - name: Upload coverage artifacts
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: coverage-reports
+                  path: |
+                      apps/web/coverage/**
+                      apps/worker/coverage/**
+                      packages/*/coverage/**
+                  if-no-files-found: warn
+                  retention-days: 14

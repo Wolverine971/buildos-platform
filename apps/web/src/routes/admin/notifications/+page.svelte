@@ -17,7 +17,8 @@
 		type ChannelMetrics,
 		type EventMetrics,
 		type FailedDelivery,
-		type SMSStats
+		type SMSStats,
+		type DailyBriefEngagementMetric
 	} from '$lib/services/notification-analytics.service';
 	import { notificationTestService } from '$lib/services/notification-test.service';
 	import { toastService } from '$lib/stores/toast.store';
@@ -34,6 +35,7 @@
 	let eventMetrics = $state<EventMetrics[]>([]);
 	let failures = $state<FailedDelivery[]>([]);
 	let smsStats = $state<SMSStats | null>(null);
+	let dailyBriefEngagement = $state<DailyBriefEngagementMetric[]>([]);
 
 	function formatTimeframeLabel(value: Timeframe): string {
 		const labels: Record<Timeframe, string> = {
@@ -46,6 +48,22 @@
 	}
 
 	const timeframeLabel = $derived(formatTimeframeLabel(timeframe));
+	const dailyBriefTotals = $derived(
+		dailyBriefEngagement.reduce(
+			(totals, metric) => ({
+				sends: totals.sends + Number(metric.sends || 0),
+				opens: totals.opens + Number(metric.opens || 0),
+				clicks: totals.clicks + Number(metric.clicks || 0),
+				reactivated: totals.reactivated + Number(metric.reactivated_7d || 0)
+			}),
+			{ sends: 0, opens: 0, clicks: 0, reactivated: 0 }
+		)
+	);
+	const dailyBriefRates = $derived({
+		open: calculateRate(dailyBriefTotals.opens, dailyBriefTotals.sends),
+		click: calculateRate(dailyBriefTotals.clicks, dailyBriefTotals.sends),
+		reactivation: calculateRate(dailyBriefTotals.reactivated, dailyBriefTotals.sends)
+	});
 
 	onMount(() => {
 		void loadAnalytics();
@@ -74,13 +92,15 @@
 		error = null;
 
 		try {
-			[overview, channelMetrics, eventMetrics, failures, smsStats] = await Promise.all([
-				notificationAnalyticsService.getOverview(timeframe),
-				notificationAnalyticsService.getChannelPerformance(timeframe),
-				notificationAnalyticsService.getEventBreakdown(timeframe),
-				notificationAnalyticsService.getFailures(timeframe, 50),
-				notificationAnalyticsService.getSMSStats(timeframe)
-			]);
+			[overview, channelMetrics, eventMetrics, failures, smsStats, dailyBriefEngagement] =
+				await Promise.all([
+					notificationAnalyticsService.getOverview(timeframe),
+					notificationAnalyticsService.getChannelPerformance(timeframe),
+					notificationAnalyticsService.getEventBreakdown(timeframe),
+					notificationAnalyticsService.getFailures(timeframe, 50),
+					notificationAnalyticsService.getSMSStats(timeframe),
+					notificationAnalyticsService.getDailyBriefEngagement(timeframe)
+				]);
 		} catch (err) {
 			console.error('Error loading notification analytics:', err);
 			error = err instanceof Error ? err.message : 'Failed to load analytics';
@@ -111,6 +131,33 @@
 			console.error('Error resending delivery:', err);
 			toastService.error(err instanceof Error ? err.message : 'Failed to resend delivery');
 		}
+	}
+
+	function calculateRate(numerator: number, denominator: number): number {
+		if (!denominator) return 0;
+		return Number(((numerator / denominator) * 100).toFixed(1));
+	}
+
+	function formatPercent(value: number | null | undefined): string {
+		return `${Number(value || 0).toFixed(1)}%`;
+	}
+
+	function formatStage(stage: string): string {
+		const labels: Record<string, string> = {
+			standard: 'Standard',
+			reengagement: 'Re-engagement',
+			dormant: 'Dormant'
+		};
+		return labels[stage] || stage;
+	}
+
+	function formatWeekStart(value: string): string {
+		const date = new Date(`${value}T00:00:00Z`);
+		return date.toLocaleDateString('en-US', {
+			timeZone: 'UTC',
+			month: 'short',
+			day: 'numeric'
+		});
 	}
 </script>
 
@@ -181,6 +228,95 @@
 			icon={MousePointerClick}
 			color="orange"
 		/>
+	</div>
+
+	<!-- Daily Brief Engagement -->
+	<div class="mb-6 rounded-lg border border-border bg-card">
+		<div class="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+			<div class="flex items-center gap-2">
+				<Calendar class="h-4 w-4 text-muted-foreground" />
+				<h2 class="text-sm font-semibold text-foreground">Daily Brief Engagement</h2>
+			</div>
+			<div class="text-xs text-muted-foreground">{timeframeLabel}</div>
+		</div>
+
+		<div class="grid grid-cols-2 gap-3 border-b border-border p-4 lg:grid-cols-4">
+			<div>
+				<div class="text-xs text-muted-foreground">Sends</div>
+				<div class="text-2xl font-semibold text-foreground">
+					{isLoading ? '...' : dailyBriefTotals.sends}
+				</div>
+			</div>
+			<div>
+				<div class="text-xs text-muted-foreground">Open Rate</div>
+				<div class="text-2xl font-semibold text-foreground">
+					{isLoading ? '...' : `${dailyBriefRates.open}%`}
+				</div>
+			</div>
+			<div>
+				<div class="text-xs text-muted-foreground">Click Rate</div>
+				<div class="text-2xl font-semibold text-foreground">
+					{isLoading ? '...' : `${dailyBriefRates.click}%`}
+				</div>
+			</div>
+			<div>
+				<div class="text-xs text-muted-foreground">7d Reactivation</div>
+				<div class="text-2xl font-semibold text-foreground">
+					{isLoading ? '...' : `${dailyBriefRates.reactivation}%`}
+				</div>
+			</div>
+		</div>
+
+		<div class="overflow-x-auto">
+			<table class="w-full text-sm">
+				<thead>
+					<tr
+						class="border-b border-border text-left text-xs uppercase text-muted-foreground"
+					>
+						<th class="px-4 py-3 font-medium">Week</th>
+						<th class="px-4 py-3 font-medium">Stage</th>
+						<th class="px-4 py-3 text-right font-medium">Sends</th>
+						<th class="px-4 py-3 text-right font-medium">Open</th>
+						<th class="px-4 py-3 text-right font-medium">Click</th>
+						<th class="px-4 py-3 text-right font-medium">Reactivate</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#if isLoading}
+						<tr>
+							<td class="px-4 py-5 text-muted-foreground" colspan="6">Loading...</td>
+						</tr>
+					{:else if dailyBriefEngagement.length === 0}
+						<tr>
+							<td class="px-4 py-5 text-muted-foreground" colspan="6">No sends</td>
+						</tr>
+					{:else}
+						{#each dailyBriefEngagement as metric}
+							<tr class="border-b border-border last:border-0">
+								<td class="px-4 py-3 text-foreground"
+									>{formatWeekStart(metric.week_start)}</td
+								>
+								<td class="px-4 py-3 text-foreground"
+									>{formatStage(metric.engagement_stage)}</td
+								>
+								<td class="px-4 py-3 text-right text-foreground">{metric.sends}</td>
+								<td class="px-4 py-3 text-right text-foreground">
+									{formatPercent(metric.open_rate)}
+								</td>
+								<td class="px-4 py-3 text-right text-foreground">
+									{formatPercent(metric.click_rate)}
+								</td>
+								<td class="px-4 py-3 text-right text-foreground">
+									{metric.reactivated_7d} ({formatPercent(
+										metric.reactivation_rate_7d
+									)})
+								</td>
+							</tr>
+						{/each}
+					{/if}
+				</tbody>
+			</table>
+		</div>
 	</div>
 
 	<!-- Failed Deliveries Alert -->

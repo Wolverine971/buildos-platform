@@ -45,7 +45,7 @@ External Services:
 - SvelteKit API routes (SSE streaming, CRUD operations)
 - Real-time updates via Supabase subscriptions
 - Google Calendar integration (frontend + API)
-- Stripe payments (optional, via `ENABLE_STRIPE` flag)
+- Stripe payments (optional, via `PRIVATE_ENABLE_STRIPE` flag)
 
 **Environment:** Serverless (Vercel Functions)  
 **URL:** buildos.app  
@@ -61,7 +61,7 @@ External Services:
 
 **Key Features:**
 
-- Brain dump processing with SSE streaming
+- Brain dump processing through the worker-backed ontology pipeline
 - Project and task management
 - Calendar sync and analysis
 - User authentication and profiles
@@ -95,7 +95,7 @@ External Services:
 
 **Key Features:**
 
-- Daily brief email generation
+- Daily brief generation and notification dispatch
 - Queue job processing
 - Scheduled tasks (cron)
 - Notification email delivery through worker-to-web webhooks
@@ -175,11 +175,11 @@ Features:
 User (Browser)
     ↓
 Web App (SvelteKit)
-    ↓ (SSE stream)
-OpenAI API
-    ↓ (parsed operations)
-Web App (validation)
-    ↓ (confirmed operations)
+    ↓ (worker API / Supabase queue)
+Worker processes ontology braindump
+    ↓ (configured LLM adapter)
+Worker applies validated operations
+    ↓
 Supabase Database
 ```
 

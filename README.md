@@ -52,7 +52,7 @@ buildos-platform/
 ```bash
 pnpm install
 
-# Dev (all apps via Turborepo)
+# Dev (all configured dev tasks via Turborepo)
 pnpm dev
 
 # Single app

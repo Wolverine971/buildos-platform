@@ -20,7 +20,8 @@
 		"clean": "rm -rf dist .turbo",
 		"typecheck": "tsc --noEmit --skipLibCheck",
 		"test": "vitest",
-		"test:run": "vitest run"
+		"test:run": "vitest run",
+		"test:coverage": "vitest run --coverage"
 	},
 	"dependencies": {
 		"@buildos/supabase-client": "workspace:*",
@@ -28,6 +29,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "^20.11.10",
+		"@vitest/coverage-v8": "^3.2.4",
 		"tsup": "^8.3.5",
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"

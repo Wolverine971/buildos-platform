@@ -605,11 +605,8 @@ Aim for:
 - **Integration Tests**: Key workflows covered
 - **E2E Tests**: Critical user journeys
 
-Check coverage:
-
-```bash
-pnpm test:coverage --filter=@buildos/twilio-service
-```
+The Twilio package does not currently expose a dedicated coverage script. Add one to
+`packages/twilio-service/package.json` before treating coverage as a standard command.
 
 ## Troubleshooting Test Failures
 

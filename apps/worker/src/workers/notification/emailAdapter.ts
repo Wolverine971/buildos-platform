@@ -14,10 +14,19 @@ const supabase = createServiceClient();
 
 type DailyBriefEngagementStage = 'standard' | 'reengagement' | 'dormant';
 
+const NOTIFICATION_EMAIL_SENDER_EMAIL = 'dj@build-os.com';
+const NOTIFICATION_EMAIL_SENDER_NAME = 'DJ from BuildOS';
+
 interface DailyBriefContentCandidate {
 	executive_summary?: string | null;
 	llm_analysis?: string | null;
 	metadata?: unknown;
+}
+
+interface ExistingEmailRecord {
+	id: string;
+	status: string | null;
+	tracking_id: string | null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -71,6 +80,178 @@ function getDailyBriefEmailSubject(
 
 function getDailyBriefPrimaryActionLabel(engagementStage: DailyBriefEngagementStage): string {
 	return engagementStage === 'standard' ? 'View in BuildOS →' : 'Resume in BuildOS →';
+}
+
+function isSentEmailStatus(status: string | null | undefined): boolean {
+	return (
+		status === 'sent' || status === 'delivered' || status === 'opened' || status === 'clicked'
+	);
+}
+
+function getPostalAddress(): string | null {
+	const postalAddress = process.env.PRIVATE_POSTAL_ADDRESS?.trim();
+	return postalAddress || null;
+}
+
+function escapeHtml(value: string): string {
+	return value
+		.replaceAll('&', '&amp;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+		.replaceAll('"', '&quot;')
+		.replaceAll("'", '&#39;');
+}
+
+function getPostalAddressHtml(): string {
+	const postalAddress = getPostalAddress();
+	if (!postalAddress) {
+		return '';
+	}
+
+	return `
+      <p style="font-size: 12px; color: #8C8B91; margin: 12px 0 0 0;">
+        ${escapeHtml(postalAddress)}
+      </p>
+  `;
+}
+
+function getPostalAddressText(): string {
+	const postalAddress = getPostalAddress();
+	return postalAddress ? `\n\nBuildOS mailing address:\n${postalAddress}` : '';
+}
+
+function buildBriefUrl(baseUrl: string, briefDate: string | null | undefined): string {
+	if (!briefDate) {
+		return `${baseUrl}/projects`;
+	}
+
+	return `${baseUrl}/projects?briefDate=${encodeURIComponent(briefDate)}`;
+}
+
+function buildDailyBriefTextFooter(options: {
+	content: string;
+	briefUrl: string;
+	managePreferencesUrl: string;
+	unsubscribeUrl: string;
+	primaryActionLabel: string;
+}): string {
+	return `${options.content.trimEnd()}
+
+${options.primaryActionLabel}: ${options.briefUrl}
+Manage preferences: ${options.managePreferencesUrl}
+Turn off daily briefs: ${options.unsubscribeUrl}${getPostalAddressText()}`;
+}
+
+async function findExistingEmailForDelivery(
+	deliveryId: string,
+	emailLogger: Logger
+): Promise<ExistingEmailRecord | null> {
+	const { data, error } = await (supabase.from('emails') as any)
+		.select('id, status, tracking_id, sent_at, created_at')
+		.contains('template_data', { delivery_id: deliveryId })
+		.order('sent_at', { ascending: false, nullsFirst: false })
+		.order('created_at', { ascending: false })
+		.limit(1);
+
+	if (error) {
+		emailLogger.warn('Failed to look up existing email record for delivery', {
+			notificationDeliveryId: deliveryId,
+			error: error.message
+		});
+		return null;
+	}
+
+	const firstRecord = Array.isArray(data) ? data[0] : data;
+	return firstRecord ?? null;
+}
+
+async function persistPendingEmailRecipient(options: {
+	emailRecordId: string;
+	recipientEmail: string;
+	recipientUserId: string;
+	recipientName: string | null | undefined;
+	emailLogger: Logger;
+}): Promise<void> {
+	const { emailRecordId, recipientEmail, recipientUserId, recipientName, emailLogger } = options;
+
+	const { data: existingRecipient, error: lookupError } = await supabase
+		.from('email_recipients')
+		.select('id')
+		.eq('email_id', emailRecordId)
+		.eq('recipient_email', recipientEmail)
+		.maybeSingle();
+
+	if (lookupError) {
+		emailLogger.error('Failed to look up existing email recipient record', lookupError, {
+			emailRecordId,
+			recipientEmail
+		});
+	}
+
+	if (existingRecipient?.id) {
+		const { error: updateError } = await supabase
+			.from('email_recipients')
+			.update({
+				recipient_id: recipientUserId,
+				recipient_type: 'to',
+				recipient_name: recipientName,
+				status: 'pending',
+				error_message: null,
+				updated_at: new Date().toISOString()
+			})
+			.eq('id', existingRecipient.id);
+
+		if (updateError) {
+			emailLogger.error('Failed to update recipient record', updateError, {
+				emailRecordId,
+				recipientEmail
+			});
+		}
+
+		return;
+	}
+
+	const { error: recipientError } = await supabase.from('email_recipients').insert({
+		email_id: emailRecordId,
+		recipient_email: recipientEmail,
+		recipient_id: recipientUserId,
+		recipient_type: 'to',
+		recipient_name: recipientName,
+		status: 'pending'
+	});
+
+	if (recipientError) {
+		emailLogger.error('Failed to create recipient record', recipientError, {
+			emailRecordId,
+			recipientEmail
+		});
+	}
+}
+
+async function persistDeliveryEngagementStage(
+	delivery: NotificationDelivery,
+	engagementStage: DailyBriefEngagementStage,
+	emailLogger: Logger
+): Promise<void> {
+	const existingPayload = isRecord(delivery.payload) ? delivery.payload : {};
+	const { error } = await supabase
+		.from('notification_deliveries')
+		.update({
+			payload: {
+				...existingPayload,
+				engagement_stage: engagementStage,
+				engagementStage
+			},
+			updated_at: new Date().toISOString()
+		})
+		.eq('id', delivery.id);
+
+	if (error) {
+		emailLogger.error('Failed to persist daily brief engagement stage on delivery', error, {
+			notificationDeliveryId: delivery.id,
+			engagementStage
+		});
+	}
 }
 
 export interface DeliveryResult {
@@ -190,6 +371,7 @@ function formatEmailTemplate(delivery: NotificationDelivery): {
       <p style="font-size: 14px; margin: 0;">
         <a href="${baseUrl}/profile?tab=notifications" style="color: ${inkprint.accent}; text-decoration: none;">Manage notification preferences</a>
       </p>
+      ${getPostalAddressHtml()}
     </div>
   </div>
 </body>
@@ -205,7 +387,7 @@ ${actionUrl ? `View details: ${actionUrl}` : ''}
 
 ---
 This is an automated notification from BuildOS
-Manage your notification preferences: ${baseUrl}/profile?tab=notifications
+Manage your notification preferences: ${baseUrl}/profile?tab=notifications${getPostalAddressText()}
   `.trim();
 
 	return { html, text };
@@ -230,6 +412,20 @@ export async function sendEmailNotification(
 		// This is a safety check in case preferences changed between worker check and adapter execution
 		const eventType = delivery.payload.event_type || 'unknown';
 		const baseUrl = (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim();
+		const existingEmailRecord = await findExistingEmailForDelivery(delivery.id, emailLogger);
+
+		if (isSentEmailStatus(existingEmailRecord?.status)) {
+			emailLogger.info('Email already sent for notification delivery - reusing record', {
+				notificationDeliveryId: delivery.id,
+				emailRecordId: existingEmailRecord?.id,
+				status: existingEmailRecord?.status
+			});
+			return {
+				success: true,
+				external_id: existingEmailRecord?.id
+			};
+		}
+
 		const prefCheck = await checkUserPreferences(
 			delivery.recipient_user_id,
 			eventType,
@@ -272,8 +468,9 @@ export async function sendEmailNotification(
 		let text: string;
 		let subject: string;
 		const isDailyBriefEmail = eventType === 'brief.completed';
-		const trackingId = crypto.randomUUID();
+		const trackingId = existingEmailRecord?.tracking_id || crypto.randomUUID();
 		const dailyBriefUnsubscribeUrl = `${baseUrl}/api/email-tracking/${trackingId}/unsubscribe`;
+		const managePreferencesUrl = `${baseUrl}/profile?tab=notifications`;
 		let dailyBriefId: string | null = null;
 		let dailyBriefDate: string | null = null;
 		let dailyBriefEngagementStage: DailyBriefEngagementStage = 'standard';
@@ -337,6 +534,7 @@ export async function sendEmailNotification(
 							const dateFormatted = new Date(
 								brief.brief_date || briefDate
 							).toLocaleDateString('en-US', {
+								timeZone: 'UTC',
 								weekday: 'long',
 								year: 'numeric',
 								month: 'long',
@@ -349,6 +547,10 @@ export async function sendEmailNotification(
 							);
 							const primaryActionLabel =
 								getDailyBriefPrimaryActionLabel(dailyBriefEngagementStage);
+							const briefUrl = buildBriefUrl(
+								baseUrl,
+								brief.brief_date || dailyBriefDate || briefDate
+							);
 
 							const fullContent = `
 	            <div style="margin: 20px 0;">
@@ -358,11 +560,12 @@ export async function sendEmailNotification(
             <hr style="border: none; border-top: 1px solid #DCD9D1; margin: 32px 0;">
 
 	            <div style="text-align: center; margin-top: 24px;">
-	              <a href="${baseUrl}/projects?briefDate=${briefDate}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">${primaryActionLabel}</a>
+	              <a href="${briefUrl}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">${primaryActionLabel}</a>
 	              <span style="color: #8C8B91; margin: 0 8px;">|</span>
-	              <a href="${baseUrl}/profile?tab=notifications" style="color: #D96C1E; text-decoration: none; font-size: 14px;">Manage Preferences</a>
+	              <a href="${managePreferencesUrl}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">Manage Preferences</a>
               <span style="color: #8C8B91; margin: 0 8px;">|</span>
               <a href="${dailyBriefUnsubscribeUrl}" style="color: #6F6E75; text-decoration: none; font-size: 14px;">Turn off daily briefs</a>
+              ${getPostalAddressHtml()}
             </div>
           `;
 
@@ -380,7 +583,13 @@ export async function sendEmailNotification(
 </html>
           `.trim();
 
-							text = briefContent;
+							text = buildDailyBriefTextFooter({
+								content: briefContent,
+								briefUrl,
+								managePreferencesUrl,
+								unsubscribeUrl: dailyBriefUnsubscribeUrl,
+								primaryActionLabel
+							});
 						}
 					}
 				} else {
@@ -430,6 +639,7 @@ export async function sendEmailNotification(
 							const contentHtml = renderMarkdown(briefContent);
 
 							const dateFormatted = new Date(briefDate).toLocaleDateString('en-US', {
+								timeZone: 'UTC',
 								weekday: 'long',
 								year: 'numeric',
 								month: 'long',
@@ -442,6 +652,7 @@ export async function sendEmailNotification(
 							);
 							const primaryActionLabel =
 								getDailyBriefPrimaryActionLabel(dailyBriefEngagementStage);
+							const briefUrl = buildBriefUrl(baseUrl, dailyBriefDate || briefDate);
 
 							// Inkprint Design System colors
 							const fullContent = `
@@ -452,11 +663,12 @@ export async function sendEmailNotification(
             <hr style="border: none; border-top: 1px solid #DCD9D1; margin: 32px 0;">
 
 	            <div style="text-align: center; margin-top: 24px;">
-	              <a href="${baseUrl}/projects?briefDate=${briefDate}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">${primaryActionLabel}</a>
+	              <a href="${briefUrl}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">${primaryActionLabel}</a>
 	              <span style="color: #8C8B91; margin: 0 8px;">|</span>
-	              <a href="${baseUrl}/profile?tab=notifications" style="color: #D96C1E; text-decoration: none; font-size: 14px;">Manage Preferences</a>
+	              <a href="${managePreferencesUrl}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">Manage Preferences</a>
               <span style="color: #8C8B91; margin: 0 8px;">|</span>
               <a href="${dailyBriefUnsubscribeUrl}" style="color: #6F6E75; text-decoration: none; font-size: 14px;">Turn off daily briefs</a>
+              ${getPostalAddressHtml()}
             </div>
           `;
 
@@ -474,7 +686,13 @@ export async function sendEmailNotification(
 </html>
           `.trim();
 
-							text = briefContent; // Plain text version
+							text = buildDailyBriefTextFooter({
+								content: briefContent,
+								briefUrl,
+								managePreferencesUrl,
+								unsubscribeUrl: dailyBriefUnsubscribeUrl,
+								primaryActionLabel
+							});
 						}
 					}
 				}
@@ -492,6 +710,10 @@ export async function sendEmailNotification(
 			subject = delivery.payload.title;
 		}
 
+		if (isDailyBriefEmail) {
+			await persistDeliveryEngagementStage(delivery, dailyBriefEngagementStage, emailLogger);
+		}
+
 		// Rewrite links for click tracking
 		const htmlWithTrackedLinks = rewriteLinksForTracking(html, trackingId);
 
@@ -499,56 +721,62 @@ export async function sendEmailNotification(
 		const trackingPixel = `<img src="${baseUrl}/api/email-tracking/${trackingId}" width="1" height="1" style="display:none;" alt="" />`;
 		const htmlWithTracking = htmlWithTrackedLinks.replace('</body>', `${trackingPixel}</body>`);
 
-		// Create email record
-		const { data: emailRecord, error: emailError } = await supabase
-			.from('emails')
-			.insert({
-				created_by: delivery.recipient_user_id,
-				from_email: 'noreply@build-os.com',
-				from_name: 'BuildOS',
-				subject,
-				content: htmlWithTracking,
-				category: isDailyBriefEmail ? 'daily_brief' : 'notification',
-				status: 'scheduled',
-				tracking_enabled: true,
-				tracking_id: trackingId,
-				template_data: {
-					delivery_id: delivery.id,
-					event_id: delivery.event_id,
-					event_type: delivery.payload.event_type,
-					brief_id: dailyBriefId,
-					brief_date: dailyBriefDate,
-					engagement_stage: dailyBriefEngagementStage,
-					user_id: delivery.recipient_user_id,
-					category: isDailyBriefEmail ? 'daily_brief' : 'notification'
-				}
-			})
-			.select()
-			.single();
+		const emailRecordPayload = {
+			created_by: delivery.recipient_user_id,
+			from_email: NOTIFICATION_EMAIL_SENDER_EMAIL,
+			from_name: NOTIFICATION_EMAIL_SENDER_NAME,
+			subject,
+			content: htmlWithTracking,
+			category: isDailyBriefEmail ? 'daily_brief' : 'notification',
+			status: 'scheduled',
+			tracking_enabled: true,
+			tracking_id: trackingId,
+			template_data: {
+				delivery_id: delivery.id,
+				event_id: delivery.event_id,
+				event_type: delivery.payload.event_type,
+				brief_id: dailyBriefId,
+				brief_date: dailyBriefDate,
+				engagement_stage: dailyBriefEngagementStage,
+				user_id: delivery.recipient_user_id,
+				category: isDailyBriefEmail ? 'daily_brief' : 'notification'
+			},
+			updated_at: new Date().toISOString()
+		};
+
+		const emailRecordResult = existingEmailRecord?.id
+			? await supabase
+					.from('emails')
+					.update(emailRecordPayload)
+					.eq('id', existingEmailRecord.id)
+					.select()
+					.single()
+			: await supabase.from('emails').insert(emailRecordPayload).select().single();
+
+		const emailRecord = emailRecordResult.data;
+		const emailError = emailRecordResult.error;
 
 		if (emailError) {
 			return {
 				success: false,
-				error: `Failed to create email record: ${emailError.message}`
+				error: `Failed to persist email record: ${emailError.message}`
 			};
 		}
 
-		// Create recipient record
-		const { error: recipientError } = await supabase.from('email_recipients').insert({
-			email_id: emailRecord.id,
-			recipient_email: user.email,
-			recipient_id: delivery.recipient_user_id,
-			recipient_type: 'to',
-			recipient_name: user.name,
-			status: 'pending'
-		});
-
-		if (recipientError) {
-			emailLogger.error('Failed to create recipient record', recipientError, {
-				emailRecordId: emailRecord.id,
-				recipientEmail: user.email
-			});
+		if (!emailRecord?.id) {
+			return {
+				success: false,
+				error: 'Failed to persist email record: missing email id'
+			};
 		}
+
+		await persistPendingEmailRecipient({
+			emailRecordId: emailRecord.id,
+			recipientEmail: user.email,
+			recipientUserId: delivery.recipient_user_id,
+			recipientName: user.name,
+			emailLogger
+		});
 
 		// Send email immediately via webhook to web app
 		const webhookUrl = (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim();
@@ -588,7 +816,10 @@ export async function sendEmailNotification(
 						emailRecordId: emailRecord.id,
 						deliveryId: delivery.id,
 						eventId: delivery.event_id,
-						eventType: delivery.payload.event_type
+						eventType: delivery.payload.event_type,
+						briefId: dailyBriefId,
+						briefDate: dailyBriefDate,
+						engagementStage: dailyBriefEngagementStage
 					})
 				}
 			);
