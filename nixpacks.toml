@@ -2,11 +2,11 @@
 # This file must be at the repository root for Railway to find it
 # when the root directory is set to /
 [phases.setup]
-nixPkgs = ["nodejs_22", "pnpm-9_x"]
+nixPkgs = ["nodejs_22"]
 
 [phases.install]
 dependsOn = ["setup"]
-cmds = ["pnpm install --prod=false --no-frozen-lockfile"]
+cmds = ["npm install -g pnpm@11.7.0", "pnpm install --prod=false --no-frozen-lockfile"]
 
 [phases.build]
 dependsOn = ["install"]

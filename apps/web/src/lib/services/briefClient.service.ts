@@ -175,6 +175,56 @@ export class BriefClientService {
 		}
 	}
 
+	static async monitorQueuedGeneration(options: {
+		briefDate: string;
+		jobId: string;
+		user: { id: string; email: string; is_admin: boolean };
+		timezone?: string;
+		supabaseClient?: any;
+	}): Promise<void> {
+		if (!browser || !options.user || !options.jobId) return;
+
+		if (
+			this.generationState.briefDate === options.briefDate &&
+			this.generationState.jobId === options.jobId
+		) {
+			return;
+		}
+
+		if (!RealtimeBriefService.isInitialized() && options.supabaseClient) {
+			try {
+				const userTimezone =
+					options.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+				await RealtimeBriefService.initialize(
+					options.user.id,
+					options.supabaseClient,
+					userTimezone
+				);
+			} catch {
+				// Polling still works if realtime setup fails.
+			}
+		}
+
+		if (this.generationState.pollingInterval || this.generationState.eventSource) {
+			this.cleanup();
+		}
+
+		this.resetStores();
+		unifiedBriefGenerationStore.startGeneration('railway');
+		unifiedBriefGenerationStore.update(
+			{
+				currentStep: 'queued',
+				message: 'Resuming existing generation...'
+			},
+			'railway',
+			0
+		);
+
+		this.generationState.briefDate = options.briefDate;
+		this.generationState.jobId = options.jobId;
+		this.startPolling(options.user.id, options.briefDate);
+	}
+
 	private static async cancelExistingGeneration(
 		userId: string,
 		briefDate: string

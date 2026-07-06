@@ -1,9 +1,9 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "pnpm-9_x"]
+nixPkgs = ["nodejs_22"]
 
 [phases.install]
 dependsOn = ["setup"]
-cmds = ["pnpm install --prod=false --frozen-lockfile"]
+cmds = ["npm install -g pnpm@11.7.0", "pnpm install --prod=false --frozen-lockfile"]
 
 [phases.build]
 dependsOn = ["install"]

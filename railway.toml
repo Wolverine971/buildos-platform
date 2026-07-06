@@ -3,7 +3,7 @@
 # when the root directory is set to /
 [build]
 builder = "nixpacks"
-buildCommand = "pnpm install --prod=false --no-frozen-lockfile && pnpm turbo build --filter=@buildos/worker"
+buildCommand = "npm install -g pnpm@11.7.0 && pnpm install --prod=false --no-frozen-lockfile && pnpm turbo build --filter=@buildos/worker"
 watchPatterns = [
   "apps/worker/**",
   "packages/**",

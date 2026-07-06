@@ -25,6 +25,19 @@
 		onviewbrief?: (brief: DailyBrief) => void;
 	}
 
+	type EnsureTodayResponse = {
+		state: 'completed' | 'in_flight' | 'queued' | 'skipped_no_actor' | 'skipped_no_projects';
+		briefDate: string;
+		timezone: string;
+		queued: boolean;
+		brief?: DailyBrief | null;
+		job?: {
+			queue_job_id?: string | null;
+			status?: string;
+			scheduled_for?: string;
+		} | null;
+	};
+
 	let { user, onviewbrief }: Props = $props();
 
 	function getInitialTimezone(): string {
@@ -106,6 +119,9 @@
 		try {
 			await fetchUserTimezone();
 			await fetchTodaysBrief();
+			if (!brief) {
+				await ensureTodaysBrief();
+			}
 		} catch (err) {
 			console.error('Failed to initialize brief widget:', err);
 			isLoading = false;
@@ -186,6 +202,47 @@
 			brief = null;
 		} finally {
 			isLoading = false;
+		}
+	}
+
+	async function ensureTodaysBrief() {
+		if (!todayDate || !user?.id) return;
+
+		try {
+			const response = await fetch('/api/daily-briefs/ensure-today', {
+				method: 'POST'
+			});
+
+			if (!response.ok) {
+				console.warn('Daily brief ensure request failed:', response.status);
+				return;
+			}
+
+			const payload = await response.json();
+			const result = payload?.data as EnsureTodayResponse | undefined;
+			if (!result) return;
+
+			if (result.state === 'completed' && result.brief) {
+				brief = result.brief;
+				return;
+			}
+
+			const jobId = result.job?.queue_job_id;
+			if ((result.state === 'queued' || result.state === 'in_flight') && jobId) {
+				await BriefClientService.monitorQueuedGeneration({
+					briefDate: result.briefDate || todayDate,
+					jobId,
+					user: {
+						id: user.id,
+						email: user.email || '',
+						is_admin: user.is_admin || false
+					},
+					timezone: result.timezone || userTimezone,
+					supabaseClient: supabase
+				});
+			}
+		} catch (err) {
+			console.warn('Unable to auto-start daily brief generation:', err);
 		}
 	}
 
