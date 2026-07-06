@@ -102,4 +102,107 @@ describe('/api/webhooks/send-notification-email', () => {
 		expect(sendEmailMock).not.toHaveBeenCalled();
 		expect(fromCalls).toEqual(['emails']);
 	});
+
+	it('claims the email row and sends via Gmail when not already sent', async () => {
+		const responsesByTable: Record<string, any[]> = {
+			emails: [
+				// findSentEmailForDelivery: by-id lookup — not sent yet
+				{ data: { id: 'email-1', status: 'scheduled', tracking_id: 't', sent_at: null } },
+				// findSentEmailForDelivery: delivery-id fallback — nothing sent
+				{ data: [], error: null },
+				// atomic claim update — this sender wins
+				{ data: { id: 'email-1' }, error: null }
+			],
+			user_notification_preferences: [
+				{ data: { email_enabled: true, should_email_daily_brief: true }, error: null }
+			]
+		};
+
+		createAdminSupabaseClientMock.mockReturnValue({
+			from: vi.fn((table: string) => {
+				fromCalls.push(table);
+				const response = responsesByTable[table]?.shift();
+				if (!response) throw new Error(`Unexpected query on table: ${table}`);
+				const query: any = {
+					select: vi.fn(() => query),
+					update: vi.fn(() => query),
+					eq: vi.fn(() => query),
+					not: vi.fn(() => query),
+					or: vi.fn(() => query),
+					in: vi.fn(() => query),
+					order: vi.fn(() => query),
+					limit: vi.fn(() => query),
+					maybeSingle: vi.fn().mockResolvedValue(response),
+					then: (resolve: any, reject: any) =>
+						Promise.resolve(response).then(resolve, reject)
+				};
+				return query;
+			})
+		});
+		sendEmailMock.mockResolvedValue({ success: true, messageId: 'msg-1' });
+
+		const response = await POST({
+			request: createWebhookRequest({})
+		} as any);
+
+		expect(response.status).toBe(200);
+		const payload = await response.json();
+		expect(payload.data).toMatchObject({ success: true, messageId: 'msg-1' });
+		expect(sendEmailMock).toHaveBeenCalledTimes(1);
+		expect(sendEmailMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				to: 'user@example.com',
+				subject: 'BuildOS Daily Brief',
+				emailId: 'email-1'
+			})
+		);
+	});
+
+	it('skips the Gmail send when another sender holds the claim', async () => {
+		const responsesByTable: Record<string, any[]> = {
+			emails: [
+				{ data: { id: 'email-1', status: 'scheduled', tracking_id: 't', sent_at: null } },
+				{ data: [], error: null },
+				// claim update matches no row — a concurrent sender owns it
+				{ data: null, error: null }
+			],
+			user_notification_preferences: [
+				{ data: { email_enabled: true, should_email_daily_brief: true }, error: null }
+			]
+		};
+
+		createAdminSupabaseClientMock.mockReturnValue({
+			from: vi.fn((table: string) => {
+				fromCalls.push(table);
+				const response = responsesByTable[table]?.shift();
+				if (!response) throw new Error(`Unexpected query on table: ${table}`);
+				const query: any = {
+					select: vi.fn(() => query),
+					update: vi.fn(() => query),
+					eq: vi.fn(() => query),
+					not: vi.fn(() => query),
+					or: vi.fn(() => query),
+					in: vi.fn(() => query),
+					order: vi.fn(() => query),
+					limit: vi.fn(() => query),
+					maybeSingle: vi.fn().mockResolvedValue(response),
+					then: (resolve: any, reject: any) =>
+						Promise.resolve(response).then(resolve, reject)
+				};
+				return query;
+			})
+		});
+
+		const response = await POST({
+			request: createWebhookRequest({})
+		} as any);
+
+		expect(response.status).toBe(200);
+		const payload = await response.json();
+		expect(payload.data).toMatchObject({
+			success: true,
+			skipped: 'claimed_by_other_sender'
+		});
+		expect(sendEmailMock).not.toHaveBeenCalled();
+	});
 });

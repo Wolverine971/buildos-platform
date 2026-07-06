@@ -2,7 +2,6 @@
 import type { BriefAudioSynthesisResult } from './kokoro';
 
 const OPENROUTER_TTS_URL = 'https://openrouter.ai/api/v1/audio/speech';
-const OPENROUTER_TTS_MODEL = 'openai/gpt-audio-mini';
 const OPENROUTER_TTS_VOICE = 'alloy';
 const OPENROUTER_TTS_FORMAT = 'mp3' as const;
 const OPENROUTER_TTS_SPEED = 1;
@@ -14,6 +13,11 @@ function getOpenRouterApiKey(): string | null {
 		process.env.OPENROUTER_API_KEY?.trim() ||
 		'';
 	return apiKey.length > 0 ? apiKey : null;
+}
+
+function getOpenRouterTtsModel(): string | null {
+	const model = process.env.OPENROUTER_TTS_MODEL?.trim() || '';
+	return model.length > 0 ? model : null;
 }
 
 function getOpenRouterHeaders(apiKey: string): Record<string, string> {
@@ -61,7 +65,7 @@ function parseOpenRouterError(errorText: string): string {
 }
 
 export function hasOpenRouterTtsCredentials(): boolean {
-	return getOpenRouterApiKey() !== null;
+	return getOpenRouterApiKey() !== null && getOpenRouterTtsModel() !== null;
 }
 
 export async function synthesizeBriefAudioWithOpenRouter(
@@ -70,6 +74,10 @@ export async function synthesizeBriefAudioWithOpenRouter(
 	const apiKey = getOpenRouterApiKey();
 	if (!apiKey) {
 		throw new Error('OpenRouter TTS is not configured');
+	}
+	const model = getOpenRouterTtsModel();
+	if (!model) {
+		throw new Error('OpenRouter TTS model is not configured');
 	}
 
 	const startedAt = Date.now();
@@ -80,7 +88,7 @@ export async function synthesizeBriefAudioWithOpenRouter(
 
 	try {
 		const body: Record<string, unknown> = {
-			model: OPENROUTER_TTS_MODEL,
+			model,
 			voice: OPENROUTER_TTS_VOICE,
 			input: text,
 			response_format: OPENROUTER_TTS_FORMAT
@@ -109,7 +117,7 @@ export async function synthesizeBriefAudioWithOpenRouter(
 			throw new Error('OpenRouter TTS returned empty audio');
 		}
 
-		const resolvedModel = response.headers.get('x-openrouter-model') || OPENROUTER_TTS_MODEL;
+		const resolvedModel = response.headers.get('x-openrouter-model') || model;
 
 		return {
 			mp3: audio,

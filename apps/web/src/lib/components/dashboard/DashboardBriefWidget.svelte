@@ -26,7 +26,13 @@
 	}
 
 	type EnsureTodayResponse = {
-		state: 'completed' | 'in_flight' | 'queued' | 'skipped_no_actor' | 'skipped_no_projects';
+		state:
+			| 'completed'
+			| 'in_flight'
+			| 'queued'
+			| 'skipped_no_actor'
+			| 'skipped_no_projects'
+			| 'skipped_recent_failure';
 		briefDate: string;
 		timezone: string;
 		queued: boolean;
@@ -221,6 +227,13 @@
 			const payload = await response.json();
 			const result = payload?.data as EnsureTodayResponse | undefined;
 			if (!result) return;
+
+			// The server resolves the canonical brief date from users.timezone; adopt
+			// it so todayDate (and the completion-event comparison against it) can't
+			// drift from the ensured brief when the local fallback timezone differs.
+			if (result.timezone && result.timezone !== userTimezone) {
+				userTimezone = result.timezone;
+			}
 
 			if (result.state === 'completed' && result.brief) {
 				brief = result.brief;

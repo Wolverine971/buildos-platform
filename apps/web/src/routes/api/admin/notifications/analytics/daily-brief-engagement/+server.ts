@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/admin/notifications/analytics/daily-brief-engagement/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 type Timeframe = '24h' | '7d' | '30d' | '90d';
 
@@ -18,7 +19,7 @@ function getSinceDate(timeframe: Timeframe): string {
 	return since.toISOString().slice(0, 10);
 }
 
-export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -32,7 +33,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const timeframe = (url.searchParams.get('timeframe') || '30d') as Timeframe;
 		const sinceDate = getSinceDate(timeframe);
 
-		const { data, error } = await (supabase as any)
+		// The metrics view is granted to service_role only (company-wide data);
+		// admin access is enforced above, so read it with the admin client.
+		const adminSupabase = createAdminSupabaseClient();
+		const { data, error } = await (adminSupabase as any)
 			.from('daily_brief_engagement_weekly_metrics')
 			.select(
 				'week_start, engagement_stage, sends, opens, clicks, open_rate, click_rate, reactivated_7d, reactivation_rate_7d'

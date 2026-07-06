@@ -66,8 +66,149 @@ async function recordSkippedBriefJobMetadata(
 	}
 }
 
+/**
+ * Builds the brief.completed payload from persisted brief rows and emits it.
+ * Safe to call for an already-emitted brief: emit_notification_event dedupes on
+ * (event_type, user, brief_id) and returns the existing event without creating
+ * new deliveries. Never throws — emission failures must not fail the brief job.
+ */
+async function emitBriefCompletedEvent(params: {
+	userId: string;
+	briefId: string;
+	briefDate: string;
+	timezone: string;
+	notificationScheduledFor?: string;
+	useOntology: boolean;
+}) {
+	const { userId, briefId, briefDate, timezone, useOntology } = params;
+
+	try {
+		const serviceClient = createServiceClient();
+
+		// Get task and project counts from appropriate table
+		let projectCount = 0;
+		let todaysTaskCount = 0;
+		let overdueTaskCount = 0;
+		let upcomingTaskCount = 0;
+		let nextSevenDaysTaskCount = 0;
+		let recentlyCompletedCount = 0;
+		let blockedTaskCount = 0;
+
+		// Query ontology_project_briefs for ontology-based briefs
+		const { data: ontologyProjectBriefs } = await supabase
+			.from('ontology_project_briefs')
+			.select('id, metadata')
+			.eq('daily_brief_id', briefId);
+
+		projectCount = ontologyProjectBriefs?.length || 0;
+
+		// Extract counts from ontology metadata (camelCase keys)
+		todaysTaskCount =
+			ontologyProjectBriefs?.reduce((sum, pb) => {
+				const meta = pb.metadata as Record<string, unknown>;
+				return sum + (typeof meta?.todaysTaskCount === 'number' ? meta.todaysTaskCount : 0);
+			}, 0) || 0;
+
+		// Ontology briefs use 'thisWeekTaskCount' instead of 'upcomingTaskCount'
+		upcomingTaskCount =
+			ontologyProjectBriefs?.reduce((sum, pb) => {
+				const meta = pb.metadata as Record<string, unknown>;
+				return (
+					sum + (typeof meta?.thisWeekTaskCount === 'number' ? meta.thisWeekTaskCount : 0)
+				);
+			}, 0) || 0;
+
+		// blockedTaskCount available in ontology briefs
+		const blockedCount =
+			ontologyProjectBriefs?.reduce((sum, pb) => {
+				const meta = pb.metadata as Record<string, unknown>;
+				return (
+					sum + (typeof meta?.blockedTaskCount === 'number' ? meta.blockedTaskCount : 0)
+				);
+			}, 0) || 0;
+		blockedTaskCount = blockedCount;
+
+		// Fetch aggregate counts from ontology_daily_briefs metadata
+		const { data: ontologyDailyBrief } = await supabase
+			.from('ontology_daily_briefs')
+			.select('metadata')
+			.eq('id', briefId)
+			.single();
+
+		const ontologyMeta = ontologyDailyBrief?.metadata as Record<string, unknown> | null;
+		overdueTaskCount =
+			typeof ontologyMeta?.overdueCount === 'number' ? ontologyMeta.overdueCount : 0;
+		recentlyCompletedCount =
+			typeof ontologyMeta?.recentUpdatesCount === 'number'
+				? ontologyMeta.recentUpdatesCount
+				: 0;
+		nextSevenDaysTaskCount = upcomingTaskCount;
+
+		console.log(
+			`🧬 Ontology brief stats - Projects: ${projectCount}, Today's tasks: ${todaysTaskCount}, This week: ${upcomingTaskCount}, Overdue: ${overdueTaskCount}, Blocked: ${blockedCount}`
+		);
+
+		// Get notification scheduled time from job data (if provided)
+		const notificationScheduledFor = params.notificationScheduledFor
+			? new Date(params.notificationScheduledFor)
+			: undefined;
+
+		if (notificationScheduledFor) {
+			console.log(
+				`📅 Scheduling notification for ${notificationScheduledFor.toISOString()} (user's preferred time)`
+			);
+		} else {
+			console.log(`📅 Sending notification immediately (no scheduled time provided)`);
+		}
+
+		console.log(
+			`📊 Task counts - Today: ${todaysTaskCount}, Overdue: ${overdueTaskCount}, Upcoming: ${upcomingTaskCount}, Next 7 days: ${nextSevenDaysTaskCount}, Recently completed: ${recentlyCompletedCount}`
+		);
+
+		// Generate correlation ID for end-to-end tracking
+		const correlationId = generateCorrelationId();
+		console.log(
+			`🔗 Generated correlation ID: ${correlationId} for brief.completed notification`
+		);
+
+		// Type assertion needed until database types are regenerated after migration
+		await (serviceClient.rpc as any)('emit_notification_event', {
+			p_event_type: 'brief.completed',
+			p_event_source: 'worker_job',
+			p_target_user_id: userId,
+			p_payload: {
+				brief_id: briefId,
+				brief_date: briefDate,
+				timezone: timezone,
+				task_count: todaysTaskCount, // Keep for backward compatibility
+				todays_task_count: todaysTaskCount,
+				overdue_task_count: overdueTaskCount,
+				upcoming_task_count: upcomingTaskCount,
+				next_seven_days_task_count: nextSevenDaysTaskCount,
+				recently_completed_count: recentlyCompletedCount,
+				blocked_task_count: blockedTaskCount,
+				project_count: projectCount,
+				correlationId, // Add correlation ID to payload
+				is_ontology_brief: useOntology // Flag for downstream consumers
+			},
+			p_metadata: {
+				correlationId, // Add correlation ID to metadata for tracking
+				is_ontology_brief: useOntology
+			},
+			p_scheduled_for: notificationScheduledFor?.toISOString() // Schedule at user's preferred time
+		});
+
+		console.log(`📬 Emitted brief.completed notification event for user ${userId}`);
+	} catch (notificationError) {
+		// Log error but don't fail the brief job
+		console.error('Failed to emit notification event:', notificationError);
+	}
+}
+
 export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 	console.log(`🏃 Processing brief job ${job.id} for user ${job.data.userId}`);
+
+	const suppressNotification = job.data.options?.suppressNotification === true;
 
 	try {
 		// Validate job data immediately to catch errors early
@@ -151,7 +292,10 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 			const existingBriefDecision = getExistingBriefJobDecision({
 				briefDate: validatedBriefDate,
 				existingBrief,
-				options: job.data.options
+				options: job.data.options,
+				// A retry means the prior attempt died — never let its abandoned
+				// "processing" heartbeat swallow the recovery run.
+				isRetryAttempt: (job.attemptsMade ?? 0) > 0
 			});
 
 			if (existingBriefDecision.shouldSkip) {
@@ -164,6 +308,25 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 				await job.log(reason);
 				await recordSkippedBriefJobMetadata(job, existingBriefDecision);
 				await updateJobStatus(job.id, 'completed', 'brief', undefined, job.processingToken);
+
+				// A completed brief may exist without its notification ever having been
+				// emitted (e.g. the generating attempt timed out after persisting the
+				// brief but before emitting). Re-emit here — the event-level dedup in
+				// emit_notification_event makes this a no-op when it already fired.
+				if (
+					existingBriefDecision.reason === 'skipped_existing_brief' &&
+					existingBriefDecision.existingBriefId &&
+					!suppressNotification
+				) {
+					await emitBriefCompletedEvent({
+						userId: job.data.userId,
+						briefId: existingBriefDecision.existingBriefId,
+						briefDate: validatedBriefDate,
+						timezone,
+						notificationScheduledFor: job.data.notificationScheduledFor,
+						useOntology: true
+					});
+				}
 				return;
 			}
 		}
@@ -278,132 +441,19 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 		});
 
 		// Emit notification event for brief completion
-		try {
-			const serviceClient = createServiceClient();
-
-			// Get task and project counts from appropriate table
-			let projectCount = 0;
-			let todaysTaskCount = 0;
-			let overdueTaskCount = 0;
-			let upcomingTaskCount = 0;
-			let nextSevenDaysTaskCount = 0;
-			let recentlyCompletedCount = 0;
-			let blockedTaskCount = 0;
-
-			// Query ontology_project_briefs for ontology-based briefs
-			const { data: ontologyProjectBriefs } = await supabase
-				.from('ontology_project_briefs')
-				.select('id, metadata')
-				.eq('daily_brief_id', brief.id);
-
-			projectCount = ontologyProjectBriefs?.length || 0;
-
-			// Extract counts from ontology metadata (camelCase keys)
-			todaysTaskCount =
-				ontologyProjectBriefs?.reduce((sum, pb) => {
-					const meta = pb.metadata as Record<string, unknown>;
-					return (
-						sum + (typeof meta?.todaysTaskCount === 'number' ? meta.todaysTaskCount : 0)
-					);
-				}, 0) || 0;
-
-			// Ontology briefs use 'thisWeekTaskCount' instead of 'upcomingTaskCount'
-			upcomingTaskCount =
-				ontologyProjectBriefs?.reduce((sum, pb) => {
-					const meta = pb.metadata as Record<string, unknown>;
-					return (
-						sum +
-						(typeof meta?.thisWeekTaskCount === 'number' ? meta.thisWeekTaskCount : 0)
-					);
-				}, 0) || 0;
-
-			// blockedTaskCount available in ontology briefs
-			const blockedCount =
-				ontologyProjectBriefs?.reduce((sum, pb) => {
-					const meta = pb.metadata as Record<string, unknown>;
-					return (
-						sum +
-						(typeof meta?.blockedTaskCount === 'number' ? meta.blockedTaskCount : 0)
-					);
-				}, 0) || 0;
-			blockedTaskCount = blockedCount;
-
-			// Fetch aggregate counts from ontology_daily_briefs metadata
-			const { data: ontologyDailyBrief } = await supabase
-				.from('ontology_daily_briefs')
-				.select('metadata')
-				.eq('id', brief.id)
-				.single();
-
-			const ontologyMeta = ontologyDailyBrief?.metadata as Record<string, unknown> | null;
-			overdueTaskCount =
-				typeof ontologyMeta?.overdueCount === 'number' ? ontologyMeta.overdueCount : 0;
-			recentlyCompletedCount =
-				typeof ontologyMeta?.recentUpdatesCount === 'number'
-					? ontologyMeta.recentUpdatesCount
-					: 0;
-			nextSevenDaysTaskCount = upcomingTaskCount;
-
+		if (suppressNotification) {
 			console.log(
-				`🧬 Ontology brief stats - Projects: ${projectCount}, Today's tasks: ${todaysTaskCount}, This week: ${upcomingTaskCount}, Overdue: ${overdueTaskCount}, Blocked: ${blockedCount}`
+				`🔕 Skipping brief.completed notification for user ${job.data.userId} (daily briefs disabled by user)`
 			);
-
-			// Get notification scheduled time from job data (if provided)
-			const notificationScheduledFor = job.data.notificationScheduledFor
-				? new Date(job.data.notificationScheduledFor)
-				: undefined;
-
-			if (notificationScheduledFor) {
-				console.log(
-					`📅 Scheduling notification for ${notificationScheduledFor.toISOString()} (user's preferred time)`
-				);
-			} else {
-				console.log(`📅 Sending notification immediately (no scheduled time provided)`);
-			}
-
-			console.log(
-				`📊 Task counts - Today: ${todaysTaskCount}, Overdue: ${overdueTaskCount}, Upcoming: ${upcomingTaskCount}, Next 7 days: ${nextSevenDaysTaskCount}, Recently completed: ${recentlyCompletedCount}`
-			);
-
-			// Generate correlation ID for end-to-end tracking
-			const correlationId = generateCorrelationId();
-			console.log(
-				`🔗 Generated correlation ID: ${correlationId} for brief.completed notification`
-			);
-
-			// Type assertion needed until database types are regenerated after migration
-			await (serviceClient.rpc as any)('emit_notification_event', {
-				p_event_type: 'brief.completed',
-				p_event_source: 'worker_job',
-				p_target_user_id: job.data.userId,
-				p_payload: {
-					brief_id: brief.id,
-					brief_date: validatedBriefDate,
-					timezone: timezone,
-					task_count: todaysTaskCount, // Keep for backward compatibility
-					todays_task_count: todaysTaskCount,
-					overdue_task_count: overdueTaskCount,
-					upcoming_task_count: upcomingTaskCount,
-					next_seven_days_task_count: nextSevenDaysTaskCount,
-					recently_completed_count: recentlyCompletedCount,
-					blocked_task_count: blockedTaskCount,
-					project_count: projectCount,
-					correlationId, // Add correlation ID to payload
-					is_ontology_brief: useOntology // Flag for downstream consumers
-				},
-				p_metadata: {
-					correlationId, // Add correlation ID to metadata for tracking
-					is_ontology_brief: useOntology
-				},
-				p_scheduled_for: notificationScheduledFor?.toISOString() // Schedule at user's preferred time
+		} else {
+			await emitBriefCompletedEvent({
+				userId: job.data.userId,
+				briefId: brief.id,
+				briefDate: validatedBriefDate,
+				timezone,
+				notificationScheduledFor: job.data.notificationScheduledFor,
+				useOntology
 			});
-
-			console.log(
-				`📬 Emitted brief.completed notification event for user ${job.data.userId}`
-			);
-		} catch (notificationError) {
-			// Log error but don't fail the brief job
-			console.error('Failed to emit notification event:', notificationError);
 		}
 
 		console.log(`✅ Completed brief generation for user ${job.data.userId}
@@ -426,6 +476,12 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 		});
 
 		// Emit notification event for brief failure (opt-in via subscriptions)
+		if (suppressNotification) {
+			console.log(
+				`🔕 Skipping brief.failed notification for user ${job.data.userId} (daily briefs disabled by user)`
+			);
+			throw error;
+		}
 		try {
 			const serviceClient = createServiceClient();
 			const briefDate = job.data.briefDate || new Date().toISOString().slice(0, 10);

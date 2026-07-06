@@ -1,7 +1,12 @@
 // apps/worker/tests/openrouterTts.test.ts
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const ENV_KEYS = ['PRIVATE_OPENROUTER_API_KEY', 'OPENROUTER_API_KEY', 'PUBLIC_APP_URL'] as const;
+const ENV_KEYS = [
+	'PRIVATE_OPENROUTER_API_KEY',
+	'OPENROUTER_API_KEY',
+	'OPENROUTER_TTS_MODEL',
+	'PUBLIC_APP_URL'
+] as const;
 
 function clearOpenRouterEnv(): void {
 	for (const key of ENV_KEYS) {
@@ -27,6 +32,7 @@ describe('OpenRouter brief audio TTS', () => {
 
 	it('sends brief narration text to OpenRouter speech and returns mp3 bytes', async () => {
 		process.env.PRIVATE_OPENROUTER_API_KEY = 'or-test-key';
+		process.env.OPENROUTER_TTS_MODEL = 'openai/gpt-audio-mini';
 		process.env.PUBLIC_APP_URL = 'https://buildos.local';
 
 		const audioBytes = new Uint8Array([1, 2, 3, 4]);
@@ -66,7 +72,7 @@ describe('OpenRouter brief audio TTS', () => {
 		expect(result.durationMs).toBeNull();
 	});
 
-	it('requires OpenRouter credentials before making a request', async () => {
+	it('requires OpenRouter credentials and a speech model before making a request', async () => {
 		const fetchMock = vi.fn();
 		vi.stubGlobal('fetch', fetchMock);
 
@@ -80,8 +86,24 @@ describe('OpenRouter brief audio TTS', () => {
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
+	it('requires an explicit OpenRouter speech model before making a request', async () => {
+		process.env.PRIVATE_OPENROUTER_API_KEY = 'or-test-key';
+		const fetchMock = vi.fn();
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { hasOpenRouterTtsCredentials, synthesizeBriefAudioWithOpenRouter } =
+			await importOpenRouterTts();
+
+		expect(hasOpenRouterTtsCredentials()).toBe(false);
+		await expect(synthesizeBriefAudioWithOpenRouter('hello')).rejects.toThrow(
+			'OpenRouter TTS model is not configured'
+		);
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
 	it('surfaces bounded OpenRouter API errors', async () => {
 		process.env.PRIVATE_OPENROUTER_API_KEY = 'or-test-key';
+		process.env.OPENROUTER_TTS_MODEL = 'openai/gpt-audio-mini';
 
 		const fetchMock = vi.fn().mockResolvedValue(
 			new Response(

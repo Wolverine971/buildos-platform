@@ -15,7 +15,16 @@ BEGIN
 		WHERE ns.nspname = 'public'
 			AND tbl.relname = 'queue_jobs'
 			AND i.indisunique
-			AND pg_get_indexdef(i.indexrelid) ILIKE '%dedup_key%'
+			-- ON CONFLICT (dedup_key) WHERE ... needs a single-column arbiter
+			-- index on exactly (dedup_key); a multi-column unique index with a
+			-- matching predicate would pass a text-only check but fail at runtime.
+			AND i.indnkeyatts = 1
+			AND (
+				SELECT a.attname
+				FROM pg_attribute a
+				WHERE a.attrelid = i.indrelid
+					AND a.attnum = i.indkey[0]
+			) = 'dedup_key'
 			AND pg_get_expr(i.indpred, i.indrelid) ILIKE '%dedup_key IS NOT NULL%'
 			AND pg_get_expr(i.indpred, i.indrelid) ILIKE '%pending%'
 			AND pg_get_expr(i.indpred, i.indrelid) ILIKE '%processing%'

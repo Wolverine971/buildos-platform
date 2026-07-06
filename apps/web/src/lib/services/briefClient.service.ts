@@ -126,7 +126,19 @@ export class BriefClientService {
 				options.briefDate
 			);
 
-			if (existingJob && !options.forceRegenerate) {
+			// A pending cron job can be parked up to ~an hour in the future. Resuming
+			// (polling) it would just time out — fall through to the worker POST
+			// instead: the non-forced request dedup-hits that job and promotes it to
+			// run now, then we monitor it like any fresh generation.
+			const existingJobScheduledForMs = Date.parse(
+				(existingJob as { scheduled_for?: string } | undefined)?.scheduled_for ?? ''
+			);
+			const existingJobParkedInFuture =
+				existingJob?.status === 'pending' &&
+				Number.isFinite(existingJobScheduledForMs) &&
+				existingJobScheduledForMs - Date.now() > 60_000;
+
+			if (existingJob && !options.forceRegenerate && !existingJobParkedInFuture) {
 				// Resume monitoring existing job
 				if (!existingJob.queue_job_id) {
 					console.warn('Existing job missing queue_job_id');

@@ -123,6 +123,11 @@ export const GET: RequestHandler = async ({ params, request }) => {
 			userAgent: userAgent.substring(0, 100)
 		});
 
+		// PostHog captures are collected and awaited together right before the
+		// response — concurrent instead of one awaited round-trip per recipient,
+		// so an analytics slowdown delays the pixel by at most one RTT.
+		const analyticsCaptures: Promise<unknown>[] = [];
+
 		// Update each recipient's open tracking
 		if (email.email_recipients && email.email_recipients.length > 0) {
 			for (const recipient of email.email_recipients) {
@@ -171,25 +176,27 @@ export const GET: RequestHandler = async ({ params, request }) => {
 					});
 				}
 
-				await captureServerEvent(
-					recipient.recipient_id || recipient.recipient_email,
-					'email_opened',
-					{
-						email_id: email.id,
-						email_recipient_id: recipient.id,
-						tracking_id: tracking_id,
-						delivery_id: deliveryId,
-						event_type: getStringMetadata(templateData, 'event_type'),
-						category: getStringMetadata(templateData, 'category'),
-						brief_id: getStringMetadata(templateData, 'brief_id'),
-						brief_date: getStringMetadata(templateData, 'brief_date'),
-						engagement_stage:
-							getStringMetadata(templateData, 'engagement_stage') ||
-							getStringMetadata(templateData, 'engagementStage') ||
-							'standard',
-						is_first_open: isFirstOpen,
-						open_count: (recipient.open_count || 0) + 1
-					}
+				analyticsCaptures.push(
+					captureServerEvent(
+						recipient.recipient_id || recipient.recipient_email,
+						'email_opened',
+						{
+							email_id: email.id,
+							email_recipient_id: recipient.id,
+							tracking_id: tracking_id,
+							delivery_id: deliveryId,
+							event_type: getStringMetadata(templateData, 'event_type'),
+							category: getStringMetadata(templateData, 'category'),
+							brief_id: getStringMetadata(templateData, 'brief_id'),
+							brief_date: getStringMetadata(templateData, 'brief_date'),
+							engagement_stage:
+								getStringMetadata(templateData, 'engagement_stage') ||
+								getStringMetadata(templateData, 'engagementStage') ||
+								'standard',
+							is_first_open: isFirstOpen,
+							open_count: (recipient.open_count || 0) + 1
+						}
+					).catch(() => {})
 				);
 			}
 
@@ -224,6 +231,11 @@ export const GET: RequestHandler = async ({ params, request }) => {
 			}
 		} else {
 			logger.warn('No recipients found for email');
+		}
+
+		// Flush analytics before responding (fire-and-forget is unsafe on Vercel).
+		if (analyticsCaptures.length > 0) {
+			await Promise.allSettled(analyticsCaptures);
 		}
 
 		// Return 1x1 transparent pixel

@@ -177,6 +177,10 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			}
 		}
 
+		// PostHog captures are collected and awaited together right before the
+		// redirect — concurrent instead of one awaited round-trip per recipient.
+		const analyticsCaptures: Promise<unknown>[] = [];
+
 		// Update each recipient's click tracking
 		if (recipients.length > 0) {
 			for (const recipient of recipients) {
@@ -207,25 +211,27 @@ export const GET: RequestHandler = async ({ params, url }) => {
 					});
 				}
 
-				await captureServerEvent(
-					recipient.recipient_id || recipient.recipient_email,
-					'email_clicked',
-					{
-						email_id: email.id,
-						email_recipient_id: recipient.id,
-						tracking_id: tracking_id,
-						delivery_id: deliveryId,
-						event_type: getStringMetadata(templateData, 'event_type'),
-						category: getStringMetadata(templateData, 'category'),
-						brief_id: getStringMetadata(templateData, 'brief_id'),
-						brief_date: getStringMetadata(templateData, 'brief_date'),
-						engagement_stage:
-							getStringMetadata(templateData, 'engagement_stage') ||
-							getStringMetadata(templateData, 'engagementStage') ||
-							'standard',
-						is_first_click: isFirstClick,
-						clicked_url: destination
-					}
+				analyticsCaptures.push(
+					captureServerEvent(
+						recipient.recipient_id || recipient.recipient_email,
+						'email_clicked',
+						{
+							email_id: email.id,
+							email_recipient_id: recipient.id,
+							tracking_id: tracking_id,
+							delivery_id: deliveryId,
+							event_type: getStringMetadata(templateData, 'event_type'),
+							category: getStringMetadata(templateData, 'category'),
+							brief_id: getStringMetadata(templateData, 'brief_id'),
+							brief_date: getStringMetadata(templateData, 'brief_date'),
+							engagement_stage:
+								getStringMetadata(templateData, 'engagement_stage') ||
+								getStringMetadata(templateData, 'engagementStage') ||
+								'standard',
+							is_first_click: isFirstClick,
+							clicked_url: destination
+						}
+					).catch(() => {})
 				);
 			}
 
@@ -280,6 +286,11 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			}
 		} else {
 			logger.warn('No recipients found for email');
+		}
+
+		// Flush analytics before the redirect (fire-and-forget is unsafe on Vercel).
+		if (analyticsCaptures.length > 0) {
+			await Promise.allSettled(analyticsCaptures);
 		}
 
 		// Redirect to destination URL

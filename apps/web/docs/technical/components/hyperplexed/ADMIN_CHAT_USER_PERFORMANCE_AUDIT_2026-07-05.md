@@ -27,16 +27,18 @@
   the 33-line activity timeline, and the 202-line recent sessions list.
 - `chat-user-export.ts` is 232 lines for pure CSV/JSON file builders and the thin browser download
   helper; `chat-user-export.test.ts` is 200 lines.
+- `chat-user-types.ts` is now a 59-line frontend alias/UI-helper type file over shared API DTOs.
 - `admin-chat-user-analytics.ts` was 3,013 lines at audit time, 3,096 lines after the first Phase 3
-  redaction extraction, and 2,973 lines after query parser extraction. `redaction.ts` is 35 lines,
+  redaction extraction, 2,973 lines after query parser extraction, and 2,526 lines after shared DTO
+  extraction. `src/lib/types/admin-chat-user-analytics.ts` is 506 lines, `redaction.ts` is 35 lines,
   `redaction.test.ts` is 30 lines, `query.ts` is 142 lines, and `query.test.ts` is 112 lines.
 - The three route handlers are thin and consistent: admin gate, query parsing, service call,
   redaction assertion, response.
 - Focused backend/API tests exist and pass:
   `./node_modules/.bin/vitest run src/lib/server/admin-chat-user-analytics/query.test.ts src/lib/server/admin-chat-user-analytics/redaction.test.ts src/lib/components/admin/chat-users/chat-user-export.test.ts src/lib/server/admin-chat-user-analytics.test.ts src/routes/api/admin/chat/users/server.test.ts`
-  -> 5 files, 38 tests passed after Phase 3 query extraction.
+  -> 5 files, 38 tests passed after Phase 3 shared DTO extraction.
 - `NODE_OPTIONS='--max-old-space-size=8192' ./node_modules/.bin/svelte-check --tsconfig ./tsconfig.json`
-  -> 0 errors and 0 warnings after Phase 3 query extraction.
+  -> 0 errors and 0 warnings after Phase 3 shared DTO extraction.
 - No Svelte/UI test exists for this page. Current frontend regressions would mostly be caught by
   manual QA or full `svelte-check`, not by focused page tests.
 - The implementation spec for this feature is currently untracked, so this audit is a separate
@@ -128,11 +130,15 @@ Shipped:
   not need to change yet.
 - Added `query.test.ts` coverage for list, detail, and redacted-session query parsing fallbacks and
   clamps.
+- Extracted shared request/response/row DTOs into
+  `src/lib/types/admin-chat-user-analytics.ts`.
+- Kept the existing service type exports stable via `export type` re-exports.
+- Collapsed frontend `chat-user-types.ts` to aliases over the shared DTOs plus UI-only helper types.
 
 Still open:
 
-- Shared DTO split, row loaders, rollup core, detail builder, redacted-session builder, and broader
-  backend module tests.
+- Row loaders, rollup core, detail builder, redacted-session builder, and broader backend module
+  tests.
 
 ## Findings
 
@@ -374,7 +380,7 @@ apps/web/src/lib/server/admin-chat-user-analytics/
 
 Work:
 
-- [ ] Move exported response/query row types to `src/lib/types/admin-chat-user-analytics.ts`.
+- [x] Move exported response/query row types to `src/lib/types/admin-chat-user-analytics.ts`.
 - [x] Move query parsing and constants to `query.ts`.
 - [x] Move `FORBIDDEN_PAYLOAD_KEYS` and recursive assertion to `redaction.ts`.
 - [ ] Move `fetchPagedRows`, `fetchChunkedRows`, and `loadAnalyticsRows` to `row-loaders.ts`.
@@ -388,9 +394,9 @@ Verification:
 - Existing `admin-chat-user-analytics.test.ts` split or expanded by module.
 - Existing API route tests remain green.
 - Add explicit tests for slow-threshold propagation, redacted session severity, and query parser
-  fallbacks.
+  fallbacks; use `svelte-check` to cover shared frontend/server DTO import compatibility.
     - `./node_modules/.bin/vitest run src/lib/server/admin-chat-user-analytics/query.test.ts src/lib/server/admin-chat-user-analytics/redaction.test.ts src/lib/components/admin/chat-users/chat-user-export.test.ts src/lib/server/admin-chat-user-analytics.test.ts src/routes/api/admin/chat/users/server.test.ts`
-      -> 5 files, 38 tests passed after the query extraction.
+      -> 5 files, 38 tests passed after the shared DTO extraction.
 
 ### Phase 4 - Backend performance and contract hardening
 

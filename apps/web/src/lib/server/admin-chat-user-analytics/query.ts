@@ -6,7 +6,7 @@ import type {
 	AdminChatUserAnalyticsTimeframe,
 	AdminChatUserDetailQuery,
 	AdminChatUserSortField
-} from '../admin-chat-user-analytics';
+} from '$lib/types/admin-chat-user-analytics';
 
 export const DEFAULT_SLOW_THRESHOLD_MS = 10_000;
 

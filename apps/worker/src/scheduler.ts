@@ -16,7 +16,7 @@ import { format } from 'date-fns';
 import { supabase } from './lib/supabase';
 import { queueConfig } from './config/queueConfig';
 import { cleanupStaleJobs } from './lib/utils/queueCleanup';
-import { queue } from './worker';
+import { queue } from './lib/queue';
 import { PROJECT_LOOPS_ENABLED } from './config/projectLoops';
 import {
 	enqueueEndOfDayProjectLoops,

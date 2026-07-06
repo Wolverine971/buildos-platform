@@ -13,7 +13,8 @@ type EnsureTodayState =
 	| 'in_flight'
 	| 'queued'
 	| 'skipped_no_actor'
-	| 'skipped_no_projects';
+	| 'skipped_no_projects'
+	| 'skipped_recent_failure';
 
 type QueueJobSummary = {
 	id: string;
@@ -25,6 +26,14 @@ type QueueJobSummary = {
 };
 
 const FRESH_PROCESSING_MS = 10 * 60 * 1000;
+// Don't auto-retry a failed generation on every app open — a deterministic failure
+// would otherwise burn a full LLM generation attempt per page load.
+const FAILED_RETRY_COOLDOWN_MS = 30 * 60 * 1000;
+
+// The generator only loads projects in these states and throws
+// 'No ontology projects found for user' otherwise (job then retries max_attempts).
+// The gate must match, or users with only done/archived projects churn failed jobs.
+const BRIEFABLE_PROJECT_STATES = ['planning', 'active'];
 
 function getTodayForTimezone(timezone: string): string {
 	try {
@@ -70,36 +79,56 @@ async function getExistingActorId(supabase: any, userId: string): Promise<string
 	return data?.id ?? null;
 }
 
-async function hasAnyProjectsForActor(supabase: any, actorId: string): Promise<boolean> {
-	const [memberResult, ownedResult] = await Promise.all([
-		supabase
-			.from('onto_project_members')
-			.select('id', { count: 'exact', head: true })
-			.eq('actor_id', actorId)
-			.is('removed_at', null),
-		supabase
-			.from('onto_projects')
-			.select('id', { count: 'exact', head: true })
-			.eq('created_by', actorId)
-			.is('deleted_at', null)
-	]);
+async function hasBriefableProjects(
+	supabase: any,
+	userId: string,
+	actorId: string
+): Promise<boolean> {
+	// Mirrors the worker loader's access filter (loadUserOntologyData):
+	// created_by = actorId OR created_by = userId (legacy rows) OR membership,
+	// restricted to planning|active, not deleted/archived.
+	const { data: memberships, error: memberError } = await supabase
+		.from('onto_project_members')
+		.select('project_id')
+		.eq('actor_id', actorId)
+		.is('removed_at', null);
 
-	if (memberResult.error) {
+	if (memberError) {
 		console.warn(
-			'[daily-briefs/ensure-today] Failed to count project memberships:',
-			memberResult.error
-		);
-	}
-	if (ownedResult.error) {
-		console.warn(
-			'[daily-briefs/ensure-today] Failed to count owned projects:',
-			ownedResult.error
+			'[daily-briefs/ensure-today] Failed to load project memberships:',
+			memberError
 		);
 	}
 
-	if ((memberResult.count ?? 0) > 0) return true;
-	if (memberResult.error && ownedResult.error) return false;
-	return (ownedResult.count ?? 0) > 0;
+	const memberProjectIds = Array.from(
+		new Set(
+			((memberships ?? []) as Array<{ project_id: string | null }>)
+				.map((m) => m.project_id)
+				.filter((id): id is string => Boolean(id))
+		)
+	);
+
+	const accessFilters = [`created_by.eq.${actorId}`, `created_by.eq.${userId}`];
+	if (memberProjectIds.length > 0) {
+		accessFilters.push(`id.in.(${memberProjectIds.join(',')})`);
+	}
+
+	const { count, error } = await supabase
+		.from('onto_projects')
+		.select('id', { count: 'exact', head: true })
+		.in('state_key', BRIEFABLE_PROJECT_STATES)
+		.is('deleted_at', null)
+		.is('archived_at', null)
+		.or(accessFilters.join(','));
+
+	if (error) {
+		console.warn('[daily-briefs/ensure-today] Failed to count briefable projects:', error);
+		// Fail closed: skipping the implicit trigger is cheap (manual Generate still
+		// works); queueing a job the generator will fail max_attempts times is not.
+		return false;
+	}
+
+	return (count ?? 0) > 0;
 }
 
 async function findActiveBriefJob(supabase: any, userId: string, briefDate: string) {
@@ -241,6 +270,18 @@ export const POST: RequestHandler = async ({ locals: { supabase, safeGetSession 
 			});
 		}
 
+		if (briefRow?.generation_status === 'failed' && !activeJob) {
+			const failedAtMs = Date.parse(briefRow.updated_at ?? '');
+			if (Number.isFinite(failedAtMs) && Date.now() - failedAtMs < FAILED_RETRY_COOLDOWN_MS) {
+				return ApiResponse.success({
+					state: 'skipped_recent_failure' satisfies EnsureTodayState,
+					briefDate,
+					timezone,
+					queued: false
+				});
+			}
+		}
+
 		const actorId = await getExistingActorId(supabase, user.id);
 		if (!actorId) {
 			return ApiResponse.success({
@@ -251,7 +292,7 @@ export const POST: RequestHandler = async ({ locals: { supabase, safeGetSession 
 			});
 		}
 
-		const hasProjects = await hasAnyProjectsForActor(supabase, actorId);
+		const hasProjects = await hasBriefableProjects(supabase, user.id, actorId);
 		if (!hasProjects) {
 			return ApiResponse.success({
 				state: 'skipped_no_projects' satisfies EnsureTodayState,

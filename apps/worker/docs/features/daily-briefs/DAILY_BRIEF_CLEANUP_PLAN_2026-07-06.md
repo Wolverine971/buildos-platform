@@ -62,6 +62,38 @@ Still to verify before calling Phase 1 fully landed:
 
 **Current position:** the codebase is ready for Phase 1 DB/queue acceptance. Once that passes, Phase 2A quality work and Phase 2B email work can start in parallel; Phase 3 app-open auto-generation can then build on the single-flight behavior.
 
+### Review pass — 2026-07-06 (PM)
+
+Three adversarial review agents + prod data checks ran over commits `3a728402`/`a98218b1`/`d0b417d4`. All verified defects were fixed in the working tree the same day:
+
+**Fixed (worker):**
+
+- Fresh-processing skip could permanently swallow a retry of a dead generation (timeout/stall → retry sees zombie heartbeat → skipped → brief stuck `processing`, job terminally completed). Retries (`attemptsMade > 0`) now bypass the fresh-processing skip; completed briefs still skip but the skip path now **re-emits `brief.completed`** (dedup-safe via the event-level lock) so a brief persisted by a dead attempt still notifies.
+- `mergeQueueMetadata` let explicitly-`undefined` request keys erase a pending job's `notificationScheduledFor`/options on promote-on-dedup — undefined-valued keys are now stripped before merge.
+- Unset `notificationScheduledFor` meant "notify immediately," contradicting the WP-12 decision for `is_active=false` users — `/queue/brief` now sets `options.suppressNotification` for them; `briefWorker` skips `brief.completed`/`brief.failed` emission when set.
+- `20260706000000` index-detection now asserts a single-column index on exactly `(dedup_key)` (a multi-column index with a matching predicate would have passed the text check and broken `ON CONFLICT` at runtime).
+- Email adapter/webhook idempotency lookups switched from unindexed `.contains(template_data)` to `template_data->>delivery_id` (expression index added in `20260706020000`).
+- Standard + fallback email content now strips `## Project Details` (stop-gap until WP-11's real digest; prevents Gmail 102KB clipping that hides the unsubscribe link/pixel).
+
+**Fixed (web):**
+
+- **SECURITY:** `daily_brief_engagement_weekly_metrics` was granted to `authenticated` AND readable via the **anon** key through PostgREST (verified live). `20260706020000` revokes anon/authenticated → service_role only; the admin endpoint now reads via `createAdminSupabaseClient()`. ⚠️ The revoke must be applied to prod immediately (see below).
+- 7-day reactivation metric was computed from mutable `users.last_visit` (decays over time). Rewritten to append-only signals (`chat_sessions`, `user_activity_logs`) + `last_visit` as additive fallback, with a 400-day floor.
+- `ensure-today` project gate didn't match the generator's criteria (`planning|active`, not deleted/archived, actor OR user OR membership access) — users with only done/archived projects would have churned failed jobs on every app open. Also added a 30-min cooldown before auto-retrying a `failed` brief (`skipped_recent_failure` state).
+- Non-forced Generate on `/briefs` could attach to a future-parked cron job and poll to timeout — `briefClient` now falls through to the worker POST (which dedup-hits and promotes) when the existing job is pending >60s in the future.
+- Widget adopts the server-resolved timezone from the ensure response so `todayDate` can't drift from the ensured brief when `users.timezone` is null.
+- Webhook: dropped `.strict()` (deploy-order 422s between Railway/Vercel), added an atomic claim (`status='sending'` conditional UPDATE, 5-min reclaim, `failed` reset on send error) closing the concurrent double-send window.
+- Tracking pixel/click endpoints: PostHog captures are now collected and flushed concurrently before the response instead of one awaited round-trip per recipient.
+- Tests: retry-bypass + suppress + re-emit cases (worker); tz day-boundary, failure-cooldown, webhook positive/claim-conflict paths, click allowed-path (web). All green; both apps typecheck.
+
+**Still open (not defects — unimplemented plan scope):** WP-7 (project-details cap in the stored brief, LLM-judged priority actions, prompt rewrite), WP-10 (backoff window gates + reachability gate + auto-suppress), WP-11 real digest email ("View full brief" at top), E8 onboarding opt-in fix, WP-2's `isBriefGenerating` still can't see jobs whose metadata lacks `briefDate` (legacy rows only).
+
+**Prod actions required (DJ):**
+
+1. **Now:** run `supabase/migrations/20260706020000_secure_daily_brief_engagement_metrics.sql` against prod (dashboard SQL editor or `supabase db push`) — the metrics view is currently readable by anyone with the anon key.
+2. Apply `20260706000000`'s updated detection only matters for fresh/shadow DBs (prod already has the index + RPC).
+3. Verify the live queue acceptance list above (unchanged).
+
 ### WP-1: Completed-brief skip in the worker (B2) — **do this first**
 
 **Goal:** generation becomes idempotent per (user, brief_date). This one change neutralizes the 6am/9am cron regeneration, stalled-retry double-spend, and most scheduler-guard blind spots (B5, B6).
@@ -172,6 +204,38 @@ The judgment-heavy WP — use the strongest agent; consider `pnpm test:llm` spot
 
 ## Phase 2B — Email track (worker + web; parallel with 2A)
 
+### Progress update — 2026-07-06
+
+**Status:** WP-8 and WP-9 are code-complete in the working tree and passed focused local verification. WP-10 and WP-11 remain separate follow-up passes because they change scheduler/backoff behavior, SMS delivery truthfulness, onboarding preference writes, and the standard daily-brief email shape.
+
+What was fixed:
+
+- **WP-8 send-path correctness:** `emailAdapter.ts` now looks up an existing `emails` row by `template_data.delivery_id`, reuses that row and tracking id across retry attempts, and returns success without calling the webhook again when the delivery already has a sent/delivered/opened/clicked email. The web notification-email webhook now performs the same sent-row check before Gmail, so a timeout-after-send retry should not double-send.
+- **WP-8 email bookkeeping/compliance:** daily brief subject date formatting now uses `timeZone: 'UTC'`; click redirects are limited to relative app paths or the configured `PUBLIC_APP_URL` origin; daily brief fallback links URL-encode `briefDate`; notification emails record the real sender (`dj@build-os.com` / `DJ from BuildOS`); and worker/web email footers read `PRIVATE_POSTAL_ADDRESS` so the required physical-address value can be supplied without blocking code.
+- **WP-8 click route correction:** the click tracking route no longer selects or updates `email_recipients.clicked_at` because that column does not exist in the current schema. It determines first-click status from prior `email_tracking_events` rows and still updates `notification_deliveries.clicked_at`, which does exist.
+- **WP-9 measurement readout:** added `supabase/migrations/20260706010000_daily_brief_engagement_metrics.sql`, which creates `daily_brief_engagement_weekly_metrics` with weekly sends, opens, clicks, open/click rates, and 7-day reactivation by `engagement_stage`.
+- **WP-9 admin surface:** `/api/admin/notifications/analytics/daily-brief-engagement` reads the new view, `notification-analytics.service.ts` exposes it, and `/admin/notifications` now shows a Daily Brief Engagement card/table for the selected timeframe.
+- **WP-9 instrumentation/dimensions:** open and click tracking endpoints now emit server-side PostHog `email_opened` / `email_clicked` events. The worker persists `engagement_stage` into `notification_deliveries.payload`, and passes `brief_id`, `brief_date`, and `engagement_stage` through the webhook so `emails.template_data` keeps the reporting dimension after the web send update.
+
+Verification run:
+
+- `pnpm --filter @buildos/web test:run src/lib/services/email-service.test.ts src/routes/api/webhooks/send-notification-email/server.test.ts 'src/routes/api/email-tracking/[tracking_id]/click/server.test.ts'`
+- `pnpm --filter @buildos/worker test:run tests/queueContracts.test.ts`
+- `pnpm --filter @buildos/worker typecheck`
+- `pnpm --filter @buildos/web typecheck`
+- `git diff --check` on the touched Phase 2B files
+- Static check for the migration regression: no remaining `er.clicked_at` / `recipient.clicked_at` references in the daily-brief metrics migration or click endpoint; recipient-level clicks are derived from `email_tracking_events`.
+
+Still to verify before calling WP-8/WP-9 fully landed:
+
+- Apply `20260706010000_daily_brief_engagement_metrics.sql` against a fresh/shadow DB and prod. The first attempt failed on `er.clicked_at`; the migration has since been corrected to use `email_tracking_events` plus `notification_deliveries.clicked_at`.
+- Run `pnpm gen:all` after the migration is applied and after isolating unrelated generated-file churn already present in the worktree.
+- Live webhook acceptance: simulate a Gmail-success/webhook-timeout retry and confirm the retry returns the existing sent email without a second Gmail send.
+- Prod readout acceptance: query the new view for the last 60 days and confirm standard-stage sends/open/click numbers are sane against the audit baseline.
+- Configure the real `PRIVATE_POSTAL_ADDRESS` value in web + worker environments; the code currently ships an env stub, not the final business address.
+
+**Current position:** the email track has the corrected send-path foundation and measurement loop needed before changing the re-engagement curve. The next Phase 2B work should be WP-10 (backoff windows, reachability, unopened suppression, SMS honesty, env/docs flag cleanup) followed by WP-11 (digest email and onboarding opt-in fix).
+
 ### WP-8: Send-path correctness (E1, E2, E4, E5, E6)
 
 - **Idempotency (E1):** pass `deliveryId` from `emailAdapter.ts` to the webhook; webhook (`/api/webhooks/send-notification-email/+server.ts`) checks for an existing **sent** email for that delivery before calling Gmail; adapter reuses (not recreates) its `emails` row across retry attempts (`emailAdapter.ts:503-544`).
@@ -213,6 +277,32 @@ The judgment-heavy WP — use the strongest agent; consider `pnpm test:llm` spot
 ## Phase 3 — The feature: auto-generate on app open (DJ builds this)
 
 Everything below is now safe because Phase 1 made generation idempotent and non-force by default.
+
+### Progress update — 2026-07-06
+
+**Status:** WP-12 is code-complete locally for the dashboard entry point and has passed focused web verification. It has not yet been validated against a live worker/queue acceptance scenario.
+
+What was implemented:
+
+- Added authenticated `POST /api/daily-briefs/ensure-today` in the web app. It resolves `today` from `users.timezone`, returns a completed brief immediately, reuses a running processing job, skips accounts with no existing ontology actor or no visible projects, and otherwise queues the worker with `{ briefDate, forceRegenerate: false, forceImmediate: true, options: { useOntology: true } }`.
+- Added `/api/daily-briefs/ensure-today` to the consumption-billing AI-compute guard list so frozen-account handling applies before an implicit app-open generation can spend compute.
+- Wired `DashboardBriefWidget.initializeWidget()` to call `ensure-today` only after `fetchTodaysBrief()` finds no completed brief. Returned queued/processing jobs are attached through `BriefClientService.monitorQueuedGeneration()` without changing the explicit Generate/Regenerate paths.
+- Preserved WP-3's promotion behavior: pending jobs are posted back through worker `/queue/brief` so future scheduled dedup hits can be promoted to run now; only completed briefs and processing jobs short-circuit in the web route.
+
+Verification run:
+
+- `pnpm --filter @buildos/web test:run src/routes/api/daily-briefs/ensure-today/server.test.ts`
+- `pnpm --filter @buildos/web typecheck`
+- `git diff --check`
+
+Still to verify before calling Phase 3 fully landed:
+
+- Live app-open acceptance: first dashboard open on a new user-local day queues exactly one `generate_daily_brief` job and the widget shows progress.
+- Refresh/open a second tab mid-generation attaches to the existing job and does not restart generation.
+- App-open when a future cron job is already pending promotes that job to run now while preserving the worker-computed `notificationScheduledFor`.
+- App-open after cron already completed returns the completed brief without queueing.
+- Explicit Regenerate still cancels/recreates and forces a fresh brief.
+- Scheduled email still arrives once at the preferred time for early app-open generation.
 
 **Spec (WP-12):**
 

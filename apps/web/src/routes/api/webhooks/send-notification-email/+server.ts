@@ -31,24 +31,25 @@ interface NotificationEmailRequest {
 	engagementStage?: string | null;
 }
 
-const notificationEmailRequestSchema = z
-	.object({
-		recipientEmail: z.string().email(),
-		recipientName: z.string().optional(),
-		recipientUserId: z.string().min(1),
-		subject: z.string().min(1),
-		htmlContent: z.string(),
-		textContent: z.string(),
-		trackingId: z.string().optional(),
-		emailRecordId: z.string().optional(),
-		deliveryId: z.string().min(1),
-		eventId: z.string().min(1),
-		eventType: z.string().optional(),
-		briefId: z.string().nullable().optional(),
-		briefDate: z.string().nullable().optional(),
-		engagementStage: z.string().nullable().optional()
-	})
-	.strict();
+const notificationEmailRequestSchema = z.object({
+	recipientEmail: z.string().email(),
+	recipientName: z.string().optional(),
+	recipientUserId: z.string().min(1),
+	subject: z.string().min(1),
+	htmlContent: z.string(),
+	textContent: z.string(),
+	trackingId: z.string().optional(),
+	emailRecordId: z.string().optional(),
+	deliveryId: z.string().min(1),
+	eventId: z.string().min(1),
+	eventType: z.string().optional(),
+	briefId: z.string().nullable().optional(),
+	briefDate: z.string().nullable().optional(),
+	engagementStage: z.string().nullable().optional()
+});
+// Intentionally not .strict(): the worker deploys independently (Railway vs
+// Vercel) and may send newer payload keys before/after this endpoint updates.
+// Unknown keys are stripped, known keys stay validated.
 
 const SENT_EMAIL_STATUSES = ['sent', 'delivered', 'opened', 'clicked'] as const;
 
@@ -88,9 +89,10 @@ async function findSentEmailForDelivery(
 		}
 	}
 
+	// ->> expression filter matches idx_emails_template_delivery_id
 	const { data, error } = await (supabase.from('emails') as any)
 		.select('id, status, tracking_id, sent_at')
-		.contains('template_data', { delivery_id: deliveryId })
+		.eq('template_data->>delivery_id', deliveryId)
 		.in('status', SENT_EMAIL_STATUSES)
 		.order('sent_at', { ascending: false, nullsFirst: false })
 		.limit(1);
@@ -210,6 +212,48 @@ export const POST: RequestHandler = async ({ request }) => {
 			});
 		}
 
+		// Atomically claim the email row before the Gmail send so two concurrent
+		// deliveries of the same email (stalled-job reclaim while the first send
+		// is still in flight) cannot both send. A crashed claim self-heals via the
+		// 5-minute reclaim window; failed sends reset the status below.
+		let claimedEmailRecord = false;
+		if (body.emailRecordId) {
+			const nowIso = new Date().toISOString();
+			const reclaimBefore = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+			const { data: claimed, error: claimError } = await (supabase.from('emails') as any)
+				.update({ status: 'sending', updated_at: nowIso })
+				.eq('id', body.emailRecordId)
+				.not('status', 'in', '(sent,delivered,opened,clicked)')
+				.or(`status.neq.sending,updated_at.lt.${reclaimBefore},updated_at.is.null`)
+				.select('id')
+				.maybeSingle();
+
+			if (claimError) {
+				// Fail open (previous behavior) — the SELECT-based idempotency check
+				// above already ran; a claim error shouldn't drop the email.
+				console.warn(
+					'[NotificationEmailWebhook] Email claim failed, proceeding unclaimed',
+					{
+						emailRecordId: body.emailRecordId,
+						error: claimError.message
+					}
+				);
+			} else if (!claimed) {
+				console.log(
+					`[NotificationEmailWebhook] Email ${body.emailRecordId} already claimed/sent by another sender; skipping (delivery: ${body.deliveryId})`
+				);
+				return ApiResponse.success({
+					success: true,
+					messageId: null,
+					emailId: body.emailRecordId,
+					skipped: 'claimed_by_other_sender',
+					duration: Date.now() - startTime
+				});
+			} else {
+				claimedEmailRecord = true;
+			}
+		}
+
 		const emailService = new EmailService(supabase);
 
 		// Send email immediately via Gmail
@@ -248,6 +292,14 @@ export const POST: RequestHandler = async ({ request }) => {
 				deliveryId: body.deliveryId,
 				error: result.error
 			});
+
+			// Release the claim so the notification worker's retry can send.
+			if (claimedEmailRecord && body.emailRecordId) {
+				await (supabase.from('emails') as any)
+					.update({ status: 'failed', updated_at: new Date().toISOString() })
+					.eq('id', body.emailRecordId)
+					.eq('status', 'sending');
+			}
 
 			return ApiResponse.internalError(result.error, result.error || 'Failed to send email');
 		}

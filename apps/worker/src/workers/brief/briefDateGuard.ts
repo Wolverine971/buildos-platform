@@ -38,6 +38,7 @@ interface ExistingBriefJobParams {
 	options?: BriefJobData['options'];
 	now?: Date;
 	freshProcessingWindowMs?: number;
+	isRetryAttempt?: boolean;
 }
 
 interface ResolveBriefDateParams {
@@ -91,7 +92,8 @@ export function getExistingBriefJobDecision({
 	existingBrief,
 	options,
 	now = new Date(),
-	freshProcessingWindowMs = FRESH_PROCESSING_BRIEF_WINDOW_MS
+	freshProcessingWindowMs = FRESH_PROCESSING_BRIEF_WINDOW_MS,
+	isRetryAttempt = false
 }: ExistingBriefJobParams): ExistingBriefJobDecision {
 	if (options?.forceRegenerate === true || !existingBrief) {
 		return { shouldSkip: false };
@@ -107,6 +109,14 @@ export function getExistingBriefJobDecision({
 			existingBriefId,
 			message: `Brief ${briefDate} already completed`
 		};
+	}
+
+	// A retry means the prior attempt died (timeout/stall/crash) — its abandoned
+	// generation promise may still be heartbeating updated_at, so a "fresh
+	// processing" row must not swallow the retry or the day's brief can be left
+	// stuck at generation_status='processing' with the job terminally completed.
+	if (isRetryAttempt) {
+		return { shouldSkip: false };
 	}
 
 	if (status === 'processing' && existingBrief.updated_at) {

@@ -1194,12 +1194,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["prepareAgentRunChatEventDetail"]
-		},
-		{
 			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 			"type": "component",
 			"components": [],
@@ -1209,6 +1203,12 @@
 				"getCommander",
 				"formatTimelineYearRange"
 			]
+		},
+		{
+			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["prepareAgentRunChatEventDetail"]
 		},
 		{
 			"file": "src/lib/components/ontology/graph/lib/g6.service.ts",
@@ -1346,8 +1346,8 @@
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",
 		"src/lib/components/ui/codemirror/voice-widget.ts",
-		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
 		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
+		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
 		"src/lib/components/ontology/graph/lib/g6.service.ts",
 		"src/lib/components/ontology/graph/lib/graph.filters.ts",
 		"src/lib/components/ontology/graph/lib/graph.service.ts",

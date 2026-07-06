@@ -3,6 +3,7 @@
 // This addresses Moderate Issue #6 in QUEUE_FIXES_DESIGN.md
 
 import dotenv from 'dotenv';
+import { DEFAULT_VAPID_SUBJECT, validateVapidDetails } from './vapid';
 
 // Load environment variables
 dotenv.config();
@@ -271,11 +272,13 @@ export function validateEnvironment(): { valid: boolean; errors: string[] } {
 	// Conditional validation: VAPID keys for push notifications (warn if both not set)
 	const vapidPublic = process.env.VAPID_PUBLIC_KEY;
 	const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
-	if ((vapidPublic && !vapidPrivate) || (!vapidPublic && vapidPrivate)) {
-		errors.push(
-			'Both VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must be set together for push notifications'
-		);
-	}
+	errors.push(
+		...validateVapidDetails(
+			vapidPublic,
+			vapidPrivate,
+			process.env.VAPID_SUBJECT || DEFAULT_VAPID_SUBJECT
+		)
+	);
 
 	// Check for common configuration mistakes
 	const pollInterval = parseEnvInt('QUEUE_POLL_INTERVAL', 5000);

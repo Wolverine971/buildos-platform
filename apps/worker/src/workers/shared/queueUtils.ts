@@ -25,6 +25,9 @@ export interface BriefJobData extends Omit<DailyBriefJobMetadata, 'briefDate' | 
 		engagementStage?: 'standard' | 'reengagement' | 'dormant';
 		// Ontology brief generation flag
 		useOntology?: boolean;
+		// Set for implicit (app-open) generations when the user has daily briefs
+		// turned off — generate the brief but emit no brief.* notification events.
+		suppressNotification?: boolean;
 	};
 }
 

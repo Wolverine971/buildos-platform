@@ -21,7 +21,7 @@ vi.mock('../src/lib/utils/queueCleanup', () => ({
 	cleanupStaleJobs: schedulerMocks.cleanupStaleJobs
 }));
 
-vi.mock('../src/worker', () => ({
+vi.mock('../src/lib/queue', () => ({
 	queue: {
 		add: vi.fn(),
 		cancelBriefJobsForDate: vi.fn()

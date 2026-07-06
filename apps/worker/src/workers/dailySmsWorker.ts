@@ -15,7 +15,7 @@ import { supabase } from '../lib/supabase';
 import type { LegacyJob } from './shared/jobAdapter';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { addMinutes, endOfDay, format, isBefore, parseISO, startOfDay } from 'date-fns';
-import { queue } from '../worker';
+import { queue } from '../lib/queue';
 import { type EventContext, SMSMessageGenerator } from '../lib/services/smsMessageGenerator';
 import { smsMetricsService } from '@buildos/shared-utils';
 

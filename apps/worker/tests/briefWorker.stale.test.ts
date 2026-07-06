@@ -108,8 +108,9 @@ const mocks = vi.hoisted(() => {
 	const mockValidateBriefJobData = vi.fn((data) => data);
 	const mockBroadcastUserEvent = vi.fn();
 	const mockGenerateOntologyDailyBrief = vi.fn();
+	const mockRpc = vi.fn().mockResolvedValue({ data: null, error: null });
 	const mockCreateServiceClient = vi.fn(() => ({
-		rpc: vi.fn().mockResolvedValue({ data: null, error: null })
+		rpc: mockRpc
 	}));
 
 	return {
@@ -120,6 +121,7 @@ const mocks = vi.hoisted(() => {
 		mockValidateBriefJobData,
 		mockBroadcastUserEvent,
 		mockGenerateOntologyDailyBrief,
+		mockRpc,
 		mockCreateServiceClient
 	};
 });
@@ -246,7 +248,7 @@ describe('processBriefJob stale daily brief guard', () => {
 		);
 	});
 
-	it('completes jobs for already completed briefs without generating or emitting completion', async () => {
+	it('completes jobs for already completed briefs without generating, but re-emits brief.completed (dedup-safe)', async () => {
 		mocks.mockResponses.existingBrief = {
 			data: {
 				id: 'existing-brief-1',
@@ -259,6 +261,7 @@ describe('processBriefJob stale daily brief guard', () => {
 			userId: 'user-1',
 			briefDate: '2026-04-12',
 			timezone: 'America/New_York',
+			notificationScheduledFor: '2026-04-12T15:00:00.000Z',
 			options: {
 				forceRegenerate: false
 			}
@@ -268,7 +271,21 @@ describe('processBriefJob stale daily brief guard', () => {
 
 		expect(mocks.mockGenerateOntologyDailyBrief).not.toHaveBeenCalled();
 		expect(mocks.mockBroadcastUserEvent).not.toHaveBeenCalled();
-		expect(mocks.mockCreateServiceClient).not.toHaveBeenCalled();
+		// The completed brief may exist without its notification ever having fired
+		// (e.g. the generating attempt died after persisting). The skip path re-emits;
+		// emit_notification_event dedupes when it already fired.
+		expect(mocks.mockRpc).toHaveBeenCalledWith(
+			'emit_notification_event',
+			expect.objectContaining({
+				p_event_type: 'brief.completed',
+				p_target_user_id: 'user-1',
+				p_payload: expect.objectContaining({
+					brief_id: 'existing-brief-1',
+					brief_date: '2026-04-12'
+				}),
+				p_scheduled_for: '2026-04-12T15:00:00.000Z'
+			})
+		);
 		expect(mocks.mockUpdateJobStatus).toHaveBeenCalledWith(
 			'job-stale-brief',
 			'completed',
@@ -290,6 +307,32 @@ describe('processBriefJob stale daily brief guard', () => {
 				})
 			])
 		);
+	});
+
+	it('does not emit on the completed-brief skip path when notifications are suppressed', async () => {
+		mocks.mockResponses.existingBrief = {
+			data: {
+				id: 'existing-brief-1',
+				generation_status: 'completed',
+				updated_at: '2026-04-12T13:55:00.000Z'
+			},
+			error: null
+		};
+		const job = createBriefJob({
+			userId: 'user-1',
+			briefDate: '2026-04-12',
+			timezone: 'America/New_York',
+			options: {
+				forceRegenerate: false,
+				suppressNotification: true
+			}
+		});
+
+		await processBriefJob(job);
+
+		expect(mocks.mockGenerateOntologyDailyBrief).not.toHaveBeenCalled();
+		expect(mocks.mockCreateServiceClient).not.toHaveBeenCalled();
+		expect(mocks.mockRpc).not.toHaveBeenCalled();
 	});
 
 	it('regenerates an already completed brief when forceRegenerate is true', async () => {
@@ -333,7 +376,7 @@ describe('processBriefJob stale daily brief guard', () => {
 		);
 	});
 
-	it('completes jobs for fresh processing briefs without generating', async () => {
+	it('completes jobs for fresh processing briefs without generating or emitting', async () => {
 		mocks.mockResponses.existingBrief = {
 			data: {
 				id: 'existing-brief-1',
@@ -351,6 +394,8 @@ describe('processBriefJob stale daily brief guard', () => {
 		await processBriefJob(job);
 
 		expect(mocks.mockGenerateOntologyDailyBrief).not.toHaveBeenCalled();
+		// The in-flight generation owns the emission — the skip must stay silent.
+		expect(mocks.mockRpc).not.toHaveBeenCalled();
 		expect(job.log).toHaveBeenCalledWith('Brief 2026-04-12 is already processing');
 		expect(mocks.mockUpdates).toEqual(
 			expect.arrayContaining([
@@ -360,6 +405,46 @@ describe('processBriefJob stale daily brief guard', () => {
 						metadata: expect.objectContaining({
 							skipReason: 'skipped_fresh_processing_brief',
 							existingBriefId: 'existing-brief-1'
+						})
+					})
+				})
+			])
+		);
+	});
+
+	it('bypasses the fresh-processing skip on retry attempts and regenerates', async () => {
+		mocks.mockResponses.existingBrief = {
+			data: {
+				id: 'existing-brief-1',
+				generation_status: 'processing',
+				// Fresh heartbeat — would be skipped on a first attempt.
+				updated_at: '2026-04-12T13:58:00.000Z'
+			},
+			error: null
+		};
+		const job = createBriefJob({
+			userId: 'user-1',
+			briefDate: '2026-04-12',
+			timezone: 'America/New_York'
+		});
+		job.attemptsMade = 1;
+
+		await processBriefJob(job);
+
+		expect(mocks.mockGenerateOntologyDailyBrief).toHaveBeenCalledWith(
+			'user-1',
+			'2026-04-12',
+			undefined,
+			'America/New_York',
+			'job-stale-brief'
+		);
+		expect(mocks.mockUpdates).not.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					table: 'queue_jobs',
+					payload: expect.objectContaining({
+						metadata: expect.objectContaining({
+							skipReason: 'skipped_fresh_processing_brief'
 						})
 					})
 				})

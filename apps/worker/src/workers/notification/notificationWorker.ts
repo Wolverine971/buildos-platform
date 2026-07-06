@@ -35,6 +35,7 @@ import {
 } from '@buildos/shared-utils';
 import { checkUserPreferences } from './preferenceChecker.js';
 import { getStaleBriefJobDecision } from '../brief/briefDateGuard.js';
+import { DEFAULT_VAPID_SUBJECT } from '../../config/vapid';
 
 const supabase = createServiceClient();
 const logger = createLogger('worker:notification', supabase);
@@ -45,11 +46,17 @@ const logger = createLogger('worker:notification', supabase);
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:support@build-os.com';
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || DEFAULT_VAPID_SUBJECT;
+let pushNotificationsConfigured = false;
 
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-	webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-	logger.info('VAPID keys configured successfully');
+	try {
+		webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+		pushNotificationsConfigured = true;
+		logger.info('VAPID keys configured successfully');
+	} catch (error) {
+		logger.error('Invalid VAPID configuration - push notifications will not work', error);
+	}
 } else {
 	logger.warn('VAPID keys not configured - push notifications will not work');
 }
@@ -376,7 +383,7 @@ async function sendPushNotification(
 	const pushLogger = jobLogger.child('push');
 
 	try {
-		if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+		if (!pushNotificationsConfigured) {
 			throw new Error('VAPID keys not configured');
 		}
 

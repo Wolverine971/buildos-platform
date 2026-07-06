@@ -20,6 +20,7 @@ function createQuery(response: QueryResponse) {
 		eq: vi.fn(() => query),
 		in: vi.fn(() => query),
 		is: vi.fn(() => query),
+		or: vi.fn(() => query),
 		contains: vi.fn(() => query),
 		order: vi.fn(() => query),
 		limit: vi.fn(() => query),
@@ -152,14 +153,14 @@ describe('POST /api/daily-briefs/ensure-today', () => {
 		expect(fetch).not.toHaveBeenCalled();
 	});
 
-	it('skips when the actor has no visible projects', async () => {
+	it('skips when the actor has no briefable (planning/active) projects', async () => {
 		const supabase = createSupabase([
 			{ data: { timezone: 'America/New_York' }, error: null },
 			noRows(),
 			noRows(),
 			{ data: { id: 'actor-1' }, error: null },
-			{ data: null, error: null, count: 0 },
-			{ data: null, error: null, count: 0 }
+			{ data: [], error: null }, // memberships
+			{ data: null, error: null, count: 0 } // planning|active project count
 		]);
 
 		const response = await POST(createEvent(supabase));
@@ -192,8 +193,8 @@ describe('POST /api/daily-briefs/ensure-today', () => {
 			noRows(),
 			noRows(),
 			{ data: { id: 'actor-1' }, error: null },
-			{ data: null, error: null, count: 1 },
-			{ data: null, error: null, count: 0 }
+			{ data: [{ project_id: 'project-1' }], error: null }, // memberships
+			{ data: null, error: null, count: 1 } // planning|active project count
 		]);
 
 		const response = await POST(createEvent(supabase));
@@ -255,8 +256,8 @@ describe('POST /api/daily-briefs/ensure-today', () => {
 				error: null
 			},
 			{ data: { id: 'actor-1' }, error: null },
-			{ data: null, error: null, count: 1 },
-			{ data: null, error: null, count: 0 }
+			{ data: [], error: null }, // memberships
+			{ data: null, error: null, count: 1 } // planning|active project count
 		]);
 
 		const response = await POST(createEvent(supabase));
@@ -277,5 +278,110 @@ describe('POST /api/daily-briefs/ensure-today', () => {
 			forceRegenerate: false,
 			forceImmediate: true
 		});
+	});
+
+	it('resolves briefDate from the user timezone across the UTC day boundary', async () => {
+		// 02:00Z on Jul 7 is still Jul 6 in New York — the ensured briefDate
+		// must be the user-local date, not the UTC date.
+		vi.setSystemTime(new Date('2026-07-07T02:00:00.000Z'));
+
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					success: true,
+					jobId: 'queue-1',
+					scheduledFor: '2026-07-07T02:00:00.000Z'
+				}),
+				{ status: 200, headers: { 'content-type': 'application/json' } }
+			)
+		);
+		vi.stubGlobal('fetch', fetchMock);
+
+		const supabase = createSupabase([
+			{ data: { timezone: 'America/New_York' }, error: null },
+			noRows(),
+			noRows(),
+			{ data: { id: 'actor-1' }, error: null },
+			{ data: [], error: null },
+			{ data: null, error: null, count: 1 }
+		]);
+
+		const response = await POST(createEvent(supabase));
+		const payload = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(payload.data.briefDate).toBe('2026-07-06');
+		const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+		expect(body.briefDate).toBe('2026-07-06');
+	});
+
+	it('does not re-queue after a recent failed generation (cooldown)', async () => {
+		const supabase = createSupabase([
+			{ data: { timezone: 'America/New_York' }, error: null },
+			{
+				data: {
+					id: 'brief-1',
+					user_id: 'user-1',
+					brief_date: '2026-07-06',
+					generation_status: 'failed',
+					updated_at: '2026-07-06T13:50:00.000Z' // 10 minutes ago
+				},
+				error: null
+			},
+			noRows() // no active job
+		]);
+
+		const response = await POST(createEvent(supabase));
+		const payload = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(payload.data).toMatchObject({
+			state: 'skipped_recent_failure',
+			briefDate: '2026-07-06',
+			queued: false
+		});
+		expect(fetch).not.toHaveBeenCalled();
+	});
+
+	it('re-queues a failed generation once the cooldown has passed', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					success: true,
+					jobId: 'queue-1',
+					scheduledFor: '2026-07-06T14:00:00.000Z'
+				}),
+				{ status: 200, headers: { 'content-type': 'application/json' } }
+			)
+		);
+		vi.stubGlobal('fetch', fetchMock);
+
+		const supabase = createSupabase([
+			{ data: { timezone: 'America/New_York' }, error: null },
+			{
+				data: {
+					id: 'brief-1',
+					user_id: 'user-1',
+					brief_date: '2026-07-06',
+					generation_status: 'failed',
+					updated_at: '2026-07-06T12:00:00.000Z' // 2 hours ago
+				},
+				error: null
+			},
+			noRows(),
+			{ data: { id: 'actor-1' }, error: null },
+			{ data: [], error: null },
+			{ data: null, error: null, count: 1 }
+		]);
+
+		const response = await POST(createEvent(supabase));
+		const payload = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(payload.data).toMatchObject({
+			state: 'queued',
+			queued: true
+		});
+		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 });

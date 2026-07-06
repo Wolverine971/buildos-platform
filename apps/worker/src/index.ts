@@ -80,6 +80,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function withoutUndefinedValues(record: Record<string, unknown>): Record<string, unknown> {
+	return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
+}
+
 function mergeQueueMetadata(
 	existingMetadata: unknown,
 	requestMetadata: Record<string, unknown>
@@ -88,12 +92,15 @@ function mergeQueueMetadata(
 	const existingOptions = isRecord(existing.options) ? existing.options : {};
 	const requestOptions = isRecord(requestMetadata.options) ? requestMetadata.options : {};
 
+	// Strip undefined-valued keys so a request that computed no value (e.g. no
+	// future notificationScheduledFor) cannot erase what the scheduler already
+	// stored on the pending job it dedup-hit.
 	return {
 		...existing,
-		...requestMetadata,
+		...withoutUndefinedValues(requestMetadata),
 		options: {
 			...existingOptions,
-			...requestOptions
+			...withoutUndefinedValues(requestOptions)
 		}
 	} as Json;
 }
@@ -267,6 +274,7 @@ app.post('/queue/brief', async (req, res) => {
 		const briefDate = normalizedRequestedBriefDate || format(zonedDate, 'yyyy-MM-dd');
 
 		let notificationScheduledFor: Date | undefined;
+		let suppressNotification = false;
 		if (shouldForceImmediate && !shouldForceRegenerate) {
 			const { data: briefPreference, error: briefPreferenceError } = await supabase
 				.from('user_brief_preferences')
@@ -279,6 +287,10 @@ app.post('/queue/brief', async (req, res) => {
 					`Failed to fetch brief preferences for user ${userId}: ${briefPreferenceError.message}`
 				);
 			} else if (briefPreference) {
+				// Users who turned daily briefs off (is_active=false) may still generate
+				// implicitly on app open, but must not receive brief notifications —
+				// unset notificationScheduledFor would otherwise mean "notify now".
+				suppressNotification = briefPreference.is_active === false;
 				notificationScheduledFor = getFutureNotificationScheduledFor({
 					briefDate,
 					timeOfDay: briefPreference.time_of_day,
@@ -297,7 +309,8 @@ app.post('/queue/brief', async (req, res) => {
 				requestedBriefDate: normalizedRequestedBriefDate,
 				useOntology: requestOptions?.useOntology ?? true, // Default to ontology-based briefs
 				includeProjects: requestOptions?.includeProjects,
-				excludeProjects: requestOptions?.excludeProjects
+				excludeProjects: requestOptions?.excludeProjects,
+				suppressNotification: suppressNotification || undefined
 			}
 		};
 

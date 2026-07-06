@@ -132,4 +132,37 @@ describe('Brief date guard', () => {
 
 		expect(staleDecision.shouldSkip).toBe(false);
 	});
+
+	it('never lets a fresh processing brief swallow a retry attempt', () => {
+		// A retry means the prior attempt died (timeout/stall) while its abandoned
+		// generation may still heartbeat updated_at — the retry must regenerate.
+		const retryDecision = getExistingBriefJobDecision({
+			briefDate: '2026-04-12',
+			existingBrief: {
+				id: 'brief-1',
+				generation_status: 'processing',
+				updated_at: '2026-04-12T13:59:30Z'
+			},
+			now: new Date('2026-04-12T14:00:00Z'),
+			isRetryAttempt: true
+		});
+
+		expect(retryDecision.shouldSkip).toBe(false);
+
+		// Completed briefs still skip on retry — no wasted regeneration; the
+		// worker re-emits the completion event instead.
+		const completedRetryDecision = getExistingBriefJobDecision({
+			briefDate: '2026-04-12',
+			existingBrief: {
+				id: 'brief-1',
+				generation_status: 'completed',
+				updated_at: '2026-04-12T13:59:30Z'
+			},
+			now: new Date('2026-04-12T14:00:00Z'),
+			isRetryAttempt: true
+		});
+
+		expect(completedRetryDecision.shouldSkip).toBe(true);
+		expect(completedRetryDecision.reason).toBe('skipped_existing_brief');
+	});
 });

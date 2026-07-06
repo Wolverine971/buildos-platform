@@ -50,7 +50,7 @@ describe('brief audio synthesis provider routing', () => {
 		delete process.env.PRIVATE_OPENAI_API_KEY;
 	});
 
-	it('defaults to OpenRouter when OpenRouter credentials are available', async () => {
+	it('uses OpenRouter when OpenRouter TTS is configured', async () => {
 		mocks.hasOpenRouterTtsCredentials.mockReturnValue(true);
 
 		const { resolveBriefAudioProviderForWorker, synthesizeBriefAudioForWorker } =
@@ -86,17 +86,38 @@ describe('brief audio synthesis provider routing', () => {
 		expect(mocks.synthesizeBriefAudioInChild).not.toHaveBeenCalled();
 	});
 
-	it('falls back to bounded-time Kokoro when OpenRouter synthesis fails', async () => {
+	it('falls back to Kokoro with the remaining worker budget when OpenRouter synthesis fails', async () => {
+		const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_000);
 		mocks.hasOpenRouterTtsCredentials.mockReturnValue(true);
 		mocks.synthesizeBriefAudioWithOpenRouter.mockRejectedValueOnce(
 			new Error('OpenRouter unavailable')
 		);
 
-		const { synthesizeBriefAudioForWorker } = await importBriefAudioSynthesis();
-		const result = await synthesizeBriefAudioForWorker('brief text', 120_000);
+		try {
+			const { synthesizeBriefAudioForWorker } = await importBriefAudioSynthesis();
+			const result = await synthesizeBriefAudioForWorker('brief text', 120_000);
 
-		expect(result.model).toBe('onnx-community/Kokoro-82M-v1.0-ONNX');
-		expect(mocks.synthesizeBriefAudioWithOpenRouter).toHaveBeenCalledWith('brief text');
-		expect(mocks.synthesizeBriefAudioInChild).toHaveBeenCalledWith('brief text', 45_000);
+			expect(result.model).toBe('onnx-community/Kokoro-82M-v1.0-ONNX');
+			expect(mocks.synthesizeBriefAudioWithOpenRouter).toHaveBeenCalledWith('brief text');
+			expect(mocks.synthesizeBriefAudioInChild).toHaveBeenCalledWith('brief text', 120_000);
+		} finally {
+			nowSpy.mockRestore();
+		}
+	});
+
+	it('keeps the OpenRouter failure detail when Kokoro fallback also fails', async () => {
+		mocks.hasOpenRouterTtsCredentials.mockReturnValue(true);
+		mocks.synthesizeBriefAudioWithOpenRouter.mockRejectedValueOnce(
+			new Error('Model does not exist')
+		);
+		mocks.synthesizeBriefAudioInChild.mockRejectedValueOnce(
+			new Error('Audio synthesis timed out after 120000ms')
+		);
+
+		const { synthesizeBriefAudioForWorker } = await importBriefAudioSynthesis();
+
+		await expect(synthesizeBriefAudioForWorker('brief text', 120_000)).rejects.toThrow(
+			'OpenRouter TTS failed first: Model does not exist; Kokoro fallback failed: Audio synthesis timed out after 120000ms'
+		);
 	});
 });

@@ -63,4 +63,30 @@ describe('/api/email-tracking/[tracking_id]/click', () => {
 			})
 		);
 	});
+
+	it('redirects relative in-app destinations (brief links must keep working)', async () => {
+		// Email lookup misses — tracking degrades gracefully but the redirect
+		// must still land on the requested in-app path, not '/'.
+		const query: any = {
+			select: vi.fn(() => query),
+			eq: vi.fn(() => query),
+			maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null })
+		};
+		const supabase = { from: vi.fn(() => query) };
+		createAdminSupabaseClientMock.mockReturnValue(supabase);
+
+		await expect(
+			GET({
+				params: { tracking_id: 'tracking-1' },
+				url: new URL(
+					'https://build-os.com/api/email-tracking/tracking-1/click?url=%2Fprojects%2Fabc%2Ftasks%2Fdef'
+				)
+			} as any)
+		).rejects.toMatchObject({
+			status: 302,
+			location: '/projects/abc/tasks/def'
+		});
+
+		expect(supabase.from).toHaveBeenCalledWith('emails');
+	});
 });

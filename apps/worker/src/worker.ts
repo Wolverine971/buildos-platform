@@ -8,7 +8,7 @@ import type {
 	ProjectLoopJobMetadata,
 	VoiceNoteTranscriptionJobMetadata
 } from '@buildos/shared-types';
-import { ProcessingJob, SupabaseQueue } from './lib/supabaseQueue';
+import type { ProcessingJob } from './lib/supabaseQueue';
 import { processBriefJob } from './workers/brief/briefWorker';
 import { processOnboardingAnalysisJob } from './workers/onboarding/onboardingWorker';
 import type { BriefJobData, OnboardingAnalysisJobData } from './workers/shared/queueUtils';
@@ -36,8 +36,9 @@ import { processProjectLoopJob } from './workers/project-loop/projectLoopWorker'
 import { processCalendarSyncJob } from './workers/calendar/calendarSyncWorker';
 import { processBriefAudio as processBriefAudioJob } from './workers/briefAudio/briefAudioWorker';
 import { createLegacyJob } from './workers/shared/jobAdapter';
-import { getEnvironmentConfig, validateEnvironment } from './config/queueConfig';
+import { validateEnvironment } from './config/queueConfig';
 import { cleanupStaleJobs } from './lib/utils/queueCleanup';
+import { queueRuntimeConfig as config, queue } from './lib/queue';
 
 // Validate environment before starting
 const { valid, errors } = validateEnvironment();
@@ -46,16 +47,6 @@ if (!valid) {
 	errors.forEach((error) => console.error(`   - ${error}`));
 	process.exit(1);
 }
-
-// Get configuration based on environment
-const config = getEnvironmentConfig();
-
-// Create queue instance with environment-based configuration
-const queue = new SupabaseQueue({
-	pollInterval: config.pollInterval,
-	batchSize: config.batchSize,
-	stalledTimeout: config.stalledTimeout
-});
 
 // Health-stats logging interval; stored so graceful shutdown can clear it.
 let statsInterval: NodeJS.Timeout | null = null;

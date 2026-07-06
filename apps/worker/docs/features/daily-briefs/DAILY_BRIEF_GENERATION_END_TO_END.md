@@ -6,7 +6,7 @@
 
 ## TL;DR (the one-paragraph version)
 
-An hourly cron in the **worker** (`apps/worker/src/scheduler.ts`) scans active `user_brief_preferences`, computes each user's next brief time in their timezone, and (2 minutes early) enqueues a `generate_daily_brief` job into the Supabase `queue_jobs` table. A user can also trigger one on demand from the **web** app, which forwards to the worker's `POST /queue/brief` endpoint and enqueues the same job. The worker (`briefWorker.ts`) claims the job, validates timezone/date, skips stale dates, then calls `generateOntologyDailyBrief(...)`. That function loads the user's entire ontology (projects, tasks, goals, plans, milestones, risks, documents, calendar, activity) from Supabase, buckets tasks by date window, calls the LLM (via OpenRouter) once per high-signal project plus a few global synthesis passes, and writes the result to **`ontology_daily_briefs`** (+ one **`ontology_project_briefs`** row per project). It then (a) enqueues `generate_brief_audio` if narration is enabled, and (b) fires `emit_notification_event('brief.completed')`, a Postgres RPC that fans out to email / SMS / push / in-app **only for users who both subscribed and enabled that channel**. Email goes worker → web webhook → Gmail; SMS goes worker → `sms_messages` → Twilio. The web app watches Supabase Realtime on `queue_jobs` + `ontology_daily_briefs` for live progress and renders the finished brief.
+An hourly cron in the **worker** (`apps/worker/src/scheduler.ts`) scans active `user_brief_preferences`, computes each user's next brief time in their timezone, and (2 minutes early) enqueues a `generate_daily_brief` job into the Supabase `queue_jobs` table. The **web** app can also ensure today's brief on dashboard open via `POST /api/daily-briefs/ensure-today`, or trigger one explicitly from a Generate/Regenerate action; both web paths ultimately forward to the worker's `POST /queue/brief` endpoint and enqueue the same job when generation is needed. The worker (`briefWorker.ts`) claims the job, validates timezone/date, skips stale dates, then calls `generateOntologyDailyBrief(...)`. That function loads the user's entire ontology (projects, tasks, goals, plans, milestones, risks, documents, calendar, activity) from Supabase, buckets tasks by date window, calls the LLM (via OpenRouter) once per high-signal project plus a few global synthesis passes, and writes the result to **`ontology_daily_briefs`** (+ one **`ontology_project_briefs`** row per project). It then (a) enqueues `generate_brief_audio` if narration is enabled, and (b) fires `emit_notification_event('brief.completed')`, a Postgres RPC that fans out to email / SMS / push / in-app **only for users who both subscribed and enabled that channel**. Email goes worker → web webhook → Gmail; SMS goes worker → `sms_messages` → Twilio. The web app watches Supabase Realtime on `queue_jobs` + `ontology_daily_briefs` for live progress and renders the finished brief.
 
 ---
 
@@ -15,7 +15,7 @@ An hourly cron in the **worker** (`apps/worker/src/scheduler.ts`) scans active `
 1. [Architecture at a glance](#1-architecture-at-a-glance)
 2. [Key files index](#2-key-files-index)
 3. [Data model / tables reference](#3-data-model--tables-reference)
-4. [Stage 1 — Triggering (cron scheduler, engagement backoff, on-demand)](#4-stage-1--triggering)
+4. [Stage 1 — Triggering (cron scheduler, engagement backoff, app-open, on-demand)](#4-stage-1--triggering)
 5. [Stage 2 — Queue & job routing](#5-stage-2--queue--job-routing)
 6. [Stage 3 — Brief worker orchestration (`briefWorker.ts`)](#6-stage-3--brief-worker-orchestration)
 7. [Stage 4 — Data loading (what the brief plugs into)](#7-stage-4--data-loading)
@@ -23,7 +23,7 @@ An hourly cron in the **worker** (`apps/worker/src/scheduler.ts`) scans active `
 9. [Stage 6 — Persistence (DB writes)](#9-stage-6--persistence)
 10. [Stage 7 — Delivery (notifications → email / SMS / push / in-app)](#10-stage-7--delivery)
 11. [Stage 8 — Audio narration](#11-stage-8--audio-narration)
-12. [Web app integration (on-demand, realtime progress, display)](#12-web-app-integration)
+12. [Web app integration (app-open, on-demand, realtime progress, display)](#12-web-app-integration)
 13. [Environment flags reference](#13-environment-flags-reference)
 14. [Gotchas & caveats (read before you change anything)](#14-gotchas--caveats)
 15. [Tests](#15-tests)
@@ -41,8 +41,8 @@ An hourly cron in the **worker** (`apps/worker/src/scheduler.ts`) scans active `
    └──────────────┘       │  • next-run in user tz − 2min buffer        │
                           │  • engagement backoff (opt-in)              │
    ┌──────────────┐       │  • queue.add('generate_daily_brief')        │
-   │ WEB on-demand│──────►│  POST /queue/brief  (index.ts)              │
-   │ user clicks  │       │        │                                    │
+   │ WEB app-open │──────►│  POST /queue/brief  (index.ts)              │
+   │ /on-demand   │       │        │                                    │
    └──────────────┘       │        ▼   add_queue_job RPC                │
                           │  ┌──────────────┐                           │
                           │  │  queue_jobs  │  (Supabase, FOR UPDATE    │
@@ -148,19 +148,21 @@ An hourly cron in the **worker** (`apps/worker/src/scheduler.ts`) scans active `
 
 ### Web — trigger, progress, display
 
-| File                                                                                              | Role                                                      |
-| ------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `apps/web/src/routes/api/daily-briefs/generate/+server.ts`                                        | On-demand `POST` → forwards to worker `/queue/brief`.     |
-| `apps/web/src/routes/api/brief-jobs/queue/+server.ts`                                             | Alt queue endpoint (browser path).                        |
-| `apps/web/src/lib/services/briefClient.service.ts`                                                | Client orchestration (queue + poll + realtime).           |
-| `apps/web/src/lib/services/realtimeBrief.service.ts`                                              | Supabase Realtime subscription (progress).                |
-| `apps/web/src/lib/services/railwayWorker.service.ts`                                              | Talks to the Railway worker.                              |
-| `apps/web/src/lib/stores/unifiedBriefGeneration.store.ts`                                         | Merges progress from SSE/railway/realtime/manual.         |
-| `apps/web/src/lib/types/daily-brief.ts`                                                           | `DailyBrief` UI type (incl. `audio_*`).                   |
-| `apps/web/src/routes/api/daily-briefs/+server.ts`                                                 | Read latest brief for a date.                             |
-| `apps/web/src/lib/components/ontology/ProjectBriefsPanel.svelte`                                  | Per-project brief display.                                |
-| `apps/web/src/routes/api/daily-briefs/[id]/audio-request/+server.ts` + `.../audio-url/+server.ts` | Request audio / get 1-hour signed URL.                    |
-| `apps/web/src/routes/api/webhooks/send-notification-email/+server.ts`                             | Receives the worker's email send + does final Gmail send. |
+| File                                                                                              | Role                                                                         |
+| ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `apps/web/src/routes/api/daily-briefs/ensure-today/+server.ts`                                    | App-open ensure endpoint; completed/in-flight/project gates before queueing. |
+| `apps/web/src/routes/api/daily-briefs/generate/+server.ts`                                        | On-demand `POST` → forwards to worker `/queue/brief`.                        |
+| `apps/web/src/routes/api/brief-jobs/queue/+server.ts`                                             | Alt queue endpoint (browser path).                                           |
+| `apps/web/src/lib/components/dashboard/DashboardBriefWidget.svelte`                               | Dashboard brief card; app-open ensure call + display.                        |
+| `apps/web/src/lib/services/briefClient.service.ts`                                                | Client orchestration (queue + poll + realtime).                              |
+| `apps/web/src/lib/services/realtimeBrief.service.ts`                                              | Supabase Realtime subscription (progress).                                   |
+| `apps/web/src/lib/services/railwayWorker.service.ts`                                              | Talks to the Railway worker.                                                 |
+| `apps/web/src/lib/stores/unifiedBriefGeneration.store.ts`                                         | Merges progress from SSE/railway/realtime/manual.                            |
+| `apps/web/src/lib/types/daily-brief.ts`                                                           | `DailyBrief` UI type (incl. `audio_*`).                                      |
+| `apps/web/src/routes/api/daily-briefs/+server.ts`                                                 | Read latest brief for a date.                                                |
+| `apps/web/src/lib/components/ontology/ProjectBriefsPanel.svelte`                                  | Per-project brief display.                                                   |
+| `apps/web/src/routes/api/daily-briefs/[id]/audio-request/+server.ts` + `.../audio-url/+server.ts` | Request audio / get 1-hour signed URL.                                       |
+| `apps/web/src/routes/api/webhooks/send-notification-email/+server.ts`                             | Receives the worker's email send + does final Gmail send.                    |
 
 ---
 
@@ -188,7 +190,7 @@ An hourly cron in the **worker** (`apps/worker/src/scheduler.ts`) scans active `
 
 ## 4. Stage 1 — Triggering
 
-There are **two** ways a `generate_daily_brief` job is created: the scheduled cron path, and the on-demand path.
+There are **three** ways a `generate_daily_brief` job can be reached: scheduled cron, app-open ensure, and explicit on-demand generation. The two web paths both forward to the worker queue endpoint when a job is actually needed.
 
 ### 4.1 Cron scheduler (`scheduler.ts`)
 
@@ -221,19 +223,32 @@ Gated by `ENGAGEMENT_BACKOFF_ENABLED === 'true'` (`scheduler.ts:41`), **default 
 
 The chosen `{isReengagement, daysSinceLastLogin, engagementStage}` is folded into the job's `options` and later steers a **different LLM prompt** (Stage 5). Backoff queries **fail open** — on error, default to sending (`briefBackoffCalculator.ts:169-175`). Known gap: 4-day/14-day gates are exact-day (`=== 4`, `=== 14`), so a missed cron run drops the user into a skip band until dormant (~day 104). See `daily-brief-exponential-backoff-spec.md`.
 
-### 4.3 On-demand endpoint (`POST /queue/brief`, `index.ts:165`)
+### 4.3 App-open ensure endpoint (`POST /api/daily-briefs/ensure-today`)
+
+Called by `DashboardBriefWidget.initializeWidget()` after the widget fails to find a completed brief for today.
+
+- Authenticated web route; covered by the consumption-billing AI-compute mutation guard.
+- Resolves `today` from `users.timezone` (not browser timezone).
+- Reads `ontology_daily_briefs` for `(user_id, today)`: `completed` returns the mapped brief immediately; a fresh `processing` row or active processing queue job returns an in-flight job reference.
+- Skips without queueing if the user has no existing `onto_actors` row or no visible ontology projects (`onto_project_members` membership or `onto_projects.created_by`).
+- Otherwise POSTs worker `/queue/brief` with `forceRegenerate:false`, `forceImmediate:true`, `briefDate:today`, `timezone`, and `options.useOntology:true`.
+- Pending jobs intentionally do **not** short-circuit in the web route. They are posted back through `/queue/brief` so the worker/RPC dedup path can return the existing job and, for future scheduled hits, promote it to run now.
+
+### 4.4 On-demand endpoint (`POST /queue/brief`, `index.ts:165`)
 
 Called by the web app (below). Body: `{ userId, scheduledFor?, briefDate?, timezone?, forceImmediate?, forceRegenerate?, options? }`.
 
 - Validates the user, resolves timezone (`requested || users.timezone || 'UTC'`).
 - `forceRegenerate` → atomically cancels existing jobs for that date via `queue.cancelBriefJobsForDate` (`index.ts:216`) and uses a unique dedup key.
+- For immediate non-forced requests, computes `notificationScheduledFor` from `user_brief_preferences.time_of_day` + `users.timezone` when the preferred send time is still in the future.
 - Enqueues `generate_daily_brief` with `priority: forceImmediate ? 1 : 10`, `dedupKey: brief-<user>-<date>` (or unique if regenerating) (`index.ts:245-266`).
+- If a non-forced immediate request dedups onto a future pending job, promotes that job to `scheduled_for=now()` while preserving/merging notification metadata.
 
 ---
 
 ## 5. Stage 2 — Queue & job routing
 
-- **Queue:** Redis-free. `SupabaseQueue.add()` (`supabaseQueue.ts:75`) calls the **`add_queue_job`** Postgres RPC for an atomic dedup insert into `queue_jobs`. Dedup key from scheduler = `brief-<userId>-<briefDate>` (`scheduler.ts:125`). A second app-level guard scans `queue_jobs` for an existing `pending|processing` `generate_daily_brief` within ±30 min and skips duplicates (`scheduler.ts:786-824`).
+- **Queue:** Redis-free. `SupabaseQueue.add()` (`supabaseQueue.ts:75`) calls the **`add_queue_job`** Postgres RPC for an atomic dedup insert into `queue_jobs`. Dedup key from scheduler/app-open/manual generate = `brief-<userId>-<briefDate>`; forced regenerate uses a unique key so it can bypass dedup intentionally. The scheduler also scans for an existing active same-date job before queueing as a cheap duplicate guard.
 - **Claim:** workers claim rows via `claim_pending_jobs` (`FOR UPDATE SKIP LOCKED`), default `pollInterval=5s`, `batchSize=5`, `stalledTimeout=5min`.
 - **Routing:** `worker.ts:396` registers `queue.process('generate_daily_brief', processBrief)`. `processBrief` (`worker.ts:70`) wraps the job in a legacy adapter and calls `processBriefJob(legacyJob)` (`worker.ts:83`). Audio: `worker.ts:417` registers `generate_brief_audio` → `processBriefAudio`.
 
@@ -454,15 +469,19 @@ Optional MP3 narration, gated to **admins with `voice_narration_enabled`**.
 
 ## 12. Web app integration
 
-### 12.1 On-demand trigger
+### 12.1 App-open trigger
+
+`POST /api/daily-briefs/ensure-today` (`ensure-today/+server.ts`) is called by `DashboardBriefWidget.svelte` after `fetchTodaysBrief()` returns no completed brief. It returns `{ state, briefDate, timezone, queued, brief?, job? }`, where `state` is one of `completed`, `in_flight`, `queued`, `skipped_no_actor`, or `skipped_no_projects`. The widget renders completed results immediately, or calls `BriefClientService.monitorQueuedGeneration()` to attach polling/realtime progress to the returned job. Automatic failures are logged quietly so the manual Generate CTA remains available.
+
+### 12.2 On-demand trigger
 
 `POST /api/daily-briefs/generate` (`generate/+server.ts`) requires auth; returns 503 if `PUBLIC_RAILWAY_WORKER_URL` unset (local generation is deprecated). Otherwise it forwards to the worker `POST ${PUBLIC_RAILWAY_WORKER_URL}/queue/brief` with `{ userId, briefDate, timezone, forceRegenerate, options:{ includeProjects, excludeProjects, useOntology:true } }` (bearer `PRIVATE_RAILWAY_WORKER_TOKEN`) → enqueues the same `generate_daily_brief` job. Returns `{ jobId, status:'processing', queued:true }`. The legacy `GET` SSE handler only emits an error now — **inline/SSE generation is removed.**
 
-### 12.2 Progress (Realtime primary, polling backstop)
+### 12.3 Progress (Realtime primary, polling backstop)
 
 `realtimeBrief.service.ts` subscribes to a Supabase channel `user-brief-notifications:<userId>` with `postgres_changes` on **`queue_jobs`** and **`ontology_daily_briefs`** (both filtered by `user_id`), plus broadcast events. `handleJobUpdate` computes % from `metadata.generation_progress` and drives the `unifiedBriefGeneration` store (priority merge `sse > railway > realtime > manual`). `briefClient.service.ts` also polls `/api/brief-jobs/{jobId}` and `/api/daily-briefs/status` as a backstop.
 
-### 12.3 Display
+### 12.4 Display
 
 - `GET /api/daily-briefs?date=` reads the latest `ontology_daily_briefs` row and maps it (`mapOntologyDailyBriefRow`) into the UI `DailyBrief` type (`apps/web/src/lib/types/daily-brief.ts`, incl. `audio_*`).
 - `ProjectBriefsPanel.svelte` lazy-loads per-project briefs via `/api/onto/projects/{id}/briefs` and renders `brief_content` markdown.
@@ -472,18 +491,18 @@ Optional MP3 narration, gated to **admins with `voice_narration_enabled`**.
 
 ## 13. Environment flags reference
 
-| Flag                                                                                                                | Effect                                                                             | Default                |
-| ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------------------- |
-| `ENGAGEMENT_BACKOFF_ENABLED`                                                                                        | Enables the engagement-backoff send/skip gate in the scheduler.                    | off                    |
-| `PUBLIC_RAILWAY_WORKER_URL`                                                                                         | Web → worker base URL for on-demand queueing. Unset ⇒ web generation 503s.         | —                      |
-| `PRIVATE_RAILWAY_WORKER_TOKEN`                                                                                      | Bearer auth for web → worker `/queue/brief`.                                       | —                      |
-| `PUBLIC_APP_URL`                                                                                                    | Base URL for email links/pixels + email webhook target.                            | `https://build-os.com` |
-| `PRIVATE_BUILDOS_WEBHOOK_SECRET`                                                                                    | Auth for worker → web email webhook.                                               | —                      |
-| `PRIVATE_OPENROUTER_API_KEY` / `OPENROUTER_API_KEY`                                                                 | LLM (brief text) + TTS provider selection (present ⇒ OpenRouter TTS, else Kokoro). | required for LLM       |
-| `PRIVATE_TWILIO_ACCOUNT_SID/AUTH_TOKEN/MESSAGING_SERVICE_SID/STATUS_CALLBACK_URL`                                   | SMS send. Missing ⇒ SMS disabled.                                                  | —                      |
-| `users.voice_narration_enabled` + `users.is_admin`                                                                  | Gate for audio narration (DB flags, not env).                                      | off                    |
-| Queue: `QUEUE_POLL_INTERVAL`, `QUEUE_BATCH_SIZE`, `QUEUE_STALLED_TIMEOUT`, `QUEUE_MAX_RETRIES`, `QUEUE_RETENTION_*` | Queue throughput/retention (`queueConfig.ts`).                                     | 5000/5/300000/3/…      |
-| `PROJECT_LOOPS_ENABLED`                                                                                             | Gates unrelated project-loop crons in the same scheduler.                          | off                    |
+| Flag                                                                                                                | Effect                                                                              | Default                |
+| ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------- |
+| `ENGAGEMENT_BACKOFF_ENABLED`                                                                                        | Enables the engagement-backoff send/skip gate in the scheduler.                     | off                    |
+| `PUBLIC_RAILWAY_WORKER_URL`                                                                                         | Web → worker base URL for app-open/on-demand queueing. Unset ⇒ web generation 503s. | —                      |
+| `PRIVATE_RAILWAY_WORKER_TOKEN`                                                                                      | Bearer auth for web → worker `/queue/brief`.                                        | —                      |
+| `PUBLIC_APP_URL`                                                                                                    | Base URL for email links/pixels + email webhook target.                             | `https://build-os.com` |
+| `PRIVATE_BUILDOS_WEBHOOK_SECRET`                                                                                    | Auth for worker → web email webhook.                                                | —                      |
+| `PRIVATE_OPENROUTER_API_KEY` / `OPENROUTER_API_KEY`                                                                 | LLM (brief text) + TTS provider selection (present ⇒ OpenRouter TTS, else Kokoro).  | required for LLM       |
+| `PRIVATE_TWILIO_ACCOUNT_SID/AUTH_TOKEN/MESSAGING_SERVICE_SID/STATUS_CALLBACK_URL`                                   | SMS send. Missing ⇒ SMS disabled.                                                   | —                      |
+| `users.voice_narration_enabled` + `users.is_admin`                                                                  | Gate for audio narration (DB flags, not env).                                       | off                    |
+| Queue: `QUEUE_POLL_INTERVAL`, `QUEUE_BATCH_SIZE`, `QUEUE_STALLED_TIMEOUT`, `QUEUE_MAX_RETRIES`, `QUEUE_RETENTION_*` | Queue throughput/retention (`queueConfig.ts`).                                      | 5000/5/300000/3/…      |
+| `PROJECT_LOOPS_ENABLED`                                                                                             | Gates unrelated project-loop crons in the same scheduler.                           | off                    |
 
 ---
 
@@ -513,8 +532,9 @@ Read these before modifying anything — they are the non-obvious traps.
 - `apps/worker/tests/ontologyPrompts.test.ts` — prompt construction.
 - `apps/worker/tests/calendarBriefFormatting.test.ts` — calendar rendering.
 - `apps/worker/tests/briefAudioSynthesis.test.ts` — TTS provider selection/fallback.
+- `apps/web/src/routes/api/daily-briefs/ensure-today/server.test.ts` — app-open ensure endpoint behavior.
 
-Run: `cd apps/worker && pnpm test:run` (all) or `pnpm test path/to/file.test.ts` (single).
+Run worker tests with `cd apps/worker && pnpm test:run` (all) or `pnpm test path/to/file.test.ts` (single). Run the web app-open route test with `pnpm --filter @buildos/web test:run src/routes/api/daily-briefs/ensure-today/server.test.ts`.
 
 ---
 

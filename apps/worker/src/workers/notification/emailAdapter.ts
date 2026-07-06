@@ -49,11 +49,26 @@ function resolveDailyBriefEngagementStage(metadata: unknown): DailyBriefEngageme
 	return 'standard';
 }
 
+/**
+ * executive_summary holds the ENTIRE assembled brief markdown, including the
+ * `## Project Details` concatenation of every project brief. Emails must never
+ * ship that tail: it can blow past Gmail's ~102KB clip (hiding the footer's
+ * unsubscribe link and the tracking pixel) and is exactly the wall the
+ * reengagement/dormant tiers exist to avoid.
+ */
+function stripProjectDetailsSection(briefMarkdown: string): string {
+	const detailsIndex = briefMarkdown.indexOf('\n## Project Details');
+	if (detailsIndex === -1) {
+		return briefMarkdown;
+	}
+	return briefMarkdown.slice(0, detailsIndex).trimEnd();
+}
+
 function selectDailyBriefEmailContent(
 	brief: DailyBriefContentCandidate,
 	engagementStage: DailyBriefEngagementStage
 ): string {
-	const executiveSummary = brief.executive_summary?.trim() || '';
+	const executiveSummary = stripProjectDetailsSection(brief.executive_summary?.trim() || '');
 	const llmAnalysis = brief.llm_analysis?.trim() || '';
 
 	if (engagementStage === 'standard') {
@@ -146,9 +161,10 @@ async function findExistingEmailForDelivery(
 	deliveryId: string,
 	emailLogger: Logger
 ): Promise<ExistingEmailRecord | null> {
+	// ->> expression filter matches idx_emails_template_delivery_id
 	const { data, error } = await (supabase.from('emails') as any)
 		.select('id, status, tracking_id, sent_at, created_at')
-		.contains('template_data', { delivery_id: deliveryId })
+		.eq('template_data->>delivery_id', deliveryId)
 		.order('sent_at', { ascending: false, nullsFirst: false })
 		.order('created_at', { ascending: false })
 		.limit(1);
