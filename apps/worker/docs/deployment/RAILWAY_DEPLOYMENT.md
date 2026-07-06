@@ -19,15 +19,14 @@ The worker deploys from the monorepo root. Do not set Railway root directory to
 Current repo-root config:
 
 ```bash
-npm install -g pnpm@11.7.0
-pnpm install --prod=false --no-frozen-lockfile
-pnpm turbo build --filter=@buildos/worker
+npx --yes pnpm@11.7.0 install --prod=false --frozen-lockfile
+npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker
 node apps/worker/dist/index.js
 ```
 
-`nixpacks.toml` currently provisions `nodejs_22`, then installs
-`pnpm@11.7.0` before dependency installation. Keep this in sync with the root
-`packageManager` and `engines.pnpm` values.
+`nixpacks.toml` currently provisions `nodejs_22`, then runs pinned
+`pnpm@11.7.0` via `npx` for dependency installation and the worker build. Keep
+this in sync with the root `packageManager` and `engines.pnpm` values.
 
 ## Watch Paths
 

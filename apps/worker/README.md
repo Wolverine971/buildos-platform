@@ -135,8 +135,8 @@ pnpm test:integration
 
 Configured at the repo root via `railway.toml` and `nixpacks.toml`:
 
-- Builder: Nixpacks on `nodejs_22`; the build installs `pnpm@11.7.0`.
-- Build: `npm install -g pnpm@11.7.0 && pnpm install --prod=false --no-frozen-lockfile && pnpm turbo build --filter=@buildos/worker`.
+- Builder: Nixpacks on `nodejs_22`; the build runs pinned `pnpm@11.7.0` via `npx`.
+- Build: `npx --yes pnpm@11.7.0 install --prod=false --frozen-lockfile && npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker`.
 - Start: `node apps/worker/dist/index.js`.
 - Healthcheck: `GET /health` with a 30s timeout.
 - Restart policy: `ON_FAILURE`, up to 3 retries.

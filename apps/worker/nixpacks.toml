@@ -3,11 +3,11 @@ nixPkgs = ["nodejs_22"]
 
 [phases.install]
 dependsOn = ["setup"]
-cmds = ["npm install -g pnpm@11.7.0", "pnpm install --prod=false --frozen-lockfile"]
+cmds = ["npx --yes pnpm@11.7.0 install --prod=false --frozen-lockfile"]
 
 [phases.build]
 dependsOn = ["install"]
-cmds = ["pnpm turbo build --filter=@buildos/worker"]
+cmds = ["npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker"]
 
 [start]
 cmd = "node apps/worker/dist/index.js"
