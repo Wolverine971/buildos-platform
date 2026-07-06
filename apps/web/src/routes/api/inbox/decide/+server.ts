@@ -13,12 +13,15 @@ import { syncInboxItemForSource } from '@buildos/shared-agent-ops/inbox-index';
 import type { ChangeSetDecision } from '@buildos/shared-types';
 import type { InboxIndexRow, InboxSourceType } from '@buildos/shared-agent-ops/inbox-index';
 
-type DecisionAction = 'approve' | 'reject';
+type SourceDecisionAction = 'approve' | 'reject';
+type DecisionAction = SourceDecisionAction | 'snooze';
 type DecisionPayload = Record<string, unknown>;
+const MAX_SNOOZE_MS = 30 * 24 * 60 * 60 * 1000;
 
 function normalizeAction(value: unknown): DecisionAction | null {
 	if (value === 'approve' || value === 'accept' || value === 'apply') return 'approve';
 	if (value === 'reject' || value === 'dismiss' || value === 'decline') return 'reject';
+	if (value === 'snooze') return 'snooze';
 	return null;
 }
 
@@ -51,6 +54,25 @@ function parseDecisions(value: unknown): ChangeSetDecision[] {
 		}));
 }
 
+function parseSnoozeUntil(
+	value: unknown
+): { ok: true; value: string } | { ok: false; message: string } {
+	const raw = asString(value);
+	if (!raw) return { ok: false, message: 'snooze_until is required' };
+	const timestamp = Date.parse(raw);
+	if (!Number.isFinite(timestamp)) {
+		return { ok: false, message: 'snooze_until must be a valid ISO timestamp' };
+	}
+
+	const now = Date.now();
+	if (timestamp <= now) return { ok: false, message: 'snooze_until must be in the future' };
+	if (timestamp - now > MAX_SNOOZE_MS) {
+		return { ok: false, message: 'snooze_until cannot be more than 30 days out' };
+	}
+
+	return { ok: true, value: new Date(timestamp).toISOString() };
+}
+
 async function loadInboxItem(params: {
 	supabase: any;
 	itemId?: string | null;
@@ -73,7 +95,7 @@ async function loadInboxItem(params: {
 
 function fallbackSourceStatus(
 	item: InboxIndexRow,
-	action: DecisionAction,
+	action: SourceDecisionAction,
 	payload: DecisionPayload
 ): string {
 	if (item.source_type === 'project_suggestion') {
@@ -125,7 +147,7 @@ function fallbackInboxStatus(item: InboxIndexRow, sourceStatus: string): InboxIn
 async function forceDecisionInboxStatus(params: {
 	admin: any;
 	item: InboxIndexRow;
-	action: DecisionAction;
+	action: SourceDecisionAction;
 	payload: DecisionPayload;
 }): Promise<InboxIndexRow> {
 	const sourceStatus = fallbackSourceStatus(params.item, params.action, params.payload);
@@ -155,7 +177,7 @@ async function forceDecisionInboxStatus(params: {
 async function syncResultItem(
 	admin: any,
 	item: InboxIndexRow,
-	action: DecisionAction,
+	action: SourceDecisionAction,
 	payload: DecisionPayload
 ): Promise<InboxIndexRow> {
 	let repaired: InboxIndexRow | null = null;
@@ -182,6 +204,105 @@ async function syncResultItem(
 	});
 }
 
+async function authorizeInboxSnooze(params: {
+	item: InboxIndexRow;
+	locals: App.Locals;
+	user: NonNullable<Awaited<ReturnType<App.Locals['safeGetSession']>>['user']>;
+}): Promise<{ ok: true } | { ok: false; response: Response; message: string }> {
+	const { item, locals, user } = params;
+	if (item.user_id && item.user_id !== user.id) {
+		return {
+			ok: false,
+			message: 'Inbox item is owned by another user',
+			response: ApiResponse.error(
+				'Inbox item is owned by another user',
+				HttpStatus.FORBIDDEN,
+				'FORBIDDEN'
+			)
+		};
+	}
+
+	if (item.project_id) {
+		const access = await requireProjectMemberAccess({
+			locals,
+			user,
+			projectId: item.project_id,
+			requiredAccess: 'read'
+		});
+		if (!access.ok) {
+			return { ok: false, message: 'Project access denied', response: access.response };
+		}
+	}
+
+	return { ok: true };
+}
+
+async function snoozeLoadedInboxItem(params: {
+	item: InboxIndexRow;
+	body: Record<string, unknown>;
+	locals: App.Locals;
+	user: NonNullable<Awaited<ReturnType<App.Locals['safeGetSession']>>['user']>;
+	admin: ReturnType<typeof createAdminSupabaseClient>;
+}): Promise<
+	| { ok: true; payload: Record<string, unknown> }
+	| { ok: false; response: Response; message: string }
+> {
+	const { item, body, locals, user, admin } = params;
+	if (item.status !== 'pending' && item.status !== 'snoozed') {
+		return {
+			ok: false,
+			message: 'Only pending inbox items can be snoozed',
+			response: ApiResponse.error(
+				'Only pending inbox items can be snoozed',
+				HttpStatus.CONFLICT,
+				'INBOX_ITEM_NOT_PENDING'
+			)
+		};
+	}
+
+	const parsed = parseSnoozeUntil(body.snooze_until ?? body.snoozed_until);
+	if (!parsed.ok) {
+		return {
+			ok: false,
+			message: parsed.message,
+			response: ApiResponse.badRequest(parsed.message)
+		};
+	}
+
+	const access = await authorizeInboxSnooze({ item, locals, user });
+	if (!access.ok) return access;
+
+	const patch: Partial<InboxIndexRow> = {
+		status: 'snoozed',
+		snoozed_until: parsed.value,
+		decided_at: null,
+		blocked_reason: null
+	};
+	let query = (admin as any).from('inbox_items').update(patch);
+	if (item.id) {
+		query = query.eq('id', item.id);
+	} else {
+		query = query.eq('source_type', item.source_type).eq('source_ref_id', item.source_ref_id);
+	}
+
+	const { data, error } = await query.select('*').maybeSingle();
+	if (error) {
+		return {
+			ok: false,
+			message: error.message ?? 'Failed to snooze inbox item',
+			response: ApiResponse.databaseError(error)
+		};
+	}
+
+	return {
+		ok: true,
+		payload: {
+			item: (data ?? { ...item, ...patch }) as InboxIndexRow,
+			snoozed_until: parsed.value
+		}
+	};
+}
+
 function statusForCommitError(code: string): number {
 	if (code === 'NOT_FOUND') return HttpStatus.NOT_FOUND;
 	if (code === 'CONFLICT') return HttpStatus.CONFLICT;
@@ -202,6 +323,9 @@ async function decideLoadedInboxItem(params: {
 	| { ok: false; response: Response; message: string }
 > {
 	const { item, action, body, locals, user, admin, fetchFn } = params;
+	if (action === 'snooze') {
+		return snoozeLoadedInboxItem({ item, body, locals, user, admin });
+	}
 
 	if (item.source_type === 'agent_run') {
 		const defaultDecision: 'approved' | 'rejected' =
@@ -371,7 +495,7 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
 
 	const action = normalizeAction((body as { action?: unknown }).action);
 	if (!action) {
-		return ApiResponse.badRequest("action must be 'approve' or 'reject'");
+		return ApiResponse.badRequest("action must be 'approve', 'reject', or 'snooze'");
 	}
 
 	const sourceTypeParam = (body as { source_type?: unknown }).source_type;

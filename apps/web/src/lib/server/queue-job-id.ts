@@ -6,13 +6,13 @@ type QueueJobClient = Pick<SupabaseClient<Database>, 'from' | 'rpc'>;
 
 export type AddQueueJobArgs = Database['public']['Functions']['add_queue_job']['Args'];
 
-export async function resolveQueueJobPublicId(
+export async function resolveQueueJobDetails(
 	supabase: QueueJobClient,
 	queueRecordId: string
-): Promise<string> {
+): Promise<{ queueJobId: string; metadata: unknown }> {
 	const { data, error } = await supabase
 		.from('queue_jobs')
-		.select('queue_job_id')
+		.select('queue_job_id, metadata')
 		.eq('id', queueRecordId)
 		.maybeSingle();
 
@@ -22,21 +22,33 @@ export async function resolveQueueJobPublicId(
 		);
 	}
 
-	return data.queue_job_id;
+	return {
+		queueJobId: data.queue_job_id,
+		metadata: data.metadata
+	};
+}
+
+export async function resolveQueueJobPublicId(
+	supabase: QueueJobClient,
+	queueRecordId: string
+): Promise<string> {
+	return (await resolveQueueJobDetails(supabase, queueRecordId)).queueJobId;
 }
 
 export async function addQueueJobWithPublicId(
 	supabase: QueueJobClient,
 	args: AddQueueJobArgs
-): Promise<{ queueRecordId: string; queueJobId: string }> {
+): Promise<{ queueRecordId: string; queueJobId: string; metadata: unknown }> {
 	const { data, error } = await supabase.rpc('add_queue_job', args);
 
 	if (error || typeof data !== 'string' || data.length === 0) {
 		throw new Error(error?.message || 'Queue RPC did not return a valid queue record ID');
 	}
 
+	const details = await resolveQueueJobDetails(supabase, data);
 	return {
 		queueRecordId: data,
-		queueJobId: await resolveQueueJobPublicId(supabase, data)
+		queueJobId: details.queueJobId,
+		metadata: details.metadata
 	};
 }

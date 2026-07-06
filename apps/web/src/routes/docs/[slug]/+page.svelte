@@ -4,6 +4,12 @@
 	import { ArrowLeft, Clock, History } from 'lucide-svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import DocsPrevNext from '$lib/components/docs/DocsPrevNext.svelte';
+	import {
+		DEFAULT_ORGANIZATION_ID,
+		DEFAULT_WEBSITE_ID,
+		SITE_NAME,
+		SITE_URL
+	} from '$lib/constants/seo';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -19,13 +25,84 @@
 	const contentComponent = $derived(
 		docModules[`/src/content/docs/${data.doc.slug}.md`]?.default ?? null
 	);
+	const canonical = $derived(`${SITE_URL}/docs/${data.doc.slug}`);
+	const seoTitle = $derived(data.doc.seoTitle ?? `${data.doc.title} — BuildOS Docs`);
+	const seoDescription = $derived(data.doc.seoDescription ?? data.doc.summary);
+	const seoKeywords = $derived(
+		data.doc.seoKeywords ??
+			`BuildOS, ${data.doc.title.toLowerCase()}, thinking environment, project memory, structured work, documentation`
+	);
+	const seoAdditionalMeta = $derived.by(() => {
+		const meta = [{ property: 'article:section', content: 'Documentation' }];
+		if (data.doc.lastUpdated) {
+			meta.push({ property: 'article:modified_time', content: data.doc.lastUpdated });
+		}
+		return meta;
+	});
+	const docJsonLd = $derived.by(() => ({
+		'@context': 'https://schema.org',
+		'@graph': [
+			{
+				'@type': 'TechArticle',
+				'@id': `${canonical}#article`,
+				headline: data.doc.title,
+				description: seoDescription,
+				url: canonical,
+				dateModified: data.doc.lastUpdated,
+				author: {
+					'@type': 'Person',
+					name: 'DJ Wayne',
+					url: `${SITE_URL}/about`
+				},
+				publisher: {
+					'@type': 'Organization',
+					'@id': DEFAULT_ORGANIZATION_ID,
+					name: SITE_NAME,
+					url: SITE_URL
+				},
+				mainEntityOfPage: {
+					'@type': 'WebPage',
+					'@id': canonical
+				},
+				isPartOf: {
+					'@type': 'WebSite',
+					'@id': DEFAULT_WEBSITE_ID,
+					name: `${SITE_NAME} Docs`,
+					url: `${SITE_URL}/docs`
+				},
+				keywords: seoKeywords,
+				timeRequired: `PT${data.doc.readingTime}M`,
+				inLanguage: 'en-US'
+			},
+			{
+				'@type': 'BreadcrumbList',
+				'@id': `${canonical}#breadcrumb`,
+				itemListElement: [
+					{
+						'@type': 'ListItem',
+						position: 1,
+						name: 'Docs',
+						item: `${SITE_URL}/docs`
+					},
+					{
+						'@type': 'ListItem',
+						position: 2,
+						name: data.doc.title
+					}
+				]
+			}
+		]
+	}));
 </script>
 
 <SEOHead
-	title="{data.doc.title} — BuildOS Docs"
-	description={data.doc.summary}
-	canonical="https://build-os.com/docs/{data.doc.slug}"
-	keywords="BuildOS, {data.doc.title.toLowerCase()}, thinking environment, project memory, structured work, documentation"
+	title={seoTitle}
+	description={seoDescription}
+	{canonical}
+	keywords={seoKeywords}
+	ogType="article"
+	jsonLd={docJsonLd}
+	additionalMeta={seoAdditionalMeta}
 />
 
 <article>

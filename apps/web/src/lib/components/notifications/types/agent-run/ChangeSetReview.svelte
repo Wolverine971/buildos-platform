@@ -3,7 +3,7 @@
 
 <script lang="ts">
 	import Button from '$lib/components/ui/Button.svelte';
-	import { Plus, Pencil, Trash2, Check, X, MessageCircle } from '$lib/icons/lucide';
+	import { Plus, Pencil, Trash2, Check, X, Clock, MessageCircle } from '$lib/icons/lucide';
 	import DocumentProposalDiff from './DocumentProposalDiff.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { notifyDataMutation } from '$lib/stores/projectDataMutations';
@@ -18,7 +18,9 @@
 		approveAllLabel = 'Approve',
 		rejectAllLabel = 'Reject',
 		openingChat = false,
-		onChat
+		snoozing = false,
+		onChat,
+		onSnooze
 	}: {
 		runId: string;
 		changeSet: ChangeSet;
@@ -28,7 +30,9 @@
 		approveAllLabel?: string;
 		rejectAllLabel?: string;
 		openingChat?: boolean;
+		snoozing?: boolean;
 		onChat?: () => void | Promise<void>;
+		onSnooze?: () => void | Promise<void>;
 	} = $props();
 
 	// Per-change decision overrides; absent = the default ('approved'). Keeping an
@@ -272,6 +276,20 @@
 	</div>
 
 	<div class="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+		{#if onSnooze}
+			<Button
+				variant="outline"
+				size="sm"
+				icon={Clock}
+				onclick={() => onSnooze?.()}
+				disabled={applying || snoozing}
+				loading={snoozing}
+				title="Snooze until tomorrow"
+				class="w-full text-xs sm:w-auto"
+			>
+				Later
+			</Button>
+		{/if}
 		{#if onChat}
 			<Button
 				variant="accent"

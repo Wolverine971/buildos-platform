@@ -3,7 +3,7 @@ import { notificationStore } from '$lib/stores/notification.store';
 import { toastService } from '$lib/stores/toast.store';
 
 type InboxDecisionSourceType = 'agent_run' | 'project_suggestion' | 'calendar_suggestion';
-type InboxDecisionAction = 'approve' | 'reject';
+type InboxDecisionAction = 'approve' | 'reject' | 'snooze';
 
 type InboxDecisionNotificationItem = {
 	id: string;
@@ -15,6 +15,7 @@ const COMPLETE_REMOVE_MS = 1800;
 const ERROR_REMOVE_MS = 5000;
 
 function decisionVerb(item: InboxDecisionNotificationItem, action: InboxDecisionAction): string {
+	if (action === 'snooze') return 'Snoozing';
 	if (action === 'reject') {
 		return item.source_type === 'calendar_suggestion' ? 'Rejecting' : 'Dismissing';
 	}

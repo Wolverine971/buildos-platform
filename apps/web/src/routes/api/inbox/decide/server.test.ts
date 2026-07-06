@@ -160,6 +160,71 @@ describe('POST /api/inbox/decide', () => {
 		}));
 	});
 
+	it('snoozes a pending project suggestion inbox row without deciding the source', async () => {
+		const inboxItem = pendingProjectSuggestionItem();
+		const { supabase } = createSupabaseMock(inboxItem);
+		const admin = createSupabaseMock(inboxItem);
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.supabase);
+		const snoozeUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+		const response = await POST({
+			request: makeRequest({
+				item_id: 'inbox-1',
+				action: 'snooze',
+				snooze_until: snoozeUntil
+			}),
+			locals: makeLocals(supabase)
+		} as any);
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(json.data).toMatchObject({
+			snoozed_until: snoozeUntil,
+			item: {
+				status: 'snoozed',
+				snoozed_until: snoozeUntil,
+				decided_at: null,
+				blocked_reason: null
+			}
+		});
+		expect(admin.updates[0]).toMatchObject({
+			table: 'inbox_items',
+			payload: expect.objectContaining({
+				status: 'snoozed',
+				snoozed_until: snoozeUntil,
+				decided_at: null,
+				blocked_reason: null
+			})
+		});
+		expect(mocks.requireProjectMemberAccess).toHaveBeenCalledWith(
+			expect.objectContaining({ requiredAccess: 'read' })
+		);
+		expect(mocks.decideProjectSuggestion).not.toHaveBeenCalled();
+		expect(mocks.decideProjectSuggestionWithClarification).not.toHaveBeenCalled();
+		expect(mocks.syncInboxItemForSource).not.toHaveBeenCalled();
+	});
+
+	it('rejects snooze requests with a past timestamp', async () => {
+		const inboxItem = pendingProjectSuggestionItem();
+		const { supabase } = createSupabaseMock(inboxItem);
+		const admin = createSupabaseMock(inboxItem);
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.supabase);
+
+		const response = await POST({
+			request: makeRequest({
+				item_id: 'inbox-1',
+				action: 'snooze',
+				snooze_until: '2020-01-01T00:00:00.000Z'
+			}),
+			locals: makeLocals(supabase)
+		} as any);
+		const json = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(json.error).toBe('snooze_until must be in the future');
+		expect(admin.updates).toEqual([]);
+	});
+
 	it('forces a dismissed project suggestion inbox row out of pending when sync returns stale pending', async () => {
 		const inboxItem = pendingProjectSuggestionItem();
 		const { supabase } = createSupabaseMock(inboxItem);
@@ -195,6 +260,41 @@ describe('POST /api/inbox/decide', () => {
 				blocked_reason: null
 			})
 		});
+	});
+
+	it('passes project suggestion dismissal feedback through to the decision service', async () => {
+		const inboxItem = pendingProjectSuggestionItem();
+		const { supabase } = createSupabaseMock(inboxItem);
+		const admin = createSupabaseMock(inboxItem);
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.supabase);
+		mocks.decideProjectSuggestion.mockResolvedValue({
+			ok: true,
+			suggestion: { id: 'suggestion-1', status: 'rejected' },
+			result: { ok: true }
+		});
+
+		const response = await POST({
+			request: makeRequest({
+				item_id: 'inbox-1',
+				action: 'reject',
+				reason: 'wrong_evidence',
+				note: 'The evidence points to the older plan.'
+			}),
+			locals: makeLocals(supabase),
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(mocks.decideProjectSuggestion).toHaveBeenCalledWith(
+			expect.objectContaining({
+				action: 'dismiss',
+				feedback: {
+					reason: 'wrong_evidence',
+					note: 'The evidence points to the older plan.'
+				}
+			})
+		);
+		expect(mocks.decideProjectSuggestionWithClarification).not.toHaveBeenCalled();
 	});
 
 	it('forces the inbox row out of pending when source sync throws after a successful decision', async () => {

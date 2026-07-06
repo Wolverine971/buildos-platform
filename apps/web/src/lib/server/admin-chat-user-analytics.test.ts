@@ -231,6 +231,90 @@ describe('admin chat user analytics', () => {
 		expect(analytics.users).toEqual([]);
 	});
 
+	it('exposes latest classification job status without raw metadata', () => {
+		const detail = buildAdminChatUserDetail(
+			{
+				sessions: [
+					{
+						id: 'session-1',
+						user_id: 'user-1',
+						title: 'Classification check',
+						chat_topics: [],
+						context_type: 'global',
+						status: 'active',
+						created_at: '2026-07-01T10:00:00.000Z',
+						updated_at: '2026-07-01T10:10:00.000Z',
+						last_message_at: '2026-07-01T10:10:00.000Z',
+						last_classified_at: null
+					}
+				],
+				users: [{ id: 'user-1', email: 'jobs@example.com', name: null }],
+				sessionProjects: [],
+				projects: [],
+				messages: [],
+				turnRuns: [],
+				timingRows: [],
+				toolExecutions: [],
+				usageRows: [],
+				projectLogs: [],
+				appErrors: [],
+				classificationJobs: [
+					{
+						id: 'job-old',
+						queue_job_id: 'queue-old',
+						metadata: {
+							sessionId: 'session-1',
+							rawContext: 'SECRET_JOB_METADATA'
+						},
+						status: 'pending',
+						created_at: '2026-07-01T10:11:00.000Z',
+						updated_at: '2026-07-01T10:11:00.000Z'
+					},
+					{
+						id: 'job-new',
+						queue_job_id: 'queue-new',
+						metadata: {
+							sessionId: 'session-1',
+							rawContext: 'SECRET_NEW_JOB_METADATA'
+						},
+						status: 'failed',
+						error_message: 'Worker timed out',
+						created_at: '2026-07-01T10:12:00.000Z',
+						updated_at: '2026-07-01T10:13:00.000Z',
+						started_at: '2026-07-01T10:12:30.000Z',
+						completed_at: '2026-07-01T10:13:00.000Z'
+					}
+				],
+				truncated: {}
+			},
+			'user-1',
+			{
+				timeframe: '7d',
+				session_page: 1,
+				session_limit: 25,
+				session_sort_by: 'last_activity_at',
+				session_sort_order: 'desc',
+				search: '',
+				slow_threshold_ms: 10_000
+			}
+		);
+
+		expect(detail?.sessions[0].classification_job).toEqual({
+			job_id: 'job-new',
+			queue_job_id: 'queue-new',
+			status: 'failed',
+			error_message: 'Worker timed out',
+			queued_at: '2026-07-01T10:12:00.000Z',
+			started_at: '2026-07-01T10:12:30.000Z',
+			completed_at: '2026-07-01T10:13:00.000Z',
+			updated_at: '2026-07-01T10:13:00.000Z'
+		});
+		assertAdminChatUserAnalyticsRedacted(detail);
+		const payloadText = JSON.stringify(detail);
+		expect(payloadText).not.toContain('SECRET_JOB_METADATA');
+		expect(payloadText).not.toContain('SECRET_NEW_JOB_METADATA');
+	});
+
 	it('returns safe entity-change drilldown details for a user', () => {
 		const detail = buildAdminChatUserDetail(
 			{

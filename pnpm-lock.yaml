@@ -56,7 +56,9 @@ overrides:
   follow-redirects@<1.16.0: '>=1.16.0'
 
 patchedDependencies:
-  '@vercel/nft@1.5.0': 30c694a1ccf5bc7095cab3583d7118162444054131fcb5a0f2b4067c265421e2
+  '@vercel/nft@1.5.0':
+    hash: 30c694a1ccf5bc7095cab3583d7118162444054131fcb5a0f2b4067c265421e2
+    path: patches/@vercel__nft@1.5.0.patch
 
 importers:
 

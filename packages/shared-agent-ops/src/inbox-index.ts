@@ -89,10 +89,40 @@ function terminalDecidedAt(row: Record<string, unknown>): string | null {
 	);
 }
 
+function parseTimestamp(value: string | null | undefined): number | null {
+	if (!value) return null;
+	const parsed = Date.parse(value);
+	return Number.isFinite(parsed) ? parsed : null;
+}
+
+function shouldPreserveActiveSnooze(
+	existing: InboxIndexRow | null,
+	nextStatus: InboxItemStatus
+): boolean {
+	if (nextStatus !== 'pending' || existing?.status !== 'snoozed') return false;
+	const snoozedUntil = parseTimestamp(existing.snoozed_until);
+	return snoozedUntil !== null && snoozedUntil > Date.now();
+}
+
 async function upsertInboxItem(
 	supabase: AnySupabase,
 	row: InboxIndexRow
 ): Promise<InboxIndexRow | null> {
+	const { data: existingData, error: existingError } = await (supabase as any)
+		.from('inbox_items')
+		.select('status,snoozed_until')
+		.eq('source_type', row.source_type)
+		.eq('source_ref_id', row.source_ref_id)
+		.maybeSingle();
+	if (existingError) {
+		console.warn('[AI Inbox] Failed to read existing inbox item before upsert', {
+			source_type: row.source_type,
+			source_ref_id: row.source_ref_id,
+			error: existingError.message
+		});
+	}
+	const existing = (existingData ?? null) as InboxIndexRow | null;
+	const preserveSnooze = shouldPreserveActiveSnooze(existing, row.status);
 	const payload = {
 		source_type: row.source_type,
 		source_ref_id: row.source_ref_id,
@@ -100,15 +130,15 @@ async function upsertInboxItem(
 		user_id: row.user_id ?? null,
 		project_id: row.project_id ?? null,
 		audience: row.audience,
-		status: row.status,
+		status: preserveSnooze ? 'snoozed' : row.status,
 		title: row.title,
 		summary: row.summary ?? null,
 		risk_tier: row.risk_tier ?? null,
 		action_kinds: row.action_kinds,
-		blocked_reason: row.blocked_reason ?? null,
-		snoozed_until: row.snoozed_until ?? null,
+		blocked_reason: preserveSnooze ? null : (row.blocked_reason ?? null),
+		snoozed_until: preserveSnooze ? existing?.snoozed_until : (row.snoozed_until ?? null),
 		expires_at: row.expires_at ?? null,
-		decided_at: row.decided_at ?? null
+		decided_at: preserveSnooze ? null : (row.decided_at ?? null)
 	};
 
 	const { data, error } = await (supabase as any)

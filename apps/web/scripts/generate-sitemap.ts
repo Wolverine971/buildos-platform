@@ -1,6 +1,7 @@
 // apps/web/scripts/generate-sitemap.ts
 import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import { parse as parseYaml } from 'yaml';
 
 interface SitemapUrl {
 	loc: string;
@@ -34,6 +35,24 @@ interface BlogContext {
 		};
 	};
 	generatedAt: string;
+}
+
+interface DocSection {
+	slug: string;
+	title: string;
+	summary: string;
+	icon: string;
+	order: number;
+}
+
+interface DocsIndex {
+	sections: DocSection[];
+}
+
+interface DocFrontmatter {
+	lastUpdated?: string;
+	sitemapChangefreq?: SitemapUrl['changefreq'];
+	sitemapPriority?: string;
 }
 
 const BASE_URL = 'https://build-os.com';
@@ -205,6 +224,98 @@ function formatDateToYYYYMMDD(dateString: string): string {
 	return `${year}-${month}-${day}`;
 }
 
+function loadDocsIndex(): DocsIndex | null {
+	const docsIndexPath = join(process.cwd(), 'src', 'content', 'docs', '_index.json');
+
+	if (!existsSync(docsIndexPath)) {
+		console.warn('⚠️  docs _index.json not found. Using static docs URLs.');
+		return null;
+	}
+
+	try {
+		const content = readFileSync(docsIndexPath, 'utf-8');
+		return JSON.parse(content);
+	} catch (error) {
+		console.error('❌ Failed to parse docs _index.json:', error);
+		return null;
+	}
+}
+
+function isChangefreq(value: unknown): value is SitemapUrl['changefreq'] {
+	return (
+		typeof value === 'string' &&
+		['always', 'hourly', 'daily', 'weekly', 'monthly', 'yearly', 'never'].includes(value)
+	);
+}
+
+function normalizePriority(value: unknown): string | undefined {
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return value.toFixed(1);
+	}
+	if (typeof value === 'string' && value.trim()) {
+		return value;
+	}
+	return undefined;
+}
+
+function readDocFrontmatter(slug: string): DocFrontmatter {
+	const docPath = join(process.cwd(), 'src', 'content', 'docs', `${slug}.md`);
+
+	if (!existsSync(docPath)) {
+		console.warn(`⚠️  Docs markdown not found for '${slug}'. Falling back to static metadata.`);
+		return {};
+	}
+
+	const content = readFileSync(docPath, 'utf-8');
+	const match = content.match(/^---\n([\s\S]*?)\n---/);
+	if (!match) return {};
+
+	try {
+		const metadata = parseYaml(match[1] ?? '') as Record<string, unknown> | null;
+		const lastUpdated = metadata?.lastUpdated;
+		const sitemapChangefreq = metadata?.sitemapChangefreq;
+
+		return {
+			lastUpdated: typeof lastUpdated === 'string' ? lastUpdated : undefined,
+			sitemapChangefreq: isChangefreq(sitemapChangefreq) ? sitemapChangefreq : undefined,
+			sitemapPriority: normalizePriority(metadata?.sitemapPriority)
+		};
+	} catch (error) {
+		console.warn(`⚠️  Failed to parse docs frontmatter for '${slug}':`, error);
+		return {};
+	}
+}
+
+function generateDocUrls(docsIndex: DocsIndex): SitemapUrl[] {
+	return [...docsIndex.sections]
+		.sort((a, b) => a.order - b.order)
+		.map((section) => {
+			const frontmatter = readDocFrontmatter(section.slug);
+			const staticUrl = STATIC_URLS.find(
+				(url) => url.loc === `${BASE_URL}/docs/${section.slug}`
+			);
+
+			return {
+				loc: `${BASE_URL}/docs/${section.slug}`,
+				lastmod: frontmatter.lastUpdated
+					? formatDateToYYYYMMDD(frontmatter.lastUpdated)
+					: (staticUrl?.lastmod ?? DEFAULT_LASTMOD),
+				changefreq: frontmatter.sitemapChangefreq ?? staticUrl?.changefreq ?? 'monthly',
+				priority:
+					frontmatter.sitemapPriority ??
+					staticUrl?.priority ??
+					(section.slug === 'reference' ? '0.7' : '0.8')
+			};
+		});
+}
+
+function getMostRecentUrlDate(urls: SitemapUrl[]): string | null {
+	return urls.reduce<string | null>((latest, url) => {
+		if (!latest || url.lastmod > latest) return url.lastmod;
+		return latest;
+	}, null);
+}
+
 function loadBlogContext(): BlogContext | null {
 	const blogContextPath = join(process.cwd(), 'src', 'content', 'blogs', 'blog-context.json');
 
@@ -352,14 +463,36 @@ function generateSitemap(): void {
 	try {
 		// Load blog context
 		const blogContext = loadBlogContext();
+		const docsIndex = loadDocsIndex();
 
 		// Start with static URLs
-		let allUrls = [...STATIC_URLS];
+		let allUrls = docsIndex
+			? STATIC_URLS.filter((url) => !url.loc.startsWith(`${BASE_URL}/docs/`))
+			: [...STATIC_URLS];
+		const staticUrlCount = allUrls.length;
+		let docUrlCount = 0;
+		let blogUrlCount = 0;
+
+		if (docsIndex) {
+			const docUrls = generateDocUrls(docsIndex);
+			const mostRecentDocDate = getMostRecentUrlDate(docUrls);
+			const docsRootUrl = allUrls.find((url) => url.loc === `${BASE_URL}/docs`);
+
+			if (docsRootUrl && mostRecentDocDate) {
+				docsRootUrl.lastmod = mostRecentDocDate;
+				console.log(`📅 Updated docs page lastmod to: ${mostRecentDocDate}`);
+			}
+
+			allUrls = allUrls.concat(docUrls);
+			docUrlCount = docUrls.length;
+			console.log(`📚 Added ${docUrls.length} docs URLs to sitemap`);
+		}
 
 		// Add dynamic blog URLs if blog context is available
 		if (blogContext) {
 			const blogUrls = generateBlogUrls(blogContext);
 			allUrls = allUrls.concat(blogUrls);
+			blogUrlCount = blogUrls.length;
 			console.log(`📝 Added ${blogUrls.length} blog URLs to sitemap`);
 		} else {
 			console.log('📝 No blog context found, using static URLs only');
@@ -382,15 +515,15 @@ function generateSitemap(): void {
 		// Summary
 		console.log('\n📊 Sitemap Summary:');
 		console.log(`  🔗 Total URLs: ${allUrls.length}`);
-		console.log(`  📄 Static pages: ${STATIC_URLS.length}`);
+		console.log(`  📄 Static pages: ${staticUrlCount}`);
+		console.log(`  📚 Docs URLs: ${docUrlCount}`);
 
 		if (blogContext) {
-			const blogUrls = allUrls.length - STATIC_URLS.length;
-			console.log(`  📝 Blog URLs: ${blogUrls}`);
+			console.log(`  📝 Blog URLs: ${blogUrlCount}`);
 
 			// Break down blog URLs
 			const categoryUrls = Object.keys(blogContext.categories).length;
-			const postUrls = blogUrls - categoryUrls;
+			const postUrls = blogUrlCount - categoryUrls;
 			console.log(`    📁 Category pages: ${categoryUrls}`);
 			console.log(`    📄 Blog posts: ${postUrls}`);
 		}

@@ -372,6 +372,55 @@ async function failCompleteAuditState({
 	}
 }
 
+async function supersedePendingSuggestionsForFailedRun(params: {
+	runId: string;
+	message: string;
+}): Promise<number> {
+	const result = {
+		ok: false,
+		applied_operations: 0,
+		errors: [
+			{
+				tool: 'project_loop_run',
+				error: params.message
+			}
+		]
+	};
+	const { data: updatedSuggestions, error } = await supabase
+		.from('project_suggestions')
+		.update({
+			status: 'superseded',
+			decided_at: nowIso(),
+			result: result as unknown as Json
+		})
+		.eq('run_id', params.runId)
+		.eq('status', 'pending')
+		.select('*');
+
+	if (error) {
+		console.error(
+			`[ProjectLoops] Failed to supersede pending suggestions for failed run ${params.runId}: ${error.message}`
+		);
+		return 0;
+	}
+
+	for (const suggestion of updatedSuggestions ?? []) {
+		try {
+			await syncInboxItemForProjectSuggestion({
+				supabase: supabase as any,
+				suggestion: suggestion as unknown as Record<string, unknown>
+			});
+		} catch (syncError) {
+			console.warn(
+				`⚠️ Failed to sync AI Inbox item for superseded failed-run suggestion ${suggestion.id}:`,
+				syncError instanceof Error ? syncError.message : syncError
+			);
+		}
+	}
+
+	return (updatedSuggestions ?? []).length;
+}
+
 type AuditActivityRow = {
 	entity_type: string | null;
 	entity_id: string | null;
@@ -2063,6 +2112,7 @@ async function processCompleteProjectAuditJob(
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Complete project audit failed';
 		await failCompleteAuditState({ runId, auditId, message });
+		await supersedePendingSuggestionsForFailedRun({ runId, message });
 		throw error;
 	}
 }
@@ -2475,6 +2525,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		const usageForError = lastUsage as UsageEvent | null;
 		await job.log(`Project loop failed: ${message}`);
 		await failRun(runId, message, { totalCost });
+		await supersedePendingSuggestionsForFailedRun({ runId, message });
 		await logWorkerError(error, {
 			userId: run.user_id,
 			projectId,

@@ -2,16 +2,19 @@
 layout: docs
 title: Connect Your Agents
 slug: connect-agents
-summary: One key. Every project. Connect Claude Code, OpenClaw, ChatGPT Actions, Codex, or any HTTP-capable tool to your BuildOS workspace with setup instructions tailored to the client.
+summary: One scoped key or OAuth grant. Connect Claude Code, OpenClaw, ChatGPT Actions, Codex, or any HTTP/MCP-capable tool to your BuildOS workspace with setup instructions tailored to the client.
+seoTitle: BuildOS MCP Agent Setup | Claude Code, ChatGPT & Codex
+seoDescription: Connect Claude Code, ChatGPT, Codex, OpenClaw, and custom MCP or HTTP agents to BuildOS with scoped keys, OAuth, project permissions, and setup examples.
+seoKeywords: BuildOS agents, MCP connector, Claude Code MCP, ChatGPT Actions, ChatGPT remote MCP, Codex MCP, OpenClaw, agent keys, OAuth remote MCP
 icon: Plug
 order: 9
-lastUpdated: 2026-05-29
+lastUpdated: 2026-07-05
 path: apps/web/src/content/docs/connect-agents.md
 ---
 
 Your messy thinking lives in BuildOS. Your AI tools — Claude Code, OpenClaw, Codex, ChatGPT Actions, custom HTTP clients, and browser-based remote connectors — can read off the same sheet of paper instead of starting from zero each session.
 
-Generate a key. Choose where you are installing it. BuildOS gives you the right storage instructions for that client. Local tools usually use env or MCP config. Private ChatGPT Actions use the Action authentication secret. Browser/cloud clients should use a remote connector with OAuth.
+Generate a key, or approve an OAuth grant from a remote MCP client. Choose where you are installing it. BuildOS gives you the right storage instructions for that client. Local tools usually use an MCP config, env var, or local stdio bridge. Private ChatGPT Actions use the Action authentication secret. Browser/cloud clients should use remote MCP with OAuth.
 
 Per-project scope. Per-op write whitelist. Audit log. Rotate or revoke any time. No retraining your agents on your context every session.
 
@@ -19,26 +22,35 @@ Per-project scope. Per-op write whitelist. Audit log. Rotate or revoke any time.
 
 BuildOS is usually a workspace with many projects. After an agent connects, it should:
 
-1. Call `call.dial`.
-2. Call `tools/list` and use the direct tool names it returns.
+1. If using MCP, initialize the MCP connection and call `tools/list`. If using the JSON-RPC gateway, call `call.dial` first, then `tools/list`.
+2. Use the direct tool names returned by `tools/list`.
 3. If it is about to work inside an existing project, call `get_onto_project_status` with the `project_id` first.
 
-`get_onto_project_status` is the BuildOS equivalent of `git status` for a project. It returns the compact snapshot an agent needs before deeper reads or writes: project description, task/document/plan/goal/collaborator counts, active collaborators, recent changes, overdue and due-soon tasks, and upcoming events.
+`get_onto_project_status` is the BuildOS equivalent of `git status` for a project. It returns the compact snapshot an agent needs before deeper reads or writes: START HERE orientation context, project description, task/document/plan/goal/collaborator counts, active collaborators, recent changes, overdue and due-soon tasks, and upcoming events.
 
 ## Client profiles
 
 Same BuildOS auth core. Different save location.
 
-| Client profile                   | Best storage path                         | Status                                                   |
-| -------------------------------- | ----------------------------------------- | -------------------------------------------------------- |
-| **OpenClaw**                     | OpenClaw env, SecretRef, or plugin config | BuildOS side ready; OpenClaw connector in progress       |
-| **Claude Code**                  | `claude mcp add` (key header or OAuth)    | MCP ready at `/mcp/buildos`                              |
-| **ChatGPT Actions**              | GPT Action API key secret                 | Ready for private GPTs; use OAuth before sharing broadly |
-| **Codex CLI / IDE**              | Codex MCP config (`/mcp/buildos`)         | MCP ready at `/mcp/buildos`                              |
-| **Claude browser / ChatGPT MCP** | Remote MCP OAuth connector                | OAuth remote MCP ready at `/mcp/buildos`                 |
-| **Custom HTTP / scripts**        | Your env file or secret manager           | Ready                                                    |
+| Client profile                       | Best storage path                                              | Status                                                   |
+| ------------------------------------ | -------------------------------------------------------------- | -------------------------------------------------------- |
+| **OpenClaw**                         | OpenClaw env, SecretRef, or plugin config                      | BuildOS side ready; OpenClaw connector in progress       |
+| **Claude Code**                      | `claude mcp add` with a bearer header or OAuth                 | Remote HTTP MCP ready at `/mcp/buildos`                  |
+| **Claude Desktop / local MCP hosts** | Local stdio bridge env vars, or direct remote MCP if supported | Bridge exists in repo; package is not published to npm   |
+| **ChatGPT Actions**                  | GPT Action API key secret                                      | Ready for private GPTs; use OAuth before sharing broadly |
+| **ChatGPT MCP / Apps**               | Remote MCP OAuth connector                                     | OAuth remote MCP ready at `/mcp/buildos`                 |
+| **Codex CLI / IDE**                  | `~/.codex/config.toml` with `bearer_token_env_var`             | Remote MCP config ready; local bridge available          |
+| **Custom HTTP / scripts**            | Your env file or secret manager                                | Ready                                                    |
 
-BuildOS speaks the Model Context Protocol at **`/mcp/buildos`**. Local clients (Claude Code, Codex, custom HTTP) authenticate with the agent key in an `Authorization: Bearer` header; browser/cloud clients (Claude.ai, ChatGPT) authenticate with OAuth — no pasted token. The older JSON-RPC gateway at `POST /api/agent-call/buildos` (the `call.dial → tools/list → tools/call → call.hangup` flow) still works for any HTTP-capable tool and is the fallback when a client can't speak MCP.
+BuildOS speaks the Model Context Protocol at **`/mcp/buildos`**. Local clients can authenticate with the agent key in an `Authorization: Bearer` header or an env-backed MCP config; browser/cloud clients (Claude.ai, ChatGPT) authenticate with OAuth — no pasted token. The older JSON-RPC gateway at `POST /api/agent-call/buildos` (the `call.dial → tools/list → tools/call → call.hangup` flow) still works for any HTTP-capable tool and is the fallback when a client can't speak MCP.
+
+The MCP endpoint supports three profiles:
+
+| Profile            | URL                                     | Tool surface                                                                                                                |
+| ------------------ | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `general`          | `/mcp/buildos`                          | Scoped BuildOS read/write tools; discovery tools are hidden.                                                                |
+| `chatgpt_data_app` | `/mcp/buildos?profile=chatgpt_data_app` | Read-only `search` and `fetch` only, even if the underlying grant allows writes.                                            |
+| `local_admin`      | `/mcp/buildos?profile=local_admin`      | Full scoped surface including `skill_load`, `tool_search`, and `tool_schema`. Use only for local/admin clients you control. |
 
 ## Generate an agent key
 
@@ -60,8 +72,7 @@ BuildOS speaks the Model Context Protocol at **`/mcp/buildos`**. Local clients (
 Choose the **Claude Code** client profile when generating the key, then add BuildOS as an MCP server. The Agent Keys tab shows this exact command (with your key filled in):
 
 ```bash
-claude mcp add --transport http buildos https://build-os.com/mcp/buildos \
-  --header "Authorization: Bearer boca_your_one_time_secret"
+claude mcp add --transport http buildos https://build-os.com/mcp/buildos --header "Authorization: Bearer boca_your_one_time_secret"
 ```
 
 Restart Claude Code and BuildOS tools appear. Then prompt:
@@ -76,7 +87,7 @@ When you pick a project, ask it to call `get_onto_project_status` before deeper 
 claude mcp add --transport http buildos https://build-os.com/mcp/buildos
 ```
 
-Claude Code discovers BuildOS's OAuth metadata and opens a browser consent screen where you approve scope and projects — no token stored locally.
+Then run `/mcp` inside Claude Code and follow the browser login flow. Claude Code discovers BuildOS's OAuth metadata, and you approve scope and projects — no token stored locally.
 
 The JSON-RPC gateway at `POST /api/agent-call/buildos` remains available as a fallback if you'd rather drive the `call.dial` flow directly with the env block:
 
@@ -89,20 +100,68 @@ BUILDOS_CALLER_KEY=claude-code:local:your-handle
 
 ## Setting it up in Cursor
 
-Cursor uses the same env block. Drop it into your Cursor agent settings (the place where Cursor stores env vars and secrets for the workspace). Then prompt:
+Use the direct remote MCP URL if your Cursor build supports remote HTTP MCP:
+
+```text
+URL: https://build-os.com/mcp/buildos
+Header: Authorization: Bearer boca_your_one_time_secret
+```
+
+If your Cursor setup only launches local stdio MCP servers, use the local bridge in `packages/buildos-mcp-server`:
+
+```bash
+pnpm --filter @buildos/mcp-server build
+```
+
+Then point Cursor's MCP config at the built entrypoint:
+
+```json
+{
+	"mcpServers": {
+		"buildos": {
+			"command": "node",
+			"args": [
+				"/absolute/path/to/buildos-platform/packages/buildos-mcp-server/dist/index.js"
+			],
+			"env": {
+				"BUILDOS_BASE_URL": "https://build-os.com",
+				"BUILDOS_AGENT_TOKEN": "boca_your_agent_key"
+			}
+		}
+	}
+}
+```
+
+Then prompt:
 
 > "Connect to BuildOS, list my projects."
 
-Cursor will use the bearer token to dial the gateway. Same tool surface as Claude Code. For project work, ask it to call `get_onto_project_status` first so it has the current project snapshot.
+For project work, ask it to call `get_onto_project_status` first so it has the current project snapshot.
 
 ## Setting it up in Claude Desktop and Claude browser
 
 There are two different paths:
 
-- **Local MCP config** behaves like Claude Code: env/header storage is fine if the server runs locally.
+- **Claude Desktop / local MCP hosts** can use direct remote HTTP MCP if supported, or the local stdio bridge in `packages/buildos-mcp-server` when the client expects a local process.
 - **Claude browser or cloud-brokered remote connectors** authenticate with OAuth, not a pasted token. Browser chat is not a secret store, and Claude's cloud cannot read your local env.
 
 For browser/cloud clients, add **`https://build-os.com/mcp/buildos`** as a custom/remote MCP connector. BuildOS publishes OAuth metadata, so the client takes you through a consent screen where you pick scope and projects, then issues its own token behind the scenes. Nothing to copy or paste.
+
+## Setting it up in Codex
+
+Choose **Codex CLI / IDE** when generating the key. Add BuildOS to `~/.codex/config.toml` and keep the secret in your environment:
+
+```toml
+[mcp_servers.buildos]
+url = "https://build-os.com/mcp/buildos"
+bearer_token_env_var = "BUILDOS_AGENT_TOKEN"
+```
+
+```bash
+export BUILDOS_AGENT_TOKEN=boca_your_one_time_secret
+```
+
+If a Codex surface only supports local stdio MCP servers, use the same local bridge shown in the Cursor section. For direct remote MCP, append `?profile=chatgpt_data_app` to the URL only when you intentionally want a read-only `search`/`fetch` surface; for the local bridge, set `BUILDOS_MCP_PROFILE=chatgpt_data_app`.
 
 ## Setting it up in ChatGPT (Custom GPT)
 
@@ -119,7 +178,9 @@ For shared GPTs or workspace-wide installs, use OAuth instead of a single bearer
 
 ## Setting it up in ChatGPT Developer Mode
 
-Choose **ChatGPT Developer Mode** only when you are building a remote MCP connector. Developer Mode is the right path for full read/write tools in ChatGPT, but it should be backed by a remote MCP server and OAuth, not a pasted BuildOS bearer token.
+Choose **ChatGPT Developer Mode** only when you are building a remote MCP connector. Developer Mode is the right path for MCP tools in ChatGPT, but it should be backed by remote MCP and OAuth, not a pasted BuildOS bearer token.
+
+Use `https://build-os.com/mcp/buildos?profile=chatgpt_data_app` when ChatGPT should only search and fetch BuildOS context. Use `https://build-os.com/mcp/buildos` only for trusted full-tool connectors where the OAuth grant and BuildOS scope allow the requested writes.
 
 ## Setting it up in OpenClaw
 
@@ -145,7 +206,7 @@ The Agent Keys UI leads with preset bundles. Pick one and you're done — the pe
 | **Full read/write**                           | Reads plus every write op the gateway currently exposes.                |
 | **Custom**                                    | Any per-op combination you pick in Advanced.                            |
 
-Existing keys that still carry the old narrow default (task writes only) auto-upgrade to **Author docs + tasks** on the next call — no action needed.
+Existing OpenClaw keys that still carry the old narrow default (task writes only) auto-upgrade to **Author docs + tasks** on the next call — no action needed.
 
 Project creation is its own write op: `onto.project.create` requires `read_write` and the op whitelisted. It is **not** tied to all-project access — a key scoped to selected projects can still create new ones, and each project it creates is automatically added to that key's scope so it can immediately read and write the project it just made. To prevent a key from creating projects, leave `onto.project.create` out of its write whitelist.
 
@@ -153,28 +214,42 @@ Project creation is its own write op: `onto.project.create` requires `read_write
 
 **Reads** (available on every key)
 
-- `onto.project.list`, `onto.project.search`, `onto.project.get`, `onto.project.status.get`
-- `onto.task.list`, `onto.task.search`, `onto.task.get`
-- `onto.document.list`, `onto.document.search`, `onto.document.get`
-- `onto.search`
+- Projects: `onto.project.list`, `onto.project.search`, `onto.project.get`, `onto.project.status.get`, `onto.project.graph.get`
+- Tasks: `onto.task.list`, `onto.task.search`, `onto.task.get`, `onto.task.docs.list`
+- Documents: `onto.document.list`, `onto.document.search`, `onto.document.get`, `onto.document.tree.get`, `onto.document.path.get`
+- Goals, plans, milestones, risks: list/search/get for each entity
+- Assets: `onto.asset.search`, `onto.asset.get`
+- Links: `onto.entity.relationships.get`, `onto.entity.links.get`
+- Search: `onto.search`
+- Calendar: `cal.event.list`, `cal.event.get`, `cal.project.get`
 
 **Writes** (require `read_write`)
 
 - `onto.task.create`, `onto.task.update`
+- `onto.task.docs.create_or_attach`
 - `onto.document.create`, `onto.document.update`
+- `onto.document.tree.move`
 - `onto.project.create`, `onto.project.update`
 - `onto.goal.create`, `onto.goal.update`
 - `onto.plan.create`, `onto.plan.update`
 - `onto.milestone.create`, `onto.milestone.update`
 - `onto.risk.create`, `onto.risk.update`
+- `onto.edge.link`, `onto.edge.unlink`
+- `cal.event.create`, `cal.event.update`, `cal.event.delete`
+- `cal.project.set`
 
 **Discovery**
 
-- `skill_load`, `tool_search`, `tool_schema`
+- `skill_load`, `tool_search`, `tool_schema` are available through the JSON-RPC gateway and through MCP only when using `?profile=local_admin`.
 
-**Session methods**
+**JSON-RPC gateway session methods**
 
 - `call.dial`, `tools/list`, `tools/call`, `call.hangup`
+
+**MCP resources**
+
+- `resources/list` exposes in-scope projects as START HERE orientation resources.
+- `resources/read` accepts `buildos://project/<id>` and `buildos://document/<id>`.
 
 ## Getting Project Status
 
@@ -188,6 +263,8 @@ Use it when an agent first attaches to a known project, before it starts searchi
 - `upcoming`: overdue tasks, due-soon tasks, upcoming project events, and the time windows used
 
 If the agent does not know the project ID yet, it can list/search projects first, or pass a `query` if the status tool is available and the project name is clear.
+
+For MCP clients, call `get_onto_project_status` through the client's normal tool-call UI with the same `arguments` object. The `call_id` wrapper below is only for the JSON-RPC gateway.
 
 ```json
 {
@@ -205,6 +282,8 @@ If the agent does not know the project ID yet, it can list/search projects first
 ## Saving a markdown document from an external agent
 
 The headline v1 write op is `onto.document.create`, exposed by `tools/list` as `create_onto_document`. Any connected tool can save a markdown artifact into a specific project in a single call.
+
+For MCP clients, call `create_onto_document` directly with the same `arguments` object. The `method` and `call_id` wrapper below is only for the JSON-RPC gateway.
 
 ```json
 {
@@ -228,16 +307,18 @@ Notes:
 
 - Content is stored as-is. No H1/H2 tree parsing; the markdown you send is the markdown we save.
 - Content cap is **200 KB** per document. Larger bodies return `VALIDATION_ERROR`.
-- `body_markdown` is accepted as a legacy alias for `content` on create and update.
+- Use `content` for document bodies. External direct tools reject legacy compatibility parameters such as `body_markdown` and `parent_id` with `VALIDATION_ERROR` so agents learn the canonical schema.
 - `onto.document.update` defaults to **replace**. It also accepts `update_strategy: "append"` and `update_strategy: "merge_llm"`; on the external gateway, `merge_llm` gracefully falls back to append when no merge worker is available.
 - `parent_document_id` is optional; omit it to land at the project root.
-- `parent_id` is also accepted as a legacy alias on the external gateway when a model uses the internal `create_onto_document` naming.
+- Use `parent_document_id` for tree placement; `parent_id` is not accepted on the external direct tool.
 - `position` is optional on create for sibling ordering within the project document tree.
 - Documents created through the gateway are tagged with `props.origin = "external_agent"` for auditability.
 
 ## Creating a project from an external agent
 
 The project creation op is `onto.project.create`, exposed by `tools/list` as `create_onto_project`. It uses the same `ProjectSpec` contract as internal BuildOS project creation: include `project`, `entities`, and `relationships`; use empty arrays when the new project should start minimal.
+
+For MCP clients, call `create_onto_project` directly with the same `arguments` object. The `method` and `call_id` wrapper below is only for the JSON-RPC gateway.
 
 ```json
 {
@@ -265,7 +346,7 @@ Notes:
 - `entities` can include initial `task`, `document`, `goal`, `plan`, `milestone`, `risk`, `requirement`, `metric`, and `source` records using `temp_id` references.
 - `relationships` connects `temp_id` entities to each other. The project itself is implicit and should not be a relationship endpoint.
 - Optional `context_document` creates a `document.context.project` document linked to the project.
-- Remote MCP read/write grants include project create/update. Project creation is omitted from `tools/list` when the grant is scoped to selected project IDs.
+- Project-scoped keys can create projects when `onto.project.create` is whitelisted. The created project is added to that key's project scope automatically.
 
 ## One-click bootstrap
 
@@ -300,7 +381,7 @@ Payload is JSON-RPC. Start with `call.dial`, list your tools with `tools/list`, 
 
 ## Roadmap
 
-- **Project, document, task, goal, plan, milestone, and risk writes** — **shipped.** External agents can create and update the same core ontology primitives used by internal BuildOS chat, subject to scope, write audit, and idempotency.
+- **Project, document, task, goal, plan, milestone, risk, link, and calendar writes** — **shipped.** External agents can create and update the same core ontology primitives used by internal BuildOS chat, subject to scope, write audit, and idempotency.
 - **Content idea wrappers** — still planned. They should compose the shipped primitives rather than inventing a separate top-level entity.
 
 Design doc: `apps/web/docs/features/agent-call/MULTI_SURFACE_CONTENT_IDEA_WORKFLOW.md`.

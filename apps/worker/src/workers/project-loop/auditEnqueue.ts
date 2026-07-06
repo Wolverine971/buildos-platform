@@ -11,7 +11,7 @@ import {
 	evaluateProjectAuditTrigger,
 	recordProjectAuditTriggerEvaluation
 } from '@buildos/shared-agent-ops/project-audits';
-import { projectAuditDedupKey } from '@buildos/shared-agent-ops';
+import { projectAuditDedupKey, readProjectLoopQueueMetadata } from '@buildos/shared-agent-ops';
 import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
 import { captureWorkerEvent } from '../../lib/posthog';
 import { supabase } from '../../lib/supabase';
@@ -70,17 +70,23 @@ function captureAuditTriggerMetric(params: {
 	});
 }
 
-async function resolveQueueJobPublicId(queueRecordId: string): Promise<string | undefined> {
+async function resolveQueueJobDetails(
+	queueRecordId: string
+): Promise<{ queueJobId: string; metadata: unknown }> {
 	const { data, error } = await supabase
 		.from('queue_jobs')
-		.select('queue_job_id')
+		.select('queue_job_id, metadata')
 		.eq('id', queueRecordId)
 		.maybeSingle();
-	if (error) {
-		console.error('[ProjectAudits] failed to resolve queue job public id:', error.message);
-		return undefined;
+	if (error || !data?.queue_job_id) {
+		throw new Error(
+			error?.message ?? `Failed to resolve queue job details for record ${queueRecordId}`
+		);
 	}
-	return data?.queue_job_id ?? undefined;
+	return {
+		queueJobId: data.queue_job_id,
+		metadata: data?.metadata
+	};
 }
 
 async function createAuditChatSession(params: {
@@ -389,13 +395,98 @@ export async function queueProjectAuditFromWorker(params: {
 		};
 	}
 
-	const queueJobId = await resolveQueueJobPublicId(queueRecordId);
-	if (queueJobId) {
-		await supabase
-			.from('project_loop_runs')
-			.update({ queue_job_id: queueJobId })
-			.eq('id', runRow.id);
+	let queueJob: { queueJobId: string; metadata: unknown };
+	try {
+		queueJob = await resolveQueueJobDetails(queueRecordId);
+	} catch (error) {
+		const message =
+			error instanceof Error ? error.message : 'Failed to resolve queued project audit job';
+		const now = new Date().toISOString();
+		await Promise.all([
+			supabase
+				.from('project_loop_runs')
+				.update({ status: 'failed', error_message: message, finished_at: now })
+				.eq('id', runRow.id)
+				.eq('status', 'queued'),
+			supabase
+				.from('project_audits')
+				.update({ status: 'failed', error_message: message, finished_at: now })
+				.eq('id', auditRow.id)
+				.eq('status', 'queued')
+		]);
+		captureAuditTriggerMetric({
+			userId: params.userId,
+			event: 'project_audit_queue_failed',
+			projectId: params.projectId,
+			triggerReason: params.triggerReason,
+			auditDepth,
+			decision: evaluated.evaluation.decision,
+			reason: message,
+			auditId: auditRow.id as string,
+			runId: runRow.id as string,
+			evaluationId: evaluationId ?? undefined,
+			projectSizeClass: evaluated.evaluation.project_size_class
+		});
+		return {
+			queued: false,
+			auditId: auditRow.id as string,
+			runId: runRow.id as string,
+			evaluationId: evaluationId ?? undefined,
+			decision: evaluated.evaluation.decision,
+			reason: message
+		};
 	}
+	const queueMetadata = readProjectLoopQueueMetadata(queueJob.metadata);
+	if (queueMetadata.runId !== runRow.id || queueMetadata.auditId !== auditRow.id) {
+		const message =
+			queueMetadata.runId || queueMetadata.auditId
+				? `Deduplicated onto active complete audit job ${queueJob.queueJobId}`
+				: `Queue job ${queueJob.queueJobId} metadata did not include the new audit run ${runRow.id}/${auditRow.id}`;
+		const now = new Date().toISOString();
+		await Promise.all([
+			supabase
+				.from('project_loop_runs')
+				.update({ status: 'failed', error_message: message, finished_at: now })
+				.eq('id', runRow.id)
+				.eq('status', 'queued'),
+			supabase
+				.from('project_audits')
+				.update({ status: 'failed', error_message: message, finished_at: now })
+				.eq('id', auditRow.id)
+				.eq('status', 'queued')
+		]);
+		captureAuditTriggerMetric({
+			userId: params.userId,
+			event: 'project_audit_skipped',
+			projectId: params.projectId,
+			triggerReason: params.triggerReason,
+			auditDepth,
+			decision: 'skipped_duplicate',
+			reason: message,
+			auditId: queueMetadata.auditId ?? (auditRow.id as string),
+			runId: queueMetadata.runId ?? (runRow.id as string),
+			evaluationId: evaluationId ?? undefined,
+			projectSizeClass: evaluated.evaluation.project_size_class
+		});
+		return {
+			queued: false,
+			auditId: queueMetadata.auditId ?? (auditRow.id as string),
+			runId: queueMetadata.runId ?? (runRow.id as string),
+			jobId: queueJob.queueJobId,
+			evaluationId: evaluationId ?? undefined,
+			decision: 'skipped_duplicate',
+			reason:
+				queueMetadata.runId || queueMetadata.auditId
+					? 'already_running'
+					: 'queue_metadata_mismatch'
+		};
+	}
+
+	const queueJobId = queueJob.queueJobId;
+	await supabase
+		.from('project_loop_runs')
+		.update({ queue_job_id: queueJobId })
+		.eq('id', runRow.id);
 
 	captureAuditTriggerMetric({
 		userId: params.userId,

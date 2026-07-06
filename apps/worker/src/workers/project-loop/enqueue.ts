@@ -5,7 +5,7 @@
 // can't be imported here, so the run-row + add_queue_job logic is duplicated.
 
 import type { Json, ProjectLoopTriggerReason } from '@buildos/shared-types';
-import { projectLoopDedupKey } from '@buildos/shared-agent-ops';
+import { projectLoopDedupKey, readProjectLoopQueueMetadata } from '@buildos/shared-agent-ops';
 import { addDays } from 'date-fns';
 import { formatInTimeZone, fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { supabase } from '../../lib/supabase';
@@ -30,6 +30,25 @@ const DEFAULT_END_OF_DAY_MAX_PROJECTS_PER_USER = 10;
 // replace. `queued` gets a longer window to tolerate nightly queue backlogs.
 const STALE_RUNNING_RUN_MS = 60 * 60 * 1000; // 1 hour
 const STALE_QUEUED_RUN_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+async function resolveQueueJobDetails(
+	queueRecordId: string
+): Promise<{ queueJobId: string; metadata: unknown }> {
+	const { data, error } = await supabase
+		.from('queue_jobs')
+		.select('queue_job_id, metadata')
+		.eq('id', queueRecordId)
+		.maybeSingle();
+	if (error || !data?.queue_job_id) {
+		throw new Error(
+			error?.message ?? `Failed to resolve queue job details for record ${queueRecordId}`
+		);
+	}
+	return {
+		queueJobId: data.queue_job_id,
+		metadata: data?.metadata
+	};
+}
 
 async function createLoopChatSession(params: {
 	projectId: string;
@@ -161,7 +180,7 @@ export async function enqueueProjectLoop(params: {
 		return { queued: false, reason: runError?.message ?? 'create_run_failed' };
 	}
 
-	const { error: queueError } = await supabase.rpc('add_queue_job', {
+	const { data: queueRecordId, error: queueError } = await supabase.rpc('add_queue_job', {
 		p_user_id: params.userId,
 		p_job_type: 'buildos_project_loop',
 		p_metadata: {
@@ -175,17 +194,61 @@ export async function enqueueProjectLoop(params: {
 		p_dedup_key: projectLoopDedupKey(params.projectId)
 	});
 
-	if (queueError) {
+	if (queueError || typeof queueRecordId !== 'string') {
+		const message = queueError?.message ?? 'Queue RPC did not return a queue record id';
 		await supabase
 			.from('project_loop_runs')
 			.update({
 				status: 'failed',
-				error_message: queueError.message,
+				error_message: message,
 				finished_at: new Date().toISOString()
 			})
 			.eq('id', runRow.id);
-		return { queued: false, runId: runRow.id, reason: queueError.message };
+		return { queued: false, runId: runRow.id, reason: message };
 	}
+
+	let queueJob: { queueJobId: string; metadata: unknown };
+	try {
+		queueJob = await resolveQueueJobDetails(queueRecordId);
+	} catch (error) {
+		const message =
+			error instanceof Error ? error.message : 'Failed to resolve queued project loop job';
+		await supabase
+			.from('project_loop_runs')
+			.update({
+				status: 'failed',
+				error_message: message,
+				finished_at: new Date().toISOString()
+			})
+			.eq('id', runRow.id)
+			.eq('status', 'queued');
+		return { queued: false, runId: runRow.id, reason: message };
+	}
+	const queueMetadata = readProjectLoopQueueMetadata(queueJob.metadata);
+	if (queueMetadata.runId !== runRow.id) {
+		const message = queueMetadata.runId
+			? `Deduplicated onto active project loop job ${queueJob.queueJobId} for run ${queueMetadata.runId}`
+			: `Queue job ${queueJob.queueJobId} metadata did not include the new loop run ${runRow.id}`;
+		await supabase
+			.from('project_loop_runs')
+			.update({
+				status: 'failed',
+				error_message: message,
+				finished_at: new Date().toISOString()
+			})
+			.eq('id', runRow.id)
+			.eq('status', 'queued');
+		return {
+			queued: false,
+			runId: queueMetadata.runId ?? runRow.id,
+			reason: queueMetadata.runId ? 'already_running' : 'queue_metadata_mismatch'
+		};
+	}
+
+	await supabase
+		.from('project_loop_runs')
+		.update({ queue_job_id: queueJob.queueJobId })
+		.eq('id', runRow.id);
 
 	return { queued: true, runId: runRow.id };
 }

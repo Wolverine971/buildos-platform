@@ -45,7 +45,7 @@
 		{
 			"slug": "daily-briefs",
 			"title": "Daily Briefs",
-			"summary": "Project-aware briefs delivered by email, SMS, and in-app — with a chat that acts on them.",
+			"summary": "AI daily briefs that turn project context, tasks, blockers, and calendar commitments into a focused plan.",
 			"icon": "Mail",
 			"order": 7
 		},
@@ -59,7 +59,7 @@
 		{
 			"slug": "connect-agents",
 			"title": "Connect External Agents",
-			"summary": "Let Claude Code, OpenClaw, or a custom agent read and write to your BuildOS project context.",
+			"summary": "Connect Claude Code, Codex, ChatGPT, OpenClaw, or custom MCP/HTTP agents to your BuildOS project context.",
 			"icon": "Plug",
 			"order": 9
 		},

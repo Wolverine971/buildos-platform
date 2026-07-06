@@ -334,4 +334,132 @@ describe('inbox service', () => {
 			'blocked-high'
 		]);
 	});
+
+	it('keeps active snoozed rows hidden from pending review without source resync', async () => {
+		const inboxItem = {
+			id: 'inbox-snoozed',
+			source_type: 'project_suggestion',
+			source_ref_id: 'suggestion-snoozed',
+			source_status: 'pending',
+			user_id: null,
+			project_id: 'project-1',
+			audience: 'project_members',
+			status: 'snoozed',
+			title: 'Review later',
+			summary: 'Hidden until tomorrow',
+			risk_tier: 2,
+			action_kinds: ['approve', 'reject'],
+			snoozed_until: '2099-01-01T00:00:00.000Z',
+			created_at: '2026-07-04T12:00:00.000Z'
+		};
+		const { supabase } = createSupabaseMock({
+			inbox_items: [inboxItem],
+			project_suggestions: []
+		});
+
+		const result = await listInboxItems({
+			supabase,
+			admin: supabase,
+			userId: 'user-1',
+			status: 'pending',
+			sourceType: 'project_suggestion',
+			limit: 20
+		});
+
+		expect(result.items).toEqual([]);
+		expect(mocks.syncInboxItemForSource).not.toHaveBeenCalledWith(
+			expect.objectContaining({
+				sourceType: 'project_suggestion',
+				sourceRefId: 'suggestion-snoozed'
+			})
+		);
+	});
+
+	it('attaches project audit context to audit child inbox items', async () => {
+		const inboxItem = {
+			id: 'inbox-1',
+			source_type: 'project_suggestion',
+			source_ref_id: 'suggestion-1',
+			source_status: 'applied',
+			user_id: null,
+			project_id: 'project-1',
+			audience: 'project_members',
+			status: 'decided',
+			title: 'Define launch decision',
+			summary: 'Audit follow-up',
+			risk_tier: 2,
+			action_kinds: ['approve', 'reject'],
+			created_at: '2026-07-04T12:00:00.000Z'
+		};
+		mocks.syncInboxItemForSource.mockResolvedValue(inboxItem);
+		const { supabase } = createSupabaseMock({
+			inbox_items: [inboxItem],
+			project_suggestions: [
+				{
+					id: 'suggestion-1',
+					project_id: 'project-1',
+					run_id: 'run-1',
+					kind: 'audit_recommendation',
+					status: 'applied',
+					title: 'Define launch decision'
+				}
+			],
+			project_loop_runs: [
+				{
+					id: 'run-1',
+					trigger_reason: 'manual',
+					status: 'completed',
+					summary: 'Audit complete',
+					brief: null,
+					suggestion_count: 1,
+					created_at: '2026-07-04T11:00:00.000Z',
+					finished_at: '2026-07-04T11:10:00.000Z'
+				}
+			],
+			project_audit_suggestions: [
+				{
+					audit_id: 'audit-1',
+					suggestion_id: 'suggestion-1',
+					role: 'decision_point'
+				}
+			],
+			project_audits: [
+				{
+					id: 'audit-1',
+					status: 'ready',
+					trigger_reason: 'manual',
+					delivery_confidence: 'yellow',
+					summary: 'Launch decision needs review.',
+					generated_suggestion_count: 1,
+					unresolved_suggestion_count: 0,
+					created_at: '2026-07-04T11:00:00.000Z',
+					finished_at: '2026-07-04T11:10:00.000Z'
+				}
+			],
+			onto_projects: [{ id: 'project-1', name: 'Launch' }]
+		});
+
+		const result = await listInboxItems({
+			supabase,
+			admin: supabase,
+			userId: 'user-1',
+			status: 'decided',
+			sourceType: 'project_suggestion',
+			limit: 20,
+			includePayload: true
+		});
+
+		expect(result.items[0]?.source_context).toMatchObject({
+			project_loop_run: {
+				id: 'run-1',
+				trigger_reason: 'manual'
+			},
+			project_audit: {
+				id: 'audit-1',
+				role: 'decision_point',
+				delivery_confidence: 'yellow',
+				summary: 'Launch decision needs review.'
+			}
+		});
+	});
 });

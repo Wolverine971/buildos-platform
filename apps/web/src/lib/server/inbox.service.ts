@@ -31,8 +31,22 @@ export type InboxProjectLoopRunContext = {
 	finished_at: string | null;
 };
 
+export type InboxProjectAuditContext = {
+	id: string;
+	status: string | null;
+	trigger_reason: string | null;
+	delivery_confidence: string | null;
+	summary: string | null;
+	role: string | null;
+	generated_suggestion_count: number | null;
+	unresolved_suggestion_count: number | null;
+	created_at: string | null;
+	finished_at: string | null;
+};
+
 export type InboxSourceContext = {
 	project_loop_run?: InboxProjectLoopRunContext | null;
+	project_audit?: InboxProjectAuditContext | null;
 };
 
 export type InboxItemWithPayload = InboxIndexRow & {
@@ -192,6 +206,12 @@ function shouldUnsnooze(row: InboxIndexRow, nowMs: number): boolean {
 	return snoozedUntil !== null && snoozedUntil <= nowMs;
 }
 
+function hasActiveSnooze(row: InboxIndexRow, nowMs: number): boolean {
+	if (row.status !== 'snoozed') return false;
+	const snoozedUntil = parseTimestamp(row.snoozed_until);
+	return snoozedUntil !== null && snoozedUntil > nowMs;
+}
+
 async function updateInboxRow(params: {
 	admin: AnySupabase;
 	row: InboxIndexRow;
@@ -217,9 +237,14 @@ async function reconcileInboxRows(params: {
 }): Promise<{ rows: InboxIndexRow[]; repairedCount: number }> {
 	const repairedRows: InboxIndexRow[] = [];
 	let repairedCount = 0;
+	const nowMs = Date.now();
 
 	for (const row of params.rows) {
 		if (!shouldReconcile(row)) {
+			repairedRows.push(row);
+			continue;
+		}
+		if (hasActiveSnooze(row, nowMs)) {
 			repairedRows.push(row);
 			continue;
 		}
@@ -354,44 +379,108 @@ function mapProjectLoopRunContext(row: Record<string, unknown>): InboxProjectLoo
 	};
 }
 
+function mapProjectAuditContext(
+	row: Record<string, unknown>,
+	role: string | null
+): InboxProjectAuditContext | null {
+	const id = asString(row.id);
+	if (!id) return null;
+	return {
+		id,
+		status: asString(row.status),
+		trigger_reason: asString(row.trigger_reason),
+		delivery_confidence: asString(row.delivery_confidence),
+		summary: asString(row.summary),
+		role,
+		generated_suggestion_count: asNumber(row.generated_suggestion_count),
+		unresolved_suggestion_count: asNumber(row.unresolved_suggestion_count),
+		created_at: asString(row.created_at),
+		finished_at: asString(row.finished_at)
+	};
+}
+
 async function loadSourceContexts(params: {
 	admin: AnySupabase;
 	rows: InboxIndexRow[];
 	payloads: Map<string, Record<string, unknown>>;
 }): Promise<Map<string, InboxSourceContext>> {
 	const runIds = new Set<string>();
+	const suggestionIds = new Set<string>();
 
 	for (const row of params.rows) {
 		if (row.source_type !== 'project_suggestion') continue;
+		suggestionIds.add(row.source_ref_id);
 		const payload = params.payloads.get(sourceKey(row.source_type, row.source_ref_id));
 		const runId = asString(payload?.run_id);
 		if (runId) runIds.add(runId);
 	}
 
 	const contexts = new Map<string, InboxSourceContext>();
-	if (runIds.size === 0) return contexts;
-
-	const { data, error } = await params.admin
-		.from('project_loop_runs')
-		.select(
-			'id, trigger_reason, status, summary, brief, suggestion_count, created_at, finished_at'
-		)
-		.in('id', [...runIds]);
-	if (error) throw error;
+	if (runIds.size === 0 && suggestionIds.size === 0) return contexts;
 
 	const runsById = new Map<string, InboxProjectLoopRunContext>();
-	for (const row of (data ?? []) as Record<string, unknown>[]) {
-		const context = mapProjectLoopRunContext(row);
-		if (context) runsById.set(context.id, context);
+	if (runIds.size > 0) {
+		const { data, error } = await params.admin
+			.from('project_loop_runs')
+			.select(
+				'id, trigger_reason, status, summary, brief, suggestion_count, created_at, finished_at'
+			)
+			.in('id', [...runIds]);
+		if (error) throw error;
+
+		for (const row of (data ?? []) as Record<string, unknown>[]) {
+			const context = mapProjectLoopRunContext(row);
+			if (context) runsById.set(context.id, context);
+		}
+	}
+
+	const auditLinkBySuggestionId = new Map<string, { auditId: string; role: string | null }>();
+	if (suggestionIds.size > 0) {
+		const { data, error } = await params.admin
+			.from('project_audit_suggestions')
+			.select('audit_id, suggestion_id, role')
+			.in('suggestion_id', [...suggestionIds]);
+		if (error) throw error;
+		for (const row of (data ?? []) as Record<string, unknown>[]) {
+			const suggestionId = asString(row.suggestion_id);
+			const auditId = asString(row.audit_id);
+			if (!suggestionId || !auditId) continue;
+			auditLinkBySuggestionId.set(suggestionId, {
+				auditId,
+				role: asString(row.role)
+			});
+		}
+	}
+
+	const auditIds = [
+		...new Set([...auditLinkBySuggestionId.values()].map((link) => link.auditId))
+	];
+	const auditsById = new Map<string, Record<string, unknown>>();
+	if (auditIds.length > 0) {
+		const { data, error } = await params.admin
+			.from('project_audits')
+			.select(
+				'id, status, trigger_reason, delivery_confidence, summary, generated_suggestion_count, unresolved_suggestion_count, created_at, finished_at'
+			)
+			.in('id', auditIds);
+		if (error) throw error;
+		for (const row of (data ?? []) as Record<string, unknown>[]) {
+			const auditId = asString(row.id);
+			if (auditId) auditsById.set(auditId, row);
+		}
 	}
 
 	for (const row of params.rows) {
 		if (row.source_type !== 'project_suggestion') continue;
 		const payload = params.payloads.get(sourceKey(row.source_type, row.source_ref_id));
 		const runId = asString(payload?.run_id);
-		if (!runId) continue;
+		const auditLink = auditLinkBySuggestionId.get(row.source_ref_id);
+		const auditRow = auditLink ? auditsById.get(auditLink.auditId) : null;
 		contexts.set(sourceKey(row.source_type, row.source_ref_id), {
-			project_loop_run: runsById.get(runId) ?? null
+			project_loop_run: runId ? (runsById.get(runId) ?? null) : null,
+			project_audit: auditRow
+				? mapProjectAuditContext(auditRow, auditLink?.role ?? null)
+				: null
 		});
 	}
 

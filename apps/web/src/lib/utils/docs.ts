@@ -13,6 +13,9 @@ export interface DocSectionMeta {
 export interface DocPage extends DocSectionMeta {
 	lastUpdated?: string;
 	readingTime: number;
+	seoTitle?: string;
+	seoDescription?: string;
+	seoKeywords?: string;
 }
 
 type DocsIndex = { sections: DocSectionMeta[] };
@@ -44,6 +47,28 @@ function estimateReadingTime(module: DocModule): number {
 		}
 	}
 	return 3;
+}
+
+function readMetadataString(metadata: Record<string, unknown>, key: string): string | undefined {
+	const value = metadata[key];
+	return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+function readMetadataKeywords(metadata: Record<string, unknown>): string | undefined {
+	const value = metadata.seoKeywords;
+
+	if (typeof value === 'string' && value.trim()) {
+		return value;
+	}
+
+	if (Array.isArray(value)) {
+		const keywords = value.filter(
+			(item): item is string => typeof item === 'string' && item.trim().length > 0
+		);
+		return keywords.length ? keywords.join(', ') : undefined;
+	}
+
+	return undefined;
 }
 
 export function listDocSections(): DocSectionMeta[] {
@@ -79,7 +104,10 @@ export async function loadDocPage(slug: string): Promise<DocPage> {
 	return {
 		...section,
 		lastUpdated,
-		readingTime: estimateReadingTime(module)
+		readingTime: estimateReadingTime(module),
+		seoTitle: readMetadataString(metadata, 'seoTitle'),
+		seoDescription: readMetadataString(metadata, 'seoDescription'),
+		seoKeywords: readMetadataKeywords(metadata)
 	};
 }
 

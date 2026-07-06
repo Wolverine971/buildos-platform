@@ -50,6 +50,7 @@
 		source_payload?: Record<string, unknown> | null;
 		source_context?: {
 			project_loop_run?: ProjectLoopRunContext | null;
+			project_audit?: ProjectAuditContext | null;
 		} | null;
 	};
 
@@ -77,6 +78,19 @@
 		summary: string | null;
 		brief: ProjectLoopRun['brief'] | null;
 		suggestion_count: number | null;
+		created_at: string | null;
+		finished_at: string | null;
+	};
+
+	type ProjectAuditContext = {
+		id: string;
+		status: string | null;
+		trigger_reason: string | null;
+		delivery_confidence: string | null;
+		summary: string | null;
+		role: string | null;
+		generated_suggestion_count: number | null;
+		unresolved_suggestion_count: number | null;
 		created_at: string | null;
 		finished_at: string | null;
 	};
@@ -134,6 +148,7 @@
 
 	const POLL_INTERVAL_MS = 2500;
 	const MAX_POLL_MS = 2 * 60 * 1000;
+	const SNOOZE_MS = 24 * 60 * 60 * 1000;
 	let pollTimer: ReturnType<typeof setTimeout> | null = null;
 	const notifiedRunIds = new Set<string>();
 
@@ -172,6 +187,7 @@
 	};
 
 	const groupedItems = $derived.by(() => {
+		const auditGroups = new Map<string, { key: string; label: string; items: InboxItem[] }>();
 		const safe = { key: 'safe', label: 'Safe cleanup', items: [] as InboxItem[] };
 		const decision = {
 			key: 'decision',
@@ -183,6 +199,18 @@
 		const groups = [safe, decision, drift, other];
 		for (const item of items) {
 			const payload = projectSuggestion(item);
+			const audit = projectAuditContext(item);
+			if (payload?.kind === 'audit_recommendation' && audit) {
+				const key = `audit:${audit.id}`;
+				const group = auditGroups.get(key) ?? {
+					key,
+					label: auditGroupLabel(audit),
+					items: [] as InboxItem[]
+				};
+				group.items.push(item);
+				auditGroups.set(key, group);
+				continue;
+			}
 			if (payload?.kind === 'drift') drift.items.push(item);
 			else if (
 				item.source_type === 'project_suggestion' &&
@@ -192,7 +220,7 @@
 			else if (item.source_type === 'project_suggestion') decision.items.push(item);
 			else other.items.push(item);
 		}
-		return groups.filter((group) => group.items.length > 0);
+		return [...auditGroups.values(), ...groups.filter((group) => group.items.length > 0)];
 	});
 
 	const selectedBatchIds = $derived.by(() =>
@@ -244,6 +272,10 @@
 		return item.source_context?.project_loop_run ?? null;
 	}
 
+	function projectAuditContext(item: InboxItem): ProjectAuditContext | null {
+		return item.source_context?.project_audit ?? null;
+	}
+
 	function agentChangeSet(item: InboxItem): ChangeSet | null {
 		if (item.source_type !== 'agent_run') return null;
 		const changeSet = agentRun(item)?.change_set;
@@ -289,6 +321,11 @@
 						: 'Project review';
 		const date = formatShortDate(run.finished_at ?? run.created_at);
 		return date ? `${trigger} · ${date}` : trigger;
+	}
+
+	function auditGroupLabel(audit: ProjectAuditContext): string {
+		const date = formatShortDate(audit.finished_at ?? audit.created_at);
+		return date ? `Audit follow-ups · ${date}` : 'Audit follow-ups';
 	}
 
 	function sourceLabel(item: InboxItem): string {
@@ -618,11 +655,13 @@
 
 	async function decide(item: InboxItem, action: 'approve' | 'reject') {
 		if (pendingIds.has(item.id)) return;
+		const dismissReason = (dismissReasonById[item.id] ?? '').trim();
+		const dismissNote = (dismissNoteById[item.id] ?? '').trim();
+		const clarification = action === 'reject' ? dismissNote : '';
 		pendingIds = new Set(pendingIds).add(item.id);
 		const notificationId = startInboxDecisionNotification(item, action);
 		removeItemsFromInbox([item.id]);
 		try {
-			const clarification = action === 'reject' ? clarificationFor(item) : '';
 			const res = await fetch('/api/inbox/decide', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -634,8 +673,8 @@
 						: {}),
 					...(action === 'reject' && item.source_type === 'project_suggestion'
 						? {
-								reason: dismissReasonById[item.id] || 'other',
-								note: dismissNoteById[item.id] || undefined
+								...(dismissReason ? { reason: dismissReason } : {}),
+								...(dismissNote ? { note: dismissNote } : {})
 							}
 						: {})
 				})
@@ -677,6 +716,46 @@
 			failInboxDecisionNotification(
 				notificationId,
 				error instanceof Error ? error.message : 'Action failed'
+			);
+			void load({ silent: true });
+		} finally {
+			const next = new Set(pendingIds);
+			next.delete(item.id);
+			pendingIds = next;
+		}
+	}
+
+	async function snooze(item: InboxItem) {
+		if (pendingIds.has(item.id)) return;
+		pendingIds = new Set(pendingIds).add(item.id);
+		const notificationId = startInboxDecisionNotification(item, 'snooze');
+		removeItemsFromInbox([item.id]);
+		try {
+			const snoozeUntil = new Date(Date.now() + SNOOZE_MS).toISOString();
+			const res = await fetch('/api/inbox/decide', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					item_id: item.id,
+					action: 'snooze',
+					snooze_until: snoozeUntil
+				})
+			});
+			const json = await res.json();
+			if (!res.ok) throw new Error(json?.error ?? 'Snooze failed');
+
+			completeInboxDecisionNotification(
+				notificationId,
+				'Review item snoozed until tomorrow.',
+				{
+					toastKind: 'info',
+					title: 'Review item snoozed'
+				}
+			);
+		} catch (error) {
+			failInboxDecisionNotification(
+				notificationId,
+				error instanceof Error ? error.message : 'Snooze failed'
 			);
 			void load({ silent: true });
 		} finally {
@@ -1011,7 +1090,9 @@
 											approveAllLabel="Accept"
 											rejectAllLabel="Dismiss"
 											openingChat={isOpeningChat(item)}
+											snoozing={pendingIds.has(item.id)}
 											onApplied={() => handleAgentRunApplied(item)}
+											onSnooze={() => snooze(item)}
 											onChat={canChat(item)
 												? () => openChat(item)
 												: undefined}
@@ -1037,6 +1118,7 @@
 									layout="project"
 									onApprove={() => decide(item, 'approve')}
 									onReject={() => decide(item, 'reject')}
+									onSnooze={() => snooze(item)}
 									onChat={() => openChat(item)}
 								/>
 							{:else if item.decision_disabled_reason}

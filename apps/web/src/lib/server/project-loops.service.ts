@@ -3,7 +3,7 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
 import { createLogger } from '$lib/utils/logger';
 import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
-import { projectLoopDedupKey } from '@buildos/shared-agent-ops';
+import { projectLoopDedupKey, readProjectLoopQueueMetadata } from '@buildos/shared-agent-ops';
 import type { ProjectLoopTriggerReason } from '@buildos/shared-types';
 
 const logger = createLogger('ProjectLoops');
@@ -130,7 +130,7 @@ export async function queueProjectLoop(params: {
 	}
 
 	try {
-		const { queueJobId } = await addQueueJobWithPublicId(supabase, {
+		const { queueJobId, metadata } = await addQueueJobWithPublicId(supabase, {
 			p_user_id: params.userId,
 			p_job_type: 'buildos_project_loop',
 			p_metadata: {
@@ -146,6 +146,28 @@ export async function queueProjectLoop(params: {
 			// one job instead of double-running (audit Tier 1 #5).
 			p_dedup_key: projectLoopDedupKey(params.projectId)
 		});
+
+		const queueMetadata = readProjectLoopQueueMetadata(metadata);
+		if (queueMetadata.runId !== runRow.id) {
+			const message = queueMetadata.runId
+				? `Deduplicated onto active project loop job ${queueJobId} for run ${queueMetadata.runId}`
+				: `Queue job ${queueJobId} metadata did not include the new loop run ${runRow.id}`;
+			await supabase
+				.from('project_loop_runs')
+				.update({
+					status: 'failed',
+					error_message: message,
+					finished_at: new Date().toISOString()
+				})
+				.eq('id', runRow.id)
+				.eq('status', 'queued');
+			return {
+				queued: false,
+				runId: queueMetadata.runId ?? runRow.id,
+				jobId: queueJobId,
+				reason: queueMetadata.runId ? 'already_running' : 'queue_metadata_mismatch'
+			};
+		}
 
 		await supabase
 			.from('project_loop_runs')

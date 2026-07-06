@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/inbox/InboxDecisionControls.svelte -->
 <script lang="ts">
 	import Button from '$lib/components/ui/Button.svelte';
-	import { Check, MessageCircle, X } from '$lib/icons/lucide';
+	import { Check, Clock, MessageCircle, X } from '$lib/icons/lucide';
 
 	type Layout = 'project' | 'dashboard';
 
@@ -12,6 +12,7 @@
 		layout = 'project',
 		onApprove,
 		onReject,
+		onSnooze,
 		onChat
 	}: {
 		pending?: boolean;
@@ -20,6 +21,7 @@
 		layout?: Layout;
 		onApprove?: () => void;
 		onReject?: () => void;
+		onSnooze?: () => void;
 		onChat?: () => void;
 	} = $props();
 
@@ -53,6 +55,19 @@
 		>
 			Dismiss
 		</Button>
+		{#if onSnooze}
+			<Button
+				variant="accent"
+				size="sm"
+				icon={Clock}
+				onclick={() => onSnooze?.()}
+				disabled={pending}
+				title="Snooze until tomorrow"
+				class="min-w-[6.5rem] flex-1 text-xs"
+			>
+				Later
+			</Button>
+		{/if}
 		{#if canChat}
 			<Button
 				variant="accent"

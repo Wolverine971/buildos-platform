@@ -1,9 +1,14 @@
-// apps/web/src/lib/server/project-loops.service.test.ts
+// apps/web/src/lib/server/project-audit-trigger.service.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	createAdminSupabaseClient: vi.fn(),
-	addQueueJobWithPublicId: vi.fn()
+	addQueueJobWithPublicId: vi.fn(),
+	captureServerEvent: vi.fn(),
+	evaluateProjectAuditTrigger: vi.fn(),
+	recordProjectAuditTriggerEvaluation: vi.fn(),
+	buildProjectAuditTriggerSnapshot: vi.fn(() => ({ snapshot: true })),
+	auditSizeClassForInsert: vi.fn(() => 'small_eligible')
 }));
 
 vi.mock('$lib/supabase/admin', () => ({
@@ -14,11 +19,26 @@ vi.mock('$lib/server/queue-job-id', () => ({
 	addQueueJobWithPublicId: mocks.addQueueJobWithPublicId
 }));
 
-vi.mock('$lib/config/project-loops', () => ({
-	PROJECT_LOOPS_ENABLED: true
+vi.mock('$lib/server/posthog', () => ({
+	captureServerEvent: mocks.captureServerEvent
 }));
 
-import { queueProjectLoop } from './project-loops.service';
+vi.mock('$lib/utils/logger', () => ({
+	createLogger: () => ({
+		warn: vi.fn(),
+		info: vi.fn(),
+		error: vi.fn()
+	})
+}));
+
+vi.mock('@buildos/shared-agent-ops/project-audits', () => ({
+	auditSizeClassForInsert: mocks.auditSizeClassForInsert,
+	buildProjectAuditTriggerSnapshot: mocks.buildProjectAuditTriggerSnapshot,
+	evaluateProjectAuditTrigger: mocks.evaluateProjectAuditTrigger,
+	recordProjectAuditTriggerEvaluation: mocks.recordProjectAuditTriggerEvaluation
+}));
+
+import { queueProjectAudit } from './project-audit-trigger.service';
 
 type Operation = {
 	table: string;
@@ -29,7 +49,6 @@ type Operation = {
 
 function createSupabaseMock() {
 	const operations: Operation[] = [];
-	let projectLoopRunSelectCount = 0;
 
 	class QueryBuilderMock {
 		private action: Operation['action'] = null;
@@ -60,31 +79,6 @@ function createSupabaseMock() {
 			return this;
 		}
 
-		in(column: string, value: unknown) {
-			this.filters.push({ column, value });
-			return this;
-		}
-
-		not(column: string, operator: string, value: unknown) {
-			this.filters.push({ column, value: `${operator}:${value}` });
-			return this;
-		}
-
-		order() {
-			return this;
-		}
-
-		limit() {
-			return this;
-		}
-
-		throwOnError() {
-			return this.resolve().then(({ error }) => {
-				if (error) throw error;
-				return { data: null, error: null };
-			});
-		}
-
 		private recordOperation() {
 			operations.push({
 				table: this.table,
@@ -97,13 +91,6 @@ function createSupabaseMock() {
 		private resolve() {
 			this.recordOperation();
 
-			if (this.table === 'project_loop_runs' && this.action === 'select') {
-				projectLoopRunSelectCount += 1;
-				return Promise.resolve({
-					data: projectLoopRunSelectCount === 1 ? null : { finished_at: null },
-					error: null
-				});
-			}
 			if (this.table === 'chat_sessions' && this.action === 'insert') {
 				return Promise.resolve({ data: { id: 'chat-1' }, error: null });
 			}
@@ -111,9 +98,12 @@ function createSupabaseMock() {
 				return Promise.resolve({ data: null, error: null });
 			}
 			if (this.table === 'project_loop_runs' && this.action === 'insert') {
-				return Promise.resolve({ data: { id: 'loop-run-1' }, error: null });
+				return Promise.resolve({ data: { id: 'run-new' }, error: null });
 			}
-			if (this.table === 'project_loop_runs' && this.action === 'update') {
+			if (this.table === 'project_audits' && this.action === 'insert') {
+				return Promise.resolve({ data: { id: 'audit-new' }, error: null });
+			}
+			if (this.action === 'update') {
 				return Promise.resolve({ data: null, error: null });
 			}
 
@@ -124,8 +114,11 @@ function createSupabaseMock() {
 			return this.resolve();
 		}
 
-		maybeSingle() {
-			return this.resolve();
+		throwOnError() {
+			return this.resolve().then(({ error }) => {
+				if (error) throw error;
+				return { data: null, error: null };
+			});
 		}
 
 		then<TResult1 = any, TResult2 = never>(
@@ -143,67 +136,45 @@ function createSupabaseMock() {
 	return { supabase, operations };
 }
 
-function findOperation(
-	operations: Operation[],
-	table: string,
-	action: Operation['action']
-): Operation | undefined {
-	return operations.find((operation) => operation.table === table && operation.action === action);
-}
-
-describe('queueProjectLoop', () => {
+describe('queueProjectAudit', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mocks.addQueueJobWithPublicId.mockResolvedValue({
-			queueJobId: 'queue-job-1',
-			metadata: { runId: 'loop-run-1' }
+		mocks.evaluateProjectAuditTrigger.mockResolvedValue({
+			evaluation: {
+				decision: 'queued',
+				reason_summary: 'Audit is eligible.',
+				project_size_class: 'small_eligible'
+			},
+			snapshot: { fingerprint: 'snapshot-fingerprint' }
 		});
-	});
-
-	it('creates a database-safe project chat session for the loop run', async () => {
-		const { supabase, operations } = createSupabaseMock();
-		mocks.createAdminSupabaseClient.mockReturnValue(supabase);
-
-		const result = await queueProjectLoop({
-			projectId: 'project-1',
-			userId: 'user-1',
-			triggerReason: 'manual'
-		});
-
-		expect(result).toEqual({ queued: true, runId: 'loop-run-1', jobId: 'queue-job-1' });
-		expect(findOperation(operations, 'chat_sessions', 'insert')?.payload).toMatchObject({
-			user_id: 'user-1',
-			context_type: 'project',
-			entity_id: 'project-1',
-			chat_type: 'project',
-			title: 'Manual Project Review'
-		});
-		expect(findOperation(operations, 'project_loop_runs', 'insert')?.payload).toMatchObject({
-			project_id: 'project-1',
-			user_id: 'user-1',
-			trigger_reason: 'manual',
-			chat_session_id: 'chat-1'
-		});
-	});
-
-	it('fails a freshly-created run when queue dedup returns an existing run', async () => {
-		const { supabase, operations } = createSupabaseMock();
-		mocks.createAdminSupabaseClient.mockReturnValue(supabase);
+		mocks.recordProjectAuditTriggerEvaluation.mockResolvedValue('evaluation-1');
 		mocks.addQueueJobWithPublicId.mockResolvedValue({
 			queueJobId: 'queue-job-existing',
-			metadata: { runId: 'loop-run-existing', projectId: 'project-1' }
+			metadata: {
+				mode: 'complete_audit',
+				runId: 'run-existing',
+				auditId: 'audit-existing',
+				projectId: 'project-1'
+			}
 		});
+	});
 
-		const result = await queueProjectLoop({
+	it('fails freshly-created audit rows when queue dedup returns an existing audit job', async () => {
+		const { supabase, operations } = createSupabaseMock();
+		mocks.createAdminSupabaseClient.mockReturnValue(supabase);
+
+		const result = await queueProjectAudit({
 			projectId: 'project-1',
 			userId: 'user-1',
 			triggerReason: 'manual'
 		});
 
-		expect(result).toEqual({
+		expect(result).toMatchObject({
 			queued: false,
-			runId: 'loop-run-existing',
+			runId: 'run-existing',
+			auditId: 'audit-existing',
 			jobId: 'queue-job-existing',
+			decision: 'skipped_duplicate',
 			reason: 'already_running'
 		});
 
@@ -213,14 +184,29 @@ describe('queueProjectLoop', () => {
 				operation.action === 'update' &&
 				(operation.payload as Record<string, unknown>).status === 'failed'
 		);
-		expect(failedRunUpdate?.payload).toMatchObject({
-			status: 'failed',
-			error_message:
-				'Deduplicated onto active project loop job queue-job-existing for run loop-run-existing'
-		});
+		const failedAuditUpdate = operations.find(
+			(operation) =>
+				operation.table === 'project_audits' &&
+				operation.action === 'update' &&
+				(operation.payload as Record<string, unknown>).status === 'failed'
+		);
+
 		expect(failedRunUpdate?.filters).toEqual([
-			{ column: 'id', value: 'loop-run-1' },
+			{ column: 'id', value: 'run-new' },
 			{ column: 'status', value: 'queued' }
 		]);
+		expect(failedAuditUpdate?.filters).toEqual([
+			{ column: 'id', value: 'audit-new' },
+			{ column: 'status', value: 'queued' }
+		]);
+		expect(mocks.captureServerEvent).toHaveBeenCalledWith(
+			'user-1',
+			'project_audit_skipped',
+			expect.objectContaining({
+				decision: 'skipped_duplicate',
+				audit_id: 'audit-existing',
+				run_id: 'run-existing'
+			})
+		);
 	});
 });

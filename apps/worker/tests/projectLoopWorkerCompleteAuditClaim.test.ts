@@ -195,5 +195,9 @@ describe('processProjectLoopJob complete audit claim lifecycle', () => {
 		expect(findUpdate('project_loop_runs', 'running')).toBeUndefined();
 		expect(findUpdate('project_loop_runs', 'failed')).toBeDefined();
 		expect(findUpdate('project_audits', 'failed')).toBeDefined();
+		expect(findUpdate('project_suggestions', 'superseded')?.filters).toEqual([
+			{ column: 'run_id', value: 'run-1' },
+			{ column: 'status', value: 'pending' }
+		]);
 	});
 });

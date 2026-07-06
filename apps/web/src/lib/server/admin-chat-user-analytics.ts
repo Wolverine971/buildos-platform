@@ -46,6 +46,17 @@ export type AdminChatUserMetric = {
 	preview: string;
 };
 
+export type AdminChatClassificationJobSummary = {
+	job_id: string;
+	queue_job_id: string | null;
+	status: string;
+	error_message: string | null;
+	queued_at: string | null;
+	started_at: string | null;
+	completed_at: string | null;
+	updated_at: string | null;
+};
+
 export type AdminChatSessionMetric = {
 	session_id: string;
 	user_id: string;
@@ -61,6 +72,7 @@ export type AdminChatSessionMetric = {
 	last_activity_at: string | null;
 	last_classified_at: string | null;
 	classification_state: 'classified' | 'missing' | 'stale';
+	classification_job: AdminChatClassificationJobSummary | null;
 	topics: string[];
 	summary_preview: string | null;
 	turn_count: number;
@@ -467,6 +479,18 @@ export type AdminChatUserAppErrorRow = {
 	created_at?: string | null;
 };
 
+export type AdminChatClassificationJobRow = {
+	id: string;
+	queue_job_id?: string | null;
+	metadata?: unknown;
+	status?: string | null;
+	error_message?: string | null;
+	created_at?: string | null;
+	updated_at?: string | null;
+	started_at?: string | null;
+	completed_at?: string | null;
+};
+
 export type BuildAdminChatUserAnalyticsInput = {
 	sessions: AdminChatUserSessionRow[];
 	users: AdminChatUserRow[];
@@ -479,6 +503,7 @@ export type BuildAdminChatUserAnalyticsInput = {
 	usageRows: AdminChatUserUsageRow[];
 	projectLogs: AdminChatUserProjectLogRow[];
 	appErrors: AdminChatUserAppErrorRow[];
+	classificationJobs?: AdminChatClassificationJobRow[];
 	truncated?: Record<string, boolean>;
 };
 
@@ -728,6 +753,49 @@ function classifySession(
 	);
 	if (lastActivity !== null && classifiedAt < lastActivity) return 'stale';
 	return 'classified';
+}
+
+function classificationJobSessionId(job: AdminChatClassificationJobRow): string | null {
+	if (!job.metadata || typeof job.metadata !== 'object' || Array.isArray(job.metadata)) {
+		return null;
+	}
+	const sessionId = (job.metadata as Record<string, unknown>).sessionId;
+	return textValue(sessionId);
+}
+
+function classificationJobSortMs(job: AdminChatClassificationJobRow): number {
+	return dateMs(job.created_at) ?? dateMs(job.updated_at) ?? 0;
+}
+
+function latestClassificationJobsBySession(
+	jobs: AdminChatClassificationJobRow[] | undefined
+): Map<string, AdminChatClassificationJobRow> {
+	const latest = new Map<string, AdminChatClassificationJobRow>();
+	for (const job of jobs ?? []) {
+		const sessionId = classificationJobSessionId(job);
+		if (!sessionId) continue;
+		const existing = latest.get(sessionId);
+		if (!existing || classificationJobSortMs(job) > classificationJobSortMs(existing)) {
+			latest.set(sessionId, job);
+		}
+	}
+	return latest;
+}
+
+function publicClassificationJob(
+	job: AdminChatClassificationJobRow | null | undefined
+): AdminChatClassificationJobSummary | null {
+	if (!job) return null;
+	return {
+		job_id: job.id,
+		queue_job_id: textValue(job.queue_job_id),
+		status: textValue(job.status) ?? 'unknown',
+		error_message: textValue(job.error_message),
+		queued_at: isoOrNull(job.created_at),
+		started_at: isoOrNull(job.started_at),
+		completed_at: isoOrNull(job.completed_at),
+		updated_at: isoOrNull(job.updated_at)
+	};
 }
 
 function userErrorCount(user: AdminChatUserMetric): number {
@@ -1189,6 +1257,7 @@ function buildAdminChatUserAnalyticsCore(
 	const usersById = new Map(input.users.map((user) => [user.id, user]));
 	const projectsById = new Map(input.projects.map((project) => [project.id, project]));
 	const projectIdsBySession = new Map<string, Set<string>>();
+	const classificationJobsBySession = latestClassificationJobsBySession(input.classificationJobs);
 
 	for (const session of input.sessions) {
 		const directProjectId =
@@ -1294,6 +1363,9 @@ function buildAdminChatUserAnalyticsCore(
 			session.created_at
 		);
 		const classificationState = classifySession(session);
+		const classificationJob = publicClassificationJob(
+			classificationJobsBySession.get(session.id)
+		);
 
 		const accumulator: SessionAccumulator = {
 			session_id: session.id,
@@ -1310,6 +1382,7 @@ function buildAdminChatUserAnalyticsCore(
 			last_activity_at: lastActivityAt,
 			last_classified_at: isoOrNull(session.last_classified_at),
 			classification_state: classificationState,
+			classification_job: classificationJob,
 			topics,
 			summary_preview: null,
 			turn_count: 0,
@@ -1339,7 +1412,15 @@ function buildAdminChatUserAnalyticsCore(
 			usageTokenTotal: 0,
 			startMs: dateMs(session.created_at),
 			endMs: dateMs(lastActivityAt),
-			searchParts: [session.id, title, session.context_type ?? '', ...topics, ...projectNames]
+			searchParts: [
+				session.id,
+				title,
+				session.context_type ?? '',
+				classificationState,
+				classificationJob?.status ?? '',
+				...topics,
+				...projectNames
+			]
 		};
 
 		sessionAccumulators.set(session.id, accumulator);
@@ -2897,6 +2978,22 @@ async function loadAnalyticsRows(
 			].filter(Boolean) as string[]
 		)
 	];
+	const classificationJobsPromise =
+		sessionIds.length > 0
+			? fetchChunkedRows<AdminChatClassificationJobRow>(sessionIds, (chunk) =>
+					supabase
+						.from('queue_jobs')
+						.select(
+							'id,queue_job_id,metadata,status,error_message,created_at,updated_at,started_at,completed_at'
+						)
+						.eq('job_type', 'classify_chat_session')
+						.in('metadata->>sessionId', chunk)
+						.order('created_at', { ascending: false })
+				).catch((error) => {
+					console.warn('Error fetching admin chat classification jobs:', error);
+					return { rows: [], truncated: true };
+				})
+			: Promise.resolve({ rows: [], truncated: false });
 
 	const [
 		usersResult,
@@ -2907,7 +3004,8 @@ async function loadAnalyticsRows(
 		toolsResult,
 		usageResult,
 		logsResult,
-		appErrorsResult
+		appErrorsResult,
+		classificationJobsResult
 	] = await Promise.all([
 		userIds.length > 0
 			? fetchChunkedRows<AdminChatUserRow>(userIds, (chunk) =>
@@ -2995,7 +3093,8 @@ async function loadAnalyticsRows(
 						.in('user_id', chunk)
 						.gte('created_at', startIso)
 				)
-			: Promise.resolve({ rows: [], truncated: false })
+			: Promise.resolve({ rows: [], truncated: false }),
+		classificationJobsPromise
 	]);
 
 	truncated.users = usersResult.truncated;
@@ -3007,6 +3106,7 @@ async function loadAnalyticsRows(
 	truncated.llmUsageLogs = usageResult.truncated;
 	truncated.projectLogs = logsResult.truncated;
 	truncated.appErrors = appErrorsResult.truncated;
+	truncated.classificationJobs = classificationJobsResult.truncated;
 
 	return {
 		sessions,
@@ -3022,6 +3122,7 @@ async function loadAnalyticsRows(
 		usageRows: usageResult.rows,
 		projectLogs: logsResult.rows,
 		appErrors: appErrorsResult.rows,
+		classificationJobs: classificationJobsResult.rows,
 		truncated
 	};
 }

@@ -50,6 +50,36 @@ export function projectAuditDedupKey(projectId: string, at: Date = new Date()): 
 	return `project-audit:${projectId}:${day}`;
 }
 
+export interface ProjectLoopQueueMetadata {
+	mode?: string;
+	runId?: string;
+	auditId?: string;
+	projectId?: string;
+	userId?: string;
+	triggerReason?: string;
+}
+
+function readQueueMetadataString(
+	record: Record<string, unknown>,
+	key: keyof ProjectLoopQueueMetadata
+): string | undefined {
+	const value = record[key];
+	return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+export function readProjectLoopQueueMetadata(metadata: unknown): ProjectLoopQueueMetadata {
+	if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return {};
+	const record = metadata as Record<string, unknown>;
+	return {
+		mode: readQueueMetadataString(record, 'mode'),
+		runId: readQueueMetadataString(record, 'runId'),
+		auditId: readQueueMetadataString(record, 'auditId'),
+		projectId: readQueueMetadataString(record, 'projectId'),
+		userId: readQueueMetadataString(record, 'userId'),
+		triggerReason: readQueueMetadataString(record, 'triggerReason')
+	};
+}
+
 export interface ProjectLoopFingerprintGoal {
 	name: string;
 	description: string | null;

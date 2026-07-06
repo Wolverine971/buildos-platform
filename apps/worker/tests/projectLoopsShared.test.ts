@@ -5,6 +5,7 @@ import {
 	buildProjectLoopSourceFingerprint,
 	buildScopedSuggestionFingerprint,
 	extractProjectLoopSuggestionEntities,
+	readProjectLoopQueueMetadata,
 	type ProjectLoopScopedEntity,
 	summarizeProjectLoopDocTree,
 	type ProjectLoopFingerprintContext
@@ -185,5 +186,28 @@ describe('project loop shared helpers', () => {
 		expect(summarizeProjectLoopDocTree(structure, titleById)).toBe(
 			'- Launch plan\n  - Beta notes'
 		);
+	});
+
+	it('reads project-loop queue metadata defensively', () => {
+		expect(
+			readProjectLoopQueueMetadata({
+				mode: 'complete_audit',
+				runId: 'run-1',
+				auditId: 'audit-1',
+				projectId: 'project-1',
+				userId: 'user-1',
+				triggerReason: 'manual',
+				ignored: 'value'
+			})
+		).toEqual({
+			mode: 'complete_audit',
+			runId: 'run-1',
+			auditId: 'audit-1',
+			projectId: 'project-1',
+			userId: 'user-1',
+			triggerReason: 'manual'
+		});
+		expect(readProjectLoopQueueMetadata(null)).toEqual({});
+		expect(readProjectLoopQueueMetadata({ runId: '   ', auditId: 42 })).toEqual({});
 	});
 });

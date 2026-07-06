@@ -17,16 +17,21 @@
 
 ## Current State
 
-- `+page.svelte` was 2,698 lines at audit time and is 2,677 lines after the first Phase 1 cleanup.
+- `+page.svelte` was 2,698 lines at audit time, 2,677 lines after the first Phase 1 cleanup,
+  2,013 lines after the first Phase 2 extraction pass, and 1,834 lines after the table/mobile-card
+  extraction pass, 1,746 lines after the filter extraction pass, and 835 lines after the drawer
+  extraction pass.
+- `ChatUserDetailDrawer.svelte` is 885 lines after extracting the 288-line redacted session timeline
+  component.
 - `admin-chat-user-analytics.ts` was 3,013 lines at audit time and is 3,027 lines after adding the
   redacted-session threshold contract.
 - The three route handlers are thin and consistent: admin gate, query parsing, service call,
   redaction assertion, response.
 - Focused backend/API tests exist and pass:
   `./node_modules/.bin/vitest run src/lib/server/admin-chat-user-analytics.test.ts src/routes/api/admin/chat/users/server.test.ts`
-  -> 2 files, 21 tests passed after Phase 1 threshold coverage.
+  -> 2 files, 28 tests passed after Phase 2 redacted timeline extraction.
 - `NODE_OPTIONS='--max-old-space-size=8192' ./node_modules/.bin/svelte-check --tsconfig ./tsconfig.json`
-  -> 0 errors and 0 warnings after Phase 1 cleanup.
+  -> 0 errors and 0 warnings after Phase 2 redacted timeline extraction.
 - No Svelte/UI test exists for this page. Current frontend regressions would mostly be caught by
   manual QA or full `svelte-check`, not by focused page tests.
 - The implementation spec for this feature is currently untracked, so this audit is a separate
@@ -59,8 +64,32 @@ Shipped:
 
 Still open:
 
-- Component extraction, drawer/modal accessibility, mobile card fallback, filter panel/chips, raw
-  command control cleanup, shared DTO split, page-level UI tests, and live visual verification.
+- Remaining component extraction, raw command control cleanup, shared DTO split, page-level UI tests,
+  and live visual verification.
+
+## Phase 2 Progress - 2026-07-05
+
+Shipped:
+
+- Added `src/lib/components/admin/chat-users/chat-user-types.ts` for frontend DTO reuse.
+- Added `src/lib/components/admin/chat-users/chat-user-ui.ts` for pure formatting, badge,
+  comparison, issue-cluster, and entity-link helpers.
+- Extracted `ChatUserKpiStrip.svelte`.
+- Extracted `ChatUserLeaderboards.svelte`, including stronger focus-visible/touch-target styling for
+  leaderboard row buttons.
+- Extracted `ChatUsersTable.svelte`.
+- Added `ChatUsersMobileCards.svelte` as the phone-width fallback for the wide users table. -> P12
+- Extracted `ChatUserFilters.svelte`; search remains visible while secondary filters collapse behind
+  a Filters button, with active chips for clearing individual filters. -> P7
+- Extracted `ChatUserDetailDrawer.svelte`; the drilldown now has `role="dialog"`, `aria-modal`,
+  labelled title/subtitle, Escape close, focus trap, focus restore, portal rendering, and body scroll
+  lock, with background content marked inert while open. -> P13
+- Extracted `ChatRedactedSessionTimeline.svelte` for the selected redacted-session summary, turn list,
+  entity-change chips, and safe event timeline.
+
+Still open:
+
+- Export helper extraction, page-level UI tests, and live visual verification.
 
 ## Findings
 
@@ -105,10 +134,12 @@ Still open:
   The main table uses `overflow-x-auto` and `min-w-[1500px]` (`+page.svelte:1638-1639`). This is
   acceptable for a first desktop admin cut, but it fails the admin-console standard established in
   prior audits. Add a `md:hidden` user-card list and keep the table `hidden md:table`. -> P12
+  Status: fixed in Phase 2 with `ChatUsersMobileCards.svelte`.
 
 - **The filter bar is a permanent wall of controls.**
   The filters occupy a large always-visible grid (`+page.svelte:1380-1520`). Keep search visible,
   collapse secondary filters behind a "Filters" button, and show active chips below it. -> P7
+  Status: fixed in Phase 2 with `ChatUserFilters.svelte`.
 
 - **The backend returns seven leaderboards while the UI renders four.**
   The response type includes `most_requests_responses`, `most_created_entities`, and
@@ -121,6 +152,7 @@ Still open:
   The overlay and `<aside>` are rendered directly (`+page.svelte:1828-1837`) without an explicit
   dialog role, `aria-modal`, Escape handling, focus trap, focus restore, or inert outside content.
   Use an existing drawer/modal primitive or add the missing interaction contract. -> P13
+  Status: fixed in Phase 2 with `ChatUserDetailDrawer.svelte`.
 
 - **Alert badge and issue-cluster builders live in the route.**
   `buildUserAlertBadges`, `buildSessionAlertBadges`, `normalizeIssueMessage`, and
@@ -196,7 +228,7 @@ Goal: make later refactors mechanical and keep privacy guarantees intact.
 Verification:
 
 - `./node_modules/.bin/vitest run src/lib/server/admin-chat-user-analytics.test.ts src/routes/api/admin/chat/users/server.test.ts`
-  -> 2 files, 21 tests passed on 2026-07-05.
+  -> 2 files, 28 tests passed on 2026-07-05 after Phase 2 filter extraction.
 - New page test command once added.
 
 ### Phase 1 - Cheap correctness and design-system cleanup
@@ -216,7 +248,7 @@ Verification:
 - Focused page tests.
 - Focused backend/API tests.
     - `./node_modules/.bin/vitest run src/lib/server/admin-chat-user-analytics.test.ts src/routes/api/admin/chat/users/server.test.ts`
-      -> 2 files, 21 tests passed on 2026-07-05.
+      -> 2 files, 28 tests passed on 2026-07-05 after Phase 2 filter extraction.
 - `svelte-check` for touched files if feasible in the local environment.
     - `NODE_OPTIONS='--max-old-space-size=8192' ./node_modules/.bin/svelte-check --tsconfig ./tsconfig.json`
       -> 0 errors and 0 warnings on 2026-07-05.
@@ -235,7 +267,7 @@ apps/web/src/lib/components/admin/chat-users/
   ChatUserLeaderboards.svelte
   ChatUsersTable.svelte
   ChatUsersMobileCards.svelte
-  ChatUserDrawer.svelte
+  ChatUserDetailDrawer.svelte
   ChatUserSummaryCards.svelte
   ChatUserComparisonPanel.svelte
   ChatUserActivityTimeline.svelte
@@ -248,20 +280,26 @@ apps/web/src/lib/components/admin/chat-users/
 
 Work:
 
-- [ ] Extract KPI strip.
-- [ ] Extract filter bar and collapse secondary filters into a filter panel with active chips. -> P7
-- [ ] Extract leaderboards; render or remove all response leaderboards based on Phase 0.
-- [ ] Extract desktop table and add mobile cards. -> P12
-- [ ] Extract drawer into a component with proper dialog semantics, Escape close, and focus restore.
+- [x] Extract KPI strip.
+- [x] Extract filter bar and collapse secondary filters into a filter panel with active chips. -> P7
+- [x] Extract leaderboards; render or remove all response leaderboards based on Phase 0.
+- [x] Extract desktop table and add mobile cards. -> P12
+- [x] Extract drawer into a component with proper dialog semantics, Escape close, and focus restore.
       -> P13
-- [ ] Extract redacted session timeline.
-- [ ] Extract issue cluster and alert badge helpers into `chat-user-ui.ts` with unit tests.
+- [x] Extract redacted session timeline.
+- [x] Extract issue cluster and alert badge helpers into `chat-user-ui.ts`.
+- [ ] Add focused unit tests for `chat-user-ui.ts` helpers.
 - [ ] Move export CSV/JSON helpers out of the page into a pure utility where practical.
 
 Verification:
 
-- Page tests updated to target behavior rather than implementation details.
-- Manual keyboard pass through filter controls, table sort, drawer, session timeline, entity changes.
+- `NODE_OPTIONS='--max-old-space-size=8192' ./node_modules/.bin/svelte-check --tsconfig ./tsconfig.json`
+  -> 0 errors and 0 warnings after the redacted timeline extraction.
+- `./node_modules/.bin/vitest run src/lib/server/admin-chat-user-analytics.test.ts src/routes/api/admin/chat/users/server.test.ts`
+  -> 2 files, 28 tests passed after the redacted timeline extraction.
+- Pending: page tests updated to target behavior rather than implementation details.
+- Pending: manual keyboard pass through filter controls, table sort, drawer, session timeline, entity
+  changes.
 
 ### Phase 3 - Split shared DTOs and backend service modules
 

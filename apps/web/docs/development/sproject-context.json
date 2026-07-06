@@ -170,14 +170,14 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": ["AgentChatModal", "ProjectModalsHost"]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
@@ -1013,6 +1013,8 @@
 				"comparisonToneClass",
 				"comparisonDeltaClass",
 				"alertBadgeClass",
+				"classificationJobStatusLabel",
+				"classificationJobStatusClass",
 				"finiteNumber",
 				"averageMetric",
 				"userErrorLoad",

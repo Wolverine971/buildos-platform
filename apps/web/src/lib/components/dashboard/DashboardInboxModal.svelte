@@ -58,6 +58,7 @@
 		source_payload?: Record<string, unknown> | null;
 		source_context?: {
 			project_loop_run?: ProjectLoopRunContext | null;
+			project_audit?: ProjectAuditContext | null;
 		} | null;
 	};
 
@@ -101,6 +102,19 @@
 		summary: string | null;
 		brief: Record<string, unknown> | null;
 		suggestion_count: number | null;
+		created_at: string | null;
+		finished_at: string | null;
+	};
+
+	type ProjectAuditContext = {
+		id: string;
+		status: string | null;
+		trigger_reason: string | null;
+		delivery_confidence: string | null;
+		summary: string | null;
+		role: string | null;
+		generated_suggestion_count: number | null;
+		unresolved_suggestion_count: number | null;
 		created_at: string | null;
 		finished_at: string | null;
 	};
@@ -155,6 +169,7 @@
 	});
 
 	const accountGroupKey = 'account';
+	const SNOOZE_MS = 24 * 60 * 60 * 1000;
 
 	type TierMeta = { label: string; cls: string };
 	const tierMeta: Record<number, TierMeta> = {
@@ -191,15 +206,24 @@
 	const groupedItems = $derived.by(() => {
 		const groups = new Map<string, InboxItem[]>();
 		for (const item of items) {
-			const key = item.project_id ?? accountGroupKey;
+			const audit = projectAuditContext(item);
+			const key = audit ? `audit:${audit.id}` : (item.project_id ?? accountGroupKey);
 			groups.set(key, [...(groups.get(key) ?? []), item]);
 		}
 		return [...groups.entries()].map(([key, groupItems]) => {
 			const project = groupItems.find((item) => item.project)?.project ?? null;
+			const audit = groupItems.map(projectAuditContext).find(Boolean) ?? null;
 			return {
 				key,
-				label: key === accountGroupKey ? 'Account' : (project?.name ?? 'Project'),
-				projectId: key === accountGroupKey ? null : key,
+				label: audit
+					? auditGroupLabel(audit, project?.name ?? 'Project')
+					: key === accountGroupKey
+						? 'Account'
+						: (project?.name ?? 'Project'),
+				projectId:
+					key === accountGroupKey
+						? null
+						: (project?.id ?? groupItems[0]?.project_id ?? null),
 				actionableCount: groupItems.filter(canDecide).length,
 				items: groupItems
 			};
@@ -234,6 +258,10 @@
 
 	function projectLoopRunContext(item: InboxItem): ProjectLoopRunContext | null {
 		return item.source_context?.project_loop_run ?? null;
+	}
+
+	function projectAuditContext(item: InboxItem): ProjectAuditContext | null {
+		return item.source_context?.project_audit ?? null;
 	}
 
 	function agentChangeSet(item: InboxItem): ChangeSet | null {
@@ -335,6 +363,11 @@
 						: 'Project review';
 		const date = formatShortDate(run.finished_at ?? run.created_at ?? undefined);
 		return date ? `${trigger} · ${date}` : trigger;
+	}
+
+	function auditGroupLabel(audit: ProjectAuditContext, projectName: string): string {
+		const date = formatShortDate(audit.finished_at ?? audit.created_at ?? undefined);
+		return date ? `${projectName} · Audit ${date}` : `${projectName} · Audit`;
 	}
 
 	function tierFor(value: number | null | undefined): TierMeta {
@@ -587,6 +620,8 @@
 
 	async function decide(item: InboxItem, action: 'approve' | 'reject') {
 		if (pendingIds.has(item.id)) return;
+		const dismissReason = (dismissReasonById[item.id] ?? '').trim();
+		const dismissNote = (dismissNoteById[item.id] ?? '').trim();
 		pendingIds = new Set(pendingIds).add(item.id);
 		const notificationId = startInboxDecisionNotification(item, action);
 		const removed = removeItemFromInbox(item);
@@ -600,8 +635,8 @@
 					action,
 					...(action === 'reject' && item.source_type === 'project_suggestion'
 						? {
-								reason: dismissReasonById[item.id] || 'other',
-								note: dismissNoteById[item.id] || undefined
+								...(dismissReason ? { reason: dismissReason } : {}),
+								...(dismissNote ? { note: dismissNote } : {})
 							}
 						: {})
 				})
@@ -644,6 +679,48 @@
 			failInboxDecisionNotification(
 				notificationId,
 				err instanceof Error ? err.message : 'Action failed'
+			);
+			void loadInbox({ silent: true });
+		} finally {
+			const next = new Set(pendingIds);
+			next.delete(item.id);
+			pendingIds = next;
+		}
+	}
+
+	async function snooze(item: InboxItem) {
+		if (pendingIds.has(item.id)) return;
+		pendingIds = new Set(pendingIds).add(item.id);
+		const notificationId = startInboxDecisionNotification(item, 'snooze');
+		const removed = removeItemFromInbox(item);
+		if (removed) changedCount += 1;
+		try {
+			const snoozeUntil = new Date(Date.now() + SNOOZE_MS).toISOString();
+			const res = await fetch('/api/inbox/decide', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					item_id: item.id,
+					action: 'snooze',
+					snooze_until: snoozeUntil
+				})
+			});
+			const json = await res.json();
+			if (!res.ok) throw new Error(json?.error ?? 'Snooze failed');
+
+			completeInboxDecisionNotification(
+				notificationId,
+				'Review item snoozed until tomorrow.',
+				{
+					toastKind: 'info',
+					title: 'Review item snoozed'
+				}
+			);
+		} catch (err) {
+			if (removed) changedCount = Math.max(0, changedCount - 1);
+			failInboxDecisionNotification(
+				notificationId,
+				err instanceof Error ? err.message : 'Snooze failed'
 			);
 			void loadInbox({ silent: true });
 		} finally {
@@ -1033,8 +1110,10 @@
 														approveAllLabel="Accept"
 														rejectAllLabel="Dismiss"
 														openingChat={isOpeningChat(item)}
+														snoozing={pendingIds.has(item.id)}
 														onApplied={() =>
 															handleAgentRunApplied(item)}
+														onSnooze={() => snooze(item)}
 														onChat={canChat(item)
 															? () => openChat(item)
 															: undefined}
@@ -1061,6 +1140,7 @@
 												layout="dashboard"
 												onApprove={() => decide(item, 'approve')}
 												onReject={() => decide(item, 'reject')}
+												onSnooze={() => snooze(item)}
 												onChat={() => openChat(item)}
 											/>
 										{:else if !canDecide(item)}

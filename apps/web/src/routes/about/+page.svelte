@@ -570,14 +570,16 @@
 				<article class="p-5 text-center wt-paper sp-inline">
 					<div
 						class="text-2xl sm:text-3xl font-bold text-accent mb-1"
-						aria-label="MVP phase"
+						aria-label="Live product"
 					>
-						MVP
+						Live
 					</div>
 					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">
-						Building phase
+						In production
 					</h3>
-					<p class="text-sm text-muted-foreground">Core capture and project memory.</p>
+					<p class="text-sm text-muted-foreground">
+							Capture, project memory, daily briefs, calendar, and agent chat.
+						</p>
 				</article>
 
 				<article class="p-5 text-center wt-paper sp-inline">

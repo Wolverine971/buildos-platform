@@ -3,7 +3,7 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
 import { captureServerEvent } from '$lib/server/posthog';
 import { createLogger } from '$lib/utils/logger';
-import { projectAuditDedupKey } from '@buildos/shared-agent-ops';
+import { projectAuditDedupKey, readProjectLoopQueueMetadata } from '@buildos/shared-agent-ops';
 import type {
 	Json,
 	ProjectAuditDepth,
@@ -325,7 +325,7 @@ export async function queueProjectAudit(params: {
 	});
 
 	try {
-		const { queueJobId } = await addQueueJobWithPublicId(supabase, {
+		const { queueJobId, metadata } = await addQueueJobWithPublicId(supabase, {
 			p_user_id: params.userId,
 			p_job_type: 'buildos_project_loop',
 			p_metadata: {
@@ -344,6 +344,57 @@ export async function queueProjectAudit(params: {
 			// onto one job instead of double-auditing (audit Tier 1 #5).
 			p_dedup_key: projectAuditDedupKey(params.projectId)
 		});
+
+		const queueMetadata = readProjectLoopQueueMetadata(metadata);
+		if (queueMetadata.runId !== runRow.id || queueMetadata.auditId !== auditRow.id) {
+			const message =
+				queueMetadata.runId || queueMetadata.auditId
+					? `Deduplicated onto active complete audit job ${queueJobId}`
+					: `Queue job ${queueJobId} metadata did not include the new audit run ${runRow.id}/${auditRow.id}`;
+			const now = new Date().toISOString();
+			await Promise.all([
+				supabase
+					.from('project_loop_runs')
+					.update({ status: 'failed', error_message: message, finished_at: now })
+					.eq('id', runRow.id)
+					.eq('status', 'queued'),
+				supabase
+					.from('project_audits')
+					.update({ status: 'failed', error_message: message, finished_at: now })
+					.eq('id', auditRow.id)
+					.eq('status', 'queued')
+			]);
+			await captureAuditTriggerMetric({
+				userId: params.userId,
+				event: 'project_audit_skipped',
+				projectId: params.projectId,
+				triggerReason: params.triggerReason,
+				auditDepth,
+				decision: 'skipped_duplicate',
+				reason: message,
+				auditId: queueMetadata.auditId ?? (auditRow.id as string),
+				runId: queueMetadata.runId ?? (runRow.id as string),
+				evaluationId,
+				projectSizeClass: evaluated.evaluation.project_size_class
+			});
+			return {
+				queued: false,
+				auditId: queueMetadata.auditId ?? (auditRow.id as string),
+				runId: queueMetadata.runId ?? (runRow.id as string),
+				jobId: queueJobId,
+				evaluationId: evaluationId ?? undefined,
+				decision: 'skipped_duplicate',
+				reason:
+					queueMetadata.runId || queueMetadata.auditId
+						? 'already_running'
+						: 'queue_metadata_mismatch',
+				evaluation: {
+					...evaluated.evaluation,
+					created_audit_id: queueMetadata.auditId ?? (auditRow.id as string),
+					created_loop_run_id: queueMetadata.runId ?? (runRow.id as string)
+				}
+			};
+		}
 
 		await supabase
 			.from('project_loop_runs')
