@@ -123,7 +123,10 @@ async function createAuditChatSession(params: {
 		chat_session_id: session.id,
 		project_id: params.projectId
 	});
-	if (linkError) throw new Error(linkError.message);
+	if (linkError) {
+		await archiveChatSession(session.id);
+		throw new Error(linkError.message);
+	}
 
 	return session.id as string;
 }

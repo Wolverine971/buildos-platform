@@ -31,8 +31,24 @@ type UserRecord = {
 };
 
 const AUDIO_HEARTBEAT_MS = 60_000;
-const DEFAULT_SYNTHESIS_TIMEOUT_MS = 2 * 60 * 1000;
+const DEFAULT_SYNTHESIS_TIMEOUT_MS = 5 * 60 * 1000;
+const MIN_SYNTHESIS_TIMEOUT_MS = 60_000;
 let audioChain: Promise<unknown> = Promise.resolve();
+
+function getSynthesisTimeoutMs(): number {
+	const rawValue = process.env.BRIEF_AUDIO_SYNTHESIS_TIMEOUT_MS?.trim();
+	if (!rawValue) return DEFAULT_SYNTHESIS_TIMEOUT_MS;
+
+	const parsed = Number.parseInt(rawValue, 10);
+	if (!Number.isFinite(parsed)) {
+		console.warn(
+			`Invalid BRIEF_AUDIO_SYNTHESIS_TIMEOUT_MS "${rawValue}", using ${DEFAULT_SYNTHESIS_TIMEOUT_MS}ms`
+		);
+		return DEFAULT_SYNTHESIS_TIMEOUT_MS;
+	}
+
+	return Math.max(parsed, MIN_SYNTHESIS_TIMEOUT_MS);
+}
 
 function truncateErrorMessage(message: string): string {
 	return message.length > 1000 ? `${message.slice(0, 997)}...` : message;
@@ -117,7 +133,7 @@ function isEligible(user: UserRecord | null): boolean {
 function startAudioJobHeartbeat(job: ProcessingJob<GenerateBriefAudioJobMetadata>): () => void {
 	const update = async () => {
 		await job.updateProgress({
-			current: 1,
+			current: 40,
 			total: 100,
 			message: 'Audio narration job is active'
 		});
@@ -244,7 +260,7 @@ async function processBriefAudioInner(
 		});
 		const synthesis = await synthesizeBriefAudioForWorker(
 			narrationText,
-			DEFAULT_SYNTHESIS_TIMEOUT_MS
+			getSynthesisTimeoutMs()
 		);
 		model = synthesis.model;
 

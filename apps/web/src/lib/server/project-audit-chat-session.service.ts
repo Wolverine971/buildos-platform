@@ -351,7 +351,14 @@ export async function createOrReuseProjectAuditChatSession(params: {
 		project_id: projectId,
 		linked_at: now
 	});
-	if (linkError) throw linkError;
+	if (linkError) {
+		await params.supabase
+			.from('chat_sessions')
+			.update({ status: 'archived', archived_at: now })
+			.eq('id', sessionId)
+			.eq('status', 'active');
+		throw linkError;
+	}
 
 	await upsertSeedMessage({
 		supabase: params.supabase,

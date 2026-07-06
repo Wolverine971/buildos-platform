@@ -3540,7 +3540,7 @@ export type Database = {
             foreignKeyName: "chat_sessions_projects_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "onto_projects"
             referencedColumns: ["id"]
           },
         ]

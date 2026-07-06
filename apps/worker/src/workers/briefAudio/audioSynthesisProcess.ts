@@ -54,10 +54,15 @@ function isChildResponse(message: unknown): message is ChildResponse {
 	return typeof maybe.ok === 'boolean';
 }
 
-function buildChildFailureMessage(message: ChildResponse, stderr: string): string {
+function appendChildOutput(current: string, source: 'stdout' | 'stderr', chunk: Buffer): string {
+	const next = `${current}${source}: ${chunk.toString('utf8')}`;
+	return next.length > 8000 ? next.slice(-8000) : next;
+}
+
+function buildChildFailureMessage(message: ChildResponse, childOutput: string): string {
 	if (message.ok) return 'Audio synthesis child failed';
-	const details = stderr.trim();
-	return details ? `${message.error}; stderr: ${details.slice(-2000)}` : message.error;
+	const details = childOutput.trim();
+	return details ? `${message.error}; child output: ${details.slice(-2000)}` : message.error;
 }
 
 export function synthesizeBriefAudioInChild(
@@ -69,10 +74,10 @@ export function synthesizeBriefAudioInChild(
 		const child = fork(childPath, [], {
 			env: process.env,
 			execArgv: getExecArgv(childPath),
-			stdio: ['ignore', 'ignore', 'pipe', 'ipc']
+			stdio: ['ignore', 'pipe', 'pipe', 'ipc']
 		});
 
-		let stderr = '';
+		let childOutput = '';
 		let settled = false;
 		let timeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -88,22 +93,23 @@ export function synthesizeBriefAudioInChild(
 		timeout = setTimeout(() => {
 			settle(() => {
 				child.kill('SIGKILL');
-				const details = stderr.trim();
+				const details = childOutput.trim();
 				reject(
 					new Error(
 						details
-							? `Audio synthesis timed out after ${timeoutMs}ms; stderr: ${details.slice(-2000)}`
+							? `Audio synthesis timed out after ${timeoutMs}ms; child output: ${details.slice(-2000)}`
 							: `Audio synthesis timed out after ${timeoutMs}ms`
 					)
 				);
 			});
 		}, timeoutMs);
 
+		child.stdout?.on('data', (chunk: Buffer) => {
+			childOutput = appendChildOutput(childOutput, 'stdout', chunk);
+		});
+
 		child.stderr?.on('data', (chunk: Buffer) => {
-			stderr += chunk.toString('utf8');
-			if (stderr.length > 8000) {
-				stderr = stderr.slice(-8000);
-			}
+			childOutput = appendChildOutput(childOutput, 'stderr', chunk);
 		});
 
 		child.once('message', (message: unknown) => {
@@ -114,7 +120,7 @@ export function synthesizeBriefAudioInChild(
 				}
 
 				if (!message.ok) {
-					reject(new Error(buildChildFailureMessage(message, stderr)));
+					reject(new Error(buildChildFailureMessage(message, childOutput)));
 					return;
 				}
 
@@ -137,12 +143,12 @@ export function synthesizeBriefAudioInChild(
 
 		child.once('exit', (code, signal) => {
 			settle(() => {
-				const details = stderr.trim();
+				const details = childOutput.trim();
 				reject(
 					new Error(
 						`Audio synthesis child exited before returning audio (code ${code ?? 'null'}, signal ${
 							signal ?? 'null'
-						})${details ? `; stderr: ${details.slice(-2000)}` : ''}`
+						})${details ? `; child output: ${details.slice(-2000)}` : ''}`
 					)
 				);
 			});

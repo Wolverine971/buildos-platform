@@ -84,6 +84,7 @@ async function createLoopChatSession(params: {
 		project_id: params.projectId
 	});
 	if (linkError) {
+		await archiveChatSession(chatSession.id);
 		throw new Error(linkError.message);
 	}
 

@@ -43,13 +43,14 @@ async function createLoopChatSession(
 		throw new Error(chatError?.message ?? 'Failed to create project review chat session');
 	}
 
-	await supabase
-		.from('chat_sessions_projects')
-		.insert({
-			chat_session_id: chatSession.id,
-			project_id: params.projectId
-		})
-		.throwOnError();
+	const { error: linkError } = await supabase.from('chat_sessions_projects').insert({
+		chat_session_id: chatSession.id,
+		project_id: params.projectId
+	});
+	if (linkError) {
+		await archiveChatSession(supabase, chatSession.id);
+		throw linkError;
+	}
 
 	return chatSession.id;
 }

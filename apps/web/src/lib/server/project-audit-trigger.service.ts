@@ -94,13 +94,14 @@ async function createAuditChatSession(params: {
 		throw sessionError ?? new Error('Failed to create project audit chat session');
 	}
 
-	await params.supabase
-		.from('chat_sessions_projects')
-		.insert({
-			chat_session_id: session.id,
-			project_id: params.projectId
-		})
-		.throwOnError();
+	const { error: linkError } = await params.supabase.from('chat_sessions_projects').insert({
+		chat_session_id: session.id,
+		project_id: params.projectId
+	});
+	if (linkError) {
+		await archiveChatSession({ supabase: params.supabase, chatSessionId: session.id });
+		throw linkError;
+	}
 
 	return session.id as string;
 }
