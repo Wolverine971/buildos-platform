@@ -998,6 +998,20 @@
 			]
 		},
 		{
+			"file": "src/lib/components/admin/chat-users/chat-user-export.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"exportTimestamp",
+				"csvCell",
+				"csvRows",
+				"buildChatUsersCsvFile",
+				"buildChatUsersJsonFile",
+				"buildChatUserDetailJsonFile",
+				"downloadTextFile"
+			]
+		},
+		{
 			"file": "src/lib/components/admin/chat-users/chat-user-ui.ts",
 			"type": "component",
 			"components": [],
@@ -1318,6 +1332,7 @@
 		"src/lib/components/ui/live-transcript-preview.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/admin/chat/session-audit-ui.ts",
+		"src/lib/components/admin/chat-users/chat-user-export.ts",
 		"src/lib/components/admin/chat-users/chat-user-ui.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",

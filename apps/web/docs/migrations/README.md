@@ -71,7 +71,7 @@ Migration documents typically track:
 ## 🔗 Related Documentation
 
 - **Development Process**: `/apps/web/docs/development/DEVELOPMENT_PROCESS.md`
-- **Testing Procedures**: `/apps/web/docs/development/TESTING_CHECKLIST.md`
+- **Testing Procedures**: `/apps/web/docs/technical/testing/TESTING_CHECKLIST.md`
 - **Git Workflow**: `/apps/web/docs/development/GIT_WORKFLOW.md`
 
 ## 📝 Common Migration Types

@@ -14,11 +14,11 @@ This service runs three things in the same process:
 
 ## Tech Stack
 
-- **Runtime** — Node.js ≥ 20 (Railway Nixpacks uses `nodejs_20`)
+- **Runtime** — Node.js >= 20.19 (Railway root Nixpacks currently uses `nodejs_22`)
 - **Web** — Express 4
 - **Queue** — Supabase-backed (no Redis). Atomic claiming via PostgreSQL RPCs (`add_queue_job`, `claim_pending_jobs`, `complete_queue_job`, `fail_queue_job`) using `FOR UPDATE SKIP LOCKED`.
 - **Scheduler** — `node-cron`
-- **Email** — Nodemailer (SMTP) with an optional webhook-based path (`USE_WEBHOOK_EMAIL=true`)
+- **Email** — Worker creates email records and calls the web app notification-email webhook; the web app owns provider delivery
 - **LLMs** — `@buildos/smart-llm`
 - **SMS** — `@buildos/twilio-service`
 
@@ -48,6 +48,7 @@ Registered in `src/worker.ts`:
 | Job type                         | Processor                                          |
 | -------------------------------- | -------------------------------------------------- |
 | `generate_daily_brief`           | `workers/brief/briefWorker`                        |
+| `generate_brief_audio`           | `workers/briefAudio/briefAudioWorker`              |
 | `onboarding_analysis`            | `workers/onboarding/onboardingWorker`              |
 | `send_notification`              | `workers/notification/notificationWorker`          |
 | `project_activity_batch_flush`   | `workers/notification/projectActivityBatchWorker`  |
@@ -57,9 +58,9 @@ Registered in `src/worker.ts`:
 | `process_onto_braindump`         | `workers/braindump/braindumpProcessor`             |
 | `transcribe_voice_note`          | `workers/voice-notes/voiceNoteTranscriptionWorker` |
 | `extract_onto_asset_ocr`         | `workers/assets/assetOcrWorker`                    |
-| `buildos_homework`               | `workers/homework/homeworkWorker`                  |
-| `buildos_tree_agent`             | `workers/tree-agent/treeAgentWorker`               |
+| `agent_run`                      | `workers/agent-run/agentRunWorker`                 |
 | `build_project_context_snapshot` | `workers/ontology/projectContextSnapshotWorker`    |
+| `buildos_project_loop`           | `workers/project-loop/projectLoopWorker`           |
 | `generate_project_icon`          | `workers/project-icon/projectIconWorker`           |
 | `sync_calendar`                  | `workers/calendar/calendarSyncWorker`              |
 
@@ -69,22 +70,21 @@ Adding a new job type is documented in [`src/workers/README.md`](./src/workers/R
 
 Base URL (prod): set via `PUBLIC_RAILWAY_WORKER_URL`. Requests from the web app are authenticated with `PRIVATE_RAILWAY_WORKER_TOKEN`.
 
-| Method | Path                       | Purpose                                       |
-| ------ | -------------------------- | --------------------------------------------- |
-| GET    | `/health`                  | Healthcheck + queue/scheduler status          |
-| POST   | `/classify/ontology`       | Sync ontology classification (non-queued)     |
-| POST   | `/queue/brief`             | Enqueue a daily brief job                     |
-| POST   | `/queue/onboarding`        | Enqueue an onboarding analysis job            |
-| POST   | `/queue/chat/classify`     | Enqueue chat-session classification           |
-| POST   | `/queue/braindump/process` | Enqueue ontology braindump processing         |
-| GET    | `/jobs/:jobId`             | Inspect a job                                 |
-| GET    | `/users/:userId/jobs`      | List a user's jobs                            |
-| GET    | `/queue/stats`             | Queue depth + status counts                   |
-| GET    | `/queue/stale-stats`       | Stalled-job statistics                        |
-| POST   | `/queue/cleanup`           | Run stale-job cleanup                         |
-| —      | `/webhooks/*`              | Provider webhooks (see `src/routes/webhooks`) |
-| —      | `/sms/scheduled`           | Scheduled-SMS management endpoints            |
-| —      | `/email-tracking/*`        | Open/click tracking pixels + redirects        |
+| Method | Path                       | Purpose                                   |
+| ------ | -------------------------- | ----------------------------------------- |
+| GET    | `/health`                  | Healthcheck                               |
+| POST   | `/classify/ontology`       | Sync ontology classification (non-queued) |
+| POST   | `/queue/brief`             | Enqueue a daily brief job                 |
+| POST   | `/queue/onboarding`        | Enqueue an onboarding analysis job        |
+| POST   | `/queue/chat/classify`     | Enqueue chat-session classification       |
+| POST   | `/queue/braindump/process` | Enqueue ontology braindump processing     |
+| GET    | `/jobs/:jobId`             | Inspect a job                             |
+| GET    | `/users/:userId/jobs`      | List a user's jobs                        |
+| GET    | `/queue/stats`             | Queue depth + status counts               |
+| GET    | `/queue/stale-stats`       | Stalled-job statistics                    |
+| POST   | `/queue/cleanup`           | Run stale-job cleanup                     |
+| GET    | `/api/email-tracking/:id`  | Public email open-tracking pixel          |
+| —      | `/sms/scheduled/*`         | Scheduled-SMS management endpoints        |
 
 ## Quick Start
 
@@ -92,16 +92,18 @@ From the monorepo root:
 
 ```bash
 pnpm install
-pnpm dev --filter=worker     # http://localhost:3001
+pnpm --filter @buildos/worker dev     # http://localhost:3001
 ```
 
-Copy the root `.env.example` to `.env`. Minimum required:
+Use a root `.env` when running from the monorepo root. `apps/worker/.env.example`
+lists worker-specific variables. Minimum required:
 
 ```env
 PUBLIC_SUPABASE_URL=
 PRIVATE_SUPABASE_SERVICE_KEY=
 PRIVATE_RAILWAY_WORKER_TOKEN=
 PRIVATE_OPENROUTER_API_KEY=
+PRIVATE_BUILDOS_WEBHOOK_SECRET=
 ```
 
 Healthcheck once running:
@@ -118,11 +120,12 @@ From `apps/worker/`:
 pnpm dev                # Full process (index.ts): API + worker + scheduler
 pnpm worker             # Worker loop only
 pnpm scheduler          # Scheduler only
-pnpm build              # tsc → dist/
+pnpm build              # tsc -> dist/
 pnpm start              # node dist/index.js (production entry)
 
 pnpm typecheck
-pnpm lint | lint:fix
+pnpm lint
+pnpm lint:fix
 pnpm test | test:run | test:watch
 pnpm test:scheduler     # Scheduler-specific suite
 pnpm test:integration
@@ -132,7 +135,7 @@ pnpm test:integration
 
 Configured at the repo root via `railway.toml` and `nixpacks.toml`:
 
-- Builder: Nixpacks on `nodejs_20` + `pnpm 9`.
+- Builder: Nixpacks on `nodejs_22` + `pnpm 9`.
 - Build: `pnpm install --prod=false --no-frozen-lockfile && pnpm turbo build --filter=@buildos/worker`.
 - Start: `node apps/worker/dist/index.js`.
 - Healthcheck: `GET /health` with a 30s timeout.
@@ -142,13 +145,14 @@ Set the required env vars in the Railway service dashboard — at minimum, Supab
 
 ## Tuning
 
-`SupabaseQueue` defaults in `src/lib/supabaseQueue.ts`:
+`SupabaseQueue` constructor defaults in `src/lib/supabaseQueue.ts`:
 
 - `pollInterval` — 5 000 ms
 - `batchSize` — 5 concurrent jobs
 - `stalledTimeout` — 300 000 ms (5 min)
 
-Per-environment overrides live in `src/config/queueConfig.ts`.
+Per-environment overrides live in `src/config/queueConfig.ts`; production
+currently uses a larger batch size and longer stalled timeout profile.
 
 ## Monitoring
 

@@ -169,7 +169,7 @@ path: docs/features/sms-event-scheduling/README.md
     - Delivery tracking and Twilio webhooks
     - Timezone handling, DST transitions, and edge cases
     - Race conditions, empty states, message content variations
-- ✅ Documentation: [`PHASE_6_TESTING_SUMMARY.md`](PHASE_6_TESTING_SUMMARY.md)
+- ✅ Testing summary captured in this README under Phase 6.
 
 **Part 2: Monitoring & Metrics** ✅ COMPLETE (2025-10-08)
 
@@ -180,7 +180,7 @@ path: docs/features/sms-event-scheduling/README.md
 - ✅ Create 5 API endpoints (daily, today, summary, alerts, user)
 - ✅ Integrate metrics collection into all workers
 - ✅ Hourly scheduler for alert monitoring
-- ✅ Documentation: [`PHASE_6_PART_2_SUMMARY.md`](PHASE_6_PART_2_SUMMARY.md)
+- ✅ Monitoring summary captured in this README under Phase 6.
 
 **User Enrollment:**
 

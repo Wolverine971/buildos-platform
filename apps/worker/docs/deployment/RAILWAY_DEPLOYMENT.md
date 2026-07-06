@@ -1,54 +1,38 @@
 <!-- apps/worker/docs/deployment/RAILWAY_DEPLOYMENT.md -->
 
-# Railway Deployment Instructions - Worker Service
+# Railway Deployment - Worker Service
 
-## Option A: Creating New Railway Project (Recommended)
+Last verified against repo-root config on 2026-07-06.
 
-### 1. Go to Railway Dashboard
+The worker deploys from the monorepo root. Do not set Railway root directory to
+`apps/worker`.
 
-Navigate to: https://railway.app/dashboard
+## Railway Service Settings
 
-### 2. Create New Project
+- Root directory: `/`
+- Build config: repo-root `railway.toml` and `nixpacks.toml`
+- Start command: `node apps/worker/dist/index.js`
+- Healthcheck path: `/health`
+- Healthcheck timeout: `30`
+- Restart policy: `ON_FAILURE`, max retries `3`
 
-1. Click **New Project**
-2. Select **Deploy from GitHub repo**
-3. Choose `Wolverine971/buildos-platform`
-4. Click **Deploy Now**
+Current repo-root config:
 
-### 3. Configure Service Settings
-
-Once deployed, click on the service card, then go to **Settings**:
-
-#### Service Name
-
-```
-buildos-worker
-```
-
-#### Root Directory
-
-```
-/
+```bash
+pnpm install --prod=false --no-frozen-lockfile
+pnpm turbo build --filter=@buildos/worker
+node apps/worker/dist/index.js
 ```
 
-**IMPORTANT**: Set the root directory to `/` (repository root) - NOT `/apps/worker`. This is required for the monorepo build process to access all packages.
+`nixpacks.toml` currently provisions `nodejs_22` and `pnpm-9_x`. The repository
+package manager is pnpm 11, so keep Railway build output under review if
+Nixpacks changes pnpm resolution behavior.
 
-Railway will find and use the `railway.toml` or `nixpacks.toml` configuration files in the repository root. These files are configured specifically for building the worker service with all its dependencies.
+## Watch Paths
 
-**DO NOT manually override the build/start commands** unless absolutely necessary. The configuration files handle:
+Use the root `railway.toml` watch patterns:
 
-- Building shared packages (`@buildos/shared-types`, `@buildos/supabase-client`)
-- Installing dependencies from the monorepo root
-- Using Turbo to orchestrate the build process
-
-If you need to verify the commands being used:
-
-- **Build Command** (from config): `pnpm install --frozen-lockfile && pnpm turbo build --filter=@buildos/worker`
-- **Start Command** (from config): `node apps/worker/dist/index.js`
-
-#### Watch Paths (for auto-redeploy)
-
-```
+```text
 apps/worker/**
 packages/**
 turbo.json
@@ -56,210 +40,146 @@ package.json
 pnpm-lock.yaml
 ```
 
-### 4. Environment Variables
+## Required Variables
 
-Go to **Variables** tab and add:
-
-**REQUIRED Variables (Different Names from Vercel!):**
+Set these in the Railway worker service:
 
 ```bash
-# Supabase (DIFFERENT NAMES than web app!)
-PUBLIC_SUPABASE_URL=YOUR_SUPABASE_URL_HERE
-PRIVATE_SUPABASE_SERVICE_KEY=YOUR_SERVICE_KEY_HERE
-
-# Node Environment
 NODE_ENV=production
-PORT=${{PORT}}  # Railway provides this automatically
-
-# Webhook Configuration (for sending emails via web app)
-USE_WEBHOOK_EMAIL=true
-BUILDOS_WEBHOOK_URL=https://YOUR-VERCEL-APP.vercel.app/webhooks/daily-brief-email
-PRIVATE_BUILDOS_WEBHOOK_SECRET=YOUR_WEBHOOK_SECRET_HERE  # Must match the same variable in Vercel
-WEBHOOK_TIMEOUT=30000
+PORT=${{PORT}}
+PUBLIC_SUPABASE_URL=
+PRIVATE_SUPABASE_SERVICE_KEY=
+PRIVATE_OPENROUTER_API_KEY=
+PRIVATE_RAILWAY_WORKER_TOKEN=
+PUBLIC_APP_URL=https://build-os.com
+PRIVATE_BUILDOS_WEBHOOK_SECRET=
 ```
 
-**OPTIONAL Queue Configuration (uses defaults if not set):**
+Notes:
+
+- The worker code validates `PUBLIC_SUPABASE_URL`, not `SUPABASE_URL`.
+- `PRIVATE_RAILWAY_WORKER_TOKEN` must match the token used by the web app when
+  calling the worker.
+- `PRIVATE_BUILDOS_WEBHOOK_SECRET` must match the web app value because worker
+  callbacks use it.
+
+## Optional Variables
+
+Queue tuning:
 
 ```bash
 QUEUE_POLL_INTERVAL=5000
 QUEUE_BATCH_SIZE=10
 QUEUE_MAX_RETRIES=3
-QUEUE_ENABLE_PROGRESS_TRACKING=true
 QUEUE_ENABLE_HEALTH_CHECKS=true
 QUEUE_WORKER_TIMEOUT=600000
 QUEUE_STALLED_TIMEOUT=600000
-QUEUE_STATS_UPDATE_INTERVAL=60000
+QUEUE_STATS_UPDATE_INTERVAL=300000
+QUEUE_RETENTION_CLEANUP_ENABLED=true
+QUEUE_RETENTION_CLEANUP_CRON="30 3 * * *"
+QUEUE_COMPLETED_RETENTION_DAYS=30
+QUEUE_DRAIN_TIMEOUT_MS=25000
 ```
 
-### 5. Generate Public URL
-
-1. Go to **Settings** tab
-2. Under **Networking**, click **Generate Domain**
-3. Copy the generated URL (should be like: `buildos-worker.up.railway.app`)
-4. Add this URL to Vercel as `PUBLIC_RAILWAY_WORKER_URL`
-
-### 6. Health Check Configuration
-
-In **Settings** → **Deploy**:
-
-```
-Health Check Path: /health
-Health Check Timeout: 30
-```
-
-### 7. Deploy
-
-Click **Deploy** button to trigger first deployment
-
----
-
-## Option B: Updating Existing Railway Project
-
-If you already have a Railway project for the worker:
-
-### 1. Go to Your Existing Project
-
-### 2. Update GitHub Repository
-
-1. Go to **Settings** → **General**
-2. Under **Service**, find **Source**
-3. Click **Change** next to repository
-4. Select `Wolverine971/buildos-platform`
-
-### 3. Update Build Settings
-
-In **Settings** → **Deploy**:
-
-**IMPORTANT**: The project includes `railway.toml` and `nixpacks.toml` configuration files that contain the correct build commands. Railway should automatically use these.
-
-**Verify the Root Directory is set to**: `/` (repository root, NOT `/apps/worker`)
-
-**DO NOT manually override** the build/start commands unless the automatic configuration isn't working. The configuration files ensure dependencies are built correctly.
-
-### 4. Update Environment Variables
-
-**IMPORTANT: Variable names are DIFFERENT from your old setup!**
-
-| Old Variable Name              | New Variable Name |
-| ------------------------------ | ----------------- |
-| `PUBLIC_SUPABASE_URL`          | Keep the same     |
-| `PRIVATE_SUPABASE_SERVICE_KEY` | Keep the same     |
-
-**Add these NEW variables:**
+SMS:
 
 ```bash
-USE_WEBHOOK_EMAIL=true
-BUILDOS_WEBHOOK_URL=https://YOUR-VERCEL-APP.vercel.app/webhooks/daily-brief-email
-PRIVATE_BUILDOS_WEBHOOK_SECRET=<same value as in Vercel>
+PRIVATE_TWILIO_ACCOUNT_SID=
+PRIVATE_TWILIO_AUTH_TOKEN=
+PRIVATE_TWILIO_MESSAGING_SERVICE_SID=
+PRIVATE_TWILIO_STATUS_CALLBACK_URL=
 ```
 
-### 5. Trigger Redeploy
+Push:
 
-Click **Redeploy** from the latest deployment
+```bash
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:support@build-os.com
+```
 
----
+Calendar:
 
-## Environment Variable Mapping
+```bash
+PRIVATE_GOOGLE_CLIENT_ID=
+PRIVATE_GOOGLE_CLIENT_SECRET=
+PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY=
+```
 
-**CRITICAL: Railway uses DIFFERENT variable names than Vercel!**
+## Web App Variables
 
-| Vercel (Web)                     | Railway (Worker)                 | Value      |
-| -------------------------------- | -------------------------------- | ---------- |
-| `PUBLIC_SUPABASE_URL`            | `SUPABASE_URL`                   | Same value |
-| `PRIVATE_SUPABASE_SERVICE_KEY`   | `PRIVATE_SUPABASE_SERVICE_KEY`   | Same value |
-| `PRIVATE_BUILDOS_WEBHOOK_SECRET` | `PRIVATE_BUILDOS_WEBHOOK_SECRET` | Same value |
+The web app needs the Railway worker URL and matching token:
 
-## Verification Steps
+```bash
+PUBLIC_RAILWAY_WORKER_URL=https://<worker-service>.up.railway.app
+PRIVATE_RAILWAY_WORKER_TOKEN=<same value as Railway>
+PRIVATE_BUILDOS_WEBHOOK_SECRET=<same value as Railway>
+```
 
-After deployment:
+## Verification
 
-1. **Check Logs**: Go to **Logs** tab
-    - Should see: "Worker started on port XXXX"
-    - Should see: "Queue worker initialized"
+After deploy:
 
-2. **Test Health Endpoint**:
+```bash
+curl https://<worker-service>.up.railway.app/health
+```
 
-    ```bash
-    curl https://buildos-worker.up.railway.app/health
-    ```
+Authenticated checks:
 
-    Should return: `{"status":"healthy","timestamp":"..."}`
+```bash
+curl -H "Authorization: Bearer $PRIVATE_RAILWAY_WORKER_TOKEN" \
+  https://<worker-service>.up.railway.app/queue/stats
 
-3. **Check Queue Status**:
+curl -H "Authorization: Bearer $PRIVATE_RAILWAY_WORKER_TOKEN" \
+  "https://<worker-service>.up.railway.app/queue/stale-stats?thresholdHours=24"
+```
 
-    ```bash
-    curl https://buildos-worker.up.railway.app/queue/stats
-    ```
+Expected startup logs include:
 
-4. **Test from Web App**:
-    - Go to your Vercel app
-    - Navigate to `/briefs` page
-    - Try generating a brief
+- queue configuration profile
+- registered processors
+- queue processor started
+- scheduler started
+- API server running on the Railway port
 
 ## Troubleshooting
 
-### Build Failures
+### Missing Supabase env
 
-**Error: "pnpm: not found"**
+Use `PUBLIC_SUPABASE_URL` and `PRIVATE_SUPABASE_SERVICE_KEY`. Do not rename the
+URL variable to `SUPABASE_URL`; the worker validates the public-prefixed name.
 
-- Railway should auto-detect pnpm from package.json
-- Try adding nixpacks.toml configuration
+### Shared package build failures
 
-**Error: "Cannot find module @buildos/shared-types" or similar**
+Confirm Railway root directory is `/` and the root config is active. Building
+from `apps/worker` skips workspace dependencies.
 
-- This means the shared packages weren't built before the worker
-- Ensure Railway is using the configuration files (`railway.toml` or `nixpacks.toml`)
-- **Ensure Root Directory is set to `/` (repository root)**
-- The build command must run from the monorepo root and use Turbo
-- Correct build command: `pnpm install --prod=false --no-frozen-lockfile && pnpm turbo build --filter=@buildos/worker`
-- DO NOT use: `cd apps/worker && pnpm build` (this skips dependency building)
+### Worker API returns 401
 
-### Runtime Failures
+Confirm the caller sends:
 
-**Error: "Missing Supabase environment variables"**
-
-- Remember: Use `SUPABASE_URL` not `PUBLIC_SUPABASE_URL`
-- Use `PRIVATE_SUPABASE_SERVICE_KEY` not `PRIVATE_SUPABASE_SERVICE_KEY`
-
-**Error: "Cannot connect to Supabase"**
-
-- Verify your service role key is correct
-- Check Supabase project is not paused
-
-**Error: "Webhook email failed"**
-
-- Verify `BUILDOS_WEBHOOK_URL` points to your Vercel app
-- Ensure webhook secrets match between Railway and Vercel
-- Check Vercel logs for webhook endpoint errors
-
-### Worker Not Processing Jobs
-
-1. Check queue_jobs table in Supabase
-2. Look for stuck jobs with status='processing'
-3. Check worker logs for errors
-4. Verify queue polling is working
-
-## Important Notes
-
-- Railway uses different environment variable names than Vercel
-- The worker connects to the same Supabase instance as the web app
-- Email is sent via webhook to the main app (not directly from worker)
-- Health checks help Railway know when to restart the service
-- The root `railway.toml` and `nixpacks.toml` files configure the build
-
-## Generating Webhook Secret
-
-If you need to generate a new webhook secret:
-
-```bash
-openssl rand -hex 32
+```http
+Authorization: Bearer <PRIVATE_RAILWAY_WORKER_TOKEN>
 ```
 
-Use this value for:
+Only `/health` and `/api/email-tracking/:trackingId` are public.
 
-- `PRIVATE_BUILDOS_WEBHOOK_SECRET` in both Vercel and Railway
+### Notification email fails
 
----
+Check:
 
-Last Updated: 2025-09-27
-After following these steps, your worker will be deployed on Railway and connected to your Vercel web app.
+- `PUBLIC_APP_URL` points to the web app origin
+- `PRIVATE_BUILDOS_WEBHOOK_SECRET` exists in both Railway and web app env
+- the web route `/api/webhooks/send-notification-email` is deployed
+
+### Jobs stay pending
+
+Check:
+
+```sql
+SELECT job_type, status, COUNT(*)
+FROM queue_jobs
+GROUP BY job_type, status;
+```
+
+Then check Railway logs for registered job types and queue claim errors.

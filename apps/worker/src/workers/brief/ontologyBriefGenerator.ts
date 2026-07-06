@@ -10,7 +10,7 @@ import { supabase } from '../../lib/supabase.js';
 import type { BriefJobData } from '../shared/queueUtils.js';
 import type { Json } from '@buildos/shared-types';
 import { ACTIVE_EXPERIMENT_MODEL, DEEPSEEK_V4_FLASH_MODEL } from '@buildos/smart-llm';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, subDays } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { getHoliday } from '../../lib/utils/holiday-finder.js';
 import { SmartLLMService } from '../../lib/services/smart-llm-service.js';
@@ -19,7 +19,8 @@ import {
 	OntologyAnalysisPrompt,
 	OntologyExecutiveSummaryPrompt,
 	OntologyProjectBriefPrompt,
-	OntologyReengagementPrompt
+	OntologyReengagementPrompt,
+	compareProjectsForPromptInclusion
 } from './ontologyPrompts.js';
 import { formatCalendarSection, formatProjectCalendarItems } from './calendarBriefFormatting.js';
 import type {
@@ -28,10 +29,12 @@ import type {
 	OntologyBriefData,
 	OntologyBriefMetadata,
 	OntologyProjectBriefRow,
+	OntoProjectWithRelations,
 	ProjectActivityEntry,
 	ProjectBriefData,
 	ProjectRecentChange
 } from './ontologyBriefTypes.js';
+import type { YesterdayPlanItem } from './ontologyPrompts.js';
 
 // ============================================================================
 // TYPES
@@ -78,6 +81,75 @@ function getDateInTimezone(timestamp: string | Date, timezone: string): string {
 function formatDate(dateStr: string): string {
 	const date = parseISO(dateStr + 'T00:00:00');
 	return format(date, 'MMM d, yyyy');
+}
+
+function normalizePlanMatchText(value: string): string {
+	return value.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function findTaskReferencedByAction(
+	action: string,
+	projectsData: OntoProjectWithRelations[]
+): { task: OntoTask; projectName: string } | null {
+	const normalizedAction = normalizePlanMatchText(action);
+	let bestMatch: { task: OntoTask; projectName: string } | null = null;
+
+	for (const project of projectsData) {
+		for (const task of project.tasks) {
+			const normalizedTitle = normalizePlanMatchText(task.title);
+			if (normalizedTitle.length < 3 || !normalizedAction.includes(normalizedTitle)) {
+				continue;
+			}
+			if (!bestMatch || task.title.length > bestMatch.task.title.length) {
+				bestMatch = { task, projectName: project.project.name };
+			}
+		}
+	}
+
+	return bestMatch;
+}
+
+async function loadYesterdayPlanContinuity(
+	userId: string,
+	briefDate: string,
+	projectsData: OntoProjectWithRelations[]
+): Promise<YesterdayPlanItem[]> {
+	const yesterday = format(subDays(parseISO(`${briefDate}T00:00:00`), 1), 'yyyy-MM-dd');
+	const { data, error } = await supabase
+		.from('ontology_daily_briefs')
+		.select('priority_actions')
+		.eq('user_id', userId)
+		.eq('brief_date', yesterday)
+		.eq('generation_status', 'completed')
+		.maybeSingle();
+
+	if (error) {
+		console.warn('[OntologyBrief] Failed to load yesterday priority actions:', error);
+		return [];
+	}
+
+	const actions = Array.isArray(data?.priority_actions)
+		? data.priority_actions.filter((action): action is string => typeof action === 'string')
+		: [];
+
+	return actions.slice(0, 5).map((action) => {
+		const match = findTaskReferencedByAction(action, projectsData);
+		if (!match) {
+			return {
+				action,
+				status: 'unknown',
+				taskTitle: null,
+				projectName: null
+			};
+		}
+
+		return {
+			action,
+			status: match.task.state_key === 'done' ? 'done' : 'still_open',
+			taskTitle: match.task.title,
+			projectName: match.projectName
+		};
+	});
 }
 
 function escapeMarkdownLinkLabel(label: string): string {
@@ -552,7 +624,8 @@ async function generateOntologyProjectBrief(
 					ontologyDailyBriefId: dailyBriefId,
 					ontologyProjectId: project.project.id,
 					briefDate,
-					model_policy: 'active_experiment_only',
+					model_policy: 'project_brief_model_order',
+					primary_model: PROJECT_BRIEF_MODELS[0],
 					fallback_model_count: PROJECT_BRIEF_MODELS.length
 				},
 				onUsage: (usage) => {
@@ -1128,6 +1201,11 @@ export async function generateOntologyDailyBrief(
 			calendar,
 			recentlyPausedProjects
 		);
+		const yesterdayPlan = await loadYesterdayPlanContinuity(
+			userId,
+			briefDateInUserTz,
+			projectsData
+		);
 		const metadata = dataLoader.calculateMetadata(
 			projectsData,
 			briefData,
@@ -1181,20 +1259,7 @@ export async function generateOntologyDailyBrief(
 			projectBriefs.map((brief) => [brief.project_id, brief.brief_content])
 		);
 		const maxPromptProjectBriefs = 5;
-		const sortedProjects = [...briefData.projects].sort((a, b) => {
-			const scoreA =
-				a.todaysTasks.length * 3 +
-				a.blockedTasks.length * 2 +
-				a.upcomingTasks.length +
-				a.recentlyUpdatedTasks.length;
-			const scoreB =
-				b.todaysTasks.length * 3 +
-				b.blockedTasks.length * 2 +
-				b.upcomingTasks.length +
-				b.recentlyUpdatedTasks.length;
-			if (scoreA !== scoreB) return scoreB - scoreA;
-			return a.project.name.localeCompare(b.project.name);
-		});
+		const sortedProjects = [...briefData.projects].sort(compareProjectsForPromptInclusion);
 		const promptProjectBriefContents: string[] = [];
 		const includedProjectIds = new Set<string>();
 		for (const project of sortedProjects) {
@@ -1239,7 +1304,8 @@ export async function generateOntologyDailyBrief(
 				timezone: userTimezone,
 				briefData,
 				holidays: holidays || undefined,
-				projectBriefContents: promptProjectBriefContents
+				projectBriefContents: promptProjectBriefContents,
+				yesterdayPlan
 			});
 
 			executiveSummary = await llmService.generateText({

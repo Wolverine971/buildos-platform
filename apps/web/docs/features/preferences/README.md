@@ -73,9 +73,10 @@ This system was originally introduced during onboarding V2 work. In the current 
 
 ### Services
 
-| File                                         | Purpose                                            |
-| -------------------------------------------- | -------------------------------------------------- |
-| `/src/lib/services/agent-context-service.ts` | Loads and injects preferences into planner context |
+| File                                               | Purpose                                      |
+| -------------------------------------------------- | -------------------------------------------- |
+| `/src/lib/services/prompts/core/data-formatter.ts` | Formats user context fields for prompt input |
+| `/src/routes/api/users/preferences/+server.ts`     | Reads and updates global preference settings |
 
 ---
 
@@ -166,7 +167,7 @@ Project preferences live in `onto_projects.props.preferences` and override globa
 
 ## Prompt Injection
 
-Preferences are converted to natural language and injected into the planner context via `loadUserProfileWithPreferences()` in `agent-context-service.ts:567-684`.
+Preferences are normalized through `/api/users/preferences` and included in prompt-facing user context by the prompt formatting layer.
 
 ### Flow
 
@@ -327,7 +328,7 @@ In the project edit modal sidebar under "AI Preferences":
 - **[Onboarding README](../onboarding/README.md)** - Current onboarding flow (V3)
 - **[Onboarding V2 Assessment](../onboarding/ONBOARDING_V2_UPDATE_ASSESSMENT.md)** - Historical implementation record
 - **[Ontology System](../ontology/README.md)** - Project structure (where project prefs live)
-- **[Agent Context Service](/src/lib/services/agent-context-service.ts)** - Preference injection implementation
+- **[Prompt Data Formatter](../../../src/lib/services/prompts/core/data-formatter.ts)** - User context formatting used by prompt assembly
 
 ---
 

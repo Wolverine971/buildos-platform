@@ -54,7 +54,6 @@ import type {
 	OntoTask,
 	OntologyBriefData,
 	OntologyBriefMetadata,
-	PlanProgress,
 	ProjectActivityEntry,
 	ProjectBriefData,
 	ProjectPauseNotice,
@@ -427,6 +426,10 @@ export function selectCalendarBriefItems(
 function isTaskCompleteOrCancelled(task: OntoTask): boolean {
 	const state = String(task.state_key);
 	return state === 'done' || state === 'cancelled' || state === 'archived';
+}
+
+function getTaskCompletionTimestamp(task: OntoTask): string {
+	return task.completed_at ?? task.updated_at;
 }
 
 function isWithinCalendarWindow(timestamp: string | null, start: Date, end: Date): boolean {
@@ -893,6 +896,7 @@ export function categorizeTasks(
 	// Status-based
 	const blockedTasks: OntoTask[] = [];
 	const inProgressTasks: OntoTask[] = [];
+	const staleInProgressTasks: OntoTask[] = [];
 
 	// Work mode categories
 	const executeTasks: OntoTask[] = [];
@@ -906,7 +910,6 @@ export function categorizeTasks(
 
 	// Relationship-based (populated later via edges)
 	const unblockingTasks: OntoTask[] = [];
-	const goalAlignedTasks: OntoTask[] = [];
 	const recentlyUpdated: OntoTask[] = [];
 
 	const taskSort = (a: OntoTask, b: OntoTask): number => {
@@ -921,26 +924,52 @@ export function categorizeTasks(
 		return a.title.localeCompare(b.title);
 	};
 
+	const recentlyCompletedSort = (a: OntoTask, b: OntoTask): number => {
+		const completedA = parseMaybeDate(getTaskCompletionTimestamp(a))?.getTime() ?? 0;
+		const completedB = parseMaybeDate(getTaskCompletionTimestamp(b))?.getTime() ?? 0;
+		if (completedA !== completedB) return completedB - completedA;
+		return taskSort(a, b);
+	};
+
 	for (const task of tasks) {
 		const dueAt = task.due_at ? parseISO(task.due_at) : null;
 		const dueDateStr = dueAt ? formatInTimeZone(dueAt, timezone, 'yyyy-MM-dd') : null;
 		const startAt = task.start_at ? parseISO(task.start_at) : null;
 		const startDateStr = startAt ? formatInTimeZone(startAt, timezone, 'yyyy-MM-dd') : null;
-		const updatedAt = parseISO(task.updated_at);
+		const updatedAt = parseMaybeDate(task.updated_at);
 		const state = task.state_key;
 
+		if (state === 'done') {
+			const completedAt = parseMaybeDate(getTaskCompletionTimestamp(task));
+			if (completedAt && completedAt >= cutoff24h) {
+				recentlyCompleted.push(task);
+			}
+			continue;
+		}
+
+		if (isTaskCompleteOrCancelled(task)) {
+			continue;
+		}
+
+		if (state === 'blocked') {
+			blockedTasks.push(task);
+			continue;
+		}
+
+		if (state === 'in_progress') {
+			inProgressTasks.push(task);
+			if (updatedAt && updatedAt <= cutoff7d) {
+				staleInProgressTasks.push(task);
+			}
+		}
+
 		// Recently updated (last 7 days, per PROJECT_CONTEXT_ENRICHMENT_SPEC.md)
-		if (updatedAt >= cutoff7d && state !== 'done' && state !== 'blocked') {
+		if (updatedAt && updatedAt >= cutoff7d) {
 			recentlyUpdated.push(task);
 		}
 
 		// Time-based
-		if (state === 'done') {
-			// Recently completed uses 24h window
-			if (updatedAt >= cutoff24h) {
-				recentlyCompleted.push(task);
-			}
-		} else if (dueDateStr || startDateStr) {
+		if (dueDateStr || startDateStr) {
 			// Check overdue first (only for tasks with due dates)
 			if (dueDateStr && dueDateStr < todayStr) {
 				overdueTasks.push(task);
@@ -953,22 +982,9 @@ export function categorizeTasks(
 				const isStartUpcoming =
 					startDateStr && startDateStr >= todayStr && startDateStr <= weekEndStr;
 				if (isDueUpcoming || isStartUpcoming) {
-					if (state !== 'blocked') {
-						upcomingTasks.push(task);
-					}
+					upcomingTasks.push(task);
 				}
 			}
-		}
-
-		// Status-based
-		if (state === 'blocked') {
-			blockedTasks.push(task);
-		} else if (state === 'in_progress') {
-			inProgressTasks.push(task);
-		}
-
-		if (state === 'done') {
-			continue;
 		}
 
 		// Work mode categorization (based on type_key)
@@ -1041,9 +1057,10 @@ export function categorizeTasks(
 		todaysTasks: todaysTasks.sort(taskSort),
 		overdueTasks: overdueTasks.sort(taskSort),
 		upcomingTasks: upcomingTasks.sort(upcomingSort),
-		recentlyCompleted: recentlyCompleted.sort(taskSort),
+		recentlyCompleted: recentlyCompleted.sort(recentlyCompletedSort),
 		blockedTasks: blockedTasks.sort(taskSort),
 		inProgressTasks: inProgressTasks.sort(taskSort),
+		staleInProgressTasks: staleInProgressTasks.sort(taskSort),
 		executeTasks: executeTasks.sort(taskSort),
 		createTasks: createTasks.sort(taskSort),
 		refineTasks: refineTasks.sort(taskSort),
@@ -1053,7 +1070,6 @@ export function categorizeTasks(
 		adminTasks: adminTasks.sort(taskSort),
 		planTasks: planTasks.sort(taskSort),
 		unblockingTasks, // Will be populated later
-		goalAlignedTasks, // Will be populated later
 		recentlyUpdated: recentlyUpdated.sort(recentUpdatedSort)
 	};
 }
@@ -1244,32 +1260,30 @@ export function getMilestoneStatus(
 	};
 }
 
-/**
- * Calculate plan progress from tasks
- */
-export function calculatePlanProgress(
-	plan: OntoPlan,
-	edges: OntoEdge[],
-	allTasks: OntoTask[]
-): PlanProgress {
-	// Find tasks belonging to this plan (plan -[has_task]-> task)
-	const planTaskEdges = edges.filter(
-		(e) => e.src_id === plan.id && e.rel === 'has_task' && e.dst_kind === 'task'
-	);
+function formatMilestoneDueDistance(daysAway: number): string {
+	if (daysAway >= 0) {
+		return `${daysAway}d`;
+	}
+	return `${Math.abs(daysAway)}d overdue`;
+}
 
-	const planTaskIds = new Set(planTaskEdges.map((e) => e.dst_id));
-	const planTasks = allTasks.filter((t) => planTaskIds.has(t.id));
+function formatMilestoneForBrief(
+	milestone: OntoMilestone,
+	briefDate: string,
+	timezone: string
+): string | null {
+	if (!milestone.due_at) return milestone.title || null;
 
-	const totalTasks = planTasks.length;
-	const completedTasks = planTasks.filter((t) => t.state_key === 'done').length;
-	const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+	const dueDate = parseISO(milestone.due_at);
+	if (Number.isNaN(dueDate.getTime())) return milestone.title || null;
 
-	return {
-		plan,
-		totalTasks,
-		completedTasks,
-		progressPercent
-	};
+	const dueDateStr = formatInTimeZone(dueDate, timezone, 'yyyy-MM-dd');
+	const today = parseISO(`${briefDate}T12:00:00`);
+	const dueDay = parseISO(`${dueDateStr}T12:00:00`);
+	const daysAway = differenceInDays(dueDay, today);
+	const dueLabel = formatInTimeZone(dueDate, timezone, 'MMM d');
+
+	return `${milestone.title} — due ${dueLabel} (${formatMilestoneDueDistance(daysAway)})`;
 }
 
 /**
@@ -1824,11 +1838,12 @@ export class OntologyBriefDataLoader {
 			this.supabase
 				.from('onto_tasks')
 				.select(
-					'id, title, project_id, state_key, type_key, priority, due_at, start_at, updated_at, created_at'
+					'id, title, project_id, state_key, type_key, priority, due_at, start_at, description, completed_at, updated_at, created_at'
 				)
 				.in('project_id', projectIds)
 				.is('deleted_at', null)
-				.is('archived_at', null),
+				.is('archived_at', null)
+				.not('state_key', 'in', '(cancelled,archived)'),
 			this.supabase
 				.from('onto_goals')
 				.select(
@@ -1984,7 +1999,6 @@ export class OntologyBriefDataLoader {
 			const projectEdges = edges.filter((e) => e.project_id === project.id);
 
 			// Build computed relationships
-			const tasksByPlan = this.buildTasksByPlan(projectPlans, projectEdges, projectTasks);
 			const taskDependencies = this.buildTaskDependencies(projectEdges);
 			const goalProgress = this.buildGoalProgressMap(
 				projectGoals,
@@ -2008,7 +2022,6 @@ export class OntologyBriefDataLoader {
 				documents: projectDocuments,
 				requirements: projectRequirements,
 				edges: projectEdges,
-				tasksByPlan,
 				taskDependencies,
 				goalProgress,
 				recentUpdates: { tasks: [], goals: [], documents: [] }
@@ -2027,7 +2040,6 @@ export class OntologyBriefDataLoader {
 				documents: projectDocuments,
 				requirements: projectRequirements,
 				edges: projectEdges,
-				tasksByPlan,
 				taskDependencies,
 				goalProgress,
 				recentUpdates
@@ -2371,30 +2383,6 @@ export class OntologyBriefDataLoader {
 	}
 
 	/**
-	 * Build tasks by plan map
-	 */
-	private buildTasksByPlan(
-		plans: OntoPlan[],
-		edges: OntoEdge[],
-		tasks: OntoTask[]
-	): Map<string, OntoTask[]> {
-		const taskMap = new Map(tasks.map((t) => [t.id, t]));
-		const tasksByPlan = new Map<string, OntoTask[]>();
-
-		for (const plan of plans) {
-			const planTaskEdges = edges.filter(
-				(e) => e.src_id === plan.id && e.rel === 'has_task' && e.dst_kind === 'task'
-			);
-			const planTasks = planTaskEdges
-				.map((e) => taskMap.get(e.dst_id))
-				.filter((t): t is OntoTask => t !== undefined);
-			tasksByPlan.set(plan.id, planTasks);
-		}
-
-		return tasksByPlan;
-	}
-
-	/**
 	 * Build task dependencies map
 	 */
 	private buildTaskDependencies(edges: OntoEdge[]): Map<string, string[]> {
@@ -2465,6 +2453,7 @@ export class OntologyBriefDataLoader {
 		};
 
 		const todaysTasksByProject = groupTasksByProject(categorizedTasks.todaysTasks);
+		const overdueTasksByProject = groupTasksByProject(categorizedTasks.overdueTasks);
 		const upcomingTasksByProject = groupTasksByProject(categorizedTasks.upcomingTasks);
 		const blockedTasksByProject = groupTasksByProject(categorizedTasks.blockedTasks);
 		const recentlyUpdatedByProject = groupTasksByProject(categorizedTasks.recentlyUpdated);
@@ -2618,6 +2607,7 @@ export class OntologyBriefDataLoader {
 				.sort((a, b) => parseISO(a.due_at!).getTime() - parseISO(b.due_at!).getTime())[0];
 
 			const projectTodaysTasks = todaysTasksByProject.get(data.project.id) ?? [];
+			const projectOverdueTasks = overdueTasksByProject.get(data.project.id) ?? [];
 			const projectUpcomingAll = upcomingTasksByProject.get(data.project.id) ?? [];
 			const projectBlockedTasks = blockedTasksByProject.get(data.project.id) ?? [];
 			const projectRecentlyUpdatedAll = recentlyUpdatedByProject.get(data.project.id) ?? [];
@@ -2654,11 +2644,14 @@ export class OntologyBriefDataLoader {
 					)
 					.slice(0, ENTITY_CAPS.DOCUMENTS),
 				nextSteps,
-				nextMilestone: nextMilestone?.title || null,
+				nextMilestone: nextMilestone
+					? formatMilestoneForBrief(nextMilestone, briefDate, timezone)
+					: null,
 				activePlan,
 				calendarToday: projectCalendarToday,
 				calendarUpcoming: projectCalendarUpcoming,
 				todaysTasks: projectTodaysTasks,
+				overdueTasks: projectOverdueTasks,
 				thisWeekTasks: [...projectTodaysTasks, ...projectUpcomingAll],
 				blockedTasks: projectBlockedTasks,
 				unblockingTasks: unblockingTasks.map((u) => u.task),
@@ -2676,6 +2669,8 @@ export class OntologyBriefDataLoader {
 			todaysTasks: categorizedTasks.todaysTasks,
 			blockedTasks: categorizedTasks.blockedTasks,
 			overdueTasks: categorizedTasks.overdueTasks,
+			inProgressTasks: categorizedTasks.inProgressTasks,
+			staleInProgressTasks: categorizedTasks.staleInProgressTasks,
 			highPriorityCount,
 			recentUpdates: allRecentUpdates,
 			recentlyPausedProjects,

@@ -24,7 +24,14 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		return ApiResponse.badRequest('Invalid request body');
 	}
 
-	const { briefDate, forceRegenerate = false, timezone, includeProjects, excludeProjects } = body;
+	const {
+		briefDate,
+		forceRegenerate = false,
+		forceImmediate = false,
+		timezone,
+		includeProjects,
+		excludeProjects
+	} = body;
 
 	try {
 		const headers: Record<string, string> = {
@@ -43,6 +50,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 				briefDate,
 				timezone,
 				forceRegenerate,
+				forceImmediate,
 				options: {
 					includeProjects,
 					excludeProjects,

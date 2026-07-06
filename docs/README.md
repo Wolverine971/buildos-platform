@@ -13,11 +13,13 @@ For **app-specific documentation**:
 
 For **package documentation**:
 
-- Twilio Service: `/packages/twilio-service/docs/`
 - Shared Types: `/packages/shared-types/` (types and schema definitions)
+- Shared Agent Ops: `/packages/shared-agent-ops/` (agent operations, ontology, gateway helpers)
 - Shared Utils: `/packages/shared-utils/` (utility functions)
 - Smart LLM: `/packages/smart-llm/` (LLM service abstraction)
 - Supabase Client: `/packages/supabase-client/` (database client)
+- Twilio Service: `/packages/twilio-service/docs/`
+- BuildOS MCP Server: `/packages/buildos-mcp-server/` (local stdio MCP bridge)
 
 ## What's in This Folder
 

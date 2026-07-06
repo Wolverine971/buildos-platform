@@ -4,31 +4,39 @@
 
 ## Overview
 
-BuildOS Platform is built as a **Turborepo monorepo** containing two independently deployed applications and shared packages.
+BuildOS Platform is a **Turborepo monorepo** containing two independently
+deployed applications, shared TypeScript packages, repo-level tooling, and
+Supabase database assets.
 
 ## Monorepo Structure
 
 ```
 buildos-platform/
-├── /apps/                      # Deployable applications
-│   ├── /web/                   # SvelteKit web app → Vercel
-│   └── /worker/                # Background worker → Railway
-├── /packages/                  # Shared packages
-│   ├── /shared-types/          # TypeScript type definitions
-│   ├── /supabase-client/       # Supabase database client
-│   ├── /twilio-service/        # SMS service wrapper
-│   └── /config/                # Shared configuration
-├── /docs/                      # Cross-cutting documentation
-├── turbo.json                  # Turborepo pipeline config
-├── pnpm-workspace.yaml         # pnpm workspace config
-└── package.json                # Root package.json
+|-- apps/                       # Deployable applications
+|   |-- web/                    # SvelteKit web app on Vercel
+|   `-- worker/                 # Node/Express worker service on Railway
+|-- packages/                   # Shared workspace packages
+|   |-- shared-types/           # Generated DB types, queue types, API types
+|   |-- shared-agent-ops/       # Shared agent ops, ontology, gateway helpers
+|   |-- shared-utils/           # Logging, metrics, shared utilities
+|   |-- smart-llm/              # Shared LLM abstraction
+|   |-- supabase-client/        # Supabase client configuration
+|   |-- twilio-service/         # SMS/Twilio integration
+|   `-- buildos-mcp-server/     # Local stdio MCP bridge
+|-- docs/                       # Cross-cutting documentation
+|-- scripts/                    # Generation and repo tooling
+|-- supabase/                   # Migrations and local Supabase config
+|-- turbo.json                  # Turborepo task config
+|-- pnpm-workspace.yaml         # pnpm workspace config
+`-- package.json                # Root package.json
 ```
 
 ## Working with the Monorepo
 
 ### Package Manager
 
-**Always use `pnpm`** - Never use `npm`. This is enforced by package manager settings.
+**Always use `pnpm`**. The root `package.json` pins `pnpm@11.7.0` and requires
+Node.js `>=20.19.0`.
 
 ### Installation
 
@@ -40,17 +48,23 @@ pnpm install
 ### Development
 
 ```bash
-# Start all apps in development mode
+# Start all configured dev tasks
 pnpm dev
 
-# Start specific app
-pnpm dev --filter=web      # Web app only
-pnpm dev --filter=worker   # Worker only
+# Start a specific app through Turbo
+pnpm dev --filter=@buildos/web      # Web app only
+pnpm dev --filter=@buildos/worker   # Worker API, queue consumer, and scheduler
 
 # Web app fast modes
 cd apps/web
 pnpm dev:split    # Dev + type checking side by side (recommended)
 pnpm dev          # Dev server only
+
+# Worker service modes
+cd apps/worker
+pnpm dev          # API + queue consumer + scheduler
+pnpm worker       # Queue consumer only
+pnpm scheduler    # Scheduler only
 ```
 
 ### Building
@@ -60,8 +74,8 @@ pnpm dev          # Dev server only
 pnpm build
 
 # Build specific app
-pnpm build --filter=web
-pnpm build --filter=worker
+pnpm build --filter=@buildos/web
+pnpm build --filter=@buildos/worker
 
 # Build with clean cache
 pnpm build --force
@@ -70,12 +84,12 @@ pnpm build --force
 ### Testing
 
 ```bash
-# Run all tests
-pnpm test
+# Run all tests in non-watch mode
+pnpm test:run
 
-# Run tests in specific app
-pnpm test --filter=web
-pnpm test --filter=worker
+# Run tests in specific app or package through Turbo
+pnpm test:run --filter=@buildos/web
+pnpm test:run --filter=@buildos/worker
 
 # Web app LLM tests (costs money - real OpenAI API calls)
 cd apps/web
@@ -103,19 +117,31 @@ pnpm pre-push
 
 ## Turborepo Concepts
 
-### Pipeline Configuration
+### Task Configuration
 
 Defined in `turbo.json`:
 
 ```json
 {
-	"pipeline": {
+	"tasks": {
 		"build": {
 			"dependsOn": ["^build"],
-			"outputs": [".svelte-kit/**", "dist/**"]
+			"outputs": [".vercel/**", ".svelte-kit/**", "dist/**", "build/**", ".tsbuildinfo"]
+		},
+		"dev": {
+			"cache": false,
+			"persistent": true
 		},
 		"test": {
-			"dependsOn": ["build"]
+			"dependsOn": ["^build"],
+			"cache": false
+		},
+		"test:run": {
+			"dependsOn": ["^build"]
+		},
+		"typecheck": {
+			"dependsOn": ["^build"],
+			"outputs": []
 		}
 	}
 }
@@ -126,6 +152,8 @@ Defined in `turbo.json`:
 - `^build` means "run build in dependencies first"
 - Tasks run in parallel when possible
 - Results are cached for faster subsequent runs
+- `.env` and `.env.*local` files are global cache dependencies
+- Environment variables listed in `turbo.json` `globalEnv` are available to tasks
 
 ### Cache Management
 
@@ -143,13 +171,13 @@ rm -rf .turbo
 
 ```bash
 # Add to specific app
-pnpm add package-name --filter=web
+pnpm --filter @buildos/web add package-name
 
 # Add to workspace root
 pnpm add -w package-name
 
 # Add dev dependency
-pnpm add -D package-name --filter=web
+pnpm --filter @buildos/web add -D package-name
 ```
 
 ### Using Shared Packages
@@ -159,38 +187,58 @@ Apps reference shared packages in their `package.json`:
 ```json
 {
 	"dependencies": {
+		"@buildos/shared-agent-ops": "workspace:*",
 		"@buildos/shared-types": "workspace:*",
+		"@buildos/shared-utils": "workspace:*",
+		"@buildos/smart-llm": "workspace:*",
 		"@buildos/supabase-client": "workspace:*"
 	}
 }
 ```
 
-Turborepo automatically builds dependencies before dependent apps.
+Root Turbo scripts automatically build dependencies before dependent apps for
+tasks configured with `dependsOn`.
 
 ## Common Workflows
 
 ### Adding a New Feature to Web App
 
 1. Work in `/apps/web/src/`
-2. Add types to `/packages/shared-types/` if needed
+2. Add shared contracts to `/packages/shared-types/` if needed
 3. Update `/apps/web/docs/features/` with documentation
-4. Test with `cd apps/web && pnpm test`
+4. Test with `pnpm test:run --filter=@buildos/web`
 5. Run `pnpm pre-push` before committing
 
 ### Adding a New Background Job
 
-1. Define job type in `/packages/shared-types/src/queue.ts`
-2. Create handler in `/apps/worker/src/jobs/`
-3. Document in `/apps/worker/docs/features/`
-4. Rebuild packages: `pnpm build --filter=shared-types`
-5. Test worker: `cd apps/worker && pnpm test`
+1. Add job metadata/result contracts in `/packages/shared-types/src/queue-types.ts`
+2. Update metadata validation in `/packages/shared-types/src/validation.ts`
+3. Create the processor under `/apps/worker/src/workers/<domain>/`
+4. Register it in `/apps/worker/src/worker.ts` with `queue.process(jobType, handler)`
+5. Add or update the producer in the web server route/service that enqueues the job
+6. Document the flow in `/apps/worker/docs/features/` or `/apps/worker/docs/WORKER_JOBS_AND_FLOWS.md`
+7. Test shared types and worker behavior:
+
+```bash
+pnpm build --filter=@buildos/shared-types
+pnpm test:run --filter=@buildos/worker
+```
 
 ### Modifying Shared Types
 
 1. Edit in `/packages/shared-types/src/`
-2. Rebuild: `pnpm build --filter=shared-types`
+2. Rebuild: `pnpm build --filter=@buildos/shared-types`
 3. Both web and worker will pick up changes automatically
 4. Run `pnpm typecheck` to verify no breaking changes
+
+When database types or schema docs have drifted, use the root generation
+scripts instead:
+
+```bash
+pnpm gen:types
+pnpm gen:schema
+pnpm gen:all
+```
 
 ## Deployment
 
@@ -208,13 +256,12 @@ See `/apps/web/docs/operations/deployment/` for details.
 ### Worker (Railway)
 
 ```bash
-# Railway automatically deploys from git
-# Manual deploy via Railway CLI:
-cd apps/worker
+# Railway automatically deploys from git using repo-root config.
+# Manual deploy via Railway CLI should run from the monorepo root:
 railway up
 ```
 
-See `/apps/worker/docs/RAILWAY_DEPLOYMENT.md` for details.
+See `/apps/worker/docs/deployment/RAILWAY_DEPLOYMENT.md` for details.
 
 ## Troubleshooting
 
@@ -239,7 +286,7 @@ pnpm build --force
 
 ```bash
 # Rebuild shared packages first
-pnpm build --filter=shared-types
+pnpm build --filter=@buildos/shared-types
 pnpm typecheck
 ```
 

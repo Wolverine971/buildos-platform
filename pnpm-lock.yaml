@@ -575,6 +575,9 @@ importers:
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.41)(@vitest/ui@3.2.4)(happy-dom@20.0.8)(jiti@1.21.7)(jsdom@26.1.0)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3)
 
   packages/shared-types:
     devDependencies:
@@ -584,6 +587,9 @@ importers:
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.41)(@vitest/ui@3.2.4)(happy-dom@20.0.8)(jiti@1.21.7)(jsdom@26.1.0)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3)
 
   packages/shared-utils:
     dependencies:
@@ -650,6 +656,9 @@ importers:
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.27)(@vitest/ui@3.2.4)(happy-dom@20.0.8)(jiti@1.21.7)(jsdom@26.1.0)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3)
 
   packages/twilio-service:
     dependencies:

@@ -90,6 +90,19 @@ async function createLoopChatSession(params: {
 	return chatSession.id;
 }
 
+async function archiveChatSession(chatSessionId: string): Promise<void> {
+	const { error } = await supabase
+		.from('chat_sessions')
+		.update({ status: 'archived' })
+		.eq('id', chatSessionId)
+		.eq('status', 'active');
+	if (error) {
+		console.warn(
+			`[ProjectLoops] Failed to archive duplicate chat session ${chatSessionId}: ${error.message}`
+		);
+	}
+}
+
 export async function enqueueProjectLoop(params: {
 	projectId: string;
 	userId: string;
@@ -177,6 +190,7 @@ export async function enqueueProjectLoop(params: {
 		.single();
 
 	if (runError || !runRow?.id) {
+		await archiveChatSession(chatSessionId);
 		return { queued: false, reason: runError?.message ?? 'create_run_failed' };
 	}
 
@@ -196,14 +210,17 @@ export async function enqueueProjectLoop(params: {
 
 	if (queueError || typeof queueRecordId !== 'string') {
 		const message = queueError?.message ?? 'Queue RPC did not return a queue record id';
-		await supabase
-			.from('project_loop_runs')
-			.update({
-				status: 'failed',
-				error_message: message,
-				finished_at: new Date().toISOString()
-			})
-			.eq('id', runRow.id);
+		await Promise.all([
+			supabase
+				.from('project_loop_runs')
+				.update({
+					status: 'failed',
+					error_message: message,
+					finished_at: new Date().toISOString()
+				})
+				.eq('id', runRow.id),
+			archiveChatSession(chatSessionId)
+		]);
 		return { queued: false, runId: runRow.id, reason: message };
 	}
 
@@ -213,15 +230,18 @@ export async function enqueueProjectLoop(params: {
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : 'Failed to resolve queued project loop job';
-		await supabase
-			.from('project_loop_runs')
-			.update({
-				status: 'failed',
-				error_message: message,
-				finished_at: new Date().toISOString()
-			})
-			.eq('id', runRow.id)
-			.eq('status', 'queued');
+		await Promise.all([
+			supabase
+				.from('project_loop_runs')
+				.update({
+					status: 'failed',
+					error_message: message,
+					finished_at: new Date().toISOString()
+				})
+				.eq('id', runRow.id)
+				.eq('status', 'queued'),
+			archiveChatSession(chatSessionId)
+		]);
 		return { queued: false, runId: runRow.id, reason: message };
 	}
 	const queueMetadata = readProjectLoopQueueMetadata(queueJob.metadata);
@@ -229,15 +249,18 @@ export async function enqueueProjectLoop(params: {
 		const message = queueMetadata.runId
 			? `Deduplicated onto active project loop job ${queueJob.queueJobId} for run ${queueMetadata.runId}`
 			: `Queue job ${queueJob.queueJobId} metadata did not include the new loop run ${runRow.id}`;
-		await supabase
-			.from('project_loop_runs')
-			.update({
-				status: 'failed',
-				error_message: message,
-				finished_at: new Date().toISOString()
-			})
-			.eq('id', runRow.id)
-			.eq('status', 'queued');
+		await Promise.all([
+			supabase
+				.from('project_loop_runs')
+				.update({
+					status: 'failed',
+					error_message: message,
+					finished_at: new Date().toISOString()
+				})
+				.eq('id', runRow.id)
+				.eq('status', 'queued'),
+			archiveChatSession(chatSessionId)
+		]);
 		return {
 			queued: false,
 			runId: queueMetadata.runId ?? runRow.id,

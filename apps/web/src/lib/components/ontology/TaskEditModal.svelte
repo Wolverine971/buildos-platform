@@ -20,6 +20,8 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { slide } from 'svelte/transition';
+	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import {
 		Save,
 		Loader,
@@ -29,12 +31,11 @@
 		ListChecks,
 		X,
 		ChevronDown,
-		Users,
 		CalendarRange,
-		Clock3,
 		CircleAlert,
 		Repeat,
 		Activity,
+		SlidersHorizontal,
 		Link as LinkIcon,
 		Image as ImageIcon,
 		Tag as TagIcon
@@ -46,7 +47,6 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
-	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import TaskAssigneeSelector from './TaskAssigneeSelector.svelte';
@@ -284,6 +284,7 @@
 	const descriptionInputId = $derived(`task-edit-${taskId}-description`);
 	const startDateInputId = $derived(`task-edit-${taskId}-start-date`);
 	const dueDateInputId = $derived(`task-edit-${taskId}-due-date`);
+	const assigneesGroupId = $derived(`task-edit-${taskId}-assignees`);
 
 	const seriesMeta = $derived.by(() => {
 		if (!task?.props || typeof task.props !== 'object') return null;
@@ -773,7 +774,7 @@
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
+					class="flex h-9 w-9 items-center justify-center rounded-md bg-accent/10 text-accent shrink-0"
 				>
 					<ListChecks class="w-5 h-5" />
 				</div>
@@ -791,7 +792,7 @@
 					type="button"
 					onclick={openChatAbout}
 					disabled={isLoading || isSaving || !task}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 					title="Chat about this task"
 				>
 					<img
@@ -805,7 +806,7 @@
 					type="button"
 					onclick={handleClose}
 					disabled={isSaving || isDeleting}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 					aria-label="Close modal"
 				>
 					<X class="w-5 h-5" />
@@ -828,7 +829,7 @@
 			{:else}
 				<div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
 					<!-- Main Form (Left 2 columns) -->
-					<div class="lg:col-span-2">
+					<div class="lg:col-span-2 lg:col-start-1 lg:row-start-1">
 						<form
 							id={detailsFormId}
 							onsubmit={(e) => {
@@ -916,33 +917,11 @@
 								</div>
 							{/if}
 						</form>
-
-						<div class="mt-3 sm:mt-4">
-							<EntityCommentsSection
-								{projectId}
-								entityType="task"
-								entityId={taskId}
-							/>
-						</div>
 					</div>
 
-					<!-- Sidebar (Right column) -->
-					<div>
+					<!-- Sidebar (right column, row 1) -->
+					<div class="lg:col-start-3 lg:row-start-1">
 						<Card variant="elevated" class="wt-card">
-							<CardHeader variant="muted" texture="strip">
-								<div class="flex items-center justify-between gap-3">
-									<div>
-										<p
-											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-										>
-											Controls
-										</p>
-										<h3 class="mt-1 text-sm font-semibold text-foreground">
-											Task operations
-										</h3>
-									</div>
-								</div>
-							</CardHeader>
 							<CardBody padding="none">
 								<div class="divide-y divide-border/70">
 									<EntityCollaborationAction
@@ -958,12 +937,10 @@
 										aria-label="Workflow: {stateMeta.label}, {priorityMeta.label}, {assigneeSummary}"
 									>
 										<div class="flex items-center gap-2">
-											<Users class="h-4 w-4 text-muted-foreground" />
-											<p
-												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-											>
-												Workflow
-											</p>
+											<SlidersHorizontal
+												class="h-4 w-4 text-muted-foreground"
+											/>
+											<p class="micro-label font-semibold">Workflow</p>
 										</div>
 
 										<div class="mt-2 space-y-2">
@@ -1028,12 +1005,13 @@
 												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-start gap-2"
 												aria-label="Assignees: {assigneeSummary}"
 											>
-												<p
+												<label
+													for={assigneesGroupId}
 													class="pt-3 text-xs font-medium text-muted-foreground"
 												>
 													Assignees
-												</p>
-												<div class="min-w-0">
+												</label>
+												<div class="min-w-0" id={assigneesGroupId}>
 													<TaskAssigneeSelector
 														{projectId}
 														bind:selectedActorIds={assigneeActorIds}
@@ -1072,11 +1050,7 @@
 												<CalendarRange
 													class="h-4 w-4 text-muted-foreground"
 												/>
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Timeline
-												</p>
+												<p class="micro-label font-semibold">Timeline</p>
 											</div>
 											{#if dueMeta}
 												<Badge variant={dueMeta.variant} size="sm"
@@ -1249,53 +1223,12 @@
 										{/if}
 									</section>
 
-									<section class="px-3 py-3 sm:px-4">
-										<div class="flex items-center gap-2">
-											<Clock3 class="h-4 w-4 text-muted-foreground" />
-											<p
-												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-											>
-												Record
-											</p>
-										</div>
-										<div class="mt-2 space-y-1.5 text-sm">
-											<div class="flex items-center justify-between gap-3">
-												<span class="text-muted-foreground">Type</span>
-												<span class="text-right text-foreground"
-													>{taskTypeLabel}</span
-												>
-											</div>
-											<div class="flex items-center justify-between gap-3">
-												<span class="text-muted-foreground">Created</span>
-												<span class="text-right text-foreground">
-													{formatSurfaceDate(
-														task?.created_at,
-														'MMM d, yyyy'
-													)}
-												</span>
-											</div>
-											<div class="flex items-center justify-between gap-3">
-												<span class="text-muted-foreground">Updated</span>
-												<span class="text-right text-foreground">
-													{formatSurfaceDate(
-														task?.updated_at,
-														'MMM d, yyyy'
-													)}
-												</span>
-											</div>
-										</div>
-									</section>
-
 									<!-- Tags -->
 									{#if task?.props?.tags?.length}
 										<section class="px-3 py-3 sm:px-4">
 											<div class="flex items-center gap-2 mb-2">
 												<TagIcon class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Tags
-												</p>
+												<p class="micro-label font-semibold">Tags</p>
 											</div>
 											<TagsDisplay
 												props={task.props}
@@ -1316,9 +1249,7 @@
 										>
 											<div class="flex items-center gap-2">
 												<LinkIcon class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
+												<p class="micro-label font-semibold">
 													Linked Entities
 												</p>
 											</div>
@@ -1329,7 +1260,7 @@
 											/>
 										</button>
 										{#if showLinkedEntities}
-											<div class="pb-3">
+											<div class="pb-3" transition:slide={slideMotion()}>
 												<LinkedEntities
 													sourceId={taskId}
 													sourceKind="task"
@@ -1351,11 +1282,7 @@
 										>
 											<div class="flex items-center gap-2">
 												<ImageIcon class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Images
-												</p>
+												<p class="micro-label font-semibold">Images</p>
 											</div>
 											<ChevronDown
 												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
@@ -1364,7 +1291,7 @@
 											/>
 										</button>
 										{#if showImages}
-											<div class="pb-3">
+											<div class="pb-3" transition:slide={slideMotion()}>
 												<ImageAssetsPanel
 													{projectId}
 													entityKind="task"
@@ -1390,11 +1317,7 @@
 										>
 											<div class="flex items-center gap-2">
 												<Activity class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Activity
-												</p>
+												<p class="micro-label font-semibold">Activity</p>
 											</div>
 											<ChevronDown
 												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
@@ -1403,7 +1326,7 @@
 											/>
 										</button>
 										{#if showActivityLog}
-											<div class="pb-3">
+											<div class="pb-3" transition:slide={slideMotion()}>
 												<EntityActivityLog
 													entityType="task"
 													entityId={taskId}
@@ -1413,9 +1336,42 @@
 											</div>
 										{/if}
 									</section>
+									<!-- Details (read-only metadata, demoted to subtext) -->
+									<section class="px-3 py-3 sm:px-4">
+										<dl class="space-y-1 text-xs text-muted-foreground">
+											<div class="flex items-center justify-between gap-3">
+												<dt>Type</dt>
+												<dd class="text-right text-foreground/80">
+													{taskTypeLabel}
+												</dd>
+											</div>
+											<div class="flex items-center justify-between gap-3">
+												<dt>Created</dt>
+												<dd class="text-right text-foreground/80">
+													{formatSurfaceDate(
+														task?.created_at,
+														'MMM d, yyyy'
+													)}
+												</dd>
+											</div>
+											<div class="flex items-center justify-between gap-3">
+												<dt>Updated</dt>
+												<dd class="text-right text-foreground/80">
+													{formatSurfaceDate(
+														task?.updated_at,
+														'MMM d, yyyy'
+													)}
+												</dd>
+											</div>
+										</dl>
+									</section>
 								</div>
 							</CardBody>
 						</Card>
+					</div>
+					<!-- Comments (left column, row 2) -->
+					<div class="lg:col-span-2 lg:col-start-1 lg:row-start-2">
+						<EntityCommentsSection {projectId} entityType="task" entityId={taskId} />
 					</div>
 				</div>
 			{/if}

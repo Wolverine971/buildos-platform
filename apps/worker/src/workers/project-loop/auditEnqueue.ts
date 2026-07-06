@@ -128,6 +128,19 @@ async function createAuditChatSession(params: {
 	return session.id as string;
 }
 
+async function archiveChatSession(chatSessionId: string): Promise<void> {
+	const { error } = await supabase
+		.from('chat_sessions')
+		.update({ status: 'archived' })
+		.eq('id', chatSessionId)
+		.eq('status', 'active');
+	if (error) {
+		console.warn(
+			`[ProjectAudits] Failed to archive duplicate chat session ${chatSessionId}: ${error.message}`
+		);
+	}
+}
+
 async function scheduleProjectAuditTriggerEvaluation(params: {
 	projectId: string;
 	userId: string;
@@ -261,6 +274,7 @@ export async function queueProjectAuditFromWorker(params: {
 	if (runError || !runRow?.id) {
 		const message = runError?.message ?? 'Failed to create audit loop run';
 		console.error('[ProjectAudits] create audit loop run failed:', message);
+		await archiveChatSession(chatSessionId);
 		captureAuditTriggerMetric({
 			userId: params.userId,
 			event: 'project_audit_queue_failed',
@@ -304,14 +318,17 @@ export async function queueProjectAuditFromWorker(params: {
 	if (auditError || !auditRow?.id) {
 		const message = auditError?.message ?? 'Failed to create project audit';
 		console.error('[ProjectAudits] create project audit failed:', message);
-		await supabase
-			.from('project_loop_runs')
-			.update({
-				status: 'failed',
-				error_message: message,
-				finished_at: new Date().toISOString()
-			})
-			.eq('id', runRow.id);
+		await Promise.all([
+			supabase
+				.from('project_loop_runs')
+				.update({
+					status: 'failed',
+					error_message: message,
+					finished_at: new Date().toISOString()
+				})
+				.eq('id', runRow.id),
+			archiveChatSession(chatSessionId)
+		]);
 		captureAuditTriggerMetric({
 			userId: params.userId,
 			event: 'project_audit_queue_failed',
@@ -370,7 +387,8 @@ export async function queueProjectAuditFromWorker(params: {
 			supabase
 				.from('project_audits')
 				.update({ status: 'failed', error_message: message, finished_at: now })
-				.eq('id', auditRow.id)
+				.eq('id', auditRow.id),
+			archiveChatSession(chatSessionId)
 		]);
 		captureAuditTriggerMetric({
 			userId: params.userId,
@@ -412,7 +430,8 @@ export async function queueProjectAuditFromWorker(params: {
 				.from('project_audits')
 				.update({ status: 'failed', error_message: message, finished_at: now })
 				.eq('id', auditRow.id)
-				.eq('status', 'queued')
+				.eq('status', 'queued'),
+			archiveChatSession(chatSessionId)
 		]);
 		captureAuditTriggerMetric({
 			userId: params.userId,
@@ -453,7 +472,8 @@ export async function queueProjectAuditFromWorker(params: {
 				.from('project_audits')
 				.update({ status: 'failed', error_message: message, finished_at: now })
 				.eq('id', auditRow.id)
-				.eq('status', 'queued')
+				.eq('status', 'queued'),
+			archiveChatSession(chatSessionId)
 		]);
 		captureAuditTriggerMetric({
 			userId: params.userId,

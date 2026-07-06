@@ -375,6 +375,51 @@ describe('inbox service', () => {
 		);
 	});
 
+	it('expires pending rows whose review TTL has elapsed', async () => {
+		const inboxItem = {
+			id: 'inbox-expired',
+			source_type: 'project_suggestion',
+			source_ref_id: 'suggestion-expired',
+			source_status: 'pending',
+			user_id: null,
+			project_id: 'project-1',
+			audience: 'project_members',
+			status: 'pending',
+			title: 'Old review item',
+			summary: 'Past its review window',
+			risk_tier: 2,
+			action_kinds: ['approve', 'reject'],
+			expires_at: '2020-01-01T00:00:00.000Z',
+			created_at: '2019-12-01T00:00:00.000Z'
+		};
+		mocks.syncInboxItemForSource.mockResolvedValue(inboxItem);
+		const { supabase, state } = createSupabaseMock({
+			inbox_items: [inboxItem],
+			project_suggestions: []
+		});
+
+		const result = await listInboxItems({
+			supabase,
+			admin: supabase,
+			userId: 'user-1',
+			status: 'pending',
+			sourceType: 'project_suggestion',
+			limit: 20
+		});
+
+		expect(result.items).toEqual([]);
+		expect(state.operations).toContainEqual(
+			expect.objectContaining({
+				table: 'inbox_items',
+				action: 'update',
+				payload: expect.objectContaining({
+					status: 'expired',
+					blocked_reason: 'Review item expired'
+				})
+			})
+		);
+	});
+
 	it('attaches project audit context to audit child inbox items', async () => {
 		const inboxItem = {
 			id: 'inbox-1',

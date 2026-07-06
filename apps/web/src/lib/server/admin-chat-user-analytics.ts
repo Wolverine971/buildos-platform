@@ -1,6 +1,15 @@
 // apps/web/src/lib/server/admin-chat-user-analytics.ts
 import { resolveUsageLogCostBreakdown } from '$lib/services/admin/llm-usage-costs';
 import { resolveBillableTokenTotal } from '$lib/services/admin/chat-session-metrics';
+import { DEFAULT_SLOW_THRESHOLD_MS } from './admin-chat-user-analytics/query';
+import { assertAdminChatUserAnalyticsRedacted } from './admin-chat-user-analytics/redaction';
+
+export {
+	parseAdminChatRedactedSessionQuery,
+	parseAdminChatUserDetailQuery,
+	parseAdminChatUsersQuery
+} from './admin-chat-user-analytics/query';
+export { assertAdminChatUserAnalyticsRedacted } from './admin-chat-user-analytics/redaction';
 
 export type AdminChatUserAnalyticsTimeframe = '24h' | '7d' | '30d' | '90d';
 
@@ -555,65 +564,6 @@ type DetailBuild = {
 const PAGE_SIZE = 1000;
 const MAX_ROWS_PER_SOURCE = 50_000;
 const ID_CHUNK_SIZE = 250;
-const DEFAULT_SLOW_THRESHOLD_MS = 10_000;
-
-const USER_SORT_FIELDS = new Set<AdminChatUserSortField>([
-	'last_activity_at',
-	'session_count',
-	'turn_count',
-	'message_count',
-	'user_message_count',
-	'assistant_message_count',
-	'tool_call_count',
-	'tool_failure_count',
-	'tool_failure_rate',
-	'llm_failure_count',
-	'validation_failure_count',
-	'p95_ttfr_ms',
-	'max_ttfr_ms',
-	'slow_turn_count',
-	'longest_session_turns',
-	'longest_session_messages',
-	'created_entity_count',
-	'updated_entity_count',
-	'total_tokens',
-	'total_cost_usd'
-]);
-
-const SESSION_SORT_FIELDS = new Set<AdminChatSessionSortField>([
-	'last_activity_at',
-	'created_at',
-	'turn_count',
-	'message_count',
-	'user_message_count',
-	'assistant_message_count',
-	'tool_call_count',
-	'tool_failure_count',
-	'llm_call_count',
-	'llm_failure_count',
-	'max_ttfr_ms',
-	'p95_ttfr_ms',
-	'duration_ms',
-	'created_entity_count',
-	'total_tokens',
-	'total_cost_usd'
-]);
-
-const FORBIDDEN_PAYLOAD_KEYS = new Set([
-	'content',
-	'request_message',
-	'system_prompt',
-	'model_messages',
-	'rendered_dump_text',
-	'arguments',
-	'result',
-	'tool_result',
-	'before_data',
-	'after_data',
-	'operation_payload',
-	'data'
-]);
-
 function numberValue(value: unknown): number {
 	if (typeof value === 'number' && Number.isFinite(value)) return value;
 	if (typeof value === 'string' && value.trim().length > 0) {
@@ -625,23 +575,6 @@ function numberValue(value: unknown): number {
 
 function textValue(value: unknown): string | null {
 	return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
-}
-
-function parsePositiveInt(value: string | null, fallback: number, max: number): number {
-	const parsed = Number.parseInt(value ?? '', 10);
-	if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
-	return Math.min(parsed, max);
-}
-
-function parseSlowThreshold(value: string | null): number {
-	const parsed = Number.parseInt(value ?? '', 10);
-	if (!Number.isFinite(parsed)) return DEFAULT_SLOW_THRESHOLD_MS;
-	return Math.min(Math.max(parsed, 1_000), 120_000);
-}
-
-function parseTimeframe(value: string | null | undefined): AdminChatUserAnalyticsTimeframe {
-	if (value === '24h' || value === '7d' || value === '30d' || value === '90d') return value;
-	return '7d';
 }
 
 function timeframeToMs(timeframe: AdminChatUserAnalyticsTimeframe): number {
@@ -1107,94 +1040,6 @@ function publicSessionMetric(session: SessionAccumulator): AdminChatSessionMetri
 		...metric
 	} = session;
 	return metric;
-}
-
-function assertNoForbiddenKeys(value: unknown, path = '$'): void {
-	if (Array.isArray(value)) {
-		value.forEach((item, index) => assertNoForbiddenKeys(item, `${path}[${index}]`));
-		return;
-	}
-	if (!value || typeof value !== 'object') return;
-	for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-		if (FORBIDDEN_PAYLOAD_KEYS.has(key)) {
-			throw new Error(
-				`Admin chat user analytics payload contains forbidden key at ${path}.${key}`
-			);
-		}
-		assertNoForbiddenKeys(child, `${path}.${key}`);
-	}
-}
-
-export function assertAdminChatUserAnalyticsRedacted(value: unknown): void {
-	assertNoForbiddenKeys(value);
-}
-
-export function parseAdminChatUsersQuery(
-	searchParams: URLSearchParams
-): AdminChatUserAnalyticsQuery {
-	const requestedSort = searchParams.get('sort_by') as AdminChatUserSortField | null;
-	const sortBy =
-		requestedSort && USER_SORT_FIELDS.has(requestedSort) ? requestedSort : 'last_activity_at';
-	const errors = searchParams.get('errors');
-	const toolBucket = searchParams.get('tool_bucket');
-	const entityAction = searchParams.get('entity_action');
-	const classification = searchParams.get('classification');
-
-	return {
-		timeframe: parseTimeframe(searchParams.get('timeframe')),
-		page: parsePositiveInt(searchParams.get('page'), 1, 10_000),
-		limit: parsePositiveInt(searchParams.get('limit'), 50, 100),
-		sort_by: sortBy,
-		sort_order: searchParams.get('sort_order') === 'asc' ? 'asc' : 'desc',
-		search: searchParams.get('search')?.trim() ?? '',
-		user_id: textValue(searchParams.get('user_id')),
-		project_id: textValue(searchParams.get('project_id')),
-		context_type: searchParams.get('context_type')?.trim() || 'all',
-		topic: searchParams.get('topic')?.trim() || '',
-		slow_threshold_ms: parseSlowThreshold(searchParams.get('slow_threshold_ms')),
-		errors: errors === 'only' || errors === 'none' ? errors : 'all',
-		tool_bucket:
-			toolBucket === 'none' || toolBucket === 'some' || toolBucket === 'heavy'
-				? toolBucket
-				: 'all',
-		entity_action:
-			entityAction === 'created' || entityAction === 'updated' || entityAction === 'deleted'
-				? entityAction
-				: 'all',
-		classification:
-			classification === 'classified' ||
-			classification === 'missing' ||
-			classification === 'stale'
-				? classification
-				: 'all'
-	};
-}
-
-export function parseAdminChatUserDetailQuery(
-	searchParams: URLSearchParams
-): AdminChatUserDetailQuery {
-	const requestedSort = searchParams.get('session_sort_by') as AdminChatSessionSortField | null;
-	const sessionSort =
-		requestedSort && SESSION_SORT_FIELDS.has(requestedSort)
-			? requestedSort
-			: 'last_activity_at';
-	return {
-		timeframe: parseTimeframe(searchParams.get('timeframe')),
-		session_page: parsePositiveInt(searchParams.get('session_page'), 1, 10_000),
-		session_limit: parsePositiveInt(searchParams.get('session_limit'), 25, 100),
-		session_sort_by: sessionSort,
-		session_sort_order: searchParams.get('session_sort_order') === 'asc' ? 'asc' : 'desc',
-		search: searchParams.get('search')?.trim() ?? '',
-		slow_threshold_ms: parseSlowThreshold(searchParams.get('slow_threshold_ms'))
-	};
-}
-
-export function parseAdminChatRedactedSessionQuery(
-	searchParams: URLSearchParams
-): AdminChatRedactedSessionQuery {
-	return {
-		slow_threshold_ms: parseSlowThreshold(searchParams.get('slow_threshold_ms'))
-	};
 }
 
 async function fetchPagedRows<T>(

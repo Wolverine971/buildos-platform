@@ -206,7 +206,9 @@
 		"build": "tsup",
 		"dev": "tsup --watch",
 		"clean": "rm -rf dist .turbo",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"test": "vitest",
+		"test:run": "vitest run"
 	},
 	"dependencies": {
 		"@buildos/shared-types": "workspace:*",
@@ -223,6 +225,7 @@
 	"devDependencies": {
 		"@types/node": "^20.11.10",
 		"tsup": "^8.3.5",
-		"typescript": "^5.9.2"
+		"typescript": "^5.9.2",
+		"vitest": "^3.2.4"
 	}
 }

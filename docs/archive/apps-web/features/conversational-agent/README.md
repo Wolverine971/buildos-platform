@@ -204,10 +204,9 @@ Tests are located in:
 
 ## Related Documentation
 
-- [Original Spec](../../../../thoughts/shared/ideas/conversational-project-agent.md)
-- [Implementation Progress](../../../../thoughts/shared/research/2025-10-28_conversational-agent-implementation-progress.md)
-- [Brain Dump System](../braindump-context/README.md)
-- [Database Schema](../../technical/database/schema.md)
+- [Original Spec](../../../../../thoughts/shared/archive/ideas/conversational-project-agent.md)
+- [Current Agentic Chat Docs](../../../../../apps/web/docs/features/agentic-chat/README.md)
+- [Braindump Context Docs](../../../../../apps/web/docs/features/braindump-context/README.md)
 
 ## Future Enhancements
 

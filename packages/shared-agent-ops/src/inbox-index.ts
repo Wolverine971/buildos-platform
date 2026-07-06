@@ -43,6 +43,7 @@ export interface InboxIndexRow {
 }
 
 type AnySupabase = SupabaseClient<any, any, any>;
+const INBOX_REVIEW_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
 	return value && typeof value === 'object' && !Array.isArray(value)
@@ -104,13 +105,42 @@ function shouldPreserveActiveSnooze(
 	return snoozedUntil !== null && snoozedUntil > Date.now();
 }
 
+function shouldPreserveExpired(
+	existing: InboxIndexRow | null,
+	nextStatus: InboxItemStatus
+): boolean {
+	if ((nextStatus !== 'pending' && nextStatus !== 'deciding') || existing?.status !== 'expired') {
+		return false;
+	}
+	const expiresAt = parseTimestamp(existing.expires_at);
+	return expiresAt !== null && expiresAt <= Date.now();
+}
+
+function reviewExpiresAt(
+	createdAt: string | null | undefined,
+	status: InboxItemStatus
+): string | null {
+	if (status !== 'pending' && status !== 'deciding') return null;
+	const created = parseTimestamp(createdAt);
+	const base = created ?? Date.now();
+	return new Date(base + INBOX_REVIEW_EXPIRY_MS).toISOString();
+}
+
+function shouldExpireIncoming(row: InboxIndexRow): boolean {
+	if (row.status !== 'pending' && row.status !== 'deciding' && row.status !== 'snoozed') {
+		return false;
+	}
+	const expiresAt = parseTimestamp(row.expires_at);
+	return expiresAt !== null && expiresAt <= Date.now();
+}
+
 async function upsertInboxItem(
 	supabase: AnySupabase,
 	row: InboxIndexRow
 ): Promise<InboxIndexRow | null> {
 	const { data: existingData, error: existingError } = await (supabase as any)
 		.from('inbox_items')
-		.select('status,snoozed_until')
+		.select('status,snoozed_until,expires_at,decided_at,blocked_reason')
 		.eq('source_type', row.source_type)
 		.eq('source_ref_id', row.source_ref_id)
 		.maybeSingle();
@@ -123,6 +153,9 @@ async function upsertInboxItem(
 	}
 	const existing = (existingData ?? null) as InboxIndexRow | null;
 	const preserveSnooze = shouldPreserveActiveSnooze(existing, row.status);
+	const preserveExpired = shouldPreserveExpired(existing, row.status);
+	const expireIncoming = shouldExpireIncoming(row);
+	const finalExpired = preserveExpired || expireIncoming;
 	const payload = {
 		source_type: row.source_type,
 		source_ref_id: row.source_ref_id,
@@ -130,15 +163,27 @@ async function upsertInboxItem(
 		user_id: row.user_id ?? null,
 		project_id: row.project_id ?? null,
 		audience: row.audience,
-		status: preserveSnooze ? 'snoozed' : row.status,
+		status: finalExpired ? 'expired' : preserveSnooze ? 'snoozed' : row.status,
 		title: row.title,
 		summary: row.summary ?? null,
 		risk_tier: row.risk_tier ?? null,
 		action_kinds: row.action_kinds,
-		blocked_reason: preserveSnooze ? null : (row.blocked_reason ?? null),
-		snoozed_until: preserveSnooze ? existing?.snoozed_until : (row.snoozed_until ?? null),
-		expires_at: row.expires_at ?? null,
-		decided_at: preserveSnooze ? null : (row.decided_at ?? null)
+		blocked_reason: finalExpired
+			? (existing?.blocked_reason ?? 'Review item expired')
+			: preserveSnooze
+				? null
+				: (row.blocked_reason ?? null),
+		snoozed_until: finalExpired
+			? null
+			: preserveSnooze
+				? existing?.snoozed_until
+				: (row.snoozed_until ?? null),
+		expires_at: preserveExpired ? existing?.expires_at : (row.expires_at ?? null),
+		decided_at: finalExpired
+			? (existing?.decided_at ?? new Date().toISOString())
+			: preserveSnooze
+				? null
+				: (row.decided_at ?? null)
 	};
 
 	const { data, error } = await (supabase as any)
@@ -231,6 +276,7 @@ export function mapAgentRunToInboxItem(run: Record<string, unknown>): InboxIndex
 		blocked_reason: blockedReason,
 		decided_at:
 			inboxStatus === 'decided' || inboxStatus === 'blocked' ? terminalDecidedAt(run) : null,
+		expires_at: reviewExpiresAt(asString(run.created_at), inboxStatus),
 		created_at: asString(run.created_at) ?? undefined
 	};
 }
@@ -272,6 +318,7 @@ export function mapProjectSuggestionToInboxItem(
 			inboxStatus === 'pending' || inboxStatus === 'deciding'
 				? null
 				: terminalDecidedAt(suggestion),
+		expires_at: reviewExpiresAt(asString(suggestion.created_at), inboxStatus),
 		created_at: asString(suggestion.created_at) ?? undefined
 	};
 }
@@ -314,6 +361,7 @@ export function mapCalendarSuggestionToInboxItem(
 			inboxStatus === 'pending' || inboxStatus === 'deciding'
 				? null
 				: terminalDecidedAt(suggestion),
+		expires_at: reviewExpiresAt(asString(suggestion.created_at), inboxStatus),
 		created_at: asString(suggestion.created_at) ?? undefined
 	};
 }

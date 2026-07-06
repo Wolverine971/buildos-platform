@@ -2,803 +2,201 @@
 
 # BuildOS Testing Infrastructure
 
-**Last Updated**: 2025-10-06
-**Status**: Active Development
-**Coverage**: ~10-15% overall (strategic focus on critical paths)
+- **Last updated**: 2026-07-06
+- **Status**: Active
+- **Scope**: Vitest-first test infrastructure across the BuildOS monorepo
 
-## Overview
+## Audit Summary
 
-The BuildOS monorepo uses **Vitest** as its primary testing framework across all applications and packages. Our testing strategy prioritizes **high-risk, high-value areas** (LLM prompts, race conditions, security validation) over comprehensive coverage.
+BuildOS uses **Vitest** as the primary test runner for web, worker, and package tests. The current infrastructure is much broader than earlier testing docs described: this repo now has **378 Vitest-discoverable test/spec files** by filesystem inventory.
 
-**Test Infrastructure:**
+| Area          | Test/spec files | Runner                  | Notes                                                                                                        |
+| ------------- | --------------: | ----------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `apps/web`    |             320 | Vitest + SvelteKit      | Default Node environment, per-file `jsdom` for component/page tests, LLM tests split into a separate config. |
+| `apps/worker` |              42 | Vitest                  | Node environment, setup file, integration tests excluded from default runs.                                  |
+| `packages`    |              16 | Vitest where configured | Package-owned tests now exist for every package with a package manifest.                                     |
+| **Total**     |         **378** |                         | Counted from runnable `*.test.{js,ts}`, `*.spec.{js,ts}`, and `.svelte.test.{js,ts}` style files.            |
 
-- **37 test files** with 498+ test cases
-- **Dual test configurations** (standard vs expensive LLM tests)
-- **Parallel execution** via Turborepo
-- **TypeScript support** with full type checking
+This is a test-file inventory, not a line or branch coverage measurement. Coverage is not consistently configured across the monorepo yet, so do not treat old percentage claims in archived testing docs as current truth.
 
-## Table of Contents
+## Current Infrastructure
 
-1. [Quick Start](#quick-start)
-2. [Coverage Status](#coverage-status)
-3. [Running Tests](#running-tests)
-4. [Test Configuration](#test-configuration)
-5. [Testing Patterns](#testing-patterns)
-6. [What Has Coverage](#what-has-coverage)
-7. [Critical Gaps](#critical-gaps)
-8. [Improvement Roadmap](#improvement-roadmap)
-9. [Additional Resources](#additional-resources)
+### Root orchestration
 
-## Documentation Quick Links
-
-- **[📊 Web App Detailed Coverage](./WEB_APP_COVERAGE.md)** - Deep dive into what's tested in the web app
-- **[📋 Coverage Matrix](./COVERAGE_MATRIX.md)** - Complete reference table for all components
-- **[🧪 Agentic Chat Prompt Test Plan](./AGENTIC_CHAT_PROMPT_TEST_PLAN.md)** - Prompt-level acceptance scenarios and current agentic chat coverage
-- **[🧭 Agentic Chat Hybrid Tool Surface Prompt Tests](./AGENTIC_CHAT_HYBRID_TOOL_SURFACE_PROMPT_TESTS_2026-04-10.md)** - Manual prompt matrix for context-preloaded direct tools, progressive disclosure, and tool trace visibility
-- **[🛠 Agentic Chat Project Creation Flow](./AGENTIC_CHAT_PROJECT_CREATION_MANUAL_FLOW.md)** - Manual acceptance flow for `project_create` mode and post-create context shift
-- **[🔬 Research Document](../../thoughts/shared/research/2025-10-06_18-44-32_testing-infrastructure-audit.md)** - Full audit findings
-
-Keep durable audit summaries in this folder. Do not keep one-off raw run artifacts under `docs/testing/artifacts/`; regenerate them locally when needed.
-
----
-
-## Quick Start
+Root scripts in [`package.json`](../../package.json):
 
 ```bash
-# Install dependencies
-pnpm install
-
-# Run all tests across monorepo
-pnpm test
-
-# Run tests in specific app
-cd apps/web && pnpm test
-cd apps/worker && pnpm test
-
-# Run expensive LLM tests (costs money!)
-cd apps/web && pnpm test:llm
-
-# Full pre-push validation
-pnpm pre-push  # typecheck + test + lint + build
+pnpm test       # turbo test
+pnpm test:run   # turbo test:run
+pnpm typecheck  # turbo typecheck
+pnpm lint       # turbo lint
+pnpm build      # turbo build
+pnpm pre-push   # turbo typecheck test:run lint build
 ```
 
----
+Turborepo configuration in [`turbo.json`](../../turbo.json):
 
-## Coverage Status
+- `test` depends on upstream workspace builds and is explicitly uncached.
+- `test:run` depends on upstream workspace builds and uses Turbo's default cache behavior.
+- `typecheck` depends on upstream workspace builds.
+- Environment-sensitive tasks include the env keys listed in `globalEnv`.
 
-### Overall Metrics
+### CI
 
-| Application        | Test Files   | Coverage    | Status                                 |
-| ------------------ | ------------ | ----------- | -------------------------------------- |
-| **Web App**        | 29 files     | ~10-15%     | 🟡 Strategic focus                     |
-| **Worker Service** | 6 files      | ~18%        | 🟡 Scheduler excellent, gaps elsewhere |
-| **Packages**       | 1 file       | 25%         | 🔴 Major gaps                          |
-| **Total**          | **37 files** | **~10-15%** | 🟡 **Improving**                       |
+GitHub Actions is configured in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml). On pushes to `main` and on pull requests it:
 
-### Coverage by Area
+1. Installs dependencies with `pnpm install --frozen-lockfile`.
+2. Copies example env files to `.env`, `apps/web/.env`, and `apps/worker/.env`.
+3. Runs `pnpm turbo typecheck`.
+4. Runs `pnpm turbo lint`.
+5. Runs `pnpm turbo test:run`.
 
-#### Web App (`/apps/web/`)
-
-| Area       | Files  | Coverage | Priority    |
-| ---------- | ------ | -------- | ----------- |
-| Components | 2/220+ | ~1%      | 🔴 Critical |
-| Services   | 6/68+  | ~9%      | 🔴 Critical |
-| Utilities  | 9/60+  | ~15%     | 🟡 Partial  |
-| Stores     | 2/14   | ~14%     | 🟡 Partial  |
-| API Routes | 2/153  | ~1%      | 🔴 Critical |
-| Pages      | 1/47   | ~2%      | 🔴 Critical |
-
-**📊 See [Web App Detailed Coverage](./WEB_APP_COVERAGE.md) for comprehensive breakdown of what's tested**
-
-#### Worker Service (`/apps/worker/`)
-
-| Component         | Status  | Priority        |
-| ----------------- | ------- | --------------- |
-| Scheduler         | ✅ 95%+ | Excellent       |
-| Brief Backoff     | ✅ 90%+ | Excellent       |
-| Brief Generator   | ⚠️ 30%  | Needs expansion |
-| Queue System      | 🔴 0%   | Critical gap    |
-| Worker Processors | 🔴 0%   | Critical gap    |
-| API Endpoints     | 🔴 0%   | Critical gap    |
-| Email Services    | 🔴 0%   | Critical gap    |
-
-#### Packages (`/packages/`)
-
-| Package                    | Status       | Priority          |
-| -------------------------- | ------------ | ----------------- |
-| `@buildos/twilio-service`  | ✅ Has tests | Good              |
-| `@buildos/shared-types`    | 🔴 No tests  | **Critical**      |
-| `@buildos/supabase-client` | 🔴 No tests  | High              |
-| `@buildos/config`          | N/A          | Empty placeholder |
-
----
+CI does **not** currently run `pnpm pre-push`, `pnpm turbo build`, coverage, web LLM tests, or worker integration tests.
 
 ## Running Tests
 
-### Standard Test Commands
-
-#### Monorepo Level
+### Monorepo
 
 ```bash
-# Run all tests in parallel via Turborepo
 pnpm test
-
-# Run tests once (no watch)
 pnpm test:run
-
-# Full validation pipeline
 pnpm pre-push
 ```
 
-#### Web App
+Use `pnpm test:run` for the same test task CI runs. Use `pnpm pre-push` when you want the local typecheck, test, lint, and build sequence.
+
+### Web app
 
 ```bash
-cd apps/web
-
-# Standard unit tests (excludes LLM tests)
-pnpm test              # Run once
-pnpm test:watch        # Watch mode
-pnpm test:ui           # Interactive UI
-
-# LLM tests (⚠️ COSTS MONEY - uses real OpenAI API)
-pnpm test:llm          # Run once
-pnpm test:llm:watch    # Watch mode
-
-# Pre-push validation
-pnpm pre-push          # typecheck + test + lint + build
+pnpm --filter @buildos/web test:run
+pnpm --filter @buildos/web test:watch
+pnpm --filter @buildos/web test:ui
+pnpm --filter @buildos/web test:llm
 ```
 
-#### Worker Service
+Web test config:
+
+- Standard config: [`apps/web/vitest.config.ts`](../../apps/web/vitest.config.ts)
+- LLM config: [`apps/web/vitest.config.llm.ts`](../../apps/web/vitest.config.llm.ts)
+- Setup file: [`apps/web/vitest.setup.ts`](../../apps/web/vitest.setup.ts)
+
+Standard web tests include `**/*.{test,spec}.{js,ts}` and exclude `apps/web/src/lib/tests/llm/**` plus `llm-simple/**` to prevent accidental paid API calls. Component and page tests that need a DOM should use a file-level directive:
+
+```ts
+// @vitest-environment jsdom
+```
+
+### Worker
 
 ```bash
-cd apps/worker
-
-# All tests
-pnpm test              # Watch mode
-pnpm test:run          # Run once
-pnpm test:coverage     # With coverage report
-
-# Specific tests
-pnpm test:scheduler    # Only scheduler tests
-pnpm test tests/briefGenerator.test.ts  # Single file
+pnpm --filter @buildos/worker test:run
+pnpm --filter @buildos/worker test:watch
+pnpm --filter @buildos/worker test:scheduler
+pnpm --filter @buildos/worker test:coverage
+pnpm --filter @buildos/worker test:integration
 ```
 
-#### Packages
+Worker test config:
+
+- Config: [`apps/worker/vitest.config.ts`](../../apps/worker/vitest.config.ts)
+- Setup file: `apps/worker/tests/setup.ts`
+
+Default worker tests exclude `apps/worker/tests/integration/**`. Use `test:integration` only when database credentials and any required external services are available.
+
+### Packages
+
+Configured package test scripts:
 
 ```bash
-cd packages/twilio-service
-
-# Run tests
-pnpm test              # Watch mode
-pnpm test:run          # Run once
+pnpm --filter @buildos/smart-llm test:run
+pnpm --filter @buildos/shared-agent-ops test:run
+pnpm --filter @buildos/shared-types test:run
+pnpm --filter @buildos/shared-utils test:run
+pnpm --filter @buildos/supabase-client test:run
+pnpm --filter @buildos/twilio-service test:run
+pnpm --filter @buildos/mcp-server test:run
 ```
 
----
+All packages under `packages/` now have `test` and `test:run` scripts. The `shared-agent-ops`, `shared-types`, and `supabase-client` suites are seed suites; expand them as shared contracts change.
 
-## Test Configuration
+## What Is Working Well
 
-### Web App Configuration
+- CI now runs typecheck, lint, and `test:run` for pull requests.
+- Web has broad server, route, agentic-chat, admin analytics, utility, and component test coverage by file count.
+- Web LLM tests are isolated behind an explicit `test:llm` command.
+- Worker has dedicated scheduler, brief, queue contract, project loop, HTTP utility, and integration test areas.
+- Package tests cover the shared LLM package, shared agent ops utilities, shared type validation, Supabase client factories, Twilio service, shared utilities, and MCP client/config behavior.
+- Web setup centralizes `$env/dynamic/public`, `matchMedia`, and console-noise handling.
+- The old webhook `server.ts.spec` implementation sketch has been moved out of the route tree to documentation so it is no longer mistaken for a runnable test.
 
-#### Standard Tests (`vitest.config.ts`)
+## Infrastructure Gaps
 
-**File**: `apps/web/vitest.config.ts`
+### P0: Coverage is not standardized
 
-```typescript
-{
-  plugins: [sveltekit()],
-  test: {
-    globals: true,
-    environment: 'node',
-    setupFiles: ['./vitest.setup.ts'],
-    // IMPORTANT: Excludes LLM tests to avoid API costs
-    exclude: [
-      '**/node_modules/**',
-      '**/lib/tests/llm/**',
-      '**/lib/tests/llm-simple/**'
-    ]
-  }
-}
-```
+Only the worker has a `test:coverage` script, and only `twilio-service` has coverage configured in package Vitest config. The web app has no coverage script or thresholds. There is no monorepo coverage aggregation or CI coverage gate.
 
-#### LLM Tests (`vitest.config.llm.ts`)
+Recommended next steps:
 
-**File**: `apps/web/vitest.config.llm.ts`
+- Add `test:coverage` to `apps/web`.
+- Add coverage provider/reporters to shared package Vitest configs.
+- Define realistic initial thresholds for critical paths instead of broad percentage targets.
+- Publish CI coverage artifacts before enforcing thresholds.
 
-```typescript
-{
-  test: {
-    include: ['**/lib/tests/llm/**/*.test.ts'],
-    testTimeout: 20000,        // 20s for API calls
-    maxConcurrency: 1,         // Sequential to avoid rate limits
-  }
-}
-```
+### P1: No browser E2E, visual regression, or accessibility runner
 
-**⚠️ Warning**: LLM tests make real API calls to OpenAI/DeepSeek and **cost money**. Run explicitly with `pnpm test:llm`.
+There is no Playwright/Cypress dependency or CI job in the current package manifests. Existing UI tests are unit/component style and rely on `jsdom` where needed.
 
-### Worker Configuration
+Recommended next steps:
 
-**File**: `apps/worker/vitest.config.ts`
+- Add Playwright for a short list of critical flows: auth, project page load, agent stream, invite flow, and billing/admin smoke paths.
+- Add axe checks for high-traffic pages once Playwright is in place.
+- Keep E2E separate from default unit tests until the suite is stable and low-noise.
 
-```typescript
-{
-  test: {
-    environment: "node",
-    globals: true,
-    setupFiles: ["./tests/setup.ts"],
-  }
-}
-```
+### P1: CI excludes expensive and environment-dependent suites
 
-### Turborepo Orchestration
+The default CI path intentionally excludes:
 
-**File**: `turbo.json`
+- Web LLM tests.
+- Worker integration tests.
+- Coverage.
+- Production build.
 
-```json
-{
-	"test": {
-		"dependsOn": ["^build"],
-		"outputs": ["coverage/**"],
-		"cache": false
-	}
-}
-```
+Recommended next steps:
 
-- Tests depend on workspace dependency builds
-- Coverage artifacts tracked
-- **No caching** - always run fresh
+- Add scheduled or manually dispatched workflows for LLM and integration suites.
+- Run build in CI or align the CI job with `pnpm pre-push`.
+- Document required secrets for each non-default suite.
 
----
+### P2: Package test ownership is still shallow
 
-## Testing Patterns
+Every package now has a package-owned test entrypoint, but several are still seed suites. Shared code used by both runtime surfaces should keep moving from app-only indirect coverage into package-level tests.
 
-### Best Practices
+Recommended next steps:
 
-#### 1. Test Isolation
+- Treat shared package tests as the default home for framework-agnostic logic.
+- Keep app tests focused on SvelteKit, route, service composition, and integration behavior.
+- Expand `shared-agent-ops`, `shared-types`, and `supabase-client` beyond seed suites.
+- Add a short "where should this test live?" section to contributor docs if confusion persists.
 
-Always use `beforeEach` and `afterEach`:
+## Test Placement Guidelines
 
-```typescript
-describe('ServiceName', () => {
-	let mockDependency: any;
-	let service: ServiceClass;
+- Put web route tests next to the route module, for example `server.test.ts` beside `server.ts`.
+- Put web service and utility tests next to the source module under `apps/web/src/lib/**`.
+- Put Svelte component tests next to the component and use `// @vitest-environment jsdom` when rendering DOM.
+- Put worker unit tests under `apps/worker/tests/**` unless there is already a local pattern beside the source.
+- Put database or external-service integration tests under `apps/worker/tests/integration/**` or another clearly excluded path.
+- Put framework-agnostic behavior in package-level tests when the source lives in `packages/**`.
 
-	beforeEach(() => {
-		vi.clearAllMocks();
-		mockDependency = createMockDependency();
-		service = new ServiceClass(mockDependency);
-	});
+## Documentation Links
 
-	afterEach(() => {
-		vi.clearAllMocks();
-	});
+- [Web app coverage notes](./WEB_APP_COVERAGE.md)
+- [Coverage matrix](./COVERAGE_MATRIX.md)
+- [Agentic chat prompt test plan](./AGENTIC_CHAT_PROMPT_TEST_PLAN.md)
+- [Agentic chat hybrid tool surface prompt tests](./AGENTIC_CHAT_HYBRID_TOOL_SURFACE_PROMPT_TESTS_2026-04-10.md)
+- [Agentic chat project creation manual flow](./AGENTIC_CHAT_PROJECT_CREATION_MANUAL_FLOW.md)
+- [Manual agent work smoke tests](./MANUAL_AGENT_WORK_SMOKE_TESTS_2026-06-20.md)
+- [Manual AI inbox smoke tests](./MANUAL_AI_INBOX_SMOKE_TESTS_2026-06-25.md)
+- [Daily brief email webhook implementation sketch](./daily-brief-email-webhook-implementation-sketch.md)
+- [Web testing checklist](../../apps/web/docs/technical/testing/TESTING_CHECKLIST.md)
 
-	it('should handle operation', async () => {
-		// Test implementation
-	});
-});
-```
-
-#### 2. Supabase Client Mocking
-
-Standard chainable mock pattern:
-
-```typescript
-const createMockSupabase = () => ({
-	from: vi.fn().mockReturnThis(),
-	select: vi.fn().mockReturnThis(),
-	insert: vi.fn().mockReturnThis(),
-	update: vi.fn().mockReturnThis(),
-	eq: vi.fn().mockReturnThis(),
-	single: vi.fn().mockResolvedValue({ data: null, error: null })
-});
-```
-
-#### 3. Race Condition Testing
-
-Verify order of operations:
-
-```typescript
-it('should track update BEFORE API call', async () => {
-	const orderOfOperations: string[] = [];
-
-	mockService.trackUpdate = vi.fn((id) => {
-		orderOfOperations.push(`trackUpdate:${id}`);
-	});
-
-	// Perform operations...
-
-	expect(orderOfOperations[0]).toBe('trackUpdate:temp-id');
-	expect(orderOfOperations[1]).toBe('apiCall');
-});
-```
-
-#### 4. Timezone Testing
-
-Always test timezone conversions:
-
-```typescript
-it('should handle timezone correctly', () => {
-	const now = new Date('2025-10-01T12:00:00Z'); // UTC
-	const preference = {
-		time_of_day: '09:00:00',
-		timezone: 'America/New_York'
-	};
-
-	const result = calculateNextRunTime(preference, now);
-
-	// 9 AM EDT = 1 PM UTC
-	expect(result?.getUTCHours()).toBe(13);
-});
-```
-
-#### 5. Parallel Processing Validation
-
-Test performance of parallel operations:
-
-```typescript
-it('should process in parallel', async () => {
-	const startTime = Date.now();
-	const results = await Promise.allSettled(promises);
-	const totalTime = Date.now() - startTime;
-
-	// Should NOT be 300ms × N items
-	expect(totalTime).toBeLessThan(400);
-});
-```
-
-### Common Mocking Patterns
-
-#### Module Mocking
-
-```typescript
-// Mock SvelteKit environment
-vi.mock('$app/environment', () => ({
-	browser: true
-}));
-
-// Mock environment variables
-vi.mock('$env/static/private', () => ({
-	PRIVATE_GOOGLE_CLIENT_ID: 'test-client-id',
-	PRIVATE_GOOGLE_CLIENT_SECRET: 'test-client-secret'
-}));
-
-// Mock services
-vi.mock('$lib/services/llm-pool', () => ({
-	LLMPool: vi.fn().mockImplementation(() => ({
-		makeRequest: vi.fn(),
-		close: vi.fn()
-	}))
-}));
-```
-
-#### Storage Mocking
-
-```typescript
-class MemorySessionStorage implements Storage {
-	private store = new Map<string, string>();
-
-	clear(): void {
-		this.store.clear();
-	}
-	getItem(key: string): string | null {
-		return this.store.has(key) ? this.store.get(key)! : null;
-	}
-	setItem(key: string, value: string): void {
-		this.store.set(key, value);
-	}
-	removeItem(key: string): void {
-		this.store.delete(key);
-	}
-	key(index: number): string | null {
-		return Array.from(this.store.keys())[index] ?? null;
-	}
-	get length(): number {
-		return this.store.size;
-	}
-}
-```
-
----
-
-## What Has Coverage
-
-### Excellent Coverage ✅
-
-#### Web App
-
-**Brain Dump Validation**:
-
-- `braindump-validation.test.ts` - Input validation, length checks
-- `brain-dump-processor.test.ts` - Core processing logic
-- `braindump-ui-validation.test.ts` - UI validation rules
-
-**LLM Prompt Testing** (5 files):
-
-- `new-project-creation.test.ts` - Tests LLM output for project creation (400+ lines)
-- `existing-project-updates.test.ts` - Tests project update prompts
-- Real API call validation (⚠️ costs money)
-
-**Race Condition Prevention**:
-
-- `project.store.test.ts` - 407 lines testing optimistic updates and real-time sync
-- Order of operations verification
-- Tracking ID management
-
-**Security Testing**:
-
-- `server.test.ts` (braindumps/stream) - DoS prevention, input validation (370 lines)
-- Content length limits (50KB max)
-- Input sanitization
-- Rate limiting validation
-
-**Event Bus**:
-
-- `event-bus.test.ts` - Comprehensive edge case coverage
-- Unsubscribe during emit
-- Error handling
-- Real-world scenarios
-
-#### Worker Service
-
-**Scheduler System** (95%+ coverage):
-
-- `scheduler.test.ts` - Core functions (171 lines)
-- `scheduler.comprehensive.test.ts` - Edge cases (764 lines)
-- `scheduler-parallel.test.ts` - Parallel processing (515 lines)
-- `scheduler-utils.test.ts` - Utility functions (230 lines)
-- Comprehensive timezone testing (UTC, EST, PST, JST, Auckland)
-- DST transition handling
-- Month/year boundary testing
-
-**Brief Backoff Calculator** (90%+ coverage):
-
-- `briefBackoffCalculator.test.ts` - 324 lines
-- All engagement states tested
-- Edge cases: new users, null visits, DB errors
-
-**Brief Generator** (30% coverage):
-
-- `briefGenerator.test.ts` - 302 lines
-- Parallel project processing
-- Error isolation with `Promise.allSettled`
-
-#### Packages
-
-**Twilio Service**:
-
-- `sms.test.ts` - 197 lines
-- SMS sending, opt-out validation
-- Phone formatting, relative time
-
-### Partial Coverage ⚠️
-
-**Operations Executor**:
-
-- `operations-executor.test.ts` - Good rollback testing
-- Needs more CRUD operation coverage
-
-**Reference Resolution**:
-
-- `reference-resolution.test.ts` - Basic resolution tested
-- `project-ref-resolution.test.ts` - Project references
-
-**Notification Store**:
-
-- `notification.store.test.ts` - Basic store logic
-- Needs Svelte 5 runes coverage expansion
-
----
-
-## Critical Gaps
-
-### P0 - CRITICAL (Immediate Production Risk)
-
-#### 1. Calendar Integration (3,934 lines, 0 tests)
-
-**Impact**: HIGH - External API integration, timezone handling
-
-**Files**:
-
-- `calendar-service.ts` (1,661 lines) - Google Calendar API operations
-- `calendar-analysis.service.ts` (1,273 lines) - AI-powered analysis
-- `calendar-webhook-service.ts` - Real-time webhook processing
-
-**Risks**:
-
-- Timezone conversion bugs
-- API error handling failures
-- Webhook signature validation bypass
-- Data sync inconsistencies
-
-#### 2. Queue System (15,522 lines, 0 tests)
-
-**Impact**: CRITICAL - Core infrastructure for background jobs
-
-**File**: `apps/worker/src/lib/supabaseQueue.ts`
-
-**Risks**:
-
-- Job claiming race conditions
-- Retry logic failures
-- Progress tracking errors
-- Stalled job recovery failures
-
-#### 3. API Endpoints (151/153 untested - 99%)
-
-**Impact**: HIGH - Security and reliability
-
-**Routes**:
-
-- Brain dump endpoints (4 routes)
-- Calendar endpoints (5+ routes)
-- Project endpoints (10+ routes)
-- Task endpoints (8+ routes)
-- Daily brief endpoints (3 routes)
-
-**Risks**:
-
-- Input validation bypass
-- Authorization check failures
-- SQL injection vulnerabilities
-- Rate limiting bypass
-- Error message information leaks
-
-#### 4. Shared Validation Logic (622 lines, 0 tests)
-
-**Impact**: CRITICAL - Used across both web and worker apps
-
-**File**: `packages/shared-types/src/validation.ts`
-
-**Risks**:
-
-- Invalid data persisted to database
-- Queue job failures due to bad data
-- Type mismatches at runtime
-- Timezone validation bypass
-
-### P1 - HIGH (Production Risk)
-
-#### 5. Phase Generation System (6 files, 0 tests)
-
-**Files**:
-
-- `orchestrator.ts` - Strategy coordination
-- `strategies/phases-only.strategy.ts`
-- `strategies/schedule-in-phases.strategy.ts`
-- `strategies/calendar-optimized.strategy.ts`
-
-**Risks**: Incorrect task distribution, calendar conflicts
-
-#### 6. Worker Processors (34 files, mostly untested)
-
-**Files**:
-
-- `briefWorker.ts` (10,734 lines)
-- `emailWorker.ts` (6,195 lines)
-- `phasesWorker.ts` (2,682 lines)
-- `onboardingWorker.ts` (2,249 lines)
-- `notificationWorker.ts` (12,989 lines)
-- `smsWorker.ts` (4,928 lines)
-
-**Risks**: Job processing failures, email delivery failures
-
-#### 7. Brain Dump UI Components (18 files, 0 tests)
-
-**Components**:
-
-- `BrainDumpModal.svelte`
-- `RecordingView.svelte`
-- `OperationsList.svelte`
-- `ProcessingModal.svelte`
-
-**Risks**: Core user journey untested, UI regressions
-
-#### 8. Payment Processing (0 tests)
-
-**File**: `stripe-service.ts`
-
-**Risks**: Financial transaction failures, webhook validation bypass
-
-### P2 - MEDIUM (Quality Risk)
-
-#### 9. Email/SMS Services (30,000+ lines, 0 tests)
-
-**Files**:
-
-- `email-sender.ts` (15,068 lines)
-- `email-service.ts` (9,829 lines)
-- `webhook-email-service.ts` (3,825 lines)
-
-**Risks**: Email delivery failures, template rendering errors
-
-#### 10. LLM Services in Worker (42,724 lines, 0 tests)
-
-**Files**:
-
-- `smart-llm-service.ts` (30,322 lines)
-- `llm-pool.ts` (12,402 lines)
-
-**Risks**: Fallback logic failures, cost optimization bugs
-
-#### 11. UI Components (220 components, 2 tested - ~1%)
-
-**Components**:
-
-- Notification system (10+ files)
-- Project management UI
-- Task management UI
-- Settings UI
-
-**Risks**: UI regressions, interaction bugs
-
-#### 12. Stores (14 stores, 2 tested - 14%)
-
-**Untested Stores**:
-
-- `brain-dump-v2.store.ts`
-- `backgroundJobs.ts`
-- `brainDumpPreferences.ts`
-- `briefPreferences.ts`
-- `modal.store.ts`
-- `toast.store.ts`
-- `userContext.ts`
-- `dashboard.store.ts`
-
-**Risks**: State management bugs with Svelte 5 runes
-
----
-
-## Improvement Roadmap
-
-### Phase 1: Critical Infrastructure (Weeks 1-2)
-
-**Goal**: Stabilize core infrastructure
-
-1. **Add Calendar Service Tests** (16 hours)
-    - Mock Google Calendar API
-    - Test CRUD operations
-    - Test timezone conversions
-    - Test error handling
-
-2. **Add Queue System Tests** (12 hours)
-    - Mock Supabase RPCs
-    - Test job lifecycle
-    - Test retry logic and backoff
-    - Test atomic operations
-
-3. **Add Shared Validation Tests** (6 hours)
-    - Test all job type validators
-    - Test edge cases (null, invalid formats)
-    - Test timezone validation
-
-### Phase 2: API Coverage (Weeks 3-4)
-
-**Goal**: Secure API endpoints
-
-4. **Test Critical API Endpoints** (20 hours)
-    - Brain dump endpoints (4 routes)
-    - Calendar endpoints (5 routes)
-    - Project endpoints (10 routes)
-    - Focus on: validation, auth, error responses
-
-5. **Add Supabase Client Tests** (4 hours)
-    - Test client factory functions
-    - Test environment validation
-    - Test redirect URL generation
-
-### Phase 3: Worker Coverage (Week 5)
-
-**Goal**: Improve background job reliability
-
-6. **Test Worker Processors** (16 hours)
-    - Brief worker job processing
-    - Email worker delivery
-    - Test timezone handling
-    - Test error isolation
-
-7. **Test Email Services** (12 hours)
-    - Mock SMTP transport
-    - Test template rendering
-    - Test webhook delivery
-
-### Phase 4: Component Testing (Week 6)
-
-**Goal**: Improve UI reliability
-
-8. **Add Component Tests** (20 hours)
-    - Brain dump modal flow
-    - Notification system
-    - Use Svelte Testing Library
-
-9. **Add Store Tests** (8 hours)
-    - Test Svelte 5 runes reactivity
-    - Test state persistence
-    - Test derived state
-
-### Phase 5: E2E Testing (Weeks 7-8)
-
-**Goal**: Validate user journeys
-
-10. **Set Up Playwright** (8 hours)
-    - Install and configure
-    - Create fixtures and helpers
-
-11. **Add Critical User Journey Tests** (20 hours)
-    - Brain dump → Project creation
-    - Calendar sync → Task scheduling
-    - Daily brief generation
-
-### Infrastructure Improvements
-
-**Immediate**:
-
-- [ ] Add coverage reporting to all apps
-- [ ] Add test coverage thresholds (60%+)
-- [ ] Create GitHub Actions test workflow
-- [ ] Set up coverage badges
-
-**Short-Term**:
-
-- [ ] Add integration test directory structure
-- [ ] Create centralized test fixtures
-- [ ] Add visual regression testing
-- [ ] Document testing patterns
-
-**Long-Term**:
-
-- [ ] Achieve 80%+ coverage of critical paths
-- [ ] Add performance testing suite
-- [ ] Add accessibility testing (axe-core)
-- [ ] Set up mutation testing
-
----
-
-## Additional Resources
-
-### Documentation
-
-- **🎯 Web App Detailed Coverage**: [`WEB_APP_COVERAGE.md`](./WEB_APP_COVERAGE.md) - **NEW** - Complete web app test breakdown
-- **📋 Coverage Matrix**: [`COVERAGE_MATRIX.md`](./COVERAGE_MATRIX.md) - Reference table for all components
-- **Testing Checklist**: [`apps/web/docs/development/TESTING_CHECKLIST.md`](../../apps/web/docs/development/TESTING_CHECKLIST.md) - Comprehensive 620-line testing guide
-- **Web App Testing**: [`apps/web/CLAUDE.md#testing`](../../apps/web/CLAUDE.md) - Web app specific commands
-- **Worker Testing**: [`apps/worker/CLAUDE.md#testing`](../../apps/worker/CLAUDE.md) - Worker specific commands
-
-### Configuration Files
-
-- **Web Standard Config**: [`apps/web/vitest.config.ts`](../../apps/web/vitest.config.ts)
-- **Web LLM Config**: [`apps/web/vitest.config.llm.ts`](../../apps/web/vitest.config.llm.ts)
-- **Worker Config**: [`apps/worker/vitest.config.ts`](../../apps/worker/vitest.config.ts)
-- **Turborepo Config**: [`turbo.json`](../../turbo.json)
-
-### Example Test Files
-
-**Best Practices**:
-
-- **Race Conditions**: [`apps/web/src/lib/stores/project.store.test.ts`](../../apps/web/src/lib/stores/project.store.test.ts)
-- **Security**: [`apps/web/src/routes/api/braindumps/stream/server.test.ts`](../../apps/web/src/routes/api/braindumps/stream/server.test.ts)
-- **Edge Cases**: [`apps/web/src/lib/utils/event-bus.test.ts`](../../apps/web/src/lib/utils/event-bus.test.ts)
-- **LLM Validation**: [`apps/web/src/lib/tests/llm/__tests__/new-project-creation.test.ts`](../../apps/web/src/lib/tests/llm/__tests__/new-project-creation.test.ts)
-- **Timezone Testing**: [`apps/worker/tests/scheduler.comprehensive.test.ts`](../../apps/worker/tests/scheduler.comprehensive.test.ts)
-- **Parallel Processing**: [`apps/worker/tests/scheduler-parallel.test.ts`](../../apps/worker/tests/scheduler-parallel.test.ts)
-
-### Research Documents
-
-- **Complete Audit**: [`thoughts/shared/research/2025-10-06_18-44-32_testing-infrastructure-audit.md`](../../thoughts/shared/research/2025-10-06_18-44-32_testing-infrastructure-audit.md) - Full research findings
-
----
-
-## Questions or Issues?
-
-For questions about:
-
-- **Testing strategy**: Review this document and the testing checklist
-- **Running tests**: See [Running Tests](#running-tests) section above
-- **Writing new tests**: See [Testing Patterns](#testing-patterns) section above
-- **Configuration**: See [Test Configuration](#test-configuration) section above
-
----
-
-**Last Updated**: 2025-10-06
-**Next Review**: 2025-11-06
-**Maintainer**: Development Team
+Keep durable audit summaries in this folder. Do not keep one-off raw run artifacts under `docs/testing/artifacts/`; regenerate them locally when needed.

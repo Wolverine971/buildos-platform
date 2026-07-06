@@ -6,7 +6,7 @@ Welcome to the BuildOS API documentation.
 
 ## Quick Links
 
-- [📖 Interactive API Documentation](/docs/api.html) - Test API endpoints directly in your browser
+- Interactive API Documentation - run `pnpm --filter=web docs:api` to regenerate route docs, then `pnpm --filter=web docs:serve` to browse them locally
 - [🛠 Route Reference](./routes-reference.md) - Complete list of all API endpoints
 - [📋 Type Definitions](./types.md) - TypeScript interfaces and types
 - [📝 Request/Response Templates](./templates.md) - Standard formats and examples

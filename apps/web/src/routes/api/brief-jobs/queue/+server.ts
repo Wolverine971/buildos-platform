@@ -32,7 +32,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 			includeProjects,
 			excludeProjects,
 			useOntology,
-			forceRegenerate
+			forceRegenerate,
+			forceImmediate
 		} = body ?? {};
 
 		const headers: Record<string, string> = {
@@ -52,6 +53,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 				briefDate,
 				timezone,
 				forceRegenerate,
+				forceImmediate,
 				options: {
 					includeProjects,
 					excludeProjects,

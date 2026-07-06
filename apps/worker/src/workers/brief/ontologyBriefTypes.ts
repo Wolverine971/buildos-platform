@@ -69,17 +69,6 @@ export interface MilestoneStatus {
 }
 
 // ============================================================================
-// PLAN PROGRESS
-// ============================================================================
-
-export interface PlanProgress {
-	plan: OntoPlan;
-	totalTasks: number;
-	completedTasks: number;
-	progressPercent: number;
-}
-
-// ============================================================================
 // UNBLOCKING TASK
 // ============================================================================
 
@@ -209,6 +198,7 @@ export interface CategorizedTasks {
 	// Status-based
 	blockedTasks: OntoTask[];
 	inProgressTasks: OntoTask[];
+	staleInProgressTasks: OntoTask[];
 
 	// Work mode categories (from type_key)
 	executeTasks: OntoTask[];
@@ -222,7 +212,6 @@ export interface CategorizedTasks {
 
 	// Relationship-based
 	unblockingTasks: OntoTask[];
-	goalAlignedTasks: OntoTask[];
 	recentlyUpdated: OntoTask[];
 }
 
@@ -245,7 +234,6 @@ export interface OntoProjectWithRelations {
 	edges: OntoEdge[];
 
 	// Computed relationships
-	tasksByPlan: Map<string, OntoTask[]>;
 	taskDependencies: Map<string, string[]>; // taskId -> depends on taskIds
 	goalProgress: Map<string, GoalProgress>;
 	recentUpdates: RecentUpdates;
@@ -309,7 +297,7 @@ export interface ProjectStatusSection {
 	scale: string;
 	context: string | null;
 	nextSteps: string[];
-	activePlan: PlanProgress | null;
+	activePlan: OntoPlan | null;
 	goals: GoalProgress[];
 	requirements: OntoRequirement[];
 	todaysTasks: OntoTask[];
@@ -404,6 +392,8 @@ export interface OntologyBriefData {
 	todaysTasks: OntoTask[];
 	blockedTasks: OntoTask[];
 	overdueTasks: OntoTask[];
+	inProgressTasks: OntoTask[];
+	staleInProgressTasks: OntoTask[];
 	highPriorityCount: number;
 	recentUpdates: RecentUpdates;
 	recentlyPausedProjects: ProjectPauseNotice[];
@@ -431,6 +421,7 @@ export interface ProjectBriefData {
 	calendarToday: CalendarBriefItem[];
 	calendarUpcoming: CalendarBriefItem[];
 	todaysTasks: OntoTask[];
+	overdueTasks: OntoTask[];
 	thisWeekTasks: OntoTask[];
 	blockedTasks: OntoTask[];
 	unblockingTasks: OntoTask[];

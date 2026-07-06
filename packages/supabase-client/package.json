@@ -16,7 +16,9 @@
 		"build": "tsup src/index.ts --format cjs,esm --dts",
 		"dev": "tsup src/index.ts --format cjs,esm --watch",
 		"clean": "rm -rf dist .turbo",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"test": "vitest",
+		"test:run": "vitest run"
 	},
 	"dependencies": {
 		"@supabase/supabase-js": "^2.89.0",
@@ -26,6 +28,7 @@
 	"devDependencies": {
 		"@types/node": "^20.11.10",
 		"tsup": "^8.3.5",
-		"typescript": "^5.9.2"
+		"typescript": "^5.9.2",
+		"vitest": "^3.2.4"
 	}
 }

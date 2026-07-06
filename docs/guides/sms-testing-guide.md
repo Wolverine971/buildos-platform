@@ -65,13 +65,13 @@ Twilio provides magic test numbers with specific behaviors:
 
 ```bash
 # Run all Twilio service tests
-pnpm test --filter=@buildos/twilio-service
+pnpm test:run --filter=@buildos/twilio-service
 
-# Run with coverage
-pnpm test:coverage --filter=@buildos/twilio-service
+# Run Twilio service tests in watch mode
+pnpm --filter @buildos/twilio-service test
 
-# Run in watch mode
-pnpm test:watch --filter=@buildos/twilio-service
+# Build the Twilio service package
+pnpm build --filter=@buildos/twilio-service
 ```
 
 ### Example Unit Tests
@@ -394,26 +394,20 @@ test.describe('SMS Phone Verification', () => {
 ### Quick Test Commands
 
 ```bash
-# Run all tests
-pnpm test
+# Run all tests in non-watch mode
+pnpm test:run
 
 # Run SMS package tests only
-pnpm test --filter=@buildos/twilio-service
+pnpm test:run --filter=@buildos/twilio-service
 
-# Run integration tests
-pnpm test:integration
+# Run worker integration tests if adding worker-side SMS coverage
+pnpm --filter @buildos/worker test:integration
 
-# Run E2E tests
-pnpm test:e2e
+# Run a specific Twilio package test file
+pnpm --filter @buildos/twilio-service test:run -- src/__tests__/sms.test.ts
 
-# Run specific test file
-pnpm test src/services/sms.test.ts
-
-# Run tests in watch mode
-pnpm test:watch
-
-# Generate coverage report
-pnpm test:coverage
+# Run Twilio package tests in watch mode
+pnpm --filter @buildos/twilio-service test
 ```
 
 ### Database Testing
@@ -587,20 +581,20 @@ jobs:
 
             - uses: pnpm/action-setup@v2
               with:
-                  version: 9
+                  version: 11.7.0
 
             - uses: actions/setup-node@v3
               with:
-                  node-version: 20
+                  node-version: 20.19
                   cache: 'pnpm'
 
             - run: pnpm install
 
             - run: pnpm build --filter=@buildos/twilio-service
 
-            - run: pnpm test --filter=@buildos/twilio-service
+            - run: pnpm test:run --filter=@buildos/twilio-service
 
-            - run: pnpm test:integration
+            - run: pnpm --filter @buildos/worker test:integration
 ```
 
 ## Test Coverage Goals

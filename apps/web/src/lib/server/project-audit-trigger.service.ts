@@ -105,6 +105,23 @@ async function createAuditChatSession(params: {
 	return session.id as string;
 }
 
+async function archiveChatSession(params: {
+	supabase: AnySupabase;
+	chatSessionId: string;
+}): Promise<void> {
+	const { error } = await params.supabase
+		.from('chat_sessions')
+		.update({ status: 'archived' })
+		.eq('id', params.chatSessionId)
+		.eq('status', 'active');
+	if (error) {
+		logger.warn('Archive duplicate audit chat session failed', {
+			chatSessionId: params.chatSessionId,
+			error: error.message
+		});
+	}
+}
+
 async function scheduleProjectAuditTriggerEvaluation(params: {
 	supabase: AnySupabase;
 	projectId: string;
@@ -248,6 +265,7 @@ export async function queueProjectAudit(params: {
 			projectId: params.projectId,
 			error: message
 		});
+		await archiveChatSession({ supabase, chatSessionId });
 		await captureAuditTriggerMetric({
 			userId: params.userId,
 			event: 'project_audit_queue_failed',
@@ -289,14 +307,17 @@ export async function queueProjectAudit(params: {
 	if (auditError || !auditRow?.id) {
 		const message = auditError?.message ?? 'Failed to create project audit';
 		logger.warn('Create project audit failed', { projectId: params.projectId, error: message });
-		await supabase
-			.from('project_loop_runs')
-			.update({
-				status: 'failed',
-				error_message: message,
-				finished_at: new Date().toISOString()
-			})
-			.eq('id', runRow.id);
+		await Promise.all([
+			supabase
+				.from('project_loop_runs')
+				.update({
+					status: 'failed',
+					error_message: message,
+					finished_at: new Date().toISOString()
+				})
+				.eq('id', runRow.id),
+			archiveChatSession({ supabase, chatSessionId })
+		]);
 		await captureAuditTriggerMetric({
 			userId: params.userId,
 			event: 'project_audit_queue_failed',
@@ -362,7 +383,8 @@ export async function queueProjectAudit(params: {
 					.from('project_audits')
 					.update({ status: 'failed', error_message: message, finished_at: now })
 					.eq('id', auditRow.id)
-					.eq('status', 'queued')
+					.eq('status', 'queued'),
+				archiveChatSession({ supabase, chatSessionId })
 			]);
 			await captureAuditTriggerMetric({
 				userId: params.userId,
@@ -440,7 +462,8 @@ export async function queueProjectAudit(params: {
 			supabase
 				.from('project_audits')
 				.update({ status: 'failed', error_message: message, finished_at: now })
-				.eq('id', auditRow.id)
+				.eq('id', auditRow.id),
+			archiveChatSession({ supabase, chatSessionId })
 		]);
 		await captureAuditTriggerMetric({
 			userId: params.userId,

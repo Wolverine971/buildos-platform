@@ -10,11 +10,34 @@ export interface StaleBriefJobDecision {
 	reason?: string;
 }
 
+export type ExistingBriefSkipReason = 'skipped_existing_brief' | 'skipped_fresh_processing_brief';
+
+export interface ExistingDailyBriefRecord {
+	id?: string | null;
+	generation_status?: string | null;
+	updated_at?: string | null;
+}
+
+export interface ExistingBriefJobDecision {
+	shouldSkip: boolean;
+	reason?: ExistingBriefSkipReason;
+	message?: string;
+	existingBriefId?: string;
+}
+
 interface StaleBriefJobParams {
 	briefDate: string;
 	timezone: string;
 	options?: BriefJobData['options'];
 	now?: Date;
+}
+
+interface ExistingBriefJobParams {
+	briefDate: string;
+	existingBrief?: ExistingDailyBriefRecord | null;
+	options?: BriefJobData['options'];
+	now?: Date;
+	freshProcessingWindowMs?: number;
 }
 
 interface ResolveBriefDateParams {
@@ -23,6 +46,8 @@ interface ResolveBriefDateParams {
 	notificationScheduledFor?: Date;
 	requestedBriefDate?: string;
 }
+
+export const FRESH_PROCESSING_BRIEF_WINDOW_MS = 10 * 60 * 1000;
 
 export function getLocalDateString(date: Date, timezone: string): string {
 	return format(toZonedTime(date, timezone), 'yyyy-MM-dd');
@@ -59,6 +84,49 @@ export function getStaleBriefJobDecision({
 		shouldSkip: false,
 		currentBriefDate
 	};
+}
+
+export function getExistingBriefJobDecision({
+	briefDate,
+	existingBrief,
+	options,
+	now = new Date(),
+	freshProcessingWindowMs = FRESH_PROCESSING_BRIEF_WINDOW_MS
+}: ExistingBriefJobParams): ExistingBriefJobDecision {
+	if (options?.forceRegenerate === true || !existingBrief) {
+		return { shouldSkip: false };
+	}
+
+	const existingBriefId = existingBrief.id ?? undefined;
+	const status = existingBrief.generation_status;
+
+	if (status === 'completed') {
+		return {
+			shouldSkip: true,
+			reason: 'skipped_existing_brief',
+			existingBriefId,
+			message: `Brief ${briefDate} already completed`
+		};
+	}
+
+	if (status === 'processing' && existingBrief.updated_at) {
+		const updatedAtMs = new Date(existingBrief.updated_at).getTime();
+
+		if (Number.isFinite(updatedAtMs)) {
+			const processingAgeMs = now.getTime() - updatedAtMs;
+
+			if (processingAgeMs <= freshProcessingWindowMs) {
+				return {
+					shouldSkip: true,
+					reason: 'skipped_fresh_processing_brief',
+					existingBriefId,
+					message: `Brief ${briefDate} is already processing`
+				};
+			}
+		}
+	}
+
+	return { shouldSkip: false };
 }
 
 export function resolveScheduledBriefDate({

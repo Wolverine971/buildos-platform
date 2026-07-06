@@ -85,6 +85,8 @@ export class RailwayWorkerService {
 			includeProjects?: string[];
 			excludeProjects?: string[];
 			useOntology?: boolean; // Use ontology-based brief generation
+			forceRegenerate?: boolean;
+			forceImmediate?: boolean;
 		}
 	): Promise<QueueBriefResponse> {
 		const targetTime = options?.scheduledFor || new Date();
@@ -103,7 +105,8 @@ export class RailwayWorkerService {
 				scheduledFor: targetTime.toISOString(),
 				briefDate: options?.briefDate, // Pass explicit brief date if provided
 				timezone: timezone, // Always include timezone,
-				forceRegenerate: true,
+				forceRegenerate: options?.forceRegenerate === true,
+				forceImmediate: options?.forceImmediate === true,
 				options: {
 					includeProjects: options?.includeProjects,
 					excludeProjects: options?.excludeProjects,
@@ -272,16 +275,15 @@ export class RailwayWorkerService {
 		try {
 			const pendingJobs = await this.getUserPendingJobs(userId, 'generate_daily_brief');
 
-			// Check for jobs scheduled for the target date
-			const targetDate = new Date(briefDate);
-			const targetDateStr = targetDate.toISOString().split('T')[0];
-
 			const activeJob = pendingJobs.find((job) => {
-				const jobDate = new Date(job.scheduled_for).toISOString().split('T')[0];
+				const metadata = job.metadata as { briefDate?: unknown } | null;
+				const jobBriefDate =
+					typeof metadata?.briefDate === 'string' ? metadata.briefDate : null;
+
 				return (
-					jobDate === targetDateStr &&
+					jobBriefDate === briefDate &&
 					job.job_type === 'generate_daily_brief' &&
-					job.status === 'processing'
+					(job.status === 'pending' || job.status === 'processing')
 				);
 			}) as BriefGenerationJob | undefined;
 

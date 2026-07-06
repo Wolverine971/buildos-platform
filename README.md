@@ -15,11 +15,11 @@ buildos-platform/
 │   └── worker/               # Node.js background worker (Railway)
 ├── packages/
 │   ├── shared-types/         # Generated DB types, queue types, API types
+│   ├── shared-agent-ops/     # Agent op layer shared by web gateway + worker Agent Run runner
 │   ├── shared-utils/         # Logging, metrics, shared utilities
 │   ├── smart-llm/            # LLM abstraction (OpenRouter + fallbacks)
 │   ├── supabase-client/      # Shared Supabase client configuration
 │   ├── twilio-service/       # SMS / Twilio integration
-│   ├── shared-agent-ops/     # Agent op layer shared by web gateway + worker Agent Run runner
 │   └── buildos-mcp-server/   # Local stdio MCP bridge to the remote BuildOS connector
 ├── docs/                     # Cross-cutting docs (architecture, marketing, ops)
 ├── scripts/                  # Type generation, schema extraction, tooling
@@ -43,7 +43,7 @@ buildos-platform/
 ### Prerequisites
 
 - Node.js **≥ 20.19** (Vercel runtime is `nodejs22.x`)
-- pnpm **≥ 9**
+- pnpm **>= 11** (the root package pins `pnpm@11.7.0`)
 - A Supabase project
 - OpenRouter API key (or OpenAI/Anthropic as fallback)
 
@@ -56,8 +56,8 @@ pnpm install
 pnpm dev
 
 # Single app
-pnpm dev --filter=web       # http://localhost:5173
-pnpm dev --filter=worker    # http://localhost:3001
+pnpm dev --filter=@buildos/web       # http://localhost:5173
+pnpm dev --filter=@buildos/worker    # http://localhost:3001
 ```
 
 ### Environment
@@ -97,23 +97,24 @@ Naming convention: `PUBLIC_*` for client-accessible, `PRIVATE_*` for server-only
 
 ```bash
 # Quality
-pnpm typecheck                    # All apps
-pnpm lint                         # All apps
+pnpm typecheck                    # All configured packages
+pnpm lint                         # All configured packages
 pnpm lint:fix
 pnpm format                       # Prettier
 pnpm pre-push                     # typecheck + test + lint + build
 
 # Tests
-pnpm test                         # Full suite
-pnpm test:run                     # No watch mode
+pnpm test:run                     # Full suite, no watch mode
+pnpm test:run --filter=@buildos/web
+pnpm test:run --filter=@buildos/worker
 cd apps/web && pnpm test path/to/file.test.ts    # Single file
 cd apps/web && pnpm test:llm      # LLM prompt tests (real API; costs money)
 cd apps/worker && pnpm test:scheduler
 
 # Build
 pnpm build
-pnpm build --filter=web
-pnpm build --filter=worker
+pnpm build --filter=@buildos/web
+pnpm build --filter=@buildos/worker
 
 # Generation
 pnpm gen:types                    # Regenerate Supabase types
@@ -145,9 +146,13 @@ Full guidelines in [`CLAUDE.md`](./CLAUDE.md).
 - [Web app](./apps/web/README.md) — SvelteKit app
 - [Worker service](./apps/worker/README.md) — background jobs & scheduler
 - [Docs hub](./docs/README.md) — cross-cutting docs
+- [Web docs hub](./apps/web/docs/README.md) — web features, technical notes, prompts, operations
+- [Worker docs hub](./apps/worker/docs/README.md) — worker jobs, flows, queue, deployment
 - [Architecture overview](./docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md)
 - [Queue system](./docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md)
 - [Inkprint design system](./apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md)
+- [Testing docs](./docs/testing/README.md)
+- [Open loose ends](./tasker/README.md) — active tracker for verification/shipping work
 - [Marketing docs](./docs/marketing/START_HERE.md)
 - [CLAUDE.md](./CLAUDE.md) ⭐ — full working guide for contributors and AI agents
 

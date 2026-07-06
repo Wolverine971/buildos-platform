@@ -3,11 +3,15 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	OntologyAnalysisPrompt,
-	OntologyProjectBriefPrompt
+	OntologyExecutiveSummaryPrompt,
+	OntologyProjectBriefPrompt,
+	getProjectPromptInclusionScore
 } from '../src/workers/brief/ontologyPrompts';
 import type {
 	CalendarBriefItem,
 	CalendarBriefSection,
+	GoalProgress,
+	OntoTask,
 	OntologyBriefData
 } from '../src/workers/brief/ontologyBriefTypes';
 
@@ -44,7 +48,34 @@ function createCalendarItem(
 	};
 }
 
-function createBriefData(calendar: CalendarBriefSection): OntologyBriefData {
+function createTask(overrides: Partial<OntoTask> = {}): OntoTask {
+	return {
+		id: 'task-1',
+		project_id: 'project-1',
+		title: 'Task',
+		state_key: 'todo',
+		type_key: 'task.execute',
+		priority: 3,
+		due_at: null,
+		start_at: null,
+		completed_at: null,
+		description: null,
+		deleted_at: null,
+		archived_at: null,
+		facet_scale: null,
+		created_by: 'actor-1',
+		created_at: '2025-12-01T00:00:00.000Z',
+		updated_at: '2025-12-16T00:00:00.000Z',
+		props: {},
+		search_vector: null,
+		...overrides
+	} as OntoTask;
+}
+
+function createBriefData(
+	calendar: CalendarBriefSection,
+	overrides: Partial<OntologyBriefData> = {}
+): OntologyBriefData {
 	return {
 		briefDate: '2025-12-17',
 		timezone: 'America/New_York',
@@ -54,6 +85,8 @@ function createBriefData(calendar: CalendarBriefSection): OntologyBriefData {
 		todaysTasks: [],
 		blockedTasks: [],
 		overdueTasks: [],
+		inProgressTasks: [],
+		staleInProgressTasks: [],
 		highPriorityCount: 0,
 		recentUpdates: {
 			tasks: [],
@@ -64,7 +97,46 @@ function createBriefData(calendar: CalendarBriefSection): OntologyBriefData {
 		projects: [],
 		calendar,
 		recentlyUpdatedTasks: [],
-		upcomingTasks: []
+		upcomingTasks: [],
+		...overrides
+	};
+}
+
+function createEmptyCalendarSection(): CalendarBriefSection {
+	return {
+		allItems: [],
+		today: [],
+		upcoming: [],
+		todayTotal: 0,
+		upcomingTotal: 0,
+		hiddenTodayCount: 0,
+		hiddenUpcomingCount: 0,
+		counts: {
+			today: {
+				total: 0,
+				google: 0,
+				internal: 0,
+				syncIssue: 0,
+				unconfirmedGoogle: 0,
+				staleGoogle: 0
+			},
+			upcoming: {
+				total: 0,
+				google: 0,
+				internal: 0,
+				syncIssue: 0,
+				unconfirmedGoogle: 0,
+				staleGoogle: 0
+			},
+			all: {
+				total: 0,
+				google: 0,
+				internal: 0,
+				syncIssue: 0,
+				unconfirmedGoogle: 0,
+				staleGoogle: 0
+			}
+		}
 	};
 }
 
@@ -73,7 +145,7 @@ describe('OntologyAnalysisPrompt calendar summary', () => {
 		const today = Array.from({ length: 4 }, (_, index) =>
 			createCalendarItem(`today-${index}`, `Today Event ${index}`)
 		);
-		const upcoming = Array.from({ length: 4 }, (_, index) =>
+		const upcoming = Array.from({ length: 6 }, (_, index) =>
 			createCalendarItem(`upcoming-${index}`, `Upcoming Event ${index}`, {
 				startAt: `2025-12-${18 + index}T15:00:00.000Z`,
 				endAt: `2025-12-${18 + index}T16:00:00.000Z`,
@@ -88,7 +160,7 @@ describe('OntologyAnalysisPrompt calendar summary', () => {
 				today,
 				upcoming,
 				todayTotal: 10,
-				upcomingTotal: 7,
+				upcomingTotal: 9,
 				hiddenTodayCount: 6,
 				hiddenUpcomingCount: 3,
 				counts: {
@@ -101,17 +173,17 @@ describe('OntologyAnalysisPrompt calendar summary', () => {
 						staleGoogle: 1
 					},
 					upcoming: {
-						total: 7,
+						total: 9,
 						google: 3,
-						internal: 4,
+						internal: 6,
 						syncIssue: 0,
 						unconfirmedGoogle: 1,
 						staleGoogle: 0
 					},
 					all: {
-						total: 17,
+						total: 19,
 						google: 10,
-						internal: 6,
+						internal: 8,
 						syncIssue: 1,
 						unconfirmedGoogle: 1,
 						staleGoogle: 1
@@ -121,23 +193,106 @@ describe('OntologyAnalysisPrompt calendar summary', () => {
 		});
 
 		expect(prompt).toContain('- Calendar Today: 10');
-		expect(prompt).toContain('- Calendar Upcoming: 7');
+		expect(prompt).toContain('- Calendar Upcoming: 9');
 		expect(prompt).toContain('## Calendar Summary');
 		expect(prompt).toContain(
 			'- Today: 10 items (7 Google, 2 internal, 1 sync issue, 1 stale Google)'
 		);
 		expect(prompt).toContain(
-			'- Upcoming next 7 days: 7 items (3 Google, 1 unconfirmed Google, 4 internal, 0 sync issues)'
+			'- Upcoming next 7 days: 9 items (3 Google, 1 unconfirmed Google, 6 internal, 0 sync issues)'
 		);
 		expect(prompt).toContain('Today Event 0');
 		expect(prompt).toContain('Today Event 1');
+		expect(prompt).toContain('Today Event 2');
+		expect(prompt).toContain('Today Event 3');
 		expect(prompt).toContain('Upcoming Event 0');
 		expect(prompt).toContain('Upcoming Event 1');
-		expect(prompt).toContain('- Hidden from prompt: 13 additional calendar items');
-		expect(prompt).not.toContain('Today Event 2');
-		expect(prompt).not.toContain('Today Event 3');
-		expect(prompt).not.toContain('Upcoming Event 2');
-		expect(prompt).not.toContain('Upcoming Event 3');
+		expect(prompt).toContain('Upcoming Event 2');
+		expect(prompt).toContain('Upcoming Event 3');
+		expect(prompt).toContain('Upcoming Event 4');
+		expect(prompt).toContain('- Hidden from prompt: 10 additional calendar items');
+		expect(prompt).not.toContain('Upcoming Event 5');
+	});
+});
+
+describe('OntologyExecutiveSummaryPrompt', () => {
+	it('includes goal task progress and yesterday continuity', () => {
+		const goal: GoalProgress = {
+			goal: {
+				id: 'goal-1',
+				name: 'Beta Launch',
+				state_key: 'active',
+				target_date: '2025-12-20T00:00:00.000Z'
+			} as any,
+			totalTasks: 7,
+			completedTasks: 3,
+			targetDate: '2025-12-20',
+			targetDaysAway: 3,
+			status: 'at_risk',
+			contributingTasks: []
+		};
+
+		const prompt = OntologyExecutiveSummaryPrompt.buildUserPrompt({
+			date: '2025-12-17',
+			timezone: 'America/New_York',
+			briefData: createBriefData(createEmptyCalendarSection(), {
+				goals: [goal],
+				projects: [
+					{
+						project: {
+							id: 'project-1',
+							name: 'Launch Plan',
+							state_key: 'active'
+						},
+						todaysTasks: [],
+						overdueTasks: [],
+						blockedTasks: [],
+						upcomingTasks: [],
+						recentlyUpdatedTasks: [],
+						calendarToday: [],
+						calendarUpcoming: [],
+						goals: [goal],
+						nextMilestone: null
+					} as any
+				]
+			}),
+			yesterdayPlan: [
+				{
+					action: 'Ship launch page',
+					status: 'still_open',
+					taskTitle: 'Ship launch page',
+					projectName: 'Launch Plan'
+				}
+			]
+		});
+
+		expect(prompt).toContain('3/7 tasks done');
+		expect(prompt).toContain("## Yesterday's Plan");
+		expect(prompt).toContain(
+			'- Ship launch page [still_open | task: Ship launch page | project: Launch Plan]'
+		);
+	});
+
+	it('scores overdue, at-risk goals, and calendar commitments for prompt inclusion', () => {
+		const score = getProjectPromptInclusionScore({
+			project: { name: 'Priority Project' },
+			todaysTasks: [createTask({ id: 'today' })],
+			overdueTasks: [createTask({ id: 'overdue' })],
+			goals: [
+				{
+					status: 'behind',
+					totalTasks: 1,
+					completedTasks: 0,
+					goal: { name: 'Behind goal' }
+				}
+			],
+			calendarToday: [createCalendarItem('event-1', 'Review')],
+			blockedTasks: [createTask({ id: 'blocked' })],
+			upcomingTasks: [createTask({ id: 'upcoming' })],
+			recentlyUpdatedTasks: [createTask({ id: 'recent' })]
+		} as any);
+
+		expect(score).toBe(15);
 	});
 });
 
@@ -206,7 +361,24 @@ describe('OntologyProjectBriefPrompt', () => {
 						displayDate: 'Thu Dec 18'
 					})
 				],
-				todaysTasks: [],
+				todaysTasks: [
+					createTask({
+						id: 'task-1',
+						title: 'Ship launch page',
+						priority: 1,
+						due_at: '2025-12-15T14:00:00.000Z',
+						start_at: '2025-12-17T14:00:00.000Z',
+						description: 'Publish the beta page after the final copy review.'
+					})
+				],
+				overdueTasks: [
+					createTask({
+						id: 'task-2',
+						title: 'Finalize pricing',
+						due_at: '2025-12-14T14:00:00.000Z',
+						description: 'Pick the beta price point.'
+					})
+				],
 				thisWeekTasks: [],
 				blockedTasks: [],
 				unblockingTasks: [],
@@ -223,6 +395,13 @@ describe('OntologyProjectBriefPrompt', () => {
 		expect(prompt).toContain('Launch Brief');
 		expect(prompt).toContain('## Plans');
 		expect(prompt).toContain('Beta Rollout');
+		expect(prompt).toContain(
+			'Ship launch page [P1] (execute) (due Dec 15 — 2 days overdue; starts Dec 17) — Publish the beta page after the final copy review.'
+		);
+		expect(prompt).toContain('## Overdue Tasks (1)');
+		expect(prompt).toContain(
+			'Finalize pricing (execute) (due Dec 14 — 3 days overdue) — Pick the beta price point.'
+		);
 		expect(prompt.toLowerCase()).not.toContain('time block');
 		expect(prompt.toLowerCase()).not.toContain('timeblock');
 	});

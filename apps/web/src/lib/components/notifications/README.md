@@ -9,10 +9,10 @@
 
 📚 **Documentation:**
 
-- **[Documentation Map](../../../../../../NOTIFICATION_SYSTEM_DOCS_MAP.md)** - Guide to all notification docs and where to find things
-- [Implementation Summary](../../../../../../NOTIFICATION_SYSTEM_IMPLEMENTATION.md) - Complete implementation details
-- [Original Specification](../../../../../../generic-stackable-notification-system-spec.md) - Full technical spec
-- [Main CLAUDE.md](../../../CLAUDE.md#feature-specific-documentation-root-level) - Project guidelines
+- **[Documentation Map](../../../../docs/features/notifications/NOTIFICATION_SYSTEM_DOCS_MAP.md)** - Guide to all notification docs and where to find things
+- [Implementation Summary](../../../../docs/features/notifications/NOTIFICATION_SYSTEM_IMPLEMENTATION.md) - Complete implementation details
+- [Original Specification](../../../../docs/features/notifications/generic-stackable-notification-system-spec.md) - Full technical spec
+- [Main CLAUDE.md](../../../../../../CLAUDE.md#documentation) - Project guidelines
 
 🔗 **Key Files:**
 
@@ -61,7 +61,7 @@
 **Testing interface** ⚠️ Remove before production
 
 - 5 test scenarios (Phase Gen, Calendar, Error, Clear All, Generic)
-- See: [Testing Documentation](../../../../../../NOTIFICATION_SYSTEM_IMPLEMENTATION.md#testing)
+- See: [Testing Documentation](../../../../docs/features/notifications/NOTIFICATION_SYSTEM_IMPLEMENTATION.md#testing)
 
 ---
 
@@ -197,7 +197,7 @@ data: {
 
 ## Store Methods
 
-See: [API Reference](../../../../../../NOTIFICATION_SYSTEM_IMPLEMENTATION.md#api-reference)
+See: [API Reference](../../../../docs/features/notifications/NOTIFICATION_SYSTEM_IMPLEMENTATION.md#api-reference)
 
 **Core Operations:**
 
@@ -251,7 +251,7 @@ update((state) => {
 
 **Why?** Svelte 5's fine-grained reactivity with `$derived()` tracks object references. Mutating a Map in-place keeps the same reference, so reactivity doesn't detect the change.
 
-See: [Full explanation](../../../../../../NOTIFICATION_SYSTEM_IMPLEMENTATION.md#4-svelte-5-map-reactivity-issue-critical-fix)
+See: [Full explanation](../../../../docs/features/notifications/NOTIFICATION_SYSTEM_IMPLEMENTATION.md#4-svelte-5-map-reactivity-issue-critical-fix)
 
 ### SSR Safety
 
@@ -288,13 +288,13 @@ onDestroy(() => {
 
 **Phase 3-5:** Phase Generation, Calendar Analysis, Polish
 
-- See: [Roadmap](../../../../../../NOTIFICATION_SYSTEM_IMPLEMENTATION.md#next-steps-future-phases)
+- See: [Roadmap](../../../../docs/features/notifications/NOTIFICATION_SYSTEM_IMPLEMENTATION.md#next-steps-future-phases)
 
 ---
 
 ## Need Help?
 
-1. Check [Implementation Summary](../../../../../../NOTIFICATION_SYSTEM_IMPLEMENTATION.md) for complete details
-2. Review [Original Specification](../../../../../../generic-stackable-notification-system-spec.md) for architecture
+1. Check [Implementation Summary](../../../../docs/features/notifications/NOTIFICATION_SYSTEM_IMPLEMENTATION.md) for complete details
+2. Review [Original Specification](../../../../docs/features/notifications/generic-stackable-notification-system-spec.md) for architecture
 3. Look at `NotificationTestButtons.svelte` for usage examples
 4. Check inline code comments in `notification.store.ts`

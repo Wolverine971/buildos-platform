@@ -19,36 +19,35 @@ This is **web app-specific** documentation (`/apps/web`).
 - SvelteKit API routes (SSE streaming, CRUD operations)
 - Real-time updates via Supabase subscriptions
 - Google Calendar integration (frontend + API)
-- Stripe payments (optional, via `ENABLE_STRIPE` flag)
+- Stripe payments (optional, via `PRIVATE_ENABLE_STRIPE` flag)
 
 ## Tech Stack
 
 - **Framework:** SvelteKit 2 + Svelte 5 (runes syntax)
 - **Database:** Supabase (via `@buildos/supabase-client`)
 - **Auth:** Supabase Auth + Google OAuth
-- **AI:** OpenAI API with streaming support
+- **AI:** OpenRouter primary via shared LLM services, with OpenAI/Anthropic fallbacks where configured
 - **Deployment:** Vercel (serverless functions)
 - **Shared Packages:** `@buildos/shared-types`, `@buildos/supabase-client`
 
 ## Documentation Structure
 
-| Folder           | Contents                           | README | Key Documents                                                         |
-| ---------------- | ---------------------------------- | ------ | --------------------------------------------------------------------- |
-| `/features/`     | Feature specs and designs          | ⭐ Yes | brain-dump, calendar, **chat-system**, notifications, admin-dashboard |
-| `/audits/`       | Feature audits & implementation    | ⭐ Yes | Core columns, notifications, implementation reviews                   |
-| `/design/`       | Design system and UI specs         | ⭐ Yes | style guide, design patterns, component standards                     |
-| `/development/`  | Dev guides and conventions         | Yes    | testing, patterns, setup, migration tracking                          |
-| `/operations/`   | Deployment and ops                 | ⭐ Yes | Vercel config, runbooks, monitoring                                   |
-| `/migrations/`   | Migration tracking                 | ⭐ Yes | active migrations (Phase 2.2, Phase 3, type updates)                  |
-| `/integrations/` | Third-party services               | ⭐ Yes | Stripe (50%), Google Calendar, OAuth, OpenAI, Twilio (planned)        |
-| `/prompts/`      | LLM prompt templates               | Yes    | brain dump prompts, AI processing, **chat context**                   |
-| `/technical/`    | Technical documentation (detailed) | No     | architecture, API, database, services, deployment                     |
+| Folder               | Contents                          | README | Key Documents                                                      |
+| -------------------- | --------------------------------- | ------ | ------------------------------------------------------------------ |
+| `/features/`         | Feature specs and designs         | Yes    | agentic-chat, calendar, notifications, ontology, onboarding        |
+| `/design/`           | Design system and UI specs        | Yes    | design principles, page patterns, context architecture             |
+| `/development/`      | Dev guides and conventions        | Yes    | testing, patterns, setup, migration tracking                       |
+| `/operations/`       | Deployment and ops                | Yes    | Vercel config, deployment runbooks                                 |
+| `/migrations/`       | Migration tracking                | Yes    | completed migration notes                                          |
+| `/integrations/`     | Third-party services              | Yes    | integration notes for external services                            |
+| `/prompts/`          | LLM prompt templates              | Yes    | brain dump prompts, agent prompts, compression prompts             |
+| `/technical/`        | Detailed technical documentation  | Yes    | architecture, API, audits, components, database, services, testing |
+| `/technical/audits/` | Technical audits and review plans | No     | current implementation audits and handoffs                         |
 
 **Note:**
 
-- ⭐ **NEW directories with README.md files** for easy navigation
 - Some documentation exists in both `/features/` and `/technical/` for comprehensive coverage
-- `/audits/` contains feature-specific implementation reviews (NEW as of Oct 20, 2025)
+- Current audit/review work lives under `/technical/audits/`
 
 ## Quick Start for LLM Agents
 
@@ -77,25 +76,22 @@ This is **web app-specific** documentation (`/apps/web`).
 
 ## Key Features
 
-### 🤖 AI Chat System with Progressive Disclosure
+### 🤖 Agentic Chat
 
-**Location:** `/features/chat-system/`
-**Architecture:** `/features/chat-system/ARCHITECTURE.md`
-**Implementation Status:** ✅ **COMPLETE** (October 2025)
+**Location:** `/features/agentic-chat/`
+**Implementation Status:** Current V2 stream/prewarm path documented as of July 2026
 
-Revolutionary context-aware chat system with 72% token reduction:
+Production chat surface with:
 
-- **Progressive Disclosure Pattern**: Two-tier data loading (abbreviated → detailed)
-- **20+ Integrated Tools**: Calendar, tasks, projects, notes management
-- **Real-time SSE Streaming**: Instant AI responses with tool visualization
-- **Smart Context Management**: Automatic context assembly from current page
-- **Secure Markdown Rendering**: Centralized HTML sanitization
-- **Multiple Access Methods**: Keyboard shortcut (Cmd/Ctrl+K), header button, FAB
+- V2 stream API, cancel API, and prepared-prompt prewarm
+- Context/project/focus routing
+- Tool discovery and direct tool execution
+- Turn observability, timing metrics, and session persistence
+- Image attachments with stream-time validation
 
 ### Brain Dump System
 
-**Location:** `/features/brain-dump/`
-**Architecture:** `/technical/architecture/brain-dump-flow.md`
+**Location:** `/features/braindump-context/`
 
 Stream-of-consciousness input that AI processes into projects and tasks. Supports:
 
@@ -156,15 +152,13 @@ Admin dashboard for monitoring LLM API usage, costs, and performance:
 
 ## 🔍 Feature Audits & Implementation Status
 
-**Location:** `/audits/` (NEW - Oct 20, 2025)
+**Location:** `/technical/audits/`
 
-Comprehensive reviews of feature implementations:
+Comprehensive reviews, repair plans, and handoffs for current implementation work. Recent examples include:
 
-- **Core Columns** (⚠️ **CRITICAL GAPS**) - 9 new core dimension columns partially integrated
-- **Notifications Logging** (✅ Complete) - End-to-end correlation tracking system
-- **Notification Preferences** (✅ Complete) - Notification preferences refactor
-
-See `/audits/README.md` for full audit status and details.
+- Agentic chat live sync, search, security, and empty-synthesis repair plans
+- Admin chat/session extraction and analytics audits
+- Onboarding and marketing-site implementation reviews
 
 ## Development Commands
 
@@ -172,7 +166,7 @@ See `/audits/README.md` for full audit status and details.
 # Development
 pnpm dev               # Standard dev server
 pnpm dev:split         # Dev with type checking in parallel (recommended)
-pnpm dev:fast          # Quick dev without type checking
+pnpm dev:clean         # Clear local Vite/SvelteKit cache, then start dev
 
 # Testing
 pnpm test              # Unit tests
@@ -186,7 +180,7 @@ pnpm lint:fix          # Auto-fix linting issues
 
 # Building
 pnpm build             # Production build
-cd .. && pnpm build --filter=web  # Build from monorepo root
+cd ../.. && pnpm build --filter=@buildos/web  # Build from monorepo root
 ```
 
 ## Environment Variables
@@ -199,9 +193,10 @@ See [Deployment Environment Checklist](/docs/operations/environment/DEPLOYMENT_E
 PUBLIC_SUPABASE_URL=
 PUBLIC_SUPABASE_ANON_KEY=
 PRIVATE_SUPABASE_SERVICE_KEY=
-OPENAI_API_KEY=
+PRIVATE_OPENROUTER_API_KEY=
+PRIVATE_OPENAI_API_KEY=
 PUBLIC_GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
+PRIVATE_GOOGLE_CLIENT_SECRET=
 ```
 
 ## Deployment
@@ -214,15 +209,7 @@ See `/operations/deployment/` for complete deployment guides:
 
 ## Migrations
 
-### Active Migrations
-
-See `/migrations/active/` for completed and ongoing migration work:
-
-- **Phase 2.2**: Store structure flattening (`PHASE_2_2_STORE_FLATTENING.md`)
-- **Phase 3**: Performance optimizations (`PHASE_3_PERFORMANCE_OPTIMIZATIONS.md`)
-- **Phase 2**: Brain dump migration (`PHASE_2_BRAIN_DUMP_MIGRATION_STATUS.md`)
-- **Type System**: Type updates and fixes (`TYPE_UPDATE_PROGRESS.md`, `TYPEFIX_PLAN.md`)
-- **Implementation**: Progress tracking (`IMPLEMENTATION_PROGRESS.md`)
+Migration notes live in `/migrations/` with completed migration records under `/migrations/completed/`.
 
 ## Related Documentation
 

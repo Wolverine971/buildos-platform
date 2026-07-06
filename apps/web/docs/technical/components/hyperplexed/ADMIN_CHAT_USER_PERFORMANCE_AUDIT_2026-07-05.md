@@ -19,19 +19,24 @@
 
 - `+page.svelte` was 2,698 lines at audit time, 2,677 lines after the first Phase 1 cleanup,
   2,013 lines after the first Phase 2 extraction pass, and 1,834 lines after the table/mobile-card
-  extraction pass, 1,746 lines after the filter extraction pass, and 835 lines after the drawer
-  extraction pass.
-- `ChatUserDetailDrawer.svelte` is 885 lines after extracting the 288-line redacted session timeline
-  component.
-- `admin-chat-user-analytics.ts` was 3,013 lines at audit time and is 3,027 lines after adding the
-  redacted-session threshold contract.
+  extraction pass, 1,746 lines after the filter extraction pass, and 834 lines after the drawer
+  extraction pass, and 712 lines after export-helper extraction.
+- `ChatUserDetailDrawer.svelte` is 316 lines after extracting the 288-line redacted session timeline
+  component, the 196-line entity changes component, the 78-line issue clusters component, and the
+  47-line tools/errors component, the 35-line summary cards component, the 59-line comparison panel,
+  the 33-line activity timeline, and the 202-line recent sessions list.
+- `chat-user-export.ts` is 232 lines for pure CSV/JSON file builders and the thin browser download
+  helper; `chat-user-export.test.ts` is 200 lines.
+- `admin-chat-user-analytics.ts` was 3,013 lines at audit time, 3,096 lines after the first Phase 3
+  redaction extraction, and 2,973 lines after query parser extraction. `redaction.ts` is 35 lines,
+  `redaction.test.ts` is 30 lines, `query.ts` is 142 lines, and `query.test.ts` is 112 lines.
 - The three route handlers are thin and consistent: admin gate, query parsing, service call,
   redaction assertion, response.
 - Focused backend/API tests exist and pass:
-  `./node_modules/.bin/vitest run src/lib/server/admin-chat-user-analytics.test.ts src/routes/api/admin/chat/users/server.test.ts`
-  -> 2 files, 28 tests passed after Phase 2 redacted timeline extraction.
+  `./node_modules/.bin/vitest run src/lib/server/admin-chat-user-analytics/query.test.ts src/lib/server/admin-chat-user-analytics/redaction.test.ts src/lib/components/admin/chat-users/chat-user-export.test.ts src/lib/server/admin-chat-user-analytics.test.ts src/routes/api/admin/chat/users/server.test.ts`
+  -> 5 files, 38 tests passed after Phase 3 query extraction.
 - `NODE_OPTIONS='--max-old-space-size=8192' ./node_modules/.bin/svelte-check --tsconfig ./tsconfig.json`
-  -> 0 errors and 0 warnings after Phase 2 redacted timeline extraction.
+  -> 0 errors and 0 warnings after Phase 3 query extraction.
 - No Svelte/UI test exists for this page. Current frontend regressions would mostly be caught by
   manual QA or full `svelte-check`, not by focused page tests.
 - The implementation spec for this feature is currently untracked, so this audit is a separate
@@ -67,7 +72,7 @@ Still open:
 - Remaining component extraction, raw command control cleanup, shared DTO split, page-level UI tests,
   and live visual verification.
 
-## Phase 2 Progress - 2026-07-05
+## Phase 2 Progress - 2026-07-05 to 2026-07-06
 
 Shipped:
 
@@ -86,10 +91,48 @@ Shipped:
   lock, with background content marked inert while open. -> P13
 - Extracted `ChatRedactedSessionTimeline.svelte` for the selected redacted-session summary, turn list,
   entity-change chips, and safe event timeline.
+- Extracted `ChatEntityChanges.svelte` for entity-group selection, filtered safe entity refs, and
+  session timeline shortcuts.
+- Extracted `ChatIssueClusters.svelte` for grouped safe error summaries; its timeline shortcut now
+  uses the shared `Button` primitive. -> P13
+- Extracted `ChatToolsAndErrors.svelte` for the drawer's top tools and recent safe error summaries.
+- Extracted `ChatUserSummaryCards.svelte` for the drawer's four summary KPI cards.
+- Extracted `ChatUserComparisonPanel.svelte` for cohort-baseline metrics.
+- Extracted `ChatUserActivityTimeline.svelte` for daily activity rows.
+- Extracted `ChatUserSessionsList.svelte` for queue status, session badges, metrics, and project
+  chips.
+- Converted the recent-session timeline action to the shared `Button` primitive, added focus-visible
+  treatment to session links, and encoded the full-session audit URL. -> P13
+- Replaced repeated drawer alert-badge helper calls with a single derived value.
+- Added `chat-user-export.ts` for pure users CSV, users JSON, and user-detail JSON file builders.
+- Added `chat-user-export.test.ts` coverage for CSV escaping, nested user summary columns, filename
+  sanitization, and detail JSON context.
 
 Still open:
 
-- Export helper extraction, page-level UI tests, and live visual verification.
+- Page-level UI tests and live visual verification.
+
+## Phase 3 Progress - 2026-07-06
+
+Shipped:
+
+- Extracted the recursive forbidden-key privacy guard into
+  `src/lib/server/admin-chat-user-analytics/redaction.ts`.
+- Kept the existing `assertAdminChatUserAnalyticsRedacted` service export stable so API routes and
+  existing tests do not need import changes.
+- Added `redaction.test.ts` coverage for safe aggregate payloads, nested forbidden-key paths, and
+  array-contained raw tool payloads.
+- Extracted query parsing, bounded request defaults, sort allow-lists, and
+  `DEFAULT_SLOW_THRESHOLD_MS` to `src/lib/server/admin-chat-user-analytics/query.ts`.
+- Kept the existing parser exports stable from `admin-chat-user-analytics.ts` so API route imports do
+  not need to change yet.
+- Added `query.test.ts` coverage for list, detail, and redacted-session query parsing fallbacks and
+  clamps.
+
+Still open:
+
+- Shared DTO split, row loaders, rollup core, detail builder, redacted-session builder, and broader
+  backend module tests.
 
 ## Findings
 
@@ -275,6 +318,8 @@ apps/web/src/lib/components/admin/chat-users/
   ChatRedactedSessionTimeline.svelte
   ChatIssueClusters.svelte
   ChatEntityChanges.svelte
+  ChatToolsAndErrors.svelte
+  chat-user-export.ts
   chat-user-ui.ts
 ```
 
@@ -287,16 +332,24 @@ Work:
 - [x] Extract drawer into a component with proper dialog semantics, Escape close, and focus restore.
       -> P13
 - [x] Extract redacted session timeline.
+- [x] Extract entity changes.
+- [x] Extract issue clusters.
+- [x] Extract tools and errors.
+- [x] Extract summary cards.
+- [x] Extract comparison panel.
+- [x] Extract activity timeline.
+- [x] Extract sessions list.
 - [x] Extract issue cluster and alert badge helpers into `chat-user-ui.ts`.
+- [x] Move export CSV/JSON helpers out of the page into `chat-user-export.ts`.
+- [x] Add focused unit tests for `chat-user-export.ts`.
 - [ ] Add focused unit tests for `chat-user-ui.ts` helpers.
-- [ ] Move export CSV/JSON helpers out of the page into a pure utility where practical.
 
 Verification:
 
 - `NODE_OPTIONS='--max-old-space-size=8192' ./node_modules/.bin/svelte-check --tsconfig ./tsconfig.json`
-  -> 0 errors and 0 warnings after the redacted timeline extraction.
-- `./node_modules/.bin/vitest run src/lib/server/admin-chat-user-analytics.test.ts src/routes/api/admin/chat/users/server.test.ts`
-  -> 2 files, 28 tests passed after the redacted timeline extraction.
+  -> 0 errors and 0 warnings after the export-helper extraction.
+- `./node_modules/.bin/vitest run src/lib/components/admin/chat-users/chat-user-export.test.ts src/lib/server/admin-chat-user-analytics.test.ts src/routes/api/admin/chat/users/server.test.ts`
+  -> 3 files, 31 tests passed after the export-helper extraction.
 - Pending: page tests updated to target behavior rather than implementation details.
 - Pending: manual keyboard pass through filter controls, table sort, drawer, session timeline, entity
   changes.
@@ -322,8 +375,8 @@ apps/web/src/lib/server/admin-chat-user-analytics/
 Work:
 
 - [ ] Move exported response/query row types to `src/lib/types/admin-chat-user-analytics.ts`.
-- [ ] Move query parsing and constants to `query.ts`.
-- [ ] Move `FORBIDDEN_PAYLOAD_KEYS` and recursive assertion to `redaction.ts`.
+- [x] Move query parsing and constants to `query.ts`.
+- [x] Move `FORBIDDEN_PAYLOAD_KEYS` and recursive assertion to `redaction.ts`.
 - [ ] Move `fetchPagedRows`, `fetchChunkedRows`, and `loadAnalyticsRows` to `row-loaders.ts`.
 - [ ] Move `buildAdminChatUserAnalyticsCore` and rollup helpers to `rollups.ts`.
 - [ ] Move `buildAdminChatUserDetail` and detail-only helpers to `detail.ts`.
@@ -334,7 +387,10 @@ Verification:
 
 - Existing `admin-chat-user-analytics.test.ts` split or expanded by module.
 - Existing API route tests remain green.
-- Add explicit tests for slow-threshold propagation and redacted session severity.
+- Add explicit tests for slow-threshold propagation, redacted session severity, and query parser
+  fallbacks.
+    - `./node_modules/.bin/vitest run src/lib/server/admin-chat-user-analytics/query.test.ts src/lib/server/admin-chat-user-analytics/redaction.test.ts src/lib/components/admin/chat-users/chat-user-export.test.ts src/lib/server/admin-chat-user-analytics.test.ts src/routes/api/admin/chat/users/server.test.ts`
+      -> 5 files, 38 tests passed after the query extraction.
 
 ### Phase 4 - Backend performance and contract hardening
 

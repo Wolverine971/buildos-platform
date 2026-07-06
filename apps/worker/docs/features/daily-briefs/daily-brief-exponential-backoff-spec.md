@@ -65,7 +65,7 @@ Batch mode uses two queries for all users: one `users` query and one latest-brie
 
 The current implementation uses exact-day gates for the 4-day and 14-day re-engagement sends. If the scheduler misses that day because of downtime or deployment timing, the user can fall into the skip band until a later dormant check-in. The dormant check-in also requires both 60+ days since login and 90+ days since last brief, so a user who received the 14-day re-engagement cannot receive the first dormant check-in until roughly day 104.
 
-This is documented as a follow-up in `apps/worker/docs/WORKER_FLOW_AUDIT_2026-07-01.md`.
+Track follow-up cleanup in `apps/worker/docs/features/daily-briefs/DAILY_BRIEF_CLEANUP_PLAN_2026-07-06.md`.
 
 ## Tests
 

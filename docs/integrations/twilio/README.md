@@ -148,7 +148,7 @@ user_sms_preferences
 - `task_reminders` - Never implemented
 - `next_up_enabled` - Never implemented
 
-See [SMS Deprecation Migration](/thoughts/shared/research/2025-10-13_17-40-27_sms-flow-deprecation-migration-plan.md) for details.
+The SMS deprecation migration notes are historical; current behavior is documented in this README and in the worker/web SMS code paths.
 
 ## API Endpoints
 

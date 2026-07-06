@@ -222,5 +222,14 @@ describe('queueProjectLoop', () => {
 			{ column: 'id', value: 'loop-run-1' },
 			{ column: 'status', value: 'queued' }
 		]);
+		expect(operations).toContainEqual({
+			table: 'chat_sessions',
+			action: 'update',
+			payload: { status: 'archived' },
+			filters: [
+				{ column: 'id', value: 'chat-1' },
+				{ column: 'status', value: 'active' }
+			]
+		});
 	});
 });

@@ -17,7 +17,7 @@ BuildOS keeps all product and interface guidance in this directory.
 | Document                                                                                   | Purpose                                              | Status    |
 | ------------------------------------------------------------------------------------------ | ---------------------------------------------------- | --------- |
 | [INKPRINT_DESIGN_SYSTEM.md](/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md) | **PRIMARY** - Complete Inkprint design specification | ✅ Active |
-| [INKPRINT_MIGRATION.md](/apps/web/docs/technical/INKPRINT_MIGRATION.md)                    | Migration tracker and progress                       | ✅ Active |
+| [INKPRINT_MIGRATION.md](../technical/INKPRINT_MIGRATION.md)                                | Migration tracker and progress                       | ✅ Active |
 
 ## Supporting Documentation
 
@@ -32,10 +32,10 @@ These documents remain useful for understanding BuildOS architecture and pattern
 
 These documents describe the **previous** design system and are retained for historical reference:
 
-| Document                                                       | Status          | Notes                        |
-| -------------------------------------------------------------- | --------------- | ---------------------------- |
-| [design-system.md](design-system.md)                           | ⚠️ **Outdated** | Old Apple-inspired patterns  |
-| [components/modal-standards.md](components/modal-standards.md) | ⚠️ **Outdated** | See Modal docs in technical/ |
+| Document                                                                 | Status          | Notes                       |
+| ------------------------------------------------------------------------ | --------------- | --------------------------- |
+| [BUILDOS_STYLE_GUIDE.md](../technical/components/BUILDOS_STYLE_GUIDE.md) | ⚠️ **Outdated** | Old Apple-inspired patterns |
+| [MODAL_STANDARDS.md](../technical/components/MODAL_STANDARDS.md)         | ⚠️ **Outdated** | See Modal docs in technical |
 
 ## Inkprint Design System Quick Reference
 
@@ -58,10 +58,7 @@ When building or updating components:
 ```
 design/
 |-- README.md
-|-- design-system.md (outdated - see Inkprint)
 |-- design-principles-checklist.md
-|-- components/
-|   |-- modal-standards.md (outdated - see technical/)
 |-- calendar-per-project-architecture.md
 |-- calendar-webhook-integration.md
 |-- context-framework-philosophy.md

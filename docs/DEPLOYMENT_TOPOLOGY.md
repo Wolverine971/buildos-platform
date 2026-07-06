@@ -26,7 +26,7 @@
 External Services:
 - Google OAuth (Authentication)
 - Google Calendar API (Calendar sync)
-- OpenAI API (AI processing)
+- OpenRouter / OpenAI / Anthropic APIs (AI processing)
 - Stripe (Payments - optional)
 - Twilio (SMS - optional)
 ```
@@ -49,11 +49,15 @@ External Services:
 
 **Environment:** Serverless (Vercel Functions)  
 **URL:** buildos.app  
-**Build Command:** `pnpm build --filter=web`  
+**Build Command:** `pnpm build --filter=@buildos/web`  
 **Dependencies:**
 
 - `@buildos/shared-types`
+- `@buildos/shared-agent-ops`
+- `@buildos/shared-utils`
+- `@buildos/smart-llm`
 - `@buildos/supabase-client`
+- `@buildos/twilio-service`
 
 **Key Features:**
 
@@ -67,21 +71,25 @@ External Services:
 
 **Location:** `/apps/worker/`  
 **Documentation:** `/apps/worker/docs/`  
-**Deployment Guide:** `/apps/worker/docs/RAILWAY_DEPLOYMENT.md`
+**Deployment Guide:** `/apps/worker/docs/deployment/RAILWAY_DEPLOYMENT.md`
 
 **Purpose:**
 
-- Background job processing (BullMQ with Supabase queue)
-- Daily brief generation and email delivery
+- Background job processing with the Supabase queue
+- Daily brief generation and notification fanout
 - Scheduled tasks via cron jobs
 - Asynchronous operations offloaded from web
+- Authenticated worker API routes for enqueueing jobs, classification, status, and operations
 
 **Environment:** Long-running Node.js process  
 **URL:** Railway private URL  
-**Build Command:** `pnpm build --filter=worker`  
+**Build Command:** `pnpm build --filter=@buildos/worker`
 **Dependencies:**
 
 - `@buildos/shared-types`
+- `@buildos/shared-agent-ops`
+- `@buildos/shared-utils`
+- `@buildos/smart-llm`
 - `@buildos/supabase-client`
 - `@buildos/twilio-service`
 
@@ -90,7 +98,7 @@ External Services:
 - Daily brief email generation
 - Queue job processing
 - Scheduled tasks (cron)
-- Email delivery via Nodemailer
+- Notification email delivery through worker-to-web webhooks
 - SMS notifications via Twilio (optional)
 
 ## Shared Packages
@@ -107,6 +115,18 @@ Key types:
 - Queue job types
 - API request/response types
 - Domain models
+
+### @buildos/shared-agent-ops
+
+**Location:** `/packages/shared-agent-ops/`  
+**Purpose:** Agent operation, ontology, gateway, inbox, and project loop helpers shared across runtimes  
+**Used By:** Web, Worker
+
+### @buildos/shared-utils
+
+**Location:** `/packages/shared-utils/`  
+**Purpose:** Shared utilities and services  
+**Used By:** Web, Worker, shared packages
 
 ### @buildos/supabase-client
 
@@ -141,6 +161,12 @@ Features:
 **Purpose:** LLM service abstraction with provider routing
 **Used By:** Web, Worker
 
+### @buildos/mcp-server
+
+**Location:** `/packages/buildos-mcp-server/`  
+**Purpose:** Local stdio MCP bridge to the remote BuildOS connector  
+**Used By:** Local MCP clients
+
 ## Data Flow Examples
 
 ### Brain Dump Processing
@@ -164,9 +190,13 @@ Scheduler (Cron) → Worker
     ↓
 Worker queries Supabase
     ↓
-Worker generates brief via OpenAI
+Worker generates brief via the configured LLM adapter
     ↓
-Worker sends email via Nodemailer
+Worker stores the brief and emits `brief.completed`
+    ↓
+Notification worker fans out email, SMS, push, and in-app delivery
+    ↓
+Worker calls web email webhook when email delivery is needed
     ↓
 Job status updated in Supabase
     ↓
@@ -195,10 +225,16 @@ Calendar changes synced to database
 
 ### Web ↔ Worker
 
-- **Queue Jobs:** Web creates jobs in `queue_jobs` table via `add_queue_job()` RPC
-- **Status Updates:** Worker updates job status, web receives real-time notifications
-- **Real-Time:** Supabase Realtime broadcasts for instant updates (no polling)
-- **No Direct HTTP:** All communication through Supabase PostgreSQL
+- **Queue Jobs:** Web enqueues asynchronous work either through worker API routes or shared
+  Supabase queue helpers backed by `add_queue_job()` RPC
+- **Worker API:** Railway exposes authenticated Express routes such as `/queue/brief`,
+  `/queue/onboarding`, `/queue/chat/classify`, `/queue/braindump/process`, `/jobs/:jobId`,
+  and `/queue/stats`
+- **Worker Callbacks:** Worker-to-web callbacks use `PRIVATE_BUILDOS_WEBHOOK_SECRET` for
+  notification email and calendar-sync webhooks
+- **Status Updates:** Worker updates job status in Supabase; web reads status from API routes,
+  queue records, and realtime subscriptions depending on the flow
+- **Real-Time:** Supabase Realtime still handles live UI updates for supported flows
 
 ### Web ↔ Supabase
 
@@ -220,24 +256,31 @@ Calendar changes synced to database
 PUBLIC_SUPABASE_URL=          # Supabase project URL
 PUBLIC_SUPABASE_ANON_KEY=     # Supabase anonymous key
 PRIVATE_SUPABASE_SERVICE_KEY= # Supabase service role key
-OPENAI_API_KEY=               # OpenAI API key
 ```
 
 ### Web-Specific
 
 ```bash
 PUBLIC_GOOGLE_CLIENT_ID=      # Google OAuth client ID
-GOOGLE_CLIENT_SECRET=         # Google OAuth secret
-ENABLE_STRIPE=false           # Enable Stripe payments
+PRIVATE_GOOGLE_CLIENT_SECRET= # Google OAuth secret
+PUBLIC_RAILWAY_WORKER_URL=    # Worker service URL
+PRIVATE_RAILWAY_WORKER_TOKEN= # Shared bearer token for worker calls
+PRIVATE_BUILDOS_WEBHOOK_SECRET= # Shared secret for worker-to-web callbacks
+PRIVATE_ENABLE_STRIPE=false   # Enable Stripe payments
 STRIPE_SECRET_KEY=            # Stripe API key (if enabled)
 ```
 
 ### Worker-Specific
 
 ```bash
-PUBLIC_RAILWAY_WORKER_URL=    # Worker service URL
+PRIVATE_RAILWAY_WORKER_TOKEN= # Shared bearer token for worker calls
+PRIVATE_BUILDOS_WEBHOOK_SECRET= # Shared secret for worker-to-web callbacks
+PRIVATE_OPENROUTER_API_KEY=   # Worker LLM API key
+PRIVATE_OPENAI_API_KEY=       # Optional OpenAI fallback / transcription API key
+PUBLIC_APP_URL=               # Web app URL for generated links and callbacks
 PRIVATE_TWILIO_ACCOUNT_SID=   # Twilio account SID (optional)
 PRIVATE_TWILIO_AUTH_TOKEN=    # Twilio auth token (optional)
+PRIVATE_TWILIO_MESSAGING_SERVICE_SID= # Twilio messaging service (optional)
 ```
 
 See [Deployment Environment Checklist](operations/environment/DEPLOYMENT_ENV_CHECKLIST.md) for complete list.

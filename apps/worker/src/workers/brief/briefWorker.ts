@@ -5,6 +5,7 @@ import { getTimezoneOffset, toZonedTime } from 'date-fns-tz';
 import { supabase } from '../../lib/supabase';
 import { captureWorkerEvent } from '../../lib/posthog';
 import { createServiceClient } from '@buildos/supabase-client';
+import type { Json } from '@buildos/shared-types';
 import {
 	BriefJobData,
 	broadcastUserEvent,
@@ -14,7 +15,11 @@ import {
 import { LegacyJob } from '../shared/jobAdapter';
 import { generateOntologyDailyBrief } from './ontologyBriefGenerator';
 import { generateCorrelationId } from '@buildos/shared-utils';
-import { getStaleBriefJobDecision } from './briefDateGuard';
+import {
+	getExistingBriefJobDecision,
+	type ExistingBriefJobDecision,
+	getStaleBriefJobDecision
+} from './briefDateGuard';
 import { enqueueBriefAudioIfEnabled } from '../briefAudio/enqueueBriefAudio';
 
 /**
@@ -29,6 +34,35 @@ function isValidTimezone(timezone: string): boolean {
 		return true;
 	} catch {
 		return false;
+	}
+}
+
+async function recordSkippedBriefJobMetadata(
+	job: LegacyJob<BriefJobData>,
+	decision: ExistingBriefJobDecision
+) {
+	if (!decision.reason) return;
+
+	const skippedAt = new Date().toISOString();
+	const metadata = {
+		...job.data,
+		skipReason: decision.reason,
+		skippedAt,
+		existingBriefId: decision.existingBriefId
+	};
+
+	let query = supabase
+		.from('queue_jobs')
+		.update({ metadata: metadata as unknown as Json })
+		.eq('queue_job_id', job.id);
+
+	if (job.processingToken) {
+		query = query.eq('processing_token', job.processingToken);
+	}
+
+	const { error } = await query;
+	if (error) {
+		console.warn(`Failed to record skipped brief metadata for job ${job.id}: ${error.message}`);
 	}
 }
 
@@ -97,6 +131,41 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 			await job.log(reason);
 			await updateJobStatus(job.id, 'completed', 'brief', undefined, job.processingToken);
 			return;
+		}
+
+		const { data: existingBrief, error: existingBriefError } = await supabase
+			.from('ontology_daily_briefs')
+			.select('id, generation_status, updated_at')
+			.eq('user_id', job.data.userId)
+			.eq('brief_date', validatedBriefDate)
+			.in('generation_status', ['completed', 'processing'])
+			.order('updated_at', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+
+		if (existingBriefError && existingBriefError.code !== 'PGRST116') {
+			console.warn(
+				`Failed to check existing daily brief for user ${job.data.userId} on ${validatedBriefDate}: ${existingBriefError.message}`
+			);
+		} else {
+			const existingBriefDecision = getExistingBriefJobDecision({
+				briefDate: validatedBriefDate,
+				existingBrief,
+				options: job.data.options
+			});
+
+			if (existingBriefDecision.shouldSkip) {
+				const reason =
+					existingBriefDecision.message ||
+					`Brief ${validatedBriefDate} already exists or is processing`;
+				console.warn(
+					`⏭️ Skipping duplicate daily brief job ${job.id} for user ${job.data.userId}: ${reason}`
+				);
+				await job.log(reason);
+				await recordSkippedBriefJobMetadata(job, existingBriefDecision);
+				await updateJobStatus(job.id, 'completed', 'brief', undefined, job.processingToken);
+				return;
+			}
 		}
 
 		console.log(

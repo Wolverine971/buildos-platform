@@ -42,6 +42,7 @@ function createProjectBriefData(overrides: Partial<ProjectBriefData> = {}): Proj
 		calendarToday: [],
 		calendarUpcoming: [],
 		todaysTasks: [],
+		overdueTasks: [],
 		thisWeekTasks: [],
 		blockedTasks: [],
 		unblockingTasks: [],

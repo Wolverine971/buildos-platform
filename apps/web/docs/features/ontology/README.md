@@ -8,7 +8,7 @@
 
 > **Recent Updates (2026-02-16)**: Added project member role-profile endpoints, project icon generation endpoints, and task completion calendar-sync behavior notes. See [API Endpoint Reference](./API_ENDPOINTS.md).
 >
-> **Recent Updates (2024-12-20)**: Schema migration complete. All ontology tables now have dedicated columns for `description`, `deleted_at` (soft deletes), and entity-specific fields like `content`, `target_date`, `completed_at`. See [Migration Plan](/docs/migrations/active/ONTOLOGY_SCHEMA_MIGRATION_PLAN.md).
+> **Recent Updates (2024-12-20)**: Schema migration complete. All ontology tables now have dedicated columns for `description`, `deleted_at` (soft deletes), and entity-specific fields like `content`, `target_date`, `completed_at`. See [Migration Plan](../../../../../docs/migrations/active/ONTOLOGY_SCHEMA_MIGRATION_PLAN.md).
 
 ---
 
@@ -313,9 +313,9 @@ const actor = await ensureActorForUser(userId);
 
 ### Development
 
-- [BuildOS Style Guide](/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md)
-- [API Patterns](/apps/web/docs/technical/api/PATTERNS.md)
-- [Modal System](/apps/web/docs/technical/components/modals/README.md)
+- [BuildOS Style Guide](../../technical/components/BUILDOS_STYLE_GUIDE.md)
+- [API Documentation](../../technical/api/README.md)
+- [Modal System](../../technical/components/modals/README.md)
 
 ---
 

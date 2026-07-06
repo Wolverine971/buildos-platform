@@ -337,7 +337,7 @@ explore. Your role is to be a thoughtful sounding board.
 | `apps/web/src/lib/components/agent/agent-chat.constants.ts`      | Added braindump context descriptor                |
 | `apps/web/src/lib/components/chat/ContextSelectionScreen.svelte` | Added braindump selection card                    |
 | `apps/web/src/lib/components/agent/AgentChatModal.svelte`        | Added braindump UI modes and handlers             |
-| `apps/web/src/lib/services/agent-context-service.ts`             | Added braindump system prompt                     |
+| `apps/web/src/lib/services/agentic-chat-v2/context-loader.ts`    | Current V2 chat context loading path              |
 
 ---
 
@@ -484,7 +484,7 @@ WHERE id = '<braindump_id>';
 
 ## Related Documentation
 
-- [AgentChatModal Technical Analysis](/apps/web/docs/technical/components/modals/TECHNICAL_ANALYSIS.md)
-- [Worker CLAUDE.md](/apps/worker/CLAUDE.md)
-- [Queue System Flow](/docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md)
-- [Ontology System](/apps/web/docs/features/ontology/README.md)
+- [AgentChatModal Technical Analysis](../../technical/components/modals/TECHNICAL_ANALYSIS.md)
+- [Contributor Guide](../../../../../CLAUDE.md)
+- [Queue System Flow](../../../../../docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md)
+- [Ontology System](../ontology/README.md)

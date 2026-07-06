@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	getExistingBriefJobDecision,
 	getStaleBriefJobDecision,
 	resolveScheduledBriefDate
 } from '../src/workers/brief/briefDateGuard';
@@ -73,5 +74,62 @@ describe('Brief date guard', () => {
 		});
 
 		expect(briefDate).toBe('2026-04-10');
+	});
+
+	it('skips an already completed brief unless the job is forced', () => {
+		const decision = getExistingBriefJobDecision({
+			briefDate: '2026-04-12',
+			existingBrief: {
+				id: 'brief-1',
+				generation_status: 'completed',
+				updated_at: '2026-04-12T13:55:00Z'
+			},
+			now: new Date('2026-04-12T14:00:00Z')
+		});
+
+		expect(decision.shouldSkip).toBe(true);
+		expect(decision.reason).toBe('skipped_existing_brief');
+
+		const forcedDecision = getExistingBriefJobDecision({
+			briefDate: '2026-04-12',
+			existingBrief: {
+				id: 'brief-1',
+				generation_status: 'completed',
+				updated_at: '2026-04-12T13:55:00Z'
+			},
+			options: {
+				forceRegenerate: true
+			},
+			now: new Date('2026-04-12T14:00:00Z')
+		});
+
+		expect(forcedDecision.shouldSkip).toBe(false);
+	});
+
+	it('skips a fresh processing brief but allows a stale processing brief to recover', () => {
+		const freshDecision = getExistingBriefJobDecision({
+			briefDate: '2026-04-12',
+			existingBrief: {
+				id: 'brief-1',
+				generation_status: 'processing',
+				updated_at: '2026-04-12T13:55:00Z'
+			},
+			now: new Date('2026-04-12T14:00:00Z')
+		});
+
+		expect(freshDecision.shouldSkip).toBe(true);
+		expect(freshDecision.reason).toBe('skipped_fresh_processing_brief');
+
+		const staleDecision = getExistingBriefJobDecision({
+			briefDate: '2026-04-12',
+			existingBrief: {
+				id: 'brief-1',
+				generation_status: 'processing',
+				updated_at: '2026-04-12T13:49:00Z'
+			},
+			now: new Date('2026-04-12T14:00:00Z')
+		});
+
+		expect(staleDecision.shouldSkip).toBe(false);
 	});
 });

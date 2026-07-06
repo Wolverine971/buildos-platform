@@ -1,178 +1,70 @@
 <!-- apps/worker/docs/features/EMAIL_TRACKING.md -->
 
-# Email Tracking Implementation
+# Worker Email Tracking
 
-## Overview
+Last verified against code on 2026-07-06.
 
-The daily brief emails now include comprehensive tracking capabilities to monitor email delivery and open rates. This helps understand user engagement with automated daily briefs.
+The worker exposes a public open-tracking pixel route:
 
-## Features
-
-### 1. **Tracking Pixel**
-
-- 1x1 transparent PNG pixel embedded in email HTML
-- Loads from `/api/email-tracking/:trackingId` endpoint
-- Fires when email is opened in clients that load images
-
-### 2. **Database Records**
-
-- **emails table**: Main email record with tracking ID
-- **email_recipients table**: Recipient-specific tracking
-- **email_tracking_events table**: Detailed event logging
-
-### 3. **Tracking Data Collected**
-
-- First open timestamp
-- Total open count
-- Last opened timestamp
-- User agent information
-- IP address (for analytics)
-
-## Implementation Details
-
-### Email Sending Flow
-
-1. **Generate Tracking ID**: 32-character hex string using crypto.randomBytes
-2. **Create Email Record**: Insert into `emails` table with:
-    - `tracking_id`: Unique identifier
-    - `tracking_enabled`: Boolean flag
-    - `status`: 'pending' -> 'sent'
-    - `category`: 'daily_brief'
-
-3. **Create Recipient Record**: Insert into `email_recipients` table:
-    - Links to email record
-    - Stores recipient email
-    - Tracks delivery and open metrics
-
-4. **Embed Tracking Pixel**: Add to email HTML:
-
-    ```html
-    <img
-    	src="https://build-os.com/api/email-tracking/{trackingId}"
-    	width="1"
-    	height="1"
-    	style="display:none;"
-    	alt=""
-    />
-    ```
-
-5. **Send Email**: Via Gmail SMTP with tracking metadata
-
-### Tracking Endpoint
-
-The `/api/email-tracking/:trackingId` endpoint:
-
-1. Returns a 1x1 transparent PNG (always, for privacy)
-2. Looks up email by tracking ID
-3. Updates recipient open metrics
-4. Logs tracking event with metadata
-5. Handles errors gracefully
-
-### Database Schema
-
-#### emails table
-
-```sql
-- id: UUID
-- tracking_id: String (unique)
-- tracking_enabled: Boolean
-- status: String ('pending', 'sent', 'failed')
-- subject, content, from_email, from_name
-- created_by: User ID
-- sent_at: Timestamp
-```
-
-#### email_recipients table
-
-```sql
-- id: UUID
-- email_id: Foreign key to emails
-- recipient_email: String
-- recipient_type: String ('to', 'cc', 'bcc')
-- delivered_at: Timestamp
-- opened_at: First open timestamp
-- open_count: Integer
-- last_opened_at: Most recent open
-```
-
-#### email_tracking_events table
-
-```sql
-- id: UUID
-- email_id: Foreign key to emails
-- recipient_id: Foreign key to email_recipients
-- event_type: String ('opened', 'clicked', etc.)
-- event_data: JSONB (additional metadata)
-- user_agent: String
-- ip_address: String
-- created_at: Timestamp
-```
-
-## Privacy Considerations
-
-- Tracking is transparent - users are informed in email footer
-- Users can disable tracking via preferences
-- Pixel always returns even if tracking fails (no user detection)
-- IP addresses are stored for analytics only
-- All data respects user privacy settings
-
-## Testing
-
-Run the tracking tests:
-
-```bash
-pnpm tsx tests/test-email-tracking.ts
-```
-
-This verifies:
-
-- Tracking ID generation
-- Pixel embedding
-- URL transformation compatibility
-- Database record creation
-
-## Configuration
-
-Tracking can be controlled via:
-
-- User preferences: `email_daily_brief` in `user_brief_preferences`
-- Per-email basis: `tracking_enabled` flag
-- Environment: Can be disabled globally if needed
-
-## Monitoring
-
-Track email performance via:
-
-- Email open rates by querying `email_recipients`
-- Delivery success via `emails.status`
-- Event timeline in `email_tracking_events`
-- Failed deliveries in `email_logs`
-
-## API Endpoints
-
-### Email Tracking Pixel
-
-```
+```http
 GET /api/email-tracking/:trackingId
 ```
 
-Returns: 1x1 transparent PNG
-Side effects: Updates tracking metrics
+It always returns a 1x1 transparent PNG. Tracking failures do not change the
+response.
 
-### Queue Stats (includes email metrics)
+## Active Email Path
 
+```text
+send_notification job
+  -> workers/notification/emailAdapter.ts
+  -> create emails and email_recipients rows
+  -> inject /api/email-tracking/:trackingId pixel
+  -> rewrite links to {PUBLIC_APP_URL}/api/email-tracking/:trackingId/click
+  -> POST {PUBLIC_APP_URL}/api/webhooks/send-notification-email
+  -> web app sends the provider email
 ```
-GET /queue/stats
-```
 
-Returns: Queue statistics including email job counts
+The worker owns record creation and the pixel endpoint. The web app owns final
+email provider delivery.
 
-## Future Enhancements
+## Pixel Route Behavior
 
-- [ ] Click tracking for links
-- [ ] Unsubscribe link tracking
-- [ ] Email client detection
-- [ ] Geographic analytics
-- [ ] A/B testing support
-- [ ] Bounce handling
-- [ ] Engagement scoring
+Implemented in `apps/worker/src/routes/email-tracking.ts`.
+
+For a valid `trackingId`, the route:
+
+1. Looks up the `emails` row by `tracking_id`.
+2. Loads related `email_recipients`.
+3. Updates each recipient's open fields:
+    - `opened_at`
+    - `open_count`
+    - `last_opened_at`
+4. Inserts an `email_tracking_events` row with:
+    - `event_type = 'opened'`
+    - user agent
+    - IP address
+    - first-open and count metadata
+5. Returns the pixel.
+
+For missing or unknown IDs, it logs and still returns the pixel.
+
+## Auth
+
+This route is intentionally public so email clients can load the pixel. It is
+exempted before the global worker bearer-token middleware.
+
+## Current Limitations
+
+- The worker route records opens only.
+- Link rewriting points click URLs at `PUBLIC_APP_URL`, so click handling is a
+  web app concern.
+- A single tracking pixel currently updates every recipient associated with the
+  email record.
+- Open tracking depends on the email client loading remote images.
+
+## Related Files
+
+- `apps/worker/src/routes/email-tracking.ts`
+- `apps/worker/src/workers/notification/emailAdapter.ts`
+- `apps/web/src/routes/api/webhooks/send-notification-email/+server.ts`

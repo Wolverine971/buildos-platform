@@ -54,6 +54,23 @@ async function createLoopChatSession(
 	return chatSession.id;
 }
 
+async function archiveChatSession(
+	supabase: ReturnType<typeof createAdminSupabaseClient>,
+	chatSessionId: string
+): Promise<void> {
+	const { error } = await supabase
+		.from('chat_sessions')
+		.update({ status: 'archived' })
+		.eq('id', chatSessionId)
+		.eq('status', 'active');
+	if (error) {
+		logger.warn('Archive duplicate loop chat session failed', {
+			chatSessionId,
+			error: error.message
+		});
+	}
+}
+
 /**
  * Create a project_loop_runs row and enqueue a buildos_project_loop job.
  * Used by the manual "Run loop" trigger, the end-of-day scheduler, and the
@@ -126,6 +143,7 @@ export async function queueProjectLoop(params: {
 	if (runError || !runRow?.id) {
 		const message = runError?.message ?? 'Failed to create loop run';
 		logger.warn('Create loop run failed', { error: message, projectId: params.projectId });
+		await archiveChatSession(supabase, chatSessionId);
 		return { queued: false, reason: message };
 	}
 
@@ -152,15 +170,18 @@ export async function queueProjectLoop(params: {
 			const message = queueMetadata.runId
 				? `Deduplicated onto active project loop job ${queueJobId} for run ${queueMetadata.runId}`
 				: `Queue job ${queueJobId} metadata did not include the new loop run ${runRow.id}`;
-			await supabase
-				.from('project_loop_runs')
-				.update({
-					status: 'failed',
-					error_message: message,
-					finished_at: new Date().toISOString()
-				})
-				.eq('id', runRow.id)
-				.eq('status', 'queued');
+			await Promise.all([
+				supabase
+					.from('project_loop_runs')
+					.update({
+						status: 'failed',
+						error_message: message,
+						finished_at: new Date().toISOString()
+					})
+					.eq('id', runRow.id)
+					.eq('status', 'queued'),
+				archiveChatSession(supabase, chatSessionId)
+			]);
 			return {
 				queued: false,
 				runId: queueMetadata.runId ?? runRow.id,
@@ -178,14 +199,17 @@ export async function queueProjectLoop(params: {
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Queue failed';
 		logger.warn('Queue loop job failed', { error: message, projectId: params.projectId });
-		await supabase
-			.from('project_loop_runs')
-			.update({
-				status: 'failed',
-				error_message: message,
-				finished_at: new Date().toISOString()
-			})
-			.eq('id', runRow.id);
+		await Promise.all([
+			supabase
+				.from('project_loop_runs')
+				.update({
+					status: 'failed',
+					error_message: message,
+					finished_at: new Date().toISOString()
+				})
+				.eq('id', runRow.id),
+			archiveChatSession(supabase, chatSessionId)
+		]);
 		return { queued: false, runId: runRow.id, reason: message };
 	}
 }

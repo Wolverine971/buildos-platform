@@ -1,383 +1,167 @@
 <!-- apps/worker/docs/QUICK_REFERENCE.md -->
 
-# Worker App - Quick Reference Guide
+# Worker Quick Reference
 
-## Overview
+Last verified against code on 2026-07-06.
 
-The BuildOS Worker is a background job processing service that runs on Railway. It processes jobs for daily brief generation, SMS scheduling, email delivery, and notifications using a **Supabase-based queue** (no Redis).
+## Identity
 
-- **Port:** 3001
-- **Language:** TypeScript
-- **Queue:** Supabase (PostgreSQL-backed)
-- **Scheduler:** node-cron (hourly & daily)
-- **Framework:** Express.js
-- **Deployment:** Railway (Nixpacks)
+- Package: `@buildos/worker`
+- Process entrypoint: `apps/worker/src/index.ts`
+- Local port: `3001` unless `PORT` is set
+- Production platform: Railway
+- Queue store: Supabase/Postgres `queue_jobs`
+- Active job registration source: `apps/worker/src/worker.ts`
 
----
+## Commands
 
-## Key Files
-
-### Entry Points
-
-| File               | Purpose                        |
-| ------------------ | ------------------------------ |
-| `src/index.ts`     | Express API server (port 3001) |
-| `src/worker.ts`    | Queue processor startup        |
-| `src/scheduler.ts` | Cron job scheduler             |
-
-### Core Services
-
-| Service  | File                                   | Purpose                       |
-| -------- | -------------------------------------- | ----------------------------- |
-| Queue    | `lib/supabaseQueue.ts`                 | Job storage & atomic claiming |
-| LLM      | `lib/services/smart-llm-service.ts`    | DeepSeek/GPT-4o/Claude AI     |
-| Email    | `workers/notification/emailAdapter.ts` | Notification email delivery   |
-| Progress | `lib/progressTracker.ts`               | Real-time job updates         |
-| SMS      | `lib/services/smsMessageGenerator.ts`  | SMS message templates         |
-
-### Job Processors
-
-| Job Type               | File                                         | Entry Point              |
-| ---------------------- | -------------------------------------------- | ------------------------ |
-| `generate_daily_brief` | `workers/brief/briefWorker.ts`               | POST `/queue/brief`      |
-| `onboarding_analysis`  | `workers/onboarding/onboardingWorker.ts`     | POST `/queue/onboarding` |
-| `send_sms`             | `workers/smsWorker.ts`                       | Internal queuing         |
-| `schedule_daily_sms`   | `workers/dailySmsWorker.ts`                  | Cron midnight            |
-| `send_notification`    | `workers/notification/notificationWorker.ts` | Internal queuing         |
-| `agent_run`            | `workers/agent-run/agentRunWorker.ts`        | Internal queuing         |
-| `buildos_project_loop` | `workers/project-loop/projectLoopWorker.ts`  | Internal queuing         |
-| `sync_calendar`        | `workers/calendar/calendarSyncWorker.ts`     | Internal queuing         |
-
----
-
-## Critical Environment Variables
+From the monorepo root:
 
 ```bash
-# REQUIRED
-PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-PRIVATE_SUPABASE_SERVICE_KEY=eyJhbGc...
-PRIVATE_OPENROUTER_API_KEY=sk-or-...
-
-# Email (choose one)
-USE_WEBHOOK_EMAIL=true                    # Preferred
-BUILDOS_WEBHOOK_URL=https://...
-PRIVATE_BUILDOS_WEBHOOK_SECRET=...
-# OR
-GMAIL_USER=noreply@build-os.com
-GMAIL_APP_PASSWORD=...
-
-# Optional but important
-ENGAGEMENT_BACKOFF_ENABLED=true           # Prevent email fatigue
-QUEUE_BATCH_SIZE=5                        # Concurrent jobs
-QUEUE_POLL_INTERVAL=5000                  # Job polling (ms)
+pnpm --filter @buildos/worker dev
+pnpm --filter @buildos/worker worker
+pnpm --filter @buildos/worker scheduler
+pnpm --filter @buildos/worker test:run
+pnpm --filter @buildos/worker test:scheduler
+pnpm --filter @buildos/worker test:integration
+pnpm --filter @buildos/worker typecheck
+pnpm --filter @buildos/worker lint
+pnpm --filter @buildos/worker build
 ```
 
----
+## Required Env
 
-## Critical Cron Schedules
-
-```
-0 * * * *  = Every hour: Queue daily briefs (timezone-aware)
-0 0 * * *  = Daily at midnight: Queue SMS event reminders
-0 * * * *  = Every hour: Check SMS alert thresholds
-```
-
-Each cron triggers scheduler functions that read from `queue_jobs` table and create new jobs.
-
----
-
-## API Endpoints (Express Server)
-
-### Brief Management
-
-- `POST /queue/brief` - Queue brief generation
-- `GET /jobs/{jobId}` - Get job status
-- `GET /users/{userId}/jobs` - List user's jobs
-
-### Project Management
-
-- `POST /queue/phases` - Queue phases generation
-
-### Onboarding
-
-- `POST /queue/onboarding` - Queue onboarding analysis
-
-### Queue Management
-
-- `GET /health` - Health check
-- `GET /queue/stats` - Queue statistics
-- `GET /queue/stale-stats` - Stale job report
-- `POST /queue/cleanup` - Manual job cleanup
-
-### Email Tracking
-
-- `GET /email/track/open/{id}` - Track opens
-- `GET /email/track/click/{id}` - Track clicks
-
-### SMS
-
-- `GET /sms/scheduled` - Get SMS schedule
-- `POST /sms/scheduled` - Update SMS schedule
-
----
-
-## Data Flow: Brief Generation
-
-```
-API /queue/brief or Scheduler
-           ↓
-Queue job: generate_daily_brief
-           ↓
-processBrief(job)
-           ├─ PHASE 1: Fetch projects, tasks, notes, events
-           ├─ PHASE 2: Generate per-project briefs
-           ├─ PHASE 3: Consolidate & add holiday detection
-           ├─ PHASE 4: LLM analysis (DeepSeek → Claude)
-           ├─ PHASE 5: Queue email job (non-blocking)
-           └─ PHASE 6: Real-time notification
-```
-
-## Database RPCs (Atomic Operations)
-
-- `add_queue_job()` - Insert with dedup
-- `claim_pending_jobs()` - Atomic batch claim
-- `complete_queue_job()` - Mark complete
-- `fail_queue_job()` - Mark failed with retry
-- `reset_stalled_jobs()` - Recover stuck jobs
-- `cancel_brief_jobs_for_date()` - Cancel briefs
-
----
-
-## Queue Configuration
-
-**Config File:** `src/config/queueConfig.ts`
-
-### Default Values
-
-```
-Development: poll 2s, batch 2, stats 30s
-Production: poll 5s, batch 10, stats 5min
-```
-
-### Validation Constraints
-
-- `pollInterval`: min 1000ms, max no limit
-- `batchSize`: min 1, max 20
-- `stalledTimeout`: min 30000ms (5 min)
-- `maxRetries`: min 0, max 10
-
----
-
-## Job Status Flow
-
-```
-pending → processing → completed
-              ↓
-          (error) → queued_for_retry
-                         ↓
-                      pending (retry)
-
-Failed after all retries → failed (terminal)
-Cancelled by user → cancelled (terminal)
-```
-
----
-
-## Development Commands
+The worker exits at startup if these are missing:
 
 ```bash
-# Install & build
-pnpm install
-pnpm build
-
-# Development (all components)
-pnpm dev
-
-# Specific components
-pnpm worker      # Worker only
-pnpm scheduler   # Scheduler only
-
-# Testing
-pnpm test                # Watch mode
-pnpm test:run           # Run once
-pnpm test:scheduler     # Scheduler tests
-pnpm test:coverage      # Coverage report
-
-# Linting
-pnpm lint               # Check
-pnpm lint:fix          # Auto-fix
-pnpm typecheck         # Type check
-pnpm pre-push          # Full validation
+PUBLIC_SUPABASE_URL=
+PRIVATE_SUPABASE_SERVICE_KEY=
+PRIVATE_OPENROUTER_API_KEY=
+PRIVATE_RAILWAY_WORKER_TOKEN=
 ```
 
----
-
-## Production Deployment
-
-### Platform: Railway
-
-1. **Build:** `pnpm build` (TypeScript → dist/)
-2. **Start:** `node dist/index.js`
-3. **Health Check:** `GET /health` endpoint (auto-restart on failure)
-4. **Database:** Requires migrations (see `/migrations`)
-
-### Required Environment Variables
-
-All 3 categories must be set:
-
-1. Supabase credentials
-2. LLM API key
-3. Email transport (webhook OR SMTP)
-
-### Graceful Shutdown
-
-- Responds to SIGTERM/SIGINT
-- Stops accepting new jobs
-- Allows in-flight jobs to complete (timeout-based)
-
----
-
-## Monitoring & Debugging
-
-### Health Check Endpoint
+Common conditional env:
 
 ```bash
-curl http://localhost:3001/health
+PUBLIC_APP_URL=https://build-os.com
+PRIVATE_BUILDOS_WEBHOOK_SECRET=
+
+PRIVATE_TWILIO_ACCOUNT_SID=
+PRIVATE_TWILIO_AUTH_TOKEN=
+PRIVATE_TWILIO_MESSAGING_SERVICE_SID=
+
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:support@build-os.com
 ```
 
-### Queue Statistics
+## API Routes
 
-```bash
-curl http://localhost:3001/queue/stats
+`/health` and `/api/email-tracking/:trackingId` are public. All other routes
+require `Authorization: Bearer $PRIVATE_RAILWAY_WORKER_TOKEN`.
+
+| Method | Route                             | Purpose                                          |
+| ------ | --------------------------------- | ------------------------------------------------ |
+| GET    | `/health`                         | Service health                                   |
+| POST   | `/classify/ontology`              | Synchronous create-modal ontology classification |
+| POST   | `/queue/brief`                    | Enqueue `generate_daily_brief`                   |
+| POST   | `/queue/onboarding`               | Enqueue `onboarding_analysis`                    |
+| POST   | `/queue/chat/classify`            | Enqueue `classify_chat_session`                  |
+| POST   | `/queue/braindump/process`        | Enqueue `process_onto_braindump`                 |
+| GET    | `/jobs/:jobId`                    | Fetch one queue job                              |
+| GET    | `/users/:userId/jobs`             | List user jobs with optional filters             |
+| GET    | `/queue/stats`                    | Queue stats view                                 |
+| GET    | `/queue/stale-stats`              | Cleanup eligibility report                       |
+| POST   | `/queue/cleanup`                  | Manual queue cleanup                             |
+| GET    | `/api/email-tracking/:trackingId` | Open tracking pixel                              |
+| GET    | `/sms/scheduled/user/:userId`     | List scheduled SMS messages                      |
+| POST   | `/sms/scheduled/:id/cancel`       | Cancel a scheduled SMS and pending queue job     |
+| PATCH  | `/sms/scheduled/:id/update`       | Update scheduled SMS row timing                  |
+| POST   | `/sms/scheduled/:id/regenerate`   | Regenerate scheduled SMS content                 |
+
+## Active Jobs
+
+| Job type                         | Trigger                                             |
+| -------------------------------- | --------------------------------------------------- |
+| `generate_daily_brief`           | Scheduler or `POST /queue/brief`                    |
+| `generate_brief_audio`           | Brief worker or web audio request                   |
+| `onboarding_analysis`            | `POST /queue/onboarding`                            |
+| `send_notification`              | `emit_notification_event` fanout                    |
+| `project_activity_batch_flush`   | Project activity batching                           |
+| `schedule_daily_sms`             | Scheduler                                           |
+| `send_sms`                       | SMS scheduler and notification SMS adapter          |
+| `classify_chat_session`          | `POST /queue/chat/classify`                         |
+| `process_onto_braindump`         | `POST /queue/braindump/process`                     |
+| `transcribe_voice_note`          | Voice note upload flow                              |
+| `extract_onto_asset_ocr`         | Ontology asset flow                                 |
+| `agent_run`                      | Chat/manual/scheduled Operatives                    |
+| `build_project_context_snapshot` | Web project context snapshot service                |
+| `generate_project_icon`          | Project icon generation service and snapshot worker |
+| `buildos_project_loop`           | Project loop services and scheduler                 |
+| `sync_calendar`                  | Calendar projection services                        |
+
+Retired or compatibility-only values include `generate_phases`,
+`generate_brief_email`, `send_email`, `update_recurring_tasks`,
+`cleanup_old_data`, and `other`.
+
+## Scheduler
+
+| Cadence                                           | Work                                  |
+| ------------------------------------------------- | ------------------------------------- |
+| Hourly                                            | Daily brief scheduling                |
+| Midnight UTC                                      | Daily SMS reminder scheduling         |
+| Hourly                                            | SMS alert checks                      |
+| 03:17 UTC                                         | Public page 30-day view count refresh |
+| Hourly, flag-gated                                | End-of-day project loops              |
+| 04:00 UTC, flag-gated                             | Scheduled project audits              |
+| Every 30 minutes, flag-gated                      | Project-loop reclaim/finalization     |
+| Every 5 minutes                                   | Scheduled Operatives to `agent_run`   |
+| `QUEUE_RETENTION_CLEANUP_CRON`, default 03:30 UTC | Queue retention cleanup               |
+
+## Queue Config
+
+Defined by `apps/worker/src/config/queueConfig.ts`.
+
+| Env var                           | Default      | Notes                     |
+| --------------------------------- | ------------ | ------------------------- |
+| `QUEUE_POLL_INTERVAL`             | `5000`       | Min 1000 ms               |
+| `QUEUE_BATCH_SIZE`                | `5`          | Clamped to 1-20           |
+| `QUEUE_STALLED_TIMEOUT`           | `300000`     | Min 30000 ms              |
+| `QUEUE_MAX_RETRIES`               | `3`          | Clamped to 0-10           |
+| `QUEUE_WORKER_TIMEOUT`            | `600000`     | Per-job timeout           |
+| `QUEUE_DRAIN_TIMEOUT_MS`          | `25000`      | Shutdown drain window     |
+| `QUEUE_RETENTION_CLEANUP_ENABLED` | `true`       | Enables scheduled cleanup |
+| `QUEUE_RETENTION_CLEANUP_CRON`    | `30 3 * * *` | Cron expression           |
+| `QUEUE_COMPLETED_RETENTION_DAYS`  | `30`         | Completed job deletion    |
+
+Note: `getEnvironmentConfig()` applies development and production profiles
+after reading env values, so profile defaults can override some core queue envs.
+
+## Email Path
+
+The active notification email path is:
+
+```text
+briefWorker -> emit_notification_event -> send_notification job
+  -> workers/notification/emailAdapter.ts
+  -> POST {PUBLIC_APP_URL}/api/webhooks/send-notification-email
+  -> web app sends the provider email
 ```
 
-### Manual Cleanup (Admin)
+The worker creates `emails`, `email_recipients`, and tracking metadata before
+calling the web webhook. It does not use Nodemailer directly.
 
-```bash
-curl -X POST http://localhost:3001/queue/cleanup \
-  -H "Content-Type: application/json" \
-  -d '{"staleThresholdHours": 24, "dryRun": true}'
-```
-
-### Database Queries
+## Debug Queries
 
 ```sql
--- View pending jobs
-SELECT * FROM queue_jobs
-WHERE status = 'pending'
-ORDER BY created_at DESC
-LIMIT 10;
-
--- View stalled jobs (>5 min)
-SELECT * FROM queue_jobs
-WHERE status = 'processing'
-AND started_at < NOW() - INTERVAL '5 minutes'
-LIMIT 10;
-
--- View job history
-SELECT job_type, status, COUNT(*) as count
+SELECT job_type, status, COUNT(*)
 FROM queue_jobs
 GROUP BY job_type, status
-ORDER BY count DESC;
+ORDER BY job_type, status;
+
+SELECT queue_job_id, job_type, status, attempts, error_message, updated_at
+FROM queue_jobs
+WHERE status IN ('failed', 'processing')
+ORDER BY updated_at DESC
+LIMIT 20;
 ```
-
----
-
-## LLM Service (SmartLLMService)
-
-**Primary:** DeepSeek Chat V3 ($0.14/1M tokens)
-**Fallback 1:** GPT-4o (OpenAI)
-**Fallback 2:** Claude 3.5 Sonnet (Anthropic)
-
-Automatic fallback on:
-
-- Rate limits (429)
-- Model unavailability
-- Token limit exceeded
-
----
-
-## Email Transport
-
-### Webhook Mode (Preferred)
-
-- HMAC-signed POST to web app
-- Low latency
-- Handles tracking & delivery
-
-### SMTP Mode (Fallback)
-
-- Direct Gmail connection
-- Configured via app password
-- Logs message ID for tracking
-
-Set via `USE_WEBHOOK_EMAIL` environment variable.
-
----
-
-## Common Issues & Solutions
-
-### Jobs stuck in "processing" (>5 min)
-
-1. Check logs for errors
-2. Verify database connection
-3. Run manual cleanup: `POST /queue/cleanup`
-4. Check stalled timeout config
-
-### High memory usage
-
-1. Check batch size (reduce from default 5)
-2. Monitor concurrent jobs
-3. Review LLM response sizes
-4. Check email template size
-
-### Missing briefs
-
-1. Verify scheduler is running (cron logs)
-2. Check user_brief_preferences (is_active = true)
-3. Verify user timezone is valid
-4. Check engagement backoff (if enabled)
-
-### Email not sending
-
-1. Check `USE_WEBHOOK_EMAIL` value
-2. Verify SMTP credentials (if using Gmail)
-3. Check webhook URL is accessible
-4. Review email_logs table for errors
-
----
-
-## Documentation Files
-
-All worker docs are in `apps/worker/docs/`:
-
-| File                                                                 | Purpose                                      |
-| -------------------------------------------------------------------- | -------------------------------------------- |
-| [`../CLAUDE.md`](../CLAUDE.md)                                       | Development guide & architecture             |
-| [`DOCUMENTATION_INDEX.md`](DOCUMENTATION_INDEX.md)                   | Complete navigation & cross-references       |
-| [`WORKER_STRUCTURE_OVERVIEW.md`](WORKER_STRUCTURE_OVERVIEW.md)       | Complete directory & component overview      |
-| [`WORKER_JOBS_AND_FLOWS.md`](WORKER_JOBS_AND_FLOWS.md)               | Job types, data flows & API reference        |
-| [`QUICK_REFERENCE.md`](QUICK_REFERENCE.md)                           | This file                                    |
-| [`WORKER_FLOW_AUDIT_2026-07-01.md`](WORKER_FLOW_AUDIT_2026-07-01.md) | Current worker audit and dead-code inventory |
-| [`features/`](features/)                                             | Email tracking, email system, daily briefs   |
-| [`deployment/`](deployment/)                                         | Railway deployment guide                     |
-
----
-
-## Important Notes
-
-- **No Redis:** Uses Supabase PostgreSQL-backed queue (atomic job claiming)
-- **Timezone-Aware:** All scheduling respects user timezone (centralized in `users` table)
-- **Non-blocking Email:** Brief generation doesn't wait for email to send
-- **Real-time Progress:** Updates via Supabase Realtime for instant UI feedback
-- **Engagement-Based:** Optional feature flag to prevent over-emailing inactive users
-- **Cost-Optimized:** DeepSeek is 95% cheaper than Anthropic models
-
----
-
-## Related Documentation
-
-- **Web App Documentation:** `/apps/web/docs/`
-- **Database Schema:** Supabase console → SQL Editor
-- **Deployment Topology:** `/docs/DEPLOYMENT_TOPOLOGY.md`
-- **Architecture Diagrams:** `/docs/architecture/diagrams/`

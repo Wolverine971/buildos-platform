@@ -2,7 +2,7 @@
 
 # Web-Worker Architecture Documentation
 
-**Last Updated:** 2025-10-05
+**Last Updated:** 2026-07-06
 **Status:** Active
 **Scope:** Cross-service communication and integration patterns
 
@@ -13,9 +13,15 @@
 BuildOS Platform uses a **dual-service architecture** with clear separation of concerns:
 
 - **Web App** (Vercel): User-facing SvelteKit application for real-time interactions
-- **Worker Service** (Railway): Background processing service for asynchronous operations
+- **Worker Service** (Railway): Express API, queue consumer, and scheduler for asynchronous operations
 
-Communication between these services happens **exclusively through Supabase PostgreSQL** using a queue-based architecture with real-time subscriptions.
+The primary async path is still the Supabase-backed queue, but web and worker also use
+authenticated HTTP for enqueue/status/classification routes and worker-to-web webhook callbacks.
+Realtime subscriptions handle supported live UI updates.
+
+> Current-state note: this document has some historical detail below. Treat
+> `apps/worker/src/worker.ts` and `apps/worker/docs/README.md` as the active
+> source of truth for registered worker jobs.
 
 ---
 
@@ -43,18 +49,16 @@ graph TB
     end
 
     subgraph "Railway - Worker Service"
-        WORKER[Worker Process]
+        HTTP[Express API]
+        WORKER[Queue Consumer]
         BRIEF[Brief Generator]
-        EMAIL[Email Sender]
-        SMS[SMS Handler]
-        PHASES[Phase Generator]
+        NOTIFY[Notification Workers]
         CRON[Scheduler/Cron]
     end
 
     subgraph "External Services"
-        OPENAI[OpenAI API]
+        LLM[OpenRouter / OpenAI / Anthropic]
         TWILIO[Twilio SMS]
-        GMAIL[Gmail SMTP]
         GCAL[Google Calendar]
     end
 
@@ -63,25 +67,25 @@ graph TB
     API <-->|SSE Stream| SSE
     WEB <-->|Subscribe| RT
 
-    API -->|Insert Jobs| QUEUE
+    API -->|Authenticated HTTP| HTTP
+    HTTP -->|Insert Jobs| QUEUE
+    API -->|Direct Queue RPCs| QUEUE
     API <-->|CRUD| DB
     RT -.->|Real-time Events| REALTIME
 
     WORKER -->|Poll & Claim| QUEUE
     WORKER <-->|Read/Write| DB
-    WORKER -->|Broadcast| REALTIME
+    WORKER -->|Events & Status| DB
+    WORKER -->|Callback Webhooks| API
 
     CRON -->|Schedule| WORKER
+    HTTP -->|Enqueue| QUEUE
     WORKER -->|Generate| BRIEF
-    WORKER -->|Send| EMAIL
-    WORKER -->|Send| SMS
-    WORKER -->|Create| PHASES
+    WORKER -->|Fanout| NOTIFY
 
     API <-->|Sync| GCAL
-    BRIEF -->|LLM Calls| OPENAI
-    PHASES -->|LLM Calls| OPENAI
-    EMAIL -->|SMTP| GMAIL
-    SMS -->|API| TWILIO
+    BRIEF -->|LLM Calls| LLM
+    NOTIFY -->|SMS API| TWILIO
 
     AUTH -.->|Verify| API
     RLS -.->|Enforce| DB
@@ -121,23 +125,37 @@ sequenceDiagram
 
 **Key Characteristics:**
 
-- **No Direct HTTP:** Web and worker never communicate via HTTP
+- **Hybrid control plane:** Web uses authenticated worker HTTP routes for selected enqueue,
+  status, and synchronous classification paths, while long-running work is processed from
+  Supabase queue rows
 - **Atomic Claiming:** Database RPC ensures no duplicate processing
 - **Type-Safe:** Typed metadata per job type
 - **Retryable:** Exponential backoff with attempt tracking
 - **Priority-Based:** Jobs processed by priority (1=highest, 10=default)
 
-**Job Types:**
+**Active Job Types:**
 
-| Job Type               | Created By               | Processed By      | Purpose                         |
-| ---------------------- | ------------------------ | ----------------- | ------------------------------- |
-| `generate_daily_brief` | Scheduler (Worker)       | Brief Worker      | Generate AI-powered daily brief |
-| `generate_brief_email` | Brief Worker             | Email Worker      | Send brief via email            |
-| `generate_phases`      | Web API                  | Phases Worker     | Generate project phases         |
-| `onboarding_analysis`  | Web API                  | Onboarding Worker | Analyze user onboarding         |
-| `send_sms`             | Web API / Twilio Webhook | SMS Worker        | Send SMS via Twilio             |
-| `sync_calendar`        | (Future)                 | (Future)          | Background calendar sync        |
-| `process_brain_dump`   | (Future)                 | (Future)          | Async brain dump processing     |
+The live source of truth is `queue.process(...)` registration in
+`apps/worker/src/worker.ts`.
+
+| Job Type                         | Created By                       | Processed By                    | Purpose                              |
+| -------------------------------- | -------------------------------- | ------------------------------- | ------------------------------------ |
+| `generate_daily_brief`           | Scheduler or worker API          | Brief worker                    | Generate ontology daily brief        |
+| `generate_brief_audio`           | Brief worker or web audio flow   | Brief audio worker              | Generate brief narration             |
+| `onboarding_analysis`            | Worker API / web service         | Onboarding worker               | Analyze onboarding input             |
+| `send_notification`              | Notification event fanout        | Notification worker             | Deliver email, SMS, push, in-app     |
+| `project_activity_batch_flush`   | Project activity batching        | Notification worker             | Flush project activity notifications |
+| `schedule_daily_sms`             | Scheduler                        | Daily SMS worker                | Schedule SMS reminders               |
+| `send_sms`                       | SMS scheduler / notification SMS | SMS worker                      | Send SMS via Twilio                  |
+| `classify_chat_session`          | Worker API / web service         | Chat classifier                 | Classify chat sessions               |
+| `process_onto_braindump`         | Worker API / web service         | Braindump processor             | Process ontology braindumps          |
+| `transcribe_voice_note`          | Voice note upload flow           | Voice note worker               | Transcribe voice notes               |
+| `extract_onto_asset_ocr`         | Ontology asset flow              | Asset OCR worker                | Extract OCR from assets              |
+| `agent_run`                      | Chat/manual/scheduled Operatives | Agent-run worker                | Run scheduled or manual Operatives   |
+| `build_project_context_snapshot` | Web project context service      | Ontology snapshot worker        | Build project context snapshots      |
+| `generate_project_icon`          | Project icon/snapshot flow       | Project icon worker             | Generate project icons               |
+| `buildos_project_loop`           | Project loop services/scheduler  | Project loop worker             | Generate project loop suggestions    |
+| `sync_calendar`                  | Calendar projection services     | Calendar sync worker            | Sync calendar projection work        |
 
 ### 2. Real-Time Updates (Worker → Web)
 
@@ -183,11 +201,10 @@ channel.on('broadcast', { event: 'brief_completed' }, (payload) => {
 
 **Notification Events:**
 
-- `brief_completed` - Daily brief generation complete
-- `brief_failed` - Brief generation error
-- `brief_email_sent` - Email successfully sent
-- `phases_completed` - Phase generation complete
-- `onboarding_completed` - Onboarding analysis complete
+- Queue job status changes in `queue_jobs`
+- Notification events such as `brief.completed`
+- Delivery records for email, SMS, push, and in-app notifications
+- Realtime broadcasts for UI flows that subscribe to project/user channels
 
 ### 3. Status Polling (Web → Database)
 
@@ -236,28 +253,23 @@ flowchart TD
 
     QUEUE --> WORKER1[Worker Claims Job]
     WORKER1 --> FETCH[Fetch Projects & Tasks]
-    FETCH --> LLM[Generate Brief via LLM]
-    LLM --> SAVE[Save to daily_briefs Table]
-
-    SAVE --> EMAIL_CHECK{Email Enabled?}
-    EMAIL_CHECK -->|Yes| QUEUE_EMAIL[Queue generate_brief_email Job]
-    EMAIL_CHECK -->|No| NOTIFY1
-
-    QUEUE_EMAIL --> WORKER2[Worker Claims Email Job]
-    WORKER2 --> SEND[Send via Gmail/Webhook]
-    SEND --> NOTIFY2[Broadcast: brief_email_sent]
-
-    SAVE --> NOTIFY1[Broadcast: brief_completed]
-    NOTIFY1 --> WEB1[Web: Show Notification]
-    NOTIFY2 --> WEB2[Web: Show Email Sent]
+    FETCH --> LLM[Generate Brief via LLM Adapter]
+    LLM --> SAVE[Save Ontology Daily Brief]
+    SAVE --> EVENT[Emit brief.completed Notification Event]
+    EVENT --> FANOUT[Notification Worker Fanout]
+    FANOUT --> EMAIL[Email via Web Webhook]
+    FANOUT --> SMS[SMS via Twilio]
+    FANOUT --> PUSH[Push / In-App Delivery]
+    SAVE --> STATUS[Complete Queue Job]
+    STATUS --> WEB[Web Reads Status / Realtime Updates]
 ```
 
 **Characteristics:**
 
-- **100% Worker-Based:** No web app involvement in generation
-- **Cascading Jobs:** Brief job creates email job
-- **Non-Blocking:** Email sending doesn't block brief completion
-- **Real-Time Feedback:** Web receives notifications via Realtime
+- **Worker-Based Generation:** The worker owns brief generation and persistence
+- **Separate Delivery Pipeline:** Notification fanout handles email, SMS, push, and in-app
+- **Webhook Email:** Worker calls the web email webhook when email delivery is needed
+- **Status Visibility:** Web reads queue status and notification state from API/database paths
 
 ### Brain Dump Processing
 
@@ -266,7 +278,7 @@ flowchart TD
 > now process through the worker via the `process_onto_braindump` job into the ontology pipeline.
 > The historical web-SSE flow diagram is preserved in `docs/archive/brain-dump/`.
 
-### Calendar Sync (100% Web-Based)
+### Calendar Sync (Web + Worker)
 
 ```mermaid
 flowchart TD
@@ -291,14 +303,17 @@ flowchart TD
     LOOP_CHECK -->|No| UPDATE_TASKS[Update Tasks]
 
     UPDATE_TASKS --> MARK[Mark sync_source='google']
+    ACTION -->|Projection Job| QUEUE_SYNC[Queue sync_calendar Job]
+    QUEUE_SYNC --> WORKER_SYNC[Worker Calendar Sync]
 ```
 
 **Characteristics:**
 
 - **Bidirectional:** App ↔ Google Calendar
-- **Webhook-Based:** Real-time sync via Google notifications
+- **Webhook-Based:** Google notifications enter through the web app
+- **Worker-Assisted:** `sync_calendar` jobs handle background calendar projection work
 - **Loop Prevention:** 5-minute window to prevent echo
-- **No Worker:** All sync happens in web app
+- **Shared Secret:** Worker-to-web callbacks use `PRIVATE_BUILDOS_WEBHOOK_SECRET`
 
 ### SMS Notifications (Web + Worker)
 
@@ -338,39 +353,11 @@ flowchart TD
 - **Retry Logic:** Exponential backoff for failures
 - **Preference-Aware:** Respects quiet hours and opt-out
 
-### Phase Generation (Web + Worker)
+### Phase Generation
 
-```mermaid
-flowchart TD
-    START[User Clicks Generate Phases] --> UI[Show Modal]
-    UI --> QUEUE[Queue generate_phases Job]
-    QUEUE --> POLL[Poll Job Status]
-
-    POLL --> WORKER[Worker Claims Job]
-    WORKER --> FETCH[Fetch Project Data]
-    FETCH --> STRATEGY[Load Strategy Prompt]
-    STRATEGY --> LLM[Generate via LLM]
-
-    LLM --> PARSE[Parse JSON Response]
-    PARSE --> VALIDATE[Validate Schema]
-    VALIDATE --> CREATE[Create Phases & Tasks]
-    CREATE --> NOTIFY[Broadcast: phases_completed]
-
-    POLL --> STATUS{Job Status}
-    STATUS -->|Processing| PROGRESS[Show Progress]
-    PROGRESS --> POLL
-
-    STATUS -->|Completed| RESULT[Display Results]
-    NOTIFY --> UPDATE_UI[Update UI Store]
-    UPDATE_UI --> RESULT
-```
-
-**Characteristics:**
-
-- **User-Initiated:** Web app queues job
-- **Worker Processing:** Heavy LLM work in worker
-- **Polling + Realtime:** Hybrid status updates
-- **Notification Bridge:** Custom store for UI updates
+`generate_phases` is a retired or compatibility-only worker job value in the current worker
+docs. Do not treat this as an active flow unless it is re-registered in
+`apps/worker/src/worker.ts`.
 
 ---
 

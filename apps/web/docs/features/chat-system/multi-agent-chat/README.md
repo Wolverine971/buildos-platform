@@ -136,11 +136,11 @@ User: "Update marketing project deadline and schedule all tasks"
 
 ```
 /apps/web/src/lib/services/
-  ├── agent-context-service.ts      ✅ Context assembly
-  ├── agent-planner-service.ts      🚧 Orchestration (needs LLM integration)
-  ├── agent-executor-service.ts     🚧 Task execution (needs LLM integration)
-  ├── smart-llm-service.ts          ✅ LLM streaming API
-  └── chat-tool-executor.ts         ✅ Tool execution
+  ├── agentic-chat-v2/context-loader.ts        ✅ Context assembly
+  ├── agentic-chat-v2/stream-orchestrator/     ✅ Streaming/tool loop
+  ├── agentic-chat-v2/session-service.ts       ✅ Session persistence
+  ├── agentic-chat/tools/core/tools.config.ts  ✅ Tool configuration
+  └── smart-llm-service.ts                     ✅ LLM streaming API
 
 /packages/shared-types/src/
   └── agent.types.ts                ✅ All type definitions
@@ -151,7 +151,7 @@ User: "Update marketing project deadline and schedule all tasks"
 
 ## 🚀 Current Status
 
-See [STATUS.md](./STATUS.md) for detailed progress tracking.
+See [HANDOFF.md](./HANDOFF.md) for the latest handoff notes in this archived multi-agent-chat folder.
 
 **Phase 1:** ✅ Complete - Scaffolding & database schema
 **Phase 2:** 🚧 In Progress - LLM integration
@@ -214,9 +214,9 @@ See [STATUS.md](./STATUS.md) for detailed progress tracking.
 - **Chat System Overview:** `../README.md`
 - **Database Schema:** `../DATABASE_SCHEMA_ANALYSIS.md`
 - **Tool Configuration:** `../../../lib/chat/tools.config.ts`
-- **Status Tracking:** `./STATUS.md`
+- **Status / Handoff:** `./HANDOFF.md`
 
 ---
 
 **For implementation details, see the service source files.**
-**For current progress, see STATUS.md.**
+**For current progress, see HANDOFF.md.**

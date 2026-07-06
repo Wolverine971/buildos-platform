@@ -1,6 +1,6 @@
 // apps/worker/src/index.ts
 import cors from 'cors';
-import type { QueueJobStatus, QueueJobType } from '@buildos/shared-types';
+import type { Json, QueueJobStatus, QueueJobType } from '@buildos/shared-types';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import dotenv from 'dotenv';
@@ -20,6 +20,7 @@ import { queueConfig } from './config/queueConfig';
 import { queue, shutdownWorker, startWorker } from './worker';
 import type { Server } from 'node:http';
 import { classifyOntologyEntity } from './workers/ontology/ontologyClassifier';
+import { getFutureNotificationScheduledFor } from './workers/brief/briefNotificationSchedule';
 
 dotenv.config();
 
@@ -74,6 +75,28 @@ app.use(jsonParseErrorHandler);
 registerEmailTrackingRoute(app);
 
 const publicWorkerPaths = new Set(['/health']);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function mergeQueueMetadata(
+	existingMetadata: unknown,
+	requestMetadata: Record<string, unknown>
+): Json {
+	const existing = isRecord(existingMetadata) ? existingMetadata : {};
+	const existingOptions = isRecord(existing.options) ? existing.options : {};
+	const requestOptions = isRecord(requestMetadata.options) ? requestMetadata.options : {};
+
+	return {
+		...existing,
+		...requestMetadata,
+		options: {
+			...existingOptions,
+			...requestOptions
+		}
+	} as Json;
+}
 
 app.use((req, res, next) => {
 	if (req.path.startsWith('/api/email-tracking') || publicWorkerPaths.has(req.path)) {
@@ -173,6 +196,8 @@ app.post('/queue/brief', async (req, res) => {
 			forceRegenerate,
 			options: requestOptions // Options from frontend (includes useOntology)
 		} = req.body;
+		const shouldForceImmediate = forceImmediate === true;
+		const shouldForceRegenerate = forceRegenerate === true;
 
 		if (!userId) {
 			return res.status(400).json({ error: 'userId is required' });
@@ -206,7 +231,7 @@ app.post('/queue/brief', async (req, res) => {
 		const timezone = getSafeTimezone(rawTimezone, userId);
 
 		// Handle force regenerate
-		if (forceRegenerate) {
+		if (shouldForceRegenerate) {
 			// Use consistent timezone (from preferences or requested)
 			const targetBriefDate =
 				normalizedRequestedBriefDate ||
@@ -223,7 +248,7 @@ app.post('/queue/brief', async (req, res) => {
 
 		// Determine when to schedule the job
 		let scheduleTime: Date;
-		if (forceImmediate || forceRegenerate) {
+		if (shouldForceImmediate || shouldForceRegenerate) {
 			scheduleTime = new Date(); // Now
 		} else if (scheduledFor) {
 			scheduleTime = new Date(scheduledFor);
@@ -241,36 +266,86 @@ app.post('/queue/brief', async (req, res) => {
 		const zonedDate = toZonedTime(scheduleTime, timezone);
 		const briefDate = normalizedRequestedBriefDate || format(zonedDate, 'yyyy-MM-dd');
 
-		// Queue the job using Supabase queue
-		const job = await queue.add(
-			'generate_daily_brief',
-			userId,
-			{
-				briefDate,
-				timezone,
-				options: {
-					forceRegenerate,
-					requestedBriefDate: normalizedRequestedBriefDate,
-					useOntology: requestOptions?.useOntology ?? true, // Default to ontology-based briefs
-					includeProjects: requestOptions?.includeProjects,
-					excludeProjects: requestOptions?.excludeProjects
-				}
-			},
-			{
-				priority: forceImmediate ? 1 : 10,
-				scheduledFor: scheduleTime,
-				dedupKey: forceRegenerate
-					? `brief-${userId}-${briefDate}-${Date.now()}`
-					: `brief-${userId}-${briefDate}`
+		let notificationScheduledFor: Date | undefined;
+		if (shouldForceImmediate && !shouldForceRegenerate) {
+			const { data: briefPreference, error: briefPreferenceError } = await supabase
+				.from('user_brief_preferences')
+				.select('time_of_day, is_active')
+				.eq('user_id', userId)
+				.maybeSingle();
+
+			if (briefPreferenceError && briefPreferenceError.code !== 'PGRST116') {
+				console.warn(
+					`Failed to fetch brief preferences for user ${userId}: ${briefPreferenceError.message}`
+				);
+			} else if (briefPreference) {
+				notificationScheduledFor = getFutureNotificationScheduledFor({
+					briefDate,
+					timeOfDay: briefPreference.time_of_day,
+					timezone,
+					isActive: briefPreference.is_active
+				});
 			}
-		);
+		}
+
+		const jobData = {
+			briefDate,
+			timezone,
+			notificationScheduledFor: notificationScheduledFor?.toISOString(),
+			options: {
+				forceRegenerate: shouldForceRegenerate,
+				requestedBriefDate: normalizedRequestedBriefDate,
+				useOntology: requestOptions?.useOntology ?? true, // Default to ontology-based briefs
+				includeProjects: requestOptions?.includeProjects,
+				excludeProjects: requestOptions?.excludeProjects
+			}
+		};
+
+		// Queue the job using Supabase queue
+		let job = await queue.add('generate_daily_brief', userId, jobData, {
+			priority: shouldForceImmediate ? 1 : 10,
+			scheduledFor: scheduleTime,
+			dedupKey: shouldForceRegenerate
+				? `brief-${userId}-${briefDate}-${Date.now()}`
+				: `brief-${userId}-${briefDate}`
+		});
+
+		if (
+			shouldForceImmediate &&
+			!shouldForceRegenerate &&
+			job.status === 'pending' &&
+			new Date(job.scheduled_for).getTime() > Date.now() + 1000
+		) {
+			const promotedAt = new Date();
+			const { data: promotedJob, error: promoteError } = await supabase
+				.from('queue_jobs')
+				.update({
+					scheduled_for: promotedAt.toISOString(),
+					priority: 1,
+					metadata: mergeQueueMetadata(job.metadata, jobData),
+					updated_at: promotedAt.toISOString()
+				})
+				.eq('id', job.id)
+				.eq('status', 'pending')
+				.select('*')
+				.single();
+
+			if (promoteError) {
+				console.warn(
+					`Failed to promote deduped brief job ${job.queue_job_id}: ${promoteError.message}`
+				);
+			} else if (promotedJob) {
+				job = promotedJob;
+				console.log(`⚡ Promoted deduped brief job ${job.queue_job_id} to run now`);
+			}
+		}
 
 		console.log(`📝 API: Queued brief for user ${userId}, job ${job.queue_job_id}`);
 
 		return res.json({
 			success: true,
 			jobId: job.queue_job_id,
-			scheduledFor: scheduleTime.toISOString(),
+			scheduledFor: new Date(job.scheduled_for).toISOString(),
 			briefDate
 		});
 	} catch (error) {
@@ -285,8 +360,8 @@ app.post('/queue/brief', async (req, res) => {
 			metadata: {
 				scheduledFor: req.body?.scheduledFor,
 				briefDate: req.body?.briefDate,
-				forceImmediate: req.body?.forceImmediate ?? false,
-				forceRegenerate: req.body?.forceRegenerate ?? false
+				forceImmediate: req.body?.forceImmediate === true,
+				forceRegenerate: req.body?.forceRegenerate === true
 			}
 		});
 		return res.status(500).json({

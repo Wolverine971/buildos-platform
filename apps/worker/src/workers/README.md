@@ -6,14 +6,18 @@ This directory contains worker processors for queue job types handled by `apps/w
 
 ## Current Worker Domains
 
-- `brief/` - Daily brief generation + email delivery jobs
+- `brief/` - Daily brief generation
+- `briefAudio/` - Daily brief narration generation
 - `notification/` - Notification sends and project activity batch flush
 - `ontology/` - Ontology jobs, including `build_project_context_snapshot`
 - `project-icon/` - Project icon generation (`generate_project_icon`)
+- `assets/` - Ontology asset OCR (`extract_onto_asset_ocr`)
 - `onboarding/` - Onboarding analysis jobs
 - `chat/` - Chat session classification jobs
 - `braindump/` - Ontology braindump processing jobs
 - `voice-notes/` - Voice note transcription jobs
+- `calendar/` - Calendar projection sync (`sync_calendar`)
+- `sms/`, `dailySmsWorker.ts`, `smsWorker.ts` - SMS prompts, scheduling, and sends
 - `agent-run/`, `project-loop/` - Agent runtime jobs
 - `shared/` - Adapters and shared worker helpers
 

@@ -96,8 +96,10 @@
 		Globe,
 		ExternalLink,
 		Link,
-		Clock
+		Clock,
+		MoreHorizontal
 	} from 'lucide-svelte';
+	import { handleRovingTabKeydown } from '$lib/components/project/v2/board-a11y';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	// Lazy-loaded AgentChatModal for better initial load performance
 
@@ -505,6 +507,7 @@
 	let exportMenuPos = $state({ top: 0, right: 0 });
 
 	// Left panel collapsible sections
+	let showPublicPage = $state(false);
 	let showLinkedEntities = $state(true);
 	let showImages = $state(false);
 	let showVersionHistory = $state(false);
@@ -868,6 +871,7 @@
 
 	function resetDocumentPanels() {
 		activeMobileTab = null;
+		showPublicPage = false;
 		showImages = false;
 		showVersionHistory = false;
 		showVoiceNotes = false;
@@ -957,6 +961,12 @@
 			if (!isOpen || activeDocumentId !== documentId) return;
 			publicPageState = normalizePublicPageState(payload?.data?.publicPage);
 			latestPublicPageReview = normalizePublicPageReview(payload?.data?.latestReview);
+			// Auto-expand the publish panel only when the page is live or has a
+			// non-default status; drafts keep it collapsed so it doesn't outweigh
+			// the editor's primary sections (hierarchy fix, Hyperplexed T2-5).
+			showPublicPage =
+				publicPageState?.is_live_public === true ||
+				(publicPageState != null && publicPageState.public_status !== 'not_public');
 		} catch (error) {
 			if (!isOpen || activeDocumentId !== documentId) return;
 			publicPageState = null;
@@ -2098,6 +2108,48 @@
 		}
 	}
 
+	// Data-driven mobile tab list so the tab bar has one source of truth and can
+	// carry proper tablist/roving-tabindex a11y (Hyperplexed T2-3).
+	type MobileTabDef = {
+		id: Exclude<MobileTab, null>;
+		label: string;
+		icon: typeof Settings2;
+		badge: number;
+	};
+	const mobileTabs = $derived.by((): MobileTabDef[] => {
+		const tabs: MobileTabDef[] = [
+			{ id: 'details', label: 'Details', icon: Settings2, badge: 0 }
+		];
+		if (isEditing && activeDocumentId) {
+			tabs.push({ id: 'links', label: 'Links', icon: Link, badge: linkedCount + tagCount });
+			tabs.push({ id: 'media', label: 'Media', icon: ImageIcon, badge: 0 });
+			tabs.push({ id: 'history', label: 'History', icon: Clock, badge: 0 });
+			tabs.push({
+				id: 'comments',
+				label: 'Comments',
+				icon: MessageSquare,
+				badge: commentsCount
+			});
+		}
+		return tabs;
+	});
+	let mobileTabButtons = $state<(HTMLButtonElement | null)[]>([]);
+
+	function selectMobileTab(index: number) {
+		const tab = mobileTabs[index];
+		if (!tab) return;
+		activeMobileTab = tab.id;
+		if (tab.id === 'history') {
+			void ensureAdminAccessChecked();
+		}
+	}
+
+	function handleMobileTabKeydown(event: KeyboardEvent, index: number) {
+		handleRovingTabKeydown(event, index, mobileTabs.length, selectMobileTab, (target) =>
+			mobileTabButtons[target]?.focus()
+		);
+	}
+
 	// Check admin access for restore permission
 	// Since we don't have a dedicated access check endpoint, we'll be optimistic
 	// and show the restore button. The API will enforce permissions anyway.
@@ -2297,6 +2349,262 @@
 
 <svelte:window onclick={handleExportMenuWindowClick} onkeydown={handleExportMenuWindowKeydown} />
 
+<!--
+	Shared snippets — rendered in both the desktop sidebar and the mobile Details
+	tab so the publish panel, metadata, move button, and save status live in one
+	place instead of being duplicated markup that must be hand-synced.
+-->
+{#snippet saveStatusIndicator()}
+	{#if isEditing}
+		<span class="inline-flex items-center gap-1">
+			{#if saveStatus === 'saving'}
+				<LoaderCircle class="w-2.5 h-2.5 animate-spin text-muted-foreground" />
+				<span class="text-muted-foreground">SAVING</span>
+			{:else if saveStatus === 'saved'}
+				<Check class="w-2.5 h-2.5 text-success" />
+				<span class="text-success">{lastSavePublishedLive ? 'LIVE UPDATED' : 'SAVED'}</span>
+			{:else if saveStatus === 'error'}
+				<AlertTriangle class="w-2.5 h-2.5 text-destructive" />
+				<span class="text-destructive">SAVE FAILED</span>
+			{:else if saveStatus === 'conflict'}
+				<AlertTriangle class="w-2.5 h-2.5 text-warning" />
+				<span class="text-warning">CONFLICT</span>
+			{:else if saveStatus === 'dirty'}
+				<span class="w-1.5 h-1.5 rounded-full bg-warning shrink-0"></span>
+				<span class="text-muted-foreground/50">UNSAVED</span>
+			{/if}
+		</span>
+	{/if}
+{/snippet}
+
+{#snippet metadataBlock()}
+	<dl class="space-y-1">
+		<div class="flex items-center justify-between gap-2">
+			<dt class="micro-label text-muted-foreground/70">CREATED</dt>
+			<dd class="text-xs font-mono text-foreground">
+				{createdAt ? new Date(createdAt).toLocaleDateString() : '—'}
+			</dd>
+		</div>
+		<div class="flex items-center justify-between gap-2">
+			<dt class="micro-label text-muted-foreground/70">UPDATED</dt>
+			<dd class="text-xs font-mono text-foreground">
+				{updatedAt ? new Date(updatedAt).toLocaleDateString() : '—'}
+			</dd>
+		</div>
+		<div class="flex items-start justify-between gap-2">
+			<dt class="micro-label text-muted-foreground/70 shrink-0">ID</dt>
+			<dd class="text-xs font-mono text-foreground truncate text-right">
+				{activeDocumentId}
+			</dd>
+		</div>
+	</dl>
+{/snippet}
+
+{#snippet moveButton()}
+	<Button
+		type="button"
+		variant="ghost"
+		size="sm"
+		onclick={openMoveModal}
+		disabled={blockingSave || treeLoading}
+		class="w-full text-xs justify-start px-2 h-8 pressable"
+		title="Move to another location"
+	>
+		<FolderInput class="w-3.5 h-3.5" />
+		<span class="ml-1">Move to...</span>
+	</Button>
+{/snippet}
+
+{#snippet publicPagePanel()}
+	{#if !publicPageStateLoaded || publicPageLoading}
+		<div class="flex items-center gap-2 text-xs text-muted-foreground">
+			<LoaderCircle class="w-3.5 h-3.5 animate-spin" />
+			<span>Loading public page state...</span>
+		</div>
+	{:else if isLiveDocument && publicPageState}
+		<div
+			class="rounded-md border px-2 py-2 space-y-1.5 tx tx-grain tx-weak wt-paper {liveDocumentNeedsAttention
+				? 'border-warning/40 bg-warning/5'
+				: 'border-success/40 bg-success/5'}"
+		>
+			<div class="flex items-start gap-2">
+				<Globe
+					class="w-3.5 h-3.5 mt-0.5 shrink-0 {liveDocumentNeedsAttention
+						? 'text-warning'
+						: 'text-success'}"
+				/>
+				<div class="min-w-0">
+					<p
+						class="micro-label {liveDocumentNeedsAttention
+							? 'text-warning'
+							: 'text-success'}"
+					>
+						{liveDocumentStatusLabel}
+					</p>
+					<p class="text-xs leading-snug text-muted-foreground">
+						{liveDocumentStatusText}
+					</p>
+				</div>
+			</div>
+			<div class="text-xs font-mono text-foreground truncate">
+				{publicPageUrlPath}
+			</div>
+			{#if publicPageLastLiveUpdateLabel}
+				<div class="flex items-center gap-1 text-xs text-muted-foreground">
+					<Clock class="w-3 h-3 shrink-0" />
+					<span>Live updated {publicPageLastLiveUpdateLabel}</span>
+				</div>
+			{/if}
+			{#if publicPageState.view_count_all > 0}
+				<div
+					class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground"
+				>
+					<span>
+						{publicPageState.view_count_all.toLocaleString()}
+						{publicPageState.view_count_all === 1 ? 'view' : 'views'}
+					</span>
+					{#if publicPageState.view_count_30d > 0}
+						<span class="text-muted-foreground/50">·</span>
+						<span>{publicPageState.view_count_30d.toLocaleString()} in 30d</span>
+					{/if}
+				</div>
+			{/if}
+			<div class="grid grid-cols-2 gap-1.5">
+				<button
+					type="button"
+					onclick={handleCopyPublicPageUrl}
+					aria-label="Copy public page link"
+					class="inline-flex min-h-[36px] items-center justify-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground transition-colors pressable hover:bg-muted"
+				>
+					<Link class="w-3 h-3" />
+					Copy link
+				</button>
+				<button
+					type="button"
+					onclick={openPublicPageInNewTab}
+					aria-label="Open public page in new tab"
+					class="inline-flex min-h-[36px] items-center justify-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground transition-colors pressable hover:bg-muted"
+				>
+					Open
+					<ExternalLink class="w-3 h-3" />
+				</button>
+				<button
+					type="button"
+					onclick={handleMakeDocumentPublic}
+					class="inline-flex min-h-[36px] items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-accent transition-colors pressable hover:bg-accent/10"
+				>
+					{livePageHasUnpublishedChanges ? 'Review changes' : 'Edit settings'}
+				</button>
+				<button
+					type="button"
+					onclick={handleUnpublishPublicPage}
+					disabled={publicPageActionLoading}
+					aria-label="Unpublish public page"
+					class="inline-flex min-h-[36px] items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors pressable disabled:opacity-50"
+				>
+					Unpublish
+				</button>
+			</div>
+			<label class="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+				<span>Live sync on save</span>
+				<input
+					type="checkbox"
+					checked={publicPageState.live_sync_enabled}
+					onchange={(event) =>
+						handleLiveSyncToggle((event.currentTarget as HTMLInputElement).checked)}
+					class="h-3.5 w-3.5 rounded border-border"
+				/>
+			</label>
+			{#if publicPageState.last_live_sync_error}
+				<p class="text-xs text-warning leading-snug">
+					Last live sync error: {publicPageState.last_live_sync_error}
+				</p>
+			{/if}
+		</div>
+	{:else}
+		<div class="space-y-1.5">
+			{#if publicPageState?.public_status === 'unpublished'}
+				<p class="text-xs text-muted-foreground leading-snug">
+					Previously published at <span class="font-mono text-foreground"
+						>{publicPageUrlPath}</span
+					>. Republish to make it live again at the same URL.
+				</p>
+			{:else if publicPageState?.public_status === 'pending_confirmation'}
+				<p class="text-xs text-warning leading-snug">
+					Publish in progress — awaiting review. Try again in a moment.
+				</p>
+			{/if}
+			<Button
+				type="button"
+				variant="outline"
+				size="sm"
+				onclick={handleMakeDocumentPublic}
+				disabled={blockingSave || publicPageActionLoading || isArchivedDocument}
+				class="w-full text-xs justify-center"
+			>
+				<Globe class="w-3.5 h-3.5" />
+				<span class="ml-1">
+					{#if publicPageState?.public_status === 'unpublished'}
+						Republish
+					{:else if publicPageState}
+						Update Public Page
+					{:else}
+						Share publicly
+					{/if}
+				</span>
+			</Button>
+			{#if publicPageState?.public_status && publicPageState.public_status !== 'not_public' && publicPageState.public_status !== 'unpublished' && publicPageState.public_status !== 'pending_confirmation'}
+				<p class="text-xs text-muted-foreground">
+					Status: {publicPageState.public_status.replace('_', ' ')}
+				</p>
+			{/if}
+		</div>
+	{/if}
+
+	{#if hasFlaggedPublicPageReview && latestPublicPageReview}
+		<div
+			class="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 space-y-1 tx tx-grain tx-weak wt-paper"
+		>
+			<p class="micro-label text-destructive">CONTENT REVIEW FLAGGED</p>
+			{#if latestPublicPageReview.summary}
+				<p class="text-xs text-destructive leading-snug">
+					{latestPublicPageReview.summary}
+				</p>
+			{/if}
+			{#if latestPublicPageReviewReasons.length > 0}
+				<ul class="space-y-0.5 text-xs text-destructive list-disc pl-4">
+					{#each latestPublicPageReviewReasons as reason}
+						<li>{reason}</li>
+					{/each}
+				</ul>
+			{/if}
+			{#if latestPublicPageReview.admin_decision}
+				<p class="text-xs text-destructive leading-snug">
+					Admin decision:
+					{latestPublicPageReview.admin_decision === 'approved'
+						? 'OK to publish'
+						: 'Not okay'}
+					{#if latestPublicPageReview.admin_decision_at}
+						({formatDate(latestPublicPageReview.admin_decision_at)})
+					{/if}
+				</p>
+			{/if}
+			{#if latestPublicPageReview.admin_decision_reason}
+				<p class="text-xs text-destructive leading-snug">
+					{latestPublicPageReview.admin_decision_reason}
+				</p>
+			{/if}
+			{#if latestPublicPageReviewGuidance}
+				<p class="text-xs text-destructive leading-snug">
+					{latestPublicPageReviewGuidance}
+				</p>
+			{/if}
+		</div>
+	{:else if latestPublicPageReview?.status === 'passed'}
+		<p class="text-xs text-muted-foreground">Last content review passed.</p>
+	{/if}
+{/snippet}
+
 <Modal
 	bind:isOpen
 	onClose={closeModal}
@@ -2315,7 +2623,7 @@
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
+					class="flex h-9 w-9 items-center justify-center rounded-md bg-accent/10 text-accent shrink-0"
 				>
 					<FileText class="w-5 h-5" />
 				</div>
@@ -2368,58 +2676,13 @@
 									day: 'numeric'
 								})}{/if}
 						</span>
-						{#if isEditing}
-							<span class="inline-flex items-center gap-1">
-								{#if saveStatus === 'saving'}
-									<LoaderCircle
-										class="w-2.5 h-2.5 animate-spin text-muted-foreground"
-									/>
-									<span class="text-muted-foreground">SAVING</span>
-								{:else if saveStatus === 'saved'}
-									<Check class="w-2.5 h-2.5 text-success" />
-									<span class="text-success"
-										>{lastSavePublishedLive ? 'LIVE UPDATED' : 'SAVED'}</span
-									>
-								{:else if saveStatus === 'error'}
-									<AlertTriangle class="w-2.5 h-2.5 text-destructive" />
-									<span class="text-destructive">SAVE FAILED</span>
-								{:else if saveStatus === 'conflict'}
-									<AlertTriangle class="w-2.5 h-2.5 text-warning" />
-									<span class="text-warning">CONFLICT</span>
-								{:else if saveStatus === 'dirty'}
-									<span class="w-1.5 h-1.5 rounded-full bg-warning shrink-0"
-									></span>
-									<span class="text-muted-foreground/50">UNSAVED</span>
-								{/if}
-							</span>
-						{/if}
+						{@render saveStatusIndicator()}
 					</p>
 				</div>
 			</div>
 			<div class="flex items-center gap-1.5">
-				{#if isEditing && activeDocumentId}
-					<button
-						type="button"
-						onclick={handleCopyDocumentPageUrl}
-						disabled={blockingSave || loading}
-						class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
-						title="Copy document URL"
-						aria-label="Copy document URL"
-					>
-						<Link class="w-4 h-4" />
-					</button>
-					<button
-						type="button"
-						onclick={handleOpenDocumentPage}
-						disabled={blockingSave || loading}
-						class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
-						title="Open document page"
-						aria-label="Open document page"
-					>
-						<ExternalLink class="w-4 h-4" />
-					</button>
-				{/if}
-				<!-- Export button -->
+				<!-- More actions: copy URL / open page / export — consolidated so the
+					 header stays uncrowded, especially on mobile (Hyperplexed T2-2) -->
 				<div class="relative" bind:this={exportMenuRef}>
 					<button
 						bind:this={exportButtonRef}
@@ -2436,17 +2699,18 @@
 							showExportMenu = !showExportMenu;
 						}}
 						disabled={blockingSave || loading || exportingFormat !== null}
-						class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
-						title="Export document"
+						class="flex h-9 w-9 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
+						title="More actions"
+						aria-label="More actions"
 						aria-haspopup="menu"
 						aria-expanded={showExportMenu}
 					>
-						<Download class="w-4 h-4" />
+						<MoreHorizontal class="w-4 h-4" />
 					</button>
 
 					{#if showExportMenu}
 						<div
-							class="fixed z-[10000] w-40 overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak"
+							class="fixed z-[10000] w-48 overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak"
 							style="top: {exportMenuPos.top}px; right: {exportMenuPos.right}px;"
 							role="menu"
 							tabindex="-1"
@@ -2457,31 +2721,63 @@
 								}
 							}}
 						>
+							{#if isEditing && activeDocumentId}
+								<button
+									type="button"
+									onclick={() => {
+										showExportMenu = false;
+										handleCopyDocumentPageUrl();
+									}}
+									disabled={blockingSave || loading}
+									class="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+									role="menuitem"
+								>
+									<Link class="w-3.5 h-3.5 shrink-0" />
+									Copy document URL
+								</button>
+								<button
+									type="button"
+									onclick={() => {
+										showExportMenu = false;
+										handleOpenDocumentPage();
+									}}
+									disabled={blockingSave || loading}
+									class="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+									role="menuitem"
+								>
+									<ExternalLink class="w-3.5 h-3.5 shrink-0" />
+									Open document page
+								</button>
+								<div class="my-1 border-t border-border/60"></div>
+							{/if}
 							<button
 								type="button"
 								onclick={() => handleExport('docx')}
 								disabled={exportingFormat !== null}
-								class="w-full px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								class="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 								role="menuitem"
 							>
+								<Download class="w-3.5 h-3.5 shrink-0" />
 								Export as DOCX
 							</button>
 							<button
 								type="button"
 								onclick={() => handleExport('html')}
 								disabled={exportingFormat !== null}
-								class="w-full px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								class="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 								role="menuitem"
 							>
+								<Download class="w-3.5 h-3.5 shrink-0" />
 								Export as HTML
 							</button>
 							<button
 								type="button"
 								onclick={() => handleExport('pdf')}
 								disabled={exportingFormat !== null}
-								class="w-full px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								class="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 								role="menuitem"
 							>
+								<Download class="w-3.5 h-3.5 shrink-0" />
 								Export as PDF
 							</button>
 						</div>
@@ -2493,7 +2789,7 @@
 						type="button"
 						onclick={openChatAbout}
 						disabled={loading || blockingSave}
-						class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
+						class="flex h-9 w-9 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
 						title="Chat about this document"
 					>
 						<img
@@ -2508,7 +2804,7 @@
 					type="button"
 					onclick={requestClose}
 					disabled={isCloseBlocked}
-					class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
+					class="flex h-9 w-9 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
 					aria-label="Close modal"
 				>
 					<X class="w-5 h-5" />
@@ -2609,306 +2905,58 @@
 										{#if hasTags}
 											<TagsDisplay props={documentProps} />
 										{/if}
-										<dl class="space-y-1">
-											<div class="flex items-center justify-between gap-2">
-												<dt class="micro-label text-muted-foreground/70">
-													CREATED
-												</dt>
-												<dd class="text-xs font-mono text-foreground">
-													{createdAt
-														? new Date(createdAt).toLocaleDateString()
-														: '—'}
-												</dd>
-											</div>
-											<div class="flex items-center justify-between gap-2">
-												<dt class="micro-label text-muted-foreground/70">
-													UPDATED
-												</dt>
-												<dd class="text-xs font-mono text-foreground">
-													{updatedAt
-														? new Date(updatedAt).toLocaleDateString()
-														: '—'}
-												</dd>
-											</div>
-											<div class="flex items-start justify-between gap-2">
-												<dt
-													class="micro-label text-muted-foreground/70 shrink-0"
-												>
-													ID
-												</dt>
-												<dd
-													class="text-xs font-mono text-foreground truncate text-right"
-												>
-													{activeDocumentId}
-												</dd>
-											</div>
-										</dl>
+										{@render metadataBlock()}
 									</div>
 								{/if}
 
-								<!-- Public Page -->
+								<!-- Public Page (collapsible; auto-expands when live) -->
 								{#if isEditing && activeDocumentId}
-									<div class="pt-3 border-t border-border space-y-2">
-										{#if !publicPageStateLoaded || publicPageLoading}
-											<div
-												class="flex items-center gap-2 text-xs text-muted-foreground"
-											>
-												<LoaderCircle class="w-3.5 h-3.5 animate-spin" />
-												<span>Loading public page state...</span>
-											</div>
-										{:else if isLiveDocument && publicPageState}
-											<div
-												class="rounded-md border px-2 py-1.5 space-y-1.5 tx tx-grain tx-weak wt-paper {liveDocumentNeedsAttention
-													? 'border-warning/30 bg-warning/10'
-													: 'border-success/30 bg-success/10'}"
-											>
-												<div class="flex items-start gap-2">
-													<Globe
-														class="w-3.5 h-3.5 mt-0.5 shrink-0 {liveDocumentNeedsAttention
-															? 'text-warning'
-															: 'text-success'}"
-													/>
-													<div class="min-w-0">
-														<p
-															class="micro-label {liveDocumentNeedsAttention
-																? 'text-warning'
-																: 'text-success'}"
-														>
-															{liveDocumentStatusLabel}
-														</p>
-														<p
-															class="text-[11px] leading-snug {liveDocumentNeedsAttention
-																? 'text-warning'
-																: 'text-success'}"
-														>
-															{liveDocumentStatusText}
-														</p>
-													</div>
-												</div>
-												<div
-													class="text-[11px] font-mono truncate {liveDocumentNeedsAttention
-														? 'text-warning'
-														: 'text-success'}"
+									<div class="pt-3 border-t border-border">
+										<button
+											type="button"
+											onclick={() => (showPublicPage = !showPublicPage)}
+											class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
+										>
+											<span class="flex items-center gap-2">
+												<span class="micro-label text-foreground"
+													>PUBLIC PAGE</span
 												>
-													{publicPageUrlPath}
-												</div>
-												{#if publicPageLastLiveUpdateLabel}
-													<div
-														class="flex items-center gap-1 text-[11px] {liveDocumentNeedsAttention
-															? 'text-warning'
-															: 'text-success'}"
+												{#if isLiveDocument}
+													<span
+														class="inline-flex items-center gap-1 rounded-full px-1.5 h-4 text-[0.6rem] font-semibold {liveDocumentNeedsAttention
+															? 'bg-warning/20 text-warning'
+															: 'bg-success/20 text-success'}"
 													>
-														<Clock class="w-3 h-3 shrink-0" />
 														<span
-															>Live updated {publicPageLastLiveUpdateLabel}</span
-														>
-													</div>
-												{/if}
-												{#if publicPageState.view_count_all > 0}
-													<div
-														class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] {liveDocumentNeedsAttention
-															? 'text-warning'
-															: 'text-success'}"
-													>
-														<span>
-															{publicPageState.view_count_all.toLocaleString()}
-															{publicPageState.view_count_all === 1
-																? 'view'
-																: 'views'}
-														</span>
-														{#if publicPageState.view_count_30d > 0}
-															<span
-																class={liveDocumentNeedsAttention
-																	? 'text-warning/50'
-																	: 'text-success/50'}>·</span
-															>
-															<span>
-																{publicPageState.view_count_30d.toLocaleString()}
-																in 30d
-															</span>
-														{/if}
-													</div>
-												{/if}
-												<div class="grid grid-cols-2 gap-1.5">
-													<button
-														type="button"
-														onclick={handleCopyPublicPageUrl}
-														aria-label="Copy public page link"
-														class="inline-flex min-h-[32px] items-center justify-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors pressable {liveDocumentNeedsAttention
-															? 'border-warning/30 bg-warning/15 text-warning hover:bg-warning/25'
-															: 'border-success/30 bg-success/15 text-success hover:bg-success/25'}"
-													>
-														<Link class="w-3 h-3" />
-														Copy link
-													</button>
-													<button
-														type="button"
-														onclick={openPublicPageInNewTab}
-														aria-label="Open public page in new tab"
-														class="inline-flex min-h-[32px] items-center justify-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors pressable {liveDocumentNeedsAttention
-															? 'border-warning/30 text-warning hover:bg-warning/10'
-															: 'border-success/30 text-success hover:bg-success/10'}"
-													>
-														Open
-														<ExternalLink class="w-3 h-3" />
-													</button>
-													<button
-														type="button"
-														onclick={handleMakeDocumentPublic}
-														class="inline-flex min-h-[32px] items-center justify-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors pressable {liveDocumentNeedsAttention
-															? 'text-warning hover:bg-warning/10'
-															: 'text-success hover:bg-success/10'}"
-													>
-														{livePageHasUnpublishedChanges
-															? 'Review changes'
-															: 'Edit settings'}
-													</button>
-													<button
-														type="button"
-														onclick={handleUnpublishPublicPage}
-														disabled={publicPageActionLoading}
-														aria-label="Unpublish public page"
-														class="inline-flex min-h-[32px] items-center justify-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10 transition-colors pressable disabled:opacity-50"
-													>
-														Unpublish
-													</button>
-												</div>
-												<label
-													class="flex items-center justify-between gap-2 text-[11px] {liveDocumentNeedsAttention
-														? 'text-warning'
-														: 'text-success'}"
-												>
-													<span>Live sync on save</span>
-													<input
-														type="checkbox"
-														checked={publicPageState.live_sync_enabled}
-														onchange={(event) =>
-															handleLiveSyncToggle(
-																(
-																	event.currentTarget as HTMLInputElement
-																).checked
-															)}
-														class="h-3.5 w-3.5 rounded border-border"
-													/>
-												</label>
-												{#if publicPageState.last_live_sync_error}
-													<p
-														class="text-[11px] text-warning leading-snug"
-													>
-														Last live sync error: {publicPageState.last_live_sync_error}
-													</p>
-												{/if}
-											</div>
-										{:else}
-											<div class="space-y-1">
-												{#if publicPageState?.public_status === 'unpublished'}
-													<p
-														class="text-[11px] text-muted-foreground leading-snug"
-													>
-														Previously published at <span
-															class="font-mono text-foreground"
-															>{publicPageUrlPath}</span
-														>. Republish to make it live again at the
-														same URL.
-													</p>
-												{:else if publicPageState?.public_status === 'pending_confirmation'}
-													<p
-														class="text-[11px] text-warning leading-snug"
-													>
-														Publish in progress — awaiting review. Try
-														again in a moment.
-													</p>
-												{/if}
-												<Button
-													type="button"
-													variant="outline"
-													size="sm"
-													onclick={handleMakeDocumentPublic}
-													disabled={blockingSave ||
-														publicPageActionLoading ||
-														isArchivedDocument}
-													class="w-full text-xs justify-center"
-												>
-													<Globe class="w-3.5 h-3.5" />
-													<span class="ml-1">
-														{#if publicPageState?.public_status === 'unpublished'}
-															Republish
-														{:else if publicPageState}
-															Update Public Page
-														{:else}
-															Share publicly
-														{/if}
+															class="w-1 h-1 rounded-full {liveDocumentNeedsAttention
+																? 'bg-warning'
+																: 'bg-success'}"
+														></span>
+														{liveDocumentNeedsAttention
+															? 'ATTENTION'
+															: 'LIVE'}
 													</span>
-												</Button>
-												{#if publicPageState?.public_status && publicPageState.public_status !== 'not_public' && publicPageState.public_status !== 'unpublished' && publicPageState.public_status !== 'pending_confirmation'}
-													<p class="text-[11px] text-muted-foreground">
-														Status: {publicPageState.public_status.replace(
-															'_',
-															' '
-														)}
-													</p>
+												{:else if publicPageState?.public_status === 'unpublished'}
+													<span
+														class="inline-flex items-center rounded-full px-1.5 h-4 text-[0.6rem] font-semibold bg-muted text-muted-foreground"
+														>UNPUBLISHED</span
+													>
 												{/if}
+											</span>
+											{#if showPublicPage}
+												<ChevronUp
+													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+												/>
+											{:else}
+												<ChevronDown
+													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+												/>
+											{/if}
+										</button>
+										{#if showPublicPage}
+											<div class="pt-2 pb-1 space-y-2">
+												{@render publicPagePanel()}
 											</div>
-										{/if}
-
-										{#if hasFlaggedPublicPageReview && latestPublicPageReview}
-											<div
-												class="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 space-y-1 tx tx-grain tx-weak wt-paper"
-											>
-												<p class="micro-label text-destructive">
-													CONTENT REVIEW FLAGGED
-												</p>
-												{#if latestPublicPageReview.summary}
-													<p
-														class="text-[11px] text-destructive leading-snug"
-													>
-														{latestPublicPageReview.summary}
-													</p>
-												{/if}
-												{#if latestPublicPageReviewReasons.length > 0}
-													<ul
-														class="space-y-0.5 text-[11px] text-destructive list-disc pl-4"
-													>
-														{#each latestPublicPageReviewReasons as reason}
-															<li>{reason}</li>
-														{/each}
-													</ul>
-												{/if}
-												{#if latestPublicPageReview.admin_decision}
-													<p
-														class="text-[11px] text-destructive leading-snug"
-													>
-														Admin decision:
-														{latestPublicPageReview.admin_decision ===
-														'approved'
-															? 'OK to publish'
-															: 'Not okay'}
-														{#if latestPublicPageReview.admin_decision_at}
-															({formatDate(
-																latestPublicPageReview.admin_decision_at
-															)})
-														{/if}
-													</p>
-												{/if}
-												{#if latestPublicPageReview.admin_decision_reason}
-													<p
-														class="text-[11px] text-destructive leading-snug"
-													>
-														{latestPublicPageReview.admin_decision_reason}
-													</p>
-												{/if}
-												{#if latestPublicPageReviewGuidance}
-													<p
-														class="text-[11px] text-destructive leading-snug"
-													>
-														{latestPublicPageReviewGuidance}
-													</p>
-												{/if}
-											</div>
-										{:else if latestPublicPageReview?.status === 'passed'}
-											<p class="text-[11px] text-muted-foreground">
-												Last content review passed.
-											</p>
 										{/if}
 									</div>
 								{/if}
@@ -3100,18 +3148,7 @@
 									<!-- Move to... button -->
 									{#if !isArchivedDocument}
 										<div class="pt-3 border-t border-border">
-											<Button
-												type="button"
-												variant="ghost"
-												size="sm"
-												onclick={openMoveModal}
-												disabled={blockingSave || treeLoading}
-												class="w-full text-xs justify-start px-2 h-8 pressable"
-												title="Move to another location"
-											>
-												<FolderInput class="w-3.5 h-3.5" />
-												<span class="ml-1">Move to...</span>
-											</Button>
+											{@render moveButton()}
 										</div>
 									{/if}
 								{/if}
@@ -3189,48 +3226,8 @@
 													})}</span
 												>
 											{/if}
-											{#if isEditing}
-												<span class="inline-flex items-center gap-1">
-													{#if saveStatus === 'saving'}
-														<LoaderCircle
-															class="w-2.5 h-2.5 animate-spin text-muted-foreground"
-														/>
-														<span class="text-muted-foreground"
-															>SAVING</span
-														>
-													{:else if saveStatus === 'saved'}
-														<Check class="w-2.5 h-2.5 text-success" />
-														<span class="text-success"
-															>{lastSavePublishedLive
-																? 'LIVE UPDATED'
-																: 'SAVED'}</span
-														>
-													{:else if saveStatus === 'error'}
-														<AlertTriangle
-															class="w-2.5 h-2.5 text-destructive"
-														/>
-														<span class="text-destructive">FAILED</span>
-													{:else if saveStatus === 'conflict'}
-														<AlertTriangle
-															class="w-2.5 h-2.5 text-warning"
-														/>
-														<span class="text-warning">CONFLICT</span>
-													{:else if saveStatus === 'dirty'}
-														<span
-															class="w-1.5 h-1.5 rounded-full bg-warning shrink-0"
-														></span>
-														<span class="text-muted-foreground/50"
-															>UNSAVED</span
-														>
-													{/if}
-												</span>
-											{/if}
+											{@render saveStatusIndicator()}
 										</p>
-										<!-- Desktop: MARKDOWN label -->
-										<span
-											class="micro-label text-muted-foreground/70 hidden lg:inline"
-											>MARKDOWN</span
-										>
 									</div>
 									<div class="flex-1 min-h-0 flex flex-col">
 										<RichMarkdownEditor
@@ -3260,95 +3257,57 @@
 							<div
 								class="lg:hidden flex-shrink-0 border-t border-border bg-muted tx tx-strip tx-weak wt-paper"
 							>
-								<!-- Tab bar - always visible -->
-								<div
-									class="flex items-center gap-1 px-2 py-1.5 overflow-x-auto scrollbar-hide"
-								>
-									<!-- Details tab -->
-									<button
-										type="button"
-										onclick={() => toggleMobileTab('details')}
-										class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
-										'details'
-											? 'bg-card shadow-ink text-foreground'
-											: 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
+								<!-- Tab bar - always visible; a scroll-edge fade signals the
+									 tabs run past the viewport (Hyperplexed T2-3) -->
+								<div class="relative">
+									<div
+										role="tablist"
+										aria-label="Document panels"
+										class="flex items-center gap-1 px-2 py-1.5 overflow-x-auto scrollbar-hide"
 									>
-										<Settings2 class="w-3.5 h-3.5" />
-										Details
-									</button>
-
-									<!-- Links tab -->
-									{#if isEditing && activeDocumentId}
-										<button
-											type="button"
-											onclick={() => toggleMobileTab('links')}
-											class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
-											'links'
-												? 'bg-card shadow-ink text-foreground'
-												: 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
-										>
-											<Link class="w-3.5 h-3.5" />
-											Links
-											{#if linkedCount + tagCount > 0}
-												<span
-													class="inline-flex items-center justify-center min-w-[1rem] h-3.5 px-1 text-[0.55rem] font-bold bg-accent/20 text-accent rounded-full"
-												>
-													{linkedCount + tagCount}
-												</span>
-											{/if}
-										</button>
-
-										<!-- Media tab -->
-										<button
-											type="button"
-											onclick={() => toggleMobileTab('media')}
-											class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
-											'media'
-												? 'bg-card shadow-ink text-foreground'
-												: 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
-										>
-											<ImageIcon class="w-3.5 h-3.5" />
-											Media
-										</button>
-
-										<!-- History tab -->
-										<button
-											type="button"
-											onclick={() => toggleMobileTab('history')}
-											class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
-											'history'
-												? 'bg-card shadow-ink text-foreground'
-												: 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
-										>
-											<Clock class="w-3.5 h-3.5" />
-											History
-										</button>
-
-										<!-- Comments tab -->
-										<button
-											type="button"
-											onclick={() => toggleMobileTab('comments')}
-											class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
-											'comments'
-												? 'bg-card shadow-ink text-foreground'
-												: 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
-										>
-											<MessageSquare class="w-3.5 h-3.5" />
-											Comments
-											{#if commentsCount > 0}
-												<span
-													class="inline-flex items-center justify-center min-w-[1rem] h-3.5 px-1 text-[0.55rem] font-bold bg-accent/20 text-accent rounded-full"
-												>
-													{commentsCount}
-												</span>
-											{/if}
-										</button>
-									{/if}
+										{#each mobileTabs as tab, i (tab.id)}
+											{@const Icon = tab.icon}
+											<button
+												bind:this={mobileTabButtons[i]}
+												type="button"
+												role="tab"
+												id={`mobile-doc-tab-${tab.id}`}
+												aria-selected={activeMobileTab === tab.id}
+												tabindex={activeMobileTab === tab.id ||
+												(activeMobileTab === null && i === 0)
+													? 0
+													: -1}
+												onclick={() => toggleMobileTab(tab.id)}
+												onkeydown={(event) =>
+													handleMobileTabKeydown(event, i)}
+												class="inline-flex min-h-[36px] items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
+												tab.id
+													? 'bg-card shadow-ink text-foreground'
+													: 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
+											>
+												<Icon class="w-3.5 h-3.5 shrink-0" />
+												{tab.label}
+												{#if tab.badge > 0}
+													<span
+														class="inline-flex items-center justify-center min-w-[1rem] h-3.5 px-1 text-[0.55rem] font-bold bg-accent/20 text-accent rounded-full"
+													>
+														{tab.badge}
+													</span>
+												{/if}
+											</button>
+										{/each}
+									</div>
+									<div
+										aria-hidden="true"
+										class="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-muted to-transparent"
+									></div>
 								</div>
 
 								<!-- Tab content panel -->
 								{#if activeMobileTab}
 									<div
+										role="tabpanel"
+										aria-labelledby={`mobile-doc-tab-${activeMobileTab}`}
 										class="max-h-[40vh] overflow-y-auto border-t border-border/50 p-2.5 space-y-2 tx tx-frame tx-weak"
 									>
 										<!-- Details tab content -->
@@ -3400,314 +3359,19 @@
 
 											{#if isEditing && activeDocumentId}
 												<div class="pt-2 border-t border-border space-y-2">
-													{#if !publicPageStateLoaded || publicPageLoading}
-														<div
-															class="flex items-center gap-2 text-xs text-muted-foreground"
-														>
-															<LoaderCircle
-																class="w-3.5 h-3.5 animate-spin"
-															/>
-															<span>Loading public page state...</span
-															>
-														</div>
-													{:else if isLiveDocument && publicPageState}
-														<div
-															class="rounded-md border px-2 py-1.5 space-y-1.5 {liveDocumentNeedsAttention
-																? 'border-warning/30 bg-warning/10'
-																: 'border-success/30 bg-success/10'}"
-														>
-															<p
-																class="micro-label {liveDocumentNeedsAttention
-																	? 'text-warning'
-																	: 'text-success'}"
-															>
-																{liveDocumentStatusLabel}
-															</p>
-															<p
-																class="text-[11px] leading-snug {liveDocumentNeedsAttention
-																	? 'text-warning'
-																	: 'text-success'}"
-															>
-																{liveDocumentStatusText}
-															</p>
-															<div
-																class="flex items-center justify-between gap-2"
-															>
-																<span
-																	class="text-[11px] font-mono truncate {liveDocumentNeedsAttention
-																		? 'text-warning'
-																		: 'text-success'}"
-																>
-																	{publicPageUrlPath}
-																</span>
-															</div>
-															{#if publicPageLastLiveUpdateLabel}
-																<div
-																	class="flex items-center gap-1 text-[11px] {liveDocumentNeedsAttention
-																		? 'text-warning'
-																		: 'text-success'}"
-																>
-																	<Clock
-																		class="w-3 h-3 shrink-0"
-																	/>
-																	<span
-																		>Live updated {publicPageLastLiveUpdateLabel}</span
-																	>
-																</div>
-															{/if}
-															{#if publicPageState.view_count_all > 0}
-																<div
-																	class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] {liveDocumentNeedsAttention
-																		? 'text-warning'
-																		: 'text-success'}"
-																>
-																	<span>
-																		{publicPageState.view_count_all.toLocaleString()}
-																		{publicPageState.view_count_all ===
-																		1
-																			? 'view'
-																			: 'views'}
-																	</span>
-																	{#if publicPageState.view_count_30d > 0}
-																		<span
-																			class={liveDocumentNeedsAttention
-																				? 'text-warning/50'
-																				: 'text-success/50'}
-																			>·</span
-																		>
-																		<span>
-																			{publicPageState.view_count_30d.toLocaleString()}
-																			in 30d
-																		</span>
-																	{/if}
-																</div>
-															{/if}
-															<div
-																class="flex flex-wrap items-center gap-1.5"
-															>
-																<button
-																	type="button"
-																	onclick={handleCopyPublicPageUrl}
-																	aria-label="Copy public page link"
-																	class="inline-flex min-h-[32px] items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors pressable {liveDocumentNeedsAttention
-																		? 'border-warning/30 bg-warning/15 text-warning hover:bg-warning/25'
-																		: 'border-success/30 bg-success/15 text-success hover:bg-success/25'}"
-																>
-																	<Link class="w-3 h-3" />
-																	Copy link
-																</button>
-																<button
-																	type="button"
-																	onclick={openPublicPageInNewTab}
-																	aria-label="Open public page in new tab"
-																	class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors pressable {liveDocumentNeedsAttention
-																		? 'text-warning hover:bg-warning/10'
-																		: 'text-success hover:bg-success/10'}"
-																>
-																	Open
-																	<ExternalLink class="w-3 h-3" />
-																</button>
-																<button
-																	type="button"
-																	onclick={handleMakeDocumentPublic}
-																	class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors pressable {liveDocumentNeedsAttention
-																		? 'text-warning hover:bg-warning/10'
-																		: 'text-success hover:bg-success/10'}"
-																>
-																	{livePageHasUnpublishedChanges
-																		? 'Review changes'
-																		: 'Edit settings'}
-																</button>
-																<button
-																	type="button"
-																	onclick={handleUnpublishPublicPage}
-																	disabled={publicPageActionLoading}
-																	aria-label="Unpublish public page"
-																	class="ml-auto inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10 transition-colors pressable disabled:opacity-50"
-																>
-																	Unpublish
-																</button>
-															</div>
-															<label
-																class="flex items-center justify-between gap-2 text-[11px] {liveDocumentNeedsAttention
-																	? 'text-warning'
-																	: 'text-success'}"
-															>
-																<span>Live sync on save</span>
-																<input
-																	type="checkbox"
-																	checked={publicPageState.live_sync_enabled}
-																	onchange={(event) =>
-																		handleLiveSyncToggle(
-																			(
-																				event.currentTarget as HTMLInputElement
-																			).checked
-																		)}
-																	class="h-3.5 w-3.5 rounded border-border"
-																/>
-															</label>
-															{#if publicPageState.last_live_sync_error}
-																<p
-																	class="text-[11px] text-warning leading-snug"
-																>
-																	Last live sync error: {publicPageState.last_live_sync_error}
-																</p>
-															{/if}
-														</div>
-													{:else}
-														<div class="space-y-1">
-															{#if publicPageState?.public_status === 'unpublished'}
-																<p
-																	class="text-[11px] text-muted-foreground leading-snug"
-																>
-																	Previously published at
-																	<span
-																		class="font-mono text-foreground"
-																		>{publicPageUrlPath}</span
-																	>. Republish to make it live
-																	again at the same URL.
-																</p>
-															{:else if publicPageState?.public_status === 'pending_confirmation'}
-																<p
-																	class="text-[11px] text-warning leading-snug"
-																>
-																	Publish in progress — awaiting
-																	review. Try again in a moment.
-																</p>
-															{/if}
-															<Button
-																type="button"
-																variant="outline"
-																size="sm"
-																onclick={handleMakeDocumentPublic}
-																disabled={blockingSave ||
-																	publicPageActionLoading ||
-																	isArchivedDocument}
-																class="w-full text-xs justify-center"
-															>
-																<Globe class="w-3.5 h-3.5" />
-																<span class="ml-1">
-																	{#if publicPageState?.public_status === 'unpublished'}
-																		Republish
-																	{:else if publicPageState}
-																		Update Public Page
-																	{:else}
-																		Share publicly
-																	{/if}
-																</span>
-															</Button>
-														</div>
-													{/if}
-
-													{#if hasFlaggedPublicPageReview && latestPublicPageReview}
-														<div
-															class="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 space-y-1"
-														>
-															<p class="micro-label text-destructive">
-																CONTENT REVIEW FLAGGED
-															</p>
-															{#if latestPublicPageReview.summary}
-																<p
-																	class="text-[11px] text-destructive leading-snug"
-																>
-																	{latestPublicPageReview.summary}
-																</p>
-															{/if}
-															{#if latestPublicPageReviewReasons.length > 0}
-																<ul
-																	class="space-y-0.5 text-[11px] text-destructive list-disc pl-4"
-																>
-																	{#each latestPublicPageReviewReasons as reason}
-																		<li>{reason}</li>
-																	{/each}
-																</ul>
-															{/if}
-															{#if latestPublicPageReview.admin_decision}
-																<p
-																	class="text-[11px] text-destructive leading-snug"
-																>
-																	Admin decision:
-																	{latestPublicPageReview.admin_decision ===
-																	'approved'
-																		? 'OK to publish'
-																		: 'Not okay'}
-																</p>
-															{/if}
-															{#if latestPublicPageReviewGuidance}
-																<p
-																	class="text-[11px] text-destructive leading-snug"
-																>
-																	{latestPublicPageReviewGuidance}
-																</p>
-															{/if}
-														</div>
-													{/if}
+													{@render publicPagePanel()}
 												</div>
 											{/if}
 
 											{#if isEditing}
-												<div class="pt-2 border-t border-border space-y-1">
-													<div
-														class="flex items-center justify-between gap-2"
-													>
-														<span
-															class="micro-label text-muted-foreground/70"
-															>CREATED</span
-														>
-														<span
-															class="text-xs font-mono text-foreground"
-															>{createdAt
-																? new Date(
-																		createdAt
-																	).toLocaleDateString()
-																: '—'}</span
-														>
-													</div>
-													<div
-														class="flex items-center justify-between gap-2"
-													>
-														<span
-															class="micro-label text-muted-foreground/70"
-															>UPDATED</span
-														>
-														<span
-															class="text-xs font-mono text-foreground"
-															>{updatedAt
-																? new Date(
-																		updatedAt
-																	).toLocaleDateString()
-																: '—'}</span
-														>
-													</div>
-													<div
-														class="flex items-start justify-between gap-2"
-													>
-														<span
-															class="micro-label text-muted-foreground/70 shrink-0"
-															>ID</span
-														>
-														<span
-															class="text-xs font-mono text-foreground truncate text-right"
-															>{activeDocumentId}</span
-														>
-													</div>
+												<div class="pt-2 border-t border-border">
+													{@render metadataBlock()}
 												</div>
 
 												<!-- Move to... button -->
 												{#if !isArchivedDocument}
 													<div class="pt-2 border-t border-border">
-														<Button
-															type="button"
-															variant="ghost"
-															size="sm"
-															onclick={openMoveModal}
-															disabled={blockingSave || treeLoading}
-															class="w-full text-xs justify-start px-2 h-8 pressable"
-															title="Move to another location"
-														>
-															<FolderInput class="w-3.5 h-3.5" />
-															<span class="ml-1">Move to...</span>
-														</Button>
+														{@render moveButton()}
 													</div>
 												{/if}
 											{/if}
@@ -3804,14 +3468,14 @@
 								<button
 									type="button"
 									onclick={handleConflictReload}
-									class="text-xs font-medium px-2.5 py-1 rounded bg-warning/15 text-warning hover:bg-warning/25 transition-colors pressable"
+									class="text-xs font-medium px-2.5 py-1 rounded-md bg-warning/15 text-warning hover:bg-warning/25 transition-colors pressable"
 								>
 									Reload latest
 								</button>
 								<button
 									type="button"
 									onclick={handleConflictOverwrite}
-									class="text-xs font-medium px-2.5 py-1 rounded bg-card border border-border text-foreground hover:bg-muted transition-colors pressable"
+									class="text-xs font-medium px-2.5 py-1 rounded-md bg-card border border-border text-foreground hover:bg-muted transition-colors pressable"
 								>
 									Overwrite
 								</button>
@@ -3821,7 +3485,7 @@
 
 					{#if globalFormError}
 						<div
-							class="mx-3 mb-2 flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 tx tx-static tx-weak wt-card"
+							class="mx-3 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 tx tx-static tx-weak wt-card"
 						>
 							<span class="text-sm text-destructive">{globalFormError}</span>
 						</div>
@@ -3920,6 +3584,7 @@
 						</Button>
 						<!-- Create Child button -->
 						{#if onCreateChildRequested}
+							<div class="w-px h-5 bg-border mx-0.5" aria-hidden="true"></div>
 							<Button
 								type="button"
 								variant="ghost"
@@ -4129,16 +3794,16 @@
 									disabled={publicPageActionLoading}
 								/>
 							</div>
-							<p class="text-[11px] text-muted-foreground">
+							<p class="text-xs text-muted-foreground">
 								The prefix is frozen from the publishing account name.
 							</p>
 							{#if publicPageSlugBaseHelperText}
-								<p class="text-[11px] text-muted-foreground">
+								<p class="text-xs text-muted-foreground">
 									{publicPageSlugBaseHelperText}
 								</p>
 							{/if}
 							{#if preview.slug_was_deduped}
-								<p class="text-[11px] text-muted-foreground">
+								<p class="text-xs text-muted-foreground">
 									This page already needed a unique suffix, so the next available
 									URL was suggested.
 								</p>

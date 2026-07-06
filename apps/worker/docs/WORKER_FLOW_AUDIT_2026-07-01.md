@@ -1,6 +1,17 @@
 <!-- apps/worker/docs/WORKER_FLOW_AUDIT_2026-07-01.md -->
 
-# Worker Flow Audit — 2026-07-01
+# Worker Flow Audit - 2026-07-01
+
+Historical audit only. Do not use this file as the current worker contract.
+Several findings and file references were superseded after July 1, 2026,
+including graceful shutdown work and removal of old homework/tree-agent worker
+surfaces from this checkout. For current job types, routes, scheduler cadence,
+and deployment notes, use:
+
+- `apps/worker/docs/README.md`
+- `apps/worker/docs/QUICK_REFERENCE.md`
+- `apps/worker/docs/WORKER_JOBS_AND_FLOWS.md`
+- `apps/worker/docs/WORKER_STRUCTURE_OVERVIEW.md`
 
 Full audit of `apps/worker`: queue core, brief pipeline, agentic workers (agent-run, project-loop, tree-agent, homework, ontology, chat), notification/SMS/calendar/misc workers, the web↔worker integration contract, and dead code. Six parallel audit passes, findings verified against actual code (both TS and the Supabase RPC SQL).
 

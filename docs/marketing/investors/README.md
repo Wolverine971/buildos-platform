@@ -28,7 +28,7 @@
 - ✅ **Investment thesis**: Portfolio patterns, decision-making styles, positioning strategies
 - ✅ **Personality profiles**: Enneagram type estimates for relationship building
 - ✅ **Outreach playbooks**: Channel preferences, timing, templates, objection handling
-- ✅ **Comprehensive research document**: [`thoughts/shared/research/2025-10-29_16-52-26_investor-research.md`](../../thoughts/shared/research/2025-10-29_16-52-26_investor-research.md)
+- ✅ **Research summary**: folded into this investor index and the individual investor profiles
 
 **Potential from Content Creator Angels:**
 
@@ -175,7 +175,7 @@ Comprehensive profiles of 24 venture capital firms with:
 
 #### Content Creator Angel Investors (8 Profiles) ⭐ NEW
 
-**[→ Browse Content Creator Angel Directory](./individual-investors/)** | [Research Summary](../../thoughts/shared/research/2025-10-29_16-52-26_investor-research.md)
+**[→ Browse Content Creator Angel Directory](./individual-investors/)**
 
 **Why These Investors Are Strategic:**
 

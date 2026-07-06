@@ -88,7 +88,7 @@ LLM usage tracking and analytics:
 **Entry Points**:
 
 - Current: [/onboarding/README.md](onboarding/README.md)
-- Legacy archive: [/onboarding-v2/README.md](onboarding-v2/README.md)
+- Legacy V2 notes: [/onboarding/ONBOARDING_V2_UPDATED_SPEC.md](onboarding/ONBOARDING_V2_UPDATED_SPEC.md)
 
 User onboarding flows:
 
@@ -129,16 +129,16 @@ Time block scheduling system.
 
 ## 🎯 Quick Navigation
 
-| Feature          | Status      | Docs | Entry Point                                                       |
-| ---------------- | ----------- | ---- | ----------------------------------------------------------------- |
-| Brain Dump       | ✅ Complete | 10   | [README](braindump-context/README.md)                             |
-| Calendar         | ✅ Complete | 7    | [README](calendar-integration/README.md)                          |
-| Notifications    | ✅ Complete | 6    | [MAP](notifications/NOTIFICATION_SYSTEM_DOCS_MAP.md) ⭐           |
-| Admin Dashboard  | ✅ Complete | 1    | [README](admin-dashboard/README.md)                               |
-| Onboarding       | ✅ Active   | 2    | [Current](onboarding/README.md) [Legacy](onboarding-v2/README.md) |
-| Project Export   | ✅ Complete | 2    | [DIR](project-export/)                                            |
-| Phase Generation | ✅ Complete | 1    | [DIR](phase-generation/)                                          |
-| Time Blocks      | ✅ Complete | 1    | [README](time-blocks/README.md)                                   |
+| Feature          | Status      | Docs | Entry Point                                                                           |
+| ---------------- | ----------- | ---- | ------------------------------------------------------------------------------------- |
+| Brain Dump       | ✅ Complete | 10   | [README](braindump-context/README.md)                                                 |
+| Calendar         | ✅ Complete | 7    | [README](calendar-integration/README.md)                                              |
+| Notifications    | ✅ Complete | 6    | [MAP](notifications/NOTIFICATION_SYSTEM_DOCS_MAP.md) ⭐                               |
+| Admin Dashboard  | ✅ Complete | 1    | [README](admin-dashboard/README.md)                                                   |
+| Onboarding       | ✅ Active   | 2    | [Current](onboarding/README.md) [Legacy V2](onboarding/ONBOARDING_V2_UPDATED_SPEC.md) |
+| Project Export   | ✅ Complete | 2    | [DIR](project-export/)                                                                |
+| Phase Generation | ✅ Complete | 1    | [DIR](phase-generation/)                                                              |
+| Time Blocks      | ✅ Complete | 1    | [README](time-blocks/README.md)                                                       |
 
 ## 📂 Directory Structure
 
@@ -150,7 +150,6 @@ Time block scheduling system.
 ├── /notifications/        (6 docs)
 ├── /admin-dashboard/      (1 doc)
 ├── /onboarding/          (active docs)
-├── /onboarding-v2/       (legacy archive)
 ├── /project-export/      (2 docs)
 ├── /phase-generation/    (1 doc)
 └── /time-blocks/         (1 doc)
@@ -176,7 +175,7 @@ Time block scheduling system.
 
 1. Find feature docs here
 2. Check for testing guides or QA checklists
-3. See `/apps/web/docs/development/TESTING_CHECKLIST.md` for general procedures
+3. See `/apps/web/docs/technical/testing/TESTING_CHECKLIST.md` for general procedures
 
 ## 🔗 Related Documentation
 
@@ -194,7 +193,7 @@ Time block scheduling system.
 
 ## ⚠️ Known Issues
 
-See `/apps/web/docs/audits/` for:
+See `/apps/web/docs/technical/audits/` for:
 
 - Core Columns: ⚠️ Critical gaps in integration
 - Other implementation issues and findings

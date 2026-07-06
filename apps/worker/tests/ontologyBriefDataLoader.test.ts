@@ -10,22 +10,22 @@ import {
 	categorizeTasks,
 	calculateGoalProgress,
 	getMilestoneStatus,
-	calculatePlanProgress,
 	findUnblockingTasks,
 	getWorkMode,
 	buildProjectAccessFilter,
 	findMissingOwnerMembershipProjectIds,
 	selectCalendarBriefItems,
 	createEmptyCalendarBriefSection,
-	resolveCalendarBriefSource
+	resolveCalendarBriefSource,
+	OntologyBriefDataLoader
 } from '../src/workers/brief/ontologyBriefDataLoader';
 import type {
 	OntoTask,
 	OntoGoal,
 	OntoMilestone,
-	OntoPlan,
 	OntoEdge,
 	OntoProject,
+	OntoProjectWithRelations,
 	CalendarBriefItem
 } from '../src/workers/brief/ontologyBriefTypes';
 
@@ -42,6 +42,11 @@ function createMockTask(overrides: Partial<OntoTask> = {}): OntoTask {
 		type_key: 'execute',
 		priority: 5,
 		due_at: null,
+		start_at: null,
+		completed_at: null,
+		description: null,
+		deleted_at: null,
+		archived_at: null,
 		facet_scale: null,
 		created_by: 'actor-1',
 		created_at: '2025-12-17T00:00:00Z',
@@ -82,25 +87,6 @@ function createMockMilestone(overrides: Partial<OntoMilestone> = {}): OntoMilest
 		search_vector: null,
 		...overrides
 	} as OntoMilestone;
-}
-
-function createMockPlan(overrides: Partial<OntoPlan> = {}): OntoPlan {
-	return {
-		id: 'plan-1',
-		project_id: 'project-1',
-		name: 'Test Plan',
-		state_key: 'active',
-		type_key: 'sprint',
-		facet_context: null,
-		facet_scale: null,
-		facet_stage: null,
-		created_by: 'actor-1',
-		created_at: '2025-12-17T00:00:00Z',
-		updated_at: '2025-12-17T00:00:00Z',
-		props: {},
-		search_vector: null,
-		...overrides
-	} as OntoPlan;
 }
 
 function createMockProject(overrides: Partial<OntoProject> = {}): OntoProject {
@@ -724,7 +710,8 @@ describe('categorizeTasks', () => {
 			createMockTask({
 				id: 'task-1',
 				state_key: 'done',
-				updated_at: recentTimestamp
+				completed_at: recentTimestamp,
+				updated_at: '2025-12-01T00:00:00Z'
 			})
 		];
 
@@ -733,6 +720,30 @@ describe('categorizeTasks', () => {
 		const result = categorizeTasks(tasks, today, timezone);
 		expect(result.recentlyCompleted).toHaveLength(1);
 		expect(result.recentlyCompleted[0].id).toBe('task-1');
+	});
+
+	it('should prefer completed_at over updated_at for recently completed tasks', () => {
+		const recentTimestamp = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+		const oldTimestamp = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+		const tasks = [
+			createMockTask({
+				id: 'task-1',
+				state_key: 'done',
+				completed_at: oldTimestamp,
+				updated_at: recentTimestamp
+			}),
+			createMockTask({
+				id: 'task-2',
+				state_key: 'done',
+				completed_at: recentTimestamp,
+				updated_at: oldTimestamp
+			})
+		];
+
+		const today = new Date().toISOString().split('T')[0];
+		const result = categorizeTasks(tasks, today, timezone);
+
+		expect(result.recentlyCompleted.map((task) => task.id)).toEqual(['task-2']);
 	});
 
 	it('should categorize blocked tasks', () => {
@@ -747,6 +758,32 @@ describe('categorizeTasks', () => {
 		expect(result.blockedTasks).toHaveLength(1);
 	});
 
+	it('should keep blocked tasks out of today and overdue buckets', () => {
+		const tasks = [
+			createMockTask({
+				id: 'blocked-overdue',
+				state_key: 'blocked',
+				due_at: '2025-12-15T14:00:00Z'
+			}),
+			createMockTask({
+				id: 'blocked-today',
+				state_key: 'blocked',
+				due_at: '2025-12-17T14:00:00Z',
+				type_key: 'task.execute'
+			})
+		];
+
+		const result = categorizeTasks(tasks, briefDate, timezone);
+
+		expect(result.blockedTasks.map((task) => task.id)).toEqual([
+			'blocked-overdue',
+			'blocked-today'
+		]);
+		expect(result.overdueTasks).toHaveLength(0);
+		expect(result.todaysTasks).toHaveLength(0);
+		expect(result.executeTasks).toHaveLength(0);
+	});
+
 	it('should categorize in-progress tasks', () => {
 		const tasks = [
 			createMockTask({
@@ -757,6 +794,30 @@ describe('categorizeTasks', () => {
 
 		const result = categorizeTasks(tasks, briefDate, timezone);
 		expect(result.inProgressTasks).toHaveLength(1);
+	});
+
+	it('should derive stale in-progress tasks that have not moved for at least 7 days', () => {
+		const staleTimestamp = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+		const freshTimestamp = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+		const tasks = [
+			createMockTask({
+				id: 'task-stale',
+				state_key: 'in_progress',
+				priority: 2,
+				updated_at: staleTimestamp
+			}),
+			createMockTask({
+				id: 'task-fresh',
+				state_key: 'in_progress',
+				priority: 1,
+				updated_at: freshTimestamp
+			})
+		];
+
+		const result = categorizeTasks(tasks, briefDate, timezone);
+
+		expect(result.inProgressTasks.map((task) => task.id)).toEqual(['task-fresh', 'task-stale']);
+		expect(result.staleInProgressTasks.map((task) => task.id)).toEqual(['task-stale']);
 	});
 
 	it('should categorize tasks by work mode', () => {
@@ -787,6 +848,87 @@ describe('categorizeTasks', () => {
 
 		const result = categorizeTasks(tasks, briefDate, timezone);
 		expect(result.overdueTasks).toHaveLength(0);
+	});
+
+	it('should exclude cancelled and archived tasks from active buckets', () => {
+		const tasks = [
+			createMockTask({
+				id: 'cancelled-due',
+				state_key: 'cancelled',
+				due_at: '2025-12-15T14:00:00Z',
+				type_key: 'task.execute'
+			}),
+			createMockTask({
+				id: 'archived-today',
+				state_key: 'archived',
+				due_at: '2025-12-17T14:00:00Z',
+				type_key: 'task.create'
+			})
+		];
+
+		const result = categorizeTasks(tasks, briefDate, timezone);
+
+		expect(result.overdueTasks).toHaveLength(0);
+		expect(result.todaysTasks).toHaveLength(0);
+		expect(result.upcomingTasks).toHaveLength(0);
+		expect(result.executeTasks).toHaveLength(0);
+		expect(result.createTasks).toHaveLength(0);
+		expect(result.recentlyUpdated).toHaveLength(0);
+	});
+});
+
+// ============================================================================
+// TESTS: prepareBriefData
+// ============================================================================
+
+describe('prepareBriefData', () => {
+	it('surfaces in-progress tasks and milestone due dates in prepared brief data', () => {
+		const staleTimestamp = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+		const projectsData: OntoProjectWithRelations[] = [
+			{
+				project: createMockProject({ id: 'project-1', name: 'Launch Plan' }),
+				isShared: false,
+				activityLogs: [],
+				startHere: null,
+				tasks: [
+					createMockTask({
+						id: 'task-in-progress',
+						project_id: 'project-1',
+						state_key: 'in_progress',
+						updated_at: staleTimestamp
+					})
+				],
+				goals: [],
+				plans: [],
+				milestones: [
+					createMockMilestone({
+						id: 'milestone-1',
+						project_id: 'project-1',
+						title: 'Launch',
+						due_at: '2025-12-24T00:00:00Z'
+					})
+				],
+				risks: [],
+				documents: [],
+				requirements: [],
+				edges: [],
+				taskDependencies: new Map(),
+				goalProgress: new Map(),
+				recentUpdates: { tasks: [], goals: [], documents: [] }
+			}
+		];
+		const loader = new OntologyBriefDataLoader({} as never);
+
+		const result = loader.prepareBriefData(
+			projectsData,
+			'2025-12-17',
+			'UTC',
+			createEmptyCalendarBriefSection()
+		);
+
+		expect(result.inProgressTasks.map((task) => task.id)).toEqual(['task-in-progress']);
+		expect(result.staleInProgressTasks.map((task) => task.id)).toEqual(['task-in-progress']);
+		expect(result.projects[0].nextMilestone).toBe('Launch — due Dec 24 (7d)');
 	});
 });
 
@@ -945,48 +1087,6 @@ describe('getMilestoneStatus', () => {
 
 		expect(result.daysAway).toBe(7); // Dec 17 to Dec 24 in Pacific = 7 days
 		expect(result.isAtRisk).toBe(true);
-	});
-});
-
-// ============================================================================
-// TESTS: calculatePlanProgress
-// ============================================================================
-
-describe('calculatePlanProgress', () => {
-	it('should calculate plan progress from tasks', () => {
-		const plan = createMockPlan({ id: 'plan-1' });
-		const tasks = [
-			createMockTask({ id: 'task-1', state_key: 'done' }),
-			createMockTask({ id: 'task-2', state_key: 'done' }),
-			createMockTask({ id: 'task-3', state_key: 'in_progress' })
-		];
-		const edges = tasks.map((t) =>
-			createMockEdge({
-				src_id: 'plan-1',
-				src_kind: 'plan',
-				dst_id: t.id,
-				dst_kind: 'task',
-				rel: 'has_task'
-			})
-		);
-
-		const result = calculatePlanProgress(plan, edges, tasks);
-
-		expect(result.totalTasks).toBe(3);
-		expect(result.completedTasks).toBe(2);
-		expect(result.progressPercent).toBe(67);
-	});
-
-	it('should handle plan with no tasks', () => {
-		const plan = createMockPlan({ id: 'plan-1' });
-		const edges: OntoEdge[] = [];
-		const tasks: OntoTask[] = [];
-
-		const result = calculatePlanProgress(plan, edges, tasks);
-
-		expect(result.totalTasks).toBe(0);
-		expect(result.completedTasks).toBe(0);
-		expect(result.progressPercent).toBe(0);
 	});
 });
 

@@ -16,6 +16,13 @@
 		entityGroupKeyForChange,
 		formatNumber
 	} from '$lib/components/admin/chat-users/chat-user-ui';
+	import {
+		buildChatUserDetailJsonFile,
+		buildChatUsersCsvFile,
+		buildChatUsersJsonFile,
+		downloadTextFile,
+		type ChatUserExportFilters
+	} from '$lib/components/admin/chat-users/chat-user-export';
 	import type {
 		ClassificationFilter,
 		EntityActionFilter,
@@ -444,11 +451,7 @@
 		slowThresholdMs = DEFAULT_SLOW_THRESHOLD_MS;
 	}
 
-	function exportTimestamp(): string {
-		return new Date().toISOString().replace(/[:.]/g, '-');
-	}
-
-	function currentFilterExport() {
+	function currentFilterExport(): ChatUserExportFilters {
 		return {
 			timeframe: selectedTimeframe,
 			page,
@@ -467,151 +470,26 @@
 		};
 	}
 
-	function csvCell(value: string | number | boolean | null | undefined): string {
-		if (value === null || value === undefined) return '';
-		const text = String(value);
-		if (/[",\n\r]/.test(text)) return `"${text.replaceAll('"', '""')}"`;
-		return text;
-	}
-
-	function csvRows(
-		headers: string[],
-		rows: Array<Record<string, string | number | boolean | null | undefined>>
-	): string {
-		return [
-			headers.map(csvCell).join(','),
-			...rows.map((row) => headers.map((header) => csvCell(row[header])).join(','))
-		].join('\n');
-	}
-
-	function downloadTextFile(filename: string, mimeType: string, contents: string) {
-		if (!browser) return;
-		const blob = new Blob([contents], { type: mimeType });
-		const url = URL.createObjectURL(blob);
-		const link = document.createElement('a');
-		link.href = url;
-		link.download = filename;
-		document.body.appendChild(link);
-		link.click();
-		link.remove();
-		URL.revokeObjectURL(url);
-	}
-
 	function exportUsersCsv() {
 		if (!data) return;
-		const headers = [
-			'user_id',
-			'email',
-			'name',
-			'last_activity_at',
-			'active_day_count',
-			'consecutive_day_streak',
-			'session_count',
-			'project_session_count',
-			'global_session_count',
-			'turn_count',
-			'message_count',
-			'user_message_count',
-			'assistant_message_count',
-			'ttfr_p50_ms',
-			'ttfr_p95_ms',
-			'ttfr_max_ms',
-			'slow_turn_count',
-			'tool_call_count',
-			'tool_failure_count',
-			'tool_failure_rate',
-			'llm_call_count',
-			'llm_failure_count',
-			'validation_failure_count',
-			'created_entity_count',
-			'updated_entity_count',
-			'deleted_entity_count',
-			'project_count',
-			'top_topics',
-			'top_projects',
-			'top_tools',
-			'preview'
-		];
-		const rows = data.users.map((user) => ({
-			user_id: user.user_id,
-			email: user.email,
-			name: user.name,
-			last_activity_at: user.last_activity_at,
-			active_day_count: user.active_day_count,
-			consecutive_day_streak: user.consecutive_day_streak,
-			session_count: user.session_count,
-			project_session_count: user.project_session_count,
-			global_session_count: user.global_session_count,
-			turn_count: user.turn_count,
-			message_count: user.message_count,
-			user_message_count: user.user_message_count,
-			assistant_message_count: user.assistant_message_count,
-			ttfr_p50_ms: user.ttfr_p50_ms,
-			ttfr_p95_ms: user.ttfr_p95_ms,
-			ttfr_max_ms: user.ttfr_max_ms,
-			slow_turn_count: user.slow_turn_count,
-			tool_call_count: user.tool_call_count,
-			tool_failure_count: user.tool_failure_count,
-			tool_failure_rate: user.tool_failure_rate,
-			llm_call_count: user.llm_call_count,
-			llm_failure_count: user.llm_failure_count,
-			validation_failure_count: user.validation_failure_count,
-			created_entity_count: user.created_entity_count,
-			updated_entity_count: user.updated_entity_count,
-			deleted_entity_count: user.deleted_entity_count,
-			project_count: user.project_count,
-			top_topics: user.top_topics
-				.map((topic) => `${topic.topic} (${topic.count})`)
-				.join('; '),
-			top_projects: user.top_projects
-				.map((project) => `${project.name ?? project.project_id} (${project.count})`)
-				.join('; '),
-			top_tools: user.top_tools
-				.map((tool) => `${tool.tool_name} (${tool.count}/${tool.failures} failed)`)
-				.join('; '),
-			preview: user.preview
-		}));
-		downloadTextFile(
-			`admin-chat-users-${selectedTimeframe}-${exportTimestamp()}.csv`,
-			'text/csv;charset=utf-8',
-			csvRows(headers, rows)
-		);
+		downloadTextFile(buildChatUsersCsvFile({ data, timeframe: selectedTimeframe }));
 	}
 
 	function exportUsersJson() {
 		if (!data) return;
-		downloadTextFile(
-			`admin-chat-users-${selectedTimeframe}-${exportTimestamp()}.json`,
-			'application/json;charset=utf-8',
-			JSON.stringify(
-				{
-					exported_at: new Date().toISOString(),
-					filters: currentFilterExport(),
-					data
-				},
-				null,
-				2
-			)
-		);
+		downloadTextFile(buildChatUsersJsonFile({ data, filters: currentFilterExport() }));
 	}
 
 	function exportUserDetailJson() {
 		if (!userDetail) return;
 		downloadTextFile(
-			`admin-chat-user-${userDetail.user.id}-${exportTimestamp()}.json`,
-			'application/json;charset=utf-8',
-			JSON.stringify(
-				{
-					exported_at: new Date().toISOString(),
-					filters: currentFilterExport(),
-					user_detail: userDetail,
-					selected_entity_group: selectedEntityGroup(),
-					visible_entity_changes: visibleEntityChanges(),
-					redacted_session: redactedSession
-				},
-				null,
-				2
-			)
+			buildChatUserDetailJsonFile({
+				userDetail,
+				filters: currentFilterExport(),
+				selectedEntityGroup: selectedEntityGroup(),
+				visibleEntityChanges: visibleEntityChanges(),
+				redactedSession
+			})
 		);
 	}
 

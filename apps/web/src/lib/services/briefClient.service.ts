@@ -250,6 +250,8 @@ export class BriefClientService {
 			scheduledFor: new Date(),
 			briefDate: options.briefDate,
 			timezone: timezone,
+			forceRegenerate: options.forceRegenerate,
+			forceImmediate: true,
 			useOntology: options.useOntology
 		});
 

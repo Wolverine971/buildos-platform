@@ -199,6 +199,16 @@ describe('queueProjectAudit', () => {
 			{ column: 'id', value: 'audit-new' },
 			{ column: 'status', value: 'queued' }
 		]);
+		const archivedSessionUpdate = operations.find(
+			(operation) =>
+				operation.table === 'chat_sessions' &&
+				operation.action === 'update' &&
+				(operation.payload as Record<string, unknown>).status === 'archived'
+		);
+		expect(archivedSessionUpdate?.filters).toEqual([
+			{ column: 'id', value: 'chat-1' },
+			{ column: 'status', value: 'active' }
+		]);
 		expect(mocks.captureServerEvent).toHaveBeenCalledWith(
 			'user-1',
 			'project_audit_skipped',
