@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "npm install -g pnpm@11.7.0 && pnpm install --prod=false --frozen-lockfile && pnpm turbo build --filter=@buildos/worker"
+buildCommand = "npx --yes pnpm@11.7.0 install --prod=false --frozen-lockfile && npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker"
 watchPatterns = [
   "apps/worker/**",
   "packages/**",

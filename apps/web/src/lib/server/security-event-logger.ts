@@ -16,7 +16,13 @@ import {
 export * from '@buildos/shared-agent-ops/ops/security-event-logger';
 
 function withDefaultAdmin(options: SecurityEventLogOptions = {}): SecurityEventLogOptions {
-	return options.supabase ? options : { ...options, supabase: createAdminSupabaseClient() };
+	if (options.supabase) return options;
+
+	try {
+		return { ...options, supabase: createAdminSupabaseClient() };
+	} catch {
+		return options;
+	}
 }
 
 export async function logSecurityEvent(

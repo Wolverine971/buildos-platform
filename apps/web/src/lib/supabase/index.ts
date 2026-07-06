@@ -83,4 +83,14 @@ export const createSupabaseServer = (cookies: CookieMethodsServer) =>
  * }
  * ```
  */
-export const supabase = browser ? createSupabaseBrowser() : null;
+function createOptionalSupabaseBrowser() {
+	if (!browser) return null;
+
+	try {
+		return createSupabaseBrowser();
+	} catch {
+		return null;
+	}
+}
+
+export const supabase = createOptionalSupabaseBrowser();

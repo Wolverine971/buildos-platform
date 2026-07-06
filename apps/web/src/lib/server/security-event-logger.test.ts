@@ -142,6 +142,15 @@ describe('security event logger delivery', () => {
 
 		expect(insert).toHaveBeenCalledTimes(1);
 	});
+
+	it('does not fail callers when the default admin client cannot be created', async () => {
+		createAdminSupabaseClientMock.mockImplementationOnce(() => {
+			throw new Error('Invalid supabaseUrl');
+		});
+
+		await expect(logSecurityEvent(baseEvent)).resolves.toBeUndefined();
+		expect(createAdminSupabaseClientMock).toHaveBeenCalledTimes(1);
+	});
 });
 
 describe('security metadata sanitization', () => {
