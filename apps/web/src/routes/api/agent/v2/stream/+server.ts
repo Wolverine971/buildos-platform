@@ -40,7 +40,7 @@ import type {
 	AgentSSEMessage,
 	AgentTimingSummary
 } from '@buildos/shared-types';
-import type { ServiceContext } from '$lib/services/agentic-chat/shared/types';
+import type { ServiceContext, ToolExecutionResult } from '$lib/services/agentic-chat/shared/types';
 import type { AgentState, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import {
 	buildEmptyAgentState,
@@ -3126,7 +3126,7 @@ export const POST: RequestHandler = async ({
 					: undefined;
 			const sharedToolExecutor =
 				toolExecutorInstance &&
-				(async (toolName: string, args: Record<string, any>, _context: ServiceContext) => {
+				(async (toolName: string, args: Record<string, any>, context: ServiceContext) => {
 					const call: ChatToolCall = {
 						id: uuidv4(),
 						type: 'function',
@@ -3136,7 +3136,15 @@ export const POST: RequestHandler = async ({
 						}
 					} as ChatToolCall;
 
-					const result = await toolExecutorInstance.execute(call);
+					const executionAbortSignal = context.abortSignal ?? turnAbortController.signal;
+					const executorForCall =
+						executionAbortSignal === turnAbortController.signal
+							? toolExecutorInstance
+							: new ChatToolExecutor(supabase, userId, session.id, fetch, llm, {
+									logExecutions: false,
+									abortSignal: executionAbortSignal
+								});
+					const result = await executorForCall.execute(call);
 					if (!result.success) {
 						throw new Error(result.error || `Tool ${toolName} execution failed`);
 					}
@@ -3627,6 +3635,55 @@ export const POST: RequestHandler = async ({
 				...historyForModel,
 				{ role: 'user', content: messageForModel }
 			] as ServiceContext['conversationHistory'];
+			const buildServiceContextForToolExecution = (): ServiceContext => {
+				const contextScope = buildToolExecutionContextScope({
+					projectId: effectiveProjectIdForTools,
+					projectName: promptContext?.projectName ?? undefined,
+					projectFocus,
+					promptContext
+				});
+				return {
+					sessionId: session.id,
+					userId,
+					contextType: effectiveContextType,
+					entityId: effectiveEntityId ?? undefined,
+					originalTurnContext: {
+						contextType,
+						entityId: entityId ?? null,
+						entityName: promptContext?.projectName ?? null
+					},
+					conversationHistory: conversationHistoryForTools,
+					ontologyContext: buildToolExecutionOntologyContext({
+						promptContext,
+						contextScope
+					}),
+					lastTurnContext: requestLastTurnContext ?? undefined,
+					projectFocus: projectFocus ?? null,
+					contextScope
+				};
+			};
+			const toChatToolResult = (result: ToolExecutionResult): ChatToolResult => {
+				const durationMs =
+					typeof result.metadata?.durationMs === 'number' &&
+					Number.isFinite(result.metadata.durationMs)
+						? Math.round(result.metadata.durationMs)
+						: undefined;
+				const tokensConsumed =
+					typeof result.tokensUsed === 'number' && Number.isFinite(result.tokensUsed)
+						? result.tokensUsed
+						: undefined;
+				return {
+					tool_call_id: result.toolCallId,
+					result: result.data ?? null,
+					success: result.success,
+					error: typeof result.error === 'string' ? result.error : result.error?.message,
+					...(durationMs !== undefined ? { duration_ms: durationMs } : {}),
+					...(tokensConsumed !== undefined ? { tokens_consumed: tokensConsumed } : {}),
+					...(Array.isArray(result.streamEvents)
+						? { stream_events: result.streamEvents }
+						: {})
+				};
+			};
 
 			const {
 				assistantText,
@@ -3691,67 +3748,32 @@ export const POST: RequestHandler = async ({
 				},
 				toolExecutor: toolExecutionService
 					? async (toolCall, availableToolsForExecution = tools) => {
-							const contextScope = buildToolExecutionContextScope({
-								projectId: effectiveProjectIdForTools,
-								projectName: promptContext?.projectName ?? undefined,
-								projectFocus,
-								promptContext
-							});
-							const serviceContext: ServiceContext = {
-								sessionId: session.id,
-								userId,
-								contextType: effectiveContextType,
-								entityId: effectiveEntityId ?? undefined,
-								originalTurnContext: {
-									contextType,
-									entityId: entityId ?? null,
-									entityName: promptContext?.projectName ?? null
-								},
-								conversationHistory: conversationHistoryForTools,
-								ontologyContext: buildToolExecutionOntologyContext({
-									promptContext,
-									contextScope
-								}),
-								lastTurnContext: requestLastTurnContext ?? undefined,
-								projectFocus: projectFocus ?? null,
-								contextScope
-							};
 							const result = await toolExecutionService.executeTool(
 								toolCall,
-								serviceContext,
+								buildServiceContextForToolExecution(),
 								availableToolsForExecution,
 								{ abortSignal: turnAbortController.signal }
 							);
-							const durationMs =
-								typeof result.metadata?.durationMs === 'number' &&
-								Number.isFinite(result.metadata.durationMs)
-									? Math.round(result.metadata.durationMs)
-									: undefined;
-							const tokensConsumed =
-								typeof result.tokensUsed === 'number' &&
-								Number.isFinite(result.tokensUsed)
-									? result.tokensUsed
-									: undefined;
-							return {
-								tool_call_id: result.toolCallId,
-								result: result.data ?? null,
-								success: result.success,
-								error:
-									typeof result.error === 'string'
-										? result.error
-										: result.error?.message,
-								...(durationMs !== undefined ? { duration_ms: durationMs } : {}),
-								...(tokensConsumed !== undefined
-									? { tokens_consumed: tokensConsumed }
-									: {}),
-								...(Array.isArray(result.streamEvents)
-									? { stream_events: result.streamEvents }
-									: {})
-							};
+							return toChatToolResult(result);
 						}
 					: toolExecutorInstance
 						? (toolCall) => toolExecutorInstance.execute(patchToolCall(toolCall))
 						: undefined,
+				batchToolExecutor: toolExecutionService
+					? async (toolCalls, availableToolsForExecution = tools) => {
+							const patchedCalls = toolCalls.map((toolCall) =>
+								patchToolCall(toolCall)
+							);
+							const results = await toolExecutionService.batchExecuteTools(
+								patchedCalls,
+								buildServiceContextForToolExecution(),
+								availableToolsForExecution,
+								3,
+								{ abortSignal: turnAbortController.signal }
+							);
+							return results.map(toChatToolResult);
+						}
+					: undefined,
 				onToolCall: async (toolCall) => {
 					const patchedCall = patchToolCall(toolCall);
 					const toolCallMeta = extractFastChatToolCallMeta(patchedCall);

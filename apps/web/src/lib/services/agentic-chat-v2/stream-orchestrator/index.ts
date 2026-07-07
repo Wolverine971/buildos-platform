@@ -17,6 +17,7 @@ import {
 	extractGatewayMaterializedToolNames,
 	materializeGatewayTools
 } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import { TOOL_METADATA } from '$lib/services/agentic-chat/tools/core/definitions/tool-metadata';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import { dev } from '$app/environment';
@@ -116,6 +117,10 @@ type StreamFastChatParams = {
 		toolCall: ChatToolCall,
 		availableTools?: ChatToolDefinition[]
 	) => Promise<ChatToolResult>;
+	batchToolExecutor?: (
+		toolCalls: ChatToolCall[],
+		availableTools?: ChatToolDefinition[]
+	) => Promise<ChatToolResult[]>;
 	onToolCall?: (toolCall: ChatToolCall) => Promise<void> | void;
 	onToolResult?: (execution: FastToolExecution) => Promise<void> | void;
 	onContextUsageUpdate?: (snapshot: ContextUsageSnapshot) => Promise<void> | void;
@@ -146,6 +151,35 @@ type FastChatModelMessage = Omit<FastChatHistoryMessage, 'content'> & {
 	reasoning_content?: string;
 	reasoning_details?: unknown[];
 };
+
+const ORCHESTRATION_STATEFUL_TOOL_NAMES = new Set([
+	'domain_search',
+	'domain_load',
+	'outcome_card_search',
+	'outcome_card_load',
+	'work_capability_search',
+	'work_capability_load',
+	'skill_search',
+	'skill_load',
+	'skill_reference_load',
+	'resource_search',
+	'resource_load',
+	'tool_search',
+	'tool_schema',
+	'libri_overview',
+	'libri_search_capabilities',
+	'libri_get_capability_schema'
+]);
+
+function isPureReadToolName(toolName: string): boolean {
+	const normalized = toolName.trim();
+	if (!normalized) return false;
+	const lower = normalized.toLowerCase();
+	if (ORCHESTRATION_STATEFUL_TOOL_NAMES.has(lower)) return false;
+	if (isWriteLikeOperation(normalized)) return false;
+	const category = TOOL_METADATA[normalized]?.category;
+	return category === 'read' || category === 'search';
+}
 
 function buildRuntimeToolBudgetMessage(params: {
 	toolRounds: number;
@@ -277,9 +311,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let docOrganizationRecoveryEligible = false;
 	let gatewaySchemaRepairInjected = false;
 	let gatewayCreateFieldNoProgressRepairInjected = false;
-	let lastRoundFingerprint: string | null = null;
-	let repeatedRoundCount = 0;
 	const repetitionLimit = gatewayModeActive ? 3 : 4;
+	let lastRoundFingerprint: string | null = null;
+	let consecutiveRoundFingerprintCount = 0;
+	const recentRoundFingerprintWindow: string[] = [];
+	const roundFingerprintWindowSize = Math.max(6, repetitionLimit * 2);
 	let docOrganizationRecoveryAttempted = false;
 	let toolLeadInEmitted = false;
 	let activeAssistantBuffer = '';
@@ -458,6 +494,12 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		const key = buildWriteDedupKey(execution.toolCall);
 		if (!key || successfulWriteExecutionsByKey.has(key)) return;
 		successfulWriteExecutionsByKey.set(key, execution);
+	};
+	const didReachWriteExecutor = (execution: FastToolExecution): boolean => {
+		if (classifyToolExecution(execution) !== 'write') return false;
+		if (isDuplicateWriteSkippedExecution(execution)) return false;
+		const error = execution.result.error;
+		return !(typeof error === 'string' && error.startsWith('Tool validation failed:'));
 	};
 	const recordGatewayRequiredFieldFailures = (
 		failures: GatewayRequiredFieldFailure[]
@@ -1507,6 +1549,79 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				}
 			}
 
+			const recordToolExecutionInOrder = async (
+				originalToolCall: ChatToolCall,
+				execution: FastToolExecution
+			): Promise<void> => {
+				const result = execution.result;
+				const executionToolCall = execution.toolCall;
+				toolExecutions.push(execution);
+				roundExecutions.push(execution);
+				rememberSuccessfulWriteForDedup(execution);
+				const skippedDuplicateWrite = isDuplicateWriteSkippedExecution(execution);
+				await observeSupervisor({
+					type: 'tool_result_received',
+					toolName: executionToolCall.function.name,
+					toolCallId: originalToolCall.id,
+					// ok-aware: a gateway envelope with `ok: false` rides in on
+					// `success: true`, so judge on didGatewayExecSucceed to keep the
+					// supervisor's write/failure counts honest. Falls back to raw
+					// success for non-gateway tools.
+					success: didGatewayExecSucceed(execution),
+					skipped: skippedDuplicateWrite,
+					error: result.error ?? null,
+					resultSummary: summarizeToolResult(result)
+				});
+				if (gatewayModeActive && result.success) {
+					materializeDirectTools(
+						extractGatewayMaterializedToolNames(result.result),
+						'Discovery loaded additional tools.'
+					);
+				}
+				if (result.success) {
+					rememberKnownEntitiesFromToolResult({
+						knownEntitiesById,
+						toolName: executionToolCall.function.name,
+						payload: result.result
+					});
+				}
+				if (params.onToolResult) {
+					try {
+						await params.onToolResult(execution);
+					} catch {
+						// UI/logging callbacks must not crash tool orchestration.
+					}
+				}
+
+				const toolPayload = buildToolPayloadForModel(
+					executionToolCall,
+					result,
+					parseToolArguments
+				);
+				const toolPayloadContent = JSON.stringify(toolPayload);
+				roundModelPayloadChars += toolPayloadContent.length;
+				messages.push({
+					role: 'tool',
+					content: toolPayloadContent,
+					tool_call_id: originalToolCall.id
+				});
+			};
+
+			const canBatchPureReadPair = (pair: {
+				original: ChatToolCall;
+				executable: ChatToolCall;
+			}): boolean => {
+				if (!params.batchToolExecutor) return false;
+				const toolName = pair.executable.function.name;
+				if (!allowedToolNames.has(toolName)) return false;
+				if (!allowedToolNamesAtRoundStart.has(toolName)) return false;
+				if (!isPureReadToolName(toolName)) return false;
+				return !buildWrongEntityKindRepairResult({
+					toolCall: pair.original,
+					knownEntitiesById
+				});
+			};
+
 			for (
 				let executionIndex = 0;
 				executionIndex < toolCallsToExecute.length;
@@ -1562,6 +1677,97 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						});
 					}
 					break;
+				}
+
+				if (params.batchToolExecutor && canBatchPureReadPair(pair)) {
+					const batchPairs: Array<{
+						original: ChatToolCall;
+						executable: ChatToolCall;
+					}> = [pair];
+					const remainingBatchSlots = maxToolCalls - toolCallsMade;
+					for (
+						let lookaheadIndex = executionIndex + 1;
+						lookaheadIndex < toolCallsToExecute.length &&
+						batchPairs.length - 1 < remainingBatchSlots;
+						lookaheadIndex += 1
+					) {
+						const candidate = toolCallsToExecute[lookaheadIndex];
+						if (!candidate || !canBatchPureReadPair(candidate)) {
+							break;
+						}
+						batchPairs.push(candidate);
+					}
+
+					if (batchPairs.length > 1) {
+						toolCallsMade += batchPairs.length - 1;
+						const batchToolCalls = batchPairs.map(({ executable }) => executable);
+						const clearBatchToolStatusTimers = batchPairs.map(({ original }) =>
+							startLongRunningOperationHeartbeat('tool_execution', {
+								toolName: original.function.name,
+								toolCallId: original.id
+							})
+						);
+						const batchStartedAt = Date.now();
+						if (dev) {
+							console.info('[stream-orchestrator] read_tool_batch_started', {
+								count: batchPairs.length,
+								toolNames: batchPairs.map(
+									({ executable }) => executable.function.name
+								)
+							});
+						}
+
+						let batchResults: ChatToolResult[];
+						try {
+							batchResults = await params.batchToolExecutor(batchToolCalls, tools);
+						} catch (error) {
+							const message =
+								error instanceof Error ? error.message : 'Tool execution failed';
+							batchResults = batchPairs.map(({ original }) => ({
+								tool_call_id: original.id,
+								result: null,
+								success: false,
+								error: message
+							}));
+						} finally {
+							for (const clearStatusTimer of clearBatchToolStatusTimers) {
+								clearStatusTimer();
+							}
+						}
+
+						if (dev) {
+							console.info('[stream-orchestrator] read_tool_batch_completed', {
+								count: batchPairs.length,
+								durationMs: Date.now() - batchStartedAt,
+								successCount: batchResults.filter((result) => result?.success)
+									.length,
+								failureCount: batchResults.filter((result) => !result?.success)
+									.length
+							});
+						}
+
+						for (let batchIndex = 0; batchIndex < batchPairs.length; batchIndex += 1) {
+							const batchPair = batchPairs[batchIndex];
+							if (!batchPair) continue;
+							const batchResult = batchResults[batchIndex] ?? {
+								tool_call_id: batchPair.original.id,
+								result: null,
+								success: false,
+								error: `No result found for tool call ${batchPair.original.id}`
+							};
+							const normalizedResult =
+								batchResult.tool_call_id === batchPair.original.id
+									? batchResult
+									: { ...batchResult, tool_call_id: batchPair.original.id };
+							await recordToolExecutionInOrder(batchPair.original, {
+								toolCall: batchPair.original,
+								result: normalizedResult
+							});
+						}
+
+						executionIndex += batchPairs.length - 1;
+						continue;
+					}
 				}
 
 				let result: ChatToolResult;
@@ -1753,56 +1959,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				}
 
 				const execution: FastToolExecution = { toolCall: executionToolCall, result };
-				toolExecutions.push(execution);
-				roundExecutions.push(execution);
-				rememberSuccessfulWriteForDedup(execution);
-				const skippedDuplicateWrite = isDuplicateWriteSkippedExecution(execution);
-				await observeSupervisor({
-					type: 'tool_result_received',
-					toolName: executionToolCall.function.name,
-					toolCallId: originalToolCall.id,
-					// ok-aware: a gateway envelope with `ok: false` rides in on
-					// `success: true`, so judge on didGatewayExecSucceed to keep the
-					// supervisor's write/failure counts honest. Falls back to raw
-					// success for non-gateway tools.
-					success: didGatewayExecSucceed(execution),
-					skipped: skippedDuplicateWrite,
-					error: result.error ?? null,
-					resultSummary: summarizeToolResult(result)
-				});
-				if (gatewayModeActive && result.success) {
-					materializeDirectTools(
-						extractGatewayMaterializedToolNames(result.result),
-						'Discovery loaded additional tools.'
-					);
-				}
-				if (result.success) {
-					rememberKnownEntitiesFromToolResult({
-						knownEntitiesById,
-						toolName: executionToolCall.function.name,
-						payload: result.result
-					});
-				}
-				if (params.onToolResult) {
-					try {
-						await params.onToolResult(execution);
-					} catch {
-						// UI/logging callbacks must not crash tool orchestration.
-					}
-				}
-
-				const toolPayload = buildToolPayloadForModel(
-					executionToolCall,
-					result,
-					parseToolArguments
-				);
-				const toolPayloadContent = JSON.stringify(toolPayload);
-				roundModelPayloadChars += toolPayloadContent.length;
-				messages.push({
-					role: 'tool',
-					content: toolPayloadContent,
-					tool_call_id: originalToolCall.id
-				});
+				await recordToolExecutionInOrder(originalToolCall, execution);
 			}
 
 			flushMaterializationNotices();
@@ -1829,8 +1986,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 
 			const roundPattern = buildRoundToolPattern(pendingToolCalls);
+			const roundReachedWriteExecutor = roundExecutions.some(didReachWriteExecutor);
 
-			if (roundPattern.hasWriteOps) {
+			if (roundReachedWriteExecutor) {
 				hasWriteAttempt = true;
 				readOnlyRoundCount = 0;
 				lastReadOpSetKey = null;
@@ -1952,14 +2110,29 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 
 			const roundFingerprint = buildToolRoundFingerprint(roundExecutions);
+			let recentRoundFingerprintCount = 0;
 			if (roundFingerprint && roundFingerprint === lastRoundFingerprint) {
-				repeatedRoundCount += 1;
+				consecutiveRoundFingerprintCount += 1;
 			} else if (roundFingerprint) {
-				repeatedRoundCount = 1;
+				consecutiveRoundFingerprintCount = 1;
 				lastRoundFingerprint = roundFingerprint;
 			}
+			if (roundFingerprint) {
+				recentRoundFingerprintWindow.push(roundFingerprint);
+				while (recentRoundFingerprintWindow.length > roundFingerprintWindowSize) {
+					recentRoundFingerprintWindow.shift();
+				}
+				recentRoundFingerprintCount = recentRoundFingerprintWindow.filter(
+					(fingerprint) => fingerprint === roundFingerprint
+				).length;
+			}
 
-			if (repeatedRoundCount >= repetitionLimit) {
+			const windowedRoundRepetitionApplies =
+				!gatewayModeActive || roundPattern.readOps.length === 0;
+			if (
+				consecutiveRoundFingerprintCount >= repetitionLimit ||
+				(windowedRoundRepetitionApplies && recentRoundFingerprintCount >= repetitionLimit)
+			) {
 				if (await attemptDocOrganizationRecovery()) {
 					break;
 				}
@@ -2055,22 +2228,24 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		}
 	}
 
-	const candidateFinalizationGuard = applyFinalizationGuard({
-		finalAssistantText,
-		assistantText,
-		toolExecutions,
-		mutationRequested: turnHadUnfulfilledMutationIntent
-	});
-	if (candidateFinalizationGuard.applied) {
-		finalizationGuardResult = candidateFinalizationGuard;
-		finalAssistantText = finalizationGuardResult.text;
-		await observeSupervisor({
-			type: 'final_candidate',
-			text: finalAssistantText,
-			finishedReason
+	if (finishedReason !== 'supervisor_question') {
+		const candidateFinalizationGuard = applyFinalizationGuard({
+			finalAssistantText,
+			assistantText,
+			toolExecutions,
+			mutationRequested: turnHadUnfulfilledMutationIntent
 		});
-		if (finalAssistantText && finalAssistantText !== assistantText.trim()) {
-			await emitAssistantRemainder(finalAssistantText);
+		if (candidateFinalizationGuard.applied) {
+			finalizationGuardResult = candidateFinalizationGuard;
+			finalAssistantText = finalizationGuardResult.text;
+			await observeSupervisor({
+				type: 'final_candidate',
+				text: finalAssistantText,
+				finishedReason
+			});
+			if (finalAssistantText && finalAssistantText !== assistantText.trim()) {
+				await emitAssistantRemainder(finalAssistantText);
+			}
 		}
 	}
 

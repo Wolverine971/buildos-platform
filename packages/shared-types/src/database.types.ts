@@ -5209,7 +5209,7 @@ export type Database = {
             foreignKeyName: "error_logs_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "onto_projects"
             referencedColumns: ["id"]
           },
           {
@@ -6045,7 +6045,7 @@ export type Database = {
             foreignKeyName: "llm_usage_logs_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "onto_projects"
             referencedColumns: ["id"]
           },
           {

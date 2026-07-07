@@ -6,6 +6,7 @@ import {
 	buildSkillGateNoLoadRepairInstruction,
 	buildToolValidationRepairInstruction,
 	enforceMutationOutcomeIntegrity,
+	looksLikeExplicitMutationRequest,
 	shouldRepairGatewayMutationNoExecution,
 	shouldRepairProjectCreateNoExecution,
 	shouldRepairSkillGateNoLoad
@@ -40,6 +41,32 @@ function createExecution(params: {
 	};
 	return { toolCall, result };
 }
+
+describe('looksLikeExplicitMutationRequest', () => {
+	it.each([
+		'update me on the project',
+		'please update me on this task',
+		'catch me up on the project',
+		'what is the status of the meeting?',
+		'where are we on the project plan?',
+		'is the meeting still on?'
+	])('does not classify read/status phrasing as a mutation: %s', (message) => {
+		expect(looksLikeExplicitMutationRequest(message)).toBe(false);
+	});
+
+	it.each([
+		'assign this to me',
+		'postpone the meeting to Friday',
+		'merge these tasks',
+		'rename the project',
+		'mark the task done',
+		'move the doc under Research',
+		'prioritize this',
+		'tag that as urgent'
+	])('classifies explicit mutation phrasing: %s', (message) => {
+		expect(looksLikeExplicitMutationRequest(message)).toBe(true);
+	});
+});
 
 describe('repair instruction policy', () => {
 	it('keeps task-create missing-title repair guidance through shared classification', () => {

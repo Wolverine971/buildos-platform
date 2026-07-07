@@ -94,7 +94,7 @@ describe('LLMUsageLogger', () => {
 				error: {
 					code: '23503',
 					details:
-						'Key (project_id)=(22222222-2222-4222-8222-222222222222) is not present in table "projects".',
+						'Key (project_id)=(22222222-2222-4222-8222-222222222222) is not present in table "onto_projects".',
 					message:
 						'insert or update on table "llm_usage_logs" violates foreign key constraint "llm_usage_logs_project_id_fkey"'
 				}

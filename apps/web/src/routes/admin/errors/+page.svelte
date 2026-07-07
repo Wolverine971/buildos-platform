@@ -354,6 +354,10 @@
 		return str.substring(0, length) + '...';
 	}
 
+	function getProjectLabel(error: ErrorLogEntry) {
+		return error.project?.name || error.project_id || '';
+	}
+
 	// Reset page when filters change
 	$effect(() => {
 		if (
@@ -712,6 +716,11 @@
 							User
 						</th>
 						<th
+							class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell"
+						>
+							Project
+						</th>
+						<th
 							class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider w-16"
 						>
 							Status
@@ -783,6 +792,19 @@
 									<span class="font-mono text-[0.65rem] text-muted-foreground">
 										{truncate(error.user_id, 8)}
 									</span>
+								{:else}
+									<span class="text-muted-foreground">-</span>
+								{/if}
+							</td>
+							<td class="px-3 py-2 hidden lg:table-cell">
+								{#if error.project_id}
+									<a
+										href="/projects/{error.project_id}"
+										class="text-xs text-foreground hover:text-accent transition-colors truncate max-w-[140px] inline-block"
+										title={error.project?.name ?? error.project_id}
+									>
+										{truncate(getProjectLabel(error), 32)}
+									</a>
 								{:else}
 									<span class="text-muted-foreground">-</span>
 								{/if}

@@ -14,6 +14,8 @@ import type { ServiceContext, ToolExecutionResult } from '../shared/types';
 import { ToolExecutionError } from '../shared/types';
 import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
 
+const contextLike = (context: ServiceContext) => expect.objectContaining(context);
+
 describe('ToolExecutionService', () => {
 	let service: ToolExecutionService;
 	let mockToolExecutor: Mock;
@@ -101,7 +103,7 @@ describe('ToolExecutionService', () => {
 			expect(mockToolExecutor).toHaveBeenCalledWith(
 				'list_onto_tasks',
 				{ project_id: 'proj_123' },
-				mockContext
+				contextLike(mockContext)
 			);
 		});
 
@@ -319,7 +321,7 @@ describe('ToolExecutionService', () => {
 					task_id: taskId,
 					title: 'Rename task'
 				}),
-				scopedContext
+				contextLike(scopedContext)
 			);
 		});
 
@@ -349,7 +351,7 @@ describe('ToolExecutionService', () => {
 			expect(mockToolExecutor).toHaveBeenCalledWith(
 				'web_search',
 				{ query: 'openai latest news' },
-				mockContext
+				contextLike(mockContext)
 			);
 		});
 
@@ -379,7 +381,7 @@ describe('ToolExecutionService', () => {
 			expect(mockToolExecutor).toHaveBeenCalledWith(
 				'web_visit',
 				{ url: 'https://example.com' },
-				mockContext
+				contextLike(mockContext)
 			);
 		});
 
@@ -410,7 +412,7 @@ describe('ToolExecutionService', () => {
 			expect(mockToolExecutor).toHaveBeenCalledWith(
 				'search_onto_tasks',
 				{ query: 'launch checklist', search: 'launch checklist' },
-				mockContext
+				contextLike(mockContext)
 			);
 		});
 
@@ -440,7 +442,7 @@ describe('ToolExecutionService', () => {
 			expect(mockToolExecutor).toHaveBeenCalledWith(
 				'web_search',
 				{ search: 'buildos docs', query: 'buildos docs' },
-				mockContext
+				contextLike(mockContext)
 			);
 		});
 
@@ -471,7 +473,7 @@ describe('ToolExecutionService', () => {
 			expect(mockToolExecutor).toHaveBeenCalledWith(
 				'list_calendar_events',
 				{ q: 'roadmap', query: 'roadmap' },
-				mockContext
+				contextLike(mockContext)
 			);
 		});
 
@@ -801,7 +803,7 @@ describe('ToolExecutionService', () => {
 					entities: [],
 					relationships: []
 				},
-				confirmedContext
+				contextLike(confirmedContext)
 			);
 		});
 
@@ -841,7 +843,7 @@ describe('ToolExecutionService', () => {
 					event_id: 'evt_123',
 					title: 'Rescheduled meeting'
 				}),
-				mockContext
+				contextLike(mockContext)
 			);
 		});
 
@@ -882,7 +884,7 @@ describe('ToolExecutionService', () => {
 					document_id: documentId,
 					new_position: 2
 				}),
-				mockContext
+				contextLike(mockContext)
 			);
 		});
 
@@ -915,7 +917,7 @@ describe('ToolExecutionService', () => {
 			expect(mockToolExecutor).toHaveBeenCalledWith(
 				'delete_onto_document',
 				expect.objectContaining({ document_id: documentId }),
-				mockContext
+				contextLike(mockContext)
 			);
 		});
 
@@ -1003,7 +1005,7 @@ describe('ToolExecutionService', () => {
 					content: '## Progress Updates\n\n- Chapter 2 complete.',
 					update_strategy: 'append'
 				}),
-				mockContext
+				contextLike(mockContext)
 			);
 		});
 
@@ -1041,7 +1043,7 @@ describe('ToolExecutionService', () => {
 					document_id: documentId,
 					content: 'Use <aside> for notes and keep x < y as an example.'
 				}),
-				mockContext
+				contextLike(mockContext)
 			);
 		});
 
@@ -1079,7 +1081,7 @@ describe('ToolExecutionService', () => {
 					include_documents: false,
 					include_content: false
 				}),
-				mockContext
+				contextLike(mockContext)
 			);
 		});
 
@@ -1099,7 +1101,7 @@ describe('ToolExecutionService', () => {
 			expect(mockToolExecutor).toHaveBeenCalledWith(
 				'list_onto_tasks',
 				{ project_id: 'proj_123' },
-				mockContext
+				contextLike(mockContext)
 			);
 		});
 
@@ -1208,7 +1210,11 @@ describe('ToolExecutionService', () => {
 			const result = await service.executeTool(toolCall, mockContext, mockToolDefinitions);
 
 			expect(result.success).toBe(true);
-			expect(mockToolExecutor).toHaveBeenCalledWith('list_onto_projects', {}, mockContext);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'list_onto_projects',
+				{},
+				contextLike(mockContext)
+			);
 		});
 
 		it('should route virtual tools through provided handler', async () => {
@@ -1236,7 +1242,7 @@ describe('ToolExecutionService', () => {
 				toolCall,
 				toolName: 'agent_create_plan',
 				args: { objective: 'Do something' },
-				context: mockContext,
+				context: contextLike(mockContext),
 				availableTools: mockToolDefinitions
 			});
 		});
@@ -1283,7 +1289,7 @@ describe('ToolExecutionService', () => {
 					description: 'Short summary',
 					type_key: 'document.default'
 				},
-				mockContext
+				contextLike(mockContext)
 			);
 		});
 
@@ -1329,7 +1335,7 @@ describe('ToolExecutionService', () => {
 					description: 'Brief for the new design',
 					type_key: 'document.context.brief'
 				}),
-				mockContext
+				contextLike(mockContext)
 			);
 		});
 
@@ -1379,7 +1385,7 @@ describe('ToolExecutionService', () => {
 					type_key: 'document.knowledge.research',
 					content: '# Findings\n\n- Item one'
 				}),
-				mockContext
+				contextLike(mockContext)
 			);
 		});
 
@@ -1431,7 +1437,7 @@ describe('ToolExecutionService', () => {
 					type_key: 'document.spec.technical',
 					content: 'Hello\nWorld'
 				}),
-				mockContext
+				contextLike(mockContext)
 			);
 		});
 
@@ -2011,6 +2017,40 @@ describe('ToolExecutionService', () => {
 				success: false,
 				error: expect.stringContaining('timeout')
 			});
+		});
+
+		it('should abort the executor context when tool execution times out', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_timeout_abort',
+				name: 'list_onto_tasks',
+				arguments: { project_id: 'proj_123' }
+			};
+			let capturedSignal: AbortSignal | undefined;
+
+			mockToolExecutor.mockImplementationOnce(
+				(_toolName: string, _args: Record<string, any>, context: ServiceContext) => {
+					capturedSignal = context.abortSignal;
+					return new Promise((_resolve, reject) => {
+						context.abortSignal?.addEventListener(
+							'abort',
+							() => reject(new DOMException('Tool execution aborted', 'AbortError')),
+							{ once: true }
+						);
+					});
+				}
+			);
+
+			const result = await service.executeTool(toolCall, mockContext, mockToolDefinitions, {
+				timeout: 10
+			});
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'timeout',
+				error: expect.stringContaining('timeout')
+			});
+			expect(capturedSignal).toBeDefined();
+			expect(capturedSignal?.aborted).toBe(true);
 		});
 
 		it('should cancel retry waits without starting another attempt', async () => {

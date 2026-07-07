@@ -54,6 +54,8 @@ export interface ServiceContext {
 	conversationHistory: ChatMessage[];
 	projectFocus?: ProjectFocus | null;
 	contextScope?: OntologyContextScope;
+	/** Abort signal for the current service operation, including per-tool timeouts */
+	abortSignal?: AbortSignal;
 }
 
 // ============================================

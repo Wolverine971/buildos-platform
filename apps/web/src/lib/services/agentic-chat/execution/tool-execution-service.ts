@@ -83,6 +83,13 @@ const GATEWAY_TOOL_NAMES = new Set([
 	'libri_get_capability_schema'
 ]);
 
+class ToolExecutionTimeoutError extends Error {
+	constructor(readonly timeoutMs: number) {
+		super(`Tool execution timeout after ${timeoutMs}ms`);
+		this.name = 'ToolExecutionTimeoutError';
+	}
+}
+
 type ProjectScopedEntityKind =
 	| 'project'
 	| 'task'
@@ -532,17 +539,11 @@ export class ToolExecutionService implements BaseService {
 			try {
 				const timeout = this.resolveTimeoutMs(toolName, options.timeout);
 				resolvedTimeoutMs = timeout;
-				const gatewayPromise = this.executeWithTimeout(
-					() => this.executeGatewayTool(toolName, args),
-					timeout
-				);
-
-				let gatewayResult: ToolExecutionResult;
-				if (options.abortSignal) {
-					gatewayResult = await this.raceWithAbort(gatewayPromise, options.abortSignal);
-				} else {
-					gatewayResult = await gatewayPromise;
-				}
+				const gatewayResult = await this.executeWithAbortableTimeout({
+					timeout,
+					abortSignal: options.abortSignal,
+					run: () => this.executeGatewayTool(toolName, args)
+				});
 
 				return finalizeResult({
 					...gatewayResult,
@@ -575,12 +576,19 @@ export class ToolExecutionService implements BaseService {
 
 		if (virtualHandler) {
 			try {
-				const result = await virtualHandler({
-					toolCall,
-					toolName,
-					args,
-					context,
-					availableTools
+				const timeout = this.resolveTimeoutMs(toolName, options.timeout);
+				resolvedTimeoutMs = timeout;
+				const result = await this.executeWithAbortableTimeout({
+					timeout,
+					abortSignal: options.abortSignal,
+					run: (abortSignal) =>
+						virtualHandler({
+							toolCall,
+							toolName,
+							args,
+							context: this.contextWithAbortSignal(context, abortSignal),
+							availableTools
+						})
 				});
 
 				return finalizeResult({
@@ -593,9 +601,20 @@ export class ToolExecutionService implements BaseService {
 					toolName,
 					error
 				});
+				if (error instanceof DOMException && error.name === 'AbortError') {
+					return finalizeResult({
+						success: false,
+						error: 'Operation cancelled',
+						errorType: 'cancelled',
+						toolName,
+						toolCallId: toolCall.id
+					});
+				}
+				const isTimeout = error instanceof ToolExecutionTimeoutError;
 				return finalizeResult({
 					success: false,
 					error: error instanceof Error ? error.message : String(error),
+					errorType: isTimeout ? 'timeout' : 'execution_error',
 					toolName,
 					toolCallId: toolCall.id
 				});
@@ -622,17 +641,16 @@ export class ToolExecutionService implements BaseService {
 			// Execute with timeout if specified or configured per tool
 			const timeout = this.resolveTimeoutMs(toolName, options.timeout);
 			resolvedTimeoutMs = timeout;
-			const execPromise = this.executeWithTimeout<ToolExecutorResponse>(
-				() => this.toolExecutor(toolName, args, context),
-				timeout
-			);
-
-			let execution: ToolExecutorResponse;
-			if (options.abortSignal) {
-				execution = await this.raceWithAbort(execPromise, options.abortSignal);
-			} else {
-				execution = await execPromise;
-			}
+			const execution = await this.executeWithAbortableTimeout<ToolExecutorResponse>({
+				timeout,
+				abortSignal: options.abortSignal,
+				run: (abortSignal) =>
+					this.toolExecutor(
+						toolName,
+						args,
+						this.contextWithAbortSignal(context, abortSignal)
+					)
+			});
 
 			const streamEvents = execution?.streamEvents;
 			const result = execution?.data;
@@ -1719,28 +1737,77 @@ export class ToolExecutionService implements BaseService {
 		return Array.from(entities);
 	}
 
+	private contextWithAbortSignal(
+		context: ServiceContext,
+		abortSignal: AbortSignal | undefined
+	): ServiceContext {
+		return abortSignal ? { ...context, abortSignal } : context;
+	}
+
 	/**
-	 * Execute with timeout
+	 * Execute with a timeout that is also propagated to downstream executors.
 	 */
-	private async executeWithTimeout<T>(fn: () => Promise<T>, timeout: number): Promise<T> {
-		if (!Number.isFinite(timeout) || timeout <= 0) {
-			return fn();
+	private async executeWithAbortableTimeout<T>({
+		timeout,
+		abortSignal,
+		run
+	}: {
+		timeout: number;
+		abortSignal?: AbortSignal;
+		run: (abortSignal?: AbortSignal) => Promise<T>;
+	}): Promise<T> {
+		const hasTimeout = Number.isFinite(timeout) && timeout > 0;
+		if (!hasTimeout && !abortSignal) {
+			return run(undefined);
 		}
 
+		if (abortSignal?.aborted) {
+			throw new DOMException('Tool execution aborted', 'AbortError');
+		}
+
+		const controller = new AbortController();
 		let timeoutId: ReturnType<typeof setTimeout> | undefined;
+		let removeAbortListener: (() => void) | undefined;
+		let timedOut = false;
+		const workPromise = Promise.resolve().then(() => run(controller.signal));
+		const cancellationPromise = new Promise<never>((_, reject) => {
+			if (hasTimeout) {
+				timeoutId = setTimeout(() => {
+					timedOut = true;
+					const error = new ToolExecutionTimeoutError(timeout);
+					if (!controller.signal.aborted) {
+						controller.abort(error);
+					}
+					reject(error);
+				}, timeout);
+			}
+
+			if (abortSignal) {
+				const onAbort = () => {
+					if (!controller.signal.aborted) {
+						controller.abort(abortSignal.reason);
+					}
+					reject(new DOMException('Tool execution aborted', 'AbortError'));
+				};
+				abortSignal.addEventListener('abort', onAbort, { once: true });
+				removeAbortListener = () => abortSignal.removeEventListener('abort', onAbort);
+			}
+		});
+
 		try {
-			return await Promise.race([
-				fn(),
-				new Promise<T>((_, reject) => {
-					timeoutId = setTimeout(
-						() => reject(new Error(`Tool execution timeout after ${timeout}ms`)),
-						timeout
-					);
-				})
-			]);
+			return await Promise.race([workPromise, cancellationPromise]);
+		} catch (error) {
+			if (timedOut && error instanceof DOMException && error.name === 'AbortError') {
+				throw new ToolExecutionTimeoutError(timeout);
+			}
+			throw error;
 		} finally {
 			if (timeoutId) {
 				clearTimeout(timeoutId);
+			}
+			removeAbortListener?.();
+			if (controller.signal.aborted) {
+				void workPromise.catch(() => undefined);
 			}
 		}
 	}

@@ -62,6 +62,10 @@ export interface ErrorLogEntry {
 		name?: string | null;
 	};
 	project_id?: string;
+	project?: {
+		id: string;
+		name: string | null;
+	};
 	brain_dump_id?: string;
 
 	endpoint?: string;

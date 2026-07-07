@@ -629,26 +629,41 @@ function looksLikePureClarifyingQuestion(text: string): boolean {
 }
 
 const EXPLICIT_MUTATION_VERB =
-	/(?:set|mark|update|change|rename|move|create|add|delete|remove|archive|unarchive|complete|reopen|close|schedule|reschedule|cancel|link|unlink|edit)/i;
+	/(?:set|mark|update|change|rename|move|create|add|delete|remove|archive|unarchive|complete|reopen|close|schedule|reschedule|cancel|link|unlink|edit|assign|unassign|postpone|defer|push|merge|split|label|tag|prioritize|deprioritize)/i;
 const MUTATION_ENTITY_NOUN =
-	/\b(?:task|project|document|doc|milestone|goal|plan|event|meeting|calendar|title|name|status|state)\b/i;
+	/\b(?:tasks?|projects?|documents?|docs?|milestones?|goals?|plans?|events?|meetings?|calendar|title|name|status|state)\b/i;
 const MUTATION_STATE_PHRASE =
 	/\b(?:to|as|back to)\s+(?:done|complete|completed|todo|to-do|open|in progress|blocked|cancelled|canceled)\b/i;
+const MUTATION_TARGET_PRONOUN = /\b(?:this|that|these|those|it|them)\b/i;
+const READ_ONLY_STATUS_REQUEST_PATTERNS = [
+	/^(?:please\s+)?update\s+(?:me|us)\s+(?:on|about)\b/i,
+	/^(?:please\s+)?catch\s+(?:me|us)\s+up\s+(?:on|about)\b/i,
+	/^(?:please\s+)?(?:give|send)\s+(?:me|us)\s+(?:an?\s+)?(?:update|status|summary)\s+(?:on|about)\b/i,
+	/^(?:what(?:'s| is)|where\s+(?:are\s+we|am\s+i))\b.*\b(?:status|progress|standing|at|on)\b/i,
+	/^(?:is|are|was|were)\b.*\b(?:still|currently)\b/i
+];
 
 export function looksLikeExplicitMutationRequest(text: string): boolean {
 	const normalized = text.replace(/\s+/g, ' ').trim();
 	if (!normalized) return false;
+	if (READ_ONLY_STATUS_REQUEST_PATTERNS.some((pattern) => pattern.test(normalized))) {
+		return false;
+	}
 
 	const commandish =
 		new RegExp(`^(?:please\\s+)?${EXPLICIT_MUTATION_VERB.source}\\b`, 'i').test(normalized) ||
 		new RegExp(
-			`\\b(?:can you|could you|please)\\s+${EXPLICIT_MUTATION_VERB.source}\\b`,
+			`\\b(?:can you|could you|please|i need you to|i want you to)\\s+${EXPLICIT_MUTATION_VERB.source}\\b`,
 			'i'
 		).test(normalized) ||
 		new RegExp(`\\b(?:and|then)\\s+${EXPLICIT_MUTATION_VERB.source}\\b`, 'i').test(normalized);
 	if (!commandish) return false;
 
-	return MUTATION_ENTITY_NOUN.test(normalized) || MUTATION_STATE_PHRASE.test(normalized);
+	return (
+		MUTATION_ENTITY_NOUN.test(normalized) ||
+		MUTATION_STATE_PHRASE.test(normalized) ||
+		MUTATION_TARGET_PRONOUN.test(normalized)
+	);
 }
 
 function looksLikeActionSuccessClaim(text: string): boolean {

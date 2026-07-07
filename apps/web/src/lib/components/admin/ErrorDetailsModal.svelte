@@ -76,6 +76,16 @@
 		return `/admin/chat/sessions?chat_session_id=${encodeURIComponent(sessionId.trim())}`;
 	}
 
+	function getProjectHref(projectId: unknown): string | undefined {
+		if (typeof projectId !== 'string' || !projectId.trim()) return undefined;
+		return `/projects/${projectId.trim()}`;
+	}
+
+	function getProjectLabel(entry: ErrorLogEntry, fallbackProjectId: unknown): string {
+		if (entry.project?.name) return entry.project.name;
+		return formatMetadataValue(entry.project_id ?? fallbackProjectId);
+	}
+
 	function getMetadataRecord(metadata: unknown): Record<string, any> | undefined {
 		if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
 			return undefined;
@@ -176,6 +186,10 @@
 		{@const contextType = getMetadataValue(metadata, 'contextType', 'context_type')}
 		{@const entityId = getMetadataValue(metadata, 'entityId', 'entity_id')}
 		{@const metadataProjectId = getMetadataValue(metadata, 'projectId', 'project_id')}
+		{@const displayProjectId =
+			error.project_id ??
+			(typeof metadataProjectId === 'string' ? metadataProjectId : undefined)}
+		{@const projectHref = getProjectHref(displayProjectId)}
 		{@const activeTurnConflict = getMetadataValue(metadata, 'activeTurnConflict')}
 		{@const originalError = getMetadataRecord(
 			getMetadataValue(metadata, 'originalError', 'original_error')
@@ -394,12 +408,31 @@
 									</p>
 								</div>
 							{/if}
-							{#if metadataProjectId || error.project_id}
+							{#if displayProjectId}
 								<div>
 									<span class="text-muted-foreground">Project:</span>
-									<p class="text-foreground font-mono text-[0.65rem] truncate">
-										{formatMetadataValue(metadataProjectId ?? error.project_id)}
-									</p>
+									{#if projectHref}
+										<a
+											href={projectHref}
+											class="inline-flex max-w-full items-center gap-1 text-foreground hover:text-accent transition-colors"
+										>
+											<span class="truncate"
+												>{getProjectLabel(error, displayProjectId)}</span
+											>
+											<ArrowUpRight class="h-3 w-3 shrink-0" />
+										</a>
+										<p
+											class="font-mono text-[0.65rem] text-muted-foreground truncate"
+										>
+											{displayProjectId}
+										</p>
+									{:else}
+										<p
+											class="text-foreground font-mono text-[0.65rem] truncate"
+										>
+											{formatMetadataValue(displayProjectId)}
+										</p>
+									{/if}
 								</div>
 							{/if}
 							{#if activeTurnConflict !== undefined}
@@ -626,12 +659,31 @@
 									</p>
 								</div>
 							{/if}
-							{#if error.project_id}
+							{#if displayProjectId}
 								<div>
 									<span class="text-muted-foreground">Project:</span>
-									<p class="text-foreground font-mono text-[0.65rem] truncate">
-										{error.project_id}
-									</p>
+									{#if projectHref}
+										<a
+											href={projectHref}
+											class="inline-flex max-w-full items-center gap-1 text-foreground hover:text-accent transition-colors"
+										>
+											<span class="truncate"
+												>{getProjectLabel(error, displayProjectId)}</span
+											>
+											<ArrowUpRight class="h-3 w-3 shrink-0" />
+										</a>
+										<p
+											class="font-mono text-[0.65rem] text-muted-foreground truncate"
+										>
+											{displayProjectId}
+										</p>
+									{:else}
+										<p
+											class="text-foreground font-mono text-[0.65rem] truncate"
+										>
+											{formatMetadataValue(displayProjectId)}
+										</p>
+									{/if}
 								</div>
 							{/if}
 							{#if error.brain_dump_id}

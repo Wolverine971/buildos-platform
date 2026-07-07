@@ -148,6 +148,224 @@ describe('streamFastChat direct tool orchestration', () => {
 		});
 	});
 
+	it('batches contiguous independent read tools and records results in model order', async () => {
+		let streamInvocation = 0;
+		const passMessages: FastChatHistoryMessage[][] = [];
+		const onToolResult = vi.fn();
+		const llm = {
+			streamText: vi.fn(async function* (params: { messages: FastChatHistoryMessage[] }) {
+				streamInvocation += 1;
+				passMessages.push(params.messages);
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'search_onto_projects',
+							{ query: 'slow first' },
+							'read:first'
+						)
+					};
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall('list_onto_projects', {}, 'read:second')
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				yield { type: 'text', content: 'Loaded both reads.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(async (): Promise<ChatToolResult> => {
+			throw new Error('single executor should not run for batched reads');
+		});
+		const batchToolExecutor = vi.fn(
+			async (calls: ChatToolCall[]): Promise<ChatToolResult[]> =>
+				calls.map((call) => ({
+					tool_call_id: call.id,
+					result: { tool: call.function.name },
+					success: true
+				}))
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'Search then list projects.',
+			tools: tools(['search_onto_projects', 'list_onto_projects']),
+			toolExecutor,
+			batchToolExecutor,
+			onToolResult,
+			onDelta: async () => {}
+		});
+
+		expect(batchToolExecutor).toHaveBeenCalledTimes(1);
+		expect(batchToolExecutor.mock.calls[0]?.[0].map((call) => call.id)).toEqual([
+			'read:first',
+			'read:second'
+		]);
+		expect(toolExecutor).not.toHaveBeenCalled();
+		expect(onToolResult.mock.calls.map(([execution]) => execution.toolCall.id)).toEqual([
+			'read:first',
+			'read:second'
+		]);
+		const secondPassToolMessages = (passMessages[1] ?? []).filter(
+			(message) => message.role === 'tool'
+		);
+		expect(secondPassToolMessages.map((message) => (message as any).tool_call_id)).toEqual([
+			'read:first',
+			'read:second'
+		]);
+		expect(result.finalAssistantText).toBe('Loaded both reads.');
+	});
+
+	it('does not batch reads across a write boundary', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'search_onto_projects',
+							{ query: 'before' },
+							'read:before'
+						)
+					};
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'update_onto_task',
+							{
+								task_id: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+								title: 'Renamed task'
+							},
+							'write:update'
+						)
+					};
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'search_onto_projects',
+							{ query: 'after' },
+							'read:after'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				yield { type: 'text', content: 'Done.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(
+			async (call: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: call.id,
+				result: { tool: call.function.name },
+				success: true
+			})
+		);
+		const batchToolExecutor = vi.fn(
+			async (calls: ChatToolCall[]): Promise<ChatToolResult[]> =>
+				calls.map((call) => ({
+					tool_call_id: call.id,
+					result: { tool: call.function.name },
+					success: true
+				}))
+		);
+
+		await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'Read, write, then read again.',
+			tools: tools(['search_onto_projects', 'update_onto_task']),
+			toolExecutor,
+			batchToolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(batchToolExecutor).not.toHaveBeenCalled();
+		expect(toolExecutor.mock.calls.map(([call]) => call.function.name)).toEqual([
+			'search_onto_projects',
+			'update_onto_task',
+			'search_onto_projects'
+		]);
+	});
+
+	it('applies the tool-call limit before extending a read batch', async () => {
+		const onToolResult = vi.fn();
+		const llm = {
+			streamText: vi.fn(async function* () {
+				yield {
+					type: 'tool_call',
+					tool_call: toolCall('search_onto_projects', { query: 'first' }, 'read:first')
+				};
+				yield {
+					type: 'tool_call',
+					tool_call: toolCall('search_onto_projects', { query: 'second' }, 'read:second')
+				};
+				yield {
+					type: 'tool_call',
+					tool_call: toolCall('search_onto_projects', { query: 'third' }, 'read:third')
+				};
+				yield { type: 'done', finished_reason: 'tool_calls' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(
+			async (call: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: call.id,
+				result: { projects: [] },
+				success: true
+			})
+		);
+		const batchToolExecutor = vi.fn(
+			async (calls: ChatToolCall[]): Promise<ChatToolResult[]> =>
+				calls.map((call) => ({
+					tool_call_id: call.id,
+					result: { projects: [] },
+					success: true
+				}))
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'Search several project names.',
+			tools: tools(['search_onto_projects']),
+			toolExecutor,
+			batchToolExecutor,
+			onToolResult,
+			onDelta: async () => {},
+			maxToolCalls: 2
+		});
+
+		expect(batchToolExecutor).toHaveBeenCalledTimes(1);
+		expect(batchToolExecutor.mock.calls[0]?.[0].map((call) => call.id)).toEqual([
+			'read:first',
+			'read:second'
+		]);
+		expect(onToolResult).toHaveBeenCalledTimes(3);
+		expect(result.finishedReason).toBe('tool_call_limit');
+		expect(result.toolExecutions).toHaveLength(3);
+		expect(result.toolExecutions?.[2]?.toolCall.id).toBe('read:third');
+		expect(result.toolExecutions?.[2]?.result).toMatchObject({
+			success: false,
+			error: expect.stringContaining('tool-call safety limit')
+		});
+	});
+
 	it('does not let onToolCall callback failures crash orchestration', async () => {
 		let streamInvocation = 0;
 		const llm = {
@@ -1217,6 +1435,88 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(result.toolExecutions).toHaveLength(2);
 	});
 
+	it('preserves a supervisor question instead of replacing it with read evidence', async () => {
+		let streamInvocation = 0;
+		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		const emittedDeltas: string[] = [];
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'search_project',
+							{ project_id: projectId, query: 'launch task' },
+							'search_project:launch-task'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield {
+					type: 'tool_call',
+					tool_call: toolCall(
+						'update_onto_task',
+						{ state_key: 'done' },
+						`update_onto_task:missing-id-${streamInvocation}`
+					)
+				};
+				yield { type: 'done', finished_reason: 'tool_calls' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			if (call.function.name !== 'search_project') {
+				throw new Error('Only the read call should execute');
+			}
+			return {
+				tool_call_id: call.id,
+				result: {
+					results: [
+						{
+							id: 'task_1',
+							type: 'task',
+							title: 'Launch task',
+							state_key: 'todo'
+						}
+					]
+				},
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: projectId,
+			projectId,
+			history: [],
+			message: 'Mark the task done.',
+			tools: tools([
+				'skill_load',
+				'tool_search',
+				'tool_schema',
+				'search_project',
+				'update_onto_task'
+			]),
+			toolExecutor,
+			onDelta: async (delta) => {
+				emittedDeltas.push(delta);
+			}
+		});
+
+		const question =
+			'Which exact task should I use? Send the name or ID, and I will continue from here.';
+		expect(result.finishedReason).toBe('supervisor_question');
+		expect(result.finalAssistantText).toBe(question);
+		expect(emittedDeltas.join('')).toContain(question);
+		expect(result.finalizationGuard).toBeUndefined();
+		expect(result.toolExecutions).toHaveLength(3);
+	});
+
 	it('annotates deterministic supervisor decisions with a telemetry trigger', async () => {
 		let streamInvocation = 0;
 		const supervisorRecords: Array<{ action: string; source?: string; trigger?: string }> = [];
@@ -1883,6 +2183,136 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(result.finalAssistantText).toBe('Final answer from the accumulated reads.');
 	});
 
+	it('keeps read-loop controls armed after a validation-only write mixed with reads', async () => {
+		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		let streamInvocation = 0;
+		const streamParams: Array<{
+			toolChoice?: string;
+			messages: FastChatHistoryMessage[];
+		}> = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				streamParams.push({
+					toolChoice: params.tool_choice,
+					messages: JSON.parse(JSON.stringify(params.messages))
+				});
+
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'update_onto_task',
+							{ state_key: 'done' },
+							'update_onto_task:missing-id'
+						)
+					};
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'search_project',
+							{ project_id: projectId, query: 'Rod Chamberlin', limit: 5 },
+							'search_project:rod'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				if (streamInvocation === 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'get_onto_project_details',
+							{ project_id: projectId },
+							'get_onto_project_details:project'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				if (streamInvocation === 3) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'search_project',
+							{
+								project_id: projectId,
+								query: 'Rod Chamberlin compliance',
+								limit: 5
+							},
+							'search_project:compliance'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Final answer from the reads.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			if (call.function.name === 'update_onto_task') {
+				throw new Error('Validation-only write should not execute');
+			}
+			if (call.function.name === 'get_onto_project_details') {
+				return {
+					tool_call_id: call.id,
+					result: { project: { id: projectId, name: 'Rod Chamberlin prep' } },
+					success: true
+				};
+			}
+			return {
+				tool_call_id: call.id,
+				result: {
+					results: [
+						{
+							id: `document-${toolExecutor.mock.calls.length}`,
+							entity_type: 'document',
+							title: 'Meeting prep notes',
+							snippet: 'Useful context.'
+						}
+					]
+				},
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: projectId,
+			projectId,
+			history: [],
+			message: 'Prep me for my Rod meeting.',
+			tools: tools([
+				'skill_load',
+				'tool_search',
+				'tool_schema',
+				'search_project',
+				'get_onto_project_details',
+				'update_onto_task'
+			]),
+			toolExecutor,
+			onDelta: async () => {},
+			maxToolRounds: 8
+		});
+
+		const passFourSystemText = (streamParams[3]?.messages ?? [])
+			.filter((message) => message.role === 'system')
+			.map((message) => message.content)
+			.join('\n');
+
+		expect(toolExecutor).toHaveBeenCalledTimes(3);
+		expect(passFourSystemText).toContain('Read-loop nudge');
+		expect(result.finalAssistantText).toContain('Final answer from the reads.');
+	});
+
 	it('uses the context ledger to synthesize when read rounds stop adding new evidence', async () => {
 		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
 		const documentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
@@ -1990,6 +2420,64 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(result.toolRounds).toBe(5);
 		expect(result.finishedReason).toBe('stop');
 		expect(result.finalAssistantText).toBe('Synthesized answer from saturated context.');
+	});
+
+	it('stops alternating repeated tool rounds using a recent fingerprint window', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation % 2 === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'search_onto_projects',
+							{ query: 'buildos' },
+							`search_onto_projects:${streamInvocation}`
+						)
+					};
+				} else {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'list_onto_projects',
+							{ limit: 5 },
+							`list_onto_projects:${streamInvocation}`
+						)
+					};
+				}
+				yield { type: 'done', finished_reason: 'tool_calls' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (call: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: call.id,
+				result: {
+					projects: [{ id: 'project-1', type: 'project', name: 'BuildOS' }]
+				},
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'Find the BuildOS project.',
+			tools: tools(['search_onto_projects', 'list_onto_projects']),
+			toolExecutor,
+			onDelta: async () => {},
+			maxToolRounds: 10,
+			maxToolCalls: 20
+		});
+
+		expect(result.finishedReason).toBe('tool_repetition_limit');
+		expect(result.toolRounds).toBeLessThan(10);
+		expect(toolExecutor).toHaveBeenCalledTimes(7);
+		expect(result.toolExecutions).toHaveLength(7);
 	});
 
 	it('surfaces a provider abort-message error as a real failure when the signal never fired (O8)', async () => {

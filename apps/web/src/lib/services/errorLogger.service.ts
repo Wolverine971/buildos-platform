@@ -262,6 +262,44 @@ export class ErrorLoggerService {
 		}));
 	}
 
+	private async attachProjectsToErrors(errors: ErrorLogEntry[]): Promise<ErrorLogEntry[]> {
+		if (errors.length === 0) {
+			return [];
+		}
+
+		const projectIds = [
+			...new Set(errors.filter((error) => error.project_id).map((error) => error.project_id!))
+		];
+		let projectsMap: Record<string, { id: string; name: string | null }> = {};
+
+		if (projectIds.length > 0) {
+			const { data: projects } = await this.supabase
+				.from('onto_projects')
+				.select('id, name')
+				.in('id', projectIds);
+
+			if (projects) {
+				projectsMap = projects.reduce(
+					(acc, project) => {
+						acc[project.id] = project;
+						return acc;
+					},
+					{} as Record<string, { id: string; name: string | null }>
+				);
+			}
+		}
+
+		return errors.map((error) => ({
+			...error,
+			project: error.project_id ? projectsMap[error.project_id] : undefined
+		}));
+	}
+
+	private async attachRelationsToErrors(errors: ErrorLogEntry[]): Promise<ErrorLogEntry[]> {
+		const withUsers = await this.attachUsersToErrors(errors);
+		return this.attachProjectsToErrors(withUsers);
+	}
+
 	private safeJsonValue(
 		value: unknown,
 		depth: number,
@@ -719,7 +757,7 @@ export class ErrorLoggerService {
 		const pageErrors = rows.slice(offset, offset + safeLimit);
 
 		return {
-			errors: await this.attachUsersToErrors(pageErrors),
+			errors: await this.attachRelationsToErrors(pageErrors),
 			hasMore: rows.length > offset + safeLimit
 		};
 	}

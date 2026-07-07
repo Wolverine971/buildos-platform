@@ -41,10 +41,24 @@ export function buildToolPayloadForModel(
 			? compactGatewayMetaPayload(basePayload)
 			: compactDirectToolPayload(toolName ?? '', basePayload);
 
-	return addToolResultSecurityNotice(toolName ?? '', compacted);
+	return addToolResultSecurityNotice(
+		toolName ?? '',
+		compacted,
+		isSkillPayloadTool(toolName ?? '')
+			? MAX_MODEL_SKILL_PAYLOAD_CHARS
+			: MAX_MODEL_TOOL_PAYLOAD_CHARS
+	);
 }
 
-function addToolResultSecurityNotice(toolName: string, payload: unknown): unknown {
+function isSkillPayloadTool(toolName: string): boolean {
+	return toolName === 'skill_load' || toolName === 'skill_reference_load';
+}
+
+function addToolResultSecurityNotice(
+	toolName: string,
+	payload: unknown,
+	maxChars = MAX_MODEL_TOOL_PAYLOAD_CHARS
+): unknown {
 	const base = {
 		model_context_notice: TOOL_RESULT_SECURITY_NOTICE,
 		model_context_source: 'tool_result_untrusted',
@@ -57,10 +71,10 @@ function addToolResultSecurityNotice(toolName: string, payload: unknown): unknow
 			if (key in output) continue;
 			output[key] = value;
 		}
-		return applyToolPayloadSizeGuard(output);
+		return applyToolPayloadSizeGuard(output, maxChars);
 	}
 
-	return applyToolPayloadSizeGuard({ ...base, data: payload });
+	return applyToolPayloadSizeGuard({ ...base, data: payload }, maxChars);
 }
 
 function compactExampleToolCall(payload: unknown): Record<string, any> | undefined {
@@ -156,56 +170,44 @@ function compactGatewayMetaPayload(payload: unknown): unknown {
 	}
 
 	if (type === 'skill') {
-		return applyToolPayloadSizeGuard(
-			{
-				type,
-				id: record.id ?? record.path,
-				name: record.name,
-				description: record.description ?? record.summary,
-				summary: record.summary,
-				parent_id: record.parent_id,
-				depth: record.depth,
-				when_to_use: Array.isArray(record.when_to_use)
-					? record.when_to_use.slice(0, 8)
-					: [],
-				workflow: Array.isArray(record.workflow) ? record.workflow.slice(0, 10) : [],
-				related_ops: Array.isArray(record.related_ops)
-					? record.related_ops.slice(0, 12)
-					: [],
-				child_skills: compactSkillLinkedResources(record.child_skills),
-				reference_modules: compactSkillLinkedResources(record.reference_modules),
-				guardrails: Array.isArray(record.guardrails) ? record.guardrails.slice(0, 8) : [],
-				markdown:
-					typeof record.markdown === 'string'
-						? toTextPreview(record.markdown, 16000)
-						: undefined,
-				examples: Array.isArray(record.examples) ? record.examples.slice(0, 4) : [],
-				notes: Array.isArray(record.notes) ? record.notes.slice(0, 6) : []
-			},
-			MAX_MODEL_SKILL_PAYLOAD_CHARS
-		);
+		return {
+			type,
+			id: record.id ?? record.path,
+			name: record.name,
+			description: record.description ?? record.summary,
+			summary: record.summary,
+			parent_id: record.parent_id,
+			depth: record.depth,
+			when_to_use: Array.isArray(record.when_to_use) ? record.when_to_use.slice(0, 8) : [],
+			workflow: Array.isArray(record.workflow) ? record.workflow.slice(0, 10) : [],
+			related_ops: Array.isArray(record.related_ops) ? record.related_ops.slice(0, 12) : [],
+			child_skills: compactSkillLinkedResources(record.child_skills),
+			reference_modules: compactSkillLinkedResources(record.reference_modules),
+			guardrails: Array.isArray(record.guardrails) ? record.guardrails.slice(0, 8) : [],
+			markdown:
+				typeof record.markdown === 'string'
+					? toTextPreview(record.markdown, 16000)
+					: undefined,
+			examples: Array.isArray(record.examples) ? record.examples.slice(0, 4) : [],
+			notes: Array.isArray(record.notes) ? record.notes.slice(0, 6) : []
+		};
 	}
 
 	if (type === 'skill_reference') {
-		return applyToolPayloadSizeGuard(
-			{
-				type,
-				skill_id: record.skill_id,
-				reference_id: record.reference_id,
-				name: record.name,
-				summary: record.summary,
-				when_to_load: Array.isArray(record.when_to_load)
-					? record.when_to_load.slice(0, 6)
-					: [],
-				path: record.path,
-				visibility: record.visibility,
-				content:
-					typeof record.content === 'string'
-						? toTextPreview(record.content, 16000)
-						: undefined
-			},
-			MAX_MODEL_SKILL_PAYLOAD_CHARS
-		);
+		return {
+			type,
+			skill_id: record.skill_id,
+			reference_id: record.reference_id,
+			name: record.name,
+			summary: record.summary,
+			when_to_load: Array.isArray(record.when_to_load) ? record.when_to_load.slice(0, 6) : [],
+			path: record.path,
+			visibility: record.visibility,
+			content:
+				typeof record.content === 'string'
+					? toTextPreview(record.content, 16000)
+					: undefined
+		};
 	}
 
 	if (type === 'domain_search_results') {
