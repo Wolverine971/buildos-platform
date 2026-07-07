@@ -10,6 +10,7 @@
 	import InboxChangeDetails from '$lib/components/inbox/InboxChangeDetails.svelte';
 	import InboxDecisionControls from '$lib/components/inbox/InboxDecisionControls.svelte';
 	import InboxDismissFeedbackFields from '$lib/components/inbox/InboxDismissFeedbackFields.svelte';
+	import InboxProjectBadge from '$lib/components/inbox/InboxProjectBadge.svelte';
 	import type {
 		AgentChatResolutionAction,
 		DataMutationSummary
@@ -40,11 +41,13 @@
 		source_type: InboxSourceType;
 		source_ref_id: string;
 		source_status: string | null;
+		project_id: string | null;
 		status: InboxItemStatus;
 		title: string;
 		summary: string | null;
 		risk_tier: number | null;
 		created_at: string;
+		project?: { id: string; name: string | null } | null;
 		can_decide?: boolean;
 		decision_disabled_reason?: string | null;
 		source_payload?: Record<string, unknown> | null;
@@ -73,6 +76,7 @@
 
 	type ProjectLoopRunContext = {
 		id: string;
+		project_id: string | null;
 		trigger_reason: string | null;
 		status: string | null;
 		summary: string | null;
@@ -84,6 +88,7 @@
 
 	type ProjectAuditContext = {
 		id: string;
+		project_id: string | null;
 		status: string | null;
 		trigger_reason: string | null;
 		delivery_confidence: string | null;
@@ -274,6 +279,10 @@
 
 	function projectAuditContext(item: InboxItem): ProjectAuditContext | null {
 		return item.source_context?.project_audit ?? null;
+	}
+
+	function itemProject(item: InboxItem): { id: string; name: string | null } | null {
+		return item.project ?? (item.project_id ? { id: item.project_id, name: null } : null);
 	}
 
 	function agentChangeSet(item: InboxItem): ChangeSet | null {
@@ -971,6 +980,7 @@
 					{@const agent = agentRun(item)}
 					{@const reviewRun = projectLoopRunContext(item)}
 					{@const reviewRunText = reviewRunLabel(reviewRun)}
+					{@const project = itemProject(item)}
 					{@const changeSet = agentChangeSet(item)}
 					{@const failedChangeSet = agentFailedChangeSet(item)}
 					{@const tier = tierFor(item.risk_tier ?? payload?.risk_tier)}
@@ -984,6 +994,7 @@
 							class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 						>
 							<div class="min-w-0 flex-1">
+								<InboxProjectBadge {project} />
 								<div class="flex flex-wrap items-center gap-2">
 									{#if canBatchApprove(item)}
 										<input

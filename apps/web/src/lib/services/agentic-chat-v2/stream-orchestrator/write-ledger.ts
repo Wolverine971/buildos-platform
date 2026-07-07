@@ -16,7 +16,7 @@
 import type { ChatToolCall } from '@buildos/shared-types';
 import { parseToolArguments } from './tool-arguments';
 import type { FastToolExecution } from './shared';
-import { isDuplicateWriteSkippedExecution } from './round-analysis';
+import { isWriteLedgerToolExecution } from './tool-classification';
 
 export type WriteLedgerEntry = {
 	toolName: string;
@@ -31,31 +31,7 @@ export type WriteLedgerEntry = {
 	error?: string;
 };
 
-type WriteLedgerClassification = 'write' | 'skip';
-
 type ParsedArgs = Record<string, unknown>;
-
-function classifyToolForLedger(toolName: string): WriteLedgerClassification {
-	if (!toolName) return 'skip';
-	if (
-		toolName.startsWith('create_onto_') ||
-		toolName.startsWith('update_onto_') ||
-		toolName.startsWith('delete_onto_') ||
-		toolName === 'move_document_in_tree' ||
-		toolName === 'create_task_document' ||
-		toolName === 'link_onto_entities' ||
-		toolName === 'unlink_onto_edge' ||
-		toolName === 'tag_onto_entity' ||
-		toolName === 'reorganize_onto_project_graph' ||
-		toolName === 'create_calendar_event' ||
-		toolName === 'update_calendar_event' ||
-		toolName === 'delete_calendar_event' ||
-		toolName === 'set_project_calendar'
-	) {
-		return 'write';
-	}
-	return 'skip';
-}
 
 function readString(value: unknown): string | undefined {
 	if (typeof value !== 'string') return undefined;
@@ -163,9 +139,8 @@ function extractParentIdFromMove(args: ParsedArgs, result: ParsedArgs | null): s
 }
 
 function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry | null {
-	if (isDuplicateWriteSkippedExecution(execution)) return null;
 	const toolName = execution.toolCall.function?.name?.trim() ?? '';
-	if (classifyToolForLedger(toolName) === 'skip') return null;
+	if (!isWriteLedgerToolExecution(execution)) return null;
 
 	const args = extractArgs(execution.toolCall);
 	const result = extractResultObject(execution.result.result);

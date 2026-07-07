@@ -13,6 +13,7 @@
 
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import { extractFastChatToolCallMeta } from './prompt-observability';
+import { classifyToolTraceName } from './stream-orchestrator/tool-classification';
 
 export type PersistedToolTraceEntry = {
 	tool_call_id: string;
@@ -31,14 +32,6 @@ const MAX_PERSISTED_TOOL_TRACE_ITEMS = 12;
 const MAX_PERSISTED_TOOL_ERROR_CHARS = 180;
 const MAX_PERSISTED_TOOL_ARGUMENT_PREVIEW_CHARS = 420;
 const MAX_PERSISTED_TOOL_RESULT_PREVIEW_CHARS = 600;
-
-const GATEWAY_DISCOVERY_TOOL_NAMES_FOR_TRACE = new Set([
-	'skill_search',
-	'domain_search',
-	'skill_load',
-	'tool_search',
-	'tool_schema'
-]);
 
 export function previewToolArguments(raw: unknown, maxChars = 280): string {
 	if (raw === undefined || raw === null) {
@@ -109,27 +102,7 @@ export function buildPersistedToolTrace(
 }
 
 export function classifyTraceEntry(entry: PersistedToolTraceEntry): ToolTraceCategory {
-	const toolName = entry.tool_name ?? '';
-	if (GATEWAY_DISCOVERY_TOOL_NAMES_FOR_TRACE.has(toolName)) return 'read_discovery';
-	if (
-		toolName.startsWith('create_onto_') ||
-		toolName.startsWith('update_onto_') ||
-		toolName.startsWith('delete_onto_') ||
-		toolName === 'move_document_in_tree' ||
-		toolName === 'create_task_document' ||
-		toolName === 'link_onto_entities' ||
-		toolName === 'unlink_onto_edge' ||
-		toolName === 'tag_onto_entity' ||
-		toolName === 'reorganize_onto_project_graph' ||
-		toolName === 'create_calendar_event' ||
-		toolName === 'update_calendar_event' ||
-		toolName === 'delete_calendar_event' ||
-		toolName === 'set_project_calendar' ||
-		toolName === 'change_chat_context'
-	) {
-		return 'write';
-	}
-	return 'other';
+	return classifyToolTraceName(entry.tool_name ?? '');
 }
 
 export function summarizeTraceGroup(

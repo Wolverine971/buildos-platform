@@ -4,9 +4,6 @@
 	import { dev } from '$app/environment';
 	import { Workflow, Network, Zap } from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
-	import OntologyGraph from '$lib/components/ontology/graph/OntologyGraph.svelte';
-	import GraphControls from '$lib/components/ontology/graph/GraphControls.svelte';
-	import NodeDetailsPanel from '$lib/components/ontology/graph/NodeDetailsPanel.svelte';
 	import type {
 		OntologyGraphInstance,
 		ViewMode,
@@ -78,7 +75,21 @@
 			class="w-full h-[72vh] sm:h-[78vh] lg:h-[calc(100vh-16rem)] rounded-lg border border-border bg-card shadow-ink overflow-hidden touch-none"
 		>
 			{#if graphLibrary === 'cytoscape'}
-				<OntologyGraph {data} {viewMode} bind:selectedNode bind:graphInstance />
+				{#await import('$lib/components/ontology/graph/OntologyGraph.svelte')}
+					<div
+						class="flex h-full items-center justify-center p-6 text-sm text-muted-foreground"
+					>
+						Loading graph...
+					</div>
+				{:then { default: OntologyGraph }}
+					<OntologyGraph {data} {viewMode} bind:selectedNode bind:graphInstance />
+				{:catch}
+					<div
+						class="flex h-full items-center justify-center p-6 text-sm text-destructive"
+					>
+						Unable to load graph.
+					</div>
+				{/await}
 			{:else if graphLibrary === 'svelteflow'}
 				{#await import('$lib/components/ontology/graph/svelteflow/SvelteFlowGraph.svelte') then { default: SvelteFlowGraph }}
 					<SvelteFlowGraph {data} {viewMode} bind:selectedNode />
@@ -93,18 +104,33 @@
 		<!-- Controls Grid -->
 		<div class="grid gap-4 lg:grid-cols-2">
 			<section class="rounded-lg border border-border bg-card shadow-ink overflow-hidden">
-				<GraphControls
-					bind:viewMode
-					{graphInstance}
-					{graphLibrary}
-					stats={data.stats}
-					showScopeControls={false}
-				/>
+				{#await import('$lib/components/ontology/graph/GraphControls.svelte')}
+					<div class="p-6 text-sm text-muted-foreground">Loading graph controls...</div>
+				{:then { default: GraphControls }}
+					<GraphControls
+						bind:viewMode
+						{graphInstance}
+						{graphLibrary}
+						stats={data.stats}
+						showScopeControls={false}
+					/>
+				{:catch}
+					<div class="p-6 text-sm text-destructive">Unable to load graph controls.</div>
+				{/await}
 			</section>
 
 			<section class="rounded-lg border border-border bg-card shadow-ink overflow-hidden">
 				{#if selectedNode}
-					<NodeDetailsPanel node={selectedNode} onClose={() => (selectedNode = null)} />
+					{#await import('$lib/components/ontology/graph/NodeDetailsPanel.svelte')}
+						<div class="p-6 text-sm text-muted-foreground">Loading node details...</div>
+					{:then { default: NodeDetailsPanel }}
+						<NodeDetailsPanel
+							node={selectedNode}
+							onClose={() => (selectedNode = null)}
+						/>
+					{:catch}
+						<div class="p-6 text-sm text-destructive">Unable to load node details.</div>
+					{/await}
 				{:else}
 					<div
 						class="flex h-full items-center justify-center p-6 text-sm text-muted-foreground"

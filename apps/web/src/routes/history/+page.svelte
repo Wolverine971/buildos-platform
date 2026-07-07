@@ -5,10 +5,10 @@
   Unified history view showing both captures and chat sessions.
   Users can view, filter, and resume previous conversations.
 
-  PERFORMANCE (Dec 2024):
-  - itemCount returned IMMEDIATELY for instant skeleton rendering
-  - Full history data streamed in background
-  - Zero layout shift - exact number of skeleton cards rendered from start
+  PERFORMANCE:
+  - Small capped skeleton set renders immediately
+  - Full history data streams from a bounded RPC
+  - Search is debounced and kept on the indexed 3+ character path
 -->
 
 <script lang="ts">
@@ -57,6 +57,7 @@
 	interface HistoryDataResult {
 		items: HistoryItem[];
 		totalItems: number;
+		totalItemsExact: boolean;
 		stats: {
 			totalBraindumps: number;
 			processedBraindumps: number;
@@ -133,6 +134,8 @@
 	let chatClassificationState = $state<Record<string, 'loading' | 'queued' | 'error'>>({});
 	let openingBraindumpId = $state<string | null>(null);
 	let lastAutoOpenedSelection = $state<string | null>(null);
+	const MIN_SEARCH_LENGTH = 3;
+	const MAX_SEARCH_LENGTH = 120;
 
 	function getBraindumpChatSessionId(item: HistoryItem): string | null {
 		if (item.type !== 'braindump') return null;
@@ -170,6 +173,8 @@
 	const currentOffset = $derived(data.filters.offset);
 	const limit = $derived(data.filters.limit);
 	const totalItems = $derived(resolvedData?.totalItems ?? itemCount);
+	const totalItemsExact = $derived(resolvedData?.totalItemsExact ?? true);
+	const visibleItemCount = $derived(currentOffset + items.length);
 
 	// Show skeletons while loading if we have items to show
 	const showSkeletons = $derived(historyLoading && itemCount > 0);
@@ -304,7 +309,8 @@
 
 	function applyFilters() {
 		const params = new URLSearchParams();
-		if (searchInput) params.set('search', searchInput);
+		const normalizedSearch = searchInput.trim().slice(0, MAX_SEARCH_LENGTH);
+		if (normalizedSearch.length >= MIN_SEARCH_LENGTH) params.set('search', normalizedSearch);
 		if (statusFilter) params.set('status', statusFilter);
 		if (typeFilter !== 'all') params.set('type', typeFilter);
 		goto(`/history?${params.toString()}`);
@@ -388,6 +394,14 @@
 
 	function onSearchInput() {
 		clearTimeout(searchDebounceTimer);
+		const normalizedSearch = searchInput.trim();
+		if (
+			normalizedSearch.length > 0 &&
+			normalizedSearch.length < MIN_SEARCH_LENGTH &&
+			!$page.url.searchParams.has('search')
+		) {
+			return;
+		}
 		searchDebounceTimer = setTimeout(() => applyFilters(), 400);
 	}
 
@@ -559,6 +573,7 @@
 					<input
 						type="text"
 						placeholder="Search..."
+						maxlength={MAX_SEARCH_LENGTH}
 						bind:value={searchInput}
 						oninput={onSearchInput}
 						onkeydown={handleKeydown}
@@ -594,7 +609,7 @@
 
 			<!-- History items list -->
 			{#if showSkeletons}
-				<!-- Show skeletons while loading - exact count for zero layout shift -->
+				<!-- Show a bounded skeleton set while streamed history data resolves. -->
 				<HistoryListSkeleton count={itemCount} />
 			{:else if historyError}
 				<!-- Error state -->
@@ -784,7 +799,13 @@
 
 				<!-- Results info -->
 				<div class="mt-4 text-center text-sm text-muted-foreground">
-					Showing {Math.min(currentOffset + items.length, totalItems)} of {totalItems} items
+					{#if totalItemsExact}
+						Showing {Math.min(visibleItemCount, totalItems)} of {totalItems} items
+					{:else if hasMore}
+						Showing {visibleItemCount}+ matching items
+					{:else}
+						Showing {visibleItemCount} matching items
+					{/if}
 				</div>
 			{/if}
 		</div>

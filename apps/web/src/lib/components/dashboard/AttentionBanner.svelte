@@ -27,6 +27,8 @@
 		href?: string;
 		/** Renders a `<button>`. */
 		onClick?: () => void;
+		/** Optional warm-up hook for lazy-loaded actions. */
+		onPreload?: () => void;
 		loading?: boolean;
 		loadingLabel?: string;
 		disabled?: boolean;
@@ -97,6 +99,9 @@
 				{#if action.href}
 					<a
 						href={action.href}
+						onpointerdown={action.onPreload}
+						onpointerenter={action.onPreload}
+						onfocus={action.onPreload}
 						class="{baseActionClass} {actionToneClass[resolvedActionTone]}"
 					>
 						{action.label}
@@ -108,6 +113,9 @@
 					<button
 						type="button"
 						onclick={action.onClick}
+						onpointerdown={action.onPreload}
+						onpointerenter={action.onPreload}
+						onfocus={action.onPreload}
 						disabled={action.disabled || action.loading}
 						class="{baseActionClass} {actionToneClass[resolvedActionTone]}"
 					>

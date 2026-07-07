@@ -146,6 +146,59 @@ describe('streamFastChat direct tool orchestration', () => {
 			success: false,
 			error: expect.stringContaining('tool-call safety limit')
 		});
+		expect(result.toolCallsMade).toBe(3);
+	});
+
+	it('counts validation-only tool calls as handled terminal tool calls', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'update_onto_task',
+							{ state_key: 'done' },
+							'update_onto_task:missing-id'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield {
+					type: 'text',
+					content:
+						'I was unable to update the task because the task id was missing. Nothing changed.'
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(async (): Promise<ChatToolResult> => {
+			throw new Error('Validation-only write should not execute');
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'Mark the task done.',
+			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'update_onto_task']),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).not.toHaveBeenCalled();
+		expect(result.toolExecutions).toHaveLength(1);
+		expect(result.toolExecutions?.[0]?.result.error).toContain(
+			'Missing required parameter: task_id'
+		);
+		expect(result.toolCallsMade).toBe(1);
 	});
 
 	it('batches contiguous independent read tools and records results in model order', async () => {
@@ -808,6 +861,83 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(assistantToolCallIndex).toBeGreaterThanOrEqual(0);
 		expect(secondPassMessages[assistantToolCallIndex + 1]?.role).toBe('tool');
 		expect(result.finalAssistantText).toBe('Created the January milestone.');
+	});
+
+	it('compacts duplicate-write skipped results without embedding the prior payload', async () => {
+		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		const taskId = '8f8a889c-c8fa-4fa4-a8b2-c264f5ddc33f';
+		const largePriorPayload = 'x'.repeat(8_000);
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					const args = {
+						task_id: taskId,
+						title: 'Updated title'
+					};
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall('update_onto_task', args, 'update_onto_task:first')
+					};
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall('update_onto_task', args, 'update_onto_task:duplicate')
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Updated the task once.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(
+			async (call: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: call.id,
+				success: true,
+				result: {
+					ok: true,
+					task: {
+						id: taskId,
+						title: 'Updated title',
+						state_key: 'todo'
+					},
+					debug_blob: largePriorPayload
+				}
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: projectId,
+			projectId,
+			history: [],
+			message: 'Update the task title.',
+			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'update_onto_task']),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		const duplicatePayload = result.toolExecutions?.[1]?.result.result;
+		expect(duplicatePayload).toMatchObject({
+			status: 'duplicate_write_skipped',
+			previous_tool_call_id: 'update_onto_task:first',
+			previous_result_summary: {
+				entity: {
+					id: taskId,
+					type: 'task',
+					title: 'Updated title',
+					state_key: 'todo'
+				}
+			}
+		});
+		expect(duplicatePayload).not.toHaveProperty('previous_result');
+		expect(JSON.stringify(duplicatePayload)).not.toContain(largePriorPayload);
 	});
 
 	it('emits a finalization guard summary when tools ran but the model gives no final text', async () => {
@@ -2313,6 +2443,88 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(result.finalAssistantText).toContain('Final answer from the reads.');
 	});
 
+	it('feeds mixed validation-only write plus read rounds into the context ledger', async () => {
+		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		let streamInvocation = 0;
+		const streamParams: Array<{ messages: FastChatHistoryMessage[] }> = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				streamParams.push({
+					messages: JSON.parse(JSON.stringify(params.messages))
+				});
+
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'update_onto_task',
+							{ state_key: 'done' },
+							'update_onto_task:missing-id'
+						)
+					};
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'search_project',
+							{ project_id: projectId, query: 'missing meeting notes', limit: 5 },
+							'search_project:empty'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield {
+					type: 'text',
+					content: 'I found no meeting notes and did not update anything.'
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			if (call.function.name === 'update_onto_task') {
+				throw new Error('Validation-only write should not execute');
+			}
+			return {
+				tool_call_id: call.id,
+				success: true,
+				result: {
+					results: []
+				}
+			};
+		});
+
+		await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: projectId,
+			projectId,
+			history: [],
+			message: 'Prep me for the meeting and mark the task done.',
+			tools: tools([
+				'skill_load',
+				'tool_search',
+				'tool_schema',
+				'search_project',
+				'update_onto_task'
+			]),
+			toolExecutor,
+			onDelta: async () => {},
+			maxToolRounds: 8
+		});
+
+		const passTwoSystemText = (streamParams[1]?.messages ?? [])
+			.filter((message) => message.role === 'system')
+			.map((message) => message.content)
+			.join('\n');
+
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(passTwoSystemText).toContain('Context gathering: narrowing.');
+	});
+
 	it('uses the context ledger to synthesize when read rounds stop adding new evidence', async () => {
 		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
 		const documentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
@@ -2505,6 +2717,67 @@ describe('streamFastChat direct tool orchestration', () => {
 				onDelta: async () => {}
 			})
 		).rejects.toThrow('The operation was aborted');
+	});
+
+	it('surfaces a stream that ends without a done event as a real failure', async () => {
+		const llm = {
+			streamText: vi.fn(async function* () {
+				yield { type: 'text', content: 'Partial provider output.' };
+				return;
+			})
+		} as any;
+		const toolExecutor = vi.fn(async (): Promise<ChatToolResult> => {
+			throw new Error('Tool executor should not run');
+		});
+
+		await expect(
+			streamFastChat({
+				llm,
+				userId: 'user_1',
+				sessionId: 'session_1',
+				contextType: 'global',
+				history: [],
+				message: 'What is happening with my projects?',
+				tools: tools(['search_onto_projects']),
+				toolExecutor,
+				onDelta: async () => {}
+			})
+		).rejects.toThrow('LLM stream ended without a completion event');
+	});
+
+	it('classifies a stream that ends without done after the signal aborts as cancelled', async () => {
+		const controller = new AbortController();
+		const emittedDeltas: string[] = [];
+		const llm = {
+			streamText: vi.fn(async function* () {
+				yield { type: 'text', content: 'Partial cancelled output.' };
+				controller.abort();
+				return;
+			})
+		} as any;
+		const toolExecutor = vi.fn(async (): Promise<ChatToolResult> => {
+			throw new Error('Tool executor should not run');
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'Cancel this turn.',
+			tools: tools(['search_onto_projects']),
+			toolExecutor,
+			onDelta: async (delta) => {
+				emittedDeltas.push(delta);
+			},
+			signal: controller.signal
+		});
+
+		expect(result.cancelled).toBe(true);
+		expect(result.finishedReason).toBe('cancelled');
+		expect(result.finalAssistantText).toBe('Partial cancelled output.');
+		expect(emittedDeltas.join('')).toContain('Partial cancelled output.');
 	});
 
 	it('classifies a genuinely aborted signal as cancelled (O8)', async () => {

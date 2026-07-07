@@ -1,22 +1,32 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/round-analysis.ts
 import type { ChatToolCall } from '@buildos/shared-types';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
-import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import { parseToolArguments } from './tool-arguments';
 import type { FastToolExecution, GatewayRequiredFieldFailure } from './shared';
 import type { ToolValidationIssue } from './tool-validation';
 import { parseRequiredParameterFailure } from './tool-failure';
+import {
+	getGatewayExecOp,
+	isDiscoveryToolName,
+	isLikelyReadToolName,
+	isLikelyWriteToolName,
+	resolveToolOperationName
+} from './tool-classification';
+export type { GatewayExecResultData } from './tool-classification';
+export {
+	didGatewayExecSucceed,
+	didGatewayOpExecute,
+	didSuccessfulGatewayOpExecute,
+	extractGatewayExecResultData,
+	getGatewayExecOp,
+	isDuplicateWriteSkippedExecution,
+	isReadLikeOperation,
+	isWriteLikeOperation
+} from './tool-classification';
 
 export type RoundToolPattern = {
 	readOps: string[];
 	hasWriteOps: boolean;
-};
-
-export type GatewayExecResultData = {
-	op?: string;
-	ok?: boolean;
-	result?: unknown;
-	meta?: unknown;
 };
 
 export function buildToolRoundFingerprint(roundExecutions: FastToolExecution[]): string {
@@ -79,10 +89,9 @@ export function buildRoundToolPattern(toolCalls: ChatToolCall[]): RoundToolPatte
 		const toolName = toolCall.function?.name?.trim();
 		if (!toolName) continue;
 
-		const registryEntry = getToolRegistry().byToolName[toolName];
-		const operationName = registryEntry?.op ?? toolName;
+		const operationName = resolveToolOperationName(toolName);
 
-		if (registryEntry?.kind === 'write' || isWriteLikeOperation(operationName)) {
+		if (isLikelyWriteToolName(toolName)) {
 			hasWriteOps = true;
 			continue;
 		}
@@ -97,7 +106,7 @@ export function buildRoundToolPattern(toolCalls: ChatToolCall[]): RoundToolPatte
 			continue;
 		}
 
-		if (registryEntry?.kind === 'read' || isReadLikeOperation(operationName)) {
+		if (isLikelyReadToolName(toolName)) {
 			readOps.add(operationName.toLowerCase());
 		}
 	}
@@ -116,20 +125,6 @@ export function hasDocumentOrganizationFailureSignal(
 		const field = failure.field.trim().toLowerCase();
 		return op.startsWith('onto.document.') && field === 'document_id';
 	});
-}
-
-export function extractGatewayExecResultData(payload: unknown): GatewayExecResultData | null {
-	if (!payload || typeof payload !== 'object') return null;
-	const record = payload as Record<string, unknown>;
-	const hasGatewayShape =
-		'op' in record || 'ok' in record || 'result' in record || 'meta' in record;
-	if (!hasGatewayShape) return null;
-	return {
-		op: typeof record.op === 'string' ? record.op : undefined,
-		ok: typeof record.ok === 'boolean' ? record.ok : undefined,
-		result: record.result,
-		meta: record.meta
-	};
 }
 
 export function getDocumentTreeRootCount(treeResult: unknown): number {
@@ -180,145 +175,6 @@ export function extractUnlinkedDocumentIds(treeResult: unknown): string[] {
 	return Object.keys(documents)
 		.map((id) => id.trim())
 		.filter((id) => id.length > 0 && !linkedIds.has(id));
-}
-
-export function isReadLikeOperation(name: string): boolean {
-	const normalized = name.trim().toLowerCase();
-	if (!normalized) return false;
-	return (
-		normalized === 'tool_search' ||
-		normalized === 'tool_schema' ||
-		normalized === 'domain_search' ||
-		normalized === 'domain_load' ||
-		normalized === 'outcome_card_search' ||
-		normalized === 'outcome_card_load' ||
-		normalized === 'work_capability_search' ||
-		normalized === 'work_capability_load' ||
-		normalized === 'skill_search' ||
-		normalized === 'resource_search' ||
-		normalized === 'resource_load' ||
-		normalized === 'skill_load' ||
-		normalized === 'skill_reference_load' ||
-		normalized === 'web_visit' ||
-		normalized.startsWith('get_') ||
-		normalized.startsWith('list_') ||
-		normalized.startsWith('search_') ||
-		normalized.startsWith('find_') ||
-		normalized.endsWith('.get') ||
-		normalized.endsWith('.list') ||
-		normalized.endsWith('.search') ||
-		normalized.endsWith('.visit')
-	);
-}
-
-// Gateway-discovery/context tools resolve tool, skill, schema, or reference
-// guidance. They are not workspace data reads, so keep them out of repeated
-// read-loop counting.
-// web_visit is intentionally NOT in this set — it fetches real content.
-const DISCOVERY_TOOL_NAMES: ReadonlySet<string> = new Set([
-	'domain_search',
-	'domain_load',
-	'outcome_card_search',
-	'outcome_card_load',
-	'work_capability_search',
-	'work_capability_load',
-	'skill_search',
-	'resource_search',
-	'resource_load',
-	'tool_search',
-	'tool_schema',
-	'skill_load',
-	'skill_reference_load'
-]);
-
-export function isDiscoveryToolName(name: string): boolean {
-	return DISCOVERY_TOOL_NAMES.has(name.trim().toLowerCase());
-}
-
-export function isWriteLikeOperation(name: string): boolean {
-	const normalized = name.trim().toLowerCase();
-	if (!normalized) return false;
-	return (
-		normalized.startsWith('create_') ||
-		normalized.startsWith('update_') ||
-		normalized.startsWith('delete_') ||
-		normalized.startsWith('move_') ||
-		normalized.startsWith('link_') ||
-		normalized.startsWith('unlink_') ||
-		normalized.startsWith('reorganize_') ||
-		normalized.startsWith('set_') ||
-		normalized.startsWith('assign_') ||
-		normalized.startsWith('complete_') ||
-		normalized.startsWith('archive_') ||
-		normalized.startsWith('restore_') ||
-		normalized.endsWith('.create') ||
-		normalized.endsWith('.update') ||
-		normalized.endsWith('.delete') ||
-		normalized.endsWith('.move') ||
-		normalized.endsWith('.link') ||
-		normalized.endsWith('.unlink') ||
-		normalized.endsWith('.reorganize') ||
-		normalized.endsWith('.set') ||
-		normalized.endsWith('.assign') ||
-		normalized.endsWith('.complete') ||
-		normalized.endsWith('.archive') ||
-		normalized.endsWith('.restore')
-	);
-}
-
-export function didGatewayExecSucceed(execution: FastToolExecution | null): boolean {
-	if (!execution || execution.result.success !== true) {
-		return false;
-	}
-	const payload = extractGatewayExecResultData(execution.result.result);
-	// Only a gateway envelope that explicitly reports `ok: false` counts as a
-	// failure. Non-gateway tools — and gateway-ish payloads that never set an
-	// explicit boolean `ok` — fall back to the raw `success` flag already
-	// checked above, so this stays correct for reads and non-gateway writes.
-	if (payload && typeof payload.ok === 'boolean') {
-		return payload.ok;
-	}
-	return true;
-}
-
-export function isDuplicateWriteSkippedExecution(execution: FastToolExecution | null): boolean {
-	if (!execution || execution.result.success !== true) return false;
-	const payload = execution.result.result;
-	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return false;
-	const record = payload as Record<string, unknown>;
-	if (record.skipped_duplicate_write === true || record.status === 'duplicate_write_skipped') {
-		return true;
-	}
-	const nested = record.result;
-	if (!nested || typeof nested !== 'object' || Array.isArray(nested)) return false;
-	const nestedRecord = nested as Record<string, unknown>;
-	return (
-		nestedRecord.skipped_duplicate_write === true ||
-		nestedRecord.status === 'duplicate_write_skipped'
-	);
-}
-
-export function getGatewayExecOp(execution: FastToolExecution): string | null {
-	const toolName = execution.toolCall.function?.name?.trim();
-	if (!toolName) return null;
-	const registryEntry = getToolRegistry().byToolName[toolName];
-	return registryEntry?.op ?? null;
-}
-
-export function didGatewayOpExecute(toolExecutions: FastToolExecution[], op: string): boolean {
-	const normalizedTarget = normalizeGatewayOpName(op);
-	return toolExecutions.some((execution) => getGatewayExecOp(execution) === normalizedTarget);
-}
-
-export function didSuccessfulGatewayOpExecute(
-	toolExecutions: FastToolExecution[],
-	op: string
-): boolean {
-	const normalizedTarget = normalizeGatewayOpName(op);
-	return toolExecutions.some(
-		(execution) =>
-			getGatewayExecOp(execution) === normalizedTarget && didGatewayExecSucceed(execution)
-	);
 }
 
 function addGatewayRequiredFieldFailure(

@@ -172,4 +172,43 @@ describe('TaskEventSyncService completion behavior', () => {
 		expect(updateEventMock).not.toHaveBeenCalled();
 		expect(deleteEventMock).not.toHaveBeenCalled();
 	});
+
+	it('removes task events when a task is moved back to the backlog', async () => {
+		const fixtures: Fixtures = {
+			edgeIds: ['event-start', 'event-due'],
+			events: [
+				{
+					id: 'event-start',
+					start_at: '2026-02-16T09:00:00Z',
+					end_at: '2026-02-16T09:30:00Z',
+					props: { task_event_kind: 'start' }
+				},
+				{
+					id: 'event-due',
+					start_at: '2026-02-18T16:30:00Z',
+					end_at: '2026-02-18T17:00:00Z',
+					props: { task_event_kind: 'due' }
+				}
+			]
+		};
+		const supabase = createSupabaseMock(fixtures);
+		const service = new TaskEventSyncService(supabase as any);
+
+		await service.syncTaskEvents('user1', 'actor1', {
+			id: 'task1',
+			project_id: 'proj1',
+			title: 'Task',
+			state_key: 'todo',
+			start_at: null,
+			due_at: null
+		} as any);
+
+		expect(createEventMock).not.toHaveBeenCalled();
+		expect(updateEventMock).not.toHaveBeenCalled();
+		expect(deleteEventMock).toHaveBeenCalledTimes(2);
+		expect(deleteEventMock.mock.calls.map((call) => call[1]?.eventId).sort()).toEqual([
+			'event-due',
+			'event-start'
+		]);
+	});
 });

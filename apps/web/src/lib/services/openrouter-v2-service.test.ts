@@ -6,11 +6,12 @@ import {
 	DEEPSEEK_V4_FLASH_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
 	KIMI_EXPERIMENT_MODEL,
+	NEX_N2_MINI_MODEL,
 	OPENROUTER_V2_JSON_MODELS,
 	OPENROUTER_V2_MULTIMODAL_MODELS,
 	OPENROUTER_V2_TEXT_MODELS,
 	OPENROUTER_V2_TOOL_MODELS,
-	TENCENT_HY3_PREVIEW_MODEL,
+	TENCENT_HY3_MODEL,
 	XIAOMI_MIMO_V25_MODEL
 } from '@buildos/smart-llm';
 
@@ -227,7 +228,7 @@ describe('OpenRouterV2Service model routing', () => {
 			require_parameters: true
 		});
 		expect(requestBodies[1]?.model).toBe(OPENROUTER_V2_JSON_MODELS[1]);
-		expect(requestBodies[1]?.models).toEqual(OPENROUTER_V2_JSON_MODELS.slice(2));
+		expect(requestBodies[1]?.models).toEqual(OPENROUTER_V2_JSON_MODELS.slice(2, 5));
 	});
 
 	it('honors JSON profile hints while keeping DeepSeek as the primary model', async () => {
@@ -282,8 +283,8 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(requestBodies[0]?.response_format).toEqual({ type: 'json_object' });
 		expect(requestBodies[0]?.models).toEqual([
 			XIAOMI_MIMO_V25_MODEL,
-			GEMINI_31_FLASH_LITE_MODEL,
-			ACTIVE_EXPERIMENT_MODEL
+			NEX_N2_MINI_MODEL,
+			GEMINI_31_FLASH_LITE_MODEL
 		]);
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
@@ -1499,7 +1500,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		expect(requestBodies[0]?.models).toEqual([
 			DEEPSEEK_V4_FLASH_MODEL,
 			GEMINI_31_FLASH_LITE_MODEL,
-			TENCENT_HY3_PREVIEW_MODEL
+			TENCENT_HY3_MODEL
 		]);
 		expect(events.find((event) => event.type === 'done')).toMatchObject({
 			type: 'done',

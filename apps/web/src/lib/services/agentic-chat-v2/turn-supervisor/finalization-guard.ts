@@ -2,10 +2,10 @@
 import type { FastToolExecution } from '../stream-orchestrator/shared';
 import { sanitizeAssistantFinalText } from '../stream-orchestrator/assistant-text-sanitization';
 import {
+	classifyToolExecution,
 	didGatewayExecSucceed,
 	isDuplicateWriteSkippedExecution
-} from '../stream-orchestrator/round-analysis';
-import { classifyToolExecution } from './digest';
+} from '../stream-orchestrator/tool-classification';
 
 export type FinalizationGuardReason =
 	| 'empty_after_tools'

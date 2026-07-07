@@ -13,11 +13,7 @@ import { normalizeFastContextType } from '../scope';
 import { buildLitePromptEnvelope } from '$lib/services/agentic-chat-lite/prompt';
 import { FASTCHAT_LIMITS } from '../limits';
 import { buildLiveSnapshotFromTokens, FASTCHAT_TOKEN_BUDGETS } from '../context-usage';
-import {
-	extractGatewayMaterializedToolNames,
-	materializeGatewayTools
-} from '$lib/services/agentic-chat/tools/core/gateway-surface';
-import { TOOL_METADATA } from '$lib/services/agentic-chat/tools/core/definitions/tool-metadata';
+import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import { dev } from '$app/environment';
@@ -30,10 +26,8 @@ import type {
 	GatewayRequiredFieldFailure,
 	LLMStreamPassMetadata
 } from './shared';
-import { buildToolPayloadForModel } from './tool-payload-compaction';
 import {
 	parseToolArguments,
-	normalizeToolCallDefaults,
 	inspectToolArgumentAnomaly,
 	logToolArgumentAnomaly,
 	sanitizeToolCallsForReplay
@@ -48,11 +42,7 @@ import {
 	type TurnSupervisorDecisionTrigger,
 	type TurnSupervisorObservation
 } from '../turn-supervisor';
-import {
-	classifyToolExecution,
-	parseToolArguments as parseSupervisorToolArguments,
-	summarizeToolResult
-} from '../turn-supervisor/digest';
+import { summarizeToolResult } from '../turn-supervisor/digest';
 import {
 	buildConsolidatedRepairInstruction,
 	buildGatewayCreateFieldNoProgressRepairInstruction,
@@ -74,25 +64,32 @@ import {
 import {
 	buildRoundToolPattern,
 	buildToolRoundFingerprint,
-	didGatewayExecSucceed,
 	extractGatewayExecResultData,
 	extractGatewayRequiredFieldFailures,
 	extractGatewayRequiredFieldFailuresFromValidationIssues,
 	extractUnlinkedDocumentIds,
 	getDocumentTreeRootCount,
 	hasDocumentOrganizationFailureSignal,
-	hasDocumentOrganizationValidationIssue,
-	isDuplicateWriteSkippedExecution,
-	isWriteLikeOperation
+	hasDocumentOrganizationValidationIssue
 } from './round-analysis';
+import {
+	classifyToolExecution,
+	didGatewayExecSucceed,
+	didToolExecutionReachWriteExecutor,
+	isDuplicateWriteSkippedExecution,
+	isPureReadToolName,
+	isWriteLikeOperation
+} from './tool-classification';
 import { validateToolCalls } from './tool-validation';
 import { buildWriteLedgerMessage } from './write-ledger';
-import {
-	buildWrongEntityKindRepairResult,
-	rememberKnownEntitiesFromToolResult,
-	type KnownEntity
-} from './entity-kind-repair';
+import { buildWrongEntityKindRepairResult, type KnownEntity } from './entity-kind-repair';
 import { ContextGatheringLedger } from './context-gathering-ledger';
+import {
+	executeToolCallPair,
+	prepareToolRound,
+	recordToolExecutionForRound
+} from './tool-round-runner';
+import { runLlmStreamPass, type FastChatModelMessage } from './llm-pass-runner';
 import * as readLoopEscalation from './read-loop-escalation';
 import type { ReadLoopRepairEscalation as ReadLoopRepairEscalationLevel } from './read-loop-escalation';
 
@@ -144,42 +141,6 @@ type StreamFastChatParams = {
 		historyHasLoadedSkillsLedger: boolean;
 	} | null;
 };
-
-type FastChatModelMessage = Omit<FastChatHistoryMessage, 'content'> & {
-	content: string | OpenRouterContentPart[];
-	reasoning?: string;
-	reasoning_content?: string;
-	reasoning_details?: unknown[];
-};
-
-const ORCHESTRATION_STATEFUL_TOOL_NAMES = new Set([
-	'domain_search',
-	'domain_load',
-	'outcome_card_search',
-	'outcome_card_load',
-	'work_capability_search',
-	'work_capability_load',
-	'skill_search',
-	'skill_load',
-	'skill_reference_load',
-	'resource_search',
-	'resource_load',
-	'tool_search',
-	'tool_schema',
-	'libri_overview',
-	'libri_search_capabilities',
-	'libri_get_capability_schema'
-]);
-
-function isPureReadToolName(toolName: string): boolean {
-	const normalized = toolName.trim();
-	if (!normalized) return false;
-	const lower = normalized.toLowerCase();
-	if (ORCHESTRATION_STATEFUL_TOOL_NAMES.has(lower)) return false;
-	if (isWriteLikeOperation(normalized)) return false;
-	const category = TOOL_METADATA[normalized]?.category;
-	return category === 'read' || category === 'search';
-}
 
 function buildRuntimeToolBudgetMessage(params: {
 	toolRounds: number;
@@ -285,6 +246,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	const allowAutonomousRecovery = Boolean(params.allowAutonomousRecovery);
 	let toolRounds = 0;
 	let toolCallsMade = 0;
+	let toolCallsExecuted = 0;
 	let consecutiveValidationIssueRounds = 0;
 	let toolLimitNotice: string | null = null;
 	let hasWriteAttempt = false;
@@ -495,12 +457,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		if (!key || successfulWriteExecutionsByKey.has(key)) return;
 		successfulWriteExecutionsByKey.set(key, execution);
 	};
-	const didReachWriteExecutor = (execution: FastToolExecution): boolean => {
-		if (classifyToolExecution(execution) !== 'write') return false;
-		if (isDuplicateWriteSkippedExecution(execution)) return false;
-		const error = execution.result.error;
-		return !(typeof error === 'string' && error.startsWith('Tool validation failed:'));
-	};
 	const recordGatewayRequiredFieldFailures = (
 		failures: GatewayRequiredFieldFailure[]
 	): (GatewayRequiredFieldFailure & { count: number }) | null => {
@@ -527,8 +483,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		// Stop issuing synthetic tool calls (which commit writes) once the turn is cancelled.
 		if (signal?.aborted) return null;
 
-		toolCallsMade += 1;
-		if (toolCallsMade > maxToolCalls) {
+		if (toolCallsMade >= maxToolCalls) {
 			markToolLimitReached('call');
 			return null;
 		}
@@ -540,7 +495,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		}
 		materializeDirectTools([directToolName], 'Autonomous recovery loaded required tool.');
 		const toolCall: ChatToolCall = {
-			id: `auto_tool_${toolCallsMade}`,
+			id: `auto_tool_${toolCallsExecuted + 1}`,
 			type: 'function',
 			function: {
 				name: directToolName,
@@ -564,6 +519,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 		let result: ChatToolResult;
 		try {
+			toolCallsExecuted += 1;
 			result = await params.toolExecutor(toolCall, tools);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Tool execution failed';
@@ -576,6 +532,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		}
 
 		const execution: FastToolExecution = { toolCall, result };
+		toolCallsMade += 1;
 		toolExecutions.push(execution);
 		rememberSuccessfulWriteForDedup(execution);
 		await observeSupervisor({
@@ -881,22 +838,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				break;
 			}
 
-			let assistantBuffer = '';
-			let assistantReasoningForReplay = '';
-			const assistantReasoningDetailsForReplay: unknown[] = [];
-			const pendingToolCalls: ChatToolCall[] = [];
-			let suppressedNoToolSynthesisToolCallCount = 0;
 			const noToolSynthesisPass = forceNoToolSynthesisPass;
 			forceNoToolSynthesisPass = false;
 			activeAssistantBuffer = '';
 			activePendingToolCallCount = 0;
-			const llmPassMeta: LLMStreamPassMetadata = {
-				pass: llmStreamPasses.length + 1
-			};
-			if (noToolSynthesisPass) {
-				llmPassMeta.forcedNoToolSynthesis = true;
-			}
-			let llmDoneReceived = false;
 			const passMessages: FastChatModelMessage[] = [
 				...messages,
 				{
@@ -911,206 +856,48 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				}
 			];
 
-			const clearLlmHeartbeat = startLongRunningOperationHeartbeat('llm_stream');
-			try {
-				for await (const event of llm.streamText({
-					messages: passMessages,
-					tools: noToolSynthesisPass ? undefined : hasTools ? tools : undefined,
-					tool_choice: noToolSynthesisPass ? undefined : hasTools ? 'auto' : undefined,
-					temperature: noToolSynthesisPass ? undefined : hasTools ? 0.2 : undefined,
-					userId,
-					sessionId,
-					chatSessionId: sessionId,
-					turnRunId: params.turnRunId ?? undefined,
-					streamRunId: params.streamRunId ?? undefined,
-					clientTurnId: params.clientTurnId ?? undefined,
-					profile: 'balanced',
-					// D8: raise the per-pass output cap well above the service default
-					// (2000). A 2000-token cap truncated real answers and half-built
-					// tool-call arguments mid-stream, and the truncated buffer was
-					// shipped as the final answer.
-					maxTokens: FASTCHAT_LIMITS.SYNTHESIS_MAX_TOKENS,
-					operationType: 'agentic_chat_v2_stream',
-					contextType: normalizedContext,
-					entityId: entityId ?? undefined,
-					projectId: params.projectId ?? undefined,
-					signal
-				})) {
-					if (event.type === 'text' && event.content) {
-						assistantBuffer += event.content;
-						activeAssistantBuffer = assistantBuffer;
-						await tryEmitEarlyAssistantLeadIn(assistantBuffer);
-					} else if (event.type === 'reasoning') {
-						// Reasoning stays out of the user-visible content buffer.
-						// Track per-pass counters and preserve blocks for tool-call
-						// continuity when the next request sends tool results.
-						// If a model emits reasoning via delta.content instead, we
-						// will see content tokens climb while these counters stay
-						// at zero, a clear signal to switch models or add a
-						// targeted sanitizer for that provider.
-						const reasoningEvent = event as {
-							reasoning?: string;
-							reasoning_details?: unknown[];
-						};
-						if (typeof reasoningEvent.reasoning === 'string') {
-							assistantReasoningForReplay += reasoningEvent.reasoning;
-						}
-						if (Array.isArray(reasoningEvent.reasoning_details)) {
-							assistantReasoningDetailsForReplay.push(
-								...reasoningEvent.reasoning_details
-							);
-						}
-						const reasoningLen =
-							(typeof reasoningEvent.reasoning === 'string'
-								? reasoningEvent.reasoning.length
-								: 0) +
-							(Array.isArray(reasoningEvent.reasoning_details)
-								? reasoningEvent.reasoning_details.reduce<number>(
-										(acc: number, part: unknown) => {
-											if (!part || typeof part !== 'object') return acc;
-											const text = (part as { text?: unknown }).text;
-											return (
-												acc + (typeof text === 'string' ? text.length : 0)
-											);
-										},
-										0
-									)
-								: 0);
-						llmPassMeta.reasoningChannelChunks =
-							(llmPassMeta.reasoningChannelChunks ?? 0) + 1;
-						llmPassMeta.reasoningChannelChars =
-							(llmPassMeta.reasoningChannelChars ?? 0) + reasoningLen;
-					} else if (event.type === 'tool_call' && event.tool_call) {
-						const normalizedToolCall = normalizeToolCallDefaults(
-							event.tool_call,
-							params.projectId ?? undefined
-						);
-						if (noToolSynthesisPass) {
-							suppressedNoToolSynthesisToolCallCount += 1;
-							llmPassMeta.suppressedNoToolSynthesisToolCalls =
-								suppressedNoToolSynthesisToolCallCount;
-							continue;
-						}
-						pendingToolCalls.push(normalizedToolCall);
-						activePendingToolCallCount = pendingToolCalls.length;
-						await observeSupervisor({
-							type: 'tool_call_emitted',
-							toolName: normalizedToolCall.function.name,
-							toolCallId: normalizedToolCall.id,
-							argsPreview: parseSupervisorToolArguments(normalizedToolCall)
-						});
-						if (params.onToolCall) {
-							try {
-								await params.onToolCall(normalizedToolCall);
-							} catch {
-								// UI/logging callbacks must not crash tool orchestration.
-							}
-						}
-					} else if (event.type === 'done') {
-						llmDoneReceived = true;
-						if (event.usage) {
-							if (!usage) {
-								usage = { ...event.usage };
-							} else {
-								if (event.usage.total_tokens !== undefined) {
-									usage.total_tokens =
-										(usage.total_tokens ?? 0) + (event.usage.total_tokens ?? 0);
-								}
-								if (event.usage.prompt_tokens !== undefined) {
-									usage.prompt_tokens =
-										(usage.prompt_tokens ?? 0) +
-										(event.usage.prompt_tokens ?? 0);
-								}
-								if (event.usage.completion_tokens !== undefined) {
-									usage.completion_tokens =
-										(usage.completion_tokens ?? 0) +
-										(event.usage.completion_tokens ?? 0);
-								}
-							}
-
-							if (typeof event.usage.prompt_tokens === 'number') {
-								llmPassMeta.promptTokens = event.usage.prompt_tokens;
-								// Update live context-usage snapshot from provider ground truth
-								// so saturation logic and the UI badge can react to real
-								// context-window load mid-turn.
-								await updateLiveContextUsage(event.usage.prompt_tokens);
-							}
-							if (typeof event.usage.completion_tokens === 'number') {
-								llmPassMeta.completionTokens = event.usage.completion_tokens;
-							}
-							if (typeof event.usage.total_tokens === 'number') {
-								llmPassMeta.totalTokens = event.usage.total_tokens;
-							}
-							const usageRecord = event.usage as Record<string, unknown>;
-							const completionTokenDetails =
-								usageRecord.completion_tokens_details &&
-								typeof usageRecord.completion_tokens_details === 'object'
-									? (usageRecord.completion_tokens_details as Record<
-											string,
-											unknown
-										>)
-									: null;
-							const usageReasoningTokens =
-								completionTokenDetails &&
-								typeof completionTokenDetails.reasoning_tokens === 'number'
-									? completionTokenDetails.reasoning_tokens
-									: undefined;
-							if (typeof usageReasoningTokens === 'number') {
-								llmPassMeta.reasoningTokens = usageReasoningTokens;
-							}
-						}
-						finishedReason = event.finished_reason ?? finishedReason;
-						llmPassMeta.finishedReason =
-							event.finished_reason ?? llmPassMeta.finishedReason;
-						const eventRecord = event as Record<string, unknown>;
-						const model = readStringMeta(eventRecord.model);
-						const provider = readStringMeta(eventRecord.provider);
-						const requestId =
-							readStringMeta(eventRecord.request_id) ??
-							readStringMeta(eventRecord.requestId);
-						const systemFingerprint =
-							readStringMeta(eventRecord.system_fingerprint) ??
-							readStringMeta(eventRecord.systemFingerprint);
-						const cacheStatus =
-							readStringMeta(eventRecord.cache_status) ??
-							readStringMeta(eventRecord.cacheStatus);
-						const reasoningTokens =
-							readNumberMeta(eventRecord.reasoning_tokens) ??
-							readNumberMeta(eventRecord.reasoningTokens);
-
-						if (model) llmPassMeta.model = model;
-						if (provider) llmPassMeta.provider = provider;
-						if (requestId) llmPassMeta.requestId = requestId;
-						if (systemFingerprint) llmPassMeta.systemFingerprint = systemFingerprint;
-						if (cacheStatus) llmPassMeta.cacheStatus = cacheStatus;
-						if (typeof reasoningTokens === 'number') {
-							llmPassMeta.reasoningTokens = reasoningTokens;
-						}
-					} else if (event.type === 'error') {
-						throw new Error(event.error || 'LLM stream error');
-					}
-				}
-			} finally {
-				clearLlmHeartbeat();
+			const llmPassResult = await runLlmStreamPass({
+				llm,
+				passMessages,
+				tools,
+				hasTools,
+				noToolSynthesisPass,
+				passNumber: llmStreamPasses.length + 1,
+				usage,
+				userId,
+				sessionId,
+				turnRunId: params.turnRunId,
+				streamRunId: params.streamRunId,
+				clientTurnId: params.clientTurnId,
+				normalizedContext,
+				entityId,
+				projectId: params.projectId,
+				signal,
+				onAssistantBufferChange: (nextBuffer) => {
+					activeAssistantBuffer = nextBuffer;
+				},
+				onPendingToolCallCountChange: (count) => {
+					activePendingToolCallCount = count;
+				},
+				tryEmitEarlyAssistantLeadIn,
+				updateLiveContextUsage,
+				startLlmHeartbeat: () => startLongRunningOperationHeartbeat('llm_stream'),
+				observeSupervisor,
+				onToolCall: params.onToolCall
+			});
+			const {
+				assistantBuffer,
+				assistantReasoningForReplay,
+				assistantReasoningDetailsForReplay,
+				pendingToolCalls,
+				suppressedNoToolSynthesisToolCallCount
+			} = llmPassResult;
+			const llmPassMeta = llmPassResult.metadata;
+			usage = llmPassResult.usage;
+			if (llmPassResult.finishedReason !== undefined) {
+				finishedReason = llmPassResult.finishedReason;
 			}
-			if (llmDoneReceived) {
-				llmStreamPasses.push(llmPassMeta);
-				await observeSupervisor({
-					type: 'llm_pass_completed',
-					pass: llmPassMeta.pass,
-					finishedReason: llmPassMeta.finishedReason,
-					usage:
-						llmPassMeta.totalTokens !== undefined ||
-						llmPassMeta.promptTokens !== undefined ||
-						llmPassMeta.completionTokens !== undefined
-							? {
-									total_tokens: llmPassMeta.totalTokens,
-									prompt_tokens: llmPassMeta.promptTokens,
-									completion_tokens: llmPassMeta.completionTokens
-								}
-							: undefined
-				});
-			}
+			llmStreamPasses.push(llmPassMeta);
 			if (supervisorStopRequested) {
 				break;
 			}
@@ -1122,11 +909,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			// confirmed partial text forward so the assembled answer is whole. When
 			// continuations are exhausted, keep the accumulated text but flag the
 			// turn as truncated so it is not presented as a clean `stop`.
-			if (
-				llmDoneReceived &&
-				llmPassMeta.finishedReason === 'length' &&
-				pendingToolCalls.length === 0
-			) {
+			if (llmPassMeta.finishedReason === 'length' && pendingToolCalls.length === 0) {
 				if (lengthContinuationCount < FASTCHAT_LIMITS.MAX_LENGTH_CONTINUATIONS) {
 					lengthContinuationCount += 1;
 					console.warn(
@@ -1347,123 +1130,33 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			const validationIssues = validateToolCalls(pendingToolCalls, tools, {
 				projectId: validationProjectId
 			});
-			const validationIssueByToolCallId = new Map(
-				validationIssues.map((issue) => [issue.toolCall.id, issue])
-			);
 			const executableToolCalls = sanitizeToolCallsForReplay(pendingToolCalls);
 			const roundExecutions: FastToolExecution[] = [];
 			let roundModelPayloadChars = 0;
-			const toolCallsToExecute: Array<{ original: ChatToolCall; executable: ChatToolCall }> =
-				[];
 			const blockedRetryCallIdsInRound = new Set(
 				pendingToolCalls
 					.filter((toolCall) => supervisorBlockedToolCallIds.has(toolCall.id))
 					.map((toolCall) => toolCall.id)
 			);
+			if (hasDocumentOrganizationValidationIssue(validationIssues)) {
+				docOrganizationRecoveryEligible = true;
+			}
+			const preparedToolRound = await prepareToolRound({
+				pendingToolCalls,
+				executableToolCalls,
+				validationIssues,
+				blockedRetryCallIdsInRound,
+				toolExecutions,
+				roundExecutions,
+				observeSupervisor,
+				onToolResult: params.onToolResult
+			});
+			toolCallsMade += preparedToolRound.handledToolCallDelta;
+			roundModelPayloadChars += preparedToolRound.modelPayloadChars;
+			messages.push(...preparedToolRound.toolMessages);
+			const toolCallsToExecute = preparedToolRound.toolCallsToExecute;
+
 			if (validationIssues.length > 0 || blockedRetryCallIdsInRound.size > 0) {
-				if (hasDocumentOrganizationValidationIssue(validationIssues)) {
-					docOrganizationRecoveryEligible = true;
-				}
-				for (let index = 0; index < pendingToolCalls.length; index += 1) {
-					const toolCall = pendingToolCalls[index];
-					if (!toolCall) {
-						continue;
-					}
-					if (blockedRetryCallIdsInRound.has(toolCall.id)) {
-						const errorMessage =
-							'Supervisor blocked this exact write retry because the same tool arguments already failed earlier in the turn. Use corrected arguments, the correct tool for the entity kind, or ask one concise clarifying question.';
-						const result: ChatToolResult = {
-							tool_call_id: toolCall.id,
-							result: null,
-							success: false,
-							error: errorMessage
-						};
-
-						toolExecutions.push({ toolCall, result });
-						roundExecutions.push({ toolCall, result });
-						await observeSupervisor({
-							type: 'tool_result_received',
-							toolName: toolCall.function.name,
-							toolCallId: toolCall.id,
-							success: false,
-							error: result.error ?? null,
-							resultSummary: summarizeToolResult(result)
-						});
-						if (params.onToolResult) {
-							try {
-								await params.onToolResult({ toolCall, result });
-							} catch {
-								// UI/logging callbacks must not crash tool orchestration.
-							}
-						}
-
-						const blockedPayload = JSON.stringify({
-							error: errorMessage,
-							supervisor_recovery: {
-								blocked_exact_retry: true
-							}
-						});
-						roundModelPayloadChars += blockedPayload.length;
-						messages.push({
-							role: 'tool',
-							content: blockedPayload,
-							tool_call_id: toolCall.id
-						});
-						continue;
-					}
-					const validationIssue = validationIssueByToolCallId.get(toolCall.id);
-					const errorMessage = validationIssue
-						? `Tool validation failed: ${validationIssue.errors.join(' ')}`
-						: null;
-					if (errorMessage) {
-						const result: ChatToolResult = {
-							tool_call_id: toolCall.id,
-							result: null,
-							success: false,
-							error: errorMessage
-						};
-
-						toolExecutions.push({ toolCall, result });
-						roundExecutions.push({ toolCall, result });
-						await observeSupervisor({
-							type: 'tool_result_received',
-							toolName: toolCall.function.name,
-							toolCallId: toolCall.id,
-							success: false,
-							error: result.error ?? null,
-							resultSummary: summarizeToolResult(result)
-						});
-						if (params.onToolResult) {
-							try {
-								await params.onToolResult({ toolCall, result });
-							} catch {
-								// UI/logging callbacks must not crash tool orchestration.
-							}
-						}
-
-						const validationPayload: Record<string, unknown> = {
-							error: errorMessage
-						};
-						if (validationIssue?.op) {
-							validationPayload.op = validationIssue.op;
-							validationPayload.help_path = validationIssue.op;
-						}
-						if (validationIssue?.errors?.length) {
-							validationPayload.details = { field_errors: validationIssue.errors };
-						}
-						const validationToolContent = JSON.stringify(validationPayload);
-						roundModelPayloadChars += validationToolContent.length;
-						messages.push({
-							role: 'tool',
-							content: validationToolContent,
-							tool_call_id: toolCall.id
-						});
-						continue;
-					}
-					const executable = executableToolCalls[index] ?? toolCall;
-					toolCallsToExecute.push({ original: toolCall, executable });
-				}
-
 				if (toolCallsToExecute.length === 0) {
 					if (validationIssues.length > 0) {
 						consecutiveValidationIssueRounds += 1;
@@ -1539,72 +1232,27 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				);
 			} else {
 				consecutiveValidationIssueRounds = 0;
-				for (let index = 0; index < pendingToolCalls.length; index += 1) {
-					const toolCall = pendingToolCalls[index];
-					if (!toolCall) {
-						continue;
-					}
-					const executable = executableToolCalls[index] ?? toolCall;
-					toolCallsToExecute.push({ original: toolCall, executable });
-				}
 			}
 
 			const recordToolExecutionInOrder = async (
 				originalToolCall: ChatToolCall,
 				execution: FastToolExecution
 			): Promise<void> => {
-				const result = execution.result;
-				const executionToolCall = execution.toolCall;
-				toolExecutions.push(execution);
-				roundExecutions.push(execution);
-				rememberSuccessfulWriteForDedup(execution);
-				const skippedDuplicateWrite = isDuplicateWriteSkippedExecution(execution);
-				await observeSupervisor({
-					type: 'tool_result_received',
-					toolName: executionToolCall.function.name,
-					toolCallId: originalToolCall.id,
-					// ok-aware: a gateway envelope with `ok: false` rides in on
-					// `success: true`, so judge on didGatewayExecSucceed to keep the
-					// supervisor's write/failure counts honest. Falls back to raw
-					// success for non-gateway tools.
-					success: didGatewayExecSucceed(execution),
-					skipped: skippedDuplicateWrite,
-					error: result.error ?? null,
-					resultSummary: summarizeToolResult(result)
+				const recorded = await recordToolExecutionForRound({
+					originalToolCall,
+					execution,
+					toolExecutions,
+					roundExecutions,
+					gatewayModeActive,
+					knownEntitiesById,
+					rememberSuccessfulWriteForDedup,
+					materializeDirectTools,
+					observeSupervisor,
+					onToolResult: params.onToolResult
 				});
-				if (gatewayModeActive && result.success) {
-					materializeDirectTools(
-						extractGatewayMaterializedToolNames(result.result),
-						'Discovery loaded additional tools.'
-					);
-				}
-				if (result.success) {
-					rememberKnownEntitiesFromToolResult({
-						knownEntitiesById,
-						toolName: executionToolCall.function.name,
-						payload: result.result
-					});
-				}
-				if (params.onToolResult) {
-					try {
-						await params.onToolResult(execution);
-					} catch {
-						// UI/logging callbacks must not crash tool orchestration.
-					}
-				}
-
-				const toolPayload = buildToolPayloadForModel(
-					executionToolCall,
-					result,
-					parseToolArguments
-				);
-				const toolPayloadContent = JSON.stringify(toolPayload);
-				roundModelPayloadChars += toolPayloadContent.length;
-				messages.push({
-					role: 'tool',
-					content: toolPayloadContent,
-					tool_call_id: originalToolCall.id
-				});
+				toolCallsMade += recorded.handledToolCallDelta;
+				roundModelPayloadChars += recorded.modelPayloadChars;
+				messages.push(recorded.toolMessage);
 			};
 
 			const canBatchPureReadPair = (pair: {
@@ -1634,8 +1282,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					throw new Error('Request aborted');
 				}
 
-				toolCallsMade += 1;
-				if (toolCallsMade > maxToolCalls) {
+				if (toolCallsMade >= maxToolCalls) {
 					markToolLimitReached('call');
 					const skippedCalls = toolCallsToExecute
 						.slice(executionIndex)
@@ -1646,35 +1293,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 							toolCall: skippedToolCall,
 							result: skippedResult
 						};
-						toolExecutions.push(skippedExecution);
-						roundExecutions.push(skippedExecution);
-						await observeSupervisor({
-							type: 'tool_result_received',
-							toolName: skippedToolCall.function.name,
-							toolCallId: skippedToolCall.id,
-							success: false,
-							error: skippedResult.error ?? null,
-							resultSummary: summarizeToolResult(skippedResult)
-						});
-						if (params.onToolResult) {
-							try {
-								await params.onToolResult(skippedExecution);
-							} catch {
-								// UI/logging callbacks must not crash tool orchestration.
-							}
-						}
-						const skippedPayload = buildToolPayloadForModel(
-							skippedToolCall,
-							skippedResult,
-							parseToolArguments
-						);
-						const skippedPayloadContent = JSON.stringify(skippedPayload);
-						roundModelPayloadChars += skippedPayloadContent.length;
-						messages.push({
-							role: 'tool',
-							content: skippedPayloadContent,
-							tool_call_id: skippedToolCall.id
-						});
+						await recordToolExecutionInOrder(skippedToolCall, skippedExecution);
 					}
 					break;
 				}
@@ -1688,7 +1307,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					for (
 						let lookaheadIndex = executionIndex + 1;
 						lookaheadIndex < toolCallsToExecute.length &&
-						batchPairs.length - 1 < remainingBatchSlots;
+						batchPairs.length < remainingBatchSlots;
 						lookaheadIndex += 1
 					) {
 						const candidate = toolCallsToExecute[lookaheadIndex];
@@ -1699,7 +1318,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					}
 
 					if (batchPairs.length > 1) {
-						toolCallsMade += batchPairs.length - 1;
 						const batchToolCalls = batchPairs.map(({ executable }) => executable);
 						const clearBatchToolStatusTimers = batchPairs.map(({ original }) =>
 							startLongRunningOperationHeartbeat('tool_execution', {
@@ -1719,6 +1337,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 						let batchResults: ChatToolResult[];
 						try {
+							toolCallsExecuted += batchPairs.length;
 							batchResults = await params.batchToolExecutor(batchToolCalls, tools);
 						} catch (error) {
 							const message =
@@ -1770,196 +1389,23 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					}
 				}
 
-				let result: ChatToolResult;
-				let executionToolCall = originalToolCall;
-				const entityKindRepairResult = buildWrongEntityKindRepairResult({
-					toolCall: originalToolCall,
-					knownEntitiesById
+				const dispatchResult = await executeToolCallPair({
+					originalToolCall,
+					toolCall,
+					getTools: () => tools,
+					getAllowedToolNames: () => allowedToolNames,
+					allowedToolNamesAtRoundStart,
+					gatewayModeActive,
+					validationProjectId,
+					knownEntitiesById,
+					toolExecutor: params.toolExecutor,
+					materializeDirectTools,
+					findDuplicateSuccessfulWrite,
+					startToolExecutionHeartbeat: (details) =>
+						startLongRunningOperationHeartbeat('tool_execution', details)
 				});
-				if (entityKindRepairResult) {
-					result = entityKindRepairResult;
-				} else if (!allowedToolNames.has(toolCall.function.name)) {
-					const requestedName = toolCall.function.name;
-					let addedToolNames = gatewayModeActive
-						? materializeDirectTools(
-								[requestedName],
-								`The tool "${requestedName}" was not preloaded.`
-							)
-						: [];
-					// The model sometimes calls a canonical op name (e.g. "onto.task.update")
-					// instead of the callable tool name surfaced as a skill's related op.
-					// Resolve op -> tool and materialize the callable tool so the next round
-					// can succeed, instead of dead-ending on "tool not available".
-					let resolvedOpToolName: string | null = null;
-					if (gatewayModeActive && addedToolNames.length === 0) {
-						const opToolName =
-							getToolRegistry().ops[normalizeGatewayOpName(requestedName)]?.tool_name;
-						if (opToolName && opToolName !== requestedName) {
-							addedToolNames = materializeDirectTools(
-								[opToolName],
-								`"${requestedName}" is an op reference, not a callable tool.`
-							);
-							if (addedToolNames.length > 0) {
-								resolvedOpToolName = opToolName;
-							}
-						}
-					}
-
-					// Auto-execute the just-materialized tool in THIS round instead of
-					// bouncing the model with a "now loaded, retry" error. The old retry
-					// path burned a full tool round per write (the write tools are not
-					// preloaded under lean discovery), which routinely exhausted the turn
-					// budget before any mutation ran — the agent would search, "load" the
-					// write tool, run out of rounds, and never actually update the
-					// task/doc. Materialize-then-run collapses that into one round.
-					const materializedExecutableToolName =
-						addedToolNames.length === 1 ? (addedToolNames[0] ?? null) : null;
-					const executableName =
-						resolvedOpToolName ?? materializedExecutableToolName ?? requestedName;
-					const canAutoExecute =
-						addedToolNames.length > 0 &&
-						allowedToolNames.has(executableName) &&
-						Boolean(params.toolExecutor);
-					if (canAutoExecute) {
-						const directToolCall: ChatToolCall =
-							executableName !== toolCall.function.name
-								? {
-										...toolCall,
-										function: { ...toolCall.function, name: executableName }
-									}
-								: toolCall;
-						executionToolCall = directToolCall;
-						// The earlier validateToolCalls pass (run before the tool was
-						// materialized) could not apply the provider-schema required-field
-						// check, because that check needs the tool's definition in `tools`.
-						// Re-validate now that it is loaded so auto-exec is strictly as safe
-						// as the old bounce-and-retry path: on a validation miss, return the
-						// helpful validation error instead of executing with bad arguments.
-						const autoExecValidationIssues = validateToolCalls(
-							[directToolCall],
-							tools,
-							{
-								projectId: validationProjectId
-							}
-						);
-						if (autoExecValidationIssues.length > 0) {
-							result = {
-								tool_call_id: originalToolCall.id,
-								result: null,
-								success: false,
-								error: `Tool validation failed: ${autoExecValidationIssues
-									.flatMap((issue) => issue.errors)
-									.join(' ')}`
-							};
-						} else {
-							const duplicateWrite = findDuplicateSuccessfulWrite(directToolCall);
-							if (duplicateWrite) {
-								result = buildDuplicateWriteSkippedResult({
-									originalToolCall,
-									executableToolCall: directToolCall,
-									priorExecution: duplicateWrite
-								});
-							} else {
-								const clearAutoToolStatusTimer = startLongRunningOperationHeartbeat(
-									'tool_execution',
-									{
-										toolName: directToolCall.function.name,
-										toolCallId: originalToolCall.id
-									}
-								);
-								try {
-									result = await params.toolExecutor!(directToolCall, tools);
-									if (result.tool_call_id !== originalToolCall.id) {
-										result = { ...result, tool_call_id: originalToolCall.id };
-									}
-								} catch (error) {
-									const messageText =
-										error instanceof Error
-											? error.message
-											: 'Tool execution failed';
-									result = {
-										tool_call_id: originalToolCall.id,
-										result: null,
-										success: false,
-										error: messageText
-									};
-								} finally {
-									clearAutoToolStatusTimer();
-								}
-							}
-						}
-					} else {
-						result = {
-							tool_call_id: originalToolCall.id,
-							result: null,
-							success: false,
-							error:
-								addedToolNames.length > 0
-									? `Tool "${requestedName}" is now loaded for this turn. Retry with the direct tool and exact arguments.`
-									: 'Tool not available in this context'
-						};
-					}
-				} else {
-					const lateValidationIssues = allowedToolNamesAtRoundStart.has(
-						toolCall.function.name
-					)
-						? []
-						: validateToolCalls([toolCall], tools, {
-								projectId: validationProjectId
-							});
-					if (lateValidationIssues.length > 0) {
-						result = {
-							tool_call_id: originalToolCall.id,
-							result: null,
-							success: false,
-							error: `Tool validation failed: ${lateValidationIssues
-								.flatMap((issue) => issue.errors)
-								.join(' ')}`
-						};
-					} else {
-						const duplicateWrite = findDuplicateSuccessfulWrite(toolCall);
-						if (duplicateWrite) {
-							result = buildDuplicateWriteSkippedResult({
-								originalToolCall,
-								executableToolCall: toolCall,
-								priorExecution: duplicateWrite
-							});
-						} else {
-							const clearToolStatusTimer = startLongRunningOperationHeartbeat(
-								'tool_execution',
-								{
-									toolName: originalToolCall.function.name,
-									toolCallId: originalToolCall.id
-								}
-							);
-							try {
-								result = await params.toolExecutor(toolCall, tools);
-								if (result.tool_call_id !== originalToolCall.id) {
-									result = {
-										...result,
-										tool_call_id: originalToolCall.id
-									};
-								}
-							} catch (error) {
-								const message =
-									error instanceof Error
-										? error.message
-										: 'Tool execution failed';
-								result = {
-									tool_call_id: originalToolCall.id,
-									result: null,
-									success: false,
-									error: message
-								};
-							} finally {
-								clearToolStatusTimer();
-							}
-						}
-					}
-				}
-
-				const execution: FastToolExecution = { toolCall: executionToolCall, result };
-				await recordToolExecutionInOrder(originalToolCall, execution);
+				toolCallsExecuted += dispatchResult.executedToolCallDelta;
+				await recordToolExecutionInOrder(originalToolCall, dispatchResult.execution);
 			}
 
 			flushMaterializationNotices();
@@ -1986,7 +1432,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 
 			const roundPattern = buildRoundToolPattern(pendingToolCalls);
-			const roundReachedWriteExecutor = roundExecutions.some(didReachWriteExecutor);
+			const roundReachedWriteExecutor = roundExecutions.some(
+				didToolExecutionReachWriteExecutor
+			);
 
 			if (roundReachedWriteExecutor) {
 				hasWriteAttempt = true;
@@ -2009,6 +1457,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				const ledgerObservation = contextGatheringLedger.observeToolRound({
 					roundExecutions,
 					roundPattern,
+					roundReachedWriteExecutor,
 					toolRounds,
 					maxToolRounds,
 					modelPayloadChars: roundModelPayloadChars,
@@ -2283,16 +1732,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	};
 }
 
-function readStringMeta(value: unknown): string | undefined {
-	if (typeof value !== 'string') return undefined;
-	const trimmed = value.trim();
-	return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function readNumberMeta(value: unknown): number | undefined {
-	return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
-}
-
 function buildWriteDedupKey(toolCall: ChatToolCall): string | null {
 	const toolName = toolCall.function?.name?.trim() ?? '';
 	if (!toolName) return null;
@@ -2304,29 +1743,6 @@ function buildWriteDedupKey(toolCall: ChatToolCall): string | null {
 
 	const { args } = parseToolArguments(toolCall.function?.arguments);
 	return `${op}|${stableStringifyForDedup(args)}`;
-}
-
-function buildDuplicateWriteSkippedResult(params: {
-	originalToolCall: ChatToolCall;
-	executableToolCall: ChatToolCall;
-	priorExecution: FastToolExecution;
-}): ChatToolResult {
-	return {
-		tool_call_id: params.originalToolCall.id,
-		success: true,
-		result: {
-			ok: true,
-			status: 'duplicate_write_skipped',
-			skipped_duplicate_write: true,
-			message:
-				'This exact write already succeeded earlier in the turn, so the duplicate tool call was not executed again.',
-			tool_name: params.executableToolCall.function.name,
-			previous_tool_call_id:
-				params.priorExecution.result.tool_call_id ?? params.priorExecution.toolCall.id,
-			previous_tool_name: params.priorExecution.toolCall.function.name,
-			previous_result: params.priorExecution.result.result ?? null
-		}
-	};
 }
 
 function buildToolCallLimitSkippedResult(toolCall: ChatToolCall): ChatToolResult {

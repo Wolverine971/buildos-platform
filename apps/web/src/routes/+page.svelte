@@ -7,7 +7,7 @@
 	import './dashboard.css';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { invalidateAll, replaceState } from '$app/navigation';
+	import { invalidate, replaceState } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
 	import {
 		DEFAULT_ORGANIZATION_ID,
@@ -78,7 +78,7 @@
 	let isAuthenticated = $derived(!!data?.user);
 
 	async function handleDashboardRefresh() {
-		await invalidateAll();
+		await invalidate('dashboard:analytics');
 	}
 
 	onMount(() => {

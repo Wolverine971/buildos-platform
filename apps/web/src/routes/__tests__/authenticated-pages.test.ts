@@ -106,6 +106,12 @@ describe('Authenticated Pages', () => {
 				user: mockUser,
 				dashboard: dashboardPayload
 			});
+			expect(mockGetUserDashboardAnalytics).toHaveBeenCalledWith(
+				supabase,
+				mockUser.id,
+				null,
+				'actor-1'
+			);
 		});
 	});
 

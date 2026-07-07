@@ -1,6 +1,6 @@
 // apps/web/src/lib/components/agent/agent-chat-formatters.ts
 import type { ContextUsageSnapshot } from '@buildos/shared-types';
-import { hasMarkdownFormatting } from '$lib/utils/markdown';
+import { hasMarkdownFormatting } from '$lib/utils/markdown-text';
 import type { UIMessage } from './agent-chat.types';
 
 // UI badge budget — calibrated for "your conversation is getting long, consider

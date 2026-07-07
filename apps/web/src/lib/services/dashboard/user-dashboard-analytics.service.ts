@@ -539,7 +539,8 @@ async function fetchRecentChatSessions(
 export async function getUserDashboardAnalytics(
 	client: TypedSupabaseClient,
 	userId: string,
-	timing?: ServerTiming
+	timing?: ServerTiming,
+	actorIdOverride?: string | null
 ): Promise<UserDashboardAnalytics> {
 	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
 		timing ? timing.measure(name, fn) : fn();
@@ -547,9 +548,9 @@ export async function getUserDashboardAnalytics(
 	const payload = createEmptyUserDashboardAnalytics();
 
 	try {
-		const actorId = await measure('dashboard.db.ensure_actor', () =>
-			ensureActorId(client, userId)
-		);
+		const actorId =
+			actorIdOverride ??
+			(await measure('dashboard.db.ensure_actor', () => ensureActorId(client, userId)));
 		const { data: rpcPayload, error: rpcError } = await measure(
 			'dashboard.db.analytics_rpc',
 			() =>

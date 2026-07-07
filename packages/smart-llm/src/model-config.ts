@@ -11,6 +11,10 @@ export const DEEPSEEK_V4_PRO_MODEL = 'deepseek/deepseek-v4-pro' as const;
 export const MINIMAX_M3_MODEL = 'minimax/minimax-m3' as const;
 export const XIAOMI_MIMO_V25_MODEL = 'xiaomi/mimo-v2.5' as const;
 export const TENCENT_HY3_PREVIEW_MODEL = 'tencent/hy3-preview' as const;
+export const TENCENT_HY3_MODEL = 'tencent/hy3' as const;
+export const GLM_52_MODEL = 'z-ai/glm-5.2' as const;
+export const NEX_N2_MINI_MODEL = 'nex-agi/nex-n2-mini' as const;
+export const POOLSIDE_LAGUNA_XS_21_MODEL = 'poolside/laguna-xs-2.1' as const;
 export const GEMINI_31_FLASH_LITE_MODEL = 'google/gemini-3.1-flash-lite' as const;
 export const ACTIVE_EXPERIMENT_MODEL = QWEN_37_PLUS_EXPERIMENT_MODEL;
 export const ACTIVE_EXPERIMENT_MODELS = [ACTIVE_EXPERIMENT_MODEL] as const;
@@ -102,6 +106,39 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			longContext: true
 		}
 	},
+	[GLM_52_MODEL]: {
+		id: GLM_52_MODEL,
+		name: 'GLM 5.2',
+		speed: 3.1,
+		smartness: 5,
+		creativity: 4.6,
+		cost: 0.9086,
+		outputCost: 2.8556,
+		provider: 'z-ai',
+		bestFor: [
+			'long-horizon-agentic-workflows',
+			'project-level-software-engineering',
+			'complex-multi-step-automation',
+			'json-mode',
+			'structured-output',
+			'tool-calling',
+			'parallel-tool-calls',
+			'1m-context',
+			'quality-profile'
+		],
+		limitations: [
+			'higher-cost-than-defaults',
+			'text-only',
+			'reasoning-tokens-can-increase-cost'
+		],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			longContext: true
+		}
+	},
 	[TENCENT_HY3_PREVIEW_MODEL]: {
 		id: TENCENT_HY3_PREVIEW_MODEL,
 		name: 'Tencent Hy3 Preview',
@@ -120,6 +157,35 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			'262k-context'
 		],
 		limitations: ['preview-model', 'text-only', 'no-json-response-format', '262k-context'],
+		capabilities: {
+			tools: true,
+			reasoning: true,
+			longContext: true
+		}
+	},
+	[TENCENT_HY3_MODEL]: {
+		id: TENCENT_HY3_MODEL,
+		name: 'Tencent Hy3',
+		speed: 4.4,
+		smartness: 4.75,
+		creativity: 4.2,
+		cost: 0.2,
+		outputCost: 0.8,
+		provider: 'tencent',
+		bestFor: [
+			'low-cost-agentic-workflows',
+			'tool-calling',
+			'coding-assistants',
+			'fast-text-generation',
+			'configurable-reasoning',
+			'262k-context'
+		],
+		limitations: [
+			'text-only',
+			'no-json-response-format',
+			'single-provider-atlascloud',
+			'262k-context'
+		],
 		capabilities: {
 			tools: true,
 			reasoning: true,
@@ -151,6 +217,60 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			tools: true,
 			reasoning: true,
 			multimodal: true,
+			longContext: true
+		}
+	},
+	[NEX_N2_MINI_MODEL]: {
+		id: NEX_N2_MINI_MODEL,
+		name: 'Nex-N2-Mini',
+		speed: 4.2,
+		smartness: 4.65,
+		creativity: 4.2,
+		cost: 0.025,
+		outputCost: 0.1,
+		provider: 'nex-agi',
+		bestFor: [
+			'ultra-low-cost-json',
+			'structured-output',
+			'tool-calling',
+			'lightweight-agentic-workflows',
+			'image-understanding',
+			'262k-context'
+		],
+		limitations: ['single-provider-nex-agi', 'new-model', 'limited-benchmark-history'],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
+	},
+	[POOLSIDE_LAGUNA_XS_21_MODEL]: {
+		id: POOLSIDE_LAGUNA_XS_21_MODEL,
+		name: 'Poolside Laguna XS 2.1',
+		speed: 4.3,
+		smartness: 4.4,
+		creativity: 4.1,
+		cost: 0.06,
+		outputCost: 0.12,
+		provider: 'poolside',
+		bestFor: [
+			'low-cost-coding-agent',
+			'text-tool-calling',
+			'fast-code-assistance',
+			'262k-context'
+		],
+		limitations: [
+			'single-provider-poolside',
+			'no-json-response-format',
+			'no-structured-outputs',
+			'limited-benchmark-history'
+		],
+		capabilities: {
+			tools: true,
+			reasoning: true,
 			longContext: true
 		}
 	},
@@ -277,34 +397,39 @@ export function modelSupportsCapability(
 	return MODEL_CATALOG[modelId]?.capabilities?.[capability] === true;
 }
 
-// Reviewed 2026-06-19 against OpenRouter model pages/API. Keep preview or
-// text-only models out of JSON routes, and reserve expensive specialists for
+// Reviewed 2026-07-07 against OpenRouter model pages/API. Keep models without
+// response_format out of JSON routes, and reserve expensive specialists for
 // explicit quality/maximum profiles.
 const OPENROUTER_TEXT_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
 	ACTIVE_EXPERIMENT_MODEL,
-	TENCENT_HY3_PREVIEW_MODEL,
+	TENCENT_HY3_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
-	GEMINI_31_FLASH_LITE_MODEL
+	GEMINI_31_FLASH_LITE_MODEL,
+	POOLSIDE_LAGUNA_XS_21_MODEL
 ] as const;
 const OPENROUTER_JSON_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
 	ACTIVE_EXPERIMENT_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	MINIMAX_M3_MODEL,
+	NEX_N2_MINI_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL
 ] as const;
 const OPENROUTER_TOOL_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
 	ACTIVE_EXPERIMENT_MODEL,
+	GLM_52_MODEL,
 	MINIMAX_M3_MODEL,
-	TENCENT_HY3_PREVIEW_MODEL,
-	XIAOMI_MIMO_V25_MODEL
+	TENCENT_HY3_MODEL,
+	XIAOMI_MIMO_V25_MODEL,
+	POOLSIDE_LAGUNA_XS_21_MODEL
 ] as const;
 const OPENROUTER_MULTIMODAL_ROUTE = [
 	XIAOMI_MIMO_V25_MODEL,
 	MINIMAX_M3_MODEL,
 	ACTIVE_EXPERIMENT_MODEL,
+	NEX_N2_MINI_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL
 ] as const;
 const EMERGENCY_TEXT_ROUTE = [
@@ -312,20 +437,24 @@ const EMERGENCY_TEXT_ROUTE = [
 	XIAOMI_MIMO_V25_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
 	ACTIVE_EXPERIMENT_MODEL,
-	TENCENT_HY3_PREVIEW_MODEL
+	TENCENT_HY3_MODEL,
+	POOLSIDE_LAGUNA_XS_21_MODEL
 ] as const;
 const JSON_FAST_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
+	NEX_N2_MINI_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL
 ] as const;
 const JSON_POWERFUL_ROUTE = [
+	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	ACTIVE_EXPERIMENT_MODEL,
 	MINIMAX_M3_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL
 ] as const;
 const JSON_MAXIMUM_ROUTE = [
+	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	ACTIVE_EXPERIMENT_MODEL,
 	KIMI_CODING_MODEL,
@@ -333,13 +462,15 @@ const JSON_MAXIMUM_ROUTE = [
 ] as const;
 const TEXT_SPEED_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
-	TENCENT_HY3_PREVIEW_MODEL,
+	POOLSIDE_LAGUNA_XS_21_MODEL,
+	TENCENT_HY3_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
 	ACTIVE_EXPERIMENT_MODEL
 ] as const;
 const TEXT_QUALITY_ROUTE = [
 	ACTIVE_EXPERIMENT_MODEL,
+	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	KIMI_CODING_MODEL,
 	MINIMAX_M3_MODEL,

@@ -1,17 +1,11 @@
 <!-- apps/web/src/routes/time-blocks/+page.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, type Component } from 'svelte';
 	import { timeBlocksStore } from '$lib/stores/timeBlocksStore';
-	import TimeBlockCreateModal from '$lib/components/time-blocks/TimeBlockCreateModal.svelte';
-	import TimeBlockList from '$lib/components/time-blocks/TimeBlockList.svelte';
 	import TimeAllocationPanel from '$lib/components/time-blocks/TimeAllocationPanel.svelte';
 	import TimeRangeSelector from '$lib/components/time-blocks/TimeRangeSelector.svelte';
 	import TimePlayCalendar from '$lib/components/time-blocks/TimePlayCalendar.svelte';
-	import TimeBlockDetailModal from '$lib/components/time-blocks/TimeBlockDetailModal.svelte';
-	import CalendarEventDetailModal from '$lib/components/time-blocks/CalendarEventDetailModal.svelte';
 	import AvailableSlotFinder from '$lib/components/time-blocks/AvailableSlotFinder.svelte';
-	import AvailableSlotList from '$lib/components/time-blocks/AvailableSlotList.svelte';
-	import CalendarConnectionOverlay from '$lib/components/calendar/CalendarConnectionOverlay.svelte';
 	import type { PageData } from './$types';
 	import type { TimeBlockWithProject } from '@buildos/shared-types';
 	import type { CalendarEvent } from '$lib/services/calendar-service';
@@ -31,6 +25,18 @@
 	let showBlockDetailModal = $state(false);
 	let selectedCalendarEvent = $state<CalendarEvent | null>(null);
 	let showCalendarEventModal = $state(false);
+	let TimeBlockCreateModalComponent = $state<Component<any, any> | null>(null);
+	let TimeBlockDetailModalComponent = $state<Component<any, any> | null>(null);
+	let CalendarEventDetailModalComponent = $state<Component<any, any> | null>(null);
+	let TimeBlockListComponent = $state<Component<any, any> | null>(null);
+	let AvailableSlotListComponent = $state<Component<any, any> | null>(null);
+	let CalendarConnectionOverlayComponent = $state<Component<any, any> | null>(null);
+	let timeBlockCreateModalPromise: Promise<Component<any, any>> | null = null;
+	let timeBlockDetailModalPromise: Promise<Component<any, any>> | null = null;
+	let calendarEventDetailModalPromise: Promise<Component<any, any>> | null = null;
+	let timeBlockListPromise: Promise<Component<any, any>> | null = null;
+	let availableSlotListPromise: Promise<Component<any, any>> | null = null;
+	let calendarConnectionOverlayPromise: Promise<Component<any, any>> | null = null;
 
 	// Calendar events from child component (for slot calculation)
 	let calendarEvents = $state<CalendarEvent[]>([]);
@@ -89,6 +95,80 @@
 		);
 	});
 
+	async function loadTimeBlockCreateModal() {
+		if (!timeBlockCreateModalPromise) {
+			timeBlockCreateModalPromise = import(
+				'$lib/components/time-blocks/TimeBlockCreateModal.svelte'
+			).then((module) => {
+				TimeBlockCreateModalComponent = module.default;
+				return module.default;
+			});
+		}
+
+		return timeBlockCreateModalPromise;
+	}
+
+	async function loadTimeBlockDetailModal() {
+		if (!timeBlockDetailModalPromise) {
+			timeBlockDetailModalPromise = import(
+				'$lib/components/time-blocks/TimeBlockDetailModal.svelte'
+			).then((module) => {
+				TimeBlockDetailModalComponent = module.default;
+				return module.default;
+			});
+		}
+
+		return timeBlockDetailModalPromise;
+	}
+
+	async function loadCalendarEventDetailModal() {
+		if (!calendarEventDetailModalPromise) {
+			calendarEventDetailModalPromise = import(
+				'$lib/components/time-blocks/CalendarEventDetailModal.svelte'
+			).then((module) => {
+				CalendarEventDetailModalComponent = module.default;
+				return module.default;
+			});
+		}
+
+		return calendarEventDetailModalPromise;
+	}
+
+	async function loadListComponents() {
+		if (!timeBlockListPromise) {
+			timeBlockListPromise = import('$lib/components/time-blocks/TimeBlockList.svelte').then(
+				(module) => {
+					TimeBlockListComponent = module.default;
+					return module.default;
+				}
+			);
+		}
+
+		if (!availableSlotListPromise) {
+			availableSlotListPromise = import(
+				'$lib/components/time-blocks/AvailableSlotList.svelte'
+			).then((module) => {
+				AvailableSlotListComponent = module.default;
+				return module.default;
+			});
+		}
+
+		await Promise.all([timeBlockListPromise, availableSlotListPromise]);
+	}
+
+	async function loadCalendarConnectionOverlay() {
+		if (!calendarConnectionOverlayPromise) {
+			calendarConnectionOverlayPromise = import(
+				'$lib/components/calendar/CalendarConnectionOverlay.svelte'
+			).then((module) => {
+				CalendarConnectionOverlayComponent = module.default;
+				return module.default;
+			});
+		}
+
+		return calendarConnectionOverlayPromise;
+	}
+
 	onMount(() => {
 		// Load display mode preference from localStorage
 		const savedMode = localStorage.getItem('timeblocks-display-mode');
@@ -115,11 +195,20 @@
 		if (typeof localStorage !== 'undefined') {
 			localStorage.setItem('timeblocks-display-mode', displayMode);
 		}
+
+		if (displayMode === 'list') {
+			void loadListComponents();
+		}
+
+		if (!data.isCalendarConnected) {
+			void loadCalendarConnectionOverlay();
+		}
 	});
 
-	function openCreateModal(start?: Date, end?: Date) {
+	async function openCreateModal(start?: Date, end?: Date) {
 		draftStart = start;
 		draftEnd = end;
+		await loadTimeBlockCreateModal();
 		showCreateModal = true;
 	}
 
@@ -184,8 +273,9 @@
 		}
 	}
 
-	function handleBlockClick(block: TimeBlockWithProject) {
+	async function handleBlockClick(block: TimeBlockWithProject) {
 		selectedBlock = block;
+		await loadTimeBlockDetailModal();
 		showBlockDetailModal = true;
 	}
 
@@ -193,8 +283,9 @@
 		openCreateModal(startTime, endTime);
 	}
 
-	function handleCalendarEventClick(event: CalendarEvent) {
+	async function handleCalendarEventClick(event: CalendarEvent) {
 		selectedCalendarEvent = event;
+		await loadCalendarEventDetailModal();
 		showCalendarEventModal = true;
 	}
 
@@ -277,7 +368,10 @@
 							? 'bg-card text-foreground shadow-ink'
 							: 'text-muted-foreground hover:text-foreground dark:hover:text-muted-foreground'
 					}`}
-					onclick={() => (displayMode = 'list')}
+					onclick={() => {
+						displayMode = 'list';
+						void loadListComponents();
+					}}
 					aria-pressed={displayMode === 'list'}
 				>
 					List
@@ -363,13 +457,25 @@
 			{:else}
 				<!-- List View: Show Available Slots List + Time Blocks List -->
 				<div class="space-y-3 px-3 py-3 sm:px-4 sm:py-4">
-					<AvailableSlotList {availableSlots} onSlotClick={handleSlotClick} />
-					<TimeBlockList
-						blocks={$timeBlocksStore.blocks}
-						regeneratingIds={$timeBlocksStore.regeneratingIds}
-						ondelete={(event) => handleDeleteBlock(event.blockId)}
-						onregenerate={(event) => handleRegenerateBlock(event.blockId)}
-					/>
+					{#if AvailableSlotListComponent && TimeBlockListComponent}
+						<AvailableSlotListComponent
+							{availableSlots}
+							onSlotClick={handleSlotClick}
+						/>
+						<TimeBlockListComponent
+							blocks={$timeBlocksStore.blocks}
+							regeneratingIds={$timeBlocksStore.regeneratingIds}
+							ondelete={(event: { blockId: string }) => handleDeleteBlock(event.blockId)}
+							onregenerate={(event: { blockId: string }) =>
+								handleRegenerateBlock(event.blockId)}
+						/>
+					{:else}
+						<div
+							class="rounded-lg border border-border bg-muted/30 p-8 text-center text-sm text-muted-foreground"
+						>
+							Loading list view...
+						</div>
+					{/if}
 				</div>
 			{/if}
 		</div>
@@ -379,13 +485,18 @@
 	</section>
 </div>
 
-{#if showCreateModal}
-	<TimeBlockCreateModal
+{#if showCreateModal && TimeBlockCreateModalComponent}
+	<TimeBlockCreateModalComponent
 		projects={data.projects}
 		initialStart={draftStart}
 		initialEnd={draftEnd}
 		isCreating={$timeBlocksStore.isCreating}
-		oncreate={(event) => handleCreateBlock(event)}
+		oncreate={(event: {
+			blockType: 'project' | 'build';
+			projectId: string | null;
+			startTime: Date;
+			endTime: Date;
+		}) => handleCreateBlock(event)}
 		onclose={() => {
 			showCreateModal = false;
 			draftStart = undefined;
@@ -394,9 +505,9 @@
 	/>
 {/if}
 
-{#if showBlockDetailModal && selectedBlock}
+{#if showBlockDetailModal && selectedBlock && TimeBlockDetailModalComponent}
 	{@const currentBlock = selectedBlock}
-	<TimeBlockDetailModal
+	<TimeBlockDetailModalComponent
 		block={currentBlock}
 		isRegenerating={$timeBlocksStore.regeneratingIds.includes(currentBlock.id)}
 		onClose={() => {
@@ -405,12 +516,12 @@
 		}}
 		onDelete={() => handleDeleteBlock(currentBlock.id)}
 		onRegenerate={() => handleRegenerateBlock(currentBlock.id)}
-		onUpdate={(params) => handleUpdateBlock(currentBlock.id, params)}
+		onUpdate={(params: any) => handleUpdateBlock(currentBlock.id, params)}
 	/>
 {/if}
 
-{#if showCalendarEventModal && selectedCalendarEvent}
-	<CalendarEventDetailModal
+{#if showCalendarEventModal && selectedCalendarEvent && CalendarEventDetailModalComponent}
+	<CalendarEventDetailModalComponent
 		event={selectedCalendarEvent}
 		onClose={() => {
 			showCalendarEventModal = false;
@@ -421,5 +532,7 @@
 
 <!-- Calendar Connection Overlay - blocks page usage when not connected -->
 {#if !data.isCalendarConnected}
-	<CalendarConnectionOverlay />
+	{#if CalendarConnectionOverlayComponent}
+		<CalendarConnectionOverlayComponent />
+	{/if}
 {/if}

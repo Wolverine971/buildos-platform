@@ -4271,6 +4271,12 @@ export const POST: RequestHandler = async ({
 				}
 			});
 			const normalizedExecutions = toolExecutions ?? [];
+			const normalizedToolCallCount = Math.max(
+				typeof toolCallsMade === 'number' && Number.isFinite(toolCallsMade)
+					? toolCallsMade
+					: 0,
+				normalizedExecutions.length
+			);
 			if (finalizationGuard?.applied) {
 				observabilityWriter.recordEvent(
 					'finalize',
@@ -4528,7 +4534,7 @@ export const POST: RequestHandler = async ({
 						status: 'cancelled',
 						finished_reason: interruptedReason,
 						tool_round_count: toolRounds ?? 0,
-						tool_call_count: toolCallsMade ?? normalizedExecutions.length,
+						tool_call_count: normalizedToolCallCount,
 						validation_failure_count: observabilityWriter.getValidationFailureCount(),
 						llm_pass_count: llmPasses?.length ?? 0,
 						...observabilityWriter.getFirstLanePatch(),
@@ -4787,7 +4793,7 @@ export const POST: RequestHandler = async ({
 					status: 'completed',
 					finished_reason: finishedReason ?? null,
 					tool_round_count: toolRounds ?? 0,
-					tool_call_count: toolCallsMade ?? normalizedExecutions.length,
+					tool_call_count: normalizedToolCallCount,
 					validation_failure_count: observabilityWriter.getValidationFailureCount(),
 					llm_pass_count: llmPasses?.length ?? 0,
 					...observabilityWriter.getFirstLanePatch(),

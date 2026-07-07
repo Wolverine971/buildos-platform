@@ -22,6 +22,7 @@ export type InboxDecisionCapability = {
 
 export type InboxProjectLoopRunContext = {
 	id: string;
+	project_id: string | null;
 	trigger_reason: string | null;
 	status: string | null;
 	summary: string | null;
@@ -33,6 +34,7 @@ export type InboxProjectLoopRunContext = {
 
 export type InboxProjectAuditContext = {
 	id: string;
+	project_id: string | null;
 	status: string | null;
 	trigger_reason: string | null;
 	delivery_confidence: string | null;
@@ -73,6 +75,15 @@ export type InboxCountResult = {
 	repairedCount: number;
 	backfilledCount: number;
 };
+
+type InboxCountFilters = {
+	status?: InboxItemStatus | null;
+	projectId?: string | null;
+	sourceType?: InboxSourceType | null;
+	group?: InboxGroupFilter | null;
+};
+
+type InboxCountBreakdownRow = Pick<InboxIndexRow, 'status' | 'source_type' | 'project_id'>;
 
 const INBOX_SOURCE_TYPES = new Set<InboxSourceType>([
 	'agent_run',
@@ -141,6 +152,63 @@ export function parseInboxLimit(value: string | null, defaultLimit = 50, maxLimi
 	const parsed = Number.parseInt(value ?? '', 10);
 	if (!Number.isFinite(parsed) || parsed <= 0) return defaultLimit;
 	return Math.min(parsed, maxLimit);
+}
+
+function applyInboxFilters<TQuery>(query: TQuery, filters: InboxCountFilters): TQuery {
+	let next = query as any;
+	if (filters.status) {
+		next = next.eq('status', filters.status);
+	}
+	if (filters.projectId) {
+		next = next.eq('project_id', filters.projectId);
+	}
+	if (filters.sourceType) {
+		next = next.eq('source_type', filters.sourceType);
+	}
+	if (filters.group === 'account') {
+		next = next.is('project_id', null);
+	} else if (filters.group === 'project') {
+		next = next.not('project_id', 'is', null);
+	}
+	return next as TQuery;
+}
+
+async function countInboxRows(params: {
+	supabase: AnySupabase;
+	status?: InboxItemStatus | null;
+	projectId?: string | null;
+	sourceType?: InboxSourceType | null;
+	group?: InboxGroupFilter | null;
+}): Promise<number> {
+	const query = applyInboxFilters(
+		params.supabase.from('inbox_items').select('id', { count: 'exact', head: true }),
+		params
+	);
+	const { count, error } = await query;
+	if (error) throw error;
+	return Number(count ?? 0);
+}
+
+async function loadInboxCountBreakdownRows(params: {
+	supabase: AnySupabase;
+	status?: InboxItemStatus | null;
+	projectId?: string | null;
+	sourceType?: InboxSourceType | null;
+	group?: InboxGroupFilter | null;
+	limit: number;
+}): Promise<InboxCountBreakdownRow[]> {
+	if (params.limit <= 0) return [];
+	const query = applyInboxFilters(
+		params.supabase
+			.from('inbox_items')
+			.select('status, source_type, project_id')
+			.order('created_at', { ascending: false })
+			.limit(params.limit),
+		params
+	);
+	const { data, error } = await query;
+	if (error) throw error;
+	return (data ?? []) as InboxCountBreakdownRow[];
 }
 
 function shouldReconcile(row: InboxIndexRow): boolean {
@@ -369,6 +437,7 @@ function mapProjectLoopRunContext(row: Record<string, unknown>): InboxProjectLoo
 	if (!id) return null;
 	return {
 		id,
+		project_id: asString(row.project_id),
 		trigger_reason: asString(row.trigger_reason),
 		status: asString(row.status),
 		summary: asString(row.summary),
@@ -387,6 +456,7 @@ function mapProjectAuditContext(
 	if (!id) return null;
 	return {
 		id,
+		project_id: asString(row.project_id),
 		status: asString(row.status),
 		trigger_reason: asString(row.trigger_reason),
 		delivery_confidence: asString(row.delivery_confidence),
@@ -423,7 +493,7 @@ async function loadSourceContexts(params: {
 		const { data, error } = await params.admin
 			.from('project_loop_runs')
 			.select(
-				'id, trigger_reason, status, summary, brief, suggestion_count, created_at, finished_at'
+				'id, project_id, trigger_reason, status, summary, brief, suggestion_count, created_at, finished_at'
 			)
 			.in('id', [...runIds]);
 		if (error) throw error;
@@ -460,7 +530,7 @@ async function loadSourceContexts(params: {
 		const { data, error } = await params.admin
 			.from('project_audits')
 			.select(
-				'id, status, trigger_reason, delivery_confidence, summary, generated_suggestion_count, unresolved_suggestion_count, created_at, finished_at'
+				'id, project_id, status, trigger_reason, delivery_confidence, summary, generated_suggestion_count, unresolved_suggestion_count, created_at, finished_at'
 			)
 			.in('id', auditIds);
 		if (error) throw error;
@@ -490,9 +560,23 @@ async function loadSourceContexts(params: {
 async function loadProjectMetadata(params: {
 	supabase: AnySupabase;
 	rows: InboxIndexRow[];
+	payloads?: Map<string, Record<string, unknown>>;
+	contexts?: Map<string, InboxSourceContext>;
 }): Promise<Map<string, InboxProjectMeta>> {
 	const projectIds = [
-		...new Set(params.rows.map((row) => row.project_id).filter((id): id is string => !!id))
+		...new Set(
+			params.rows
+				.map((row) =>
+					resolveInboxItemProjectId({
+						row,
+						payload: params.payloads?.get(
+							sourceKey(row.source_type, row.source_ref_id)
+						),
+						context: params.contexts?.get(sourceKey(row.source_type, row.source_ref_id))
+					})
+				)
+				.filter((id): id is string => !!id)
+		)
 	];
 	const projects = new Map<string, InboxProjectMeta>();
 	if (projectIds.length === 0) return projects;
@@ -512,6 +596,31 @@ async function loadProjectMetadata(params: {
 	}
 
 	return projects;
+}
+
+function resolveProjectIdFromPayload(
+	sourceType: InboxSourceType,
+	payload: Record<string, unknown> | null | undefined
+): string | null {
+	if (!payload) return null;
+	if (sourceType === 'calendar_suggestion') {
+		return asString(payload.created_project_id) ?? asString(payload.project_id);
+	}
+	return asString(payload.project_id);
+}
+
+function resolveInboxItemProjectId(params: {
+	row: InboxIndexRow;
+	payload?: Record<string, unknown> | null;
+	context?: InboxSourceContext | null;
+}): string | null {
+	return (
+		asString(params.row.project_id) ??
+		resolveProjectIdFromPayload(params.row.source_type, params.payload) ??
+		params.context?.project_audit?.project_id ??
+		params.context?.project_loop_run?.project_id ??
+		null
+	);
 }
 
 async function loadDecisionCapabilities(params: {
@@ -867,7 +976,6 @@ export async function listInboxItems(params: {
 		};
 	}
 
-	const projects = await loadProjectMetadata({ supabase: params.supabase, rows: visibleRows });
 	const capabilities = await loadDecisionCapabilities({
 		supabase: params.supabase,
 		rows: visibleRows,
@@ -879,17 +987,33 @@ export async function listInboxItems(params: {
 		rows: visibleRows,
 		payloads
 	});
+	const projects = await loadProjectMetadata({
+		supabase: params.supabase,
+		rows: visibleRows,
+		payloads,
+		contexts
+	});
 	return {
-		items: visibleRows.map((row) => ({
-			...row,
-			project: row.project_id ? (projects.get(row.project_id) ?? null) : null,
-			can_decide: capabilities.get(rowKey(row))?.can_decide ?? false,
-			decision_disabled_reason:
-				capabilities.get(rowKey(row))?.decision_disabled_reason ??
-				'Unsupported inbox source',
-			source_payload: payloads.get(sourceKey(row.source_type, row.source_ref_id)) ?? null,
-			source_context: contexts.get(sourceKey(row.source_type, row.source_ref_id)) ?? null
-		})),
+		items: visibleRows.map((row) => {
+			const key = sourceKey(row.source_type, row.source_ref_id);
+			const payload = payloads.get(key) ?? null;
+			const context = contexts.get(key) ?? null;
+			const projectId = resolveInboxItemProjectId({ row, payload, context });
+			const project = projectId
+				? (projects.get(projectId) ?? { id: projectId, name: null })
+				: null;
+			return {
+				...row,
+				project_id: projectId,
+				project,
+				can_decide: capabilities.get(rowKey(row))?.can_decide ?? false,
+				decision_disabled_reason:
+					capabilities.get(rowKey(row))?.decision_disabled_reason ??
+					'Unsupported inbox source',
+				source_payload: payload,
+				source_context: context
+			};
+		}),
 		repairedCount: totalRepairedCount,
 		backfilledCount
 	};
@@ -906,35 +1030,55 @@ export async function countInboxItems(params: {
 	limit?: number;
 }): Promise<InboxCountResult> {
 	const limit = params.limit ?? 1000;
-	const { items, repairedCount, backfilledCount } = await listInboxItems({
-		...params,
-		limit,
-		includePayload: false
-	});
+	const requestedStatus = params.status ?? null;
+	const totalPromise = countInboxRows(params);
+	const accountPromise =
+		params.projectId || params.group === 'project'
+			? Promise.resolve(0)
+			: params.group === 'account'
+				? totalPromise
+				: countInboxRows({ ...params, group: 'account' });
+
+	const [total, account, rows] = await Promise.all([
+		totalPromise,
+		accountPromise,
+		loadInboxCountBreakdownRows({ ...params, limit })
+	]);
 
 	const byStatus: Record<string, number> = {};
 	const bySourceType: Record<string, number> = {};
 	const byProject: Record<string, number> = {};
-	let account = 0;
 
-	for (const item of items) {
-		byStatus[item.status] = (byStatus[item.status] ?? 0) + 1;
-		bySourceType[item.source_type] = (bySourceType[item.source_type] ?? 0) + 1;
-		if (item.project_id) {
-			byProject[item.project_id] = (byProject[item.project_id] ?? 0) + 1;
-		} else {
-			account += 1;
+	if (requestedStatus) {
+		byStatus[requestedStatus] = total;
+	}
+	if (params.sourceType) {
+		bySourceType[params.sourceType] = total;
+	}
+	if (params.projectId && total > 0) {
+		byProject[params.projectId] = total;
+	}
+
+	for (const row of rows) {
+		if (!requestedStatus) {
+			byStatus[row.status] = (byStatus[row.status] ?? 0) + 1;
+		}
+		if (!params.sourceType) {
+			bySourceType[row.source_type] = (bySourceType[row.source_type] ?? 0) + 1;
+		}
+		if (!params.projectId && row.project_id) {
+			byProject[row.project_id] = (byProject[row.project_id] ?? 0) + 1;
 		}
 	}
 
 	return {
-		total: items.length,
+		total,
 		by_status: byStatus,
 		by_source_type: bySourceType,
 		by_project: byProject,
 		account,
-		truncated: items.length >= limit,
-		repairedCount,
-		backfilledCount
+		truncated: rows.length < total,
+		repairedCount: 0,
+		backfilledCount: 0
 	};
 }

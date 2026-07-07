@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/email/EmailManager.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, type Component } from 'svelte';
 	import { browser } from '$app/environment';
 	import {
 		Mail,
@@ -15,8 +15,6 @@
 		ChevronLeft,
 		ChevronRight
 	} from 'lucide-svelte';
-	import EmailComposer from './EmailComposer.svelte';
-	import EmailPreview from './EmailPreview.svelte';
 	import ConfirmationModal from '../ui/ConfirmationModal.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -44,6 +42,10 @@
 	let showDeleteModal = $state(false);
 	let emailToDelete = $state<any>(null);
 	let isDeleting = $state(false);
+	let EmailComposerComponent = $state<Component<any, any> | null>(null);
+	let EmailPreviewComponent = $state<Component<any, any> | null>(null);
+	let emailComposerPromise: Promise<Component<any, any>> | null = null;
+	let emailPreviewPromise: Promise<Component<any, any>> | null = null;
 
 	// Mobile responsive
 	let showMobileFilters = $state(false);
@@ -123,19 +125,44 @@
 		}
 	}
 
+	async function loadEmailComposer() {
+		if (!emailComposerPromise) {
+			emailComposerPromise = import('./EmailComposer.svelte').then((module) => {
+				EmailComposerComponent = module.default;
+				return module.default;
+			});
+		}
+
+		return emailComposerPromise;
+	}
+
+	async function loadEmailPreview() {
+		if (!emailPreviewPromise) {
+			emailPreviewPromise = import('./EmailPreview.svelte').then((module) => {
+				EmailPreviewComponent = module.default;
+				return module.default;
+			});
+		}
+
+		return emailPreviewPromise;
+	}
+
 	function createNewEmail() {
 		selectedEmail = null;
 		activeView = 'compose';
+		void loadEmailComposer();
 	}
 
 	function editEmail(email: any) {
 		selectedEmail = email;
 		activeView = 'edit';
+		void loadEmailComposer();
 	}
 
 	function viewEmail(email: any) {
 		selectedEmail = email;
 		activeView = 'preview';
+		void loadEmailPreview();
 	}
 
 	function confirmDeleteEmail(email: any) {
@@ -704,18 +731,37 @@
 			{/if}
 		</div>
 	{:else if activeView === 'compose'}
-		<EmailComposer onsaved={handleEmailSaved} onsent={handleEmailSent} />
+		{#if EmailComposerComponent}
+			<EmailComposerComponent onsaved={handleEmailSaved} onsent={handleEmailSent} />
+		{:else}
+			<div class="admin-panel p-8 text-center text-sm text-muted-foreground">
+				Loading composer...
+			</div>
+		{/if}
 	{:else if activeView === 'edit'}
-		<EmailComposer
-			initialEmail={selectedEmail}
-			onsaved={handleEmailSaved}
-			onsent={handleEmailSent}
-		/>
+		{#if EmailComposerComponent}
+			<EmailComposerComponent
+				initialEmail={selectedEmail}
+				onsaved={handleEmailSaved}
+				onsent={handleEmailSent}
+			/>
+		{:else}
+			<div class="admin-panel p-8 text-center text-sm text-muted-foreground">
+				Loading composer...
+			</div>
+		{/if}
 	{:else if activeView === 'preview'}
-		<EmailPreview
-			emailData={{ ...selectedEmail, recipients: selectedEmail?.email_recipients || [] }}
-			showTracking={selectedEmail?.status === 'sent' || selectedEmail?.status === 'delivered'}
-		/>
+		{#if EmailPreviewComponent}
+			<EmailPreviewComponent
+				emailData={{ ...selectedEmail, recipients: selectedEmail?.email_recipients || [] }}
+				showTracking={selectedEmail?.status === 'sent' ||
+					selectedEmail?.status === 'delivered'}
+			/>
+		{:else}
+			<div class="admin-panel p-8 text-center text-sm text-muted-foreground">
+				Loading preview...
+			</div>
+		{/if}
 	{/if}
 </div>
 

@@ -7,11 +7,11 @@ import {
 	didGatewayExecSucceed,
 	didGatewayOpExecute,
 	didSuccessfulGatewayOpExecute,
-	extractGatewayRequiredFieldFailuresFromValidationIssues,
 	getGatewayExecOp,
 	isDuplicateWriteSkippedExecution,
 	isWriteLikeOperation
-} from './round-analysis';
+} from './tool-classification';
+import { extractGatewayRequiredFieldFailuresFromValidationIssues } from './round-analysis';
 import {
 	classifyToolFailure,
 	isNotFoundFailure,

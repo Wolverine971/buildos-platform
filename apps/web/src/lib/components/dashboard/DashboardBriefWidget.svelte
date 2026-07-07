@@ -10,7 +10,7 @@
 <script lang="ts">
 	import { Sparkles, LoaderCircle, ChevronRight, AlertCircle, Sun, Volume2 } from 'lucide-svelte';
 	import { browser } from '$app/environment';
-	import { getContext, onMount } from 'svelte';
+	import { getContext, onDestroy, onMount } from 'svelte';
 	import {
 		BriefClientService,
 		streamingStatus,
@@ -23,6 +23,7 @@
 	interface Props {
 		user: { id: string; email?: string; is_admin?: boolean; timezone?: string | null };
 		onviewbrief?: (brief: DailyBrief) => void;
+		onpreloadbrief?: () => void;
 	}
 
 	type EnsureTodayResponse = {
@@ -44,7 +45,7 @@
 		} | null;
 	};
 
-	let { user, onviewbrief }: Props = $props();
+	let { user, onviewbrief, onpreloadbrief }: Props = $props();
 
 	function getInitialTimezone(): string {
 		return browser ? user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC';
@@ -59,6 +60,8 @@
 	let error = $state<string | null>(null);
 	let userTimezone = $state(getInitialTimezone());
 	let hasInitialized = $state(false);
+	let briefRequestToken = 0;
+	let ensureRequestToken = 0;
 
 	// Streaming state from stores
 	let currentStreamingStatus = $state<StreamingStatus | null>(null);
@@ -102,7 +105,7 @@
 		const unsubCompletion = briefGenerationCompleted.subscribe((value) => {
 			if (value && value.briefDate === todayDate) {
 				// Refresh brief when generation completes
-				fetchTodaysBrief();
+				void fetchTodaysBrief();
 			}
 		});
 
@@ -115,7 +118,12 @@
 	// Initialize data fetching on mount
 	onMount(() => {
 		if (!user?.id) return;
-		initializeWidget();
+		void initializeWidget();
+	});
+
+	onDestroy(() => {
+		briefRequestToken += 1;
+		ensureRequestToken += 1;
 	});
 
 	async function initializeWidget() {
@@ -123,7 +131,6 @@
 		hasInitialized = true;
 
 		try {
-			await fetchUserTimezone();
 			await fetchTodaysBrief();
 			if (!brief) {
 				await ensureTodaysBrief();
@@ -134,32 +141,15 @@
 		}
 	}
 
-	async function fetchUserTimezone() {
-		if (user?.timezone) {
-			userTimezone = user.timezone;
-			return;
-		}
-
-		try {
-			const { data } = await supabase
-				.from('users')
-				.select('timezone')
-				.eq('id', user.id)
-				.single();
-
-			userTimezone = data?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-		} catch {
-			userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-		}
-	}
-
 	async function fetchTodaysBrief() {
 		if (!todayDate) return;
 
+		const requestToken = ++briefRequestToken;
 		isLoading = true;
 		error = null;
 
 		try {
+			let nextBrief: DailyBrief | null = null;
 			// First try ontology briefs table (use maybeSingle to handle 0 rows gracefully)
 			const { data: ontologyBrief, error: ontologyError } = await supabase
 				.from('ontology_daily_briefs')
@@ -173,7 +163,7 @@
 				.maybeSingle();
 
 			if (ontologyBrief) {
-				brief = {
+				nextBrief = {
 					id: ontologyBrief.id,
 					user_id: ontologyBrief.user_id,
 					brief_date: ontologyBrief.brief_date,
@@ -196,24 +186,30 @@
 					audio_error: ontologyBrief.audio_error
 				} as DailyBrief;
 			} else if (!ontologyError || ontologyError.code === 'PGRST116') {
-				brief = null;
+				nextBrief = null;
 			} else {
 				// Actual error occurred
 				console.error('Error fetching ontology brief:', ontologyError);
-				brief = null;
+				nextBrief = null;
 			}
+			if (requestToken !== briefRequestToken) return;
+			brief = nextBrief;
 		} catch (err) {
 			console.error('Failed to fetch brief:', err);
 			// Don't show error for missing briefs - just show generate CTA
+			if (requestToken !== briefRequestToken) return;
 			brief = null;
 		} finally {
-			isLoading = false;
+			if (requestToken === briefRequestToken) {
+				isLoading = false;
+			}
 		}
 	}
 
 	async function ensureTodaysBrief() {
 		if (!todayDate || !user?.id) return;
 
+		const requestToken = ++ensureRequestToken;
 		try {
 			const response = await fetch('/api/daily-briefs/ensure-today', {
 				method: 'POST'
@@ -227,6 +223,7 @@
 			const payload = await response.json();
 			const result = payload?.data as EnsureTodayResponse | undefined;
 			if (!result) return;
+			if (requestToken !== ensureRequestToken) return;
 
 			// The server resolves the canonical brief date from users.timezone; adopt
 			// it so todayDate (and the completion-event comparison against it) can't
@@ -347,6 +344,9 @@
 		<!-- Brief Available - paper weight with frame texture -->
 		<button
 			onclick={handleClick}
+			onpointerdown={onpreloadbrief}
+			onpointerenter={onpreloadbrief}
+			onfocus={onpreloadbrief}
 			class="w-full text-left wt-paper p-2 sm:p-3 hover:border-accent pressable tx tx-frame tx-weak group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 		>
 			<div class="flex items-center sm:items-start gap-2 sm:gap-3">

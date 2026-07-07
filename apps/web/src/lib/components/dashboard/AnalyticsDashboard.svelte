@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { goto, invalidate } from '$app/navigation';
+	import { onDestroy, onMount } from 'svelte';
 	import {
 		ArrowRight,
 		Calendar,
@@ -35,6 +36,7 @@
 	import type { OverdueProjectBatch } from '$lib/types/overdue-triage';
 	import PullToRefresh from '$lib/components/pwa/PullToRefresh.svelte';
 	import { toastService } from '$lib/stores/toast.store';
+	import { createDashboardPerformanceTracker } from '$lib/utils/dashboard-performance';
 
 	type User = {
 		id: string;
@@ -72,6 +74,11 @@
 		total?: number;
 		account?: number;
 		by_project?: Record<string, number>;
+	};
+
+	type IdleWindow = Window & {
+		requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+		cancelIdleCallback?: (handle: number) => void;
 	};
 
 	type ActivityItem =
@@ -120,6 +127,7 @@
 	}: Props = $props();
 
 	let isRefreshing = $state(false);
+	let pendingNavigationHref = $state<string | null>(null);
 	let dashboardInviteRows = $state<ProjectInviteRow[]>([]);
 	let inviteActionId = $state<string | null>(null);
 	let inviteActionError = $state<string | null>(null);
@@ -141,11 +149,16 @@
 	let isLoadingOverdueProjectBatches = $state(false);
 	let overdueProjectBatchError = $state<string | null>(null);
 	let overdueProjectBatchRequestToken = 0;
+	let overdueProjectBatchAbortController: AbortController | null = null;
 	let dashboardInboxCount = $state(0);
 	let dashboardInboxProjectCount = $state(0);
 	let dashboardInboxAccountCount = $state(0);
 	let isLoadingDashboardInboxCount = $state(false);
 	let dashboardInboxCountError = $state<string | null>(null);
+	let dashboardInboxCountRequestToken = 0;
+	let dashboardInboxCountAbortController: AbortController | null = null;
+	let dashboardModalPreloadStarted = false;
+	const dashboardPerformance = createDashboardPerformanceTracker({ enabled: browser });
 
 	// Brief chat state
 	let showBriefChatModal = $state(false);
@@ -372,6 +385,125 @@
 		return projectId ? `/projects/${projectId}` : '/projects';
 	}
 
+	type GotoOptions = NonNullable<Parameters<typeof goto>[1]>;
+
+	function isPrimaryNavigationClick(event: MouseEvent): boolean {
+		return (
+			event.button === 0 &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.shiftKey &&
+			!event.altKey &&
+			!event.defaultPrevented
+		);
+	}
+
+	function setPendingNavigation(href: string) {
+		pendingNavigationHref = href;
+	}
+
+	function isPendingNavigation(href: string): boolean {
+		return pendingNavigationHref === href;
+	}
+
+	function dashboardLinkClass(href: string): string {
+		return isPendingNavigation(href)
+			? 'ring-1 ring-accent/50 animate-pulse motion-reduce:animate-none'
+			: '';
+	}
+
+	function handleDashboardAnchorClick(event: MouseEvent, href: string) {
+		if (!isPrimaryNavigationClick(event)) return;
+		setPendingNavigation(href);
+	}
+
+	async function gotoWithPending(href: string, options?: GotoOptions) {
+		setPendingNavigation(href);
+		try {
+			await goto(href, options);
+		} finally {
+			pendingNavigationHref = null;
+		}
+	}
+
+	async function loadDailyBriefModalComponent() {
+		if (DailyBriefModal) return DailyBriefModal;
+		const module = await import('$lib/components/briefs/DailyBriefModal.svelte');
+		DailyBriefModal = module.default;
+		return DailyBriefModal;
+	}
+
+	async function loadBriefChatModalComponent() {
+		if (BriefChatModal) return BriefChatModal;
+		const module = await import('$lib/components/briefs/BriefChatModal.svelte');
+		BriefChatModal = module.default;
+		return BriefChatModal;
+	}
+
+	async function loadOverdueTaskTriageModalComponent() {
+		if (OverdueTaskTriageModal) return OverdueTaskTriageModal;
+		const module = await import('./OverdueTaskTriageModal.svelte');
+		OverdueTaskTriageModal = module.default;
+		return OverdueTaskTriageModal;
+	}
+
+	async function loadDashboardInboxModalComponent() {
+		if (DashboardInboxModal) return DashboardInboxModal;
+		const module = await import('./DashboardInboxModal.svelte');
+		DashboardInboxModal = module.default;
+		return DashboardInboxModal;
+	}
+
+	function preloadBriefModals() {
+		void Promise.allSettled([loadDailyBriefModalComponent(), loadBriefChatModalComponent()]);
+	}
+
+	function preloadOverdueTaskTriageModal() {
+		void loadOverdueTaskTriageModalComponent().catch((error) => {
+			console.warn('[Dashboard] Failed to preload overdue triage modal:', error);
+		});
+	}
+
+	function preloadDashboardInboxModal() {
+		void loadDashboardInboxModalComponent().catch((error) => {
+			console.warn('[Dashboard] Failed to preload inbox modal:', error);
+		});
+	}
+
+	function preloadDashboardModals() {
+		if (dashboardModalPreloadStarted) return;
+		dashboardModalPreloadStarted = true;
+		preloadBriefModals();
+		preloadOverdueTaskTriageModal();
+		preloadDashboardInboxModal();
+	}
+
+	function scheduleIdleModalPreload(): () => void {
+		if (!browser) return () => {};
+		const idleWindow = window as IdleWindow;
+		if (typeof idleWindow.requestIdleCallback === 'function') {
+			const handle = idleWindow.requestIdleCallback(() => preloadDashboardModals(), {
+				timeout: 3500
+			});
+			return () => idleWindow.cancelIdleCallback?.(handle);
+		}
+
+		const timeout = window.setTimeout(preloadDashboardModals, 2500);
+		return () => window.clearTimeout(timeout);
+	}
+
+	onMount(() => {
+		dashboardPerformance.mark('mounted');
+		return scheduleIdleModalPreload();
+	});
+
+	onDestroy(() => {
+		dashboardInboxCountRequestToken += 1;
+		overdueProjectBatchRequestToken += 1;
+		dashboardInboxCountAbortController?.abort();
+		overdueProjectBatchAbortController?.abort();
+	});
+
 	function handleProjectCardClick(
 		event: MouseEvent,
 		project: {
@@ -388,10 +520,11 @@
 		if (!projectId) {
 			event.preventDefault();
 			console.warn('[Dashboard] Project card clicked without a valid id');
-			void goto('/projects');
+			void gotoWithPending('/projects');
 			return;
 		}
 
+		handleDashboardAnchorClick(event, resolveProjectHref({ id: projectId }));
 		handleProjectClick({
 			...project,
 			id: projectId
@@ -431,17 +564,16 @@
 	}
 
 	async function handleViewBrief(brief: DailyBrief) {
-		if (!DailyBriefModal) {
+		await dashboardPerformance.trackAction('modal.daily_brief.open', async () => {
 			try {
-				const module = await import('$lib/components/briefs/DailyBriefModal.svelte');
-				DailyBriefModal = module.default;
+				await loadDailyBriefModalComponent();
 			} catch (err) {
 				console.error('Failed to load DailyBriefModal:', err);
 				return;
 			}
-		}
-		selectedBrief = brief;
-		showBriefModal = true;
+			selectedBrief = brief;
+			showBriefModal = true;
+		});
 	}
 
 	function handleBriefModalClose() {
@@ -453,20 +585,18 @@
 		// Close the brief modal first to avoid stacking
 		showBriefModal = false;
 
-		// Lazy load BriefChatModal (two-pane brief + chat modal)
-		if (!BriefChatModal) {
+		await dashboardPerformance.trackAction('modal.brief_chat.open', async () => {
 			try {
-				const module = await import('$lib/components/briefs/BriefChatModal.svelte');
-				BriefChatModal = module.default;
+				await loadBriefChatModalComponent();
 			} catch (err) {
 				console.error('Failed to load BriefChatModal:', err);
 				return;
 			}
-		}
 
-		briefChatSessionId = briefChatSessionStore.get(brief.id);
-		briefChatBrief = brief;
-		showBriefChatModal = true;
+			briefChatSessionId = briefChatSessionStore.get(brief.id);
+			briefChatBrief = brief;
+			showBriefChatModal = true;
+		});
 	}
 
 	function handleBriefChatClose(summary?: DataMutationSummary) {
@@ -486,12 +616,16 @@
 
 	async function loadOverdueProjectBatches() {
 		const requestToken = ++overdueProjectBatchRequestToken;
+		overdueProjectBatchAbortController?.abort();
+		const controller = new AbortController();
+		overdueProjectBatchAbortController = controller;
 		isLoadingOverdueProjectBatches = true;
 		overdueProjectBatchError = null;
 
 		try {
 			const response = await fetch(
-				'/api/onto/tasks/overdue/batches?limit=100&include_tasks=false'
+				'/api/onto/tasks/overdue/batches?limit=100&include_tasks=false',
+				{ signal: controller.signal }
 			);
 			const payload = (await response.json()) as {
 				success?: boolean;
@@ -503,15 +637,19 @@
 				};
 			};
 
+			if (requestToken !== overdueProjectBatchRequestToken || controller.signal.aborted) {
+				return;
+			}
+
 			if (!response.ok || !payload.success) {
 				throw new Error(payload.error || 'Failed to load overdue project batches');
 			}
 
-			if (requestToken !== overdueProjectBatchRequestToken) return;
 			overdueProjectBatches = payload.data?.batches ?? [];
 			overdueProjectBatchTotal = payload.data?.totalProjects ?? overdueProjectBatches.length;
 			overdueProjectTaskTotal = payload.data?.totalTasks ?? overdueTasks;
 		} catch (err) {
+			if (controller.signal.aborted) return;
 			console.error('[Dashboard] Failed to load overdue project batches:', err);
 			if (requestToken !== overdueProjectBatchRequestToken) return;
 			overdueProjectBatchError =
@@ -522,6 +660,7 @@
 		} finally {
 			if (requestToken === overdueProjectBatchRequestToken) {
 				isLoadingOverdueProjectBatches = false;
+				overdueProjectBatchAbortController = null;
 			}
 		}
 	}
@@ -532,11 +671,20 @@
 	});
 
 	async function loadDashboardInboxCount() {
+		const requestToken = ++dashboardInboxCountRequestToken;
+		dashboardInboxCountAbortController?.abort();
+		const controller = new AbortController();
+		dashboardInboxCountAbortController = controller;
 		isLoadingDashboardInboxCount = true;
 		dashboardInboxCountError = null;
 		try {
-			const response = await fetch('/api/inbox/count?status=pending&limit=5000');
+			const response = await fetch('/api/inbox/count?status=pending&limit=1000', {
+				signal: controller.signal
+			});
 			const payload = await response.json();
+			if (requestToken !== dashboardInboxCountRequestToken || controller.signal.aborted) {
+				return;
+			}
 			if (!response.ok || !payload.success) {
 				throw new Error(payload.error || 'Failed to load inbox count');
 			}
@@ -545,11 +693,16 @@
 			dashboardInboxAccountCount = Number(data.account ?? 0);
 			dashboardInboxProjectCount = Object.keys(data.by_project ?? {}).length;
 		} catch (err) {
+			if (controller.signal.aborted) return;
 			console.error('[Dashboard] Failed to load inbox count:', err);
+			if (requestToken !== dashboardInboxCountRequestToken) return;
 			dashboardInboxCountError =
 				err instanceof Error ? err.message : 'Failed to load inbox count';
 		} finally {
-			isLoadingDashboardInboxCount = false;
+			if (requestToken === dashboardInboxCountRequestToken) {
+				isLoadingDashboardInboxCount = false;
+				dashboardInboxCountAbortController = null;
+			}
 		}
 	}
 
@@ -557,11 +710,10 @@
 		if (isOpeningDashboardInbox) return;
 		isOpeningDashboardInbox = true;
 		try {
-			if (!DashboardInboxModal) {
-				const module = await import('./DashboardInboxModal.svelte');
-				DashboardInboxModal = module.default;
-			}
-			showDashboardInboxModal = true;
+			await dashboardPerformance.trackAction('modal.dashboard_inbox.open', async () => {
+				await loadDashboardInboxModalComponent();
+				showDashboardInboxModal = true;
+			});
 		} catch (err) {
 			console.error('Failed to load DashboardInboxModal:', err);
 			toastService.error('Failed to open inbox');
@@ -599,8 +751,6 @@
 			isLoadingOverdueProjectBatches = false;
 			return;
 		}
-
-		void loadOverdueProjectBatches();
 	});
 
 	async function openOverdueTaskTriage(projectId: string | null = null) {
@@ -609,11 +759,10 @@
 		selectedOverdueProjectId = projectId ?? overdueProjectBatches[0]?.project_id ?? null;
 
 		try {
-			if (!OverdueTaskTriageModal) {
-				const module = await import('./OverdueTaskTriageModal.svelte');
-				OverdueTaskTriageModal = module.default;
-			}
-			showOverdueTaskTriageModal = true;
+			await dashboardPerformance.trackAction('modal.overdue_triage.open', async () => {
+				await loadOverdueTaskTriageModalComponent();
+				showOverdueTaskTriageModal = true;
+			});
 		} catch (err) {
 			console.error('Failed to load OverdueTaskTriageModal:', err);
 			await goto('/projects');
@@ -638,7 +787,9 @@
 		if (!refreshHandler || isRefreshing) return;
 		isRefreshing = true;
 		try {
-			await refreshHandler();
+			await dashboardPerformance.trackAction('refresh', async () => {
+				await refreshHandler();
+			});
 		} finally {
 			isRefreshing = false;
 		}
@@ -662,12 +813,11 @@
 			toastService.success('Invite accepted');
 			const projectId =
 				payload?.data?.projectId ?? payload?.data?.project_id ?? invite.project_id;
-			await goto(
-				projectId
-					? `/projects/${projectId}?message=${encodeURIComponent('Invite accepted')}`
-					: `/projects?message=${encodeURIComponent('Invite accepted')}`,
-				{ invalidateAll: true }
-			);
+			const targetHref = projectId
+				? `/projects/${projectId}?message=${encodeURIComponent('Invite accepted')}`
+				: `/projects?message=${encodeURIComponent('Invite accepted')}`;
+			void invalidate('app:invites');
+			await gotoWithPending(targetHref);
 		} catch (error) {
 			console.error('[Dashboard] Failed to accept invite:', error);
 			inviteActionError = error instanceof Error ? error.message : 'Failed to accept invite';
@@ -718,7 +868,9 @@
 		if (isOpeningCalendar) return;
 		isOpeningCalendar = true;
 		try {
-			await goto('/dashboard/calendar');
+			await dashboardPerformance.trackAction('route.calendar.open', async () => {
+				await gotoWithPending('/dashboard/calendar');
+			});
 		} finally {
 			isOpeningCalendar = false;
 		}
@@ -751,8 +903,10 @@
 						variant="outline"
 						size="sm"
 						icon={Plus}
-						onclick={() => goto('/projects/create')}
-						class="flex-1 whitespace-nowrap border-accent/30 bg-card text-accent hover:border-accent/50 hover:bg-accent/10 hover:text-accent focus:ring-accent/40 sm:flex-none"
+						onclick={() => gotoWithPending('/projects/create')}
+						class="flex-1 whitespace-nowrap border-accent/30 bg-card text-accent hover:border-accent/50 hover:bg-accent/10 hover:text-accent focus:ring-accent/40 sm:flex-none {dashboardLinkClass(
+							'/projects/create'
+						)}"
 					>
 						New Project
 					</Button>
@@ -797,7 +951,11 @@
 
 			<!-- Daily Brief -->
 			<section>
-				<DashboardBriefWidget {user} onviewbrief={handleViewBrief} />
+				<DashboardBriefWidget
+					{user}
+					onviewbrief={handleViewBrief}
+					onpreloadbrief={preloadBriefModals}
+				/>
 			</section>
 
 			{#if dashboardInboxCount > 0 || dashboardInboxCountError}
@@ -819,6 +977,7 @@
 						: {
 								label: 'Review inbox',
 								onClick: openDashboardInbox,
+								onPreload: preloadDashboardInboxModal,
 								loading: isOpeningDashboardInbox,
 								disabled: isOpeningDashboardInbox
 							}}
@@ -931,6 +1090,7 @@
 					action={{
 						label: 'Review overdue',
 						onClick: () => openOverdueTaskTriage(),
+						onPreload: preloadOverdueTaskTriageModal,
 						loading: isOpeningOverdueTriage,
 						disabled: isOpeningOverdueTriage,
 						showArrow: false
@@ -970,7 +1130,11 @@
 					{#if !hasNoProjects}
 						<a
 							href="/projects"
-							class="text-sm text-muted-foreground hover:text-accent transition-colors"
+							onclick={(event) => handleDashboardAnchorClick(event, '/projects')}
+							aria-busy={isPendingNavigation('/projects')}
+							class="text-sm text-muted-foreground hover:text-accent transition-colors {dashboardLinkClass(
+								'/projects'
+							)}"
 						>
 							All projects &rarr;
 						</a>
@@ -1002,7 +1166,8 @@
 						<Button
 							variant="primary"
 							size="sm"
-							onclick={() => goto('/projects/create')}
+							onclick={() => gotoWithPending('/projects/create')}
+							class={dashboardLinkClass('/projects/create')}
 						>
 							Start a brain dump
 						</Button>
@@ -1013,8 +1178,8 @@
 						<Button
 							variant="outline"
 							size="sm"
-							onclick={() => goto('/projects')}
-							class="mt-2"
+							onclick={() => gotoWithPending('/projects')}
+							class="mt-2 {dashboardLinkClass('/projects')}"
 						>
 							View all projects
 						</Button>
@@ -1028,12 +1193,16 @@
 					<div class="grid gap-2 sm:gap-3 lg:grid-cols-2">
 						{#each projectsToDisplay as project (project.id)}
 							{@const overdueBatch = overdueBatchByProjectId.get(project.id)}
+							{@const projectHref = resolveProjectHref(project)}
 							<a
-								href={resolveProjectHref(project)}
+								href={projectHref}
 								onclick={(event) => handleProjectCardClick(event, project)}
+								aria-busy={isPendingNavigation(projectHref)}
 								class="group relative block wt-paper px-3 py-2.5
 								hover:border-accent/40 transition-colors pressable
-								focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+								focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {dashboardLinkClass(
+									projectHref
+								)}"
 							>
 								<div class="flex items-center justify-between gap-2">
 									<div class="flex items-center gap-2 min-w-0">
@@ -1108,7 +1277,11 @@
 						</div>
 						<a
 							href="/projects"
-							class="text-sm text-muted-foreground hover:text-accent transition-colors"
+							onclick={(event) => handleDashboardAnchorClick(event, '/projects')}
+							aria-busy={isPendingNavigation('/projects')}
+							class="text-sm text-muted-foreground hover:text-accent transition-colors {dashboardLinkClass(
+								'/projects'
+							)}"
 						>
 							View all &rarr;
 						</a>
@@ -1117,12 +1290,16 @@
 					<div class="grid gap-2 sm:gap-3 lg:grid-cols-2">
 						{#each sharedNotActive as project (project.id)}
 							{@const overdueBatch = overdueBatchByProjectId.get(project.id)}
+							{@const projectHref = resolveProjectHref(project)}
 							<a
-								href={resolveProjectHref(project)}
+								href={projectHref}
 								onclick={(event) => handleProjectCardClick(event, project)}
+								aria-busy={isPendingNavigation(projectHref)}
 								class="group relative block wt-paper px-3 py-2.5
 								hover:border-accent/40 transition-colors pressable
-								focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+								focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {dashboardLinkClass(
+									projectHref
+								)}"
 							>
 								<div class="flex items-center justify-between gap-2">
 									<div class="flex items-center gap-2 min-w-0">
@@ -1184,7 +1361,12 @@
 							{#each unifiedFeed as item (item.kind + '-' + item.id)}
 								<a
 									href={item.href}
-									class="group flex items-start gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+									onclick={(event) =>
+										handleDashboardAnchorClick(event, item.href)}
+									aria-busy={isPendingNavigation(item.href)}
+									class="group flex items-start gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {dashboardLinkClass(
+										item.href
+									)}"
 								>
 									<div class="shrink-0 mt-0.5">
 										{#if item.kind === 'task'}
@@ -1264,7 +1446,12 @@
 						</h2>
 						<a
 							href="/history?type=chats"
-							class="text-sm text-muted-foreground hover:text-accent transition-colors"
+							onclick={(event) =>
+								handleDashboardAnchorClick(event, '/history?type=chats')}
+							aria-busy={isPendingNavigation('/history?type=chats')}
+							class="text-sm text-muted-foreground hover:text-accent transition-colors {dashboardLinkClass(
+								'/history?type=chats'
+							)}"
 						>
 							All chats &rarr;
 						</a>
@@ -1277,9 +1464,14 @@
 					{:else}
 						<div class="wt-paper divide-y divide-border overflow-hidden">
 							{#each recentChats as session (session.id)}
+								{@const chatHref = `/history?type=chats&id=${session.id}&itemType=chat_session`}
 								<a
-									href="/history?type=chats&id={session.id}&itemType=chat_session"
-									class="group block px-3 py-2.5 hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+									href={chatHref}
+									onclick={(event) => handleDashboardAnchorClick(event, chatHref)}
+									aria-busy={isPendingNavigation(chatHref)}
+									class="group block px-3 py-2.5 hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {dashboardLinkClass(
+										chatHref
+									)}"
 								>
 									<div class="flex items-start justify-between gap-2">
 										<div class="flex items-start gap-2 min-w-0">

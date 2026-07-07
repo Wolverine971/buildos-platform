@@ -5,11 +5,10 @@
  * Lists both braindumps and chat sessions for a unified history view.
  * Supports filtering by type, status, and search.
  *
- * PERFORMANCE OPTIMIZATIONS (Dec 2024):
- * - itemCount returned IMMEDIATELY for instant skeleton rendering
- * - Full history data streamed in background
- * - Stats queries run in parallel
- * - Zero layout shift - exact number of skeleton cards rendered from start
+ * PERFORMANCE:
+ * - The initial load does not block on COUNT(*) queries.
+ * - Full history data is streamed from a bounded RPC that returns only the
+ *   requested page and aggregate stats.
  */
 
 import { redirect } from '@sveltejs/kit';
@@ -90,6 +89,45 @@ export interface HistoryItem {
 
 /** Type filter options */
 type TypeFilter = 'all' | 'braindumps' | 'chats';
+type SelectedType = HistoryItem['type'];
+type StatusFilter = 'pending' | 'processing' | 'processed' | 'failed';
+
+interface HistoryStats {
+	totalBraindumps: number;
+	processedBraindumps: number;
+	pendingBraindumps: number;
+	totalChatSessions: number;
+	chatSessionsWithSummary: number;
+}
+
+interface HistoryDataResult {
+	items: HistoryItem[];
+	totalItems: number;
+	totalItemsExact: boolean;
+	stats: HistoryStats;
+	selectedItem: HistoryItem | null;
+	hasMore: boolean;
+}
+
+interface HistoryRpcRow {
+	type: SelectedType;
+	data: unknown;
+}
+
+interface HistoryRpcPayload {
+	rows?: unknown;
+	totalItems?: unknown;
+	totalItemsExact?: unknown;
+	stats?: unknown;
+	selectedRow?: unknown;
+	hasMore?: unknown;
+}
+
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 100;
+const SKELETON_ITEM_LIMIT = 12;
+const MIN_SEARCH_LENGTH = 3;
+const MAX_SEARCH_LENGTH = 120;
 
 export const load: PageServerLoad = async ({ locals, url, depends }) => {
 	depends('history:data');
@@ -101,13 +139,13 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
 	}
 
 	// Parse query parameters
-	const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
-	const offset = parseInt(url.searchParams.get('offset') || '0');
-	const typeFilter = (url.searchParams.get('type') as TypeFilter) || 'all';
-	const status = url.searchParams.get('status') || null;
-	const search = url.searchParams.get('search') || '';
-	const selectedId = url.searchParams.get('id') || null;
-	const selectedType = url.searchParams.get('itemType') || null;
+	const limit = clampIntegerParam(url.searchParams.get('limit'), DEFAULT_LIMIT, 1, MAX_LIMIT);
+	const offset = clampIntegerParam(url.searchParams.get('offset'), 0, 0, Number.MAX_SAFE_INTEGER);
+	const typeFilter = parseTypeFilter(url.searchParams.get('type'));
+	const status = parseStatusFilter(url.searchParams.get('status'));
+	const search = normalizeSearchFilter(url.searchParams.get('search')) ?? '';
+	const selectedId = parseUuid(url.searchParams.get('id'));
+	const selectedType = parseSelectedType(url.searchParams.get('itemType'));
 
 	const filters = {
 		limit,
@@ -119,38 +157,15 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
 		selectedType
 	};
 
-	// FAST: Get item counts immediately (~20-50ms each) for skeleton rendering
-	// These run in parallel for speed
-	const [braindumpCountResult, chatCountResult] = await Promise.all([
-		typeFilter === 'all' || typeFilter === 'braindumps'
-			? supabase
-					.from('onto_braindumps')
-					.select('*', { count: 'exact', head: true })
-					.eq('user_id', user.id)
-			: Promise.resolve({ count: 0, error: null }),
-		typeFilter === 'all' || typeFilter === 'chats'
-			? supabase
-					.from('chat_sessions')
-					.select('*', { count: 'exact', head: true })
-					.eq('user_id', user.id)
-					.neq('status', 'archived')
-					.or('message_count.gte.3,summary.not.is.null')
-			: Promise.resolve({ count: 0, error: null })
-	]);
-
-	const braindumpCount = braindumpCountResult.count ?? 0;
-	const chatSessionCount = chatCountResult.count ?? 0;
-	const itemCount = Math.min(braindumpCount + chatSessionCount, limit);
-
 	// STREAMED: Full history data loaded in background
 	// Skeletons will be hydrated when this resolves
 	const historyData = loadHistoryData(supabase, user.id, filters);
 
 	return {
-		// Immediate data for skeleton rendering
-		itemCount,
-		braindumpCount,
-		chatSessionCount,
+		// Immediate skeleton shape. Exact totals arrive in streamed historyData.
+		itemCount: Math.min(limit, SKELETON_ITEM_LIMIT),
+		braindumpCount: 0,
+		chatSessionCount: 0,
 		filters,
 		user,
 		// Streamed data
@@ -166,193 +181,77 @@ async function loadHistoryData(
 		limit: number;
 		offset: number;
 		typeFilter: TypeFilter;
-		status: string | null;
+		status: StatusFilter | null;
 		search: string;
 		selectedId: string | null;
-		selectedType: string | null;
+		selectedType: SelectedType | null;
 	}
-): Promise<{
-	items: HistoryItem[];
-	totalItems: number;
-	stats: {
-		totalBraindumps: number;
-		processedBraindumps: number;
-		pendingBraindumps: number;
-		totalChatSessions: number;
-		chatSessionsWithSummary: number;
-	};
-	selectedItem: HistoryItem | null;
-	hasMore: boolean;
-}> {
+): Promise<HistoryDataResult> {
 	try {
 		const { limit, offset, typeFilter, status, search, selectedId, selectedType } = filters;
 
-		// Fetch data based on type filter - run in parallel
-		const [braindumpResult, chatResult, braindumpStatsResult, chatStatsResult] =
-			await Promise.all([
-				// Braindumps query
-				typeFilter === 'all' || typeFilter === 'braindumps'
-					? (async () => {
-							let query = supabase
-								.from('onto_braindumps')
-								.select('*')
-								.eq('user_id', userId)
-								.order('created_at', { ascending: false });
+		const { data, error } = await supabase.rpc('get_history_page_v1', {
+			p_user_id: userId,
+			p_type_filter: typeFilter,
+			p_status: status,
+			p_search: search || null,
+			p_limit: limit,
+			p_offset: offset,
+			p_selected_id: selectedId,
+			p_selected_type: selectedType
+		});
 
-							if (
-								status &&
-								['pending', 'processing', 'processed', 'failed'].includes(status)
-							) {
-								query = query.eq('status', status);
-							}
+		if (error) {
+			throw error;
+		}
 
-							if (search) {
-								query = query.or(
-									`content.ilike.%${search}%,title.ilike.%${search}%,summary.ilike.%${search}%`
-								);
-							}
-
-							const { data, error } = await query;
-							if (error) {
-								console.error('Error fetching braindumps:', error);
-								return [];
-							}
-							return (data || []) as OntoBraindump[];
-						})()
-					: Promise.resolve([] as OntoBraindump[]),
-
-				// Chat sessions query
-				typeFilter === 'all' || typeFilter === 'chats'
-					? (async () => {
-							let query = supabase
-								.from('chat_sessions')
-								.select('*')
-								.eq('user_id', userId)
-								.neq('status', 'archived')
-								.order('created_at', { ascending: false });
-
-							if (status === 'processed') {
-								query = query.not('summary', 'is', null);
-							}
-
-							if (search) {
-								query = query.or(
-									`title.ilike.%${search}%,auto_title.ilike.%${search}%,summary.ilike.%${search}%`
-								);
-							}
-
-							query = query.or('message_count.gte.3,summary.not.is.null');
-
-							const { data, error } = await query;
-							if (error) {
-								console.error('Error fetching chat sessions:', error);
-								return [];
-							}
-							return (data || []) as ChatSession[];
-						})()
-					: Promise.resolve([] as ChatSession[]),
-
-				// Braindump stats
-				supabase.from('onto_braindumps').select('status').eq('user_id', userId),
-
-				// Chat stats
-				supabase
-					.from('chat_sessions')
-					.select('id, summary')
-					.eq('user_id', userId)
-					.neq('status', 'archived')
-					.or('message_count.gte.3,summary.not.is.null')
-			]);
-
-		const braindumps = braindumpResult;
-		const chatSessions = chatResult;
+		const payload = normalizeHistoryRpcPayload(data);
+		const rows = normalizeHistoryRpcRows(payload.rows);
+		const selectedRow = normalizeHistoryRpcRow(payload.selectedRow);
+		const chatSessions = [
+			...rows
+				.filter((row) => row.type === 'chat_session')
+				.map((row) => normalizeChatSession(row.data))
+				.filter((session): session is ChatSession => Boolean(session)),
+			...(selectedRow?.type === 'chat_session'
+				? [normalizeChatSession(selectedRow.data)].filter(
+						(session): session is ChatSession => Boolean(session)
+					)
+				: [])
+		];
 		const classificationJobsBySessionId = await loadChatClassificationJobs(
 			supabase,
 			userId,
 			chatSessions.filter(needsChatClassification).map((session) => session.id)
 		);
-		const braindumpStats = braindumpStatsResult.data;
-		const chatStats = chatStatsResult.data;
 
-		// Merge and sort items by creation date
-		const allItems: HistoryItem[] = [
-			...braindumps.map(
-				(b): HistoryItem => ({
-					id: b.id,
-					type: 'braindump',
-					title: b.title || 'Untitled Braindump',
-					preview:
-						b.summary ||
-						b.content.slice(0, 200) + (b.content.length > 200 ? '...' : ''),
-					topics: b.topics || [],
-					status: b.status,
-					createdAt: b.created_at,
-					originalData: b
-				})
-			),
-			...chatSessions.map(
-				(c): HistoryItem => toChatHistoryItem(c, classificationJobsBySessionId.get(c.id))
-			)
-		];
-
-		// Sort by creation date descending
-		allItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-		// Apply pagination to merged results
-		const paginatedItems = allItems.slice(offset, offset + limit);
-		const totalItems = allItems.length;
-
-		// Get selected item if specified
-		let selectedItem: HistoryItem | null = null;
-		if (selectedId && selectedType) {
-			if (selectedType === 'braindump') {
-				const found = braindumps.find((b) => b.id === selectedId);
-				if (found) {
-					selectedItem = {
-						id: found.id,
-						type: 'braindump',
-						title: found.title || 'Untitled Braindump',
-						preview: found.summary || found.content.slice(0, 200),
-						topics: found.topics || [],
-						status: found.status,
-						createdAt: found.created_at,
-						originalData: found
-					};
-				}
-			} else if (selectedType === 'chat_session') {
-				const found = chatSessions.find((c) => c.id === selectedId);
-				if (found) {
-					selectedItem = toChatHistoryItem(
-						found,
-						classificationJobsBySessionId.get(found.id)
-					);
-				}
-			}
-		}
-
-		const stats = {
-			totalBraindumps: braindumpStats?.length || 0,
-			processedBraindumps:
-				braindumpStats?.filter((b: any) => b.status === 'processed').length || 0,
-			pendingBraindumps:
-				braindumpStats?.filter((b: any) => b.status === 'pending').length || 0,
-			totalChatSessions: chatStats?.length || 0,
-			chatSessionsWithSummary:
-				chatStats?.filter((c: any) => normalizeHistoryText(c.summary)).length || 0
-		};
+		const items = rows
+			.map((row) => toHistoryItem(row, classificationJobsBySessionId))
+			.filter((item): item is HistoryItem => Boolean(item));
+		const selectedItem = selectedRow
+			? toHistoryItem(selectedRow, classificationJobsBySessionId)
+			: null;
+		const totalItems = asNumber(payload.totalItems, items.length);
+		const stats = normalizeHistoryStats(payload.stats);
+		const hasMore =
+			typeof payload.hasMore === 'boolean' ? payload.hasMore : totalItems > offset + limit;
+		const totalItemsExact =
+			typeof payload.totalItemsExact === 'boolean' ? payload.totalItemsExact : !hasMore;
 
 		return {
-			items: paginatedItems,
+			items,
 			totalItems,
+			totalItemsExact,
 			stats,
 			selectedItem,
-			hasMore: totalItems > offset + limit
+			hasMore
 		};
 	} catch (err) {
 		console.error('Error loading history data:', err);
 		return {
 			items: [],
 			totalItems: 0,
+			totalItemsExact: true,
 			stats: {
 				totalBraindumps: 0,
 				processedBraindumps: 0,
@@ -364,6 +263,38 @@ async function loadHistoryData(
 			hasMore: false
 		};
 	}
+}
+
+function toHistoryItem(
+	row: HistoryRpcRow,
+	classificationJobsBySessionId: Map<string, ChatClassificationJob>
+): HistoryItem | null {
+	if (row.type === 'braindump') {
+		const braindump = normalizeBraindump(row.data);
+		return braindump ? toBraindumpHistoryItem(braindump) : null;
+	}
+
+	const session = normalizeChatSession(row.data);
+	return session
+		? toChatHistoryItem(session, classificationJobsBySessionId.get(session.id))
+		: null;
+}
+
+function toBraindumpHistoryItem(braindump: OntoBraindump): HistoryItem {
+	const content = braindump.content ?? '';
+	const summary = normalizeHistoryText(braindump.summary);
+	const preview = summary ?? content.slice(0, 200) + (content.length > 200 ? '...' : '');
+
+	return {
+		id: braindump.id,
+		type: 'braindump',
+		title: normalizeHistoryText(braindump.title) ?? 'Untitled Braindump',
+		preview,
+		topics: normalizeHistoryTopics(braindump.topics),
+		status: braindump.status,
+		createdAt: braindump.created_at,
+		originalData: braindump
+	};
 }
 
 function toChatHistoryItem(
@@ -389,6 +320,181 @@ function toChatHistoryItem(
 		canQueueSummary: displayState.canQueueSummary,
 		originalData: session
 	};
+}
+
+function clampIntegerParam(
+	value: string | null,
+	fallback: number,
+	min: number,
+	max: number
+): number {
+	const parsed = Number.parseInt(value ?? '', 10);
+	if (!Number.isFinite(parsed)) return fallback;
+	return Math.min(Math.max(parsed, min), max);
+}
+
+function normalizeFilterText(value: string | null): string | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed ? trimmed : null;
+}
+
+function normalizeSearchFilter(value: string | null): string | null {
+	const normalized = normalizeFilterText(value);
+	return normalized && normalized.length >= MIN_SEARCH_LENGTH
+		? normalized.slice(0, MAX_SEARCH_LENGTH)
+		: null;
+}
+
+function parseTypeFilter(value: string | null): TypeFilter {
+	if (value === 'braindumps' || value === 'chats') return value;
+	return 'all';
+}
+
+function parseStatusFilter(value: string | null): StatusFilter | null {
+	if (
+		value === 'pending' ||
+		value === 'processing' ||
+		value === 'processed' ||
+		value === 'failed'
+	) {
+		return value;
+	}
+	return null;
+}
+
+function parseSelectedType(value: string | null): SelectedType | null {
+	if (value === 'braindump' || value === 'chat_session') return value;
+	return null;
+}
+
+function parseUuid(value: string | null): string | null {
+	const normalized = normalizeFilterText(value);
+	if (!normalized) return null;
+	return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalized)
+		? normalized
+		: null;
+}
+
+function normalizeHistoryRpcPayload(value: unknown): HistoryRpcPayload {
+	return isRecord(value) ? value : {};
+}
+
+function normalizeHistoryRpcRows(value: unknown): HistoryRpcRow[] {
+	if (!Array.isArray(value)) return [];
+
+	return value.map(normalizeHistoryRpcRow).filter((row): row is HistoryRpcRow => Boolean(row));
+}
+
+function normalizeHistoryRpcRow(value: unknown): HistoryRpcRow | null {
+	if (!isRecord(value)) return null;
+	const type = value.type;
+	if (type !== 'braindump' && type !== 'chat_session') return null;
+	return { type, data: value.data };
+}
+
+function normalizeHistoryStats(value: unknown): HistoryStats {
+	const record = isRecord(value) ? value : {};
+	return {
+		totalBraindumps: asNumber(record.totalBraindumps, 0),
+		processedBraindumps: asNumber(record.processedBraindumps, 0),
+		pendingBraindumps: asNumber(record.pendingBraindumps, 0),
+		totalChatSessions: asNumber(record.totalChatSessions, 0),
+		chatSessionsWithSummary: asNumber(record.chatSessionsWithSummary, 0)
+	};
+}
+
+function normalizeBraindump(value: unknown): OntoBraindump | null {
+	if (!isRecord(value)) return null;
+
+	const id = asString(value.id);
+	const createdAt = asString(value.created_at);
+	if (!id || !createdAt) return null;
+
+	return {
+		id,
+		content: asString(value.content) ?? '',
+		title: asNullableString(value.title),
+		topics: asStringArray(value.topics),
+		summary: asNullableString(value.summary),
+		status: asBraindumpStatus(value.status),
+		chat_session_id: asNullableString(value.chat_session_id),
+		metadata: asNullableRecord(value.metadata),
+		processed_at: asNullableString(value.processed_at),
+		error_message: asNullableString(value.error_message),
+		created_at: createdAt,
+		updated_at: asString(value.updated_at) ?? createdAt
+	};
+}
+
+function normalizeChatSession(value: unknown): ChatSession | null {
+	if (!isRecord(value)) return null;
+
+	const id = asString(value.id);
+	if (!id) return null;
+
+	return {
+		id,
+		title: asNullableString(value.title),
+		auto_title: asNullableString(value.auto_title),
+		chat_topics: asStringArray(value.chat_topics),
+		summary: asNullableString(value.summary),
+		context_type: asString(value.context_type) ?? 'global',
+		entity_id: asNullableString(value.entity_id),
+		message_count: asNullableNumber(value.message_count),
+		status: asString(value.status) ?? 'active',
+		created_at: asNullableString(value.created_at),
+		updated_at: asNullableString(value.updated_at),
+		last_message_at: asNullableString(value.last_message_at)
+	};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function asString(value: unknown): string | null {
+	return typeof value === 'string' ? value : null;
+}
+
+function asNullableString(value: unknown): string | null {
+	return typeof value === 'string' ? value : null;
+}
+
+function asStringArray(value: unknown): string[] {
+	return Array.isArray(value)
+		? value.filter((item): item is string => typeof item === 'string')
+		: [];
+}
+
+function asNumber(value: unknown, fallback: number): number {
+	if (typeof value === 'number' && Number.isFinite(value)) return value;
+	if (typeof value === 'string') {
+		const parsed = Number(value);
+		if (Number.isFinite(parsed)) return parsed;
+	}
+	return fallback;
+}
+
+function asNullableNumber(value: unknown): number | null {
+	if (value === null || value === undefined) return null;
+	return asNumber(value, 0);
+}
+
+function asNullableRecord(value: unknown): Record<string, unknown> | null {
+	return isRecord(value) ? value : null;
+}
+
+function asBraindumpStatus(value: unknown): OntoBraindump['status'] {
+	if (
+		value === 'pending' ||
+		value === 'processing' ||
+		value === 'processed' ||
+		value === 'failed'
+	) {
+		return value;
+	}
+	return 'pending';
 }
 
 async function loadChatClassificationJobs(

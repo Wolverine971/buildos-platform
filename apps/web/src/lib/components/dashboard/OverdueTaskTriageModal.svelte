@@ -12,6 +12,7 @@
 		CircleCheck,
 		Clock3,
 		ExternalLink,
+		Inbox,
 		LoaderCircle,
 		MoreHorizontal,
 		Share2,
@@ -58,6 +59,11 @@
 		project_id: string;
 		project_name: string;
 	};
+	type TaskMutationOptions = {
+		silent?: boolean;
+		successMessage?: string;
+	};
+	type ProjectBatchAction = 'tomorrow' | 'plus3' | 'in_progress' | 'done' | 'backlog';
 	type LocatedTask = {
 		batch: OverdueProjectBatch;
 		batchIndex: number;
@@ -79,6 +85,11 @@
 		plus3: '+3d',
 		nextWeek: 'Next week'
 	};
+	const BACKLOG_TASK_UPDATES = {
+		state_key: 'todo',
+		start_at: null,
+		due_at: null
+	} satisfies Record<string, unknown>;
 
 	let { isOpen, initialProjectId = null, onClose }: Props = $props();
 
@@ -374,7 +385,7 @@
 	async function mutateFoundTask(
 		found: LocatedTask,
 		updates: Record<string, unknown>,
-		options: { silent?: boolean } = {}
+		options: TaskMutationOptions = {}
 	): Promise<boolean> {
 		const taskId = found.task.id;
 		if (pendingTaskIds.has(taskId)) return false;
@@ -386,7 +397,7 @@
 
 			changedCount += 1;
 			if (!options.silent) {
-				toastService.success('Task updated');
+				toastService.success(options.successMessage ?? 'Task updated');
 			}
 			return true;
 		} catch (err) {
@@ -404,7 +415,7 @@
 	async function mutateTask(
 		taskId: string,
 		updates: Record<string, unknown>,
-		options: { silent?: boolean } = {}
+		options: TaskMutationOptions = {}
 	): Promise<boolean> {
 		const found = findTask(taskId);
 		if (!found) return false;
@@ -433,6 +444,12 @@
 
 	async function handleQuickReschedule(taskId: string, preset: 'tomorrow' | 'plus3') {
 		await mutateTask(taskId, { due_at: presetDueAt(preset) });
+	}
+
+	async function handleMoveTaskToBacklog(taskId: string) {
+		await mutateTask(taskId, BACKLOG_TASK_UPDATES, {
+			successMessage: 'Task moved to backlog'
+		});
 	}
 
 	async function fetchReschedulePlan(
@@ -534,7 +551,28 @@
 		});
 	}
 
-	async function runProjectAction(action: 'tomorrow' | 'plus3' | 'in_progress' | 'done') {
+	function getProjectActionUpdates(action: ProjectBatchAction): Record<string, unknown> {
+		switch (action) {
+			case 'tomorrow':
+				return { due_at: presetDueAt('tomorrow') };
+			case 'plus3':
+				return { due_at: presetDueAt('plus3') };
+			case 'in_progress':
+				return { state_key: 'in_progress', due_at: presetDueAt('today') };
+			case 'backlog':
+				return BACKLOG_TASK_UPDATES;
+			case 'done':
+				return { state_key: 'done' };
+		}
+	}
+
+	function formatProjectActionResult(action: ProjectBatchAction, succeeded: number, failed = 0) {
+		const suffix = failed > 0 ? ` (${failed} failed)` : '';
+		if (action === 'backlog') return `Moved ${succeeded} tasks to backlog${suffix}`;
+		return `Updated ${succeeded} tasks${suffix}`;
+	}
+
+	async function runProjectAction(action: ProjectBatchAction) {
 		if (!activeBatch) return;
 		const projectName = activeBatch.project_name;
 		const locatedTasks = ((activeBatch.tasks ?? []) as OverdueTask[])
@@ -549,21 +587,20 @@
 			if (!confirmed) return;
 		}
 
+		if (action === 'backlog' && browser) {
+			const confirmed = window.confirm(
+				`Move ${locatedTasks.length} overdue tasks to the backlog in ${projectName}? This will clear their start and due dates.`
+			);
+			if (!confirmed) return;
+		}
+
 		isProjectActionRunning = true;
 		projectMenuOpen = false;
 		let succeeded = 0;
 		let failed = 0;
 
 		try {
-			const updates =
-				action === 'tomorrow'
-					? { due_at: presetDueAt('tomorrow') }
-					: action === 'plus3'
-						? { due_at: presetDueAt('plus3') }
-						: action === 'in_progress'
-							? { state_key: 'in_progress', due_at: presetDueAt('today') }
-							: { state_key: 'done' };
-
+			const updates = getProjectActionUpdates(action);
 			const results = await Promise.all(
 				locatedTasks.map((task) => mutateFoundTask(task, updates, { silent: true }))
 			);
@@ -576,14 +613,16 @@
 		}
 
 		if (succeeded > 0 && failed === 0) {
-			toastService.success(`Updated ${succeeded} tasks in ${projectName}`);
+			toastService.success(
+				`${formatProjectActionResult(action, succeeded)} in ${projectName}`
+			);
 			return;
 		}
 		if (succeeded > 0 && failed > 0) {
-			toastService.error(`Updated ${succeeded} tasks (${failed} failed)`);
+			toastService.error(formatProjectActionResult(action, succeeded, failed));
 			return;
 		}
-		toastService.error('No tasks were updated');
+		toastService.error(action === 'backlog' ? 'No tasks were moved' : 'No tasks were updated');
 	}
 
 	function setActiveProject(projectId: string) {
@@ -847,6 +886,15 @@
 												<CircleCheck class="h-4 w-4 text-success" />
 												Mark all done
 											</button>
+											<button
+												type="button"
+												class="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+												role="menuitem"
+												onclick={() => runProjectAction('backlog')}
+											>
+												<Inbox class="h-4 w-4 text-muted-foreground" />
+												Move all to backlog
+											</button>
 											<a
 												href="/projects/{activeBatch.project_id}"
 												target="_blank"
@@ -994,6 +1042,15 @@
 													onclick={() => toggleSlotFinder(task.id)}
 												>
 													Find slot
+												</Button>
+												<Button
+													size="sm"
+													variant="outline"
+													icon={Inbox}
+													disabled={pendingTaskIds.has(task.id)}
+													onclick={() => handleMoveTaskToBacklog(task.id)}
+												>
+													Move to backlog
 												</Button>
 												<a
 													href="/projects/{task.project_id}/tasks/{task.id}"

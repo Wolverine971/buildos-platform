@@ -968,7 +968,7 @@ describe('/api/agent/v2/stream', () => {
 					toolExecutions: [{ toolCall, result: toolResult }],
 					llmPasses: [],
 					toolRounds: 1,
-					toolCallsMade: 1,
+					toolCallsMade: 0,
 					supervisorDecisions: [],
 					finalizationGuard: undefined,
 					cancelled: false,
@@ -1115,6 +1115,14 @@ describe('/api/agent/v2/stream', () => {
 		expect(supabase.insertedRows.chat_tool_executions?.[0]?.affected_entities).toEqual([
 			expectedRef
 		]);
+		const completedTurnRun = supabase.updatedRows.chat_turn_runs?.find(
+			(row) => row.status === 'completed'
+		);
+		expect(completedTurnRun).toEqual(
+			expect.objectContaining({
+				tool_call_count: 1
+			})
+		);
 	});
 
 	it('passes prompt entity ownership context into tool execution', async () => {

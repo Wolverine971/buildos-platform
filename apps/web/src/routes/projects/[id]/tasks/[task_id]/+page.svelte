@@ -45,10 +45,8 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
-	import RichMarkdownEditor from '$lib/components/ui/RichMarkdownEditor.svelte';
 	import LinkedEntities from '$lib/components/ontology/linked-entities/LinkedEntities.svelte';
 	import StateDisplay from '$lib/components/ontology/StateDisplay.svelte';
-	import TaskEditModal from '$lib/components/ontology/TaskEditModal.svelte';
 	import TaskAssigneeSelector from '$lib/components/ontology/TaskAssigneeSelector.svelte';
 	import { TASK_STATES } from '$lib/types/onto';
 	import type { EntityKind } from '$lib/components/ontology/linked-entities/linked-entities.types';
@@ -164,6 +162,10 @@
 	let MilestoneEditModalComponent = $state<Component<any, any> | null>(null);
 	let EventCreateModalComponent = $state<Component<any, any> | null>(null);
 	let EventEditModalComponent = $state<Component<any, any> | null>(null);
+	let TaskEditModalComponent = $state<Component<any, any> | null>(null);
+	let RichMarkdownEditorComponent = $state<Component<any, any> | null>(null);
+	let richMarkdownEditorPromise: Promise<Component<any, any>> | null = null;
+	let taskEditModalPromise: Promise<Component<any, any>> | null = null;
 
 	let lastRouteDataKey = $state('');
 
@@ -296,6 +298,9 @@
 
 	$effect(() => {
 		if (!browser) return;
+		if (activeView === 'workspace') {
+			void loadRichMarkdownEditor();
+		}
 		if (activeView === 'workspace' && !workspaceInitialized && task) {
 			loadWorkspaceDocuments();
 		}
@@ -669,6 +674,19 @@
 	// MODAL MANAGEMENT
 	// ============================================================
 
+	async function loadRichMarkdownEditor() {
+		if (!richMarkdownEditorPromise) {
+			richMarkdownEditorPromise = import('$lib/components/ui/RichMarkdownEditor.svelte').then(
+				(mod) => {
+					RichMarkdownEditorComponent = mod.default;
+					return mod.default;
+				}
+			);
+		}
+
+		return richMarkdownEditorPromise;
+	}
+
 	async function loadDocumentModal() {
 		if (!DocumentModalComponent) {
 			const mod = await import('$lib/components/ontology/DocumentModal.svelte');
@@ -711,6 +729,19 @@
 		}
 	}
 
+	async function loadTaskEditModal() {
+		if (!taskEditModalPromise) {
+			taskEditModalPromise = import('$lib/components/ontology/TaskEditModal.svelte').then(
+				(mod) => {
+					TaskEditModalComponent = mod.default;
+					return mod.default;
+				}
+			);
+		}
+
+		return taskEditModalPromise;
+	}
+
 	async function openDocumentModal(id: string | null = null) {
 		if (id && project?.id) {
 			goto(`/projects/${project.id}/documents/${id}`);
@@ -733,8 +764,9 @@
 		showPlanModal = true;
 	}
 
-	function openTaskModal(id: string) {
+	async function openTaskModal(id: string) {
 		selectedTaskId = id;
+		await loadTaskEditModal();
 		showTaskModal = true;
 	}
 
@@ -1250,14 +1282,22 @@
 								class="bg-card border border-border rounded-lg shadow-ink tx tx-grain tx-weak overflow-hidden"
 							>
 								<div class="p-2 sm:p-3">
-									<RichMarkdownEditor
-										bind:value={workspaceDocContent}
-										rows={18}
-										maxLength={50000}
-										size="base"
-										label="Document Content"
-										helpText="Markdown supported"
-									/>
+									{#if RichMarkdownEditorComponent}
+										<RichMarkdownEditorComponent
+											bind:value={workspaceDocContent}
+											rows={18}
+											maxLength={50000}
+											size="base"
+											label="Document Content"
+											helpText="Markdown supported"
+										/>
+									{:else}
+										<div
+											class="flex min-h-[28rem] items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 text-sm text-muted-foreground"
+										>
+											Loading editor...
+										</div>
+									{/if}
 								</div>
 								<div
 									class="flex items-center justify-between gap-2 px-2 sm:px-3 py-2 border-t border-border bg-muted/30"
@@ -1878,9 +1918,9 @@
 	/>
 {/if}
 
-<!-- Task Edit Modal -->
-{#if showTaskModal && selectedTaskId}
-	<TaskEditModal
+<!-- Task Edit Modal (Lazy Loaded) -->
+{#if showTaskModal && selectedTaskId && TaskEditModalComponent}
+	<TaskEditModalComponent
 		taskId={selectedTaskId}
 		projectId={project?.id}
 		onClose={handleModalClose}

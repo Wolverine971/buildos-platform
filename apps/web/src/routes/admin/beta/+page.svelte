@@ -24,8 +24,6 @@
 	import { browser } from '$app/environment';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import AdminCard from '$lib/components/admin/AdminCard.svelte';
-	import EmailManager from '$lib/components/email/EmailManager.svelte';
-	import EmailComposerModal from '$lib/components/admin/EmailComposerModal.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -34,6 +32,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import { formatDateTimeForDisplay } from '$lib/utils/date-utils';
 	import { requireApiData, requireApiSuccess } from '$lib/utils/api-client-helpers';
+	import type { Component } from 'svelte';
 
 	let activeTab = $state<'signups' | 'members' | 'emails' | 'dataview'>('signups');
 	let isLoading = $state(true);
@@ -49,6 +48,10 @@
 	let emailUserId = $state('');
 	let emailUserName = $state('');
 	let emailUserEmail = $state('');
+	let EmailManagerComponent = $state<Component<any, any> | null>(null);
+	let EmailComposerModalComponent = $state<Component<any, any> | null>(null);
+	let emailManagerPromise: Promise<Component<any, any>> | null = null;
+	let emailComposerModalPromise: Promise<Component<any, any>> | null = null;
 
 	// Approval confirmation modal state
 	let showApprovalModal = $state(false);
@@ -124,6 +127,44 @@
 		// The reactive statement will automatically trigger loadSignups()
 	}
 
+	async function loadEmailManager() {
+		if (!emailManagerPromise) {
+			emailManagerPromise = import('$lib/components/email/EmailManager.svelte').then(
+				(module) => {
+					EmailManagerComponent = module.default;
+					return module.default;
+				}
+			);
+		}
+
+		return emailManagerPromise;
+	}
+
+	async function loadEmailComposerModal() {
+		if (!emailComposerModalPromise) {
+			emailComposerModalPromise = import(
+				'$lib/components/admin/EmailComposerModal.svelte'
+			).then((module) => {
+				EmailComposerModalComponent = module.default;
+				return module.default;
+			});
+		}
+
+		return emailComposerModalPromise;
+	}
+
+	async function openEmailComposer(user: {
+		user_id?: string;
+		full_name?: string;
+		email?: string;
+	}) {
+		emailUserId = user.user_id || '';
+		emailUserName = user.full_name || '';
+		emailUserEmail = user.email || '';
+		await loadEmailComposerModal();
+		showEmailModal = true;
+	}
+
 	// Optional: Add a function to get sort icon component (if you want to refactor the inline SVG)
 	function getSortIcon(column: string) {
 		if (dataViewFilters.sortBy === column) {
@@ -168,6 +209,13 @@
 
 			currentPage = 1;
 			loadSignups();
+		}
+	});
+
+	$effect(() => {
+		if (!browser) return;
+		if (activeTab === 'emails') {
+			void loadEmailManager();
 		}
 	});
 
@@ -612,7 +660,13 @@
 	<!-- Content Based on Active Tab -->
 	{#if activeTab === 'emails'}
 		<!-- Email Management Component -->
-		<EmailManager />
+		{#if EmailManagerComponent}
+			<EmailManagerComponent />
+		{:else}
+			<div class="admin-panel p-8 text-center text-sm text-muted-foreground">
+				Loading email tools...
+			</div>
+		{/if}
 	{:else if activeTab === 'dataview'}
 		<!-- Enhanced Data View Table Section - Replace the existing data view table in your component -->
 
@@ -769,12 +823,7 @@
 									title="View full details"
 								></Button>
 								<Button
-									onclick={() => {
-										emailUserId = signup.user_id || '';
-										emailUserName = signup.full_name;
-										emailUserEmail = signup.email;
-										showEmailModal = true;
-									}}
+									onclick={() => openEmailComposer(signup)}
 									variant="ghost"
 									size="sm"
 									icon={Mail}
@@ -1211,12 +1260,7 @@
 
 											<!-- Send Email -->
 											<Button
-												onclick={() => {
-													emailUserId = signup.user_id || '';
-													emailUserName = signup.full_name;
-													emailUserEmail = signup.email;
-													showEmailModal = true;
-												}}
+												onclick={() => openEmailComposer(signup)}
 												variant="ghost"
 												size="sm"
 												icon={Mail}
@@ -1961,12 +2005,7 @@
 
 												<!-- Send Email -->
 												<Button
-													onclick={() => {
-														emailUserId = signup.user_id || '';
-														emailUserName = signup.full_name;
-														emailUserEmail = signup.email;
-														showEmailModal = true;
-													}}
+													onclick={() => openEmailComposer(signup)}
 													variant="ghost"
 													size="sm"
 													icon={Mail}
@@ -2073,12 +2112,7 @@
 											<div class="flex items-center justify-end space-x-2">
 												<!-- Send Email -->
 												<Button
-													onclick={() => {
-														emailUserId = member.user_id || '';
-														emailUserName = member.full_name;
-														emailUserEmail = member.email;
-														showEmailModal = true;
-													}}
+													onclick={() => openEmailComposer(member)}
 													variant="ghost"
 													size="sm"
 													icon={Mail}
@@ -2648,13 +2682,15 @@
 </Modal>
 
 <!-- Email Composer Modal -->
-<EmailComposerModal
-	bind:isOpen={showEmailModal}
-	userId={emailUserId}
-	userName={emailUserName}
-	userEmail={emailUserEmail}
-	onEmailSent={() => {
-		showEmailModal = false;
-		// Optionally refresh members list or show success message
-	}}
-/>
+{#if EmailComposerModalComponent}
+	<EmailComposerModalComponent
+		bind:isOpen={showEmailModal}
+		userId={emailUserId}
+		userName={emailUserName}
+		userEmail={emailUserEmail}
+		onEmailSent={() => {
+			showEmailModal = false;
+			// Optionally refresh members list or show success message
+		}}
+	/>
+{/if}

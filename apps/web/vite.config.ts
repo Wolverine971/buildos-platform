@@ -11,6 +11,12 @@ export default defineConfig(({ mode }) => {
 	const isAnalyze = process.env.ANALYZE === 'true';
 	// Keep dep pre-bundles stable in local dev unless explicitly forced.
 	const forceOptimizeDeps = process.env.VITE_FORCE_OPTIMIZE_DEPS === 'true';
+	const hmrPortEnv = process.env.VITE_HMR_PORT?.trim();
+	const parsedHmrPort = hmrPortEnv ? Number.parseInt(hmrPortEnv, 10) : 24678;
+	const hmrPort =
+		hmrPortEnv?.toLowerCase() === 'auto' || !Number.isFinite(parsedHmrPort)
+			? undefined
+			: parsedHmrPort;
 
 	// Extra dev-server hostnames (comma-separated). Use when tunneling through
 	// ngrok/cloudflared with a specific subdomain that isn't covered by the
@@ -73,7 +79,7 @@ export default defineConfig(({ mode }) => {
 		server: {
 			fs: { strict: true },
 			hmr: {
-				port: 24678,
+				...(hmrPort && hmrPort > 0 ? { port: hmrPort } : {}),
 				overlay: true
 			},
 			watch: {

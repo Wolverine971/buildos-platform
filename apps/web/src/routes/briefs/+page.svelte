@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/briefs/+page.svelte -->
 <script lang="ts">
-	import { onMount, onDestroy, getContext } from 'svelte';
+	import { onMount, onDestroy, getContext, type Component } from 'svelte';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
 	import { replaceState } from '$app/navigation';
@@ -34,7 +34,6 @@
 	} from '$lib/services/briefClient.service';
 	import type { DailyBrief, StreamingBriefData, StreamingStatus } from '$lib/types/daily-brief';
 	import { renderMarkdown } from '$lib/utils/markdown';
-	import BriefAnalyticsDashboard from '$lib/components/analytics/BriefAnalyticsDashboard.svelte';
 	import ProjectBriefGrid from '$lib/components/briefs/ProjectBriefGrid.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -46,7 +45,6 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import BriefsSettingsModal from '$lib/components/briefs/BriefsSettingsModal.svelte';
 	import { Settings } from 'lucide-svelte';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import { briefChatSessionStore } from '$lib/stores/briefChatSession.store';
@@ -107,6 +105,10 @@
 	let showDeleteConfirmation = $state(false);
 	let briefToDelete = $state<DailyBrief | null>(null);
 	let showSettingsModal = $state(false);
+	let BriefAnalyticsDashboardComponent = $state<Component<any, any> | null>(null);
+	let BriefsSettingsModalComponent = $state<Component<any, any> | null>(null);
+	let briefAnalyticsDashboardPromise: Promise<Component<any, any>> | null = null;
+	let briefsSettingsModalPromise: Promise<Component<any, any>> | null = null;
 
 	// Brief chat state
 	let showBriefChatModal = $state(false);
@@ -125,6 +127,44 @@
 	// Next scheduled brief state
 	let nextScheduledBrief = $state<{ scheduledFor: string; status: string } | null>(null);
 	let isLoadingNextBrief = $state(true);
+
+	async function loadBriefAnalyticsDashboard() {
+		if (!briefAnalyticsDashboardPromise) {
+			briefAnalyticsDashboardPromise = import(
+				'$lib/components/analytics/BriefAnalyticsDashboard.svelte'
+			).then((module) => {
+				BriefAnalyticsDashboardComponent = module.default;
+				return module.default;
+			});
+		}
+
+		return briefAnalyticsDashboardPromise;
+	}
+
+	async function loadBriefsSettingsModal() {
+		if (!briefsSettingsModalPromise) {
+			briefsSettingsModalPromise = import(
+				'$lib/components/briefs/BriefsSettingsModal.svelte'
+			).then((module) => {
+				BriefsSettingsModalComponent = module.default;
+				return module.default;
+			});
+		}
+
+		return briefsSettingsModalPromise;
+	}
+
+	async function openBriefSettings() {
+		await loadBriefsSettingsModal();
+		showSettingsModal = true;
+	}
+
+	$effect(() => {
+		if (!browser) return;
+		if (selectedView === 'analytics') {
+			void loadBriefAnalyticsDashboard();
+		}
+	});
 
 	// Function to get user's timezone
 	function getUserTimezone(): string {
@@ -539,6 +579,9 @@
 
 	function changeView(newView: 'single' | 'list' | 'analytics') {
 		selectedView = newView;
+		if (newView === 'analytics') {
+			void loadBriefAnalyticsDashboard();
+		}
 		if (newView !== 'single') {
 			activeBriefId = null;
 		}
@@ -754,7 +797,7 @@
 
 						<Button
 							type="button"
-							onclick={() => (showSettingsModal = true)}
+							onclick={openBriefSettings}
 							variant="ghost"
 							size="sm"
 							class="flex items-center gap-2 px-2 sm:px-3 py-2"
@@ -1008,7 +1051,15 @@
 
 			<!-- Main Content -->
 			{#if selectedView === 'analytics'}
-				<BriefAnalyticsDashboard />
+				{#if BriefAnalyticsDashboardComponent}
+					<BriefAnalyticsDashboardComponent />
+				{:else}
+					<div
+						class="bg-card rounded-lg border border-border p-8 text-center text-sm text-muted-foreground"
+					>
+						Loading analytics...
+					</div>
+				{/if}
 			{:else if selectedView === 'list'}
 				<!-- Mobile-Optimized Filters Panel -->
 				{#if showFilters}
@@ -1388,19 +1439,21 @@
 </ConfirmationModal>
 
 <!-- Briefs Settings Modal -->
-<BriefsSettingsModal
-	isOpen={showSettingsModal}
-	user={data.user}
-	onClose={() => (showSettingsModal = false)}
-	onSave={() => {
-		toastService.success('Brief settings updated successfully');
-		showSettingsModal = false;
-	}}
-	onReset={() => {
-		toastService.success('Brief settings reset to defaults');
-		showSettingsModal = false;
-	}}
-/>
+{#if BriefsSettingsModalComponent}
+	<BriefsSettingsModalComponent
+		isOpen={showSettingsModal}
+		user={data.user}
+		onClose={() => (showSettingsModal = false)}
+		onSave={() => {
+			toastService.success('Brief settings updated successfully');
+			showSettingsModal = false;
+		}}
+		onReset={() => {
+			toastService.success('Brief settings reset to defaults');
+			showSettingsModal = false;
+		}}
+	/>
+{/if}
 
 <!-- Brief Chat Modal (two-pane: brief + chat) -->
 {#if BriefChatModal && showBriefChatModal && briefChatBrief}

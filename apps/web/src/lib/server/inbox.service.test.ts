@@ -9,7 +9,7 @@ vi.mock('@buildos/shared-agent-ops/inbox-index', () => ({
 	syncInboxItemForSource: mocks.syncInboxItemForSource
 }));
 
-import { listInboxItems, sortInboxRowsForReview } from './inbox.service';
+import { countInboxItems, listInboxItems, sortInboxRowsForReview } from './inbox.service';
 
 type Row = Record<string, any>;
 
@@ -41,15 +41,20 @@ class QueryBuilderMock {
 	private action: 'select' | 'update' = 'select';
 	private filters: Array<[string, unknown]> = [];
 	private inFilters: Array<[string, unknown[]]> = [];
+	private notNullFilters: string[] = [];
 	private updatePayload: Row | null = null;
 	private rowLimit: number | null = null;
+	private countRequested = false;
+	private headOnly = false;
 
 	constructor(
 		private readonly state: MockState,
 		private readonly table: string
 	) {}
 
-	select() {
+	select(_columns?: string, options?: { count?: string; head?: boolean }) {
+		this.countRequested = Boolean(options?.count);
+		this.headOnly = Boolean(options?.head);
 		return this;
 	}
 
@@ -74,7 +79,10 @@ class QueryBuilderMock {
 		return this;
 	}
 
-	not() {
+	not(field: string, operator: string, value: unknown) {
+		if (operator === 'is' && value === null) {
+			this.notNullFilters.push(field);
+		}
 		return this;
 	}
 
@@ -88,8 +96,12 @@ class QueryBuilderMock {
 	}
 
 	private selectRows(): Row[] {
-		const rows = (this.state.tables[this.table] ?? []).filter((row) =>
-			matches(row, this.filters, this.inFilters)
+		const rows = (this.state.tables[this.table] ?? []).filter(
+			(row) =>
+				matches(row, this.filters, this.inFilters) &&
+				this.notNullFilters.every(
+					(field) => row[field] !== null && row[field] !== undefined
+				)
 		);
 		return this.rowLimit === null ? rows : rows.slice(0, this.rowLimit);
 	}
@@ -112,7 +124,15 @@ class QueryBuilderMock {
 		return { data: this.selectRows()[0] ?? null, error: null };
 	}
 
-	then(resolve: (value: { data: Row[]; error: null }) => unknown) {
+	then(resolve: (value: { data: Row[]; error: null; count: number | null }) => unknown) {
+		const allRows = (this.state.tables[this.table] ?? []).filter(
+			(row) =>
+				matches(row, this.filters, this.inFilters) &&
+				this.notNullFilters.every(
+					(field) => row[field] !== null && row[field] !== undefined
+				)
+		);
+		const rows = this.rowLimit === null ? allRows : allRows.slice(0, this.rowLimit);
 		this.state.operations.push({
 			table: this.table,
 			action: this.action,
@@ -120,7 +140,13 @@ class QueryBuilderMock {
 			filters: [...this.filters],
 			inFilters: [...this.inFilters]
 		});
-		return Promise.resolve(resolve({ data: this.selectRows(), error: null }));
+		return Promise.resolve(
+			resolve({
+				data: this.headOnly ? [] : rows,
+				error: null,
+				count: this.countRequested ? allRows.length : null
+			})
+		);
 	}
 }
 
@@ -418,6 +444,152 @@ describe('inbox service', () => {
 				})
 			})
 		);
+	});
+
+	it('counts inbox rows through a lightweight index query without backfilling source rows', async () => {
+		const { supabase, state } = createSupabaseMock({
+			inbox_items: [
+				{
+					id: 'inbox-account',
+					source_type: 'agent_run',
+					source_ref_id: 'agent-run-1',
+					status: 'pending',
+					project_id: null,
+					created_at: '2026-07-04T12:00:00.000Z'
+				},
+				{
+					id: 'inbox-project',
+					source_type: 'project_suggestion',
+					source_ref_id: 'suggestion-1',
+					status: 'pending',
+					project_id: 'project-1',
+					created_at: '2026-07-04T12:01:00.000Z'
+				},
+				{
+					id: 'inbox-decided',
+					source_type: 'project_suggestion',
+					source_ref_id: 'suggestion-2',
+					status: 'decided',
+					project_id: 'project-1',
+					created_at: '2026-07-04T12:02:00.000Z'
+				}
+			],
+			project_suggestions: [delegatedSuggestion()]
+		});
+
+		const result = await countInboxItems({
+			supabase,
+			admin: supabase,
+			userId: 'user-1',
+			status: 'pending',
+			limit: 20
+		});
+
+		expect(result).toMatchObject({
+			total: 2,
+			by_status: { pending: 2 },
+			by_source_type: {
+				agent_run: 1,
+				project_suggestion: 1
+			},
+			by_project: { 'project-1': 1 },
+			account: 1,
+			truncated: false,
+			repairedCount: 0,
+			backfilledCount: 0
+		});
+		expect(mocks.syncInboxItemForSource).not.toHaveBeenCalled();
+		expect(
+			state.operations.some((operation) => operation.table === 'project_suggestions')
+		).toBe(false);
+	});
+
+	it('keeps exact totals when the count breakdown rows are limited', async () => {
+		const { supabase } = createSupabaseMock({
+			inbox_items: [
+				{
+					id: 'inbox-account',
+					source_type: 'agent_run',
+					source_ref_id: 'agent-run-1',
+					status: 'pending',
+					project_id: null,
+					created_at: '2026-07-04T12:00:00.000Z'
+				},
+				{
+					id: 'inbox-project',
+					source_type: 'project_suggestion',
+					source_ref_id: 'suggestion-1',
+					status: 'pending',
+					project_id: 'project-1',
+					created_at: '2026-07-04T12:01:00.000Z'
+				}
+			]
+		});
+
+		const result = await countInboxItems({
+			supabase,
+			admin: supabase,
+			userId: 'user-1',
+			status: 'pending',
+			limit: 1
+		});
+
+		expect(result.total).toBe(2);
+		expect(result.account).toBe(1);
+		expect(result.by_status).toEqual({ pending: 2 });
+		expect(result.truncated).toBe(true);
+	});
+
+	it('attaches project metadata from source payloads when the index row is missing project_id', async () => {
+		const inboxItem = {
+			id: 'inbox-agent-run',
+			source_type: 'agent_run',
+			source_ref_id: 'agent-run-1',
+			source_status: 'proposal_ready',
+			user_id: 'user-1',
+			project_id: null,
+			audience: 'user',
+			status: 'pending',
+			title: 'Review generated changes',
+			summary: 'One proposed change',
+			risk_tier: null,
+			action_kinds: ['approve', 'reject'],
+			created_at: '2026-07-04T12:00:00.000Z'
+		};
+		mocks.syncInboxItemForSource.mockResolvedValue(inboxItem);
+		const { supabase, state } = createSupabaseMock({
+			inbox_items: [inboxItem],
+			agent_runs: [
+				{
+					id: 'agent-run-1',
+					user_id: 'user-1',
+					project_id: 'project-1',
+					status: 'proposal_ready',
+					label: 'Review generated changes',
+					change_set: { status: 'pending', changes: [{ tool: 'create_onto_task' }] },
+					created_at: '2026-07-04T12:00:00.000Z'
+				}
+			],
+			onto_projects: [{ id: 'project-1', name: 'Launch' }]
+		});
+
+		const result = await listInboxItems({
+			supabase,
+			admin: supabase,
+			userId: 'user-1',
+			status: 'pending',
+			sourceType: 'agent_run',
+			limit: 20,
+			includePayload: true
+		});
+
+		expect(result.items[0]).toMatchObject({
+			project_id: 'project-1',
+			project: { id: 'project-1', name: 'Launch' }
+		});
+		expect(
+			state.operations.filter((operation) => operation.table === 'onto_projects')
+		).toHaveLength(1);
 	});
 
 	it('attaches project audit context to audit child inbox items', async () => {

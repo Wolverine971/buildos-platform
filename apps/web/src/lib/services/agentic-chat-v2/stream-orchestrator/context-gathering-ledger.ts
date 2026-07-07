@@ -29,6 +29,7 @@ export type ContextGatheringObservation = {
 type ObserveToolRoundParams = {
 	roundExecutions: FastToolExecution[];
 	roundPattern: RoundToolPattern;
+	roundReachedWriteExecutor?: boolean;
 	toolRounds: number;
 	maxToolRounds: number;
 	modelPayloadChars: number;
@@ -57,7 +58,9 @@ export class ContextGatheringLedger {
 
 	observeToolRound(params: ObserveToolRoundParams): ContextGatheringObservation {
 		this.totalModelPayloadChars += Math.max(0, params.modelPayloadChars);
-		if (params.roundPattern.hasWriteOps) {
+		const roundReachedWriteExecutor =
+			params.roundReachedWriteExecutor ?? params.roundPattern.hasWriteOps;
+		if (roundReachedWriteExecutor) {
 			this.writeRounds += 1;
 			this.lowNoveltyRounds = 0;
 			this.repeatedSearchRounds = 0;

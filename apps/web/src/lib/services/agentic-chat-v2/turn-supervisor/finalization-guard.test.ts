@@ -294,6 +294,29 @@ describe('applyFinalizationGuard', () => {
 		expect(guard.text).not.toContain('I completed');
 	});
 
+	it('does not treat schema discovery for a write op as a completed write', () => {
+		const call = toolCall('tool_schema', {
+			op: 'onto.task.update',
+			include_schema: true
+		});
+		const guard = applyFinalizationGuard({
+			finalAssistantText: '',
+			assistantText: '',
+			mutationRequested: true,
+			toolExecutions: [
+				{
+					toolCall: call,
+					result: toolResult(call, true, { type: 'tool_schema' })
+				}
+			]
+		});
+
+		expect(guard.applied).toBe(true);
+		expect(guard.reason).toBe('incomplete_mutation_after_reads');
+		expect(guard.text).toContain('nothing was updated');
+		expect(guard.text).not.toContain('I completed');
+	});
+
 	it('replaces a read-only lead-in after successful reads with evidence', () => {
 		const call = toolCall('search_project', { query: 'user guide suite' });
 		const guard = applyFinalizationGuard({

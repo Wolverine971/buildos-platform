@@ -15,6 +15,7 @@
 	import InboxChangeDetails from '$lib/components/inbox/InboxChangeDetails.svelte';
 	import InboxDecisionControls from '$lib/components/inbox/InboxDecisionControls.svelte';
 	import InboxDismissFeedbackFields from '$lib/components/inbox/InboxDismissFeedbackFields.svelte';
+	import InboxProjectBadge from '$lib/components/inbox/InboxProjectBadge.svelte';
 	import type {
 		AgentChatResolutionAction,
 		DataMutationSummary
@@ -97,6 +98,7 @@
 
 	type ProjectLoopRunContext = {
 		id: string;
+		project_id: string | null;
 		trigger_reason: string | null;
 		status: string | null;
 		summary: string | null;
@@ -108,6 +110,7 @@
 
 	type ProjectAuditContext = {
 		id: string;
+		project_id: string | null;
 		status: string | null;
 		trigger_reason: string | null;
 		delivery_confidence: string | null;
@@ -207,11 +210,12 @@
 		const groups = new Map<string, InboxItem[]>();
 		for (const item of items) {
 			const audit = projectAuditContext(item);
-			const key = audit ? `audit:${audit.id}` : (item.project_id ?? accountGroupKey);
+			const project = itemProject(item);
+			const key = audit ? `audit:${audit.id}` : (project?.id ?? accountGroupKey);
 			groups.set(key, [...(groups.get(key) ?? []), item]);
 		}
 		return [...groups.entries()].map(([key, groupItems]) => {
-			const project = groupItems.find((item) => item.project)?.project ?? null;
+			const project = groupItems.map(itemProject).find(Boolean) ?? null;
 			const audit = groupItems.map(projectAuditContext).find(Boolean) ?? null;
 			return {
 				key,
@@ -262,6 +266,10 @@
 
 	function projectAuditContext(item: InboxItem): ProjectAuditContext | null {
 		return item.source_context?.project_audit ?? null;
+	}
+
+	function itemProject(item: InboxItem): { id: string; name: string | null } | null {
+		return item.project ?? (item.project_id ? { id: item.project_id, name: null } : null);
 	}
 
 	function agentChangeSet(item: InboxItem): ChangeSet | null {
@@ -901,6 +909,7 @@
 								{@const calendar = calendarSuggestion(item)}
 								{@const reviewRun = projectLoopRunContext(item)}
 								{@const reviewRunText = reviewRunLabel(reviewRun)}
+								{@const project = itemProject(item)}
 								{@const taskPreview = calendarTasks(item)}
 								{@const eventPattern = calendarEventPattern(item)}
 								{@const dateRange = formatCalendarDateRange(eventPattern)}
@@ -916,6 +925,7 @@
 										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 									>
 										<div class="min-w-0 flex-1">
+											<InboxProjectBadge {project} />
 											<div class="flex flex-wrap items-center gap-2">
 												<span
 													class="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold {tier.cls}"
