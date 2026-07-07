@@ -33,6 +33,7 @@ import {
 	buildPreparedPromptKey,
 	buildPreparedPromptResponse,
 	buildPreparedPromptSurface,
+	compactPreparedPromptContextPayload,
 	getPreparedPromptTtlMs,
 	isPreparedPromptPrewarmEnabled,
 	resolveDefaultPreparedSurfaceProfile,
@@ -191,8 +192,11 @@ async function buildPreparedPrompt(params: {
 		}
 	});
 
+	const preparedContextPayload = compactPreparedPromptContextPayload(
+		params.prewarmedContext.context
+	);
 	const promptContext = {
-		...params.prewarmedContext.context,
+		...preparedContextPayload,
 		conversationSummary
 	};
 	const defaultSurfaceProfile = resolveDefaultPreparedSurfaceProfile(params.contextType);
@@ -212,7 +216,7 @@ async function buildPreparedPrompt(params: {
 		preparedSurfaces[surfaceProfile] = buildPreparedPromptSurface({
 			surfaceProfile,
 			contextType: params.contextType,
-			contextPayload: promptContext,
+			contextPayload: preparedContextPayload,
 			conversationSummary,
 			tools,
 			envelope,
@@ -238,7 +242,7 @@ async function buildPreparedPrompt(params: {
 		nonce_sha256: nonceSha256,
 		prompt_variant: LITE_PROMPT_VARIANT,
 		context_cache_version: FASTCHAT_CONTEXT_CACHE_VERSION,
-		context_payload: params.prewarmedContext.context,
+		context_payload: preparedContextPayload,
 		conversation_summary: conversationSummary,
 		history_for_model: historyComposition.historyForModel,
 		history_strategy: historyComposition.strategy,
@@ -247,7 +251,7 @@ async function buildPreparedPrompt(params: {
 		history_for_model_count: historyComposition.historyForModel.length,
 		prepared_surfaces: preparedSurfaces,
 		default_surface_profile: defaultSurfaceProfile,
-		context_payload_sha256: sha256Json(params.prewarmedContext.context),
+		context_payload_sha256: sha256Json(preparedContextPayload),
 		expires_at: expiresAt
 	});
 
@@ -390,6 +394,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			focusEntityType: promptContext.focusEntityType ?? null,
 			focusEntityId: promptContext.focusEntityId ?? null,
 			focusEntityName: promptContext.focusEntityName ?? null,
+			contextLoadSource: promptContext.contextLoadSource ?? undefined,
 			data: promptContext.data ?? null
 		}
 	});

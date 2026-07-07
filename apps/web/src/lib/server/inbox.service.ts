@@ -88,6 +88,7 @@ type InboxCountBreakdownRow = Pick<InboxIndexRow, 'status' | 'source_type' | 'pr
 const INBOX_SOURCE_TYPES = new Set<InboxSourceType>([
 	'agent_run',
 	'project_suggestion',
+	'project_audit',
 	'calendar_suggestion',
 	'profile_fragment',
 	'contact_merge_candidate'
@@ -96,6 +97,7 @@ const INBOX_SOURCE_TYPES = new Set<InboxSourceType>([
 const SUPPORTED_SOURCE_TYPES = new Set<InboxSourceType>([
 	'agent_run',
 	'project_suggestion',
+	'project_audit',
 	'calendar_suggestion'
 ]);
 
@@ -415,6 +417,7 @@ async function loadSourcePayloads(params: {
 	const tableBySource: Partial<Record<InboxSourceType, string>> = {
 		agent_run: 'agent_runs',
 		project_suggestion: 'project_suggestions',
+		project_audit: 'project_audits',
 		calendar_suggestion: 'calendar_project_suggestions'
 	};
 
@@ -476,17 +479,25 @@ async function loadSourceContexts(params: {
 }): Promise<Map<string, InboxSourceContext>> {
 	const runIds = new Set<string>();
 	const suggestionIds = new Set<string>();
+	const directAuditIds = new Set<string>();
 
 	for (const row of params.rows) {
-		if (row.source_type !== 'project_suggestion') continue;
-		suggestionIds.add(row.source_ref_id);
 		const payload = params.payloads.get(sourceKey(row.source_type, row.source_ref_id));
-		const runId = asString(payload?.run_id);
-		if (runId) runIds.add(runId);
+		if (row.source_type === 'project_suggestion') {
+			suggestionIds.add(row.source_ref_id);
+			const runId = asString(payload?.run_id);
+			if (runId) runIds.add(runId);
+		} else if (row.source_type === 'project_audit') {
+			directAuditIds.add(row.source_ref_id);
+			const runId = asString(payload?.loop_run_id);
+			if (runId) runIds.add(runId);
+		}
 	}
 
 	const contexts = new Map<string, InboxSourceContext>();
-	if (runIds.size === 0 && suggestionIds.size === 0) return contexts;
+	if (runIds.size === 0 && suggestionIds.size === 0 && directAuditIds.size === 0) {
+		return contexts;
+	}
 
 	const runsById = new Map<string, InboxProjectLoopRunContext>();
 	if (runIds.size > 0) {
@@ -523,14 +534,17 @@ async function loadSourceContexts(params: {
 	}
 
 	const auditIds = [
-		...new Set([...auditLinkBySuggestionId.values()].map((link) => link.auditId))
+		...new Set([
+			...directAuditIds,
+			...[...auditLinkBySuggestionId.values()].map((link) => link.auditId)
+		])
 	];
 	const auditsById = new Map<string, Record<string, unknown>>();
 	if (auditIds.length > 0) {
 		const { data, error } = await params.admin
 			.from('project_audits')
 			.select(
-				'id, project_id, status, trigger_reason, delivery_confidence, summary, generated_suggestion_count, unresolved_suggestion_count, created_at, finished_at'
+				'id, project_id, loop_run_id, status, trigger_reason, delivery_confidence, summary, generated_suggestion_count, unresolved_suggestion_count, created_at, finished_at'
 			)
 			.in('id', auditIds);
 		if (error) throw error;
@@ -551,6 +565,18 @@ async function loadSourceContexts(params: {
 			project_audit: auditRow
 				? mapProjectAuditContext(auditRow, auditLink?.role ?? null)
 				: null
+		});
+	}
+
+	for (const row of params.rows) {
+		if (row.source_type !== 'project_audit') continue;
+		const auditRow =
+			auditsById.get(row.source_ref_id) ??
+			params.payloads.get(sourceKey(row.source_type, row.source_ref_id));
+		const runId = asString(auditRow?.loop_run_id);
+		contexts.set(sourceKey(row.source_type, row.source_ref_id), {
+			project_loop_run: runId ? (runsById.get(runId) ?? null) : null,
+			project_audit: auditRow ? mapProjectAuditContext(auditRow, null) : null
 		});
 	}
 
@@ -650,6 +676,14 @@ async function loadDecisionCapabilities(params: {
 			continue;
 		}
 
+		if (row.source_type === 'project_audit') {
+			capabilities.set(rowKey(row), {
+				can_decide: false,
+				decision_disabled_reason: 'Open the audit packet to review recommendations'
+			});
+			continue;
+		}
+
 		if (row.source_type === 'project_suggestion') {
 			if (!row.project_id) {
 				capabilities.set(rowKey(row), {
@@ -704,6 +738,66 @@ async function syncRows(params: {
 		if (syncedRow) synced += 1;
 	}
 	return synced;
+}
+
+async function splitProjectSuggestionsByAuditLink(params: {
+	admin: AnySupabase;
+	rows: Record<string, unknown>[];
+}): Promise<{
+	standaloneRows: Record<string, unknown>[];
+	linkedSuggestionIds: string[];
+}> {
+	const suggestionIds = [
+		...new Set(params.rows.map((row) => asString(row.id)).filter((id): id is string => !!id))
+	];
+	if (suggestionIds.length === 0) return { standaloneRows: params.rows, linkedSuggestionIds: [] };
+
+	const { data, error } = await params.admin
+		.from('project_audit_suggestions')
+		.select('suggestion_id')
+		.in('suggestion_id', suggestionIds);
+	if (error) throw error;
+
+	const linkedSuggestionIds = [
+		...new Set(
+			((data ?? []) as Record<string, unknown>[])
+				.map((row) => asString(row.suggestion_id))
+				.filter((id): id is string => !!id)
+		)
+	];
+	if (linkedSuggestionIds.length === 0) {
+		return { standaloneRows: params.rows, linkedSuggestionIds: [] };
+	}
+
+	const linkedSet = new Set(linkedSuggestionIds);
+	return {
+		standaloneRows: params.rows.filter((row) => {
+			const id = asString(row.id);
+			return !id || !linkedSet.has(id);
+		}),
+		linkedSuggestionIds
+	};
+}
+
+async function expireAuditChildInboxRows(params: {
+	admin: AnySupabase;
+	suggestionIds: string[];
+}): Promise<number> {
+	if (params.suggestionIds.length === 0) return 0;
+	const { data, error } = await params.admin
+		.from('inbox_items')
+		.update({
+			status: 'expired',
+			source_status: 'grouped_into_project_audit',
+			decided_at: new Date().toISOString(),
+			blocked_reason: 'Grouped into the complete project audit inbox packet'
+		})
+		.eq('source_type', 'project_suggestion')
+		.in('source_ref_id', params.suggestionIds)
+		.in('status', ['pending', 'deciding', 'snoozed', 'blocked'])
+		.select('id');
+	if (error) throw error;
+	return ((data ?? []) as Record<string, unknown>[]).length;
 }
 
 function buildClarifiedSuggestionRepairResult(params: {
@@ -879,10 +973,38 @@ async function backfillVisibleSourceRows(params: {
 			admin: params.admin,
 			rows: (data ?? []) as Record<string, unknown>[]
 		});
+		const { standaloneRows, linkedSuggestionIds } = await splitProjectSuggestionsByAuditLink({
+			admin: params.admin,
+			rows
+		});
+		await expireAuditChildInboxRows({
+			admin: params.admin,
+			suggestionIds: linkedSuggestionIds
+		});
 		synced += await syncRows({
 			admin: params.admin,
 			sourceType: 'project_suggestion',
-			rows
+			rows: standaloneRows
+		});
+	}
+
+	if (
+		(!params.sourceType || params.sourceType === 'project_audit') &&
+		params.group !== 'account'
+	) {
+		let query = params.supabase
+			.from('project_audits')
+			.select('*')
+			.in('status', ['queued', 'running', 'ready'])
+			.order('created_at', { ascending: false })
+			.limit(limit);
+		if (params.projectId) query = query.eq('project_id', params.projectId);
+		const { data, error } = await query;
+		if (error) throw error;
+		synced += await syncRows({
+			admin: params.admin,
+			sourceType: 'project_audit',
+			rows: (data ?? []) as Record<string, unknown>[]
 		});
 	}
 

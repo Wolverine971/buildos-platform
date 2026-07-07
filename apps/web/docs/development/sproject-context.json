@@ -33,6 +33,21 @@
 			]
 		},
 		{
+			"file": "src/lib/components/email/EmailManager.svelte",
+			"type": "component",
+			"components": ["EmailComposer", "EmailPreview"]
+		},
+		{
+			"file": "src/lib/components/landing/HomepageV2.svelte",
+			"type": "component",
+			"components": ["PublicProjectView"]
+		},
+		{
+			"file": "src/lib/components/layout/Navigation.svelte",
+			"type": "component",
+			"components": ["AgentChatModal", "WorkPanel"]
+		},
+		{
 			"file": "src/lib/components/dashboard/AnalyticsDashboard.svelte",
 			"type": "component",
 			"components": [
@@ -46,16 +61,6 @@
 			"file": "src/lib/components/dashboard/DashboardInboxModal.svelte",
 			"type": "component",
 			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/email/EmailManager.svelte",
-			"type": "component",
-			"components": ["EmailComposer", "EmailPreview"]
-		},
-		{
-			"file": "src/lib/components/layout/Navigation.svelte",
-			"type": "component",
-			"components": ["AgentChatModal", "WorkPanel"]
 		},
 		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
@@ -78,60 +83,9 @@
 			]
 		},
 		{
-			"file": "src/lib/components/landing/HomepageV2.svelte",
-			"type": "component",
-			"components": ["PublicProjectView"]
-		},
-		{
 			"file": "src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
 			"type": "component",
 			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/ontology/DocumentModal.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/ontology/EventEditModal.svelte",
-			"type": "component",
-			"components": ["TaskEditModal", "GoalEditModal", "PlanEditModal", "DocumentModal"]
-		},
-		{
-			"file": "src/lib/components/ontology/GoalEditModal.svelte",
-			"type": "component",
-			"components": ["AgentChatModal", "MilestoneCreateModal", "MilestoneEditModal"]
-		},
-		{
-			"file": "src/lib/components/ontology/MilestoneEditModal.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/ontology/OntologyProjectEditModal.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/ontology/PlanEditModal.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/ontology/RiskEditModal.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/ontology/TaskEditModal.svelte",
-			"type": "component",
-			"components": [
-				"TaskSeriesModal",
-				"DocumentModal",
-				"GoalEditModal",
-				"PlanEditModal",
-				"AgentChatModal"
-			]
 		},
 		{
 			"file": "src/lib/components/project/ProjectAuditTracker.svelte",
@@ -182,6 +136,52 @@
 			]
 		},
 		{
+			"file": "src/lib/components/ontology/DocumentModal.svelte",
+			"type": "component",
+			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/lib/components/ontology/EventEditModal.svelte",
+			"type": "component",
+			"components": ["TaskEditModal", "GoalEditModal", "PlanEditModal", "DocumentModal"]
+		},
+		{
+			"file": "src/lib/components/ontology/GoalEditModal.svelte",
+			"type": "component",
+			"components": ["AgentChatModal", "MilestoneCreateModal", "MilestoneEditModal"]
+		},
+		{
+			"file": "src/lib/components/ontology/MilestoneEditModal.svelte",
+			"type": "component",
+			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/lib/components/ontology/OntologyProjectEditModal.svelte",
+			"type": "component",
+			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/lib/components/ontology/PlanEditModal.svelte",
+			"type": "component",
+			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/lib/components/ontology/RiskEditModal.svelte",
+			"type": "component",
+			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/lib/components/ontology/TaskEditModal.svelte",
+			"type": "component",
+			"components": [
+				"TaskSeriesModal",
+				"DocumentModal",
+				"GoalEditModal",
+				"PlanEditModal",
+				"AgentChatModal"
+			]
+		},
+		{
 			"file": "src/routes/admin/beta/+page.svelte",
 			"type": "page",
 			"components": ["EmailManager", "EmailComposerModal"]
@@ -192,14 +192,14 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal", "ProjectModalsHost"]
-		},
-		{
 			"file": "src/routes/projects/create/+page.svelte",
 			"type": "page",
 			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal", "ProjectModalsHost"]
 		},
 		{
 			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
@@ -1230,6 +1230,12 @@
 			]
 		},
 		{
+			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["prepareAgentRunChatEventDetail"]
+		},
+		{
 			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 			"type": "component",
 			"components": [],
@@ -1239,12 +1245,6 @@
 				"getCommander",
 				"formatTimelineYearRange"
 			]
-		},
-		{
-			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["prepareAgentRunChatEventDetail"]
 		},
 		{
 			"file": "src/lib/components/ontology/graph/lib/g6.service.ts",
@@ -1284,20 +1284,6 @@
 		"src/lib/components/dashboard/AnalyticsDashboard.svelte": [
 			"src/lib/components/dashboard/DashboardInboxModal.svelte"
 		],
-		"src/lib/components/ontology/EventEditModal.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/GoalEditModal.svelte",
-			"src/lib/components/ontology/PlanEditModal.svelte",
-			"src/lib/components/ontology/DocumentModal.svelte"
-		],
-		"src/lib/components/ontology/GoalEditModal.svelte": [
-			"src/lib/components/ontology/MilestoneEditModal.svelte"
-		],
-		"src/lib/components/ontology/TaskEditModal.svelte": [
-			"src/lib/components/ontology/DocumentModal.svelte",
-			"src/lib/components/ontology/GoalEditModal.svelte",
-			"src/lib/components/ontology/PlanEditModal.svelte"
-		],
 		"src/lib/components/project/ProjectCalendarSettingsModal.svelte": [
 			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/ontology/EventEditModal.svelte"
@@ -1312,6 +1298,20 @@
 			"src/lib/components/ontology/EventEditModal.svelte",
 			"src/lib/components/project/ProjectCalendarSettingsModal.svelte",
 			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
+		],
+		"src/lib/components/ontology/EventEditModal.svelte": [
+			"src/lib/components/ontology/TaskEditModal.svelte",
+			"src/lib/components/ontology/GoalEditModal.svelte",
+			"src/lib/components/ontology/PlanEditModal.svelte",
+			"src/lib/components/ontology/DocumentModal.svelte"
+		],
+		"src/lib/components/ontology/GoalEditModal.svelte": [
+			"src/lib/components/ontology/MilestoneEditModal.svelte"
+		],
+		"src/lib/components/ontology/TaskEditModal.svelte": [
+			"src/lib/components/ontology/DocumentModal.svelte",
+			"src/lib/components/ontology/GoalEditModal.svelte",
+			"src/lib/components/ontology/PlanEditModal.svelte"
 		],
 		"src/routes/admin/beta/+page.svelte": ["src/lib/components/email/EmailManager.svelte"],
 		"src/routes/dashboard/calendar/+page.svelte": [
@@ -1335,11 +1335,11 @@
 		]
 	},
 	"unusedComponents": [
-		"src/lib/components/dashboard/AnalyticsDashboard.svelte",
+		"src/lib/components/landing/HomepageV2.svelte",
 		"src/lib/components/layout/Navigation.svelte",
+		"src/lib/components/dashboard/AnalyticsDashboard.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
-		"src/lib/components/landing/HomepageV2.svelte",
 		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
 		"src/lib/components/project/ProjectAuditTracker.svelte",
 		"src/lib/components/project/ProjectHistorySection.svelte",
@@ -1384,8 +1384,8 @@
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",
 		"src/lib/components/ui/codemirror/voice-widget.ts",
-		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
+		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/ontology/graph/lib/g6.service.ts",
 		"src/lib/components/ontology/graph/lib/graph.filters.ts",
 		"src/lib/components/ontology/graph/lib/graph.service.ts",

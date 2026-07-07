@@ -1,5 +1,9 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/repair-instructions.ts
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
+import {
+	getSkillById,
+	getSkillByReference
+} from '$lib/services/agentic-chat/tools/skills/registry';
 import { parseToolArguments } from './tool-arguments';
 import type { FastToolExecution, GatewayRequiredFieldFailure } from './shared';
 import type { ToolValidationIssue } from './tool-validation';
@@ -53,17 +57,18 @@ export function buildProjectCreateNoExecutionRepairInstruction(): string {
 // finalization attempt and demand the load. Fires at most once per turn.
 export function shouldRepairSkillGateNoLoad(params: {
 	skillLoadRequired: boolean;
-	historyHasLoadedSkillsLedger: boolean;
+	acceptableSkillIds: string[];
+	historyLoadedSkillIds: string[];
 	finalText: string;
 	toolExecutions: FastToolExecution[];
 	repairAlreadyInjected: boolean;
 }): boolean {
 	if (!params.skillLoadRequired) return false;
 	if (params.repairAlreadyInjected) return false;
-	// Skills loaded earlier in the session satisfy the gate: the prompt ledger
-	// explicitly tells the model not to reload them.
-	if (params.historyHasLoadedSkillsLedger) return false;
-	if (didSuccessfulSkillLoadExecute(params.toolExecutions)) return false;
+	const acceptableSkillIds = normalizeSkillIdList(params.acceptableSkillIds);
+	if (hasRelevantLoadedSkill(params.historyLoadedSkillIds, acceptableSkillIds)) return false;
+	if (didRelevantSuccessfulSkillLoadExecute(params.toolExecutions, acceptableSkillIds))
+		return false;
 	const finalText = params.finalText.trim();
 	if (!finalText) return true;
 	// A pure clarifying question produces no work product; the gate allows it.
@@ -71,18 +76,109 @@ export function shouldRepairSkillGateNoLoad(params: {
 	return true;
 }
 
-function didSuccessfulSkillLoadExecute(toolExecutions: FastToolExecution[]): boolean {
-	return toolExecutions.some(
-		(execution) =>
-			execution.toolCall.function?.name?.trim() === 'skill_load' &&
-			execution.result.success === true
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeSkillIdList(skillIds: string[]): string[] {
+	const result: string[] = [];
+	const seen = new Set<string>();
+	for (const skillId of skillIds) {
+		const canonicalId = canonicalizeSkillReference(skillId);
+		if (!canonicalId || seen.has(canonicalId)) continue;
+		seen.add(canonicalId);
+		result.push(canonicalId);
+	}
+	return result;
+}
+
+function canonicalizeSkillReference(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const reference = value.trim();
+	if (!reference) return null;
+	return getSkillByReference(reference)?.id ?? reference;
+}
+
+function hasRelevantLoadedSkill(loadedSkillIds: string[], acceptableSkillIds: string[]): boolean {
+	const normalizedLoadedSkillIds = normalizeSkillIdList(loadedSkillIds);
+	if (acceptableSkillIds.length === 0) {
+		return normalizedLoadedSkillIds.length > 0;
+	}
+	return normalizedLoadedSkillIds.some((skillId) =>
+		doesLoadedSkillSatisfyAcceptableSkill(skillId, acceptableSkillIds)
 	);
+}
+
+function didRelevantSuccessfulSkillLoadExecute(
+	toolExecutions: FastToolExecution[],
+	acceptableSkillIds: string[]
+): boolean {
+	for (const execution of toolExecutions) {
+		if (execution.toolCall.function?.name?.trim() !== 'skill_load') continue;
+		if (execution.result.success !== true) continue;
+		const loadedSkillIds = extractLoadedSkillIdsFromExecution(execution);
+		if (acceptableSkillIds.length === 0) return true;
+		if (
+			loadedSkillIds.some((skillId) =>
+				doesLoadedSkillSatisfyAcceptableSkill(skillId, acceptableSkillIds)
+			)
+		) {
+			return true;
+		}
+	}
+	return false;
+}
+
+function extractLoadedSkillIdsFromExecution(execution: FastToolExecution): string[] {
+	const resultSkillIds: Array<string | null> = [];
+	const result = execution.result.result;
+	if (isRecord(result)) {
+		resultSkillIds.push(
+			canonicalizeSkillReference(result.id),
+			canonicalizeSkillReference(result.skill_id),
+			canonicalizeSkillReference(result.skill)
+		);
+	}
+	const normalizedResultSkillIds = normalizeSkillIdList(
+		resultSkillIds.filter((id): id is string => Boolean(id))
+	);
+	if (normalizedResultSkillIds.length > 0) return normalizedResultSkillIds;
+
+	const argumentSkillIds: Array<string | null> = [];
+	const parsed = parseToolArguments(execution.toolCall.function?.arguments);
+	if (!parsed.error) {
+		argumentSkillIds.push(
+			canonicalizeSkillReference(parsed.args.skill),
+			canonicalizeSkillReference(parsed.args.id),
+			canonicalizeSkillReference(parsed.args.path)
+		);
+	}
+	return normalizeSkillIdList(argumentSkillIds.filter((id): id is string => Boolean(id)));
+}
+
+function doesLoadedSkillSatisfyAcceptableSkill(
+	loadedSkillId: string,
+	acceptableSkillIds: string[]
+): boolean {
+	const acceptableSet = new Set(acceptableSkillIds);
+	if (acceptableSet.has(loadedSkillId)) return true;
+
+	const seen = new Set<string>([loadedSkillId]);
+	let currentParentId = getSkillById(loadedSkillId)?.parentId?.trim();
+	while (currentParentId && !seen.has(currentParentId)) {
+		const canonicalParentId = canonicalizeSkillReference(currentParentId);
+		if (!canonicalParentId) return false;
+		if (acceptableSet.has(canonicalParentId)) return true;
+		seen.add(canonicalParentId);
+		currentParentId = getSkillById(canonicalParentId)?.parentId?.trim();
+	}
+	return false;
 }
 
 export function buildSkillGateNoLoadRepairInstruction(recommendedSkillIds: string[]): string {
 	const candidates = recommendedSkillIds.slice(0, 6);
 	return [
-		'The skill-load gate for this turn is ACTIVE and no skill has been loaded in this turn or earlier in this session.',
+		'The skill-load gate for this turn is ACTIVE and no matching skill has been loaded in this turn or earlier in this session.',
 		'This request matches skill-covered work; do not finalize an answer from base knowledge.',
 		candidates.length > 0
 			? `Your next response must call skill_load for the best-matching skill among: ${candidates.join(', ')}.`

@@ -44,6 +44,7 @@ export type TurnObservabilityTimingState = {
 	rawHistoryCount: number | null;
 	historyForModelCount: number | null;
 	contextCacheSource: AgentTimingSummary['cache_source'];
+	contextLoadSource: AgentTimingSummary['context_load_source'];
 	contextCacheAgeSeconds: number | null;
 	bypassedContextCache: boolean;
 	preparedPromptRequested: boolean;
@@ -252,6 +253,7 @@ export class TurnObservabilityWriter {
 			assistant_persisted_at: toIsoString(timingState.assistantPersistedAtMs),
 			done_emitted_at: toIsoString(timingState.doneEmittedAtMs),
 			cache_source: timingState.contextCacheSource,
+			context_load_source: timingState.contextLoadSource,
 			cache_age_seconds: timingState.contextCacheAgeSeconds,
 			bypassed_context_cache: timingState.bypassedContextCache,
 			history_strategy: timingState.historyStrategy,
@@ -333,6 +335,7 @@ export class TurnObservabilityWriter {
 				project_id: timingState.projectId,
 				entity_id: timingState.entityId,
 				request_prewarmed_context: this.params.requestPrewarmedContext,
+				context_load_source: timingState.contextLoadSource,
 				prepared_prompt_requested: timingState.preparedPromptRequested,
 				prepared_prompt_hit: timingState.preparedPromptHit,
 				prepared_prompt_miss_reason: timingState.preparedPromptMissReason,

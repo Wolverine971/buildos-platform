@@ -7,6 +7,9 @@ import {
 	type OutcomeCardCoverageStatus,
 	type OutcomeCardDefinition
 } from '../outcome-cards';
+import { getSkillById } from '../skills/registry';
+import { getRecommendedSkillLoadFormat } from '../skills/skill-load';
+import type { SkillLoadFormat } from '../skills/types';
 
 export type DomainSensingInput = {
 	currentUserMessage?: string | null;
@@ -47,6 +50,7 @@ export type SensedOutcomeCard = {
 	buildos_capability_ids: string[];
 	default_skill_id?: string;
 	skill_ids: string[];
+	skill_load_formats: Record<string, SkillLoadFormat>;
 	coverage_status: OutcomeCardCoverageStatus;
 	load_hint: string;
 };
@@ -103,6 +107,30 @@ function normalizeText(value: string | null | undefined): string {
 
 function unique(items: string[]): string[] {
 	return Array.from(new Set(items));
+}
+
+function uniqueTrimmed(items: Array<string | null | undefined>): string[] {
+	const result: string[] = [];
+	const seen = new Set<string>();
+	for (const item of items) {
+		const normalized = typeof item === 'string' ? item.trim() : '';
+		if (!normalized || seen.has(normalized)) continue;
+		seen.add(normalized);
+		result.push(normalized);
+	}
+	return result;
+}
+
+function buildSkillLoadFormats(
+	defaultSkillId: string | undefined,
+	skillIds: string[]
+): Record<string, SkillLoadFormat> {
+	const formats: Record<string, SkillLoadFormat> = {};
+	for (const skillId of uniqueTrimmed([defaultSkillId, ...skillIds])) {
+		const skill = getSkillById(skillId);
+		if (skill) formats[skillId] = getRecommendedSkillLoadFormat(skill);
+	}
+	return formats;
 }
 
 function isDomainPayload(
@@ -164,6 +192,7 @@ function toSensedOutcomeCard(
 		buildos_capability_ids: capability.buildosCapabilityIds,
 		default_skill_id: capability.defaultSkillId,
 		skill_ids: capability.skillIds,
+		skill_load_formats: buildSkillLoadFormats(capability.defaultSkillId, capability.skillIds),
 		coverage_status: capability.coverageStatus,
 		load_hint: loadHint
 	};
@@ -202,6 +231,7 @@ function buildCandidateOutcomeCards(
 				buildos_capability_ids: match.buildos_capability_ids,
 				default_skill_id: match.default_skill_id,
 				skill_ids: match.skill_ids,
+				skill_load_formats: match.skill_load_formats,
 				coverage_status: match.coverage_status,
 				load_hint: match.load_hint
 			});
@@ -290,6 +320,20 @@ export function senseDomains(input: DomainSensingInput): DomainSensingResult | n
 	};
 }
 
+export function getSkillGateCandidateSkillIds(
+	result: DomainSensingResult | null | undefined
+): string[] {
+	if (!result) return [];
+	return uniqueTrimmed([
+		...result.candidate_outcome_cards.flatMap((card) => [
+			card.default_skill_id,
+			...card.skill_ids
+		]),
+		...result.recommended_skill_ids,
+		...result.active_domains.flatMap((domain) => domain.skill_ids)
+	]);
+}
+
 export function renderDomainSensingPromptContent(
 	result: DomainSensingResult | null
 ): string | null {
@@ -314,13 +358,17 @@ export function renderDomainSensingPromptContent(
 		return `- ${domain.id} (${domain.name}): ${details.join('; ')}`;
 	});
 	const outcomeCardLines = result.candidate_outcome_cards.map((capability) => {
+		const skillFormatEntries = Object.entries(capability.skill_load_formats)
+			.slice(0, 5)
+			.map(([skillId, format]) => `${skillId}:${format}`);
 		const details = [
 			`${capability.coverage_status} coverage`,
 			`confidence ${capability.confidence}`,
 			capability.default_skill_id ? `default skill: ${capability.default_skill_id}` : null,
 			capability.skill_ids.length
 				? `skills: ${capability.skill_ids.slice(0, 5).join(', ')}`
-				: null
+				: null,
+			skillFormatEntries.length ? `skill formats: ${skillFormatEntries.join(', ')}` : null
 		].filter((item): item is string => Boolean(item));
 		return `- ${capability.id} (${capability.name}): ${details.join('; ')}. ${capability.summary}`;
 	});

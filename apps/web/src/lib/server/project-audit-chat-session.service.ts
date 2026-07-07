@@ -113,6 +113,9 @@ function buildSessionMetadata(params: {
 	return {
 		source: 'project_audit',
 		audit_id: params.audit.id,
+		source_type: 'project_audit',
+		source_ref_id: params.audit.id,
+		source_label: 'Project audit',
 		project_id: params.audit.project_id,
 		project_name: readString(params.project?.name),
 		status: readString(params.audit.status),

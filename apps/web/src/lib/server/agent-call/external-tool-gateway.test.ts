@@ -1499,6 +1499,48 @@ describe('external tool gateway', () => {
 		expect(tools.map((tool) => tool.name)).not.toContain('update_onto_task');
 	});
 
+	it('filters internal skill reference handles from external skill loads', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock({
+				documents: [],
+				tasks: [],
+				toolExecutions: [],
+				nextTaskId: 1,
+				nextToolExecutionId: 1
+			}),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			scope: {
+				mode: 'read_only',
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS]
+			},
+			toolName: 'skill_load',
+			arguments: {
+				skill: 'cold_email_engagement_first_outreach',
+				format: 'short'
+			}
+		});
+
+		expect(result).toMatchObject({
+			type: 'skill',
+			id: 'cold_email_engagement_first_outreach'
+		});
+		expect(result.reference_modules).toEqual([
+			expect.objectContaining({
+				id: 'cold_email_engagement_first_outreach.public_mode_router',
+				visibility: 'public'
+			})
+		]);
+		expect(result.reference_modules).not.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					visibility: 'internal'
+				})
+			])
+		);
+	});
+
 	it('returns a compact project status packet for first-time external agent context', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
 		const now = Date.now();

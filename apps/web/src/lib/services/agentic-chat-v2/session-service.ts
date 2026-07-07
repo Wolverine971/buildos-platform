@@ -190,6 +190,32 @@ function formatLoadedSkillSummaryLine(skill: LoadedSkillSummary): string {
 
 export const LOADED_SKILLS_LEDGER_PREFIX = 'Previously loaded skills in this session:';
 
+function extractLoadedSkillIdFromLedgerLine(line: string): string | null {
+	const match = line.match(/^\s*-\s+`([^`]+)`/);
+	const id = match?.[1]?.trim();
+	return id || null;
+}
+
+export function extractLoadedSkillIdsFromHistory(
+	messages: Array<Pick<FastChatHistoryMessage, 'role' | 'content'>>
+): string[] {
+	const loadedSkillIds = new Set<string>();
+	for (const message of messages) {
+		if (
+			message.role !== 'system' ||
+			typeof message.content !== 'string' ||
+			!message.content.startsWith(LOADED_SKILLS_LEDGER_PREFIX)
+		) {
+			continue;
+		}
+		for (const line of message.content.split('\n')) {
+			const id = extractLoadedSkillIdFromLedgerLine(line);
+			if (id) loadedSkillIds.add(id);
+		}
+	}
+	return [...loadedSkillIds];
+}
+
 /**
  * Whether composed history already carries the loaded-skills ledger — i.e. a
  * skill was loaded earlier in this session. The skill-load gate (stream
@@ -198,12 +224,7 @@ export const LOADED_SKILLS_LEDGER_PREFIX = 'Previously loaded skills in this ses
 export function historyIncludesLoadedSkillsLedger(
 	messages: Array<Pick<FastChatHistoryMessage, 'role' | 'content'>>
 ): boolean {
-	return messages.some(
-		(message) =>
-			message.role === 'system' &&
-			typeof message.content === 'string' &&
-			message.content.startsWith(LOADED_SKILLS_LEDGER_PREFIX)
-	);
+	return extractLoadedSkillIdsFromHistory(messages).length > 0;
 }
 
 export function buildLoadedSkillHistorySummary(

@@ -29,7 +29,11 @@
 		ProjectSuggestionResult
 	} from '@buildos/shared-types';
 
-	type InboxSourceType = 'agent_run' | 'project_suggestion' | 'calendar_suggestion';
+	type InboxSourceType =
+		| 'agent_run'
+		| 'project_suggestion'
+		| 'project_audit'
+		| 'calendar_suggestion';
 	type InboxItemStatus = 'pending' | 'deciding' | 'decided' | 'blocked' | 'expired' | 'snoozed';
 	type AgentChatModalLazy =
 		| typeof import('$lib/components/agent/AgentChatModal.svelte').default
@@ -199,12 +203,17 @@
 			label: 'Needs your call',
 			items: [] as InboxItem[]
 		};
+		const audits = { key: 'audits', label: 'Complete audits', items: [] as InboxItem[] };
 		const drift = { key: 'drift', label: 'Project drift', items: [] as InboxItem[] };
 		const other = { key: 'other', label: 'Other proposals', items: [] as InboxItem[] };
-		const groups = [safe, decision, drift, other];
+		const groups = [audits, safe, decision, drift, other];
 		for (const item of items) {
 			const payload = projectSuggestion(item);
 			const audit = projectAuditContext(item);
+			if (item.source_type === 'project_audit') {
+				audits.items.push(item);
+				continue;
+			}
 			if (payload?.kind === 'audit_recommendation' && audit) {
 				const key = `audit:${audit.id}`;
 				const group = auditGroups.get(key) ?? {
@@ -337,8 +346,16 @@
 		return date ? `Audit follow-ups · ${date}` : 'Audit follow-ups';
 	}
 
+	function auditRecommendationLabel(audit: ProjectAuditContext | null): string | null {
+		if (!audit) return null;
+		const count = audit.unresolved_suggestion_count ?? audit.generated_suggestion_count;
+		if (count === null) return null;
+		return `${count} recommendation${count === 1 ? '' : 's'}`;
+	}
+
 	function sourceLabel(item: InboxItem): string {
 		if (item.source_type === 'agent_run') return 'Agent proposal';
+		if (item.source_type === 'project_audit') return 'Project audit';
 		if (item.source_type === 'calendar_suggestion') return 'Calendar suggestion';
 		return 'Project review';
 	}
@@ -420,7 +437,12 @@
 	}
 
 	function canChat(item: InboxItem): boolean {
-		return canDecide(item) || Boolean(agentFailedChangeSet(item));
+		return (
+			canDecide(item) ||
+			Boolean(agentFailedChangeSet(item)) ||
+			(item.source_type === 'project_audit' &&
+				(item.status === 'pending' || item.status === 'blocked'))
+		);
 	}
 
 	function isOpeningChat(item: InboxItem): boolean {
@@ -979,10 +1001,12 @@
 					{@const payload = projectSuggestion(item)}
 					{@const agent = agentRun(item)}
 					{@const reviewRun = projectLoopRunContext(item)}
+					{@const audit = projectAuditContext(item)}
 					{@const reviewRunText = reviewRunLabel(reviewRun)}
 					{@const project = itemProject(item)}
 					{@const changeSet = agentChangeSet(item)}
 					{@const failedChangeSet = agentFailedChangeSet(item)}
+					{@const auditRecommendations = auditRecommendationLabel(audit)}
 					{@const tier = tierFor(item.risk_tier ?? payload?.risk_tier)}
 					{@const Icon = sourceIcon(item)}
 					{@const evidence = arrayValue<ProjectSuggestionEvidenceRef>(
@@ -1059,6 +1083,24 @@
 										{payload.preview.summary}
 									</p>
 								{/if}
+								{#if item.source_type === 'project_audit' && audit}
+									<div class="mt-2 flex flex-wrap gap-1.5">
+										{#if auditRecommendations}
+											<span
+												class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+											>
+												{auditRecommendations}
+											</span>
+										{/if}
+										{#if audit.delivery_confidence}
+											<span
+												class="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[10px] text-accent"
+											>
+												{audit.delivery_confidence} confidence
+											</span>
+										{/if}
+									</div>
+								{/if}
 								{#if evidence.length}
 									<div class="mt-2 flex flex-wrap gap-1.5">
 										{#each evidence as ref}
@@ -1132,6 +1174,18 @@
 									onSnooze={() => snooze(item)}
 									onChat={() => openChat(item)}
 								/>
+							{:else if canChat(item)}
+								<Button
+									variant="outline"
+									size="sm"
+									loading={isOpeningChat(item)}
+									disabled={isOpeningChat(item)}
+									onclick={() => openChat(item)}
+									class="shrink-0"
+								>
+									<Sparkles class="mr-2 h-4 w-4" />
+									Open chat
+								</Button>
 							{:else if item.decision_disabled_reason}
 								<div
 									class="shrink-0 rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground"

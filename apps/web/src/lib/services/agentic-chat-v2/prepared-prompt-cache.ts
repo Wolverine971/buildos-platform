@@ -14,6 +14,12 @@ import { resolveGatewaySurfaceProfileForContextType } from '$lib/services/agenti
 export const PREPARED_PROMPT_CACHE_VERSION = 1;
 export const PREPARED_PROMPT_KEY_PREFIX = 'pp_v1';
 export const PREPARED_PROMPT_TTL_MS = 90 * 1000;
+const PREPARED_PROMPT_FOCUS_STRING_MAX_CHARS = 1_500;
+
+export type PreparedPromptSectionSummary = Omit<LitePromptSection, 'content'> & {
+	content_sha256: string;
+	content_chars: number;
+};
 
 export type PreparedPromptCacheMissReason =
 	| 'disabled'
@@ -39,7 +45,7 @@ export type PreparedPromptSurface = {
 	harness_sha256: string;
 	system_prompt: string;
 	system_prompt_sha256: string;
-	sections: LitePromptSection[];
+	sections: PreparedPromptSectionSummary[];
 	context_inventory: LitePromptContextInventory;
 	tools_summary: LitePromptToolsSummary;
 	created_at: string;
@@ -124,6 +130,74 @@ function stableStringify(value: unknown): string {
 
 function sha256ToolDefinitions(tools: ChatToolDefinition[]): string | null {
 	return tools.length > 0 ? sha256Text(stableStringify(tools)) : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function cloneJsonRecord(value: Record<string, unknown>): Record<string, unknown> {
+	return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+}
+
+function truncatePreparedPromptString(value: string): string {
+	if (value.length <= PREPARED_PROMPT_FOCUS_STRING_MAX_CHARS) return value;
+	return `${value.slice(0, PREPARED_PROMPT_FOCUS_STRING_MAX_CHARS)}...`;
+}
+
+function compactPreparedPromptFocusEntity(value: unknown): Record<string, unknown> {
+	if (!isRecord(value)) return {};
+	const allowedKeys = new Set([
+		'id',
+		'project_id',
+		'title',
+		'name',
+		'description',
+		'summary',
+		'state_key',
+		'type_key',
+		'priority',
+		'start_at',
+		'due_at',
+		'target_date',
+		'completed_at',
+		'created_at',
+		'updated_at',
+		'content_length',
+		'content_preview'
+	]);
+	const output: Record<string, unknown> = {};
+	for (const key of allowedKeys) {
+		if (!(key in value)) continue;
+		const field = value[key];
+		if (typeof field === 'string') {
+			output[key] = truncatePreparedPromptString(field);
+		} else if (field === null || typeof field === 'number' || typeof field === 'boolean') {
+			output[key] = field;
+		}
+	}
+	return output;
+}
+
+export function compactPreparedPromptContextPayload<T extends Record<string, unknown>>(
+	contextPayload: T
+): T {
+	const compacted = cloneJsonRecord(contextPayload) as T;
+	const data = compacted.data;
+	if (isRecord(data) && 'focus_entity_full' in data) {
+		data.focus_entity_full = compactPreparedPromptFocusEntity(data.focus_entity_full);
+	}
+	return compacted;
+}
+
+function summarizePreparedPromptSections(
+	sections: LitePromptSection[]
+): PreparedPromptSectionSummary[] {
+	return sections.map(({ content, ...section }) => ({
+		...section,
+		content_sha256: sha256Text(content),
+		content_chars: content.length
+	}));
 }
 
 function buildPreparedPromptHarnessSha(params: {
@@ -225,7 +299,7 @@ export function buildPreparedPromptSurface(params: {
 		}),
 		system_prompt: params.envelope.systemPrompt,
 		system_prompt_sha256: sha256Text(params.envelope.systemPrompt),
-		sections: params.envelope.sections,
+		sections: summarizePreparedPromptSections(params.envelope.sections),
 		context_inventory: params.envelope.contextInventory,
 		tools_summary: params.envelope.toolsSummary,
 		created_at: params.createdAt ?? new Date().toISOString()

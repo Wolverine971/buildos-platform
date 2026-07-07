@@ -742,7 +742,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			console.warn('[Task PATCH] Failed to enrich assignees in response:', assigneeError);
 		}
 
-		if (!shouldSkipProjectLoopBurst(request)) {
+		if (!shouldSkipProjectLoopBurst(request, projectLoopReviewContext)) {
 			const burstParams = {
 				projectId: existingTask.project_id,
 				userId: session.user.id,

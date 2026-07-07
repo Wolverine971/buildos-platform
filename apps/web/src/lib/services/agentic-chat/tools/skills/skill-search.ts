@@ -1,7 +1,8 @@
 // apps/web/src/lib/services/agentic-chat/tools/skills/skill-search.ts
 import { loadDomain } from '../domains/domain-load';
 import { listAllSkills } from './registry';
-import type { SkillDefinition } from './types';
+import { getRecommendedSkillLoadFormat } from './skill-load';
+import type { SkillDefinition, SkillLoadFormat } from './types';
 
 export type SkillSearchOptions = {
 	query?: string;
@@ -15,10 +16,15 @@ type SkillSearchMatch = {
 	name: string;
 	parent_id?: string;
 	depth?: number;
+	skill_type?: NonNullable<SkillDefinition['skillType']>;
+	altitude?: NonNullable<SkillDefinition['altitude']>;
+	activation?: NonNullable<SkillDefinition['activation']>;
+	dependencies?: NonNullable<SkillDefinition['dependencies']>;
 	confidence: number;
 	summary: string;
 	when_to_use: string[];
 	related_ops: string[];
+	recommended_load_format: SkillLoadFormat;
 	load_hint: string;
 };
 
@@ -67,7 +73,16 @@ function getDomainSkillIds(domain?: string): Set<string> | null {
 function skillMatchesCapability(skill: SkillDefinition, capability?: string): boolean {
 	if (!capability?.trim()) return true;
 	const normalized = normalize(capability);
-	const haystack = [skill.id, skill.name, skill.summary, ...skill.relatedOps]
+	const haystack = [
+		skill.id,
+		skill.name,
+		skill.summary,
+		skill.skillType,
+		skill.altitude,
+		skill.activation,
+		...skill.relatedOps,
+		...(skill.dependencies?.flatMap((dependency) => [dependency.id, dependency.owns]) ?? [])
+	]
 		.join(' ')
 		.toLowerCase();
 	return haystack.includes(normalized);
@@ -82,11 +97,15 @@ function computeScore(skill: SkillDefinition, query: string): number {
 		skill.name,
 		skill.summary,
 		skill.parentId,
+		skill.skillType,
+		skill.altitude,
+		skill.activation,
 		...skill.legacyPaths,
 		...skill.whenToUse,
 		...skill.relatedOps,
 		...(skill.childSkills?.map((child) => child.id) ?? []),
-		...(skill.referenceModules?.map((module) => module.id) ?? [])
+		...(skill.referenceModules?.map((module) => module.id) ?? []),
+		...(skill.dependencies?.flatMap((dependency) => [dependency.id, dependency.owns]) ?? [])
 	]
 		.filter((value): value is string => typeof value === 'string' && value.length > 0)
 		.join(' ')
@@ -113,7 +132,7 @@ function confidenceFromScore(score: number): number {
 }
 
 function toMatch(skill: SkillDefinition, score: number): SkillSearchMatch {
-	return {
+	const match: SkillSearchMatch = {
 		skill_id: skill.id,
 		name: skill.name,
 		parent_id: skill.parentId,
@@ -122,10 +141,20 @@ function toMatch(skill: SkillDefinition, score: number): SkillSearchMatch {
 		summary: skill.summary,
 		when_to_use: skill.whenToUse.slice(0, 4),
 		related_ops: skill.relatedOps.slice(0, 8),
+		recommended_load_format: getRecommendedSkillLoadFormat(skill),
 		load_hint: skill.parentId
 			? 'Load only when this child skill is the specific needed lens.'
 			: 'Load this root skill when the current task needs its workflow playbook.'
 	};
+	if (skill.skillType) match.skill_type = skill.skillType;
+	if (skill.altitude) match.altitude = skill.altitude;
+	if (skill.activation) match.activation = skill.activation;
+	if (skill.dependencies?.length) {
+		match.dependencies = skill.dependencies.slice(0, 12).map((dependency) => ({
+			...dependency
+		}));
+	}
+	return match;
 }
 
 export function searchSkills(options: SkillSearchOptions = {}): Record<string, unknown> {

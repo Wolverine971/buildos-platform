@@ -1024,8 +1024,10 @@ export class ToolExecutionService implements BaseService {
 						: typeof args.path === 'string'
 							? args.path
 							: '';
+			const format =
+				args.format === 'full' || args.format === 'short' ? args.format : undefined;
 			const result = loadSkill(skill, {
-				format: args.format === 'full' ? 'full' : 'short',
+				format,
 				include_examples: args.include_examples !== false
 			});
 			return { success: true, data: result, toolName, toolCallId: 'gateway' };

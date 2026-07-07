@@ -34,7 +34,11 @@
 		ProjectSuggestionResult
 	} from '@buildos/shared-types';
 
-	type InboxSourceType = 'agent_run' | 'project_suggestion' | 'calendar_suggestion';
+	type InboxSourceType =
+		| 'agent_run'
+		| 'project_suggestion'
+		| 'project_audit'
+		| 'calendar_suggestion';
 	type InboxItemStatus = 'pending' | 'deciding' | 'decided' | 'blocked' | 'expired' | 'snoozed';
 	type CloseSummary = { hasChanges: boolean; changedCount: number; remainingCount: number };
 	type AgentChatModalLazy =
@@ -420,6 +424,13 @@
 		return date ? `${projectName} · Audit ${date}` : `${projectName} · Audit`;
 	}
 
+	function auditRecommendationLabel(audit: ProjectAuditContext | null): string | null {
+		if (!audit) return null;
+		const count = audit.unresolved_suggestion_count ?? audit.generated_suggestion_count;
+		if (count === null) return null;
+		return `${count} recommendation${count === 1 ? '' : 's'}`;
+	}
+
 	function tierFor(value: number | null | undefined): TierMeta {
 		if (!value) return fallbackTier;
 		return tierMeta[value] ?? fallbackTier;
@@ -427,6 +438,7 @@
 
 	function sourceLabel(item: InboxItem): string {
 		if (item.source_type === 'agent_run') return 'Agent proposal';
+		if (item.source_type === 'project_audit') return 'Project audit';
 		if (item.source_type === 'calendar_suggestion') return 'Calendar suggestion';
 		return 'Project review';
 	}
@@ -483,7 +495,12 @@
 	}
 
 	function canChat(item: InboxItem): boolean {
-		return canDecide(item) || Boolean(agentFailedChangeSet(item));
+		return (
+			canDecide(item) ||
+			Boolean(agentFailedChangeSet(item)) ||
+			(item.source_type === 'project_audit' &&
+				(item.status === 'pending' || item.status === 'blocked'))
+		);
 	}
 
 	function isOpeningChat(item: InboxItem): boolean {
@@ -969,12 +986,14 @@
 								{@const failedChangeSet = agentFailedChangeSet(item)}
 								{@const calendar = calendarSuggestion(item)}
 								{@const reviewRun = projectLoopRunContext(item)}
+								{@const audit = projectAuditContext(item)}
 								{@const reviewRunText = reviewRunLabel(reviewRun)}
 								{@const project = itemProject(item)}
 								{@const taskPreview = calendarTasks(item)}
 								{@const eventPattern = calendarEventPattern(item)}
 								{@const dateRange = formatCalendarDateRange(eventPattern)}
 								{@const confidence = formatConfidence(calendar?.confidence_score)}
+								{@const auditRecommendations = auditRecommendationLabel(audit)}
 								{@const tier = tierFor(item.risk_tier ?? payload?.risk_tier)}
 								{@const Icon = sourceIcon(item)}
 								{@const showProjectBadge =
@@ -1146,6 +1165,24 @@
 													{/if}
 												</div>
 											{/if}
+											{#if item.source_type === 'project_audit' && audit}
+												<div class="mt-2 flex flex-wrap gap-1.5">
+													{#if auditRecommendations}
+														<span
+															class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+														>
+															{auditRecommendations}
+														</span>
+													{/if}
+													{#if audit.delivery_confidence}
+														<span
+															class="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[10px] text-accent"
+														>
+															{audit.delivery_confidence} confidence
+														</span>
+													{/if}
+												</div>
+											{/if}
 											{#if evidence.length}
 												<div class="mt-2 flex flex-wrap gap-1.5">
 													{#each evidence as ref}
@@ -1226,6 +1263,18 @@
 												onSnooze={() => snooze(item)}
 												onChat={() => openChat(item)}
 											/>
+										{:else if canChat(item)}
+											<Button
+												variant="outline"
+												size="sm"
+												loading={isOpeningChat(item)}
+												disabled={isOpeningChat(item)}
+												onclick={() => openChat(item)}
+												class="shrink-0"
+											>
+												<Sparkles class="mr-2 h-4 w-4" />
+												Open chat
+											</Button>
 										{:else if !canDecide(item)}
 											<div
 												class="max-w-full shrink-0 break-words rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground sm:max-w-56"

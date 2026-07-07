@@ -29,9 +29,13 @@ export type SkillAltitude = (typeof ALTITUDES)[number];
 export const ACTIVATIONS = ['always_on', 'progressive', 'invoked'] as const;
 export type SkillActivation = (typeof ACTIVATIONS)[number];
 
+export const SKILL_LOAD_FORMATS = ['short', 'full'] as const;
+export type SkillLoadFormat = (typeof SKILL_LOAD_FORMATS)[number];
+
 export const skillTypeSchema = z.enum(SKILL_TYPES);
 export const altitudeSchema = z.enum(ALTITUDES);
 export const activationSchema = z.enum(ACTIVATIONS);
+export const skillLoadFormatSchema = z.enum(SKILL_LOAD_FORMATS);
 
 /** Machine-readable routing entry: which sibling skill owns what (§3.1). */
 export const skillDependencySchema = z.object({
@@ -71,6 +75,7 @@ export const skillFrontmatterSchema = z
 		skill_type: skillTypeSchema.optional(),
 		altitude: altitudeSchema.optional(),
 		activation: activationSchema.optional(),
+		recommended_load_format: skillLoadFormatSchema.optional(),
 		dependencies: z.array(skillDependencySchema).optional(),
 		parent_id: z.union([z.string(), z.null()]).optional(),
 		depth: z.number().optional(),

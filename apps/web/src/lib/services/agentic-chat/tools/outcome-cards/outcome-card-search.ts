@@ -1,5 +1,8 @@
 // apps/web/src/lib/services/agentic-chat/tools/outcome-cards/outcome-card-search.ts
 import { listOutcomeCards } from './catalog';
+import { getSkillById } from '../skills/registry';
+import { getRecommendedSkillLoadFormat } from '../skills/skill-load';
+import type { SkillLoadFormat } from '../skills/types';
 import type {
 	OutcomeCardDefinition,
 	OutcomeCardSearchMatch,
@@ -95,6 +98,19 @@ function loadHintFor(capability: OutcomeCardDefinition): string {
 	return 'Load this outcome card to confirm the coverage gap and avoid pretending a dedicated playbook exists.';
 }
 
+function buildSkillLoadFormats(capability: OutcomeCardDefinition): Record<string, SkillLoadFormat> {
+	const formats: Record<string, SkillLoadFormat> = {};
+	const skillIds = Array.from(
+		new Set([capability.defaultSkillId, ...capability.skillIds].filter(Boolean))
+	);
+	for (const skillId of skillIds) {
+		if (typeof skillId !== 'string') continue;
+		const skill = getSkillById(skillId);
+		if (skill) formats[skillId] = getRecommendedSkillLoadFormat(skill);
+	}
+	return formats;
+}
+
 function toMatch(capability: OutcomeCardDefinition, score: number): OutcomeCardSearchMatch {
 	return {
 		outcome_card_id: capability.id,
@@ -105,6 +121,7 @@ function toMatch(capability: OutcomeCardDefinition, score: number): OutcomeCardS
 		buildos_capability_ids: capability.buildosCapabilityIds,
 		default_skill_id: capability.defaultSkillId,
 		skill_ids: capability.skillIds,
+		skill_load_formats: buildSkillLoadFormats(capability),
 		coverage_status: capability.coverageStatus,
 		load_hint: loadHintFor(capability)
 	};

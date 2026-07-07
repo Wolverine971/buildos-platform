@@ -2,11 +2,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-	createAgentRunChatSession: vi.fn()
+	createAgentRunChatSession: vi.fn(),
+	createOrReuseProjectAuditChatSession: vi.fn()
 }));
 
 vi.mock('./agent-run-chat-session.service', () => ({
 	createAgentRunChatSession: mocks.createAgentRunChatSession
+}));
+
+vi.mock('./project-audit-chat-session.service', () => ({
+	createOrReuseProjectAuditChatSession: mocks.createOrReuseProjectAuditChatSession
 }));
 
 import { createInboxChatSession } from './inbox-chat-session.service';
@@ -32,7 +37,8 @@ function createSupabaseMock(sourcePayload: Record<string, unknown> | null) {
 				select: vi.fn(() => builder),
 				eq: vi.fn(() => builder),
 				maybeSingle: vi.fn(async () => ({
-					data: table === 'agent_runs' ? sourcePayload : null,
+					data:
+						table === 'agent_runs' || table === 'project_audits' ? sourcePayload : null,
 					error: null
 				}))
 			};
@@ -448,6 +454,23 @@ describe('createInboxChatSession', () => {
 			entity_id: 'project-1',
 			project_id: 'project-1'
 		});
+		mocks.createOrReuseProjectAuditChatSession.mockResolvedValue({
+			created: false,
+			seeded: true,
+			chat_session_id: 'audit-session-1',
+			session: {
+				id: 'audit-session-1',
+				context_type: 'project',
+				entity_id: PROJECT_ID
+			},
+			audit: {
+				id: 'audit-1',
+				project_id: PROJECT_ID,
+				status: 'ready',
+				summary: 'Project audit summary.'
+			},
+			project: { id: PROJECT_ID, name: '9takes' }
+		});
 	});
 
 	it('delegates agent_run inbox items to the shared agent-run chat service', async () => {
@@ -507,6 +530,58 @@ describe('createInboxChatSession', () => {
 				source_status: 'proposal_ready',
 				project_id: 'project-1'
 			}
+		});
+	});
+
+	it('delegates project_audit inbox items to the project audit chat service', async () => {
+		const audit = {
+			id: 'audit-1',
+			project_id: PROJECT_ID,
+			status: 'ready',
+			summary: 'Project audit summary.'
+		};
+		const item = {
+			id: 'inbox-audit-1',
+			source_type: 'project_audit' as const,
+			source_ref_id: 'audit-1',
+			source_status: 'ready',
+			user_id: null,
+			project_id: PROJECT_ID,
+			audience: 'project_members' as const,
+			status: 'pending' as const,
+			title: 'Complete project audit',
+			summary: audit.summary,
+			risk_tier: 2,
+			action_kinds: ['open', 'resolve'],
+			created_at: '2026-06-29T12:00:00.000Z',
+			updated_at: '2026-06-29T12:00:00.000Z',
+			decided_at: null,
+			blocked_reason: null,
+			snoozed_until: null,
+			expires_at: null
+		};
+		const supabase = createSupabaseMock(audit);
+
+		const result = await createInboxChatSession({
+			supabase,
+			item,
+			userId: USER_ID
+		});
+
+		expect(result).toMatchObject({
+			created: false,
+			chat_session_id: 'audit-session-1',
+			context_type: 'project',
+			entity_id: PROJECT_ID,
+			project_id: PROJECT_ID,
+			item,
+			source_payload: audit
+		});
+		expect(mocks.createOrReuseProjectAuditChatSession).toHaveBeenCalledWith({
+			supabase,
+			auditId: 'audit-1',
+			userId: USER_ID,
+			projectId: PROJECT_ID
 		});
 	});
 

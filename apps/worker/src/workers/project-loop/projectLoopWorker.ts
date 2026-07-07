@@ -55,6 +55,10 @@ import {
 	syncInboxItemForProjectSuggestion
 } from '@buildos/shared-agent-ops';
 import {
+	expireInboxItemsForProjectAuditChildSuggestions,
+	syncInboxItemForProjectAudit
+} from '@buildos/shared-agent-ops/inbox-index';
+import {
 	processProjectAuditTriggerEvaluationJob,
 	queueProjectAuditFromWorker
 } from './auditEnqueue';
@@ -1897,20 +1901,6 @@ async function createAuditChildSuggestions(params: {
 		throw new Error(`Failed to link audit child suggestions: ${linkError.message}`);
 	}
 
-	for (const suggestion of suggestions) {
-		try {
-			await syncInboxItemForProjectSuggestion({
-				supabase: supabase as any,
-				suggestion: suggestion as unknown as Record<string, unknown>
-			});
-		} catch (syncError) {
-			console.warn(
-				`⚠️ Failed to sync AI Inbox item for audit suggestion ${suggestion.id}:`,
-				syncError instanceof Error ? syncError.message : syncError
-			);
-		}
-	}
-
 	return {
 		generatedCount: suggestions.length,
 		unresolvedCount: suggestions.filter((suggestion) =>
@@ -1957,6 +1947,25 @@ async function supersedeOlderReadyAudits(params: {
 			auditUpdateError.message
 		);
 		return { supersededAuditCount: 0, supersededSuggestionCount: 0 };
+	}
+
+	for (const oldAuditId of oldAuditIds) {
+		try {
+			await syncInboxItemForProjectAudit({
+				supabase: supabase as any,
+				auditId: oldAuditId
+			});
+			await expireInboxItemsForProjectAuditChildSuggestions({
+				supabase: supabase as any,
+				auditId: oldAuditId,
+				reason: 'Grouped into a superseded complete project audit packet'
+			});
+		} catch (syncError) {
+			console.warn(
+				`⚠️ Failed to sync AI Inbox item for superseded audit ${oldAuditId}:`,
+				syncError instanceof Error ? syncError.message : syncError
+			);
+		}
 	}
 
 	const { data: links, error: linksError } = await supabase
@@ -2215,6 +2224,22 @@ async function processCompleteProjectAuditJob(
 			.eq('id', auditId);
 		if (auditUpdateError) {
 			throw new Error(`Failed to persist project audit: ${auditUpdateError.message}`);
+		}
+
+		try {
+			await syncInboxItemForProjectAudit({
+				supabase: supabase as any,
+				auditId
+			});
+			await expireInboxItemsForProjectAuditChildSuggestions({
+				supabase: supabase as any,
+				auditId
+			});
+		} catch (syncError) {
+			console.warn(
+				`⚠️ Failed to sync AI Inbox item for project audit ${auditId}:`,
+				syncError instanceof Error ? syncError.message : syncError
+			);
 		}
 
 		const superseded = await supersedeOlderReadyAudits({

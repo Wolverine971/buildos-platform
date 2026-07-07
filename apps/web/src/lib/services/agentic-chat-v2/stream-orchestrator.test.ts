@@ -2235,6 +2235,114 @@ describe('streamFastChat direct tool orchestration', () => {
 		});
 	});
 
+	it('stops document organization recovery when the tool-call limit fires mid-recovery', async () => {
+		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		const firstDocumentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
+		const secondDocumentId = '0d78bbbc-2721-4c4d-a3ec-ad07a5d3c305';
+		let streamInvocation = 0;
+		const emittedDeltas: string[] = [];
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation <= 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'move_document_in_tree',
+							{ project_id: projectId },
+							`move_document_in_tree:missing-document-${streamInvocation}`
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Unexpected continuation after recovery limit.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			const args = JSON.parse(call.function.arguments || '{}');
+			if (call.function.name === 'get_document_tree') {
+				return {
+					tool_call_id: call.id,
+					result: {
+						ok: true,
+						op: 'onto.document.tree.get',
+						result: {
+							structure: { root: [{ id: 'root-document' }] },
+							unlinked: [{ id: firstDocumentId }, { id: secondDocumentId }]
+						}
+					},
+					success: true
+				};
+			}
+			if (call.function.name === 'move_document_in_tree') {
+				return {
+					tool_call_id: call.id,
+					result: {
+						ok: true,
+						op: 'onto.document.tree.move',
+						result: {
+							document: {
+								id: args.document_id,
+								parent_id: null,
+								position: args.new_position
+							}
+						}
+					},
+					success: true
+				};
+			}
+			throw new Error(`Unexpected tool ${call.function.name}`);
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: projectId,
+			projectId,
+			history: [],
+			message: 'Organize the unlinked project documents.',
+			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'move_document_in_tree']),
+			toolExecutor,
+			turnSupervisor: {
+				observe: () => [{ action: 'continue' }],
+				getDigest: () => {
+					throw new Error('continue decisions should not need a digest');
+				}
+			} as any,
+			allowAutonomousRecovery: true,
+			maxToolCalls: 4,
+			maxToolRounds: 6,
+			onDelta: async (delta) => {
+				emittedDeltas.push(delta);
+			}
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(2);
+		expect(toolExecutor.mock.calls.map(([call]) => call.function.name)).toEqual([
+			'get_document_tree',
+			'move_document_in_tree'
+		]);
+		expect(
+			toolExecutor.mock.calls.map(([call]) => JSON.parse(call.function.arguments || '{}'))
+		).toEqual([
+			expect.objectContaining({ project_id: projectId }),
+			expect.objectContaining({ document_id: firstDocumentId })
+		]);
+		expect(
+			toolExecutor.mock.calls.some(([call]) =>
+				call.function.arguments.includes(secondDocumentId)
+			)
+		).toBe(false);
+		expect(result.finishedReason).toBe('tool_call_limit');
+		expect(result.finalAssistantText).not.toContain('I organized 1 unlinked document');
+		expect(emittedDeltas.join('')).not.toContain('Unexpected continuation');
+	});
+
 	it('forces a final no-tool synthesis pass before read-only tools hit the round cap', async () => {
 		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
 		let streamInvocation = 0;

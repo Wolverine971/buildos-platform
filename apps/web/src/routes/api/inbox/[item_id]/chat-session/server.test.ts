@@ -22,7 +22,7 @@ import { POST } from './+server';
 
 type InboxItemFixture = {
 	id: string;
-	source_type: 'project_suggestion' | 'calendar_suggestion' | 'agent_run';
+	source_type: 'project_suggestion' | 'project_audit' | 'calendar_suggestion' | 'agent_run';
 	source_ref_id: string;
 	source_status: string | null;
 	status: string;
@@ -90,6 +90,21 @@ function calendarSuggestionItem(userId = USER_ID): InboxItemFixture {
 	};
 }
 
+function projectAuditItem(): InboxItemFixture {
+	return {
+		id: 'inbox-audit-1',
+		source_type: 'project_audit',
+		source_ref_id: 'audit-1',
+		source_status: 'ready',
+		status: 'pending',
+		user_id: null,
+		project_id: 'project-1',
+		audience: 'project_members',
+		title: 'Complete project audit',
+		action_kinds: ['open', 'resolve']
+	};
+}
+
 describe('POST /api/inbox/[item_id]/chat-session', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -148,6 +163,32 @@ describe('POST /api/inbox/[item_id]/chat-session', () => {
 		expect(response.status).toBe(200);
 		expect(json.data.chat_session_id).toBe('session-2');
 		expect(mocks.requireProjectMemberAccess).not.toHaveBeenCalled();
+		expect(mocks.createInboxChatSession).toHaveBeenCalledWith(
+			expect.objectContaining({
+				item,
+				userId: USER_ID
+			})
+		);
+	});
+
+	it('requires project read access before opening a project-audit chat', async () => {
+		const item = projectAuditItem();
+		const supabase = createSupabaseMock(item);
+
+		const response = await POST({
+			params: { item_id: item.id },
+			locals: makeLocals(supabase)
+		} as any);
+		const json = await response.json();
+
+		expect(response.status).toBe(201);
+		expect(json.data.chat_session_id).toBe('session-1');
+		expect(mocks.requireProjectMemberAccess).toHaveBeenCalledWith(
+			expect.objectContaining({
+				projectId: 'project-1',
+				requiredAccess: 'read'
+			})
+		);
 		expect(mocks.createInboxChatSession).toHaveBeenCalledWith(
 			expect.objectContaining({
 				item,

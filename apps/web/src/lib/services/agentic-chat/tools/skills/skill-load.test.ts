@@ -15,6 +15,9 @@ describe('skill loading', () => {
 		expect(skill).toBeDefined();
 		expect(skill?.name).toBe('Project Creation');
 		expect(skill?.summary).toContain('smallest valid BuildOS project payload');
+		expect(skill?.skillType).toBe('procedure');
+		expect(skill?.altitude).toBe('task');
+		expect(skill?.activation).toBe('progressive');
 		expect(skill?.legacyPaths).toContain('onto.project.create.skill');
 		expect(skill?.relatedOps).toEqual(['onto.project.create']);
 	});
@@ -41,9 +44,110 @@ describe('skill loading', () => {
 		>;
 
 		expect(result.type).toBe('skill');
+		expect(result.format).toBe('short');
+		expect(result.recommended_load_format).toBe('full');
 		expect(typeof result.output_contract).toBe('string');
 		expect(result.output_contract).toContain('Severity rubric');
 		expect(result.output_contract).toContain('Evidence');
+	});
+
+	it('returns typed ontology metadata and dependencies in skill loads', () => {
+		const result = loadSkill('content_strategy_beyond_blogging', {
+			format: 'short'
+		}) as Record<string, any>;
+
+		expect(result.type).toBe('skill');
+		expect(result.skill_type).toBe('strategy');
+		expect(result.altitude).toBe('domain');
+		expect(result.activation).toBe('progressive');
+		expect(result.dependencies).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: 'hook_craft_short_form',
+					owns: expect.stringContaining('Line-level hook')
+				})
+			])
+		);
+	});
+
+	it('filters internal reference handles from external skill loads', () => {
+		const result = loadSkill('cold_email_engagement_first_outreach', {
+			format: 'short',
+			surface: 'external_agent'
+		}) as Record<string, any>;
+
+		expect(result.type).toBe('skill');
+		expect(result.reference_modules).toEqual([
+			expect.objectContaining({
+				id: 'cold_email_engagement_first_outreach.public_mode_router',
+				visibility: 'public'
+			})
+		]);
+		expect(result.reference_modules).not.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					visibility: 'internal'
+				})
+			])
+		);
+	});
+
+	it('hides omitted-visibility reference handles outside internal chat', () => {
+		const result = loadSkill('task_management', {
+			format: 'short',
+			surface: 'public_portable'
+		}) as Record<string, any>;
+
+		expect(result.type).toBe('skill');
+		expect(result.reference_modules).toBeUndefined();
+	});
+
+	it('splits related ops and only auto-materializes read tools', () => {
+		const skill = defineMarkdownSkill({
+			id: 'mixed_related_ops',
+			markdown: `---
+name: Mixed Related Ops
+description: Skill fixture with read, write, and destructive related ops.
+---
+
+# Mixed Related Ops
+
+## When to Use
+
+- Exercise related-op materialization policy.
+
+## Workflow
+
+1. Read the task before deciding whether to write.
+
+## Related Tools
+
+- \`onto.task.get\`
+- \`onto.task.update\`
+- \`onto.task.delete\`
+- \`util.web.search\`
+`
+		});
+
+		const payload = buildSkillLoadPayload(skill, 'test-version', 'short', false);
+
+		expect(payload.read_ops).toEqual(['onto.task.get', 'util.web.search']);
+		expect(payload.write_ops).toEqual(['onto.task.update']);
+		expect(payload.destructive_ops).toEqual(['onto.task.delete']);
+		expect(payload.materialized_tools).toEqual(['get_onto_task_details', 'web_search']);
+		expect(payload.materialized_tools).not.toContain('update_onto_task');
+		expect(payload.materialized_tools).not.toContain('delete_onto_task');
+	});
+
+	it('defaults source-preserved skills to their recommended full load format', () => {
+		const result = loadSkill('ui_ux_quality_review') as Record<string, unknown>;
+
+		expect(result.type).toBe('skill');
+		expect(result.format).toBe('full');
+		expect(result.recommended_load_format).toBe('full');
+		expect(typeof result.markdown).toBe('string');
+		expect(result.markdown).toContain('## Procedure');
+		expect(result.markdown).toContain('## Contract');
 	});
 
 	it('parses an output contract for every skill that declares an ## Output section', () => {
@@ -377,8 +481,16 @@ describe('skill loading', () => {
 			markdown: `---
 name: Cold Email Outreach
 description: Root playbook for cold outreach. Use for campaign routing, drafting, and audit.
+skill_type: orchestration
+altitude: domain
+activation: progressive
+dependencies:
+  - id: cold_email_outreach.offer_crafting
+    owns: Offer crafting and promise repair.
 parent_id: marketing
 depth: 0
+preserve_markdown: true
+recommended_load_format: short
 legacy_paths:
   - growth.cold_email.skill
 child_skills:
@@ -415,6 +527,17 @@ reference_modules:
 
 		expect(skill.parentId).toBe('marketing');
 		expect(skill.depth).toBe(0);
+		expect(skill.skillType).toBe('orchestration');
+		expect(skill.altitude).toBe('domain');
+		expect(skill.activation).toBe('progressive');
+		expect(skill.dependencies).toEqual([
+			{
+				id: 'cold_email_outreach.offer_crafting',
+				owns: 'Offer crafting and promise repair.'
+			}
+		]);
+		expect(skill.preserveMarkdown).toBe(true);
+		expect(skill.recommendedLoadFormat).toBe('short');
 		expect(skill.childSkills).toEqual([
 			expect.objectContaining({
 				id: 'cold_email_outreach.offer_crafting',
@@ -431,6 +554,16 @@ reference_modules:
 		]);
 
 		const shortPayload = buildSkillLoadPayload(skill, 'test-version', 'short', false);
+		expect(shortPayload.recommended_load_format).toBe('short');
+		expect(shortPayload.skill_type).toBe('orchestration');
+		expect(shortPayload.altitude).toBe('domain');
+		expect(shortPayload.activation).toBe('progressive');
+		expect(shortPayload.dependencies).toEqual([
+			{
+				id: 'cold_email_outreach.offer_crafting',
+				owns: 'Offer crafting and promise repair.'
+			}
+		]);
 		expect(shortPayload.markdown).toBeUndefined();
 		expect(shortPayload.child_skills).toEqual([
 			expect.objectContaining({

@@ -36,6 +36,7 @@ import type { ParentRef } from '$lib/services/ontology/containment-organizer';
 import { isValidTypeKey, type DocumentState, type DocStructure } from '$lib/types/onto';
 import { logOntologyApiError } from '../../shared/error-logging';
 import {
+	readProjectLoopReviewContext,
 	queueProjectLoopBurstAsync,
 	shouldSkipProjectLoopBurst
 } from '$lib/server/project-loop-burst.service';
@@ -51,6 +52,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (!body || typeof body !== 'object') {
 			return ApiResponse.badRequest('Invalid request body');
 		}
+		const projectLoopReviewContext = readProjectLoopReviewContext(
+			body as Record<string, unknown>
+		);
 
 		const {
 			project_id,
@@ -384,7 +388,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
-		if (!shouldSkipProjectLoopBurst(request)) {
+		if (!shouldSkipProjectLoopBurst(request, projectLoopReviewContext)) {
 			queueProjectLoopBurstAsync({
 				projectId: project_id as string,
 				userId: session.user.id,

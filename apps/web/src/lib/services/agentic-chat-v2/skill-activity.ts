@@ -7,6 +7,21 @@ import {
 import { isSkillHelpPayload } from '$lib/services/agentic-chat/tools/skills/types';
 export type { SkillActivityEvent } from '@buildos/shared-types';
 
+export type LoadedSkillToolingTelemetry = {
+	materialized_tools?: string[];
+	read_ops?: string[];
+	write_ops?: string[];
+	destructive_ops?: string[];
+};
+
+function compactSkillStringList(value: unknown, limit = 12): string[] {
+	if (!Array.isArray(value)) return [];
+	return value
+		.map((item) => (typeof item === 'string' ? item.trim() : ''))
+		.filter((item) => item.length > 0)
+		.slice(0, limit);
+}
+
 function parseSkillReference(
 	toolCall: ChatToolCall
 ): { skillId: string; via: SkillActivityEvent['via'] } | null {
@@ -58,5 +73,22 @@ export function getLoadedSkillActivity(
 		action: 'loaded',
 		path: result.result.id,
 		via: 'skill_load'
+	};
+}
+
+export function getLoadedSkillToolingTelemetry(
+	result: ChatToolResult
+): LoadedSkillToolingTelemetry {
+	if (!result.success || !isSkillHelpPayload(result.result)) return {};
+	const materializedTools = compactSkillStringList(result.result.materialized_tools);
+	const readOps = compactSkillStringList(result.result.read_ops);
+	const writeOps = compactSkillStringList(result.result.write_ops);
+	const destructiveOps = compactSkillStringList(result.result.destructive_ops);
+
+	return {
+		...(materializedTools.length ? { materialized_tools: materializedTools } : {}),
+		...(readOps.length ? { read_ops: readOps } : {}),
+		...(writeOps.length ? { write_ops: writeOps } : {}),
+		...(destructiveOps.length ? { destructive_ops: destructiveOps } : {})
 	};
 }

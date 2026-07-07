@@ -11,11 +11,37 @@ describe('skill search', () => {
 
 		expect(result.type).toBe('skill_search_results');
 		expect(result.matches[0]).toMatchObject({
-			skill_id: 'cold_email_deliverability_readiness'
+			skill_id: 'cold_email_deliverability_readiness',
+			skill_type: 'procedure',
+			altitude: 'task',
+			activation: 'progressive',
+			recommended_load_format: 'full'
 		});
 		// Auto-mounts skill_load so the search -> load hop is round-free under lean
 		// discovery (Tier 2 item 4).
 		expect(result.materialized_tools).toContain('skill_load');
+	});
+
+	it('includes orchestration ownership metadata in matches', () => {
+		const result = searchSkills({
+			query: 'content_strategy_beyond_blogging',
+			limit: 1
+		}) as Record<string, any>;
+
+		expect(result.matches[0]).toMatchObject({
+			skill_id: 'content_strategy_beyond_blogging',
+			skill_type: 'strategy',
+			altitude: 'domain',
+			activation: 'progressive'
+		});
+		expect(result.matches[0].dependencies).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: 'hook_craft_short_form',
+					owns: expect.stringContaining('Line-level hook')
+				})
+			])
+		);
 	});
 
 	it('filters skills through a domain card', () => {

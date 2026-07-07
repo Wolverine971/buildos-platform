@@ -4,6 +4,7 @@ import {
 	type ProposalContextLoopRun
 } from '@buildos/shared-agent-ops/proposal-context';
 import { createAgentRunChatSession } from './agent-run-chat-session.service';
+import { createOrReuseProjectAuditChatSession } from './project-audit-chat-session.service';
 import type { InboxIndexRow, InboxSourceType } from '@buildos/shared-agent-ops/inbox-index';
 import type { Json } from '@buildos/shared-types';
 
@@ -11,7 +12,7 @@ type AnySupabase = any;
 
 type SupportedInboxSourceType = Extract<
 	InboxSourceType,
-	'agent_run' | 'project_suggestion' | 'calendar_suggestion'
+	'agent_run' | 'project_suggestion' | 'project_audit' | 'calendar_suggestion'
 >;
 
 type SourceContext = {
@@ -51,12 +52,14 @@ export type InboxChatSessionResult = {
 const SOURCE_TABLE_BY_TYPE: Record<SupportedInboxSourceType, string> = {
 	agent_run: 'agent_runs',
 	project_suggestion: 'project_suggestions',
+	project_audit: 'project_audits',
 	calendar_suggestion: 'calendar_project_suggestions'
 };
 
 const SOURCE_LABEL_BY_TYPE: Record<SupportedInboxSourceType, string> = {
 	agent_run: 'Agent proposal',
 	project_suggestion: 'Project review item',
+	project_audit: 'Project audit',
 	calendar_suggestion: 'Calendar project suggestion'
 };
 
@@ -684,6 +687,26 @@ export async function createInboxChatSession(params: {
 			context_type: result.context_type as SessionScope['contextType'],
 			entity_id: result.entity_id,
 			project_id: result.project_id
+		};
+	}
+
+	if (params.item.source_type === 'project_audit') {
+		const projectId = params.item.project_id ?? readString(sourcePayload.project_id);
+		const result = await createOrReuseProjectAuditChatSession({
+			supabase: params.supabase,
+			auditId: params.item.source_ref_id,
+			userId: params.userId,
+			projectId
+		});
+		return {
+			created: result.created,
+			session: result.session,
+			chat_session_id: result.chat_session_id,
+			item: params.item,
+			source_payload: result.audit,
+			context_type: 'project',
+			entity_id: projectId,
+			project_id: projectId
 		};
 	}
 

@@ -560,7 +560,12 @@ describe('ToolExecutionService', () => {
 						name: 'skill_load',
 						arguments: { id: 'google_calendar', include_examples: false }
 					},
-					expectedData: { type: 'skill', id: 'google_calendar' }
+					expectedData: {
+						type: 'skill',
+						id: 'google_calendar',
+						format: 'full',
+						recommended_load_format: 'full'
+					}
 				},
 				{
 					call: {

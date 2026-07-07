@@ -77,7 +77,7 @@ import {
 } from '$lib/services/agentic-chat/state/agent-state-reconciliation-service';
 import {
 	createFastChatSessionService,
-	historyIncludesLoadedSkillsLedger,
+	extractLoadedSkillIdsFromHistory,
 	appendAttachmentContextToMessage,
 	buildAttachmentOnlyDisplayText,
 	buildLiveVisionContentParts,
@@ -113,9 +113,13 @@ import {
 	buildLitePromptEnvelope,
 	LITE_PROMPT_VARIANT,
 	type LitePromptEnvelope,
+	type LitePromptSection,
 	type LitePromptVariant
 } from '$lib/services/agentic-chat-lite/prompt';
-import { senseDomains } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
+import {
+	getSkillGateCandidateSkillIds,
+	senseDomains
+} from '$lib/services/agentic-chat/tools/domains/domain-sensing';
 import {
 	getActiveDomainIds,
 	getActiveOutcomeCardIds,
@@ -139,6 +143,7 @@ import { buildPromptCostBreakdown } from '$lib/services/agentic-chat-v2/prompt-c
 import { buildToolSurfaceSizeReport } from '$lib/services/agentic-chat-v2/tool-surface-size-report';
 import {
 	getLoadedSkillActivity,
+	getLoadedSkillToolingTelemetry,
 	getRequestedSkillActivity,
 	type SkillActivityEvent
 } from '$lib/services/agentic-chat-v2/skill-activity';
@@ -157,7 +162,8 @@ import {
 	parsePreparedPromptKey,
 	verifyPreparedPromptNonce,
 	type PreparedPromptCacheMissReason,
-	type PreparedPromptRow
+	type PreparedPromptRow,
+	type PreparedPromptSectionSummary
 } from '$lib/services/agentic-chat-v2/prepared-prompt-cache';
 import {
 	consumeTransientFastChatCancelHint,
@@ -325,6 +331,7 @@ type FastChatResolvedPromptContext = {
 	focusEntityType?: string | null;
 	focusEntityId?: string | null;
 	focusEntityName?: string | null;
+	contextLoadSource?: AgentTimingSummary['context_load_source'];
 	conversationSummary?: string | null;
 	entityResolutionHint?: string | null;
 	data?: Record<string, unknown> | string | null;
@@ -1026,6 +1033,33 @@ function resolveCacheAgeSeconds(createdAtRaw: string | null | undefined): number
 	const createdAtMs = Date.parse(createdAtRaw);
 	if (!Number.isFinite(createdAtMs)) return 0;
 	return Math.max(0, Math.floor((Date.now() - createdAtMs) / 1000));
+}
+
+const CONTEXT_LOAD_SOURCES = new Set<NonNullable<AgentTimingSummary['context_load_source']>>([
+	'rpc',
+	'rpc_null_fallback',
+	'rpc_error_fallback',
+	'fallback',
+	'none',
+	'unknown_cached'
+]);
+
+function normalizeContextLoadSource(
+	value: unknown
+): NonNullable<AgentTimingSummary['context_load_source']> {
+	return typeof value === 'string' &&
+		CONTEXT_LOAD_SOURCES.has(value as NonNullable<AgentTimingSummary['context_load_source']>)
+		? (value as NonNullable<AgentTimingSummary['context_load_source']>)
+		: 'unknown_cached';
+}
+
+function hasRenderableLiteSections(sections: readonly unknown[]): sections is LitePromptSection[] {
+	if (sections.length === 0) return false;
+	return sections.every((section) => {
+		if (!section || typeof section !== 'object' || Array.isArray(section)) return false;
+		const record = section as Record<string, unknown>;
+		return typeof record.id === 'string' && typeof record.content === 'string';
+	});
 }
 
 function annotateContextMetaCacheAge(
@@ -2298,6 +2332,7 @@ export const POST: RequestHandler = async ({
 	let rawHistoryCount: number | null = null;
 	let historyForModelCount: number | null = null;
 	let contextCacheSource: AgentTimingSummary['cache_source'] = 'not_requested';
+	let contextLoadSource: AgentTimingSummary['context_load_source'] = 'none';
 	let contextCacheAgeSecondsForTiming: number | null = null;
 	let bypassedContextCache = false;
 	let preparedPromptRequested = Boolean(requestPreparedPromptKey);
@@ -2371,6 +2406,7 @@ export const POST: RequestHandler = async ({
 			rawHistoryCount,
 			historyForModelCount,
 			contextCacheSource,
+			contextLoadSource,
 			contextCacheAgeSeconds: contextCacheAgeSecondsForTiming,
 			bypassedContextCache,
 			preparedPromptRequested,
@@ -3195,6 +3231,9 @@ export const POST: RequestHandler = async ({
 
 			let systemPrompt: string | undefined;
 			let litePromptEnvelope: LitePromptEnvelope | null = null;
+			let preparedPromptSectionSummaries: PreparedPromptSectionSummary[] | null = null;
+			let preparedPromptContextInventory: unknown = null;
+			let preparedPromptToolsSummary: unknown = null;
 			let contextUsageSnapshot: ContextUsageSnapshot | null = null;
 			let currentTurnContent: string | OpenRouterContentPart[] = messageForModel;
 			let liveVisionPrepared = {
@@ -3235,15 +3274,27 @@ export const POST: RequestHandler = async ({
 						}
 					);
 					systemPrompt = preparedPromptForTurn.surface.system_prompt;
-					litePromptEnvelope = {
-						promptVariant: LITE_PROMPT_VARIANT,
-						systemPrompt,
-						sections: preparedPromptForTurn.surface.sections,
-						contextInventory: preparedPromptForTurn.surface.context_inventory,
-						toolsSummary: preparedPromptForTurn.surface.tools_summary
-					};
+					preparedPromptSectionSummaries = Array.isArray(
+						preparedPromptForTurn.surface.sections
+					)
+						? preparedPromptForTurn.surface.sections
+						: [];
+					preparedPromptContextInventory =
+						preparedPromptForTurn.surface.context_inventory ?? null;
+					preparedPromptToolsSummary =
+						preparedPromptForTurn.surface.tools_summary ?? null;
+					if (hasRenderableLiteSections(preparedPromptForTurn.surface.sections)) {
+						litePromptEnvelope = {
+							promptVariant: LITE_PROMPT_VARIANT,
+							systemPrompt,
+							sections: preparedPromptForTurn.surface.sections,
+							contextInventory: preparedPromptForTurn.surface.context_inventory,
+							toolsSummary: preparedPromptForTurn.surface.tools_summary
+						};
+					}
 					contextCacheAgeSeconds = preparedPromptForTurn.ageSeconds;
 					contextCacheSource = 'prepared_prompt';
+					contextLoadSource = normalizeContextLoadSource(promptContext.contextLoadSource);
 					preparedPromptHit = true;
 					preparedPromptMissReason = null;
 					preparedPromptId = preparedPromptForTurn.row.id;
@@ -3258,6 +3309,9 @@ export const POST: RequestHandler = async ({
 					promptContext = { ...cachedContext.context };
 					contextCacheAgeSeconds = resolveCacheAgeSeconds(cachedContext.created_at);
 					contextCacheSource = 'session_cache';
+					contextLoadSource = normalizeContextLoadSource(
+						cachedContext.context.contextLoadSource
+					);
 				} else {
 					promptContext = await loadFastChatPromptContext({
 						supabase,
@@ -3281,6 +3335,7 @@ export const POST: RequestHandler = async ({
 						}
 					});
 					contextCacheSource = 'fresh_load';
+					contextLoadSource = promptContext.contextLoadSource ?? 'none';
 
 					const fastChatContextCache = buildFastChatContextCacheEntry({
 						cacheKey,
@@ -3292,6 +3347,7 @@ export const POST: RequestHandler = async ({
 							focusEntityType: promptContext.focusEntityType ?? null,
 							focusEntityId: promptContext.focusEntityId ?? null,
 							focusEntityName: promptContext.focusEntityName ?? null,
+							contextLoadSource,
 							data: promptContext.data ?? null
 						}
 					});
@@ -3330,6 +3386,16 @@ export const POST: RequestHandler = async ({
 						domainSensingResult: null
 					});
 					systemPrompt = litePromptEnvelope.systemPrompt;
+				}
+
+				if (!litePromptEnvelope && systemPrompt && turnDomainSensing) {
+					litePromptEnvelope = buildLitePromptEnvelope({
+						...promptContext,
+						tools,
+						productSurface: FASTCHAT_STREAM_ENDPOINT,
+						conversationPosition: `live stream turn ${streamRunId}`,
+						domainSensingResult: null
+					});
 				}
 
 				if (litePromptEnvelope) {
@@ -3474,6 +3540,7 @@ export const POST: RequestHandler = async ({
 					'update_turn_run_context_cache',
 					{
 						cacheSource: contextCacheSource,
+						contextLoadSource,
 						cacheAgeSeconds: contextCacheAgeSecondsForTiming,
 						preparedPromptHit,
 						preparedPromptMissReason,
@@ -3549,16 +3616,24 @@ export const POST: RequestHandler = async ({
 								promptVariant,
 								promptCostBreakdown,
 								toolSurfaceReport: promptToolSurfaceReport,
-								liteSections: litePromptEnvelope?.sections ?? null,
-								liteContextInventory: litePromptEnvelope?.contextInventory ?? null,
-								liteToolsSummary: litePromptEnvelope?.toolsSummary ?? null
+								liteSections:
+									litePromptEnvelope?.sections ?? preparedPromptSectionSummaries,
+								liteContextInventory:
+									litePromptEnvelope?.contextInventory ??
+									preparedPromptContextInventory,
+								liteToolsSummary:
+									litePromptEnvelope?.toolsSummary ?? preparedPromptToolsSummary
 							}),
 							promptCostBreakdown,
 							contextPayload: promptContext,
 							toolSurfaceReport: promptToolSurfaceReport,
-							liteSections: litePromptEnvelope?.sections ?? null,
-							liteContextInventory: litePromptEnvelope?.contextInventory ?? null,
-							liteToolsSummary: litePromptEnvelope?.toolsSummary ?? null
+							liteSections:
+								litePromptEnvelope?.sections ?? preparedPromptSectionSummaries,
+							liteContextInventory:
+								litePromptEnvelope?.contextInventory ??
+								preparedPromptContextInventory,
+							liteToolsSummary:
+								litePromptEnvelope?.toolsSummary ?? preparedPromptToolsSummary
 						});
 						const { error: snapshotError } = await supabase
 							.from('chat_prompt_snapshots')
@@ -3719,9 +3794,9 @@ export const POST: RequestHandler = async ({
 				skillGate: turnDomainSensing
 					? {
 							required: turnDomainSensing.skill_load_required === true,
-							recommendedSkillIds: turnDomainSensing.recommended_skill_ids ?? [],
-							historyHasLoadedSkillsLedger:
-								historyIncludesLoadedSkillsLedger(historyForModel)
+							recommendedSkillIds: getSkillGateCandidateSkillIds(turnDomainSensing),
+							acceptableSkillIds: getSkillGateCandidateSkillIds(turnDomainSensing),
+							historyLoadedSkillIds: extractLoadedSkillIdsFromHistory(historyForModel)
 						}
 					: null,
 				tools,
@@ -3742,9 +3817,10 @@ export const POST: RequestHandler = async ({
 					historyForModelCount: historyForModel.length,
 					tailMessagesKept: historyComposition.tailMessagesKept,
 					continuityHintUsed: historyComposition.continuityHintUsed,
-					liteSections: litePromptEnvelope?.sections ?? null,
-					liteContextInventory: litePromptEnvelope?.contextInventory ?? null,
-					liteToolsSummary: litePromptEnvelope?.toolsSummary ?? null
+					liteSections: litePromptEnvelope?.sections ?? preparedPromptSectionSummaries,
+					liteContextInventory:
+						litePromptEnvelope?.contextInventory ?? preparedPromptContextInventory,
+					liteToolsSummary: litePromptEnvelope?.toolsSummary ?? preparedPromptToolsSummary
 				},
 				toolExecutor: toolExecutionService
 					? async (toolCall, availableToolsForExecution = tools) => {
@@ -3981,12 +4057,14 @@ export const POST: RequestHandler = async ({
 						);
 						const loadedSkillActivity = getLoadedSkillActivity(patchedCall, result);
 						if (loadedSkillActivity) {
+							const loadedSkillTooling = getLoadedSkillToolingTelemetry(result);
 							observabilityWriter.recordEvent(
 								'tool',
 								'skill_loaded',
 								{
 									path: loadedSkillActivity.path,
-									via: loadedSkillActivity.via
+									via: loadedSkillActivity.via,
+									...loadedSkillTooling
 								} as Json,
 								{ skillPath: loadedSkillActivity.path }
 							);

@@ -14,8 +14,25 @@ export type FastChatPromptContextSnapshot = {
 	focusEntityType?: string | null;
 	focusEntityId?: string | null;
 	focusEntityName?: string | null;
+	contextLoadSource?:
+		| 'rpc'
+		| 'rpc_null_fallback'
+		| 'rpc_error_fallback'
+		| 'fallback'
+		| 'none'
+		| 'unknown_cached';
 	data?: Record<string, unknown> | string | null;
 };
+
+type FastChatContextLoadSource = NonNullable<FastChatPromptContextSnapshot['contextLoadSource']>;
+const FASTCHAT_CONTEXT_LOAD_SOURCES = new Set<FastChatContextLoadSource>([
+	'rpc',
+	'rpc_null_fallback',
+	'rpc_error_fallback',
+	'fallback',
+	'none',
+	'unknown_cached'
+]);
 
 export type FastChatContextCache = {
 	version: number;
@@ -64,6 +81,13 @@ function readString(
 	return null;
 }
 
+function normalizeContextLoadSource(value: string | null): FastChatContextLoadSource | null {
+	if (!value) return null;
+	return FASTCHAT_CONTEXT_LOAD_SOURCES.has(value as FastChatContextLoadSource)
+		? (value as FastChatContextLoadSource)
+		: null;
+}
+
 /**
  * Single normalization point for context snapshots arriving from outside the
  * process (request prewarm payloads, prepared prompt rows). Accepts the
@@ -80,6 +104,10 @@ export function normalizeFastChatContextSnapshot(
 	if (!contextTypeRaw) return null;
 
 	const data = record.data;
+	const contextLoadSource =
+		normalizeContextLoadSource(
+			readString(record, 'contextLoadSource', 'context_load_source')
+		) ?? undefined;
 	return {
 		contextType: normalizeAgenticChatContextType(contextTypeRaw),
 		entityId: readString(record, 'entityId', 'entity_id'),
@@ -88,6 +116,7 @@ export function normalizeFastChatContextSnapshot(
 		focusEntityType: readString(record, 'focusEntityType', 'focus_entity_type'),
 		focusEntityId: readString(record, 'focusEntityId', 'focus_entity_id'),
 		focusEntityName: readString(record, 'focusEntityName', 'focus_entity_name'),
+		contextLoadSource,
 		data:
 			data && typeof data === 'object' && !Array.isArray(data)
 				? (data as Record<string, unknown>)
@@ -138,6 +167,7 @@ export function buildFastChatContextCacheEntry(params: {
 			focusEntityType: params.context.focusEntityType ?? null,
 			focusEntityId: params.context.focusEntityId ?? null,
 			focusEntityName: params.context.focusEntityName ?? null,
+			contextLoadSource: params.context.contextLoadSource ?? undefined,
 			data: params.context.data ?? null
 		}
 	};

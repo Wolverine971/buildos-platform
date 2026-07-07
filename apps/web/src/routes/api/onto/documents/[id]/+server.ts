@@ -46,6 +46,7 @@ import {
 	type PublicPageLiveSyncResult
 } from '$lib/server/public-page.service';
 import {
+	readProjectLoopReviewContext,
 	queueProjectLoopBurstAsync,
 	shouldSkipProjectLoopBurst
 } from '$lib/server/project-loop-burst.service';
@@ -250,6 +251,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (!body || typeof body !== 'object') {
 			return ApiResponse.badRequest('Invalid request body');
 		}
+		const projectLoopReviewContext = readProjectLoopReviewContext(
+			body as Record<string, unknown>
+		);
 
 		const accessResult = await ensureDocumentAccess(
 			locals,
@@ -415,7 +419,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				chatSessionId
 			);
 
-			if (!shouldSkipProjectLoopBurst(request)) {
+			if (!shouldSkipProjectLoopBurst(request, projectLoopReviewContext)) {
 				queueProjectLoopBurstAsync({
 					projectId: document.project_id,
 					userId: session.user.id,
@@ -522,7 +526,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				chatSessionId
 			);
 
-			if (!shouldSkipProjectLoopBurst(request)) {
+			if (!shouldSkipProjectLoopBurst(request, projectLoopReviewContext)) {
 				queueProjectLoopBurstAsync({
 					projectId: document.project_id,
 					userId: session.user.id,
@@ -900,7 +904,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			}
 		}
 
-		if (!shouldSkipProjectLoopBurst(request)) {
+		if (!shouldSkipProjectLoopBurst(request, projectLoopReviewContext)) {
 			queueProjectLoopBurstAsync({
 				projectId: document.project_id,
 				userId,

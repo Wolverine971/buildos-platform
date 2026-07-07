@@ -1,5 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/prompt-observability.test.ts
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/shared-types';
 import {
 	buildLitePromptEnvelope,
@@ -18,6 +18,11 @@ import { buildPromptCostBreakdown } from './prompt-cost-breakdown';
 import { FASTCHAT_PROMPT_VARIANT } from './prompt-variant';
 
 describe('prompt observability helpers', () => {
+	afterEach(() => {
+		delete process.env.FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_ENABLED;
+		delete process.env.FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_MAX_CHARS;
+	});
+
 	it('builds a stable prompt snapshot row', () => {
 		const tools: ChatToolDefinition[] = [
 			{
@@ -59,10 +64,7 @@ describe('prompt observability helpers', () => {
 		expect(row.tools_sha256).toMatch(/^[a-f0-9]{64}$/);
 		expect(row.system_prompt_sha256).toMatch(/^[a-f0-9]{64}$/);
 		expect(row.messages_sha256).toMatch(/^[a-f0-9]{64}$/);
-		expect(row.rendered_dump_text).toContain('FASTCHAT V2 PROMPT SNAPSHOT');
-		expect(row.rendered_dump_text).toContain('Prompt variant: fastchat_prompt_v1');
-		expect(row.rendered_dump_text).toContain('stream-run-1');
-		expect(row.rendered_dump_text).toContain('tool_schema');
+		expect(row.rendered_dump_text).toBeNull();
 		expect(row.message_chars).toBeGreaterThan(0);
 		expect(row.approx_prompt_tokens).toBeGreaterThan(0);
 		expect((row.prompt_sections as Record<string, unknown>).cost_breakdown).toBeDefined();
@@ -146,9 +148,38 @@ describe('prompt observability helpers', () => {
 		expect(promptSections.lite_context_inventory).toBeDefined();
 		expect(promptSections.lite_tools_summary).toBeDefined();
 		expect(promptSections.tool_surface_report).toBeDefined();
-		expect(row.rendered_dump_text).toContain('Prompt variant: lite_seed_v1');
-		expect(row.rendered_dump_text).toContain('LITE SECTION BREAKDOWN');
-		expect(row.rendered_dump_text).toContain('identity_mission - Identity and Mission');
+		expect(row.rendered_dump_text).toBeNull();
+	});
+
+	it('stores a bounded rendered prompt dump only when explicitly enabled', () => {
+		process.env.FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_ENABLED = 'true';
+		process.env.FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_MAX_CHARS = '240';
+
+		const row = buildPromptSnapshotRow({
+			turnRunId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+			sessionId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+			userId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+			streamRunId: 'stream-run-dump-enabled',
+			contextType: 'global',
+			promptVariant: LITE_PROMPT_VARIANT,
+			systemPrompt: 'Lite system prompt '.repeat(40),
+			history: [],
+			message: 'Use the lite prompt.',
+			tools: [
+				{
+					type: 'function',
+					function: {
+						name: 'tool_schema',
+						description: 'Lookup tool schema',
+						parameters: { type: 'object', properties: {} }
+					}
+				}
+			]
+		});
+
+		expect(row.rendered_dump_text).toContain('FASTCHAT V2 PROMPT SNAPSHOT');
+		expect(row.rendered_dump_text).toContain('[rendered_dump_text truncated at 240 chars]');
+		expect(row.rendered_dump_text?.length).toBeLessThanOrEqual(300);
 	});
 
 	it('estimates costs for prompt sections and provider tool definitions', () => {

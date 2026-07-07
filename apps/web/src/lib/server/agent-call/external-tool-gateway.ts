@@ -453,7 +453,11 @@ export async function executeBuildosAgentGatewayTool(params: {
 	securityEventOptions?: SecurityEventLogOptions;
 }): Promise<Record<string, unknown>> {
 	switch (params.toolName) {
-		case 'skill_load':
+		case 'skill_load': {
+			const format =
+				params.arguments?.format === 'full' || params.arguments?.format === 'short'
+					? params.arguments.format
+					: undefined;
 			return loadSkill(
 				typeof params.arguments?.skill === 'string'
 					? params.arguments.skill
@@ -463,10 +467,12 @@ export async function executeBuildosAgentGatewayTool(params: {
 							? params.arguments.path
 							: '',
 				{
-					format: params.arguments?.format === 'full' ? 'full' : 'short',
-					include_examples: params.arguments?.include_examples !== false
+					format,
+					include_examples: params.arguments?.include_examples !== false,
+					surface: 'external_agent'
 				}
 			) as Record<string, unknown>;
+		}
 		case 'tool_search': {
 			const registry = buildExternalGatewayRegistry(params.scope);
 			const filters = normalizeToolSearchFilterArgs(params.arguments);

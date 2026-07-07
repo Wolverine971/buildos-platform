@@ -51,7 +51,10 @@ describe('outcome card discovery', () => {
 		expect(result.matches[0]).toMatchObject({
 			outcome_card_id: 'youtube_growth_strategy_plan',
 			coverage_status: 'partial',
-			default_skill_id: 'content_strategy_beyond_blogging'
+			default_skill_id: 'content_strategy_beyond_blogging',
+			skill_load_formats: {
+				content_strategy_beyond_blogging: 'full'
+			}
 		});
 		expect(result.materialized_tools).toEqual(['outcome_card_load']);
 	});
@@ -90,6 +93,9 @@ describe('outcome card discovery', () => {
 			throw new Error('Expected outcome card payload');
 		}
 		expect(result.skill_ids).toEqual(['linkedin_company_page_growth']);
+		expect(result.skill_load_formats).toEqual({
+			linkedin_company_page_growth: 'full'
+		});
 		expect(result.resource_ids).toEqual(['linkedin_company_page_growth.growth_playbook']);
 		expect(result.materialized_tools).toEqual(['skill_load', 'resource_search']);
 		expect(result.materialized_tools).not.toContain('create_onto_document');

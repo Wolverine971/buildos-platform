@@ -113,6 +113,11 @@ const UNRESOLVED_AUDIT_SUGGESTION_STATUSES = new Set([
 	'delegated',
 	'failed'
 ]);
+const PROJECT_SUGGESTION_REPLAY_REVIEW_CONTEXT = {
+	origin: 'project_suggestion_replay',
+	operation_kind: 'suggestion_apply',
+	review_policy: 'suppress'
+} as const;
 
 function sanitizeFeedback(value: unknown): ProjectSuggestionFeedback | null {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -147,6 +152,62 @@ function linkedSuggestionStatus(link: Record<string, unknown>): string | null {
 		return typeof status === 'string' ? status : null;
 	}
 	return null;
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isBinaryOrStreamBody(value: unknown): boolean {
+	return (
+		(typeof FormData !== 'undefined' && value instanceof FormData) ||
+		(typeof URLSearchParams !== 'undefined' && value instanceof URLSearchParams) ||
+		(typeof Blob !== 'undefined' && value instanceof Blob) ||
+		(typeof ArrayBuffer !== 'undefined' && value instanceof ArrayBuffer) ||
+		(typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(value as ArrayBufferView)) ||
+		(typeof ReadableStream !== 'undefined' && value instanceof ReadableStream)
+	);
+}
+
+function withProjectSuggestionReplayContext(
+	init: RequestInit,
+	params: { suggestionId: string; operationCount: number }
+): RequestInit {
+	const rawBody = init.body;
+	const method = init.method?.toUpperCase();
+	if (method === 'GET' || method === 'HEAD' || (!method && rawBody == null)) return init;
+	if (isBinaryOrStreamBody(rawBody)) return init;
+
+	let body: Record<string, unknown>;
+	if (rawBody === undefined || rawBody === null) {
+		body = {};
+	} else if (typeof rawBody === 'string') {
+		try {
+			const parsed = JSON.parse(rawBody);
+			if (!isJsonObject(parsed)) return init;
+			body = parsed;
+		} catch {
+			return init;
+		}
+	} else {
+		return init;
+	}
+
+	const headers = new Headers(init.headers);
+	headers.set('Content-Type', 'application/json');
+
+	return {
+		...init,
+		headers,
+		body: JSON.stringify({
+			...body,
+			project_review_context: {
+				...PROJECT_SUGGESTION_REPLAY_REVIEW_CONTEXT,
+				operation_id: `project_suggestion:${params.suggestionId}`,
+				entity_count: params.operationCount
+			}
+		})
+	};
 }
 
 async function refreshLinkedAuditSuggestionCounts(params: {
@@ -366,14 +427,18 @@ export async function decideProjectSuggestion(params: {
 			error instanceof Error ? error.message : error
 		);
 	}
+	const operations: LoopOperation[] = Array.isArray(suggestion.operations)
+		? suggestion.operations
+		: [];
 	const baseFetch = params.fetchFn ?? fetch;
 	const projectLoopFetch: typeof fetch = (input, init = {}) => {
-		const headers = new Headers(init.headers);
-		headers.set('X-Skip-Project-Loop-Burst', 'true');
-		return baseFetch(input, {
-			...init,
-			headers
-		});
+		return baseFetch(
+			input,
+			withProjectSuggestionReplayContext(init, {
+				suggestionId,
+				operationCount: operations.length
+			})
+		);
 	};
 	const executor = new ChatToolExecutor(
 		supabase,
@@ -381,9 +446,6 @@ export async function decideProjectSuggestion(params: {
 		chatSessionId ?? undefined,
 		projectLoopFetch
 	);
-	const operations: LoopOperation[] = Array.isArray(suggestion.operations)
-		? suggestion.operations
-		: [];
 
 	const errors: Array<{ tool: string; error: string }> = [];
 	let appliedCount = 0;

@@ -9,6 +9,7 @@ import { moveDocument } from '$lib/services/ontology/doc-structure.service';
 import { logOntologyApiError } from '../../../../shared/error-logging';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import {
+	readProjectLoopReviewContext,
 	queueProjectLoopBurstAsync,
 	shouldSkipProjectLoopBurst
 } from '$lib/server/project-loop-burst.service';
@@ -32,6 +33,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		if (!body || typeof body !== 'object') {
 			return ApiResponse.badRequest('Invalid request body');
 		}
+		const projectLoopReviewContext = readProjectLoopReviewContext(
+			body as Record<string, unknown>
+		);
 
 		const documentId = typeof (body as any).document_id === 'string' ? body.document_id : '';
 		const newParentIdRaw = (body as any).new_parent_id;
@@ -187,7 +191,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			throw err;
 		}
 
-		if (!shouldSkipProjectLoopBurst(request)) {
+		if (!shouldSkipProjectLoopBurst(request, projectLoopReviewContext)) {
 			queueProjectLoopBurstAsync({
 				projectId: id,
 				userId: session.user.id,

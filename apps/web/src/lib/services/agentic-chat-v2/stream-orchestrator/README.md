@@ -113,7 +113,7 @@ Importers point directly at `./stream-orchestrator/index` via the barrel in `age
 - Current status after repair/round-analysis extraction pass: `35/35` tests passing.
 - Current baseline freeze status: `38/38` orchestrator tests passing.
 - Current focused baseline with direct helper coverage: `46/46` tests passing across `stream-orchestrator.test.ts`, `repair-instructions.test.ts`, and `round-analysis.test.ts`.
-- Current Wave 4 focused suite: `111/111` tests passing across `stream-orchestrator.test.ts`, `finalization-runner.test.ts`, `repair-instructions.test.ts`, and `tool-payload-compaction.test.ts`.
+- Current Wave 4 focused suite: `114/114` tests passing across `stream-orchestrator.test.ts`, `finalization-runner.test.ts`, `repair-instructions.test.ts`, and `tool-payload-compaction.test.ts`.
 - Broader `agentic-chat-v2` service baseline: `112/112` tests passing across `18` test files.
 - Current Phase 5 focused suite: `174/174` tests passing across `13` test files.
 - Current broader `agentic-chat-v2` service suite: `423/423` tests passing across `51` test files.

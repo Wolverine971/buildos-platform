@@ -33,7 +33,7 @@ import { POST } from './+server';
 
 type InboxItemFixture = {
 	id: string;
-	source_type: 'project_suggestion' | 'calendar_suggestion' | 'agent_run';
+	source_type: 'project_suggestion' | 'project_audit' | 'calendar_suggestion' | 'agent_run';
 	source_ref_id: string;
 	source_status: string | null;
 	status: string;
@@ -98,6 +98,34 @@ function calendarSuggestionItem(): InboxItemFixture {
 	};
 }
 
+function projectAuditItem(): InboxItemFixture {
+	return {
+		id: 'inbox-audit-1',
+		source_type: 'project_audit',
+		source_ref_id: 'audit-1',
+		source_status: 'ready',
+		status: 'pending',
+		user_id: null,
+		project_id: 'project-1',
+		audience: 'project_members',
+		title: 'Complete project audit',
+		action_kinds: ['open', 'resolve']
+	};
+}
+
+function projectAuditChatSessionFor(item: InboxItemFixture) {
+	return {
+		id: 'session-1',
+		user_id: USER_ID,
+		agent_metadata: {
+			source: 'project_audit',
+			audit_id: item.source_ref_id,
+			source_type: 'project_audit',
+			source_ref_id: item.source_ref_id
+		}
+	};
+}
+
 function chatSessionFor(item: InboxItemFixture, metadataPatch: Record<string, unknown> = {}) {
 	return {
 		id: 'session-1',
@@ -116,6 +144,7 @@ function createSupabaseMock(params: {
 	item: InboxItemFixture | null;
 	session: Record<string, unknown> | null;
 	projectSuggestionUpdate?: Record<string, unknown> | null;
+	projectAuditUpdate?: Record<string, unknown> | null;
 	calendarSuggestionUpdate?: Record<string, unknown> | null;
 }) {
 	const operations: Operation[] = [];
@@ -138,6 +167,7 @@ function createSupabaseMock(params: {
 					state.filters.push([column, value]);
 					return builder;
 				}),
+				in: vi.fn(() => builder),
 				maybeSingle: vi.fn(async () => {
 					operations.push({ ...state, filters: [...state.filters] });
 					if (table === 'inbox_items') {
@@ -148,6 +178,9 @@ function createSupabaseMock(params: {
 					}
 					if (table === 'project_suggestions' && state.action === 'update') {
 						return { data: params.projectSuggestionUpdate ?? null, error: null };
+					}
+					if (table === 'project_audits' && state.action === 'update') {
+						return { data: params.projectAuditUpdate ?? null, error: null };
 					}
 					if (table === 'calendar_project_suggestions' && state.action === 'update') {
 						return { data: params.calendarSuggestionUpdate ?? null, error: null };
@@ -337,6 +370,66 @@ describe('POST /api/inbox/[item_id]/resolve-from-chat', () => {
 		expect(mocks.syncInboxItemForSource).toHaveBeenCalledWith(
 			expect.objectContaining({
 				sourceType: 'project_suggestion',
+				sourceRefId: item.source_ref_id
+			})
+		);
+	});
+
+	it('marks a project audit reviewed from its audit chat session', async () => {
+		const item = projectAuditItem();
+		const local = createSupabaseMock({
+			item,
+			session: projectAuditChatSessionFor(item)
+		});
+		const admin = createSupabaseMock({
+			item: null,
+			session: null,
+			projectAuditUpdate: { id: item.source_ref_id, status: 'reviewed' }
+		});
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.supabase);
+		mocks.syncInboxItemForSource.mockResolvedValue({
+			...item,
+			status: 'decided',
+			source_status: 'reviewed'
+		});
+
+		const response = await POST({
+			params: { item_id: item.id },
+			request: makeRequest({
+				session_id: 'session-1',
+				has_changes: true,
+				total_mutations: 2,
+				affected_project_ids: ['project-1']
+			}),
+			locals: makeLocals(local.supabase)
+		} as any);
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(json.data).toMatchObject({
+			resolved: true,
+			source_type: 'project_audit',
+			source_ref_id: item.source_ref_id
+		});
+		expect(mocks.requireProjectMemberAccess).toHaveBeenCalledWith(
+			expect.objectContaining({
+				projectId: 'project-1',
+				requiredAccess: 'write'
+			})
+		);
+		const update = admin.operations.find((operation) => operation.table === 'project_audits');
+		expect(update?.payload).toMatchObject({
+			status: 'reviewed'
+		});
+		expect(update?.filters).toEqual(
+			expect.arrayContaining([
+				['id', item.source_ref_id],
+				['project_id', 'project-1']
+			])
+		);
+		expect(mocks.syncInboxItemForSource).toHaveBeenCalledWith(
+			expect.objectContaining({
+				sourceType: 'project_audit',
 				sourceRefId: item.source_ref_id
 			})
 		);

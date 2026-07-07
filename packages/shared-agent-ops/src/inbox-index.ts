@@ -7,6 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export type InboxSourceType =
 	| 'agent_run'
 	| 'project_suggestion'
+	| 'project_audit'
 	| 'calendar_suggestion'
 	| 'profile_fragment'
 	| 'contact_merge_candidate';
@@ -88,6 +89,10 @@ function terminalDecidedAt(row: Record<string, unknown>): string | null {
 		asString(row.updated_at) ??
 		null
 	);
+}
+
+function projectAuditDecidedAt(row: Record<string, unknown>): string | null {
+	return asString(row.reviewed_at) ?? asString(row.archived_at) ?? terminalDecidedAt(row);
 }
 
 function parseTimestamp(value: string | null | undefined): number | null {
@@ -323,6 +328,58 @@ export function mapProjectSuggestionToInboxItem(
 	};
 }
 
+export function mapProjectAuditToInboxItem(audit: Record<string, unknown>): InboxIndexRow | null {
+	const id = asString(audit.id);
+	const projectId = asString(audit.project_id);
+	if (!id || !projectId) return null;
+
+	const status = asString(audit.status) ?? 'queued';
+	const inboxStatus: InboxItemStatus =
+		status === 'ready'
+			? 'pending'
+			: status === 'queued' || status === 'running'
+				? 'deciding'
+				: status === 'failed'
+					? 'blocked'
+					: 'decided';
+	const unresolvedCount =
+		typeof audit.unresolved_suggestion_count === 'number'
+			? Math.max(0, audit.unresolved_suggestion_count)
+			: null;
+	const generatedCount =
+		typeof audit.generated_suggestion_count === 'number'
+			? Math.max(0, audit.generated_suggestion_count)
+			: null;
+	const summary =
+		asString(audit.summary) ??
+		(unresolvedCount !== null
+			? `${unresolvedCount} recommended action${unresolvedCount === 1 ? '' : 's'} to review`
+			: generatedCount !== null
+				? `${generatedCount} audit recommendation${generatedCount === 1 ? '' : 's'}`
+				: null);
+
+	return {
+		source_type: 'project_audit',
+		source_ref_id: id,
+		source_status: status,
+		user_id: null,
+		project_id: projectId,
+		audience: 'project_members',
+		status: inboxStatus,
+		title: 'Complete project audit',
+		summary,
+		risk_tier: 2,
+		action_kinds: ['open', 'resolve'],
+		blocked_reason: inboxStatus === 'blocked' ? 'Project audit failed' : null,
+		decided_at:
+			inboxStatus === 'pending' || inboxStatus === 'deciding'
+				? null
+				: projectAuditDecidedAt(audit),
+		expires_at: reviewExpiresAt(asString(audit.created_at), inboxStatus),
+		created_at: asString(audit.created_at) ?? undefined
+	};
+}
+
 export function mapCalendarSuggestionToInboxItem(
 	suggestion: Record<string, unknown>
 ): InboxIndexRow | null {
@@ -414,6 +471,66 @@ export async function syncInboxItemForProjectSuggestion(params: {
 	return row ? upsertInboxItem(params.supabase, row) : null;
 }
 
+export async function syncInboxItemForProjectAudit(params: {
+	supabase: AnySupabase;
+	audit?: Record<string, unknown> | null;
+	auditId?: string;
+}): Promise<InboxIndexRow | null> {
+	let audit = params.audit ?? null;
+	if (!audit && params.auditId) {
+		const { data, error } = await (params.supabase as any)
+			.from('project_audits')
+			.select('*')
+			.eq('id', params.auditId)
+			.maybeSingle();
+		if (error) throw error;
+		audit = data;
+	}
+	if (!audit) {
+		return params.auditId
+			? markInboxItemExpired(params.supabase, 'project_audit', params.auditId)
+			: null;
+	}
+	const row = mapProjectAuditToInboxItem(audit);
+	return row ? upsertInboxItem(params.supabase, row) : null;
+}
+
+export async function expireInboxItemsForProjectAuditChildSuggestions(params: {
+	supabase: AnySupabase;
+	auditId: string;
+	reason?: string;
+}): Promise<number> {
+	const { data: links, error: linkError } = await (params.supabase as any)
+		.from('project_audit_suggestions')
+		.select('suggestion_id')
+		.eq('audit_id', params.auditId);
+	if (linkError) throw linkError;
+
+	const suggestionIds = Array.from(
+		new Set(
+			((links ?? []) as Record<string, unknown>[])
+				.map((link) => asString(link.suggestion_id))
+				.filter((id): id is string => Boolean(id))
+		)
+	);
+	if (suggestionIds.length === 0) return 0;
+
+	const { data, error } = await (params.supabase as any)
+		.from('inbox_items')
+		.update({
+			status: 'expired',
+			source_status: 'grouped_into_project_audit',
+			decided_at: new Date().toISOString(),
+			blocked_reason: params.reason ?? 'Grouped into the complete project audit inbox packet'
+		})
+		.eq('source_type', 'project_suggestion')
+		.in('source_ref_id', suggestionIds)
+		.in('status', ['pending', 'deciding', 'snoozed', 'blocked'])
+		.select('id');
+	if (error) throw error;
+	return (data ?? []).length;
+}
+
 export async function syncInboxItemForCalendarSuggestion(params: {
 	supabase: AnySupabase;
 	suggestion?: Record<string, unknown> | null;
@@ -453,6 +570,11 @@ export async function syncInboxItemForSource(params: {
 			return syncInboxItemForProjectSuggestion({
 				supabase: params.supabase,
 				suggestionId: params.sourceRefId
+			});
+		case 'project_audit':
+			return syncInboxItemForProjectAudit({
+				supabase: params.supabase,
+				auditId: params.sourceRefId
 			});
 		case 'calendar_suggestion':
 			return syncInboxItemForCalendarSuggestion({

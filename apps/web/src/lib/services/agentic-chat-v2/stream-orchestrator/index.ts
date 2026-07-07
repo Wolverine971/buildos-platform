@@ -66,6 +66,7 @@ import {
 import {
 	didGatewayExecSucceed,
 	didToolExecutionReachWriteExecutor,
+	getGatewayExecOp,
 	isDuplicateWriteSkippedExecution,
 	isPureReadToolName,
 	isWriteLikeOperation
@@ -129,13 +130,14 @@ type StreamFastChatParams = {
 	/**
 	 * Deterministic skill-load enforcement (2026-07-02). When domain sensing
 	 * marked the turn skill-covered (`required`), the first finalization attempt
-	 * with no skill_load this turn — and no loaded-skills ledger in history —
-	 * gets one repair round demanding the load.
+	 * with no relevant skill_load this turn — and no relevant skill in the
+	 * loaded-skills ledger — gets one repair round demanding the load.
 	 */
 	skillGate?: {
 		required: boolean;
 		recommendedSkillIds: string[];
-		historyHasLoadedSkillsLedger: boolean;
+		acceptableSkillIds: string[];
+		historyLoadedSkillIds: string[];
 	} | null;
 };
 
@@ -456,7 +458,15 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	};
 	const buildNearBudgetWriteIntentToolPass = (): ForcedWriteIntentToolPass | null => {
 		if (!gatewayModeActive || writeIntentCarveOutUsed) return null;
-		const writeIntentOps = collectGatewayWriteIntentOps(toolExecutions);
+		const writeIntentOps = collectGatewayWriteIntentOps(toolExecutions).filter((op) => {
+			const normalizedOp = normalizeGatewayOpName(op);
+			let latestDirectAttemptSucceeded: boolean | null = null;
+			for (const execution of toolExecutions) {
+				if (getGatewayExecOp(execution) !== normalizedOp) continue;
+				latestDirectAttemptSucceeded = didGatewayExecSucceed(execution);
+			}
+			return latestDirectAttemptSucceeded !== true;
+		});
 		if (writeIntentOps.length === 0) return null;
 
 		const registry = getToolRegistry();
@@ -1083,7 +1093,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					}
 					if (noToolCallFinalization.kind === 'skill_gate') {
 						console.info(
-							'[stream-orchestrator] skill-load gate active with no skill loaded; injecting repair round',
+							'[stream-orchestrator] skill-load gate active with no matching skill loaded; injecting repair round',
 							{
 								recommendedSkillIds: params.skillGate?.recommendedSkillIds ?? []
 							}
@@ -1210,6 +1220,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						consecutiveValidationIssueRounds >= 2 &&
 						(await attemptDocOrganizationRecovery())
 					) {
+						break;
+					}
+					if (toolLimitNotice) {
 						break;
 					}
 					if (consecutiveValidationIssueRounds <= maxValidationRepairRounds) {

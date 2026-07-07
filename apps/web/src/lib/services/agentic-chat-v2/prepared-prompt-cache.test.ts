@@ -4,6 +4,7 @@ import type { ChatToolDefinition } from '@buildos/shared-types';
 import { buildLitePromptEnvelope } from '$lib/services/agentic-chat-lite/prompt';
 import {
 	buildPreparedPromptSurface,
+	compactPreparedPromptContextPayload,
 	isPreparedPromptPrewarmEnabled,
 	isPreparedPromptSurfaceCurrent
 } from './prepared-prompt-cache';
@@ -44,6 +45,64 @@ describe('isPreparedPromptPrewarmEnabled', () => {
 });
 
 describe('prepared-prompt-cache', () => {
+	it('stores compact section summaries instead of duplicating section content', () => {
+		const tools = [tool('get_workspace_overview', 'Get a workspace overview.')];
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			tools
+		});
+		const surface = buildPreparedPromptSurface({
+			surfaceProfile: 'global_basic',
+			contextType: 'global',
+			contextPayload: { contextType: 'global' },
+			conversationSummary: null,
+			tools,
+			envelope,
+			createdAt: '2026-05-11T00:00:00.000Z'
+		});
+
+		expect(surface.system_prompt).toBe(envelope.systemPrompt);
+		expect(surface.sections.length).toBe(envelope.sections.length);
+		expect(surface.sections[0]).toEqual(
+			expect.objectContaining({
+				content_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+				content_chars: expect.any(Number)
+			})
+		);
+		expect(JSON.stringify(surface.sections)).not.toContain('"content"');
+		expect(JSON.stringify(surface.sections)).not.toContain(envelope.sections[0]?.content);
+	});
+
+	it('defensively compacts focus_entity_full before prepared prompt storage', () => {
+		const compacted = compactPreparedPromptContextPayload({
+			contextType: 'project',
+			data: {
+				focus_entity_full: {
+					id: 'doc-1',
+					project_id: 'project-1',
+					title: 'Strategy Doc',
+					description: 'd'.repeat(2_000),
+					content: 'full body '.repeat(1_000),
+					props: { secret: 'do not persist' },
+					content_length: 9_000,
+					content_preview: 'preview'
+				}
+			}
+		});
+
+		const focus = (compacted.data as Record<string, any>).focus_entity_full;
+		expect(focus).toMatchObject({
+			id: 'doc-1',
+			project_id: 'project-1',
+			title: 'Strategy Doc',
+			content_length: 9_000,
+			content_preview: 'preview'
+		});
+		expect(focus.description.length).toBeLessThanOrEqual(1_503);
+		expect(focus).not.toHaveProperty('content');
+		expect(focus).not.toHaveProperty('props');
+	});
+
 	it('accepts a prepared surface when the current prompt and tool surface still match', () => {
 		const tools = [tool('get_workspace_overview', 'Get a workspace overview.')];
 		const envelope = buildLitePromptEnvelope({

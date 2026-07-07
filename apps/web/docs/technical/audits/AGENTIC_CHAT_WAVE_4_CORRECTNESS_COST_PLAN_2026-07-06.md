@@ -4,7 +4,7 @@
 
 Date: 2026-07-06
 
-Status: Draft 0.6 - planning started from the deep backend audit and spot-checked against the current working tree. Initial Wave 4 slices started: A1, A2, A3, A4, A5, B1, and finalization-runner cleanup implemented locally with focused tests passing.
+Status: Draft 0.7 - planning started from the deep backend audit and spot-checked against the current working tree. Initial Wave 4 slices started: A1, A2, A3, A4, A5, A6, B1, and finalization-runner cleanup implemented locally with focused tests passing.
 
 Source audit:
 
@@ -42,11 +42,11 @@ The Wave 4 stub in the audit is stale in a few places. Spot checks in the curren
 | O9      | In progress         | Non-adjacent repeated tool fingerprints are now counted inside a bounded recent window for non-gateway/discovery loops; gateway evidence-read loops keep their ledger path.   |
 | O10     | In progress         | `hasWriteAttempt` is now set only when a write reaches execution; validation-only writes no longer permanently suppress read-loop controls.                                   |
 | O11     | In progress         | Near-budget force synthesis can now allow one exact write-only pass when prior discovery identified a concrete gateway write op.                                              |
-| O12     | Partially addressed | Call-cap skips now synthesize tool results, but every discard path still needs an audit and regression coverage.                                                              |
-| O13     | Appears addressed   | Document organization recovery checks `toolLimitNotice` before and during recovery and returns false if the limit fired. Keep as verify-only unless tests show a gap.         |
-| O14     | Appears addressed   | Same-round materialize-then-run now revalidates the just-materialized direct tool before execution. Keep as verify-only.                                                      |
-| O15     | Appears addressed   | Alias/op references now resolve to the materialized executable name before auto-exec. Keep as verify-only.                                                                    |
-| O16     | Appears addressed   | `onToolCall` callbacks in the inspected paths are wrapped. Keep as verify-only.                                                                                               |
+| O12     | Partially addressed | Call-cap skips now synthesize tool results and no-tool synthesis suppression does not emit `onToolCall`; remaining discard paths need continued review as the loop changes.   |
+| O13     | In progress         | Document organization recovery now breaks when `toolLimitNotice` fires in the validation-only branch; mid-recovery tool-call-limit behavior is covered.                       |
+| O14     | Regression covered  | Same-round materialize-then-run now revalidates the just-materialized direct tool before execution.                                                                           |
+| O15     | Regression covered  | Alias/op references now resolve to the materialized executable name before auto-exec.                                                                                         |
+| O16     | Regression covered  | `onToolCall` callbacks in inspected paths are wrapped and covered.                                                                                                            |
 | C3      | Open                | RPC and fallback context paths still diverge in project/global filters, project dates, focus constraints, and observability.                                                  |
 | C4      | Open                | Fallback project loads still fetch unbounded task/goal/plan sets and only limit in JS. Focus entity uses `select('*')`.                                                       |
 | C5      | Open                | Prepared prompt rows still store full `context_payload` and per-surface prompt material.                                                                                      |
@@ -67,7 +67,8 @@ The Wave 4 stub in the audit is stale in a few places. Spot checks in the curren
 - Phase 4 cleanup: finalization decisions were extracted into `finalization-runner.ts` with coverage for length continuation, no-tool synthesis retry/finalization, cancellation partial text, terminal finalization guard behavior, tool-limit separator streaming, duplicate-remainder avoidance, supervisor-question preservation, and truncated-answer finish reasons.
 - B1 cleanup: short `skill_load` payloads now preserve `output_contract` content under a 4k field budget while retaining the 20k overall skill payload budget.
 - A5 started: near-budget `force_synthesis` decisions now inspect discovered gateway write intent and, when a direct write tool can be materialized, run one write-only pass before final no-tool synthesis.
-- Verification: `pnpm exec vitest run src/lib/services/agentic-chat-v2/stream-orchestrator/finalization-runner.test.ts src/lib/services/agentic-chat-v2/stream-orchestrator.test.ts src/lib/services/agentic-chat-v2/stream-orchestrator/repair-instructions.test.ts src/lib/services/agentic-chat-v2/stream-orchestrator/tool-payload-compaction.test.ts` passed with 111 tests; `pnpm exec vitest run src/routes/api/agent/v2/stream/server.test.ts` passed with 17 tests; `pnpm --filter @buildos/web check` passed with 0 errors and 0 warnings.
+- A6 started: discard-path coverage now includes validation-only call handling, call-cap skipped results, read-batch call-cap skips, no-tool synthesis suppression, callback isolation, same-round materialized-tool validation, alias/op executable-name resolution, and document-organization recovery stopping when a tool limit fires mid-recovery.
+- Verification: `pnpm exec vitest run src/lib/services/agentic-chat-v2/stream-orchestrator/finalization-runner.test.ts src/lib/services/agentic-chat-v2/stream-orchestrator.test.ts src/lib/services/agentic-chat-v2/stream-orchestrator/repair-instructions.test.ts src/lib/services/agentic-chat-v2/stream-orchestrator/tool-payload-compaction.test.ts` passed with 114 tests; `pnpm exec vitest run src/routes/api/agent/v2/stream/server.test.ts` passed with 17 tests; `pnpm --filter @buildos/web check` passed with 0 errors and 0 warnings.
 
 ## Track A - Orchestrator Correctness
 

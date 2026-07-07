@@ -15,6 +15,7 @@ import { FASTCHAT_PROMPT_VARIANT, type FastChatPromptVariant } from './prompt-va
 import type { FastChatHistoryMessage } from './types';
 
 export const FASTCHAT_PROMPT_SNAPSHOT_VERSION = 'fastchat_prompt_v1';
+export const FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_MAX_CHARS = 80_000;
 
 type JsonRecord = Record<string, Json | undefined>;
 
@@ -73,6 +74,33 @@ function stableStringify(value: unknown): string {
 
 function sha256(value: string): string {
 	return createHash('sha256').update(value).digest('hex');
+}
+
+function parseBooleanEnv(value: string | undefined, fallback: boolean): boolean {
+	if (!value) return fallback;
+	const normalized = value.trim().toLowerCase();
+	if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+	if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+	return fallback;
+}
+
+function parsePositiveIntEnv(value: string | undefined, fallback: number): number {
+	if (!value) return fallback;
+	const parsed = Number.parseInt(value, 10);
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+export function shouldStorePromptSnapshotRenderedDump(): boolean {
+	return parseBooleanEnv(process.env.FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_ENABLED, false);
+}
+
+function truncateRenderedPromptDump(value: string): string {
+	const maxChars = parsePositiveIntEnv(
+		process.env.FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_MAX_CHARS,
+		FASTCHAT_PROMPT_SNAPSHOT_RENDERED_DUMP_MAX_CHARS
+	);
+	if (value.length <= maxChars) return value;
+	return `${value.slice(0, maxChars)}\n\n[rendered_dump_text truncated at ${maxChars} chars]`;
 }
 
 function toJsonValue(value: unknown): Json | null {
@@ -329,21 +357,25 @@ export function buildPromptSnapshotRow(params: {
 			: params.contextPayload && typeof params.contextPayload === 'object'
 				? (toJsonRecord(params.contextPayload as Record<string, unknown>) as Json)
 				: null;
-	const renderedDumpText = buildRenderedPromptDump({
-		streamRunId: params.streamRunId,
-		sessionId: params.sessionId,
-		contextType: params.contextType,
-		entityId: params.entityId,
-		projectId: params.projectId,
-		promptVariant: params.promptVariant ?? FASTCHAT_PROMPT_VARIANT,
-		systemPrompt: params.systemPrompt,
-		modelMessages,
-		tools: params.tools,
-		liteSections: params.liteSections,
-		liteContextInventory: params.liteContextInventory,
-		liteToolsSummary: params.liteToolsSummary,
-		toolSurfaceReport: params.toolSurfaceReport
-	});
+	const renderedDumpText = shouldStorePromptSnapshotRenderedDump()
+		? truncateRenderedPromptDump(
+				buildRenderedPromptDump({
+					streamRunId: params.streamRunId,
+					sessionId: params.sessionId,
+					contextType: params.contextType,
+					entityId: params.entityId,
+					projectId: params.projectId,
+					promptVariant: params.promptVariant ?? FASTCHAT_PROMPT_VARIANT,
+					systemPrompt: params.systemPrompt,
+					modelMessages,
+					tools: params.tools,
+					liteSections: params.liteSections,
+					liteContextInventory: params.liteContextInventory,
+					liteToolsSummary: params.liteToolsSummary,
+					toolSurfaceReport: params.toolSurfaceReport
+				})
+			)
+		: null;
 	const messageChars = modelMessages.reduce(
 		(sum, entry) => sum + (entry.content?.length ?? 0),
 		0

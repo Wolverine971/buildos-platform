@@ -49,7 +49,7 @@ import { POST } from './+server';
 
 type InboxItemFixture = {
 	id: string;
-	source_type: 'project_suggestion' | 'calendar_suggestion' | 'agent_run';
+	source_type: 'project_suggestion' | 'project_audit' | 'calendar_suggestion' | 'agent_run';
 	source_ref_id: string;
 	source_status: string | null;
 	status: string;

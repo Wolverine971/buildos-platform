@@ -38,6 +38,7 @@ type ExplicitChatResolution = {
 const SUPPORTED_SOURCE_TYPES = new Set<InboxSourceType>([
 	'agent_run',
 	'project_suggestion',
+	'project_audit',
 	'calendar_suggestion'
 ]);
 
@@ -101,6 +102,19 @@ function sessionMatchesInboxItem(session: ChatSessionRow, item: InboxIndexRow): 
 	if (metadata.inbox_item_id === item.id) return true;
 	return (
 		metadata.source_type === item.source_type && metadata.source_ref_id === item.source_ref_id
+	);
+}
+
+function projectAuditSessionMatchesInboxItem(
+	session: ChatSessionRow,
+	item: InboxIndexRow
+): boolean {
+	if (item.source_type !== 'project_audit') return false;
+	const metadata = asRecord(session.agent_metadata);
+	if (!metadata) return false;
+	return (
+		(metadata.source === 'project_audit' && metadata.audit_id === item.source_ref_id) ||
+		(metadata.source_type === 'project_audit' && metadata.source_ref_id === item.source_ref_id)
 	);
 }
 
@@ -306,6 +320,52 @@ async function resolveCalendarSuggestionExplicitlyFromChat(params: {
 	};
 }
 
+async function resolveProjectAuditFromChat(params: {
+	admin: any;
+	item: InboxIndexRow;
+	summary?: ChatMutationSummary | null;
+	resolution?: ExplicitChatResolution | null;
+}): Promise<{ resolved: boolean; item: InboxIndexRow | null; reason?: string }> {
+	if (!params.item.project_id) {
+		return { resolved: false, item: params.item, reason: 'missing_project' };
+	}
+
+	const now = new Date().toISOString();
+	const dismissed = params.resolution?.resolution === 'dismissed';
+	const status = dismissed ? 'archived' : 'reviewed';
+	const patch: Record<string, unknown> = dismissed
+		? {
+				status,
+				archived_at: now
+			}
+		: {
+				status,
+				reviewed_at: now
+			};
+
+	const { data: updated, error } = await params.admin
+		.from('project_audits')
+		.update(patch)
+		.eq('id', params.item.source_ref_id)
+		.eq('project_id', params.item.project_id)
+		.in('status', ['ready', 'reviewed', 'archived'])
+		.select('*')
+		.maybeSingle();
+
+	if (error) throw error;
+	if (updated) {
+		const synced = await syncResolvedItem(params.admin, params.item);
+		return { resolved: true, item: synced };
+	}
+
+	const repaired = await syncResolvedItem(params.admin, params.item);
+	return {
+		resolved: isTerminalInboxStatus(repaired?.status),
+		item: repaired,
+		reason: params.summary ? 'source_not_ready' : 'source_not_pending'
+	};
+}
+
 async function resolveAgentRunFromChat(params: {
 	admin: any;
 	item: InboxIndexRow;
@@ -360,6 +420,13 @@ async function resolveInboxItemWithMutations(params: {
 			userId: params.userId
 		});
 	}
+	if (params.item.source_type === 'project_audit') {
+		return resolveProjectAuditFromChat({
+			admin: params.admin,
+			item: params.item,
+			summary: params.summary
+		});
+	}
 	return resolveAgentRunFromChat({
 		admin: params.admin,
 		item: params.item,
@@ -386,6 +453,13 @@ async function resolveInboxItemExplicitly(params: {
 			item: params.item,
 			resolution: params.resolution,
 			userId: params.userId
+		});
+	}
+	if (params.item.source_type === 'project_audit') {
+		return resolveProjectAuditFromChat({
+			admin: params.admin,
+			item: params.item,
+			resolution: params.resolution
 		});
 	}
 	return resolveAgentRunFromChat({
@@ -435,13 +509,20 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			'UNSUPPORTED_INBOX_SOURCE'
 		);
 	}
-	if (!sessionMatchesInboxItem(session, item)) {
+	if (
+		!sessionMatchesInboxItem(session, item) &&
+		!projectAuditSessionMatchesInboxItem(session, item)
+	) {
 		return ApiResponse.badRequest('Chat session does not match inbox item');
 	}
 
-	if (item.source_type === 'project_suggestion') {
+	if (item.source_type === 'project_suggestion' || item.source_type === 'project_audit') {
 		if (!item.project_id)
-			return ApiResponse.badRequest('Project suggestion is missing project_id');
+			return ApiResponse.badRequest(
+				item.source_type === 'project_audit'
+					? 'Project audit is missing project_id'
+					: 'Project suggestion is missing project_id'
+			);
 		const access = await requireProjectMemberAccess({
 			locals,
 			user,

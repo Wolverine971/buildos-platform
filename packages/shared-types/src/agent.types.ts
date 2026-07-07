@@ -435,6 +435,13 @@ export interface AgentTimingSummary {
     | 'prepared_prompt'
     | 'fresh_load'
     | 'context_build_failed';
+  context_load_source?:
+    | 'rpc'
+    | 'rpc_null_fallback'
+    | 'rpc_error_fallback'
+    | 'fallback'
+    | 'none'
+    | 'unknown_cached';
   cache_age_seconds?: number | null;
   bypassed_context_cache?: boolean;
   history_strategy?: string | null;

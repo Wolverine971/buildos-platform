@@ -12,22 +12,19 @@ type QueryRecord = {
 };
 
 const mocks = vi.hoisted(() => {
+	const createSignal = (overrides: Record<string, unknown> = {}) => ({
+		id: 'signal-1',
+		project_id: 'project-1',
+		user_id: 'user-1',
+		status: 'pending',
+		due_at: '2026-07-07T14:00:00.000Z',
+		...overrides
+	});
+
 	const state = {
 		queries: [] as QueryRecord[],
-		pendingSignal: {
-			id: 'signal-1',
-			project_id: 'project-1',
-			user_id: 'user-1',
-			status: 'pending',
-			due_at: '2026-07-07T14:00:00.000Z'
-		},
-		claimedSignal: {
-			id: 'signal-1',
-			project_id: 'project-1',
-			user_id: 'user-1',
-			status: 'processing',
-			due_at: '2026-07-07T14:00:00.000Z'
-		}
+		pendingSignal: createSignal(),
+		claimedSignal: createSignal({ status: 'processing' }) as Record<string, unknown> | null
 	};
 
 	const createQuery = (record: QueryRecord) => {
@@ -80,6 +77,7 @@ const mocks = vi.hoisted(() => {
 	return {
 		state,
 		supabaseFrom,
+		supabaseRpc: vi.fn(),
 		enqueueProjectLoop: vi.fn(),
 		queueProjectAuditFromWorker: vi.fn(),
 		processProjectAuditTriggerEvaluationJob: vi.fn(),
@@ -95,7 +93,7 @@ vi.mock('../src/config/projectLoops', () => ({
 vi.mock('../src/lib/supabase', () => ({
 	supabase: {
 		from: mocks.supabaseFrom,
-		rpc: vi.fn()
+		rpc: mocks.supabaseRpc
 	}
 }));
 
@@ -147,8 +145,21 @@ describe('processProjectLoopJob debounced review signals', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.state.queries.length = 0;
-		mocks.state.pendingSignal.due_at = '2026-07-07T14:00:00.000Z';
-		mocks.state.claimedSignal.due_at = '2026-07-07T14:00:00.000Z';
+		mocks.state.pendingSignal = {
+			id: 'signal-1',
+			project_id: 'project-1',
+			user_id: 'user-1',
+			status: 'pending',
+			due_at: '2026-07-07T14:00:00.000Z'
+		};
+		mocks.state.claimedSignal = {
+			id: 'signal-1',
+			project_id: 'project-1',
+			user_id: 'user-1',
+			status: 'processing',
+			due_at: '2026-07-07T14:00:00.000Z'
+		};
+		mocks.supabaseRpc.mockResolvedValue({ data: null, error: null });
 		mocks.enqueueProjectLoop.mockResolvedValue({ queued: true, runId: 'run-1' });
 		mocks.queueProjectAuditFromWorker.mockResolvedValue({
 			queued: false,
@@ -167,11 +178,13 @@ describe('processProjectLoopJob debounced review signals', () => {
 		const result = await processProjectLoopJob(createDebouncedSignalJob());
 
 		expect(result).toMatchObject({ success: true, runId: 'run-1', skipped: false });
+		expect(mocks.enqueueProjectLoop).toHaveBeenCalledTimes(1);
 		expect(mocks.enqueueProjectLoop).toHaveBeenCalledWith({
 			projectId: 'project-1',
 			userId: 'user-1',
 			triggerReason: 'burst'
 		});
+		expect(mocks.queueProjectAuditFromWorker).toHaveBeenCalledTimes(1);
 		expect(mocks.queueProjectAuditFromWorker).toHaveBeenCalledWith({
 			projectId: 'project-1',
 			userId: 'user-1',
@@ -196,5 +209,72 @@ describe('processProjectLoopJob debounced review signals', () => {
 			processed_loop_run_id: 'run-1',
 			processed_audit_id: null
 		});
+		expect(completedUpdate?.filters).toEqual([
+			{ column: 'id', value: 'signal-1' },
+			{ column: 'status', value: 'processing' }
+		]);
+	});
+
+	it('reschedules a pending signal that is not due yet without triggering review work', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-07-07T14:01:00.000Z'));
+		mocks.state.pendingSignal.due_at = '2026-07-07T14:05:00.000Z';
+		const job = createDebouncedSignalJob();
+
+		const result = await processProjectLoopJob(job);
+
+		expect(result).toEqual({ success: true, skipped: true });
+		expect(mocks.supabaseRpc).toHaveBeenCalledWith('add_queue_job', {
+			p_user_id: 'user-1',
+			p_job_type: 'buildos_project_loop',
+			p_metadata: {
+				mode: 'debounced_review_signal',
+				signalId: 'signal-1',
+				projectId: 'project-1',
+				userId: 'user-1',
+				triggerReason: 'burst'
+			},
+			p_priority: 8,
+			p_scheduled_for: '2026-07-07T14:05:00.000Z',
+			p_dedup_key: 'project-review-signal:project-1:retry:2026-07-07T14:05'
+		});
+		expect(mocks.enqueueProjectLoop).not.toHaveBeenCalled();
+		expect(mocks.queueProjectAuditFromWorker).not.toHaveBeenCalled();
+		expect(mocks.state.queries.some((query) => query.action === 'update')).toBe(false);
+		expect(job.log).toHaveBeenCalledWith(
+			'Debounced project review signal signal-1 is not due until 2026-07-07T14:05:00.000Z; rescheduled.'
+		);
+	});
+
+	it('skips cleanly when the due signal loses the conditional claim', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-07-07T14:01:00.000Z'));
+		mocks.state.claimedSignal = null;
+		const job = createDebouncedSignalJob();
+
+		const result = await processProjectLoopJob(job);
+
+		expect(result).toEqual({ success: true, skipped: true });
+		expect(mocks.enqueueProjectLoop).not.toHaveBeenCalled();
+		expect(mocks.queueProjectAuditFromWorker).not.toHaveBeenCalled();
+
+		const processingUpdate = mocks.state.queries.find(
+			(query) => query.action === 'update' && query.payload?.status === 'processing'
+		);
+		expect(processingUpdate?.filters).toEqual([
+			{ column: 'id', value: 'signal-1' },
+			{ column: 'status', value: 'pending' }
+		]);
+		expect(processingUpdate?.lteFilters).toEqual([
+			{ column: 'due_at', value: '2026-07-07T14:01:00.000Z' }
+		]);
+		expect(
+			mocks.state.queries.find(
+				(query) => query.action === 'update' && query.payload?.status === 'completed'
+			)
+		).toBeUndefined();
+		expect(job.log).toHaveBeenCalledWith(
+			'Debounced project review signal signal-1 was already claimed or deferred; skipping.'
+		);
 	});
 });

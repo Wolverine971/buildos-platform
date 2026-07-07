@@ -126,6 +126,7 @@ function buildTimingState(overrides: Partial<TurnObservabilityTimingState> = {})
 		rawHistoryCount: 3,
 		historyForModelCount: 3,
 		contextCacheSource: 'fresh_load',
+		contextLoadSource: 'rpc_null_fallback',
 		contextCacheAgeSeconds: null,
 		bypassedContextCache: false,
 		preparedPromptRequested: false,
@@ -367,7 +368,11 @@ describe('TurnObservabilityWriter', () => {
 				stream_version: 'v2',
 				client_turn_id: 'client-turn-1',
 				stream_run_id: 'stream-run-1',
-				timing_summary: expect.objectContaining({ finished_reason: 'stop' })
+				context_load_source: 'rpc_null_fallback',
+				timing_summary: expect.objectContaining({
+					finished_reason: 'stop',
+					context_load_source: 'rpc_null_fallback'
+				})
 			})
 		);
 		expect(writer.getTimingMetricId()).toBe('metric-1');

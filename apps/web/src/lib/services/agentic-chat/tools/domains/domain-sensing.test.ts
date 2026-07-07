@@ -1,6 +1,10 @@
 // apps/web/src/lib/services/agentic-chat/tools/domains/domain-sensing.test.ts
 import { describe, expect, it } from 'vitest';
-import { renderDomainSensingPromptBlock, senseDomains } from './domain-sensing';
+import {
+	getSkillGateCandidateSkillIds,
+	renderDomainSensingPromptBlock,
+	senseDomains
+} from './domain-sensing';
 
 describe('domain sensing', () => {
 	it('detects active domains and routing handles from the current user message', () => {
@@ -29,9 +33,25 @@ describe('domain sensing', () => {
 		expect(result?.candidate_outcome_card_ids).toContain('youtube_growth_strategy_plan');
 		expect(result?.candidate_outcome_cards[0]).toMatchObject({
 			id: 'youtube_growth_strategy_plan',
-			default_skill_id: 'content_strategy_beyond_blogging'
+			default_skill_id: 'content_strategy_beyond_blogging',
+			skill_load_formats: {
+				content_strategy_beyond_blogging: 'full'
+			}
 		});
 		expect(result?.coverage_gap_skill_ids).toContain('youtube_channel_diagnostics');
+	});
+
+	it('builds the skill-gate candidate set from outcome cards and active domains', () => {
+		const result = senseDomains({
+			currentUserMessage: 'Just give me 10 opening-hook options for the launch video.'
+		});
+
+		const candidateSkillIds = getSkillGateCandidateSkillIds(result);
+
+		expect(candidateSkillIds[0]).toBe('hook_craft_short_form');
+		expect(candidateSkillIds).toContain('content_strategy_beyond_blogging');
+		expect(candidateSkillIds).toContain('viral_video_script_structure');
+		expect(new Set(candidateSkillIds).size).toBe(candidateSkillIds.length);
 	});
 
 	it('renders a compact prompt block for model routing', () => {
@@ -46,6 +66,7 @@ describe('domain sensing', () => {
 		expect(block).toContain('Candidate outcome cards:');
 		expect(block).toContain('cold_email_campaign_build');
 		expect(block).toContain('cold_email_engagement_first_outreach');
+		expect(block).toContain('skill formats: cold_email_engagement_first_outreach:full');
 		expect(block).toContain('Next step:');
 	});
 

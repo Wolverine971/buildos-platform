@@ -9,6 +9,7 @@ import type { InboxIndexRow, InboxSourceType } from '@buildos/shared-agent-ops/i
 const SUPPORTED_SOURCE_TYPES = new Set<InboxSourceType>([
 	'agent_run',
 	'project_suggestion',
+	'project_audit',
 	'calendar_suggestion'
 ]);
 
@@ -55,16 +56,21 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		);
 	}
 
-	if (item.source_type === 'project_suggestion') {
+	if (item.source_type === 'project_suggestion' || item.source_type === 'project_audit') {
 		if (!PROJECT_LOOPS_ENABLED) return ApiResponse.notFound('Inbox item');
-		if (!item.project_id)
-			return ApiResponse.badRequest('Project suggestion is missing project_id');
+		if (!item.project_id) {
+			return ApiResponse.badRequest(
+				item.source_type === 'project_audit'
+					? 'Project audit is missing project_id'
+					: 'Project suggestion is missing project_id'
+			);
+		}
 
 		const access = await requireProjectMemberAccess({
 			locals,
 			user,
 			projectId: item.project_id,
-			requiredAccess: 'write'
+			requiredAccess: item.source_type === 'project_audit' ? 'read' : 'write'
 		});
 		if (!access.ok) return access.response;
 	} else if (item.user_id !== user.id) {

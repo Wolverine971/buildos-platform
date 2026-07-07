@@ -1,14 +1,39 @@
 // apps/web/src/lib/services/agentic-chat/tools/skills/skill-load.ts
 import { getToolRegistry } from '../registry/tool-registry';
+import { normalizeGatewayOpName } from '../registry/gateway-op-aliases';
 import { getSkillByReference, listChildSkillsForSkill } from './registry';
-import type { SkillDefinition, SkillHelpPayload, SkillLinkedResourcePayload } from './types';
-
-export type SkillLoadFormat = 'short' | 'full';
+import { canReadSkillReference } from './skill-reference-visibility';
+import type {
+	SkillDefinition,
+	SkillHelpPayload,
+	SkillLinkedResourcePayload,
+	SkillLoadFormat,
+	SkillReferenceLoadSurface
+} from './types';
+export type { SkillLoadFormat } from './types';
 
 export type SkillLoadOptions = {
 	format?: SkillLoadFormat;
 	include_examples?: boolean;
+	surface?: SkillReferenceLoadSurface;
 };
+
+type RelatedOpsResolution = {
+	materializedToolNames: string[];
+	readOps: string[];
+	writeOps: string[];
+	destructiveOps: string[];
+};
+
+const DESTRUCTIVE_RELATED_OP_ACTIONS = new Set([
+	'delete',
+	'archive',
+	'restore',
+	'unlink',
+	'reorganize'
+]);
+
+const DESTRUCTIVE_TOOL_PREFIXES = ['delete_', 'archive_', 'restore_', 'unlink_', 'reorganize_'];
 
 function renderBulletSection(title: string, items: string[]): string {
 	if (items.length === 0) return '';
@@ -128,34 +153,85 @@ function mergeLinkedResourcePayloads(
 	return [...resourcesById.values()].sort((a, b) => a.id.localeCompare(b.id));
 }
 
-function resolveRelatedOpToolNames(relatedOps: string[]): string[] {
-	const registry = getToolRegistry();
-	const toolNames = new Set<string>();
-	for (const op of relatedOps) {
-		const toolName = registry.ops[op]?.tool_name;
-		if (toolName) {
-			toolNames.add(toolName);
-		}
+function isDestructiveRelatedOp(entry: {
+	action?: string;
+	op: string;
+	tool_name: string;
+}): boolean {
+	if (entry.action && DESTRUCTIVE_RELATED_OP_ACTIONS.has(entry.action)) return true;
+	if (DESTRUCTIVE_TOOL_PREFIXES.some((prefix) => entry.tool_name.startsWith(prefix))) {
+		return true;
 	}
-	return Array.from(toolNames).sort((a, b) => a.localeCompare(b));
+	const normalizedOp = entry.op.toLowerCase();
+	return (
+		normalizedOp.endsWith('.delete') ||
+		normalizedOp.endsWith('.archive') ||
+		normalizedOp.endsWith('.restore') ||
+		normalizedOp.endsWith('.unlink') ||
+		normalizedOp.endsWith('.reorganize')
+	);
+}
+
+function resolveRelatedOps(relatedOps: string[]): RelatedOpsResolution {
+	const registry = getToolRegistry();
+	const materializedToolNames = new Set<string>();
+	const readOps = new Set<string>();
+	const writeOps = new Set<string>();
+	const destructiveOps = new Set<string>();
+
+	for (const op of relatedOps) {
+		const normalizedOp = normalizeGatewayOpName(op);
+		const entry = registry.ops[normalizedOp];
+		if (!entry) continue;
+
+		if (entry.kind === 'write') {
+			if (isDestructiveRelatedOp(entry)) {
+				destructiveOps.add(entry.op);
+			} else {
+				writeOps.add(entry.op);
+			}
+			continue;
+		}
+
+		readOps.add(entry.op);
+		materializedToolNames.add(entry.tool_name);
+	}
+
+	return {
+		materializedToolNames: Array.from(materializedToolNames).sort((a, b) => a.localeCompare(b)),
+		readOps: Array.from(readOps).sort((a, b) => a.localeCompare(b)),
+		writeOps: Array.from(writeOps).sort((a, b) => a.localeCompare(b)),
+		destructiveOps: Array.from(destructiveOps).sort((a, b) => a.localeCompare(b))
+	};
+}
+
+export function getRecommendedSkillLoadFormat(skill: SkillDefinition): SkillLoadFormat {
+	if (skill.recommendedLoadFormat) return skill.recommendedLoadFormat;
+	return skill.preserveMarkdown ? 'full' : 'short';
 }
 
 export function buildSkillLoadPayload(
 	skill: SkillDefinition,
 	version: string,
 	format: SkillLoadFormat,
-	includeExamples: boolean
+	includeExamples: boolean,
+	surface: SkillReferenceLoadSurface = 'chat_internal'
 ): SkillHelpPayload {
 	const childSkillPayloads = mergeLinkedResourcePayloads(
 		skill.childSkills?.map(mapLinkedResource) ?? [],
 		listChildSkillsForSkill(skill).map(mapRegisteredChildSkill)
 	);
-	const referenceModulePayloads = skill.referenceModules?.map(mapLinkedResource) ?? [];
+	const referenceModulePayloads =
+		skill.referenceModules
+			?.filter((resource) => canReadSkillReference(resource, surface))
+			.map(mapLinkedResource) ?? [];
+	const relatedOpsResolution = resolveRelatedOps(skill.relatedOps);
 	const payload: SkillHelpPayload = {
 		type: 'skill',
 		id: skill.id,
 		name: skill.name,
 		format,
+		recommended_load_format: getRecommendedSkillLoadFormat(skill),
 		version,
 		description: skill.summary,
 		summary: skill.summary,
@@ -163,11 +239,23 @@ export function buildSkillLoadPayload(
 		when_to_use: skill.whenToUse,
 		workflow: skill.workflow.map((step, index) => `${index + 1}) ${step}`),
 		related_ops: skill.relatedOps,
-		materialized_tools: resolveRelatedOpToolNames(skill.relatedOps)
+		materialized_tools: relatedOpsResolution.materializedToolNames
 	};
 
 	if (payload.materialized_tools?.length === 0) {
 		delete payload.materialized_tools;
+	}
+
+	if (relatedOpsResolution.readOps.length) {
+		payload.read_ops = relatedOpsResolution.readOps;
+	}
+
+	if (relatedOpsResolution.writeOps.length) {
+		payload.write_ops = relatedOpsResolution.writeOps;
+	}
+
+	if (relatedOpsResolution.destructiveOps.length) {
+		payload.destructive_ops = relatedOpsResolution.destructiveOps;
 	}
 
 	if (skill.parentId) {
@@ -176,6 +264,22 @@ export function buildSkillLoadPayload(
 
 	if (typeof skill.depth === 'number') {
 		payload.depth = skill.depth;
+	}
+
+	if (skill.skillType) {
+		payload.skill_type = skill.skillType;
+	}
+
+	if (skill.altitude) {
+		payload.altitude = skill.altitude;
+	}
+
+	if (skill.activation) {
+		payload.activation = skill.activation;
+	}
+
+	if (skill.dependencies?.length) {
+		payload.dependencies = skill.dependencies.map((dependency) => ({ ...dependency }));
 	}
 
 	if (childSkillPayloads.length) {
@@ -226,18 +330,25 @@ export function loadSkill(
 	const registry = getToolRegistry();
 	const trimmedReference = reference.trim();
 	const skill = getSkillByReference(trimmedReference);
-	const format: SkillLoadFormat = options.format ?? 'short';
 	const includeExamples = options.include_examples !== false;
 
 	if (!skill) {
 		return {
 			type: 'not_found',
 			skill: trimmedReference,
-			format,
+			format: options.format ?? 'short',
 			version: registry.version,
 			message: 'No skill found for this reference.'
 		};
 	}
 
-	return buildSkillLoadPayload(skill, registry.version, format, includeExamples);
+	const format: SkillLoadFormat = options.format ?? getRecommendedSkillLoadFormat(skill);
+
+	return buildSkillLoadPayload(
+		skill,
+		registry.version,
+		format,
+		includeExamples,
+		options.surface ?? 'chat_internal'
+	);
 }

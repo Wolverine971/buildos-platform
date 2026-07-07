@@ -223,4 +223,124 @@ describe('POST /api/agent/v2/prewarm', () => {
 			})
 		);
 	});
+
+	it('stores bounded project prepared prompt rows with compact focus and section metadata', async () => {
+		const projectId = '11111111-1111-4111-8111-111111111111';
+		const cachedContext = {
+			version: 1,
+			key: `project:${projectId}`,
+			warmed_at: '2026-03-12T00:00:00.000Z',
+			context: {
+				contextType: 'project',
+				entityId: projectId,
+				projectId,
+				projectName: 'Launch',
+				focusEntityType: 'document',
+				focusEntityId: '22222222-2222-4222-8222-222222222222',
+				focusEntityName: 'Strategy Doc',
+				data: {
+					project: { id: projectId, name: 'Launch', state_key: 'active' },
+					focus_entity_full: {
+						id: '22222222-2222-4222-8222-222222222222',
+						project_id: projectId,
+						title: 'Strategy Doc',
+						description: 'd'.repeat(5_000),
+						content: 'full body '.repeat(20_000),
+						props: { secret: 'do not persist' },
+						content_length: 180_000,
+						content_preview: 'A bounded preview'
+					}
+				}
+			}
+		};
+		const session = {
+			id: 'session-1',
+			user_id: 'user-1',
+			context_type: 'project',
+			summary: null,
+			agent_metadata: {
+				fastchat_context_cache: cachedContext
+			}
+		};
+		const insertedRows: Array<Record<string, any>> = [];
+		const insertPreparedPrompt = vi.fn(async (row: Record<string, any>) => {
+			insertedRows.push(row);
+			return { error: null };
+		});
+		const rpc = vi.fn(async (fn: string, args?: Record<string, unknown>) => {
+			if (fn === 'ensure_actor_for_user') return { data: 'actor-1', error: null };
+			if (fn === 'current_actor_has_project_member_access') {
+				return { data: true, error: null };
+			}
+			return mergeRpcMock(fn, args);
+		});
+		resolveSessionMock.mockResolvedValue({ session });
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/prewarm', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					context_type: 'project',
+					entity_id: projectId,
+					session_id: 'session-1',
+					prepare_prompt: true
+				})
+			}),
+			locals: {
+				safeGetSession: async () => ({
+					user: { id: 'user-1' }
+				}),
+				supabase: {
+					rpc,
+					from: vi.fn((table: string) => {
+						if (table === 'agentic_chat_prepared_prompts') {
+							return {
+								insert: insertPreparedPrompt
+							};
+						}
+						return {
+							select: vi.fn().mockReturnThis(),
+							eq: vi.fn().mockReturnThis(),
+							maybeSingle: vi.fn().mockResolvedValue({
+								data: table === 'chat_sessions' ? session : null,
+								error: null
+							})
+						};
+					})
+				}
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(insertPreparedPrompt).toHaveBeenCalledOnce();
+		const row = insertedRows[0];
+		const serializedRow = JSON.stringify(row);
+		const focus = row.context_payload.data.focus_entity_full;
+		expect(focus).toMatchObject({
+			id: '22222222-2222-4222-8222-222222222222',
+			project_id: projectId,
+			title: 'Strategy Doc',
+			content_length: 180_000,
+			content_preview: 'A bounded preview'
+		});
+		expect(focus.description.length).toBeLessThanOrEqual(1_503);
+		expect(focus).not.toHaveProperty('content');
+		expect(focus).not.toHaveProperty('props');
+		expect(serializedRow).not.toContain('do not persist');
+		expect(serializedRow).not.toContain('full body full body');
+		expect(serializedRow.length).toBeLessThan(180_000);
+
+		for (const surface of Object.values(row.prepared_surfaces)) {
+			expect(surface.system_prompt).toEqual(expect.any(String));
+			expect(surface.sections.length).toBeGreaterThan(0);
+			expect(JSON.stringify(surface.sections)).not.toContain('"content"');
+			expect(surface.sections[0]).toEqual(
+				expect.objectContaining({
+					content_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+					content_chars: expect.any(Number)
+				})
+			);
+		}
+	});
 });

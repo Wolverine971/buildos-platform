@@ -71,10 +71,27 @@ const PROJECT_CONTEXT_PLAN_LIMIT = 12;
 const PROJECT_CONTEXT_TASK_LIMIT = 18;
 const PROJECT_CONTEXT_DOCUMENT_LIMIT = 20;
 const PROJECT_CONTEXT_EVENT_LIMIT = 16;
+const PROJECT_CONTEXT_GOAL_FETCH_LIMIT = PROJECT_CONTEXT_GOAL_LIMIT * 4;
+const PROJECT_CONTEXT_MILESTONE_FETCH_LIMIT = PROJECT_CONTEXT_MILESTONE_LIMIT * 4;
+const PROJECT_CONTEXT_PLAN_FETCH_LIMIT = PROJECT_CONTEXT_PLAN_LIMIT * 4;
+const PROJECT_CONTEXT_TASK_FETCH_LIMIT = PROJECT_CONTEXT_TASK_LIMIT * 4;
+const PROJECT_CONTEXT_DOCUMENT_FETCH_LIMIT = PROJECT_CONTEXT_DOCUMENT_LIMIT * 3;
+const GLOBAL_CONTEXT_ENTITY_FETCH_LIMIT = GLOBAL_CONTEXT_PROJECT_LIMIT * 4;
+const START_HERE_CANDIDATE_FETCH_LIMIT = 20;
+const FOCUS_DOCUMENT_CONTENT_PREVIEW_MAX_CHARS = Math.min(1200, START_HERE_CONTEXT_LOAD_MAX_CHARS);
 const PROJECT_DESCRIPTION_MAX_CHARS = 320;
 const ENTITY_DESCRIPTION_MAX_CHARS = 220;
 const TASK_DESCRIPTION_MAX_CHARS = 280;
 const EVENT_DESCRIPTION_MAX_CHARS = 180;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export type FastChatContextLoadSource =
+	| 'rpc'
+	| 'rpc_null_fallback'
+	| 'rpc_error_fallback'
+	| 'fallback'
+	| 'none'
+	| 'unknown_cached';
 
 type ProjectRow = Database['public']['Tables']['onto_projects']['Row'];
 type ProjectSelectRow = Pick<
@@ -102,6 +119,10 @@ type ContextDocumentRow = Pick<
 type ProjectStartHereDocumentRow = Pick<
 	DocumentRow,
 	'id' | 'title' | 'content' | 'props' | 'created_at' | 'updated_at'
+>;
+type ProjectStartHereDocumentCandidateRow = Pick<
+	DocumentRow,
+	'id' | 'title' | 'props' | 'created_at' | 'updated_at'
 >;
 type EventRow = Database['public']['Tables']['onto_events']['Row'];
 type ActorRow = Database['public']['Tables']['onto_actors']['Row'];
@@ -171,10 +192,22 @@ type FastChatContextRpcResponse = {
 	project_intelligence?: FastChatProjectIntelligence | null;
 };
 
+type FastChatContextRpcLoadResult = {
+	payload: FastChatContextRpcResponse | null;
+	fallbackSource: Extract<
+		FastChatContextLoadSource,
+		'rpc_null_fallback' | 'rpc_error_fallback'
+	> | null;
+};
+
 type LinkedEntityConfig = {
 	table: keyof Database['public']['Tables'];
 	select: string;
 	map: (row: any) => Record<string, unknown>;
+};
+
+type FocusEntityConfig = LinkedEntityConfig & {
+	projectScoped?: boolean;
 };
 
 function reportContextLoadError(
@@ -192,6 +225,34 @@ function reportContextLoadError(
 			callbackError
 		});
 	}
+}
+
+function isUuid(value: string | null | undefined): value is string {
+	return typeof value === 'string' && UUID_PATTERN.test(value);
+}
+
+function truncatePreview(value: string | null | undefined, maxChars: number): string | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	if (trimmed.length === 0) return null;
+	if (trimmed.length <= maxChars) return trimmed;
+	return trimmed.slice(0, Math.max(0, maxChars - 3)).trimEnd() + '...';
+}
+
+function mapDocumentFocus(row: DocumentRow): Record<string, unknown> {
+	const content = typeof row.content === 'string' ? row.content : null;
+	return {
+		id: row.id,
+		project_id: row.project_id,
+		title: row.title,
+		description: truncateText(row.description, ENTITY_DESCRIPTION_MAX_CHARS),
+		state_key: row.state_key,
+		type_key: row.type_key,
+		content_length: content?.length ?? null,
+		content_preview: truncatePreview(content, FOCUS_DOCUMENT_CONTENT_PREVIEW_MAX_CHARS),
+		created_at: row.created_at,
+		updated_at: row.updated_at
+	};
 }
 
 const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
@@ -298,6 +359,57 @@ const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
 			probability: row.probability,
 			updated_at: row.updated_at
 		})
+	}
+};
+
+const FOCUS_ENTITY_CONFIG: Record<string, FocusEntityConfig> = {
+	task: {
+		...LINKED_ENTITY_CONFIG.task!,
+		select: 'id, project_id, title, description, state_key, priority, start_at, due_at, completed_at, updated_at',
+		projectScoped: true
+	},
+	plan: {
+		...LINKED_ENTITY_CONFIG.plan!,
+		select: 'id, project_id, name, description, state_key, updated_at',
+		projectScoped: true
+	},
+	goal: {
+		...LINKED_ENTITY_CONFIG.goal!,
+		select: 'id, project_id, name, description, state_key, target_date, completed_at, updated_at',
+		projectScoped: true
+	},
+	milestone: {
+		...LINKED_ENTITY_CONFIG.milestone!,
+		select: 'id, project_id, title, description, state_key, due_at, completed_at, updated_at',
+		projectScoped: true
+	},
+	document: {
+		table: 'onto_documents',
+		select: 'id, project_id, title, description, state_key, type_key, content, created_at, updated_at',
+		map: mapDocumentFocus,
+		projectScoped: true
+	},
+	event: {
+		...LINKED_ENTITY_CONFIG.event!,
+		select: 'id, project_id, title, description, state_key, start_at, end_at, all_day, location, updated_at',
+		projectScoped: true
+	},
+	risk: {
+		...LINKED_ENTITY_CONFIG.risk!,
+		select: 'id, project_id, title, content, state_key, impact, probability, updated_at',
+		projectScoped: true
+	},
+	requirement: {
+		table: 'onto_requirements',
+		select: 'id, project_id, text, priority, updated_at',
+		map: (row: any) => ({
+			id: row.id,
+			project_id: row.project_id,
+			text: row.text,
+			priority: row.priority,
+			updated_at: row.updated_at
+		}),
+		projectScoped: true
 	}
 };
 
@@ -509,6 +621,23 @@ function stripEntityFields(
 		result[key] = value;
 	}
 	return result;
+}
+
+function sanitizeFocusEntity(
+	focusType: string | null | undefined,
+	entity: Record<string, unknown> | null | undefined
+): Record<string, unknown> {
+	if (!entity || !focusType) return {};
+	const config = FOCUS_ENTITY_CONFIG[focusType];
+	if (!config) return stripEntityFields(entity);
+	const mapped = config.map(entity as any);
+	if (
+		typeof entity.project_id === 'string' &&
+		!Object.prototype.hasOwnProperty.call(mapped, 'project_id')
+	) {
+		mapped.project_id = entity.project_id;
+	}
+	return mapped;
 }
 
 function mapProject(
@@ -2054,7 +2183,7 @@ function buildEntityContextFromRpc(params: {
 		payload.focus_entity_full && typeof payload.focus_entity_full === 'object'
 			? (payload.focus_entity_full as Record<string, unknown>)
 			: null;
-	const focusEntityFull = stripEntityFields(rawFocus);
+	const focusEntityFull = sanitizeFocusEntity(focusType, rawFocus);
 	const focusEntityName = resolveEntityName(focusEntityFull);
 	const linked_entities =
 		payload.linked_entities && typeof payload.linked_entities === 'object'
@@ -2077,19 +2206,30 @@ function buildEntityContextFromRpc(params: {
 
 async function loadFastChatContextViaRpc(
 	params: LoadContextParams
-): Promise<FastChatContextRpcResponse | null> {
+): Promise<FastChatContextRpcLoadResult> {
 	const { supabase, userId, contextType, entityId, projectFocus } = params;
 	const rpcContextType = resolveRpcContextType({ contextType, projectFocus });
-	if (!rpcContextType) return null;
+	if (!rpcContextType) return { payload: null, fallbackSource: null };
 
 	const projectId = resolveEffectiveProjectId({ contextType, entityId, projectFocus });
-	if (rpcContextType === 'project' && !projectId) return null;
+	if (rpcContextType === 'project' && !projectId) {
+		return { payload: null, fallbackSource: 'rpc_null_fallback' };
+	}
 
 	const focusType =
 		projectFocus?.focusType && projectFocus.focusType !== 'project-wide'
 			? projectFocus.focusType
 			: null;
-	const focusEntityId = focusType ? (projectFocus?.focusEntityId ?? null) : null;
+	const rawFocusEntityId = focusType ? (projectFocus?.focusEntityId ?? null) : null;
+	const focusEntityId = isUuid(rawFocusEntityId) ? rawFocusEntityId : null;
+	if (focusType && rawFocusEntityId && !focusEntityId) {
+		reportContextLoadError(
+			params.onError,
+			'rpc.load_fastchat_context.invalid_focus_entity_id',
+			new Error('Invalid focus entity id'),
+			{ contextType, projectId, focusType, focusEntityId: rawFocusEntityId }
+		);
+	}
 
 	const { data, error } = await supabase.rpc(FASTCHAT_CONTEXT_RPC, {
 		p_context_type: rpcContextType,
@@ -2112,12 +2252,20 @@ async function loadFastChatContextViaRpc(
 			focusType,
 			focusEntityId
 		});
-		return null;
+		return { payload: null, fallbackSource: 'rpc_error_fallback' };
 	}
 
-	if (!data || typeof data !== 'object') return null;
+	if (!data || typeof data !== 'object') {
+		reportContextLoadError(
+			params.onError,
+			'rpc.load_fastchat_context.empty_payload',
+			new Error('FastChat context RPC returned no usable payload'),
+			{ contextType, projectId, focusType, focusEntityId }
+		);
+		return { payload: null, fallbackSource: 'rpc_null_fallback' };
+	}
 
-	return data as FastChatContextRpcResponse;
+	return { payload: data as FastChatContextRpcResponse, fallbackSource: null };
 }
 
 async function loadProjectStartHereDocument(
@@ -2125,24 +2273,56 @@ async function loadProjectStartHereDocument(
 	projectId: string,
 	onError?: LoadContextParams['onError']
 ): Promise<ProjectStartHereDocument | null> {
-	const { data, error } = await supabase
+	const { data: candidates, error: candidateError } = await supabase
 		.from('onto_documents')
-		.select('id, title, content, props, created_at, updated_at')
+		.select('id, title, props, created_at, updated_at')
 		.eq('project_id', projectId)
 		.eq('type_key', START_HERE_DOCUMENT_TYPE_KEY)
 		.is('deleted_at', null)
 		.is('archived_at', null)
 		.order('updated_at', { ascending: false })
-		.limit(20);
+		.limit(START_HERE_CANDIDATE_FETCH_LIMIT);
 
-	if (error) {
-		logger.warn('Failed to load project Start Here document', { error, projectId });
-		reportContextLoadError(onError, 'query.project.start_here', error, { projectId });
+	if (candidateError) {
+		logger.warn('Failed to load project Start Here candidates', {
+			error: candidateError,
+			projectId
+		});
+		reportContextLoadError(onError, 'query.project.start_here_candidates', candidateError, {
+			projectId
+		});
 		return null;
 	}
 
-	const selected = pickStartHereDocument((data ?? []) as ProjectStartHereDocumentRow[]);
-	return selected ? mapStartHereDocument(selected) : null;
+	const selected = pickStartHereDocument(
+		(candidates ?? []) as ProjectStartHereDocumentCandidateRow[]
+	);
+	if (!selected?.id) return null;
+
+	const { data: documentRow, error: documentError } = await supabase
+		.from('onto_documents')
+		.select('id, title, content, props, created_at, updated_at')
+		.eq('id', selected.id)
+		.eq('project_id', projectId)
+		.eq('type_key', START_HERE_DOCUMENT_TYPE_KEY)
+		.is('deleted_at', null)
+		.is('archived_at', null)
+		.maybeSingle();
+
+	if (documentError) {
+		logger.warn('Failed to load selected project Start Here document body', {
+			error: documentError,
+			projectId,
+			documentId: selected.id
+		});
+		reportContextLoadError(onError, 'query.project.start_here_body', documentError, {
+			projectId,
+			documentId: selected.id
+		});
+		return null;
+	}
+
+	return documentRow ? mapStartHereDocument(documentRow as ProjectStartHereDocumentRow) : null;
 }
 
 async function attachProjectStartHere<T extends ProjectContextData | EntityContextData | null>(
@@ -2166,15 +2346,15 @@ async function loadGlobalContextData(
 		name: string;
 		state_key: LightProject['state_key'];
 		description: string | null;
+		start_at?: string | null;
+		end_at?: string | null;
 		next_step_short: string | null;
 		updated_at: string;
 	}> | null = null;
 
 	try {
 		const actorId = await ensureActorId(supabase as any, userId);
-		projectSummaries = (await fetchProjectSummaries(supabase as any, actorId)).filter(
-			(project) => project.state_key !== 'paused'
-		);
+		projectSummaries = await fetchProjectSummaries(supabase as any, actorId);
 	} catch (error) {
 		logger.warn('Failed to load global project summaries', { error });
 		reportContextLoadError(onError, 'query.global.projects', error, { userId });
@@ -2198,22 +2378,47 @@ async function loadGlobalContextData(
 		};
 	}
 
-	const allProjects = [...(projectSummaries ?? [])]
-		.sort((a, b) => {
-			const aTs = a.updated_at ? Date.parse(a.updated_at) : Number.NEGATIVE_INFINITY;
-			const bTs = b.updated_at ? Date.parse(b.updated_at) : Number.NEGATIVE_INFINITY;
-			return bTs - aTs;
-		})
-		.map((row) => ({
+	const sortedProjectSummaries = [...(projectSummaries ?? [])].sort((a, b) => {
+		const aTs = a.updated_at ? Date.parse(a.updated_at) : Number.NEGATIVE_INFINITY;
+		const bTs = b.updated_at ? Date.parse(b.updated_at) : Number.NEGATIVE_INFINITY;
+		return bTs - aTs;
+	});
+	const summaryProjectIds = sortedProjectSummaries.map((project) => project.id);
+	const projectDatesById = new Map<string, { start_at: string | null; end_at: string | null }>();
+	if (summaryProjectIds.length > 0) {
+		const { data: dateRows, error: dateError } = await supabase
+			.from('onto_projects')
+			.select('id, start_at, end_at')
+			.in('id', summaryProjectIds)
+			.is('deleted_at', null);
+		if (dateError) {
+			logger.warn('Failed to load global project dates', { error: dateError });
+			reportContextLoadError(onError, 'query.global.project_dates', dateError, {
+				projectCount: summaryProjectIds.length
+			});
+		} else {
+			for (const row of dateRows ?? []) {
+				projectDatesById.set(row.id, {
+					start_at: row.start_at ?? null,
+					end_at: row.end_at ?? null
+				});
+			}
+		}
+	}
+
+	const allProjects = sortedProjectSummaries.map((row) => {
+		const directDates = projectDatesById.get(row.id);
+		return {
 			id: row.id,
 			name: row.name,
 			state_key: row.state_key as LightProject['state_key'],
 			description: truncateText(row.description, PROJECT_DESCRIPTION_MAX_CHARS),
-			start_at: null,
-			end_at: null,
+			start_at: directDates?.start_at ?? row.start_at ?? null,
+			end_at: directDates?.end_at ?? row.end_at ?? null,
 			next_step_short: normalizeOptionalText(row.next_step_short) ?? null,
 			updated_at: row.updated_at
-		}));
+		};
+	});
 	const lightProjects = allProjects.slice(0, GLOBAL_CONTEXT_PROJECT_LIMIT);
 	const projectIds = lightProjects.map((project) => project.id);
 	const allProjectIds = allProjects.map((project) => project.id);
@@ -2253,20 +2458,29 @@ async function loadGlobalContextData(
 			.select(
 				'id, project_id, name, description, state_key, target_date, completed_at, updated_at'
 			)
-			.in('project_id', allProjectIds)
-			.is('deleted_at', null),
+			.in('project_id', projectIds)
+			.is('deleted_at', null)
+			.is('archived_at', null)
+			.order('updated_at', { ascending: false })
+			.limit(GLOBAL_CONTEXT_ENTITY_FETCH_LIMIT),
 		supabase
 			.from('onto_milestones')
 			.select(
 				'id, project_id, title, description, state_key, due_at, completed_at, updated_at'
 			)
-			.in('project_id', allProjectIds)
-			.is('deleted_at', null),
+			.in('project_id', projectIds)
+			.is('deleted_at', null)
+			.is('archived_at', null)
+			.order('updated_at', { ascending: false })
+			.limit(GLOBAL_CONTEXT_ENTITY_FETCH_LIMIT),
 		supabase
 			.from('onto_plans')
 			.select('id, project_id, name, description, state_key, updated_at')
-			.in('project_id', allProjectIds)
-			.is('deleted_at', null),
+			.in('project_id', projectIds)
+			.is('deleted_at', null)
+			.is('archived_at', null)
+			.order('updated_at', { ascending: false })
+			.limit(GLOBAL_CONTEXT_ENTITY_FETCH_LIMIT),
 		supabase
 			.from('onto_project_logs')
 			.select(
@@ -2281,16 +2495,18 @@ async function loadGlobalContextData(
 			.select(
 				'id, project_id, title, description, state_key, priority, start_at, due_at, completed_at, updated_at'
 			)
-			.in('project_id', allProjectIds)
+			.in('project_id', projectIds)
 			.is('deleted_at', null)
+			.is('archived_at', null)
 			.or(`due_at.not.is.null,start_at.lte.${upcomingCutoffIso}`)
+			.order('updated_at', { ascending: false })
 			.limit(500),
 		supabase
 			.from('onto_events')
 			.select(
 				'id, project_id, title, description, state_key, start_at, end_at, all_day, location, updated_at'
 			)
-			.in('project_id', allProjectIds)
+			.in('project_id', projectIds)
 			.is('deleted_at', null)
 			.gte('start_at', new Date(nowMs).toISOString())
 			.lte('start_at', upcomingCutoffIso)
@@ -2327,13 +2543,13 @@ async function loadGlobalContextData(
 	if (tasksRes.error) {
 		logger.warn('Failed to load global task signals', { error: tasksRes.error });
 		reportContextLoadError(onError, 'query.global.tasks', tasksRes.error, {
-			projectCount: allProjectIds.length
+			projectCount: projectIds.length
 		});
 	}
 	if (eventsRes.error) {
 		logger.warn('Failed to load global event signals', { error: eventsRes.error });
 		reportContextLoadError(onError, 'query.global.events', eventsRes.error, {
-			projectCount: allProjectIds.length
+			projectCount: projectIds.length
 		});
 	}
 
@@ -2411,6 +2627,8 @@ async function loadProjectContextData(
 			'id, name, state_key, description, start_at, end_at, next_step_short, updated_at, doc_structure'
 		)
 		.eq('id', projectId)
+		.is('deleted_at', null)
+		.is('archived_at', null)
 		.maybeSingle();
 
 	if (error || !projectRow) {
@@ -2438,35 +2656,55 @@ async function loadProjectContextData(
 	] = await Promise.all([
 		supabase
 			.from('onto_goals')
-			.select('id, name, description, state_key, target_date, completed_at, updated_at')
+			.select('id, name, description, state_key, target_date, completed_at, updated_at', {
+				count: 'exact'
+			})
 			.eq('project_id', projectId)
-			.is('deleted_at', null),
+			.is('deleted_at', null)
+			.is('archived_at', null)
+			.order('updated_at', { ascending: false })
+			.limit(PROJECT_CONTEXT_GOAL_FETCH_LIMIT),
 		supabase
 			.from('onto_milestones')
-			.select('id, title, description, state_key, due_at, completed_at, updated_at')
+			.select('id, title, description, state_key, due_at, completed_at, updated_at', {
+				count: 'exact'
+			})
 			.eq('project_id', projectId)
-			.is('deleted_at', null),
+			.is('deleted_at', null)
+			.is('archived_at', null)
+			.order('updated_at', { ascending: false })
+			.limit(PROJECT_CONTEXT_MILESTONE_FETCH_LIMIT),
 		supabase
 			.from('onto_plans')
-			.select('id, name, description, state_key, updated_at')
+			.select('id, name, description, state_key, updated_at', { count: 'exact' })
 			.eq('project_id', projectId)
-			.is('deleted_at', null),
+			.is('deleted_at', null)
+			.is('archived_at', null)
+			.order('updated_at', { ascending: false })
+			.limit(PROJECT_CONTEXT_PLAN_FETCH_LIMIT),
 		supabase
 			.from('onto_tasks')
 			.select(
-				'id, title, description, state_key, priority, start_at, due_at, completed_at, updated_at'
+				'id, title, description, state_key, priority, start_at, due_at, completed_at, updated_at',
+				{ count: 'exact' }
 			)
 			.eq('project_id', projectId)
-			.is('deleted_at', null),
+			.is('deleted_at', null)
+			.is('archived_at', null)
+			.order('updated_at', { ascending: false })
+			.limit(PROJECT_CONTEXT_TASK_FETCH_LIMIT),
 		supabase
 			.from('onto_events')
 			.select(
-				'id, title, description, state_key, start_at, end_at, all_day, location, updated_at'
+				'id, title, description, state_key, start_at, end_at, all_day, location, updated_at',
+				{ count: 'exact' }
 			)
 			.eq('project_id', projectId)
 			.is('deleted_at', null)
 			.gte('start_at', eventWindow.start_at)
-			.lte('start_at', eventWindow.end_at),
+			.lte('start_at', eventWindow.end_at)
+			.order('start_at', { ascending: true })
+			.limit(PROJECT_CONTEXT_EVENT_LIMIT),
 		supabase
 			.from('onto_project_members')
 			.select(
@@ -2476,9 +2714,12 @@ async function loadProjectContextData(
 			.is('removed_at', null),
 		supabase
 			.from('onto_documents')
-			.select('id, title, state_key, created_at, updated_at')
+			.select('id, title, state_key, created_at, updated_at', { count: 'exact' })
 			.eq('project_id', projectId)
-			.is('deleted_at', null),
+			.is('deleted_at', null)
+			.is('archived_at', null)
+			.order('updated_at', { ascending: false })
+			.limit(PROJECT_CONTEXT_DOCUMENT_FETCH_LIMIT),
 		supabase
 			.from('onto_project_logs')
 			.select(
@@ -2547,7 +2788,15 @@ async function loadProjectContextData(
 		events: (eventsRes.data ?? []) as EventRow[],
 		members: (membersRes.data ?? []) as ProjectMemberRow[],
 		projectLogs: (logsRes.data ?? []) as ProjectLogRow[],
-		eventWindow
+		eventWindow,
+		entityCounts: {
+			goals_total: goalsRes.count,
+			milestones_total: milestonesRes.count,
+			plans_total: plansRes.count,
+			tasks_total: tasksRes.count,
+			documents_total: documentsRes.count,
+			events_total: eventsRes.count
+		}
 	});
 }
 
@@ -2560,6 +2809,16 @@ async function loadLinkedEntities(
 	linked_entities: Record<string, Array<Record<string, unknown>>>;
 	linked_edges: LinkedEdge[];
 }> {
+	if (!isUuid(focusEntityId)) {
+		reportContextLoadError(
+			onError,
+			'query.project.linked_edges.invalid_focus_entity_id',
+			new Error('Invalid focus entity id'),
+			{ projectId, focusEntityId }
+		);
+		return { linked_entities: {}, linked_edges: [] };
+	}
+
 	const { data: edges, error } = await supabase
 		.from('onto_edges')
 		.select('src_id, src_kind, dst_id, dst_kind, rel')
@@ -2602,11 +2861,15 @@ async function loadLinkedEntities(
 		async ([kind, ids]): Promise<readonly [string, Record<string, unknown>[]]> => {
 			const config = LINKED_ENTITY_CONFIG[kind];
 			if (!config) return [kind, []] as const;
-			const { data, error } = await (supabase
+			let query = supabase
 				.from(config.table as any)
 				.select(config.select)
 				.in('id', Array.from(ids))
-				.is('deleted_at', null) as any);
+				.is('deleted_at', null) as any;
+			if (config.table !== 'onto_projects') {
+				query = query.eq('project_id', projectId);
+			}
+			const { data, error } = await query;
 			if (error) {
 				logger.warn('Failed to load linked entities', { error, kind });
 				reportContextLoadError(onError, `query.project.linked_entities.${kind}`, error, {
@@ -2641,16 +2904,50 @@ async function loadEntityContextData(params: {
 	const projectContext = await loadProjectContextData(supabase, projectId, eventWindow, onError);
 	if (!projectContext) return { data: null };
 
-	const focusConfig = LINKED_ENTITY_CONFIG[focusType];
+	const focusConfig = FOCUS_ENTITY_CONFIG[focusType];
 	let focusEntityFull: Record<string, unknown> | null = null;
 	let focusEntityName: string | null = null;
 
+	if (!isUuid(focusEntityId)) {
+		reportContextLoadError(
+			onError,
+			'query.project.focus_entity.invalid_focus_entity_id',
+			new Error('Invalid focus entity id'),
+			{ projectId, focusType, focusEntityId }
+		);
+		return {
+			data: {
+				...projectContext,
+				focus_entity_type: focusType,
+				focus_entity_id: focusEntityId,
+				focus_entity_full: {},
+				linked_entities: {},
+				linked_edges: []
+			},
+			focusEntityName: null
+		};
+	}
+
 	if (focusConfig) {
-		const { data, error } = await (supabase
+		let query = supabase
 			.from(focusConfig.table as any)
-			.select('*')
+			.select(focusConfig.select)
 			.eq('id', focusEntityId)
-			.maybeSingle() as any);
+			.is('deleted_at', null) as any;
+		if (focusConfig.projectScoped) {
+			query = query.eq('project_id', projectId);
+		}
+		if (
+			focusConfig.table === 'onto_documents' ||
+			focusConfig.table === 'onto_goals' ||
+			focusConfig.table === 'onto_milestones' ||
+			focusConfig.table === 'onto_plans' ||
+			focusConfig.table === 'onto_risks' ||
+			focusConfig.table === 'onto_tasks'
+		) {
+			query = query.is('archived_at', null);
+		}
+		const { data, error } = await query.maybeSingle();
 		if (error) {
 			logger.warn('Failed to load focus entity', { error, focusType, focusEntityId });
 			reportContextLoadError(onError, 'query.project.focus_entity', error, {
@@ -2659,7 +2956,7 @@ async function loadEntityContextData(params: {
 				focusEntityId
 			});
 		} else if (data) {
-			focusEntityFull = stripEntityFields(data as Record<string, unknown>);
+			focusEntityFull = sanitizeFocusEntity(focusType, data as Record<string, unknown>);
 			focusEntityName = resolveEntityName(focusEntityFull);
 		}
 	}
@@ -2859,11 +3156,13 @@ export async function loadFastChatPromptContext(
 	const eventWindow = buildFastChatEventWindow();
 
 	const projectId = resolveEffectiveProjectId({ contextType, entityId, projectFocus });
-	const focusType =
+	const rawFocusType =
 		projectFocus?.focusType && projectFocus.focusType !== 'project-wide'
 			? projectFocus.focusType
 			: null;
-	const focusEntityId = focusType ? (projectFocus?.focusEntityId ?? null) : null;
+	const rawFocusEntityId = rawFocusType ? (projectFocus?.focusEntityId ?? null) : null;
+	const focusEntityId = isUuid(rawFocusEntityId) ? rawFocusEntityId : null;
+	const focusType = rawFocusType && focusEntityId ? rawFocusType : null;
 	const focusEntityName = focusType ? (projectFocus?.focusEntityName ?? null) : null;
 
 	const baseContext: MasterPromptContext = {
@@ -2873,7 +3172,8 @@ export async function loadFastChatPromptContext(
 		projectName: projectFocus?.projectName ?? null,
 		focusEntityType: focusType,
 		focusEntityId,
-		focusEntityName
+		focusEntityName,
+		contextLoadSource: 'none'
 	};
 
 	if (contextType === 'daily_brief') {
@@ -2890,19 +3190,34 @@ export async function loadFastChatPromptContext(
 		return {
 			...baseContext,
 			entityId,
+			contextLoadSource: 'fallback',
 			data
 		};
 	}
 
 	const rpcContextType = resolveRpcContextType({ contextType, projectFocus });
+	let fallbackContextLoadSource: FastChatContextLoadSource = rpcContextType
+		? 'rpc_null_fallback'
+		: 'fallback';
 	if (rpcContextType) {
-		const rpcPayload = await loadFastChatContextViaRpc(params);
+		const rpcResult = await loadFastChatContextViaRpc(params);
+		const rpcPayload = rpcResult.payload;
+		if (rpcResult.fallbackSource) {
+			fallbackContextLoadSource = rpcResult.fallbackSource;
+		}
 		if (rpcPayload) {
 			if (rpcContextType === 'global') {
 				if (normalizeProjectIntelligenceFromPayload(rpcPayload.project_intelligence)) {
 					const data = buildGlobalContextFromRpc(rpcPayload);
-					return { ...baseContext, data };
+					return { ...baseContext, contextLoadSource: 'rpc', data };
 				}
+				reportContextLoadError(
+					params.onError,
+					'rpc.load_fastchat_context.unusable_global_payload',
+					new Error('FastChat global RPC payload did not include project intelligence'),
+					{ contextType, projectId }
+				);
+				fallbackContextLoadSource = 'rpc_null_fallback';
 			} else {
 				const projectContext = buildProjectContextFromRpc(rpcPayload, eventWindow);
 				if (projectContext) {
@@ -2927,6 +3242,7 @@ export async function loadFastChatPromptContext(
 							projectName: resolvedProjectName,
 							focusEntityName:
 								resolvedFocusName ?? baseContext.focusEntityName ?? null,
+							contextLoadSource: 'rpc',
 							data
 						};
 					}
@@ -2935,16 +3251,24 @@ export async function loadFastChatPromptContext(
 						...baseContext,
 						projectId,
 						projectName: resolvedProjectName,
+						contextLoadSource: 'rpc',
 						data: projectContextWithStartHere
 					};
 				}
+				reportContextLoadError(
+					params.onError,
+					'rpc.load_fastchat_context.unusable_project_payload',
+					new Error('FastChat project RPC payload did not include a project row'),
+					{ contextType, projectId, focusType, focusEntityId }
+				);
+				fallbackContextLoadSource = 'rpc_null_fallback';
 			}
 		}
 	}
 
 	if (contextType === 'global') {
 		const data = await loadGlobalContextData(supabase, userId, params.onError);
-		return { ...baseContext, data };
+		return { ...baseContext, contextLoadSource: fallbackContextLoadSource, data };
 	}
 
 	if (isProjectScopedContext(contextType)) {
@@ -2967,6 +3291,7 @@ export async function loadFastChatPromptContext(
 				projectId,
 				projectName: projectFocus?.projectName ?? baseContext.projectName,
 				focusEntityName: focusEntityName ?? baseContext.focusEntityName ?? null,
+				contextLoadSource: fallbackContextLoadSource,
 				data: dataWithStartHere
 			};
 		}
@@ -2981,6 +3306,7 @@ export async function loadFastChatPromptContext(
 			...baseContext,
 			projectId,
 			projectName,
+			contextLoadSource: fallbackContextLoadSource,
 			data
 		};
 	}
@@ -2996,6 +3322,7 @@ export async function loadFastChatPromptContext(
 			...baseContext,
 			projectId: resolvedProjectId,
 			projectName: projectFocus.projectName ?? data?.project.name ?? null,
+			contextLoadSource: fallbackContextLoadSource,
 			data
 		};
 	}

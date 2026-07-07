@@ -532,21 +532,50 @@ export async function checkAndScheduleAgentOperatives(now: Date = new Date()): P
 async function runPreparedPromptRetentionCleanup(): Promise<void> {
 	try {
 		const { data, error } = await (supabase as any).rpc(
-			'cleanup_expired_agentic_chat_prepared_prompts'
+			'cleanup_agentic_chat_prompt_artifacts'
 		);
 		if (error) {
-			console.warn('⚠️ Scheduled prepared prompt cleanup failed:', error);
+			console.warn(
+				'⚠️ Scheduled prompt artifact cleanup failed; falling back to prepared prompt cleanup:',
+				error
+			);
+			const fallback = await (supabase as any).rpc(
+				'cleanup_expired_agentic_chat_prepared_prompts'
+			);
+			if (fallback.error) {
+				console.warn(
+					'⚠️ Scheduled prepared prompt cleanup fallback failed:',
+					fallback.error
+				);
+				return;
+			}
+			const fallbackDeletedCount = typeof fallback.data === 'number' ? fallback.data : 0;
+			if (fallbackDeletedCount > 0) {
+				console.log(
+					`✅ Scheduled prepared prompt cleanup removed ${fallbackDeletedCount} expired prompt(s)`
+				);
+			}
 			return;
 		}
 
-		const deletedCount = typeof data === 'number' ? data : 0;
-		if (deletedCount > 0) {
+		const summary = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+		const preparedDeleted =
+			typeof summary.prepared_prompts_deleted === 'number'
+				? summary.prepared_prompts_deleted
+				: 0;
+		const snapshotsDeleted =
+			typeof summary.prompt_snapshots_deleted === 'number'
+				? summary.prompt_snapshots_deleted
+				: 0;
+		const renderedDumpsCleared =
+			typeof summary.rendered_dumps_cleared === 'number' ? summary.rendered_dumps_cleared : 0;
+		if (preparedDeleted > 0 || snapshotsDeleted > 0 || renderedDumpsCleared > 0) {
 			console.log(
-				`✅ Scheduled prepared prompt cleanup removed ${deletedCount} expired prompt(s)`
+				`✅ Scheduled prompt artifact cleanup complete: prepared=${preparedDeleted}, snapshots=${snapshotsDeleted}, dumpsCleared=${renderedDumpsCleared}`
 			);
 		}
 	} catch (error) {
-		console.error('❌ Scheduled prepared prompt cleanup failed:', error);
+		console.error('❌ Scheduled prompt artifact cleanup failed:', error);
 	}
 }
 

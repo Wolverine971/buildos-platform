@@ -154,7 +154,8 @@ export async function runNoToolCallFinalization(params: {
 	skillGate?: {
 		required: boolean;
 		recommendedSkillIds: string[];
-		historyHasLoadedSkillsLedger: boolean;
+		acceptableSkillIds: string[];
+		historyLoadedSkillIds: string[];
 	} | null;
 	assistantText: string;
 	finishedReason?: string;
@@ -197,7 +198,8 @@ export async function runNoToolCallFinalization(params: {
 	if (
 		shouldRepairSkillGateNoLoad({
 			skillLoadRequired: params.skillGate?.required === true,
-			historyHasLoadedSkillsLedger: params.skillGate?.historyHasLoadedSkillsLedger === true,
+			acceptableSkillIds: params.skillGate?.acceptableSkillIds ?? [],
+			historyLoadedSkillIds: params.skillGate?.historyLoadedSkillIds ?? [],
 			finalText: candidateFinalText,
 			toolExecutions: params.toolExecutions,
 			repairAlreadyInjected: params.skillGateStopRepairInjected

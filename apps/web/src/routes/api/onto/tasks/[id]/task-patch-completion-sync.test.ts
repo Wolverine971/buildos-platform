@@ -526,6 +526,65 @@ describe('PATCH /api/onto/tasks/[id] completion sync behavior', () => {
 		expect(capturedAtomicArgs?.p_updates).not.toHaveProperty('project_review_context');
 	});
 
+	it('suppresses project-loop bursts for project suggestion replay context', async () => {
+		const supabase = createSupabaseMock({
+			existingTask: {
+				id: 'task1',
+				project_id: 'proj1',
+				title: 'Task',
+				type_key: 'task.default',
+				state_key: 'todo',
+				start_at: '2026-07-01T09:00:00Z',
+				due_at: '2026-07-01T10:00:00Z',
+				props: {},
+				project: { id: 'proj1', created_by: 'actor1' }
+			},
+			updatedTask: {
+				id: 'task1',
+				project_id: 'proj1',
+				title: 'Updated task',
+				type_key: 'task.default',
+				state_key: 'todo',
+				start_at: '2026-07-01T09:00:00Z',
+				due_at: '2026-07-01T10:00:00Z',
+				props: {}
+			}
+		});
+
+		const { PATCH } = await routeModule;
+		const request = new Request('http://localhost/api/onto/tasks/task1', {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				title: 'Updated task',
+				project_review_context: {
+					origin: 'project_suggestion_replay',
+					operation_kind: 'suggestion_apply',
+					review_policy: 'suppress',
+					operation_id: 'project_suggestion:suggestion-1',
+					entity_count: 1
+				}
+			})
+		});
+
+		const response = await PATCH({
+			params: { id: 'task1' },
+			request,
+			locals: {
+				supabase: supabase as any,
+				safeGetSession: async () => ({ user: { id: 'user1' } })
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(queueProjectLoopBurstAsyncMock).not.toHaveBeenCalled();
+		expect(queueProjectLoopReviewSignalAsyncMock).not.toHaveBeenCalled();
+		expect(capturedAtomicArgs?.p_updates).toMatchObject({
+			title: 'Updated task'
+		});
+		expect(capturedAtomicArgs?.p_updates).not.toHaveProperty('project_review_context');
+	});
+
 	it('still sends ordinary task updates to the project-loop burst evaluator', async () => {
 		const supabase = createSupabaseMock({
 			existingTask: {

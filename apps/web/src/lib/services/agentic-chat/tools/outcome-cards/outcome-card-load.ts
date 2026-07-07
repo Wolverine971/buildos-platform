@@ -1,5 +1,8 @@
 // apps/web/src/lib/services/agentic-chat/tools/outcome-cards/outcome-card-load.ts
 import { getOutcomeCardById, listOutcomeCards } from './catalog';
+import { getRecommendedSkillLoadFormat } from '../skills/skill-load';
+import { getSkillById } from '../skills/registry';
+import type { SkillLoadFormat } from '../skills/types';
 import type { OutcomeCardDefinition, OutcomeCardLoadPayload } from './types';
 
 function materializedToolsFor(capability: OutcomeCardDefinition): string[] {
@@ -11,6 +14,19 @@ function materializedToolsFor(capability: OutcomeCardDefinition): string[] {
 		tools.push('resource_search');
 	}
 	return tools;
+}
+
+function buildSkillLoadFormats(capability: OutcomeCardDefinition): Record<string, SkillLoadFormat> {
+	const formats: Record<string, SkillLoadFormat> = {};
+	const skillIds = Array.from(
+		new Set([capability.defaultSkillId, ...capability.skillIds].filter(Boolean))
+	);
+	for (const skillId of skillIds) {
+		if (typeof skillId !== 'string') continue;
+		const skill = getSkillById(skillId);
+		if (skill) formats[skillId] = getRecommendedSkillLoadFormat(skill);
+	}
+	return formats;
 }
 
 export function loadOutcomeCard(
@@ -44,6 +60,7 @@ export function loadOutcomeCard(
 		example_requests: capability.exampleRequests,
 		default_skill_id: capability.defaultSkillId,
 		skill_ids: capability.skillIds,
+		skill_load_formats: buildSkillLoadFormats(capability),
 		resource_ids: capability.resourceIds ?? [],
 		tool_hints: capability.toolHints ?? [],
 		outputs: capability.outputs,

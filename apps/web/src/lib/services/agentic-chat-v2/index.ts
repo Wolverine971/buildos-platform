@@ -9,7 +9,11 @@ export {
 } from './context-usage';
 export { resolveFastChatSurfaceProfileForTurn, selectFastChatTools } from './tool-selector';
 export * from './context-models';
-export { createFastChatSessionService, historyIncludesLoadedSkillsLedger } from './session-service';
+export {
+	createFastChatSessionService,
+	extractLoadedSkillIdsFromHistory,
+	historyIncludesLoadedSkillsLedger
+} from './session-service';
 export { streamFastChat } from './stream-orchestrator/index';
 export { FASTCHAT_LIMITS } from './limits';
 export { composeFastChatHistory } from './history-composer';

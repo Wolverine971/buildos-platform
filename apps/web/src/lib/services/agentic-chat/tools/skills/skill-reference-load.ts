@@ -1,7 +1,16 @@
 // apps/web/src/lib/services/agentic-chat/tools/skills/skill-reference-load.ts
 import { getToolRegistry } from '../registry/tool-registry';
 import { getSkillByReference } from './registry';
-import type { SkillDefinition, SkillLinkedResourcePayload } from './types';
+import {
+	canReadSkillReference,
+	getEffectiveSkillReferenceVisibility,
+	normalizeSkillReferenceSurface
+} from './skill-reference-visibility';
+import type {
+	SkillDefinition,
+	SkillLinkedResourcePayload,
+	SkillReferenceLoadSurface
+} from './types';
 
 const referenceContentModules = import.meta.glob<string>('./definitions/**/references/*.md', {
 	eager: true,
@@ -20,6 +29,10 @@ export type SkillReferenceLoadPayload = {
 	visibility?: SkillLinkedResourcePayload['visibility'];
 	version: string;
 	content: string;
+};
+
+export type SkillReferenceLoadOptions = {
+	surface?: SkillReferenceLoadSurface;
 };
 
 function normalizeReference(value: string): string {
@@ -55,11 +68,36 @@ function buildModuleKey(skillId: string, path: string): string | null {
 	return `./definitions/${skillId}/${normalizedPath}`;
 }
 
+function buildAvailableReferences(
+	skill: SkillDefinition,
+	surface: SkillReferenceLoadSurface
+): Array<{
+	id: string;
+	name?: string;
+	path?: string;
+	summary: string;
+	visibility: SkillLinkedResourcePayload['visibility'];
+}> {
+	return (
+		skill.referenceModules
+			?.filter((item) => canReadSkillReference(item, surface))
+			.map((item) => ({
+				id: item.id,
+				name: item.name,
+				path: item.path,
+				summary: item.summary,
+				visibility: getEffectiveSkillReferenceVisibility(item)
+			})) ?? []
+	);
+}
+
 export function loadSkillReference(
 	skillReference: string,
-	reference: string
+	reference: string,
+	options: SkillReferenceLoadOptions = {}
 ): SkillReferenceLoadPayload | Record<string, unknown> {
 	const registry = getToolRegistry();
+	const surface = normalizeSkillReferenceSurface(options.surface);
 	const skill = getSkillByReference(skillReference.trim());
 	if (!skill) {
 		return {
@@ -78,14 +116,22 @@ export function loadSkillReference(
 			skill_id: skill.id,
 			reference: reference.trim(),
 			version: registry.version,
-			available_references:
-				skill.referenceModules?.map((item) => ({
-					id: item.id,
-					name: item.name,
-					path: item.path,
-					summary: item.summary
-				})) ?? [],
+			available_references: buildAvailableReferences(skill, surface),
 			message: 'No declared reference module found for this skill.'
+		};
+	}
+
+	const visibility = getEffectiveSkillReferenceVisibility(module);
+	if (!canReadSkillReference(module, surface)) {
+		return {
+			type: 'forbidden',
+			skill_id: skill.id,
+			reference_id: module.id,
+			path: module.path,
+			visibility,
+			surface,
+			version: registry.version,
+			message: 'This reference module is internal and cannot be loaded on this surface.'
 		};
 	}
 
@@ -109,10 +155,10 @@ export function loadSkillReference(
 		summary: module.summary,
 		when_to_load: module.whenToLoad,
 		path: module.path,
+		visibility,
 		version: registry.version,
 		content: stripReferenceFrontmatter(content)
 	};
 	if (module.name) payload.name = module.name;
-	if (module.visibility) payload.visibility = module.visibility;
 	return payload;
 }

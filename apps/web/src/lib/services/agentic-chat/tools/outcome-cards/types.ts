@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat/tools/outcome-cards/types.ts
 import type { DomainCoverageGap } from '../domains/types';
+import type { SkillLoadFormat } from '../skills/types';
 
 export type OutcomeCardCoverageStatus = 'none' | 'partial' | 'strong';
 
@@ -31,6 +32,7 @@ export interface OutcomeCardSearchMatch {
 	buildos_capability_ids: string[];
 	default_skill_id?: string;
 	skill_ids: string[];
+	skill_load_formats: Record<string, SkillLoadFormat>;
 	coverage_status: OutcomeCardCoverageStatus;
 	load_hint: string;
 }
@@ -59,6 +61,7 @@ export interface OutcomeCardLoadPayload {
 	example_requests: string[];
 	default_skill_id?: string;
 	skill_ids: string[];
+	skill_load_formats: Record<string, SkillLoadFormat>;
 	resource_ids: string[];
 	tool_hints: string[];
 	outputs: string[];

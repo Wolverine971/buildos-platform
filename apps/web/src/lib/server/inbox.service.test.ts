@@ -132,6 +132,11 @@ class QueryBuilderMock {
 					(field) => row[field] !== null && row[field] !== undefined
 				)
 		);
+		if (this.action === 'update' && this.updatePayload) {
+			for (const row of allRows) {
+				Object.assign(row, this.updatePayload);
+			}
+		}
 		const rows = this.rowLimit === null ? allRows : allRows.slice(0, this.rowLimit);
 		this.state.operations.push({
 			table: this.table,
@@ -747,6 +752,173 @@ describe('inbox service', () => {
 				delivery_confidence: 'yellow',
 				summary: 'Launch decision needs review.'
 			}
+		});
+	});
+
+	it('attaches project audit payload and run context to project_audit inbox items', async () => {
+		const inboxItem = {
+			id: 'inbox-audit-1',
+			source_type: 'project_audit',
+			source_ref_id: 'audit-1',
+			source_status: 'ready',
+			user_id: null,
+			project_id: 'project-1',
+			audience: 'project_members',
+			status: 'pending',
+			title: 'Complete project audit',
+			summary: 'Launch decision needs review.',
+			risk_tier: 2,
+			action_kinds: ['open', 'resolve'],
+			created_at: '2026-07-04T12:00:00.000Z'
+		};
+		mocks.syncInboxItemForSource.mockResolvedValue(inboxItem);
+		const { supabase } = createSupabaseMock({
+			inbox_items: [inboxItem],
+			project_audits: [
+				{
+					id: 'audit-1',
+					project_id: 'project-1',
+					loop_run_id: 'run-1',
+					status: 'ready',
+					trigger_reason: 'burst',
+					delivery_confidence: 'yellow',
+					summary: 'Launch decision needs review.',
+					generated_suggestion_count: 3,
+					unresolved_suggestion_count: 2,
+					created_at: '2026-07-04T11:00:00.000Z',
+					finished_at: '2026-07-04T11:10:00.000Z'
+				}
+			],
+			project_loop_runs: [
+				{
+					id: 'run-1',
+					project_id: 'project-1',
+					trigger_reason: 'burst',
+					status: 'completed',
+					summary: 'Audit complete',
+					brief: null,
+					suggestion_count: 3,
+					created_at: '2026-07-04T11:00:00.000Z',
+					finished_at: '2026-07-04T11:10:00.000Z'
+				}
+			],
+			onto_projects: [{ id: 'project-1', name: 'Launch' }]
+		});
+
+		const result = await listInboxItems({
+			supabase,
+			admin: supabase,
+			userId: 'user-1',
+			status: 'pending',
+			sourceType: 'project_audit',
+			limit: 20,
+			includePayload: true
+		});
+
+		expect(result.items[0]).toMatchObject({
+			source_type: 'project_audit',
+			project: { id: 'project-1', name: 'Launch' },
+			can_decide: false,
+			decision_disabled_reason: 'Open the audit packet to review recommendations',
+			source_payload: {
+				id: 'audit-1',
+				status: 'ready',
+				loop_run_id: 'run-1'
+			},
+			source_context: {
+				project_loop_run: {
+					id: 'run-1',
+					trigger_reason: 'burst'
+				},
+				project_audit: {
+					id: 'audit-1',
+					role: null,
+					delivery_confidence: 'yellow',
+					unresolved_suggestion_count: 2
+				}
+			}
+		});
+	});
+
+	it('backfills complete audit packets without recreating linked child suggestion inbox rows', async () => {
+		mocks.syncInboxItemForSource.mockImplementation(
+			async ({ sourceType, sourceRefId }: { sourceType: string; sourceRefId: string }) => ({
+				source_type: sourceType,
+				source_ref_id: sourceRefId,
+				status: 'pending'
+			})
+		);
+		const { supabase, state } = createSupabaseMock({
+			project_suggestions: [
+				{
+					id: 'suggestion-linked',
+					project_id: 'project-1',
+					status: 'pending',
+					title: 'Audit child'
+				},
+				{
+					id: 'suggestion-standalone',
+					project_id: 'project-1',
+					status: 'pending',
+					title: 'Standalone suggestion'
+				}
+			],
+			project_audit_suggestions: [
+				{
+					audit_id: 'audit-1',
+					suggestion_id: 'suggestion-linked',
+					role: 'recommended_action'
+				}
+			],
+			project_audits: [
+				{
+					id: 'audit-1',
+					project_id: 'project-1',
+					status: 'ready',
+					created_at: '2026-07-04T11:00:00.000Z'
+				}
+			],
+			inbox_items: [
+				{
+					id: 'inbox-linked',
+					source_type: 'project_suggestion',
+					source_ref_id: 'suggestion-linked',
+					status: 'pending',
+					project_id: 'project-1'
+				}
+			]
+		});
+
+		await listInboxItems({
+			supabase,
+			admin: supabase,
+			userId: 'user-1',
+			status: 'pending',
+			projectId: 'project-1',
+			limit: 20
+		});
+
+		expect(mocks.syncInboxItemForSource).toHaveBeenCalledWith(
+			expect.objectContaining({
+				sourceType: 'project_suggestion',
+				sourceRefId: 'suggestion-standalone'
+			})
+		);
+		expect(mocks.syncInboxItemForSource).toHaveBeenCalledWith(
+			expect.objectContaining({
+				sourceType: 'project_audit',
+				sourceRefId: 'audit-1'
+			})
+		);
+		expect(mocks.syncInboxItemForSource).not.toHaveBeenCalledWith(
+			expect.objectContaining({
+				sourceType: 'project_suggestion',
+				sourceRefId: 'suggestion-linked'
+			})
+		);
+		expect(state.tables.inbox_items[0]).toMatchObject({
+			status: 'expired',
+			source_status: 'grouped_into_project_audit'
 		});
 	});
 });

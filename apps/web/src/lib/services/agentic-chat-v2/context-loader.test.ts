@@ -6,6 +6,19 @@ import { loadFastChatPromptContext } from './context-loader';
 type QueryResult = {
 	data: any;
 	error: any;
+	count?: number | null;
+};
+
+type QueryCallRecord = {
+	table: string;
+	selectColumns: string | null;
+	selectOptions: Record<string, unknown> | null;
+	eqCalls: Array<[string, unknown]>;
+	inCalls: Array<[string, unknown[]]>;
+	isCalls: Array<[string, unknown]>;
+	orCalls: string[];
+	orderCalls: Array<[string, Record<string, unknown> | undefined]>;
+	limitCalls: number[];
 };
 
 function createDailyBriefSupabaseMock(config: {
@@ -54,13 +67,36 @@ function createProjectRpcSupabaseMock(
 				startHereResult.data && !Array.isArray(startHereResult.data)
 					? { ...startHereResult, data: [startHereResult.data] }
 					: startHereResult;
-			const limit = vi.fn().mockResolvedValue(normalizedStartHereResult);
-			const order = vi.fn().mockReturnValue({ limit });
-			const isArchived = vi.fn().mockReturnValue({ order });
-			const isDeleted = vi.fn().mockReturnValue({ is: isArchived });
-			const eqType = vi.fn().mockReturnValue({ is: isDeleted });
-			const eqProject = vi.fn().mockReturnValue({ eq: eqType });
-			const select = vi.fn().mockReturnValue({ eq: eqProject });
+			const rows = (normalizedStartHereResult.data ?? []) as Array<Record<string, any>>;
+			const select = vi.fn().mockImplementation((columns: string) => {
+				if (!columns.includes('content')) {
+					const limit = vi.fn().mockResolvedValue({
+						...normalizedStartHereResult,
+						data: rows.map(({ content: _content, ...row }) => row)
+					});
+					const order = vi.fn().mockReturnValue({ limit });
+					const isArchived = vi.fn().mockReturnValue({ order });
+					const isDeleted = vi.fn().mockReturnValue({ is: isArchived });
+					const eqType = vi.fn().mockReturnValue({ is: isDeleted });
+					const eqProject = vi.fn().mockReturnValue({ eq: eqType });
+					return { eq: eqProject };
+				}
+
+				let selectedId: string | null = null;
+				const maybeSingle = vi.fn().mockImplementation(async () => ({
+					data: rows.find((row) => row.id === selectedId) ?? rows[0] ?? null,
+					error: normalizedStartHereResult.error
+				}));
+				const isArchived = vi.fn().mockReturnValue({ maybeSingle });
+				const isDeleted = vi.fn().mockReturnValue({ is: isArchived });
+				const eqType = vi.fn().mockReturnValue({ is: isDeleted });
+				const eqProject = vi.fn().mockReturnValue({ eq: eqType });
+				const eqId = vi.fn().mockImplementation((column: string, value: string) => {
+					if (column === 'id') selectedId = value;
+					return { eq: eqProject };
+				});
+				return { eq: eqId };
+			});
 			return { select };
 		}
 		throw new Error(`Unexpected fallback query path for project RPC mock: ${table}`);
@@ -101,22 +137,45 @@ function createGlobalFallbackSupabaseMock(config: {
 		return Promise.resolve({ data: null, error: null });
 	});
 	const from = vi.fn().mockImplementation((table: string) => {
+		if (table === 'onto_projects') {
+			const is = vi.fn().mockResolvedValue({
+				data: config.projectSummaries.map((project) => ({
+					id: project.id,
+					start_at: project.start_at ?? null,
+					end_at: project.end_at ?? null
+				})),
+				error: null
+			});
+			const inFn = vi.fn().mockReturnValue({ is });
+			const select = vi.fn().mockReturnValue({ in: inFn });
+			return { select };
+		}
+
 		if (table === 'onto_goals') {
-			const is = vi.fn().mockResolvedValue(config.goals);
+			const limit = vi.fn().mockResolvedValue(config.goals);
+			const order = vi.fn().mockReturnValue({ limit });
+			const isArchived = vi.fn().mockReturnValue({ order });
+			const is = vi.fn().mockReturnValue({ is: isArchived });
 			const inFn = vi.fn().mockReturnValue({ is });
 			const select = vi.fn().mockReturnValue({ in: inFn });
 			return { select };
 		}
 
 		if (table === 'onto_milestones') {
-			const is = vi.fn().mockResolvedValue(config.milestones);
+			const limit = vi.fn().mockResolvedValue(config.milestones);
+			const order = vi.fn().mockReturnValue({ limit });
+			const isArchived = vi.fn().mockReturnValue({ order });
+			const is = vi.fn().mockReturnValue({ is: isArchived });
 			const inFn = vi.fn().mockReturnValue({ is });
 			const select = vi.fn().mockReturnValue({ in: inFn });
 			return { select };
 		}
 
 		if (table === 'onto_plans') {
-			const is = vi.fn().mockResolvedValue(config.plans);
+			const limit = vi.fn().mockResolvedValue(config.plans);
+			const order = vi.fn().mockReturnValue({ limit });
+			const isArchived = vi.fn().mockReturnValue({ order });
+			const is = vi.fn().mockReturnValue({ is: isArchived });
 			const inFn = vi.fn().mockReturnValue({ is });
 			const select = vi.fn().mockReturnValue({ in: inFn });
 			return { select };
@@ -133,8 +192,10 @@ function createGlobalFallbackSupabaseMock(config: {
 
 		if (table === 'onto_tasks') {
 			const limit = vi.fn().mockResolvedValue(config.tasks ?? { data: [], error: null });
-			const or = vi.fn().mockReturnValue({ limit });
-			const is = vi.fn().mockReturnValue({ or });
+			const order = vi.fn().mockReturnValue({ limit });
+			const or = vi.fn().mockReturnValue({ order });
+			const isArchived = vi.fn().mockReturnValue({ or });
+			const is = vi.fn().mockReturnValue({ is: isArchived });
 			const inFn = vi.fn().mockReturnValue({ is });
 			const select = vi.fn().mockReturnValue({ in: inFn });
 			return { select };
@@ -155,6 +216,114 @@ function createGlobalFallbackSupabaseMock(config: {
 	});
 
 	return { rpc, from } as any;
+}
+
+function createContextFallbackSupabaseMock(config: {
+	rpc?: QueryResult;
+	tables: Record<string, any[]>;
+}) {
+	const calls: QueryCallRecord[] = [];
+	const rpc = vi.fn().mockImplementation((fn: string) => {
+		if (fn === 'load_fastchat_context') {
+			return Promise.resolve(config.rpc ?? { data: null, error: null });
+		}
+		if (fn === 'ensure_actor_for_user') {
+			return Promise.resolve({ data: 'actor-1', error: null });
+		}
+		if (fn === 'get_onto_project_summaries_v1') {
+			return Promise.resolve({ data: config.tables.project_summaries ?? [], error: null });
+		}
+		return Promise.resolve({ data: null, error: null });
+	});
+
+	const applyFilters = (table: string, call: QueryCallRecord) => {
+		let rows = [...(config.tables[table] ?? [])];
+		for (const [column, value] of call.eqCalls) {
+			rows = rows.filter((row) => row[column] === value);
+		}
+		for (const [column, values] of call.inCalls) {
+			rows = rows.filter((row) => values.includes(row[column]));
+		}
+		for (const [column, value] of call.isCalls) {
+			rows = rows.filter((row) => (row[column] ?? null) === value);
+		}
+		return rows;
+	};
+
+	const from = vi.fn().mockImplementation((table: string) => {
+		const call: QueryCallRecord = {
+			table,
+			selectColumns: null,
+			selectOptions: null,
+			eqCalls: [],
+			inCalls: [],
+			isCalls: [],
+			orCalls: [],
+			orderCalls: [],
+			limitCalls: []
+		};
+		calls.push(call);
+
+		const resolveResult = () => {
+			const filtered = applyFilters(table, call);
+			const count = filtered.length;
+			const limit = call.limitCalls.at(-1);
+			return {
+				data: typeof limit === 'number' ? filtered.slice(0, limit) : filtered,
+				error: null,
+				count
+			};
+		};
+
+		const query: Record<string, any> = {
+			select: vi.fn((columns: string, options?: Record<string, unknown>) => {
+				call.selectColumns = columns;
+				call.selectOptions = options ?? null;
+				return query;
+			}),
+			eq: vi.fn((column: string, value: unknown) => {
+				call.eqCalls.push([column, value]);
+				return query;
+			}),
+			in: vi.fn((column: string, values: unknown[]) => {
+				call.inCalls.push([column, values]);
+				return query;
+			}),
+			is: vi.fn((column: string, value: unknown) => {
+				call.isCalls.push([column, value]);
+				return query;
+			}),
+			gte: vi.fn(() => query),
+			lte: vi.fn(() => query),
+			or: vi.fn((filter: string) => {
+				call.orCalls.push(filter);
+				return query;
+			}),
+			order: vi.fn((column: string, options?: Record<string, unknown>) => {
+				call.orderCalls.push([column, options]);
+				return query;
+			}),
+			limit: vi.fn((value: number) => {
+				call.limitCalls.push(value);
+				return query;
+			}),
+			maybeSingle: vi.fn(async () => {
+				const result = resolveResult();
+				return {
+					data: result.data[0] ?? null,
+					error: result.error,
+					count: result.count
+				};
+			}),
+			then: (
+				onfulfilled?: (value: QueryResult) => unknown,
+				onrejected?: (reason: unknown) => unknown
+			) => Promise.resolve(resolveResult()).then(onfulfilled, onrejected)
+		};
+		return query;
+	});
+
+	return { rpc, from, calls } as any;
 }
 
 afterEach(() => {
@@ -709,6 +878,58 @@ describe('loadFastChatPromptContext global', () => {
 		]);
 	});
 
+	it('preserves fallback project dates and does not filter paused projects in TypeScript', async () => {
+		const supabase = createGlobalFallbackSupabaseMock({
+			projectSummaries: [
+				{
+					id: 'proj-active',
+					name: 'Active Project',
+					state_key: 'active',
+					description: 'Active project',
+					start_at: '2026-08-01',
+					end_at: '2026-09-01',
+					next_step_short: null,
+					updated_at: '2026-07-01T00:00:00.000Z'
+				},
+				{
+					id: 'proj-paused',
+					name: 'Paused Project',
+					state_key: 'paused',
+					description: 'Paused project',
+					start_at: '2026-10-01',
+					end_at: '2026-11-01',
+					next_step_short: null,
+					updated_at: '2026-06-30T00:00:00.000Z'
+				}
+			],
+			goals: { data: [], error: null },
+			milestones: { data: [], error: null },
+			plans: { data: [], error: null },
+			logs: { data: [], error: null }
+		});
+
+		const context = await loadFastChatPromptContext({
+			supabase,
+			userId: 'user-1',
+			contextType: 'global'
+		});
+
+		const data = context.data as Record<string, any>;
+		expect(context.contextLoadSource).toBe('rpc_null_fallback');
+		expect(
+			data.projects.map((bundle: { project: { id: string } }) => bundle.project.id)
+		).toEqual(['proj-active', 'proj-paused']);
+		expect(data.projects[0].project).toMatchObject({
+			start_at: '2026-08-01',
+			end_at: '2026-09-01'
+		});
+		expect(data.projects[1].project).toMatchObject({
+			state_key: 'paused',
+			start_at: '2026-10-01',
+			end_at: '2026-11-01'
+		});
+	});
+
 	it('prefers the last 7 days of activity, dedupes repeated entities, and only falls back when needed', async () => {
 		vi.useFakeTimers();
 		const now = new Date('2026-02-15T20:07:18.308Z');
@@ -866,6 +1087,246 @@ describe('loadFastChatPromptContext global', () => {
 			projectTwo.recent_activity.map((item: { entity_id: string }) => item.entity_id)
 		).toEqual(['task-b', 'doc-z', 'proj-2']);
 		expect(projectThree.recent_activity).toEqual([]);
+	});
+});
+
+describe('loadFastChatPromptContext fallback bounds and focus safety', () => {
+	const projectId = '11111111-1111-4111-8111-111111111111';
+	const taskId = '22222222-2222-4222-8222-222222222222';
+	const otherProjectId = '33333333-3333-4333-8333-333333333333';
+
+	function createProjectFallbackTables(overrides: Record<string, any[]> = {}) {
+		return {
+			onto_projects: [
+				{
+					id: projectId,
+					name: 'Project One',
+					state_key: 'active',
+					description: 'Fallback project',
+					start_at: null,
+					end_at: null,
+					next_step_short: null,
+					updated_at: '2026-02-15T20:00:00.000Z',
+					doc_structure: null,
+					deleted_at: null,
+					archived_at: null
+				}
+			],
+			onto_goals: [],
+			onto_milestones: [],
+			onto_plans: [],
+			onto_tasks: [],
+			onto_events: [],
+			onto_project_members: [],
+			onto_documents: [],
+			onto_project_logs: [],
+			onto_edges: [],
+			...overrides
+		};
+	}
+
+	it('records RPC-null fallback source and applies SQL limits on project fallback queries', async () => {
+		const supabase = createContextFallbackSupabaseMock({
+			tables: createProjectFallbackTables({
+				onto_goals: Array.from({ length: 80 }, (_, index) => ({
+					id: `goal-${index}`,
+					project_id: projectId,
+					name: `Goal ${index}`,
+					description: null,
+					state_key: 'active',
+					target_date: null,
+					completed_at: null,
+					updated_at: `2026-02-${String((index % 20) + 1).padStart(2, '0')}T00:00:00.000Z`,
+					deleted_at: null,
+					archived_at: null
+				})),
+				onto_tasks: Array.from({ length: 2000 }, (_, index) => ({
+					id: `task-${index}`,
+					project_id: projectId,
+					title: `Task ${index}`,
+					description: 'x'.repeat(500),
+					state_key: 'todo',
+					priority: index % 3,
+					start_at: null,
+					due_at: null,
+					completed_at: null,
+					updated_at: `2026-02-${String((index % 20) + 1).padStart(2, '0')}T00:00:00.000Z`,
+					deleted_at: null,
+					archived_at: null
+				})),
+				onto_documents: Array.from({ length: 100 }, (_, index) => ({
+					id: `doc-${index}`,
+					project_id: projectId,
+					title: `Doc ${index}`,
+					state_key: 'draft',
+					type_key: 'note',
+					created_at: '2026-01-01T00:00:00.000Z',
+					updated_at: `2026-02-${String((index % 20) + 1).padStart(2, '0')}T00:00:00.000Z`,
+					deleted_at: null,
+					archived_at: null
+				}))
+			})
+		});
+		const onError = vi.fn();
+
+		const context = await loadFastChatPromptContext({
+			supabase,
+			userId: 'user-1',
+			contextType: 'project',
+			entityId: projectId,
+			onError
+		});
+
+		const data = context.data as Record<string, any>;
+		expect(context.contextLoadSource).toBe('rpc_null_fallback');
+		expect(data.context_meta.source).toBe('fallback');
+		expect(onError).toHaveBeenCalledWith(
+			expect.objectContaining({
+				stage: 'rpc.load_fastchat_context.empty_payload'
+			})
+		);
+
+		const goalCall = supabase.calls.find(
+			(call: QueryCallRecord) => call.table === 'onto_goals'
+		);
+		const taskCall = supabase.calls.find(
+			(call: QueryCallRecord) => call.table === 'onto_tasks'
+		);
+		const documentCall = supabase.calls.find(
+			(call: QueryCallRecord) =>
+				call.table === 'onto_documents' &&
+				call.selectColumns === 'id, title, state_key, created_at, updated_at'
+		);
+		expect(goalCall?.limitCalls).toContain(48);
+		expect(taskCall?.limitCalls).toContain(72);
+		expect(documentCall?.limitCalls).toContain(60);
+		expect(goalCall?.orderCalls.length).toBeGreaterThan(0);
+		expect(taskCall?.orderCalls.length).toBeGreaterThan(0);
+		expect(documentCall?.orderCalls.length).toBeGreaterThan(0);
+		expect(data.tasks.length).toBeLessThanOrEqual(18);
+		expect(JSON.stringify(data).length).toBeLessThan(80_000);
+	});
+
+	it('does not load a cross-project fallback focus entity', async () => {
+		const supabase = createContextFallbackSupabaseMock({
+			tables: createProjectFallbackTables({
+				onto_tasks: [
+					{
+						id: taskId,
+						project_id: otherProjectId,
+						title: 'Wrong project task',
+						description: 'Should not load',
+						state_key: 'todo',
+						priority: 1,
+						start_at: null,
+						due_at: null,
+						completed_at: null,
+						updated_at: '2026-02-15T00:00:00.000Z',
+						deleted_at: null,
+						archived_at: null
+					}
+				]
+			})
+		});
+
+		const context = await loadFastChatPromptContext({
+			supabase,
+			userId: 'user-1',
+			contextType: 'project',
+			entityId: projectId,
+			projectFocus: {
+				projectId,
+				projectName: 'Project One',
+				focusType: 'task',
+				focusEntityId: taskId,
+				focusEntityName: 'Wrong project task'
+			}
+		});
+
+		const data = context.data as Record<string, any>;
+		expect(data.focus_entity_full).toEqual({});
+		const focusCall = supabase.calls.find(
+			(call: QueryCallRecord) =>
+				call.table === 'onto_tasks' && call.eqCalls.some(([column]) => column === 'id')
+		);
+		expect(focusCall?.eqCalls).toContainEqual(['project_id', projectId]);
+	});
+
+	it('sanitizes document focus payloads to a bounded preview', async () => {
+		const documentId = '44444444-4444-4444-8444-444444444444';
+		const longContent = 'Document body '.repeat(300);
+		const supabase = createContextFallbackSupabaseMock({
+			tables: createProjectFallbackTables({
+				onto_documents: [
+					{
+						id: documentId,
+						project_id: projectId,
+						title: 'Strategy Doc',
+						description: 'Doc description',
+						state_key: 'draft',
+						type_key: 'note',
+						content: longContent,
+						props: { secret: 'do not expose' },
+						created_at: '2026-02-01T00:00:00.000Z',
+						updated_at: '2026-02-15T00:00:00.000Z',
+						deleted_at: null,
+						archived_at: null
+					}
+				]
+			})
+		});
+
+		const context = await loadFastChatPromptContext({
+			supabase,
+			userId: 'user-1',
+			contextType: 'project',
+			entityId: projectId,
+			projectFocus: {
+				projectId,
+				projectName: 'Project One',
+				focusType: 'document',
+				focusEntityId: documentId,
+				focusEntityName: 'Strategy Doc'
+			}
+		});
+
+		const data = context.data as Record<string, any>;
+		expect(data.focus_entity_full).toMatchObject({
+			id: documentId,
+			project_id: projectId,
+			title: 'Strategy Doc',
+			content_length: longContent.length
+		});
+		expect(data.focus_entity_full.content_preview.length).toBeLessThanOrEqual(
+			START_HERE_CONTEXT_LOAD_MAX_CHARS
+		);
+		expect(data.focus_entity_full).not.toHaveProperty('content');
+		expect(data.focus_entity_full).not.toHaveProperty('props');
+	});
+
+	it('ignores non-UUID focus ids before linked-edge loading', async () => {
+		const supabase = createContextFallbackSupabaseMock({
+			tables: createProjectFallbackTables()
+		});
+
+		const context = await loadFastChatPromptContext({
+			supabase,
+			userId: 'user-1',
+			contextType: 'project',
+			entityId: projectId,
+			projectFocus: {
+				projectId,
+				projectName: 'Project One',
+				focusType: 'task',
+				focusEntityId: 'not-a-uuid,src_id.not.is.null',
+				focusEntityName: 'Bad focus'
+			}
+		});
+
+		expect(context.focusEntityId).toBeNull();
+		expect(supabase.calls.some((call: QueryCallRecord) => call.table === 'onto_edges')).toBe(
+			false
+		);
 	});
 });
 

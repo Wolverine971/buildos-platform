@@ -42,6 +42,7 @@ import {
 	resolveEntityMentionUserIds
 } from '$lib/server/entity-mention-notification.service';
 import {
+	readProjectLoopReviewContext,
 	queueProjectLoopBurstAsync,
 	shouldSkipProjectLoopBurst
 } from '$lib/server/project-loop-burst.service';
@@ -90,6 +91,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const parsed = await parseJsonRequest(request, jsonObjectSchema);
 		if (!parsed.ok) return parsed.response;
 		const body = parsed.data;
+		const projectLoopReviewContext = readProjectLoopReviewContext(body);
 		const {
 			project_id,
 			title,
@@ -465,7 +467,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		} catch (assigneeError) {
 			console.warn('[Task Create] Failed to enrich assignees in response:', assigneeError);
 		}
-		if (!shouldSkipProjectLoopBurst(request)) {
+		if (!shouldSkipProjectLoopBurst(request, projectLoopReviewContext)) {
 			queueProjectLoopBurstAsync({
 				projectId,
 				userId: user.id,

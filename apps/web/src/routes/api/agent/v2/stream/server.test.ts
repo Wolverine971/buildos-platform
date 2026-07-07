@@ -50,6 +50,7 @@ vi.mock('$lib/services/agentic-chat/state/agent-state-reconciliation-service', (
 }));
 
 vi.mock('$lib/services/agentic-chat/tools/domains/domain-sensing', () => ({
+	getSkillGateCandidateSkillIds: () => [],
 	senseDomains: mocks.senseDomains
 }));
 
@@ -115,6 +116,7 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 		resolveSession: mocks.resolveSession,
 		updateSessionContext: mocks.updateSessionContext
 	}),
+	extractLoadedSkillIdsFromHistory: () => [],
 	historyIncludesLoadedSkillsLedger: () => false,
 	loadFastChatPromptContext: mocks.loadPromptContext,
 	normalizeChatAttachmentRefs: () => ({ attachments: [], rejected: 0 }),
@@ -685,16 +687,7 @@ describe('/api/agent/v2/stream', () => {
 				prepared_prompt_id: preparedPrompt.row.id
 			})
 		);
-		expect(mocks.applyActiveDomainSignalsOverlay).toHaveBeenCalledWith(
-			expect.objectContaining({
-				systemPrompt: 'System prompt',
-				sections: expect.any(Array)
-			}),
-			expect.objectContaining({
-				currentUserMessage: 'Hello',
-				domainSensingResult: null
-			})
-		);
+		expect(mocks.applyActiveDomainSignalsOverlay).not.toHaveBeenCalled();
 		expect(mocks.streamFastChat.mock.calls[0]?.[0]?.systemPrompt).toBe('System prompt');
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(supabase.rpc).toHaveBeenCalledWith('merge_chat_session_agent_metadata', {

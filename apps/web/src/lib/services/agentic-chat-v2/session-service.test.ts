@@ -2,7 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import {
 	buildInterruptedToolHistorySummary,
-	buildLoadedSkillHistorySummary
+	buildLoadedSkillHistorySummary,
+	extractLoadedSkillIdsFromHistory,
+	historyIncludesLoadedSkillsLedger
 } from './session-service';
 
 describe('fast chat session service helpers', () => {
@@ -129,5 +131,65 @@ describe('fast chat session service helpers', () => {
 		expect(summary).toContain('Do not call skill_load again just to rediscover');
 		expect(summary).not.toContain('# Full playbook should not be carried forward');
 		expect(summary?.match(/`cold_email_engagement_first_outreach`/g)).toHaveLength(2);
+	});
+
+	it('extracts only loaded skill ids from the cross-turn ledger', () => {
+		const summary = buildLoadedSkillHistorySummary([
+			{
+				message_id: 'assistant-message-1',
+				tool_name: 'skill_load',
+				gateway_op: null,
+				sequence_index: 1,
+				success: true,
+				error_message: null,
+				arguments: {
+					skill: 'cold_email_research_anchors',
+					format: 'short'
+				},
+				result: {
+					type: 'skill',
+					id: 'cold_email_research_anchors',
+					name: 'Cold Email Research Anchors',
+					parent_id: 'cold_email_engagement_first_outreach',
+					depth: 1,
+					format: 'short',
+					summary: 'Find specific prospect signals before drafting.',
+					materialized_tools: ['web_search', 'web_visit']
+				}
+			},
+			{
+				message_id: 'assistant-message-2',
+				tool_name: 'skill_load',
+				gateway_op: null,
+				sequence_index: 1,
+				success: true,
+				error_message: null,
+				arguments: {
+					skill: 'ui_ux_quality_review',
+					format: 'short'
+				},
+				result: {
+					type: 'skill',
+					id: 'ui_ux_quality_review',
+					name: 'UI/UX Quality Review',
+					parent_id: 'build_quality_ui_ux',
+					depth: 1,
+					format: 'short',
+					summary: 'Review product UI quality.'
+				}
+			}
+		]);
+
+		const history = [{ role: 'system' as const, content: summary ?? '' }];
+
+		expect(extractLoadedSkillIdsFromHistory(history)).toEqual([
+			'cold_email_research_anchors',
+			'ui_ux_quality_review'
+		]);
+		expect(extractLoadedSkillIdsFromHistory(history)).not.toContain(
+			'cold_email_engagement_first_outreach'
+		);
+		expect(extractLoadedSkillIdsFromHistory(history)).not.toContain('web_search');
+		expect(historyIncludesLoadedSkillsLedger(history)).toBe(true);
 	});
 });

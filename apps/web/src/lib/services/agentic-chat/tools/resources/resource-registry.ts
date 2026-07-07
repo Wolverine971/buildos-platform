@@ -2,6 +2,12 @@
 import { listDomains } from '../domains/catalog';
 import { listAllSkills } from '../skills/registry';
 import { loadSkillReference } from '../skills/skill-reference-load';
+import {
+	canReadSkillReference,
+	getEffectiveSkillReferenceVisibility,
+	normalizeSkillReferenceSurface
+} from '../skills/skill-reference-visibility';
+import type { SkillReferenceLoadSurface } from '../skills/types';
 
 export type ResourceKind = 'domain_resource' | 'skill_reference';
 
@@ -23,6 +29,15 @@ export type ResourceSearchOptions = {
 	domain?: string;
 	skill?: string;
 	limit?: number;
+	surface?: SkillReferenceLoadSurface;
+};
+
+type ResourceListOptions = {
+	surface?: SkillReferenceLoadSurface;
+};
+
+type ResourceLoadOptions = {
+	surface?: SkillReferenceLoadSurface;
 };
 
 function unique(items: string[]): string[] {
@@ -54,7 +69,8 @@ function buildSkillDomainMap(): Map<string, string[]> {
 	return map;
 }
 
-export function listResources(): ResourceDefinition[] {
+export function listResources(options: ResourceListOptions = {}): ResourceDefinition[] {
+	const surface = normalizeSkillReferenceSurface(options.surface);
 	const skillDomainMap = buildSkillDomainMap();
 	const domainResources = listDomains().flatMap<ResourceDefinition>((domain) =>
 		(domain.resources ?? []).map((resource) => ({
@@ -68,18 +84,20 @@ export function listResources(): ResourceDefinition[] {
 		}))
 	);
 	const skillReferences = listAllSkills().flatMap<ResourceDefinition>((skill) =>
-		(skill.referenceModules ?? []).map((resource) => ({
-			id: resource.id,
-			kind: 'skill_reference',
-			title: resource.name,
-			summary: resource.summary,
-			whenToLoad: resource.whenToLoad,
-			domainIds: skillDomainMap.get(skill.id) ?? [],
-			skillIds: [skill.id],
-			skillId: skill.id,
-			path: resource.path,
-			visibility: resource.visibility
-		}))
+		(skill.referenceModules ?? [])
+			.filter((resource) => canReadSkillReference(resource, surface))
+			.map((resource) => ({
+				id: resource.id,
+				kind: 'skill_reference',
+				title: resource.name,
+				summary: resource.summary,
+				whenToLoad: resource.whenToLoad,
+				domainIds: skillDomainMap.get(skill.id) ?? [],
+				skillIds: [skill.id],
+				skillId: skill.id,
+				path: resource.path,
+				visibility: getEffectiveSkillReferenceVisibility(resource)
+			}))
 	);
 
 	return [...domainResources, ...skillReferences].sort((a, b) => a.id.localeCompare(b.id));
@@ -125,7 +143,7 @@ export function searchResources(options: ResourceSearchOptions = {}): Record<str
 	const domain = typeof options.domain === 'string' ? options.domain.trim() : '';
 	const skill = typeof options.skill === 'string' ? options.skill.trim() : '';
 	const limit = Math.max(1, Math.min(20, options.limit ?? 8));
-	const matches = listResources()
+	const matches = listResources({ surface: options.surface })
 		.filter((resource) => {
 			if (domain && !resource.domainIds.includes(domain)) return false;
 			if (skill && !resource.skillIds.includes(skill)) return false;
@@ -170,14 +188,17 @@ export function searchResources(options: ResourceSearchOptions = {}): Record<str
 	};
 }
 
-export function loadResource(resourceId: string): Record<string, unknown> {
+export function loadResource(
+	resourceId: string,
+	options: ResourceLoadOptions = {}
+): Record<string, unknown> {
 	const id = resourceId.trim();
 	const resource = listResources().find((item) => item.id === id);
 	if (!resource) {
 		return {
 			type: 'not_found',
 			resource: id,
-			available_resources: listResources()
+			available_resources: listResources({ surface: options.surface })
 				.slice(0, 20)
 				.map((item) => ({ id: item.id, kind: item.kind, title: item.title })),
 			message: 'No resource found for this id.'
@@ -185,7 +206,9 @@ export function loadResource(resourceId: string): Record<string, unknown> {
 	}
 
 	if (resource.kind === 'skill_reference' && resource.skillId) {
-		return loadSkillReference(resource.skillId, resource.id);
+		return loadSkillReference(resource.skillId, resource.id, {
+			surface: options.surface
+		});
 	}
 
 	return {

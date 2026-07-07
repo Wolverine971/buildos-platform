@@ -99,6 +99,7 @@ const CURRENT_SOURCE_SCORES: Record<string, number> = {
 
 const REVIEW_CONTEXT_BODY_KEY = 'project_review_context';
 const OVERDUE_TRIAGE_ORIGIN = 'overdue_triage';
+const PROJECT_SUGGESTION_REPLAY_ORIGIN = 'project_suggestion_replay';
 const OVERDUE_TRIAGE_BACKLOG_OPERATION_KINDS = new Set([
 	'single_backlog',
 	'bulk_backlog',
@@ -145,6 +146,15 @@ export function shouldSuppressProjectLoopBurstForTaskUpdate(params: {
 	reviewContext?: ProjectLoopReviewContext | null;
 }): boolean {
 	return projectLoopReviewPolicyForTaskUpdate(params) === 'suppress';
+}
+
+export function shouldSuppressProjectLoopBurstForReviewContext(
+	reviewContext?: ProjectLoopReviewContext | null
+): boolean {
+	return (
+		reviewContext?.reviewPolicy === 'suppress' &&
+		reviewContext.origin === PROJECT_SUGGESTION_REPLAY_ORIGIN
+	);
 }
 
 export function shouldDebounceProjectLoopBurstForTaskUpdate(params: {
@@ -464,8 +474,14 @@ export async function queueProjectLoopBurst(
 	};
 }
 
-export function shouldSkipProjectLoopBurst(request: Request): boolean {
-	return request.headers.get('X-Skip-Project-Loop-Burst') === 'true';
+export function shouldSkipProjectLoopBurst(
+	request: Request,
+	reviewContext?: ProjectLoopReviewContext | null
+): boolean {
+	return (
+		request.headers.get('X-Skip-Project-Loop-Burst') === 'true' ||
+		shouldSuppressProjectLoopBurstForReviewContext(reviewContext)
+	);
 }
 
 export function scoreProjectLoopBurstSource(source: string): number {

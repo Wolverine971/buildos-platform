@@ -15,6 +15,13 @@ export type MasterPromptContext = {
 	focusEntityType?: string | null;
 	focusEntityId?: string | null;
 	focusEntityName?: string | null;
+	contextLoadSource?:
+		| 'rpc'
+		| 'rpc_null_fallback'
+		| 'rpc_error_fallback'
+		| 'fallback'
+		| 'none'
+		| 'unknown_cached';
 	conversationSummary?: string | null;
 	entityResolutionHint?: string | null;
 	data?: Record<string, unknown> | string | null;

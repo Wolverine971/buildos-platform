@@ -560,7 +560,8 @@ describe('repair instruction policy', () => {
 describe('skill-load gate repair', () => {
 	const baseParams = {
 		skillLoadRequired: true,
-		historyHasLoadedSkillsLedger: false,
+		acceptableSkillIds: ['story_driven_content_craft'],
+		historyLoadedSkillIds: [] as string[],
 		finalText: 'Here is the improved narrative arc for the video script...',
 		toolExecutions: [] as FastToolExecution[],
 		repairAlreadyInjected: false
@@ -585,10 +586,38 @@ describe('skill-load gate repair', () => {
 			createExecution({
 				name: 'skill_load',
 				args: { skill: 'story_driven_content_craft' },
-				result: { type: 'skill', skill: 'story_driven_content_craft' }
+				result: { type: 'skill', id: 'story_driven_content_craft' }
 			})
 		];
 		expect(shouldRepairSkillGateNoLoad({ ...baseParams, toolExecutions })).toBe(false);
+	});
+
+	it('is not satisfied by a successful unrelated skill_load this turn', () => {
+		const toolExecutions = [
+			createExecution({
+				name: 'skill_load',
+				args: { skill: 'cold_email_engagement_first_outreach' },
+				result: { type: 'skill', id: 'cold_email_engagement_first_outreach' }
+			})
+		];
+		expect(shouldRepairSkillGateNoLoad({ ...baseParams, toolExecutions })).toBe(true);
+	});
+
+	it('allows a loaded child skill to satisfy a parent candidate', () => {
+		const toolExecutions = [
+			createExecution({
+				name: 'skill_load',
+				args: { skill: 'viral_video_script_structure' },
+				result: { type: 'skill', id: 'viral_video_script_structure' }
+			})
+		];
+		expect(
+			shouldRepairSkillGateNoLoad({
+				...baseParams,
+				acceptableSkillIds: ['content_strategy_beyond_blogging'],
+				toolExecutions
+			})
+		).toBe(false);
 	});
 
 	it('is not satisfied by a failed skill_load', () => {
@@ -603,7 +632,7 @@ describe('skill-load gate repair', () => {
 		expect(shouldRepairSkillGateNoLoad({ ...baseParams, toolExecutions })).toBe(true);
 	});
 
-	it('is satisfied by document reads only when a prior-session ledger exists', () => {
+	it('does not allow document reads or unrelated prior ledger skills to satisfy the gate', () => {
 		const toolExecutions = [
 			createExecution({
 				name: 'get_document_outline',
@@ -616,7 +645,40 @@ describe('skill-load gate repair', () => {
 			shouldRepairSkillGateNoLoad({
 				...baseParams,
 				toolExecutions,
-				historyHasLoadedSkillsLedger: true
+				historyLoadedSkillIds: ['cold_email_engagement_first_outreach']
+			})
+		).toBe(true);
+	});
+
+	it('is satisfied by a relevant prior-session ledger skill', () => {
+		expect(
+			shouldRepairSkillGateNoLoad({
+				...baseParams,
+				historyLoadedSkillIds: ['story_driven_content_craft']
+			})
+		).toBe(false);
+	});
+
+	it('falls back to any successful load when sensing provided no acceptable ids', () => {
+		const toolExecutions = [
+			createExecution({
+				name: 'skill_load',
+				args: { skill: 'cold_email_engagement_first_outreach' },
+				result: { type: 'skill', id: 'cold_email_engagement_first_outreach' }
+			})
+		];
+		expect(
+			shouldRepairSkillGateNoLoad({
+				...baseParams,
+				acceptableSkillIds: [],
+				toolExecutions
+			})
+		).toBe(false);
+		expect(
+			shouldRepairSkillGateNoLoad({
+				...baseParams,
+				acceptableSkillIds: [],
+				historyLoadedSkillIds: ['cold_email_engagement_first_outreach']
 			})
 		).toBe(false);
 	});
@@ -643,6 +705,7 @@ describe('skill-load gate repair', () => {
 			'viral_video_script_structure'
 		]);
 		expect(instruction).toContain('skill_load');
+		expect(instruction).toContain('no matching skill has been loaded');
 		expect(instruction).toContain('story_driven_content_craft, viral_video_script_structure');
 		expect(instruction).toContain('skill_search');
 		// The rerun failure wrote the document BEFORE finalizing, so the repair

@@ -1,9 +1,12 @@
 // apps/web/src/lib/services/agentic-chat/tools/skills/markdown-skill.ts
 import { parse as parseYaml } from 'yaml';
+import { ACTIVATIONS, ALTITUDES, SKILL_TYPES } from './skill.schema';
+import type { SkillActivation, SkillAltitude, SkillDependency, SkillType } from './skill.schema';
 import type {
 	SkillDefinition,
 	SkillExample,
 	SkillLinkedResource,
+	SkillLoadFormat,
 	SkillResourceVisibility
 } from './types';
 
@@ -15,9 +18,14 @@ type MarkdownSkillOptions = {
 type MarkdownSkillFrontmatter = {
 	name?: unknown;
 	description?: unknown;
+	skill_type?: unknown;
+	altitude?: unknown;
+	activation?: unknown;
+	dependencies?: unknown;
 	parent_id?: unknown;
 	depth?: unknown;
 	preserve_markdown?: unknown;
+	recommended_load_format?: unknown;
 	legacy_paths?: unknown;
 	child_skills?: unknown;
 	reference_modules?: unknown;
@@ -115,6 +123,46 @@ function parseOptionalBoolean(value: unknown): boolean {
 function parseVisibility(value: unknown): SkillResourceVisibility | undefined {
 	const normalized = parseOptionalString(value);
 	return normalized === 'public' || normalized === 'internal' ? normalized : undefined;
+}
+
+function parseSkillLoadFormat(value: unknown): SkillLoadFormat | undefined {
+	const normalized = parseOptionalString(value);
+	return normalized === 'short' || normalized === 'full' ? normalized : undefined;
+}
+
+function parseEnumValue<T extends string>(
+	value: unknown,
+	allowedValues: readonly T[]
+): T | undefined {
+	const normalized = parseOptionalString(value);
+	return normalized && allowedValues.includes(normalized as T) ? (normalized as T) : undefined;
+}
+
+function parseSkillType(value: unknown): SkillType | undefined {
+	return parseEnumValue(value, SKILL_TYPES);
+}
+
+function parseSkillAltitude(value: unknown): SkillAltitude | undefined {
+	return parseEnumValue(value, ALTITUDES);
+}
+
+function parseSkillActivation(value: unknown): SkillActivation | undefined {
+	return parseEnumValue(value, ACTIVATIONS);
+}
+
+function parseSkillDependencies(value: unknown): SkillDependency[] {
+	if (!Array.isArray(value)) return [];
+
+	return value
+		.map((item): SkillDependency | null => {
+			if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+			const record = item as Record<string, unknown>;
+			const id = parseOptionalString(record.id);
+			const owns = parseOptionalString(record.owns);
+			if (!id || !owns) return null;
+			return { id, owns };
+		})
+		.filter((item): item is SkillDependency => Boolean(item));
 }
 
 function parseLinkedResources(value: unknown): SkillLinkedResource[] {
@@ -313,8 +361,13 @@ export function defineMarkdownSkill({ id, markdown }: MarkdownSkillOptions): Ski
 	const outputContract = pickSection(sections, ['output', 'output contract', 'contract'])
 		.join('\n')
 		.trim();
+	const skillType = parseSkillType(frontmatter.skill_type);
+	const altitude = parseSkillAltitude(frontmatter.altitude);
+	const activation = parseSkillActivation(frontmatter.activation);
+	const dependencies = parseSkillDependencies(frontmatter.dependencies);
 	const parentId = parseOptionalString(frontmatter.parent_id);
 	const depth = parseOptionalNumber(frontmatter.depth);
+	const recommendedLoadFormat = parseSkillLoadFormat(frontmatter.recommended_load_format);
 	const childSkills = parseLinkedResources(frontmatter.child_skills);
 	const referenceModules = parseLinkedResources(frontmatter.reference_modules);
 
@@ -336,8 +389,13 @@ export function defineMarkdownSkill({ id, markdown }: MarkdownSkillOptions): Ski
 		outputContract: outputContract.length > 0 ? outputContract : undefined
 	};
 
+	if (skillType) skill.skillType = skillType;
+	if (altitude) skill.altitude = altitude;
+	if (activation) skill.activation = activation;
+	if (dependencies.length > 0) skill.dependencies = dependencies;
 	if (parentId) skill.parentId = parentId;
 	if (typeof depth === 'number') skill.depth = depth;
+	if (recommendedLoadFormat) skill.recommendedLoadFormat = recommendedLoadFormat;
 	if (childSkills.length > 0) skill.childSkills = childSkills;
 	if (referenceModules.length > 0) skill.referenceModules = referenceModules;
 

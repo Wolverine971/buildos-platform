@@ -28,6 +28,50 @@ describe('skill reference loading', () => {
 		expect(result.reference_id).toBe('task_management.state_coverage');
 	});
 
+	it('blocks internal reference modules on public portable surfaces', () => {
+		const result = loadSkillReference(
+			'cold_email_engagement_first_outreach',
+			'cold_email_engagement_first_outreach.internal_os',
+			{ surface: 'public_portable' }
+		) as Record<string, unknown>;
+
+		expect(result).toMatchObject({
+			type: 'forbidden',
+			skill_id: 'cold_email_engagement_first_outreach',
+			reference_id: 'cold_email_engagement_first_outreach.internal_os',
+			visibility: 'internal',
+			surface: 'public_portable'
+		});
+		expect(result.content).toBeUndefined();
+	});
+
+	it('treats omitted reference visibility as internal outside internal chat', () => {
+		const result = loadSkillReference('task_management', 'task_management.state_coverage', {
+			surface: 'external_agent'
+		}) as Record<string, unknown>;
+
+		expect(result).toMatchObject({
+			type: 'forbidden',
+			skill_id: 'task_management',
+			reference_id: 'task_management.state_coverage',
+			visibility: 'internal',
+			surface: 'external_agent'
+		});
+		expect(result.content).toBeUndefined();
+	});
+
+	it('loads explicitly public reference modules on public portable surfaces', () => {
+		const result = loadSkillReference(
+			'google_calendar',
+			'google_calendar.public_safe_write_rules',
+			{ surface: 'public_portable' }
+		) as Record<string, unknown>;
+
+		expect(result.type).toBe('skill_reference');
+		expect(result.visibility).toBe('public');
+		expect(result.content).toContain('Public Safe Calendar Write Rules');
+	});
+
 	it('returns declared references when a requested module is not found', () => {
 		const result = loadSkillReference('task_management', '../secrets.md') as Record<
 			string,

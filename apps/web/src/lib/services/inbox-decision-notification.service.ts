@@ -2,7 +2,11 @@
 import { notificationStore } from '$lib/stores/notification.store';
 import { toastService } from '$lib/stores/toast.store';
 
-type InboxDecisionSourceType = 'agent_run' | 'project_suggestion' | 'calendar_suggestion';
+type InboxDecisionSourceType =
+	| 'agent_run'
+	| 'project_suggestion'
+	| 'project_audit'
+	| 'calendar_suggestion';
 type InboxDecisionAction = 'approve' | 'reject' | 'snooze';
 
 type InboxDecisionNotificationItem = {
@@ -26,6 +30,7 @@ function decisionVerb(item: InboxDecisionNotificationItem, action: InboxDecision
 function decisionNoun(item: InboxDecisionNotificationItem): string {
 	if (item.source_type === 'calendar_suggestion') return 'calendar suggestion';
 	if (item.source_type === 'agent_run') return 'agent proposal';
+	if (item.source_type === 'project_audit') return 'project audit';
 	return 'review item';
 }
 

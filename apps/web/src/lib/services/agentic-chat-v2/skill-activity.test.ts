@@ -1,7 +1,11 @@
 // apps/web/src/lib/services/agentic-chat-v2/skill-activity.test.ts
 import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
-import { getLoadedSkillActivity, getRequestedSkillActivity } from './skill-activity';
+import {
+	getLoadedSkillActivity,
+	getLoadedSkillToolingTelemetry,
+	getRequestedSkillActivity
+} from './skill-activity';
 
 function buildSkillLoadCall(skill: string): ChatToolCall {
 	return {
@@ -44,6 +48,29 @@ describe('skill activity helpers', () => {
 			action: 'loaded',
 			path: 'document_workspace',
 			via: 'skill_load'
+		});
+	});
+
+	it('extracts materialized read tools and gated write ops from loaded skill results', () => {
+		const result = {
+			tool_call_id: 'skill_load:1',
+			success: true,
+			result: {
+				type: 'skill',
+				id: 'document_workspace',
+				name: 'Document Workspace',
+				materialized_tools: ['get_onto_document_details', '', 42],
+				read_ops: ['onto.document.get'],
+				write_ops: ['onto.document.update'],
+				destructive_ops: ['onto.document.delete']
+			}
+		} as ChatToolResult;
+
+		expect(getLoadedSkillToolingTelemetry(result)).toEqual({
+			materialized_tools: ['get_onto_document_details'],
+			read_ops: ['onto.document.get'],
+			write_ops: ['onto.document.update'],
+			destructive_ops: ['onto.document.delete']
 		});
 	});
 
