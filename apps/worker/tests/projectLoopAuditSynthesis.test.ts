@@ -23,7 +23,8 @@ vi.mock('../src/lib/services/smart-llm-service', () => ({
 }));
 
 vi.mock('../src/workers/project-loop/auditEnqueue', () => ({
-	processProjectAuditTriggerEvaluationJob: vi.fn()
+	processProjectAuditTriggerEvaluationJob: vi.fn(),
+	queueProjectAuditFromWorker: vi.fn()
 }));
 
 import { applyCompleteAuditSynthesis } from '../src/workers/project-loop/projectLoopWorker';

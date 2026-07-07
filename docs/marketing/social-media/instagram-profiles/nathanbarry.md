@@ -11,7 +11,7 @@
 **Relationship Status:** Prospect
 **Audience Quality:** High
 **Profile Created:** 2026-05-07
-**Last Reviewed:** 2026-06-19
+**Last Reviewed:** 2026-07-07
 **Last Engaged:** Never
 **Source of First Discovery:** `instagram-engagement-targets.md` (added 2026-05-06 in anti-ADHD-first pivot as "underleveraged on IG")
 
@@ -92,6 +92,8 @@
 | 2026-06-28 | Reel | NEW `DaGGPlygpos` "What actually drives reach on Instagram? Saves, shares, and comments…" **20.6h / 10 likes / 2 cmts** (fresh low-comp). Supersedes 6/27 storytelling reel `DaDycsivunx` (~42h). 12.6K. | https://www.instagram.com/reel/DaGGPlygpos/ | Queued (#4 today) | Pending /instagram-reply | Pure cheerleader mode — genuine builder-to-builder note on the saves/shares/comments point. Mention fit 0. NO product name. Watch `cognivalai` bot. | Pending | 2026-06-28_instagram-warmup.md |
 | 2026-06-29 | Reel | NEW `DaIx58aArOg` "Access to technology is a remarkably level playing field. What you do with it makes the di…" **19.9h / 9 likes / 0 cmts (FCW).** Cleanest non-promo Nathan surface (Kit-promo cycle ongoing). 12.6K. | https://www.instagram.com/reel/DaIx58aArOg/ | Queued (#4) | Pending /instagram-reply | Peer-builder note: the playing field is level on access; the edge is judgment/context you bring to the tool. Warm, short. Mention fit 1. NO product name. Watch `cognivalai` bot. | Pending | 2026-06-29_instagram-warmup.md |
 | 2026-07-02 | Post | NEW `DaQqgxghA3L` "At Craft + Commerce this year, I hosted a Q&A with James [Clear]…" **18.2h / 10 likes / 0 cmts (FCW).** 12.6K. | https://www.instagram.com/p/DaQqgxghA3L/ | Queued (#2 today) | Pending /instagram-reply | Cheerleader/curious — one specific question about hosting the Q&A (what answer surprised him). Warm, short. Mention fit 0. NO product name. Watch `cognivalai` bot. | Pending | 2026-07-02_instagram-warmup.md |
+| 2026-07-06 | Reel | NEW `Daa26CFhrgR` rapid-fire "What's the best book you've read in the last year?" — **19.2h / 17 likes / 0 cmts (FCW).** Substantive ALT: `DaYHzLHAby4` "founders who scale too fast" 44.7h/3c (stronger DJ-voice surface). 12.7K. | https://www.instagram.com/reel/Daa26CFhrgR/ | Queued (#4 today) | Pending /instagram-reply | Cheerleader/curious — just genuinely answer with one real book + one line why. Warm, short, human. Mention fit 0. NO product name. Watch `cognivalai` bot. | Pending | 2026-07-06_instagram-warmup.md |
+| 2026-07-07 | Reel | NEW `DadRVIOBjMp` "James Clear on the structure of great non-fiction" — **20.6h / 18 likes / 0 cmts (FCW).** Supersedes 7/06 best-book rapid-fire `Daa26CFhrgR` (now 43.1h/2c). Alt: `DaYHzLHAby4` "as revenue climbs, founders make the mistake…" (68.6h/3c). 12,708f. | https://www.instagram.com/reel/DadRVIOBjMp/ | Queued (warmup) | Pending /instagram-reply | Cheerleader/curious — one real reaction to the Clear structure idea, warm/human. Soft adjacency to structuring messy thinking (fit 1, don't force). NO product name. Watch `cognivalai` bot as false first commenter. | Pending | 2026-07-07_instagram-warmup.md |
 
 ## Open Loops
 

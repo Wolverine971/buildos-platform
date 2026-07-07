@@ -48,6 +48,7 @@
 	let approvedCount = $derived(
 		changeSet.changes.filter((c) => decisionFor(c.id) !== 'rejected').length
 	);
+	const hasFooterSecondaryActions = $derived(Boolean(onSnooze || onChat));
 
 	function setDecision(id: string, decision: 'approved' | 'rejected') {
 		overrides[id] = decision;
@@ -180,21 +181,21 @@
 </script>
 
 <div class="space-y-3 rounded-lg border border-info/40 bg-info/5 p-3">
-	<div class="flex items-center justify-between gap-2 flex-wrap">
+	<div class="flex flex-wrap items-center justify-between gap-2">
 		<div class="micro-label text-info">
 			Proposed changes ({changeSet.changes.length}) — review before applying
 		</div>
-		<div class="flex items-center gap-2">
+		<div class="flex flex-wrap items-center justify-end gap-1">
 			<button
 				type="button"
-				class="text-xs text-muted-foreground hover:text-foreground underline"
+				class="inline-flex min-h-[44px] items-center rounded-md px-2 text-xs font-medium text-muted-foreground underline transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60"
 				onclick={() => setAll('approved')}
 				disabled={applying}>{approveAllLabel} all</button
 			>
-			<span class="text-muted-foreground text-xs">·</span>
+			<span class="text-xs text-muted-foreground" aria-hidden="true">·</span>
 			<button
 				type="button"
-				class="text-xs text-muted-foreground hover:text-foreground underline"
+				class="inline-flex min-h-[44px] items-center rounded-md px-2 text-xs font-medium text-muted-foreground underline transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60"
 				onclick={() => setAll('rejected')}
 				disabled={applying}>{rejectAllLabel} all</button
 			>
@@ -210,41 +211,49 @@
 				class="rounded-md border border-border bg-card p-2.5 {rejected ? 'opacity-50' : ''}"
 			>
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-					<div class="flex items-center gap-1.5 min-w-0">
-						<ActionIcon class="w-3.5 h-3.5 flex-shrink-0 {meta.cls}" />
-						<span class="text-xs font-medium text-foreground">{meta.label}</span>
-						<span class="text-xs text-muted-foreground">{change.entity_type}</span>
+					<div class="flex min-w-0 items-center gap-1.5">
+						<ActionIcon class="h-3.5 w-3.5 shrink-0 {meta.cls}" />
+						<span class="shrink-0 text-xs font-medium text-foreground"
+							>{meta.label}</span
+						>
+						<span class="min-w-0 truncate text-xs text-muted-foreground"
+							>{change.entity_type}</span
+						>
 					</div>
 					<div
-						class="inline-flex min-h-9 overflow-hidden rounded-md border border-border"
+						class="inline-flex min-h-[44px] overflow-hidden rounded-md border border-border"
 					>
 						<button
 							type="button"
 							onclick={() => setDecision(change.id, 'approved')}
 							disabled={applying}
-							class="inline-flex min-w-0 flex-1 items-center justify-center gap-1 px-2.5 py-1.5 text-xs sm:flex-none {rejected
+							aria-pressed={!rejected}
+							class="inline-flex min-h-[44px] min-w-[44px] flex-1 items-center justify-center gap-1 px-3 text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none {rejected
 								? 'text-muted-foreground hover:bg-muted'
 								: 'bg-success/10 text-success'}"
 						>
-							<Check class="w-3 h-3" />
+							<Check class="h-3 w-3 shrink-0" />
 							{acceptLabel}
 						</button>
 						<button
 							type="button"
 							onclick={() => setDecision(change.id, 'rejected')}
 							disabled={applying}
-							class="inline-flex min-w-0 flex-1 items-center justify-center gap-1 border-l border-border px-2.5 py-1.5 text-xs sm:flex-none {rejected
+							aria-pressed={rejected}
+							class="inline-flex min-h-[44px] min-w-[44px] flex-1 items-center justify-center gap-1 border-l border-border px-3 text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none {rejected
 								? 'bg-muted text-foreground'
 								: 'text-muted-foreground hover:bg-muted'}"
 						>
-							<X class="w-3 h-3" />
+							<X class="h-3 w-3 shrink-0" />
 							{dismissLabel}
 						</button>
 					</div>
 				</div>
 
 				{#if change.rationale}
-					<p class="text-xs text-muted-foreground mt-1">{change.rationale}</p>
+					<p class="mt-1 line-clamp-3 break-words text-xs text-muted-foreground">
+						{change.rationale}
+					</p>
 				{/if}
 
 				{#if isDocumentDiffChange(change)}
@@ -252,18 +261,21 @@
 				{:else if diffRows(change).length}
 					<div class="mt-1.5 space-y-0.5">
 						{#each diffRows(change) as row (row.key)}
-							<div class="text-xs flex gap-1.5">
-								<span class="text-muted-foreground flex-shrink-0">{row.key}:</span>
+							<div
+								class="flex min-w-0 flex-col gap-0.5 text-xs sm:flex-row sm:gap-1.5"
+							>
+								<span class="shrink-0 text-muted-foreground">{row.key}:</span>
 								{#if change.action === 'update' && change.before}
-									<span class="text-muted-foreground line-through break-words"
+									<span
+										class="min-w-0 break-words text-muted-foreground line-through"
 										>{formatValue(row.before)}</span
 									>
-									<span class="text-muted-foreground">→</span>
-									<span class="text-foreground break-words"
+									<span class="shrink-0 text-muted-foreground">→</span>
+									<span class="min-w-0 break-words text-foreground"
 										>{formatValue(row.after)}</span
 									>
 								{:else}
-									<span class="text-foreground break-words"
+									<span class="min-w-0 break-words text-foreground"
 										>{formatValue(row.after)}</span
 									>
 								{/if}
@@ -275,33 +287,45 @@
 		{/each}
 	</div>
 
-	<div class="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
-		{#if onSnooze}
-			<Button
-				variant="outline"
-				size="sm"
-				icon={Clock}
-				onclick={() => onSnooze?.()}
-				disabled={applying || snoozing}
-				loading={snoozing}
-				title="Snooze until tomorrow"
-				class="w-full text-xs sm:w-auto"
+	<div
+		class="flex flex-col gap-2 sm:flex-row sm:items-center {hasFooterSecondaryActions
+			? 'sm:justify-between'
+			: 'sm:justify-end'}"
+	>
+		{#if hasFooterSecondaryActions}
+			<div
+				class="grid gap-2 sm:flex sm:items-center {onSnooze && onChat
+					? 'grid-cols-2'
+					: 'grid-cols-1'}"
 			>
-				Later
-			</Button>
-		{/if}
-		{#if onChat}
-			<Button
-				variant="accent"
-				size="sm"
-				icon={MessageCircle}
-				onclick={() => onChat?.()}
-				disabled={applying || openingChat}
-				loading={openingChat}
-				class="w-full text-xs sm:w-auto"
-			>
-				Chat
-			</Button>
+				{#if onChat}
+					<Button
+						variant="accent"
+						size="sm"
+						icon={MessageCircle}
+						onclick={() => onChat?.()}
+						disabled={applying || openingChat}
+						loading={openingChat}
+						class="w-full text-xs sm:w-auto"
+					>
+						Chat
+					</Button>
+				{/if}
+				{#if onSnooze}
+					<Button
+						variant="outline"
+						size="sm"
+						icon={Clock}
+						onclick={() => onSnooze?.()}
+						disabled={applying || snoozing}
+						loading={snoozing}
+						title="Snooze until tomorrow"
+						class="w-full text-xs sm:w-auto"
+					>
+						Snooze
+					</Button>
+				{/if}
+			</div>
 		{/if}
 		<Button
 			onclick={apply}

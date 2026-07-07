@@ -35,7 +35,7 @@
 		<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 			<div class="min-w-0">
 				<div class="micro-label flex items-center gap-1.5 text-warning">
-					<AlertCircle class="h-3.5 w-3.5" />
+					<AlertCircle class="h-3.5 w-3.5 shrink-0" />
 					{failedChanges.length} change{failedChanges.length === 1 ? '' : 's'} need follow-up
 				</div>
 				<p class="mt-1 text-xs text-muted-foreground">
@@ -60,8 +60,10 @@
 		<div class="space-y-2">
 			{#each failedChanges as change (change.id)}
 				<div class="rounded-md border border-border bg-card p-2.5">
-					<div class="text-xs font-medium text-foreground">{labelFor(change)}</div>
-					<p class="mt-1 text-xs text-destructive">{change.error}</p>
+					<div class="line-clamp-2 break-words text-xs font-medium text-foreground">
+						{labelFor(change)}
+					</div>
+					<p class="mt-1 break-words text-xs text-destructive">{change.error}</p>
 				</div>
 			{/each}
 		</div>

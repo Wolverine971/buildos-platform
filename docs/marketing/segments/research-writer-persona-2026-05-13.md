@@ -22,6 +22,10 @@ The persona we are biasing toward is **the indie / hybrid / Substack-serial / mu
 3. Operate like solo businesses (BuildOS pitch maps 1:1 to their pain).
 4. Talk about their tools out loud (the source of every pain quote in this doc).
 
+> **Corpus role — Tier 3 (Evidence).** This is the canonical **deep-research / evidence base** of the writer corpus — the hard layer the lighter docs can't supply: ~100 named tools with prices, community sizes, the full 15-stage self-pub ops pipeline, sourced verbatim pain quotes, and a ranked outreach pipeline. It pairs with the July **community-voice** research at [`../brand/worldbuilding/research/writer-archetype-2026-07-02/`](../brand/worldbuilding/research/writer-archetype-2026-07-02/) and feeds the persona ([`persona-writer.md`](./persona-writer.md)) and archetype ([`../brand/worldbuilding/ARCHETYPE_WRITER.md`](../brand/worldbuilding/ARCHETYPE_WRITER.md)). Hub: [`writer-corpus.md`](./writer-corpus.md). Keep it — but treat it as **evidence, not positioning**: its value-prop framing predates the 2026-07-06 memory-hero ruling, so use `persona-writer.md` for current copy.
+>
+> **⚠ Perishable facts — verify before quoting (freshness pass owed):** tool prices (Vellum $249–499, Atticus $147, dev-edit $1.5–5k/book, BookBub deals $200–1.5k) and especially **BookFunnel "doubling 2026"**; community counts (20BooksTo50K / Author Nation ~70k, Wide for the Win ~18k, subreddit sizes); **Joanna Penn's annual theme** ("2025: Leverage" has almost certainly moved); Substack Fiction leaderboard ranks; rebrands (Kit ← ConvertKit, D2D ← Smashwords, Spotify Audiobooks for Authors ← Findaway); and the **§6 outreach send-status** vs. the current skip list. These are point-in-time May 2026 — do not present as current without a re-check.
+
 ---
 
 ## 1. Persona archetypes — the indie / scrappy writer

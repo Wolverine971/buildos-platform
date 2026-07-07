@@ -131,13 +131,46 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.forbidden('You do not have access to this milestone');
 		}
 
+		const { data: goalEdge, error: goalEdgeError } = await supabase
+			.from('onto_edges')
+			.select('src_id')
+			.eq('project_id', milestone.project_id)
+			.eq('src_kind', 'goal')
+			.eq('dst_kind', 'milestone')
+			.eq('dst_id', params.id)
+			.eq('rel', 'has_milestone')
+			.order('created_at', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+
+		if (goalEdgeError) {
+			console.error('[Milestone GET] Failed to load goal edge:', goalEdgeError);
+			await logOntologyApiError({
+				supabase,
+				error: goalEdgeError,
+				endpoint: `/api/onto/milestones/${params.id}`,
+				method: 'GET',
+				userId: session.user.id,
+				projectId: milestone.project_id,
+				entityType: 'milestone',
+				entityId: params.id,
+				operation: 'milestone_goal_edge_fetch',
+				tableName: 'onto_edges'
+			});
+			return ApiResponse.error('Failed to load milestone goal', 500);
+		}
+
 		const decoratedMilestone = withComputedMilestoneState(milestone);
 
 		// Extract project data and include project name in response
 		const { project, type_key: _typeKey, ...milestoneData } = decoratedMilestone;
 
 		return ApiResponse.success({
-			milestone: { ...milestoneData, project: { name: project.name } }
+			milestone: {
+				...milestoneData,
+				goal_id: goalEdge?.src_id ?? null,
+				project: { name: project.name }
+			}
 		});
 	} catch (error) {
 		console.error('[Milestone GET] Unexpected error:', error);

@@ -3,10 +3,9 @@
  * GET /api/onto/projects/[id]/full
  * OPTIMIZED: Fetch project with all related entities using single RPC
  *
- * This endpoint uses the get_project_full() database function which
- * fetches core project data in a single database round-trip, replacing
- * 13+ separate queries. Server-side enrichment adds task metadata, events,
- * and lightweight public-page counts before returning to the browser.
+ * By default this endpoint uses get_project_full() for the classic project
+ * page contract. The v2 page can request ?profile=v2-initial to use a lean
+ * RPC that skips collections not rendered during initial hydration.
  *
  * Performance improvement: ~100-300ms faster than the standard endpoint
  *
@@ -32,17 +31,18 @@ import { pickStartHereDocument } from '$lib/services/ontology/start-here-selecto
 // Type for the RPC response
 interface ProjectFullData {
 	project: Record<string, unknown>;
-	goals: unknown[];
-	requirements: unknown[];
-	plans: unknown[];
-	tasks: unknown[];
-	documents: unknown[];
-	images: unknown[];
-	sources: unknown[];
-	milestones: unknown[];
-	risks: unknown[];
-	metrics: unknown[];
-	context_document: unknown | null;
+	current_actor_id?: string | null;
+	goals?: unknown[];
+	requirements?: unknown[];
+	plans?: unknown[];
+	tasks?: unknown[];
+	documents?: unknown[];
+	images?: unknown[];
+	sources?: unknown[];
+	milestones?: unknown[];
+	risks?: unknown[];
+	metrics?: unknown[];
+	context_document?: unknown | null;
 	goal_milestone_edges?: GoalMilestoneEdge[] | null;
 	task_assignees?: Record<string, TaskAssignee[]> | null;
 	task_last_changed_by?: Record<string, string> | null;
@@ -98,18 +98,39 @@ const CONTEXT_DOCUMENT_FALLBACK_COLUMNS = [
 	'updated_at'
 ].join(',');
 
+const CONTEXT_DOCUMENT_METADATA_COLUMNS = [
+	'archived_at',
+	'children',
+	'created_at',
+	'created_by',
+	'deleted_at',
+	'description',
+	'id',
+	'project_id',
+	'props',
+	'state_key',
+	'title',
+	'type_key',
+	'updated_at'
+].join(',');
+
 async function fetchContextDocumentByTypeKey(
 	supabase: App.Locals['supabase'],
-	projectId: string
+	projectId: string,
+	options: { includeContent?: boolean } = {}
 ): Promise<unknown | null> {
+	const columns =
+		options.includeContent === false
+			? CONTEXT_DOCUMENT_METADATA_COLUMNS
+			: CONTEXT_DOCUMENT_FALLBACK_COLUMNS;
 	const { data, error } = await supabase
 		.from('onto_documents')
-		.select(CONTEXT_DOCUMENT_FALLBACK_COLUMNS)
+		.select(columns)
 		.eq('project_id', projectId)
-			.eq('type_key', 'document.context.project')
-			.is('deleted_at', null)
-			.order('updated_at', { ascending: false })
-			.limit(20);
+		.eq('type_key', 'document.context.project')
+		.is('deleted_at', null)
+		.order('updated_at', { ascending: false })
+		.limit(20);
 
 	if (error) {
 		throw error;
@@ -175,9 +196,18 @@ const extractErrorMessage = (error: unknown): string => {
 	return String(error);
 };
 
-export const GET: RequestHandler = async ({ params, locals }) => {
+type ProjectFullProfile = 'classic' | 'v2-initial';
+
+function resolveProfile(url: URL): ProjectFullProfile {
+	const profile = url.searchParams.get('profile');
+	return profile === 'v2' || profile === 'v2-initial' ? 'v2-initial' : 'classic';
+}
+
+export const GET: RequestHandler = async ({ params, locals, url }) => {
 	try {
 		const { id } = params;
+		const profile = resolveProfile(url);
+		const isV2InitialProfile = profile === 'v2-initial';
 
 		if (!id) {
 			return ApiResponse.badRequest('Project ID required');
@@ -187,18 +217,30 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		const supabase = locals.supabase;
-		const access = await requireProjectMemberAccess({
-			locals,
-			projectId: id,
-			requiredAccess: 'read'
-		});
-		if (!access.ok) return access.response;
+		let actorId: string | null = null;
+		let userId: string;
 
-		const actorId = access.actorId;
-		const userId = access.userId;
+		if (isV2InitialProfile) {
+			const { user } = await locals.safeGetSession();
+			if (!user) {
+				return ApiResponse.unauthorized('Authentication required');
+			}
+			userId = user.id;
+		} else {
+			const access = await requireProjectMemberAccess({
+				locals,
+				projectId: id,
+				requiredAccess: 'read'
+			});
+			if (!access.ok) return access.response;
+			actorId = access.actorId;
+			userId = access.userId;
+		}
 
-		// OPTIMIZED: Single RPC call for all project data
-		const { data, error } = (await supabase.rpc('get_project_full', {
+		// OPTIMIZED: Single RPC call for project data. Classic keeps the full
+		// historical contract; v2 uses a narrower initial-render payload.
+		const rpcName = isV2InitialProfile ? 'get_project_full_v2_initial' : 'get_project_full';
+		const { data, error } = (await (supabase as any).rpc(rpcName, {
 			p_project_id: id,
 			p_actor_id: actorId
 		})) as { data: ProjectFullData | null; error: unknown };
@@ -213,7 +255,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				userId,
 				projectId: id,
 				entityType: 'project',
-				operation: 'project_full_get'
+				operation: isV2InitialProfile ? 'project_full_v2_initial_get' : 'project_full_get'
 			});
 			const errorMessage = extractErrorMessage(error);
 			return ApiResponse.error(`Failed to fetch project: ${errorMessage}`, 500);
@@ -221,6 +263,13 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (!data) {
 			return ApiResponse.notFound('Project');
+		}
+
+		if (isV2InitialProfile) {
+			actorId =
+				typeof data.current_actor_id === 'string' && data.current_actor_id.length > 0
+					? data.current_actor_id
+					: null;
 		}
 
 		const goals = (data.goals || []) as GoalRow[];
@@ -237,7 +286,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const contextDocumentPromise =
 			data.context_document !== null && data.context_document !== undefined
 				? Promise.resolve(data.context_document)
-				: fetchContextDocumentByTypeKey(supabase, id).catch((contextError) => {
+				: fetchContextDocumentByTypeKey(supabase, id, {
+						includeContent: !isV2InitialProfile
+					}).catch((contextError) => {
 						console.warn(
 							'[Project Full API] Failed to load context document fallback:',
 							contextError
@@ -245,9 +296,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 						return null;
 					});
 
-		// Run remaining independent post-RPC fetches in parallel: milestone/goal
-		// decoration (edges already supplied by RPC), events, and public-page
-		// counts.
+		// Run remaining independent post-RPC fetches in parallel. Public-page
+		// counts are omitted from the v2 initial profile because that page does
+		// not render them during hydration.
 		const [milestoneDecorateResult, eventsResult, publicPageCountsResult, contextDocument] =
 			await Promise.all([
 				decorateMilestonesWithGoals(supabase, goals, milestones, goalMilestoneEdges),
@@ -266,13 +317,15 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 						);
 						return [];
 					}),
-				fetchPublicPageCounts(supabase, id).catch((countsError) => {
-					console.warn(
-						'[Project Full API] Failed to load public-page counts:',
-						countsError
-					);
-					return { total: 0, live: 0 } satisfies PublicPageCounts;
-				}),
+				isV2InitialProfile
+					? Promise.resolve(null)
+					: fetchPublicPageCounts(supabase, id).catch((countsError) => {
+							console.warn(
+								'[Project Full API] Failed to load public-page counts:',
+								countsError
+							);
+							return { total: 0, live: 0 } satisfies PublicPageCounts;
+						}),
 				contextDocumentPromise
 			]);
 
@@ -286,23 +339,28 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			lastChangedByActorMap
 		);
 
-		return ApiResponse.success({
+		const payload: Record<string, unknown> = {
 			project: sanitizedProject,
 			current_actor_id: actorId,
 			goals,
-			requirements: data.requirements || [],
 			plans: data.plans || [],
 			tasks: tasksWithAssignees,
 			documents: data.documents || [],
-			images: data.images || [],
-			sources: data.sources || [],
 			milestones: decoratedMilestones,
 			risks: data.risks || [],
-			metrics: data.metrics || [],
 			context_document: contextDocument,
-			events: eventsResult,
-			public_page_counts: publicPageCountsResult
-		});
+			events: eventsResult
+		};
+
+		if (!isV2InitialProfile) {
+			payload.requirements = data.requirements || [];
+			payload.images = data.images || [];
+			payload.sources = data.sources || [];
+			payload.metrics = data.metrics || [];
+			payload.public_page_counts = publicPageCountsResult;
+		}
+
+		return ApiResponse.success(payload);
 	} catch (err) {
 		console.error('[Project Full API] Unexpected error:', err);
 		await logOntologyApiError({

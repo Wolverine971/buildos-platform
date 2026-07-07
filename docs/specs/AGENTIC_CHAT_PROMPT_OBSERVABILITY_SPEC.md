@@ -117,6 +117,10 @@ One row per streamed user turn.
 - `cache_source TEXT NULL`
 - `cache_age_seconds NUMERIC NULL`
 - `request_prewarmed_context BOOLEAN NULL`
+- `prepared_prompt_id UUID NULL REFERENCES agentic_chat_prepared_prompts(id)`
+- `prepared_prompt_hit BOOLEAN NULL`
+- `prepared_prompt_miss_reason TEXT NULL`
+- `prepared_surface_profile TEXT NULL`
 - `prompt_snapshot_id UUID NULL`
 - `timing_metric_id UUID NULL`
 - `started_at TIMESTAMPTZ NOT NULL`
@@ -132,6 +136,20 @@ One row per streamed user turn.
 - index on `(first_canonical_op, created_at desc)`
 - index on `(first_skill_path, created_at desc)`
 - index on `(status, created_at desc)`
+- partial index on `prepared_prompt_id` where present
+
+### Cache source notes
+
+Current live UI stream sources are:
+
+- `prepared_prompt` when a short-lived server-owned prepared prompt row is consumed.
+- `session_cache` when fresh context is read from session metadata.
+- `fresh_load` when the stream route loads context from canonical server data.
+
+`request_prewarmed_context` is retained as a legacy observability column, but it
+should remain `false` for the current live UI stream path because unsigned
+client-carried `prewarmedContext` is no longer trusted. Prepared prompt age is
+recorded in timing/request metadata as `prepared_prompt_age_seconds`.
 
 ## 2. `chat_prompt_snapshots`
 

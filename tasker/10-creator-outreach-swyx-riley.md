@@ -6,6 +6,10 @@
 **Type:** Marketing / outreach
 **Sources:** `docs/marketing/growth/target-influencers/CANDIDATE-PIPELINE-2026-06-19.md`, `INDEX.md`, `ai-native-builders/swyx.md`, `ai-native-builders/riley-brown.md`
 
+## Refresh 2026-07-02 — Simon is now the send-ready target
+
+A **Simon Willison dossier now exists** (`ai-native-builders/simon-willison.md`, added 7/01) with a fully drafted first-touch email ("an MCP server I'd like you to try to break"). Its three send-preconditions — public MCP server, one-command repro, lethal-trifecta self-audit — are **ALL MET** as of 7/01 (`pnpm mcp:repro`, self-audit, and second-audit MCP fixes committed). The dossier's `artifact_status: blocked` flag is stale. **Update the dossier flags and send.** Riley/Swyx/pipeline unchanged (nothing sent anywhere).
+
 ## State
 
 - **Riley Brown** — profile drafted; first touch **not sent**. No longer a "build him a workspace" recruit — he's a peer founder with adjacent execution-layer infra. Draft is sendable after verification.

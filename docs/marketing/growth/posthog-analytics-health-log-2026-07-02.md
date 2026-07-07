@@ -70,12 +70,12 @@ the funnel events during the verification window.
 
 Create a PostHog dashboard named `BuildOS Activation`.
 
-| Tile | Insight name        | Type      | Configuration                                                                                                                   | Status  |
-| ---- | ------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| 1    | Activation funnel   | Funnel    | `signup -> onboarding_completed -> brain_dump_created -> project_created`; 7-day conversion window; last 30 days                | Pending |
-| 2    | Weekly active users | Trends    | Unique users; weekly; last 90 days; action/group containing `brain_dump_created`, `task_completed`, `brief_viewed`              | Pending |
-| 3    | Retention after aha | Retention | First time `project_created`; return event `task_completed`; weekly                                                             | Pending |
-| 4    | Signups by source   | Trends    | `signup`; total count; weekly; last 90 days; breakdown by event property `signup_source`, fallback person property `utm_source` | Pending |
+| Tile | Insight name        | Type      | Configuration                                                                                                                   | Status                                           |
+| ---- | ------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| 1    | Activation funnel   | Funnel    | `signup -> onboarding_completed -> brain_dump_created -> project_created`; 7-day conversion window; last 30 days                | Created: insight `9751644` / short id `uYaKaFst` |
+| 2    | Weekly active users | Trends    | Unique users; weekly; last 90 days; `brain_dump_created`, `task_completed`, `brief_viewed`                                      | Created: insight `9751645` / short id `5IfpEYQD` |
+| 3    | Retention after aha | Retention | First time `project_created`; return event `task_completed`; weekly                                                             | Created: insight `9751646` / short id `4JRwg008` |
+| 4    | Signups by source   | Trends    | `signup`; total count; weekly; last 90 days; breakdown by event property `signup_source`, fallback person property `utm_source` | Created: insight `9751647` / short id `f2zKBO7R` |
 
 ## Verification Notes
 
@@ -83,3 +83,6 @@ Create a PostHog dashboard named `BuildOS Activation`.
   already complete. Not re-confirmed in this thread.
 - 2026-07-02: One-time follow-up created for 2026-07-09 to review one week of
   event flow and dashboard data quality.
+- 2026-07-02: Created PostHog dashboard `BuildOS Activation` with dashboard id
+  `1788754` on US Cloud. Created all four initial dashboard insights via the
+  private PostHog API.

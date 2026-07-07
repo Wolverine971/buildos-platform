@@ -25,6 +25,9 @@ vi.mock('$lib/config/project-loops', () => ({
 
 import {
 	queueProjectLoopBurst,
+	readProjectLoopReviewContext,
+	shouldDebounceProjectLoopBurstForTaskUpdate,
+	shouldSuppressProjectLoopBurstForTaskUpdate,
 	scoreProjectLoopRecentActivity,
 	type ProjectLoopRecentActivityRow
 } from './project-loop-burst.service';
@@ -258,5 +261,77 @@ describe('project loop burst scoring', () => {
 				reason: 'audit evaluator unavailable'
 			}
 		});
+	});
+});
+
+describe('project loop review context', () => {
+	it('reads snake-case review context from the request body', () => {
+		expect(
+			readProjectLoopReviewContext({
+				project_review_context: {
+					operation_id: 'operation-1',
+					origin: 'overdue_triage',
+					operation_kind: 'bulk_backlog',
+					review_policy: 'suppress',
+					entity_count: 6
+				}
+			})
+		).toEqual({
+			operationId: 'operation-1',
+			origin: 'overdue_triage',
+			operationKind: 'bulk_backlog',
+			reviewPolicy: 'suppress',
+			entityCount: 6
+		});
+	});
+
+	it('suppresses overdue triage backlog cleanup bursts', () => {
+		expect(
+			shouldSuppressProjectLoopBurstForTaskUpdate({
+				body: {
+					state_key: 'todo',
+					start_at: null,
+					due_at: null,
+					project_review_context: {
+						origin: 'overdue_triage',
+						operation_kind: 'bulk_backlog',
+						review_policy: 'suppress'
+					}
+				}
+			})
+		).toBe(true);
+	});
+
+	it('debounces overdue triage backlog cleanup bursts when requested', () => {
+		expect(
+			shouldDebounceProjectLoopBurstForTaskUpdate({
+				body: {
+					state_key: 'todo',
+					start_at: null,
+					due_at: null,
+					project_review_context: {
+						origin: 'overdue_triage',
+						operation_kind: 'bulk_backlog',
+						review_policy: 'debounced'
+					}
+				}
+			})
+		).toBe(true);
+	});
+
+	it('does not suppress non-backlog task updates even with review context', () => {
+		expect(
+			shouldSuppressProjectLoopBurstForTaskUpdate({
+				body: {
+					state_key: 'in_progress',
+					due_at: '2026-07-08T23:59:59.000Z',
+					project_review_context: {
+						origin: 'overdue_triage',
+						operation_kind: 'bulk_backlog',
+						review_policy: 'suppress'
+					}
+				}
+			})
+		).toBe(false);
 	});
 });

@@ -1,7 +1,7 @@
 ---
 title: 'Persona — Writer / Author (indie, scrappy, multi-WIP)'
 created: 2026-05-13
-status: active
+status: active — positioning reconciled 2026-07-06 to memory-hero (see note under intro)
 owner: DJ Wayne
 purpose: Canonical persona doc for the writer/author wedge of the BuildOS thinking-environment strategy. Use this as the reference whenever positioning, copy, outreach, or product decisions touch the author audience.
 related_docs:
@@ -21,6 +21,8 @@ The wedge: not the literary-establishment trad-pub-only author. The author-as-bu
 
 Supporting research: [`research-writer-persona-2026-05-13.md`](./research-writer-persona-2026-05-13.md). Verbatim writer language: [`customer-lingo-writer.md`](../customer-lingo-writer.md).
 
+> **Positioning ruling (2026-07-06, reconciled to the worldbuilding archetype):** Lead with **manuscript memory and relief**, not "make your AI tools smarter." The words stay the writer's — BuildOS never generates prose. The "your other tools can read from BuildOS" story is a **demoted Author-Operator capability**, never the hero pitch. This doc is **Tier 2 (Persona & GTM)** of the writer corpus; the voice source of truth is [`../brand/worldbuilding/ARCHETYPE_WRITER.md`](../brand/worldbuilding/ARCHETYPE_WRITER.md). Hub: [`writer-corpus.md`](./writer-corpus.md).
+
 ---
 
 ## TL;DR for product and copy
@@ -28,7 +30,8 @@ Supporting research: [`research-writer-persona-2026-05-13.md`](./research-writer
 - **Voice they trust:** Joanna Penn, Sarra Cannon, Becca Syme, Lindsay Buroker. Calm, business-of-writing, no hype, no AI evangelism.
 - **What they buy:** an extension of how they already think and write — not a system to learn. (Dominic de Souza's exact verbatim.)
 - **The slot BuildOS fills:** the layer underneath Scrivener / Plottr / Obsidian / Substack / ChatGPT. Their existing tools stay. BuildOS remembers what they each forget.
-- **The line that lands:** _"Scrivener still owns the manuscript. BuildOS holds the world bible, beta feedback, and revision tasks — so ChatGPT, Claude, and Sudowrite all read from the same brain."_
+- **The line that lands:** _"Scrivener still owns the manuscript. BuildOS is its memory — the world bible, beta feedback, and revision tasks kept warm between sessions, so you resume in five minutes instead of forty. Your words stay yours; BuildOS never writes the book."_
+- **Operator-only, secondary (never lead with this):** _"…and because it all lives in one place, your other tools can read from it when you want."_
 
 ---
 
@@ -84,9 +87,9 @@ Each stage has 3–6 tool contenders. The author cycles through 15–30 active t
 | **AI assistants**             | ChatGPT, Claude, **Sudowrite** (Story Bible), **NovelCrafter** (Codex), Squibler AI, ProWritingAid AI                                                                                                                                                                                                                                 |
 | **Project / task**            | Notion (most popular), Plottr (doubles as PM), Trello, Sunsama, Akiflow, Things, OmniFocus                                                                                                                                                                                                                                            |
 
-**Where BuildOS lands:** Scrivener stays. Plottr stays. Vellum stays. Substack stays. ChatGPT / Claude / Sudowrite stay. BuildOS is the project's brain underneath all of them — world rules, beta feedback, revision tasks, draft state — so the AI tools and the next book read from the same context.
+**Where BuildOS lands:** Scrivener stays. Plottr stays. Vellum stays. Substack stays. ChatGPT / Claude / Sudowrite stay. BuildOS is the project's **memory** underneath all of them — world rules, beta feedback, revision tasks, draft state — kept warm so you can resume the book in five minutes instead of forty. _(Operator capability, not the pitch: because it's all in one place, your other tools can read from it when you choose.)_
 
-**Market validation already present:** NovelCrafter's Codex and Sudowrite's Story Bible are explicit evidence that the indie author market _will pay_ for "the AI tools read from a persistent context layer." BuildOS is the generalization.
+**Market validation already present:** NovelCrafter's Codex and Sudowrite's Story Bible are explicit evidence that the indie author market _will pay to stop re-explaining their own book_ — i.e., for **manuscript memory**. BuildOS generalizes that memory across the whole stack. It just never writes the prose — that trust boundary is what the segment demands.
 
 ---
 
@@ -299,7 +302,7 @@ The shape across all of them: _multiple WIPs + tool sprawl + memory failure + AD
 
 ### 1a. Self-pub series-fiction author (20BooksTo50K)
 
-> Your stack is already a business — Scrivener for drafting, Plottr for the series bible, ProWritingAid for the self-edit, ScribeCount for sales, BookFunnel for ARCs. BuildOS doesn't replace any of them. It's the place where book 4's revision tasks, book 5's plot bible, and the beta feedback on book 3 share one brain. So when ChatGPT helps you outline scene 12, it actually knows what the assassin already drank in book 1.
+> Your stack is already a business — Scrivener for drafting, Plottr for the series bible, ProWritingAid for the self-edit, ScribeCount for sales, BookFunnel for ARCs. BuildOS doesn't replace any of them. It's the place where book 4's revision tasks, book 5's plot bible, and the beta feedback on book 3 stop living in seven places and share one memory — so you never again lose track of what the assassin already drank in book 1. The continuity stays warm across the whole series.
 
 ### 1b. Substack serialist
 
@@ -311,15 +314,15 @@ The shape across all of them: _multiple WIPs + tool sprawl + memory failure + AD
 
 ### 1d. Indie nonfiction / expert author
 
-> Your stack is books + newsletter + course + podcast + speaking — five surfaces off the same underlying research. The same HBR article ends up cited in the book, the email, the episode notes, the lesson, and the keynote. BuildOS is the shared archive your AI tools can read from. Newsletter draft, episode prep, course module, book chapter — they all see the same source-of-truth so you stop re-citing yourself and start compounding.
+> Your stack is books + newsletter + course + podcast + speaking — five surfaces off the same underlying research. The same HBR article ends up cited in the book, the email, the episode notes, the lesson, and the keynote. BuildOS is the shared archive that remembers all of it. Newsletter draft, episode prep, course module, book chapter — one source-of-truth so you stop re-finding and re-citing yourself and start compounding.
 
 ### 1e. Narrative nonfiction / research-heavy
 
-> Three years of source material is too much for any one tool. Zotero has the citations, Readwise has the highlights, Obsidian has the notes, Scrivener has the drafts — and you still spend an hour finding the quote you want to use today. BuildOS holds the project's brain. Every source, every highlight, every draft revision in one place. When you ask Claude to help reframe chapter 6, it already knows what you wrote about the same archive in chapter 2.
+> Three years of source material is too much for any one tool. Zotero has the citations, Readwise has the highlights, Obsidian has the notes, Scrivener has the drafts — and you still spend an hour finding the quote you want to use today. BuildOS holds the project's memory: every source, every highlight, every draft revision in one place that remembers where chapter 2 already used the same archive — so you stop re-finding and start writing chapter 6.
 
 ### 1f. Ghostwriter / book coach
 
-> Three client manuscripts, three voices, three sets of expert vocabulary, three style guides. The context-switch tax is the job. BuildOS gives every client their own project — interview transcripts, voice notes, draft revisions, edit-letter response tasks — so when you sit down with Client A's chapter today, your AI tools and your own notes are already in Client A's voice and world. Less bleed. Faster onboarding the next time you take a new manuscript.
+> Three client manuscripts, three voices, three sets of expert vocabulary, three style guides. The context-switch tax is the job. BuildOS gives every client their own project — interview transcripts, voice notes, draft revisions, edit-letter response tasks — so when you sit down with Client A's chapter today, the whole context is already warm: Client A's voice, world, and open threads, right there. Less bleed. Faster onboarding the next time you take a new manuscript.
 
 ---
 
@@ -327,7 +330,7 @@ The shape across all of them: _multiple WIPs + tool sprawl + memory failure + AD
 
 - **Don't displace Sarra Cannon's HB90 or Becca Syme's Better-Faster.** Position BuildOS as the substrate their methods run on top of. HB90 quarterly plans live IN BuildOS. Better-Faster strengths-based decisions show up as BuildOS project shapes. Both coaches could become amplifiers if framed correctly.
 - **The Substack-fiction UX problem is well-documented across multiple sources** (Simon K. Jones, Compact Mag, John Ward). BuildOS could position specifically against Substack-serial pain — that's a 2,000-author-tier pocket that can be won decisively.
-- **NovelCrafter Codex + Sudowrite Story Bible validate the thesis.** The indie author market is already paying for "AI tools read from a persistent context layer." BuildOS is the generalization across all the author's tools, not just one AI app.
+- **NovelCrafter Codex + Sudowrite Story Bible validate the thesis.** The indie author market is already paying to stop re-explaining their book — i.e., for **manuscript memory**. BuildOS generalizes that memory across the author's whole stack (not just one AI app), and — unlike a co-writer tool — never generates the prose.
 - **Dominic de Souza's "23 tools" post is the single most quotable real-world pain.** He's already in the outreach list. The exact quotes there should anchor BuildOS's writer-facing copy.
 
 ---

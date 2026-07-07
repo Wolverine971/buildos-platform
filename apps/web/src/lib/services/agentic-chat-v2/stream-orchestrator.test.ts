@@ -2102,6 +2102,139 @@ describe('streamFastChat direct tool orchestration', () => {
 		).toBe(true);
 	});
 
+	it('allows a near-budget write-intent carve-out before forced synthesis', async () => {
+		const taskId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		let streamInvocation = 0;
+		const streamParams: Array<{
+			toolChoice?: string;
+			toolNames: string[];
+			messages: FastChatHistoryMessage[];
+		}> = [];
+		const supervisorRecords: Array<{ action: string; trigger?: string }> = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				streamParams.push({
+					toolChoice: params.tool_choice,
+					toolNames: (params.tools ?? [])
+						.map((tool: ChatToolDefinition) => tool.function?.name)
+						.filter((name: string | undefined): name is string => Boolean(name)),
+					messages: JSON.parse(JSON.stringify(params.messages))
+				});
+
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'tool_schema',
+							{ op: 'onto.task.update', include_schema: true },
+							'tool_schema:task-update'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				if (streamInvocation === 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'update_onto_task',
+							{ task_id: taskId, state_key: 'done' },
+							'update_onto_task:done'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Updated the task to done.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (
+				call: ChatToolCall,
+				availableTools?: ChatToolDefinition[]
+			): Promise<ChatToolResult> => {
+				if (call.function.name === 'tool_schema') {
+					const args = JSON.parse(call.function.arguments || '{}');
+					return {
+						tool_call_id: call.id,
+						result: getToolSchema(args.op, {
+							include_schema: args.include_schema,
+							include_examples: true
+						}),
+						success: true
+					};
+				}
+
+				expect(call.function.name).toBe('update_onto_task');
+				expect(
+					(availableTools ?? [])
+						.map((tool) => tool.function?.name)
+						.filter((name): name is string => Boolean(name))
+				).toEqual(['update_onto_task']);
+				return {
+					tool_call_id: call.id,
+					result: {
+						ok: true,
+						op: 'onto.task.update',
+						result: {
+							task: { id: taskId, title: 'Launch task', state_key: 'done' }
+						}
+					},
+					success: true
+				};
+			}
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: taskId,
+			projectId: taskId,
+			history: [],
+			message: 'Mark the launch task done.',
+			tools: tools(['skill_load', 'tool_search', 'tool_schema']),
+			toolExecutor,
+			onDelta: async () => {},
+			onSupervisorDecision: async ({ decision, trigger }) => {
+				supervisorRecords.push({ action: decision.action, trigger });
+			},
+			maxToolRounds: 2
+		});
+
+		expect(streamParams[1]?.toolChoice).toBe('auto');
+		expect(streamParams[1]?.toolNames).toEqual(['update_onto_task']);
+		expect(streamParams[1]?.messages.map((message) => message.content).join('\n')).toContain(
+			'near-budget write-intent pass'
+		);
+		expect(streamParams[2]?.toolChoice).toBeUndefined();
+		expect(streamParams[2]?.toolNames).toEqual([]);
+		expect(toolExecutor.mock.calls.map(([call]) => call.function.name)).toEqual([
+			'tool_schema',
+			'update_onto_task'
+		]);
+		expect(result.finalAssistantText).toBe('Updated the task to done.');
+		expect(result.llmPasses?.[1]?.forcedNoToolSynthesis).toBeUndefined();
+		expect(result.llmPasses?.[2]?.forcedNoToolSynthesis).toBe(true);
+		expect(
+			result.toolExecutions?.some(
+				(execution) =>
+					execution.toolCall.function.name === 'update_onto_task' &&
+					execution.result.success === true
+			)
+		).toBe(true);
+		expect(supervisorRecords).toContainEqual({
+			action: 'force_synthesis',
+			trigger: 'near_tool_budget'
+		});
+	});
+
 	it('forces a final no-tool synthesis pass before read-only tools hit the round cap', async () => {
 		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
 		let streamInvocation = 0;

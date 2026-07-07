@@ -59,9 +59,17 @@
 		project_id: string;
 		project_name: string;
 	};
+	type ProjectReviewContext = {
+		operation_id: string;
+		origin: 'overdue_triage';
+		operation_kind: 'single_backlog' | 'bulk_backlog';
+		review_policy: 'debounced';
+		entity_count: number;
+	};
 	type TaskMutationOptions = {
 		silent?: boolean;
 		successMessage?: string;
+		projectReviewContext?: ProjectReviewContext | null;
 	};
 	type ProjectBatchAction = 'tomorrow' | 'plus3' | 'in_progress' | 'done' | 'backlog';
 	type LocatedTask = {
@@ -95,6 +103,23 @@
 
 	function getInitialProjectId(): string | null {
 		return initialProjectId;
+	}
+
+	function createReviewOperationId(): string {
+		if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+			return crypto.randomUUID();
+		}
+		return `overdue-triage-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+	}
+
+	function createBacklogReviewContext(taskCount: number): ProjectReviewContext {
+		return {
+			operation_id: createReviewOperationId(),
+			origin: 'overdue_triage',
+			operation_kind: taskCount > 1 ? 'bulk_backlog' : 'single_backlog',
+			review_policy: 'debounced',
+			entity_count: taskCount
+		};
 	}
 
 	let isLoading = $state(false);
@@ -361,13 +386,20 @@
 		setBatches([...batches, restoredBatch], task.project_id);
 	}
 
-	async function patchTask(taskId: string, updates: Record<string, unknown>) {
+	async function patchTask(
+		taskId: string,
+		updates: Record<string, unknown>,
+		options: Pick<TaskMutationOptions, 'projectReviewContext'> = {}
+	) {
+		const body = options.projectReviewContext
+			? { ...updates, project_review_context: options.projectReviewContext }
+			: updates;
 		const response = await fetch(`/api/onto/tasks/${taskId}`, {
 			method: 'PATCH',
 			headers: {
 				'Content-Type': 'application/json'
 			},
-			body: JSON.stringify(updates)
+			body: JSON.stringify(body)
 		});
 
 		const payload = (await response.json().catch(() => null)) as {
@@ -393,7 +425,9 @@
 		pendingTaskIds = new Set([...pendingTaskIds, taskId]);
 		removeTaskFromBatches(taskId);
 		try {
-			await patchTask(taskId, updates);
+			await patchTask(taskId, updates, {
+				projectReviewContext: options.projectReviewContext
+			});
 
 			changedCount += 1;
 			if (!options.silent) {
@@ -448,7 +482,8 @@
 
 	async function handleMoveTaskToBacklog(taskId: string) {
 		await mutateTask(taskId, BACKLOG_TASK_UPDATES, {
-			successMessage: 'Task moved to backlog'
+			successMessage: 'Task moved to backlog',
+			projectReviewContext: createBacklogReviewContext(1)
 		});
 	}
 
@@ -601,8 +636,12 @@
 
 		try {
 			const updates = getProjectActionUpdates(action);
+			const projectReviewContext =
+				action === 'backlog' ? createBacklogReviewContext(locatedTasks.length) : null;
 			const results = await Promise.all(
-				locatedTasks.map((task) => mutateFoundTask(task, updates, { silent: true }))
+				locatedTasks.map((task) =>
+					mutateFoundTask(task, updates, { silent: true, projectReviewContext })
+				)
 			);
 			for (const ok of results) {
 				if (ok) succeeded += 1;

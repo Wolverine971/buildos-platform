@@ -4,12 +4,18 @@ import {
 	archiveProjectDocument,
 	deleteProject,
 	fetchProjectBriefs,
+	fetchProjectDocument,
 	fetchProjectLogs,
 	fetchProjectEvents,
 	fetchProjectFullData,
+	fetchProjectGoal,
+	fetchProjectMilestone,
 	fetchProjectMembers,
 	fetchProjectNotificationSettings,
+	fetchProjectPlan,
+	fetchProjectRisk,
 	fetchProjectSnapshot,
+	fetchProjectTask,
 	generateProjectNextStep,
 	moveProjectDocument,
 	updateProjectMilestoneState,
@@ -67,6 +73,25 @@ describe('project-page-data-controller', () => {
 		expect(global.fetch).toHaveBeenCalledWith('/api/onto/projects/project-1/full', undefined);
 	});
 
+	it('fetchProjectFullData can request the v2 initial payload profile', async () => {
+		(global.fetch as any).mockImplementation(() =>
+			mockJsonResponse({
+				body: successBody({
+					project: { id: 'project-1', name: 'Project 1' },
+					tasks: []
+				})
+			})
+		);
+
+		const result = await fetchProjectFullData('project-1', { profile: 'v2-initial' });
+
+		expect(result.project).toMatchObject({ id: 'project-1' });
+		expect(global.fetch).toHaveBeenCalledWith(
+			'/api/onto/projects/project-1/full?profile=v2-initial',
+			undefined
+		);
+	});
+
 	it('fetchProjectFullData throws when response contract is invalid', async () => {
 		(global.fetch as any).mockImplementation(() => mockJsonResponse({ body: {} }));
 
@@ -100,6 +125,77 @@ describe('project-page-data-controller', () => {
 		expect(result.project).toMatchObject({ id: 'project-1' });
 		expect(global.fetch).toHaveBeenCalledWith('/api/onto/projects/project-1/full', undefined);
 	});
+
+	it('fetchProjectSnapshot can request the v2 initial payload profile', async () => {
+		(global.fetch as any).mockImplementation(() =>
+			mockJsonResponse({
+				body: successBody({
+					project: { id: 'project-1', name: 'Project 1' },
+					tasks: []
+				})
+			})
+		);
+
+		const result = await fetchProjectSnapshot('project-1', { profile: 'v2-initial' });
+
+		expect(result.project).toMatchObject({ id: 'project-1' });
+		expect(global.fetch).toHaveBeenCalledWith(
+			'/api/onto/projects/project-1/full?profile=v2-initial',
+			undefined
+		);
+	});
+
+	it('fetchProjectDocument returns a document payload', async () => {
+		(global.fetch as any).mockImplementation(() =>
+			mockJsonResponse({
+				body: successBody({
+					document: {
+						id: 'doc-1',
+						title: 'Start Here',
+						content: '# Context'
+					}
+				})
+			})
+		);
+
+		const result = await fetchProjectDocument('doc-1');
+
+		expect(result).toMatchObject({ id: 'doc-1', content: '# Context' });
+		expect(global.fetch).toHaveBeenCalledWith('/api/onto/documents/doc-1', undefined);
+	});
+
+	it.each([
+		['task', fetchProjectTask, 'task', '/api/onto/tasks/task-1', 'task-1'],
+		['plan', fetchProjectPlan, 'plan', '/api/onto/plans/plan-1', 'plan-1'],
+		['goal', fetchProjectGoal, 'goal', '/api/onto/goals/goal-1', 'goal-1'],
+		['risk', fetchProjectRisk, 'risk', '/api/onto/risks/risk-1', 'risk-1'],
+		[
+			'milestone',
+			fetchProjectMilestone,
+			'milestone',
+			'/api/onto/milestones/milestone-1',
+			'milestone-1'
+		]
+	] as const)(
+		'fetchProject%s returns a single entity payload',
+		async (_, fetcher, key, url, id) => {
+			(global.fetch as any).mockImplementation(() =>
+				mockJsonResponse({
+					body: successBody({
+						[key]: {
+							id,
+							name: 'Entity'
+						}
+					})
+				})
+			);
+
+			const result = await fetcher(id);
+
+			expect(result).toMatchObject({ id });
+			expect(global.fetch).toHaveBeenCalledWith(url, undefined);
+		}
+	);
 
 	it('fetchProjectEvents returns events list', async () => {
 		(global.fetch as any).mockImplementationOnce(() =>

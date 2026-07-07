@@ -2,6 +2,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const syncTaskEventsMock = vi.fn();
+const queueProjectLoopBurstAsyncMock = vi.hoisted(() => vi.fn());
+const queueProjectLoopReviewSignalAsyncMock = vi.hoisted(() => vi.fn());
 let capturedAtomicArgs: Record<string, unknown> | null = null;
 
 vi.mock('$lib/services/ontology/task-event-sync.service', () => ({
@@ -70,6 +72,17 @@ vi.mock('$lib/server/entity-mention-notification.service', () => ({
 	resolveEntityMentionUserIds: vi.fn(async () => []),
 	notifyEntityMentionsAdded: vi.fn(async () => ({ notifiedUserIds: [] }))
 }));
+
+vi.mock('$lib/server/project-loop-burst.service', async () => {
+	const actual = await vi.importActual<typeof import('$lib/server/project-loop-burst.service')>(
+		'$lib/server/project-loop-burst.service'
+	);
+	return {
+		...actual,
+		queueProjectLoopBurstAsync: queueProjectLoopBurstAsyncMock,
+		queueProjectLoopReviewSignalAsync: queueProjectLoopReviewSignalAsyncMock
+	};
+});
 
 const routeModule = import('./+server');
 
@@ -168,6 +181,8 @@ function createSupabaseMock(fixtures: { existingTask: any; updatedTask?: any }) 
 describe('PATCH /api/onto/tasks/[id] completion sync behavior', () => {
 	beforeEach(() => {
 		capturedAtomicArgs = null;
+		queueProjectLoopBurstAsyncMock.mockReset();
+		queueProjectLoopReviewSignalAsyncMock.mockReset();
 		syncTaskEventsMock.mockReset();
 		syncTaskEventsMock.mockResolvedValue(undefined);
 	});
@@ -432,5 +447,139 @@ describe('PATCH /api/onto/tasks/[id] completion sync behavior', () => {
 			'actor1',
 			expect.objectContaining({ id: 'task1', state_key: 'todo' })
 		);
+	});
+
+	it('debounces project-loop review for overdue triage backlog cleanup', async () => {
+		const supabase = createSupabaseMock({
+			existingTask: {
+				id: 'task1',
+				project_id: 'proj1',
+				title: 'Task',
+				type_key: 'task.default',
+				state_key: 'todo',
+				start_at: '2026-07-01T09:00:00Z',
+				due_at: '2026-07-01T10:00:00Z',
+				props: {},
+				project: { id: 'proj1', created_by: 'actor1' }
+			},
+			updatedTask: {
+				id: 'task1',
+				project_id: 'proj1',
+				title: 'Task',
+				type_key: 'task.default',
+				state_key: 'todo',
+				start_at: null,
+				due_at: null,
+				props: {}
+			}
+		});
+
+		const { PATCH } = await routeModule;
+		const request = new Request('http://localhost/api/onto/tasks/task1', {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				state_key: 'todo',
+				start_at: null,
+				due_at: null,
+				project_review_context: {
+					operation_id: 'operation-1',
+					origin: 'overdue_triage',
+					operation_kind: 'bulk_backlog',
+					review_policy: 'debounced',
+					entity_count: 6
+				}
+			})
+		});
+
+		const response = await PATCH({
+			params: { id: 'task1' },
+			request,
+			locals: {
+				supabase: supabase as any,
+				safeGetSession: async () => ({ user: { id: 'user1' } })
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(queueProjectLoopBurstAsyncMock).not.toHaveBeenCalled();
+		expect(queueProjectLoopReviewSignalAsyncMock).toHaveBeenCalledWith({
+			projectId: 'proj1',
+			userId: 'user1',
+			source: 'task_update',
+			entityType: 'task',
+			entityId: 'task1',
+			action: 'updated',
+			reviewContext: {
+				operationId: 'operation-1',
+				origin: 'overdue_triage',
+				operationKind: 'bulk_backlog',
+				reviewPolicy: 'debounced',
+				entityCount: 6
+			}
+		});
+		expect(capturedAtomicArgs?.p_updates).toMatchObject({
+			state_key: 'todo',
+			start_at: null,
+			due_at: null
+		});
+		expect(capturedAtomicArgs?.p_updates).not.toHaveProperty('project_review_context');
+	});
+
+	it('still sends ordinary task updates to the project-loop burst evaluator', async () => {
+		const supabase = createSupabaseMock({
+			existingTask: {
+				id: 'task1',
+				project_id: 'proj1',
+				title: 'Task',
+				type_key: 'task.default',
+				state_key: 'todo',
+				start_at: '2026-07-01T09:00:00Z',
+				due_at: '2026-07-01T10:00:00Z',
+				props: {},
+				project: { id: 'proj1', created_by: 'actor1' }
+			},
+			updatedTask: {
+				id: 'task1',
+				project_id: 'proj1',
+				title: 'Task',
+				type_key: 'task.default',
+				state_key: 'todo',
+				start_at: null,
+				due_at: null,
+				props: {}
+			}
+		});
+
+		const { PATCH } = await routeModule;
+		const request = new Request('http://localhost/api/onto/tasks/task1', {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				state_key: 'todo',
+				start_at: null,
+				due_at: null
+			})
+		});
+
+		const response = await PATCH({
+			params: { id: 'task1' },
+			request,
+			locals: {
+				supabase: supabase as any,
+				safeGetSession: async () => ({ user: { id: 'user1' } })
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(queueProjectLoopBurstAsyncMock).toHaveBeenCalledWith({
+			projectId: 'proj1',
+			userId: 'user1',
+			source: 'task_update',
+			entityType: 'task',
+			entityId: 'task1',
+			action: 'updated'
+		});
+		expect(queueProjectLoopReviewSignalAsyncMock).not.toHaveBeenCalled();
 	});
 });

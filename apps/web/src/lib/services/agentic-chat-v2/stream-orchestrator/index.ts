@@ -18,7 +18,7 @@ import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registr
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import { dev } from '$app/environment';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
-import { sanitizeAssistantFinalText, sanitizeToolPassLeadIn } from './assistant-text-sanitization';
+import { sanitizeToolPassLeadIn } from './assistant-text-sanitization';
 import { appendRuntimeMetadataToPromptDump, writeInitialPromptDump } from './prompt-dump-debug';
 import type {
 	FastChatDebugContext,
@@ -33,7 +33,6 @@ import {
 	sanitizeToolCallsForReplay
 } from './tool-arguments';
 import {
-	applyFinalizationGuard,
 	buildTurnSupervisorEntityIndexFromContextData,
 	createDeterministicTurnSupervisor,
 	type FinalizationGuardResult,
@@ -46,20 +45,12 @@ import { summarizeToolResult } from '../turn-supervisor/digest';
 import {
 	buildConsolidatedRepairInstruction,
 	buildGatewayCreateFieldNoProgressRepairInstruction,
-	buildGatewayMutationNoExecutionRepairInstruction,
 	buildGatewayRequiredFieldRepairInstruction,
-	buildProjectCreateNoExecutionRepairInstruction,
-	buildSkillGateNoLoadRepairInstruction,
 	buildReadLoopRepairInstruction,
 	buildToolRoundBudgetSynthesisInstruction,
 	buildToolValidationRepairInstruction,
 	collectGatewayWriteIntentOps,
-	enforceMutationOutcomeIntegrity,
-	hasGatewayCreateFieldNoProgressFailure,
-	looksLikeExplicitMutationRequest,
-	shouldRepairGatewayMutationNoExecution,
-	shouldRepairProjectCreateNoExecution,
-	shouldRepairSkillGateNoLoad
+	hasGatewayCreateFieldNoProgressFailure
 } from './repair-instructions';
 import {
 	buildRoundToolPattern,
@@ -73,7 +64,6 @@ import {
 	hasDocumentOrganizationValidationIssue
 } from './round-analysis';
 import {
-	classifyToolExecution,
 	didGatewayExecSucceed,
 	didToolExecutionReachWriteExecutor,
 	isDuplicateWriteSkippedExecution,
@@ -90,6 +80,13 @@ import {
 	recordToolExecutionForRound
 } from './tool-round-runner';
 import { runLlmStreamPass, type FastChatModelMessage } from './llm-pass-runner';
+import {
+	resolveLengthContinuation,
+	runCancellationFinalization,
+	runNoToolCallFinalization,
+	runNoToolSynthesisFinalization,
+	runTerminalFinalization
+} from './finalization-runner';
 import * as readLoopEscalation from './read-loop-escalation';
 import type { ReadLoopRepairEscalation as ReadLoopRepairEscalationLevel } from './read-loop-escalation';
 
@@ -148,9 +145,17 @@ function buildRuntimeToolBudgetMessage(params: {
 	toolCallsMade: number;
 	maxToolCalls: number;
 	noToolSynthesisPass: boolean;
+	writeToolOnlyPassToolNames?: string[];
 }): string {
 	const roundsRemaining = Math.max(0, params.maxToolRounds - params.toolRounds);
 	const callsRemaining = Math.max(0, params.maxToolCalls - params.toolCallsMade);
+	if (params.writeToolOnlyPassToolNames?.length) {
+		return [
+			`Runtime tool budget: ${roundsRemaining} of ${params.maxToolRounds} tool rounds remain; ${callsRemaining} of ${params.maxToolCalls} tool calls remain.`,
+			`The supervisor is allowing one near-budget write-intent pass. Only these write tools are available: ${params.writeToolOnlyPassToolNames.join(', ')}.`,
+			'Call one of those write tools only if the required arguments are known. If a required target or field is missing, ask one concise clarifying question instead of guessing. Do not call reads, searches, schemas, or skills.'
+		].join(' ');
+	}
 	if (params.noToolSynthesisPass) {
 		return [
 			`Runtime tool budget: tools are unavailable for this synthesis pass. ${roundsRemaining} of ${params.maxToolRounds} tool rounds remain in the turn budget, but the supervisor has asked for an answer from loaded evidence.`,
@@ -168,6 +173,11 @@ function buildRuntimeToolBudgetMessage(params: {
 		pressureLine
 	].join(' ');
 }
+
+type ForcedWriteIntentToolPass = {
+	toolNames: string[];
+	instruction: string;
+};
 
 export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	assistantText: string;
@@ -223,7 +233,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	const toolExecutions: FastToolExecution[] = [];
 	const llmStreamPasses: LLMStreamPassMetadata[] = [];
 	let tools = params.tools ?? [];
-	let hasTools = tools.length > 0;
 	let allowedToolNames = new Set(
 		tools.map((tool) => tool.function?.name).filter((name): name is string => Boolean(name))
 	);
@@ -258,6 +267,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let repeatedReadOpSetCount = 0;
 	let readLoopRepairRank = 0;
 	let forceNoToolSynthesisPass = false;
+	let forceWriteIntentToolPass: ForcedWriteIntentToolPass | null = null;
+	let writeIntentCarveOutUsed = false;
 	let noToolSynthesisRetryCount = 0;
 	// D8: recovery state for answers that hit the output-token cap
 	// (finish_reason === 'length'). `lengthContinuationCount` bounds how many
@@ -434,7 +445,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			return [];
 		}
 		tools = materialized.tools;
-		hasTools = tools.length > 0;
 		allowedToolNames = new Set(
 			tools.map((tool) => tool.function?.name).filter((name): name is string => Boolean(name))
 		);
@@ -443,6 +453,40 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			pendingMaterializationNotices.push(notice);
 		}
 		return materialized.addedToolNames;
+	};
+	const buildNearBudgetWriteIntentToolPass = (): ForcedWriteIntentToolPass | null => {
+		if (!gatewayModeActive || writeIntentCarveOutUsed) return null;
+		const writeIntentOps = collectGatewayWriteIntentOps(toolExecutions);
+		if (writeIntentOps.length === 0) return null;
+
+		const registry = getToolRegistry();
+		const writeToolNames = new Set<string>();
+		for (const op of writeIntentOps) {
+			const toolName = registry.ops[normalizeGatewayOpName(op)]?.tool_name;
+			if (!toolName) continue;
+			materializeDirectTools([toolName], `Near-budget write intent ${op} was identified.`);
+			if (allowedToolNames.has(toolName)) {
+				writeToolNames.add(toolName);
+			}
+		}
+		if (writeToolNames.size === 0) return null;
+
+		const toolNames = Array.from(writeToolNames);
+		return {
+			toolNames,
+			instruction: [
+				'Supervisor note: the turn is near the tool-round budget, but a concrete write operation has already been identified.',
+				`For the next response, you may use only these write tools: ${toolNames.join(', ')}.`,
+				'Make at most one write attempt if the required target and fields are known.',
+				'If required arguments are missing, ask one concise clarifying question instead of guessing.',
+				'Do not call reads, searches, schemas, skills, or any other discovery tools in this pass.'
+			].join(' ')
+		};
+	};
+	const consumeForcedWriteIntentToolPass = (): ForcedWriteIntentToolPass | null => {
+		const nextPass = forceWriteIntentToolPass;
+		forceWriteIntentToolPass = null;
+		return nextPass;
 	};
 	const findDuplicateSuccessfulWrite = (
 		toolCall: ChatToolCall
@@ -747,6 +791,16 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 		const { decision } = record;
 		if (decision.action === 'force_synthesis') {
+			const writeIntentToolPass =
+				decision.reason === 'near_tool_budget'
+					? buildNearBudgetWriteIntentToolPass()
+					: null;
+			if (writeIntentToolPass) {
+				writeIntentCarveOutUsed = true;
+				forceWriteIntentToolPass = writeIntentToolPass;
+				queueRepairInstruction(writeIntentToolPass.instruction);
+				return;
+			}
 			queueRepairInstruction(decision.instruction);
 			forceNoToolSynthesisPass = true;
 			return;
@@ -838,7 +892,22 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				break;
 			}
 
-			const noToolSynthesisPass = forceNoToolSynthesisPass;
+			const writeIntentToolPass = consumeForcedWriteIntentToolPass();
+			const writeIntentToolNameSet = writeIntentToolPass
+				? new Set<string>(writeIntentToolPass.toolNames)
+				: null;
+			const passTools = writeIntentToolNameSet
+				? tools.filter((tool) => {
+						const name = tool.function?.name;
+						return Boolean(name && writeIntentToolNameSet.has(name));
+					})
+				: tools;
+			const getPassTools = (): ChatToolDefinition[] =>
+				writeIntentToolNameSet ? passTools : tools;
+			const getPassAllowedToolNames = (): Set<string> =>
+				writeIntentToolNameSet ?? allowedToolNames;
+			const passGatewayModeActive = writeIntentToolNameSet ? false : gatewayModeActive;
+			const noToolSynthesisPass = writeIntentToolPass ? false : forceNoToolSynthesisPass;
 			forceNoToolSynthesisPass = false;
 			activeAssistantBuffer = '';
 			activePendingToolCallCount = 0;
@@ -851,7 +920,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						maxToolRounds,
 						toolCallsMade,
 						maxToolCalls,
-						noToolSynthesisPass
+						noToolSynthesisPass,
+						writeToolOnlyPassToolNames: writeIntentToolPass?.toolNames
 					})
 				}
 			];
@@ -859,8 +929,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			const llmPassResult = await runLlmStreamPass({
 				llm,
 				passMessages,
-				tools,
-				hasTools,
+				tools: passTools,
+				hasTools: passTools.length > 0,
 				noToolSynthesisPass,
 				passNumber: llmStreamPasses.length + 1,
 				usage,
@@ -909,33 +979,43 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			// confirmed partial text forward so the assembled answer is whole. When
 			// continuations are exhausted, keep the accumulated text but flag the
 			// turn as truncated so it is not presented as a clean `stop`.
-			if (llmPassMeta.finishedReason === 'length' && pendingToolCalls.length === 0) {
-				if (lengthContinuationCount < FASTCHAT_LIMITS.MAX_LENGTH_CONTINUATIONS) {
-					lengthContinuationCount += 1;
-					console.warn(
-						'[stream-orchestrator] answer hit output-token cap; requesting continuation',
-						{
-							pass: llmPassMeta.pass,
-							continuation: lengthContinuationCount,
-							maxContinuations: FASTCHAT_LIMITS.MAX_LENGTH_CONTINUATIONS,
-							noToolSynthesisPass
-						}
-					);
-					carriedTruncatedText += assistantBuffer;
-					const partial = sanitizeAssistantFinalText(assistantBuffer);
-					if (partial) {
-						messages.push({ role: 'assistant', content: partial });
+			const lengthContinuationDecision = resolveLengthContinuation({
+				llmPassMeta,
+				pendingToolCallCount: pendingToolCalls.length,
+				assistantBuffer,
+				carriedTruncatedText,
+				lengthContinuationCount,
+				maxLengthContinuations: FASTCHAT_LIMITS.MAX_LENGTH_CONTINUATIONS,
+				noToolSynthesisPass
+			});
+			if (lengthContinuationDecision.action === 'continue') {
+				lengthContinuationCount = lengthContinuationDecision.nextLengthContinuationCount;
+				carriedTruncatedText = lengthContinuationDecision.nextCarriedTruncatedText;
+				console.warn(
+					'[stream-orchestrator] answer hit output-token cap; requesting continuation',
+					{
+						pass: llmPassMeta.pass,
+						continuation: lengthContinuationCount,
+						maxContinuations: FASTCHAT_LIMITS.MAX_LENGTH_CONTINUATIONS,
+						noToolSynthesisPass
 					}
+				);
+				if (lengthContinuationDecision.partialAssistantText) {
 					messages.push({
-						role: 'system',
-						content:
-							'Your previous message was cut off because it reached the output length limit. Continue the answer from exactly where it stopped. Do not repeat text you already wrote, do not restart, and do not call any tools — just finish the answer.'
+						role: 'assistant',
+						content: lengthContinuationDecision.partialAssistantText
 					});
-					if (noToolSynthesisPass) {
-						forceNoToolSynthesisPass = true;
-					}
-					continue;
 				}
+				messages.push({
+					role: 'system',
+					content: lengthContinuationDecision.systemMessage
+				});
+				if (lengthContinuationDecision.forceNoToolSynthesisPass) {
+					forceNoToolSynthesisPass = true;
+				}
+				continue;
+			}
+			if (lengthContinuationDecision.action === 'exhausted') {
 				console.warn(
 					'[stream-orchestrator] answer still truncated after continuation budget; flagging turn',
 					{
@@ -947,127 +1027,73 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 
 			if (noToolSynthesisPass) {
-				const candidateFinalText = sanitizeAssistantFinalText(
-					carriedTruncatedText + assistantBuffer
-				);
-				// Retry the withheld-tools synthesis once when it failed to produce a
-				// usable answer. Two failure modes qualify: the model kept trying to
-				// call tools (suppressed), or it returned no visible text at all
-				// (finished_reason=stop with empty content) — the empty-synthesis
-				// incident 2026-06-23, where the generic finalization-guard fallback
-				// was persisted instead of the answer the reads already supported.
-				const noToolPassStillRequestedTools = suppressedNoToolSynthesisToolCallCount > 0;
-				const noToolPassProducedNoAnswer = !candidateFinalText;
-				if (
-					(noToolPassStillRequestedTools || noToolPassProducedNoAnswer) &&
-					noToolSynthesisRetryCount < 1
-				) {
-					noToolSynthesisRetryCount += 1;
-					messages.push({
-						role: 'system',
-						content: noToolPassStillRequestedTools
-							? 'The previous synthesis attempt still requested tool calls even though tools are unavailable. Ignore all pending or implied tool calls and write the final user-facing answer now from the existing tool results. Do not say you will check, search, pull up, inspect, load, or update anything else.'
-							: 'The previous synthesis attempt produced no visible answer. Write the final user-facing answer now from the existing tool results. Include the concrete entities you found (with their titles and states) and directly answer any definition question the user asked. Do not call tools.'
-					});
+				const noToolFinalization = await runNoToolSynthesisFinalization({
+					assistantBuffer,
+					carriedTruncatedText,
+					suppressedNoToolSynthesisToolCallCount,
+					noToolSynthesisRetryCount,
+					contextType: normalizedContext,
+					toolExecutions,
+					latestUserText: message,
+					assistantText,
+					emitAssistantRemainder,
+					observeSupervisor
+				});
+				if (noToolFinalization.action === 'retry') {
+					noToolSynthesisRetryCount = noToolFinalization.nextRetryCount;
+					messages.push({ role: 'system', content: noToolFinalization.systemMessage });
 					forceNoToolSynthesisPass = true;
 					continue;
 				}
-				if (candidateFinalText && suppressedNoToolSynthesisToolCallCount === 0) {
-					finalAssistantText = enforceMutationOutcomeIntegrity(candidateFinalText, {
-						contextType: normalizedContext,
-						toolExecutions,
-						latestUserText: message
-					});
-					await observeSupervisor({
-						type: 'final_candidate',
-						text: finalAssistantText,
-						finishedReason: 'stop'
-					});
-					if (finalAssistantText && finalAssistantText !== assistantText.trim()) {
-						await emitAssistantRemainder(finalAssistantText);
-					}
-					finishedReason = 'stop';
+				if (noToolFinalization.action === 'finalized') {
+					finalAssistantText = noToolFinalization.finalAssistantText;
+					finishedReason = noToolFinalization.finishedReason;
 					activeAssistantBuffer = '';
 					activePendingToolCallCount = 0;
 					break;
 				}
-				markToolLimitReached('round');
+				markToolLimitReached(noToolFinalization.kind);
 				break;
 			}
 
 			if (pendingToolCalls.length === 0) {
-				const candidateFinalText = sanitizeAssistantFinalText(
-					carriedTruncatedText + assistantBuffer
-				);
-				if (
-					shouldRepairProjectCreateNoExecution({
-						contextType: normalizedContext,
-						finalText: candidateFinalText,
-						toolExecutions,
-						repairAlreadyInjected: projectCreateStopRepairInjected
-					})
-				) {
-					projectCreateStopRepairInjected = true;
-					queueRepairInstruction(buildProjectCreateNoExecutionRepairInstruction());
-					flushRepairInstructions();
-					continue;
-				}
-				if (
-					shouldRepairGatewayMutationNoExecution({
-						gatewayModeActive,
-						contextType: normalizedContext,
-						finalText: candidateFinalText,
-						toolExecutions,
-						repairAlreadyInjected: gatewayMutationStopRepairInjected,
-						latestUserText: message
-					})
-				) {
-					gatewayMutationStopRepairInjected = true;
-					queueRepairInstruction(
-						buildGatewayMutationNoExecutionRepairInstruction(toolExecutions)
-					);
-					flushRepairInstructions();
-					continue;
-				}
-				if (
-					shouldRepairSkillGateNoLoad({
-						skillLoadRequired: params.skillGate?.required === true,
-						historyHasLoadedSkillsLedger:
-							params.skillGate?.historyHasLoadedSkillsLedger === true,
-						finalText: candidateFinalText,
-						toolExecutions,
-						repairAlreadyInjected: skillGateStopRepairInjected
-					})
-				) {
-					skillGateStopRepairInjected = true;
-					console.info(
-						'[stream-orchestrator] skill-load gate active with no skill loaded; injecting repair round',
-						{
-							recommendedSkillIds: params.skillGate?.recommendedSkillIds ?? []
-						}
-					);
-					queueRepairInstruction(
-						buildSkillGateNoLoadRepairInstruction(
-							params.skillGate?.recommendedSkillIds ?? []
-						)
-					);
-					flushRepairInstructions();
-					continue;
-				}
-
-				finalAssistantText = enforceMutationOutcomeIntegrity(candidateFinalText, {
+				const noToolCallFinalization = await runNoToolCallFinalization({
+					assistantBuffer,
+					carriedTruncatedText,
 					contextType: normalizedContext,
 					toolExecutions,
-					latestUserText: message
+					latestUserText: message,
+					gatewayModeActive,
+					projectCreateStopRepairInjected,
+					gatewayMutationStopRepairInjected,
+					skillGateStopRepairInjected,
+					skillGate: params.skillGate,
+					assistantText,
+					finishedReason,
+					emitAssistantRemainder,
+					observeSupervisor
 				});
-				await observeSupervisor({
-					type: 'final_candidate',
-					text: finalAssistantText,
-					finishedReason
-				});
-				if (finalAssistantText && finalAssistantText !== assistantText.trim()) {
-					await emitAssistantRemainder(finalAssistantText);
+				if (noToolCallFinalization.action === 'repair') {
+					if (noToolCallFinalization.kind === 'project_create') {
+						projectCreateStopRepairInjected = true;
+					} else if (noToolCallFinalization.kind === 'gateway_mutation') {
+						gatewayMutationStopRepairInjected = true;
+					} else {
+						skillGateStopRepairInjected = true;
+					}
+					if (noToolCallFinalization.kind === 'skill_gate') {
+						console.info(
+							'[stream-orchestrator] skill-load gate active with no skill loaded; injecting repair round',
+							{
+								recommendedSkillIds: params.skillGate?.recommendedSkillIds ?? []
+							}
+						);
+					}
+					queueRepairInstruction(noToolCallFinalization.instruction);
+					flushRepairInstructions();
+					continue;
 				}
+				finalAssistantText = noToolCallFinalization.finalAssistantText;
 				activeAssistantBuffer = '';
 				activePendingToolCallCount = 0;
 				break;
@@ -1126,8 +1152,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						  normalizedContext === 'project'
 						? entityId
 						: null;
-			const allowedToolNamesAtRoundStart = new Set(allowedToolNames);
-			const validationIssues = validateToolCalls(pendingToolCalls, tools, {
+			const allowedToolNamesAtRoundStart = new Set(getPassAllowedToolNames());
+			const validationIssues = validateToolCalls(pendingToolCalls, getPassTools(), {
 				projectId: validationProjectId
 			});
 			const executableToolCalls = sanitizeToolCallsForReplay(pendingToolCalls);
@@ -1243,7 +1269,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					execution,
 					toolExecutions,
 					roundExecutions,
-					gatewayModeActive,
+					gatewayModeActive: passGatewayModeActive,
 					knownEntitiesById,
 					rememberSuccessfulWriteForDedup,
 					materializeDirectTools,
@@ -1261,7 +1287,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}): boolean => {
 				if (!params.batchToolExecutor) return false;
 				const toolName = pair.executable.function.name;
-				if (!allowedToolNames.has(toolName)) return false;
+				if (!getPassAllowedToolNames().has(toolName)) return false;
 				if (!allowedToolNamesAtRoundStart.has(toolName)) return false;
 				if (!isPureReadToolName(toolName)) return false;
 				return !buildWrongEntityKindRepairResult({
@@ -1338,7 +1364,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						let batchResults: ChatToolResult[];
 						try {
 							toolCallsExecuted += batchPairs.length;
-							batchResults = await params.batchToolExecutor(batchToolCalls, tools);
+							batchResults = await params.batchToolExecutor(
+								batchToolCalls,
+								getPassTools()
+							);
 						} catch (error) {
 							const message =
 								error instanceof Error ? error.message : 'Tool execution failed';
@@ -1392,10 +1421,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				const dispatchResult = await executeToolCallPair({
 					originalToolCall,
 					toolCall,
-					getTools: () => tools,
-					getAllowedToolNames: () => allowedToolNames,
+					getTools: getPassTools,
+					getAllowedToolNames: getPassAllowedToolNames,
 					allowedToolNamesAtRoundStart,
-					gatewayModeActive,
+					gatewayModeActive: passGatewayModeActive,
 					validationProjectId,
 					knownEntitiesById,
 					toolExecutor: params.toolExecutor,
@@ -1601,15 +1630,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	} catch (error) {
 		if (isUserCancellation()) {
 			finishedReason = 'cancelled';
-			if (activePendingToolCallCount === 0) {
-				const partialAssistantText = sanitizeAssistantFinalText(activeAssistantBuffer);
-				if (partialAssistantText && partialAssistantText !== assistantText.trim()) {
-					await emitAssistantRemainder(partialAssistantText);
-					if (!finalAssistantText) {
-						finalAssistantText = partialAssistantText;
-					}
-				}
-			}
+			const cancellationFinalization = await runCancellationFinalization({
+				activePendingToolCallCount,
+				activeAssistantBuffer,
+				assistantText,
+				finalAssistantText,
+				emitAssistantRemainder
+			});
+			finalAssistantText = cancellationFinalization.finalAssistantText;
 			if (dev) {
 				appendRuntimeMetadataToPromptDump(promptDumpPath, {
 					llmPasses: llmStreamPasses,
@@ -1639,72 +1667,22 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		throw error;
 	}
 
-	// Did this turn carry a mutation intent that never landed? Used by the
-	// finalization guard so an unfinished write turn says "nothing was updated yet"
-	// instead of the soothing read-context summary. True when the user explicitly
-	// asked for a change OR the model identified a write op but no write succeeded.
-	const turnHadUnfulfilledMutationIntent =
-		(looksLikeExplicitMutationRequest(message) ||
-			collectGatewayWriteIntentOps(toolExecutions).length > 0) &&
-		!toolExecutions.some(
-			(execution) =>
-				classifyToolExecution(execution) === 'write' && didGatewayExecSucceed(execution)
-		);
-
-	if (toolLimitNotice) {
-		const toolLimitFinalizationGuard = applyFinalizationGuard({
-			finalAssistantText: '',
-			assistantText: '',
-			toolExecutions,
-			mutationRequested: turnHadUnfulfilledMutationIntent
-		});
-		const finalToolLimitText = toolLimitFinalizationGuard.applied
-			? toolLimitFinalizationGuard.text
-			: toolLimitNotice;
-		const prefix = assistantText.trim().length > 0 ? '\n\n' : '';
-		const noticeDelta = `${prefix}${finalToolLimitText}`;
-		assistantText += noticeDelta;
-		finalAssistantText = finalToolLimitText;
-		await onDelta(noticeDelta);
-		await observeSupervisor({ type: 'assistant_text_delta', chars: noticeDelta.length });
-		if (toolLimitFinalizationGuard.applied) {
-			finalizationGuardResult = toolLimitFinalizationGuard;
-			await observeSupervisor({
-				type: 'final_candidate',
-				text: finalAssistantText,
-				finishedReason
-			});
-		}
-	}
-
-	if (finishedReason !== 'supervisor_question') {
-		const candidateFinalizationGuard = applyFinalizationGuard({
-			finalAssistantText,
-			assistantText,
-			toolExecutions,
-			mutationRequested: turnHadUnfulfilledMutationIntent
-		});
-		if (candidateFinalizationGuard.applied) {
-			finalizationGuardResult = candidateFinalizationGuard;
-			finalAssistantText = finalizationGuardResult.text;
-			await observeSupervisor({
-				type: 'final_candidate',
-				text: finalAssistantText,
-				finishedReason
-			});
-			if (finalAssistantText && finalAssistantText !== assistantText.trim()) {
-				await emitAssistantRemainder(finalAssistantText);
-			}
-		}
-	}
-
-	// D8: if we ran out of continuation budget on a truncated answer, keep the
-	// accumulated text but never report a clean `stop` — a finalize branch may
-	// have overwritten finishedReason (e.g. the synthesis pass). Preserve the
-	// `length` signal so downstream telemetry/UX knows the answer was cut off.
-	if (answerTruncated && (finishedReason === 'stop' || finishedReason === undefined)) {
-		finishedReason = 'length';
-	}
+	const terminalFinalization = await runTerminalFinalization({
+		assistantText,
+		finalAssistantText,
+		finishedReason,
+		toolLimitNotice,
+		answerTruncated,
+		latestUserText: message,
+		toolExecutions,
+		emitAssistantDelta,
+		emitAssistantRemainder,
+		observeSupervisor
+	});
+	finalAssistantText = terminalFinalization.finalAssistantText;
+	finishedReason = terminalFinalization.finishedReason;
+	finalizationGuardResult =
+		terminalFinalization.finalizationGuardResult ?? finalizationGuardResult;
 
 	if (dev) {
 		appendRuntimeMetadataToPromptDump(promptDumpPath, {

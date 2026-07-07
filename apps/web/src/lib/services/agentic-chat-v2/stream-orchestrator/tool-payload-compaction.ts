@@ -6,6 +6,7 @@ type ToolArgumentParser = (rawArgs: unknown) => { args: Record<string, any>; err
 
 const MAX_MODEL_TOOL_PAYLOAD_CHARS = 6000;
 const MAX_MODEL_SKILL_PAYLOAD_CHARS = 20000;
+const MAX_SKILL_OUTPUT_CONTRACT_CHARS = 4000;
 const MAX_TOOL_LIST_ITEMS = 20;
 const INTERNAL_PAYLOAD_KEYS = new Set(['search_vector']);
 const TOOL_RESULT_SECURITY_NOTICE =
@@ -184,6 +185,7 @@ function compactGatewayMetaPayload(payload: unknown): unknown {
 			child_skills: compactSkillLinkedResources(record.child_skills),
 			reference_modules: compactSkillLinkedResources(record.reference_modules),
 			guardrails: Array.isArray(record.guardrails) ? record.guardrails.slice(0, 8) : [],
+			output_contract: toTextPreview(record.output_contract, MAX_SKILL_OUTPUT_CONTRACT_CHARS),
 			markdown:
 				typeof record.markdown === 'string'
 					? toTextPreview(record.markdown, 16000)

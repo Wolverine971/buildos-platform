@@ -59,6 +59,12 @@ export type ProjectFullData = {
 	current_actor_id?: string | null;
 };
 
+export type ProjectFullDataProfile = 'classic' | 'v2-initial';
+
+export type ProjectFullDataOptions = {
+	profile?: ProjectFullDataProfile;
+};
+
 type JsonRecord = Record<string, unknown>;
 
 export type ProjectActivityLogPage = {
@@ -163,6 +169,13 @@ function readNullableString(value: unknown, fallback: string): string | null {
 	return value;
 }
 
+function buildProjectFullUrl(projectId: string, options: ProjectFullDataOptions = {}): string {
+	const base = `/api/onto/projects/${projectId}/full`;
+	if (!options.profile || options.profile === 'classic') return base;
+	const params = new URLSearchParams({ profile: options.profile });
+	return `${base}?${params.toString()}`;
+}
+
 async function requestApiDataRecord(
 	url: string,
 	fallbackMessage: string,
@@ -190,9 +203,12 @@ function parseProjectNotificationSettings(
 	};
 }
 
-export async function fetchProjectFullData(projectId: string): Promise<ProjectFullData> {
+export async function fetchProjectFullData(
+	projectId: string,
+	options: ProjectFullDataOptions = {}
+): Promise<ProjectFullData> {
 	const data = await requestApiDataRecord(
-		`/api/onto/projects/${projectId}/full`,
+		buildProjectFullUrl(projectId, options),
 		'Failed to load project data'
 	);
 	if (!isRecord(data.project)) {
@@ -201,15 +217,60 @@ export async function fetchProjectFullData(projectId: string): Promise<ProjectFu
 	return data as ProjectFullData;
 }
 
-export async function fetchProjectSnapshot(projectId: string): Promise<ProjectFullData> {
+export async function fetchProjectSnapshot(
+	projectId: string,
+	options: ProjectFullDataOptions = {}
+): Promise<ProjectFullData> {
 	const data = await requestApiDataRecord(
-		`/api/onto/projects/${projectId}/full`,
+		buildProjectFullUrl(projectId, options),
 		'Failed to refresh data'
 	);
 	if (!isRecord(data.project)) {
 		throw new Error('Invalid project snapshot response');
 	}
 	return data as ProjectFullData;
+}
+
+export async function fetchProjectDocument(documentId: string): Promise<Document> {
+	const data = await requestApiDataRecord(
+		`/api/onto/documents/${documentId}`,
+		'Failed to load document'
+	);
+	const document = requireRecord(data.document, 'Invalid document response');
+	return document as Document;
+}
+
+export async function fetchProjectTask(taskId: string): Promise<Task> {
+	const data = await requestApiDataRecord(`/api/onto/tasks/${taskId}`, 'Failed to load task');
+	const task = requireRecord(data.task, 'Invalid task response');
+	return task as Task;
+}
+
+export async function fetchProjectPlan(planId: string): Promise<Plan> {
+	const data = await requestApiDataRecord(`/api/onto/plans/${planId}`, 'Failed to load plan');
+	const plan = requireRecord(data.plan, 'Invalid plan response');
+	return plan as Plan;
+}
+
+export async function fetchProjectGoal(goalId: string): Promise<Goal> {
+	const data = await requestApiDataRecord(`/api/onto/goals/${goalId}`, 'Failed to load goal');
+	const goal = requireRecord(data.goal, 'Invalid goal response');
+	return goal as Goal;
+}
+
+export async function fetchProjectRisk(riskId: string): Promise<Risk> {
+	const data = await requestApiDataRecord(`/api/onto/risks/${riskId}`, 'Failed to load risk');
+	const risk = requireRecord(data.risk, 'Invalid risk response');
+	return risk as Risk;
+}
+
+export async function fetchProjectMilestone(milestoneId: string): Promise<Milestone> {
+	const data = await requestApiDataRecord(
+		`/api/onto/milestones/${milestoneId}`,
+		'Failed to load milestone'
+	);
+	const milestone = requireRecord(data.milestone, 'Invalid milestone response');
+	return milestone as Milestone;
 }
 
 export async function fetchProjectMembers(projectId: string): Promise<{

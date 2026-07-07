@@ -51,13 +51,20 @@
 	import TaskKanbanBoard from '$lib/components/project/v2/TaskKanbanBoard.svelte';
 	import EntityTabStrip from '$lib/components/project/v2/EntityTabStrip.svelte';
 	import ProjectEntitySearchCombobox from '$lib/components/project/v2/ProjectEntitySearchCombobox.svelte';
+	import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
 	import {
 		archiveProjectDocument,
 		deleteProject,
+		fetchProjectDocument,
 		fetchProjectEvents,
 		fetchProjectFullData,
+		fetchProjectGoal,
+		fetchProjectMilestone,
 		fetchProjectNotificationSettings,
+		fetchProjectPlan,
+		fetchProjectRisk,
 		fetchProjectSnapshot,
+		fetchProjectTask,
 		moveProjectDocument,
 		updateProjectMilestoneState,
 		updateProjectNotificationSettings,
@@ -153,6 +160,9 @@
 	let contextDocument = $state<Document | null>(
 		initialData.skeleton ? null : ((initialData.context_document ?? null) as Document | null)
 	);
+	let isContextDocumentContentLoading = $state(false);
+	let contextDocumentContentRequestId = 0;
+	let canLoadSecondaryProjectRequests = $state(false);
 	let activePageDataProjectId = initialData.projectId;
 
 	function seedCoreProjectData(sourceData: PageData) {
@@ -379,7 +389,7 @@
 		if (!sourceData.skeleton) return;
 		const projectId = sourceData.projectId;
 		try {
-			const fullData = await fetchProjectFullData(projectId);
+			const fullData = await fetchProjectFullData(projectId, { profile: 'v2-initial' });
 			if (data.projectId !== projectId) return;
 			project = (fullData.project as Project) || project;
 			tasks = (fullData.tasks ?? []) as Task[];
@@ -389,7 +399,7 @@
 			milestones = (fullData.milestones ?? []) as Milestone[];
 			risks = (fullData.risks ?? []) as Risk[];
 			events = (fullData.events ?? []) as OntoEventWithSync[];
-			contextDocument = (fullData.context_document ?? null) as Document | null;
+			contextDocument = mergeContextDocumentFromPayload(fullData.context_document);
 			applyDocTreeSeed(buildDocTreeSeed(fullData.project as Project, documents));
 			isHydrating = false;
 			if (!Array.isArray(fullData.events)) {
@@ -412,7 +422,7 @@
 	async function refreshSilently() {
 		const projectId = data.projectId;
 		try {
-			const fullData = await fetchProjectSnapshot(projectId);
+			const fullData = await fetchProjectSnapshot(projectId, { profile: 'v2-initial' });
 			if (data.projectId !== projectId) return;
 			project = (fullData.project as Project) || project;
 			tasks = (fullData.tasks ?? []) as Task[];
@@ -421,7 +431,7 @@
 			goals = (fullData.goals ?? []) as Goal[];
 			milestones = (fullData.milestones ?? []) as Milestone[];
 			risks = (fullData.risks ?? []) as Risk[];
-			contextDocument = (fullData.context_document ?? null) as Document | null;
+			contextDocument = mergeContextDocumentFromPayload(fullData.context_document);
 			if (Array.isArray(fullData.events)) {
 				events = fullData.events as OntoEventWithSync[];
 			} else {
@@ -430,6 +440,129 @@
 			applyDocTreeSeed(buildDocTreeSeed(fullData.project as Project, documents));
 		} catch (err) {
 			console.warn('[Project v2] Silent refresh failed:', err);
+		}
+	}
+
+	function upsertById<T extends { id: string }>(items: T[], nextItem: T): T[] {
+		const index = items.findIndex((item) => item.id === nextItem.id);
+		if (index === -1) return [nextItem, ...items];
+		return items.map((item) => (item.id === nextItem.id ? nextItem : item));
+	}
+
+	async function refreshTaskById(taskId: string) {
+		try {
+			const task = await fetchProjectTask(taskId);
+			tasks = upsertById(tasks, task);
+		} catch (err) {
+			console.warn('[Project v2] Failed to refresh task; falling back to snapshot:', err);
+			await refreshSilently();
+		}
+	}
+
+	async function refreshPlanById(planId: string) {
+		try {
+			const plan = await fetchProjectPlan(planId);
+			plans = upsertById(plans, plan);
+		} catch (err) {
+			console.warn('[Project v2] Failed to refresh plan; falling back to snapshot:', err);
+			await refreshSilently();
+		}
+	}
+
+	async function refreshGoalById(goalId: string) {
+		try {
+			const goal = await fetchProjectGoal(goalId);
+			goals = upsertById(goals, goal);
+		} catch (err) {
+			console.warn('[Project v2] Failed to refresh goal; falling back to snapshot:', err);
+			await refreshSilently();
+		}
+	}
+
+	async function refreshRiskById(riskId: string) {
+		try {
+			const risk = await fetchProjectRisk(riskId);
+			risks = upsertById(risks, risk);
+		} catch (err) {
+			console.warn('[Project v2] Failed to refresh risk; falling back to snapshot:', err);
+			await refreshSilently();
+		}
+	}
+
+	async function refreshMilestoneById(milestoneId: string, goalId: string | null = null) {
+		try {
+			const fetchedMilestone = await fetchProjectMilestone(milestoneId);
+			const existingMilestone = milestones.find((milestone) => milestone.id === milestoneId);
+			const milestone = {
+				...existingMilestone,
+				...fetchedMilestone,
+				goal_id:
+					(fetchedMilestone as Milestone).goal_id ?? existingMilestone?.goal_id ?? goalId
+			} as Milestone;
+			milestones = upsertById(milestones, milestone);
+		} catch (err) {
+			console.warn(
+				'[Project v2] Failed to refresh milestone; falling back to snapshot:',
+				err
+			);
+			await refreshSilently();
+		}
+	}
+
+	function hasContextDocumentContent(document: Document | null): boolean {
+		if (!document) return true;
+		if (typeof document.content === 'string') return true;
+		const props = document.props ?? {};
+		return typeof props.body_markdown === 'string';
+	}
+
+	function mergeContextDocumentFromPayload(value: unknown): Document | null {
+		const nextDocument = (value ?? null) as Document | null;
+		if (!nextDocument) return null;
+		const currentDocument = contextDocument;
+		if (
+			currentDocument?.id === nextDocument.id &&
+			hasContextDocumentContent(currentDocument) &&
+			!hasContextDocumentContent(nextDocument)
+		) {
+			return {
+				...nextDocument,
+				content: currentDocument.content,
+				props: nextDocument.props ?? currentDocument.props
+			};
+		}
+		return nextDocument;
+	}
+
+	async function ensureContextDocumentContentLoaded() {
+		const documentId = contextDocument?.id;
+		if (
+			!documentId ||
+			hasContextDocumentContent(contextDocument) ||
+			isContextDocumentContentLoading
+		) {
+			return;
+		}
+		const requestId = ++contextDocumentContentRequestId;
+		isContextDocumentContentLoading = true;
+		try {
+			const loadedDocument = await fetchProjectDocument(documentId);
+			if (
+				contextDocument?.id !== documentId ||
+				requestId !== contextDocumentContentRequestId
+			) {
+				return;
+			}
+			contextDocument = {
+				...contextDocument,
+				...loadedDocument
+			};
+		} catch (err) {
+			console.warn('[Project v2] Failed to load context document content:', err);
+		} finally {
+			if (requestId === contextDocumentContentRequestId) {
+				isContextDocumentContentLoading = false;
+			}
 		}
 	}
 
@@ -551,6 +684,31 @@
 		});
 	});
 
+	$effect(() => {
+		if (isHydrating || !project?.id) {
+			canLoadSecondaryProjectRequests = false;
+			return;
+		}
+
+		const activeProjectId = project.id;
+		canLoadSecondaryProjectRequests = false;
+		if (typeof window === 'undefined') return;
+
+		const allowSecondaryRequests = () => {
+			if (project?.id === activeProjectId && !isHydrating) {
+				canLoadSecondaryProjectRequests = true;
+			}
+		};
+
+		if ('requestIdleCallback' in window) {
+			const idleId = window.requestIdleCallback(allowSecondaryRequests, { timeout: 1500 });
+			return () => window.cancelIdleCallback(idleId);
+		}
+
+		const timerId = setTimeout(allowSecondaryRequests, 600);
+		return () => clearTimeout(timerId);
+	});
+
 	// When the agentic chat (from anywhere — global launcher, embedded edit modals, …)
 	// reports that it mutated data affecting this project, silently refetch so newly
 	// created/updated entities appear without a manual reload.
@@ -574,6 +732,11 @@
 		if (mutationAffectsProject(event.summary, data.projectId)) {
 			untrack(() => void refreshAndHighlight());
 		}
+	});
+
+	$effect(() => {
+		if (!showProjectEditModal) return;
+		untrack(() => void ensureContextDocumentContentLoaded());
 	});
 
 	$effect(() => () => {
@@ -778,8 +941,7 @@
 		deleteDocumentId = null;
 	}
 
-	async function handleDocumentSaved() {
-		await refreshSilently();
+	function handleDocumentSaved() {
 		docTreeViewRef?.refresh();
 	}
 
@@ -823,7 +985,6 @@
 			await archiveProjectDocument({ documentId: docId, mode });
 			closeDeleteDocumentConfirmModal();
 			toastService.success('Document archived');
-			await refreshSilently();
 			docTreeViewRef?.refresh();
 		} catch (err) {
 			toastService.error(err instanceof Error ? err.message : 'Failed to archive document');
@@ -840,6 +1001,15 @@
 		docTreeDocuments = loaded.documents;
 		docTreeUnlinked = loaded.unlinked ?? [];
 		docTreeArchived = loaded.archived ?? [];
+		const nextDocumentsById = new Map<string, Document>();
+		for (const doc of [
+			...Object.values(loaded.documents),
+			...(loaded.unlinked ?? []),
+			...(loaded.archived ?? [])
+		]) {
+			nextDocumentsById.set(doc.id, doc as unknown as Document);
+		}
+		documents = Array.from(nextDocumentsById.values());
 	}
 
 	// ============================================================
@@ -850,18 +1020,52 @@
 		toastService.success('Task created');
 		showTaskCreateModal = false;
 		editingTaskId = taskId;
-		void refreshSilently();
+		void refreshTaskById(taskId);
 	}
 
 	function handleTaskUpdated() {
-		void refreshSilently();
+		const taskId = editingTaskId;
 		editingTaskId = null;
+		if (taskId) {
+			void refreshTaskById(taskId);
+		} else {
+			void refreshSilently();
+		}
 	}
 
 	function handleTaskDeleted() {
 		const deletedId = editingTaskId;
 		if (deletedId) tasks = tasks.filter((t) => t.id !== deletedId);
 		editingTaskId = null;
+	}
+
+	function handleTaskMoved(taskId: string, newState: Task['state_key'] | 'archived') {
+		let matchedExistingTask = false;
+		if (newState === 'archived') {
+			tasks = tasks.filter((task) => {
+				const keep = task.id !== taskId;
+				if (!keep) matchedExistingTask = true;
+				return keep;
+			});
+			return;
+		}
+
+		const completedAt = newState === 'done' ? new Date().toISOString() : null;
+		tasks = tasks.map((task) => {
+			if (task.id !== taskId) return task;
+			matchedExistingTask = true;
+			return {
+				...task,
+				deleted_at: null,
+				state_key: newState,
+				completed_at: newState === 'done' ? (task.completed_at ?? completedAt) : null,
+				updated_at: new Date().toISOString()
+			};
+		});
+
+		if (!matchedExistingTask) {
+			void refreshSilently();
+		}
 	}
 
 	// ============================================================
@@ -872,11 +1076,16 @@
 		toastService.success('Plan created');
 		showPlanCreateModal = false;
 		editingPlanId = planId;
-		void refreshSilently();
+		void refreshPlanById(planId);
 	}
 	function handlePlanUpdated() {
-		void refreshSilently();
+		const planId = editingPlanId;
 		editingPlanId = null;
+		if (planId) {
+			void refreshPlanById(planId);
+		} else {
+			void refreshSilently();
+		}
 	}
 	function handlePlanDeleted() {
 		const id = editingPlanId;
@@ -888,11 +1097,16 @@
 		toastService.success('Goal created');
 		showGoalCreateModal = false;
 		editingGoalId = goalId;
-		void refreshSilently();
+		void refreshGoalById(goalId);
 	}
 	function handleGoalUpdated() {
-		void refreshSilently();
+		const goalId = editingGoalId;
 		editingGoalId = null;
+		if (goalId) {
+			void refreshGoalById(goalId);
+		} else {
+			void refreshSilently();
+		}
 	}
 	function handleGoalDeleted() {
 		const id = editingGoalId;
@@ -907,11 +1121,16 @@
 		toastService.success('Risk created');
 		showRiskCreateModal = false;
 		editingRiskId = riskId;
-		void refreshSilently();
+		void refreshRiskById(riskId);
 	}
 	function handleRiskUpdated() {
-		void refreshSilently();
+		const riskId = editingRiskId;
 		editingRiskId = null;
+		if (riskId) {
+			void refreshRiskById(riskId);
+		} else {
+			void refreshSilently();
+		}
 	}
 	function handleRiskDeleted() {
 		const id = editingRiskId;
@@ -920,15 +1139,21 @@
 	}
 
 	function handleMilestoneCreated(milestoneId: string) {
+		const goalId = milestoneCreateGoalContext?.goalId ?? null;
 		toastService.success('Milestone created');
 		showMilestoneCreateModal = false;
 		milestoneCreateGoalContext = null;
 		editingMilestoneId = milestoneId;
-		void refreshSilently();
+		void refreshMilestoneById(milestoneId, goalId);
 	}
 	function handleMilestoneUpdated() {
-		void refreshSilently();
+		const milestoneId = editingMilestoneId;
 		editingMilestoneId = null;
+		if (milestoneId) {
+			void refreshMilestoneById(milestoneId);
+		} else {
+			void refreshSilently();
+		}
 	}
 	function handleMilestoneDeleted() {
 		const id = editingMilestoneId;
@@ -1107,6 +1332,21 @@
 		mq.addEventListener('change', handler);
 		return () => mq.removeEventListener('change', handler);
 	});
+
+	let hasResolvedTaskViewport = $state(false);
+	let isDesktopTaskViewport = $state(false);
+
+	$effect(() => {
+		if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+		const mq = window.matchMedia('(min-width: 640px)');
+		const syncTaskViewport = () => {
+			isDesktopTaskViewport = mq.matches;
+			hasResolvedTaskViewport = true;
+		};
+		syncTaskViewport();
+		mq.addEventListener('change', syncTaskViewport);
+		return () => mq.removeEventListener('change', syncTaskViewport);
+	});
 </script>
 
 <svelte:head>
@@ -1196,6 +1436,7 @@
 					{milestones}
 					{goals}
 					{events}
+					loadActivity={canLoadSecondaryProjectRequests}
 					onOpenEntity={handleEntityClick}
 				/>
 			</div>
@@ -1219,9 +1460,18 @@
 			</div>
 		{/if}
 
-		<div class="mb-2 sm:mb-3">
-			<ProjectAuditTracker projectId={project.id} {canEdit} />
-		</div>
+		{#if PROJECT_LOOPS_ENABLED}
+			<div class="mb-2 sm:mb-3">
+				{#if canLoadSecondaryProjectRequests}
+					<ProjectAuditTracker projectId={project.id} {canEdit} />
+				{:else}
+					<div
+						class="h-16 rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak animate-pulse"
+						aria-hidden="true"
+					></div>
+				{/if}
+			</div>
+		{/if}
 
 		<!-- Entity tabs (shared mobile + desktop). All entity surfaces live
 			 here: Briefs · Chats · Graph · Goals · Milestones · Plans · Risks
@@ -1247,6 +1497,7 @@
 					{risks}
 					{events}
 					{milestonesByGoalId}
+					loadInboxPreview={canLoadSecondaryProjectRequests}
 					onEditGoal={(id) => (editingGoalId = id)}
 					onEditMilestone={(id) => (editingMilestoneId = id)}
 					onEditPlan={(id) => (editingPlanId = id)}
@@ -1263,29 +1514,15 @@
 			</div>
 		{/if}
 
-		<!-- Mobile-only: task board (sm:hidden). Tasks are the daily-driver
-			 surface and deserve a dedicated pane on mobile. -->
-		<div class="sm:hidden mb-2">
-			{#if isHydrating}
+		<!-- Task board: keep the responsive skeleton SSR-safe, then mount only
+			 the active board once the browser viewport is known. -->
+		{#if isHydrating || !hasResolvedTaskViewport}
+			<div class="sm:hidden mb-2">
 				<div
 					class="h-32 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak animate-pulse"
 				></div>
-			{:else}
-				<div in:fade={fadeIn} out:fade={fadeOut}>
-					<MobileTaskBoard
-						projectId={project.id}
-						{tasks}
-						{canEdit}
-						onEditTask={(id) => (editingTaskId = id)}
-						onCreateTask={() => (showTaskCreateModal = true)}
-					/>
-				</div>
-			{/if}
-		</div>
-
-		<!-- Desktop-only: 7-column kanban board (hidden sm:block). -->
-		<div class="hidden sm:block">
-			{#if isHydrating}
+			</div>
+			<div class="hidden sm:block">
 				<div
 					class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
 				>
@@ -1301,17 +1538,27 @@
 						{/each}
 					</div>
 				</div>
-			{:else}
-				<TaskKanbanBoard
+			</div>
+		{:else if isDesktopTaskViewport}
+			<TaskKanbanBoard
+				projectId={project.id}
+				{tasks}
+				{canEdit}
+				onEditTask={(id) => (editingTaskId = id)}
+				onCreateTask={() => (showTaskCreateModal = true)}
+				onTaskMoved={handleTaskMoved}
+			/>
+		{:else}
+			<div class="mb-2" in:fade={fadeIn} out:fade={fadeOut}>
+				<MobileTaskBoard
 					projectId={project.id}
 					{tasks}
 					{canEdit}
 					onEditTask={(id) => (editingTaskId = id)}
 					onCreateTask={() => (showTaskCreateModal = true)}
-					onTaskMoved={() => void refreshSilently()}
 				/>
-			{/if}
-		</div>
+			</div>
+		{/if}
 
 		<!-- Documents (shared mobile + desktop) -->
 		{#if !isHydrating}
@@ -1332,6 +1579,7 @@
 					initialDocuments={docTreeDocuments}
 					initialUnlinked={docTreeUnlinked}
 					initialArchived={docTreeArchived}
+					pollInterval={canLoadSecondaryProjectRequests ? 30000 : 0}
 					onTreeRefChange={(ref) => {
 						docTreeViewRef = ref;
 					}}

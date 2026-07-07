@@ -21,16 +21,18 @@
 
 ### Files Created/Modified
 
-| File                                                        | Change                           | Status      |
-| ----------------------------------------------------------- | -------------------------------- | ----------- |
-| `supabase/migrations/20251208_add_chat_session_summary.sql` | Add summary column + indexes     | ✅ Created  |
-| `packages/shared-types/src/database.schema.ts`              | Add summary type                 | ✅ Modified |
-| `packages/shared-types/src/queue-types.ts`                  | Update ClassifyChatSessionResult | ✅ Modified |
-| `apps/worker/src/workers/chat/chatSessionClassifier.ts`     | Add summary generation           | ✅ Modified |
-| `apps/web/src/routes/history/+page.server.ts`               | Fetch both types, unified items  | ✅ Modified |
-| `apps/web/src/routes/history/+page.svelte`                  | Unified UI with type filters     | ✅ Modified |
-| `apps/web/src/routes/api/chat/sessions/[id]/+server.ts`     | Add GET endpoint                 | ✅ Modified |
-| `apps/web/src/lib/components/agent/AgentChatModal.svelte`   | Session resumption               | ✅ Modified |
+| File                                                           | Change                                                      | Status      |
+| -------------------------------------------------------------- | ----------------------------------------------------------- | ----------- |
+| `supabase/migrations/20251208_add_chat_session_summary.sql`    | Add summary column + indexes                                | ✅ Created  |
+| `packages/shared-types/src/database.schema.ts`                 | Add summary type                                            | ✅ Modified |
+| `packages/shared-types/src/queue-types.ts`                     | Update ClassifyChatSessionResult                            | ✅ Modified |
+| `apps/worker/src/workers/chat/chatSessionClassifier.ts`        | Add summary generation                                      | ✅ Modified |
+| `apps/web/src/routes/history/+page.server.ts`                  | Fetch both types, unified items                             | ✅ Modified |
+| `apps/web/src/routes/history/+page.svelte`                     | Unified UI with type filters                                | ✅ Modified |
+| `apps/web/src/routes/api/chat/sessions/[id]/+server.ts`        | Add GET endpoint                                            | ✅ Modified |
+| `apps/web/src/lib/components/agent/AgentChatModal.svelte`      | Session resumption                                          | ✅ Modified |
+| `supabase/migrations/20260707000000_history_page_perf_rpc.sql` | Bounded history RPC + base indexes                          | ✅ Created  |
+| `supabase/migrations/20260707020000_history_page_perf_p2.sql`  | Search/sort/classification indexes + RPC count optimization | ✅ Created  |
 
 ---
 
@@ -38,6 +40,14 @@
 
 - Chat session fetch supports `includeVoiceNotes=1` to return voice note groups and segments.
 - Agent chat resume now renders message-level voice note playback panels.
+
+## 2026-07-07 Update: History Page Performance
+
+- `/history` now streams page data from `public.get_history_page_v1` instead of issuing wide SvelteKit table reads.
+- Initial server response returns a capped skeleton shape immediately; exact aggregate stats arrive with streamed history data.
+- The RPC returns only the requested page plus selected deep-linked item, uses `limit + 1` for `hasMore`, and avoids exact filtered counts for search/status filters.
+- Search is only applied for 3+ character terms and is backed by trigram indexes over capture title/summary/content and chat title/auto-title/summary.
+- Chat classification status lookups are limited to visible/selected sessions and backed by a `queue_jobs` expression index on `metadata->>'sessionId'`.
 
 ---
 
@@ -243,10 +253,12 @@ Implemented:
 
 - Unified `HistoryItem` interface exported for use in page component
 - Type filter support (`all`, `braindumps`, `chats`)
-- Fetches both `onto_braindumps` and `chat_sessions`
-- Merges and sorts by `created_at` descending
+- Streams bounded page data through `public.get_history_page_v1`
+- Merges captures and chat sessions by effective activity timestamp
 - Filters chat sessions to only show those with 3+ messages OR summary
 - Stats for both types
+- Sanitizes pagination, status, selected item, and search query params before RPC call
+- Caps initial skeleton rendering to 12 cards to avoid large first-paint DOM work
 
 ```typescript
 export interface HistoryItem {
@@ -271,10 +283,11 @@ export interface HistoryItem {
 Implemented:
 
 - Type filter tabs (All / Braindumps / Chats) with counts
-- Visual distinction between types (Brain icon for braindumps, MessagesSquare for chats)
-- Color-coded badges (violet for braindumps, blue for chats)
+- Visual distinction between types (Capture icon for captures, MessagesSquare for chats)
+- Color-coded badges for captures, chats, and processing state
 - Chat-specific metadata display (message count, context type)
-- "Resume" vs "Explore" action text based on type
+- Debounced search that only applies indexed 3+ character terms
+- Lower-bound filtered result display when exact filtered counts are intentionally skipped
 
 #### 3.3 Chat Session Resumption ✅
 
@@ -548,6 +561,9 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 - [x] Migration creates `summary` column
 - [x] Indexes created for history queries
 - [x] Existing sessions not affected (nullable column)
+- [x] Bounded history RPC applied
+- [x] Search/sort/classification indexes applied
+- [x] Filtered pagination uses `limit + 1` instead of exact filtered counts
 
 ### Worker
 
@@ -560,7 +576,8 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 
 - [x] History page shows both types
 - [x] Type filter tabs work (All/Braindumps/Chats)
-- [x] Search searches both types
+- [x] Search searches both types for 3+ character terms
+- [x] Short search terms are ignored/cleared before RPC execution
 - [x] Braindump click opens modal correctly
 - [x] Chat session click resumes session
 - [x] Messages load correctly
@@ -600,7 +617,10 @@ With summary:
 ```bash
 # Apply the migration
 supabase db push
-# Or manually run: 20251208_add_chat_session_summary.sql
+# Or manually run:
+# - 20251208_add_chat_session_summary.sql
+# - 20260707000000_history_page_perf_rpc.sql
+# - 20260707020000_history_page_perf_p2.sql
 ```
 
 ### Step 2: Deploy Worker
@@ -622,16 +642,19 @@ supabase db push
 
 ## Files Modified Summary
 
-| File                                                        | Change                                                 |
-| ----------------------------------------------------------- | ------------------------------------------------------ |
-| `supabase/migrations/20251208_add_chat_session_summary.sql` | ✅ Created - Add summary column + indexes              |
-| `packages/shared-types/src/database.schema.ts`              | ✅ Modified - Add summary to chat_sessions             |
-| `packages/shared-types/src/queue-types.ts`                  | ✅ Modified - Add summary/title/messageCount to result |
-| `apps/worker/src/workers/chat/chatSessionClassifier.ts`     | ✅ Modified - Generate summaries                       |
-| `apps/web/src/routes/history/+page.server.ts`               | ✅ Modified - Unified history items                    |
-| `apps/web/src/routes/history/+page.svelte`                  | ✅ Modified - Type filters, dual display               |
-| `apps/web/src/routes/api/chat/sessions/[id]/+server.ts`     | ✅ Modified - Add GET endpoint                         |
-| `apps/web/src/lib/components/agent/AgentChatModal.svelte`   | ✅ Modified - Session resumption                       |
+| File                                                           | Change                                                                        |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `supabase/migrations/20251208_add_chat_session_summary.sql`    | ✅ Created - Add summary column + indexes                                     |
+| `packages/shared-types/src/database.schema.ts`                 | ✅ Modified - Add summary to chat_sessions                                    |
+| `packages/shared-types/src/queue-types.ts`                     | ✅ Modified - Add summary/title/messageCount to result                        |
+| `apps/worker/src/workers/chat/chatSessionClassifier.ts`        | ✅ Modified - Generate summaries                                              |
+| `apps/web/src/routes/history/+page.server.ts`                  | ✅ Modified - Unified history items                                           |
+| `apps/web/src/routes/history/+page.svelte`                     | ✅ Modified - Type filters, dual display                                      |
+| `apps/web/src/routes/api/chat/sessions/[id]/+server.ts`        | ✅ Modified - Add GET endpoint                                                |
+| `apps/web/src/lib/components/agent/AgentChatModal.svelte`      | ✅ Modified - Session resumption                                              |
+| `supabase/migrations/20260707000000_history_page_perf_rpc.sql` | ✅ Created - Bounded history RPC + base indexes                               |
+| `supabase/migrations/20260707020000_history_page_perf_p2.sql`  | ✅ Created - Search/sort/classification indexes + cheaper filtered pagination |
+| `apps/web/src/routes/history/page.server.test.ts`              | ✅ Created - RPC load and query sanitization coverage                         |
 
 ---
 

@@ -200,7 +200,12 @@ export interface ProjectLoopJobMetadata {
 	projectId: string;
 	userId: string;
 	triggerReason: 'end_of_day' | 'scheduled' | 'burst' | 'critical_change' | 'manual';
-	mode?: 'light_loop' | 'complete_audit' | 'complete_audit_trigger_evaluation';
+	mode?:
+		| 'light_loop'
+		| 'complete_audit'
+		| 'complete_audit_trigger_evaluation'
+		| 'debounced_review_signal';
+	signalId?: string;
 	auditId?: string;
 	auditDepth?: 'standard' | 'deep';
 	triggerEvaluationId?: string;

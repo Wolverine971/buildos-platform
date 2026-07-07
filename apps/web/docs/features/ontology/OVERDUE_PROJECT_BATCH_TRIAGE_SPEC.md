@@ -2,7 +2,7 @@
 
 # Project-Batched Overdue Task Triage Spec
 
-**Last Updated**: March 26, 2026  
+**Last Updated**: July 7, 2026
 **Status**: Draft  
 **Category**: Feature Spec  
 **Supersedes**: parts of `/apps/web/docs/features/ontology/OVERDUE_TASK_TRIAGE_MODAL_SPEC.md`  
@@ -219,6 +219,7 @@ Header actions:
 - `Mark all in progress`
 - overflow menu:
     - `Mark all done` with confirmation
+    - `Move all to backlog` with confirmation
     - `Open project`
 
 Important change:
@@ -249,12 +250,14 @@ Visible quick actions per row:
 - `In progress`
 - `Blocked + revisit`
 - `Find slot`
+- `Move to backlog`
 - `Open task`
 
 Notes:
 
 - row descriptions should stay collapsed by default
 - "Find slot" should reuse the current reschedule-options API, but open in a small popover/sheet instead of rendering the full reschedule UI inline for every task
+- "Move to backlog" should set the task back to `todo`, clear `start_at`, and clear `due_at`
 
 ## 8.6 Project Progress Behavior
 
@@ -411,6 +414,13 @@ Fields used by batch triage:
 - `start_at`
 - `due_at`
 
+Backlog move semantics:
+
+- single-task `Move to backlog` sends `state_key: 'todo'`, `start_at: null`, and `due_at: null`
+- project-level `Move all to backlog` applies the same payload to every remaining overdue task in the active project batch
+- clearing `due_at` removes the task from the overdue query; clearing `start_at` keeps it out of scheduled/calendar views
+- the existing task event sync path should remove linked task calendar events when both scheduling fields are null
+
 ## 11.4 No Required Bulk Endpoint For MVP
 
 Project-level actions can reuse the existing single-task `PATCH` endpoint in a client-side loop for MVP.
@@ -508,6 +518,7 @@ Suggested events:
 2. Replace home alert card with overdue project-batch section.
 3. Rework modal into project-batched layout.
 4. Reuse existing mutation endpoints for row and project actions.
+5. Include backlog recovery actions for individual tasks and active project batches.
 
 ## Phase 2
 
@@ -525,6 +536,7 @@ Suggested events:
 5. Clearing a project batch advances the user to the next batch without forcing a route change.
 6. Advanced reschedule UI is available, but hidden behind secondary controls.
 7. The experience works cleanly on both desktop and mobile.
+8. Moving a task to backlog clears `start_at` and `due_at`, removes it from overdue triage, and removes linked task calendar events.
 
 ## 18. Open Questions
 

@@ -7,7 +7,7 @@
 	Inkprint design tokens. Svelte 5 runes.
 -->
 <script lang="ts">
-	import { ChevronDown } from 'lucide-svelte';
+	import { ChevronDown } from '$lib/icons/lucide';
 	import type { DocumentDiffLine, DocumentFieldDiff } from '$lib/utils/document-diff';
 
 	interface Props {
@@ -88,7 +88,7 @@
 				<div
 					class="bg-muted px-3 py-1.5 border-b border-border flex items-center justify-between"
 				>
-					<span class="micro-label text-foreground">{field.label.toUpperCase()}</span>
+					<span class="micro-label text-foreground">{field.label}</span>
 					<span class="text-[10px] text-muted-foreground/60 tabular-nums">
 						{#if field.stats.modified > 0}
 							<span class="text-warning">~{field.stats.modified}</span>
@@ -114,10 +114,10 @@
 								onclick={() => toggleSeparator(fieldIndex, lineIndex)}
 								aria-expanded={expanded}
 								aria-controls={`diff-hidden-${separatorKey}`}
-								class="w-full flex items-center gap-2 px-3 py-1 bg-muted/50 border-y border-border/30 text-[10px] text-muted-foreground/60 hover:bg-muted hover:text-muted-foreground transition-colors cursor-pointer"
+								class="flex min-h-[44px] w-full cursor-pointer items-center gap-2 border-y border-border/30 bg-muted/50 px-3 py-1 text-[10px] text-muted-foreground/60 transition-colors hover:bg-muted hover:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none"
 							>
 								<ChevronDown
-									class="w-3 h-3 shrink-0 transition-transform {expanded
+									class="h-3 w-3 shrink-0 transition-transform motion-reduce:transition-none {expanded
 										? 'rotate-180'
 										: ''}"
 								/>

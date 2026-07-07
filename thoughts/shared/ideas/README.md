@@ -9,16 +9,16 @@ Ideas related to the conversational agent and chat system.
 
 | File | Description | Status | Frontmatter |
 |------|-------------|--------|-------------|
-| [braindump-chat-original.md](braindump-chat-original.md) | Conversational Project Agent - Design Document v1.0 | implemented | no |
-| [braindump-chat-replacement.md](braindump-chat-replacement.md) | Multi-phase implementation spec for replacing braindump with chat | implemented | yes |
+| [braindump-chat-original.md](../archive/ideas/braindump-chat-original.md) | Conversational Project Agent - Design Document v1.0 | implemented | no |
+| [braindump-chat-replacement.md](../archive/ideas/braindump-chat-replacement.md) | Multi-phase implementation spec for replacing braindump with chat | implemented | yes |
 | [buildos-conversational-agent.md](buildos-conversational-agent.md) | Context and vision document for the conversational agent | implemented | yes |
-| [chat-context-and-tools-design.md](chat-context-and-tools-design.md) | Context management and tool calling design (98% complete) | implemented | no |
-| [chat-implementation-index.md](chat-implementation-index.md) | Implementation index for the chat system with progressive disclosure | implemented | no |
-| [chat-spec.md](chat-spec.md) | Original complete chat system specification | implemented | no |
+| [chat-context-and-tools-design.md](../archive/ideas/chat-context-and-tools-design.md) | Context management and tool calling design (98% complete) | implemented | no |
+| [chat-implementation-index.md](../archive/ideas/chat-implementation-index.md) | Implementation index for the chat system with progressive disclosure | implemented | no |
+| [chat-spec.md](../archive/ideas/chat-spec.md) | Original complete chat system specification | implemented | no |
 | [chat-spec-improved.md](chat-spec-improved.md) | Tailored implementation specification v1 | implemented | no |
-| [chat-spec-improved-v2.md](chat-spec-improved-v2.md) | Implementation specification v2 with progressive disclosure | implemented | no |
-| [chat-task-integration.md](chat-task-integration.md) | Chat system integration with task detail page | implemented | no |
-| [conversational-project-agent.md](conversational-project-agent.md) | Conversational project agent implementation spec v3.0 | implemented | no |
+| [chat-spec-improved-v2.md](../archive/ideas/chat-spec-improved-v2.md) | Implementation specification v2 with progressive disclosure | implemented | no |
+| [chat-task-integration.md](../archive/ideas/chat-task-integration.md) | Chat system integration with task detail page | implemented | no |
+| [conversational-project-agent.md](../archive/ideas/conversational-project-agent.md) | Conversational project agent implementation spec v3.0 | implemented | no |
 
 ## Ontology
 
@@ -40,7 +40,7 @@ Ideas related to project features, scaffolding, and context management.
 
 | File | Description | Status | Frontmatter |
 |------|-------------|--------|-------------|
-| [new-project-context-fields.md](new-project-context-fields.md) | Braindump analyzer for project context field updates | exploratory | no |
+| [new-project-context-fields.md](../archive/ideas/new-project-context-fields.md) | Braindump analyzer for project context field updates | exploratory | no |
 | [project-context-sub-node-design.md](project-context-sub-node-design.md) | Smart context chunking - feature overview and design | exploratory | yes |
 | [project-context-sub-node-system.md](project-context-sub-node-system.md) | Smart context chunking - implementation instructions | exploratory | yes |
 | [project-scaffolding.md](project-scaffolding.md) | Project scaffolding templates system with gallery UI | exploratory | yes |
@@ -51,5 +51,5 @@ Miscellaneous brainstorm and exploration ideas.
 
 | File | Description | Status | Frontmatter |
 |------|-------------|--------|-------------|
-| [brainstorm-user-profile.md](brainstorm-user-profile.md) | Living user profile knowledge base organized as a document tree | brainstorm | no |
-| [rolling-context-window-llm-game-idea.md](rolling-context-window-llm-game-idea.md) | D&D turn-based game with LLM rolling context window | brainstorm | no |
+| [brainstorm-user-profile.md](../archive/ideas/brainstorm-user-profile.md) | Living user profile knowledge base organized as a document tree | brainstorm | no |
+| [rolling-context-window-llm-game-idea.md](../archive/ideas/rolling-context-window-llm-game-idea.md) | D&D turn-based game with LLM rolling context window | brainstorm | no |

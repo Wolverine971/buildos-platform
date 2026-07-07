@@ -6,7 +6,11 @@
 **Type:** Marketing / engagement
 **Source:** `docs/marketing/social-media/linkedin-action-board.md`
 
-## State (DJ is acting on this now)
+## Refresh 2026-07-02 — engagement side unmoved; board is 2 weeks stale
+
+No LinkedIn scan or post since the board's last consolidation (**06-19**). The Tier A windows below are long dead — do NOT post the stale queue; run a fresh scan and post same-day. Troy/Manuel relationship touches may still be worth a late comment. Separate discovery: root `linkedin-edits.md` (expanded 6/28) is DJ's **profile rewrite** (About section, paste-ready blocks, facts-to-verify list: Curri = YC S19, BuildOS start Mar 2025, Security+) — drafted, not yet pasted to the live profile. That's a distinct 15-minute ship.
+
+## State (original, now stale)
 
 The action board is explicit: **"nothing in this backlog was ever posted… shipping is the bottleneck."** Full ready-to-post comments live in the board's Master Queue.
 

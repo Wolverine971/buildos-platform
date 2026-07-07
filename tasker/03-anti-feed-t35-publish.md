@@ -16,13 +16,13 @@ Verified directly: `https://build-os.com/blogs/philosophy/you-stopped-choosing-w
 - **WS09 dashboard flipped**: T35 → ✅. Also discovered `what-a-thinking-environment-actually-is.md` (= T36's title) has been live since 2026-04-18 but untracked — flagged ⚠️ in the dashboard pending spec verification.
 - Technical validation: JSON-LD (`BlogPosting`, correct `datePublished`) ✅, all cross-links live ✅, no comment leaks ✅. Note: `pic` frontmatter is dead site-wide (parsed, never rendered; OG image falls back to generic card) — a custom OG image would help the social wave but is a site-wide fix, not a T35 blocker.
 
-**Remaining:**
+**Remaining (refreshed 2026-07-02):**
 
 1. ~~Flip T35 to ✅ in the WS09 dashboard~~ ✅ done 2026-07-01.
-2. **Commit + push the quality edits** (blog + WS09 + this file).
-3. Post the drafted social extractions (X thread, LinkedIn, IG carousel, Reddit angles) from the publish kit — post-edit deploy first so the page matches what gets quoted.
+2. ~~Commit + push the quality edits~~ ✅ committed in `734b291a` and pushed 7/01 — the edited page is deployed.
+3. **Post the social extractions** (X thread, LinkedIn, IG carousel, Reddit angles) — kit checkboxes are all still `[ ]`; the page now matches what gets quoted, so nothing blocks this but posting.
 4. TikTok recordings (T48) still gated on [[11-tiktok-ws10-setup]] account setup.
-5. Cadence at-risk: verify T36's live post against its spec (it may already satisfy the slot), then the real gap is T37+ — nothing new tracked since April.
+5. **Verify T36** (`what-a-thinking-environment-actually-is.md`, live since 2026-04-18, flagged `⚠️ live, unverified` in WS09) against its spec (cross-links, JSON-LD, WS04 T15 reconciliation), then flip to ✅. After that the real cadence gap is T37+.
 
 ## State
 

@@ -2,7 +2,7 @@
 
 # Overdue Task Triage Modal Spec
 
-**Last Updated**: March 3, 2026  
+**Last Updated**: July 7, 2026
 **Status**: Draft (Ready for review)  
 **Category**: Feature Spec  
 **Location**: `/apps/web/docs/features/ontology/OVERDUE_TASK_TRIAGE_MODAL_SPEC.md`
@@ -152,13 +152,15 @@ Primary actions shown on each card:
     - `+3d`
     - `Next week`
     - `Pick date...`
-5. `Skip` (no mutation, move to next in queue)
+5. `Move to backlog` → `state_key: 'todo'`, `start_at: null`, `due_at: null`
+6. `Skip` (no mutation, move to next in queue)
 
 Queue removal rule:
 
 - Remove from queue immediately if mutation makes task non-overdue:
     - `state_key` becomes `done`, or
-    - `due_at` moves to `>= now`
+    - `due_at` moves to `>= now`, or
+    - `due_at` is cleared because the task was moved to backlog
 
 ## 7.6 Bulk Actions (All Remaining)
 
@@ -175,6 +177,7 @@ MVP bulk actions:
 2. `Reschedule all +3 days`
 3. `Set all to in progress`
 4. `Mark all done` (requires confirmation)
+5. `Move all to backlog` (requires confirmation; clears `start_at` and `due_at`)
 
 Post-action behavior:
 
@@ -305,7 +308,14 @@ Single-task updates should reuse existing API:
 Fields used by triage:
 
 - `state_key`
+- `start_at`
 - `due_at`
+
+Backlog move behavior:
+
+- single-task backlog action uses the existing task patch endpoint with `state_key: 'todo'`, `start_at: null`, and `due_at: null`
+- bulk backlog action applies the same patch to each task in scope
+- clearing both scheduling fields should also remove linked task calendar events via the existing task event sync path
 
 ## 10.3 Bulk Mutation Strategy
 
@@ -422,6 +432,7 @@ Suggested events:
 5. Bulk action applies to selected scope (`current lane` or `all lanes`) and reports partial failures.
 6. Closing modal reflects updated overdue count after refresh.
 7. Works on mobile and desktop with accessible controls.
+8. Moving to backlog removes the task from overdue triage without marking it complete.
 
 ## 17. Open Questions for Review
 

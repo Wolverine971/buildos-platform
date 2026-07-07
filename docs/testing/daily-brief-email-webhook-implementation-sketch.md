@@ -1,3 +1,12 @@
+<!-- docs/testing/daily-brief-email-webhook-implementation-sketch.md -->
+
+# Daily Brief Email Webhook Implementation Sketch
+
+This is a preserved implementation sketch, not a runnable Vitest spec. It was moved
+out of `apps/web/src/routes` because the previous `server.ts.spec` suffix was not
+discoverable by Vitest and the content contains pseudocode placeholders.
+
+```ts
 // SvelteKit +server.ts specification for BuildOS email webhook endpoint
 // Location: src/routes/webhooks/daily-brief-email/+server.ts
 
@@ -17,36 +26,30 @@ import nodemailer from 'nodemailer';
  * - SUPABASE_URL: Your Supabase project URL
  * - PRIVATE_SUPABASE_SERVICE_KEY: Service role key
  */
-routes/webhooks/daily-brief-email/+server.ts.spec
+// Original sketch path: routes/webhooks/daily-brief-email/+server.ts.spec
 
 interface WebhookPayload {
-  userId: string;
-  briefId: string;
-  briefDate: string;
-  recipientEmail: string;
-  timestamp: string;
-  metadata?: {
-    emailRecordId?: string;
-    recipientRecordId?: string;
-    trackingId?: string;
-    subject?: string;
-  };
+	userId: string;
+	briefId: string;
+	briefDate: string;
+	recipientEmail: string;
+	timestamp: string;
+	metadata?: {
+		emailRecordId?: string;
+		recipientRecordId?: string;
+		trackingId?: string;
+		subject?: string;
+	};
 }
 
 /**
  * Verify webhook signature using HMAC SHA-256
  */
-function verifyWebhookSignature(
-  payload: string,
-  signature: string,
-  secret: string
-): boolean {
-  const expectedSignature = createHmac('sha256', secret)
-    .update(payload)
-    .digest('hex');
+function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
+	const expectedSignature = createHmac('sha256', secret).update(payload).digest('hex');
 
-  // Timing-safe comparison
-  return signature === expectedSignature;
+	// Timing-safe comparison
+	return signature === expectedSignature;
 }
 
 /**
@@ -55,177 +58,183 @@ function verifyWebhookSignature(
  * Receives webhook from daily-brief-worker to send email
  */
 export const POST: RequestHandler = async ({ request }) => {
-  try {
-    // 1. Validate webhook headers
-    const signature = request.headers.get('x-webhook-signature');
-    const timestamp = request.headers.get('x-webhook-timestamp');
-    const source = request.headers.get('x-source');
+	try {
+		// 1. Validate webhook headers
+		const signature = request.headers.get('x-webhook-signature');
+		const timestamp = request.headers.get('x-webhook-timestamp');
+		const source = request.headers.get('x-source');
 
-    if (!signature || !timestamp) {
-      throw error(401, 'Missing webhook signature or timestamp');
-    }
+		if (!signature || !timestamp) {
+			throw error(401, 'Missing webhook signature or timestamp');
+		}
 
-    if (source !== 'daily-brief-worker') {
-      throw error(401, 'Invalid webhook source');
-    }
+		if (source !== 'daily-brief-worker') {
+			throw error(401, 'Invalid webhook source');
+		}
 
-    // 2. Parse and validate payload
-    const rawBody = await request.text();
-    const webhookSecret = import.meta.env.VITE_PRIVATE_BUILDOS_WEBHOOK_SECRET || process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET;
+		// 2. Parse and validate payload
+		const rawBody = await request.text();
+		const webhookSecret =
+			import.meta.env.VITE_PRIVATE_BUILDOS_WEBHOOK_SECRET ||
+			process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET;
 
-    if (!webhookSecret) {
-      console.error('PRIVATE_BUILDOS_WEBHOOK_SECRET not configured');
-      throw error(500, 'Webhook secret not configured');
-    }
+		if (!webhookSecret) {
+			console.error('PRIVATE_BUILDOS_WEBHOOK_SECRET not configured');
+			throw error(500, 'Webhook secret not configured');
+		}
 
-    // Verify signature
-    if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
-      throw error(401, 'Invalid webhook signature');
-    }
+		// Verify signature
+		if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
+			throw error(401, 'Invalid webhook signature');
+		}
 
-    // Check timestamp freshness (prevent replay attacks)
-    const requestTime = new Date(timestamp).getTime();
-    const now = Date.now();
-    const MAX_AGE = 5 * 60 * 1000; // 5 minutes
+		// Check timestamp freshness (prevent replay attacks)
+		const requestTime = new Date(timestamp).getTime();
+		const now = Date.now();
+		const MAX_AGE = 5 * 60 * 1000; // 5 minutes
 
-    if (Math.abs(now - requestTime) > MAX_AGE) {
-      throw error(401, 'Webhook timestamp too old');
-    }
+		if (Math.abs(now - requestTime) > MAX_AGE) {
+			throw error(401, 'Webhook timestamp too old');
+		}
 
-    const payload: WebhookPayload = JSON.parse(rawBody);
+		const payload: WebhookPayload = JSON.parse(rawBody);
 
-    // 3. Initialize Supabase client
-    const supabase = createClient(
-      import.meta.env.VITE_SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL!,
-      import.meta.env.PRIVATE_SUPABASE_SERVICE_KEY || process.env.PRIVATE_SUPABASE_SERVICE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
+		// 3. Initialize Supabase client
+		const supabase = createClient(
+			import.meta.env.VITE_SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL!,
+			import.meta.env.PRIVATE_SUPABASE_SERVICE_KEY ||
+				process.env.PRIVATE_SUPABASE_SERVICE_KEY!,
+			{
+				auth: {
+					autoRefreshToken: false,
+					persistSession: false
+				}
+			}
+		);
 
-    // 4. Fetch the daily brief data with llm_analysis
-    const { data: brief, error: briefError } = await supabase
-      .from('daily_briefs')
-      .select('*')
-      .eq('id', payload.briefId)
-      .single();
+		// 4. Fetch the daily brief data with llm_analysis
+		const { data: brief, error: briefError } = await supabase
+			.from('daily_briefs')
+			.select('*')
+			.eq('id', payload.briefId)
+			.single();
 
-    if (briefError || !brief) {
-      console.error('Failed to fetch brief:', briefError);
-      throw error(404, 'Brief not found');
-    }
+		if (briefError || !brief) {
+			console.error('Failed to fetch brief:', briefError);
+			throw error(404, 'Brief not found');
+		}
 
-    // PSEUDO CODE: Get llm_analysis content
-    // The llm_analysis field contains the formatted markdown content
-    // that should be sent in the email
-    const briefContent = brief.llm_analysis || brief.summary_content;
+		// PSEUDO CODE: Get llm_analysis content
+		// The llm_analysis field contains the formatted markdown content
+		// that should be sent in the email
+		const briefContent = brief.llm_analysis || brief.summary_content;
 
-    // 5. Fetch user preferences (optional - for additional customization)
-    const { data: preferences } = await supabase
-      .from('user_brief_preferences')
-      .select('*')
-      .eq('user_id', payload.userId)
-      .single();
+		// 5. Fetch user preferences (optional - for additional customization)
+		const { data: preferences } = await supabase
+			.from('user_brief_preferences')
+			.select('*')
+			.eq('user_id', payload.userId)
+			.single();
 
-    // 6. Generate email HTML from template
-    // PSEUDO CODE: Use your existing email template system
-    const emailHtml = generateEmailTemplate({
-      subject: payload.metadata?.subject || `Daily Brief - ${new Date(payload.briefDate).toLocaleDateString()}`,
-      content: renderMarkdown(briefContent), // Convert markdown to HTML
-      briefDate: payload.briefDate,
-      briefId: payload.briefId,
-      trackingId: payload.metadata?.trackingId,
-      userPreferences: preferences
-    });
+		// 6. Generate email HTML from template
+		// PSEUDO CODE: Use your existing email template system
+		const emailHtml = generateEmailTemplate({
+			subject:
+				payload.metadata?.subject ||
+				`Daily Brief - ${new Date(payload.briefDate).toLocaleDateString()}`,
+			content: renderMarkdown(briefContent), // Convert markdown to HTML
+			briefDate: payload.briefDate,
+			briefId: payload.briefId,
+			trackingId: payload.metadata?.trackingId,
+			userPreferences: preferences
+		});
 
-    // 7. Send email using Gmail (or your email service)
-    // Option A: Using nodemailer directly
-    const transporter = nodemailer.createTransporter({
-      service: 'gmail',
-      auth: {
-        user: import.meta.env.VITE_GMAIL_USER || process.env.GMAIL_USER,
-        pass: import.meta.env.VITE_GMAIL_APP_PASSWORD || process.env.GMAIL_APP_PASSWORD
-      }
-    });
+		// 7. Send email using Gmail (or your email service)
+		// Option A: Using nodemailer directly
+		const transporter = nodemailer.createTransporter({
+			service: 'gmail',
+			auth: {
+				user: import.meta.env.VITE_GMAIL_USER || process.env.GMAIL_USER,
+				pass: import.meta.env.VITE_GMAIL_APP_PASSWORD || process.env.GMAIL_APP_PASSWORD
+			}
+		});
 
-    const mailOptions = {
-      from: `BuildOS <${import.meta.env.VITE_GMAIL_USER || process.env.GMAIL_USER}>`,
-      to: payload.recipientEmail,
-      subject: payload.metadata?.subject || `Daily Brief - ${new Date(payload.briefDate).toLocaleDateString()}`,
-      html: emailHtml,
-      // Optional: Add tracking pixel
-      headers: payload.metadata?.trackingId ? {
-        'X-Tracking-Id': payload.metadata.trackingId
-      } : undefined
-    };
+		const mailOptions = {
+			from: `BuildOS <${import.meta.env.VITE_GMAIL_USER || process.env.GMAIL_USER}>`,
+			to: payload.recipientEmail,
+			subject:
+				payload.metadata?.subject ||
+				`Daily Brief - ${new Date(payload.briefDate).toLocaleDateString()}`,
+			html: emailHtml,
+			// Optional: Add tracking pixel
+			headers: payload.metadata?.trackingId
+				? {
+						'X-Tracking-Id': payload.metadata.trackingId
+					}
+				: undefined
+		};
 
-    await transporter.sendMail(mailOptions);
+		await transporter.sendMail(mailOptions);
 
-    // Option B: Using your existing EmailService
-    // const emailService = new EmailService();
-    // await emailService.send({
-    //   to: payload.recipientEmail,
-    //   subject: payload.metadata?.subject,
-    //   html: emailHtml,
-    //   trackingId: payload.metadata?.trackingId
-    // });
+		// Option B: Using your existing EmailService
+		// const emailService = new EmailService();
+		// await emailService.send({
+		//   to: payload.recipientEmail,
+		//   subject: payload.metadata?.subject,
+		//   html: emailHtml,
+		//   trackingId: payload.metadata?.trackingId
+		// });
 
-    // 8. Update email status in database (if tracking)
-    if (payload.metadata?.emailRecordId) {
-      await supabase
-        .from('emails')
-        .update({
-          status: 'sent',
-          sent_at: new Date().toISOString()
-        })
-        .eq('id', payload.metadata.emailRecordId);
-    }
+		// 8. Update email status in database (if tracking)
+		if (payload.metadata?.emailRecordId) {
+			await supabase
+				.from('emails')
+				.update({
+					status: 'sent',
+					sent_at: new Date().toISOString()
+				})
+				.eq('id', payload.metadata.emailRecordId);
+		}
 
-    if (payload.metadata?.recipientRecordId) {
-      await supabase
-        .from('email_recipients')
-        .update({
-          status: 'sent',
-          sent_at: new Date().toISOString()
-        })
-        .eq('id', payload.metadata.recipientRecordId);
-    }
+		if (payload.metadata?.recipientRecordId) {
+			await supabase
+				.from('email_recipients')
+				.update({
+					status: 'sent',
+					sent_at: new Date().toISOString()
+				})
+				.eq('id', payload.metadata.recipientRecordId);
+		}
 
-    // 9. Log email event for tracking
-    await supabase
-      .from('email_tracking_events')
-      .insert({
-        tracking_id: payload.metadata?.trackingId,
-        event_type: 'sent',
-        recipient_email: payload.recipientEmail,
-        metadata: {
-          brief_id: payload.briefId,
-          user_id: payload.userId,
-          sent_via: 'webhook'
-        }
-      });
+		// 9. Log email event for tracking
+		await supabase.from('email_tracking_events').insert({
+			tracking_id: payload.metadata?.trackingId,
+			event_type: 'sent',
+			recipient_email: payload.recipientEmail,
+			metadata: {
+				brief_id: payload.briefId,
+				user_id: payload.userId,
+				sent_via: 'webhook'
+			}
+		});
 
-    // 10. Return success response
-    return json({
-      success: true,
-      message: 'Email sent successfully',
-      briefId: payload.briefId,
-      timestamp: new Date().toISOString()
-    });
+		// 10. Return success response
+		return json({
+			success: true,
+			message: 'Email sent successfully',
+			briefId: payload.briefId,
+			timestamp: new Date().toISOString()
+		});
+	} catch (err) {
+		console.error('Webhook error:', err);
 
-  } catch (err) {
-    console.error('Webhook error:', err);
+		// Return appropriate error response
+		if (err instanceof Error && 'status' in err) {
+			throw err; // Re-throw SvelteKit errors
+		}
 
-    // Return appropriate error response
-    if (err instanceof Error && 'status' in err) {
-      throw err; // Re-throw SvelteKit errors
-    }
-
-    throw error(500, 'Failed to process webhook');
-  }
+		throw error(500, 'Failed to process webhook');
+	}
 };
 
 /**
@@ -234,11 +243,11 @@ export const POST: RequestHandler = async ({ request }) => {
  * Health check endpoint
  */
 export const GET: RequestHandler = async () => {
-  return json({
-    status: 'healthy',
-    service: 'daily-brief-email-webhook',
-    timestamp: new Date().toISOString()
-  });
+	return json({
+		status: 'healthy',
+		service: 'daily-brief-email-webhook',
+		timestamp: new Date().toISOString()
+	});
 };
 
 // ============================================
@@ -250,16 +259,16 @@ export const GET: RequestHandler = async () => {
  * PSEUDO CODE - Implement based on your existing template system
  */
 function generateEmailTemplate(data: {
-  subject: string;
-  content: string;
-  briefDate: string;
-  briefId: string;
-  trackingId?: string;
-  userPreferences?: any;
+	subject: string;
+	content: string;
+	briefDate: string;
+	briefId: string;
+	trackingId?: string;
+	userPreferences?: any;
 }): string {
-  // Your existing email template logic
-  // Example structure:
-  return `
+	// Your existing email template logic
+	// Example structure:
+	return `
     <!DOCTYPE html>
     <html>
       <head>
@@ -289,13 +298,13 @@ function generateEmailTemplate(data: {
  * PSEUDO CODE - Use your existing markdown renderer
  */
 function renderMarkdown(markdown: string): string {
-  // Use your existing markdown rendering logic
-  // Example: marked, markdown-it, etc.
-  // import { marked } from 'marked';
-  // return marked(markdown);
+	// Use your existing markdown rendering logic
+	// Example: marked, markdown-it, etc.
+	// import { marked } from 'marked';
+	// return marked(markdown);
 
-  // For now, return as-is (implement your renderer)
-  return markdown.replace(/\n/g, '<br>');
+	// For now, return as-is (implement your renderer)
+	return markdown.replace(/\n/g, '<br>');
 }
 
 // ============================================
@@ -335,3 +344,4 @@ function renderMarkdown(markdown: string): string {
  *    - Dead letter queue for failed emails
  *    - Email provider failover (SendGrid, SES as backup)
  */
+```

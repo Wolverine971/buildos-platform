@@ -50,6 +50,7 @@
 		milestones,
 		goals,
 		events,
+		loadActivity = true,
 		onOpenEntity
 	}: {
 		projectId: string;
@@ -57,12 +58,14 @@
 		milestones: Milestone[];
 		goals: Goal[];
 		events: OntoEvent[];
+		loadActivity?: boolean;
 		onOpenEntity: (kind: ProjectLogEntityType, id: string) => void;
 	} = $props();
 
 	let logs = $state<ProjectLogEntryWithMeta[]>([]);
 	let logsLoading = $state(true);
 	let logsError = $state<string | null>(null);
+	let loadedLogsProjectId = $state<string | null>(null);
 
 	let mobileTab = $state<'next' | 'recent'>('recent');
 
@@ -80,24 +83,39 @@
 		);
 	}
 
-	async function loadLogs() {
+	async function loadLogs(requestProjectId = projectId) {
 		logsLoading = true;
 		logsError = null;
 		try {
-			const page = await fetchProjectLogs({ projectId, limit: 12, offset: 0 });
+			const page = await fetchProjectLogs({
+				projectId: requestProjectId,
+				limit: 12,
+				offset: 0
+			});
+			if (projectId !== requestProjectId) return;
 			logs = page.logs;
+			loadedLogsProjectId = requestProjectId;
 		} catch (err) {
+			if (projectId !== requestProjectId) return;
 			logsError = err instanceof Error ? err.message : 'Failed to load activity';
 		} finally {
-			logsLoading = false;
+			if (projectId === requestProjectId) {
+				logsLoading = false;
+			}
 		}
 	}
 
-	// Effect runs once after first mount AND every time projectId changes.
-	// (No `onMount(loadLogs)` — that would double-fetch on the initial render.)
+	// Effect runs once after first mount AND every time projectId changes, but
+	// only after the page lets secondary requests start.
 	$effect(() => {
-		void projectId;
-		void loadLogs();
+		const currentProjectId = projectId;
+		if (loadedLogsProjectId !== currentProjectId) {
+			logs = [];
+			logsError = null;
+			logsLoading = true;
+		}
+		if (!loadActivity || loadedLogsProjectId === currentProjectId) return;
+		void loadLogs(currentProjectId);
 	});
 
 	// ----------------------------------------------------------------

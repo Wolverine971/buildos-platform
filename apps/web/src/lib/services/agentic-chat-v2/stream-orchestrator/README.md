@@ -48,8 +48,20 @@ That makes changes harder to reason about and raises the odds of subtle regressi
   Repair-policy builders and mutation-integrity guidance.
 - `round-analysis.ts`
   Repetition detection, round fingerprinting, and gateway result analysis.
-- Future helper modules
-  Gateway recovery routines and any remaining loop-local policy extraction.
+- `tool-classification.ts`
+  Shared read/write/discovery classification, gateway success semantics, duplicate-write skip detection, and trace classification.
+- `tool-round-runner.ts`
+  Tool-round terminal preparation, single-call dispatch, materialization-on-miss, duplicate-write skips, result recording, and model replay messages.
+- `llm-pass-runner.ts`
+  LLM stream event loop, text/reasoning/tool-call event capture, usage/pass metadata, no-tool synthesis suppression, and incomplete-stream guard.
+- `finalization-runner.ts`
+  Length-continuation decisions, no-tool/zero-tool finalization, cancellation partial text, terminal finalization guard, mutation outcome integrity, and tool-limit final text.
+- `write-ledger.ts`
+  Durable write outcome ledger messages for model grounding.
+- `context-gathering-ledger.ts`
+  Read-loop evidence accounting and synthesis pressure.
+- `read-loop-escalation.ts`
+  Read-loop repair escalation thresholds.
 
 Importers point directly at `./stream-orchestrator/index` via the barrel in `agentic-chat-v2/index.ts`.
 
@@ -78,9 +90,11 @@ Importers point directly at `./stream-orchestrator/index` via the barrel in `age
 
 ### Phase 4: Main Loop Reduction
 
-- [ ] Reduce `index.ts` to orchestration-only responsibilities.
+- [x] Reduce `index.ts` toward orchestration-only responsibilities.
 - [x] Introduce small, named round-processing helpers.
-- [ ] Reduce mutable state fan-out where possible.
+- [x] Extract LLM pass execution into `llm-pass-runner.ts`.
+- [x] Extract finalization decisions into `finalization-runner.ts`.
+- [x] Reduce mutable state fan-out where possible without rewriting the state machine.
 
 ## Working Rules
 
@@ -99,4 +113,10 @@ Importers point directly at `./stream-orchestrator/index` via the barrel in `age
 - Current status after repair/round-analysis extraction pass: `35/35` tests passing.
 - Current baseline freeze status: `38/38` orchestrator tests passing.
 - Current focused baseline with direct helper coverage: `46/46` tests passing across `stream-orchestrator.test.ts`, `repair-instructions.test.ts`, and `round-analysis.test.ts`.
+- Current Wave 4 focused suite: `111/111` tests passing across `stream-orchestrator.test.ts`, `finalization-runner.test.ts`, `repair-instructions.test.ts`, and `tool-payload-compaction.test.ts`.
 - Broader `agentic-chat-v2` service baseline: `112/112` tests passing across `18` test files.
+- Current Phase 5 focused suite: `174/174` tests passing across `13` test files.
+- Current broader `agentic-chat-v2` service suite: `423/423` tests passing across `51` test files.
+- Current route-level stream suite: `17/17` tests passing in `src/routes/api/agent/v2/stream/server.test.ts`.
+- Current TypeScript check: `pnpm --filter @buildos/web exec tsc --noEmit --pretty false --skipLibCheck` passes after `pnpm --filter @buildos/web exec svelte-kit sync`.
+- Current web check: `pnpm --filter @buildos/web check` passes with `0` errors and `0` warnings.

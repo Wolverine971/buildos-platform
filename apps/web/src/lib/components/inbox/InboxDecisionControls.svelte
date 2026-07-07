@@ -30,10 +30,12 @@
 			? 'flex shrink-0 flex-col items-stretch gap-2 sm:w-56 sm:items-end'
 			: 'flex shrink-0 flex-col items-stretch gap-2 sm:w-52'
 	);
+	const canOpenChat = $derived(canChat && Boolean(onChat));
+	const hasSecondaryActions = $derived(Boolean(onSnooze || canOpenChat));
 </script>
 
 <div class={containerClass}>
-	<div class="flex flex-wrap items-center justify-end gap-2">
+	<div class="grid w-full grid-cols-2 gap-2">
 		<Button
 			variant="success"
 			size="sm"
@@ -41,7 +43,7 @@
 			loading={pending}
 			onclick={() => onApprove?.()}
 			disabled={pending}
-			class="min-w-[6.5rem] flex-1 text-xs"
+			class="w-full text-xs"
 		>
 			Accept
 		</Button>
@@ -51,35 +53,39 @@
 			icon={X}
 			onclick={() => onReject?.()}
 			disabled={pending}
-			class="min-w-[6.5rem] flex-1 text-xs"
+			class="w-full text-xs"
 		>
 			Dismiss
 		</Button>
-		{#if onSnooze}
-			<Button
-				variant="accent"
-				size="sm"
-				icon={Clock}
-				onclick={() => onSnooze?.()}
-				disabled={pending}
-				title="Snooze until tomorrow"
-				class="min-w-[6.5rem] flex-1 text-xs"
-			>
-				Later
-			</Button>
-		{/if}
-		{#if canChat}
-			<Button
-				variant="accent"
-				size="sm"
-				icon={MessageCircle}
-				loading={openingChat}
-				onclick={() => onChat?.()}
-				disabled={pending || openingChat}
-				class="min-w-[6.5rem] flex-1 text-xs"
-			>
-				Chat
-			</Button>
-		{/if}
 	</div>
+	{#if hasSecondaryActions}
+		<div class="grid w-full gap-2 {onSnooze && canOpenChat ? 'grid-cols-2' : 'grid-cols-1'}">
+			{#if canOpenChat}
+				<Button
+					variant="accent"
+					size="sm"
+					icon={MessageCircle}
+					loading={openingChat}
+					onclick={() => onChat?.()}
+					disabled={pending || openingChat}
+					class="w-full text-xs"
+				>
+					Chat
+				</Button>
+			{/if}
+			{#if onSnooze}
+				<Button
+					variant="outline"
+					size="sm"
+					icon={Clock}
+					onclick={() => onSnooze?.()}
+					disabled={pending}
+					title="Snooze until tomorrow"
+					class="w-full text-xs"
+				>
+					Snooze
+				</Button>
+			{/if}
+		</div>
+	{/if}
 </div>

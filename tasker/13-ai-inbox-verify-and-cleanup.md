@@ -46,6 +46,12 @@ The unified mutation-review queue is built and wired end-to-end:
   `POST /api/inbox/decide`: after a successful source decision, stale or failed
   source sync is repaired by forcing the matching `inbox_items` row out of
   `pending`, so handled items do not reload into the inbox.
+- ✅ Project-suggestion dismissal feedback UI is wired: Project Inbox and
+  Dashboard Inbox expose reason/note fields, preserve those values through
+  optimistic removal, and allow truly bare dismissals to fall back to
+  `dismissed_without_note`. Verified with
+  `pnpm --filter=web test -- apps/web/src/routes/api/inbox/decide/server.test.ts`
+  (repo expanded to 317 files / 1998 tests) and `pnpm --filter=web check`.
 - ✅ Inbox Chat resolution hook is implemented: Project Inbox and Dashboard
   Inbox call `POST /api/inbox/[item_id]/resolve-from-chat` when an inbox-origin
   chat closes with successful mutations. Discussion-only chats keep the card
@@ -55,6 +61,12 @@ The unified mutation-review queue is built and wired end-to-end:
   imported nowhere and has been deleted. `ProjectInboxPanel` is the sole
   project-scoped loop review surface.
 - ✅ Phase 3 (profile fragments / contact merge) and Phase 4 (loops/calendar emit true ChangeSets) intentionally deferred
+
+## Refresh 2026-07-02 — more hardening landed; smoke tests remain THE gap
+
+The uncommitted worker wave hardens the loop pipeline further: `projectLoopWorker.ts` status-fenced atomic claim (`queued`→`running`, prevents stall-reclaim double-execution) + heartbeat across the ~5 LLM calls; `enqueue.ts` stable per-day dedup key (`project-loop:{projectId}:{YYYY-MM-DD}` — the old per-runId key never deduped); `projectLoops.ts` flag resolver where explicit `ENABLE_PROJECT_LOOPS` always wins (fixes dev-default overriding an explicit `false`). New `projectLoopStallReclaim.test.ts` (7 tests); worker suite 265/265 green. All uncommitted — see [[15-commit-staged-work]].
+
+The manual smoke docs/checklists are still `Pass / Fail` placeholders with blank run headers. START HERE's prod deploy was closed 7/01, proving the migration path works — the inbox migrations' prod state should be verified the same way.
 
 ## Loose ends (refreshed 2026-07-01)
 

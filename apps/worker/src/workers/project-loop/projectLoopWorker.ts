@@ -47,11 +47,18 @@ import {
 	loadProjectLoopSuggestionEntityStates,
 	MAX_PROJECT_LOOP_CONTEXT_DOCUMENTS,
 	projectLoopDocumentRecencyMs,
+	projectReviewSignalDedupKey,
+	PROJECT_REVIEW_SIGNAL_QUEUE_MODE,
+	PROJECT_REVIEW_SIGNAL_TRIGGER_REASON,
 	type ProjectLoopScopedEntity,
 	summarizeProjectLoopDocTree,
 	syncInboxItemForProjectSuggestion
 } from '@buildos/shared-agent-ops';
-import { processProjectAuditTriggerEvaluationJob } from './auditEnqueue';
+import {
+	processProjectAuditTriggerEvaluationJob,
+	queueProjectAuditFromWorker
+} from './auditEnqueue';
+import { enqueueProjectLoop } from './enqueue';
 
 function isProjectAuditTriggerReason(
 	value: ProjectLoopJobMetadata['triggerReason']
@@ -421,6 +428,148 @@ async function supersedePendingSuggestionsForFailedRun(params: {
 	return (updatedSuggestions ?? []).length;
 }
 
+async function scheduleDebouncedProjectReviewSignalWakeup(params: {
+	projectId: string;
+	userId: string;
+	signalId: string;
+	dueAt: string;
+}): Promise<void> {
+	const { error } = await supabase.rpc('add_queue_job', {
+		p_user_id: params.userId,
+		p_job_type: 'buildos_project_loop',
+		p_metadata: {
+			mode: PROJECT_REVIEW_SIGNAL_QUEUE_MODE,
+			signalId: params.signalId,
+			projectId: params.projectId,
+			userId: params.userId,
+			triggerReason: PROJECT_REVIEW_SIGNAL_TRIGGER_REASON
+		} as unknown as Json,
+		p_priority: 8,
+		p_scheduled_for: params.dueAt,
+		p_dedup_key: `${projectReviewSignalDedupKey(params.projectId)}:retry:${params.dueAt.slice(0, 16)}`
+	});
+
+	if (error) {
+		console.warn(
+			`[ProjectLoops] Failed to reschedule debounced review signal ${params.signalId}: ${error.message}`
+		);
+	}
+}
+
+async function processDebouncedProjectReviewSignalJob(
+	job: ProcessingJob<ProjectLoopJobMetadata>
+): Promise<{ success: boolean; runId?: string; auditId?: string; skipped?: boolean }> {
+	const { projectId, userId, signalId } = job.data;
+	if (!projectId || !userId) {
+		throw new Error('projectId and userId are required for debounced review signal jobs');
+	}
+
+	let query = (supabase as any)
+		.from('project_review_signals')
+		.select('*')
+		.eq('project_id', projectId)
+		.eq('status', 'pending');
+	if (signalId) query = query.eq('id', signalId);
+	const { data: signal, error: signalError } = await query
+		.order('due_at', { ascending: true })
+		.limit(1)
+		.maybeSingle();
+
+	if (signalError) {
+		throw new Error(`Failed to load debounced project review signal: ${signalError.message}`);
+	}
+	if (!signal?.id) {
+		await job.log('No pending debounced project review signal found; skipping.');
+		return { success: true, skipped: true };
+	}
+
+	const pendingSignal = signal as ProjectReviewSignalRow;
+	const dueMs = Date.parse(pendingSignal.due_at);
+	const now = new Date();
+	if (Number.isFinite(dueMs) && dueMs > now.getTime() + 1000) {
+		await scheduleDebouncedProjectReviewSignalWakeup({
+			projectId,
+			userId,
+			signalId: pendingSignal.id,
+			dueAt: pendingSignal.due_at
+		});
+		await job.log(
+			`Debounced project review signal ${pendingSignal.id} is not due until ${pendingSignal.due_at}; rescheduled.`
+		);
+		return { success: true, skipped: true };
+	}
+
+	const nowIso = now.toISOString();
+	const { data: claimed, error: claimError } = await (supabase as any)
+		.from('project_review_signals')
+		.update({ status: 'processing', started_at: nowIso, queue_job_id: job.id })
+		.eq('id', pendingSignal.id)
+		.eq('status', 'pending')
+		.lte('due_at', nowIso)
+		.select('*')
+		.maybeSingle();
+
+	if (claimError) {
+		throw new Error(`Failed to claim debounced project review signal: ${claimError.message}`);
+	}
+	if (!claimed?.id) {
+		await job.log(
+			`Debounced project review signal ${pendingSignal.id} was already claimed or deferred; skipping.`
+		);
+		return { success: true, skipped: true };
+	}
+
+	try {
+		const [loopResult, auditResult] = await Promise.all([
+			enqueueProjectLoop({
+				projectId,
+				userId,
+				triggerReason: PROJECT_REVIEW_SIGNAL_TRIGGER_REASON
+			}),
+			queueProjectAuditFromWorker({
+				projectId,
+				userId,
+				triggerReason: PROJECT_REVIEW_SIGNAL_TRIGGER_REASON
+			})
+		]);
+
+		await (supabase as any)
+			.from('project_review_signals')
+			.update({
+				status: 'completed',
+				finished_at: new Date().toISOString(),
+				processed_loop_run_id: loopResult.runId ?? null,
+				processed_audit_id: auditResult.auditId ?? null,
+				error_message: loopResult.reason ?? auditResult.reason ?? null
+			})
+			.eq('id', pendingSignal.id)
+			.eq('status', 'processing');
+
+		await job.log(
+			`Debounced project review signal ${pendingSignal.id} processed: loop=${loopResult.reason ?? loopResult.runId ?? 'queued'}, audit=${auditResult.reason ?? auditResult.auditId ?? 'queued'}.`
+		);
+		return {
+			success: true,
+			runId: loopResult.runId,
+			auditId: auditResult.auditId,
+			skipped: !loopResult.queued && !auditResult.queued
+		};
+	} catch (error) {
+		const message =
+			error instanceof Error ? error.message : 'Debounced project review signal failed';
+		await (supabase as any)
+			.from('project_review_signals')
+			.update({
+				status: 'failed',
+				error_message: message,
+				finished_at: new Date().toISOString()
+			})
+			.eq('id', pendingSignal.id)
+			.eq('status', 'processing');
+		throw error;
+	}
+}
+
 type AuditActivityRow = {
 	entity_type: string | null;
 	entity_id: string | null;
@@ -493,6 +642,14 @@ type AuditChildSuggestionResult = {
 };
 
 type CompleteAuditPacket = ReturnType<typeof buildCompleteAuditPacket>;
+
+type ProjectReviewSignalRow = {
+	id: string;
+	project_id: string;
+	user_id: string;
+	status: string;
+	due_at: string;
+};
 
 type RawAuditEvidenceRef = {
 	entity_type?: unknown;
@@ -2159,6 +2316,10 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			auditId: result.auditId,
 			skipped: !result.queued
 		};
+	}
+
+	if (job.data.mode === PROJECT_REVIEW_SIGNAL_QUEUE_MODE) {
+		return processDebouncedProjectReviewSignalJob(job);
 	}
 
 	if (!runId || !projectId) {

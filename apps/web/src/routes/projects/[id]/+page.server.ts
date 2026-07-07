@@ -5,14 +5,14 @@
  * This page uses a skeleton-first loading strategy for instant perceived performance:
  *
  * 1. WARM NAVIGATION (from /projects or homepage):
- *    - Navigation store contains project summary with counts
- *    - Server returns skeleton flag immediately (no blocking fetch)
- *    - Client renders skeleton with counts, then hydrates via /api/onto/projects/[id]/full
+ *    - Server returns a lightweight skeleton/access bundle
+ *    - Client renders skeleton, then hydrates via /api/onto/projects/[id]/full
  *
  * 2. COLD LOAD (direct URL, refresh, external link):
  *    - No navigation store data available
- *    - Server calls get_project_skeleton_with_access RPC (single round-trip that
- *      ensures the actor row, returns counts, and resolves access flags).
+ *    - Server calls a skeleton/access RPC (single round-trip that ensures the
+ *      actor row and resolves access flags). The classic /old route keeps the
+ *      counted skeleton RPC for its count-bearing placeholders.
  *    - Client renders skeleton, then hydrates via /api/onto/projects/[id]/full
  *
  * Performance Targets:
@@ -153,7 +153,7 @@ function normalizeAccess(
 	};
 }
 
-export const load: PageServerLoad = async ({ params, locals }) => {
+export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const { id } = params;
 
 	if (!id) {
@@ -166,12 +166,18 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const supabase = locals.supabase;
 	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
 		locals.serverTiming ? locals.serverTiming.measure(name, fn) : fn();
+	const includeSkeletonCounts = url.pathname.endsWith('/old');
+	const skeletonRpcName = includeSkeletonCounts
+		? 'get_project_skeleton_with_access'
+		: 'get_project_skeleton_with_access_v2';
 
 	// Single round-trip: ensures actor, resolves read access, returns skeleton + access.
 	const { data: bundleRaw, error: bundleError } = await measure(
-		'db.project_skeleton_with_access',
+		includeSkeletonCounts
+			? 'db.project_skeleton_with_access'
+			: 'db.project_skeleton_with_access_v2',
 		() =>
-			supabase.rpc('get_project_skeleton_with_access', {
+			(supabase as any).rpc(skeletonRpcName, {
 				p_project_id: id
 			})
 	);
@@ -278,22 +284,22 @@ async function loadFullData(
 			.from('onto_documents')
 			.select(CONTEXT_DOCUMENT_COLUMNS)
 			.eq('project_id', id)
-				.eq('type_key', 'document.context.project')
-				.is('deleted_at', null)
-				.order('updated_at', { ascending: false })
-				.limit(20);
+			.eq('type_key', 'document.context.project')
+			.is('deleted_at', null)
+			.order('updated_at', { ascending: false })
+			.limit(20);
 
 		if (contextDocumentError) {
 			console.warn(
 				'[Project Page] Failed to load context document fallback:',
 				contextDocumentError
 			);
-			} else {
-				data.context_document =
-					pickStartHereDocument(
-						(contextDocument ?? []) as unknown as Array<Record<string, unknown>>
-					) ?? null;
-			}
+		} else {
+			data.context_document =
+				pickStartHereDocument(
+					(contextDocument ?? []) as unknown as Array<Record<string, unknown>>
+				) ?? null;
+		}
 	}
 	const rawTasks = (data.tasks || []) as Array<{ id: string } & Record<string, unknown>>;
 	const goals = (data.goals || []) as GoalRow[];

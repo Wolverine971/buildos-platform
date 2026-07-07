@@ -446,7 +446,7 @@ describe('inbox service', () => {
 		);
 	});
 
-	it('counts inbox rows through a lightweight index query without backfilling source rows', async () => {
+	it('counts inbox rows through lightweight index queries after scoped source backfill', async () => {
 		const { supabase, state } = createSupabaseMock({
 			inbox_items: [
 				{
@@ -496,12 +496,15 @@ describe('inbox service', () => {
 			account: 1,
 			truncated: false,
 			repairedCount: 0,
-			backfilledCount: 0
+			backfilledCount: 1
 		});
-		expect(mocks.syncInboxItemForSource).not.toHaveBeenCalled();
-		expect(
-			state.operations.some((operation) => operation.table === 'project_suggestions')
-		).toBe(false);
+		expect(mocks.syncInboxItemForSource).toHaveBeenCalledWith(
+			expect.objectContaining({
+				sourceType: 'project_suggestion',
+				sourceRefId: 'suggestion-1'
+			})
+		);
+		expect(state.operations.some((operation) => operation.table === 'inbox_items')).toBe(true);
 	});
 
 	it('keeps exact totals when the count breakdown rows are limited', async () => {
@@ -538,6 +541,73 @@ describe('inbox service', () => {
 		expect(result.account).toBe(1);
 		expect(result.by_status).toEqual({ pending: 2 });
 		expect(result.truncated).toBe(true);
+	});
+
+	it('backfills stale project_id values before project-scoped counts', async () => {
+		const inboxItem = {
+			id: 'inbox-agent-run',
+			source_type: 'agent_run',
+			source_ref_id: 'agent-run-1',
+			source_status: 'proposal_ready',
+			user_id: 'user-1',
+			project_id: null,
+			audience: 'user',
+			status: 'pending',
+			title: 'Review generated changes',
+			summary: 'One proposed change',
+			risk_tier: null,
+			action_kinds: ['approve', 'reject'],
+			created_at: '2026-07-04T12:00:00.000Z'
+		};
+		const { supabase, state } = createSupabaseMock({
+			inbox_items: [inboxItem],
+			agent_runs: [
+				{
+					id: 'agent-run-1',
+					user_id: 'user-1',
+					project_id: 'project-1',
+					status: 'proposal_ready',
+					label: 'Review generated changes',
+					change_set: { status: 'pending', changes: [{ tool: 'create_onto_task' }] },
+					created_at: '2026-07-04T12:00:00.000Z'
+				}
+			]
+		});
+		mocks.syncInboxItemForSource.mockImplementation(
+			async ({ sourceRefId }: { sourceRefId: string }) => {
+				const row = state.tables.inbox_items.find(
+					(entry) => entry.source_ref_id === sourceRefId
+				);
+				if (row) row.project_id = 'project-1';
+				return row ?? null;
+			}
+		);
+
+		const result = await countInboxItems({
+			supabase,
+			admin: supabase,
+			userId: 'user-1',
+			projectId: 'project-1',
+			status: 'pending',
+			limit: 20
+		});
+
+		expect(result).toMatchObject({
+			total: 1,
+			by_status: { pending: 1 },
+			by_source_type: { agent_run: 1 },
+			by_project: { 'project-1': 1 },
+			account: 0,
+			truncated: false,
+			repairedCount: 0,
+			backfilledCount: 1
+		});
+		expect(mocks.syncInboxItemForSource).toHaveBeenCalledWith(
+			expect.objectContaining({
+				sourceType: 'agent_run',
+				sourceRefId: 'agent-run-1'
+			})
+		);
 	});
 
 	it('attaches project metadata from source payloads when the index row is missing project_id', async () => {

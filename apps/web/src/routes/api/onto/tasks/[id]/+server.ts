@@ -76,7 +76,11 @@ import {
 	resolveEntityMentionUserIds
 } from '$lib/server/entity-mention-notification.service';
 import {
+	queueProjectLoopReviewSignalAsync,
 	queueProjectLoopBurstAsync,
+	readProjectLoopReviewContext,
+	shouldDebounceProjectLoopBurstForTaskUpdate,
+	shouldSuppressProjectLoopBurstForTaskUpdate,
 	shouldSkipProjectLoopBurst
 } from '$lib/server/project-loop-burst.service';
 
@@ -228,6 +232,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		const parsed = await parseJsonRequest(request, jsonObjectSchema);
 		if (!parsed.ok) return parsed.response;
 		const body = parsed.data;
+		const projectLoopReviewContext = readProjectLoopReviewContext(body);
 		const {
 			title,
 			description,
@@ -738,14 +743,32 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		if (!shouldSkipProjectLoopBurst(request)) {
-			queueProjectLoopBurstAsync({
+			const burstParams = {
 				projectId: existingTask.project_id,
 				userId: session.user.id,
 				source: 'task_update',
 				entityType: 'task',
 				entityId: params.id,
 				action: 'updated'
-			});
+			};
+			if (
+				shouldDebounceProjectLoopBurstForTaskUpdate({
+					body,
+					reviewContext: projectLoopReviewContext
+				})
+			) {
+				queueProjectLoopReviewSignalAsync({
+					...burstParams,
+					reviewContext: projectLoopReviewContext
+				});
+			} else if (
+				!shouldSuppressProjectLoopBurstForTaskUpdate({
+					body,
+					reviewContext: projectLoopReviewContext
+				})
+			) {
+				queueProjectLoopBurstAsync(burstParams);
+			}
 		}
 
 		return ApiResponse.success({ task: taskWithAssignees });

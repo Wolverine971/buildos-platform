@@ -2,8 +2,9 @@
 
 # Agentic Chat Prepared Prompt Prewarm Spec
 
-Status: Proposed
+Status: Implemented
 Date: 2026-04-26
+Last updated: 2026-07-05
 Owner: BuildOS Agentic Chat
 
 Related:
@@ -40,6 +41,7 @@ User clicks Send
   -> POST /api/agent/v2/stream with message + prepared_prompt_key
   -> authenticate + validate key belongs to this user/session/scope
   -> select prepared prompt artifact for the user message/tool profile
+  -> overlay current-turn Active Domain Signals
   -> immediately start OpenRouter stream
 ```
 
@@ -55,16 +57,21 @@ Important current files:
 | Prewarm endpoint           | `apps/web/src/routes/api/agent/v2/prewarm/+server.ts`                     |
 | Stream endpoint            | `apps/web/src/routes/api/agent/v2/stream/+server.ts`                      |
 | Context cache contract     | `apps/web/src/lib/services/agentic-chat-v2/context-cache.ts`              |
+| Prepared prompt helpers    | `apps/web/src/lib/services/agentic-chat-v2/prepared-prompt-cache.ts`      |
 | Context loader             | `apps/web/src/lib/services/agentic-chat-v2/context-loader.ts`             |
 | Lite prompt builder        | `apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.ts` |
 | Tool surface router        | `apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts`              |
 | OpenRouter stream client   | `apps/web/src/lib/services/openrouter-v2-service.ts`                      |
+| Cleanup scheduler          | `apps/worker/src/scheduler.ts`                                            |
 
 Current facts:
 
-- The prewarm endpoint authenticates with `safeGetSession()`, checks project or daily brief access where needed, loads `loadFastChatPromptContext()`, builds a `FastChatContextCache`, and returns `prewarmed_context`.
-- The frontend stores only one `FastChatContextCache`, keyed by context type, project id, focus type, and focus entity id.
-- The stream endpoint accepts `prewarmedContext`, but it still builds the `LitePromptEnvelope` on send.
+- The prewarm endpoint authenticates with `safeGetSession()`, checks project or daily brief access where needed, loads `loadFastChatPromptContext()`, builds a `FastChatContextCache`, prepares Lite prompt surfaces when enabled, and returns both `prewarmed_context` and `prepared_prompt`.
+- The frontend tracks context-cache readiness and prepared-prompt readiness separately. A fresh context cache can satisfy local readiness, but a missing, consumed, or expired prepared prompt still triggers a prepared-prompt rebuild when no turn is active.
+- The frontend sends only `preparedPromptKey` on stream. It no longer sends unsigned client-carried `prewarmedContext` as a stream fallback.
+- The stream endpoint still accepts legacy `prewarmedContext` fields at the request boundary for compatibility, but it ignores unsigned client-carried context. Stream context now comes from a consumed prepared prompt, a fresh session metadata cache, or a fresh server load.
+- Prepared prompts are built without turn-specific Active Domain Signals. The stream endpoint overlays the current turn's domain signals into both the system prompt and Lite prompt sections after it knows the current user message.
+- Prepared-prompt rows are consumed once and cleaned up through the worker retention cleanup path, which calls `cleanup_expired_agentic_chat_prepared_prompts`.
 - Project tool selection can depend on the user message. For example, project document or mutation-heavy turns route to larger surfaces in `selectFastChatTools({ contextType, latestUserMessage })`.
 - Prompt snapshots already persist the full system prompt in `chat_prompt_snapshots`; prepared prompts can reuse that observability shape.
 
@@ -87,9 +94,10 @@ Materialized views can still be useful in a later phase for shared, bounded aggr
 - Avoid repeating backend context queries when the user sends shortly after modal open.
 - Preserve the current Lite prompt behavior and prompt observability.
 - Keep frontend API simple: pass `prepared_prompt_key` in addition to the user message.
-- Keep the existing `prewarmed_context` response during rollout for compatibility and fallback.
+- Keep the existing `prewarmed_context` response as a local/session cache artifact from `/prewarm`, but do not trust it on `/stream`.
 - Support message-dependent project tool surfaces without rebuilding database context.
 - Make stale, mismatched, consumed, or invalid keys fall back to the current stream path.
+- Do not rebuild prepared prompts while a turn is starting, streaming, or restored-active; rebuild the next prepared prompt after the current turn completes so history is fresh.
 
 ## Non-Goals
 
@@ -191,6 +199,8 @@ type PreparedPromptSurface = {
 	surface_profile: string;
 	tool_names: string[];
 	tools_sha256: string | null;
+	tool_definitions_sha256: string | null;
+	harness_sha256: string;
 	system_prompt: string;
 	system_prompt_sha256: string;
 	sections: unknown[];
@@ -266,7 +276,9 @@ Response:
 }
 ```
 
-The frontend stores `prepared_prompt.key` beside the existing `prewarmedContext`.
+The frontend stores `prepared_prompt.key` beside the existing local `prewarmedContext`.
+Only the prepared prompt key is sent to `/api/agent/v2/stream`; the local
+context cache is not a trusted stream input.
 
 ### `POST /api/agent/v2/stream`
 
@@ -277,6 +289,7 @@ type FastAgentStreamRequest = {
 	message: string;
 	preparedPromptKey?: string | null;
 	prepared_prompt_key?: string | null;
+	/** Legacy accepted field. Ignored by the stream route unless a signed format is added later. */
 	prewarmedContext?: FastChatContextCache | null;
 };
 ```
@@ -289,10 +302,11 @@ Stream behavior:
 4. Select the surface profile from the user message.
 5. Try to consume `prepared_prompt_key`.
 6. If valid and the requested surface exists, use its `system_prompt`, `history_for_model`, and `context_payload`.
-7. If valid but surface is missing, use stored `context_payload` to build only the needed prompt surface without database re-query.
-8. If invalid, stale, mismatched, or consumed, fall back to current cache/fresh-load path.
-9. Start `streamFastChat()` as soon as the prompt artifact is available.
-10. Persist prompt snapshot and detailed observability without blocking the OpenRouter stream where possible.
+7. Overlay the current turn's Active Domain Signals into both the prepared system prompt and `litePromptEnvelope.sections`.
+8. If invalid, stale, mismatched, consumed, or missing the requested surface, fall back to session metadata cache or fresh server context load.
+9. Ignore legacy unsigned `prewarmedContext` request payloads. Do not use them as a cache source.
+10. Start `streamFastChat()` as soon as the prompt artifact is available.
+11. Persist prompt snapshot and detailed observability without blocking the OpenRouter stream where possible.
 
 ## Stream Fast Path
 
@@ -335,8 +349,16 @@ if (prepared.hit) {
   });
   contextCacheSource = 'prepared_prompt';
 } else {
-  // existing session_cache/request_prewarm/fresh_load path
+  // session_cache/fresh_load path; unsigned request prewarm payloads are ignored
 }
+
+litePromptEnvelope = applyActiveDomainSignalsOverlay(litePromptEnvelope, {
+  currentUserMessage: message,
+  conversationSummary,
+  priorDomainIds,
+  priorOutcomeCardIds,
+  domainSensingResult: turnDomainSensing
+});
 
 void persistPromptSnapshotAfterStreamStart(prepared);
 await streamFastChat({ systemPrompt, history: historyForModel, tools, message, ... });
@@ -352,13 +374,16 @@ await streamFastChat({ systemPrompt, history: historyForModel, tools, message, .
 
 - Store `preparedPromptKey` and metadata beside `prewarmedContext`.
 - Add `matchingFreshPreparedPrompt(key)` parallel to `matchingFreshContext(key)`.
+- Track `contextCacheReady` and `preparedPromptReady` separately.
+- Do not refire when both the context cache and prepared prompt are ready; do refire when the context cache is fresh but the prepared prompt is missing, consumed, expired, or retry-ready.
+- Gate prewarm with `getIsTurnActive()` so prepared prompts are not rebuilt while a turn is starting, streaming, or restored-active.
 - Invalidate when context key changes, expiry passes, or modal closes.
 - Clear the prepared key after a send attempt uses it.
 
 `AgentChatModal.svelte`:
 
 - Include `preparedPromptKey` in the stream request when it matches the current context key.
-- Keep sending `prewarmedContext` during rollout as fallback.
+- Do not include `prewarmedContext` in the stream request. The local context cache remains useful for readiness and for adopting `/prewarm` responses, not for stream trust.
 
 ## Backend Changes
 
@@ -378,9 +403,12 @@ await streamFastChat({ systemPrompt, history: historyForModel, tools, message, .
 `/api/agent/v2/stream/+server.ts`:
 
 - Parse `preparedPromptKey`.
-- Try prepared prompt consume before checking session/request context cache.
+- Accept legacy `prewarmedContext` fields at the request boundary, but ignore unsigned client-carried context.
+- Try prepared prompt consume before checking session context cache.
 - Add `cache_source = 'prepared_prompt'`.
 - Add miss reasons in timing metadata.
+- Use only `prepared_prompt`, `session_cache`, or `fresh_load` as live context cache sources.
+- Apply current-turn Active Domain Signals after prompt selection so prepared prompt surfaces do not bake in stale turn-specific domain sections.
 - Avoid blocking OpenRouter startup on prompt snapshot insert when using a prepared row.
 
 `prompt-observability.ts`:
@@ -471,7 +499,9 @@ end;
 $$;
 ```
 
-Schedule with Supabase Cron if available. Supabase Cron can run SQL or database functions inside Postgres, which avoids network round trips. The job should run every 5 to 15 minutes.
+The worker retention cleanup path should call this function with the service
+client. Supabase Cron can also run it every 5 to 15 minutes if available, but
+the app should not rely solely on manual cleanup.
 
 ## Materialized View Option
 
@@ -518,7 +548,8 @@ Better v1 work:
 
 - keep stable prompt sections before dynamic context;
 - avoid volatile timestamps in the stable prefix;
-- use the prepared prompt to preserve identical system prompt text between prewarm and send;
+- use the prepared prompt to preserve a stable base system prompt between prewarm and send;
+- apply turn-specific Active Domain Signals only at stream time, after the current user message exists;
 - track `cached_prompt_tokens` by prepared prompt hit vs miss.
 
 Possible phase 3:
@@ -549,6 +580,7 @@ Add admin dashboard slices:
 
 Miss reasons:
 
+- `disabled`
 - `missing_key`
 - `bad_format`
 - `not_found`
@@ -558,21 +590,24 @@ Miss reasons:
 - `user_mismatch`
 - `session_mismatch`
 - `scope_mismatch`
-- `access_denied`
+- `stale_harness`
 - `surface_missing`
+- `update_failed`
 - `parse_error`
 
 ## Rollout Plan
 
-1. Add database table, RLS, indexes, cleanup function, and `chat_turn_runs` columns.
-2. Add prepared prompt key helpers and tests.
-3. Extend prewarm endpoint behind `FASTCHAT_PREPARED_PROMPT_PREWARM_ENABLED`.
-4. Extend frontend to store and pass `preparedPromptKey`, while still passing `prewarmedContext`.
-5. Extend stream endpoint to consume prepared prompts and fall back cleanly.
-6. Add unit tests for valid hit, stale key, wrong user, wrong scope, consumed key, and surface profile routing.
-7. Canary in development/admin traffic.
-8. Compare metrics to baseline.
-9. Remove or reduce request-carried `prewarmedContext` reliance after prepared prompts are stable.
+Implemented state as of 2026-07-05:
+
+1. Database table, RLS, indexes, cleanup function, and `chat_turn_runs` columns are in place.
+2. Prepared prompt key helpers and tests are in place.
+3. Prewarm endpoint creates prepared prompts when `FASTCHAT_PREPARED_PROMPT_PREWARM_ENABLED` is true; the default is enabled, with the env var as a rollback override.
+4. Frontend stores prepared prompt metadata and sends `preparedPromptKey` when it matches the current context key.
+5. Frontend no longer sends unsigned `prewarmedContext` on stream.
+6. Stream endpoint consumes prepared prompts and falls back cleanly to session cache or fresh load.
+7. Active Domain Signals are overlaid at stream time so prepared prompts do not retain stale turn-specific sections.
+8. Worker retention cleanup calls `cleanup_expired_agentic_chat_prepared_prompts`.
+9. Admin/session observability records prepared prompt request, hit, miss reason, age, and surface profile.
 
 ## Test Plan
 
@@ -583,8 +618,12 @@ Backend unit tests:
 - stream rejects stale prepared prompt and falls back.
 - stream rejects wrong nonce.
 - stream rejects wrong user/session/scope.
+- stream rejects consumed prompts.
+- stream rejects stale harnesses when the prepared surface no longer matches the current prompt/tool harness.
 - stream selects `project_write`, `project_document`, or `project_write_document` from the user message and uses the matching prepared surface.
-- consumed rows cannot be reused.
+- stream ignores unsigned client-carried `prewarmedContext` and performs a fresh server load when there is no prepared prompt or session cache.
+- stream replaces stale prepared Active Domain Signals with current-turn domain signals.
+- worker scheduler calls `cleanup_expired_agentic_chat_prepared_prompts` on the retention cleanup path.
 
 Frontend tests:
 
@@ -592,7 +631,11 @@ Frontend tests:
 - key clears on modal close.
 - key clears after send.
 - key is not sent when context key drifts.
-- legacy `prewarmedContext` still works when prepared prompt is absent.
+- first send with a matching sessionless prepared prompt skips `ensureSessionReady()` and lets stream create the session.
+- first send without a matching prepared prompt bootstraps a session before stream.
+- prepared prompt is not rebuilt while a turn is starting, streaming, or restored-active.
+- prepared prompt is rebuilt after stream completion with fresh history.
+- fresh context cache plus missing prepared prompt triggers prepared-prompt rebuild without reloading context.
 
 Integration tests:
 
@@ -616,7 +659,8 @@ Performance checks:
 - Invalid prepared keys never expose prompt/context data.
 - A prepared key cannot be reused after a successful send.
 - Tool execution still enforces normal runtime authorization.
-- Existing `prewarmed_context` fallback remains functional.
+- Existing `prewarmed_context` response remains available for local/session cache adoption.
+- Unsigned request-carried `prewarmedContext` is not a stream cache source.
 - Admin timing shows `cache_source = 'prepared_prompt'`.
 - Prepared prompt rows are cleaned up automatically.
 

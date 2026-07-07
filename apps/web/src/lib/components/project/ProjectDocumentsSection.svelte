@@ -23,7 +23,8 @@
 		initialStructure = null,
 		initialDocuments = {},
 		initialUnlinked = [],
-		initialArchived = []
+		initialArchived = [],
+		pollInterval = 30000
 	}: {
 		projectId: string;
 		documents: Document[];
@@ -46,6 +47,7 @@
 		initialDocuments?: Record<string, OntoDocument>;
 		initialUnlinked?: OntoDocument[];
 		initialArchived?: OntoDocument[];
+		pollInterval?: number;
 	} = $props();
 
 	let docTreeViewRef = $state<{ refresh: () => void } | null>(null);
@@ -114,6 +116,7 @@
 				{initialDocuments}
 				{initialUnlinked}
 				{initialArchived}
+				{pollInterval}
 				selectedDocumentId={activeDocumentId}
 			/>
 		</div>

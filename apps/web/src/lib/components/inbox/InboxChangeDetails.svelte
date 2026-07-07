@@ -17,7 +17,7 @@
 		ListChecks,
 		Pencil,
 		Trash2
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import type { LoopOperation, ProjectSuggestionPreview } from '@buildos/shared-types';
 	import {
 		decodeLoopOperations,
@@ -35,6 +35,8 @@
 	} = $props();
 
 	let open = $state(untrack(() => defaultOpen));
+	const propsId = $props.id();
+	const detailsId = `inbox-change-details-${propsId}`;
 
 	const actionMeta: Record<LoopOperationAction, { cls: string; icon: typeof Pencil }> = {
 		create: {
@@ -84,16 +86,21 @@
 		<button
 			type="button"
 			onclick={() => (open = !open)}
-			class="inline-flex items-center gap-1 rounded text-[11px] font-semibold text-accent hover:underline"
+			class="-ml-2 inline-flex min-h-[44px] items-center gap-1 rounded-md px-2 text-[11px] font-semibold text-accent transition-colors hover:bg-accent/10 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none"
 			aria-expanded={open}
+			aria-controls={detailsId}
 		>
-			<ChevronDown class="h-3 w-3 transition-transform {open ? 'rotate-0' : '-rotate-90'}" />
+			<ChevronDown
+				class="h-3 w-3 shrink-0 transition-transform motion-reduce:transition-none {open
+					? 'rotate-0'
+					: '-rotate-90'}"
+			/>
 			{open ? 'Hide' : 'Show'}
 			{count} proposed change{count === 1 ? '' : 's'}
 		</button>
 
 		{#if open}
-			<div class="mt-2 space-y-1.5">
+			<div id={detailsId} class="mt-2 space-y-1.5">
 				{#each decoded as op, opIndex (opIndex)}
 					{@const Icon = entityIcon[op.entityLabel] ?? actionMeta[op.action].icon}
 					<div class="rounded-md border border-border bg-muted/20 p-2">
@@ -103,13 +110,13 @@
 									op.action
 								].cls}"
 							>
-								<Icon class="h-3 w-3" />
+								<Icon class="h-3 w-3 shrink-0" />
 								{op.actionLabel}
 								{op.entityLabel}
 							</span>
 							{#if op.target}
 								<span
-									class="min-w-0 truncate text-[11px] font-medium text-foreground"
+									class="block min-w-0 max-w-full truncate text-[11px] font-medium text-foreground"
 								>
 									{op.target}
 								</span>
@@ -117,7 +124,9 @@
 						</div>
 
 						{#if op.summary}
-							<p class="mt-1 text-[11px] text-muted-foreground">{op.summary}</p>
+							<p class="mt-1 break-words text-[11px] text-muted-foreground">
+								{op.summary}
+							</p>
 						{/if}
 
 						{#if op.changes.length}
@@ -143,11 +152,7 @@
 							<div class="flex flex-wrap items-start gap-2 text-[11px]">
 								{#if preview?.before?.length}
 									<div class="min-w-0 flex-1">
-										<p
-											class="text-[10px] font-semibold uppercase text-muted-foreground"
-										>
-											Before
-										</p>
+										<p class="micro-label text-muted-foreground">Before</p>
 										<ul class="mt-0.5 space-y-0.5">
 											{#each preview.before as line}
 												<li
@@ -164,11 +169,7 @@
 								{/if}
 								{#if preview?.after?.length}
 									<div class="min-w-0 flex-1">
-										<p
-											class="text-[10px] font-semibold uppercase text-muted-foreground"
-										>
-											After
-										</p>
+										<p class="micro-label text-muted-foreground">After</p>
 										<ul class="mt-0.5 space-y-0.5">
 											{#each preview.after as line}
 												<li class="break-words text-foreground/90">
@@ -181,7 +182,7 @@
 							</div>
 						{/if}
 						{#if preview?.impact}
-							<p class="mt-1.5 text-[11px] text-muted-foreground">
+							<p class="mt-1.5 break-words text-[11px] text-muted-foreground">
 								<span class="font-semibold text-foreground/80">Impact:</span>
 								{preview.impact}
 							</p>

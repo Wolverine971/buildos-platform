@@ -2,7 +2,7 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-	import { FileDiff } from 'lucide-svelte';
+	import { FileDiff } from '$lib/icons/lucide';
 	import UnifiedDiffView from '$lib/components/ui/UnifiedDiffView.svelte';
 	import { createDocumentDiff } from '$lib/utils/document-diff';
 	import type { ProposedChange } from '@buildos/shared-types';

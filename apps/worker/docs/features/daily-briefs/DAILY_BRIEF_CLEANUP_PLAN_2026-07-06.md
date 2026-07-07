@@ -94,6 +94,46 @@ Three adversarial review agents + prod data checks ran over commits `3a728402`/`
 2. Apply `20260706000000`'s updated detection only matters for fresh/shadow DBs (prod already has the index + RPC).
 3. Verify the live queue acceptance list above (unchanged).
 
+---
+
+## Follow-ups — canonical list as of 2026-07-06 EOD
+
+### P0 — do first (DJ-only actions)
+
+- [ ] **Apply `20260706020000_secure_daily_brief_engagement_metrics.sql` to prod.** The engagement view is live and anon-readable RIGHT NOW (verified via anon-key read). Dashboard SQL editor or `supabase db push`. Everything in the file is safe to run on a DB that already has the 010000 view.
+- [ ] **Commit + deploy the review-fix working tree** (worker + web + 1 migration + tests; all brief/email-scoped). Deploy order no longer matters (webhook `.strict()` removed), but both Vercel and Railway need the new code. Watch the first Railway build — `d0b417d4` also switched nixpacks to node 22 / pnpm 11.
+- [ ] **Set `PRIVATE_POSTAL_ADDRESS` in Vercel + Railway env.** The CAN-SPAM footer renders empty until it's set (code ships fine without it).
+
+### P1 — post-deploy validation (agent-runnable, ~1 session)
+
+- [ ] Live queue acceptance: (a) two rapid non-forced Generates coalesce to ONE `generate_daily_brief` job; (b) Regenerate button still cancels + recreates; (c) on-demand generate before preferred send time → `send_notification` job `scheduled_for` = preferred time, email arrives once at that time; (d) a second same-day job for the same brief date (cron or manual, non-forced) completes with `skipped_existing_brief`, its re-emit dedupes, and no second email is delivered.
+- [ ] Confirm the consecutive-day duplicate emails stop: re-run the audit §1 email query after ~5–7 days (same-subject emails on adjacent days should no longer appear).
+- [ ] App-open flow in prod: open dashboard on a fresh day → brief generates once, widget attaches; check `queue_jobs.metadata` for `skipped_*` reasons distribution and confirm no failed-job churn from projectless/archived-only users.
+- [ ] Fresh shadow-DB apply of `20260706000000` + `20260706020000`, then `pnpm gen:all` (the new view will enter generated types; the admin endpoint's `as any` casts can then be removed).
+- [ ] Check the new `/admin/notifications` daily-brief engagement card once ~a week of data exists, and confirm PostHog `email_opened`/`email_clicked` events are flowing (fold into the existing PostHog check-back due 2026-07-08→15).
+
+### P2 — remaining plan scope (dispatch as WPs)
+
+- [ ] **WP-7 (quality, biggest lever):** the stored brief is still the 39KB wall. Cap `## Project Details` to top-5 signal projects, LLM-judged priority actions (kills the dueling Start Heres), merge exec+analysis into one JSON call, project-prompt rewrite (3 sections, Next Steps first, anti-filler). Data prerequisites (WP-5/6) are already shipped.
+- [ ] **WP-10 (re-engagement repair):** window gates (`>=4 && lastBrief>=2`, `>=14 && lastBrief>=10`, dormant ~45–60d), **reachability gate** before generating for dormant users (no deliverable channel → skip generation entirely), auto-suppress after 3 consecutive unopened sends, add `ENGAGEMENT_BACKOFF_ENABLED` to `apps/worker/.env.example` + flags table (it is ON in prod, hand-set in Railway).
+- [ ] **WP-11 (digest email):** proper digest (exec summary + Start Here + counts + "View full brief →" AT THE TOP). Current stop-gap only strips `## Project Details` from the email body. Best done after WP-7 so it can consume structured priority actions.
+- [ ] **E8 (onboarding opt-in):** `NotificationsStepV3.svelte` swallows the 400 when the brief-prefs row doesn't exist yet — auto-create the row in the `notification-preferences` PUT and surface failures. Every silently-lost opt-in is a lost retention channel.
+- [ ] **SMS honesty:** decide — stop creating `sms` `notification_deliveries` for brief events while the Twilio send is parked (they're currently marked "sent" while all 195 `sms_messages` ever sit queued/pending), or revive the SMS worker (see worker-flow-audit 2026-07-01).
+
+### P3 — small deferred items (batch into any nearby session)
+
+- [ ] `isBriefGenerating` can't see legacy queue jobs whose `metadata` lacks `briefDate` (all new paths set it; only pre-deploy rows affected — self-ages out).
+- [ ] Pin the fresh-window invariant: non-prod `stalledTimeout` (120s) < `FRESH_PROCESSING_BRIEF_WINDOW_MS` (10min) — retry-bypass now defuses the swallow, but add a test/derivation (`freshWindow ≈ stalledTimeout + margin`) so the constants can't drift dangerously in prod.
+- [ ] Data hygiene: orphaned `emails` rows with `status='scheduled'` from pre-fix retry attempts (harmless; optional cleanup query). Also `emails.status` on some legacy sent rows still says `scheduled`.
+- [ ] Docs refresh: `DAILY_BRIEF_GENERATION_END_TO_END.md` still carries stale claims in places (qwen-primary model note in §8.4/§14.3, "backoff default off" framing, §14.4 dead-code note now that `projectNextStepGenerator` is deleted) — sweep it against the shipped code.
+- [ ] Deferred review nits: emailAdapter webhook `fetch` has no timeout/AbortSignal (slow Vercel response holds the notification job toward the 5-min stall window); view join casts (`::TEXT`) prevent index use on `chat_sessions.user_id` — fine at current scale.
+
+### Later — from the original audit, unscheduled
+
+- [ ] Re-engagement content polish when WP-10 lands: reengagement prompt gets user first name, no-heading + no-invented-links rules; dormant prompt formats raw ISO dates before injection.
+- [ ] Quality backlog beyond WP-7: yesterday-continuity is shipped (WP-6) but §3.3 items 9–10 (render or drop `llm_analysis`; exec temp 0.4; In-Flight/stale-task section rendering in assembly) remain.
+- [ ] Re-engagement curve redesign (§4.4-8) — only after the measurement card has real data.
+
 ### WP-1: Completed-brief skip in the worker (B2) — **do this first**
 
 **Goal:** generation becomes idempotent per (user, brief_date). This one change neutralizes the 6am/9am cron regeneration, stalled-retry double-spend, and most scheduler-guard blind spots (B5, B6).

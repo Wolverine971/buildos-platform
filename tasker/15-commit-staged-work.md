@@ -1,36 +1,27 @@
 <!-- tasker/15-commit-staged-work.md -->
 
-# 15 — Commit the standing worktree (4 coherent bundles + untracked strays)
+# 15 — Commit the standing worktree (wave 2)
 
-**Priority:** P1 — cheap, removes risk; everything here is done work sitting uncommitted
+**Priority:** P1 — cheap, removes risk; and CI now exists but can't gate uncommitted work
 **Type:** Engineering (housekeeping)
-**Source:** `git status` as of 2026-07-01
+**Source:** `git status` as of 2026-07-02
 
-## State — what's sitting in the tree
+## ✅ Wave 1 (the 2026-07-01 list) — COMMITTED & PUSHED
 
-Four coherent staged bundles, all build-complete:
+All four original bundles landed on 7/01: skill ontology refactor (`2655b199`), burst hardening + onto-route provenance (`2655b199`), /ideate + /moodboard commands (`2655b199`), MCP self-audit + second-audit fixes (`69943e9a`), T35 quality edits + CI + PostHog + agentic-chat W1 fixes (`734b291a`). Root `test.md` deleted. `main` == `origin/main`.
 
-1. **Skill ontology refactor** — new `skill.schema.ts` (Zod frontmatter contract: 6 skill types, 3 altitudes, 3 activations, provenance vocabulary) + ~460-line body-block linter in `skill-authoring-validation.ts` + ~60 SKILL.md files migrated to the canonical block order. **Tests pass: 35/35** (`skill-authoring-validation.test.ts` 19, `skill-load.test.ts` 16). ~59 files, +4352/−1768.
-2. **Loop-burst weighted-score hardening** — `project-loop-burst.service.ts` (score gate: source scores, threshold 4, 30-min lookback, de-dupe, no-double-count) + new test file (6 tests passing) + the five `api/onto/**` routes now passing `entityType`/`entityId`/`action` provenance. Producer AND consumer sides confirmed wired.
-3. **/ideate + /moodboard commands** — `.claude/commands/ideate.md` + `moodboard.md` (iklipse directing engine ported to Real Media Rule / Inkprint). `/ideate` exercised once (author-workflow-teardown renders exist); **`/moodboard` never run** (empty output dir) — first real run validates it.
-4. **Doc updates** — AI Inbox design + clarified-decisions spec status text (current through 6/30), Complete Project Audit spec (see [[14-complete-project-audit-build]]), HYPERPLEXED playbook edits, ONBOARDING/DASHBOARD/PROFILE audit updates.
+## Wave 2 — the NEW uncommitted set (~163 files)
 
-Untracked strays worth committing or deciding on:
-
-- `docs/specs/buildos-mcp-lethal-trifecta-self-audit-2026-06-28.md` — the ONE remaining MCP-hardening artifact ([[07-mcp-hardening]])
-- `docs/testing/MANUAL_AI_INBOX_SMOKE_TESTS_2026-06-25.md` — the smoke checklist itself
-- `docs/marketing/research/anti-feed-receipts-library.md` — this IS the WS09 T45 target file, now created but untracked
-- `tasker/` itself (this whole tracker)
-- Root `test.md` (single HTML comment) — delete
-
-Unstaged noise: WS09 table re-padding (cosmetic), WS10 one-line path fix, marketing doc touch-ups.
+1. **Dead-code sweep** (~2,700 LOC, 55 deletions, per `WORKER_FLOW_AUDIT_2026-07-01.md` §5): homework + tree-agent surfaces (web routes/components/stores + worker engines), legacy email chain (email-sender/service, gmail-transporter, emailWorker, templates), legacy llm-pool, old scripts/planning docs. Plus `queue-types.ts` retired-enum tolerance and `consumption-billing.ts` prefix cleanup.
+2. **Worker loop hardening**: `projectLoopWorker.ts` atomic claim + heartbeat, `enqueue.ts` per-day dedup key, `projectLoops.ts` flag resolver, `supabaseQueue.ts` `getRegisteredJobTypes()`. New stall-reclaim test (7 tests). **Worker suite 265/265 green.**
+3. **Docs/trackers**: `tasker/` (staged), audit docs (`WORKER_FLOW_AUDIT`, `AGENTIC_CHAT_BACKEND_AUDIT` + `_DEEP`), the big staged marketing/docs tranche (target-influencer dossiers incl. simon-willison.md, visual-assets renders, brainstorms, smoke-test checklists, strategy docs), root skill-refactor handoffs, CLAUDE.md updates.
 
 ## Next action
 
-1. Commit as ~4 commits matching the bundles above (skills refactor / burst hardening / commands / docs+trackers).
-2. Fold the untracked strays into the docs commit; delete root `test.md`.
-3. Then run `/moodboard` once for real to validate bundle 3's untested half.
+1. Commit wave 2 as ~3 commits (dead-code sweep / worker loop hardening / docs+trackers). Run `pnpm typecheck` + web tests first — worker is green, web not re-verified after the deletion sweep (web-side homework/tree-agent routes were deleted too).
+2. Confirm no live producers still enqueue `buildos_homework`/`buildos_tree_agent` and drain/clean any old DB rows (the types now only tolerate them via an index signature).
+3. Still pending from wave 1: **`/moodboard` has never been run** (empty `docs/marketing/visual-assets/moodboards/`) — first real run validates it.
 
 ## Done when
 
-`git status` is clean (or intentionally minimal) and `/moodboard` has produced its first artifact.
+`git status` clean, CI green on the pushed commits, retired job types confirmed drained, `/moodboard` exercised once.

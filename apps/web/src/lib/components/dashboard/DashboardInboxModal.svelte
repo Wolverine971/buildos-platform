@@ -238,6 +238,48 @@
 	);
 	const totalActionable = $derived(items.filter(canDecide).length);
 
+	function safeDomId(value: string): string {
+		return value.replace(/[^a-zA-Z0-9_-]/g, '-') || 'group';
+	}
+
+	function groupTabId(key: string): string {
+		return `dashboard-inbox-group-tab-${safeDomId(key)}`;
+	}
+
+	function groupPanelId(key: string): string {
+		return `dashboard-inbox-group-panel-${safeDomId(key)}`;
+	}
+
+	function selectGroup(key: string, options: { focus?: boolean } = {}) {
+		activeGroupKey = key;
+		if (options.focus && typeof document !== 'undefined') {
+			queueMicrotask(() => document.getElementById(groupTabId(key))?.focus());
+		}
+	}
+
+	function handleGroupKeydown(event: KeyboardEvent, key: string) {
+		const currentIndex = groupedItems.findIndex((group) => group.key === key);
+		if (currentIndex < 0 || groupedItems.length <= 1) return;
+
+		let nextIndex = currentIndex;
+		if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+			nextIndex = (currentIndex + 1) % groupedItems.length;
+		} else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+			nextIndex = (currentIndex - 1 + groupedItems.length) % groupedItems.length;
+		} else if (event.key === 'Home') {
+			nextIndex = 0;
+		} else if (event.key === 'End') {
+			nextIndex = groupedItems.length - 1;
+		} else {
+			return;
+		}
+
+		event.preventDefault();
+		const nextGroup = groupedItems[nextIndex];
+		if (!nextGroup) return;
+		selectGroup(nextGroup.key, { focus: true });
+	}
+
 	function asRecord(value: unknown): Record<string, unknown> | null {
 		return value && typeof value === 'object' && !Array.isArray(value)
 			? (value as Record<string, unknown>)
@@ -807,7 +849,9 @@
 				title="Refresh inbox"
 				aria-label="Refresh inbox"
 			>
-				<LoaderCircle class="h-3.5 w-3.5 {loading ? 'animate-spin' : ''}" />
+				<LoaderCircle
+					class="h-3.5 w-3.5 {loading ? 'animate-spin motion-reduce:animate-none' : ''}"
+				/>
 			</Button>
 		</div>
 
@@ -815,7 +859,7 @@
 			<div class="space-y-2 p-3">
 				{#each Array(4) as _, index (index)}
 					<div
-						class="h-24 rounded-md border border-border bg-muted/30 animate-pulse"
+						class="h-24 rounded-md border border-border bg-muted/30 animate-pulse motion-reduce:animate-none"
 					></div>
 				{/each}
 			</div>
@@ -842,19 +886,29 @@
 				<div
 					class="border-b border-border p-2 lg:max-h-[calc(85dvh-8rem)] lg:overflow-y-auto lg:border-b-0 lg:border-r"
 				>
-					<div class="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible">
+					<div
+						role="tablist"
+						aria-label="Inbox groups"
+						class="flex snap-x scroll-px-2 gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible"
+					>
 						{#each groupedItems as group (group.key)}
 							<button
 								type="button"
-								onclick={() => (activeGroupKey = group.key)}
-								class="min-w-[190px] rounded-md border px-2.5 py-2 text-left transition-colors lg:min-w-0 {activeGroup?.key ===
+								id={groupTabId(group.key)}
+								role="tab"
+								aria-selected={activeGroup?.key === group.key}
+								aria-controls={groupPanelId(group.key)}
+								tabindex={activeGroup?.key === group.key ? 0 : -1}
+								onclick={() => selectGroup(group.key)}
+								onkeydown={(event) => handleGroupKeydown(event, group.key)}
+								class="min-h-[44px] min-w-[190px] snap-start rounded-md border px-2.5 py-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none lg:min-w-0 {activeGroup?.key ===
 								group.key
 									? 'border-accent/40 bg-accent/10'
 									: 'border-border bg-card hover:bg-muted/40'}"
 							>
 								<div class="flex items-start justify-between gap-2">
 									<p
-										class="min-w-0 truncate text-xs font-semibold text-foreground"
+										class="min-w-0 flex-1 truncate text-xs font-semibold text-foreground"
 									>
 										{group.label}
 									</p>
@@ -873,7 +927,12 @@
 				</div>
 
 				{#if activeGroup}
-					<section class="flex min-h-0 flex-col overflow-hidden">
+					<div
+						id={groupPanelId(activeGroup.key)}
+						role="tabpanel"
+						aria-labelledby={groupTabId(activeGroup.key)}
+						class="flex min-h-0 flex-col overflow-hidden"
+					>
 						<div
 							class="flex items-center justify-between border-b border-border bg-muted/30 px-3 py-2"
 						>
@@ -893,14 +952,16 @@
 							{#if activeGroup.projectId}
 								<a
 									href="/projects/{activeGroup.projectId}"
-									class="shrink-0 text-xs font-medium text-accent hover:underline"
+									class="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
 								>
 									Open project
 								</a>
 							{/if}
 						</div>
 
-						<div class="min-h-0 flex-1 overflow-y-auto divide-y divide-border">
+						<div
+							class="inbox-spotlight-group min-h-0 flex-1 overflow-y-auto divide-y divide-border"
+						>
 							{#each activeGroup.items as item (item.id)}
 								{@const payload = projectSuggestion(item)}
 								{@const agent = agentRun(item)}
@@ -916,21 +977,33 @@
 								{@const confidence = formatConfidence(calendar?.confidence_score)}
 								{@const tier = tierFor(item.risk_tier ?? payload?.risk_tier)}
 								{@const Icon = sourceIcon(item)}
+								{@const showProjectBadge =
+									Boolean(project) && activeGroup.projectId !== project?.id}
 								{@const evidence = arrayValue<ProjectSuggestionEvidenceRef>(
 									payload?.evidence_refs
 								).slice(0, 2)}
 								{@const changes = changeCount(item)}
-								<div class="px-3 py-3">
+								<div class="inbox-spotlight-item px-3 py-3">
 									<div
 										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 									>
 										<div class="min-w-0 flex-1">
-											<InboxProjectBadge {project} />
-											<div class="flex flex-wrap items-center gap-2">
+											<InboxProjectBadge
+												project={showProjectBadge ? project : null}
+											/>
+											<p
+												class="line-clamp-2 break-words text-sm font-semibold text-foreground"
+											>
+												{item.title ||
+													payload?.title ||
+													agent?.label ||
+													'Review item'}
+											</p>
+											<div class="mt-1.5 flex flex-wrap items-center gap-2">
 												<span
-													class="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold {tier.cls}"
+													class="inline-flex min-w-0 items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold {tier.cls}"
 												>
-													<Icon class="h-3 w-3" />
+													<Icon class="h-3 w-3 shrink-0" />
 													{tier.label}
 												</span>
 												<span class="micro-label text-muted-foreground">
@@ -949,19 +1022,17 @@
 													</span>
 												{/if}
 											</div>
-											<p class="mt-1.5 text-sm font-semibold text-foreground">
-												{item.title ||
-													payload?.title ||
-													agent?.label ||
-													'Review item'}
-											</p>
 											{#if payload?.why_now}
-												<p class="mt-1 text-[12px] text-foreground/80">
+												<p
+													class="mt-1 line-clamp-3 break-words text-[12px] text-foreground/80"
+												>
 													<span class="font-semibold">Why now:</span>
 													{payload.why_now}
 												</p>
 											{:else if item.summary || payload?.rationale || agent?.goal}
-												<p class="mt-1 text-[12px] text-muted-foreground">
+												<p
+													class="mt-1 line-clamp-3 break-words text-[12px] text-muted-foreground"
+												>
 													{item.summary ??
 														payload?.rationale ??
 														agent?.goal}
@@ -969,7 +1040,7 @@
 											{/if}
 											{#if payload?.preview?.summary}
 												<p
-													class="mt-1.5 border-l-2 border-accent/30 pl-2 text-[12px] text-muted-foreground"
+													class="mt-1.5 line-clamp-3 break-words border-l-2 border-accent/30 pl-2 text-[12px] text-muted-foreground"
 												>
 													<span class="font-semibold text-foreground/80">
 														Preview:
@@ -1017,7 +1088,7 @@
 													</div>
 													{#if calendar.suggested_description || calendar.suggested_context}
 														<p
-															class="text-[12px] text-muted-foreground"
+															class="line-clamp-3 break-words text-[12px] text-muted-foreground"
 														>
 															{calendar.suggested_description ??
 																calendar.suggested_context}
@@ -1078,10 +1149,12 @@
 											{#if evidence.length}
 												<div class="mt-2 flex flex-wrap gap-1.5">
 													{#each evidence as ref}
+														{@const label = evidenceLabel(ref)}
 														<span
-															class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+															class="inline-block max-w-full truncate rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground sm:max-w-[18rem]"
+															title={label}
 														>
-															{evidenceLabel(ref)}
+															{label}
 														</span>
 													{/each}
 												</div>
@@ -1155,7 +1228,7 @@
 											/>
 										{:else if !canDecide(item)}
 											<div
-												class="shrink-0 rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground"
+												class="max-w-full shrink-0 break-words rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground sm:max-w-56"
 											>
 												{item.decision_disabled_reason ?? 'View only'}
 											</div>
@@ -1164,7 +1237,7 @@
 								</div>
 							{/each}
 						</div>
-					</section>
+					</div>
 				{/if}
 			</div>
 		{/if}
@@ -1181,3 +1254,29 @@
 		onClose={closeChat}
 	/>
 {/if}
+
+<style>
+	.inbox-spotlight-item {
+		transition:
+			opacity 180ms ease,
+			background-color 180ms ease;
+	}
+
+	.inbox-spotlight-item:hover,
+	.inbox-spotlight-item:focus-within {
+		background-color: hsl(var(--muted) / 0.18);
+	}
+
+	.inbox-spotlight-group:has(.inbox-spotlight-item:hover)
+		.inbox-spotlight-item:not(:hover):not(:focus-within),
+	.inbox-spotlight-group:has(.inbox-spotlight-item:focus-within)
+		.inbox-spotlight-item:not(:hover):not(:focus-within) {
+		opacity: 0.55;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.inbox-spotlight-item {
+			transition: none;
+		}
+	}
+</style>

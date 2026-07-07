@@ -21,7 +21,6 @@
 	action-oriented way, so the dedicated Activity tab was removed.
 -->
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import {
 		AlertTriangle,
@@ -71,6 +70,7 @@
 		risks = [],
 		events = [],
 		milestonesByGoalId = new Map<string, Milestone[]>(),
+		loadInboxPreview = true,
 		onEditGoal,
 		onEditMilestone,
 		onEditPlan,
@@ -93,6 +93,7 @@
 		risks: Risk[];
 		events: OntoEvent[];
 		milestonesByGoalId: Map<string, Milestone[]>;
+		loadInboxPreview?: boolean;
 		onEditGoal: (id: string) => void;
 		onEditMilestone: (id: string) => void;
 		onEditPlan: (id: string) => void;
@@ -132,25 +133,35 @@
 	let openingBriefId = $state<string | null>(null);
 	let inboxCount = $state(0);
 	let inboxCountLoaded = $state(false);
+	let inboxCountLoadedProjectId = $state<string | null>(null);
 
-	async function loadInboxCount() {
+	async function loadInboxCount(requestProjectId = projectId) {
 		try {
 			const url = new URL('/api/inbox/count', window.location.origin);
-			url.searchParams.set('project_id', projectId);
+			url.searchParams.set('project_id', requestProjectId);
 			url.searchParams.set('status', 'pending');
 			const res = await fetch(url);
 			const json = await res.json();
 			if (!res.ok) throw new Error(json?.error ?? 'Failed to load inbox count');
+			if (projectId !== requestProjectId) return;
 			inboxCount = Number(json.data?.total ?? 0);
 			inboxCountLoaded = true;
+			inboxCountLoadedProjectId = requestProjectId;
 		} catch (error) {
+			if (projectId !== requestProjectId) return;
 			console.warn('[EntityTabStrip] Failed to load inbox count', error);
 			inboxCountLoaded = false;
 		}
 	}
 
-	onMount(() => {
-		void loadInboxCount();
+	$effect(() => {
+		const currentProjectId = projectId;
+		if (inboxCountLoadedProjectId !== currentProjectId) {
+			inboxCount = 0;
+			inboxCountLoaded = false;
+		}
+		if (!loadInboxPreview || inboxCountLoadedProjectId === currentProjectId) return;
+		void loadInboxCount(currentProjectId);
 	});
 
 	async function loadBriefs(reset = false) {

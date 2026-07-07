@@ -105,11 +105,12 @@ AgentChatModal.svelte
   -> POST /api/agent/v2/prewarm
   -> loadFastChatPromptContext()
   -> FastChat context cache entry
+  -> short-lived prepared prompt row when enabled
   -> chat_sessions.agent_metadata.fastchat_context_cache when a session exists
 
 AgentChatModal.svelte
   -> POST /api/agent/v2/stream
-  -> stream endpoint checks session cache / request prewarm / fresh load
+  -> stream endpoint consumes prepared prompt or checks session cache / fresh load
   -> buildMasterPrompt() or buildLitePromptEnvelope()
 ```
 
@@ -452,23 +453,29 @@ changing materially.
 The stream endpoint should keep this priority order:
 
 1. fresh matching session metadata cache
-2. verified request prewarm cache
+2. consumed server-owned prepared prompt
 3. fresh context load fallback
 
-For safety, request-provided `prewarmedContext` should be treated as a cache
-transport artifact from prewarm, not as user-authored context.
+For safety, request-provided `prewarmedContext` is no longer a trusted stream
+cache source. `/api/agent/v2/stream` may continue accepting the legacy field at
+the request boundary for older clients, but it should ignore unsigned
+client-carried context unless a signed format is added later.
 
 Recommended hardening:
 
 - Prefer session cache whenever a session exists.
-- Reject request prewarm payloads with wrong version, wrong key, or stale
-  `created_at`.
-- Add an HMAC signature for request prewarm payloads before relying on
-  no-session draft prewarm in production.
+- Prefer short-lived prepared prompt keys for no-session first-send fast paths.
+- Reject prepared prompt keys with wrong nonce, wrong user, wrong session/scope,
+  expiry, consumption, surface mismatch, or stale harness.
+- Rebuild prepared prompts after a turn completes so the next turn includes
+  fresh history; do not rebuild while a turn is active.
+- Add an HMAC signature before reintroducing any request-carried context payload
+  as a stream optimization.
 - Never use request prewarm context for permission decisions or writes.
 
-This keeps `/api/agent/v2/prewarm` as the canonical data builder while avoiding
-trust in arbitrary client-edited JSON.
+This keeps `/api/agent/v2/prewarm` as the canonical data builder while keeping
+the stream trust boundary on server-owned session metadata, server-owned
+prepared prompt rows, and fresh server loads.
 
 ## Prompt Integration
 
@@ -534,10 +541,11 @@ Prompt snapshots and local prompt dumps should expose:
 - `project_intelligence.counts`
 - list lengths for overdue/due-soon, upcoming, recent changes
 - `maybe_more` flags
-- cache source: `session_cache`, `request_prewarm`, `fresh_load`
+- cache source: `prepared_prompt`, `session_cache`, `fresh_load`
 - cache age seconds
 - whether the lite timeline section used `project_intelligence` or fallback
   nested context
+- prepared prompt request/hit/miss reason when a prepared prompt key was sent
 
 This should make bad prompts obvious. A prompt dump should not require reading
 the full raw JSON to know whether recent changes were loaded.
@@ -594,9 +602,11 @@ bug.
 1. Ensure prewarm stores the new context in session metadata whenever a session
    exists.
 2. Ensure stream prefers session cache.
-3. Add version/key/staleness tests for request prewarm payloads.
-4. Optionally add an HMAC signature to request prewarm payloads before relying
-   on no-session draft prewarm for this richer context.
+3. Ensure no-session draft prewarm uses server-owned prepared prompt keys, not
+   unsigned request-carried context.
+4. Add wrong user/session/scope/consumed/stale prepared prompt tests.
+5. Keep unsigned request prewarm payloads ignored unless a future signed format
+   is explicitly added.
 
 ### Phase 4: Observability
 
@@ -629,7 +639,9 @@ API tests:
   `project_intelligence`.
 - Prewarm writes the enriched context cache into session metadata.
 - Stream uses fresh matching session cache and does not call the context loader.
-- Stream rejects stale or mismatched request prewarm context.
+- Stream ignores unsigned request-carried prewarm context and falls back to
+  session cache or fresh server load.
+- Stream rejects stale, mismatched, consumed, or stale-harness prepared prompts.
 
 SQL tests/manual verification:
 
@@ -662,5 +674,5 @@ SQL tests/manual verification:
   and updated? First pass should not, but the log shape can support it later.
 - Should due-soon be seven days everywhere, or should user preference/timezone
   eventually control the window?
-- Should request prewarm HMAC be implemented in the same phase as the richer
-  snapshot, or immediately after?
+- Should a signed request-carried context format ever be reintroduced, or should
+  no-session fast paths stay exclusively on server-owned prepared prompt rows?

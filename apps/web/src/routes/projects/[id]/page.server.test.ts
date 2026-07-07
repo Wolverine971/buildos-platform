@@ -28,6 +28,7 @@ type HarnessOptions = {
 	bundleData?: Record<string, unknown> | null;
 	bundleError?: { message: string } | null;
 	access?: BundleAccess;
+	pathname?: string;
 };
 
 function buildDefaultAccess(userId: string | null | undefined): BundleAccess {
@@ -50,27 +51,32 @@ function createHarness(options: HarnessOptions = {}) {
 	const accessDefaults = buildDefaultAccess(userId);
 	const access = { ...accessDefaults, ...(options.access ?? {}) };
 
+	const baseBundleData = {
+		id: PROJECT_ID,
+		name: 'Project 1',
+		description: null,
+		state_key: 'active',
+		type_key: 'project',
+		next_step_short: null,
+		next_step_long: null,
+		next_step_source: null,
+		next_step_updated_at: null,
+		access
+	};
 	const bundleData =
 		options.bundleData === undefined
-			? {
-					id: PROJECT_ID,
-					name: 'Project 1',
-					description: null,
-					state_key: 'active',
-					type_key: 'project',
-					next_step_short: null,
-					next_step_long: null,
-					next_step_source: null,
-					next_step_updated_at: null,
-					task_count: 1,
-					document_count: 2,
-					goal_count: 3,
-					plan_count: 4,
-					milestone_count: 5,
-					risk_count: 6,
-					image_count: 7,
-					access
-				}
+			? options.pathname?.endsWith('/old')
+				? {
+						...baseBundleData,
+						task_count: 1,
+						document_count: 2,
+						goal_count: 3,
+						plan_count: 4,
+						milestone_count: 5,
+						risk_count: 6,
+						image_count: 7
+					}
+				: baseBundleData
 			: options.bundleData;
 
 	const from = vi.fn((table: string) => {
@@ -79,8 +85,11 @@ function createHarness(options: HarnessOptions = {}) {
 	});
 
 	const rpc = vi.fn((fn: string) => {
-		if (fn === 'get_project_skeleton_with_access') {
-			operations.push('rpc:get_project_skeleton_with_access');
+		if (
+			fn === 'get_project_skeleton_with_access' ||
+			fn === 'get_project_skeleton_with_access_v2'
+		) {
+			operations.push(`rpc:${fn}`);
 			return Promise.resolve({
 				data: bundleData,
 				error: options.bundleError ?? null
@@ -97,6 +106,7 @@ function createHarness(options: HarnessOptions = {}) {
 
 	const event = {
 		params: { id: PROJECT_ID },
+		url: new URL(`https://buildos.test${options.pathname ?? `/projects/${PROJECT_ID}`}`),
 		locals: {
 			supabase: { rpc, from },
 			safeGetSession,
@@ -148,11 +158,30 @@ describe('projects/[id] +page.server load', () => {
 			isAuthenticated: true,
 			currentActorId: 'actor-current'
 		});
-		// New hot path: exactly one DB round-trip.
-		expect(operations).toEqual(['rpc:get_project_skeleton_with_access']);
+		// New v2 hot path: exactly one count-free DB round-trip.
+		expect(operations).toEqual(['rpc:get_project_skeleton_with_access_v2']);
 		expect(from).not.toHaveBeenCalled();
 		expect(safeGetSession).not.toHaveBeenCalled();
 		expect(ensureActorIdMock).not.toHaveBeenCalled();
+	});
+
+	it('classic route keeps the counted skeleton RPC', async () => {
+		const { event, operations } = createHarness({
+			pathname: `/projects/${PROJECT_ID}/old`
+		});
+
+		const result = await load(event);
+
+		expect(result.counts).toEqual({
+			task_count: 1,
+			document_count: 2,
+			goal_count: 3,
+			plan_count: 4,
+			milestone_count: 5,
+			risk_count: 6,
+			image_count: 7
+		});
+		expect(operations).toEqual(['rpc:get_project_skeleton_with_access']);
 	});
 
 	it('editor access keeps invite/log visibility without admin', async () => {
@@ -220,7 +249,7 @@ describe('projects/[id] +page.server load', () => {
 			isAuthenticated: false,
 			currentActorId: null
 		});
-		expect(operations).toEqual(['rpc:get_project_skeleton_with_access']);
+		expect(operations).toEqual(['rpc:get_project_skeleton_with_access_v2']);
 		expect(from).not.toHaveBeenCalled();
 		expect(safeGetSession).not.toHaveBeenCalled();
 		expect(ensureActorIdMock).not.toHaveBeenCalled();
@@ -230,7 +259,7 @@ describe('projects/[id] +page.server load', () => {
 		const { event, operations } = createHarness({ bundleData: null });
 
 		await expect(load(event)).rejects.toMatchObject({ status: 404 });
-		expect(operations).toEqual(['rpc:get_project_skeleton_with_access']);
+		expect(operations).toEqual(['rpc:get_project_skeleton_with_access_v2']);
 	});
 
 	it('emits the combined timing label', async () => {
@@ -247,7 +276,7 @@ describe('projects/[id] +page.server load', () => {
 
 		await load(event);
 
-		expect(timingLabels).toContain('db.project_skeleton_with_access');
+		expect(timingLabels).toContain('db.project_skeleton_with_access_v2');
 	});
 
 	it('rejects invalid project ids before making API calls', async () => {

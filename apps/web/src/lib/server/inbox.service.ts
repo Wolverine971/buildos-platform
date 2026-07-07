@@ -1030,6 +1030,10 @@ export async function countInboxItems(params: {
 	limit?: number;
 }): Promise<InboxCountResult> {
 	const limit = params.limit ?? 1000;
+	const backfilledCount = await backfillVisibleSourceRows({
+		...params,
+		limit
+	});
 	const requestedStatus = params.status ?? null;
 	const totalPromise = countInboxRows(params);
 	const accountPromise =
@@ -1079,6 +1083,6 @@ export async function countInboxItems(params: {
 		account,
 		truncated: rows.length < total,
 		repairedCount: 0,
-		backfilledCount: 0
+		backfilledCount
 	};
 }

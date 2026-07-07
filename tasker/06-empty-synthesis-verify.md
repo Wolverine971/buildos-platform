@@ -15,11 +15,17 @@ Fixes A–D are **implemented and locally verified** with regression coverage (`
 - **C** empty no-tool synthesis retry (one retry)
 - **D** evidence-aware finalization-guard fallback (`finalization-guard.ts:137-181`)
 
+## Refresh 2026-07-02 — adjacent hardening landed; core loose ends unchanged
+
+Commit `734b291a` (7/01) shipped DEEP-audit fix **D6**: `finalization-guard.ts` + `round-analysis.ts` are now ok-aware (`didGatewayExecSucceed` treats only explicit `ok:false` gateway envelopes as failure — no more false "I completed the change" on failed writes), with new tests. The A–D fixes are also now deployed (pushed to main), so loose end 3's "no live deploy" is stale — but nothing has been _verified_ live.
+
+Still open, unchanged: pentest R1–R8 (no run log exists) and the over-eager corrector (`repair-instructions.ts` untouched since 6/25).
+
 ## Loose ends
 
 1. **Manual pentest R1–R8 not run** — `apps/web/docs/features/agentic-chat/pentesting/REGRESSION_TESTS_2026-06-23.md` defines 8 manual tests (stale-context write reversal, false-done correction, cross-project write protection, refusal-no-loop, etc.). No run-log exists. These should be run _after_ the A–D changes.
 2. **Over-eager document-claim corrector flagged, not fixed** — `collectUnsupportedDocumentClaims()` in `repair-instructions.ts` (~L210/613-631) can strip legitimate read-synthesis sentences (it removed a correct "the parent task … is still todo" during test dev). Plan calls this out as a follow-up.
-3. **No live/staging deploy verification** — plan says "locally verified"; no prod/staging confirmation.
+3. ~~No live/staging deploy verification~~ — code is deployed (main = origin/main); live _verification_ is what R1–R8 provides.
 
 ## Next action
 

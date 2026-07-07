@@ -371,7 +371,9 @@
 		}
 
 		try {
-			const query = isPolling ? '?include_documents=false&include_content=false' : '';
+			const query = isPolling
+				? '?include_documents=false&include_content=false'
+				: '?include_content=false';
 			const res = await fetch(`/api/onto/projects/${projectId}/doc-tree${query}`);
 			if (!res.ok) {
 				const data = await res.json().catch(() => ({}));
@@ -534,6 +536,16 @@
 
 		stopPolling();
 	}
+
+	$effect(() => {
+		if (!browser) return;
+		if (pollInterval <= 0) {
+			stopPolling();
+			return;
+		}
+		startPolling();
+		return stopPolling;
+	});
 
 	// Lifecycle
 	onMount(() => {
