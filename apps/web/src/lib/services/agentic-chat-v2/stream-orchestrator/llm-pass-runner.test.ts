@@ -1,5 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/llm-pass-runner.test.ts
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ChatToolCall } from '@buildos/shared-types';
 import { runLlmStreamPass, type FastChatModelMessage } from './llm-pass-runner';
 
@@ -41,7 +41,27 @@ function baseParams(overrides: Partial<Parameters<typeof runLlmStreamPass>[0]> =
 	return { params, clearHeartbeat };
 }
 
+function waitForAbort(signal: AbortSignal | undefined, message = 'The operation was aborted') {
+	return new Promise<never>((_, reject) => {
+		if (signal?.aborted) {
+			reject(Object.assign(new Error(message), { name: 'AbortError' }));
+			return;
+		}
+		signal?.addEventListener(
+			'abort',
+			() => {
+				reject(Object.assign(new Error(message), { name: 'AbortError' }));
+			},
+			{ once: true }
+		);
+	});
+}
+
 describe('runLlmStreamPass', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it('streams text, tool calls, usage, and pass metadata', async () => {
 		const emittedToolCall = toolCall('search_project', { query: 'timeline' }, 'tool-1');
 		const onToolCall = vi.fn(async () => {
@@ -245,5 +265,94 @@ describe('runLlmStreamPass', () => {
 		);
 		expect(params.llm.streamText).toHaveBeenCalledTimes(2);
 		expect(clearHeartbeat).toHaveBeenCalledTimes(2);
+	});
+
+	it('retries after a per-pass stream timeout and returns the recovered attempt', async () => {
+		vi.useFakeTimers();
+		let invocation = 0;
+		const { params, clearHeartbeat } = baseParams({
+			llm: {
+				streamText: vi.fn(async function* (options: { signal?: AbortSignal }) {
+					invocation += 1;
+					if (invocation === 1) {
+						await waitForAbort(options.signal);
+						return;
+					}
+					yield { type: 'text', content: 'Recovered after timeout.' };
+					yield {
+						type: 'done',
+						finished_reason: 'stop',
+						usage: {
+							prompt_tokens: 9,
+							completion_tokens: 4,
+							total_tokens: 13
+						}
+					};
+				})
+			} as any,
+			passTimeoutMs: 25,
+			retryDelayMs: () => 0
+		});
+
+		const resultPromise = runLlmStreamPass(params);
+		await vi.advanceTimersByTimeAsync(25);
+		const result = await resultPromise;
+
+		expect(params.llm.streamText).toHaveBeenCalledTimes(2);
+		expect(result.assistantBuffer).toBe('Recovered after timeout.');
+		expect(result.metadata).toMatchObject({
+			attempts: 2,
+			streamRetryCount: 1,
+			lastStreamRetryError: 'LLM stream pass timed out after 25ms',
+			finishedReason: 'stop',
+			promptTokens: 9,
+			completionTokens: 4,
+			totalTokens: 13
+		});
+		expect(clearHeartbeat).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not retry a parent turn abort before the per-pass timeout fires', async () => {
+		vi.useFakeTimers();
+		const controller = new AbortController();
+		const { params, clearHeartbeat } = baseParams({
+			llm: {
+				streamText: vi.fn(async function* (options: { signal?: AbortSignal }) {
+					await waitForAbort(options.signal, 'Request aborted');
+				})
+			} as any,
+			signal: controller.signal,
+			passTimeoutMs: 25,
+			retryDelayMs: () => 0
+		});
+
+		const resultPromise = runLlmStreamPass(params);
+		const rejectionExpectation = expect(resultPromise).rejects.toThrow('Request aborted');
+		setTimeout(() => controller.abort(), 10);
+		await vi.advanceTimersByTimeAsync(10);
+
+		await rejectionExpectation;
+		expect(params.llm.streamText).toHaveBeenCalledTimes(1);
+		expect(clearHeartbeat).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not retry a missing done event after the abort signal fires', async () => {
+		const controller = new AbortController();
+		const clearHeartbeat = vi.fn();
+		const { params } = baseParams({
+			llm: {
+				streamText: vi.fn(async function* () {
+					yield { type: 'text', content: 'partial cancelled output' };
+					controller.abort();
+				})
+			} as any,
+			signal: controller.signal,
+			startLlmHeartbeat: vi.fn(() => clearHeartbeat),
+			retryDelayMs: () => 0
+		});
+
+		await expect(runLlmStreamPass(params)).rejects.toThrow('Request aborted');
+		expect(params.llm.streamText).toHaveBeenCalledTimes(1);
+		expect(clearHeartbeat).toHaveBeenCalledTimes(1);
 	});
 });

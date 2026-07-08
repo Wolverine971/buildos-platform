@@ -6,6 +6,14 @@ function sanitizeSSEFieldValue(value: string): string {
 	return value.replace(/[\r\n\0]/g, ' ');
 }
 
+export interface SSEChatStreamOptions {
+	/**
+	 * Emit invisible SSE comment frames at this interval to keep long-lived
+	 * responses active through idle proxies. Disabled when omitted or <= 0.
+	 */
+	heartbeatIntervalMs?: number;
+}
+
 export class SSEResponse {
 	/**
 	 * Create an SSE error response with consistent format matching ApiResponse
@@ -152,6 +160,18 @@ export class SSEResponse {
 	}
 
 	/**
+	 * Send an SSE comment frame. Comment frames are valid SSE keepalives and are
+	 * ignored by EventSource/data parsers.
+	 */
+	static async sendComment(
+		writer: WritableStreamDefaultWriter,
+		encoder: TextEncoder,
+		comment: string
+	): Promise<void> {
+		await writer.write(encoder.encode(`: ${sanitizeSSEFieldValue(comment)}\n\n`));
+	}
+
+	/**
 	 * Close an SSE stream gracefully
 	 */
 	static async close(writer: WritableStreamDefaultWriter): Promise<void> {
@@ -166,8 +186,36 @@ export class SSEResponse {
 	/**
 	 * Create an SSE stream response for chat
 	 */
-	static createChatStream() {
+	static createChatStream(options: SSEChatStreamOptions = {}) {
 		const { response, writer, encoder } = SSEResponse.createStream();
+		const heartbeatIntervalMs = options.heartbeatIntervalMs ?? 0;
+		let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+		let heartbeatInFlight = false;
+		let closed = false;
+
+		const stopHeartbeat = (): void => {
+			if (!heartbeatTimer) return;
+			clearInterval(heartbeatTimer);
+			heartbeatTimer = null;
+		};
+
+		const sendHeartbeat = async (): Promise<void> => {
+			if (closed || heartbeatInFlight) return;
+			heartbeatInFlight = true;
+			try {
+				await SSEResponse.sendComment(writer, encoder, 'ping');
+			} catch {
+				stopHeartbeat();
+			} finally {
+				heartbeatInFlight = false;
+			}
+		};
+
+		if (heartbeatIntervalMs > 0) {
+			heartbeatTimer = setInterval(() => {
+				void sendHeartbeat();
+			}, heartbeatIntervalMs);
+		}
 
 		return {
 			response,
@@ -179,6 +227,8 @@ export class SSEResponse {
 				await SSEResponse.sendMessage(writer, encoder, data, undefined, id);
 			},
 			close: async () => {
+				closed = true;
+				stopHeartbeat();
 				await SSEResponse.close(writer);
 			}
 		};

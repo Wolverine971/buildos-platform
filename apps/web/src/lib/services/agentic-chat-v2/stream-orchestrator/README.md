@@ -53,7 +53,7 @@ That makes changes harder to reason about and raises the odds of subtle regressi
 - `tool-round-runner.ts`
   Tool-round terminal preparation, single-call dispatch, materialization-on-miss, duplicate-write skips, result recording, and model replay messages.
 - `llm-pass-runner.ts`
-  LLM stream event loop, text/reasoning/tool-call event capture, usage/pass metadata, no-tool synthesis suppression, and incomplete-stream guard.
+  LLM stream event loop, per-pass timeout, bounded retry for transient stream failures, text/reasoning/tool-call event capture, usage/pass metadata, no-tool synthesis suppression, and incomplete-stream guard.
 - `finalization-runner.ts`
   Length-continuation decisions, no-tool/zero-tool finalization, cancellation partial text, terminal finalization guard, mutation outcome integrity, and tool-limit final text.
 - `write-ledger.ts`
@@ -107,7 +107,6 @@ Importers point directly at `./stream-orchestrator/index` via the barrel in `age
 
 - Focused suite: `npm run test -- src/lib/services/agentic-chat-v2/stream-orchestrator.test.ts`
 - Baseline at start of this effort: `35` tests passing.
-- Current status after Phase 1 pass: `35/35` tests passing.
 - Current status after Phase 2 safe pass: `35/35` tests passing.
 - Current status after Phase 3 validation pass: `35/35` tests passing.
 - Current status after repair/round-analysis extraction pass: `35/35` tests passing.
@@ -120,3 +119,4 @@ Importers point directly at `./stream-orchestrator/index` via the barrel in `age
 - Current route-level stream suite: `17/17` tests passing in `src/routes/api/agent/v2/stream/server.test.ts`.
 - Current TypeScript check: `pnpm --filter @buildos/web exec tsc --noEmit --pretty false --skipLibCheck` passes after `pnpm --filter @buildos/web exec svelte-kit sync`.
 - Current web check: `pnpm --filter @buildos/web check` passes with `0` errors and `0` warnings.
+- Latest targeted stream-resilience checks (2026-07-08): `42/42` passing in `stream-orchestrator.test.ts`, `8/8` passing in `llm-pass-runner.test.ts`, and `pnpm --dir apps/web run check` passes with `0` errors and `0` warnings.

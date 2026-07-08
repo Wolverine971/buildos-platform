@@ -21,6 +21,7 @@ type SmartLlmStreamEvent =
 	SmartLlmStreamTextResult extends AsyncGenerator<infer Event, unknown, unknown> ? Event : never;
 
 const MAX_LLM_STREAM_ATTEMPTS = 2;
+const LLM_PASS_TIMEOUT_MS = 60_000;
 const LLM_STREAM_RETRY_BASE_DELAY_MS = 250;
 const LLM_STREAM_RETRY_JITTER_MS = 250;
 const MAX_RETRY_ERROR_METADATA_LENGTH = 240;
@@ -61,6 +62,7 @@ export async function runLlmStreamPass(params: {
 	observeSupervisor: (observation: TurnSupervisorObservation) => Promise<void>;
 	onToolCall?: (toolCall: ChatToolCall) => Promise<void> | void;
 	retryDelayMs?: (attempt: number) => number;
+	passTimeoutMs?: number;
 }): Promise<LlmStreamPassResult> {
 	const maxAttempts = MAX_LLM_STREAM_ATTEMPTS;
 	let lastRetryError: Error | null = null;
@@ -83,6 +85,10 @@ export async function runLlmStreamPass(params: {
 			}
 		}
 
+		const passAbortSignal = createLlmPassAbortSignal(
+			params.signal,
+			params.passTimeoutMs ?? LLM_PASS_TIMEOUT_MS
+		);
 		const clearLlmHeartbeat = params.startLlmHeartbeat();
 		let heartbeatCleared = false;
 		const clearLlmHeartbeatOnce = (): void => {
@@ -122,7 +128,7 @@ export async function runLlmStreamPass(params: {
 				contextType: params.normalizedContext,
 				entityId: params.entityId ?? undefined,
 				projectId: params.projectId ?? undefined,
-				signal: params.signal
+				signal: passAbortSignal.signal
 			})) {
 				if (event.type === 'text' && event.content) {
 					assistantBuffer += event.content;
@@ -198,7 +204,11 @@ export async function runLlmStreamPass(params: {
 				}
 			}
 		} catch (error) {
-			const normalizedError = normalizeStreamAttemptError(error);
+			const normalizedError = normalizeStreamAttemptError(
+				passAbortSignal.timedOut() && !params.signal?.aborted
+					? createLlmPassTimeoutError(passAbortSignal.timeoutMs)
+					: error
+			);
 			if (shouldRetryStreamAttempt(normalizedError, params.signal, attempt, maxAttempts)) {
 				lastRetryError = normalizedError;
 				clearLlmHeartbeatOnce();
@@ -207,6 +217,7 @@ export async function runLlmStreamPass(params: {
 			}
 			throw normalizedError;
 		} finally {
+			passAbortSignal.dispose();
 			clearLlmHeartbeatOnce();
 		}
 
@@ -214,6 +225,8 @@ export async function runLlmStreamPass(params: {
 			const missingDoneError = new LlmStreamPassAttemptError(
 				params.signal?.aborted
 					? 'Request aborted'
+					: passAbortSignal.timedOut()
+						? createLlmPassTimeoutMessage(passAbortSignal.timeoutMs)
 					: 'LLM stream ended without a completion event'
 			);
 			if (shouldRetryStreamAttempt(missingDoneError, params.signal, attempt, maxAttempts)) {
@@ -257,6 +270,67 @@ export async function runLlmStreamPass(params: {
 
 class LlmStreamPassAttemptError extends Error {
 	override name = 'LlmStreamPassAttemptError';
+}
+
+type LlmPassAbortSignal = {
+	signal: AbortSignal | undefined;
+	timeoutMs: number;
+	timedOut: () => boolean;
+	dispose: () => void;
+};
+
+function createLlmPassAbortSignal(
+	parentSignal: AbortSignal | undefined,
+	timeoutMs: number
+): LlmPassAbortSignal {
+	const normalizedTimeoutMs = Math.max(0, Math.floor(timeoutMs));
+	if (normalizedTimeoutMs <= 0) {
+		return {
+			signal: parentSignal,
+			timeoutMs: normalizedTimeoutMs,
+			timedOut: () => false,
+			dispose: () => {}
+		};
+	}
+
+	const controller = new AbortController();
+	let timeout: ReturnType<typeof setTimeout> | null = null;
+	let timedOut = false;
+	const cleanup = (): void => {
+		if (timeout) {
+			clearTimeout(timeout);
+			timeout = null;
+		}
+		parentSignal?.removeEventListener('abort', abortFromParent);
+	};
+	const abortFromParent = (): void => {
+		controller.abort(parentSignal?.reason);
+	};
+
+	if (parentSignal?.aborted) {
+		abortFromParent();
+	} else {
+		parentSignal?.addEventListener('abort', abortFromParent, { once: true });
+		timeout = setTimeout(() => {
+			timedOut = true;
+			controller.abort(createLlmPassTimeoutError(normalizedTimeoutMs));
+		}, normalizedTimeoutMs);
+	}
+
+	return {
+		signal: controller.signal,
+		timeoutMs: normalizedTimeoutMs,
+		timedOut: () => timedOut,
+		dispose: cleanup
+	};
+}
+
+function createLlmPassTimeoutMessage(timeoutMs: number): string {
+	return `LLM stream pass timed out after ${timeoutMs}ms`;
+}
+
+function createLlmPassTimeoutError(timeoutMs: number): LlmStreamPassAttemptError {
+	return new LlmStreamPassAttemptError(createLlmPassTimeoutMessage(timeoutMs));
 }
 
 function createPassMetadata(

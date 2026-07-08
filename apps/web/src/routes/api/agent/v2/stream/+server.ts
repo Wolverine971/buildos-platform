@@ -13,6 +13,8 @@ export const config = {
 	memory: 1024
 };
 
+const FASTCHAT_SSE_HEARTBEAT_INTERVAL_MS = 12_000;
+
 import type { RequestHandler } from './$types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { dev } from '$app/environment';
@@ -1941,7 +1943,9 @@ export const POST: RequestHandler = async ({
 	// of re-inserting them (keyed by turn_run_id + sequence_index).
 	let incrementalToolSequence = 0;
 	const incrementallyPersistedToolSequences = new Set<number>();
-	const baseAgentStream = SSEResponse.createChatStream();
+	const baseAgentStream = SSEResponse.createChatStream({
+		heartbeatIntervalMs: FASTCHAT_SSE_HEARTBEAT_INTERVAL_MS
+	});
 	const agentStream = createSequencedAgentStream({
 		baseStream: baseAgentStream,
 		streamRunId,

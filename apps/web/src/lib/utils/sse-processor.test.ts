@@ -109,4 +109,31 @@ describe('SSEProcessor', () => {
 			expect.objectContaining({ type: 'done', complete: true })
 		);
 	});
+
+	it('ignores SSE heartbeat comment frames while preserving data events', async () => {
+		const onProgress = vi.fn();
+		const onParseError = vi.fn();
+
+		await SSEProcessor.processStream(
+			buildRawSseResponse([
+				': ping\n\n',
+				`data: ${JSON.stringify({ type: 'agent_state', state: 'thinking' })}\n\n`,
+				': ping\r\n\r\n',
+				`data: ${JSON.stringify({ type: 'done', finished_reason: 'stop' })}\n\n`
+			]),
+			{ onProgress },
+			{ onParseError }
+		);
+
+		expect(onProgress).toHaveBeenCalledTimes(2);
+		expect(onProgress).toHaveBeenNthCalledWith(1, {
+			type: 'agent_state',
+			state: 'thinking'
+		});
+		expect(onProgress).toHaveBeenNthCalledWith(2, {
+			type: 'done',
+			finished_reason: 'stop'
+		});
+		expect(onParseError).not.toHaveBeenCalled();
+	});
 });
