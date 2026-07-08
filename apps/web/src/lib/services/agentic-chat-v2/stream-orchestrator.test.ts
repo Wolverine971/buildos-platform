@@ -77,6 +77,81 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(secondBudgetMessage).toContain('With two or fewer tool rounds remaining');
 	});
 
+	it('routes only the first tool-capable planning pass to the fast model tier', async () => {
+		let streamInvocation = 0;
+		const streamParams: Array<{ profile?: string; models?: string[] }> = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: { profile?: string; models?: string[] }) {
+				streamInvocation += 1;
+				streamParams.push({
+					profile: params.profile,
+					models: params.models
+				});
+
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'search_onto_projects',
+							{ query: 'BuildOS' },
+							'search:buildos'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'I found the BuildOS project.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(
+			async (call: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: call.id,
+				result: { projects: [{ id: 'project-1', type: 'project', name: 'BuildOS' }] },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'What is happening with my projects?',
+			tools: tools(['search_onto_projects']),
+			toolExecutor,
+			onDelta: async () => {},
+			maxToolRounds: 3,
+			maxToolCalls: 5,
+			modelTiering: {
+				variant: 'fast_initial_plan',
+				initialPlanModels: ['tencent/hy3', 'deepseek/deepseek-v4-flash']
+			}
+		});
+
+		expect(streamParams[0]).toEqual({
+			profile: 'speed',
+			models: ['tencent/hy3', 'deepseek/deepseek-v4-flash']
+		});
+		expect(streamParams[1]).toEqual({
+			profile: 'balanced',
+			models: undefined
+		});
+		expect(result.llmPasses?.[0]).toMatchObject({
+			passRole: 'initial_plan',
+			requestedProfile: 'speed',
+			requestedModels: ['tencent/hy3', 'deepseek/deepseek-v4-flash'],
+			modelTieringVariant: 'fast_initial_plan'
+		});
+		expect(result.llmPasses?.[1]).toMatchObject({
+			passRole: 'tool_followup',
+			requestedProfile: 'balanced',
+			modelTieringVariant: 'fast_initial_plan'
+		});
+	});
+
 	it('emits terminal failed results for tool calls skipped by the call limit', async () => {
 		const onToolResult = vi.fn();
 		const llm = {
@@ -1002,6 +1077,69 @@ describe('streamFastChat direct tool orchestration', () => {
 			reason: 'empty_after_successful_writes'
 		});
 		expect(supervisorRecords).toContain('flag_eval');
+	});
+
+	it('marks generic no-evidence read fallbacks as synthesis_empty', async () => {
+		let streamInvocation = 0;
+		const emittedDeltas: string[] = [];
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'search_project',
+							{
+								project_id: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+								query: 'missing launch note'
+							},
+							'search_project:missing'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			return {
+				tool_call_id: call.id,
+				result: { results: [] },
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'What did you find about the missing launch note?',
+			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'search_project']),
+			toolExecutor,
+			onDelta: async (delta) => {
+				emittedDeltas.push(delta);
+			}
+		});
+
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(result.finishedReason).toBe('synthesis_empty');
+		expect(result.finalAssistantText).toContain(
+			'turn ended before a final response was produced'
+		);
+		expect(emittedDeltas.join('')).toBe(result.finalAssistantText);
+		expect(result.finalizationGuard).toMatchObject({
+			applied: true,
+			reason: 'empty_after_reads',
+			finishedReason: 'synthesis_empty'
+		});
 	});
 
 	it('emits a supervisor status during long model silence', async () => {

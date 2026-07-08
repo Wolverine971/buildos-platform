@@ -41,7 +41,10 @@
 
 	const displayedActivities = $derived(
 		block.activities.filter(
-			(activity) => activity.activityType === 'tool_call' || activity.metadata?.skillActivity
+			(activity) =>
+				activity.activityType === 'tool_call' ||
+				activity.metadata?.skillActivity ||
+				activity.metadata?.activityVisibility === 'activity_log'
 		)
 	);
 	const displayedActivityCount = $derived(displayedActivities.length);

@@ -2,13 +2,16 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import {
+		Calendar,
+		CalendarRange,
 		ChevronLeft,
 		ChevronRight,
 		Clock,
 		ExternalLink,
-		Calendar,
-		RefreshCw
-	} from 'lucide-svelte';
+		Play,
+		RefreshCw,
+		Target
+	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import {
 		formatTime,
@@ -65,6 +68,8 @@
 		continuesBefore: boolean;
 		continuesAfter: boolean;
 	}
+
+	type TaskMarkerKind = 'range' | 'start' | 'due';
 
 	const monthSegmentIdentityCache = new WeakMap<object, string>();
 	let monthSegmentIdentityCounter = 0;
@@ -174,6 +179,14 @@
 	function changeViewMode(mode: 'day' | 'week' | 'month') {
 		viewMode = mode;
 		onviewModeChange?.(mode);
+	}
+
+	function openDayView(date: Date) {
+		const nextDate = new Date(date);
+		internalDate = nextDate;
+		viewMode = 'day';
+		ondateChange?.(nextDate);
+		onviewModeChange?.('day');
 	}
 
 	function handleEventClick(event: any) {
@@ -554,6 +567,13 @@
 		return getTimedEvents(getEventsForDay(date));
 	}
 
+	function getCurrentMonthEventDates(date: Date): Date[] {
+		return getMonthDates(date).filter(
+			(monthDate) =>
+				monthDate.getMonth() === date.getMonth() && getEventsForDay(monthDate).length > 0
+		);
+	}
+
 	function getMonthSegmentTop(lane: number): number {
 		return 30 + lane * 23;
 	}
@@ -587,6 +607,27 @@
 	function getMonthSegmentLabel(segment: MonthEventSegment): string {
 		if (segment.event.allDay) return segment.event.title;
 		return `${formatTime(segment.event.start)} ${segment.event.title}`;
+	}
+
+	function getTaskMarkerKind(event: CalendarDayEvent): TaskMarkerKind | null {
+		const rawKind =
+			event.calendarItem?.item_kind ??
+			event.originalEvent?.itemKind ??
+			event.originalEvent?.calendarItem?.item_kind ??
+			null;
+		if (rawKind === 'range' || rawKind === 'start' || rawKind === 'due') return rawKind;
+		return null;
+	}
+
+	function getTaskMarkerLabel(kind: TaskMarkerKind, compact = false): string {
+		if (kind === 'range') return compact ? 'Sched' : 'Scheduled';
+		if (kind === 'start') return 'Start';
+		return 'Due';
+	}
+
+	function getOpenDayAriaLabel(date: Date, hiddenCount: number): string {
+		const eventLabel = hiddenCount === 1 ? 'event' : 'events';
+		return `Open ${formatDate(date)} day view to see ${hiddenCount} more ${eventLabel}`;
 	}
 
 	function getTimePosition(date: Date): number {
@@ -625,6 +666,7 @@
 	// Check if navigation buttons should be disabled
 	let canNavigateBack = $derived(!effectivePhaseStart || internalDate > effectivePhaseStart);
 	let canNavigateForward = $derived(!effectivePhaseEnd || internalDate < effectivePhaseEnd);
+	let currentMonthEventDates = $derived(getCurrentMonthEventDates(internalDate));
 
 	const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 </script>
@@ -676,9 +718,14 @@
 				variant="ghost"
 				size="sm"
 				class="p-1"
+				aria-label="Refresh calendar"
 				title="Refresh calendar data"
 			>
-				<RefreshCw class="w-4 h-4 shrink-0 {refreshing ? 'animate-spin' : ''}" />
+				<RefreshCw
+					class="w-4 h-4 shrink-0 {refreshing
+						? 'animate-spin motion-reduce:animate-none'
+						: ''}"
+				/>
 			</Button>
 
 			<div
@@ -717,7 +764,9 @@
 		{#if loading}
 			<div class="flex items-center justify-center h-full">
 				<div class="flex flex-col items-center gap-2">
-					<Calendar class="w-10 h-10 text-muted-foreground animate-pulse" />
+					<Calendar
+						class="w-10 h-10 text-muted-foreground animate-pulse motion-reduce:animate-none"
+					/>
 					<span class="text-xs text-muted-foreground">Loading calendar...</span>
 				</div>
 			</div>
@@ -732,25 +781,42 @@
 						<div
 							class="rounded-lg border border-border bg-muted/20 p-2 shadow-ink-inner"
 						>
-							<div
-								class="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-							>
+							<div class="micro-label mb-1.5 flex items-center gap-1.5">
 								<Calendar class="h-3 w-3" />
 								<span>All-day and multi-day</span>
 							</div>
 							<div class="space-y-1">
 								{#each allDayEvents as event}
+									{@const markerKind = getTaskMarkerKind(event)}
 									<button
 										onclick={() => handleEventClick(event)}
-										class="w-full text-left px-3 py-2 rounded-md border border-border transition-colors hover:border-accent/50 hover:shadow-ink pressable tx tx-grain tx-weak {event.color} {getContinuationClass(
+										class="w-full text-left px-3 py-2 rounded-md border border-border transition-colors hover:border-accent/50 hover:shadow-ink motion-reduce:transition-none pressable tx tx-grain tx-weak {event.color} {getContinuationClass(
 											event
 										)}"
 									>
 										<div class="flex items-center justify-between gap-2">
 											<div class="min-w-0 flex-1">
-												<div class="flex items-center gap-2">
+												<div class="flex min-w-0 items-center gap-2">
+													{#if markerKind}
+														<span
+															class="inline-flex shrink-0 items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
+														>
+															{#if markerKind === 'range'}
+																<CalendarRange class="h-3 w-3" />
+															{:else if markerKind === 'start'}
+																<Play class="h-3 w-3" />
+															{:else}
+																<Target class="h-3 w-3" />
+															{/if}
+															<span
+																>{getTaskMarkerLabel(
+																	markerKind
+																)}</span
+															>
+														</span>
+													{/if}
 													<h4
-														class="text-sm font-medium text-foreground truncate"
+														class="min-w-0 truncate text-sm font-medium text-foreground"
 													>
 														{event.title}
 													</h4>
@@ -778,14 +844,31 @@
 					{/if}
 
 					{#each timedEvents as event}
+						{@const markerKind = getTaskMarkerKind(event)}
 						<button
 							onclick={() => handleEventClick(event)}
-							class="w-full text-left px-3 py-2.5 rounded-lg border border-border transition-colors hover:border-accent/50 hover:shadow-ink shadow-ink pressable tx tx-grain tx-weak {event.color}"
+							class="w-full text-left px-3 py-2.5 rounded-lg border border-border transition-colors hover:border-accent/50 hover:shadow-ink motion-reduce:transition-none shadow-ink pressable tx tx-grain tx-weak {event.color}"
 						>
 							<div class="flex items-center justify-between gap-2">
 								<div class="flex-1 min-w-0">
-									<div class="flex items-center gap-2">
-										<h4 class="text-sm font-medium text-foreground truncate">
+									<div class="flex min-w-0 items-center gap-2">
+										{#if markerKind}
+											<span
+												class="inline-flex shrink-0 items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
+											>
+												{#if markerKind === 'range'}
+													<CalendarRange class="h-3 w-3" />
+												{:else if markerKind === 'start'}
+													<Play class="h-3 w-3" />
+												{:else}
+													<Target class="h-3 w-3" />
+												{/if}
+												<span>{getTaskMarkerLabel(markerKind)}</span>
+											</span>
+										{/if}
+										<h4
+											class="min-w-0 truncate text-sm font-medium text-foreground"
+										>
 											{event.title}
 										</h4>
 										{#if event.type === 'existing' && event.htmlLink}
@@ -826,9 +909,7 @@
 				<!-- Time column -->
 				<div class="bg-muted/50">
 					<div class="h-10 border-b border-border"></div>
-					<div
-						class="h-[46px] border-b border-border px-1.5 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
-					>
+					<div class="micro-label h-[46px] border-b border-border px-1.5 py-1">
 						All day
 					</div>
 					{#each Array(parseInt(workingHours.work_end_time.split(':')[0] ?? '17') - parseInt(workingHours.work_start_time.split(':')[0] ?? '9')) as _, i}
@@ -841,7 +922,7 @@
 				</div>
 
 				<!-- Day columns -->
-				{#each getWeekDates(internalDate) as date, i}
+				{#each getWeekDates(internalDate) as date}
 					{@const dayEvents = getEventsForDay(date)}
 					{@const allDayEvents = getAllDayLaneEvents(dayEvents)}
 					{@const timedEvents = getTimedEvents(dayEvents)}
@@ -850,7 +931,7 @@
 					{@const isToday = date.toDateString() === new Date().toDateString()}
 					<div class="bg-card {isToday ? 'bg-accent/[0.03]' : ''}">
 						<div class="h-10 px-1.5 py-1 border-b border-border text-center">
-							<div class="text-[10px] uppercase tracking-wide text-muted-foreground">
+							<div class="micro-label">
 								{dayNames[date.getDay()]}
 							</div>
 							<div
@@ -865,24 +946,45 @@
 							class="h-[46px] border-b border-border p-1 space-y-0.5 overflow-hidden"
 						>
 							{#each allDayEvents.slice(0, 2) as event}
+								{@const markerKind = getTaskMarkerKind(event)}
 								<button
 									onclick={() => handleEventClick(event)}
-									class="w-full px-1 py-0.5 rounded-sm text-[10px] leading-tight text-left truncate transition-all hover:opacity-90 hover:shadow-ink pressable {event.color} {getContinuationClass(
+									class="flex w-full items-center gap-1 overflow-hidden rounded-sm px-1 py-0.5 text-left text-[10px] leading-tight transition-colors hover:opacity-90 hover:shadow-ink motion-reduce:transition-none pressable {event.color} {getContinuationClass(
 										event
 									)}"
 									title={`${event.title} - ${getEventDayLabel(event)}`}
 								>
-									<span class="font-medium"
-										>{getContinuationLabel(event) || 'All day'}</span
-									>
-									<span class="opacity-70"> - </span>
-									<span>{event.title}</span>
+									{#if markerKind}
+										<span
+											class="inline-flex shrink-0 items-center gap-0.5 rounded-sm bg-background/70 px-1 py-0.5 font-semibold text-foreground/80 shadow-sm ring-1 ring-border/60"
+										>
+											{#if markerKind === 'range'}
+												<CalendarRange class="h-2.5 w-2.5" />
+											{:else if markerKind === 'start'}
+												<Play class="h-2.5 w-2.5" />
+											{:else}
+												<Target class="h-2.5 w-2.5" />
+											{/if}
+											<span>{getTaskMarkerLabel(markerKind, true)}</span>
+										</span>
+									{:else}
+										<span class="shrink-0 font-medium"
+											>{getContinuationLabel(event) || 'All day'}</span
+										>
+										<span class="shrink-0 opacity-70">-</span>
+									{/if}
+									<span class="min-w-0 truncate">{event.title}</span>
 								</button>
 							{/each}
 							{#if allDayEvents.length > 2}
-								<div class="text-[10px] text-muted-foreground pl-1">
+								<button
+									type="button"
+									onclick={() => openDayView(date)}
+									class="block w-full truncate rounded-sm px-1 text-left text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground motion-reduce:transition-none"
+									aria-label={getOpenDayAriaLabel(date, allDayEvents.length - 2)}
+								>
 									+{allDayEvents.length - 2} more
-								</div>
+								</button>
 							{/if}
 						</div>
 						<div
@@ -897,9 +999,10 @@
 								{#each eventsInColumn as event}
 									{@const left = (columnIndex / columnCount) * 100}
 									{@const width = 100 / columnCount - 4}
+									{@const markerKind = getTaskMarkerKind(event)}
 									<button
 										onclick={() => handleEventClick(event)}
-										class="absolute px-1 py-0.5 rounded-sm text-[10px] leading-tight overflow-hidden transition-all hover:opacity-90 hover:shadow-ink pressable border border-transparent {event.color}"
+										class="absolute px-1 py-0.5 rounded-sm text-[10px] leading-tight overflow-hidden transition-colors hover:opacity-90 hover:shadow-ink motion-reduce:transition-none pressable border border-transparent {event.color}"
 										style="left: {left + 2}%; right: {100 -
 											(left + width + 2)}%; top: {getTimePosition(
 											event.start
@@ -909,7 +1012,30 @@
 												getTimePosition(event.start)
 										)}%"
 									>
-										<div class="font-medium truncate">{event.title}</div>
+										<div class="flex min-w-0 items-center gap-1">
+											{#if markerKind}
+												<span
+													class="inline-flex shrink-0 items-center gap-0.5 rounded-sm bg-background/70 px-1 py-0.5 font-semibold text-foreground/80 shadow-sm ring-1 ring-border/60"
+												>
+													{#if markerKind === 'range'}
+														<CalendarRange class="h-2.5 w-2.5" />
+													{:else if markerKind === 'start'}
+														<Play class="h-2.5 w-2.5" />
+													{:else}
+														<Target class="h-2.5 w-2.5" />
+													{/if}
+													<span
+														>{getTaskMarkerLabel(
+															markerKind,
+															true
+														)}</span
+													>
+												</span>
+											{/if}
+											<span class="min-w-0 truncate font-medium"
+												>{event.title}</span
+											>
+										</div>
 										<div class="opacity-70 tabular-nums">
 											{formatTime(event.start)}
 										</div>
@@ -940,9 +1066,7 @@
 								>
 									{date.getDate()}
 								</div>
-								<div
-									class="text-[10px] uppercase tracking-wide text-muted-foreground"
-								>
+								<div class="micro-label">
 									{dayNames[date.getDay()]}
 								</div>
 							</div>
@@ -957,17 +1081,35 @@
 						{#if dayEvents.length > 0}
 							<div class="space-y-1 border-t border-border pt-1.5">
 								{#each dayEvents as event}
+									{@const markerKind = getTaskMarkerKind(event)}
 									<button
 										onclick={() => handleEventClick(event)}
-										class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted pressable {event.color} {getContinuationClass(
+										class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted motion-reduce:transition-none pressable {event.color} {getContinuationClass(
 											event
 										)}"
 									>
 										<div class="flex-1 min-w-0">
-											<div
-												class="text-sm font-medium text-foreground truncate"
-											>
-												{event.title}
+											<div class="flex min-w-0 items-center gap-2">
+												{#if markerKind}
+													<span
+														class="inline-flex shrink-0 items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
+													>
+														{#if markerKind === 'range'}
+															<CalendarRange class="h-3 w-3" />
+														{:else if markerKind === 'start'}
+															<Play class="h-3 w-3" />
+														{:else}
+															<Target class="h-3 w-3" />
+														{/if}
+														<span>{getTaskMarkerLabel(markerKind)}</span
+														>
+													</span>
+												{/if}
+												<div
+													class="min-w-0 truncate text-sm font-medium text-foreground"
+												>
+													{event.title}
+												</div>
 											</div>
 											<div class="text-xs text-muted-foreground tabular-nums">
 												{#if getContinuationLabel(event)}
@@ -999,9 +1141,7 @@
 			>
 				<div class="grid grid-cols-7 gap-px bg-border">
 					{#each dayNames as day}
-						<div
-							class="bg-muted/50 px-1.5 py-1.5 text-center text-[10px] uppercase tracking-wide font-medium text-muted-foreground"
-						>
+						<div class="micro-label bg-muted/50 px-1.5 py-1.5 text-center">
 							{day}
 						</div>
 					{/each}
@@ -1044,20 +1184,49 @@
 										style="margin-top: {getMonthCellEventOffset(laneCount)}px"
 									>
 										{#if hiddenSegments > 0}
-											<div class="text-[10px] text-muted-foreground pl-1">
+											<button
+												type="button"
+												onclick={() => openDayView(date)}
+												class="block w-full truncate rounded-sm px-1 text-left text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground motion-reduce:transition-none"
+												aria-label={getOpenDayAriaLabel(
+													date,
+													hiddenSegments
+												)}
+											>
 												+{hiddenSegments} more
-											</div>
+											</button>
 										{/if}
 										{#each timedEvents.slice(0, 2) as event}
+											{@const markerKind = getTaskMarkerKind(event)}
 											<button
 												onclick={() => handleEventClick(event)}
-												class="flex w-full items-center gap-1 truncate rounded-sm px-1 py-0.5 text-left text-[10px] leading-tight transition-all hover:bg-muted pressable"
+												class="flex w-full items-center gap-1 overflow-hidden rounded-sm px-1 py-0.5 text-left text-[10px] leading-tight transition-colors hover:bg-muted motion-reduce:transition-none pressable"
 												title={`${event.title} - ${getEventDayLabel(event)}`}
 											>
-												<span
-													class="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/70"
-												></span>
-												<span class="truncate">
+												{#if markerKind}
+													<span
+														class="inline-flex shrink-0 items-center gap-0.5 rounded-sm bg-muted px-1 py-0.5 font-semibold text-foreground/80 ring-1 ring-border/60"
+													>
+														{#if markerKind === 'range'}
+															<CalendarRange class="h-2.5 w-2.5" />
+														{:else if markerKind === 'start'}
+															<Play class="h-2.5 w-2.5" />
+														{:else}
+															<Target class="h-2.5 w-2.5" />
+														{/if}
+														<span
+															>{getTaskMarkerLabel(
+																markerKind,
+																true
+															)}</span
+														>
+													</span>
+												{:else}
+													<span
+														class="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/70"
+													></span>
+												{/if}
+												<span class="min-w-0 truncate">
 													{#if !event.allDay}
 														<span class="tabular-nums"
 															>{formatTime(event.start)}</span
@@ -1069,23 +1238,48 @@
 											</button>
 										{/each}
 										{#if timedEvents.length > 2}
-											<div class="text-[10px] text-muted-foreground pl-1">
+											<button
+												type="button"
+												onclick={() => openDayView(date)}
+												class="block w-full truncate rounded-sm px-1 text-left text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground motion-reduce:transition-none"
+												aria-label={getOpenDayAriaLabel(
+													date,
+													timedEvents.length - 2
+												)}
+											>
 												+{timedEvents.length - 2} more
-											</div>
+											</button>
 										{/if}
 									</div>
 								</div>
 							{/each}
 
 							{#each visibleSegments as segment}
+								{@const markerKind = getTaskMarkerKind(segment.event)}
 								<button
 									onclick={() => handleEventClick(segment.event)}
-									class="absolute z-10 h-5 truncate px-1.5 text-left text-[10px] font-semibold leading-5 text-foreground shadow-sm transition-all hover:brightness-95 hover:shadow-ink pressable {segment
+									class="absolute z-10 flex h-5 items-center gap-1 overflow-hidden px-1.5 text-left text-[10px] font-semibold leading-5 text-foreground shadow-sm transition-colors hover:brightness-95 hover:shadow-ink motion-reduce:transition-none pressable {segment
 										.event.color}"
 									style={getMonthSegmentStyle(segment)}
 									title={`${segment.event.title} - ${getEventRangeLabel(segment.event)}`}
 								>
-									<span class="truncate">{getMonthSegmentLabel(segment)}</span>
+									{#if markerKind}
+										<span
+											class="inline-flex shrink-0 items-center gap-0.5 rounded-sm bg-background/70 px-1 py-0.5 leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
+										>
+											{#if markerKind === 'range'}
+												<CalendarRange class="h-2.5 w-2.5" />
+											{:else if markerKind === 'start'}
+												<Play class="h-2.5 w-2.5" />
+											{:else}
+												<Target class="h-2.5 w-2.5" />
+											{/if}
+											<span>{getTaskMarkerLabel(markerKind, true)}</span>
+										</span>
+									{/if}
+									<span class="min-w-0 truncate"
+										>{getMonthSegmentLabel(segment)}</span
+									>
 								</button>
 							{/each}
 						</div>
@@ -1095,11 +1289,10 @@
 
 			<!-- Mobile Month View - Card-based layout -->
 			<div class="md:hidden space-y-1.5">
-				{#each getMonthDates(internalDate) as date}
-					{@const dayEvents = getEventsForDay(date)}
-					{@const isCurrentMonth = date.getMonth() === internalDate.getMonth()}
-					{@const isToday = date.toDateString() === new Date().toDateString()}
-					{#if isCurrentMonth && dayEvents.length > 0}
+				{#if currentMonthEventDates.length > 0}
+					{#each currentMonthEventDates as date}
+						{@const dayEvents = getEventsForDay(date)}
+						{@const isToday = date.toDateString() === new Date().toDateString()}
 						<div
 							class="rounded-lg border shadow-ink {isToday
 								? 'border-accent/50 bg-accent/[0.03]'
@@ -1114,9 +1307,7 @@
 									>
 										{date.getDate()}
 									</div>
-									<div
-										class="text-[10px] uppercase tracking-wide text-muted-foreground"
-									>
+									<div class="micro-label">
 										{dayNames[date.getDay()]}
 									</div>
 								</div>
@@ -1129,16 +1320,36 @@
 								{/if}
 							</div>
 							<div class="space-y-0.5 border-t border-border pt-1.5">
-								{#each dayEvents as event}
+								{#each dayEvents.slice(0, 3) as event}
+									{@const markerKind = getTaskMarkerKind(event)}
 									<button
 										onclick={() => handleEventClick(event)}
-										class="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-xs transition-colors hover:bg-muted pressable {event.color} {getContinuationClass(
+										class="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-xs transition-colors hover:bg-muted motion-reduce:transition-none pressable {event.color} {getContinuationClass(
 											event
 										)}"
 									>
 										<div class="min-w-0 flex-1">
-											<div class="truncate text-foreground font-medium">
-												{event.title}
+											<div class="flex min-w-0 items-center gap-2">
+												{#if markerKind}
+													<span
+														class="inline-flex shrink-0 items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
+													>
+														{#if markerKind === 'range'}
+															<CalendarRange class="h-3 w-3" />
+														{:else if markerKind === 'start'}
+															<Play class="h-3 w-3" />
+														{:else}
+															<Target class="h-3 w-3" />
+														{/if}
+														<span>{getTaskMarkerLabel(markerKind)}</span
+														>
+													</span>
+												{/if}
+												<div
+													class="min-w-0 truncate font-medium text-foreground"
+												>
+													{event.title}
+												</div>
 											</div>
 											<div class="text-[10px] text-muted-foreground">
 												{#if getContinuationLabel(event)}
@@ -1153,14 +1364,26 @@
 									</button>
 								{/each}
 								{#if dayEvents.length > 3}
-									<div class="text-[10px] text-muted-foreground px-1.5 pt-0.5">
+									<button
+										type="button"
+										onclick={() => openDayView(date)}
+										class="block w-full truncate rounded-sm px-1.5 pt-0.5 text-left text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground motion-reduce:transition-none"
+										aria-label={getOpenDayAriaLabel(date, dayEvents.length - 3)}
+									>
 										+{dayEvents.length - 3} more
-									</div>
+									</button>
 								{/if}
 							</div>
 						</div>
-					{/if}
-				{/each}
+					{/each}
+				{:else}
+					<div
+						class="rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground shadow-ink"
+					>
+						<Calendar class="mx-auto mb-2 h-10 w-10 opacity-40" />
+						<p class="text-sm">No events scheduled for this month</p>
+					</div>
+				{/if}
 			</div>
 		{/if}
 	</div>

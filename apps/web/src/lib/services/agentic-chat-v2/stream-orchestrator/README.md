@@ -119,4 +119,4 @@ Importers point directly at `./stream-orchestrator/index` via the barrel in `age
 - Current route-level stream suite: `17/17` tests passing in `src/routes/api/agent/v2/stream/server.test.ts`.
 - Current TypeScript check: `pnpm --filter @buildos/web exec tsc --noEmit --pretty false --skipLibCheck` passes after `pnpm --filter @buildos/web exec svelte-kit sync`.
 - Current web check: `pnpm --filter @buildos/web check` passes with `0` errors and `0` warnings.
-- Latest targeted stream-resilience checks (2026-07-08): `42/42` passing in `stream-orchestrator.test.ts`, `8/8` passing in `llm-pass-runner.test.ts`, and `pnpm --dir apps/web run check` passes with `0` errors and `0` warnings.
+- Latest targeted stream-resilience checks (2026-07-08): `42/42` passing in `stream-orchestrator.test.ts`, `9/9` passing in `llm-pass-runner.test.ts`, and `pnpm --dir apps/web run check` passes with `0` errors and `0` warnings.

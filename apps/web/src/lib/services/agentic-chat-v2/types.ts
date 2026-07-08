@@ -138,6 +138,7 @@ export type FastAgentStreamEvent =
 			type: 'agent_state';
 			state: 'thinking' | 'waiting_on_user';
 			details?: string;
+			activity_visibility?: 'activity_log';
 	  }
 	| { type: 'text_delta'; content: string }
 	| { type: 'error'; error: string }

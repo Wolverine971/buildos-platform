@@ -2,7 +2,7 @@
 
 # Agentic Chat Performance & Raw Speed Audit Tasker - 2026-07-07
 
-Status: Draft 0.1 - starter audit opened from the 2026-07-01 deep backend audit and the current 2026-07-07 working tree.
+Status: Draft 0.2 - starter audit opened from the 2026-07-01 deep backend audit, updated after the first 2026-07-07/08 performance cleanup pass.
 
 Source audit:
 
@@ -35,92 +35,93 @@ Tool surface size baseline from:
 ./node_modules/.bin/tsx --tsconfig apps/web/tsconfig.json apps/web/scripts/report-agentic-tool-surface-sizes.ts
 ```
 
-Key profiles:
+Key profiles after the D1 launch-surface trim:
 
 | Surface                        | Tools |  Chars | Est. tokens |
 | ------------------------------ | ----: | -----: | ----------: |
 | `project_create_minimal`       |     1 |  5,774 |       1,444 |
 | `project_calendar`             |    13 | 10,607 |       2,652 |
-| `project_basic`                |    18 | 15,482 |       3,871 |
-| `global_basic`                 |    16 | 14,966 |       3,742 |
-| `project_write`                |    22 | 23,710 |       5,928 |
-| `global_write` / `daily_brief` |    23 | 24,847 |       6,212 |
-| `project_write_document`       |    25 | 25,870 |       6,468 |
+| `project_basic`                |    14 | 10,571 |       2,643 |
+| `global_basic`                 |    11 |  9,659 |       2,415 |
+| `project_write`                |    18 | 18,799 |       4,700 |
+| `global_write` / `daily_brief` |    18 | 19,540 |       4,885 |
+| `project_document`             |    18 | 16,073 |       4,019 |
+| `project_write_document`       |    20 | 20,563 |       5,141 |
 
-The current largest speed lever is still prompt/tool-surface size. A misrouted project turn can add roughly 2K-2.6K prompt tokens before the model reads the user message.
+The current largest speed lever is still prompt/tool-surface size. The first trim removed roughly 1.2K-1.3K estimated tokens from several common launch surfaces. A misrouted project turn can still add roughly 2K-2.5K prompt tokens before the model reads the user message.
 
-Timing primitives exist but are too coarse for the next audit:
+Timing primitives exist and now include the first hot-path splits:
 
 - `timing_metrics` records `context_build_ms`, `tool_selection_ms`, `time_to_first_event_ms`, `time_to_first_response_ms`, and total request time in `apps/web/src/lib/services/agentic-chat-v2/turn-observability-writer.ts:242`.
-- It does not split active-turn lookup, prepared-prompt consume, context RPC vs fallback, Start Here fetch, prompt snapshot insert, live vision prep, or per-LLM-pass first byte.
+- `timing_metrics.metadata.timing_summary.phases` also records `active_turn_lookup_ms`, `turn_admission_ms`, `prepared_prompt_consume_ms`, and `prompt_snapshot_insert_ms`.
+- It still does not split context RPC vs fallback internals, Start Here load, live vision prep, or per-LLM-pass first byte.
 
 ## Starter Findings
 
 ### P1. Prompt snapshot insert blocks the first LLM pass
 
-Confirmed. The stream route builds and awaits a full `chat_prompt_snapshots` insert before calling `streamFastChat`.
+Addressed in the current working tree. The stream route now captures a deferred prompt-snapshot persistence closure when prompt context is ready, but it does not build or insert the snapshot before calling `streamFastChat`. The snapshot task is scheduled after the first text delta is emitted; tool-only or empty-text turns schedule it after `streamFastChat` returns. Thrown cancellation/error paths schedule the same detached task after emitting their terminal response path.
 
 References:
 
-- Prompt snapshot build starts at `apps/web/src/routes/api/agent/v2/stream/+server.ts:3483`.
-- The route awaits `.from('chat_prompt_snapshots').insert(...)` at `apps/web/src/routes/api/agent/v2/stream/+server.ts:3563`.
-- `streamFastChat(...)` does not start until `apps/web/src/routes/api/agent/v2/stream/+server.ts:3702`.
+- Prompt snapshot closure is prepared after context is ready in `apps/web/src/routes/api/agent/v2/stream/+server.ts`.
+- The first `onDelta` schedules the detached snapshot task after the text delta has been emitted.
+- `TurnObservabilityWriter.flushWithBudget(...)` still gives the detached snapshot task a bounded chance to persist before the stream closes.
 
 Why it matters:
 
-- This is on the user-visible hot path before the first model byte.
+- Snapshot build + insert is no longer on the user-visible hot path before the first model byte.
 - The snapshot contains full prompt material, tool definitions, context payload, sections, cost breakdown, and tool surface report.
-- Observability is important, but it should not be a synchronous tax on every turn.
+- Observability remains available through the detached snapshot row, `prompt_snapshot_created` event, and turn-run `prompt_snapshot_id` link when the insert succeeds.
 
 Recommended next scan:
 
-- Add `prompt_snapshot_insert_ms` to timing.
-- Compare p50/p95 time-to-first-response with snapshots enabled vs sampled/detached.
-- Move snapshot insertion after the first token, after `done`, or into a detached/sampled writer while preserving `prompt_snapshot_id` when available.
+- Compare p50/p95 time-to-first-response before/after the deferred snapshot path.
+- Check `prompt_snapshot_created` event rate and `chat_turn_runs.prompt_snapshot_id` fill rate after deploy.
+- Consider sampling prompt snapshots if detached snapshot persistence still pressures total request time or flush budget.
 
 ### P1. Turn admission and prepared prompt consumption happen late
 
-Confirmed. The route performs session/context/prompt setup and consumes a prepared prompt before the authoritative `chat_turn_runs` insert wins the running-turn lock.
+Partially addressed in the current working tree. The route now inserts the authoritative `chat_turn_runs` row before prepared-prompt consumption, history loading, context loading, or prompt construction. The prepared prompt is no longer consumed by a request that loses the running-turn unique constraint.
 
 References:
 
 - Session resolves at `apps/web/src/routes/api/agent/v2/stream/+server.ts:2616`.
 - Active-turn lookup happens at `apps/web/src/routes/api/agent/v2/stream/+server.ts:2649`.
-- Prepared prompt consume starts at `apps/web/src/routes/api/agent/v2/stream/+server.ts:2827`.
-- Running turn row is inserted at `apps/web/src/routes/api/agent/v2/stream/+server.ts:2928`.
-- `consumePreparedPrompt` loads the whole row with `select('*')` at `apps/web/src/routes/api/agent/v2/stream/+server.ts:932` and only then marks it consumed at `:977`.
+- Running turn row is now inserted before `consumePreparedPrompt`.
+- Prepared prompt consumption is extracted to `apps/web/src/lib/services/agentic-chat-v2/prepared-prompt-consumer.ts`.
 
 Why it matters:
 
-- A superseded or racing request can consume a useful prepared prompt before it owns the turn.
-- Work done between active-turn lookup and insert can be wasted if another request wins the unique running-turn boundary.
+- This closes the most direct prepared-prompt race: a losing request should not burn a prewarmed prompt.
+- Work done before admission is now limited to auth/access, session resolution, active-turn cleanup, and stale supervisor checkpoint recovery.
+- Prepared prompt consume now has its own timing so the hit path can be measured separately from history/context work.
 
 Recommended next scan:
 
-- Move the turn-run admission insert as early as possible after session resolution and stale-turn cleanup.
-- Consume prepared prompts only after admission succeeds.
-- Add timing for `active_turn_lookup_ms`, `turn_admission_ms`, and `prepared_prompt_consume_ms`.
+- Verify in production telemetry that `prepared_prompt_hit=false` / conflict turns no longer update `agentic_chat_prepared_prompts.consumed_at`.
+- Consider moving stale supervisor checkpoint recovery after admission if its query cost shows up in p95 time-to-admission.
 
-### P1. Context RPC still pays a Start Here side query with full content
+### P1. Context RPC still pays a Start Here side query
 
-Confirmed. Even when the context RPC path succeeds, project context attaches Start Here with an extra query that selects content from up to 20 docs.
+Partially addressed. Project context still attaches Start Here with an extra side query, but the loader now fetches candidate metadata first and fetches `content` only for the selected Start Here document.
 
 References:
 
 - RPC path starts at `apps/web/src/lib/services/agentic-chat-v2/context-loader.ts:2897`.
 - On project RPC success, it still calls `attachProjectStartHere(...)` at `apps/web/src/lib/services/agentic-chat-v2/context-loader.ts:2909`.
-- `loadProjectStartHereDocument` selects `id, title, content, props, created_at, updated_at` and `.limit(20)` at `apps/web/src/lib/services/agentic-chat-v2/context-loader.ts:2128`.
+- `loadProjectStartHereDocument` fetches Start Here candidates without `content`, then fetches body content for the selected document only.
 
 Why it matters:
 
 - This adds an extra DB round trip to the "fast" RPC path.
-- It fetches full content for up to 20 candidates to select one.
+- It no longer fetches full content for up to 20 candidates.
 - The same work hits prewarm and live fresh-load turns.
 
 Recommended next scan:
 
-- Move Start Here selection into the context RPC or fetch metadata first, then fetch content for the selected doc only.
-- Add `context_load_source` and `start_here_load_ms` telemetry.
+- Move Start Here selection into the context RPC if the remaining side query shows up in p95 context builds.
+- Add `start_here_load_ms` telemetry.
 - Compare project fresh-load `context_build_ms` with and without Start Here content.
 
 ### P1. Fallback project/entity context remains unbounded

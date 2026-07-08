@@ -10,6 +10,7 @@ import type { OpenRouterContentPart } from '$lib/services/openrouter-v2/types';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
 import type { FastChatHistoryMessage, FastAgentStreamUsage } from '../types';
 import { normalizeFastContextType } from '../scope';
+import { resolveFastChatPassModelRouting, type FastChatModelTieringConfig } from '../model-tiering';
 import { buildLitePromptEnvelope } from '$lib/services/agentic-chat-lite/prompt';
 import { FASTCHAT_LIMITS } from '../limits';
 import { buildLiveSnapshotFromTokens, FASTCHAT_TOKEN_BUDGETS } from '../context-usage';
@@ -126,6 +127,7 @@ type StreamFastChatParams = {
 	maxToolRounds?: number;
 	maxToolCalls?: number;
 	allowAutonomousRecovery?: boolean;
+	modelTiering?: FastChatModelTieringConfig | null;
 	debugContext?: FastChatDebugContext;
 	/**
 	 * Deterministic skill-load enforcement (2026-07-02). When domain sensing
@@ -920,6 +922,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			const passGatewayModeActive = writeIntentToolNameSet ? false : gatewayModeActive;
 			const noToolSynthesisPass = writeIntentToolPass ? false : forceNoToolSynthesisPass;
 			forceNoToolSynthesisPass = false;
+			const passNumber = llmStreamPasses.length + 1;
+			const modelRouting = resolveFastChatPassModelRouting({
+				passNumber,
+				hasTools: passTools.length > 0,
+				noToolSynthesisPass,
+				writeIntentToolPass: Boolean(writeIntentToolPass),
+				modelTiering: params.modelTiering ?? null
+			});
 			activeAssistantBuffer = '';
 			activePendingToolCallCount = 0;
 			const passMessages: FastChatModelMessage[] = [
@@ -943,7 +953,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				tools: passTools,
 				hasTools: passTools.length > 0,
 				noToolSynthesisPass,
-				passNumber: llmStreamPasses.length + 1,
+				passNumber,
 				usage,
 				userId,
 				sessionId,
@@ -964,7 +974,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				updateLiveContextUsage,
 				startLlmHeartbeat: () => startLongRunningOperationHeartbeat('llm_stream'),
 				observeSupervisor,
-				onToolCall: params.onToolCall
+				onToolCall: params.onToolCall,
+				modelRouting
 			});
 			const {
 				assistantBuffer,

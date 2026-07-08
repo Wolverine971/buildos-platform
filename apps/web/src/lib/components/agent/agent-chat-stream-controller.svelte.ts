@@ -79,6 +79,10 @@ export interface StreamControllerVoiceDeps {
 export interface StreamControllerPrewarmDeps {
 	resolveCurrentKey(): string | null;
 	matchingFreshPreparedPrompt(key: string | null | undefined): PreparedPromptClient | null;
+	waitForPreparedPrompt?(
+		key: string | null | undefined,
+		options?: { timeoutMs?: number }
+	): Promise<PreparedPromptClient | null>;
 	clearPreparedPrompt(): void;
 }
 
@@ -149,6 +153,8 @@ export function buildClientStreamTimingState(runId: number): ClientStreamTimingS
 		serverTiming: null
 	};
 }
+
+const PREPARED_PROMPT_SEND_WAIT_MS = 250;
 
 function diffMs(start: number | null, end: number | null): number | null {
 	if (typeof start !== 'number' || typeof end !== 'number') return null;
@@ -390,6 +396,19 @@ export class AgentChatStreamController {
 		return false;
 	}
 
+	async #resolvePreparedPromptForSend(
+		prewarm: StreamControllerPrewarmDeps,
+		key: string | null
+	): Promise<PreparedPromptClient | null> {
+		const prepared = prewarm.matchingFreshPreparedPrompt(key);
+		if (prepared || !prewarm.waitForPreparedPrompt) return prepared;
+		return (
+			(await prewarm.waitForPreparedPrompt(key, {
+				timeoutMs: PREPARED_PROMPT_SEND_WAIT_MS
+			})) ?? prewarm.matchingFreshPreparedPrompt(key)
+		);
+	}
+
 	async sendMessage(
 		contentOverride?: string,
 		options: { senderType?: 'user' | 'agent_peer'; suppressInputClear?: boolean } = {}
@@ -446,7 +465,10 @@ export class AgentChatStreamController {
 			const requestProjectFocus = this.#deps.getResolvedProjectFocus();
 			const prewarm = this.#deps.getPrewarm();
 			const currentPrewarmKey = prewarm.resolveCurrentKey();
-			let matchingPreparedPrompt = prewarm.matchingFreshPreparedPrompt(currentPrewarmKey);
+			let matchingPreparedPrompt = await this.#resolvePreparedPromptForSend(
+				prewarm,
+				currentPrewarmKey
+			);
 			let sessionForTurn = this.#deps.getCurrentSession();
 			const canUseStreamCreatedSession =
 				senderType === 'user' && Boolean(matchingPreparedPrompt);
@@ -471,7 +493,10 @@ export class AgentChatStreamController {
 					return;
 				}
 
-				matchingPreparedPrompt = prewarm.matchingFreshPreparedPrompt(currentPrewarmKey);
+				matchingPreparedPrompt = await this.#resolvePreparedPromptForSend(
+					prewarm,
+					currentPrewarmKey
+				);
 			}
 
 			if (!sessionForTurn?.id && !matchingPreparedPrompt) {

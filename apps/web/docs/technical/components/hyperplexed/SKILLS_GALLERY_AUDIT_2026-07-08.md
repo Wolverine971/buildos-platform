@@ -1,0 +1,81 @@
+<!-- apps/web/docs/technical/components/hyperplexed/SKILLS_GALLERY_AUDIT_2026-07-08.md -->
+
+# Skills Gallery Audit 2026-07-08
+
+Target: `/skills`, `/skills/[slug]`, `/skills/domain/[domain]`, `/skills/path/[path]`, and `/skills/try/[slug]`
+
+Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail template, Phase 3 domain rabbit-hole routes plus the first BuildOS try launcher, Phase 4 pack/stack path pages, and Phase 5 curated metadata registry.
+
+## Regions
+
+- Hero and search tool
+- Featured skill cards
+- Domain map cards
+- Packs and stacks cards
+- Skill result cards
+- Right rail: rabbit hole, families, agent artifacts
+- Skill detail hero, procedure, prompts, boundaries, related skills, lineage, and agent rail
+- Domain detail hero, domain search, path steps, skill families, packs, and agent rail
+- Pack/stack path hero, ordered stages, related domains, related paths, and agent rail
+- Try route redirect and chat draft handoff
+- Curated gallery metadata registry
+- Guest footer resource link
+
+## Shipped Fixes
+
+### Tier 1 - cheap, high-impact
+
+- Page shell uses the shared `max-w-7xl mx-auto px-2 sm:px-4 lg:px-6` width and padding scale -> P3.
+- Search, filter buttons, cards, and result rows use 44px-plus targets and visible focus rings -> P13.
+- Skill titles, family rows, result badges, and card descriptions are clamped or truncated so long names cannot break alignment -> P1.
+- Metadata such as domain, source count, reference count, skill type, and output shapes is rendered as subtext or chips instead of competing headings -> P4.
+- Section labels use `.micro-label` consistently -> P5.
+- Public footer now links users to `Skill Gallery` instead of the agent repository first -> P6.
+
+### Tier 2 - structural within the surface
+
+- `/skills` is separated from `/agent-skills`: the new route leads with user jobs, while agent artifacts remain one click away -> P6+P8.
+- Domain cards expose a broad-to-specific map, then the right rail turns the selected domain into a path and family list -> P4.
+- Domain cards now expose separate `Filter` and `Map` actions, avoiding a hidden route behind a filter-only card -> P8+P13.
+- Packs and stacks expose separate `Filter` and `Path` actions, so users can either refine the gallery or open the ordered workflow -> P7+P8+P13.
+- Icons are lucide exports from `$lib/icons/lucide.ts`, with fixed icon containers on repeated cards -> P9.
+- Gallery URL helpers live in `src/lib/skills/skill-gallery.ts`, so the gallery and detail route share one path model -> P3+P6.
+- Curated domain, pack, family, output-shape, workflow, guardrail, and starter-prompt metadata moved into `src/lib/skills/skill-gallery-metadata.ts`, while `skill-gallery.ts` keeps heuristic fallbacks for unregistered skills -> P3+P6.
+- `/skills/[slug]` now gives each skill a user-first detail page with visible use cases, prompts, workflow, boundaries, related skills, lineage, and agent artifacts -> P4+P8.
+- `/skills/domain/[domain]` gives each domain its own rabbit-hole page with local search, path steps, family sections, related packs/stacks, and 44px mobile controls -> P3+P7+P13.
+- `/skills/path/[path]` gives each pack or stack an ordered workflow page with stages, start-skill CTA, domain links, related paths, and agent file access -> P3+P4+P8+P13.
+- `/skills/try/[slug]` preserves skill intent through registration and hands signed-in users an editable chat draft without auto-sending -> P6+P8+P13.
+- Runtime workflow text is cleaned before rendering so internal markdown helper syntax does not leak into the user-facing page -> P6.
+
+### Tier 3 - polish/signature
+
+- Deferred. The Phase 1 route intentionally avoids a signature hover/glow effect until live visual verification confirms density, contrast, and mobile behavior.
+
+## Verification
+
+- Targeted Prettier on the touched gallery, detail, domain, launcher, navigation, and chat modal files.
+- `pnpm run check` -> 0 errors, 0 warnings
+- Live `/skills` check at 1280px and 390px: 8 cards rendered, no horizontal overflow.
+- Search for `calendar` narrows to the Google Calendar skill.
+- Growth domain filter shows the two cold-email skills after clearing search.
+- Founder Content Pack filter shows the three content skills.
+- Live `/skills/cold-email-engagement-first-outreach` check: detail page renders What It Does, Try It, Procedure, Boundaries, For Agents, SKILL.md, bundle, and repository links.
+- Live 390px detail check: no horizontal overflow, no tiny article links, primary actions remain 44px high.
+- Live `/skills/domain/sales-and-growth` check at 1280px: domain page renders the path, domain search, two growth skills, packs/stacks, Try links, and no horizontal overflow.
+- Domain search for `icp` narrows to `Cold Email ICP And Signal Design`.
+- Guest `/skills/try/cold-email-engagement-first-outreach` check redirects to `/auth/register` with `open=agent-chat`, the skill slug, and the generated prompt preserved.
+- Live 390px domain check: no horizontal overflow; main controls and pack skill links remain 44px high.
+- Baseline and post-Phase-4 `pnpm run check` -> 0 errors, 0 warnings.
+- Live `/skills` check at 1280px: 4 pack/stack path links rendered, no horizontal overflow.
+- Live `/skills/path/founder-content-pack` check at 1280px: path page renders the hero, three ordered stages, Try/Open/SKILL actions, domain link, related path, and no horizontal overflow.
+- Live `/skills/domain/marketing-and-content` check: domain sidebar links to three relevant paths.
+- Live 390px path check: no horizontal overflow; all main controls remain at least 44px high.
+- Post-Phase-5 `pnpm run check` -> 0 errors, 0 warnings.
+
+## Deferred
+
+- Full screenshot verification in desktop and iPhone light/dark mode.
+- Authenticated end-to-end launcher smoke with a real signed-in session.
+- Optional nested skill URL shape if we later want `/skills/domain/[domain]/[skill]` aliases.
+- Generated gallery metadata sync from `buildos.yaml` or source skill manifests.
+- Full public coverage for runtime skills that do not yet have gallery-quality metadata.

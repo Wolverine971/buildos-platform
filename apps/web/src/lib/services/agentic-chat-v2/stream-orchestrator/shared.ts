@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/shared.ts
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
+import type { FastChatLlmPassRole, FastChatModelTieringVariant } from '../model-tiering';
 
 export type FastToolExecution = {
 	toolCall: ChatToolCall;
@@ -29,6 +30,10 @@ export type FastChatDebugContext = {
 
 export type LLMStreamPassMetadata = {
 	pass: number;
+	passRole?: FastChatLlmPassRole;
+	requestedProfile?: string;
+	requestedModels?: string[];
+	modelTieringVariant?: FastChatModelTieringVariant;
 	finishedReason?: string;
 	model?: string;
 	provider?: string;

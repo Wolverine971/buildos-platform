@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/layout/Navigation.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { replaceState } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import {
 		FolderOpen,
@@ -70,10 +71,12 @@
 	let chatOpenedWithContext = $state<ChatContextType | null>(null);
 	let chatInitialSessionId = $state<string | null>(null);
 	let chatInitialBrainDumpContext = $state<AgentBrainDumpContext | null>(null);
+	let chatInitialDraft = $state<string | null>(null);
 	let chatOverrideContextType = $state<ChatContextType | null>(null);
 	let chatOverrideEntityId = $state<string | undefined>(undefined);
 	let chatUsePageFocus = $state(true);
 	let isOpeningBrainDumpChat = $state(false);
+	let handledAgentChatLaunchKey = $state('');
 
 	// Mobile-menu accessibility: drawer ref for the focus trap, and the element to restore
 	// focus to when the drawer closes (the hamburger button the user came from).
@@ -166,7 +169,7 @@
 		if (projectDetailMatch) return 'Project chat';
 		if (currentPath === '/projects') return 'Projects chat';
 		if (currentPath.startsWith('/briefs')) return 'Brief chat';
-		if (currentPath.startsWith('/dashboard/calendar')) return 'Projects chat';
+		if (currentPath.startsWith('/dashboard/calendar')) return 'Calendar chat';
 		return 'BuildOS chat';
 	});
 
@@ -371,6 +374,7 @@
 		closeAllMenus();
 		chatInitialSessionId = null;
 		chatInitialBrainDumpContext = null;
+		chatInitialDraft = null;
 		chatOverrideContextType = null;
 		chatOverrideEntityId = undefined;
 		chatUsePageFocus = true;
@@ -391,10 +395,15 @@
 				contextType?: ChatContextType | null;
 				entityId?: string | null;
 				projectId?: string | null;
+				initialDraft?: string | null;
 			}>
 		).detail;
 		closeAllMenus();
 		chatInitialBrainDumpContext = null;
+		chatInitialDraft =
+			typeof detail?.initialDraft === 'string' && detail.initialDraft.trim()
+				? detail.initialDraft.trim()
+				: null;
 		chatUsePageFocus = false;
 		chatInitialSessionId =
 			typeof detail?.sessionId === 'string' && detail.sessionId.trim()
@@ -411,12 +420,56 @@
 		showChatModal = true;
 	}
 
+	function normalizeLaunchDraft(value: string | null): string | null {
+		const trimmed = value?.trim();
+		if (!trimmed) return null;
+		return trimmed.length > 2400 ? `${trimmed.slice(0, 2400)}...` : trimmed;
+	}
+
+	function openAgentChatLaunch(draft: string) {
+		closeAllMenus();
+		chatInitialSessionId = null;
+		chatInitialBrainDumpContext = null;
+		chatInitialDraft = draft;
+		chatUsePageFocus = false;
+		chatOverrideContextType = 'global';
+		chatOverrideEntityId = undefined;
+		chatOpenedWithContext = 'global';
+		showChatModal = true;
+	}
+
+	$effect(() => {
+		if (!browser || !user) return;
+
+		const url = $page.url;
+		if (url.searchParams.get('open') !== 'agent-chat') return;
+
+		const skillSlug = url.searchParams.get('skill')?.trim() ?? '';
+		const draft =
+			normalizeLaunchDraft(url.searchParams.get('prompt')) ??
+			(skillSlug ? `Use the ${skillSlug} skill on my current work.` : null);
+		if (!draft) return;
+
+		const launchKey = `${url.pathname}|${skillSlug}|${draft}`;
+		if (handledAgentChatLaunchKey === launchKey) return;
+		handledAgentChatLaunchKey = launchKey;
+
+		openAgentChatLaunch(draft);
+
+		const cleanUrl = new URL(url);
+		cleanUrl.searchParams.delete('open');
+		cleanUrl.searchParams.delete('skill');
+		cleanUrl.searchParams.delete('prompt');
+		replaceState(`${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`, {});
+	});
+
 	function handleChatClose(summary?: DataMutationSummary) {
 		const wasProjectCreate = chatOpenedWithContext === 'project_create';
 		showChatModal = false;
 		chatOpenedWithContext = null;
 		chatInitialSessionId = null;
 		chatInitialBrainDumpContext = null;
+		chatInitialDraft = null;
 		chatOverrideContextType = null;
 		chatOverrideEntityId = undefined;
 		chatUsePageFocus = true;
@@ -1291,6 +1344,7 @@
 			initialChatSessionId={chatInitialSessionId}
 			initialBrainDumpContext={chatInitialBrainDumpContext}
 			initialProjectFocus={effectiveChatInitialProjectFocus}
+			initialDraft={chatInitialDraft}
 			onClose={handleChatClose}
 		/>
 	{/await}

@@ -127,6 +127,23 @@ describe('applyFinalizationGuard', () => {
 			'task "Create detailed BuildOS guides for Tech Project Managers [MERGED]" (done)'
 		);
 		expect(guard.text).not.toContain('I gathered the requested context');
+		expect(guard.finishedReason).toBeUndefined();
+	});
+
+	it('tags generic no-evidence read fallbacks as synthesis_empty', () => {
+		const call = toolCall('search_project', { query: 'missing launch note' });
+		const guard = applyFinalizationGuard({
+			finalAssistantText: '',
+			assistantText: '',
+			toolExecutions: [{ toolCall: call, result: toolResult(call, true, { results: [] }) }]
+		});
+
+		expect(guard).toMatchObject({
+			applied: true,
+			reason: 'empty_after_reads',
+			finishedReason: 'synthesis_empty'
+		});
+		expect(guard.text).toContain('turn ended before a final response was produced');
 	});
 
 	it('summarizes workspace overview status when a workspace read-heavy turn has no final text', () => {

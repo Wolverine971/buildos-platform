@@ -17,6 +17,7 @@ reference_modules:
           - When mode selection lands on setup-layered (B2B SaaS, considered purchases, non-obvious "why pick us over the alternatives").
           - When a scorecard with a frustration hook is bouncing considered buyers who have not accepted the category framing.
       path: references/setup-layer-positioning.md
+      visibility: public
     - id: landing_page_scorecard_funnel.funnel_build_specs
       name: Funnel Build Specs
       summary: Threshold-bearing build rules — the five-section landing page with three hook forms, the CTA stack (plus waiting-list and group-registration CTA variants), the 15-question questionnaire (contact capture, 10 best-practice questions, Big 5 qualification), the dynamic results page, high/middle/low-fit lead routing, and the funnel KPI / scale-gate layer (LAPS dashboard, allowable cost per sale and per lead, paid-traffic ratchet, traffic prerequisites).
@@ -24,6 +25,7 @@ reference_modules:
           - Before drafting or auditing the landing-page sections, questionnaire, results page, or lead routing.
           - Before measuring funnel performance, recommending paid traffic, or diagnosing a low-traffic scorecard page.
       path: references/funnel-build-specs.md
+      visibility: public
 path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/landing_page_scorecard_funnel/SKILL.md
 ---
 

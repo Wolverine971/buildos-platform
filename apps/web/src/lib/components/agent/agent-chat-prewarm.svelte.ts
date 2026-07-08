@@ -86,6 +86,37 @@ export interface PrewarmReadiness {
 // ---------------------------------------------------------------------------
 
 const PREPARED_PROMPT_RETRY_DELAY_MS = 10_000;
+const DEFAULT_PREPARED_PROMPT_SEND_WAIT_MS = 250;
+
+type InflightPrewarm = {
+	key: string;
+	controller: AbortController;
+	promise: Promise<void>;
+	heldForSend: boolean;
+	abortAfterHold: boolean;
+};
+
+async function waitForPromiseWithTimeout(
+	promise: Promise<unknown>,
+	timeoutMs: number
+): Promise<boolean> {
+	if (timeoutMs <= 0) {
+		await promise;
+		return true;
+	}
+
+	let timeoutId: ReturnType<typeof setTimeout> | null = null;
+	const timeout = new Promise<false>((resolve) => {
+		timeoutId = setTimeout(() => resolve(false), timeoutMs);
+	});
+	try {
+		return await Promise.race([promise.then(() => true), timeout]);
+	} finally {
+		if (timeoutId) {
+			clearTimeout(timeoutId);
+		}
+	}
+}
 
 export class PrewarmController {
 	prewarmedContext = $state<FastChatContextCache | null>(null);
@@ -93,6 +124,7 @@ export class PrewarmController {
 	#lastPrewarmKey: string | null = null;
 	#preparedPromptRetryKey: string | null = null;
 	#preparedPromptRetryAfterMs = 0;
+	#inflightPrewarm: InflightPrewarm | null = null;
 	#deps: PrewarmControllerDeps;
 
 	constructor(deps: PrewarmControllerDeps) {
@@ -157,6 +189,32 @@ export class PrewarmController {
 			preparedPromptRetryBlocked:
 				!preparedPromptReady && this.#isPreparedPromptRetryBlocked(key)
 		};
+	}
+
+	async waitForPreparedPrompt(
+		key: string | null | undefined,
+		options: { timeoutMs?: number } = {}
+	): Promise<PreparedPromptClient | null> {
+		const existing = this.matchingFreshPreparedPrompt(key);
+		if (existing || !key) return existing;
+
+		const inflight = this.#inflightPrewarm;
+		if (!inflight || inflight.key !== key) return null;
+
+		inflight.heldForSend = true;
+		try {
+			await waitForPromiseWithTimeout(
+				inflight.promise,
+				options.timeoutMs ?? DEFAULT_PREPARED_PROMPT_SEND_WAIT_MS
+			).catch(() => false);
+		} finally {
+			inflight.heldForSend = false;
+			if (inflight.abortAfterHold && this.#inflightPrewarm === inflight) {
+				inflight.controller.abort();
+			}
+		}
+
+		return this.matchingFreshPreparedPrompt(key);
 	}
 
 	/**
@@ -260,7 +318,7 @@ export class PrewarmController {
 		this.#lastPrewarmKey = key;
 		const controller = new AbortController();
 
-		void (async () => {
+		const prewarmPromise = (async () => {
 			try {
 				const warmed = await this.#deps.prewarmAgentContext(
 					{
@@ -296,8 +354,27 @@ export class PrewarmController {
 				}
 			}
 		})();
+		const inflight: InflightPrewarm = {
+			key,
+			controller,
+			promise: prewarmPromise,
+			heldForSend: false,
+			abortAfterHold: false
+		};
+		this.#inflightPrewarm = inflight;
+		void prewarmPromise.finally(() => {
+			if (this.#inflightPrewarm === inflight) {
+				this.#inflightPrewarm = null;
+			}
+		});
 
-		return () => controller.abort();
+		return () => {
+			if (this.#inflightPrewarm === inflight && inflight.heldForSend) {
+				inflight.abortAfterHold = true;
+				return;
+			}
+			controller.abort();
+		};
 	}
 
 	/**

@@ -16,10 +16,13 @@ export type FinalizationGuardReason =
 	| 'empty_after_reads'
 	| 'incomplete_mutation_after_reads';
 
+export type FinalizationGuardFinishedReason = 'synthesis_empty';
+
 export type FinalizationGuardResult = {
 	text: string;
 	applied: boolean;
 	reason?: FinalizationGuardReason;
+	finishedReason?: FinalizationGuardFinishedReason;
 };
 
 type ApplyFinalizationGuardParams = {
@@ -78,7 +81,11 @@ function buildGuardText(params: {
 	otherFailures: number;
 	mutationRequested?: boolean;
 	toolExecutions?: FastToolExecution[] | null;
-}): { text: string; reason: FinalizationGuardReason } {
+}): {
+	text: string;
+	reason: FinalizationGuardReason;
+	finishedReason?: FinalizationGuardFinishedReason;
+} {
 	const {
 		successfulWrites,
 		failedWrites,
@@ -144,7 +151,8 @@ function buildGuardText(params: {
 		}
 		return {
 			text: `I gathered the requested context, but the turn ended before a final response was produced.${failureSuffix}`,
-			reason: 'empty_after_reads'
+			reason: 'empty_after_reads',
+			finishedReason: 'synthesis_empty'
 		};
 	}
 
@@ -490,7 +498,12 @@ export function applyFinalizationGuard(
 	});
 
 	if (synthesized.reason === 'incomplete_mutation_after_reads') {
-		return { text: synthesized.text, applied: true, reason: synthesized.reason };
+		return {
+			text: synthesized.text,
+			applied: true,
+			reason: synthesized.reason,
+			finishedReason: synthesized.finishedReason
+		};
 	}
 
 	return {
@@ -500,6 +513,7 @@ export function applyFinalizationGuard(
 			? 'lead_in_after_successful_writes'
 			: shouldReplaceReadLeadIn
 				? 'lead_in_after_reads'
-				: synthesized.reason
+				: synthesized.reason,
+		finishedReason: synthesized.finishedReason
 	};
 }

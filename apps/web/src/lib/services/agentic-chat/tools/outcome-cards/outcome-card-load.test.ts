@@ -81,6 +81,15 @@ describe('outcome card discovery', () => {
 		});
 	});
 
+	it('keeps project_forecast as an alias for the native forecast outcome card', () => {
+		expect(getOutcomeCardById('project_forecast')?.id).toBe('project_slip_forecast');
+		expect(loadOutcomeCard('project_forecast')).toMatchObject({
+			type: 'outcome_card',
+			id: 'project_slip_forecast',
+			default_skill_id: 'project_forecast'
+		});
+	});
+
 	it('loads an outcome card without materializing broad direct tools', () => {
 		const result = loadOutcomeCard('linkedin_company_page_growth_plan');
 

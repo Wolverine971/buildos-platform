@@ -211,6 +211,7 @@ export type StreamEvent =
 			state: 'thinking' | 'waiting_on_user';
 			contextType: ChatContextType;
 			details?: string;
+			activity_visibility?: 'activity_log';
 	  }
 	| {
 			type: 'operation';

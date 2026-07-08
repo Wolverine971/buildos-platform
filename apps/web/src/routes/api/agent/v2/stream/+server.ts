@@ -87,6 +87,10 @@ import {
 	normalizeChatAttachmentRefs,
 	composeFastChatHistory,
 	normalizeFastAgentStreamRequest,
+	parseFastChatInitialPlanModels,
+	parseFastChatModelTieringMode,
+	parseFastChatModelTieringSampleRate,
+	resolveFastChatModelTieringConfig,
 	resolveFastChatSurfaceProfileForTurn,
 	sanitizeAttachmentRefsForMetadata,
 	selectFastChatTools,
@@ -210,6 +214,7 @@ type FastChatSupabaseClient = SupabaseClient<Database>;
 
 const FASTCHAT_STREAM_ENDPOINT = '/api/agent/v2/stream';
 const FASTCHAT_STREAM_METHOD = 'POST';
+const FASTCHAT_FIRST_TOOL_CALL_PLANNING_CUE = 'Planning the first step...';
 const FASTCHAT_CLEAN_RESPONSE_FALLBACK =
 	'I hit an issue producing a clean final response for that turn. Please try again and I can continue from the project state.';
 
@@ -276,6 +281,16 @@ const FASTCHAT_CANCEL_REASON_RETRY_DELAY_MS = parsePositiveInt(
 const FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED = parseBooleanFlag(
 	process.env.FASTCHAT_ENABLE_AUTONOMOUS_RECOVERY,
 	false
+);
+const FASTCHAT_INITIAL_PLAN_MODEL_TIERING_MODE = parseFastChatModelTieringMode(
+	process.env.FASTCHAT_INITIAL_PLAN_MODEL_TIERING
+);
+const FASTCHAT_INITIAL_PLAN_MODEL_TIERING_SAMPLE_RATE = parseFastChatModelTieringSampleRate(
+	process.env.FASTCHAT_INITIAL_PLAN_MODEL_TIERING_SAMPLE_RATE,
+	0.5
+);
+const FASTCHAT_INITIAL_PLAN_MODEL_TIERING_MODELS = parseFastChatInitialPlanModels(
+	process.env.FASTCHAT_INITIAL_PLAN_MODEL_TIERING_MODELS
 );
 const FASTCHAT_DETACHED_TURN_MAX_DURATION_MS = parsePositiveInt(
 	process.env.FASTCHAT_DETACHED_TURN_MAX_DURATION_MS,
@@ -509,6 +524,49 @@ function addToolExecutionEntityCollection(
 	}
 }
 
+function findToolExecutionEntityRecord(params: {
+	data: Record<string, unknown> | null;
+	kind: ToolExecutionEntityKind;
+	id: string;
+}): Record<string, unknown> | null {
+	const { data, kind, id } = params;
+	if (!data) return null;
+
+	const matchesId = (record: unknown): record is Record<string, unknown> =>
+		isPlainRecord(record) && readMetadataString(record.id) === id;
+
+	if (kind === 'project' && matchesId(data.project)) {
+		return data.project;
+	}
+
+	const focusEntityKind = normalizeToolExecutionEntityKind(data.focus_entity_type);
+	if (focusEntityKind === kind && matchesId(data.focus_entity_full)) {
+		return data.focus_entity_full;
+	}
+
+	const collectionKey = TOOL_EXECUTION_ENTITY_COLLECTION_KEYS[kind];
+	const searchCollection = (collection: unknown): Record<string, unknown> | null => {
+		if (!Array.isArray(collection)) return null;
+		return collection.find(matchesId) ?? null;
+	};
+
+	if (collectionKey) {
+		const directMatch = searchCollection(data[collectionKey]);
+		if (directMatch) return directMatch;
+	}
+
+	const linkedEntities = isPlainRecord(data.linked_entities) ? data.linked_entities : null;
+	if (!linkedEntities) return null;
+
+	const linkedKeys = [kind, collectionKey].filter(Boolean) as string[];
+	for (const key of linkedKeys) {
+		const linkedMatch = searchCollection(linkedEntities[key]);
+		if (linkedMatch) return linkedMatch;
+	}
+
+	return null;
+}
+
 function buildToolExecutionContextScope(params: {
 	projectId?: string | null;
 	projectName?: string | null;
@@ -561,20 +619,46 @@ function countToolExecutionDocumentTreeNodes(nodes: unknown): number {
 	return count;
 }
 
+function buildFocusedToolExecutionEntityRecord(params: {
+	data: Record<string, unknown> | null;
+	focus: NonNullable<NonNullable<ServiceContext['contextScope']>['focus']>;
+}): Record<string, unknown> {
+	const existing = findToolExecutionEntityRecord({
+		data: params.data,
+		kind: params.focus.type,
+		id: params.focus.id
+	});
+	return {
+		...(existing ?? {}),
+		id: params.focus.id,
+		...(params.focus.name &&
+		!readMetadataString(existing?.name) &&
+		!readMetadataString(existing?.title)
+			? { name: params.focus.name }
+			: {})
+	};
+}
+
 function buildToolExecutionOntologyContext(params: {
 	promptContext?: FastChatResolvedPromptContext;
 	contextScope?: ServiceContext['contextScope'];
 }): ServiceContext['ontologyContext'] | undefined {
 	const projectId = readMetadataString(
-		params.promptContext?.projectId ?? params.contextScope?.projectId
+		params.contextScope?.projectId ?? params.promptContext?.projectId
 	);
 	if (!projectId) return undefined;
 
-	const data = isPlainRecord(params.promptContext?.data) ? params.promptContext.data : null;
+	const rawData = isPlainRecord(params.promptContext?.data) ? params.promptContext.data : null;
+	const rawDataProjectId =
+		readMetadataString(isPlainRecord(rawData?.project) ? rawData.project.id : null) ??
+		readMetadataString(params.promptContext?.projectId);
+	const data = !rawDataProjectId || rawDataProjectId === projectId ? rawData : null;
 	const entities: Record<string, any> = {};
 	const projectName =
-		readMetadataString(params.promptContext?.projectName ?? params.contextScope?.projectName) ??
+		readMetadataString(params.contextScope?.projectName ?? params.promptContext?.projectName) ??
 		'Project';
+	const focus = params.contextScope?.focus;
+	const shouldUseFocusedNeighborhood = Boolean(focus?.id);
 
 	if (data) {
 		if (isPlainRecord(data.project)) {
@@ -583,12 +667,21 @@ function buildToolExecutionOntologyContext(params: {
 				id: readMetadataString(data.project.id) ?? projectId
 			});
 		}
-		addToolExecutionEntityCollection(entities, 'goal', data.goals);
-		addToolExecutionEntityCollection(entities, 'milestone', data.milestones);
-		addToolExecutionEntityCollection(entities, 'plan', data.plans);
-		addToolExecutionEntityCollection(entities, 'task', data.tasks);
-		addToolExecutionEntityCollection(entities, 'document', data.documents);
-		addToolExecutionEntityCollection(entities, 'risk', data.risks);
+
+		if (shouldUseFocusedNeighborhood && focus) {
+			addToolExecutionEntityRecord(
+				entities,
+				focus.type,
+				buildFocusedToolExecutionEntityRecord({ data, focus })
+			);
+		} else {
+			addToolExecutionEntityCollection(entities, 'goal', data.goals);
+			addToolExecutionEntityCollection(entities, 'milestone', data.milestones);
+			addToolExecutionEntityCollection(entities, 'plan', data.plans);
+			addToolExecutionEntityCollection(entities, 'task', data.tasks);
+			addToolExecutionEntityCollection(entities, 'document', data.documents);
+			addToolExecutionEntityCollection(entities, 'risk', data.risks);
+		}
 
 		const linkedEntities = isPlainRecord(data.linked_entities) ? data.linked_entities : null;
 		if (linkedEntities) {
@@ -600,12 +693,14 @@ function buildToolExecutionOntologyContext(params: {
 			}
 		}
 
-		const focusKind = normalizeToolExecutionEntityKind(
-			data.focus_entity_type ?? params.promptContext?.focusEntityType
-		);
-		const focusId = readMetadataString(
-			data.focus_entity_id ?? params.promptContext?.focusEntityId
-		);
+		const focusKind = shouldUseFocusedNeighborhood
+			? null
+			: normalizeToolExecutionEntityKind(
+					data.focus_entity_type ?? params.promptContext?.focusEntityType
+				);
+		const focusId = shouldUseFocusedNeighborhood
+			? null
+			: readMetadataString(data.focus_entity_id ?? params.promptContext?.focusEntityId);
 		if (focusKind && focusId) {
 			const focusFull = isPlainRecord(data.focus_entity_full) ? data.focus_entity_full : {};
 			addToolExecutionEntityRecord(entities, focusKind, {
@@ -624,8 +719,20 @@ function buildToolExecutionOntologyContext(params: {
 
 	const docStructure = data && isPlainRecord(data.doc_structure) ? data.doc_structure : null;
 	const documentRoot = docStructure?.root;
+	const includeDocumentTree =
+		!shouldUseFocusedNeighborhood ||
+		params.contextScope?.focus?.type === 'document' ||
+		Boolean(
+			Array.isArray(documentRoot) &&
+				params.contextScope?.focus?.id &&
+				findToolExecutionEntityRecord({
+					data,
+					kind: 'document',
+					id: params.contextScope.focus.id
+				})
+		);
 	const metadata =
-		docStructure && Array.isArray(documentRoot)
+		includeDocumentTree && docStructure && Array.isArray(documentRoot)
 			? {
 					document_tree: {
 						version:
@@ -646,6 +753,41 @@ function buildToolExecutionOntologyContext(params: {
 			focus: params.contextScope?.focus
 		}
 	};
+}
+
+function buildToolExecutionProjectFocus(params: {
+	projectFocus?: ProjectFocus | null;
+	promptContext?: FastChatResolvedPromptContext;
+	latestContextShift?: ContextShiftPayload | null;
+	projectId?: string | null;
+}): ProjectFocus | null {
+	const contextShift = params.latestContextShift;
+	if (contextShift?.entity_type && contextShift.entity_type !== 'workspace') {
+		const shiftedProjectId =
+			contextShift.entity_type === 'project'
+				? readMetadataString(contextShift.entity_id)
+				: (readMetadataString(params.projectFocus?.projectId) ??
+					readMetadataString(params.promptContext?.projectId) ??
+					readMetadataString(params.projectId));
+		if (!shiftedProjectId) return params.projectFocus ?? null;
+		const shiftedProjectName =
+			contextShift.entity_type === 'project'
+				? contextShift.entity_name
+				: (params.projectFocus?.projectName ??
+					params.promptContext?.projectName ??
+					'Project');
+		return {
+			focusType:
+				contextShift.entity_type === 'project' ? 'project-wide' : contextShift.entity_type,
+			focusEntityId: contextShift.entity_type === 'project' ? null : contextShift.entity_id,
+			focusEntityName:
+				contextShift.entity_type === 'project' ? null : contextShift.entity_name,
+			projectId: shiftedProjectId,
+			projectName: shiftedProjectName ?? 'Project'
+		};
+	}
+
+	return params.projectFocus ?? null;
 }
 
 function truncatePromptBlock(
@@ -1400,6 +1542,11 @@ function buildLLMPassSummary(
 
 	const passes = llmPasses.map((pass) => {
 		const entry: Record<string, Json> = { pass: pass.pass };
+		if (pass.passRole !== undefined) entry.pass_role = pass.passRole;
+		if (pass.requestedProfile !== undefined) entry.requested_profile = pass.requestedProfile;
+		if (pass.requestedModels !== undefined) entry.requested_models = pass.requestedModels;
+		if (pass.modelTieringVariant !== undefined)
+			entry.model_tiering_variant = pass.modelTieringVariant;
 		if (pass.model !== undefined) entry.model = pass.model;
 		if (pass.provider !== undefined) entry.provider = pass.provider;
 		if (pass.requestId !== undefined) entry.request_id = pass.requestId;
@@ -3367,10 +3514,17 @@ export const POST: RequestHandler = async ({
 				{ role: 'user', content: messageForModel }
 			] as ServiceContext['conversationHistory'];
 			const buildServiceContextForToolExecution = (): ServiceContext => {
+				const toolProjectFocus = buildToolExecutionProjectFocus({
+					projectFocus,
+					promptContext,
+					latestContextShift,
+					projectId: effectiveProjectIdForTools
+				});
 				const contextScope = buildToolExecutionContextScope({
 					projectId: effectiveProjectIdForTools,
-					projectName: promptContext?.projectName ?? undefined,
-					projectFocus,
+					projectName:
+						toolProjectFocus?.projectName ?? promptContext?.projectName ?? undefined,
+					projectFocus: toolProjectFocus,
 					promptContext
 				});
 				return {
@@ -3389,7 +3543,7 @@ export const POST: RequestHandler = async ({
 						contextScope
 					}),
 					lastTurnContext: requestLastTurnContext ?? undefined,
-					projectFocus: projectFocus ?? null,
+					projectFocus: toolProjectFocus,
 					contextScope
 				};
 			};
@@ -3432,6 +3586,13 @@ export const POST: RequestHandler = async ({
 						historyLoadedSkillIds: skillGateHistoryLoadedSkillIds
 					}
 				: null;
+			let firstToolCallPlanningCueEmitted = false;
+			const modelTiering = resolveFastChatModelTieringConfig({
+				mode: FASTCHAT_INITIAL_PLAN_MODEL_TIERING_MODE,
+				sampleRate: FASTCHAT_INITIAL_PLAN_MODEL_TIERING_SAMPLE_RATE,
+				bucketKey: clientTurnId ?? streamRunId ?? turnRunId ?? session.id,
+				initialPlanModels: FASTCHAT_INITIAL_PLAN_MODEL_TIERING_MODELS
+			});
 
 			const {
 				assistantText,
@@ -3465,6 +3626,7 @@ export const POST: RequestHandler = async ({
 				systemPrompt,
 				maxToolRounds: Math.max(1, gatewayRoundCap),
 				allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
+				modelTiering,
 				skillGate,
 				tools,
 				// Live orchestration-budget snapshot from provider-reported tokens.
@@ -3529,6 +3691,38 @@ export const POST: RequestHandler = async ({
 							canonicalOp: toolCallMeta.canonicalOp
 						}
 					);
+					if (!streamDetached && !firstToolCallPlanningCueEmitted) {
+						firstToolCallPlanningCueEmitted = true;
+						const planningCueSent = await sendTimedMessage(
+							{
+								type: 'agent_state',
+								state: 'thinking',
+								contextType: effectiveContextType,
+								details: FASTCHAT_FIRST_TOOL_CALL_PLANNING_CUE,
+								activity_visibility: 'activity_log'
+							},
+							{
+								operationType: 'fastchat_stream_emit_first_tool_call_planning_cue',
+								projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+								metadata: {
+									sessionId: session.id,
+									contextType: effectiveContextType,
+									toolName: patchedCall.function.name,
+									toolCallId: patchedCall.id
+								}
+							}
+						);
+						if (planningCueSent) {
+							observabilityWriter.recordEvent(
+								'stream',
+								'first_tool_call_planning_cue_emitted',
+								{
+									tool_name: patchedCall.function.name,
+									tool_call_id: patchedCall.id
+								} as Json
+							);
+						}
+					}
 					if (!streamDetached) {
 						emitToolCall(agentStream, patchedCall, {
 							onError: (error) => {
@@ -3813,10 +4007,11 @@ export const POST: RequestHandler = async ({
 							effectiveEntityId = contextShift.entity_id;
 							latestContextShift = contextShift;
 							effectiveProjectIdForTools =
-								resolveEffectiveProjectId({
-									contextType: contextShift.new_context,
-									entityId: contextShift.entity_id
-								}) ?? undefined;
+								contextShift.entity_type === 'project'
+									? (readMetadataString(contextShift.entity_id) ?? undefined)
+									: (readMetadataString(projectFocus?.projectId) ??
+										readMetadataString(promptContext?.projectId) ??
+										effectiveProjectIdForTools);
 							void updateAgentMetadata(
 								supabase,
 								session.id,
@@ -4046,6 +4241,7 @@ export const POST: RequestHandler = async ({
 					'supervisor_finalization_guard_applied',
 					{
 						reason: finalizationGuard.reason ?? null,
+						guard_finished_reason: finalizationGuard.finishedReason ?? null,
 						text_chars: finalizationGuard.text.length,
 						tool_execution_count: normalizedExecutions.length
 					} as Json
@@ -4070,6 +4266,10 @@ export const POST: RequestHandler = async ({
 			for (const pass of llmPasses ?? []) {
 				observabilityWriter.recordEvent('llm', 'llm_pass_completed', {
 					pass: pass.pass,
+					pass_role: pass.passRole ?? null,
+					requested_profile: pass.requestedProfile ?? null,
+					requested_models: pass.requestedModels ?? null,
+					model_tiering_variant: pass.modelTieringVariant ?? null,
 					model: pass.model ?? null,
 					provider: pass.provider ?? null,
 					request_id: pass.requestId ?? null,
@@ -4353,6 +4553,7 @@ export const POST: RequestHandler = async ({
 			if (finalizationGuard?.applied) {
 				assistantPersistMetadata.supervisor_finalization_guard = {
 					reason: finalizationGuard.reason ?? null,
+					guard_finished_reason: finalizationGuard.finishedReason ?? null,
 					text_chars: finalizationGuard.text.length
 				} as Json;
 			}

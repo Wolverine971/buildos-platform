@@ -435,6 +435,64 @@ describe('PrewarmController — orchestrate', () => {
 		const signal = h.prewarm.mock.calls[0]?.[1]?.signal as AbortSignal;
 		expect(signal.aborted).toBe(true);
 	});
+
+	it('lets send wait finish a same-key prepared prompt before cleanup aborts', async () => {
+		const h = createHarness();
+		const key = h.controller.resolveCurrentKey()!;
+		const cache = makeCache({ key });
+		const prepared = makePreparedPrompt({ cacheKey: key });
+		let signal: AbortSignal | undefined;
+		let resolvePrewarm:
+			| ((value: {
+					session: null;
+					prewarmedContext: FastChatContextCache;
+					preparedPrompt: PreparedPromptClient;
+			  }) => void)
+			| null = null;
+		h.prewarm.mockImplementation(
+			(_payload, options) =>
+				new Promise((resolve) => {
+					signal = options.signal;
+					resolvePrewarm = resolve;
+				})
+		);
+
+		const cleanup = h.controller.orchestrate();
+		const waitPromise = h.controller.waitForPreparedPrompt(key, { timeoutMs: 10_000 });
+
+		cleanup!();
+		expect(signal?.aborted).toBe(false);
+
+		resolvePrewarm?.({
+			session: null,
+			prewarmedContext: cache,
+			preparedPrompt: prepared
+		});
+
+		await expect(waitPromise).resolves.toEqual(prepared);
+		expect(signal?.aborted).toBe(false);
+	});
+
+	it('aborts a held prewarm when send wait times out after cleanup', async () => {
+		const h = createHarness();
+		const key = h.controller.resolveCurrentKey()!;
+		let signal: AbortSignal | undefined;
+		h.prewarm.mockImplementation(
+			(_payload, options) =>
+				new Promise(() => {
+					signal = options.signal;
+				})
+		);
+
+		const cleanup = h.controller.orchestrate();
+		const waitPromise = h.controller.waitForPreparedPrompt(key, { timeoutMs: 1 });
+
+		cleanup!();
+		expect(signal?.aborted).toBe(false);
+
+		await expect(waitPromise).resolves.toBeNull();
+		expect(signal?.aborted).toBe(true);
+	});
 });
 
 describe('PrewarmController — reset', () => {

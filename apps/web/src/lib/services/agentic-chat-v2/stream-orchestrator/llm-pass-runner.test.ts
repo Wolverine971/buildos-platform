@@ -183,6 +183,32 @@ describe('runLlmStreamPass', () => {
 		expect(params.onPendingToolCallCountChange).not.toHaveBeenCalled();
 	});
 
+	it('passes per-pass model routing through to the LLM stream and metadata', async () => {
+		const { params } = baseParams({
+			modelRouting: {
+				passRole: 'initial_plan',
+				profile: 'speed',
+				models: ['tencent/hy3', 'deepseek/deepseek-v4-flash'],
+				modelTieringVariant: 'fast_initial_plan'
+			}
+		});
+
+		const result = await runLlmStreamPass(params);
+
+		expect(params.llm.streamText).toHaveBeenCalledWith(
+			expect.objectContaining({
+				profile: 'speed',
+				models: ['tencent/hy3', 'deepseek/deepseek-v4-flash']
+			})
+		);
+		expect(result.metadata).toMatchObject({
+			passRole: 'initial_plan',
+			requestedProfile: 'speed',
+			requestedModels: ['tencent/hy3', 'deepseek/deepseek-v4-flash'],
+			modelTieringVariant: 'fast_initial_plan'
+		});
+	});
+
 	it('retries a transient stream error and returns the successful attempt', async () => {
 		let invocation = 0;
 		const { params, clearHeartbeat } = baseParams({
@@ -308,6 +334,44 @@ describe('runLlmStreamPass', () => {
 			promptTokens: 9,
 			completionTokens: 4,
 			totalTokens: 13
+		});
+		expect(clearHeartbeat).toHaveBeenCalledTimes(2);
+	});
+
+	it('retries when a per-pass timeout makes the provider stream return without done', async () => {
+		vi.useFakeTimers();
+		let invocation = 0;
+		const { params, clearHeartbeat } = baseParams({
+			llm: {
+				streamText: vi.fn(async function* (options: { signal?: AbortSignal }) {
+					invocation += 1;
+					if (invocation === 1) {
+						await new Promise<void>((resolve) => {
+							options.signal?.addEventListener('abort', () => resolve(), {
+								once: true
+							});
+						});
+						return;
+					}
+					yield { type: 'text', content: 'Recovered after silent abort.' };
+					yield { type: 'done', finished_reason: 'stop' };
+				})
+			} as any,
+			passTimeoutMs: 25,
+			retryDelayMs: () => 0
+		});
+
+		const resultPromise = runLlmStreamPass(params);
+		await vi.advanceTimersByTimeAsync(25);
+		const result = await resultPromise;
+
+		expect(params.llm.streamText).toHaveBeenCalledTimes(2);
+		expect(result.assistantBuffer).toBe('Recovered after silent abort.');
+		expect(result.metadata).toMatchObject({
+			attempts: 2,
+			streamRetryCount: 1,
+			lastStreamRetryError: 'LLM stream pass timed out after 25ms',
+			finishedReason: 'stop'
 		});
 		expect(clearHeartbeat).toHaveBeenCalledTimes(2);
 	});

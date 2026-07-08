@@ -306,6 +306,202 @@ describe('buildAdminChatDashboardAnalytics', () => {
 		});
 	});
 
+	it('summarizes required skill-gate issues from gate telemetry events', () => {
+		const result = buildAdminChatDashboardAnalytics({
+			startIso: '2026-04-01T00:00:00.000Z',
+			endIso: '2026-04-08T00:00:00.000Z',
+			timeframe: '7d',
+			sessions: [
+				{
+					id: 'session-1',
+					user_id: 'user-1',
+					status: 'active',
+					created_at: '2026-04-01T10:00:00.000Z'
+				}
+			],
+			messages: [],
+			turnRuns: [
+				{
+					id: 'turn-missing',
+					session_id: 'session-1',
+					user_id: 'user-1',
+					status: 'completed',
+					request_message: 'Audit the project',
+					started_at: '2026-04-01T10:00:00.000Z',
+					created_at: '2026-04-01T10:00:00.000Z'
+				},
+				{
+					id: 'turn-wrong-format',
+					session_id: 'session-1',
+					user_id: 'user-1',
+					status: 'completed',
+					first_skill_path: 'project_audit',
+					request_message: 'Forecast the project',
+					started_at: '2026-04-01T11:00:00.000Z',
+					created_at: '2026-04-01T11:00:00.000Z'
+				},
+				{
+					id: 'turn-missing-contract',
+					session_id: 'session-1',
+					user_id: 'user-1',
+					status: 'completed',
+					first_skill_path: 'project_audit',
+					request_message: 'Review project health',
+					started_at: '2026-04-01T12:00:00.000Z',
+					created_at: '2026-04-01T12:00:00.000Z'
+				},
+				{
+					id: 'turn-ok',
+					session_id: 'session-1',
+					user_id: 'user-1',
+					status: 'completed',
+					first_skill_path: 'project_audit',
+					request_message: 'Audit again',
+					started_at: '2026-04-01T13:00:00.000Z',
+					created_at: '2026-04-01T13:00:00.000Z'
+				}
+			],
+			previousTurnRuns: [],
+			usageRows: [],
+			previousUsageRows: [],
+			llmPassEvents: [],
+			skillGateEvents: [
+				{
+					id: 'gate-old-ok',
+					turn_run_id: 'turn-missing',
+					session_id: 'session-1',
+					user_id: 'user-1',
+					event_type: 'skill_gate_evaluated',
+					created_at: '2026-04-01T10:00:01.000Z',
+					payload: {
+						skill_gate_required: true,
+						expected_skill_ids: ['project_audit'],
+						expected_skill_format: 'full',
+						expected_skill_formats: { project_audit: 'full' },
+						loaded_skill_ids: ['project_audit'],
+						matching_loaded_skill_ids: ['project_audit'],
+						loaded_skill_formats: { project_audit: 'full' },
+						skill_gate_satisfied: true,
+						skill_contract_present: true
+					}
+				},
+				{
+					id: 'gate-missing',
+					turn_run_id: 'turn-missing',
+					session_id: 'session-1',
+					user_id: 'user-1',
+					event_type: 'skill_gate_evaluated',
+					created_at: '2026-04-01T10:00:02.000Z',
+					payload: {
+						skill_gate_required: true,
+						expected_skill_ids: ['project_audit'],
+						expected_skill_format: 'full',
+						expected_skill_formats: { project_audit: 'full' },
+						loaded_skill_ids: [],
+						matching_loaded_skill_ids: [],
+						loaded_skill_formats: {},
+						skill_gate_satisfied: false,
+						skill_gate_violation_repaired: true,
+						skill_contract_present: null
+					}
+				},
+				{
+					id: 'gate-wrong-format',
+					turn_run_id: 'turn-wrong-format',
+					session_id: 'session-1',
+					user_id: 'user-1',
+					event_type: 'skill_gate_evaluated',
+					created_at: '2026-04-01T11:00:02.000Z',
+					payload: {
+						skill_gate_required: true,
+						expected_skill_ids: ['project_audit'],
+						expected_skill_format: 'full',
+						expected_skill_formats: { project_audit: 'full' },
+						loaded_skill_ids: ['project_audit'],
+						matching_loaded_skill_ids: ['project_audit'],
+						loaded_skill_formats: { project_audit: 'short' },
+						skill_gate_satisfied: true,
+						skill_gate_violation_repaired: false,
+						skill_contract_present: true
+					}
+				},
+				{
+					id: 'gate-missing-contract',
+					turn_run_id: 'turn-missing-contract',
+					session_id: 'session-1',
+					user_id: 'user-1',
+					event_type: 'skill_gate_evaluated',
+					created_at: '2026-04-01T12:00:02.000Z',
+					payload: {
+						skill_gate_required: true,
+						expected_skill_ids: ['project_audit'],
+						expected_skill_format: 'full',
+						expected_skill_formats: { project_audit: 'full' },
+						loaded_skill_ids: ['project_audit'],
+						matching_loaded_skill_ids: ['project_audit'],
+						loaded_skill_formats: { project_audit: 'full' },
+						skill_gate_satisfied: true,
+						skill_gate_violation_repaired: false,
+						skill_contract_present: false
+					}
+				},
+				{
+					id: 'gate-ok',
+					turn_run_id: 'turn-ok',
+					session_id: 'session-1',
+					user_id: 'user-1',
+					event_type: 'skill_gate_evaluated',
+					created_at: '2026-04-01T13:00:02.000Z',
+					payload: {
+						skill_gate_required: true,
+						expected_skill_ids: ['project_audit'],
+						expected_skill_format: 'full',
+						expected_skill_formats: { project_audit: 'full' },
+						loaded_skill_ids: ['project_audit'],
+						matching_loaded_skill_ids: ['project_audit'],
+						loaded_skill_formats: { project_audit: 'full' },
+						skill_gate_satisfied: true,
+						skill_gate_violation_repaired: false,
+						skill_contract_present: true
+					}
+				}
+			],
+			toolExecutions: [],
+			evalRuns: [],
+			users: [{ id: 'user-1', email: 'one@example.com' }]
+		});
+
+		expect(result.skill_gate_diagnostics).toMatchObject({
+			evaluated_turns: 4,
+			required_turns: 4,
+			satisfied_turns: 3,
+			unsatisfied_turns: 1,
+			wrong_format_turns: 1,
+			missing_contract_turns: 1,
+			repaired_turns: 1,
+			issue_turns: 3,
+			issue_rate: 75
+		});
+		expect(
+			result.skill_gate_diagnostics.recent_issues.map((issue) => issue.turn_run_id)
+		).toEqual(['turn-missing-contract', 'turn-wrong-format', 'turn-missing']);
+		expect(result.skill_gate_diagnostics.recent_issues[0]).toMatchObject({
+			user_email: 'one@example.com',
+			issue_types: ['missing_contract'],
+			request_message: 'Review project health',
+			first_skill_path: 'project_audit'
+		});
+		expect(result.skill_gate_diagnostics.recent_issues[1]).toMatchObject({
+			issue_types: ['wrong_format'],
+			loaded_skill_formats: { project_audit: 'short' }
+		});
+		expect(result.skill_gate_diagnostics.recent_issues[2]).toMatchObject({
+			issue_types: ['missing_matching_skill'],
+			skill_gate_violation_repaired: true
+		});
+		expect(result.data_health.rows.skillGateEvents).toBe(5);
+	});
+
 	it('attributes usage and event rows through session/user ids when turn rows are absent', () => {
 		const result = buildAdminChatDashboardAnalytics({
 			startIso: '2026-04-01T00:00:00.000Z',

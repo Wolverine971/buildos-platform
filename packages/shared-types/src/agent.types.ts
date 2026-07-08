@@ -496,6 +496,7 @@ export type AgentSSEMessage =
           state: 'thinking' | 'waiting_on_user';
           contextType: ChatContextType;
           details?: string;
+          activity_visibility?: 'activity_log';
         }
       | { type: 'clarifying_questions'; questions: string[] }
       | { type: 'text'; content: string }

@@ -3,6 +3,7 @@ import type { ChatContextType, ChatToolCall, ChatToolDefinition } from '@buildos
 import type { OpenRouterContentPart } from '$lib/services/openrouter-v2/types';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
 import { FASTCHAT_LIMITS } from '../limits';
+import type { FastChatPassModelRouting } from '../model-tiering';
 import type { FastAgentStreamUsage, FastChatHistoryMessage } from '../types';
 import type { TurnSupervisorObservation } from '../turn-supervisor';
 import { parseToolArguments as parseSupervisorToolArguments } from '../turn-supervisor/digest';
@@ -63,9 +64,15 @@ export async function runLlmStreamPass(params: {
 	onToolCall?: (toolCall: ChatToolCall) => Promise<void> | void;
 	retryDelayMs?: (attempt: number) => number;
 	passTimeoutMs?: number;
+	modelRouting?: FastChatPassModelRouting;
 }): Promise<LlmStreamPassResult> {
 	const maxAttempts = MAX_LLM_STREAM_ATTEMPTS;
 	let lastRetryError: Error | null = null;
+	const modelProfile = params.modelRouting?.profile ?? 'balanced';
+	const modelCandidates =
+		params.modelRouting?.models && params.modelRouting.models.length > 0
+			? params.modelRouting.models
+			: undefined;
 
 	for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
 		let assistantBuffer = '';
@@ -76,7 +83,11 @@ export async function runLlmStreamPass(params: {
 		let usage = params.usage;
 		let finishedReason: string | undefined;
 		let llmDoneReceived = false;
-		const metadata = createPassMetadata(params.passNumber, params.noToolSynthesisPass);
+		const metadata = createPassMetadata(
+			params.passNumber,
+			params.noToolSynthesisPass,
+			params.modelRouting
+		);
 		if (attempt > 1) {
 			metadata.attempts = attempt;
 			metadata.streamRetryCount = attempt - 1;
@@ -120,7 +131,8 @@ export async function runLlmStreamPass(params: {
 				turnRunId: params.turnRunId ?? undefined,
 				streamRunId: params.streamRunId ?? undefined,
 				clientTurnId: params.clientTurnId ?? undefined,
-				profile: 'balanced',
+				profile: modelProfile,
+				models: modelCandidates,
 				// Keep the per-pass output cap above the service default so long
 				// answers and tool-call argument payloads are not cut mid-stream.
 				maxTokens: FASTCHAT_LIMITS.SYNTHESIS_MAX_TOKENS,
@@ -227,7 +239,7 @@ export async function runLlmStreamPass(params: {
 					? 'Request aborted'
 					: passAbortSignal.timedOut()
 						? createLlmPassTimeoutMessage(passAbortSignal.timeoutMs)
-					: 'LLM stream ended without a completion event'
+						: 'LLM stream ended without a completion event'
 			);
 			if (shouldRetryStreamAttempt(missingDoneError, params.signal, attempt, maxAttempts)) {
 				lastRetryError = missingDoneError;
@@ -335,11 +347,22 @@ function createLlmPassTimeoutError(timeoutMs: number): LlmStreamPassAttemptError
 
 function createPassMetadata(
 	passNumber: number,
-	noToolSynthesisPass: boolean
+	noToolSynthesisPass: boolean,
+	modelRouting?: FastChatPassModelRouting
 ): LLMStreamPassMetadata {
 	const metadata: LLMStreamPassMetadata = {
 		pass: passNumber
 	};
+	if (modelRouting) {
+		metadata.passRole = modelRouting.passRole;
+		metadata.requestedProfile = modelRouting.profile;
+		if (modelRouting.models?.length) {
+			metadata.requestedModels = [...modelRouting.models];
+		}
+		if (modelRouting.modelTieringVariant) {
+			metadata.modelTieringVariant = modelRouting.modelTieringVariant;
+		}
+	}
 	if (noToolSynthesisPass) {
 		metadata.forcedNoToolSynthesis = true;
 	}

@@ -127,6 +127,7 @@
 		initialChatSessionId?: string | null;
 		initialBrainDumpContext?: AgentBrainDumpContext | null;
 		initialProjectFocus?: ProjectFocus | null;
+		initialDraft?: string | null;
 		embedded?: boolean;
 		inboxResolutionActions?: AgentChatResolutionAction[];
 		/** Reports the active chat session id so embedding surfaces can render
@@ -143,6 +144,7 @@
 		initialChatSessionId = null,
 		initialBrainDumpContext = null,
 		initialProjectFocus = null,
+		initialDraft = null,
 		embedded = false,
 		inboxResolutionActions = [],
 		onSessionChange
@@ -363,6 +365,7 @@
 		}
 	}
 	let inputValue = $state('');
+	let appliedInitialDraftKey = $state('');
 	const attachments = createAttachmentController({
 		getBrowser: () => browser,
 		getProjectId: () => attachmentProjectId,
@@ -644,6 +647,27 @@
 				console.warn(msg, err);
 			}
 		}
+	});
+
+	$effect(() => {
+		const draft = initialDraft?.trim() ?? '';
+		if (!isOpen) {
+			appliedInitialDraftKey = '';
+			return;
+		}
+		if (!draft) return;
+
+		const draftKey = [
+			draft,
+			initialChatSessionId ?? '',
+			_initialContextType,
+			_initialEntityId ?? ''
+		].join('|');
+		if (appliedInitialDraftKey === draftKey) return;
+		if (inputValue.trim() || messages.length > 0 || stream.isStreaming || isSessionBusy) return;
+
+		inputValue = draft;
+		appliedInitialDraftKey = draftKey;
 	});
 
 	function cancelSessionBootstrap() {

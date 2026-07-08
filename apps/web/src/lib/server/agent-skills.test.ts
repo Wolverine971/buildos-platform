@@ -2,14 +2,19 @@
 import { describe, expect, it } from 'vitest';
 import { parse as parseYaml } from 'yaml';
 import {
+	buildPublicSkillGalleryMetadata,
+	buildPublicRuntimeSkill,
 	buildPortableAgentSkillBundle,
 	formatAgentSkillValidationReport,
 	getAgentSkillMarkdown,
 	getAgentSkillReference,
+	listPublicAgentSkillReferences,
 	loadAgentSkillIndex,
+	resolveRuntimeSkillForPost,
 	validateAgentSkillCatalogPosts,
 	validatePublicAgentSkillCatalog
 } from './agent-skills';
+import type { SkillDefinition } from '$lib/services/agentic-chat/tools/skills/types';
 import { AGENT_SKILLS_CATEGORY_KEY, loadBlogPostMetadata, type BlogPost } from '$lib/utils/blog';
 
 describe('public agent skill serving', () => {
@@ -22,7 +27,18 @@ describe('public agent skill serving', () => {
 			skill_md_url: 'https://build-os.com/agent-skills/hook-craft-short-form/skill.md',
 			portable_skill_md_url:
 				'https://build-os.com/agent-skills/hook-craft-short-form/portable/SKILL.md',
-			bundle_zip_url: 'https://build-os.com/agent-skills/hook-craft-short-form/bundle.zip'
+			bundle_zip_url: 'https://build-os.com/agent-skills/hook-craft-short-form/bundle.zip',
+			gallery: {
+				display_title: 'Hook Craft For Short-Form',
+				family: 'Content Craft',
+				output_shapes: ['hook options', 'rewrite pass', 'diagnostic'],
+				source: {
+					curated: true,
+					runtime: true,
+					blog: true,
+					fallback: false
+				}
+			}
 		});
 		expect(
 			index.skills.find(
@@ -47,7 +63,9 @@ describe('public agent skill serving', () => {
 			source: 'runtime',
 			runtimeSkillId: 'hook_craft_short_form'
 		});
-		expect(result?.content).toContain('skill_id: hook-craft-short-form');
+		expect(result?.content).toContain('name: hook-craft-short-form');
+		expect(result?.content).toContain('## Portable References');
+		expect(result?.content).not.toContain('visibility: internal');
 	});
 
 	it('serves dedicated runtime markdown for the Google Calendar public skill', async () => {
@@ -61,8 +79,47 @@ describe('public agent skill serving', () => {
 			source: 'runtime',
 			runtimeSkillId: 'google_calendar'
 		});
-		expect(result?.content).toContain('name: Google Calendar');
+		expect(result?.content).toContain('name: google-calendar');
 		expect(result?.content.toLowerCase()).toContain('search before create');
+	});
+
+	it('serves public skill markdown without raw internal reference metadata', async () => {
+		const post = await loadBlogPostMetadata(
+			AGENT_SKILLS_CATEGORY_KEY,
+			'cold-email-engagement-first-outreach'
+		);
+		const result = getAgentSkillMarkdown(post);
+
+		expect(result).toMatchObject({
+			source: 'runtime',
+			runtimeSkillId: 'cold_email_engagement_first_outreach'
+		});
+		expect(result?.content).toContain('references/public-mode-router.md');
+		expect(result?.content).not.toContain('visibility: internal');
+		expect(result?.content).not.toContain('references/source-map.md');
+		expect(result?.content).not.toContain('references/internal-operating-system.md');
+		expect(result?.content).not.toContain('references/internal-skill-architecture.md');
+		expect(result?.content).not.toContain('references/child-skill-source-plan.md');
+		expect(result?.content).not.toContain('references/source-acquisition-queue.md');
+	});
+
+	it('serves portable runtime markdown without authoring comments or internal repo paths', async () => {
+		const post = await loadBlogPostMetadata(AGENT_SKILLS_CATEGORY_KEY, 'ui-ux-quality-review');
+		const runtime = resolveRuntimeSkillForPost(post);
+
+		expect(runtime?.rawMarkdown).toContain('<!--');
+		expect(runtime?.rawMarkdown).toContain('docs/research/');
+
+		const result = getAgentSkillMarkdown(post);
+
+		expect(result).toMatchObject({
+			source: 'runtime',
+			runtimeSkillId: 'ui_ux_quality_review'
+		});
+		expect(result?.content).toContain('references/foundation-checks.md');
+		expect(result?.content).not.toContain('<!--');
+		expect(result?.content).not.toContain('docs/research/');
+		expect(result?.content).not.toContain('apps/web/src/');
 	});
 
 	it('serves public reference modules and hides internal reference modules', async () => {
@@ -94,6 +151,77 @@ describe('public agent skill serving', () => {
 		expect(getAgentSkillReference(coldEmailPost, 'source-map.md')).toBeUndefined();
 	});
 
+	it('projects runtime skill metadata for public pages without internal reference modules', async () => {
+		const post = await loadBlogPostMetadata(
+			AGENT_SKILLS_CATEGORY_KEY,
+			'cold-email-engagement-first-outreach'
+		);
+		const runtime = buildPublicRuntimeSkill(resolveRuntimeSkillForPost(post));
+
+		expect(runtime?.reference_modules.map((reference) => reference.id)).toEqual([
+			'cold_email_engagement_first_outreach.public_mode_router'
+		]);
+		expect(JSON.stringify(runtime)).not.toContain('source-map.md');
+		expect(JSON.stringify(runtime)).not.toContain('visibility');
+		expect(JSON.stringify(runtime)).not.toContain('apps/web/src/lib/services');
+	});
+
+	it('builds user-first gallery metadata from curated and runtime skill sources', async () => {
+		const post = await loadBlogPostMetadata(AGENT_SKILLS_CATEGORY_KEY, 'ui-ux-quality-review');
+		const gallery = buildPublicSkillGalleryMetadata(post);
+
+		expect(gallery).toMatchObject({
+			display_title: 'UI/UX Quality Review',
+			family: 'Interface Quality',
+			domain_id: 'product-and-design',
+			output_shapes: ['interface audit', 'fix list', 'agent checks'],
+			source: {
+				curated: true,
+				runtime: true,
+				blog: true,
+				fallback: false
+			}
+		});
+		expect(gallery.workflow).toContain('Map the surface region by region.');
+		expect(gallery.guardrails).toContain('Do not skip mobile or overflow checks.');
+		expect(gallery.starter_prompts[0]).toContain('Audit this screen region by region');
+	});
+
+	it('does not treat implicit reference visibility as public', async () => {
+		const post = await loadBlogPostMetadata(AGENT_SKILLS_CATEGORY_KEY, 'hook-craft-short-form');
+		const skill = {
+			id: 'test_public_skill',
+			name: 'Test Public Skill',
+			summary: 'Test public skill.',
+			legacyPaths: [],
+			relatedOps: [],
+			whenToUse: [],
+			workflow: [],
+			referenceModules: [
+				{
+					id: 'test_public_skill.implicit',
+					summary: 'Implicit visibility should stay internal.',
+					whenToLoad: [],
+					path: 'references/implicit.md'
+				},
+				{
+					id: 'test_public_skill.public',
+					summary: 'Explicit public reference.',
+					whenToLoad: [],
+					path: 'references/public.md',
+					visibility: 'public'
+				}
+			]
+		} satisfies SkillDefinition;
+
+		expect(
+			listPublicAgentSkillReferences(post, skill).map((reference) => reference.id)
+		).toEqual(['test_public_skill.public']);
+		expect(
+			buildPublicRuntimeSkill(skill)?.reference_modules.map((reference) => reference.id)
+		).toEqual(['test_public_skill.public']);
+	});
+
 	it('builds a portable skill bundle with clean frontmatter and local references', async () => {
 		const post = await loadBlogPostMetadata(AGENT_SKILLS_CATEGORY_KEY, 'ui-ux-quality-review');
 		const bundle = buildPortableAgentSkillBundle(post);
@@ -122,11 +250,17 @@ describe('public agent skill serving', () => {
 		expect(buildosMetadata.bundle_url).toBe(
 			'https://build-os.com/agent-skills/ui-ux-quality-review/bundle.zip'
 		);
+		expect(buildosMetadata.gallery).toMatchObject({
+			display_title: 'UI/UX Quality Review',
+			family: 'Interface Quality',
+			output_shapes: ['interface audit', 'fix list', 'agent checks']
+		});
 	});
 
 	it('validates the current public skill catalog without blocking errors', async () => {
 		const report = await validatePublicAgentSkillCatalog();
 
+		expect(report.issues).toEqual([]);
 		expect(report).toMatchObject({
 			ok: true,
 			total_skills: 8,
@@ -136,7 +270,6 @@ describe('public agent skill serving', () => {
 			errors: 0,
 			warnings: 0
 		});
-		expect(report.issues).toEqual([]);
 		expect(formatAgentSkillValidationReport(report).join('\n')).toContain('Result: passed.');
 	});
 

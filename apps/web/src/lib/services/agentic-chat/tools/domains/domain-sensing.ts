@@ -77,15 +77,64 @@ export type DomainSensingResult = {
 
 const MAX_QUERY_CHARS = 800;
 const MIN_DOMAIN_CONFIDENCE = 0.45;
+const SKILL_GATE_CANDIDATE_LIMIT = 3;
 // Gate threshold: live prompts that should load a skill matched skill-bearing
 // domains at >= 0.56 confidence, while trivial follow-ups and direct-tool asks
 // returned no sensing result at all (2026-07-02 routing investigation).
 const SKILL_GATE_MIN_CONFIDENCE = 0.55;
+const NATIVE_PROJECT_SIGNAL_CONFIDENCE = 0.9;
+
+type NativeOutcomeCardSignal = {
+	outcomeCardId: string;
+	confidence: number;
+	loadHint: string;
+	matches: (query: string, activeDomains: SensedDomain[]) => boolean;
+};
+
+const EXPLICIT_PROJECT_SCOPE_PATTERN =
+	/\b(project|initiative|roadmap|milestone|milestones|deadline|timeline|sprint|tasks?|blocked|blockers?|dependency|dependencies|stale|slip|slipping|delayed?|schedule|on track)\b/i;
+const PROJECT_CONTAINER_SCOPE_PATTERN =
+	/\b(project|initiative|roadmap|milestone|milestones|deadline|timeline|sprint|tasks?|dependency|dependencies|planning|execution)\b/i;
+const PROJECT_AUDIT_INTENT_PATTERN =
+	/\b(audit|review|assess|inspect|stress[- ]?test|health check)\b/i;
+const PROJECT_DIAGNOSE_INTENT_PATTERN = /\b(diagnose|diagnosis)\b/i;
+const PROJECT_AUDIT_SIGNAL_PATTERN =
+	/\b(project|initiative|blocked|blockers?|stale|risks?|risky|gaps?|dependencies|milestones?|planning|execution)\b/i;
+const PROJECT_HEALTH_SIGNAL_PATTERN = /\b(project health|health of|health check)\b/i;
+const PROJECT_FORECAST_INTENT_PATTERN = /\b(forecast|predict|estimate)\b/i;
+const PROJECT_FORECAST_SIGNAL_PATTERN =
+	/\b(slip|slipping|delays?|delayed|deadline|timeline|schedule|milestones?|eta|on track|at risk|risks?|uncertainty|miss)\b/i;
+const PROJECT_FORECAST_DIRECT_PATTERN =
+	/\b(project|initiative|roadmap|milestone|milestones|deadline|timeline|schedule)\b.*\b(slip|slipping|delays?|delayed|late|on track|miss)\b|\b(slip|slipping|delays?|delayed|late|on track|miss)\b.*\b(project|initiative|roadmap|milestone|milestones|deadline|timeline|schedule)\b/i;
 
 const ADVISORY_NEXT_STEP =
 	'Use these domains and outcome cards as routing hints. Load an outcome card when output contract or quality criteria would help; load a skill only when the user needs workflow depth.';
 const GATED_NEXT_STEP =
-	"Skill-load gate is ACTIVE for this turn: the request matches skill-covered work. Before drafting the final answer, pick the best-matching skill for the user's actual ask (outcome-card default_skill_id first, then the recommended skill ids) and call skill_load for it. Skip the load only when that skill is already in the loaded-skills ledger, or the message is a clarification/acknowledgment that produces no new work product.";
+	'Skill-load gate is ACTIVE for this turn: the request matches skill-covered work. Before drafting the final answer, pick the best-matching id from the ranked Skill-load candidates and call skill_load for it. Skip the load only when that skill is already in the loaded-skills ledger, or the message is a clarification/acknowledgment that produces no new work product.';
+
+const NATIVE_OUTCOME_CARD_SIGNALS: NativeOutcomeCardSignal[] = [
+	{
+		outcomeCardId: 'project_health_audit',
+		confidence: NATIVE_PROJECT_SIGNAL_CONFIDENCE,
+		loadHint:
+			'BuildOS-native project audit signal. Load project_audit before assessing blockers, stale work, risks, or project health.',
+		matches: matchesNativeProjectAudit
+	},
+	{
+		outcomeCardId: 'project_slip_forecast',
+		confidence: NATIVE_PROJECT_SIGNAL_CONFIDENCE,
+		loadHint:
+			'BuildOS-native project forecast signal. Load project_forecast before estimating slippage, timeline risk, or schedule uncertainty.',
+		matches: (query, activeDomains) =>
+			shouldAllowNativeProjectSignal(query, activeDomains) &&
+			(PROJECT_FORECAST_INTENT_PATTERN.test(query) ||
+				PROJECT_FORECAST_DIRECT_PATTERN.test(query) ||
+				/\b(likely to slip|will slip|could slip|going to slip|on track|at risk)\b/i.test(
+					query
+				)) &&
+			PROJECT_FORECAST_SIGNAL_PATTERN.test(query)
+	}
+];
 
 function shouldRequireSkillLoad(
 	source: DomainSensingResult['source'],
@@ -198,6 +247,69 @@ function toSensedOutcomeCard(
 	};
 }
 
+function shouldAllowNativeProjectSignal(query: string, activeDomains: SensedDomain[]): boolean {
+	if (!query.trim()) return false;
+	if (activeDomains.length === 0) return true;
+	return EXPLICIT_PROJECT_SCOPE_PATTERN.test(query);
+}
+
+function matchesNativeProjectAudit(query: string, activeDomains: SensedDomain[]): boolean {
+	if (!shouldAllowNativeProjectSignal(query, activeDomains)) return false;
+	if (
+		PROJECT_AUDIT_INTENT_PATTERN.test(query) &&
+		(PROJECT_AUDIT_SIGNAL_PATTERN.test(query) || PROJECT_HEALTH_SIGNAL_PATTERN.test(query))
+	) {
+		return true;
+	}
+	if (
+		PROJECT_DIAGNOSE_INTENT_PATTERN.test(query) &&
+		PROJECT_CONTAINER_SCOPE_PATTERN.test(query) &&
+		PROJECT_AUDIT_SIGNAL_PATTERN.test(query)
+	) {
+		return true;
+	}
+	return (
+		PROJECT_CONTAINER_SCOPE_PATTERN.test(query) &&
+		/\b(blocked|blockers?|stale|risks?|risky|gaps?)\b/i.test(query)
+	);
+}
+
+function buildNativeOutcomeCards(
+	query: string,
+	activeDomains: SensedDomain[]
+): SensedOutcomeCard[] {
+	if (!query.trim()) return [];
+	return NATIVE_OUTCOME_CARD_SIGNALS.map((signal) => {
+		if (!signal.matches(query, activeDomains)) return null;
+		const outcomeCard = getOutcomeCardById(signal.outcomeCardId);
+		if (!outcomeCard) return null;
+		return toSensedOutcomeCard(outcomeCard, signal.confidence, signal.loadHint);
+	}).filter((card): card is SensedOutcomeCard => Boolean(card));
+}
+
+function buildPriorDomainlessOutcomeCards(priorOutcomeCardIds: string[]): SensedOutcomeCard[] {
+	const cards: SensedOutcomeCard[] = [];
+	for (const id of priorOutcomeCardIds) {
+		const outcomeCard = getOutcomeCardById(id);
+		if (!outcomeCard) continue;
+		if (outcomeCard.domainIds.length > 0) {
+			return cards.length > 0 ? cards : [];
+		}
+		cards.push(toSensedOutcomeCard(outcomeCard, 0.6));
+	}
+	return cards;
+}
+
+function mergeSensedOutcomeCards(cards: SensedOutcomeCard[], limit: number): SensedOutcomeCard[] {
+	const byId = new Map<string, SensedOutcomeCard>();
+	for (const card of cards) {
+		const existing = byId.get(card.id);
+		if (existing && existing.confidence >= card.confidence) continue;
+		byId.set(card.id, card);
+	}
+	return Array.from(byId.values()).sort(compareOutcomeCardsForSkillGate).slice(0, limit);
+}
+
 function buildCandidateOutcomeCards(
 	activeDomains: SensedDomain[],
 	query: string,
@@ -246,6 +358,81 @@ function buildCandidateOutcomeCards(
 		.slice(0, limit);
 }
 
+type RankedSkillGateCandidate = {
+	id: string;
+	confidence: number;
+	isPrimaryDefault: boolean;
+	sourceRank: number;
+	sequence: number;
+};
+
+function normalizeConfidence(value: number | null | undefined): number {
+	return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function compareOutcomeCardsForSkillGate(a: SensedOutcomeCard, b: SensedOutcomeCard): number {
+	if (b.confidence !== a.confidence) return b.confidence - a.confidence;
+	return a.id.localeCompare(b.id);
+}
+
+function isBetterSkillGateCandidate(
+	next: RankedSkillGateCandidate,
+	current: RankedSkillGateCandidate
+): boolean {
+	if (next.isPrimaryDefault !== current.isPrimaryDefault) return next.isPrimaryDefault;
+	if (next.confidence !== current.confidence) return next.confidence > current.confidence;
+	if (next.sourceRank !== current.sourceRank) return next.sourceRank < current.sourceRank;
+	return next.sequence < current.sequence;
+}
+
+function upsertSkillGateCandidate(
+	candidates: Map<string, RankedSkillGateCandidate>,
+	input: {
+		id: string | null | undefined;
+		confidence: number | null | undefined;
+		isPrimaryDefault?: boolean;
+		sourceRank: number;
+		sequence: number;
+	}
+): void {
+	const id = typeof input.id === 'string' ? input.id.trim() : '';
+	if (!id) return;
+	const next: RankedSkillGateCandidate = {
+		id,
+		confidence: normalizeConfidence(input.confidence),
+		isPrimaryDefault: input.isPrimaryDefault === true,
+		sourceRank: input.sourceRank,
+		sequence: input.sequence
+	};
+	const current = candidates.get(id);
+	if (!current || isBetterSkillGateCandidate(next, current)) {
+		candidates.set(id, next);
+	}
+}
+
+function getDomainSkillConfidenceById(activeDomains: SensedDomain[]): Map<string, number> {
+	const confidenceById = new Map<string, number>();
+	for (const domain of activeDomains) {
+		for (const skillId of domain.skill_ids) {
+			const normalized = skillId.trim();
+			if (!normalized) continue;
+			const current = confidenceById.get(normalized) ?? 0;
+			confidenceById.set(
+				normalized,
+				Math.max(current, normalizeConfidence(domain.confidence))
+			);
+		}
+	}
+	return confidenceById;
+}
+
+function formatSkillIdPreview(skillIds: string[], limit: number): string {
+	const visible = skillIds.slice(0, limit);
+	if (visible.length === 0) return 'none';
+	const remaining = Math.max(0, skillIds.length - visible.length);
+	return remaining > 0 ? `${visible.join(', ')} (+${remaining} more)` : visible.join(', ');
+}
+
 export function senseDomains(input: DomainSensingInput): DomainSensingResult | null {
 	const currentUserMessage = normalizeText(input.currentUserMessage);
 	const conversationSummary = normalizeText(input.conversationSummary);
@@ -275,7 +462,24 @@ export function senseDomains(input: DomainSensingInput): DomainSensingResult | n
 		.filter(shouldKeepMatch)
 		.map((match) => toSensedDomain(match.domain_id, match))
 		.filter((domain): domain is SensedDomain => Boolean(domain));
-	if (activeDomains.length === 0 && priorDomainIds.length > 0) {
+	const nativeOutcomeCards = buildNativeOutcomeCards(query, activeDomains);
+	const priorDomainlessOutcomeCards =
+		activeDomains.length === 0 && nativeOutcomeCards.length === 0
+			? buildPriorDomainlessOutcomeCards(priorOutcomeCardIds)
+			: [];
+	if (
+		activeDomains.length === 0 &&
+		nativeOutcomeCards.length === 0 &&
+		priorDomainlessOutcomeCards.length > 0
+	) {
+		source = 'session_state';
+	}
+	if (
+		activeDomains.length === 0 &&
+		nativeOutcomeCards.length === 0 &&
+		priorDomainlessOutcomeCards.length === 0 &&
+		priorDomainIds.length > 0
+	) {
 		source = 'session_state';
 		activeDomains.push(
 			...priorDomainIds
@@ -284,18 +488,36 @@ export function senseDomains(input: DomainSensingInput): DomainSensingResult | n
 		);
 	}
 
-	if (activeDomains.length === 0) return null;
+	if (
+		activeDomains.length === 0 &&
+		nativeOutcomeCards.length === 0 &&
+		priorDomainlessOutcomeCards.length === 0
+	) {
+		return null;
+	}
 
-	const candidateOutcomeCards = buildCandidateOutcomeCards(
-		activeDomains,
-		query,
-		priorOutcomeCardIds,
-		Math.max(2, Math.min(6, input.limit ?? 4))
+	const outcomeCardLimit = Math.max(2, Math.min(6, input.limit ?? 4));
+	const candidateOutcomeCards = mergeSensedOutcomeCards(
+		[
+			...nativeOutcomeCards,
+			...priorDomainlessOutcomeCards,
+			...buildCandidateOutcomeCards(
+				activeDomains,
+				query,
+				priorOutcomeCardIds,
+				outcomeCardLimit
+			)
+		],
+		outcomeCardLimit
 	);
-	const recommendedSkillIds = unique(activeDomains.flatMap((domain) => domain.skill_ids)).slice(
-		0,
-		10
-	);
+	const recommendedSkillIds = unique(
+		[
+			...activeDomains.flatMap((domain) => domain.skill_ids),
+			...candidateOutcomeCards.flatMap((card) =>
+				uniqueTrimmed([card.default_skill_id, ...card.skill_ids])
+			)
+		].filter((skillId): skillId is string => typeof skillId === 'string' && skillId.length > 0)
+	).slice(0, 10);
 	const coverageGapSkillIds = unique(
 		activeDomains.flatMap((domain) => domain.gap_skill_ids)
 	).slice(0, 8);
@@ -303,7 +525,9 @@ export function senseDomains(input: DomainSensingInput): DomainSensingResult | n
 		activeDomains.flatMap((domain) => domain.gap_resource_ids)
 	).slice(0, 8);
 
-	const skillLoadRequired = shouldRequireSkillLoad(source, activeDomains);
+	const skillLoadRequired =
+		shouldRequireSkillLoad(source, activeDomains) ||
+		(source !== 'session_state' && nativeOutcomeCards.length > 0);
 
 	return {
 		type: 'domain_sensing',
@@ -324,14 +548,67 @@ export function getSkillGateCandidateSkillIds(
 	result: DomainSensingResult | null | undefined
 ): string[] {
 	if (!result) return [];
-	return uniqueTrimmed([
-		...result.candidate_outcome_cards.flatMap((card) => [
-			card.default_skill_id,
-			...card.skill_ids
-		]),
-		...result.recommended_skill_ids,
-		...result.active_domains.flatMap((domain) => domain.skill_ids)
-	]);
+	const candidates = new Map<string, RankedSkillGateCandidate>();
+	const outcomeCards = [...result.candidate_outcome_cards].sort(compareOutcomeCardsForSkillGate);
+	const primaryOutcomeCard = outcomeCards.find((card) => card.default_skill_id?.trim());
+	const domainSkillConfidenceById = getDomainSkillConfidenceById(result.active_domains);
+	let sequence = 0;
+
+	upsertSkillGateCandidate(candidates, {
+		id: primaryOutcomeCard?.default_skill_id,
+		confidence: primaryOutcomeCard?.confidence,
+		isPrimaryDefault: true,
+		sourceRank: 0,
+		sequence: sequence++
+	});
+
+	for (const card of outcomeCards) {
+		upsertSkillGateCandidate(candidates, {
+			id: card.default_skill_id,
+			confidence: card.confidence,
+			sourceRank: 1,
+			sequence: sequence++
+		});
+		for (const skillId of card.skill_ids) {
+			upsertSkillGateCandidate(candidates, {
+				id: skillId,
+				confidence: card.confidence,
+				sourceRank: 2,
+				sequence: sequence++
+			});
+		}
+	}
+
+	for (const skillId of result.recommended_skill_ids) {
+		const normalized = skillId.trim();
+		upsertSkillGateCandidate(candidates, {
+			id: normalized,
+			confidence: domainSkillConfidenceById.get(normalized) ?? 0,
+			sourceRank: 3,
+			sequence: sequence++
+		});
+	}
+
+	for (const domain of result.active_domains) {
+		for (const skillId of domain.skill_ids) {
+			upsertSkillGateCandidate(candidates, {
+				id: skillId,
+				confidence: domain.confidence,
+				sourceRank: 4,
+				sequence: sequence++
+			});
+		}
+	}
+
+	return Array.from(candidates.values())
+		.sort((a, b) => {
+			if (a.isPrimaryDefault !== b.isPrimaryDefault) return a.isPrimaryDefault ? -1 : 1;
+			if (b.confidence !== a.confidence) return b.confidence - a.confidence;
+			if (a.sourceRank !== b.sourceRank) return a.sourceRank - b.sourceRank;
+			return a.sequence - b.sequence;
+		})
+		.slice(0, SKILL_GATE_CANDIDATE_LIMIT)
+		.map((candidate) => candidate.id);
 }
 
 export function getSkillGateCandidateSkillLoadFormats(
@@ -339,27 +616,38 @@ export function getSkillGateCandidateSkillLoadFormats(
 ): Record<string, SkillLoadFormat> {
 	if (!result) return {};
 	const formats: Record<string, SkillLoadFormat> = {};
-	for (const capability of result.candidate_outcome_cards) {
+	const candidateSkillIds = getSkillGateCandidateSkillIds(result);
+	const outcomeCards = [...result.candidate_outcome_cards].sort(compareOutcomeCardsForSkillGate);
+	for (const capability of outcomeCards) {
 		for (const [skillId, format] of Object.entries(capability.skill_load_formats)) {
-			if ((format === 'short' || format === 'full') && skillId.trim()) {
+			if (
+				(format === 'short' || format === 'full') &&
+				skillId.trim() &&
+				!formats[skillId.trim()]
+			) {
 				formats[skillId.trim()] = format;
 			}
 		}
 	}
-	for (const skillId of getSkillGateCandidateSkillIds(result)) {
-		if (formats[skillId]) continue;
+	for (const skillId of candidateSkillIds) {
+		if (formats[skillId] === 'short' || formats[skillId] === 'full') continue;
 		const skill = getSkillById(skillId);
 		if (skill) {
 			formats[skillId] = getRecommendedSkillLoadFormat(skill);
 		}
 	}
-	return formats;
+	return Object.fromEntries(
+		candidateSkillIds
+			.map((skillId) => [skillId, formats[skillId]] as const)
+			.filter((entry): entry is readonly [string, SkillLoadFormat] => Boolean(entry[1]))
+	);
 }
 
 export function renderDomainSensingPromptContent(
 	result: DomainSensingResult | null
 ): string | null {
 	if (!result) return null;
+	const skillGateCandidateSkillIds = getSkillGateCandidateSkillIds(result);
 
 	const domainLines = result.active_domains.map((domain) => {
 		const details = [
@@ -403,6 +691,13 @@ export function renderDomainSensingPromptContent(
 					'Skill-load gate: ACTIVE. Do not draft the final answer until you have called skill_load for the best-matching skill below or confirmed it is already in the loaded-skills ledger. Answering skill-covered work from base knowledge is a routing failure.'
 				]
 			: []),
+		...(result.skill_load_required
+			? [
+					'',
+					'Skill-load candidates (ranked, max 3):',
+					`- ${skillGateCandidateSkillIds.length ? skillGateCandidateSkillIds.join(', ') : 'none'}`
+				]
+			: []),
 		'',
 		'Candidate domains:',
 		...domainLines,
@@ -411,7 +706,7 @@ export function renderDomainSensingPromptContent(
 		...(outcomeCardLines.length > 0 ? outcomeCardLines : ['- none']),
 		'',
 		'Recommended skill ids:',
-		`- ${result.recommended_skill_ids.length ? result.recommended_skill_ids.join(', ') : 'none'}`,
+		`- ${formatSkillIdPreview(result.recommended_skill_ids, SKILL_GATE_CANDIDATE_LIMIT)}`,
 		'',
 		'Coverage gap skill ids:',
 		`- ${result.coverage_gap_skill_ids.length ? result.coverage_gap_skill_ids.join(', ') : 'none'}`,

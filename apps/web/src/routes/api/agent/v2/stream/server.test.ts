@@ -154,6 +154,10 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 		preparedPromptKey: input?.preparedPromptKey ?? input?.prepared_prompt_key ?? null
 	}),
 	normalizeFastContextType: (value?: string) => value ?? 'global',
+	parseFastChatInitialPlanModels: () => null,
+	parseFastChatModelTieringMode: () => 'off',
+	parseFastChatModelTieringSampleRate: (_value?: string, fallback = 0.5) => fallback,
+	resolveFastChatModelTieringConfig: () => null,
 	resolveFastChatSurfaceProfileForTurn: () => 'general',
 	sanitizeAttachmentRefsForMetadata: () => [],
 	selectFastChatTools: mocks.selectFastChatTools,
@@ -166,6 +170,7 @@ import {
 	buildPreparedPromptKey,
 	buildPreparedPromptSurface
 } from '$lib/services/agentic-chat-v2/prepared-prompt-cache';
+import { ToolExecutionService } from '$lib/services/agentic-chat/execution/tool-execution-service';
 
 type Row = Record<string, any>;
 
@@ -1175,8 +1180,29 @@ describe('/api/agent/v2/stream', () => {
 
 		expect(response.status).toBe(200);
 		const events = parseSseEvents(await response.text());
+		const planningCueEvents = events.filter(
+			(event) =>
+				event.type === 'agent_state' && event.details === 'Planning the first step...'
+		);
+		const planningCueIndex = events.findIndex(
+			(event) =>
+				event.type === 'agent_state' && event.details === 'Planning the first step...'
+		);
+		const toolCallIndex = events.findIndex(
+			(event) => event.type === 'tool_call' && event.tool_call?.id === 'call-search'
+		);
 		const liveToolResult = events.find((event) => event.type === 'tool_result');
 
+		expect(planningCueEvents).toHaveLength(1);
+		expect(planningCueEvents[0]).toEqual(
+			expect.objectContaining({
+				state: 'thinking',
+				contextType: 'global',
+				activity_visibility: 'activity_log'
+			})
+		);
+		expect(planningCueIndex).toBeGreaterThan(-1);
+		expect(toolCallIndex).toBeGreaterThan(planningCueIndex);
 		expect(liveToolResult?.result).toEqual(
 			expect.objectContaining({
 				tool_call_id: 'call-search',
@@ -1398,6 +1424,536 @@ describe('/api/agent/v2/stream', () => {
 				error: expect.stringContaining('task_id belongs to a different project')
 			})
 		);
+	});
+
+	it('narrows ontology context to the focused entity neighborhood for tool execution', async () => {
+		const supabase = createStreamingSupabase();
+		const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+		const focusTaskId = 'f914f9dc-a7a7-4f9e-9a3e-477c6975f259';
+		const unrelatedTaskId = 'af2046ce-92f9-448c-9a48-05b278514a73';
+		const linkedDocumentId = '2860f74f-c3ec-4823-8fcb-66c9d85673a6';
+		const linkedGoalId = 'f279c08a-4055-41a6-8e5e-f1bba2065859';
+		const inspectDefinition = {
+			name: 'inspect_context',
+			description: 'Inspect context',
+			parameters: {
+				type: 'object',
+				properties: {},
+				required: []
+			}
+		};
+		let capturedContext: Row | null = null;
+		const executeSpy = vi
+			.spyOn(ToolExecutionService.prototype, 'executeTool')
+			.mockImplementation(async (toolCall: Row, context: Row) => {
+				capturedContext = context;
+				return {
+					success: true,
+					toolName: toolCall.function.name,
+					toolCallId: toolCall.id,
+					data: { ok: true }
+				} as any;
+			});
+
+		try {
+			mocks.selectFastChatTools.mockReturnValueOnce([inspectDefinition]);
+			mocks.loadPromptContext.mockResolvedValueOnce({
+				contextType: 'project',
+				entityId: projectId,
+				projectId,
+				projectName: 'Launch Project',
+				focusEntityType: 'task',
+				focusEntityId: focusTaskId,
+				focusEntityName: 'Focused task',
+				conversationSummary: null,
+				data: {
+					project: { id: projectId, name: 'Launch Project' },
+					tasks: [
+						{
+							id: focusTaskId,
+							title: 'Focused task',
+							project_id: projectId
+						},
+						{
+							id: unrelatedTaskId,
+							title: 'Unrelated task',
+							project_id: projectId
+						}
+					],
+					goals: [
+						{
+							id: '1e4029a5-e880-46ff-9f0f-b77dd71c1adc',
+							name: 'Unrelated goal',
+							project_id: projectId
+						}
+					],
+					documents: [
+						{
+							id: '4e8af885-0796-4b35-b8e8-f4d203ac3d23',
+							title: 'Unrelated document',
+							project_id: projectId
+						}
+					],
+					milestones: [],
+					plans: [],
+					risks: [],
+					focus_entity_type: 'task',
+					focus_entity_id: focusTaskId,
+					focus_entity_full: {
+						id: focusTaskId,
+						title: 'Focused task',
+						project_id: projectId,
+						description: 'Only this task should be carried as focus.'
+					},
+					linked_entities: {
+						document: [
+							{
+								id: linkedDocumentId,
+								title: 'Linked brief',
+								project_id: projectId
+							}
+						],
+						goal: [
+							{
+								id: linkedGoalId,
+								name: 'Linked goal',
+								project_id: projectId
+							}
+						]
+					},
+					doc_structure: {
+						version: 1,
+						root: [
+							{
+								id: '4e8af885-0796-4b35-b8e8-f4d203ac3d23',
+								title: 'Unrelated document'
+							}
+						]
+					}
+				}
+			});
+			mocks.streamFastChat.mockImplementationOnce(async ({ toolExecutor, onDelta }: Row) => {
+				await toolExecutor(
+					{
+						id: 'call-inspect-context',
+						type: 'function',
+						function: { name: 'inspect_context', arguments: '{}' }
+					},
+					[inspectDefinition]
+				);
+				await onDelta('Inspected context.');
+				return {
+					assistantText: 'Inspected context.',
+					finalAssistantText: 'Inspected context.',
+					usage: { total_tokens: 8 },
+					finishedReason: 'stop',
+					toolExecutions: [],
+					llmPasses: [],
+					toolRounds: 1,
+					toolCallsMade: 1,
+					supervisorDecisions: [],
+					finalizationGuard: undefined,
+					cancelled: false,
+					peakPromptTokens: undefined,
+					finalContextUsage: undefined
+				};
+			});
+
+			const response = await POST({
+				request: new Request('http://localhost/api/agent/v2/stream', {
+					method: 'POST',
+					body: JSON.stringify({
+						message: 'Work on the focused task',
+						context_type: 'project',
+						entity_id: projectId,
+						projectFocus: {
+							focusType: 'task',
+							focusEntityId: focusTaskId,
+							focusEntityName: 'Focused task',
+							projectId,
+							projectName: 'Launch Project'
+						},
+						stream_run_id: 'stream-run-focused-context',
+						client_turn_id: 'client-turn-focused-context'
+					})
+				}),
+				locals: {
+					supabase,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				},
+				fetch: vi.fn()
+			} as any);
+
+			expect(response.status).toBe(200);
+			await response.text();
+
+			expect(capturedContext?.contextScope).toEqual({
+				projectId,
+				projectName: 'Launch Project',
+				focus: {
+					type: 'task',
+					id: focusTaskId,
+					name: 'Focused task'
+				}
+			});
+			expect(capturedContext?.projectFocus).toMatchObject({
+				focusType: 'task',
+				focusEntityId: focusTaskId,
+				projectId
+			});
+			const entities = capturedContext?.ontologyContext?.entities ?? {};
+			expect(entities.project).toEqual(
+				expect.objectContaining({ id: projectId, name: 'Launch Project' })
+			);
+			expect(entities.tasks).toEqual([
+				expect.objectContaining({ id: focusTaskId, title: 'Focused task' })
+			]);
+			expect(entities.goals).toEqual([
+				expect.objectContaining({ id: linkedGoalId, name: 'Linked goal' })
+			]);
+			expect(entities.documents).toEqual([
+				expect.objectContaining({ id: linkedDocumentId, title: 'Linked brief' })
+			]);
+			expect(JSON.stringify(entities)).not.toContain(unrelatedTaskId);
+			expect(JSON.stringify(entities)).not.toContain('Unrelated goal');
+			expect(capturedContext?.ontologyContext?.metadata?.document_tree).toBeUndefined();
+		} finally {
+			executeSpy.mockRestore();
+		}
+	});
+
+	it('uses a context-shift focus to narrow subsequent tool execution context', async () => {
+		const supabase = createStreamingSupabase();
+		const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+		const focusedDocumentId = '2860f74f-c3ec-4823-8fcb-66c9d85673a6';
+		const unrelatedTaskId = 'af2046ce-92f9-448c-9a48-05b278514a73';
+		const inspectDefinition = {
+			name: 'inspect_context',
+			description: 'Inspect context',
+			parameters: {
+				type: 'object',
+				properties: {},
+				required: []
+			}
+		};
+		let capturedContext: Row | null = null;
+		const executeSpy = vi
+			.spyOn(ToolExecutionService.prototype, 'executeTool')
+			.mockImplementation(async (toolCall: Row, context: Row) => {
+				capturedContext = context;
+				return {
+					success: true,
+					toolName: toolCall.function.name,
+					toolCallId: toolCall.id,
+					data: { ok: true }
+				} as any;
+			});
+
+		try {
+			mocks.selectFastChatTools.mockReturnValueOnce([inspectDefinition]);
+			mocks.loadPromptContext.mockResolvedValueOnce({
+				contextType: 'project',
+				entityId: projectId,
+				projectId,
+				projectName: 'Launch Project',
+				focusEntityType: null,
+				focusEntityId: null,
+				focusEntityName: null,
+				conversationSummary: null,
+				data: {
+					project: { id: projectId, name: 'Launch Project' },
+					tasks: [
+						{
+							id: unrelatedTaskId,
+							title: 'Unrelated task',
+							project_id: projectId
+						}
+					],
+					documents: [
+						{
+							id: focusedDocumentId,
+							title: 'Focused spec',
+							project_id: projectId
+						},
+						{
+							id: '4e8af885-0796-4b35-b8e8-f4d203ac3d23',
+							title: 'Unrelated document',
+							project_id: projectId
+						}
+					],
+					goals: [],
+					milestones: [],
+					plans: [],
+					risks: [],
+					doc_structure: {
+						version: 1,
+						root: [
+							{ id: focusedDocumentId, title: 'Focused spec' },
+							{
+								id: '4e8af885-0796-4b35-b8e8-f4d203ac3d23',
+								title: 'Unrelated document'
+							}
+						]
+					}
+				}
+			});
+			mocks.streamFastChat.mockImplementationOnce(
+				async ({ toolExecutor, onToolResult, onDelta }: Row) => {
+					await onToolResult?.({
+						toolCall: {
+							id: 'call-shift',
+							type: 'function',
+							function: { name: 'change_chat_context', arguments: '{}' }
+						},
+						result: {
+							success: true,
+							result: {
+								context_shift: {
+									new_context: 'project',
+									entity_id: focusedDocumentId,
+									entity_name: 'Focused spec',
+									entity_type: 'document',
+									message: 'Focused on the spec.'
+								}
+							}
+						}
+					});
+					await toolExecutor(
+						{
+							id: 'call-inspect-after-shift',
+							type: 'function',
+							function: { name: 'inspect_context', arguments: '{}' }
+						},
+						[inspectDefinition]
+					);
+					await onDelta('Inspected shifted context.');
+					return {
+						assistantText: 'Inspected shifted context.',
+						finalAssistantText: 'Inspected shifted context.',
+						usage: { total_tokens: 8 },
+						finishedReason: 'stop',
+						toolExecutions: [],
+						llmPasses: [],
+						toolRounds: 1,
+						toolCallsMade: 1,
+						supervisorDecisions: [],
+						finalizationGuard: undefined,
+						cancelled: false,
+						peakPromptTokens: undefined,
+						finalContextUsage: undefined
+					};
+				}
+			);
+
+			const response = await POST({
+				request: new Request('http://localhost/api/agent/v2/stream', {
+					method: 'POST',
+					body: JSON.stringify({
+						message: 'Focus the spec then continue',
+						context_type: 'project',
+						entity_id: projectId,
+						stream_run_id: 'stream-run-shift-focused-context',
+						client_turn_id: 'client-turn-shift-focused-context'
+					})
+				}),
+				locals: {
+					supabase,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				},
+				fetch: vi.fn()
+			} as any);
+
+			expect(response.status).toBe(200);
+			const events = parseSseEvents(await response.text());
+
+			expect(events).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						type: 'context_shift',
+						context_shift: expect.objectContaining({
+							entity_id: focusedDocumentId,
+							entity_type: 'document'
+						})
+					})
+				])
+			);
+			expect(capturedContext?.contextScope).toEqual({
+				projectId,
+				projectName: 'Launch Project',
+				focus: {
+					type: 'document',
+					id: focusedDocumentId,
+					name: 'Focused spec'
+				}
+			});
+			expect(capturedContext?.projectFocus).toMatchObject({
+				focusType: 'document',
+				focusEntityId: focusedDocumentId,
+				projectId
+			});
+			const entities = capturedContext?.ontologyContext?.entities ?? {};
+			expect(entities.documents).toEqual([
+				expect.objectContaining({ id: focusedDocumentId, title: 'Focused spec' })
+			]);
+			expect(JSON.stringify(entities)).not.toContain(unrelatedTaskId);
+			expect(capturedContext?.ontologyContext?.metadata?.document_tree).toEqual(
+				expect.objectContaining({
+					root: expect.arrayContaining([
+						expect.objectContaining({ id: focusedDocumentId })
+					])
+				})
+			);
+		} finally {
+			executeSpy.mockRestore();
+		}
+	});
+
+	it('drops stale prompt ontology data after a context shift to another project', async () => {
+		const supabase = createStreamingSupabase();
+		const originalProjectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+		const shiftedProjectId = '972064c0-c2aa-4c74-a735-313802ffd456';
+		const staleTaskId = 'af2046ce-92f9-448c-9a48-05b278514a73';
+		const inspectDefinition = {
+			name: 'inspect_context',
+			description: 'Inspect context',
+			parameters: {
+				type: 'object',
+				properties: {},
+				required: []
+			}
+		};
+		let capturedContext: Row | null = null;
+		const executeSpy = vi
+			.spyOn(ToolExecutionService.prototype, 'executeTool')
+			.mockImplementation(async (toolCall: Row, context: Row) => {
+				capturedContext = context;
+				return {
+					success: true,
+					toolName: toolCall.function.name,
+					toolCallId: toolCall.id,
+					data: { ok: true }
+				} as any;
+			});
+
+		try {
+			mocks.selectFastChatTools.mockReturnValueOnce([inspectDefinition]);
+			mocks.loadPromptContext.mockResolvedValueOnce({
+				contextType: 'project',
+				entityId: originalProjectId,
+				projectId: originalProjectId,
+				projectName: 'Original Project',
+				focusEntityType: null,
+				focusEntityId: null,
+				focusEntityName: null,
+				conversationSummary: null,
+				data: {
+					project: { id: originalProjectId, name: 'Original Project' },
+					tasks: [
+						{
+							id: staleTaskId,
+							title: 'Stale original task',
+							project_id: originalProjectId
+						}
+					],
+					goals: [],
+					milestones: [],
+					plans: [],
+					documents: [],
+					risks: []
+				}
+			});
+			mocks.streamFastChat.mockImplementationOnce(
+				async ({ toolExecutor, onToolResult, onDelta }: Row) => {
+					await onToolResult?.({
+						toolCall: {
+							id: 'call-project-shift',
+							type: 'function',
+							function: { name: 'change_chat_context', arguments: '{}' }
+						},
+						result: {
+							success: true,
+							result: {
+								context_shift: {
+									new_context: 'project',
+									entity_id: shiftedProjectId,
+									entity_name: 'Shifted Project',
+									entity_type: 'project',
+									message: 'Focused on another project.'
+								}
+							}
+						}
+					});
+					await toolExecutor(
+						{
+							id: 'call-inspect-after-project-shift',
+							type: 'function',
+							function: { name: 'inspect_context', arguments: '{}' }
+						},
+						[inspectDefinition]
+					);
+					await onDelta('Inspected shifted project context.');
+					return {
+						assistantText: 'Inspected shifted project context.',
+						finalAssistantText: 'Inspected shifted project context.',
+						usage: { total_tokens: 8 },
+						finishedReason: 'stop',
+						toolExecutions: [],
+						llmPasses: [],
+						toolRounds: 1,
+						toolCallsMade: 1,
+						supervisorDecisions: [],
+						finalizationGuard: undefined,
+						cancelled: false,
+						peakPromptTokens: undefined,
+						finalContextUsage: undefined
+					};
+				}
+			);
+
+			const response = await POST({
+				request: new Request('http://localhost/api/agent/v2/stream', {
+					method: 'POST',
+					body: JSON.stringify({
+						message: 'Switch projects then continue',
+						context_type: 'project',
+						entity_id: originalProjectId,
+						stream_run_id: 'stream-run-project-shift-context',
+						client_turn_id: 'client-turn-project-shift-context'
+					})
+				}),
+				locals: {
+					supabase,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				},
+				fetch: vi.fn()
+			} as any);
+
+			expect(response.status).toBe(200);
+			await response.text();
+
+			expect(capturedContext?.contextScope).toEqual({
+				projectId: shiftedProjectId,
+				projectName: 'Shifted Project'
+			});
+			expect(capturedContext?.projectFocus).toMatchObject({
+				focusType: 'project-wide',
+				projectId: shiftedProjectId,
+				projectName: 'Shifted Project'
+			});
+			expect(capturedContext?.ontologyContext?.scope?.projectId).toBe(shiftedProjectId);
+			expect(capturedContext?.ontologyContext?.entities?.project).toEqual({
+				id: shiftedProjectId,
+				name: 'Shifted Project'
+			});
+			expect(JSON.stringify(capturedContext?.ontologyContext?.entities ?? {})).not.toContain(
+				originalProjectId
+			);
+			expect(JSON.stringify(capturedContext?.ontologyContext?.entities ?? {})).not.toContain(
+				staleTaskId
+			);
+		} finally {
+			executeSpy.mockRestore();
+		}
 	});
 
 	it('injects AI Inbox proposal context into the model history', async () => {

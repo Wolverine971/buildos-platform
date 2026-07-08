@@ -675,7 +675,10 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 				if (event.details) {
 					thinking.addActivity(event.details, 'state_change', {
 						state: agentState,
-						details: event.details
+						details: event.details,
+						...(event.activity_visibility
+							? { activityVisibility: event.activity_visibility }
+							: {})
 					});
 				}
 				state.setCurrentActivity(computeAgentStateActivity(agentState, event.details));

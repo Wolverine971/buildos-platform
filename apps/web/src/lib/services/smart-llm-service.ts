@@ -36,6 +36,13 @@ export type WebSmartLLMConfig = {
 	moonshot?: SmartLLMConfig['moonshot'];
 };
 
+type SharedStreamTextOptions = Parameters<SharedSmartLLMService['streamText']>[0];
+type WebStreamTextOptions = SharedStreamTextOptions & {
+	model?: string;
+	models?: string[];
+};
+type SharedStreamTextResult = ReturnType<SharedSmartLLMService['streamText']>;
+
 export class SmartLLMService extends SharedSmartLLMService {
 	constructor(config?: WebSmartLLMConfig) {
 		const errorLogger = config?.supabase
@@ -72,5 +79,9 @@ export class SmartLLMService extends SharedSmartLLMService {
 			openrouter: config?.openrouter,
 			moonshot: moonshotConfig
 		});
+	}
+
+	streamText(options: WebStreamTextOptions): SharedStreamTextResult {
+		return super.streamText(options as SharedStreamTextOptions);
 	}
 }

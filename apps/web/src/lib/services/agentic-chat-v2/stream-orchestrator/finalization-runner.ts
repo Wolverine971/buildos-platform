@@ -29,6 +29,16 @@ const NO_TOOL_SYNTHESIS_TOOL_RETRY_MESSAGE =
 const NO_TOOL_SYNTHESIS_EMPTY_RETRY_MESSAGE =
 	'The previous synthesis attempt produced no visible answer. Write the final user-facing answer now from the existing tool results. Include the concrete entities you found (with their titles and states) and directly answer any definition question the user asked. Do not call tools.';
 
+function shouldAdoptFinalizationGuardFinishedReason(
+	currentFinishedReason: string | undefined,
+	guardResult: FinalizationGuardResult
+): boolean {
+	return (
+		guardResult.finishedReason !== undefined &&
+		(currentFinishedReason === undefined || currentFinishedReason === 'stop')
+	);
+}
+
 export type LengthContinuationDecision =
 	| {
 			action: 'continue';
@@ -299,6 +309,11 @@ export async function runTerminalFinalization(params: {
 		finalAssistantText = finalToolLimitText;
 		if (toolLimitFinalizationGuard.applied) {
 			finalizationGuardResult = toolLimitFinalizationGuard;
+			if (
+				shouldAdoptFinalizationGuardFinishedReason(finishedReason, finalizationGuardResult)
+			) {
+				finishedReason = finalizationGuardResult.finishedReason;
+			}
 			await params.observeSupervisor({
 				type: 'final_candidate',
 				text: finalAssistantText,
@@ -317,6 +332,11 @@ export async function runTerminalFinalization(params: {
 		if (candidateFinalizationGuard.applied) {
 			finalizationGuardResult = candidateFinalizationGuard;
 			finalAssistantText = finalizationGuardResult.text;
+			if (
+				shouldAdoptFinalizationGuardFinishedReason(finishedReason, finalizationGuardResult)
+			) {
+				finishedReason = finalizationGuardResult.finishedReason;
+			}
 			await params.observeSupervisor({
 				type: 'final_candidate',
 				text: finalAssistantText,

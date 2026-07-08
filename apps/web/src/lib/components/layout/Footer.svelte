@@ -47,7 +47,7 @@
 			title: 'Resources',
 			links: [
 				{ href: '/blogs', label: 'Blog', icon: FileText },
-				{ href: '/agent-skills', label: 'Agent Skills', icon: Brain },
+				{ href: '/skills', label: 'Skill Gallery', icon: Brain },
 				{ href: '/help', label: 'Help', icon: CircleHelp },
 				{ href: '/docs', label: 'Docs', icon: BookOpen }
 			]

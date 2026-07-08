@@ -86,12 +86,43 @@
 			turnRuns: number;
 			llmUsageLogs: number;
 			llmPassEvents: number;
+			skillGateEvents: number;
 			toolExecutions: number;
 			evalRuns: number;
 		};
 		truncated: Record<string, boolean>;
 		hasBillableUsage: boolean;
 		hasTurnTelemetry: boolean;
+	};
+
+	type SkillGateIssueType = 'missing_matching_skill' | 'wrong_format' | 'missing_contract';
+	type SkillGateIssue = {
+		turn_run_id: string | null;
+		session_id: string | null;
+		user_id: string | null;
+		user_email: string;
+		timestamp: string | null;
+		issue_types: SkillGateIssueType[];
+		expected_skill_ids: string[];
+		expected_skill_formats: Record<string, string>;
+		loaded_skill_ids: string[];
+		matching_loaded_skill_ids: string[];
+		loaded_skill_formats: Record<string, string>;
+		skill_gate_violation_repaired: boolean;
+		request_message: string | null;
+		first_skill_path: string | null;
+	};
+	type SkillGateDiagnostics = {
+		evaluated_turns: number;
+		required_turns: number;
+		satisfied_turns: number;
+		unsatisfied_turns: number;
+		wrong_format_turns: number;
+		missing_contract_turns: number;
+		repaired_turns: number;
+		issue_turns: number;
+		issue_rate: number;
+		recent_issues: SkillGateIssue[];
 	};
 
 	type ChatMediaUsage = {
@@ -237,6 +268,7 @@
 			turnRuns: 0,
 			llmUsageLogs: 0,
 			llmPassEvents: 0,
+			skillGateEvents: 0,
 			toolExecutions: 0,
 			evalRuns: 0
 		},
@@ -244,6 +276,7 @@
 		hasBillableUsage: false,
 		hasTurnTelemetry: false
 	});
+	let skillGateDiagnostics = $state<SkillGateDiagnostics>(createEmptySkillGateDiagnostics());
 	let hasTruncatedDashboardData = $derived(
 		Object.values(dataHealth.truncated ?? {}).some(Boolean)
 	);
@@ -316,6 +349,8 @@
 				runtimeDistribution = data.data.runtime_distribution;
 				topUsers = data.data.top_users;
 				dataHealth = data.data.data_health;
+				skillGateDiagnostics =
+					data.data.skill_gate_diagnostics ?? createEmptySkillGateDiagnostics();
 			} else {
 				throw new Error(data.message || 'Failed to load dashboard');
 			}
@@ -371,6 +406,21 @@
 		};
 	}
 
+	function createEmptySkillGateDiagnostics(): SkillGateDiagnostics {
+		return {
+			evaluated_turns: 0,
+			required_turns: 0,
+			satisfied_turns: 0,
+			unsatisfied_turns: 0,
+			wrong_format_turns: 0,
+			missing_contract_turns: 0,
+			repaired_turns: 0,
+			issue_turns: 0,
+			issue_rate: 0,
+			recent_issues: []
+		};
+	}
+
 	function formatNumber(num: number): string {
 		return new Intl.NumberFormat().format(num);
 	}
@@ -408,6 +458,40 @@
 		if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
 		if (value < 1024 * 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 		return `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+	}
+
+	function formatDateTime(value: string | null): string {
+		if (!value) return 'Unknown time';
+		const parsed = new Date(value);
+		if (Number.isNaN(parsed.getTime())) return value;
+		return parsed.toLocaleString();
+	}
+
+	function formatSkillList(values: string[]): string {
+		if (!values.length) return 'none';
+		return values.slice(0, 3).join(', ') + (values.length > 3 ? ` +${values.length - 3}` : '');
+	}
+
+	function skillGateIssueLabel(type: SkillGateIssueType): string {
+		switch (type) {
+			case 'missing_matching_skill':
+				return 'No matching skill';
+			case 'wrong_format':
+				return 'Wrong format';
+			case 'missing_contract':
+				return 'Missing contract';
+		}
+	}
+
+	function skillGateIssueClass(type: SkillGateIssueType): string {
+		switch (type) {
+			case 'missing_matching_skill':
+				return 'bg-destructive/10 text-destructive border-destructive/30';
+			case 'wrong_format':
+				return 'bg-warning/10 text-warning border-warning/30';
+			case 'missing_contract':
+				return 'bg-info/10 text-info border-info/30';
+		}
 	}
 
 	function trendPrefix(trend: Trend): string {
@@ -935,6 +1019,193 @@
 					{formatPercentage(dashboardKPIs.historyCompressionRate)} compressed
 				</div>
 			</div>
+		</div>
+
+		<!-- Skill Gate Health -->
+		<div
+			class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak mb-6"
+		>
+			<div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-4">
+				<div>
+					<h3 class="text-sm font-semibold text-foreground">Skill Gate Health</h3>
+					<p class="text-xs text-muted-foreground">
+						Required skill loads, matching skill coverage, expected format, and contract
+						presence
+					</p>
+				</div>
+				<div
+					class="inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium {skillGateDiagnostics.issue_turns >
+					0
+						? 'border-warning/30 bg-warning/10 text-warning'
+						: 'border-success/30 bg-success/10 text-success'}"
+				>
+					{formatPercentage(skillGateDiagnostics.issue_rate)} issue rate
+				</div>
+			</div>
+
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+				<div class="rounded-lg border border-border bg-muted/30 p-3">
+					<div class="flex items-center justify-between gap-3">
+						<div>
+							<p class="text-xs uppercase tracking-wide text-muted-foreground">
+								Required Gates
+							</p>
+							<p class="text-xl font-bold text-foreground mt-1">
+								{formatNumber(skillGateDiagnostics.required_turns)}
+							</p>
+						</div>
+						<Network class="h-6 w-6 text-info shrink-0" />
+					</div>
+					<p class="text-xs text-muted-foreground mt-2">
+						{formatNumber(skillGateDiagnostics.evaluated_turns)} evaluated turns
+					</p>
+				</div>
+
+				<div class="rounded-lg border border-border bg-muted/30 p-3">
+					<div class="flex items-center justify-between gap-3">
+						<div>
+							<p class="text-xs uppercase tracking-wide text-muted-foreground">
+								Satisfied
+							</p>
+							<p class="text-xl font-bold text-success mt-1">
+								{formatNumber(skillGateDiagnostics.satisfied_turns)}
+							</p>
+						</div>
+						<CheckCircle class="h-6 w-6 text-success shrink-0" />
+					</div>
+					<p class="text-xs text-muted-foreground mt-2">
+						{formatNumber(skillGateDiagnostics.repaired_turns)} repaired before final
+					</p>
+				</div>
+
+				<div class="rounded-lg border border-border bg-muted/30 p-3">
+					<div class="flex items-center justify-between gap-3">
+						<div>
+							<p class="text-xs uppercase tracking-wide text-muted-foreground">
+								No Match
+							</p>
+							<p class="text-xl font-bold text-destructive mt-1">
+								{formatNumber(skillGateDiagnostics.unsatisfied_turns)}
+							</p>
+						</div>
+						<XCircle class="h-6 w-6 text-destructive shrink-0" />
+					</div>
+					<p class="text-xs text-muted-foreground mt-2">
+						No matching loaded skill for required gate
+					</p>
+				</div>
+
+				<div class="rounded-lg border border-border bg-muted/30 p-3">
+					<div class="flex items-center justify-between gap-3">
+						<div>
+							<p class="text-xs uppercase tracking-wide text-muted-foreground">
+								Quality Issues
+							</p>
+							<p class="text-xl font-bold text-warning mt-1">
+								{formatNumber(
+									skillGateDiagnostics.wrong_format_turns +
+										skillGateDiagnostics.missing_contract_turns
+								)}
+							</p>
+						</div>
+						<AlertCircle class="h-6 w-6 text-warning shrink-0" />
+					</div>
+					<p class="text-xs text-muted-foreground mt-2">
+						{formatNumber(skillGateDiagnostics.wrong_format_turns)} format • {formatNumber(
+							skillGateDiagnostics.missing_contract_turns
+						)}
+						contract
+					</p>
+				</div>
+			</div>
+
+			{#if skillGateDiagnostics.recent_issues.length > 0}
+				<div class="border-t border-border pt-4">
+					<div
+						class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-3"
+					>
+						<h4
+							class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+						>
+							Recent Skill Gate Issues
+						</h4>
+						<div class="text-xs text-muted-foreground">
+							{formatNumber(skillGateDiagnostics.issue_turns)} issue turns
+						</div>
+					</div>
+					<div class="space-y-3">
+						{#each skillGateDiagnostics.recent_issues.slice(0, 5) as issue}
+							<div class="rounded-lg border border-border bg-muted/20 p-3">
+								<div
+									class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
+								>
+									<div class="min-w-0 flex-1">
+										<div class="mb-2 flex flex-wrap items-center gap-2">
+											{#each issue.issue_types as type}
+												<span
+													class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium {skillGateIssueClass(
+														type
+													)}"
+												>
+													{skillGateIssueLabel(type)}
+												</span>
+											{/each}
+											{#if issue.skill_gate_violation_repaired}
+												<span
+													class="inline-flex items-center rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success"
+												>
+													Repaired
+												</span>
+											{/if}
+										</div>
+										<div class="text-sm font-medium text-foreground truncate">
+											{issue.request_message ?? 'No request text captured'}
+										</div>
+										<div class="mt-1 text-xs text-muted-foreground">
+											{issue.user_email} • {formatDateTime(issue.timestamp)}
+										</div>
+									</div>
+									<div
+										class="grid min-w-0 gap-2 text-xs sm:grid-cols-2 lg:w-[26rem]"
+									>
+										<div class="min-w-0">
+											<div class="text-muted-foreground">Expected</div>
+											<div class="truncate text-foreground">
+												{formatSkillList(issue.expected_skill_ids)}
+											</div>
+										</div>
+										<div class="min-w-0">
+											<div class="text-muted-foreground">Loaded</div>
+											<div class="truncate text-foreground">
+												{formatSkillList(issue.loaded_skill_ids)}
+											</div>
+										</div>
+										<div class="min-w-0">
+											<div class="text-muted-foreground">Matching</div>
+											<div class="truncate text-foreground">
+												{formatSkillList(issue.matching_loaded_skill_ids)}
+											</div>
+										</div>
+										<div class="min-w-0">
+											<div class="text-muted-foreground">First skill</div>
+											<div class="truncate text-foreground">
+												{issue.first_skill_path ?? 'none'}
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{:else}
+				<div class="rounded-lg border border-success/20 bg-success/5 p-3">
+					<div class="flex items-center gap-2 text-sm text-success">
+						<CheckCircle class="h-4 w-4 shrink-0" />
+						<span>No required skill-gate issues recorded in this period.</span>
+					</div>
+				</div>
+			{/if}
 		</div>
 
 		<!-- Multimodal Media Usage -->

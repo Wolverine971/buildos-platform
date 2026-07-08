@@ -125,6 +125,7 @@ function createHarness(
 		readyRefs?: ChatAttachmentRef[];
 		draftAttachments?: AgentChatImageAttachment[];
 		preparedPrompt?: PreparedPromptClient | null;
+		waitForPreparedPrompt?: StreamControllerPrewarmDeps['waitForPreparedPrompt'];
 	} = {}
 ) {
 	let inputValue = overrides.inputValue ?? 'hello';
@@ -185,6 +186,9 @@ function createHarness(
 			preparedPrompt = null;
 		})
 	};
+	if (overrides.waitForPreparedPrompt) {
+		prewarm.waitForPreparedPrompt = overrides.waitForPreparedPrompt;
+	}
 
 	const thinking = {
 		create: vi.fn(() => 'thinking-1'),
@@ -517,6 +521,41 @@ describe('AgentChatStreamController', () => {
 			session: expect.objectContaining({ id: 'stream-created-session' })
 		});
 		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('completed');
+	});
+
+	it('waits briefly for an in-flight prepared prompt before first send', async () => {
+		const prepared: PreparedPromptClient = {
+			id: 'prepared-late',
+			key: 'prepared-late-key',
+			cache_key: 'cache-key',
+			expires_at: '2099-01-01T00:00:00.000Z'
+		};
+		const waitForPreparedPrompt = vi.fn(async () => prepared);
+		const h = createHarness({
+			currentSession: null,
+			inputValue: 'First turn',
+			preparedPrompt: null,
+			waitForPreparedPrompt
+		});
+
+		const sendPromise = h.controller.sendMessage();
+		await flushMicrotasks();
+
+		expect(waitForPreparedPrompt).toHaveBeenCalledWith('cache-key', { timeoutMs: 250 });
+		expect(h.ensureSessionReady).not.toHaveBeenCalled();
+
+		const requestBody = parseBody(h.streamFetchCalls[0]!);
+		expect(requestBody).not.toHaveProperty('session_id');
+		expect(requestBody).toMatchObject({
+			message: 'First turn',
+			context_type: 'project',
+			entity_id: 'project-1',
+			preparedPromptKey: 'prepared-late-key'
+		});
+
+		h.streamProcessor.runs[0]!.progress({ type: 'done' });
+		h.streamProcessor.runs[0]!.complete();
+		await sendPromise;
 	});
 
 	it('bootstraps a session on first send when no prepared prompt is available', async () => {

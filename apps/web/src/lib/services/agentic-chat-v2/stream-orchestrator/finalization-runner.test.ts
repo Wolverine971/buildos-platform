@@ -246,6 +246,47 @@ describe('runTerminalFinalization', () => {
 		);
 	});
 
+	it('returns synthesis_empty for generic no-evidence read fallbacks', async () => {
+		const readExecution = execution({
+			call: toolCall('search_project', { query: 'missing launch note' }, 'read-1'),
+			result: { results: [] }
+		});
+		const emitAssistantRemainder = vi.fn();
+		const observeSupervisor = vi.fn();
+
+		const result = await runTerminalFinalization({
+			assistantText: '',
+			finalAssistantText: '',
+			finishedReason: 'stop',
+			toolLimitNotice: null,
+			answerTruncated: false,
+			latestUserText: 'What did you find about the missing launch note?',
+			toolExecutions: [readExecution],
+			emitAssistantDelta: vi.fn(),
+			emitAssistantRemainder,
+			observeSupervisor
+		});
+
+		expect(result.finishedReason).toBe('synthesis_empty');
+		expect(result.finalizationGuardResult).toMatchObject({
+			applied: true,
+			reason: 'empty_after_reads',
+			finishedReason: 'synthesis_empty'
+		});
+		expect(result.finalAssistantText).toContain(
+			'turn ended before a final response was produced'
+		);
+		expect(emitAssistantRemainder).toHaveBeenCalledWith(
+			expect.stringContaining('turn ended before a final response was produced')
+		);
+		expect(observeSupervisor).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'final_candidate',
+				finishedReason: 'synthesis_empty'
+			})
+		);
+	});
+
 	it('does not overwrite supervisor questions in terminal finalization', async () => {
 		const readExecution = execution({
 			call: toolCall('search_project', { query: 'task' }, 'read-1'),

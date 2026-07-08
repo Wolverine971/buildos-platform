@@ -5,24 +5,25 @@
 	import { goto } from '$app/navigation';
 	import { addDays, format, startOfDay } from 'date-fns';
 	import {
-		SlidersHorizontal,
-		LoaderCircle,
-		ExternalLink,
 		ArrowLeft,
-		Clock,
-		MapPin,
-		FolderOpen,
-		Target,
-		ListChecks,
-		Milestone,
-		FileText,
-		ChevronRight,
-		CircleDot,
-		CheckCircle2,
-		Circle,
 		Ban,
-		Pause
-	} from 'lucide-svelte';
+		CheckCircle2,
+		ChevronRight,
+		Circle,
+		CircleDot,
+		Clock,
+		ExternalLink,
+		FileText,
+		FolderOpen,
+		ListChecks,
+		LoaderCircle,
+		MapPin,
+		Milestone,
+		Pause,
+		SlidersHorizontal,
+		Target,
+		X
+	} from '$lib/icons/lucide';
 	import CalendarView from '$lib/components/scheduling/CalendarView.svelte';
 	import CalendarItemDrawer from '$lib/components/scheduling/CalendarItemDrawer.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -338,6 +339,14 @@
 		void loadCalendarItems({ force: true });
 	}
 
+	function restoreLayer(layer: 'events' | 'range' | 'start' | 'due') {
+		if (layer === 'events') includeEvents = true;
+		if (layer === 'range') includeTaskRange = true;
+		if (layer === 'start') includeTaskStart = true;
+		if (layer === 'due') includeTaskDue = true;
+		handleToggleChange();
+	}
+
 	function handleDateChange(date: Date) {
 		currentDate = date;
 		saveLocalState();
@@ -564,13 +573,6 @@
 		return detailData.data?.props?.external_link || null;
 	}
 
-	function getTaskMarkerIcon(itemKind: string): string {
-		if (itemKind === 'range') return '📅';
-		if (itemKind === 'start') return '▶️';
-		if (itemKind === 'due') return '🎯';
-		return '📌';
-	}
-
 	function getTaskMarkerLabel(itemKind: string): string {
 		if (itemKind === 'range') return 'Scheduled';
 		if (itemKind === 'start') return 'Start marker';
@@ -669,7 +671,7 @@
 </script>
 
 <main class="min-h-screen bg-background">
-	<div class="container mx-auto max-w-6xl px-3 py-3 sm:px-5 sm:py-6">
+	<div class="mx-auto max-w-7xl px-2 py-3 sm:px-4 sm:py-6 lg:px-6">
 		<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 			<div class="space-y-0.5">
 				<button
@@ -694,15 +696,65 @@
 			</div>
 		</div>
 
+		{#if !showSettings && (!includeEvents || !includeTaskRange || !includeTaskStart || !includeTaskDue)}
+			<div
+				class="mt-2 flex flex-wrap items-center gap-1.5"
+				aria-label="Hidden calendar layers"
+			>
+				{#if !includeEvents}
+					<button
+						type="button"
+						class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-muted-foreground shadow-ink transition-colors hover:border-accent/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
+						aria-label="Show events"
+						onclick={() => restoreLayer('events')}
+					>
+						Events off
+						<X class="h-3 w-3 shrink-0" aria-hidden="true" />
+					</button>
+				{/if}
+				{#if !includeTaskRange}
+					<button
+						type="button"
+						class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-muted-foreground shadow-ink transition-colors hover:border-accent/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
+						aria-label="Show task ranges"
+						onclick={() => restoreLayer('range')}
+					>
+						Task ranges off
+						<X class="h-3 w-3 shrink-0" aria-hidden="true" />
+					</button>
+				{/if}
+				{#if !includeTaskStart}
+					<button
+						type="button"
+						class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-muted-foreground shadow-ink transition-colors hover:border-accent/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
+						aria-label="Show task start markers"
+						onclick={() => restoreLayer('start')}
+					>
+						Start markers off
+						<X class="h-3 w-3 shrink-0" aria-hidden="true" />
+					</button>
+				{/if}
+				{#if !includeTaskDue}
+					<button
+						type="button"
+						class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-muted-foreground shadow-ink transition-colors hover:border-accent/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
+						aria-label="Show task due markers"
+						onclick={() => restoreLayer('due')}
+					>
+						Due markers off
+						<X class="h-3 w-3 shrink-0" aria-hidden="true" />
+					</button>
+				{/if}
+			</div>
+		{/if}
+
 		{#if showSettings}
 			<div
 				class="mt-3 rounded-lg border border-border bg-card p-3 shadow-ink tx tx-frame tx-weak"
 			>
 				<div class="flex items-center gap-2 mb-2">
 					<SlidersHorizontal class="h-3.5 w-3.5 text-muted-foreground" />
-					<span class="text-xs font-semibold text-foreground uppercase tracking-wide"
-						>Display Filters</span
-					>
+					<span class="micro-label text-foreground">Display filters</span>
 				</div>
 				<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
 					<label class="flex items-center gap-2 text-sm">
@@ -785,7 +837,7 @@
 				<div
 					class="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center"
 				>
-					<LoaderCircle class="h-4 w-4 animate-spin" />
+					<LoaderCircle class="h-4 w-4 animate-spin motion-reduce:animate-none" />
 					Loading details…
 				</div>
 			{:else if detailError}
@@ -841,10 +893,10 @@
 
 				<!-- Date/time -->
 				<div
-					class="flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm text-foreground"
+					class="flex min-w-0 items-start gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm text-foreground"
 				>
 					<Clock class="h-4 w-4 shrink-0 text-muted-foreground" />
-					<span
+					<span class="min-w-0 break-words"
 						>{formatRange(
 							selectedItem.start_at,
 							selectedItem.end_at,
@@ -856,15 +908,17 @@
 				<!-- Task-specific: due date and start date if different from calendar item -->
 				{#if detail.type === 'task'}
 					{#if detail.data?.due_at && detail.data.due_at !== selectedItem.end_at}
-						<div class="flex items-center gap-2 text-sm text-muted-foreground">
+						<div class="flex min-w-0 items-start gap-2 text-sm text-muted-foreground">
 							<Target class="h-3.5 w-3.5 shrink-0" />
-							<span>Due: {format(new Date(detail.data.due_at), 'MMM d, yyyy')}</span>
+							<span class="min-w-0 break-words"
+								>Due: {format(new Date(detail.data.due_at), 'MMM d, yyyy')}</span
+							>
 						</div>
 					{/if}
 					{#if detail.data?.completed_at}
-						<div class="flex items-center gap-2 text-sm text-success">
+						<div class="flex min-w-0 items-start gap-2 text-sm text-success">
 							<CheckCircle2 class="h-3.5 w-3.5 shrink-0" />
-							<span
+							<span class="min-w-0 break-words"
 								>Completed: {format(
 									new Date(detail.data.completed_at),
 									'MMM d, yyyy'
@@ -876,9 +930,9 @@
 
 				<!-- Event-specific: location -->
 				{#if detail.type === 'event' && detail.data?.location}
-					<div class="flex items-center gap-2 text-sm text-muted-foreground">
+					<div class="flex min-w-0 items-start gap-2 text-sm text-muted-foreground">
 						<MapPin class="h-3.5 w-3.5 shrink-0" />
-						<span>{detail.data.location}</span>
+						<span class="min-w-0 break-words">{detail.data.location}</span>
 					</div>
 				{/if}
 
@@ -886,7 +940,9 @@
 				{@const description = getDescription(detail)}
 				{#if description}
 					<div class="rounded-lg border border-border bg-card p-3">
-						<div class="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+						<div
+							class="break-words text-sm text-foreground whitespace-pre-wrap leading-relaxed"
+						>
 							{description}
 						</div>
 					</div>
@@ -911,38 +967,34 @@
 					{@const le = detail.linkedEntities}
 					{#if le.plans.length > 0 || le.goals.length > 0 || le.milestones.length > 0 || le.documents.length > 0 || le.dependentTasks.length > 0}
 						<div class="space-y-2">
-							<h3
-								class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-							>
-								Linked Entities
-							</h3>
+							<h3 class="micro-label">Linked entities</h3>
 							<div class="space-y-1">
 								{#each le.plans as plan}
 									<div
-										class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
+										class="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm"
 									>
 										<ListChecks class="h-3.5 w-3.5 shrink-0 text-accent" />
-										<span class="text-foreground truncate"
+										<span class="min-w-0 truncate text-foreground"
 											>{plan.name || plan.title || 'Untitled Plan'}</span
 										>
 									</div>
 								{/each}
 								{#each le.goals as goal}
 									<div
-										class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
+										class="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm"
 									>
 										<Target class="h-3.5 w-3.5 shrink-0 text-warning" />
-										<span class="text-foreground truncate"
+										<span class="min-w-0 truncate text-foreground"
 											>{goal.name || goal.title || 'Untitled Goal'}</span
 										>
 									</div>
 								{/each}
 								{#each le.milestones as milestone}
 									<div
-										class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
+										class="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm"
 									>
 										<Milestone class="h-3.5 w-3.5 shrink-0 text-info" />
-										<span class="text-foreground truncate"
+										<span class="min-w-0 truncate text-foreground"
 											>{milestone.title ||
 												milestone.name ||
 												'Untitled Milestone'}</span
@@ -958,22 +1010,22 @@
 								{/each}
 								{#each le.documents as doc}
 									<div
-										class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
+										class="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm"
 									>
 										<FileText class="h-3.5 w-3.5 shrink-0 text-info" />
-										<span class="text-foreground truncate"
+										<span class="min-w-0 truncate text-foreground"
 											>{doc.title || doc.name || 'Untitled Document'}</span
 										>
 									</div>
 								{/each}
 								{#each le.dependentTasks as depTask}
 									<div
-										class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
+										class="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm"
 									>
 										<ChevronRight
 											class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
 										/>
-										<span class="text-foreground truncate"
+										<span class="min-w-0 truncate text-foreground"
 											>{depTask.title ||
 												depTask.name ||
 												'Untitled Task'}</span
@@ -997,18 +1049,14 @@
 				<!-- Project section -->
 				{#if detail.project}
 					<div class="space-y-2 pt-1">
-						<h3
-							class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-						>
-							Project
-						</h3>
+						<h3 class="micro-label">Project</h3>
 						<button
 							onclick={() => openProject(detail?.project?.id ?? null)}
-							class="w-full rounded-lg border border-border bg-card p-2.5 text-left hover:border-accent/50 hover:bg-muted/50 transition-colors shadow-ink pressable"
+							class="w-full rounded-lg border border-border bg-card p-2.5 text-left hover:border-accent/50 hover:bg-muted/50 transition-colors motion-reduce:transition-none shadow-ink pressable"
 						>
-							<div class="flex items-center gap-2">
+							<div class="flex min-w-0 items-center gap-2">
 								<FolderOpen class="h-4 w-4 shrink-0 text-accent" />
-								<span class="text-sm font-medium text-foreground truncate">
+								<span class="min-w-0 truncate text-sm font-medium text-foreground">
 									{detail.project.name}
 								</span>
 							</div>
@@ -1036,7 +1084,9 @@
 								{/if}
 							</div>
 							{#if detail.project.description}
-								<p class="mt-2 text-xs text-muted-foreground line-clamp-2">
+								<p
+									class="mt-2 break-words text-xs text-muted-foreground line-clamp-2"
+								>
 									{detail.project.description}
 								</p>
 							{/if}

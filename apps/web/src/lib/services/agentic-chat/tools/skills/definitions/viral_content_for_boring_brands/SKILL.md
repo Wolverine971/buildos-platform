@@ -17,6 +17,7 @@ reference_modules:
           - When executing a full audit or design pass, before producing findings for filters A–D.
           - When a piece reads as an ad, leads with the product, lacks a layer-3 identity statement, or has no credential in the first 2 seconds.
       path: references/attention-filters.md
+      visibility: public
     - id: viral_content_for_boring_brands.spread_checks
       name: Spread Checks E–F (checks 5–6)
       summary: Threshold-bearing rules for spread and sustained engagement — the one-line sharer test with identity payoff tagging, drive-emotion rules, and the Hook → Problem → Story → Payoff skeleton with dead-space and caption rules.
@@ -24,6 +25,7 @@ reference_modules:
           - When executing a full audit or design pass, before producing findings for filters E–F.
           - When a piece gets views but no shares, or retention dies mid-piece.
       path: references/spread-checks.md
+      visibility: public
     - id: viral_content_for_boring_brands.honesty_overlays
       name: Honesty Overlays (checks 7–8)
       summary: BuildOS overlay rules — slop-format rejection (rage-bait, fake-confession, manufactured-drama mechanisms) and performative-credential rejection (cosplayed authority), with the brand's strongest true credentials.
@@ -31,6 +33,7 @@ reference_modules:
           - Whenever a format-steal candidate or a credential is being evaluated (overlays on filters A and D).
           - Always for BuildOS-tagged work.
       path: references/honesty-overlays.md
+      visibility: public
 path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/viral_content_for_boring_brands/SKILL.md
 ---
 

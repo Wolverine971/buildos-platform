@@ -2,21 +2,36 @@
 import { SITE_URL } from '$lib/constants/seo';
 import { AGENT_SKILLS_CATEGORY_KEY, loadAgentSkillPosts, type BlogPost } from '$lib/utils/blog';
 import {
+	getDisplayTitle,
+	getFallbackGuardrails,
+	getFallbackTryPrompts,
+	getFallbackUseCases,
+	getFallbackWorkflow,
+	getOutputShapes,
+	getSkillFamily,
+	getSkillMetadata
+} from '$lib/skills/skill-gallery';
+import {
 	getSkillByReference,
 	listAllSkills
 } from '$lib/services/agentic-chat/tools/skills/registry';
 import { loadSkillReference } from '$lib/services/agentic-chat/tools/skills/skill-reference-load';
+import { canReadSkillReference } from '$lib/services/agentic-chat/tools/skills/skill-reference-visibility';
 import { stringify as stringifyYaml } from 'yaml';
 import type {
 	SkillDefinition,
-	SkillLinkedResource
+	SkillLinkedResource,
+	SkillReferenceLoadSurface
 } from '$lib/services/agentic-chat/tools/skills/types';
+import type { PublicSkillGalleryMetadata } from '$lib/skills/skill-gallery';
 
 const agentSkillBlogModules = import.meta.glob<string>('/src/content/blogs/agent-skills/*.md', {
 	eager: true,
 	query: '?raw',
 	import: 'default'
 });
+
+const PUBLIC_AGENT_SKILL_SURFACE: SkillReferenceLoadSurface = 'public_portable';
 
 export type PublicAgentSkillReference = {
 	id: string;
@@ -45,7 +60,29 @@ export type AgentSkillIndexItem = {
 	lineage_people?: string[];
 	lineage_sources?: BlogPost['lineageSources'];
 	lineage_stats?: BlogPost['lineageStats'];
+	gallery: PublicSkillGalleryMetadata;
 	references: PublicAgentSkillReference[];
+};
+
+export type PublicRuntimeSkillResource = {
+	id: string;
+	name?: string;
+	summary: string;
+	when_to_load: string[];
+};
+
+export type PublicRuntimeSkill = {
+	id: string;
+	name: string;
+	summary: string;
+	when_to_use: string[];
+	workflow: string[];
+	guardrails: string[];
+	examples: NonNullable<SkillDefinition['examples']>;
+	output_contract?: string;
+	notes: string[];
+	child_skills: PublicRuntimeSkillResource[];
+	reference_modules: PublicRuntimeSkillResource[];
 };
 
 export type AgentSkillMarkdownResult = {
@@ -126,6 +163,56 @@ export function resolveRuntimeSkillForPost(post: BlogPost): SkillDefinition | un
 	return listAllSkills().find((skill) => skill.id === normalizedSlug);
 }
 
+function cleanRuntimeText(value: string): string {
+	return value
+		.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+		.replace(/\s+\*\*\[here\]\*\*/gi, '')
+		.replace(/\s+\[here\]/gi, '')
+		.replace(/\*\*([^*]+)\*\*/g, '$1')
+		.replace(/`([^`]+)`/g, '$1')
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
+function cleanRuntimeList(values: string[] | undefined): string[] {
+	return (values ?? []).map(cleanRuntimeText).filter(Boolean);
+}
+
+function mapPublicRuntimeResource(resource: SkillLinkedResource): PublicRuntimeSkillResource {
+	const payload: PublicRuntimeSkillResource = {
+		id: resource.id,
+		summary: cleanRuntimeText(resource.summary),
+		when_to_load: cleanRuntimeList(resource.whenToLoad)
+	};
+	if (resource.name) payload.name = resource.name;
+	return payload;
+}
+
+export function buildPublicRuntimeSkill(
+	skill: SkillDefinition | undefined
+): PublicRuntimeSkill | null {
+	if (!skill) return null;
+
+	return {
+		id: skill.id,
+		name: skill.name,
+		summary: cleanRuntimeText(skill.summary),
+		when_to_use: cleanRuntimeList(skill.whenToUse),
+		workflow: cleanRuntimeList(skill.workflow),
+		guardrails: cleanRuntimeList(skill.guardrails),
+		examples: (skill.examples ?? []).map((example) => ({
+			description: cleanRuntimeText(example.description),
+			next_steps: cleanRuntimeList(example.next_steps)
+		})),
+		output_contract: skill.outputContract ? cleanRuntimeText(skill.outputContract) : undefined,
+		notes: cleanRuntimeList(skill.notes),
+		child_skills: (skill.childSkills ?? []).map(mapPublicRuntimeResource),
+		reference_modules: (skill.referenceModules ?? [])
+			.filter((resource) => canReadSkillReference(resource, PUBLIC_AGENT_SKILL_SURFACE))
+			.map(mapPublicRuntimeResource)
+	};
+}
+
 function getRawBlogContent(post: BlogPost): string | undefined {
 	return agentSkillBlogModules[`/src/content/blogs/${AGENT_SKILLS_CATEGORY_KEY}/${post.slug}.md`];
 }
@@ -179,6 +266,59 @@ function rewriteReferenceLoadLanguage(
 	return nextBody;
 }
 
+const INTERNAL_REPO_PATH_PREFIX_PATTERN =
+	'(?:apps/web/src|docs/research|docs/technical|docs/marketing|packages|supabase|scripts|tasker)/';
+const HTML_COMMENT_PATTERN = /<!--[\s\S]*?-->/g;
+const HTML_COMMENT_TEST_PATTERN = /<!--[\s\S]*?-->/;
+const INTERNAL_REPO_PATH_PATTERN = new RegExp(
+	'\\b' + INTERNAL_REPO_PATH_PREFIX_PATTERN + '[^\\s)\\]`]+',
+	'g'
+);
+const BACKTICKED_INTERNAL_REPO_PATH_PATTERN = new RegExp(
+	'`' + INTERNAL_REPO_PATH_PREFIX_PATTERN + '[^`]*`',
+	'g'
+);
+const MARKDOWN_LINK_INTERNAL_REPO_PATH_PATTERN = new RegExp(
+	'\\[([^\\]]+)\\]\\(' + INTERNAL_REPO_PATH_PREFIX_PATTERN + '[^)]+\\)',
+	'g'
+);
+const INTERNAL_REPO_PATH_ONLY_LINE_PATTERN = new RegExp(
+	'^\\s*(?:[-*]\\s+)?`?' + INTERNAL_REPO_PATH_PREFIX_PATTERN + '[^`\\s)]*`?\\s*\\.?\\s*$'
+);
+const INTERNAL_REPO_PATH_REPLACEMENT = 'internal BuildOS source notes';
+
+function removeBlocksContainingMarkers(body: string, markers: string[]): string {
+	if (markers.length === 0) return body;
+
+	return body
+		.split(/\n{2,}/)
+		.filter((block) => !markers.some((marker) => block.includes(marker)))
+		.join('\n\n');
+}
+
+function scrubInternalRepoPaths(body: string): string {
+	return body
+		.split(/\r?\n/)
+		.filter((line) => !INTERNAL_REPO_PATH_ONLY_LINE_PATTERN.test(line.trim()))
+		.join('\n')
+		.replace(MARKDOWN_LINK_INTERNAL_REPO_PATH_PATTERN, '$1')
+		.replace(BACKTICKED_INTERNAL_REPO_PATH_PATTERN, INTERNAL_REPO_PATH_REPLACEMENT)
+		.replace(INTERNAL_REPO_PATH_PATTERN, INTERNAL_REPO_PATH_REPLACEMENT);
+}
+
+function sanitizePortableSkillBody(body: string, runtimeSkill?: SkillDefinition): string {
+	const withoutComments = body.replace(HTML_COMMENT_PATTERN, '').trim();
+	const withoutPrivateReferenceBlocks = removeBlocksContainingMarkers(
+		withoutComments,
+		getInternalReferenceLeakMarkers(runtimeSkill)
+	);
+
+	return scrubInternalRepoPaths(withoutPrivateReferenceBlocks)
+		.replace(/[ \t]+\n/g, '\n')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim();
+}
+
 function buildPortableReferenceSection(references: PublicAgentSkillReference[]): string {
 	if (references.length === 0) return '';
 
@@ -215,7 +355,10 @@ function buildPortableSkillMarkdown(
 	const body = sourceMarkdown
 		? stripFrontmatter(sourceMarkdown)
 		: `# ${post.title}\n\n${post.description}`;
-	const rewrittenBody = rewriteReferenceLoadLanguage(body, references);
+	const rewrittenBody = sanitizePortableSkillBody(
+		rewriteReferenceLoadLanguage(body, references),
+		runtimeSkill
+	);
 	const referenceSection = buildPortableReferenceSection(references);
 
 	const frontmatter = stringifyYaml({
@@ -242,6 +385,7 @@ function buildBuildOsMetadataYaml(
 	references: PublicAgentSkillReference[]
 ): string {
 	const skillUrl = `${SITE_URL}/agent-skills/${post.slug}`;
+	const gallery = buildPublicSkillGalleryMetadata(post, runtimeSkill);
 	const metadata = {
 		id: post.skillId ?? runtimeSkill?.id ?? post.slug,
 		slug: post.slug,
@@ -260,6 +404,7 @@ function buildBuildOsMetadataYaml(
 		lineage_people: post.lineagePeople,
 		lineage_sources: post.lineageSources,
 		lineage_stats: post.lineageStats,
+		gallery,
 		references: references.map((reference) => ({
 			id: reference.id,
 			path: reference.path,
@@ -271,11 +416,67 @@ function buildBuildOsMetadataYaml(
 	return `${stringifyYaml(metadata).trim()}\n`;
 }
 
+function firstNonEmptyList(...lists: Array<string[] | undefined>): string[] {
+	return lists.find((list) => list && list.length > 0) ?? [];
+}
+
+export function buildPublicSkillGalleryMetadata(
+	post: BlogPost,
+	runtimeSkill = resolveRuntimeSkillForPost(post)
+): PublicSkillGalleryMetadata {
+	const runtime = buildPublicRuntimeSkill(runtimeSkill);
+	const curated = getSkillMetadata({ slug: post.slug });
+
+	const workflow = firstNonEmptyList(
+		curated?.workflow,
+		runtime?.workflow,
+		getFallbackWorkflow({ slug: post.slug })
+	);
+	const useCases = firstNonEmptyList(
+		curated?.useCases,
+		runtime?.when_to_use,
+		getFallbackUseCases({ slug: post.slug })
+	);
+	const guardrails = firstNonEmptyList(
+		curated?.guardrails,
+		runtime?.guardrails,
+		getFallbackGuardrails({ slug: post.slug })
+	);
+	const starterPrompts = firstNonEmptyList(
+		curated?.tryPrompts,
+		runtime?.examples.map((example) => example.description),
+		getFallbackTryPrompts({ slug: post.slug })
+	);
+
+	return {
+		display_title: getDisplayTitle({ title: post.title }),
+		family: getSkillFamily({ slug: post.slug, skill_type: post.skillType }),
+		domain_id: post.skillCategory,
+		output_shapes: firstNonEmptyList(curated?.outputs, getOutputShapes({ slug: post.slug })),
+		workflow,
+		use_cases: useCases,
+		guardrails,
+		starter_prompts: starterPrompts,
+		source: {
+			curated: Boolean(curated),
+			runtime: Boolean(runtime),
+			blog: true,
+			fallback:
+				!curated?.workflow?.length ||
+				!curated?.useCases?.length ||
+				!curated?.guardrails?.length ||
+				!curated?.tryPrompts?.length ||
+				!curated?.outputs?.length
+		}
+	};
+}
+
 export function getAgentSkillMarkdown(post: BlogPost): AgentSkillMarkdownResult | undefined {
 	const runtimeSkill = resolveRuntimeSkillForPost(post);
 	if (runtimeSkill?.rawMarkdown) {
+		const references = listPublicAgentSkillReferences(post, runtimeSkill);
 		return {
-			content: runtimeSkill.rawMarkdown,
+			content: buildPortableSkillMarkdown(post, runtimeSkill, references),
 			source: 'runtime',
 			runtimeSkillId: runtimeSkill.id
 		};
@@ -297,7 +498,7 @@ function isPublicReferenceModule(
 ): reference is SkillLinkedResource & {
 	path: string;
 } {
-	return Boolean(reference.path) && reference.visibility !== 'internal';
+	return Boolean(reference.path) && canReadSkillReference(reference, PUBLIC_AGENT_SKILL_SURFACE);
 }
 
 function normalizeReferencePath(path: string): string | null {
@@ -317,6 +518,46 @@ function getPublicReferenceModules(skill?: SkillDefinition): Array<
 	return skill?.referenceModules?.filter(isPublicReferenceModule) ?? [];
 }
 
+function uniqueSkillsById(skills: SkillDefinition[]): SkillDefinition[] {
+	const byId = new Map<string, SkillDefinition>();
+	for (const skill of skills) {
+		byId.set(skill.id, skill);
+	}
+	return [...byId.values()];
+}
+
+function getInternalReferenceLeakMarkers(skill?: SkillDefinition): string[] {
+	const markers = new Set<string>();
+	for (const candidateSkill of uniqueSkillsById([
+		...(skill ? [skill] : []),
+		...listAllSkills()
+	])) {
+		for (const reference of candidateSkill.referenceModules ?? []) {
+			if (canReadSkillReference(reference, PUBLIC_AGENT_SKILL_SURFACE)) continue;
+			markers.add(reference.id);
+			const path = reference.path ? normalizeReferencePath(reference.path) : null;
+			if (path) markers.add(path);
+		}
+	}
+	return [...markers].filter((marker) => marker.length > 0);
+}
+
+function findInternalReferenceLeaks(content: string, skill?: SkillDefinition): string[] {
+	return getInternalReferenceLeakMarkers(skill).filter((marker) => content.includes(marker));
+}
+
+function findInternalRepoPathLeaks(content: string): string[] {
+	return [...new Set(content.match(INTERNAL_REPO_PATH_PATTERN) ?? [])];
+}
+
+function findPortableInfrastructureLeaks(content: string): string[] {
+	const leaks = findInternalRepoPathLeaks(content);
+	if (HTML_COMMENT_TEST_PATTERN.test(content)) {
+		leaks.push('html_comment');
+	}
+	return leaks;
+}
+
 function buildReferenceUrl(post: BlogPost, referencePath: string): string {
 	return `${SITE_URL}/agent-skills/${post.slug}/${referencePath}`;
 }
@@ -325,14 +566,20 @@ export function listPublicAgentSkillReferences(
 	post: BlogPost,
 	skill = resolveRuntimeSkillForPost(post)
 ): PublicAgentSkillReference[] {
-	return getPublicReferenceModules(skill).map((reference) => ({
-		id: reference.id,
-		name: reference.name,
-		summary: reference.summary,
-		path: reference.path,
-		url: buildReferenceUrl(post, reference.path),
-		when_to_load: reference.whenToLoad
-	}));
+	return getPublicReferenceModules(skill)
+		.map((reference): PublicAgentSkillReference | null => {
+			const path = normalizeReferencePath(reference.path);
+			if (!path) return null;
+			return {
+				id: reference.id,
+				name: reference.name,
+				summary: reference.summary,
+				path,
+				url: buildReferenceUrl(post, path),
+				when_to_load: reference.whenToLoad
+			};
+		})
+		.filter((reference): reference is PublicAgentSkillReference => Boolean(reference));
 }
 
 function loadPublicReferenceContent(
@@ -340,7 +587,9 @@ function loadPublicReferenceContent(
 	reference: PublicAgentSkillReference
 ): string | undefined {
 	if (!runtimeSkill) return undefined;
-	const payload = loadSkillReference(runtimeSkill.id, reference.id);
+	const payload = loadSkillReference(runtimeSkill.id, reference.id, {
+		surface: PUBLIC_AGENT_SKILL_SURFACE
+	});
 	if (payload.type !== 'skill_reference' || typeof payload.content !== 'string') {
 		return undefined;
 	}
@@ -417,7 +666,9 @@ export function getAgentSkillReference(
 	);
 	if (!reference) return undefined;
 
-	const payload = loadSkillReference(runtimeSkill.id, reference.id);
+	const payload = loadSkillReference(runtimeSkill.id, reference.id, {
+		surface: PUBLIC_AGENT_SKILL_SURFACE
+	});
 	if (payload.type !== 'skill_reference' || typeof payload.content !== 'string') {
 		return undefined;
 	}
@@ -452,6 +703,7 @@ export function buildAgentSkillIndexItem(post: BlogPost): AgentSkillIndexItem {
 		lineage_people: post.lineagePeople,
 		lineage_sources: post.lineageSources,
 		lineage_stats: post.lineageStats,
+		gallery: buildPublicSkillGalleryMetadata(post, runtimeSkill),
 		references: listPublicAgentSkillReferences(post, runtimeSkill)
 	};
 }
@@ -586,6 +838,69 @@ export function validateAgentSkillCatalogPosts(posts: BlogPost[]): AgentSkillVal
 		}
 
 		const indexItem = buildAgentSkillIndexItem(post);
+		if (!indexItem.gallery.display_title.trim()) {
+			addValidationIssue(
+				issues,
+				'error',
+				'missing_gallery_display_title',
+				'Skill gallery metadata is missing display_title.',
+				slug
+			);
+		}
+		if (!indexItem.gallery.family.trim()) {
+			addValidationIssue(
+				issues,
+				'error',
+				'missing_gallery_family',
+				'Skill gallery metadata is missing family.',
+				slug
+			);
+		}
+		if (indexItem.gallery.output_shapes.length === 0) {
+			addValidationIssue(
+				issues,
+				'error',
+				'missing_gallery_output_shapes',
+				'Skill gallery metadata is missing output_shapes.',
+				slug
+			);
+		}
+		if (indexItem.gallery.workflow.length === 0) {
+			addValidationIssue(
+				issues,
+				'error',
+				'missing_gallery_workflow',
+				'Skill gallery metadata is missing workflow.',
+				slug
+			);
+		}
+		if (indexItem.gallery.use_cases.length === 0) {
+			addValidationIssue(
+				issues,
+				'error',
+				'missing_gallery_use_cases',
+				'Skill gallery metadata is missing use_cases.',
+				slug
+			);
+		}
+		if (indexItem.gallery.guardrails.length === 0) {
+			addValidationIssue(
+				issues,
+				'error',
+				'missing_gallery_guardrails',
+				'Skill gallery metadata is missing guardrails.',
+				slug
+			);
+		}
+		if (indexItem.gallery.starter_prompts.length === 0) {
+			addValidationIssue(
+				issues,
+				'error',
+				'missing_gallery_starter_prompts',
+				'Skill gallery metadata is missing starter_prompts.',
+				slug
+			);
+		}
 		validateRequiredUrl(issues, slug, 'url', indexItem.url, `/agent-skills/${post.slug}`);
 		validateRequiredUrl(
 			issues,
@@ -634,6 +949,30 @@ export function validateAgentSkillCatalogPosts(posts: BlogPost[]): AgentSkillVal
 			);
 		} else if (markdown.source === 'embedded-portable') {
 			embeddedPortableCount += 1;
+		}
+		const publicMarkdownInternalReferenceLeaks = markdown?.content
+			? findInternalReferenceLeaks(markdown.content, runtimeSkill)
+			: [];
+		if (publicMarkdownInternalReferenceLeaks.length > 0) {
+			addValidationIssue(
+				issues,
+				'error',
+				'public_skill_markdown_internal_reference_leak',
+				`Public skill markdown exposes internal reference markers: ${publicMarkdownInternalReferenceLeaks.join(', ')}.`,
+				slug
+			);
+		}
+		const publicMarkdownInfrastructureLeaks = markdown?.content
+			? findPortableInfrastructureLeaks(markdown.content)
+			: [];
+		if (publicMarkdownInfrastructureLeaks.length > 0) {
+			addValidationIssue(
+				issues,
+				'error',
+				'public_skill_markdown_internal_infrastructure_leak',
+				`Public skill markdown exposes internal infrastructure markers: ${publicMarkdownInfrastructureLeaks.join(', ')}.`,
+				slug
+			);
 		}
 
 		const references = listPublicAgentSkillReferences(post, runtimeSkill);
@@ -727,6 +1066,29 @@ export function validateAgentSkillCatalogPosts(posts: BlogPost[]): AgentSkillVal
 					slug
 				);
 			}
+			const portableSkillInternalReferenceLeaks = findInternalReferenceLeaks(
+				portableSkill,
+				runtimeSkill
+			);
+			if (portableSkillInternalReferenceLeaks.length > 0) {
+				addValidationIssue(
+					issues,
+					'error',
+					'portable_skill_internal_reference_leak',
+					`Portable SKILL.md exposes internal reference markers: ${portableSkillInternalReferenceLeaks.join(', ')}.`,
+					slug
+				);
+			}
+			const portableSkillInfrastructureLeaks = findPortableInfrastructureLeaks(portableSkill);
+			if (portableSkillInfrastructureLeaks.length > 0) {
+				addValidationIssue(
+					issues,
+					'error',
+					'portable_skill_internal_infrastructure_leak',
+					`Portable SKILL.md exposes internal infrastructure markers: ${portableSkillInfrastructureLeaks.join(', ')}.`,
+					slug
+				);
+			}
 		}
 
 		if (!buildOsMetadata?.trim()) {
@@ -735,6 +1097,14 @@ export function validateAgentSkillCatalogPosts(posts: BlogPost[]): AgentSkillVal
 				'error',
 				'missing_buildos_metadata',
 				'Portable bundle is missing buildos.yaml.',
+				slug
+			);
+		} else if (!buildOsMetadata.includes('\ngallery:\n')) {
+			addValidationIssue(
+				issues,
+				'error',
+				'missing_buildos_gallery_metadata',
+				'Portable buildos.yaml is missing generated gallery metadata.',
 				slug
 			);
 		}

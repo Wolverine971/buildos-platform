@@ -20,7 +20,11 @@ export type {
 	TurnCheckpointStatus,
 	TurnCheckpointType
 } from './checkpoint-service';
-export type { FinalizationGuardReason, FinalizationGuardResult } from './finalization-guard';
+export type {
+	FinalizationGuardFinishedReason,
+	FinalizationGuardReason,
+	FinalizationGuardResult
+} from './finalization-guard';
 export type {
 	TurnDigest,
 	TurnSupervisor,

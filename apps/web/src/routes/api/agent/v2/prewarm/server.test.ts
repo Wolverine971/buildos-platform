@@ -313,10 +313,17 @@ describe('POST /api/agent/v2/prewarm', () => {
 		} as any);
 
 		expect(response.status).toBe(200);
+		const payload = await response.json();
 		expect(insertPreparedPrompt).toHaveBeenCalledOnce();
 		const row = insertedRows[0];
 		const serializedRow = JSON.stringify(row);
 		const focus = row.context_payload.data.focus_entity_full;
+		expect(Object.keys(row.prepared_surfaces).sort()).toEqual(
+			['project_basic', 'project_document', 'project_write', 'project_write_document'].sort()
+		);
+		expect(payload.data.prepared_prompt.prepared_surface_profiles.sort()).toEqual(
+			['project_basic', 'project_document', 'project_write', 'project_write_document'].sort()
+		);
 		expect(focus).toMatchObject({
 			id: '22222222-2222-4222-8222-222222222222',
 			project_id: projectId,

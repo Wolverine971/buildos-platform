@@ -153,9 +153,9 @@ Binary kill-questions. Run every candidate segment through both tables after sco
 ## Procedure
 
 1. **Fill one row of the `## Persona × Signal × Reason-Now Schema` below.** One persona, one narrowing signal, one reason-now sentence. Reject mixed-persona lists at this step — a second persona or second signal is a second row, which is a separate campaign.
-2. **Score the signal with the inline `## Signal Scoring Rubric`.** If the signal is trigger-based, or two candidate signals compete, load `cold_email_icp_signal_design.signal_scoring_rubric` to sub-classify (Holland sub-type, Elias family, Maurya switching type) before scoring. Do not start list-building below a total of 5.
+2. **Score the signal with the inline `## Signal Scoring Rubric`.** If the signal is trigger-based, or two candidate signals compete, use the deeper signal taxonomy when it is available in the current runtime; otherwise classify from the inline rules before scoring. Do not start list-building below a total of 5.
 3. **Run the MVS check** — Common Needs, Dominability, Viability with MVP (Underscore VC / Skok). Reject segments that fail any of the three.
-4. **Map the buying committee.** For multi-stakeholder B2B, load `cold_email_icp_signal_design.buying_committee_map` and return the role map table: Champion, Economic Buyer, User, Blocker, Adamson class tags, Golden Path, first outreach target. For single-stakeholder modes (founder-to-founder, recruiting, PR, customer research) use the collapsed shapes in that reference's mode table — no full map needed.
+4. **Map the buying committee.** For multi-stakeholder B2B, return the role map table: Champion, Economic Buyer, User, Blocker, Adamson class tags, Golden Path, first outreach target. Use the deeper committee map when it is available in the current runtime. For single-stakeholder modes (founder-to-founder, recruiting, PR, customer research), use collapsed role shapes — no full map needed.
 5. **Verify the timing thesis.** Cross-check the trigger with the three-taxonomy rule in the signal taxonomy reference (Holland sub-type vs Elias family vs Maurya switching type). If they disagree, the trigger is ambiguous — re-test before approving.
 6. **Name the buyer-progress thesis** (Moesta): what struggle, current workaround, or desired progress makes this signal matter now. This is the substance behind the reason-now column.
 7. **Tier the segment** (Mark Roberge): Green (PMF measured), Yellow (experiment only), Red (do not write). Reject Red segments. Run Yellow segments only as one-variable experiments.
@@ -269,7 +269,7 @@ Completed example row:
 ### User has a strong trigger but no committee map for a B2B segment
 
 - Approve the signal.
-- Block on kill-list questions 15-19. Return the role map table from [references/buying-committee-map.md](references/buying-committee-map.md).
+- Block on kill-list questions 15-19. Return the role map table from the committee-map rules available in the current runtime.
 - Request the committee shape before approving campaign-mode outreach.
 
 ### User has a high-conviction segment
@@ -294,4 +294,4 @@ This skill draws from:
 - `[PRIMARY]` **Bob Moesta** — buyer progress, struggling moments, current workaround, and demand-side timing.
 - `[PRIMARY]` **Rob Fitzpatrick** — false-positive avoidance and past-behavior evidence for research-mode outreach.
 
-Scorecard point bands, the ≥5 list-building threshold, and freshness day-windows are internal defaults (assembled, not sourced). `[internal-default]` Full provenance is in the source analyses under `apps/web/src/content/blogs/source-analyses/` and the root [source-map.md](../cold_email_engagement_first_outreach/references/source-map.md).
+Scorecard point bands, the ≥5 list-building threshold, and freshness day-windows are internal defaults (assembled, not sourced). `[internal-default]` Full provenance remains in the internal source analyses and root source map.

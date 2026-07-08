@@ -2,7 +2,8 @@
 import type { OutcomeCardDefinition } from './types';
 
 const OUTCOME_CARD_ID_ALIASES: Record<string, string> = {
-	project_audit: 'project_health_audit'
+	project_audit: 'project_health_audit',
+	project_forecast: 'project_slip_forecast'
 };
 
 const OUTCOME_CARD_CATALOG: OutcomeCardDefinition[] = [
@@ -332,6 +333,39 @@ const OUTCOME_CARD_CATALOG: OutcomeCardDefinition[] = [
 			'The audit is grounded in loaded project evidence.',
 			'Risks and blockers are separated from general observations.',
 			'Next actions are concrete and tied to project state.'
+		],
+		coverageStatus: 'strong',
+		notes: ['BuildOS-native outcome card; it does not require an active subject domain.']
+	},
+	{
+		id: 'project_slip_forecast',
+		name: 'Project Slip Forecast',
+		summary:
+			'Forecast likely schedule outcomes, slippage risk, uncertainty drivers, and mitigation priorities from project context.',
+		domainIds: [],
+		buildosCapabilityIds: ['project_forecast', 'project_graph', 'planning'],
+		whenToUse: [
+			'The user asks whether project work is on track, likely to slip, delayed, or schedule-risky.',
+			'The work is BuildOS-native project forecasting rather than a specialized subject domain.'
+		],
+		exampleRequests: [
+			'Forecast what is likely to slip in this project.',
+			'Are we on track for the next milestone?'
+		],
+		defaultSkillId: 'project_forecast',
+		skillIds: ['project_forecast'],
+		toolHints: ['get_project_overview', 'search_project'],
+		outputs: [
+			'forecast summary',
+			'likely slippage',
+			'uncertainty drivers',
+			'schedule risks',
+			'mitigation priorities'
+		],
+		evaluationCriteria: [
+			'The forecast is grounded in loaded project evidence.',
+			'Slippage risk is tied to tasks, milestones, blockers, or dependencies.',
+			'The answer separates likelihood, drivers, and recommended mitigation.'
 		],
 		coverageStatus: 'strong',
 		notes: ['BuildOS-native outcome card; it does not require an active subject domain.']

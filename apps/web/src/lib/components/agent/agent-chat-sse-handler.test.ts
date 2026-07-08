@@ -266,6 +266,7 @@ describe('resolveDoneFinalization', () => {
 
 	it('leaves normal and supervisor-question finishes as normal completion', () => {
 		expect(resolveDoneFinalization('stop')).toEqual({});
+		expect(resolveDoneFinalization('synthesis_empty')).toEqual({});
 		expect(resolveDoneFinalization('supervisor_question')).toEqual({});
 		expect(resolveDoneFinalization(undefined)).toEqual({});
 	});
@@ -647,6 +648,30 @@ describe('createSSEHandler — routing', () => {
 			}
 		]);
 		expect(h.snapshot.currentActivity).toBe('Reading project');
+	});
+
+	it('preserves activity-log visibility for first-tool planning cues', () => {
+		const h = createHarness();
+		h.handler({
+			type: 'agent_state',
+			state: 'thinking',
+			contextType: 'project' as any,
+			details: 'Planning the first step...',
+			activity_visibility: 'activity_log'
+		});
+		expect(h.calls.addActivity).toEqual([
+			{
+				content: 'Planning the first step...',
+				activityType: 'state_change',
+				metadata: {
+					state: 'thinking',
+					details: 'Planning the first step...',
+					activityVisibility: 'activity_log'
+				},
+				status: undefined
+			}
+		]);
+		expect(h.snapshot.currentActivity).toBe('Planning the first step...');
 	});
 
 	it('handles waiting_on_user without details', () => {

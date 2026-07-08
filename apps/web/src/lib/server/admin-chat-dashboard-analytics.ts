@@ -27,6 +27,41 @@ export type ChatDashboardActivityEvent = {
 	tokens_used?: number;
 };
 
+export type ChatDashboardSkillGateIssueType =
+	| 'missing_matching_skill'
+	| 'wrong_format'
+	| 'missing_contract';
+
+export type ChatDashboardSkillGateIssue = {
+	turn_run_id: string | null;
+	session_id: string | null;
+	user_id: string | null;
+	user_email: string;
+	timestamp: string | null;
+	issue_types: ChatDashboardSkillGateIssueType[];
+	expected_skill_ids: string[];
+	expected_skill_formats: Record<string, string>;
+	loaded_skill_ids: string[];
+	matching_loaded_skill_ids: string[];
+	loaded_skill_formats: Record<string, string>;
+	skill_gate_violation_repaired: boolean;
+	request_message: string | null;
+	first_skill_path: string | null;
+};
+
+export type ChatDashboardSkillGateDiagnostics = {
+	evaluated_turns: number;
+	required_turns: number;
+	satisfied_turns: number;
+	unsatisfied_turns: number;
+	wrong_format_turns: number;
+	missing_contract_turns: number;
+	repaired_turns: number;
+	issue_turns: number;
+	issue_rate: number;
+	recent_issues: ChatDashboardSkillGateIssue[];
+};
+
 export type ChatDashboardDistributionMetric = {
 	label: string;
 	count: number;
@@ -94,6 +129,7 @@ export type ChatDashboardAnalytics = {
 		cache_sources: ChatDashboardDistributionMetric[];
 	};
 	activity_feed: ChatDashboardActivityEvent[];
+	skill_gate_diagnostics: ChatDashboardSkillGateDiagnostics;
 	top_users: ChatDashboardTopUser[];
 	date_range: {
 		start: string;
@@ -107,6 +143,7 @@ export type ChatDashboardAnalytics = {
 			turnRuns: number;
 			llmUsageLogs: number;
 			llmPassEvents: number;
+			skillGateEvents: number;
 			toolExecutions: number;
 			evalRuns: number;
 		};
@@ -238,6 +275,7 @@ export type BuildChatDashboardAnalyticsInput = {
 	usageRows: ChatDashboardUsageRow[];
 	previousUsageRows: ChatDashboardUsageRow[];
 	llmPassEvents: ChatDashboardTurnEventRow[];
+	skillGateEvents?: ChatDashboardTurnEventRow[];
 	toolExecutions: ChatDashboardToolExecutionRow[];
 	evalRuns: ChatDashboardEvalRunRow[];
 	users: ChatDashboardUserRow[];
@@ -341,6 +379,120 @@ function jsonObject(value: unknown): Record<string, unknown> {
 	return value && typeof value === 'object' && !Array.isArray(value)
 		? (value as Record<string, unknown>)
 		: {};
+}
+
+function stringList(value: unknown, limit = 24): string[] {
+	if (!Array.isArray(value)) return [];
+	const result: string[] = [];
+	const seen = new Set<string>();
+	for (const item of value) {
+		const normalized = textValue(item);
+		if (!normalized || seen.has(normalized)) continue;
+		seen.add(normalized);
+		result.push(normalized);
+		if (result.length >= limit) break;
+	}
+	return result;
+}
+
+function stringRecord(value: unknown): Record<string, string> {
+	const record = jsonObject(value);
+	const result: Record<string, string> = {};
+	for (const [key, rawValue] of Object.entries(record)) {
+		const normalizedKey = textValue(key);
+		const normalizedValue = textValue(rawValue);
+		if (!normalizedKey || !normalizedValue) continue;
+		result[normalizedKey] = normalizedValue;
+	}
+	return result;
+}
+
+function skillLoadFormat(value: unknown): string | null {
+	return value === 'short' || value === 'full' ? value : null;
+}
+
+type ParsedSkillGateEvent = {
+	row: ChatDashboardTurnEventRow;
+	skillGateRequired: boolean;
+	skillGateSatisfied: boolean;
+	expectedSkillIds: string[];
+	expectedSkillFormat: string | null;
+	expectedSkillFormats: Record<string, string>;
+	loadedSkillIds: string[];
+	matchingLoadedSkillIds: string[];
+	loadedSkillFormats: Record<string, string>;
+	skillGateViolationRepaired: boolean;
+	skillContractPresent: boolean | null;
+};
+
+function parseSkillGateEvent(row: ChatDashboardTurnEventRow): ParsedSkillGateEvent {
+	const payload = jsonObject(row.payload);
+	return {
+		row,
+		skillGateRequired: payload.skill_gate_required === true,
+		skillGateSatisfied: payload.skill_gate_satisfied === true,
+		expectedSkillIds: stringList(payload.expected_skill_ids),
+		expectedSkillFormat: skillLoadFormat(payload.expected_skill_format),
+		expectedSkillFormats: stringRecord(payload.expected_skill_formats),
+		loadedSkillIds: stringList(payload.loaded_skill_ids),
+		matchingLoadedSkillIds: stringList(payload.matching_loaded_skill_ids),
+		loadedSkillFormats: stringRecord(payload.loaded_skill_formats),
+		skillGateViolationRepaired: payload.skill_gate_violation_repaired === true,
+		skillContractPresent:
+			typeof payload.skill_contract_present === 'boolean'
+				? payload.skill_contract_present
+				: null
+	};
+}
+
+function latestSkillGateEvents(rows: ChatDashboardTurnEventRow[]): ParsedSkillGateEvent[] {
+	const latestByTurn = new Map<string, ParsedSkillGateEvent>();
+	for (const row of rows) {
+		const key = row.turn_run_id ?? row.id ?? row.created_at;
+		if (!key) continue;
+		const parsed = parseSkillGateEvent(row);
+		const existing = latestByTurn.get(key);
+		if (
+			!existing ||
+			String(row.created_at ?? '').localeCompare(String(existing.row.created_at ?? '')) > 0
+		) {
+			latestByTurn.set(key, parsed);
+		}
+	}
+	return Array.from(latestByTurn.values());
+}
+
+function hasWrongSkillGateFormat(event: ParsedSkillGateEvent): boolean {
+	if (!event.skillGateRequired || event.matchingLoadedSkillIds.length === 0) return false;
+	const checks = event.matchingLoadedSkillIds
+		.map((skillId) => ({
+			skillId,
+			expectedFormat:
+				skillLoadFormat(event.expectedSkillFormats[skillId]) ?? event.expectedSkillFormat
+		}))
+		.filter(
+			(check): check is { skillId: string; expectedFormat: string } =>
+				check.expectedFormat === 'short' || check.expectedFormat === 'full'
+		);
+	if (checks.length === 0) return false;
+	return !checks.some(
+		(check) => event.loadedSkillFormats[check.skillId] === check.expectedFormat
+	);
+}
+
+function skillGateIssueTypes(event: ParsedSkillGateEvent): ChatDashboardSkillGateIssueType[] {
+	if (!event.skillGateRequired) return [];
+	const issueTypes: ChatDashboardSkillGateIssueType[] = [];
+	if (!event.skillGateSatisfied || event.matchingLoadedSkillIds.length === 0) {
+		issueTypes.push('missing_matching_skill');
+	}
+	if (hasWrongSkillGateFormat(event)) {
+		issueTypes.push('wrong_format');
+	}
+	if (event.skillContractPresent === false) {
+		issueTypes.push('missing_contract');
+	}
+	return issueTypes;
 }
 
 function parseLlmPassPayload(row: ChatDashboardTurnEventRow) {
@@ -488,9 +640,71 @@ function updateLastActivity(
 	}
 }
 
+function buildSkillGateDiagnostics(params: {
+	skillGateEvents: ChatDashboardTurnEventRow[];
+	turnById: Map<string, ChatDashboardTurnRunRow>;
+	userMap: Map<string, ChatDashboardUserRow>;
+}): ChatDashboardSkillGateDiagnostics {
+	const parsedEvents = latestSkillGateEvents(params.skillGateEvents);
+	const requiredEvents = parsedEvents.filter((event) => event.skillGateRequired);
+	const issueEvents = requiredEvents
+		.map((event) => ({
+			event,
+			issueTypes: skillGateIssueTypes(event)
+		}))
+		.filter((item) => item.issueTypes.length > 0);
+
+	const emailForUser = (userId: string | null | undefined) =>
+		userId ? params.userMap.get(userId)?.email || 'Unknown' : 'Unknown';
+
+	return {
+		evaluated_turns: parsedEvents.length,
+		required_turns: requiredEvents.length,
+		satisfied_turns: requiredEvents.filter((event) => event.skillGateSatisfied).length,
+		unsatisfied_turns: requiredEvents.filter((event) => !event.skillGateSatisfied).length,
+		wrong_format_turns: requiredEvents.filter(hasWrongSkillGateFormat).length,
+		missing_contract_turns: requiredEvents.filter(
+			(event) => event.skillContractPresent === false
+		).length,
+		repaired_turns: requiredEvents.filter((event) => event.skillGateViolationRepaired).length,
+		issue_turns: issueEvents.length,
+		issue_rate: percent(issueEvents.length, requiredEvents.length),
+		recent_issues: issueEvents
+			.sort((a, b) =>
+				String(b.event.row.created_at ?? '').localeCompare(
+					String(a.event.row.created_at ?? '')
+				)
+			)
+			.slice(0, 20)
+			.map(({ event, issueTypes }) => {
+				const turn = event.row.turn_run_id
+					? params.turnById.get(event.row.turn_run_id)
+					: null;
+				const userId = event.row.user_id ?? turn?.user_id ?? null;
+				return {
+					turn_run_id: event.row.turn_run_id ?? null,
+					session_id: event.row.session_id ?? turn?.session_id ?? null,
+					user_id: userId,
+					user_email: emailForUser(userId),
+					timestamp: event.row.created_at ?? null,
+					issue_types: issueTypes,
+					expected_skill_ids: event.expectedSkillIds,
+					expected_skill_formats: event.expectedSkillFormats,
+					loaded_skill_ids: event.loadedSkillIds,
+					matching_loaded_skill_ids: event.matchingLoadedSkillIds,
+					loaded_skill_formats: event.loadedSkillFormats,
+					skill_gate_violation_repaired: event.skillGateViolationRepaired,
+					request_message: turn?.request_message ?? null,
+					first_skill_path: turn?.first_skill_path ?? null
+				};
+			})
+	};
+}
+
 export function buildAdminChatDashboardAnalytics(
 	params: BuildChatDashboardAnalyticsInput
 ): ChatDashboardAnalytics {
+	const skillGateEvents = params.skillGateEvents ?? [];
 	const sessionsById = new Map(params.sessions.map((session) => [session.id, session]));
 	const turnById = new Map(params.turnRuns.map((turn) => [turn.id, turn]));
 	const userMap = new Map(params.users.map((user) => [user.id, user]));
@@ -526,6 +740,14 @@ export function buildAdminChatDashboardAnalytics(
 		}
 	}
 	for (const event of params.llmPassEvents) {
+		if (event.session_id) sessionIds.add(event.session_id);
+		const turn = event.turn_run_id ? turnById.get(event.turn_run_id) : null;
+		const session = event.session_id ? sessionsById.get(event.session_id) : null;
+		if (event.user_id || turn?.user_id || session?.user_id) {
+			userIds.add((event.user_id ?? turn?.user_id ?? session?.user_id) as string);
+		}
+	}
+	for (const event of skillGateEvents) {
 		if (event.session_id) sessionIds.add(event.session_id);
 		const turn = event.turn_run_id ? turnById.get(event.turn_run_id) : null;
 		const session = event.session_id ? sessionsById.get(event.session_id) : null;
@@ -695,6 +917,11 @@ export function buildAdminChatDashboardAnalytics(
 
 	const emailForUser = (userId: string | null | undefined) =>
 		userId ? userMap.get(userId)?.email || 'Unknown' : 'Unknown';
+	const skillGateDiagnostics = buildSkillGateDiagnostics({
+		skillGateEvents,
+		turnById,
+		userMap
+	});
 
 	const activityEvents: ChatDashboardActivityEvent[] = [];
 	for (const turn of params.turnRuns.slice(0, 30)) {
@@ -856,6 +1083,7 @@ export function buildAdminChatDashboardAnalytics(
 			)
 		},
 		activity_feed: activityFeed,
+		skill_gate_diagnostics: skillGateDiagnostics,
 		top_users: topUsers,
 		date_range: {
 			start: params.startIso,
@@ -869,6 +1097,7 @@ export function buildAdminChatDashboardAnalytics(
 				turnRuns: params.turnRuns.length,
 				llmUsageLogs: params.usageRows.length,
 				llmPassEvents: params.llmPassEvents.length,
+				skillGateEvents: skillGateEvents.length,
 				toolExecutions: params.toolExecutions.length,
 				evalRuns: params.evalRuns.length
 			},
@@ -966,6 +1195,7 @@ export async function getAdminChatDashboardAnalytics(
 		usageResult,
 		previousUsageResult,
 		llmPassResult,
+		skillGateResult,
 		toolResult,
 		messageResult,
 		evalResult,
@@ -1025,6 +1255,16 @@ export async function getAdminChatDashboardAnalytics(
 				.order('created_at', { ascending: false })
 				.range(from, to)
 		),
+		fetchAllRows<ChatDashboardTurnEventRow>((from, to) =>
+			supabase
+				.from('chat_turn_events')
+				.select('id, turn_run_id, session_id, user_id, event_type, payload, created_at')
+				.eq('event_type', 'skill_gate_evaluated')
+				.gte('created_at', startIso)
+				.lte('created_at', endIso)
+				.order('created_at', { ascending: false })
+				.range(from, to)
+		),
 		fetchAllRows<ChatDashboardToolExecutionRow>((from, to) =>
 			supabase
 				.from('chat_tool_executions')
@@ -1075,7 +1315,8 @@ export async function getAdminChatDashboardAnalytics(
 		...usageResult.rows.map((row) => row.chat_session_id),
 		...toolResult.rows.map((row) => row.session_id),
 		...messageResult.rows.map((row) => row.session_id),
-		...llmPassResult.rows.map((row) => row.session_id)
+		...llmPassResult.rows.map((row) => row.session_id),
+		...skillGateResult.rows.map((row) => row.session_id)
 	]);
 	const missingSessionIds = sessionIds.filter((sessionId) => !sessionsById.has(sessionId));
 	const extraSessions = await fetchSessionsByIds(supabase, missingSessionIds);
@@ -1090,7 +1331,11 @@ export async function getAdminChatDashboardAnalytics(
 		...messageResult.rows.map((row) => row.user_id),
 		...usageResult.rows.map((row) => row.user_id),
 		...llmPassResult.rows.map((row) => row.user_id),
+		...skillGateResult.rows.map((row) => row.user_id),
 		...usageResult.rows.map((row) =>
+			row.turn_run_id ? turnById.get(row.turn_run_id)?.user_id : null
+		),
+		...skillGateResult.rows.map((row) =>
 			row.turn_run_id ? turnById.get(row.turn_run_id)?.user_id : null
 		)
 	]);
@@ -1104,6 +1349,7 @@ export async function getAdminChatDashboardAnalytics(
 		usageRows: usageResult.rows,
 		previousUsageRows: previousUsageResult.rows,
 		llmPassEvents: llmPassResult.rows,
+		skillGateEvents: skillGateResult.rows,
 		toolExecutions: toolResult.rows,
 		evalRuns: evalResult.rows,
 		users,
@@ -1117,6 +1363,7 @@ export async function getAdminChatDashboardAnalytics(
 			llmUsageLogs: usageResult.truncated,
 			previousLlmUsageLogs: previousUsageResult.truncated,
 			llmPassEvents: llmPassResult.truncated,
+			skillGateEvents: skillGateResult.truncated,
 			toolExecutions: toolResult.truncated,
 			messages: messageResult.truncated,
 			evalRuns: evalResult.truncated
