@@ -4,6 +4,7 @@ import {
 	getSkillById,
 	getSkillByReference
 } from '$lib/services/agentic-chat/tools/skills/registry';
+import type { SkillLoadFormat } from '$lib/services/agentic-chat/tools/skills/types';
 import { parseToolArguments } from './tool-arguments';
 import type { FastToolExecution, GatewayRequiredFieldFailure } from './shared';
 import type { ToolValidationIssue } from './tool-validation';
@@ -55,6 +56,27 @@ export function buildProjectCreateNoExecutionRepairInstruction(): string {
 // model still rewrote a document with zero skill_load calls. When domain sensing
 // marked the turn skill-covered and nothing satisfied the gate, block the first
 // finalization attempt and demand the load. Fires at most once per turn.
+
+export type SkillGateTelemetry = {
+	skill_gate_required: boolean;
+	expected_skill_ids: string[];
+	expected_skill_format: SkillLoadFormat | null;
+	expected_skill_formats: Record<string, SkillLoadFormat>;
+	history_loaded_skill_ids: string[];
+	loaded_skill_ids: string[];
+	matching_loaded_skill_ids: string[];
+	loaded_skill_formats: Record<string, SkillLoadFormat>;
+	skill_gate_satisfied: boolean;
+	skill_gate_violation_repaired: boolean;
+	skill_contract_present: boolean | null;
+};
+
+type LoadedSkillExecutionTelemetry = {
+	skillIds: string[];
+	format: SkillLoadFormat | null;
+	contractPresent: boolean | null;
+};
+
 export function shouldRepairSkillGateNoLoad(params: {
 	skillLoadRequired: boolean;
 	acceptableSkillIds: string[];
@@ -76,6 +98,66 @@ export function shouldRepairSkillGateNoLoad(params: {
 	return true;
 }
 
+export function buildSkillGateTelemetry(params: {
+	skillLoadRequired: boolean;
+	expectedSkillIds: string[];
+	expectedSkillFormats?: Record<string, SkillLoadFormat>;
+	historyLoadedSkillIds: string[];
+	toolExecutions: FastToolExecution[];
+	violationRepairInjected: boolean;
+}): SkillGateTelemetry {
+	const expectedSkillIds = normalizeSkillIdList(params.expectedSkillIds).slice(0, 20);
+	const expectedSkillFormats = normalizeSkillLoadFormats(params.expectedSkillFormats ?? {});
+	const historyLoadedSkillIds = normalizeSkillIdList(params.historyLoadedSkillIds).slice(0, 20);
+	const loadedSkillExecutions = params.toolExecutions
+		.map(extractLoadedSkillExecutionTelemetry)
+		.filter(
+			(summary): summary is LoadedSkillExecutionTelemetry =>
+				summary !== null && summary.skillIds.length > 0
+		);
+	const currentLoadedSkillIds = uniqueSkillIds(
+		loadedSkillExecutions.flatMap((summary) => summary.skillIds)
+	);
+	const loadedSkillIds = uniqueSkillIds([...historyLoadedSkillIds, ...currentLoadedSkillIds]);
+	const matchingLoadedSkillIds = params.skillLoadRequired
+		? loadedSkillIds.filter((skillId) =>
+				expectedSkillIds.length === 0
+					? true
+					: doesLoadedSkillSatisfyAcceptableSkill(skillId, expectedSkillIds)
+			)
+		: [];
+	const loadedSkillFormats = collectLoadedSkillFormats(loadedSkillExecutions);
+	const skillGateSatisfied =
+		!params.skillLoadRequired ||
+		hasRelevantLoadedSkill(historyLoadedSkillIds, expectedSkillIds) ||
+		loadedSkillExecutions.some((summary) =>
+			summary.skillIds.some((skillId) =>
+				expectedSkillIds.length === 0
+					? true
+					: doesLoadedSkillSatisfyAcceptableSkill(skillId, expectedSkillIds)
+			)
+		);
+
+	return {
+		skill_gate_required: params.skillLoadRequired,
+		expected_skill_ids: expectedSkillIds,
+		expected_skill_format: resolveExpectedSkillFormat(expectedSkillFormats),
+		expected_skill_formats: expectedSkillFormats,
+		history_loaded_skill_ids: historyLoadedSkillIds,
+		loaded_skill_ids: loadedSkillIds,
+		matching_loaded_skill_ids: matchingLoadedSkillIds,
+		loaded_skill_formats: loadedSkillFormats,
+		skill_gate_satisfied: skillGateSatisfied,
+		skill_gate_violation_repaired: params.violationRepairInjected,
+		skill_contract_present: resolveSkillContractPresent({
+			loadedSkillExecutions,
+			expectedSkillIds,
+			skillGateRequired: params.skillLoadRequired,
+			skillGateSatisfied
+		})
+	};
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -90,6 +172,98 @@ function normalizeSkillIdList(skillIds: string[]): string[] {
 		result.push(canonicalId);
 	}
 	return result;
+}
+
+function uniqueSkillIds(skillIds: string[]): string[] {
+	return normalizeSkillIdList(skillIds);
+}
+
+function normalizeSkillLoadFormats(
+	value: Record<string, SkillLoadFormat>
+): Record<string, SkillLoadFormat> {
+	const formats: Record<string, SkillLoadFormat> = {};
+	for (const [skillId, format] of Object.entries(value)) {
+		if (format !== 'short' && format !== 'full') continue;
+		const canonicalId = canonicalizeSkillReference(skillId);
+		if (!canonicalId) continue;
+		formats[canonicalId] = format;
+	}
+	return formats;
+}
+
+function resolveExpectedSkillFormat(
+	expectedSkillFormats: Record<string, SkillLoadFormat>
+): SkillLoadFormat | null {
+	const uniqueFormats = new Set(Object.values(expectedSkillFormats));
+	return uniqueFormats.size === 1 ? ([...uniqueFormats][0] ?? null) : null;
+}
+
+function collectLoadedSkillFormats(
+	loadedSkillExecutions: LoadedSkillExecutionTelemetry[]
+): Record<string, SkillLoadFormat> {
+	const formats: Record<string, SkillLoadFormat> = {};
+	for (const summary of loadedSkillExecutions) {
+		if (!summary.format) continue;
+		for (const skillId of summary.skillIds) {
+			formats[skillId] = summary.format;
+		}
+	}
+	return formats;
+}
+
+function parseSkillLoadFormat(value: unknown): SkillLoadFormat | null {
+	return value === 'short' || value === 'full' ? value : null;
+}
+
+function extractLoadedSkillExecutionTelemetry(
+	execution: FastToolExecution
+): LoadedSkillExecutionTelemetry | null {
+	if (execution.toolCall.function?.name?.trim() !== 'skill_load') return null;
+	if (execution.result.success !== true) return null;
+	const skillIds = extractLoadedSkillIdsFromExecution(execution);
+	if (skillIds.length === 0) return null;
+
+	const result = execution.result.result;
+	let resultFormat: SkillLoadFormat | null = null;
+	let contractPresent: boolean | null = null;
+	if (isRecord(result)) {
+		resultFormat = parseSkillLoadFormat(result.format);
+		if (result.type === 'skill') {
+			contractPresent =
+				typeof result.output_contract === 'string' &&
+				result.output_contract.trim().length > 0;
+		}
+	}
+
+	const parsedArgs = parseToolArguments(execution.toolCall.function?.arguments);
+	const argumentFormat = parsedArgs.error ? null : parseSkillLoadFormat(parsedArgs.args.format);
+
+	return {
+		skillIds,
+		format: resultFormat ?? argumentFormat,
+		contractPresent
+	};
+}
+
+function resolveSkillContractPresent(params: {
+	loadedSkillExecutions: LoadedSkillExecutionTelemetry[];
+	expectedSkillIds: string[];
+	skillGateRequired: boolean;
+	skillGateSatisfied: boolean;
+}): boolean | null {
+	if (!params.skillGateRequired || !params.skillGateSatisfied) return null;
+	let sawMatchingCurrentLoad = false;
+	for (const summary of params.loadedSkillExecutions) {
+		const matchesGate = summary.skillIds.some((skillId) =>
+			params.expectedSkillIds.length === 0
+				? true
+				: doesLoadedSkillSatisfyAcceptableSkill(skillId, params.expectedSkillIds)
+		);
+		if (!matchesGate) continue;
+		sawMatchingCurrentLoad = true;
+		if (summary.contractPresent === true) return true;
+	}
+	return sawMatchingCurrentLoad ? false : null;
 }
 
 function canonicalizeSkillReference(value: unknown): string | null {

@@ -84,6 +84,12 @@ const DEFAULT_CATEGORY_METADATA: Record<string, BlogCategory> = {
 		name: 'Agent Skills',
 		description: 'Portable skill guides, definitions, and operating playbooks for AI agents.',
 		color: 'cyan'
+	},
+	'source-analyses': {
+		name: 'Source Analyses',
+		description:
+			'Deep reads of the videos, talks, and writing that inform BuildOS agent skills and design philosophy.',
+		color: 'amber'
 	}
 };
 
@@ -201,6 +207,14 @@ function scanBlogDirectory(blogDir: string, includeNulls: boolean = false): Blog
 					continue;
 				}
 
+				if (frontmatter.published !== true) {
+					console.log(`  ⏩ ${slug} - skipped because published is not true`);
+					if (includeNulls) {
+						context.categories[categoryKey].posts[slug] = null;
+					}
+					continue;
+				}
+
 				// Validate required fields exist and are not null
 				const requiredFields = ['title', 'description', 'author', 'date'];
 				const hasRequiredFields = requiredFields.every((field) => {
@@ -226,8 +240,7 @@ function scanBlogDirectory(blogDir: string, includeNulls: boolean = false): Blog
 					tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
 					readingTime:
 						typeof frontmatter.readingTime === 'number' ? frontmatter.readingTime : 5,
-					published:
-						typeof frontmatter.published === 'boolean' ? frontmatter.published : true
+					published: true
 				};
 
 				context.categories[categoryKey].posts[slug] = postMetadata;

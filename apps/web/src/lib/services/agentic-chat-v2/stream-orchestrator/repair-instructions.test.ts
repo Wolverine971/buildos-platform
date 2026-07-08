@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import {
 	buildGatewayMutationNoExecutionRepairInstruction,
+	buildSkillGateTelemetry,
 	buildSkillGateNoLoadRepairInstruction,
 	buildToolValidationRepairInstruction,
 	enforceMutationOutcomeIntegrity,
@@ -718,5 +719,94 @@ describe('skill-load gate repair', () => {
 		const instruction = buildSkillGateNoLoadRepairInstruction([]);
 		expect(instruction).toContain('skill_load');
 		expect(instruction).toContain('Active Domain Signals');
+	});
+
+	it('summarizes satisfied skill gate telemetry with format and contract presence', () => {
+		const toolExecutions = [
+			createExecution({
+				name: 'skill_load',
+				args: { skill: 'story_driven_content_craft', format: 'full' },
+				result: {
+					type: 'skill',
+					id: 'story_driven_content_craft',
+					format: 'full',
+					output_contract: 'Return a scored critique.'
+				}
+			})
+		];
+
+		expect(
+			buildSkillGateTelemetry({
+				skillLoadRequired: true,
+				expectedSkillIds: ['story_driven_content_craft'],
+				expectedSkillFormats: { story_driven_content_craft: 'full' },
+				historyLoadedSkillIds: [],
+				toolExecutions,
+				violationRepairInjected: true
+			})
+		).toEqual({
+			skill_gate_required: true,
+			expected_skill_ids: ['story_driven_content_craft'],
+			expected_skill_format: 'full',
+			expected_skill_formats: { story_driven_content_craft: 'full' },
+			history_loaded_skill_ids: [],
+			loaded_skill_ids: ['story_driven_content_craft'],
+			matching_loaded_skill_ids: ['story_driven_content_craft'],
+			loaded_skill_formats: { story_driven_content_craft: 'full' },
+			skill_gate_satisfied: true,
+			skill_gate_violation_repaired: true,
+			skill_contract_present: true
+		});
+	});
+
+	it('reports an active gate as unsatisfied when only unrelated skills loaded', () => {
+		const toolExecutions = [
+			createExecution({
+				name: 'skill_load',
+				args: { skill: 'cold_email_engagement_first_outreach', format: 'short' },
+				result: {
+					type: 'skill',
+					id: 'cold_email_engagement_first_outreach',
+					format: 'short',
+					output_contract: 'Return an outreach draft.'
+				}
+			})
+		];
+
+		expect(
+			buildSkillGateTelemetry({
+				skillLoadRequired: true,
+				expectedSkillIds: ['story_driven_content_craft'],
+				expectedSkillFormats: { story_driven_content_craft: 'full' },
+				historyLoadedSkillIds: [],
+				toolExecutions,
+				violationRepairInjected: false
+			})
+		).toMatchObject({
+			loaded_skill_ids: ['cold_email_engagement_first_outreach'],
+			matching_loaded_skill_ids: [],
+			loaded_skill_formats: { cold_email_engagement_first_outreach: 'short' },
+			skill_gate_satisfied: false,
+			skill_contract_present: null
+		});
+	});
+
+	it('marks prior ledger satisfaction with unknown current-turn contract presence', () => {
+		expect(
+			buildSkillGateTelemetry({
+				skillLoadRequired: true,
+				expectedSkillIds: ['story_driven_content_craft'],
+				expectedSkillFormats: { story_driven_content_craft: 'full' },
+				historyLoadedSkillIds: ['story_driven_content_craft'],
+				toolExecutions: [],
+				violationRepairInjected: false
+			})
+		).toMatchObject({
+			history_loaded_skill_ids: ['story_driven_content_craft'],
+			loaded_skill_ids: ['story_driven_content_craft'],
+			matching_loaded_skill_ids: ['story_driven_content_craft'],
+			skill_gate_satisfied: true,
+			skill_contract_present: null
+		});
 	});
 });

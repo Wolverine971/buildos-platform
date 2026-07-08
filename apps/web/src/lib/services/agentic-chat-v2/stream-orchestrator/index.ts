@@ -195,6 +195,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	cancelled?: boolean;
 	peakPromptTokens?: number;
 	finalContextUsage?: ContextUsageSnapshot;
+	skillGateViolationRepaired?: boolean;
 }> {
 	const { llm, userId, sessionId, contextType, entityId, history, message, signal, onDelta } =
 		params;
@@ -1674,7 +1675,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				finalizationGuard: finalizationGuardResult,
 				cancelled: true,
 				peakPromptTokens: peakPromptTokens > 0 ? peakPromptTokens : undefined,
-				finalContextUsage: liveContextUsage
+				finalContextUsage: liveContextUsage,
+				skillGateViolationRepaired: skillGateStopRepairInjected
 			};
 		}
 		throw error;
@@ -1719,7 +1721,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		supervisorDecisions,
 		finalizationGuard: finalizationGuardResult,
 		peakPromptTokens: peakPromptTokens > 0 ? peakPromptTokens : undefined,
-		finalContextUsage: liveContextUsage
+		finalContextUsage: liveContextUsage,
+		skillGateViolationRepaired: skillGateStopRepairInjected
 	};
 }
 

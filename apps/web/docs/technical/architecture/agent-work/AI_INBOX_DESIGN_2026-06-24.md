@@ -394,7 +394,9 @@ Recommended sequence:
 7. **Replace naive burst triggering.**
     - Implemented 2026-07-01 first slice: web mutation hooks now pass source/entity/action metadata into `project-loop-burst.service`, which scores the current mutation plus recent `onto_project_logs` activity before queueing a `trigger_reason:'burst'` loop run.
     - The v1 gate uses a 30-minute lookback, a score threshold of 4, current-row de-duplication to avoid double-counting fire-and-forget activity logs, and the existing `queueProjectLoop` active-run/cooldown guard as the second layer.
-    - Remaining full-audit trigger work: eligibility baseline, project size class, longer rolling windows, quiet period, and complete-audit cooldown from `docs/research/project-review-loop-audit-suggestion-families-2026-06-25.md`.
+    - 2026-07-07 update: overdue triage backlog cleanup now sends structured `project_review_context` with `review_policy:'debounced'`, recording/coalescing `project_review_signals` and waking the worker after the debounce window instead of firing immediate review work per task.
+    - 2026-07-07 update: project-suggestion replay now suppresses recursive bursts through structured request-body context (`origin:'project_suggestion_replay'`, `review_policy:'suppress'`) rather than emitting a custom skip header; the header remains only as a compatibility fallback.
+    - Remaining full-audit trigger work: eligibility baseline, project size class, longer rolling windows, quiet period, complete-audit cooldown from `docs/research/project-review-loop-audit-suggestion-families-2026-06-25.md`, and live smoke validation of the new debounced backlog flow.
 
 8. **Choose the first true `ChangeSet` migration.**
     - Prefer Calendar Analysis first because it is a bounded create-project/tasks flow.

@@ -451,10 +451,14 @@ export interface AgentTimingSummary {
   finished_reason?: string | null;
   phases: {
     session_resolve_ms?: number;
+    active_turn_lookup_ms?: number;
+    turn_admission_ms?: number;
     history_load_ms?: number;
     history_compose_ms?: number;
     tool_selection_ms?: number;
+    prepared_prompt_consume_ms?: number;
     context_build_ms?: number;
+    prompt_snapshot_insert_ms?: number;
     request_to_context_ready_ms?: number;
     time_to_first_event_ms?: number;
     time_to_first_response_ms?: number;

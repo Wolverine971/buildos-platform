@@ -26,13 +26,17 @@ export type TurnObservabilityTimingState = {
 	projectId: string | null;
 	entityId: string | null;
 	sessionResolvedAtMs: number | null;
+	activeTurnLookupMs: number | null;
+	turnAdmissionMs: number | null;
 	historyLoadStartedAtMs: number | null;
 	historyLoadedAtMs: number | null;
 	historyComposeStartedAtMs: number | null;
 	historyComposedAtMs: number | null;
 	toolSelectionMs: number | null;
+	preparedPromptConsumeMs: number | null;
 	contextBuildStartedAtMs: number | null;
 	contextReadyAtMs: number | null;
+	promptSnapshotInsertMs: number | null;
 	firstEventAtMs: number | null;
 	firstResponseAtMs: number | null;
 	assistantPersistStartedAtMs: number | null;
@@ -266,6 +270,8 @@ export class TurnObservabilityWriter {
 					this.params.requestStartedAtMs,
 					timingState.sessionResolvedAtMs
 				),
+				active_turn_lookup_ms: timingState.activeTurnLookupMs ?? undefined,
+				turn_admission_ms: timingState.turnAdmissionMs ?? undefined,
 				history_load_ms: durationMs(
 					timingState.historyLoadStartedAtMs,
 					timingState.historyLoadedAtMs
@@ -275,10 +281,12 @@ export class TurnObservabilityWriter {
 					timingState.historyComposedAtMs
 				),
 				tool_selection_ms: timingState.toolSelectionMs ?? undefined,
+				prepared_prompt_consume_ms: timingState.preparedPromptConsumeMs ?? undefined,
 				context_build_ms: durationMs(
 					timingState.contextBuildStartedAtMs,
 					timingState.contextReadyAtMs
 				),
+				prompt_snapshot_insert_ms: timingState.promptSnapshotInsertMs ?? undefined,
 				request_to_context_ready_ms: durationMs(
 					this.params.requestStartedAtMs,
 					timingState.contextReadyAtMs

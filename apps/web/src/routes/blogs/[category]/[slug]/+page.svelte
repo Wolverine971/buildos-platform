@@ -38,6 +38,8 @@
 	);
 	const showUpdatedDate = $derived((data.post.lastmod || data.post.date) !== data.post.date);
 	const isAgentSkillPost = $derived(data.post.category === 'agent-skills');
+	const isSourceAnalysisPost = $derived(data.post.category === 'source-analyses');
+	const showSourceLineage = $derived(isAgentSkillPost || isSourceAnalysisPost);
 	const categoryDisplayName = $derived(
 		isAgentSkillPost
 			? AGENT_SKILLS_COLLECTION.name
@@ -60,6 +62,7 @@
 	const lineagePeople = $derived(data.post.lineagePeople ?? []);
 	const lineageStatEntries = $derived(Object.entries(data.post.lineageStats ?? {}));
 	const stackWith = $derived(data.post.stackWith ?? []);
+	const relatedSkills = $derived(data.post.relatedSkills ?? []);
 
 	type JsonLdNode = Record<string, unknown>;
 
@@ -154,6 +157,11 @@
 		}
 
 		return [...channels.values()];
+	}
+
+	function isSameLineageSource(source: BlogLineageSource, candidate: BlogLineageSource) {
+		if (source.url && candidate.url) return source.url === candidate.url;
+		return source.title.trim().toLowerCase() === candidate.title.trim().toLowerCase();
 	}
 
 	function buildLineageGraph(sources: BlogLineageSource[], people: string[]) {
@@ -278,16 +286,17 @@
 			? {
 					title: data.post.sourceTitle,
 					creator: data.post.sourceCreator,
-					creatorType: 'Organization',
 					url: data.post.sourceUrl,
 					sourceType: isYoutubeUrl(data.post.sourceUrl)
 						? 'youtube_video'
-						: 'creative_work',
-					channelName: data.post.sourceCreator,
-					channelUrl: data.post.sourceChannelUrl
+						: 'creative_work'
 				}
 			: null;
-		const citationSources = primarySource ? [...lineageSources, primarySource] : lineageSources;
+		const citationSources =
+			primarySource &&
+			!lineageSources.some((source) => isSameLineageSource(source, primarySource))
+				? [...lineageSources, primarySource]
+				: lineageSources;
 		const lineageGraph = buildLineageGraph(citationSources, lineagePeople);
 		const graphItems: Record<string, unknown>[] = [
 			{
@@ -318,12 +327,19 @@
 					'@id': articleUrl
 				},
 				keywords: data.post.tags.join(', '),
-				wordCount: data.post.readingTime * 200,
+				wordCount: data.wordCount || undefined,
 				timeRequired: `PT${data.post.readingTime}M`,
 				citation: lineageGraph.sourceRefs.length ? lineageGraph.sourceRefs : undefined,
 				mentions: lineageGraph.mentionRefs.length ? lineageGraph.mentionRefs : undefined,
 				articleSection: categoryDisplayName,
 				inLanguage: 'en-US',
+				about: relatedSkills.length
+					? relatedSkills.map((skill) => ({
+							'@type': 'DefinedTerm',
+							name: skill,
+							url: `${SITE_URL}/agent-skills/${skill}`
+						}))
+					: undefined,
 				copyrightYear: publishedDate?.getFullYear(),
 				copyrightHolder: {
 					'@id': DEFAULT_ORGANIZATION_ID
@@ -413,12 +429,6 @@
 	<title>{metaTitle}</title>
 	<meta name="description" content={data.post.description} />
 	<meta name="author" content={data.post.author || 'BuildOS Team'} />
-	<meta
-		name="keywords"
-		content="{data.post.tags.join(
-			', '
-		)}, BuildOS, thinking environment, project memory, structured work, {categoryDisplayName.toLowerCase()}"
-	/>
 	<link rel="canonical" href={articleUrl} />
 
 	<!-- Open Graph / Facebook -->
@@ -590,12 +600,12 @@
 				</div>
 			{/if}
 
-			{#if isAgentSkillPost && (lineageSources.length || lineagePeople.length)}
+			{#if showSourceLineage && (lineageSources.length || lineagePeople.length || relatedSkills.length)}
 				<div
 					class="mt-6 rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground"
 				>
 					<span class="block text-xs font-medium uppercase tracking-wide text-foreground">
-						Source Lineage
+						{isSourceAnalysisPost ? 'Source Notes' : 'Source Lineage'}
 					</span>
 					{#if lineagePeople.length}
 						<p class="mt-2 text-xs">
@@ -621,6 +631,20 @@
 						<p class="mt-2 text-xs">
 							<span class="font-medium text-foreground">Stacks with:</span>
 							{stackWith.join(', ')}
+						</p>
+					{/if}
+					{#if relatedSkills.length}
+						<p class="mt-2 text-xs">
+							<span class="font-medium text-foreground">Related skills:</span>
+							{#each relatedSkills as skill, index}
+								{#if index > 0}<span>, </span>{/if}
+								<a
+									href={`/agent-skills/${skill}`}
+									class="text-accent hover:underline"
+								>
+									{skill}
+								</a>
+							{/each}
 						</p>
 					{/if}
 					{#if lineageChannels.length}

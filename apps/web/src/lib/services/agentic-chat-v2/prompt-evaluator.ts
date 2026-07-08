@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/prompt-evaluator.ts
 import type { Json } from '@buildos/shared-types';
+import { getSkillByReference } from '$lib/services/agentic-chat/tools/skills/registry';
 import type { PromptEvalScenario } from './prompt-eval-scenarios';
 
 export type PromptEvalAssertionStatus = 'passed' | 'failed' | 'skipped';
@@ -104,10 +105,25 @@ function collectObservedOps(target: PromptEvalTarget): string[] {
 	return Array.from(observed).sort();
 }
 
+function canonicalizeSkillReference(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const reference = value.trim();
+	if (!reference) return null;
+	return getSkillByReference(reference)?.id ?? reference;
+}
+
+function canonicalizeSkillReferences(values: string[]): string[] {
+	const observed = new Set<string>();
+	for (const value of values) {
+		const canonical = canonicalizeSkillReference(value);
+		if (canonical) observed.add(canonical);
+	}
+	return Array.from(observed).sort();
+}
+
 function collectObservedToolNames(target: PromptEvalTarget): string[] {
 	const observed = new Set<string>();
-	const toolNames =
-		target.toolExecutions?.map((item) => item.tool_name).filter(Boolean) ?? [];
+	const toolNames = target.toolExecutions?.map((item) => item.tool_name).filter(Boolean) ?? [];
 	for (const toolName of toolNames) {
 		observed.add(toolName as string);
 	}
@@ -122,13 +138,14 @@ function collectObservedToolNames(target: PromptEvalTarget): string[] {
 
 function collectObservedSkillPaths(target: PromptEvalTarget): string[] {
 	const observed = new Set<string>();
-	if (target.turnRun.first_skill_path) {
-		observed.add(target.turnRun.first_skill_path);
+	const firstSkillPath = canonicalizeSkillReference(target.turnRun.first_skill_path);
+	if (firstSkillPath) {
+		observed.add(firstSkillPath);
 	}
 	for (const event of target.events) {
 		const payload =
 			event.payload && typeof event.payload === 'object' ? event.payload : undefined;
-		const path = typeof payload?.path === 'string' ? payload.path : null;
+		const path = canonicalizeSkillReference(payload?.path);
 		if (
 			path &&
 			(event.event_type === 'skill_requested' || event.event_type === 'skill_loaded')
@@ -149,6 +166,45 @@ function collectEventTypes(target: PromptEvalTarget): string[] {
 	).sort();
 }
 
+function getLatestEventPayload(
+	target: PromptEvalTarget,
+	eventType: string
+): Record<string, unknown> | null {
+	for (let index = target.events.length - 1; index >= 0; index -= 1) {
+		const event = target.events[index];
+		if (event?.event_type !== eventType) continue;
+		return event.payload && typeof event.payload === 'object' && !Array.isArray(event.payload)
+			? event.payload
+			: {};
+	}
+	return null;
+}
+
+function getRecordField(value: unknown): Record<string, unknown> {
+	return value && typeof value === 'object' && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: {};
+}
+
+function getSkillLoadFormatForReference(
+	loadedSkillFormats: Record<string, unknown>,
+	skillReference: string
+): unknown {
+	if (Object.prototype.hasOwnProperty.call(loadedSkillFormats, skillReference)) {
+		return loadedSkillFormats[skillReference];
+	}
+
+	const canonicalSkillId = canonicalizeSkillReference(skillReference);
+	if (
+		canonicalSkillId &&
+		Object.prototype.hasOwnProperty.call(loadedSkillFormats, canonicalSkillId)
+	) {
+		return loadedSkillFormats[canonicalSkillId];
+	}
+
+	return null;
+}
+
 export function evaluatePromptScenario(
 	scenario: PromptEvalScenario,
 	target: PromptEvalTarget
@@ -160,6 +216,7 @@ export function evaluatePromptScenario(
 	const observedToolNames = collectObservedToolNames(target);
 	const observedSkills = collectObservedSkillPaths(target);
 	const validationFailures = Number(target.turnRun.validation_failure_count ?? 0);
+	const skillGatePayload = getLatestEventPayload(target, 'skill_gate_evaluated');
 
 	if (scenario.requireCompletedStatus !== false) {
 		pushAssertion(assertions, {
@@ -251,14 +308,16 @@ export function evaluatePromptScenario(
 	}
 
 	if (Array.isArray(scenario.expectedFirstSkills) && scenario.expectedFirstSkills.length > 0) {
+		const expectedFirstSkills = canonicalizeSkillReferences(scenario.expectedFirstSkills);
+		const actualFirstSkill = canonicalizeSkillReference(target.turnRun.first_skill_path);
 		pushAssertion(assertions, {
 			assertionKey: 'first_skill_matches',
-			passed: scenario.expectedFirstSkills.includes(target.turnRun.first_skill_path ?? ''),
-			expected: scenario.expectedFirstSkills,
-			actual: target.turnRun.first_skill_path ?? null,
-			details: scenario.expectedFirstSkills.includes(target.turnRun.first_skill_path ?? '')
+			passed: expectedFirstSkills.includes(actualFirstSkill ?? ''),
+			expected: expectedFirstSkills,
+			actual: actualFirstSkill,
+			details: expectedFirstSkills.includes(actualFirstSkill ?? '')
 				? null
-				: `Expected first skill in ${scenario.expectedFirstSkills.join(', ')}, got ${target.turnRun.first_skill_path ?? 'none'}.`
+				: `Expected first skill in ${expectedFirstSkills.join(', ')}, got ${actualFirstSkill ?? 'none'}.`
 		});
 	}
 
@@ -313,14 +372,63 @@ export function evaluatePromptScenario(
 		scenario.requiredObservedSkillPaths.length > 0
 	) {
 		for (const path of scenario.requiredObservedSkillPaths) {
+			const canonicalPath = canonicalizeSkillReference(path) ?? path;
 			pushAssertion(assertions, {
 				assertionKey: `observed_skill:${path}`,
-				passed: observedSkills.includes(path),
-				expected: path,
+				passed: observedSkills.includes(canonicalPath),
+				expected: canonicalPath,
 				actual: observedSkills,
-				details: observedSkills.includes(path)
+				details: observedSkills.includes(canonicalPath)
 					? null
-					: `Observed skill paths did not include ${path}.`
+					: `Observed skill paths did not include ${canonicalPath}.`
+			});
+		}
+	}
+
+	if (scenario.requireSkillGateSatisfied) {
+		const satisfied = skillGatePayload?.skill_gate_satisfied;
+		pushAssertion(assertions, {
+			assertionKey: 'skill_gate_satisfied',
+			passed: satisfied === true,
+			expected: true,
+			actual: satisfied ?? null,
+			details:
+				satisfied === true
+					? null
+					: 'Expected skill gate telemetry to report a satisfied gate.'
+		});
+	}
+
+	if (scenario.requireSkillContractPresent) {
+		const contractPresent = skillGatePayload?.skill_contract_present;
+		pushAssertion(assertions, {
+			assertionKey: 'skill_contract_present',
+			passed: contractPresent === true,
+			expected: true,
+			actual: contractPresent ?? null,
+			details:
+				contractPresent === true
+					? null
+					: 'Expected matching skill load to include an output contract.'
+		});
+	}
+
+	if (
+		scenario.requiredSkillLoadFormats &&
+		Object.keys(scenario.requiredSkillLoadFormats).length > 0
+	) {
+		const loadedSkillFormats = getRecordField(skillGatePayload?.loaded_skill_formats);
+		for (const [skillId, expectedFormat] of Object.entries(scenario.requiredSkillLoadFormats)) {
+			const actualFormat = getSkillLoadFormatForReference(loadedSkillFormats, skillId);
+			pushAssertion(assertions, {
+				assertionKey: `skill_format:${skillId}`,
+				passed: actualFormat === expectedFormat,
+				expected: expectedFormat,
+				actual: actualFormat,
+				details:
+					actualFormat === expectedFormat
+						? null
+						: `Expected ${skillId} to load as ${expectedFormat}, got ${actualFormat ?? 'none'}.`
 			});
 		}
 	}

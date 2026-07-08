@@ -5,6 +5,7 @@ import {
 	formatBlogDate,
 	getContentCollectionPath,
 	getContentPostPath,
+	isKnownContentCategory,
 	parseBlogDate
 } from './blog';
 
@@ -40,5 +41,11 @@ describe('content route helpers', () => {
 		expect(
 			getContentPostPath({ category: 'agent-skills', slug: 'hook-craft-short-form' })
 		).toBe('/agent-skills/hook-craft-short-form');
+	});
+
+	it('recognizes only registered public content categories', () => {
+		expect(isKnownContentCategory('source-analyses')).toBe(true);
+		expect(isKnownContentCategory('agent-skills')).toBe(true);
+		expect(isKnownContentCategory('blogs')).toBe(false);
 	});
 });

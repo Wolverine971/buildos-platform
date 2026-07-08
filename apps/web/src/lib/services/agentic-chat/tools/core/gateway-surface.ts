@@ -54,22 +54,15 @@ export const GATEWAY_SURFACE_PROFILE_NAMES = [
 
 export type GatewaySurfaceProfileName = (typeof GATEWAY_SURFACE_PROFILE_NAMES)[number];
 
+// Rare bridge/orchestration tools (Corsair MCP, delegate_task, commit_change_set)
+// are intentionally not mounted on every launch surface. They remain available
+// through tool_search/tool_schema and the orchestrator's on-miss materialization.
 const GLOBAL_BASIC_DIRECT_TOOL_NAMES = [
 	'change_chat_context',
 	'get_workspace_overview',
 	'get_project_overview',
-	'list_corsair_mcp_tools',
-	'call_corsair_mcp_tool',
 	'search_onto_projects',
-	'search_all_projects',
-	// Reading a doc body after a cross-project search is the common next step; without
-	// this preloaded, a global-context turn burns a tool_search + tool_schema round just
-	// to discover the doc-read tool (see SEARCH_EVAL_2026-06-19 F5).
-	'get_onto_document_details',
-	// Orchestrator capability: hand a self-contained task to a background Agent Run.
-	'delegate_task',
-	// Apply a review run's staged changes once the user approves (02).
-	'commit_change_set'
+	'search_all_projects'
 ] as const;
 
 // Cross-project action surface for contexts whose whole point is acting on
@@ -92,21 +85,16 @@ const PROJECT_BASIC_DIRECT_TOOL_NAMES = [
 	'change_chat_context',
 	'get_project_overview',
 	'get_onto_project_details',
-	'list_corsair_mcp_tools',
-	'call_corsair_mcp_tool',
 	'search_project',
 	'list_onto_tasks',
 	'list_onto_documents',
 	// Document reading is ungated on every project turn (Project Knowledge Layer L2):
 	// the scan→read flow ("does a marketing doc cover this? read that section") must
 	// not depend on a document-write turn or a discovery round. These two are the lean
-	// path; the full-body get_onto_document_details stays in the document profiles.
+	// path; full-body get_onto_document_details materializes after document results
+	// or direct on-miss rather than sitting in every launch surface.
 	'get_document_outline',
-	'read_document_section',
-	// Orchestrator capability: hand a self-contained task to a background Agent Run.
-	'delegate_task',
-	// Apply a review run's staged changes once the user approves (02).
-	'commit_change_set'
+	'read_document_section'
 ] as const;
 
 const PROJECT_WRITE_DIRECT_TOOL_NAMES = [
@@ -119,7 +107,6 @@ const PROJECT_WRITE_DIRECT_TOOL_NAMES = [
 
 const PROJECT_DOCUMENT_DIRECT_TOOL_NAMES = [
 	...PROJECT_BASIC_DIRECT_TOOL_NAMES,
-	'get_onto_document_details',
 	'create_onto_document',
 	'update_onto_document',
 	'get_document_tree',
@@ -133,7 +120,6 @@ const PROJECT_WRITE_DOCUMENT_DIRECT_TOOL_NAMES = [
 	...PROJECT_BASIC_DIRECT_TOOL_NAMES,
 	'create_onto_task',
 	'update_onto_task',
-	'get_onto_document_details',
 	'create_onto_document',
 	'update_onto_document',
 	'get_document_tree',

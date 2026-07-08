@@ -93,42 +93,27 @@ describe('tool surface size report', () => {
 
 		const reports = buildGatewayProfileToolSurfaceSizeReports([
 			'project_create_minimal',
+			'global_write',
 			'project_basic',
-			'project_write'
+			'project_write',
+			'project_write_document'
 		]);
 		const projectCreate = reports.find((report) => report.profile === 'project_create_minimal');
+		const globalWrite = reports.find((report) => report.profile === 'global_write');
 		const projectBasic = reports.find((report) => report.profile === 'project_basic');
 		const projectWrite = reports.find((report) => report.profile === 'project_write');
+		const projectWriteDocument = reports.find(
+			(report) => report.profile === 'project_write_document'
+		);
 
 		expect(projectCreate?.totalChars).toBeLessThanOrEqual(9000);
-		// 2026-05-17: budget bumped from 9300 -> 9400 after adding the
-		// skill_search discovery bridge. domain_load is still materialized only
-		// after search, so the always-on increase stays bounded.
-		// 2026-05-29: budget bumped from 9400 -> 11000. The gateway tool refactor
-		// intentionally widened the always-on project_basic surface to 14 tools:
-		// the discovery bridge (domain_search, skill_search, skill_load,
-		// skill_reference_load, tool_search, tool_schema) plus the Corsair MCP
-		// bridge (list_corsair_mcp_tools + call_corsair_mcp_tool, ~1100 chars) and
-		// the project read tools. It now serializes to ~10617 chars. This is a
-		// deliberate composition, not description-bloat -- verified per-tool, no
-		// single definition regressed. 11000 keeps the guard meaningful (~400 chars
-		// of headroom) while no longer flagging the intended surface.
-		// 2026-06-16: budget bumped from 11000 -> 12000. Project Knowledge Layer (L2)
-		// ungates the two lean document-retrieval tools (get_document_outline +
-		// read_document_section, ~1067 chars) on every project turn so the
-		// scan->read flow works without a discovery round. The full-body
-		// get_onto_document_details was intentionally NOT added here. Serializes to
-		// ~11684 chars; 12000 keeps ~300 chars of headroom.
-		// 2026-06-19: budget bumped from 12000 -> 16000. Agent Work (Phase 4) added the
-		// two orchestrator tools delegate_task + commit_change_set to project_basic
-		// (deliberate composition, not description-bloat). Surface serializes to ~15482
-		// chars; 16000 keeps ~500 chars of headroom. (Unrelated to the search work in the
-		// same changeset; bumped here because the guard was already stale on main.)
-		expect(projectBasic?.totalChars).toBeLessThanOrEqual(16000);
-		// 2026-06-19: budget bumped from 21000 -> 25000. project_write extends
-		// project_basic, so the same Agent Work additions (delegate_task +
-		// commit_change_set) cascade here. Serializes to ~23710 chars; 25000 keeps
-		// ~1290 chars of headroom. (Pre-existing on main, unrelated to the search work.)
-		expect(projectWrite?.totalChars).toBeLessThan(25000);
+		// 2026-07-07 D1 trim: rare bridge/orchestration tools and full-body document
+		// reads materialize on demand instead of sitting in every launch profile.
+		// Baselines from the pre-trim report: global_write 24,847 chars,
+		// project_basic 15,482, project_write 23,710, project_write_document 25,870.
+		expect(globalWrite?.totalChars).toBeLessThanOrEqual(19_900);
+		expect(projectBasic?.totalChars).toBeLessThanOrEqual(11_000);
+		expect(projectWrite?.totalChars).toBeLessThanOrEqual(19_000);
+		expect(projectWriteDocument?.totalChars).toBeLessThanOrEqual(20_700);
 	});
 });

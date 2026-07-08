@@ -62,7 +62,8 @@ describe('skill activity helpers', () => {
 				materialized_tools: ['get_onto_document_details', '', 42],
 				read_ops: ['onto.document.get'],
 				write_ops: ['onto.document.update'],
-				destructive_ops: ['onto.document.delete']
+				destructive_ops: ['onto.document.delete'],
+				output_contract: 'Return evidence and next actions.'
 			}
 		} as ChatToolResult;
 
@@ -70,7 +71,8 @@ describe('skill activity helpers', () => {
 			materialized_tools: ['get_onto_document_details'],
 			read_ops: ['onto.document.get'],
 			write_ops: ['onto.document.update'],
-			destructive_ops: ['onto.document.delete']
+			destructive_ops: ['onto.document.delete'],
+			skill_contract_present: true
 		});
 	});
 

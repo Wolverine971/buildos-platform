@@ -24,6 +24,9 @@ export type PromptEvalScenario = {
 	requiredObservedToolNames?: string[];
 	forbiddenObservedToolNames?: string[];
 	requiredObservedSkillPaths?: string[];
+	requiredSkillLoadFormats?: Record<string, 'short' | 'full'>;
+	requireSkillGateSatisfied?: boolean;
+	requireSkillContractPresent?: boolean;
 	requiredEventTypes?: string[];
 	expectedFinishedReason?: string;
 	maxValidationFailures?: number;
@@ -101,7 +104,10 @@ const SCENARIOS: PromptEvalScenario[] = [
 			contextType: 'global'
 		},
 		requiredObservedOps: ['util.project.overview'],
-		requiredObservedSkillPaths: ['workflow.audit.skill'],
+		requiredObservedSkillPaths: ['project_audit'],
+		requiredSkillLoadFormats: { project_audit: 'full' },
+		requireSkillGateSatisfied: true,
+		requireSkillContractPresent: true,
 		forbiddenObservedToolNames: ['outcome_card_load', 'work_capability_load'],
 		requiredEventTypes: ['skill_loaded', 'done_emitted'],
 		maxValidationFailures: 0,
@@ -122,7 +128,10 @@ const SCENARIOS: PromptEvalScenario[] = [
 			contextType: 'global'
 		},
 		requiredObservedOps: ['util.project.overview'],
-		requiredObservedSkillPaths: ['workflow.forecast.skill'],
+		requiredObservedSkillPaths: ['project_forecast'],
+		requiredSkillLoadFormats: { project_forecast: 'full' },
+		requireSkillGateSatisfied: true,
+		requireSkillContractPresent: true,
 		requiredEventTypes: ['skill_loaded', 'done_emitted'],
 		maxValidationFailures: 0,
 		requirePromptSnapshot: true,
@@ -199,7 +208,7 @@ const SCENARIOS: PromptEvalScenario[] = [
 			message: 'What is on my calendar tomorrow?',
 			contextType: 'global'
 		},
-		requiredObservedSkillPaths: ['cal.skill'],
+		requiredObservedSkillPaths: ['calendar_management'],
 		requiredObservedOps: ['cal.event.list'],
 		requiredEventTypes: ['done_emitted'],
 		maxValidationFailures: 0,
@@ -219,7 +228,7 @@ const SCENARIOS: PromptEvalScenario[] = [
 			message: 'Move my 9takes review to Friday at 2pm',
 			contextType: 'global'
 		},
-		requiredObservedSkillPaths: ['cal.skill'],
+		requiredObservedSkillPaths: ['calendar_management'],
 		requiredObservedOps: ['cal.event.update'],
 		requiredEventTypes: ['skill_loaded', 'done_emitted'],
 		maxValidationFailures: 0,

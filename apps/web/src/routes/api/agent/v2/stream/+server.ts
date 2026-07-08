@@ -37,7 +37,6 @@ import type {
 	ContextUsageSnapshot,
 	Database,
 	Json,
-	AgentSSEMessage,
 	AgentTimingSummary
 } from '@buildos/shared-types';
 import type { ServiceContext, ToolExecutionResult } from '$lib/services/agentic-chat/shared/types';
@@ -117,6 +116,7 @@ import {
 	type LitePromptVariant
 } from '$lib/services/agentic-chat-lite/prompt';
 import {
+	getSkillGateCandidateSkillLoadFormats,
 	getSkillGateCandidateSkillIds,
 	senseDomains
 } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
@@ -144,8 +144,7 @@ import { buildToolSurfaceSizeReport } from '$lib/services/agentic-chat-v2/tool-s
 import {
 	getLoadedSkillActivity,
 	getLoadedSkillToolingTelemetry,
-	getRequestedSkillActivity,
-	type SkillActivityEvent
+	getRequestedSkillActivity
 } from '$lib/services/agentic-chat-v2/skill-activity';
 import {
 	FASTCHAT_CONTEXT_CACHE_VERSION,
@@ -156,15 +155,21 @@ import {
 	type FastChatContextCache
 } from '$lib/services/agentic-chat-v2/context-cache';
 import {
-	getPreparedPromptSurface,
-	isPreparedPromptSurfaceCurrent,
-	isPreparedPromptPrewarmEnabled,
-	parsePreparedPromptKey,
-	verifyPreparedPromptNonce,
+	annotateContextMetaCacheAge,
+	normalizeContextLoadSource,
+	resolveCacheAgeSeconds,
+	shouldBypassContextCacheForShiftHint,
+	type FastChatContextShiftHint
+} from '$lib/services/agentic-chat-v2/context-cache-routing';
+import {
 	type PreparedPromptCacheMissReason,
-	type PreparedPromptRow,
 	type PreparedPromptSectionSummary
 } from '$lib/services/agentic-chat-v2/prepared-prompt-cache';
+import { consumePreparedPrompt } from '$lib/services/agentic-chat-v2/prepared-prompt-consumer';
+import {
+	normalizePreparedHistoryForModel,
+	normalizePreparedHistoryStrategy
+} from '$lib/services/agentic-chat-v2/prepared-prompt-history';
 import {
 	consumeTransientFastChatCancelHint,
 	resolveFastChatStreamRunId,
@@ -176,6 +181,16 @@ import { isRunningTurnUniqueViolation } from '$lib/services/agentic-chat-v2/turn
 import { TurnObservabilityWriter } from '$lib/services/agentic-chat-v2/turn-observability-writer';
 import { sanitizeAssistantFinalText } from '$lib/services/agentic-chat-v2/stream-orchestrator/assistant-text-sanitization';
 import { buildRoundToolPattern } from '$lib/services/agentic-chat-v2/stream-orchestrator/round-analysis';
+import { buildSkillGateTelemetry } from '$lib/services/agentic-chat-v2/stream-orchestrator/repair-instructions';
+import {
+	createSequencedAgentStream,
+	emitContextShift,
+	emitContextUsage,
+	emitSkillActivity,
+	emitToolCall,
+	extractContextShiftPayload,
+	type AgentChatSSEStream
+} from '$lib/services/agentic-chat-v2/stream-events';
 import {
 	buildCheckpointResumeSystemMessage,
 	createTurnCheckpoint,
@@ -190,7 +205,6 @@ import {
 const logger = createLogger('API:AgentStreamV2');
 
 type FastChatSupabaseClient = SupabaseClient<Database>;
-type AgentStreamEventPhase = 'prompt' | 'llm' | 'tool' | 'stream' | 'finalize';
 
 const FASTCHAT_STREAM_ENDPOINT = '/api/agent/v2/stream';
 const FASTCHAT_STREAM_METHOD = 'POST';
@@ -828,13 +842,6 @@ function startFastChatCancelWatcher(params: {
 	};
 }
 
-type FastChatContextShiftHint = {
-	context_type: ChatContextType;
-	entity_id?: string | null;
-	project_id?: string | null;
-	shifted_at: string;
-};
-
 function readRecentContextShiftHint(
 	metadata: Record<string, unknown>,
 	nowMs: number = Date.now()
@@ -860,199 +867,6 @@ function readRecentContextShiftHint(
 	};
 }
 
-const PREPARED_HISTORY_ROLES = new Set<FastChatHistoryMessage['role']>([
-	'user',
-	'assistant',
-	'system',
-	'tool'
-]);
-
-function normalizePreparedHistoryForModel(raw: unknown): FastChatHistoryMessage[] {
-	if (!Array.isArray(raw)) return [];
-	const history: FastChatHistoryMessage[] = [];
-	for (const item of raw) {
-		if (!item || typeof item !== 'object') continue;
-		const message = item as Record<string, unknown>;
-		const role = message.role;
-		const content = message.content;
-		if (
-			typeof role !== 'string' ||
-			!PREPARED_HISTORY_ROLES.has(role as FastChatHistoryMessage['role'])
-		) {
-			continue;
-		}
-		if (typeof content !== 'string') continue;
-		const normalized: FastChatHistoryMessage = {
-			role: role as FastChatHistoryMessage['role'],
-			content
-		};
-		if (typeof message.tool_call_id === 'string') {
-			normalized.tool_call_id = message.tool_call_id;
-		}
-		history.push(normalized);
-	}
-	return history;
-}
-
-function normalizePreparedHistoryStrategy(
-	value: unknown
-): FastChatHistoryCompositionResult['strategy'] {
-	if (value === 'raw_history' || value === 'continuity_only' || value === 'compressed_history') {
-		return value;
-	}
-	return 'raw_history';
-}
-
-async function consumePreparedPrompt(params: {
-	supabase: FastChatSupabaseClient;
-	key: string | null;
-	userId: string;
-	sessionId: string;
-	cacheKey: string;
-	surfaceProfile: ReturnType<typeof resolveFastChatSurfaceProfileForTurn>;
-	contextType: ChatContextType;
-	tools: ChatToolDefinition[];
-}): Promise<
-	| {
-			hit: true;
-			row: PreparedPromptRow;
-			surface: NonNullable<ReturnType<typeof getPreparedPromptSurface>>;
-			ageSeconds: number;
-	  }
-	| {
-			hit: false;
-			reason: PreparedPromptCacheMissReason;
-	  }
-> {
-	if (!params.key) {
-		return { hit: false, reason: 'missing_key' };
-	}
-	if (!isPreparedPromptPrewarmEnabled()) {
-		return { hit: false, reason: 'disabled' };
-	}
-
-	const parsed = parsePreparedPromptKey(params.key);
-	if (!parsed) {
-		return { hit: false, reason: 'bad_format' };
-	}
-
-	const { data, error } = await params.supabase
-		.from('agentic_chat_prepared_prompts')
-		.select('*')
-		.eq('id', parsed.id)
-		.maybeSingle();
-	if (error || !data) {
-		return { hit: false, reason: 'not_found' };
-	}
-
-	const row = data as PreparedPromptRow;
-	if (row.user_id !== params.userId) {
-		return { hit: false, reason: 'user_mismatch' };
-	}
-	if (!verifyPreparedPromptNonce({ nonce: parsed.nonce, nonceSha256: row.nonce_sha256 })) {
-		return { hit: false, reason: 'nonce_mismatch' };
-	}
-	if (row.consumed_at) {
-		return { hit: false, reason: 'consumed' };
-	}
-	if (Date.parse(row.expires_at) <= Date.now()) {
-		return { hit: false, reason: 'expired' };
-	}
-	if (row.session_id && row.session_id !== params.sessionId) {
-		return { hit: false, reason: 'session_mismatch' };
-	}
-	if (row.cache_key !== params.cacheKey) {
-		return { hit: false, reason: 'scope_mismatch' };
-	}
-
-	const surface = getPreparedPromptSurface(row, params.surfaceProfile);
-	if (!surface) {
-		return { hit: false, reason: 'surface_missing' };
-	}
-	if (
-		!isPreparedPromptSurfaceCurrent({
-			surface,
-			contextType: params.contextType,
-			contextPayload: row.context_payload,
-			conversationSummary: row.conversation_summary ?? null,
-			tools: params.tools
-		})
-	) {
-		return { hit: false, reason: 'stale_harness' };
-	}
-
-	const consumedAt = new Date().toISOString();
-	const { data: updated, error: updateError } = await params.supabase
-		.from('agentic_chat_prepared_prompts')
-		.update({ consumed_at: consumedAt, updated_at: consumedAt })
-		.eq('id', row.id)
-		.eq('user_id', params.userId)
-		.is('consumed_at', null)
-		.select('id')
-		.maybeSingle();
-	if (updateError) {
-		return { hit: false, reason: 'update_failed' };
-	}
-	if (!updated?.id) {
-		return { hit: false, reason: 'consumed' };
-	}
-
-	return {
-		hit: true,
-		row: {
-			...row,
-			consumed_at: consumedAt
-		},
-		surface,
-		ageSeconds: resolveCacheAgeSeconds(row.created_at)
-	};
-}
-
-function shouldBypassContextCacheForShiftHint(params: {
-	requestContextType: ChatContextType;
-	requestEntityId?: string | null;
-	requestProjectFocus?: Pick<ProjectFocus, 'focusType' | 'focusEntityId' | 'projectId'> | null;
-	shiftHint: FastChatContextShiftHint | null;
-}): boolean {
-	const { shiftHint } = params;
-	if (!shiftHint) return false;
-	const requestKey = buildContextCacheKey({
-		contextType: params.requestContextType,
-		entityId: params.requestEntityId,
-		projectFocus: params.requestProjectFocus
-	});
-	const shiftKey = buildContextCacheKey({
-		contextType: shiftHint.context_type,
-		entityId: shiftHint.entity_id ?? shiftHint.project_id ?? null
-	});
-	return requestKey !== shiftKey;
-}
-
-function resolveCacheAgeSeconds(createdAtRaw: string | null | undefined): number {
-	if (!createdAtRaw) return 0;
-	const createdAtMs = Date.parse(createdAtRaw);
-	if (!Number.isFinite(createdAtMs)) return 0;
-	return Math.max(0, Math.floor((Date.now() - createdAtMs) / 1000));
-}
-
-const CONTEXT_LOAD_SOURCES = new Set<NonNullable<AgentTimingSummary['context_load_source']>>([
-	'rpc',
-	'rpc_null_fallback',
-	'rpc_error_fallback',
-	'fallback',
-	'none',
-	'unknown_cached'
-]);
-
-function normalizeContextLoadSource(
-	value: unknown
-): NonNullable<AgentTimingSummary['context_load_source']> {
-	return typeof value === 'string' &&
-		CONTEXT_LOAD_SOURCES.has(value as NonNullable<AgentTimingSummary['context_load_source']>)
-		? (value as NonNullable<AgentTimingSummary['context_load_source']>)
-		: 'unknown_cached';
-}
-
 function hasRenderableLiteSections(sections: readonly unknown[]): sections is LitePromptSection[] {
 	if (sections.length === 0) return false;
 	return sections.every((section) => {
@@ -1060,20 +874,6 @@ function hasRenderableLiteSections(sections: readonly unknown[]): sections is Li
 		const record = section as Record<string, unknown>;
 		return typeof record.id === 'string' && typeof record.content === 'string';
 	});
-}
-
-function annotateContextMetaCacheAge(
-	data: Record<string, unknown> | string | null | undefined,
-	cacheAgeSeconds: number
-): void {
-	if (!data || typeof data !== 'object') return;
-	const record = data as Record<string, unknown>;
-	const contextMeta =
-		record.context_meta && typeof record.context_meta === 'object'
-			? (record.context_meta as Record<string, unknown>)
-			: null;
-	if (!contextMeta) return;
-	contextMeta.cache_age_seconds = Math.max(0, Math.floor(cacheAgeSeconds));
 }
 
 function extractEntityLabel(
@@ -1341,114 +1141,6 @@ async function updateAgentMetadata(
 	}
 }
 
-type AgentChatSSEStream = ReturnType<typeof SSEResponse.createChatStream>;
-
-function resolveAgentStreamEventPhase(eventType: string): AgentStreamEventPhase {
-	switch (eventType) {
-		case 'text':
-		case 'text_delta':
-		case 'clarifying_questions':
-			return 'llm';
-		case 'tool_call':
-		case 'tool_result':
-		case 'skill_activity':
-		case 'context_shift':
-		case 'operation':
-			return 'tool';
-		case 'timing':
-		case 'done':
-		case 'error':
-		case 'last_turn_context':
-			return 'finalize';
-		case 'context_usage':
-		case 'session':
-		case 'ontology_loaded':
-		case 'focus_active':
-		case 'focus_changed':
-		case 'agent_state':
-		case 'draft_update':
-		case 'dimension_update':
-		case 'phase_update':
-		case 'queue_update':
-		default:
-			return 'stream';
-	}
-}
-
-function createSequencedAgentStream(params: {
-	baseStream: AgentChatSSEStream;
-	streamRunId: string;
-	clientTurnId: string | null | undefined;
-	getTurnRunId: () => string | null;
-}): AgentChatSSEStream {
-	let sequenceIndex = 0;
-
-	return {
-		response: params.baseStream.response,
-		sendMessage: async (
-			payload: AgentSSEMessage | (Record<string, unknown> & { type: string })
-		) => {
-			const eventType = typeof payload.type === 'string' ? payload.type : 'message';
-			const nextSequenceIndex = ++sequenceIndex;
-			const turnRunId = params.getTurnRunId();
-			const eventId = `${params.streamRunId}:${nextSequenceIndex}`;
-			const sequencedPayload = {
-				...payload,
-				event_id: eventId,
-				stream_run_id: params.streamRunId,
-				client_turn_id: params.clientTurnId ?? undefined,
-				turn_run_id: turnRunId,
-				sequence_index: nextSequenceIndex,
-				phase: resolveAgentStreamEventPhase(eventType),
-				event_type: eventType,
-				durable: Boolean(turnRunId)
-			};
-			await params.baseStream.sendMessage(sequencedPayload);
-		},
-		close: async () => {
-			await params.baseStream.close();
-		}
-	};
-}
-
-function emitContextUsage(
-	agentStream: AgentChatSSEStream,
-	usage: ContextUsageSnapshot,
-	options: {
-		onError?: (error: unknown) => void;
-		onMessageSent?: () => void;
-	} = {}
-): void {
-	void agentStream
-		.sendMessage({ type: 'context_usage', usage })
-		.then(() => {
-			options.onMessageSent?.();
-		})
-		.catch((error) => {
-			logger.warn('Failed to emit context usage', { error });
-			options.onError?.(error);
-		});
-}
-
-function emitToolCall(
-	agentStream: AgentChatSSEStream,
-	toolCall: ChatToolCall,
-	options: {
-		onError?: (error: unknown) => void;
-		onMessageSent?: () => void;
-	} = {}
-): void {
-	void agentStream
-		.sendMessage({ type: 'tool_call', tool_call: toolCall })
-		.then(() => {
-			options.onMessageSent?.();
-		})
-		.catch((error) => {
-			logger.warn('Failed to emit tool_call', { error, toolCall });
-			options.onError?.(error);
-		});
-}
-
 function resolveToolResultRequiresUserAction(result: ChatToolResult): boolean | null {
 	const direct = result as ChatToolResult & Record<string, unknown>;
 	if (typeof direct.requires_user_action === 'boolean') return direct.requires_user_action;
@@ -1603,123 +1295,6 @@ function emitToolResult(
 			logger.warn('Failed to emit tool_result', { error, toolCall });
 			options.onError?.(error);
 		});
-}
-
-function emitSkillActivity(
-	agentStream: AgentChatSSEStream,
-	event: SkillActivityEvent,
-	options: {
-		onError?: (error: unknown) => void;
-		onMessageSent?: () => void;
-	} = {}
-): void {
-	void agentStream
-		.sendMessage(event)
-		.then(() => {
-			options.onMessageSent?.();
-		})
-		.catch((error) => {
-			logger.warn('Failed to emit skill_activity', { error, event });
-			options.onError?.(error);
-		});
-}
-
-const CONTEXT_SHIFT_ENTITY_TYPES: ContextShiftPayload['entity_type'][] = [
-	'workspace',
-	'project',
-	'task',
-	'plan',
-	'goal',
-	'document',
-	'milestone',
-	'risk'
-];
-
-const CONTEXT_SHIFT_NESTED_KEYS = ['result', 'data', 'payload'];
-
-function isContextShiftEntityType(
-	value: string | null | undefined
-): value is ContextShiftPayload['entity_type'] {
-	if (!value) return false;
-	return CONTEXT_SHIFT_ENTITY_TYPES.includes(value as ContextShiftPayload['entity_type']);
-}
-
-function extractContextShiftObject(value: unknown, depth = 0): Record<string, unknown> | null {
-	if (!value || typeof value !== 'object' || depth > 4) return null;
-
-	const record = value as Record<string, unknown>;
-	if (record.context_shift && typeof record.context_shift === 'object') {
-		return record.context_shift as Record<string, unknown>;
-	}
-
-	for (const key of CONTEXT_SHIFT_NESTED_KEYS) {
-		const nested = record[key];
-		const extracted = extractContextShiftObject(nested, depth + 1);
-		if (extracted) {
-			return extracted;
-		}
-	}
-
-	return null;
-}
-
-function extractContextShiftPayload(result: ChatToolResult): ContextShiftPayload | null {
-	const contextShift = extractContextShiftObject(result);
-	if (!contextShift) return null;
-
-	const rawContext =
-		typeof contextShift.new_context === 'string' ? contextShift.new_context.trim() : '';
-	const rawEntityId =
-		typeof contextShift.entity_id === 'string' ? contextShift.entity_id.trim() : '';
-	if (!rawContext) return null;
-
-	const normalizedContext = normalizeFastContextType(rawContext as ChatContextType);
-	const isGlobalContext = normalizedContext === 'global' || normalizedContext === 'general';
-	if (!isGlobalContext && !rawEntityId) return null;
-	const entityName =
-		typeof contextShift.entity_name === 'string' && contextShift.entity_name.trim()
-			? contextShift.entity_name.trim()
-			: isGlobalContext
-				? 'Workspace'
-				: 'Project';
-	const entityType =
-		typeof contextShift.entity_type === 'string' &&
-		isContextShiftEntityType(contextShift.entity_type)
-			? contextShift.entity_type
-			: isGlobalContext
-				? 'workspace'
-				: 'project';
-	const message =
-		typeof contextShift.message === 'string' && contextShift.message.trim()
-			? contextShift.message.trim()
-			: isGlobalContext
-				? 'Zoomed out to workspace context.'
-				: `Context updated to ${entityName}`;
-
-	return {
-		new_context: normalizedContext,
-		entity_id: rawEntityId || null,
-		entity_name: entityName,
-		entity_type: entityType,
-		message
-	};
-}
-
-async function emitContextShift(
-	agentStream: AgentChatSSEStream,
-	contextShift: ContextShiftPayload,
-	options: {
-		onError?: (error: unknown) => void;
-		onMessageSent?: () => void;
-	} = {}
-): Promise<void> {
-	try {
-		await agentStream.sendMessage({ type: 'context_shift', context_shift: contextShift });
-		options.onMessageSent?.();
-	} catch (error) {
-		logger.warn('Failed to emit context_shift', { error, contextShift });
-		options.onError?.(error);
-	}
 }
 
 const TOOL_ENTITY_KEYS = [
@@ -2314,13 +1889,17 @@ export const POST: RequestHandler = async ({
 		projectFocus: streamRequest.projectFocus
 	});
 	let sessionResolvedAtMs: number | null = null;
+	let activeTurnLookupMs: number | null = null;
+	let turnAdmissionMs: number | null = null;
 	let historyLoadStartedAtMs: number | null = null;
 	let historyLoadedAtMs: number | null = null;
 	let historyComposeStartedAtMs: number | null = null;
 	let historyComposedAtMs: number | null = null;
 	let toolSelectionMs: number | null = null;
+	let preparedPromptConsumeMs: number | null = null;
 	let contextBuildStartedAtMs: number | null = null;
 	let contextReadyAtMs: number | null = null;
+	let promptSnapshotInsertMs: number | null = null;
 	let firstEventAtMs: number | null = null;
 	let firstResponseAtMs: number | null = null;
 	let assistantPersistStartedAtMs: number | null = null;
@@ -2345,6 +1924,13 @@ export const POST: RequestHandler = async ({
 	let preparedSurfaceProfile: string | null = null;
 	let turnRunId: string | null = null;
 	let promptSnapshotId: string | null = null;
+	let persistPromptSnapshotAfterFirstResponse: (() => void) | null = null;
+	const scheduleDeferredPromptSnapshotPersistence = (): void => {
+		const schedule = persistPromptSnapshotAfterFirstResponse;
+		if (!schedule) return;
+		persistPromptSnapshotAfterFirstResponse = null;
+		schedule();
+	};
 	let streamDetached = false;
 	// D4: incremental tool-execution persistence. `onToolResult` fires exactly once
 	// per execution pushed to the orchestrator's toolExecutions array, in order, so a
@@ -2388,13 +1974,17 @@ export const POST: RequestHandler = async ({
 			projectId: timingProjectId ?? null,
 			entityId: timingEntityId ?? null,
 			sessionResolvedAtMs,
+			activeTurnLookupMs,
+			turnAdmissionMs,
 			historyLoadStartedAtMs,
 			historyLoadedAtMs,
 			historyComposeStartedAtMs,
 			historyComposedAtMs,
 			toolSelectionMs,
+			preparedPromptConsumeMs,
 			contextBuildStartedAtMs,
 			contextReadyAtMs,
+			promptSnapshotInsertMs,
 			firstEventAtMs,
 			firstResponseAtMs,
 			assistantPersistStartedAtMs,
@@ -2682,6 +2272,7 @@ export const POST: RequestHandler = async ({
 				onCancel: abortTurn
 			});
 
+			const activeTurnLookupStartedAtMs = Date.now();
 			const { data: activeTurnRows, error: activeTurnError } = await supabase
 				.from('chat_turn_runs')
 				.select('id, stream_run_id, client_turn_id, started_at, request_message')
@@ -2690,6 +2281,7 @@ export const POST: RequestHandler = async ({
 				.eq('status', 'running')
 				.order('started_at', { ascending: false })
 				.limit(1);
+			activeTurnLookupMs = Math.max(0, Date.now() - activeTurnLookupStartedAtMs);
 
 			if (activeTurnError) {
 				logFastChatError({
@@ -2758,6 +2350,94 @@ export const POST: RequestHandler = async ({
 						}
 					});
 				}
+			}
+
+			const gatewayEnabled = true;
+			turnRunId = uuidv4();
+			observabilityWriter.setTurnRunId(turnRunId);
+			let turnRunInsertError: unknown = null;
+			const turnAdmissionStartedAtMs = Date.now();
+			try {
+				const { error: turnRunError } = await supabase.from('chat_turn_runs').insert({
+					id: turnRunId,
+					session_id: session.id,
+					user_id: userId,
+					stream_run_id: streamRunId,
+					client_turn_id: clientTurnId ?? null,
+					source: 'live_ui',
+					context_type: contextType,
+					entity_id: entityId ?? null,
+					project_id: timingProjectId ?? null,
+					gateway_enabled: gatewayEnabled,
+					request_message: storedUserMessageContent,
+					status: 'running',
+					request_prewarmed_context: false,
+					started_at: new Date(requestStartedAtMs).toISOString()
+				});
+				if (turnRunError) {
+					turnRunInsertError = turnRunError;
+				}
+			} catch (error) {
+				turnRunInsertError = error;
+			}
+			turnAdmissionMs = Math.max(0, Date.now() - turnAdmissionStartedAtMs);
+			if (turnRunInsertError) {
+				const failedTurnRunId = turnRunId;
+				const activeTurnConflict = isRunningTurnUniqueViolation(turnRunInsertError);
+				turnRunId = null;
+				observabilityWriter.setTurnRunId(null);
+				const conflictMetadata = {
+					sessionId: session.id,
+					turnRunId: failedTurnRunId,
+					streamRunId,
+					clientTurnId: clientTurnId ?? null,
+					contextType,
+					entityId,
+					projectId: timingProjectId,
+					activeTurnConflict,
+					requestMessageLength: storedUserMessageContent.length
+				};
+				if (activeTurnConflict) {
+					logger.info('FastChat turn insert skipped because a turn is already running', {
+						...conflictMetadata,
+						streamRunId
+					});
+				} else {
+					logFastChatError({
+						error: turnRunInsertError,
+						operationType: 'fastchat_turn_run_insert',
+						projectId: projectIdForLogs,
+						tableName: 'chat_turn_runs',
+						recordId: failedTurnRunId,
+						metadata: conflictMetadata
+					});
+				}
+				const failedReason = activeTurnConflict
+					? 'active_turn_running'
+					: 'turn_run_insert_failed';
+				await emitErrorThenDone({
+					error: activeTurnConflict
+						? 'BuildOS is still finishing the previous response. Reopen this chat in a moment to see the completed result.'
+						: 'BuildOS could not start this response. Please try again.',
+					finishedReason: failedReason,
+					projectId: projectIdForLogs,
+					errorMetadata: {
+						sessionId: session.id,
+						contextType,
+						entityId,
+						reason: activeTurnConflict
+							? 'active_turn_conflict'
+							: 'turn_run_insert_failed'
+					},
+					doneMetadata: {
+						sessionId: session.id,
+						contextType,
+						entityId,
+						reason: failedReason
+					}
+				});
+				observabilityWriter.queueTimingMetric(failedReason);
+				return;
 			}
 
 			try {
@@ -2847,7 +2527,6 @@ export const POST: RequestHandler = async ({
 				httpReferer: request.headers.get('referer') ?? undefined,
 				appName: 'BuildOS Agentic Chat V2'
 			});
-			const gatewayEnabled = true;
 			const toolSelectionStartedAtMs = Date.now();
 			const selectedSurfaceProfile = resolveFastChatSurfaceProfileForTurn({
 				contextType,
@@ -2860,6 +2539,7 @@ export const POST: RequestHandler = async ({
 			preparedSurfaceProfile = selectedSurfaceProfile;
 			toolSelectionMs = Math.max(0, Date.now() - toolSelectionStartedAtMs);
 
+			const preparedPromptConsumeStartedAtMs = Date.now();
 			const preparedPromptForTurn = await consumePreparedPrompt({
 				supabase,
 				key: requestPreparedPromptKey,
@@ -2870,6 +2550,7 @@ export const POST: RequestHandler = async ({
 				contextType,
 				tools
 			});
+			preparedPromptConsumeMs = Math.max(0, Date.now() - preparedPromptConsumeStartedAtMs);
 			if (!preparedPromptForTurn.hit) {
 				preparedPromptMissReason = preparedPromptForTurn.reason;
 			}
@@ -2936,6 +2617,21 @@ export const POST: RequestHandler = async ({
 			const promptDumpTurnNumber =
 				historyForModel.reduce((count, item) => count + (item.role === 'user' ? 1 : 0), 0) +
 				1;
+			observabilityWriter.queueTurnRunUpdate(
+				{
+					history_strategy: historyStrategy,
+					history_compressed: historyCompressed,
+					raw_history_count: rawHistoryCount,
+					history_for_model_count: historyForModelCount
+				},
+				'update_turn_run_history_composition',
+				{
+					historyStrategy,
+					historyCompressed,
+					rawHistoryCount,
+					historyForModelCount
+				}
+			);
 
 			const userMessageMetadata: Record<string, Json | undefined> = {};
 			if (voiceGroupId) {
@@ -2957,94 +2653,6 @@ export const POST: RequestHandler = async ({
 				) as unknown as Json;
 			}
 
-			turnRunId = uuidv4();
-			observabilityWriter.setTurnRunId(turnRunId);
-			let turnRunInsertError: unknown = null;
-			try {
-				const { error: turnRunError } = await supabase.from('chat_turn_runs').insert({
-					id: turnRunId,
-					session_id: session.id,
-					user_id: userId,
-					stream_run_id: streamRunId,
-					client_turn_id: clientTurnId ?? null,
-					source: 'live_ui',
-					context_type: contextType,
-					entity_id: entityId ?? null,
-					project_id: timingProjectId ?? null,
-					gateway_enabled: gatewayEnabled,
-					request_message: storedUserMessageContent,
-					status: 'running',
-					history_strategy: historyStrategy,
-					history_compressed: historyCompressed,
-					raw_history_count: rawHistoryCount,
-					history_for_model_count: historyForModelCount,
-					request_prewarmed_context: false,
-					started_at: new Date(requestStartedAtMs).toISOString()
-				});
-				if (turnRunError) {
-					turnRunInsertError = turnRunError;
-				}
-			} catch (error) {
-				turnRunInsertError = error;
-			}
-			if (turnRunInsertError) {
-				const failedTurnRunId = turnRunId;
-				const activeTurnConflict = isRunningTurnUniqueViolation(turnRunInsertError);
-				turnRunId = null;
-				observabilityWriter.setTurnRunId(null);
-				const conflictMetadata = {
-					sessionId: session.id,
-					turnRunId: failedTurnRunId,
-					streamRunId,
-					clientTurnId: clientTurnId ?? null,
-					contextType,
-					entityId,
-					projectId: timingProjectId,
-					activeTurnConflict,
-					requestMessageLength: storedUserMessageContent.length
-				};
-				if (activeTurnConflict) {
-					logger.info('FastChat turn insert skipped because a turn is already running', {
-						...conflictMetadata,
-						streamRunId
-					});
-				} else {
-					logFastChatError({
-						error: turnRunInsertError,
-						operationType: 'fastchat_turn_run_insert',
-						projectId: projectIdForLogs,
-						tableName: 'chat_turn_runs',
-						recordId: failedTurnRunId,
-						metadata: conflictMetadata
-					});
-				}
-				const failedReason = activeTurnConflict
-					? 'active_turn_running'
-					: 'turn_run_insert_failed';
-				await emitErrorThenDone({
-					error: activeTurnConflict
-						? 'BuildOS is still finishing the previous response. Reopen this chat in a moment to see the completed result.'
-						: 'BuildOS could not start this response. Please try again.',
-					finishedReason: failedReason,
-					projectId: projectIdForLogs,
-					errorMetadata: {
-						sessionId: session.id,
-						contextType,
-						entityId,
-						reason: activeTurnConflict
-							? 'active_turn_conflict'
-							: 'turn_run_insert_failed'
-					},
-					doneMetadata: {
-						sessionId: session.id,
-						contextType,
-						entityId,
-						reason: failedReason
-					}
-				});
-				observabilityWriter.queueTimingMetric(failedReason);
-				return;
-			}
 			if (activeSupervisorCheckpoint) {
 				try {
 					resumingSupervisorCheckpoint = await markCheckpointResuming({
@@ -3440,6 +3048,10 @@ export const POST: RequestHandler = async ({
 						domain_ids: turnDomainSensing.active_domains.map((domain) => domain.id),
 						candidate_outcome_card_ids: turnDomainSensing.candidate_outcome_card_ids,
 						recommended_skill_ids: turnDomainSensing.recommended_skill_ids,
+						skill_gate_required: turnDomainSensing.skill_load_required === true,
+						expected_skill_ids: getSkillGateCandidateSkillIds(turnDomainSensing),
+						expected_skill_formats:
+							getSkillGateCandidateSkillLoadFormats(turnDomainSensing),
 						coverage_gap_skill_ids: turnDomainSensing.coverage_gap_skill_ids,
 						coverage_gap_resource_ids: turnDomainSensing.coverage_gap_resource_ids,
 						research_backlog_ids: nextDomainState.research_backlog.map(
@@ -3547,140 +3159,180 @@ export const POST: RequestHandler = async ({
 						preparedSurfaceProfile
 					}
 				);
-				if (turnRunId) {
-					try {
-						promptSnapshotId = uuidv4();
-						const promptCostBreakdown = buildPromptCostBreakdown({
-							systemPrompt,
-							history: historyForModel,
-							userMessage: messageForModel,
-							tools
+				if (turnRunId && systemPrompt) {
+					const snapshotTurnRunId = turnRunId;
+					const snapshotSessionId = session.id;
+					const snapshotSystemPrompt = systemPrompt;
+					const snapshotPromptContext = {
+						...promptContext,
+						contextType: promptContext.contextType ?? contextType
+					};
+					const snapshotEntityId = promptContext.entityId ?? entityId ?? null;
+					const snapshotProjectId =
+						promptContext.projectId ??
+						resolveEffectiveProjectId({ contextType, entityId, projectFocus });
+					const snapshotHistory = [...historyForModel];
+					const snapshotTools = tools;
+					const snapshotLiteSections =
+						litePromptEnvelope?.sections ?? preparedPromptSectionSummaries;
+					const snapshotLiteContextInventory =
+						litePromptEnvelope?.contextInventory ?? preparedPromptContextInventory;
+					const snapshotLiteToolsSummary =
+						litePromptEnvelope?.toolsSummary ?? preparedPromptToolsSummary;
+					const snapshotRequestPayload = {
+						message: storedUserMessageContent,
+						session_id: snapshotSessionId,
+						client_turn_id: clientTurnId ?? null,
+						stream_run_id: streamRunId,
+						context_type: contextType,
+						entity_id: entityId ?? null,
+						project_focus: projectFocus ?? null,
+						attachments:
+							chatAttachmentRefs.length > 0
+								? sanitizeAttachmentRefsForMetadata(chatAttachmentRefs)
+								: [],
+						live_vision: {
+							requested: liveVisionPrepared.requested,
+							enabled: liveVisionPrepared.enabled,
+							raw_media_included: liveVisionPrepared.imageCount > 0,
+							image_count: liveVisionPrepared.imageCount,
+							failed_image_count: liveVisionPrepared.failedImageCount,
+							skipped_by_limit: liveVisionPrepared.skippedByLimit,
+							asset_ids: liveVisionPrepared.assetIds,
+							failed_asset_ids: liveVisionPrepared.failedAssetIds,
+							max_images_per_turn:
+								FASTCHAT_LIVE_VISION_MAX_IMAGE_ATTACHMENTS_PER_TURN,
+							max_image_file_size_bytes: FASTCHAT_LIVE_VISION_MAX_IMAGE_BYTES,
+							render_width: FASTCHAT_LIVE_VISION_RENDER_WIDTH,
+							signed_url_ttl_seconds: FASTCHAT_LIVE_VISION_SIGNED_URL_TTL_SECONDS
+						},
+						prompt_variant: promptVariant,
+						voice_note_group_id: voiceGroupId ?? null,
+						prepared_prompt_id: preparedPromptId,
+						prepared_prompt_hit: preparedPromptHit,
+						prepared_prompt_miss_reason: preparedPromptMissReason,
+						prepared_surface_profile: preparedSurfaceProfile
+					};
+					persistPromptSnapshotAfterFirstResponse = () => {
+						const snapshotId = uuidv4();
+						const snapshotTask = new Promise<void>((resolve) => {
+							setTimeout(() => {
+								void (async () => {
+									try {
+										const promptCostBreakdown = buildPromptCostBreakdown({
+											systemPrompt: snapshotSystemPrompt,
+											history: snapshotHistory,
+											userMessage: messageForModel,
+											tools: snapshotTools
+										});
+										const promptToolSurfaceReport = buildToolSurfaceSizeReport({
+											profile: 'current_request',
+											contextType,
+											tools: snapshotTools
+										});
+										const promptSections = buildPromptSnapshotSections({
+											...snapshotPromptContext,
+											promptVariant,
+											promptCostBreakdown,
+											toolSurfaceReport: promptToolSurfaceReport,
+											liteSections: snapshotLiteSections,
+											liteContextInventory: snapshotLiteContextInventory,
+											liteToolsSummary: snapshotLiteToolsSummary
+										});
+										const promptSnapshotRow = buildPromptSnapshotRow({
+											turnRunId: snapshotTurnRunId,
+											sessionId: snapshotSessionId,
+											userId,
+											streamRunId,
+											contextType,
+											entityId: snapshotEntityId,
+											projectId: snapshotProjectId,
+											promptVariant,
+											systemPrompt: snapshotSystemPrompt,
+											history: snapshotHistory,
+											message: messageForModel,
+											tools: snapshotTools,
+											requestPayload: snapshotRequestPayload,
+											promptSections,
+											promptCostBreakdown,
+											contextPayload: snapshotPromptContext,
+											toolSurfaceReport: promptToolSurfaceReport,
+											liteSections: snapshotLiteSections,
+											liteContextInventory: snapshotLiteContextInventory,
+											liteToolsSummary: snapshotLiteToolsSummary
+										});
+										const promptSnapshotInsertStartedAtMs = Date.now();
+										const { error: snapshotError } = await supabase
+											.from('chat_prompt_snapshots')
+											.insert({
+												id: snapshotId,
+												...promptSnapshotRow
+											});
+										promptSnapshotInsertMs = Math.max(
+											0,
+											Date.now() - promptSnapshotInsertStartedAtMs
+										);
+										if (snapshotError) {
+											logFastChatError({
+												error: snapshotError,
+												operationType: 'fastchat_prompt_snapshot_insert',
+												projectId: projectIdForLogs,
+												metadata: {
+													sessionId: snapshotSessionId,
+													contextType,
+													turnRunId: snapshotTurnRunId
+												}
+											});
+											return;
+										}
+										promptSnapshotId = snapshotId;
+										observabilityWriter.queueTurnRunUpdate(
+											{ prompt_snapshot_id: snapshotId },
+											'link_turn_run_prompt_snapshot',
+											{ promptSnapshotId: snapshotId }
+										);
+										observabilityWriter.recordEvent(
+											'prompt',
+											'prompt_snapshot_created',
+											{
+												prompt_snapshot_id: snapshotId,
+												prompt_variant: promptVariant,
+												system_prompt_chars:
+													promptSnapshotRow.system_prompt_chars,
+												message_chars: promptSnapshotRow.message_chars,
+												approx_prompt_tokens:
+													promptSnapshotRow.approx_prompt_tokens,
+												prompt_snapshot_insert_ms: promptSnapshotInsertMs,
+												prompt_cost_breakdown: promptCostBreakdown
+											} as Json
+										);
+									} catch (error) {
+										logFastChatError({
+											error,
+											operationType: 'fastchat_prompt_snapshot_insert',
+											projectId: projectIdForLogs,
+											metadata: {
+												sessionId: snapshotSessionId,
+												contextType,
+												turnRunId: snapshotTurnRunId
+											}
+										});
+									}
+								})().finally(resolve);
+							}, 0);
 						});
-						const promptToolSurfaceReport = buildToolSurfaceSizeReport({
-							profile: 'current_request',
-							contextType,
-							tools
-						});
-						const promptSnapshotRow = buildPromptSnapshotRow({
-							turnRunId,
-							sessionId: session.id,
-							userId,
-							streamRunId,
-							contextType,
-							entityId: promptContext.entityId ?? entityId ?? null,
-							projectId:
-								promptContext.projectId ??
-								resolveEffectiveProjectId({ contextType, entityId, projectFocus }),
-							promptVariant,
-							systemPrompt,
-							history: historyForModel,
-							message: messageForModel,
-							tools,
-							requestPayload: {
-								message: storedUserMessageContent,
-								session_id: session.id,
-								client_turn_id: clientTurnId ?? null,
-								stream_run_id: streamRunId,
-								context_type: contextType,
-								entity_id: entityId ?? null,
-								project_focus: projectFocus ?? null,
-								attachments:
-									chatAttachmentRefs.length > 0
-										? sanitizeAttachmentRefsForMetadata(chatAttachmentRefs)
-										: [],
-								live_vision: {
-									requested: liveVisionPrepared.requested,
-									enabled: liveVisionPrepared.enabled,
-									raw_media_included: liveVisionPrepared.imageCount > 0,
-									image_count: liveVisionPrepared.imageCount,
-									failed_image_count: liveVisionPrepared.failedImageCount,
-									skipped_by_limit: liveVisionPrepared.skippedByLimit,
-									asset_ids: liveVisionPrepared.assetIds,
-									failed_asset_ids: liveVisionPrepared.failedAssetIds,
-									max_images_per_turn:
-										FASTCHAT_LIVE_VISION_MAX_IMAGE_ATTACHMENTS_PER_TURN,
-									max_image_file_size_bytes: FASTCHAT_LIVE_VISION_MAX_IMAGE_BYTES,
-									render_width: FASTCHAT_LIVE_VISION_RENDER_WIDTH,
-									signed_url_ttl_seconds:
-										FASTCHAT_LIVE_VISION_SIGNED_URL_TTL_SECONDS
-								},
-								prompt_variant: promptVariant,
-								voice_note_group_id: voiceGroupId ?? null,
-								prepared_prompt_id: preparedPromptId,
-								prepared_prompt_hit: preparedPromptHit,
-								prepared_prompt_miss_reason: preparedPromptMissReason,
-								prepared_surface_profile: preparedSurfaceProfile
-							},
-							promptSections: buildPromptSnapshotSections({
-								...promptContext,
-								promptVariant,
-								promptCostBreakdown,
-								toolSurfaceReport: promptToolSurfaceReport,
-								liteSections:
-									litePromptEnvelope?.sections ?? preparedPromptSectionSummaries,
-								liteContextInventory:
-									litePromptEnvelope?.contextInventory ??
-									preparedPromptContextInventory,
-								liteToolsSummary:
-									litePromptEnvelope?.toolsSummary ?? preparedPromptToolsSummary
-							}),
-							promptCostBreakdown,
-							contextPayload: promptContext,
-							toolSurfaceReport: promptToolSurfaceReport,
-							liteSections:
-								litePromptEnvelope?.sections ?? preparedPromptSectionSummaries,
-							liteContextInventory:
-								litePromptEnvelope?.contextInventory ??
-								preparedPromptContextInventory,
-							liteToolsSummary:
-								litePromptEnvelope?.toolsSummary ?? preparedPromptToolsSummary
-						});
-						const { error: snapshotError } = await supabase
-							.from('chat_prompt_snapshots')
-							.insert({
-								id: promptSnapshotId,
-								...promptSnapshotRow
-							});
-						if (snapshotError) {
-							promptSnapshotId = null;
-							logFastChatError({
-								error: snapshotError,
-								operationType: 'fastchat_prompt_snapshot_insert',
+						observabilityWriter.trackDetachedTask(
+							snapshotTask,
+							'persist_prompt_snapshot',
+							{
 								projectId: projectIdForLogs,
-								metadata: {
-									sessionId: session.id,
-									contextType,
-									turnRunId
-								}
-							});
-						} else {
-							observabilityWriter.queueTurnRunUpdate(
-								{ prompt_snapshot_id: promptSnapshotId },
-								'link_turn_run_prompt_snapshot',
-								{ promptSnapshotId }
-							);
-							observabilityWriter.recordEvent('prompt', 'prompt_snapshot_created', {
-								prompt_snapshot_id: promptSnapshotId,
-								prompt_variant: promptVariant,
-								system_prompt_chars: promptSnapshotRow.system_prompt_chars,
-								message_chars: promptSnapshotRow.message_chars,
-								approx_prompt_tokens: promptSnapshotRow.approx_prompt_tokens,
-								prompt_cost_breakdown: promptCostBreakdown
-							} as Json);
-						}
-					} catch (error) {
-						promptSnapshotId = null;
-						logFastChatError({
-							error,
-							operationType: 'fastchat_prompt_snapshot_insert',
-							projectId: projectIdForLogs,
-							metadata: {
-								sessionId: session.id,
 								contextType,
-								turnRunId
+								sessionId: snapshotSessionId,
+								entityId: snapshotEntityId,
+								turnRunId: snapshotTurnRunId
 							}
-						});
-					}
+						);
+					};
 				}
 			} catch (error) {
 				contextCacheSource = 'context_build_failed';
@@ -3759,6 +3411,23 @@ export const POST: RequestHandler = async ({
 						: {})
 				};
 			};
+			const skillGateExpectedSkillIds = turnDomainSensing
+				? getSkillGateCandidateSkillIds(turnDomainSensing)
+				: [];
+			const skillGateExpectedSkillFormats = turnDomainSensing
+				? getSkillGateCandidateSkillLoadFormats(turnDomainSensing)
+				: {};
+			const skillGateHistoryLoadedSkillIds = turnDomainSensing
+				? extractLoadedSkillIdsFromHistory(historyForModel)
+				: [];
+			const skillGate = turnDomainSensing
+				? {
+						required: turnDomainSensing.skill_load_required === true,
+						recommendedSkillIds: skillGateExpectedSkillIds,
+						acceptableSkillIds: skillGateExpectedSkillIds,
+						historyLoadedSkillIds: skillGateHistoryLoadedSkillIds
+					}
+				: null;
 
 			const {
 				assistantText,
@@ -3773,7 +3442,8 @@ export const POST: RequestHandler = async ({
 				finalizationGuard,
 				cancelled,
 				peakPromptTokens,
-				finalContextUsage
+				finalContextUsage,
+				skillGateViolationRepaired
 			} = await streamFastChat({
 				llm,
 				userId,
@@ -3791,14 +3461,7 @@ export const POST: RequestHandler = async ({
 				systemPrompt,
 				maxToolRounds: Math.max(1, gatewayRoundCap),
 				allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
-				skillGate: turnDomainSensing
-					? {
-							required: turnDomainSensing.skill_load_required === true,
-							recommendedSkillIds: getSkillGateCandidateSkillIds(turnDomainSensing),
-							acceptableSkillIds: getSkillGateCandidateSkillIds(turnDomainSensing),
-							historyLoadedSkillIds: extractLoadedSkillIdsFromHistory(historyForModel)
-						}
-					: null,
+				skillGate,
 				tools,
 				// Live orchestration-budget snapshot from provider-reported tokens.
 				// Not re-emitted to the UI badge because the UI uses a different
@@ -4326,7 +3989,7 @@ export const POST: RequestHandler = async ({
 				},
 				onDelta: async (delta) => {
 					try {
-						await sendTimedMessage(
+						const deltaSent = await sendTimedMessage(
 							{ type: 'text_delta', content: delta },
 							{
 								operationType: 'fastchat_stream_emit_delta',
@@ -4337,6 +4000,9 @@ export const POST: RequestHandler = async ({
 								}
 							}
 						);
+						if (deltaSent) {
+							scheduleDeferredPromptSnapshotPersistence();
+						}
 					} catch (error) {
 						if (!turnAbortController.signal.aborted) {
 							logger.warn('Failed to emit text delta', {
@@ -4348,6 +4014,7 @@ export const POST: RequestHandler = async ({
 					}
 				}
 			});
+			scheduleDeferredPromptSnapshotPersistence();
 			const normalizedExecutions = toolExecutions ?? [];
 			const normalizedToolCallCount = Math.max(
 				typeof toolCallsMade === 'number' && Number.isFinite(toolCallsMade)
@@ -4355,6 +4022,20 @@ export const POST: RequestHandler = async ({
 					: 0,
 				normalizedExecutions.length
 			);
+			if (turnDomainSensing) {
+				observabilityWriter.recordEvent(
+					'finalize',
+					'skill_gate_evaluated',
+					buildSkillGateTelemetry({
+						skillLoadRequired: turnDomainSensing.skill_load_required === true,
+						expectedSkillIds: skillGateExpectedSkillIds,
+						expectedSkillFormats: skillGateExpectedSkillFormats,
+						historyLoadedSkillIds: skillGateHistoryLoadedSkillIds,
+						toolExecutions: normalizedExecutions,
+						violationRepairInjected: skillGateViolationRepaired === true
+					}) as Json
+				);
+			}
 			if (finalizationGuard?.applied) {
 				observabilityWriter.recordEvent(
 					'finalize',
@@ -4935,6 +4616,7 @@ export const POST: RequestHandler = async ({
 			if (turnAbortController.signal.aborted) {
 				const interruptedReason = turnAbortReason ?? 'cancelled';
 				doneEmittedAtMs = doneEmittedAtMs ?? Date.now();
+				scheduleDeferredPromptSnapshotPersistence();
 				observabilityWriter.queueTimingMetric(interruptedReason);
 				await observabilityWriter.persistFinalState(
 					{
@@ -5016,6 +4698,7 @@ export const POST: RequestHandler = async ({
 					finished_reason: 'error',
 					total_tokens: 0
 				} as Json);
+				scheduleDeferredPromptSnapshotPersistence();
 				observabilityWriter.queueTimingMetric('error');
 			} catch (sendError) {
 				logFastChatError({

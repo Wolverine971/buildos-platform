@@ -23,6 +23,19 @@ function stripLeadingH1(body: string): string {
 	return body.replace(/^[^\n]+\n=+\s*\n+/, '');
 }
 
+function countMarkdownWords(body: string): number {
+	const text = body
+		.replace(/```[\s\S]*?```/g, ' ')
+		.replace(/`[^`]*`/g, ' ')
+		.replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+		.replace(/\[[^\]]*\]\([^)]*\)/g, ' ')
+		.replace(/<[^>]+>/g, ' ')
+		.replace(/[^\p{L}\p{N}'-]+/gu, ' ')
+		.trim();
+
+	return text ? text.split(/\s+/).length : 0;
+}
+
 export const load: PageServerLoad = async ({ params, url }) => {
 	const { category, slug } = params;
 
@@ -34,13 +47,13 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	const post = await loadBlogPostMetadata(category, slug);
 	const relatedPosts = await getRelatedPosts(category, slug, 3);
 	const rawContent = blogContentModules[`/src/content/blogs/${post.category}/${post.slug}.md`];
-	const contentHtml = rawContent
-		? renderBlogMarkdown(stripLeadingH1(stripFrontmatter(rawContent)))
-		: '';
+	const contentMarkdown = rawContent ? stripLeadingH1(stripFrontmatter(rawContent)) : '';
+	const contentHtml = contentMarkdown ? renderBlogMarkdown(contentMarkdown) : '';
 
 	return {
 		post,
 		relatedPosts,
-		contentHtml
+		contentHtml,
+		wordCount: countMarkdownWords(contentMarkdown)
 	};
 };

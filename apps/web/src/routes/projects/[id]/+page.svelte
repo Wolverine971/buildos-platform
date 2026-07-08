@@ -35,7 +35,6 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import { getNavigationData } from '$lib/stores/project-navigation.store';
-	import { resolveMilestoneState } from '$lib/utils/milestone-state';
 	import {
 		collectDocIds,
 		normalizeDocumentState,
@@ -66,23 +65,13 @@
 		fetchProjectSnapshot,
 		fetchProjectTask,
 		moveProjectDocument,
-		updateProjectMilestoneState,
 		updateProjectNotificationSettings,
 		type OntoEventWithSync,
 		type ProjectNotificationSettings
 	} from '$lib/components/project/project-page-data-controller';
 	import { resolveEntityOpenAction } from '$lib/components/project/project-page-interactions';
 	import { Bell, BellOff, Calendar, Pencil, Trash2, Users } from 'lucide-svelte';
-	import type {
-		Project,
-		Task,
-		Document,
-		Plan,
-		Goal,
-		Milestone,
-		MilestoneState,
-		Risk
-	} from '$lib/types/onto';
+	import type { Project, Task, Document, Plan, Goal, Milestone, Risk } from '$lib/types/onto';
 	import type { EntityReference, ProjectLogEntityType } from '@buildos/shared-types';
 	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
@@ -700,9 +689,11 @@
 			}
 		};
 
-		if ('requestIdleCallback' in window) {
-			const idleId = window.requestIdleCallback(allowSecondaryRequests, { timeout: 1500 });
-			return () => window.cancelIdleCallback(idleId);
+		const requestIdleCallback = window.requestIdleCallback?.bind(window);
+		const cancelIdleCallback = window.cancelIdleCallback?.bind(window);
+		if (requestIdleCallback && cancelIdleCallback) {
+			const idleId = requestIdleCallback(allowSecondaryRequests, { timeout: 1500 });
+			return () => cancelIdleCallback(idleId);
 		}
 
 		const timerId = setTimeout(allowSecondaryRequests, 600);
@@ -1167,32 +1158,6 @@
 	function handleAddMilestoneFromGoal(goalId: string, goalName: string) {
 		milestoneCreateGoalContext = { goalId, goalName };
 		showMilestoneCreateModal = true;
-	}
-	async function handleToggleMilestoneComplete(milestoneId: string, currentState: string) {
-		const newState: MilestoneState = currentState === 'completed' ? 'pending' : 'completed';
-		try {
-			await updateProjectMilestoneState({ milestoneId, stateKey: newState });
-			milestones = milestones.map((m) => {
-				if (m.id !== milestoneId) return m;
-				const updated: Milestone = {
-					...m,
-					state_key: newState,
-					due_at: m.due_at ?? null
-				};
-				const { state, isMissed } = resolveMilestoneState(updated);
-				return {
-					...updated,
-					effective_state_key: state,
-					is_missed: isMissed,
-					due_at: updated.due_at
-				};
-			});
-			toastService.success(
-				newState === 'completed' ? 'Milestone completed!' : 'Milestone reopened'
-			);
-		} catch (err) {
-			toastService.error(err instanceof Error ? err.message : 'Failed to update milestone');
-		}
 	}
 
 	function handleEventCreated(eventId: string) {

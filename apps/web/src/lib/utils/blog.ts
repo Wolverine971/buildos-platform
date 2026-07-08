@@ -49,6 +49,7 @@ export interface BlogPost {
 	lineageStats?: BlogLineageStats;
 	lineagePeople?: string[];
 	lineageSources?: BlogLineageSource[];
+	relatedSkills?: string[];
 	sourceTitle?: string;
 	sourceCreator?: string;
 	sourceUrl?: string;
@@ -288,6 +289,7 @@ function buildBlogPost(
 		lineageStats: normalizeScalarRecord(metadata.lineageStats),
 		lineagePeople: normalizeStringArray(metadata.lineagePeople),
 		lineageSources: normalizeLineageSources(metadata.lineageSources),
+		relatedSkills: normalizeStringArray(metadata.relatedSkills),
 		sourceTitle: typeof metadata.sourceTitle === 'string' ? metadata.sourceTitle : undefined,
 		sourceCreator:
 			typeof metadata.sourceCreator === 'string' ? metadata.sourceCreator : undefined,
@@ -348,6 +350,12 @@ export function isAgentSkillsCategory(category: string): boolean {
 	return category === AGENT_SKILLS_CATEGORY_KEY;
 }
 
+export function isKnownContentCategory(
+	category: string
+): category is BlogCategory | typeof AGENT_SKILLS_CATEGORY_KEY {
+	return isAgentSkillsCategory(category) || category in BLOG_CATEGORIES;
+}
+
 export function getContentCollectionPath(category: string): string {
 	return isAgentSkillsCategory(category) ? '/agent-skills' : `/blogs/${category}`;
 }
@@ -389,6 +397,7 @@ export async function loadBlogPosts(): Promise<BlogPost[]> {
 
 		const slug = filename.replace('.md', '');
 
+		if (!isKnownContentCategory(category)) continue;
 		if (!isBlogModule(module)) continue;
 
 		const post = buildBlogPost(path, slug, category, module);

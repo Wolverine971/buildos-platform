@@ -39,11 +39,39 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('search_all_projects');
 		expect(names).not.toContain('search_buildos');
 		expect(names).toContain('search_onto_projects');
-		// Doc-read tool is preloaded so reading a body after a cross-project search
-		// doesn't require a tool_search/tool_schema discovery round (SEARCH_EVAL F5).
-		expect(names).toContain('get_onto_document_details');
+		// Full-body doc reads materialize from document search/results instead of
+		// sitting in every first-turn launch surface.
+		expect(names).not.toContain('get_onto_document_details');
+		expect(names).not.toContain('list_corsair_mcp_tools');
+		expect(names).not.toContain('call_corsair_mcp_tool');
+		expect(names).not.toContain('delegate_task');
+		expect(names).not.toContain('commit_change_set');
 		expect(names).not.toContain('list_onto_tasks');
 		expect(names).not.toContain('resolve_libri_resource');
+	});
+
+	it('keeps rare bridge and orchestration tools materializable without preloading them', () => {
+		const currentTools = selectFastChatTools({ contextType: 'project' });
+		const currentNames = currentTools.map((tool) => tool.function?.name).filter(Boolean);
+
+		expect(currentNames).not.toContain('list_corsair_mcp_tools');
+		expect(currentNames).not.toContain('call_corsair_mcp_tool');
+		expect(currentNames).not.toContain('delegate_task');
+		expect(currentNames).not.toContain('commit_change_set');
+
+		const materialized = materializeGatewayTools(currentTools, [
+			'list_corsair_mcp_tools',
+			'call_corsair_mcp_tool',
+			'delegate_task',
+			'commit_change_set'
+		]);
+
+		expect(materialized.addedToolNames).toEqual([
+			'list_corsair_mcp_tools',
+			'call_corsair_mcp_tool',
+			'delegate_task',
+			'commit_change_set'
+		]);
 	});
 
 	it('mounts only skill_search + domain_search at launch under FASTCHAT_LEAN_DISCOVERY', () => {

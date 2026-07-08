@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat/tools/domains/domain-sensing.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	getSkillGateCandidateSkillLoadFormats,
 	getSkillGateCandidateSkillIds,
 	renderDomainSensingPromptBlock,
 	senseDomains
@@ -52,6 +53,20 @@ describe('domain sensing', () => {
 		expect(candidateSkillIds).toContain('content_strategy_beyond_blogging');
 		expect(candidateSkillIds).toContain('viral_video_script_structure');
 		expect(new Set(candidateSkillIds).size).toBe(candidateSkillIds.length);
+	});
+
+	it('builds skill-gate candidate load formats from outcome cards and skill defaults', () => {
+		const result = senseDomains({
+			currentUserMessage: 'Just give me 10 opening-hook options for the launch video.'
+		});
+
+		expect(getSkillGateCandidateSkillLoadFormats(result)).toEqual(
+			expect.objectContaining({
+				hook_craft_short_form: 'full',
+				content_strategy_beyond_blogging: 'full',
+				viral_video_script_structure: 'full'
+			})
+		);
 	});
 
 	it('renders a compact prompt block for model routing', () => {

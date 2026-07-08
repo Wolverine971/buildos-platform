@@ -163,6 +163,71 @@ describe('runLlmStreamPass', () => {
 		expect(params.onPendingToolCallCountChange).not.toHaveBeenCalled();
 	});
 
+	it('retries a transient stream error and returns the successful attempt', async () => {
+		let invocation = 0;
+		const { params, clearHeartbeat } = baseParams({
+			llm: {
+				streamText: vi.fn(async function* () {
+					invocation += 1;
+					if (invocation === 1) {
+						yield { type: 'text', content: 'discarded partial text.' };
+						yield {
+							type: 'error',
+							error: 'OpenRouter API error: 503 Service Unavailable'
+						};
+						return;
+					}
+					yield { type: 'text', content: 'Recovered answer.' };
+					yield {
+						type: 'done',
+						finished_reason: 'stop',
+						usage: {
+							prompt_tokens: 12,
+							completion_tokens: 3,
+							total_tokens: 15
+						}
+					};
+				})
+			} as any,
+			retryDelayMs: () => 0
+		});
+
+		const result = await runLlmStreamPass(params);
+
+		expect(params.llm.streamText).toHaveBeenCalledTimes(2);
+		expect(result.assistantBuffer).toBe('Recovered answer.');
+		expect(result.metadata).toMatchObject({
+			pass: 1,
+			attempts: 2,
+			streamRetryCount: 1,
+			lastStreamRetryError: 'OpenRouter API error: 503 Service Unavailable',
+			finishedReason: 'stop',
+			promptTokens: 12,
+			completionTokens: 3,
+			totalTokens: 15
+		});
+		expect(params.onAssistantBufferChange).toHaveBeenCalledWith('');
+		expect(params.onPendingToolCallCountChange).toHaveBeenCalledWith(0);
+		expect(clearHeartbeat).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not retry non-transient stream errors', async () => {
+		const { params, clearHeartbeat } = baseParams({
+			llm: {
+				streamText: vi.fn(async function* () {
+					yield { type: 'error', error: 'OpenRouter API error: 400 invalid request' };
+				})
+			} as any,
+			retryDelayMs: () => 0
+		});
+
+		await expect(runLlmStreamPass(params)).rejects.toThrow(
+			'OpenRouter API error: 400 invalid request'
+		);
+		expect(params.llm.streamText).toHaveBeenCalledTimes(1);
+		expect(clearHeartbeat).toHaveBeenCalledTimes(1);
+	});
+
 	it('throws when the provider stream ends without a done event', async () => {
 		const clearHeartbeat = vi.fn();
 		const { params } = baseParams({
@@ -171,12 +236,14 @@ describe('runLlmStreamPass', () => {
 					yield { type: 'text', content: 'partial' };
 				})
 			} as any,
-			startLlmHeartbeat: vi.fn(() => clearHeartbeat)
+			startLlmHeartbeat: vi.fn(() => clearHeartbeat),
+			retryDelayMs: () => 0
 		});
 
 		await expect(runLlmStreamPass(params)).rejects.toThrow(
 			'LLM stream ended without a completion event'
 		);
-		expect(clearHeartbeat).toHaveBeenCalledTimes(1);
+		expect(params.llm.streamText).toHaveBeenCalledTimes(2);
+		expect(clearHeartbeat).toHaveBeenCalledTimes(2);
 	});
 });

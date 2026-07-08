@@ -12,6 +12,7 @@ export type LoadedSkillToolingTelemetry = {
 	read_ops?: string[];
 	write_ops?: string[];
 	destructive_ops?: string[];
+	skill_contract_present?: boolean;
 };
 
 function compactSkillStringList(value: unknown, limit = 12): string[] {
@@ -84,11 +85,15 @@ export function getLoadedSkillToolingTelemetry(
 	const readOps = compactSkillStringList(result.result.read_ops);
 	const writeOps = compactSkillStringList(result.result.write_ops);
 	const destructiveOps = compactSkillStringList(result.result.destructive_ops);
+	const skillContractPresent =
+		typeof result.result.output_contract === 'string' &&
+		result.result.output_contract.trim().length > 0;
 
 	return {
 		...(materializedTools.length ? { materialized_tools: materializedTools } : {}),
 		...(readOps.length ? { read_ops: readOps } : {}),
 		...(writeOps.length ? { write_ops: writeOps } : {}),
-		...(destructiveOps.length ? { destructive_ops: destructiveOps } : {})
+		...(destructiveOps.length ? { destructive_ops: destructiveOps } : {}),
+		skill_contract_present: skillContractPresent
 	};
 }

@@ -50,7 +50,33 @@ vi.mock('$lib/services/agentic-chat/state/agent-state-reconciliation-service', (
 }));
 
 vi.mock('$lib/services/agentic-chat/tools/domains/domain-sensing', () => ({
-	getSkillGateCandidateSkillIds: () => [],
+	getSkillGateCandidateSkillIds: (result: Row | null | undefined) =>
+		result
+			? [
+					...new Set(
+						[
+							...(result.candidate_outcome_cards ?? []).flatMap((card: Row) => [
+								card.default_skill_id,
+								...(card.skill_ids ?? [])
+							]),
+							...(result.recommended_skill_ids ?? []),
+							...(result.active_domains ?? []).flatMap(
+								(domain: Row) => domain.skill_ids ?? []
+							)
+						].filter(Boolean)
+					)
+				]
+			: [],
+	getSkillGateCandidateSkillLoadFormats: (result: Row | null | undefined) => {
+		const formats: Record<string, string> = {};
+		for (const card of result?.candidate_outcome_cards ?? []) {
+			Object.assign(formats, card.skill_load_formats ?? {});
+		}
+		for (const skillId of result?.recommended_skill_ids ?? []) {
+			formats[skillId] ??= 'full';
+		}
+		return formats;
+	},
 	senseDomains: mocks.senseDomains
 }));
 
@@ -166,7 +192,10 @@ function createAdminOnlySupabase({ isAdmin = false } = {}) {
 	};
 }
 
-function createStreamingSupabase(initialRows: Record<string, Row[]> = {}) {
+function createStreamingSupabase(
+	initialRows: Record<string, Row[]> = {},
+	options: { insertErrors?: Record<string, unknown> } = {}
+) {
 	const rows: Record<string, Row[]> = {
 		chat_turn_runs: [],
 		chat_turn_checkpoints: [],
@@ -209,6 +238,10 @@ function createStreamingSupabase(initialRows: Record<string, Row[]> = {}) {
 
 		insert(value: Row | Row[]) {
 			this.mode = 'insert';
+			if (options.insertErrors?.[this.table]) {
+				this.inserted = [];
+				return this;
+			}
 			const now = new Date().toISOString();
 			const values = Array.isArray(value) ? value : [value];
 			this.inserted = values.map((item) => {
@@ -289,11 +322,17 @@ function createStreamingSupabase(initialRows: Record<string, Row[]> = {}) {
 			return this.execute(false).then(onfulfilled, onrejected);
 		}
 
-		private async execute(single: true): Promise<{ data: Row | null; error: null }>;
-		private async execute(single: false): Promise<{ data: Row[]; error: null }>;
+		private async execute(single: true): Promise<{ data: Row | null; error: unknown | null }>;
+		private async execute(single: false): Promise<{ data: Row[]; error: unknown | null }>;
 		private async execute(single: boolean) {
 			let data: Row[];
 			if (this.mode === 'insert') {
+				const insertError = options.insertErrors?.[this.table];
+				if (insertError) {
+					return single
+						? { data: null, error: insertError }
+						: { data: [], error: insertError };
+				}
 				data = this.inserted ?? [];
 			} else {
 				data = ensureRows(this.table).filter((row) =>
@@ -704,6 +743,114 @@ describe('/api/agent/v2/stream', () => {
 		});
 	});
 
+	it('does not consume a prepared prompt when turn admission loses the running-turn lock', async () => {
+		const preparedPrompt = buildPreparedPromptRow();
+		const supabase = createStreamingSupabase(
+			{
+				agentic_chat_prepared_prompts: [preparedPrompt.row]
+			},
+			{
+				insertErrors: {
+					chat_turn_runs: {
+						code: '23505',
+						constraint: 'uq_chat_turn_runs_one_running_per_session',
+						message: 'duplicate key value violates unique constraint'
+					}
+				}
+			}
+		);
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Hello',
+					context_type: 'global',
+					stream_run_id: 'stream-run-admission-conflict',
+					client_turn_id: 'client-turn-admission-conflict',
+					preparedPromptKey: preparedPrompt.key
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		const events = parseSseEvents(await response.text());
+		expect(events).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'done',
+					finished_reason: 'active_turn_running'
+				})
+			])
+		);
+		expect(supabase.updatedRows.agentic_chat_prepared_prompts ?? []).toHaveLength(0);
+		expect(mocks.loadRecentMessages).not.toHaveBeenCalled();
+		expect(mocks.loadPromptContext).not.toHaveBeenCalled();
+		expect(mocks.streamFastChat).not.toHaveBeenCalled();
+	});
+
+	it('defers prompt snapshot persistence until after the first model delta is emitted', async () => {
+		const supabase = createStreamingSupabase();
+		const snapshotCountsDuringModel: number[] = [];
+		mocks.streamFastChat.mockImplementationOnce(async ({ onDelta }: Row) => {
+			snapshotCountsDuringModel.push(
+				supabase.insertedRows.chat_prompt_snapshots?.length ?? 0
+			);
+			await onDelta('Hello back.');
+			snapshotCountsDuringModel.push(
+				supabase.insertedRows.chat_prompt_snapshots?.length ?? 0
+			);
+			return {
+				assistantText: 'Hello back.',
+				finalAssistantText: 'Hello back.',
+				usage: { total_tokens: 12 },
+				finishedReason: 'stop',
+				toolExecutions: [],
+				llmPasses: [],
+				toolRounds: 0,
+				toolCallsMade: 0,
+				supervisorDecisions: [],
+				finalizationGuard: undefined,
+				cancelled: false,
+				peakPromptTokens: undefined,
+				finalContextUsage: undefined
+			};
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Hello',
+					context_type: 'global',
+					stream_run_id: 'stream-run-deferred-snapshot',
+					client_turn_id: 'client-turn-deferred-snapshot'
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		await response.text();
+
+		expect(snapshotCountsDuringModel).toEqual([0, 0]);
+		expect(supabase.insertedRows.chat_prompt_snapshots).toHaveLength(1);
+		expect(
+			supabase.insertedRows.chat_turn_events?.some(
+				(row) => row.event_type === 'prompt_snapshot_created'
+			)
+		).toBe(true);
+	});
+
 	it('ignores unsigned client-carried prewarmedContext and falls back to server context', async () => {
 		const supabase = createStreamingSupabase();
 
@@ -827,15 +974,31 @@ describe('/api/agent/v2/stream', () => {
 					parent_ids: [],
 					aliases_hit: ['launch'],
 					skill_ids: ['gtm-plan'],
-					outcome_card_ids: [],
+					outcome_card_ids: ['launch-plan-card'],
 					recommended_skill_stack_ids: [],
 					gaps: [],
 					gap_skill_ids: [],
 					gap_resource_ids: []
 				}
 			],
-			candidate_outcome_cards: [],
-			candidate_outcome_card_ids: [],
+			candidate_outcome_cards: [
+				{
+					id: 'launch-plan-card',
+					name: 'Launch Plan',
+					confidence: 0.82,
+					summary: 'Plan a product launch.',
+					domain_ids: ['go-to-market'],
+					buildos_capability_ids: [],
+					default_skill_id: 'gtm-plan',
+					skill_ids: ['gtm-plan'],
+					skill_load_formats: {
+						'gtm-plan': 'short'
+					},
+					coverage_status: 'strong',
+					load_hint: 'Load for launch plans.'
+				}
+			],
+			candidate_outcome_card_ids: ['launch-plan-card'],
 			recommended_skill_ids: ['gtm-plan'],
 			coverage_gap_skill_ids: [],
 			coverage_gap_resource_ids: [],
@@ -910,6 +1073,28 @@ describe('/api/agent/v2/stream', () => {
 		const systemPrompt = mocks.streamFastChat.mock.calls[0]?.[0]?.systemPrompt;
 		expect(systemPrompt).toContain('Current turn signal');
 		expect(systemPrompt).not.toContain('Stale turn signal');
+		const domainEvent = supabase.insertedRows.chat_turn_events?.find(
+			(row) => row.event_type === 'domain_sensing_applied'
+		);
+		expect(domainEvent?.payload).toMatchObject({
+			skill_gate_required: false,
+			expected_skill_ids: ['gtm-plan'],
+			expected_skill_formats: {
+				'gtm-plan': 'short'
+			}
+		});
+		const gateEvent = supabase.insertedRows.chat_turn_events?.find(
+			(row) => row.event_type === 'skill_gate_evaluated'
+		);
+		expect(gateEvent?.payload).toMatchObject({
+			skill_gate_required: false,
+			expected_skill_ids: ['gtm-plan'],
+			expected_skill_format: 'short',
+			loaded_skill_ids: [],
+			skill_gate_satisfied: true,
+			skill_gate_violation_repaired: false,
+			skill_contract_present: null
+		});
 	});
 
 	it('emits live tool_result payloads with search telemetry and stream events', async () => {

@@ -78,12 +78,142 @@ describe('evaluatePromptScenario', () => {
 		).toBe('failed');
 		expect(
 			result.assertions.find(
-				(assertion) => assertion.assertionKey === 'observed_skill:workflow.audit.skill'
+				(assertion) => assertion.assertionKey === 'observed_skill:project_audit'
 			)?.status
 		).toBe('failed');
 		expect(
 			result.assertions.find(
 				(assertion) => assertion.assertionKey === 'validation_failures_within_limit'
+			)?.status
+		).toBe('failed');
+	});
+
+	it('passes a skill-gated audit turn when telemetry reports the expected skill format and contract', () => {
+		const scenario = getPromptEvalScenario('workflow.audit.project_health');
+		expect(scenario).not.toBeNull();
+
+		const result = evaluatePromptScenario(scenario!, {
+			turnRun: {
+				id: 'run-skill-gate',
+				status: 'completed',
+				first_lane: 'skill_first',
+				first_canonical_op: 'util.project.overview',
+				first_skill_path: 'workflow.audit.skill',
+				validation_failure_count: 0,
+				prompt_snapshot: { id: 'snapshot-skill-gate' }
+			},
+			assistantMessage: {
+				id: 'assistant-skill-gate',
+				content: 'I audited the project health and ranked the risks by evidence.'
+			},
+			events: [
+				{ event_type: 'skill_loaded', payload: { path: 'workflow.audit.skill' } },
+				{
+					event_type: 'tool_result_received',
+					payload: { canonical_op: 'util.project.overview' }
+				},
+				{
+					event_type: 'skill_gate_evaluated',
+					payload: {
+						skill_gate_required: true,
+						expected_skill_ids: ['project_audit'],
+						expected_skill_format: 'full',
+						expected_skill_formats: { project_audit: 'full' },
+						loaded_skill_ids: ['project_audit'],
+						matching_loaded_skill_ids: ['project_audit'],
+						loaded_skill_formats: { project_audit: 'full' },
+						skill_gate_satisfied: true,
+						skill_gate_violation_repaired: false,
+						skill_contract_present: true
+					}
+				},
+				{ event_type: 'done_emitted', payload: {} }
+			],
+			toolExecutions: [{ gateway_op: 'util.project.overview', success: true }]
+		});
+
+		expect(result.status).toBe('passed');
+		expect(
+			result.assertions.find(
+				(assertion) => assertion.assertionKey === 'observed_skill:project_audit'
+			)?.status
+		).toBe('passed');
+		expect(
+			result.assertions.find((assertion) => assertion.assertionKey === 'skill_gate_satisfied')
+				?.status
+		).toBe('passed');
+		expect(
+			result.assertions.find(
+				(assertion) => assertion.assertionKey === 'skill_contract_present'
+			)?.status
+		).toBe('passed');
+		expect(
+			result.assertions.find(
+				(assertion) => assertion.assertionKey === 'skill_format:project_audit'
+			)?.status
+		).toBe('passed');
+		expect(result.summary).toMatchObject({
+			observed_skill_paths: ['project_audit']
+		});
+	});
+
+	it('fails a skill-gated audit turn when the loaded skill format or contract is wrong', () => {
+		const scenario = getPromptEvalScenario('workflow.audit.project_health');
+		expect(scenario).not.toBeNull();
+
+		const result = evaluatePromptScenario(scenario!, {
+			turnRun: {
+				id: 'run-skill-gate-wrong-format',
+				status: 'completed',
+				first_lane: 'skill_first',
+				first_canonical_op: 'util.project.overview',
+				first_skill_path: 'project_audit',
+				validation_failure_count: 0,
+				prompt_snapshot: { id: 'snapshot-skill-gate-wrong-format' }
+			},
+			assistantMessage: {
+				id: 'assistant-skill-gate-wrong-format',
+				content: 'I audited the project health.'
+			},
+			events: [
+				{ event_type: 'skill_loaded', payload: { path: 'project_audit' } },
+				{
+					event_type: 'tool_result_received',
+					payload: { canonical_op: 'util.project.overview' }
+				},
+				{
+					event_type: 'skill_gate_evaluated',
+					payload: {
+						skill_gate_required: true,
+						expected_skill_ids: ['project_audit'],
+						expected_skill_format: 'full',
+						expected_skill_formats: { project_audit: 'full' },
+						loaded_skill_ids: ['project_audit'],
+						matching_loaded_skill_ids: ['project_audit'],
+						loaded_skill_formats: { project_audit: 'short' },
+						skill_gate_satisfied: true,
+						skill_gate_violation_repaired: false,
+						skill_contract_present: false
+					}
+				},
+				{ event_type: 'done_emitted', payload: {} }
+			],
+			toolExecutions: [{ gateway_op: 'util.project.overview', success: true }]
+		});
+
+		expect(result.status).toBe('failed');
+		expect(
+			result.assertions.find((assertion) => assertion.assertionKey === 'skill_gate_satisfied')
+				?.status
+		).toBe('passed');
+		expect(
+			result.assertions.find(
+				(assertion) => assertion.assertionKey === 'skill_contract_present'
+			)?.status
+		).toBe('failed');
+		expect(
+			result.assertions.find(
+				(assertion) => assertion.assertionKey === 'skill_format:project_audit'
 			)?.status
 		).toBe('failed');
 	});

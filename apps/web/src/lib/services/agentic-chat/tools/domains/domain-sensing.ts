@@ -334,6 +334,28 @@ export function getSkillGateCandidateSkillIds(
 	]);
 }
 
+export function getSkillGateCandidateSkillLoadFormats(
+	result: DomainSensingResult | null | undefined
+): Record<string, SkillLoadFormat> {
+	if (!result) return {};
+	const formats: Record<string, SkillLoadFormat> = {};
+	for (const capability of result.candidate_outcome_cards) {
+		for (const [skillId, format] of Object.entries(capability.skill_load_formats)) {
+			if ((format === 'short' || format === 'full') && skillId.trim()) {
+				formats[skillId.trim()] = format;
+			}
+		}
+	}
+	for (const skillId of getSkillGateCandidateSkillIds(result)) {
+		if (formats[skillId]) continue;
+		const skill = getSkillById(skillId);
+		if (skill) {
+			formats[skillId] = getRecommendedSkillLoadFormat(skill);
+		}
+	}
+	return formats;
+}
+
 export function renderDomainSensingPromptContent(
 	result: DomainSensingResult | null
 ): string | null {

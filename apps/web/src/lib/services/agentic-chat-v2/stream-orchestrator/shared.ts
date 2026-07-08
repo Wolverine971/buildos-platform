@@ -39,6 +39,9 @@ export type LLMStreamPassMetadata = {
 	promptTokens?: number;
 	completionTokens?: number;
 	totalTokens?: number;
+	attempts?: number;
+	streamRetryCount?: number;
+	lastStreamRetryError?: string;
 	forcedNoToolSynthesis?: boolean;
 	suppressedNoToolSynthesisToolCalls?: number;
 	// Reasoning channel counters (populated when the provider emits reasoning
