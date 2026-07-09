@@ -4,7 +4,7 @@
 
 Target: `/skills`, `/skills/[slug]`, `/skills/domain/[domain]`, `/skills/path/[path]`, and `/skills/try/[slug]`
 
-Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail template, Phase 3 domain rabbit-hole routes plus the first BuildOS try launcher, Phase 4 pack/stack path pages, and Phase 5 curated metadata registry.
+Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail template, Phase 3 domain rabbit-hole routes plus the first BuildOS try launcher, Phase 4 pack/stack path pages, Phase 5 curated metadata registry, Phase 6 generated gallery metadata sync, and Phase 7 production-preview visual verification.
 
 ## Regions
 
@@ -19,6 +19,7 @@ Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail templat
 - Pack/stack path hero, ordered stages, related domains, related paths, and agent rail
 - Try route redirect and chat draft handoff
 - Curated gallery metadata registry
+- Generated public catalog and `buildos.yaml` gallery metadata
 - Guest footer resource link
 
 ## Shipped Fixes
@@ -41,6 +42,8 @@ Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail templat
 - Icons are lucide exports from `$lib/icons/lucide.ts`, with fixed icon containers on repeated cards -> P9.
 - Gallery URL helpers live in `src/lib/skills/skill-gallery.ts`, so the gallery and detail route share one path model -> P3+P6.
 - Curated domain, pack, family, output-shape, workflow, guardrail, and starter-prompt metadata moved into `src/lib/skills/skill-gallery-metadata.ts`, while `skill-gallery.ts` keeps heuristic fallbacks for unregistered skills -> P3+P6.
+- Public skill index items and bundle `buildos.yaml` files now include a generated `gallery` block with display title, family, domain, output shapes, workflow, use cases, guardrails, starter prompts, and metadata source flags -> P4+P6.
+- The shared gallery helper prefers generated public metadata when present, then curated registry overrides, then runtime/slug fallbacks for incomplete future skills -> P3+P6.
 - `/skills/[slug]` now gives each skill a user-first detail page with visible use cases, prompts, workflow, boundaries, related skills, lineage, and agent artifacts -> P4+P8.
 - `/skills/domain/[domain]` gives each domain its own rabbit-hole page with local search, path steps, family sections, related packs/stacks, and 44px mobile controls -> P3+P7+P13.
 - `/skills/path/[path]` gives each pack or stack an ordered workflow page with stages, start-skill CTA, domain links, related paths, and agent file access -> P3+P4+P8+P13.
@@ -71,11 +74,15 @@ Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail templat
 - Live `/skills/domain/marketing-and-content` check: domain sidebar links to three relevant paths.
 - Live 390px path check: no horizontal overflow; all main controls remain at least 44px high.
 - Post-Phase-5 `pnpm run check` -> 0 errors, 0 warnings.
+- Post-Phase-6 `pnpm exec vitest run src/lib/server/agent-skills.test.ts` -> 12 tests passed.
+- Post-Phase-6 `pnpm run agent-skills:check` -> 8 skills, 13 public reference files, 0 errors, 0 warnings.
+- Post-Phase-6 `pnpm run check` -> 0 errors, 0 warnings.
+- Post-Phase-7 production preview visual matrix checked `/skills`, `/skills/cold-email-engagement-first-outreach`, `/skills/domain/marketing-and-content`, and `/skills/path/founder-content-pack` at 1280x720 and 390x844 in light and dark mode.
+- Post-Phase-7 matrix result: 16 route/theme/viewport checks, no horizontal overflow, no missing required copy, no undersized visible main controls, nonblank viewport screenshots, and theme toggle hydration confirmed.
+- Preview console review found no new gallery errors; stale dev-server `@fs` import errors were isolated to the earlier Vite dev-server tab.
 
 ## Deferred
 
-- Full screenshot verification in desktop and iPhone light/dark mode.
 - Authenticated end-to-end launcher smoke with a real signed-in session.
 - Optional nested skill URL shape if we later want `/skills/domain/[domain]/[skill]` aliases.
-- Generated gallery metadata sync from `buildos.yaml` or source skill manifests.
 - Full public coverage for runtime skills that do not yet have gallery-quality metadata.

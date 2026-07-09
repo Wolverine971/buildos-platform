@@ -82,17 +82,18 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'get_calendar_event_details',
 			description:
-				'Fetch detailed information for a calendar event. Use onto_event_id for ontology events or event_id for Google events.',
+				'Fetch detailed information for a calendar event. Use the onto_event_id UUID from list results for ontology events, or pass the external_event_id value as event_id for Google events.',
 			parameters: {
 				type: 'object',
 				properties: {
 					onto_event_id: {
 						type: 'string',
-						description: 'Ontology event id (preferred if available)'
+						description:
+							'Ontology event UUID (onto_event_id from list results; not the Google id)'
 					},
 					event_id: {
 						type: 'string',
-						description: 'Google event id (external)'
+						description: 'Google event id (external_event_id from list results)'
 					},
 					calendar_id: {
 						type: 'string',
@@ -184,11 +185,13 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 				properties: {
 					onto_event_id: {
 						type: 'string',
-						description: 'Ontology event id (preferred)'
+						description:
+							'Ontology event UUID (onto_event_id from list results; not the Google id)'
 					},
 					event_id: {
 						type: 'string',
-						description: 'Google event id. Alias: external_event_id.'
+						description:
+							'Google event id (external_event_id from list results). Alias: external_event_id.'
 					},
 					external_event_id: {
 						type: 'string',
@@ -252,11 +255,13 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 				properties: {
 					onto_event_id: {
 						type: 'string',
-						description: 'Ontology event id (preferred)'
+						description:
+							'Ontology event UUID (onto_event_id from list results; not the Google id)'
 					},
 					event_id: {
 						type: 'string',
-						description: 'Google event id. Alias: external_event_id.'
+						description:
+							'Google event id (external_event_id from list results). Alias: external_event_id.'
 					},
 					external_event_id: {
 						type: 'string',

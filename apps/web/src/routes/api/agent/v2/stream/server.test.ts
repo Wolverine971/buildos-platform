@@ -748,6 +748,125 @@ describe('/api/agent/v2/stream', () => {
 		});
 	});
 
+	it('merges loaded outcome-card gaps and used-domain signals into session metadata', async () => {
+		mocks.streamFastChat.mockImplementationOnce(async ({ onDelta }: Row) => {
+			await onDelta('Loaded the outcome card.');
+			return {
+				assistantText: 'Loaded the outcome card.',
+				finalAssistantText: 'Loaded the outcome card.',
+				usage: { total_tokens: 16 },
+				finishedReason: 'stop',
+				toolExecutions: [
+					{
+						toolCall: {
+							id: 'tool-call-outcome-card-1',
+							type: 'function',
+							function: {
+								name: 'outcome_card_load',
+								arguments: JSON.stringify({
+									id: 'newsletter_retention_review'
+								})
+							}
+						},
+						result: {
+							tool_call_id: 'tool-call-outcome-card-1',
+							success: true,
+							result: {
+								type: 'outcome_card',
+								id: 'newsletter_retention_review',
+								name: 'Newsletter Retention Review',
+								domain_ids: ['marketing.content_strategy'],
+								coverage_status: 'partial',
+								gaps: [
+									{
+										missing_skill_id: 'newsletter_retention_diagnostics',
+										user_need:
+											'diagnose retention and churn in a newsletter funnel',
+										summary:
+											'No dedicated newsletter retention diagnostics skill exists yet.'
+									}
+								]
+							}
+						}
+					}
+				],
+				llmPasses: [],
+				toolRounds: 1,
+				toolCallsMade: 1,
+				supervisorDecisions: [],
+				finalizationGuard: undefined,
+				cancelled: false,
+				peakPromptTokens: undefined,
+				finalContextUsage: undefined
+			};
+		});
+		const supabase = createStreamingSupabase();
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Load the newsletter retention review outcome card.',
+					context_type: 'global',
+					stream_run_id: 'stream-run-outcome-card-gap',
+					client_turn_id: 'client-turn-outcome-card-gap'
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		await response.text();
+
+		const domainStatePatches = supabase.rpc.mock.calls
+			.filter(([procedure, args]) => {
+				return (
+					procedure === 'merge_chat_session_agent_metadata' &&
+					Boolean(args?.p_patch?.fastchat_domain_state)
+				);
+			})
+			.map(([, args]) => args.p_patch.fastchat_domain_state);
+		const finalDomainState = domainStatePatches.at(-1);
+		expect(finalDomainState).toMatchObject({
+			used_domains: [
+				expect.objectContaining({
+					domain_id: 'marketing.content_strategy',
+					source: 'outcome_card_load',
+					tool_name: 'outcome_card_load',
+					outcome_card_id: 'newsletter_retention_review'
+				})
+			],
+			research_backlog: [
+				expect.objectContaining({
+					id: 'skill:newsletter_retention_diagnostics',
+					kind: 'skill',
+					priority: 'medium',
+					domain_ids: ['marketing.content_strategy'],
+					missing_skill_id: 'newsletter_retention_diagnostics'
+				})
+			]
+		});
+		expect(finalDomainState.coverage_gaps).toEqual([
+			expect.objectContaining({
+				missing_skill_id: 'newsletter_retention_diagnostics',
+				domain_ids: ['marketing.content_strategy']
+			})
+		]);
+		const toolSignalEvent = supabase.insertedRows.chat_turn_events?.find(
+			(row) => row.event_type === 'domain_tool_signals_merged'
+		);
+		expect(toolSignalEvent?.payload).toMatchObject({
+			used_domain_signal_count: 1,
+			loaded_outcome_card_gap_count: 1,
+			used_domain_ids: ['marketing.content_strategy'],
+			loaded_outcome_card_gap_ids: ['newsletter_retention_diagnostics']
+		});
+	});
+
 	it('does not consume a prepared prompt when turn admission loses the running-turn lock', async () => {
 		const preparedPrompt = buildPreparedPromptRow();
 		const supabase = createStreamingSupabase(
@@ -901,6 +1020,18 @@ describe('/api/agent/v2/stream', () => {
 				prepared_prompt_miss_reason: 'missing_key'
 			})
 		);
+		const event = supabase.insertedRows.chat_turn_events?.find(
+			(row) => row.event_type === 'prepared_prompt_cache_checked'
+		);
+		expect(event?.payload).toMatchObject({
+			prepared_prompt_requested: false,
+			prepared_prompt_hit: false,
+			prepared_prompt_miss_reason: 'missing_key',
+			prepared_prompt_id: null,
+			prepared_prompt_age_seconds: null,
+			requested_surface_profile: 'general',
+			diagnostics: null
+		});
 	});
 
 	it.each([
@@ -951,6 +1082,74 @@ describe('/api/agent/v2/stream', () => {
 		}
 	);
 
+	it('records stale prepared-prompt harness diagnostics in turn events', async () => {
+		const preparedPrompt = buildPreparedPromptRow();
+		mocks.selectFastChatTools.mockReturnValueOnce([
+			{
+				type: 'function',
+				function: {
+					name: 'get_workspace_overview',
+					description: 'Current description that was not in the prepared surface.',
+					parameters: { type: 'object', properties: {} }
+				}
+			}
+		]);
+		const supabase = createStreamingSupabase({
+			agentic_chat_prepared_prompts: [preparedPrompt.row]
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Hello',
+					context_type: 'global',
+					stream_run_id: 'stream-run-stale-harness',
+					client_turn_id: 'client-turn-stale-harness',
+					preparedPromptKey: preparedPrompt.key
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		await response.text();
+
+		const event = supabase.insertedRows.chat_turn_events?.find(
+			(row) => row.event_type === 'prepared_prompt_cache_checked'
+		);
+		expect(event?.payload).toMatchObject({
+			prepared_prompt_requested: true,
+			prepared_prompt_hit: false,
+			prepared_prompt_miss_reason: 'stale_harness',
+			prepared_prompt_id: preparedPrompt.row.id,
+			requested_surface_profile: 'general',
+			diagnostics: {
+				prepared_prompt_id: preparedPrompt.row.id,
+				requested_surface_profile: 'general',
+				surface_available: true,
+				prepared_tool_names: [],
+				actual_tool_names: ['get_workspace_overview'],
+				harness_match: false,
+				tool_names_match: false,
+				tool_definitions_match: false
+			}
+		});
+		expect(
+			supabase.updatedRows.chat_turn_runs?.find((row) => row.status === 'completed')
+		).toEqual(
+			expect.objectContaining({
+				cache_source: 'fresh_load',
+				prepared_prompt_hit: false,
+				prepared_prompt_miss_reason: 'stale_harness'
+			})
+		);
+	});
+
 	it('overlays current turn domain signals on a prepared prompt with stale domain sections', async () => {
 		const preparedPrompt = buildPreparedPromptRow();
 		preparedPrompt.row.prepared_surfaces.general = {
@@ -1000,6 +1199,9 @@ describe('/api/agent/v2/stream', () => {
 						'gtm-plan': 'short'
 					},
 					coverage_status: 'strong',
+					gaps: [],
+					gap_skill_ids: [],
+					gap_resource_ids: [],
 					load_hint: 'Load for launch plans.'
 				}
 			],

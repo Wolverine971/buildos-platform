@@ -55,4 +55,12 @@ export type LLMStreamPassMetadata = {
 	// it into delta.content instead. See the 2026-04-17 audit.
 	reasoningChannelChunks?: number;
 	reasoningChannelChars?: number;
+	// Pass-level timing telemetry. startedAtMs/durationMs cover the full pass
+	// wall-clock (including retry attempts); firstTokenAtMs/timeToFirstTokenMs
+	// track the first content signal (text delta, reasoning delta, or tool-call
+	// delta) from the SUCCESSFUL attempt's stream.
+	startedAtMs?: number;
+	firstTokenAtMs?: number | null;
+	durationMs?: number;
+	timeToFirstTokenMs?: number | null;
 };

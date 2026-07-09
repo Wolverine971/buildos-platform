@@ -16,16 +16,16 @@ The problems are not in the harness logic — they're in **latency** and a few *
 
 1. **Time-to-first-_token_ is the real UX weakness: p50 9.0s, p95 26s.** Harness overhead is negligible (context build p50 2ms, tool selection ~1ms). ~100% of latency is the LLM (`deepseek-v4-flash`, `balanced` profile, 15k median prompt tokens). The harness is fast; the model is slow.
 2. **A single LLM stream error kills the whole turn — no per-pass retry.** This was the highest-value robustness fix and is now fixed as of 2026-07-08.
-3. **Prewarm hit rate is only 28%** — the prepared-prompt optimization is mostly not landing (40% never triggered, 28% "stale_harness" rejection). The first `missing_key` race mitigation is now in place as of 2026-07-08; residual `stale_harness` should stay strict and be investigated with telemetry.
+3. **Prewarm hit rate is only 28%** — the prepared-prompt optimization is mostly not landing (40% never triggered, 28% "stale_harness" rejection). The first `missing_key` race mitigation is now in place as of 2026-07-08, and stale-harness diagnostics were added on 2026-07-09 while keeping strict rejection semantics.
 4. **No SSE heartbeat frames** on a path where p95 turn duration is 79s and max is 192s. This is now fixed as of 2026-07-08.
 5. **No per-pass LLM timeout** was leaving individual provider calls bounded only by the 285s turn timeout. This is now fixed as of 2026-07-08.
-6. Several smaller items remain: residual prewarm miss/staleness analysis and noisy skill recommendation lists. The finalization guard no-evidence telemetry gap is now fixed as of 2026-07-08, and the dead duplicate-code finding was rechecked against the current tree and is no longer present.
+6. Several smaller items remain: production follow-up on residual prewarm misses and synthesis-quality affordances. The finalization guard no-evidence telemetry gap is now fixed as of 2026-07-08, the skill recommendation list is capped, and the dead duplicate-code finding was rechecked against the current tree and is no longer present.
 
 Verdict on the three questions asked:
 
 - **Speed:** first byte is instant (6ms), first _token_ is slow (9s p50) — and that's the model, not the harness.
 - **Capability:** high. Edge-case and error tolerance is strong; the un-retried LLM stream error and unbounded per-pass LLM call gaps called out in this audit were fixed on 2026-07-08.
-- **Overall quality:** the skills and tool calls make sense; the architecture is sound. The first robustness wins — stream-error retry, SSE heartbeat keepalive, per-pass LLM timeout, and the first prewarm send-race mitigation — are now in place; the remaining biggest wins are latency (model/prewarm/prompt size) and synthesis-quality instrumentation.
+- **Overall quality:** the skills and tool calls make sense; the architecture is sound. The first robustness wins — stream-error retry, SSE heartbeat keepalive, per-pass LLM timeout, prewarm send-race mitigation, and stale-harness diagnostics — are now in place; the remaining biggest wins are latency (model/prewarm/prompt size) and synthesis-quality instrumentation.
 
 ### Implementation update — 2026-07-08
 
@@ -94,6 +94,19 @@ Verification:
 - `pnpm --dir apps/web exec vitest run src/lib/services/agentic-chat-v2/prepared-prompt-cache.test.ts src/lib/services/agentic-chat-v2/prepared-prompt-consumer.test.ts`
 - `pnpm --dir apps/web run check`
 
+Follow-up telemetry for prioritized fix #5 was added on 2026-07-09 in `apps/web/src/lib/services/agentic-chat-v2/prepared-prompt-cache.ts`, `apps/web/src/lib/services/agentic-chat-v2/prepared-prompt-consumer.ts`, `apps/web/src/lib/services/agentic-chat-v2/turn-observability-writer.ts`, and `apps/web/src/routes/api/agent/v2/stream/+server.ts`. Stale prepared prompts are still rejected strictly, but misses now carry compact diagnostics: prepared vs. actual harness hash, tool-name hash, tool-definition hash, surface profile, surface availability, and prompt/surface age. The stream route also records a durable `prepared_prompt_cache_checked` turn event and attaches `prepared_prompt_miss_diagnostics` to timing/prompt-snapshot metadata, so production analysis can separate real surface drift from tool-definition churn before any tolerance policy changes.
+
+Bug-check notes from the 2026-07-09 review:
+
+- `prepared_prompt_cache_checked` is emitted for both absent prepared-prompt keys (`missing_key`) and presented keys that miss, so the original "never triggered" class remains measurable after the client handoff mitigation.
+- The new diagnostics persist hashes, tool names, surface profile, and age metadata only; cached system-prompt text and full tool definitions are not copied into turn events or timing metadata.
+- `isPreparedPromptSurfaceCurrent` still resolves to strict harness-hash equality. The telemetry path adds explanation for rejects, not a fallback path that can accept stale prompts.
+
+Verification:
+
+- `pnpm --dir apps/web exec vitest run src/lib/services/agentic-chat-v2/prepared-prompt-consumer.test.ts src/lib/services/agentic-chat-v2/prepared-prompt-cache.test.ts src/lib/services/agentic-chat-v2/turn-observability-writer.test.ts src/routes/api/agent/v2/stream/server.test.ts`
+- `pnpm --dir apps/web run check`
+
 Prioritized fix #7 is fixed in `apps/web/src/lib/services/agentic-chat-v2/turn-supervisor/finalization-guard.ts` and `apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/finalization-runner.ts`. When the guard reaches the generic no-evidence read fallback (`"turn ended before a final response was produced"`), it now carries `finishedReason: 'synthesis_empty'`, and terminal finalization adopts that reason when the turn would otherwise finish as `stop`.
 
 Guardrails added with the fix:
@@ -155,6 +168,8 @@ Verification:
 
 - `pnpm --dir apps/web exec vitest run src/lib/services/agentic-chat-v2/model-tiering.test.ts src/lib/services/agentic-chat-v2/stream-orchestrator/llm-pass-runner.test.ts src/lib/services/agentic-chat-v2/stream-orchestrator.test.ts`
 - `pnpm --dir packages/smart-llm test -- --runInBand`
+- `pnpm --dir packages/smart-llm typecheck`
+- `pnpm --dir apps/web run check`
 
 ---
 
@@ -249,7 +264,7 @@ The harness adds ~single-digit-ms of overhead. The 9s p50 / 26s p95 to first tok
 When prewarm _is_ triggered, ~28% of the time the prepared prompt is rejected because its tool-surface/context signature no longer matches the actual turn (`isPreparedPromptSurfaceCurrent` fails). This happens because the surface profile is routed from the **user message** (`resolveFastChatSurfaceProfileForTurn` keyword-matches "draft/update/save" → `project_write`/`project_document`), but prewarm runs before the message is known, so it prewarms the default surface and the real turn picks a different one. And 40% of turns send no `preparedPromptKey` at all.
 **Impact:** context build is already ~2ms on a session-cache hit, so the wall-clock savings are modest — but the prompt-snapshot + system-prompt assembly is skipped on a true hit. **Fix options:** (a) prewarm _all_ plausible surfaces for the context, not just the default; (b) make the surface-signature check tolerant of the discovery-tool subset (writes materialize on-demand anyway, so a launch-surface match should suffice); (c) instrument _why_ `missing_key` is 40% — is the client not calling `/v2/prewarm` on focus, or racing the send?
 
-**Status:** Partially mitigated 2026-07-08. The current server implementation was rechecked and already prepares all plausible project surfaces for project/ontology contexts, so user-message routing to `project_write`, `project_document`, or `project_write_document` should not by itself cause a surface miss. The client now waits up to `250ms` for an already in-flight same-key prepared prompt before sending, which directly targets the send-before-prewarm-response `missing_key` race. The `stale_harness` fingerprint remains strict by design; residual staleness should be investigated with telemetry before relaxing any signature check.
+**Status:** Partially mitigated 2026-07-08; telemetry follow-up added 2026-07-09. The current server implementation was rechecked and already prepares all plausible project surfaces for project/ontology contexts, so user-message routing to `project_write`, `project_document`, or `project_write_document` should not by itself cause a surface miss. The client now waits up to `250ms` for an already in-flight same-key prepared prompt before sending, which directly targets the send-before-prewarm-response `missing_key` race. The `stale_harness` fingerprint remains strict by design, and residual staleness now emits hash-level diagnostics before any signature relaxation is considered.
 
 ### P2 — No SSE heartbeat frames on a path with 79s p95 / 192s max turns
 
@@ -319,14 +334,14 @@ The `llm_usage_logs` max response_time of ~25 min indicates at least one provide
 | 2   | **Add SSE `:ping` heartbeat** (~12s) for the turn duration — fixed 2026-07-08                                                                                          | S      | High — eliminates idle-timeout stream drops     |
 | 3   | **Delete dead block** `+server.ts:2995-3003` — rechecked 2026-07-08; duplicate block is no longer present                                                              | XS     | Low (hygiene)                                   |
 | 4   | **Per-pass LLM timeout** (~60s) composed with the turn signal — fixed 2026-07-08                                                                                       | S      | Medium — fail-fast + recover with #1            |
-| 5   | **Investigate `missing_key` 40% + `stale_harness` 28%** in prewarm; initial same-key send-race mitigation shipped 2026-07-08, residual staleness still needs telemetry | M      | Medium — recover the prewarm win                |
+| 5   | **Investigate `missing_key` 40% + `stale_harness` 28%** in prewarm; same-key send-race mitigation shipped 2026-07-08 and stale-harness diagnostics shipped 2026-07-09 | M      | Medium — recover the prewarm win                |
 | 6   | **First-token affordance**: emit a visible planning cue on first tool_call, not only on sentence-completion                                                            | S      | Medium — perceived latency                      |
 | 7   | **Tag no-evidence finalization** with a distinct `finished_reason` (not `stop`) — fixed 2026-07-08                                                                     | XS     | Medium — stop masking non-answers as success    |
 | 8   | **Cap skill-gate surfaced list to top-3 + lead with `default_skill_id`** — fixed 2026-07-08                                                                            | S      | Medium — better skill selection on a weak model |
 | 9   | **Narrow ontology context** after a turn focuses on an entity — fixed 2026-07-08                                                                                       | M      | Medium — prompt-size / latency                  |
-| 10  | **Per-pass model tiering** (fast first-token model for route/plan pass) — deterministic A/B implemented 2026-07-08                                                    | M      | Medium — first-token latency                    |
+| 10  | **Per-pass model tiering** (fast first-token model for route/plan pass) — deterministic A/B implemented 2026-07-08                                                     | M      | Medium — first-token latency                    |
 
-**Next:** Continue #5 from production telemetry: confirm whether `missing_key` drops after the client handoff, then inspect remaining `stale_harness` rows by `prepared_prompt_surface_profile`, harness/tool fingerprint age, and cache source before changing any signature tolerance.
+**Next:** Continue #5 from production telemetry: confirm whether `missing_key` drops after the client handoff, then inspect `prepared_prompt_cache_checked` events for remaining `stale_harness` rows by surface profile, prompt/surface age, and prepared-vs-actual harness/tool hashes before changing any signature tolerance.
 
 ---
 

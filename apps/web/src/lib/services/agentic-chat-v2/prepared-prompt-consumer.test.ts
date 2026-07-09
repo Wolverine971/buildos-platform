@@ -189,18 +189,39 @@ describe('consumePreparedPrompt', () => {
 		const preparedPrompt = buildPreparedPromptRow({ tools: preparedTools });
 		const mock = createSupabaseMock({ row: preparedPrompt.row });
 
-		await expect(
-			consumePreparedPrompt({
-				supabase: mock.supabase as any,
-				key: preparedPrompt.key,
-				userId: 'user-1',
-				sessionId: 'session-1',
-				cacheKey: 'v2|global|none|none|none',
-				surfaceProfile: 'global_basic',
-				contextType: 'global',
-				tools: currentTools
-			})
-		).resolves.toEqual({ hit: false, reason: 'stale_harness' });
+		const result = await consumePreparedPrompt({
+			supabase: mock.supabase as any,
+			key: preparedPrompt.key,
+			userId: 'user-1',
+			sessionId: 'session-1',
+			cacheKey: 'v2|global|none|none|none',
+			surfaceProfile: 'global_basic',
+			contextType: 'global',
+			tools: currentTools
+		});
+
+		expect(result).toMatchObject({
+			hit: false,
+			reason: 'stale_harness',
+			diagnostics: {
+				prepared_prompt_id: preparedPrompt.row.id,
+				requested_surface_profile: 'global_basic',
+				default_surface_profile: 'global_basic',
+				prepared_surface_profiles: ['global_basic'],
+				surface_available: true,
+				prepared_tool_names: ['get_workspace_overview'],
+				actual_tool_names: ['get_workspace_overview'],
+				harness_match: false,
+				tool_names_match: true,
+				tool_definitions_match: false
+			}
+		});
+		if (result.hit) return;
+		expect(result.diagnostics?.prepared_harness_sha256).toEqual(expect.any(String));
+		expect(result.diagnostics?.actual_harness_sha256).toEqual(expect.any(String));
+		expect(result.diagnostics?.prepared_tool_definitions_sha256).not.toBe(
+			result.diagnostics?.actual_tool_definitions_sha256
+		);
 		expect(mock.updatePatches).toEqual([]);
 	});
 });

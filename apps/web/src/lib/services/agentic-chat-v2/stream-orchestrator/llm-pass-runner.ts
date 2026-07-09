@@ -73,6 +73,7 @@ export async function runLlmStreamPass(params: {
 		params.modelRouting?.models && params.modelRouting.models.length > 0
 			? params.modelRouting.models
 			: undefined;
+	const startedAtMs = Date.now();
 
 	for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
 		let assistantBuffer = '';
@@ -83,11 +84,13 @@ export async function runLlmStreamPass(params: {
 		let usage = params.usage;
 		let finishedReason: string | undefined;
 		let llmDoneReceived = false;
+		let firstTokenAtMs: number | null = null;
 		const metadata = createPassMetadata(
 			params.passNumber,
 			params.noToolSynthesisPass,
 			params.modelRouting
 		);
+		metadata.startedAtMs = startedAtMs;
 		if (attempt > 1) {
 			metadata.attempts = attempt;
 			metadata.streamRetryCount = attempt - 1;
@@ -143,10 +146,12 @@ export async function runLlmStreamPass(params: {
 				signal: passAbortSignal.signal
 			})) {
 				if (event.type === 'text' && event.content) {
+					if (firstTokenAtMs === null) firstTokenAtMs = Date.now();
 					assistantBuffer += event.content;
 					params.onAssistantBufferChange(assistantBuffer);
 					await params.tryEmitEarlyAssistantLeadIn(assistantBuffer);
 				} else if (event.type === 'reasoning') {
+					if (firstTokenAtMs === null) firstTokenAtMs = Date.now();
 					const reasoningEvent = event as SmartLlmStreamEvent & {
 						reasoning?: string;
 						reasoning_details?: unknown[];
@@ -174,6 +179,7 @@ export async function runLlmStreamPass(params: {
 					metadata.reasoningChannelChars =
 						(metadata.reasoningChannelChars ?? 0) + reasoningLen;
 				} else if (event.type === 'tool_call' && event.tool_call) {
+					if (firstTokenAtMs === null) firstTokenAtMs = Date.now();
 					const normalizedToolCall = normalizeToolCallDefaults(
 						event.tool_call,
 						params.projectId ?? undefined
@@ -248,6 +254,10 @@ export async function runLlmStreamPass(params: {
 			}
 			throw missingDoneError;
 		}
+
+		metadata.firstTokenAtMs = firstTokenAtMs;
+		metadata.timeToFirstTokenMs = firstTokenAtMs !== null ? firstTokenAtMs - startedAtMs : null;
+		metadata.durationMs = Date.now() - startedAtMs;
 
 		await params.observeSupervisor({
 			type: 'llm_pass_completed',

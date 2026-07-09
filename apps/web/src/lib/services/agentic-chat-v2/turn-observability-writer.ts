@@ -54,6 +54,7 @@ export type TurnObservabilityTimingState = {
 	preparedPromptRequested: boolean;
 	preparedPromptHit: boolean;
 	preparedPromptMissReason: string | null;
+	preparedPromptMissDiagnostics: Json | null;
 	preparedPromptId: string | null;
 	preparedPromptAgeSeconds: number | null;
 	preparedSurfaceProfile: string | null;
@@ -347,6 +348,7 @@ export class TurnObservabilityWriter {
 				prepared_prompt_requested: timingState.preparedPromptRequested,
 				prepared_prompt_hit: timingState.preparedPromptHit,
 				prepared_prompt_miss_reason: timingState.preparedPromptMissReason,
+				prepared_prompt_miss_diagnostics: timingState.preparedPromptMissDiagnostics,
 				prepared_prompt_id: timingState.preparedPromptId,
 				prepared_prompt_age_seconds: timingState.preparedPromptAgeSeconds,
 				prepared_prompt_surface_profile: timingState.preparedSurfaceProfile,

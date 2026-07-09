@@ -43,6 +43,9 @@ function buildSkillGateFixture(): DomainSensingResult {
 					story_driven_content_craft: 'full'
 				},
 				coverage_status: 'strong',
+				gaps: [],
+				gap_skill_ids: [],
+				gap_resource_ids: [],
 				load_hint: 'Use for strategy.'
 			},
 			{
@@ -59,6 +62,9 @@ function buildSkillGateFixture(): DomainSensingResult {
 					viral_video_script_structure: 'full'
 				},
 				coverage_status: 'strong',
+				gaps: [],
+				gap_skill_ids: [],
+				gap_resource_ids: [],
 				load_hint: 'Use for hooks.'
 			}
 		],
@@ -106,7 +112,8 @@ describe('domain sensing', () => {
 			default_skill_id: 'content_strategy_beyond_blogging',
 			skill_load_formats: {
 				content_strategy_beyond_blogging: 'full'
-			}
+			},
+			gap_skill_ids: expect.arrayContaining(['youtube_channel_diagnostics'])
 		});
 		expect(result?.coverage_gap_skill_ids).toContain('youtube_channel_diagnostics');
 	});

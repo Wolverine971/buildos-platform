@@ -132,6 +132,7 @@ function buildTimingState(overrides: Partial<TurnObservabilityTimingState> = {})
 		preparedPromptRequested: false,
 		preparedPromptHit: false,
 		preparedPromptMissReason: 'missing_key',
+		preparedPromptMissDiagnostics: null,
 		preparedPromptId: null,
 		preparedPromptAgeSeconds: null,
 		preparedSurfaceProfile: 'global_default',

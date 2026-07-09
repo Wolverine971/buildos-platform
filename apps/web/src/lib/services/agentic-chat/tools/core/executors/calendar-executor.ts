@@ -260,6 +260,22 @@ export class CalendarExecutor extends BaseExecutor {
 		return value;
 	}
 
+	// Mutations stay strict about onto vs Google ids: deleting/updating through the
+	// Google path when the model meant a synced ontology event would leave the onto
+	// row behind, so a wrong-field id gets a corrective error instead of a fallback.
+	private requireOntoEventUuid(value: unknown, action: 'update' | 'delete'): string | undefined {
+		const raw = this.getStringArg(value);
+		if (!raw) {
+			return undefined;
+		}
+		if (!isValidUUID(raw)) {
+			throw new Error(
+				`Invalid onto_event_id: expected the UUID from list_calendar_events results. '${raw}' looks like a Google Calendar event id — pass it as event_id to ${action} the Google event, or use the event's onto_event_id UUID to ${action} the ontology event.`
+			);
+		}
+		return raw;
+	}
+
 	private normalizeListCalendarScope(rawScope: unknown, fallback: CalendarScope): CalendarScope {
 		if (typeof rawScope !== 'string') {
 			return fallback;
@@ -717,21 +733,28 @@ export class CalendarExecutor extends BaseExecutor {
 	}
 
 	async getCalendarEventDetails(args: GetCalendarEventDetailsArgs) {
-		if (args.onto_event_id) {
-			const ontoEventId = this.getUuidArg('onto_event_id', args.onto_event_id);
-			if (!ontoEventId) {
-				throw new Error('onto_event_id is required for ontology event lookup');
+		// Models routinely pass the Google event id from list_calendar_events'
+		// external_event_id as onto_event_id. A non-UUID value cannot reference an
+		// ontology event, so route it to the Google lookup instead of failing the round.
+		const rawOntoEventId = this.getStringArg(args.onto_event_id);
+		let googleEventIdFromOntoArg: string | undefined;
+		if (rawOntoEventId) {
+			if (isValidUUID(rawOntoEventId)) {
+				const event = await this.eventSyncService.getEvent(rawOntoEventId, this.userId);
+				if (!event) {
+					throw new Error('Event not found');
+				}
+				return { source: 'ontology', event };
 			}
-			const event = await this.eventSyncService.getEvent(ontoEventId, this.userId);
-			if (!event) {
-				throw new Error('Event not found');
-			}
-			return { source: 'ontology', event };
+			googleEventIdFromOntoArg = rawOntoEventId;
 		}
 
-		const eventId = this.getStringArg(args.event_id, args.external_event_id);
+		const eventId =
+			this.getStringArg(args.event_id, args.external_event_id) ?? googleEventIdFromOntoArg;
 		if (!eventId) {
-			throw new Error('event_id is required for Google event lookup');
+			throw new Error(
+				'Provide onto_event_id (the UUID from list_calendar_events results) or event_id (the external_event_id value for Google events).'
+			);
 		}
 
 		const calendarId = await this.resolveCalendarIdForScope({
@@ -940,7 +963,7 @@ export class CalendarExecutor extends BaseExecutor {
 
 	async updateCalendarEvent(args: UpdateCalendarEventArgs) {
 		if (args.onto_event_id) {
-			const ontoEventId = this.getUuidArg('onto_event_id', args.onto_event_id);
+			const ontoEventId = this.requireOntoEventUuid(args.onto_event_id, 'update');
 			if (!ontoEventId) {
 				throw new Error('onto_event_id is required for ontology event update');
 			}
@@ -1118,7 +1141,7 @@ export class CalendarExecutor extends BaseExecutor {
 
 	async deleteCalendarEvent(args: DeleteCalendarEventArgs) {
 		if (args.onto_event_id) {
-			const ontoEventId = this.getUuidArg('onto_event_id', args.onto_event_id);
+			const ontoEventId = this.requireOntoEventUuid(args.onto_event_id, 'delete');
 			if (!ontoEventId) {
 				throw new Error('onto_event_id is required for ontology event delete');
 			}

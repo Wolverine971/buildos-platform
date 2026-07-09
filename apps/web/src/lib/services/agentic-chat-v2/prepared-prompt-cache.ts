@@ -51,6 +51,14 @@ export type PreparedPromptSurface = {
 	created_at: string;
 };
 
+export type PreparedPromptSurfaceCurrentInspection = {
+	current: boolean;
+	actual_tool_names: string[];
+	actual_tools_sha256: string | null;
+	actual_tool_definitions_sha256: string | null;
+	actual_harness_sha256: string;
+};
+
 export type PreparedPromptResponse = {
 	id: string;
 	key: string;
@@ -322,15 +330,32 @@ export function isPreparedPromptSurfaceCurrent(params: {
 	conversationSummary?: string | null;
 	tools: ChatToolDefinition[];
 }): boolean {
-	return (
-		params.surface.harness_sha256 ===
-		buildPreparedPromptHarnessSha({
-			contextType: params.contextType,
-			contextPayload: params.contextPayload,
-			conversationSummary: params.conversationSummary ?? null,
-			tools: params.tools
-		})
-	);
+	return inspectPreparedPromptSurfaceCurrent(params).current;
+}
+
+export function inspectPreparedPromptSurfaceCurrent(params: {
+	surface: PreparedPromptSurface;
+	contextType: ChatContextType;
+	contextPayload: Record<string, unknown>;
+	conversationSummary?: string | null;
+	tools: ChatToolDefinition[];
+}): PreparedPromptSurfaceCurrentInspection {
+	const actualToolNames = params.tools
+		.map((tool) => tool.function?.name)
+		.filter((name): name is string => Boolean(name));
+	const actualHarnessSha256 = buildPreparedPromptHarnessSha({
+		contextType: params.contextType,
+		contextPayload: params.contextPayload,
+		conversationSummary: params.conversationSummary ?? null,
+		tools: params.tools
+	});
+	return {
+		current: params.surface.harness_sha256 === actualHarnessSha256,
+		actual_tool_names: actualToolNames,
+		actual_tools_sha256: actualToolNames.length > 0 ? sha256Json(actualToolNames) : null,
+		actual_tool_definitions_sha256: sha256ToolDefinitions(params.tools),
+		actual_harness_sha256: actualHarnessSha256
+	};
 }
 
 export function buildPreparedPromptResponse(params: {

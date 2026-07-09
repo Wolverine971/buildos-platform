@@ -129,6 +129,14 @@ describe('runLlmStreamPass', () => {
 			reasoningChannelChunks: 1,
 			reasoningChannelChars: 'hidden chain'.length + 'hidden details'.length
 		});
+		expect(typeof result.metadata.startedAtMs).toBe('number');
+		expect(typeof result.metadata.durationMs).toBe('number');
+		expect(result.metadata.durationMs).toBeGreaterThanOrEqual(0);
+		expect(typeof result.metadata.timeToFirstTokenMs).toBe('number');
+		expect(result.metadata.timeToFirstTokenMs).toBeGreaterThanOrEqual(0);
+		expect(result.metadata.firstTokenAtMs).toBe(
+			result.metadata.startedAtMs! + result.metadata.timeToFirstTokenMs!
+		);
 		expect(params.onAssistantBufferChange).toHaveBeenCalledWith('Thinking out loud.');
 		expect(params.tryEmitEarlyAssistantLeadIn).toHaveBeenCalledWith('Thinking out loud.');
 		expect(params.onPendingToolCallCountChange).toHaveBeenCalledWith(1);
@@ -255,6 +263,14 @@ describe('runLlmStreamPass', () => {
 		expect(params.onAssistantBufferChange).toHaveBeenCalledWith('');
 		expect(params.onPendingToolCallCountChange).toHaveBeenCalledWith(0);
 		expect(clearHeartbeat).toHaveBeenCalledTimes(2);
+		expect(typeof result.metadata.startedAtMs).toBe('number');
+		expect(typeof result.metadata.durationMs).toBe('number');
+		expect(result.metadata.timeToFirstTokenMs).toBeGreaterThanOrEqual(0);
+		// The first attempt's discarded text must not count toward first-token
+		// timing; only the successful (retried) attempt's first content counts.
+		expect(result.metadata.firstTokenAtMs).toBe(
+			result.metadata.startedAtMs! + result.metadata.timeToFirstTokenMs!
+		);
 	});
 
 	it('does not retry non-transient stream errors', async () => {

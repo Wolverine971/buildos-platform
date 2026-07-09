@@ -5,8 +5,8 @@ import type { GatewaySurfaceProfileName } from '$lib/services/agentic-chat/tools
 import { resolveCacheAgeSeconds } from './context-cache-routing';
 import {
 	getPreparedPromptSurface,
+	inspectPreparedPromptSurfaceCurrent,
 	isPreparedPromptPrewarmEnabled,
-	isPreparedPromptSurfaceCurrent,
 	parsePreparedPromptKey,
 	verifyPreparedPromptNonce,
 	type PreparedPromptCacheMissReason,
@@ -15,6 +15,29 @@ import {
 } from './prepared-prompt-cache';
 
 type FastChatSupabaseClient = SupabaseClient<Database>;
+
+export type PreparedPromptConsumeMissDiagnostics = {
+	prepared_prompt_id?: string;
+	prepared_prompt_age_seconds?: number;
+	prepared_prompt_created_at?: string;
+	default_surface_profile?: GatewaySurfaceProfileName;
+	requested_surface_profile: GatewaySurfaceProfileName;
+	prepared_surface_profiles?: string[];
+	surface_available?: boolean;
+	surface_created_at?: string;
+	surface_age_seconds?: number;
+	prepared_tool_names?: string[];
+	actual_tool_names?: string[];
+	prepared_tools_sha256?: string | null;
+	actual_tools_sha256?: string | null;
+	prepared_tool_definitions_sha256?: string | null;
+	actual_tool_definitions_sha256?: string | null;
+	prepared_harness_sha256?: string | null;
+	actual_harness_sha256?: string | null;
+	harness_match?: boolean;
+	tool_names_match?: boolean;
+	tool_definitions_match?: boolean;
+};
 
 export type PreparedPromptConsumeResult =
 	| {
@@ -26,6 +49,7 @@ export type PreparedPromptConsumeResult =
 	| {
 			hit: false;
 			reason: PreparedPromptCacheMissReason;
+			diagnostics?: PreparedPromptConsumeMissDiagnostics;
 	  };
 
 export async function consumePreparedPrompt(params: {
@@ -76,23 +100,39 @@ export async function consumePreparedPrompt(params: {
 		return { hit: false, reason: 'session_mismatch' };
 	}
 	if (row.cache_key !== params.cacheKey) {
-		return { hit: false, reason: 'scope_mismatch' };
+		return {
+			hit: false,
+			reason: 'scope_mismatch',
+			diagnostics: buildPreparedPromptRowDiagnostics({ row, params })
+		};
 	}
 
 	const surface = getPreparedPromptSurface(row, params.surfaceProfile);
 	if (!surface) {
-		return { hit: false, reason: 'surface_missing' };
+		return {
+			hit: false,
+			reason: 'surface_missing',
+			diagnostics: buildPreparedPromptRowDiagnostics({ row, params })
+		};
 	}
-	if (
-		!isPreparedPromptSurfaceCurrent({
-			surface,
-			contextType: params.contextType,
-			contextPayload: row.context_payload,
-			conversationSummary: row.conversation_summary ?? null,
-			tools: params.tools
-		})
-	) {
-		return { hit: false, reason: 'stale_harness' };
+	const surfaceInspection = inspectPreparedPromptSurfaceCurrent({
+		surface,
+		contextType: params.contextType,
+		contextPayload: row.context_payload,
+		conversationSummary: row.conversation_summary ?? null,
+		tools: params.tools
+	});
+	if (!surfaceInspection.current) {
+		return {
+			hit: false,
+			reason: 'stale_harness',
+			diagnostics: buildPreparedPromptRowDiagnostics({
+				row,
+				params,
+				surface,
+				surfaceInspection
+			})
+		};
 	}
 
 	const consumedAt = new Date().toISOString();
@@ -119,5 +159,54 @@ export async function consumePreparedPrompt(params: {
 		},
 		surface,
 		ageSeconds: resolveCacheAgeSeconds(row.created_at)
+	};
+}
+
+function buildPreparedPromptRowDiagnostics(params: {
+	row: PreparedPromptRow;
+	params: {
+		surfaceProfile: GatewaySurfaceProfileName;
+		tools: ChatToolDefinition[];
+	};
+	surface?: PreparedPromptSurface | null;
+	surfaceInspection?: ReturnType<typeof inspectPreparedPromptSurfaceCurrent>;
+}): PreparedPromptConsumeMissDiagnostics {
+	const surfaceProfiles = Object.keys(params.row.prepared_surfaces ?? {});
+	const surface =
+		params.surface ?? getPreparedPromptSurface(params.row, params.params.surfaceProfile);
+	const ageSeconds = resolveCacheAgeSeconds(params.row.created_at);
+	const surfaceAgeSeconds = surface?.created_at
+		? resolveCacheAgeSeconds(surface.created_at)
+		: undefined;
+	const inspection = params.surfaceInspection;
+	return {
+		prepared_prompt_id: params.row.id,
+		prepared_prompt_age_seconds: ageSeconds,
+		prepared_prompt_created_at: params.row.created_at,
+		default_surface_profile: params.row.default_surface_profile,
+		requested_surface_profile: params.params.surfaceProfile,
+		prepared_surface_profiles: surfaceProfiles,
+		surface_available: Boolean(surface),
+		...(surface?.created_at ? { surface_created_at: surface.created_at } : {}),
+		...(surfaceAgeSeconds !== undefined ? { surface_age_seconds: surfaceAgeSeconds } : {}),
+		...(surface ? { prepared_tool_names: surface.tool_names } : {}),
+		...(inspection ? { actual_tool_names: inspection.actual_tool_names } : {}),
+		...(surface ? { prepared_tools_sha256: surface.tools_sha256 } : {}),
+		...(inspection ? { actual_tools_sha256: inspection.actual_tools_sha256 } : {}),
+		...(surface ? { prepared_tool_definitions_sha256: surface.tool_definitions_sha256 } : {}),
+		...(inspection
+			? { actual_tool_definitions_sha256: inspection.actual_tool_definitions_sha256 }
+			: {}),
+		...(surface ? { prepared_harness_sha256: surface.harness_sha256 } : {}),
+		...(inspection ? { actual_harness_sha256: inspection.actual_harness_sha256 } : {}),
+		...(surface && inspection
+			? {
+					harness_match: surface.harness_sha256 === inspection.actual_harness_sha256,
+					tool_names_match: surface.tools_sha256 === inspection.actual_tools_sha256,
+					tool_definitions_match:
+						surface.tool_definitions_sha256 ===
+						inspection.actual_tool_definitions_sha256
+				}
+			: {})
 	};
 }

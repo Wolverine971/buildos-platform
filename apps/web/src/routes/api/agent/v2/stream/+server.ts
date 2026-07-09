@@ -33,7 +33,6 @@ import type { OpenRouterContentPart } from '$lib/services/openrouter-v2/types';
 import type {
 	ChatContextType,
 	ChatToolCall,
-	ChatToolDefinition,
 	ChatToolResult,
 	ContextShiftPayload,
 	ContextUsageSnapshot,
@@ -42,7 +41,7 @@ import type {
 	AgentTimingSummary
 } from '@buildos/shared-types';
 import type { ServiceContext, ToolExecutionResult } from '$lib/services/agentic-chat/shared/types';
-import type { AgentState, ProjectFocus } from '$lib/types/agent-chat-enhancement';
+import type { AgentState } from '$lib/types/agent-chat-enhancement';
 import {
 	buildEmptyAgentState,
 	sanitizeAgentStateForPrompt
@@ -50,7 +49,6 @@ import {
 import {
 	buildPersistedToolTrace,
 	buildPersistedToolTraceSummary,
-	extractToolOpFromToolCall,
 	previewToolArguments
 } from '$lib/services/agentic-chat-v2/tool-trace';
 import {
@@ -58,18 +56,22 @@ import {
 	maybeInjectProjectId
 } from '$lib/services/agentic-chat-v2/tool-project-id';
 import {
+	buildToolExecutionContextScope,
+	buildToolExecutionOntologyContext,
+	buildToolExecutionProjectFocus,
+	type FastChatResolvedPromptContext
+} from '$lib/services/agentic-chat-v2/tool-execution-context';
+import {
 	checkDailyBriefAccess,
 	checkProjectAccess
 } from '$lib/services/agentic-chat-v2/access-checks';
 import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
 import { ToolExecutionService } from '$lib/services/agentic-chat/execution/tool-execution-service';
-import { getToolCategory } from '$lib/services/agentic-chat/tools/core/tools.config';
 import {
 	isSearchTool,
 	searchToolFamily,
 	searchTelemetryColumns
 } from '$lib/services/agentic-chat/tools/core/search-telemetry';
-import { extractAffectedEntitiesFromToolExecution } from '$lib/components/agent/agent-chat-timeline';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	AgentStateReconciliationService,
@@ -112,7 +114,15 @@ import {
 	type ValidatedChatAttachments
 } from '$lib/services/agentic-chat-v2/stream-attachments';
 import type { FastChatHistoryCompositionResult } from '$lib/services/agentic-chat-v2/history-composer';
-import type { LLMStreamPassMetadata } from '$lib/services/agentic-chat-v2/stream-orchestrator/shared';
+import {
+	buildLLMPassSummary,
+	buildToolMessageSnapshotsForReconciliation,
+	buildToolResultSummaries,
+	emitToolResult,
+	parseToolArgumentsForPersistence,
+	persistIncrementalToolExecutionRow,
+	persistToolExecutionRows
+} from '$lib/services/agentic-chat-v2/turn-persistence';
 import {
 	applyActiveDomainSignalsOverlay,
 	buildLitePromptEnvelope,
@@ -127,12 +137,16 @@ import {
 	senseDomains
 } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
 import {
+	deriveLoadedOutcomeCardGapSignalsFromToolExecutions,
 	getActiveDomainIds,
 	getActiveOutcomeCardIds,
 	getNewDomainResearchBacklogEntries,
 	mergeDomainSessionState,
+	mergeLoadedOutcomeCardGapsIntoSessionState,
+	mergeUsedDomainSignalsIntoSessionState,
 	readDomainSessionState
 } from '$lib/services/agentic-chat/tools/domains/domain-session-state';
+import { deriveUsedDomainSignalsFromToolExecutions } from '$lib/services/agentic-chat/tools/domains/domain-used-signals';
 import { buildEntityResolutionHint } from '$lib/services/agentic-chat-v2/entity-resolution';
 import {
 	buildLastTurnContext,
@@ -171,7 +185,10 @@ import {
 	type PreparedPromptCacheMissReason,
 	type PreparedPromptSectionSummary
 } from '$lib/services/agentic-chat-v2/prepared-prompt-cache';
-import { consumePreparedPrompt } from '$lib/services/agentic-chat-v2/prepared-prompt-consumer';
+import {
+	consumePreparedPrompt,
+	type PreparedPromptConsumeMissDiagnostics
+} from '$lib/services/agentic-chat-v2/prepared-prompt-consumer';
 import {
 	normalizePreparedHistoryForModel,
 	normalizePreparedHistoryStrategy
@@ -194,8 +211,7 @@ import {
 	emitContextUsage,
 	emitSkillActivity,
 	emitToolCall,
-	extractContextShiftPayload,
-	type AgentChatSSEStream
+	extractContextShiftPayload
 } from '$lib/services/agentic-chat-v2/stream-events';
 import {
 	buildCheckpointResumeSystemMessage,
@@ -349,66 +365,8 @@ const FASTCHAT_LIVE_VISION_SIGNED_URL_TTL_SECONDS = parsePositiveInt(
 );
 const FASTCHAT_CHAT_ATTACHMENT_STORAGE_BUCKET = 'onto-assets';
 const FASTCHAT_TEMP_ATTACHMENT_PATH_PREFIX = 'users';
-const TOOL_RESULT_STREAM_EVENTS_PREVIEW_LIMIT = 8;
-const TOOL_RESULT_STREAM_EVENTS_PREVIEW_MAX_STRING_LENGTH = 240;
-const TOOL_RESULT_STREAM_EVENTS_PREVIEW_MAX_DEPTH = 3;
 
 type FastChatTurnAbortReason = FastChatCancelReason | 'timeout';
-type FastChatResolvedPromptContext = {
-	contextType: ChatContextType;
-	entityId?: string | null;
-	projectId?: string | null;
-	projectName?: string | null;
-	focusEntityType?: string | null;
-	focusEntityId?: string | null;
-	focusEntityName?: string | null;
-	contextLoadSource?: AgentTimingSummary['context_load_source'];
-	conversationSummary?: string | null;
-	entityResolutionHint?: string | null;
-	data?: Record<string, unknown> | string | null;
-};
-
-type ToolExecutionEntityKind =
-	| 'project'
-	| 'task'
-	| 'goal'
-	| 'plan'
-	| 'document'
-	| 'milestone'
-	| 'risk'
-	| 'requirement';
-
-const TOOL_EXECUTION_ENTITY_KIND_ALIASES: Record<string, ToolExecutionEntityKind> = {
-	project: 'project',
-	projects: 'project',
-	task: 'task',
-	tasks: 'task',
-	goal: 'goal',
-	goals: 'goal',
-	plan: 'plan',
-	plans: 'plan',
-	document: 'document',
-	documents: 'document',
-	doc: 'document',
-	docs: 'document',
-	milestone: 'milestone',
-	milestones: 'milestone',
-	risk: 'risk',
-	risks: 'risk',
-	requirement: 'requirement',
-	requirements: 'requirement'
-};
-
-const TOOL_EXECUTION_ENTITY_COLLECTION_KEYS: Partial<Record<ToolExecutionEntityKind, string>> = {
-	project: 'projects',
-	task: 'tasks',
-	goal: 'goals',
-	plan: 'plans',
-	document: 'documents',
-	milestone: 'milestones',
-	risk: 'risks',
-	requirement: 'requirements'
-};
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
 	if (!value) return fallback;
@@ -480,314 +438,6 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 
 function readMetadataString(value: unknown): string | null {
 	return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-function normalizeToolExecutionEntityKind(value: unknown): ToolExecutionEntityKind | null {
-	if (typeof value !== 'string') return null;
-	const normalized = value.trim().toLowerCase();
-	return TOOL_EXECUTION_ENTITY_KIND_ALIASES[normalized] ?? null;
-}
-
-function addToolExecutionEntityRecord(
-	entities: Record<string, any>,
-	kind: ToolExecutionEntityKind,
-	record: Record<string, unknown>
-): void {
-	const id = readMetadataString(record.id);
-	if (!id) return;
-
-	if (kind === 'project') {
-		entities.project = entities.project ?? record;
-	} else {
-		entities[kind] = entities[kind] ?? record;
-	}
-
-	const collectionKey = TOOL_EXECUTION_ENTITY_COLLECTION_KEYS[kind];
-	if (!collectionKey) return;
-	const collection = Array.isArray(entities[collectionKey]) ? entities[collectionKey] : [];
-	if (!collection.some((item: unknown) => isPlainRecord(item) && item.id === id)) {
-		collection.push(record);
-	}
-	entities[collectionKey] = collection;
-}
-
-function addToolExecutionEntityCollection(
-	entities: Record<string, any>,
-	kind: ToolExecutionEntityKind,
-	value: unknown
-): void {
-	if (!Array.isArray(value)) return;
-	for (const item of value) {
-		if (isPlainRecord(item)) {
-			addToolExecutionEntityRecord(entities, kind, item);
-		}
-	}
-}
-
-function findToolExecutionEntityRecord(params: {
-	data: Record<string, unknown> | null;
-	kind: ToolExecutionEntityKind;
-	id: string;
-}): Record<string, unknown> | null {
-	const { data, kind, id } = params;
-	if (!data) return null;
-
-	const matchesId = (record: unknown): record is Record<string, unknown> =>
-		isPlainRecord(record) && readMetadataString(record.id) === id;
-
-	if (kind === 'project' && matchesId(data.project)) {
-		return data.project;
-	}
-
-	const focusEntityKind = normalizeToolExecutionEntityKind(data.focus_entity_type);
-	if (focusEntityKind === kind && matchesId(data.focus_entity_full)) {
-		return data.focus_entity_full;
-	}
-
-	const collectionKey = TOOL_EXECUTION_ENTITY_COLLECTION_KEYS[kind];
-	const searchCollection = (collection: unknown): Record<string, unknown> | null => {
-		if (!Array.isArray(collection)) return null;
-		return collection.find(matchesId) ?? null;
-	};
-
-	if (collectionKey) {
-		const directMatch = searchCollection(data[collectionKey]);
-		if (directMatch) return directMatch;
-	}
-
-	const linkedEntities = isPlainRecord(data.linked_entities) ? data.linked_entities : null;
-	if (!linkedEntities) return null;
-
-	const linkedKeys = [kind, collectionKey].filter(Boolean) as string[];
-	for (const key of linkedKeys) {
-		const linkedMatch = searchCollection(linkedEntities[key]);
-		if (linkedMatch) return linkedMatch;
-	}
-
-	return null;
-}
-
-function buildToolExecutionContextScope(params: {
-	projectId?: string | null;
-	projectName?: string | null;
-	projectFocus?: ProjectFocus | null;
-	promptContext?: FastChatResolvedPromptContext;
-}): ServiceContext['contextScope'] {
-	const projectId = readMetadataString(params.projectId ?? params.promptContext?.projectId);
-	if (!projectId) return undefined;
-
-	const projectName =
-		readMetadataString(params.projectName) ??
-		readMetadataString(params.promptContext?.projectName) ??
-		undefined;
-	const focusKind = normalizeToolExecutionEntityKind(
-		params.projectFocus?.focusType === 'project-wide'
-			? null
-			: (params.projectFocus?.focusType ?? params.promptContext?.focusEntityType)
-	);
-	const focusId = readMetadataString(
-		params.projectFocus?.focusEntityId ?? params.promptContext?.focusEntityId
-	);
-	const focusName =
-		readMetadataString(params.projectFocus?.focusEntityName) ??
-		readMetadataString(params.promptContext?.focusEntityName) ??
-		undefined;
-
-	return {
-		projectId,
-		projectName,
-		...(focusKind && focusKind !== 'project' && focusId
-			? {
-					focus: {
-						type: focusKind as Exclude<ToolExecutionEntityKind, 'project'>,
-						id: focusId,
-						name: focusName
-					}
-				}
-			: {})
-	};
-}
-
-function countToolExecutionDocumentTreeNodes(nodes: unknown): number {
-	if (!Array.isArray(nodes)) return 0;
-	let count = 0;
-	for (const node of nodes) {
-		if (!isPlainRecord(node)) continue;
-		count += 1;
-		count += countToolExecutionDocumentTreeNodes(node.children);
-	}
-	return count;
-}
-
-function buildFocusedToolExecutionEntityRecord(params: {
-	data: Record<string, unknown> | null;
-	focus: NonNullable<NonNullable<ServiceContext['contextScope']>['focus']>;
-}): Record<string, unknown> {
-	const existing = findToolExecutionEntityRecord({
-		data: params.data,
-		kind: params.focus.type,
-		id: params.focus.id
-	});
-	return {
-		...(existing ?? {}),
-		id: params.focus.id,
-		...(params.focus.name &&
-		!readMetadataString(existing?.name) &&
-		!readMetadataString(existing?.title)
-			? { name: params.focus.name }
-			: {})
-	};
-}
-
-function buildToolExecutionOntologyContext(params: {
-	promptContext?: FastChatResolvedPromptContext;
-	contextScope?: ServiceContext['contextScope'];
-}): ServiceContext['ontologyContext'] | undefined {
-	const projectId = readMetadataString(
-		params.contextScope?.projectId ?? params.promptContext?.projectId
-	);
-	if (!projectId) return undefined;
-
-	const rawData = isPlainRecord(params.promptContext?.data) ? params.promptContext.data : null;
-	const rawDataProjectId =
-		readMetadataString(isPlainRecord(rawData?.project) ? rawData.project.id : null) ??
-		readMetadataString(params.promptContext?.projectId);
-	const data = !rawDataProjectId || rawDataProjectId === projectId ? rawData : null;
-	const entities: Record<string, any> = {};
-	const projectName =
-		readMetadataString(params.contextScope?.projectName ?? params.promptContext?.projectName) ??
-		'Project';
-	const focus = params.contextScope?.focus;
-	const shouldUseFocusedNeighborhood = Boolean(focus?.id);
-
-	if (data) {
-		if (isPlainRecord(data.project)) {
-			addToolExecutionEntityRecord(entities, 'project', {
-				...data.project,
-				id: readMetadataString(data.project.id) ?? projectId
-			});
-		}
-
-		if (shouldUseFocusedNeighborhood && focus) {
-			addToolExecutionEntityRecord(
-				entities,
-				focus.type,
-				buildFocusedToolExecutionEntityRecord({ data, focus })
-			);
-		} else {
-			addToolExecutionEntityCollection(entities, 'goal', data.goals);
-			addToolExecutionEntityCollection(entities, 'milestone', data.milestones);
-			addToolExecutionEntityCollection(entities, 'plan', data.plans);
-			addToolExecutionEntityCollection(entities, 'task', data.tasks);
-			addToolExecutionEntityCollection(entities, 'document', data.documents);
-			addToolExecutionEntityCollection(entities, 'risk', data.risks);
-		}
-
-		const linkedEntities = isPlainRecord(data.linked_entities) ? data.linked_entities : null;
-		if (linkedEntities) {
-			for (const [key, value] of Object.entries(linkedEntities)) {
-				const kind = normalizeToolExecutionEntityKind(key);
-				if (kind) {
-					addToolExecutionEntityCollection(entities, kind, value);
-				}
-			}
-		}
-
-		const focusKind = shouldUseFocusedNeighborhood
-			? null
-			: normalizeToolExecutionEntityKind(
-					data.focus_entity_type ?? params.promptContext?.focusEntityType
-				);
-		const focusId = shouldUseFocusedNeighborhood
-			? null
-			: readMetadataString(data.focus_entity_id ?? params.promptContext?.focusEntityId);
-		if (focusKind && focusId) {
-			const focusFull = isPlainRecord(data.focus_entity_full) ? data.focus_entity_full : {};
-			addToolExecutionEntityRecord(entities, focusKind, {
-				...focusFull,
-				id: readMetadataString(focusFull.id) ?? focusId
-			});
-		}
-	}
-
-	if (!entities.project) {
-		addToolExecutionEntityRecord(entities, 'project', {
-			id: projectId,
-			name: projectName
-		});
-	}
-
-	const docStructure = data && isPlainRecord(data.doc_structure) ? data.doc_structure : null;
-	const documentRoot = docStructure?.root;
-	const includeDocumentTree =
-		!shouldUseFocusedNeighborhood ||
-		params.contextScope?.focus?.type === 'document' ||
-		Boolean(
-			Array.isArray(documentRoot) &&
-				params.contextScope?.focus?.id &&
-				findToolExecutionEntityRecord({
-					data,
-					kind: 'document',
-					id: params.contextScope.focus.id
-				})
-		);
-	const metadata =
-		includeDocumentTree && docStructure && Array.isArray(documentRoot)
-			? {
-					document_tree: {
-						version:
-							typeof docStructure.version === 'number' ? docStructure.version : 1,
-						root: documentRoot,
-						total_nodes: countToolExecutionDocumentTreeNodes(documentRoot)
-					}
-				}
-			: {};
-
-	return {
-		type: 'project',
-		entities: entities as NonNullable<ServiceContext['ontologyContext']>['entities'],
-		metadata: metadata as NonNullable<ServiceContext['ontologyContext']>['metadata'],
-		scope: {
-			projectId,
-			projectName,
-			focus: params.contextScope?.focus
-		}
-	};
-}
-
-function buildToolExecutionProjectFocus(params: {
-	projectFocus?: ProjectFocus | null;
-	promptContext?: FastChatResolvedPromptContext;
-	latestContextShift?: ContextShiftPayload | null;
-	projectId?: string | null;
-}): ProjectFocus | null {
-	const contextShift = params.latestContextShift;
-	if (contextShift?.entity_type && contextShift.entity_type !== 'workspace') {
-		const shiftedProjectId =
-			contextShift.entity_type === 'project'
-				? readMetadataString(contextShift.entity_id)
-				: (readMetadataString(params.projectFocus?.projectId) ??
-					readMetadataString(params.promptContext?.projectId) ??
-					readMetadataString(params.projectId));
-		if (!shiftedProjectId) return params.projectFocus ?? null;
-		const shiftedProjectName =
-			contextShift.entity_type === 'project'
-				? contextShift.entity_name
-				: (params.projectFocus?.projectName ??
-					params.promptContext?.projectName ??
-					'Project');
-		return {
-			focusType:
-				contextShift.entity_type === 'project' ? 'project-wide' : contextShift.entity_type,
-			focusEntityId: contextShift.entity_type === 'project' ? null : contextShift.entity_id,
-			focusEntityName:
-				contextShift.entity_type === 'project' ? null : contextShift.entity_name,
-			projectId: shiftedProjectId,
-			projectName: shiftedProjectName ?? 'Project'
-		};
-	}
-
-	return params.projectFocus ?? null;
 }
 
 function truncatePromptBlock(
@@ -1285,584 +935,6 @@ async function updateAgentMetadata(
 	}
 }
 
-function resolveToolResultRequiresUserAction(result: ChatToolResult): boolean | null {
-	const direct = result as ChatToolResult & Record<string, unknown>;
-	if (typeof direct.requires_user_action === 'boolean') return direct.requires_user_action;
-	if (typeof direct.requiresUserAction === 'boolean') return direct.requiresUserAction;
-	return inferPayloadRequiresUserAction(result.result);
-}
-
-function inferPayloadRequiresUserAction(value: unknown, depth = 0): boolean | null {
-	if (!isPlainRecord(value) || depth > 2) return null;
-
-	const direct = value.requires_user_action ?? value.requiresUserAction;
-	if (typeof direct === 'boolean') return direct;
-
-	const needsInput = value.needs_input ?? value.needsInput;
-	if (typeof needsInput === 'boolean') return needsInput;
-
-	const status = readMetadataString(value.status) ?? readMetadataString(value.state);
-	if (
-		status &&
-		[
-			'needs_input',
-			'needs input',
-			'requires_user_action',
-			'user_action_required',
-			'waiting_on_user'
-		].includes(status.toLowerCase())
-	) {
-		return true;
-	}
-
-	return (
-		inferPayloadRequiresUserAction(value.result, depth + 1) ??
-		inferPayloadRequiresUserAction(value.data, depth + 1) ??
-		null
-	);
-}
-
-function finiteTelemetryNumber(value: unknown): number | undefined {
-	return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
-}
-
-function buildToolResultStreamEventsTelemetry(params: {
-	streamEvents?: unknown[];
-	streamEventsPreview?: unknown[];
-	streamEventCount?: unknown;
-}): {
-	stream_event_count?: number;
-	stream_events_preview?: unknown[];
-} {
-	const previewSource = params.streamEvents ?? params.streamEventsPreview;
-	const streamEventCount =
-		finiteTelemetryNumber(params.streamEventCount) ??
-		params.streamEvents?.length ??
-		params.streamEventsPreview?.length;
-	return {
-		...(streamEventCount !== undefined ? { stream_event_count: streamEventCount } : {}),
-		...(Array.isArray(previewSource)
-			? {
-					stream_events_preview: sanitizeLogData(previewSource, {
-						maxEntries: TOOL_RESULT_STREAM_EVENTS_PREVIEW_LIMIT,
-						maxStringLength: TOOL_RESULT_STREAM_EVENTS_PREVIEW_MAX_STRING_LENGTH,
-						maxDepth: TOOL_RESULT_STREAM_EVENTS_PREVIEW_MAX_DEPTH
-					}) as unknown[]
-				}
-			: {})
-	};
-}
-
-// Canonical tool_result wire shape: snake_case fields only. The camelCase
-// duplicates (toolName/toolCallId) and the `data` alias for `result` were
-// dropped 2026-06-10; the SSE handler and tool presenter read tool_name,
-// tool_call_id, and result.
-function buildToolResultEventPayload(toolCall: ChatToolCall, result: ChatToolResult) {
-	const meta = extractFastChatToolCallMeta(toolCall);
-	const argumentsPayload = parseToolArgumentsForPersistence(toolCall.function.arguments);
-	const resultPayload = result.success ? normalizeToolResultForPersistence(result.result) : null;
-	const searchTelemetry = searchTelemetryColumns({
-		toolName: toolCall.function.name,
-		success: result.success === true,
-		result: result.result
-	});
-	const toolCategory = getToolCategory(toolCall.function.name) ?? null;
-	const affectedEntities = extractAffectedEntitiesFromToolExecution({
-		id: result.tool_call_id ?? toolCall.id,
-		tool_name: toolCall.function.name,
-		gateway_op: meta.canonicalOp,
-		arguments: argumentsPayload,
-		result: resultPayload,
-		success: result.success === true
-	});
-	const requiresUserAction = resolveToolResultRequiresUserAction(result);
-	const resultRecord = result as ChatToolResult & Record<string, unknown>;
-	const {
-		stream_events: rawStreamEvents,
-		streamEvents: rawCamelStreamEvents,
-		stream_events_preview: rawStreamEventsPreview,
-		streamEventsPreview: rawCamelStreamEventsPreview,
-		stream_event_count: rawStreamEventCount,
-		streamEventCount: rawCamelStreamEventCount,
-		...resultWithoutRawStreamEvents
-	} = resultRecord;
-	const streamEvents = Array.isArray(rawStreamEvents)
-		? rawStreamEvents
-		: Array.isArray(rawCamelStreamEvents)
-			? rawCamelStreamEvents
-			: undefined;
-	const streamEventsPreview = Array.isArray(rawStreamEventsPreview)
-		? rawStreamEventsPreview
-		: Array.isArray(rawCamelStreamEventsPreview)
-			? rawCamelStreamEventsPreview
-			: undefined;
-
-	return {
-		...resultWithoutRawStreamEvents,
-		...(searchTelemetry.result_count !== null
-			? {
-					result_count: searchTelemetry.result_count,
-					zero_result: searchTelemetry.zero_result
-				}
-			: {}),
-		...(requiresUserAction !== null ? { requires_user_action: requiresUserAction } : {}),
-		...(toolCategory ? { tool_category: toolCategory } : {}),
-		...(meta.canonicalOp ? { gateway_op: meta.canonicalOp } : {}),
-		...(meta.helpPath ? { help_path: meta.helpPath } : {}),
-		affected_entities: affectedEntities,
-		...buildToolResultStreamEventsTelemetry({
-			streamEvents,
-			streamEventsPreview,
-			streamEventCount: rawStreamEventCount ?? rawCamelStreamEventCount
-		}),
-		tool_name: toolCall.function.name,
-		tool_call_id: result.tool_call_id ?? toolCall.id
-	};
-}
-
-function emitToolResult(
-	agentStream: AgentChatSSEStream,
-	toolCall: ChatToolCall,
-	result: ChatToolResult,
-	options: {
-		onError?: (error: unknown) => void;
-		onMessageSent?: () => void;
-	} = {}
-): void {
-	const payload = buildToolResultEventPayload(toolCall, result);
-	void agentStream
-		.sendMessage({ type: 'tool_result', result: payload })
-		.then(() => {
-			options.onMessageSent?.();
-		})
-		.catch((error) => {
-			logger.warn('Failed to emit tool_result', { error, toolCall });
-			options.onError?.(error);
-		});
-}
-
-const TOOL_ENTITY_KEYS = [
-	'project',
-	'task',
-	'goal',
-	'plan',
-	'document',
-	'milestone',
-	'risk',
-	'event'
-];
-
-function buildToolEntityCounts(payload: Record<string, any>): Record<string, number> {
-	const counts: Record<string, number> = {};
-	for (const key of TOOL_ENTITY_KEYS) {
-		const pluralKey = `${key}s`;
-		if (Array.isArray(payload?.[pluralKey])) {
-			counts[key] = payload[pluralKey].length;
-		}
-	}
-	return counts;
-}
-
-function buildToolEntityUpdates(
-	payload: Record<string, any>
-): Array<{ id: string; kind: string; name?: string }> {
-	const updates: Array<{ id: string; kind: string; name?: string }> = [];
-	for (const key of TOOL_ENTITY_KEYS) {
-		const record = payload?.[key];
-		if (!record || typeof record !== 'object') continue;
-		const id = typeof record.id === 'string' ? record.id : null;
-		if (!id) continue;
-		updates.push({
-			id,
-			kind: key,
-			name: extractEntityLabel(record)
-		});
-	}
-	return updates;
-}
-
-function buildToolResultSummaries(
-	executions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>
-): AgentStateToolSummary[] {
-	if (!executions.length) return [];
-
-	return executions.map(({ toolCall, result }) => {
-		const payload = result.result;
-		const counts =
-			payload && typeof payload === 'object'
-				? buildToolEntityCounts(payload as Record<string, any>)
-				: {};
-		const updates =
-			payload && typeof payload === 'object'
-				? buildToolEntityUpdates(payload as Record<string, any>)
-				: [];
-		const entitiesAccessed = Array.isArray((payload as any)?._entities_accessed)
-			? ((payload as any)._entities_accessed as string[])
-			: Array.isArray((payload as any)?.entities_accessed)
-				? ((payload as any).entities_accessed as string[])
-				: undefined;
-		const summaryParts: string[] = [`${toolCall.function.name}`];
-		if (Object.keys(counts).length > 0) {
-			const countsLine = Object.entries(counts)
-				.map(([key, count]) => `${key}:${count}`)
-				.join(', ');
-			summaryParts.push(`(${countsLine})`);
-		}
-		const summary = result.success
-			? `Executed ${summaryParts.join(' ')}.`
-			: `Failed ${toolCall.function.name}: ${result.error ?? 'unknown error'}`;
-		const toolSummary: AgentStateToolSummary = {
-			tool_name: toolCall.function.name,
-			success: result.success,
-			error: result.error,
-			summary
-		};
-		if (entitiesAccessed?.length) {
-			toolSummary.entities_accessed = entitiesAccessed;
-		}
-		if (Object.keys(counts).length > 0) {
-			toolSummary.entity_counts = counts;
-		}
-		if (updates.length > 0) {
-			toolSummary.entity_updates = updates;
-		}
-		return toolSummary;
-	});
-}
-
-// Reduce per-pass LLMStreamPassMetadata into a compact summary stored on
-// chat_messages.metadata. Preserves per-pass shape for tool-using turns where
-// the message-level prompt_tokens column otherwise reports a cumulative sum
-// across passes (see docs/specs/agent-token-tracking-investigation-2026-05-12.md
-// Bug 1).
-function buildLLMPassSummary(
-	llmPasses: LLMStreamPassMetadata[] | undefined
-): { passes: Json; peak_prompt_tokens: number | null; pass_count: number } | null {
-	if (!llmPasses?.length) return null;
-
-	const passes = llmPasses.map((pass) => {
-		const entry: Record<string, Json> = { pass: pass.pass };
-		if (pass.passRole !== undefined) entry.pass_role = pass.passRole;
-		if (pass.requestedProfile !== undefined) entry.requested_profile = pass.requestedProfile;
-		if (pass.requestedModels !== undefined) entry.requested_models = pass.requestedModels;
-		if (pass.modelTieringVariant !== undefined)
-			entry.model_tiering_variant = pass.modelTieringVariant;
-		if (pass.model !== undefined) entry.model = pass.model;
-		if (pass.provider !== undefined) entry.provider = pass.provider;
-		if (pass.requestId !== undefined) entry.request_id = pass.requestId;
-		if (pass.systemFingerprint !== undefined) entry.system_fingerprint = pass.systemFingerprint;
-		if (pass.cacheStatus !== undefined) entry.cache_status = pass.cacheStatus;
-		if (pass.finishedReason !== undefined) entry.finished_reason = pass.finishedReason;
-		if (typeof pass.promptTokens === 'number') entry.prompt_tokens = pass.promptTokens;
-		if (typeof pass.completionTokens === 'number')
-			entry.completion_tokens = pass.completionTokens;
-		if (typeof pass.totalTokens === 'number') entry.total_tokens = pass.totalTokens;
-		if (typeof pass.reasoningTokens === 'number') entry.reasoning_tokens = pass.reasoningTokens;
-		if (pass.forcedNoToolSynthesis === true) entry.forced_no_tool_synthesis = true;
-		return entry;
-	});
-
-	let peak: number | null = null;
-	for (const pass of llmPasses) {
-		if (typeof pass.promptTokens === 'number' && Number.isFinite(pass.promptTokens)) {
-			peak = peak === null ? pass.promptTokens : Math.max(peak, pass.promptTokens);
-		}
-	}
-
-	return {
-		passes: passes as Json,
-		peak_prompt_tokens: peak,
-		pass_count: llmPasses.length
-	};
-}
-
-type ToolExecutionInsertRow = {
-	session_id: string;
-	message_id: string | null;
-	turn_run_id: string | null;
-	stream_run_id: string | null;
-	client_turn_id: string | null;
-	tool_name: string;
-	tool_category: string | null;
-	gateway_op: string | null;
-	help_path: string | null;
-	sequence_index: number | null;
-	arguments: Json;
-	result: Json | null;
-	result_count: number | null;
-	zero_result: boolean | null;
-	execution_time_ms: number | null;
-	tokens_consumed: number | null;
-	success: boolean;
-	error_message: string | null;
-	requires_user_action: boolean | null;
-	affected_entities: Json;
-};
-
-function parseToolArgumentsForPersistence(rawArgs: unknown): Json {
-	if (!rawArgs || rawArgs === '') return {} as Json;
-	if (typeof rawArgs === 'string') {
-		try {
-			return JSON.parse(rawArgs) as Json;
-		} catch {
-			return { raw: rawArgs } as Json;
-		}
-	}
-	if (typeof rawArgs === 'object') {
-		return rawArgs as Json;
-	}
-	return { value: String(rawArgs) } as Json;
-}
-
-function normalizeToolResultForPersistence(rawResult: unknown): Json | null {
-	if (rawResult === undefined) return null;
-	if (
-		rawResult === null ||
-		typeof rawResult === 'string' ||
-		typeof rawResult === 'number' ||
-		typeof rawResult === 'boolean'
-	) {
-		return rawResult as Json;
-	}
-	if (Array.isArray(rawResult) || typeof rawResult === 'object') {
-		return rawResult as Json;
-	}
-	return { value: String(rawResult) } as Json;
-}
-
-function buildToolExecutionInsertRows(params: {
-	sessionId: string;
-	messageId: string | null;
-	turnRunId?: string | null;
-	streamRunId?: string | null;
-	clientTurnId?: string | null;
-	executions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>;
-}): ToolExecutionInsertRow[] {
-	if (!Array.isArray(params.executions) || params.executions.length === 0) return [];
-	return params.executions.map(({ toolCall, result }, index) => {
-		const meta = extractFastChatToolCallMeta(toolCall);
-		const argumentsPayload = parseToolArgumentsForPersistence(toolCall.function.arguments);
-		const resultPayload = result.success
-			? normalizeToolResultForPersistence(result.result)
-			: null;
-		// Populate search telemetry (result_count / zero_result) on the live persistence
-		// path. Without this the columns are always NULL in prod because ChatToolExecutor
-		// (the other writer that sets them) runs with logExecutions=false here.
-		const searchTelemetry = searchTelemetryColumns({
-			toolName: toolCall.function.name,
-			success: result.success === true,
-			result: result.result
-		});
-		return {
-			session_id: params.sessionId,
-			message_id: params.messageId,
-			turn_run_id: params.turnRunId ?? null,
-			stream_run_id: params.streamRunId ?? null,
-			client_turn_id: params.clientTurnId ?? null,
-			tool_name: toolCall.function.name,
-			tool_category: getToolCategory(toolCall.function.name) ?? null,
-			gateway_op: meta.canonicalOp,
-			help_path: meta.helpPath,
-			sequence_index: index + 1,
-			arguments: argumentsPayload,
-			result: resultPayload,
-			result_count: searchTelemetry.result_count,
-			zero_result: searchTelemetry.zero_result,
-			execution_time_ms:
-				typeof result.duration_ms === 'number' && Number.isFinite(result.duration_ms)
-					? result.duration_ms
-					: null,
-			tokens_consumed:
-				typeof (result as ChatToolResult & { tokens_consumed?: number }).tokens_consumed ===
-					'number' &&
-				Number.isFinite(
-					(result as ChatToolResult & { tokens_consumed?: number }).tokens_consumed
-				)
-					? (result as ChatToolResult & { tokens_consumed?: number }).tokens_consumed!
-					: null,
-			success: result.success === true,
-			error_message: typeof result.error === 'string' ? result.error : null,
-			requires_user_action: resolveToolResultRequiresUserAction(result),
-			affected_entities: extractAffectedEntitiesFromToolExecution({
-				id: (toolCall as { id?: string }).id ?? `${toolCall.function.name}-${index + 1}`,
-				tool_name: toolCall.function.name,
-				gateway_op: meta.canonicalOp,
-				arguments: argumentsPayload,
-				result: resultPayload,
-				success: result.success === true
-			}) as unknown as Json
-		};
-	});
-}
-
-// D4: persist a single tool execution the moment it completes (called from the
-// orchestrator's onToolResult). The row is written with a null message_id (the
-// assistant message doesn't exist until end-of-turn); the end-of-turn bulk persist
-// later attaches message_id to these rows via `persistToolExecutionRows` using the
-// (turn_run_id, sequence_index) key, so nothing is double-inserted. Returns true when
-// the row was written so the caller can record the sequence as already-persisted.
-async function persistIncrementalToolExecutionRow(params: {
-	supabase: FastChatSupabaseClient;
-	sessionId: string;
-	turnRunId: string;
-	streamRunId?: string | null;
-	clientTurnId?: string | null;
-	toolCall: ChatToolCall;
-	result: ChatToolResult;
-	sequenceIndex: number;
-}): Promise<boolean> {
-	const rows = buildToolExecutionInsertRows({
-		sessionId: params.sessionId,
-		messageId: null,
-		turnRunId: params.turnRunId,
-		streamRunId: params.streamRunId,
-		clientTurnId: params.clientTurnId,
-		executions: [{ toolCall: params.toolCall, result: params.result }]
-	});
-	const row = rows[0];
-	if (!row) return false;
-	// Single-row batch: buildToolExecutionInsertRows always assigns sequence_index=1;
-	// override with the turn-global sequence so it lines up with the end-of-turn bulk
-	// persist and the idempotency key.
-	row.sequence_index = params.sequenceIndex;
-	const { error } = await params.supabase.from('chat_tool_executions').insert(rows);
-	if (error) throw error;
-	return true;
-}
-
-async function persistToolExecutionRows(params: {
-	supabase: FastChatSupabaseClient;
-	sessionId: string;
-	messageId: string | null;
-	turnRunId?: string | null;
-	streamRunId?: string | null;
-	clientTurnId?: string | null;
-	executions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>;
-	projectId?: string;
-	contextType: ChatContextType;
-	interrupted?: boolean;
-	// Sequence indices already written incrementally via
-	// persistIncrementalToolExecutionRow. Those rows are UPDATEd to attach the
-	// assistant message_id rather than re-inserted, so recovery (which reads
-	// executions by message_id) still resolves them.
-	persistedSequenceIndices?: ReadonlySet<number>;
-	logError?: (params: {
-		error: unknown;
-		operationType: string;
-		projectId?: string;
-		metadata?: Record<string, unknown>;
-	}) => void;
-}): Promise<void> {
-	const rows = buildToolExecutionInsertRows({
-		sessionId: params.sessionId,
-		messageId: params.messageId,
-		turnRunId: params.turnRunId,
-		streamRunId: params.streamRunId,
-		clientTurnId: params.clientTurnId,
-		executions: params.executions
-	});
-	if (rows.length === 0) return;
-
-	const persisted = params.persistedSequenceIndices;
-	const hasPersisted = Boolean(persisted && persisted.size > 0);
-
-	// Attach the assistant message_id to rows already written incrementally (they were
-	// inserted with message_id=null). Keyed by turn_run_id + sequence_index, which is
-	// unique per turn.
-	if (hasPersisted && params.messageId && params.turnRunId) {
-		const attachSequences = rows
-			.map((row) => row.sequence_index)
-			.filter(
-				(seq): seq is number =>
-					typeof seq === 'number' && (persisted as ReadonlySet<number>).has(seq)
-			);
-		if (attachSequences.length > 0) {
-			const { error: attachError } = await params.supabase
-				.from('chat_tool_executions')
-				.update({ message_id: params.messageId })
-				.eq('turn_run_id', params.turnRunId)
-				.eq('session_id', params.sessionId)
-				.in('sequence_index', attachSequences);
-			if (attachError) {
-				logger.warn('Failed to attach assistant message to incremental tool executions', {
-					error: attachError,
-					sessionId: params.sessionId
-				});
-				params.logError?.({
-					error: attachError,
-					operationType: 'fastchat_attach_tool_execution_message',
-					projectId: params.projectId,
-					metadata: {
-						sessionId: params.sessionId,
-						messageId: params.messageId,
-						turnRunId: params.turnRunId,
-						attachCount: attachSequences.length,
-						contextType: params.contextType
-					}
-				});
-			}
-		}
-	}
-
-	// Only insert rows that were NOT already persisted incrementally.
-	const rowsToInsert = hasPersisted
-		? rows.filter(
-				(row) =>
-					row.sequence_index == null ||
-					!(persisted as ReadonlySet<number>).has(row.sequence_index)
-			)
-		: rows;
-	if (rowsToInsert.length === 0) return;
-
-	const { error } = await params.supabase.from('chat_tool_executions').insert(rowsToInsert);
-	if (!error) return;
-
-	logger.warn(
-		params.interrupted
-			? 'Failed to persist FastChat interrupted tool executions'
-			: 'Failed to persist FastChat tool executions',
-		{
-			error,
-			sessionId: params.sessionId
-		}
-	);
-	params.logError?.({
-		error,
-		operationType: 'fastchat_persist_tool_executions',
-		projectId: params.projectId,
-		metadata: {
-			sessionId: params.sessionId,
-			messageId: params.messageId,
-			toolExecutionCount: rowsToInsert.length,
-			contextType: params.contextType,
-			...(params.interrupted ? { interrupted: true } : {})
-		}
-	});
-}
-
-function buildToolMessageSnapshotsForReconciliation(
-	executions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>,
-	toolSummaries: AgentStateToolSummary[]
-): AgentStateMessageSnapshot[] {
-	if (!executions.length) return [];
-	return executions.map(({ toolCall, result }, index) => {
-		const summary = toolSummaries[index];
-		const contentPayload = {
-			tool_name: toolCall.function.name,
-			op: extractToolOpFromToolCall(toolCall),
-			success: result.success,
-			error: result.error,
-			summary: summary?.summary
-		};
-		return {
-			role: 'tool',
-			tool_call_id: toolCall.id,
-			tool_name: toolCall.function.name,
-			content: JSON.stringify(contentPayload)
-		};
-	});
-}
-
 export const POST: RequestHandler = async ({
 	request,
 	locals: { supabase, safeGetSession },
@@ -2068,6 +1140,7 @@ export const POST: RequestHandler = async ({
 	let preparedPromptMissReason: PreparedPromptCacheMissReason | null = requestPreparedPromptKey
 		? null
 		: 'missing_key';
+	let preparedPromptMissDiagnostics: PreparedPromptConsumeMissDiagnostics | null = null;
 	let preparedPromptId: string | null = null;
 	let preparedPromptAgeSeconds: number | null = null;
 	let preparedSurfaceProfile: string | null = null;
@@ -2153,6 +1226,7 @@ export const POST: RequestHandler = async ({
 			preparedPromptRequested,
 			preparedPromptHit,
 			preparedPromptMissReason,
+			preparedPromptMissDiagnostics: preparedPromptMissDiagnostics as Json | null,
 			preparedPromptId,
 			preparedPromptAgeSeconds,
 			preparedSurfaceProfile
@@ -2643,6 +1717,8 @@ export const POST: RequestHandler = async ({
 			const previousDomainState = readDomainSessionState(
 				sessionMetadata.fastchat_domain_state
 			);
+			let latestDomainState = previousDomainState;
+			let domainStateMetadataUpdatePromise: Promise<void> | null = null;
 			const priorDomainIds = getActiveDomainIds(previousDomainState);
 			const priorOutcomeCardIds = getActiveOutcomeCardIds(previousDomainState);
 			const turnDomainSensing = senseDomains({
@@ -2704,7 +1780,27 @@ export const POST: RequestHandler = async ({
 			preparedPromptConsumeMs = Math.max(0, Date.now() - preparedPromptConsumeStartedAtMs);
 			if (!preparedPromptForTurn.hit) {
 				preparedPromptMissReason = preparedPromptForTurn.reason;
+				preparedPromptMissDiagnostics = preparedPromptForTurn.diagnostics ?? null;
+			} else {
+				preparedPromptMissDiagnostics = null;
 			}
+			observabilityWriter.recordEvent('prompt', 'prepared_prompt_cache_checked', {
+				prepared_prompt_requested: preparedPromptRequested,
+				prepared_prompt_hit: preparedPromptForTurn.hit,
+				prepared_prompt_miss_reason: preparedPromptForTurn.hit
+					? null
+					: preparedPromptForTurn.reason,
+				prepared_prompt_id: preparedPromptForTurn.hit
+					? preparedPromptForTurn.row.id
+					: (preparedPromptForTurn.diagnostics?.prepared_prompt_id ?? null),
+				prepared_prompt_age_seconds: preparedPromptForTurn.hit
+					? preparedPromptForTurn.ageSeconds
+					: (preparedPromptForTurn.diagnostics?.prepared_prompt_age_seconds ?? null),
+				requested_surface_profile: selectedSurfaceProfile,
+				diagnostics: preparedPromptForTurn.hit
+					? null
+					: ((preparedPromptForTurn.diagnostics ?? null) as Json | null)
+			} as Json);
 
 			let history: FastChatHistoryMessage[] = [];
 			let historyForModel: FastChatHistoryMessage[];
@@ -3178,7 +2274,8 @@ export const POST: RequestHandler = async ({
 							now: new Date()
 						}
 					);
-					void updateAgentMetadata(
+					latestDomainState = nextDomainState;
+					domainStateMetadataUpdatePromise = updateAgentMetadata(
 						supabase,
 						session.id,
 						{
@@ -3190,6 +2287,7 @@ export const POST: RequestHandler = async ({
 							projectId: projectIdForLogs
 						}
 					);
+					void domainStateMetadataUpdatePromise;
 					const newResearchBacklogEntries = getNewDomainResearchBacklogEntries(
 						nextDomainState,
 						previousDomainState
@@ -3362,6 +2460,8 @@ export const POST: RequestHandler = async ({
 						prepared_prompt_id: preparedPromptId,
 						prepared_prompt_hit: preparedPromptHit,
 						prepared_prompt_miss_reason: preparedPromptMissReason,
+						prepared_prompt_miss_diagnostics:
+							(preparedPromptMissDiagnostics as Json | null) ?? null,
 						prepared_surface_profile: preparedSurfaceProfile
 					};
 					persistPromptSnapshotAfterFirstResponse = () => {
@@ -4221,6 +3321,85 @@ export const POST: RequestHandler = async ({
 					: 0,
 				normalizedExecutions.length
 			);
+			const toolDomainSignalObservedAt = new Date();
+			const usedDomainSignals = deriveUsedDomainSignalsFromToolExecutions(
+				normalizedExecutions,
+				{
+					now: toolDomainSignalObservedAt,
+					turnRunId
+				}
+			);
+			const loadedOutcomeCardGapSignals =
+				deriveLoadedOutcomeCardGapSignalsFromToolExecutions(normalizedExecutions);
+			if (usedDomainSignals.length > 0 || loadedOutcomeCardGapSignals.length > 0) {
+				const domainStateBeforeToolMerge = latestDomainState;
+				if (domainStateMetadataUpdatePromise) {
+					await domainStateMetadataUpdatePromise;
+				}
+				let nextDomainState =
+					usedDomainSignals.length > 0
+						? mergeUsedDomainSignalsIntoSessionState(
+								latestDomainState,
+								usedDomainSignals,
+								{ now: toolDomainSignalObservedAt }
+							)
+						: mergeLoadedOutcomeCardGapsIntoSessionState(
+								latestDomainState,
+								loadedOutcomeCardGapSignals,
+								{ now: toolDomainSignalObservedAt }
+							);
+				if (usedDomainSignals.length > 0 && loadedOutcomeCardGapSignals.length > 0) {
+					nextDomainState = mergeLoadedOutcomeCardGapsIntoSessionState(
+						nextDomainState,
+						loadedOutcomeCardGapSignals,
+						{ now: toolDomainSignalObservedAt }
+					);
+				}
+				latestDomainState = nextDomainState;
+				await updateAgentMetadata(
+					supabase,
+					session.id,
+					{
+						fastchat_domain_state: nextDomainState
+					},
+					{
+						errorLogger,
+						userId,
+						projectId: effectiveProjectIdForTools ?? projectIdForLogs
+					}
+				);
+				const newToolBacklogEntries = getNewDomainResearchBacklogEntries(
+					nextDomainState,
+					domainStateBeforeToolMerge
+				);
+				observabilityWriter.recordEvent('finalize', 'domain_tool_signals_merged', {
+					used_domain_signal_count: usedDomainSignals.length,
+					loaded_outcome_card_gap_count: loadedOutcomeCardGapSignals.length,
+					used_domain_ids: [
+						...new Set(usedDomainSignals.map((signal) => signal.domain_id))
+					],
+					loaded_outcome_card_gap_ids: loadedOutcomeCardGapSignals
+						.map(
+							(signal) =>
+								signal.missing_skill_id ?? signal.missing_resource_id ?? null
+						)
+						.filter((id): id is string => Boolean(id)),
+					research_backlog_ids: nextDomainState.research_backlog.map((entry) => entry.id)
+				} as Json);
+				if (newToolBacklogEntries.length > 0) {
+					observabilityWriter.recordEvent('finalize', 'domain_research_backlog_queued', {
+						source: 'tool_results',
+						entries: newToolBacklogEntries.map((entry) => ({
+							id: entry.id,
+							kind: entry.kind,
+							priority: entry.priority,
+							domain_ids: entry.domain_ids,
+							missing_skill_id: entry.missing_skill_id ?? null,
+							missing_resource_id: entry.missing_resource_id ?? null
+						}))
+					} as Json);
+				}
+			}
 			if (turnDomainSensing) {
 				observabilityWriter.recordEvent(
 					'finalize',
@@ -4279,7 +3458,10 @@ export const POST: RequestHandler = async ({
 					reasoning_tokens: pass.reasoningTokens ?? null,
 					prompt_tokens: pass.promptTokens ?? null,
 					completion_tokens: pass.completionTokens ?? null,
-					total_tokens: pass.totalTokens ?? null
+					total_tokens: pass.totalTokens ?? null,
+					started_at_ms: pass.startedAtMs ?? null,
+					duration_ms: pass.durationMs ?? null,
+					time_to_first_token_ms: pass.timeToFirstTokenMs ?? null
 				} as Json);
 			}
 			const persistedUserMessagePromise = userMessagePromise.catch((error) => {

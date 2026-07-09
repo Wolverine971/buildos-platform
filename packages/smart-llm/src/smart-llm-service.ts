@@ -1830,6 +1830,8 @@ export class SmartLLMService {
 		profile?: TextProfile;
 		temperature?: number;
 		maxTokens?: number;
+		model?: string;
+		models?: string[];
 		sessionId?: string;
 		messageId?: string;
 		chatSessionId?: string;
@@ -1885,11 +1887,22 @@ export class SmartLLMService {
 		);
 
 		// Select models optimized for chat streaming
-		let preferredModels = selectTextModels(
+		const profileModels = selectTextModels(
 			profile,
 			estimatedLength,
 			{ maxLatency: 2000 } // Fast response for chat
 		);
+		const explicitModels = Array.from(
+			new Set(
+				[options.model, ...(options.models ?? [])]
+					.map((model) => (typeof model === 'string' ? model.trim() : ''))
+					.filter(Boolean)
+			)
+		);
+		let preferredModels =
+			explicitModels.length > 0
+				? Array.from(new Set([...explicitModels, ...profileModels]))
+				: profileModels;
 
 		if (needsToolSupport) {
 			preferredModels = ensureToolCompatibleModels(preferredModels);

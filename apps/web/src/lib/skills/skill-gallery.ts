@@ -150,7 +150,11 @@ export function getBundlePath(skill: Pick<GallerySkill, 'slug'>): string {
 	return `/agent-skills/${skill.slug}/bundle.zip`;
 }
 
-export function getDisplayTitle(skill: Pick<GallerySkill, 'title'>): string {
+export function getDisplayTitle(
+	skill: Pick<GallerySkill, 'title'> & Partial<Pick<GallerySkill, 'gallery'>>
+): string {
+	if (skill.gallery?.display_title) return skill.gallery.display_title;
+
 	return skill.title
 		.replace(/:\s*An Agent Skill.*$/i, '')
 		.replace(/:\s*Agent Skill.*$/i, '')

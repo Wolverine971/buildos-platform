@@ -31,14 +31,16 @@ export type SensedDomain = {
 	skill_ids: string[];
 	outcome_card_ids: string[];
 	recommended_skill_stack_ids: string[];
-	gaps: Array<{
-		missing_skill_id?: string;
-		missing_resource_id?: string;
-		user_need: string;
-		summary: string;
-	}>;
+	gaps: SensedCoverageGap[];
 	gap_skill_ids: string[];
 	gap_resource_ids: string[];
+};
+
+export type SensedCoverageGap = {
+	missing_skill_id?: string;
+	missing_resource_id?: string;
+	user_need: string;
+	summary: string;
 };
 
 export type SensedOutcomeCard = {
@@ -52,6 +54,9 @@ export type SensedOutcomeCard = {
 	skill_ids: string[];
 	skill_load_formats: Record<string, SkillLoadFormat>;
 	coverage_status: OutcomeCardCoverageStatus;
+	gaps: SensedCoverageGap[];
+	gap_skill_ids: string[];
+	gap_resource_ids: string[];
 	load_hint: string;
 };
 
@@ -188,6 +193,29 @@ function isDomainPayload(
 	return value.type === 'domain';
 }
 
+function getGapSkillIds(gaps: SensedCoverageGap[]): string[] {
+	return gaps
+		.map((gap) => gap.missing_skill_id)
+		.filter((skillId): skillId is string => Boolean(skillId));
+}
+
+function getGapResourceIds(gaps: SensedCoverageGap[]): string[] {
+	return gaps
+		.map((gap) => gap.missing_resource_id)
+		.filter((resourceId): resourceId is string => Boolean(resourceId));
+}
+
+function mapOutcomeCardGaps(capability: OutcomeCardDefinition | undefined): SensedCoverageGap[] {
+	return (
+		capability?.gaps?.map((gap) => ({
+			missing_skill_id: gap.missingSkillId,
+			missing_resource_id: gap.missingResourceId,
+			user_need: gap.userNeed,
+			summary: gap.summary
+		})) ?? []
+	);
+}
+
 function shouldKeepMatch(match: DomainSearchMatch): boolean {
 	return match.confidence >= MIN_DOMAIN_CONFIDENCE || match.aliases_hit.length > 0;
 }
@@ -195,6 +223,12 @@ function shouldKeepMatch(match: DomainSearchMatch): boolean {
 function toSensedDomain(domainId: string, match?: DomainSearchMatch): SensedDomain | null {
 	const loaded = loadDomain(domainId);
 	if (!isDomainPayload(loaded)) return null;
+	const gaps = loaded.gaps.map((gap) => ({
+		missing_skill_id: gap.missing_skill_id,
+		missing_resource_id: gap.missing_resource_id,
+		user_need: gap.user_need,
+		summary: gap.summary
+	}));
 
 	return {
 		id: loaded.domain_id,
@@ -206,18 +240,9 @@ function toSensedDomain(domainId: string, match?: DomainSearchMatch): SensedDoma
 		skill_ids: loaded.skills.map((skill) => skill.id),
 		outcome_card_ids: loaded.outcome_card_ids,
 		recommended_skill_stack_ids: loaded.recommended_skill_stacks.map((stack) => stack.id),
-		gaps: loaded.gaps.map((gap) => ({
-			missing_skill_id: gap.missing_skill_id,
-			missing_resource_id: gap.missing_resource_id,
-			user_need: gap.user_need,
-			summary: gap.summary
-		})),
-		gap_skill_ids: loaded.gaps
-			.map((gap) => gap.missing_skill_id)
-			.filter((skillId): skillId is string => Boolean(skillId)),
-		gap_resource_ids: loaded.gaps
-			.map((gap) => gap.missing_resource_id)
-			.filter((resourceId): resourceId is string => Boolean(resourceId))
+		gaps,
+		gap_skill_ids: getGapSkillIds(gaps),
+		gap_resource_ids: getGapResourceIds(gaps)
 	};
 }
 
@@ -232,6 +257,7 @@ function toSensedOutcomeCard(
 	confidence: number,
 	loadHint = 'Reuse this prior outcome card when the follow-up still fits the same outcome lane.'
 ): SensedOutcomeCard {
+	const gaps = mapOutcomeCardGaps(capability);
 	return {
 		id: capability.id,
 		name: capability.name,
@@ -243,6 +269,9 @@ function toSensedOutcomeCard(
 		skill_ids: capability.skillIds,
 		skill_load_formats: buildSkillLoadFormats(capability.defaultSkillId, capability.skillIds),
 		coverage_status: capability.coverageStatus,
+		gaps,
+		gap_skill_ids: getGapSkillIds(gaps),
+		gap_resource_ids: getGapResourceIds(gaps),
 		load_hint: loadHint
 	};
 }
@@ -334,6 +363,8 @@ function buildCandidateOutcomeCards(
 		for (const match of result.matches) {
 			const existing = byId.get(match.outcome_card_id);
 			if (existing && existing.confidence >= match.confidence) continue;
+			const capability = getOutcomeCardById(match.outcome_card_id);
+			const gaps = mapOutcomeCardGaps(capability);
 			byId.set(match.outcome_card_id, {
 				id: match.outcome_card_id,
 				name: match.name,
@@ -345,6 +376,9 @@ function buildCandidateOutcomeCards(
 				skill_ids: match.skill_ids,
 				skill_load_formats: match.skill_load_formats,
 				coverage_status: match.coverage_status,
+				gaps,
+				gap_skill_ids: getGapSkillIds(gaps),
+				gap_resource_ids: getGapResourceIds(gaps),
 				load_hint: match.load_hint
 			});
 		}
@@ -518,12 +552,14 @@ export function senseDomains(input: DomainSensingInput): DomainSensingResult | n
 			)
 		].filter((skillId): skillId is string => typeof skillId === 'string' && skillId.length > 0)
 	).slice(0, 10);
-	const coverageGapSkillIds = unique(
-		activeDomains.flatMap((domain) => domain.gap_skill_ids)
-	).slice(0, 8);
-	const coverageGapResourceIds = unique(
-		activeDomains.flatMap((domain) => domain.gap_resource_ids)
-	).slice(0, 8);
+	const coverageGapSkillIds = unique([
+		...activeDomains.flatMap((domain) => domain.gap_skill_ids),
+		...candidateOutcomeCards.flatMap((card) => card.gap_skill_ids)
+	]).slice(0, 8);
+	const coverageGapResourceIds = unique([
+		...activeDomains.flatMap((domain) => domain.gap_resource_ids),
+		...candidateOutcomeCards.flatMap((card) => card.gap_resource_ids)
+	]).slice(0, 8);
 
 	const skillLoadRequired =
 		shouldRequireSkillLoad(source, activeDomains) ||
@@ -671,6 +707,10 @@ export function renderDomainSensingPromptContent(
 		const skillFormatEntries = Object.entries(capability.skill_load_formats)
 			.slice(0, 5)
 			.map(([skillId, format]) => `${skillId}:${format}`);
+		const gapIds = unique([...capability.gap_skill_ids, ...capability.gap_resource_ids]).slice(
+			0,
+			4
+		);
 		const details = [
 			`${capability.coverage_status} coverage`,
 			`confidence ${capability.confidence}`,
@@ -678,7 +718,8 @@ export function renderDomainSensingPromptContent(
 			capability.skill_ids.length
 				? `skills: ${capability.skill_ids.slice(0, 5).join(', ')}`
 				: null,
-			skillFormatEntries.length ? `skill formats: ${skillFormatEntries.join(', ')}` : null
+			skillFormatEntries.length ? `skill formats: ${skillFormatEntries.join(', ')}` : null,
+			gapIds.length ? `gaps: ${gapIds.join(', ')}` : null
 		].filter((item): item is string => Boolean(item));
 		return `- ${capability.id} (${capability.name}): ${details.join('; ')}. ${capability.summary}`;
 	});
