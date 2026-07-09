@@ -35,7 +35,13 @@ export interface PrewarmControllerDeps {
 	getIsTurnActive(): boolean;
 	getCurrentSession(): ChatSession | null;
 	getCanPrimeActiveChatSession(): boolean;
-	getInputValue(): string;
+	/**
+	 * True when the composer holds a non-empty draft. Must be backed by a
+	 * memoized boolean (`$derived`), NOT the raw input string — the
+	 * orchestrator `$effect` tracks this read, and tracking the string
+	 * would re-run (and abort/reissue) the prewarm on every keystroke.
+	 */
+	getHasDraftInput(): boolean;
 	/** True when voice capture is mid-flight (recording/initializing/etc.). */
 	getIsVoiceBusy(): boolean;
 	/** True while awaiting transcription after user hit Send during recording. */
@@ -94,6 +100,8 @@ type InflightPrewarm = {
 	promise: Promise<void>;
 	heldForSend: boolean;
 	abortAfterHold: boolean;
+	/** Set by the effect cleanup; cleared when a same-key rerun re-claims the request. */
+	pendingAbort: boolean;
 };
 
 async function waitForPromiseWithTimeout(
@@ -291,7 +299,7 @@ export class PrewarmController {
 
 		const shouldPrewarmDraftContext =
 			this.#deps.getCanPrimeActiveChatSession() &&
-			(this.#deps.getInputValue().trim().length > 0 ||
+			(this.#deps.getHasDraftInput() ||
 				this.#deps.getIsVoiceBusy() ||
 				this.#deps.getIsVoicePending());
 
@@ -313,6 +321,26 @@ export class PrewarmController {
 			(readiness.preparedPromptReady || readiness.preparedPromptRetryBlocked)
 		) {
 			return;
+		}
+		// A recent hard failure (e.g. 402-frozen account) marked the retry
+		// block without adopting anything — wait out the window instead of
+		// re-POSTing on every orchestrator rerun.
+		if (
+			key === this.#lastPrewarmKey &&
+			!readiness.contextCacheReady &&
+			readiness.preparedPromptRetryBlocked
+		) {
+			return;
+		}
+
+		// A same-key prewarm is already in flight — re-claim it instead of
+		// aborting and reissuing. The effect cleanup that ran just before this
+		// body only marked it pending-abort (see #releaseInflight); clearing
+		// the flag keeps the request alive across benign effect reruns.
+		const inflight = this.#inflightPrewarm;
+		if (inflight && inflight.key === key && !inflight.controller.signal.aborted) {
+			inflight.pendingAbort = false;
+			return () => this.#releaseInflight(inflight);
 		}
 
 		this.#lastPrewarmKey = key;
@@ -351,30 +379,48 @@ export class PrewarmController {
 			} catch (err) {
 				if ((err as DOMException)?.name !== 'AbortError') {
 					this.#deps.logWarn?.('[AgentChat] Background prewarm failed', err);
+					// Block immediate refires (e.g. a 402-frozen account would
+					// otherwise re-POST on every orchestrator rerun).
+					this.#markPreparedPromptRetry(key);
 				}
 			}
 		})();
-		const inflight: InflightPrewarm = {
+		const newInflight: InflightPrewarm = {
 			key,
 			controller,
 			promise: prewarmPromise,
 			heldForSend: false,
-			abortAfterHold: false
+			abortAfterHold: false,
+			pendingAbort: false
 		};
-		this.#inflightPrewarm = inflight;
+		this.#inflightPrewarm = newInflight;
 		void prewarmPromise.finally(() => {
-			if (this.#inflightPrewarm === inflight) {
+			if (this.#inflightPrewarm === newInflight) {
 				this.#inflightPrewarm = null;
 			}
 		});
 
-		return () => {
+		return () => this.#releaseInflight(newInflight);
+	}
+
+	/**
+	 * Effect-cleanup handler for an in-flight prewarm. Cleanups run
+	 * synchronously right before the effect body reruns, so the abort is
+	 * deferred one microtask: a same-key rerun re-claims the request by
+	 * clearing `pendingAbort` before the abort fires. Only a real teardown
+	 * (key change, guard exit, effect destroy) lets the abort go through.
+	 */
+	#releaseInflight(inflight: InflightPrewarm): void {
+		inflight.pendingAbort = true;
+		queueMicrotask(() => {
+			if (!inflight.pendingAbort) return;
+			inflight.pendingAbort = false;
 			if (this.#inflightPrewarm === inflight && inflight.heldForSend) {
 				inflight.abortAfterHold = true;
 				return;
 			}
-			controller.abort();
-		};
+			inflight.controller.abort();
+		});
 	}
 
 	/**
@@ -412,6 +458,14 @@ export class PrewarmController {
 		this.preparedPrompt = null;
 		this.#lastPrewarmKey = null;
 		this.#clearPreparedPromptRetry();
+		// Drop any in-flight request so the next orchestrate starts fresh
+		// instead of re-claiming a request issued before the reset.
+		const inflight = this.#inflightPrewarm;
+		if (inflight) {
+			this.#inflightPrewarm = null;
+			inflight.pendingAbort = false;
+			inflight.controller.abort();
+		}
 	}
 }
 

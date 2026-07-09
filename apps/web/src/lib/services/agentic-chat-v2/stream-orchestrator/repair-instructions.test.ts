@@ -481,6 +481,37 @@ describe('repair instruction policy', () => {
 		expect(finalText).toContain('One write did not complete: task update failed');
 	});
 
+	it('discloses missing writes when only part of a compound mutation succeeded', () => {
+		const finalText = enforceMutationOutcomeIntegrity('Done. I created the handoff document.', {
+			contextType: 'project',
+			toolExecutions: [
+				createExecution({
+					name: 'create_onto_document',
+					args: { title: 'Handoff', description: 'Handoff', content: 'Content' }
+				})
+			],
+			explicitMutationRequested: true,
+			expectedWriteToolNames: ['update_onto_task', 'create_onto_document']
+		});
+
+		expect(finalText).toContain('I completed only part of the requested change.');
+		expect(finalText).toContain('Still unfinished: task update.');
+		expect(finalText).toContain('The request remains pending.');
+	});
+
+	it('does not claim partial completion when a destructive write is awaiting confirmation', () => {
+		const finalText = enforceMutationOutcomeIntegrity('Please confirm the deletion.', {
+			contextType: 'project',
+			toolExecutions: [],
+			explicitMutationRequested: true,
+			expectedWriteToolNames: ['delete_onto_document']
+		});
+
+		expect(finalText).toContain('The requested change has not run yet.');
+		expect(finalText).not.toContain('completed only part');
+		expect(finalText).toContain('The request remains pending.');
+	});
+
 	it('corrects document link claims when no link write succeeded', () => {
 		const toolExecutions = [
 			createExecution({

@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
 	reconcile: vi.fn(),
 	readFastChatPendingTurnIntent: vi.fn(),
 	resolveFastChatTurnIntent: vi.fn(),
+	resolveFastChatTurnOutcome: vi.fn(),
 	resolveSession: vi.fn(),
 	selectFastChatTools: vi.fn(),
 	senseDomains: vi.fn(),
@@ -80,6 +81,18 @@ vi.mock('$lib/services/agentic-chat/tools/domains/domain-sensing', () => ({
 		return formats;
 	},
 	senseDomains: mocks.senseDomains
+}));
+
+vi.mock('$lib/services/agentic-chat-v2/turn-intent', () => ({
+	FASTCHAT_PENDING_TURN_INTENT_METADATA_KEY: 'fastchat_pending_turn_intent',
+	readFastChatPendingTurnIntent: mocks.readFastChatPendingTurnIntent,
+	resolveFastChatTurnIntent: mocks.resolveFastChatTurnIntent,
+	shouldBypassDomainSensingForTurnIntent: () => false
+}));
+
+vi.mock('$lib/services/agentic-chat-v2/tool-selector', () => ({
+	resolveFastChatSurfaceProfileForTurn: () => 'general',
+	selectFastChatTools: mocks.selectFastChatTools
 }));
 
 vi.mock('$lib/services/agentic-chat-lite/prompt', () => ({
@@ -163,12 +176,9 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 	parseFastChatInitialPlanModels: () => null,
 	parseFastChatModelTieringMode: () => 'off',
 	parseFastChatModelTieringSampleRate: (_value?: string, fallback = 0.5) => fallback,
-	readFastChatPendingTurnIntent: mocks.readFastChatPendingTurnIntent,
 	resolveFastChatModelTieringConfig: () => null,
-	resolveFastChatSurfaceProfileForTurn: () => 'general',
-	resolveFastChatTurnIntent: mocks.resolveFastChatTurnIntent,
+	resolveFastChatTurnOutcome: mocks.resolveFastChatTurnOutcome,
 	sanitizeAttachmentRefsForMetadata: () => [],
-	selectFastChatTools: mocks.selectFastChatTools,
 	shouldUseLiveVisionForTurn: () => false,
 	streamFastChat: mocks.streamFastChat
 }));
@@ -538,10 +548,16 @@ beforeEach(() => {
 		requiresWrite: false,
 		action: null,
 		entityKind: 'unknown',
+		operations: [],
 		source: 'none',
 		originalRequestText: null,
 		originatingTurnRunId: null,
 		clearPending: false
+	});
+	mocks.resolveFastChatTurnOutcome.mockReturnValue({
+		status: 'fulfilled',
+		fulfilled: true,
+		expectedWriteToolNames: []
 	});
 	mocks.senseDomains.mockReturnValue(null);
 	mocks.applyActiveDomainSignalsOverlay.mockImplementation((envelope: Row, input: Row) => {
@@ -2584,5 +2600,73 @@ describe('/api/agent/v2/stream', () => {
 				}
 			})
 		);
+	});
+
+	it('keeps a resumed checkpoint active when its mutation remains unfulfilled', async () => {
+		const supabase = createStreamingSupabase({
+			chat_turn_checkpoints: [buildCheckpointRow({ id: 'checkpoint-still-active' })]
+		});
+		mocks.resolveFastChatTurnIntent.mockReturnValueOnce({
+			version: 1,
+			requiresWrite: true,
+			action: 'update',
+			entityKind: 'task',
+			operations: [{ action: 'update', entityKind: 'task' }],
+			source: 'pending_continuation',
+			originalRequestText: 'Update the task.',
+			originatingTurnRunId: 'turn-previous',
+			clearPending: false
+		});
+		mocks.resolveFastChatTurnOutcome.mockReturnValueOnce({
+			status: 'unfulfilled',
+			fulfilled: false,
+			expectedWriteToolNames: ['update_onto_task']
+		});
+		mocks.streamFastChat.mockResolvedValueOnce({
+			assistantText: 'I could not update the task.',
+			finalAssistantText: 'I could not update the task.',
+			usage: { total_tokens: 10 },
+			finishedReason: 'mutation_unfulfilled',
+			toolExecutions: [],
+			llmPasses: [],
+			toolRounds: 1,
+			toolCallsMade: 1,
+			supervisorDecisions: [],
+			cancelled: false
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Use the launch checklist task.',
+					context_type: 'global',
+					stream_run_id: 'stream-run-still-active',
+					client_turn_id: 'client-turn-still-active'
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		await response.text();
+		expect(
+			supabase.updatedRows.chat_turn_checkpoints?.some(
+				(row) => row.id === 'checkpoint-still-active' && row.status === 'resumed'
+			)
+		).toBe(false);
+		expect(
+			supabase.insertedRows.chat_turn_events?.find(
+				(row) => row.event_type === 'supervisor_checkpoint_remains_active'
+			)?.payload
+		).toMatchObject({
+			checkpoint_id: 'checkpoint-still-active',
+			outcome_status: 'unfulfilled',
+			intent_fulfilled: false
+		});
 	});
 });

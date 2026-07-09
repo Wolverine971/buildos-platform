@@ -8,6 +8,7 @@ import {
 } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { GATEWAY_TOOL_DEFINITIONS } from '$lib/services/agentic-chat/tools/core/definitions/gateway';
 import { selectFastChatTools } from './tool-selector';
+import { resolveFastChatTurnIntent } from './turn-intent';
 
 afterEach(() => {
 	vi.unstubAllEnvs();
@@ -351,6 +352,49 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('update_onto_document');
 		expect(names).toContain('get_document_tree');
 		expect(names).toContain('move_document_in_tree');
+	});
+
+	it('uses structured compound intent to keep every required write tool available', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
+		const message = 'Mark the task done and create a document for the handoff.';
+		const turnIntent = resolveFastChatTurnIntent({
+			contextType: 'project',
+			latestUserMessage: message
+		});
+		const names = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage: message,
+			turnIntent
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(names).toContain('update_onto_task');
+		expect(names).toContain('create_onto_document');
+		expect(names).toContain('get_document_tree');
+	});
+
+	it('materializes safe goal writes at turn start but keeps deletes behind discovery', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
+		const createGoal = resolveFastChatTurnIntent({
+			contextType: 'project',
+			latestUserMessage: 'Create a goal for launch.'
+		});
+		const deleteGoal = resolveFastChatTurnIntent({
+			contextType: 'project',
+			latestUserMessage: 'Delete the goal.'
+		});
+		const createNames = selectFastChatTools({
+			contextType: 'project',
+			turnIntent: createGoal
+		}).map((tool) => tool.function?.name);
+		const deleteNames = selectFastChatTools({
+			contextType: 'project',
+			turnIntent: deleteGoal
+		}).map((tool) => tool.function?.name);
+
+		expect(createNames).toContain('create_onto_goal');
+		expect(deleteNames).not.toContain('delete_onto_goal');
 	});
 
 	it('does not expose Libri when the feature flag is disabled', () => {

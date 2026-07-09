@@ -476,11 +476,21 @@ export function enforceMutationOutcomeIntegrity(
 		toolExecutions: FastToolExecution[];
 		latestUserText?: string;
 		explicitMutationRequested?: boolean;
+		expectedWriteToolNames?: string[];
 	}
 ): string {
 	if (!finalText) return finalText;
 
 	const mutationOutcomes = summarizeMutationOutcomes(params.toolExecutions);
+	const successfulWriteToolNames = new Set(
+		params.toolExecutions
+			.filter((execution) => didWriteExecutionSucceed(execution))
+			.map((execution) => execution.toolCall.function?.name?.trim() ?? '')
+			.filter(Boolean)
+	);
+	const missingExpectedWriteTools = Array.from(
+		new Set(params.expectedWriteToolNames ?? [])
+	).filter((toolName) => !successfulWriteToolNames.has(toolName));
 	if (
 		mutationOutcomes.attempted === 0 &&
 		(params.explicitMutationRequested === true ||
@@ -488,6 +498,18 @@ export function enforceMutationOutcomeIntegrity(
 		looksLikeMutationSuccessClaim(finalText)
 	) {
 		return buildNoExecutionMutationFailureMessage();
+	}
+	if (
+		missingExpectedWriteTools.length > 0 &&
+		params.explicitMutationRequested === true &&
+		!looksLikeWriteFailureDisclosure(finalText) &&
+		!looksLikePureClarifyingQuestion(finalText)
+	) {
+		return buildPartialMutationDisclosure(
+			finalText,
+			missingExpectedWriteTools,
+			mutationOutcomes.succeeded
+		);
 	}
 
 	if (mutationOutcomes.attempted > 0) {
@@ -541,6 +563,37 @@ export function enforceMutationOutcomeIntegrity(
 	}
 
 	return finalText;
+}
+
+function buildPartialMutationDisclosure(
+	finalText: string,
+	missingToolNames: string[],
+	successfulWriteCount: number
+): string {
+	const remaining = missingToolNames.map(describeWriteTool).join(', ');
+	const status =
+		successfulWriteCount > 0
+			? 'I completed only part of the requested change.'
+			: 'The requested change has not run yet.';
+	return `${finalText.trim()}\n\n${status} Still unfinished: ${remaining}. The request remains pending.`;
+}
+
+function describeWriteTool(toolName: string): string {
+	const match =
+		/^(create|update|delete)_onto_(document|task|project|goal|plan|milestone|risk)$/.exec(
+			toolName
+		);
+	if (match) {
+		const [, action, entity] = match;
+		return `${entity} ${action}`;
+	}
+	if (toolName === 'create_calendar_event') return 'event creation';
+	if (toolName === 'update_calendar_event') return 'event update';
+	if (toolName === 'delete_calendar_event') return 'event deletion';
+	if (toolName === 'move_document_in_tree') return 'document organization';
+	if (toolName === 'link_onto_entities') return 'entity link';
+	if (toolName === 'unlink_onto_edge') return 'entity unlink';
+	return toolName.replaceAll('_', ' ');
 }
 
 export function buildToolValidationRepairInstruction(

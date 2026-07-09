@@ -398,6 +398,28 @@ export const GET: RequestHandler = async ({
 		return ApiResponse.badRequest('Session id is required');
 	}
 
+	// Lightweight probe used by the client while a restored turn is running:
+	// one turn-runs query instead of the full snapshot (~8 queries incl.
+	// 1000-row tool-execution/turn-event scans + timeline build). The
+	// user_id filter scopes ownership, so the session row isn't fetched.
+	if (url.searchParams.get('probe') === 'active-turn') {
+		const { data: probeRuns, error: probeError } = await supabase
+			.from('chat_turn_runs')
+			.select(
+				'id, session_id, status, stream_run_id, client_turn_id, finished_reason, updated_at'
+			)
+			.eq('session_id', sessionId)
+			.eq('user_id', user.id)
+			.order('started_at', { ascending: false })
+			.limit(5);
+
+		if (probeError) {
+			return ApiResponse.databaseError(probeError);
+		}
+
+		return ApiResponse.success({ turnRuns: probeRuns ?? [] });
+	}
+
 	// Fetch the session
 	const { data: session, error: sessionError } = await supabase
 		.from('chat_sessions')

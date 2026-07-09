@@ -676,118 +676,159 @@ export function buildTimelineItemQuestionDraft(item: AgentTimelineItem): string 
 	return lines.join('\n');
 }
 
+// ---------------------------------------------------------------------------
+// Live-timeline memoization
+//
+// `timelineItemsFromMessages` runs inside a `$derived` that the modal
+// re-reads on every streaming text flush (the `messages` array is replaced
+// wholesale per rAF batch). The caches below make those re-runs cheap by
+// reusing the items built for unchanged message / activity objects.
+//
+// Correctness relies on the modal's copy-on-update invariant: messages and
+// thinking-block activities are NEVER mutated in place — every change
+// replaces the object — so object identity is a valid cache key and stale
+// entries are unreachable (WeakMap lets replaced objects be GC'd).
+// ---------------------------------------------------------------------------
+
+const messageTimelineCache = new WeakMap<
+	object,
+	{ sessionId: string; items: AgentTimelineItem[] }
+>();
+const activityTimelineCache = new WeakMap<
+	object,
+	{ sessionId: string; messageId: string; items: AgentTimelineItem[] }
+>();
+
+function timelineItemsForThinkingActivity(
+	sessionId: string,
+	message: UIMessage,
+	activity: any
+): AgentTimelineItem[] {
+	const metadata = activity.metadata ?? {};
+	const timestamp =
+		activity.timestamp instanceof Date
+			? activity.timestamp.toISOString()
+			: fallbackTimestamp(activity.timestamp, message.created_at);
+	const toolName = stringValue(metadata.toolName) ?? stringValue(metadata.originalToolName);
+	const kind: AgentTimelineItemKind = activity.activityType === 'tool_call' ? 'tool' : 'step';
+	if (kind === 'tool' && toolName) {
+		const toolItem = buildToolTimelineItem(sessionId, {
+			id:
+				stringValue(metadata.toolExecutionId) ??
+				stringValue(metadata.toolCallId) ??
+				activity.toolCallId ??
+				activity.id,
+			session_id: sessionId,
+			message_id: message.id,
+			turn_run_id: stringValue(metadata.turnRunId) ?? stringValue(metadata.turn_run_id),
+			stream_run_id: stringValue(metadata.streamRunId) ?? stringValue(metadata.stream_run_id),
+			client_turn_id:
+				stringValue(metadata.clientTurnId) ?? stringValue(metadata.client_turn_id),
+			tool_name: toolName,
+			tool_category:
+				stringValue(metadata.toolCategory) ?? stringValue(metadata.tool_category),
+			gateway_op: stringValue(metadata.gatewayOp) ?? stringValue(metadata.gateway_op),
+			help_path: stringValue(metadata.helpPath) ?? stringValue(metadata.help_path),
+			sequence_index: numberValue(metadata.sequenceIndex),
+			arguments: metadata.arguments ?? metadata.rawArguments ?? metadata.args,
+			result: metadata.result ?? metadata.response,
+			result_count: numberValue(metadata.resultCount) ?? numberValue(metadata.result_count),
+			zero_result: booleanValue(metadata.zeroResult) ?? booleanValue(metadata.zero_result),
+			execution_time_ms:
+				numberValue(metadata.durationMs) ?? numberValue(metadata.duration_ms),
+			tokens_consumed:
+				numberValue(metadata.tokensConsumed) ?? numberValue(metadata.tokens_consumed),
+			success: activity.status !== 'failed',
+			error_message: stringValue(metadata.error),
+			requires_user_action:
+				booleanValue(metadata.requiresUserAction) ??
+				booleanValue(metadata.requires_user_action),
+			affected_entities: metadata.affectedEntities ?? metadata.affected_entities,
+			created_at: timestamp
+		});
+		if (!toolItem) return [];
+		const change = buildChangeTimelineItem(toolItem);
+		return change ? [toolItem, change] : [toolItem];
+	}
+	return [
+		{
+			id: `activity:${activity.id}`,
+			sessionId,
+			source: 'turn_event',
+			kind,
+			status: normalizeStatus(activity.status),
+			timestamp,
+			messageId: message.id,
+			title: activity.content,
+			summary: activity.content,
+			detailPreview: redactedJsonPreview(metadata.result ?? metadata.response).preview,
+			tool: null,
+			projectRef: null,
+			entityRefs: []
+		}
+	];
+}
+
+function timelineItemsForMessage(sessionId: string, message: UIMessage): AgentTimelineItem[] {
+	if (message.type === 'created_entities') {
+		const entities: unknown[] = Array.isArray(message.data?.entities)
+			? message.data.entities
+			: [];
+		const items: AgentTimelineItem[] = [];
+		entities.forEach((entity: unknown, index: number) => {
+			const item = buildCreatedEntityChangeTimelineItem(sessionId, message, entity, index);
+			if (item) items.push(item);
+		});
+		return items;
+	}
+	if (message.type === 'thinking_block' && Array.isArray((message as any).activities)) {
+		const items: AgentTimelineItem[] = [];
+		for (const activity of (message as any).activities) {
+			if (activity && typeof activity === 'object') {
+				const cached = activityTimelineCache.get(activity);
+				if (cached && cached.sessionId === sessionId && cached.messageId === message.id) {
+					items.push(...cached.items);
+					continue;
+				}
+				const built = timelineItemsForThinkingActivity(sessionId, message, activity);
+				activityTimelineCache.set(activity, {
+					sessionId,
+					messageId: message.id,
+					items: built
+				});
+				items.push(...built);
+			}
+		}
+		return items;
+	}
+	const item = buildMessageTimelineItem(sessionId, {
+		id: message.id,
+		session_id: message.session_id,
+		role: message.role ?? message.type,
+		content: message.content,
+		created_at: message.created_at ?? message.timestamp?.toISOString(),
+		metadata: message.metadata
+	});
+	return item ? [item] : [];
+}
+
 export function timelineItemsFromMessages(
 	sessionId: string,
 	messages: UIMessage[]
 ): AgentTimelineItem[] {
 	const items: AgentTimelineItem[] = [];
 	for (const message of messages) {
-		if (message.type === 'created_entities') {
-			const entities: unknown[] = Array.isArray(message.data?.entities)
-				? message.data.entities
-				: [];
-			entities.forEach((entity: unknown, index: number) => {
-				const item = buildCreatedEntityChangeTimelineItem(
-					sessionId,
-					message,
-					entity,
-					index
-				);
-				if (item) items.push(item);
-			});
-			continue;
-		}
-		if (message.type === 'thinking_block' && Array.isArray((message as any).activities)) {
-			for (const activity of (message as any).activities) {
-				const metadata = activity.metadata ?? {};
-				const timestamp =
-					activity.timestamp instanceof Date
-						? activity.timestamp.toISOString()
-						: fallbackTimestamp(activity.timestamp, message.created_at);
-				const toolName =
-					stringValue(metadata.toolName) ?? stringValue(metadata.originalToolName);
-				const kind: AgentTimelineItemKind =
-					activity.activityType === 'tool_call' ? 'tool' : 'step';
-				if (kind === 'tool' && toolName) {
-					const toolItem = buildToolTimelineItem(sessionId, {
-						id:
-							stringValue(metadata.toolExecutionId) ??
-							stringValue(metadata.toolCallId) ??
-							activity.toolCallId ??
-							activity.id,
-						session_id: sessionId,
-						message_id: message.id,
-						turn_run_id:
-							stringValue(metadata.turnRunId) ?? stringValue(metadata.turn_run_id),
-						stream_run_id:
-							stringValue(metadata.streamRunId) ??
-							stringValue(metadata.stream_run_id),
-						client_turn_id:
-							stringValue(metadata.clientTurnId) ??
-							stringValue(metadata.client_turn_id),
-						tool_name: toolName,
-						tool_category:
-							stringValue(metadata.toolCategory) ??
-							stringValue(metadata.tool_category),
-						gateway_op:
-							stringValue(metadata.gatewayOp) ?? stringValue(metadata.gateway_op),
-						help_path:
-							stringValue(metadata.helpPath) ?? stringValue(metadata.help_path),
-						sequence_index: numberValue(metadata.sequenceIndex),
-						arguments: metadata.arguments ?? metadata.rawArguments ?? metadata.args,
-						result: metadata.result ?? metadata.response,
-						result_count:
-							numberValue(metadata.resultCount) ?? numberValue(metadata.result_count),
-						zero_result:
-							booleanValue(metadata.zeroResult) ?? booleanValue(metadata.zero_result),
-						execution_time_ms:
-							numberValue(metadata.durationMs) ?? numberValue(metadata.duration_ms),
-						tokens_consumed:
-							numberValue(metadata.tokensConsumed) ??
-							numberValue(metadata.tokens_consumed),
-						success: activity.status !== 'failed',
-						error_message: stringValue(metadata.error),
-						requires_user_action:
-							booleanValue(metadata.requiresUserAction) ??
-							booleanValue(metadata.requires_user_action),
-						affected_entities: metadata.affectedEntities ?? metadata.affected_entities,
-						created_at: timestamp
-					});
-					if (toolItem) {
-						items.push(toolItem);
-						const change = buildChangeTimelineItem(toolItem);
-						if (change) items.push(change);
-					}
-					continue;
-				}
-				items.push({
-					id: `activity:${activity.id}`,
-					sessionId,
-					source: 'turn_event',
-					kind,
-					status: normalizeStatus(activity.status),
-					timestamp,
-					messageId: message.id,
-					title: activity.content,
-					summary: activity.content,
-					detailPreview: redactedJsonPreview(metadata.result ?? metadata.response)
-						.preview,
-					tool: null,
-					projectRef: null,
-					entityRefs: []
-				});
+		if (message && typeof message === 'object') {
+			const cached = messageTimelineCache.get(message);
+			if (cached && cached.sessionId === sessionId) {
+				items.push(...cached.items);
+				continue;
 			}
+			const built = timelineItemsForMessage(sessionId, message);
+			messageTimelineCache.set(message, { sessionId, items: built });
+			items.push(...built);
 			continue;
 		}
-		const item = buildMessageTimelineItem(sessionId, {
-			id: message.id,
-			session_id: message.session_id,
-			role: message.role ?? message.type,
-			content: message.content,
-			created_at: message.created_at ?? message.timestamp?.toISOString(),
-			metadata: message.metadata
-		});
-		if (item) items.push(item);
 	}
 	return sortAndDedupeTimelineItems(items);
 }

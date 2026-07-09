@@ -8,6 +8,7 @@ import {
 	deriveSessionTitle,
 	loadAgentChatSessionSnapshot,
 	prewarmAgentContext,
+	probeActiveTurnRun,
 	warmAgentChatStreamTransport
 } from './agent-chat-session';
 
@@ -603,6 +604,61 @@ describe('agent-chat-session helpers', () => {
 			prewarmedContext: { key: 'global:none' },
 			preparedPrompt: null
 		});
+	});
+
+	it('prewarmAgentContext throws a status-aware AgentRequestError on HTTP failure', async () => {
+		const frozenMessage =
+			'AI generation is paused until billing is activated. Your workspace remains readable.';
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue({
+				ok: false,
+				status: 402,
+				json: async () => ({
+					success: false,
+					error: frozenMessage,
+					code: 'UPGRADE_REQUIRED'
+				})
+			})
+		);
+
+		await expect(
+			prewarmAgentContext({ context_type: 'global', ensure_session: true })
+		).rejects.toMatchObject({
+			name: 'AgentRequestError',
+			status: 402,
+			code: 'UPGRADE_REQUIRED',
+			message: frozenMessage
+		});
+	});
+
+	it('probeActiveTurnRun reports the running turn from the lightweight probe endpoint', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => ({
+				success: true,
+				data: {
+					turnRuns: [
+						{ id: 'run-2', status: 'running' },
+						{ id: 'run-1', status: 'completed' }
+					]
+				}
+			})
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const result = await probeActiveTurnRun('session-9');
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			'/api/chat/sessions/session-9?probe=active-turn',
+			expect.anything()
+		);
+		expect(result).toEqual({ hasActiveTurnRun: true, activeTurnRunId: 'run-2' });
+	});
+
+	it('probeActiveTurnRun returns null on failure so callers keep polling', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
+		expect(await probeActiveTurnRun('session-9')).toBeNull();
 	});
 
 	it('warmAgentChatStreamTransport calls the stream route warmup endpoint', async () => {

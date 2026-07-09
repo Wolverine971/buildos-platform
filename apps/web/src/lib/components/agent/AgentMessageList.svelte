@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/agent/AgentMessageList.svelte -->
 <!-- INKPRINT Design System: Message list with semantic textures -->
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import ThinkingBlock from './ThinkingBlock.svelte';
 	import CreatedEntityCards from './CreatedEntityCards.svelte';
 	import { renderMarkdown, getProseClasses } from '$lib/utils/markdown';
@@ -23,6 +24,8 @@
 		onSelectSuggestion?: (text: string) => void;
 		selectedContextType?: ChatContextType | null;
 		resolvedProjectFocus?: ProjectFocus | null;
+		/** Id of the assistant message currently receiving streamed text, if any. */
+		streamingMessageId?: string | null;
 	}
 
 	let {
@@ -35,10 +38,69 @@
 		onDeleteVoiceNote,
 		onSelectSuggestion,
 		selectedContextType = null,
-		resolvedProjectFocus = null
+		resolvedProjectFocus = null,
+		streamingMessageId = null
 	}: Props = $props();
 
 	const proseClasses = getProseClasses('sm');
+
+	// Throttled markdown for the actively streaming assistant bubble. Re-parsing
+	// the full accumulated markdown (marked + sanitize-html) on every rAF text
+	// flush is O(n²) over the response length and replaces the bubble's DOM
+	// subtree per frame. Instead we re-parse at most once per interval, serve
+	// the cached html in between, and let a trailing parse catch the final
+	// chunk. Finalized messages take the normal parse-once path in the template.
+	const STREAMING_MARKDOWN_PARSE_INTERVAL_MS = 150;
+	let streamingParseTick = $state(0);
+	let streamingParseTimer: ReturnType<typeof setTimeout> | null = null;
+	let streamingParseCache: {
+		id: string;
+		content: string;
+		isMarkdown: boolean;
+		html: string;
+		parsedAt: number;
+	} | null = null;
+
+	function scheduleTrailingStreamingParse(delayMs: number) {
+		if (streamingParseTimer !== null) return;
+		streamingParseTimer = setTimeout(() => {
+			streamingParseTimer = null;
+			streamingParseTick += 1;
+		}, delayMs);
+	}
+
+	/** Returns sanitized html for the streaming bubble, or null to render plaintext. */
+	function streamingMarkdownHtml(message: UIMessage): string | null {
+		void streamingParseTick; // re-evaluate when the trailing parse fires
+		const content = message.content ?? '';
+		const cache = streamingParseCache;
+		if (cache && cache.id === message.id) {
+			if (cache.content === content) {
+				return cache.isMarkdown ? cache.html : null;
+			}
+			const elapsed = Date.now() - cache.parsedAt;
+			if (elapsed < STREAMING_MARKDOWN_PARSE_INTERVAL_MS) {
+				scheduleTrailingStreamingParse(STREAMING_MARKDOWN_PARSE_INTERVAL_MS - elapsed);
+				return cache.isMarkdown ? cache.html : null;
+			}
+		}
+		const isMarkdown = shouldRenderAsMarkdown(content);
+		streamingParseCache = {
+			id: message.id,
+			content,
+			isMarkdown,
+			html: isMarkdown ? renderMarkdown(content) : '',
+			parsedAt: Date.now()
+		};
+		return isMarkdown ? streamingParseCache.html : null;
+	}
+
+	onDestroy(() => {
+		if (streamingParseTimer !== null) {
+			clearTimeout(streamingParseTimer);
+			streamingParseTimer = null;
+		}
+	});
 
 	// Per-context suggestion sets shown in the empty-state card.
 	// Project context branches further on focus type so entity-focused chats
@@ -307,7 +369,22 @@
 							loading="lazy"
 						/>
 					</div>
-					{#if shouldRenderAsMarkdown(message.content)}
+					{#if message.id === streamingMessageId}
+						{@const streamingHtml = streamingMarkdownHtml(message)}
+						{#if streamingHtml !== null}
+							<div
+								class="agent-markdown {proseClasses} min-w-0 overflow-x-auto break-words"
+							>
+								{@html streamingHtml}
+							</div>
+						{:else}
+							<div
+								class="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
+							>
+								{message.content}
+							</div>
+						{/if}
+					{:else if shouldRenderAsMarkdown(message.content)}
 						<div
 							class="agent-markdown {proseClasses} min-w-0 overflow-x-auto break-words"
 						>

@@ -18,6 +18,7 @@ import {
 	type StreamCallbacks,
 	type SSEProcessorOptions
 } from '$lib/utils/sse-processor';
+import { AgentRequestError, buildAgentRequestError } from './agent-chat-session';
 import type { PreparedPromptClient } from './agent-chat-session';
 import type { AgentChatImageAttachment, UIMessage } from './agent-chat.types';
 
@@ -156,6 +157,28 @@ export function buildClientStreamTimingState(runId: number): ClientStreamTimingS
 
 const PREPARED_PROMPT_SEND_WAIT_MS = 250;
 
+// Inactivity guard for the SSE transport. The server heartbeats every 12s
+// (SSE comments — the processor counts raw chunk bytes as activity), so a
+// 45s gap means the connection is dead; the timeout error routes into the
+// standard turn-reconciliation path instead of an infinite spinner.
+const STREAM_INACTIVITY_TIMEOUT_MS = 45_000;
+
+// Event types that prove the server started the turn proper (they are only
+// emitted after turn admission + user-message persistence). The initial
+// `agent_state` and `session` events fire BEFORE the deny checks, so they
+// don't count — see the deny-rollback in sendMessage's onComplete.
+const TURN_EVIDENCE_EVENT_TYPES = new Set<string>([
+	'context_usage',
+	'text',
+	'text_delta',
+	'tool_call',
+	'tool_result',
+	'context_shift',
+	'last_turn_context',
+	'skill_activity',
+	'operation'
+]);
+
 function diffMs(start: number | null, end: number | null): number | null {
 	if (typeof start !== 'number' || typeof end !== 'number') return null;
 	return Math.max(0, end - start);
@@ -207,13 +230,17 @@ export class AgentChatStreamController {
 	isStreaming = $state(false);
 	isStartingStream = $state(false);
 	currentActivity = $state('');
-	activeStreamRunId = $state(0);
-	activeTransportStreamRunId = $state<string | null>(null);
-	activeClientTurnId = $state<string | null>(null);
 	error = $state<string | null>(null);
-	activeStreamTiming = $state<ClientStreamTimingState | null>(null);
-	lastCompletedStreamTiming = $state<ClientStreamTimingState | null>(null);
 	hasSentMessage = $state(false);
+
+	// Run-guard tokens and timing telemetry. Deliberately NOT $state: nothing
+	// reads them reactively (templates/effects), and they're written in the
+	// per-SSE-event hot path where signal overhead adds up.
+	activeStreamRunId = 0;
+	activeTransportStreamRunId: string | null = null;
+	activeClientTurnId: string | null = null;
+	activeStreamTiming: ClientStreamTimingState | null = null;
+	lastCompletedStreamTiming: ClientStreamTimingState | null = null;
 
 	#currentStreamController: AbortController | null = null;
 	#deps: StreamControllerDeps;
@@ -235,32 +262,28 @@ export class AgentChatStreamController {
 		runId: number,
 		eventType: AgentSSEMessage['type'] | 'transport_error'
 	): void {
-		if (!this.activeStreamTiming || this.activeStreamTiming.runId !== runId) return;
+		const timing = this.activeStreamTiming;
+		if (!timing || timing.runId !== runId) return;
 
+		// Mutated in place: this runs once per SSE event (incl. every
+		// text_delta) and the struct is non-reactive telemetry.
 		const now = Date.now();
-		let next = this.activeStreamTiming;
-		if (next.firstEventAtMs === null) {
-			next = { ...next, firstEventAtMs: now };
+		if (timing.firstEventAtMs === null) {
+			timing.firstEventAtMs = now;
 		}
 		if (eventType === 'text' || eventType === 'text_delta') {
-			next = {
-				...next,
-				firstTextAtMs: next.firstTextAtMs ?? now,
-				lastTextAtMs: now
-			};
+			timing.firstTextAtMs ??= now;
+			timing.lastTextAtMs = now;
 		}
-		if (eventType === 'done' && next.doneEventAtMs === null) {
-			next = { ...next, doneEventAtMs: now };
+		if (eventType === 'done' && timing.doneEventAtMs === null) {
+			timing.doneEventAtMs = now;
 		}
-		this.activeStreamTiming = next;
 	}
 
 	attachServerTiming(runId: number, timing: AgentTimingSummary): void {
-		if (!this.activeStreamTiming || this.activeStreamTiming.runId !== runId) return;
-		this.activeStreamTiming = {
-			...this.activeStreamTiming,
-			serverTiming: timing
-		};
+		const active = this.activeStreamTiming;
+		if (!active || active.runId !== runId) return;
+		active.serverTiming = timing;
 	}
 
 	#clearStreamEventOrderingState(): void {
@@ -605,9 +628,13 @@ export class AgentChatStreamController {
 			});
 
 			if (!response.ok) {
-				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+				throw await buildAgentRequestError(
+					response,
+					'Failed to send message. Please try again.'
+				);
 			}
 			responseAccepted = true;
+			let receivedTurnEvidence = false;
 
 			const callbacks: StreamCallbacks = {
 				onProgress: (data: any) => {
@@ -624,6 +651,9 @@ export class AgentChatStreamController {
 					const event = data as AgentSSEMessage;
 					if (!this.#shouldAcceptStreamEvent(event)) return;
 					receivedStreamEvent = true;
+					if (event?.type && TURN_EVIDENCE_EVENT_TYPES.has(event.type)) {
+						receivedTurnEvidence = true;
+					}
 					this.recordClientStreamEvent(
 						runId,
 						(event?.type as AgentSSEMessage['type']) ?? 'text'
@@ -670,11 +700,26 @@ export class AgentChatStreamController {
 					this.#deps.assistant.flushText();
 					this.#deps.assistant.finalizeMessage();
 					this.finalizeClientStreamTiming(runId, terminalState);
+
+					// Deny-shaped turn: the server rejected before starting the
+					// turn proper (error event, zero post-admission evidence),
+					// so the optimistic user bubble was never persisted — it
+					// would silently vanish on the next snapshot reload. Roll
+					// it back and restore the draft instead.
+					if (this.error && receivedStreamEvent && !receivedTurnEvidence && userMessage) {
+						this.#deps.messages.removeById(userMessage.id);
+						if (!this.#deps.getInputValue().trim()) {
+							this.#deps.setInputValue(trimmed);
+						}
+						if (!suppressInputClear && sentImageAttachments.length > 0) {
+							this.#deps.attachments.restoreDraft(sentImageAttachments);
+						}
+					}
 				}
 			};
 
 			await this.#streamProcessor.processStream(response, callbacks, {
-				timeout: 0,
+				timeout: STREAM_INACTIVITY_TIMEOUT_MS,
 				parseJSON: true,
 				treatErrorEventsAsProgress: true,
 				signal: streamController.signal
@@ -712,7 +757,10 @@ export class AgentChatStreamController {
 				return;
 			}
 
-			this.error = 'Failed to send message. Please try again.';
+			this.error =
+				err instanceof AgentRequestError
+					? err.message
+					: 'Failed to send message. Please try again.';
 			this.isStreaming = false;
 			this.currentActivity = '';
 			this.activeTransportStreamRunId = null;
@@ -729,7 +777,11 @@ export class AgentChatStreamController {
 			if (failedUserMessageId) {
 				this.#deps.messages.removeById(failedUserMessageId);
 			}
-			this.#deps.setInputValue(trimmed);
+			// Restore the failed draft, but never clobber text the user typed
+			// while the request was in flight.
+			if (!this.#deps.getInputValue().trim()) {
+				this.#deps.setInputValue(trimmed);
+			}
 			if (!suppressInputClear && sentImageAttachments.length > 0) {
 				this.#deps.attachments.restoreDraft(sentImageAttachments);
 			}
@@ -852,7 +904,9 @@ export class AgentChatStreamController {
 		}
 
 		try {
-			this.#currentStreamController.abort();
+			// Optional chain: the natural-completion path may have nulled the
+			// controller while we awaited the cancel hint above.
+			this.#currentStreamController?.abort();
 		} catch (abortError) {
 			this.#deps.logDebug?.('Abort failed (already closed)', abortError);
 		}

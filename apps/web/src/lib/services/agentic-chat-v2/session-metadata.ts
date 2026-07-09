@@ -20,7 +20,7 @@ export async function updateAgentMetadata(
 		endpoint?: string;
 		httpMethod?: string;
 	}
-): Promise<void> {
+): Promise<boolean> {
 	const errorLogger = options?.errorLogger;
 	const { data, error } = await supabase.rpc('merge_chat_session_agent_metadata', {
 		p_session_id: sessionId,
@@ -44,10 +44,12 @@ export async function updateAgentMetadata(
 				}
 			});
 		}
-		return;
+		return false;
 	}
 
 	if (data === null) {
 		logger.warn('No chat session metadata merged', { sessionId });
+		return false;
 	}
+	return true;
 }

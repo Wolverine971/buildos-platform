@@ -184,4 +184,29 @@ describe('ContextGatheringLedger', () => {
 		});
 		expect(observation.status.reasons).toContain('1 semantic read miss this round');
 	});
+
+	it('treats distinct sections from the same document as new evidence', () => {
+		const ledger = new ContextGatheringLedger();
+		const observe = (anchor: string, toolRounds: number) =>
+			ledger.observeToolRound({
+				roundExecutions: [
+					execution(
+						'read_document_section',
+						{ document_id: documentId, anchor },
+						{ found: true, content: `Content for ${anchor}` },
+						`read:${anchor}:${toolRounds}`
+					)
+				],
+				roundPattern: { readOps: ['onto.document.section.get'], hasWriteOps: false },
+				toolRounds,
+				maxToolRounds: 8,
+				modelPayloadChars: 200
+			});
+
+		expect(observe('overview', 1).status.newEvidenceThisRound).toBe(true);
+		expect(observe('implementation', 2).status.newEvidenceThisRound).toBe(true);
+		const repeated = observe('implementation', 3);
+		expect(repeated.status.newEvidenceThisRound).toBe(false);
+		expect(repeated.status.status).toBe('narrowing');
+	});
 });

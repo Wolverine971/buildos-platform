@@ -96,7 +96,7 @@ function createHarness(opts: Partial<Flags> = {}) {
 		getIsTurnActive: () => flags.isTurnActive,
 		getCurrentSession: () => flags.currentSession,
 		getCanPrimeActiveChatSession: () => flags.canPrimeActiveChatSession,
-		getInputValue: () => flags.inputValue,
+		getHasDraftInput: () => flags.inputValue.trim().length > 0,
 		getIsVoiceBusy: () => flags.isVoiceBusy,
 		getIsVoicePending: () => flags.isVoicePending,
 		prewarmAgentContext: prewarm,
@@ -427,13 +427,45 @@ describe('PrewarmController — orchestrate', () => {
 		expect(h.prewarm).toHaveBeenCalledTimes(1);
 	});
 
-	it('returns a cleanup that aborts the in-flight request', () => {
+	it('returns a cleanup that aborts the in-flight request (after a microtask)', async () => {
 		const h = createHarness();
 		const cleanup = h.controller.orchestrate();
 		expect(typeof cleanup).toBe('function');
 		cleanup!();
+		await flushMicrotasks();
 		const signal = h.prewarm.mock.calls[0]?.[1]?.signal as AbortSignal;
 		expect(signal.aborted).toBe(true);
+	});
+
+	it('re-claims a same-key in-flight request across effect reruns instead of aborting', async () => {
+		// Regression: while composing the first message, every keystroke reruns
+		// the orchestrator effect (cleanup + body). The rerun must keep the
+		// in-flight prewarm alive, not abort and reissue it.
+		const h = createHarness({
+			currentSession: null,
+			canPrimeActiveChatSession: true,
+			inputValue: 'hello'
+		});
+		let signal: AbortSignal | undefined;
+		h.prewarm.mockImplementation(
+			(_payload, options) =>
+				new Promise(() => {
+					signal = options.signal;
+				})
+		);
+
+		const cleanup1 = h.controller.orchestrate();
+		cleanup1!(); // effect cleanup runs right before the rerun body
+		const cleanup2 = h.controller.orchestrate(); // same key → re-claim
+		await flushMicrotasks();
+
+		expect(h.prewarm).toHaveBeenCalledTimes(1);
+		expect(signal?.aborted).toBe(false);
+
+		// A real teardown (no rerun re-claims it) still aborts.
+		cleanup2!();
+		await flushMicrotasks();
+		expect(signal?.aborted).toBe(true);
 	});
 
 	it('lets send wait finish a same-key prepared prompt before cleanup aborts', async () => {

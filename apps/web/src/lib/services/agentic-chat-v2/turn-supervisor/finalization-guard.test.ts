@@ -337,6 +337,25 @@ describe('applyFinalizationGuard', () => {
 		expect(guard.text).not.toContain('I completed');
 	});
 
+	it('keeps an empty compound mutation unfulfilled when only one write succeeded', () => {
+		const call = toolCall('create_onto_document', { title: 'Handoff' });
+		const guard = applyFinalizationGuard({
+			finalAssistantText: '',
+			assistantText: '',
+			mutationRequested: true,
+			expectedWriteToolNames: ['update_onto_task', 'create_onto_document'],
+			toolExecutions: [{ toolCall: call, result: toolResult(call, true) }]
+		});
+
+		expect(guard).toMatchObject({
+			applied: true,
+			reason: 'incomplete_mutation_after_reads',
+			finishedReason: 'mutation_unfulfilled'
+		});
+		expect(guard.text).toContain('completed 1 requested change');
+		expect(guard.text).toContain('remaining request stays pending');
+	});
+
 	it('replaces a read-only lead-in after successful reads with evidence', () => {
 		const call = toolCall('search_project', { query: 'user guide suite' });
 		const guard = applyFinalizationGuard({

@@ -93,21 +93,16 @@ import {
 	parseFastChatModelTieringMode,
 	parseFastChatModelTieringSampleRate,
 	resolveFastChatModelTieringConfig,
-	resolveFastChatSurfaceProfileForTurn,
-	resolveFastChatTurnIntent,
-	readFastChatPendingTurnIntent,
 	buildFastChatPendingTurnIntent,
 	buildPendingTurnIntentSystemMessage,
-	getWriteToolNamesForTurnIntent,
+	resolveFastChatTurnOutcome,
 	FASTCHAT_PENDING_TURN_INTENT_METADATA_KEY,
 	sanitizeAttachmentRefsForMetadata,
-	selectFastChatTools,
 	shouldUseLiveVisionForTurn,
 	streamFastChat,
 	type FastAgentStreamRequest,
 	type FastChatHistoryMessage
 } from '$lib/services/agentic-chat-v2';
-import { didGatewayExecSucceed } from '$lib/services/agentic-chat-v2/stream-orchestrator/tool-classification';
 import { updateAgentMetadata } from '$lib/services/agentic-chat-v2/session-metadata';
 import {
 	isProjectScopedContext,
@@ -141,21 +136,17 @@ import {
 } from '$lib/services/agentic-chat-lite/prompt';
 import {
 	getSkillGateCandidateSkillLoadFormats,
-	getSkillGateCandidateSkillIds,
-	senseDomains
+	getSkillGateCandidateSkillIds
 } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
 import { resolveSkillGatePreload } from '$lib/services/agentic-chat/tools/domains/skill-gate-preload';
 import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import {
 	deriveLoadedOutcomeCardGapSignalsFromToolExecutions,
-	getActiveDomainIds,
-	getActiveOutcomeCardIds,
 	getLoadedSkillIdsFromUsedDomains,
 	getNewDomainResearchBacklogEntries,
 	mergeDomainSessionState,
 	mergeLoadedOutcomeCardGapsIntoSessionState,
-	mergeUsedDomainSignalsIntoSessionState,
-	readDomainSessionState
+	mergeUsedDomainSignalsIntoSessionState
 } from '$lib/services/agentic-chat/tools/domains/domain-session-state';
 import { deriveUsedDomainSignalsFromToolExecutions } from '$lib/services/agentic-chat/tools/domains/domain-used-signals';
 import { buildEntityResolutionHint } from '$lib/services/agentic-chat-v2/entity-resolution';
@@ -180,17 +171,13 @@ import {
 import {
 	FASTCHAT_CONTEXT_CACHE_VERSION,
 	buildFastChatContextCacheEntry,
-	buildFastChatContextCacheKey as buildContextCacheKey,
 	isFastChatContextCacheFresh as isCacheFresh,
-	normalizeFastChatContextSnapshot,
-	type FastChatContextCache
+	normalizeFastChatContextSnapshot
 } from '$lib/services/agentic-chat-v2/context-cache';
 import {
 	annotateContextMetaCacheAge,
 	normalizeContextLoadSource,
-	resolveCacheAgeSeconds,
-	shouldBypassContextCacheForShiftHint,
-	type FastChatContextShiftHint
+	resolveCacheAgeSeconds
 } from '$lib/services/agentic-chat-v2/context-cache-routing';
 import {
 	type PreparedPromptCacheMissReason,
@@ -211,7 +198,8 @@ import {
 	type FastChatCancelReason
 } from '$lib/services/agentic-chat-v2/cancel-reason-channel';
 import { parseFastAgentStreamRequestBody } from '$lib/services/agentic-chat-v2/stream-request';
-import { isRunningTurnUniqueViolation } from '$lib/services/agentic-chat-v2/turn-run-conflicts';
+import { admitFastChatTurn } from '$lib/services/agentic-chat-v2/turn-admission';
+import { resolveFastChatTurnPreparation } from '$lib/services/agentic-chat-v2/turn-preparation';
 import { TurnObservabilityWriter } from '$lib/services/agentic-chat-v2/turn-observability-writer';
 import { sanitizeAssistantFinalText } from '$lib/services/agentic-chat-v2/stream-orchestrator/assistant-text-sanitization';
 import { buildRoundToolPattern } from '$lib/services/agentic-chat-v2/stream-orchestrator/round-analysis';
@@ -644,31 +632,6 @@ function startFastChatCancelWatcher(params: {
 	return () => {
 		stopped = true;
 		clearTimer();
-	};
-}
-
-function readRecentContextShiftHint(
-	metadata: Record<string, unknown>,
-	nowMs: number = Date.now()
-): FastChatContextShiftHint | null {
-	const raw = metadata.fastchat_last_context_shift;
-	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-	const record = raw as Record<string, unknown>;
-	const contextType =
-		typeof record.context_type === 'string'
-			? (normalizeFastContextType(record.context_type as ChatContextType) as ChatContextType)
-			: null;
-	if (!contextType) return null;
-	const shiftedAtRaw = typeof record.shifted_at === 'string' ? record.shifted_at : '';
-	const shiftedAtMs = Date.parse(shiftedAtRaw);
-	if (!Number.isFinite(shiftedAtMs)) return null;
-	if (nowMs - shiftedAtMs > FASTCHAT_CONTEXT_SHIFT_HINT_TTL_MS) return null;
-
-	return {
-		context_type: contextType,
-		entity_id: typeof record.entity_id === 'string' ? record.entity_id : null,
-		project_id: typeof record.project_id === 'string' ? record.project_id : null,
-		shifted_at: shiftedAtRaw
 	};
 }
 
@@ -1467,20 +1430,28 @@ export const POST: RequestHandler = async ({
 				onCancel: abortTurn
 			});
 
-			const activeTurnLookupStartedAtMs = Date.now();
-			const { data: activeTurnRows, error: activeTurnError } = await supabase
-				.from('chat_turn_runs')
-				.select('id, stream_run_id, client_turn_id, started_at, request_message')
-				.eq('session_id', session.id)
-				.eq('user_id', userId)
-				.eq('status', 'running')
-				.order('started_at', { ascending: false })
-				.limit(1);
-			activeTurnLookupMs = Math.max(0, Date.now() - activeTurnLookupStartedAtMs);
+			const gatewayEnabled = true;
+			const turnAdmission = await admitFastChatTurn({
+				supabase,
+				sessionId: session.id,
+				userId,
+				streamRunId,
+				clientTurnId: clientTurnId ?? null,
+				contextType,
+				entityId: entityId ?? null,
+				projectId: timingProjectId ?? null,
+				gatewayEnabled,
+				requestMessage: storedUserMessageContent,
+				requestStartedAtMs,
+				detachedTurnMaxDurationMs: FASTCHAT_DETACHED_TURN_MAX_DURATION_MS,
+				createTurnRunId: uuidv4
+			});
+			activeTurnLookupMs = turnAdmission.activeTurnLookupMs;
+			turnAdmissionMs = turnAdmission.turnAdmissionMs;
 
-			if (activeTurnError) {
+			if (turnAdmission.activeTurnLookupError) {
 				logFastChatError({
-					error: activeTurnError,
+					error: turnAdmission.activeTurnLookupError,
 					operationType: 'fastchat_active_turn_lookup',
 					projectId: projectIdForLogs,
 					metadata: {
@@ -1491,94 +1462,48 @@ export const POST: RequestHandler = async ({
 				});
 			}
 
-			const activeTurn = Array.isArray(activeTurnRows) ? activeTurnRows[0] : null;
-			if (activeTurn) {
-				const activeStartedAtMs =
-					typeof activeTurn.started_at === 'string'
-						? Date.parse(activeTurn.started_at)
-						: Number.NaN;
-				const activeTurnAgeMs = Number.isFinite(activeStartedAtMs)
-					? Math.max(0, Date.now() - activeStartedAtMs)
-					: 0;
-
-				if (activeTurnAgeMs < FASTCHAT_DETACHED_TURN_MAX_DURATION_MS) {
-					await emitErrorThenDone({
-						error: 'BuildOS is still finishing the previous response. Reopen this chat in a moment to see the completed result.',
-						finishedReason: 'active_turn_running',
-						projectId: projectIdForLogs,
-						errorMetadata: {
-							sessionId: session.id,
-							contextType,
-							activeTurnRunId: activeTurn.id,
-							activeStreamRunId: activeTurn.stream_run_id
-						}
-					});
-					stopCancelWatcher?.();
-					stopCancelWatcher = null;
-					return;
-				}
-
-				const { error: staleTurnCancelError } = await supabase
-					.from('chat_turn_runs')
-					.update({
-						status: 'cancelled',
-						finished_reason: 'stale_running_turn',
-						finished_at: new Date().toISOString()
-					})
-					.eq('id', activeTurn.id)
-					.eq('user_id', userId);
-				if (staleTurnCancelError) {
-					logFastChatError({
-						error: staleTurnCancelError,
-						operationType: 'fastchat_stale_turn_cancel',
-						projectId: projectIdForLogs,
-						tableName: 'chat_turn_runs',
-						recordId: activeTurn.id,
-						metadata: {
-							sessionId: session.id,
-							contextType,
-							entityId,
-							activeTurnRunId: activeTurn.id,
-							activeStreamRunId: activeTurn.stream_run_id,
-							streamRunId,
-							clientTurnId: clientTurnId ?? null
-						}
-					});
-				}
-			}
-
-			const gatewayEnabled = true;
-			turnRunId = uuidv4();
-			observabilityWriter.setTurnRunId(turnRunId);
-			let turnRunInsertError: unknown = null;
-			const turnAdmissionStartedAtMs = Date.now();
-			try {
-				const { error: turnRunError } = await supabase.from('chat_turn_runs').insert({
-					id: turnRunId,
-					session_id: session.id,
-					user_id: userId,
-					stream_run_id: streamRunId,
-					client_turn_id: clientTurnId ?? null,
-					source: 'live_ui',
-					context_type: contextType,
-					entity_id: entityId ?? null,
-					project_id: timingProjectId ?? null,
-					gateway_enabled: gatewayEnabled,
-					request_message: storedUserMessageContent,
-					status: 'running',
-					request_prewarmed_context: false,
-					started_at: new Date(requestStartedAtMs).toISOString()
+			const activeTurn = turnAdmission.activeTurn;
+			if (turnAdmission.staleTurnCancelError && activeTurn) {
+				logFastChatError({
+					error: turnAdmission.staleTurnCancelError,
+					operationType: 'fastchat_stale_turn_cancel',
+					projectId: projectIdForLogs,
+					tableName: 'chat_turn_runs',
+					recordId: activeTurn.id,
+					metadata: {
+						sessionId: session.id,
+						contextType,
+						entityId,
+						activeTurnRunId: activeTurn.id,
+						activeStreamRunId: activeTurn.stream_run_id,
+						streamRunId,
+						clientTurnId: clientTurnId ?? null
+					}
 				});
-				if (turnRunError) {
-					turnRunInsertError = turnRunError;
-				}
-			} catch (error) {
-				turnRunInsertError = error;
 			}
-			turnAdmissionMs = Math.max(0, Date.now() - turnAdmissionStartedAtMs);
-			if (turnRunInsertError) {
-				const failedTurnRunId = turnRunId;
-				const activeTurnConflict = isRunningTurnUniqueViolation(turnRunInsertError);
+
+			if (turnAdmission.status === 'active_turn_running') {
+				await emitErrorThenDone({
+					error: 'BuildOS is still finishing the previous response. Reopen this chat in a moment to see the completed result.',
+					finishedReason: 'active_turn_running',
+					projectId: projectIdForLogs,
+					errorMetadata: {
+						sessionId: session.id,
+						contextType,
+						activeTurnRunId: turnAdmission.activeTurn.id,
+						activeStreamRunId: turnAdmission.activeTurn.stream_run_id
+					}
+				});
+				stopCancelWatcher?.();
+				stopCancelWatcher = null;
+				return;
+			}
+
+			turnRunId = turnAdmission.turnRunId;
+			observabilityWriter.setTurnRunId(turnRunId);
+			if (turnAdmission.status === 'insert_failed') {
+				const failedTurnRunId = turnAdmission.turnRunId;
+				const activeTurnConflict = turnAdmission.activeTurnConflict;
 				turnRunId = null;
 				observabilityWriter.setTurnRunId(null);
 				const conflictMetadata = {
@@ -1599,7 +1524,7 @@ export const POST: RequestHandler = async ({
 					});
 				} else {
 					logFastChatError({
-						error: turnRunInsertError,
+						error: turnAdmission.insertError,
 						operationType: 'fastchat_turn_run_insert',
 						projectId: projectIdForLogs,
 						tableName: 'chat_turn_runs',
@@ -1683,53 +1608,39 @@ export const POST: RequestHandler = async ({
 			const continuityHint = buildLastTurnContinuityHint(requestLastTurnContext);
 			const conversationSummary =
 				typeof session.summary === 'string' ? session.summary : null;
-			const sessionMetadata = (session.agent_metadata ?? {}) as Record<string, any>;
-			const pendingTurnIntent = readFastChatPendingTurnIntent(
-				sessionMetadata[FASTCHAT_PENDING_TURN_INTENT_METADATA_KEY]
-			);
-			const turnIntent = resolveFastChatTurnIntent({
+			const turnPreparation = resolveFastChatTurnPreparation({
 				contextType,
+				entityId,
 				projectId: projectIdForLogs ?? null,
+				projectFocus,
 				latestUserMessage: messageForModel,
-				pendingIntent: pendingTurnIntent
+				conversationSummary,
+				agentMetadata: session.agent_metadata,
+				contextShiftHintTtlMs: FASTCHAT_CONTEXT_SHIFT_HINT_TTL_MS
 			});
-			const previousDomainState = readDomainSessionState(
-				sessionMetadata.fastchat_domain_state
-			);
+			const {
+				sessionMetadata,
+				pendingTurnIntent,
+				turnIntent,
+				previousDomainState,
+				priorDomainIds,
+				priorOutcomeCardIds,
+				domainSensingBypassed,
+				turnDomainSensing,
+				recentContextShiftHint,
+				bypassContextCacheForShiftHint,
+				cacheKey,
+				cachedContext,
+				selectedSurfaceProfile
+			} = turnPreparation;
+			let tools = turnPreparation.tools;
 			let latestDomainState = previousDomainState;
-			let domainStateMetadataUpdatePromise: Promise<void> | null = null;
-			const priorDomainIds = getActiveDomainIds(previousDomainState);
-			const priorOutcomeCardIds = getActiveOutcomeCardIds(previousDomainState);
-			// Native BuildOS mutations should not activate subject-matter skill gates
-			// merely because generic words like "create" or "document" matched a
-			// domain catalog. The write surface and supervisor are driven by turnIntent.
-			const bypassDomainSensingForNativeMutation =
-				turnIntent.requiresWrite && turnIntent.entityKind !== 'unknown';
-			const turnDomainSensing = bypassDomainSensingForNativeMutation
-				? null
-				: senseDomains({
-						currentUserMessage: messageForModel,
-						conversationSummary,
-						priorDomainIds,
-						priorOutcomeCardIds,
-						limit: 3
-					});
+			let domainStateMetadataUpdatePromise: Promise<boolean> | null = null;
 			observabilityWriter.recordEvent('prompt', 'turn_intent_resolved', {
 				...turnIntent,
 				pending_intent_present: pendingTurnIntent !== null,
-				domain_sensing_bypassed: bypassDomainSensingForNativeMutation
+				domain_sensing_bypassed: domainSensingBypassed
 			} as Json);
-			const recentContextShiftHint = readRecentContextShiftHint(sessionMetadata);
-			const bypassContextCacheForShiftHint = shouldBypassContextCacheForShiftHint({
-				requestContextType: contextType,
-				requestEntityId: entityId,
-				requestProjectFocus: projectFocus,
-				shiftHint: recentContextShiftHint
-			});
-			const cacheKey = buildContextCacheKey({ contextType, entityId, projectFocus });
-			const cachedContext = sessionMetadata.fastchat_context_cache as
-				| FastChatContextCache
-				| undefined;
 			if (bypassContextCacheForShiftHint && cachedContext) {
 				logger.info('Bypassing fastchat context cache due to recent context shift hint', {
 					sessionId: session.id,
@@ -1745,19 +1656,8 @@ export const POST: RequestHandler = async ({
 				httpReferer: request.headers.get('referer') ?? undefined,
 				appName: 'BuildOS Agentic Chat V2'
 			});
-			const toolSelectionStartedAtMs = Date.now();
-			const selectedSurfaceProfile = resolveFastChatSurfaceProfileForTurn({
-				contextType,
-				latestUserMessage: messageForModel,
-				turnIntent
-			});
-			let tools = selectFastChatTools({
-				contextType,
-				surfaceProfile: selectedSurfaceProfile,
-				turnIntent
-			});
 			preparedSurfaceProfile = selectedSurfaceProfile;
-			toolSelectionMs = Math.max(0, Date.now() - toolSelectionStartedAtMs);
+			toolSelectionMs = turnPreparation.toolSelectionMs;
 
 			const preparedPromptConsumeStartedAtMs = Date.now();
 			const preparedPromptForTurn = await consumePreparedPrompt({
@@ -3353,25 +3253,15 @@ export const POST: RequestHandler = async ({
 			});
 			scheduleDeferredPromptSnapshotPersistence();
 			const normalizedExecutions = toolExecutions ?? [];
-			const expectedIntentWriteToolNames = new Set(
-				getWriteToolNamesForTurnIntent(turnIntent)
-			);
-			const turnIntentFulfilled =
-				!turnIntent.requiresWrite ||
-				normalizedExecutions.some(
-					(execution) =>
-						expectedIntentWriteToolNames.has(execution.toolCall.function?.name ?? '') &&
-						didGatewayExecSucceed(execution)
-				);
-			const turnOutcomeStatus = turnIntent.requiresWrite
-				? turnIntentFulfilled
-					? 'fulfilled'
-					: finishedReason === 'supervisor_question'
-						? 'blocked'
-						: 'unfulfilled'
-				: finishedReason === 'synthesis_failed'
-					? 'failed'
-					: 'fulfilled';
+			const turnOutcome = resolveFastChatTurnOutcome({
+				intent: turnIntent,
+				toolExecutions: normalizedExecutions,
+				finishedReason
+			});
+			const expectedIntentWriteToolNames = new Set(turnOutcome.expectedWriteToolNames);
+			const turnIntentFulfilled = turnOutcome.fulfilled;
+			const turnOutcomeStatus = turnOutcome.status;
+			let pendingIntentMetadataPersisted = false;
 			if (turnIntent.requiresWrite || turnIntent.clearPending) {
 				const nextPendingTurnIntent =
 					turnIntent.requiresWrite && !turnIntentFulfilled
@@ -3383,7 +3273,7 @@ export const POST: RequestHandler = async ({
 								finishedReason
 							})
 						: null;
-				await updateAgentMetadata(
+				pendingIntentMetadataPersisted = await updateAgentMetadata(
 					supabase,
 					session.id,
 					{ [FASTCHAT_PENDING_TURN_INTENT_METADATA_KEY]: nextPendingTurnIntent },
@@ -3399,7 +3289,10 @@ export const POST: RequestHandler = async ({
 				intent_requires_write: turnIntent.requiresWrite,
 				intent_fulfilled: turnIntentFulfilled,
 				expected_write_tools: Array.from(expectedIntentWriteToolNames),
-				pending_intent_persisted: turnIntent.requiresWrite && !turnIntentFulfilled
+				pending_intent_persisted:
+					turnIntent.requiresWrite &&
+					!turnIntentFulfilled &&
+					pendingIntentMetadataPersisted
 			} as Json);
 			const normalizedToolCallCount = Math.max(
 				typeof toolCallsMade === 'number' && Number.isFinite(toolCallsMade)
@@ -4046,7 +3939,7 @@ export const POST: RequestHandler = async ({
 				},
 				'completed'
 			);
-			if (resumingSupervisorCheckpoint) {
+			if (resumingSupervisorCheckpoint && shouldResolveResumingCheckpoint) {
 				const checkpointId = resumingSupervisorCheckpoint.id;
 				try {
 					const resumed = await markCheckpointResumed({

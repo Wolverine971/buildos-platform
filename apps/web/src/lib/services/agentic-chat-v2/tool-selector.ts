@@ -3,10 +3,15 @@ import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types'
 import {
 	getGatewaySurfaceForContextType,
 	getGatewaySurfaceForProfile,
+	materializeGatewayTools,
 	resolveGatewaySurfaceProfileForContextType,
 	type GatewaySurfaceProfileName
 } from '$lib/services/agentic-chat/tools/core/gateway-surface';
-import type { FastChatTurnIntent } from './turn-intent';
+import {
+	getAutonomousWriteToolNamesForTurnIntent,
+	getWriteToolNamesForTurnIntent,
+	type FastChatTurnIntent
+} from './turn-intent';
 
 export function selectFastChatTools(params: {
 	contextType: ChatContextType;
@@ -14,16 +19,23 @@ export function selectFastChatTools(params: {
 	latestUserMessage?: string | null;
 	turnIntent?: FastChatTurnIntent | null;
 }): ChatToolDefinition[] {
+	let tools: ChatToolDefinition[];
 	if (params.surfaceProfile) {
-		return getGatewaySurfaceForProfile(params.surfaceProfile);
+		tools = getGatewaySurfaceForProfile(params.surfaceProfile);
+	} else {
+		const routedProfile = resolveFastChatSurfaceProfileForTurn({
+			contextType: params.contextType,
+			latestUserMessage: params.latestUserMessage,
+			turnIntent: params.turnIntent
+		});
+		tools = routedProfile
+			? getGatewaySurfaceForProfile(routedProfile)
+			: getGatewaySurfaceForContextType(params.contextType);
 	}
-	const routedProfile = resolveFastChatSurfaceProfileForTurn({
-		contextType: params.contextType,
-		latestUserMessage: params.latestUserMessage,
-		turnIntent: params.turnIntent
-	});
-	if (routedProfile) return getGatewaySurfaceForProfile(routedProfile);
-	return getGatewaySurfaceForContextType(params.contextType);
+	const autonomousWriteTools = params.turnIntent
+		? getAutonomousWriteToolNamesForTurnIntent(params.turnIntent)
+		: [];
+	return materializeGatewayTools(tools, autonomousWriteTools).tools;
 }
 
 export function resolveFastChatSurfaceProfileForTurn(params: {
@@ -47,8 +59,17 @@ function resolveSurfaceProfileForTurnIntent(
 	if (!turnIntent?.requiresWrite) return null;
 	if (contextType === 'project_create') return 'project_create_minimal';
 	if (contextType !== 'project' && contextType !== 'ontology') return null;
-	if (turnIntent.entityKind === 'document') return 'project_document';
-	if (turnIntent.entityKind === 'event') return 'project_calendar';
+	const expectedWriteTools = getWriteToolNamesForTurnIntent(turnIntent);
+	const hasDocumentOperation = expectedWriteTools.some((name) => name.includes('document'));
+	const hasNonDocumentOperation = expectedWriteTools.some((name) => !name.includes('document'));
+	if (hasDocumentOperation && hasNonDocumentOperation) return 'project_write_document';
+	if (hasDocumentOperation) return 'project_document';
+	if (
+		expectedWriteTools.length > 0 &&
+		expectedWriteTools.every((name) => name.includes('calendar_event'))
+	) {
+		return 'project_calendar';
+	}
 	return 'project_write';
 }
 

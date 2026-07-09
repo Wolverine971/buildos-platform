@@ -196,6 +196,76 @@ export function deriveSessionTitle(session: ChatSession | null | undefined): str
 	return rawTitle || null;
 }
 
+/**
+ * HTTP failure from an agent endpoint with a message safe to surface
+ * directly in the chat error banner. `message` is status-aware: a 402
+ * consumption freeze carries the server's billing guidance instead of a
+ * generic "try again".
+ */
+export class AgentRequestError extends Error {
+	status: number;
+	code: string | null;
+
+	constructor(message: string, status: number, code: string | null = null) {
+		super(message);
+		this.name = 'AgentRequestError';
+		this.status = status;
+		this.code = code;
+	}
+}
+
+function describeAgentRequestFailure(
+	status: number,
+	serverMessage: string | null,
+	fallback: string
+): string {
+	if (status === 402) {
+		return serverMessage ?? 'Upgrade required to continue. Your workspace remains readable.';
+	}
+	if (status === 401) {
+		return 'Your session has expired. Refresh the page and sign in again.';
+	}
+	if (status === 429) {
+		return (
+			serverMessage ??
+			"You're sending requests too quickly — wait a few seconds and try again."
+		);
+	}
+	if (status >= 400 && status < 500 && serverMessage) {
+		return serverMessage;
+	}
+	return fallback;
+}
+
+/** Reads the ApiResponse-style error body (`{ error, code }`) off a failed response. */
+export async function buildAgentRequestError(
+	response: Response,
+	fallback: string
+): Promise<AgentRequestError> {
+	let serverMessage: string | null = null;
+	let code: string | null = null;
+	try {
+		const body = await response.json();
+		if (body && typeof body === 'object') {
+			const record = body as Record<string, unknown>;
+			serverMessage =
+				typeof record.error === 'string'
+					? record.error
+					: typeof record.message === 'string'
+						? record.message
+						: null;
+			code = typeof record.code === 'string' ? record.code : null;
+		}
+	} catch {
+		/* non-JSON error body */
+	}
+	return new AgentRequestError(
+		describeAgentRequestFailure(response.status, serverMessage, fallback),
+		response.status,
+		code
+	);
+}
+
 export async function prewarmAgentContext(
 	payload: FastAgentPrewarmRequest,
 	options: { signal?: AbortSignal } = {}
@@ -214,7 +284,13 @@ export async function prewarmAgentContext(
 			body: JSON.stringify(payload)
 		});
 		if (!response.ok) {
-			return null;
+			// Throw so session bootstrap can surface the status-specific message
+			// (402 freeze, 401 expiry). The background prewarm orchestrator
+			// catches and logs.
+			throw await buildAgentRequestError(
+				response,
+				'Unable to prepare a chat session right now.'
+			);
 		}
 
 		const result = await response.json();
@@ -231,11 +307,49 @@ export async function prewarmAgentContext(
 			preparedPrompt: preparedPrompt as PreparedPromptClient | null
 		};
 	} catch (err) {
-		if ((err as DOMException)?.name === 'AbortError') {
+		if ((err as DOMException)?.name === 'AbortError' || err instanceof AgentRequestError) {
 			throw err;
 		}
 		if (dev) {
 			console.warn('[AgentChat] Prewarm failed:', err);
+		}
+		return null;
+	}
+}
+
+export interface ActiveTurnRunProbeResult {
+	hasActiveTurnRun: boolean;
+	activeTurnRunId: string | null;
+}
+
+/**
+ * Lightweight "is the restored turn still running" check — a single
+ * turn-runs query server-side instead of the full ~8-query session
+ * snapshot. Returns null on failure so callers keep polling with backoff.
+ */
+export async function probeActiveTurnRun(
+	sessionId: string,
+	options: { signal?: AbortSignal } = {}
+): Promise<ActiveTurnRunProbeResult | null> {
+	try {
+		const response = await fetch(`/api/chat/sessions/${sessionId}?probe=active-turn`, {
+			signal: options.signal
+		});
+		if (!response.ok) return null;
+		const result = await response.json().catch(() => null);
+		const runs = Array.isArray(result?.data?.turnRuns) ? result.data.turnRuns : [];
+		const active =
+			runs.find(
+				(run: unknown) =>
+					isRecord(run) && typeof run.status === 'string' && run.status === 'running'
+			) ?? null;
+		return {
+			hasActiveTurnRun: Boolean(active),
+			activeTurnRunId: active && typeof active.id === 'string' ? active.id : null
+		};
+	} catch (err) {
+		if ((err as DOMException)?.name === 'AbortError') {
+			throw err;
 		}
 		return null;
 	}

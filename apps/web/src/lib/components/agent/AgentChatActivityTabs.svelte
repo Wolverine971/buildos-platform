@@ -84,15 +84,19 @@
 		return changeItems.length;
 	}
 
+	// Constructed once — Intl.DateTimeFormat allocation is expensive and this
+	// formats per visible item on every timeline update.
+	const timelineTimeFormatter = new Intl.DateTimeFormat(undefined, {
+		month: 'short',
+		day: 'numeric',
+		hour: 'numeric',
+		minute: '2-digit'
+	});
+
 	function formatTime(value: string): string {
 		const date = new Date(value);
 		if (Number.isNaN(date.getTime())) return 'Unknown time';
-		return new Intl.DateTimeFormat(undefined, {
-			month: 'short',
-			day: 'numeric',
-			hour: 'numeric',
-			minute: '2-digit'
-		}).format(date);
+		return timelineTimeFormatter.format(date);
 	}
 
 	function statusMeta(status: AgentTimelineItem['status']) {

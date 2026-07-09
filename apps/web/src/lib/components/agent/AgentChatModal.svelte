@@ -79,6 +79,7 @@
 		loadAgentChatSessionSnapshot,
 		normalizeSessionContextType,
 		prewarmAgentContext,
+		probeActiveTurnRun,
 		warmAgentChatStreamTransport
 	} from './agent-chat-session';
 	import {
@@ -94,6 +95,7 @@
 	import {
 		createSSEHandler,
 		sanitizeToolResultForActivityMetadata,
+		type AgentSSEMessageHandler,
 		type PendingToolStatus,
 		type SSEHandlerDeps
 	} from './agent-chat-sse-handler';
@@ -198,9 +200,17 @@
 		browser && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
 	);
 
-	// Conversation state
-	let messages = $state<UIMessage[]>([]);
-	let persistedTimelineItems = $state<AgentTimelineItem[]>([]);
+	// Conversation state.
+	//
+	// `messages` is $state.raw: every update path replaces the array (and any
+	// changed message/activity object) rather than mutating in place, so deep
+	// proxying would only add per-property signal overhead on the streaming
+	// hot path — including proxying large tool-result payloads stored in
+	// thinking-block activity metadata. The copy-on-update invariant is also
+	// what makes the timeline memoization in agent-chat-timeline.ts sound;
+	// never mutate a message or activity object in place.
+	let messages = $state.raw<UIMessage[]>([]);
+	let persistedTimelineItems = $state.raw<AgentTimelineItem[]>([]);
 	let activeChatTab = $state<AgentChatPanelTab>('chat');
 	let brainDumpContext = $state<AgentBrainDumpContext | null>(null);
 	let currentSession = $state<ChatSession | null>(null);
@@ -337,7 +347,9 @@
 		}
 	});
 
-	function scheduleAgentRunMessageFallback(sid: string, runId: string): void {
+	const AGENT_RUN_FALLBACK_MAX_ATTEMPTS = 5;
+
+	function scheduleAgentRunMessageFallback(sid: string, runId: string, attempt = 0): void {
 		const existing = agentRunFallbackTimers.get(runId);
 		if (existing) clearTimeout(existing);
 		const timer = setTimeout(() => {
@@ -345,9 +357,14 @@
 			if (currentSession?.id !== sid) return;
 			// Realtime already delivered it — nothing to do.
 			if (messageHasAgentRun(runId)) return;
-			// Don't clobber an in-flight streamed turn; retry shortly.
+			// Don't clobber an in-flight streamed turn; retry a few times, then
+			// give up — the realtime INSERT or the close-time refresh will
+			// surface the message. (Uncapped, a long streamed turn kept this
+			// timer respawning every 2.5s for its whole duration.)
 			if (stream.isStreaming) {
-				scheduleAgentRunMessageFallback(sid, runId);
+				if (attempt + 1 < AGENT_RUN_FALLBACK_MAX_ATTEMPTS) {
+					scheduleAgentRunMessageFallback(sid, runId, attempt + 1);
+				}
 				return;
 			}
 			void loadChatSession(sid, { backgroundRefresh: true });
@@ -408,9 +425,12 @@
 	let contextUsage = $state<ContextUsageSnapshot | null>(null);
 	let contextUsageOverheadTokens = $state(0);
 	let prewarm: ReturnType<typeof createPrewarmController>;
-	let handleSSEMessage: (event: AgentSSEMessage) => void = () => {
-		/* assigned after SSE deps are created */
-	};
+	let handleSSEMessage: AgentSSEMessageHandler = Object.assign(
+		(_event: AgentSSEMessage) => {
+			/* assigned after SSE deps are created */
+		},
+		{ resetTurnState: () => {} }
+	);
 
 	// Let embedding surfaces (e.g. BriefChatModal) mirror the active session id
 	// into their own header chrome.
@@ -419,6 +439,9 @@
 	});
 
 	const displayContextUsage = $derived.by(() => {
+		// The header's context-usage pill only renders in dev — skip the
+		// O(conversation) token estimate per keystroke in prod.
+		if (!dev) return null;
 		if (!shellRouter.selectedContextType) {
 			return null;
 		}
@@ -444,10 +467,12 @@
 		waiting_on_user: 'Waiting on your direction...'
 	};
 
-	const ACTIVE_TURN_SESSION_REFRESH_MS = 2000;
+	const ACTIVE_TURN_PROBE_BASE_MS = 2000;
+	const ACTIVE_TURN_PROBE_MAX_MS = 10_000;
 	const TURN_RECONCILE_RETRY_MS = 1200;
 	const TURN_RECONCILE_MAX_ATTEMPTS = 8;
 	let turnReconciliationRequestId = 0;
+	let activeTurnProbeAttempt = 0;
 
 	// Voice recording adapter — see agent-chat-voice.svelte.ts
 	const voice = createVoiceAdapter({
@@ -503,6 +528,10 @@
 			hiddenToolCallIds.clear();
 			processedToolCallIds.clear();
 			processedToolResultIds.clear();
+			// Also drop the SSE handler's created-entities buffer: a cancelled
+			// turn never receives done/error, and without this reset its
+			// entity chips would flush into the next turn's card.
+			handleSSEMessage.resetTurnState();
 		},
 		handleSSEMessage: (event) => handleSSEMessage(event),
 		hydrateSessionFromEvent: (session) => hydrateSessionFromEvent(session),
@@ -623,6 +652,11 @@
 		return true;
 	});
 
+	// Memoized draft-presence flag for the prewarm orchestrator. The effect must
+	// track this boolean — not the raw input string — or every keystroke would
+	// rerun it and abort/reissue the in-flight prewarm.
+	const hasDraftInput = $derived(inputValue.trim().length > 0);
+
 	// Prewarm controller — owns the context-cache prewarm lifecycle.
 	// See agent-chat-prewarm.svelte.ts.
 	prewarm = createPrewarmController({
@@ -636,7 +670,7 @@
 			stream.isStartingStream || stream.isStreaming || activeRestoredTurnRunId !== null,
 		getCurrentSession: () => currentSession,
 		getCanPrimeActiveChatSession: () => canPrimeActiveChatSession,
-		getInputValue: () => inputValue,
+		getHasDraftInput: () => hasDraftInput,
 		getIsVoiceBusy: () => voice.isBusy,
 		getIsVoicePending: () => voice.pendingSendAfterTranscription,
 		prewarmAgentContext: (payload, options) => prewarmAgentContext(payload, options),
@@ -686,15 +720,43 @@
 		sessionRefreshTimeout = null;
 	}
 
+	// While a restored turn is running, poll a lightweight turn-run probe with
+	// backoff (2s → 4s → 8s → 10s cap) and reload the full session snapshot
+	// only once, when the turn goes terminal. The old behavior re-fetched the
+	// entire snapshot (~8 server queries incl. 1000-row scans) every 2s for
+	// the whole life of the detached turn (up to ~285s).
 	function scheduleActiveTurnSessionRefresh(sessionId: string) {
 		clearSessionRefreshTimeout();
 		if (!browser || !isOpen) return;
 
+		const delay = Math.min(
+			ACTIVE_TURN_PROBE_BASE_MS * 2 ** activeTurnProbeAttempt,
+			ACTIVE_TURN_PROBE_MAX_MS
+		);
 		sessionRefreshTimeout = setTimeout(() => {
 			sessionRefreshTimeout = null;
 			if (!isOpen) return;
+			void probeActiveTurnAndRefresh(sessionId);
+		}, delay);
+	}
+
+	async function probeActiveTurnAndRefresh(sessionId: string): Promise<void> {
+		if (currentSession?.id !== sessionId || !activeRestoredTurnRunId) return;
+		activeTurnProbeAttempt += 1;
+		let probe: Awaited<ReturnType<typeof probeActiveTurnRun>> = null;
+		try {
+			probe = await probeActiveTurnRun(sessionId);
+		} catch {
+			probe = null; // aborted — treat as unknown
+		}
+		if (!isOpen || currentSession?.id !== sessionId || !activeRestoredTurnRunId) return;
+		if (probe && !probe.hasActiveTurnRun) {
+			// Turn went terminal — one full reload picks up the persisted result.
 			void loadChatSession(sessionId, { backgroundRefresh: true });
-		}, ACTIVE_TURN_SESSION_REFRESH_MS);
+			return;
+		}
+		// Still running (or probe failed) — keep polling with backoff.
+		scheduleActiveTurnSessionRefresh(sessionId);
 	}
 
 	async function ensureSessionReady(target: SessionBootstrapTarget): Promise<ChatSession | null> {
@@ -887,6 +949,7 @@
 		hiddenToolCallIds.clear();
 		processedToolCallIds.clear();
 		processedToolResultIds.clear();
+		handleSSEMessage.resetTurnState();
 		presenter.resetMutationTracking();
 		voice.reset();
 		shellRouter.resetConversationState({ preserveContext });
@@ -1027,9 +1090,16 @@
 
 		if (!isOpen) {
 			if (wasOpen) {
-				// In embedded mode, trigger full close cleanup since there's no Modal.onClose
 				if (embedded) {
+					// Embedded mode has no Modal.onClose — run the full close path
+					// including the host's onClose callback contract.
 					handleClose();
+				} else {
+					// Programmatic close (parent flipped isOpen without the close
+					// button): run the same teardown so the live stream, session
+					// finalize/classification, and mutation broadcast aren't
+					// skipped. Button-initiated closes re-enter here harmlessly.
+					releaseSessionResources('close');
 				}
 				wasOpen = false;
 				shellRouter.autoInitDismissed = false;
@@ -1037,14 +1107,6 @@
 				lastLoadedSessionId = null; // Reset to allow reloading same session
 				shellRouter.showProjectActionSelector = false;
 				prewarm.reset();
-				cancelSessionBootstrap();
-				clearSessionRefreshTimeout();
-				activeRestoredTurnRunId = null;
-				if (sessionLoadController) {
-					sessionLoadController.abort();
-					sessionLoadController = null;
-				}
-				isLoadingSession = false;
 			}
 			return;
 		}
@@ -1212,6 +1274,8 @@
 		activeRestoredTurnRunId = nextActiveTurnRun?.id ?? null;
 		if (nextActiveTurnRun) {
 			stream.currentActivity = 'BuildOS is still finishing the latest response...';
+			// Fresh snapshot evidence of a running turn — restart probe backoff.
+			activeTurnProbeAttempt = 0;
 			scheduleActiveTurnSessionRefresh(sessionId);
 		} else {
 			clearSessionRefreshTimeout();
@@ -1858,22 +1922,40 @@
 			});
 	}
 
-	function handleClose() {
-		finalizeSession('close');
+	/**
+	 * Single teardown path shared by the close button (handleClose), programmatic
+	 * close (parent flips isOpen without the button), and unmount. Finalizes the
+	 * session (close + classification), stops the live stream, releases realtime
+	 * and timer resources, and broadcasts the mutation summary. Every step is
+	 * idempotent, so overlapping close paths re-enter harmlessly (the summary
+	 * drains on first build).
+	 */
+	function releaseSessionResources(reason: 'close' | 'destroy'): DataMutationSummary {
+		finalizeSession(reason);
 		voice.stop();
 		cancelSessionBootstrap();
 		turnReconciliationRequestId += 1;
 		clearSessionRefreshTimeout();
 		activeRestoredTurnRunId = null;
+		if (sessionLoadController) {
+			sessionLoadController.abort();
+			sessionLoadController = null;
+		}
+		isLoadingSession = false;
 		stream.disposeActiveStream({ reconcile: false });
 		voice.cleanup();
 		attachments.cleanup();
+		void unsubscribeSessionMessages();
+		for (const timer of agentRunFallbackTimers.values()) clearTimeout(timer);
+		agentRunFallbackTimers.clear();
+		seenTerminalAgentRunIds.clear();
 
-		// Clear any pending tool results to prevent memory leaks
+		// Clear per-turn tool state to prevent memory leaks
 		pendingToolResults.clear();
 		hiddenToolCallIds.clear();
 		processedToolCallIds.clear();
 		processedToolResultIds.clear();
+		handleSSEMessage.resetTurnState();
 
 		const summary = presenter.buildMutationSummary({
 			hasMessagesSent: stream.hasSentMessage,
@@ -1888,7 +1970,11 @@
 		}
 
 		presenter.resetMutationTracking();
+		return summary;
+	}
 
+	function handleClose() {
+		const summary = releaseSessionResources('close');
 		if (onClose) onClose(summary);
 	}
 
@@ -2256,10 +2342,6 @@
 		pendingTimeouts.forEach((id) => clearTimeout(id));
 		pendingTimeouts.clear();
 
-		for (const timer of agentRunFallbackTimers.values()) clearTimeout(timer);
-		agentRunFallbackTimers.clear();
-		void unsubscribeSessionMessages();
-
 		if (
 			pendingAssistantTextFlushHandle !== null &&
 			typeof cancelAnimationFrame === 'function'
@@ -2269,18 +2351,7 @@
 		}
 		pendingAssistantText = '';
 
-		if (sessionLoadController) {
-			sessionLoadController.abort();
-			sessionLoadController = null;
-		}
-		turnReconciliationRequestId += 1;
-		cancelSessionBootstrap();
-		clearSessionRefreshTimeout();
-		finalizeSession('destroy');
-		voice.stop();
-		stream.disposeActiveStream({ reconcile: false });
-		voice.cleanup();
-		attachments.cleanup();
+		releaseSessionResources('destroy');
 	});
 </script>
 
@@ -2353,6 +2424,7 @@
 							{displayContextLabel}
 							selectedContextType={shellRouter.selectedContextType}
 							{resolvedProjectFocus}
+							streamingMessageId={currentAssistantMessageId}
 							onToggleThinkingBlock={toggleThinkingBlockCollapse}
 							bind:container={messagesContainer}
 							onScroll={handleScroll}

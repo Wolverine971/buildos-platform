@@ -55,6 +55,7 @@ export class ContextGatheringLedger {
 	private repeatedSearchRounds = 0;
 	private seenEntityIds = new Set<string>();
 	private openedEntityIds = new Set<string>();
+	private openedReadEvidenceKeys = new Set<string>();
 	private semanticReadMisses = 0;
 	private searchAttempts = new Map<string, { label: string; count: number }>();
 	private lastEmittedStatusRank = 0;
@@ -83,6 +84,7 @@ export class ContextGatheringLedger {
 		this.readRounds += 1;
 		const roundEntityIds = new Set<string>();
 		const roundOpenedEntityIds = new Set<string>();
+		const roundReadEvidenceKeys = new Set<string>();
 		const roundSearchKeys = new Set<string>();
 		const roundSearchAttempts: Array<{ key: string; label: string }> = [];
 		let roundSemanticReadMisses = 0;
@@ -107,6 +109,8 @@ export class ContextGatheringLedger {
 					roundOpenedEntityIds.add(id);
 				}
 				if (!semanticReadMiss) {
+					const readEvidenceKey = extractDetailReadEvidenceKey(execution.toolCall);
+					if (readEvidenceKey) roundReadEvidenceKeys.add(readEvidenceKey);
 					for (const id of extractToolArgumentIds(execution.toolCall)) {
 						roundOpenedEntityIds.add(id);
 					}
@@ -123,6 +127,12 @@ export class ContextGatheringLedger {
 		);
 		for (const id of roundOpenedEntityIds) {
 			this.openedEntityIds.add(id);
+		}
+		const newReadEvidenceKeys = Array.from(roundReadEvidenceKeys).filter(
+			(key) => !this.openedReadEvidenceKeys.has(key)
+		);
+		for (const key of roundReadEvidenceKeys) {
+			this.openedReadEvidenceKeys.add(key);
 		}
 
 		const repeatedSearchRound =
@@ -142,7 +152,10 @@ export class ContextGatheringLedger {
 			});
 		}
 
-		const newEvidenceThisRound = newEntityIds.length > 0 || newOpenedEntityIds.length > 0;
+		const newEvidenceThisRound =
+			newEntityIds.length > 0 ||
+			newOpenedEntityIds.length > 0 ||
+			newReadEvidenceKeys.length > 0;
 		if (newEvidenceThisRound) {
 			this.lowNoveltyRounds = 0;
 		} else {
@@ -330,7 +343,9 @@ function isDetailReadOperation(toolCall: ChatToolCall): boolean {
 	}
 	return (
 		normalizedToolName.startsWith('get_') ||
+		normalizedToolName.startsWith('read_') ||
 		normalizedOp.endsWith('.get') ||
+		normalizedOp.endsWith('.read') ||
 		normalizedToolName.endsWith('_details')
 	);
 }
@@ -403,6 +418,32 @@ function extractToolArgumentIds(toolCall: ChatToolCall): string[] {
 		}
 	}
 	return Array.from(ids);
+}
+
+function extractDetailReadEvidenceKey(toolCall: ChatToolCall): string | null {
+	const toolName = toolCall.function?.name?.trim().toLowerCase() ?? '';
+	if (!toolName) return null;
+	const parsed = parseToolArguments(toolCall.function?.arguments);
+	const args = parsed.args ?? {};
+	const locationKeys = [
+		'anchor',
+		'section',
+		'path',
+		'cursor',
+		'page',
+		'page_number',
+		'offset',
+		'start',
+		'end'
+	];
+	const location = locationKeys.flatMap((key) => {
+		const value = args[key];
+		return typeof value === 'string' || typeof value === 'number'
+			? [[key, value] as const]
+			: [];
+	});
+	if (location.length === 0) return null;
+	return `${toolName}|${JSON.stringify(Object.fromEntries(location))}`;
 }
 
 function collectEntityIds(value: unknown, ids: Set<string>): void {

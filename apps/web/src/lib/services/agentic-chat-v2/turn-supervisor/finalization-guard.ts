@@ -35,6 +35,7 @@ type ApplyFinalizationGuardParams = {
 	// "I gathered context before the turn ended" read summary, which reads as a
 	// completed answer and is the root of the "did you update it?" complaint pattern.
 	mutationRequested?: boolean;
+	expectedWriteToolNames?: string[];
 };
 
 type EvidenceItem = {
@@ -79,7 +80,7 @@ function buildGuardText(params: {
 	failedReads: number;
 	otherSuccesses: number;
 	otherFailures: number;
-	mutationRequested?: boolean;
+	mutationIncomplete?: boolean;
 	toolExecutions?: FastToolExecution[] | null;
 }): {
 	text: string;
@@ -93,14 +94,21 @@ function buildGuardText(params: {
 		failedReads,
 		otherSuccesses,
 		otherFailures,
-		mutationRequested
+		mutationIncomplete
 	} = params;
 
 	// A write was requested but none was even attempted — the turn ran out of room
 	// before the change happened. Be explicit that nothing was updated so the user
 	// knows to continue, rather than reading a context summary as a finished result.
-	if (mutationRequested && successfulWrites === 0 && failedWrites === 0) {
+	if (mutationIncomplete) {
 		const evidenceText = buildReadEvidenceFallbackText(params);
+		if (successfulWrites > 0) {
+			return {
+				text: `I completed ${successfulWrites} requested ${plural(successfulWrites, 'change')}, but I was not able to complete every requested write before the turn ended. The remaining request stays pending.`,
+				reason: 'incomplete_mutation_after_reads',
+				finishedReason: 'mutation_unfulfilled'
+			};
+		}
 		const lead =
 			evidenceText ||
 			'I gathered the context I needed but ran out of steps before making the change.';
@@ -449,6 +457,7 @@ export function applyFinalizationGuard(
 	let failedReads = 0;
 	let otherSuccesses = 0;
 	let otherFailures = 0;
+	const successfulWriteToolNames = new Set<string>();
 
 	for (const execution of toolExecutions) {
 		if (isDuplicateWriteSkippedExecution(execution)) continue;
@@ -458,8 +467,10 @@ export function applyFinalizationGuard(
 		// check so an `{ ok: false }` write is not counted as completed.
 		const success = didGatewayExecSucceed(execution);
 		if (category === 'write') {
-			if (success) successfulWrites += 1;
-			else failedWrites += 1;
+			if (success) {
+				successfulWrites += 1;
+				successfulWriteToolNames.add(execution.toolCall.function?.name?.trim() ?? '');
+			} else failedWrites += 1;
 		} else if (category === 'read_discovery') {
 			if (success) successfulReads += 1;
 			else failedReads += 1;
@@ -472,8 +483,12 @@ export function applyFinalizationGuard(
 
 	// A requested mutation that never ran (no write succeeded or failed) must not be
 	// papered over with a lead-in like "let me update that" — the change did not happen.
+	const expectedWriteToolNames = Array.from(new Set(params.expectedWriteToolNames ?? []));
 	const mutationIncomplete =
-		params.mutationRequested === true && successfulWrites === 0 && failedWrites === 0;
+		params.mutationRequested === true &&
+		(expectedWriteToolNames.length > 0
+			? expectedWriteToolNames.some((toolName) => !successfulWriteToolNames.has(toolName))
+			: successfulWrites === 0 && failedWrites === 0);
 	const shouldReplaceWriteLeadIn = successfulWrites > 0 && candidate && isLikelyLeadIn(candidate);
 	const shouldReplaceReadLeadIn =
 		successfulWrites === 0 && successfulReads > 0 && candidate && isLikelyLeadIn(candidate);
@@ -494,7 +509,7 @@ export function applyFinalizationGuard(
 		failedReads,
 		otherSuccesses,
 		otherFailures,
-		mutationRequested: params.mutationRequested,
+		mutationIncomplete,
 		toolExecutions
 	});
 

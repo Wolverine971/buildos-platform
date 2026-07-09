@@ -14,7 +14,11 @@ import { resolveFastChatPassModelRouting, type FastChatModelTieringConfig } from
 import { buildLitePromptEnvelope } from '$lib/services/agentic-chat-lite/prompt';
 import { FASTCHAT_LIMITS } from '../limits';
 import { buildLiveSnapshotFromTokens, FASTCHAT_TOKEN_BUDGETS } from '../context-usage';
-import { getWriteToolNamesForTurnIntent, type FastChatTurnIntent } from '../turn-intent';
+import {
+	getAutonomousWriteToolNamesForTurnIntent,
+	getWriteToolNamesForTurnIntent,
+	type FastChatTurnIntent
+} from '../turn-intent';
 import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
@@ -481,6 +485,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		if (!gatewayModeActive || writeIntentCarveOutUsed) return null;
 		const writeIntentOps = collectGatewayWriteIntentOps(toolExecutions).filter((op) => {
 			const normalizedOp = normalizeGatewayOpName(op);
+			if (isDestructiveWriteOperation(normalizedOp)) return false;
 			let latestDirectAttemptSucceeded: boolean | null = null;
 			for (const execution of toolExecutions) {
 				if (getGatewayExecOp(execution) !== normalizedOp) continue;
@@ -498,7 +503,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				writeToolNames.add(toolName);
 			}
 		}
-		for (const toolName of getWriteToolNamesForTurnIntent(
+		for (const toolName of getAutonomousWriteToolNamesForTurnIntent(
 			params.turnIntent ?? emptyTurnIntent
 		)) {
 			const latestMatchingAttempt = [...toolExecutions]
@@ -519,7 +524,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			instruction: [
 				'Supervisor note: a requested mutation is still pending after context gathering.',
 				`For the next response, you may use only these write tools: ${toolNames.join(', ')}.`,
-				'Make at most one write attempt if the required target and fields are known.',
+				'Make at most one attempt per required write tool if the target and fields are known.',
 				'If required arguments are missing, ask one concise clarifying question instead of guessing.',
 				'Do not call reads, searches, schemas, skills, or any other discovery tools in this pass.'
 			].join(' ')
@@ -1089,6 +1094,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					toolExecutions,
 					latestUserText: message,
 					mutationRequested: params.turnIntent?.requiresWrite === true,
+					expectedWriteToolNames: getWriteToolNamesForTurnIntent(
+						params.turnIntent ?? emptyTurnIntent
+					),
 					assistantText,
 					emitAssistantRemainder,
 					observeSupervisor
@@ -1118,6 +1126,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					toolExecutions,
 					latestUserText: message,
 					mutationRequested: params.turnIntent?.requiresWrite === true,
+					expectedWriteToolNames: getWriteToolNamesForTurnIntent(
+						params.turnIntent ?? emptyTurnIntent
+					),
 					gatewayModeActive,
 					projectCreateStopRepairInjected,
 					gatewayMutationStopRepairInjected,
@@ -1777,6 +1788,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		answerTruncated,
 		latestUserText: message,
 		mutationRequested: params.turnIntent?.requiresWrite === true,
+		expectedWriteToolNames: getWriteToolNamesForTurnIntent(
+			params.turnIntent ?? emptyTurnIntent
+		),
 		toolExecutions,
 		emitAssistantDelta,
 		emitAssistantRemainder,
@@ -1819,11 +1833,22 @@ const emptyTurnIntent: FastChatTurnIntent = {
 	requiresWrite: false,
 	action: null,
 	entityKind: 'unknown',
+	operations: [],
 	source: 'none',
 	originalRequestText: null,
 	originatingTurnRunId: null,
 	clearPending: false
 };
+
+function isDestructiveWriteOperation(operation: string): boolean {
+	const normalized = operation.trim().toLowerCase();
+	return (
+		normalized.startsWith('delete_') ||
+		normalized.startsWith('unlink_') ||
+		normalized.endsWith('.delete') ||
+		normalized.endsWith('.unlink')
+	);
+}
 
 function buildWriteDedupKey(toolCall: ChatToolCall): string | null {
 	const toolName = toolCall.function?.name?.trim() ?? '';

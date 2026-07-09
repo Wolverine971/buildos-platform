@@ -354,7 +354,9 @@ describe('AgentChatStreamController', () => {
 
 		const run = h.streamProcessor.runs[0]!;
 		expect(h.streamProcessor.processStream.mock.calls[0]?.[2]).toMatchObject({
-			timeout: 0,
+			// Inactivity guard: server heartbeats every 12s, so a 45s gap means
+			// the connection is dead and the turn reconciles instead of spinning.
+			timeout: 45_000,
 			parseJSON: true,
 			treatErrorEventsAsProgress: true
 		});
@@ -691,6 +693,90 @@ describe('AgentChatStreamController', () => {
 		expect(h.controller.error).toBe('BuildOS did not return a response. Please try again.');
 		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('error');
 		expect(h.thinking.finalize).toHaveBeenCalledWith('error');
+	});
+
+	it('surfaces the server error body when the stream POST is rejected (402 freeze)', async () => {
+		const frozenMessage =
+			'AI generation is paused until billing is activated. Your workspace remains readable.';
+		const fetchImpl = vi.fn(
+			async () =>
+				new Response(
+					JSON.stringify({
+						success: false,
+						error: frozenMessage,
+						code: 'UPGRADE_REQUIRED'
+					}),
+					{ status: 402, headers: { 'Content-Type': 'application/json' } }
+				)
+		) as unknown as typeof fetch;
+		const h = createHarness({ fetchImpl });
+
+		await h.controller.sendMessage();
+
+		expect(h.controller.error).toBe(frozenMessage);
+		expect(h.messages).toHaveLength(0);
+		expect(h.inputValue).toBe('hello');
+	});
+
+	it('does not clobber a newer draft when restoring a failed send', async () => {
+		let resolveFetch!: (response: Response) => void;
+		const fetchImpl = vi.fn(
+			() =>
+				new Promise<Response>((resolve) => {
+					resolveFetch = resolve;
+				})
+		) as unknown as typeof fetch;
+		const h = createHarness({ fetchImpl });
+
+		const sendPromise = h.controller.sendMessage();
+		await flushMicrotasks();
+		// User starts typing a new message while the failed request is in flight.
+		h.inputValue = 'newer draft typed mid-flight';
+		resolveFetch(new Response('oops', { status: 500, statusText: 'Server Error' }));
+		await sendPromise;
+
+		expect(h.controller.error).toBe('Failed to send message. Please try again.');
+		expect(h.inputValue).toBe('newer draft typed mid-flight');
+	});
+
+	it('rolls back the optimistic bubble when the server denies the turn before it starts', async () => {
+		const h = createHarness();
+		const sendPromise = h.controller.sendMessage();
+		await flushMicrotasks();
+		const run = h.streamProcessor.runs[0]!;
+		expect(h.messages).toHaveLength(1);
+
+		// Deny-shaped stream: session (emitted pre-admission) → error → done,
+		// with no post-admission evidence (context_usage/text/tool events).
+		run.progress({ type: 'session', session: makeSession() } as AgentSSEMessage);
+		run.progress({
+			type: 'error',
+			error: 'Another turn is already running.'
+		} as AgentSSEMessage);
+		// Mirrors the real SSE handler's state.setError wiring.
+		h.controller.error = 'Another turn is already running.';
+		run.progress({ type: 'done' } as AgentSSEMessage);
+		run.complete();
+		await sendPromise;
+
+		expect(h.messages).toHaveLength(0);
+		expect(h.inputValue).toBe('hello');
+	});
+
+	it('keeps the persisted bubble when a turn errors after real work started', async () => {
+		const h = createHarness();
+		const sendPromise = h.controller.sendMessage();
+		await flushMicrotasks();
+		const run = h.streamProcessor.runs[0]!;
+
+		run.progress({ type: 'text_delta', content: 'Working' } as AgentSSEMessage);
+		run.progress({ type: 'error', error: 'LLM failed' } as AgentSSEMessage);
+		h.controller.error = 'LLM failed';
+		run.complete();
+		await sendPromise;
+
+		expect(h.messages).toHaveLength(1);
+		expect(h.inputValue).toBe('');
 	});
 
 	it('reports and aborts user cancellation', async () => {

@@ -346,7 +346,18 @@ export interface SSEHandlerDeps {
 	isDev?: boolean;
 }
 
-export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage) => void {
+export interface AgentSSEMessageHandler {
+	(event: AgentSSEMessage): void;
+	/**
+	 * Clears per-turn closure state (the created-entities buffer). Must be
+	 * called at turn start / teardown: a user cancel aborts the transport
+	 * before `done`/`error` arrive, and without this reset a cancelled
+	 * turn's created-entity chips would flush into the NEXT turn's card.
+	 */
+	resetTurnState(): void;
+}
+
+export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 	const { presenter, thinking, state } = deps;
 	const isDev = deps.isDev ?? false;
 
@@ -622,7 +633,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 		}
 	}
 
-	return function handleSSEMessage(event: AgentSSEMessage): void {
+	const handleSSEMessage = function handleSSEMessage(event: AgentSSEMessage): void {
 		if (event.type !== 'text' && event.type !== 'text_delta') {
 			deps.flushAssistantText();
 		}
@@ -755,5 +766,11 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 				// Unhandled/legacy event types — silently ignore.
 				return;
 		}
+	} as AgentSSEMessageHandler;
+
+	handleSSEMessage.resetTurnState = () => {
+		createdEntitiesBuffer = [];
 	};
+
+	return handleSSEMessage;
 }
