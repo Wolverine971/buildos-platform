@@ -141,7 +141,11 @@ export type FastAgentStreamEvent =
 			activity_visibility?: 'activity_log';
 	  }
 	| { type: 'text_delta'; content: string }
-	| { type: 'error'; error: string }
+	// `turn_rejected` marks pre-persistence denies (access denied, active turn
+	// running, turn-run insert failed): those turns never persisted the user
+	// message, so the client rolls back its optimistic bubble ONLY when this
+	// flag is set. Mid-turn errors omit it.
+	| { type: 'error'; error: string; turn_rejected?: boolean }
 	| { type: 'done'; usage?: FastAgentStreamUsage; finished_reason?: string };
 
 export type FastChatHistoryMessage = {

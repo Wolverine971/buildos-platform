@@ -1285,6 +1285,10 @@ export const POST: RequestHandler = async ({
 		// Emits the standard error -> done pair used by every early-exit / deny path.
 		// Marks doneEmittedAtMs for timing. Callers keep their own tail (stream close,
 		// cancel-watcher teardown, timing metric) since those differ per exit reason.
+		// `turn_rejected: true` tells the client this turn was denied BEFORE the user
+		// message persisted, so it can roll back its optimistic bubble. Every caller
+		// of this helper runs before persistMessage — keep it that way, or add an
+		// explicit override if a post-persistence caller ever appears.
 		const emitErrorThenDone = async (params: {
 			error: string;
 			finishedReason: string;
@@ -1293,7 +1297,7 @@ export const POST: RequestHandler = async ({
 			doneMetadata?: Record<string, unknown>;
 		}): Promise<void> => {
 			await sendTimedMessage(
-				{ type: 'error', error: params.error },
+				{ type: 'error', error: params.error, turn_rejected: true },
 				{
 					operationType: 'fastchat_stream_emit_error',
 					projectId: params.projectId,
@@ -1560,49 +1564,56 @@ export const POST: RequestHandler = async ({
 				return;
 			}
 
-			try {
-				const staleBefore = new Date(
-					Date.now() - FASTCHAT_SUPERVISOR_RESUMING_STALE_AFTER_MS
-				).toISOString();
-				await recoverStaleResumingCheckpoints({
-					supabase,
-					userId,
-					staleBefore
-				});
-			} catch (error) {
-				logFastChatError({
-					error,
-					operationType: 'fastchat_supervisor_checkpoint_restore_stale',
-					projectId: projectIdForLogs,
-					tableName: 'chat_turn_checkpoints',
-					metadata: {
-						sessionId: session.id,
-						contextType,
-						entityId
-					}
-				});
-			}
+			// WP-12c (speed audit): stale-recovery must precede the active-checkpoint
+			// load (recovery flips resuming→active), but the pair as a whole is
+			// independent of prepared-prompt consumption and history load — run it
+			// in the background and await just before the checkpoint is consumed.
+			// Both steps catch internally, so the chain never rejects.
+			const supervisorCheckpointChain: Promise<ChatTurnCheckpoint | null> = (async () => {
+				try {
+					const staleBefore = new Date(
+						Date.now() - FASTCHAT_SUPERVISOR_RESUMING_STALE_AFTER_MS
+					).toISOString();
+					await recoverStaleResumingCheckpoints({
+						supabase,
+						userId,
+						staleBefore
+					});
+				} catch (error) {
+					logFastChatError({
+						error,
+						operationType: 'fastchat_supervisor_checkpoint_restore_stale',
+						projectId: projectIdForLogs,
+						tableName: 'chat_turn_checkpoints',
+						metadata: {
+							sessionId: session.id,
+							contextType,
+							entityId
+						}
+					});
+				}
 
-			try {
-				activeSupervisorCheckpoint = await loadLatestActiveCheckpoint({
-					supabase,
-					sessionId: session.id,
-					userId
-				});
-			} catch (error) {
-				activeSupervisorCheckpoint = null;
-				logFastChatError({
-					error,
-					operationType: 'fastchat_supervisor_checkpoint_load',
-					projectId: projectIdForLogs,
-					tableName: 'chat_turn_checkpoints',
-					metadata: {
+				try {
+					return await loadLatestActiveCheckpoint({
+						supabase,
 						sessionId: session.id,
-						contextType,
-						entityId
-					}
-				});
-			}
+						userId
+					});
+				} catch (error) {
+					logFastChatError({
+						error,
+						operationType: 'fastchat_supervisor_checkpoint_load',
+						projectId: projectIdForLogs,
+						tableName: 'chat_turn_checkpoints',
+						metadata: {
+							sessionId: session.id,
+							contextType,
+							entityId
+						}
+					});
+					return null;
+				}
+			})();
 
 			const requestLastTurnContext = streamRequest.lastTurnContext ?? null;
 			const continuityHint = buildLastTurnContinuityHint(requestLastTurnContext);
@@ -1694,6 +1705,46 @@ export const POST: RequestHandler = async ({
 					? null
 					: ((preparedPromptForTurn.diagnostics ?? null) as Json | null)
 			} as Json);
+
+			// WP-12c (speed audit): on the cold path (prepared-prompt miss +
+			// stale/absent session context cache) the fresh context load needs
+			// only request identity — start it before history load/composition
+			// runs and await it where the context is consumed below.
+			const canUseSessionContextCache = Boolean(
+				cachedContext &&
+					!bypassContextCacheForShiftHint &&
+					cachedContext.version === FASTCHAT_CONTEXT_CACHE_VERSION &&
+					cachedContext.key === cacheKey &&
+					isCacheFresh(cachedContext)
+			);
+			const freshContextLoadPromise =
+				!preparedPromptForTurn.hit && !canUseSessionContextCache
+					? loadFastChatPromptContext({
+							supabase,
+							userId,
+							contextType,
+							entityId,
+							projectFocus,
+							onError: ({ stage, error, metadata }) => {
+								logFastChatError({
+									error,
+									operationType: 'fastchat_context_load',
+									projectId: projectIdForLogs,
+									metadata: {
+										stage,
+										contextType,
+										entityId,
+										projectFocus,
+										...(metadata ?? {})
+									}
+								});
+							}
+						})
+					: null;
+			// The loader resolves with degraded context on stage errors; this
+			// no-op guard only prevents an unhandled rejection if the turn
+			// aborts before the await below.
+			freshContextLoadPromise?.catch(() => {});
 
 			let history: FastChatHistoryMessage[] = [];
 			let historyForModel: FastChatHistoryMessage[];
@@ -1818,6 +1869,7 @@ export const POST: RequestHandler = async ({
 				) as unknown as Json;
 			}
 
+			activeSupervisorCheckpoint = await supervisorCheckpointChain;
 			if (activeSupervisorCheckpoint) {
 				try {
 					resumingSupervisorCheckpoint = await markCheckpointResuming({
@@ -2072,13 +2124,7 @@ export const POST: RequestHandler = async ({
 					preparedPromptMissReason = null;
 					preparedPromptId = preparedPromptForTurn.row.id;
 					preparedPromptAgeSeconds = preparedPromptForTurn.ageSeconds;
-				} else if (
-					cachedContext &&
-					!bypassContextCacheForShiftHint &&
-					cachedContext.version === FASTCHAT_CONTEXT_CACHE_VERSION &&
-					cachedContext.key === cacheKey &&
-					isCacheFresh(cachedContext)
-				) {
+				} else if (cachedContext && canUseSessionContextCache) {
 					promptContext = { ...cachedContext.context };
 					contextCacheAgeSeconds = resolveCacheAgeSeconds(cachedContext.created_at);
 					contextCacheSource = 'session_cache';
@@ -2086,27 +2132,14 @@ export const POST: RequestHandler = async ({
 						cachedContext.context.contextLoadSource
 					);
 				} else {
-					promptContext = await loadFastChatPromptContext({
-						supabase,
-						userId,
-						contextType,
-						entityId,
-						projectFocus,
-						onError: ({ stage, error, metadata }) => {
-							logFastChatError({
-								error,
-								operationType: 'fastchat_context_load',
-								projectId: projectIdForLogs,
-								metadata: {
-									stage,
-									contextType,
-									entityId,
-									projectFocus,
-									...(metadata ?? {})
-								}
-							});
-						}
-					});
+					// Started before history load (WP-12c) — this await measures
+					// only the residual wait, not the full context build.
+					if (!freshContextLoadPromise) {
+						throw new Error(
+							'FastChat fresh context load was not started for a cold turn'
+						);
+					}
+					promptContext = await freshContextLoadPromise;
 					contextCacheSource = 'fresh_load';
 					contextLoadSource = promptContext.contextLoadSource ?? 'none';
 

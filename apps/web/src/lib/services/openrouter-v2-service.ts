@@ -112,6 +112,34 @@ function parseOpenRouterProviderOrder(value: string | undefined): string[] {
 		.slice(0, 8);
 }
 
+// Default provider steering (2026-07-09 speed audit WP-4): OpenRouter's price
+// routing lands deepseek chat traffic ~86% on GMICloud, whose prompt-prefix
+// caching barely works (6% median cache hit on passes 2+); Baidu caches ~47%
+// of the prompt AND runs ~41% faster at p50. These defaults prefer the hosts
+// that actually cache; allow_fallbacks stays on, so an unavailable preferred
+// host falls back to OpenRouter's normal routing. Models not listed here keep
+// default routing. PRIVATE_OPENROUTER_PROVIDER_ORDER overrides globally;
+// setting it to "off"/"none"/"default" disables steering entirely (the
+// no-deploy kill switch if a preferred host degrades).
+const DEFAULT_PROVIDER_ORDER_BY_MODEL: Record<string, string[]> = {
+	'deepseek/deepseek-v4-flash': ['Baidu', 'GMICloud']
+};
+
+const PROVIDER_ORDER_DISABLED_VALUES = new Set(['off', 'none', 'default', 'disabled']);
+
+function resolveProviderOrderForModel(
+	envValue: string | undefined,
+	model: string | undefined
+): string[] {
+	const trimmedEnvValue = envValue?.trim();
+	if (trimmedEnvValue) {
+		if (PROVIDER_ORDER_DISABLED_VALUES.has(trimmedEnvValue.toLowerCase())) return [];
+		return parseOpenRouterProviderOrder(trimmedEnvValue);
+	}
+	if (!model) return [];
+	return DEFAULT_PROVIDER_ORDER_BY_MODEL[model.trim().toLowerCase()] ?? [];
+}
+
 function parseDirectFallbackProviderOrder(
 	value: string | undefined,
 	fallback: DirectFallbackProvider[]
@@ -699,19 +727,21 @@ export class OpenRouterV2Service extends SmartLLMService {
 		return timeoutMs ?? this.v2DefaultTimeoutMs;
 	}
 
-	private resolveOpenRouterProviderConfig(lane: ModelLane): OpenRouterProviderConfig {
+	private resolveOpenRouterProviderConfig(
+		lane: ModelLane,
+		model?: string
+	): OpenRouterProviderConfig {
 		const config: OpenRouterProviderConfig =
 			lane === 'json' || lane === 'tool_calling' || lane === 'multimodal'
 				? { allow_fallbacks: true, require_parameters: true }
 				: { allow_fallbacks: true };
 
-		// Optional provider steering (2026-07-09 speed audit): OpenRouter's default
-		// price routing lands deepseek chat traffic on hosts with near-zero prompt
-		// prefix caching. A comma-separated provider order (e.g. "Baidu,GMICloud")
-		// prefers hosts that actually cache; allow_fallbacks keeps normal routing
-		// as the safety net. Unset = OpenRouter default routing.
-		const providerOrder = parseOpenRouterProviderOrder(
-			readPrivateEnv('PRIVATE_OPENROUTER_PROVIDER_ORDER')
+		// Provider steering keyed off the request's primary model — see
+		// DEFAULT_PROVIDER_ORDER_BY_MODEL. The env var remains a global
+		// override / kill switch; unset means the per-model defaults apply.
+		const providerOrder = resolveProviderOrderForModel(
+			readPrivateEnv('PRIVATE_OPENROUTER_PROVIDER_ORDER'),
+			model
 		);
 		if (providerOrder.length > 0) {
 			config.order = providerOrder;
@@ -1161,7 +1191,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 					max_tokens: maxTokens,
 					response_format: { type: 'json_object' },
 					reasoning: resolveLaneReasoning('json'),
-					provider: this.resolveOpenRouterProviderConfig('json'),
+					provider: this.resolveOpenRouterProviderConfig('json', model),
 					timeoutMs: this.resolveTimeout(options.timeoutMs)
 				});
 				const content = extractTextFromResponse(response);
@@ -1385,7 +1415,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 					temperature: options.temperature ?? 0.7,
 					max_tokens: options.maxTokens ?? 4096,
 					reasoning: resolveLaneReasoning('text'),
-					provider: this.resolveOpenRouterProviderConfig('text'),
+					provider: this.resolveOpenRouterProviderConfig('text', model),
 					timeoutMs: this.resolveTimeout(options.timeoutMs)
 				});
 
@@ -1601,7 +1631,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 					temperature: options.temperature ?? (needsTools ? 0.2 : 0.7),
 					max_tokens: options.maxTokens ?? 2000,
 					reasoning: resolveLaneReasoning(lane),
-					provider: this.resolveOpenRouterProviderConfig(lane),
+					provider: this.resolveOpenRouterProviderConfig(lane, model),
 					timeoutMs: this.resolveTimeout(undefined),
 					signal: options.signal,
 					// Restore cache affinity on the primary streaming path (D9). OpenRouter's
@@ -1661,7 +1691,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 						temperature: options.temperature ?? (needsTools ? 0.2 : 0.7),
 						max_tokens: options.maxTokens ?? 2000,
 						reasoning: resolveLaneReasoning(fallbackLane),
-						provider: this.resolveOpenRouterProviderConfig(fallbackLane),
+						provider: this.resolveOpenRouterProviderConfig(fallbackLane, model),
 						timeoutMs: this.resolveTimeout(undefined),
 						signal: options.signal
 					});

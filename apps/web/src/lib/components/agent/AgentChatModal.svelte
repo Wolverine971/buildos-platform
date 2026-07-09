@@ -200,6 +200,12 @@
 		browser && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
 	);
 
+	// "Is this surface live?" — embedded hosts may keep isOpen=false while the
+	// chat is visible, so recovery loops (turn probe, reconcile) must not gate
+	// on isOpen alone or they'd wedge send with activeRestoredTurnRunId set
+	// and no timer armed.
+	const isSurfaceActive = $derived(embedded || isOpen);
+
 	// Conversation state.
 	//
 	// `messages` is $state.raw: every update path replaces the array (and any
@@ -727,7 +733,7 @@
 	// the whole life of the detached turn (up to ~285s).
 	function scheduleActiveTurnSessionRefresh(sessionId: string) {
 		clearSessionRefreshTimeout();
-		if (!browser || !isOpen) return;
+		if (!browser || !isSurfaceActive) return;
 
 		const delay = Math.min(
 			ACTIVE_TURN_PROBE_BASE_MS * 2 ** activeTurnProbeAttempt,
@@ -735,7 +741,7 @@
 		);
 		sessionRefreshTimeout = setTimeout(() => {
 			sessionRefreshTimeout = null;
-			if (!isOpen) return;
+			if (!isSurfaceActive) return;
 			void probeActiveTurnAndRefresh(sessionId);
 		}, delay);
 	}
@@ -749,10 +755,23 @@
 		} catch {
 			probe = null; // aborted — treat as unknown
 		}
-		if (!isOpen || currentSession?.id !== sessionId || !activeRestoredTurnRunId) return;
+		if (!isSurfaceActive || currentSession?.id !== sessionId || !activeRestoredTurnRunId) {
+			return;
+		}
 		if (probe && !probe.hasActiveTurnRun) {
 			// Turn went terminal — one full reload picks up the persisted result.
-			void loadChatSession(sessionId, { backgroundRefresh: true });
+			await loadChatSession(sessionId, { backgroundRefresh: true });
+			// On success applyChatSessionSnapshot either clears the restored-turn
+			// state or re-arms the timer itself. If the reload failed, both are
+			// untouched — re-arm so the loop doesn't stall with send blocked.
+			if (
+				isSurfaceActive &&
+				currentSession?.id === sessionId &&
+				activeRestoredTurnRunId &&
+				!sessionRefreshTimeout
+			) {
+				scheduleActiveTurnSessionRefresh(sessionId);
+			}
 			return;
 		}
 		// Still running (or probe failed) — keep polling with backoff.
@@ -913,9 +932,30 @@
 		const draft = buildTimelineItemQuestionDraft(item);
 		const existingDraft = inputValue.trim();
 		inputValue = existingDraft ? `${existingDraft}\n\n${draft}` : draft;
-		activeChatTab = 'chat';
+		handleChatTabChange('chat');
 		haptic('light');
 		toastService.success('Added step context to composer');
+	}
+
+	// The chat pane stays mounted behind `hidden` when another tab is active,
+	// but some browsers clamp a display:none scroller's scrollTop to 0 — save
+	// and restore it explicitly across tab switches.
+	let savedChatScrollTop = 0;
+
+	function handleChatTabChange(tab: AgentChatPanelTab) {
+		if (tab === activeChatTab) return;
+		if (activeChatTab === 'chat' && messagesContainer) {
+			savedChatScrollTop = messagesContainer.scrollTop;
+		}
+		activeChatTab = tab;
+		if (tab === 'chat' && browser) {
+			requestAnimationFrame(() => {
+				if (activeChatTab !== 'chat' || !messagesContainer) return;
+				messagesContainer.scrollTop = userHasScrolled
+					? savedChatScrollTop
+					: messagesContainer.scrollHeight;
+			});
+		}
 	}
 
 	function resetConversation(options: { preserveContext?: boolean } = {}) {
@@ -1115,6 +1155,12 @@
 			wasOpen = true;
 			hasFinalizedSession = false;
 			stream.hasSentMessage = false;
+			// Reopening a still-mounted modal with the same session: the
+			// subscribe effect keys on currentSession.id (unchanged), so
+			// resubscribe the realtime channel released by the close teardown.
+			if (currentSession?.id) {
+				subscribeSessionMessages(currentSession.id);
+			}
 
 			// If resuming a session, skip any auto-init flows that would create a new one
 			if (initialChatSessionId) {
@@ -1316,7 +1362,7 @@
 		attempt = 0,
 		requestId = ++turnReconciliationRequestId
 	): Promise<void> {
-		if (!browser || !isOpen) return;
+		if (!browser || !isSurfaceActive) return;
 		if (requestId !== turnReconciliationRequestId) return;
 
 		activeRestoredTurnRunId = `reconcile:${request.streamRunId}`;
@@ -1325,7 +1371,7 @@
 
 		try {
 			const snapshot = await loadAgentChatSessionSnapshot(request.sessionId);
-			if (requestId !== turnReconciliationRequestId || !isOpen) return;
+			if (requestId !== turnReconciliationRequestId || !isSurfaceActive) return;
 
 			const matchingTurnRun =
 				snapshot.turnRuns.find((run) => turnRunMatchesRequest(run, request)) ?? null;
@@ -1348,7 +1394,7 @@
 			stream.currentActivity = '';
 			stream.error = 'Connection lost before the latest response could be restored.';
 		} catch (err) {
-			if (requestId !== turnReconciliationRequestId || !isOpen) return;
+			if (requestId !== turnReconciliationRequestId || !isSurfaceActive) return;
 			if (attempt < TURN_RECONCILE_MAX_ATTEMPTS) {
 				setTrackedTimeout(() => {
 					void reconcileTurnFromSession(request, attempt + 1, requestId);
@@ -1406,8 +1452,13 @@
 				return;
 			}
 			console.error('Failed to load chat session:', err);
-			sessionLoadError = err.message || 'Failed to load chat session';
-			stream.error = sessionLoadError;
+			// Silent background refreshes (active-turn poll, agent-run fallback)
+			// must not surface an error banner mid-conversation — the caller
+			// retries or the close-time refresh picks the data up.
+			if (!backgroundRefresh) {
+				sessionLoadError = err.message || 'Failed to load chat session';
+				stream.error = sessionLoadError;
+			}
 		} finally {
 			if (requestId === sessionLoadRequestId) {
 				isLoadingSession = false;
@@ -2312,7 +2363,23 @@
 		}
 	}
 
+	// Screen-reader announcement for completed replies. The streaming bubble
+	// itself is deliberately NOT a live region (per-token announcements are
+	// unusable); instead a single polite note fires when a reply finishes.
+	let srAnnouncement = $state('');
+
+	function announceForScreenReader(text: string) {
+		// Clear-then-set so consecutive identical announcements still fire.
+		srAnnouncement = '';
+		setTrackedTimeout(() => {
+			srAnnouncement = text;
+		}, 30);
+	}
+
 	function finalizeAssistantMessage() {
+		if (currentAssistantMessageId) {
+			announceForScreenReader('BuildOS replied');
+		}
 		currentAssistantMessageId = null;
 		currentAssistantMessageIndex = null;
 	}
@@ -2407,33 +2474,33 @@
 				<AgentChatActivityTabs
 					activeTab={activeChatTab}
 					timelineItems={agentTimelineItems}
-					onTabChange={(tab) => {
-						activeChatTab = tab;
-					}}
+					onTabChange={handleChatTabChange}
 					onAskAboutItem={handleAskAboutTimelineItem}
 				/>
-				{#if activeChatTab === 'chat'}
-					<div
-						class="flex min-h-0 flex-1 flex-col"
-						role="tabpanel"
-						id="agent-chat-panel-chat"
-						aria-labelledby="agent-chat-tab-chat"
-					>
-						<AgentMessageList
-							{messages}
-							{displayContextLabel}
-							selectedContextType={shellRouter.selectedContextType}
-							{resolvedProjectFocus}
-							streamingMessageId={currentAssistantMessageId}
-							onToggleThinkingBlock={toggleThinkingBlockCollapse}
-							bind:container={messagesContainer}
-							onScroll={handleScroll}
-							voiceNotesByGroupId={voice.notesByGroupId}
-							onDeleteVoiceNote={voice.removeNoteFromGroup.bind(voice)}
-							onSelectSuggestion={handleSelectSuggestion}
-						/>
-					</div>
-				{/if}
+				<!-- Kept mounted (hidden, not unmounted) when another tab is active:
+				     unmounting reset the scroll position to the top of the whole
+				     conversation and replayed every entrance animation on return. -->
+				<div
+					class={`${activeChatTab === 'chat' ? 'flex' : 'hidden'} min-h-0 flex-1 flex-col`}
+					role="tabpanel"
+					id="agent-chat-panel-chat"
+					tabindex="0"
+					aria-labelledby="agent-chat-tab-chat"
+				>
+					<AgentMessageList
+						{messages}
+						{displayContextLabel}
+						selectedContextType={shellRouter.selectedContextType}
+						{resolvedProjectFocus}
+						streamingMessageId={currentAssistantMessageId}
+						onToggleThinkingBlock={toggleThinkingBlockCollapse}
+						bind:container={messagesContainer}
+						onScroll={handleScroll}
+						voiceNotesByGroupId={voice.notesByGroupId}
+						onDeleteVoiceNote={voice.removeNoteFromGroup.bind(voice)}
+						onSelectSuggestion={handleSelectSuggestion}
+					/>
+				</div>
 			</div>
 			{#if brainDumpContext}
 				<BrainDumpContextPanel
@@ -2443,6 +2510,10 @@
 			{/if}
 		</div>
 	{/if}
+
+	<!-- Polite announcement when a streamed reply completes (see
+	     announceForScreenReader) — the streaming bubble has no live region. -->
+	<div class="sr-only" role="status" aria-live="polite">{srAnnouncement}</div>
 
 	{#if stream.error && !showSessionLoadErrorState}
 		<div

@@ -148,10 +148,13 @@
 	}
 
 	function handleDragOver(event: DragEvent) {
-		if (disabled || isStreaming || !hasImageDrag(event)) return;
+		if (!hasImageDrag(event)) return;
+		// Always claim image drags, even while disabled/streaming — without
+		// preventDefault the browser's default drop handler NAVIGATES to the
+		// dropped file, blowing away the in-flight conversation view.
 		event.preventDefault();
 		if (event.dataTransfer) {
-			event.dataTransfer.dropEffect = 'copy';
+			event.dataTransfer.dropEffect = disabled || isStreaming ? 'none' : 'copy';
 		}
 	}
 
@@ -164,10 +167,13 @@
 	function handleDrop(event: DragEvent) {
 		// Always clear the drag overlay, even on the early-return paths below.
 		dragDepth = 0;
+		if (!hasImageDrag(event) && !event.dataTransfer?.files?.length) return;
+		// Swallow the drop unconditionally (see handleDragOver — the default
+		// action is a page navigation), then decide whether to attach.
+		event.preventDefault();
 		if (disabled || isStreaming) return;
 		const files = filesFromList(event.dataTransfer?.files);
 		if (!files.length) return;
-		event.preventDefault();
 		onAttachmentFiles?.(files);
 	}
 

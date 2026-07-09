@@ -129,6 +129,16 @@ async function waitForPromiseWithTimeout(
 export class PrewarmController {
 	prewarmedContext = $state<FastChatContextCache | null>(null);
 	preparedPrompt = $state<PreparedPromptClient | null>(null);
+	/**
+	 * Bumped by internal timers when a retry window or prepared-prompt TTL
+	 * expires. The orchestrator `$effect` reads it, so expiry re-runs the
+	 * effect — wall-clock passage is not otherwise reactive, and without this
+	 * a failed/expired prepared prompt would stall until an unrelated
+	 * dependency happened to flip.
+	 */
+	refreshTick = $state(0);
+	#refreshTimer: ReturnType<typeof setTimeout> | null = null;
+	#refreshTimerAtMs = 0;
 	#lastPrewarmKey: string | null = null;
 	#preparedPromptRetryKey: string | null = null;
 	#preparedPromptRetryAfterMs = 0;
@@ -137,6 +147,31 @@ export class PrewarmController {
 
 	constructor(deps: PrewarmControllerDeps) {
 		this.#deps = deps;
+	}
+
+	#scheduleRefreshTick(atMs: number): void {
+		if (!Number.isFinite(atMs) || atMs <= 0) return;
+		// Keep the earliest pending wake-up.
+		if (this.#refreshTimer && this.#refreshTimerAtMs <= atMs) return;
+		if (this.#refreshTimer) clearTimeout(this.#refreshTimer);
+		this.#refreshTimerAtMs = atMs;
+		// +50ms so the rerun lands strictly after the deadline it waits on.
+		this.#refreshTimer = setTimeout(
+			() => {
+				this.#refreshTimer = null;
+				this.#refreshTimerAtMs = 0;
+				this.refreshTick += 1;
+			},
+			Math.max(50, atMs - Date.now() + 50)
+		);
+	}
+
+	#clearRefreshTimer(): void {
+		if (this.#refreshTimer) {
+			clearTimeout(this.#refreshTimer);
+			this.#refreshTimer = null;
+		}
+		this.#refreshTimerAtMs = 0;
 	}
 
 	/**
@@ -287,6 +322,9 @@ export class PrewarmController {
 	 * no request is started on this tick.
 	 */
 	orchestrate(): (() => void) | undefined {
+		// Tracked read: expiry timers bump this so the effect re-runs when a
+		// retry window or prepared-prompt TTL lapses (see #scheduleRefreshTick).
+		void this.refreshTick;
 		if (!this.#deps.getIsBrowser() || !this.#deps.getIsOpen()) return;
 		const contextType = this.#deps.getSelectedContextType();
 		if (!contextType) return;
@@ -320,6 +358,14 @@ export class PrewarmController {
 			readiness.contextCacheReady &&
 			(readiness.preparedPromptReady || readiness.preparedPromptRetryBlocked)
 		) {
+			if (readiness.preparedPromptReady) {
+				// Wake up when the prepared prompt expires so it re-warms
+				// instead of silently falling back to the slow path on send.
+				const prepared = this.matchingFreshPreparedPrompt(key);
+				if (prepared) this.#scheduleRefreshTick(Date.parse(prepared.expires_at));
+			} else {
+				this.#scheduleRefreshTick(this.#preparedPromptRetryAfterMs);
+			}
 			return;
 		}
 		// A recent hard failure (e.g. 402-frozen account) marked the retry
@@ -330,6 +376,7 @@ export class PrewarmController {
 			!readiness.contextCacheReady &&
 			readiness.preparedPromptRetryBlocked
 		) {
+			this.#scheduleRefreshTick(this.#preparedPromptRetryAfterMs);
 			return;
 		}
 
@@ -458,6 +505,7 @@ export class PrewarmController {
 		this.preparedPrompt = null;
 		this.#lastPrewarmKey = null;
 		this.#clearPreparedPromptRetry();
+		this.#clearRefreshTimer();
 		// Drop any in-flight request so the next orchestrate starts fresh
 		// instead of re-claiming a request issued before the reset.
 		const inflight = this.#inflightPrewarm;

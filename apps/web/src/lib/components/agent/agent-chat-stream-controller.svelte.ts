@@ -166,7 +166,9 @@ const STREAM_INACTIVITY_TIMEOUT_MS = 45_000;
 // Event types that prove the server started the turn proper (they are only
 // emitted after turn admission + user-message persistence). The initial
 // `agent_state` and `session` events fire BEFORE the deny checks, so they
-// don't count — see the deny-rollback in sendMessage's onComplete.
+// don't count. Used as a SAFETY CHECK on the deny-rollback in sendMessage's
+// onComplete — the rollback trigger itself is the server's explicit
+// `turn_rejected` flag on the error event.
 const TURN_EVIDENCE_EVENT_TYPES = new Set<string>([
 	'context_usage',
 	'text',
@@ -635,6 +637,7 @@ export class AgentChatStreamController {
 			}
 			responseAccepted = true;
 			let receivedTurnEvidence = false;
+			let turnRejectedByServer = false;
 
 			const callbacks: StreamCallbacks = {
 				onProgress: (data: any) => {
@@ -653,6 +656,12 @@ export class AgentChatStreamController {
 					receivedStreamEvent = true;
 					if (event?.type && TURN_EVIDENCE_EVENT_TYPES.has(event.type)) {
 						receivedTurnEvidence = true;
+					}
+					if (
+						event?.type === 'error' &&
+						(event as { turn_rejected?: boolean }).turn_rejected === true
+					) {
+						turnRejectedByServer = true;
 					}
 					this.recordClientStreamEvent(
 						runId,
@@ -701,12 +710,13 @@ export class AgentChatStreamController {
 					this.#deps.assistant.finalizeMessage();
 					this.finalizeClientStreamTiming(runId, terminalState);
 
-					// Deny-shaped turn: the server rejected before starting the
-					// turn proper (error event, zero post-admission evidence),
-					// so the optimistic user bubble was never persisted — it
-					// would silently vanish on the next snapshot reload. Roll
-					// it back and restore the draft instead.
-					if (this.error && receivedStreamEvent && !receivedTurnEvidence && userMessage) {
+					// Denied turn: the server explicitly rejected it before the
+					// user message persisted (`turn_rejected` on the error
+					// event), so the optimistic bubble would silently vanish on
+					// the next snapshot reload. Roll it back and restore the
+					// draft. The evidence check is a safety net: never roll
+					// back a turn that demonstrably did real work.
+					if (turnRejectedByServer && !receivedTurnEvidence && userMessage) {
 						this.#deps.messages.removeById(userMessage.id);
 						if (!this.#deps.getInputValue().trim()) {
 							this.#deps.setInputValue(trimmed);

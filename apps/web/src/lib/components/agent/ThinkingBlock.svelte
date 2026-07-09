@@ -1,7 +1,20 @@
 <!-- apps/web/src/lib/components/agent/ThinkingBlock.svelte -->
 <!-- INKPRINT Design System: Thinking block with terminal-like activity log -->
 <script lang="ts">
-	import { ChevronDown, ChevronRight, Loader, Check, X } from 'lucide-svelte';
+	import {
+		ChevronDown,
+		ChevronRight,
+		Loader,
+		Check,
+		X,
+		Wrench,
+		CircleDot,
+		RefreshCw,
+		Zap,
+		BookOpen,
+		HelpCircle,
+		Info
+	} from 'lucide-svelte';
 	import type { ActivityType, ThinkingBlockMessage } from './agent-chat.types';
 
 	interface Props {
@@ -18,20 +31,12 @@
 		isExpanded = !isExpanded;
 	}
 
-	// Derive if thinking is complete (check for completion phrases in content)
-	const isThinkingComplete = $derived.by(() => {
-		if (block.status !== 'active') return true;
-		// Prefer the explicit loop signal; fall back to completion phrases in content.
-		// `\bcomplete` matches "complete"/"completed" without false-positiving on
-		// "incomplete" (no word boundary before the inner "complete").
-		if (block.agentState === 'waiting_on_user') return true;
-		const content = block.content?.toLowerCase() || '';
-		return (
-			content.includes('ready for your response') ||
-			/\bcomplete/.test(content) ||
-			content.includes('waiting on your')
-		);
-	});
+	// Driven by the explicit loop signals only — never by sniffing copy in
+	// `block.content` (a status detail containing "complete" used to flip the
+	// header early, and copy edits silently broke the heuristic).
+	const isThinkingComplete = $derived(
+		block.status !== 'active' || block.agentState === 'waiting_on_user'
+	);
 
 	// Derive header label - changes from "Thinking" to "Thoughts" when complete
 	const headerLabel = $derived(isThinkingComplete ? 'BuildOS Thoughts' : 'BuildOS Thinking');
@@ -72,41 +77,44 @@
 		`${displayedActivityCount} ${displayedActivityCount === 1 ? 'action' : 'actions'}`
 	);
 
-	// INKPRINT activity styles with semantic meanings
-	const ACTIVITY_STYLES: Record<ActivityType, { icon: string; color: string; prefix: string }> = {
-		tool_call: { icon: '🔧', color: 'text-info', prefix: 'TOOL' },
-		tool_result: { icon: '✓', color: 'text-success', prefix: 'TOOL' },
-		state_change: {
-			icon: '🟢',
-			color: 'text-success',
-			prefix: 'STATE'
-		},
-		context_shift: {
-			icon: '🔄',
-			color: 'text-warning',
-			prefix: 'CONTEXT'
-		},
-		operation: {
-			icon: '⚡',
-			color: 'text-info',
-			prefix: 'OP'
-		},
-		ontology_loaded: {
-			icon: '📚',
-			color: 'text-info',
-			prefix: 'ONTO'
-		},
-		clarification: {
-			icon: '❓',
-			color: 'text-info',
-			prefix: 'CLARIFY'
-		},
-		general: { icon: 'ℹ️', color: 'text-muted-foreground', prefix: 'INFO' }
+	// INKPRINT activity styles. Lucide icons (not emoji) so they theme with the
+	// Inkprint color tokens and render identically across platforms, matching
+	// the icon language of the sibling tabs/header surfaces.
+	const ACTIVITY_STYLES: Record<ActivityType, { icon: typeof Info; color: string }> = {
+		tool_call: { icon: Wrench, color: 'text-info' },
+		tool_result: { icon: Check, color: 'text-success' },
+		state_change: { icon: CircleDot, color: 'text-success' },
+		context_shift: { icon: RefreshCw, color: 'text-warning' },
+		operation: { icon: Zap, color: 'text-info' },
+		ontology_loaded: { icon: BookOpen, color: 'text-info' },
+		clarification: { icon: HelpCircle, color: 'text-info' },
+		general: { icon: Info, color: 'text-muted-foreground' }
 	};
 
 	function getActivityStyle(type: ActivityType) {
 		return ACTIVITY_STYLES[type] || ACTIVITY_STYLES.general;
 	}
+
+	// Auto-follow: keep the newest log entry in view while the turn is active —
+	// the log is a short scroll box and tool #5 onward otherwise appends below
+	// the fold. Manual scrolling up pauses following (same rule as the message
+	// list); scrolling back to the bottom resumes it.
+	let logContainer = $state<HTMLElement | undefined>(undefined);
+	let logUserScrolled = $state(false);
+
+	function handleLogScroll() {
+		if (!logContainer) return;
+		const distanceFromBottom =
+			logContainer.scrollHeight - (logContainer.scrollTop + logContainer.clientHeight);
+		logUserScrolled = distanceFromBottom > 16;
+	}
+
+	$effect(() => {
+		if (displayedActivityCount === 0) return;
+		if (block.status !== 'active') return;
+		if (logUserScrolled || !logContainer) return;
+		logContainer.scrollTop = logContainer.scrollHeight;
+	});
 </script>
 
 <!-- INKPRINT thinking block card with Thread texture -->
@@ -118,9 +126,10 @@
 		class:thinking-block-active={showAnimatedHammer}
 		class:thinking-block-complete={block.status === 'completed' && !hasDisplayedActivities}
 		class:thinking-block-error={block.status === 'error'}
-		role="status"
-		aria-live={block.status === 'active' ? 'polite' : 'off'}
 	>
+		<!-- No live region on the container: role="status" is implicitly atomic,
+		     so every appended activity re-announced the whole block. The activity
+		     list below is a role="log", which announces only new entries. -->
 		<button
 			type="button"
 			onclick={() => {
@@ -208,6 +217,8 @@
 		>
 			<div class="p-2 sm:p-2.5">
 				<div
+					bind:this={logContainer}
+					onscroll={handleLogScroll}
 					class="thinking-log thinking-log-height space-y-0.5 overflow-y-auto rounded-md bg-background/55 p-1.5 font-mono text-[0.65rem] shadow-ink-inner sm:text-[0.7rem]"
 					class:thinking-log-expanded={isExpanded}
 					role="log"
@@ -215,13 +226,13 @@
 				>
 					{#each displayedActivities as activity (activity.id)}
 						{@const style = getActivityStyle(activity.activityType)}
+						{@const ActivityIcon = style.icon}
 						<div class="py-0.5">
 							<div class="flex items-center gap-1.5 leading-snug">
 								<!-- Icon -->
-								<span
-									class="shrink-0 pt-0.5 text-[0.65rem] {style.color} sm:pt-0"
-									aria-hidden="true">{style.icon}</span
-								>
+								<span class="shrink-0 {style.color}" aria-hidden="true">
+									<ActivityIcon class="h-3 w-3" />
+								</span>
 
 								<!-- Content -->
 								<span

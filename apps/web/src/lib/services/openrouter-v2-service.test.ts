@@ -223,12 +223,20 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(requestBodies[0]?.model).toBe(OPENROUTER_V2_JSON_MODELS[0]);
 		expect(requestBodies[0]?.models).toEqual(OPENROUTER_V2_JSON_MODELS.slice(1, 4));
+		// deepseek-v4-flash primary → per-model default provider steering applies
+		// (WP-4: prefer hosts whose prompt-prefix caching actually works).
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
-			require_parameters: true
+			require_parameters: true,
+			order: ['Baidu', 'GMICloud']
 		});
 		expect(requestBodies[1]?.model).toBe(OPENROUTER_V2_JSON_MODELS[1]);
 		expect(requestBodies[1]?.models).toEqual(OPENROUTER_V2_JSON_MODELS.slice(2, 5));
+		// The retry's primary model has no default order — steering is per-model.
+		expect(requestBodies[1]?.provider).toEqual({
+			allow_fallbacks: true,
+			require_parameters: true
+		});
 	});
 
 	it('applies PRIVATE_OPENROUTER_PROVIDER_ORDER as a provider order preference', async () => {
@@ -268,6 +276,50 @@ describe('OpenRouterV2Service model routing', () => {
 				allow_fallbacks: true,
 				require_parameters: true,
 				order: ['Baidu', 'GMICloud']
+			});
+		} finally {
+			vi.unstubAllEnvs();
+		}
+	});
+
+	it('disables provider steering entirely when PRIVATE_OPENROUTER_PROVIDER_ORDER is "off"', async () => {
+		vi.stubEnv('PRIVATE_OPENROUTER_PROVIDER_ORDER', 'off');
+		try {
+			const requestBodies: any[] = [];
+			const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+				if (typeof init?.body === 'string') {
+					requestBodies.push(JSON.parse(init.body));
+				}
+				return new Response(
+					JSON.stringify({
+						id: 'chatcmpl-v2-provider-order-off',
+						model: DEEPSEEK_V4_FLASH_MODEL,
+						choices: [
+							{
+								index: 0,
+								message: { role: 'assistant', content: '{"ok":true}' },
+								finish_reason: 'stop'
+							}
+						],
+						usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 }
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } }
+				);
+			});
+			vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+			const service = createService();
+			const result = await service.getJSONResponse<{ ok: boolean }>({
+				systemPrompt: 'Return valid JSON.',
+				userPrompt: 'Respond with {"ok":true}.'
+			});
+
+			// The kill switch suppresses even the per-model defaults — instant
+			// no-deploy revert if a preferred host degrades.
+			expect(result).toEqual({ ok: true });
+			expect(requestBodies[0]?.provider).toEqual({
+				allow_fallbacks: true,
+				require_parameters: true
 			});
 		} finally {
 			vi.unstubAllEnvs();
@@ -331,7 +383,8 @@ describe('OpenRouterV2Service model routing', () => {
 		]);
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
-			require_parameters: true
+			require_parameters: true,
+			order: ['Baidu', 'GMICloud']
 		});
 	});
 
@@ -638,7 +691,8 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(requestUrls[1]).toBe('https://api.moonshot.ai/v1/chat/completions');
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
-			require_parameters: true
+			require_parameters: true,
+			order: ['Baidu', 'GMICloud']
 		});
 		expect(requestBodies[1]?.model).toBe('kimi-k2.6');
 		expect(requestBodies[1]?.temperature).toBe(1);
@@ -801,7 +855,8 @@ describe('OpenRouterV2Service model routing', () => {
 		);
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
-			require_parameters: true
+			require_parameters: true,
+			order: ['Baidu', 'GMICloud']
 		});
 		expect(requestBodies[OPENROUTER_V2_TOOL_MODELS.length]?.model).toBe('kimi-k2.6');
 		expect(requestBodies[OPENROUTER_V2_TOOL_MODELS.length]?.tools).toHaveLength(1);
@@ -1475,7 +1530,8 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		expect(requestBodies[0]?.reasoning).toEqual({ effort: 'low', exclude: false });
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
-			require_parameters: true
+			require_parameters: true,
+			order: ['Baidu', 'GMICloud']
 		});
 	});
 

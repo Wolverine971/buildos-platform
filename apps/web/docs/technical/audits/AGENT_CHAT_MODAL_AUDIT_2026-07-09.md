@@ -211,11 +211,33 @@ Keyed each on `message.id` + `content-visibility: auto` in the message list; rAF
 - 1.4 dev-only token counter → `displayContextUsage` gated on `dev`.
 - 1.5 hygiene → stream-controller run-guard/timing fields de-`$state`d + timing mutated in place; `messages`/`persistedTimelineItems` → `$state.raw`; `Intl.DateTimeFormat` hoisted in `AgentChatActivityTabs`.
 
-**Wave 2 — lifecycle & network (~1 day):**
-2.1 snapshot polling probe+backoff → 2.2 error-body parsing (402!) → 2.3 unified teardown → 2.4 inactivity timeout + fallback cap + single-message fetch → 2.5 deny-path bubble → 2.6 buffer reset → 2.8 first-turn reconcile.
+**Wave 2 — lifecycle & network (~1 day): ✅ DONE 2026-07-09** (uncommitted; 269/269 agent + 534/534 agentic-chat-v2 tests + typecheck green)
 
-**Wave 3 — UX/a11y (~half day):**
-3.1 keep chat pane mounted (`hidden`) → 3.4 Modal `:global(.dark)` → 3.2 thinking-log follow → 3.3 answer announcement → 3.5 drops/tabindex/menus.
+- 2.1 snapshot polling → new `?probe=active-turn` mode on the session GET (single turn-runs query vs ~8-query snapshot) + client `probeActiveTurnRun()`; the modal polls with 2s→4s→8s→10s-cap backoff and does ONE full reload when the turn goes terminal. Backoff restarts on fresh snapshot evidence.
+- 2.2 error surfacing → `AgentRequestError` + `buildAgentRequestError` in agent-chat-session.ts (message = status-aware user-facing text; 402 carries the server's freeze guidance, 401 → re-auth cue, 429 → slow-down). Stream POST and `prewarmAgentContext` both throw it; the prewarm orchestrator catches + arms the 10s retry-block (plus a new no-cache skip-guard so frozen accounts don't re-POST per rerun).
+- 2.3 (+2.7) unified teardown → `releaseSessionResources(reason)` in the modal is the single close path (button, programmatic isOpen flip, unmount, embedded). Programmatic close no longer leaks the live stream or skips finalize/classification/mutation broadcast. Also releases the realtime `chat_messages` channel, agent-run fallback timers, and `seenTerminalAgentRunIds`.
+- 2.4 hung stream → SSE inactivity timeout 45s (server heartbeats every 12s; SSEProcessor counts raw chunk bytes as activity, so comments reset it); timeout routes into turn reconciliation. Agent-run message fallback capped at 5 re-arms while streaming. Single-message fetch skipped deliberately: realtime is the fast path, the capped fallback does at most one full reload per terminal run.
+- 2.5 deny-path bubble → controller tracks `receivedTurnEvidence` (post-admission event types only — the initial `agent_state` and `session` fire BEFORE the server's deny checks, verified in +server.ts); an error-terminal turn with zero evidence rolls back the optimistic user message and restores the draft/attachments.
+- 2.6 buffer reset → `createSSEHandler` now returns `AgentSSEMessageHandler` with `resetTurnState()`; wired into `clearPendingToolState` (turn start), `resetConversation`, and teardown, so a cancelled turn's created-entity chips can't flush into the next turn.
+- 2.8 first-turn reconcile → **deferred**: a prepared-prompt first turn that dies before its `session` event has no session id client-side; a real fix needs a server lookup endpoint (find turn by `client_turn_id`). Window is milliseconds-wide; revisit if telemetry shows it.
+- Bonus (from 2.9): `stopGeneration` null-guards the post-await abort; failed-send draft restore no longer clobbers text typed mid-flight.
+
+**Wave 3 — UX/a11y (~half day): ✅ DONE 2026-07-09** (uncommitted; 271/271 agent tests + typecheck green)
+
+- 3.1 chat pane kept mounted behind `hidden` (no more scroll reset / animation replay on tab return) + explicit scrollTop save/restore across tab switches (some browsers clamp a display:none scroller to 0) + `tabindex="0"` on the chat tabpanel. Tabs now emit `aria-controls` only for panels that exist (fixes the dangling references, AY-1).
+- 3.2 thinking log auto-follows the newest entry while the turn is active; manual scroll-up pauses following, scroll-to-bottom resumes (same rule as the message list).
+- 3.3 SR: polite "BuildOS replied" announcement on assistant-message finalize (streaming bubble deliberately not live); ThinkingBlock's atomic `role="status"` container removed — the `role="log"` activity list announces only new entries.
+- 3.4 `Modal.svelte` dark overrides fixed with `:global(.dark)` (card bg + shadow-ink-strong now actually ship). Also: focus trap filters to visible elements (`checkVisibility` + `offsetParent` fallback) so hidden-but-mounted content can't swallow the Tab wrap.
+- 3.5 composer swallows image drops while disabled/streaming (`dropEffect: 'none'`) instead of letting the browser navigate to the file; ThinkingBlock completion driven by `status`/`agentState` only (copy-sniffing removed) and emoji icons replaced with themed Lucide icons (also deletes dead `prefix`/inert `color`-on-emoji, DC-1/ID-2); Tabs `pending` label "Queued" (was "Running") + unknown statuses humanized; `formatTime` uses the user's locale (was hardcoded en-US next to a user-locale formatter on the same screen).
+- Deferred: `ChatSessionAuditActions` desktop-menu keyboard contract (file under active edit in a parallel workstream).
+
+**Post-implementation adversarial review (2026-07-09):** independent verify pass over all Wave 1+2 changes — 9 of 11 areas confirmed sound (copy-on-replace invariant verified in every writer; deferred-abort interleavings exhausted; 12s heartbeat vs 45s timeout verified transport-level; probe columns/scoping schema-checked). Three findings, all fixed:
+
+1. Deny rollback could misfire on a persisted-then-failed turn (server persists fire-and-forget, context-build failure swallowed, first LLM pass dies before any evidence event). Fixed by making the deny explicit: `emitErrorThenDone` (used only by pre-persistence deny paths) now stamps `turn_rejected: true` on the error event; the client rolls back ONLY on that flag, with the evidence check kept as a safety net. Regression test added for the evidence-free unflagged error.
+2. Prewarm retry-window/TTL expiry had no re-trigger after the keystroke-dep removal (prepared prompt could stall until an unrelated dep flipped). Fixed with a timer-driven `refreshTick` the orchestrator effect tracks; wakes at retry-window end and at prepared-prompt expiry. Test added.
+3. Latent embedded-host wedge: probe/reconcile loops gated on `isOpen`, which the code documents as possibly-false in embedded mode. Gates now use `isSurfaceActive` (`embedded || isOpen`).
+
+Plus two robustness fixes from self-review: the active-turn probe loop re-arms if its one full reload fails (previously stalled with send blocked), background-refresh failures no longer surface an error banner mid-conversation, and the realtime channel explicitly resubscribes on reopen of a still-mounted modal (the unified teardown had made reopen silently realtime-dead).
 
 **Wave 4 — cleanup (~1 day, mostly deletion):**
 4.1 camelCase deletion → 4.3 dead handlers + union → 4.4 dead state/exports → 4.2 formatter-table merge → 4.5 structural simplification (teardown helper, deps narrowing, wrapper removal, extractions).

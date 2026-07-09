@@ -10,7 +10,9 @@ import type { UIMessage } from './agent-chat.types';
 export const DEFAULT_AGENT_CHAT_TOKEN_BUDGET = 15000;
 
 export function formatTime(date: Date): string {
-	return date.toLocaleTimeString('en-US', {
+	// User locale (not hardcoded en-US) — the Steps/Tools tabs already format
+	// with the user's locale, and both timestamps render on one screen.
+	return date.toLocaleTimeString(undefined, {
 		hour: 'numeric',
 		minute: '2-digit'
 	});

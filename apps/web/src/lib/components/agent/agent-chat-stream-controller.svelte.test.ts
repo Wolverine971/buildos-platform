@@ -746,12 +746,14 @@ describe('AgentChatStreamController', () => {
 		const run = h.streamProcessor.runs[0]!;
 		expect(h.messages).toHaveLength(1);
 
-		// Deny-shaped stream: session (emitted pre-admission) → error → done,
-		// with no post-admission evidence (context_usage/text/tool events).
+		// Deny-shaped stream: session (emitted pre-admission) → error with the
+		// explicit turn_rejected flag → done. Only emitErrorThenDone (the
+		// pre-persistence deny helper) sets the flag server-side.
 		run.progress({ type: 'session', session: makeSession() } as AgentSSEMessage);
 		run.progress({
 			type: 'error',
-			error: 'Another turn is already running.'
+			error: 'Another turn is already running.',
+			turn_rejected: true
 		} as AgentSSEMessage);
 		// Mirrors the real SSE handler's state.setError wiring.
 		h.controller.error = 'Another turn is already running.';
@@ -777,6 +779,27 @@ describe('AgentChatStreamController', () => {
 
 		expect(h.messages).toHaveLength(1);
 		expect(h.inputValue).toBe('');
+	});
+
+	it('keeps the bubble on an evidence-free error WITHOUT the turn_rejected flag', async () => {
+		// Regression for the persisted-then-failed window: the server can
+		// persist the user message, swallow a context-build failure, then die
+		// before emitting any evidence event. That error carries no
+		// turn_rejected flag, so the (persisted) bubble must survive.
+		const h = createHarness();
+		const sendPromise = h.controller.sendMessage();
+		await flushMicrotasks();
+		const run = h.streamProcessor.runs[0]!;
+
+		run.progress({ type: 'session', session: makeSession() } as AgentSSEMessage);
+		run.progress({ type: 'error', error: 'Streaming failed' } as AgentSSEMessage);
+		h.controller.error = 'Streaming failed';
+		run.progress({ type: 'done' } as AgentSSEMessage);
+		run.complete();
+		await sendPromise;
+
+		expect(h.messages).toHaveLength(1);
+		expect(h.controller.error).toBe('Streaming failed');
 	});
 
 	it('reports and aborts user cancellation', async () => {

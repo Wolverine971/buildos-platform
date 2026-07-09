@@ -394,6 +394,41 @@ describe('PrewarmController — orchestrate', () => {
 		expect(h.prewarm).toHaveBeenCalledTimes(1);
 	});
 
+	it('re-fires after the prepared-prompt retry window expires', async () => {
+		// Regression: nothing else re-runs the orchestrator effect when the
+		// 10s retry window lapses — the refresh timer must bump refreshTick.
+		vi.useFakeTimers();
+		try {
+			const h = createHarness();
+			const key = h.controller.resolveCurrentKey()!;
+			const cache = makeCache({ key });
+			h.controller.adopt(cache);
+			h.prewarm.mockResolvedValue({
+				session: null,
+				prewarmedContext: cache,
+				preparedPrompt: null
+			});
+
+			h.controller.orchestrate();
+			await flushMicrotasks();
+			expect(h.prewarm).toHaveBeenCalledTimes(1);
+
+			// Retry window active: the rerun skips but arms the wake-up timer.
+			h.controller.orchestrate();
+			expect(h.prewarm).toHaveBeenCalledTimes(1);
+			const tickBefore = h.controller.refreshTick;
+
+			vi.advanceTimersByTime(11_000);
+			expect(h.controller.refreshTick).toBeGreaterThan(tickBefore);
+
+			// The effect rerun (simulated) now issues a fresh prewarm.
+			h.controller.orchestrate();
+			expect(h.prewarm).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('fires when the key changes', () => {
 		const h = createHarness();
 		h.controller.orchestrate();

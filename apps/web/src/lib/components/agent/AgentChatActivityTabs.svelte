@@ -106,8 +106,9 @@
 			case 'failed':
 				return { icon: TriangleAlert, className: 'text-destructive', label: 'Failed' };
 			case 'running':
-			case 'pending':
 				return { icon: CircleDashed, className: 'text-warning', label: 'Running' };
+			case 'pending':
+				return { icon: Clock3, className: 'text-muted-foreground', label: 'Queued' };
 			case 'needs_input':
 			case 'partial':
 				return { icon: Clock3, className: 'text-warning', label: 'Needs input' };
@@ -118,7 +119,14 @@
 					label: 'Cancelled'
 				};
 			default:
-				return { icon: CircleDashed, className: 'text-muted-foreground', label: status };
+				// Humanize unknown statuses instead of leaking the raw enum.
+				return {
+					icon: CircleDashed,
+					className: 'text-muted-foreground',
+					label:
+						String(status).charAt(0).toUpperCase() +
+						String(status).slice(1).replace(/_/g, ' ')
+				};
 		}
 	}
 
@@ -152,7 +160,9 @@
 				role="tab"
 				id={`agent-chat-tab-${tab.id}`}
 				aria-selected={activeTab === tab.id}
-				aria-controls={`agent-chat-panel-${tab.id}`}
+				aria-controls={tab.id === 'chat' || activeTab === tab.id
+					? `agent-chat-panel-${tab.id}`
+					: undefined}
 				tabindex={activeTab === tab.id ? 0 : -1}
 				class={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
 					activeTab === tab.id

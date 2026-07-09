@@ -379,12 +379,31 @@
 	const FOCUSABLE_SELECTOR =
 		'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+	// The selector alone matches invisible nodes (content kept mounted behind
+	// `hidden`, `hidden sm:flex` responsive controls). Focusing a display:none
+	// element no-ops, so a wrap-around targeting one silently drops focus to
+	// the browser chrome. checkVisibility covers display/visibility/content-
+	// visibility; offsetParent is the fallback for older engines.
+	function isFocusTargetVisible(element: HTMLElement): boolean {
+		if (typeof element.checkVisibility === 'function') {
+			return element.checkVisibility();
+		}
+		return element.offsetParent !== null;
+	}
+
+	function visibleFocusableElements(): HTMLElement[] {
+		if (!modalElement) return [];
+		return Array.from(modalElement.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+			isFocusTargetVisible
+		);
+	}
+
 	async function trapFocus() {
 		if (!modalElement) return;
 
 		await tick();
 
-		const focusableElements = modalElement.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+		const focusableElements = visibleFocusableElements();
 
 		if (focusableElements.length === 0) {
 			modalElement.focus();
@@ -398,7 +417,7 @@
 		// focus on stale nodes.
 		function handleTabKey(e: KeyboardEvent) {
 			if (e.key !== 'Tab' || !modalElement) return;
-			const current = modalElement.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+			const current = visibleFocusableElements();
 			if (current.length === 0) return;
 			const first = current[0];
 			const last = current[current.length - 1];
@@ -934,13 +953,12 @@
 
 	/* ==================== Dark Mode Optimizations ==================== */
 
-	.dark .modal-container {
-		/* Use card color from Inkprint tokens */
+	/* `:global(.dark)` is required: `.dark` lives on <html>, outside this
+	   component, so a scoped `.dark .modal-container` selector is pruned by
+	   the compiler (css_unused_selector) and these overrides never ship. */
+	:global(.dark) .modal-container {
+		/* Card color + Inkprint shadow from the theme tokens */
 		background-color: hsl(var(--card));
-	}
-
-	/* Use Inkprint shadow in dark mode */
-	.dark .modal-container {
 		box-shadow: var(--shadow-ink-strong);
 	}
 </style>
