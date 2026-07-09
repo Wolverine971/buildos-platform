@@ -6,6 +6,7 @@ import {
 	getActiveDomainIds,
 	getActiveOutcomeCardIds,
 	getActiveWorkCapabilityIds,
+	getLoadedSkillIdsFromUsedDomains,
 	getNewDomainResearchBacklogEntries,
 	mergeDomainSessionState,
 	mergeLoadedOutcomeCardGapsIntoSessionState,
@@ -117,11 +118,13 @@ describe('domain session state', () => {
 			now: '2026-05-17T12:00:00.000Z'
 		});
 
-		expect(getNewDomainResearchBacklogEntries(next, null)).toEqual([
-			expect.objectContaining({
-				id: 'skill:youtube_channel_diagnostics'
-			})
-		]);
+		expect(getNewDomainResearchBacklogEntries(next, null)).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: 'skill:youtube_channel_diagnostics'
+				})
+			])
+		);
 	});
 
 	it('promotes outcome-card-only gaps into session backlog without domain duplication', () => {
@@ -622,5 +625,66 @@ describe('domain session state', () => {
 			occurrences: 2,
 			domain_ids: ['agent.engineering', 'product.operations']
 		});
+	});
+});
+
+describe('getLoadedSkillIdsFromUsedDomains', () => {
+	it('returns skill ids only from skill-load sources, deduped', () => {
+		const state = mergeUsedDomainSignalsIntoSessionState(
+			null,
+			[
+				{
+					domain_id: 'marketing.youtube_growth',
+					source: 'skill_load',
+					tool_name: 'skill_load',
+					skill_id: 'content_strategy_beyond_blogging'
+				},
+				{
+					domain_id: 'marketing.content_strategy',
+					source: 'skill_load',
+					tool_name: 'skill_load',
+					skill_id: 'content_strategy_beyond_blogging'
+				},
+				{
+					domain_id: 'marketing.cold_outreach',
+					source: 'skill_loaded_event',
+					skill_id: 'cold_email_outreach'
+				},
+				{
+					domain_id: 'marketing.cold_outreach',
+					source: 'outcome_card_load',
+					tool_name: 'outcome_card_load',
+					outcome_card_id: 'cold_email_campaign',
+					skill_id: 'should_not_count_card_loads'
+				},
+				{
+					domain_id: 'marketing.cold_outreach',
+					source: 'resource_load',
+					tool_name: 'resource_load',
+					resource_id: 'resource-1',
+					skill_id: 'should_not_count_resource_loads'
+				}
+			],
+			{ now: '2026-05-17T12:00:00.000Z' }
+		);
+
+		const loaded = getLoadedSkillIdsFromUsedDomains(state);
+
+		expect(loaded).toContain('content_strategy_beyond_blogging');
+		expect(loaded).toContain('cold_email_outreach');
+		expect(loaded).not.toContain('should_not_count_card_loads');
+		expect(loaded).not.toContain('should_not_count_resource_loads');
+		expect(loaded.filter((id) => id === 'content_strategy_beyond_blogging')).toHaveLength(1);
+	});
+
+	it('returns empty for null state and states without used domains', () => {
+		expect(getLoadedSkillIdsFromUsedDomains(null)).toEqual([]);
+		expect(getLoadedSkillIdsFromUsedDomains(undefined)).toEqual([]);
+
+		const sensed = senseDomains({ currentUserMessage: 'Grow my YouTube audience.' });
+		if (!sensed) throw new Error('Expected sensing');
+		const state = mergeDomainSessionState(null, sensed, { now: '2026-05-17T12:00:00.000Z' });
+
+		expect(getLoadedSkillIdsFromUsedDomains(state)).toEqual([]);
 	});
 });

@@ -81,6 +81,10 @@ export async function runLlmStreamPass(params: {
 		const assistantReasoningDetailsForReplay: unknown[] = [];
 		const pendingToolCalls: ChatToolCall[] = [];
 		let suppressedNoToolSynthesisToolCallCount = 0;
+		const suppressedNoToolSynthesisToolCallDetails: Array<{
+			name: string;
+			argumentsPreview: string;
+		}> = [];
 		let usage = params.usage;
 		let finishedReason: string | undefined;
 		let llmDoneReceived = false;
@@ -119,15 +123,11 @@ export async function runLlmStreamPass(params: {
 						? params.tools
 						: undefined,
 				tool_choice: params.noToolSynthesisPass
-					? undefined
+					? 'none'
 					: params.hasTools
 						? 'auto'
 						: undefined,
-				temperature: params.noToolSynthesisPass
-					? undefined
-					: params.hasTools
-						? 0.2
-						: undefined,
+				temperature: params.noToolSynthesisPass ? 0.1 : params.hasTools ? 0.2 : undefined,
 				userId: params.userId,
 				sessionId: params.sessionId,
 				chatSessionId: params.sessionId,
@@ -188,6 +188,16 @@ export async function runLlmStreamPass(params: {
 						suppressedNoToolSynthesisToolCallCount += 1;
 						metadata.suppressedNoToolSynthesisToolCalls =
 							suppressedNoToolSynthesisToolCallCount;
+						if (suppressedNoToolSynthesisToolCallDetails.length < 4) {
+							suppressedNoToolSynthesisToolCallDetails.push({
+								name: normalizedToolCall.function.name,
+								argumentsPreview: JSON.stringify(
+									parseSupervisorToolArguments(normalizedToolCall)
+								).slice(0, 800)
+							});
+							metadata.suppressedNoToolSynthesisToolCallDetails =
+								suppressedNoToolSynthesisToolCallDetails;
+						}
 						continue;
 					}
 					pendingToolCalls.push(normalizedToolCall);

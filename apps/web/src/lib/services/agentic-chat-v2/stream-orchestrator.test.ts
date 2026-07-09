@@ -6,6 +6,7 @@ import { REDACTED_DURABLE_TEXT } from './stream-orchestrator/tool-arguments';
 import type { FastChatHistoryMessage } from './types';
 import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { getToolSchema } from '$lib/services/agentic-chat/tools/registry/tool-schema';
+import { resolveFastChatTurnIntent } from './turn-intent';
 
 function tools(names: string[]): ChatToolDefinition[] {
 	return materializeGatewayTools([], names).tools;
@@ -1255,7 +1256,7 @@ describe('streamFastChat direct tool orchestration', () => {
 
 		expect(llm.streamText).toHaveBeenCalledTimes(2);
 		expect(toolExecutor).toHaveBeenCalledTimes(1);
-		expect(streamParams[1]?.toolChoice).toBeUndefined();
+		expect(streamParams[1]?.toolChoice).toBe('none');
 		expect(streamParams[1]?.toolNames).toEqual([]);
 		expect(result.finishedReason).toBe('stop');
 		expect(result.finalAssistantText).toBe('I can draft from the loaded context.');
@@ -1353,9 +1354,9 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(toolExecutor).toHaveBeenCalledTimes(1);
 		expect(onToolCall).toHaveBeenCalledTimes(1);
 		expect(onToolCall.mock.calls[0]?.[0].id).toBe('search_project:email-sequence');
-		expect(streamParams[1]?.toolChoice).toBeUndefined();
+		expect(streamParams[1]?.toolChoice).toBe('none');
 		expect(streamParams[1]?.toolNames).toEqual([]);
-		expect(streamParams[2]?.toolChoice).toBeUndefined();
+		expect(streamParams[2]?.toolChoice).toBe('none');
 		expect(streamParams[2]?.toolNames).toEqual([]);
 		expect(result.finishedReason).toBe('stop');
 		expect(result.finalAssistantText).toBe(
@@ -1436,9 +1437,9 @@ describe('streamFastChat direct tool orchestration', () => {
 
 		expect(llm.streamText).toHaveBeenCalledTimes(3);
 		expect(toolExecutor).toHaveBeenCalledTimes(1);
-		expect(streamParams[1]?.toolChoice).toBeUndefined();
+		expect(streamParams[1]?.toolChoice).toBe('none');
 		expect(streamParams[1]?.toolNames).toEqual([]);
-		expect(streamParams[2]?.toolChoice).toBeUndefined();
+		expect(streamParams[2]?.toolChoice).toBe('none');
 		expect(streamParams[2]?.toolNames).toEqual([]);
 		expect(result.finishedReason).toBe('stop');
 		expect(result.finalAssistantText).toBe(
@@ -1505,11 +1506,11 @@ describe('streamFastChat direct tool orchestration', () => {
 
 		expect(llm.streamText).toHaveBeenCalledTimes(3);
 		expect(toolExecutor).toHaveBeenCalledTimes(1);
-		expect(streamParams[1]?.toolChoice).toBeUndefined();
+		expect(streamParams[1]?.toolChoice).toBe('none');
 		expect(streamParams[1]?.toolNames).toEqual([]);
-		expect(streamParams[2]?.toolChoice).toBeUndefined();
+		expect(streamParams[2]?.toolChoice).toBe('none');
 		expect(streamParams[2]?.toolNames).toEqual([]);
-		expect(result.finishedReason).toBe('tool_round_limit');
+		expect(result.finishedReason).toBe('synthesis_failed');
 		expect(result.finalAssistantText).toContain('I gathered context before the turn ended.');
 		expect(result.finalAssistantText).toContain('document "Meeting prep notes"');
 		expect(emittedDeltas.join('')).toBe(result.finalAssistantText);
@@ -2349,9 +2350,9 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(streamParams[1]?.toolChoice).toBe('auto');
 		expect(streamParams[1]?.toolNames).toEqual(['update_onto_task']);
 		expect(streamParams[1]?.messages.map((message) => message.content).join('\n')).toContain(
-			'near-budget write-intent pass'
+			'requested mutation is still pending'
 		);
-		expect(streamParams[2]?.toolChoice).toBeUndefined();
+		expect(streamParams[2]?.toolChoice).toBe('none');
 		expect(streamParams[2]?.toolNames).toEqual([]);
 		expect(toolExecutor.mock.calls.map(([call]) => call.function.name)).toEqual([
 			'tool_schema',
@@ -2371,6 +2372,99 @@ describe('streamFastChat direct tool orchestration', () => {
 			action: 'force_synthesis',
 			trigger: 'near_tool_budget'
 		});
+	});
+
+	it('uses explicit turn intent to force a document write before synthesis', async () => {
+		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		let streamInvocation = 0;
+		const passToolNames: string[][] = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				passToolNames.push(
+					(params.tools ?? [])
+						.map((tool: ChatToolDefinition) => tool.function?.name)
+						.filter((name: string | undefined): name is string => Boolean(name))
+				);
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'search_project',
+							{ project_id: projectId, query: 'implementation context' },
+							'search:context'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				if (streamInvocation === 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'create_onto_document',
+							{
+								project_id: projectId,
+								title: 'Implementation Handoff',
+								description:
+									'Implementation instructions for another AI assistant.',
+								content: '# Implementation Handoff\n\nApply the requested changes.'
+							},
+							'create:handoff'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				yield { type: 'text', content: 'Created the Implementation Handoff document.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			if (call.function.name === 'search_project') {
+				return {
+					tool_call_id: call.id,
+					result: { results: [{ id: 'doc-1', type: 'document', title: 'Context' }] },
+					success: true
+				};
+			}
+			return {
+				tool_call_id: call.id,
+				result: {
+					ok: true,
+					op: 'onto.document.create',
+					result: { document: { id: 'doc-created', title: 'Implementation Handoff' } }
+				},
+				success: true
+			};
+		});
+		const message = 'Please create a document I can give to Claude or ChatGPT.';
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: projectId,
+			projectId,
+			history: [],
+			message,
+			turnIntent: resolveFastChatTurnIntent({
+				contextType: 'project',
+				latestUserMessage: message
+			}),
+			tools: tools(['skill_search', 'search_project']),
+			toolExecutor,
+			onDelta: async () => {},
+			maxToolRounds: 2
+		});
+
+		expect(passToolNames[1]).toEqual(['create_onto_document']);
+		expect(toolExecutor.mock.calls.map(([call]) => call.function.name)).toEqual([
+			'search_project',
+			'create_onto_document'
+		]);
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalAssistantText).toBe('Created the Implementation Handoff document.');
 	});
 
 	it('stops document organization recovery when the tool-call limit fires mid-recovery', async () => {
@@ -2560,7 +2654,7 @@ describe('streamFastChat direct tool orchestration', () => {
 
 		expect(llm.streamText).toHaveBeenCalledTimes(3);
 		expect(toolExecutor).toHaveBeenCalledTimes(2);
-		expect(streamParams[2]?.toolChoice).toBeUndefined();
+		expect(streamParams[2]?.toolChoice).toBe('none');
 		expect(streamParams[2]?.toolNames).toEqual([]);
 		expect(result.toolRounds).toBe(2);
 		expect(result.finishedReason).toBe('stop');
@@ -3004,8 +3098,21 @@ describe('streamFastChat direct tool orchestration', () => {
 			.join('\n');
 
 		expect(llm.streamText).toHaveBeenCalledTimes(6);
-		expect(toolExecutor).toHaveBeenCalledTimes(5);
-		expect(streamParams[5]?.toolChoice).toBeUndefined();
+		// WP-12 read memo: the second and third identical get_onto_document_details
+		// calls are served from the in-turn cache — only 3 reads actually execute,
+		// while all 5 calls still produce tool executions for the model.
+		expect(toolExecutor).toHaveBeenCalledTimes(3);
+		expect(result.toolExecutions).toHaveLength(5);
+		const memoServedExecutions = result.toolExecutions.filter(
+			(execution) => execution.result.result?.served_from_turn_memo === true
+		);
+		expect(memoServedExecutions).toHaveLength(2);
+		expect(
+			memoServedExecutions.every(
+				(execution) => execution.toolCall.function.name === 'get_onto_document_details'
+			)
+		).toBe(true);
+		expect(streamParams[5]?.toolChoice).toBe('none');
 		expect(finalPassSystemText).toContain('Context gathering: must synthesize.');
 		expect(finalPassSystemText).toContain('Read-loop hard stop: synthesize now.');
 		expect(result.toolRounds).toBe(5);
@@ -3067,8 +3174,105 @@ describe('streamFastChat direct tool orchestration', () => {
 
 		expect(result.finishedReason).toBe('tool_repetition_limit');
 		expect(result.toolRounds).toBeLessThan(10);
-		expect(toolExecutor).toHaveBeenCalledTimes(7);
+		// WP-12 read memo: the alternating rounds repeat identical arguments, so
+		// only the first search + first list actually execute; every repeat is
+		// served from the in-turn cache. The repetition fingerprint window still
+		// halts the loop — memoization makes the loop cheap, not invisible.
+		expect(toolExecutor).toHaveBeenCalledTimes(2);
 		expect(result.toolExecutions).toHaveLength(7);
+		const memoServedExecutions = result.toolExecutions.filter(
+			(execution) => execution.result.result?.served_from_turn_memo === true
+		);
+		expect(memoServedExecutions).toHaveLength(5);
+	});
+
+	it('re-executes an identical read after a write clears the in-turn read memo', async () => {
+		const documentId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		const taskId = '8f8a889c-c8fa-4fa4-a8b2-c264f5ddc33f';
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'get_onto_document_details',
+							{ document_id: documentId },
+							'read:first'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				if (streamInvocation === 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'update_onto_task',
+							{ task_id: taskId, title: 'Updated title' },
+							'write:first'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				if (streamInvocation === 3) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'get_onto_document_details',
+							{ document_id: documentId },
+							'read:after-write'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Done.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			if (call.function.name === 'update_onto_task') {
+				return {
+					tool_call_id: call.id,
+					result: { task: { id: taskId, title: 'Updated title' } },
+					success: true
+				};
+			}
+			return {
+				tool_call_id: call.id,
+				result: { document: { id: documentId, title: 'Rod notes' } },
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'Update the task, then re-check the doc.',
+			tools: tools(['get_onto_document_details', 'update_onto_task']),
+			toolExecutor,
+			onDelta: async () => {},
+			maxToolRounds: 6
+		});
+
+		// The write between the two identical reads clears the memo — the
+		// post-write re-read must hit the source, not the cache.
+		expect(toolExecutor).toHaveBeenCalledTimes(3);
+		expect(result.toolExecutions).toHaveLength(3);
+		expect(
+			result.toolExecutions.filter(
+				(execution) => execution.result.result?.served_from_turn_memo === true
+			)
+		).toHaveLength(0);
+		expect(result.finishedReason).toBe('stop');
 	});
 
 	it('surfaces a provider abort-message error as a real failure when the signal never fired (O8)', async () => {

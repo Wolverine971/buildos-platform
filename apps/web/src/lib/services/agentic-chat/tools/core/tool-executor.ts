@@ -31,7 +31,7 @@ import { normalizeToolError } from '$lib/services/agentic-chat/shared/error-util
 import { createLogger } from '$lib/utils/logger';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
-import { extractAffectedEntitiesFromToolExecution } from '$lib/components/agent/agent-chat-timeline';
+import { extractAffectedEntitiesFromToolExecution } from './affected-entities';
 
 import {
 	OntologyReadExecutor,

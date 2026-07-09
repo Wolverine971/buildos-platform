@@ -1815,6 +1815,16 @@ export class SmartLLMService {
 	/**
 	 * Stream text responses for chat system with tool support
 	 * Returns an async generator for real-time streaming
+	 *
+	 * WARNING (2026-07-09 diff-audit): the live agentic-chat stream does NOT use
+	 * this method — it runs the full override in apps/web
+	 * openrouter-v2-service.ts, which carries fixes this base method lacks:
+	 * mid-stream error-frame handling (G7/D11), terminal done on streams that
+	 * close without [DONE], abort/failure usage logging with token estimates,
+	 * provider routing preferences, direct-provider + lane fallbacks, and
+	 * reasoning_content/thinking delta channels. Do not point the chat
+	 * orchestrator here without porting those first — see
+	 * apps/web/docs/technical/audits/AGENTIC_CHAT_V2_SPEED_FIX_PLAN_2026-07-08.md (WP-6).
 	 */
 	async *streamText(options: {
 		messages: Array<{
@@ -1957,6 +1967,11 @@ export class SmartLLMService {
 					options.temperature,
 					0.7
 				);
+				// Stable per session (never per pass/turn) so multi-pass turns and
+				// follow-up turns land on the provider node holding the prompt prefix
+				// cache. Regressed in the openrouter-v2 -> smart-llm refactor (D9).
+				const cacheAffinityKey =
+					options.chatSessionId || options.sessionId || options.agentSessionId;
 				const body: any =
 					route.provider === 'openrouter'
 						? buildOpenRouterChatCompletionBody({
@@ -1970,7 +1985,9 @@ export class SmartLLMService {
 									? OPENROUTER_TOOL_STREAM_REASONING
 									: undefined,
 								transforms,
-								stream_options: { include_usage: true }
+								stream_options: { include_usage: true },
+								session_id: cacheAffinityKey,
+								prompt_cache_key: cacheAffinityKey
 							})
 						: {
 								model: route.requestModel,
@@ -1983,10 +2000,8 @@ export class SmartLLMService {
 					if (this.moonshotStreamIncludeUsage) {
 						body.stream_options = { include_usage: true };
 					}
-					const promptCacheKey =
-						options.chatSessionId || options.sessionId || options.agentSessionId;
-					if (promptCacheKey) {
-						body.prompt_cache_key = promptCacheKey;
+					if (cacheAffinityKey) {
+						body.prompt_cache_key = cacheAffinityKey;
 					}
 				}
 

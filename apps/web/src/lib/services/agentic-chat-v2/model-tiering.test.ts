@@ -113,5 +113,20 @@ describe('fast chat model tiering', () => {
 			profile: 'balanced',
 			modelTieringVariant: 'fast_initial_plan'
 		});
+
+		expect(
+			resolveFastChatPassModelRouting({
+				passNumber: 4,
+				hasTools: false,
+				noToolSynthesisPass: true,
+				writeIntentToolPass: false,
+				noToolSynthesisRetryCount: 1,
+				modelTiering
+			})
+		).toEqual({
+			passRole: 'forced_synthesis',
+			profile: 'quality',
+			modelTieringVariant: 'fast_initial_plan'
+		});
 	});
 });

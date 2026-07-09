@@ -103,6 +103,15 @@ function readPrivateEnv(name: string): string | undefined {
 	return dynamicEnv[name] || process.env[name];
 }
 
+function parseOpenRouterProviderOrder(value: string | undefined): string[] {
+	if (!value) return [];
+	return value
+		.split(',')
+		.map((entry) => entry.trim())
+		.filter((entry) => entry.length > 0)
+		.slice(0, 8);
+}
+
 function parseDirectFallbackProviderOrder(
 	value: string | undefined,
 	fallback: DirectFallbackProvider[]
@@ -691,16 +700,24 @@ export class OpenRouterV2Service extends SmartLLMService {
 	}
 
 	private resolveOpenRouterProviderConfig(lane: ModelLane): OpenRouterProviderConfig {
-		if (lane === 'json' || lane === 'tool_calling' || lane === 'multimodal') {
-			return {
-				allow_fallbacks: true,
-				require_parameters: true
-			};
+		const config: OpenRouterProviderConfig =
+			lane === 'json' || lane === 'tool_calling' || lane === 'multimodal'
+				? { allow_fallbacks: true, require_parameters: true }
+				: { allow_fallbacks: true };
+
+		// Optional provider steering (2026-07-09 speed audit): OpenRouter's default
+		// price routing lands deepseek chat traffic on hosts with near-zero prompt
+		// prefix caching. A comma-separated provider order (e.g. "Baidu,GMICloud")
+		// prefers hosts that actually cache; allow_fallbacks keeps normal routing
+		// as the safety net. Unset = OpenRouter default routing.
+		const providerOrder = parseOpenRouterProviderOrder(
+			readPrivateEnv('PRIVATE_OPENROUTER_PROVIDER_ORDER')
+		);
+		if (providerOrder.length > 0) {
+			config.order = providerOrder;
 		}
 
-		return {
-			allow_fallbacks: true
-		};
+		return config;
 	}
 
 	private isKimiDirectModel(model: string): boolean {
@@ -1580,7 +1597,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 					models,
 					messages: requestMessages,
 					tools: requestTools,
-					tool_choice: needsTools ? options.tool_choice || 'auto' : undefined,
+					tool_choice: options.tool_choice ?? (needsTools ? 'auto' : undefined),
 					temperature: options.temperature ?? (needsTools ? 0.2 : 0.7),
 					max_tokens: options.maxTokens ?? 2000,
 					reasoning: resolveLaneReasoning(lane),
@@ -1640,7 +1657,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 						models,
 						messages: fallbackMessages,
 						tools: requestTools,
-						tool_choice: needsTools ? options.tool_choice || 'auto' : undefined,
+						tool_choice: options.tool_choice ?? (needsTools ? 'auto' : undefined),
 						temperature: options.temperature ?? (needsTools ? 0.2 : 0.7),
 						max_tokens: options.maxTokens ?? 2000,
 						reasoning: resolveLaneReasoning(fallbackLane),
@@ -1678,7 +1695,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 						route,
 						messages: directFallbackMessages,
 						tools: requestTools,
-						tool_choice: needsTools ? options.tool_choice || 'auto' : undefined,
+						tool_choice: options.tool_choice ?? (needsTools ? 'auto' : undefined),
 						temperature: options.temperature ?? (needsTools ? 0.2 : 0.7),
 						max_tokens: options.maxTokens ?? 2000,
 						stream: true,

@@ -185,10 +185,23 @@ describe('runLlmStreamPass', () => {
 		expect(result.suppressedNoToolSynthesisToolCallCount).toBe(1);
 		expect(result.metadata).toMatchObject({
 			forcedNoToolSynthesis: true,
-			suppressedNoToolSynthesisToolCalls: 1
+			suppressedNoToolSynthesisToolCalls: 1,
+			suppressedNoToolSynthesisToolCallDetails: [
+				{
+					name: 'search_project',
+					argumentsPreview: '{"query":"still searching"}'
+				}
+			]
 		});
 		expect(onToolCall).not.toHaveBeenCalled();
 		expect(params.onPendingToolCallCountChange).not.toHaveBeenCalled();
+		expect(params.llm.streamText).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tools: undefined,
+				tool_choice: 'none',
+				temperature: 0.1
+			})
+		);
 	});
 
 	it('passes per-pass model routing through to the LLM stream and metadata', async () => {

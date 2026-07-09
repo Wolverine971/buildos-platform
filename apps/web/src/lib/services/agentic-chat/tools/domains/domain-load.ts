@@ -17,11 +17,68 @@ function normalize(value: string): string {
 	return value.trim().toLowerCase();
 }
 
-function tokenize(value: string): string[] {
+const QUERY_STOP_WORDS = new Set([
+	'a',
+	'an',
+	'and',
+	'are',
+	'as',
+	'at',
+	'be',
+	'can',
+	'campaign',
+	'create',
+	'demo',
+	'do',
+	'document',
+	'doc',
+	'for',
+	'from',
+	'give',
+	'help',
+	'i',
+	'in',
+	'is',
+	'it',
+	'make',
+	'me',
+	'my',
+	'need',
+	'of',
+	'on',
+	'or',
+	'outline',
+	'please',
+	'so',
+	'summary',
+	'status',
+	'that',
+	'the',
+	'they',
+	'this',
+	'to',
+	'want',
+	'update',
+	'video',
+	'what',
+	'with',
+	'work',
+	'write',
+	'you'
+]);
+
+function tokenizeRaw(value: string): string[] {
 	return normalize(value)
-		.split(/[^a-z0-9_]+/)
+		.split(/[^a-z0-9]+/)
 		.map((token) => token.trim())
 		.filter((token) => token.length >= 2);
+}
+
+function tokenizeQuery(value: string): string[] {
+	return tokenizeRaw(value).filter(
+		(token) =>
+			!QUERY_STOP_WORDS.has(token) && !QUERY_STOP_WORDS.has(normalizeTokenForMatch(token))
+	);
 }
 
 function unique<T>(items: T[]): T[] {
@@ -37,9 +94,10 @@ function getSkillIds(domain: DomainDefinition): string[] {
 // (u-i inside b-u-i-l-d), which routed ordinary product mentions — and a
 // narrative-arc craft prompt — to product_and_design (2026-07-02 rerun, turn 5).
 function aliasMatchesQuery(alias: string, queryTokenText: string): boolean {
-	const aliasTokenText = tokenize(alias).join(' ');
-	if (!aliasTokenText) return false;
-	return ` ${queryTokenText} `.includes(` ${aliasTokenText} `);
+	const aliasTokens = tokenizeRaw(alias).map(normalizeTokenForMatch);
+	if (aliasTokens.length === 0) return false;
+	const queryTokens = new Set(tokenizeRaw(queryTokenText).map(normalizeTokenForMatch));
+	return aliasTokens.every((token) => queryTokens.has(token));
 }
 
 function computeScore(
@@ -49,8 +107,9 @@ function computeScore(
 	if (!query) return { score: 1, aliasesHit: [] };
 
 	const normalizedQuery = normalize(query);
-	const tokens = tokenize(query);
-	const queryTokenText = tokens.join(' ');
+	const rawQueryTokens = tokenizeRaw(query);
+	const tokens = tokenizeQuery(query);
+	const queryTokenText = rawQueryTokens.join(' ');
 	const aliasesHit = domain.aliases.filter((alias) => aliasMatchesQuery(alias, queryTokenText));
 	const skillIds = getSkillIds(domain);
 	const haystack = [
@@ -63,6 +122,12 @@ function computeScore(
 	]
 		.join(' ')
 		.toLowerCase();
+	const haystackTokens = new Set(tokenizeRaw(haystack));
+	const normalizedHaystackTokens = new Set(
+		Array.from(haystackTokens).map(normalizeTokenForMatch)
+	);
+	const domainIdTokens = new Set(tokenizeRaw(domain.id).map(normalizeTokenForMatch));
+	const domainNameTokens = new Set(tokenizeRaw(domain.name).map(normalizeTokenForMatch));
 
 	let score = 0;
 	if (domain.id === normalizedQuery) score += 220;
@@ -72,11 +137,22 @@ function computeScore(
 	score += aliasesHit.length * 70;
 
 	for (const token of tokens) {
-		if (domain.id.includes(token)) score += 30;
-		if (haystack.includes(token)) score += 16;
+		const normalizedToken = normalizeTokenForMatch(token);
+		if (domainIdTokens.has(normalizedToken)) score += 50;
+		if (domainNameTokens.has(normalizedToken)) score += 40;
+		if (normalizedHaystackTokens.has(normalizedToken)) score += 50;
 	}
 
 	return { score, aliasesHit };
+}
+
+function normalizeTokenForMatch(token: string): string {
+	if (token.length > 5 && token.endsWith('ies')) return `${token.slice(0, -3)}y`;
+	if (token.length > 5 && token.endsWith('ing')) return token.slice(0, -3);
+	if (token.length > 4 && token.endsWith('ed')) return token.slice(0, -2);
+	if (token.length > 4 && token.endsWith('es')) return token.slice(0, -2);
+	if (token.length > 3 && token.endsWith('s')) return token.slice(0, -1);
+	return token;
 }
 
 function confidenceFromScore(score: number): number {

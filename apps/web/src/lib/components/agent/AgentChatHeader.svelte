@@ -472,6 +472,9 @@
 			</a>
 		{/if}
 
+		<!-- Admin audit logs stay visible; audit downloads live under the unified Export menu. -->
+		<ChatSessionAuditActions {sessionId} variant="desktop" includeExports={false} />
+
 		{#if onExportSteps || onExportSupportPacket}
 			<div class="relative hidden sm:block">
 				<button
@@ -486,6 +489,7 @@
 					aria-haspopup="menu"
 					aria-expanded={desktopExportMenuOpen}
 				>
+					<Download class="h-3.5 w-3.5 shrink-0" />
 					<span>Export</span>
 					<ChevronDown class="h-3.5 w-3.5 shrink-0" />
 				</button>
@@ -539,13 +543,18 @@
 								<span>Export support packet</span>
 							</button>
 						{/if}
+
+						<ChatSessionAuditActions
+							{sessionId}
+							variant="menu"
+							includeLogs={false}
+							showTopDivider={true}
+							onItemClick={() => closeDesktopExportMenu()}
+						/>
 					</div>
 				{/if}
 			</div>
 		{/if}
-
-		<!-- Admin audit actions: desktop row only here (its mobile rows live in the unified menu) -->
-		<ChatSessionAuditActions {sessionId} variant="desktop" />
 
 		<!-- Mobile-only unified overflow menu -->
 		{#if hasMobileOverflowItems || sessionId}

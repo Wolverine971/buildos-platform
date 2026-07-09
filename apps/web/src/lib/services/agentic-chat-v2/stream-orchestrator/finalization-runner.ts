@@ -86,7 +86,7 @@ export type NoToolSynthesisFinalizationResult =
 			forceNoToolSynthesisPass: true;
 	  }
 	| { action: 'finalized'; finalAssistantText: string; finishedReason: 'stop' }
-	| { action: 'tool_limit'; kind: 'round' };
+	| { action: 'failed'; finishedReason: 'synthesis_failed' };
 
 export async function runNoToolSynthesisFinalization(params: {
 	assistantBuffer: string;
@@ -96,6 +96,7 @@ export async function runNoToolSynthesisFinalization(params: {
 	contextType: ChatContextType;
 	toolExecutions: FastToolExecution[];
 	latestUserText: string;
+	mutationRequested?: boolean;
 	assistantText: string;
 	emitAssistantRemainder: (content: string) => Promise<void>;
 	observeSupervisor: (observation: TurnSupervisorObservation) => Promise<void>;
@@ -123,7 +124,8 @@ export async function runNoToolSynthesisFinalization(params: {
 		const finalAssistantText = enforceMutationOutcomeIntegrity(candidateFinalText, {
 			contextType: params.contextType,
 			toolExecutions: params.toolExecutions,
-			latestUserText: params.latestUserText
+			latestUserText: params.latestUserText,
+			explicitMutationRequested: params.mutationRequested
 		});
 		await params.observeSupervisor({
 			type: 'final_candidate',
@@ -140,7 +142,7 @@ export async function runNoToolSynthesisFinalization(params: {
 		};
 	}
 
-	return { action: 'tool_limit', kind: 'round' };
+	return { action: 'failed', finishedReason: 'synthesis_failed' };
 }
 
 export type NoToolCallFinalizationResult =
@@ -157,6 +159,7 @@ export async function runNoToolCallFinalization(params: {
 	contextType: ChatContextType;
 	toolExecutions: FastToolExecution[];
 	latestUserText: string;
+	mutationRequested?: boolean;
 	gatewayModeActive: boolean;
 	projectCreateStopRepairInjected: boolean;
 	gatewayMutationStopRepairInjected: boolean;
@@ -196,7 +199,8 @@ export async function runNoToolCallFinalization(params: {
 			finalText: candidateFinalText,
 			toolExecutions: params.toolExecutions,
 			repairAlreadyInjected: params.gatewayMutationStopRepairInjected,
-			latestUserText: params.latestUserText
+			latestUserText: params.latestUserText,
+			explicitMutationRequested: params.mutationRequested
 		})
 	) {
 		return {
@@ -227,7 +231,8 @@ export async function runNoToolCallFinalization(params: {
 	const finalAssistantText = enforceMutationOutcomeIntegrity(candidateFinalText, {
 		contextType: params.contextType,
 		toolExecutions: params.toolExecutions,
-		latestUserText: params.latestUserText
+		latestUserText: params.latestUserText,
+		explicitMutationRequested: params.mutationRequested
 	});
 	await params.observeSupervisor({
 		type: 'final_candidate',
@@ -277,6 +282,7 @@ export async function runTerminalFinalization(params: {
 	toolLimitNotice: string | null;
 	answerTruncated: boolean;
 	latestUserText: string;
+	mutationRequested?: boolean;
 	toolExecutions: FastToolExecution[];
 	emitAssistantDelta: (content: string) => Promise<void>;
 	emitAssistantRemainder: (content: string) => Promise<void>;
@@ -287,10 +293,12 @@ export async function runTerminalFinalization(params: {
 	let finalizationGuardResult: FinalizationGuardResult | undefined;
 	let assistantText = params.assistantText;
 
-	const mutationRequested = didTurnHaveUnfulfilledMutationIntent({
-		latestUserText: params.latestUserText,
-		toolExecutions: params.toolExecutions
-	});
+	const mutationRequested =
+		params.mutationRequested === true ||
+		didTurnHaveUnfulfilledMutationIntent({
+			latestUserText: params.latestUserText,
+			toolExecutions: params.toolExecutions
+		});
 
 	if (params.toolLimitNotice) {
 		const toolLimitFinalizationGuard = applyFinalizationGuard({

@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
 	persistMessage: vi.fn(),
 	persistMessageAttachments: vi.fn(),
 	reconcile: vi.fn(),
+	readFastChatPendingTurnIntent: vi.fn(),
+	resolveFastChatTurnIntent: vi.fn(),
 	resolveSession: vi.fn(),
 	selectFastChatTools: vi.fn(),
 	senseDomains: vi.fn(),
@@ -115,6 +117,7 @@ vi.mock('$lib/services/agentic-chat-v2/tool-surface-size-report', () => ({
 }));
 
 vi.mock('$lib/services/agentic-chat-v2', () => ({
+	FASTCHAT_PENDING_TURN_INTENT_METADATA_KEY: 'fastchat_pending_turn_intent',
 	appendAttachmentContextToMessage: (message: string) => message,
 	assessLiveVisionImageEligibility: () => ({ eligible: false, reason: 'disabled' }),
 	buildAttachmentOnlyDisplayText: () => 'Attachment',
@@ -125,6 +128,8 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 		status: 'ok'
 	}),
 	buildLiveVisionContentParts: ({ text }: { text: string }) => text,
+	buildFastChatPendingTurnIntent: () => null,
+	buildPendingTurnIntentSystemMessage: () => null,
 	composeFastChatHistory: () => ({
 		historyForModel: [],
 		compressed: false,
@@ -143,6 +148,7 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 		updateSessionContext: mocks.updateSessionContext
 	}),
 	extractLoadedSkillIdsFromHistory: () => [],
+	getWriteToolNamesForTurnIntent: () => [],
 	historyIncludesLoadedSkillsLedger: () => false,
 	loadFastChatPromptContext: mocks.loadPromptContext,
 	normalizeChatAttachmentRefs: () => ({ attachments: [], rejected: 0 }),
@@ -157,8 +163,10 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 	parseFastChatInitialPlanModels: () => null,
 	parseFastChatModelTieringMode: () => 'off',
 	parseFastChatModelTieringSampleRate: (_value?: string, fallback = 0.5) => fallback,
+	readFastChatPendingTurnIntent: mocks.readFastChatPendingTurnIntent,
 	resolveFastChatModelTieringConfig: () => null,
 	resolveFastChatSurfaceProfileForTurn: () => 'general',
+	resolveFastChatTurnIntent: mocks.resolveFastChatTurnIntent,
 	sanitizeAttachmentRefsForMetadata: () => [],
 	selectFastChatTools: mocks.selectFastChatTools,
 	shouldUseLiveVisionForTurn: () => false,
@@ -524,6 +532,17 @@ beforeEach(() => {
 		}
 	});
 	mocks.loadRecentMessages.mockResolvedValue([]);
+	mocks.readFastChatPendingTurnIntent.mockReturnValue(null);
+	mocks.resolveFastChatTurnIntent.mockReturnValue({
+		version: 1,
+		requiresWrite: false,
+		action: null,
+		entityKind: 'unknown',
+		source: 'none',
+		originalRequestText: null,
+		originatingTurnRunId: null,
+		clearPending: false
+	});
 	mocks.senseDomains.mockReturnValue(null);
 	mocks.applyActiveDomainSignalsOverlay.mockImplementation((envelope: Row, input: Row) => {
 		if (!input.domainSensingResult) {

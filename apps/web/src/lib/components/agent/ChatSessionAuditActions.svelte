@@ -38,11 +38,21 @@
 		 * - `menu`: bare menu-item rows for embedding inside a host dropdown.
 		 */
 		variant?: 'standalone' | 'desktop' | 'menu';
+		includeLogs?: boolean;
+		includeExports?: boolean;
+		showTopDivider?: boolean;
 		/** Called after a menu item is activated (lets a host close its dropdown). */
 		onItemClick?: () => void;
 	}
 
-	let { sessionId = null, variant = 'standalone', onItemClick }: Props = $props();
+	let {
+		sessionId = null,
+		variant = 'standalone',
+		includeLogs = true,
+		includeExports = true,
+		showTopDivider = false,
+		onItemClick
+	}: Props = $props();
 
 	let exportMenuOpen = $state(false);
 	let mobileMenuOpen = $state(false);
@@ -54,6 +64,9 @@
 	const visible = $derived(isAdminUser && Boolean(sessionId));
 	const adminSessionHref = $derived(
 		sessionId ? `/admin/chat/sessions?chat_session_id=${encodeURIComponent(sessionId)}` : null
+	);
+	const hasVisibleActions = $derived(
+		visible && ((includeLogs && Boolean(adminSessionHref)) || includeExports)
 	);
 
 	async function exportAudit(format: 'markdown' | 'bundle') {
@@ -113,7 +126,10 @@
 </script>
 
 {#snippet auditMenuItems()}
-	{#if adminSessionHref}
+	{#if showTopDivider}
+		<div class="my-1 h-px bg-border" role="separator"></div>
+	{/if}
+	{#if includeLogs && adminSessionHref}
 		<a
 			href={adminSessionHref}
 			target="_blank"
@@ -129,43 +145,45 @@
 			<span>Logs</span>
 		</a>
 	{/if}
-	<button
-		type="button"
-		onclick={() => {
-			mobileMenuOpen = false;
-			onItemClick?.();
-			void exportAudit('markdown');
-		}}
-		disabled={isExporting}
-		class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-		role="menuitem"
-	>
-		<Download class="h-3.5 w-3.5 shrink-0" />
-		<span>Export as markdown</span>
-	</button>
-	<button
-		type="button"
-		onclick={() => {
-			mobileMenuOpen = false;
-			onItemClick?.();
-			void exportAudit('bundle');
-		}}
-		disabled={isExporting}
-		class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-		role="menuitem"
-	>
-		<FileArchive class="h-3.5 w-3.5 shrink-0" />
-		<span>Export as separate files</span>
-	</button>
+	{#if includeExports}
+		<button
+			type="button"
+			onclick={() => {
+				mobileMenuOpen = false;
+				onItemClick?.();
+				void exportAudit('markdown');
+			}}
+			disabled={isExporting}
+			class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+			role="menuitem"
+		>
+			<Download class="h-3.5 w-3.5 shrink-0" />
+			<span>Export audit markdown</span>
+		</button>
+		<button
+			type="button"
+			onclick={() => {
+				mobileMenuOpen = false;
+				onItemClick?.();
+				void exportAudit('bundle');
+			}}
+			disabled={isExporting}
+			class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+			role="menuitem"
+		>
+			<FileArchive class="h-3.5 w-3.5 shrink-0" />
+			<span>Export audit files</span>
+		</button>
+	{/if}
 {/snippet}
 
-{#if visible && variant === 'menu'}
+{#if hasVisibleActions && variant === 'menu'}
 	<!-- Bare menu rows for embedding inside a host dropdown -->
 	{@render auditMenuItems()}
-{:else if visible}
+{:else if hasVisibleActions}
 	<!-- Desktop: Logs link + Export dropdown -->
 	<div class="hidden items-center gap-1.5 sm:flex">
-		{#if adminSessionHref}
+		{#if includeLogs && adminSessionHref}
 			<a
 				href={adminSessionHref}
 				target="_blank"
@@ -179,74 +197,76 @@
 			</a>
 		{/if}
 
-		<div>
-			<button
-				bind:this={exportButtonEl}
-				type="button"
-				onclick={() => toggleExportMenu()}
-				disabled={isExporting}
-				class="flex h-7 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
-				style="-webkit-tap-highlight-color: transparent;"
-				title="Export this chat session"
-				aria-haspopup="menu"
-				aria-expanded={exportMenuOpen}
-			>
-				{#if isExporting}
-					<LoaderCircle class="h-3.5 w-3.5 shrink-0 animate-spin" />
-				{:else}
-					<Download class="h-3.5 w-3.5 shrink-0" />
-				{/if}
-				<span>Export</span>
-				<ChevronDown class="h-3 w-3 shrink-0" />
-			</button>
+		{#if includeExports}
+			<div>
+				<button
+					bind:this={exportButtonEl}
+					type="button"
+					onclick={() => toggleExportMenu()}
+					disabled={isExporting}
+					class="flex h-7 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+					style="-webkit-tap-highlight-color: transparent;"
+					title="Export this chat session"
+					aria-haspopup="menu"
+					aria-expanded={exportMenuOpen}
+				>
+					{#if isExporting}
+						<LoaderCircle class="h-3.5 w-3.5 shrink-0 animate-spin" />
+					{:else}
+						<Download class="h-3.5 w-3.5 shrink-0" />
+					{/if}
+					<span>Export</span>
+					<ChevronDown class="h-3 w-3 shrink-0" />
+				</button>
 
-			{#if exportMenuOpen}
-				<div use:portal>
-					<!-- Click-away backdrop -->
-					<button
-						type="button"
-						class="fixed inset-0 z-[10000] cursor-default"
-						aria-label="Close export menu"
-						tabindex="-1"
-						onclick={() => (exportMenuOpen = false)}
-					></button>
-					<div
-						class="fixed z-[10001] min-w-52 overflow-hidden rounded-lg border border-border bg-card py-1 shadow-ink tx tx-frame tx-weak"
-						role="menu"
-						style="left: {exportMenuPosition.left}px; top: {exportMenuPosition.top}px;"
-					>
+				{#if exportMenuOpen}
+					<div use:portal>
+						<!-- Click-away backdrop -->
 						<button
 							type="button"
-							onclick={() => {
-								exportMenuOpen = false;
-								void exportAudit('markdown');
-							}}
-							disabled={isExporting}
-							class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-							role="menuitem"
-							title="Export this chat session as a single markdown file"
+							class="fixed inset-0 z-[10000] cursor-default"
+							aria-label="Close export menu"
+							tabindex="-1"
+							onclick={() => (exportMenuOpen = false)}
+						></button>
+						<div
+							class="fixed z-[10001] min-w-52 overflow-hidden rounded-lg border border-border bg-card py-1 shadow-ink tx tx-frame tx-weak"
+							role="menu"
+							style="left: {exportMenuPosition.left}px; top: {exportMenuPosition.top}px;"
 						>
-							<Download class="h-3.5 w-3.5 shrink-0" />
-							<span>Export as markdown</span>
-						</button>
-						<button
-							type="button"
-							onclick={() => {
-								exportMenuOpen = false;
-								void exportAudit('bundle');
-							}}
-							disabled={isExporting}
-							class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-							role="menuitem"
-							title="Export this chat session as a multi-file zip bundle (README gist + transcript + raw JSON)"
-						>
-							<FileArchive class="h-3.5 w-3.5 shrink-0" />
-							<span>Export as separate files</span>
-						</button>
+							<button
+								type="button"
+								onclick={() => {
+									exportMenuOpen = false;
+									void exportAudit('markdown');
+								}}
+								disabled={isExporting}
+								class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+								role="menuitem"
+								title="Export this chat session as a single markdown file"
+							>
+								<Download class="h-3.5 w-3.5 shrink-0" />
+								<span>Export audit markdown</span>
+							</button>
+							<button
+								type="button"
+								onclick={() => {
+									exportMenuOpen = false;
+									void exportAudit('bundle');
+								}}
+								disabled={isExporting}
+								class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+								role="menuitem"
+								title="Export this chat session as a multi-file zip bundle (README gist + transcript + raw JSON)"
+							>
+								<FileArchive class="h-3.5 w-3.5 shrink-0" />
+								<span>Export audit files</span>
+							</button>
+						</div>
 					</div>
-				</div>
-			{/if}
-		</div>
+				{/if}
+			</div>
+		{/if}
 	</div>
 
 	<!-- Mobile: single "..." menu (standalone hosts only) -->

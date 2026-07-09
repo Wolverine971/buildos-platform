@@ -237,8 +237,10 @@ describe('applyFinalizationGuard', () => {
 
 		expect(guard.applied).toBe(true);
 		expect(guard.reason).toBe('incomplete_mutation_after_reads');
-		expect(guard.text).toContain('not made the change yet');
+		expect(guard.finishedReason).toBe('mutation_unfulfilled');
+		expect(guard.text).toContain('not able to make the requested change');
 		expect(guard.text).toContain('nothing was updated');
+		expect(guard.text).toContain('request remains pending');
 	});
 
 	it('replaces a write lead-in with an honest incomplete notice when no write ran', () => {
@@ -252,6 +254,7 @@ describe('applyFinalizationGuard', () => {
 
 		expect(guard.applied).toBe(true);
 		expect(guard.reason).toBe('incomplete_mutation_after_reads');
+		expect(guard.finishedReason).toBe('mutation_unfulfilled');
 		expect(guard.text).not.toContain("I'll update that doc");
 		expect(guard.text).toContain('nothing was updated');
 	});

@@ -631,6 +631,7 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 			'user research',
 			'user interviews',
 			'quick research',
+			'research program',
 			'3-user test',
 			'research plan'
 		],

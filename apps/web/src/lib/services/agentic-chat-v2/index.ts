@@ -19,5 +19,6 @@ export { FASTCHAT_LIMITS } from './limits';
 export { composeFastChatHistory } from './history-composer';
 export * from './attachments';
 export * from './model-tiering';
+export * from './turn-intent';
 export * from './prompt-variant';
 export * from './types';

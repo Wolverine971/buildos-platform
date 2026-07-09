@@ -129,6 +129,26 @@ describe('runNoToolSynthesisFinalization', () => {
 			})
 		);
 	});
+
+	it('reports synthesis_failed instead of a false tool-round limit after retry exhaustion', async () => {
+		const result = await runNoToolSynthesisFinalization({
+			assistantBuffer: '',
+			carriedTruncatedText: '',
+			suppressedNoToolSynthesisToolCallCount: 1,
+			noToolSynthesisRetryCount: 1,
+			contextType: 'project',
+			toolExecutions: [],
+			latestUserText: 'Create the document.',
+			assistantText: '',
+			emitAssistantRemainder: vi.fn(),
+			observeSupervisor: vi.fn()
+		});
+
+		expect(result).toEqual({
+			action: 'failed',
+			finishedReason: 'synthesis_failed'
+		});
+	});
 });
 
 describe('runCancellationFinalization', () => {
@@ -232,8 +252,10 @@ describe('runTerminalFinalization', () => {
 
 		expect(result.finalizationGuardResult).toMatchObject({
 			applied: true,
-			reason: 'incomplete_mutation_after_reads'
+			reason: 'incomplete_mutation_after_reads',
+			finishedReason: 'mutation_unfulfilled'
 		});
+		expect(result.finishedReason).toBe('mutation_unfulfilled');
 		expect(result.finalAssistantText).toContain('nothing was updated');
 		expect(emitAssistantRemainder).toHaveBeenCalledWith(
 			expect.stringContaining('nothing was updated')
@@ -241,7 +263,7 @@ describe('runTerminalFinalization', () => {
 		expect(observeSupervisor).toHaveBeenCalledWith(
 			expect.objectContaining({
 				type: 'final_candidate',
-				finishedReason: 'stop'
+				finishedReason: 'mutation_unfulfilled'
 			})
 		);
 	});

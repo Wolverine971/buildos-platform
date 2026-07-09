@@ -121,6 +121,7 @@ export function resolveFastChatPassModelRouting(params: {
 	hasTools: boolean;
 	noToolSynthesisPass: boolean;
 	writeIntentToolPass: boolean;
+	noToolSynthesisRetryCount?: number;
 	modelTiering?: FastChatModelTieringConfig | null;
 }): FastChatPassModelRouting {
 	const passRole = resolvePassRole(params);
@@ -133,7 +134,12 @@ export function resolveFastChatPassModelRouting(params: {
 
 	return {
 		passRole,
-		profile: useFastInitialPlan ? 'speed' : 'balanced',
+		profile:
+			params.noToolSynthesisPass && (params.noToolSynthesisRetryCount ?? 0) > 0
+				? 'quality'
+				: useFastInitialPlan
+					? 'speed'
+					: 'balanced',
 		...(useFastInitialPlan ? { models: fastInitialPlanModels } : {}),
 		...(modelTieringVariant ? { modelTieringVariant } : {})
 	};

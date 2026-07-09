@@ -328,18 +328,18 @@ The `llm_usage_logs` max response_time of ~25 min indicates at least one provide
 
 ## Prioritized fix list
 
-| #   | Fix                                                                                                                                                                    | Effort | Impact                                          |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----------------------------------------------- |
-| 1   | **Retry LLM stream errors** (bounded, transient-only, non-cancellation) in `llm-pass-runner` — fixed 2026-07-08                                                        | S      | High — kills the #1 turn-failure mode           |
-| 2   | **Add SSE `:ping` heartbeat** (~12s) for the turn duration — fixed 2026-07-08                                                                                          | S      | High — eliminates idle-timeout stream drops     |
-| 3   | **Delete dead block** `+server.ts:2995-3003` — rechecked 2026-07-08; duplicate block is no longer present                                                              | XS     | Low (hygiene)                                   |
-| 4   | **Per-pass LLM timeout** (~60s) composed with the turn signal — fixed 2026-07-08                                                                                       | S      | Medium — fail-fast + recover with #1            |
+| #   | Fix                                                                                                                                                                   | Effort | Impact                                          |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----------------------------------------------- |
+| 1   | **Retry LLM stream errors** (bounded, transient-only, non-cancellation) in `llm-pass-runner` — fixed 2026-07-08                                                       | S      | High — kills the #1 turn-failure mode           |
+| 2   | **Add SSE `:ping` heartbeat** (~12s) for the turn duration — fixed 2026-07-08                                                                                         | S      | High — eliminates idle-timeout stream drops     |
+| 3   | **Delete dead block** `+server.ts:2995-3003` — rechecked 2026-07-08; duplicate block is no longer present                                                             | XS     | Low (hygiene)                                   |
+| 4   | **Per-pass LLM timeout** (~60s) composed with the turn signal — fixed 2026-07-08                                                                                      | S      | Medium — fail-fast + recover with #1            |
 | 5   | **Investigate `missing_key` 40% + `stale_harness` 28%** in prewarm; same-key send-race mitigation shipped 2026-07-08 and stale-harness diagnostics shipped 2026-07-09 | M      | Medium — recover the prewarm win                |
-| 6   | **First-token affordance**: emit a visible planning cue on first tool_call, not only on sentence-completion                                                            | S      | Medium — perceived latency                      |
-| 7   | **Tag no-evidence finalization** with a distinct `finished_reason` (not `stop`) — fixed 2026-07-08                                                                     | XS     | Medium — stop masking non-answers as success    |
-| 8   | **Cap skill-gate surfaced list to top-3 + lead with `default_skill_id`** — fixed 2026-07-08                                                                            | S      | Medium — better skill selection on a weak model |
-| 9   | **Narrow ontology context** after a turn focuses on an entity — fixed 2026-07-08                                                                                       | M      | Medium — prompt-size / latency                  |
-| 10  | **Per-pass model tiering** (fast first-token model for route/plan pass) — deterministic A/B implemented 2026-07-08                                                     | M      | Medium — first-token latency                    |
+| 6   | **First-token affordance**: emit a visible planning cue on first tool_call, not only on sentence-completion                                                           | S      | Medium — perceived latency                      |
+| 7   | **Tag no-evidence finalization** with a distinct `finished_reason` (not `stop`) — fixed 2026-07-08                                                                    | XS     | Medium — stop masking non-answers as success    |
+| 8   | **Cap skill-gate surfaced list to top-3 + lead with `default_skill_id`** — fixed 2026-07-08                                                                           | S      | Medium — better skill selection on a weak model |
+| 9   | **Narrow ontology context** after a turn focuses on an entity — fixed 2026-07-08                                                                                      | M      | Medium — prompt-size / latency                  |
+| 10  | **Per-pass model tiering** (fast first-token model for route/plan pass) — deterministic A/B implemented 2026-07-08                                                    | M      | Medium — first-token latency                    |
 
 **Next:** Continue #5 from production telemetry: confirm whether `missing_key` drops after the client handoff, then inspect `prepared_prompt_cache_checked` events for remaining `stale_harness` rows by surface profile, prompt/surface age, and prepared-vs-actual harness/tool hashes before changing any signature tolerance.
 

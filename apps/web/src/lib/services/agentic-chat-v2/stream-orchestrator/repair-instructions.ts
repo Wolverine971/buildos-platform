@@ -8,6 +8,7 @@ import type { SkillLoadFormat } from '$lib/services/agentic-chat/tools/skills/ty
 import { parseToolArguments } from './tool-arguments';
 import type { FastToolExecution, GatewayRequiredFieldFailure } from './shared';
 import type { ToolValidationIssue } from './tool-validation';
+import { looksLikeFastChatMutationRequest } from '../turn-intent';
 import {
 	didGatewayExecSucceed,
 	didGatewayOpExecute,
@@ -379,6 +380,7 @@ export function shouldRepairGatewayMutationNoExecution(params: {
 	toolExecutions: FastToolExecution[];
 	repairAlreadyInjected: boolean;
 	latestUserText?: string;
+	explicitMutationRequested?: boolean;
 }): boolean {
 	if (!params.gatewayModeActive) return false;
 	if (params.contextType === 'project_create') return false;
@@ -391,7 +393,9 @@ export function shouldRepairGatewayMutationNoExecution(params: {
 	if (mutationOutcomes.succeeded > 0) return false;
 
 	const writeIntentOps = collectGatewayWriteIntentOps(params.toolExecutions);
-	const explicitUserWriteIntent = looksLikeExplicitMutationRequest(params.latestUserText ?? '');
+	const explicitUserWriteIntent =
+		params.explicitMutationRequested === true ||
+		looksLikeExplicitMutationRequest(params.latestUserText ?? '');
 	if (writeIntentOps.length === 0 && !explicitUserWriteIntent) return false;
 
 	if (looksLikePureClarifyingQuestion(finalText)) return false;
@@ -467,14 +471,20 @@ export function buildGatewayMutationNoExecutionRepairInstruction(
 
 export function enforceMutationOutcomeIntegrity(
 	finalText: string,
-	params: { contextType: string; toolExecutions: FastToolExecution[]; latestUserText?: string }
+	params: {
+		contextType: string;
+		toolExecutions: FastToolExecution[];
+		latestUserText?: string;
+		explicitMutationRequested?: boolean;
+	}
 ): string {
 	if (!finalText) return finalText;
 
 	const mutationOutcomes = summarizeMutationOutcomes(params.toolExecutions);
 	if (
 		mutationOutcomes.attempted === 0 &&
-		looksLikeExplicitMutationRequest(params.latestUserText ?? '') &&
+		(params.explicitMutationRequested === true ||
+			looksLikeExplicitMutationRequest(params.latestUserText ?? '')) &&
 		looksLikeMutationSuccessClaim(finalText)
 	) {
 		return buildNoExecutionMutationFailureMessage();
@@ -898,42 +908,8 @@ function looksLikePureClarifyingQuestion(text: string): boolean {
 	return text.includes('?') && !looksLikeActionSuccessClaim(text);
 }
 
-const EXPLICIT_MUTATION_VERB =
-	/(?:set|mark|update|change|rename|move|create|add|delete|remove|archive|unarchive|complete|reopen|close|schedule|reschedule|cancel|link|unlink|edit|assign|unassign|postpone|defer|push|merge|split|label|tag|prioritize|deprioritize)/i;
-const MUTATION_ENTITY_NOUN =
-	/\b(?:tasks?|projects?|documents?|docs?|milestones?|goals?|plans?|events?|meetings?|calendar|title|name|status|state)\b/i;
-const MUTATION_STATE_PHRASE =
-	/\b(?:to|as|back to)\s+(?:done|complete|completed|todo|to-do|open|in progress|blocked|cancelled|canceled)\b/i;
-const MUTATION_TARGET_PRONOUN = /\b(?:this|that|these|those|it|them)\b/i;
-const READ_ONLY_STATUS_REQUEST_PATTERNS = [
-	/^(?:please\s+)?update\s+(?:me|us)\s+(?:on|about)\b/i,
-	/^(?:please\s+)?catch\s+(?:me|us)\s+up\s+(?:on|about)\b/i,
-	/^(?:please\s+)?(?:give|send)\s+(?:me|us)\s+(?:an?\s+)?(?:update|status|summary)\s+(?:on|about)\b/i,
-	/^(?:what(?:'s| is)|where\s+(?:are\s+we|am\s+i))\b.*\b(?:status|progress|standing|at|on)\b/i,
-	/^(?:is|are|was|were)\b.*\b(?:still|currently)\b/i
-];
-
 export function looksLikeExplicitMutationRequest(text: string): boolean {
-	const normalized = text.replace(/\s+/g, ' ').trim();
-	if (!normalized) return false;
-	if (READ_ONLY_STATUS_REQUEST_PATTERNS.some((pattern) => pattern.test(normalized))) {
-		return false;
-	}
-
-	const commandish =
-		new RegExp(`^(?:please\\s+)?${EXPLICIT_MUTATION_VERB.source}\\b`, 'i').test(normalized) ||
-		new RegExp(
-			`\\b(?:can you|could you|please|i need you to|i want you to)\\s+${EXPLICIT_MUTATION_VERB.source}\\b`,
-			'i'
-		).test(normalized) ||
-		new RegExp(`\\b(?:and|then)\\s+${EXPLICIT_MUTATION_VERB.source}\\b`, 'i').test(normalized);
-	if (!commandish) return false;
-
-	return (
-		MUTATION_ENTITY_NOUN.test(normalized) ||
-		MUTATION_STATE_PHRASE.test(normalized) ||
-		MUTATION_TARGET_PRONOUN.test(normalized)
-	);
+	return looksLikeFastChatMutationRequest(text);
 }
 
 function looksLikeActionSuccessClaim(text: string): boolean {

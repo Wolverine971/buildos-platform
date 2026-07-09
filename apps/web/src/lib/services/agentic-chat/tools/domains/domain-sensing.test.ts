@@ -83,6 +83,15 @@ function buildSkillGateFixture(): DomainSensingResult {
 }
 
 describe('domain sensing', () => {
+	it('does not force an unrelated craft domain for a native document action', () => {
+		const result = senseDomains({
+			currentUserMessage:
+				'I want to work on this. Please create a document I can give to Claude or ChatGPT that outlines what I need to do so they can do this for me.'
+		});
+
+		expect(result).toBeNull();
+	});
+
 	it('detects active domains and routing handles from the current user message', () => {
 		const result = senseDomains({
 			currentUserMessage: 'I want to grow my YouTube audience and plan the next videos.'

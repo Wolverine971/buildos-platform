@@ -11,7 +11,7 @@ import { createLogger } from '$lib/utils/logger';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
 import { getToolCategory } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { searchTelemetryColumns } from '$lib/services/agentic-chat/tools/core/search-telemetry';
-import { extractAffectedEntitiesFromToolExecution } from '$lib/components/agent/agent-chat-timeline';
+import { extractAffectedEntitiesFromToolExecution } from '$lib/services/agentic-chat/tools/core/affected-entities';
 import type {
 	AgentStateMessageSnapshot,
 	AgentStateToolSummary
@@ -385,6 +385,13 @@ export function buildLLMPassSummary(llmPasses: LLMStreamPassMetadata[] | undefin
 		if (typeof pass.totalTokens === 'number') entry.total_tokens = pass.totalTokens;
 		if (typeof pass.reasoningTokens === 'number') entry.reasoning_tokens = pass.reasoningTokens;
 		if (pass.forcedNoToolSynthesis === true) entry.forced_no_tool_synthesis = true;
+		if (typeof pass.suppressedNoToolSynthesisToolCalls === 'number') {
+			entry.suppressed_no_tool_synthesis_tool_calls = pass.suppressedNoToolSynthesisToolCalls;
+		}
+		if (pass.suppressedNoToolSynthesisToolCallDetails?.length) {
+			entry.suppressed_no_tool_synthesis_tool_call_details =
+				pass.suppressedNoToolSynthesisToolCallDetails as Json;
+		}
 		if (typeof pass.durationMs === 'number') entry.duration_ms = pass.durationMs;
 		if (typeof pass.timeToFirstTokenMs === 'number' || pass.timeToFirstTokenMs === null)
 			entry.time_to_first_token_ms = pass.timeToFirstTokenMs;

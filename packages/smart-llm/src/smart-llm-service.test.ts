@@ -151,6 +151,48 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 				streaming: true
 			})
 		);
+
+		// D9 cache affinity: the OpenRouter streaming body must carry the session
+		// as session_id + prompt_cache_key so multi-pass turns hit the provider
+		// prompt-prefix cache. chatSessionId wins over sessionId.
+		const requestBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+		expect(requestBody.session_id).toBe('chat-usage');
+		expect(requestBody.prompt_cache_key).toBe('chat-usage');
+	});
+
+	it('omits cache-affinity keys from the streaming body when no session id is supplied', async () => {
+		const fetchMock = vi.fn(async () =>
+			buildSSE([
+				JSON.stringify({
+					id: 'chatcmpl-nosession',
+					object: 'chat.completion.chunk',
+					created: 0,
+					model: ACTIVE_EXPERIMENT_MODEL,
+					choices: [{ index: 0, delta: { content: 'Hi' }, finish_reason: 'stop' }],
+					usage: null
+				}),
+				'[DONE]'
+			])
+		);
+
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		for await (const event of llm.streamText({
+			messages: [{ role: 'user', content: 'Say hi.' }],
+			userId: 'user-nosession',
+			operationType: 'test_stream'
+		})) {
+			if (event.type === 'done' || event.type === 'error') {
+				break;
+			}
+		}
+
+		const requestBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+		expect(Object.keys(requestBody)).not.toContain('session_id');
+		expect(Object.keys(requestBody)).not.toContain('prompt_cache_key');
 	});
 
 	it('does not emit partial pending tool calls when stream finishes with stop', async () => {

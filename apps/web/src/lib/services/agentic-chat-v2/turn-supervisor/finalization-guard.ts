@@ -16,7 +16,7 @@ export type FinalizationGuardReason =
 	| 'empty_after_reads'
 	| 'incomplete_mutation_after_reads';
 
-export type FinalizationGuardFinishedReason = 'synthesis_empty';
+export type FinalizationGuardFinishedReason = 'synthesis_empty' | 'mutation_unfulfilled';
 
 export type FinalizationGuardResult = {
 	text: string;
@@ -105,8 +105,9 @@ function buildGuardText(params: {
 			evidenceText ||
 			'I gathered the context I needed but ran out of steps before making the change.';
 		return {
-			text: `${lead} I have not made the change yet — nothing was updated. Tell me to go ahead and I'll apply it now.`,
-			reason: 'incomplete_mutation_after_reads'
+			text: `${lead} I was not able to make the requested change before the turn ended, so nothing was updated. The request remains pending and can resume without repeating completed reads.`,
+			reason: 'incomplete_mutation_after_reads',
+			finishedReason: 'mutation_unfulfilled'
 		};
 	}
 

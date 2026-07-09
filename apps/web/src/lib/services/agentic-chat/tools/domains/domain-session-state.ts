@@ -676,6 +676,28 @@ export function getActiveWorkCapabilityIds(
 	return getActiveOutcomeCardIds(state, limit);
 }
 
+/**
+ * Skill ids this session actually loaded, read back from the durable
+ * used_domains ledger. The history-derived loaded-skills ledger dies with
+ * history compression; this one lives in session metadata, so the skill gate
+ * can treat a previously loaded skill as loaded instead of re-paying the hop
+ * (WP-8, speed audit 2026-07-08). Only skill_load / skill_loaded_event
+ * entries count — outcome-card and resource loads do not put skill content
+ * in front of the model.
+ */
+export function getLoadedSkillIdsFromUsedDomains(
+	state: DomainSessionState | null | undefined,
+	limit = 20
+): string[] {
+	if (!state) return [];
+	const skillIds = new Set<string>();
+	for (const entry of state.used_domains) {
+		if (entry.source !== 'skill_load' && entry.source !== 'skill_loaded_event') continue;
+		if (entry.skill_id) skillIds.add(entry.skill_id);
+	}
+	return [...skillIds].slice(0, limit);
+}
+
 function createEmptyDomainSessionState(now: string): DomainSessionState {
 	return {
 		version: 1,

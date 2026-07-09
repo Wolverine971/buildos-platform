@@ -14,6 +14,7 @@ import { resolveFastChatPassModelRouting, type FastChatModelTieringConfig } from
 import { buildLitePromptEnvelope } from '$lib/services/agentic-chat-lite/prompt';
 import { FASTCHAT_LIMITS } from '../limits';
 import { buildLiveSnapshotFromTokens, FASTCHAT_TOKEN_BUDGETS } from '../context-usage';
+import { getWriteToolNamesForTurnIntent, type FastChatTurnIntent } from '../turn-intent';
 import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
@@ -72,8 +73,13 @@ import {
 	isPureReadToolName,
 	isWriteLikeOperation
 } from './tool-classification';
+import { buildMemoServedResult, buildReadMemoKey, shouldMemoizeReadResult } from './read-memo';
 import { validateToolCalls } from './tool-validation';
 import { buildWriteLedgerMessage } from './write-ledger';
+import {
+	buildForcedSynthesisMessages,
+	collectForcedSynthesisDirectives
+} from './synthesis-context';
 import { buildWrongEntityKindRepairResult, type KnownEntity } from './entity-kind-repair';
 import { ContextGatheringLedger } from './context-gathering-ledger';
 import {
@@ -128,6 +134,7 @@ type StreamFastChatParams = {
 	maxToolCalls?: number;
 	allowAutonomousRecovery?: boolean;
 	modelTiering?: FastChatModelTieringConfig | null;
+	turnIntent?: FastChatTurnIntent | null;
 	debugContext?: FastChatDebugContext;
 	/**
 	 * Deterministic skill-load enforcement (2026-07-02). When domain sensing
@@ -236,6 +243,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let usage: FastAgentStreamUsage | undefined;
 	let finishedReason: string | undefined;
 	const toolExecutions: FastToolExecution[] = [];
+	// Within-turn cache of successful pure-read results (WP-12): identical
+	// repeat reads are served from here with a nudge instead of re-executing.
+	// Cleared whenever an execution reaches the write executor — see read-memo.ts.
+	const turnReadMemo = new Map<string, ChatToolResult>();
 	const llmStreamPasses: LLMStreamPassMetadata[] = [];
 	let tools = params.tools ?? [];
 	let allowedToolNames = new Set(
@@ -420,7 +431,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			})
 		);
 		if (level === 'must_synthesize') {
-			forceNoToolSynthesisPass = true;
+			const writeIntentToolPass = buildNearBudgetWriteIntentToolPass();
+			if (writeIntentToolPass) {
+				writeIntentCarveOutUsed = true;
+				forceWriteIntentToolPass = writeIntentToolPass;
+				queueRepairInstruction(writeIntentToolPass.instruction);
+			} else {
+				forceNoToolSynthesisPass = true;
+			}
 		}
 	};
 	const flushMaterializationNotices = (): void => {
@@ -459,7 +477,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		}
 		return materialized.addedToolNames;
 	};
-	const buildNearBudgetWriteIntentToolPass = (): ForcedWriteIntentToolPass | null => {
+	function buildNearBudgetWriteIntentToolPass(): ForcedWriteIntentToolPass | null {
 		if (!gatewayModeActive || writeIntentCarveOutUsed) return null;
 		const writeIntentOps = collectGatewayWriteIntentOps(toolExecutions).filter((op) => {
 			const normalizedOp = normalizeGatewayOpName(op);
@@ -470,8 +488,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 			return latestDirectAttemptSucceeded !== true;
 		});
-		if (writeIntentOps.length === 0) return null;
-
 		const registry = getToolRegistry();
 		const writeToolNames = new Set<string>();
 		for (const op of writeIntentOps) {
@@ -482,20 +498,33 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				writeToolNames.add(toolName);
 			}
 		}
+		for (const toolName of getWriteToolNamesForTurnIntent(
+			params.turnIntent ?? emptyTurnIntent
+		)) {
+			const latestMatchingAttempt = [...toolExecutions]
+				.reverse()
+				.find((execution) => execution.toolCall.function?.name === toolName);
+			if (latestMatchingAttempt && didGatewayExecSucceed(latestMatchingAttempt)) continue;
+			materializeDirectTools(
+				[toolName],
+				`Pending ${params.turnIntent?.action ?? 'write'} ${params.turnIntent?.entityKind ?? 'entity'} intent was identified.`
+			);
+			if (allowedToolNames.has(toolName)) writeToolNames.add(toolName);
+		}
 		if (writeToolNames.size === 0) return null;
 
 		const toolNames = Array.from(writeToolNames);
 		return {
 			toolNames,
 			instruction: [
-				'Supervisor note: the turn is near the tool-round budget, but a concrete write operation has already been identified.',
+				'Supervisor note: a requested mutation is still pending after context gathering.',
 				`For the next response, you may use only these write tools: ${toolNames.join(', ')}.`,
 				'Make at most one write attempt if the required target and fields are known.',
 				'If required arguments are missing, ask one concise clarifying question instead of guessing.',
 				'Do not call reads, searches, schemas, skills, or any other discovery tools in this pass.'
 			].join(' ')
 		};
-	};
+	}
 	const consumeForcedWriteIntentToolPass = (): ForcedWriteIntentToolPass | null => {
 		const nextPass = forceWriteIntentToolPass;
 		forceWriteIntentToolPass = null;
@@ -804,10 +833,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 		const { decision } = record;
 		if (decision.action === 'force_synthesis') {
-			const writeIntentToolPass =
-				decision.reason === 'near_tool_budget'
-					? buildNearBudgetWriteIntentToolPass()
-					: null;
+			const writeIntentToolPass = buildNearBudgetWriteIntentToolPass();
 			if (writeIntentToolPass) {
 				writeIntentCarveOutUsed = true;
 				forceWriteIntentToolPass = writeIntentToolPass;
@@ -928,24 +954,29 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				hasTools: passTools.length > 0,
 				noToolSynthesisPass,
 				writeIntentToolPass: Boolean(writeIntentToolPass),
+				noToolSynthesisRetryCount,
 				modelTiering: params.modelTiering ?? null
 			});
 			activeAssistantBuffer = '';
 			activePendingToolCallCount = 0;
-			const passMessages: FastChatModelMessage[] = [
-				...messages,
-				{
-					role: 'system',
-					content: buildRuntimeToolBudgetMessage({
-						toolRounds,
-						maxToolRounds,
-						toolCallsMade,
-						maxToolCalls,
-						noToolSynthesisPass,
-						writeToolOnlyPassToolNames: writeIntentToolPass?.toolNames
+			const runtimeBudgetMessage = buildRuntimeToolBudgetMessage({
+				toolRounds,
+				maxToolRounds,
+				toolCallsMade,
+				maxToolCalls,
+				noToolSynthesisPass,
+				writeToolOnlyPassToolNames: writeIntentToolPass?.toolNames
+			});
+			const passMessages: FastChatModelMessage[] = noToolSynthesisPass
+				? buildForcedSynthesisMessages({
+						latestUserText: message,
+						turnIntent: params.turnIntent,
+						toolExecutions,
+						recoveryDirectives: collectForcedSynthesisDirectives(messages),
+						retryCount: noToolSynthesisRetryCount,
+						runtimeBudgetMessage
 					})
-				}
-			];
+				: [...messages, { role: 'system', content: runtimeBudgetMessage }];
 
 			const llmPassResult = await runLlmStreamPass({
 				llm,
@@ -1057,6 +1088,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					contextType: normalizedContext,
 					toolExecutions,
 					latestUserText: message,
+					mutationRequested: params.turnIntent?.requiresWrite === true,
 					assistantText,
 					emitAssistantRemainder,
 					observeSupervisor
@@ -1074,7 +1106,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					activePendingToolCallCount = 0;
 					break;
 				}
-				markToolLimitReached(noToolFinalization.kind);
+				finishedReason = noToolFinalization.finishedReason;
 				break;
 			}
 
@@ -1085,6 +1117,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					contextType: normalizedContext,
 					toolExecutions,
 					latestUserText: message,
+					mutationRequested: params.turnIntent?.requiresWrite === true,
 					gatewayModeActive,
 					projectCreateStopRepairInjected,
 					gatewayMutationStopRepairInjected,
@@ -1306,11 +1339,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				messages.push(recorded.toolMessage);
 			};
 
-			const canBatchPureReadPair = (pair: {
+			const isDispatchablePureReadPair = (pair: {
 				original: ChatToolCall;
 				executable: ChatToolCall;
 			}): boolean => {
-				if (!params.batchToolExecutor) return false;
 				const toolName = pair.executable.function.name;
 				if (!getPassAllowedToolNames().has(toolName)) return false;
 				if (!allowedToolNamesAtRoundStart.has(toolName)) return false;
@@ -1319,6 +1351,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					toolCall: pair.original,
 					knownEntitiesById
 				});
+			};
+
+			const canBatchPureReadPair = (pair: {
+				original: ChatToolCall;
+				executable: ChatToolCall;
+			}): boolean => {
+				if (!params.batchToolExecutor) return false;
+				return isDispatchablePureReadPair(pair);
 			};
 
 			for (
@@ -1347,6 +1387,27 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						await recordToolExecutionInOrder(skippedToolCall, skippedExecution);
 					}
 					break;
+				}
+
+				// WP-12 read memo: an identical pure read already executed this
+				// turn is served from cache with a nudge — zero execution cost,
+				// and the model learns it is looping.
+				if (turnReadMemo.size > 0 && isDispatchablePureReadPair(pair)) {
+					const memoKey = buildReadMemoKey(toolCall);
+					const cachedReadResult = memoKey ? turnReadMemo.get(memoKey) : undefined;
+					if (cachedReadResult) {
+						if (dev) {
+							console.info('[stream-orchestrator] read_memo_served', {
+								toolName: toolCall.function.name,
+								toolCallId: originalToolCall.id
+							});
+						}
+						await recordToolExecutionInOrder(originalToolCall, {
+							toolCall: originalToolCall,
+							result: buildMemoServedResult(cachedReadResult, originalToolCall.id)
+						});
+						continue;
+					}
 				}
 
 				if (params.batchToolExecutor && canBatchPureReadPair(pair)) {
@@ -1432,6 +1493,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 								batchResult.tool_call_id === batchPair.original.id
 									? batchResult
 									: { ...batchResult, tool_call_id: batchPair.original.id };
+							if (shouldMemoizeReadResult(normalizedResult)) {
+								const memoKey = buildReadMemoKey(batchPair.executable);
+								if (memoKey) turnReadMemo.set(memoKey, normalizedResult);
+							}
 							await recordToolExecutionInOrder(batchPair.original, {
 								toolCall: batchPair.original,
 								result: normalizedResult
@@ -1459,6 +1524,17 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						startLongRunningOperationHeartbeat('tool_execution', details)
 				});
 				toolCallsExecuted += dispatchResult.executedToolCallDelta;
+				if (
+					isPureReadToolName(toolCall.function.name) &&
+					shouldMemoizeReadResult(dispatchResult.execution.result)
+				) {
+					const memoKey = buildReadMemoKey(toolCall);
+					if (memoKey) turnReadMemo.set(memoKey, dispatchResult.execution.result);
+				} else if (didToolExecutionReachWriteExecutor(dispatchResult.execution)) {
+					// A write (successful or not) may have changed what any read
+					// returns — post-write re-reads must hit the source.
+					turnReadMemo.clear();
+				}
 				await recordToolExecutionInOrder(originalToolCall, dispatchResult.execution);
 			}
 
@@ -1700,6 +1776,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		toolLimitNotice,
 		answerTruncated,
 		latestUserText: message,
+		mutationRequested: params.turnIntent?.requiresWrite === true,
 		toolExecutions,
 		emitAssistantDelta,
 		emitAssistantRemainder,
@@ -1736,6 +1813,17 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		skillGateViolationRepaired: skillGateStopRepairInjected
 	};
 }
+
+const emptyTurnIntent: FastChatTurnIntent = {
+	version: 1,
+	requiresWrite: false,
+	action: null,
+	entityKind: 'unknown',
+	source: 'none',
+	originalRequestText: null,
+	originatingTurnRunId: null,
+	clearPending: false
+};
 
 function buildWriteDedupKey(toolCall: ChatToolCall): string | null {
 	const toolName = toolCall.function?.name?.trim() ?? '';

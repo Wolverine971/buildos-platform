@@ -94,6 +94,12 @@ import {
 	parseFastChatModelTieringSampleRate,
 	resolveFastChatModelTieringConfig,
 	resolveFastChatSurfaceProfileForTurn,
+	resolveFastChatTurnIntent,
+	readFastChatPendingTurnIntent,
+	buildFastChatPendingTurnIntent,
+	buildPendingTurnIntentSystemMessage,
+	getWriteToolNamesForTurnIntent,
+	FASTCHAT_PENDING_TURN_INTENT_METADATA_KEY,
 	sanitizeAttachmentRefsForMetadata,
 	selectFastChatTools,
 	shouldUseLiveVisionForTurn,
@@ -101,6 +107,8 @@ import {
 	type FastAgentStreamRequest,
 	type FastChatHistoryMessage
 } from '$lib/services/agentic-chat-v2';
+import { didGatewayExecSucceed } from '$lib/services/agentic-chat-v2/stream-orchestrator/tool-classification';
+import { updateAgentMetadata } from '$lib/services/agentic-chat-v2/session-metadata';
 import {
 	isProjectScopedContext,
 	normalizeFastContextType,
@@ -136,10 +144,13 @@ import {
 	getSkillGateCandidateSkillIds,
 	senseDomains
 } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
+import { resolveSkillGatePreload } from '$lib/services/agentic-chat/tools/domains/skill-gate-preload';
+import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import {
 	deriveLoadedOutcomeCardGapSignalsFromToolExecutions,
 	getActiveDomainIds,
 	getActiveOutcomeCardIds,
+	getLoadedSkillIdsFromUsedDomains,
 	getNewDomainResearchBacklogEntries,
 	mergeDomainSessionState,
 	mergeLoadedOutcomeCardGapsIntoSessionState,
@@ -892,47 +903,6 @@ function buildContextToolSummary(params: {
 			summary
 		}
 	];
-}
-
-async function updateAgentMetadata(
-	supabase: FastChatSupabaseClient,
-	sessionId: string,
-	patch: Record<string, unknown>,
-	options?: {
-		errorLogger?: ErrorLoggerService;
-		userId?: string;
-		projectId?: string;
-	}
-): Promise<void> {
-	const errorLogger = options?.errorLogger;
-	const { data, error } = await supabase.rpc('merge_chat_session_agent_metadata', {
-		p_session_id: sessionId,
-		p_patch: patch as Json
-	});
-
-	if (error) {
-		logger.warn('Failed to merge agent metadata', { error, sessionId });
-		if (errorLogger) {
-			void errorLogger.logError(error, {
-				userId: options?.userId,
-				projectId: options?.projectId,
-				endpoint: FASTCHAT_STREAM_ENDPOINT,
-				httpMethod: FASTCHAT_STREAM_METHOD,
-				operationType: 'fastchat_update_agent_metadata',
-				tableName: 'chat_sessions',
-				recordId: sessionId,
-				metadata: {
-					stage: 'rpc',
-					patch: sanitizeLogData(patch)
-				}
-			});
-		}
-		return;
-	}
-
-	if (data === null) {
-		logger.warn('No chat session metadata merged', { sessionId });
-	}
 }
 
 export const POST: RequestHandler = async ({
@@ -1714,6 +1684,15 @@ export const POST: RequestHandler = async ({
 			const conversationSummary =
 				typeof session.summary === 'string' ? session.summary : null;
 			const sessionMetadata = (session.agent_metadata ?? {}) as Record<string, any>;
+			const pendingTurnIntent = readFastChatPendingTurnIntent(
+				sessionMetadata[FASTCHAT_PENDING_TURN_INTENT_METADATA_KEY]
+			);
+			const turnIntent = resolveFastChatTurnIntent({
+				contextType,
+				projectId: projectIdForLogs ?? null,
+				latestUserMessage: messageForModel,
+				pendingIntent: pendingTurnIntent
+			});
 			const previousDomainState = readDomainSessionState(
 				sessionMetadata.fastchat_domain_state
 			);
@@ -1721,13 +1700,25 @@ export const POST: RequestHandler = async ({
 			let domainStateMetadataUpdatePromise: Promise<void> | null = null;
 			const priorDomainIds = getActiveDomainIds(previousDomainState);
 			const priorOutcomeCardIds = getActiveOutcomeCardIds(previousDomainState);
-			const turnDomainSensing = senseDomains({
-				currentUserMessage: messageForModel,
-				conversationSummary,
-				priorDomainIds,
-				priorOutcomeCardIds,
-				limit: 3
-			});
+			// Native BuildOS mutations should not activate subject-matter skill gates
+			// merely because generic words like "create" or "document" matched a
+			// domain catalog. The write surface and supervisor are driven by turnIntent.
+			const bypassDomainSensingForNativeMutation =
+				turnIntent.requiresWrite && turnIntent.entityKind !== 'unknown';
+			const turnDomainSensing = bypassDomainSensingForNativeMutation
+				? null
+				: senseDomains({
+						currentUserMessage: messageForModel,
+						conversationSummary,
+						priorDomainIds,
+						priorOutcomeCardIds,
+						limit: 3
+					});
+			observabilityWriter.recordEvent('prompt', 'turn_intent_resolved', {
+				...turnIntent,
+				pending_intent_present: pendingTurnIntent !== null,
+				domain_sensing_bypassed: bypassDomainSensingForNativeMutation
+			} as Json);
 			const recentContextShiftHint = readRecentContextShiftHint(sessionMetadata);
 			const bypassContextCacheForShiftHint = shouldBypassContextCacheForShiftHint({
 				requestContextType: contextType,
@@ -1757,11 +1748,13 @@ export const POST: RequestHandler = async ({
 			const toolSelectionStartedAtMs = Date.now();
 			const selectedSurfaceProfile = resolveFastChatSurfaceProfileForTurn({
 				contextType,
-				latestUserMessage: messageForModel
+				latestUserMessage: messageForModel,
+				turnIntent
 			});
-			const tools = selectFastChatTools({
+			let tools = selectFastChatTools({
 				contextType,
-				surfaceProfile: selectedSurfaceProfile
+				surfaceProfile: selectedSurfaceProfile,
+				turnIntent
 			});
 			preparedSurfaceProfile = selectedSurfaceProfile;
 			toolSelectionMs = Math.max(0, Date.now() - toolSelectionStartedAtMs);
@@ -1861,6 +1854,31 @@ export const POST: RequestHandler = async ({
 				];
 			}
 			historyForModelCount = historyForModel.length;
+			const pendingIntentSystemMessage = buildPendingTurnIntentSystemMessage(turnIntent);
+			if (pendingIntentSystemMessage) {
+				historyForModel = [
+					...historyForModel,
+					{ role: 'system', content: pendingIntentSystemMessage }
+				];
+				historyForModelCount = historyForModel.length;
+			}
+			// WP-7 skill preload: sensing already knows the top gate candidate, so
+			// load it server-side instead of spending an LLM pass on skill_load.
+			// Runs AFTER consumePreparedPrompt so the prepared-surface hash check
+			// still compares launch tools (preload must not inflate stale_harness),
+			// and after history composition so an already-loaded skill is skipped.
+			const historyLoadedSkillIdsForTurn = turnDomainSensing
+				? extractLoadedSkillIdsFromHistory(historyForModel)
+				: [];
+			const skillGatePreload = resolveSkillGatePreload(turnDomainSensing, {
+				alreadyLoadedSkillIds: historyLoadedSkillIdsForTurn
+			});
+			if (skillGatePreload && skillGatePreload.materializedToolNames.length > 0) {
+				tools = materializeGatewayTools(
+					tools,
+					skillGatePreload.materializedToolNames
+				).tools;
+			}
 			const promptDumpTurnNumber =
 				historyForModel.reduce((count, item) => count + (item.role === 'user' ? 1 : 0), 0) +
 				1;
@@ -2259,7 +2277,8 @@ export const POST: RequestHandler = async ({
 						conversationSummary,
 						priorDomainIds,
 						priorOutcomeCardIds,
-						domainSensingResult: turnDomainSensing
+						domainSensingResult: turnDomainSensing,
+						skillGatePreload
 					});
 					systemPrompt = litePromptEnvelope.systemPrompt;
 				}
@@ -2298,6 +2317,9 @@ export const POST: RequestHandler = async ({
 						candidate_outcome_card_ids: turnDomainSensing.candidate_outcome_card_ids,
 						recommended_skill_ids: turnDomainSensing.recommended_skill_ids,
 						skill_gate_required: turnDomainSensing.skill_load_required === true,
+						skill_preloaded_id: skillGatePreload?.skillId ?? null,
+						skill_preload_materialized_tools:
+							skillGatePreload?.materializedToolNames ?? [],
 						expected_skill_ids: getSkillGateCandidateSkillIds(turnDomainSensing),
 						expected_skill_formats:
 							getSkillGateCandidateSkillLoadFormats(turnDomainSensing),
@@ -2675,9 +2697,24 @@ export const POST: RequestHandler = async ({
 			const skillGateExpectedSkillFormats = turnDomainSensing
 				? getSkillGateCandidateSkillLoadFormats(turnDomainSensing)
 				: {};
-			const skillGateHistoryLoadedSkillIds = turnDomainSensing
-				? extractLoadedSkillIdsFromHistory(historyForModel)
+			// A server-preloaded skill counts as loaded: the gate must not force
+			// (or repair toward) a redundant skill_load for it.
+			// The used_domains ledger (session metadata) survives history
+			// compression, so skills the session already loaded stay loaded for
+			// gate/repair purposes (WP-8). It deliberately does NOT feed the
+			// preload skip above: when compression evicted the skill content,
+			// the preload must re-inject it rather than the gate passing on a
+			// skill the model can no longer see.
+			const usedDomainLedgerSkillIds = turnDomainSensing
+				? getLoadedSkillIdsFromUsedDomains(previousDomainState)
 				: [];
+			const skillGateHistoryLoadedSkillIds = [
+				...new Set([
+					...historyLoadedSkillIdsForTurn,
+					...usedDomainLedgerSkillIds,
+					...(skillGatePreload ? [skillGatePreload.skillId] : [])
+				])
+			];
 			const skillGate = turnDomainSensing
 				? {
 						required: turnDomainSensing.skill_load_required === true,
@@ -2727,6 +2764,7 @@ export const POST: RequestHandler = async ({
 				maxToolRounds: Math.max(1, gatewayRoundCap),
 				allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
 				modelTiering,
+				turnIntent,
 				skillGate,
 				tools,
 				// Live orchestration-budget snapshot from provider-reported tokens.
@@ -3315,6 +3353,54 @@ export const POST: RequestHandler = async ({
 			});
 			scheduleDeferredPromptSnapshotPersistence();
 			const normalizedExecutions = toolExecutions ?? [];
+			const expectedIntentWriteToolNames = new Set(
+				getWriteToolNamesForTurnIntent(turnIntent)
+			);
+			const turnIntentFulfilled =
+				!turnIntent.requiresWrite ||
+				normalizedExecutions.some(
+					(execution) =>
+						expectedIntentWriteToolNames.has(execution.toolCall.function?.name ?? '') &&
+						didGatewayExecSucceed(execution)
+				);
+			const turnOutcomeStatus = turnIntent.requiresWrite
+				? turnIntentFulfilled
+					? 'fulfilled'
+					: finishedReason === 'supervisor_question'
+						? 'blocked'
+						: 'unfulfilled'
+				: finishedReason === 'synthesis_failed'
+					? 'failed'
+					: 'fulfilled';
+			if (turnIntent.requiresWrite || turnIntent.clearPending) {
+				const nextPendingTurnIntent =
+					turnIntent.requiresWrite && !turnIntentFulfilled
+						? buildFastChatPendingTurnIntent({
+								intent: turnIntent,
+								contextType,
+								projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+								turnRunId,
+								finishedReason
+							})
+						: null;
+				await updateAgentMetadata(
+					supabase,
+					session.id,
+					{ [FASTCHAT_PENDING_TURN_INTENT_METADATA_KEY]: nextPendingTurnIntent },
+					{
+						errorLogger,
+						userId,
+						projectId: effectiveProjectIdForTools ?? projectIdForLogs
+					}
+				);
+			}
+			observabilityWriter.recordEvent('finalize', 'turn_outcome_resolved', {
+				outcome_status: turnOutcomeStatus,
+				intent_requires_write: turnIntent.requiresWrite,
+				intent_fulfilled: turnIntentFulfilled,
+				expected_write_tools: Array.from(expectedIntentWriteToolNames),
+				pending_intent_persisted: turnIntent.requiresWrite && !turnIntentFulfilled
+			} as Json);
 			const normalizedToolCallCount = Math.max(
 				typeof toolCallsMade === 'number' && Number.isFinite(toolCallsMade)
 					? toolCallsMade
@@ -3401,18 +3487,18 @@ export const POST: RequestHandler = async ({
 				}
 			}
 			if (turnDomainSensing) {
-				observabilityWriter.recordEvent(
-					'finalize',
-					'skill_gate_evaluated',
-					buildSkillGateTelemetry({
+				observabilityWriter.recordEvent('finalize', 'skill_gate_evaluated', {
+					...buildSkillGateTelemetry({
 						skillLoadRequired: turnDomainSensing.skill_load_required === true,
 						expectedSkillIds: skillGateExpectedSkillIds,
 						expectedSkillFormats: skillGateExpectedSkillFormats,
 						historyLoadedSkillIds: skillGateHistoryLoadedSkillIds,
 						toolExecutions: normalizedExecutions,
 						violationRepairInjected: skillGateViolationRepaired === true
-					}) as Json
-				);
+					}),
+					skill_preloaded_id: skillGatePreload?.skillId ?? null,
+					used_domain_ledger_skill_ids: usedDomainLedgerSkillIds
+				} as Json);
 			}
 			if (finalizationGuard?.applied) {
 				observabilityWriter.recordEvent(
@@ -3454,6 +3540,11 @@ export const POST: RequestHandler = async ({
 					request_id: pass.requestId ?? null,
 					system_fingerprint: pass.systemFingerprint ?? null,
 					finished_reason: pass.finishedReason ?? null,
+					forced_no_tool_synthesis: pass.forcedNoToolSynthesis === true,
+					suppressed_no_tool_synthesis_tool_calls:
+						pass.suppressedNoToolSynthesisToolCalls ?? 0,
+					suppressed_no_tool_synthesis_tool_call_details:
+						(pass.suppressedNoToolSynthesisToolCallDetails as Json | undefined) ?? null,
 					cache_status: pass.cacheStatus ?? null,
 					reasoning_tokens: pass.reasoningTokens ?? null,
 					prompt_tokens: pass.promptTokens ?? null,
@@ -3702,6 +3793,8 @@ export const POST: RequestHandler = async ({
 				resolvePersistableAssistantContent({ finalAssistantText, assistantText }) ??
 				FASTCHAT_CLEAN_RESPONSE_FALLBACK;
 			const assistantPersistMetadata: Record<string, Json | undefined> = {};
+			assistantPersistMetadata.outcome_status = turnOutcomeStatus;
+			assistantPersistMetadata.turn_intent = turnIntent as unknown as Json;
 			if (persistedToolTrace.length > 0) {
 				assistantPersistMetadata.fastchat_tool_trace_v1 = persistedToolTrace as Json;
 				if (persistedToolTraceSummary) {
@@ -3739,7 +3832,9 @@ export const POST: RequestHandler = async ({
 					text_chars: finalizationGuard.text.length
 				} as Json;
 			}
-			if (resumingSupervisorCheckpoint) {
+			const shouldResolveResumingCheckpoint =
+				!turnIntent.requiresWrite || turnIntentFulfilled || turnIntent.clearPending;
+			if (resumingSupervisorCheckpoint && shouldResolveResumingCheckpoint) {
 				assistantPersistMetadata.supervisor_resume_checkpoint = {
 					checkpoint_id: resumingSupervisorCheckpoint.id,
 					original_turn_run_id: resumingSupervisorCheckpoint.turn_run_id,
@@ -3992,6 +4087,17 @@ export const POST: RequestHandler = async ({
 						}
 					});
 				}
+			} else if (resumingSupervisorCheckpoint) {
+				observabilityWriter.recordEvent(
+					'finalize',
+					'supervisor_checkpoint_remains_active',
+					{
+						checkpoint_id: resumingSupervisorCheckpoint.id,
+						resume_turn_run_id: turnRunId,
+						outcome_status: turnOutcomeStatus,
+						intent_fulfilled: turnIntentFulfilled
+					} as Json
+				);
 			}
 		} catch (error) {
 			// O8: a turn is a *user cancellation* only when the abort signal actually

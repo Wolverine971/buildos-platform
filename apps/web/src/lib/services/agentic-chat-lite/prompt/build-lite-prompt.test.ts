@@ -312,6 +312,36 @@ describe('buildLitePromptEnvelope', () => {
 		expect(overlaid.systemPrompt).not.toContain('marketing.youtube_growth');
 	});
 
+	it('renders the preloaded skill block instead of the active gate directive (WP-7)', async () => {
+		const { senseDomains } = await import(
+			'$lib/services/agentic-chat/tools/domains/domain-sensing'
+		);
+		const { resolveSkillGatePreload } = await import(
+			'$lib/services/agentic-chat/tools/domains/skill-gate-preload'
+		);
+		const sensing = senseDomains({
+			currentUserMessage: 'Write a cold email to a newsletter creator about BuildOS.',
+			limit: 3
+		});
+		const preload = resolveSkillGatePreload(sensing);
+		expect(preload).not.toBeNull();
+
+		const base = buildLitePromptEnvelope({
+			contextType: 'global',
+			entityId: null,
+			domainSensingResult: null
+		});
+		const overlaid = applyActiveDomainSignalsOverlay(base, {
+			currentUserMessage: 'Write a cold email to a newsletter creator about BuildOS.',
+			domainSensingResult: sensing,
+			skillGatePreload: preload
+		});
+
+		expect(overlaid.systemPrompt).toContain('Skill-load gate: SATISFIED BY PRELOAD.');
+		expect(overlaid.systemPrompt).toContain(`Preloaded skill: ${preload!.skillId}`);
+		expect(overlaid.systemPrompt).not.toContain('Skill-load gate: ACTIVE.');
+	});
+
 	it('removes stale active-domain signals when the current turn has none', () => {
 		const stale = buildLitePromptEnvelope({
 			contextType: 'global',

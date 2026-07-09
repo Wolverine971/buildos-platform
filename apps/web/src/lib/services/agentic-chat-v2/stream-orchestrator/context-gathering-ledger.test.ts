@@ -159,4 +159,29 @@ describe('ContextGatheringLedger', () => {
 		expect(observation.status.reasons).toContain('context window is over budget');
 		expect(observation.forceSynthesis).toBe(true);
 	});
+
+	it('counts found-false reads as semantic misses instead of opened evidence', () => {
+		const ledger = new ContextGatheringLedger();
+		const observation = ledger.observeToolRound({
+			roundExecutions: [
+				execution(
+					'read_document_section',
+					{ document_id: documentId, section: 'missing-anchor' },
+					{ found: false, available_anchors: ['overview'] }
+				)
+			],
+			roundPattern: { readOps: ['onto.document.section.get'], hasWriteOps: false },
+			toolRounds: 1,
+			maxToolRounds: 8,
+			modelPayloadChars: 200
+		});
+
+		expect(observation.status).toMatchObject({
+			status: 'narrowing',
+			newEvidenceThisRound: false,
+			seenEntityCount: 0,
+			semanticReadMisses: 1
+		});
+		expect(observation.status.reasons).toContain('1 semantic read miss this round');
+	});
 });

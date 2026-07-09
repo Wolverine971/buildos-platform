@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/context-gathering-ledger.ts
 import type { ChatToolCall, ContextUsageSnapshot } from '@buildos/shared-types';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
+import { extractSearchResultCount } from '$lib/services/agentic-chat/tools/core/search-telemetry';
 import { parseToolArguments } from './tool-arguments';
 import type { FastToolExecution } from './shared';
 import type { RoundToolPattern } from './round-analysis';
@@ -15,6 +16,7 @@ export type ContextSaturationStatus = {
 	lowNoveltyRounds: number;
 	searchedCount: number;
 	seenEntityCount: number;
+	semanticReadMisses: number;
 	totalModelPayloadChars: number;
 	newEvidenceThisRound: boolean;
 	reasons: string[];
@@ -53,6 +55,7 @@ export class ContextGatheringLedger {
 	private repeatedSearchRounds = 0;
 	private seenEntityIds = new Set<string>();
 	private openedEntityIds = new Set<string>();
+	private semanticReadMisses = 0;
 	private searchAttempts = new Map<string, { label: string; count: number }>();
 	private lastEmittedStatusRank = 0;
 
@@ -82,14 +85,20 @@ export class ContextGatheringLedger {
 		const roundOpenedEntityIds = new Set<string>();
 		const roundSearchKeys = new Set<string>();
 		const roundSearchAttempts: Array<{ key: string; label: string }> = [];
+		let roundSemanticReadMisses = 0;
 
 		for (const execution of params.roundExecutions) {
 			if (!execution.result.success) continue;
+			const unwrappedPayload = unwrapGatewayResult(execution.result.result);
+			const semanticReadMiss = isSemanticReadMiss(execution, unwrappedPayload);
+			if (semanticReadMiss) {
+				roundSemanticReadMisses += 1;
+				this.semanticReadMisses += 1;
+			}
 			for (const search of extractSearchAttempts(execution.toolCall)) {
 				roundSearchKeys.add(search.key);
 				roundSearchAttempts.push(search);
 			}
-			const unwrappedPayload = unwrapGatewayResult(execution.result.result);
 			for (const id of extractEntityIds(unwrappedPayload)) {
 				roundEntityIds.add(id);
 			}
@@ -97,8 +106,10 @@ export class ContextGatheringLedger {
 				for (const id of extractPrimaryEntityIds(unwrappedPayload)) {
 					roundOpenedEntityIds.add(id);
 				}
-				for (const id of extractToolArgumentIds(execution.toolCall)) {
-					roundOpenedEntityIds.add(id);
+				if (!semanticReadMiss) {
+					for (const id of extractToolArgumentIds(execution.toolCall)) {
+						roundOpenedEntityIds.add(id);
+					}
 				}
 			}
 		}
@@ -138,7 +149,11 @@ export class ContextGatheringLedger {
 			this.lowNoveltyRounds += 1;
 		}
 
-		const { status, reasons } = this.evaluateStatus(params, newEvidenceThisRound);
+		const { status, reasons } = this.evaluateStatus(
+			params,
+			newEvidenceThisRound,
+			roundSemanticReadMisses
+		);
 		return this.buildObservation(status, params, {
 			newEvidenceThisRound,
 			reasons
@@ -147,7 +162,8 @@ export class ContextGatheringLedger {
 
 	private evaluateStatus(
 		params: ObserveToolRoundParams,
-		newEvidenceThisRound: boolean
+		newEvidenceThisRound: boolean,
+		roundSemanticReadMisses: number
 	): { status: ContextSaturationStatusName; reasons: string[] } {
 		const reasons: string[] = [];
 		const roundsRemaining = params.maxToolRounds - params.toolRounds;
@@ -162,6 +178,11 @@ export class ContextGatheringLedger {
 		}
 		if (!newEvidenceThisRound) {
 			reasons.push('last read round added no new entity IDs');
+		}
+		if (roundSemanticReadMisses > 0) {
+			reasons.push(
+				`${roundSemanticReadMisses} semantic read ${roundSemanticReadMisses === 1 ? 'miss' : 'misses'} this round`
+			);
 		}
 		if (this.lowNoveltyRounds >= 2) {
 			reasons.push(`${this.lowNoveltyRounds} consecutive low-novelty read rounds`);
@@ -207,6 +228,7 @@ export class ContextGatheringLedger {
 			lowNoveltyRounds: this.lowNoveltyRounds,
 			searchedCount: this.searchAttempts.size,
 			seenEntityCount: this.seenEntityIds.size,
+			semanticReadMisses: this.semanticReadMisses,
 			totalModelPayloadChars: this.totalModelPayloadChars,
 			newEvidenceThisRound: round.newEvidenceThisRound,
 			reasons: round.reasons
@@ -253,6 +275,7 @@ function buildContextGatheringMessage(
 		`Rounds remaining: ${status.roundsRemaining}.`,
 		searchLine,
 		`Seen entities: ${status.seenEntityCount}.`,
+		`Semantic read misses: ${status.semanticReadMisses}.`,
 		noveltyLine,
 		actionLine
 	].join(' ');
@@ -321,6 +344,15 @@ function unwrapGatewayResult(payload: unknown): unknown {
 		return record.result;
 	}
 	return payload;
+}
+
+function isSemanticReadMiss(execution: FastToolExecution, payload: unknown): boolean {
+	if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+		const record = payload as Record<string, unknown>;
+		if (record.found === false || record.exists === false) return true;
+	}
+	const toolName = execution.toolCall.function?.name?.trim() ?? '';
+	return extractSearchResultCount(toolName, payload) === 0;
 }
 
 function extractEntityIds(payload: unknown): string[] {

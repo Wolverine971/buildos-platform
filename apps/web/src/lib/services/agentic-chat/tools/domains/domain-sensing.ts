@@ -116,6 +116,8 @@ const ADVISORY_NEXT_STEP =
 	'Use these domains and outcome cards as routing hints. Load an outcome card when output contract or quality criteria would help; load a skill only when the user needs workflow depth.';
 const GATED_NEXT_STEP =
 	'Skill-load gate is ACTIVE for this turn: the request matches skill-covered work. Before drafting the final answer, pick the best-matching id from the ranked Skill-load candidates and call skill_load for it. Skip the load only when that skill is already in the loaded-skills ledger, or the message is a clarification/acknowledgment that produces no new work product.';
+const PRELOADED_NEXT_STEP =
+	'Skill-load gate already satisfied: apply the preloaded skill workflow above directly. Do not call skill_load for the preloaded skill again, and do not call outcome_card_load for the cards listed here — they are routing metadata the preload already covers.';
 
 const NATIVE_OUTCOME_CARD_SIGNALS: NativeOutcomeCardSignal[] = [
 	{
@@ -680,10 +682,12 @@ export function getSkillGateCandidateSkillLoadFormats(
 }
 
 export function renderDomainSensingPromptContent(
-	result: DomainSensingResult | null
+	result: DomainSensingResult | null,
+	options: { preloadedSkillPromptContent?: string | null } = {}
 ): string | null {
 	if (!result) return null;
 	const skillGateCandidateSkillIds = getSkillGateCandidateSkillIds(result);
+	const preloadedSkillPromptContent = options.preloadedSkillPromptContent?.trim() || null;
 
 	const domainLines = result.active_domains.map((domain) => {
 		const details = [
@@ -726,13 +730,16 @@ export function renderDomainSensingPromptContent(
 
 	return [
 		`Source: ${result.source}.`,
-		...(result.skill_load_required
+		...(result.skill_load_required && preloadedSkillPromptContent
+			? ['', 'Skill-load gate: SATISFIED BY PRELOAD.', '', preloadedSkillPromptContent]
+			: []),
+		...(result.skill_load_required && !preloadedSkillPromptContent
 			? [
 					'',
 					'Skill-load gate: ACTIVE. Do not draft the final answer until you have called skill_load for the best-matching skill below or confirmed it is already in the loaded-skills ledger. Answering skill-covered work from base knowledge is a routing failure.'
 				]
 			: []),
-		...(result.skill_load_required
+		...(result.skill_load_required && !preloadedSkillPromptContent
 			? [
 					'',
 					'Skill-load candidates (ranked, max 3):',
@@ -755,7 +762,10 @@ export function renderDomainSensingPromptContent(
 		'Coverage gap resource ids:',
 		`- ${result.coverage_gap_resource_ids.length ? result.coverage_gap_resource_ids.join(', ') : 'none'}`,
 		'',
-		`Next step: ${result.next_step}`
+		// A preload-satisfied gate must not keep the gated next step: it demands
+		// a skill_load call the preload already made redundant, and the outcome
+		// card hop is a pure pass-through once the default skill is in-context.
+		`Next step: ${result.skill_load_required && preloadedSkillPromptContent ? PRELOADED_NEXT_STEP : result.next_step}`
 	].join('\n');
 }
 

@@ -72,9 +72,40 @@ describe('ChatSessionAuditActions', () => {
 
 		expect(screen.getByRole('menu')).toHaveClass('z-[10001]');
 		expect(screen.getByRole('button', { name: /close export menu/i })).toHaveClass('z-[10000]');
-		expect(screen.getByRole('menuitem', { name: /export as markdown/i })).toBeInTheDocument();
 		expect(
-			screen.getByRole('menuitem', { name: /export as separate files/i })
+			screen.getByRole('menuitem', { name: /export audit markdown/i })
 		).toBeInTheDocument();
+		expect(screen.getByRole('menuitem', { name: /export audit files/i })).toBeInTheDocument();
+	});
+
+	it('can render only the desktop logs shortcut when export is owned by the host menu', () => {
+		render(ChatSessionAuditActions, {
+			props: {
+				sessionId: 'session-1',
+				variant: 'desktop',
+				includeExports: false
+			}
+		});
+
+		expect(screen.getByRole('link', { name: /logs/i })).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: /^export$/i })).not.toBeInTheDocument();
+	});
+
+	it('can render only audit export rows inside a host menu', () => {
+		render(ChatSessionAuditActions, {
+			props: {
+				sessionId: 'session-1',
+				variant: 'menu',
+				includeLogs: false,
+				showTopDivider: true
+			}
+		});
+
+		expect(screen.queryByRole('menuitem', { name: /logs/i })).not.toBeInTheDocument();
+		expect(screen.getByRole('separator')).toBeInTheDocument();
+		expect(
+			screen.getByRole('menuitem', { name: /export audit markdown/i })
+		).toBeInTheDocument();
+		expect(screen.getByRole('menuitem', { name: /export audit files/i })).toBeInTheDocument();
 	});
 });

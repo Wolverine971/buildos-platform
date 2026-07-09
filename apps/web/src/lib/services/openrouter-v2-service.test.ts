@@ -231,6 +231,49 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(requestBodies[1]?.models).toEqual(OPENROUTER_V2_JSON_MODELS.slice(2, 5));
 	});
 
+	it('applies PRIVATE_OPENROUTER_PROVIDER_ORDER as a provider order preference', async () => {
+		vi.stubEnv('PRIVATE_OPENROUTER_PROVIDER_ORDER', ' Baidu, GMICloud ,');
+		try {
+			const requestBodies: any[] = [];
+			const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+				if (typeof init?.body === 'string') {
+					requestBodies.push(JSON.parse(init.body));
+				}
+				return new Response(
+					JSON.stringify({
+						id: 'chatcmpl-v2-provider-order',
+						model: DEEPSEEK_V4_FLASH_MODEL,
+						choices: [
+							{
+								index: 0,
+								message: { role: 'assistant', content: '{"ok":true}' },
+								finish_reason: 'stop'
+							}
+						],
+						usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 }
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } }
+				);
+			});
+			vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+			const service = createService();
+			const result = await service.getJSONResponse<{ ok: boolean }>({
+				systemPrompt: 'Return valid JSON.',
+				userPrompt: 'Respond with {"ok":true}.'
+			});
+
+			expect(result).toEqual({ ok: true });
+			expect(requestBodies[0]?.provider).toEqual({
+				allow_fallbacks: true,
+				require_parameters: true,
+				order: ['Baidu', 'GMICloud']
+			});
+		} finally {
+			vi.unstubAllEnvs();
+		}
+	});
+
 	it('honors JSON profile hints while keeping DeepSeek as the primary model', async () => {
 		const requestBodies: any[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {

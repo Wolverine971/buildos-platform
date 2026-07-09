@@ -193,7 +193,7 @@ describe('empty no-tool synthesis retry (incident 2026-06-23, Fix C)', () => {
 		expect(out.forcedSynthesisPassCount).toBe(2);
 
 		// Both empty, so the finalization guard still produces the bounded fallback.
-		expect(out.finishedReason).toBe('tool_round_limit');
+		expect(out.finishedReason).toBe('synthesis_failed');
 		expect(out.finalizationGuardApplied).toBe(true);
 		expect(out.finalizationGuardReason).toBe('empty_after_reads');
 	});

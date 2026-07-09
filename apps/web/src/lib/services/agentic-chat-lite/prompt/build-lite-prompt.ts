@@ -196,6 +196,7 @@ export function applyActiveDomainSignalsOverlay(
 		| 'priorOutcomeCardIds'
 		| 'priorWorkCapabilityIds'
 		| 'domainSensingResult'
+		| 'skillGatePreload'
 	>
 ): LitePromptEnvelope {
 	const domainSignalSection = buildActiveDomainSignalsSection(input as LitePromptInput);
@@ -686,7 +687,8 @@ function buildActiveDomainSignalsSection(input: LitePromptInput): LitePromptSect
 					priorDomainIds: input.priorDomainIds,
 					priorOutcomeCardIds: input.priorOutcomeCardIds ?? input.priorWorkCapabilityIds,
 					limit: 3
-				})
+				}),
+		{ preloadedSkillPromptContent: input.skillGatePreload?.promptContent ?? null }
 	);
 	if (!content) return null;
 

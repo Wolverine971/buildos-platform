@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-lite/prompt/types.ts
 import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
 import type { DomainSensingResult } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
+import type { SkillGatePreload } from '$lib/services/agentic-chat/tools/domains/skill-gate-preload';
 
 /**
  * Shared context shape used by both the Lite prompt builder and the data loaders
@@ -158,6 +159,7 @@ export type LitePromptInput = MasterPromptContext & {
 	priorWorkCapabilityIds?: string[] | null;
 	priorOutcomeCardIds?: string[] | null;
 	domainSensingResult?: DomainSensingResult | null;
+	skillGatePreload?: SkillGatePreload | null;
 	retrievalMap?: LitePromptRetrievalMapInput | null;
 	tools?: ChatToolDefinition[] | null;
 };
