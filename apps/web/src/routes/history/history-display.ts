@@ -56,6 +56,12 @@ const DEFAULT_CHAT_TITLES = new Set(
 	].map((title) => title.toLowerCase())
 );
 
+export function compactHistoryCount(count: number, maximum = 99): string {
+	const safeCount = Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
+	const safeMaximum = Number.isFinite(maximum) ? Math.max(0, Math.trunc(maximum)) : 99;
+	return safeCount > safeMaximum ? `${safeMaximum}+` : String(safeCount);
+}
+
 export function normalizeHistoryText(value: string | null | undefined): string | null {
 	if (typeof value !== 'string') return null;
 

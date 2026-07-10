@@ -3,11 +3,18 @@ import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { loadAgentSkillIndex } from '$lib/server/agent-skills';
 import { loadAgentSkillPosts } from '$lib/utils/blog';
-import { buildDomainCards, buildPackCards, groupSkillsByFamily } from '$lib/skills/skill-gallery';
+import {
+	buildDomainDiscoveryCards,
+	buildPackCards,
+	getFamilyId,
+	groupSkillsByFamily
+} from '$lib/skills/skill-gallery';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const [posts, catalog] = await Promise.all([loadAgentSkillPosts(), loadAgentSkillIndex()]);
-	const domain = buildDomainCards(catalog.skills).find((item) => item.id === params.domain);
+	const domain = buildDomainDiscoveryCards(catalog.skills, catalog.previews).find(
+		(item) => item.id === params.domain
+	);
 
 	if (!domain) {
 		throw error(404, 'Skill domain not found');
@@ -27,13 +34,38 @@ export const load: PageServerLoad = async ({ params }) => {
 		}));
 	const featuredSkill =
 		domain.skills.find((skill) => skill.slug === domain.startSlug) ?? domain.skills[0] ?? null;
+	const featuredPreview =
+		domain.previews.find(
+			(preview) => preview.runtime_skill_id === domain.startPreviewRuntimeId
+		) ??
+		domain.previews.find((preview) => preview.family_start) ??
+		domain.previews.find((preview) => !preview.parent_id) ??
+		domain.previews[0] ??
+		null;
+	const previewFamilyNames = [...new Set(domain.previews.map((preview) => preview.family))];
+	const previewFamilies = previewFamilyNames.map((name) => ({
+		id: getFamilyId(name),
+		name,
+		previews: domain.previews
+			.filter((preview) => preview.family === name)
+			.sort(
+				(left, right) =>
+					Number(Boolean(right.family_start)) - Number(Boolean(left.family_start))
+			)
+	}));
+	const families = groupSkillsByFamily(domain.skills);
+	const familyCount = new Set([...families.map((family) => family.name), ...previewFamilyNames])
+		.size;
 
 	return {
 		domain,
 		posts,
 		packs,
 		featuredSkill,
-		families: groupSkillsByFamily(domain.skills),
+		featuredPreview,
+		families,
+		previewFamilies,
+		familyCount,
 		catalogVersion: catalog.version,
 		totalSkills: catalog.skills.length
 	};

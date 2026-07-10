@@ -76,3 +76,4 @@ Crawl-delay: 1
 
 # Sitemap location
 Sitemap: https://build-os.com/sitemap.xml
+Sitemap: https://build-os.com/sitemap-public-pages.xml

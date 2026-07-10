@@ -580,6 +580,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://build-os.com/skills/domain/planning-and-ops</loc>
+    <lastmod>2026-07-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://build-os.com/skills/domain/product-and-design</loc>
     <lastmod>2026-07-10</lastmod>
     <changefreq>weekly</changefreq>
@@ -617,6 +623,12 @@
   </url>
   <url>
     <loc>https://build-os.com/skills/family/interface-quality</loc>
+    <lastmod>2026-07-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/skills/family/project-operations</loc>
     <lastmod>2026-07-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -730,6 +742,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://build-os.com/skills/preview/calm-software-design-review</loc>
+    <lastmod>2026-07-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://build-os.com/skills/preview/cold-email-deliverability-readiness</loc>
     <lastmod>2026-07-10</lastmod>
     <changefreq>monthly</changefreq>
@@ -784,6 +802,24 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://build-os.com/skills/preview/delightful-product-review</loc>
+    <lastmod>2026-07-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/skills/preview/design-system-architecture-review</loc>
+    <lastmod>2026-07-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/skills/preview/document-workspace</loc>
+    <lastmod>2026-07-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://build-os.com/skills/preview/framework-extraction-lens</loc>
     <lastmod>2026-07-10</lastmod>
     <changefreq>monthly</changefreq>
@@ -820,6 +856,30 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://build-os.com/skills/preview/plan-management</loc>
+    <lastmod>2026-07-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/skills/preview/project-audit</loc>
+    <lastmod>2026-07-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/skills/preview/project-creation</loc>
+    <lastmod>2026-07-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/skills/preview/project-forecast</loc>
+    <lastmod>2026-07-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://build-os.com/skills/preview/sensory-double-tap</loc>
     <lastmod>2026-07-10</lastmod>
     <changefreq>monthly</changefreq>
@@ -827,6 +887,24 @@
   </url>
   <url>
     <loc>https://build-os.com/skills/preview/storyboard-journey-lens</loc>
+    <lastmod>2026-07-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/skills/preview/task-management</loc>
+    <lastmod>2026-07-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/skills/preview/task-state-updates</loc>
+    <lastmod>2026-07-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/skills/preview/usability-quick-research</loc>
     <lastmod>2026-07-10</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>

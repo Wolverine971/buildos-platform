@@ -19,6 +19,7 @@
 	import LinkedinIcon from 'lucide-svelte/icons/linkedin';
 	import XIcon from 'lucide-svelte/icons/twitter';
 	import { DEFAULT_APP_ICON_URL } from '$lib/constants/seo';
+	import { requestTrackingPreferences } from '$lib/services/tracking-consent';
 
 	// Svelte 5 props
 	let { user = null }: { user: any | null } = $props();
@@ -124,6 +125,13 @@
 								{link.label}
 							</a>
 						{/each}
+						<button
+							type="button"
+							onclick={requestTrackingPreferences}
+							class="inline-flex min-h-[44px] items-center text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							Privacy choices
+						</button>
 					</nav>
 				</div>
 			</div>
@@ -243,6 +251,13 @@
 									{link.label}
 								</a>
 							{/each}
+							<button
+								type="button"
+								onclick={requestTrackingPreferences}
+								class="inline-flex min-h-[44px] items-center font-semibold tracking-tight text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>
+								Privacy choices
+							</button>
 						</div>
 					</div>
 				</div>
@@ -316,7 +331,7 @@
 					<!-- Bottom Section -->
 					<div class="flex items-center justify-between pt-6 border-t border-border">
 						<!-- Legal Links -->
-						<nav class="flex space-x-4">
+						<nav class="flex items-center space-x-4">
 							{#each LEGAL_LINKS as link}
 								<a
 									href={link.href}
@@ -325,6 +340,13 @@
 									{link.label}
 								</a>
 							{/each}
+							<button
+								type="button"
+								onclick={requestTrackingPreferences}
+								class="inline-flex min-h-[44px] items-center text-sm text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>
+								Privacy choices
+							</button>
 						</nav>
 
 						<!-- Social Icons -->

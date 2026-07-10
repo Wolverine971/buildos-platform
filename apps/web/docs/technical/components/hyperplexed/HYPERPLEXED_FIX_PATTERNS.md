@@ -456,6 +456,27 @@ Verify scroll height before/after, direct and clicked fragment links, deferred m
 demo, zero horizontal overflow, and light/dark rendering at desktop and phone widths. Browsers that
 do not support `content-visibility` receive the complete page with no behavioral fallback required.
 
+### P22 · A badge counts only state owned by its destination
+
+**Finding:** a badge combines lifecycle states with different next actions, or appears on a control
+whose destination cannot resolve the counted items. Typical failure: “agents working” includes
+proposals that are no longer running and must be reviewed somewhere else.
+
+Partition statuses once at the data/store layer, then bind each surface to the subset it owns:
+
+1. Execution surfaces count only work they can monitor or control (`queued`/`running`/`paused`, plus a
+   separately worded needs-input state when that surface can answer it).
+2. Durable review surfaces count pending decisions they can resolve; transient notifications may point
+   there but must not become a second source of pending truth.
+3. Completion/history states do not keep an attention badge alive.
+4. The control's accessible name spells out the count and action (“Open AI Inbox — 3 pending review
+   items”), while the visible chip stays compact and caps large values (`99+`).
+5. Share the count source across every view of the same destination so resolving an item updates all
+   badges together; do not independently fetch competing totals.
+
+Badges should update without attention-grabbing motion. If the destination is lazy-loaded, gate any
+loading spinner with `motion-reduce:animate-none` (P11) and keep the count chip static.
+
 ---
 
 ## Using this doc in an audit

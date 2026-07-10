@@ -156,3 +156,57 @@ Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail templat
 
 - Authenticated end-to-end skill and pack launcher smoke with a real signed-in session.
 - Publication review and metadata authoring for the remaining 23 core internal runtime skills, plus optional Libri when enabled.
+
+## Planning And Ops Coverage — 2026-07-10
+
+### Shipped
+
+- Seven reviewed Project Operations previews now cover Project Creation, Project Audit, Project Forecast, Plan Management, Task Management, Task State Updates, and Document Workspace. Project Creation is the explicit family/domain start; Task State Updates retains its child relationship to Task Management -> P3+P4+P6+P8.
+- Domain discovery now merges published skills with reviewed previews. `/skills` shows five domain cards, and a preview-only domain can be filtered and opened without fabricating a published skill -> P3+P6+P7.
+- `/skills/domain/planning-and-ops` renders 0 published skills, 7 reviewed previews, one Project Operations family, a Project Creation start action, combined preview search, safe preview cards, and publication-aware agent copy -> P4+P6+P8+P13.
+- Preview-first domains resolve through the friendly `/skills/[domain]` alias. Root and domain JSON-LD include reviewed previews, and sitemap generation includes preview-only domains and families.
+- The runtime coverage split is now 8 public, 27 reviewed previews, and 16 core internal skills. Optional Libri raises enabled/internal totals to 52/17.
+- The designated family start is sorted first on domain pages, while root/child labels remain quiet hierarchy metadata.
+
+### Verification
+
+- `pnpm exec vitest run src/lib/skills/skill-gallery.test.ts src/lib/server/agent-skills.test.ts` -> 19 tests passed.
+- `pnpm run agent-skills:check` -> 8 public skills, 13 public reference files, 0 errors, 0 warnings.
+- `pnpm run check` -> 0 errors, 0 warnings before an unrelated untracked analytics file appeared during the final pass; final `pnpm exec svelte-check --no-tsconfig` still reports 0 errors and 0 warnings across Svelte surfaces.
+- `pnpm run gen:sitemap` -> 50 dynamic gallery URLs; 150 total sitemap URLs.
+- `/skills` rendered 8 published skills, 27 reviewed previews, and 5 domains. Planning And Ops exposed seven entries and filtered to seven previews with the explicit `No published skills in this view` state.
+- `/skills/domain/planning-and-ops` rendered Project Creation first and as the start preview. Search for `trajectory` narrowed to Project Forecast; the Task State Updates card retained `Child of Task Management`.
+- `/skills/family/project-operations` selected `/skills/preview/project-creation` as its start and rendered all seven previews.
+- `/skills/preview/project-creation` exposed no portable file, bundle, repository path, raw runtime ID, or console warning/error. Guest Try preserved `open=agent-chat`, `skill=project_creation`, the reviewed prompt, and the pause-before-action instruction through registration.
+- Desktop 1280x720 and mobile 390x844 checks in light and dark mode found no horizontal overflow on the gallery, domain, family, or preview surfaces.
+
+### Still Deferred
+
+- Authenticated end-to-end skill and pack launcher smoke with a real signed-in session.
+- Publication review and metadata authoring for the remaining 16 core internal runtime skills, plus optional Libri when enabled.
+
+## Product Quality Coverage — 2026-07-10
+
+### Shipped
+
+- Four additional reviewed Interface Quality previews now cover Calm Software Design Review, Delightful Product Review, Design System Architecture Review, and Usability Quick Research. Each preserves its runtime child relationship to Build Quality UI/UX -> P3+P4+P6+P8.
+- The metadata is publication-safe and user-first: concrete outputs, workflows, use cases, guardrails, and starter prompts are public; raw runtime definitions, internal reference modules, and repository paths remain private.
+- The Interface Quality family now presents one public workflow and nine reviewed previews, keeps Build Quality UI/UX as the explicit start preview, and searches the new workflow, boundary, and prompt fields.
+- The runtime coverage split is now 8 public, 31 reviewed previews, and 12 core internal skills. Optional Libri raises enabled/internal totals to 52/13.
+- Sitemap generation includes the four new preview routes for 54 dynamic gallery URLs and 154 total URLs.
+
+### Verification
+
+- `pnpm exec vitest run src/lib/skills/skill-gallery.test.ts src/lib/server/agent-skills.test.ts` -> 19 tests passed.
+- `pnpm run agent-skills:check` -> 8 public skills, 13 public reference files, 0 errors, 0 warnings.
+- Clean baseline `pnpm run check` -> 0 errors, 0 warnings. A later full rerun was interrupted by a concurrent History-page import mismatch outside the gallery scope.
+- `pnpm run gen:sitemap` -> 54 dynamic gallery URLs; 154 total sitemap URLs.
+- `/skills/family/interface-quality` rendered nine reviewed previews with Build Quality UI/UX first. Search for `habituation` narrowed to Delightful Product Review; all new entries retained `Child of Build Quality UI/UX`.
+- `/skills/preview/design-system-architecture-review` exposed no portable file, bundle, repository path, raw internal path, or reference-module metadata.
+- Guest Design System Architecture Review Try preserved `open=agent-chat`, `skill=design_system_architecture_review`, the reviewed starting prompt, and the pause-before-action instruction through registration.
+- Desktop 1280x720 and mobile 390x844 checks in light and dark mode found no horizontal overflow on the Interface Quality family and preview surfaces. The only console error was the local secondary Vite server's websocket-port collision, not an application exception.
+
+### Still Deferred
+
+- Authenticated end-to-end skill and pack launcher smoke with a real signed-in session.
+- Publication review and metadata authoring for the remaining 12 core internal runtime skills, plus optional Libri when enabled.

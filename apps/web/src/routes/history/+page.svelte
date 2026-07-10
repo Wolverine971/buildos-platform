@@ -37,6 +37,7 @@
 		DataMutationSummary
 	} from '$lib/components/agent/agent-chat.types';
 	import type { HistoryItem } from './+page.server';
+	import { compactHistoryCount } from './history-display';
 
 	interface OntoBraindump {
 		id: string;
@@ -464,62 +465,92 @@
 		<!-- Main content -->
 		<div>
 			<!-- Stats cards - compact on mobile -->
-			<div class="mb-3 sm:mb-6 grid grid-cols-4 gap-1.5 sm:gap-4">
+			<div class="mb-3 grid grid-cols-4 gap-1.5 sm:mb-6 sm:gap-4">
 				<div
-					class="rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
+					class="min-w-0 rounded-lg border border-border bg-card p-2 shadow-ink tx tx-frame tx-weak sm:p-4"
 				>
-					<div class="flex items-center gap-1 sm:gap-2">
-						<span class="text-base sm:text-2xl font-bold text-foreground">
-							{stats.totalBraindumps + stats.totalChatSessions}
+					<div class="flex min-w-0 items-center gap-1 sm:gap-2">
+						<span
+							class="min-w-0 truncate text-base font-bold tabular-nums text-foreground sm:text-2xl"
+							title={String(stats.totalBraindumps + stats.totalChatSessions)}
+						>
+							{compactHistoryCount(
+								stats.totalBraindumps + stats.totalChatSessions,
+								999
+							)}
 						</span>
 					</div>
-					<div class="text-[9px] sm:text-sm text-muted-foreground">Total</div>
+					<div class="truncate text-[10px] text-muted-foreground sm:text-sm">Total</div>
 				</div>
 				<div
-					class="rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
+					class="min-w-0 rounded-lg border border-border bg-card p-2 shadow-ink tx tx-frame tx-weak sm:p-4"
 				>
-					<div class="flex items-center gap-1 sm:gap-2">
+					<div class="flex min-w-0 items-center gap-1 sm:gap-2">
 						<Lightbulb class="h-3 w-3 sm:h-5 sm:w-5 text-info hidden sm:block" />
-						<span class="text-base sm:text-2xl font-bold text-foreground">
-							{stats.totalBraindumps}
+						<span
+							class="min-w-0 truncate text-base font-bold tabular-nums text-foreground sm:text-2xl"
+							title={String(stats.totalBraindumps)}
+						>
+							{compactHistoryCount(stats.totalBraindumps, 999)}
 						</span>
 					</div>
-					<div class="text-[9px] sm:text-sm text-muted-foreground">Captures</div>
+					<div class="truncate text-[10px] text-muted-foreground sm:text-sm">
+						Captures
+					</div>
 				</div>
 				<div
-					class="rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
+					class="min-w-0 rounded-lg border border-border bg-card p-2 shadow-ink tx tx-frame tx-weak sm:p-4"
 				>
-					<div class="flex items-center gap-1 sm:gap-2">
+					<div class="flex min-w-0 items-center gap-1 sm:gap-2">
 						<MessagesSquare class="h-3 w-3 sm:h-5 sm:w-5 text-accent hidden sm:block" />
-						<span class="text-base sm:text-2xl font-bold text-foreground">
-							{stats.totalChatSessions}
+						<span
+							class="min-w-0 truncate text-base font-bold tabular-nums text-foreground sm:text-2xl"
+							title={String(stats.totalChatSessions)}
+						>
+							{compactHistoryCount(stats.totalChatSessions, 999)}
 						</span>
 					</div>
-					<div class="text-[9px] sm:text-sm text-muted-foreground">Chats</div>
+					<div class="truncate text-[10px] text-muted-foreground sm:text-sm">Chats</div>
 				</div>
 				<div
-					class="rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
+					class="min-w-0 rounded-lg border border-border bg-card p-2 shadow-ink tx tx-frame tx-weak sm:p-4"
 				>
-					<div class="flex items-center gap-1 sm:gap-2">
-						<span class="text-base sm:text-2xl font-bold text-foreground">
-							{stats.processedBraindumps + stats.chatSessionsWithSummary}
+					<div class="flex min-w-0 items-center gap-1 sm:gap-2">
+						<span
+							class="min-w-0 truncate text-base font-bold tabular-nums text-foreground sm:text-2xl"
+							title={String(
+								stats.processedBraindumps + stats.chatSessionsWithSummary
+							)}
+						>
+							{compactHistoryCount(
+								stats.processedBraindumps + stats.chatSessionsWithSummary,
+								999
+							)}
 						</span>
 					</div>
-					<div class="text-[9px] sm:text-sm text-muted-foreground">Done</div>
+					<div class="truncate text-[10px] text-muted-foreground sm:text-sm">Done</div>
 				</div>
 			</div>
 
-			<!-- Type filter tabs - compact on mobile -->
-			<div class="mb-2 sm:mb-4 flex gap-0.5 sm:gap-2 border-b border-border overflow-x-auto">
+			<!-- Type filters use three fixed mobile columns; no hidden horizontal scroll. -->
+			<div
+				class="mb-2 grid grid-cols-3 gap-0.5 border-b border-border sm:mb-4 sm:flex sm:gap-2"
+			>
 				<button
 					onclick={() => setTypeFilter('all')}
 					aria-pressed={typeFilter === 'all'}
-					class="relative px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {typeFilter ===
+					aria-label={`All history, ${stats.totalBraindumps + stats.totalChatSessions} entries`}
+					class="relative inline-flex min-w-0 items-center justify-center gap-1 px-1 py-1.5 text-xs font-medium transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:px-4 sm:py-2 sm:text-sm {typeFilter ===
 					'all'
 						? 'text-foreground'
 						: 'text-muted-foreground hover:text-foreground'}"
 				>
-					All
+					<span class="min-w-0 truncate">All</span>
+					<span
+						class="shrink-0 rounded-full bg-muted px-1 py-0.5 text-[10px] text-muted-foreground sm:px-1.5 sm:text-xs"
+					>
+						{compactHistoryCount(stats.totalBraindumps + stats.totalChatSessions)}
+					</span>
 					{#if typeFilter === 'all'}
 						<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></span>
 					{/if}
@@ -527,17 +558,18 @@
 				<button
 					onclick={() => setTypeFilter('braindumps')}
 					aria-pressed={typeFilter === 'braindumps'}
-					class="relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {typeFilter ===
+					aria-label={`Captures, ${stats.totalBraindumps} entries`}
+					class="relative inline-flex min-w-0 items-center justify-center gap-1 px-1 py-1.5 text-xs font-medium transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:gap-1.5 sm:px-4 sm:py-2 sm:text-sm {typeFilter ===
 					'braindumps'
 						? 'text-foreground'
 						: 'text-muted-foreground hover:text-foreground'}"
 				>
-					<Lightbulb class="h-3 w-3 sm:h-4 sm:w-4" />
-					<span>Captures</span>
+					<Lightbulb class="hidden h-3 w-3 shrink-0 sm:block sm:h-4 sm:w-4" />
+					<span class="min-w-0 truncate">Captures</span>
 					<span
-						class="rounded-full bg-info/15 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-xs text-info"
+						class="shrink-0 rounded-full bg-info/15 px-1 py-0.5 text-[10px] text-info sm:px-1.5 sm:text-xs"
 					>
-						{stats.totalBraindumps}
+						{compactHistoryCount(stats.totalBraindumps)}
 					</span>
 					{#if typeFilter === 'braindumps'}
 						<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></span>
@@ -546,17 +578,18 @@
 				<button
 					onclick={() => setTypeFilter('chats')}
 					aria-pressed={typeFilter === 'chats'}
-					class="relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {typeFilter ===
+					aria-label={`Chats, ${stats.totalChatSessions} entries`}
+					class="relative inline-flex min-w-0 items-center justify-center gap-1 px-1 py-1.5 text-xs font-medium transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:gap-1.5 sm:px-4 sm:py-2 sm:text-sm {typeFilter ===
 					'chats'
 						? 'text-foreground'
 						: 'text-muted-foreground hover:text-foreground'}"
 				>
-					<MessagesSquare class="h-3 w-3 sm:h-4 sm:w-4" />
-					Chats
+					<MessagesSquare class="hidden h-3 w-3 shrink-0 sm:block sm:h-4 sm:w-4" />
+					<span class="min-w-0 truncate">Chats</span>
 					<span
-						class="rounded-full bg-accent/15 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-xs text-accent"
+						class="shrink-0 rounded-full bg-accent/15 px-1 py-0.5 text-[10px] text-accent sm:px-1.5 sm:text-xs"
 					>
-						{stats.totalChatSessions}
+						{compactHistoryCount(stats.totalChatSessions)}
 					</span>
 					{#if typeFilter === 'chats'}
 						<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></span>
@@ -678,7 +711,7 @@
 								<!-- Header: Type badge and status -->
 								<div class="mb-1 sm:mb-2 flex items-center justify-between">
 									<span
-										class="inline-flex items-center gap-0.5 sm:gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-xs font-medium {getTypeColor(
+										class="inline-flex items-center gap-0.5 sm:gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-medium {getTypeColor(
 											item.type
 										)}"
 									>
@@ -762,7 +795,7 @@
 
 								<!-- Footer: Metadata - compact on mobile -->
 								<div
-									class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3 text-[9px] sm:text-xs text-muted-foreground"
+									class="mt-auto flex items-center justify-between border-t border-border pt-1.5 text-[10px] text-muted-foreground sm:pt-3 sm:text-xs"
 								>
 									<span class="flex items-center gap-0.5 sm:gap-1 truncate">
 										<Clock class="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />

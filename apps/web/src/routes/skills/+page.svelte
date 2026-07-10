@@ -36,7 +36,7 @@
 		X
 	} from '$lib/icons/lucide';
 	import {
-		buildDomainCards,
+		buildDomainDiscoveryCards,
 		buildPackCards,
 		buildPostBySlug,
 		buildSkillBySlug,
@@ -76,7 +76,7 @@
 	let postBySlug = $derived(buildPostBySlug(data.posts));
 	let normalizedQuery = $derived(normalizeSearchText(query));
 	let skillBySlug = $derived(buildSkillBySlug(skills));
-	let domainCards = $derived(buildDomainCards(skills));
+	let domainCards = $derived(buildDomainDiscoveryCards(skills, previews));
 	let allDomainOptions = $derived(domainCards);
 	let packCards = $derived(buildPackCards(skills));
 	let selectedPackSlugs = $derived(getSelectedPackSlugSet(packCards, activePack));
@@ -218,6 +218,20 @@
 
 	function generateJsonLd() {
 		const collectionUrl = `${SITE_URL}/skills`;
+		const entries = [
+			...skills.map((skill) => ({
+				name: getDisplayTitle(skill),
+				description: skill.description,
+				url: `${SITE_URL}${getSkillPath(skill)}`,
+				genre: skill.skill_category ? humanize(skill.skill_category) : undefined
+			})),
+			...previews.map((preview) => ({
+				name: preview.title,
+				description: preview.description,
+				url: `${SITE_URL}${getPreviewSkillPath(preview)}`,
+				genre: humanize(preview.domain_id)
+			}))
+		];
 		return JSON.stringify(
 			{
 				'@context': 'https://schema.org',
@@ -235,16 +249,13 @@
 				},
 				mainEntity: {
 					'@type': 'ItemList',
-					numberOfItems: skills.length,
-					itemListElement: skills.map((skill, index) => ({
+					numberOfItems: entries.length,
+					itemListElement: entries.map((entry, index) => ({
 						'@type': 'ListItem',
 						position: index + 1,
 						item: {
 							'@type': 'CreativeWork',
-							name: getDisplayTitle(skill),
-							description: skill.description,
-							url: `${SITE_URL}${getSkillPath(skill)}`,
-							genre: skill.skill_category ? humanize(skill.skill_category) : undefined
+							...entry
 						}
 					}))
 				}
@@ -800,7 +811,7 @@
 					</p>
 				</div>
 
-				<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+				<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
 					{#each allDomainOptions as domain}
 						<article
 							class={`flex min-h-[15rem] flex-col rounded-lg border p-4 shadow-ink transition-colors ${
@@ -818,9 +829,12 @@
 								<span
 									class="rounded-full bg-muted px-2 py-1 text-2xs font-medium text-muted-foreground"
 								>
-									{domain.skills.length} skill{domain.skills.length === 1
-										? ''
-										: 's'}
+									{domain.skills.length + domain.previews.length} entr{domain
+										.skills.length +
+										domain.previews.length ===
+									1
+										? 'y'
+										: 'ies'}
 								</span>
 							</div>
 							<h3 class="mt-4 text-lg font-semibold">{domain.name}</h3>
@@ -1087,11 +1101,14 @@
 					>
 						<Search class="mx-auto h-8 w-8 text-muted-foreground" />
 						<h3 class="mt-3 text-lg font-semibold text-foreground">
-							No matching skills
+							{matchingPreviews.length
+								? 'No published skills in this view'
+								: 'No matching skills'}
 						</h3>
 						<p class="mx-auto mt-1 max-w-sm text-sm leading-6 text-muted-foreground">
-							Clear the filters or search for a broader domain, output, tool, or
-							workflow.
+							{matchingPreviews.length
+								? 'Reviewed previews are available above; this domain has not promoted a skill to full publication yet.'
+								: 'Clear the filters or search for a broader domain, output, tool, or workflow.'}
 						</p>
 						<button
 							type="button"

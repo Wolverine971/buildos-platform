@@ -16,13 +16,13 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import ContactImportPreview from './ContactImportPreview.svelte';
 	import TabHeader from './_shared/TabHeader.svelte';
 	import SettingsCard from './_shared/SettingsCard.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import type {
 		ContactImportCommitResult,
 		ContactImportNormalizedInput,
-		ContactImportPreviewRow,
 		ContactImportPreviewResult
 	} from '$lib/types/profile-contacts';
 
@@ -253,53 +253,6 @@
 		const parsed = new Date(value);
 		if (Number.isNaN(parsed.getTime())) return 'Unknown';
 		return parsed.toLocaleString();
-	}
-
-	function maskPreviewMethodValue(methodType: string, value: string): string {
-		if (methodType === 'email') {
-			const [local = '', domain = ''] = value.split('@');
-			if (!domain) return '***';
-			const localMask = local.length <= 1 ? '*' : `${local[0]}***`;
-			return `${localMask}@${domain}`;
-		}
-		if (
-			methodType === 'phone' ||
-			methodType === 'sms' ||
-			methodType === 'whatsapp' ||
-			methodType === 'telegram'
-		) {
-			const digits = value.replace(/\D/g, '');
-			if (digits.length <= 4) return '***';
-			return `***${digits.slice(-4)}`;
-		}
-		if (value.length <= 6) return '***';
-		return `${value.slice(0, 2)}***${value.slice(-2)}`;
-	}
-
-	function formatPreviewMethods(row: ContactImportPreviewRow): string {
-		const methods = row.normalized_input?.methods ?? [];
-		if (methods.length === 0) return 'No methods';
-		return methods
-			.map((method) => {
-				const methodType = method.method_type || 'method';
-				const masked = maskPreviewMethodValue(methodType, method.value);
-				return `${methodType}: ${masked}`;
-			})
-			.join(' · ');
-	}
-
-	// Humanize raw enum strings (e.g. "create_new" → "Create new") for the preview table.
-	function formatImportLabel(value: string): string {
-		if (!value) return '';
-		const spaced = value.replace(/_/g, ' ');
-		return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-	}
-
-	// Reserve color for state: ready = success, error = destructive, otherwise muted.
-	function importStatusClass(status: string): string {
-		if (status === 'ready') return 'text-success';
-		if (status === 'error' || status === 'errors') return 'text-destructive';
-		return 'text-muted-foreground';
 	}
 
 	function handleFileSelection(event: Event) {
@@ -583,49 +536,7 @@
 						Skipped:
 						{importPreview.summary.skipped} · Errors: {importPreview.summary.errors}
 					</p>
-					<div class="max-h-64 overflow-auto border border-border rounded-md">
-						<table class="w-full min-w-[640px] text-sm">
-							<thead class="bg-muted/60 text-left sticky top-0">
-								<tr>
-									<th class="px-3 py-2">Row</th>
-									<th class="px-3 py-2">Contact</th>
-									<th class="px-3 py-2">Methods (masked)</th>
-									<th class="px-3 py-2">Status</th>
-									<th class="px-3 py-2">Action</th>
-									<th class="px-3 py-2">Reason</th>
-								</tr>
-							</thead>
-							<tbody>
-								{#each importPreview.rows as row (`import-preview-${row.row_number}`)}
-									<tr class="border-t border-border">
-										<td class="px-3 py-2">{row.row_number}</td>
-										<td class="px-3 py-2">
-											{row.normalized_input?.display_name ?? 'Unknown'}
-										</td>
-										<td class="px-3 py-2 text-muted-foreground">
-											{formatPreviewMethods(row)}
-										</td>
-										<td class="px-3 py-2">
-											<span
-												class="font-medium {importStatusClass(row.status)}"
-											>
-												{formatImportLabel(row.status)}
-											</span>
-										</td>
-										<td class="px-3 py-2 text-muted-foreground">
-											{formatImportLabel(row.action)}
-										</td>
-										<td class="px-3 py-2 text-muted-foreground">
-											{row.reason ??
-												(row.matched_contact_name
-													? `Matched ${row.matched_contact_name}`
-													: 'Ready')}
-										</td>
-									</tr>
-								{/each}
-							</tbody>
-						</table>
-					</div>
+					<ContactImportPreview rows={importPreview.rows} />
 				</div>
 			{/if}
 

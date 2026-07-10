@@ -58,7 +58,7 @@ describe('public agent skill serving', () => {
 			bundle_zip_url:
 				'https://build-os.com/agent-skills/google-calendar-for-ai-agents-search-before-you-create/bundle.zip'
 		});
-		expect(index.previews).toHaveLength(20);
+		expect(index.previews).toHaveLength(31);
 		expect(
 			index.previews.find((preview) => preview.runtime_skill_id === 'cold_email_offer_lab')
 		).toMatchObject({
@@ -71,9 +71,9 @@ describe('public agent skill serving', () => {
 		});
 		expect(index.coverage).toMatchObject({
 			public_total: 8,
-			preview_total: 20
+			preview_total: 31
 		});
-		expect(index.coverage.internal_total).toBe(index.coverage.runtime_total - 28);
+		expect(index.coverage.internal_total).toBe(index.coverage.runtime_total - 39);
 		expect(index.coverage.runtime_total).toBe(
 			index.coverage.public_total +
 				index.coverage.preview_total +
@@ -101,6 +101,21 @@ describe('public agent skill serving', () => {
 			family_start: true,
 			parent_id: undefined
 		});
+		for (const runtimeSkillId of [
+			'calm_software_design_review',
+			'delightful_product_review',
+			'design_system_architecture_review',
+			'usability_quick_research'
+		]) {
+			expect(
+				index.previews.find((preview) => preview.runtime_skill_id === runtimeSkillId)
+			).toMatchObject({
+				publication_status: 'preview',
+				domain_id: 'product-and-design',
+				family: 'Interface Quality',
+				parent_id: 'build_quality_ui_ux'
+			});
+		}
 		expect(
 			index.previews.find(
 				(preview) => preview.runtime_skill_id === 'content_strategy_beyond_blogging'
@@ -127,6 +142,23 @@ describe('public agent skill serving', () => {
 		).toMatchObject({
 			parent_id: 'content_creation_pipeline',
 			family: 'Content Craft'
+		});
+		expect(
+			index.previews.find((preview) => preview.runtime_skill_id === 'project_creation')
+		).toMatchObject({
+			publication_status: 'preview',
+			slug: 'project-creation',
+			title: 'Project Creation',
+			domain_id: 'planning-and-ops',
+			family: 'Project Operations',
+			family_start: true,
+			parent_id: undefined
+		});
+		expect(
+			index.previews.find((preview) => preview.runtime_skill_id === 'task_state_updates')
+		).toMatchObject({
+			parent_id: 'task_management',
+			family: 'Project Operations'
 		});
 		expect(JSON.stringify(index.previews)).not.toContain('rawMarkdown');
 		expect(JSON.stringify(index.previews)).not.toContain('referenceModules');

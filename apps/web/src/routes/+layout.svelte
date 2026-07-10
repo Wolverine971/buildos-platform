@@ -5,8 +5,15 @@
 	import { ModeWatcher } from 'mode-watcher';
 	import { setContext, onMount, onDestroy, untrack } from 'svelte';
 	import { page } from '$app/stores';
-	import { browser, dev } from '$app/environment';
-	import { goto, replaceState, onNavigate, invalidate, invalidateAll } from '$app/navigation';
+	import { browser } from '$app/environment';
+	import {
+		goto,
+		replaceState,
+		onNavigate,
+		afterNavigate,
+		invalidate,
+		invalidateAll
+	} from '$app/navigation';
 	import { navigationStore } from '$lib/stores/navigation.store';
 	import Navigation from '$lib/components/layout/Navigation.svelte';
 	import Footer from '$lib/components/layout/Footer.svelte';
@@ -25,21 +32,16 @@
 	import type { LayoutData } from './$types';
 	// Static import: TrialBanner must be in the SSR pass to prevent layout shift
 	import TrialBannerStatic from '$lib/components/trial/TrialBanner.svelte';
-
-	// Vercel Analytics & Speed Insights
-	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
-	import { initPostHog, identifyUser, resetPostHogUser } from '$lib/services/posthog';
+	import TrackingPreferences from '$lib/components/privacy/TrackingPreferences.svelte';
+	import { initializeBrowserAnalytics, trackMetaPageView } from '$lib/services/browser-analytics';
+	import { identifyUser, resetPostHogUser } from '$lib/services/posthog';
+	import {
+		TRACKING_PREFERENCES_CHANGED_EVENT,
+		type TrackingPreferences as TrackingPreferenceState
+	} from '$lib/services/tracking-consent';
 	import type { Snippet } from 'svelte';
 	import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 	import { LOGOUT_REDIRECT_STORAGE_KEY } from '$lib/utils/auth';
-
-	// Initialize Speed Insights in production
-	if (browser && !dev) {
-		injectSpeedInsights();
-	}
-
-	// PostHog product analytics (no-op without PUBLIC_POSTHOG_KEY)
-	initPostHog();
 
 	// FIXED: Convert to $props() for Svelte 5 runes mode compatibility
 	let { data, children }: { data: LayoutData; children?: Snippet } = $props();
@@ -83,8 +85,7 @@
 	// PostHog identify — once per user id; reset on sign-out merges are handled
 	// in handleAuthSignedOut.
 	let posthogIdentifiedUserId: string | null = null;
-	$effect(() => {
-		const currentUser = user;
+	function syncPostHogUser(currentUser: typeof user): void {
 		if (currentUser?.id && currentUser.id !== posthogIdentifiedUserId) {
 			posthogIdentifiedUserId = currentUser.id;
 			identifyUser(currentUser.id, {
@@ -92,6 +93,10 @@
 				completed_onboarding: untrack(() => completedOnboarding)
 			});
 		}
+	}
+
+	$effect(() => {
+		syncPostHogUser(user);
 	});
 	let hasConnectedAgents = $derived(Boolean(data.hasConnectedAgents));
 	type BillingContext = {
@@ -765,35 +770,18 @@
 		}
 	}
 
-	// PERFORMANCE: Initialize visitor tracking with better error handling and timing
-	let visitorTrackingInitialized = $state(false);
-
-	function initializeVisitorTracking() {
-		if (visitorTrackingInitialized || !browser) return;
-
-		visitorTrackingInitialized = true;
-
-		// Use requestIdleCallback for non-critical background tasks
-		const initVisitor = async () => {
-			try {
-				const { visitorService } = await import('$lib/services/visitor.service');
-				await visitorService.initialize();
-			} catch (error) {
-				// Silent failure for visitor tracking
-				console.warn('Visitor tracking initialization failed:', error);
-			}
-		};
-
-		if ('requestIdleCallback' in window) {
-			requestIdleCallback(initVisitor, { timeout: 5000 });
-		} else {
-			setTimeout(initVisitor, 2000);
-		}
-	}
-
 	onMount(() => {
 		if (!browser) return;
 
+		const analyticsCleanup = initializeBrowserAnalytics();
+		const handleTrackingPreferenceChange = (event: Event) => {
+			const preferences = (event as CustomEvent<TrackingPreferenceState>).detail;
+			if (!preferences.analytics) return;
+
+			posthogIdentifiedUserId = null;
+			syncPostHogUser(user);
+		};
+		window.addEventListener(TRACKING_PREFERENCES_CHANGED_EVENT, handleTrackingPreferenceChange);
 		setupAuthSubscription();
 
 		// FIXED: Store cleanup functions to prevent memory leaks
@@ -847,11 +835,13 @@
 			handleBriefNotificationWrapper as EventListener
 		);
 
-		// Initialize visitor tracking in background
-		initializeVisitorTracking();
-
 		// Return cleanup function
 		return () => {
+			analyticsCleanup();
+			window.removeEventListener(
+				TRACKING_PREFERENCES_CHANGED_EVENT,
+				handleTrackingPreferenceChange
+			);
 			window.removeEventListener('briefGenerationComplete', handleBriefCompleteWrapper);
 			window.removeEventListener(
 				'briefNotification',
@@ -898,7 +888,6 @@
 			resourcesLoaded = false;
 			notificationResourcesLoadPromise = undefined;
 			notificationResourcesLoaded = false;
-			visitorTrackingInitialized = false;
 		}
 	});
 
@@ -922,6 +911,10 @@
 				await navigation.complete;
 			});
 		});
+	});
+
+	afterNavigate(() => {
+		trackMetaPageView();
 	});
 
 	// PERFORMANCE: Memoize component props to prevent unnecessary re-renders - converted to $derived.by()
@@ -1113,6 +1106,8 @@
 	{#if user && NotificationStackManager}
 		<NotificationStackManager />
 	{/if}
+
+	<TrackingPreferences />
 </div>
 
 <style>

@@ -640,15 +640,23 @@
 				<section class="mt-5 sm:mt-6" aria-label="All-day events">
 					<div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
 						{#each agenda.allDay as event (event.calendar_item_id)}
+							{@const eventTitle = event.title ?? 'Untitled event'}
+							{@const eventProjectName = projectNameFor(event.project_id)}
 							<span
-								class="inline-flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent/5 px-2.5 py-1 text-[11px] sm:text-xs text-foreground"
+								class="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full border border-accent/20 bg-accent/5 px-2.5 py-1 text-[11px] text-foreground sm:text-xs"
+								title={eventProjectName
+									? `${eventTitle} · ${eventProjectName}`
+									: eventTitle}
 							>
-								<Calendar class="h-3 w-3 text-accent" />
-								{event.title ?? 'Untitled event'}
-								{#if projectNameFor(event.project_id)}
-									<span class="text-muted-foreground"
-										>· {projectNameFor(event.project_id)}</span
+								<Calendar class="h-3 w-3 shrink-0 text-accent" />
+								<span class="min-w-0 truncate">{eventTitle}</span>
+								{#if eventProjectName}
+									<span class="shrink-0 text-muted-foreground" aria-hidden="true"
+										>·</span
 									>
+									<span class="min-w-0 truncate text-muted-foreground">
+										{eventProjectName}
+									</span>
 								{/if}
 							</span>
 						{/each}

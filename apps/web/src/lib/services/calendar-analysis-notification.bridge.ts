@@ -9,6 +9,7 @@
 import { get } from 'svelte/store';
 import { notificationStore } from '$lib/stores/notification.store';
 import { toastService } from '$lib/stores/toast.store';
+import { loadAiInboxCount } from '$lib/stores/aiInboxCount.store';
 import type { CalendarAnalysisNotification, Notification } from '$lib/types/notification.types';
 
 interface StartCalendarAnalysisOptions {
@@ -147,6 +148,7 @@ async function executeAnalysis(
 					}`
 				: 'Calendar analysis finished without suggestions';
 		toastService.success(successMessage);
+		if (suggestions.length > 0) void loadAiInboxCount({ force: true });
 	} catch (error) {
 		if (error instanceof DOMException && error.name === 'AbortError') {
 			return;

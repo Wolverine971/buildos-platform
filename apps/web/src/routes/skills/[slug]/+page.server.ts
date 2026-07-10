@@ -7,7 +7,11 @@ import {
 	resolveRuntimeSkillForPost
 } from '$lib/server/agent-skills';
 import { loadAgentSkillPosts } from '$lib/utils/blog';
-import { buildDomainCards, buildPackCards, getDomainPath } from '$lib/skills/skill-gallery';
+import {
+	buildDomainDiscoveryCards,
+	buildPackCards,
+	getDomainPath
+} from '$lib/skills/skill-gallery';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const [posts, catalog] = await Promise.all([loadAgentSkillPosts(), loadAgentSkillIndex()]);
@@ -15,7 +19,9 @@ export const load: PageServerLoad = async ({ params }) => {
 	const post = posts.find((item) => item.slug === params.slug);
 
 	if (!skill || !post) {
-		const domain = buildDomainCards(catalog.skills).find((item) => item.id === params.slug);
+		const domain = buildDomainDiscoveryCards(catalog.skills, catalog.previews).find(
+			(item) => item.id === params.slug
+		);
 		if (domain) {
 			throw redirect(307, getDomainPath(domain));
 		}

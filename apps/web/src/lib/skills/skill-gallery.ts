@@ -76,6 +76,11 @@ export type GalleryDomain<TSkill extends GallerySkill = GallerySkill> = DomainGu
 	skills: TSkill[];
 };
 
+export type GalleryDomainDiscovery<TSkill extends GallerySkill = GallerySkill> =
+	GalleryDomain<TSkill> & {
+		previews: RuntimeSkillGalleryPreview[];
+	};
+
 export type GalleryPack<TSkill extends GallerySkill = GallerySkill> = PackDefinition & {
 	skills: TSkill[];
 };
@@ -457,6 +462,43 @@ export function buildDomainCards<TSkill extends GallerySkill>(
 			skills: skills.filter((skill) => skill.skill_category === category)
 		}))
 	];
+}
+
+export function buildDomainDiscoveryCards<TSkill extends GallerySkill>(
+	skills: TSkill[],
+	previews: RuntimeSkillGalleryPreview[]
+): GalleryDomainDiscovery<TSkill>[] {
+	const publicCards = buildDomainCards(skills);
+	const publicCardById = new Map(publicCards.map((domain) => [domain.id, domain]));
+	const previewDomainIds = new Set(previews.map((preview) => preview.domain_id));
+	const orderedIds = [
+		...domainGuides.map((domain) => domain.id),
+		...publicCards.map((domain) => domain.id),
+		...previewDomainIds
+	].filter((domainId, index, allIds) => allIds.indexOf(domainId) === index);
+
+	return orderedIds
+		.map((domainId) => {
+			const publicCard = publicCardById.get(domainId);
+			const guide = domainGuides.find((domain) => domain.id === domainId);
+			const domainPreviews = previews.filter((preview) => preview.domain_id === domainId);
+			const base = publicCard ??
+				guide ?? {
+					id: domainId,
+					name: humanize(domainId),
+					shortName: humanize(domainId),
+					description: 'Reviewed skill previews in this operating domain.',
+					promise: 'Browse reviewed workflows for this domain.',
+					path: ['Browse', 'Choose a family', 'Open a preview']
+				};
+
+			return {
+				...base,
+				skills: publicCard?.skills ?? [],
+				previews: domainPreviews
+			};
+		})
+		.filter((domain) => domain.skills.length > 0 || domain.previews.length > 0);
 }
 
 export function buildPackCards<TSkill extends GallerySkill>(

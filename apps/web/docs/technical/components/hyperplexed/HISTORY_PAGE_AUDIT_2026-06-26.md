@@ -296,6 +296,24 @@ anything").
 
 **Deferred (lower-value / needs live screenshots):** stat-card density at `grid-cols-4` on phones and the
 "make stat cards clickable filter shortcuts" call (ergonomics/scope, not a taste defect); dark-mode
-contrast of the seven `getStatusBadgeClass` hues (suspected color call). Next step is the live dark-mode
+contrast of the seven `getStatusBadgeClass` hues (suspected color call). The next visual step is a
+dark-mode mobile screenshot pass.
 
-- mobile screenshot pass — shoot mobile first to confirm the S-skel shift is gone on a real device.
+---
+
+## Part 6 — Mobile command-center follow-up (2026-07-10)
+
+The cross-surface mobile re-audit found one remaining History composition that relied on hidden
+horizontal scrolling: the All / Captures / Chats filter rail. This follow-up shipped:
+
+- Three equal mobile filter columns, returning to the looser inline desktop row at `sm` (P8/P1).
+- A count slot on every filter, capped at `99+` visually while the exact value remains in the accessible
+  label (P4/P8).
+- `min-w-0` and compact `999+` fallbacks on the four stat cards so large histories cannot widen the
+  phone grid (P1).
+- A 10 px mobile floor for stat labels, type badges, and card footer metadata (P5/P6).
+- `compactHistoryCount` regression coverage in the existing History display helper suite.
+
+Verification: scoped Prettier clean; History plus the Tier 1 mobile component suites pass (3 files, 9
+tests); `pnpm check` reports 0 errors and 0 warnings. Authenticated 320/390 px light/dark screenshots are
+still pending because the local browser session redirects private routes to sign-in.

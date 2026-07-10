@@ -441,3 +441,27 @@ scroll + sticky footer). Both want the live-device pass to prioritize.
 > **Method note:** still a static audit (markup + responsive classes + known iOS behaviors). The two
 > things only a real device confirms: wrap behavior of the dense AgentKeys 5-button action row, and the
 > Contacts import-table horizontal scroll. Those remain the top candidates for a live mobile glance.
+
+---
+
+## Part 7 — Contacts import-preview mobile fallback (2026-07-10)
+
+The wider mobile audit returned to the remaining Contacts exception named above: the six-column CSV
+preview required a 640 px horizontal canvas on phones. That kept the data technically reachable, but it
+was a poor command-center composition because contact identity, status, action, and reason could not be
+scanned together.
+
+Shipped with the established **P12 wide-table fallback**:
+
+- Extracted `ContactImportPreview.svelte` so the responsive contract and masking logic live together.
+- Phones render a bounded vertical card list. Every card keeps the row number, contact name, masked
+  methods, status, import action, and reason visible without lateral panning (P1/P4/P12).
+- Long names, methods, and reasons use the full zero-minimum + clamp/break chain; status remains a
+  fixed-width scan anchor (P1).
+- Tablet/desktop retains the original sticky-header, six-column, 640 px table for efficient comparison.
+- The mobile list preserves the original bounded preview region via intentional vertical scrolling,
+  rather than expanding a large CSV across the entire settings page.
+
+Verification: the focused component suite passes (2 tests), including masked values, all mobile fields,
+the bounded list contract, and preservation of all six desktop columns. `pnpm check` reports 0 errors
+and 0 warnings. Authenticated 320/390 px light/dark screenshots remain pending.

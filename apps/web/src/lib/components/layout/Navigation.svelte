@@ -40,6 +40,7 @@
 	} from '$lib/components/agent/agent-chat.types';
 	import {
 		agentRunNeedsInputCount,
+		agentRunsStore,
 		agentWorkAttentionCount,
 		workingAgentRunCount
 	} from '$lib/services/agentRunsRealtime.service';
@@ -80,9 +81,12 @@
 	let showChatModal = $state(false);
 	let showWorkPanel = $state(false);
 	let DashboardInboxModal = $state<any>(null);
+	let aiInboxModalLoadPromise: Promise<any> | null = null;
 	let showAiInboxModal = $state(false);
 	let isOpeningAiInbox = $state(false);
 	let loadedInboxUserId = '';
+	let proposalReadyFingerprint = '';
+	let hasProposalReadySnapshot = false;
 	let chatOpenedWithContext = $state<ChatContextType | null>(null);
 	let chatInitialSessionId = $state<string | null>(null);
 	let chatInitialBrainDumpContext = $state<AgentBrainDumpContext | null>(null);
@@ -293,9 +297,18 @@
 
 	async function loadAiInboxModalComponent() {
 		if (DashboardInboxModal) return DashboardInboxModal;
-		const module = await import('$lib/components/dashboard/DashboardInboxModal.svelte');
-		DashboardInboxModal = module.default;
-		return DashboardInboxModal;
+		if (!aiInboxModalLoadPromise) {
+			aiInboxModalLoadPromise = import('$lib/components/dashboard/DashboardInboxModal.svelte')
+				.then((module) => {
+					DashboardInboxModal = module.default;
+					return DashboardInboxModal;
+				})
+				.catch((error) => {
+					aiInboxModalLoadPromise = null;
+					throw error;
+				});
+		}
+		return aiInboxModalLoadPromise;
 	}
 
 	function preloadAiInboxModal() {
@@ -311,6 +324,7 @@
 		try {
 			await loadAiInboxModalComponent();
 			showAiInboxModal = true;
+			void loadAiInboxCount({ force: true });
 		} catch (error) {
 			console.error('[Navigation] Failed to open AI Inbox:', error);
 			toastService.error('Failed to open AI Inbox');
@@ -549,6 +563,24 @@
 		if (userId) void loadAiInboxCount();
 	});
 
+	$effect(() => {
+		if (!browser || !user?.id) return;
+		const nextFingerprint = Array.from($agentRunsStore.values())
+			.filter((run) => run.user_id === user.id && run.status === 'proposal_ready')
+			.map((run) => run.id)
+			.sort()
+			.join('|');
+		if (!hasProposalReadySnapshot) {
+			hasProposalReadySnapshot = true;
+			proposalReadyFingerprint = nextFingerprint;
+			if (nextFingerprint) void loadAiInboxCount({ force: true });
+			return;
+		}
+		if (nextFingerprint === proposalReadyFingerprint) return;
+		proposalReadyFingerprint = nextFingerprint;
+		void loadAiInboxCount({ force: true });
+	});
+
 	function handleChatClose(summary?: DataMutationSummary) {
 		const wasProjectCreate = chatOpenedWithContext === 'project_create';
 		showChatModal = false;
@@ -597,6 +629,12 @@
 		lastScrollY = currentY;
 	}
 
+	function handleVisibilityChange() {
+		if (document.visibilityState === 'visible' && user) {
+			void loadAiInboxCount({ force: true });
+		}
+	}
+
 	onMount(() => {
 		if (!browser) return;
 
@@ -621,6 +659,7 @@
 		document.addEventListener('click', handleClickOutside);
 		window.addEventListener('scroll', handleScroll, { passive: true });
 		window.addEventListener('buildos:open-agent-chat', handleOpenAgentChatEvent);
+		document.addEventListener('visibilitychange', handleVisibilityChange);
 
 		return () => {
 			themeObserver.disconnect();
@@ -628,6 +667,7 @@
 			document.removeEventListener('click', handleClickOutside);
 			window.removeEventListener('scroll', handleScroll);
 			window.removeEventListener('buildos:open-agent-chat', handleOpenAgentChatEvent);
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
 		};
 	});
 </script>

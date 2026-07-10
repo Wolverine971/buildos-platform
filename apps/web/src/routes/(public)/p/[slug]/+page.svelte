@@ -7,12 +7,14 @@
 	import OwnerBar from '$lib/components/public-page/OwnerBar.svelte';
 	import AuthorIndex from '$lib/components/public-page/AuthorIndex.svelte';
 	import PublicPageComments from '$lib/components/public-page/PublicPageComments.svelte';
+	import { buildPublicAuthorSeo } from '$lib/utils/public-author-seo';
 
 	let { data } = $props();
 
 	// Early branch: this slug is actually a username-only URL (/p/{user_name})
 	// and we're rendering the author's public-pages index instead of a page.
 	const authorIndexData = $derived(data.authorIndex);
+	const authorIndexSeo = $derived(authorIndexData ? buildPublicAuthorSeo(authorIndexData) : null);
 
 	const page = $derived(data.page);
 	const currentUser = $derived(data.currentUser ?? null);
@@ -98,6 +100,9 @@
 </script>
 
 {#if authorIndexData}
+	{#if authorIndexSeo}
+		<SEOHead {...authorIndexSeo} />
+	{/if}
 	<AuthorIndex data={authorIndexData} />
 {:else if page}
 	<SEOHead

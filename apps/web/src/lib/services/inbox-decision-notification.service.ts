@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/inbox-decision-notification.service.ts
 import { notificationStore } from '$lib/stores/notification.store';
 import { toastService } from '$lib/stores/toast.store';
+import { loadAiInboxCount } from '$lib/stores/aiInboxCount.store';
 
 type InboxDecisionSourceType =
 	| 'agent_run'
@@ -120,6 +121,7 @@ export function completeInboxDecisionNotification(
 	if (toastKind === 'error') toastService.error(message);
 	else if (toastKind === 'info') toastService.info(message);
 	else toastService.success(message);
+	void loadAiInboxCount({ force: true });
 
 	removeLater(notificationId, toastKind === 'error' ? ERROR_REMOVE_MS : COMPLETE_REMOVE_MS);
 }
@@ -138,5 +140,6 @@ export function failInboxDecisionNotification(notificationId: string, message: s
 		}
 	});
 	toastService.error(message);
+	void loadAiInboxCount({ force: true });
 	removeLater(notificationId, ERROR_REMOVE_MS);
 }

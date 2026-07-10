@@ -1,6 +1,7 @@
 // apps/web/src/routes/history/history-display.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	compactHistoryCount,
 	needsChatClassification,
 	normalizeHistoryText,
 	normalizeHistoryTopics,
@@ -12,6 +13,12 @@ import {
 const NOW = Date.parse('2026-04-24T15:20:00.000Z');
 
 describe('history display helpers', () => {
+	it('keeps dense mobile counts bounded', () => {
+		expect(compactHistoryCount(42)).toBe('42');
+		expect(compactHistoryCount(105)).toBe('99+');
+		expect(compactHistoryCount(1200, 999)).toBe('999+');
+	});
+
 	it('treats literal undefined values as missing display text', () => {
 		expect(normalizeHistoryText('undefined')).toBeNull();
 		expect(normalizeHistoryText(' null ')).toBeNull();

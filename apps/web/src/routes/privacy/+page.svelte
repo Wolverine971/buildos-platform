@@ -6,9 +6,9 @@
 
 <SEOHead
 	title="Privacy Policy - BuildOS | Data Protection & User Privacy"
-	description="BuildOS privacy policy: how we protect your data, handle project context securely, manage connected agents, and respect your privacy. GDPR compliant, encrypted, you own your content."
+	description="BuildOS privacy policy: how we protect your data, handle project context securely, manage connected agents, and give you control over optional analytics and marketing measurement."
 	canonical="https://build-os.com/privacy"
-	keywords="BuildOS privacy policy, data protection, GDPR compliance, user privacy, project context security, connected agents, OAuth connectors, data encryption, privacy rights"
+	keywords="BuildOS privacy policy, data protection, user privacy, analytics choices, project context security, connected agents, OAuth connectors, data encryption, privacy rights"
 	author="BuildOS"
 />
 
@@ -105,8 +105,9 @@
 							and scheduling information (only if you enable calendar integration)
 						</li>
 						<li class="text-muted-foreground">
-							<strong class="text-foreground">Usage Analytics:</strong> Page views and
-							user interactions via Google Analytics
+							<strong class="text-foreground">Usage Analytics:</strong> Anonymous traffic
+							and performance measurements through Vercel, plus optional product analytics
+							only when you allow them
 						</li>
 						<li class="text-muted-foreground">
 							<strong class="text-foreground">Technical Data:</strong> Login timestamps,
@@ -254,8 +255,16 @@
 							for sending notifications (only if you opt in to SMS notifications)
 						</li>
 						<li class="text-muted-foreground">
-							<strong class="text-foreground">Google Analytics:</strong>
-							Website usage analytics
+							<strong class="text-foreground">Vercel:</strong> Cookie-free aggregate web
+							analytics and performance measurements
+						</li>
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">PostHog:</strong> Optional product funnel
+							and page-view analytics after you allow product analytics
+						</li>
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Meta:</strong> Optional advertising attribution
+							through Meta Pixel after you allow marketing measurement
 						</li>
 						<li class="text-muted-foreground">
 							<strong class="text-foreground">AI Providers:</strong> OpenAI, Anthropic,
@@ -267,6 +276,44 @@
 							them
 						</li>
 					</ul>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="text-2xl font-bold text-foreground mb-4">Tracking and Your Choices</h2>
+				<div class="prose dark:prose-invert max-w-none">
+					<ul class="space-y-2 text-muted-foreground">
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Essential storage:</strong> BuildOS uses
+							authentication cookies and local preferences needed for sign-in, security,
+							theme, and remembering your tracking choice.
+						</li>
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Operational measurement:</strong> Vercel
+							Web Analytics uses anonymous daily identifiers without cookies. Speed Insights
+							collects aggregate performance signals. These tools are not connected to
+							your BuildOS user identity.
+						</li>
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Optional product analytics:</strong> If you
+							allow it, PostHog stores analytics state in local storage and BuildOS keeps
+							a first-party identifier used for one daily visitor count. Broad interaction
+							autocapture and session recording are disabled.
+						</li>
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Optional marketing measurement:</strong>
+							Meta Pixel loads only after you allow marketing measurement. The no-JavaScript
+							fallback pixel is not used because it cannot honor your choice.
+						</li>
+					</ul>
+					<p class="text-muted-foreground mt-4">
+						Optional tools remain off until you choose. You can change or withdraw that
+						choice at any time through <strong class="text-foreground"
+							>Privacy choices</strong
+						>
+						in the site footer. Global Privacy Control and browser Do Not Track signals keep
+						all optional tracking off.
+					</p>
 				</div>
 			</section>
 
@@ -393,7 +440,7 @@
 
 			<!-- Last Updated -->
 			<div class="border-t border-border pt-6">
-				<p class="text-sm text-muted-foreground">Last updated: May 13, 2026</p>
+				<p class="text-sm text-muted-foreground">Last updated: July 10, 2026</p>
 			</div>
 		</div>
 

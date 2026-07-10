@@ -1,7 +1,30 @@
 <!-- apps/web/src/routes/road-map/+page.svelte -->
 <script lang="ts">
-	import { CircleCheck, Wrench, Calendar, Sparkles, MessageCircle } from 'lucide-svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
+	import {
+		ArrowRight,
+		Bot,
+		Calendar,
+		CheckCircle2,
+		CircleCheck,
+		Clock3,
+		Compass,
+		FolderTree,
+		Globe,
+		History,
+		ListChecks,
+		MessageCircle,
+		MessageSquare,
+		Mic,
+		Network,
+		Repeat,
+		Search,
+		ShieldCheck,
+		Smartphone,
+		Sparkles,
+		Users
+	} from '$lib/icons/lucide';
+	import type { Icon } from '$lib/icons/lucide';
 	import {
 		DEFAULT_ORGANIZATION_ID,
 		DEFAULT_ORGANIZATION_LOGO_IMAGE,
@@ -9,22 +32,145 @@
 		SITE_URL
 	} from '$lib/constants/seo';
 
-	let innerWidth = $state(0);
-	let isMobile = $derived(innerWidth < 768);
+	type RoadmapItem = {
+		title: string;
+		description: string;
+		icon: Icon;
+	};
+
+	const shipped: RoadmapItem[] = [
+		{
+			title: 'Capture and structure',
+			description:
+				'Turn rough text or voice into connected projects, goals, plans, tasks, documents, and context.',
+			icon: Mic
+		},
+		{
+			title: 'Persistent project memory',
+			description:
+				'Keep activity, source context, document history, relationships, and daily briefs attached to the work.',
+			icon: History
+		},
+		{
+			title: 'Project-aware chat',
+			description:
+				'Explore, update, audit, and forecast work with the relevant project, task, document, brief, and calendar context.',
+			icon: MessageSquare
+		},
+		{
+			title: 'Durable agent work',
+			description:
+				'Delegate bounded work to background Agent Runs that can be watched, steered, scheduled, and reviewed before commit.',
+			icon: Bot
+		},
+		{
+			title: 'Graph and collaboration',
+			description:
+				'Visualize how work connects, invite project members with scoped roles, and publish selected documents to the web.',
+			icon: Network
+		},
+		{
+			title: 'Connected workflows',
+			description:
+				'Sync with Google Calendar, search across structured work, repeat tasks, and connect outside agents through MCP.',
+			icon: Calendar
+		}
+	];
+
+	const now: RoadmapItem[] = [
+		{
+			title: 'Make the first session click',
+			description:
+				'Show the messy-input-to-structure transformation, prove that project memory persists, and make the first brief immediately useful.',
+			icon: Sparkles
+		},
+		{
+			title: 'Roll out proactive project review',
+			description:
+				'Finish production verification for AI Inbox, project review loops, and evidence-backed Complete Project Audits.',
+			icon: ShieldCheck
+		},
+		{
+			title: 'Harden agent work',
+			description:
+				'Complete live UI and calendar verification for Agent Runs and scheduled Operatives, then tighten reliability and safety.',
+			icon: CheckCircle2
+		},
+		{
+			title: 'Choose the paid model deliberately',
+			description:
+				'Billing is not active. We will define the paid experience and communicate it clearly before any account can be charged.',
+			icon: Clock3
+		}
+	];
+
+	const next: RoadmapItem[] = [
+		{
+			title: 'Public project discovery',
+			description:
+				'Build on public document pages with a showcase, cloneable project structures, and stronger creator attribution.',
+			icon: Globe
+		},
+		{
+			title: 'Recurring work, version two',
+			description:
+				'Edit schedules, regenerate future instances, and create the next occurrence without maintaining a large batch.',
+			icon: Repeat
+		},
+		{
+			title: 'Easier agent connections',
+			description:
+				'Package the local MCP bridge, improve connector setup, and make scoped BuildOS context easier to use from outside tools.',
+			icon: FolderTree
+		},
+		{
+			title: 'User-controlled review cadence',
+			description:
+				'Give people clearer control over audit history, review appetite, notifications, and when proactive suggestions appear.',
+			icon: ListChecks
+		}
+	];
+
+	const exploring: RoadmapItem[] = [
+		{
+			title: 'Stalled-project intervention',
+			description:
+				'Notice meaningful drift or blocked work early, then offer a grounded next move without creating notification noise.',
+			icon: Compass
+		},
+		{
+			title: 'Cross-project intelligence',
+			description:
+				'Help people see competing commitments and shared context across projects without turning BuildOS into enterprise portfolio software.',
+			icon: Search
+		},
+		{
+			title: 'Deeper user-controlled automation',
+			description:
+				'Let trusted agents act on recurring project work with explicit scope, observable runs, and review when the stakes require it.',
+			icon: Users
+		},
+		{
+			title: 'Native mobile, if the evidence supports it',
+			description:
+				'The responsive web app comes first. Native iOS and Android remain an option when mobile usage justifies a second client.',
+			icon: Smartphone
+		}
+	];
 </script>
 
 <SEOHead
-	title="BuildOS Roadmap | Thinking Environment Timeline"
-	description="Detailed BuildOS development roadmap with monthly milestones. Track our progress building a thinking environment for complex work and durable project memory."
+	title="BuildOS Roadmap | Shipped, Now, Next, and Exploring"
+	description="See what BuildOS has shipped, what we are improving now, what comes next, and which longer-term ideas we are exploring for project memory and agent-assisted work."
 	canonical="https://build-os.com/road-map"
-	keywords="BuildOS roadmap, thinking environment development, project management roadmap, project memory roadmap, project context roadmap"
+	keywords="BuildOS roadmap, thinking environment roadmap, project memory, agent work, project context, BuildOS features"
 	jsonLd={{
 		'@context': 'https://schema.org',
 		'@type': 'Article',
 		'@id': `${SITE_URL}/road-map#article`,
-		headline: 'BuildOS Development Roadmap',
+		headline: 'BuildOS Roadmap',
 		description:
-			'Detailed monthly timeline for BuildOS development - the thinking environment for complex work',
+			'What BuildOS has shipped, what is improving now, what comes next, and which longer-term ideas are being explored.',
 		author: {
 			'@type': 'Organization',
 			'@id': DEFAULT_ORGANIZATION_ID,
@@ -39,501 +185,301 @@
 			logo: DEFAULT_ORGANIZATION_LOGO_IMAGE
 		},
 		datePublished: '2025-07-21',
-		dateModified: '2025-08-28',
+		dateModified: '2026-07-10',
 		mainEntityOfPage: `${SITE_URL}/road-map`
 	}}
 />
 
-<svelte:window bind:innerWidth />
-
 <div class="min-h-screen bg-background text-foreground">
-	<!-- Header -->
-	<section class="pt-24 pb-12 px-4 sm:px-6 lg:px-8">
-		<div class="max-w-4xl mx-auto">
-			<div class="flex items-center gap-4 mb-8">
-				<img
-					src="/brain-bolt.webp"
-					alt="BuildOS"
-					class="w-12 h-12 rounded-xl shadow-ink"
-					width="48"
-					height="48"
-				/>
-				<div>
-					<h1 class="text-4xl md:text-5xl font-bold text-foreground">BuildOS Roadmap</h1>
-					<p class="text-muted-foreground mt-2">
-						<span class="micro-label text-accent">LAST UPDATED</span> August 10, 2025
-						{#if isMobile}
-							<br />
-						{/if}
-
-						<a
-							href="https://build-os.com/feedback"
-							class="text-accent hover:text-accent/80 transition-colors pressable"
-							>Got feedback? Report it here 📬</a
-						>
-					</p>
+	<section
+		class="border-b border-border bg-muted atmo atmo-med"
+		aria-labelledby="roadmap-heading"
+	>
+		<div class="mx-auto max-w-7xl px-2 py-12 sm:px-4 sm:py-16 lg:px-6 lg:py-20">
+			<div class="mx-auto max-w-4xl text-center">
+				<div class="mb-5 flex justify-center">
+					<div
+						class="flex h-16 w-16 items-center justify-center tx tx-frame tx-weak wt-card"
+					>
+						<img
+							src="/brain-bolt.webp"
+							alt=""
+							class="h-11 w-11"
+							width="44"
+							height="44"
+						/>
+					</div>
 				</div>
-			</div>
 
-			<div
-				class="bg-card border border-accent/30 rounded-lg p-6 mb-8 shadow-ink tx tx-bloom tx-weak"
-			>
-				<h2 class="text-lg font-semibold mb-3 text-foreground">🎯 Mission</h2>
-				<p class="text-muted-foreground">
-					Build the thinking environment for complex work. Users talk through rough input,
-					BuildOS structures the project, and the work stays connected as memory
-					compounds.
+				<p class="micro-label mb-3 text-accent">PUBLIC ROADMAP · UPDATED JULY 10, 2026</p>
+				<h1
+					id="roadmap-heading"
+					class="mx-auto max-w-4xl text-3xl font-semibold leading-tight text-pretty sm:text-5xl"
+				>
+					What BuildOS has shipped—and what comes next.
+				</h1>
+				<p
+					class="mx-auto mt-5 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base"
+				>
+					BuildOS is becoming a thinking environment where rough input becomes structured
+					work, project memory compounds, and people and agents operate from the same
+					context.
 				</p>
 			</div>
 
-			<!-- Status Legend -->
-			<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-				<div class="flex items-center gap-2">
-					<CircleCheck class="w-5 h-5 text-success" />
-					<span class="text-sm font-medium text-foreground">Live</span>
+			<div
+				class="mx-auto mt-8 grid max-w-4xl gap-2 sm:grid-cols-4"
+				aria-label="Roadmap status guide"
+			>
+				<div
+					class="flex min-w-0 items-center gap-2 rounded-lg border border-success/30 bg-success/10 px-3 py-2.5"
+				>
+					<CircleCheck class="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+					<span class="text-sm font-medium text-foreground">Shipped</span>
 				</div>
-				<div class="flex items-center gap-2">
-					<Wrench class="w-5 h-5 text-warning" />
-					<span class="text-sm font-medium text-foreground">In Progress</span>
+				<div
+					class="flex min-w-0 items-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-3 py-2.5"
+				>
+					<Clock3 class="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+					<span class="text-sm font-medium text-foreground">Now</span>
 				</div>
-				<div class="flex items-center gap-2">
-					<Calendar class="w-5 h-5 text-accent" />
-					<span class="text-sm font-medium text-foreground">Planned</span>
+				<div
+					class="flex min-w-0 items-center gap-2 rounded-lg border border-info/30 bg-info/10 px-3 py-2.5"
+				>
+					<ArrowRight class="h-4 w-4 shrink-0 text-info" aria-hidden="true" />
+					<span class="text-sm font-medium text-foreground">Next</span>
 				</div>
-				<div class="flex items-center gap-2">
-					<Sparkles class="w-5 h-5 text-info" />
-					<span class="text-sm font-medium text-foreground">Future Vision</span>
+				<div
+					class="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2.5"
+				>
+					<Compass class="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+					<span class="text-sm font-medium text-foreground">Exploring</span>
 				</div>
 			</div>
 		</div>
 	</section>
 
-	<!-- Timeline -->
-	<section class="pb-20 px-4 sm:px-6 lg:px-8">
-		<div class="max-w-4xl mx-auto">
-			<!-- JULY 2025 - Current Features -->
-			<div class="mb-16">
-				<div class="flex items-center gap-3 mb-6">
-					<div class="w-3 h-3 bg-success rounded-full"></div>
-					<h2 class="text-2xl font-bold text-foreground">
-						July 2025 - Live & Functional
-					</h2>
-					<span
-						class="px-3 py-1 bg-success/10 text-success border border-success/20 rounded-full text-sm font-medium"
-					>
-						Current State
-					</span>
+	<section class="py-12 sm:py-16" aria-labelledby="shipped-heading">
+		<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6">
+			<header class="mb-6 max-w-3xl">
+				<div class="mb-2 flex items-center gap-2">
+					<CircleCheck class="h-5 w-5 shrink-0 text-success" aria-hidden="true" />
+					<p class="micro-label text-success">SHIPPED</p>
 				</div>
+				<h2 id="shipped-heading" class="text-2xl font-semibold sm:text-3xl">
+					The foundation is already working.
+				</h2>
+				<p class="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
+					These are current product capabilities, not future promises.
+				</p>
+			</header>
 
-				<div class="border-l-2 border-success/30 pl-6 ml-1.5 space-y-4">
-					<div
-						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-grain tx-weak"
+			<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+				{#each shipped as item}
+					{@const ItemIcon = item.icon}
+					<article
+						class="min-w-0 border border-border bg-card p-5 shadow-ink tx tx-grain tx-weak wt-paper"
 					>
-						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<CircleCheck class="w-4 h-4 text-success" />
-							Core Capture & Project System
-						</h3>
-						<ul class="space-y-2 text-sm text-muted-foreground">
-							<li>✅ Project Capture (text & voice)</li>
-							<li>
-								✅ AI Parsing Engine - automatically extracts projects, tasks, notes
-							</li>
-							<li>✅ Project Complexity Detection - breaks big goals into phases</li>
-							<li>
-								✅ Rich Project Context - AI-generated markdown for each project
-							</li>
-							<li>
-								✅ Voice-to-Action - convert voice notes into structured projects
-								and tasks
-							</li>
-							<li>✅ AI Summarization - actionable briefs for projects</li>
-							<li>
-								🔗 Context Linking - automatically connect related tasks, notes,
-								projects to the original captured context
-							</li>
-							<li>
-								📜 View project context history - see how project has evolved from
-								one session to the next
-							</li>
-						</ul>
-					</div>
-
-					<div
-						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-grain tx-weak"
-					>
-						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<CircleCheck class="w-4 h-4 text-success" />
-							Smart Task & Calendar Management
-						</h3>
-						<ul class="space-y-2 text-sm text-muted-foreground">
-							<li>
-								✅ Google Calendar Integration - sync tasks and view calendar
-								context
-							</li>
-							<li>
-								✅ Google Calendar Scheduling - schedules tasks around existing
-								events
-							</li>
-							<!-- <li>✅ Homepage Task Sync - tasks update in real-time</li> -->
-							<li>
-								✅ Improved Daily Briefs - actionable with links to projects, tasks,
-								and notes
-							</li>
-							<li>
-								✅ Task Visibility - view completed, scheduled and archived tasks
-							</li>
-							<!-- <li>✅ Faster Task/Note Updates - instant UI reflection</li> -->
-						</ul>
-					</div>
-
-					<div
-						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-grain tx-weak"
-					>
-						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<CircleCheck class="w-4 h-4 text-success" />
-							User Experience & Infrastructure
-						</h3>
-						<ul class="space-y-2 text-sm text-muted-foreground">
-							<li>
-								✅ Personalized Onboarding - adapts to goals and work style (more to
-								come)
-							</li>
-							<li>✅ User Accounts + Google OAuth - secure sign-in</li>
-							<li>✅ UI Themes (Light/Dark Mode)</li>
-						</ul>
-					</div>
-				</div>
-			</div>
-
-			<!-- AUGUST 2025 -->
-			<div class="mb-16">
-				<div class="flex items-center gap-3 mb-6">
-					<div class="w-3 h-3 bg-warning rounded-full"></div>
-					<h2 class="text-2xl font-bold text-foreground">August 2025</h2>
-					<span
-						class="px-3 py-1 bg-warning/10 text-warning border border-warning/20 rounded-full text-sm font-medium"
-					>
-						In Progress
-					</span>
-				</div>
-
-				<div class="border-l-2 border-warning/30 pl-6 ml-1.5 space-y-4">
-					<div
-						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-pulse tx-weak"
-					>
-						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<Wrench class="w-4 h-4 text-warning" />
-							User Experience Improvements
-						</h3>
-						<ul class="space-y-2 text-sm text-muted-foreground">
-							<!-- <li>
-								🛠 Responsive UI Overhaul - better mobile experience across screen
-								sizes
-							</li> -->
-							<li>
-								✅ Phase-to-Calendar Scheduling - automatically schedule entire
-								project phases
-							</li>
-							<li>
-								✅ Smart Time Blocking - BuildOS finds optimal work sessions for
-								tasks
-							</li>
-							<li>
-								🌀 Feedback Portal - public board to vote on features and track
-								progress
-							</li>
-							<li>
-								📋 Adjustable Briefs - customize the cadence and time of day you
-								want your briefs
-							</li>
-							<li>
-								🛠️ Task workbench- with a whole project as context, deep dive into a
-								task and flesh out the steps needed to complete the task
-							</li>
-						</ul>
-					</div>
-				</div>
-			</div>
-
-			<!-- SEPTEMBER 2025 -->
-			<div class="mb-16">
-				<div class="flex items-center gap-3 mb-6">
-					<div class="w-3 h-3 bg-accent rounded-full"></div>
-					<h2 class="text-2xl font-bold text-foreground">September 2025</h2>
-					<span
-						class="px-3 py-1 bg-accent/10 text-accent border border-accent/20 rounded-full text-sm font-medium"
-					>
-						Planned
-					</span>
-				</div>
-
-				<div class="border-l-2 border-accent/30 pl-6 ml-1.5 space-y-4">
-					<div
-						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-frame tx-weak"
-					>
-						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<Calendar class="w-4 h-4 text-accent" />
-							Enhanced Organization
-						</h3>
-						<ul class="space-y-2 text-sm text-muted-foreground">
-							<li>🏷️ Tagging & Search - organize and quickly find your data</li>
-							<li>🗣️ Project Brief interaction</li>
-							<li>⟳ Recurring Tasks & Projects - plan and automate your workflows</li>
-							<li>💲 Activate pricing gate- 7 day free trial</li>
-						</ul>
-					</div>
-
-					<div
-						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-frame tx-weak"
-					>
-						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<Calendar class="w-4 h-4 text-accent" />
-							Community & Integrations
-						</h3>
-						<ul class="space-y-2 text-sm text-muted-foreground">
-							<li>
-								👨‍👨‍👦‍👦 Discord Community - private group for feedback and early access
-							</li>
-							<li>💬 Live Beta Feedback Sessions - AMAs and roadmap walkthroughs</li>
-							<li>
-								🤲 Onboarding-Driven Suggestions - smart tips based on goals and
-								activity
-							</li>
-						</ul>
-					</div>
-				</div>
-			</div>
-
-			<!-- OCTOBER 2025 -->
-			<div class="mb-16">
-				<div class="flex items-center gap-3 mb-6">
-					<div class="w-3 h-3 bg-info rounded-full"></div>
-					<h2 class="text-2xl font-bold text-foreground">October 2025</h2>
-					<span
-						class="px-3 py-1 bg-info/10 text-info border border-info/20 rounded-full text-sm font-medium"
-					>
-						Next Phase
-					</span>
-				</div>
-
-				<div class="border-l-2 border-info/30 pl-6 ml-1.5 space-y-4">
-					<div
-						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-bloom tx-weak"
-					>
-						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<Sparkles class="w-4 h-4 text-info" />
-							Project Intelligence Engine (Beta)
-						</h3>
-						<ul class="space-y-2 text-sm text-muted-foreground">
-							<li>
-								🎯 Project Completion Scoring - AI analyzes likelihood of project
-								success
-							</li>
-							<li>
-								⏩ Proactive Project Prompts - AI detects gaps and asks clarifying
-								questions
-							</li>
-							<li>
-								🧪 Smart Project Synthesis - AI helps refine project scope and
-								details
-							</li>
-							<li>
-								⚔️ Conflict Detection - identify competing priorities across
-								projects
-							</li>
-							<li>📝 BuildOS homework- give BuildOS homework</li>
-						</ul>
-					</div>
-				</div>
-			</div>
-
-			<!-- NOVEMBER 2025 -->
-			<div class="mb-16">
-				<div class="flex items-center gap-3 mb-6">
-					<div class="w-3 h-3 bg-info rounded-full"></div>
-					<h2 class="text-2xl font-bold text-foreground">November 2025</h2>
-					<span
-						class="px-3 py-1 bg-info/10 text-info border border-info/20 rounded-full text-sm font-medium"
-					>
-						Advanced Features
-					</span>
-				</div>
-
-				<div class="border-l-2 border-info/30 pl-6 ml-1.5 space-y-4">
-					<div
-						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-bloom tx-weak"
-					>
-						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<Sparkles class="w-4 h-4 text-info" />
-							Predictive Project Management
-						</h3>
-						<ul class="space-y-2 text-sm text-muted-foreground">
-							<li>
-								🔮 Next Step Predictions - AI suggests what to do next based on
-								progress
-							</li>
-							<li>
-								📈 Timeline Optimization - AI adjusts schedules based on realistic
-								progress
-							</li>
-							<li>
-								🚧 Bottleneck Detection - identify and resolve project blockers
-								early
-							</li>
-						</ul>
-					</div>
-
-					<div
-						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-bloom tx-weak"
-					>
-						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<Sparkles class="w-4 h-4 text-info" />
-							Unified Interface Evolution
-						</h3>
-						<ul class="space-y-2 text-sm text-muted-foreground">
-							<li>
-								✅ Eliminate separate capture page - everything flows through
-								projects
-							</li>
-							<li>✅ Context-aware capture - knows which project you're updating</li>
-							<li>
-								🇼🇮🇵 Daily brief project updates - update projects through morning
-								brief
-							</li>
-						</ul>
-					</div>
-				</div>
-			</div>
-
-			<!-- DECEMBER 2025 -->
-			<div class="mb-16">
-				<div class="flex items-center gap-3 mb-6">
-					<div class="w-3 h-3 bg-accent rounded-full"></div>
-					<h2 class="text-2xl font-bold text-foreground">December 2025</h2>
-					<span
-						class="px-3 py-1 bg-accent/10 text-accent border border-accent/20 rounded-full text-sm font-medium"
-					>
-						Premium Launch
-					</span>
-				</div>
-
-				<div class="border-l-2 border-accent/30 pl-6 ml-1.5 space-y-4">
-					<div
-						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-thread tx-weak"
-					>
-						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<Sparkles class="w-4 h-4 text-accent" />
-							Premium Synthesis Features
-						</h3>
-						<ul class="space-y-2 text-sm text-muted-foreground">
-							<li>💎 Deep Project Analysis - comprehensive project optimization</li>
-							<li>💎 Strategic Recommendations - Strategic guidance</li>
-							<li>💎 Custom Synthesis Requests - on-demand project deep dives</li>
-							<li>💎 Multi-Project Portfolio Optimization</li>
-						</ul>
-						<div class="mt-3 p-3 bg-accent/10 border border-accent/20 rounded-lg">
-							<p class="text-sm text-foreground">
-								<strong>Tiered Model:</strong> Free tier includes basic task deduplication
-								and simple suggestions. Premium tier unlocks advanced AI synthesis and
-								proactive project management.
-							</p>
+						<div class="flex min-w-0 items-start gap-3">
+							<div
+								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-success/10"
+							>
+								<ItemIcon class="h-5 w-5 text-success" aria-hidden="true" />
+							</div>
+							<div class="min-w-0">
+								<h3 class="text-lg font-semibold text-foreground">{item.title}</h3>
+								<p class="mt-1 text-sm leading-6 text-muted-foreground">
+									{item.description}
+								</p>
+							</div>
 						</div>
-					</div>
-
-					<div
-						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-thread tx-weak"
-					>
-						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<Sparkles class="w-4 h-4 text-accent" />
-							Complete Life Integration
-						</h3>
-						<ul class="space-y-2 text-sm text-muted-foreground">
-							<li>🤖 AI Project Manager Mode - proactive reminders and guidance</li>
-							<li>🤖 Automated Status Updates and Reports</li>
-							<li>🤖 Hand-holding to Project Completion</li>
-							<li>🤖 Smart Intervention when projects stall</li>
-						</ul>
-					</div>
-				</div>
-			</div>
-
-			<!-- 2026+ FUTURE VISION -->
-			<div class="mb-16">
-				<div class="flex items-center gap-3 mb-6">
-					<div class="w-3 h-3 bg-accent rounded-full"></div>
-					<h2 class="text-2xl font-bold text-foreground">2026+ Future Vision</h2>
-					<span
-						class="px-3 py-1 bg-accent/10 text-accent border border-accent/20 rounded-full text-sm font-medium"
-					>
-						Long-term Vision
-					</span>
-				</div>
-
-				<div class="border-l-2 border-accent/30 pl-6 ml-1.5 space-y-4">
-					<div
-						class="bg-card rounded-lg p-4 border border-accent/30 shadow-ink tx tx-bloom tx-med"
-					>
-						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<Sparkles class="w-4 h-4 text-accent" />
-							AI Operating System for Projects
-						</h3>
-						<ul class="space-y-2 text-sm text-muted-foreground">
-							<li>🚀 Graph-Style Knowledge Mapping - visualize how ideas connect</li>
-							<li>
-								🚀 Task Dependency Chains - auto-schedule based on prerequisite
-								tasks
-							</li>
-							<li>🚀 Mobile App - native iOS/Android version</li>
-							<li>
-								🚀 Multi-Brain Workspaces - switch between personal & project modes
-							</li>
-							<li>
-								🚀 Agent Integration - third-party AI agents work with BuildOS
-								context (MCP server)
-							</li>
-						</ul>
-						<div class="mt-4 p-4 bg-muted border border-border rounded-lg">
-							<p class="text-sm font-medium text-foreground">
-								🎯 <strong>Ultimate Vision:</strong> BuildOS becomes the operating system
-								for complex project memory. Users bring rough ideas, BuildOS preserves
-								the context, and agent-assisted workflows operate against the same structure.
-							</p>
-						</div>
-					</div>
-				</div>
+					</article>
+				{/each}
 			</div>
 		</div>
 	</section>
 
-	<!-- Footer -->
-	<section class="py-16 px-4 sm:px-6 lg:px-8 bg-muted">
-		<div class="max-w-4xl mx-auto text-center">
-			<h2 class="text-3xl font-bold mb-4 text-foreground">Help Shape the Future</h2>
-			<p class="text-lg text-muted-foreground mb-8">
-				Start with real project context and share what should improve next. Your feedback
-				drives what we build.
-			</p>
+	<section class="border-y border-border bg-muted py-12 sm:py-16" aria-labelledby="now-heading">
+		<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6">
+			<header class="mb-6 max-w-3xl">
+				<div class="mb-2 flex items-center gap-2">
+					<Clock3 class="h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
+					<p class="micro-label text-accent">NOW</p>
+				</div>
+				<h2 id="now-heading" class="text-2xl font-semibold sm:text-3xl">
+					Make the system easier to trust and return to.
+				</h2>
+				<p class="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
+					The immediate work is activation, verification, reliability, and a clear
+					business model.
+				</p>
+			</header>
 
-			<div class="flex flex-col sm:flex-row gap-4 justify-center">
-				<a
-					href="/auth/register"
-					class="inline-flex items-center px-8 py-4 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors text-lg font-semibold shadow-ink pressable"
-				>
-					<Sparkles class="w-5 h-5 mr-3" />
-					Start in chat
-				</a>
-				<a
-					href="https://build-os.com/feedback"
-					class="inline-flex items-center px-8 py-4 border border-border text-foreground rounded-lg hover:bg-muted hover:border-accent transition-colors text-lg font-semibold shadow-ink pressable"
-				>
-					<MessageCircle class="w-5 h-5 mr-3" />
-					Share Feedback
-				</a>
+			<div class="grid gap-3 lg:grid-cols-2">
+				{#each now as item}
+					{@const ItemIcon = item.icon}
+					<article
+						class="min-w-0 border border-accent/30 bg-card p-5 shadow-ink tx tx-pulse tx-weak wt-paper"
+					>
+						<div class="flex min-w-0 items-start gap-3">
+							<div
+								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent/10"
+							>
+								<ItemIcon class="h-5 w-5 text-accent" aria-hidden="true" />
+							</div>
+							<div class="min-w-0">
+								<h3 class="text-lg font-semibold text-foreground">{item.title}</h3>
+								<p class="mt-1 text-sm leading-6 text-muted-foreground">
+									{item.description}
+								</p>
+							</div>
+						</div>
+					</article>
+				{/each}
 			</div>
+		</div>
+	</section>
 
-			<p class="text-sm text-muted-foreground mt-6">
-				No active billing • Direct founder access • Shape product direction
-			</p>
+	<section class="py-12 sm:py-16" aria-labelledby="next-heading">
+		<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6">
+			<header class="mb-6 max-w-3xl">
+				<div class="mb-2 flex items-center gap-2">
+					<ArrowRight class="h-5 w-5 shrink-0 text-info" aria-hidden="true" />
+					<p class="micro-label text-info">NEXT</p>
+				</div>
+				<h2 id="next-heading" class="text-2xl font-semibold sm:text-3xl">
+					Extend what is already proving useful.
+				</h2>
+				<p class="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
+					The next layer compounds public work, recurring workflows, connected agents, and
+					review controls.
+				</p>
+			</header>
+
+			<div class="grid gap-3 lg:grid-cols-2">
+				{#each next as item}
+					{@const ItemIcon = item.icon}
+					<article
+						class="min-w-0 border border-info/30 bg-card p-5 shadow-ink tx tx-thread tx-weak wt-paper"
+					>
+						<div class="flex min-w-0 items-start gap-3">
+							<div
+								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-info/10"
+							>
+								<ItemIcon class="h-5 w-5 text-info" aria-hidden="true" />
+							</div>
+							<div class="min-w-0">
+								<h3 class="text-lg font-semibold text-foreground">{item.title}</h3>
+								<p class="mt-1 text-sm leading-6 text-muted-foreground">
+									{item.description}
+								</p>
+							</div>
+						</div>
+					</article>
+				{/each}
+			</div>
+		</div>
+	</section>
+
+	<section
+		class="border-y border-border bg-muted py-12 sm:py-16"
+		aria-labelledby="exploring-heading"
+	>
+		<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6">
+			<header class="mb-6 max-w-3xl">
+				<div class="mb-2 flex items-center gap-2">
+					<Compass class="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+					<p class="micro-label">EXPLORING</p>
+				</div>
+				<h2 id="exploring-heading" class="text-2xl font-semibold sm:text-3xl">
+					Promising directions, without fake delivery dates.
+				</h2>
+				<p class="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
+					These ideas need stronger user evidence before they become commitments.
+				</p>
+			</header>
+
+			<div class="grid gap-3 lg:grid-cols-2">
+				{#each exploring as item}
+					{@const ItemIcon = item.icon}
+					<article
+						class="min-w-0 border border-border bg-card p-5 shadow-ink tx tx-bloom tx-weak wt-ghost"
+					>
+						<div class="flex min-w-0 items-start gap-3">
+							<div
+								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted"
+							>
+								<ItemIcon
+									class="h-5 w-5 text-muted-foreground"
+									aria-hidden="true"
+								/>
+							</div>
+							<div class="min-w-0">
+								<h3 class="text-lg font-semibold text-foreground">{item.title}</h3>
+								<p class="mt-1 text-sm leading-6 text-muted-foreground">
+									{item.description}
+								</p>
+							</div>
+						</div>
+					</article>
+				{/each}
+			</div>
+		</div>
+	</section>
+
+	<section class="py-12 sm:py-16" aria-labelledby="boundaries-heading">
+		<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6">
+			<div
+				class="mx-auto max-w-4xl border border-border bg-card p-5 shadow-ink tx tx-frame tx-weak wt-card sm:p-7"
+			>
+				<p class="micro-label mb-2 text-accent">DELIBERATE BOUNDARIES</p>
+				<h2 id="boundaries-heading" class="text-2xl font-semibold sm:text-3xl">
+					What we are not promising.
+				</h2>
+				<p class="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
+					BuildOS is not trying to become heavyweight portfolio software, fabricate a
+					percentage chance of success, or silently rewrite your schedule. We prefer
+					evidence-backed project health, lightweight dependencies, visible agent work,
+					and user-controlled changes.
+				</p>
+			</div>
+		</div>
+	</section>
+
+	<section
+		class="border-t border-border bg-muted py-12 sm:py-16"
+		aria-labelledby="feedback-heading"
+	>
+		<div class="mx-auto max-w-7xl px-2 text-center sm:px-4 lg:px-6">
+			<div class="mx-auto max-w-3xl">
+				<p class="micro-label mb-2 text-accent">HELP SHAPE THE ROADMAP</p>
+				<h2 id="feedback-heading" class="text-2xl font-semibold sm:text-3xl">
+					Tell us where your work still breaks down.
+				</h2>
+				<p
+					class="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base"
+				>
+					The most useful feedback starts with a real project: what you tried, what stayed
+					scattered, and what would have helped you move forward.
+				</p>
+
+				<div class="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+					<a
+						href="/auth/register"
+						class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-accent bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-auto"
+					>
+						<Sparkles class="h-4 w-4 shrink-0" aria-hidden="true" />
+						Start with a project
+					</a>
+					<a
+						href="/feedback"
+						class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-ink pressable transition-colors hover:border-accent hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-auto"
+					>
+						<MessageCircle class="h-4 w-4 shrink-0" aria-hidden="true" />
+						Share feedback
+					</a>
+				</div>
+			</div>
 		</div>
 	</section>
 </div>

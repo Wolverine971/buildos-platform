@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	buildPackCards,
 	buildPackLaunchPrompt,
+	buildDomainDiscoveryCards,
 	buildPreviewSkillLaunchPrompt,
 	buildSkillLaunchPrompt,
 	getFamilyId,
@@ -42,6 +43,42 @@ describe('skill gallery discovery helpers', () => {
 		expect(family).toMatchObject({
 			id: 'cold-outreach',
 			name: 'Cold Outreach'
+		});
+	});
+
+	it('includes preview-first domains without requiring a published skill', () => {
+		const [domain] = buildDomainDiscoveryCards(
+			[],
+			[
+				{
+					publication_status: 'preview',
+					slug: 'project-creation',
+					title: 'Project Creation',
+					description: 'Frame a project.',
+					runtime_skill_id: 'project_creation',
+					domain_id: 'planning-and-ops',
+					family: 'Project Operations',
+					family_start: true,
+					output_shapes: ['project brief'],
+					workflow: ['Frame the work.'],
+					use_cases: ['Start a project.'],
+					guardrails: ['Do not overbuild.'],
+					starter_prompts: ['Help me frame this project.'],
+					trust: {
+						eval_status: 'not-covered',
+						last_updated: '2026-07-10',
+						safety_notes: ['Editable draft only.']
+					}
+				}
+			]
+		);
+
+		expect(domain).toMatchObject({
+			id: 'planning-and-ops',
+			name: 'Planning And Ops',
+			startPreviewRuntimeId: 'project_creation',
+			skills: [],
+			previews: [expect.objectContaining({ runtime_skill_id: 'project_creation' })]
 		});
 	});
 

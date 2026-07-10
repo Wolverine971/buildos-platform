@@ -5,7 +5,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/sv
 import ChangeSetReview from './ChangeSetReview.svelte';
 import type { ChangeSet } from '@buildos/shared-types';
 
-const { toastWarningMock, notifyDataMutationMock } = vi.hoisted(() => ({
+const { loadAiInboxCountMock, toastWarningMock, notifyDataMutationMock } = vi.hoisted(() => ({
+	loadAiInboxCountMock: vi.fn(),
 	toastWarningMock: vi.fn(),
 	notifyDataMutationMock: vi.fn()
 }));
@@ -21,6 +22,10 @@ vi.mock('$lib/stores/toast.store', () => ({
 
 vi.mock('$lib/stores/projectDataMutations', () => ({
 	notifyDataMutation: notifyDataMutationMock
+}));
+
+vi.mock('$lib/stores/aiInboxCount.store', () => ({
+	loadAiInboxCount: loadAiInboxCountMock
 }));
 
 const changeSet: ChangeSet = {
@@ -84,6 +89,7 @@ describe('ChangeSetReview', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Apply 1 change' }));
 
 		await waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1));
+		expect(loadAiInboxCountMock).toHaveBeenCalledWith({ force: true });
 		expect(onChat).not.toHaveBeenCalled();
 		expect(toastWarningMock).toHaveBeenCalledWith(
 			'Applied 0, 1 failed, 0 rejected. Use Chat for follow-up.'

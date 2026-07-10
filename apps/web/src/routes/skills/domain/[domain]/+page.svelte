@@ -28,6 +28,7 @@
 		Package,
 		PlayCircle,
 		Search,
+		Sparkles,
 		Target,
 		Workflow,
 		X
@@ -37,9 +38,10 @@
 		getAgentFilePath,
 		getDisplayTitle,
 		getFamilyPath,
-		getNumericStat,
 		getOutputShapes,
 		getPackPath,
+		getPreviewSearchText,
+		getPreviewSkillPath,
 		getSearchText,
 		getSkillFamily,
 		getSkillPath,
@@ -54,6 +56,7 @@
 	let { data }: { data: PageData } = $props();
 
 	type Skill = PageData['domain']['skills'][number];
+	type Preview = PageData['domain']['previews'][number];
 
 	let query = $state('');
 
@@ -61,11 +64,9 @@
 	let postBySlug = $derived(buildPostBySlug(data.posts));
 	let normalizedQuery = $derived(normalizeSearchText(query));
 	let featuredSkill = $derived(data.featuredSkill as Skill | null);
-	let totalReferences = $derived(
-		domain.skills.reduce((total, skill) => total + skill.references.length, 0)
-	);
-	let totalSources = $derived(
-		domain.skills.reduce((total, skill) => total + getNumericStat(skill, 'sources'), 0)
+	let featuredPreview = $derived(data.featuredPreview as Preview | null);
+	let previewByRuntimeId = $derived(
+		new Map(domain.previews.map((preview) => [preview.runtime_skill_id, preview]))
 	);
 	let filteredSkills = $derived.by(() => {
 		if (!normalizedQuery) return domain.skills;
@@ -76,6 +77,26 @@
 		});
 	});
 	let filteredFamilies = $derived(groupSkillsByFamily(filteredSkills));
+	let filteredPreviews = $derived.by(() => {
+		if (!normalizedQuery) return domain.previews;
+		return domain.previews.filter((preview) =>
+			normalizeSearchText(getPreviewSearchText(preview)).includes(normalizedQuery)
+		);
+	});
+	let filteredPreviewFamilies = $derived(
+		data.previewFamilies
+			.map((family) => ({
+				...family,
+				previews: family.previews.filter((preview) =>
+					filteredPreviews.some(
+						(filteredPreview) =>
+							filteredPreview.runtime_skill_id === preview.runtime_skill_id
+					)
+				)
+			}))
+			.filter((family) => family.previews.length > 0)
+	);
+	let totalMatches = $derived(filteredSkills.length + filteredPreviews.length);
 
 	function clearSearch() {
 		query = '';
@@ -85,8 +106,28 @@
 		return `family-${normalizeSearchText(name).replace(/\s+/g, '-') || 'skills'}`;
 	}
 
+	function getPreviewHierarchyLabel(preview: Preview): string {
+		if (!preview.parent_id) return 'Root workflow';
+		const parent = previewByRuntimeId.get(preview.parent_id);
+		return parent ? `Child of ${parent.title}` : 'Child workflow';
+	}
+
 	function generateJsonLd() {
 		const domainUrl = `${SITE_URL}/skills/domain/${domain.id}`;
+		const entries = [
+			...domain.skills.map((skill) => ({
+				name: getDisplayTitle(skill),
+				description: skill.description,
+				url: `${SITE_URL}${getSkillPath(skill)}`,
+				genre: humanize(skill.skill_type)
+			})),
+			...domain.previews.map((preview) => ({
+				name: preview.title,
+				description: preview.description,
+				url: `${SITE_URL}${getPreviewSkillPath(preview)}`,
+				genre: 'Reviewed Preview'
+			}))
+		];
 		return JSON.stringify(
 			{
 				'@context': 'https://schema.org',
@@ -104,16 +145,13 @@
 				},
 				mainEntity: {
 					'@type': 'ItemList',
-					numberOfItems: domain.skills.length,
-					itemListElement: domain.skills.map((skill, index) => ({
+					numberOfItems: entries.length,
+					itemListElement: entries.map((entry, index) => ({
 						'@type': 'ListItem',
 						position: index + 1,
 						item: {
 							'@type': 'CreativeWork',
-							name: getDisplayTitle(skill),
-							description: skill.description,
-							url: `${SITE_URL}${getSkillPath(skill)}`,
-							genre: humanize(skill.skill_type)
+							...entry
 						}
 					}))
 				}
@@ -210,6 +248,21 @@
 								<BookOpen class="h-4 w-4" />
 								Open start skill
 							</a>
+						{:else if featuredPreview}
+							<a
+								href={getTryInBuildOsPath(featuredPreview)}
+								class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-accent bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>
+								<PlayCircle class="h-4 w-4" />
+								Try start preview
+							</a>
+							<a
+								href={getPreviewSkillPath(featuredPreview)}
+								class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-4 text-sm font-semibold text-foreground shadow-ink transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>
+								<Sparkles class="h-4 w-4" />
+								Open start preview
+							</a>
 						{/if}
 					</div>
 				</div>
@@ -218,26 +271,26 @@
 					<div
 						class="rounded-lg border border-border bg-background/85 p-3 shadow-ink-inner"
 					>
-						<p class="text-xs text-muted-foreground">Skills</p>
+						<p class="text-xs text-muted-foreground">Published</p>
 						<p class="mt-1 text-2xl font-semibold">{domain.skills.length}</p>
 					</div>
 					<div
 						class="rounded-lg border border-border bg-background/85 p-3 shadow-ink-inner"
 					>
+						<p class="text-xs text-muted-foreground">Previews</p>
+						<p class="mt-1 text-2xl font-semibold">{domain.previews.length}</p>
+					</div>
+					<div
+						class="rounded-lg border border-border bg-background/85 p-3 shadow-ink-inner"
+					>
 						<p class="text-xs text-muted-foreground">Families</p>
-						<p class="mt-1 text-2xl font-semibold">{data.families.length}</p>
+						<p class="mt-1 text-2xl font-semibold">{data.familyCount}</p>
 					</div>
 					<div
 						class="rounded-lg border border-border bg-background/85 p-3 shadow-ink-inner"
 					>
-						<p class="text-xs text-muted-foreground">Sources</p>
-						<p class="mt-1 text-2xl font-semibold">{totalSources}</p>
-					</div>
-					<div
-						class="rounded-lg border border-border bg-background/85 p-3 shadow-ink-inner"
-					>
-						<p class="text-xs text-muted-foreground">Refs</p>
-						<p class="mt-1 text-2xl font-semibold">{totalReferences}</p>
+						<p class="text-xs text-muted-foreground">Paths</p>
+						<p class="mt-1 text-2xl font-semibold">{data.packs.length}</p>
 					</div>
 				</div>
 			</div>
@@ -314,20 +367,18 @@
 			<section aria-labelledby="domain-skills">
 				<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 					<div>
-						<p class="micro-label text-accent">Skills</p>
+						<p class="micro-label text-accent">Domain Catalog</p>
 						<h2 id="domain-skills" class="mt-1 text-2xl font-semibold text-foreground">
-							{filteredSkills.length}
-							{domain.shortName.toLowerCase()} skill{filteredSkills.length === 1
-								? ''
-								: 's'}
+							{totalMatches}
+							{domain.shortName.toLowerCase()} entr{totalMatches === 1 ? 'y' : 'ies'}
 						</h2>
 					</div>
 					<p class="text-sm text-muted-foreground">
-						Showing {filteredSkills.length} of {domain.skills.length}
+						Showing {totalMatches} of {domain.skills.length + domain.previews.length}
 					</p>
 				</div>
 
-				{#if filteredFamilies.length > 0}
+				{#if filteredFamilies.length > 0 || filteredPreviewFamilies.length > 0}
 					<div class="space-y-8">
 						{#each filteredFamilies as family}
 							<section
@@ -427,6 +478,100 @@
 								</div>
 							</section>
 						{/each}
+
+						{#each filteredPreviewFamilies as family}
+							<section
+								aria-labelledby={familyId(`preview-${family.name}`)}
+								class="border-t border-border pt-6 first:border-t-0 first:pt-0"
+							>
+								<div class="mb-3 flex items-center gap-2">
+									<Sparkles class="h-4 w-4 shrink-0 text-accent" />
+									<h3 id={familyId(`preview-${family.name}`)}>
+										<a
+											href={getFamilyPath(family)}
+											class="inline-flex min-h-[44px] items-center gap-2 text-lg font-semibold text-foreground transition-colors hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										>
+											{family.name}
+											<ArrowRight class="h-4 w-4" />
+										</a>
+									</h3>
+									<span
+										class="rounded-full border border-accent/50 bg-accent/10 px-2 py-1 text-2xs font-medium text-accent"
+									>
+										{family.previews.length} preview{family.previews.length ===
+										1
+											? ''
+											: 's'}
+									</span>
+								</div>
+
+								<div class="grid gap-3 xl:grid-cols-2">
+									{#each family.previews as preview}
+										<article
+											class="flex min-h-[19rem] flex-col rounded-lg border border-dashed border-accent/60 bg-card p-4 shadow-ink tx tx-frame tx-weak"
+										>
+											<div class="flex items-start justify-between gap-3">
+												<div class="flex min-w-0 items-center gap-2">
+													<span
+														class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-accent/50 bg-accent/10 text-accent"
+													>
+														<Sparkles class="h-4 w-4" />
+													</span>
+													<div class="min-w-0">
+														<p class="micro-label">
+															{getPreviewHierarchyLabel(preview)}
+														</p>
+														<h4
+															class="mt-1 line-clamp-2 text-lg font-semibold text-foreground"
+														>
+															{preview.title}
+														</h4>
+													</div>
+												</div>
+												<span
+													class="shrink-0 rounded-full bg-accent/10 px-2 py-1 text-2xs font-semibold text-accent"
+												>
+													Preview
+												</span>
+											</div>
+
+											<p
+												class="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground"
+											>
+												{preview.description}
+											</p>
+
+											<div class="mt-4 flex flex-wrap gap-1.5">
+												{#each preview.output_shapes.slice(0, 4) as output}
+													<span
+														class="rounded-full border border-border bg-background px-2 py-1 text-2xs font-medium text-muted-foreground"
+													>
+														{output}
+													</span>
+												{/each}
+											</div>
+
+											<div class="mt-auto grid grid-cols-2 gap-2 pt-5">
+												<a
+													href={getPreviewSkillPath(preview)}
+													class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-accent bg-accent px-3 text-sm font-semibold text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+												>
+													<BookOpen class="h-4 w-4" />
+													Open
+												</a>
+												<a
+													href={getTryInBuildOsPath(preview)}
+													class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+												>
+													<PlayCircle class="h-4 w-4" />
+													Try
+												</a>
+											</div>
+										</article>
+									{/each}
+								</div>
+							</section>
+						{/each}
 					</div>
 				{:else}
 					<div
@@ -489,6 +634,47 @@
 							>
 								<BookOpen class="h-4 w-4" />
 								Read skill page
+							</a>
+						</div>
+					</section>
+				{:else if featuredPreview}
+					<section
+						aria-labelledby="start-preview"
+						class="rounded-lg border border-dashed border-accent/60 bg-card p-4 shadow-ink tx tx-thread tx-weak"
+					>
+						<div class="flex items-start gap-3">
+							<span
+								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-accent/50 bg-accent/10 text-accent"
+							>
+								<Sparkles class="h-4 w-4" />
+							</span>
+							<div class="min-w-0">
+								<p class="micro-label text-accent">Start Preview</p>
+								<h2
+									id="start-preview"
+									class="mt-1 text-lg font-semibold text-foreground"
+								>
+									{featuredPreview.title}
+								</h2>
+							</div>
+						</div>
+						<p class="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">
+							{featuredPreview.description}
+						</p>
+						<div class="mt-4 grid gap-2">
+							<a
+								href={getTryInBuildOsPath(featuredPreview)}
+								class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-accent bg-accent px-3 text-sm font-semibold text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>
+								<PlayCircle class="h-4 w-4" />
+								Try in BuildOS
+							</a>
+							<a
+								href={getPreviewSkillPath(featuredPreview)}
+								class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>
+								<BookOpen class="h-4 w-4" />
+								Read preview page
 							</a>
 						</div>
 					</section>
@@ -560,7 +746,8 @@
 						</h2>
 					</div>
 					<p class="mt-2 text-sm leading-6 text-muted-foreground">
-						Every visible skill still exposes portable agent instructions.
+						Published skills expose portable agent files. Reviewed previews deliberately
+						keep those files private until publication review is complete.
 					</p>
 					<div class="mt-4 grid gap-2">
 						<a
@@ -579,7 +766,9 @@
 						</a>
 					</div>
 					<p class="mt-4 text-xs text-muted-foreground">
-						Catalog {data.catalogVersion}; {data.totalSkills} total public skills.
+						Catalog {data.catalogVersion}; {domain.skills.length} published · {domain
+							.previews.length}
+						reviewed previews in this domain.
 					</p>
 				</section>
 			</aside>

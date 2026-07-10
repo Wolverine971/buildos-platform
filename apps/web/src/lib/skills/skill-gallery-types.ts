@@ -7,6 +7,7 @@ export type DomainGuide = {
 	description: string;
 	promise: string;
 	startSlug?: string;
+	startPreviewRuntimeId?: string;
 	path: string[];
 };
 

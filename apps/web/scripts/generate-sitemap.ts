@@ -471,6 +471,9 @@ function generateSkillGalleryUrls(blogContext: BlogContext): SitemapUrl[] {
 			.map((post) => post.skillCategory)
 			.filter((domainId): domainId is string => Boolean(domainId))
 	);
+	for (const metadata of Object.values(previewSkillMetadataByRuntimeId)) {
+		domainIds.add(metadata.domainId);
+	}
 	for (const domainId of domainIds) {
 		urls.push({
 			loc: `${BASE_URL}/skills/domain/${domainId}`,
@@ -485,6 +488,9 @@ function generateSkillGalleryUrls(blogContext: BlogContext): SitemapUrl[] {
 			.map((post) => skillMetadataBySlug[post.slug]?.family)
 			.filter((familyName): familyName is string => Boolean(familyName))
 	);
+	for (const metadata of Object.values(previewSkillMetadataByRuntimeId)) {
+		familyNames.add(metadata.family);
+	}
 	for (const familyName of familyNames) {
 		urls.push({
 			loc: `${BASE_URL}/skills/family/${getFamilyId(familyName)}`,

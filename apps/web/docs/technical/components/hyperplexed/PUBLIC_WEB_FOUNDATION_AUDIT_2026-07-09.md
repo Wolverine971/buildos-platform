@@ -62,6 +62,20 @@ request work rather than a universal server-rendering failure.
    loads are corrected after hydration with an instant, non-animated scroll. Root static JS fell
    from 127,834 to 123,164 bytes gzip (87→83 modules); initial static CSS fell by about 0.5 KiB gzip.
    The closed Modal chunk is absent from the initial root graph. → P11+P20+P21
+8. **Five independent analytics systems loaded without one consent contract.** Vercel Analytics and
+   Speed Insights were statically initialized, Ahrefs and Clarity started after three seconds,
+   PostHog and the first-party daily visitor tracker wrote analytics state, and Meta Pixel loaded at
+   idle with an unconditional no-JavaScript fallback. **Shipped:** one versioned, reversible
+   preferences contract now separates product analytics from marketing measurement; optional tools
+   stay off until the visitor chooses, and Global Privacy Control or Do Not Track keeps both off.
+   Vercel's cookie-free Web Analytics and aggregate Speed Insights remain production-only operational
+   measurement and now load from an idle dynamic import. Ahrefs and Clarity were removed as
+   overlapping page/session trackers. PostHog retains automatic SPA page views and named funnel
+   events but disables broad autocapture, session replay, surveys, product tours, feature flags,
+   dead-click capture, Web Vitals capture, cookies, and external extension loading. Meta loads only
+   after marketing consent; its no-JavaScript pixel was removed because it could not honor that
+   choice. The privacy page now names the tools actually in use, and every footer exposes a
+   44px-target `Privacy choices` control. → P6+P13+P19
 
 ### Tier 1 — semantics and interaction
 
@@ -91,11 +105,9 @@ request work rather than a universal server-rendering failure.
 
 ## Next implementation sequence
 
-1. **Consolidate analytics and consent behavior.** Inventory Vercel analytics, Speed Insights,
-   Meta Pixel, and any duplicate page-view paths; align loading with the desired consent policy.
-2. **Finish dynamic SEO.** Add public skill and published `/p/*` sitemap sources, author-index SEO,
+1. **Finish dynamic SEO.** Add public skill and published `/p/*` sitemap sources, author-index SEO,
    and structured-data tests.
-3. **Run the visual polish pass.** Desktop/mobile and light/dark verification for home, pricing,
+2. **Run the visual polish pass.** Desktop/mobile and light/dark verification for home, pricing,
    about, blogs, and skills; then normalize CTA hierarchy, radius drift, micro-type, and hidden
    product proof using P2/P4/P5/P8/P13.
 
@@ -141,3 +153,22 @@ request work rather than a universal server-rendering failure.
   pipeline interpreted as invalid element syntax; this was an unrelated production-build blocker.
 - ⬜ Fresh deployed mobile Lighthouse is still required to compare LCP/TBT/request totals against
   the original 66-performance baseline.
+
+## Analytics and consent follow-up — 2026-07-10
+
+- ✅ First-visit production preview loads only Vercel Analytics and Speed Insights. PostHog, the
+  first-party `/api/visitors` request, and Meta Pixel remain absent until their matching choice.
+- ✅ Product-analytics-only loads one PostHog configuration/event path plus the first-party daily
+  visit. Meta, Ahrefs, Clarity, PostHog dead-click capture, and PostHog Web Vitals are absent.
+- ✅ Marketing measurement loads Meta Pixel only after opt-in. `Use necessary only` revokes both
+  optional categories, clears first-party analytics identifiers, and remains saved after reload.
+- ✅ The preferences panel and footer control were verified at 390×844 and 1440×900 in light and
+  dark mode: zero horizontal overflow, panel fully within the viewport, visible focus, and 44px
+  controls. The only browser warning was Meta rejecting localhost under its domain traffic rules.
+- ✅ Focused consent tests (2), touched-file ESLint (0 errors, 0 warnings), Prettier,
+  `pnpm check` (0 errors, 0 warnings), and the production Vite build pass. The build retains the
+  known optional Sharp platform-dependency warning.
+- ✅ The public root's static graph is 127,750 bytes gzip / 86 modules, including the visible
+  preferences UI, versus 123,164 bytes / 83 modules before consent controls. The Vercel packages,
+  PostHog SDK, visitor service, and Meta's external script all remain outside that static graph; the
+  roughly 4.5 KiB increase is the privacy-control UI and orchestration cost.

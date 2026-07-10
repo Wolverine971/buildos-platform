@@ -84,6 +84,10 @@
 		return changeItems.length;
 	}
 
+	function displayCount(count: number): string {
+		return count > 99 ? '99+' : String(count);
+	}
+
 	// Constructed once — Intl.DateTimeFormat allocation is expensive and this
 	// formats per visible item on every timeline update.
 	const timelineTimeFormatter = new Intl.DateTimeFormat(undefined, {
@@ -151,7 +155,11 @@
 </script>
 
 <div class="border-b border-border bg-card px-3 py-2 tx tx-frame tx-weak sm:px-4">
-	<div class="flex gap-1 overflow-x-auto" role="tablist" aria-label="Agent chat views">
+	<div
+		class="grid grid-cols-4 gap-1 sm:flex sm:overflow-x-auto"
+		role="tablist"
+		aria-label="Agent chat views"
+	>
 		{#each tabs as tab, index (tab.id)}
 			{@const count = countFor(tab.id)}
 			<button
@@ -163,8 +171,9 @@
 				aria-controls={tab.id === 'chat' || activeTab === tab.id
 					? `agent-chat-panel-${tab.id}`
 					: undefined}
+				aria-label={count === null ? tab.label : `${tab.label}, ${count} entries`}
 				tabindex={activeTab === tab.id ? 0 : -1}
-				class={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+				class={`inline-flex min-w-0 items-center justify-center gap-1 rounded-md border px-1 py-1.5 text-[0.65rem] font-semibold transition pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:shrink-0 sm:gap-1.5 sm:rounded-lg sm:px-3 sm:text-xs ${
 					activeTab === tab.id
 						? 'border-accent bg-accent text-accent-foreground shadow-ink'
 						: 'border-border bg-background/70 text-muted-foreground hover:border-accent hover:text-foreground'
@@ -172,16 +181,16 @@
 				onclick={() => onTabChange(tab.id)}
 				onkeydown={(event) => handleTabKeydown(event, index)}
 			>
-				<span>{tab.label}</span>
+				<span class="min-w-0 truncate">{tab.label}</span>
 				{#if count !== null}
 					<span
-						class={`rounded-full px-1.5 py-0.5 text-[0.65rem] ${
+						class={`shrink-0 rounded-full px-1 py-0.5 text-[0.65rem] sm:px-1.5 ${
 							activeTab === tab.id
 								? 'bg-accent-foreground/15 text-accent-foreground'
 								: 'bg-muted text-muted-foreground'
 						}`}
 					>
-						{count}
+						{displayCount(count)}
 					</span>
 				{/if}
 			</button>

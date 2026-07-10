@@ -7,6 +7,7 @@
 	import DocumentProposalDiff from './DocumentProposalDiff.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { notifyDataMutation } from '$lib/stores/projectDataMutations';
+	import { loadAiInboxCount } from '$lib/stores/aiInboxCount.store';
 	import type { ChangeSet, ProposedChange, ProposedChangeAction } from '@buildos/shared-types';
 
 	let {
@@ -152,6 +153,7 @@
 				toastService.error(payload?.error || 'Could not apply the changes');
 				return;
 			}
+			void loadAiInboxCount({ force: true });
 			const r = payload?.data;
 			const failed = r?.failed ?? 0;
 			if (failed > 0) {

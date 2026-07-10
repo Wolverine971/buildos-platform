@@ -73,6 +73,20 @@ calendar events blended with tasks — where every item is chattable and decidab
   are merged (event row represents the task).
 - A task due/starting at local midnight is treated as date-only → "Anytime today", not 12:00 AM.
 
+## Mobile
+
+Audited + hardened 2026-07-10. The page is mobile-first throughout (`sm:` breakpoints, wrapping
+chip rows, short "My day" button label, `min-w-0` header block, composer with `flex-1 min-w-0` +
+`shrink-0` send). Hardening pass fixed the flex-truncation pitfall class (a `truncate` flex child
+without `min-w-0` refuses to shrink and forces horizontal overflow at phone widths):
+`TodayAgendaRow` meta label, `WhatChangedSection` project-name link, entity-name span, and the
+actor cluster (which also got a `max-w-20 sm:max-w-40` cap for long external-caller names).
+
+Caveat: this was verified at the code level plus desktop rendering — a true 390px pixel pass
+couldn't be captured in-session (browser zoom pins the automation viewport at desktop width).
+Worth one manual check on a real phone after deploy: agenda rows (3 actions + done toggle),
+What-changed rows, and the voice capture composer.
+
 ## Deliberate scope cuts (follow-ups)
 
 - What-changed follow-ups: click-through from a receipt to the entity (currently the group links

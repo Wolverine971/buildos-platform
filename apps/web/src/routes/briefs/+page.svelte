@@ -100,6 +100,15 @@
 	let customEndDate = $state('');
 	let showFilters = $state(false);
 	let filteredBriefs = $state<DailyBrief[]>([]);
+	let activeBriefFilterCount = $derived(
+		(searchQuery.trim() ? 1 : 0) + (selectedDateRange !== 'today' ? 1 : 0)
+	);
+	let activeDateRangeLabel = $derived.by(() => {
+		if (selectedDateRange === 'week') return 'Last week';
+		if (selectedDateRange === 'month') return 'Last month';
+		if (selectedDateRange === 'custom') return 'Custom range';
+		return 'Today';
+	});
 
 	// Modal state
 	let showDeleteConfirmation = $state(false);
@@ -556,6 +565,21 @@
 		filteredBriefs = filtered;
 	}
 
+	function clearSearchFilter() {
+		searchQuery = '';
+	}
+
+	function clearDateRangeFilter() {
+		selectedDateRange = 'today';
+		customStartDate = '';
+		customEndDate = '';
+	}
+
+	function clearBriefFilters() {
+		clearSearchFilter();
+		clearDateRangeFilter();
+	}
+
 	function navigateDate(direction: 'prev' | 'next') {
 		const date = new Date(currentDate);
 		if (direction === 'prev') {
@@ -895,10 +919,14 @@
 								<Button
 									type="button"
 									onclick={() => (showFilters = !showFilters)}
-									variant="ghost"
+									variant={showFilters || activeBriefFilterCount > 0
+										? 'outline'
+										: 'ghost'}
 									size="sm"
 									class="p-2 text-muted-foreground hover:text-foreground"
 									title="Toggle filters"
+									aria-label="Toggle brief filters"
+									aria-expanded={showFilters}
 									icon={Filter}
 								></Button>
 							{/if}
@@ -924,6 +952,70 @@
 						</Button>
 					{/each}
 				</div>
+
+				{#if selectedView === 'list'}
+					<div class="mt-2 flex items-center gap-2 sm:hidden">
+						<Button
+							type="button"
+							onclick={() => (showFilters = !showFilters)}
+							variant={showFilters || activeBriefFilterCount > 0
+								? 'outline'
+								: 'ghost'}
+							size="sm"
+							class="flex-1 justify-start"
+							icon={Filter}
+							aria-expanded={showFilters}
+						>
+							Filters
+							{#if activeBriefFilterCount > 0}
+								<span
+									class="ml-auto rounded-full bg-accent/15 px-1.5 py-0.5 text-2xs font-semibold text-accent"
+								>
+									{activeBriefFilterCount}
+								</span>
+							{/if}
+						</Button>
+					</div>
+
+					{#if activeBriefFilterCount > 0}
+						<div
+							class="mt-2 flex min-w-0 flex-wrap items-center gap-1.5"
+							aria-label="Active brief filters"
+						>
+							{#if searchQuery.trim()}
+								<button
+									type="button"
+									onclick={clearSearchFilter}
+									class="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-2 py-1 text-2xs font-medium text-accent transition-colors hover:bg-accent/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									aria-label={`Clear search filter ${searchQuery.trim()}`}
+								>
+									<span class="max-w-48 truncate"
+										>Search: {searchQuery.trim()}</span
+									>
+									<X class="h-3 w-3 shrink-0" />
+								</button>
+							{/if}
+							{#if selectedDateRange !== 'today'}
+								<button
+									type="button"
+									onclick={clearDateRangeFilter}
+									class="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-2 py-1 text-2xs font-medium text-accent transition-colors hover:bg-accent/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									aria-label={`Clear date filter ${activeDateRangeLabel}`}
+								>
+									{activeDateRangeLabel}
+									<X class="h-3 w-3 shrink-0" />
+								</button>
+							{/if}
+							<button
+								type="button"
+								onclick={clearBriefFilters}
+								class="rounded-md px-1.5 py-1 text-2xs font-medium text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>
+								Clear filters
+							</button>
+						</div>
+					{/if}
+				{/if}
 
 				<!-- Mobile Date Navigation (for single view) -->
 				{#if selectedView === 'single'}

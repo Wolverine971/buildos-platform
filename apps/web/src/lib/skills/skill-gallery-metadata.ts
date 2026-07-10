@@ -58,6 +58,17 @@ export const domainGuides: DomainGuide[] = [
 		promise: 'Operate connected work tools without duplicate or destructive actions.',
 		startSlug: 'google-calendar-for-ai-agents-search-before-you-create',
 		path: ['Pick scope', 'Search first', 'Use exact IDs', 'Treat recurrence as high risk']
+	},
+	{
+		id: 'planning-and-ops',
+		name: 'Planning And Ops',
+		shortName: 'Planning',
+		description:
+			'Project setup, plans, tasks, documents, audits, and forecasts for durable execution.',
+		promise:
+			'Turn a messy initiative into structured work that stays understandable over time.',
+		startPreviewRuntimeId: 'project_creation',
+		path: ['Frame the project', 'Plan the work', 'Operate tasks and docs', 'Audit and forecast']
 	}
 ];
 
@@ -490,6 +501,122 @@ export const previewSkillMetadataByRuntimeId: Record<string, RuntimeSkillPreview
 		],
 		lastUpdated: '2026-07-10'
 	},
+	calm_software_design_review: {
+		displayTitle: 'Calm Software Design Review',
+		description:
+			'Audit cognitively demanding software for attention cost, manufactured engagement, notification load, and avoidable surface noise.',
+		domainId: 'product-and-design',
+		family: 'Interface Quality',
+		outputShapes: ['calm-surface audit', 'subtraction-first fixes', 'calm-vs-delight verdict'],
+		workflow: [
+			'Confirm the surface, audience state, and whether calm is the right product school.',
+			'Check motion, surface count, attention cost, defaults, notifications, states, and tone.',
+			'Run the door and disappearance tests, putting subtraction before additions.',
+			'Prioritize evidence-backed fixes and return a calm-vs-delight verdict.'
+		],
+		useCases: [
+			'Review a productivity or knowledge tool for distraction and anxiety.',
+			'Reduce notification fatigue, manufactured urgency, or gamification pressure.',
+			'Triage a feature list into main-quest work and attention-costly side quests.'
+		],
+		guardrails: [
+			'Do not apply calm-software rules to entertainment products whose users arrive under-stimulated.',
+			'Do not recommend animation, badges, or streaks as a substitute for product quality.',
+			'Do not produce findings without evidence from a specific surface, message, or roadmap item.'
+		],
+		starterPrompts: [
+			'Audit this product flow for attention cost, manufactured engagement, and unnecessary surface noise.',
+			'Review this roadmap through a calm-software lens and put subtraction-first fixes in priority order.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	delightful_product_review: {
+		displayTitle: 'Delightful Product Review',
+		description:
+			'Find and gate product-delight opportunities that serve real functional and emotional needs without covering broken basics.',
+		domainId: 'product-and-design',
+		family: 'Interface Quality',
+		outputShapes: ['motivator map', 'delight opportunity grid', 'pre-ship gate'],
+		workflow: [
+			'Confirm delight is appropriate for the audience and foundational usability is already sound.',
+			'Map functional, personal-emotional, and social-emotional motivators.',
+			'Place opportunities on the low, surface, deep, or anti-delight grid.',
+			'Gate ship-bound ideas for inclusion, feasibility, impact, familiarity, and durability.'
+		],
+		useCases: [
+			'Find meaningful delight opportunities in onboarding, empty states, or achievement moments.',
+			'Review a celebration, recap, animation, or personalization concept before launch.',
+			'Diagnose why a feature intended to feel delightful landed flat.'
+		],
+		guardrails: [
+			'Do not use delight to cover broken flows, weak hierarchy, or missing states.',
+			'Do not recommend context-blind or default-on celebrations.',
+			'Do not gamify products used under cognitive load or in burnout-, grief-, or ADHD-adjacent contexts.'
+		],
+		starterPrompts: [
+			'Find the strongest deep-delight opportunities in this journey and reject the anti-delight ideas.',
+			'Gate this celebration feature before ship for inclusion, context, impact, and habituation risk.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	design_system_architecture_review: {
+		displayTitle: 'Design System Architecture Review',
+		description:
+			'Review the product outcomes, taxonomy, tokens, governance, adoption, and migration model behind a design system.',
+		domainId: 'product-and-design',
+		family: 'Interface Quality',
+		outputShapes: ['system architecture map', 'adoption diagnosis', 'migration plan'],
+		workflow: [
+			'Name the product outcomes the system must make faster, safer, clearer, or more coherent.',
+			'Map atomic layers and test whether products and the system inform each other.',
+			'Review token tiers, component taxonomy, ownership, releases, intake, and accessibility.',
+			'Choose an evidence-backed migration path and next operating change.'
+		],
+		useCases: [
+			'Audit a component library or token system before expanding it.',
+			'Diagnose why teams are not adopting an existing design system.',
+			'Plan a flow-by-flow migration from duplicated UI patterns.'
+		],
+		guardrails: [
+			'Do not treat a design system as a component inventory without adoption and operations.',
+			'Do not standardize components before running or referencing an interface inventory.',
+			'Do not recommend raw-token consumption, governance theater, or component-by-component migration by default.'
+		],
+		starterPrompts: [
+			'Audit this design system for product outcomes, adoption gaps, taxonomy, governance, and migration risk.',
+			'Diagnose why this component library is not being adopted and propose the next operating change.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	usability_quick_research: {
+		displayTitle: 'Usability Quick Research',
+		description:
+			'Right-size user research around the decision, bet size, highest-risk unknown, and smallest credible method.',
+		domainId: 'product-and-design',
+		family: 'Interface Quality',
+		outputShapes: ['decision-first research plan', 'neutral test script', 'evidence synthesis'],
+		workflow: [
+			'Name the decision, current belief, success condition, and evidence that would change the team’s mind.',
+			'Size the bet from reversibility, cost of being wrong, and existing knowledge.',
+			'Rank unknowns and select the smallest credible qualitative or quantitative method.',
+			'Prepare neutral prompts, representative participants, analysis rules, and stop conditions.'
+		],
+		useCases: [
+			'Plan a lightweight usability or prototype test.',
+			'Reduce decision risk without creating a large research program.',
+			'Rewrite leading interview questions into prompts that can disconfirm a hypothesis.'
+		],
+		guardrails: [
+			'Do not choose a method before naming the decision, bet size, and unknowns.',
+			'Do not structure research to validate a decision that is already made.',
+			'Do not treat three users as sufficient for expensive, hard-to-reverse decisions.'
+		],
+		starterPrompts: [
+			'Right-size a research plan for this product decision and its highest-risk unknown.',
+			'Turn these leading questions into a neutral three-user usability test with explicit stop conditions.'
+		],
+		lastUpdated: '2026-07-10'
+	},
 	content_strategy_beyond_blogging: {
 		displayTitle: 'Content Strategy Beyond Blogging',
 		description:
@@ -720,6 +847,210 @@ export const previewSkillMetadataByRuntimeId: Record<string, RuntimeSkillPreview
 		starterPrompts: [
 			'Tailor this approved draft to the target medium while preserving its core claim.',
 			'Audit this adaptation and show where it still feels copied instead of platform-native.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	project_creation: {
+		displayTitle: 'Project Creation',
+		description:
+			'Turn an early idea into the smallest coherent BuildOS project without inventing unnecessary structure.',
+		domainId: 'planning-and-ops',
+		family: 'Project Operations',
+		familyStart: true,
+		outputShapes: ['project brief', 'minimum project payload', 'initial structure'],
+		workflow: [
+			'Clarify the intended outcome, constraints, and current evidence.',
+			'Distinguish what belongs in the project now from what can wait.',
+			'Draft the minimum viable project payload and initial structure.',
+			'Ask for confirmation before creating or mutating project data.'
+		],
+		useCases: [
+			'Turn a rough initiative into a new project.',
+			'Recover the essential structure from an overlong project brief.',
+			'Prepare a project payload for review before creation.'
+		],
+		guardrails: [
+			'Do not create a project until the user confirms the proposed payload.',
+			'Do not manufacture dates, owners, or requirements.',
+			'Do not overbuild plans, tasks, or documents during initial framing.'
+		],
+		starterPrompts: [
+			'Help me turn this idea into the smallest useful BuildOS project.',
+			'Draft a project brief and initial structure for review before anything is created.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	project_audit: {
+		displayTitle: 'Project Audit',
+		description:
+			'Inspect project structure and evidence, then prioritize the risks and gaps that matter most.',
+		domainId: 'planning-and-ops',
+		family: 'Project Operations',
+		outputShapes: ['structure audit', 'risk register', 'prioritized recommendations'],
+		workflow: [
+			'Define the audit question and inspect the available project evidence.',
+			'Check outcomes, plans, tasks, documents, ownership, and dependencies.',
+			'Separate observed facts from inferences and unknowns.',
+			'Rank the highest-leverage corrections and explain the evidence behind them.'
+		],
+		useCases: [
+			'Diagnose why a project feels stalled or incoherent.',
+			'Find missing ownership, dependencies, or decision records.',
+			'Prepare a project health review before replanning.'
+		],
+		guardrails: [
+			'Do not present missing evidence as a confirmed problem.',
+			'Do not rewrite project data during an audit without approval.',
+			'Do not bury critical risks inside an undifferentiated checklist.'
+		],
+		starterPrompts: [
+			'Audit this project and prioritize the structural risks blocking progress.',
+			'Review this project for missing ownership, evidence, dependencies, and decisions.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	project_forecast: {
+		displayTitle: 'Project Forecast',
+		description:
+			'Forecast project trajectory from current evidence, explicit assumptions, and schedule risks.',
+		domainId: 'planning-and-ops',
+		family: 'Project Operations',
+		outputShapes: ['trajectory forecast', 'assumptions map', 'next strategic moves'],
+		workflow: [
+			'Identify the forecast horizon, target outcome, and available evidence.',
+			'Map dependencies, pace, unresolved decisions, and capacity constraints.',
+			'Build scenarios with explicit assumptions and confidence levels.',
+			'Recommend the next moves that most improve the likely trajectory.'
+		],
+		useCases: [
+			'Assess whether a project is likely to hit a milestone.',
+			'Compare best-case, expected, and risk scenarios.',
+			'Choose interventions when a project may slip.'
+		],
+		guardrails: [
+			'Do not claim certainty when the project evidence is incomplete.',
+			'Do not invent progress, capacity, or delivery dates.',
+			'Do not confuse a forecast with a commitment.'
+		],
+		starterPrompts: [
+			'Forecast whether this project is on track and show the assumptions behind the answer.',
+			'Build three trajectory scenarios and recommend the next strategic moves.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	plan_management: {
+		displayTitle: 'Plan Management',
+		description:
+			'Create and maintain execution plans that expose sequence, dependencies, and update rules.',
+		domainId: 'planning-and-ops',
+		family: 'Project Operations',
+		outputShapes: ['execution plan', 'dependency map', 'update rules'],
+		workflow: [
+			'Confirm the outcome, planning horizon, and constraints.',
+			'Decompose the work into coherent phases and dependencies.',
+			'Define how progress, decisions, and changes should update the plan.',
+			'Review the proposed plan before writing changes.'
+		],
+		useCases: [
+			'Create a plan from an approved project brief.',
+			'Resequence work after a constraint or decision changes.',
+			'Make a vague roadmap executable.'
+		],
+		guardrails: [
+			'Do not imply dates or capacity that have not been confirmed.',
+			'Do not create duplicate plans when an existing plan should be updated.',
+			'Do not mutate project structure without showing the proposed changes.'
+		],
+		starterPrompts: [
+			'Turn this approved outcome into an execution plan with explicit dependencies.',
+			'Audit and resequence this plan after the latest constraint changed.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	task_management: {
+		displayTitle: 'Task Management',
+		description:
+			'Shape project work into clear tasks with ownership, timing, and relationships that remain maintainable.',
+		domainId: 'planning-and-ops',
+		family: 'Project Operations',
+		outputShapes: ['task map', 'ownership and schedule plan', 'relationship map'],
+		workflow: [
+			'Inspect the project outcome, plan, and existing tasks before adding work.',
+			'Define task boundaries, completion evidence, ownership, and timing.',
+			'Map dependencies and parent-child relationships.',
+			'Present the exact proposed task changes before applying them.'
+		],
+		useCases: [
+			'Break an approved plan into executable tasks.',
+			'Repair duplicate, vague, or disconnected task lists.',
+			'Clarify task ownership and dependency order.'
+		],
+		guardrails: [
+			'Do not create tasks before checking what already exists.',
+			'Do not infer assignees or deadlines without evidence.',
+			'Do not turn every idea into a task when a note or decision is more appropriate.'
+		],
+		starterPrompts: [
+			'Turn this approved plan into a task map with owners, timing, and dependencies.',
+			'Audit these tasks for duplication, vague completion criteria, and broken relationships.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	task_state_updates: {
+		displayTitle: 'Task State Updates',
+		description:
+			'Apply accurate task-state changes while keeping status, evidence, and related fields aligned.',
+		domainId: 'planning-and-ops',
+		family: 'Project Operations',
+		outputShapes: ['state-change plan', 'exact task update set', 'update summary'],
+		workflow: [
+			'Identify the exact task and the evidence that its state changed.',
+			'Choose the valid next state and any related field updates.',
+			'Preview the complete mutation set and check for conflicts.',
+			'Apply only approved changes and summarize the result.'
+		],
+		useCases: [
+			'Mark work started, blocked, completed, or reopened.',
+			'Keep state changes aligned with task descriptions and evidence.',
+			'Correct an inconsistent task state.'
+		],
+		guardrails: [
+			'Do not change state based on a guess or ambiguous progress language.',
+			'Do not update the wrong task when names are similar.',
+			'Do not report a mutation as complete until the result is confirmed.'
+		],
+		starterPrompts: [
+			'Prepare the exact state update for this task based on the work just completed.',
+			'Check this task state for consistency and propose the smallest correction.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	document_workspace: {
+		displayTitle: 'Document Workspace',
+		description:
+			'Create and reorganize project documents with deliberate hierarchy, linkage, and safe write behavior.',
+		domainId: 'planning-and-ops',
+		family: 'Project Operations',
+		outputShapes: ['document hierarchy plan', 'linkage map', 'safe action checklist'],
+		workflow: [
+			'Inspect the project and existing documents before creating or moving anything.',
+			'Choose the right document purpose, parent, position, and project links.',
+			'Preview the hierarchy or content mutation and check for duplication.',
+			'Apply approved writes and verify the resulting structure.'
+		],
+		useCases: [
+			'Create a project document in the correct location.',
+			'Reorganize an unclear document hierarchy.',
+			'Connect plans, decisions, tasks, and source documents.'
+		],
+		guardrails: [
+			'Do not create a duplicate document when an existing one should be updated.',
+			'Do not move or overwrite documents without explicit scope.',
+			'Do not treat links or hierarchy as decoration; preserve their operational meaning.'
+		],
+		starterPrompts: [
+			'Plan the right document hierarchy and links for this project before writing anything.',
+			'Audit this project workspace and propose a safe document reorganization.'
 		],
 		lastUpdated: '2026-07-10'
 	}

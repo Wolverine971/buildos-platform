@@ -21,6 +21,16 @@
 			"components": ["AgentChatModal", "GraphControls", "OntologyGraph", "NodeDetailsPanel"]
 		},
 		{
+			"file": "src/routes/today/+page.svelte",
+			"type": "page",
+			"components": [
+				"TaskEditModal",
+				"AgentChatModal",
+				"DashboardInboxModal",
+				"OverdueTaskTriageModal"
+			]
+		},
+		{
 			"file": "src/routes/time-blocks/+page.svelte",
 			"type": "page",
 			"components": [
@@ -30,16 +40,6 @@
 				"TimeBlockList",
 				"AvailableSlotList",
 				"CalendarConnectionOverlay"
-			]
-		},
-		{
-			"file": "src/routes/today/+page.svelte",
-			"type": "page",
-			"components": [
-				"TaskEditModal",
-				"AgentChatModal",
-				"DashboardInboxModal",
-				"OverdueTaskTriageModal"
 			]
 		},
 		{
@@ -71,7 +71,7 @@
 		{
 			"file": "src/lib/components/layout/Navigation.svelte",
 			"type": "component",
-			"components": ["AgentChatModal", "WorkPanel"]
+			"components": ["DashboardInboxModal", "AgentChatModal", "WorkPanel"]
 		},
 		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
@@ -294,6 +294,9 @@
 				"isActiveAgentRunStatus",
 				"agentRunsStore",
 				"activeAgentRunCount",
+				"workingAgentRunCount",
+				"agentRunNeedsInputCount",
+				"agentWorkAttentionCount",
 				"AgentRunsRealtimeService"
 			]
 		},
@@ -308,6 +311,12 @@
 			"type": "service",
 			"components": [],
 			"exports": ["BriefClientService"]
+		},
+		{
+			"file": "src/lib/services/browser-analytics.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["initializeBrowserAnalytics", "trackMetaPageView"]
 		},
 		{
 			"file": "src/lib/services/browser-push.service.ts",
@@ -504,6 +513,7 @@
 				"initPostHog",
 				"identifyUser",
 				"resetPostHogUser",
+				"disablePostHog",
 				"captureEvent",
 				"getFirstTouchAttribution"
 			]
@@ -621,6 +631,25 @@
 			"exports": ["TimeBlockService"]
 		},
 		{
+			"file": "src/lib/services/tracking-consent.ts",
+			"type": "service",
+			"components": [],
+			"exports": [
+				"TRACKING_PREFERENCES_STORAGE_KEY",
+				"TRACKING_PREFERENCES_CHANGED_EVENT",
+				"TRACKING_PREFERENCES_OPEN_EVENT",
+				"parseTrackingPreferences",
+				"detectBrowserPrivacySignal",
+				"getBrowserPrivacySignal",
+				"getStoredTrackingPreferences",
+				"getEffectiveTrackingPreferences",
+				"hasAnalyticsConsent",
+				"hasMarketingConsent",
+				"saveTrackingPreferences",
+				"requestTrackingPreferences"
+			]
+		},
+		{
 			"file": "src/lib/services/visitor.service.ts",
 			"type": "service",
 			"components": [],
@@ -660,6 +689,17 @@
 				"loadAgentOperatives",
 				"mergeAgentOperatives",
 				"removeAgentOperative"
+			]
+		},
+		{
+			"file": "src/lib/stores/aiInboxCount.store.ts",
+			"type": "store",
+			"components": [],
+			"exports": [
+				"aiInboxCountStore",
+				"resetAiInboxCount",
+				"setAiInboxRemainingCount",
+				"loadAiInboxCount"
 			]
 		},
 		{
@@ -1045,6 +1085,12 @@
 			]
 		},
 		{
+			"file": "src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["createDragDropState"]
+		},
+		{
 			"file": "src/lib/components/admin/chat-users/chat-user-export.ts",
 			"type": "component",
 			"components": [],
@@ -1089,12 +1135,6 @@
 				"entityGroupKeyForAggregate",
 				"entityGroupKeyForChange"
 			]
-		},
-		{
-			"file": "src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["createDragDropState"]
 		},
 		{
 			"file": "src/lib/components/ontology/insight-panels/insight-panel-config.ts",
@@ -1193,17 +1233,6 @@
 			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
 		},
 		{
-			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"PROJECT_COMMANDERS",
-				"DEFAULT_PUBLIC_PROJECT_ID",
-				"getCommander",
-				"formatTimelineYearRange"
-			]
-		},
-		{
 			"file": "src/lib/components/ui/codemirror/extensions.ts",
 			"type": "component",
 			"components": [],
@@ -1249,6 +1278,17 @@
 				"hideVoiceWidget",
 				"hideVoiceInsertHint",
 				"voiceWidgetExtension"
+			]
+		},
+		{
+			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"PROJECT_COMMANDERS",
+				"DEFAULT_PUBLIC_PROJECT_ID",
+				"getCommander",
+				"formatTimelineYearRange"
 			]
 		},
 		{
@@ -1298,6 +1338,9 @@
 		],
 		"src/lib/components/dashboard/AnalyticsDashboard.svelte": [
 			"src/lib/components/project/ProjectModalsHost.svelte",
+			"src/lib/components/dashboard/DashboardInboxModal.svelte"
+		],
+		"src/lib/components/layout/Navigation.svelte": [
 			"src/lib/components/dashboard/DashboardInboxModal.svelte"
 		],
 		"src/lib/components/ontology/DocumentModal.svelte": [
@@ -1402,9 +1445,9 @@
 		"src/lib/components/ui/live-transcript-preview.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/admin/chat/session-audit-ui.ts",
+		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/admin/chat-users/chat-user-export.ts",
 		"src/lib/components/admin/chat-users/chat-user-ui.ts",
-		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",
 		"src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
@@ -1412,11 +1455,11 @@
 		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/project/v2/board-a11y.ts",
-		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",
 		"src/lib/components/ui/codemirror/voice-widget.ts",
+		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
 		"src/lib/components/ontology/graph/lib/g6.service.ts",
 		"src/lib/components/ontology/graph/lib/graph.filters.ts",

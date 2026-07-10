@@ -835,22 +835,24 @@
 
 									<!-- Content -->
 									<div class="flex-1 min-w-0">
-										<div class="flex items-start justify-between gap-3">
-											<div class="min-w-0">
+										<div
+											class="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3"
+										>
+											<div class="min-w-0 flex-1">
 												<p
-													class="text-sm font-medium text-foreground leading-snug"
+													class="line-clamp-2 break-words text-sm font-medium leading-snug text-foreground [overflow-wrap:anywhere]"
 												>
 													{content.title}
 												</p>
 												{#if eventDetails.summary}
 													<p
-														class="text-sm text-muted-foreground mt-0.5 leading-snug"
+														class="mt-0.5 line-clamp-2 break-words text-sm leading-snug text-muted-foreground [overflow-wrap:anywhere]"
 													>
 														{eventDetails.summary}
 													</p>
 												{:else if content.body}
 													<p
-														class="text-sm text-muted-foreground mt-0.5 leading-snug line-clamp-2"
+														class="mt-0.5 line-clamp-2 break-words text-sm leading-snug text-muted-foreground [overflow-wrap:anywhere]"
 													>
 														{content.body}
 													</p>
@@ -858,9 +860,11 @@
 												{#if notificationLink}
 													<a
 														href={notificationLink.href}
-														class="mt-1 inline-flex max-w-full items-center gap-1 text-xs font-medium text-accent hover:underline underline-offset-2"
+														class="mt-1 inline-flex max-w-full min-w-0 items-center gap-1 text-xs font-medium text-accent underline-offset-2 hover:underline"
 													>
-														<span>{notificationLink.label}</span>
+														<span class="shrink-0"
+															>{notificationLink.label}</span
+														>
 														<span
 															class="text-muted-foreground truncate"
 														>
@@ -869,15 +873,17 @@
 													</a>
 												{/if}
 											</div>
-											<div class="shrink-0 flex flex-col items-end gap-1">
+											<div
+												class="flex shrink-0 items-center gap-1.5 sm:flex-col sm:items-end sm:gap-1"
+											>
 												<span
-													class="text-xs text-muted-foreground tabular-nums"
+													class="order-2 text-xs tabular-nums text-muted-foreground sm:order-1"
 												>
 													{formatRelativeTime(rollup.created_at)}
 												</span>
 												<!-- Status badge -->
 												<span
-													class="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded {statusInfo.bgColor} {statusInfo.color}"
+													class="order-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium sm:order-2 {statusInfo.bgColor} {statusInfo.color}"
 												>
 													<StatusIcon class="w-2.5 h-2.5" />
 													{statusInfo.label}

@@ -113,4 +113,36 @@ describe('legacy public page route', () => {
 			currentUser: null
 		});
 	});
+
+	it('returns 404 instead of indexing an empty author collection', async () => {
+		const { load } = await import('./+page.server');
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ success: false, error: 'Public page not found' }), {
+					status: 404,
+					headers: { 'Content-Type': 'application/json' }
+				})
+			)
+			.mockResolvedValueOnce(
+				new Response(
+					JSON.stringify({
+						success: true,
+						data: {
+							author: { slug_prefix: 'empty-author', name: null, page_count: 0 },
+							pages: []
+						}
+					}),
+					{ status: 200, headers: { 'Content-Type': 'application/json' } }
+				)
+			);
+
+		await expect(
+			load({
+				params: { slug: 'empty-author' },
+				locals: makeLocals(),
+				fetch: fetchMock
+			} as any)
+		).rejects.toMatchObject({ status: 404 });
+	});
 });

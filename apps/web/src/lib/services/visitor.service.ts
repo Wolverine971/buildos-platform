@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/visitor.service.ts
 import { browser } from '$app/environment';
+import { hasAnalyticsConsent } from './tracking-consent';
 
 export class VisitorService {
 	private static readonly VISITOR_ID_KEY = 'visitor_id';
@@ -38,7 +39,7 @@ export class VisitorService {
 			}
 
 			return visitorId;
-		} catch (error) {
+		} catch {
 			// localStorage not available, use fallback
 			return this.generateFallbackId();
 		}
@@ -75,7 +76,7 @@ export class VisitorService {
 
 			const today = new Date().toDateString();
 			return lastTracked === today;
-		} catch (error) {
+		} catch {
 			return false;
 		}
 	}
@@ -89,7 +90,7 @@ export class VisitorService {
 		try {
 			const today = new Date().toDateString();
 			localStorage.setItem(VisitorService.LAST_TRACKED_KEY, today);
-		} catch (error) {
+		} catch {
 			// Silent failure - localStorage not available
 		}
 	}
@@ -98,7 +99,7 @@ export class VisitorService {
 	 * Track visitor visit - fire and forget
 	 */
 	public async trackVisit(): Promise<void> {
-		if (!browser) return;
+		if (!browser || !hasAnalyticsConsent()) return;
 
 		// Check if we've already tracked today
 		if (this.hasTrackedToday()) {
@@ -127,7 +128,7 @@ export class VisitorService {
 				.catch(() => {
 					// Silent failure - completely ignore errors
 				});
-		} catch (error) {
+		} catch {
 			// Silent failure - completely ignore errors
 		}
 	}
@@ -136,12 +137,23 @@ export class VisitorService {
 	 * Initialize visitor tracking
 	 */
 	public async initialize(): Promise<void> {
-		if (!browser) return;
+		if (!browser || !hasAnalyticsConsent()) return;
 
 		// Add a small delay to ensure page has loaded
 		setTimeout(() => {
-			this.trackVisit();
+			if (hasAnalyticsConsent()) void this.trackVisit();
 		}, 100);
+	}
+
+	public clearTrackingData(): void {
+		if (!browser) return;
+
+		try {
+			localStorage.removeItem(VisitorService.VISITOR_ID_KEY);
+			localStorage.removeItem(VisitorService.LAST_TRACKED_KEY);
+		} catch {
+			// Storage cleanup is best-effort when the browser blocks localStorage.
+		}
 	}
 }
 

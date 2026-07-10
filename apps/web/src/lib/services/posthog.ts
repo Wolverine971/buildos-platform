@@ -4,6 +4,7 @@
 // never need to guard. See docs/marketing/growth/posthog-analytics-workflow.md.
 import { browser, dev } from '$app/environment';
 import { env } from '$env/dynamic/public';
+import { hasAnalyticsConsent } from './tracking-consent';
 
 const FIRST_TOUCH_STORAGE_KEY = 'buildos_first_touch';
 const FUNNEL_EVENTS = new Set([
@@ -48,11 +49,15 @@ function logHealth(
 	});
 }
 
-function isEnabled(): boolean {
+function isConfigured(): boolean {
 	if (!browser || !env.PUBLIC_POSTHOG_KEY) return false;
 	// Dev captures are opt-in so localhost sessions don't pollute production data
 	if (dev && env.PUBLIC_POSTHOG_CAPTURE_DEV !== 'true') return false;
 	return true;
+}
+
+function isEnabled(): boolean {
+	return isConfigured() && hasAnalyticsConsent();
 }
 
 function applyPendingIdentify(): void {
@@ -76,10 +81,23 @@ function ensurePostHogInitialized(): Promise<any | null> {
 				if (!initialized) {
 					posthog.init(env.PUBLIC_POSTHOG_KEY!, {
 						api_host: env.PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
-						defaults: '2026-05-30', // history_change pageviews — SPA navigations tracked automatically
+						capture_pageview: 'history_change',
 						person_profiles: 'identified_only',
-						capture_pageleave: true
+						capture_pageleave: true,
+						autocapture: false,
+						disable_session_recording: true,
+						disable_surveys: true,
+						disable_product_tours: true,
+						advanced_disable_feature_flags: true,
+						disable_external_dependency_loading: true,
+						capture_performance: false,
+						capture_dead_clicks: false,
+						persistence: 'localStorage',
+						opt_out_capturing_by_default: true,
+						opt_out_persistence_by_default: true,
+						respect_dnt: true
 					});
+					posthog.opt_in_capturing({ captureEventName: false });
 					initialized = true;
 				}
 
@@ -99,13 +117,20 @@ function ensurePostHogInitialized(): Promise<any | null> {
 }
 
 /**
- * Initialize PostHog. Call once from the root layout. Also stashes first-touch
- * attribution (which runs even when capture is disabled, so UTM data survives
- * a localhost signup or a session that starts before consent to capture).
+ * Initialize PostHog after analytics consent. Also stores first-touch
+ * attribution so acquisition context can be attached on registration.
  */
 export function initPostHog(): void {
-	if (browser) captureFirstTouchAttribution();
-	if (initialized || initPromise || !isEnabled()) return;
+	if (!isEnabled()) return;
+	captureFirstTouchAttribution();
+
+	if (initialized && posthogClient) {
+		posthogClient.opt_in_capturing({ captureEventName: false });
+		applyPendingIdentify();
+		return;
+	}
+
+	if (initPromise) return;
 
 	const start = () => {
 		void ensurePostHogInitialized();
@@ -123,10 +148,12 @@ export function initPostHog(): void {
  * $set_once so it never overwrites the original acquisition source.
  */
 export function identifyUser(userId: string, properties?: Record<string, unknown>): void {
-	if (!isEnabled()) return;
+	if (!isConfigured()) return;
 	pendingIdentify = { userId, properties };
+	if (!isEnabled()) return;
 
 	if (initialized && posthogClient) {
+		posthogClient.opt_in_capturing({ captureEventName: false });
 		applyPendingIdentify();
 		return;
 	}
@@ -139,6 +166,23 @@ export function resetPostHogUser(): void {
 	pendingIdentify = null;
 	if (!initialized || !posthogClient) return;
 	posthogClient.reset();
+	if (hasAnalyticsConsent()) {
+		posthogClient.opt_in_capturing({ captureEventName: false });
+	}
+}
+
+export function disablePostHog(): void {
+	pendingIdentify = null;
+	if (initialized && posthogClient) {
+		posthogClient.opt_out_capturing();
+	}
+
+	if (!browser) return;
+	try {
+		localStorage.removeItem(FIRST_TOUCH_STORAGE_KEY);
+	} catch {
+		// Storage cleanup is best-effort when the browser blocks localStorage.
+	}
 }
 
 export function captureEvent(event: string, properties?: Record<string, unknown>): void {
@@ -198,7 +242,7 @@ function captureFirstTouchAttribution(): void {
 }
 
 export function getFirstTouchAttribution(): FirstTouchAttribution | null {
-	if (!browser) return null;
+	if (!browser || !hasAnalyticsConsent()) return null;
 	try {
 		const raw = localStorage.getItem(FIRST_TOUCH_STORAGE_KEY);
 		return raw ? (JSON.parse(raw) as FirstTouchAttribution) : null;

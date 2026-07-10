@@ -295,3 +295,54 @@ should, most visibly where a banner sits above the content column), and decide t
 - **Region 5** — mobile bottom tab bar for the 3 primary destinations (still a hamburger-only reach).
 - Low/opportunistic: collapse the 4× `brain-bolt.webp` `<img>` stack on the chat launcher; the S4 radius
   drift on the onboarding CTA + non-auth buttons; confirm the `p-px` main-frame seam.
+
+---
+
+## AI Inbox ownership follow-up — 2026-07-10
+
+An authenticated iPhone capture exposed an information-architecture mismatch in the right-side control
+cluster: two `proposal_ready` agent runs rendered as “Changes proposed — review,” while the chat launcher
+showed an orange `2` described as agents working. The adjacent `Inbox` icon actually opened Agent Work,
+not AI Inbox, even though the dashboard uses the same glyph and label for the durable review queue.
+
+### Shipped
+
+- **Split state by meaning.** The chat launcher now counts only `queued`, `running`, and `paused` runs.
+  `needs_input` remains an Agent Work attention state, while `proposal_ready` is excluded from both badges
+  because reviewable mutations belong to AI Inbox. -> P6+P22
+- **Made AI Inbox global.** The header `Inbox` affordance now opens `DashboardInboxModal` from any
+  authenticated route and shows the shared `/api/inbox/count` pending-review count. The dashboard banner
+  and header badge consume one store, so decisions update both surfaces together. -> P6+P8+P22
+- **Clarified Agent Work.** Desktop keeps a separate bot-icon Agent Work affordance; the mobile account
+  menu includes a labeled `Agent Work` entry with a count for working/needs-input runs. The same inbox
+  glyph no longer names two destinations, and desktop does not duplicate the direct path in its menu.
+  -> P6+P8+P9+P22
+- **Protected the count contract.** Focused store/service tests cover count loading, forced refresh,
+  immediate modal-close updates, and the exclusion of `proposal_ready` from working/Work-attention
+  badges.
+
+### Verification
+
+- `apps/web`: focused Vitest run — 4 tests passed.
+- `apps/web`: `NODE_OPTIONS='--max-old-space-size=8192' pnpm check` — 0 errors, 0 warnings.
+- Targeted Prettier completed for the touched Svelte/TypeScript files.
+- Authenticated mobile screenshots remain owed: the in-app browser reached the BuildOS login screen at
+  the 390x844 verification viewport, so the real header/modal state could not be captured locally.
+
+### Second-pass lifecycle review — 2026-07-10
+
+The placement pass was correct but the first implementation refreshed the shared count only on initial
+load and AI Inbox close. That left the header/dashboard count stale when a proposal arrived later or was
+resolved through the notification stack or project-level Inbox.
+
+- Agent-run realtime now fingerprints the current user's `proposal_ready` ids and refreshes the AI Inbox
+  count whenever that set changes. Normal `running` progress updates do not create count traffic. -> P22
+- Successful direct Change Set commits and all shared Inbox decision completion/failure paths refresh the
+  count, covering notification-modal, dashboard, project Inbox, batch, snooze, and optimistic rollback
+  flows. -> P22
+- Calendar analysis refreshes the count when it creates suggestions; returning to a visible tab and opening
+  AI Inbox also reconcile the count against source truth. -> P22
+- AI Inbox's intent-preload and click paths now share one cached dynamic-import promise, avoiding duplicate
+  chunk work when focus and click arrive together. -> P20
+- Second-pass verification: 7 focused tests passed across four files; full `pnpm check` remained 0 errors /
+  0 warnings; Prettier and `git diff --check` passed.
