@@ -21,6 +21,7 @@ Disallow: /config.json
 Disallow: /credentials.json
 Disallow: /profile
 Disallow: /onboarding
+Disallow: /dashboard
 Disallow: /projects/
 Disallow: /brain-dump
 Disallow: /briefs
@@ -66,6 +67,7 @@ Disallow: /config.json
 Disallow: /credentials.json
 Disallow: /profile
 Disallow: /onboarding
+Disallow: /dashboard
 Disallow: /projects/
 Disallow: /brain-dump
 Disallow: /briefs

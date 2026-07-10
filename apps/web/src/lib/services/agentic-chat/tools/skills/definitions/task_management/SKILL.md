@@ -1,5 +1,6 @@
 ---
 name: Task Management
+catalog_line: 'Decide when work becomes a task; manage task scope, ownership, schedule, and relationships safely.'
 description: Task workflow playbook for deciding when work should become a task and how to manage task scope, ownership, schedule, and relationships safely.
 skill_type: procedure # procedure | reference | strategy | resource | policy | orchestration
 altitude: domain # task | domain | meta

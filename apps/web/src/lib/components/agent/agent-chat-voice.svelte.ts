@@ -7,7 +7,7 @@
 // See: apps/web/docs/features/agentic-chat/PROPOSAL_2026-04-18_GOD-COMPONENT-DECOMPOSITION.md
 
 import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
-import type { VoiceNote } from '$lib/types/voice-notes';
+import { compareVoiceNotesInGroup, type VoiceNote } from '$lib/types/voice-notes';
 
 export interface VoiceAdapterDeps {
 	/** Surface a user-visible error (typically `toastService.error`). */
@@ -66,12 +66,9 @@ export class VoiceAdapter {
 		if (!note.group_id) return;
 		const groupId = note.group_id;
 		const existing = this.notesByGroupId[groupId] ?? [];
-		const next = [...existing.filter((entry) => entry.id !== note.id), note].sort((a, b) => {
-			const aIndex = a.segment_index ?? 0;
-			const bIndex = b.segment_index ?? 0;
-			if (aIndex !== bIndex) return aIndex - bIndex;
-			return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-		});
+		const next = [...existing.filter((entry) => entry.id !== note.id), note].sort(
+			compareVoiceNotesInGroup
+		);
 		this.notesByGroupId = { ...this.notesByGroupId, [groupId]: next };
 	}
 

@@ -61,6 +61,8 @@ const PARENT_ENDPOINTS: Partial<Record<EntityKind, string>> = {
 	milestone: '/api/onto/milestones'
 };
 
+const inFlightLinkedEntityRequests = new Map<string, Promise<LinkedEntitiesApiResponse>>();
+
 /**
  * Fetch linked entities for a source entity.
  * By default, skips fetching available entities for performance.
@@ -77,7 +79,28 @@ export async function fetchLinkedEntities(
 	options: { includeAvailable?: boolean } = {}
 ): Promise<LinkedEntitiesApiResponse> {
 	const { includeAvailable = false } = options;
+	const requestKey = `${projectId}:${sourceKind}:${sourceId}:${includeAvailable}`;
+	const existingRequest = inFlightLinkedEntityRequests.get(requestKey);
+	if (existingRequest) return existingRequest;
 
+	const request = fetchLinkedEntitiesUncached(sourceId, sourceKind, projectId, includeAvailable);
+	inFlightLinkedEntityRequests.set(requestKey, request);
+
+	try {
+		return await request;
+	} finally {
+		if (inFlightLinkedEntityRequests.get(requestKey) === request) {
+			inFlightLinkedEntityRequests.delete(requestKey);
+		}
+	}
+}
+
+async function fetchLinkedEntitiesUncached(
+	sourceId: string,
+	sourceKind: EntityKind,
+	projectId: string,
+	includeAvailable: boolean
+): Promise<LinkedEntitiesApiResponse> {
 	const params = new URLSearchParams({
 		sourceId,
 		sourceKind,

@@ -1,5 +1,6 @@
 ---
 name: Project Audit
+catalog_line: 'Audit project health in project context: structure, timeline realism, blockers, stale work, gaps.'
 description: Project-scoped audit playbook for evaluating structure, documentation, timeline realism, velocity, loose work, duplication, blockers, and strategic gaps while staying in project context.
 skill_type: strategy # procedure | strategy | reference | resource | policy | orchestration
 altitude: domain # task | domain | meta

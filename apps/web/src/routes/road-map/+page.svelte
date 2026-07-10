@@ -46,7 +46,7 @@
 
 <svelte:window bind:innerWidth />
 
-<main class="min-h-screen bg-background text-foreground">
+<div class="min-h-screen bg-background text-foreground">
 	<!-- Header -->
 	<section class="pt-24 pb-12 px-4 sm:px-6 lg:px-8">
 		<div class="max-w-4xl mx-auto">
@@ -532,8 +532,8 @@
 			</div>
 
 			<p class="text-sm text-muted-foreground mt-6">
-				14-day trial • Direct founder access • Shape product direction
+				No active billing • Direct founder access • Shape product direction
 			</p>
 		</div>
 	</section>
-</main>
+</div>

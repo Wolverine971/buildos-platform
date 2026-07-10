@@ -11,6 +11,7 @@ import {
 	getSkillFamily,
 	getSkillMetadata
 } from '$lib/skills/skill-gallery';
+import { previewSkillMetadataByRuntimeId } from '$lib/skills/skill-gallery-metadata';
 import {
 	getSkillByReference,
 	listAllSkills
@@ -23,13 +24,22 @@ import type {
 	SkillLinkedResource,
 	SkillReferenceLoadSurface
 } from '$lib/services/agentic-chat/tools/skills/types';
-import type { PublicSkillGalleryMetadata } from '$lib/skills/skill-gallery';
+import type {
+	PublicSkillGalleryMetadata,
+	RuntimeSkillGalleryPreview,
+	SkillGalleryCoverage,
+	SkillPublicationStatus
+} from '$lib/skills/skill-gallery';
 
 const agentSkillBlogModules = import.meta.glob<string>('/src/content/blogs/agent-skills/*.md', {
 	eager: true,
 	query: '?raw',
 	import: 'default'
 });
+
+const agentSkillEvalModules = import.meta.glob(
+	'/src/lib/services/agentic-chat/tools/skills/definitions/*/evals.md'
+);
 
 const PUBLIC_AGENT_SKILL_SURFACE: SkillReferenceLoadSurface = 'public_portable';
 
@@ -124,6 +134,51 @@ export type AgentSkillValidationReport = {
 	issues: AgentSkillValidationIssue[];
 };
 
+function runtimeSkillIdToPreviewSlug(skillId: string): string {
+	return skillId.replace(/_/g, '-');
+}
+
+export function getRuntimeSkillPublicationStatus(
+	skillId: string,
+	publicRuntimeSkillIds: ReadonlySet<string>
+): SkillPublicationStatus {
+	if (publicRuntimeSkillIds.has(skillId)) return 'public';
+	if (previewSkillMetadataByRuntimeId[skillId]) return 'preview';
+	return 'internal';
+}
+
+export function buildRuntimeSkillGalleryPreview(
+	skill: SkillDefinition
+): RuntimeSkillGalleryPreview | null {
+	const metadata = previewSkillMetadataByRuntimeId[skill.id];
+	if (!metadata) return null;
+
+	return {
+		publication_status: 'preview',
+		slug: runtimeSkillIdToPreviewSlug(skill.id),
+		title: metadata.displayTitle,
+		description: metadata.description,
+		runtime_skill_id: skill.id,
+		parent_id: skill.parentId,
+		skill_type: skill.skillType,
+		domain_id: metadata.domainId,
+		family: metadata.family,
+		output_shapes: metadata.outputShapes,
+		workflow: metadata.workflow,
+		use_cases: metadata.useCases,
+		guardrails: metadata.guardrails,
+		starter_prompts: metadata.starterPrompts,
+		trust: {
+			eval_status: hasRuntimeSkillEval(skill) ? 'covered' : 'not-covered',
+			last_updated: metadata.lastUpdated,
+			safety_notes: [
+				'This preview is a reviewed public synopsis, not the complete internal skill definition.',
+				'BuildOS opens an editable draft and does not perform external actions automatically.'
+			]
+		}
+	};
+}
+
 function kebabToSnake(value: string): string {
 	return value.replace(/-/g, '_');
 }
@@ -176,6 +231,15 @@ function cleanRuntimeText(value: string): string {
 
 function cleanRuntimeList(values: string[] | undefined): string[] {
 	return (values ?? []).map(cleanRuntimeText).filter(Boolean);
+}
+
+function hasRuntimeSkillEval(skill?: SkillDefinition): boolean {
+	if (!skill) return false;
+	return Boolean(
+		agentSkillEvalModules[
+			`/src/lib/services/agentic-chat/tools/skills/definitions/${skill.id}/evals.md`
+		]
+	);
 }
 
 function mapPublicRuntimeResource(resource: SkillLinkedResource): PublicRuntimeSkillResource {
@@ -467,6 +531,11 @@ export function buildPublicSkillGalleryMetadata(
 				!curated?.guardrails?.length ||
 				!curated?.tryPrompts?.length ||
 				!curated?.outputs?.length
+		},
+		trust: {
+			eval_status: hasRuntimeSkillEval(runtimeSkill) ? 'covered' : 'not-covered',
+			last_updated: post.lastmod,
+			safety_notes: guardrails
 		}
 	};
 }
@@ -712,13 +781,37 @@ export async function loadAgentSkillIndex(): Promise<{
 	version: string;
 	generated_at: string;
 	skills: AgentSkillIndexItem[];
+	previews: RuntimeSkillGalleryPreview[];
+	coverage: SkillGalleryCoverage;
 }> {
 	const posts = await loadAgentSkillPosts();
+	const skills = posts.map(buildAgentSkillIndexItem);
+	const runtimeSkills = listAllSkills();
+	const publicRuntimeSkillIds = new Set(
+		skills
+			.map((skill) => skill.runtime_skill_id)
+			.filter((skillId): skillId is string => Boolean(skillId))
+	);
+	const previews = runtimeSkills
+		.filter(
+			(skill) =>
+				getRuntimeSkillPublicationStatus(skill.id, publicRuntimeSkillIds) === 'preview'
+		)
+		.map(buildRuntimeSkillGalleryPreview)
+		.filter((preview): preview is RuntimeSkillGalleryPreview => Boolean(preview));
+	const coverage: SkillGalleryCoverage = {
+		runtime_total: runtimeSkills.length,
+		public_total: publicRuntimeSkillIds.size,
+		preview_total: previews.length,
+		internal_total: runtimeSkills.length - publicRuntimeSkillIds.size - previews.length
+	};
 
 	return {
-		version: '2026-06-11',
+		version: '2026-07-10',
 		generated_at: new Date().toISOString(),
-		skills: posts.map(buildAgentSkillIndexItem)
+		skills,
+		previews,
+		coverage
 	};
 }
 
@@ -898,6 +991,24 @@ export function validateAgentSkillCatalogPosts(posts: BlogPost[]): AgentSkillVal
 				'error',
 				'missing_gallery_starter_prompts',
 				'Skill gallery metadata is missing starter_prompts.',
+				slug
+			);
+		}
+		if (!indexItem.gallery.trust.last_updated.trim()) {
+			addValidationIssue(
+				issues,
+				'error',
+				'missing_gallery_last_updated',
+				'Skill gallery trust metadata is missing last_updated.',
+				slug
+			);
+		}
+		if (indexItem.gallery.trust.safety_notes.length === 0) {
+			addValidationIssue(
+				issues,
+				'error',
+				'missing_gallery_safety_notes',
+				'Skill gallery trust metadata is missing safety_notes.',
 				slug
 			);
 		}

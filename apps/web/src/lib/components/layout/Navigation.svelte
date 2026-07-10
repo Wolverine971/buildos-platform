@@ -23,7 +23,7 @@
 		Bell,
 		Inbox,
 		CreditCard
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import { toggleMode } from 'mode-watcher';
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -174,7 +174,8 @@
 	});
 
 	const navItems = [
-		{ href: '/', label: 'Dashboard', icon: Home },
+		{ href: '/today', label: 'Today', icon: Sun },
+		{ href: '/dashboard', label: 'Dashboard', icon: Home },
 		{ href: '/projects', label: 'Projects', icon: FolderOpen },
 		// { href: '/time-blocks', label: 'Time Blocks', icon: Clock },
 		{ href: '/history', label: 'History', icon: StickyNote }
@@ -563,9 +564,9 @@
 					{#if user}
 						<!-- Authenticated: Text logo -->
 						<a
-							href="/"
+							href="/dashboard"
 							class="flex items-center group"
-							onclick={() => handleMenuItemClick('/')}
+							onclick={() => handleMenuItemClick('/dashboard')}
 						>
 							<span class="sr-only">BuildOS</span>
 							<span

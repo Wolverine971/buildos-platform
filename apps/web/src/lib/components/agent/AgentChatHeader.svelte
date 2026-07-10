@@ -35,7 +35,6 @@
 		resolvedProjectFocus: ProjectFocus | null;
 		onChangeFocus: () => void;
 		onClearFocus: () => void;
-		ontologyLoaded: boolean;
 		hasActiveThinkingBlock: boolean;
 		currentActivity: string;
 		sessionStatusLabel?: string | null;
@@ -63,7 +62,6 @@
 		resolvedProjectFocus,
 		onChangeFocus,
 		onClearFocus,
-		ontologyLoaded,
 		hasActiveThinkingBlock,
 		currentActivity,
 		sessionStatusLabel = null,
@@ -312,6 +310,46 @@
 	});
 </script>
 
+<!--
+	Export menu rows shared verbatim by the desktop "Export" menu and the mobile
+	"..." menu; the only difference is which menu-close handler runs on click.
+-->
+{#snippet exportMenuRows(closeMenu: () => void)}
+	{#if onExportSteps}
+		<button
+			type="button"
+			onclick={() => {
+				closeMenu();
+				onExportSteps?.();
+			}}
+			disabled={!canExportSteps}
+			class="flex w-full items-center gap-2 px-3 py-2 text-left micro-label font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+			role="menuitem"
+			title={exportStepsTitle}
+		>
+			<Download class="h-3.5 w-3.5 shrink-0" />
+			<span>Export steps</span>
+		</button>
+	{/if}
+
+	{#if onExportSupportPacket}
+		<button
+			type="button"
+			onclick={() => {
+				closeMenu();
+				onExportSupportPacket?.();
+			}}
+			disabled={!canExportSupportPacket}
+			class="flex w-full items-center gap-2 px-3 py-2 text-left micro-label font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+			role="menuitem"
+			title={exportSupportPacketTitle}
+		>
+			<FileArchive class="h-3.5 w-3.5 shrink-0" />
+			<span>Export support packet</span>
+		</button>
+	{/if}
+{/snippet}
+
 <!-- INKPRINT compact header: fixed 48px height with Frame texture for structural hierarchy -->
 <div class="flex h-12 items-center gap-2 px-3 sm:px-4 tx tx-frame tx-weak">
 	<!-- Back button with INKPRINT outline style. Collapses away (width + gap) once
@@ -385,7 +423,7 @@
 		<!-- INKPRINT status pills with micro-label styling -->
 		<!-- On mobile: show only spinner (when loading) and activity dot to prevent overflow -->
 		<!-- On sm+: show full text-based pills -->
-		{#if sessionStatusLabel || contextUsageCounter || ontologyLoaded || (currentActivity && !hasActiveThinkingBlock)}
+		{#if sessionStatusLabel || contextUsageCounter || (currentActivity && !hasActiveThinkingBlock)}
 			<div class="flex items-center gap-1.5 sm:gap-2">
 				{#if sessionStatusLabel}
 					<!-- Mobile: spinner only. sm+: spinner + text -->
@@ -408,15 +446,6 @@
 						{/if}
 						<span class="font-mono sm:hidden">{contextUsageCounter.mobileLabel}</span>
 						<span class="hidden font-mono sm:inline">{contextUsageCounter.label}</span>
-					</span>
-				{/if}
-
-				{#if ontologyLoaded}
-					<!-- Hidden on mobile, visible on sm+ -->
-					<span
-						class="micro-label hidden h-7 items-center rounded-lg border border-accent/30 bg-accent/10 px-2.5 text-accent tx tx-thread tx-weak sm:inline-flex"
-					>
-						ONTO
 					</span>
 				{/if}
 
@@ -510,39 +539,7 @@
 						tabindex="-1"
 						onkeydown={handleDesktopExportMenuKeydown}
 					>
-						{#if onExportSteps}
-							<button
-								type="button"
-								onclick={() => {
-									closeDesktopExportMenu();
-									onExportSteps?.();
-								}}
-								disabled={!canExportSteps}
-								class="flex w-full items-center gap-2 px-3 py-2 text-left micro-label font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-								role="menuitem"
-								title={exportStepsTitle}
-							>
-								<Download class="h-3.5 w-3.5 shrink-0" />
-								<span>Export steps</span>
-							</button>
-						{/if}
-
-						{#if onExportSupportPacket}
-							<button
-								type="button"
-								onclick={() => {
-									closeDesktopExportMenu();
-									onExportSupportPacket?.();
-								}}
-								disabled={!canExportSupportPacket}
-								class="flex w-full items-center gap-2 px-3 py-2 text-left micro-label font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-								role="menuitem"
-								title={exportSupportPacketTitle}
-							>
-								<FileArchive class="h-3.5 w-3.5 shrink-0" />
-								<span>Export support packet</span>
-							</button>
-						{/if}
+						{@render exportMenuRows(closeDesktopExportMenu)}
 
 						<ChatSessionAuditActions
 							{sessionId}
@@ -627,39 +624,7 @@
 							</button>
 						{/each}
 
-						{#if onExportSteps}
-							<button
-								type="button"
-								onclick={() => {
-									mobileMenuOpen = false;
-									onExportSteps?.();
-								}}
-								disabled={!canExportSteps}
-								class="flex w-full items-center gap-2 px-3 py-2 text-left micro-label font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-								role="menuitem"
-								title={exportStepsTitle}
-							>
-								<Download class="h-3.5 w-3.5 shrink-0" />
-								<span>Export steps</span>
-							</button>
-						{/if}
-
-						{#if onExportSupportPacket}
-							<button
-								type="button"
-								onclick={() => {
-									mobileMenuOpen = false;
-									onExportSupportPacket?.();
-								}}
-								disabled={!canExportSupportPacket}
-								class="flex w-full items-center gap-2 px-3 py-2 text-left micro-label font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-								role="menuitem"
-								title={exportSupportPacketTitle}
-							>
-								<FileArchive class="h-3.5 w-3.5 shrink-0" />
-								<span>Export support packet</span>
-							</button>
-						{/if}
+						{@render exportMenuRows(() => (mobileMenuOpen = false))}
 
 						<!-- Admin audit rows (render nothing for non-admins) -->
 						<ChatSessionAuditActions

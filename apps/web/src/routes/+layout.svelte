@@ -284,8 +284,8 @@
 	let needsOnboarding = $derived(Boolean(user && !completedOnboarding));
 	let showOnboardingModal = $derived.by(() => {
 		if (!needsOnboarding) return false;
-		const isHomePage = $page?.url?.pathname === '/';
-		if (!isHomePage) return false;
+		const isDashboard = $page?.url?.pathname === '/dashboard';
+		if (!isDashboard) return false;
 		return forceOnboardingActive || (onboardingProgress < 25 && !checkModalDismissed());
 	});
 
@@ -620,7 +620,7 @@
 		// skip invalidation and resource resets to prevent a visible page flicker.
 		if (!isNewSignIn) return;
 
-		// After login, goto('/', { invalidateAll: true }) already loaded fresh data
+		// After login, goto('/dashboard', { invalidateAll: true }) already loaded fresh data
 		// including the user. When SIGNED_IN fires afterward (browser client detecting
 		// new cookies), data.user already matches — skip the redundant invalidation
 		// and resource reset to avoid flashing/conflicts with the completed navigation.
@@ -1069,7 +1069,7 @@
 			>
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<h2 class="text-sm font-semibold text-warning-foreground">
+						<h2 class="text-sm font-semibold text-foreground">
 							Workspace is read-only until billing is activated
 						</h2>
 						<p class="text-sm text-muted-foreground">

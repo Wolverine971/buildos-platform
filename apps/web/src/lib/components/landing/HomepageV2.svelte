@@ -22,7 +22,7 @@
 		Circle,
 		Mail,
 		LoaderCircle
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
 
 	let isExampleOpen = $state(false);
@@ -106,9 +106,9 @@
 					</a>
 					<a
 						href="#split"
-						class="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4"
+						class="inline-flex min-h-11 items-center text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
-						Or scroll for the longer version ↓
+						How BuildOS works ↓
 					</a>
 				</div>
 			</div>
@@ -212,11 +212,11 @@
 		<section id="split" class="border-b border-border bg-card/40">
 			<div class="mx-auto max-w-6xl px-4 py-12 sm:py-16">
 				<div class="text-center mb-8 sm:mb-10">
-					<div class="micro-label inline-flex items-center gap-3">
+					<h2 class="micro-label inline-flex items-center gap-3">
 						<span class="h-px w-10 bg-border"></span>
 						<span>§02 — Do you work with AI agents yet?</span>
 						<span class="h-px w-10 bg-border"></span>
-					</div>
+					</h2>
 				</div>
 
 				<div class="grid md:grid-cols-2 gap-4 sm:gap-5">
@@ -249,10 +249,10 @@
 							<button
 								type="button"
 								onclick={openExampleModal}
-								class="group inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:gap-3 transition-all"
+								class="group inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-foreground transition-all hover:gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 							>
-								Want to see what a project looks like in BuildOS?
-								<ArrowRight class="w-4 h-4" />
+								See an example project
+								<ArrowRight class="h-4 w-4 shrink-0" />
 							</button>
 						</div>
 					</article>
@@ -1102,7 +1102,7 @@
 		<div
 			class="px-4 sm:px-6 py-16 flex items-center justify-center gap-2 text-sm text-muted-foreground"
 		>
-			<LoaderCircle class="w-5 h-5 animate-spin" />
+			<LoaderCircle class="h-5 w-5 animate-spin motion-reduce:animate-none" />
 			<span>Loading example project…</span>
 		</div>
 	{/if}

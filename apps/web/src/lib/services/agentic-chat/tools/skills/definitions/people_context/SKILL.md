@@ -1,5 +1,6 @@
 ---
 name: People Context
+catalog_line: 'Profile and contact context: lookup, search and updates, candidate resolution, sensitive-value handling.'
 description: People context playbook for profile lookup, contact search and updates, candidate resolution, and safe handling of sensitive contact values.
 skill_type: procedure # procedure | strategy | reference | resource | policy | orchestration
 altitude: task # task | domain | meta

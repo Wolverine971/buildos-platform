@@ -8,12 +8,19 @@ import type {
 	DomainGuide,
 	PackDefinition,
 	PublicSkillGalleryMetadata,
+	RuntimeSkillGalleryPreview,
+	RuntimeSkillPreviewMetadata,
+	SkillGalleryCoverage,
 	SkillGalleryMetadata
 } from './skill-gallery-types';
 export type {
 	DomainGuide,
 	PackDefinition,
 	PublicSkillGalleryMetadata,
+	RuntimeSkillGalleryPreview,
+	RuntimeSkillPreviewMetadata,
+	SkillGalleryCoverage,
+	SkillPublicationStatus,
 	SkillGalleryMetadata
 } from './skill-gallery-types';
 
@@ -46,10 +53,23 @@ export type GallerySkill = {
 
 export type GallerySkillPost = {
 	slug: string;
+	title?: string;
+	description?: string;
 	excerpt?: string;
 	tags?: string[];
 	readingTime?: number;
+	date?: string;
+	lastmod?: string;
 	relatedSkills?: string[];
+	lineageSources?: Array<{
+		title: string;
+		creator?: string;
+	}>;
+};
+
+export type GallerySearchMatch = {
+	label: string;
+	value: string;
 };
 
 export type GalleryDomain<TSkill extends GallerySkill = GallerySkill> = DomainGuide & {
@@ -57,6 +77,12 @@ export type GalleryDomain<TSkill extends GallerySkill = GallerySkill> = DomainGu
 };
 
 export type GalleryPack<TSkill extends GallerySkill = GallerySkill> = PackDefinition & {
+	skills: TSkill[];
+};
+
+export type GalleryFamily<TSkill extends GallerySkill = GallerySkill> = {
+	id: string;
+	name: string;
 	skills: TSkill[];
 };
 
@@ -120,9 +146,22 @@ export function getSkillPath(skill: Pick<GallerySkill, 'slug'>): string {
 	return `/skills/${skill.slug}`;
 }
 
+export function getPreviewSkillPath(preview: Pick<RuntimeSkillGalleryPreview, 'slug'>): string {
+	return `/skills/preview/${preview.slug}`;
+}
+
 export function getDomainPath(domain: Pick<DomainGuide, 'id'> | string): string {
 	const domainId = typeof domain === 'string' ? domain : domain.id;
 	return `/skills/domain/${domainId}`;
+}
+
+export function getFamilyId(name: string): string {
+	return normalizeSearchText(name).replace(/\s+/g, '-');
+}
+
+export function getFamilyPath(family: { name: string } | string): string {
+	const familyName = typeof family === 'string' ? family : family.name;
+	return `/skills/family/${getFamilyId(familyName)}`;
 }
 
 export function getPackPath(pack: Pick<PackDefinition, 'id'> | string): string {
@@ -130,8 +169,18 @@ export function getPackPath(pack: Pick<PackDefinition, 'id'> | string): string {
 	return `/skills/path/${packId}`;
 }
 
-export function getTryInBuildOsPath(skill: Pick<GallerySkill, 'slug'>): string {
-	return `/skills/try/${skill.slug}`;
+export function getTryInBuildOsPath(
+	skill: Pick<GallerySkill, 'slug'>,
+	starterPrompt?: string
+): string {
+	const path = `/skills/try/${skill.slug}`;
+	if (!starterPrompt?.trim()) return path;
+	return `${path}?prompt=${encodeURIComponent(starterPrompt.trim())}`;
+}
+
+export function getTryPackInBuildOsPath(pack: Pick<PackDefinition, 'id'> | string): string {
+	const packId = typeof pack === 'string' ? pack : pack.id;
+	return `/skills/try/path/${packId}`;
 }
 
 export function getAgentRepositoryPath(skill: Pick<GallerySkill, 'slug'>): string {
@@ -148,6 +197,10 @@ export function getBuildOsSkillPath(skill: Pick<GallerySkill, 'slug'>): string {
 
 export function getBundlePath(skill: Pick<GallerySkill, 'slug'>): string {
 	return `/agent-skills/${skill.slug}/bundle.zip`;
+}
+
+export function getBuildOsMetadataPath(skill: Pick<GallerySkill, 'slug'>): string {
+	return `/agent-skills/${skill.slug}/portable/buildos.yaml`;
 }
 
 export function getDisplayTitle(
@@ -201,8 +254,13 @@ export function getSkillPromise(skill: GallerySkill, post?: GallerySkillPost): s
 	return skill.description;
 }
 
-export function buildSkillLaunchPrompt(skill: GallerySkill, post?: GallerySkillPost): string {
-	const [prompt] = getFallbackTryPrompts(skill);
+export function buildSkillLaunchPrompt(
+	skill: GallerySkill,
+	post?: GallerySkillPost,
+	starterPrompt?: string
+): string {
+	const [fallbackPrompt] = getFallbackTryPrompts(skill);
+	const prompt = starterPrompt?.trim() || fallbackPrompt;
 	const promise = getSkillPromise(skill, post);
 	return [
 		`Use the ${getDisplayTitle(skill)} skill.`,
@@ -211,6 +269,64 @@ export function buildSkillLaunchPrompt(skill: GallerySkill, post?: GallerySkillP
 	]
 		.filter(Boolean)
 		.join('\n\n');
+}
+
+export function buildPreviewSkillLaunchPrompt(
+	preview: RuntimeSkillGalleryPreview,
+	starterPrompt?: string
+): string {
+	const prompt =
+		preview.starter_prompts.find((candidate) => candidate === starterPrompt?.trim()) ??
+		preview.starter_prompts[0];
+
+	return [
+		`Use the ${preview.title} skill preview.`,
+		`Context: ${preview.description}`,
+		prompt ? `Starting ask: ${prompt}` : 'Help me run this workflow on my current work.',
+		'Keep the result as an editable draft and pause before any external action.'
+	].join('\n\n');
+}
+
+export function getPreviewSearchText(preview: RuntimeSkillGalleryPreview): string {
+	return [
+		preview.title,
+		preview.description,
+		preview.slug,
+		preview.runtime_skill_id,
+		preview.skill_type,
+		preview.domain_id,
+		preview.family,
+		...preview.output_shapes,
+		...preview.workflow,
+		...preview.use_cases,
+		...preview.guardrails,
+		...preview.starter_prompts
+	]
+		.filter((value): value is string => Boolean(value))
+		.join(' ');
+}
+
+export function buildPackLaunchPrompt<TSkill extends GallerySkill>(
+	pack: GalleryPack<TSkill>,
+	posts: GallerySkillPost[] = []
+): string {
+	const postBySlug = buildPostBySlug(posts);
+	const stages = pack.skills.map((skill, index) => {
+		const stage = pack.order[index] ?? getSkillFamily(skill);
+		const promise =
+			getSkillMetadata(skill)?.useCases?.[0] ??
+			getSkillPromise(skill, postBySlug.get(skill.slug));
+		return `${index + 1}. ${stage} — ${getDisplayTitle(skill)}${promise ? `: ${promise}` : ''}`;
+	});
+
+	return [
+		`Run the ${pack.name} as one ordered ${pack.kind.toLowerCase()} workflow.`,
+		`Job: ${pack.job}`,
+		`Starting ask: ${pack.tryPrompt}`,
+		['Stages:', ...stages].join('\n'),
+		['Handoff rules:', ...pack.handoff.map((rule) => `- ${rule}`)].join('\n'),
+		'Complete each stage in order, carry approved outputs forward, and return one integrated final result.'
+	].join('\n\n');
 }
 
 export function getSearchText(skill: GallerySkill, post?: GallerySkillPost): string {
@@ -229,6 +345,14 @@ export function getSearchText(skill: GallerySkill, post?: GallerySkillPost): str
 		...(skill.compatible_agents ?? []),
 		...(skill.stack_with ?? []),
 		...(skill.lineage_people ?? []),
+		...(post?.relatedSkills ?? []),
+		...(post?.lineageSources?.flatMap((source) => [source.title, source.creator]) ?? []),
+		...skill.references.flatMap((reference) => [
+			reference.name,
+			reference.summary,
+			reference.path,
+			...reference.when_to_load
+		]),
 		...getOutputShapes(skill),
 		...(metadata?.workflow ?? []),
 		...(metadata?.useCases ?? []),
@@ -237,6 +361,55 @@ export function getSearchText(skill: GallerySkill, post?: GallerySkillPost): str
 	]
 		.filter((value): value is string => Boolean(value))
 		.join(' ');
+}
+
+export function getSkillSearchMatches(
+	skill: GallerySkill,
+	post: GallerySkillPost | undefined,
+	query: string
+): GallerySearchMatch[] {
+	const normalizedQuery = normalizeSearchText(query);
+	if (!normalizedQuery) return [];
+	const metadata = getSkillMetadata(skill);
+	const candidates: Array<{ label: string; values: Array<string | undefined> }> = [
+		{ label: 'Name', values: [getDisplayTitle(skill), skill.title] },
+		{ label: 'Promise', values: [getSkillPromise(skill, post), skill.description] },
+		{ label: 'Domain', values: [humanize(skill.skill_category), skill.skill_category] },
+		{ label: 'Family', values: [getSkillFamily(skill)] },
+		{ label: 'Output', values: getOutputShapes(skill) },
+		{ label: 'Use case', values: metadata?.useCases ?? [] },
+		{ label: 'Procedure', values: metadata?.workflow ?? [] },
+		{ label: 'Activation', values: metadata?.tryPrompts ?? [] },
+		{
+			label: 'Related skill',
+			values: [...(skill.stack_with ?? []), ...(post?.relatedSkills ?? [])]
+		},
+		{ label: 'Lineage', values: [...(skill.lineage_people ?? [])] },
+		{
+			label: 'Source',
+			values: post?.lineageSources?.flatMap((source) => [source.title, source.creator]) ?? []
+		},
+		{
+			label: 'Reference',
+			values: skill.references.flatMap((reference) => [
+				reference.name,
+				reference.summary,
+				reference.path,
+				...reference.when_to_load
+			])
+		}
+	];
+
+	return candidates
+		.flatMap(({ label, values }) => {
+			const value = values.find(
+				(candidate): candidate is string =>
+					Boolean(candidate) &&
+					normalizeSearchText(candidate ?? '').includes(normalizedQuery)
+			);
+			return value ? [{ label, value }] : [];
+		})
+		.slice(0, 3);
 }
 
 export function buildSkillBySlug<TSkill extends GallerySkill>(
@@ -311,7 +484,7 @@ export function getSelectedPackSlugSet<TSkill extends GallerySkill>(
 
 export function groupSkillsByFamily<TSkill extends GallerySkill>(
 	skills: TSkill[]
-): Array<{ name: string; skills: TSkill[] }> {
+): GalleryFamily<TSkill>[] {
 	const families = new Map<string, TSkill[]>();
 	for (const skill of skills) {
 		const family = getSkillFamily(skill);
@@ -320,6 +493,7 @@ export function groupSkillsByFamily<TSkill extends GallerySkill>(
 		families.set(family, familySkills);
 	}
 	return Array.from(families.entries()).map(([name, familySkills]) => ({
+		id: getFamilyId(name),
 		name,
 		skills: familySkills
 	}));

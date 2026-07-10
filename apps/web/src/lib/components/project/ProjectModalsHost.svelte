@@ -6,6 +6,12 @@
 	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
 	import type { Document, Goal, Project, Task } from '$lib/types/onto';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
+	import {
+		loadDocumentModal,
+		loadGoalEditModal,
+		loadPlanEditModal,
+		loadTaskEditModal
+	} from './project-entity-modal-loader';
 
 	let {
 		project,
@@ -95,7 +101,8 @@
 		onProjectDeleteConfirm,
 		onCancelProjectDelete,
 		onCloseGraphModal,
-		onGraphNodeClick
+		onGraphNodeClick,
+		onEntityModalLoaded
 	}: {
 		project: Project;
 		contextDocument: Document | null;
@@ -187,6 +194,7 @@
 		onCancelProjectDelete: () => void;
 		onCloseGraphModal: () => void;
 		onGraphNodeClick: (node: GraphNode) => void;
+		onEntityModalLoaded?: () => void;
 	} = $props();
 
 	function handleGraphNodeSelect(node: GraphNode) {
@@ -197,7 +205,7 @@
 
 <!-- Document Create/Edit Modal -->
 {#if showDocumentModal}
-	{#await import('$lib/components/ontology/DocumentModal.svelte') then { default: DocumentModal }}
+	{#await loadDocumentModal() then { default: DocumentModal }}
 		<DocumentModal
 			isOpen={showDocumentModal}
 			projectId={project.id}
@@ -207,6 +215,7 @@
 			onClose={onCloseDocumentModal}
 			onSaved={onDocumentSaved}
 			onDeleted={onDocumentDeleted}
+			onLoaded={onEntityModalLoaded}
 		/>
 	{/await}
 {/if}
@@ -250,13 +259,14 @@
 
 <!-- Task Edit Modal -->
 {#if editingTaskId}
-	{#await import('$lib/components/ontology/TaskEditModal.svelte') then { default: TaskEditModal }}
+	{#await loadTaskEditModal() then { default: TaskEditModal }}
 		<TaskEditModal
 			taskId={editingTaskId}
 			projectId={project.id}
 			onClose={onCloseTaskEditModal}
 			onUpdated={onTaskUpdated}
 			onDeleted={onTaskDeleted}
+			onLoaded={onEntityModalLoaded}
 		/>
 	{/await}
 {/if}
@@ -274,13 +284,14 @@
 
 <!-- Plan Edit Modal -->
 {#if editingPlanId}
-	{#await import('$lib/components/ontology/PlanEditModal.svelte') then { default: PlanEditModal }}
+	{#await loadPlanEditModal() then { default: PlanEditModal }}
 		<PlanEditModal
 			planId={editingPlanId}
 			projectId={project.id}
 			onClose={onClosePlanEditModal}
 			onUpdated={onPlanUpdated}
 			onDeleted={onPlanDeleted}
+			onLoaded={onEntityModalLoaded}
 		/>
 	{/await}
 {/if}
@@ -298,13 +309,14 @@
 
 <!-- Goal Edit Modal -->
 {#if editingGoalId}
-	{#await import('$lib/components/ontology/GoalEditModal.svelte') then { default: GoalEditModal }}
+	{#await loadGoalEditModal() then { default: GoalEditModal }}
 		<GoalEditModal
 			goalId={editingGoalId}
 			projectId={project.id}
 			onClose={onCloseGoalEditModal}
 			onUpdated={onGoalUpdated}
 			onDeleted={onGoalDeleted}
+			onLoaded={onEntityModalLoaded}
 		/>
 	{/await}
 {/if}

@@ -18,6 +18,8 @@ export type PackDefinition = {
 	description: string;
 	slugs: string[];
 	order: string[];
+	tryPrompt: string;
+	handoff: string[];
 };
 
 export type SkillGalleryMetadata = {
@@ -27,6 +29,50 @@ export type SkillGalleryMetadata = {
 	useCases?: string[];
 	guardrails?: string[];
 	tryPrompts?: string[];
+};
+
+export type SkillPublicationStatus = 'public' | 'preview' | 'internal';
+
+export type RuntimeSkillPreviewMetadata = {
+	displayTitle: string;
+	description: string;
+	domainId: string;
+	family: string;
+	outputShapes: string[];
+	workflow: string[];
+	useCases: string[];
+	guardrails: string[];
+	starterPrompts: string[];
+	lastUpdated: string;
+};
+
+export type RuntimeSkillGalleryPreview = {
+	publication_status: 'preview';
+	slug: string;
+	title: string;
+	description: string;
+	runtime_skill_id: string;
+	parent_id?: string;
+	skill_type?: string;
+	domain_id: string;
+	family: string;
+	output_shapes: string[];
+	workflow: string[];
+	use_cases: string[];
+	guardrails: string[];
+	starter_prompts: string[];
+	trust: {
+		eval_status: 'covered' | 'not-covered';
+		last_updated: string;
+		safety_notes: string[];
+	};
+};
+
+export type SkillGalleryCoverage = {
+	runtime_total: number;
+	public_total: number;
+	preview_total: number;
+	internal_total: number;
 };
 
 export type PublicSkillGalleryMetadata = {
@@ -43,5 +89,10 @@ export type PublicSkillGalleryMetadata = {
 		runtime: boolean;
 		blog: boolean;
 		fallback: boolean;
+	};
+	trust: {
+		eval_status: 'covered' | 'not-covered';
+		last_updated: string;
+		safety_notes: string[];
 	};
 };

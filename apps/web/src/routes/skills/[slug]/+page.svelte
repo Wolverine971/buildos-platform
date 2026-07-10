@@ -19,9 +19,12 @@
 		ArrowRight,
 		BookOpen,
 		Brain,
+		Check,
 		CheckCircle2,
 		Code2,
+		Copy,
 		Download,
+		ExternalLink,
 		FileText,
 		GitBranch,
 		Layers3,
@@ -35,6 +38,7 @@
 	import {
 		getAgentFilePath,
 		getAgentRepositoryPath,
+		getBuildOsMetadataPath,
 		getBuildOsSkillPath,
 		getBundlePath,
 		getDisplayTitle,
@@ -42,12 +46,15 @@
 		getFallbackTryPrompts,
 		getFallbackUseCases,
 		getFallbackWorkflow,
+		getFamilyPath,
 		getNumericStat,
 		getOutputShapes,
+		getPackPath,
 		getSkillFamily,
 		getSkillPath,
 		getSkillPromise,
 		getTryInBuildOsPath,
+		getTryPackInBuildOsPath,
 		humanize
 	} from '$lib/skills/skill-gallery';
 	import type { PageData } from './$types';
@@ -79,6 +86,15 @@
 	let runtimeExamples = $derived(runtime?.examples.slice(0, 3) ?? []);
 	let lineagePeople = $derived(skill.lineage_people?.slice(0, 8) ?? []);
 	let lineageSources = $derived(skill.lineage_sources?.slice(0, 5) ?? []);
+	let copiedPrompt = $state<string | null>(null);
+
+	async function copyPrompt(prompt: string) {
+		await navigator.clipboard.writeText(prompt);
+		copiedPrompt = prompt;
+		window.setTimeout(() => {
+			if (copiedPrompt === prompt) copiedPrompt = null;
+		}, 1800);
+	}
 
 	function generateJsonLd() {
 		const skillUrl = `${SITE_URL}${getSkillPath(skill)}`;
@@ -161,12 +177,13 @@
 			<div class="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-end">
 				<div class="max-w-4xl">
 					<div class="mb-4 flex flex-wrap items-center gap-2 text-sm">
-						<span
-							class="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 font-medium text-accent"
+						<a
+							href={getFamilyPath(family)}
+							class="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 font-medium text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							<Target class="h-4 w-4" />
 							{family}
-						</span>
+						</a>
 						<span
 							class="rounded-full border border-border bg-background px-3 py-1.5 text-muted-foreground"
 						>
@@ -243,7 +260,7 @@
 		</div>
 	</header>
 
-	<main class="mx-auto max-w-7xl px-2 py-8 sm:px-4 sm:py-10 lg:px-6">
+	<div class="mx-auto max-w-7xl px-2 py-8 sm:px-4 sm:py-10 lg:px-6">
 		<div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
 			<div class="space-y-10">
 				<section aria-labelledby="what-it-does">
@@ -294,13 +311,28 @@
 								class="flex min-h-[8rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink tx tx-grid tx-weak"
 							>
 								<p class="text-sm leading-6 text-foreground">{prompt}</p>
-								<a
-									href={getTryInBuildOsPath(skill)}
-									class="mt-auto inline-flex min-h-[44px] items-center gap-2 self-start pt-4 text-sm font-semibold text-accent hover:text-accent/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-								>
-									Try in BuildOS
-									<ArrowRight class="h-4 w-4" />
-								</a>
+								<div class="mt-auto flex flex-wrap gap-2 pt-4">
+									<a
+										href={getTryInBuildOsPath(skill, prompt)}
+										class="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-accent bg-accent px-3 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									>
+										Try in BuildOS
+										<ArrowRight class="h-4 w-4" />
+									</a>
+									<button
+										type="button"
+										class="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										onclick={() => void copyPrompt(prompt)}
+									>
+										{#if copiedPrompt === prompt}
+											<Check class="h-4 w-4 text-success" />
+											Copied
+										{:else}
+											<Copy class="h-4 w-4" />
+											Copy prompt
+										{/if}
+									</button>
+								</div>
 							</div>
 						{/each}
 					</div>
@@ -442,6 +474,13 @@
 							Bundle.zip
 						</a>
 						<a
+							href={getBuildOsMetadataPath(skill)}
+							class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							<FileText class="h-4 w-4" />
+							buildos.yaml
+						</a>
+						<a
 							href={getBuildOsSkillPath(skill)}
 							class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
@@ -460,6 +499,14 @@
 						<p class="mt-4 truncate font-mono text-xs text-muted-foreground">
 							{runtime.id}
 						</p>
+					{/if}
+					{#if skill.compatible_agents?.length}
+						<div class="mt-4 border-t border-border pt-4">
+							<p class="micro-label">Compatibility</p>
+							<p class="mt-2 text-xs leading-5 text-muted-foreground">
+								{skill.compatible_agents.join(' · ')}
+							</p>
+						</div>
 					{/if}
 				</section>
 
@@ -489,6 +536,20 @@
 						<div class="rounded-md border border-border bg-background p-2">
 							<p class="text-xs text-muted-foreground">Catalog</p>
 							<p class="mt-1 font-semibold">{data.catalogVersion}</p>
+						</div>
+						<div class="rounded-md border border-border bg-background p-2">
+							<p class="text-xs text-muted-foreground">Evals</p>
+							<p class="mt-1 font-semibold">
+								{skill.gallery.trust.eval_status === 'covered'
+									? 'Covered'
+									: 'Not covered'}
+							</p>
+						</div>
+						<div class="rounded-md border border-border bg-background p-2">
+							<p class="text-xs text-muted-foreground">Updated</p>
+							<p class="mt-1 truncate font-semibold">
+								{skill.gallery.trust.last_updated}
+							</p>
 						</div>
 					</div>
 
@@ -560,13 +621,27 @@
 									>
 										{pack.job}
 									</p>
+									<div class="mt-3 grid grid-cols-2 gap-2">
+										<a
+											href={getPackPath(pack)}
+											class="inline-flex min-h-[44px] items-center justify-center rounded-md border border-border bg-card px-2 text-xs font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										>
+											Open path
+										</a>
+										<a
+											href={getTryPackInBuildOsPath(pack)}
+											class="inline-flex min-h-[44px] items-center justify-center rounded-md border border-border bg-card px-2 text-xs font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										>
+											Try path
+										</a>
+									</div>
 								</div>
 							{/each}
 						</div>
 					</section>
 				{/if}
 
-				{#if runtime?.child_skills.length || runtime?.reference_modules.length}
+				{#if data.childSkills.length || skill.references.length}
 					<section
 						aria-labelledby="skill-modules"
 						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
@@ -577,44 +652,86 @@
 								Modules
 							</h2>
 						</div>
-						{#if runtime?.child_skills.length}
+						{#if data.childSkills.length}
 							<div class="mt-4">
 								<p class="micro-label">Child Skills</p>
 								<div class="mt-2 space-y-2">
-									{#each runtime.child_skills.slice(0, 5) as child}
-										<div
-											class="rounded-md border border-border bg-background p-2"
-										>
-											<p class="truncate text-sm font-medium text-foreground">
-												{child.name ?? child.id}
-											</p>
-											<p
-												class="mt-1 line-clamp-2 text-xs text-muted-foreground"
+									{#each data.childSkills as child}
+										{#if child.slug}
+											<a
+												href={getSkillPath({ slug: child.slug })}
+												class="group block rounded-md border border-border bg-background p-2 transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 											>
-												{child.summary}
-											</p>
-										</div>
+												<div
+													class="flex min-w-0 items-center justify-between gap-2"
+												>
+													<p
+														class="truncate text-sm font-medium text-foreground"
+													>
+														{child.name ?? child.id}
+													</p>
+													<ArrowRight
+														class="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-accent"
+													/>
+												</div>
+												<p
+													class="mt-1 line-clamp-2 text-xs text-muted-foreground"
+												>
+													{child.summary}
+												</p>
+											</a>
+										{:else}
+											<div
+												class="rounded-md border border-border bg-background p-2"
+											>
+												<p
+													class="truncate text-sm font-medium text-foreground"
+												>
+													{child.name ?? child.id}
+												</p>
+												<p
+													class="mt-1 line-clamp-2 text-xs text-muted-foreground"
+												>
+													{child.summary}
+												</p>
+												<p
+													class="mt-2 text-2xs font-medium text-muted-foreground"
+												>
+													Catalog entry pending
+												</p>
+											</div>
+										{/if}
 									{/each}
 								</div>
 							</div>
 						{/if}
-						{#if runtime?.reference_modules.length}
+						{#if skill.references.length}
 							<div class="mt-4">
 								<p class="micro-label">References</p>
 								<div class="mt-2 space-y-2">
-									{#each runtime.reference_modules.slice(0, 5) as reference}
-										<div
-											class="rounded-md border border-border bg-background p-2"
+									{#each skill.references as reference}
+										<a
+											href={reference.url}
+											class="group block rounded-md border border-border bg-background p-2 transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 										>
-											<p class="truncate text-sm font-medium text-foreground">
-												{reference.name ?? reference.id}
-											</p>
+											<div
+												class="flex min-w-0 items-center justify-between gap-2"
+											>
+												<p
+													class="truncate text-sm font-medium text-foreground"
+												>
+													{reference.name ?? reference.id}
+												</p>
+												<ExternalLink
+													class="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-accent"
+												/>
+											</div>
 											<p
 												class="mt-1 line-clamp-2 text-xs text-muted-foreground"
 											>
 												{reference.summary}
 											</p>
-										</div>
+										</a>
 									{/each}
 								</div>
 							</div>
@@ -631,5 +748,5 @@
 				</a>
 			</aside>
 		</div>
-	</main>
+	</div>
 </div>

@@ -1,5 +1,6 @@
 ---
 name: Project Creation
+catalog_line: 'Turn a user idea into the smallest valid BuildOS project payload with only the structure the user described.'
 description: Project creation playbook for turning a user idea into the smallest valid BuildOS project payload with inferred name, type_key, props, and only the initial structure the user actually described.
 skill_type: procedure # procedure | reference | strategy | resource | policy | orchestration
 altitude: task # task | domain | meta

@@ -1,5 +1,10 @@
 // apps/web/src/lib/skills/skill-gallery-metadata.ts
-import type { DomainGuide, PackDefinition, SkillGalleryMetadata } from './skill-gallery-types';
+import type {
+	DomainGuide,
+	PackDefinition,
+	RuntimeSkillPreviewMetadata,
+	SkillGalleryMetadata
+} from './skill-gallery-types';
 
 export const domainGuides: DomainGuide[] = [
 	{
@@ -69,7 +74,14 @@ export const packDefinitions: PackDefinition[] = [
 			'cold-email-engagement-first-outreach',
 			'landing-page-scorecard-funnel'
 		],
-		order: ['ICP and signal', 'Engagement-first email', 'Scorecard funnel']
+		order: ['ICP and signal', 'Engagement-first email', 'Scorecard funnel'],
+		tryPrompt:
+			'Help me launch or repair this outbound campaign. Start by checking the ICP and buying signal, then build the outreach, then verify the conversion path.',
+		handoff: [
+			'Carry the approved segment and buying signal into the outreach stage.',
+			'Carry the offer, researched bridge, and reply route into the conversion-path stage.',
+			'Pause for human approval before any sending or external action.'
+		]
 	},
 	{
 		id: 'founder-content-pack',
@@ -82,7 +94,14 @@ export const packDefinitions: PackDefinition[] = [
 			'story-driven-content-craft',
 			'viral-content-for-boring-brands'
 		],
-		order: ['Hook', 'Story', 'Brand filter']
+		order: ['Hook', 'Story', 'Brand filter'],
+		tryPrompt:
+			'Help me turn this founder or product idea into content. Develop the opening hook, shape the story, then audit whether the final piece fits the brand and audience.',
+		handoff: [
+			'Carry the chosen hook and its promised payoff into the story stage.',
+			'Carry the completed narrative into the brand-fit review without changing its core claim.',
+			'Return one publishable draft plus the rejected alternatives and reasons.'
+		]
 	},
 	{
 		id: 'landing-page-improvement-stack',
@@ -92,7 +111,14 @@ export const packDefinitions: PackDefinition[] = [
 		description:
 			'Audit the interface, sharpen the scorecard path, then connect the follow-up skills.',
 		slugs: ['ui-ux-quality-review', 'landing-page-scorecard-funnel', 'hook-craft-short-form'],
-		order: ['UX review', 'Scorecard funnel', 'Opening hook']
+		order: ['UX review', 'Scorecard funnel', 'Opening hook'],
+		tryPrompt:
+			'Help me improve this landing page as an ordered workflow: audit the UI and UX, rebuild the scorecard conversion path, then sharpen the opening hook.',
+		handoff: [
+			'Convert the UX audit into explicit constraints for the funnel rebuild.',
+			'Carry the scorecard promise and qualification logic into the hook stage.',
+			'Finish with a prioritized implementation brief, not three disconnected reports.'
+		]
 	},
 	{
 		id: 'agent-ops-starter-pack',
@@ -101,9 +127,224 @@ export const packDefinitions: PackDefinition[] = [
 		job: 'Give agents practical operating rules before they touch external systems.',
 		description: 'A compact starting point for safe, search-first connected-tool behavior.',
 		slugs: ['google-calendar-for-ai-agents-search-before-you-create'],
-		order: ['Calendar safety']
+		order: ['Calendar safety'],
+		tryPrompt:
+			'Help me plan this calendar action safely. Search before creating, confirm exact event scope, and call out recurrence or time-zone risks before any mutation.',
+		handoff: [
+			'Return the proposed action and the evidence used to avoid duplicates.',
+			'Pause for confirmation before creating, updating, or deleting calendar data.'
+		]
 	}
 ];
+
+/**
+ * Explicitly reviewed runtime-only skills that are safe to describe publicly.
+ * Every runtime skill not represented by a published gallery post or this map
+ * remains internal by default.
+ */
+export const previewSkillMetadataByRuntimeId: Record<string, RuntimeSkillPreviewMetadata> = {
+	cold_email_offer_lab: {
+		displayTitle: 'Cold Email Offer Lab',
+		description: 'Design the smallest useful cold-outreach offer before any copy is written.',
+		domainId: 'sales-and-growth',
+		family: 'Cold Outreach',
+		outputShapes: ['artifact offer', 'trust-tier ruling', 'backup tests'],
+		workflow: [
+			'Name the outreach mode and buyer moment.',
+			'Separate the core offer from the front-end artifact.',
+			'Size the ask to the current trust level.',
+			'Run production-cost and false-positive checks.'
+		],
+		useCases: [
+			'Replace a meeting-first cold ask with a useful artifact.',
+			'Repair an offer that is too large for a stranger.',
+			'Compare artifact hypotheses before drafting copy.'
+		],
+		guardrails: [
+			'Do not disguise a pitch deck or calendar link as an artifact.',
+			'Do not make claims without approved proof.',
+			'Do not let the ask outrun the trust already earned.'
+		],
+		starterPrompts: [
+			'Help me turn this meeting-first cold email offer into the smallest useful artifact ask.',
+			'Audit these outreach offer ideas and recommend the strongest low-trust option.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	cold_email_research_anchors: {
+		displayTitle: 'Cold Email Research Anchors',
+		description:
+			'Find a specific, public reason to email one person and connect it to the ask.',
+		domainId: 'sales-and-growth',
+		family: 'Cold Outreach',
+		outputShapes: ['research anchor', 'specificity grade', 'causal bridge'],
+		workflow: [
+			'Choose one named, high-value recipient.',
+			'Find a specific and verifiable public anchor.',
+			'Grade specificity and check the original context.',
+			'Write a bridge that makes the anchor cause the email.'
+		],
+		useCases: [
+			'Research a strategic prospect before drafting outreach.',
+			'Repair decorative personalization.',
+			'Check whether a research hook feels invasive or irrelevant.'
+		],
+		guardrails: [
+			'Use professional, public information only.',
+			'Do not imply familiarity or access you do not have.',
+			'Discard anchors that fail the original-context check.'
+		],
+		starterPrompts: [
+			'Help me find and grade a real research anchor for this named prospect.',
+			'Audit this personalization line and rewrite the bridge so it causes the email.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	cold_email_outreach_compiler: {
+		displayTitle: 'Cold Email Outreach Compiler',
+		description:
+			'Compile approved research, offer, proof, and mode constraints into one email.',
+		domainId: 'sales-and-growth',
+		family: 'Cold Outreach',
+		outputShapes: ['mode-aware email draft', 'CTA choice', 'pre-send checklist'],
+		workflow: [
+			'Confirm the outreach mode and approved inputs.',
+			'Choose the opening structure and single CTA.',
+			'Compile one concise draft without inventing proof.',
+			'Run the pre-send checks and expose missing inputs.'
+		],
+		useCases: [
+			'Turn approved campaign inputs into a final draft.',
+			'Adapt an email to strategic, recruiting, investor, or PR mode.',
+			'Diagnose why a draft has too many asks or unsupported claims.'
+		],
+		guardrails: [
+			'Do not invent research, proof, or recipient facts.',
+			'Do not combine multiple outreach modes.',
+			'Do not send the compiled message automatically.'
+		],
+		starterPrompts: [
+			'Compile these approved outreach inputs into one concise email with a single CTA.',
+			'Audit this draft against its outreach mode and pre-send requirements.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	cold_email_taste_review: {
+		displayTitle: 'Cold Email Taste Review',
+		description: 'Review a cold email for credibility, restraint, and recipient respect.',
+		domainId: 'sales-and-growth',
+		family: 'Cold Outreach',
+		outputShapes: ['taste audit', 'risk flags', 'rewrite brief'],
+		workflow: [
+			'Read the email from the recipient point of view.',
+			'Flag pressure, imitation, vagueness, and credibility gaps.',
+			'Preserve the useful claim while removing performative language.',
+			'Return a prioritized rewrite brief.'
+		],
+		useCases: [
+			'Run a final editorial review before outreach.',
+			'Repair a draft that feels templated or overfamiliar.',
+			'Tighten tone without erasing the concrete offer.'
+		],
+		guardrails: [
+			'Do not mistake aggressive certainty for credibility.',
+			'Do not add fake warmth or familiarity.',
+			'Do not approve language that hides the real ask.'
+		],
+		starterPrompts: [
+			'Review this cold email for taste, credibility, and recipient respect.',
+			'Turn these taste-review flags into a concise rewrite brief.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	cold_email_deliverability_readiness: {
+		displayTitle: 'Cold Email Deliverability Readiness',
+		description:
+			'Check sender, list, provider, and compliance readiness before a campaign starts.',
+		domainId: 'sales-and-growth',
+		family: 'Cold Outreach',
+		outputShapes: ['readiness verdict', 'provider checklist', 'remediation plan'],
+		workflow: [
+			'Identify the sending provider, volume, and audience.',
+			'Check authentication, list hygiene, and complaint risk.',
+			'Separate infrastructure issues from copy issues.',
+			'Return a go, repair, or stop verdict.'
+		],
+		useCases: [
+			'Audit a campaign before the first send.',
+			'Diagnose low placement or elevated bounce risk.',
+			'Create a remediation checklist for a sending domain.'
+		],
+		guardrails: [
+			'Do not treat copy changes as a fix for infrastructure failure.',
+			'Do not send to unverified or improperly sourced lists.',
+			'Do not continue when trust or provider thresholds require a stop.'
+		],
+		starterPrompts: [
+			'Audit this cold email campaign for deliverability readiness before we send.',
+			'Help me separate infrastructure, list, and copy causes behind these campaign metrics.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	cold_email_reply_os: {
+		displayTitle: 'Cold Email Reply OS',
+		description:
+			'Classify cold-email replies and choose a respectful next step for each route.',
+		domainId: 'sales-and-growth',
+		family: 'Cold Outreach',
+		outputShapes: ['reply classification', 'response draft', 'follow-up rule'],
+		workflow: [
+			'Classify the reply before writing a response.',
+			'Choose the matching route and intent level.',
+			'Draft one answer, artifact, or calibrated next step.',
+			'Log the buyer language and stop rule.'
+		],
+		useCases: [
+			'Respond to interested, skeptical, or send-info replies.',
+			'Route objections without counter-pitching.',
+			'Set a respectful rule for silence, opt-out, or revival.'
+		],
+		guardrails: [
+			'Honor a no or opt-out immediately.',
+			'Do not pressure a weak-interest reply into a call.',
+			'Do not respond before classifying the reply.'
+		],
+		starterPrompts: [
+			'Classify this cold email reply and draft the safest useful next response.',
+			'Help me route these replies and capture the buyer language we should learn from.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	cold_email_learning_review: {
+		displayTitle: 'Cold Email Learning Review',
+		description:
+			'Turn campaign results and buyer language into the next evidence-based decision.',
+		domainId: 'sales-and-growth',
+		family: 'Cold Outreach',
+		outputShapes: ['campaign diagnosis', 'gate decision', 'learning memo'],
+		workflow: [
+			'Gather raw counts by variant and persona.',
+			'Check trust and sample validity before reading rates.',
+			'Diagnose one failing layer and extract buyer language.',
+			'Decide whether to stop, iterate, recycle, or scale.'
+		],
+		useCases: [
+			'Review a completed cold outreach test.',
+			'Decide whether a campaign is ready to scale.',
+			'Convert objections and replies into the next controlled test.'
+		],
+		guardrails: [
+			'Do not optimize a composite reply rate.',
+			'Do not make a rate verdict from an invalid sample.',
+			'Do not scale through a trust, bounce, or complaint failure.'
+		],
+		starterPrompts: [
+			'Review these campaign counts and tell me whether to stop, iterate, recycle, or scale.',
+			'Turn these replies, objections, and metrics into a concise learning memo.'
+		],
+		lastUpdated: '2026-07-10'
+	}
+};
 
 export const skillMetadataBySlug: Record<string, SkillGalleryMetadata> = {
 	'cold-email-icp-signal-design': {

@@ -1,6 +1,7 @@
 ---
 skill_id: youtube-channel-craft-for-founders
 name: YouTube Channel Craft For Founders
+catalog_line: 'Grow a founder YouTube channel: title-thumbnail packaging, phase strategy, formats, cadence, analytics.'
 description: Diagnose and grow a founder-led YouTube channel at the channel level — "grow my YouTube channel", "why aren't my videos getting views", "help with my titles and thumbnails", "what videos should I make next", "how often should I upload", "channel strategy". Covers packaging (title + thumbnail as one unit), phase-appropriate strategy, format and series design, upload cadence vs quality, channel positioning, and analytics-driven iteration. Not for single-video hooks or scripts — those route to the hook and script sibling skills.
 skill_type: strategy # procedure | strategy | reference | resource | policy | orchestration
 altitude: domain # task | domain | meta

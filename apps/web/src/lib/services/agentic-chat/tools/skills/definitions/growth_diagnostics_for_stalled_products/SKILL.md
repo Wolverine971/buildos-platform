@@ -1,5 +1,6 @@
 ---
 name: Growth Diagnostics For Stalled Products
+catalog_line: 'Diagnose stalled SaaS or product growth with an ordered five-layer framework before proposing tactics.'
 description: >-
     Root skill for diagnosing stalled SaaS, subscription, marketplace, or product-led growth with an ordered five-layer framework — logo churn and the growth ceiling, pricing and positioning, expansion and net revenue retention, channel saturation, and whether growth is still the goal. Use when growth has slowed or plateaued, new marketing or feature work is not moving revenue, or a founder, PM, or marketer needs the highest-leverage growth constraint identified before proposing tactics.
 skill_type: procedure # procedure | reference | strategy | resource | policy | orchestration

@@ -38,11 +38,16 @@ export type OntologyEntityKind =
 	| 'event';
 
 export interface NormalizedToolDisplay {
-	hidden: boolean;
 	toolName: string;
 	args: string | Record<string, any>;
 	gatewayOp?: string;
 	originalToolName: string;
+}
+
+/** Present-tense (gerund) action + optional target — the single per-tool display atom. */
+export interface ToolDisplayDescriptor {
+	action: string;
+	target?: string;
 }
 
 export interface ToolPresenterContext {
@@ -66,10 +71,23 @@ export interface ToolPresenter {
 		status: 'pending' | 'completed' | 'failed',
 		errorMessage?: string
 	): string;
-	formatOperationEvent(operation: Record<string, any>): {
-		message: string;
-		activityStatus: ActivityEntry['status'];
-	};
+	/**
+	 * Single source of tool-display truth. Returns the present-tense action + optional
+	 * target for a tool. `formatToolMessage` (live path) calls this with no opts; the
+	 * restored session path passes `genericPrefix: true` (CRUD-prefix fallback for
+	 * unknown tools), `resultRecord` (result-backed targets for the 3 tools whose name
+	 * lives in the payload, not the args), and `gatewayOp` (op-routed prefix detection).
+	 * Returns null only when no formatter matches and no generic prefix applies.
+	 */
+	describeToolDisplay(
+		toolName: string,
+		args: Record<string, any> | null | undefined,
+		opts?: {
+			resultRecord?: Record<string, any> | null;
+			genericPrefix?: boolean;
+			gatewayOp?: string | null;
+		}
+	): ToolDisplayDescriptor | null;
 	formatErrorMessage(error: unknown, maxLength?: number): string | undefined;
 	normalizeToolDisplayPayload(
 		toolName: string,
@@ -236,16 +254,10 @@ const TOOL_ACTION_BASE_FORM: Record<string, string> = {
 	Resolving: 'resolve',
 	Querying: 'query',
 	Tagging: 'tag',
-	Reorganizing: 'reorganize'
-};
-
-const OPERATION_VERBS: Record<string, { present: string; past: string }> = {
-	list: { present: 'Listing', past: 'Listed' },
-	search: { present: 'Searching', past: 'Searched' },
-	read: { present: 'Reading', past: 'Read' },
-	create: { present: 'Creating', past: 'Created' },
-	update: { present: 'Updating', past: 'Updated' },
-	delete: { present: 'Deleting', past: 'Deleted' }
+	Reorganizing: 'reorganize',
+	Committing: 'commit',
+	Delegating: 'delegate',
+	Moving: 'move'
 };
 
 // ---------------------------------------------------------------------------
@@ -266,11 +278,6 @@ function normalizeEntityLabel(value: unknown): string | undefined {
 	if (typeof value !== 'string') return undefined;
 	const trimmed = value.trim();
 	return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function capitalizeWord(value: string): string {
-	if (!value) return value;
-	return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function toPastTenseAction(action: string): string {
@@ -322,15 +329,6 @@ function formatErrorMessage(error: unknown, maxLength = 160): string | undefined
 function formatErrorSuffix(errorMessage?: string): string {
 	if (!errorMessage) return '';
 	return ` - ${errorMessage}`;
-}
-
-function formatListPreview(values: string[], limit = 2): string {
-	const cleaned = values
-		.map((value) => (typeof value === 'string' ? value.trim() : ''))
-		.filter((value) => value.length > 0);
-	if (cleaned.length === 0) return '';
-	if (cleaned.length <= limit) return cleaned.join(', ');
-	return `${cleaned.slice(0, limit).join(', ')} (+${cleaned.length - limit} more)`;
 }
 
 function truncateDisplayLabel(value: unknown, maxLength = 96): string | undefined {
@@ -548,6 +546,162 @@ export function extractCreatedEntityFromResult(
 				null;
 
 	return { kind, id, name, projectId };
+}
+
+// ---------------------------------------------------------------------------
+// Restored-path helpers (cache-free) — used by describeToolDisplay for the
+// session-snapshot fork. Pure + module-level: no presenter state. These derive
+// targets from persisted args/result payloads where the live cache is absent,
+// suppress raw UUIDs, and provide the CRUD-prefix fallback for unknown tools.
+// ---------------------------------------------------------------------------
+
+const RAW_UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Whitespace-normalize + truncate a label, dropping bare UUIDs so ids never leak. */
+function suppressRawLabel(value: unknown, maxLength = 90): string | undefined {
+	if (typeof value !== 'string') return undefined;
+	const normalized = value.replace(/\s+/g, ' ').trim();
+	if (!normalized) return undefined;
+	if (RAW_UUID_REGEX.test(normalized)) return undefined;
+	if (normalized.length <= maxLength) return normalized;
+	return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
+}
+
+const RESTORED_TARGET_KEYS = [
+	'title',
+	'name',
+	'project_name',
+	'project_query',
+	'task_title',
+	'task_name',
+	'goal_name',
+	'plan_name',
+	'document_title',
+	'milestone_title',
+	'risk_title',
+	'event_title',
+	'entity_name',
+	'label',
+	'skill',
+	'reference',
+	'resource',
+	'domain',
+	'outcomeCard',
+	'outcome_card',
+	'workCapability',
+	'work_capability',
+	'display_name',
+	'query',
+	'search',
+	'url',
+	'op',
+	'action',
+	'path',
+	'skill_path'
+];
+
+const RESTORED_TARGET_NESTED_KEYS = [
+	'project',
+	'task',
+	'goal',
+	'plan',
+	'document',
+	'milestone',
+	'risk',
+	'event',
+	'calendar_event',
+	'entity',
+	'data',
+	'result'
+];
+
+/** Walk a persisted args/result record for the first human-readable target label. */
+function extractGenericTarget(
+	record: Record<string, any> | null | undefined,
+	depth = 0
+): string | undefined {
+	if (!record || typeof record !== 'object' || depth > 2) return undefined;
+	for (const key of RESTORED_TARGET_KEYS) {
+		const label = suppressRawLabel(record[key]);
+		if (label) return label;
+	}
+	for (const key of RESTORED_TARGET_NESTED_KEYS) {
+		const nested = record[key];
+		if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+			const label = extractGenericTarget(nested as Record<string, any>, depth + 1);
+			if (label) return label;
+		}
+	}
+	return undefined;
+}
+
+/** Document title pulled from args-then-result records (result wins when args are thin). */
+function documentTitleFromRecords(
+	...records: Array<Record<string, any> | null | undefined>
+): string | undefined {
+	for (const record of records) {
+		if (!record) continue;
+		const title =
+			suppressRawLabel(record.document_title) ??
+			suppressRawLabel(record.documentTitle) ??
+			suppressRawLabel(record.title) ??
+			suppressRawLabel((record.document as Record<string, any> | undefined)?.title);
+		if (title) return title;
+	}
+	return undefined;
+}
+
+/** Document title + section, across args-then-result records. */
+function documentSectionFromRecords(
+	...records: Array<Record<string, any> | null | undefined>
+): string | undefined {
+	const documentTitle = documentTitleFromRecords(...records);
+	let section: string | undefined;
+	for (const record of records) {
+		if (!record) continue;
+		section =
+			suppressRawLabel(record.heading) ??
+			suppressRawLabel(record.section_title) ??
+			suppressRawLabel(record.sectionTitle) ??
+			suppressRawLabel(record.anchor);
+		if (section) break;
+	}
+	if (documentTitle && section) return `${documentTitle} · section: ${section}`;
+	return documentTitle ?? (section ? `section: ${section}` : undefined);
+}
+
+/** Best-guess entity noun for an unknown tool, from its name + gateway op. */
+function entityNounFromToolName(toolName: string, gatewayOp: string): string {
+	const source = `${toolName} ${gatewayOp}`.toLowerCase();
+	if (source.includes('project')) return 'project';
+	if (source.includes('task')) return 'task';
+	if (source.includes('goal')) return 'goal';
+	if (source.includes('plan')) return 'plan';
+	if (source.includes('document')) return 'document';
+	if (source.includes('milestone')) return 'milestone';
+	if (source.includes('risk')) return 'risk';
+	if (source.includes('calendar') || source.includes('event')) return 'calendar event';
+	if (source.includes('skill')) return 'skill';
+	if (source.includes('context')) return 'chat context';
+	if (source.includes('relationship') || source.includes('link_')) return 'relationship';
+	return 'tool';
+}
+
+/** CRUD-prefix fallback descriptor for tools with no explicit formatter. */
+function genericPrefixDescriptor(
+	toolName: string,
+	gatewayOp?: string | null
+): ToolDisplayDescriptor | null {
+	const name = toolName.toLowerCase();
+	const op = gatewayOp?.toLowerCase() ?? '';
+	const entity = entityNounFromToolName(name, op);
+	if (name.startsWith('create_') || op.endsWith('.create')) return { action: `Creating ${entity}` };
+	if (name.startsWith('update_') || op.endsWith('.update')) return { action: `Updating ${entity}` };
+	if (name.startsWith('delete_') || op.endsWith('.delete')) return { action: `Deleting ${entity}` };
+	if (name.startsWith('search_') || op.includes('.search')) return { action: `Searching ${entity}` };
+	if (name.startsWith('list_') || op.includes('.list')) return { action: `Listing ${entity}` };
+	if (name.startsWith('get_') || op.includes('.read')) return { action: `Loading ${entity}` };
+	return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1177,7 +1331,7 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			target: resolveEntityName('project', args?.project_id)
 		}),
 		move_document_in_tree: (args) => ({
-			action: 'Reorganizing document tree',
+			action: 'Moving document in tree',
 			target: resolveEntityName('document', args?.document_id)
 		}),
 		get_document_path: (args) => ({
@@ -1302,7 +1456,7 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			target: firstDisplayLabel(args?.op)
 		}),
 		web_search: (args) => ({
-			action: 'Running web search',
+			action: 'Searching web',
 			target: args?.query
 		}),
 		web_visit: (args) => ({
@@ -1414,11 +1568,58 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		argsJson: string | Record<string, any>
 	): NormalizedToolDisplay {
 		return {
-			hidden: false,
 			toolName,
 			args: argsJson,
 			originalToolName: toolName
 		};
+	}
+
+	function describeToolDisplay(
+		toolName: string,
+		args: Record<string, any> | null | undefined,
+		opts?: {
+			resultRecord?: Record<string, any> | null;
+			genericPrefix?: boolean;
+			gatewayOp?: string | null;
+		}
+	): ToolDisplayDescriptor | null {
+		const argsObj = (args ?? {}) as Record<string, any>;
+		const formatter = TOOL_DISPLAY_FORMATTERS[toolName];
+
+		if (formatter) {
+			const descriptor = formatter(argsObj);
+			let target = descriptor.target;
+			const resultRecord = opts?.resultRecord;
+			// The 3 tools whose display name lives in the RESULT payload, not the args.
+			// Cache-free (restored) the args-only formatter can't resolve it, so fall
+			// back to (or, for section reads, prefer) the persisted result record.
+			if (resultRecord) {
+				if (toolName === 'get_project_overview') {
+					target = target ?? extractGenericTarget(resultRecord);
+				} else if (toolName === 'get_document_outline') {
+					target = target ?? documentTitleFromRecords(argsObj, resultRecord);
+				} else if (toolName === 'read_document_section') {
+					target = documentSectionFromRecords(argsObj, resultRecord) ?? target;
+				}
+			}
+			// Restored path only: normalize + drop bare UUIDs so ids never leak into
+			// labels. The live path passes no opts, so its output stays byte-identical.
+			if (opts?.genericPrefix) {
+				target = suppressRawLabel(target);
+			}
+			return { action: descriptor.action, target: target ?? undefined };
+		}
+
+		if (opts?.genericPrefix) {
+			const generic = genericPrefixDescriptor(toolName, opts.gatewayOp);
+			if (!generic) return null;
+			const target =
+				extractGenericTarget(argsObj) ??
+				(opts.resultRecord ? extractGenericTarget(opts.resultRecord) : undefined);
+			return { action: generic.action, target: target ?? undefined };
+		}
+
+		return null;
 	}
 
 	function formatToolMessage(
@@ -1464,7 +1665,14 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 
 		try {
 			const args = typeof argsJson === 'string' ? JSON.parse(argsJson) : argsJson;
-			const { action, target } = formatter(args);
+			const descriptor = describeToolDisplay(toolName, args);
+			if (!descriptor) {
+				// Unreachable while `formatter` exists above; preserves the unknown-tool contract.
+				if (status === 'pending') return `Using tool: ${toolName}`;
+				if (status === 'completed') return `Tool ${toolName} completed`;
+				return `Tool ${toolName} failed${errorSuffix}`;
+			}
+			const { action, target } = descriptor;
 
 			if (!target) {
 				if (status === 'pending') {
@@ -1490,31 +1698,6 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			}
 			return `Using tool: ${toolName}`;
 		}
-	}
-
-	function formatOperationEvent(operation: Record<string, any>): {
-		message: string;
-		activityStatus: ActivityEntry['status'];
-	} {
-		const action = typeof operation?.action === 'string' ? operation.action : 'work';
-		const status = typeof operation?.status === 'string' ? operation.status : 'start';
-		const entityType =
-			typeof operation?.entity_type === 'string'
-				? operation.entity_type.replace(/_/g, ' ')
-				: 'item';
-		const entityName =
-			typeof operation?.entity_name === 'string' ? operation.entity_name.trim() : '';
-		const verbPair = OPERATION_VERBS[action] ?? {
-			present: capitalizeWord(action),
-			past: capitalizeWord(action)
-		};
-		const verb = status === 'success' ? verbPair.past : verbPair.present;
-		const message = entityName
-			? `${verb} ${entityType}: "${entityName}"`
-			: `${verb} ${entityType}`;
-		const activityStatus =
-			status === 'success' ? 'completed' : status === 'error' ? 'failed' : 'pending';
-		return { message, activityStatus };
 	}
 
 	// -------------------------------------------------------------------------
@@ -1677,7 +1860,7 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 
 	return {
 		formatToolMessage,
-		formatOperationEvent,
+		describeToolDisplay,
 		formatErrorMessage,
 		normalizeToolDisplayPayload,
 		cacheEntityName,
@@ -1697,9 +1880,10 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 // Re-export helpers that some tests may want without a factory
 export {
 	formatErrorMessage,
-	formatListPreview,
 	formatCalendarDateLabel,
 	formatDateOnlyLabel,
 	formatExplicitTimezoneDateLabel,
-	normalizeCalendarTimeZone
+	normalizeCalendarTimeZone,
+	toPastTenseAction,
+	toFailureAction
 };

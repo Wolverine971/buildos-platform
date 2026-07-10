@@ -18,6 +18,7 @@ type MarkdownSkillOptions = {
 type MarkdownSkillFrontmatter = {
 	name?: unknown;
 	description?: unknown;
+	catalog_line?: unknown;
 	skill_type?: unknown;
 	altitude?: unknown;
 	activation?: unknown;
@@ -361,6 +362,7 @@ export function defineMarkdownSkill({ id, markdown }: MarkdownSkillOptions): Ski
 	const outputContract = pickSection(sections, ['output', 'output contract', 'contract'])
 		.join('\n')
 		.trim();
+	const catalogLine = parseOptionalString(frontmatter.catalog_line);
 	const skillType = parseSkillType(frontmatter.skill_type);
 	const altitude = parseSkillAltitude(frontmatter.altitude);
 	const activation = parseSkillActivation(frontmatter.activation);
@@ -389,6 +391,7 @@ export function defineMarkdownSkill({ id, markdown }: MarkdownSkillOptions): Ski
 		outputContract: outputContract.length > 0 ? outputContract : undefined
 	};
 
+	if (catalogLine) skill.catalogLine = catalogLine;
 	if (skillType) skill.skillType = skillType;
 	if (altitude) skill.altitude = altitude;
 	if (activation) skill.activation = activation;

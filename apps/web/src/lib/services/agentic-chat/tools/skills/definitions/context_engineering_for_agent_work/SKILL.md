@@ -1,5 +1,6 @@
 ---
 name: Context Engineering For Agent Work
+catalog_line: "Design an AI agent's context: what to load, markdown data layers, prompt-bloat audits, harness debugging."
 description: >-
     Root skill for designing the context an AI agent works with — selecting what files, docs, memories, and tool outputs to load, structuring project context as markdown with frontmatter, stage-gating workflows, auditing prompt bloat, and right-sizing evals. Use when the user wants to set up or structure context for an agent, convert messy notes into an AI-readable project data layer, reduce a bloated system prompt, build or debug an agent harness, or figure out why an agent seems confused, ignores rules, or behaves unreliably.
 skill_type: strategy # procedure | reference | strategy | resource | policy | orchestration

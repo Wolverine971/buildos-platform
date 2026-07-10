@@ -57,17 +57,25 @@
 	import { GOAL_STATES } from '$lib/types/onto';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
-	import TaskEditModal from './TaskEditModal.svelte';
-	import PlanEditModal from './PlanEditModal.svelte';
-	import DocumentModal from './DocumentModal.svelte';
 	import GoalMilestonesSidebarSection from './GoalMilestonesSidebarSection.svelte';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
+	import {
+		loadDocumentModal,
+		loadPlanEditModal,
+		loadTaskEditModal
+	} from '$lib/components/project/project-entity-modal-loader';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 	type AgentChatModalLazy =
 		| typeof import('$lib/components/agent/AgentChatModal.svelte').default
 		| null;
 	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
+	type TaskEditModalLazy = typeof import('./TaskEditModal.svelte').default | null;
+	type PlanEditModalLazy = typeof import('./PlanEditModal.svelte').default | null;
+	type DocumentModalLazy = typeof import('./DocumentModal.svelte').default | null;
+	let TaskEditModalComponent = $state<TaskEditModalLazy>(null);
+	let PlanEditModalComponent = $state<PlanEditModalLazy>(null);
+	let DocumentModalComponent = $state<DocumentModalLazy>(null);
 
 	async function loadAgentChatModal() {
 		if (!AgentChatModalComponent) {
@@ -83,9 +91,10 @@
 		onClose: () => void;
 		onUpdated?: () => void;
 		onDeleted?: () => void;
+		onLoaded?: () => void;
 	}
 
-	let { goalId, projectId, onClose, onUpdated, onDeleted }: Props = $props();
+	let { goalId, projectId, onClose, onUpdated, onDeleted, onLoaded }: Props = $props();
 
 	let modalOpen = $state(true);
 	let goal = $state<any>(null);
@@ -193,13 +202,12 @@
 	async function loadGoal() {
 		try {
 			isLoading = true;
-			// Use /full endpoint for optimized single-request loading
-			const response = await fetch(`/api/onto/goals/${goalId}/full`);
+			linkedEntities = undefined;
+			const response = await fetch(`/api/onto/goals/${goalId}/full?include_linked=false`);
 			if (!response.ok) throw new Error('Failed to load goal');
 
 			const data = await response.json();
 			goal = data.data?.goal;
-			linkedEntities = data.data?.linkedEntities;
 
 			if (goal) {
 				name = goal.name || '';
@@ -214,7 +222,7 @@
 		} catch (err) {
 			console.error('Error loading goal:', err);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/goals/${goalId}/full`,
+				endpoint: `/api/onto/goals/${goalId}/full?include_linked=false`,
 				method: 'GET',
 				projectId,
 				entityType: 'goal',
@@ -224,7 +232,12 @@
 			error = 'Failed to load goal';
 		} finally {
 			isLoading = false;
+			onLoaded?.();
 		}
+	}
+
+	function handleLinkedEntitiesLoaded(value: LinkedEntitiesResult) {
+		linkedEntities = value;
 	}
 
 	async function handleSave() {
@@ -324,18 +337,21 @@
 	}
 
 	// Linked entity click handler
-	function handleLinkedEntityClick(kind: EntityKind, id: string) {
+	async function handleLinkedEntityClick(kind: EntityKind, id: string) {
 		switch (kind) {
 			case 'task':
 				selectedTaskIdForModal = id;
+				TaskEditModalComponent = (await loadTaskEditModal()).default;
 				showTaskModal = true;
 				break;
 			case 'plan':
 				selectedPlanIdForModal = id;
+				PlanEditModalComponent = (await loadPlanEditModal()).default;
 				showPlanModal = true;
 				break;
 			case 'document':
 				selectedDocumentIdForModal = id;
+				DocumentModalComponent = (await loadDocumentModal()).default;
 				showDocumentModal = true;
 				break;
 			default:
@@ -740,6 +756,7 @@
 						<!-- Milestones (goal-specific, self-contained card) -->
 						<GoalMilestonesSidebarSection
 							{milestones}
+							loading={!linkedEntities}
 							{goalId}
 							goalName={name || goal?.name || 'Goal'}
 							goalState={stateKey}
@@ -940,6 +957,7 @@
 													sourceKind="goal"
 													{projectId}
 													initialLinkedEntities={linkedEntities}
+													onLoaded={handleLinkedEntitiesLoaded}
 													onEntityClick={handleLinkedEntityClick}
 													onLinksChanged={handleLinksChanged}
 												/>
@@ -1101,8 +1119,9 @@
 {/if}
 
 <!-- Linked Entity Modals -->
-{#if showTaskModal && selectedTaskIdForModal}
-	<TaskEditModal
+{#if showTaskModal && selectedTaskIdForModal && TaskEditModalComponent}
+	{@const TaskModal = TaskEditModalComponent}
+	<TaskModal
 		taskId={selectedTaskIdForModal}
 		{projectId}
 		onClose={closeLinkedEntityModals}
@@ -1111,8 +1130,9 @@
 	/>
 {/if}
 
-{#if showPlanModal && selectedPlanIdForModal}
-	<PlanEditModal
+{#if showPlanModal && selectedPlanIdForModal && PlanEditModalComponent}
+	{@const PlanModal = PlanEditModalComponent}
+	<PlanModal
 		planId={selectedPlanIdForModal}
 		{projectId}
 		onClose={closeLinkedEntityModals}
@@ -1121,8 +1141,9 @@
 	/>
 {/if}
 
-{#if showDocumentModal && selectedDocumentIdForModal}
-	<DocumentModal
+{#if showDocumentModal && selectedDocumentIdForModal && DocumentModalComponent}
+	{@const DocModal = DocumentModalComponent}
+	<DocModal
 		{projectId}
 		documentId={selectedDocumentIdForModal}
 		bind:isOpen={showDocumentModal}

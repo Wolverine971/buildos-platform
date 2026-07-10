@@ -34,6 +34,8 @@ export interface SkillDefinition {
 	id: string;
 	name: string;
 	summary: string;
+	/** Short trigger line for the always-on catalog table; falls back to summary. */
+	catalogLine?: string;
 	skillType?: SkillType;
 	altitude?: SkillAltitude;
 	activation?: SkillActivation;

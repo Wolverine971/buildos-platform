@@ -1,5 +1,6 @@
 ---
 name: Build Quality UI/UX
+catalog_line: 'Route UI/UX quality work: screen audits, accessibility, visual craft, design systems, IA, usability research.'
 description: >-
     Root UI/UX skill for routing, sequencing, and source-backed quality work across product screens, generated UI, marketing pages, accessibility, visual craft, calm/delight posture, design systems, information architecture, usability research, and implementation verification.
 skill_type: orchestration # procedure | strategy | reference | resource | policy | orchestration

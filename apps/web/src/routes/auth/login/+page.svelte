@@ -204,7 +204,7 @@
 			// This will trigger the layout to reload with the new session
 			const redirectTarget = resolveRedirectTarget();
 			const pendingRedirect = redirectTarget ? null : await resolvePendingInviteRedirect();
-			const destination = redirectTarget ?? pendingRedirect ?? '/';
+			const destination = redirectTarget ?? pendingRedirect ?? '/dashboard';
 
 			await goto(destination, {
 				invalidateAll: true // This ensures all load functions re-run

@@ -1,0 +1,71 @@
+<!-- apps/web/docs/features/today-view/TODAY_VIEW_2026-07-09.md -->
+
+# Today View (`/today`)
+
+**Created 2026-07-09.** First slice of the re-envisioned dashboard from the thinking-loop work
+(`docs/product/thinking-loop-capture-structure-surface-decide-update-2026-07-07.md`). The Today
+view is the loop's **Surface** stage made concrete: one calm, time-ordered agenda for the day —
+calendar events blended with tasks — where every item is chattable and decidable in place.
+
+## What it does
+
+- **Merged agenda.** Calendar events (via the `list_calendar_items` RPC, events only) interleaved
+  with today's tasks (due today, starting today, or in progress) on a single time rail, in the
+  user's timezone. Untimed tasks live in an "Anytime today" band; all-day events render as chips.
+- **Now marker.** A current-time line in the schedule; in-progress events get a "Now" chip and
+  accent treatment; past events dim.
+- **Chat about anything.** Every row has a chat action. Tasks open agent chat with a task-scoped
+  `initialProjectFocus` (same contract as `TaskEditModal`). Events open project- or
+  calendar-scoped chat with a prefilled draft. Events that are backed by a task (`task_id`) route
+  to task chat and carry the done toggle.
+- **Chat about the whole day.** Header button seeds agent chat with a compact plain-text agenda
+  draft (schedule + anytime tasks + overdue count) so one conversation can work the whole day.
+- **Decide in place.** Tasks have an inline done toggle (optimistic, undoable, restores the prior
+  state on undo). Attention lives in two compact chips — pending AI Inbox items (opens
+  `DashboardInboxModal`) and overdue count (opens `OverdueTaskTriageModal`) — instead of stacked
+  banners.
+- **What changed since you were here** (added 2026-07-10). A receipts section under the header:
+  recent mutations across all projects, grouped by project, one collapsed entry per entity
+  (latest action + ×N occurrence count), attributed to an actor — You / member name / Agent chat /
+  Agent run / external agent caller name / Brain dump — with created/updated/deleted icons.
+  Built entirely on `onto_project_logs` (the existing canonical activity log; no new table).
+  The "since" anchor is the previous visit (localStorage `buildos:today:last-visit-at`, held
+  steady across reloads via sessionStorage, clamped server-side to 7 days, default 24h). Hidden
+  when empty. Edge (relationship) logs are excluded as structural noise.
+
+## Files
+
+| Piece | Path |
+| --- | --- |
+| Shared types | `apps/web/src/lib/types/today.ts` |
+| Feed assembly (server) | `apps/web/src/lib/server/today-feed.service.ts` |
+| Refresh endpoint | `apps/web/src/routes/api/today/+server.ts` (GET) |
+| Route | `apps/web/src/routes/today/{+page.server.ts,+page.svelte}` |
+| Agenda row | `apps/web/src/lib/components/today/TodayAgendaRow.svelte` |
+| What-changed service | `apps/web/src/lib/server/what-changed.service.ts` |
+| What-changed endpoint | `apps/web/src/routes/api/today/changes/+server.ts` (GET, `since` param) |
+| What-changed UI | `apps/web/src/lib/components/today/WhatChangedSection.svelte` |
+| Log enrichment (shared) | `apps/web/src/lib/server/project-logs-enrich.ts` (extracted from the per-project logs route) |
+| Entry points | `Navigation.svelte` navItems (`Today`), `AnalyticsDashboard.svelte` header button |
+
+## Data notes
+
+- Day bounds are computed in the user's timezone (`users.timezone`, `date-fns-tz` `fromZonedTime`)
+  and passed as UTC ISO to both the calendar RPC and the task query.
+- Task query: non-paused visible projects → `onto_tasks` with active states
+  (`todo/in_progress/blocked`) AND (due today OR starts today OR `in_progress`). Bucket priority:
+  `due_today` > `starts_today` > `in_progress`.
+- Task markers from the calendar RPC are excluded (`include_task_*: false`) — tasks come from the
+  task query directly, which avoids dedup. Events carrying a `task_id` that matches a fetched task
+  are merged (event row represents the task).
+- A task due/starting at local midnight is treated as date-only → "Anytime today", not 12:00 AM.
+
+## Deliberate scope cuts (follow-ups)
+
+- **Quick capture / "what changed?" composer** on the page (loop restart).
+- What-changed follow-ups: click-through from a receipt to the entity (currently the group links
+  to the project), a per-receipt "chat about this change" action, and folding agent-run
+  `entities_touched` / `agent_tool_executions` in for run-level receipts.
+- Server-seeded whole-day chat session (inbox-style seed message instead of a composer draft).
+- Making `/today` the default post-login landing (flip the `/` redirect once it earns it).
+- Task reschedule/push-to-tomorrow action; priority display; multi-day peek.

@@ -52,7 +52,10 @@
 				await tick();
 				if (canceled) return;
 				const el = document.querySelector(hash);
-				el?.scrollIntoView({ behavior: 'smooth' });
+				const prefersReducedMotion = window.matchMedia(
+					'(prefers-reduced-motion: reduce)'
+				).matches;
+				el?.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth' });
 			}
 			if (!canceled) void logView(currentPage.slug);
 		})();
@@ -115,7 +118,7 @@
 		}}
 	/>
 
-	<main class="min-h-screen rounded-lg bg-card">
+	<div class="min-h-screen rounded-lg bg-card">
 		<div class="mx-auto px-4 py-6 sm:px-8 sm:py-10">
 			{#if page.is_author}
 				<OwnerBar {page} />
@@ -168,7 +171,7 @@
 
 			<!-- Article body -->
 			<div
-				class="{getProseClasses('base')}
+				class="public-page-content {getProseClasses('base')}
 				prose-p:text-sm prose-p:leading-relaxed sm:prose-p:text-base sm:prose-p:leading-[1.75]
 				prose-li:text-sm prose-li:leading-relaxed sm:prose-li:text-base sm:prose-li:leading-[1.75]
 				prose-blockquote:border-l-2 prose-blockquote:pl-4
@@ -248,17 +251,17 @@
 				</div>
 			</footer>
 		</div>
-	</main>
+	</div>
 {/if}
 
 <style>
 	/* Offset anchors so headings don't hide behind the top edge */
-	main :global(h1[id]),
-	main :global(h2[id]),
-	main :global(h3[id]),
-	main :global(h4[id]),
-	main :global(h5[id]),
-	main :global(h6[id]) {
+	.public-page-content :global(h1[id]),
+	.public-page-content :global(h2[id]),
+	.public-page-content :global(h3[id]),
+	.public-page-content :global(h4[id]),
+	.public-page-content :global(h5[id]),
+	.public-page-content :global(h6[id]) {
 		scroll-margin-top: 1.5rem;
 	}
 </style>

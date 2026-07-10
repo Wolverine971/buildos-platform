@@ -46,8 +46,8 @@
 			answer: 'People making complex things whose work depends on preserved context: authors, YouTubers, podcasters, newsletter operators, course creators, researchers, and builders juggling product work alongside content. BuildOS is for work that generic productivity tools flatten.'
 		},
 		{
-			question: 'Is there a free trial?',
-			answer: 'Yes. BuildOS Pro includes a 14-day free trial so you can build real projects and see context compound before committing to a paid plan.'
+			question: 'Is BuildOS charging users yet?',
+			answer: 'Not yet. Paid billing is not active. The Pricing page shows the planned Pro price, and creating an account does not charge you.'
 		}
 	] as const;
 

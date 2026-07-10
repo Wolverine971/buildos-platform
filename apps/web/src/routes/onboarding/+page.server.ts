@@ -51,7 +51,7 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		.single();
 
 	if (userData?.onboarding_completed_at) {
-		throw redirect(303, '/');
+		throw redirect(303, '/dashboard');
 	}
 
 	// Load user context (used by ProjectsCaptureStep).

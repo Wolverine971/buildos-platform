@@ -119,7 +119,7 @@
 		{
 			stat: 'Live',
 			title: 'Product access',
-			body: '14-day trial, paid plan, projects, documents, daily briefs, calendar sync, and agentic chat — in production.'
+			body: 'Product access is live; paid billing is not yet active. Projects, documents, daily briefs, calendar sync, and agentic chat are in production.'
 		},
 		{
 			stat: 'Read + write',
@@ -191,7 +191,7 @@
 	}}
 />
 
-<main class="min-h-screen bg-background text-foreground">
+<div class="min-h-screen bg-background text-foreground">
 	<!-- Hero: lead with the bet -->
 	<section class="border-b border-border bg-muted atmo atmo-med rim-accent">
 		<div class="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16 lg:py-20">
@@ -617,4 +617,4 @@
 			</div>
 		</div>
 	</section>
-</main>
+</div>

@@ -56,14 +56,6 @@ export function computeAgentStateActivity(state: AgentLoopState, details?: strin
 	}
 }
 
-/** Count valid clarifying questions (trimmed non-empty strings) in a payload. */
-export function computeClarifyingQuestionsCount(questions: unknown): number {
-	if (!Array.isArray(questions)) return 0;
-	return questions.filter(
-		(question: unknown) => typeof question === 'string' && question.trim().length > 0
-	).length;
-}
-
 /** Normalize the `new_context` field from a context-shift payload. Treats 'general' as 'global'. */
 export function normalizeContextShiftContext(
 	newContext: ContextShiftPayload['new_context']
@@ -72,9 +64,7 @@ export function normalizeContextShiftContext(
 }
 
 export interface ToolCallActivityBuildResult {
-	/** Null if the tool_call is hidden and should not produce a visible activity. */
-	activity: ActivityEntry | null;
-	hidden: boolean;
+	activity: ActivityEntry;
 	toolCallId: string | undefined;
 }
 
@@ -90,10 +80,6 @@ export function buildToolCallActivity(
 	const toolCallId = event.tool_call?.id;
 	const args = event.tool_call?.function?.arguments || '';
 	const displayPayload = presenter.normalizeToolDisplayPayload(rawToolName, args);
-
-	if (displayPayload.hidden) {
-		return { activity: null, hidden: true, toolCallId };
-	}
 
 	const displayMessage = presenter.formatToolMessage(
 		displayPayload.toolName,
@@ -137,7 +123,7 @@ export function buildToolCallActivity(
 		}
 	};
 
-	return { activity, hidden: false, toolCallId };
+	return { activity, toolCallId };
 }
 
 export interface ToolResultInfo {
@@ -150,19 +136,16 @@ export interface ToolResultInfo {
 
 /**
  * Extract the routing metadata from a tool_result payload.
- * Canonical wire fields are snake_case (`tool_call_id`, `tool_name`); the
- * camelCase reads are fallbacks for stale clients/servers during a deploy
- * window (duplicated fields removed server-side 2026-06-10).
+ * Wire fields are snake_case only (`tool_call_id`, `tool_name`);
+ * the duplicated camelCase fields were removed server-side 2026-06-10.
  */
 export function computeToolResultInfo(
 	toolResult: Record<string, any> | undefined,
 	presenter: ToolPresenter
 ): ToolResultInfo {
-	const resultToolCallId = toolResult?.tool_call_id ?? toolResult?.toolCallId;
+	const resultToolCallId = toolResult?.tool_call_id;
 	const rawResultToolName =
-		(typeof toolResult?.tool_name === 'string' && toolResult.tool_name) ||
-		(typeof toolResult?.toolName === 'string' && toolResult.toolName) ||
-		undefined;
+		(typeof toolResult?.tool_name === 'string' && toolResult.tool_name) || undefined;
 	const success = toolResult?.success ?? true;
 	const toolError = toolResult?.error;
 	const toolErrorMessage = success ? undefined : presenter.formatErrorMessage(toolError);
@@ -179,27 +162,19 @@ export function sanitizeToolResultForActivityMetadata(
 	const sanitized = { ...toolResult };
 	const rawStreamEvents = Array.isArray(sanitized.stream_events)
 		? sanitized.stream_events
-		: Array.isArray(sanitized.streamEvents)
-			? sanitized.streamEvents
-			: undefined;
+		: undefined;
 	const rawStreamEventsPreview = Array.isArray(sanitized.stream_events_preview)
 		? sanitized.stream_events_preview
-		: Array.isArray(sanitized.streamEventsPreview)
-			? sanitized.streamEventsPreview
-			: undefined;
+		: undefined;
 	const streamEventCount =
 		finiteNumberValue(sanitized.stream_event_count) ??
-		finiteNumberValue(sanitized.streamEventCount) ??
 		rawStreamEvents?.length ??
 		rawStreamEventsPreview?.length;
 	const streamEventsPreviewSource = rawStreamEvents ?? rawStreamEventsPreview;
 
 	delete sanitized.stream_events;
-	delete sanitized.streamEvents;
 	delete sanitized.stream_events_preview;
-	delete sanitized.streamEventsPreview;
 	delete sanitized.stream_event_count;
-	delete sanitized.streamEventCount;
 
 	if (streamEventCount !== undefined) {
 		sanitized.stream_event_count = streamEventCount;
@@ -269,10 +244,6 @@ export interface ThinkingBlockDeps {
 	): void;
 	updateState(state: AgentLoopState, details?: string): void;
 	upsertSkillActivity(event: SkillActivityEvent): void;
-	upsertOperationActivity(
-		operation: Record<string, unknown>,
-		format: { message: string; activityStatus: ActivityEntry['status'] }
-	): void;
 	updateActivityStatus(
 		toolCallId: string,
 		status: 'completed' | 'failed',
@@ -329,19 +300,12 @@ export interface SSEHandlerDeps {
 	finalizeAssistantMessage(): void;
 
 	// Pending tool state (mutable, owned by caller)
-	hiddenToolCallIds: Set<string>;
 	pendingToolResults: Map<string, PendingToolStatus>;
 	processedToolCallIds: Set<string>;
 	processedToolResultIds: Set<string>;
 
-	// Clarifications
-	addClarifyingQuestionsMessage(questions: unknown): void;
-
 	// Created-entity chips appended inline at the end of a turn that created entities.
 	addCreatedEntitiesMessage(entities: CreatedEntityRef[]): void;
-
-	// Focus logging
-	logFocusActivity(action: string, focus: ProjectFocus | null): void;
 
 	isDev?: boolean;
 }
@@ -458,13 +422,6 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 			deps.processedToolCallIds.add(result.toolCallId);
 		}
 
-		if (result.hidden) {
-			if (result.toolCallId) {
-				deps.hiddenToolCallIds.add(result.toolCallId);
-			}
-			return;
-		}
-
 		if (isDev) {
 			const rawToolName = event.tool_call?.function?.name || 'unknown';
 			const rawArgs = event.tool_call?.function?.arguments || '';
@@ -478,12 +435,10 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 			});
 		}
 
-		if (!result.activity) return;
-
 		const blockId = thinking.ensure();
 		thinking.update(blockId, (block) => ({
 			...block,
-			activities: [...block.activities, result.activity!]
+			activities: [...block.activities, result.activity]
 		}));
 
 		if (result.toolCallId && deps.pendingToolResults.has(result.toolCallId)) {
@@ -537,12 +492,6 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 		}
 
 		presenter.indexEntitiesFromToolResult(toolResult);
-
-		if (info.resultToolCallId && deps.hiddenToolCallIds.has(info.resultToolCallId)) {
-			deps.hiddenToolCallIds.delete(info.resultToolCallId);
-			deps.pendingToolResults.delete(info.resultToolCallId);
-			return;
-		}
 
 		let resolvedToolName: string | undefined;
 		let resolvedArgs: string | Record<string, unknown> | undefined;
@@ -634,7 +583,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 	}
 
 	const handleSSEMessage = function handleSSEMessage(event: AgentSSEMessage): void {
-		if (event.type !== 'text' && event.type !== 'text_delta') {
+		if (event.type !== 'text_delta') {
 			deps.flushAssistantText();
 		}
 
@@ -671,15 +620,6 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 				}
 				return;
 
-			case 'focus_active':
-				state.setProjectFocus(event.focus);
-				return;
-
-			case 'focus_changed':
-				state.setProjectFocus(event.focus);
-				deps.logFocusActivity('Focus changed', event.focus);
-				return;
-
 			case 'agent_state': {
 				const agentState = event.state as AgentLoopState;
 				thinking.updateState(agentState, event.details);
@@ -696,26 +636,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 				return;
 			}
 
-			case 'clarifying_questions': {
-				deps.addClarifyingQuestionsMessage(event.questions);
-				const questionCount = computeClarifyingQuestionsCount(event.questions);
-				if (questionCount > 0) {
-					thinking.addActivity(
-						`Clarifying questions requested (${questionCount})`,
-						'clarification',
-						{ questionCount, questions: event.questions }
-					);
-					state.setCurrentActivity('Waiting on your clarifications to continue...');
-					thinking.updateState(
-						'waiting_on_user',
-						'Waiting on your clarifications to continue...'
-					);
-				}
-				return;
-			}
-
 			case 'text_delta':
-			case 'text':
 				if (event.content) {
 					deps.bufferAssistantText(event.content);
 				}
@@ -732,21 +653,6 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 			case 'skill_activity':
 				thinking.upsertSkillActivity(event);
 				return;
-
-			case 'operation': {
-				const operationPayload =
-					'operation' in event && (event as any).operation
-						? (event as any).operation
-						: event;
-				const format = presenter.formatOperationEvent(
-					operationPayload as Record<string, any>
-				);
-				thinking.upsertOperationActivity(
-					operationPayload as Record<string, unknown>,
-					format
-				);
-				return;
-			}
 
 			case 'context_shift':
 				if (event.context_shift) {

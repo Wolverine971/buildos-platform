@@ -182,3 +182,21 @@
 		padding: 1rem;
 	}
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.animate-pulse-slow,
+	.animate-pulse,
+	.float-animation,
+	.fade-in,
+	.skeleton {
+		animation: none;
+		will-change: auto;
+	}
+
+	.fade-in,
+	.fade-in.delay-200,
+	.fade-in.delay-400 {
+		opacity: 1;
+		transform: none;
+	}
+}

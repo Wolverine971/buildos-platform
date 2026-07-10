@@ -1,6 +1,13 @@
 // apps/web/src/lib/components/agent/agent-chat.constants.ts
 import type { ChatContextType } from '@buildos/shared-types';
 
+/**
+ * How long the stream controller holds a prepared-prompt send while the prewarm
+ * request settles. Shared by the prewarm orchestrator (as its default wait) and
+ * the stream controller (as the wait it passes in).
+ */
+export const PREPARED_PROMPT_SEND_WAIT_MS = 250;
+
 export const CONTEXT_DESCRIPTORS: Record<ChatContextType, { title: string; subtitle: string }> = {
 	global: {
 		title: 'Global conversation',
@@ -35,15 +42,3 @@ export const CONTEXT_DESCRIPTORS: Record<ChatContextType, { title: string; subti
 		subtitle: 'Work with the ontology system (projects, tasks, docs, goals).'
 	}
 };
-
-export const CONTEXT_BADGE_CLASSES: Partial<Record<ChatContextType, string>> = {
-	global: 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300',
-	project: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300',
-	ontology: 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300',
-	project_create: 'bg-purple-500/10 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300',
-	daily_brief_update: 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300',
-	daily_brief: 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300',
-	calendar: 'bg-sky-500/10 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300'
-};
-
-export const DEFAULT_CONTEXT_BADGE_CLASS = 'bg-muted text-muted-foreground border border-border';

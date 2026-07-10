@@ -152,7 +152,7 @@
 		</div>
 	</header>
 
-	<main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-10 sm:space-y-12">
+	<div class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-10 sm:space-y-12">
 		<!-- Pattern Overview -->
 		<section>
 			<div class="flex items-center gap-2 mb-4">
@@ -1021,5 +1021,5 @@
 				</div>
 			</div>
 		</footer>
-	</main>
+	</div>
 </div>

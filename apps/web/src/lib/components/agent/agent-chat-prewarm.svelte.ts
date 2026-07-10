@@ -17,6 +17,7 @@ import {
 	type FastChatContextCache
 } from '$lib/services/agentic-chat-v2/context-cache';
 import { isProjectContext, type PreparedPromptClient } from './agent-chat-session';
+import { PREPARED_PROMPT_SEND_WAIT_MS } from './agent-chat.constants';
 import type { ChatContextType } from '@buildos/shared-types';
 
 // ---------------------------------------------------------------------------
@@ -92,7 +93,6 @@ export interface PrewarmReadiness {
 // ---------------------------------------------------------------------------
 
 const PREPARED_PROMPT_RETRY_DELAY_MS = 10_000;
-const DEFAULT_PREPARED_PROMPT_SEND_WAIT_MS = 250;
 
 type InflightPrewarm = {
 	key: string;
@@ -248,7 +248,7 @@ export class PrewarmController {
 		try {
 			await waitForPromiseWithTimeout(
 				inflight.promise,
-				options.timeoutMs ?? DEFAULT_PREPARED_PROMPT_SEND_WAIT_MS
+				options.timeoutMs ?? PREPARED_PROMPT_SEND_WAIT_MS
 			).catch(() => false);
 		} finally {
 			inflight.heldForSend = false;

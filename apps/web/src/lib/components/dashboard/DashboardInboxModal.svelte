@@ -832,9 +832,17 @@
 	});
 </script>
 
-<Modal {isOpen} onClose={close} title="AI Inbox" size="xl" variant="bottom-sheet">
+<Modal
+	{isOpen}
+	onClose={close}
+	title="AI Inbox"
+	size="xl"
+	variant="bottom-sheet"
+	enableGestures={false}
+	showDragHandle={false}
+>
 	<div
-		class="flex h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden sm:h-auto sm:min-h-[55vh]"
+		class="flex h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-4.25rem-var(--keyboard-height,0px))] min-h-0 flex-col overflow-hidden sm:h-auto sm:min-h-[55vh]"
 	>
 		<div class="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5">
 			<div class="min-w-0">
@@ -898,15 +906,15 @@
 			</div>
 		{:else}
 			<div
-				class="grid min-h-0 flex-1 gap-0 overflow-hidden lg:grid-cols-[240px_minmax(0,1fr)]"
+				class="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] gap-0 overflow-hidden lg:grid-cols-[240px_minmax(0,1fr)]"
 			>
 				<div
-					class="border-b border-border p-2 lg:max-h-[calc(85dvh-8rem)] lg:overflow-y-auto lg:border-b-0 lg:border-r"
+					class="min-w-0 shrink-0 border-b border-border p-2 lg:max-h-[calc(85dvh-8rem)] lg:overflow-y-auto lg:border-b-0 lg:border-r"
 				>
 					<div
 						role="tablist"
 						aria-label="Inbox groups"
-						class="flex snap-x scroll-px-2 gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible"
+						class="flex min-w-0 snap-x scroll-px-2 gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible"
 					>
 						{#each groupedItems as group (group.key)}
 							<button
@@ -918,24 +926,22 @@
 								tabindex={activeGroup?.key === group.key ? 0 : -1}
 								onclick={() => selectGroup(group.key)}
 								onkeydown={(event) => handleGroupKeydown(event, group.key)}
-								class="min-h-[44px] min-w-[190px] snap-start rounded-md border px-2.5 py-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none lg:min-w-0 {activeGroup?.key ===
+								class="inline-flex min-h-[44px] min-w-32 max-w-[44vw] shrink-0 snap-start items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none lg:block lg:w-full lg:max-w-none lg:min-w-0 {activeGroup?.key ===
 								group.key
 									? 'border-accent/40 bg-accent/10'
 									: 'border-border bg-card hover:bg-muted/40'}"
 							>
-								<div class="flex items-start justify-between gap-2">
-									<p
-										class="min-w-0 flex-1 truncate text-xs font-semibold text-foreground"
-									>
-										{group.label}
-									</p>
-									<span
-										class="shrink-0 text-[11px] font-semibold text-foreground"
-									>
-										{group.items.length}
-									</span>
-								</div>
-								<p class="mt-1 text-[11px] text-muted-foreground">
+								<p
+									class="min-w-0 flex-1 truncate text-xs font-semibold text-foreground"
+								>
+									{group.label}
+								</p>
+								<span
+									class="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-2xs font-semibold text-foreground lg:hidden"
+								>
+									{group.items.length}
+								</span>
+								<p class="mt-1 hidden text-2xs text-muted-foreground lg:block">
 									{group.actionableCount} actionable
 								</p>
 							</button>
@@ -948,20 +954,34 @@
 						id={groupPanelId(activeGroup.key)}
 						role="tabpanel"
 						aria-labelledby={groupTabId(activeGroup.key)}
-						class="flex min-h-0 flex-col overflow-hidden"
+						class="flex min-h-0 min-w-0 flex-col overflow-hidden"
 					>
 						<div
-							class="flex items-center justify-between border-b border-border bg-muted/30 px-3 py-2"
+							class="flex min-h-11 items-center justify-between gap-3 border-b border-border bg-muted/30 px-3 py-1.5"
 						>
 							<div class="min-w-0">
-								<p class="truncate text-xs font-semibold text-foreground">
+								<p class="text-xs font-semibold text-foreground lg:hidden">
+									{activeGroup.items.length} item{activeGroup.items.length === 1
+										? ''
+										: 's'}
+									{#if activeGroup.actionableCount !== activeGroup.items.length}
+										<span class="font-normal text-muted-foreground">
+											· {activeGroup.actionableCount} actionable
+										</span>
+									{/if}
+								</p>
+								<p
+									class="hidden truncate text-xs font-semibold text-foreground lg:block"
+								>
 									{activeGroup.label}
 									<span class="text-muted-foreground">
 										({activeGroup.items.length})
 									</span>
 								</p>
 								{#if activeGroup.actionableCount !== activeGroup.items.length}
-									<p class="mt-0.5 text-[11px] text-muted-foreground">
+									<p
+										class="mt-0.5 hidden text-[11px] text-muted-foreground lg:block"
+									>
 										{activeGroup.actionableCount} actionable
 									</p>
 								{/if}
@@ -969,7 +989,7 @@
 							{#if activeGroup.projectId}
 								<a
 									href="/projects/{activeGroup.projectId}"
-									class="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+									class="inline-flex min-h-11 shrink-0 items-center rounded-md px-2 text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
 								>
 									Open project
 								</a>
@@ -977,7 +997,7 @@
 						</div>
 
 						<div
-							class="inbox-spotlight-group min-h-0 flex-1 overflow-y-auto divide-y divide-border"
+							class="inbox-spotlight-group min-h-0 min-w-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto p-2 lg:space-y-0 lg:divide-y lg:divide-border lg:p-0"
 						>
 							{#each activeGroup.items as item (item.id)}
 								{@const payload = projectSuggestion(item)}
@@ -1002,7 +1022,9 @@
 									payload?.evidence_refs
 								).slice(0, 2)}
 								{@const changes = changeCount(item)}
-								<div class="inbox-spotlight-item px-3 py-3">
+								<div
+									class="inbox-spotlight-item min-w-0 rounded-lg border border-border bg-card p-3 shadow-ink lg:rounded-none lg:border-0 lg:bg-transparent lg:shadow-none"
+								>
 									<div
 										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 									>
@@ -1270,14 +1292,14 @@
 												loading={isOpeningChat(item)}
 												disabled={isOpeningChat(item)}
 												onclick={() => openChat(item)}
-												class="shrink-0"
+												class="w-full shrink-0 sm:w-auto"
 											>
 												<Sparkles class="mr-2 h-4 w-4" />
 												Open chat
 											</Button>
 										{:else if !canDecide(item)}
 											<div
-												class="max-w-full shrink-0 break-words rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground sm:max-w-56"
+												class="w-full max-w-full shrink-0 break-words rounded-md border border-border bg-muted/30 px-2.5 py-2 text-2xs font-medium text-muted-foreground sm:w-auto sm:max-w-56"
 											>
 												{item.decision_disabled_reason ?? 'View only'}
 											</div>

@@ -82,7 +82,7 @@
 			autoResize && 'resize-none overflow-hidden',
 
 			// State classes - clean borders
-			error ? 'border-destructive' : 'border-border focus:border-b-accent',
+			error ? 'border-destructive' : 'border-border-strong focus:border-accent',
 
 			// Background - card
 			'bg-card',

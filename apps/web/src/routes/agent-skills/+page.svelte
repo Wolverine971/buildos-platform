@@ -288,19 +288,26 @@
 				<div class="relative max-w-xl flex-1">
 					<Search
 						class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+						aria-hidden="true"
 					/>
 					<input
 						bind:value={query}
 						type="search"
+						aria-label="Search agent skills"
 						placeholder="Search skills, creators, stacks, or categories"
-						class="h-10 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-accent focus:ring-2 focus:ring-accent/20"
+						class="h-11 w-full rounded-lg border border-border-strong bg-card pl-9 pr-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-accent focus:ring-2 focus:ring-accent/20 motion-reduce:transition-none"
 					/>
 				</div>
 
-				<div class="flex flex-wrap gap-2">
+				<div
+					class="flex flex-wrap gap-2"
+					role="group"
+					aria-label="Filter skills by category"
+				>
 					<button
 						type="button"
-						class={`inline-flex h-9 items-center rounded-lg border px-3 text-sm font-medium transition-colors ${
+						aria-pressed={activeCategory === 'all'}
+						class={`inline-flex min-h-11 items-center rounded-lg border px-3 text-sm font-medium transition-colors motion-reduce:transition-none ${
 							activeCategory === 'all'
 								? 'border-accent bg-accent text-accent-foreground'
 								: 'border-border bg-card text-muted-foreground hover:border-accent/50 hover:text-foreground'
@@ -312,7 +319,8 @@
 					{#each categoryOptions as category}
 						<button
 							type="button"
-							class={`inline-flex h-9 items-center rounded-lg border px-3 text-sm font-medium transition-colors ${
+							aria-pressed={activeCategory === category}
+							class={`inline-flex min-h-11 items-center rounded-lg border px-3 text-sm font-medium transition-colors motion-reduce:transition-none ${
 								activeCategory === category
 									? 'border-accent bg-accent text-accent-foreground'
 									: 'border-border bg-card text-muted-foreground hover:border-accent/50 hover:text-foreground'
@@ -327,7 +335,7 @@
 		</div>
 	</section>
 
-	<main class="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+	<div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
 		<div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 			<p class="text-sm text-muted-foreground">
 				Showing {filteredSkills.length} of {skills.length} skills
@@ -487,5 +495,5 @@
 				</p>
 			</div>
 		{/if}
-	</main>
+	</div>
 </div>

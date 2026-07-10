@@ -72,6 +72,10 @@ export const skillFrontmatterSchema = z
 	.object({
 		name: z.string().min(1),
 		description: z.string().min(1),
+		// Short trigger line (~<=140 chars) rendered in the always-on root-skill
+		// catalog table; the full description stays the skill_search / skill_load
+		// routing surface. Prompt audit WP-2 (2026-07-10).
+		catalog_line: z.string().min(1).optional(),
 		skill_type: skillTypeSchema.optional(),
 		altitude: altitudeSchema.optional(),
 		activation: activationSchema.optional(),

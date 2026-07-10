@@ -1,14 +1,6 @@
 <!-- apps/web/src/routes/+page.svelte -->
-<!--
-  Authenticated users: analytics dashboard
-  Unauthenticated users: HomepageV2 landing page
--->
+<!-- Public landing page. Authenticated entry lives at /dashboard. -->
 <script lang="ts">
-	import './dashboard.css';
-	import { onMount } from 'svelte';
-	import { page } from '$app/state';
-	import { invalidate, replaceState } from '$app/navigation';
-	import { toastService } from '$lib/stores/toast.store';
 	import {
 		DEFAULT_ORGANIZATION_ID,
 		DEFAULT_ORGANIZATION_SOCIAL_PROFILES,
@@ -24,9 +16,7 @@
 		SITE_NAME,
 		SITE_URL
 	} from '$lib/constants/seo';
-	import AnalyticsDashboard from '$lib/components/dashboard/AnalyticsDashboard.svelte';
 	import HomepageV2 from '$lib/components/landing/HomepageV2.svelte';
-	import { createEmptyUserDashboardAnalytics } from '$lib/types/dashboard-analytics';
 	import { serializeJsonLd } from '$lib/utils/json-ld';
 
 	let { data } = $props();
@@ -35,70 +25,51 @@
 	const homeDescription =
 		'BuildOS is a thinking environment for creators. Talk to BuildOS, see your projects organized. Same context for you and your agents — both make progress, in parallel.';
 
-	const landingStructuredData = serializeJsonLd({
-		'@context': 'https://schema.org',
-		'@type': 'SoftwareApplication',
-		'@id': `${SITE_URL}/#software-application`,
-		name: SITE_NAME,
-		description: homeDescription,
-		applicationCategory: 'ProductivityApplication',
-		operatingSystem: 'Web',
-		offers: {
-			'@type': 'Offer',
-			price: '20.00',
-			priceCurrency: 'USD',
-			availability: 'https://schema.org/InStock',
-			url: `${SITE_URL}/pricing`,
-			description: 'BuildOS Pro monthly plan with a 14-day free trial.'
-		},
-		author: {
-			'@id': DEFAULT_ORGANIZATION_ID
-		},
-		publisher: {
-			'@id': DEFAULT_ORGANIZATION_ID
-		},
-		image: DEFAULT_SOCIAL_IMAGE_OBJECT,
-		featureList: [
-			'Rough input to project structure',
-			'Persistent project context',
-			'Chat-based project organization',
-			'Voice note capture',
-			'Task and milestone organization',
-			'Research and document organization',
-			'Daily briefs and next-step visibility',
-			'Google Calendar synchronization',
-			'Shared project context for people and AI agents'
-		],
-		url: SITE_URL,
-		sameAs: DEFAULT_ORGANIZATION_SOCIAL_PROFILES,
-		dateModified: HOME_PAGE_LAST_MODIFIED,
-		mainEntityOfPage: SITE_URL
-	});
-
-	let isAuthenticated = $derived(!!data?.user);
-
-	async function handleDashboardRefresh() {
-		await invalidate('dashboard:analytics');
-	}
-
-	onMount(() => {
-		const message = page.url.searchParams.get('message');
-		const urlError = page.url.searchParams.get('error');
-
-		if (message) {
-			toastService.success(message);
-			const url = new URL(page.url);
-			url.searchParams.delete('message');
-			replaceState(url.toString(), {});
-		}
-
-		if (urlError) {
-			toastService.error(urlError);
-			const url = new URL(page.url);
-			url.searchParams.delete('error');
-			replaceState(url.toString(), {});
-		}
-	});
+	let landingStructuredData = $derived.by(() =>
+		serializeJsonLd({
+			'@context': 'https://schema.org',
+			'@type': 'SoftwareApplication',
+			'@id': `${SITE_URL}/#software-application`,
+			name: SITE_NAME,
+			description: homeDescription,
+			applicationCategory: 'ProductivityApplication',
+			operatingSystem: 'Web',
+			...(data.stripeEnabled
+				? {
+						offers: {
+							'@type': 'Offer',
+							price: '20.00',
+							priceCurrency: 'USD',
+							availability: 'https://schema.org/InStock',
+							url: `${SITE_URL}/pricing`,
+							description: 'BuildOS Pro monthly plan with a 14-day free trial.'
+						}
+					}
+				: {}),
+			author: {
+				'@id': DEFAULT_ORGANIZATION_ID
+			},
+			publisher: {
+				'@id': DEFAULT_ORGANIZATION_ID
+			},
+			image: DEFAULT_SOCIAL_IMAGE_OBJECT,
+			featureList: [
+				'Rough input to project structure',
+				'Persistent project context',
+				'Chat-based project organization',
+				'Voice note capture',
+				'Task and milestone organization',
+				'Research and document organization',
+				'Daily briefs and next-step visibility',
+				'Google Calendar synchronization',
+				'Shared project context for people and AI agents'
+			],
+			url: SITE_URL,
+			sameAs: DEFAULT_ORGANIZATION_SOCIAL_PROFILES,
+			dateModified: HOME_PAGE_LAST_MODIFIED,
+			mainEntityOfPage: SITE_URL
+		})
+	);
 </script>
 
 <svelte:head>
@@ -138,20 +109,4 @@
 	{@html `<script type="application/ld+json">${landingStructuredData}</script>`}
 </svelte:head>
 
-{#if isAuthenticated && data.user}
-	<AnalyticsDashboard
-		user={{
-			id: data.user.id,
-			email: data.user.email,
-			name: data.user.name ?? undefined,
-			is_admin: data.user.is_admin,
-			timezone: data.user.timezone ?? undefined
-		}}
-		analytics={data.dashboard ?? createEmptyUserDashboardAnalytics()}
-		pendingInvites={data.pendingInvites ?? []}
-		showAgentConnectionCta={!data.hasConnectedAgents}
-		onrefresh={handleDashboardRefresh}
-	/>
-{:else}
-	<HomepageV2 />
-{/if}
+<HomepageV2 />

@@ -220,7 +220,7 @@
 					? 'border-destructive focus:ring-destructive'
 					: disabled
 						? 'border-border opacity-50'
-						: 'border-border hover:border-border/80 focus:border-accent',
+						: 'border-border-strong hover:border-accent/70 focus:border-accent',
 
 			// Background - clean card background
 			'bg-card',

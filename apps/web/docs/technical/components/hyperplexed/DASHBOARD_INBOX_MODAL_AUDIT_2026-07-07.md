@@ -77,3 +77,38 @@ controls. This audit is the deferred content-body pass.
 Live authenticated visual verification is still owed. The in-app browser loaded the public landing page
 with a `Log in` CTA and no AI Inbox, so this pass did not capture real AI Inbox desktop/iPhone,
 light/dark screenshots.
+
+## Mobile follow-up - 2026-07-09
+
+The authenticated product report that the modal was still broken on mobile exposed a structural issue
+the earlier static pass did not catch: at 390px, the base one-column CSS grid used an automatic minimum
+track and expanded the review panel to about 770px. The modal clipped that oversized track, hiding the
+right half of review content and every second action button.
+
+### Shipped
+
+- The phone grid now uses an explicit `minmax(0, 1fr)` track with `min-w-0` propagated through the
+  group panel and item scroller. Review cards, action grids, and long user strings remain inside the
+  viewport instead of being clipped. -> P1
+- Mobile group navigation is now a compact horizontal chip rail with truncated labels and count badges;
+  the desktop presentation remains the 240px vertical sidebar. A short selected-group summary replaces
+  the duplicated long group title on phones. -> P4+P7
+- Review items render as bounded Inkprint cards with consistent outer/inner radii and full-width fallback
+  actions on phones, while desktop retains the dense divided list. -> P2+P12+P13
+- The mobile sheet uses a safe-area-aware fixed review height and a single nested item scroller. Swipe
+  dismissal and its drag handle are disabled for this information-dense review surface so scrolling long
+  proposals cannot accidentally dismiss the sheet. -> P13
+
+### Verification
+
+- Temporary representative-data fixture covered multiple project groups, an account-level calendar
+  suggestion, long titles/evidence labels, expandable proposal details, feedback controls, and all four
+  decision actions. The fixture was removed after verification.
+- Browser captures passed at 390x844 in light and dark mode, 320x568 in dark mode, and 1440x900 in light
+  mode. Phone body width, review-card width, and action rows had no horizontal overflow; long expanded
+  content scrolled inside the item pane and all actions remained reachable.
+- `apps/web`: `NODE_OPTIONS='--max-old-space-size=8192' pnpm check` - passed with 0 errors and 0 warnings.
+- Targeted Prettier and `git diff --check` passed for the implementation and audit files.
+
+Authenticated real-data verification remains deferred because the local preview session redirected the
+dashboard to login.

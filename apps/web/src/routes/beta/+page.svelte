@@ -228,7 +228,7 @@
 	keywords="BuildOS beta, thinking environment, project memory, creator workflow, author workflow, YouTube workflow, structured work"
 />
 
-<main class="min-h-screen bg-background">
+<div class="min-h-screen bg-background">
 	<!-- Simple Hero Section -->
 	<section class="pt-20 pb-12 px-4 sm:px-6 lg:px-8">
 		<div class="max-w-4xl mx-auto text-center">
@@ -849,4 +849,4 @@
 			</p>
 		</div>
 	</section>
-</main>
+</div>

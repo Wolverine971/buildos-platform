@@ -670,12 +670,12 @@
 	});
 </script>
 
-<main class="min-h-screen bg-background">
+<div class="min-h-screen bg-background">
 	<div class="mx-auto max-w-7xl px-2 py-3 sm:px-4 sm:py-6 lg:px-6">
 		<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 			<div class="space-y-0.5">
 				<button
-					onclick={() => goto('/')}
+					onclick={() => goto('/dashboard')}
 					class="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground pressable"
 				>
 					<ArrowLeft class="h-3 w-3" />
@@ -820,7 +820,7 @@
 			/>
 		</div>
 	</div>
-</main>
+</div>
 
 {#if showDetailDrawer && selectedItem}
 	<CalendarItemDrawer

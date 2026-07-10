@@ -20,6 +20,7 @@
 		Brain,
 		Code2,
 		Compass,
+		ExternalLink,
 		FileText,
 		Filter,
 		FolderTree,
@@ -42,14 +43,18 @@
 		getAgentFilePath,
 		getDisplayTitle,
 		getDomainPath,
+		getFamilyPath,
 		getNumericStat,
 		getOutputShapes,
 		getPackPath,
+		getPreviewSearchText,
+		getPreviewSkillPath,
 		getSearchText,
 		getSelectedPackSlugSet,
 		getSkillFamily,
 		getSkillPath,
 		getSkillPromise,
+		getSkillSearchMatches,
 		getTryInBuildOsPath,
 		groupSkillsByFamily,
 		humanize,
@@ -64,8 +69,10 @@
 	let query = $state('');
 	let activeDomain = $state('all');
 	let activePack = $state('all');
+	let sortOrder = $state<'featured' | 'name' | 'domain' | 'updated'>('featured');
 
 	let skills = $derived(data.catalog.skills);
+	let previews = $derived(data.catalog.previews);
 	let postBySlug = $derived(buildPostBySlug(data.posts));
 	let normalizedQuery = $derived(normalizeSearchText(query));
 	let skillBySlug = $derived(buildSkillBySlug(skills));
@@ -77,11 +84,8 @@
 	let totalReferences = $derived(
 		skills.reduce((total, skill) => total + skill.references.length, 0)
 	);
-	let totalSources = $derived(
-		skills.reduce((total, skill) => total + getNumericStat(skill, 'sources'), 0)
-	);
 	let filteredSkills = $derived.by(() => {
-		return skills.filter((skill) => {
+		const matches = skills.filter((skill) => {
 			const post = postBySlug.get(skill.slug);
 			const matchesDomain = activeDomain === 'all' || skill.skill_category === activeDomain;
 			const matchesPack = activePack === 'all' || selectedPackSlugs.has(skill.slug);
@@ -90,7 +94,100 @@
 
 			return normalizeSearchText(getSearchText(skill, post)).includes(normalizedQuery);
 		});
+
+		if (sortOrder === 'featured') return matches;
+		return [...matches].sort((left, right) => {
+			if (sortOrder === 'name') {
+				return getDisplayTitle(left).localeCompare(getDisplayTitle(right));
+			}
+			if (sortOrder === 'domain') {
+				return humanize(left.skill_category).localeCompare(humanize(right.skill_category));
+			}
+			const leftUpdated = Date.parse(postBySlug.get(left.slug)?.lastmod ?? '') || 0;
+			const rightUpdated = Date.parse(postBySlug.get(right.slug)?.lastmod ?? '') || 0;
+			return rightUpdated - leftUpdated;
+		});
 	});
+	let matchingDomains = $derived.by(() => {
+		if (!normalizedQuery) return [];
+		return domainCards.filter((domain) =>
+			normalizeSearchText(
+				[domain.name, domain.description, domain.promise, ...domain.path].join(' ')
+			).includes(normalizedQuery)
+		);
+	});
+	let matchingPreviews = $derived.by(() => {
+		if (activePack !== 'all') return [];
+		return previews.filter((preview) => {
+			if (activeDomain !== 'all' && preview.domain_id !== activeDomain) return false;
+			if (!normalizedQuery) return true;
+			return normalizeSearchText(getPreviewSearchText(preview)).includes(normalizedQuery);
+		});
+	});
+	let matchingPacks = $derived.by(() => {
+		if (!normalizedQuery) return [];
+		return packCards.filter((pack) =>
+			normalizeSearchText(
+				[
+					pack.name,
+					pack.kind,
+					pack.job,
+					pack.description,
+					pack.tryPrompt,
+					...pack.order,
+					...pack.handoff,
+					...pack.skills.flatMap((skill) => [getDisplayTitle(skill), skill.description])
+				].join(' ')
+			).includes(normalizedQuery)
+		);
+	});
+	let matchingReferences = $derived.by(() => {
+		if (!normalizedQuery) return [];
+		return skills
+			.flatMap((skill) =>
+				skill.references.map((reference) => ({
+					skill,
+					reference
+				}))
+			)
+			.filter(({ skill, reference }) =>
+				normalizeSearchText(
+					[
+						getDisplayTitle(skill),
+						reference.name,
+						reference.summary,
+						reference.path,
+						...reference.when_to_load
+					].join(' ')
+				).includes(normalizedQuery)
+			)
+			.slice(0, 8);
+	});
+	let matchingArticles = $derived.by(() => {
+		if (!normalizedQuery) return [];
+		return data.posts
+			.filter((post) =>
+				normalizeSearchText(
+					[
+						post.title,
+						post.description,
+						post.excerpt,
+						...post.tags,
+						post.sourceTitle,
+						post.sourceCreator
+					].join(' ')
+				).includes(normalizedQuery)
+			)
+			.slice(0, 6);
+	});
+	let totalSearchResults = $derived(
+		filteredSkills.length +
+			matchingPreviews.length +
+			matchingDomains.length +
+			matchingPacks.length +
+			matchingReferences.length +
+			matchingArticles.length
+	);
 	let filteredFamilies = $derived(groupSkillsByFamily(filteredSkills));
 	let featuredSkills = $derived(
 		['cold-email-engagement-first-outreach', 'ui-ux-quality-review', 'hook-craft-short-form']
@@ -98,7 +195,10 @@
 			.filter((skill): skill is Skill => Boolean(skill))
 	);
 	let activeFilterCount = $derived(
-		(activeDomain !== 'all' ? 1 : 0) + (activePack !== 'all' ? 1 : 0) + (query.trim() ? 1 : 0)
+		(activeDomain !== 'all' ? 1 : 0) +
+			(activePack !== 'all' ? 1 : 0) +
+			(query.trim() ? 1 : 0) +
+			(sortOrder !== 'featured' ? 1 : 0)
 	);
 
 	function setDomain(domainId: string) {
@@ -113,6 +213,7 @@
 		query = '';
 		activeDomain = 'all';
 		activePack = 'all';
+		sortOrder = 'featured';
 	}
 
 	function generateJsonLd() {
@@ -232,7 +333,7 @@
 					<div
 						class="rounded-lg border border-border bg-background/85 p-3 shadow-ink-inner"
 					>
-						<p class="text-xs text-muted-foreground">Skills</p>
+						<p class="text-xs text-muted-foreground">Published</p>
 						<p class="mt-1 text-2xl font-semibold">{skills.length}</p>
 					</div>
 					<div
@@ -250,8 +351,8 @@
 					<div
 						class="rounded-lg border border-border bg-background/85 p-3 shadow-ink-inner"
 					>
-						<p class="text-xs text-muted-foreground">Sources</p>
-						<p class="mt-1 text-2xl font-semibold">{totalSources}</p>
+						<p class="text-xs text-muted-foreground">Previews</p>
+						<p class="mt-1 text-2xl font-semibold">{previews.length}</p>
 					</div>
 				</div>
 			</div>
@@ -259,7 +360,7 @@
 			<div
 				class="mt-8 rounded-lg border border-border bg-background p-3 shadow-ink tx tx-grid tx-weak"
 			>
-				<div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+				<div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_12rem_auto] lg:items-center">
 					<label class="relative block min-w-0">
 						<span class="sr-only">Search skills</span>
 						<Search
@@ -271,6 +372,19 @@
 							placeholder="Search cold email, hooks, UI review, calendar safety..."
 							class="h-12 w-full rounded-md border border-border-strong bg-card pl-10 pr-3 text-base text-foreground shadow-ink-inner outline-none transition-colors placeholder:text-muted-foreground focus:border-accent focus:ring-2 focus:ring-ring sm:text-sm"
 						/>
+					</label>
+
+					<label class="block">
+						<span class="sr-only">Sort skills</span>
+						<select
+							bind:value={sortOrder}
+							class="h-12 w-full rounded-md border border-border-strong bg-card px-3 text-base font-medium text-foreground shadow-ink-inner outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-ring sm:text-sm"
+						>
+							<option value="featured">Featured order</option>
+							<option value="name">Name A–Z</option>
+							<option value="domain">Domain</option>
+							<option value="updated">Recently updated</option>
+						</select>
 					</label>
 
 					<div class="flex flex-wrap gap-2">
@@ -314,6 +428,17 @@
 								Search: {query.trim()}
 							</span>
 						{/if}
+						{#if sortOrder !== 'featured'}
+							<span
+								class="rounded-full border border-border bg-card px-2.5 py-1 font-medium text-foreground"
+							>
+								Sort: {sortOrder === 'name'
+									? 'Name A–Z'
+									: sortOrder === 'domain'
+										? 'Domain'
+										: 'Recently updated'}
+							</span>
+						{/if}
 						{#if selectedDomain}
 							<span
 								class="rounded-full border border-border bg-card px-2.5 py-1 font-medium text-foreground"
@@ -351,230 +476,463 @@
 		</div>
 	</header>
 
-	<main class="mx-auto max-w-7xl px-2 py-8 sm:px-4 sm:py-10 lg:px-6">
-		<section aria-labelledby="featured-skills" class="mb-10">
-			<div class="mb-4 flex items-end justify-between gap-4">
-				<div>
-					<p class="micro-label text-accent">Start Here</p>
-					<h2 id="featured-skills" class="mt-1 text-2xl font-semibold text-foreground">
-						Featured skills
-					</h2>
+	<div class="mx-auto max-w-7xl px-2 py-8 sm:px-4 sm:py-10 lg:px-6">
+		{#if normalizedQuery}
+			<section aria-labelledby="gallery-search-results" class="mb-10">
+				<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+					<div>
+						<p class="micro-label text-accent">Search Across Gallery</p>
+						<h2
+							id="gallery-search-results"
+							class="mt-1 text-2xl font-semibold text-foreground"
+						>
+							{totalSearchResults} result{totalSearchResults === 1 ? '' : 's'} for “{query.trim()}”
+						</h2>
+					</div>
+					<div class="flex flex-wrap gap-1.5 text-2xs font-medium text-muted-foreground">
+						<span class="rounded-full border border-border bg-card px-2.5 py-1"
+							>{filteredSkills.length} skills</span
+						>
+						<span class="rounded-full border border-border bg-card px-2.5 py-1"
+							>{matchingPreviews.length} previews</span
+						>
+						<span class="rounded-full border border-border bg-card px-2.5 py-1"
+							>{matchingDomains.length} domains</span
+						>
+						<span class="rounded-full border border-border bg-card px-2.5 py-1"
+							>{matchingPacks.length} paths</span
+						>
+						<span class="rounded-full border border-border bg-card px-2.5 py-1"
+							>{matchingReferences.length} references</span
+						>
+						<span class="rounded-full border border-border bg-card px-2.5 py-1"
+							>{matchingArticles.length} guides</span
+						>
+					</div>
 				</div>
-				<a
-					href="/agent-skills"
-					class="hidden min-h-[44px] items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground shadow-ink transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:inline-flex"
-				>
-					Agent repository
-					<ArrowRight class="h-4 w-4" />
-				</a>
-			</div>
 
-			<div class="grid gap-3 lg:grid-cols-3">
-				{#each featuredSkills as skill}
+				{#if matchingPreviews.length || matchingDomains.length || matchingPacks.length || matchingReferences.length || matchingArticles.length}
+					<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+						{#each matchingPreviews as preview}
+							<a
+								href={getPreviewSkillPath(preview)}
+								class="group flex min-h-[10rem] flex-col rounded-lg border border-dashed border-accent/60 bg-accent/5 p-4 shadow-ink transition-colors hover:border-accent hover:bg-accent/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-frame tx-weak"
+							>
+								<div class="flex min-w-0 items-center gap-2">
+									<Sparkles class="h-4 w-4 shrink-0 text-accent" />
+									<p class="micro-label">Reviewed Preview</p>
+								</div>
+								<h3 class="mt-2 line-clamp-2 text-lg font-semibold group-hover:text-accent">
+									{preview.title}
+								</h3>
+								<p class="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
+									{preview.description}
+								</p>
+								<p class="mt-auto pt-3 text-2xs font-medium text-muted-foreground">
+									Matched preview promise, use case, output, or workflow
+								</p>
+							</a>
+						{/each}
+
+						{#each matchingDomains as domain}
+							<a
+								href={getDomainPath(domain)}
+								class="group flex min-h-[10rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-frame tx-weak"
+							>
+								<div class="flex min-w-0 items-center gap-2">
+									<FolderTree class="h-4 w-4 shrink-0 text-accent" />
+									<p class="micro-label">Domain</p>
+								</div>
+								<h3
+									class="mt-2 line-clamp-2 text-lg font-semibold group-hover:text-accent"
+								>
+									{domain.name}
+								</h3>
+								<p
+									class="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground"
+								>
+									{domain.promise}
+								</p>
+								<p class="mt-auto pt-3 text-2xs font-medium text-muted-foreground">
+									Matched domain overview or path
+								</p>
+							</a>
+						{/each}
+
+						{#each matchingPacks as pack}
+							<a
+								href={getPackPath(pack)}
+								class="group flex min-h-[10rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-thread tx-weak"
+							>
+								<div class="flex min-w-0 items-center gap-2">
+									<Package class="h-4 w-4 shrink-0 text-accent" />
+									<p class="micro-label">{pack.kind}</p>
+								</div>
+								<h3
+									class="mt-2 line-clamp-2 text-lg font-semibold group-hover:text-accent"
+								>
+									{pack.name}
+								</h3>
+								<p
+									class="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground"
+								>
+									{pack.job}
+								</p>
+								<p class="mt-auto pt-3 text-2xs font-medium text-muted-foreground">
+									Matched job, stage, handoff, or included skill
+								</p>
+							</a>
+						{/each}
+
+						{#each matchingReferences as result}
+							<a
+								href={result.reference.url}
+								class="group flex min-h-[10rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-grain tx-weak"
+							>
+								<div class="flex min-w-0 items-center gap-2">
+									<FileText class="h-4 w-4 shrink-0 text-accent" />
+									<p class="micro-label">Reference</p>
+									<ExternalLink
+										class="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-accent"
+									/>
+								</div>
+								<h3
+									class="mt-2 line-clamp-2 text-base font-semibold group-hover:text-accent"
+								>
+									{result.reference.name ?? result.reference.id}
+								</h3>
+								<p
+									class="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground"
+								>
+									{result.reference.summary}
+								</p>
+								<p
+									class="mt-auto truncate pt-3 text-2xs font-medium text-muted-foreground"
+								>
+									From {getDisplayTitle(result.skill)}
+								</p>
+							</a>
+						{/each}
+
+						{#each matchingArticles as article}
+							<a
+								href={`/agent-skills/${article.slug}`}
+								class="group flex min-h-[10rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-frame tx-weak"
+							>
+								<div class="flex min-w-0 items-center gap-2">
+									<BookOpen class="h-4 w-4 shrink-0 text-accent" />
+									<p class="micro-label">Guide</p>
+								</div>
+								<h3
+									class="mt-2 line-clamp-2 text-base font-semibold group-hover:text-accent"
+								>
+									{article.title}
+								</h3>
+								<p
+									class="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground"
+								>
+									{article.description}
+								</p>
+								<p class="mt-auto pt-3 text-2xs font-medium text-muted-foreground">
+									Matched editorial guide metadata
+								</p>
+							</a>
+						{/each}
+					</div>
+				{/if}
+			</section>
+		{:else}
+			<section aria-labelledby="featured-skills" class="mb-10">
+				<div class="mb-4 flex items-end justify-between gap-4">
+					<div>
+						<p class="micro-label text-accent">Start Here</p>
+						<h2
+							id="featured-skills"
+							class="mt-1 text-2xl font-semibold text-foreground"
+						>
+							Featured skills
+						</h2>
+					</div>
 					<a
-						href={getSkillPath(skill)}
-						class="group flex min-h-[15rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-frame tx-weak"
+						href="/agent-skills"
+						class="hidden min-h-[44px] items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground shadow-ink transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:inline-flex"
 					>
-						<div class="flex items-start justify-between gap-3">
-							<div class="flex min-w-0 items-center gap-2">
+						Agent repository
+						<ArrowRight class="h-4 w-4" />
+					</a>
+				</div>
+
+				<div class="grid gap-3 lg:grid-cols-3">
+					{#each featuredSkills as skill}
+						<a
+							href={getSkillPath(skill)}
+							class="group flex min-h-[15rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-frame tx-weak"
+						>
+							<div class="flex items-start justify-between gap-3">
+								<div class="flex min-w-0 items-center gap-2">
+									<span
+										class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-background text-accent"
+									>
+										<Sparkles class="h-4 w-4" />
+									</span>
+									<div class="min-w-0">
+										<p class="micro-label">{getSkillFamily(skill)}</p>
+										<h3
+											class="mt-1 line-clamp-2 text-lg font-semibold text-foreground"
+										>
+											{getDisplayTitle(skill)}
+										</h3>
+									</div>
+								</div>
+								<ArrowRight
+									class="mt-2 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent motion-reduce:transition-none"
+								/>
+							</div>
+							<p class="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">
+								{getSkillPromise(skill, postBySlug.get(skill.slug))}
+							</p>
+							<div class="mt-auto flex flex-wrap gap-1.5 pt-4">
+								{#each getOutputShapes(skill).slice(0, 3) as output}
+									<span
+										class="rounded-full border border-border bg-background px-2 py-1 text-2xs font-medium text-muted-foreground"
+									>
+										{output}
+									</span>
+								{/each}
+							</div>
+						</a>
+					{/each}
+				</div>
+			</section>
+
+			{#if matchingPreviews.length}
+				<section aria-labelledby="runtime-previews" class="mb-10 border-t border-border pt-8">
+					<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+						<div>
+							<p class="micro-label text-accent">Next Phase</p>
+							<h2 id="runtime-previews" class="mt-1 text-2xl font-semibold text-foreground">
+								Reviewed runtime previews
+							</h2>
+						</div>
+						<p class="max-w-xl text-sm leading-6 text-muted-foreground">
+							These safe summaries can start an editable BuildOS workflow. Portable files stay
+							private until each skill completes publication review.
+						</p>
+					</div>
+
+					<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+						{#each matchingPreviews as preview}
+							<article
+								class="flex min-h-[16rem] flex-col rounded-lg border border-dashed border-accent/60 bg-card p-4 shadow-ink transition-colors hover:border-accent tx tx-frame tx-weak"
+							>
+								<div class="flex min-w-0 items-start justify-between gap-3">
+									<span
+										class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-accent/50 bg-accent/10 text-accent"
+									>
+										<Sparkles class="h-4 w-4" />
+									</span>
+									<span class="rounded-full bg-accent/10 px-2 py-1 text-2xs font-semibold text-accent">
+										Preview
+									</span>
+								</div>
+								<h3 class="mt-4 line-clamp-2 text-lg font-semibold">{preview.title}</h3>
+								<p class="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
+									{preview.description}
+								</p>
+								<div class="mt-4 flex flex-wrap gap-1.5">
+									{#each preview.output_shapes.slice(0, 3) as output}
+										<span class="rounded-full border border-border bg-background px-2 py-1 text-2xs font-medium text-muted-foreground">
+											{output}
+										</span>
+									{/each}
+								</div>
+								<div class="mt-auto grid grid-cols-2 gap-2 pt-5">
+									<a
+										href={getPreviewSkillPath(preview)}
+										class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-accent bg-accent px-3 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									>
+										Open
+									</a>
+									<a
+										href={getTryInBuildOsPath(preview)}
+										class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									>
+										<PlayCircle class="h-4 w-4" />
+										Try
+									</a>
+								</div>
+							</article>
+						{/each}
+					</div>
+				</section>
+			{/if}
+
+			<section aria-labelledby="domain-map" class="mb-10">
+				<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+					<div>
+						<p class="micro-label text-accent">Domain Map</p>
+						<h2 id="domain-map" class="mt-1 text-2xl font-semibold text-foreground">
+							Browse by domain
+						</h2>
+					</div>
+					<p class="max-w-xl text-sm leading-6 text-muted-foreground">
+						Each domain starts broad, then narrows into families and concrete skills.
+					</p>
+				</div>
+
+				<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+					{#each allDomainOptions as domain}
+						<article
+							class={`flex min-h-[15rem] flex-col rounded-lg border p-4 shadow-ink transition-colors ${
+								activeDomain === domain.id
+									? 'border-accent bg-accent/10 text-foreground'
+									: 'border-border bg-card text-foreground hover:border-accent'
+							}`}
+						>
+							<div class="flex items-start justify-between gap-3">
 								<span
 									class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-background text-accent"
 								>
-									<Sparkles class="h-4 w-4" />
+									<FolderTree class="h-4 w-4" />
 								</span>
-								<div class="min-w-0">
-									<p class="micro-label">{getSkillFamily(skill)}</p>
-									<h3
-										class="mt-1 line-clamp-2 text-lg font-semibold text-foreground"
-									>
-										{getDisplayTitle(skill)}
-									</h3>
-								</div>
+								<span
+									class="rounded-full bg-muted px-2 py-1 text-2xs font-medium text-muted-foreground"
+								>
+									{domain.skills.length} skill{domain.skills.length === 1
+										? ''
+										: 's'}
+								</span>
 							</div>
-							<ArrowRight
-								class="mt-2 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent motion-reduce:transition-none"
-							/>
-						</div>
-						<p class="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">
-							{getSkillPromise(skill, postBySlug.get(skill.slug))}
-						</p>
-						<div class="mt-auto flex flex-wrap gap-1.5 pt-4">
-							{#each getOutputShapes(skill).slice(0, 3) as output}
-								<span
-									class="rounded-full border border-border bg-background px-2 py-1 text-2xs font-medium text-muted-foreground"
-								>
-									{output}
-								</span>
-							{/each}
-						</div>
-					</a>
-				{/each}
-			</div>
-		</section>
-
-		<section aria-labelledby="domain-map" class="mb-10">
-			<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-				<div>
-					<p class="micro-label text-accent">Domain Map</p>
-					<h2 id="domain-map" class="mt-1 text-2xl font-semibold text-foreground">
-						Browse by domain
-					</h2>
-				</div>
-				<p class="max-w-xl text-sm leading-6 text-muted-foreground">
-					Each domain starts broad, then narrows into families and concrete skills.
-				</p>
-			</div>
-
-			<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-				{#each allDomainOptions as domain}
-					<article
-						class={`flex min-h-[15rem] flex-col rounded-lg border p-4 shadow-ink transition-colors ${
-							activeDomain === domain.id
-								? 'border-accent bg-accent/10 text-foreground'
-								: 'border-border bg-card text-foreground hover:border-accent'
-						}`}
-					>
-						<div class="flex items-start justify-between gap-3">
-							<span
-								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-background text-accent"
-							>
-								<FolderTree class="h-4 w-4" />
-							</span>
-							<span
-								class="rounded-full bg-muted px-2 py-1 text-2xs font-medium text-muted-foreground"
-							>
-								{domain.skills.length} skill{domain.skills.length === 1 ? '' : 's'}
-							</span>
-						</div>
-						<h3 class="mt-4 text-lg font-semibold">{domain.name}</h3>
-						<p class="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
-							{domain.promise}
-						</p>
-						<div class="mt-4 flex flex-wrap gap-1.5">
-							{#each domain.path.slice(0, 3) as step}
-								<span
-									class="rounded-full border border-border bg-background px-2 py-1 text-2xs font-medium text-muted-foreground"
-								>
-									{step}
-								</span>
-							{/each}
-						</div>
-						<div class="mt-auto grid grid-cols-2 gap-2 pt-4">
-							<button
-								type="button"
-								class={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border px-3 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-									activeDomain === domain.id
-										? 'border-accent bg-accent text-accent-foreground'
-										: 'border-border bg-background text-foreground hover:border-accent hover:text-accent'
-								}`}
-								onclick={() => setDomain(domain.id)}
-							>
-								<Filter class="h-4 w-4" />
-								Filter
-							</button>
-							<a
-								href={getDomainPath(domain)}
-								class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							>
-								<ListTree class="h-4 w-4" />
-								Map
-							</a>
-						</div>
-					</article>
-				{/each}
-			</div>
-		</section>
-
-		<section aria-labelledby="packs-stacks" class="mb-10">
-			<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-				<div>
-					<p class="micro-label text-accent">Packs And Stacks</p>
-					<h2 id="packs-stacks" class="mt-1 text-2xl font-semibold text-foreground">
-						Curated paths
-					</h2>
-				</div>
-				<button
-					type="button"
-					class={`inline-flex min-h-[44px] items-center gap-2 self-start rounded-md border px-3 text-sm font-semibold shadow-ink transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-						activePack === 'all'
-							? 'border-accent bg-accent text-accent-foreground'
-							: 'border-border bg-card text-foreground hover:border-accent hover:text-accent'
-					}`}
-					onclick={() => setPack('all')}
-				>
-					<ListTree class="h-4 w-4" />
-					All paths
-				</button>
-			</div>
-
-			<div class="grid gap-3 lg:grid-cols-4">
-				{#each packCards as pack}
-					{@const PackIcon = pack.kind === 'Stack' ? Workflow : Package}
-					<article
-						class={`flex min-h-[19rem] flex-col rounded-lg border p-4 shadow-ink transition-colors ${
-							activePack === pack.id
-								? 'border-accent bg-accent/10'
-								: 'border-border bg-card hover:border-accent'
-						}`}
-					>
-						<div class="flex items-start justify-between gap-3">
-							<span
-								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-background text-accent"
-							>
-								<PackIcon class="h-4 w-4" />
-							</span>
-							<span
-								class="rounded-full bg-muted px-2 py-1 text-2xs font-medium text-muted-foreground"
-							>
-								{pack.kind}
-							</span>
-						</div>
-						<h3 class="mt-4 text-lg font-semibold text-foreground">{pack.name}</h3>
-						<p class="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
-							{pack.job}
-						</p>
-						<ol class="mt-4 space-y-1.5 text-sm text-muted-foreground">
-							{#each pack.order.slice(0, 3) as step, index}
-								<li class="flex min-w-0 items-center gap-2">
+							<h3 class="mt-4 text-lg font-semibold">{domain.name}</h3>
+							<p class="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
+								{domain.promise}
+							</p>
+							<div class="mt-4 flex flex-wrap gap-1.5">
+								{#each domain.path.slice(0, 3) as step}
 									<span
-										class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border bg-background text-2xs font-semibold"
+										class="rounded-full border border-border bg-background px-2 py-1 text-2xs font-medium text-muted-foreground"
 									>
-										{index + 1}
+										{step}
 									</span>
-									<span class="truncate">{step}</span>
-								</li>
-							{/each}
-						</ol>
-						<p class="mt-auto pt-4 text-xs font-medium text-accent">
-							{pack.skills.length} available skill{pack.skills.length === 1
-								? ''
-								: 's'}
-						</p>
-						<div class="grid grid-cols-2 gap-2 pt-4">
-							<button
-								type="button"
-								class={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border px-3 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-									activePack === pack.id
-										? 'border-accent bg-accent text-accent-foreground'
-										: 'border-border bg-background text-foreground hover:border-accent hover:text-accent'
-								}`}
-								onclick={() => setPack(pack.id)}
-							>
-								<Filter class="h-4 w-4" />
-								Filter
-							</button>
-							<a
-								href={getPackPath(pack)}
-								class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							>
-								<ListTree class="h-4 w-4" />
-								Path
-							</a>
-						</div>
-					</article>
-				{/each}
-			</div>
-		</section>
+								{/each}
+							</div>
+							<div class="mt-auto grid grid-cols-2 gap-2 pt-4">
+								<button
+									type="button"
+									class={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border px-3 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+										activeDomain === domain.id
+											? 'border-accent bg-accent text-accent-foreground'
+											: 'border-border bg-background text-foreground hover:border-accent hover:text-accent'
+									}`}
+									onclick={() => setDomain(domain.id)}
+								>
+									<Filter class="h-4 w-4" />
+									Filter
+								</button>
+								<a
+									href={getDomainPath(domain)}
+									class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								>
+									<ListTree class="h-4 w-4" />
+									Map
+								</a>
+							</div>
+						</article>
+					{/each}
+				</div>
+			</section>
+
+			<section aria-labelledby="packs-stacks" class="mb-10">
+				<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+					<div>
+						<p class="micro-label text-accent">Packs And Stacks</p>
+						<h2 id="packs-stacks" class="mt-1 text-2xl font-semibold text-foreground">
+							Curated paths
+						</h2>
+					</div>
+					<button
+						type="button"
+						class={`inline-flex min-h-[44px] items-center gap-2 self-start rounded-md border px-3 text-sm font-semibold shadow-ink transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+							activePack === 'all'
+								? 'border-accent bg-accent text-accent-foreground'
+								: 'border-border bg-card text-foreground hover:border-accent hover:text-accent'
+						}`}
+						onclick={() => setPack('all')}
+					>
+						<ListTree class="h-4 w-4" />
+						All paths
+					</button>
+				</div>
+
+				<div class="grid gap-3 lg:grid-cols-4">
+					{#each packCards as pack}
+						{@const PackIcon = pack.kind === 'Stack' ? Workflow : Package}
+						<article
+							class={`flex min-h-[19rem] flex-col rounded-lg border p-4 shadow-ink transition-colors ${
+								activePack === pack.id
+									? 'border-accent bg-accent/10'
+									: 'border-border bg-card hover:border-accent'
+							}`}
+						>
+							<div class="flex items-start justify-between gap-3">
+								<span
+									class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-background text-accent"
+								>
+									<PackIcon class="h-4 w-4" />
+								</span>
+								<span
+									class="rounded-full bg-muted px-2 py-1 text-2xs font-medium text-muted-foreground"
+								>
+									{pack.kind}
+								</span>
+							</div>
+							<h3 class="mt-4 text-lg font-semibold text-foreground">{pack.name}</h3>
+							<p class="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
+								{pack.job}
+							</p>
+							<ol class="mt-4 space-y-1.5 text-sm text-muted-foreground">
+								{#each pack.order.slice(0, 3) as step, index}
+									<li class="flex min-w-0 items-center gap-2">
+										<span
+											class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border bg-background text-2xs font-semibold"
+										>
+											{index + 1}
+										</span>
+										<span class="truncate">{step}</span>
+									</li>
+								{/each}
+							</ol>
+							<p class="mt-auto pt-4 text-xs font-medium text-accent">
+								{pack.skills.length} available skill{pack.skills.length === 1
+									? ''
+									: 's'}
+							</p>
+							<div class="grid grid-cols-2 gap-2 pt-4">
+								<button
+									type="button"
+									class={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border px-3 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+										activePack === pack.id
+											? 'border-accent bg-accent text-accent-foreground'
+											: 'border-border bg-background text-foreground hover:border-accent hover:text-accent'
+									}`}
+									onclick={() => setPack(pack.id)}
+								>
+									<Filter class="h-4 w-4" />
+									Filter
+								</button>
+								<a
+									href={getPackPath(pack)}
+									class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								>
+									<ListTree class="h-4 w-4" />
+									Path
+								</a>
+							</div>
+						</article>
+					{/each}
+				</div>
+			</section>
+		{/if}
 
 		<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
 			<section aria-labelledby="skill-results">
@@ -595,6 +953,7 @@
 						{#each filteredSkills as skill}
 							{@const post = postBySlug.get(skill.slug)}
 							{@const sourceCount = getNumericStat(skill, 'sources')}
+							{@const searchMatches = getSkillSearchMatches(skill, post, query)}
 							<article
 								class="flex min-h-[21rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
 							>
@@ -636,6 +995,26 @@
 										</span>
 									{/each}
 								</div>
+
+								{#if normalizedQuery && searchMatches.length}
+									<div
+										class="mt-4 rounded-md border border-border bg-background p-3"
+									>
+										<p class="micro-label text-accent">Why It Matched</p>
+										<ul
+											class="mt-2 space-y-1 text-xs leading-5 text-muted-foreground"
+										>
+											{#each searchMatches as match}
+												<li class="line-clamp-2">
+													<span class="font-semibold text-foreground"
+														>{match.label}:</span
+													>
+													{match.value}
+												</li>
+											{/each}
+										</ul>
+									</div>
+								{/if}
 
 								<div class="mt-4 grid grid-cols-3 gap-2 text-sm">
 									<div class="rounded-md border border-border bg-background p-2">
@@ -766,12 +1145,18 @@
 					<div class="mt-4 space-y-4">
 						{#each filteredFamilies as family}
 							<div>
-								<p class="micro-label">{family.name}</p>
+								<a
+									href={getFamilyPath(family)}
+									class="inline-flex min-h-[44px] items-center gap-1 micro-label text-accent hover:text-accent/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								>
+									{family.name}
+									<ArrowRight class="h-3 w-3" />
+								</a>
 								<div class="mt-2 space-y-1.5">
 									{#each family.skills as skill}
 										<a
 											href={getSkillPath(skill)}
-											class="flex min-w-0 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											class="flex min-h-[44px] min-w-0 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 										>
 											<span class="truncate">{getDisplayTitle(skill)}</span>
 											<ArrowRight class="h-3.5 w-3.5 shrink-0" />
@@ -819,5 +1204,5 @@
 				</section>
 			</aside>
 		</div>
-	</main>
+	</div>
 </div>

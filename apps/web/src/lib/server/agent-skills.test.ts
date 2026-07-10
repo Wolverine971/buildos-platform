@@ -8,6 +8,7 @@ import {
 	formatAgentSkillValidationReport,
 	getAgentSkillMarkdown,
 	getAgentSkillReference,
+	getRuntimeSkillPublicationStatus,
 	listPublicAgentSkillReferences,
 	loadAgentSkillIndex,
 	resolveRuntimeSkillForPost,
@@ -37,6 +38,10 @@ describe('public agent skill serving', () => {
 					runtime: true,
 					blog: true,
 					fallback: false
+				},
+				trust: {
+					eval_status: 'covered',
+					last_updated: '2026-05-02'
 				}
 			}
 		});
@@ -53,6 +58,43 @@ describe('public agent skill serving', () => {
 			bundle_zip_url:
 				'https://build-os.com/agent-skills/google-calendar-for-ai-agents-search-before-you-create/bundle.zip'
 		});
+		expect(index.previews).toHaveLength(7);
+		expect(
+			index.previews.find((preview) => preview.runtime_skill_id === 'cold_email_offer_lab')
+		).toMatchObject({
+			publication_status: 'preview',
+			slug: 'cold-email-offer-lab',
+			title: 'Cold Email Offer Lab',
+			parent_id: 'cold_email_engagement_first_outreach',
+			domain_id: 'sales-and-growth',
+			family: 'Cold Outreach'
+		});
+		expect(index.coverage).toMatchObject({
+			public_total: 8,
+			preview_total: 7
+		});
+		expect(index.coverage.runtime_total).toBe(
+			index.coverage.public_total +
+				index.coverage.preview_total +
+				index.coverage.internal_total
+		);
+		expect(index.coverage.internal_total).toBeGreaterThan(0);
+		expect(JSON.stringify(index.previews)).not.toContain('rawMarkdown');
+		expect(JSON.stringify(index.previews)).not.toContain('referenceModules');
+	});
+
+	it('keeps unreviewed runtime skills internal by default', () => {
+		const publicRuntimeSkillIds = new Set(['hook_craft_short_form']);
+
+		expect(
+			getRuntimeSkillPublicationStatus('hook_craft_short_form', publicRuntimeSkillIds)
+		).toBe('public');
+		expect(
+			getRuntimeSkillPublicationStatus('cold_email_offer_lab', publicRuntimeSkillIds)
+		).toBe('preview');
+		expect(getRuntimeSkillPublicationStatus('project_management', publicRuntimeSkillIds)).toBe(
+			'internal'
+		);
 	});
 
 	it('serves runtime markdown when a public skill maps to a registered BuildOS skill', async () => {
@@ -180,11 +222,22 @@ describe('public agent skill serving', () => {
 				runtime: true,
 				blog: true,
 				fallback: false
+			},
+			trust: {
+				eval_status: 'covered',
+				last_updated: '2026-05-03'
 			}
 		});
 		expect(gallery.workflow).toContain('Map the surface region by region.');
 		expect(gallery.guardrails).toContain('Do not skip mobile or overflow checks.');
 		expect(gallery.starter_prompts[0]).toContain('Audit this screen region by region');
+		expect(gallery.trust.safety_notes).toContain('Do not skip mobile or overflow checks.');
+
+		const calendarPost = await loadBlogPostMetadata(
+			AGENT_SKILLS_CATEGORY_KEY,
+			'google-calendar-for-ai-agents-search-before-you-create'
+		);
+		expect(buildPublicSkillGalleryMetadata(calendarPost).trust.eval_status).toBe('not-covered');
 	});
 
 	it('does not treat implicit reference visibility as public', async () => {

@@ -403,7 +403,7 @@
 	</header>
 
 	<!-- Main Content -->
-	<main class="mx-auto max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+	<div class="mx-auto max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
 		<div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4 sm:gap-6">
 			<!-- Left Column: Main Content -->
 			<div class="min-w-0 space-y-4 sm:space-y-6">
@@ -975,5 +975,5 @@
 				<span class="font-mono text-[0.55rem]"> Last synced: 2026-02-01 14:32 UTC </span>
 			</div>
 		</footer>
-	</main>
+	</div>
 </div>

@@ -30,7 +30,7 @@
 		Database,
 		Globe,
 		Network
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import AdminSidebar from '$lib/components/admin/AdminSidebar.svelte';
 	import type { AdminNavGroup } from '$lib/components/admin/adminNav.types';
@@ -394,7 +394,7 @@
 					</div>
 				{/if}
 				<a
-					href="/"
+					href="/dashboard"
 					class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					aria-label="Open main app"
 					title="Open main app"

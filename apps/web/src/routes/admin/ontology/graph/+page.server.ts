@@ -179,7 +179,7 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 	}
 
 	if (!dbUser?.is_admin) {
-		throw redirect(303, '/');
+		throw redirect(303, '/dashboard');
 	}
 
 	const adminClient = createAdminSupabaseClient();

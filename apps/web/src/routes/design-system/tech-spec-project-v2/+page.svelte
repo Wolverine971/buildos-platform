@@ -522,7 +522,7 @@
 	<!-- ═══════════════════════════════════════════════════════════════════════
 	     MAIN CONTENT - Dense Mode A Layout
 	═══════════════════════════════════════════════════════════════════════ -->
-	<main class="mx-auto max-w-screen-2xl px-2 sm:px-3 lg:px-4 py-3 sm:py-4">
+	<div class="mx-auto max-w-screen-2xl px-2 sm:px-3 lg:px-4 py-3 sm:py-4">
 		<!-- Quick Actions Bar -->
 		<div class="mb-3 sm:mb-4 flex items-center justify-between gap-2">
 			<div class="flex items-center gap-2">
@@ -1402,5 +1402,5 @@
 				<span>Last sync: 2026-02-01 14:32:00 UTC</span>
 			</div>
 		</footer>
-	</main>
+	</div>
 </div>

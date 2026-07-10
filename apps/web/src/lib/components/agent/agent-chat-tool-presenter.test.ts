@@ -289,52 +289,6 @@ describe('agent-chat-tool-presenter — formatToolMessage', () => {
 	});
 });
 
-describe('agent-chat-tool-presenter — formatOperationEvent', () => {
-	it('formats a list start', () => {
-		const presenter = createToolPresenter(makeHarness().ctx);
-		expect(
-			presenter.formatOperationEvent({
-				action: 'list',
-				status: 'start',
-				entity_type: 'task'
-			})
-		).toEqual({ message: 'Listing task', activityStatus: 'pending' });
-	});
-
-	it('formats a create success with entity name', () => {
-		const presenter = createToolPresenter(makeHarness().ctx);
-		expect(
-			presenter.formatOperationEvent({
-				action: 'create',
-				status: 'success',
-				entity_type: 'task',
-				entity_name: 'Write tests'
-			})
-		).toEqual({ message: 'Created task: "Write tests"', activityStatus: 'completed' });
-	});
-
-	it('formats an error as failed with the present verb', () => {
-		const presenter = createToolPresenter(makeHarness().ctx);
-		const result = presenter.formatOperationEvent({
-			action: 'update',
-			status: 'error',
-			entity_type: 'goal'
-		});
-		expect(result.activityStatus).toBe('failed');
-		expect(result.message).toContain('Updating');
-	});
-
-	it('falls back to capitalized verb on unknown action', () => {
-		const presenter = createToolPresenter(makeHarness().ctx);
-		const result = presenter.formatOperationEvent({
-			action: 'migrate',
-			status: 'start',
-			entity_type: 'plan'
-		});
-		expect(result.message).toBe('Migrate plan');
-	});
-});
-
 describe('agent-chat-tool-presenter — resolveEntityName precedence', () => {
 	it('prefers a directly provided candidate name', () => {
 		const h = makeHarness();

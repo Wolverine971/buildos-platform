@@ -705,7 +705,7 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 		if (admin.status === 401) {
 			throw redirect(303, '/auth/login');
 		}
-		throw redirect(303, '/');
+		throw redirect(303, '/dashboard');
 	}
 
 	const selectedSequenceKey = normalizeSequenceKey(url.searchParams.get('sequence'));

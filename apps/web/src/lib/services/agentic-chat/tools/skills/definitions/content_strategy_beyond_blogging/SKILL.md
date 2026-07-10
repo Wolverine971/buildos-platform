@@ -1,6 +1,7 @@
 ---
 skill_id: content-strategy-beyond-blogging
 name: Content Strategy Beyond Blogging
+catalog_line: 'Plan content strategy around intent, identity, distribution, and durable point of view.'
 description: Build content strategy around intent, identity, distribution, and durable point of view instead of generic blog volume. Use when planning content for SaaS, creators, local services, founder-led brands, or agent-assisted publishing systems.
 skill_type: strategy
 altitude: domain

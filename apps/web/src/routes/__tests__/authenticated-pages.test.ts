@@ -56,62 +56,34 @@ describe('Authenticated Pages', () => {
 		]);
 	});
 
-	describe('Homepage (/) - Dashboard', () => {
-		it('returns null payload for unauthenticated users', async () => {
+	describe('Homepage (/) - landing/redirect', () => {
+		it('returns an empty payload for unauthenticated users', async () => {
 			const { load } = await import('../+page.server');
-			const depends = vi.fn();
 
 			const result = await load({
 				locals: {
-					safeGetSession: vi.fn().mockResolvedValue({ user: null }),
-					supabase: {},
-					serverTiming: null
+					safeGetSession: vi.fn().mockResolvedValue({ user: null })
 				},
-				depends
+				url: new URL('https://build-os.com/')
 			} as any);
 
-			expect(result).toEqual({
-				user: null,
-				dashboard: null
-			});
-			expect(depends).toHaveBeenCalledWith('app:auth');
-			expect(depends).toHaveBeenCalledWith('dashboard:analytics');
+			expect(result).toEqual({});
 		});
 
-		it('returns user + analytics payload for authenticated users', async () => {
+		it('redirects authenticated users to /dashboard preserving the query string', async () => {
 			const { load } = await import('../+page.server');
-			const depends = vi.fn();
-			const dashboardPayload = { snapshot: { totalProjects: 2 } };
-			mockGetUserDashboardAnalytics.mockResolvedValueOnce(dashboardPayload);
 
-			const supabase = {
-				from: vi.fn((table: string) => {
-					if (table === 'onto_project_members') return createCountQuery(1);
-					if (table === 'onto_projects') return createCountQuery(0);
-					return createCountQuery(0);
-				}),
-				rpc: vi.fn().mockResolvedValue({ data: [], error: null })
-			};
-
-			const result = await load({
-				locals: {
-					safeGetSession: vi.fn().mockResolvedValue({ user: mockUser }),
-					supabase,
-					serverTiming: null
-				},
-				depends
-			} as any);
-
-			expect(result).toEqual({
-				user: mockUser,
-				dashboard: dashboardPayload
+			await expect(
+				load({
+					locals: {
+						safeGetSession: vi.fn().mockResolvedValue({ user: mockUser })
+					},
+					url: new URL('https://build-os.com/?open=agent-chat')
+				} as any)
+			).rejects.toMatchObject({
+				status: 303,
+				location: '/dashboard?open=agent-chat'
 			});
-			expect(mockGetUserDashboardAnalytics).toHaveBeenCalledWith(
-				supabase,
-				mockUser.id,
-				null,
-				'actor-1'
-			);
 		});
 	});
 

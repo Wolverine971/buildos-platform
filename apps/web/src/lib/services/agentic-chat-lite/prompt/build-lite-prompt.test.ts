@@ -550,6 +550,244 @@ describe('buildLitePromptEnvelope', () => {
 		).toHaveLength(1);
 	});
 
+	it('renders each intelligence work item once: slim JSON index, IDs in status lines', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			now: '2026-04-15T12:00:00Z',
+			data: {
+				projects: [],
+				project_intelligence: {
+					generated_at: '2026-04-15T12:00:00Z',
+					scope: 'global',
+					project_id: null,
+					project_name: null,
+					timezone: 'UTC',
+					windows: {
+						due_soon_days: 7,
+						upcoming_days: 30,
+						recent_changes_days: 7,
+						recent_changes_max_lookback_days: 21
+					},
+					counts: {
+						accessible_projects: 2,
+						projects_returned: 1,
+						overdue_total: 0,
+						due_soon_total: 1,
+						upcoming_total: 0,
+						recent_change_total: 0
+					},
+					overdue_or_due_soon: [
+						{
+							kind: 'task',
+							id: 'task-invite',
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							title: 'Send beta invite',
+							state_key: 'todo',
+							date_kind: 'due_at',
+							date: '2026-04-18T12:00:00Z',
+							bucket: 'due_soon',
+							days_delta: 3,
+							updated_at: '2026-04-15T10:00:00Z'
+						}
+					],
+					upcoming_work: [],
+					recent_changes: [],
+					project_summaries: [
+						{
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							state_key: 'active',
+							next_step_short: 'Ship the beta build',
+							updated_at: '2026-04-15T10:00:00Z',
+							counts: { overdue: 0, due_soon: 1, upcoming: 0, recent_changes: 0 }
+						}
+					],
+					limits: {
+						overdue_or_due_soon: 16,
+						upcoming_work: 16,
+						recent_changes: 16,
+						project_summaries: 8
+					},
+					maybe_more: {
+						overdue_or_due_soon: false,
+						upcoming_work: false,
+						recent_changes: false,
+						project_summaries: false
+					},
+					source: 'load_fastchat_context'
+				}
+			}
+		});
+
+		// The JSON index carries counts only; the Timeline prose is the single
+		// carrier of per-item detail (WP-1, prompt audit 2026-07-10).
+		expect(envelope.systemPrompt).not.toContain('selected_refs');
+		expect(envelope.systemPrompt).not.toContain('attention_projects');
+		expect(envelope.systemPrompt.match(/Send beta invite/g)).toHaveLength(1);
+		// Status lines now carry the project id so zoom-in tools keep working
+		// without the JSON attention_projects block.
+		expect(envelope.systemPrompt).toContain('Launch Alpha (project_id: project-1):');
+	});
+
+	it('suppresses "Due:" shadow events when the underlying task is in the same signal set', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			now: '2026-04-15T12:00:00Z',
+			data: {
+				projects: [],
+				project_intelligence: {
+					generated_at: '2026-04-15T12:00:00Z',
+					scope: 'global',
+					project_id: null,
+					project_name: null,
+					timezone: 'UTC',
+					windows: {
+						due_soon_days: 7,
+						upcoming_days: 30,
+						recent_changes_days: 7,
+						recent_changes_max_lookback_days: 21
+					},
+					counts: {
+						accessible_projects: 2,
+						projects_returned: 1,
+						overdue_total: 0,
+						due_soon_total: 1,
+						upcoming_total: 2,
+						recent_change_total: 2
+					},
+					overdue_or_due_soon: [
+						{
+							kind: 'task',
+							id: 'task-invite',
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							title: 'Send beta invite',
+							state_key: 'todo',
+							date_kind: 'due_at',
+							date: '2026-04-18T12:00:00Z',
+							bucket: 'due_soon',
+							days_delta: 3,
+							updated_at: '2026-04-15T10:00:00Z'
+						}
+					],
+					upcoming_work: [
+						{
+							kind: 'event',
+							id: 'event-shadow',
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							title: 'Due: Send beta invite',
+							state_key: 'scheduled',
+							date_kind: 'start_at',
+							date: '2026-04-18T11:00:00Z',
+							bucket: 'upcoming',
+							days_delta: 3,
+							updated_at: '2026-04-15T10:00:00Z'
+						},
+						{
+							kind: 'event',
+							id: 'event-standalone',
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							title: 'Due: Renew SSL certificate',
+							state_key: 'scheduled',
+							date_kind: 'start_at',
+							date: '2026-04-20T11:00:00Z',
+							bucket: 'upcoming',
+							days_delta: 5,
+							updated_at: '2026-04-15T10:00:00Z'
+						}
+					],
+					recent_changes: [
+						{
+							kind: 'task',
+							id: 'task-invite',
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							title: 'Send beta invite',
+							action: 'created',
+							changed_at: '2026-04-15T11:00:00Z'
+						},
+						{
+							kind: 'event',
+							id: 'event-shadow',
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							title: 'Due: Send beta invite',
+							action: 'created',
+							changed_at: '2026-04-15T11:00:00Z'
+						}
+					],
+					project_summaries: [],
+					limits: {
+						overdue_or_due_soon: 16,
+						upcoming_work: 16,
+						recent_changes: 16,
+						project_summaries: 8
+					},
+					maybe_more: {
+						overdue_or_due_soon: false,
+						upcoming_work: false,
+						recent_changes: false,
+						project_summaries: false
+					},
+					source: 'load_fastchat_context'
+				}
+			}
+		});
+
+		// The shadow event duplicates the task; the task is the canonical carrier.
+		expect(envelope.systemPrompt).not.toContain('event-shadow');
+		expect(envelope.systemPrompt).not.toContain('Due: Send beta invite');
+		// A "Due:" event with no matching task in the signal set stays visible.
+		expect(envelope.systemPrompt).toContain('Due: Renew SSL certificate');
+		// The task itself renders once as a signal line and once as a recent change.
+		expect(envelope.systemPrompt).toContain('(task_id: task-invite) "Send beta invite"');
+	});
+
+	it('suppresses "Due:" shadow events in the digest path when the task is loaded', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project',
+			projectId: 'project-1',
+			projectName: 'Launch Alpha',
+			now: '2026-04-15T12:00:00Z',
+			data: {
+				project: {
+					id: 'project-1',
+					name: 'Launch Alpha',
+					state_key: 'active',
+					updated_at: '2026-04-14T12:00:00Z'
+				},
+				tasks: [
+					{
+						id: 'task-invite',
+						title: 'Send beta invite',
+						state_key: 'todo',
+						due_at: '2026-04-18T12:00:00Z',
+						updated_at: '2026-04-14T13:45:00Z'
+					}
+				],
+				events: [
+					{
+						id: 'event-shadow',
+						title: 'Due: Send beta invite',
+						state_key: 'scheduled',
+						start_at: '2026-04-18T11:00:00Z',
+						updated_at: '2026-04-14T13:45:00Z'
+					}
+				],
+				context_meta: { generated_at: '2026-04-15T12:00:00Z', source: 'rpc' }
+			}
+		});
+
+		const timeline = envelope.sections.find(
+			(section) => section.id === 'timeline_recent_activity'
+		);
+		expect(timeline?.content).toContain('Send beta invite');
+		expect(timeline?.content).not.toContain('Due: Send beta invite');
+	});
+
 	it('ignores incomplete project intelligence payloads instead of throwing', () => {
 		const envelope = buildLitePromptEnvelope({
 			contextType: 'global',

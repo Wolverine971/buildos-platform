@@ -1,13 +1,15 @@
 // apps/web/src/lib/services/overdue-task-reschedule.service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
-import { addDays, addMinutes, startOfDay } from 'date-fns';
+import { addDays, addMinutes, endOfDay, startOfDay } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { CalendarService, type CalendarEvent } from '$lib/services/calendar-service';
 import type { CalendarItem } from '$lib/types/calendar-items';
 import {
 	buildRescheduleWindow,
 	createLocalWorkWindow,
+	assignNonOverlappingBatchSlots,
+	isImportantTaskPriority,
 	isWorkingDay,
 	resolveDurationMinutes,
 	roundUpToInterval,
@@ -30,6 +32,12 @@ interface RescheduleContext {
 	durationMinutes: number;
 }
 
+interface BatchRescheduleContext {
+	tasks: OntoTaskRow[];
+	timezone: string;
+	preferences: SchedulingPreferencesShape;
+}
+
 export interface RescheduleSuggestion {
 	start_at: string;
 	due_at: string;
@@ -47,6 +55,24 @@ export interface ReschedulePlan {
 	calendar_connected: boolean;
 }
 
+export interface BatchRescheduleAssignment extends RescheduleSuggestion {
+	task_id: string;
+}
+
+export interface BatchReschedulePlan {
+	preset: OverdueReschedulePreset;
+	timezone: string;
+	window_start_at: string;
+	window_end_at: string;
+	target_window_end_at: string;
+	note: string | null;
+	assignments: BatchRescheduleAssignment[];
+	unscheduled_task_ids: string[];
+	overflow_count: number;
+	scheduled_day_count: number;
+	calendar_connected: boolean;
+}
+
 const DEFAULT_PREFERENCES: SchedulingPreferencesShape = {
 	work_start_time: '09:00',
 	work_end_time: '17:00',
@@ -56,6 +82,7 @@ const DEFAULT_PREFERENCES: SchedulingPreferencesShape = {
 	max_task_duration_minutes: 240,
 	prefer_morning_for_important_tasks: false
 };
+const BATCH_SPILLOVER_CALENDAR_DAYS = 14;
 
 class ReschedulePlannerError extends Error {
 	constructor(
@@ -174,10 +201,6 @@ function buildGaps(
 	return gaps;
 }
 
-function isImportantTask(task: OntoTaskRow): boolean {
-	return (task.priority ?? 0) >= 4;
-}
-
 export class OverdueTaskRescheduleService {
 	private readonly calendarService: CalendarService;
 
@@ -229,6 +252,91 @@ export class OverdueTaskRescheduleService {
 				due_at: slot.end.toISOString(),
 				duration_minutes: context.durationMinutes
 			})),
+			calendar_connected: busyIntervals.calendarConnected
+		};
+	}
+
+	async planBatchReschedule(params: {
+		userId: string;
+		taskIds: string[];
+		preset: OverdueReschedulePreset;
+	}): Promise<BatchReschedulePlan> {
+		const context = await this.loadBatchContext(params.userId, params.taskIds);
+		const window = buildRescheduleWindow({
+			preset: params.preset,
+			timezone: context.timezone,
+			workingDays: context.preferences.working_days
+		});
+		const searchEndLocal = endOfDay(addDays(window.endLocal, BATCH_SPILLOVER_CALENDAR_DAYS));
+		const windowStartUtc = fromZonedTime(window.startLocal, context.timezone);
+		const targetWindowEndUtc = fromZonedTime(window.endLocal, context.timezone);
+		const searchEndUtc = fromZonedTime(searchEndLocal, context.timezone);
+		const excludedTaskIds = new Set(context.tasks.map((task) => task.id));
+		const busyIntervals = await this.loadBusyIntervals({
+			userId: params.userId,
+			excludedTaskIds,
+			windowStartUtc,
+			windowEndUtc: searchEndUtc
+		});
+		const durationByTaskId = new Map<string, number>();
+		const slotRequests = context.tasks.map((task) => {
+			const durationMinutes = resolveDurationMinutes(
+				parseTaskDuration(task),
+				context.preferences
+			);
+			durationByTaskId.set(task.id, durationMinutes);
+
+			return {
+				taskId: task.id,
+				candidateSlots: this.buildCandidateSlots({
+					task,
+					timezone: context.timezone,
+					preferences: context.preferences,
+					durationMinutes,
+					windowStartLocal: window.startLocal,
+					windowEndLocal: searchEndLocal,
+					busyIntervals
+				})
+			};
+		});
+		const scheduled = assignNonOverlappingBatchSlots(slotRequests);
+		const overflowCount = scheduled.assignments.filter(
+			(assignment) => assignment.start.getTime() >= targetWindowEndUtc.getTime()
+		).length;
+		const scheduledDays = new Set(
+			scheduled.assignments.map((assignment) => {
+				const local = toZonedTime(assignment.start, context.timezone);
+				return `${local.getFullYear()}-${local.getMonth()}-${local.getDate()}`;
+			})
+		);
+		const notes = [window.note];
+		if (overflowCount > 0) {
+			notes.push(
+				`${overflowCount} ${overflowCount === 1 ? 'task was' : 'tasks were'} placed in later working days because the requested window was full.`
+			);
+		}
+		if (scheduled.unscheduledTaskIds.length > 0) {
+			notes.push(
+				`${scheduled.unscheduledTaskIds.length} ${scheduled.unscheduledTaskIds.length === 1 ? 'task could' : 'tasks could'} not fit within the next ${BATCH_SPILLOVER_CALENDAR_DAYS} days.`
+			);
+		}
+
+		return {
+			preset: params.preset,
+			timezone: context.timezone,
+			window_start_at: windowStartUtc.toISOString(),
+			window_end_at: searchEndUtc.toISOString(),
+			target_window_end_at: targetWindowEndUtc.toISOString(),
+			note: notes.filter((note): note is string => Boolean(note)).join(' ') || null,
+			assignments: scheduled.assignments.map((assignment) => ({
+				task_id: assignment.taskId,
+				start_at: assignment.start.toISOString(),
+				due_at: assignment.end.toISOString(),
+				duration_minutes: durationByTaskId.get(assignment.taskId) ?? 60
+			})),
+			unscheduled_task_ids: scheduled.unscheduledTaskIds,
+			overflow_count: overflowCount,
+			scheduled_day_count: scheduledDays.size,
 			calendar_connected: busyIntervals.calendarConnected
 		};
 	}
@@ -307,9 +415,97 @@ export class OverdueTaskRescheduleService {
 		};
 	}
 
+	private async loadBatchContext(
+		userId: string,
+		taskIds: string[]
+	): Promise<BatchRescheduleContext> {
+		const uniqueTaskIds = [...new Set(taskIds)];
+		if (uniqueTaskIds.length === 0) {
+			throw new ReschedulePlannerError('At least one task is required', 400);
+		}
+
+		const [
+			{ data: actorId, error: actorError },
+			{ data: userData },
+			{ data: preferenceData, error: preferenceError },
+			taskResult
+		] = await Promise.all([
+			this.supabase.rpc('ensure_actor_for_user', { p_user_id: userId }),
+			this.supabase.from('users').select('timezone').eq('id', userId).single(),
+			this.supabase
+				.from('user_calendar_preferences')
+				.select('*')
+				.eq('user_id', userId)
+				.single(),
+			this.supabase
+				.from('onto_tasks')
+				.select('*, project:onto_projects!inner(id)')
+				.in('id', uniqueTaskIds)
+				.is('deleted_at', null)
+		]);
+
+		if (actorError || !actorId) {
+			throw actorError ?? new ReschedulePlannerError('Actor not found', 403);
+		}
+		if (preferenceError && preferenceError.code !== 'PGRST116') {
+			throw preferenceError;
+		}
+		if (taskResult.error) {
+			throw taskResult.error;
+		}
+
+		const taskRows = (taskResult.data ?? []) as Array<
+			OntoTaskRow & { project: { id: string } | null }
+		>;
+		const tasksById = new Map(taskRows.map((task) => [task.id, task]));
+		const tasks = uniqueTaskIds.map((taskId) => tasksById.get(taskId));
+		if (tasks.some((task) => !task)) {
+			throw new ReschedulePlannerError('One or more tasks were not found', 404);
+		}
+
+		const resolvedTasks = tasks as Array<OntoTaskRow & { project: { id: string } | null }>;
+		const projectIds = [
+			...new Set(
+				resolvedTasks.map((task) => task.project?.id ?? task.project_id).filter(Boolean)
+			)
+		] as string[];
+		if (projectIds.length === 0) {
+			throw new ReschedulePlannerError('Task project not found', 404);
+		}
+
+		const accessResults = await Promise.all(
+			projectIds.map(async (projectId) => {
+				const { data: hasAccess, error } = await this.supabase.rpc(
+					'current_actor_has_project_member_access',
+					{
+						p_project_id: projectId,
+						p_required_access: 'write'
+					}
+				);
+				return { hasAccess, error };
+			})
+		);
+		for (const access of accessResults) {
+			if (access.error) throw access.error;
+			if (!access.hasAccess) {
+				throw new ReschedulePlannerError('Access denied', 403);
+			}
+		}
+
+		return {
+			tasks: resolvedTasks,
+			timezone: userData?.timezone || 'America/New_York',
+			preferences: {
+				...DEFAULT_PREFERENCES,
+				...(preferenceData ?? {})
+			}
+		};
+	}
+
 	private async loadBusyIntervals(params: {
 		userId: string;
-		taskId: string;
+		taskId?: string;
+		excludedTaskIds?: ReadonlySet<string>;
 		windowStartUtc: Date;
 		windowEndUtc: Date;
 	}): Promise<{ intervals: BusyInterval[]; calendarConnected: boolean }> {
@@ -335,9 +531,16 @@ export class OverdueTaskRescheduleService {
 			throw calendarItemsError;
 		}
 
+		const excludedTaskIds = new Set(params.excludedTaskIds ?? []);
+		if (params.taskId) excludedTaskIds.add(params.taskId);
+
 		for (const item of (calendarItems ?? []) as CalendarItem[]) {
-			if (item.task_id === params.taskId) continue;
-			if (item.owner_entity_type === 'task' && item.owner_entity_id === params.taskId)
+			if (item.task_id && excludedTaskIds.has(item.task_id)) continue;
+			if (
+				item.owner_entity_type === 'task' &&
+				item.owner_entity_id &&
+				excludedTaskIds.has(item.owner_entity_id)
+			)
 				continue;
 			const start = new Date(item.start_at);
 			const end =
@@ -468,7 +671,7 @@ export class OverdueTaskRescheduleService {
 			timezone: params.timezone,
 			preferMorning:
 				Boolean(params.preferences.prefer_morning_for_important_tasks) &&
-				isImportantTask(params.task)
+				isImportantTaskPriority(params.task.priority)
 		});
 	}
 }

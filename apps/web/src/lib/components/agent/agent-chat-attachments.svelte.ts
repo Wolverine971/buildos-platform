@@ -9,8 +9,8 @@ import { uploadFileToSignedStorageUrl as uploadToSignedStorageUrl } from '$lib/u
 import type { AgentChatImageAttachment, UIMessage } from './agent-chat.types';
 
 export const AGENT_CHAT_MAX_IMAGE_ATTACHMENTS = 4;
-export const AGENT_CHAT_MAX_IMAGE_BYTES = 25 * 1024 * 1024;
-export const AGENT_CHAT_MAX_CONCURRENT_IMAGE_UPLOADS = 2;
+const AGENT_CHAT_MAX_IMAGE_BYTES = 25 * 1024 * 1024;
+const AGENT_CHAT_MAX_CONCURRENT_IMAGE_UPLOADS = 2;
 export const AGENT_CHAT_OCR_POLL_INITIAL_DELAY_MS = 2500;
 export const AGENT_CHAT_OCR_POLL_MAX_DELAY_MS = 10_000;
 export const AGENT_CHAT_OCR_POLL_MAX_ATTEMPTS = 10;
@@ -43,11 +43,11 @@ export interface AttachmentControllerDeps {
 	clearTimeoutImpl?(id: TimeoutHandle): void;
 }
 
-export function assetRenderPreviewUrl(assetId: string): string {
+function assetRenderPreviewUrl(assetId: string): string {
 	return `/api/onto/assets/${assetId}/render?width=160`;
 }
 
-export function compactAttachmentText(value: unknown, maxChars = 1200): string | null {
+function compactAttachmentText(value: unknown, maxChars = 1200): string | null {
 	if (typeof value !== 'string') return null;
 	const normalized = value.replace(/\s+/g, ' ').trim();
 	if (!normalized) return null;
@@ -56,7 +56,7 @@ export function compactAttachmentText(value: unknown, maxChars = 1200): string |
 		: `${normalized.slice(0, Math.max(0, maxChars - 3))}...`;
 }
 
-export function isTerminalOcrStatus(status: unknown): boolean {
+function isTerminalOcrStatus(status: unknown): boolean {
 	return status === 'complete' || status === 'failed' || status === 'skipped';
 }
 

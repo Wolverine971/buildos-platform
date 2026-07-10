@@ -1,5 +1,6 @@
 ---
 name: Cold Email Engagement-First Outreach
+catalog_line: 'Plan, draft, audit, and route cold outreach to strangers: campaigns, single emails, reply handling.'
 description: Root skill for planning, drafting, auditing, and routing cold outreach to strangers across B2B sales, founder-led outreach, investor fundraising, recruiting, partnerships, PR, podcasts, and customer research. Use when the user needs a campaign bundle, one targeted email, reply handling, or a trust-preserving outreach operating workflow.
 skill_type: orchestration # procedure | strategy | reference | resource | policy | orchestration
 altitude: domain # task | domain | meta

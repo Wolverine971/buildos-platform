@@ -26,7 +26,7 @@ import { resolveLinkedEntities } from '../../task-linked-helpers';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import { attachAssigneesToTask, fetchTaskAssigneesMap } from '$lib/server/task-assignment.service';
 
-export const GET: RequestHandler = async ({ params, locals }) => {
+export const GET: RequestHandler = async ({ params, locals, url }) => {
 	const session = await locals.safeGetSession();
 	if (!session?.user) {
 		return ApiResponse.unauthorized('Authentication required');
@@ -34,6 +34,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 	const supabase = locals.supabase;
 	const taskId = params.id;
+	const includeLinkedEntities = url.searchParams.get('include_linked') !== 'false';
 
 	try {
 		// Phase 1: Parallelize initial queries
@@ -125,7 +126,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.forbidden('Access denied');
 		}
 
-		const linkedEntities = await resolveLinkedEntities(supabase, taskId);
+		const linkedEntities = includeLinkedEntities
+			? await resolveLinkedEntities(supabase, taskId)
+			: null;
 
 		// Extract project data and include project name in response
 		const { project, ...taskData } = task;
@@ -139,7 +142,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		return ApiResponse.success({
 			task: { ...taskWithAssignees, project: { name: project.name } },
-			linkedEntities
+			...(linkedEntities ? { linkedEntities } : {})
 		});
 	} catch (error) {
 		console.error('[Task Full GET] Error fetching task data:', error);

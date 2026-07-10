@@ -77,7 +77,7 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		throw error(500, 'Unable to verify admin access');
 	}
 	if (!dbUser?.is_admin) {
-		throw redirect(303, '/');
+		throw redirect(303, '/dashboard');
 	}
 
 	const adminClient = createAdminSupabaseClient();

@@ -280,7 +280,8 @@
 				const pendingRedirect = redirectTarget
 					? null
 					: await resolvePendingInviteRedirect();
-				const destination = redirectTarget ?? pendingRedirect ?? '/?onboarding=true';
+				const destination =
+					redirectTarget ?? pendingRedirect ?? '/dashboard?onboarding=true';
 
 				// Auto-login successful - navigate to destination
 				await goto(destination, {
@@ -361,10 +362,10 @@
 </script>
 
 <SEOHead
-	title="Sign Up - BuildOS | Start Your 14-Day Free Trial"
-	description="Create your BuildOS account and transform rough project input into structured projects with memory. No credit card required."
+	title="Create Your BuildOS Account"
+	description="Create your BuildOS account and transform rough project input into structured projects with memory. Paid billing is not active, and creating an account does not charge you."
 	canonical="https://build-os.com/auth/register"
-	keywords="BuildOS sign up, free trial, thinking environment, project memory, project context app"
+	keywords="BuildOS sign up, early access, thinking environment, project memory, project context app"
 	noindex={true}
 />
 

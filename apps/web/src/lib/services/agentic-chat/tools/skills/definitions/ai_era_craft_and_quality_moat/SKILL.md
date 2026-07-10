@@ -1,5 +1,6 @@
 ---
 name: AI-Era Craft and Quality Moat
+catalog_line: 'Decide where craft and quality are the moat when AI makes shipping cheap: differentiation, quality bets, AI-slop diagnosis.'
 description: >-
     Root skill for deciding where craft and quality are the moat when AI makes shipping working software cheap. Use for "how do we differentiate" questions, prioritizing quality investments, good-enough-vs-excellent roadmap arbitration, defending craft hires against AI-substitution arguments, defining a quality north star, or diagnosing why a product feels like AI slop despite functional parity. Strategy layer above per-screen audits — distills the Saarinen/Field/Wen/Lu consensus into a craft priority ladder, a five-question surface-posture filter, a craft-vs-speed quadrant, hiring and roadmap rubrics, and BuildOS posture calls.
 skill_type: strategy # procedure | reference | strategy | resource | policy | orchestration

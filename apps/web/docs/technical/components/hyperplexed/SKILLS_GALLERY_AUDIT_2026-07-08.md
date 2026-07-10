@@ -84,5 +84,33 @@ Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail templat
 ## Deferred
 
 - Authenticated end-to-end launcher smoke with a real signed-in session.
-- Optional nested skill URL shape if we later want `/skills/domain/[domain]/[skill]` aliases.
 - Full public coverage for runtime skills that do not yet have gallery-quality metadata.
+
+## Follow-Up Implementation — 2026-07-10
+
+### Shipped
+
+- Global search now returns skills, domains, packs/stacks, public references, and editorial guides; skill cards explain the matched field and value, and results can be sorted by featured order, name, domain, or last-updated date -> P4+P6+P7.
+- `/skills/family/[family]` adds family-scoped search and parent-to-child skill trees. Public children link directly; runtime-only children stay visible with an explicit `Gallery entry pending` state -> P4+P6+P8.
+- Family routes are linked from the gallery, domain pages, and skill detail headers with explicit 44px controls -> P6+P8+P13.
+- Skill detail prompt cards preserve the selected starter prompt, add `Copy prompt`, and expose `buildos.yaml`, compatibility, eval coverage, last-updated metadata, and linked public reference files -> P4+P6+P8+P13.
+- Curated pack/stack metadata now includes a pack-level example prompt and explicit handoff rules. `/skills/try/path/[path]` launches the complete ordered workflow as one editable BuildOS draft instead of opening only stage one -> P4+P6+P8.
+- Pack/stack pages now explain when to use each stage and show the handoff contract beside the ordered path -> P4+P6.
+- Friendly `/skills/[domain]`, `/skills/[domain]/[skill]`, `/skills/packs/[pack]`, and `/skills/stacks/[stack]` aliases resolve to the canonical gallery routes -> P6.
+- Generated gallery metadata now includes eval coverage, last-updated dates, and safety notes; catalog validation treats missing trust metadata as blocking.
+- Sitemap generation now includes 21 dynamic public gallery URLs across skills, domains, families, and paths.
+- Mobile follow-up raised family navigation and detail-family links to the 44px interaction floor -> P13.
+
+### Verification
+
+- `pnpm exec vitest run src/lib/skills/skill-gallery.test.ts src/lib/server/agent-skills.test.ts` -> 16 tests passed.
+- `pnpm run agent-skills:check` -> 8 skills, 13 public reference files, 0 errors, 0 warnings.
+- `pnpm run check` -> 0 errors, 0 warnings.
+- `pnpm gen:sitemap` -> 21 dynamic gallery URLs; 121 total sitemap URLs.
+- Live 1280px and 390px checks covered global search, match explanations, reference and pack results, `/skills/family/cold-outreach`, child-only family search, `/skills/path/founder-content-pack`, prompt copy, detail agent/trust links, guest pack redirect, and friendly route aliases.
+- Light and dark desktop plus light and dark 390px family checks showed no horizontal overflow; visible main controls met the interaction-size bar after the P13 follow-up.
+
+### Still Deferred
+
+- Authenticated end-to-end skill and pack launcher smoke with a real signed-in session.
+- Full public coverage and publication-status metadata for runtime-only skills.

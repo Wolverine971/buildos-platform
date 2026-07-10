@@ -13,7 +13,7 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession } }) => {
 	const { session } = await safeGetSession();
 
 	if (session) {
-		throw redirect(303, '/');
+		throw redirect(303, '/dashboard');
 	}
 };
 

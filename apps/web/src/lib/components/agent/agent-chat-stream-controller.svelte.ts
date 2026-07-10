@@ -20,6 +20,7 @@ import {
 } from '$lib/utils/sse-processor';
 import { AgentRequestError, buildAgentRequestError } from './agent-chat-session';
 import type { PreparedPromptClient } from './agent-chat-session';
+import { PREPARED_PROMPT_SEND_WAIT_MS } from './agent-chat.constants';
 import type { AgentChatImageAttachment, UIMessage } from './agent-chat.types';
 
 export interface SessionBootstrapTarget {
@@ -128,7 +129,7 @@ export interface StreamControllerDeps {
 	logDebug?(message: string, data?: unknown): void;
 }
 
-export function buildSessionBootstrapTarget(
+function buildSessionBootstrapTarget(
 	contextType: ChatContextType,
 	entityId?: string,
 	projectFocusOverride?: ProjectFocus | null
@@ -140,7 +141,7 @@ export function buildSessionBootstrapTarget(
 	};
 }
 
-export function buildClientStreamTimingState(runId: number): ClientStreamTimingState {
+function buildClientStreamTimingState(runId: number): ClientStreamTimingState {
 	return {
 		runId,
 		sendStartedAtMs: Date.now(),
@@ -154,8 +155,6 @@ export function buildClientStreamTimingState(runId: number): ClientStreamTimingS
 		serverTiming: null
 	};
 }
-
-const PREPARED_PROMPT_SEND_WAIT_MS = 250;
 
 // Inactivity guard for the SSE transport. The server heartbeats every 12s
 // (SSE comments — the processor counts raw chunk bytes as activity), so a
@@ -210,7 +209,7 @@ function buildStreamEventKey(
 	return streamRunId ? `sequence:${streamRunId}:${sequenceIndex}` : null;
 }
 
-export function summarizeClientStreamTiming(timing: ClientStreamTimingState) {
+function summarizeClientStreamTiming(timing: ClientStreamTimingState) {
 	return {
 		runId: timing.runId,
 		timeToFirstStreamEventMs: diffMs(timing.sendStartedAtMs, timing.firstEventAtMs),
@@ -254,10 +253,6 @@ export class AgentChatStreamController {
 		this.#deps = deps;
 		this.#fetch = deps.fetchImpl ?? fetch;
 		this.#streamProcessor = deps.streamProcessor ?? SSEProcessor;
-	}
-
-	get hasActiveTransport(): boolean {
-		return Boolean(this.#currentStreamController);
 	}
 
 	recordClientStreamEvent(

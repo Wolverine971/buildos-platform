@@ -1,5 +1,6 @@
 ---
 name: Viral Content For Boring Brands
+catalog_line: 'Design or audit content for unexciting products against the first-two-seconds scroll filters.'
 description: >-
     Design or audit brand-account and founder-account content for products that are not inherently exciting — B2B SaaS, dev tools, project-management software, supplements, commodity consumables — against the six pre-conscious filters that decide whether a viewer scrolls or stays in the first two seconds. Covers format steal with a moral edge, curiosity gaps, means-end identity ladders, honest credentials, the one-line sharer test, and the story skeleton, with overlays that reject slop formats and performative authority. Not for creator-led personal-brand content, sentence-level hook polish, script bodies, or narrative arcs — escalate those to hook_craft_short_form, viral_video_script_structure, and story_driven_content_craft.
 skill_type: procedure # procedure | reference | strategy | resource | policy | orchestration

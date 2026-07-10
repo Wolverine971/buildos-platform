@@ -1,6 +1,5 @@
 // apps/web/src/lib/utils/auth.ts
 import { browser } from '$app/environment';
-import { createSupabaseBrowser } from '$lib/supabase';
 
 export const LOGOUT_REDIRECT_STORAGE_KEY = 'buildos:auth:logout-redirect';
 
@@ -11,6 +10,7 @@ export const LOGOUT_REDIRECT_STORAGE_KEY = 'buildos:auth:logout-redirect';
 export async function logout(redirectTo: string = '/auth/login'): Promise<void> {
 	if (!browser) return;
 
+	const { createSupabaseBrowser } = await import('$lib/supabase');
 	const supabase = createSupabaseBrowser();
 
 	try {
@@ -47,6 +47,7 @@ export async function logout(redirectTo: string = '/auth/login'): Promise<void> 
 export async function forceAuthRefresh(): Promise<void> {
 	if (!browser) return;
 
+	const { createSupabaseBrowser } = await import('$lib/supabase');
 	const supabase = createSupabaseBrowser();
 
 	try {

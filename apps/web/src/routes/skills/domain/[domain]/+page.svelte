@@ -36,6 +36,7 @@
 		buildPostBySlug,
 		getAgentFilePath,
 		getDisplayTitle,
+		getFamilyPath,
 		getNumericStat,
 		getOutputShapes,
 		getPackPath,
@@ -272,7 +273,7 @@
 		</div>
 	</header>
 
-	<main class="mx-auto max-w-7xl px-2 py-8 sm:px-4 sm:py-10 lg:px-6">
+	<div class="mx-auto max-w-7xl px-2 py-8 sm:px-4 sm:py-10 lg:px-6">
 		<section aria-labelledby="domain-path" class="mb-10">
 			<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
 				<div>
@@ -335,11 +336,14 @@
 							>
 								<div class="mb-3 flex items-center gap-2">
 									<GitBranch class="h-4 w-4 shrink-0 text-accent" />
-									<h3
-										id={familyId(family.name)}
-										class="text-lg font-semibold text-foreground"
-									>
-										{family.name}
+									<h3 id={familyId(family.name)}>
+										<a
+											href={getFamilyPath(family)}
+											class="inline-flex min-h-[44px] items-center gap-2 text-lg font-semibold text-foreground transition-colors hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										>
+											{family.name}
+											<ArrowRight class="h-4 w-4" />
+										</a>
 									</h3>
 									<span
 										class="rounded-full border border-border bg-card px-2 py-1 text-2xs font-medium text-muted-foreground"
@@ -580,5 +584,5 @@
 				</section>
 			</aside>
 		</div>
-	</main>
+	</div>
 </div>

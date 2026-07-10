@@ -2,7 +2,7 @@
 
 # Project-Batched Overdue Task Triage Spec
 
-**Last Updated**: July 7, 2026
+**Last Updated**: July 9, 2026
 **Status**: Draft  
 **Category**: Feature Spec  
 **Supersedes**: parts of `/apps/web/docs/features/ontology/OVERDUE_TASK_TRIAGE_MODAL_SPEC.md`  
@@ -214,9 +214,9 @@ Header content:
 
 Header actions:
 
-- `Tomorrow all`
-- `+3d all`
-- `Mark all in progress`
+- `Schedule from tomorrow`
+- `Schedule from +3d`
+- `Start & schedule all`
 - overflow menu:
     - `Mark all done` with confirmation
     - `Move all to backlog` with confirmation
@@ -226,6 +226,14 @@ Important change:
 
 - the selected project panel should show **all overdue tasks for that project at once**
 - the UI should not require a `Skip` button as the primary navigation mechanism
+- scheduling actions must set a real `start_at`/`due_at` work block for each task rather than
+  assigning one shared end-of-day due timestamp to the whole batch
+- each chosen slot must be reserved before planning the next task so a batch can never stack
+  several task events into the same calendar hour
+- planning should respect the user's timezone, working days, working hours, task-duration
+  preferences, BuildOS calendar items, and connected-calendar busy events
+- the selected preset is the preferred starting window; when it is full, remaining tasks may use
+  later working days inside the bounded spillover window, and the UI must disclose that behavior
 
 ## 8.5 Task Row Design
 
@@ -408,6 +416,13 @@ Keep reusing:
 - `PATCH /api/onto/tasks/[id]`
 - `POST /api/onto/tasks/[id]/reschedule-options`
 
+Add for collision-free project actions:
+
+- `POST /api/onto/tasks/batch-reschedule-options`
+- accepts up to 100 task IDs plus `today | tomorrow | plus3 | nextWeek`
+- returns one non-overlapping assignment per schedulable task, explicit unscheduled task IDs,
+  overflow count, scheduled-day count, and whether connected-calendar availability was loaded
+
 Fields used by batch triage:
 
 - `state_key`
@@ -537,6 +552,8 @@ Suggested events:
 6. Advanced reschedule UI is available, but hidden behind secondary controls.
 7. The experience works cleanly on both desktop and mobile.
 8. Moving a task to backlog clears `start_at` and `due_at`, removes it from overdue triage, and removes linked task calendar events.
+9. Project-level schedule actions assign distinct, availability-aware work blocks and never create a shared due-time pile-up.
+10. If the requested day is full, overflow is placed only on later working days inside the bounded planning window and is disclosed to the user.
 
 ## 18. Open Questions
 

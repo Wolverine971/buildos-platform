@@ -220,7 +220,7 @@
 		</header>
 
 		<!-- Main Content - Matches project page 2-column layout -->
-		<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 overflow-x-hidden">
+		<div class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 overflow-x-hidden">
 			<div
 				class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px] gap-2 sm:gap-4 lg:gap-6"
 			>
@@ -897,7 +897,7 @@
 					</div>
 				</aside>
 			</div>
-		</main>
+		</div>
 	</div>
 </div>
 

@@ -194,12 +194,13 @@
 
 			<div class="relative max-w-md mx-auto mt-5">
 				<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-					<Search class="h-4 w-4 text-muted-foreground" />
+					<Search class="h-4 w-4 text-muted-foreground" aria-hidden="true" />
 				</div>
 				<TextInput
 					type="text"
 					bind:value={searchQuery}
 					placeholder="Search articles..."
+					aria-label="Search articles"
 					size="md"
 					class="pl-10"
 				/>
@@ -209,9 +210,14 @@
 
 	<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 		<!-- Category filter pills -->
-		<nav class="flex flex-wrap gap-2 py-5 border-b border-border">
+		<div
+			class="flex flex-wrap gap-2 border-b border-border py-5"
+			role="group"
+			aria-label="Filter articles by category"
+		>
 			<button
 				onclick={() => (activeCategory = 'all')}
+				aria-pressed={activeCategory === 'all'}
 				class="px-3 py-1.5 text-sm font-medium rounded-full transition-colors {activeCategory ===
 				'all'
 					? 'bg-foreground text-background'
@@ -223,6 +229,7 @@
 			{#each activeCategories as [categoryKey, count]}
 				<button
 					onclick={() => (activeCategory = categoryKey)}
+					aria-pressed={activeCategory === categoryKey}
 					class="px-3 py-1.5 text-sm font-medium rounded-full transition-colors {activeCategory ===
 					categoryKey
 						? 'bg-foreground text-background'
@@ -232,7 +239,7 @@
 					<span class="ml-1 text-xs opacity-70">{count}</span>
 				</button>
 			{/each}
-		</nav>
+		</div>
 
 		{#if hasActiveSearch}
 			<div class="pt-5 pb-2">

@@ -404,7 +404,11 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		}
 
 		// Skip for non-calendar routes to save time
-		if (!pathname.includes('calendar') && !pathname.includes('task') && pathname !== '/') {
+		if (
+			!pathname.includes('calendar') &&
+			!pathname.includes('task') &&
+			pathname !== '/dashboard'
+		) {
 			return null;
 		}
 
@@ -497,6 +501,16 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			});
 			// Continue with null session/user - don't throw
 		}
+	}
+
+	// Keep the public homepage out of the authenticated app bundle and data path.
+	// Preserve auth/toast query parameters when old links still land on `/`.
+	if (
+		pathname === '/' &&
+		event.locals.user &&
+		(event.request.method === 'GET' || event.request.method === 'HEAD')
+	) {
+		throw redirect(303, `/dashboard${event.url.search}`);
 	}
 
 	const mutationGuardEnabled =

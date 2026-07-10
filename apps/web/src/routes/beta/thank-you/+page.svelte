@@ -52,7 +52,7 @@
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
-<main class="min-h-screen bg-background">
+<div class="min-h-screen bg-background">
 	<!-- Hero Section -->
 	<section class="pt-12 pb-16 px-4 sm:px-6 lg:px-8">
 		<div class="max-w-4xl mx-auto">
@@ -254,7 +254,7 @@
 			</div>
 		</div>
 	</section>
-</main>
+</div>
 
 <style>
 	@keyframes fade-in {

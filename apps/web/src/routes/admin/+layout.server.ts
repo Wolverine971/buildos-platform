@@ -16,7 +16,7 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
 		.single();
 
 	if (error || !dbUser?.is_admin) {
-		throw redirect(303, '/');
+		throw redirect(303, '/dashboard');
 	}
 
 	return {

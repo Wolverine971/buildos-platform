@@ -38,6 +38,18 @@ export type EntityOpenResolution =
 	| { result: 'unsupported' }
 	| { result: 'unknown' };
 
+export function buildProjectEntityOpenHref(
+	projectId: string,
+	entityType: EntityOpenAction['kind'],
+	entityId: string
+): string {
+	const params = new URLSearchParams({
+		entity: entityType,
+		entity_id: entityId
+	});
+	return `/projects/${encodeURIComponent(projectId)}?${params.toString()}`;
+}
+
 export function resolveEntityOpenAction(
 	entityType: string,
 	entityId: string

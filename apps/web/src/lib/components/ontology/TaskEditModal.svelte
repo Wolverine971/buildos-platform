@@ -125,9 +125,10 @@
 		onClose: () => void;
 		onUpdated?: () => void;
 		onDeleted?: () => void;
+		onLoaded?: () => void;
 	}
 
-	let { taskId, projectId, onClose, onUpdated, onDeleted }: Props = $props();
+	let { taskId, projectId, onClose, onUpdated, onDeleted, onLoaded }: Props = $props();
 
 	let modalOpen = $state(true);
 	let task = $state<any>(null);
@@ -454,7 +455,7 @@
 	async function loadTask() {
 		try {
 			isLoading = true;
-			const response = await fetch(`/api/onto/tasks/${taskId}/full`);
+			const response = await fetch(`/api/onto/tasks/${taskId}/full?include_linked=false`);
 
 			if (!response.ok) throw new Error('Failed to load task');
 
@@ -483,7 +484,7 @@
 		} catch (err) {
 			console.error('Error loading task:', err);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/tasks/${taskId}/full`,
+				endpoint: `/api/onto/tasks/${taskId}/full?include_linked=false`,
 				method: 'GET',
 				projectId,
 				entityType: 'task',
@@ -493,6 +494,7 @@
 			error = 'Failed to load task';
 		} finally {
 			isLoading = false;
+			onLoaded?.();
 		}
 	}
 
@@ -765,7 +767,7 @@
 	onClose={handleClose}
 	closeOnEscape={!isSaving && !isDeleting}
 	showCloseButton={false}
-	customClasses="wt-plate"
+	customClasses="wt-plate lg:!max-w-7xl sm:!max-h-[92dvh]"
 >
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
@@ -902,6 +904,9 @@
 											enterkeyhint="next"
 											placeholder="Add the context, expected outcome, or handoff notes..."
 											rows={4}
+											autoResize={true}
+											maxRows={16}
+											class="min-h-28"
 											disabled={isSaving}
 											size="md"
 										/>

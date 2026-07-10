@@ -75,9 +75,7 @@
 						<DollarSign class="w-6 h-6 text-foreground" />
 					</div>
 					<h3 class="font-semibold text-foreground mb-2">Subscription</h3>
-					<p class="text-sm text-muted-foreground">
-						14-day trial, then monthly subscription
-					</p>
+					<p class="text-sm text-muted-foreground">Paid billing is not active yet</p>
 				</div>
 			</div>
 		</div>
@@ -115,16 +113,15 @@
 
 			<section>
 				<h2 class="text-2xl font-bold text-foreground mb-4">3. Pricing and Billing</h2>
-				<div class="bg-accent/10 rounded-lg p-6 mb-4">
-					<p class="text-accent-foreground font-medium font-medium mb-2">
-						Current Status: 14-Day Trial
-					</p>
+				<div class="bg-accent/10 border border-accent/30 rounded-lg p-6 mb-4">
+					<p class="text-foreground font-medium mb-2">Current Status: Pre-Billing</p>
 					<p class="text-muted-foreground">
-						BuildOS offers a 14-day trial before the monthly subscription begins. Paid
-						plans are processed through Stripe.
+						BuildOS is not currently charging users. Before paid plans launch, BuildOS
+						will publish the applicable pricing and require an explicit checkout. Stripe
+						will process paid subscriptions when they become available.
 					</p>
 				</div>
-				<p class="text-muted-foreground mb-4">For paid subscriptions:</p>
+				<p class="text-muted-foreground mb-4">When paid subscriptions become available:</p>
 				<ul class="space-y-2 text-muted-foreground ml-6">
 					<li>• Subscriptions can be cancelled at any time</li>
 					<li>• Billing is handled securely through Stripe</li>

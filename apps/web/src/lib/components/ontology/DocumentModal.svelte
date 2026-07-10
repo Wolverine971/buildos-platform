@@ -55,10 +55,6 @@
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import type { DocStructure, OntoDocument, GetDocTreeResponse } from '$lib/types/onto-api';
 	import { findNodeById, enrichTreeNodes } from '$lib/services/ontology/doc-structure.service';
-	import TaskEditModal from './TaskEditModal.svelte';
-	import PlanEditModal from './PlanEditModal.svelte';
-	import GoalEditModal from './GoalEditModal.svelte';
-	import DocumentModal from './DocumentModal.svelte';
 	import { DOCUMENT_STATES } from '$lib/types/onto';
 	import type { VoiceNote } from '$lib/types/voice-notes';
 	import { toastService } from '$lib/stores/toast.store';
@@ -101,12 +97,26 @@
 	} from 'lucide-svelte';
 	import { handleRovingTabKeydown } from '$lib/components/project/v2/board-a11y';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
+	import {
+		loadDocumentModal,
+		loadGoalEditModal,
+		loadPlanEditModal,
+		loadTaskEditModal
+	} from '$lib/components/project/project-entity-modal-loader';
 	// Lazy-loaded AgentChatModal for better initial load performance
 
 	type LazyComponent =
 		| typeof import('$lib/components/agent/AgentChatModal.svelte').default
 		| null;
 	let AgentChatModalComponent = $state<LazyComponent>(null);
+	type TaskEditModalLazy = typeof import('./TaskEditModal.svelte').default | null;
+	type PlanEditModalLazy = typeof import('./PlanEditModal.svelte').default | null;
+	type GoalEditModalLazy = typeof import('./GoalEditModal.svelte').default | null;
+	type DocumentModalLazy = typeof import('./DocumentModal.svelte').default | null;
+	let TaskEditModalComponent = $state<TaskEditModalLazy>(null);
+	let PlanEditModalComponent = $state<PlanEditModalLazy>(null);
+	let GoalEditModalComponent = $state<GoalEditModalLazy>(null);
+	let DocumentModalComponent = $state<DocumentModalLazy>(null);
 
 	async function loadAgentChatModal() {
 		if (!AgentChatModalComponent) {
@@ -127,6 +137,7 @@
 		onClose?: () => void;
 		onSaved?: () => void;
 		onDeleted?: () => void;
+		onLoaded?: () => void;
 		/** Called when user wants to move this document */
 		onMoveRequested?: () => void;
 		/** Called when user wants to create a child document */
@@ -143,6 +154,7 @@
 		onClose,
 		onSaved,
 		onDeleted,
+		onLoaded,
 		onMoveRequested,
 		onCreateChildRequested
 	}: Props = $props();
@@ -1294,8 +1306,8 @@
 		try {
 			loading = true;
 			formError = null;
-			// Use /full endpoint for optimized single-request loading
-			const response = await fetch(`/api/onto/documents/${id}/full`);
+			linkedEntities = undefined;
+			const response = await fetch(`/api/onto/documents/${id}/full?include_linked=false`);
 			const payload = await response.json().catch(() => null);
 
 			if (!response.ok) {
@@ -1303,7 +1315,6 @@
 			}
 
 			const document = payload?.data?.document;
-			linkedEntities = payload?.data?.linkedEntities;
 			if (!document) {
 				throw new Error('Document not found');
 			}
@@ -1328,7 +1339,7 @@
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to load document';
 			void logOntologyClientError(error, {
-				endpoint: `/api/onto/documents/${id}/full`,
+				endpoint: `/api/onto/documents/${id}/full?include_linked=false`,
 				method: 'GET',
 				projectId,
 				entityType: 'document',
@@ -1341,7 +1352,12 @@
 			latestPublicPageReview = null;
 		} finally {
 			loading = false;
+			onLoaded?.();
 		}
+	}
+
+	function handleLinkedEntitiesLoaded(value: LinkedEntitiesResult) {
+		linkedEntities = value;
 	}
 
 	// Watch for modal opening and load/reset form accordingly
@@ -1978,22 +1994,26 @@
 	}
 
 	// Linked entity click handler
-	function handleLinkedEntityClick(kind: EntityKind, id: string) {
+	async function handleLinkedEntityClick(kind: EntityKind, id: string) {
 		switch (kind) {
 			case 'task':
 				selectedTaskIdForModal = id;
+				TaskEditModalComponent = (await loadTaskEditModal()).default;
 				showTaskModal = true;
 				break;
 			case 'plan':
 				selectedPlanIdForModal = id;
+				PlanEditModalComponent = (await loadPlanEditModal()).default;
 				showPlanModal = true;
 				break;
 			case 'goal':
 				selectedGoalIdForModal = id;
+				GoalEditModalComponent = (await loadGoalEditModal()).default;
 				showGoalModal = true;
 				break;
 			case 'document':
 				selectedDocumentIdForModal = id;
+				DocumentModalComponent = (await loadDocumentModal()).default;
 				showDocumentModal = true;
 				break;
 			default:
@@ -3002,6 +3022,7 @@
 															sourceKind="document"
 															{projectId}
 															initialLinkedEntities={linkedEntities}
+															onLoaded={handleLinkedEntitiesLoaded}
 															onEntityClick={handleLinkedEntityClick}
 															onLinksChanged={handleLinksChanged}
 														/>
@@ -3384,6 +3405,7 @@
 													sourceKind="document"
 													{projectId}
 													initialLinkedEntities={linkedEntities}
+													onLoaded={handleLinkedEntitiesLoaded}
 													onEntityClick={handleLinkedEntityClick}
 													onLinksChanged={handleLinksChanged}
 												/>
@@ -3954,8 +3976,9 @@
 {/if}
 
 <!-- Linked Entity Modals -->
-{#if showTaskModal && selectedTaskIdForModal}
-	<TaskEditModal
+{#if showTaskModal && selectedTaskIdForModal && TaskEditModalComponent}
+	{@const TaskModal = TaskEditModalComponent}
+	<TaskModal
 		taskId={selectedTaskIdForModal}
 		{projectId}
 		onClose={closeLinkedEntityModals}
@@ -3964,8 +3987,9 @@
 	/>
 {/if}
 
-{#if showPlanModal && selectedPlanIdForModal}
-	<PlanEditModal
+{#if showPlanModal && selectedPlanIdForModal && PlanEditModalComponent}
+	{@const PlanModal = PlanEditModalComponent}
+	<PlanModal
 		planId={selectedPlanIdForModal}
 		{projectId}
 		onClose={closeLinkedEntityModals}
@@ -3974,8 +3998,9 @@
 	/>
 {/if}
 
-{#if showGoalModal && selectedGoalIdForModal}
-	<GoalEditModal
+{#if showGoalModal && selectedGoalIdForModal && GoalEditModalComponent}
+	{@const GoalModal = GoalEditModalComponent}
+	<GoalModal
 		goalId={selectedGoalIdForModal}
 		{projectId}
 		onClose={closeLinkedEntityModals}
@@ -3984,8 +4009,9 @@
 	/>
 {/if}
 
-{#if showDocumentModal && selectedDocumentIdForModal}
-	<DocumentModal
+{#if showDocumentModal && selectedDocumentIdForModal && DocumentModalComponent}
+	{@const NestedDocumentModal = DocumentModalComponent}
+	<NestedDocumentModal
 		{projectId}
 		documentId={selectedDocumentIdForModal}
 		bind:isOpen={showDocumentModal}

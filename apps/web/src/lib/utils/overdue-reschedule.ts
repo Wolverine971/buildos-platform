@@ -19,6 +19,15 @@ export interface CandidateSlot {
 	end: Date;
 }
 
+export interface BatchSlotRequest {
+	taskId: string;
+	candidateSlots: CandidateSlot[];
+}
+
+export interface BatchSlotAssignment extends CandidateSlot {
+	taskId: string;
+}
+
 export interface RescheduleWindow {
 	requestedStartLocal: Date;
 	requestedEndLocal: Date;
@@ -52,6 +61,51 @@ export function getWorkingDays(workingDays?: number[] | null): number[] {
 
 export function isWorkingDay(date: Date, workingDays?: number[] | null): boolean {
 	return getWorkingDays(workingDays).includes(date.getDay());
+}
+
+export function isImportantTaskPriority(priority: number | null | undefined): boolean {
+	return (
+		typeof priority === 'number' && Number.isFinite(priority) && priority >= 1 && priority <= 2
+	);
+}
+
+function slotsOverlap(left: CandidateSlot, right: CandidateSlot): boolean {
+	return left.start.getTime() < right.end.getTime() && right.start.getTime() < left.end.getTime();
+}
+
+export function assignNonOverlappingBatchSlots(requests: BatchSlotRequest[]): {
+	assignments: BatchSlotAssignment[];
+	unscheduledTaskIds: string[];
+} {
+	const assignments: BatchSlotAssignment[] = [];
+	const unscheduledTaskIds: string[] = [];
+
+	for (const request of requests) {
+		const slot = request.candidateSlots.find((candidate) => {
+			if (
+				Number.isNaN(candidate.start.getTime()) ||
+				Number.isNaN(candidate.end.getTime()) ||
+				candidate.end.getTime() <= candidate.start.getTime()
+			) {
+				return false;
+			}
+
+			return assignments.every((reserved) => !slotsOverlap(candidate, reserved));
+		});
+
+		if (!slot) {
+			unscheduledTaskIds.push(request.taskId);
+			continue;
+		}
+
+		assignments.push({
+			taskId: request.taskId,
+			start: new Date(slot.start),
+			end: new Date(slot.end)
+		});
+	}
+
+	return { assignments, unscheduledTaskIds };
 }
 
 function sameLocalDay(left: Date, right: Date): boolean {

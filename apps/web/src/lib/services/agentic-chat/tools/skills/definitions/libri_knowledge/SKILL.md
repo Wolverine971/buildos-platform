@@ -1,5 +1,6 @@
 ---
 name: Libri Knowledge
+catalog_line: 'Libri, the BuildOS durable library: books, authors, categories, ingested videos. Check before web search.'
 description: Libri is BuildOS's connected durable library and enrichment system; use this playbook for Libri access questions, stable people or author knowledge, books, categories, authors, and ingested YouTube videos before generic web search.
 skill_type: procedure # procedure | strategy | reference | resource | policy | orchestration
 altitude: domain # task | domain | meta

@@ -1,5 +1,6 @@
 ---
 name: Document Workspace
+catalog_line: 'Project document hierarchy: doc tree operations, unlinked docs, task docs, document CRUD rules.'
 description: Project document hierarchy playbook for doc tree operations, unlinked docs, task docs, and document CRUD rules.
 skill_type: procedure # procedure | reference | strategy | resource | policy | orchestration
 altitude: task # task | domain | meta

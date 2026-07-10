@@ -86,7 +86,6 @@
 		buildSkillLoadActivityEvent,
 		upsertSkillActivityEntries
 	} from './agent-chat-skill-activity';
-	import { upsertOperationActivityEntries } from './agent-chat-operation-activity';
 	import {
 		createToolPresenter,
 		type OntologyEntityKind,
@@ -95,6 +94,7 @@
 	import {
 		createSSEHandler,
 		sanitizeToolResultForActivityMetadata,
+		type ActivityUpdateResult,
 		type AgentSSEMessageHandler,
 		type PendingToolStatus,
 		type SSEHandlerDeps
@@ -411,7 +411,6 @@
 	let pendingAssistantTextFlushHandle: number | null = null;
 	let currentThinkingBlockId = $state<string | null>(null);
 	const pendingToolResults = new Map<string, PendingToolStatus>(); // Tool results that arrive before tool_call
-	const hiddenToolCallIds = new Set<string>();
 	const processedToolCallIds = new Set<string>();
 	const processedToolResultIds = new Set<string>();
 
@@ -427,7 +426,6 @@
 
 	// Ontology integration state
 	let lastTurnContext = $state<LastTurnContext | null>(null);
-	let ontologyLoaded = $state(false);
 	let contextUsage = $state<ContextUsageSnapshot | null>(null);
 	let contextUsageOverheadTokens = $state(0);
 	let prewarm: ReturnType<typeof createPrewarmController>;
@@ -531,7 +529,6 @@
 		},
 		clearPendingToolState: () => {
 			pendingToolResults.clear();
-			hiddenToolCallIds.clear();
 			processedToolCallIds.clear();
 			processedToolResultIds.clear();
 			// Also drop the SSE handler's created-entities buffer: a cancelled
@@ -696,6 +693,11 @@
 			return;
 		}
 		if (!draft) return;
+		// Hold the draft while a context/action selector is up: choosing a context
+		// runs resetConversation (which clears the composer), so applying early gets
+		// wiped. These flags are reactive — the effect re-runs once the user lands
+		// in the actual chat surface and the draft applies to the fresh composer.
+		if (shellRouter.showContextSelection || shellRouter.showProjectActionSelector) return;
 
 		const draftKey = [
 			draft,
@@ -982,11 +984,9 @@
 		stream.reset();
 		// Reset ontology state
 		lastTurnContext = null;
-		ontologyLoaded = false;
 		contextUsage = null;
 		contextUsageOverheadTokens = 0;
 		pendingToolResults.clear();
-		hiddenToolCallIds.clear();
 		processedToolCallIds.clear();
 		processedToolResultIds.clear();
 		handleSSEMessage.resetTurnState();
@@ -1698,20 +1698,6 @@
 		}));
 	}
 
-	function upsertOperationActivityInThinkingBlock(
-		operation: Record<string, unknown>,
-		format: {
-			message: string;
-			activityStatus: ActivityEntry['status'];
-		}
-	) {
-		const blockId = ensureThinkingBlock();
-		updateThinkingBlock(blockId, (block) => ({
-			...block,
-			activities: upsertOperationActivityEntries(block.activities, operation, format)
-		}));
-	}
-
 	function updateThinkingBlockState(state: AgentLoopState, details?: string) {
 		updateThinkingBlock(currentThinkingBlockId, (block) => ({
 			...block,
@@ -1750,12 +1736,6 @@
 		}));
 	}
 
-	interface ActivityUpdateResult {
-		matched: boolean;
-		toolName?: string;
-		args?: string | Record<string, unknown>;
-	}
-
 	function updateActivityStatus(
 		toolCallId: string,
 		status: 'completed' | 'failed',
@@ -1791,41 +1771,24 @@
 				toolName === 'skill_load' && status === 'completed'
 					? buildSkillLoadActivityEvent('loaded', args)
 					: null;
-			const resultPayload =
-				toolResult?.result ?? toolResult?.data ?? toolResult?.tool_result ?? toolResult;
+			const resultPayload = toolResult?.result ?? toolResult;
 			const responsePayload = toolResult
 				? sanitizeToolResultForActivityMetadata(toolResult)
 				: undefined;
 			const durationMs =
-				typeof toolResult?.duration_ms === 'number'
-					? toolResult.duration_ms
-					: typeof toolResult?.durationMs === 'number'
-						? toolResult.durationMs
-						: undefined;
+				typeof toolResult?.duration_ms === 'number' ? toolResult.duration_ms : undefined;
 			const tokensConsumed =
 				typeof toolResult?.tokens_consumed === 'number'
 					? toolResult.tokens_consumed
-					: typeof toolResult?.tokensConsumed === 'number'
-						? toolResult.tokensConsumed
-						: undefined;
+					: undefined;
 			const resultCount =
-				typeof toolResult?.result_count === 'number'
-					? toolResult.result_count
-					: typeof toolResult?.resultCount === 'number'
-						? toolResult.resultCount
-						: undefined;
+				typeof toolResult?.result_count === 'number' ? toolResult.result_count : undefined;
 			const zeroResult =
-				typeof toolResult?.zero_result === 'boolean'
-					? toolResult.zero_result
-					: typeof toolResult?.zeroResult === 'boolean'
-						? toolResult.zeroResult
-						: undefined;
+				typeof toolResult?.zero_result === 'boolean' ? toolResult.zero_result : undefined;
 			const requiresUserAction =
 				typeof toolResult?.requires_user_action === 'boolean'
 					? toolResult.requires_user_action
-					: typeof toolResult?.requiresUserAction === 'boolean'
-						? toolResult.requiresUserAction
-						: undefined;
+					: undefined;
 			const streamEventCount =
 				typeof responsePayload?.stream_event_count === 'number'
 					? responsePayload.stream_event_count
@@ -1835,27 +1798,15 @@
 				: undefined;
 			const affectedEntities = Array.isArray(toolResult?.affected_entities)
 				? toolResult.affected_entities
-				: Array.isArray(toolResult?.affectedEntities)
-					? toolResult.affectedEntities
-					: undefined;
+				: undefined;
 			const toolCategory =
 				typeof toolResult?.tool_category === 'string'
 					? toolResult.tool_category
-					: typeof toolResult?.toolCategory === 'string'
-						? toolResult.toolCategory
-						: undefined;
+					: undefined;
 			const gatewayOp =
-				typeof toolResult?.gateway_op === 'string'
-					? toolResult.gateway_op
-					: typeof toolResult?.gatewayOp === 'string'
-						? toolResult.gatewayOp
-						: undefined;
+				typeof toolResult?.gateway_op === 'string' ? toolResult.gateway_op : undefined;
 			const helpPath =
-				typeof toolResult?.help_path === 'string'
-					? toolResult.help_path
-					: typeof toolResult?.helpPath === 'string'
-						? toolResult.helpPath
-						: undefined;
+				typeof toolResult?.help_path === 'string' ? toolResult.help_path : undefined;
 
 			const updatedActivity: ActivityEntry = {
 				...activity,
@@ -2003,7 +1954,6 @@
 
 		// Clear per-turn tool state to prevent memory leaks
 		pendingToolResults.clear();
-		hiddenToolCallIds.clear();
 		processedToolCallIds.clear();
 		processedToolResultIds.clear();
 		handleSSEMessage.resetTurnState();
@@ -2107,7 +2057,6 @@
 			addActivity: addActivityToThinkingBlock,
 			updateState: updateThinkingBlockState,
 			upsertSkillActivity: upsertSkillActivityInThinkingBlock,
-			upsertOperationActivity: upsertOperationActivityInThinkingBlock,
 			updateActivityStatus,
 			finalize: finalizeThinkingBlock,
 			getCurrentBlockId: () => currentThinkingBlockId
@@ -2171,13 +2120,10 @@
 		bufferAssistantText,
 		flushAssistantText,
 		finalizeAssistantMessage,
-		hiddenToolCallIds,
 		pendingToolResults,
 		processedToolCallIds,
 		processedToolResultIds,
-		addClarifyingQuestionsMessage,
 		addCreatedEntitiesMessage,
-		logFocusActivity,
 		isDev: dev
 	};
 
@@ -2197,31 +2143,6 @@
 		addActivityToThinkingBlock(`${action}: ${details}`, 'context_shift', {
 			focus
 		});
-	}
-
-	function addClarifyingQuestionsMessage(questions: unknown) {
-		const normalizedQuestions = Array.isArray(questions)
-			? questions
-					.map((question) => (typeof question === 'string' ? question.trim() : ''))
-					.filter((question) => question.length > 0)
-			: [];
-
-		if (normalizedQuestions.length === 0) {
-			return;
-		}
-
-		const clarificationMessage: UIMessage = {
-			id: crypto.randomUUID(),
-			type: 'clarification',
-			content:
-				normalizedQuestions.length === 1
-					? 'I need one quick clarification before I continue:'
-					: 'I have a few clarifying questions before I continue:',
-			data: { questions: normalizedQuestions },
-			timestamp: new Date()
-		};
-
-		messages = [...messages, clarificationMessage];
 	}
 
 	function addCreatedEntitiesMessage(entities: CreatedEntityRef[]) {
@@ -2642,7 +2563,6 @@
 					{resolvedProjectFocus}
 					onChangeFocus={openFocusSelector}
 					onClearFocus={handleFocusClear}
-					{ontologyLoaded}
 					hasActiveThinkingBlock={!!currentThinkingBlockId}
 					currentActivity={stream.currentActivity}
 					{sessionStatusLabel}

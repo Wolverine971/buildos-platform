@@ -51,6 +51,22 @@
 		slots: RescheduleSlot[];
 		calendar_connected: boolean;
 	};
+	type BatchRescheduleAssignment = RescheduleSlot & {
+		task_id: string;
+	};
+	type BatchReschedulePlan = {
+		preset: ReschedulePreset;
+		timezone: string;
+		window_start_at: string;
+		window_end_at: string;
+		target_window_end_at: string;
+		note: string | null;
+		assignments: BatchRescheduleAssignment[];
+		unscheduled_task_ids: string[];
+		overflow_count: number;
+		scheduled_day_count: number;
+		calendar_connected: boolean;
+	};
 	type CloseSummary = {
 		hasChanges: boolean;
 		changedCount: number;
@@ -123,7 +139,7 @@
 	}
 
 	let isLoading = $state(false);
-	let isProjectActionRunning = $state(false);
+	let runningProjectAction = $state<ProjectBatchAction | null>(null);
 	let error = $state<string | null>(null);
 	let changedCount = $state(0);
 	let initialTaskCount = $state(0);
@@ -132,6 +148,7 @@
 	let batches = $state<OverdueProjectBatch[]>([]);
 	let completedBatches = $state<CompletedBatch[]>([]);
 	let pendingTaskIds = $state(new Set<string>());
+	let schedulingTaskIds = $state(new Set<string>());
 	let projectMenuOpen = $state(false);
 	let projectMenuRef = $state<HTMLDivElement | null>(null);
 	let expandedTaskId = $state<string | null>(null);
@@ -144,6 +161,7 @@
 	let slotErrorsByTask = $state<Record<string, string>>({});
 
 	const totalRemaining = $derived(batches.reduce((sum, batch) => sum + batch.overdue_count, 0));
+	const isProjectActionRunning = $derived(runningProjectAction !== null);
 	const resolvedCount = $derived(Math.max(0, initialTaskCount - totalRemaining));
 	const activeBatch = $derived(
 		batches.find((batch) => batch.project_id === activeProjectId) ?? batches[0] ?? null
@@ -159,6 +177,11 @@
 		slotPlansByTask = {};
 		slotErrorsByTask = {};
 		pendingTaskIds = new Set<string>();
+		schedulingTaskIds = new Set<string>();
+	}
+
+	function isTaskBusy(taskId: string): boolean {
+		return pendingTaskIds.has(taskId) || schedulingTaskIds.has(taskId);
 	}
 
 	function formatDueDate(value: string | null): string {
@@ -457,6 +480,8 @@
 	}
 
 	async function handleSetTaskState(taskId: string, state: 'done' | 'in_progress' | 'blocked') {
+		if (isProjectActionRunning || isTaskBusy(taskId)) return;
+
 		if (state === 'blocked') {
 			await mutateTask(taskId, {
 				state_key: 'blocked',
@@ -466,10 +491,7 @@
 		}
 
 		if (state === 'in_progress') {
-			await mutateTask(taskId, {
-				state_key: 'in_progress',
-				due_at: presetDueAt('today')
-			});
+			await smartScheduleTask(taskId, 'today', { state_key: 'in_progress' }, 'Task started');
 			return;
 		}
 
@@ -477,10 +499,11 @@
 	}
 
 	async function handleQuickReschedule(taskId: string, preset: 'tomorrow' | 'plus3') {
-		await mutateTask(taskId, { due_at: presetDueAt(preset) });
+		await smartScheduleTask(taskId, preset, {}, 'Task scheduled');
 	}
 
 	async function handleMoveTaskToBacklog(taskId: string) {
+		if (isProjectActionRunning || isTaskBusy(taskId)) return;
 		await mutateTask(taskId, BACKLOG_TASK_UPDATES, {
 			successMessage: 'Task moved to backlog',
 			projectReviewContext: createBacklogReviewContext(1)
@@ -513,6 +536,75 @@
 		}
 
 		return payload.data;
+	}
+
+	async function fetchBatchReschedulePlan(
+		taskIds: string[],
+		preset: ReschedulePreset
+	): Promise<BatchReschedulePlan> {
+		const response = await fetch('/api/onto/tasks/batch-reschedule-options', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				task_ids: taskIds,
+				preset
+			})
+		});
+
+		const payload = (await response.json().catch(() => null)) as {
+			success?: boolean;
+			error?: string;
+			data?: BatchReschedulePlan;
+		} | null;
+
+		if (!response.ok || !payload?.success || !payload.data) {
+			throw new Error(payload?.error || 'Failed to plan task schedule');
+		}
+
+		return payload.data;
+	}
+
+	async function smartScheduleTask(
+		taskId: string,
+		preset: ReschedulePreset,
+		additionalUpdates: Record<string, unknown> = {},
+		successMessage = 'Task scheduled'
+	): Promise<boolean> {
+		const found = findTask(taskId);
+		if (!found || isTaskBusy(taskId) || isProjectActionRunning) return false;
+
+		schedulingTaskIds = new Set([...schedulingTaskIds, taskId]);
+		try {
+			const plan = await fetchBatchReschedulePlan([taskId], preset);
+			const assignment = plan.assignments.find((item) => item.task_id === taskId);
+			if (!assignment) {
+				throw new Error(plan.note || 'No open working time was found for this task');
+			}
+			const resolvedSuccessMessage =
+				plan.overflow_count > 0
+					? `${successMessage} in a later working day because the selected window was full`
+					: successMessage;
+
+			return await mutateFoundTask(
+				found,
+				{
+					...additionalUpdates,
+					start_at: assignment.start_at,
+					due_at: assignment.due_at
+				},
+				{ successMessage: resolvedSuccessMessage }
+			);
+		} catch (err) {
+			console.error('[Overdue Project Batch Triage] Failed to schedule task:', err);
+			toastService.error(err instanceof Error ? err.message : 'Failed to schedule task');
+			return false;
+		} finally {
+			const nextScheduling = new Set(schedulingTaskIds);
+			nextScheduling.delete(taskId);
+			schedulingTaskIds = nextScheduling;
+		}
 	}
 
 	async function loadReschedulePlan(taskId: string, preset: ReschedulePreset) {
@@ -580,31 +672,51 @@
 	}
 
 	async function applyRescheduleSlot(taskId: string, slot: RescheduleSlot) {
+		if (isProjectActionRunning || isTaskBusy(taskId)) return;
 		await mutateTask(taskId, {
 			start_at: slot.start_at,
 			due_at: slot.due_at
 		});
 	}
 
-	function getProjectActionUpdates(action: ProjectBatchAction): Record<string, unknown> {
-		switch (action) {
-			case 'tomorrow':
-				return { due_at: presetDueAt('tomorrow') };
-			case 'plus3':
-				return { due_at: presetDueAt('plus3') };
-			case 'in_progress':
-				return { state_key: 'in_progress', due_at: presetDueAt('today') };
-			case 'backlog':
-				return BACKLOG_TASK_UPDATES;
-			case 'done':
-				return { state_key: 'done' };
-		}
+	function isSchedulingProjectAction(
+		action: ProjectBatchAction
+	): action is 'tomorrow' | 'plus3' | 'in_progress' {
+		return action === 'tomorrow' || action === 'plus3' || action === 'in_progress';
+	}
+
+	function projectActionPreset(action: 'tomorrow' | 'plus3' | 'in_progress'): ReschedulePreset {
+		return action === 'in_progress' ? 'today' : action;
+	}
+
+	function getProjectActionUpdates(action: 'done' | 'backlog'): Record<string, unknown> {
+		return action === 'backlog' ? BACKLOG_TASK_UPDATES : { state_key: 'done' };
 	}
 
 	function formatProjectActionResult(action: ProjectBatchAction, succeeded: number, failed = 0) {
 		const suffix = failed > 0 ? ` (${failed} failed)` : '';
 		if (action === 'backlog') return `Moved ${succeeded} tasks to backlog${suffix}`;
 		return `Updated ${succeeded} tasks${suffix}`;
+	}
+
+	function formatProjectScheduleResult(
+		action: 'tomorrow' | 'plus3' | 'in_progress',
+		succeeded: number,
+		failed: number,
+		plan: BatchReschedulePlan
+	): string {
+		const verb = action === 'in_progress' ? 'Started and scheduled' : 'Scheduled';
+		const taskLabel = succeeded === 1 ? 'task' : 'tasks';
+		const daySummary =
+			plan.scheduled_day_count > 1
+				? ` across ${plan.scheduled_day_count} working days`
+				: ' in open calendar time';
+		const overflowSummary =
+			plan.overflow_count > 0
+				? `; ${plan.overflow_count} carried into later working days`
+				: '';
+		const failedSummary = failed > 0 ? ` (${failed} not scheduled)` : '';
+		return `${verb} ${succeeded} ${taskLabel}${daySummary}${overflowSummary}${failedSummary}`;
 	}
 
 	async function runProjectAction(action: ProjectBatchAction) {
@@ -629,26 +741,76 @@
 			if (!confirmed) return;
 		}
 
-		isProjectActionRunning = true;
+		runningProjectAction = action;
 		projectMenuOpen = false;
 		let succeeded = 0;
 		let failed = 0;
+		let schedulePlan: BatchReschedulePlan | null = null;
 
 		try {
-			const updates = getProjectActionUpdates(action);
-			const projectReviewContext =
-				action === 'backlog' ? createBacklogReviewContext(locatedTasks.length) : null;
-			const results = await Promise.all(
-				locatedTasks.map((task) =>
-					mutateFoundTask(task, updates, { silent: true, projectReviewContext })
-				)
-			);
+			let results: boolean[];
+			if (isSchedulingProjectAction(action)) {
+				schedulePlan = await fetchBatchReschedulePlan(
+					locatedTasks.map((task) => task.task.id),
+					projectActionPreset(action)
+				);
+				const assignments = new Map(
+					schedulePlan.assignments.map((assignment) => [assignment.task_id, assignment])
+				);
+				const schedulableTasks = locatedTasks.filter((task) =>
+					assignments.has(task.task.id)
+				);
+				failed += locatedTasks.length - schedulableTasks.length;
+				if (schedulableTasks.length === 0) {
+					throw new Error(
+						schedulePlan.note || 'No open working time was found for these tasks'
+					);
+				}
+
+				results = await Promise.all(
+					schedulableTasks.map((task) => {
+						const assignment = assignments.get(task.task.id)!;
+						return mutateFoundTask(
+							task,
+							{
+								...(action === 'in_progress' ? { state_key: 'in_progress' } : {}),
+								start_at: assignment.start_at,
+								due_at: assignment.due_at
+							},
+							{ silent: true }
+						);
+					})
+				);
+			} else {
+				const updates = getProjectActionUpdates(action);
+				const projectReviewContext =
+					action === 'backlog' ? createBacklogReviewContext(locatedTasks.length) : null;
+				results = await Promise.all(
+					locatedTasks.map((task) =>
+						mutateFoundTask(task, updates, { silent: true, projectReviewContext })
+					)
+				);
+			}
 			for (const ok of results) {
 				if (ok) succeeded += 1;
 				else failed += 1;
 			}
+		} catch (err) {
+			console.error('[Overdue Project Batch Triage] Project action failed:', err);
+			toastService.error(err instanceof Error ? err.message : 'Project action failed');
+			return;
 		} finally {
-			isProjectActionRunning = false;
+			runningProjectAction = null;
+		}
+
+		if (schedulePlan && isSchedulingProjectAction(action)) {
+			const message = formatProjectScheduleResult(action, succeeded, failed, schedulePlan);
+			if (succeeded > 0 && failed === 0) {
+				toastService.success(`${message} in ${projectName}`);
+			} else {
+				toastService.error(message);
+			}
+			return;
 		}
 
 		if (succeeded > 0 && failed === 0) {
@@ -880,7 +1042,14 @@
 									disabled={isProjectActionRunning}
 									onclick={() => runProjectAction('tomorrow')}
 								>
-									Tomorrow all
+									{#if runningProjectAction === 'tomorrow'}
+										<LoaderCircle
+											class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+										/>
+										Scheduling...
+									{:else}
+										Schedule from tomorrow
+									{/if}
 								</Button>
 								<Button
 									size="sm"
@@ -889,7 +1058,14 @@
 									disabled={isProjectActionRunning}
 									onclick={() => runProjectAction('plus3')}
 								>
-									+3d all
+									{#if runningProjectAction === 'plus3'}
+										<LoaderCircle
+											class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+										/>
+										Scheduling...
+									{:else}
+										Schedule from +3d
+									{/if}
 								</Button>
 								<Button
 									size="sm"
@@ -898,7 +1074,14 @@
 									disabled={isProjectActionRunning}
 									onclick={() => runProjectAction('in_progress')}
 								>
-									Mark all in progress
+									{#if runningProjectAction === 'in_progress'}
+										<LoaderCircle
+											class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+										/>
+										Scheduling...
+									{:else}
+										Start & schedule all
+									{/if}
 								</Button>
 								<div class="relative" bind:this={projectMenuRef}>
 									<button
@@ -950,6 +1133,9 @@
 									{/if}
 								</div>
 							</div>
+							<p class="text-2xs text-muted-foreground">
+								Tasks use separate open slots; overflow moves to later working days.
+							</p>
 						</div>
 
 						<div
@@ -1013,7 +1199,8 @@
 											<button
 												type="button"
 												class="min-h-9 rounded-md border border-success/30 bg-success/10 px-2 py-1.5 text-[11px] font-semibold text-success transition-colors hover:bg-success/15 disabled:opacity-50"
-												disabled={pendingTaskIds.has(task.id)}
+												disabled={isProjectActionRunning ||
+													isTaskBusy(task.id)}
 												onclick={() => handleSetTaskState(task.id, 'done')}
 											>
 												Done
@@ -1021,7 +1208,8 @@
 											<button
 												type="button"
 												class="min-h-9 rounded-md border border-border bg-card px-2 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
-												disabled={pendingTaskIds.has(task.id)}
+												disabled={isProjectActionRunning ||
+													isTaskBusy(task.id)}
 												onclick={() =>
 													handleQuickReschedule(task.id, 'tomorrow')}
 											>
@@ -1030,7 +1218,8 @@
 											<button
 												type="button"
 												class="min-h-9 rounded-md border border-border bg-card px-2 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
-												disabled={pendingTaskIds.has(task.id)}
+												disabled={isProjectActionRunning ||
+													isTaskBusy(task.id)}
 												onclick={() =>
 													handleQuickReschedule(task.id, 'plus3')}
 											>
@@ -1039,6 +1228,8 @@
 											<button
 												type="button"
 												class="min-h-9 rounded-md border border-border bg-card px-2 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted"
+												disabled={isProjectActionRunning ||
+													isTaskBusy(task.id)}
 												aria-expanded={expandedTaskId === task.id}
 												onclick={() => toggleTaskDetails(task.id)}
 											>
@@ -1059,7 +1250,8 @@
 												<Button
 													size="sm"
 													variant="outline"
-													disabled={pendingTaskIds.has(task.id)}
+													disabled={isProjectActionRunning ||
+														isTaskBusy(task.id)}
 													onclick={() =>
 														handleSetTaskState(task.id, 'in_progress')}
 												>
@@ -1068,7 +1260,8 @@
 												<Button
 													size="sm"
 													variant="outline"
-													disabled={pendingTaskIds.has(task.id)}
+													disabled={isProjectActionRunning ||
+														isTaskBusy(task.id)}
 													onclick={() =>
 														handleSetTaskState(task.id, 'blocked')}
 												>
@@ -1077,7 +1270,8 @@
 												<Button
 													size="sm"
 													variant="ghost"
-													disabled={pendingTaskIds.has(task.id)}
+													disabled={isProjectActionRunning ||
+														isTaskBusy(task.id)}
 													onclick={() => toggleSlotFinder(task.id)}
 												>
 													Find slot
@@ -1086,7 +1280,8 @@
 													size="sm"
 													variant="outline"
 													icon={Inbox}
-													disabled={pendingTaskIds.has(task.id)}
+													disabled={isProjectActionRunning ||
+														isTaskBusy(task.id)}
 													onclick={() => handleMoveTaskToBacklog(task.id)}
 												>
 													Move to backlog
@@ -1153,9 +1348,8 @@
 																	<button
 																		type="button"
 																		class="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-left transition-colors hover:bg-muted/40 disabled:opacity-50"
-																		disabled={pendingTaskIds.has(
-																			task.id
-																		)}
+																		disabled={isProjectActionRunning ||
+																			isTaskBusy(task.id)}
 																		onclick={() =>
 																			applyRescheduleSlot(
 																				task.id,

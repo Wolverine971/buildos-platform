@@ -1,5 +1,6 @@
 ---
 name: Content Creation Pipeline
+catalog_line: 'Turn one chosen idea into a ship-ready draft (post, video, essay), step by step.'
 description: Take one chosen idea from raw thought to a ship-ready draft. Use when the user says "I have an idea, help me turn it into a post / video / essay", wants to expand a half-formed thought into content, or needs a step-by-step path from idea to drafted piece. Not for broad channel/format/distribution strategy — route that to content_strategy_beyond_blogging.
 skill_type: orchestration # procedure | strategy | reference | resource | policy | orchestration
 altitude: domain # task | domain | meta

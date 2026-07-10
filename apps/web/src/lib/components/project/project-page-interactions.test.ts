@@ -1,6 +1,7 @@
 // apps/web/src/lib/components/project/project-page-interactions.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import {
+	buildProjectEntityOpenHref,
 	flushPendingImageUploadOpen,
 	requestImageUploadOpen,
 	resolveEntityOpenAction
@@ -54,5 +55,16 @@ describe('resolveEntityOpenAction', () => {
 
 	it('marks unknown entity types as unknown', () => {
 		expect(resolveEntityOpenAction('user', 'ent-1')).toEqual({ result: 'unknown' });
+	});
+});
+
+describe('buildProjectEntityOpenHref', () => {
+	it('routes to the project with the requested entity modal encoded in the URL', () => {
+		expect(buildProjectEntityOpenHref('project-1', 'task', 'task-1')).toBe(
+			'/projects/project-1?entity=task&entity_id=task-1'
+		);
+		expect(buildProjectEntityOpenHref('project 2', 'document', 'doc/2')).toBe(
+			'/projects/project%202?entity=document&entity_id=doc%2F2'
+		);
 	});
 });

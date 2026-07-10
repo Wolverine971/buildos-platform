@@ -70,6 +70,7 @@
 		type ProjectNotificationSettings
 	} from '$lib/components/project/project-page-data-controller';
 	import { resolveEntityOpenAction } from '$lib/components/project/project-page-interactions';
+	import { preloadProjectEntityModal } from '$lib/components/project/project-entity-modal-loader';
 	import { Bell, BellOff, Calendar, Pencil, Trash2, Users } from 'lucide-svelte';
 	import type { Project, Task, Document, Plan, Goal, Milestone, Risk } from '$lib/types/onto';
 	import type { EntityReference, ProjectLogEntityType } from '@buildos/shared-types';
@@ -131,6 +132,7 @@
 
 	let isHydrating = $state(initialData.skeleton === true);
 	let hydrationError = $state<string | null>(null);
+	let deferredProjectDataLoad = $state<PageData | null>(null);
 
 	let project = $state<Project>(projectFromPageData(initialData));
 	let tasks = $state<Task[]>(initialData.skeleton ? [] : ((initialData.tasks ?? []) as Task[]));
@@ -663,6 +665,13 @@
 		}
 	}
 
+	function resumeDeferredProjectDataLoading() {
+		const pendingData = deferredProjectDataLoad;
+		if (!pendingData) return;
+		deferredProjectDataLoad = null;
+		startProjectDataLoading(pendingData);
+	}
+
 	$effect(() => {
 		const currentData = data;
 		if (currentData.projectId === activePageDataProjectId) return;
@@ -769,7 +778,27 @@
 	// MOUNT
 	// ============================================================
 
+	function preloadInitialEntitySurface(entityType: string) {
+		void Promise.all([
+			import('$lib/components/project/ProjectModalsHost.svelte'),
+			preloadProjectEntityModal(entityType)
+		]).catch((error) => {
+			console.warn('[Project v2] Failed to preload entity modal:', error);
+		});
+	}
+
+	function shouldPrioritizeInitialEntityModal(entityType: string): boolean {
+		return (
+			entityType === 'task' ||
+			entityType === 'document' ||
+			entityType === 'note' ||
+			entityType === 'goal' ||
+			entityType === 'plan'
+		);
+	}
+
 	onMount(() => {
+		let openedInitialEntity = false;
 		// Open an entity via query params (used by notifications and OwnerBar "Edit original")
 		if (typeof window !== 'undefined') {
 			const params = new URLSearchParams(window.location.search);
@@ -777,20 +806,28 @@
 			const entityType = params.get('entity');
 			const entityId = params.get('entity_id') ?? params.get('id');
 			if (docId) {
+				preloadInitialEntitySurface('document');
 				activeDocumentId = docId;
 				showDocumentModal = true;
+				openedInitialEntity = true;
 				const cleanUrl = window.location.pathname + window.location.hash;
 				window.history.replaceState({}, '', cleanUrl);
 			} else if (entityType && entityId) {
+				preloadInitialEntitySurface(entityType);
 				const result = openEntityEditor(entityType, entityId);
 				if (result === 'opened') {
+					openedInitialEntity = shouldPrioritizeInitialEntityModal(entityType);
 					const cleanUrl = window.location.pathname + window.location.hash;
 					window.history.replaceState({}, '', cleanUrl);
 				}
 			}
 		}
 
-		startProjectDataLoading(data);
+		if (openedInitialEntity && data.skeleton) {
+			deferredProjectDataLoad = data;
+		} else {
+			startProjectDataLoading(data);
+		}
 	});
 
 	// ============================================================
@@ -920,6 +957,22 @@
 		showDocumentModal = false;
 		activeDocumentId = null;
 		parentDocumentId = null;
+		resumeDeferredProjectDataLoading();
+	}
+
+	function closeTaskEditModal() {
+		editingTaskId = null;
+		resumeDeferredProjectDataLoading();
+	}
+
+	function closePlanEditModal() {
+		editingPlanId = null;
+		resumeDeferredProjectDataLoading();
+	}
+
+	function closeGoalEditModal() {
+		editingGoalId = null;
+		resumeDeferredProjectDataLoading();
 	}
 
 	function closeMoveDocumentModal() {
@@ -1332,7 +1385,7 @@
 		}}
 	/>
 
-	<main class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 overflow-x-hidden">
+	<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 overflow-x-hidden">
 		{#if hydrationError}
 			<div
 				class="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 tx tx-static tx-weak"
@@ -1569,7 +1622,7 @@
 				</div>
 			</div>
 		{/if}
-	</main>
+	</div>
 </div>
 
 <!-- All modals via the shared host (matches v1 coverage) -->
@@ -1626,17 +1679,17 @@
 			onDeleteDocumentConfirm={handleDeleteDocumentConfirm}
 			onCloseTaskCreateModal={() => (showTaskCreateModal = false)}
 			onTaskCreated={handleTaskCreated}
-			onCloseTaskEditModal={() => (editingTaskId = null)}
+			onCloseTaskEditModal={closeTaskEditModal}
 			onTaskUpdated={handleTaskUpdated}
 			onTaskDeleted={handleTaskDeleted}
 			onClosePlanCreateModal={() => (showPlanCreateModal = false)}
 			onPlanCreated={handlePlanCreated}
-			onClosePlanEditModal={() => (editingPlanId = null)}
+			onClosePlanEditModal={closePlanEditModal}
 			onPlanUpdated={handlePlanUpdated}
 			onPlanDeleted={handlePlanDeleted}
 			onCloseGoalCreateModal={() => (showGoalCreateModal = false)}
 			onGoalCreated={handleGoalCreated}
-			onCloseGoalEditModal={() => (editingGoalId = null)}
+			onCloseGoalEditModal={closeGoalEditModal}
 			onGoalUpdated={handleGoalUpdated}
 			onGoalDeleted={handleGoalDeleted}
 			onCloseRiskCreateModal={() => (showRiskCreateModal = false)}
@@ -1664,6 +1717,7 @@
 			onCancelProjectDelete={cancelDeleteProjectModal}
 			onCloseGraphModal={closeGraphModal}
 			onGraphNodeClick={handleGraphNodeClick}
+			onEntityModalLoaded={resumeDeferredProjectDataLoading}
 		/>
 	{/await}
 {/if}

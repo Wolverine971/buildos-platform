@@ -1,5 +1,5 @@
 // apps/web/src/routes/skills/[slug]/+page.server.ts
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import {
 	buildPublicRuntimeSkill,
@@ -7,7 +7,7 @@ import {
 	resolveRuntimeSkillForPost
 } from '$lib/server/agent-skills';
 import { loadAgentSkillPosts } from '$lib/utils/blog';
-import { buildPackCards } from '$lib/skills/skill-gallery';
+import { buildDomainCards, buildPackCards, getDomainPath } from '$lib/skills/skill-gallery';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const [posts, catalog] = await Promise.all([loadAgentSkillPosts(), loadAgentSkillIndex()]);
@@ -15,6 +15,10 @@ export const load: PageServerLoad = async ({ params }) => {
 	const post = posts.find((item) => item.slug === params.slug);
 
 	if (!skill || !post) {
+		const domain = buildDomainCards(catalog.skills).find((item) => item.id === params.slug);
+		if (domain) {
+			throw redirect(307, getDomainPath(domain));
+		}
 		throw error(404, 'Skill not found');
 	}
 
@@ -37,6 +41,11 @@ export const load: PageServerLoad = async ({ params }) => {
 		.filter((item): item is typeof skill => Boolean(item))
 		.slice(0, 4);
 	const runtime = buildPublicRuntimeSkill(resolveRuntimeSkillForPost(post));
+	const childSkills =
+		runtime?.child_skills.map((child) => ({
+			...child,
+			slug: catalog.skills.find((candidate) => candidate.runtime_skill_id === child.id)?.slug
+		})) ?? [];
 	const containingPacks = buildPackCards(catalog.skills)
 		.filter((pack) => pack.skills.some((item) => item.slug === skill.slug))
 		.map((pack) => ({
@@ -56,6 +65,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		skill,
 		post,
 		runtime,
+		childSkills,
 		relatedSkills,
 		containingPacks,
 		catalogVersion: catalog.version,

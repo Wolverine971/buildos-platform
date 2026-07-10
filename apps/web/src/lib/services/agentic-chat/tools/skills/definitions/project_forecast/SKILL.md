@@ -1,5 +1,6 @@
 ---
 name: Project Forecast
+catalog_line: 'Forecast project trajectory in project context: goal attainment, schedule risk, assumptions, next moves.'
 description: Project-scoped forecasting playbook for projecting trajectory, goal attainment, emerging work, schedule risk, assumptions, and next strategic moves while staying in project context.
 skill_type: strategy # procedure | strategy | reference | resource | policy | orchestration
 altitude: domain # task | domain | meta

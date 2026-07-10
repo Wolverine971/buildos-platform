@@ -380,6 +380,54 @@ usual text-color tokens, so this is exactly the kind of call the live verify pas
 Skip Linear's sparkle-stars layer unless the surface really earns it; if added, JS owns the whole
 cycle (playbook §2 "one timing owner") and the stars are `aria-hidden`.
 
+### P19 · Tint and foreground must describe the same surface
+
+**Finding:** text or controls use a `*-foreground` token intended for a solid semantic background
+while sitting on a faint tint such as `bg-warning/10` or `bg-accent/10`. The pairing can look
+plausible in one theme while falling below contrast requirements in the other.
+
+Reserve semantic foreground tokens for their solid background pair. On a soft tint, use the normal
+page foreground for body text and the semantic color only for a short label, icon, or border.
+
+```svelte
+<!-- Soft informational surface -->
+<div class="border border-warning/30 bg-warning/10">
+	<p class="font-medium text-foreground">Billing is not active yet</p>
+	<p class="text-muted-foreground">Creating an account does not charge you.</p>
+</div>
+
+<!-- Solid action/control surface -->
+<button class="bg-warning text-warning-foreground">Review billing</button>
+```
+
+Apply the same contract to `accent`, `success`, and `destructive` tokens. Color-only state changes
+do not need animation; if the component already transitions colors, add
+`motion-reduce:transition-none` so reduced-motion users receive the state instantly.
+
+### P20 · Critical entity first, secondary context after first paint
+
+**Finding:** opening one record waits on the entire parent surface, relationship graph, activity,
+or nested-editor code before the user can read or edit the record they selected.
+
+Treat the selected entity as the critical path and everything around it as progressively enhanced
+context:
+
+1. Preserve the entity identity in the navigation URL so the destination can open the requested
+   record immediately.
+2. Load only the entity fields required by the initial form before clearing the modal skeleton.
+   Relationship lists, comments, publishing state, trees, and activity load independently afterward.
+3. Do not make a broad parent-page hydration compete with a direct modal open. Resume it when the
+   entity request settles or the modal closes.
+4. Lazy-load nested editors. Preload the destination editor on user intent (`pointerenter` and
+   keyboard `focus`) and reuse one cached import promise so route and modal hosts do not create a
+   serial chunk waterfall.
+5. Deduplicate concurrent secondary requests, but do not keep a persistent result cache that can
+   hide link mutations. In-flight deduplication is safe; mutation refreshes still reach the server.
+
+Keep the modal shell and core-field skeleton stable while secondary panels load so the layout does
+not jump. Skeleton animation must use `motion-reduce:animate-none`; the information still appears
+progressively without pulsing for reduced-motion users.
+
 ---
 
 ## Using this doc in an audit

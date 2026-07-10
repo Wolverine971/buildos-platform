@@ -62,8 +62,15 @@ Scope applied (DJ, 2026-07-06): **Recommended 80% = all Tier 1 + T2-1 + T2-2 + T
 - `prettier --check` → clean.
 - **Live before/after screenshot pass still owed** (desktop + iPhone width, light + dark) — the program's standing gap. Confirm on the live pass: (1) the three-child grid re-collapses cleanly at the `lg` breakpoint boundary; (2) the demoted Details `<dl>` reads as quiet subtext, not a hierarchy drop-out; (3) `slideMotion` collapse timing on the three accordions.
 
+### Long-description follow-up — 2026-07-10 ✅ shipped
+
+- **Modal breathing room.** The task-specific shell now expands to `max-w-7xl` on large screens and up to `92dvh` from `sm` upward. Mobile keeps the base modal's near-full-height safe-area strategy.
+- **Description overflow → P1.** The description keeps a comfortable four-row minimum, then uses the shared `Textarea` auto-resize behavior to grow with its content up to 16 rows. Beyond the cap, the editor owns a clear internal scroll region while the modal retains its outer scroll for the rest of the form.
+- **Live stress check.** A temporary component harness using the real `Modal` and `Textarea` primitives was checked with a 24-paragraph description at 1440×900 and 390×844 in light and dark mode. Desktop resolved to a 1280px shell with a 384px description editor; phone resolved to a 390px shell with the same capped editor and no horizontal overflow. Authenticated task-data verification is still owed.
+- `pnpm check` → **0 errors, 0 warnings.** `prettier --check TaskEditModal.svelte` → clean.
+
 ---
 
 ## Applied file
 
-`apps/web/src/lib/components/ontology/TaskEditModal.svelte` — 10 transforms (imports + template), Prettier-formatted, svelte-check clean.
+`apps/web/src/lib/components/ontology/TaskEditModal.svelte` — initial 10-transform audit pass plus the 2026-07-10 shell-sizing/description-growth follow-up; Prettier-formatted and svelte-check clean.

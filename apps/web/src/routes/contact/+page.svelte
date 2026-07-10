@@ -59,7 +59,7 @@
 			icon: MessageCircle,
 			title: 'Start in chat',
 			description: 'Turn rough project input into structured work with memory',
-			badge: '14-day trial'
+			badge: 'No billing yet'
 		},
 		{
 			href: '/feedback',
@@ -86,7 +86,7 @@
 	author="DJ Wayne"
 />
 
-<main class="min-h-screen bg-background">
+<div class="min-h-screen bg-background">
 	<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
 		<!-- Header -->
 		<header class="text-center mb-12">
@@ -334,9 +334,12 @@
 			<div
 				class="inline-flex items-center space-x-2 rounded-full bg-accent text-accent-foreground text-xs font-bold px-2 py-1"
 			>
-				<div class="w-2 h-2 bg-accent rounded-full animate-pulse" aria-hidden="true"></div>
+				<div
+					class="w-2 h-2 bg-accent rounded-full animate-pulse motion-reduce:animate-none"
+					aria-hidden="true"
+				></div>
 				<span class="text-sm font-medium">Response within 24 hours</span>
 			</div>
 		</footer>
 	</div>
-</main>
+</div>

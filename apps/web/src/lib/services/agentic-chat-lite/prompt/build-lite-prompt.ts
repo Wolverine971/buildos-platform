@@ -51,8 +51,6 @@ const DISCOVERY_TOOL_NAMES = new Set([
 const DEFAULT_TIMEZONE = 'UTC';
 const LOADED_CONTEXT_PROJECT_REF_LIMIT = 5;
 const LOADED_CONTEXT_ENTITY_REF_LIMIT = 6;
-const LOADED_CONTEXT_SIGNAL_REF_LIMIT = 4;
-const LOADED_CONTEXT_RECENT_REF_LIMIT = 5;
 const LOADED_CONTEXT_TEXT_MAX_CHARS = 2000;
 const PROMPT_DUE_SOON_SIGNAL_LIMIT = 5;
 const PROMPT_OVERDUE_SIGNAL_LIMIT = 3;
@@ -709,9 +707,17 @@ function buildCapabilitiesSkillsToolsSection(): LitePromptSection {
 	const capabilities = listCapabilities('available').map(
 		(capability) => `${capability.name}: ${capability.summary}`
 	);
+	// Catalog rows are Level-1 metadata: a short trigger line, not the full
+	// routing description (prompt audit WP-2, 2026-07-10 — the old summaries ran
+	// 500-700 chars each and put ~2.2k tokens of prose in every turn). The full
+	// summary stays available through skill_search and skill_load. The fallback
+	// truncation guards skills that have not declared catalog_line yet.
 	const rootSkillRows = listRootSkills()
 		.sort((a, b) => a.id.localeCompare(b.id))
-		.map((skill) => `| \`${skill.id}\` | ${skill.summary} |`);
+		.map(
+			(skill) =>
+				`| \`${skill.id}\` | ${skill.catalogLine ?? truncateText(skill.summary, 220)} |`
+		);
 
 	const rootSkillTable =
 		rootSkillRows.length > 0
@@ -1253,7 +1259,7 @@ function buildActionableLoadedContextIndex(data: Record<string, unknown>): Recor
 		linked_entity_refs: Object.keys(linkedEntityRefs).length > 0 ? linkedEntityRefs : null,
 		focus_entity: summarizeFocusEntityIndex(data),
 		retrieval_note:
-			'Full cached context is intentionally not pasted. Use direct overview/search tools for complete lists, full entity fields, document bodies, or stale backlog details.'
+			'Overdue, upcoming, and recent-change items are listed once, with exact IDs, in the Timeline section. Full cached context is intentionally not pasted; use direct overview/search tools for complete lists, full entity fields, document bodies, or stale backlog details.'
 	});
 }
 
@@ -1344,6 +1350,11 @@ function summarizeBundleCounts(
 	return Object.keys(counts).length > 0 ? counts : undefined;
 }
 
+// Trimmed 2026-07-10 (prompt audit WP-1): attention_projects and selected_refs
+// duplicated the Timeline section item-for-item, so the same task could render
+// up to 4 times in one prompt. The Timeline prose (which carries exact IDs) is
+// now the single carrier of overdue/upcoming/recent detail; this index keeps
+// only counts and scope so the model knows how much exists beyond the seed.
 function summarizeProjectIntelligenceIndex(
 	intelligence: FastChatProjectIntelligence
 ): Record<string, unknown> {
@@ -1353,29 +1364,7 @@ function summarizeProjectIntelligenceIndex(
 		project_id: intelligence.project_id,
 		project_name: intelligence.project_name,
 		counts: dropNullish(intelligence.counts as unknown as Record<string, unknown>),
-		more_available: summarizeTrueFlags(intelligence.maybe_more),
-		attention_projects: intelligence.project_summaries
-			.slice(0, LOADED_CONTEXT_PROJECT_REF_LIMIT)
-			.map((summary) =>
-				dropNullish({
-					project_id: summary.project_id,
-					project_name: summary.project_name,
-					state_key: summary.state_key,
-					next_step_short: truncateText(summary.next_step_short, 120),
-					counts: summary.counts
-				})
-			),
-		selected_refs: {
-			overdue_or_due_soon: selectPromptAttentionSignals(intelligence.overdue_or_due_soon)
-				.slice(0, LOADED_CONTEXT_SIGNAL_REF_LIMIT)
-				.map(summarizeWorkSignalRef),
-			upcoming_work: selectPromptUpcomingSignals(intelligence.upcoming_work)
-				.slice(0, LOADED_CONTEXT_SIGNAL_REF_LIMIT)
-				.map(summarizeWorkSignalRef),
-			recent_changes: dedupeRecentChanges(intelligence.recent_changes)
-				.slice(0, LOADED_CONTEXT_RECENT_REF_LIMIT)
-				.map(summarizeRecentChangeRef)
-		}
+		more_available: summarizeTrueFlags(intelligence.maybe_more)
 	});
 }
 
@@ -1442,33 +1431,6 @@ function summarizeEntityRef(
 		in_doc_structure:
 			typeof record.in_doc_structure === 'boolean' ? record.in_doc_structure : undefined,
 		is_unlinked: typeof record.is_unlinked === 'boolean' ? record.is_unlinked : undefined
-	});
-}
-
-function summarizeWorkSignalRef(signal: FastChatWorkSignal): Record<string, unknown> {
-	return dropNullish({
-		id: signal.id,
-		kind: signal.kind,
-		project_id: signal.project_id,
-		project_name: signal.project_name,
-		title: truncateText(signal.title, 120),
-		state_key: signal.state_key,
-		date: signal.date,
-		bucket: signal.bucket,
-		days_delta: signal.days_delta,
-		priority: signal.priority
-	});
-}
-
-function summarizeRecentChangeRef(change: FastChatRecentChange): Record<string, unknown> {
-	return dropNullish({
-		id: change.id,
-		kind: change.kind,
-		project_id: change.project_id,
-		project_name: change.project_name,
-		title: truncateText(change.title, 120),
-		action: change.action,
-		changed_at: change.changed_at
 	});
 }
 
@@ -1634,7 +1596,9 @@ function buildProjectIntelligenceStatusLines(intelligence: FastChatProjectIntell
 		].filter(Boolean);
 		const counts = countParts.length > 0 ? countParts.join(', ') : 'no active signals loaded';
 		const nextStep = summary.next_step_short ? ` Next step: ${summary.next_step_short}` : '';
-		lines.push(`${summary.project_name}: ${counts}.${nextStep}`);
+		lines.push(
+			`${summary.project_name} (project_id: ${summary.project_id}): ${counts}.${nextStep}`
+		);
 	}
 
 	if (intelligence.maybe_more.project_summaries) {
@@ -1650,17 +1614,84 @@ export function buildProjectIntelligencePromptSections(
 	LitePromptTimelineSummary,
 	'statusLines' | 'overdueLines' | 'upcomingLines' | 'recentChangeLines'
 > {
+	const filtered = suppressShadowDueEventSignals(intelligence);
 	return {
-		statusLines: buildProjectIntelligenceStatusLines(intelligence),
-		overdueLines: formatAttentionWorkLines(intelligence),
-		upcomingLines: formatWorkSignalLines(
-			selectPromptUpcomingSignals(intelligence.upcoming_work),
-			{ includeBucket: false }
-		),
+		statusLines: buildProjectIntelligenceStatusLines(filtered),
+		overdueLines: formatAttentionWorkLines(filtered),
+		upcomingLines: formatWorkSignalLines(selectPromptUpcomingSignals(filtered.upcoming_work), {
+			includeBucket: false
+		}),
 		recentChangeLines: formatRecentChangeLines(
-			dedupeRecentChanges(intelligence.recent_changes).slice(0, PROMPT_RECENT_CHANGE_LIMIT)
+			dedupeRecentChanges(filtered.recent_changes).slice(0, PROMPT_RECENT_CHANGE_LIMIT)
 		)
 	};
+}
+
+// BuildOS auto-creates "Due: <task title>" calendar events for task due dates.
+// When the task itself is present in the same signal set, the shadow event is a
+// duplicate carrier of the same work item (prompt audit WP-1 measured the same
+// item rendering up to 4 times). The task, which carries state and priority, is
+// the canonical carrier; shadow events without their task stay visible.
+const SHADOW_DUE_EVENT_PREFIX = /^due:\s*/i;
+
+function workItemTitleKey(title: string): string {
+	return title.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function shadowDueTaskTitleKey(title: string | null | undefined): string | null {
+	if (!title) return null;
+	const trimmed = title.trim();
+	if (!SHADOW_DUE_EVENT_PREFIX.test(trimmed)) return null;
+	const stripped = trimmed.replace(SHADOW_DUE_EVENT_PREFIX, '').trim();
+	return stripped.length > 0 ? workItemTitleKey(stripped) : null;
+}
+
+function suppressShadowDueEventSignals(
+	intelligence: FastChatProjectIntelligence
+): FastChatProjectIntelligence {
+	const taskTitleKeys = new Set(
+		[...intelligence.overdue_or_due_soon, ...intelligence.upcoming_work]
+			.filter((signal) => signal.kind === 'task')
+			.map((signal) => workItemTitleKey(signal.title))
+	);
+	const keepSignal = (signal: FastChatWorkSignal): boolean => {
+		if (signal.kind !== 'event') return true;
+		const shadowKey = shadowDueTaskTitleKey(signal.title);
+		return !shadowKey || !taskTitleKeys.has(shadowKey);
+	};
+
+	const changeTaskTitleKeys = new Set(
+		intelligence.recent_changes
+			.filter((change) => change.kind === 'task' && change.title)
+			.map((change) => workItemTitleKey(change.title as string))
+	);
+	const keepChange = (change: FastChatRecentChange): boolean => {
+		if (change.kind !== 'event') return true;
+		const shadowKey = shadowDueTaskTitleKey(change.title);
+		return !shadowKey || !changeTaskTitleKeys.has(shadowKey);
+	};
+
+	return {
+		...intelligence,
+		overdue_or_due_soon: intelligence.overdue_or_due_soon.filter(keepSignal),
+		upcoming_work: intelligence.upcoming_work.filter(keepSignal),
+		recent_changes: intelligence.recent_changes.filter(keepChange)
+	};
+}
+
+function collectLoadedTaskTitleKeys(data: Record<string, unknown>): Set<string> {
+	return new Set(
+		recordsForKey(data, 'tasks').map((task) => workItemTitleKey(titleForRecord(task, 'task')))
+	);
+}
+
+function isShadowDueEventRecord(
+	record: Record<string, unknown>,
+	loadedTaskTitleKeys: Set<string>
+): boolean {
+	if (loadedTaskTitleKeys.size === 0) return false;
+	const shadowKey = shadowDueTaskTitleKey(titleForRecord(record, 'event'));
+	return Boolean(shadowKey && loadedTaskTitleKeys.has(shadowKey));
 }
 
 function formatAttentionWorkLines(intelligence: FastChatProjectIntelligence): string[] {
@@ -2000,12 +2031,14 @@ function collectDatedWorkItems(data: Record<string, unknown>, now: Date): LitePr
 		['project', 'project', ['end_at', 'start_at']]
 	];
 	const items: LitePromptTimelineItem[] = [];
+	const loadedTaskTitleKeys = collectLoadedTaskTitleKeys(data);
 
 	for (const [kind, key, dateKeys] of specs) {
 		const records =
 			key === 'project' && isRecord(data.project) ? [data.project] : recordsForKey(data, key);
 		for (const record of records) {
 			if (!isOpenRecord(record)) continue;
+			if (kind === 'event' && isShadowDueEventRecord(record, loadedTaskTitleKeys)) continue;
 			const dateValue = dateKeys
 				.map((dateKey) => record[dateKey])
 				.find((value) => parseDate(value));
@@ -2043,10 +2076,13 @@ function collectRecentChangeItems(
 		['event', 'events']
 	];
 
+	const loadedTaskTitleKeys = collectLoadedTaskTitleKeys(data);
+
 	for (const [kind, key] of specs) {
 		for (const record of recordsForKey(data, key)) {
 			const date = parseDate(record.updated_at ?? record.created_at);
 			if (!date) continue;
+			if (kind === 'event' && isShadowDueEventRecord(record, loadedTaskTitleKeys)) continue;
 			items.push({
 				kind,
 				id: stringValue(record.id),
@@ -2061,6 +2097,12 @@ function collectRecentChangeItems(
 	for (const activity of recordsForKey(data, 'recent_activity')) {
 		const date = parseDate(activity.updated_at ?? activity.created_at);
 		if (!date) continue;
+		if (
+			stringValue(activity.entity_type) === 'event' &&
+			isShadowDueEventRecord(activity, loadedTaskTitleKeys)
+		) {
+			continue;
+		}
 		items.push({
 			kind: stringValue(activity.entity_type) ?? 'activity',
 			id: stringValue(activity.entity_id) ?? stringValue(activity.id),

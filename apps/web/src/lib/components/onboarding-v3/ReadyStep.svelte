@@ -10,7 +10,7 @@
 		Globe,
 		Check,
 		Plug
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
@@ -150,7 +150,7 @@
 
 			toastService.success('Welcome to BuildOS!');
 			await invalidateAll();
-			setTimeout(() => goto('/'), 1000);
+			setTimeout(() => goto('/dashboard'), 1000);
 		} catch (error) {
 			console.error('Failed to complete onboarding:', error);
 			toastService.error('Failed to complete setup. Please try again.');

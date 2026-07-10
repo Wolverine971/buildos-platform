@@ -1,5 +1,6 @@
 ---
 name: Landing Page Scorecard Funnel
+catalog_line: 'Design assessment-driven landing pages: quizzes, scorecards, and diagnostic funnels that segment leads.'
 description: >-
     Design an assessment-driven landing page that converts visitors into qualified, segmented leads. Use for quizzes, scorecards, diagnostic funnels, lead magnets, and dynamic results pages for consulting, coaching, SaaS, education, agencies, or services — including a setup-layered mode that wraps the scorecard in a positioning layer (market insight, alternatives, perfect-world scenario) for B2B and considered purchases.
 skill_type: procedure # procedure | reference | strategy | resource | policy | orchestration

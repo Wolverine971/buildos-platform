@@ -1756,7 +1756,7 @@
 		/>
 
 		<!-- Main Content -->
-		<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 overflow-x-hidden">
+		<div class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 overflow-x-hidden">
 			<!-- Hydration Error Banner -->
 			{#if hydrationError}
 				<div
@@ -2111,7 +2111,7 @@
 					</div>
 				{/if}
 			</div>
-		</main>
+		</div>
 	</div>
 </PullToRefresh>
 

@@ -1,8 +1,10 @@
 // apps/web/src/lib/utils/overdue-reschedule.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	assignNonOverlappingBatchSlots,
 	buildRescheduleWindow,
 	debugLocalDateTime,
+	isImportantTaskPriority,
 	isWorkingDay,
 	resolveDurationMinutes
 } from './overdue-reschedule';
@@ -46,5 +48,61 @@ describe('overdue reschedule helpers', () => {
 		});
 
 		expect(duration).toBe(30);
+	});
+
+	it('uses the BuildOS priority scale when identifying important tasks', () => {
+		expect(isImportantTaskPriority(1)).toBe(true);
+		expect(isImportantTaskPriority(2)).toBe(true);
+		expect(isImportantTaskPriority(3)).toBe(false);
+		expect(isImportantTaskPriority(5)).toBe(false);
+		expect(isImportantTaskPriority(0)).toBe(false);
+		expect(isImportantTaskPriority(null)).toBe(false);
+	});
+
+	it('assigns a distinct non-overlapping slot to every batch task', () => {
+		const slot = (start: string, end: string) => ({
+			start: new Date(start),
+			end: new Date(end)
+		});
+		const sharedCandidates = [
+			slot('2026-03-16T09:00:00Z', '2026-03-16T10:00:00Z'),
+			slot('2026-03-16T09:30:00Z', '2026-03-16T10:30:00Z'),
+			slot('2026-03-16T10:00:00Z', '2026-03-16T11:00:00Z'),
+			slot('2026-03-16T11:00:00Z', '2026-03-16T12:00:00Z')
+		];
+
+		const result = assignNonOverlappingBatchSlots([
+			{ taskId: 'task-1', candidateSlots: sharedCandidates },
+			{ taskId: 'task-2', candidateSlots: sharedCandidates },
+			{ taskId: 'task-3', candidateSlots: sharedCandidates }
+		]);
+
+		expect(result.unscheduledTaskIds).toEqual([]);
+		expect(
+			result.assignments.map((assignment) => [
+				assignment.taskId,
+				assignment.start.toISOString(),
+				assignment.end.toISOString()
+			])
+		).toEqual([
+			['task-1', '2026-03-16T09:00:00.000Z', '2026-03-16T10:00:00.000Z'],
+			['task-2', '2026-03-16T10:00:00.000Z', '2026-03-16T11:00:00.000Z'],
+			['task-3', '2026-03-16T11:00:00.000Z', '2026-03-16T12:00:00.000Z']
+		]);
+	});
+
+	it('leaves overflow tasks unscheduled instead of stacking them into one slot', () => {
+		const onlySlot = {
+			start: new Date('2026-03-16T09:00:00Z'),
+			end: new Date('2026-03-16T10:00:00Z')
+		};
+
+		const result = assignNonOverlappingBatchSlots([
+			{ taskId: 'task-1', candidateSlots: [onlySlot] },
+			{ taskId: 'task-2', candidateSlots: [onlySlot] }
+		]);
+
+		expect(result.assignments).toHaveLength(1);
+		expect(result.unscheduledTaskIds).toEqual(['task-2']);
 	});
 });

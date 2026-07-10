@@ -1,5 +1,6 @@
 ---
 name: Calendar Operations
+catalog_line: 'BuildOS calendar workflow: event reads and writes, scope decisions, project calendar mapping.'
 description: Calendar workflow playbook for BuildOS agentic chat. Use for event reads/writes, scope decisions, and project calendar mapping.
 skill_type: procedure # procedure | strategy | reference | resource | policy | orchestration
 altitude: task # task | domain | meta

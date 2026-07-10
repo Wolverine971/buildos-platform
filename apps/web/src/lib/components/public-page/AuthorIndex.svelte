@@ -66,7 +66,7 @@
 	}
 </script>
 
-<main class="min-h-screen rounded-lg bg-card">
+<div class="min-h-screen rounded-lg bg-card">
 	<div class="mx-auto px-4 py-6 sm:px-8 sm:py-10">
 		<header class="mb-8 flex items-center gap-3">
 			<span
@@ -141,4 +141,4 @@
 			</a>
 		</footer>
 	</div>
-</main>
+</div>

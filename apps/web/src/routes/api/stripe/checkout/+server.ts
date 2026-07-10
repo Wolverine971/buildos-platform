@@ -50,7 +50,7 @@ export const POST: RequestHandler = async ({
 		const payload = (await request.json().catch(() => ({}))) as CheckoutRequestPayload;
 		const discountCode =
 			typeof payload.discountCode === 'string' ? payload.discountCode : undefined;
-		const successPath = sanitizeRelativePath(payload.successPath, '/?payment=success');
+		const successPath = sanitizeRelativePath(payload.successPath, '/dashboard?payment=success');
 		const cancelPath = sanitizeRelativePath(payload.cancelPath, '/pricing?payment=cancelled');
 		const checkoutSource =
 			typeof payload.source === 'string' && payload.source.length > 0

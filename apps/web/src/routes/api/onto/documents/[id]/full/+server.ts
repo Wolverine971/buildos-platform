@@ -22,7 +22,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { resolveLinkedEntitiesGeneric } from '../../../shared/entity-linked-helpers';
 import { logOntologyApiError } from '../../../shared/error-logging';
 
-export const GET: RequestHandler = async ({ params, locals }) => {
+export const GET: RequestHandler = async ({ params, locals, url }) => {
 	const session = await locals.safeGetSession();
 	if (!session?.user) {
 		return ApiResponse.unauthorized('Authentication required');
@@ -30,12 +30,30 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 	const supabase = locals.supabase;
 	const documentId = params.id;
+	const includeLinkedEntities = url.searchParams.get('include_linked') !== 'false';
 
 	try {
-		const actorResult = await supabase.rpc('ensure_actor_for_user', {
-			p_user_id: session.user.id
-		});
+		const [actorResult, documentResult] = await Promise.all([
+			supabase.rpc('ensure_actor_for_user', {
+				p_user_id: session.user.id
+			}),
+			supabase
+				.from('onto_documents')
+				.select(
+					`
+						*,
+						project:onto_projects!inner(
+							id
+						)
+					`
+				)
+				.eq('id', documentId)
+				.is('deleted_at', null)
+				.single()
+		]);
 		const { data: actorId, error: actorError } = actorResult;
+		const { data: document, error: documentError } = documentResult;
+		const projectId = document?.project?.id;
 
 		if (actorError || !actorId) {
 			console.error('[Document Full GET] Failed to resolve actor:', actorError);
@@ -54,21 +72,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				'Failed to get user actor'
 			);
 		}
-
-		const { data: document, error: documentError } = await supabase
-			.from('onto_documents')
-			.select(
-				`
-					*,
-					project:onto_projects!inner(
-						id
-					)
-				`
-			)
-			.eq('id', documentId)
-			.is('deleted_at', null)
-			.single();
-		const projectId = document?.project?.id;
 
 		if (documentError || !document) {
 			if (documentError) {
@@ -119,14 +122,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		// Phase 2: Fetch linked entities (can run after auth is verified)
-		const linkedEntities = await resolveLinkedEntitiesGeneric(supabase, documentId, 'document');
+		const linkedEntities = includeLinkedEntities
+			? await resolveLinkedEntitiesGeneric(supabase, documentId, 'document')
+			: null;
 
 		// Remove nested project data from response
 		const { project: _project, ...documentData } = document;
 
 		return ApiResponse.success({
 			document: documentData,
-			linkedEntities
+			...(linkedEntities ? { linkedEntities } : {})
 		});
 	} catch (error) {
 		console.error('[Document Full GET] Error fetching document data:', error);

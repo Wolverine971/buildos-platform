@@ -52,6 +52,7 @@
 		goalState: string;
 		projectId: string;
 		canEdit?: boolean;
+		loading?: boolean;
 		onAddMilestone: () => void;
 		onEditMilestone: (milestoneId: string) => void;
 		onToggleMilestoneComplete?: (milestoneId: string, currentState: string) => void;
@@ -64,6 +65,7 @@
 		goalState,
 		projectId,
 		canEdit = true,
+		loading = false,
 		onAddMilestone,
 		onEditMilestone,
 		onToggleMilestoneComplete
@@ -236,7 +238,16 @@
 				</div>
 			{/if}
 
-			{#if milestones.length === 0}
+			{#if loading}
+				<div class="space-y-2 px-3 py-3" aria-label="Loading milestones">
+					<div
+						class="h-3 w-3/4 rounded bg-muted animate-pulse motion-reduce:animate-none"
+					></div>
+					<div
+						class="h-3 w-1/2 rounded bg-muted animate-pulse motion-reduce:animate-none"
+					></div>
+				</div>
+			{:else if milestones.length === 0}
 				<!-- Empty State -->
 				<div class="px-3 py-6 text-center tx tx-bloom tx-weak">
 					<Flag class="w-8 h-8 mx-auto text-muted-foreground/30 mb-2" />

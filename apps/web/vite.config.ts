@@ -182,15 +182,6 @@ export default defineConfig(({ mode }) => {
 							) {
 								return 'ui-vendor';
 							}
-							// Utilities
-							if (
-								id.includes('date-fns') ||
-								id.includes('tailwind-merge') ||
-								id.includes('sanitize-html') ||
-								id.includes('marked')
-							) {
-								return 'utils';
-							}
 							// Heavy vendors (these are less likely to be external)
 							if (id.includes('openai')) {
 								return 'ai-vendor';

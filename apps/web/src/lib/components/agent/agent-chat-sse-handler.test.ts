@@ -5,7 +5,6 @@ import type { CreatedEntityRef, ThinkingBlockMessage, UIMessage } from './agent-
 import {
 	buildToolCallActivity,
 	computeAgentStateActivity,
-	computeClarifyingQuestionsCount,
 	computeToolResultInfo,
 	createSSEHandler,
 	normalizeContextShiftContext,
@@ -34,18 +33,6 @@ describe('computeAgentStateActivity', () => {
 
 	it('uses event details for thinking when provided', () => {
 		expect(computeAgentStateActivity('thinking', 'Reading project')).toBe('Reading project');
-	});
-});
-
-describe('computeClarifyingQuestionsCount', () => {
-	it('returns 0 for non-array payloads', () => {
-		expect(computeClarifyingQuestionsCount(null)).toBe(0);
-		expect(computeClarifyingQuestionsCount('nope')).toBe(0);
-		expect(computeClarifyingQuestionsCount(undefined)).toBe(0);
-	});
-
-	it('counts only non-empty string questions', () => {
-		expect(computeClarifyingQuestionsCount(['why?', '', '   ', 'when?', 42, null])).toBe(2);
 	});
 });
 
@@ -97,7 +84,6 @@ describe('buildToolCallActivity', () => {
 		};
 
 		const result = buildToolCallActivity(event, presenter);
-		expect(result.hidden).toBe(false);
 		expect(result.toolCallId).toBe('call-1');
 		expect(result.activity?.activityType).toBe('tool_call');
 		expect(result.activity?.status).toBe('pending');
@@ -130,7 +116,6 @@ describe('buildToolCallActivity', () => {
 		};
 
 		const result = buildToolCallActivity(event, presenter);
-		expect(result.hidden).toBe(false);
 		expect(result.activity?.metadata?.skillActivity).toBeDefined();
 		expect(result.activity?.metadata?.skillAction).toBe('requested');
 	});
@@ -159,31 +144,27 @@ describe('computeToolResultInfo', () => {
 		expect(info.toolErrorMessage).toBeUndefined();
 	});
 
-	it('prefers canonical tool_name over the legacy toolName fallback', () => {
+	it('reads the canonical tool_name and ignores the retired camelCase key', () => {
 		expect(
-			computeToolResultInfo(
-				{ tool_name: 'create_onto_task', toolName: 'ignored' },
-				makePresenter()
-			).rawResultToolName
+			computeToolResultInfo({ tool_name: 'create_onto_task' }, makePresenter())
+				.rawResultToolName
 		).toBe('create_onto_task');
 
+		// Server emits snake_case only since 2026-06-10; camelCase no longer falls back.
 		expect(
 			computeToolResultInfo({ toolName: 'legacy_fallback' }, makePresenter())
 				.rawResultToolName
-		).toBe('legacy_fallback');
+		).toBeUndefined();
 	});
 
-	it('prefers canonical tool_call_id over the legacy toolCallId fallback', () => {
+	it('reads the canonical tool_call_id and ignores the retired camelCase key', () => {
 		expect(
-			computeToolResultInfo(
-				{ tool_call_id: 'canonical', toolCallId: 'legacy' },
-				makePresenter()
-			).resultToolCallId
+			computeToolResultInfo({ tool_call_id: 'canonical' }, makePresenter()).resultToolCallId
 		).toBe('canonical');
 
 		expect(
 			computeToolResultInfo({ toolCallId: 'legacy' }, makePresenter()).resultToolCallId
-		).toBe('legacy');
+		).toBeUndefined();
 	});
 
 	it('formats the error message on failure', () => {
@@ -295,16 +276,13 @@ interface HandlerHarness {
 			result: ActivityUpdateResult;
 		}>;
 		upsertSkillActivity: number;
-		upsertOperationActivity: number;
 		finalize: Array<{ status?: string; note?: string }>;
 		hydrateSessionFromEvent: number;
 		attachServerTiming: number;
 		flushAssistantText: number;
 		bufferAssistantText: string[];
 		finalizeAssistantMessage: number;
-		addClarifyingQuestionsMessage: number;
 		addCreatedEntitiesMessage: CreatedEntityRef[][];
-		logFocusActivity: Array<{ action: string }>;
 		updateBlocks: ThinkingBlockMessage[];
 	};
 	snapshot: {
@@ -325,7 +303,6 @@ interface HandlerHarness {
 		agentTurnsRemaining: number;
 	};
 	presenter: ToolPresenter;
-	hiddenToolCallIds: Set<string>;
 	pendingToolResults: Map<string, PendingToolStatus>;
 	// Override the next updateActivityStatus return value
 	nextActivityUpdateResult: (result: ActivityUpdateResult) => void;
@@ -362,17 +339,14 @@ function createHarness(
 		updateState: [],
 		updateActivityStatus: [],
 		upsertSkillActivity: 0,
-		upsertOperationActivity: 0,
 		finalize: [],
 		hydrateSessionFromEvent: 0,
 		attachServerTiming: 0,
 		flushAssistantText: 0,
 		bufferAssistantText: [],
 		finalizeAssistantMessage: 0,
-		addClarifyingQuestionsMessage: 0,
 		addCreatedEntitiesMessage: [],
-		updateBlocks: [],
-		logFocusActivity: []
+		updateBlocks: []
 	};
 
 	const messages: UIMessage[] = options.messages ?? [];
@@ -418,9 +392,6 @@ function createHarness(
 		},
 		upsertSkillActivity() {
 			calls.upsertSkillActivity += 1;
-		},
-		upsertOperationActivity() {
-			calls.upsertOperationActivity += 1;
 		},
 		updateActivityStatus(toolCallId, status, errorMessage, toolResult) {
 			const result = nextActivityUpdateResult;
@@ -491,7 +462,6 @@ function createHarness(
 		}
 	};
 
-	const hiddenToolCallIds = new Set<string>();
 	const pendingToolResults = new Map<string, PendingToolStatus>();
 	const processedToolCallIds = new Set<string>();
 	const processedToolResultIds = new Set<string>();
@@ -515,18 +485,11 @@ function createHarness(
 		finalizeAssistantMessage: () => {
 			calls.finalizeAssistantMessage += 1;
 		},
-		hiddenToolCallIds,
 		pendingToolResults,
 		processedToolCallIds,
 		processedToolResultIds,
-		addClarifyingQuestionsMessage: () => {
-			calls.addClarifyingQuestionsMessage += 1;
-		},
 		addCreatedEntitiesMessage: (entities) => {
 			calls.addCreatedEntitiesMessage.push(entities);
-		},
-		logFocusActivity: (action) => {
-			calls.logFocusActivity.push({ action });
 		},
 		isDev: false
 	};
@@ -537,7 +500,6 @@ function createHarness(
 		calls,
 		snapshot,
 		presenter,
-		hiddenToolCallIds,
 		pendingToolResults,
 		nextActivityUpdateResult: (result) => {
 			nextActivityUpdateResult = result;
@@ -552,10 +514,10 @@ describe('createSSEHandler — routing', () => {
 		expect(h.calls.flushAssistantText).toBe(1);
 	});
 
-	it('does NOT flush buffered text for text/text_delta', () => {
+	it('does NOT flush buffered text for text_delta', () => {
 		const h = createHarness();
 		h.handler({ type: 'text_delta', content: 'hi' });
-		h.handler({ type: 'text', content: 'there' });
+		h.handler({ type: 'text_delta', content: 'there' });
 		expect(h.calls.flushAssistantText).toBe(0);
 		expect(h.calls.bufferAssistantText).toEqual(['hi', 'there']);
 	});
@@ -616,20 +578,6 @@ describe('createSSEHandler — routing', () => {
 		expect(h.snapshot.lastTurnContext).toEqual({ turn_id: 'abc' });
 	});
 
-	it('sets focus on focus_active (no log)', () => {
-		const h = createHarness();
-		h.handler({ type: 'focus_active', focus: { projectId: 'p-1' } as any });
-		expect(h.snapshot.projectFocus).toEqual({ projectId: 'p-1' });
-		expect(h.calls.logFocusActivity).toEqual([]);
-	});
-
-	it('sets focus AND logs on focus_changed', () => {
-		const h = createHarness();
-		h.handler({ type: 'focus_changed', focus: { projectId: 'p-1' } as any });
-		expect(h.snapshot.projectFocus).toEqual({ projectId: 'p-1' });
-		expect(h.calls.logFocusActivity).toEqual([{ action: 'Focus changed' }]);
-	});
-
 	it('routes agent_state through thinking.updateState and sets activity label', () => {
 		const h = createHarness();
 		h.handler({
@@ -678,26 +626,6 @@ describe('createSSEHandler — routing', () => {
 		const h = createHarness();
 		h.handler({ type: 'agent_state', state: 'waiting_on_user', contextType: 'global' as any });
 		expect(h.snapshot.currentActivity).toBe('Waiting on your direction...');
-		expect(h.calls.addActivity).toEqual([]);
-	});
-
-	it('routes clarifying_questions + logs activity when count > 0', () => {
-		const h = createHarness();
-		h.handler({
-			type: 'clarifying_questions',
-			questions: ['why?', 'when?']
-		});
-		expect(h.calls.addClarifyingQuestionsMessage).toBe(1);
-		expect(h.calls.addActivity[0]?.content).toBe('Clarifying questions requested (2)');
-		expect(h.calls.updateState).toEqual([
-			{ state: 'waiting_on_user', details: 'Waiting on your clarifications to continue...' }
-		]);
-	});
-
-	it('routes clarifying_questions without activity when count = 0', () => {
-		const h = createHarness();
-		h.handler({ type: 'clarifying_questions', questions: [] });
-		expect(h.calls.addClarifyingQuestionsMessage).toBe(1);
 		expect(h.calls.addActivity).toEqual([]);
 	});
 });
@@ -769,7 +697,7 @@ describe('createSSEHandler — tool call + result', () => {
 			result: {
 				tool_call_id: 'call-1',
 				success: true,
-				toolName: 'create_onto_task',
+				tool_name: 'create_onto_task',
 				result: {
 					task: {
 						id: 'task-1',
@@ -799,7 +727,7 @@ describe('createSSEHandler — tool call + result', () => {
 			result: {
 				tool_call_id: 'call-1',
 				success: true,
-				toolName: 'create_onto_task',
+				tool_name: 'create_onto_task',
 				result: {
 					task: {
 						id: 'task-1',
@@ -850,7 +778,7 @@ describe('createSSEHandler — tool call + result', () => {
 			type: 'tool_result',
 			result: {
 				tool_call_id: 'call-late',
-				toolName: 'create_onto_task',
+				tool_name: 'create_onto_task',
 				success: true,
 				result: {
 					task: {
@@ -908,7 +836,7 @@ describe('createSSEHandler — tool call + result', () => {
 			type: 'tool_result',
 			result: {
 				tool_call_id: 'call-never-arrives',
-				toolName: 'create_onto_task',
+				tool_name: 'create_onto_task',
 				success: true,
 				result: {
 					task: {
@@ -929,19 +857,6 @@ describe('createSSEHandler — tool call + result', () => {
 			id: 'task-fallback',
 			name: 'Fallback task'
 		});
-	});
-
-	it('tool_result for a hidden tool clears the hidden + pending maps and exits', () => {
-		const h = createHarness();
-		h.hiddenToolCallIds.add('hidden-1');
-		h.pendingToolResults.set('hidden-1', { status: 'completed' });
-		h.handler({
-			type: 'tool_result',
-			result: { tool_call_id: 'hidden-1', success: true }
-		});
-		expect(h.hiddenToolCallIds.has('hidden-1')).toBe(false);
-		expect(h.pendingToolResults.has('hidden-1')).toBe(false);
-		expect(h.calls.updateActivityStatus).toHaveLength(0);
 	});
 });
 
@@ -1039,7 +954,7 @@ describe('createSSEHandler — done + error', () => {
 			result: {
 				tool_call_id: 'call-create',
 				success: true,
-				toolName: 'create_onto_task',
+				tool_name: 'create_onto_task',
 				result: {
 					task: {
 						id: 'task-created',
@@ -1071,7 +986,7 @@ describe('createSSEHandler — done + error', () => {
 				result: {
 					tool_call_id: `call-create-${finished_reason}`,
 					success: true,
-					toolName: 'create_onto_task',
+					tool_name: 'create_onto_task',
 					result: {
 						task: {
 							id: `task-created-${finished_reason}`,
@@ -1105,7 +1020,7 @@ describe('createSSEHandler — done + error', () => {
 	});
 });
 
-describe('createSSEHandler — skill_activity + operation', () => {
+describe('createSSEHandler — skill_activity', () => {
 	it('forwards skill_activity to thinking.upsertSkillActivity', () => {
 		const h = createHarness();
 		h.handler({
@@ -1115,19 +1030,5 @@ describe('createSSEHandler — skill_activity + operation', () => {
 			via: 'skill_load'
 		} as any);
 		expect(h.calls.upsertSkillActivity).toBe(1);
-	});
-
-	it('formats operation events via presenter and forwards to thinking.upsertOperationActivity', () => {
-		const h = createHarness();
-		h.handler({
-			type: 'operation',
-			operation: {
-				action: 'create',
-				status: 'start',
-				entity_type: 'task',
-				entity_name: 'Do X'
-			}
-		} as any);
-		expect(h.calls.upsertOperationActivity).toBe(1);
 	});
 });

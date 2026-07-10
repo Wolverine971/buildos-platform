@@ -1,5 +1,6 @@
 ---
 name: Plan Management
+catalog_line: 'Turn a goal or milestone into a durable plan: scope, timeline, tasks, dependencies, owners, risks.'
 description: BuildOS plan workflow playbook for turning a goal or milestone into a durable execution source of truth with scope, timeline, tasks, dependencies, owners, risks, and update rules.
 skill_type: procedure # procedure | reference | strategy | resource | policy | orchestration
 altitude: domain # task | domain | meta

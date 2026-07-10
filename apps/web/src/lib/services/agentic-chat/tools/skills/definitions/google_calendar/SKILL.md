@@ -1,5 +1,6 @@
 ---
 name: Google Calendar
+catalog_line: 'Use Google Calendar safely from an agent: read, create, reschedule, cancel, and sync without duplicates.'
 description: Use Google Calendar safely from an AI agent. Use when reading, creating, rescheduling, cancelling, or syncing calendar events; choosing calendar scope; preventing duplicate events; handling recurring events; or linking calendar time to projects and tasks.
 skill_type: procedure # procedure | strategy | reference | resource | policy | orchestration
 altitude: domain # task | domain | meta

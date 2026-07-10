@@ -73,7 +73,7 @@
 	}}
 />
 
-<main class="min-h-screen bg-background">
+<div class="min-h-screen bg-background">
 	<!-- Hero Section - Mode B: Orientation Surface -->
 	<section class="bg-muted atmo atmo-med rim-accent">
 		<div class="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14 lg:py-16">
@@ -578,20 +578,20 @@
 						In production
 					</h3>
 					<p class="text-sm text-muted-foreground">
-							Capture, project memory, daily briefs, calendar, and agent chat.
-						</p>
+						Capture, project memory, daily briefs, calendar, and agent chat.
+					</p>
 				</article>
 
 				<article class="p-5 text-center wt-paper sp-inline">
 					<div
 						class="text-2xl sm:text-3xl font-bold text-accent mb-1"
-						aria-label="Fourteen day free trial"
+						aria-label="Paid billing is not live"
 					>
-						14 days
+						Not live
 					</div>
-					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">Trial</h3>
+					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">Billing</h3>
 					<p class="text-sm text-muted-foreground">
-						Start free and see whether the workflow fits your projects.
+						Paid billing has not launched. Creating an account does not charge you.
 					</p>
 				</article>
 
@@ -657,4 +657,4 @@
 			</nav>
 		</div>
 	</section>
-</main>
+</div>

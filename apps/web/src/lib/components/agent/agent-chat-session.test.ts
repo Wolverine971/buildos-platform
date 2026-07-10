@@ -472,6 +472,69 @@ describe('agent-chat-session helpers', () => {
 		]);
 	});
 
+	it('buildAgentChatSessionSnapshot restores presenter labels for previously mislabeled tools', () => {
+		// search_project, get_field_info, and the contact tools used to fall through the
+		// restored fork to generic "Searched project" / "Loaded tool" / "Listed tool"
+		// labels. They now derive their label from the single presenter table.
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'I looked things up.',
+					created_at: '2026-03-28T10:01:00.000Z',
+					metadata: {
+						fastchat_tool_trace_v1: [
+							{
+								tool_call_id: 'call-search-project',
+								tool_name: 'search_project',
+								success: true,
+								arguments_preview:
+									'{"project_id":"p-1","project_name":"9takes","query":"pricing page"}'
+							},
+							{
+								tool_call_id: 'call-field-info',
+								tool_name: 'get_field_info',
+								success: true,
+								arguments_preview: '{"entity_type":"task","field_name":"status"}'
+							},
+							{
+								tool_call_id: 'call-list-candidates',
+								tool_name: 'list_user_contact_candidates',
+								success: true,
+								arguments_preview: '{"status":"pending"}'
+							},
+							{
+								tool_call_id: 'call-resolve-candidate',
+								tool_name: 'resolve_user_contact_candidate',
+								success: true,
+								arguments_preview: '{"action":"link"}'
+							},
+							{
+								tool_call_id: 'call-link-contact',
+								tool_name: 'link_user_contact',
+								success: true,
+								arguments_preview: '{"link_type":"is","entity_type":"contact"}'
+							}
+						]
+					}
+				}
+			] as any
+		});
+
+		expect(snapshot.messages[0]?.type).toBe('thinking_block');
+		expect(
+			(snapshot.messages[0] as any).activities.map((activity: any) => activity.content)
+		).toEqual([
+			'Searched 9takes: "pricing page"',
+			'Loaded field guidance: "task.status"',
+			'Listed contact candidates: "pending"',
+			'Resolved contact candidate: "link"',
+			'Linked contact: "is"'
+		]);
+	});
+
 	it('buildAgentChatSessionSnapshot restores project overview labels with project names', () => {
 		const snapshot = buildAgentChatSessionSnapshot({
 			session: makeSession(),

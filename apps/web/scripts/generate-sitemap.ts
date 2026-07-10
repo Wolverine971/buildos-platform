@@ -2,6 +2,12 @@
 import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { parse as parseYaml } from 'yaml';
+import { getFamilyId } from '../src/lib/skills/skill-gallery';
+import {
+	packDefinitions,
+	previewSkillMetadataByRuntimeId,
+	skillMetadataBySlug
+} from '../src/lib/skills/skill-gallery-metadata';
 
 interface SitemapUrl {
 	loc: string;
@@ -19,6 +25,7 @@ interface BlogPost {
 	published: boolean;
 	slug: string;
 	category: string;
+	skillCategory?: string;
 }
 
 interface BlogContext {
@@ -57,6 +64,7 @@ interface DocFrontmatter {
 
 const BASE_URL = 'https://build-os.com';
 const AGENT_SKILLS_CATEGORY_KEY = 'agent-skills';
+const SKILL_GALLERY_LASTMOD = '2026-07-10';
 // Use a static fallback date instead of today's date to avoid constantly changing dates
 // This should be the date of the initial blog launch or earliest blog post
 const DEFAULT_LASTMOD = '2025-10-05'; // Static fallback date for empty categories
@@ -86,6 +94,12 @@ const STATIC_URLS: SitemapUrl[] = [
 		lastmod: '2026-03-27',
 		changefreq: 'weekly',
 		priority: '0.7'
+	},
+	{
+		loc: `${BASE_URL}/skills`,
+		lastmod: SKILL_GALLERY_LASTMOD,
+		changefreq: 'weekly',
+		priority: '0.8'
 	},
 	{
 		loc: `${BASE_URL}/contact`,
@@ -432,6 +446,68 @@ function generateBlogUrls(blogContext: BlogContext): SitemapUrl[] {
 	return urls;
 }
 
+function generateSkillGalleryUrls(blogContext: BlogContext): SitemapUrl[] {
+	const posts = Object.entries(blogContext.categories[AGENT_SKILLS_CATEGORY_KEY]?.posts ?? {})
+		.map(([slug, post]) => (post?.published ? { ...post, slug } : null))
+		.filter((post): post is BlogPost => Boolean(post));
+	const urls: SitemapUrl[] = posts.map((post) => ({
+		loc: `${BASE_URL}/skills/${post.slug}`,
+		lastmod: SKILL_GALLERY_LASTMOD,
+		changefreq: 'monthly',
+		priority: '0.8'
+	}));
+
+	for (const runtimeSkillId of Object.keys(previewSkillMetadataByRuntimeId)) {
+		urls.push({
+			loc: `${BASE_URL}/skills/preview/${runtimeSkillId.replace(/_/g, '-')}`,
+			lastmod: SKILL_GALLERY_LASTMOD,
+			changefreq: 'monthly',
+			priority: '0.6'
+		});
+	}
+
+	const domainIds = new Set(
+		posts
+			.map((post) => post.skillCategory)
+			.filter((domainId): domainId is string => Boolean(domainId))
+	);
+	for (const domainId of domainIds) {
+		urls.push({
+			loc: `${BASE_URL}/skills/domain/${domainId}`,
+			lastmod: SKILL_GALLERY_LASTMOD,
+			changefreq: 'weekly',
+			priority: '0.7'
+		});
+	}
+
+	const familyNames = new Set(
+		posts
+			.map((post) => skillMetadataBySlug[post.slug]?.family)
+			.filter((familyName): familyName is string => Boolean(familyName))
+	);
+	for (const familyName of familyNames) {
+		urls.push({
+			loc: `${BASE_URL}/skills/family/${getFamilyId(familyName)}`,
+			lastmod: SKILL_GALLERY_LASTMOD,
+			changefreq: 'weekly',
+			priority: '0.7'
+		});
+	}
+
+	const publishedSlugs = new Set(posts.map((post) => post.slug));
+	for (const pack of packDefinitions) {
+		if (!pack.slugs.some((slug) => publishedSlugs.has(slug))) continue;
+		urls.push({
+			loc: `${BASE_URL}/skills/path/${pack.id}`,
+			lastmod: SKILL_GALLERY_LASTMOD,
+			changefreq: 'monthly',
+			priority: '0.7'
+		});
+	}
+
+	return urls;
+}
+
 function generateSitemapXml(urls: SitemapUrl[]): string {
 	const xmlHeader = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
@@ -472,6 +548,7 @@ function generateSitemap(): void {
 		const staticUrlCount = allUrls.length;
 		let docUrlCount = 0;
 		let blogUrlCount = 0;
+		let skillGalleryUrlCount = 0;
 
 		if (docsIndex) {
 			const docUrls = generateDocUrls(docsIndex);
@@ -491,9 +568,12 @@ function generateSitemap(): void {
 		// Add dynamic blog URLs if blog context is available
 		if (blogContext) {
 			const blogUrls = generateBlogUrls(blogContext);
-			allUrls = allUrls.concat(blogUrls);
+			const skillGalleryUrls = generateSkillGalleryUrls(blogContext);
+			allUrls = allUrls.concat(blogUrls, skillGalleryUrls);
 			blogUrlCount = blogUrls.length;
+			skillGalleryUrlCount = skillGalleryUrls.length;
 			console.log(`📝 Added ${blogUrls.length} blog URLs to sitemap`);
+			console.log(`🧠 Added ${skillGalleryUrls.length} skill gallery URLs to sitemap`);
 		} else {
 			console.log('📝 No blog context found, using static URLs only');
 		}
@@ -517,6 +597,7 @@ function generateSitemap(): void {
 		console.log(`  🔗 Total URLs: ${allUrls.length}`);
 		console.log(`  📄 Static pages: ${staticUrlCount}`);
 		console.log(`  📚 Docs URLs: ${docUrlCount}`);
+		console.log(`  🧠 Skill gallery URLs: ${skillGalleryUrlCount}`);
 
 		if (blogContext) {
 			console.log(`  📝 Blog URLs: ${blogUrlCount}`);

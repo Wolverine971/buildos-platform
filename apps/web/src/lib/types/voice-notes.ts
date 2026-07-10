@@ -43,3 +43,15 @@ export type VoiceNotePlaybackResponse = {
 	url: string;
 	expiresAt: string;
 };
+
+/**
+ * Stable ordering for the voice notes within a single group: by segment index,
+ * then by creation time as a tiebreak. Used by both the live voice controller
+ * and the restored-session grouping so the two paths never drift.
+ */
+export function compareVoiceNotesInGroup(a: VoiceNote, b: VoiceNote): number {
+	const aIndex = a.segment_index ?? 0;
+	const bIndex = b.segment_index ?? 0;
+	if (aIndex !== bIndex) return aIndex - bIndex;
+	return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+}

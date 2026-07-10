@@ -36,6 +36,7 @@
 		getAgentFilePath,
 		getDisplayTitle,
 		getDomainPath,
+		getFallbackUseCases,
 		getNumericStat,
 		getOutputShapes,
 		getPackPath,
@@ -43,6 +44,7 @@
 		getSkillPath,
 		getSkillPromise,
 		getTryInBuildOsPath,
+		getTryPackInBuildOsPath,
 		humanize
 	} from '$lib/skills/skill-gallery';
 	import type { PageData } from './$types';
@@ -188,11 +190,11 @@
 					<div class="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
 						{#if startSkill}
 							<a
-								href={getTryInBuildOsPath(startSkill)}
+								href={getTryPackInBuildOsPath(pack)}
 								class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-accent bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								<PlayCircle class="h-4 w-4" />
-								Try first stage
+								Try {pack.kind.toLowerCase()} in BuildOS
 							</a>
 							<a
 								href={getSkillPath(startSkill)}
@@ -235,7 +237,7 @@
 		</div>
 	</header>
 
-	<main class="mx-auto max-w-7xl px-2 py-8 sm:px-4 sm:py-10 lg:px-6">
+	<div class="mx-auto max-w-7xl px-2 py-8 sm:px-4 sm:py-10 lg:px-6">
 		<div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
 			<section aria-labelledby="path-stages">
 				<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -249,6 +251,20 @@
 						Each stage is a full skill page for users and a portable SKILL.md for
 						agents.
 					</p>
+				</div>
+
+				<div
+					class="mb-5 rounded-lg border border-border bg-card p-4 shadow-ink tx tx-grid tx-weak"
+				>
+					<p class="micro-label text-accent">Example Prompt</p>
+					<p class="mt-2 text-sm leading-6 text-foreground">{pack.tryPrompt}</p>
+					<a
+						href={getTryPackInBuildOsPath(pack)}
+						class="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					>
+						<PlayCircle class="h-4 w-4" />
+						Launch the full path
+					</a>
 				</div>
 
 				<ol class="space-y-4">
@@ -273,6 +289,12 @@
 										</h3>
 										<p class="mt-2 text-sm leading-6 text-muted-foreground">
 											{getSkillPromise(skill, post)}
+										</p>
+										<p class="mt-2 text-xs leading-5 text-muted-foreground">
+											<span class="font-semibold text-foreground"
+												>Use when:</span
+											>
+											{getFallbackUseCases(skill)[0]}
 										</p>
 									</div>
 									<span
@@ -352,6 +374,26 @@
 							</li>
 						{/each}
 					</ol>
+				</section>
+
+				<section
+					aria-labelledby="path-handoffs"
+					class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-thread tx-weak"
+				>
+					<div class="flex items-center gap-2">
+						<GitBranch class="h-4 w-4 shrink-0 text-accent" />
+						<h2 id="path-handoffs" class="text-lg font-semibold text-foreground">
+							Handoff Rules
+						</h2>
+					</div>
+					<ul class="mt-4 space-y-2">
+						{#each pack.handoff as rule}
+							<li class="flex gap-2 text-sm leading-6 text-muted-foreground">
+								<CheckCircle2 class="mt-1 h-4 w-4 shrink-0 text-success" />
+								<span>{rule}</span>
+							</li>
+						{/each}
+					</ul>
 				</section>
 
 				{#if data.domains.length}
@@ -455,5 +497,5 @@
 				</section>
 			</aside>
 		</div>
-	</main>
+	</div>
 </div>

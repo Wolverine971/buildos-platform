@@ -22,7 +22,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { resolveLinkedEntitiesGeneric } from '../../../shared/entity-linked-helpers';
 import { logOntologyApiError } from '../../../shared/error-logging';
 
-export const GET: RequestHandler = async ({ params, locals }) => {
+export const GET: RequestHandler = async ({ params, locals, url }) => {
 	const session = await locals.safeGetSession();
 	if (!session?.user) {
 		return ApiResponse.unauthorized('Authentication required');
@@ -30,6 +30,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 	const supabase = locals.supabase;
 	const planId = params.id;
+	const includeLinkedEntities = url.searchParams.get('include_linked') !== 'false';
 
 	try {
 		// Phase 1: Parallelize initial queries
@@ -122,14 +123,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		// Phase 2: Fetch linked entities (can run after auth is verified)
-		const linkedEntities = await resolveLinkedEntitiesGeneric(supabase, planId, 'plan');
+		const linkedEntities = includeLinkedEntities
+			? await resolveLinkedEntitiesGeneric(supabase, planId, 'plan')
+			: null;
 
 		// Extract project data and include project name in response
 		const { project, ...planData } = plan;
 
 		return ApiResponse.success({
 			plan: { ...planData, project: { name: project.name } },
-			linkedEntities
+			...(linkedEntities ? { linkedEntities } : {})
 		});
 	} catch (error) {
 		console.error('[Plan Full GET] Error fetching plan data:', error);

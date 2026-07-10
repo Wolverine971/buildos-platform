@@ -1,5 +1,6 @@
 ---
 name: LinkedIn Company Page Growth
+catalog_line: 'Grow a LinkedIn company page: audits, content systems, advocacy, comment motion, measurement.'
 description: Root skill for growing LinkedIn company pages with Page audits, content systems, employee and SME advocacy, comment/community motion, paid assist, current resource and SME research, experiments, and measurement. Use when the user asks how to grow a LinkedIn company account or Company Page, increase followers, reach, engagement, leads, or qualified visibility, diagnose low LinkedIn Page performance, create a LinkedIn content calendar, or find tactical LinkedIn growth resources.
 skill_type: strategy # procedure | reference | strategy | resource | policy | orchestration
 altitude: domain # task | domain | meta

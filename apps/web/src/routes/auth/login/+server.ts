@@ -169,7 +169,8 @@ export const POST: RequestHandler = async (event) => {
 		return ApiResponse.success(
 			{
 				user: data.user,
-				redirectTo: '/?auth_success=true&message=' + encodeURIComponent('Welcome back!')
+				redirectTo:
+					'/dashboard?auth_success=true&message=' + encodeURIComponent('Welcome back!')
 			},
 			'Logged in successfully',
 			undefined,

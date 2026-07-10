@@ -135,7 +135,7 @@
 			// State classes - clean borders
 			error
 				? 'border-destructive focus:ring-destructive'
-				: 'border-border focus:border-accent',
+				: 'border-border-strong focus:border-accent',
 
 			// Background - clean card
 			'bg-card',

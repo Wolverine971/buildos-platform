@@ -16,6 +16,7 @@
 		RefreshCcw,
 		Share2,
 		Sparkles,
+		Sun,
 		Target,
 		AlertTriangle,
 		CheckCircle2,
@@ -37,6 +38,8 @@
 	import PullToRefresh from '$lib/components/pwa/PullToRefresh.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { createDashboardPerformanceTracker } from '$lib/utils/dashboard-performance';
+	import { buildProjectEntityOpenHref } from '$lib/components/project/project-page-interactions';
+	import { preloadProjectEntityModal } from '$lib/components/project/project-entity-modal-loader';
 
 	type User = {
 		id: string;
@@ -291,7 +294,7 @@
 				due_at: t.due_at,
 				updated_at: t.updated_at,
 				action_label: t.action_label,
-				href: `/projects/${t.project_id}/tasks/${t.id}`
+				href: buildProjectEntityOpenHref(t.project_id, 'task', t.id)
 			});
 		}
 
@@ -305,7 +308,7 @@
 				state_key: d.state_key,
 				updated_at: d.updated_at,
 				action_label: d.action_label,
-				href: `/projects/${d.project_id}`
+				href: buildProjectEntityOpenHref(d.project_id, 'document', d.id)
 			});
 		}
 
@@ -320,7 +323,7 @@
 				target_date: g.target_date,
 				updated_at: g.updated_at,
 				action_label: g.action_label,
-				href: `/projects/${g.project_id}`
+				href: buildProjectEntityOpenHref(g.project_id, 'goal', g.id)
 			});
 		}
 
@@ -415,6 +418,15 @@
 	function handleDashboardAnchorClick(event: MouseEvent, href: string) {
 		if (!isPrimaryNavigationClick(event)) return;
 		setPendingNavigation(href);
+	}
+
+	function preloadActivityDestination(kind: ActivityItem['kind']) {
+		void Promise.all([
+			import('$lib/components/project/ProjectModalsHost.svelte'),
+			preloadProjectEntityModal(kind)
+		]).catch((error) => {
+			console.warn('[Dashboard] Failed to preload entity modal:', error);
+		});
 	}
 
 	async function gotoWithPending(href: string, options?: GotoOptions) {
@@ -913,6 +925,17 @@
 					<Button
 						variant="outline"
 						size="sm"
+						onclick={() => gotoWithPending('/today')}
+						class="shrink-0 px-2.5 sm:px-3 {dashboardLinkClass('/today')}"
+						aria-label="Open today view"
+						title="Today"
+					>
+						<Sun class="h-3.5 w-3.5 sm:mr-1.5" />
+						<span class="hidden sm:inline">Today</span>
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
 						onclick={openCalendarDashboard}
 						disabled={isOpeningCalendar}
 						class="shrink-0 px-2.5 sm:px-3"
@@ -1122,9 +1145,9 @@
 			{/if}
 
 			<!-- Active Projects -->
-			<section>
-				<div class="flex items-center justify-between mb-2">
-					<h2 class="text-sm sm:text-base font-semibold text-foreground">
+			<section class="min-w-0">
+				<div class="flex min-w-0 items-center justify-between gap-2 mb-2">
+					<h2 class="min-w-0 truncate text-sm sm:text-base font-semibold text-foreground">
 						{projectSectionTitle}
 					</h2>
 					{#if !hasNoProjects}
@@ -1132,7 +1155,7 @@
 							href="/projects"
 							onclick={(event) => handleDashboardAnchorClick(event, '/projects')}
 							aria-busy={isPendingNavigation('/projects')}
-							class="text-sm text-muted-foreground hover:text-accent transition-colors {dashboardLinkClass(
+							class="shrink-0 text-sm text-muted-foreground hover:text-accent transition-colors {dashboardLinkClass(
 								'/projects'
 							)}"
 						>
@@ -1190,7 +1213,7 @@
 							No active projects right now. Showing your most recent projects.
 						</div>
 					{/if}
-					<div class="grid gap-2 sm:gap-3 lg:grid-cols-2">
+					<div class="grid min-w-0 grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-2">
 						{#each projectsToDisplay as project (project.id)}
 							{@const overdueBatch = overdueBatchByProjectId.get(project.id)}
 							{@const projectHref = resolveProjectHref(project)}
@@ -1198,20 +1221,22 @@
 								href={projectHref}
 								onclick={(event) => handleProjectCardClick(event, project)}
 								aria-busy={isPendingNavigation(projectHref)}
-								class="group relative block wt-paper px-3 py-2.5
+								class="group relative block w-full min-w-0 wt-paper px-3 py-2.5
 								hover:border-accent/40 transition-colors pressable
 								focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {dashboardLinkClass(
 									projectHref
 								)}"
 							>
-								<div class="flex items-center justify-between gap-2">
-									<div class="flex items-center gap-2 min-w-0">
+								<div class="flex min-w-0 items-center justify-between gap-2">
+									<div class="flex min-w-0 flex-1 items-center gap-2">
 										<FolderKanban
 											class="h-3.5 w-3.5 shrink-0 {project.is_shared
 												? 'text-accent'
 												: 'text-muted-foreground'}"
 										/>
-										<p class="text-sm font-semibold text-foreground truncate">
+										<p
+											class="min-w-0 flex-1 truncate text-sm font-semibold text-foreground"
+										>
 											{project.name}
 										</p>
 										{#if project.is_shared}
@@ -1237,11 +1262,11 @@
 											{formatRelativeTime(project.updated_at)}
 										</span>
 										<ArrowRight
-											class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+											class="hidden h-3 w-3 text-accent opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none sm:block"
 										/>
 									</div>
 								</div>
-								<div class="mt-0.5 flex items-center gap-2 pl-[22px]">
+								<div class="mt-0.5 flex min-w-0 items-center gap-2 pl-[22px]">
 									<p
 										class="min-w-0 flex-1 truncate text-[11px] text-muted-foreground"
 									>
@@ -1263,10 +1288,12 @@
 
 			<!-- Shared With Me (projects not already in active list) -->
 			{#if sharedNotActive.length > 0 && !showingFallbackProjects}
-				<section>
-					<div class="flex items-center justify-between mb-2">
-						<div class="flex items-center gap-2">
-							<h2 class="text-sm sm:text-base font-semibold text-foreground">
+				<section class="min-w-0">
+					<div class="flex min-w-0 items-center justify-between gap-2 mb-2">
+						<div class="flex min-w-0 items-center gap-2">
+							<h2
+								class="min-w-0 truncate text-sm sm:text-base font-semibold text-foreground"
+							>
 								Shared with me
 							</h2>
 							<span
@@ -1279,7 +1306,7 @@
 							href="/projects"
 							onclick={(event) => handleDashboardAnchorClick(event, '/projects')}
 							aria-busy={isPendingNavigation('/projects')}
-							class="text-sm text-muted-foreground hover:text-accent transition-colors {dashboardLinkClass(
+							class="shrink-0 text-sm text-muted-foreground hover:text-accent transition-colors {dashboardLinkClass(
 								'/projects'
 							)}"
 						>
@@ -1287,7 +1314,7 @@
 						</a>
 					</div>
 
-					<div class="grid gap-2 sm:gap-3 lg:grid-cols-2">
+					<div class="grid min-w-0 grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-2">
 						{#each sharedNotActive as project (project.id)}
 							{@const overdueBatch = overdueBatchByProjectId.get(project.id)}
 							{@const projectHref = resolveProjectHref(project)}
@@ -1295,16 +1322,18 @@
 								href={projectHref}
 								onclick={(event) => handleProjectCardClick(event, project)}
 								aria-busy={isPendingNavigation(projectHref)}
-								class="group relative block wt-paper px-3 py-2.5
+								class="group relative block w-full min-w-0 wt-paper px-3 py-2.5
 								hover:border-accent/40 transition-colors pressable
 								focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {dashboardLinkClass(
 									projectHref
 								)}"
 							>
-								<div class="flex items-center justify-between gap-2">
-									<div class="flex items-center gap-2 min-w-0">
+								<div class="flex min-w-0 items-center justify-between gap-2">
+									<div class="flex min-w-0 flex-1 items-center gap-2">
 										<FolderKanban class="h-3.5 w-3.5 text-accent shrink-0" />
-										<p class="text-sm font-semibold text-foreground truncate">
+										<p
+											class="min-w-0 flex-1 truncate text-sm font-semibold text-foreground"
+										>
 											{project.name}
 										</p>
 										<span
@@ -1320,11 +1349,11 @@
 											{formatRelativeTime(project.updated_at)}
 										</span>
 										<ArrowRight
-											class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+											class="hidden h-3 w-3 text-accent opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none sm:block"
 										/>
 									</div>
 								</div>
-								<div class="mt-0.5 flex items-center gap-2 pl-[22px]">
+								<div class="mt-0.5 flex min-w-0 items-center gap-2 pl-[22px]">
 									<p
 										class="min-w-0 flex-1 truncate text-[11px] text-muted-foreground"
 									>
@@ -1345,9 +1374,9 @@
 			{/if}
 
 			<!-- Recent Activity + Recent Chats side by side on desktop -->
-			<div class="grid gap-3 lg:grid-cols-3">
+			<div class="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-3">
 				<!-- Unified Activity Feed (2/3 width on desktop) -->
-				<section class="lg:col-span-2">
+				<section class="min-w-0 lg:col-span-2">
 					<h2 class="text-sm sm:text-base font-semibold text-foreground mb-2">
 						Recent activity
 					</h2>
@@ -1357,14 +1386,16 @@
 							<p class="text-sm text-muted-foreground">No recent activity yet.</p>
 						</div>
 					{:else}
-						<div class="wt-paper divide-y divide-border overflow-hidden">
+						<div class="wt-paper min-w-0 divide-y divide-border overflow-hidden">
 							{#each unifiedFeed as item (item.kind + '-' + item.id)}
 								<a
 									href={item.href}
+									onpointerenter={() => preloadActivityDestination(item.kind)}
+									onfocus={() => preloadActivityDestination(item.kind)}
 									onclick={(event) =>
 										handleDashboardAnchorClick(event, item.href)}
 									aria-busy={isPendingNavigation(item.href)}
-									class="group flex items-start gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {dashboardLinkClass(
+									class="group flex min-w-0 items-start gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {dashboardLinkClass(
 										item.href
 									)}"
 								>
@@ -1379,8 +1410,10 @@
 									</div>
 
 									<div class="min-w-0 flex-1">
-										<div class="flex items-center gap-2">
-											<p class="text-sm font-medium text-foreground truncate">
+										<div class="flex min-w-0 items-center gap-2">
+											<p
+												class="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
+											>
 												{item.title}
 											</p>
 											{#if item.kind === 'task'}
@@ -1393,7 +1426,9 @@
 												</span>
 											{/if}
 										</div>
-										<div class="flex items-center gap-1.5 mt-0.5">
+										<div
+											class="mt-0.5 flex min-w-0 items-center gap-1.5 overflow-hidden"
+										>
 											<span
 												class="text-[11px] font-medium {item.action_label ===
 												'Created'
@@ -1404,22 +1439,39 @@
 												>{item.action_label} {item.kind}</span
 											>
 											<span class="text-[11px] text-muted-foreground">·</span>
-											<span class="text-[11px] text-muted-foreground truncate"
+											<span
+												class="min-w-0 flex-1 truncate text-[11px] text-muted-foreground"
 												>{item.project_name}</span
 											>
 											{#if item.kind === 'task' && item.due_at}
-												<span class="text-[11px] text-muted-foreground"
+												<span
+													class="hidden shrink-0 text-[11px] text-muted-foreground sm:inline"
 													>· due {formatDueDate(item.due_at)}</span
 												>
 											{/if}
 											{#if item.kind === 'goal' && item.target_date}
-												<span class="text-[11px] text-muted-foreground"
+												<span
+													class="hidden shrink-0 text-[11px] text-muted-foreground sm:inline"
 													>· target {formatDueDate(
 														item.target_date
 													)}</span
 												>
 											{/if}
 										</div>
+										{#if item.kind === 'task' && item.due_at}
+											<p
+												class="mt-0.5 text-[11px] text-muted-foreground sm:hidden"
+											>
+												Due {formatDueDate(item.due_at)}
+											</p>
+										{/if}
+										{#if item.kind === 'goal' && item.target_date}
+											<p
+												class="mt-0.5 text-[11px] text-muted-foreground sm:hidden"
+											>
+												Target {formatDueDate(item.target_date)}
+											</p>
+										{/if}
 									</div>
 
 									<div class="flex items-center gap-1 shrink-0">
@@ -1429,7 +1481,7 @@
 											{formatRelativeTime(item.updated_at)}
 										</span>
 										<ArrowRight
-											class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+											class="hidden h-3 w-3 text-accent opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none sm:block"
 										/>
 									</div>
 								</a>
@@ -1439,9 +1491,11 @@
 				</section>
 
 				<!-- Recent Chats (1/3 width on desktop) -->
-				<section>
-					<div class="flex items-center justify-between mb-2">
-						<h2 class="text-sm sm:text-base font-semibold text-foreground">
+				<section class="min-w-0">
+					<div class="flex min-w-0 items-center justify-between gap-2 mb-2">
+						<h2
+							class="min-w-0 truncate text-sm sm:text-base font-semibold text-foreground"
+						>
 							Recent chats
 						</h2>
 						<a
@@ -1449,7 +1503,7 @@
 							onclick={(event) =>
 								handleDashboardAnchorClick(event, '/history?type=chats')}
 							aria-busy={isPendingNavigation('/history?type=chats')}
-							class="text-sm text-muted-foreground hover:text-accent transition-colors {dashboardLinkClass(
+							class="shrink-0 text-sm text-muted-foreground hover:text-accent transition-colors {dashboardLinkClass(
 								'/history?type=chats'
 							)}"
 						>
@@ -1462,23 +1516,23 @@
 							<p class="text-sm text-muted-foreground">No recent chats.</p>
 						</div>
 					{:else}
-						<div class="wt-paper divide-y divide-border overflow-hidden">
+						<div class="wt-paper min-w-0 divide-y divide-border overflow-hidden">
 							{#each recentChats as session (session.id)}
 								{@const chatHref = `/history?type=chats&id=${session.id}&itemType=chat_session`}
 								<a
 									href={chatHref}
 									onclick={(event) => handleDashboardAnchorClick(event, chatHref)}
 									aria-busy={isPendingNavigation(chatHref)}
-									class="group block px-3 py-2.5 hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {dashboardLinkClass(
+									class="group block min-w-0 px-3 py-2.5 hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {dashboardLinkClass(
 										chatHref
 									)}"
 								>
-									<div class="flex items-start justify-between gap-2">
-										<div class="flex items-start gap-2 min-w-0">
+									<div class="flex min-w-0 items-start justify-between gap-2">
+										<div class="flex min-w-0 flex-1 items-start gap-2">
 											<MessageSquare
 												class="h-3.5 w-3.5 text-accent shrink-0 mt-0.5"
 											/>
-											<div class="min-w-0">
+											<div class="min-w-0 flex-1">
 												<p
 													class="text-sm font-medium text-foreground truncate"
 												>
@@ -1502,7 +1556,7 @@
 												{formatRelativeTime(session.last_activity_at)}
 											</span>
 											<ArrowRight
-												class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+												class="hidden h-3 w-3 text-accent opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none sm:block"
 											/>
 										</div>
 									</div>

@@ -1,5 +1,6 @@
 ---
 name: Lead List Research
+catalog_line: 'Build and refine qualified B2B lead lists: ICP patterns, fit scoring, enrichment, list cleanup.'
 description: >-
     Build and refine qualified B2B lead lists with an agent in the loop. Use when sourcing
     candidate accounts, turning closed-won customers into an ICP search pattern, scoring

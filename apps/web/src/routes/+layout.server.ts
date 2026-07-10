@@ -147,7 +147,7 @@ export const load: LayoutServerLoad = async ({
 	const nowMs = Date.now();
 	const routePath = url.pathname;
 	const shouldLoadOnboardingProgress =
-		!completedOnboarding && (routePath === '/' || routePath.startsWith('/onboarding'));
+		!completedOnboarding && (routePath === '/dashboard' || routePath.startsWith('/onboarding'));
 	const shouldLoadBillingContext = stripeEnabled && !routePath.startsWith('/auth');
 
 	const webhookThrottleKey = `${user.id}:${url.origin}`;

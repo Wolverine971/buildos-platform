@@ -44,6 +44,7 @@
 		projectId: string;
 		/** Pre-loaded linked entities from parent /full endpoint - skips initial fetch */
 		initialLinkedEntities?: LinkedEntitiesResult;
+		onLoaded?: (linkedEntities: LinkedEntitiesResult) => void;
 		onEntityClick?: (kind: EntityKind, id: string) => void;
 		onLinksChanged?: () => void;
 		allowedEntityTypes?: EntityKind[];
@@ -58,6 +59,7 @@
 		sourceKind,
 		projectId,
 		initialLinkedEntities,
+		onLoaded,
 		onEntityClick,
 		onLinksChanged,
 		allowedEntityTypes,
@@ -208,6 +210,7 @@
 				includeAvailable: false
 			});
 			linkedEntities = result.linkedEntities;
+			onLoaded?.(result.linkedEntities);
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to load linked entities';
 			error = message;

@@ -1,5 +1,6 @@
 ---
 name: Nonfiction Writing From Lived Conviction
+catalog_line: 'Write personal essays and posts from lived experience; make generic drafts specific and voiced.'
 description: >-
     Write creative nonfiction that shows a real mind at work on lived experience. Use when
     drafting a personal essay or blog post from the user's own experience, making a generic
