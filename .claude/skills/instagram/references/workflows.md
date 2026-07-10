@@ -1,3 +1,4 @@
+<!-- .claude/skills/instagram/references/workflows.md -->
 # Instagram — Detailed Workflows
 
 Step-by-step browser flows for Instagram. Load this file when SKILL.md points you here.
@@ -127,6 +128,19 @@ When Chrome lands on the logged-out account picker but the target handle is visi
 Known 2026-05-20 pattern: the picker-click workaround restored `@djwayne3`. For BuildOS posting, `/instagram-reply` should click the `build.os` row from the same picker screen, then verify `build.os` before posting or reading DMs.
 
 If the handle appears in the picker but protected routes redirect to `/accounts/login/`, the account is listed but has no valid session cookie. Stop and require DJ to log in manually; do not attempt password entry.
+
+## 8.5 Read-only data pulls that beat clicking (proven 2026-07-10)
+
+**Comment walks via the page-context API.** The reels viewer treats scroll as next-video, making DOM comment walks flaky. Instead, from any instagram.com tab (authenticated session), run in page context via javascript_tool:
+
+1. Convert shortcode → media_id (base64url digits): `let id=0n; for(const c of SHORTCODE){ id = id*64n + BigInt('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'.indexOf(c)); }`
+2. `fetch('/api/v1/media/'+id+'/comments/?can_support_threading=true&permalink_enabled=false', {headers:{'x-ig-app-id':'936619743392459'}, credentials:'include'})` — returns ~5 comments/page with `comment_like_count`, `child_comment_count`, user objects; paginate with `next_min_id` (`&min_id=...`), ~900ms between pages.
+
+Read-only GET, equivalent to viewing the thread. Same pattern works for hashtags: `/api/v1/tags/web_info/?tag_name=X` (Top section only — Recent is no longer returned on web).
+
+**Freshness sweeps without a session.** `curl -s -H "x-ig-app-id: 936619743392459" "https://i.instagram.com/api/v1/users/web_profile_info/?username=X"` from the CLI returns follower count + last 12 timeline posts (timestamps, comment/like counts, captions, `pinned_for_users`). Space requests ~2.5s. Used by every warmup for the 14-account sweep.
+
+**Caveat — collab posts are invisible to `web_profile_info`.** A collab post lives on the ORIGINATOR's timeline only; the co-author's API timeline drops it even while it's live (2026-07-10: @leaturnerholt's `DakdqjjgNJl` "vanished" — it was an @iconicwealthforwomen-owned collab). Before declaring a queued post deleted, open the permalink in-app.
 
 ## 9. Selector cheat-sheet
 

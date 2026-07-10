@@ -4,6 +4,8 @@
 	import { browserPushService } from '$lib/services/browser-push.service';
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
+	import SEOHead from '$lib/components/SEOHead.svelte';
+	import { SITE_URL } from '$lib/constants/seo';
 	import { AlertCircle, ArrowRight, Bell, CheckCircle2, Mail, UserPlus } from 'lucide-svelte';
 
 	let { data } = $props();
@@ -40,6 +42,22 @@
 	let loginUrl = $derived(`/auth/login?redirect=${encodeURIComponent(authRedirect)}`);
 	let registerUrl = $derived(`/auth/register?redirect=${encodeURIComponent(authRedirect)}`);
 	let logoutUrl = $derived(`/auth/logout?redirect=${encodeURIComponent(loginUrl)}`);
+	let inviteProjectName = $derived(
+		typeof invite?.project_name === 'string' && invite.project_name.trim()
+			? invite.project_name.trim()
+			: null
+	);
+	let inviteTitle = $derived(
+		inviteProjectName
+			? `${inviteProjectName} | BuildOS Project Invite`
+			: 'Project Invite | BuildOS'
+	);
+	let inviteDescription = $derived(
+		inviteProjectName
+			? `You've been invited to collaborate on ${inviteProjectName} in BuildOS.`
+			: "You've been invited to collaborate on a project in BuildOS."
+	);
+	let inviteCanonical = $derived(`${SITE_URL}${authRedirect}`);
 
 	async function updateNotificationPreferences(
 		updates: Record<string, unknown>,
@@ -242,9 +260,12 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Project Invite | BuildOS</title>
-</svelte:head>
+<SEOHead
+	title={inviteTitle}
+	description={inviteDescription}
+	canonical={inviteCanonical}
+	noindex={true}
+/>
 
 <div class="min-h-screen bg-background flex items-center justify-center px-4 py-8">
 	<div class="w-full max-w-sm">

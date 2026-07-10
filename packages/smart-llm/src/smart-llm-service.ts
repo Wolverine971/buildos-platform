@@ -53,7 +53,6 @@ import {
 } from './response-parsing';
 import { ToolCallAssembler, resolveToolCallAssemblerProfile } from './tool-call-assembler';
 import {
-	buildTranscriptionVocabulary,
 	coerceAudioInput,
 	encodeAudioToBase64,
 	getAudioFormatForInput,
@@ -116,6 +115,7 @@ const DEFAULT_MOONSHOT_MODEL_MAP: Record<string, string> = {
 };
 const MOONSHOT_REASONING_CONTENT_FALLBACK = '[reasoning omitted]';
 const OPENROUTER_TOOL_STREAM_REASONING = { effort: 'low', exclude: false } as const;
+const OPENROUTER_TRANSCRIPTION_API_URL = 'https://openrouter.ai/api/v1/audio/transcriptions';
 const CANONICAL_MODEL_ALIASES: Record<string, string> = {
 	'kimi-k2.7-code': KIMI_CODING_MODEL,
 	'kimi-k2-7-code': KIMI_CODING_MODEL,
@@ -1587,7 +1587,7 @@ export class SmartLLMService {
 	}
 
 	// ============================================
-	// TRANSCRIPTION METHODS (OPENROUTER AUDIO INPUT)
+	// TRANSCRIPTION METHODS (OPENROUTER SPEECH-TO-TEXT API)
 	// ============================================
 
 	async transcribeAudio(options: TranscriptionOptions): Promise<TranscriptionResult> {
@@ -1606,14 +1606,9 @@ export class SmartLLMService {
 			throw new Error('OpenRouter transcription models not configured');
 		}
 
-		const vocabularyPrompt = buildTranscriptionVocabulary(options.vocabularyTerms);
 		const audioInput = coerceAudioInput(options.audio, options.audioFile);
 		const audioFormat = getAudioFormatForInput(audioInput);
 		const base64Audio = await encodeAudioToBase64(audioInput);
-
-		const systemPrompt =
-			'You are a transcription engine. Return only the transcript text. Do not add labels, timestamps, or commentary.';
-		const userPrompt = `Transcribe the following audio. Use these vocabulary terms if they appear: ${vocabularyPrompt}.`;
 
 		let lastError: Error | null = null;
 
@@ -1625,46 +1620,17 @@ export class SmartLLMService {
 						await sleep(delay);
 					}
 
-					const response = await this.openRouterClient.callOpenRouterAudio({
+					const response = await this.openRouterClient.callOpenRouterTranscription({
 						model,
-						messages: [
-							{ role: 'system', content: systemPrompt },
-							{
-								role: 'user',
-								content: [
-									{ type: 'text', text: userPrompt },
-									{
-										type: 'input_audio',
-										input_audio: {
-											data: base64Audio,
-											format: audioFormat
-										}
-									}
-								]
-							}
-						],
+						inputAudio: {
+							data: base64Audio,
+							format: audioFormat
+						},
 						temperature: 0,
-						max_tokens: 4096,
 						timeoutMs
 					});
 
-					if (!response.choices || response.choices.length === 0) {
-						throw new Error('OpenRouter returned empty choices array');
-					}
-
-					const choice = response.choices[0];
-					const content = extractTextFromChoice(choice);
-					if (!content || content.trim().length === 0) {
-						throw buildOpenRouterEmptyContentError({
-							operation: 'transcribeAudio',
-							requestedModel: model,
-							response,
-							choice,
-							extractedText: content
-						});
-					}
-
-					const transcript = content.trim();
+					const transcript = response.text?.trim();
 					if (!transcript) {
 						throw new Error('OpenRouter returned empty transcript');
 					}
@@ -1675,7 +1641,7 @@ export class SmartLLMService {
 						audioDuration: null,
 						model: response.model || model,
 						service: 'openrouter',
-						requestId: response.id
+						requestId: response.requestId
 					};
 				} catch (error) {
 					lastError = error as Error;
@@ -1697,7 +1663,7 @@ export class SmartLLMService {
 
 			await this.errorLogger.logAPIError(
 				lastError || new Error('OpenRouter transcription failed'),
-				this.apiUrl,
+				OPENROUTER_TRANSCRIPTION_API_URL,
 				'POST',
 				options.userId,
 				{

@@ -38,6 +38,7 @@ export type RuntimeSkillPreviewMetadata = {
 	description: string;
 	domainId: string;
 	family: string;
+	familyStart?: boolean;
 	outputShapes: string[];
 	workflow: string[];
 	useCases: string[];
@@ -56,6 +57,7 @@ export type RuntimeSkillGalleryPreview = {
 	skill_type?: string;
 	domain_id: string;
 	family: string;
+	family_start?: boolean;
 	output_shapes: string[];
 	workflow: string[];
 	use_cases: string[];

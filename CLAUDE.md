@@ -12,8 +12,8 @@ pnpm install
 
 # Development
 pnpm dev                          # All apps via Turborepo
-pnpm dev --filter=web             # SvelteKit web app only (localhost:5173)
-pnpm dev --filter=worker          # Worker service only (localhost:3001)
+pnpm dev --filter=@buildos/web    # SvelteKit web app only (localhost:5173)
+pnpm dev --filter=@buildos/worker # Worker service only (localhost:3001)
 
 # Testing
 pnpm test                         # All tests across monorepo
@@ -32,8 +32,8 @@ pnpm pre-push                     # Full validation: typecheck + test + lint + b
 
 # Building
 pnpm build                        # Build all apps
-pnpm build --filter=web           # Build web only
-pnpm build --filter=worker        # Build worker only
+pnpm build --filter=@buildos/web    # Build web only
+pnpm build --filter=@buildos/worker # Build worker only
 
 # Type/schema generation
 pnpm gen:types                    # Generate Supabase types

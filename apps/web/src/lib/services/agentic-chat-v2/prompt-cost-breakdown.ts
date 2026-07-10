@@ -158,7 +158,10 @@ function splitLiteCapabilitiesSection(content: string): {
 	capabilities: string;
 	skillCatalog: string;
 } {
-	const capabilitiesStart = content.indexOf('Capabilities:\n');
+	// WP-5 (2026-07-10): the capability block collapsed from a "Capabilities:"
+	// bullet list to a single "BuildOS runtime capabilities: ..." line followed
+	// by the routing-signals paragraph.
+	const capabilitiesStart = content.indexOf('BuildOS runtime capabilities:');
 	const rootSkillStart = content.indexOf('Root skill catalog');
 	if (capabilitiesStart < 0 || rootSkillStart < 0 || rootSkillStart <= capabilitiesStart) {
 		return { capabilities: '', skillCatalog: '' };

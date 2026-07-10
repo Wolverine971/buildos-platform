@@ -1,6 +1,7 @@
 // apps/worker/src/workers/voice-notes/voiceNoteTranscriptionWorker.ts
 import type { VoiceNoteTranscriptionJobMetadata } from '@buildos/shared-types';
 import { logWorkerError } from '../../lib/errorLogger';
+import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { supabase } from '../../lib/supabase';
 import type { LegacyJob } from '../shared/jobAdapter';
 
@@ -16,29 +17,36 @@ type VoiceNoteRecord = {
 	deleted_at: string | null;
 };
 
-const OPENAI_API_KEY =
-	process.env.OPENAI_API_KEY?.trim() || process.env.PRIVATE_OPENAI_API_KEY?.trim();
-// const TRANSCRIPTION_MODEL = process.env.TRANSCRIPTION_MODEL || 'gpt-4o-transcribe';
-// NOTE: Testing the cheaper model to reduce transcription costs.
-const TRANSCRIPTION_MODEL = process.env.TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe';
-const OPENAI_TRANSCRIBE_URL = 'https://api.openai.com/v1/audio/transcriptions';
+const OPENROUTER_API_KEY =
+	process.env.PRIVATE_OPENROUTER_API_KEY?.trim() || process.env.OPENROUTER_API_KEY?.trim();
+const DEFAULT_TRANSCRIPTION_MODEL = 'openai/gpt-4o-mini-transcribe';
+const TRANSCRIPTION_MODEL =
+	process.env.TRANSCRIPTION_OPENROUTER_MODEL?.trim() || DEFAULT_TRANSCRIPTION_MODEL;
+const TRANSCRIPTION_FALLBACK_MODELS = (process.env.TRANSCRIPTION_OPENROUTER_FALLBACK_MODELS || '')
+	.split(',')
+	.map((model) => model.trim())
+	.filter(Boolean);
 
 const BASE_VOCABULARY = 'BuildOS, ontology, daily brief, phase, project context';
-
-function buildFilename(storagePath: string, mimeType: string | null): string {
-	const basename = storagePath.split('/').pop();
-	if (basename) return basename;
-
-	if (mimeType?.includes('ogg')) return 'voice-note.ogg';
-	if (mimeType?.includes('mpeg') || mimeType?.includes('mp3')) return 'voice-note.mp3';
-	if (mimeType?.includes('wav')) return 'voice-note.wav';
-	if (mimeType?.includes('mp4') || mimeType?.includes('aac')) return 'voice-note.m4a';
-	return 'voice-note.webm';
-}
 
 function normalizeMimeType(mimeType: string | null): string {
 	if (!mimeType) return 'audio/webm';
 	return mimeType.split(';')[0]?.trim().toLowerCase() || 'audio/webm';
+}
+
+function getAudioFormat(mimeType: string): string {
+	const formats: Record<string, string> = {
+		'audio/webm': 'webm',
+		'audio/ogg': 'ogg',
+		'audio/wav': 'wav',
+		'audio/mp4': 'm4a',
+		'audio/mpeg': 'mp3',
+		'audio/mp3': 'mp3',
+		'audio/flac': 'flac',
+		'audio/x-flac': 'flac',
+		'audio/aac': 'm4a'
+	};
+	return formats[mimeType] || 'webm';
 }
 
 export async function processVoiceNoteTranscriptionJob(
@@ -50,12 +58,13 @@ export async function processVoiceNoteTranscriptionJob(
 	let errorType: 'validation_error' | 'database_error' | 'api_error' | 'llm_error' | 'unknown' =
 		'unknown';
 	let transcriptionStartTime: number | null = null;
+	let transcriptionModel = TRANSCRIPTION_MODEL;
 	console.log(`🎙️  Transcribing voice note ${voiceNoteId} for user ${userId}`);
 
 	try {
-		if (!OPENAI_API_KEY) {
+		if (!OPENROUTER_API_KEY) {
 			errorType = 'validation_error';
-			throw new Error('Missing OpenAI API key for voice note transcription');
+			throw new Error('Missing OpenRouter API key for voice note transcription');
 		}
 
 		stage = 'fetch';
@@ -105,46 +114,41 @@ export async function processVoiceNoteTranscriptionJob(
 		}
 
 		const mimeType = normalizeMimeType(voiceNote.mime_type || audioBlob.type);
-		const filename = buildFilename(voiceNote.storage_path, mimeType);
 		const audioBuffer = await audioBlob.arrayBuffer();
-		const audioFile = new Blob([audioBuffer], { type: mimeType });
-
-		const formData = new FormData();
-		formData.append('file', audioFile, filename);
-		formData.append('model', TRANSCRIPTION_MODEL);
-		formData.append('response_format', 'json');
-		formData.append('temperature', '0.2');
-		formData.append('prompt', BASE_VOCABULARY);
+		const models = [TRANSCRIPTION_MODEL, ...TRANSCRIPTION_FALLBACK_MODELS].filter(
+			(model, index, candidates) => candidates.indexOf(model) === index
+		);
 
 		stage = 'transcribe';
 		errorType = 'llm_error';
 		transcriptionStartTime = Date.now();
-		const response = await fetch(OPENAI_TRANSCRIBE_URL, {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${OPENAI_API_KEY}`
-			},
-			body: formData
+		const llmService = new SmartLLMService({
+			apiKey: OPENROUTER_API_KEY,
+			supabase,
+			appName: 'BuildOS Voice Note Transcription'
 		});
-
-		const payload = await response.json().catch(() => ({}));
-		if (!response.ok) {
-			const message =
-				payload?.error?.message || `OpenAI transcription failed (${response.status})`;
-			throw new Error(message);
-		}
-
-		const transcript = typeof payload?.text === 'string' ? payload.text.trim() : '';
+		const transcription = await llmService.transcribeAudio({
+			audio: {
+				kind: 'buffer',
+				data: new Uint8Array(audioBuffer),
+				format: getAudioFormat(mimeType)
+			},
+			userId,
+			vocabularyTerms: BASE_VOCABULARY,
+			models
+		});
+		const transcript = transcription.text.trim();
 		if (!transcript) {
-			throw new Error('No transcript returned from OpenAI');
+			throw new Error('No transcript returned from OpenRouter');
 		}
+		transcriptionModel = transcription.model;
 
 		stage = 'update';
 		errorType = 'database_error';
 		const metadata: Record<string, unknown> = {
 			...(voiceNote.metadata || {}),
 			transcription_source: (voiceNote.metadata as any)?.transcription_source || 'audio',
-			transcription_service: 'openai',
+			transcription_service: 'openrouter',
 			transcription_latency_ms: Date.now() - (transcriptionStartTime ?? Date.now())
 		};
 
@@ -153,7 +157,7 @@ export async function processVoiceNoteTranscriptionJob(
 			.update({
 				transcript,
 				transcription_status: 'complete',
-				transcription_model: TRANSCRIPTION_MODEL,
+				transcription_model: transcriptionModel,
 				transcription_error: null,
 				metadata
 			})
@@ -169,7 +173,7 @@ export async function processVoiceNoteTranscriptionJob(
 		const fallbackMetadata: Record<string, unknown> = {
 			...(voiceNote?.metadata || {}),
 			transcription_source: (voiceNote?.metadata as any)?.transcription_source || 'audio',
-			transcription_service: 'openai'
+			transcription_service: 'openrouter'
 		};
 
 		if (voiceNoteId) {
@@ -177,7 +181,7 @@ export async function processVoiceNoteTranscriptionJob(
 				.from('voice_notes')
 				.update({
 					transcription_status: 'failed',
-					transcription_model: TRANSCRIPTION_MODEL,
+					transcription_model: transcriptionModel,
 					transcription_error: message,
 					metadata: fallbackMetadata
 				})
@@ -189,8 +193,8 @@ export async function processVoiceNoteTranscriptionJob(
 			tableName: 'voice_notes',
 			recordId: voiceNoteId,
 			operationType: 'transcribe_voice_note',
-			llmProvider: 'openai',
-			llmModel: TRANSCRIPTION_MODEL,
+			llmProvider: 'openrouter',
+			llmModel: transcriptionModel,
 			responseTimeMs: transcriptionStartTime
 				? Date.now() - transcriptionStartTime
 				: undefined,

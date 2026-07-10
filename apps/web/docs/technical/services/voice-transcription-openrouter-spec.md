@@ -4,44 +4,44 @@
 
 **Date:** 2026-01-13
 **Author:** Codex (GPT-5)
-**Status:** Draft
+**Status:** Implemented for web on 2026-07-10
 
 ---
 
 ## Executive Summary
 
-Centralize audio transcription in `SmartLLMService` and attempt OpenRouter first via chat-completions audio inputs, with a direct OpenAI transcription fallback and model-level fallbacks. This keeps the existing `/api/transcribe` contract stable while enabling routing and failover.
+Centralize web audio transcription in `SmartLLMService` and send it through OpenRouter's dedicated speech-to-text endpoint. The web route fails closed on OpenRouter and never sends transcription audio to OpenAI directly. The existing `/api/transcribe` response contract remains stable.
 
 ---
 
 ## Current State
 
-- `/api/transcribe` (`apps/web/src/routes/api/transcribe/+server.ts`) uses the OpenAI SDK directly.
-- Background voice note transcription (`apps/worker/src/workers/voice-notes/voiceNoteTranscriptionWorker.ts`) calls OpenAI audio transcription directly.
+- `/api/transcribe` (`apps/web/src/routes/api/transcribe/+server.ts`) uses OpenRouter exclusively.
+- Background voice note transcription (`apps/worker/src/workers/voice-notes/voiceNoteTranscriptionWorker.ts`) uses the same OpenRouter-only shared service.
 - Transcription response fields consumed by the UI: `transcript`, `duration_ms`, `audio_duration`, `transcription_model`, `transcription_service`.
 - Custom vocabulary prompt is supported via `vocabularyTerms` form field.
 
 ---
 
-## Research Findings (OpenRouter Audio Inputs)
+## Research Findings (OpenRouter Speech-to-Text)
 
-OpenRouter supports audio inputs through the chat completions API:
+OpenRouter supports dedicated transcription requests:
 
-- **Endpoint:** `POST https://openrouter.ai/api/v1/chat/completions`
-- **Audio payload:** `messages[].content[]` with `type: "input_audio"`
+- **Endpoint:** `POST https://openrouter.ai/api/v1/audio/transcriptions`
+- **Audio payload:** top-level `input_audio` object
 - **Encoding:** audio must be **base64-encoded**; direct URLs are not supported
 - **Format:** `input_audio.format` must be provided (e.g., `wav`, `mp3`, `m4a`)
-- **Models:** only models that declare audio input support will accept these requests
+- **Models:** only speech-to-text models that support the transcription endpoint will accept these requests
 - **Common formats:** `wav`, `mp3`, `aiff`, `aac`, `ogg`, `flac`, `m4a`, `pcm16`, `pcm24`
 
-This is **not** the OpenAI `/audio/transcriptions` multipart endpoint. For OpenRouter, the transcription task is performed by a chat model that accepts audio input.
+The request is authenticated and billed with `PRIVATE_OPENROUTER_API_KEY`. The default model is `openai/gpt-4o-mini-transcribe`, but the request is sent to OpenRouter rather than OpenAI's API.
 
 ---
 
 ## Goals
 
-- Route transcription through OpenRouter when supported (OpenAI models via OpenRouter).
-- Provide fallback models and provider-level fallback (OpenRouter -> OpenAI direct).
+- Route web transcription through OpenRouter (OpenAI models via OpenRouter).
+- Provide ordered OpenRouter model fallbacks without a direct-provider fallback.
 - Move transcription logic into `apps/web/src/lib/services/smart-llm-service.ts`.
 - Keep API response shape stable for existing UI.
 
@@ -83,10 +83,9 @@ type TranscriptionResult = {
 
 Implementation notes:
 
-- Keep default vocabulary terms: `"BuildOS, brain dump, ontology, daily brief, phase, project context"`.
-- Normalize model ids for OpenAI direct (strip `openai/` prefix).
+- Retain `vocabularyTerms` for API compatibility; OpenRouter's dedicated endpoint does not currently expose a vocabulary prompt field.
 - Retry only on transient errors (timeout, network, 429, 5xx).
-- Use **base64 + JSON** for OpenRouter (`input_audio`) and `FormData` for OpenAI direct.
+- Use **base64 + JSON** for OpenRouter's `input_audio` field.
 
 ---
 
@@ -94,26 +93,20 @@ Implementation notes:
 
 ### Default Model Order (if not overridden)
 
-OpenRouter (audio-input chat models, ordered by quality):
+OpenRouter speech-to-text models:
 
-1. `<audio-capable-model-1>`
-2. `<audio-capable-model-2>`
-
-OpenAI direct (transcription endpoint):
-
-1. `gpt-4o-mini-transcribe` (default, cheaper)
-2. `gpt-4o-transcribe` (higher accuracy)
-3. `whisper-1` (legacy)
+1. `openai/gpt-4o-mini-transcribe` (default)
+2. Values from `TRANSCRIPTION_OPENROUTER_FALLBACK_MODELS` (optional)
 
 ### Provider Order
 
-1. **OpenRouter** (if configured + supported)
-2. **OpenAI direct** (fallback)
+1. **OpenRouter** using its dedicated speech-to-text endpoint
+2. Return an OpenRouter-specific error if all configured models fail
 
 ### Fallback Logic
 
 - **Per-model fallback**: try models in order until success.
-- **Provider fallback**: if OpenRouter returns 404/405/unsupported endpoint, fall back to OpenAI.
+- **Provider behavior**: fail closed on OpenRouter; never send transcription audio to OpenAI directly.
 - **Retry**: exponential backoff per model on retryable errors.
 
 ---
@@ -123,13 +116,8 @@ OpenAI direct (transcription endpoint):
 Add/extend env configuration (defaults shown):
 
 ```
-TRANSCRIPTION_USE_OPENROUTER=false # Feature flag for OpenRouter transcription
-TRANSCRIPTION_OPENROUTER_MODEL=<audio-capable-model>
-TRANSCRIPTION_OPENROUTER_FALLBACK_MODELS=<comma-separated>
-# TRANSCRIPTION_MODEL=gpt-4o-transcribe
-# NOTE: Testing the cheaper model to reduce transcription costs.
-TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
-TRANSCRIPTION_FALLBACK_MODELS=gpt-4o-mini-transcribe,whisper-1
+TRANSCRIPTION_OPENROUTER_MODEL=openai/gpt-4o-mini-transcribe
+TRANSCRIPTION_OPENROUTER_FALLBACK_MODELS=<optional-comma-separated-models>
 TRANSCRIPTION_TIMEOUT_MS=30000
 TRANSCRIPTION_MAX_RETRIES=2
 TRANSCRIPTION_INITIAL_RETRY_DELAY_MS=1000
@@ -137,9 +125,9 @@ TRANSCRIPTION_INITIAL_RETRY_DELAY_MS=1000
 
 Notes:
 
-- When `TRANSCRIPTION_USE_OPENROUTER=true`, OpenRouter is attempted first and falls back to OpenAI direct.
-- OpenRouter models must support **audio input** via chat completions (not transcription endpoint models).
-- `PRIVATE_OPENROUTER_API_KEY` and `PRIVATE_OPENAI_API_KEY` are both required to allow fallback.
+- Transcription always uses OpenRouter's `/api/v1/audio/transcriptions` endpoint.
+- OpenRouter models must support the speech-to-text transcription endpoint.
+- Only `PRIVATE_OPENROUTER_API_KEY` is required for transcription.
 
 ---
 
@@ -157,10 +145,8 @@ Refactor to:
 
 ### 2) Background Transcription (worker)
 
-Optional follow-up:
-
-- Update `apps/worker/src/workers/voice-notes/voiceNoteTranscriptionWorker.ts` to use the same routing logic (likely via a shared helper or duplicated logic).
-- Keep the database metadata in sync with new `transcription_service` values.
+- Uses `SmartLLMService.transcribeAudio(...)` with the same primary and fallback model variables.
+- Stores `transcription_service: 'openrouter'` and the actual model in voice-note metadata.
 
 ---
 
@@ -175,7 +161,7 @@ Optional follow-up:
 ## Testing Plan
 
 - **Manual**: Use `/api/transcribe` with a short audio clip.
-- **Fallback**: Force an invalid OpenRouter model to verify fallback to OpenAI.
+- **Fallback**: Force an invalid primary OpenRouter model and verify the configured OpenRouter model fallback.
 - **Timeout**: Set low `TRANSCRIPTION_TIMEOUT_MS` and verify retry behavior.
 - **UI**: Confirm transcription fields still populate in `TextareaWithVoice`, `CommentTextareaWithVoice`, and `DocumentEditor`.
 
@@ -183,8 +169,7 @@ Optional follow-up:
 
 ## Risks / Open Questions
 
-- **Model selection**: Which OpenRouter models provide the best transcription accuracy with audio input?
-- **Response consistency**: Chat models may add commentary; need a strict transcription prompt and post-processing.
+- **Model selection**: Periodically compare supported OpenRouter speech-to-text models for accuracy and cost.
 - **File size limits**: Determine OpenRouter max request size (may differ from OpenAI).
 - **Data handling**: Confirm OpenRouter data retention / privacy constraints for audio.
 
@@ -192,6 +177,6 @@ Optional follow-up:
 
 ## Recommendations
 
-- Keep OpenAI direct fallback even if OpenRouter is enabled.
-- Add a short-lived circuit breaker if OpenRouter audio is unavailable (avoid repeated 404s).
-- Align worker transcription with web logic once OpenRouter viability is confirmed.
+- Keep transcription fail-closed on OpenRouter to prevent accidental direct OpenAI spend.
+- Consider a short-lived circuit breaker if OpenRouter audio is unavailable.
+- Keep web and worker transcription model configuration aligned.

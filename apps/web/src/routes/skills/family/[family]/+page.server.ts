@@ -11,23 +11,40 @@ import {
 	buildDomainCards,
 	buildPackCards,
 	buildPostBySlug,
+	domainGuides,
+	getFamilyId,
 	groupSkillsByFamily
 } from '$lib/skills/skill-gallery';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const [posts, catalog] = await Promise.all([loadAgentSkillPosts(), loadAgentSkillIndex()]);
-	const family = groupSkillsByFamily(catalog.skills).find((item) => item.id === params.family);
+	const publicFamily = groupSkillsByFamily(catalog.skills).find(
+		(item) => item.id === params.family
+	);
+	const familyPreviews = catalog.previews.filter(
+		(preview) => getFamilyId(preview.family) === params.family
+	);
 
-	if (!family) {
+	if (!publicFamily && !familyPreviews.length) {
 		throw error(404, 'Skill family not found');
 	}
+	const family = publicFamily ?? {
+		id: params.family,
+		name: familyPreviews[0]?.family ?? params.family,
+		skills: []
+	};
 
 	const postBySlug = buildPostBySlug(posts);
-	const startSkill =
+	const publicRootSkill =
 		family.skills.find((skill) => {
 			const post = postBySlug.get(skill.slug);
 			return post ? !resolveRuntimeSkillForPost(post)?.parentId : false;
-		}) ?? family.skills[0];
+		}) ?? null;
+	const preferredStartPreview = familyPreviews.find((preview) => preview.family_start) ?? null;
+	const startPreview =
+		preferredStartPreview ??
+		(publicRootSkill ? null : (familyPreviews.find((preview) => !preview.parent_id) ?? null));
+	const startSkill = startPreview ? null : (publicRootSkill ?? family.skills[0] ?? null);
 	const catalogSkillByRuntimeId = new Map(
 		catalog.skills
 			.filter((skill) => Boolean(skill.runtime_skill_id))
@@ -49,10 +66,24 @@ export const load: PageServerLoad = async ({ params }) => {
 				})) ?? []
 		};
 	});
+	const linkedPreviewIds = new Set(
+		trees.flatMap((tree) =>
+			tree.children.filter((child) => Boolean(child.previewSlug)).map((child) => child.id)
+		)
+	);
+	const standalonePreviews = familyPreviews.filter(
+		(preview) => !linkedPreviewIds.has(preview.runtime_skill_id)
+	);
 	const familySlugs = new Set(family.skills.map((skill) => skill.slug));
 	const domains = buildDomainCards(catalog.skills).filter((domain) =>
 		domain.skills.some((skill) => familySlugs.has(skill.slug))
 	);
+	const previewDomainIds = new Set(familyPreviews.map((preview) => preview.domain_id));
+	for (const domain of domainGuides) {
+		if (!previewDomainIds.has(domain.id) || domains.some((item) => item.id === domain.id))
+			continue;
+		domains.push({ ...domain, skills: [] });
+	}
 	const packs = buildPackCards(catalog.skills).filter((pack) =>
 		pack.skills.some((skill) => familySlugs.has(skill.slug))
 	);
@@ -60,8 +91,11 @@ export const load: PageServerLoad = async ({ params }) => {
 	return {
 		family,
 		startSkill,
+		startPreview,
 		posts,
 		trees,
+		previews: familyPreviews,
+		standalonePreviews,
 		domains,
 		packs,
 		catalogVersion: catalog.version,

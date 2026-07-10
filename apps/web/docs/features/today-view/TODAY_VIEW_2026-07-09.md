@@ -24,6 +24,10 @@ calendar events blended with tasks — where every item is chattable and decidab
   state on undo). Attention lives in two compact chips — pending AI Inbox items (opens
   `DashboardInboxModal`) and overdue count (opens `OverdueTaskTriageModal`) — instead of stacked
   banners.
+- **Open tasks in place** (added 2026-07-10). Every task row has an explicit task-details action
+  that lazy-loads the existing `TaskEditModal`, including timed calendar events backed by a task.
+  The project name is rendered separately as a labeled inline link, so opening the task stays on
+  `/today` while opening its project remains a clear, distinct path.
 - **Quick capture** (added 2026-07-10). A one-line voice-capable composer under the chips
   ("What changed? Brain-dump it — messy is fine."). Enter (or send) opens the agent chat with the
   text auto-sent — no context selector, no second Enter — the agent structures the update into
@@ -44,18 +48,18 @@ calendar events blended with tasks — where every item is chattable and decidab
 
 ## Files
 
-| Piece | Path |
-| --- | --- |
-| Shared types | `apps/web/src/lib/types/today.ts` |
-| Feed assembly (server) | `apps/web/src/lib/server/today-feed.service.ts` |
-| Refresh endpoint | `apps/web/src/routes/api/today/+server.ts` (GET) |
-| Route | `apps/web/src/routes/today/{+page.server.ts,+page.svelte}` |
-| Agenda row | `apps/web/src/lib/components/today/TodayAgendaRow.svelte` |
-| What-changed service | `apps/web/src/lib/server/what-changed.service.ts` |
-| What-changed endpoint | `apps/web/src/routes/api/today/changes/+server.ts` (GET, `since` param) |
-| What-changed UI | `apps/web/src/lib/components/today/WhatChangedSection.svelte` |
+| Piece                   | Path                                                                                         |
+| ----------------------- | -------------------------------------------------------------------------------------------- |
+| Shared types            | `apps/web/src/lib/types/today.ts`                                                            |
+| Feed assembly (server)  | `apps/web/src/lib/server/today-feed.service.ts`                                              |
+| Refresh endpoint        | `apps/web/src/routes/api/today/+server.ts` (GET)                                             |
+| Route                   | `apps/web/src/routes/today/{+page.server.ts,+page.svelte}`                                   |
+| Agenda row              | `apps/web/src/lib/components/today/TodayAgendaRow.svelte`                                    |
+| What-changed service    | `apps/web/src/lib/server/what-changed.service.ts`                                            |
+| What-changed endpoint   | `apps/web/src/routes/api/today/changes/+server.ts` (GET, `since` param)                      |
+| What-changed UI         | `apps/web/src/lib/components/today/WhatChangedSection.svelte`                                |
 | Log enrichment (shared) | `apps/web/src/lib/server/project-logs-enrich.ts` (extracted from the per-project logs route) |
-| Entry points | `Navigation.svelte` navItems (`Today`), `AnalyticsDashboard.svelte` header button |
+| Entry points            | `Navigation.svelte` navItems (`Today`), `AnalyticsDashboard.svelte` header button            |
 
 ## Data notes
 

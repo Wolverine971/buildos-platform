@@ -343,6 +343,385 @@ export const previewSkillMetadataByRuntimeId: Record<string, RuntimeSkillPreview
 			'Turn these replies, objections, and metrics into a concise learning memo.'
 		],
 		lastUpdated: '2026-07-10'
+	},
+	build_quality_ui_ux: {
+		displayTitle: 'Build Quality UI/UX',
+		description:
+			'Route a UI or UX problem to the right review lenses and sequence structure before polish.',
+		domainId: 'product-and-design',
+		family: 'Interface Quality',
+		familyStart: true,
+		outputShapes: ['review routing plan', 'sequenced lens brief', 'evidence-level report'],
+		workflow: [
+			'Classify the surface and the outcome the user needs.',
+			'Choose one primary review lens and at most two secondary lenses.',
+			'Sequence structure, evidence, accessibility, craft, and verification.',
+			'Return the requested audit, redesign, or implementation artifact.'
+		],
+		useCases: [
+			'Choose the right review workflow for a product surface.',
+			'Sequence a multi-lens UI or UX audit.',
+			'Plan a design-quality review without loading every specialist procedure.'
+		],
+		guardrails: [
+			'Do not flatten every interface problem into visual polish.',
+			'Do not load every review lens by default.',
+			'Do not claim rendered behavior was verified from static code alone.'
+		],
+		starterPrompts: [
+			'Route this interface problem to the right review lenses and sequence the work.',
+			'Help me plan a structure-to-polish quality review for this product surface.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	visual_craft_fundamentals: {
+		displayTitle: 'Visual Craft Fundamentals',
+		description:
+			'Turn a functional interface into a more deliberate one using evidence-backed craft techniques.',
+		domainId: 'product-and-design',
+		family: 'Interface Quality',
+		outputShapes: ['visual craft audit', 'ranked token fixes', 'delegated findings'],
+		workflow: [
+			'Confirm the foundational flow and hierarchy already work.',
+			'Check vetted references before proposing a new layout pattern.',
+			'Audit typography, spacing, emphasis, depth, color, and image treatment.',
+			'Rank concrete fixes by severity and perceived polish gain.'
+		],
+		useCases: [
+			'Polish a functional screen that still feels generic.',
+			'Repair common AI-generated interface patterns.',
+			'Turn visual feedback into concrete token-level changes.'
+		],
+		guardrails: [
+			'Do not decorate a broken flow before fixing its foundation.',
+			'Do not produce a finding without specific evidence.',
+			'Do not invent parallel design-token scales or reduce accessibility.'
+		],
+		starterPrompts: [
+			'Audit this working interface for visual craft and rank the five highest-impact fixes.',
+			'Help me remove the generic AI-generated feel from this screen using concrete token changes.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	accessibility_inclusive_ui_review: {
+		displayTitle: 'Accessibility And Inclusive UI Review',
+		description:
+			'Audit a screen and its component patterns for semantic, keyboard, focus, and assistive-technology failures.',
+		domainId: 'product-and-design',
+		family: 'Interface Quality',
+		outputShapes: ['accessibility findings', 'WCAG evidence map', 'primitive fix list'],
+		workflow: [
+			'Run a screen-level accessibility pass on the core flow.',
+			'Run a component-pattern pass on the primitives in use.',
+			'Classify each finding by WCAG criterion, evidence, and severity.',
+			'Prioritize reusable primitive fixes and human-review items.'
+		],
+		useCases: [
+			'Audit a route, form, dialog, menu, table, or custom control.',
+			'Diagnose keyboard, focus, contrast, or screen-reader problems.',
+			'Review a design-system primitive before it propagates.'
+		],
+		guardrails: [
+			'Do not replace semantic HTML with unnecessary ARIA.',
+			'Do not remove visible focus indicators or rely on color alone.',
+			'Do not call a screen accessible; report evidence and remaining judgment.'
+		],
+		starterPrompts: [
+			'Audit this screen for keyboard, focus, semantics, contrast, and dynamic-content risks.',
+			'Review this component primitive and identify the highest-leverage inclusive fix.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	marketing_site_design_review: {
+		displayTitle: 'Marketing Site Design Review',
+		description:
+			'Review a marketing page section by section for offer clarity, proof, trust, and conversion.',
+		domainId: 'product-and-design',
+		family: 'Interface Quality',
+		outputShapes: ['section audit', 'conversion fix list', 'effort consistency score'],
+		workflow: [
+			'Name the page goal, audience, promise, primary action, and proof standard.',
+			'Run the site-wide foundation checks once.',
+			'Review each present section from hero through the tail.',
+			'Rank fixes by conversion impact and delegate out-of-scope findings.'
+		],
+		useCases: [
+			'Audit a homepage, pricing page, comparison page, or launch page.',
+			'Diagnose why a marketing page underperforms despite useful traffic.',
+			'Review one weak section without redesigning the entire site.'
+		],
+		guardrails: [
+			'Do not judge a selling page only as an in-app interface.',
+			'Do not recommend a redesign when section-level fixes are enough.',
+			'Do not fabricate proof, generic taglines, or decorative fixes.'
+		],
+		starterPrompts: [
+			'Audit this marketing page section by section and rank the conversion fixes.',
+			'Review this hero for audience clarity, concrete offer, proof, and primary action.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	information_architecture_review: {
+		displayTitle: 'Information Architecture Review',
+		description:
+			'Map a confusing interface or flow and fix its conceptual model, labels, wayfinding, feedback, and recovery.',
+		domainId: 'product-and-design',
+		family: 'Interface Quality',
+		outputShapes: ['structural map', 'IA findings', 'flow repair plan'],
+		workflow: [
+			'State the user goal and the interface conceptual model.',
+			'Map the primary flow from entry to completion.',
+			'Apply the structure, label, affordance, wayfinding, feedback, and recovery lenses.',
+			'Lead with structural fixes and delegate cosmetic residue.'
+		],
+		useCases: [
+			'Diagnose a flow that looks acceptable but feels confusing.',
+			'Review navigation, labels, affordances, and recovery paths.',
+			'Build a structural map before a redesign begins.'
+		],
+		guardrails: [
+			'Do not start with color or spacing when the conceptual model is broken.',
+			'Do not expose implementation terminology as user-facing structure.',
+			'Do not include findings without specific evidence and a named lens.'
+		],
+		starterPrompts: [
+			'Map this confusing flow and identify the structural fixes before visual polish.',
+			'Audit these labels, affordances, wayfinding, feedback, and recovery paths.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	content_strategy_beyond_blogging: {
+		displayTitle: 'Content Strategy Beyond Blogging',
+		description:
+			'Build a durable content strategy around intent, identity, distribution, and point of view.',
+		domainId: 'marketing-and-content',
+		family: 'Content Craft',
+		familyStart: true,
+		outputShapes: ['content strategy', 'point-of-view map', 'distribution plan'],
+		workflow: [
+			'Name the audience, business intent, and durable point of view.',
+			'Choose the content jobs and formats that support that intent.',
+			'Map distribution before expanding the production calendar.',
+			'Return a focused strategy with explicit exclusions and measures.'
+		],
+		useCases: [
+			'Replace generic blog volume with a focused content system.',
+			'Plan founder-led or agent-assisted publishing around a point of view.',
+			'Choose content formats and distribution based on intent.'
+		],
+		guardrails: [
+			'Do not confuse publishing volume with strategy.',
+			'Do not choose formats before the audience and intent are clear.',
+			'Do not automate away the lived point of view that makes the work distinct.'
+		],
+		starterPrompts: [
+			'Help me build a content strategy around this audience, business intent, and point of view.',
+			'Audit this content plan for generic volume, weak distribution, and missing identity.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	content_creation_pipeline: {
+		displayTitle: 'Content Creation Pipeline',
+		description:
+			'Turn one chosen idea into a ship-ready draft through explicit creative stages and handoffs.',
+		domainId: 'marketing-and-content',
+		family: 'Content Craft',
+		outputShapes: ['ship-ready draft', 'stage handoffs', 'quality checklist'],
+		workflow: [
+			'Confirm the chosen idea, audience, intent, and target medium.',
+			'Choose the right idea-shaping lens before drafting.',
+			'Draft the piece, then reinforce its load-bearing beats.',
+			'Tailor the approved draft to the target medium and run final checks.'
+		],
+		useCases: [
+			'Turn a half-formed idea into a complete post, video, or essay.',
+			'Coordinate idea shaping, drafting, enhancement, and tailoring.',
+			'Repair a creation process that jumps straight from idea to publish.'
+		],
+		guardrails: [
+			'Do not use the pipeline to choose a broad channel strategy.',
+			'Do not run every shaping lens on one idea.',
+			'Do not tailor for a medium before the core draft is approved.'
+		],
+		starterPrompts: [
+			'Take this chosen idea through a structured path to a ship-ready draft.',
+			'Help me identify which creation stage is blocking this piece and continue from there.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	idea_expansion_lens: {
+		displayTitle: 'Idea Expansion Lens',
+		description:
+			'Expand one claim into a labeled set of distinct angles before committing to a draft.',
+		domainId: 'marketing-and-content',
+		family: 'Content Craft',
+		outputShapes: ['angle spread', 'labeled candidates', 'selection brief'],
+		workflow: [
+			'State the original claim and the audience it should serve.',
+			'Generate meaningfully different angles instead of paraphrases.',
+			'Label each angle by its promise, evidence need, and likely format.',
+			'Recommend the strongest path and explain the tradeoff.'
+		],
+		useCases: [
+			'Find new angles around one useful idea.',
+			'Break out of repetitive takes before drafting.',
+			'Compare candidate directions for a post, essay, or video.'
+		],
+		guardrails: [
+			'Do not treat reworded headlines as distinct angles.',
+			'Do not draft the full piece before an angle is selected.',
+			'Do not recommend an angle whose evidence the creator cannot support.'
+		],
+		starterPrompts: [
+			'Expand this idea into distinct, labeled angles and recommend the strongest one.',
+			'Help me find a less obvious path for this claim before I draft it.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	storyboard_journey_lens: {
+		displayTitle: 'Storyboard Journey Lens',
+		description:
+			'Map the audience journey and choose the strongest entry point for a story-driven piece.',
+		domainId: 'marketing-and-content',
+		family: 'Content Craft',
+		outputShapes: ['journey map', 'entry-point options', 'story spine'],
+		workflow: [
+			'Name how the audience arrives and what changes by the end.',
+			'Map the meaningful moments, decisions, and shifts in the journey.',
+			'Generate entry points with different tension and context tradeoffs.',
+			'Select the story spine before handing off to narrative drafting.'
+		],
+		useCases: [
+			'Find the shape of a founder or customer story.',
+			'Choose where to enter a story without overloading the setup.',
+			'Map an experience before writing narrative prose.'
+		],
+		guardrails: [
+			'Do not invent events or emotional stakes.',
+			'Do not confuse a chronological list with a story journey.',
+			'Do not draft the prose before the entry point and change are clear.'
+		],
+		starterPrompts: [
+			'Map the audience journey in this story and recommend the strongest entry point.',
+			'Help me find the story spine inside this sequence of events.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	lived_conviction_lens: {
+		displayTitle: 'Lived Conviction Lens',
+		description:
+			'Find an earned belief in lived experience, the proof behind it, and the bridge to the reader.',
+		domainId: 'marketing-and-content',
+		family: 'Content Craft',
+		outputShapes: ['earned belief', 'proof inventory', 'reader bridge'],
+		workflow: [
+			'Identify the lived experience and the belief it earned.',
+			'Separate observed proof from hindsight or borrowed opinion.',
+			'Name the reader situation where the belief becomes useful.',
+			'Return a defensible angle and bridge for the drafting stage.'
+		],
+		useCases: [
+			'Turn hard-won experience into a useful content angle.',
+			'Find the authority behind a founder opinion.',
+			'Repair a piece that sounds borrowed or generic.'
+		],
+		guardrails: [
+			'Do not manufacture vulnerability or certainty.',
+			'Do not treat an opinion as earned without supporting experience.',
+			'Do not draft the full essay inside the angle-finding step.'
+		],
+		starterPrompts: [
+			'Help me find the earned belief and reader bridge inside this lived experience.',
+			'Audit this opinion and identify what proof would make it genuinely mine.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	framework_extraction_lens: {
+		displayTitle: 'Framework Extraction Lens',
+		description:
+			'Turn a messy practice or example into a named, repeatable framework with transferable principles.',
+		domainId: 'marketing-and-content',
+		family: 'Content Craft',
+		outputShapes: ['named framework', 'principle set', 'teaching outline'],
+		workflow: [
+			'Define the practice, example, or result being examined.',
+			'Separate repeatable moves from context-specific details.',
+			'Name the steps, principles, and boundaries of the framework.',
+			'Return a teaching outline with evidence and failure cases.'
+		],
+		useCases: [
+			'Systematize tacit knowledge into a teachable method.',
+			'Extract transferable principles from a success or failure.',
+			'Create a framework-shaped angle before drafting.'
+		],
+		guardrails: [
+			'Do not force every example into a neat acronym.',
+			'Do not present context-specific luck as a repeatable rule.',
+			'Do not omit the conditions where the framework fails.'
+		],
+		starterPrompts: [
+			'Extract a named, repeatable framework from this messy practice.',
+			'Tear down this example and separate transferable principles from context.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	sensory_double_tap: {
+		displayTitle: 'Sensory Double-Tap',
+		description:
+			'Reinforce the load-bearing beats of an approved draft through a second sensory channel.',
+		domainId: 'marketing-and-content',
+		family: 'Content Craft',
+		outputShapes: ['reinforcement plan', 'visual cues', 'load-bearing beat map'],
+		workflow: [
+			'Confirm the draft spine and target medium are already approved.',
+			'Identify the beats that carry comprehension, proof, or emotion.',
+			'Match each selected beat to a useful visual, demo, diagram, or example.',
+			'Reject additions that decorate without reinforcing meaning.'
+		],
+		useCases: [
+			'Add visuals or demonstrations to an approved draft.',
+			'Make an abstract explanation easier to grasp.',
+			'Plan supporting imagery around the most important beats.'
+		],
+		guardrails: [
+			'Do not use this step to rewrite the core draft or opening hook.',
+			'Do not add visuals that repeat without clarifying or proving.',
+			'Do not propose media the target format cannot carry.'
+		],
+		starterPrompts: [
+			'Identify the load-bearing beats in this approved draft and plan a sensory double-tap.',
+			'Help me choose where a visual, demo, diagram, or concrete example adds real meaning.'
+		],
+		lastUpdated: '2026-07-10'
+	},
+	medium_tailoring: {
+		displayTitle: 'Medium Tailoring',
+		description:
+			'Reshape an approved draft into one target medium’s native form without losing its core claim.',
+		domainId: 'marketing-and-content',
+		family: 'Content Craft',
+		outputShapes: ['platform-native draft', 'format adaptations', 'amplification checklist'],
+		workflow: [
+			'Confirm the approved draft, target medium, audience, and publishing goal.',
+			'Map the medium’s native structure, length, and presentation constraints.',
+			'Reshape the draft while preserving its claim, proof, and payoff.',
+			'Apply medium-specific amplification checks and return the adapted piece.'
+		],
+		useCases: [
+			'Adapt an approved piece for LinkedIn, Instagram, X, YouTube, a blog, or a newsletter.',
+			'Preserve one core idea across different native formats.',
+			'Diagnose why a cross-post feels copied instead of platform-native.'
+		],
+		guardrails: [
+			'Do not use this step to choose the overall channel strategy.',
+			'Do not change the core claim merely to mimic a platform trend.',
+			'Do not tailor an unapproved or structurally incomplete draft.'
+		],
+		starterPrompts: [
+			'Tailor this approved draft to the target medium while preserving its core claim.',
+			'Audit this adaptation and show where it still feels copied instead of platform-native.'
+		],
+		lastUpdated: '2026-07-10'
 	}
 };
 

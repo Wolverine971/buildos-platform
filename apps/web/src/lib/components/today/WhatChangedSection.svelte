@@ -121,7 +121,7 @@
 						<div class="flex items-center justify-between gap-2 mb-1.5 sm:mb-2">
 							<a
 								href={`/projects/${group.projectId}`}
-								class="truncate text-xs sm:text-sm font-semibold text-foreground hover:text-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+								class="min-w-0 truncate text-xs sm:text-sm font-semibold text-foreground hover:text-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
 							>
 								{group.projectName}
 							</a>
@@ -150,7 +150,7 @@
 										/>
 									{/if}
 									<span
-										class="truncate text-[11px] sm:text-xs text-foreground"
+										class="min-w-0 truncate text-[11px] sm:text-xs text-foreground"
 										title={entry.entity_name}
 									>
 										{entry.entity_name}
@@ -164,15 +164,20 @@
 										{/if}
 									</span>
 									<span
-										class="ml-auto flex flex-shrink-0 items-center gap-1 text-[10px] sm:text-[11px] text-muted-foreground"
+										class="ml-auto flex min-w-0 items-center gap-1 text-[10px] sm:text-[11px] text-muted-foreground"
 									>
 										{#if entry.actor_kind === 'agent' || entry.actor_kind === 'external_agent'}
-											<Bot class="h-3 w-3 text-accent/80" />
+											<Bot class="h-3 w-3 flex-shrink-0 text-accent/80" />
 										{:else}
-											<UserIcon class="h-3 w-3 text-muted-foreground/70" />
+											<UserIcon
+												class="h-3 w-3 flex-shrink-0 text-muted-foreground/70"
+											/>
 										{/if}
-										{entry.actor_label}
-										<span class="text-muted-foreground/60"
+										<span
+											class="min-w-0 max-w-20 truncate sm:max-w-40"
+											title={entry.actor_label}>{entry.actor_label}</span
+										>
+										<span class="flex-shrink-0 text-muted-foreground/60"
 											>· {relativeTime(entry.latest_at)}</span
 										>
 									</span>

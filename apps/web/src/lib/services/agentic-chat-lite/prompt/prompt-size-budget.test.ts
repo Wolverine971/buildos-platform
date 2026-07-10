@@ -171,16 +171,17 @@ describe('total assembled prompt size budget', () => {
 		expect(breakdown.system_prompt.chars).toBeGreaterThan(0);
 		expect(breakdown.tool_definitions.chars).toBeGreaterThan(0);
 
-		// Budgets ratcheted 2026-07-10 (prompt audit WP-1..WP-4: index de-dupe,
-		// catalog_line diet, project_create fork, safety/strategy negation
-		// rewrite) from measured canonical values with ~10% headroom:
-		// system_prompt 20,848 chars, provider payload 31,476 chars (~7,869 est
-		// tokens). The 2026-07-09 pre-audit canonical was system_prompt 27,169 /
-		// payload 37,797 (~9,450 est tokens). Real prod turns add live project
-		// data and history on top — these budgets guard the template + tool
-		// schemas, which is the part that drifts silently.
-		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(23_000);
-		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(34_500);
-		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(8_650);
+		// Budgets ratcheted 2026-07-10 (prompt audit WP-1..WP-7: index de-dupe,
+		// catalog_line diet, project_create fork, negation rewrite, vocabulary
+		// diet, final-response contract move, hygiene) from measured canonical
+		// values with ~10% headroom: system_prompt 18,013 chars, provider
+		// payload 28,641 chars (~7,161 est tokens). The 2026-07-09 pre-audit
+		// canonical was system_prompt 27,169 / payload 37,797 (~9,450 est
+		// tokens) — a 34% template cut. Real prod turns add live project data
+		// and history on top — these budgets guard the template + tool schemas,
+		// which is the part that drifts silently.
+		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(20_000);
+		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(31_500);
+		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(7_900);
 	});
 });

@@ -40,6 +40,11 @@
 	import { createDashboardPerformanceTracker } from '$lib/utils/dashboard-performance';
 	import { buildProjectEntityOpenHref } from '$lib/components/project/project-page-interactions';
 	import { preloadProjectEntityModal } from '$lib/components/project/project-entity-modal-loader';
+	import {
+		aiInboxCountStore,
+		loadAiInboxCount,
+		setAiInboxRemainingCount
+	} from '$lib/stores/aiInboxCount.store';
 
 	type User = {
 		id: string;
@@ -71,12 +76,6 @@
 		can_accept?: boolean | null;
 		invited_by_name?: string | null;
 		invited_by_email?: string | null;
-	};
-
-	type DashboardInboxCountPayload = {
-		total?: number;
-		account?: number;
-		by_project?: Record<string, number>;
 	};
 
 	type IdleWindow = Window & {
@@ -153,13 +152,11 @@
 	let overdueProjectBatchError = $state<string | null>(null);
 	let overdueProjectBatchRequestToken = 0;
 	let overdueProjectBatchAbortController: AbortController | null = null;
-	let dashboardInboxCount = $state(0);
-	let dashboardInboxProjectCount = $state(0);
-	let dashboardInboxAccountCount = $state(0);
-	let isLoadingDashboardInboxCount = $state(false);
-	let dashboardInboxCountError = $state<string | null>(null);
-	let dashboardInboxCountRequestToken = 0;
-	let dashboardInboxCountAbortController: AbortController | null = null;
+	let dashboardInboxCount = $derived($aiInboxCountStore.total);
+	let dashboardInboxProjectCount = $derived($aiInboxCountStore.projectCount);
+	let dashboardInboxAccountCount = $derived($aiInboxCountStore.account);
+	let isLoadingDashboardInboxCount = $derived($aiInboxCountStore.loading);
+	let dashboardInboxCountError = $derived($aiInboxCountStore.error);
 	let dashboardModalPreloadStarted = false;
 	const dashboardPerformance = createDashboardPerformanceTracker({ enabled: browser });
 
@@ -510,9 +507,7 @@
 	});
 
 	onDestroy(() => {
-		dashboardInboxCountRequestToken += 1;
 		overdueProjectBatchRequestToken += 1;
-		dashboardInboxCountAbortController?.abort();
 		overdueProjectBatchAbortController?.abort();
 	});
 
@@ -682,40 +677,8 @@
 		void loadDashboardInboxCount();
 	});
 
-	async function loadDashboardInboxCount() {
-		const requestToken = ++dashboardInboxCountRequestToken;
-		dashboardInboxCountAbortController?.abort();
-		const controller = new AbortController();
-		dashboardInboxCountAbortController = controller;
-		isLoadingDashboardInboxCount = true;
-		dashboardInboxCountError = null;
-		try {
-			const response = await fetch('/api/inbox/count?status=pending&limit=1000', {
-				signal: controller.signal
-			});
-			const payload = await response.json();
-			if (requestToken !== dashboardInboxCountRequestToken || controller.signal.aborted) {
-				return;
-			}
-			if (!response.ok || !payload.success) {
-				throw new Error(payload.error || 'Failed to load inbox count');
-			}
-			const data = (payload.data ?? {}) as DashboardInboxCountPayload;
-			dashboardInboxCount = Number(data.total ?? 0);
-			dashboardInboxAccountCount = Number(data.account ?? 0);
-			dashboardInboxProjectCount = Object.keys(data.by_project ?? {}).length;
-		} catch (err) {
-			if (controller.signal.aborted) return;
-			console.error('[Dashboard] Failed to load inbox count:', err);
-			if (requestToken !== dashboardInboxCountRequestToken) return;
-			dashboardInboxCountError =
-				err instanceof Error ? err.message : 'Failed to load inbox count';
-		} finally {
-			if (requestToken === dashboardInboxCountRequestToken) {
-				isLoadingDashboardInboxCount = false;
-				dashboardInboxCountAbortController = null;
-			}
-		}
+	async function loadDashboardInboxCount(force = false) {
+		await loadAiInboxCount({ force });
 	}
 
 	async function openDashboardInbox() {
@@ -741,14 +704,14 @@
 	}) {
 		showDashboardInboxModal = false;
 		if (summary) {
-			dashboardInboxCount = summary.remainingCount;
+			setAiInboxRemainingCount(summary.remainingCount);
 		}
 		if (summary?.hasChanges) {
 			const refreshPromise = refreshHandler
 				? Promise.resolve(refreshHandler())
 				: Promise.resolve();
 			void refreshPromise.finally(() => {
-				if (browser) void loadDashboardInboxCount();
+				if (browser) void loadAiInboxCount({ force: true });
 			});
 		}
 	}
@@ -992,7 +955,7 @@
 					action={dashboardInboxCountError
 						? {
 								label: 'Retry',
-								onClick: loadDashboardInboxCount,
+								onClick: () => loadDashboardInboxCount(true),
 								disabled: isLoadingDashboardInboxCount,
 								tone: 'neutral',
 								showArrow: false

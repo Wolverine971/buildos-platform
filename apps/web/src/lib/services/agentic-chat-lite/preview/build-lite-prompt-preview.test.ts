@@ -108,9 +108,12 @@ describe('buildLitePromptPreview', () => {
 			'focus_purpose',
 			'location_loaded_context',
 			'timeline_recent_activity',
-			'context_inventory_retrieval'
+			'context_inventory_retrieval',
+			'final_response_contract'
 		]);
-		expect(preview.lite.system_prompt).toContain('Prompt variant: lite_seed_v1');
+		// WP-7 (2026-07-10): the variant lives in envelope metadata, not model input.
+		expect(preview.lite.system_prompt).not.toContain('Prompt variant:');
+		expect(preview.lite.system_prompt).toContain('# BuildOS Agentic Chat');
 		expect(preview.lite.context_inventory.dataSummary.arrayCounts.projects).toBe(1);
 		expect(preview.lite.tool_surface_report.toolCount).toBe(2);
 		expect(preview.lite.cost_breakdown.provider_payload_estimate.chars).toBeGreaterThan(

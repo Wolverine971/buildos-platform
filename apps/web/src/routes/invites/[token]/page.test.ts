@@ -30,6 +30,37 @@ vi.mock('$lib/utils/ontology-client-logger', () => ({
 import InviteTokenPage from './+page.svelte';
 
 describe('/invites/[token] page', () => {
+	it('renders project-specific social metadata without allowing invite indexing', () => {
+		render(InviteTokenPage, {
+			props: {
+				data: {
+					status: 'unauthenticated',
+					redirectTo: '/invites/invite-token',
+					invite: {
+						invite_id: 'invite-1',
+						project_name: 'Project Alpha',
+						role_key: 'editor',
+						invited_by_name: 'Owner'
+					}
+				}
+			}
+		});
+
+		expect(document.title).toBe('Project Alpha | BuildOS Project Invite');
+		expect(document.head.querySelector('meta[property="og:title"]')).toHaveAttribute(
+			'content',
+			'Project Alpha | BuildOS Project Invite'
+		);
+		expect(document.head.querySelector('meta[name="twitter:title"]')).toHaveAttribute(
+			'content',
+			'Project Alpha | BuildOS Project Invite'
+		);
+		expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute(
+			'content',
+			'noindex, nofollow'
+		);
+	});
+
 	it('renders login and registration links that preserve the invite token path', () => {
 		render(InviteTokenPage, {
 			props: {

@@ -1,6 +1,6 @@
 // packages/smart-llm/src/openrouter-client.ts
 
-import type { ErrorLogger, OpenRouterResponse } from './types';
+import type { ErrorLogger, OpenRouterResponse, OpenRouterTranscriptionResponse } from './types';
 import { buildOpenRouterChatCompletionBody } from './openrouter-request';
 
 export class OpenRouterClient {
@@ -232,6 +232,86 @@ export class OpenRouterClient {
 			return (await response.json()) as OpenRouterResponse;
 		} catch (error) {
 			if (error instanceof Error && error.name === 'AbortError') {
+				const timeoutError = new Error(
+					`Transcription request timed out after ${params.timeoutMs}ms`
+				) as Error & { name: string };
+				timeoutError.name = 'TranscriptionTimeoutError';
+				throw timeoutError;
+			}
+			throw error;
+		}
+	}
+
+	async callOpenRouterTranscription(params: {
+		model: string;
+		inputAudio: { data: string; format: string };
+		temperature?: number;
+		timeoutMs: number;
+	}): Promise<OpenRouterTranscriptionResponse> {
+		const headers = {
+			Authorization: `Bearer ${this.apiKey}`,
+			'Content-Type': 'application/json',
+			'HTTP-Referer': this.httpReferer,
+			'X-Title': this.appName
+		};
+		const transcriptionUrl = this.apiUrl.replace(
+			/\/chat\/completions\/?$/,
+			'/audio/transcriptions'
+		);
+
+		try {
+			const response = await this.fetchImpl(transcriptionUrl, {
+				method: 'POST',
+				headers,
+				body: JSON.stringify({
+					model: params.model,
+					input_audio: params.inputAudio,
+					...(params.temperature === undefined ? {} : { temperature: params.temperature })
+				}),
+				signal: AbortSignal.timeout(params.timeoutMs)
+			});
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				let parsed: any = null;
+				try {
+					parsed = JSON.parse(errorText);
+				} catch {
+					parsed = null;
+				}
+				const errorObject =
+					parsed?.error && typeof parsed.error === 'object' ? parsed.error : parsed;
+				const message =
+					typeof errorObject?.message === 'string' ? errorObject.message : errorText;
+				const enrichedError = new Error(
+					`OpenRouter transcription API error: ${response.status} - ${message}`
+				) as Error & { status?: number; openrouter?: Record<string, unknown> };
+				enrichedError.status = response.status;
+				enrichedError.openrouter = {
+					httpStatus: response.status,
+					requestId:
+						response.headers.get('x-generation-id') ||
+						response.headers.get('x-request-id') ||
+						null,
+					error: errorObject ?? errorText
+				};
+				throw enrichedError;
+			}
+
+			const data = (await response.json()) as OpenRouterTranscriptionResponse;
+			return {
+				...data,
+				requestId:
+					data.requestId ||
+					response.headers.get('x-generation-id') ||
+					response.headers.get('x-request-id') ||
+					undefined
+			};
+		} catch (error) {
+			if (
+				error instanceof Error &&
+				(error.name === 'AbortError' || error.name === 'TimeoutError')
+			) {
 				const timeoutError = new Error(
 					`Transcription request timed out after ${params.timeoutMs}ms`
 				) as Error & { name: string };

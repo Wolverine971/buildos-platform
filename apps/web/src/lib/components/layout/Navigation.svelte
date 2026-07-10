@@ -22,6 +22,7 @@
 		Moon,
 		Bell,
 		Inbox,
+		Bot,
 		CreditCard
 	} from '$lib/icons/lucide';
 	import { toggleMode } from 'mode-watcher';
@@ -37,7 +38,17 @@
 		AgentBrainDumpContext,
 		DataMutationSummary
 	} from '$lib/components/agent/agent-chat.types';
-	import { activeAgentRunCount } from '$lib/services/agentRunsRealtime.service';
+	import {
+		agentRunNeedsInputCount,
+		agentWorkAttentionCount,
+		workingAgentRunCount
+	} from '$lib/services/agentRunsRealtime.service';
+	import {
+		aiInboxCountStore,
+		loadAiInboxCount,
+		resetAiInboxCount,
+		setAiInboxRemainingCount
+	} from '$lib/stores/aiInboxCount.store';
 
 	type Props = {
 		user: any | null;
@@ -68,6 +79,10 @@
 	let isDark = $state(false);
 	let showChatModal = $state(false);
 	let showWorkPanel = $state(false);
+	let DashboardInboxModal = $state<any>(null);
+	let showAiInboxModal = $state(false);
+	let isOpeningAiInbox = $state(false);
+	let loadedInboxUserId = '';
 	let chatOpenedWithContext = $state<ChatContextType | null>(null);
 	let chatInitialSessionId = $state<string | null>(null);
 	let chatInitialBrainDumpContext = $state<AgentBrainDumpContext | null>(null);
@@ -195,6 +210,24 @@
 	const pendingInviteCount = $derived(pendingInvites.length);
 	const hasPendingInvites = $derived(pendingInviteCount > 0);
 	const showAgentConnectionCta = $derived(Boolean(user) && !hasConnectedAgents);
+	const aiInboxBadgeLabel = $derived(
+		$aiInboxCountStore.total > 99 ? '99+' : String($aiInboxCountStore.total)
+	);
+	const workAriaLabel = $derived.by(() => {
+		if ($agentWorkAttentionCount <= 0) return 'Open Agent Work';
+		const parts: string[] = [];
+		if ($workingAgentRunCount > 0) {
+			parts.push(
+				`${$workingAgentRunCount} agent${$workingAgentRunCount === 1 ? '' : 's'} working`
+			);
+		}
+		if ($agentRunNeedsInputCount > 0) {
+			parts.push(
+				`${$agentRunNeedsInputCount} ${$agentRunNeedsInputCount === 1 ? 'needs' : 'need'} input`
+			);
+		}
+		return `Open Agent Work — ${parts.join(', ')}`;
+	});
 
 	$effect(() => {
 		const path = currentPath;
@@ -251,6 +284,49 @@
 	function closeAllMenus() {
 		showMobileMenu = false;
 		showUserMenu = false;
+	}
+
+	function openAgentWork() {
+		closeAllMenus();
+		showWorkPanel = true;
+	}
+
+	async function loadAiInboxModalComponent() {
+		if (DashboardInboxModal) return DashboardInboxModal;
+		const module = await import('$lib/components/dashboard/DashboardInboxModal.svelte');
+		DashboardInboxModal = module.default;
+		return DashboardInboxModal;
+	}
+
+	function preloadAiInboxModal() {
+		void loadAiInboxModalComponent().catch((error) => {
+			console.warn('[Navigation] Failed to preload AI Inbox:', error);
+		});
+	}
+
+	async function openAiInbox() {
+		if (isOpeningAiInbox) return;
+		closeAllMenus();
+		isOpeningAiInbox = true;
+		try {
+			await loadAiInboxModalComponent();
+			showAiInboxModal = true;
+		} catch (error) {
+			console.error('[Navigation] Failed to open AI Inbox:', error);
+			toastService.error('Failed to open AI Inbox');
+		} finally {
+			isOpeningAiInbox = false;
+		}
+	}
+
+	function handleAiInboxClose(summary?: {
+		hasChanges: boolean;
+		changedCount: number;
+		remainingCount: number;
+	}) {
+		showAiInboxModal = false;
+		if (summary) setAiInboxRemainingCount(summary.remainingCount);
+		if (summary?.hasChanges) void loadAiInboxCount({ force: true });
 	}
 
 	function toggleMobileMenu(e: Event) {
@@ -464,6 +540,15 @@
 		replaceState(`${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`, {});
 	});
 
+	$effect(() => {
+		if (!browser) return;
+		const userId = typeof user?.id === 'string' ? user.id : '';
+		if (userId === loadedInboxUserId) return;
+		loadedInboxUserId = userId;
+		resetAiInboxCount();
+		if (userId) void loadAiInboxCount();
+	});
+
 	function handleChatClose(summary?: DataMutationSummary) {
 		const wasProjectCreate = chatOpenedWithContext === 'project_create';
 		showChatModal = false;
@@ -664,21 +749,50 @@
 						<BriefStatusIndicator />
 					</div>
 
-					<!-- Work Panel (agent runs inbox). Activity badge lives on the chat
-					     launcher; this is the durable inbox access point. -->
+					<!-- Agent Work: persistent run history/control. Kept separate from
+					     AI Inbox, which owns pending mutation reviews. -->
 					<button
 						type="button"
-						onclick={() => (showWorkPanel = true)}
-						class="relative flex h-9 w-9 items-center justify-center rounded-md border bg-card shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent {$activeAgentRunCount >
+						onclick={openAgentWork}
+						class="relative hidden h-9 w-9 items-center justify-center rounded-md border bg-card shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent md:flex {$agentWorkAttentionCount >
 						0
 							? 'border-accent/50 text-accent'
 							: 'border-border text-muted-foreground'}"
-						aria-label={$activeAgentRunCount > 0
-							? `Open Work — ${$activeAgentRunCount} agents working`
-							: 'Open Work'}
-						title="Work — agent runs"
+						aria-label={workAriaLabel}
+						title="Agent Work"
 					>
-						<Inbox class="h-4 w-4" />
+						<Bot class="h-4 w-4" />
+					</button>
+
+					<!-- AI Inbox: the durable queue for proposals and other reviewable changes. -->
+					<button
+						type="button"
+						onclick={openAiInbox}
+						onpointerenter={preloadAiInboxModal}
+						onfocus={preloadAiInboxModal}
+						disabled={isOpeningAiInbox}
+						class="relative flex h-9 w-9 items-center justify-center rounded-md border bg-card shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent disabled:cursor-wait disabled:opacity-70 {$aiInboxCountStore.total >
+						0
+							? 'border-accent/50 text-accent'
+							: 'border-border text-muted-foreground'}"
+						aria-label={$aiInboxCountStore.total > 0
+							? `Open AI Inbox — ${$aiInboxCountStore.total} pending review item${$aiInboxCountStore.total === 1 ? '' : 's'}`
+							: 'Open AI Inbox'}
+						title="AI Inbox"
+					>
+						{#if isOpeningAiInbox}
+							<LoaderCircle class="h-4 w-4 animate-spin motion-reduce:animate-none" />
+						{:else}
+							<Inbox class="h-4 w-4" />
+						{/if}
+						{#if $aiInboxCountStore.total > 0}
+							<span
+								class="pointer-events-none absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-black leading-none text-accent-foreground shadow-ink"
+								aria-hidden="true"
+							>
+								{aiInboxBadgeLabel}
+							</span>
+						{/if}
 					</button>
 
 					<!-- Agent Chat Button -->
@@ -687,8 +801,8 @@
 						size="sm"
 						onclick={handleOpenChat}
 						class={`relative flex items-center gap-2 px-3 h-9 rounded-md font-bold tracking-tight text-xs md:text-sm transition-all duration-200 group pressable border tx tx-grain tx-weak ${showChatModal ? 'text-accent-foreground bg-accent border-accent shadow-ink' : 'text-muted-foreground bg-card border-border hover:border-accent hover:bg-accent/10 hover:text-accent shadow-ink'}`}
-						aria-label={$activeAgentRunCount > 0 && !showChatModal
-							? `Open ${chatLabel}. ${$activeAgentRunCount} agent${$activeAgentRunCount === 1 ? '' : 's'} working in the background`
+						aria-label={$workingAgentRunCount > 0 && !showChatModal
+							? `Open ${chatLabel}. ${$workingAgentRunCount} agent${$workingAgentRunCount === 1 ? '' : 's'} working in the background`
 							: `Open ${chatLabel}`}
 						title={chatLabel}
 						btnType="container"
@@ -743,13 +857,13 @@
 						<!-- "N agents working" badge (Agent Work UI-P4): shown while
 							     background runs are active and the chat is closed. Keep it in
 							     flow so it doesn't clip against the nav edge or neighboring controls. -->
-						{#if $activeAgentRunCount > 0 && !showChatModal}
+						{#if $workingAgentRunCount > 0 && !showChatModal}
 							<span
 								class="pointer-events-none inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-black leading-none text-accent-foreground shadow-ink"
 								aria-hidden="true"
-								title={`${$activeAgentRunCount} agent${$activeAgentRunCount === 1 ? '' : 's'} working in the background`}
+								title={`${$workingAgentRunCount} agent${$workingAgentRunCount === 1 ? '' : 's'} working in the background`}
 							>
-								{$activeAgentRunCount}
+								{$workingAgentRunCount}
 							</span>
 						{/if}
 					</Button>
@@ -1193,6 +1307,22 @@
 							Notifications
 						</a>
 
+						<button
+							type="button"
+							onclick={openAgentWork}
+							class="flex w-full items-center rounded-md px-3 py-1.5 text-base font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+						>
+							<Bot class="mr-3 h-5 w-5" />
+							<span>Agent Work</span>
+							{#if $agentWorkAttentionCount > 0}
+								<span
+									class="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-accent/10 px-1.5 py-0.5 text-[0.65rem] font-bold text-accent"
+								>
+									{$agentWorkAttentionCount}
+								</span>
+							{/if}
+						</button>
+
 						{#if showAgentConnectionCta}
 							<a
 								href="/profile?tab=agent-keys"
@@ -1349,6 +1479,10 @@
 			onClose={handleChatClose}
 		/>
 	{/await}
+{/if}
+
+{#if DashboardInboxModal && showAiInboxModal}
+	<DashboardInboxModal isOpen={showAiInboxModal} onClose={handleAiInboxClose} />
 {/if}
 
 {#if showWorkPanel}

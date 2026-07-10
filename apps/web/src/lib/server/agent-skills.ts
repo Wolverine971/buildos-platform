@@ -163,6 +163,7 @@ export function buildRuntimeSkillGalleryPreview(
 		skill_type: skill.skillType,
 		domain_id: metadata.domainId,
 		family: metadata.family,
+		family_start: metadata.familyStart,
 		output_shapes: metadata.outputShapes,
 		workflow: metadata.workflow,
 		use_cases: metadata.useCases,

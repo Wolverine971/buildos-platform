@@ -1,6 +1,13 @@
 <!-- apps/web/src/lib/components/today/TodayAgendaRow.svelte -->
 <script lang="ts">
-	import { Calendar, Check, ChevronRight, MessageCircle } from '$lib/icons/lucide';
+	import {
+		Calendar,
+		Check,
+		ChevronRight,
+		FolderKanban,
+		MessageCircle,
+		SquarePen
+	} from '$lib/icons/lucide';
 
 	interface Props {
 		kind: 'event' | 'task';
@@ -13,8 +20,10 @@
 		done?: boolean;
 		past?: boolean;
 		current?: boolean;
+		projectName?: string | null;
 		projectHref?: string | null;
 		onChat: () => void;
+		onOpenTask?: (() => void) | null;
 		onToggleDone?: (() => void) | null;
 	}
 
@@ -27,8 +36,10 @@
 		done = false,
 		past = false,
 		current = false,
+		projectName = null,
 		projectHref = null,
 		onChat,
+		onOpenTask = null,
 		onToggleDone = null
 	}: Props = $props();
 </script>
@@ -101,10 +112,28 @@
 						</span>
 					{/if}
 				</div>
-				{#if metaLabel}
-					<p class="truncate text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-						{metaLabel}
-					</p>
+				{#if metaLabel || (projectHref && projectName)}
+					<div
+						class="mt-0.5 flex min-w-0 items-center gap-1.5 text-[10px] text-muted-foreground sm:text-xs"
+					>
+						{#if metaLabel}
+							<span class="min-w-0 truncate">{metaLabel}</span>
+						{/if}
+						{#if projectHref && projectName}
+							{#if metaLabel}<span aria-hidden="true">·</span>{/if}
+							<a
+								href={projectHref}
+								class="inline-flex min-w-0 items-center gap-1 rounded-sm font-medium text-muted-foreground underline decoration-border-strong underline-offset-2 transition-colors hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								title={`Open ${projectName}`}
+								aria-label={`Open project ${projectName}`}
+							>
+								<FolderKanban class="h-3 w-3 shrink-0" />
+								<span class="shrink-0">Project:</span>
+								<span class="truncate">{projectName}</span>
+								<ChevronRight class="h-2.5 w-2.5 shrink-0" />
+							</a>
+						{/if}
+					</div>
 				{/if}
 			</div>
 
@@ -117,14 +146,23 @@
 				>
 					<MessageCircle class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
 				</button>
-				{#if projectHref}
+				{#if onOpenTask}
+					<button
+						onclick={onOpenTask}
+						class="rounded-md border border-accent/30 bg-accent/5 p-1.5 text-accent transition-colors hover:border-accent/50 hover:bg-accent/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-2"
+						title="Open task details"
+						aria-label={`Open task details for "${title}"`}
+					>
+						<SquarePen class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+					</button>
+				{:else if projectHref && !projectName}
 					<a
 						href={projectHref}
 						class="p-1.5 sm:p-2 rounded-md text-muted-foreground hover:text-accent hover:bg-accent/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						title="Open project"
 						aria-label={`Open project for "${title}"`}
 					>
-						<ChevronRight class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+						<FolderKanban class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
 					</a>
 				{/if}
 			</div>

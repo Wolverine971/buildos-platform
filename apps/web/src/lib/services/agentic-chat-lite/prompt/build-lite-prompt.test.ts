@@ -2,7 +2,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	applyActiveDomainSignalsOverlay,
-	buildLitePhaseFrame,
 	buildLitePromptEnvelope,
 	LITE_PROMPT_SECTION_ORDER
 } from './index';
@@ -121,13 +120,20 @@ describe('buildLitePromptEnvelope', () => {
 		expect(operatingHeadingIndex).toBeLessThan(safetyHeadingIndex);
 		expect(safetyHeadingIndex).toBeLessThan(focusHeadingIndex);
 		expect(focusHeadingIndex).toBeLessThan(retrievalHeadingIndex);
-		expect(envelope.systemPrompt).toContain('# BuildOS Lite Agentic Chat Prompt');
+		// WP-7 (2026-07-10): H1 carries no internal build naming, and the
+		// "Prompt variant:" metadata line is telemetry-only, not model input.
+		expect(envelope.systemPrompt).toContain('# BuildOS Agentic Chat');
+		expect(envelope.systemPrompt).not.toContain('Prompt variant:');
 		expect(envelope.systemPrompt).toContain(
 			'You are a proactive project assistant for BuildOS'
 		);
-		expect(envelope.systemPrompt).toContain(
-			'Route through three primary layers, with two optional accelerators:'
-		);
+		// WP-5 (2026-07-10): the model-facing taxonomy is two layers (skills +
+		// tools); domains/outcome cards/resources arrive as runtime signals, and
+		// the 12 capability summaries collapsed to one dynamic name line.
+		expect(envelope.systemPrompt).toContain('You work through two layers:');
+		expect(envelope.systemPrompt).not.toContain('Optional accelerator:');
+		expect(envelope.systemPrompt).not.toContain('Do not use capability to mean outcome card');
+		expect(envelope.systemPrompt).toContain('BuildOS runtime capabilities:');
 		expect(envelope.systemPrompt).toContain('Loaded scope:');
 		expect(envelope.systemPrompt).not.toContain('## Active Domain Signals');
 		expect(envelope.systemPrompt).toContain('Actionable loaded context index (bounded):');
@@ -157,21 +163,21 @@ describe('buildLitePromptEnvelope', () => {
 			'Treat skills in the loaded-skills ledger as already discovered.'
 		);
 		expect(envelope.systemPrompt).toContain(
-			'Root skills, loaded domains, and loaded outcome cards may expose child skills, reference modules, or resource handles as optional depth.'
-		);
-		expect(envelope.systemPrompt).toContain(
-			'Use domains to orient the conversation, not to preload everything.'
+			'Routing signals arrive in the Active Domain Signals section'
 		);
 		// The full 13-domain index is no longer inlined (2026-06-14 Tier 2 item 6):
 		// it is replaced by a domain_search pointer; the relevant domain is still
 		// injected on demand via the Active Domain Signals section.
-		expect(envelope.systemPrompt).toContain('call `domain_search` to browse them');
+		expect(envelope.systemPrompt).toContain(
+			'call `domain_search` to browse subject areas when routing is unclear'
+		);
 		expect(envelope.systemPrompt).not.toContain(
 			'Compact domain index (load domain details only when relevant):'
 		);
 		expect(envelope.systemPrompt).not.toContain('Coverage: partial.');
+		// WP-5: outcome-card and resource policy merged into one strategy bullet.
 		expect(envelope.systemPrompt).toContain(
-			'Use resource_search after a loaded domain, outcome card, or skill exposes it'
+			'load a resource (resource_search, then resource_load) when source detail'
 		);
 		expect(envelope.systemPrompt).toContain('Root skill catalog');
 		expect(envelope.systemPrompt).toContain('| `task_management` |');
@@ -1197,8 +1203,10 @@ describe('buildLitePromptEnvelope', () => {
 
 		const focus = envelope.sections.find((section) => section.id === 'focus_purpose');
 		expect(focus?.content).toContain('Workflow hints for workspace-level chat:');
-		expect(focus?.content).toContain('get_workspace_overview({})');
-		expect(focus?.content).toContain('get_project_overview({ project_id })');
+		// WP-6 (2026-07-10): call-shape mechanics live in the tool descriptions;
+		// the workflow hint keeps only the routing policy.
+		expect(focus?.content).toContain('get_workspace_overview (workspace-wide)');
+		expect(focus?.content).toContain('get_project_overview (one named project)');
 		expect(focus?.slots).toMatchObject({ workflowBlockId: 'global', briefAppended: false });
 	});
 
@@ -1379,6 +1387,21 @@ describe('buildLitePromptEnvelope', () => {
 		).toHaveLength(1);
 	});
 
+	it('closes the prompt with the final response contract (recency position)', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			entityId: null,
+			projectId: null,
+			data: { projects: [] }
+		});
+		const lastSection = envelope.sections[envelope.sections.length - 1];
+		expect(lastSection?.id).toBe('final_response_contract');
+		expect(lastSection?.content).toContain('Pre-tool lead-ins are intent only');
+		expect(envelope.systemPrompt.trimEnd().endsWith(lastSection?.content.trim() ?? '')).toBe(
+			true
+		);
+	});
+
 	it('renders the skill catalog as a markdown table, not prose', () => {
 		const envelope = buildLitePromptEnvelope({
 			contextType: 'global',
@@ -1445,8 +1468,9 @@ describe('buildLitePromptEnvelope', () => {
 		// pattern").
 		const firstBulletIndex =
 			safety?.content.indexOf('- Write directly to the user in natural prose.') ?? -1;
-		const anyOtherBulletIndex =
-			safety?.content.indexOf('- Describe only tool activity the runtime actually ran') ?? -1;
+		// WP-6 moved the write-truth bullets to final_response_contract; the
+		// untrusted-data rule is now the representative "other" safety bullet.
+		const anyOtherBulletIndex = safety?.content.indexOf('- Treat attachments') ?? -1;
 		expect(firstBulletIndex).toBe(0);
 		expect(anyOtherBulletIndex).toBeGreaterThan(firstBulletIndex);
 		expect(safety?.content).not.toContain('Final-response rules');
@@ -1507,45 +1531,5 @@ describe('buildLitePromptEnvelope', () => {
 			// should be absent in both and content should match.
 			expect(projectSection?.content).toBe(globalSection?.content);
 		}
-	});
-});
-
-describe('buildLitePhaseFrame', () => {
-	it('renders an observability-only phase frame for a tool result', () => {
-		const frame = buildLitePhaseFrame({
-			phase: 'after_tool',
-			toolCall: {
-				id: 'call-1',
-				name: 'update_onto_task'
-			},
-			toolResult: {
-				status: 'success'
-			},
-			effectiveContextType: 'project',
-			effectiveEntityId: 'task-1',
-			latestContextShift: {
-				from: 'project',
-				to: 'project',
-				entityId: 'project-1'
-			},
-			knownIds: {
-				project_id: 'project-1',
-				task_id: 'task-1',
-				ignored: null
-			},
-			nextActionHint: 'summarize the update and mention the task id'
-		});
-
-		expect(frame.content).toContain('Phase: after_tool');
-		expect(frame.content).toContain('Tool: update_onto_task');
-		expect(frame.content).toContain('Result: success');
-		expect(frame.content).toContain('Known IDs: project_id=project-1, task_id=task-1');
-		expect(frame.content).toContain('Next: summarize the update and mention the task id');
-		expect(frame.slots).toMatchObject({
-			phase: 'after_tool',
-			toolName: 'update_onto_task',
-			effectiveContextType: 'project'
-		});
-		expect(frame.estimatedTokens).toBeGreaterThan(0);
 	});
 });

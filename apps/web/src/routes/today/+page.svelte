@@ -9,6 +9,7 @@
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import TodayAgendaRow from '$lib/components/today/TodayAgendaRow.svelte';
 	import WhatChangedSection from '$lib/components/today/WhatChangedSection.svelte';
+	import { loadTaskEditModal } from '$lib/components/project/project-entity-modal-loader';
 	import {
 		AlertCircle,
 		Calendar,
@@ -71,6 +72,11 @@
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let OverdueModalComponent = $state<any>(null);
 	let overdueOpen = $state(false);
+	type TaskEditModalLazy =
+		| typeof import('$lib/components/ontology/TaskEditModal.svelte').default
+		| null;
+	let TaskEditModalComponent = $state<TaskEditModalLazy>(null);
+	let selectedTask = $state<TodayTask | null>(null);
 
 	const timezone = $derived(feed?.timezone ?? 'UTC');
 	const dateLabel = $derived(
@@ -130,7 +136,6 @@
 			if (event.all_day) continue;
 			const startMs = new Date(event.start_at).getTime();
 			const endMs = event.end_at ? new Date(event.end_at).getTime() : null;
-			const projectName = projectNameFor(event.project_id);
 			const range = `${fmtTime(event.start_at)}${event.end_at ? ` – ${fmtTime(event.end_at)}` : ''}`;
 			schedule.push({
 				key: `event-${event.calendar_item_id}`,
@@ -139,7 +144,7 @@
 				kind: 'event',
 				title: event.title ?? 'Untitled event',
 				timeLabel: fmtTime(event.start_at),
-				metaLabel: projectName ? `${range} · ${projectName}` : range,
+				metaLabel: range,
 				event,
 				linkedTask: event.task_id ? (taskById.get(event.task_id) ?? null) : null
 			});
@@ -156,7 +161,7 @@
 					kind: 'task',
 					title: task.title,
 					timeLabel: fmtTime(task.due_at),
-					metaLabel: `Due ${fmtTime(task.due_at)} · ${task.project_name}`,
+					metaLabel: `Due ${fmtTime(task.due_at)}`,
 					task
 				});
 			} else if (
@@ -171,7 +176,7 @@
 					kind: 'task',
 					title: task.title,
 					timeLabel: fmtTime(task.start_at),
-					metaLabel: `Starts ${fmtTime(task.start_at)} · ${task.project_name}`,
+					metaLabel: `Starts ${fmtTime(task.start_at)}`,
 					task
 				});
 			} else {
@@ -362,6 +367,25 @@
 			}
 		};
 		chatOpen = true;
+	}
+
+	async function openTask(task: TodayTask) {
+		selectedTask = task;
+		try {
+			TaskEditModalComponent = (await loadTaskEditModal()).default;
+		} catch {
+			selectedTask = null;
+			toastService.error('Could not open the task');
+		}
+	}
+
+	function closeTask() {
+		selectedTask = null;
+	}
+
+	function handleTaskChanged() {
+		void refresh();
+		void loadChanges();
 	}
 
 	async function openEventChat(entry: ScheduleEntry) {
@@ -666,15 +690,25 @@
 										: false}
 								past={entryIsPast(entry)}
 								current={entryIsCurrent(entry)}
+								projectName={entry.task?.project_name ??
+									entry.linkedTask?.project_name ??
+									projectNameFor(entry.event?.project_id ?? null)}
 								projectHref={entry.task
 									? `/projects/${entry.task.project_id}`
-									: entry.event?.project_id
-										? `/projects/${entry.event.project_id}`
-										: null}
+									: entry.linkedTask
+										? `/projects/${entry.linkedTask.project_id}`
+										: entry.event?.project_id
+											? `/projects/${entry.event.project_id}`
+											: null}
 								onChat={() =>
 									entry.kind === 'task' && entry.task
 										? openTaskChat(entry.task)
 										: openEventChat(entry)}
+								onOpenTask={entry.task
+									? () => openTask(entry.task!)
+									: entry.linkedTask
+										? () => openTask(entry.linkedTask!)
+										: null}
 								onToggleDone={entry.task
 									? () => toggleDone(entry.task!)
 									: entry.linkedTask
@@ -710,14 +744,16 @@
 								title={task.title}
 								timeLabel={null}
 								metaLabel={task.bucket === 'due_today'
-									? `Due today · ${task.project_name}`
+									? 'Due today'
 									: task.bucket === 'starts_today'
-										? `Starts today · ${task.project_name}`
-										: task.project_name}
+										? 'Starts today'
+										: null}
 								stateKey={task.state_key}
 								done={doneIds.has(task.id)}
+								projectName={task.project_name}
 								projectHref={`/projects/${task.project_id}`}
 								onChat={() => openTaskChat(task)}
+								onOpenTask={() => openTask(task)}
 								onToggleDone={() => toggleDone(task)}
 							/>
 						{/each}
@@ -768,4 +804,14 @@
 
 {#if OverdueModalComponent}
 	<OverdueModalComponent isOpen={overdueOpen} onClose={handleOverdueClose} />
+{/if}
+
+{#if TaskEditModalComponent && selectedTask}
+	<TaskEditModalComponent
+		taskId={selectedTask.id}
+		projectId={selectedTask.project_id}
+		onClose={closeTask}
+		onUpdated={handleTaskChanged}
+		onDeleted={handleTaskChanged}
+	/>
 {/if}

@@ -45,7 +45,8 @@ export type LitePromptSectionId =
 	| 'project_knowledge_map'
 	| 'timeline_recent_activity'
 	| 'context_inventory_retrieval'
-	| 'tool_surface_dynamic';
+	| 'tool_surface_dynamic'
+	| 'final_response_contract';
 
 export type LitePromptSection = {
 	id: LitePromptSectionId;

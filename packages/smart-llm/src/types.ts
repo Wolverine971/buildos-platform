@@ -149,6 +149,19 @@ export interface TranscriptionResult {
 	requestId?: string;
 }
 
+export interface OpenRouterTranscriptionResponse {
+	text: string;
+	model?: string;
+	requestId?: string;
+	usage?: {
+		cost?: number;
+		input_tokens?: number;
+		output_tokens?: number;
+		seconds?: number;
+		total_tokens?: number;
+	};
+}
+
 export interface OpenRouterResponse {
 	id: string;
 	provider?: string;

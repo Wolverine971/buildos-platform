@@ -206,7 +206,10 @@ describe('buildLiteShadowComparison', () => {
 		expect(comparison.gaps).toContain(
 			'snapshot.context_payload is missing; lite rendered from scope metadata only.'
 		);
-		expect(comparison.lite.system_prompt).toContain('Prompt variant: lite_seed_v1');
+		// WP-7 (2026-07-10): the variant lives in comparison metadata (and the
+		// dev-facing report), not in the model-input system prompt.
+		expect(comparison.lite.system_prompt).not.toContain('Prompt variant:');
+		expect(comparison.lite.system_prompt).toContain('# BuildOS Agentic Chat');
 		expect(comparison.lite.context_inventory.dataSummary.hasData).toBe(false);
 		expect(comparison.context_key_comparison.missing_from_lite).toEqual(['project', 'tasks']);
 	});

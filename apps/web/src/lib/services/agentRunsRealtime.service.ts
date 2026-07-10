@@ -38,10 +38,16 @@ export function isActiveAgentRunStatus(status: AgentRunStatus): boolean {
 	return ACTIVE_STATUSES.has(status);
 }
 
+const WORKING_STATUSES: ReadonlySet<AgentRunStatus> = new Set<AgentRunStatus>([
+	'queued',
+	'running',
+	'paused'
+]);
+
 /** Map of runId → latest run row, for runs the client is currently tracking. */
 export const agentRunsStore = writable<Map<string, AgentRunRow>>(new Map());
 
-/** Count of in-flight runs — drives a future "N agents working" badge. */
+/** All non-terminal runs, including runs waiting for input or proposal review. */
 export const activeAgentRunCount = derived(agentRunsStore, ($runs) => {
 	let count = 0;
 	for (const run of $runs.values()) {
@@ -49,6 +55,30 @@ export const activeAgentRunCount = derived(agentRunsStore, ($runs) => {
 	}
 	return count;
 });
+
+/** Runs that are genuinely executing or paused mid-execution. */
+export const workingAgentRunCount = derived(agentRunsStore, ($runs) => {
+	let count = 0;
+	for (const run of $runs.values()) {
+		if (WORKING_STATUSES.has(run.status)) count += 1;
+	}
+	return count;
+});
+
+/** Runs blocked on an answer; proposal review belongs to AI Inbox instead. */
+export const agentRunNeedsInputCount = derived(agentRunsStore, ($runs) => {
+	let count = 0;
+	for (const run of $runs.values()) {
+		if (run.status === 'needs_input') count += 1;
+	}
+	return count;
+});
+
+/** Work-panel attention count, deliberately excluding proposal-ready reviews. */
+export const agentWorkAttentionCount = derived(
+	[workingAgentRunCount, agentRunNeedsInputCount],
+	([$working, $needsInput]) => $working + $needsInput
+);
 
 const POLL_INTERVAL_MS = 6000;
 // Drop terminal rows the bridge has had time to render, so the store does not

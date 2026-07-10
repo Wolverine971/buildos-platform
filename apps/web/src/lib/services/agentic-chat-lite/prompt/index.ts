@@ -4,8 +4,6 @@ export {
 	buildLitePromptEnvelope,
 	LITE_PROMPT_SECTION_ORDER
 } from './build-lite-prompt';
-export { buildLitePhaseFrame } from './phase-frame';
-export type { LitePhaseFrame, LitePhaseFrameInput } from './phase-frame';
 export type {
 	LitePromptContextInventory,
 	LitePromptDataSummary,

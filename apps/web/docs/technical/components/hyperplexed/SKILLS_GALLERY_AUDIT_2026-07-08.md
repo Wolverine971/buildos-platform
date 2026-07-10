@@ -122,26 +122,37 @@ Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail templat
 ### Shipped
 
 - The runtime catalog now applies an explicit `public | preview | internal` publication model. Published blog-backed skills win, explicitly reviewed runtime metadata creates previews, and every other enabled runtime skill stays internal by default -> P4+P6.
-- Catalog coverage is generated from the enabled runtime registry: 52 total, 8 public, 7 preview, and 37 internal. Tests assert that the buckets sum to the enabled registry and that an unreviewed runtime ID stays internal.
+- Catalog coverage is generated from the enabled runtime registry: 51 core skills plus optional Libri, 8 public, 20 preview, and 23 core internal. Libri raises the enabled/internal totals to 52/24 when active. Tests assert that the buckets sum to the enabled registry and that an unreviewed runtime ID stays internal.
 - Seven Cold Outreach children now have reviewed, user-first preview metadata: Offer Lab, Research Anchors, Outreach Compiler, Taste Review, Deliverability Readiness, Reply OS, and Learning Review.
+- Five Interface Quality workflows now have reviewed preview metadata: Build Quality UI/UX, Visual Craft Fundamentals, Accessibility And Inclusive UI Review, Marketing Site Design Review, and Information Architecture Review.
+- Eight Content Craft workflows now have reviewed preview metadata: Content Strategy Beyond Blogging, Content Creation Pipeline, Idea Expansion Lens, Storyboard Journey Lens, Lived Conviction Lens, Framework Extraction Lens, Sensory Double-Tap, and Medium Tailoring.
 - `/skills/preview/[slug]` exposes only reviewed synopsis fields: promise, use cases, output shapes, workflow, guardrails, starter prompts, eval status, and update date. It deliberately exposes no portable link, internal reference module, repository path, or raw runtime definition -> P4+P6+P8.
 - `/skills` surfaces previews as a separate status, includes them in typed search, and links to preview details and editable Try launches. The status is visually distinct without competing with published featured skills -> P4+P6+P7.
 - `/skills/family/cold-outreach` now links all seven reviewed previews and selects the parent Engagement-First Outreach workflow as the start skill instead of relying on catalog order -> P3+P6+P8.
+- Family routes now support preview roots and standalone reviewed siblings. `/skills/family/interface-quality` selects Build Quality UI/UX as its start preview, then shows one public workflow and five reviewed previews without pretending the unpublished artifacts are portable -> P3+P4+P6+P8.
+- Reviewed metadata can explicitly mark the intended family start. This prevents an unrelated parentless public skill from outranking a broader reviewed router, while preserving the published Cold Outreach root. Standalone preview cards now label `Root workflow` or `Child of …` as quiet hierarchy metadata -> P4+P6+P8.
 - Preview Try launches validate selected starter prompts, pass the runtime skill ID, preserve the reviewed draft through registration, and explicitly pause before external action -> P6+P8+P13.
-- Sitemap generation now includes seven preview routes for 28 dynamic gallery URLs and 128 total URLs.
+- Sitemap generation now includes 20 preview routes for 41 dynamic gallery URLs and 141 total URLs.
 
 ### Verification
 
 - `pnpm exec vitest run src/lib/skills/skill-gallery.test.ts src/lib/server/agent-skills.test.ts` -> 18 tests passed.
 - `pnpm run agent-skills:check` -> 8 public skills, 13 public reference files, 0 errors, 0 warnings.
 - `pnpm run check` -> 0 errors, 0 warnings.
-- `pnpm run gen:sitemap` -> 28 dynamic gallery URLs; 128 total sitemap URLs.
+- `pnpm run gen:sitemap` -> 41 dynamic gallery URLs; 141 total sitemap URLs.
 - Desktop light and dark checks at 1280x720 plus mobile light and dark checks at 390x844 showed no horizontal overflow on the gallery and preview detail surfaces.
-- `/skills` rendered 8 published skills and 7 reviewed previews. Search for `production cost` returned the preview-only Offer Lab result.
+- `/skills` rendered 8 published skills and 20 reviewed previews. Search for `production cost` returned the preview-only Offer Lab result.
 - `/skills/family/cold-outreach` rendered seven preview links, no pending Cold Outreach child, and `/skills/cold-email-engagement-first-outreach` as the root start action.
+- `/skills/family/interface-quality` rendered one public workflow and five standalone previews, used `/skills/preview/build-quality-ui-ux` as the root start action, and narrowed to Information Architecture Review for the preview-only query `wayfinding`.
+- Interface Quality desktop/mobile light/dark checks at 1280x720 and 390x844 showed no horizontal overflow. The reviewed root preview exposed no `/agent-skills/` links.
+- Guest Interface Quality Try preserved the selected prompt, `open=agent-chat`, and `skill=build_quality_ui_ux` through `/auth/register`; the generated editable draft was 309 characters and did not auto-send.
+- `/skills/family/content-craft` rendered three public workflows, two preview roots, and six preview children. The start action resolved to `/skills/preview/content-strategy-beyond-blogging`, not the unrelated parentless Viral Content public skill.
+- Content Craft search for `angle spread` narrowed to Idea Expansion Lens and retained the `Child of Content Creation Pipeline` hierarchy label.
+- Content Craft desktop/mobile light/dark checks at 1280x720 and 390x844 showed no horizontal overflow; the browser console reported no warnings or errors.
+- Guest Content Craft Try preserved the selected prompt, `open=agent-chat`, and `skill=content_strategy_beyond_blogging` through `/auth/register`; the generated editable draft was 332 characters and did not auto-send.
 - Guest preview Try preserved the selected prompt, `open=agent-chat`, and `skill=cold_email_offer_lab` through `/auth/register`; the generated editable draft was 298 characters and did not auto-send.
 
 ### Still Deferred
 
 - Authenticated end-to-end skill and pack launcher smoke with a real signed-in session.
-- Publication review and metadata authoring for the remaining 37 internal runtime skills.
+- Publication review and metadata authoring for the remaining 23 core internal runtime skills, plus optional Libri when enabled.

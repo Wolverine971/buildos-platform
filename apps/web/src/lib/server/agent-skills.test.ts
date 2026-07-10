@@ -58,7 +58,7 @@ describe('public agent skill serving', () => {
 			bundle_zip_url:
 				'https://build-os.com/agent-skills/google-calendar-for-ai-agents-search-before-you-create/bundle.zip'
 		});
-		expect(index.previews).toHaveLength(7);
+		expect(index.previews).toHaveLength(20);
 		expect(
 			index.previews.find((preview) => preview.runtime_skill_id === 'cold_email_offer_lab')
 		).toMatchObject({
@@ -71,14 +71,63 @@ describe('public agent skill serving', () => {
 		});
 		expect(index.coverage).toMatchObject({
 			public_total: 8,
-			preview_total: 7
+			preview_total: 20
 		});
+		expect(index.coverage.internal_total).toBe(index.coverage.runtime_total - 28);
 		expect(index.coverage.runtime_total).toBe(
 			index.coverage.public_total +
 				index.coverage.preview_total +
 				index.coverage.internal_total
 		);
 		expect(index.coverage.internal_total).toBeGreaterThan(0);
+		expect(new Set(index.previews.map((preview) => preview.slug)).size).toBe(
+			index.previews.length
+		);
+		const familyStartPreviews = index.previews.filter((preview) => preview.family_start);
+		const familyStartCounts = new Map<string, number>();
+		for (const preview of familyStartPreviews) {
+			familyStartCounts.set(preview.family, (familyStartCounts.get(preview.family) ?? 0) + 1);
+		}
+		expect(familyStartPreviews.every((preview) => !preview.parent_id)).toBe(true);
+		expect([...familyStartCounts.values()].every((count) => count === 1)).toBe(true);
+		expect(
+			index.previews.find((preview) => preview.runtime_skill_id === 'build_quality_ui_ux')
+		).toMatchObject({
+			publication_status: 'preview',
+			slug: 'build-quality-ui-ux',
+			title: 'Build Quality UI/UX',
+			domain_id: 'product-and-design',
+			family: 'Interface Quality',
+			family_start: true,
+			parent_id: undefined
+		});
+		expect(
+			index.previews.find(
+				(preview) => preview.runtime_skill_id === 'content_strategy_beyond_blogging'
+			)
+		).toMatchObject({
+			family: 'Content Craft',
+			family_start: true,
+			parent_id: undefined
+		});
+		expect(
+			index.previews.find(
+				(preview) => preview.runtime_skill_id === 'content_creation_pipeline'
+			)
+		).toMatchObject({
+			publication_status: 'preview',
+			slug: 'content-creation-pipeline',
+			title: 'Content Creation Pipeline',
+			domain_id: 'marketing-and-content',
+			family: 'Content Craft',
+			parent_id: undefined
+		});
+		expect(
+			index.previews.find((preview) => preview.runtime_skill_id === 'medium_tailoring')
+		).toMatchObject({
+			parent_id: 'content_creation_pipeline',
+			family: 'Content Craft'
+		});
 		expect(JSON.stringify(index.previews)).not.toContain('rawMarkdown');
 		expect(JSON.stringify(index.previews)).not.toContain('referenceModules');
 	});
