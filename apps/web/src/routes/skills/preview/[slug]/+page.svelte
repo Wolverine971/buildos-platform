@@ -1,3 +1,4 @@
+<!-- apps/web/src/routes/skills/preview/[slug]/+page.svelte -->
 <script lang="ts">
 	import {
 		DEFAULT_ORGANIZATION_ID,
@@ -145,8 +146,8 @@
 					<p class="micro-label text-accent">Publication status</p>
 					<p class="mt-2 text-lg font-semibold">Preview, not yet portable</p>
 					<p class="mt-2 text-sm leading-6 text-muted-foreground">
-						This reviewed synopsis can launch an editable workflow draft. The full internal
-						definition and reference files are not published here.
+						This reviewed synopsis can launch an editable workflow draft. The full
+						internal definition and reference files are not published here.
 					</p>
 					<div class="mt-4 border-t border-border pt-4 text-xs text-muted-foreground">
 						Updated {preview.trust.last_updated} · Eval {preview.trust.eval_status}
@@ -164,7 +165,9 @@
 						<Target class="h-4 w-4" />
 						<p class="micro-label">Use Cases</p>
 					</div>
-					<h2 id="preview-use-cases" class="mt-1 text-2xl font-semibold">When to use it</h2>
+					<h2 id="preview-use-cases" class="mt-1 text-2xl font-semibold">
+						When to use it
+					</h2>
 					<div class="mt-5 grid gap-3 md:grid-cols-3">
 						{#each preview.use_cases as useCase}
 							<div class="rounded-lg border border-border bg-card p-4 shadow-ink">
@@ -182,7 +185,9 @@
 					<h2 id="preview-workflow" class="mt-1 text-2xl font-semibold">How it works</h2>
 					<ol class="mt-5 grid gap-3 md:grid-cols-2">
 						{#each preview.workflow as step, index}
-							<li class="flex gap-3 rounded-lg border border-border bg-card p-4 shadow-ink">
+							<li
+								class="flex gap-3 rounded-lg border border-border bg-card p-4 shadow-ink"
+							>
 								<span
 									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-accent bg-accent/10 text-xs font-semibold text-accent"
 									>{index + 1}</span
@@ -195,7 +200,9 @@
 
 				<section aria-labelledby="preview-try" class="border-t border-border pt-8">
 					<p class="micro-label text-accent">Try It</p>
-					<h2 id="preview-try" class="mt-1 text-2xl font-semibold">Start with an editable prompt</h2>
+					<h2 id="preview-try" class="mt-1 text-2xl font-semibold">
+						Start with an editable prompt
+					</h2>
 					<div class="mt-5 space-y-3">
 						{#each preview.starter_prompts as prompt}
 							<div class="rounded-lg border border-border bg-card p-4 shadow-ink">
@@ -227,19 +234,26 @@
 			</div>
 
 			<aside class="space-y-4 lg:sticky lg:top-20">
-				<section class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak">
+				<section
+					class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
+				>
 					<div class="flex items-center gap-2">
 						<ListTree class="h-4 w-4 text-accent" />
 						<h2 class="text-lg font-semibold">Outputs</h2>
 					</div>
 					<div class="mt-4 flex flex-wrap gap-1.5">
 						{#each preview.output_shapes as output}
-							<span class="rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground">{output}</span>
+							<span
+								class="rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground"
+								>{output}</span
+							>
 						{/each}
 					</div>
 				</section>
 
-				<section class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-grain tx-weak">
+				<section
+					class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-grain tx-weak"
+				>
 					<div class="flex items-center gap-2">
 						<ShieldCheck class="h-4 w-4 text-accent" />
 						<h2 class="text-lg font-semibold">Guardrails</h2>

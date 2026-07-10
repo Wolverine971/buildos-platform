@@ -6,6 +6,7 @@
 	import type { PageData } from './$types';
 
 	import Button from '$lib/components/ui/Button.svelte';
+	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import TodayAgendaRow from '$lib/components/today/TodayAgendaRow.svelte';
 	import WhatChangedSection from '$lib/components/today/WhatChangedSection.svelte';
 	import {
@@ -14,6 +15,7 @@
 		Inbox,
 		MessageCircle,
 		RefreshCcw,
+		Send,
 		Sparkles,
 		Sun
 	} from '$lib/icons/lucide';
@@ -55,7 +57,13 @@
 		entityId?: string;
 		focus?: ProjectFocus | null;
 		draft?: string | null;
+		autoSend?: boolean;
 	}>({});
+
+	// Quick capture: "what changed?" text handed to the agent chat, which
+	// structures it into project updates (the receipts section shows the result).
+	let captureText = $state('');
+	let captureVoiceRecording = $state(false);
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let InboxModalComponent = $state<any>(null);
@@ -151,7 +159,11 @@
 					metaLabel: `Due ${fmtTime(task.due_at)} · ${task.project_name}`,
 					task
 				});
-			} else if (task.bucket === 'starts_today' && task.start_at && hasClockTime(task.start_at)) {
+			} else if (
+				task.bucket === 'starts_today' &&
+				task.start_at &&
+				hasClockTime(task.start_at)
+			) {
 				schedule.push({
 					key: `task-${task.id}`,
 					sortMs: new Date(task.start_at).getTime(),
@@ -390,7 +402,8 @@
 		if (agenda.schedule.length > 0) {
 			lines.push('', 'Schedule:');
 			for (const entry of agenda.schedule.slice(0, 14)) {
-				const project = entry.task?.project_name ?? projectNameFor(entry.event?.project_id ?? null);
+				const project =
+					entry.task?.project_name ?? projectNameFor(entry.event?.project_id ?? null);
 				lines.push(
 					`- ${entry.timeLabel}: ${entry.title}${project ? ` (${project})` : ''}${entry.kind === 'task' ? ' [task]' : ''}`
 				);
@@ -404,7 +417,10 @@
 			}
 		}
 		if (feed.overdueCount > 0) {
-			lines.push('', `I also have ${feed.overdueCount} overdue task${feed.overdueCount === 1 ? '' : 's'}.`);
+			lines.push(
+				'',
+				`I also have ${feed.overdueCount} overdue task${feed.overdueCount === 1 ? '' : 's'}.`
+			);
 		}
 		lines.push('', 'Help me review my day and figure out what to focus on.');
 		return lines.join('\n').slice(0, 2300);
@@ -414,6 +430,28 @@
 		await ensureChatModal();
 		chatConfig = { contextType: 'global', draft: buildDayDraft() };
 		chatOpen = true;
+	}
+
+	async function submitCapture() {
+		const text = captureText.trim();
+		if (!text || captureVoiceRecording) return;
+		await ensureChatModal();
+		// 'general' (not 'global') skips the context selector and normalizes to
+		// workspace-wide scope, so the auto-send fires straight into the chat.
+		chatConfig = {
+			contextType: 'general',
+			draft: `Here's a quick update from my day. Figure out which projects and tasks this touches and apply the changes:\n\n${text}`,
+			autoSend: true
+		};
+		chatOpen = true;
+		captureText = '';
+	}
+
+	function handleCaptureKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter' && !event.shiftKey) {
+			event.preventDefault();
+			void submitCapture();
+		}
 	}
 
 	function handleChatClose() {
@@ -527,6 +565,38 @@
 			</div>
 		</header>
 
+		<section class="mt-4 sm:mt-5" aria-label="Quick capture">
+			<div
+				class="wt-ghost border-dashed border-accent/40 p-2 sm:p-2.5 transition-colors focus-within:border-accent"
+				onkeydown={handleCaptureKeydown}
+				role="presentation"
+			>
+				<div class="flex items-end gap-2">
+					<div class="flex-1 min-w-0">
+						<TextareaWithVoice
+							bind:value={captureText}
+							bind:isRecording={captureVoiceRecording}
+							placeholder="What changed? Brain-dump it — messy is fine."
+							rows={1}
+							maxRows={6}
+							autoResize={true}
+							showStatusRow={false}
+							textareaClass="border-0 bg-transparent px-1 py-1 text-xs sm:text-sm shadow-none focus:ring-0"
+						/>
+					</div>
+					<button
+						onclick={submitCapture}
+						disabled={!captureText.trim() || captureVoiceRecording}
+						class="mb-0.5 flex-shrink-0 p-1.5 sm:p-2 rounded-md text-accent hover:bg-accent/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						title="Send update to BuildOS"
+						aria-label="Send update to BuildOS"
+					>
+						<Send class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+					</button>
+				</div>
+			</div>
+		</section>
+
 		{#if changesFeed}
 			<WhatChangedSection feed={changesFeed} />
 		{/if}
@@ -536,9 +606,7 @@
 				<div class="p-1.5 sm:p-2 rounded-md bg-destructive/10">
 					<AlertCircle class="h-4 w-4 text-destructive" />
 				</div>
-				<p class="flex-1 text-xs sm:text-sm text-destructive">
-					Couldn't load your day.
-				</p>
+				<p class="flex-1 text-xs sm:text-sm text-destructive">Couldn't load your day.</p>
 				<Button onclick={refresh} variant="outline" size="sm" loading={refreshing}>
 					Retry
 				</Button>
@@ -588,7 +656,9 @@
 								title={entry.title}
 								timeLabel={entry.timeLabel}
 								metaLabel={entry.metaLabel}
-								stateKey={entry.task?.state_key ?? entry.linkedTask?.state_key ?? null}
+								stateKey={entry.task?.state_key ??
+									entry.linkedTask?.state_key ??
+									null}
 								done={entry.task
 									? doneIds.has(entry.task.id)
 									: entry.linkedTask
@@ -687,6 +757,7 @@
 		entityId={chatConfig.entityId}
 		initialProjectFocus={chatConfig.focus ?? null}
 		initialDraft={chatConfig.draft ?? null}
+		autoSendInitialDraft={chatConfig.autoSend ?? false}
 		onClose={handleChatClose}
 	/>
 {/if}

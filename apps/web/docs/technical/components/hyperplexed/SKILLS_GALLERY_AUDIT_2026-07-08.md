@@ -2,9 +2,9 @@
 
 # Skills Gallery Audit 2026-07-08
 
-Target: `/skills`, `/skills/[slug]`, `/skills/domain/[domain]`, `/skills/path/[path]`, and `/skills/try/[slug]`
+Target: `/skills`, `/skills/[slug]`, `/skills/preview/[slug]`, `/skills/domain/[domain]`, `/skills/family/[family]`, `/skills/path/[path]`, and the skill/path Try launchers
 
-Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail template, Phase 3 domain rabbit-hole routes plus the first BuildOS try launcher, Phase 4 pack/stack path pages, Phase 5 curated metadata registry, Phase 6 generated gallery metadata sync, and Phase 7 production-preview visual verification.
+Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail template, Phase 3 domain rabbit-hole routes plus the first BuildOS try launcher, Phase 4 pack/stack path pages, Phase 5 curated metadata registry, Phase 6 generated gallery metadata sync, Phase 7 production-preview visual verification, and the 2026-07-10 controlled catalog-coverage phase.
 
 ## Regions
 
@@ -18,6 +18,8 @@ Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail templat
 - Domain detail hero, domain search, path steps, skill families, packs, and agent rail
 - Pack/stack path hero, ordered stages, related domains, related paths, and agent rail
 - Try route redirect and chat draft handoff
+- Reviewed runtime preview detail, family-tree, search, and Try surfaces
+- Publication coverage counts and default-internal enforcement
 - Curated gallery metadata registry
 - Generated public catalog and `buildos.yaml` gallery metadata
 - Guest footer resource link
@@ -113,4 +115,33 @@ Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail templat
 ### Still Deferred
 
 - Authenticated end-to-end skill and pack launcher smoke with a real signed-in session.
-- Full public coverage and publication-status metadata for runtime-only skills.
+- Promotion of the remaining reviewed previews and internal runtime skills to full public entries.
+
+## Catalog Coverage Phase — 2026-07-10
+
+### Shipped
+
+- The runtime catalog now applies an explicit `public | preview | internal` publication model. Published blog-backed skills win, explicitly reviewed runtime metadata creates previews, and every other enabled runtime skill stays internal by default -> P4+P6.
+- Catalog coverage is generated from the enabled runtime registry: 52 total, 8 public, 7 preview, and 37 internal. Tests assert that the buckets sum to the enabled registry and that an unreviewed runtime ID stays internal.
+- Seven Cold Outreach children now have reviewed, user-first preview metadata: Offer Lab, Research Anchors, Outreach Compiler, Taste Review, Deliverability Readiness, Reply OS, and Learning Review.
+- `/skills/preview/[slug]` exposes only reviewed synopsis fields: promise, use cases, output shapes, workflow, guardrails, starter prompts, eval status, and update date. It deliberately exposes no portable link, internal reference module, repository path, or raw runtime definition -> P4+P6+P8.
+- `/skills` surfaces previews as a separate status, includes them in typed search, and links to preview details and editable Try launches. The status is visually distinct without competing with published featured skills -> P4+P6+P7.
+- `/skills/family/cold-outreach` now links all seven reviewed previews and selects the parent Engagement-First Outreach workflow as the start skill instead of relying on catalog order -> P3+P6+P8.
+- Preview Try launches validate selected starter prompts, pass the runtime skill ID, preserve the reviewed draft through registration, and explicitly pause before external action -> P6+P8+P13.
+- Sitemap generation now includes seven preview routes for 28 dynamic gallery URLs and 128 total URLs.
+
+### Verification
+
+- `pnpm exec vitest run src/lib/skills/skill-gallery.test.ts src/lib/server/agent-skills.test.ts` -> 18 tests passed.
+- `pnpm run agent-skills:check` -> 8 public skills, 13 public reference files, 0 errors, 0 warnings.
+- `pnpm run check` -> 0 errors, 0 warnings.
+- `pnpm run gen:sitemap` -> 28 dynamic gallery URLs; 128 total sitemap URLs.
+- Desktop light and dark checks at 1280x720 plus mobile light and dark checks at 390x844 showed no horizontal overflow on the gallery and preview detail surfaces.
+- `/skills` rendered 8 published skills and 7 reviewed previews. Search for `production cost` returned the preview-only Offer Lab result.
+- `/skills/family/cold-outreach` rendered seven preview links, no pending Cold Outreach child, and `/skills/cold-email-engagement-first-outreach` as the root start action.
+- Guest preview Try preserved the selected prompt, `open=agent-chat`, and `skill=cold_email_offer_lab` through `/auth/register`; the generated editable draft was 298 characters and did not auto-send.
+
+### Still Deferred
+
+- Authenticated end-to-end skill and pack launcher smoke with a real signed-in session.
+- Publication review and metadata authoring for the remaining 37 internal runtime skills.

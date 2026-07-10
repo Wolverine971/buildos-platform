@@ -522,10 +522,14 @@
 									<Sparkles class="h-4 w-4 shrink-0 text-accent" />
 									<p class="micro-label">Reviewed Preview</p>
 								</div>
-								<h3 class="mt-2 line-clamp-2 text-lg font-semibold group-hover:text-accent">
+								<h3
+									class="mt-2 line-clamp-2 text-lg font-semibold group-hover:text-accent"
+								>
 									{preview.title}
 								</h3>
-								<p class="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
+								<p
+									class="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground"
+								>
 									{preview.description}
 								</p>
 								<p class="mt-auto pt-3 text-2xs font-medium text-muted-foreground">
@@ -706,17 +710,25 @@
 			</section>
 
 			{#if matchingPreviews.length}
-				<section aria-labelledby="runtime-previews" class="mb-10 border-t border-border pt-8">
-					<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+				<section
+					aria-labelledby="runtime-previews"
+					class="mb-10 border-t border-border pt-8"
+				>
+					<div
+						class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"
+					>
 						<div>
 							<p class="micro-label text-accent">Next Phase</p>
-							<h2 id="runtime-previews" class="mt-1 text-2xl font-semibold text-foreground">
+							<h2
+								id="runtime-previews"
+								class="mt-1 text-2xl font-semibold text-foreground"
+							>
 								Reviewed runtime previews
 							</h2>
 						</div>
 						<p class="max-w-xl text-sm leading-6 text-muted-foreground">
-							These safe summaries can start an editable BuildOS workflow. Portable files stay
-							private until each skill completes publication review.
+							These safe summaries can start an editable BuildOS workflow. Portable
+							files stay private until each skill completes publication review.
 						</p>
 					</div>
 
@@ -731,17 +743,25 @@
 									>
 										<Sparkles class="h-4 w-4" />
 									</span>
-									<span class="rounded-full bg-accent/10 px-2 py-1 text-2xs font-semibold text-accent">
+									<span
+										class="rounded-full bg-accent/10 px-2 py-1 text-2xs font-semibold text-accent"
+									>
 										Preview
 									</span>
 								</div>
-								<h3 class="mt-4 line-clamp-2 text-lg font-semibold">{preview.title}</h3>
-								<p class="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
+								<h3 class="mt-4 line-clamp-2 text-lg font-semibold">
+									{preview.title}
+								</h3>
+								<p
+									class="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground"
+								>
 									{preview.description}
 								</p>
 								<div class="mt-4 flex flex-wrap gap-1.5">
 									{#each preview.output_shapes.slice(0, 3) as output}
-										<span class="rounded-full border border-border bg-background px-2 py-1 text-2xs font-medium text-muted-foreground">
+										<span
+											class="rounded-full border border-border bg-background px-2 py-1 text-2xs font-medium text-muted-foreground"
+										>
 											{output}
 										</span>
 									{/each}

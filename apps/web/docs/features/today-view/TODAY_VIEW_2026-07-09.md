@@ -24,6 +24,15 @@ calendar events blended with tasks — where every item is chattable and decidab
   state on undo). Attention lives in two compact chips — pending AI Inbox items (opens
   `DashboardInboxModal`) and overdue count (opens `OverdueTaskTriageModal`) — instead of stacked
   banners.
+- **Quick capture** (added 2026-07-10). A one-line voice-capable composer under the chips
+  ("What changed? Brain-dump it — messy is fine."). Enter (or send) opens the agent chat with the
+  text auto-sent — no context selector, no second Enter — the agent structures the update into
+  project memory, and closing the chat refreshes both the agenda and the receipts below it. Two
+  contracts make this work: `contextType: 'general'` (skips the modal's context selector and
+  normalizes to workspace-wide/global scope downstream) and the new
+  `autoSendInitialDraft` prop on `AgentChatModal` (fires `stream.handleSendMessage()` once, the
+  moment the initialDraft lands in a ready composer). The submitted text gets a one-line
+  instruction preamble so weaker routed models apply changes instead of just chatting.
 - **What changed since you were here** (added 2026-07-10). A receipts section under the header:
   recent mutations across all projects, grouped by project, one collapsed entry per entity
   (latest action + ×N occurrence count), attributed to an actor — You / member name / Agent chat /
@@ -62,10 +71,11 @@ calendar events blended with tasks — where every item is chattable and decidab
 
 ## Deliberate scope cuts (follow-ups)
 
-- **Quick capture / "what changed?" composer** on the page (loop restart).
 - What-changed follow-ups: click-through from a receipt to the entity (currently the group links
   to the project), a per-receipt "chat about this change" action, and folding agent-run
   `entities_touched` / `agent_tool_executions` in for run-level receipts.
+- Quick-capture follow-ups: inline (non-modal) processing state, project-targeting hints
+  ("@project" affordance), and capture history.
 - Server-seeded whole-day chat session (inbox-style seed message instead of a composer draft).
 - Making `/today` the default post-login landing (flip the `/` redirect once it earns it).
 - Task reschedule/push-to-tomorrow action; priority display; multi-day peek.

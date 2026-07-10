@@ -42,11 +42,11 @@ export const load: PageServerLoad = async ({ params }) => {
 		return {
 			skill,
 			children:
-					runtime?.child_skills.map((child) => ({
-						...child,
-						slug: catalogSkillByRuntimeId.get(child.id)?.slug,
-						previewSlug: previewByRuntimeId.get(child.id)?.slug
-					})) ?? []
+				runtime?.child_skills.map((child) => ({
+					...child,
+					slug: catalogSkillByRuntimeId.get(child.id)?.slug,
+					previewSlug: previewByRuntimeId.get(child.id)?.slug
+				})) ?? []
 		};
 	});
 	const familySlugs = new Set(family.skills.map((skill) => skill.slug));

@@ -3,14 +3,18 @@ import { describe, expect, it } from 'vitest';
 import {
 	buildPackCards,
 	buildPackLaunchPrompt,
+	buildPreviewSkillLaunchPrompt,
 	buildSkillLaunchPrompt,
 	getFamilyId,
 	getFamilyPath,
+	getPreviewSearchText,
+	getPreviewSkillPath,
 	getSkillSearchMatches,
 	getTryInBuildOsPath,
 	getTryPackInBuildOsPath,
 	groupSkillsByFamily,
-	type GallerySkill
+	type GallerySkill,
+	type RuntimeSkillGalleryPreview
 } from './skill-gallery';
 
 function gallerySkill(slug: string, overrides: Partial<GallerySkill> = {}): GallerySkill {
@@ -52,6 +56,37 @@ describe('skill gallery discovery helpers', () => {
 		);
 		expect(buildSkillLaunchPrompt(skill, undefined, selectedPrompt)).toContain(
 			`Starting ask: ${selectedPrompt}`
+		);
+	});
+
+	it('builds safe preview paths, search text, and launch drafts', () => {
+		const preview = {
+			publication_status: 'preview',
+			slug: 'cold-email-offer-lab',
+			title: 'Cold Email Offer Lab',
+			description: 'Design a useful artifact offer.',
+			runtime_skill_id: 'cold_email_offer_lab',
+			domain_id: 'sales-and-growth',
+			family: 'Cold Outreach',
+			output_shapes: ['artifact offer'],
+			workflow: ['Choose the smallest useful yes.'],
+			use_cases: ['Repair a meeting-first ask.'],
+			guardrails: ['Do not send automatically.'],
+			starter_prompts: ['Repair this offer.'],
+			trust: {
+				eval_status: 'covered',
+				last_updated: '2026-07-10',
+				safety_notes: ['Editable draft only.']
+			}
+		} satisfies RuntimeSkillGalleryPreview;
+
+		expect(getPreviewSkillPath(preview)).toBe('/skills/preview/cold-email-offer-lab');
+		expect(getPreviewSearchText(preview)).toContain('meeting-first');
+		expect(buildPreviewSkillLaunchPrompt(preview)).toContain(
+			'Starting ask: Repair this offer.'
+		);
+		expect(buildPreviewSkillLaunchPrompt(preview)).toContain(
+			'pause before any external action'
 		);
 	});
 

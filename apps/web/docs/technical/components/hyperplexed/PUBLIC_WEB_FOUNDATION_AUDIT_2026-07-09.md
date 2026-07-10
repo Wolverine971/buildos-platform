@@ -53,6 +53,15 @@ request work rather than a universal server-rendering failure.
    146 KiB to 128 KiB gzip before dynamic imports (102→87 modules, about 12% less JS). The dashboard
    graph remains isolated at approximately 151 KiB gzip. Dashboard motion also gained a
    `prefers-reduced-motion` fallback. → P3+P11+P13
+7. **The mobile homepage laid out and painted all seven sections immediately, statically imported a
+   closed example modal, and eagerly fetched an agent logo more than 5,000px below the first
+   viewport.** **Shipped:** the modal and full public-project preview now share an intent-preloaded
+   dynamic-import path; the logo has explicit lazy/low-priority loading; and the five deep sections
+   use measured desktop/mobile paint containment without removing their SSR content. Containment is
+   applied inside the `#loop` and `#agents` targets so in-page links stay reliable, and initial hash
+   loads are corrected after hydration with an instant, non-animated scroll. Root static JS fell
+   from 127,834 to 123,164 bytes gzip (87→83 modules); initial static CSS fell by about 0.5 KiB gzip.
+   The closed Modal chunk is absent from the initial root graph. → P11+P20+P21
 
 ### Tier 1 — semantics and interaction
 
@@ -82,13 +91,11 @@ request work rather than a universal server-rendering failure.
 
 ## Next implementation sequence
 
-1. **Reduce mobile home cost.** Audit image dimensions/formats, delay below-fold media, apply
-   `content-visibility` where safe, and compare route chunks and Lighthouse after each change.
-2. **Consolidate analytics and consent behavior.** Inventory Vercel analytics, Speed Insights,
+1. **Consolidate analytics and consent behavior.** Inventory Vercel analytics, Speed Insights,
    Meta Pixel, and any duplicate page-view paths; align loading with the desired consent policy.
-3. **Finish dynamic SEO.** Add public skill and published `/p/*` sitemap sources, author-index SEO,
+2. **Finish dynamic SEO.** Add public skill and published `/p/*` sitemap sources, author-index SEO,
    and structured-data tests.
-4. **Run the visual polish pass.** Desktop/mobile and light/dark verification for home, pricing,
+3. **Run the visual polish pass.** Desktop/mobile and light/dark verification for home, pricing,
    about, blogs, and skills; then normalize CTA hierarchy, radius drift, micro-type, and hidden
    product proof using P2/P4/P5/P8/P13.
 
@@ -114,3 +121,23 @@ request work rather than a universal server-rendering failure.
   canonical `https://build-os.com/`, index/follow robots, two JSON-LD blocks, no dashboard content.
 - ✅ Anonymous `/dashboard` verification resolves to
   `/auth/login?redirect=%2Fdashboard`; authenticated root behavior is covered by the server test.
+
+## Mobile homepage performance follow-up — 2026-07-10
+
+- ✅ Initial root JS: 127,834→123,164 bytes gzip and 87→83 static modules. Initial CSS:
+  32,136→31,646 bytes gzip. The Modal chunk/CSS moved behind user intent.
+- ✅ The below-fold OpenClaw image remains undecoded on a fresh 390×844 first viewport and loads
+  only when its section becomes relevant; width/height prevent layout shift.
+- ✅ Five deep sections use measured `content-visibility` containment. Initial document height is
+  9,234px versus the 9,229px baseline, avoiding a meaningful scrollbar/geometry jump.
+- ✅ Example-project activation loads the accessible modal and full public-project fixture; normal
+  `#agents` clicks and direct `/#agents` loads both land with the target at viewport top.
+- ✅ Local production preview verified at 1440×900 and 390×844 in light and dark: one main/one H1,
+  zero horizontal overflow, stable first viewport, and no lost deferred content.
+- ✅ `pnpm --filter @buildos/web check` (0 errors, 0 warnings), lint/guardrails (0 errors; 224
+  repository warnings), Prettier, and the production Vite build pass. The build still reports its
+  existing optional Sharp platform-dependency warning.
+- ✅ Repaired raw comparison notation in two skill eval Markdown fixtures that the Markdown/Svelte
+  pipeline interpreted as invalid element syntax; this was an unrelated production-build blocker.
+- ⬜ Fresh deployed mobile Lighthouse is still required to compare LCP/TBT/request totals against
+  the original 66-performance baseline.

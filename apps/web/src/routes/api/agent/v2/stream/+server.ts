@@ -140,6 +140,7 @@ import {
 } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
 import { resolveSkillGatePreload } from '$lib/services/agentic-chat/tools/domains/skill-gate-preload';
 import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import { extractToolNamesFromDefinitions } from '$lib/services/agentic-chat/tools/core/tools.config';
 import {
 	deriveLoadedOutcomeCardGapSignalsFromToolExecutions,
 	getLoadedSkillIdsFromUsedDomains,
@@ -2648,14 +2649,21 @@ export const POST: RequestHandler = async ({
 					...(skillGatePreload ? [skillGatePreload.skillId] : [])
 				])
 			];
-			const skillGate = turnDomainSensing
-				? {
-						required: turnDomainSensing.skill_load_required === true,
-						recommendedSkillIds: skillGateExpectedSkillIds,
-						acceptableSkillIds: skillGateExpectedSkillIds,
-						historyLoadedSkillIds: skillGateHistoryLoadedSkillIds
-					}
-				: null;
+			// The gate can only demand skill_load when the turn's tool surface
+			// actually exposes it. project_create (create_onto_project only)
+			// otherwise gets a finalization repair instructing a tool call the
+			// model cannot make (prompt audit WP-3, 2026-07-10).
+			const turnToolSurfaceHasSkillLoad =
+				extractToolNamesFromDefinitions(tools).includes('skill_load');
+			const skillGate =
+				turnDomainSensing && turnToolSurfaceHasSkillLoad
+					? {
+							required: turnDomainSensing.skill_load_required === true,
+							recommendedSkillIds: skillGateExpectedSkillIds,
+							acceptableSkillIds: skillGateExpectedSkillIds,
+							historyLoadedSkillIds: skillGateHistoryLoadedSkillIds
+						}
+					: null;
 			let firstToolCallPlanningCueEmitted = false;
 			const modelTiering = resolveFastChatModelTieringConfig({
 				mode: FASTCHAT_INITIAL_PLAN_MODEL_TIERING_MODE,

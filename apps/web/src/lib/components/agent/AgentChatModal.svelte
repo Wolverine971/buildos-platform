@@ -130,6 +130,11 @@
 		initialBrainDumpContext?: AgentBrainDumpContext | null;
 		initialProjectFocus?: ProjectFocus | null;
 		initialDraft?: string | null;
+		/** Send initialDraft automatically once it lands in the composer (i.e. the
+		 * user's submit already happened on the launching surface). Only meaningful
+		 * with a selector-free context — with 'global' the draft waits on the
+		 * context selector and sends after the user picks one. */
+		autoSendInitialDraft?: boolean;
 		embedded?: boolean;
 		inboxResolutionActions?: AgentChatResolutionAction[];
 		/** Reports the active chat session id so embedding surfaces can render
@@ -147,6 +152,7 @@
 		initialBrainDumpContext = null,
 		initialProjectFocus = null,
 		initialDraft = null,
+		autoSendInitialDraft = false,
 		embedded = false,
 		inboxResolutionActions = [],
 		onSessionChange
@@ -389,6 +395,7 @@
 	}
 	let inputValue = $state('');
 	let appliedInitialDraftKey = $state('');
+	let autoSentDraftKey = $state('');
 	const attachments = createAttachmentController({
 		getBrowser: () => browser,
 		getProjectId: () => attachmentProjectId,
@@ -690,6 +697,7 @@
 		const draft = initialDraft?.trim() ?? '';
 		if (!isOpen) {
 			appliedInitialDraftKey = '';
+			autoSentDraftKey = '';
 			return;
 		}
 		if (!draft) return;
@@ -710,6 +718,13 @@
 
 		inputValue = draft;
 		appliedInitialDraftKey = draftKey;
+
+		// The launching surface already collected the user's submit; sending here is
+		// the equivalent of them pressing Enter the moment the composer is ready.
+		if (autoSendInitialDraft && autoSentDraftKey !== draftKey) {
+			autoSentDraftKey = draftKey;
+			void stream.handleSendMessage();
+		}
 	});
 
 	function cancelSessionBootstrap() {

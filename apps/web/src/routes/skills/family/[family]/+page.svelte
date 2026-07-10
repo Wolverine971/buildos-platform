@@ -355,8 +355,8 @@
 						Move into narrower procedures
 					</h2>
 					<p class="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-						Public child skills open directly. Reviewed runtime children open as previews;
-						internal children remain visible so the family map is complete.
+						Public child skills open directly. Reviewed runtime children open as
+						previews; internal children remain visible so the family map is complete.
 					</p>
 					{#if filteredTrees.length}
 						<div class="mt-5 space-y-4">
@@ -405,7 +405,9 @@
 												</a>
 											{:else if child.previewSlug}
 												<a
-													href={getPreviewSkillPath({ slug: child.previewSlug })}
+													href={getPreviewSkillPath({
+														slug: child.previewSlug
+													})}
 													class="group rounded-md border border-dashed border-accent/60 bg-accent/5 p-3 transition-colors hover:border-accent hover:bg-accent/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 												>
 													<div
@@ -423,7 +425,9 @@
 													>
 														{child.summary}
 													</p>
-													<p class="mt-2 text-2xs font-semibold text-accent">
+													<p
+														class="mt-2 text-2xs font-semibold text-accent"
+													>
 														Reviewed preview
 													</p>
 												</a>

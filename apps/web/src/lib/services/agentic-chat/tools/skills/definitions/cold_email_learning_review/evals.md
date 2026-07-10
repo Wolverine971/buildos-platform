@@ -27,7 +27,7 @@ Golden tasks per `../../EVALS_GUIDE.md`. Run B gets the shell only — this is a
 1. **M1 (trust gate first):** Checks the trust gate BEFORE reading any copy/offer metric, with thresholds cited: bounce 0.9% vs the >5% stop line, complaints 0 vs the 0.3% ceiling / 0.1% sustained target — passes, stated explicitly as gate 0.
 2. **M2 (sample gate before conclusions, math shown):** Runs the sample check BEFORE any rate verdict, showing the arithmetic: ~396 delivered, single variant, single persona × signal ≥ the ~200-delivered-per-variant floor → **rate-readable** (with the qualifier that n≈400 detects only large effects).
 3. **M3 (stage-by-stage, never composite):** Lays the funnel out stage by stage (delivered → opens → replies → positive replies → meetings) and cites the hard rule: never optimize a single composite reply rate — replies include "no," "stop," and "wrong person."
-4. **M4 (one failing layer, from the closed list):** Names exactly ONE most-likely failing layer from {sender | segment | offer | body | proof | cadence | reply-handling} — **offer** (with segment as the explicit secondary suspect) — with the implicating evidence: positive reply 1/396 ≈ 0.25% (<1%) while opens ≥30%, which is the offer/segment-is-wrong branch.
+4. **M4 (one failing layer, from the closed list):** Names exactly ONE most-likely failing layer from the closed list (sender | segment | offer | body | proof | cadence | reply-handling) — **offer** (with segment as the explicit secondary suspect) — with the implicating evidence: positive reply 1/396 ≈ 0.25% (below 1%) while opens ≥30%, which is the offer/segment-is-wrong branch.
 5. **M5 (honest negative — placement ruled out):** Does NOT route to `cold_email_deliverability_readiness` — explicitly rules out the 2026 compliance/placement suspect because opens are ≥30% and bounce is under the 5% line.
 6. **M6 (benchmarks caveated):** Every vendor band used carries its methodology caveat — Mailshake bands as a 508-respondent self-reported survey (directional), Schneider figures as practitioner patterns never governing thresholds, Lavender as directional-vendor — and opens are treated as a directional metric inflated by privacy proxies, never as buying intent.
 7. **M7 (gate decision with which-gate-fired):** Refuses the "double the volume" ask and issues **RECYCLE** — positive-reply gate fired on the `<1% positive AND opens ≥30%` branch: recycle non-responders into a new campaign with a different opener + different artifact offer (Schneider replacement for touches 3–7) — and flags the gate values as internal calibration defaults, not industry standards.
@@ -62,7 +62,7 @@ Golden tasks per `../../EVALS_GUIDE.md`. Run B gets the shell only — this is a
 2. **M2 (math shown):** Shows why 30/arm can't be read: per the fixed-sample table, even detecting a 3%→6% doubling needs ≈560 per arm (Evan Miller n ≈ 16·σ²/δ²); at n=30 the expected reply count difference is fractions of one reply — 0 vs 1 is noise.
 3. **M3 (no-peeking flag):** Flags the daily dashboard-watching as peeking — repeated checks with intent to act inflate a nominal 5% false-positive rate to as much as **26.1%** — and prescribes pre-committing the sample size and reading once at the end.
 4. **M4 (no variant winner):** Does NOT crown variant B over variant A. One reply (a negative one) at 30 sends is not a subject-line verdict.
-5. **M5 (refuses the dead declaration):** Refuses to declare the segment dead, citing the dead-gate criteria: two recycle attempts on the same segment with <1% positive reply AND no usable buyer language — none of which has occurred — and the rule that a no-meetings result alone never kills a segment (nurture accounting comes first).
+5. **M5 (refuses the dead declaration):** Refuses to declare the segment dead, citing the dead-gate criteria: two recycle attempts on the same segment with below 1% positive reply AND no usable buyer language — none of which has occurred — and the rule that a no-meetings result alone never kills a segment (nurture accounting comes first).
 6. **M6 (gate decision: sample gate fired):** Names the decision and the gate: sample gate fired → NO RATE VERDICT; next action is to keep sending the pre-committed 300 (or widen the same segment) — not stop, not segment-switch mid-test.
 7. **M7 (qualitative downgrade done properly):** Extracts what the 60 sends DID produce: the verbatim "we handle this internally, please remove me" → objection class (already solved, in-house), suppression honored on the remove-me, and the buyer-language file started; notes the Hail Mary corollary does NOT apply here (an opt-out gets no follow-through question).
 8. **M8 (output contract):** Output follows the contract with the sample verdict field reading **qualitative only**, the gate decision naming which gate fired, and trust-cost signals reported (1 opt-out flagged as part of the internal proxy composite).
@@ -102,18 +102,18 @@ Notes: The "38% opens = subject works, double the volume" trap is the load-beari
 ### 2026-06-12 — Task 1 — BLIND A/B (the owed pair; prior wave-2 entry was a with-skill self-check) — performer (with/without) + blind judge: claude-opus-4-8 (workflow subagents)
 
 | Marker | without | with |
-| --- | --- | --- |
-| M1 | miss | hit |
-| M2 | miss | hit |
-| M3 | miss | hit |
-| M4 | miss | hit |
-| M5 | miss | hit |
-| M6 | miss | hit |
-| M7 | miss | hit |
-| M8 | miss | hit |
-| M9 | miss | hit |
-| M10 | miss | hit |
-| M11 | miss | hit |
+| ------ | ------- | ---- |
+| M1     | miss    | hit  |
+| M2     | miss    | hit  |
+| M3     | miss    | hit  |
+| M4     | miss    | hit  |
+| M5     | miss    | hit  |
+| M6     | miss    | hit  |
+| M7     | miss    | hit  |
+| M8     | miss    | hit  |
+| M9     | miss    | hit  |
+| M10    | miss    | hit  |
+| M11    | miss    | hit  |
 
 Verdict: **STRONG DELTA**. With-skill hit 11/11 markers; gap over no-skill = 11 markers. Refusal missed by skill run: False.
 Load path (expected, not re-tested this run): skill_load(cold_email_learning_review, full) — full shell only (single-shell skill: diagnostic table, benchmark bands, gate tree, sample rules, memo template, and Output Contract all live outside the short-format parsed sections); no references exist so any reference load is a usage failure; must NOT load cold_email_deliverability_readiness (placement is ruled out by the numbers, not investigated).

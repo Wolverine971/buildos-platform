@@ -7,6 +7,7 @@
   Strategy: docs/marketing/strategy/buildos-positioning-and-homepage-rewrite-2026-05-07.md
 -->
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import {
 		FolderKanban,
 		Target,
@@ -20,28 +21,79 @@
 		ArrowDown,
 		CircleCheck,
 		Circle,
-		Mail,
-		LoaderCircle
+		Mail
 	} from '$lib/icons/lucide';
-	import Modal from '$lib/components/ui/Modal.svelte';
 
 	let isExampleOpen = $state(false);
+	let ExampleModal = $state<any>(null);
 	let PublicProjectView = $state<any>(null);
 	let publicProjectLoadFailed = $state(false);
+	let exampleComponentsLoadPromise: Promise<void> | undefined;
+
+	function loadExampleComponents(): Promise<void> {
+		if (ExampleModal && (PublicProjectView || publicProjectLoadFailed)) {
+			return Promise.resolve();
+		}
+		if (exampleComponentsLoadPromise) return exampleComponentsLoadPromise;
+
+		const modalLoad = import('$lib/components/ui/Modal.svelte')
+			.then((module) => {
+				ExampleModal = module.default;
+			})
+			.catch((error) => {
+				console.error('[HomepageV2] Failed to load the example modal:', error);
+			});
+		const projectLoad = import(
+			'$lib/components/landing/public-project-preview/PublicProjectView.svelte'
+		)
+			.then((module) => {
+				PublicProjectView = module.default;
+			})
+			.catch((error) => {
+				console.error('[HomepageV2] Failed to load PublicProjectView:', error);
+				publicProjectLoadFailed = true;
+			});
+
+		exampleComponentsLoadPromise = Promise.all([modalLoad, projectLoad])
+			.then(() => undefined)
+			.finally(() => {
+				exampleComponentsLoadPromise = undefined;
+			});
+
+		return exampleComponentsLoadPromise;
+	}
+
+	function preloadExampleModal() {
+		void loadExampleComponents();
+	}
 
 	async function openExampleModal() {
 		isExampleOpen = true;
-		if (PublicProjectView || publicProjectLoadFailed) return;
-		try {
-			const module = await import(
-				'$lib/components/landing/public-project-preview/PublicProjectView.svelte'
-			);
-			PublicProjectView = module.default;
-		} catch (err) {
-			console.error('[HomepageV2] Failed to load PublicProjectView:', err);
-			publicProjectLoadFailed = true;
-		}
+		await loadExampleComponents();
 	}
+
+	onMount(() => {
+		const rawHash = window.location.hash.slice(1);
+		if (!rawHash) return;
+
+		let targetId = rawHash;
+		try {
+			targetId = decodeURIComponent(rawHash);
+		} catch {
+			// Keep the literal fragment when it is not valid URI-encoded text.
+		}
+
+		const target = document.getElementById(targetId);
+		if (!target) return;
+
+		// Native fragment scrolling runs before deferred sections have stable geometry.
+		// Re-apply it after hydration without introducing animated motion.
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() =>
+				target.scrollIntoView({ block: 'start', behavior: 'instant' as ScrollBehavior })
+			);
+		});
+	});
 
 	const dataModel = [
 		{
@@ -249,6 +301,9 @@
 							<button
 								type="button"
 								onclick={openExampleModal}
+								onpointerenter={preloadExampleModal}
+								onpointerdown={preloadExampleModal}
+								onfocus={preloadExampleModal}
 								class="group inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-foreground transition-all hover:gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 							>
 								See an example project
@@ -325,7 +380,9 @@
 
 		<!-- ─── §03 the loop — flow chart for non-AI users (rail enters from §02A above) ── -->
 		<section id="loop" class="border-b border-border">
-			<div class="mx-auto max-w-6xl px-4 py-12 sm:py-16 space-y-8">
+			<div
+				class="home-deferred home-deferred-loop mx-auto max-w-6xl px-4 py-12 sm:py-16 space-y-8"
+			>
 				<!--
 				  entry marker: dead-center under LEFT rail via grid-mirroring.
 				  Uses the same grid shape as §02 so the chip lands on the same X as the rail.
@@ -600,7 +657,9 @@
 
 		<!-- ─── §04 same context — agents at the same project (for §02B readers) ── -->
 		<section id="agents" class="relative border-b border-border bg-card/40">
-			<div class="mx-auto max-w-6xl px-4 py-12 sm:py-16 space-y-8">
+			<div
+				class="home-deferred home-deferred-agents mx-auto max-w-6xl px-4 py-12 sm:py-16 space-y-8"
+			>
 				<!--
 				  entry marker: lands at the RIGHT rail's terminus (x=90% on lg+).
 				  The chip sits inside a 20%-wide column anchored to the parent's right edge
@@ -781,7 +840,9 @@
 												class="w-4 h-4 object-contain"
 												width="16"
 												height="16"
+												loading="lazy"
 												decoding="async"
+												fetchpriority="low"
 											/>
 											<span class="text-2xs font-medium text-foreground">
 												OpenClaw
@@ -841,7 +902,7 @@
 	<!-- ═══ END BRANCH WRAPPER ═══ -->
 
 	<!-- ─── §05 what it holds (the data model) ──────────────────────── -->
-	<section class="border-b border-border">
+	<section class="home-deferred home-deferred-model border-b border-border">
 		<div class="mx-auto max-w-6xl px-4 py-10 sm:py-12 space-y-6">
 			<div class="text-center">
 				<div class="micro-label inline-flex items-center gap-3">
@@ -870,7 +931,7 @@
 	</section>
 
 	<!-- ─── §06 what it becomes — future pacing timeline ────────────── -->
-	<section class="border-b border-border bg-card/40">
+	<section class="home-deferred home-deferred-timeline border-b border-border bg-card/40">
 		<div class="mx-auto max-w-6xl px-4 py-12 sm:py-16 space-y-8">
 			<div class="text-center">
 				<div class="micro-label inline-flex items-center gap-3">
@@ -1017,7 +1078,7 @@
 	</section>
 
 	<!-- ─── §07 honest comparison + final CTA ──────────────────────── -->
-	<section class="py-12 sm:py-16">
+	<section class="home-deferred home-deferred-cta py-12 sm:py-16">
 		<div class="mx-auto max-w-6xl px-4 space-y-8">
 			<div class="text-center">
 				<div class="micro-label inline-flex items-center gap-3">
@@ -1085,25 +1146,82 @@
 	</section>
 </div>
 
-<Modal
-	isOpen={isExampleOpen}
-	onClose={() => (isExampleOpen = false)}
-	size="xl"
-	title="Example project in BuildOS"
-	ariaLabel="Example BuildOS project preview"
->
-	{#if PublicProjectView}
-		<PublicProjectView embedded />
-	{:else if publicProjectLoadFailed}
-		<div class="px-4 sm:px-6 py-12 text-center text-sm text-muted-foreground">
-			Couldn't load the example project. Close this and try again.
-		</div>
-	{:else}
-		<div
-			class="px-4 sm:px-6 py-16 flex items-center justify-center gap-2 text-sm text-muted-foreground"
-		>
-			<LoaderCircle class="h-5 w-5 animate-spin motion-reduce:animate-none" />
-			<span>Loading example project…</span>
-		</div>
-	{/if}
-</Modal>
+{#if isExampleOpen && ExampleModal}
+	<ExampleModal
+		isOpen={isExampleOpen}
+		onClose={() => (isExampleOpen = false)}
+		size="xl"
+		title="Example project in BuildOS"
+		ariaLabel="Example BuildOS project preview"
+	>
+		{#if PublicProjectView}
+			<PublicProjectView embedded />
+		{:else if publicProjectLoadFailed}
+			<div class="px-4 sm:px-6 py-12 text-center text-sm text-muted-foreground">
+				Couldn't load the example project. Close this and try again.
+			</div>
+		{:else}
+			<div
+				class="px-4 sm:px-6 py-16 flex items-center justify-center gap-2 text-sm text-muted-foreground"
+			>
+				<span
+					aria-hidden="true"
+					class="h-5 w-5 rounded-full border-2 border-border border-t-accent animate-spin motion-reduce:animate-none"
+				></span>
+				<span>Loading example project…</span>
+			</div>
+		{/if}
+	</ExampleModal>
+{/if}
+
+<style>
+	@supports (content-visibility: auto) {
+		.home-deferred {
+			content-visibility: auto;
+		}
+
+		.home-deferred-loop {
+			contain-intrinsic-size: auto 1125px;
+		}
+
+		.home-deferred-agents {
+			contain-intrinsic-size: auto 835px;
+		}
+
+		.home-deferred-model {
+			contain-intrinsic-size: auto 420px;
+		}
+
+		.home-deferred-timeline {
+			contain-intrinsic-size: auto 525px;
+		}
+
+		.home-deferred-cta {
+			contain-intrinsic-size: auto 330px;
+		}
+	}
+
+	@media (max-width: 767px) {
+		@supports (content-visibility: auto) {
+			.home-deferred-loop {
+				contain-intrinsic-size: auto 1862px;
+			}
+
+			.home-deferred-agents {
+				contain-intrinsic-size: auto 1534px;
+			}
+
+			.home-deferred-model {
+				contain-intrinsic-size: auto 975px;
+			}
+
+			.home-deferred-timeline {
+				contain-intrinsic-size: auto 1040px;
+			}
+
+			.home-deferred-cta {
+				contain-intrinsic-size: auto 635px;
+			}
+		}
+	}
+</style>

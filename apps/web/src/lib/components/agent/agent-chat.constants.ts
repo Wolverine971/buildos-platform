@@ -26,8 +26,10 @@ export const CONTEXT_DESCRIPTORS: Record<ChatContextType, { title: string; subti
 		subtitle: 'Act on your generated brief with context-aware updates.'
 	},
 	general: {
-		title: 'Global conversation',
-		subtitle: 'Legacy mode - use global instead.'
+		// Selector-free workspace scope: launch surfaces (e.g. /today quick capture)
+		// use 'general' to skip the context selector; it normalizes to global.
+		title: 'Workspace chat',
+		subtitle: 'Work across projects, tasks, and the calendar.'
 	},
 	project_create: {
 		title: 'New project flow',

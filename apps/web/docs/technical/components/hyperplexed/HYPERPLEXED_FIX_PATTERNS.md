@@ -428,6 +428,34 @@ Keep the modal shell and core-field skeleton stable while secondary panels load 
 not jump. Skeleton animation must use `motion-reduce:animate-none`; the information still appears
 progressively without pulsing for reduced-motion users.
 
+### P21 · Measured paint containment for long public pages
+
+**Finding:** a long, mostly static marketing page lays out and paints every deep section during the
+first viewport, while closed demos and below-fold media join the initial request graph.
+
+Use browser-native containment without sacrificing the server-rendered document:
+
+1. Keep headings, copy, links, and structured content in the SSR markup. `content-visibility` is a
+   paint/layout optimization, not permission to remove crawlable or accessible content.
+2. Apply `content-visibility: auto` to the heavy content wrapper _inside_ a fragment-target section,
+   not to the element that owns `id="…"`. This keeps `#section` navigation reliable.
+3. Measure the wrapper at phone and desktop widths, then set matching
+   `contain-intrinsic-size: auto <size>`. Account for padding: intrinsic block size describes the
+   contained content box, while the element's padding is added outside that estimate.
+4. Give below-fold images explicit dimensions plus `loading="lazy"`, `decoding="async"`, and
+   `fetchpriority="low"`. Confirm in a fresh load that they have not decoded before they are near
+   the viewport.
+5. Move closed demos/modals out of the initial graph with a cached dynamic import. Preload on
+   `pointerenter`, `pointerdown`, and keyboard `focus`, then reuse the same promise on activation
+   (P20).
+6. Native fragment scrolling can run before contained sections have stable geometry. On an initial
+   hash load, re-apply `scrollIntoView` after hydration with `behavior: 'instant'`; normal in-page
+   clicks can retain the site's reduced-motion-aware scroll behavior (P11).
+
+Verify scroll height before/after, direct and clicked fragment links, deferred media, the activated
+demo, zero horizontal overflow, and light/dark rendering at desktop and phone widths. Browsers that
+do not support `content-visibility` receive the complete page with no behavioral fallback required.
+
 ---
 
 ## Using this doc in an audit
