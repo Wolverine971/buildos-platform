@@ -60,7 +60,10 @@ type InboxItemFixture = {
 	action_kinds: string[];
 };
 
-function createSupabaseMock(inboxItem: InboxItemFixture) {
+function createSupabaseMock(
+	inboxItem: InboxItemFixture,
+	options: { project?: Record<string, unknown> | null } = {}
+) {
 	const updates: Array<{
 		table: string;
 		payload: Record<string, unknown>;
@@ -90,6 +93,17 @@ function createSupabaseMock(inboxItem: InboxItemFixture) {
 					return builder;
 				}),
 				maybeSingle: vi.fn(async () => {
+					if (table === 'onto_projects') {
+						return {
+							data:
+								options.project === undefined
+									? inboxItem.project_id
+										? { id: inboxItem.project_id, deleted_at: null }
+										: null
+									: options.project,
+							error: null
+						};
+					}
 					if (table !== 'inbox_items') return { data: null, error: null };
 					if (state.action === 'update') {
 						updates.push({
@@ -447,5 +461,55 @@ describe('POST /api/inbox/decide', () => {
 			status: 'decided',
 			source_status: 'completed'
 		});
+	});
+
+	it('expires a stale inbox item instead of applying it after its project was deleted', async () => {
+		const inboxItem: InboxItemFixture = {
+			id: 'inbox-agent-deleted-project',
+			source_type: 'agent_run',
+			source_ref_id: 'agent-run-deleted-project',
+			source_status: 'proposal_ready',
+			status: 'pending',
+			user_id: 'user-1',
+			project_id: 'project-deleted',
+			audience: 'user',
+			title: 'Update project START HERE',
+			action_kinds: ['approve', 'reject']
+		};
+		const { supabase } = createSupabaseMock(inboxItem);
+		const admin = createSupabaseMock(inboxItem, {
+			project: {
+				id: 'project-deleted',
+				deleted_at: '2026-07-11T03:38:13.141Z'
+			}
+		});
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.supabase);
+
+		const response = await POST({
+			request: makeRequest({
+				item_id: inboxItem.id,
+				action: 'approve'
+			}),
+			locals: makeLocals(supabase),
+			fetch: vi.fn()
+		} as any);
+		const json = await response.json();
+
+		expect(response.status).toBe(409);
+		expect(json).toMatchObject({
+			error: 'This review item belongs to a deleted project and can no longer be applied.',
+			code: 'PROJECT_DELETED'
+		});
+		expect(mocks.commitChangeSet).not.toHaveBeenCalled();
+		expect(admin.updates).toContainEqual(
+			expect.objectContaining({
+				table: 'inbox_items',
+				payload: expect.objectContaining({
+					status: 'expired',
+					source_status: 'project_deleted',
+					blocked_reason: 'Project was deleted'
+				})
+			})
+		);
 	});
 });

@@ -5,7 +5,9 @@ import {
 	mapCalendarSuggestionToInboxItem,
 	mapProjectAuditToInboxItem,
 	mapProjectSuggestionToInboxItem,
+	expireInboxItemsForProject,
 	expireInboxItemsForProjectAuditChildSuggestions,
+	syncInboxItemForAgentRun,
 	syncInboxItemForProjectAudit,
 	syncInboxItemForProjectSuggestion
 } from '../../../packages/shared-agent-ops/src/inbox-index';
@@ -262,5 +264,81 @@ describe('inbox index mappers', () => {
 				source_status: 'grouped_into_project_audit'
 			})
 		);
+	});
+
+	it('expires every active inbox item for a deleted project', async () => {
+		const tables = {
+			inbox_items: [
+				{ id: 'inbox-1', project_id: 'project-1', status: 'pending' },
+				{ id: 'inbox-2', project_id: 'project-1', status: 'snoozed' },
+				{ id: 'inbox-3', project_id: 'project-1', status: 'decided' },
+				{ id: 'inbox-4', project_id: 'project-2', status: 'pending' }
+			]
+		};
+		const { supabase } = createSupabaseMock(tables);
+
+		const count = await expireInboxItemsForProject({
+			supabase: supabase as any,
+			projectId: 'project-1'
+		});
+
+		expect(count).toBe(2);
+		expect(tables.inbox_items).toEqual([
+			expect.objectContaining({
+				id: 'inbox-1',
+				status: 'expired',
+				source_status: 'project_deleted',
+				blocked_reason: 'Project was deleted'
+			}),
+			expect.objectContaining({
+				id: 'inbox-2',
+				status: 'expired',
+				source_status: 'project_deleted',
+				blocked_reason: 'Project was deleted'
+			}),
+			expect.objectContaining({ id: 'inbox-3', status: 'decided' }),
+			expect.objectContaining({ id: 'inbox-4', status: 'pending' })
+		]);
+	});
+
+	it('does not reactivate a deleted-project inbox item during source reconciliation', async () => {
+		const { supabase, upserts } = createSupabaseMock({
+			agent_runs: [
+				{
+					id: 'agent-run-1',
+					user_id: 'user-1',
+					project_id: 'project-1',
+					status: 'proposal_ready',
+					label: 'Update project START HERE',
+					change_set: { status: 'pending', changes: [{ id: 'change-1' }] },
+					created_at: '2026-07-11T03:31:37.886Z'
+				}
+			],
+			inbox_items: [
+				{
+					id: 'inbox-1',
+					source_type: 'agent_run',
+					source_ref_id: 'agent-run-1',
+					status: 'expired',
+					source_status: 'project_deleted',
+					blocked_reason: 'Project was deleted',
+					decided_at: '2026-07-11T03:38:13.141Z'
+				}
+			]
+		});
+
+		const row = await syncInboxItemForAgentRun({
+			supabase: supabase as any,
+			runId: 'agent-run-1'
+		});
+
+		expect(row).toMatchObject({
+			status: 'expired',
+			blocked_reason: 'Project was deleted'
+		});
+		expect(upserts[0]).toMatchObject({
+			status: 'expired',
+			blocked_reason: 'Project was deleted'
+		});
 	});
 });

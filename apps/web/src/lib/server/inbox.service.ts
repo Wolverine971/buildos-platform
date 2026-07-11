@@ -1,5 +1,7 @@
 // apps/web/src/lib/server/inbox.service.ts
 import {
+	expireInboxItemsForProject,
+	PROJECT_DELETED_INBOX_REASON,
 	syncInboxItemForSource,
 	type InboxIndexRow,
 	type InboxItemStatus,
@@ -288,6 +290,44 @@ function hasActiveSnooze(row: InboxIndexRow, nowMs: number): boolean {
 	return snoozedUntil !== null && snoozedUntil > nowMs;
 }
 
+function hasActiveProjectReviewStatus(row: InboxIndexRow): boolean {
+	return (
+		Boolean(row.project_id) &&
+		(row.status === 'pending' ||
+			row.status === 'deciding' ||
+			row.status === 'snoozed' ||
+			row.status === 'blocked')
+	);
+}
+
+async function loadDeletedOrMissingProjectIds(params: {
+	admin: AnySupabase;
+	rows: InboxIndexRow[];
+}): Promise<Set<string>> {
+	const projectIds = [
+		...new Set(
+			params.rows
+				.filter(hasActiveProjectReviewStatus)
+				.map((row) => row.project_id)
+				.filter((id): id is string => Boolean(id))
+		)
+	];
+	if (projectIds.length === 0) return new Set();
+
+	const { data, error } = await params.admin
+		.from('onto_projects')
+		.select('id, deleted_at')
+		.in('id', projectIds);
+	if (error) throw error;
+
+	const activeIds = new Set(
+		((data ?? []) as Array<{ id?: unknown; deleted_at?: unknown }>)
+			.filter((project) => typeof project.id === 'string' && project.deleted_at == null)
+			.map((project) => project.id as string)
+	);
+	return new Set(projectIds.filter((projectId) => !activeIds.has(projectId)));
+}
+
 async function updateInboxRow(params: {
 	admin: AnySupabase;
 	row: InboxIndexRow;
@@ -358,8 +398,38 @@ async function reconcileInboxLifecycle(params: {
 	const now = params.now ?? new Date();
 	const nowMs = now.getTime();
 	const nowIso = now.toISOString();
+	const deletedProjectIds = await loadDeletedOrMissingProjectIds({
+		admin: params.admin,
+		rows: params.rows
+	});
+
+	await Promise.all(
+		[...deletedProjectIds].map((projectId) =>
+			expireInboxItemsForProject({
+				supabase: params.admin,
+				projectId
+			})
+		)
+	);
 
 	for (const row of params.rows) {
+		if (
+			row.project_id &&
+			deletedProjectIds.has(row.project_id) &&
+			hasActiveProjectReviewStatus(row)
+		) {
+			repairedRows.push({
+				...row,
+				status: 'expired',
+				source_status: 'project_deleted',
+				decided_at: nowIso,
+				blocked_reason: PROJECT_DELETED_INBOX_REASON,
+				snoozed_until: null
+			});
+			repairedCount += 1;
+			continue;
+		}
+
 		if (shouldExpire(row, nowMs)) {
 			const repaired = await updateInboxRow({
 				admin: params.admin,

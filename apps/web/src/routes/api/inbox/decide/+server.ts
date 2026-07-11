@@ -17,6 +17,8 @@ type SourceDecisionAction = 'approve' | 'reject';
 type DecisionAction = SourceDecisionAction | 'snooze';
 type DecisionPayload = Record<string, unknown>;
 const MAX_SNOOZE_MS = 30 * 24 * 60 * 60 * 1000;
+const DELETED_PROJECT_DECISION_MESSAGE =
+	'This review item belongs to a deleted project and can no longer be applied.';
 
 function normalizeAction(value: unknown): DecisionAction | null {
 	if (value === 'approve' || value === 'accept' || value === 'apply') return 'approve';
@@ -303,6 +305,58 @@ async function snoozeLoadedInboxItem(params: {
 	};
 }
 
+async function guardActiveInboxProject(params: {
+	admin: any;
+	item: InboxIndexRow;
+}): Promise<{ ok: true } | { ok: false; response: Response; message: string }> {
+	if (!params.item.project_id) return { ok: true };
+
+	const { data: project, error } = await params.admin
+		.from('onto_projects')
+		.select('id, deleted_at')
+		.eq('id', params.item.project_id)
+		.maybeSingle();
+	if (error) {
+		return {
+			ok: false,
+			message: error.message ?? 'Failed to verify inbox project',
+			response: ApiResponse.databaseError(error)
+		};
+	}
+	if (project && !project.deleted_at) return { ok: true };
+
+	let expireQuery = params.admin.from('inbox_items').update({
+		status: 'expired',
+		source_status: 'project_deleted',
+		decided_at: new Date().toISOString(),
+		blocked_reason: 'Project was deleted',
+		snoozed_until: null
+	});
+	expireQuery = params.item.id
+		? expireQuery.eq('id', params.item.id)
+		: expireQuery
+				.eq('source_type', params.item.source_type)
+				.eq('source_ref_id', params.item.source_ref_id);
+	const { error: expireError } = await expireQuery.select('*').maybeSingle();
+	if (expireError) {
+		return {
+			ok: false,
+			message: expireError.message ?? 'Failed to expire deleted-project inbox item',
+			response: ApiResponse.databaseError(expireError)
+		};
+	}
+
+	return {
+		ok: false,
+		message: DELETED_PROJECT_DECISION_MESSAGE,
+		response: ApiResponse.error(
+			DELETED_PROJECT_DECISION_MESSAGE,
+			HttpStatus.CONFLICT,
+			'PROJECT_DELETED'
+		)
+	};
+}
+
 function statusForCommitError(code: string): number {
 	if (code === 'NOT_FOUND') return HttpStatus.NOT_FOUND;
 	if (code === 'CONFLICT') return HttpStatus.CONFLICT;
@@ -323,6 +377,9 @@ async function decideLoadedInboxItem(params: {
 	| { ok: false; response: Response; message: string }
 > {
 	const { item, action, body, locals, user, admin, fetchFn } = params;
+	const projectGuard = await guardActiveInboxProject({ admin, item });
+	if (!projectGuard.ok) return projectGuard;
+
 	if (action === 'snooze') {
 		return snoozeLoadedInboxItem({ item, body, locals, user, admin });
 	}

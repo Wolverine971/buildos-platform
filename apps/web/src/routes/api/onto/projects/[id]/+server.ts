@@ -29,6 +29,8 @@ import {
 } from '$lib/server/task-relevance.service';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 import { pickStartHereDocument } from '$lib/services/ontology/start-here-selector';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { expireInboxItemsForProject } from '@buildos/shared-agent-ops/inbox-index';
 
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
@@ -940,6 +942,29 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		if (deleteRpcName === 'soft_delete_onto_project') {
+			try {
+				const admin = createAdminSupabaseClient();
+				const nowIso = new Date().toISOString();
+				const { error: cancelProposalError } = await admin
+					.from('agent_runs')
+					.update({
+						status: 'cancelled',
+						error: 'Project was deleted before proposal review',
+						completed_at: nowIso,
+						commit_started_at: null
+					} as never)
+					.eq('project_id', id)
+					.eq('status', 'proposal_ready');
+				if (cancelProposalError) throw cancelProposalError;
+
+				await expireInboxItemsForProject({
+					supabase: admin as any,
+					projectId: id
+				});
+			} catch (inboxError) {
+				console.warn('[Project DELETE] Failed to expire project inbox items:', inboxError);
+			}
+
 			// Only log when the project row remains (soft delete) to avoid FK errors.
 			logDeleteAsync(
 				supabase,

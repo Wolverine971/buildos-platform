@@ -45,6 +45,7 @@ export interface InboxIndexRow {
 
 type AnySupabase = SupabaseClient<any, any, any>;
 const INBOX_REVIEW_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
+export const PROJECT_DELETED_INBOX_REASON = 'Project was deleted';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
 	return value && typeof value === 'object' && !Array.isArray(value)
@@ -114,6 +115,12 @@ function shouldPreserveExpired(
 	existing: InboxIndexRow | null,
 	nextStatus: InboxItemStatus
 ): boolean {
+	if (
+		existing?.status === 'expired' &&
+		existing.blocked_reason === PROJECT_DELETED_INBOX_REASON
+	) {
+		return true;
+	}
 	if ((nextStatus !== 'pending' && nextStatus !== 'deciding') || existing?.status !== 'expired') {
 		return false;
 	}
@@ -525,6 +532,27 @@ export async function expireInboxItemsForProjectAuditChildSuggestions(params: {
 		})
 		.eq('source_type', 'project_suggestion')
 		.in('source_ref_id', suggestionIds)
+		.in('status', ['pending', 'deciding', 'snoozed', 'blocked'])
+		.select('id');
+	if (error) throw error;
+	return (data ?? []).length;
+}
+
+export async function expireInboxItemsForProject(params: {
+	supabase: AnySupabase;
+	projectId: string;
+	reason?: string;
+}): Promise<number> {
+	const { data, error } = await (params.supabase as any)
+		.from('inbox_items')
+		.update({
+			status: 'expired',
+			source_status: 'project_deleted',
+			decided_at: new Date().toISOString(),
+			blocked_reason: params.reason ?? PROJECT_DELETED_INBOX_REASON,
+			snoozed_until: null
+		})
+		.eq('project_id', params.projectId)
 		.in('status', ['pending', 'deciding', 'snoozed', 'blocked'])
 		.select('id');
 	if (error) throw error;

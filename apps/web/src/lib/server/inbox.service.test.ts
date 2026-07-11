@@ -5,9 +5,15 @@ const mocks = vi.hoisted(() => ({
 	syncInboxItemForSource: vi.fn()
 }));
 
-vi.mock('@buildos/shared-agent-ops/inbox-index', () => ({
-	syncInboxItemForSource: mocks.syncInboxItemForSource
-}));
+vi.mock('@buildos/shared-agent-ops/inbox-index', async () => {
+	const actual = await vi.importActual<typeof import('@buildos/shared-agent-ops/inbox-index')>(
+		'@buildos/shared-agent-ops/inbox-index'
+	);
+	return {
+		...actual,
+		syncInboxItemForSource: mocks.syncInboxItemForSource
+	};
+});
 
 import { countInboxItems, listInboxItems, sortInboxRowsForReview } from './inbox.service';
 
@@ -412,7 +418,8 @@ describe('inbox service', () => {
 		};
 		const { supabase, state } = createSupabaseMock({
 			inbox_items: [inboxItem],
-			project_suggestions: [{ id: 'suggestion-fast', status: 'pending' }]
+			project_suggestions: [{ id: 'suggestion-fast', status: 'pending' }],
+			onto_projects: [{ id: 'project-1', deleted_at: null }]
 		});
 		const timing = {
 			measure: vi.fn(async (_name: string, fn: () => Promise<unknown>) => fn())
@@ -502,7 +509,8 @@ describe('inbox service', () => {
 		mocks.syncInboxItemForSource.mockResolvedValue(inboxItem);
 		const { supabase, state } = createSupabaseMock({
 			inbox_items: [inboxItem],
-			project_suggestions: []
+			project_suggestions: [],
+			onto_projects: [{ id: 'project-1', deleted_at: null }]
 		});
 
 		const result = await listInboxItems({
@@ -525,6 +533,50 @@ describe('inbox service', () => {
 				})
 			})
 		);
+	});
+
+	it('expires and hides pending review items after their project is deleted', async () => {
+		const inboxItem = {
+			id: 'inbox-deleted-project',
+			source_type: 'agent_run',
+			source_ref_id: 'agent-run-deleted-project',
+			source_status: 'proposal_ready',
+			user_id: 'user-1',
+			project_id: 'project-deleted',
+			audience: 'user',
+			status: 'pending',
+			title: 'Update project START HERE',
+			action_kinds: ['approve', 'reject'],
+			created_at: '2026-07-11T03:31:37.886Z'
+		};
+		const { supabase, state } = createSupabaseMock({
+			inbox_items: [inboxItem],
+			onto_projects: [
+				{
+					id: 'project-deleted',
+					deleted_at: '2026-07-11T03:38:13.141Z'
+				}
+			]
+		});
+
+		const result = await listInboxItems({
+			supabase,
+			admin: supabase,
+			userId: 'user-1',
+			status: 'pending',
+			sourceType: 'agent_run',
+			limit: 20,
+			repair: false
+		});
+
+		expect(result.items).toEqual([]);
+		expect(result.total).toBe(0);
+		expect(state.tables.inbox_items[0]).toMatchObject({
+			status: 'expired',
+			source_status: 'project_deleted',
+			blocked_reason: 'Project was deleted',
+			snoozed_until: null
+		});
 	});
 
 	it('counts inbox rows through lightweight index queries after scoped source backfill', async () => {
@@ -555,7 +607,8 @@ describe('inbox service', () => {
 					created_at: '2026-07-04T12:02:00.000Z'
 				}
 			],
-			project_suggestions: [delegatedSuggestion()]
+			project_suggestions: [delegatedSuggestion()],
+			onto_projects: [{ id: 'project-1', deleted_at: null }]
 		});
 
 		const result = await countInboxItems({
@@ -672,6 +725,7 @@ describe('inbox service', () => {
 		};
 		const { supabase, state } = createSupabaseMock({
 			inbox_items: [inboxItem],
+			onto_projects: [{ id: 'project-1', deleted_at: null }],
 			agent_runs: [
 				{
 					id: 'agent-run-1',
