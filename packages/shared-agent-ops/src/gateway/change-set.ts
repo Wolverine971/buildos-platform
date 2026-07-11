@@ -23,7 +23,16 @@ import {
 	runGatewayWriteOp,
 	titleFromGatewayChange
 } from './op-execution-gateway';
-import { AGENT_RUN_CHANGE_SET_SELECT } from './op-execution-gateway.config';
+import {
+	AGENT_RUN_CHANGE_SET_SELECT,
+	ONTO_DOCUMENT_SELECT,
+	ONTO_GOAL_SELECT,
+	ONTO_MILESTONE_SELECT,
+	ONTO_PLAN_SELECT,
+	ONTO_PROJECT_SELECT,
+	ONTO_RISK_SELECT,
+	ONTO_TASK_SELECT
+} from './op-execution-gateway.config';
 import { START_HERE_DOCUMENT_TYPE_KEY, stripStartHereManagedRegions } from '../ontology/start-here';
 import { syncInboxItemForAgentRun } from '../inbox-index';
 
@@ -89,31 +98,31 @@ const CHANGE_SET_DRIFT_ENTITY_CONFIG: Record<
 > = {
 	project: {
 		table: 'onto_projects',
-		select: 'id, name, description, type_key, state_key, props, start_at, end_at, created_by, created_at, updated_at, archived_at, deleted_at'
+		select: ONTO_PROJECT_SELECT
 	},
 	task: {
 		table: 'onto_tasks',
-		select: 'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at, archived_at, deleted_at'
+		select: ONTO_TASK_SELECT
 	},
 	document: {
 		table: 'onto_documents',
-		select: 'id, project_id, title, description, type_key, state_key, content, props, children, created_at, updated_at, archived_at, deleted_at'
+		select: ONTO_DOCUMENT_SELECT
 	},
 	goal: {
 		table: 'onto_goals',
-		select: 'id, project_id, name, goal, description, type_key, state_key, target_date, completed_at, props, created_at, updated_at, archived_at, deleted_at'
+		select: ONTO_GOAL_SELECT
 	},
 	plan: {
 		table: 'onto_plans',
-		select: 'id, project_id, name, description, plan, type_key, state_key, props, created_at, updated_at, archived_at, deleted_at'
+		select: ONTO_PLAN_SELECT
 	},
 	milestone: {
 		table: 'onto_milestones',
-		select: 'id, project_id, title, description, type_key, state_key, target_date, completed_at, props, created_at, updated_at, archived_at, deleted_at'
+		select: ONTO_MILESTONE_SELECT
 	},
 	risk: {
 		table: 'onto_risks',
-		select: 'id, project_id, title, description, type_key, state_key, probability, impact, mitigation, owner_actor_id, resolved_at, props, created_at, updated_at, archived_at, deleted_at'
+		select: ONTO_RISK_SELECT
 	}
 };
 

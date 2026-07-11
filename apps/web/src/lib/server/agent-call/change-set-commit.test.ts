@@ -44,10 +44,14 @@ function createSupabaseMock(
 		client: {
 			from: vi.fn((table: string) => {
 				const direct = directData[table];
+				let selectedColumns: string | undefined;
 				const chain = {
 					data: direct?.data ?? null,
 					error: direct?.error ?? null,
-					select: vi.fn(() => chain),
+					select: vi.fn((columns?: string) => {
+						selectedColumns = columns;
+						return chain;
+					}),
 					update: vi.fn((payload: Record<string, unknown>) => {
 						updates.push({ table, payload });
 						return chain;
@@ -61,7 +65,20 @@ function createSupabaseMock(
 					in: vi.fn(() => chain),
 					maybeSingle: vi.fn(async () => {
 						const next = results[table]?.shift();
-						return next ?? { data: null, error: null };
+						if (!next || !next.data || typeof next.data !== 'object' || !selectedColumns) {
+							return next ?? { data: null, error: null };
+						}
+						const projected = Object.fromEntries(
+							selectedColumns
+								.split(',')
+								.map((column) => column.trim())
+								.filter((column) => column && column !== '*')
+								.map((column) => [
+									column,
+									(next.data as Record<string, unknown>)[column]
+								])
+						);
+						return selectedColumns.trim() === '*' ? next : { ...next, data: projected };
 					}),
 					single: vi.fn(async () => {
 						const next = results[table]?.shift();
@@ -125,6 +142,7 @@ describe('commitChangeSet', () => {
 			content: beforeContent,
 			props: { origin: 'external_agent', body_markdown: beforeContent },
 			children: { children: [] },
+			created_by: 'user-1',
 			created_at: '2026-06-28T19:00:00.000Z',
 			updated_at: '2026-06-28T19:07:56.593Z',
 			archived_at: null,
