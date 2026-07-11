@@ -642,6 +642,300 @@ export const skillExperts: SkillExpertProfile[] = [
 			height: 628
 		},
 		lastReviewed: '2026-07-10'
+	},
+	{
+		slug: 'connor-murray',
+		name: 'Connor Murray',
+		headline: 'Enterprise sales leader and sales educator at Higher Levels',
+		shortBio:
+			'Connor Murray teaches practical prospecting, cold email, cold calling, and enterprise sales workflows through Higher Levels and his public sales content.',
+		cardReason:
+			'His ten-year cold-email synthesis supplies the strategic-account structure, direct asks, and four-touch cadence used by the outreach skill.',
+		whyWeListen:
+			'BuildOS listens to Connor because his teaching distinguishes researched, strategic outreach from high-volume sending and turns that distinction into a concrete message and follow-up sequence. His source is one of the broadest inputs to Engagement-First Outreach, especially its strategic-account mode. Career and student-performance claims remain attributed to Connor or Higher Levels.',
+		specialties: ['Enterprise sales', 'Cold email', 'Cold calling', 'Sales coaching'],
+		work: [
+			{
+				title: 'Higher Levels',
+				organization: 'Sales educator',
+				summary:
+					'Teaches SDRs, account executives, and founders practical prospecting and enterprise-sales systems.',
+				sourceUrl: 'https://www.higherlevels.com/'
+			},
+			{
+				title: 'Cold Email Engine',
+				summary:
+					'Teaches research, message structure, follow-up, and campaign review for B2B cold email.',
+				sourceUrl: 'https://www.higherlevels.com/cold-email-engine?via=connor-techsales'
+			},
+			{
+				title: 'Enterprise sales leadership',
+				summary:
+					'Higher Levels describes Connor as a five-time national MVP, enterprise account executive, SDR manager, and former Oracle cold-call coach.',
+				sourceUrl: 'https://www.higherlevels.com/cold-email-engine?via=connor-techsales'
+			},
+			{
+				title: 'Tech Sales With Higher Levels',
+				organization: 'YouTube',
+				summary:
+					'Publishes sales breakdowns, examples, and training for modern B2B sellers.',
+				sourceUrl: 'https://www.youtube.com/@techsales-higherlevels'
+			}
+		],
+		sources: [
+			{
+				label: 'Connor Murray channel',
+				url: 'https://www.youtube.com/@Connor-Murray',
+				description: 'Public creator channel and portrait source.'
+			},
+			{
+				label: 'Higher Levels',
+				url: 'https://www.higherlevels.com/',
+				description: 'Primary home for his sales education work.'
+			},
+			{
+				label: 'Cold Email Engine',
+				url: 'https://www.higherlevels.com/cold-email-engine?via=connor-techsales',
+				description: 'Primary description of his cold-email curriculum and background.'
+			},
+			{
+				label: 'Reviewed video',
+				url: 'https://www.youtube.com/watch?v=XLsAAnNaFOc',
+				description: 'Primary source reviewed for Engagement-First Outreach.'
+			}
+		],
+		portrait: {
+			src: '/images/skill-people/connor-murray.jpg',
+			alt: 'Connor Murray speaking against a blue background',
+			sourceUrl: 'https://www.youtube.com/@Connor-Murray',
+			sourceLabel: 'Public YouTube profile image',
+			width: 900,
+			height: 900
+		},
+		lastReviewed: '2026-07-10'
+	},
+	{
+		slug: 'aaron-shepherd',
+		name: 'Aaron Shepherd',
+		headline: 'Cold-outbound operator and founder of GrowthFlare',
+		shortBio:
+			'Aaron Shepherd runs GrowthFlare and publishes tactical cold-outbound teaching about infrastructure, front-end offers, concise email copy, and campaign economics.',
+		cardReason:
+			'His operating model supplies the outreach skill’s volume-mode infrastructure floor, front-end offer, short body, and back-end qualification.',
+		whyWeListen:
+			'BuildOS listens to Aaron because his source connects cold-email copy to the operational system around it: sending infrastructure, offer design, account volume, qualification, and reply economics. That makes his material especially useful for the high-volume mode of Engagement-First Outreach. Pipeline, meeting, send-volume, and company-growth figures are self-reported and are labeled as such.',
+		specialties: [
+			'Cold outbound',
+			'Front-end offers',
+			'Email infrastructure',
+			'Campaign operations'
+		],
+		work: [
+			{
+				title: 'GrowthFlare',
+				organization: 'Founder',
+				summary:
+					'Runs a growth and outbound agency focused on campaign systems, lead generation, and sales pipeline.',
+				sourceUrl: 'https://www.growthflare.io/'
+			},
+			{
+				title: 'Cold-outbound operations',
+				summary:
+					'Publishes detailed breakdowns of list volume, sending infrastructure, offer tests, concise copy, and reply conversion.',
+				sourceUrl: 'https://www.youtube.com/@AaronxShepherd'
+			},
+			{
+				title: 'Buyer-psychology background',
+				summary:
+					'His public profile connects formal psychology and marketing study with later work as a cold-email copywriter and operator.',
+				sourceUrl: 'https://ca.linkedin.com/in/aaronxshepherd'
+			},
+			{
+				title: 'GrowthFlare operating results',
+				summary:
+					'Aaron reports that GrowthFlare has booked thousands of meetings and built a seven-figure business; these figures are self-reported.',
+				sourceUrl: 'https://ca.linkedin.com/in/aaronxshepherd'
+			}
+		],
+		sources: [
+			{
+				label: 'YouTube channel',
+				url: 'https://www.youtube.com/@AaronxShepherd',
+				description: 'Primary publishing channel and portrait source.'
+			},
+			{
+				label: 'GrowthFlare',
+				url: 'https://www.growthflare.io/',
+				description: 'Primary company site and description of its outbound work.'
+			},
+			{
+				label: 'LinkedIn profile',
+				url: 'https://ca.linkedin.com/in/aaronxshepherd',
+				description: 'First-person career history and self-reported operating metrics.'
+			},
+			{
+				label: 'Reviewed video',
+				url: 'https://www.youtube.com/watch?v=CFZuljj6DrU',
+				description: 'Primary source reviewed for Engagement-First Outreach.'
+			}
+		],
+		portrait: {
+			src: '/images/skill-people/aaron-shepherd.jpg',
+			alt: 'Aaron Shepherd seated in a dark office',
+			sourceUrl: 'https://www.youtube.com/@AaronxShepherd',
+			sourceLabel: 'Public YouTube profile image',
+			width: 900,
+			height: 900
+		},
+		lastReviewed: '2026-07-10'
+	},
+	{
+		slug: 'sam-mckenna',
+		name: 'Sam McKenna',
+		headline: 'Founder of #samsales and buyer-first sales educator',
+		shortBio:
+			'Sam McKenna teaches buyer-first enterprise selling, researched outreach, LinkedIn strategy, and sales leadership through #samsales.',
+		cardReason:
+			'Her buyer-first approach supplies the outreach skill’s authenticity bridge, respectful cadence, and research-before-personalization standard.',
+		whyWeListen:
+			'BuildOS listens to Sam because her work makes respect and preparation operational rather than aspirational. The reviewed source reinforces researched relevance, clear language, and follow-up that preserves the buyer’s dignity. Her contribution is used for strategic and relationship outreach, not as justification for high-volume automation.',
+		specialties: [
+			'Buyer-first sales',
+			'Enterprise sales',
+			'LinkedIn strategy',
+			'Sales leadership'
+		],
+		work: [
+			{
+				title: '#samsales Consulting',
+				organization: 'Founder and CEO',
+				summary:
+					'Leads a sales training and executive-branding firm built around manners-first and buyer-first selling.',
+				sourceUrl: 'https://www.samsalesconsulting.com/meet-samsales/'
+			},
+			{
+				title: 'Show Me You Know Me',
+				summary:
+					'Created a research-led outreach method that asks sellers to demonstrate genuine knowledge of the buyer before making an ask.',
+				sourceUrl: 'https://www.samsalesconsulting.com/meet-samsales/'
+			},
+			{
+				title: 'Enterprise sales leadership',
+				summary:
+					'Previously held sales and leadership roles at LinkedIn and ON24 before founding #samsales.',
+				sourceUrl: 'https://www.samsalesconsulting.com/resource/threeyearsofsamsales/'
+			},
+			{
+				title: 'Sales and leadership education',
+				summary:
+					'Publishes and speaks about sales, prospecting, leadership, social selling, and building durable buyer relationships.',
+				sourceUrl: 'https://www.linkedin.com/in/samsalesli'
+			}
+		],
+		sources: [
+			{
+				label: 'Official team profile',
+				url: 'https://www.samsalesconsulting.com/meet-samsales/',
+				description:
+					'Primary biography, company background, methodology, and portrait source.'
+			},
+			{
+				label: 'LinkedIn profile',
+				url: 'https://www.linkedin.com/in/samsalesli',
+				description: 'First-person professional history and current teaching focus.'
+			},
+			{
+				label: 'Why I started #samsales',
+				url: 'https://www.samsalesconsulting.com/resource/threeyearsofsamsales/',
+				description: 'First-person account of the company and teaching mission.'
+			},
+			{
+				label: 'Reviewed interview',
+				url: 'https://www.youtube.com/watch?v=5ln1cGTzXTg',
+				description: 'Primary source reviewed for Engagement-First Outreach.'
+			}
+		],
+		portrait: {
+			src: '/images/skill-people/sam-mckenna.jpg',
+			alt: 'Sam McKenna smiling in a white top against a light background',
+			sourceUrl: 'https://www.samsalesconsulting.com/meet-samsales/',
+			sourceLabel: 'Public #samsales team image',
+			width: 980,
+			height: 980
+		},
+		lastReviewed: '2026-07-10'
+	},
+	{
+		slug: 'steli-efti',
+		name: 'Steli Efti',
+		headline: 'Co-founder and CEO of Close and startup-sales educator',
+		shortBio:
+			'Steli Efti co-founded Close and publishes practical teaching about startup sales, outbound, follow-up, objections, leadership, and founder-led growth.',
+		cardReason:
+			'His reply-routing method supplies the outreach skill’s numbered fork, objection response bank, and respectful close-the-loop behavior.',
+		whyWeListen:
+			'BuildOS listens to Steli because his sales teaching focuses on what happens after an initial ask: objections, silence, follow-up, and the smallest next response. The reviewed source directly informs the reply-revival mode in Engagement-First Outreach. We use that narrow process without importing every sales opinion or treating company results as independent evidence.',
+		specialties: ['Startup sales', 'Sales follow-up', 'Objection handling', 'Sales leadership'],
+		work: [
+			{
+				title: 'Close',
+				organization: 'Co-founder and CEO',
+				summary:
+					'Co-founded a CRM platform built for sales-focused small and midsize businesses.',
+				sourceUrl: 'https://close.com/author/steli-efti'
+			},
+			{
+				title: 'Startup sales education',
+				summary:
+					'Publishes long-running practical guidance about outbound, follow-up, objection handling, hiring, and sales management.',
+				sourceUrl: 'https://close.com/author/steli-efti'
+			},
+			{
+				title: 'Y Combinator founder',
+				summary:
+					'Close identifies Steli as a Y Combinator alumnus who advises startup founders and sales teams.',
+				sourceUrl: 'https://close.com/author/steli-efti'
+			},
+			{
+				title: 'Founder sales guides',
+				summary:
+					'Authors public guides and books on startup sales, negotiation, demos, pipelines, and sales hiring.',
+				sourceUrl:
+					'https://resource-downloads.close.com/resources/steli_efti-the_founders_guide_to_sales_negotiation-ebook.pdf'
+			}
+		],
+		sources: [
+			{
+				label: 'Close author profile',
+				url: 'https://close.com/author/steli-efti',
+				description:
+					'Official biography, writing archive, current role, and portrait source.'
+			},
+			{
+				label: 'Close sales resources',
+				url: 'https://close.com/resources/',
+				description: 'Primary collection of the company’s public sales guides and teaching.'
+			},
+			{
+				label: 'Reviewed video',
+				url: 'https://www.youtube.com/watch?v=hmuMkXntbH0',
+				description: 'Primary source reviewed for the reply-revival mode.'
+			},
+			{
+				label: 'Founder sales guide',
+				url: 'https://resource-downloads.close.com/resources/steli_efti-the_founders_guide_to_sales_negotiation-ebook.pdf',
+				description: 'First-party long-form sales teaching from Steli and Close.'
+			}
+		],
+		portrait: {
+			src: '/images/skill-people/steli-efti.jpg',
+			alt: 'Steli Efti pointing upward against a dark background',
+			sourceUrl: 'https://close.com/author/steli-efti',
+			sourceLabel: 'Public Close author image',
+			width: 800,
+			height: 800
+		},
+		lastReviewed: '2026-07-10'
 	}
 ];
 

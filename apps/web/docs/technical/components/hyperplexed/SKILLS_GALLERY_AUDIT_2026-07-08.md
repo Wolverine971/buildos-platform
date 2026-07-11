@@ -301,13 +301,15 @@ Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail templat
 - `pnpm run gen:sitemap` -> 63 dynamic gallery URLs; 163 total sitemap URLs, including the people
   index and all eight profiles.
 - Live `/skills/people` at 1440×900 and 390×844 verified eight cards, dynamic counts, local
-  portraits, the editorial inclusion standard, one H1, and zero horizontal overflow. Desktop light
-  and dark modes remained legible with no broken named images.
+  portraits, the editorial inclusion standard, one main landmark, one H1, and zero horizontal
+  overflow. Desktop light and dark modes remained legible with no broken named images.
 - Live lineage checks confirmed Daniel + April + Lenny on Landing Page Scorecard Funnel; Kole +
   Nesrine + Lenny on UI/UX Quality Review; Tuan on Viral Content For Boring Brands; and Michael on
   Engagement-First Outreach. No tested route had horizontal overflow or a broken named portrait.
 - Live `/skills/people/april-dunford` verified direct creator attribution, reviewed-material copy,
   directory/gallery back-navigation, and the mobile dark portrait/header composition.
+- A final landmark pass removed the nested page-level `<main>` from both people templates; the
+  shell now contributes the single main landmark on the directory and individual profile routes.
 
 ### Next
 
@@ -316,3 +318,55 @@ Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail templat
   they appear in `lineagePeople`.
 - Continue with direct outreach-source creators only after each page can support a non-thin public
   background and an explicit source-to-skill relationship.
+
+## Cross-Repository People Alignment — 2026-07-10
+
+### Shipped
+
+- `/skills` and `/agent-skills` now use the same compact `SkillExpertLink` primitive, `People`
+  micro-label, three-person display cap, `+N more` treatment, 44px interaction floor, portrait
+  treatment, and canonical `/skills/people/[slug]` destination -> P3+P4+P5+P8+P13.
+- Registered experts render as linked portrait chips; unregistered lineage names retain an
+  intentionally non-clickable initials fallback instead of producing dead or invented profile
+  URLs. The first eleven registered person links on both collection routes resolve in the same
+  order with identical hrefs.
+- Agent-skill detail pages now reuse the same person links in Source Lineage. Direct creators link
+  to their BuildOS profile, external creator/channel links remain available, and a registered host
+  is labeled separately as `Host profile` so channel ownership does not overwrite framework
+  authorship.
+- Collection and detail JSON-LD now reference canonical expert `Person` entities. The public agent
+  index and generated portable `buildos.yaml` expose `lineage_profiles` with name, slug, and
+  canonical URL while retaining the full plain-name `lineage_people` list.
+- The `/agent-skills` public shell now matches the gallery's `max-w-7xl` spacing rhythm, uses the
+  shared icon wrapper, standardizes inner radii to `rounded-md`, and raises card actions to the
+  44px interaction floor -> P2+P3+P9+P13.
+- Four direct outreach-source creators form the third sourced profile batch: Connor Murray, Aaron
+  Shepherd, Sam McKenna, and Steli Efti. Each page includes a locally hosted portrait, current role
+  context, evidence-linked background, specialties, an explicit editorial rationale, and a scoped
+  source-to-skill relationship. Self-reported performance claims remain labeled as such.
+
+### Verification
+
+- `pnpm exec vitest run src/lib/skills/skill-experts.test.ts src/lib/skills/skill-gallery.test.ts src/lib/server/agent-skills.test.ts src/lib/server/public-page-sitemap.test.ts` -> 26 tests passed.
+- `pnpm run guardrails:agent-skills` -> 8 skills, 13 public reference files, 0 errors, 0 warnings.
+- `pnpm run check` completed with no Svelte diagnostics.
+- `pnpm run gen:sitemap` -> 67 dynamic gallery URLs and 167 total sitemap URLs, including all 12
+  expert profiles.
+- Live 1440x900 checks found one main landmark, one H1, no broken named portraits, no horizontal
+  overflow, and identical 44px canonical person links on `/skills` and `/agent-skills`.
+- Live `/agent-skills/cold-email-engagement-first-outreach` verified canonical links for Connor,
+  Aaron, Sam, Steli, and Michael plus safe unlinked fallbacks for Austin Schneider and Florin
+  Tatulea. The public JSON index returned the same five canonical `lineage_profiles`.
+- Live `/agent-skills/landing-page-scorecard-funnel` preserved April Dunford as the direct creator
+  and labeled Lenny Rachitsky separately as the host. `/skills/people/connor-murray` rendered its
+  900x900 portrait, one linked reviewed source, and four profile/background citations.
+- `/skills` and `/agent-skills` passed 390x844 mobile checks with wrapping 44px person chips and no
+  horizontal overflow. `/agent-skills` also passed a 1440x900 dark-mode legibility check.
+
+### Next
+
+- Austin Schneider and Florin Tatulea are the next direct-source profile candidates because both
+  remain visible in the Engagement-First Outreach lineage. Promote them only when the public
+  background and portrait evidence can support a non-thin profile.
+- Keep the ten-name ICP framework lineage as a separate authorship audit; do not turn indirect
+  framework mentions into expert profiles without a reviewed-source relationship.

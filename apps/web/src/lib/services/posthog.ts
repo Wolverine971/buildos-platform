@@ -20,10 +20,16 @@ const FUNNEL_EVENTS = new Set([
 	'intent_selected',
 	'first_capture_started',
 	'first_capture_submitted',
+	'first_capture_skipped',
 	'first_structure_generated',
 	'first_project_created',
 	'first_project_reviewed',
-	'first_project_opened'
+	'first_project_opened',
+	// Return-loop / visible-memory funnel (activation plan Phase 2)
+	'project_opened',
+	'memory_snapshot_shown',
+	'start_here_opened',
+	'memory_update_started'
 ]);
 
 export interface FirstTouchAttribution {

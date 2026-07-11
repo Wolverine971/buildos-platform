@@ -8,7 +8,7 @@
 import { captureEvent } from './posthog';
 
 /** Surfaces that emit loop events. Extend as more surfaces are instrumented. */
-export type LoopSurface = 'today' | 'onboarding';
+export type LoopSurface = 'today' | 'onboarding' | 'project';
 
 export type LoopEventName =
 	| 'loop_surface_shown'
@@ -25,7 +25,14 @@ export type LoopEventName =
 	| 'first_structure_generated'
 	| 'first_project_created'
 	| 'first_project_reviewed'
-	| 'first_project_opened';
+	| 'first_project_opened'
+	// Return-loop / visible-memory instrumentation (Phase 2 of
+	// docs/product/activation-start-here-daily-brief-plan-2026-07-10.md).
+	// First-vs-reopen is derived in PostHog from event ordinality per user.
+	| 'project_opened'
+	| 'memory_snapshot_shown'
+	| 'start_here_opened'
+	| 'memory_update_started';
 
 /** Flat values only — nested objects invite content leaking into analytics. */
 export type LoopEventProperties = Record<string, string | number | boolean | null>;

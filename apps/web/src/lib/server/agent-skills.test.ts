@@ -25,6 +25,13 @@ describe('public agent skill serving', () => {
 		expect(index.skills).toHaveLength(8);
 		expect(index.skills.find((skill) => skill.slug === 'hook-craft-short-form')).toMatchObject({
 			runtime_skill_id: 'hook_craft_short_form',
+			lineage_profiles: [
+				{
+					name: 'Kane Kallaway',
+					slug: 'kane-kallaway',
+					url: 'https://build-os.com/skills/people/kane-kallaway'
+				}
+			],
 			skill_md_url: 'https://build-os.com/agent-skills/hook-craft-short-form/skill.md',
 			portable_skill_md_url:
 				'https://build-os.com/agent-skills/hook-craft-short-form/portable/SKILL.md',
@@ -384,6 +391,23 @@ describe('public agent skill serving', () => {
 		expect(buildosMetadata.bundle_url).toBe(
 			'https://build-os.com/agent-skills/ui-ux-quality-review/bundle.zip'
 		);
+		expect(buildosMetadata.lineage_profiles).toEqual([
+			{
+				name: 'Kole Jain',
+				slug: 'kole-jain',
+				url: 'https://build-os.com/skills/people/kole-jain'
+			},
+			{
+				name: 'Nesrine Changuel',
+				slug: 'nesrine-changuel',
+				url: 'https://build-os.com/skills/people/nesrine-changuel'
+			},
+			{
+				name: 'Lenny Rachitsky',
+				slug: 'lenny-rachitsky',
+				url: 'https://build-os.com/skills/people/lenny-rachitsky'
+			}
+		]);
 		expect(buildosMetadata.gallery).toMatchObject({
 			display_title: 'UI/UX Quality Review',
 			family: 'Interface Quality',

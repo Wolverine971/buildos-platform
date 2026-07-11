@@ -12,6 +12,7 @@ import {
 	getSkillMetadata
 } from '$lib/skills/skill-gallery';
 import { previewSkillMetadataByRuntimeId } from '$lib/skills/skill-gallery-metadata';
+import { getSkillExpertByName, getSkillExpertPath } from '$lib/skills/skill-experts';
 import {
 	getSkillByReference,
 	listAllSkills
@@ -68,11 +69,33 @@ export type AgentSkillIndexItem = {
 	compatible_agents?: string[];
 	stack_with?: string[];
 	lineage_people?: string[];
+	lineage_profiles: Array<{
+		name: string;
+		slug: string;
+		url: string;
+	}>;
 	lineage_sources?: BlogPost['lineageSources'];
 	lineage_stats?: BlogPost['lineageStats'];
 	gallery: PublicSkillGalleryMetadata;
 	references: PublicAgentSkillReference[];
 };
+
+function getLineageProfileLinks(
+	people: string[] | undefined
+): AgentSkillIndexItem['lineage_profiles'] {
+	return (people ?? []).flatMap((name) => {
+		const expert = getSkillExpertByName(name);
+		return expert
+			? [
+					{
+						name: expert.name,
+						slug: expert.slug,
+						url: `${SITE_URL}${getSkillExpertPath(expert)}`
+					}
+				]
+			: [];
+	});
+}
 
 export type PublicRuntimeSkillResource = {
 	id: string;
@@ -467,6 +490,7 @@ function buildBuildOsMetadataYaml(
 		compatible_agents: post.compatibleAgents,
 		stack_with: post.stackWith,
 		lineage_people: post.lineagePeople,
+		lineage_profiles: getLineageProfileLinks(post.lineagePeople),
 		lineage_sources: post.lineageSources,
 		lineage_stats: post.lineageStats,
 		gallery,
@@ -771,6 +795,7 @@ export function buildAgentSkillIndexItem(post: BlogPost): AgentSkillIndexItem {
 		compatible_agents: post.compatibleAgents,
 		stack_with: post.stackWith,
 		lineage_people: post.lineagePeople,
+		lineage_profiles: getLineageProfileLinks(post.lineagePeople),
 		lineage_sources: post.lineageSources,
 		lineage_stats: post.lineageStats,
 		gallery: buildPublicSkillGalleryMetadata(post, runtimeSkill),

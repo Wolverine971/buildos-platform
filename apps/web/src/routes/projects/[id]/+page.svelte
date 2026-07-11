@@ -50,6 +50,8 @@
 	import TaskKanbanBoard from '$lib/components/project/v2/TaskKanbanBoard.svelte';
 	import EntityTabStrip from '$lib/components/project/v2/EntityTabStrip.svelte';
 	import ProjectEntitySearchCombobox from '$lib/components/project/v2/ProjectEntitySearchCombobox.svelte';
+	import ProjectMemoryCard from '$lib/components/project/ProjectMemoryCard.svelte';
+	import { trackLoopEvent } from '$lib/services/loop-telemetry';
 	import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
 	import {
 		archiveProjectDocument,
@@ -502,9 +504,10 @@
 
 	function hasContextDocumentContent(document: Document | null): boolean {
 		if (!document) return true;
-		if (typeof document.content === 'string') return true;
-		const props = document.props ?? {};
-		return typeof props.body_markdown === 'string';
+		// Only the content column counts: props.body_markdown is a legacy copy
+		// that predates the managed status/map regions, so treating it as
+		// loaded leaves the memory card (and edit modal) on a stale body.
+		return typeof document.content === 'string';
 	}
 
 	function mergeContextDocumentFromPayload(value: unknown): Document | null {
@@ -737,6 +740,28 @@
 	$effect(() => {
 		if (!showProjectEditModal) return;
 		untrack(() => void ensureContextDocumentContentLoaded());
+	});
+
+	// The memory card previews the Start Here body, so pull the lazily-loaded
+	// content as soon as hydration lands a context document.
+	$effect(() => {
+		if (isHydrating || !contextDocument?.id) return;
+		untrack(() => void ensureContextDocumentContentLoaded());
+	});
+
+	// Return-loop telemetry (activation plan Phase 2): one project_opened per
+	// project id per page instance. First-open vs reopen is derived in PostHog
+	// from per-user event history, not client state.
+	let trackedOpenedProjectId: string | null = null;
+	$effect(() => {
+		const projectId = data.projectId;
+		if (!projectId || trackedOpenedProjectId === projectId) return;
+		trackedOpenedProjectId = projectId;
+		untrack(() =>
+			trackLoopEvent('project_opened', 'project', {
+				project_id: projectId
+			})
+		);
 	});
 
 	$effect(() => () => {
@@ -1266,6 +1291,39 @@
 		showEventsModal = false;
 		showEventCreateModal = true;
 	}
+	// Memory card (Start Here snapshot) — activation plan Phase 2.
+	let showMemoryUpdateChatModal = $state(false);
+
+	function handleOpenStartHereFromMemoryCard(docId: string) {
+		trackLoopEvent('start_here_opened', 'project', {
+			project_id: data.projectId,
+			document_id: docId,
+			source: 'memory_card'
+		});
+		handleOpenDocument(docId);
+	}
+	async function handleUpdateProjectFromMemoryCard() {
+		trackLoopEvent('memory_update_started', 'project', { project_id: data.projectId });
+		await loadAgentChatModal();
+		showMemoryUpdateChatModal = true;
+	}
+	function closeMemoryUpdateChatModal(_summary?: DataMutationSummary) {
+		showMemoryUpdateChatModal = false;
+		// Refresh is handled globally via the dataMutationEvents subscription above.
+	}
+	function handleMemorySnapshotShown(info: {
+		documentId: string;
+		rendered: boolean;
+		freshness: string;
+	}) {
+		trackLoopEvent('memory_snapshot_shown', 'project', {
+			project_id: data.projectId,
+			document_id: info.documentId,
+			rendered: info.rendered,
+			freshness: info.freshness
+		});
+	}
+
 	function openRecentChatsModal() {
 		showRecentChatsModal = true;
 	}
@@ -1456,6 +1514,23 @@
 					{events}
 					loadActivity={canLoadSecondaryProjectRequests}
 					onOpenEntity={handleEntityClick}
+				/>
+			</div>
+		{/if}
+
+		<!-- Start Here / project memory snapshot (activation plan Phase 2).
+			 Previews canonical memory and deep-links into the Start Here doc;
+			 /today keeps ownership of event-level change receipts. -->
+		{#if !isHydrating && contextDocument}
+			<div class="mb-2 sm:mb-3">
+				<ProjectMemoryCard
+					document={contextDocument}
+					contentLoading={isContextDocumentContentLoading}
+					nextStepShort={project?.next_step_short ?? null}
+					{canEdit}
+					onOpenStartHere={handleOpenStartHereFromMemoryCard}
+					onUpdateProject={handleUpdateProjectFromMemoryCard}
+					onShown={handleMemorySnapshotShown}
 				/>
 			</div>
 		{/if}
@@ -1744,6 +1819,18 @@
 		isOpen={showRecentChatAgentModal}
 		initialChatSessionId={selectedRecentChatSessionId}
 		onClose={closeRecentChatAgentModal}
+	/>
+{/if}
+
+<!-- "Update project" from the memory card: fresh project-context chat whose
+	 mutations flow back through dataMutationEvents (and, at session end, the
+	 Start Here capture proposal path). -->
+{#if showMemoryUpdateChatModal && AgentChatModalComponent}
+	<AgentChatModalComponent
+		isOpen={showMemoryUpdateChatModal}
+		contextType="project"
+		entityId={data.projectId}
+		onClose={closeMemoryUpdateChatModal}
 	/>
 {/if}
 

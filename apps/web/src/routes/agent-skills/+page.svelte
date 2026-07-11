@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/agent-skills/+page.svelte -->
 <script lang="ts">
+	import SkillExpertLink from '$lib/components/skills/SkillExpertLink.svelte';
 	import {
 		DEFAULT_ORGANIZATION_ID,
 		DEFAULT_SOCIAL_IMAGE_ALT,
@@ -26,7 +27,8 @@
 		GitBranch,
 		Layers3,
 		Search
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
+	import { resolveSkillExperts } from '$lib/skills/skill-experts';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -162,6 +164,13 @@
 							name: skill.title,
 							description: skill.description,
 							url: skill.url,
+							mentions: resolveSkillExperts(skill.lineage_people ?? [])
+								.filter((person) => person.profile)
+								.map((person) => ({
+									'@type': 'Person',
+									'@id': `${SITE_URL}/skills/people/${person.profile?.slug}`,
+									name: person.profile?.name
+								})),
 							encoding: [
 								{
 									'@type': 'MediaObject',
@@ -240,7 +249,7 @@
 
 <div class="min-h-screen bg-background text-foreground">
 	<header class="border-b border-border bg-card tx tx-bloom tx-weak">
-		<div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+		<div class="mx-auto max-w-7xl px-2 py-8 sm:px-4 sm:py-10 lg:px-6">
 			<div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
 				<div class="max-w-3xl">
 					<div
@@ -283,7 +292,7 @@
 	</header>
 
 	<section class="border-b border-border bg-background">
-		<div class="mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-8">
+		<div class="mx-auto max-w-7xl px-2 py-4 sm:px-4 lg:px-6">
 			<div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
 				<div class="relative max-w-xl flex-1">
 					<Search
@@ -335,7 +344,7 @@
 		</div>
 	</section>
 
-	<div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+	<div class="mx-auto max-w-7xl px-2 py-8 sm:px-4 sm:py-10 lg:px-6">
 		<div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 			<p class="text-sm text-muted-foreground">
 				Showing {filteredSkills.length} of {skills.length} skills
@@ -363,18 +372,19 @@
 				{#each filteredSkills as skill}
 					{@const sourceCount = getNumericStat(skill, 'sources')}
 					{@const primitiveCount = getNumericStat(skill, 'primitives')}
+					{@const skillPeople = resolveSkillExperts(skill.lineage_people ?? [])}
 					<article
-						class="flex min-h-[22rem] flex-col rounded-lg border border-border bg-card p-5 shadow-ink tx tx-frame tx-weak"
+						class="flex min-h-[24rem] flex-col rounded-lg border border-border bg-card p-5 shadow-ink tx tx-frame tx-weak"
 					>
 						<div class="flex flex-wrap items-center gap-2 text-xs">
 							<span
-								class="inline-flex items-center gap-1 rounded border border-border bg-background px-2 py-1 font-medium text-muted-foreground"
+								class="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 font-medium text-muted-foreground"
 							>
 								<Layers3 class="h-3.5 w-3.5" />
 								{humanize(skill.skill_type)}
 							</span>
 							<span
-								class="inline-flex items-center gap-1 rounded border border-border bg-background px-2 py-1 font-medium text-muted-foreground"
+								class="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 font-medium text-muted-foreground"
 							>
 								<GitBranch class="h-3.5 w-3.5" />
 								{humanize(skill.skill_category)}
@@ -393,40 +403,34 @@
 						</div>
 
 						<div class="mt-4 grid grid-cols-3 gap-2 text-sm">
-							<div class="rounded border border-border bg-background p-2">
+							<div class="rounded-md border border-border bg-background p-2">
 								<p class="text-xs text-muted-foreground">Sources</p>
 								<p class="mt-1 font-semibold">
 									{sourceCount || skill.lineage_sources?.length || 0}
 								</p>
 							</div>
-							<div class="rounded border border-border bg-background p-2">
+							<div class="rounded-md border border-border bg-background p-2">
 								<p class="text-xs text-muted-foreground">Primitives</p>
 								<p class="mt-1 font-semibold">{primitiveCount}</p>
 							</div>
-							<div class="rounded border border-border bg-background p-2">
+							<div class="rounded-md border border-border bg-background p-2">
 								<p class="text-xs text-muted-foreground">Refs</p>
 								<p class="mt-1 font-semibold">{skill.references.length}</p>
 							</div>
 						</div>
 
-						{#if skill.lineage_people?.length}
+						{#if skillPeople.length}
 							<div class="mt-4">
-								<p class="mb-2 text-xs font-medium uppercase text-muted-foreground">
-									Lineage
-								</p>
-								<div class="flex flex-wrap gap-1.5">
-									{#each skill.lineage_people.slice(0, 5) as person}
-										<span
-											class="rounded bg-muted px-2 py-1 text-xs font-medium text-muted-foreground"
-										>
-											{person}
-										</span>
+								<p class="micro-label">People</p>
+								<div class="mt-2 flex flex-wrap gap-2">
+									{#each skillPeople.slice(0, 3) as person}
+										<SkillExpertLink {person} />
 									{/each}
-									{#if skill.lineage_people.length > 5}
+									{#if skillPeople.length > 3}
 										<span
-											class="rounded bg-muted px-2 py-1 text-xs font-medium text-muted-foreground"
+											class="inline-flex min-h-[44px] items-center px-1 text-xs font-medium text-muted-foreground"
 										>
-											+{skill.lineage_people.length - 5}
+											+{skillPeople.length - 3} more
 										</span>
 									{/if}
 								</div>
@@ -437,28 +441,28 @@
 							<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
 								<a
 									href={getSkillPath(skill)}
-									class="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-2 text-xs font-medium text-foreground transition-colors hover:border-accent/50"
+									class="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground transition-colors hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 								>
 									<BookOpen class="h-3.5 w-3.5" />
 									Guide
 								</a>
 								<a
 									href={getPortableSkillPath(skill)}
-									class="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-2 text-xs font-medium text-foreground transition-colors hover:border-accent/50"
+									class="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground transition-colors hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 								>
 									<FileText class="h-3.5 w-3.5" />
 									SKILL.md
 								</a>
 								<a
 									href={getBundlePath(skill)}
-									class="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-2 text-xs font-medium text-foreground transition-colors hover:border-accent/50"
+									class="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground transition-colors hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 								>
 									<Download class="h-3.5 w-3.5" />
 									Bundle
 								</a>
 								<button
 									type="button"
-									class="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-2 text-xs font-medium text-foreground transition-colors hover:border-accent/50"
+									class="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground transition-colors hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 									onclick={() => copyBundleCommand(skill)}
 								>
 									{#if copiedSlug === skill.slug}

@@ -527,6 +527,18 @@ export function preserveCurrentStartHereManagedRegions(
 		: authoredBody;
 }
 
+// The 2026-06-24 backfill template emitted its per-section editing guidance as
+// plain text (not italic blockquotes), so those exact lines survive in prod
+// docs and would otherwise reach prompts as fake authored content. Match them
+// verbatim (trimmed) — real content never reproduces these strings exactly.
+const LEGACY_SCAFFOLD_LINES = new Set([
+	'- Things we are deliberately not doing, with the reason in brief.',
+	'2-4 sentences: what just happened, what is in progress, and what is blocked.',
+	'- **Decision** - one-line rationale. _(YYYY-MM-DD)_',
+	'- **Term** - what it means in this project.',
+	'- Live question we have not resolved.'
+]);
+
 function stripPromptNoiseLines(body: string): string {
 	return normalizeMarkdownLineEndings(body)
 		.split('\n')
@@ -534,6 +546,7 @@ function stripPromptNoiseLines(body: string): string {
 			const trimmed = line.trim();
 			// Volatile per-run managed footer.
 			if (/^_?last refreshed\b/i.test(trimmed)) return false;
+			if (LEGACY_SCAFFOLD_LINES.has(trimmed)) return false;
 			// Authoring scaffolding: a line that is entirely an italic blockquote
 			// (e.g. "> _Capture target: ..._" or the legacy "> _authored - capture
 			// target_"). This is editing guidance, not project context, so it must
@@ -555,6 +568,117 @@ function collectMarkdownHeadings(body: string, limit = 20): string[] {
 		if (headings.length >= limit) break;
 	}
 	return headings;
+}
+
+export type StartHereStatusSnapshot = {
+	state: string | null;
+	scale: string | null;
+	stage: string | null;
+	now: string | null;
+	nextStep: string | null;
+	refreshedAt: string | null;
+	/** False while the region still holds the never-rendered template copy. */
+	rendered: boolean;
+};
+
+const STATUS_TEMPLATE_NOW_VALUES = new Set([
+	'No project snapshot has been rendered yet.',
+	'No snapshot summary loaded.'
+]);
+const STATUS_TEMPLATE_NEXT_STEP = 'Not captured yet.';
+
+/**
+ * Parse the machine-owned `managed:status` region (the inverse of
+ * `renderStartHereStatusContent`) so display surfaces can show State / Now /
+ * Next step without re-rendering the raw markdown. Returns null when the body
+ * has no status region at all.
+ */
+export function parseStartHereStatusRegion(body: string): StartHereStatusSnapshot | null {
+	const region = extractStartHereManagedRegions(body).status;
+	if (typeof region !== 'string') return null;
+
+	let state: string | null = null;
+	let scale: string | null = null;
+	let stage: string | null = null;
+	let now: string | null = null;
+	let nextStep: string | null = null;
+	let refreshedAt: string | null = null;
+
+	for (const rawLine of region.split('\n')) {
+		const line = rawLine.trim();
+		if (!line) continue;
+
+		const refreshedMatch = /^_Last refreshed (.+?) from project snapshot\._$/.exec(line);
+		if (refreshedMatch) {
+			refreshedAt = refreshedMatch[1].trim() || null;
+			continue;
+		}
+
+		// Now/Next step hold a single free-text value for the whole line; only
+		// the state line packs State/Scale/Stage as ` · `-joined bold labels.
+		const wholeLineMatch = /^\*\*(Now|Next step):\*\*\s*(.*)$/.exec(line);
+		if (wholeLineMatch) {
+			const value = compactLabel(wholeLineMatch[2]);
+			if (wholeLineMatch[1] === 'Now') now = value;
+			else nextStep = value;
+			continue;
+		}
+
+		for (const part of line.split(' · ')) {
+			const labelMatch = /^\*\*(State|Scale|Stage):\*\*\s*(.*)$/.exec(part.trim());
+			if (!labelMatch) continue;
+			const value = compactLabel(labelMatch[2]);
+			if (labelMatch[1] === 'State') state = value;
+			else if (labelMatch[1] === 'Scale') scale = value;
+			else stage = value;
+		}
+	}
+
+	if (now && STATUS_TEMPLATE_NOW_VALUES.has(now)) now = null;
+	if (nextStep === STATUS_TEMPLATE_NEXT_STEP) nextStep = null;
+	const rendered = Boolean(refreshedAt) || (state !== null && state !== 'Unknown');
+	if (state === 'Unknown') state = null;
+
+	return { state, scale, stage, now, nextStep, refreshedAt, rendered };
+}
+
+/**
+ * Pull a short "what this project is" orientation line from a Start Here body.
+ * Handles both authored dialects — the `## What this is` template section and
+ * the instantiation `## Vision & Summary` section — and falls back to the
+ * first real paragraph. Managed regions, headings, and editing scaffolding are
+ * never returned.
+ */
+export function extractStartHereOrientation(body: string, maxChars = 280): string | null {
+	const authored = stripPromptNoiseLines(stripStartHereManagedRegions(body));
+	if (!authored) return null;
+
+	const sectionsToTry = ['What this is', 'Vision & Summary', 'Vision and Summary'];
+	const candidates: string[] = [];
+	for (const section of sectionsToTry) {
+		const match = new RegExp(
+			`^##\\s+${escapeRegExp(section)}\\s*$([\\s\\S]*?)(?=^#{1,2}\\s|$(?![\\s\\S]))`,
+			'im'
+		).exec(authored);
+		if (match?.[1]) candidates.push(match[1]);
+	}
+	candidates.push(authored);
+
+	for (const candidate of candidates) {
+		const paragraph = candidate
+			.split(/\n{2,}/)
+			.map((block) =>
+				block
+					.split('\n')
+					.filter((line) => !/^#{1,6}\s/.test(line.trim()))
+					.join(' ')
+					.replace(/\s+/g, ' ')
+					.trim()
+			)
+			.find((block) => block.length > 0);
+		if (paragraph) return truncateByChars(paragraph, Math.max(1, maxChars));
+	}
+	return null;
 }
 
 export function buildStartHerePromptExcerpt(

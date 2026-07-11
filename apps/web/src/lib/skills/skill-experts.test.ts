@@ -52,7 +52,11 @@ describe('skill expert profiles', () => {
 			'daniel-priestley',
 			'nesrine-changuel',
 			'tuan-le',
-			'michael-seibel'
+			'michael-seibel',
+			'connor-murray',
+			'aaron-shepherd',
+			'sam-mckenna',
+			'steli-efti'
 		]);
 		expect(new Set(skillExperts.map((expert) => expert.slug)).size).toBe(skillExperts.length);
 		for (const expert of skillExperts) {

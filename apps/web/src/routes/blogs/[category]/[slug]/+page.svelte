@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/blogs/[category]/[slug]/+page.svelte -->
 <script lang="ts">
+	import SkillExpertLink from '$lib/components/skills/SkillExpertLink.svelte';
 	import {
 		DEFAULT_ORGANIZATION_LOGO_IMAGE,
 		DEFAULT_ORGANIZATION_ID,
@@ -17,6 +18,15 @@
 	} from '$lib/constants/seo';
 	import type { PageData } from './$types';
 	import { ArrowLeft, Calendar, Clock, History, Tag } from '$lib/icons/lucide';
+	import {
+		getSkillExpertByName,
+		getSkillExpertLineageRelationship,
+		getSkillExpertPath,
+		normalizeSkillExpertName,
+		resolveSkillExperts,
+		type SkillExpertLineageRelationship,
+		type SkillExpertProfile
+	} from '$lib/skills/skill-experts';
 	import {
 		AGENT_SKILLS_COLLECTION,
 		formatBlogDate,
@@ -60,6 +70,7 @@
 	const metaTitle = $derived(`${data.post.seoTitle ?? data.post.title} | BuildOS`);
 	const lineageSources = $derived(data.post.lineageSources ?? []);
 	const lineagePeople = $derived(data.post.lineagePeople ?? []);
+	const resolvedLineagePeople = $derived(resolveSkillExperts(lineagePeople));
 	const lineageStatEntries = $derived(Object.entries(data.post.lineageStats ?? {}));
 	const stackWith = $derived(data.post.stackWith ?? []);
 	const relatedSkills = $derived(data.post.relatedSkills ?? []);
@@ -159,6 +170,22 @@
 		return [...channels.values()];
 	}
 
+	function getSourceExpertLinks(source: BlogLineageSource) {
+		return resolvedLineagePeople.flatMap((person) => {
+			if (!person.profile) return [];
+			const relationship = getSkillExpertLineageRelationship(person.profile, source);
+			return relationship ? [{ profile: person.profile, relationship }] : [];
+		});
+	}
+
+	function getSourceExpert(
+		source: BlogLineageSource,
+		relationship: SkillExpertLineageRelationship
+	): SkillExpertProfile | undefined {
+		return getSourceExpertLinks(source).find((item) => item.relationship === relationship)
+			?.profile;
+	}
+
 	function isSameLineageSource(source: BlogLineageSource, candidate: BlogLineageSource) {
 		if (source.url && candidate.url) return source.url === candidate.url;
 		return source.title.trim().toLowerCase() === candidate.title.trim().toLowerCase();
@@ -170,15 +197,16 @@
 		const mentionRefs: JsonLdNode[] = [];
 		const peopleByName = new Map<string, string>();
 
-		const getPersonKey = (name: string) =>
-			name
-				.toLowerCase()
-				.replace(/[^a-z0-9]+/g, ' ')
-				.trim();
+		const getPersonKey = normalizeSkillExpertName;
 
 		for (const [index, source] of sources.entries()) {
 			const sourceId = getLineageSourceId(source, index);
-			const creatorId = source.creator ? getLineageCreatorId(source, index) : null;
+			const creatorExpert = source.creator ? getSkillExpertByName(source.creator) : undefined;
+			const creatorId = source.creator
+				? creatorExpert
+					? `${SITE_URL}${getSkillExpertPath(creatorExpert)}#person`
+					: getLineageCreatorId(source, index)
+				: null;
 			const channelId = source.channelName ? getLineageChannelId(source, index) : null;
 			const sourceType =
 				source.sourceType === 'youtube_video' || isYoutubeUrl(source.url)
@@ -190,7 +218,9 @@
 					'@type': source.creatorType ?? 'Person',
 					'@id': creatorId,
 					name: source.creator,
-					url: source.creatorUrl,
+					url: creatorExpert
+						? `${SITE_URL}${getSkillExpertPath(creatorExpert)}`
+						: source.creatorUrl,
 					sameAs: source.creatorUrl ? [source.creatorUrl] : undefined
 				});
 				mentionRefs.push({ '@id': creatorId });
@@ -234,15 +264,19 @@
 				continue;
 			}
 
-			const personId = `${articleUrl}#mentioned-${person
-				.toLowerCase()
-				.replace(/[^a-z0-9]+/g, '-')
-				.replace(/^-|-$/g, '')}`;
+			const expert = getSkillExpertByName(person);
+			const personId = expert
+				? `${SITE_URL}${getSkillExpertPath(expert)}#person`
+				: `${articleUrl}#mentioned-${person
+						.toLowerCase()
+						.replace(/[^a-z0-9]+/g, '-')
+						.replace(/^-|-$/g, '')}`;
 			if (!nodesById.has(personId)) {
 				nodesById.set(personId, {
 					'@type': 'Person',
 					'@id': personId,
-					name: person
+					name: person,
+					url: expert ? `${SITE_URL}${getSkillExpertPath(expert)}` : undefined
 				});
 			}
 			peopleByName.set(personKey, personId);
@@ -617,14 +651,18 @@
 				<div
 					class="mt-6 rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground"
 				>
-					<span class="block text-xs font-medium uppercase tracking-wide text-foreground">
+					<span class="micro-label block text-foreground">
 						{isSourceAnalysisPost ? 'Source Notes' : 'Source Lineage'}
 					</span>
-					{#if lineagePeople.length}
-						<p class="mt-2 text-xs">
-							<span class="font-medium text-foreground">People referenced:</span>
-							{lineagePeople.join(', ')}
-						</p>
+					{#if resolvedLineagePeople.length}
+						<div class="mt-3">
+							<p class="micro-label">People</p>
+							<div class="mt-2 flex flex-wrap gap-2">
+								{#each resolvedLineagePeople as person}
+									<SkillExpertLink {person} />
+								{/each}
+							</div>
+						</div>
 					{/if}
 					{#if lineageStatEntries.length}
 						<div class="mt-3 flex flex-wrap gap-1.5">
@@ -683,11 +721,13 @@
 					{#if lineageSources.length}
 						<ul class="mt-2 space-y-1.5 text-xs">
 							{#each lineageSources as source}
-								<li>
+								{@const creatorExpert = getSourceExpert(source, 'creator')}
+								{@const channelExpert = getSourceExpert(source, 'channel')}
+								<li class="rounded-md border border-border bg-background p-3">
 									{#if source.url}
 										<a
 											href={source.url}
-											class="text-accent hover:underline"
+											class="inline-flex min-h-[44px] items-center font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 											target="_blank"
 											rel="noreferrer"
 										>
@@ -697,7 +737,28 @@
 										<span class="text-foreground">{source.title}</span>
 									{/if}
 									{#if source.creator}
-										<span> by {source.creator}</span>
+										<span> by </span>
+										{#if creatorExpert}
+											<a
+												href={getSkillExpertPath(creatorExpert)}
+												class="inline-flex min-h-[44px] items-center font-semibold text-foreground hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											>
+												{creatorExpert.name}
+											</a>
+										{:else if source.creatorUrl}
+											<a
+												href={source.creatorUrl}
+												target="_blank"
+												rel="noreferrer"
+												class="inline-flex min-h-[44px] items-center font-semibold text-foreground hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											>
+												{source.creator}
+											</a>
+										{:else}
+											<span class="font-semibold text-foreground"
+												>{source.creator}</span
+											>
+										{/if}
 									{/if}
 									{#if source.channelName && source.channelName !== source.creator}
 										<span> on </span>
@@ -713,6 +774,15 @@
 										{:else}
 											<span>{source.channelName}</span>
 										{/if}
+									{/if}
+									{#if channelExpert}
+										<span aria-hidden="true"> · </span>
+										<a
+											href={getSkillExpertPath(channelExpert)}
+											class="inline-flex min-h-[44px] items-center font-semibold text-foreground hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										>
+											Host profile: {channelExpert.name}
+										</a>
 									{/if}
 								</li>
 							{/each}

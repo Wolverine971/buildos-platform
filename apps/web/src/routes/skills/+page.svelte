@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/skills/+page.svelte -->
 <script lang="ts">
+	import SkillExpertLink from '$lib/components/skills/SkillExpertLink.svelte';
 	import {
 		DEFAULT_ORGANIZATION_ID,
 		DEFAULT_SOCIAL_IMAGE_ALT,
@@ -60,6 +61,7 @@
 		humanize,
 		normalizeSearchText
 	} from '$lib/skills/skill-gallery';
+	import { resolveSkillExperts } from '$lib/skills/skill-experts';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -243,7 +245,14 @@
 				name: getDisplayTitle(skill),
 				description: skill.description,
 				url: `${SITE_URL}${getSkillPath(skill)}`,
-				genre: skill.skill_category ? humanize(skill.skill_category) : undefined
+				genre: skill.skill_category ? humanize(skill.skill_category) : undefined,
+				mentions: resolveSkillExperts(skill.lineage_people ?? [])
+					.filter((person) => person.profile)
+					.map((person) => ({
+						'@type': 'Person',
+						'@id': `${SITE_URL}/skills/people/${person.profile?.slug}`,
+						name: person.profile?.name
+					}))
 			})),
 			...previews.map((preview) => ({
 				name: preview.title,
@@ -1010,6 +1019,7 @@
 							{@const sourceCount = getNumericStat(skill, 'sources')}
 							{@const searchMatches = getSkillSearchMatches(skill, post, query)}
 							{@const outputShapes = getOutputShapes(skill)}
+							{@const skillPeople = resolveSkillExperts(skill.lineage_people ?? [])}
 							<article
 								class="flex min-h-[19rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
 							>
@@ -1041,6 +1051,24 @@
 								>
 									{getSkillPromise(skill, post)}
 								</p>
+
+								{#if skillPeople.length}
+									<div class="mt-4">
+										<p class="micro-label">People</p>
+										<div class="mt-2 flex flex-wrap gap-2">
+											{#each skillPeople.slice(0, 3) as person}
+												<SkillExpertLink {person} />
+											{/each}
+											{#if skillPeople.length > 3}
+												<span
+													class="inline-flex min-h-[44px] items-center px-1 text-xs font-medium text-muted-foreground"
+												>
+													+{skillPeople.length - 3} more
+												</span>
+											{/if}
+										</div>
+									</div>
+								{/if}
 
 								<div class="mt-4 flex flex-wrap gap-1.5">
 									{#each outputShapes.slice(0, 3) as output}

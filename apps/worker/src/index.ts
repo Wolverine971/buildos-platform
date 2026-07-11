@@ -1,9 +1,12 @@
 // apps/worker/src/index.ts
+// Load .env before any other import evaluates — static imports are hoisted, so
+// module-level env reads (e.g. config/projectLoops.ts) run before this module's
+// body. A plain dotenv.config() call in the body is too late for those flags.
+import 'dotenv/config';
 import cors from 'cors';
 import type { Json, QueueJobStatus, QueueJobType } from '@buildos/shared-types';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
-import dotenv from 'dotenv';
 import express from 'express';
 
 import { supabase } from './lib/supabase';
@@ -21,8 +24,6 @@ import { queue, shutdownWorker, startWorker } from './worker';
 import type { Server } from 'node:http';
 import { classifyOntologyEntity } from './workers/ontology/ontologyClassifier';
 import { getFutureNotificationScheduledFor } from './workers/brief/briefNotificationSchedule';
-
-dotenv.config();
 
 // Log email configuration at startup
 console.log('🚀 Application starting...');
