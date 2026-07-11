@@ -21,9 +21,10 @@
 		Sun
 	} from '$lib/icons/lucide';
 	import { requireApiData } from '$lib/utils/api-client-helpers';
+	import { trackLoopEvent } from '$lib/services/loop-telemetry';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { CalendarItem } from '$lib/types/calendar-items';
-	import type { TodayFeed, TodayTask, WhatChangedFeed } from '$lib/types/today';
+	import type { TodayFeed, TodayTask, WhatChangedEntry, WhatChangedFeed } from '$lib/types/today';
 
 	let { data }: { data: PageData } = $props();
 
@@ -284,6 +285,10 @@
 		}
 	}
 
+	// Receipt-viewed fires once per page view, on the first non-empty render —
+	// loadChanges() also reruns after chat/inbox/task modals close.
+	let receiptViewTracked = false;
+
 	async function loadChanges() {
 		if (!changesSince) return;
 		try {
@@ -293,6 +298,20 @@
 			if (!response.ok) return;
 			const result = await requireApiData<{ feed: WhatChangedFeed }>(response);
 			changesFeed = result.feed;
+			if (!receiptViewTracked && result.feed.entries.length > 0) {
+				receiptViewTracked = true;
+				trackLoopEvent('loop_receipt_viewed', 'today', {
+					source_type: 'what_changed',
+					entry_count: result.feed.entries.length,
+					project_count: new Set(result.feed.entries.map((entry) => entry.project_id))
+						.size,
+					total_log_count: result.feed.totalLogCount,
+					truncated: result.feed.truncated,
+					since_hours: Math.round(
+						(Date.now() - new Date(result.feed.since).getTime()) / (60 * 60 * 1000)
+					)
+				});
+			}
 		} catch {
 			// Best-effort module; keep whatever we last showed.
 		}
@@ -307,6 +326,16 @@
 			// Storage unavailable (private mode etc.) — the 24h fallback covers it.
 		}
 		loadChanges();
+		trackLoopEvent('loop_surface_shown', 'today', {
+			loaded: !!feed,
+			event_count: eventCount,
+			task_count: feed?.tasks.length ?? 0,
+			overdue_count: feed?.overdueCount ?? 0,
+			all_day_count: agenda.allDay.length,
+			schedule_count: agenda.schedule.length,
+			anytime_count: agenda.anytime.length,
+			is_clear_day: isClearDay
+		});
 	});
 
 	async function toggleDone(task: TodayTask) {
@@ -332,6 +361,13 @@
 			if (!response.ok) {
 				throw new Error(`Task update failed (${response.status})`);
 			}
+			trackLoopEvent('loop_decision_made', 'today', {
+				source_type: 'task',
+				action: markingDone ? 'done' : 'undo_done',
+				source_ref_id: task.id,
+				project_id: task.project_id,
+				bucket: task.bucket
+			});
 		} catch {
 			if (markingDone) {
 				const next = new Set(doneIds);
@@ -355,7 +391,7 @@
 		}
 	}
 
-	async function openTaskChat(task: TodayTask) {
+	async function openTaskChat(task: TodayTask, chatSource: 'task' | 'event_task' = 'task') {
 		await ensureChatModal();
 		chatConfig = {
 			focus: {
@@ -367,12 +403,43 @@
 			}
 		};
 		chatOpen = true;
+		trackLoopEvent('loop_chat_opened', 'today', {
+			chat_source: chatSource,
+			source_ref_id: task.id,
+			project_id: task.project_id
+		});
+	}
+
+	// "Chat about this change" on a task receipt: same task-focus contract as
+	// agenda rows, built from the receipt's entity fields.
+	async function openReceiptChat(entry: WhatChangedEntry) {
+		await ensureChatModal();
+		chatConfig = {
+			focus: {
+				focusType: 'task',
+				focusEntityId: entry.entity_id,
+				focusEntityName: entry.entity_name,
+				projectId: entry.project_id,
+				projectName: entry.project_name
+			}
+		};
+		chatOpen = true;
+		trackLoopEvent('loop_chat_opened', 'today', {
+			chat_source: 'receipt_task',
+			source_ref_id: entry.entity_id,
+			project_id: entry.project_id
+		});
 	}
 
 	async function openTask(task: TodayTask) {
 		selectedTask = task;
 		try {
 			TaskEditModalComponent = (await loadTaskEditModal()).default;
+			trackLoopEvent('loop_surface_opened', 'today', {
+				source_type: 'task_details',
+				source_ref_id: task.id,
+				project_id: task.project_id
+			});
 		} catch {
 			selectedTask = null;
 			toastService.error('Could not open the task');
@@ -392,7 +459,7 @@
 		const event = entry.event;
 		if (!event) return;
 		if (entry.linkedTask) {
-			await openTaskChat(entry.linkedTask);
+			await openTaskChat(entry.linkedTask, 'event_task');
 			return;
 		}
 		await ensureChatModal();
@@ -412,6 +479,11 @@
 			};
 		}
 		chatOpen = true;
+		trackLoopEvent('loop_chat_opened', 'today', {
+			chat_source: 'event',
+			source_ref_id: event.calendar_item_id,
+			project_id: event.project_id ?? null
+		});
 	}
 
 	function buildDayDraft(): string {
@@ -454,6 +526,11 @@
 		await ensureChatModal();
 		chatConfig = { contextType: 'global', draft: buildDayDraft() };
 		chatOpen = true;
+		trackLoopEvent('loop_chat_opened', 'today', {
+			chat_source: 'day',
+			event_count: eventCount,
+			task_count: openTaskCount
+		});
 	}
 
 	async function submitCapture() {
@@ -469,6 +546,13 @@
 		};
 		chatOpen = true;
 		captureText = '';
+		trackLoopEvent('loop_capture_submitted', 'today', {
+			source_type: 'quick_capture',
+			capture_length: text.length
+		});
+		trackLoopEvent('loop_chat_opened', 'today', {
+			chat_source: 'quick_capture'
+		});
 	}
 
 	function handleCaptureKeydown(event: KeyboardEvent) {
@@ -493,6 +577,10 @@
 			).default;
 		}
 		inboxOpen = true;
+		trackLoopEvent('loop_surface_opened', 'today', {
+			source_type: 'ai_inbox',
+			pending_count: inboxCount
+		});
 	}
 
 	function handleInboxClose() {
@@ -509,6 +597,10 @@
 			).default;
 		}
 		overdueOpen = true;
+		trackLoopEvent('loop_surface_opened', 'today', {
+			source_type: 'overdue_triage',
+			overdue_count: feed?.overdueCount ?? 0
+		});
 	}
 
 	function handleOverdueClose() {
@@ -622,7 +714,7 @@
 		</section>
 
 		{#if changesFeed}
-			<WhatChangedSection feed={changesFeed} />
+			<WhatChangedSection feed={changesFeed} onChatAboutEntry={openReceiptChat} />
 		{/if}
 
 		{#if !feed}

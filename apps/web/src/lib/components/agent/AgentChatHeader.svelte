@@ -31,6 +31,8 @@
 		showBackButton: boolean;
 		onBack: () => void;
 		onClose?: () => void;
+		/** Park the chat into the notification stack (keeps the session + any in-flight turn alive). */
+		onMinimize?: () => void;
 		projectId?: string;
 		resolvedProjectFocus: ProjectFocus | null;
 		onChangeFocus: () => void;
@@ -58,6 +60,7 @@
 		showBackButton,
 		onBack,
 		onClose,
+		onMinimize,
 		projectId,
 		resolvedProjectFocus,
 		onChangeFocus,
@@ -635,6 +638,20 @@
 					</div>
 				{/if}
 			</div>
+		{/if}
+
+		<!-- INKPRINT minimize button — parks the chat into the notification stack -->
+		{#if onMinimize}
+			<button
+				type="button"
+				onclick={onMinimize}
+				class="flex h-9 w-9 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				style="-webkit-tap-highlight-color: transparent;"
+				aria-label="Minimize chat"
+				title="Minimize — keeps working in the background"
+			>
+				<ChevronDown class="h-4 w-4" />
+			</button>
 		{/if}
 
 		<!-- INKPRINT close button -->

@@ -45,12 +45,37 @@ calendar events blended with tasks — where every item is chattable and decidab
   The "since" anchor is the previous visit (localStorage `buildos:today:last-visit-at`, held
   steady across reloads via sessionStorage, clamped server-side to 7 days, default 24h). Hidden
   when empty. Edge (relationship) logs are excluded as structural noise.
+  Receipt rows deep-link (added 2026-07-10): the entity name links to the entity on the project
+  page via `resolveEntityOpenAction` + `buildProjectEntityOpenHref` (`?entity=&entity_id=`), with
+  deleted entities and unsupported types falling back to plain text; task receipts also carry a
+  "chat about this change" action that opens task-focused agent chat (same contract as agenda
+  rows).
+
+- **Loop telemetry** (added 2026-07-10). The page emits thinking-loop events through
+  `$lib/services/loop-telemetry.ts` (a thin envelope over the PostHog wrapper — safe no-op without
+  a key/consent; payloads are IDs/counts only, never content). Events, all with
+  `surface: 'today'` + `actor_kind: 'user'`:
+    - `loop_surface_shown` — once per page view, with agenda counts (`event_count`, `task_count`,
+      `overdue_count`, `all_day_count`, `schedule_count`, `anytime_count`, `is_clear_day`,
+      `loaded`).
+    - `loop_receipt_viewed` — first non-empty What-changed render per page view
+      (`entry_count`, `project_count`, `total_log_count`, `truncated`, `since_hours`).
+    - `loop_capture_submitted` — quick capture sent (`source_type: 'quick_capture'`,
+      `capture_length`).
+    - `loop_decision_made` — done toggle success only (`source_type: 'task'`,
+      `action: 'done' | 'undo_done'`, `source_ref_id`, `project_id`, `bucket`).
+    - `loop_chat_opened` — every chat entry, keyed by `chat_source`:
+      `task` | `event` | `event_task` | `day` | `quick_capture` | `receipt_task`.
+    - `loop_surface_opened` — inbox chip (`ai_inbox`, `pending_count`), overdue chip
+      (`overdue_triage`, `overdue_count`), task-details modal (`task_details`), receipt
+      entity click-through (`receipt_entity`).
 
 ## Files
 
 | Piece                   | Path                                                                                         |
 | ----------------------- | -------------------------------------------------------------------------------------------- |
 | Shared types            | `apps/web/src/lib/types/today.ts`                                                            |
+| Loop telemetry          | `apps/web/src/lib/services/loop-telemetry.ts` (+ `.test.ts`)                                 |
 | Feed assembly (server)  | `apps/web/src/lib/server/today-feed.service.ts`                                              |
 | Refresh endpoint        | `apps/web/src/routes/api/today/+server.ts` (GET)                                             |
 | Route                   | `apps/web/src/routes/today/{+page.server.ts,+page.svelte}`                                   |
@@ -89,9 +114,9 @@ What-changed rows, and the voice capture composer.
 
 ## Deliberate scope cuts (follow-ups)
 
-- What-changed follow-ups: click-through from a receipt to the entity (currently the group links
-  to the project), a per-receipt "chat about this change" action, and folding agent-run
-  `entities_touched` / `agent_tool_executions` in for run-level receipts.
+- ~~What-changed follow-ups: click-through from a receipt to the entity~~ (done 2026-07-10) and
+  ~~a per-receipt "chat about this change" action~~ (done 2026-07-10, task receipts). Still open:
+  folding agent-run `entities_touched` / `agent_tool_executions` in for run-level receipts.
 - Quick-capture follow-ups: inline (non-modal) processing state, project-targeting hints
   ("@project" affordance), and capture history.
 - Server-seeded whole-day chat session (inbox-style seed message instead of a composer draft).

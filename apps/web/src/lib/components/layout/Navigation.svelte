@@ -2,7 +2,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { replaceState } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import {
 		FolderOpen,
 		Home,
@@ -96,6 +96,20 @@
 	let chatUsePageFocus = $state(true);
 	let isOpeningBrainDumpChat = $state(false);
 	let handledAgentChatLaunchKey = $state('');
+	// Imperative handle + live session id for the mounted chat modal, so an
+	// open-chat request for a different session can park the current one first.
+	let agentChatModalRef = $state<{
+		minimizeToStack: () => void;
+		hardParkAndClose: () => void;
+		markSessionFinalized: () => void;
+	} | null>(null);
+	let activeChatSessionId = $state<string | null>(null);
+	// Keep-alive park: when set, the chat modal stays MOUNTED but hidden —
+	// its stream keeps rendering into live state (and survives client-side
+	// route changes since Navigation lives in the layout). Reopening the same
+	// session is a seamless unhide; anything else tears the instance down
+	// first via hardParkAndClose (that chat then resumes from the DB).
+	let parkedChatSessionId = $state<string | null>(null);
 
 	// Mobile-menu accessibility: drawer ref for the focus trap, and the element to restore
 	// focus to when the drawer closes (the hamburger button the user came from).
@@ -434,10 +448,39 @@
 		}
 	}
 
+	/**
+	 * Tear down any current chat instance (visible or parked keep-alive) so
+	 * the next open gets a clean bootstrap. A chat with a session is parked as
+	 * a stack card first — nothing is lost, it resumes from the DB.
+	 */
+	async function ensureFreshChatSurface(): Promise<void> {
+		if (!showChatModal && parkedChatSessionId === null) return;
+		agentChatModalRef?.hardParkAndClose();
+		showChatModal = false;
+		parkedChatSessionId = null;
+		await tick();
+	}
+
+	function handleChatParked(sessionId: string) {
+		parkedChatSessionId = sessionId;
+		showChatModal = false;
+	}
+
+	// The parked card was dismissed (= chat ended by the bridge): unmount the
+	// hidden keep-alive instance. The bridge already closed the session, so
+	// mark it finalized first to skip a duplicate close on teardown.
+	function handleChatSessionDismissedEvent(event: Event) {
+		const sessionId = (event as CustomEvent<{ sessionId?: string }>).detail?.sessionId;
+		if (!sessionId || sessionId !== parkedChatSessionId) return;
+		agentChatModalRef?.markSessionFinalized();
+		parkedChatSessionId = null;
+	}
+
 	async function openSelectedHistoryBrainDumpChat(braindumpId: string): Promise<boolean> {
 		if (isOpeningBrainDumpChat) return true;
 		isOpeningBrainDumpChat = true;
 		try {
+			await ensureFreshChatSurface();
 			const response = await fetch(`/api/onto/braindumps/${braindumpId}/chat-session`, {
 				method: 'POST'
 			});
@@ -463,6 +506,13 @@
 		detailOrEvent?: { projectId: string; chatType: string } | MouseEvent | CustomEvent
 	) {
 		closeAllMenus();
+		// A parked keep-alive chat exists: the chat button brings it back
+		// exactly where it left off instead of starting over.
+		if (parkedChatSessionId) {
+			parkedChatSessionId = null;
+			showChatModal = true;
+			return;
+		}
 		chatInitialSessionId = null;
 		chatInitialBrainDumpContext = null;
 		chatInitialDraft = null;
@@ -479,7 +529,7 @@
 		// If detailOrEvent has projectId, it's the detail object we need
 	}
 
-	function handleOpenAgentChatEvent(event: Event) {
+	async function handleOpenAgentChatEvent(event: Event) {
 		const detail = (
 			event as CustomEvent<{
 				sessionId?: string | null;
@@ -489,6 +539,26 @@
 				initialDraft?: string | null;
 			}>
 		).detail;
+		const requestedSessionId =
+			typeof detail?.sessionId === 'string' && detail.sessionId.trim()
+				? detail.sessionId.trim()
+				: null;
+		// Already showing the requested session — nothing to do.
+		if (showChatModal && requestedSessionId && requestedSessionId === activeChatSessionId) {
+			return;
+		}
+		// The requested session is parked keep-alive: seamless resume — just
+		// unhide the still-live instance (stream, tool calls, and all).
+		if (requestedSessionId && requestedSessionId === parkedChatSessionId) {
+			closeAllMenus();
+			parkedChatSessionId = null;
+			showChatModal = true;
+			return;
+		}
+		// A different chat is open (visible or parked): park it as a stack card
+		// and let the instance actually unmount so the new session gets a clean
+		// bootstrap instead of a mid-life prop swap.
+		await ensureFreshChatSurface();
 		closeAllMenus();
 		chatInitialBrainDumpContext = null;
 		chatInitialDraft =
@@ -496,10 +566,7 @@
 				? detail.initialDraft.trim()
 				: null;
 		chatUsePageFocus = false;
-		chatInitialSessionId =
-			typeof detail?.sessionId === 'string' && detail.sessionId.trim()
-				? detail.sessionId.trim()
-				: null;
+		chatInitialSessionId = requestedSessionId;
 		chatOverrideContextType = detail?.contextType ?? null;
 		chatOverrideEntityId =
 			typeof detail?.entityId === 'string' && detail.entityId.trim()
@@ -517,8 +584,9 @@
 		return trimmed.length > 2400 ? `${trimmed.slice(0, 2400)}...` : trimmed;
 	}
 
-	function openAgentChatLaunch(draft: string) {
+	async function openAgentChatLaunch(draft: string) {
 		closeAllMenus();
+		await ensureFreshChatSurface();
 		chatInitialSessionId = null;
 		chatInitialBrainDumpContext = null;
 		chatInitialDraft = draft;
@@ -545,7 +613,7 @@
 		if (handledAgentChatLaunchKey === launchKey) return;
 		handledAgentChatLaunchKey = launchKey;
 
-		openAgentChatLaunch(draft);
+		void openAgentChatLaunch(draft);
 
 		const cleanUrl = new URL(url);
 		cleanUrl.searchParams.delete('open');
@@ -584,6 +652,8 @@
 	function handleChatClose(summary?: DataMutationSummary) {
 		const wasProjectCreate = chatOpenedWithContext === 'project_create';
 		showChatModal = false;
+		parkedChatSessionId = null;
+		activeChatSessionId = null;
 		chatOpenedWithContext = null;
 		chatInitialSessionId = null;
 		chatInitialBrainDumpContext = null;
@@ -659,6 +729,7 @@
 		document.addEventListener('click', handleClickOutside);
 		window.addEventListener('scroll', handleScroll, { passive: true });
 		window.addEventListener('buildos:open-agent-chat', handleOpenAgentChatEvent);
+		window.addEventListener('buildos:chat-session-dismissed', handleChatSessionDismissedEvent);
 		document.addEventListener('visibilitychange', handleVisibilityChange);
 
 		return () => {
@@ -667,6 +738,10 @@
 			document.removeEventListener('click', handleClickOutside);
 			window.removeEventListener('scroll', handleScroll);
 			window.removeEventListener('buildos:open-agent-chat', handleOpenAgentChatEvent);
+			window.removeEventListener(
+				'buildos:chat-session-dismissed',
+				handleChatSessionDismissedEvent
+			);
 			document.removeEventListener('visibilitychange', handleVisibilityChange);
 		};
 	});
@@ -1504,11 +1579,14 @@
 	{/if}
 </nav>
 
-<!-- Agent Chat Modal -->
-{#if showChatModal}
+<!-- Agent Chat Modal — stays mounted (hidden) while parked keep-alive so the
+     live stream keeps rendering and reopen is a seamless unhide. -->
+{#if showChatModal || parkedChatSessionId !== null}
 	{#await import('$lib/components/agent/AgentChatModal.svelte') then { default: AgentChatModal }}
 		<AgentChatModal
-			isOpen={showChatModal}
+			bind:this={agentChatModalRef}
+			isOpen={showChatModal || parkedChatSessionId !== null}
+			hidden={!showChatModal}
 			contextType={chatModalContextType}
 			entityId={chatModalEntityId}
 			autoInitProject={chatModalAutoInitProject}
@@ -1517,6 +1595,8 @@
 			initialProjectFocus={effectiveChatInitialProjectFocus}
 			initialDraft={chatInitialDraft}
 			onClose={handleChatClose}
+			onParked={handleChatParked}
+			onSessionChange={(sessionId) => (activeChatSessionId = sessionId)}
 		/>
 	{/await}
 {/if}

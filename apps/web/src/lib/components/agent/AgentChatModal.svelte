@@ -28,6 +28,10 @@
 	import AgentRunDock from './AgentRunDock.svelte';
 	import { agentRunsStore, type AgentRunRow } from '$lib/services/agentRunsRealtime.service';
 	import { notificationStore } from '$lib/stores/notification.store';
+	import {
+		parkChatSession,
+		resolveParkedChatSession
+	} from '$lib/services/chat-session-notification.bridge';
 	import { get } from 'svelte/store';
 	import ProjectImageLibrary from '$lib/components/ontology/ProjectImageLibrary.svelte';
 	import type { OntologyImageAsset } from '$lib/components/ontology/image-assets/types';
@@ -122,9 +126,16 @@
 
 	interface Props {
 		isOpen?: boolean;
+		/** Keep-alive park: the component stays mounted (stream, messages, and
+		 * realtime all live) but the Modal chrome is closed — no scroll lock,
+		 * no ESC handling, no DOM. Flipping back to false is a seamless resume. */
+		hidden?: boolean;
 		contextType?: ChatContextType;
 		entityId?: string;
 		onClose?: (summary?: DataMutationSummary) => void;
+		/** Provided by launch surfaces that can host a hidden keep-alive
+		 * instance (Navigation). When set, minimize parks without teardown. */
+		onParked?: (sessionId: string) => void;
 		autoInitProject?: AutoInitProjectConfig | null;
 		initialChatSessionId?: string | null;
 		initialBrainDumpContext?: AgentBrainDumpContext | null;
@@ -144,9 +155,11 @@
 
 	let {
 		isOpen = false,
+		hidden = false,
 		contextType: _initialContextType = 'global',
 		entityId: _initialEntityId,
 		onClose,
+		onParked,
 		autoInitProject = null,
 		initialChatSessionId = null,
 		initialBrainDumpContext = null,
@@ -1314,6 +1327,9 @@
 
 	function applyChatSessionSnapshot(sessionId: string, snapshot: AgentChatSessionSnapshot): void {
 		const nextActiveTurnRun = snapshot.activeTurnRun ?? null;
+		// The chat is on screen again — drop any parked stack card for it (covers
+		// reopen paths the card click didn't initiate, e.g. the history page).
+		resolveParkedChatSession(sessionId);
 		currentSession = snapshot.session;
 		lastLoadedSessionId = sessionId;
 		contextUsage = null;
@@ -1989,9 +2005,112 @@
 		return summary;
 	}
 
-	function handleClose() {
+	function closeChat() {
 		const summary = releaseSessionResources('close');
 		if (onClose) onClose(summary);
+	}
+
+	function buildParkPayload(session: ChatSession) {
+		return {
+			sessionId: session.id,
+			title: deriveSessionTitle(session) ?? displayContextLabel ?? 'Chat',
+			contextType:
+				shellRouter.selectedContextType ??
+				normalizeSessionContextType(session.context_type),
+			entityId: shellRouter.selectedEntityId ?? session.entity_id ?? null,
+			projectId: resolvedProjectFocus?.projectId ?? null,
+			hasActiveTurn: stream.isStreaming || Boolean(activeRestoredTurnRunId),
+			hasSentMessage: stream.hasSentMessage
+		};
+	}
+
+	/**
+	 * Park the chat into the notification stack instead of ending it. When the
+	 * launch surface can host a hidden keep-alive instance (`onParked`
+	 * provided), nothing is torn down: the SSE stream keeps rendering into
+	 * component state and reopening is a seamless unhide. Otherwise falls back
+	 * to a hard park (card + full teardown; resume rebuilds from the DB).
+	 */
+	export function minimizeToStack() {
+		const session = currentSession;
+		if (!session?.id) {
+			// No session yet (context selection screen) — nothing to park.
+			closeChat();
+			return;
+		}
+		if (!embedded && onParked) {
+			parkChatSession(buildParkPayload(session));
+			voice.stop();
+			// Broadcast applied changes now — the usual close-time broadcast
+			// won't run until the chat is actually ended.
+			const summary = presenter.buildMutationSummary({
+				hasMessagesSent: stream.hasSentMessage,
+				sessionId: session.id
+			});
+			if (summary.hasChanges) notifyDataMutation(summary);
+			presenter.resetMutationTracking();
+			onParked(session.id);
+			return;
+		}
+		hardParkAndClose();
+	}
+
+	/**
+	 * Park the card but fully tear this instance down, skipping session
+	 * finalize (the card's dismiss action owns close + classify). Used by the
+	 * launch surface when it needs the singleton instance for a different
+	 * session; the parked chat resumes via the DB-snapshot path.
+	 */
+	export function hardParkAndClose() {
+		const session = currentSession;
+		if (!session?.id) {
+			closeChat();
+			return;
+		}
+		parkChatSession(buildParkPayload(session));
+		// Park ≠ end: mark the session finalized so the shared teardown skips
+		// close + classify — the card's dismiss action owns those now.
+		hasFinalizedSession = true;
+		closeChat();
+	}
+
+	/**
+	 * Mark the session finalized without closing. The launch surface calls
+	 * this before unmounting a hidden keep-alive instance whose card was
+	 * dismissed — the bridge already closed the session server-side.
+	 */
+	export function markSessionFinalized() {
+		hasFinalizedSession = true;
+	}
+
+	// Reopening a hidden keep-alive instance: the chat is on screen again, so
+	// drop its parked stack card.
+	let wasHiddenWhileParked = $state(false);
+	$effect(() => {
+		if (!browser) return;
+		if (hidden) {
+			wasHiddenWhileParked = true;
+			return;
+		}
+		if (wasHiddenWhileParked) {
+			wasHiddenWhileParked = false;
+			const sessionId = currentSession?.id;
+			if (sessionId) resolveParkedChatSession(sessionId);
+		}
+	});
+
+	function handleClose() {
+		// Closing mid-turn parks instead of discarding: the server finishes the
+		// detached turn either way, so keep a visible handle to the result.
+		if (
+			!embedded &&
+			currentSession?.id &&
+			(stream.isStreaming || Boolean(activeRestoredTurnRunId))
+		) {
+			minimizeToStack();
+			return;
+		}
+		closeChat();
 	}
 
 	async function handleInboxResolutionAction(action: AgentChatResolutionAction) {
@@ -2547,7 +2666,7 @@
 	</div>
 {:else}
 	<Modal
-		{isOpen}
+		isOpen={isOpen && !hidden}
 		onClose={handleClose}
 		size="xl"
 		variant="bottom-sheet"
@@ -2574,6 +2693,9 @@
 					showBackButton={shouldShowBackButton}
 					onBack={handleBackNavigation}
 					onClose={handleClose}
+					onMinimize={currentSession?.id && messages.length > 0
+						? minimizeToStack
+						: undefined}
 					projectId={shellRouter.selectedEntityId}
 					{resolvedProjectFocus}
 					onChangeFocus={openFocusSelector}

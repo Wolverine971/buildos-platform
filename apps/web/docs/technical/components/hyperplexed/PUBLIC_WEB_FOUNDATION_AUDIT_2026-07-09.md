@@ -96,20 +96,25 @@ request work rather than a universal server-rendering failure.
 
 1. **The sitemap omitted the new `/skills` root.** **Shipped:** it is now part of the generated
    static URL set.
-2. **Dynamic skill detail/domain/path routes and public `/p/*` pages are not yet generated into the
-   sitemap.** **Deferred:** add a data-aware URL source with stable `lastmod` values; do not invent
-   dates or expose unpublished public pages.
-3. **The public author index lacks dedicated title/description/canonical metadata.** **Deferred:**
-   provide author data to an SEO head at the route boundary, including indexability rules for empty
-   authors.
+2. **Dynamic skill detail/domain/path routes and public `/p/*` pages were absent from the sitemap.**
+   **Shipped:** the generated static sitemap now includes the public and reviewed-preview skill
+   gallery routes. A separate database-backed sitemap enumerates only live, public, published,
+   indexable pages and their non-empty author indexes, using stored publication/update timestamps
+   for `lastmod`. The endpoint fails closed with `503` when its source query fails rather than
+   serving an authoritative-looking empty sitemap.
+3. **The public author index lacked dedicated title/description/canonical metadata.** **Shipped:**
+   author indexes now emit a route-specific title, description, canonical URL, social URL, and
+   `CollectionPage`/`Person`/`ItemList` structured data. Empty author collections return `404`
+   instead of creating thin indexable pages.
 
 ## Next implementation sequence
 
-1. **Finish dynamic SEO.** Add public skill and published `/p/*` sitemap sources, author-index SEO,
-   and structured-data tests.
-2. **Run the visual polish pass.** Desktop/mobile and light/dark verification for home, pricing,
-   about, blogs, and skills; then normalize CTA hierarchy, radius drift, micro-type, and hidden
-   product proof using P2/P4/P5/P8/P13.
+1. **Continue the visual polish pass.** Home and pricing geometry/hierarchy are shipped. Next,
+   simplify Contact's page purpose and CTA order, then close the footer, blog-card, and skills
+   metadata/tap-target findings using P2/P3/P4/P5/P6/P8/P11/P13.
+2. **Re-run deployed performance evidence.** Capture fresh mobile Lighthouse results after the
+   current public-web batches reach production and compare LCP, TBT, and request totals with the
+   original 66-performance baseline.
 
 ## Release gates for this batch
 
@@ -172,3 +177,41 @@ request work rather than a universal server-rendering failure.
   preferences UI, versus 123,164 bytes / 83 modules before consent controls. The Vercel packages,
   PostHog SDK, visitor service, and Meta's external script all remain outside that static graph; the
   roughly 4.5 KiB increase is the privacy-control UI and orchestration cost.
+
+## Dynamic SEO follow-up — 2026-07-10
+
+- ✅ The static sitemap covers the public and reviewed-preview skill gallery routes. Robots now
+  advertises both the static sitemap and the database-backed `/sitemap-public-pages.xml` child
+  sitemap.
+- ✅ The public-page sitemap filters for `published` + `live` + `public` + indexable rows, includes
+  canonical nested and supported legacy URLs, deduplicates author indexes, paginates source reads,
+  and uses only stored timestamps for `lastmod`.
+- ✅ Source-query failure returns `503` with retry guidance and no cache; successful XML uses a
+  one-hour shared cache with stale-while-revalidate so crawlers do not force a database read on
+  every request.
+- ✅ A real local author index (`/p/dj-wayne`) was verified with the route-specific title,
+  description, canonical URL, index/follow directive, Open Graph URL, and `CollectionPage`
+  structured data containing its two published pages.
+- ✅ Focused sitemap/author-route tests pass (10 assertions); touched-file ESLint is clean;
+  Prettier, `pnpm check` (0 errors, 0 warnings), and the production Vite/Vercel build pass. The build
+  retains the repository's known optional Sharp platform-dependency warning.
+
+## Visual polish follow-up — home and pricing — 2026-07-10
+
+- ✅ Home and pricing now use the public shell's `max-w-7xl` and `px-2 sm:px-4 lg:px-6` geometry,
+  so their content edges align with navigation and footer at phone and desktop widths. → P3
+- ✅ Pricing retains the truthful pre-billing status while removing repeated versions of the same
+  warning. The plan now leads with five product-defining capabilities and demotes integrations,
+  export, and support to quieter included metadata. → P4+P6
+- ✅ Pricing FAQ cards use a bounded two-column desktop reading measure and compact phone padding;
+  the closing CTA now uses the same restrained Inkprint hierarchy as the rest of the public site
+  instead of a full-width solid accent band. → P2+P3+P4
+- ✅ The homepage agent-skip link now meets the 44px/focus/reduced-motion control contract, and
+  already-small bidirectional labels no longer receive an extra opacity reduction. → P4+P11+P13
+- ✅ Live verification passed at 390×844 and 1440×900 in light and dark mode: one main/one H1,
+  zero horizontal overflow, a 44px agent-skip target, and a two-column desktop FAQ. Touched-file
+  ESLint, Prettier, `pnpm check` (0 errors, 0 warnings), and the production Vite/Vercel build pass.
+  The build retains the repository's known optional Sharp platform-dependency warning.
+- ⬜ Larger judgment-heavy changes remain separate: homepage proof deduplication/visible product
+  preview, Contact content reordering, About copy deduplication, footer consolidation, and the
+  blog/skills density fixes from the read-only route audit.

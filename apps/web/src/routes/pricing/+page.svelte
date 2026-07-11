@@ -25,6 +25,20 @@
 			: 'Review the planned BuildOS Pro price. Billing is not active yet, and creating an account will not charge you.'
 	);
 
+	const coreFeatures = [
+		'Persistent project context',
+		'Unlimited projects',
+		'Structured tasks and plans',
+		'Daily project-aware briefs',
+		'Goal-task alignment tracking'
+	] as const;
+
+	const includedFeatures = [
+		'Calendar integrations',
+		'Data export',
+		'Priority email support'
+	] as const;
+
 	async function handleSubscribe() {
 		if (!data.user) {
 			goto('/auth/register');
@@ -98,33 +112,38 @@
 
 <div class="min-h-screen bg-background">
 	<!-- Hero Section -->
-	<section class="py-20 bg-muted" aria-labelledby="pricing-heading">
-		<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-			<div class="text-center mb-16">
-				<div class="flex justify-center mb-6">
+	<section
+		class="border-b border-border bg-muted py-12 sm:py-16"
+		aria-labelledby="pricing-heading"
+	>
+		<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6">
+			<div class="mx-auto mb-10 max-w-3xl text-center sm:mb-12">
+				<div class="mb-5 flex justify-center">
 					<div
-						class="flex h-16 w-16 items-center justify-center rounded-lg border border-border bg-card shadow-ink"
+						class="flex h-14 w-14 items-center justify-center rounded-lg border border-border bg-card shadow-ink"
 					>
 						<img
 							src={DEFAULT_APP_ICON_URL}
-							alt="BuildOS Icon"
-							class="w-12 h-12"
-							width="48"
-							height="48"
+							alt=""
+							class="h-10 w-10"
+							width="40"
+							height="40"
 							decoding="async"
 						/>
 					</div>
 				</div>
 				<h1
 					id="pricing-heading"
-					class="text-4xl md:text-5xl font-bold text-foreground mb-6"
+					class="mb-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl"
 				>
-					Simple, <span class="text-accent">Transparent</span> Pricing
+					Simple, transparent pricing
 				</h1>
-				<p class="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
+				<p
+					class="mx-auto max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
+				>
 					{billingIsLive
 						? 'Start with a 14-day free trial. No credit card required, cancel anytime.'
-						: 'Planned Pro pricing for when paid billing launches. You can create an account today without being charged.'}
+						: 'Review the planned Pro plan before paid billing launches.'}
 				</p>
 
 				{#if error}
@@ -143,7 +162,7 @@
 			</div>
 
 			<!-- Pricing Card -->
-			<div class="max-w-md mx-auto" role="region" aria-label="Pricing plan">
+			<div class="mx-auto max-w-md" role="region" aria-label="Pricing plan">
 				<!-- BuildOS Pro -->
 				<article
 					class="border border-border bg-card shadow-ink p-6 sm:p-8 relative tx tx-frame tx-weak wt-card"
@@ -168,18 +187,13 @@
 						</div>
 					{/if}
 
-					<div class="text-center mb-8">
+					<div class="mb-7 text-center">
 						<h2 id="pro-plan-heading" class="text-2xl font-bold text-foreground mb-2">
 							BuildOS Pro
 						</h2>
-						<p class="text-muted-foreground mb-6">
-							{billingIsLive
-								? 'Your thinking environment for complex work'
-								: 'Planned pricing for the future paid plan'}
+						<p class="mb-5 text-muted-foreground">
+							Your thinking environment for complex work
 						</p>
-						{#if !billingIsLive}
-							<p class="micro-label mb-2 text-info">Planned price</p>
-						{/if}
 						<div class="text-4xl font-bold text-foreground mb-2">
 							$20
 							<span class="text-lg font-normal text-muted-foreground">/month</span>
@@ -187,68 +201,25 @@
 						<p class="text-sm text-muted-foreground">
 							{billingIsLive
 								? 'Billed monthly • 14-day free trial'
-								: 'No billing or automatic charges today'}
+								: 'Planned price • no billing or automatic charges today'}
 						</p>
 					</div>
 
-					<ul class="space-y-3 mb-8" role="list" aria-label="Plan features">
-						<li class="flex items-center">
-							<Check
-								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
-								aria-hidden="true"
-							/>
-							<span class="text-muted-foreground">Unlimited projects</span>
-						</li>
-						<li class="flex items-center">
-							<Check
-								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
-								aria-hidden="true"
-							/>
-							<span class="text-muted-foreground">Persistent project context</span>
-						</li>
-						<li class="flex items-center">
-							<Check
-								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
-								aria-hidden="true"
-							/>
-							<span class="text-muted-foreground">Structured tasks and plans</span>
-						</li>
-						<li class="flex items-center">
-							<Check
-								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
-								aria-hidden="true"
-							/>
-							<span class="text-muted-foreground">Daily project-aware briefs</span>
-						</li>
-						<li class="flex items-center">
-							<Check
-								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
-								aria-hidden="true"
-							/>
-							<span class="text-muted-foreground">Goal-task alignment tracking</span>
-						</li>
-						<li class="flex items-center">
-							<Check
-								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
-								aria-hidden="true"
-							/>
-							<span class="text-muted-foreground">Priority email support</span>
-						</li>
-						<li class="flex items-center">
-							<Check
-								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
-								aria-hidden="true"
-							/>
-							<span class="text-muted-foreground">Calendar integrations</span>
-						</li>
-						<li class="flex items-center">
-							<Check
-								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
-								aria-hidden="true"
-							/>
-							<span class="text-muted-foreground">Data export</span>
-						</li>
+					<ul class="mb-6 space-y-3" role="list" aria-label="Core plan features">
+						{#each coreFeatures as feature}
+							<li class="flex min-w-0 items-center gap-3">
+								<Check class="h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
+								<span class="min-w-0 text-foreground">{feature}</span>
+							</li>
+						{/each}
 					</ul>
+
+					<div class="mb-7 border-t border-border pt-5">
+						<p class="micro-label mb-3">Also included</p>
+						<p class="text-sm leading-relaxed text-muted-foreground">
+							{includedFeatures.join(' · ')}
+						</p>
+					</div>
 
 					{#if !data.stripeEnabled}
 						<Button
@@ -292,20 +263,24 @@
 	</section>
 
 	<!-- FAQ -->
-	<section class="py-20 bg-card">
-		<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-			<div class="text-center mb-16">
-				<h2 class="text-4xl font-bold text-foreground mb-6">
-					Frequently Asked <span class="text-accent">Questions</span>
+	<section class="border-b border-border bg-card py-12 sm:py-16">
+		<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6">
+			<div class="mb-8 text-center sm:mb-10">
+				<h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+					Frequently asked questions
 				</h2>
 			</div>
 
-			<div class="space-y-8" role="region" aria-label="Frequently asked questions">
+			<div
+				class="mx-auto grid max-w-5xl gap-4 md:grid-cols-2"
+				role="region"
+				aria-label="Frequently asked questions"
+			>
 				{#if billingIsLive}
 					<article
-						class="bg-muted rounded-lg p-8 border border-border tx tx-frame tx-weak"
+						class="rounded-lg border border-border bg-muted p-5 tx tx-frame tx-weak sm:p-6"
 					>
-						<h3 class="text-xl font-semibold text-foreground mb-4">
+						<h3 class="mb-2 text-lg font-semibold text-foreground">
 							What happens after my 14-day trial?
 						</h3>
 						<p class="text-muted-foreground">
@@ -317,9 +292,9 @@
 					</article>
 
 					<article
-						class="bg-muted rounded-lg p-8 border border-border tx tx-frame tx-weak"
+						class="rounded-lg border border-border bg-muted p-5 tx tx-frame tx-weak sm:p-6"
 					>
-						<h3 class="text-xl font-semibold text-foreground mb-4">
+						<h3 class="mb-2 text-lg font-semibold text-foreground">
 							Do I need a credit card to start?
 						</h3>
 						<p class="text-muted-foreground">
@@ -330,9 +305,9 @@
 					</article>
 
 					<article
-						class="bg-muted rounded-lg p-8 border border-border tx tx-frame tx-weak"
+						class="rounded-lg border border-border bg-muted p-5 tx tx-frame tx-weak sm:p-6"
 					>
-						<h3 class="text-xl font-semibold text-foreground mb-4">
+						<h3 class="mb-2 text-lg font-semibold text-foreground">
 							What happens to my data if I cancel?
 						</h3>
 						<p class="text-muted-foreground">
@@ -342,9 +317,9 @@
 					</article>
 
 					<article
-						class="bg-muted rounded-lg p-8 border border-border tx tx-frame tx-weak"
+						class="rounded-lg border border-border bg-muted p-5 tx tx-frame tx-weak sm:p-6"
 					>
-						<h3 class="text-xl font-semibold text-foreground mb-4">
+						<h3 class="mb-2 text-lg font-semibold text-foreground">
 							Can I cancel anytime?
 						</h3>
 						<p class="text-muted-foreground">
@@ -355,9 +330,9 @@
 					</article>
 				{:else}
 					<article
-						class="bg-muted rounded-lg p-8 border border-border tx tx-frame tx-weak"
+						class="rounded-lg border border-border bg-muted p-5 tx tx-frame tx-weak sm:p-6"
 					>
-						<h3 class="text-xl font-semibold text-foreground mb-4">
+						<h3 class="mb-2 text-lg font-semibold text-foreground">
 							Are you charging for BuildOS today?
 						</h3>
 						<p class="text-muted-foreground">
@@ -367,9 +342,9 @@
 					</article>
 
 					<article
-						class="bg-muted rounded-lg p-8 border border-border tx tx-frame tx-weak"
+						class="rounded-lg border border-border bg-muted p-5 tx tx-frame tx-weak sm:p-6"
 					>
-						<h3 class="text-xl font-semibold text-foreground mb-4">
+						<h3 class="mb-2 text-lg font-semibold text-foreground">
 							What will BuildOS Pro cost?
 						</h3>
 						<p class="text-muted-foreground">
@@ -379,9 +354,9 @@
 					</article>
 
 					<article
-						class="bg-muted rounded-lg p-8 border border-border tx tx-frame tx-weak"
+						class="rounded-lg border border-border bg-muted p-5 tx tx-frame tx-weak sm:p-6"
 					>
-						<h3 class="text-xl font-semibold text-foreground mb-4">
+						<h3 class="mb-2 text-lg font-semibold text-foreground">
 							Will BuildOS start charging me automatically later?
 						</h3>
 						<p class="text-muted-foreground">
@@ -391,9 +366,9 @@
 					</article>
 
 					<article
-						class="bg-muted rounded-lg p-8 border border-border tx tx-frame tx-weak"
+						class="rounded-lg border border-border bg-muted p-5 tx tx-frame tx-weak sm:p-6"
 					>
-						<h3 class="text-xl font-semibold text-foreground mb-4">
+						<h3 class="mb-2 text-lg font-semibold text-foreground">
 							Can I start using BuildOS now?
 						</h3>
 						<p class="text-muted-foreground">
@@ -407,27 +382,31 @@
 	</section>
 
 	<!-- Final CTA -->
-	<section class="py-20 bg-accent text-accent-foreground">
-		<div class="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-			<h2 class="text-4xl font-bold mb-6">
-				{billingIsLive
-					? 'Ready to turn messy thinking into structured work?'
-					: 'Start building before paid billing begins.'}
-			</h2>
-			<p class="text-xl opacity-90 mb-12">
-				{billingIsLive
-					? 'Start your 14-day free trial today. No credit card required.'
-					: 'Create an account today. There is no active subscription or automatic charge.'}
-			</p>
-
-			<div class="flex justify-center">
-				<a
-					href="/auth/register"
-					class="inline-flex items-center px-8 py-4 text-lg font-semibold bg-card text-foreground hover:opacity-90 rounded-lg shadow-ink transform hover:scale-105 motion-reduce:hover:scale-100 transition-all duration-200 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-accent"
+	<section class="bg-muted py-12 sm:py-16">
+		<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6">
+			<div class="mx-auto max-w-4xl text-center">
+				<h2 class="mb-3 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+					{billingIsLive
+						? 'Ready to turn messy thinking into structured work?'
+						: 'Start building before paid billing begins.'}
+				</h2>
+				<p
+					class="mx-auto mb-7 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
 				>
-					<Brain class="w-5 h-5 mr-3" aria-hidden="true" />
-					{billingIsLive ? 'Start Free Trial' : 'Create free account'}
-				</a>
+					{billingIsLive
+						? 'Start your 14-day free trial today. No credit card required.'
+						: 'Create an account today. There is no active subscription or automatic charge.'}
+				</p>
+
+				<div class="flex justify-center">
+					<a
+						href="/auth/register"
+						class="pressable inline-flex min-h-12 items-center rounded-lg border border-accent bg-accent px-6 py-3 text-base font-semibold text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
+					>
+						<Brain class="w-5 h-5 mr-3" aria-hidden="true" />
+						{billingIsLive ? 'Start Free Trial' : 'Create free account'}
+					</a>
+				</div>
 			</div>
 		</div>
 	</section>

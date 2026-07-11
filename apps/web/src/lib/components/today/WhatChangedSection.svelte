@@ -4,18 +4,26 @@
 		Bot,
 		ChevronDown,
 		ChevronRight,
+		MessageCircle,
 		Pencil,
 		Plus,
 		Trash2,
 		User as UserIcon
 	} from '$lib/icons/lucide';
+	import {
+		buildProjectEntityOpenHref,
+		resolveEntityOpenAction
+	} from '$lib/components/project/project-page-interactions';
+	import { trackLoopEvent } from '$lib/services/loop-telemetry';
 	import type { WhatChangedEntry, WhatChangedFeed } from '$lib/types/today';
 
 	interface Props {
 		feed: WhatChangedFeed;
+		/** Present = task receipts get a "chat about this change" action. */
+		onChatAboutEntry?: (entry: WhatChangedEntry) => void;
 	}
 
-	let { feed }: Props = $props();
+	let { feed, onChatAboutEntry }: Props = $props();
 
 	let collapsed = $state(false);
 	let expandedProjects = $state<Set<string>>(new Set());
@@ -76,6 +84,28 @@
 		return entry.entity_type === 'note' ? 'document' : entry.entity_type;
 	}
 
+	function entityHref(entry: WhatChangedEntry): string | null {
+		// Deleted entities have nowhere to land; the project link above still works.
+		if (entry.action === 'deleted') return null;
+		if (entry.entity_type === 'project') return `/projects/${entry.project_id}`;
+		const resolution = resolveEntityOpenAction(entry.entity_type, entry.entity_id);
+		if (resolution.result !== 'opened') return null;
+		return buildProjectEntityOpenHref(
+			entry.project_id,
+			resolution.action.kind,
+			resolution.action.entityId
+		);
+	}
+
+	function trackEntityOpen(entry: WhatChangedEntry) {
+		trackLoopEvent('loop_surface_opened', 'today', {
+			source_type: 'receipt_entity',
+			entity_type: entry.entity_type,
+			source_ref_id: entry.entity_id,
+			project_id: entry.project_id
+		});
+	}
+
 	function toggleProject(projectId: string) {
 		const next = new Set(expandedProjects);
 		if (next.has(projectId)) {
@@ -125,13 +155,16 @@
 							>
 								{group.projectName}
 							</a>
-							<span class="flex-shrink-0 text-[10px] sm:text-xs text-muted-foreground">
+							<span
+								class="flex-shrink-0 text-[10px] sm:text-xs text-muted-foreground"
+							>
 								{group.entries.length}
 								{group.entries.length === 1 ? 'change' : 'changes'}
 							</span>
 						</div>
 						<ul class="space-y-1 sm:space-y-1.5">
 							{#each visible as entry (entry.id)}
+								{@const href = entityHref(entry)}
 								<li class="flex items-center gap-1.5 sm:gap-2 min-w-0">
 									{#if entry.action === 'created'}
 										<Plus
@@ -149,12 +182,23 @@
 											aria-label="Updated"
 										/>
 									{/if}
-									<span
-										class="min-w-0 truncate text-[11px] sm:text-xs text-foreground"
-										title={entry.entity_name}
-									>
-										{entry.entity_name}
-									</span>
+									{#if href}
+										<a
+											{href}
+											onclick={() => trackEntityOpen(entry)}
+											class="min-w-0 truncate text-[11px] sm:text-xs text-foreground hover:text-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+											title={entry.entity_name}
+										>
+											{entry.entity_name}
+										</a>
+									{:else}
+										<span
+											class="min-w-0 truncate text-[11px] sm:text-xs text-foreground"
+											title={entry.entity_name}
+										>
+											{entry.entity_name}
+										</span>
+									{/if}
 									<span
 										class="flex-shrink-0 text-[10px] sm:text-[11px] text-muted-foreground"
 									>
@@ -181,6 +225,16 @@
 											>· {relativeTime(entry.latest_at)}</span
 										>
 									</span>
+									{#if onChatAboutEntry && entry.entity_type === 'task' && entry.action !== 'deleted'}
+										<button
+											onclick={() => onChatAboutEntry(entry)}
+											class="flex-shrink-0 p-1 rounded-md text-muted-foreground/70 hover:text-accent hover:bg-accent/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											title={`Chat about "${entry.entity_name}"`}
+											aria-label={`Chat about "${entry.entity_name}"`}
+										>
+											<MessageCircle class="h-3 w-3" />
+										</button>
+									{/if}
 								</li>
 							{/each}
 						</ul>

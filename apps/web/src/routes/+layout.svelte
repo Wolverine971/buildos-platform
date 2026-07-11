@@ -442,6 +442,7 @@
 				projectSynthesisBridgeModule,
 				timeBlockBridgeModule,
 				agentRunBridgeModule,
+				chatSessionBridgeModule,
 				timeBlocksStoreModule,
 				agentRunsRealtimeModule
 			] = await Promise.all([
@@ -450,6 +451,7 @@
 				import('$lib/services/project-synthesis-notification.bridge'),
 				import('$lib/services/time-block-notification.bridge'),
 				import('$lib/services/agent-run-notification.bridge'),
+				import('$lib/services/chat-session-notification.bridge'),
 				import('$lib/stores/timeBlocksStore'),
 				import('$lib/services/agentRunsRealtime.service')
 			]);
@@ -464,6 +466,7 @@
 				projectSynthesisBridgeModule,
 				timeBlockBridgeModule,
 				agentRunBridgeModule,
+				chatSessionBridgeModule,
 				timeBlocksStoreModule
 			});
 
@@ -486,6 +489,7 @@
 		projectSynthesisBridgeModule: any;
 		timeBlockBridgeModule: any;
 		agentRunBridgeModule: any;
+		chatSessionBridgeModule: any;
 		timeBlocksStoreModule: any;
 	}) {
 		if (notificationBridgeCleanup) return;
@@ -494,6 +498,7 @@
 		modules.projectSynthesisBridgeModule.initProjectSynthesisNotificationBridge();
 		modules.timeBlockBridgeModule.initTimeBlockNotificationBridge();
 		modules.agentRunBridgeModule.initAgentRunNotificationBridge();
+		modules.chatSessionBridgeModule.initChatSessionNotificationBridge();
 
 		notificationBridgeCleanup = () => {
 			modules.timeBlockBridgeModule.destroyTimeBlockNotificationBridge();
@@ -501,6 +506,7 @@
 			modules.calendarAnalysisBridgeModule.cleanupCalendarAnalysisNotificationBridge();
 			modules.projectSynthesisBridgeModule.cleanupProjectSynthesisNotificationBridge();
 			modules.agentRunBridgeModule.destroyAgentRunNotificationBridge();
+			modules.chatSessionBridgeModule.destroyChatSessionNotificationBridge();
 		};
 	}
 

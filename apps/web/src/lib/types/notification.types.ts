@@ -16,7 +16,8 @@ import type {
 	AgentRunContextType,
 	AgentRunScopeMode,
 	AgentRunMetrics,
-	RunResult
+	RunResult,
+	ChatContextType
 } from '@buildos/shared-types';
 import type { ParsedOperation } from './operations';
 import type { SynthesisOptions } from './synthesis';
@@ -46,6 +47,7 @@ export type NotificationType =
 	| 'daily-brief'
 	| 'time-block'
 	| 'agent-run'
+	| 'chat-session'
 	| 'generic';
 
 /**
@@ -295,6 +297,38 @@ export interface AgentRunNotification extends BaseNotification {
 }
 
 // ============================================================================
+// Chat Session Notification (parked/minimized agent chat)
+// ============================================================================
+
+/**
+ * An agent chat parked into the stack via the modal's minimize path. The
+ * conversation itself lives server-side keyed by `sessionId` — the card only
+ * carries what's needed to show status and reopen the modal. Managed by
+ * `chat-session-notification.bridge`, which probes any in-flight turn to
+ * completion. Clicking the card reopens the real chat modal (there is no
+ * expanded NotificationModal view for this type).
+ */
+export interface ChatSessionNotification extends BaseNotification {
+	type: 'chat-session';
+	data: {
+		sessionId: string;
+		title: string;
+		contextType: ChatContextType | null;
+		entityId?: string | null;
+		projectId?: string | null;
+		/** True while a detached server-side turn is (believed) still running. */
+		hasActiveTurn: boolean;
+		/** First ~140 chars of the assistant reply once the parked turn lands. */
+		responsePreview?: string | null;
+		/** stream.hasSentMessage at park time — forwarded to close/classify on dismiss. */
+		hasSentMessage: boolean;
+		error?: string | null;
+	};
+	progress: NotificationProgress;
+	actions: NotificationActions;
+}
+
+// ============================================================================
 // Generic Notification
 // ============================================================================
 
@@ -324,6 +358,7 @@ export type Notification =
 	| ProjectSynthesisNotification
 	| CalendarAnalysisNotification
 	| AgentRunNotification
+	| ChatSessionNotification
 	| GenericNotification;
 
 // ============================================================================
@@ -399,6 +434,12 @@ export function isAgentRunNotification(
 	notification: Notification
 ): notification is AgentRunNotification {
 	return notification.type === 'agent-run';
+}
+
+export function isChatSessionNotification(
+	notification: Notification
+): notification is ChatSessionNotification {
+	return notification.type === 'chat-session';
 }
 
 // ============================================================================

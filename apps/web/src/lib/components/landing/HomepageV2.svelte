@@ -119,7 +119,7 @@
 	<!-- ─── §01 hero ────────────────────────────────────────────────── -->
 	<section class="border-b border-border">
 		<div
-			class="mx-auto max-w-6xl px-4 py-10 sm:py-14 grid md:grid-cols-2 gap-8 sm:gap-10 items-center"
+			class="mx-auto grid max-w-7xl items-center gap-8 px-2 py-10 sm:gap-10 sm:px-4 sm:py-14 md:grid-cols-2 lg:px-6"
 		>
 			<div class="space-y-5 sm:space-y-6">
 				<div
@@ -215,8 +215,8 @@
 		  vector-effect="non-scaling-stroke" keeps the stroke 2px regardless of the stretch.
 		-->
 		<div aria-hidden="true" class="hidden lg:block absolute inset-0 pointer-events-none z-[1]">
-			<div class="mx-auto max-w-6xl h-full">
-				<div class="relative h-full mx-4">
+			<div class="mx-auto h-full max-w-7xl px-2 sm:px-4 lg:px-6">
+				<div class="relative h-full">
 					<svg
 						class="absolute inset-0 w-full h-full text-foreground/55"
 						viewBox="0 0 100 100"
@@ -262,7 +262,7 @@
 
 		<!-- ─── §02 the two-persona split (modeled on Stakes screenshot) ─── -->
 		<section id="split" class="border-b border-border bg-card/40">
-			<div class="mx-auto max-w-6xl px-4 py-12 sm:py-16">
+			<div class="mx-auto max-w-7xl px-2 py-12 sm:px-4 sm:py-16 lg:px-6">
 				<div class="text-center mb-8 sm:mb-10">
 					<h2 class="micro-label inline-flex items-center gap-3">
 						<span class="h-px w-10 bg-border"></span>
@@ -367,7 +367,7 @@
 						<div class="mt-auto pt-6">
 							<a
 								href="#agents"
-								class="inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:gap-3 transition-all"
+								class="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-foreground transition-all hover:gap-3 focus:outline-none focus-visible:gap-3 focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 							>
 								Skip to: how agents work in BuildOS
 								<ArrowDown class="w-4 h-4" />
@@ -381,7 +381,7 @@
 		<!-- ─── §03 the loop — flow chart for non-AI users (rail enters from §02A above) ── -->
 		<section id="loop" class="border-b border-border">
 			<div
-				class="home-deferred home-deferred-loop mx-auto max-w-6xl px-4 py-12 sm:py-16 space-y-8"
+				class="home-deferred home-deferred-loop mx-auto max-w-7xl space-y-8 px-2 py-12 sm:px-4 sm:py-16 lg:px-6"
 			>
 				<!--
 				  entry marker: dead-center under LEFT rail via grid-mirroring.
@@ -658,7 +658,7 @@
 		<!-- ─── §04 same context — agents at the same project (for §02B readers) ── -->
 		<section id="agents" class="relative border-b border-border bg-card/40">
 			<div
-				class="home-deferred home-deferred-agents mx-auto max-w-6xl px-4 py-12 sm:py-16 space-y-8"
+				class="home-deferred home-deferred-agents mx-auto max-w-7xl space-y-8 px-2 py-12 sm:px-4 sm:py-16 lg:px-6"
 			>
 				<!--
 				  entry marker: lands at the RIGHT rail's terminus (x=90% on lg+).
@@ -866,7 +866,7 @@
 
 						<!-- bidirectional flow indicators -->
 						<div
-							class="mt-5 grid md:grid-cols-3 gap-3 sm:gap-4 micro-label text-muted-foreground/80 text-center"
+							class="micro-label mt-5 grid gap-3 text-center md:grid-cols-3 sm:gap-4"
 						>
 							<div class="flex items-center justify-center gap-2">
 								<span>writes & reads</span>
@@ -903,7 +903,7 @@
 
 	<!-- ─── §05 what it holds (the data model) ──────────────────────── -->
 	<section class="home-deferred home-deferred-model border-b border-border">
-		<div class="mx-auto max-w-6xl px-4 py-10 sm:py-12 space-y-6">
+		<div class="mx-auto max-w-7xl space-y-6 px-2 py-10 sm:px-4 sm:py-12 lg:px-6">
 			<div class="text-center">
 				<div class="micro-label inline-flex items-center gap-3">
 					<span class="h-px w-10 bg-border"></span>
@@ -932,7 +932,7 @@
 
 	<!-- ─── §06 what it becomes — future pacing timeline ────────────── -->
 	<section class="home-deferred home-deferred-timeline border-b border-border bg-card/40">
-		<div class="mx-auto max-w-6xl px-4 py-12 sm:py-16 space-y-8">
+		<div class="mx-auto max-w-7xl space-y-8 px-2 py-12 sm:px-4 sm:py-16 lg:px-6">
 			<div class="text-center">
 				<div class="micro-label inline-flex items-center gap-3">
 					<span class="h-px w-10 bg-border"></span>
@@ -1079,7 +1079,7 @@
 
 	<!-- ─── §07 honest comparison + final CTA ──────────────────────── -->
 	<section class="home-deferred home-deferred-cta py-12 sm:py-16">
-		<div class="mx-auto max-w-6xl px-4 space-y-8">
+		<div class="mx-auto max-w-7xl space-y-8 px-2 sm:px-4 lg:px-6">
 			<div class="text-center">
 				<div class="micro-label inline-flex items-center gap-3">
 					<span class="h-px w-10 bg-border"></span>

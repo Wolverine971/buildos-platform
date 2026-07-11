@@ -24,6 +24,7 @@
 	let CalendarAnalysisMinimizedView = $state<any>(null);
 	let TimeBlockMinimizedView = $state<any>(null);
 	let AgentRunMinimizedView = $state<any>(null);
+	let ChatSessionMinimizedView = $state<any>(null);
 
 	// Lazy load type-specific component
 	async function loadTypeSpecificComponent() {
@@ -61,6 +62,14 @@
 						AgentRunMinimizedView = module.default;
 					}
 					break;
+				case 'chat-session':
+					if (!ChatSessionMinimizedView) {
+						const module = await import(
+							'./types/chat-session/ChatSessionMinimizedView.svelte'
+						);
+						ChatSessionMinimizedView = module.default;
+					}
+					break;
 				default:
 					break;
 			}
@@ -94,7 +103,9 @@
 					? TimeBlockMinimizedView
 					: notification.type === 'agent-run'
 						? AgentRunMinimizedView
-						: null
+						: notification.type === 'chat-session'
+							? ChatSessionMinimizedView
+							: null
 	);
 
 	// Get notification title based on type (fallback for generic view)
@@ -126,7 +137,9 @@
 								: 'Time block'
 					: notification.type === 'generic'
 						? notification.data.title
-						: 'Processing'
+						: notification.type === 'chat-session'
+							? notification.data.title
+							: 'Processing'
 	);
 
 	// Get subtitle/progress message with type-safe handling across progress variants
@@ -176,6 +189,12 @@
 
 	// Handle click to expand
 	function handleClick() {
+		// Chat cards reopen the real chat modal instead of expanding into the
+		// generic NotificationModal — the chat IS the expanded view.
+		if (notification.type === 'chat-session') {
+			notification.actions?.view?.();
+			return;
+		}
 		notificationStore.expand(notification.id);
 	}
 
