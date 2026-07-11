@@ -21,6 +21,7 @@
 		Sun
 	} from '$lib/icons/lucide';
 	import { requireApiData } from '$lib/utils/api-client-helpers';
+	import { aiInboxPerformance } from '$lib/utils/ai-inbox-performance';
 	import { trackLoopEvent } from '$lib/services/loop-telemetry';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { CalendarItem } from '$lib/types/calendar-items';
@@ -571,16 +572,22 @@
 	}
 
 	async function openInbox() {
-		if (!InboxModalComponent) {
-			InboxModalComponent = (
-				await import('$lib/components/dashboard/DashboardInboxModal.svelte')
-			).default;
+		aiInboxPerformance.begin('today');
+		try {
+			if (!InboxModalComponent) {
+				InboxModalComponent = (
+					await import('$lib/components/dashboard/DashboardInboxModal.svelte')
+				).default;
+			}
+			inboxOpen = true;
+			trackLoopEvent('loop_surface_opened', 'today', {
+				source_type: 'ai_inbox',
+				pending_count: inboxCount
+			});
+		} catch (error) {
+			aiInboxPerformance.cancel();
+			throw error;
 		}
-		inboxOpen = true;
-		trackLoopEvent('loop_surface_opened', 'today', {
-			source_type: 'ai_inbox',
-			pending_count: inboxCount
-		});
 	}
 
 	function handleInboxClose() {

@@ -8,6 +8,7 @@
 import { createServiceClient } from '@buildos/supabase-client';
 import type { NotificationDelivery } from '@buildos/shared-types';
 import type { Logger } from '@buildos/shared-utils';
+import { resolveNotificationActionUrl } from './email-action-url.js';
 import { checkUserPreferences } from './preferenceChecker.js';
 
 const supabase = createServiceClient();
@@ -314,7 +315,7 @@ function formatEmailTemplate(delivery: NotificationDelivery): {
 	// Defensive validation - ensure required fields exist
 	const title = payload.title || 'Notification';
 	const body = payload.body || '';
-	const actionUrl = payload.action_url || null;
+	const actionUrl = resolveNotificationActionUrl(baseUrl, payload.action_url);
 	const imageUrl = payload.image_url || null;
 
 	// Inkprint Design System colors

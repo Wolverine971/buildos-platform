@@ -145,15 +145,25 @@
 
 			const result = await response.json();
 			if (!response.ok || !result?.success) {
-				throw new Error(result?.error?.[0] || 'Failed to complete');
+				const serverError =
+					typeof result?.error === 'string'
+						? result.error
+						: Array.isArray(result?.error)
+							? result.error[0]
+							: null;
+				throw new Error(serverError || 'Failed to complete');
 			}
 
 			toastService.success('Welcome to BuildOS!');
 			await invalidateAll();
-			setTimeout(() => goto('/dashboard'), 1000);
+			setTimeout(() => goto('/today'), 1000);
 		} catch (error) {
 			console.error('Failed to complete onboarding:', error);
-			toastService.error('Failed to complete setup. Please try again.');
+			toastService.error(
+				error instanceof Error && error.message !== 'Failed to complete'
+					? error.message
+					: 'Failed to complete setup. Please try again.'
+			);
 			isCompleting = false;
 		}
 	}
@@ -371,7 +381,7 @@
 			{#if isCompleting}
 				Preparing Your Workspace...
 			{:else}
-				Go to Dashboard
+				Start your day
 				<ArrowRight class="w-5 h-5 ml-2" />
 			{/if}
 		</Button>

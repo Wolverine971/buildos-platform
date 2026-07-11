@@ -4,6 +4,7 @@ import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validatio
 import type { RequestHandler } from './$types';
 import { OnboardingServerService } from '$lib/server/onboarding.service';
 import { captureServerEvent } from '$lib/server/posthog';
+import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 
 const VALID_INTENTS = new Set(['organize', 'plan', 'unstuck', 'explore']);
 const VALID_STAKES = new Set(['high', 'medium', 'low']);
@@ -97,6 +98,25 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 					);
 				}
 
+				// Activation gate (tasker/26 WP-3): non-explore users must actually have
+				// a project in their workspace — the client-claimed projectsCreated count
+				// is not trusted. Membership covers both created and invited-into
+				// projects, matching what the UI's project list shows.
+				const actorId = await ensureActorId(supabase, user.id);
+				const { count: workspaceProjectCount, error: projectCountError } = await supabase
+					.from('onto_project_members')
+					.select('id', { count: 'exact', head: true })
+					.eq('actor_id', actorId)
+					.is('removed_at', null);
+				if (projectCountError) {
+					return ApiResponse.databaseError(projectCountError);
+				}
+				if (intent !== 'explore' && (workspaceProjectCount ?? 0) < 1) {
+					return ApiResponse.badRequest(
+						'Create your first project before finishing onboarding'
+					);
+				}
+
 				await onboardingService.completeOnboardingV3(user.id, {
 					intent,
 					stakes,
@@ -114,7 +134,12 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 					projects_created: projectsCreated,
 					tasks_created: tasksCreated,
 					goals_created: goalsCreated,
-					time_spent_seconds: timeSpentSeconds ?? null
+					time_spent_seconds: timeSpentSeconds ?? null,
+					// Server-verified workspace count; distinguishes the explicit
+					// explore/empty-workspace branch from gated completions.
+					projects_in_workspace: workspaceProjectCount ?? 0,
+					explore_empty_workspace:
+						intent === 'explore' && (workspaceProjectCount ?? 0) === 0
 				});
 				return ApiResponse.success({ success: true }, 'Onboarding V3 complete');
 			}

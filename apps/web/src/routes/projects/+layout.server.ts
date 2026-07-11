@@ -14,12 +14,13 @@ interface OntologyUser {
 	is_admin?: boolean;
 }
 
-export const load: LayoutServerLoad = async ({ locals }) => {
+export const load: LayoutServerLoad = async ({ locals, url }) => {
 	const { user } = await locals.safeGetSession();
 
 	// Check if user is authenticated
 	if (!user) {
-		throw redirect(303, '/auth/login');
+		const destination = `${url.pathname}${url.search}`;
+		throw redirect(303, `/auth/login?redirect=${encodeURIComponent(destination)}`);
 	}
 
 	const ontologyUser = user as OntologyUser;

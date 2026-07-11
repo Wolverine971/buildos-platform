@@ -38,6 +38,7 @@
 	import PullToRefresh from '$lib/components/pwa/PullToRefresh.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { createDashboardPerformanceTracker } from '$lib/utils/dashboard-performance';
+	import { aiInboxPerformance } from '$lib/utils/ai-inbox-performance';
 	import { buildProjectEntityOpenHref } from '$lib/components/project/project-page-interactions';
 	import { preloadProjectEntityModal } from '$lib/components/project/project-entity-modal-loader';
 	import {
@@ -684,12 +685,14 @@
 	async function openDashboardInbox() {
 		if (isOpeningDashboardInbox) return;
 		isOpeningDashboardInbox = true;
+		aiInboxPerformance.begin('dashboard');
 		try {
 			await dashboardPerformance.trackAction('modal.dashboard_inbox.open', async () => {
 				await loadDashboardInboxModalComponent();
 				showDashboardInboxModal = true;
 			});
 		} catch (err) {
+			aiInboxPerformance.cancel();
 			console.error('Failed to load DashboardInboxModal:', err);
 			toastService.error('Failed to open inbox');
 		} finally {

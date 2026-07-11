@@ -15,6 +15,7 @@
 		type OnboardingIntent,
 		type OnboardingStakes
 	} from '$lib/config/onboarding.config';
+	import { captureEvent } from '$lib/services/posthog';
 	import { toastService } from '$lib/stores/toast.store';
 	import { untrack } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
@@ -57,6 +58,7 @@
 
 	function selectIntent(id: OnboardingIntent) {
 		selectedIntent = id;
+		captureEvent('intent_selected', { intent: id });
 		// Auto-advance to stakes question after a brief pause
 		setTimeout(() => {
 			currentQuestion = 'stakes';

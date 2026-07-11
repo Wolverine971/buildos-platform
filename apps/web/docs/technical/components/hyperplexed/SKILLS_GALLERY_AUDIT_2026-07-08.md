@@ -2,7 +2,7 @@
 
 # Skills Gallery Audit 2026-07-08
 
-Target: `/skills`, `/skills/[slug]`, `/skills/preview/[slug]`, `/skills/domain/[domain]`, `/skills/family/[family]`, `/skills/path/[path]`, and the skill/path Try launchers
+Target: `/skills`, `/skills/[slug]`, `/skills/people/[slug]`, `/skills/preview/[slug]`, `/skills/domain/[domain]`, `/skills/family/[family]`, `/skills/path/[path]`, and the skill/path Try launchers
 
 Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail template, Phase 3 domain rabbit-hole routes plus the first BuildOS try launcher, Phase 4 pack/stack path pages, Phase 5 curated metadata registry, Phase 6 generated gallery metadata sync, Phase 7 production-preview visual verification, and the 2026-07-10 controlled catalog-coverage phase.
 
@@ -23,6 +23,7 @@ Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail templat
 - Curated gallery metadata registry
 - Generated public catalog and `buildos.yaml` gallery metadata
 - Guest footer resource link
+- Skill-expert cards, profiles, reviewed-source relationships, and editorial disclosures
 
 ## Shipped Fixes
 
@@ -210,3 +211,108 @@ Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail templat
 
 - Authenticated end-to-end skill and pack launcher smoke with a real signed-in session.
 - Publication review and metadata authoring for the remaining 12 core internal runtime skills, plus optional Libri when enabled.
+
+## Root Density Follow-Up — 2026-07-10
+
+### Shipped
+
+- Root search result counts are one readable summary instead of six competing pills, while typed
+  result cards remain complete -> P4+P7.
+- Published skill cards cap output chips at three and demote domain, source, and reference totals to
+  one compact metadata row -> P4.
+- Selected-domain and selected-pack path links now meet the 44px interaction floor -> P13.
+- The root gallery summarizes 31 reviewed previews with six cards and an explicit 44px
+  `aria-expanded` show-all/show-fewer control. Search results still return every match, and all
+  preview routes remain linked through search, filters, families, domains, and the sitemap -> P7+P8+P13.
+
+### Verification
+
+- Default 390×844 document height fell from 20,253px to 12,588px (about 38%) with zero horizontal
+  overflow; the expanded state renders all 31 previews and collapses back to six.
+- Live 390×844 and 1440×900 light/dark checks covered search, selected-domain state, preview
+  expansion/collapse, 44px selected-filter links, one main landmark, and one H1.
+- `pnpm exec vitest run src/lib/skills/skill-gallery.test.ts` -> 6 tests passed.
+- `pnpm check` -> 0 errors, 0 warnings.
+
+## Expert Credibility Follow-Up — 2026-07-10
+
+### Shipped
+
+- `Trust And Lineage` resolves registered people into evidence-dense expert cards with a real
+  portrait, role context, a short `Why BuildOS listens` explanation, specialty chips, and an
+  explicit profile link. Unregistered people retain a safe plain-name fallback -> P1+P4+P5+P8+P13.
+- `/skills/people/[slug]` adds a reusable expert profile surface covering background, specialties,
+  BuildOS's editorial rationale, primary/profile sources, linked skills, and every reviewed source
+  material dynamically traced from published skill metadata -> P3+P4+P6+P8+P13.
+- Eight people now have registered profiles: Kane Kallaway, Lenny Rachitsky, Kole Jain, April
+  Dunford, Daniel Priestley, Nesrine Changuel, Tuan Le, and Michael Seibel. The expansion rule is
+  evidence-based: prioritize direct reviewed creators, the share of a published skill that depends
+  on their work, and visibly incomplete lineage panels before incidental framework references ->
+  P4+P6.
+- Kane's profile traces seven reviewed videos across Hook Craft and Story-Driven Content Craft.
+  Lenny's traces two hosted interviews across two skills, and Kole's traces two direct source videos
+  into UI/UX Quality Review. Each profile labels self-reported metrics, links background claims to
+  verification sources, and states that inclusion does not imply review, approval, or endorsement.
+- Lineage matching distinguishes creator from channel host. Lenny's two episodes credit April
+  Dunford and Nesrine Changuel as the framework sources while labeling Lenny as the publishing host;
+  the UI never silently converts a host into the author of a guest's process.
+- Capped Source Highlights reserve one relevant source per profiled person before filling remaining
+  slots in source order. This keeps the person card and its evidence visible together even when a
+  skill has more than five source materials -> P4+P8.
+- Skill source highlights now link directly to the original material and back to the relevant
+  expert profile. Skill JSON-LD mentions the registered person; the expert route emits
+  `ProfilePage` + `Person` structured data.
+- All eight public portraits are locally hosted to avoid fragile hotlinking, while the original
+  public profile remains credited. Expert pages are generated into the sitemap.
+- `/skills/people` now provides the directory promised by the first follow-up: CollectionPage and
+  ItemList structured data, a clear inclusion/no-endorsement standard, eight reusable expert cards,
+  and dynamic reviewed-source/skill counts. Individual profiles navigate back to this directory as
+  well as the full gallery -> P3+P4+P6+P8+P13.
+- April, Daniel, Nesrine, Tuan, and Michael form the second evidence-prioritized batch. April and
+  Nesrine retain direct framework authorship on Lenny-hosted interviews; Daniel and Tuan expose the
+  primary or sole source layer behind their respective published skills; Michael is scoped to the
+  investor-email mode rather than generalized across the outreach skill.
+
+### Verification
+
+- `pnpm exec vitest run src/lib/skills/skill-experts.test.ts src/lib/skills/skill-gallery.test.ts src/lib/server/agent-skills.test.ts` -> 24 tests passed.
+- `pnpm run agent-skills:check` -> 8 public skills, 13 public reference files, 0 errors, 0 warnings.
+- `pnpm run check` -> 0 errors, 0 warnings.
+- `pnpm run gen:sitemap` -> 57 dynamic gallery URLs; 157 total sitemap URLs.
+- Live `/skills/hook-craft-short-form` verified the expert card, portrait, four source links, profile
+  navigation, 44px controls, and zero horizontal overflow at 1280px.
+- Live `/skills/people/kane-kallaway` verified the portrait, two linked skills, seven reviewed
+  sources, four background/profile sources, and disclosure copy at 1280×720 and 390×844.
+- Live `/skills/ui-ux-quality-review` verified two expert cards, the unprofiled-name fallback, Kole's
+  creator links, Lenny's host link, representative source selection, 44px controls, and zero
+  horizontal overflow.
+- Live `/skills/people/lenny-rachitsky` verified two hosted sources across two skills with guest
+  attribution; `/skills/people/kole-jain` verified two direct sources and its 900×900 portrait.
+  Both profile templates passed 1280×720 and 390×844 checks with zero horizontal overflow.
+- Light and dark checks showed legible textures, cards, links, and portrait treatment with zero
+  horizontal overflow. The only console error was the known secondary Vite websocket-port
+  collision, not an application exception.
+
+### Second Profile Batch Verification
+
+- `pnpm exec vitest run src/lib/skills/skill-experts.test.ts src/lib/skills/skill-gallery.test.ts src/lib/server/public-page-sitemap.test.ts` -> 13 tests passed.
+- `pnpm run guardrails:agent-skills` -> 8 skills, 13 public reference files, 0 errors, 0 warnings.
+- `pnpm run check` completed without Svelte diagnostics.
+- `pnpm run gen:sitemap` -> 63 dynamic gallery URLs; 163 total sitemap URLs, including the people
+  index and all eight profiles.
+- Live `/skills/people` at 1440×900 and 390×844 verified eight cards, dynamic counts, local
+  portraits, the editorial inclusion standard, one H1, and zero horizontal overflow. Desktop light
+  and dark modes remained legible with no broken named images.
+- Live lineage checks confirmed Daniel + April + Lenny on Landing Page Scorecard Funnel; Kole +
+  Nesrine + Lenny on UI/UX Quality Review; Tuan on Viral Content For Boring Brands; and Michael on
+  Engagement-First Outreach. No tested route had horizontal overflow or a broken named portrait.
+- Live `/skills/people/april-dunford` verified direct creator attribution, reviewed-material copy,
+  directory/gallery back-navigation, and the mobile dark portrait/header composition.
+
+### Next
+
+- Audit the ten-name ICP framework lineage separately. Several names are currently indirect
+  framework references rather than reviewed-source creators, so do not promote them solely because
+  they appear in `lineagePeople`.
+- Continue with direct outreach-source creators only after each page can support a non-thin public
+  background and an explicit source-to-skill relationship.

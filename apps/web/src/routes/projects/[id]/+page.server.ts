@@ -27,7 +27,7 @@
  */
 
 import type { PageServerLoad } from './$types';
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import type { Database } from '@buildos/shared-types';
 import {
@@ -93,6 +93,7 @@ interface ProjectSkeletonWithAccessResponse {
 	risk_count?: number;
 	image_count?: number;
 	access?: ProjectAccessPayload;
+	route_access_state?: 'allowed' | 'forbidden' | 'not_found' | 'unauthenticated';
 }
 
 /**
@@ -216,6 +217,16 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const bundle = bundleRaw as ProjectSkeletonWithAccessResponse | null;
 
 	if (!bundle) {
+		throw error(404, 'Project not found');
+	}
+	if (bundle.route_access_state === 'forbidden') {
+		throw error(403, 'You do not have access to this project.');
+	}
+	if (bundle.route_access_state === 'unauthenticated') {
+		const destination = `${url.pathname}${url.search}`;
+		throw redirect(303, `/auth/login?redirect=${encodeURIComponent(destination)}`);
+	}
+	if (bundle.route_access_state === 'not_found') {
 		throw error(404, 'Project not found');
 	}
 

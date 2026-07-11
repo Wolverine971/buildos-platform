@@ -116,9 +116,32 @@ describe('GET /api/inbox/count', () => {
 				projectId: null,
 				sourceType: 'agent_run',
 				group: 'account',
-				limit: 5000
+				limit: 5000,
+				repair: false
 			})
 		);
+	});
+
+	it('enables full source repair only when explicitly requested', async () => {
+		const response = await GET(
+			makeEvent('http://localhost/api/inbox/count?status=pending&repair=full')
+		);
+
+		expect(response.status).toBe(200);
+		expect(mocks.countInboxItems).toHaveBeenCalledWith(
+			expect.objectContaining({ repair: true })
+		);
+	});
+
+	it('rejects an unknown repair mode', async () => {
+		const response = await GET(
+			makeEvent('http://localhost/api/inbox/count?status=pending&repair=background')
+		);
+		const json = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(json.success).toBe(false);
+		expect(mocks.countInboxItems).not.toHaveBeenCalled();
 	});
 
 	it('retries a transient Supabase fetch failure once before succeeding', async () => {

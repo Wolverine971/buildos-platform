@@ -8,7 +8,7 @@
 import { captureEvent } from './posthog';
 
 /** Surfaces that emit loop events. Extend as more surfaces are instrumented. */
-export type LoopSurface = 'today';
+export type LoopSurface = 'today' | 'onboarding';
 
 export type LoopEventName =
 	| 'loop_surface_shown'
@@ -16,7 +16,16 @@ export type LoopEventName =
 	| 'loop_receipt_viewed'
 	| 'loop_capture_submitted'
 	| 'loop_decision_made'
-	| 'loop_chat_opened';
+	| 'loop_chat_opened'
+	// Activation first-run funnel (tasker/26 WP-4). Fired from onboarding only;
+	// same envelope rules: IDs/counts/flags, never capture text.
+	| 'first_capture_started'
+	| 'first_capture_submitted'
+	| 'first_capture_skipped'
+	| 'first_structure_generated'
+	| 'first_project_created'
+	| 'first_project_reviewed'
+	| 'first_project_opened';
 
 /** Flat values only — nested objects invite content leaking into analytics. */
 export type LoopEventProperties = Record<string, string | number | boolean | null>;

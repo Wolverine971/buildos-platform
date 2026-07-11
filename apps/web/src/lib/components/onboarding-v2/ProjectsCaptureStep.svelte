@@ -1,19 +1,28 @@
 <!-- apps/web/src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte -->
+<!-- Onboarding Step 2: inline first brain dump -> transformation receipt (tasker/26 WP-1/2/3).
+     Capture phase: the user dumps messy thinking into an inline composer; submit hands the
+     draft to the agentic project-create chat (the processing vehicle, auto-sent). Receipt
+     phase: a compact activation packet proves what BuildOS understood, created, and will
+     remember. Non-explore users cannot continue without one created project. -->
 <script lang="ts">
 	import {
-		MessagesSquare,
+		ArrowRight,
 		Calendar,
-		LoaderCircle,
-		Sparkles,
 		CheckCircle,
-		FolderPlus,
+		ExternalLink,
 		FolderOpen,
-		ListChecks
+		ListChecks,
+		LoaderCircle,
+		MessageCircle,
+		Sparkles,
+		Target
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
+	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
+	import { toastService } from '$lib/stores/toast.store';
 	import { ONBOARDING_V3_CONFIG, type OnboardingIntent } from '$lib/config/onboarding.config';
 	import { startCalendarAnalysis } from '$lib/services/calendar-analysis-notification.bridge';
+	import { trackLoopEvent } from '$lib/services/loop-telemetry';
 	import { fade, scale } from 'svelte/transition';
 	import { onMount, untrack } from 'svelte';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
@@ -25,6 +34,29 @@
 		status: string;
 		created_at: string | null;
 		task_count?: number;
+	};
+
+	type ActivationPacket = {
+		project: {
+			id: string;
+			name: string;
+			description: string | null;
+			next_step_short: string | null;
+		};
+		start_here: {
+			id: string;
+			title: string | null;
+			excerpt: string | null;
+			truncated: boolean;
+		} | null;
+		counts: {
+			tasks: number;
+			goals: number;
+			documents: number;
+			plans: number;
+			milestones: number;
+		};
+		sample_entities: Array<{ kind: 'task' | 'goal' | 'document'; id: string; name: string }>;
 	};
 
 	interface Props {
@@ -64,27 +96,246 @@
 		initialProjects = []
 	}: Props = $props();
 
-	// Live list of user's projects. Seeded from server, refreshed after chat creates one.
-	let projects = $state<ProjectPreview[]>(untrack(() => initialProjects));
+	const v3Prompts = $derived(intent ? ONBOARDING_V3_CONFIG.capturePrompts[intent] : null);
+	const isExplore = $derived(intent === 'explore');
+	const hadProjectsBeforeStep = untrack(() => initialProjects.length > 0);
 
-	async function refreshProjects() {
+	const PROMPT_CHIPS = [
+		'What are you trying to finish?',
+		'What feels messy right now?',
+		'What deadlines or meetings matter?',
+		'What have you already started?'
+	];
+
+	// --- Step substate, persisted across the calendar OAuth redirect ---
+	const SUBSTATE_KEY = 'buildos_onboarding_step2_state';
+	type Step2Substate = {
+		phase: 'capture' | 'receipt';
+		projectIds: string[];
+		draft: string;
+		savedAt: number;
+	};
+
+	function loadSubstate(): Step2Substate | null {
 		try {
-			const res = await fetch('/api/projects?status=active,planning&limit=6', {
-				cache: 'no-store'
-			});
-			if (!res.ok) return;
-			const payload = await res.json();
-			const list = (payload?.data?.projects ?? payload?.projects ?? []) as ProjectPreview[];
-			projects = list.slice(0, 6);
-		} catch (err) {
-			console.error('Failed to refresh projects:', err);
+			const raw = sessionStorage.getItem(SUBSTATE_KEY);
+			if (!raw) return null;
+			const state = JSON.parse(raw) as Step2Substate;
+			if (Date.now() - state.savedAt > 30 * 60 * 1000) {
+				sessionStorage.removeItem(SUBSTATE_KEY);
+				return null;
+			}
+			return state;
+		} catch {
+			return null;
 		}
 	}
 
-	// V3 intent-aware prompt configuration
-	const v3Prompts = $derived(intent ? ONBOARDING_V3_CONFIG.capturePrompts[intent] : null);
+	const restored = typeof sessionStorage !== 'undefined' ? loadSubstate() : null;
 
-	// Calendar connection state
+	let phase = $state<'capture' | 'receipt'>(restored?.phase ?? 'capture');
+	let draftText = $state(restored?.draft ?? '');
+	let isVoiceRecording = $state(false);
+	let createdProjectIds = $state<string[]>(restored?.projectIds ?? []);
+	let captureStartedTracked = $state(false);
+	let reviewedTracked = $state(false);
+
+	let packet = $state<ActivationPacket | null>(null);
+	let packetLoading = $state(false);
+	let packetError = $state<string | null>(null);
+
+	$effect(() => {
+		// Persist so the calendar OAuth round-trip restores the receipt, not a blank step.
+		const state: Step2Substate = {
+			phase,
+			projectIds: createdProjectIds,
+			draft: draftText,
+			savedAt: Date.now()
+		};
+		try {
+			sessionStorage.setItem(SUBSTATE_KEY, JSON.stringify(state));
+		} catch {
+			// sessionStorage may be unavailable (private browsing, etc.)
+		}
+	});
+
+	function clearSubstate() {
+		try {
+			sessionStorage.removeItem(SUBSTATE_KEY);
+		} catch {
+			// ignore
+		}
+	}
+
+	function track(
+		event: Parameters<typeof trackLoopEvent>[0],
+		props: Record<string, string | number | boolean | null> = {}
+	) {
+		trackLoopEvent(event, 'onboarding', { intent: intent ?? null, ...props });
+	}
+
+	$effect(() => {
+		if (!captureStartedTracked && draftText.trim().length > 0) {
+			captureStartedTracked = true;
+			track('first_capture_started');
+		}
+	});
+
+	function appendChip(chip: string) {
+		draftText = draftText.trim() ? `${draftText.trimEnd()}\n\n${chip}\n` : `${chip}\n`;
+	}
+
+	// --- Agentic chat modal (project_create context, the processing vehicle) ---
+	let AgentChatModal = $state<any>(null);
+	let showChatModal = $state(false);
+	let isLoadingChat = $state(false);
+	let chatConfig = $state<{
+		contextType: 'project_create' | 'project';
+		entityId?: string;
+		draft?: string | null;
+		autoSend?: boolean;
+	}>({ contextType: 'project_create' });
+
+	async function ensureChatModal() {
+		if (AgentChatModal) return;
+		isLoadingChat = true;
+		try {
+			const module = await import('$lib/components/agent/AgentChatModal.svelte');
+			AgentChatModal = module.default;
+		} finally {
+			isLoadingChat = false;
+		}
+	}
+
+	async function submitCapture() {
+		const text = draftText.trim();
+		if (!text || isVoiceRecording) return;
+		try {
+			await ensureChatModal();
+		} catch (err) {
+			console.error('Failed to load AgentChatModal:', err);
+			toastService.error('Could not start processing. Please try again.');
+			return;
+		}
+		track('first_capture_submitted', { capture_length: text.length });
+		chatConfig = {
+			contextType: 'project_create',
+			draft: text,
+			autoSend: true
+		};
+		showChatModal = true;
+	}
+
+	async function openAdjustChat() {
+		const projectId = createdProjectIds[0];
+		if (!projectId) return;
+		try {
+			await ensureChatModal();
+		} catch (err) {
+			console.error('Failed to load AgentChatModal:', err);
+			toastService.error('Could not open the project chat. Please try again.');
+			return;
+		}
+		chatConfig = { contextType: 'project', entityId: projectId };
+		showChatModal = true;
+	}
+
+	function handleChatClose(summary?: DataMutationSummary) {
+		showChatModal = false;
+		const wasAdjusting = chatConfig.contextType === 'project';
+		const firstAffectedId = summary?.affectedProjectIds[0];
+		if (summary?.hasChanges && firstAffectedId) {
+			if (!wasAdjusting) {
+				createdProjectIds = summary.affectedProjectIds;
+				draftText = '';
+				phase = 'receipt';
+				track('first_structure_generated', {
+					project_count: summary.affectedProjectIds.length
+				});
+				track('first_project_created', {
+					project_id: firstAffectedId,
+					is_first: !hadProjectsBeforeStep
+				});
+				onProjectsCreated(summary.affectedProjectIds);
+			}
+			void loadPacket(createdProjectIds[0] ?? firstAffectedId);
+		}
+		// No changes: stay in capture with the draft preserved so retry is one click.
+	}
+
+	async function loadPacket(projectId: string | undefined) {
+		if (!projectId) return;
+		packetLoading = true;
+		packetError = null;
+		try {
+			const res = await fetch(`/api/onto/projects/${projectId}/activation-packet`, {
+				cache: 'no-store'
+			});
+			const payload = await res.json().catch(() => null);
+			if (!res.ok) {
+				throw new Error(payload?.error || 'Failed to load your project summary');
+			}
+			const loaded = (payload?.data ?? payload) as ActivationPacket;
+			packet = loaded;
+			// loadPacket also runs on OAuth restore and after adjust-in-chat closes —
+			// the review event should count the first reveal only.
+			if (!reviewedTracked) {
+				reviewedTracked = true;
+				track('first_project_reviewed', { project_id: projectId });
+			}
+			onProjectsCreated(createdProjectIds, {
+				goals: loaded.counts.goals,
+				requirements: 0,
+				plans: loaded.counts.plans,
+				tasks: loaded.counts.tasks,
+				documents: loaded.counts.documents,
+				sources: 0,
+				metrics: 0,
+				milestones: loaded.counts.milestones,
+				risks: 0,
+				edges: 0
+			});
+		} catch (err) {
+			console.error('Failed to load activation packet:', err);
+			packetError =
+				err instanceof Error ? err.message : 'Failed to load your project summary';
+		} finally {
+			packetLoading = false;
+		}
+	}
+
+	function handleOpenProject() {
+		const projectId = createdProjectIds[0];
+		if (!projectId) return;
+		track('first_project_opened', { project_id: projectId });
+	}
+
+	function handleExploreSkip() {
+		track('first_capture_skipped', { reason: 'explore' });
+		clearSubstate();
+		onNext();
+	}
+
+	function handleContinue() {
+		clearSubstate();
+		onNext();
+	}
+
+	function handleCaptureKeydown(event: KeyboardEvent) {
+		// Match the composer's visible "Enter send" hint (and /today's quick capture).
+		// Only intercept Enter from the textarea itself — the card also contains the
+		// prompt chips and submit button, whose Enter activation must stay native.
+		if (
+			event.key === 'Enter' &&
+			!event.shiftKey &&
+			event.target instanceof HTMLTextAreaElement
+		) {
+			event.preventDefault();
+			void submitCapture();
+		}
+	}
+
+	// --- Calendar connection state (follow-up CTA after the first win) ---
 	let hasCalendarConnected = $state(false);
 	let isCheckingConnection = $state(true);
 	let connectionError = $state<string | null>(null);
@@ -94,41 +345,6 @@
 	let calendarAnalysisStarted = $state(false);
 	let calendarAnalysisCompleted = $state(false);
 
-	// Agentic chat modal (project_create context)
-	let AgentChatModal = $state<any>(null);
-	let showChatModal = $state(false);
-	let isLoadingChat = $state(false);
-
-	async function handleOpenProjectChat() {
-		try {
-			if (!AgentChatModal) {
-				isLoadingChat = true;
-				const module = await import('$lib/components/agent/AgentChatModal.svelte');
-				AgentChatModal = module.default;
-			}
-			showChatModal = true;
-		} catch (err) {
-			console.error('Failed to load AgentChatModal:', err);
-			toastService.error('Could not open the project chat. Please try again.');
-		} finally {
-			isLoadingChat = false;
-		}
-	}
-
-	function handleChatClose(summary?: DataMutationSummary) {
-		showChatModal = false;
-		if (summary?.hasChanges && summary.affectedProjectIds.length > 0) {
-			toastService.success('Project created! We saved it to your workspace.', {
-				duration: TOAST_DURATION.LONG
-			});
-			onProjectsCreated(summary.affectedProjectIds);
-			void refreshProjects();
-		}
-	}
-
-	/**
-	 * Check if user has Google Calendar connected
-	 */
 	async function checkCalendarConnection(): Promise<boolean> {
 		try {
 			isCheckingConnection = true;
@@ -155,9 +371,6 @@
 		}
 	}
 
-	/**
-	 * Initiate Google Calendar OAuth connection
-	 */
 	async function handleConnectCalendar() {
 		try {
 			isConnectingCalendar = true;
@@ -226,15 +439,18 @@
 		return false;
 	}
 
-	// Initialize calendar status and handle OAuth callback
 	onMount(() => {
+		// Restore the receipt after an OAuth redirect (or any remount mid-step).
+		if (phase === 'receipt' && createdProjectIds.length > 0 && !packet) {
+			void loadPacket(createdProjectIds[0]);
+		}
+
 		// Check if user just returned from OAuth
 		if (typeof window !== 'undefined') {
 			const params = new URLSearchParams(window.location.search);
 
 			// Handle success callback
 			if (params.get('calendar') === '1' && params.get('success') === 'calendar_connected') {
-				// Clean up URL params
 				params.delete('calendar');
 				params.delete('success');
 				replaceCalendarUrlParams(params);
@@ -270,24 +486,17 @@
 
 				toastService.error(errorMessage);
 
-				// Clean up URL params
 				params.delete('calendar');
 				params.delete('error');
 				replaceCalendarUrlParams(params);
 			}
 		}
 
-		// Check calendar connection status
 		void refreshCalendarConnection();
 	});
 
-	/**
-	 * Start calendar analysis
-	 * Only callable when calendar is connected
-	 */
 	async function handleStartCalendarAnalysis() {
 		try {
-			// Double-check connection before analysis
 			const connected = await checkCalendarConnection();
 
 			if (!connected) {
@@ -297,7 +506,6 @@
 				return;
 			}
 
-			// Start calendar analysis via notification stack
 			const { completion } = await startCalendarAnalysis({
 				daysBack: 7,
 				daysForward: 60,
@@ -330,70 +538,103 @@
 </script>
 
 <div class="max-w-3xl mx-auto px-4 py-8 sm:py-10">
-	<!-- Header -->
-	<div class="mb-8 text-center">
-		<div class="flex justify-center mb-4">
-			<div
-				class="w-14 h-14 bg-muted rounded-xl flex items-center justify-center shadow-ink tx tx-bloom tx-weak"
-			>
-				<MessagesSquare class="w-7 h-7 text-accent" />
-			</div>
+	{#if phase === 'capture'}
+		<!-- Header -->
+		<div class="mb-8 text-center">
+			<h2 class="text-2xl sm:text-3xl font-bold mb-3 text-foreground">
+				{v3Prompts?.heading ?? "Dump what's in your head. BuildOS will shape it."}
+			</h2>
+			<p class="text-base text-muted-foreground leading-relaxed max-w-xl mx-auto">
+				{isExplore
+					? 'Try one real dump if you want to see the product work. You can also skip for now.'
+					: "Write it messy. Projects, worries, deadlines, half-formed ideas. We'll turn it into something you can work with."}
+			</p>
 		</div>
 
-		<h2 class="text-2xl sm:text-3xl font-bold mb-3 text-foreground">
-			{projects.length > 0
-				? 'Your projects'
-				: v3Prompts
-					? v3Prompts.heading
-					: 'Create your first project'}
-		</h2>
-		<p class="text-base text-muted-foreground leading-relaxed max-w-xl mx-auto">
-			{projects.length > 0
-				? 'You already have projects in BuildOS. Add another anytime or continue setup.'
-				: "Open the chat, describe what you're working on, and BuildOS will turn it into a structured project."}
-		</p>
-	</div>
+		<!-- Composer -->
+		<div
+			class="mb-4 p-4 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak"
+			onkeydown={handleCaptureKeydown}
+			role="presentation"
+		>
+			<TextareaWithVoice
+				bind:value={draftText}
+				bind:isRecording={isVoiceRecording}
+				placeholder={v3Prompts?.placeholder ??
+					"Describe what you're working on. Just write freely — we'll sort it out..."}
+				rows={6}
+				maxRows={14}
+				autoResize={true}
+				voiceNoteSource="onboarding_first_braindump"
+			/>
 
-	<!-- Existing projects preview -->
-	{#if projects.length > 0}
-		<div class="mb-6" in:fade={{ duration: 250 }}>
-			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-				{#each projects as project (project.id)}
-					<a
-						href={`/projects/${project.id}`}
-						target="_blank"
-						rel="noopener noreferrer"
-						class="group relative block p-4 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak hover:border-accent/50 hover:shadow-ink-strong transition-all pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			<!-- Prompt chips for blank-state freeze -->
+			<div class="mt-3 flex flex-wrap gap-1.5">
+				{#each PROMPT_CHIPS as chip}
+					<button
+						type="button"
+						onclick={() => appendChip(chip)}
+						class="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:border-accent/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
-						<div class="flex items-start gap-3">
-							<div
-								class="flex-shrink-0 w-9 h-9 rounded-lg bg-accent/10 text-accent flex items-center justify-center"
-							>
-								<FolderOpen class="w-4.5 h-4.5" />
-							</div>
-							<div class="flex-1 min-w-0">
-								<h4
-									class="font-semibold text-sm text-foreground truncate group-hover:text-accent transition-colors"
-								>
-									{project.name}
-								</h4>
-								{#if project.description}
-									<p
-										class="text-xs text-muted-foreground mt-1 leading-snug line-clamp-2"
-									>
-										{project.description}
-									</p>
-								{/if}
+						{chip}
+					</button>
+				{/each}
+			</div>
+
+			<Button
+				variant="primary"
+				size="lg"
+				onclick={submitCapture}
+				disabled={!draftText.trim() || isVoiceRecording || isLoadingChat}
+				loading={isLoadingChat}
+				class="w-full mt-4 shadow-ink pressable"
+			>
+				<Sparkles class="w-5 h-5 mr-2" />
+				Shape my first project
+			</Button>
+			<p class="mt-2 text-center text-[11px] text-muted-foreground">
+				BuildOS reads your dump and builds a structured project — you'll see exactly what it
+				understood before you continue.
+			</p>
+		</div>
+
+		<!-- Existing projects (returning users): the first win already happened -->
+		{#if initialProjects.length > 0}
+			<div class="mb-4" in:fade={{ duration: 250 }}>
+				<h3 class="text-sm font-semibold text-muted-foreground mb-2">
+					Already in your workspace
+				</h3>
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+					{#each initialProjects.slice(0, 4) as project (project.id)}
+						<a
+							href={`/projects/${project.id}`}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="group relative block p-4 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak hover:border-accent/50 hover:shadow-ink-strong transition-all pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							<div class="flex items-start gap-3">
 								<div
-									class="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground"
+									class="flex-shrink-0 w-9 h-9 rounded-lg bg-accent/10 text-accent flex items-center justify-center"
 								>
-									<span
-										class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-muted text-foreground/80 capitalize font-medium"
+									<FolderOpen class="w-4.5 h-4.5" />
+								</div>
+								<div class="flex-1 min-w-0">
+									<h4
+										class="font-semibold text-sm text-foreground truncate group-hover:text-accent transition-colors"
 									>
-										{project.status}
-									</span>
+										{project.name}
+									</h4>
+									{#if project.description}
+										<p
+											class="text-xs text-muted-foreground mt-1 leading-snug line-clamp-2"
+										>
+											{project.description}
+										</p>
+									{/if}
 									{#if (project.task_count ?? 0) > 0}
-										<span class="inline-flex items-center gap-1">
+										<span
+											class="mt-2 inline-flex items-center gap-1 text-[11px] text-muted-foreground"
+										>
 											<ListChecks class="w-3 h-3" />
 											{project.task_count}
 											{project.task_count === 1 ? 'task' : 'tasks'}
@@ -401,232 +642,323 @@
 									{/if}
 								</div>
 							</div>
-						</div>
-					</a>
-				{/each}
-			</div>
-		</div>
-	{/if}
-
-	<!-- How to create a project -->
-	<div class="mb-4 p-4 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak">
-		<h3 class="font-semibold mb-2 flex items-center gap-2 text-foreground text-sm">
-			<Sparkles class="w-4 h-4 text-accent" />
-			{projects.length > 0 ? 'Create another project' : 'This is how you create a project'}
-		</h3>
-		<p class="text-xs text-muted-foreground mb-3 leading-relaxed">
-			Click the <strong class="text-foreground">Ask AI</strong> button in the top nav anytime.
-			Describe what you're working on and BuildOS will turn it into a structured project — goals,
-			tasks, notes, all in one place.
-		</p>
-
-		{#if projects.length === 0}
-			<!-- Screenshot: where the chat icon lives — only show for first-time users -->
-			<div class="mb-4 bg-muted rounded-lg overflow-hidden border border-border">
-				<img
-					src="/onboarding-assets/screenshots/agentic-chat-select.webp"
-					alt="Arrow pointing to the Ask AI button in the navigation bar"
-					loading="lazy"
-					class="w-full"
-				/>
+						</a>
+					{/each}
+				</div>
 			</div>
 		{/if}
 
-		<!-- Or click here CTA -->
-		<Button
-			variant="primary"
-			size="lg"
-			onclick={handleOpenProjectChat}
-			disabled={isLoadingChat}
-			loading={isLoadingChat}
-			class="w-full shadow-ink pressable"
-		>
-			{#if isLoadingChat}
-				Opening...
-			{:else}
-				<FolderPlus class="w-5 h-5 mr-2" />
-				{projects.length > 0
-					? 'Create another project'
-					: 'Or click here to create a project'}
-			{/if}
-		</Button>
-	</div>
-
-	<!-- Calendar Connection & Analysis Section -->
-	{#if hasCalendarConnected}
-		<!-- Calendar Connected — prominent CTA to analyze -->
-		<div
-			class="mb-4 p-5 bg-accent/5 rounded-xl border-2 border-accent/30 shadow-ink tx tx-grain tx-weak"
-			in:scale={{ duration: 400, start: 0.95 }}
-		>
-			<div class="flex items-start gap-3 mb-4">
-				<div
-					class="w-12 h-12 bg-accent rounded-xl flex items-center justify-center flex-shrink-0 shadow-ink"
-				>
-					<CheckCircle class="w-6 h-6 text-accent-foreground" />
-				</div>
-				<div class="flex-1">
-					<h3 class="text-base font-bold text-foreground flex items-center gap-2">
-						Google Calendar Connected
-						<span
-							class="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium"
-						>
-							{showConnectionSuccess ? 'Connected just now' : 'Ready'}
-						</span>
-					</h3>
-					<p class="text-sm text-muted-foreground mt-1 leading-relaxed">
-						BuildOS can scan your calendar to automatically detect projects from your
-						meetings, recurring events, and upcoming deadlines.
-					</p>
-				</div>
-			</div>
-
-			<!-- Benefits -->
-			<div class="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-muted-foreground">
-				<span
-					class="flex items-center gap-1.5 bg-card rounded-lg border border-border px-3 py-2"
-				>
-					<CheckCircle class="w-3.5 h-3.5 text-accent flex-shrink-0" />
-					Auto-detect projects from events
-				</span>
-				<span
-					class="flex items-center gap-1.5 bg-card rounded-lg border border-border px-3 py-2"
-				>
-					<CheckCircle class="w-3.5 h-3.5 text-accent flex-shrink-0" />
-					Pre-fill tasks and deadlines
-				</span>
-				<span
-					class="flex items-center gap-1.5 bg-card rounded-lg border border-border px-3 py-2"
-				>
-					<CheckCircle class="w-3.5 h-3.5 text-accent flex-shrink-0" />
-					Smart scheduling suggestions
-				</span>
-			</div>
-
-			{#if calendarAnalysisStarted}
-				<div class="flex items-center gap-2 p-3 bg-card rounded-lg border border-border">
-					<LoaderCircle class="w-4 h-4 animate-spin text-accent flex-shrink-0" />
-					<span class="text-sm text-foreground font-medium">
-						Analyzing your calendar — check the notification in the bottom-right corner.
-					</span>
-				</div>
-			{:else}
+		<!-- Continue / skip: explicit paths only. Non-explore users with no projects
+		     must complete the brain dump above — there is no default way past it. -->
+		<div class="mt-6 flex justify-center">
+			{#if initialProjects.length > 0}
 				<Button
 					variant="primary"
 					size="lg"
-					onclick={handleStartCalendarAnalysis}
+					onclick={handleContinue}
+					class="min-w-[200px] shadow-ink-strong pressable"
+				>
+					Continue
+					<ArrowRight class="w-4 h-4 ml-2" />
+				</Button>
+			{:else if isSkippable}
+				<button
+					type="button"
+					onclick={handleExploreSkip}
+					class="text-sm text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+				>
+					Skip for now — start with an empty workspace
+				</button>
+			{/if}
+		</div>
+	{:else}
+		<!-- Receipt: what BuildOS understood, created, and will remember -->
+		<div class="mb-6 text-center" in:scale={{ duration: 400, start: 0.95 }}>
+			<div class="flex justify-center mb-4">
+				<div
+					class="w-14 h-14 bg-success rounded-xl flex items-center justify-center shadow-ink-strong tx tx-bloom tx-weak"
+				>
+					<CheckCircle class="w-7 h-7 text-success-foreground" />
+				</div>
+			</div>
+			<h2 class="text-2xl sm:text-3xl font-bold mb-2 text-foreground">
+				Your first project is real
+			</h2>
+			<p class="text-base text-muted-foreground max-w-xl mx-auto">
+				Here's what BuildOS understood, what it created, and what it will remember when you
+				come back.
+			</p>
+		</div>
+
+		{#if packetLoading}
+			<div
+				class="mb-4 flex items-center gap-3 p-4 bg-card rounded-xl border border-border shadow-ink"
+			>
+				<LoaderCircle class="w-5 h-5 animate-spin text-accent flex-shrink-0" />
+				<span class="text-sm text-foreground">Pulling your project summary together…</span>
+			</div>
+		{:else if packetError}
+			<div
+				class="mb-4 p-4 bg-card rounded-xl border border-destructive/30 shadow-ink text-sm"
+			>
+				<p class="text-destructive mb-3">{packetError}</p>
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={() => loadPacket(createdProjectIds[0])}
+				>
+					Try again
+				</Button>
+			</div>
+		{:else if packet}
+			<div class="space-y-3 mb-6" in:fade={{ duration: 250 }}>
+				<!-- What it understood -->
+				<div
+					class="p-4 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak"
+				>
+					<h3
+						class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2"
+					>
+						What BuildOS understood
+					</h3>
+					<p class="text-base font-semibold text-foreground">{packet.project.name}</p>
+					{#if packet.project.description}
+						<p class="text-sm text-muted-foreground mt-1 leading-relaxed">
+							{packet.project.description}
+						</p>
+					{/if}
+				</div>
+
+				<!-- What it created -->
+				<div
+					class="p-4 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak"
+				>
+					<h3
+						class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2"
+					>
+						What it created
+					</h3>
+					<div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-foreground mb-2">
+						{#if packet.counts.tasks > 0}
+							<span class="inline-flex items-center gap-1.5">
+								<ListChecks class="w-4 h-4 text-accent" />
+								{packet.counts.tasks}
+								{packet.counts.tasks === 1 ? 'task' : 'tasks'}
+							</span>
+						{/if}
+						{#if packet.counts.goals > 0}
+							<span class="inline-flex items-center gap-1.5">
+								<Target class="w-4 h-4 text-accent" />
+								{packet.counts.goals}
+								{packet.counts.goals === 1 ? 'goal' : 'goals'}
+							</span>
+						{/if}
+						{#if packet.counts.documents > 0}
+							<span class="inline-flex items-center gap-1.5">
+								<FolderOpen class="w-4 h-4 text-accent" />
+								{packet.counts.documents}
+								{packet.counts.documents === 1 ? 'document' : 'documents'}
+							</span>
+						{/if}
+					</div>
+					{#if packet.sample_entities.length > 0}
+						<ul class="space-y-1">
+							{#each packet.sample_entities.slice(0, 5) as entity (entity.id)}
+								<li class="flex items-center gap-2 text-sm text-muted-foreground">
+									<span
+										class="inline-block w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0"
+									></span>
+									<span class="truncate">{entity.name}</span>
+									<span class="text-[10px] uppercase text-muted-foreground/70"
+										>{entity.kind}</span
+									>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</div>
+
+				<!-- What it will remember -->
+				{#if packet.start_here?.excerpt}
+					<div
+						class="p-4 bg-card rounded-xl border border-border shadow-ink tx tx-grain tx-weak"
+					>
+						<h3
+							class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2"
+						>
+							What it will remember
+						</h3>
+						<p class="text-xs text-muted-foreground mb-2 leading-relaxed">
+							This lives in your project's Start Here document — BuildOS reads it
+							every time you (or your AI tools) come back, so you never re-explain the
+							project.
+						</p>
+						<div
+							class="max-h-44 overflow-y-auto rounded-lg bg-muted/40 border border-border px-3 py-2 text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed"
+						>
+							{packet.start_here.excerpt}
+						</div>
+					</div>
+				{/if}
+
+				<!-- Next move -->
+				{#if packet.project.next_step_short}
+					<div
+						class="p-4 bg-accent/5 rounded-xl border border-accent/30 shadow-ink flex items-start gap-3"
+					>
+						<ArrowRight class="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+						<div>
+							<h3
+								class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1"
+							>
+								Next move
+							</h3>
+							<p class="text-sm text-foreground">{packet.project.next_step_short}</p>
+						</div>
+					</div>
+				{/if}
+			</div>
+
+			<!-- Receipt actions -->
+			<div class="mb-6 flex flex-wrap items-center justify-center gap-3">
+				<a
+					href={`/projects/${packet.project.id}`}
+					target="_blank"
+					rel="noopener noreferrer"
+					onclick={handleOpenProject}
+					class="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline underline-offset-2"
+				>
+					<ExternalLink class="w-4 h-4" />
+					Open my project
+				</a>
+				<button
+					type="button"
+					onclick={openAdjustChat}
+					class="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+				>
+					<MessageCircle class="w-4 h-4" />
+					Adjust in chat
+				</button>
+			</div>
+		{/if}
+
+		<!-- Calendar follow-up: place the first win in the reality of the week -->
+		{#if hasCalendarConnected}
+			<div
+				class="mb-4 p-5 bg-accent/5 rounded-xl border-2 border-accent/30 shadow-ink tx tx-grain tx-weak"
+				in:scale={{ duration: 400, start: 0.95 }}
+			>
+				<div class="flex items-start gap-3 mb-4">
+					<div
+						class="w-10 h-10 bg-accent rounded-xl flex items-center justify-center flex-shrink-0 shadow-ink"
+					>
+						<CheckCircle class="w-5 h-5 text-accent-foreground" />
+					</div>
+					<div class="flex-1">
+						<h3 class="text-base font-bold text-foreground flex items-center gap-2">
+							Google Calendar connected
+							<span
+								class="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium"
+							>
+								{showConnectionSuccess ? 'Connected just now' : 'Ready'}
+							</span>
+						</h3>
+						<p class="text-sm text-muted-foreground mt-1 leading-relaxed">
+							Want BuildOS to scan your calendar for project signals and open time?
+						</p>
+					</div>
+				</div>
+
+				{#if calendarAnalysisStarted}
+					<div
+						class="flex items-center gap-2 p-3 bg-card rounded-lg border border-border"
+					>
+						<LoaderCircle class="w-4 h-4 animate-spin text-accent flex-shrink-0" />
+						<span class="text-sm text-foreground font-medium">
+							Analyzing your calendar — check the notification in the bottom-right
+							corner.
+						</span>
+					</div>
+				{:else}
+					<Button
+						variant="primary"
+						onclick={handleStartCalendarAnalysis}
+						class="w-full shadow-ink pressable"
+					>
+						<Sparkles class="w-4 h-4 mr-2" />
+						Analyze my calendar
+					</Button>
+				{/if}
+			</div>
+		{:else if !isCheckingConnection}
+			<div
+				class="mb-4 p-4 bg-card rounded-xl border border-border shadow-ink tx tx-thread tx-weak"
+			>
+				<div class="flex items-start gap-3 mb-3">
+					<div
+						class="w-10 h-10 bg-accent rounded-lg flex items-center justify-center flex-shrink-0 shadow-ink"
+					>
+						<Calendar class="w-5 h-5 text-accent-foreground" />
+					</div>
+					<div class="flex-1">
+						<h3 class="text-sm font-semibold text-foreground mb-1">
+							Connect your calendar so BuildOS can work around real life
+						</h3>
+						<p class="text-xs text-muted-foreground leading-relaxed">
+							Find open time around commitments, detect recurring work from meetings,
+							and get scheduling suggestions based on actual availability.
+						</p>
+					</div>
+				</div>
+
+				{#if connectionError}
+					<div
+						class="mb-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+					>
+						{connectionError}
+					</div>
+				{/if}
+
+				<Button
+					variant="primary"
+					onclick={handleConnectCalendar}
+					disabled={isConnectingCalendar}
+					loading={isConnectingCalendar}
 					class="w-full shadow-ink pressable"
 				>
-					<Sparkles class="w-5 h-5 mr-2" />
-					Analyze My Calendar to Extract Projects
+					{#if isConnectingCalendar}
+						Connecting...
+					{:else}
+						<Calendar class="w-4 h-4 mr-2" />
+						Connect Google Calendar
+					{/if}
 				</Button>
-			{/if}
-		</div>
-	{:else if isCheckingConnection}
-		<div
-			class="mb-4 p-4 bg-card rounded-xl border border-border shadow-ink tx tx-thread tx-weak"
-		>
-			<div class="flex items-center gap-3">
-				<div
-					class="w-10 h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0"
-				>
-					<LoaderCircle class="w-5 h-5 animate-spin text-accent" />
-				</div>
-				<div>
-					<h3 class="text-sm font-semibold text-foreground mb-1">
-						Checking calendar connection
-					</h3>
-					<p class="text-xs text-muted-foreground leading-relaxed">
-						We are confirming Google Calendar is connected before calendar analysis
-						starts.
-					</p>
-				</div>
 			</div>
-		</div>
-	{:else if !hasCalendarConnected && !isCheckingConnection}
-		<!-- Calendar Not Connected -->
-		<div
-			class="mb-4 p-4 bg-card rounded-xl border border-border shadow-ink tx tx-thread tx-weak"
-		>
-			<div class="flex items-start gap-3 mb-3">
-				<div
-					class="w-10 h-10 bg-accent rounded-lg flex items-center justify-center flex-shrink-0 shadow-ink"
-				>
-					<Calendar class="w-5 h-5 text-accent-foreground" />
-				</div>
-				<div class="flex-1">
-					<h3 class="text-sm font-semibold text-foreground mb-1">
-						Shortcut: Analyze your calendar
-					</h3>
-					<p class="text-xs text-muted-foreground leading-relaxed">
-						Connect Google Calendar and BuildOS will automatically detect projects from
-						your meetings and events.
-					</p>
-				</div>
-			</div>
+		{/if}
 
-			<!-- Benefits - Compact inline -->
-			<div class="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-				<span class="flex items-center gap-1">
-					<CheckCircle class="w-3 h-3 text-accent flex-shrink-0" />
-					Auto-detect projects
-				</span>
-				<span class="flex items-center gap-1">
-					<CheckCircle class="w-3 h-3 text-accent flex-shrink-0" />
-					Pre-fill tasks
-				</span>
-				<span class="flex items-center gap-1">
-					<CheckCircle class="w-3 h-3 text-accent flex-shrink-0" />
-					Smart scheduling
-				</span>
-			</div>
-
-			<!-- Primary CTA -->
-			{#if connectionError}
-				<div
-					class="mb-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-				>
-					{connectionError}
-				</div>
-			{/if}
-
-			<Button
-				variant="primary"
-				onclick={handleConnectCalendar}
-				disabled={isConnectingCalendar}
-				loading={isConnectingCalendar}
-				class="w-full mb-2 shadow-ink pressable"
-			>
-				{#if isConnectingCalendar}
-					Connecting...
-				{:else}
-					<Calendar class="w-4 h-4 mr-2" />
-					Connect Google Calendar
-				{/if}
-			</Button>
-		</div>
-	{/if}
-
-	<!-- Continue -->
-	<div class="mt-6 flex justify-center">
-		{#if projects.length > 0}
+		<!-- Continue -->
+		<div class="mt-6 flex justify-center">
 			<Button
 				variant="primary"
 				size="lg"
-				onclick={onNext}
+				onclick={handleContinue}
 				class="min-w-[200px] shadow-ink-strong pressable"
 			>
-				Continue
+				Continue setup
+				<ArrowRight class="w-4 h-4 ml-2" />
 			</Button>
-		{:else}
-			<Button variant="ghost" onclick={onNext}>
-				{isSkippable ? 'Skip for now' : 'Continue'}
-			</Button>
-		{/if}
-	</div>
+		</div>
+	{/if}
 </div>
 
-<!-- Agentic chat modal for project creation -->
+<!-- Agentic chat modal: processing vehicle for the first dump, edit surface afterwards -->
 {#if AgentChatModal && showChatModal}
-	<AgentChatModal isOpen={showChatModal} contextType="project_create" onClose={handleChatClose} />
+	<AgentChatModal
+		isOpen={showChatModal}
+		contextType={chatConfig.contextType}
+		entityId={chatConfig.entityId}
+		initialDraft={chatConfig.draft ?? null}
+		autoSendInitialDraft={chatConfig.autoSend ?? false}
+		onClose={handleChatClose}
+	/>
 {/if}

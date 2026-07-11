@@ -5,18 +5,21 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
-	import { AlertCircle, ArrowLeft, RefreshCw, FileX } from 'lucide-svelte';
+	import { AlertCircle, ArrowLeft, FileX, LogOut, RefreshCw } from '$lib/icons/lucide';
 
 	const status = $derived($page.status);
 	const message = $derived($page.error?.message || 'An unexpected error occurred');
 	const projectId = $derived($page.params.id);
+	const userEmail = $derived(
+		typeof $page.data?.user?.email === 'string' ? $page.data.user.email : ''
+	);
 
 	const errorTitle = $derived.by(() => {
 		switch (status) {
 			case 404:
 				return 'Project Not Found';
 			case 403:
-				return 'Access Denied';
+				return 'You do not have access to this project';
 			case 500:
 				return 'Failed to Load Project';
 			default:
@@ -29,7 +32,9 @@
 			case 404:
 				return `The project with ID "${projectId}" could not be found. It may have been deleted or you may not have permission to view it.`;
 			case 403:
-				return 'You do not have permission to access this project. Admin privileges may be required.';
+				return userEmail
+					? 'This email does not have access to this project.'
+					: 'Your current account does not have access to this project.';
 			case 500:
 				return 'There was a problem loading this project. Please try again in a few moments.';
 			default:
@@ -43,6 +48,12 @@
 
 	function handleGoBack() {
 		goto('/projects');
+	}
+
+	function handleSwitchAccount() {
+		const destination = `${$page.url.pathname}${$page.url.search}`;
+		const loginUrl = `/auth/login?redirect=${encodeURIComponent(destination)}`;
+		window.location.href = `/auth/logout?redirect=${encodeURIComponent(loginUrl)}`;
 	}
 </script>
 
@@ -82,6 +93,17 @@
 					{errorDescription}
 				</p>
 
+				{#if status === 403 && userEmail}
+					<div
+						class="mb-6 min-w-0 rounded-lg border border-border bg-muted px-4 py-3 text-left"
+					>
+						<p class="micro-label mb-1 text-muted-foreground">Signed in as</p>
+						<p class="truncate text-sm font-medium text-foreground" title={userEmail}>
+							{userEmail}
+						</p>
+					</div>
+				{/if}
+
 				<!-- Project ID Display -->
 				{#if projectId && status === 404}
 					<div
@@ -92,7 +114,7 @@
 				{/if}
 
 				<!-- Error Details (if available and different from description) -->
-				{#if message && message !== errorDescription && !message.includes('not found')}
+				{#if status !== 403 && message && message !== errorDescription && !message.includes('not found')}
 					<div
 						class="bg-muted rounded-lg px-4 py-3 mb-6 text-sm text-muted-foreground text-left border border-border"
 					>
@@ -115,6 +137,15 @@
 						>
 							Create New Project
 						</Button>
+					{:else if status === 403}
+						<Button variant="primary" size="md" onclick={handleSwitchAccount}>
+							<LogOut class="h-4 w-4 shrink-0" />
+							Switch account
+						</Button>
+						<Button variant="outline" size="md" onclick={handleGoBack}>
+							<ArrowLeft class="h-4 w-4 shrink-0" />
+							Back to Projects
+						</Button>
 					{:else}
 						<Button variant="primary" size="md" onclick={handleRetry}>
 							<RefreshCw class="w-4 h-4" />
@@ -132,21 +163,26 @@
 					<p>
 						{#if status === 404}
 							If you believe this project should exist, try:
+						{:else if status === 403}
+							Ask the project owner to invite this email, or switch to the invited
+							account.
 						{:else}
 							If this problem persists:
 						{/if}
 					</p>
-					<ul class="list-disc list-inside text-left max-w-sm mx-auto">
-						{#if status === 404}
-							<li>Checking the project ID is correct</li>
-							<li>Verifying you have the right permissions</li>
-							<li>Contacting the project owner</li>
-						{:else}
-							<li>Refreshing the page</li>
-							<li>Clearing your browser cache</li>
-							<li>Checking your internet connection</li>
-						{/if}
-					</ul>
+					{#if status !== 403}
+						<ul class="list-disc list-inside text-left max-w-sm mx-auto">
+							{#if status === 404}
+								<li>Checking the project ID is correct</li>
+								<li>Verifying you have the right permissions</li>
+								<li>Contacting the project owner</li>
+							{:else}
+								<li>Refreshing the page</li>
+								<li>Clearing your browser cache</li>
+								<li>Checking your internet connection</li>
+							{/if}
+						</ul>
+					{/if}
 				</div>
 			</CardBody>
 		</Card>

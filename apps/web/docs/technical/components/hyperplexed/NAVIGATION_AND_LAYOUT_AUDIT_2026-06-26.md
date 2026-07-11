@@ -340,9 +340,21 @@ resolved through the notification stack or project-level Inbox.
 - Successful direct Change Set commits and all shared Inbox decision completion/failure paths refresh the
   count, covering notification-modal, dashboard, project Inbox, batch, snooze, and optimistic rollback
   flows. -> P22
-- Calendar analysis refreshes the count when it creates suggestions; returning to a visible tab and opening
-  AI Inbox also reconcile the count against source truth. -> P22
+- Calendar analysis refreshes the count when it creates suggestions; returning to a visible tab refreshes
+  from the indexed inbox truth, while explicit AI Inbox Refresh retains full source repair. -> P22
 - AI Inbox's intent-preload and click paths now share one cached dynamic-import promise, avoiding duplicate
   chunk work when focus and click arrive together. -> P20
 - Second-pass verification: 7 focused tests passed across four files; full `pnpm check` remained 0 errors /
   0 warnings; Prettier and `git diff --check` passed.
+
+### AI Inbox initial-load performance follow-up - 2026-07-10
+
+The global entry now preloads its cached modal import on idle and pointer down as well as hover/focus, so
+touch users do not pay the whole chunk cost after click. Opening the modal no longer forces a competing
+count reconciliation; the bounded 25-item modal response supplies the exact shared badge total instead.
+The detailed list/pagination contract and verification are recorded in
+[`DASHBOARD_INBOX_MODAL_AUDIT_2026-07-07.md`](./DASHBOARD_INBOX_MODAL_AUDIT_2026-07-07.md). -> P20+P22
+
+The global entry also starts `buildos.ai_inbox.open_to_data.navigation` before lazy import; the modal
+completes it only after its first usable data state renders. Failed/abandoned opens do not pollute the
+metric, and the initial click-to-data budget is 800 ms. -> P20

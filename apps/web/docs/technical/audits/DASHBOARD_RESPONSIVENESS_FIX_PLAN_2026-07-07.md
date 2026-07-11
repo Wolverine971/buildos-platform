@@ -73,6 +73,7 @@ Implementation log:
 - 2026-07-07: Dashboard mount no longer fetches overdue project-batch summaries immediately. Full overdue batches load when the triage modal opens.
 - 2026-07-07: `DashboardBriefWidget` no longer performs a separate user-timezone Supabase lookup on mount; `ensure-today` remains the canonical timezone correction path.
 - 2026-07-07: Dashboard inbox count, overdue batch refresh, and daily-brief fetches now guard against stale post-mount responses with abort controllers and/or request tokens.
+- 2026-07-10: Shared inbox counts now default to the indexed inbox read model plus bounded lifecycle cleanup; source-table backfill is reserved for explicit `repair=full` recovery instead of every post-mount/realtime/visibility count.
 
 ## Phase 3 - Modal And Navigation Responsiveness
 
@@ -112,6 +113,7 @@ Implementation log:
 
 - 2026-07-07: Started Phase 4 by threading the onboarding project-visibility preflight actor id into `getUserDashboardAnalytics`, avoiding a duplicate `ensureActorId` call for onboarding users who already have projects.
 - 2026-07-07: Finished Phase 4 backend/index pass with targeted dashboard indexes in `supabase/migrations/20260707010000_dashboard_responsiveness_indexes.sql` for pending inbox counts, open due tasks, and active chat-session activity ordering.
+- 2026-07-10: AI Inbox's interactive list path now skips source backfill and per-row source reconciliation, while manual Refresh preserves full repair. Source payload tables and unique-project access checks hydrate concurrently.
 
 ## Phase 5 - Guardrails
 
@@ -132,6 +134,8 @@ Implementation log:
 - 2026-07-07: Started Phase 5 with browser performance marks/measures for dashboard mount, refresh, daily brief modal open, brief chat modal open, dashboard inbox open, overdue triage open, and calendar navigation.
 - 2026-07-07: Dashboard performance entries use the `buildos.dashboard.*` prefix so local traces and future smoke tests can filter dashboard-only timings.
 - 2026-07-07: Finished the first Phase 5 guardrail by extracting the dashboard performance tracker into `src/lib/utils/dashboard-performance.ts`, adding budget constants, and covering the mark/measure contract with `src/lib/utils/dashboard-performance.test.ts`.
+- 2026-07-10: Inbox list/count backend phases now emit Server Timing entries for indexed reads, lifecycle cleanup, hydration, contexts, projects, and opt-in repair work.
+- 2026-07-10: Navigation, Dashboard, and Today now emit `buildos.ai_inbox.open_to_data.<source>` from activation through the first rendered inbox data state, with an 800 ms initial budget and cancelled failure/abandon paths.
 
 Current client-side budget targets:
 

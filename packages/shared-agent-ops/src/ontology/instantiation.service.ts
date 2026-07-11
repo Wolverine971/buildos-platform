@@ -1059,11 +1059,11 @@ export async function instantiateProject(
 			)
 			.filter((log) => Boolean(log.entityId));
 
-		// Edge count (display metadata), activity logs, and the PostHog funnel
-		// event are three independent network calls — run them together. The
-		// funnel event stays awaited (not fire-and-forget): it is the aha-moment
-		// metric and serverless teardown would drop an un-awaited capture.
-		const [{ count: edgeCount }] = await Promise.all([
+		// Edge count (display metadata), activity logs, and the actor's project
+		// count are three independent network calls — run them together. The
+		// project count feeds the first-vs-Nth flag on the funnel event below;
+		// this project's row is already inserted, so count === 1 means first.
+		const [{ count: edgeCount }, , { count: actorProjectCount }] = await Promise.all([
 			client
 				.from('onto_edges')
 				.select('id', { count: 'exact', head: true })
@@ -1071,16 +1071,23 @@ export async function instantiateProject(
 			activityLogs.length > 0
 				? logActivitiesAsync(client as any, { logs: activityLogs })
 				: Promise.resolve(),
-			// AHA-moment funnel event — this is the single point every project
-			// creation path (API, agentic chat, braindump, calendar analysis)
-			// funnels through.
-			captureProductEvent(userId, 'project_created', {
-				project_id: typedProjectId,
-				type_key: parsed.project.type_key,
-				task_count: counts.tasks,
-				change_source: options.activityLog?.changeSource ?? 'api'
-			})
+			client
+				.from('onto_projects')
+				.select('id', { count: 'exact', head: true })
+				.eq('created_by', actorId)
 		]);
+		// AHA-moment funnel event — this is the single point every project
+		// creation path (API, agentic chat, braindump, calendar analysis)
+		// funnels through. It stays awaited (not fire-and-forget): it is the
+		// aha-moment metric and serverless teardown would drop an un-awaited
+		// capture.
+		await captureProductEvent(userId, 'project_created', {
+			project_id: typedProjectId,
+			type_key: parsed.project.type_key,
+			task_count: counts.tasks,
+			change_source: options.activityLog?.changeSource ?? 'api',
+			is_first_project: typeof actorProjectCount === 'number' ? actorProjectCount <= 1 : null
+		});
 		if (typeof edgeCount === 'number') {
 			counts.edges = edgeCount;
 		}

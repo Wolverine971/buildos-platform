@@ -262,6 +262,18 @@ describe('projects/[id] +page.server load', () => {
 		expect(operations).toEqual(['rpc:get_project_skeleton_with_access_v2']);
 	});
 
+	it('returns a forbidden error when the route bundle identifies a signed-in nonmember', async () => {
+		const { event, operations } = createHarness({
+			bundleData: { route_access_state: 'forbidden' }
+		});
+
+		await expect(load(event)).rejects.toMatchObject({
+			status: 403,
+			body: { message: 'You do not have access to this project.' }
+		});
+		expect(operations).toEqual(['rpc:get_project_skeleton_with_access_v2']);
+	});
+
 	it('emits the combined timing label', async () => {
 		const { event, timingLabels } = createHarness({
 			access: {

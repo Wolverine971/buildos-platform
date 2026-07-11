@@ -109,7 +109,7 @@ async function countInboxItemsWithTransientRetry(params: Parameters<typeof count
 export const GET: RequestHandler = async (event) => {
 	const {
 		url,
-		locals: { safeGetSession, supabase }
+		locals: { safeGetSession, supabase, serverTiming }
 	} = event;
 	const projectId = url.searchParams.get('project_id');
 	let userId: string | null = null;
@@ -137,6 +137,10 @@ export const GET: RequestHandler = async (event) => {
 		if (groupParam && !group) {
 			return ApiResponse.badRequest("group must be 'account' or 'project'");
 		}
+		const repairParam = url.searchParams.get('repair');
+		if (repairParam && repairParam !== 'none' && repairParam !== 'full') {
+			return ApiResponse.badRequest("repair must be 'none' or 'full'");
+		}
 
 		const admin = createAdminSupabaseClient();
 		const result = await countInboxItemsWithTransientRetry({
@@ -147,7 +151,9 @@ export const GET: RequestHandler = async (event) => {
 			projectId,
 			sourceType,
 			group,
-			limit: parseInboxLimit(url.searchParams.get('limit'), 1000, 5000)
+			limit: parseInboxLimit(url.searchParams.get('limit'), 1000, 5000),
+			repair: repairParam === 'full',
+			timing: serverTiming
 		});
 
 		return ApiResponse.success(result);

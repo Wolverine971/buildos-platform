@@ -5,8 +5,13 @@ import {
 	type InboxItemStatus,
 	type InboxSourceType
 } from '@buildos/shared-agent-ops/inbox-index';
+import type { ServerTiming } from '$lib/server/server-timing';
 
 type AnySupabase = any;
+
+function measure<T>(timing: ServerTiming | null | undefined, name: string, fn: () => Promise<T>) {
+	return timing ? timing.measure(name, fn) : fn();
+}
 
 export type InboxGroupFilter = 'account' | 'project';
 
@@ -61,6 +66,7 @@ export type InboxItemWithPayload = InboxIndexRow & {
 
 export type ListInboxItemsResult = {
 	items: InboxItemWithPayload[];
+	total: number;
 	repairedCount: number;
 	backfilledCount: number;
 };
@@ -389,6 +395,38 @@ async function reconcileInboxLifecycle(params: {
 	return { rows: repairedRows, repairedCount };
 }
 
+async function reconcileVisibleInboxLifecycle(params: {
+	supabase: AnySupabase;
+	admin: AnySupabase;
+	projectId?: string | null;
+	sourceType?: InboxSourceType | null;
+	group?: InboxGroupFilter | null;
+	limit: number;
+}): Promise<number> {
+	let query = params.supabase
+		.from('inbox_items')
+		.select('*')
+		.in('status', ['pending', 'snoozed'])
+		.order('created_at', { ascending: false })
+		.limit(Math.min(params.limit, 200));
+
+	if (params.projectId) query = query.eq('project_id', params.projectId);
+	if (params.sourceType) query = query.eq('source_type', params.sourceType);
+	if (params.group === 'account') {
+		query = query.is('project_id', null);
+	} else if (params.group === 'project') {
+		query = query.not('project_id', 'is', null);
+	}
+
+	const { data, error } = await query;
+	if (error) throw error;
+	const { repairedCount } = await reconcileInboxLifecycle({
+		admin: params.admin,
+		rows: (data ?? []) as InboxIndexRow[]
+	});
+	return repairedCount;
+}
+
 async function loadRowsById(params: {
 	admin: AnySupabase;
 	table: string;
@@ -421,14 +459,19 @@ async function loadSourcePayloads(params: {
 		calendar_suggestion: 'calendar_project_suggestions'
 	};
 
-	for (const [sourceType, ids] of idsBySource) {
-		const table = tableBySource[sourceType];
-		if (!table) continue;
-		const rows = await loadRowsById({ admin: params.admin, table, ids });
+	const sourceRows = await Promise.all(
+		[...idsBySource].map(async ([sourceType, ids]) => {
+			const table = tableBySource[sourceType];
+			if (!table) return { sourceType, rows: [] as Record<string, unknown>[] };
+			return {
+				sourceType,
+				rows: await loadRowsById({ admin: params.admin, table, ids })
+			};
+		})
+	);
+	for (const { sourceType, rows } of sourceRows) {
 		for (const row of rows) {
-			if (typeof row.id === 'string') {
-				payloads.set(sourceKey(sourceType, row.id), row);
-			}
+			if (typeof row.id === 'string') payloads.set(sourceKey(sourceType, row.id), row);
 		}
 	}
 
@@ -656,6 +699,35 @@ async function loadDecisionCapabilities(params: {
 }): Promise<Map<string, InboxDecisionCapability>> {
 	const capabilities = new Map<string, InboxDecisionCapability>();
 	const projectWriteAccess = new Map<string, boolean>();
+	const projectIds = [
+		...new Set(
+			params.rows
+				.filter(
+					(row) =>
+						row.status === 'pending' &&
+						row.source_type === 'project_suggestion' &&
+						Boolean(row.project_id)
+				)
+				.map((row) => row.project_id as string)
+		)
+	];
+
+	const projectAccessResults = await Promise.all(
+		projectIds.map(async (projectId) => {
+			const { data, error } = await params.supabase.rpc(
+				'current_actor_has_project_member_access',
+				{
+					p_project_id: projectId,
+					p_required_access: 'write'
+				}
+			);
+			if (error) throw error;
+			return [projectId, Boolean(data)] as const;
+		})
+	);
+	for (const [projectId, canWrite] of projectAccessResults) {
+		projectWriteAccess.set(projectId, canWrite);
+	}
 
 	for (const row of params.rows) {
 		if (row.status !== 'pending') {
@@ -691,18 +763,6 @@ async function loadDecisionCapabilities(params: {
 					decision_disabled_reason: 'Missing project'
 				});
 				continue;
-			}
-
-			if (!projectWriteAccess.has(row.project_id)) {
-				const { data, error } = await params.supabase.rpc(
-					'current_actor_has_project_member_access',
-					{
-						p_project_id: row.project_id,
-						p_required_access: 'write'
-					}
-				);
-				if (error) throw error;
-				projectWriteAccess.set(row.project_id, Boolean(data));
 			}
 
 			const canDecide = projectWriteAccess.get(row.project_id) === true;
@@ -1041,9 +1101,14 @@ export async function listInboxItems(params: {
 	group?: InboxGroupFilter | null;
 	limit?: number;
 	includePayload?: boolean;
+	repair?: boolean;
+	timing?: ServerTiming | null;
 }): Promise<ListInboxItemsResult> {
 	const requestedStatus = params.status ?? null;
-	const backfilledCount = await backfillVisibleSourceRows(params);
+	const shouldRepairSources = params.repair !== false;
+	const backfilledCount = shouldRepairSources
+		? await measure(params.timing, 'inbox.backfill', () => backfillVisibleSourceRows(params))
+		: 0;
 	const requestedLimit = params.limit ?? 50;
 	const queryLimit =
 		requestedStatus === 'pending' ? Math.min(requestedLimit * 3, 10000) : requestedLimit;
@@ -1070,19 +1135,31 @@ export async function listInboxItems(params: {
 		query = query.not('project_id', 'is', null);
 	}
 
-	const { data, error } = await query;
+	const { data, error } = await measure<{ data: unknown[] | null; error: unknown }>(
+		params.timing,
+		'inbox.index',
+		async () => await query
+	);
 	if (error) throw error;
 
 	const initialRows = (data ?? []) as InboxIndexRow[];
-	const { rows: reconciledRows, repairedCount } = await reconcileInboxRows({
-		admin: params.admin,
-		rows: initialRows
-	});
-	const { rows: lifecycleRows, repairedCount: lifecycleRepairedCount } =
-		await reconcileInboxLifecycle({
-			admin: params.admin,
-			rows: reconciledRows
-		});
+	const { rows: reconciledRows, repairedCount } = shouldRepairSources
+		? await measure(params.timing, 'inbox.source_reconcile', () =>
+				reconcileInboxRows({
+					admin: params.admin,
+					rows: initialRows
+				})
+			)
+		: { rows: initialRows, repairedCount: 0 };
+	const { rows: lifecycleRows, repairedCount: lifecycleRepairedCount } = await measure(
+		params.timing,
+		'inbox.lifecycle',
+		() =>
+			reconcileInboxLifecycle({
+				admin: params.admin,
+				rows: reconciledRows
+			})
+	);
 
 	const orderedRows = sortInboxRowsForReview(lifecycleRows);
 	const visibleRows = requestedStatus
@@ -1091,30 +1168,41 @@ export async function listInboxItems(params: {
 	const totalRepairedCount = repairedCount + lifecycleRepairedCount;
 
 	if (!params.includePayload) {
+		const total = await measure(params.timing, 'inbox.total', () => countInboxRows(params));
 		return {
 			items: visibleRows,
+			total,
 			repairedCount: totalRepairedCount,
 			backfilledCount
 		};
 	}
 
-	const capabilities = await loadDecisionCapabilities({
-		supabase: params.supabase,
-		rows: visibleRows,
-		userId: params.userId
-	});
-	const payloads = await loadSourcePayloads({ admin: params.admin, rows: visibleRows });
-	const contexts = await loadSourceContexts({
-		admin: params.admin,
-		rows: visibleRows,
-		payloads
-	});
-	const projects = await loadProjectMetadata({
-		supabase: params.supabase,
-		rows: visibleRows,
-		payloads,
-		contexts
-	});
+	const [total, capabilities, payloads] = await measure(params.timing, 'inbox.hydrate_base', () =>
+		Promise.all([
+			countInboxRows(params),
+			loadDecisionCapabilities({
+				supabase: params.supabase,
+				rows: visibleRows,
+				userId: params.userId
+			}),
+			loadSourcePayloads({ admin: params.admin, rows: visibleRows })
+		])
+	);
+	const contexts = await measure(params.timing, 'inbox.contexts', () =>
+		loadSourceContexts({
+			admin: params.admin,
+			rows: visibleRows,
+			payloads
+		})
+	);
+	const projects = await measure(params.timing, 'inbox.projects', () =>
+		loadProjectMetadata({
+			supabase: params.supabase,
+			rows: visibleRows,
+			payloads,
+			contexts
+		})
+	);
 	return {
 		items: visibleRows.map((row) => {
 			const key = sourceKey(row.source_type, row.source_ref_id);
@@ -1136,6 +1224,7 @@ export async function listInboxItems(params: {
 				source_context: context
 			};
 		}),
+		total,
 		repairedCount: totalRepairedCount,
 		backfilledCount
 	};
@@ -1150,26 +1239,45 @@ export async function countInboxItems(params: {
 	sourceType?: InboxSourceType | null;
 	group?: InboxGroupFilter | null;
 	limit?: number;
+	repair?: boolean;
+	timing?: ServerTiming | null;
 }): Promise<InboxCountResult> {
 	const limit = params.limit ?? 1000;
-	const backfilledCount = await backfillVisibleSourceRows({
-		...params,
-		limit
-	});
+	const shouldRepairSources = params.repair !== false;
+	const backfilledCount = shouldRepairSources
+		? await measure(params.timing, 'inbox_count.backfill', () =>
+				backfillVisibleSourceRows({
+					...params,
+					limit
+				})
+			)
+		: 0;
+	const repairedCount = await measure(params.timing, 'inbox_count.lifecycle', () =>
+		reconcileVisibleInboxLifecycle({
+			supabase: params.supabase,
+			admin: params.admin,
+			projectId: params.projectId,
+			sourceType: params.sourceType,
+			group: params.group,
+			limit
+		})
+	);
 	const requestedStatus = params.status ?? null;
-	const totalPromise = countInboxRows(params);
-	const accountPromise =
-		params.projectId || params.group === 'project'
-			? Promise.resolve(0)
-			: params.group === 'account'
-				? totalPromise
-				: countInboxRows({ ...params, group: 'account' });
+	const [total, account, rows] = await measure(params.timing, 'inbox_count.index', () => {
+		const totalPromise = countInboxRows(params);
+		const accountPromise =
+			params.projectId || params.group === 'project'
+				? Promise.resolve(0)
+				: params.group === 'account'
+					? totalPromise
+					: countInboxRows({ ...params, group: 'account' });
 
-	const [total, account, rows] = await Promise.all([
-		totalPromise,
-		accountPromise,
-		loadInboxCountBreakdownRows({ ...params, limit })
-	]);
+		return Promise.all([
+			totalPromise,
+			accountPromise,
+			loadInboxCountBreakdownRows({ ...params, limit })
+		]);
+	});
 
 	const byStatus: Record<string, number> = {};
 	const bySourceType: Record<string, number> = {};
@@ -1204,7 +1312,7 @@ export async function countInboxItems(params: {
 		by_project: byProject,
 		account,
 		truncated: rows.length < total,
-		repairedCount: 0,
+		repairedCount,
 		backfilledCount
 	};
 }

@@ -16,7 +16,7 @@
 		SITE_NAME
 	} from '$lib/constants/seo';
 	import type { PageData } from './$types';
-	import { ArrowLeft, Calendar, Clock, History, Tag } from 'lucide-svelte';
+	import { ArrowLeft, Calendar, Clock, History, Tag } from '$lib/icons/lucide';
 	import {
 		AGENT_SKILLS_COLLECTION,
 		formatBlogDate,
@@ -476,13 +476,21 @@
 	<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 		<!-- Breadcrumb -->
 		<nav
-			class="flex items-center gap-1.5 text-xs text-muted-foreground py-4 border-b border-border"
+			aria-label="Breadcrumb"
+			class="flex items-center gap-1 border-b border-border py-2 text-xs text-muted-foreground"
 		>
 			{#if !isAgentSkillPost}
-				<a href="/blogs" class="hover:text-accent transition-colors">Blog</a>
-				<span>/</span>
+				<a
+					href="/blogs"
+					class="inline-flex min-h-11 items-center rounded-md px-2 transition-colors hover:bg-muted hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+					>Blog</a
+				>
+				<span aria-hidden="true">/</span>
 			{/if}
-			<a href={categoryPath} class="hover:text-accent transition-colors">
+			<a
+				href={categoryPath}
+				class="inline-flex min-h-11 items-center rounded-md px-2 transition-colors hover:bg-muted hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+			>
 				{categoryDisplayName}
 			</a>
 		</nav>
@@ -540,14 +548,21 @@
 
 				{#if data.post.tags.length > 0}
 					<div class="flex min-w-0 flex-wrap gap-1.5 sm:justify-end">
-						{#each data.post.tags as tag}
+						{#each data.post.tags.slice(0, 3) as tag}
 							<span
-								class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground"
+								class="inline-flex items-center rounded-full bg-muted px-2 py-1 text-2xs font-medium text-muted-foreground"
 							>
-								<Tag class="w-2.5 h-2.5 mr-0.5" />
+								<Tag class="mr-1 h-3 w-3" aria-hidden="true" />
 								{tag}
 							</span>
 						{/each}
+						{#if data.post.tags.length > 3}
+							<span
+								class="inline-flex items-center px-1 text-2xs text-muted-foreground"
+							>
+								+{data.post.tags.length - 3} more
+							</span>
+						{/if}
 					</div>
 				{/if}
 			</div>
@@ -556,31 +571,29 @@
 				<div
 					class="mt-6 rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground shadow-ink"
 				>
-					<span class="block text-xs font-medium uppercase tracking-wide text-foreground">
-						For agents
-					</span>
+					<span class="micro-label block text-foreground">For agents</span>
 					<div class="mt-2 flex flex-wrap gap-2">
 						<a
 							href={portableSkillMarkdownUrl}
-							class="inline-flex items-center rounded border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:border-accent hover:text-accent"
+							class="inline-flex min-h-11 items-center rounded-md border border-border bg-muted px-3 text-xs font-medium text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 						>
 							Portable SKILL.md
 						</a>
 						<a
 							href={skillBundleUrl}
-							class="inline-flex items-center rounded border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:border-accent hover:text-accent"
+							class="inline-flex min-h-11 items-center rounded-md border border-border bg-muted px-3 text-xs font-medium text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 						>
 							bundle.zip
 						</a>
 						<a
 							href={agentSkillMarkdownUrl}
-							class="inline-flex items-center rounded border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:border-accent hover:text-accent"
+							class="inline-flex min-h-11 items-center rounded-md border border-border bg-muted px-3 text-xs font-medium text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 						>
 							BuildOS SKILL.md
 						</a>
 						<a
 							href={agentSkillIndexUrl}
-							class="inline-flex items-center rounded border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:border-accent hover:text-accent"
+							class="inline-flex min-h-11 items-center rounded-md border border-border bg-muted px-3 text-xs font-medium text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 						>
 							index.json
 						</a>
@@ -765,14 +778,14 @@
 		<div class="py-6 flex flex-col sm:flex-row gap-3">
 			<a
 				href={categoryPath}
-				class="flex-1 inline-flex items-center justify-center gap-2 bg-muted text-foreground text-sm font-medium px-4 py-2.5 rounded-lg border border-border hover:border-accent/40 transition-colors shadow-ink pressable"
+				class="pressable inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-muted px-4 text-sm font-medium text-foreground shadow-ink transition-colors hover:border-accent/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 			>
 				<ArrowLeft class="w-3.5 h-3.5" />
 				More {categoryDisplayName}
 			</a>
 			<a
 				href="/blogs"
-				class="flex-1 inline-flex items-center justify-center gap-2 bg-accent text-accent-foreground text-sm font-medium px-4 py-2.5 rounded-lg hover:bg-accent/90 transition-colors shadow-ink pressable"
+				class="pressable inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-accent px-4 text-sm font-medium text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 			>
 				All Articles
 			</a>
@@ -789,7 +802,7 @@
 					{#each data.relatedPosts as relatedPost}
 						<a
 							href={getContentPostPath(relatedPost)}
-							class="group block bg-card border border-border rounded-lg p-4 hover:shadow-ink hover:border-accent/40 transition-all duration-200 pressable"
+							class="pressable group block rounded-lg border border-border bg-card p-4 transition-colors hover:border-accent/40 hover:shadow-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 						>
 							<span
 								class="flex items-center gap-1 text-xs text-muted-foreground mb-2"
@@ -799,7 +812,7 @@
 							</span>
 
 							<h3
-								class="text-sm font-medium text-foreground mb-1.5 line-clamp-2 group-hover:text-accent transition-colors"
+								class="mb-1.5 line-clamp-2 text-sm font-medium text-foreground transition-colors group-hover:text-accent motion-reduce:transition-none"
 							>
 								{relatedPost.title}
 							</h3>

@@ -15,7 +15,7 @@
 		SITE_NAME,
 		SITE_URL
 	} from '$lib/constants/seo';
-	import { Calendar, Clock, ArrowRight, Search } from 'lucide-svelte';
+	import { ArrowRight, Calendar, Clock, Search } from '$lib/icons/lucide';
 	import type { PageData } from './$types';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import {
@@ -184,7 +184,7 @@
 <div class="min-h-screen bg-background">
 	<!-- Hero -->
 	<header class="border-b border-border bg-card tx tx-bloom tx-weak">
-		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 text-center">
+		<div class="mx-auto max-w-7xl px-2 py-10 text-center sm:px-4 sm:py-14 lg:px-6">
 			<h1 class="text-3xl sm:text-4xl font-bold text-foreground tracking-tight leading-[1.1]">
 				BuildOS Blog
 			</h1>
@@ -208,7 +208,7 @@
 		</div>
 	</header>
 
-	<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+	<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6">
 		<!-- Category filter pills -->
 		<div
 			class="flex flex-wrap gap-2 border-b border-border py-5"
@@ -218,25 +218,25 @@
 			<button
 				onclick={() => (activeCategory = 'all')}
 				aria-pressed={activeCategory === 'all'}
-				class="px-3 py-1.5 text-sm font-medium rounded-full transition-colors {activeCategory ===
+				class="inline-flex min-h-11 items-center rounded-full px-3 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none {activeCategory ===
 				'all'
 					? 'bg-foreground text-background'
 					: 'bg-muted text-muted-foreground hover:text-foreground'}"
 			>
 				All
-				<span class="ml-1 text-xs opacity-70">{data.totalPosts}</span>
+				<span class="ml-1 text-2xs opacity-80">{data.totalPosts}</span>
 			</button>
 			{#each activeCategories as [categoryKey, count]}
 				<button
 					onclick={() => (activeCategory = categoryKey)}
 					aria-pressed={activeCategory === categoryKey}
-					class="px-3 py-1.5 text-sm font-medium rounded-full transition-colors {activeCategory ===
+					class="inline-flex min-h-11 items-center rounded-full px-3 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none {activeCategory ===
 					categoryKey
 						? 'bg-foreground text-background'
 						: 'bg-muted text-muted-foreground hover:text-foreground'}"
 				>
 					{data.categories[categoryKey].name}
-					<span class="ml-1 text-xs opacity-70">{count}</span>
+					<span class="ml-1 text-2xs opacity-80">{count}</span>
 				</button>
 			{/each}
 		</div>
@@ -254,7 +254,7 @@
 			<article class="group pt-6 pb-2">
 				<a
 					href={getContentPostPath(featuredPost)}
-					class="block bg-card border border-border shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
+					class="pressable block overflow-hidden border border-border bg-card shadow-ink transition-colors hover:border-accent/40 hover:shadow-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none tx tx-frame tx-weak wt-paper"
 				>
 					<div class="p-5 sm:p-7">
 						<div
@@ -267,17 +267,17 @@
 									featuredPost.category}
 							</span>
 							<span class="flex shrink-0 items-center gap-1">
-								<Calendar class="w-3 h-3" />
+								<Calendar class="h-3 w-3" aria-hidden="true" />
 								{formatBlogDate(featuredPost.date)}
 							</span>
 							<span class="flex shrink-0 items-center gap-1">
-								<Clock class="w-3 h-3" />
+								<Clock class="h-3 w-3" aria-hidden="true" />
 								{featuredPost.readingTime} min read
 							</span>
 						</div>
 
 						<h2
-							class="text-xl sm:text-2xl font-bold text-foreground mb-2 group-hover:text-accent transition-colors"
+							class="mb-2 text-xl font-bold text-foreground transition-colors group-hover:text-accent motion-reduce:transition-none sm:text-2xl"
 						>
 							{featuredPost.title}
 						</h2>
@@ -289,7 +289,7 @@
 						<span
 							class="inline-flex items-center gap-1 text-sm text-accent font-medium"
 						>
-							Read article <ArrowRight class="w-3.5 h-3.5" />
+							Read article <ArrowRight class="h-3.5 w-3.5" aria-hidden="true" />
 						</span>
 					</div>
 				</a>
@@ -307,7 +307,7 @@
 						<article class="group">
 							<a
 								href={getContentPostPath(post)}
-								class="flex flex-col h-full bg-card border border-border shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
+								class="pressable flex h-full flex-col overflow-hidden border border-border bg-card shadow-ink transition-colors hover:border-accent/40 hover:shadow-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none tx tx-frame tx-weak wt-paper"
 							>
 								<div class="p-4 sm:p-5 flex flex-col flex-1">
 									<div
@@ -319,13 +319,13 @@
 											{categoryName}
 										</span>
 										<span class="flex shrink-0 items-center gap-1">
-											<Calendar class="w-3 h-3" />
+											<Calendar class="h-3 w-3" aria-hidden="true" />
 											{formatBlogDate(post.date)}
 										</span>
 									</div>
 
 									<h3
-										class="text-base font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-accent transition-colors"
+										class="mb-2 line-clamp-2 text-base font-semibold text-foreground transition-colors group-hover:text-accent motion-reduce:transition-none"
 									>
 										{post.title}
 									</h3>
@@ -340,13 +340,16 @@
 										<span
 											class="flex items-center gap-1 text-xs text-muted-foreground"
 										>
-											<Clock class="w-3 h-3" />
+											<Clock class="h-3 w-3" aria-hidden="true" />
 											{post.readingTime} min
 										</span>
 										<span
 											class="text-xs text-accent font-medium flex items-center gap-1"
 										>
-											Read article <ArrowRight class="w-3 h-3" />
+											Read article <ArrowRight
+												class="h-3 w-3"
+												aria-hidden="true"
+											/>
 										</span>
 									</div>
 								</div>

@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/dashboard/DashboardInboxModal.svelte -->
 <script lang="ts">
+	import { tick } from 'svelte';
 	import {
 		CalendarDays,
 		ClipboardCheck,
@@ -25,7 +26,9 @@
 		failInboxDecisionNotification,
 		startInboxDecisionNotification
 	} from '$lib/services/inbox-decision-notification.service';
+	import { setAiInboxRemainingCount } from '$lib/stores/aiInboxCount.store';
 	import { toastService } from '$lib/stores/toast.store';
+	import { aiInboxPerformance } from '$lib/utils/ai-inbox-performance';
 	import type {
 		ChatContextType,
 		ChangeSet,
@@ -136,10 +139,14 @@
 
 	let items = $state<InboxItem[]>([]);
 	let loading = $state(false);
+	let loadingMore = $state(false);
 	let error = $state<string | null>(null);
+	let loadedLimit = $state(25);
+	let totalAvailable = $state(0);
 	let pendingIds = $state<Set<string>>(new Set());
 	let changedCount = $state(0);
 	let wasOpen = $state(false);
+	let initialDataReadyPending = false;
 	let activeGroupKey = $state<string | null>(null);
 	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
 	let chatSessionId = $state<string | null>(null);
@@ -176,6 +183,8 @@
 	});
 
 	const accountGroupKey = 'account';
+	const INBOX_PAGE_SIZE = 25;
+	const MAX_INBOX_LIMIT = 200;
 	const SNOOZE_MS = 24 * 60 * 60 * 1000;
 
 	type TierMeta = { label: string; cls: string };
@@ -241,6 +250,14 @@
 		groupedItems.find((group) => group.key === activeGroupKey) ?? groupedItems[0] ?? null
 	);
 	const totalActionable = $derived(items.filter(canDecide).length);
+	const hasMoreItems = $derived(items.length < totalAvailable && loadedLimit < MAX_INBOX_LIMIT);
+	const nextPageCount = $derived(
+		Math.min(
+			INBOX_PAGE_SIZE,
+			Math.max(0, totalAvailable - items.length),
+			Math.max(0, MAX_INBOX_LIMIT - loadedLimit)
+		)
+	);
 
 	function safeDomId(value: string): string {
 		return value.replace(/[^a-zA-Z0-9_-]/g, '-') || 'group';
@@ -472,6 +489,8 @@
 		const before = items.length;
 		items = items.filter((candidate) => candidate.id !== itemId);
 		if (items.length !== before) {
+			totalAvailable = Math.max(items.length, totalAvailable - 1);
+			setAiInboxRemainingCount(totalAvailable);
 			dismissReasonById = Object.fromEntries(
 				Object.entries(dismissReasonById).filter(([id]) => id !== itemId)
 			);
@@ -664,24 +683,70 @@
 		}
 	}
 
-	async function loadInbox(options: { silent?: boolean } = {}) {
+	async function loadInbox(
+		options: {
+			silent?: boolean;
+			limit?: number;
+			repair?: boolean;
+			showErrorToast?: boolean;
+		} = {}
+	): Promise<boolean> {
 		if (!options.silent) loading = true;
 		if (!options.silent) error = null;
+		const requestedLimit = Math.min(
+			MAX_INBOX_LIMIT,
+			Math.max(INBOX_PAGE_SIZE, options.limit ?? loadedLimit)
+		);
 		try {
 			const url = new URL('/api/inbox', window.location.origin);
 			url.searchParams.set('status', 'pending');
 			url.searchParams.set('include_payload', '1');
-			url.searchParams.set('limit', '100');
+			url.searchParams.set('limit', String(requestedLimit));
+			url.searchParams.set('repair', options.repair ? 'full' : 'none');
 			const res = await fetch(url);
 			const json = await res.json();
 			if (!res.ok) throw new Error(json?.error ?? 'Failed to load inbox');
 			items = json.data?.items ?? [];
-		} catch (err) {
-			if (!options.silent) {
-				error = err instanceof Error ? err.message : 'Failed to load inbox';
+			loadedLimit = requestedLimit;
+			const responseTotal = Number(json.data?.total);
+			totalAvailable = Number.isFinite(responseTotal)
+				? Math.max(items.length, responseTotal)
+				: items.length;
+			setAiInboxRemainingCount(totalAvailable);
+			if (initialDataReadyPending) {
+				initialDataReadyPending = false;
+				await tick();
+				aiInboxPerformance.complete();
 			}
+			return true;
+		} catch (err) {
+			if (initialDataReadyPending) {
+				initialDataReadyPending = false;
+				aiInboxPerformance.cancel();
+			}
+			const message = err instanceof Error ? err.message : 'Failed to load inbox';
+			if (!options.silent) {
+				error = message;
+			} else if (options.showErrorToast) {
+				toastService.error(message);
+			}
+			return false;
 		} finally {
 			if (!options.silent) loading = false;
+		}
+	}
+
+	async function loadMore() {
+		if (loadingMore || !hasMoreItems) return;
+		loadingMore = true;
+		try {
+			await loadInbox({
+				silent: true,
+				limit: Math.min(MAX_INBOX_LIMIT, loadedLimit + INBOX_PAGE_SIZE),
+				showErrorToast: true
+			});
+		} finally {
+			loadingMore = false;
 		}
 	}
 
@@ -802,11 +867,13 @@
 	}
 
 	function close() {
+		initialDataReadyPending = false;
+		aiInboxPerformance.cancel();
 		closeChat();
 		onClose({
 			hasChanges: changedCount > 0,
 			changedCount,
-			remainingCount: items.length
+			remainingCount: totalAvailable
 		});
 	}
 
@@ -814,7 +881,10 @@
 		if (isOpen && !wasOpen) {
 			wasOpen = true;
 			changedCount = 0;
-			void loadInbox();
+			initialDataReadyPending = true;
+			loadedLimit = INBOX_PAGE_SIZE;
+			totalAvailable = 0;
+			void loadInbox({ limit: INBOX_PAGE_SIZE });
 		} else if (!isOpen && wasOpen) {
 			wasOpen = false;
 		}
@@ -850,7 +920,11 @@
 					{#if loading}
 						Loading review items
 					{:else if items.length}
-						{items.length} pending item{items.length === 1 ? '' : 's'}
+						{#if items.length < totalAvailable}
+							Showing {items.length} of {totalAvailable} pending items
+						{:else}
+							{totalAvailable} pending item{totalAvailable === 1 ? '' : 's'}
+						{/if}
 					{:else}
 						Inbox is clear
 					{/if}
@@ -868,8 +942,8 @@
 			<Button
 				variant="outline"
 				size="sm"
-				onclick={() => loadInbox()}
-				disabled={loading}
+				onclick={() => loadInbox({ repair: true })}
+				disabled={loading || loadingMore}
 				class="h-11 w-11 p-0"
 				title="Refresh inbox"
 				aria-label="Refresh inbox"
@@ -891,7 +965,12 @@
 		{:else if error}
 			<div class="p-4">
 				<p class="text-sm text-destructive">{error}</p>
-				<Button variant="outline" size="sm" onclick={() => loadInbox()} class="mt-3">
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={() => loadInbox({ repair: true })}
+					class="mt-3"
+				>
 					Retry
 				</Button>
 			</div>
@@ -1311,6 +1390,20 @@
 					</div>
 				{/if}
 			</div>
+			{#if hasMoreItems}
+				<div class="flex shrink-0 justify-center border-t border-border px-3 py-2">
+					<Button
+						variant="outline"
+						size="sm"
+						onclick={loadMore}
+						loading={loadingMore}
+						disabled={loadingMore}
+						class="min-h-11"
+					>
+						Load {nextPageCount} more
+					</Button>
+				</div>
+			{/if}
 		{/if}
 	</div>
 </Modal>

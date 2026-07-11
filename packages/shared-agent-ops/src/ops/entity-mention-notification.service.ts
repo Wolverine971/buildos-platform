@@ -38,6 +38,9 @@ function getEntityActionUrl(entityType: string, projectId: string, entityId: str
 	if (entityType === 'task') {
 		return `/projects/${projectId}/tasks/${entityId}`;
 	}
+	if (entityType === 'document') {
+		return `/projects/${projectId}/documents/${entityId}`;
+	}
 	return `/projects/${projectId}`;
 }
 

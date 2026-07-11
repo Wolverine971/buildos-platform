@@ -15,7 +15,10 @@ function parseGroup(value: string | null): InboxGroupFilter | null {
 	return null;
 }
 
-export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supabase } }) => {
+export const GET: RequestHandler = async ({
+	url,
+	locals: { safeGetSession, supabase, serverTiming }
+}) => {
 	const { user } = await safeGetSession();
 	if (!user) return ApiResponse.unauthorized();
 
@@ -36,6 +39,10 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 	if (groupParam && !group) {
 		return ApiResponse.badRequest("group must be 'account' or 'project'");
 	}
+	const repairParam = url.searchParams.get('repair');
+	if (repairParam && repairParam !== 'none' && repairParam !== 'full') {
+		return ApiResponse.badRequest("repair must be 'none' or 'full'");
+	}
 
 	const admin = createAdminSupabaseClient();
 	const result = await listInboxItems({
@@ -47,6 +54,8 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 		sourceType,
 		group,
 		limit: parseInboxLimit(url.searchParams.get('limit')),
+		repair: repairParam !== 'none',
+		timing: serverTiming,
 		includePayload:
 			url.searchParams.get('include_payload') === 'true' ||
 			url.searchParams.get('include_payload') === '1'

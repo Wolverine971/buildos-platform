@@ -35,6 +35,12 @@
 		Target,
 		Workflow
 	} from '$lib/icons/lucide';
+	import SkillExpertCard from '$lib/components/skills/SkillExpertCard.svelte';
+	import {
+		getSkillExpertLineageRelationship,
+		getSkillExpertPath,
+		type SkillExpertLineageSource
+	} from '$lib/skills/skill-experts';
 	import {
 		getAgentFilePath,
 		getAgentRepositoryPath,
@@ -84,8 +90,8 @@
 	let primitiveCount = $derived(getNumericStat(skill, 'primitives'));
 	let promise = $derived(getSkillPromise(skill, post));
 	let runtimeExamples = $derived(runtime?.examples.slice(0, 3) ?? []);
-	let lineagePeople = $derived(skill.lineage_people?.slice(0, 8) ?? []);
-	let lineageSources = $derived(skill.lineage_sources?.slice(0, 5) ?? []);
+	let lineagePeople = $derived(data.lineagePeople);
+	let lineageSources = $derived(data.lineageSources);
 	let copiedPrompt = $state<string | null>(null);
 
 	async function copyPrompt(prompt: string) {
@@ -94,6 +100,14 @@
 		window.setTimeout(() => {
 			if (copiedPrompt === prompt) copiedPrompt = null;
 		}, 1800);
+	}
+
+	function getLineageSourceExperts(source: SkillExpertLineageSource) {
+		return lineagePeople.flatMap((person) => {
+			if (!person.profile) return [];
+			const relationship = getSkillExpertLineageRelationship(person.profile, source);
+			return relationship ? [{ profile: person.profile, relationship }] : [];
+		});
 	}
 
 	function generateJsonLd() {
@@ -114,7 +128,14 @@
 					'@id': DEFAULT_ORGANIZATION_ID
 				},
 				genre: domainLabel,
-				about: outputShapes
+				about: outputShapes,
+				mentions: lineagePeople
+					.filter((person) => person.profile)
+					.map((person) => ({
+						'@type': 'Person',
+						'@id': `${SITE_URL}/skills/people/${person.profile?.slug}`,
+						name: person.profile?.name
+					}))
 			},
 			null,
 			2
@@ -556,13 +577,17 @@
 					{#if lineagePeople.length}
 						<div class="mt-4">
 							<p class="micro-label">People</p>
-							<div class="mt-2 flex flex-wrap gap-1.5">
+							<div class="mt-2 space-y-2">
 								{#each lineagePeople as person}
-									<span
-										class="rounded-full border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground"
-									>
-										{person}
-									</span>
+									{#if person.profile}
+										<SkillExpertCard expert={person.profile} />
+									{:else}
+										<span
+											class="inline-flex rounded-full border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground"
+										>
+											{person.name}
+										</span>
+									{/if}
 								{/each}
 							</div>
 						</div>
@@ -573,11 +598,44 @@
 							<p class="micro-label">Source Highlights</p>
 							<div class="mt-2 space-y-2">
 								{#each lineageSources as source}
-									<div class="rounded-md border border-border bg-background p-2">
-										<p class="line-clamp-2 text-sm font-medium text-foreground">
-											{source.title}
-										</p>
-										{#if source.creator}
+									{@const sourceExperts = getLineageSourceExperts(source)}
+									<div class="rounded-md border border-border bg-background p-3">
+										{#if source.url}
+											<a
+												href={source.url}
+												target="_blank"
+												rel="noreferrer"
+												class="group flex min-h-[44px] items-start justify-between gap-3 text-sm font-medium leading-5 text-foreground hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											>
+												<span class="line-clamp-2">{source.title}</span>
+												<ExternalLink
+													class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground group-hover:text-accent"
+												/>
+											</a>
+										{:else}
+											<p
+												class="line-clamp-2 text-sm font-medium text-foreground"
+											>
+												{source.title}
+											</p>
+										{/if}
+										{#if sourceExperts.length}
+											<div class="mt-1 flex flex-wrap gap-x-3">
+												{#each sourceExperts as sourceExpert}
+													<a
+														href={getSkillExpertPath(
+															sourceExpert.profile
+														)}
+														class="inline-flex min-h-[44px] items-center text-xs font-semibold text-muted-foreground hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+													>
+														{sourceExpert.relationship === 'channel'
+															? 'Host profile'
+															: 'Profile'}:
+														{sourceExpert.profile.name}
+													</a>
+												{/each}
+											</div>
+										{:else if source.creator}
 											<p class="mt-1 truncate text-xs text-muted-foreground">
 												{source.creator}
 											</p>

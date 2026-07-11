@@ -109,9 +109,9 @@ request work rather than a universal server-rendering failure.
 
 ## Next implementation sequence
 
-1. **Continue the visual polish pass.** Home and pricing geometry/hierarchy are shipped. Next,
-   simplify Contact's page purpose and CTA order, then close the footer, blog-card, and skills
-   metadata/tap-target findings using P2/P3/P4/P5/P6/P8/P11/P13.
+1. **Continue the visual polish pass.** Home, pricing, Contact, the shared footer, blog surfaces,
+   the Skill Gallery density pass, and About are shipped. Next, take the larger homepage-proof
+   consolidation as its own judgment-heavy pass.
 2. **Re-run deployed performance evidence.** Capture fresh mobile Lighthouse results after the
    current public-web batches reach production and compare LCP, TBT, and request totals with the
    original 66-performance baseline.
@@ -213,5 +213,86 @@ request work rather than a universal server-rendering failure.
   ESLint, Prettier, `pnpm check` (0 errors, 0 warnings), and the production Vite/Vercel build pass.
   The build retains the repository's known optional Sharp platform-dependency warning.
 - ⬜ Larger judgment-heavy changes remain separate: homepage proof deduplication/visible product
-  preview, Contact content reordering, About copy deduplication, footer consolidation, and the
-  blog/skills density fixes from the read-only route audit.
+  preview, About copy deduplication, and the blog/skills density fixes from the read-only route
+  audit.
+
+## Visual polish follow-up — Contact — 2026-07-10
+
+- ✅ Contact now says what the page is for in the H1 and puts email, product feedback, and investor
+  information immediately after the orientation section. Signup moved to a tertiary closing path,
+  and the duplicated About-page problem/solution section was removed. → P4+P6+P8
+- ✅ Vague card badges and redundant veteran pills were removed. Email receives the one earned
+  primary treatment; feedback and investor information stay quieter; social links are secondary;
+  and founder context is one compact evidence row. → P4+P6
+- ✅ Every contact/social control now has a 44px target, visible focus, reduced-motion-safe
+  transitions, fixed icon geometry, and the two-radius card/control contract. Route icons now use
+  the shared lucide entry point. → P2+P9+P11+P13
+- ✅ The decorative brand video no longer autoplays from SSR. Playback starts only after the client
+  checks motion preference, pauses when reduced motion is requested, and has a static/poster
+  brain-bolt fallback instead of a blank paused frame. → P11
+- ✅ The page uses the shared `max-w-7xl` / `px-2 sm:px-4 lg:px-6` shell, measures about 2,900px tall
+  at 390×844 versus roughly 3,600px before, and has zero horizontal overflow. Live 390×844 and
+  1440×900 light/dark checks confirm one main, one H1, a three-column desktop contact row, and a
+  one-column phone composition. → P3
+- ✅ Touched-file ESLint and Prettier are clean; `pnpm check` passes with 0 errors and 0 warnings;
+  the production Vite/Vercel build passes with the repository's known optional Sharp warning.
+
+## Visual polish follow-up — shared footer — 2026-07-10
+
+- ✅ The guest footer now has one responsive implementation instead of separate mobile and desktop
+  trees. Brand, CTA, link groups, legal/privacy controls, social links, and copyright share one
+  hierarchy at every breakpoint. → P3+P4+P13
+- ✅ `Start in chat` and `Read docs` each appear once in the footer. Their duplicate link-column
+  entries were removed, and the prior desktop anchor-wrapped-button markup was replaced with
+  semantic links that carry the complete focus/tap contract. → P8+P13
+- ✅ The brand image is decorative inside an explicitly named `BuildOS home` link; link-group labels
+  use `.micro-label` instead of context-breaking H4s; all icons come through the shared lucide
+  entry point; and social links announce their new-tab behavior. → P4+P5+P6+P9+P13
+- ✅ Every phone control measures at least 44px. The mobile navigation uses three balanced columns,
+  reducing footer height from about 908px in the first unified draft to about 721px with zero
+  horizontal overflow. Desktop remains a compact 336px two-region composition. → P1+P3+P13
+- ✅ The footer-wide `transition: all` rule was removed. Each interactive element now owns only the
+  color/opacity transition it needs and disables that transition for reduced motion. → P11
+- ✅ Live 390×844 and 1440×900 light/dark checks confirm the shared structure, CTA/link deduplication,
+  legal/social alignment, and responsive geometry. Touched-file ESLint and Prettier are clean;
+  `pnpm check` passes with 0 errors and 0 warnings; the production Vite/Vercel build passes with the
+  repository's known optional Sharp warning.
+
+## Visual polish follow-up — blog and Skill Gallery — 2026-07-10
+
+- ✅ Blog category filters now meet the 44px phone target, expose visible focus and pressed state,
+  use motion-safe transitions, and keep their counts as quiet `text-2xs` metadata. Blog cards and
+  related-category links share the same focus/pressable contract and lucide entry point. → P4+P5+P9+P11+P13
+- ✅ Article breadcrumbs and agent-artifact links now meet the 44px interaction floor. Visible article
+  tags are capped at three plus a quiet remainder count, while complete tag metadata remains in the
+  document head. → P4+P13
+- ✅ Skill search replaces six competing result-count pills with one readable summary line. Published
+  skill cards cap output-shape chips at three and collapse domain/source/reference boxes into compact
+  metadata subtext. Selected-domain and selected-pack links now measure 44px. → P4+P7+P13
+- ✅ The root gallery no longer expands all 31 reviewed previews ahead of the domain map. It renders
+  six representative cards by default with a 44px, `aria-expanded` show-all/show-fewer control; all
+  previews remain reachable, and filtered search results remain complete. The default 390px page
+  height fell from 20,253px to 12,588px (about 38%) with zero horizontal overflow. → P4+P7+P8+P13
+- ✅ Live checks covered blog filter state, Skill Gallery search and domain state, preview expansion
+  and collapse, article tag capping, 390×844 and 1440×900 geometry, and light/dark rendering. Focused
+  Skill Gallery tests pass (6), and `pnpm check` reports 0 errors and 0 warnings.
+
+## Visual polish follow-up — About — 2026-07-10
+
+- ✅ Five overlapping versions of the context-reset problem were consolidated into one founder
+  origin, one three-part product thesis, and one three-step workflow. The page now has six distinct
+  regions instead of repeatedly reintroducing the same pitch. → P4+P6+P8
+- ✅ Founder credibility stays adjacent to the origin story instead of appearing as a separate late
+  reveal. The generic mission section, duplicated before/after comparison, broad founder quote, and
+  repeated problem copy were removed. → P4+P6
+- ✅ Operating proof and current company status now share one bounded section. Product availability,
+  founder-led status, and the fact that billing is not live remain explicit without competing metric
+  cards. → P4+P6+P19
+- ✅ The route now uses the shared `max-w-7xl` / `px-2 sm:px-4 lg:px-6` shell, `.micro-label`, the
+  shared lucide entry point, 44px/focus/motion-safe action contracts, and the same reduced-motion
+  brand-video fallback as Contact. The implementation is 221 lines smaller. → P3+P5+P9+P11+P13
+- ✅ Live 390×844 and 1440×900 light/dark checks confirm one main, one H1, six sections, zero
+  horizontal overflow, a 4,888px phone document, a 2,804px desktop document, and exact
+  `#founder-story` navigation. Title, canonical, description, and JSON-LD remain present.
+- ✅ Touched-file ESLint and Prettier are clean; `pnpm check` passes with 0 errors and 0 warnings;
+  the production Vite/Vercel build passes with the repository's known optional Sharp warning.

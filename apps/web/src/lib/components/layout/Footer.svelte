@@ -1,118 +1,97 @@
 <!-- apps/web/src/lib/components/layout/Footer.svelte -->
 <script lang="ts">
-	import Button from '$components/ui/Button.svelte';
-	import {
-		Brain,
-		Mail,
-		Shield,
-		Heart,
-		TrendingUp,
-		FileText,
-		BookOpen,
-		CircleHelp,
-		Info,
-		DollarSign,
-		MessageSquare,
-		Map,
-		Sparkles
-	} from 'lucide-svelte';
-	import LinkedinIcon from 'lucide-svelte/icons/linkedin';
-	import XIcon from 'lucide-svelte/icons/twitter';
+	import { BookOpen, Brain, Heart, Linkedin, Shield, Twitter } from '$lib/icons/lucide';
 	import { DEFAULT_APP_ICON_URL } from '$lib/constants/seo';
 	import { requestTrackingPreferences } from '$lib/services/tracking-consent';
 
-	// Svelte 5 props
 	let { user = null }: { user: any | null } = $props();
 
 	const CURRENT_YEAR = new Date().getFullYear();
 
 	const SUPPORT_LINKS = [
-		{ href: '/help', label: 'Help', icon: CircleHelp },
-		{ href: '/docs', label: 'Docs', icon: BookOpen },
-		{ href: '/feedback', label: 'Feedback', icon: MessageSquare }
-	];
+		{ href: '/help', label: 'Help' },
+		{ href: '/docs', label: 'Docs' },
+		{ href: '/feedback', label: 'Feedback' }
+	] as const;
 
-	// Guest links - organized in sections
 	const GUEST_SECTIONS = [
 		{
 			title: 'Product',
 			links: [
-				{ href: '/about', label: 'About', icon: Info },
-				{ href: '/pricing', label: 'Pricing', icon: DollarSign },
-				{ href: '/road-map', label: 'Roadmap', icon: Map },
-				{ href: '/beta', label: 'Join beta', icon: Sparkles },
-				{ href: '/auth/register', label: 'Start in chat', icon: Brain }
+				{ href: '/about', label: 'About' },
+				{ href: '/pricing', label: 'Pricing' },
+				{ href: '/road-map', label: 'Roadmap' },
+				{ href: '/beta', label: 'Join beta' }
 			]
 		},
 		{
 			title: 'Resources',
 			links: [
-				{ href: '/blogs', label: 'Blog', icon: FileText },
-				{ href: '/skills', label: 'Skill Gallery', icon: Brain },
-				{ href: '/help', label: 'Help', icon: CircleHelp },
-				{ href: '/docs', label: 'Docs', icon: BookOpen }
+				{ href: '/blogs', label: 'Blog' },
+				{ href: '/skills', label: 'Skill Gallery' },
+				{ href: '/help', label: 'Help' }
 			]
 		},
 		{
 			title: 'Company',
 			links: [
-				{ href: '/contact', label: 'Contact', icon: Mail },
-				{ href: '/investors', label: 'Investors', icon: TrendingUp },
-				{ href: '/feedback', label: 'Feedback', icon: MessageSquare }
+				{ href: '/contact', label: 'Contact' },
+				{ href: '/investors', label: 'Investors' },
+				{ href: '/feedback', label: 'Feedback' }
 			]
 		}
-	];
+	] as const;
 
-	// Legal links - always shown
 	const LEGAL_LINKS = [
 		{ href: '/privacy', label: 'Privacy' },
 		{ href: '/terms', label: 'Terms' }
-	];
+	] as const;
 
 	const SOCIAL_LINKS = [
-		{ href: 'https://x.com/build_os', icon: XIcon, label: 'X' },
+		{ href: 'https://x.com/build_os', icon: Twitter, label: 'BuildOS on X' },
 		{
 			href: 'https://www.linkedin.com/company/build-os-app',
-			icon: LinkedinIcon,
-			label: 'LinkedIn'
+			icon: Linkedin,
+			label: 'BuildOS on LinkedIn'
 		}
-	];
+	] as const;
 
 	let isAuthenticated = $derived(!!user);
 </script>
 
 <footer
-	class="bg-card border-t border-border mt-auto no-print {isAuthenticated
+	class="mt-auto border-t border-border bg-card no-print {isAuthenticated
 		? ''
 		: 'tx tx-frame tx-weak'}"
 >
-	<div class="max-w-7xl mx-auto">
+	<div class="mx-auto max-w-7xl">
 		{#if isAuthenticated}
-			<div class="px-2 sm:px-4 lg:px-6 py-3 sm:py-4">
+			<div class="px-2 py-3 sm:px-4 sm:py-4 lg:px-6">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 					<div
 						class="flex items-center justify-center gap-2 text-sm font-semibold tracking-tight text-muted-foreground"
 					>
 						<span>© {CURRENT_YEAR} BuildOS</span>
 						{#if user?.is_admin}
-							<span class="text-border">•</span>
+							<span class="text-border" aria-hidden="true">•</span>
 							<a
 								href="/admin"
-								class="inline-flex items-center gap-1 text-destructive hover:text-destructive/80 transition-colors"
+								class="inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-destructive transition-colors hover:bg-destructive/10 hover:text-destructive/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 							>
-								<Shield class="w-3.5 h-3.5" />
+								<Shield class="h-3.5 w-3.5" aria-hidden="true" />
 								Admin
 							</a>
 						{/if}
 					</div>
+
 					<nav
 						aria-label="App footer links"
-						class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm font-semibold tracking-tight"
+						class="flex flex-wrap items-center justify-center gap-x-1 gap-y-0 text-sm font-semibold tracking-tight"
 					>
 						{#each SUPPORT_LINKS as link}
 							<a
 								href={link.href}
-								class="text-muted-foreground hover:text-accent transition-colors"
+								class="inline-flex min-h-11 items-center rounded-md px-2 text-muted-foreground transition-colors hover:bg-muted hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 							>
 								{link.label}
 							</a>
@@ -120,7 +99,7 @@
 						{#each LEGAL_LINKS as link}
 							<a
 								href={link.href}
-								class="text-muted-foreground hover:text-foreground transition-colors"
+								class="inline-flex min-h-11 items-center rounded-md px-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 							>
 								{link.label}
 							</a>
@@ -128,7 +107,7 @@
 						<button
 							type="button"
 							onclick={requestTrackingPreferences}
-							class="inline-flex min-h-[44px] items-center text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							class="inline-flex min-h-11 items-center rounded-md px-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 						>
 							Privacy choices
 						</button>
@@ -136,68 +115,70 @@
 				</div>
 			</div>
 		{:else}
-			<!-- Non-authenticated User Footer -->
-			<div class="px-2 sm:px-4 lg:px-6 py-6 sm:py-8">
-				<!-- Mobile Layout -->
-				<div class="lg:hidden space-y-6">
-					<!-- Brand & CTA -->
-					<div class="text-center space-y-4">
-						<a href="/" class="inline-flex items-center space-x-2 group">
-							<div class="relative">
-								<img
-									src={DEFAULT_APP_ICON_URL}
-									alt="BuildOS"
-									class="w-8 h-8 rounded-md transition-opacity duration-200 group-hover:opacity-80"
-									loading="lazy"
-									width="32"
-									height="32"
-									decoding="async"
-								/>
-							</div>
-							<span class="text-xl font-black tracking-tight text-foreground">
+			<div class="px-2 py-8 sm:px-4 lg:px-6">
+				<div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] lg:gap-12">
+					<section
+						class="text-center lg:text-left"
+						aria-labelledby="footer-brand-heading"
+					>
+						<a
+							href="/"
+							aria-label="BuildOS home"
+							class="group inline-flex min-h-11 items-center gap-2 rounded-md px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							<img
+								src={DEFAULT_APP_ICON_URL}
+								alt=""
+								class="h-8 w-8 rounded-md transition-opacity group-hover:opacity-80 motion-reduce:transition-none"
+								loading="lazy"
+								width="32"
+								height="32"
+								decoding="async"
+							/>
+							<span
+								id="footer-brand-heading"
+								class="text-xl font-bold text-foreground"
+							>
 								BuildOS
 							</span>
 						</a>
-						<p class="text-sm text-muted-foreground max-w-xs mx-auto">
+						<p
+							class="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground lg:mx-0"
+						>
 							Turn messy thinking into structured work with persistent project memory.
 						</p>
 
-						<!-- CTA Buttons -->
-						<div class="flex flex-col sm:flex-row gap-3 max-w-sm mx-auto">
+						<div class="mx-auto mt-5 flex max-w-sm flex-col gap-3 sm:flex-row lg:mx-0">
 							<a
 								href="/auth/register"
-								class="flex-1 inline-flex items-center justify-center px-6 py-3 text-sm font-semibold tracking-tight
-									text-accent-foreground bg-accent border border-accent hover:bg-accent/90
-									rounded-lg transition-all shadow-ink pressable"
+								class="pressable inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-lg border border-accent bg-accent px-5 py-3 text-sm font-semibold tracking-tight text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
 							>
-								<Brain class="w-4 h-4 mr-2" />
+								<Brain class="h-4 w-4 shrink-0" aria-hidden="true" />
 								Start in chat
 							</a>
 							<a
 								href="/docs"
-								class="flex-1 inline-flex items-center justify-center px-6 py-3 text-sm font-semibold tracking-tight
-									text-foreground bg-card border border-border
-									hover:bg-muted hover:border-accent rounded-lg transition-colors"
+								class="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 py-3 text-sm font-semibold tracking-tight text-foreground shadow-ink transition-colors hover:border-accent hover:bg-muted hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
 							>
-								<BookOpen class="w-4 h-4 mr-2" />
+								<BookOpen class="h-4 w-4 shrink-0" aria-hidden="true" />
 								Read docs
 							</a>
 						</div>
-					</div>
+					</section>
 
-					<!-- Links Sections -->
-					<div class="grid grid-cols-2 gap-6">
-						{#each GUEST_SECTIONS.slice(0, 2) as section}
+					<nav
+						aria-label="Footer navigation"
+						class="grid grid-cols-3 gap-x-3 gap-y-8 text-left sm:gap-x-6"
+					>
+						{#each GUEST_SECTIONS as section}
 							<div>
-								<h4 class="text-sm font-black tracking-tight text-foreground mb-3">
-									{section.title}
-								</h4>
-								<ul class="space-y-2">
+								<p class="micro-label mb-2 text-foreground">{section.title}</p>
+								<ul class="space-y-0.5">
 									{#each section.links as link}
 										<li>
 											<a
 												href={link.href}
-												class="text-sm font-semibold tracking-tight text-muted-foreground hover:text-accent transition-colors"
+												class="inline-flex min-h-11 items-center rounded-md px-1 text-sm text-muted-foreground transition-colors hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none lg:min-h-0 lg:py-1"
 											>
 												{link.label}
 											</a>
@@ -206,175 +187,60 @@
 								</ul>
 							</div>
 						{/each}
-					</div>
-
-					<!-- Company Links -->
-					<div class="text-center">
-						<h4 class="text-sm font-black tracking-tight text-foreground mb-3">
-							Company
-						</h4>
-						<div class="flex flex-wrap justify-center gap-x-4 gap-y-2">
-							{#each GUEST_SECTIONS[2]?.links ?? [] as link}
-								<a
-									href={link.href}
-									class="text-sm text-muted-foreground hover:text-foreground transition-colors"
-								>
-									{link.label}
-								</a>
-							{/each}
-						</div>
-					</div>
-
-					<!-- Social & Legal -->
-					<div class="space-y-4 pt-6 border-t border-border">
-						<!-- Social Icons -->
-						<div class="flex justify-center space-x-4">
-							{#each SOCIAL_LINKS as social}
-								{@const SocialIcon = social.icon}
-								<a
-									href={social.href}
-									class="p-2 text-muted-foreground hover:text-accent transition-colors rounded-lg hover:bg-muted"
-									aria-label={social.label}
-								>
-									<SocialIcon class="w-5 h-5" />
-								</a>
-							{/each}
-						</div>
-
-						<!-- Legal Links -->
-						<div class="flex justify-center space-x-4 text-sm">
-							{#each LEGAL_LINKS as link}
-								<a
-									href={link.href}
-									class="text-muted-foreground hover:text-foreground transition-colors font-semibold tracking-tight"
-								>
-									{link.label}
-								</a>
-							{/each}
-							<button
-								type="button"
-								onclick={requestTrackingPreferences}
-								class="inline-flex min-h-[44px] items-center font-semibold tracking-tight text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							>
-								Privacy choices
-							</button>
-						</div>
-					</div>
+					</nav>
 				</div>
 
-				<!-- Desktop Layout -->
-				<div class="hidden lg:block space-y-6">
-					<!-- Top Section -->
-					<div class="flex items-start justify-between">
-						<!-- Brand & Description -->
-						<div class="max-w-sm space-y-4">
-							<a href="/" class="inline-flex items-center space-x-2 group">
-								<div class="relative">
-									<img
-										src={DEFAULT_APP_ICON_URL}
-										alt="BuildOS"
-										class="w-8 h-8 rounded-md transition-opacity duration-200 group-hover:opacity-80"
-										loading="lazy"
-										width="32"
-										height="32"
-										decoding="async"
-									/>
-								</div>
-								<span class="text-xl font-bold text-foreground">BuildOS</span>
-							</a>
-							<p class="text-sm text-muted-foreground">
-								Turn messy thinking into structured work with persistent project
-								memory.
-							</p>
-							<!-- CTA Buttons -->
-							<div class="flex gap-3 pt-2">
-								<a href="/auth/register">
-									<Button icon={Brain} variant="primary">Start in chat</Button>
-								</a>
-								<a href="/docs">
-									<Button icon={BookOpen} variant="outline">Read docs</Button>
-								</a>
-							</div>
-						</div>
-
-						<!-- Links Grid -->
-						<div class="grid grid-cols-3 gap-8">
-							{#each GUEST_SECTIONS as section}
-								<div>
-									<h4 class="text-sm font-semibold text-foreground mb-4">
-										{section.title}
-									</h4>
-									<ul class="space-y-3">
-										{#each section.links as link}
-											<li>
-												<a
-													href={link.href}
-													class="inline-flex items-center text-sm text-muted-foreground
-														hover:text-foreground transition-colors group"
-												>
-													{#if link.icon}
-														{@const Icon = link.icon}
-														<Icon
-															class="w-4 h-4 mr-2 text-muted-foreground group-hover:text-foreground transition-colors"
-														/>
-													{/if}
-													{link.label}
-												</a>
-											</li>
-										{/each}
-									</ul>
-								</div>
-							{/each}
-						</div>
-					</div>
-
-					<!-- Bottom Section -->
-					<div class="flex items-center justify-between pt-6 border-t border-border">
-						<!-- Legal Links -->
-						<nav class="flex items-center space-x-4">
-							{#each LEGAL_LINKS as link}
-								<a
-									href={link.href}
-									class="text-sm text-muted-foreground hover:text-foreground transition-colors"
-								>
-									{link.label}
-								</a>
-							{/each}
-							<button
-								type="button"
-								onclick={requestTrackingPreferences}
-								class="inline-flex min-h-[44px] items-center text-sm text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							>
-								Privacy choices
-							</button>
-						</nav>
-
-						<!-- Social Icons -->
-						<div class="flex space-x-2">
-							{#each SOCIAL_LINKS as social}
-								{@const SocialIcon = social.icon}
-								<a
-									href={social.href}
-									class="p-2 text-muted-foreground hover:text-accent transition-colors rounded-lg hover:bg-muted"
-									aria-label={social.label}
-								>
-									<SocialIcon class="w-4 h-4" />
-								</a>
-							{/each}
-						</div>
-					</div>
-				</div>
-
-				<!-- Copyright -->
 				<div
-					class="flex items-center justify-center space-x-1 text-xs font-semibold tracking-tight text-muted-foreground
-					mt-6 pt-6 border-t border-border"
+					class="mt-8 flex flex-col items-center gap-4 border-t border-border pt-6 sm:flex-row sm:justify-between"
 				>
-					<span>© {CURRENT_YEAR} BuildOS</span>
-					<span>•</span>
-					<span>Made with</span>
-					<Heart class="w-3 h-3 text-destructive fill-destructive mx-1" />
-					<span>for the builders</span>
+					<p
+						class="flex items-center gap-1 text-xs font-semibold tracking-tight text-muted-foreground"
+					>
+						<span>© {CURRENT_YEAR} BuildOS</span>
+						<span aria-hidden="true">•</span>
+						<span>Made with</span>
+						<Heart
+							class="h-3 w-3 fill-destructive text-destructive"
+							aria-hidden="true"
+						/>
+						<span>for builders</span>
+					</p>
+
+					<nav
+						aria-label="Legal and privacy links"
+						class="flex flex-wrap items-center justify-center gap-x-1 text-sm"
+					>
+						{#each LEGAL_LINKS as link}
+							<a
+								href={link.href}
+								class="inline-flex min-h-11 items-center rounded-md px-2 font-semibold tracking-tight text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+							>
+								{link.label}
+							</a>
+						{/each}
+						<button
+							type="button"
+							onclick={requestTrackingPreferences}
+							class="inline-flex min-h-11 items-center rounded-md px-2 font-semibold tracking-tight text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+						>
+							Privacy choices
+						</button>
+					</nav>
+
+					<nav class="flex items-center gap-1" aria-label="BuildOS social links">
+						{#each SOCIAL_LINKS as social}
+							{@const SocialIcon = social.icon}
+							<a
+								href={social.href}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+								aria-label="{social.label} (opens in new tab)"
+							>
+								<SocialIcon class="h-5 w-5" aria-hidden="true" />
+							</a>
+						{/each}
+					</nav>
 				</div>
 			</div>
 		{/if}
@@ -382,21 +248,9 @@
 </footer>
 
 <style>
-	/* Enhanced focus states */
-	a:focus-visible {
-		outline: 2px solid hsl(var(--ring));
-		outline-offset: 2px;
-		border-radius: 4px;
-	}
-
-	/* Smooth transitions */
-	a {
-		transition: all 0.2s ease;
-	}
-
-	/* Better touch targets for mobile */
 	@media (max-width: 768px) {
-		a {
+		a,
+		button {
 			-webkit-tap-highlight-color: transparent;
 		}
 	}

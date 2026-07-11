@@ -505,12 +505,13 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 
 	// Keep the public homepage out of the authenticated app bundle and data path.
 	// Preserve auth/toast query parameters when old links still land on `/`.
+	// Logged-in users land on /today — the remembered-project surface (tasker/26).
 	if (
 		pathname === '/' &&
 		event.locals.user &&
 		(event.request.method === 'GET' || event.request.method === 'HEAD')
 	) {
-		throw redirect(303, `/dashboard${event.url.search}`);
+		throw redirect(303, `/today${event.url.search}`);
 	}
 
 	const mutationGuardEnabled =

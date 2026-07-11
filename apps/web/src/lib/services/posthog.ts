@@ -15,7 +15,15 @@ const FUNNEL_EVENTS = new Set([
 	'project_created',
 	'brief_generated',
 	'brief_viewed',
-	'task_completed'
+	'task_completed',
+	// Activation first-run funnel (tasker/26 WP-4)
+	'intent_selected',
+	'first_capture_started',
+	'first_capture_submitted',
+	'first_structure_generated',
+	'first_project_created',
+	'first_project_reviewed',
+	'first_project_opened'
 ]);
 
 export interface FirstTouchAttribution {

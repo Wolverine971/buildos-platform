@@ -3,9 +3,52 @@
 # Onboarding First Brain Dump Rebuild Spec
 
 **Date**: 2026-04-08  
-**Status**: Draft  
+**Status**: IMPLEMENTED 2026-07-10/11 (tasker/26; see "Implementation Status" below for the
+as-built mapping). Execution sequence came from
+`docs/product/activation-start-here-daily-brief-plan-2026-07-10.md`.
 **Owner**: Product / Growth / Web  
 **Scope**: Active Onboarding V3 flow at `/onboarding`
+
+---
+
+## Implementation Status (2026-07-11, uncommitted)
+
+Built per tasker/26 with DJ's decisions locked (direct create; gate UI + API; `/` and
+ReadyStep → `/today`; creator intent deferred). Live-verified end-to-end on the dev server:
+composer → auto-sent project-create chat → project created → transformation receipt with
+Start Here excerpt.
+
+As-built deltas from this spec:
+
+- **§7.4 transformation panel**: implemented as a two-phase step (`capture` → `receipt`), not
+  a persistent side-by-side panel. The `AgentChatModal` (`contextType="project_create"`,
+  `autoSendInitialDraft`) IS the processing state — the user's submit happens inline, the
+  chat streams the structure being built, and closing it reveals the receipt. No static
+  example / skeleton panel was built (the 2026-07-10 architecture correction in §9 governs).
+- **§7.5 success state**: served by a NEW compact endpoint
+  `GET /api/onto/projects/[id]/activation-packet` (project + `next_step_short` + bounded
+  Start Here excerpt via `buildStartHerePromptExcerpt` + counts + ≤3-per-kind sample
+  entities). Receipt copy frames it as understood / created / will remember, with
+  `Open my project` (new tab), `Adjust in chat` (project-context modal), `Continue setup`.
+- **§9.4 persistence**: implemented component-locally — `buildos_onboarding_step2_state`
+  sessionStorage key (phase, projectIds, draft, 30-min expiry) restores the receipt after
+  the calendar OAuth round-trip; the packet refetches on remount.
+- **§9.5 server enforcement**: `complete_v3` resolves the user's actor and head-counts
+  `onto_project_members` (`removed_at IS NULL`) — the DB count is the gate, not the
+  client-claimed `projectsCreated`. Explore keeps an explicit, tracked skip
+  ("Skip for now — start with an empty workspace"). Users with pre-existing workspace
+  projects keep Continue.
+- **§11 events**: superseded by the tasker/26 WP-4 set, fired through `trackLoopEvent`
+  (surface `'onboarding'`): `intent_selected`, `first_capture_started/submitted/skipped`,
+  `first_structure_generated`, `first_project_created` (+ server-side `is_first_project` on
+  `project_created`), `first_project_reviewed`, `first_project_opened`. All added to
+  `FUNNEL_EVENTS` for `[posthog-health]` logging.
+- **Voice input** (optional in §7.3): shipped — `TextareaWithVoice`, Enter-to-send.
+- **Calendar follow-up (§7.6)**: kept, shown only after the first win (receipt phase);
+  existing analysis/notification machinery unchanged.
+
+Remaining from §12: fresh zero-project account walkthrough (unit-tested, not yet browsed),
+OAuth-restore manual QA, real-key PostHog ingestion check. Tracking lives in tasker/26.
 
 ---
 
@@ -294,6 +337,14 @@ Those assets can live in docs/help, a later empty-state, or a collapsed help dis
 ---
 
 ## 9. Technical Approach
+
+> **2026-07-10 architecture correction:** the `brainDumpService.parseBrainDumpWithStream(...)` /
+> `saveBrainDump(...)` project-creation stack described below is no longer present in the current web
+> app. The live onboarding path uses `AgentChatModal` with `contextType="project_create"` and returns
+> affected project IDs through `DataMutationSummary`. The current plan reuses that working path,
+> fetches a bounded activation result packet after creation, and reveals the generated Start Here
+> memory and structure inside onboarding. The product goals and UI/API gating decisions in this spec
+> remain valid; its parser-specific implementation is historical.
 
 ### 9.1 Brain dump pipeline decision
 

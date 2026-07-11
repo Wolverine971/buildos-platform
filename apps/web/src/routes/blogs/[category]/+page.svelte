@@ -25,7 +25,7 @@
 		GitCompareArrows,
 		Lightbulb,
 		BookOpen
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import type { PageData } from './$types';
 	import {
 		formatBlogDate,
@@ -189,13 +189,14 @@
 <div class="min-h-screen bg-background">
 	<!-- Header -->
 	<header class="border-b border-border bg-card tx tx-bloom tx-weak">
-		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+		<div class="mx-auto max-w-7xl px-2 py-8 sm:px-4 sm:py-12 lg:px-6">
 			<a
 				href="/blogs"
-				class="inline-flex items-center text-sm text-accent hover:underline mb-6 group"
+				class="group mb-6 inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-accent hover:bg-accent/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				<ArrowLeft
-					class="w-3.5 h-3.5 mr-1.5 group-hover:-translate-x-0.5 transition-transform"
+					class="mr-1.5 h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5 motion-reduce:transition-none"
+					aria-hidden="true"
 				/>
 				All Articles
 			</a>
@@ -235,31 +236,31 @@
 
 	<!-- Articles Grid -->
 	<section class="py-8 sm:py-12">
-		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+		<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6">
 			{#if data.posts.length > 0}
 				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
 					{#each data.posts as post}
 						<article class="group">
 							<a
 								href={getContentPostPath(post)}
-								class="flex h-full flex-col bg-card border border-border shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
+								class="pressable flex h-full flex-col overflow-hidden border border-border bg-card shadow-ink transition-colors hover:border-accent/40 hover:shadow-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none tx tx-frame tx-weak wt-paper"
 							>
 								<div class="flex flex-1 flex-col p-4 sm:p-5">
 									<div
 										class="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-muted-foreground mb-3"
 									>
 										<span class="flex shrink-0 items-center gap-1">
-											<Calendar class="w-3 h-3" />
+											<Calendar class="h-3 w-3" aria-hidden="true" />
 											{formatBlogDate(post.date)}
 										</span>
 										<span class="flex shrink-0 items-center gap-1">
-											<Clock class="w-3 h-3" />
+											<Clock class="h-3 w-3" aria-hidden="true" />
 											{post.readingTime} min
 										</span>
 									</div>
 
 									<h3
-										class="text-base font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-accent transition-colors"
+										class="mb-2 line-clamp-2 text-base font-semibold text-foreground transition-colors group-hover:text-accent motion-reduce:transition-none"
 									>
 										{post.title}
 									</h3>
@@ -272,7 +273,7 @@
 										<div class="flex flex-wrap gap-1 mb-3">
 											{#each post.tags.slice(0, 3) as tag}
 												<span
-													class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground"
+													class="inline-flex items-center rounded-full bg-muted px-2 py-1 text-2xs font-medium text-muted-foreground"
 												>
 													{tag}
 												</span>
@@ -283,7 +284,10 @@
 									<span
 										class="mt-auto inline-flex items-center gap-1 text-xs text-accent font-medium"
 									>
-										Read article <ArrowRight class="w-3 h-3" />
+										Read article <ArrowRight
+											class="h-3 w-3"
+											aria-hidden="true"
+										/>
 									</span>
 								</div>
 							</a>
@@ -303,7 +307,7 @@
 					</p>
 					<a
 						href="/blogs"
-						class="inline-flex items-center justify-center px-4 py-2 bg-accent text-accent-foreground text-sm font-medium rounded-lg hover:bg-accent/90 transition-colors shadow-ink pressable"
+						class="pressable inline-flex min-h-11 items-center justify-center rounded-lg bg-accent px-4 text-sm font-medium text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 					>
 						Explore Other Categories
 					</a>
@@ -315,7 +319,7 @@
 	<!-- Related Categories -->
 	{#if data.posts.length > 0}
 		<section class="py-8 sm:py-10 bg-muted/30 border-t border-border">
-			<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+			<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6">
 				<h2 class="text-base font-semibold text-foreground mb-4">
 					More to explore beyond {data.category.name}
 				</h2>
@@ -328,10 +332,10 @@
 
 							<a
 								href={getContentCollectionPath(key)}
-								class="group flex items-start gap-3 bg-card border border-border rounded-lg p-3 hover:shadow-ink hover:border-accent/40 transition-all duration-200 pressable"
+								class="pressable group flex min-h-11 items-start gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:border-accent/40 hover:shadow-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 							>
 								<div
-									class="flex items-center justify-center w-8 h-8 bg-muted rounded-md shrink-0 group-hover:scale-105 transition-transform"
+									class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted transition-transform group-hover:scale-105 motion-reduce:transition-none"
 								>
 									<OtherIconComponent class="w-4 h-4 text-foreground" />
 								</div>

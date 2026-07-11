@@ -112,3 +112,43 @@ right half of review content and every second action button.
 
 Authenticated real-data verification remains deferred because the local preview session redirected the
 dashboard to login.
+
+## Initial-load performance follow-up - 2026-07-10
+
+The new global navigation entry exposed that opening AI Inbox launched two source-reconciling requests
+at once: the modal's full payload request and a forced shared-count refresh. The modal also hydrated up
+to 100 review records before showing useful data.
+
+### Shipped
+
+- The navigation open path no longer starts a parallel `/api/inbox/count` reconciliation. The modal's
+  list response now carries the exact pending total and updates the shared badge from that same request,
+  preserving one count owner without making a second backend path compete with first paint. -> P20+P22
+- The global navigation preloads the cached modal import on idle, pointer hover, pointer down, and keyboard
+  focus. Touch activation now warms the chunk before `click`, matching the dashboard preload contract. -> P20
+- Initial hydration is bounded to 25 records. The modal shows `Showing X of Y`, keeps the exact total through
+  optimistic decisions and close summaries, and exposes a 44px-safe `Load N more` action in 25-item steps. -> P20+P13
+- The list service returns the exact filtered total with the bounded page. On payload requests, that count,
+  decision-capability lookup, and source-payload hydration start together instead of adding a new serial
+  count stage. -> P20
+- Normal modal loads and load-more requests now use an indexed `repair=none` path: they retain bounded
+  lifecycle cleanup for expired/snoozed rows but skip source-table backfill and per-row source
+  reconciliation. The explicit Refresh/Retry control keeps the full repair path as a recovery affordance.
+  -> P20
+- Shared badge counts default to the same indexed fast path instead of scanning every source table after
+  mount, realtime changes, or tab visibility. `repair=full` remains an explicit API mode for diagnostics
+  and recovery. -> P20+P22
+- Source payload tables hydrate in parallel, and unique project permission checks run concurrently instead
+  of serially per project. Server Timing now exposes `inbox.index`, `inbox.lifecycle`,
+  `inbox.hydrate_base`, `inbox.contexts`, and `inbox.projects` (plus full-repair phases when requested). -> P20
+- Navigation, Dashboard, and Today now share a browser performance guardrail for the full click-to-data
+  path. `buildos.ai_inbox.open_to_data.<source>` starts before lazy import and completes only after the
+  modal's first loaded/empty state renders; failed and abandoned opens are cancelled. The initial budget is
+  800 ms for each entry point. -> P20
+
+### Verification
+
+- `apps/web`: focused inbox/count/client-performance/authenticated-route Vitest suite - 42 tests passed.
+- `apps/web`: `pnpm check` - passed with 0 errors and 0 warnings.
+- Targeted Prettier and repository `git diff --check` passed.
+- Authenticated click-to-data timing remains owed; the local in-app browser is signed out.

@@ -158,7 +158,8 @@ class QueryBuilderMock {
 function createSupabaseMock(tables: Record<string, Row[]>) {
 	const state: MockState = { tables, operations: [] };
 	const supabase = {
-		from: vi.fn((table: string) => new QueryBuilderMock(state, table))
+		from: vi.fn((table: string) => new QueryBuilderMock(state, table)),
+		rpc: vi.fn(async () => ({ data: true, error: null }))
 	};
 	return { supabase, state };
 }
@@ -366,6 +367,81 @@ describe('inbox service', () => {
 		]);
 	});
 
+	it('returns the exact pending total when the visible inbox page is bounded', async () => {
+		const inboxItems = Array.from({ length: 30 }, (_, index) => ({
+			id: `fragment-${index}`,
+			source_type: 'profile_fragment',
+			source_ref_id: `source-${index}`,
+			source_status: 'pending',
+			user_id: 'user-1',
+			project_id: null,
+			audience: 'user',
+			status: 'pending',
+			title: `Profile fragment ${index}`,
+			action_kinds: ['approve', 'reject'],
+			created_at: new Date(Date.UTC(2026, 6, 1, 0, index)).toISOString()
+		}));
+		const { supabase } = createSupabaseMock({ inbox_items: inboxItems });
+
+		const result = await listInboxItems({
+			supabase,
+			admin: supabase,
+			userId: 'user-1',
+			status: 'pending',
+			sourceType: 'profile_fragment',
+			limit: 25
+		});
+
+		expect(result.items).toHaveLength(25);
+		expect(result.total).toBe(30);
+	});
+
+	it('uses the indexed fast path without source backfill or source reconciliation', async () => {
+		const inboxItem = {
+			id: 'inbox-fast',
+			source_type: 'project_suggestion',
+			source_ref_id: 'suggestion-fast',
+			source_status: 'pending',
+			user_id: null,
+			project_id: 'project-1',
+			audience: 'project_members',
+			status: 'pending',
+			title: 'Fast indexed review',
+			action_kinds: ['approve', 'reject'],
+			created_at: '2026-07-10T12:00:00.000Z'
+		};
+		const { supabase, state } = createSupabaseMock({
+			inbox_items: [inboxItem],
+			project_suggestions: [{ id: 'suggestion-fast', status: 'pending' }]
+		});
+		const timing = {
+			measure: vi.fn(async (_name: string, fn: () => Promise<unknown>) => fn())
+		} as any;
+
+		const result = await listInboxItems({
+			supabase,
+			admin: supabase,
+			userId: 'user-1',
+			status: 'pending',
+			limit: 25,
+			repair: false,
+			timing
+		});
+
+		expect(result.items).toHaveLength(1);
+		expect(result.total).toBe(1);
+		expect(result.backfilledCount).toBe(0);
+		expect(mocks.syncInboxItemForSource).not.toHaveBeenCalled();
+		expect(
+			state.operations.some((operation) => operation.table === 'project_suggestions')
+		).toBe(false);
+		expect(timing.measure.mock.calls.map(([name]: [string]) => name)).toEqual([
+			'inbox.index',
+			'inbox.lifecycle',
+			'inbox.total'
+		]);
+	});
+
 	it('keeps active snoozed rows hidden from pending review without source resync', async () => {
 		const inboxItem = {
 			id: 'inbox-snoozed',
@@ -510,6 +586,36 @@ describe('inbox service', () => {
 			})
 		);
 		expect(state.operations.some((operation) => operation.table === 'inbox_items')).toBe(true);
+	});
+
+	it('counts from the inbox index without scanning source tables on the fast path', async () => {
+		const { supabase, state } = createSupabaseMock({
+			inbox_items: [
+				{
+					id: 'inbox-fast-count',
+					source_type: 'agent_run',
+					source_ref_id: 'agent-run-fast',
+					status: 'pending',
+					project_id: null,
+					created_at: '2026-07-10T12:00:00.000Z'
+				}
+			],
+			agent_runs: [{ id: 'agent-run-fast', status: 'proposal_ready', user_id: 'user-1' }]
+		});
+
+		const result = await countInboxItems({
+			supabase,
+			admin: supabase,
+			userId: 'user-1',
+			status: 'pending',
+			limit: 1000,
+			repair: false
+		});
+
+		expect(result.total).toBe(1);
+		expect(result.backfilledCount).toBe(0);
+		expect(state.operations.some((operation) => operation.table === 'agent_runs')).toBe(false);
+		expect(mocks.syncInboxItemForSource).not.toHaveBeenCalled();
 	});
 
 	it('keeps exact totals when the count breakdown rows are limited', async () => {

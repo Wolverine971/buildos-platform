@@ -1,3 +1,4 @@
+// apps/web/src/routes/page.server.test.ts
 import { describe, expect, it, vi } from 'vitest';
 
 describe('public home route', () => {
@@ -14,7 +15,7 @@ describe('public home route', () => {
 		expect(safeGetSession).toHaveBeenCalledOnce();
 	});
 
-	it('redirects authenticated visitors to the dashboard and preserves query state', async () => {
+	it('redirects authenticated visitors to /today and preserves query state', async () => {
 		const { load } = await import('./+page.server');
 
 		await expect(
@@ -29,7 +30,7 @@ describe('public home route', () => {
 			} as any)
 		).rejects.toMatchObject({
 			status: 303,
-			location: '/dashboard?message=Welcome'
+			location: '/today?message=Welcome'
 		});
 	});
 });

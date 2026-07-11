@@ -3,6 +3,7 @@ import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { parse as parseYaml } from 'yaml';
 import { getFamilyId } from '../src/lib/skills/skill-gallery';
+import { skillExperts } from '../src/lib/skills/skill-experts';
 import {
 	packDefinitions,
 	previewSkillMetadataByRuntimeId,
@@ -456,6 +457,21 @@ function generateSkillGalleryUrls(blogContext: BlogContext): SitemapUrl[] {
 		changefreq: 'monthly',
 		priority: '0.8'
 	}));
+	urls.push({
+		loc: `${BASE_URL}/skills/people`,
+		lastmod: SKILL_GALLERY_LASTMOD,
+		changefreq: 'monthly',
+		priority: '0.7'
+	});
+
+	for (const expert of skillExperts) {
+		urls.push({
+			loc: `${BASE_URL}/skills/people/${expert.slug}`,
+			lastmod: expert.lastReviewed,
+			changefreq: 'monthly',
+			priority: '0.7'
+		});
+	}
 
 	for (const runtimeSkillId of Object.keys(previewSkillMetadataByRuntimeId)) {
 		urls.push({

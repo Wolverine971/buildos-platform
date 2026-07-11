@@ -1,36 +1,92 @@
 <!-- apps/web/src/routes/about/+page.svelte -->
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import {
+		ArrowRight,
 		Brain,
 		Calendar,
-		MessageSquare,
-		Zap,
-		Users,
+		FileText,
+		Layers3,
 		MessageCircle,
-		Coffee
-	} from 'lucide-svelte';
+		Sparkles,
+		Users
+	} from '$lib/icons/lucide';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import {
 		DEFAULT_ORGANIZATION_ID,
 		DEFAULT_ORGANIZATION_LOGO_IMAGE,
 		DEFAULT_ORGANIZATION_SOCIAL_PROFILES
 	} from '$lib/constants/seo';
-	import { onMount } from 'svelte';
 
-	let prefersReducedMotion = $state(false);
+	let brandVideo: HTMLVideoElement;
 
 	onMount(() => {
 		const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-		prefersReducedMotion = mediaQuery.matches;
 
-		// Listen for changes
-		const handleChange = (e: MediaQueryListEvent) => {
-			prefersReducedMotion = e.matches;
+		const syncPlayback = () => {
+			if (mediaQuery.matches) {
+				brandVideo.pause();
+				try {
+					brandVideo.currentTime = 0;
+				} catch {
+					// Metadata may not be ready yet; pausing still honors the preference.
+				}
+				return;
+			}
+
+			void brandVideo.play().catch(() => {
+				// Browser autoplay policy may keep the decorative video paused.
+			});
 		};
-		mediaQuery.addEventListener('change', handleChange);
 
-		return () => mediaQuery.removeEventListener('change', handleChange);
+		syncPlayback();
+		mediaQuery.addEventListener('change', syncPlayback);
+		return () => mediaQuery.removeEventListener('change', syncPlayback);
 	});
+
+	const productPrinciples = [
+		{
+			icon: Brain,
+			title: 'Project memory, not session memory',
+			description:
+				'Important decisions, open questions, and project history stay available after the chat closes.'
+		},
+		{
+			icon: Layers3,
+			title: 'Structure, not another answer',
+			description:
+				'Messy input becomes connected projects, tasks, documents, and decisions you can keep working from.'
+		},
+		{
+			icon: Calendar,
+			title: 'Continuity, not another blank page',
+			description:
+				'Daily briefs and calendar-aware planning bring the right context back when it is time to act.'
+		}
+	] as const;
+
+	const workflowSteps = [
+		{
+			icon: Sparkles,
+			step: '01',
+			title: 'Bring the messy version',
+			description: 'Talk through the idea before you have a clean brief, plan, or task list.'
+		},
+		{
+			icon: Layers3,
+			step: '02',
+			title: 'Build durable context',
+			description:
+				'BuildOS organizes the useful pieces into a project you can inspect and refine.'
+		},
+		{
+			icon: FileText,
+			step: '03',
+			title: 'Continue from where you left off',
+			description:
+				'Return to a brief, a next action, and project memory instead of starting over.'
+		}
+	] as const;
 </script>
 
 <SEOHead
@@ -74,587 +130,311 @@
 />
 
 <div class="min-h-screen bg-background">
-	<!-- Hero Section - Mode B: Orientation Surface -->
-	<section class="bg-muted atmo atmo-med rim-accent">
-		<div class="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14 lg:py-16">
-			<header class="text-center sp-focus">
-				<div class="flex justify-center mb-5">
+	<!-- Orientation -->
+	<section class="border-b border-border bg-muted tx tx-bloom tx-weak">
+		<div class="mx-auto max-w-7xl px-2 py-10 sm:px-4 sm:py-14 lg:px-6 lg:py-16">
+			<header class="mx-auto max-w-4xl text-center">
+				<div class="mb-5 flex justify-center">
 					<div
-						class="w-20 h-20 flex items-center justify-center tx tx-bloom tx-weak wt-card"
+						class="flex h-14 w-14 items-center justify-center rounded-lg border border-border bg-card shadow-ink"
 					>
 						<video
+							bind:this={brandVideo}
 							src="/onboarding-assets/animations/brain-bolt-electric.mp4"
-							class="w-16 h-16"
-							autoplay={!prefersReducedMotion}
+							poster="/brain-bolt-80.png"
+							class="h-10 w-10 motion-reduce:hidden"
+							width="40"
+							height="40"
+							preload="metadata"
 							loop
 							muted
 							playsinline
 							aria-hidden="true"
 						></video>
+						<img
+							src="/brain-bolt-80.png"
+							alt=""
+							class="hidden h-10 w-10 motion-reduce:block"
+							width="40"
+							height="40"
+							aria-hidden="true"
+						/>
 					</div>
 				</div>
 
-				<p class="text-xs sm:text-sm font-semibold text-accent mb-3">
-					A thinking environment for complex work
-				</p>
+				<p class="micro-label mb-3 text-accent">About BuildOS</p>
 				<h1
-					class="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4 max-w-4xl mx-auto text-pretty"
+					class="mx-auto max-w-4xl text-pretty text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl lg:text-5xl"
 				>
-					Scattered context is killing your best work.
+					Your work should not reset every time the chat closes.
 				</h1>
-				<p class="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-					BuildOS turns messy notes, AI conversations, project fragments, and calendar
-					pressure into structured context you can act on.
+				<p
+					class="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
+				>
+					BuildOS is a thinking environment that turns scattered notes, conversations, and
+					project fragments into structured context you can keep building from.
 				</p>
 
-				<div class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+				<div class="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
 					<a
 						href="/auth/register"
-						class="inline-flex min-h-11 w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+						class="pressable inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-accent px-5 text-sm font-semibold text-accent-foreground shadow-ink transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none sm:w-auto"
 						aria-label="Start in chat with BuildOS"
 					>
-						<Users class="w-4 h-4" aria-hidden="true" />
+						<Users class="h-4 w-4 shrink-0" aria-hidden="true" />
 						Start in chat
 					</a>
 					<a
 						href="#founder-story"
-						class="inline-flex min-h-11 w-full sm:w-auto items-center justify-center rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-ink pressable transition-colors hover:border-accent hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+						class="pressable inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 text-sm font-semibold text-foreground shadow-ink transition-colors hover:border-accent hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none sm:w-auto"
 					>
-						Read the story
+						Read the founder story
+						<ArrowRight class="h-4 w-4 shrink-0" aria-hidden="true" />
 					</a>
 				</div>
-
-				<p class="mt-5 text-xs sm:text-sm text-muted-foreground max-w-2xl mx-auto">
-					Built by DJ Wayne, a former USMC Scout Sniper and software engineer who kept
-					rebuilding the same project context for Claude and ChatGPT.
-				</p>
 			</header>
 		</div>
 	</section>
 
-	<!-- Why we made it (skeptical-why hook, Nest-style) -->
-	<section class="py-12 sm:py-16 bg-background" aria-labelledby="why-heading">
-		<div class="max-w-3xl mx-auto px-4 sm:px-6">
-			<p class="text-xs sm:text-sm font-semibold text-accent mb-4 text-center">
-				Why we made it
-			</p>
-			<h2
-				id="why-heading"
-				class="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-6 text-pretty leading-[1.1] text-center"
-			>
-				We didn't think the world needed another AI app either.
-			</h2>
-			<div class="space-y-4 text-base sm:text-lg leading-8 text-muted-foreground">
-				<p>
-					Then we caught ourselves doing the same thing every single day: opening a fresh
-					chat, re-explaining the same project from scratch, watching good thinking
-					evaporate the moment the tab closed.
-				</p>
-				<p>
-					The tools were never the problem. The problem was that none of them remembered.
-					Every session started at zero, so the work never compounded — it just reset.
-				</p>
-				<p class="text-foreground font-medium">
-					So we built the thing we actually needed: a place that holds your thinking, so
-					you — and your agents — never start from scratch again.
-				</p>
-			</div>
-		</div>
-	</section>
-
-	<!-- Before / After -->
-	<section class="py-10 sm:py-12 bg-background" aria-labelledby="problem-heading">
-		<div class="max-w-5xl mx-auto px-4 sm:px-6">
-			<header class="text-center mb-6">
-				<h2
-					id="problem-heading"
-					class="text-2xl sm:text-3xl font-bold text-foreground mb-2"
-				>
-					From scattered context to structured action
-				</h2>
-				<p class="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-					The problem is not a lack of tools. It is the drag of keeping every tool,
-					thought, and agent pointed at the same truth.
-				</p>
-			</header>
-
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-				<article class="p-5 sm:p-6 tx tx-static tx-weak wt-card sp-block">
-					<p class="text-xs font-semibold text-accent mb-2">Before BuildOS</p>
-					<h3 class="text-lg font-bold text-foreground mb-3">
-						Your work keeps resetting
-					</h3>
-					<ul class="space-y-2 text-sm text-muted-foreground" role="list">
-						<li class="flex items-start gap-2">
-							<span
-								class="w-1.5 h-1.5 bg-accent rounded-full mt-2 shrink-0"
-								aria-hidden="true"
-							></span>
-							<p>
-								Notes live in Notion, Obsidian, Google Docs, Apple Notes, and
-								notebooks.
-							</p>
-						</li>
-						<li class="flex items-start gap-2">
-							<span
-								class="w-1.5 h-1.5 bg-accent rounded-full mt-2 shrink-0"
-								aria-hidden="true"
-							></span>
-							<p>
-								AI conversations start over because the useful context is scattered.
-							</p>
-						</li>
-						<li class="flex items-start gap-2">
-							<span
-								class="w-1.5 h-1.5 bg-accent rounded-full mt-2 shrink-0"
-								aria-hidden="true"
-							></span>
-							<p>Momentum leaks away while you reconstruct what already happened.</p>
-						</li>
-					</ul>
-				</article>
-
-				<article class="p-5 sm:p-6 tx tx-thread tx-weak wt-card sp-block">
-					<p class="text-xs font-semibold text-accent mb-2">With BuildOS</p>
-					<h3 class="text-lg font-bold text-foreground mb-3">Your context compounds</h3>
-					<ul class="space-y-2 text-sm text-muted-foreground" role="list">
-						<li class="flex items-start gap-2">
-							<span
-								class="w-1.5 h-1.5 bg-accent rounded-full mt-2 shrink-0"
-								aria-hidden="true"
-							></span>
-							<p>
-								Talk through the messy version and let AI turn it into project
-								structure.
-							</p>
-						</li>
-						<li class="flex items-start gap-2">
-							<span
-								class="w-1.5 h-1.5 bg-accent rounded-full mt-2 shrink-0"
-								aria-hidden="true"
-							></span>
-							<p>Keep reusable project context ready for better AI collaboration.</p>
-						</li>
-						<li class="flex items-start gap-2">
-							<span
-								class="w-1.5 h-1.5 bg-accent rounded-full mt-2 shrink-0"
-								aria-hidden="true"
-							></span>
-							<p>
-								Use daily briefs and calendar-aware planning to protect the next
-								action.
-							</p>
-						</li>
-					</ul>
-				</article>
-			</div>
-		</div>
-	</section>
-
-	<!-- How BuildOS Works -->
-	<section class="py-10 sm:py-12 bg-muted" aria-labelledby="how-it-works-heading">
-		<div class="max-w-5xl mx-auto px-4 sm:px-6">
-			<header class="text-center mb-7">
-				<h2
-					id="how-it-works-heading"
-					class="text-2xl sm:text-3xl font-bold text-foreground mb-2"
-				>
-					How BuildOS works
-				</h2>
-				<p class="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-					Capture the raw material, build the project context, and come back to a clearer
-					next step.
-				</p>
-			</header>
-
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-				<article class="text-center sp-inline">
-					<div
-						class="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center mb-3 mx-auto tx tx-bloom tx-weak wt-paper"
-					>
-						<Brain class="w-6 h-6 sm:w-7 sm:h-7 text-foreground" aria-hidden="true" />
-					</div>
-					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">
-						Capture raw thoughts
-					</h3>
-					<p class="text-sm text-muted-foreground">
-						Drop in the unpolished version before structure exists.
-					</p>
-				</article>
-
-				<article class="text-center sp-inline">
-					<div
-						class="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center mb-3 mx-auto wt-paper"
-					>
-						<Zap class="w-6 h-6 sm:w-7 sm:h-7 text-foreground" aria-hidden="true" />
-					</div>
-					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">
-						Let BuildOS structure it
-					</h3>
-					<p class="text-sm text-muted-foreground">
-						Turn notes into projects, tasks, decisions, and open questions.
-					</p>
-				</article>
-
-				<article class="text-center sp-inline">
-					<div
-						class="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center mb-3 mx-auto wt-paper"
-					>
-						<MessageSquare
-							class="w-6 h-6 sm:w-7 sm:h-7 text-foreground"
-							aria-hidden="true"
-						/>
-					</div>
-					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">
-						Review the brief
-					</h3>
-					<p class="text-sm text-muted-foreground">
-						See what matters today without rebuilding the whole picture.
-					</p>
-				</article>
-
-				<article class="text-center sp-inline">
-					<div
-						class="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center mb-3 mx-auto wt-paper"
-					>
-						<Calendar
-							class="w-6 h-6 sm:w-7 sm:h-7 text-foreground"
-							aria-hidden="true"
-						/>
-					</div>
-					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">
-						Protect time
-					</h3>
-					<p class="text-sm text-muted-foreground">
-						Move from organized context to scheduled work.
-					</p>
-				</article>
-			</div>
-
-			<div class="mt-8 p-5 sm:p-6 tx tx-thread tx-weak wt-card sp-block">
-				<h3 class="text-base sm:text-lg font-semibold text-foreground mb-2 text-center">
-					The real product is reusable context
-				</h3>
-				<p class="text-sm sm:text-base text-muted-foreground text-center max-w-2xl mx-auto">
-					BuildOS gives you the project memory you need to iterate, critique, plan, or
-					unblock the work without explaining everything again.
-				</p>
-			</div>
-		</div>
-	</section>
-
-	<!-- Mission / Vision -->
-	<section class="py-10 sm:py-12 bg-background" aria-labelledby="mission-heading">
-		<div class="max-w-3xl mx-auto px-4 sm:px-6">
-			<header class="text-center mb-6">
-				<p class="text-xs sm:text-sm font-semibold text-accent mb-3">What we're building</p>
-				<h2
-					id="mission-heading"
-					class="text-2xl sm:text-3xl font-bold text-foreground mb-3"
-				>
-					A thinking environment, not another chatbot
-				</h2>
-			</header>
-			<div class="space-y-4 text-sm sm:text-base leading-7 text-muted-foreground">
-				<p>
-					Most AI tools hand you a chat box and call it a product. But a chat box
-					collapses everything — capturing, planning, deciding, remembering — into one
-					cramped primitive. It's a meeting you can never leave.
-				</p>
-				<p>
-					BuildOS is the opposite bet. It's a thinking environment with real primitives:
-					projects, tasks, documents, and a memory that persists. You bring the messy
-					thinking; BuildOS gives it a place to live and grow.
-				</p>
-				<p class="text-foreground font-medium">
-					For people making complex things, that's the difference between starting over
-					every day and building something that compounds.
-				</p>
-			</div>
-		</div>
-	</section>
-
-	<!-- Founder Story -->
+	<!-- Founder origin -->
 	<section
 		id="founder-story"
-		class="py-10 sm:py-12 bg-background"
+		class="border-b border-border bg-background"
 		aria-labelledby="founder-heading"
 	>
-		<div class="max-w-5xl mx-auto px-4 sm:px-6">
-			<header class="text-center mb-8">
-				<h2
-					id="founder-heading"
-					class="text-2xl sm:text-3xl font-bold text-foreground mb-2"
-				>
-					Why BuildOS exists
-				</h2>
-				<p class="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-					BuildOS started with a problem every builder runs into — context that falls
-					apart the moment you need it most.
-				</p>
-			</header>
-
-			<div class="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-8 items-start">
-				<aside class="sp-inline">
-					<div class="flex justify-center lg:justify-start mb-4">
-						<img
-							src="/s-dj-wayne-profile.webp"
-							alt="DJ Wayne, founder of BuildOS"
-							class="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover shadow-ink-strong border-2 border-border"
-							width="128"
-							height="128"
-							loading="lazy"
-						/>
-					</div>
-					<div class="text-center lg:text-left space-y-1.5 text-sm text-muted-foreground">
-						<h3 class="text-lg sm:text-xl font-bold text-foreground">DJ Wayne</h3>
+		<div class="mx-auto max-w-7xl px-2 py-10 sm:px-4 sm:py-14 lg:px-6">
+			<div class="mx-auto grid max-w-5xl gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-12">
+				<aside class="text-center lg:text-left">
+					<img
+						src="/s-dj-wayne-profile.webp"
+						alt="DJ Wayne, founder of BuildOS"
+						class="mx-auto h-28 w-28 rounded-full border-2 border-border object-cover shadow-ink-strong lg:mx-0 lg:h-32 lg:w-32"
+						width="128"
+						height="128"
+						loading="lazy"
+						decoding="async"
+					/>
+					<div class="mt-4 space-y-1 text-sm text-muted-foreground">
+						<p class="text-lg font-bold text-foreground">DJ Wayne</p>
 						<p class="font-medium text-foreground">Founder of BuildOS</p>
 						<p>Former USMC Scout Sniper</p>
 						<p>8 years building software</p>
-						<p>YC-backed startup experience at Curri</p>
 					</div>
 				</aside>
 
-				<div class="space-y-5">
-					<article class="space-y-2">
-						<h3 class="text-base sm:text-lg font-semibold text-foreground">
-							When your best work keeps resetting
-						</h3>
-						<p class="text-sm sm:text-base leading-7 text-muted-foreground">
+				<div>
+					<p class="micro-label mb-3 text-accent">Why BuildOS exists</p>
+					<h2
+						id="founder-heading"
+						class="text-pretty text-2xl font-bold text-foreground sm:text-3xl"
+					>
+						It began with the cost of rebuilding context.
+					</h2>
+					<div class="mt-5 space-y-4 text-base leading-7 text-muted-foreground">
+						<p>
 							I was juggling BuildOS, 9takes.com, client work, family life, and a pile
-							of half-structured ideas. The context was everywhere: Notion, Obsidian,
-							Google Docs, Moleskines, Apple Notes, and random text files.
+							of half-structured ideas spread across Notion, Obsidian, Google Docs,
+							Moleskines, Apple Notes, and random text files.
 						</p>
-					</article>
-
-					<article class="space-y-2">
-						<h3 class="text-base sm:text-lg font-semibold text-foreground">
-							When AI can't remember your project
-						</h3>
-						<p class="text-sm sm:text-base leading-7 text-muted-foreground">
-							Claude and ChatGPT were useful, but only after I rebuilt the same
-							project background over and over. The better the work became, the more
-							painful it was to keep the context alive.
+						<p>
+							Claude and ChatGPT were useful, but only after I reconstructed the same
+							project background again. The tools could answer a question; they could
+							not hold the work together over time.
 						</p>
-					</article>
-
-					<article class="space-y-2">
-						<h3 class="text-base sm:text-lg font-semibold text-foreground">
-							The proof: BuildOS builds BuildOS
-						</h3>
-						<p class="text-sm sm:text-base leading-7 text-muted-foreground">
-							BuildOS is now what I use to build BuildOS. It helps me capture the
-							messy version, preserve project memory, and come back to the next useful
-							action without starting from zero.
+						<p class="font-medium text-foreground">
+							So I built the place I needed: one environment where messy thinking can
+							become durable project memory. BuildOS now helps build BuildOS every
+							day.
 						</p>
-					</article>
+					</div>
 				</div>
 			</div>
-
-			<div class="mt-8 p-5 sm:p-6 tx tx-frame tx-weak wt-card sp-block">
-				<blockquote class="text-center">
-					<p class="text-base sm:text-lg leading-7 text-muted-foreground italic mb-3">
-						"I believe humans are nowhere near as productive as we could be. We have
-						incredible tools, but we're still stuck rebuilding context instead of doing
-						the work."
-					</p>
-					<footer class="text-sm text-muted-foreground">
-						<cite>- DJ Wayne, Founder</cite>
-					</footer>
-				</blockquote>
-			</div>
 		</div>
 	</section>
 
-	<!-- Proof / receipts -->
-	<section class="py-10 sm:py-12 bg-background" aria-labelledby="proof-heading">
-		<div class="max-w-5xl mx-auto px-4 sm:px-6">
-			<header class="text-center mb-6">
-				<p class="text-xs sm:text-sm font-semibold text-accent mb-3">Receipts</p>
-				<h2 id="proof-heading" class="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-					We run BuildOS on BuildOS
+	<!-- Product thesis -->
+	<section class="border-b border-border bg-muted" aria-labelledby="thesis-heading">
+		<div class="mx-auto max-w-7xl px-2 py-10 sm:px-4 sm:py-12 lg:px-6">
+			<header class="mx-auto mb-6 max-w-3xl text-center">
+				<p class="micro-label mb-3 text-accent">The product thesis</p>
+				<h2 id="thesis-heading" class="text-2xl font-bold text-foreground sm:text-3xl">
+					A thinking environment, not another chatbot
 				</h2>
-				<p class="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-					This isn't a demo we dress up for the homepage. The company's real work lives
-					inside the product.
+				<p
+					class="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base"
+				>
+					A chat box is useful for a session. Complex work needs a system that can
+					remember, structure, and return the work to you.
 				</p>
 			</header>
 
-			<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-				<article class="p-5 tx tx-grain tx-weak wt-card sp-block">
-					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">
-						The product builds itself
-					</h3>
-					<p class="text-sm text-muted-foreground">
-						Roadmap, features, and bugs are captured, structured, and planned in BuildOS
-						— the same flow we ship to you.
-					</p>
-				</article>
-
-				<article class="p-5 tx tx-grain tx-weak wt-card sp-block">
-					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">
-						Marketing runs here too
-					</h3>
-					<p class="text-sm text-muted-foreground">
-						This site's positioning, the content calendar, and outreach all live as real
-						projects with real context.
-					</p>
-				</article>
-
-				<article class="p-5 tx tx-grain tx-weak wt-card sp-block">
-					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">
-						Daily, not occasionally
-					</h3>
-					<p class="text-sm text-muted-foreground">
-						The day starts from a BuildOS brief, not a blank page. If it can't survive
-						daily use, it doesn't ship.
-					</p>
-				</article>
+			<div class="mx-auto grid max-w-5xl gap-4 md:grid-cols-3">
+				{#each productPrinciples as principle}
+					{@const PrincipleIcon = principle.icon}
+					<article
+						class="rounded-lg border border-border bg-card p-5 shadow-ink tx tx-frame tx-weak"
+					>
+						<div
+							class="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-background text-accent"
+						>
+							<PrincipleIcon class="h-5 w-5" aria-hidden="true" />
+						</div>
+						<h3 class="mt-4 text-lg font-semibold text-foreground">
+							{principle.title}
+						</h3>
+						<p class="mt-2 text-sm leading-6 text-muted-foreground">
+							{principle.description}
+						</p>
+					</article>
+				{/each}
 			</div>
 		</div>
 	</section>
 
-	<!-- ─────────────────────────────────────────────────────────────────────
-	     TESTIMONIALS — hidden until real creator quotes exist.
-	     Do NOT ship placeholder or fabricated quotes on this page.
-	     To enable:
-	       1. Replace each "REAL QUOTE HERE" + attribution with a real, permissioned quote.
-	       2. Delete the surrounding comment markers to render the section.
-	     Per the Messaging Activation Matrix (5.4.2), testimonials belong on:
-	     Homepage, Demo, LinkedIn, Twitter, Instagram — and here (About).
-	──────────────────────────────────────────────────────────────────────── -->
-	<!--
-	<section class="py-10 sm:py-12 bg-muted" aria-labelledby="testimonials-heading">
-		<div class="max-w-5xl mx-auto px-4 sm:px-6">
-			<header class="text-center mb-6">
-				<p class="text-xs sm:text-sm font-semibold text-accent mb-3">What people are saying</p>
-				<h2 id="testimonials-heading" class="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-					From the people using it
+	<!-- How it works -->
+	<section
+		id="how-it-works"
+		class="border-b border-border bg-background"
+		aria-labelledby="how-heading"
+	>
+		<div class="mx-auto max-w-7xl px-2 py-10 sm:px-4 sm:py-12 lg:px-6">
+			<header class="mx-auto mb-7 max-w-3xl text-center">
+				<p class="micro-label mb-3 text-accent">How it works</p>
+				<h2 id="how-heading" class="text-2xl font-bold text-foreground sm:text-3xl">
+					From rough thought to reusable context
 				</h2>
 			</header>
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-				<figure class="p-5 sm:p-6 tx tx-frame tx-weak wt-card sp-block">
-					<blockquote class="text-sm sm:text-base leading-7 text-muted-foreground italic mb-3">
-						"REAL QUOTE HERE"
-					</blockquote>
-					<figcaption class="text-sm text-muted-foreground">
-						<cite>— Name, role / @handle</cite>
-					</figcaption>
-				</figure>
-				<figure class="p-5 sm:p-6 tx tx-frame tx-weak wt-card sp-block">
-					<blockquote class="text-sm sm:text-base leading-7 text-muted-foreground italic mb-3">
-						"REAL QUOTE HERE"
-					</blockquote>
-					<figcaption class="text-sm text-muted-foreground">
-						<cite>— Name, role / @handle</cite>
-					</figcaption>
-				</figure>
-			</div>
-		</div>
-	</section>
-	-->
 
-	<!-- Current Status -->
-	<section class="py-10 sm:py-12 bg-muted" aria-labelledby="status-heading">
-		<div class="max-w-5xl mx-auto px-4 sm:px-6">
-			<header class="text-center mb-6">
-				<h2 id="status-heading" class="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-					Where BuildOS is now
-				</h2>
-				<p class="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-					The product is still early, which is exactly when the right users can shape it.
-				</p>
-			</header>
-
-			<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-				<article class="p-5 text-center wt-paper sp-inline">
-					<div
-						class="text-2xl sm:text-3xl font-bold text-accent mb-1"
-						aria-label="Live product"
-					>
-						Live
-					</div>
-					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">
-						In production
-					</h3>
-					<p class="text-sm text-muted-foreground">
-						Capture, project memory, daily briefs, calendar, and agent chat.
-					</p>
-				</article>
-
-				<article class="p-5 text-center wt-paper sp-inline">
-					<div
-						class="text-2xl sm:text-3xl font-bold text-accent mb-1"
-						aria-label="Paid billing is not live"
-					>
-						Not live
-					</div>
-					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">Billing</h3>
-					<p class="text-sm text-muted-foreground">
-						Paid billing has not launched. Creating an account does not charge you.
-					</p>
-				</article>
-
-				<article class="p-5 text-center wt-paper sp-inline">
-					<div
-						class="text-2xl sm:text-3xl font-bold text-accent mb-1"
-						aria-label="Solo founder"
-					>
-						1
-					</div>
-					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">
-						Solo founder
-					</h3>
-					<p class="text-sm text-muted-foreground">
-						Bootstrapped and focused on real workflow pain.
-					</p>
-				</article>
-			</div>
+			<ol class="mx-auto grid max-w-5xl gap-4 md:grid-cols-3">
+				{#each workflowSteps as item}
+					{@const StepIcon = item.icon}
+					<li class="rounded-lg border border-border bg-card p-5 shadow-ink">
+						<div class="flex items-center justify-between gap-3">
+							<span
+								class="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-background text-accent"
+							>
+								<StepIcon class="h-5 w-5" aria-hidden="true" />
+							</span>
+							<span class="text-2xs font-semibold text-muted-foreground"
+								>{item.step}</span
+							>
+						</div>
+						<h3 class="mt-4 text-lg font-semibold text-foreground">{item.title}</h3>
+						<p class="mt-2 text-sm leading-6 text-muted-foreground">
+							{item.description}
+						</p>
+					</li>
+				{/each}
+			</ol>
 		</div>
 	</section>
 
-	<!-- Join Us -->
-	<section class="py-10 sm:py-12 bg-background" aria-labelledby="join-heading">
-		<div class="max-w-4xl mx-auto text-center px-4 sm:px-6">
-			<header class="mb-6">
-				<h2 id="join-heading" class="text-2xl sm:text-3xl font-bold text-foreground mb-2">
+	<!-- Proof and current status -->
+	<section class="border-b border-border bg-muted" aria-labelledby="proof-heading">
+		<div class="mx-auto max-w-7xl px-2 py-10 sm:px-4 sm:py-12 lg:px-6">
+			<div
+				class="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]"
+			>
+				<div>
+					<p class="micro-label mb-3 text-accent">Operating proof</p>
+					<h2 id="proof-heading" class="text-2xl font-bold text-foreground sm:text-3xl">
+						BuildOS runs on BuildOS
+					</h2>
+					<p class="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+						The roadmap, feature work, bugs, positioning, content calendar, and outreach
+						live inside the product. If a workflow cannot survive daily use, it does not
+						ship.
+					</p>
+
+					<div class="mt-5 grid gap-3 sm:grid-cols-2">
+						<article
+							class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-grain tx-weak"
+						>
+							<h3 class="font-semibold text-foreground">The product builds itself</h3>
+							<p class="mt-1 text-sm leading-6 text-muted-foreground">
+								Roadmap decisions and delivery work use the same project-memory flow
+								available to users.
+							</p>
+						</article>
+						<article
+							class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-grain tx-weak"
+						>
+							<h3 class="font-semibold text-foreground">
+								The company work lives here
+							</h3>
+							<p class="mt-1 text-sm leading-6 text-muted-foreground">
+								Marketing and operating context stay connected to the product
+								instead of becoming another abandoned archive.
+							</p>
+						</article>
+					</div>
+				</div>
+
+				<aside
+					class="rounded-lg border border-border bg-card p-5 shadow-ink tx tx-frame tx-weak"
+					aria-label="Current company status"
+				>
+					<p class="micro-label mb-4 text-accent">Current status</p>
+					<dl class="space-y-4">
+						<div>
+							<dt class="font-semibold text-foreground">Product</dt>
+							<dd class="mt-1 text-sm leading-6 text-muted-foreground">
+								Live and actively developed.
+							</dd>
+						</div>
+						<div class="border-t border-border pt-4">
+							<dt class="font-semibold text-foreground">Billing</dt>
+							<dd class="mt-1 text-sm leading-6 text-muted-foreground">
+								Not live. Creating an account does not charge you.
+							</dd>
+						</div>
+						<div class="border-t border-border pt-4">
+							<dt class="font-semibold text-foreground">Company</dt>
+							<dd class="mt-1 text-sm leading-6 text-muted-foreground">
+								Bootstrapped and founder-led.
+							</dd>
+						</div>
+					</dl>
+				</aside>
+			</div>
+		</div>
+	</section>
+
+	<!-- Closing path -->
+	<section class="bg-background" aria-labelledby="join-heading">
+		<div class="mx-auto max-w-7xl px-2 py-10 sm:px-4 sm:py-12 lg:px-6">
+			<div class="mx-auto max-w-3xl text-center">
+				<h2 id="join-heading" class="text-2xl font-bold text-foreground sm:text-3xl">
 					Start with the messy version
 				</h2>
-				<p class="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-					If your best ideas are scattered across tools, bring the rough version into one
-					place and turn it into organized action.
+				<p
+					class="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base"
+				>
+					Bring one scattered project into BuildOS and see whether persistent context
+					makes the next step easier to find.
 				</p>
-			</header>
 
-			<nav
-				class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3"
-				aria-label="Action links"
-			>
-				<a
-					href="/auth/register"
-					class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-6 py-2.5 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-					aria-label="Start in chat with BuildOS"
+				<nav
+					class="mt-6 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center"
+					aria-label="About page actions"
 				>
-					<Users class="w-4 h-4" aria-hidden="true" />
-					Start in chat
-				</a>
-				<a
-					href="/contact"
-					class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-2.5 text-sm font-semibold text-foreground shadow-ink pressable transition-colors hover:border-accent hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-					aria-label="Contact the BuildOS team"
-				>
-					<MessageCircle class="w-4 h-4" aria-hidden="true" />
-					Contact DJ
-				</a>
-				<a
-					href="/investors"
-					class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-					aria-label="Learn about investment opportunities with BuildOS"
-				>
-					<Coffee class="w-4 h-4" aria-hidden="true" />
-					Investor info
-				</a>
-			</nav>
+					<a
+						href="/auth/register"
+						class="pressable inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-6 text-sm font-semibold text-accent-foreground shadow-ink transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
+						aria-label="Start in chat with BuildOS"
+					>
+						<Users class="h-4 w-4 shrink-0" aria-hidden="true" />
+						Start in chat
+					</a>
+					<a
+						href="/contact"
+						class="pressable inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 text-sm font-semibold text-foreground shadow-ink transition-colors hover:border-accent hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
+					>
+						<MessageCircle class="h-4 w-4 shrink-0" aria-hidden="true" />
+						Contact DJ
+					</a>
+				</nav>
+			</div>
 		</div>
 	</section>
 </div>

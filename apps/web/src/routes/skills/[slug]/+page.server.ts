@@ -12,6 +12,7 @@ import {
 	buildPackCards,
 	getDomainPath
 } from '$lib/skills/skill-gallery';
+import { resolveSkillExperts, selectSkillExpertSourceHighlights } from '$lib/skills/skill-experts';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const [posts, catalog] = await Promise.all([loadAgentSkillPosts(), loadAgentSkillIndex()]);
@@ -66,10 +67,21 @@ export const load: PageServerLoad = async ({ params }) => {
 				title: item.title
 			}))
 		}));
+	const lineagePeople = resolveSkillExperts(skill.lineage_people?.slice(0, 8) ?? []);
+	const profiledPeople = lineagePeople
+		.map((person) => person.profile)
+		.filter((profile): profile is NonNullable<typeof profile> => Boolean(profile));
+	const lineageSources = selectSkillExpertSourceHighlights(
+		skill.lineage_sources ?? [],
+		profiledPeople,
+		5
+	);
 
 	return {
 		skill,
 		post,
+		lineagePeople,
+		lineageSources,
 		runtime,
 		childSkills,
 		relatedSkills,

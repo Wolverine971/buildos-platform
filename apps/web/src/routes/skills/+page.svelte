@@ -70,6 +70,9 @@
 	let activeDomain = $state('all');
 	let activePack = $state('all');
 	let sortOrder = $state<'featured' | 'name' | 'domain' | 'updated'>('featured');
+	let showAllPreviews = $state(false);
+
+	const PREVIEW_SUMMARY_LIMIT = 6;
 
 	let skills = $derived(data.catalog.skills);
 	let previews = $derived(data.catalog.previews);
@@ -124,6 +127,10 @@
 			return normalizeSearchText(getPreviewSearchText(preview)).includes(normalizedQuery);
 		});
 	});
+	let visiblePreviews = $derived(
+		showAllPreviews ? matchingPreviews : matchingPreviews.slice(0, PREVIEW_SUMMARY_LIMIT)
+	);
+	let hiddenPreviewCount = $derived(Math.max(0, matchingPreviews.length - PREVIEW_SUMMARY_LIMIT));
 	let matchingPacks = $derived.by(() => {
 		if (!normalizedQuery) return [];
 		return packCards.filter((pack) =>
@@ -187,6 +194,19 @@
 			matchingPacks.length +
 			matchingReferences.length +
 			matchingArticles.length
+	);
+	let searchResultSummary = $derived(
+		[
+			[filteredSkills.length, 'skills'],
+			[matchingPreviews.length, 'previews'],
+			[matchingDomains.length, 'domains'],
+			[matchingPacks.length, 'paths'],
+			[matchingReferences.length, 'references'],
+			[matchingArticles.length, 'guides']
+		]
+			.filter(([count]) => Number(count) > 0)
+			.map(([count, label]) => `${count} ${label}`)
+			.join(' · ')
 	);
 	let filteredFamilies = $derived(groupSkillsByFamily(filteredSkills));
 	let featuredSkills = $derived(
@@ -381,7 +401,7 @@
 							bind:value={query}
 							type="search"
 							placeholder="Search cold email, hooks, UI review, calendar safety..."
-							class="h-12 w-full rounded-md border border-border-strong bg-card pl-10 pr-3 text-base text-foreground shadow-ink-inner outline-none transition-colors placeholder:text-muted-foreground focus:border-accent focus:ring-2 focus:ring-ring sm:text-sm"
+							class="h-12 w-full rounded-md border border-border-strong bg-card pl-10 pr-3 text-base text-foreground shadow-ink-inner outline-none transition-colors placeholder:text-muted-foreground focus:border-accent focus:ring-2 focus:ring-ring motion-reduce:transition-none sm:text-sm"
 						/>
 					</label>
 
@@ -389,7 +409,7 @@
 						<span class="sr-only">Sort skills</span>
 						<select
 							bind:value={sortOrder}
-							class="h-12 w-full rounded-md border border-border-strong bg-card px-3 text-base font-medium text-foreground shadow-ink-inner outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-ring sm:text-sm"
+							class="h-12 w-full rounded-md border border-border-strong bg-card px-3 text-base font-medium text-foreground shadow-ink-inner outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-ring motion-reduce:transition-none sm:text-sm"
 						>
 							<option value="featured">Featured order</option>
 							<option value="name">Name A–Z</option>
@@ -458,7 +478,7 @@
 							</span>
 							<a
 								href={getDomainPath(selectedDomain)}
-								class="inline-flex min-h-[32px] items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 font-medium text-accent transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								class="inline-flex min-h-11 items-center gap-1 rounded-full border border-border bg-card px-3 font-medium text-accent transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 							>
 								Open map
 								<ArrowRight class="h-3.5 w-3.5" />
@@ -474,7 +494,7 @@
 							{#if selectedPack}
 								<a
 									href={getPackPath(selectedPack)}
-									class="inline-flex min-h-[32px] items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 font-medium text-accent transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									class="inline-flex min-h-11 items-center gap-1 rounded-full border border-border bg-card px-3 font-medium text-accent transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 								>
 									Open path
 									<ArrowRight class="h-3.5 w-3.5" />
@@ -500,26 +520,7 @@
 							{totalSearchResults} result{totalSearchResults === 1 ? '' : 's'} for “{query.trim()}”
 						</h2>
 					</div>
-					<div class="flex flex-wrap gap-1.5 text-2xs font-medium text-muted-foreground">
-						<span class="rounded-full border border-border bg-card px-2.5 py-1"
-							>{filteredSkills.length} skills</span
-						>
-						<span class="rounded-full border border-border bg-card px-2.5 py-1"
-							>{matchingPreviews.length} previews</span
-						>
-						<span class="rounded-full border border-border bg-card px-2.5 py-1"
-							>{matchingDomains.length} domains</span
-						>
-						<span class="rounded-full border border-border bg-card px-2.5 py-1"
-							>{matchingPacks.length} paths</span
-						>
-						<span class="rounded-full border border-border bg-card px-2.5 py-1"
-							>{matchingReferences.length} references</span
-						>
-						<span class="rounded-full border border-border bg-card px-2.5 py-1"
-							>{matchingArticles.length} guides</span
-						>
-					</div>
+					<p class="text-xs font-medium text-muted-foreground">{searchResultSummary}</p>
 				</div>
 
 				{#if matchingPreviews.length || matchingDomains.length || matchingPacks.length || matchingReferences.length || matchingArticles.length}
@@ -743,8 +744,8 @@
 						</p>
 					</div>
 
-					<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-						{#each matchingPreviews as preview}
+					<div id="runtime-preview-grid" class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+						{#each visiblePreviews as preview}
 							<article
 								class="flex min-h-[16rem] flex-col rounded-lg border border-dashed border-accent/60 bg-card p-4 shadow-ink transition-colors hover:border-accent tx tx-frame tx-weak"
 							>
@@ -795,6 +796,26 @@
 							</article>
 						{/each}
 					</div>
+
+					{#if hiddenPreviewCount > 0}
+						<div class="mt-5 flex flex-col items-center gap-2 text-center">
+							<p class="text-xs text-muted-foreground">
+								Showing {visiblePreviews.length} of {matchingPreviews.length} reviewed
+								previews
+							</p>
+							<button
+								type="button"
+								aria-expanded={showAllPreviews}
+								aria-controls="runtime-preview-grid"
+								class="pressable inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-ink transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+								onclick={() => (showAllPreviews = !showAllPreviews)}
+							>
+								{showAllPreviews
+									? 'Show fewer previews'
+									: `Show all ${matchingPreviews.length} previews`}
+							</button>
+						</div>
+					{/if}
 				</section>
 			{/if}
 
@@ -988,8 +1009,9 @@
 							{@const post = postBySlug.get(skill.slug)}
 							{@const sourceCount = getNumericStat(skill, 'sources')}
 							{@const searchMatches = getSkillSearchMatches(skill, post, query)}
+							{@const outputShapes = getOutputShapes(skill)}
 							<article
-								class="flex min-h-[21rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
+								class="flex min-h-[19rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
 							>
 								<div class="flex items-start justify-between gap-3">
 									<div class="flex min-w-0 items-center gap-2">
@@ -1021,13 +1043,20 @@
 								</p>
 
 								<div class="mt-4 flex flex-wrap gap-1.5">
-									{#each getOutputShapes(skill) as output}
+									{#each outputShapes.slice(0, 3) as output}
 										<span
 											class="rounded-full border border-border bg-background px-2 py-1 text-2xs font-medium text-muted-foreground"
 										>
 											{output}
 										</span>
 									{/each}
+									{#if outputShapes.length > 3}
+										<span
+											class="px-1 py-1 text-2xs font-medium text-muted-foreground"
+										>
+											+{outputShapes.length - 3} more
+										</span>
+									{/if}
 								</div>
 
 								{#if normalizedQuery && searchMatches.length}
@@ -1050,24 +1079,17 @@
 									</div>
 								{/if}
 
-								<div class="mt-4 grid grid-cols-3 gap-2 text-sm">
-									<div class="rounded-md border border-border bg-background p-2">
-										<p class="text-xs text-muted-foreground">Domain</p>
-										<p class="mt-1 truncate font-semibold">
-											{humanize(skill.skill_category)}
-										</p>
-									</div>
-									<div class="rounded-md border border-border bg-background p-2">
-										<p class="text-xs text-muted-foreground">Sources</p>
-										<p class="mt-1 font-semibold">
-											{sourceCount || skill.lineage_sources?.length || 0}
-										</p>
-									</div>
-									<div class="rounded-md border border-border bg-background p-2">
-										<p class="text-xs text-muted-foreground">Refs</p>
-										<p class="mt-1 font-semibold">{skill.references.length}</p>
-									</div>
-								</div>
+								<p
+									class="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-2xs font-medium text-muted-foreground"
+								>
+									<span>{humanize(skill.skill_category)}</span>
+									<span aria-hidden="true">·</span>
+									<span
+										>{sourceCount || skill.lineage_sources?.length || 0} sources</span
+									>
+									<span aria-hidden="true">·</span>
+									<span>{skill.references.length} references</span>
+								</p>
 
 								<div class="mt-auto grid gap-2 pt-5 sm:grid-cols-3">
 									<a

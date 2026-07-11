@@ -50,6 +50,7 @@
 		resetAiInboxCount,
 		setAiInboxRemainingCount
 	} from '$lib/stores/aiInboxCount.store';
+	import { aiInboxPerformance } from '$lib/utils/ai-inbox-performance';
 
 	type Props = {
 		user: any | null;
@@ -59,6 +60,11 @@
 		stripeEnabled?: boolean;
 		subscription?: any;
 		hasConnectedAgents?: boolean;
+	};
+
+	type IdleWindow = Window & {
+		requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+		cancelIdleCallback?: (handle: number) => void;
 	};
 
 	let {
@@ -331,15 +337,28 @@
 		});
 	}
 
+	function scheduleAiInboxModalPreload(): () => void {
+		if (!browser || !user) return () => {};
+		const idleWindow = window as IdleWindow;
+		if (typeof idleWindow.requestIdleCallback === 'function') {
+			const handle = idleWindow.requestIdleCallback(preloadAiInboxModal, { timeout: 3500 });
+			return () => idleWindow.cancelIdleCallback?.(handle);
+		}
+
+		const timeout = window.setTimeout(preloadAiInboxModal, 2500);
+		return () => window.clearTimeout(timeout);
+	}
+
 	async function openAiInbox() {
 		if (isOpeningAiInbox) return;
 		closeAllMenus();
 		isOpeningAiInbox = true;
+		aiInboxPerformance.begin('navigation');
 		try {
 			await loadAiInboxModalComponent();
 			showAiInboxModal = true;
-			void loadAiInboxCount({ force: true });
 		} catch (error) {
+			aiInboxPerformance.cancel();
 			console.error('[Navigation] Failed to open AI Inbox:', error);
 			toastService.error('Failed to open AI Inbox');
 		} finally {
@@ -731,8 +750,10 @@
 		window.addEventListener('buildos:open-agent-chat', handleOpenAgentChatEvent);
 		window.addEventListener('buildos:chat-session-dismissed', handleChatSessionDismissedEvent);
 		document.addEventListener('visibilitychange', handleVisibilityChange);
+		const cancelAiInboxModalPreload = scheduleAiInboxModalPreload();
 
 		return () => {
+			cancelAiInboxModalPreload();
 			themeObserver.disconnect();
 			document.removeEventListener('keydown', handleKeydown);
 			document.removeEventListener('click', handleClickOutside);
@@ -884,6 +905,7 @@
 						type="button"
 						onclick={openAiInbox}
 						onpointerenter={preloadAiInboxModal}
+						onpointerdown={preloadAiInboxModal}
 						onfocus={preloadAiInboxModal}
 						disabled={isOpeningAiInbox}
 						class="relative flex h-9 w-9 items-center justify-center rounded-md border bg-card shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent disabled:cursor-wait disabled:opacity-70 {$aiInboxCountStore.total >

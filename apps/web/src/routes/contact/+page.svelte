@@ -1,81 +1,82 @@
 <!-- apps/web/src/routes/contact/+page.svelte -->
 <script lang="ts">
-	import { Mail, Linkedin, Twitter, MessageCircle, Lightbulb, TrendingUp } from 'lucide-svelte';
-	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { onMount } from 'svelte';
+	import {
+		ArrowRight,
+		ExternalLink,
+		Lightbulb,
+		Linkedin,
+		Mail,
+		MessageCircle,
+		TrendingUp,
+		Twitter
+	} from '$lib/icons/lucide';
+	import SEOHead from '$lib/components/SEOHead.svelte';
 
-	let prefersReducedMotion = $state(false);
+	let brandVideo: HTMLVideoElement;
 
 	onMount(() => {
 		const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-		prefersReducedMotion = mediaQuery.matches;
 
-		// Listen for changes
-		const handleChange = (e: MediaQueryListEvent) => {
-			prefersReducedMotion = e.matches;
+		const syncPlayback = () => {
+			if (mediaQuery.matches) {
+				brandVideo.pause();
+				try {
+					brandVideo.currentTime = 0;
+				} catch {
+					// Metadata may not be ready yet; pausing still honors the preference.
+				}
+				return;
+			}
+
+			void brandVideo.play().catch(() => {
+				// Browser autoplay policy may keep the decorative video paused.
+			});
 		};
-		mediaQuery.addEventListener('change', handleChange);
 
-		return () => mediaQuery.removeEventListener('change', handleChange);
+		syncPlayback();
+		mediaQuery.addEventListener('change', syncPlayback);
+		return () => mediaQuery.removeEventListener('change', syncPlayback);
 	});
 
-	const contactMethods = [
-		{
-			href: 'https://www.linkedin.com/company/build-os-app',
-			icon: Linkedin,
-			title: 'BuildOS LinkedIn',
-			description: 'Company updates, product launches, and professional insights',
-			external: true
-		},
-		{
-			href: 'https://x.com/build_os',
-			icon: Twitter,
-			title: '@build_os',
-			description: 'Building in public, product updates, and thinking-environment notes',
-			external: true
-		},
+	const contactPaths = [
 		{
 			href: 'mailto:team@build-os.com',
 			icon: Mail,
-			title: 'Direct Email',
-			description: 'Partnerships, investment, strategic discussions',
-			external: false
-		}
-	];
-
-	const founderContacts = [
-		{
-			href: 'https://linkedin.com/in/djwayne',
-			icon: Linkedin,
-			title: 'DJ Wayne',
-			subtitle: '',
-			external: true
-		}
-	];
-
-	const actionCards = [
-		{
-			href: '/auth/register',
-			icon: MessageCircle,
-			title: 'Start in chat',
-			description: 'Turn rough project input into structured work with memory',
-			badge: 'No billing yet'
+			title: 'Email BuildOS',
+			description:
+				'Partnerships, press, customer questions, and anything that needs a reply.',
+			meta: 'team@build-os.com',
+			featured: true
 		},
 		{
 			href: '/feedback',
 			icon: Lightbulb,
-			title: 'Give Feedback',
-			description: 'Help shape the thinking environment for complex work',
-			badge: 'Valued'
+			title: 'Share product feedback',
+			description:
+				'Tell us what is working, what is confusing, or what would make BuildOS useful.',
+			meta: 'Product feedback',
+			featured: false
 		},
 		{
 			href: '/investors',
 			icon: TrendingUp,
-			title: 'Investment Info',
-			description: 'The BuildOS investor overview and current thesis',
-			badge: 'Open'
+			title: 'Investor information',
+			description:
+				'Read the current company overview and thesis before starting a conversation.',
+			meta: 'Overview and thesis',
+			featured: false
 		}
-	];
+	] as const;
+
+	const socialLinks = [
+		{
+			href: 'https://www.linkedin.com/company/build-os-app',
+			icon: Linkedin,
+			label: 'BuildOS on LinkedIn'
+		},
+		{ href: 'https://x.com/build_os', icon: Twitter, label: 'BuildOS on X' }
+	] as const;
 </script>
 
 <SEOHead
@@ -87,259 +88,204 @@
 />
 
 <div class="min-h-screen bg-background">
-	<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-		<!-- Header -->
-		<header class="text-center mb-12">
-			<div class="flex justify-center mb-6">
-				<div
-					class="rounded-lg border border-border bg-card shadow-ink w-14 h-14 rounded-sm flex items-center justify-center"
-				>
-					<video
-						src="/onboarding-assets/animations/brain-bolt-electric.mp4"
-						class="w-10 h-10"
-						width="40"
-						height="40"
-						preload="metadata"
-						autoplay={!prefersReducedMotion}
-						loop
-						muted
-						playsinline
-						aria-hidden="true"
-					></video>
-				</div>
-			</div>
-			<h1 class="text-4xl md:text-5xl font-bold text-foreground mb-4">Building BuildOS</h1>
-			<p class="text-xl text-muted-foreground max-w-2xl mx-auto mb-6">
-				A thinking environment that turns messy project context into structured projects
-				with memory.
-			</p>
-
-			<!-- Founder credibility -->
-			<div class="flex justify-center items-center space-x-6 text-sm">
-				<span
-					class="flex items-center rounded-lg border border-border bg-muted px-2 py-1 text-sm text-muted-foreground"
-				>
-					<div class="w-2 h-2 bg-accent rounded-full mr-2" aria-hidden="true"></div>
-					Veteran Founder
-				</span>
-				<span
-					class="flex items-center rounded-lg border border-border bg-muted px-2 py-1 text-sm text-muted-foreground"
-				>
-					<div class="w-2 h-2 bg-accent rounded-full mr-2" aria-hidden="true"></div>
-					YC-backed startup experience
-				</span>
-				<span
-					class="flex items-center rounded-lg border border-border bg-muted px-2 py-1 text-sm text-muted-foreground"
-				>
-					<div class="w-2 h-2 bg-accent rounded-full mr-2" aria-hidden="true"></div>
-					USMC Veteran
-				</span>
-			</div>
-		</header>
-
-		<!-- Primary Actions -->
-		<section class="mb-12" aria-labelledby="primary-actions-heading">
-			<h2 id="primary-actions-heading" class="sr-only">Get Started with BuildOS</h2>
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-				{#each actionCards as card}
-					{@const Icon = card.icon}
-					<a
-						href={card.href}
-						class="relative rounded-lg border border-border bg-card shadow-ink p-6 hover:brightness-105 hover:border-accent transition-all group tx tx-bloom tx-weak pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+	<!-- Orientation -->
+	<section class="border-b border-border bg-muted">
+		<div class="mx-auto max-w-7xl px-2 py-10 sm:px-4 sm:py-14 lg:px-6">
+			<header class="mx-auto max-w-3xl text-center">
+				<div class="mb-5 flex justify-center">
+					<div
+						class="flex h-14 w-14 items-center justify-center rounded-lg border border-border bg-card shadow-ink"
 					>
-						{#if card.badge}
-							<div
-								class="absolute -top-2 -right-2 rounded-full bg-accent text-accent-foreground text-xs font-bold px-2 py-1"
+						<video
+							bind:this={brandVideo}
+							src="/onboarding-assets/animations/brain-bolt-electric.mp4"
+							poster="/brain-bolt-80.png"
+							class="h-10 w-10 motion-reduce:hidden"
+							width="40"
+							height="40"
+							preload="metadata"
+							loop
+							muted
+							playsinline
+							aria-hidden="true"
+						></video>
+						<img
+							src="/brain-bolt-80.png"
+							alt=""
+							class="hidden h-10 w-10 motion-reduce:block"
+							width="40"
+							height="40"
+							aria-hidden="true"
+						/>
+					</div>
+				</div>
+
+				<p class="micro-label mb-3 text-accent">Founder-led support</p>
+				<h1 class="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+					Contact BuildOS
+				</h1>
+				<p
+					class="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
+				>
+					Tell us what you are building, where BuildOS is falling short, or what kind of
+					partnership you have in mind.
+				</p>
+				<p class="mt-4 text-sm text-muted-foreground">
+					Partnerships <span aria-hidden="true">·</span> Press
+					<span aria-hidden="true">·</span> Product feedback
+				</p>
+			</header>
+		</div>
+	</section>
+
+	<!-- Primary contact paths -->
+	<section class="border-b border-border bg-background" aria-labelledby="contact-paths-heading">
+		<div class="mx-auto max-w-7xl px-2 py-10 sm:px-4 sm:py-12 lg:px-6">
+			<header class="mx-auto mb-6 max-w-2xl text-center">
+				<h2
+					id="contact-paths-heading"
+					class="text-2xl font-bold text-foreground sm:text-3xl"
+				>
+					Choose the right path
+				</h2>
+				<p class="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
+					Email is the best starting point when you are not sure where your message
+					belongs.
+				</p>
+			</header>
+
+			<div class="mx-auto grid max-w-5xl gap-4 md:grid-cols-3">
+				{#each contactPaths as path}
+					{@const PathIcon = path.icon}
+					<a
+						href={path.href}
+						class="pressable group flex min-w-0 items-start gap-4 rounded-lg border p-5 shadow-ink transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none {path.featured
+							? 'border-accent/50 bg-accent/5 hover:border-accent'
+							: 'border-border bg-card hover:border-accent/50 hover:bg-muted'}"
+					>
+						<span
+							class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border bg-card text-foreground transition-colors group-hover:border-accent/40 group-hover:text-accent motion-reduce:transition-none"
+						>
+							<PathIcon class="h-5 w-5" aria-hidden="true" />
+						</span>
+						<span class="min-w-0 flex-1">
+							<span class="block font-semibold text-foreground">{path.title}</span>
+							<span class="mt-1 block text-sm leading-relaxed text-muted-foreground">
+								{path.description}
+							</span>
+							<span
+								class="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-accent"
 							>
-								{card.badge}
-							</div>
-						{/if}
-						<div class="flex items-start space-x-4">
-							<div class="flex-shrink-0">
-								<div
-									class="rounded-lg border border-border bg-card shadow-ink w-12 h-12 rounded-sm flex items-center justify-center"
-								>
-									<Icon
-										class="w-6 h-6 text-foreground group-hover:scale-110 transition-transform"
-										aria-hidden="true"
-									/>
-								</div>
-							</div>
-							<div>
-								<h3 class="font-bold text-foreground mb-1">
-									{card.title}
-								</h3>
-								<p class="text-sm text-muted-foreground">
-									{card.description}
-								</p>
-							</div>
-						</div>
+								{path.meta}
+								<ArrowRight class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+							</span>
+						</span>
 					</a>
 				{/each}
 			</div>
-		</section>
+		</div>
+	</section>
 
-		<!-- Why BuildOS -->
-		<section
-			class="rounded-lg border border-border bg-card shadow-ink p-6 sm:p-8 mb-12 relative tx tx-frame tx-weak"
-		>
-			<h2 class="text-2xl font-bold text-foreground mb-6">The Problem We're Solving</h2>
-			<div class="grid md:grid-cols-2 gap-8">
-				<div>
-					<h3 class="font-semibold text-foreground mb-3">Scattered Information</h3>
-					<p class="text-muted-foreground mb-4">
-						Thoughts spread across Notion, Obsidian, Apple Notes, random text files.
-						Brilliant ideas lost in daily chaos.
-					</p>
-					<h3 class="font-semibold text-foreground mb-3">LLM Context Loss</h3>
-					<p class="text-muted-foreground">
-						Constantly repeating project context to Claude/ChatGPT instead of building
-						on previous conversations.
-					</p>
-				</div>
-				<div>
-					<h3 class="font-semibold text-foreground mb-3">BuildOS Solution</h3>
-					<ul class="space-y-2 text-muted-foreground">
-						<li class="flex items-center">
-							<div
-								class="w-2 h-2 bg-accent rounded-full mr-3"
-								aria-hidden="true"
-							></div>
-							Brain dump → structured project memory
-						</li>
-						<li class="flex items-center">
-							<div
-								class="w-2 h-2 bg-accent rounded-full mr-3"
-								aria-hidden="true"
-							></div>
-							Build rich project context over time
-						</li>
-						<li class="flex items-center">
-							<div
-								class="w-2 h-2 bg-accent rounded-full mr-3"
-								aria-hidden="true"
-							></div>
-							Copy/paste context to any LLM
-						</li>
-						<li class="flex items-center">
-							<div
-								class="w-2 h-2 bg-accent rounded-full mr-3"
-								aria-hidden="true"
-							></div>
-							Smart scheduling bridges thoughts to action
-						</li>
-					</ul>
-				</div>
-			</div>
-		</section>
-
-		<!-- Meet the Founder -->
-		<section
-			class="rounded-lg border border-border bg-card shadow-ink p-6 sm:p-8 mb-12 tx tx-frame tx-weak"
-		>
-			<h2 class="text-2xl font-bold text-foreground text-center mb-8">Meet the Founder</h2>
-
-			<!-- DJ Wayne -->
-			<div class="flex items-start space-x-6">
+	<!-- Founder context -->
+	<section class="border-b border-border bg-card/40" aria-labelledby="founder-contact-heading">
+		<div class="mx-auto max-w-7xl px-2 py-10 sm:px-4 sm:py-12 lg:px-6">
+			<div
+				class="mx-auto grid max-w-5xl items-center gap-6 rounded-lg border border-border bg-card p-5 shadow-ink tx tx-frame tx-weak sm:p-6 md:grid-cols-[auto_1fr_auto]"
+			>
 				<img
 					src="/s-dj-wayne-profile.webp"
-					alt="DJ Wayne"
-					class="w-20 h-20 rounded-sm object-cover"
+					alt="DJ Wayne, founder of BuildOS"
+					class="h-20 w-20 rounded-lg object-cover"
 					width="80"
 					height="80"
 					loading="lazy"
+					decoding="async"
 				/>
-				<div class="flex-1">
-					<h3 class="text-xl font-bold text-foreground mb-1">DJ Wayne</h3>
-					<p class="text-muted-foreground mb-2">
-						Dad, former USMC Scout Sniper, creator of <a
-							href="https://9takes.com"
-							target="_blank"
-							rel="noopener noreferrer"
-							class="text-accent hover:text-accent/80"
-							aria-label="9takes personality insights website (opens in new tab)"
-							>9takes</a
-						>, Tiny Tibe Adventures, The Cadre Training. Software engineer with
-						YC-backed startup experience (Curri).
-					</p>
-					<p class="text-sm text-muted-foreground">
-						Brings technical depth and product vision to BuildOS.
+				<div class="min-w-0">
+					<p class="micro-label mb-2">A note from the founder</p>
+					<h2
+						id="founder-contact-heading"
+						class="text-xl font-bold text-foreground sm:text-2xl"
+					>
+						Founder-led, not routed through a queue
+					</h2>
+					<p
+						class="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base"
+					>
+						I read the messages that come through BuildOS. Clear context helps: tell me
+						what you are trying to do, what happened, and what a useful response would
+						look like.
 					</p>
 				</div>
+				<a
+					href="https://linkedin.com/in/djwayne"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground shadow-ink transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
+				>
+					<Linkedin class="h-4 w-4 shrink-0" aria-hidden="true" />
+					DJ on LinkedIn
+					<ExternalLink class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+				</a>
 			</div>
-		</section>
+		</div>
+	</section>
 
-		<!-- Contact Methods -->
-		<section class="mb-12">
-			<h2 class="text-xl font-bold text-foreground text-center mb-8">Connect With BuildOS</h2>
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-				{#each contactMethods as method}
-					{@const MethodIcon = method.icon}
-					<a
-						href={method.href}
-						{...method.external ? { target: '_blank', rel: 'noopener noreferrer' } : {}}
-						aria-label="{method.title}{method.external ? ' (opens in new tab)' : ''}"
-						class="rounded-lg border border-border bg-card shadow-ink p-6 hover:brightness-105 hover:border-accent transition-all group tx tx-frame tx-weak pressable"
-					>
-						<div
-							class="rounded-lg border border-border bg-card shadow-ink w-12 h-12 rounded-sm flex items-center justify-center mb-4 mx-auto group-hover:scale-110 transition-transform"
-						>
-							<MethodIcon class="w-6 h-6 text-foreground" aria-hidden="true" />
-						</div>
-						<h3 class="font-semibold text-foreground text-center mb-2">
-							{method.title}
-						</h3>
-						<p class="text-sm text-muted-foreground text-center">
-							{method.description}
-						</p>
-					</a>
-				{/each}
-			</div>
+	<!-- Secondary channels -->
+	<section class="border-b border-border bg-background" aria-labelledby="follow-heading">
+		<div class="mx-auto max-w-7xl px-2 py-10 sm:px-4 sm:py-12 lg:px-6">
+			<div class="mx-auto max-w-4xl text-center">
+				<p class="micro-label mb-2">Building in public</p>
+				<h2 id="follow-heading" class="text-2xl font-bold text-foreground">
+					Follow the build
+				</h2>
+				<p
+					class="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base"
+				>
+					Product notes and company updates live on the BuildOS social channels.
+				</p>
 
-			<!-- Founder Links -->
-			<div class="text-center mb-6">
-				<p class="text-sm text-muted-foreground mb-4">Connect with the founder directly:</p>
-				<div class="flex justify-center space-x-4">
-					{#each founderContacts as founder}
-						{@const FounderIcon = founder.icon}
+				<div class="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
+					{#each socialLinks as social}
+						{@const SocialIcon = social.icon}
 						<a
-							href={founder.href}
-							{...founder.external
-								? { target: '_blank', rel: 'noopener noreferrer' }
-								: {}}
-							aria-label="{founder.title}{founder.external
-								? ' on LinkedIn (opens in new tab)'
-								: ''}"
-							class="inline-flex items-center space-x-2 px-4 py-3 min-h-[44px] rounded-lg border border-border bg-card shadow-ink hover:brightness-105 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+							href={social.href}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground shadow-ink transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
 						>
-							<FounderIcon class="w-4 h-4 text-foreground" aria-hidden="true" />
-							<div class="text-left">
-								<span class="block text-sm font-medium text-foreground"
-									>{founder.title}</span
-								>
-								{#if founder.subtitle}
-									<span class="block text-xs text-muted-foreground"
-										>{founder.subtitle}</span
-									>
-								{/if}
-							</div>
+							<SocialIcon class="h-4 w-4 shrink-0" aria-hidden="true" />
+							{social.label}
+							<ExternalLink class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
 						</a>
 					{/each}
 				</div>
 			</div>
-		</section>
+		</div>
+	</section>
 
-		<!-- Response Notice -->
-		<footer class="text-center">
-			<div
-				class="inline-flex items-center space-x-2 rounded-full bg-accent text-accent-foreground text-xs font-bold px-2 py-1"
-			>
-				<div
-					class="w-2 h-2 bg-accent rounded-full animate-pulse motion-reduce:animate-none"
-					aria-hidden="true"
-				></div>
-				<span class="text-sm font-medium">Response within 24 hours</span>
+	<!-- Tertiary product path -->
+	<section class="bg-muted" aria-labelledby="try-heading">
+		<div class="mx-auto max-w-7xl px-2 py-10 sm:px-4 sm:py-12 lg:px-6">
+			<div class="mx-auto max-w-3xl text-center">
+				<MessageCircle class="mx-auto h-6 w-6 text-accent" aria-hidden="true" />
+				<h2 id="try-heading" class="mt-3 text-2xl font-bold text-foreground">
+					Want to try BuildOS instead?
+				</h2>
+				<p
+					class="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base"
+				>
+					Create a free account and start in chat. Paid billing is not active, so creating
+					an account will not charge you.
+				</p>
+				<a
+					href="/auth/register"
+					class="pressable mt-5 inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-accent bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
+				>
+					Start in chat
+					<ArrowRight class="h-4 w-4 shrink-0" aria-hidden="true" />
+				</a>
 			</div>
-		</footer>
-	</div>
+		</div>
+	</section>
 </div>
