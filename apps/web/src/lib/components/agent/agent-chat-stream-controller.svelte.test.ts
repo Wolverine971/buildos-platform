@@ -707,6 +707,25 @@ describe('AgentChatStreamController', () => {
 		);
 	});
 
+	it('fails a non-terminal clean close when no session is available to reconcile', async () => {
+		const h = createHarness({ currentSession: null });
+		const sendPromise = h.controller.sendMessage();
+		await flushMicrotasks();
+
+		h.streamProcessor.runs[0]!.progress({
+			type: 'agent_state',
+			state: 'thinking',
+			details: 'Accepted before session identity arrived'
+		});
+		h.streamProcessor.runs[0]!.complete();
+		await sendPromise;
+
+		expect(h.reconcileTurnFromSession).not.toHaveBeenCalled();
+		expect(h.controller.error).toBe('The response ended before completion. Please try again.');
+		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('error');
+		expect(h.thinking.finalize).toHaveBeenCalledWith('error');
+	});
+
 	it('surfaces the server error body when the stream POST is rejected (402 freeze)', async () => {
 		const frozenMessage =
 			'AI generation is paused until billing is activated. Your workspace remains readable.';

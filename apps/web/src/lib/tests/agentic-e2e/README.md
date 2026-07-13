@@ -62,10 +62,13 @@ VITEST_SILENT=false pnpm --filter @buildos/web test:agentic   # show harness log
 
 The `@wiring` browser lane authenticates against the real app, opens the modal
 through the dashboard, selects General chat, and exercises real draft prewarm
-and send-time session bootstrap. It intercepts only the stream/cancel transport,
-so it makes no model calls. Each case owns an `AE2E ·` project and exact chat
-session, and verifies both are deleted. The `@live` case uses the real stream
-and is paid.
+and send-time session bootstrap. It intercepts model transport and, in the
+temporary-image case, attachment creation and signed storage, so it makes no
+model calls or media writes. It covers cancellation identity, interrupted-stream
+reconciliation, two-turn `lastTurnContext` forwarding, and canonical
+temporary-image attachment refs. Each case owns an `AE2E ·` project and exact
+chat session, and verifies both are deleted. The `@live` case uses the real
+stream and is paid.
 
 ## What it checks
 

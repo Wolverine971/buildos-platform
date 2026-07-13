@@ -71,13 +71,29 @@ function buildVisibleSeed(params: {
 	const summary = compactText(params.audit.summary, 420);
 	const topFindings = normalizeArray(params.audit.top_findings).slice(0, 3);
 	const recommendations = normalizeArray(params.audit.recommendations).slice(0, 3);
+	const leadRecommendation = recommendations[0] ?? null;
+	const leadTitle = leadRecommendation
+		? (compactText(leadRecommendation.title, 180) ??
+			compactText(leadRecommendation.summary, 180))
+		: null;
+	const leadSummary = leadRecommendation ? compactText(leadRecommendation.summary, 500) : null;
+	const leadRole = leadRecommendation ? readString(leadRecommendation.role) : null;
 	const pendingSuggestions = params.childSuggestions.filter(
 		(item) => readString(item.status) === 'pending' || readString(item.status) === 'delegated'
 	);
 
 	const lines = [
-		`I reviewed the latest complete audit for ${params.projectName ?? 'this project'}.`,
+		'## Bottom line',
+		leadTitle
+			? `${leadRole === 'decision_point' ? 'Decision needed' : 'Recommendation'}: ${leadTitle}`
+			: 'No action is recommended from this audit. It remains available in project history but should not create an inbox item.',
+		leadSummary ? `Factors: ${leadSummary}` : null,
+		leadTitle
+			? 'Your call: adopt, reject, or refine this direction. I can turn an accepted direction into a concrete project change.'
+			: null,
 		'',
+		'## Audit context',
+		`Project: ${params.projectName ?? 'this project'}`,
 		`Delivery confidence: ${deliveryConfidence}`,
 		readString(params.audit.status) ? `Audit status: ${readString(params.audit.status)}` : null,
 		readString(params.audit.trigger_reason)
@@ -85,22 +101,30 @@ function buildVisibleSeed(params: {
 			: null,
 		pendingSuggestions.length
 			? `Follow-up items: ${pendingSuggestions.length} pending suggestion${pendingSuggestions.length === 1 ? '' : 's'}.`
-			: 'Follow-up items: none pending yet.',
+			: null,
 		summary ? `\n${summary}` : null
 	].filter((line): line is string => Boolean(line));
+
+	if (recommendations.length > 1) {
+		lines.push(
+			'',
+			'## Other recommendations',
+			...recommendations
+				.slice(1)
+				.map((recommendation, index) => summarizeRecommendation(recommendation, index + 1))
+		);
+	}
 
 	if (topFindings.length) {
 		lines.push('', '## Top findings', ...topFindings.map(summarizeFinding));
 	}
 
-	if (recommendations.length) {
-		lines.push('', '## Recommendations', ...recommendations.map(summarizeRecommendation));
+	if (leadTitle) {
+		lines.push(
+			'',
+			'Tell me whether you want to adopt, reject, or modify the recommendation; I can explain the evidence or draft the resulting project change.'
+		);
 	}
-
-	lines.push(
-		'',
-		'You can ask me to explain the evidence, compare this to the last audit, or turn one recommendation into a concrete project change.'
-	);
 
 	return lines.join('\n');
 }

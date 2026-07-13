@@ -57,6 +57,83 @@ function asString(value: unknown): string | null {
 	return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function compactText(value: unknown, maxLength: number): string | null {
+	const text = asString(value)?.replace(/\s+/g, ' ').trim();
+	if (!text) return null;
+	return text.length <= maxLength
+		? text
+		: `${text.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+}
+
+type AuditInboxRecommendation = {
+	title: string;
+	summary: string | null;
+	role: string | null;
+	priority: string | null;
+	evidenceLabels: string[];
+};
+
+function readAuditInboxRecommendations(audit: Record<string, unknown>): AuditInboxRecommendation[] {
+	const source = [
+		...(Array.isArray(audit.recommendations) ? audit.recommendations : []),
+		...(Array.isArray(audit.top_actions) ? audit.top_actions : [])
+	];
+	const recommendations: AuditInboxRecommendation[] = [];
+	const seen = new Set<string>();
+
+	for (const item of source) {
+		const record = asRecord(item);
+		const title = compactText(record?.title ?? item, 180);
+		if (!title) continue;
+		const key = title.toLowerCase();
+		if (seen.has(key)) continue;
+		seen.add(key);
+		const evidenceLabels = Array.isArray(record?.evidence_refs)
+			? record.evidence_refs
+					.map((ref) => compactText(asRecord(ref)?.label ?? asRecord(ref)?.title, 80))
+					.filter((label): label is string => Boolean(label))
+					.slice(0, 3)
+			: [];
+		recommendations.push({
+			title,
+			summary: compactText(record?.summary ?? record?.description, 420),
+			role: asString(record?.role),
+			priority: asString(record?.priority),
+			evidenceLabels
+		});
+	}
+
+	return recommendations;
+}
+
+function auditRecommendationTitle(recommendation: AuditInboxRecommendation): string {
+	const prefix =
+		recommendation.role === 'decision_point'
+			? 'Decision'
+			: recommendation.role === 'cleanup'
+				? 'Update'
+				: recommendation.role === 'risk_follow_up'
+					? 'Consider'
+					: 'Recommendation';
+	return `${prefix}: ${recommendation.title}`;
+}
+
+function auditRecommendationSummary(params: {
+	audit: Record<string, unknown>;
+	recommendation: AuditInboxRecommendation;
+	additionalCount: number;
+}): string | null {
+	const factors = params.recommendation.summary ?? compactText(params.audit.summary, 420);
+	const evidence = params.recommendation.evidenceLabels.length
+		? ` Evidence: ${params.recommendation.evidenceLabels.join(', ')}.`
+		: '';
+	const more = params.additionalCount
+		? ` ${params.additionalCount} more recommendation${params.additionalCount === 1 ? '' : 's'} in the audit.`
+		: '';
+	if (!factors && !evidence && !more) return null;
+	return `${factors ? `Factors: ${factors}` : ''}${evidence}${more}`.trim();
+}
+
 function formatCalendarSuggestionTitle(value: unknown): string {
 	const raw = asString(value) ?? 'Calendar project suggestion';
 	const withoutGenericSuffix = raw.replace(/\s+project$/i, '').trim() || raw;
@@ -244,6 +321,35 @@ async function markInboxItemExpired(
 	return (data ?? null) as InboxIndexRow | null;
 }
 
+async function markProjectAuditInboxNoActionRequired(
+	supabase: AnySupabase,
+	auditId: string
+): Promise<InboxIndexRow | null> {
+	const { data, error } = await (supabase as any)
+		.from('inbox_items')
+		.update({
+			status: 'expired',
+			source_status: 'no_action_required',
+			decided_at: new Date().toISOString(),
+			blocked_reason: 'Audit completed without an actionable recommendation',
+			snoozed_until: null,
+			expires_at: null
+		})
+		.eq('source_type', 'project_audit')
+		.eq('source_ref_id', auditId)
+		.in('status', ['pending', 'deciding', 'snoozed', 'blocked'])
+		.select('*')
+		.maybeSingle();
+	if (error) {
+		console.warn('[AI Inbox] Failed to expire no-action project audit item', {
+			auditId,
+			error: error.message
+		});
+		return null;
+	}
+	return (data ?? null) as InboxIndexRow | null;
+}
+
 export function mapAgentRunToInboxItem(run: Record<string, unknown>): InboxIndexRow | null {
 	const runId = asString(run.id);
 	const userId = asString(run.user_id);
@@ -339,31 +445,21 @@ export function mapProjectAuditToInboxItem(audit: Record<string, unknown>): Inbo
 	const id = asString(audit.id);
 	const projectId = asString(audit.project_id);
 	if (!id || !projectId) return null;
-
 	const status = asString(audit.status) ?? 'queued';
+	if (status === 'queued' || status === 'running') return null;
+	const recommendations = readAuditInboxRecommendations(audit);
+	// Audit reports remain useful project history, but the inbox is reserved for
+	// concrete asks. Queued/running audits and clean audits must not create noise.
+	if (recommendations.length === 0) return null;
+	const leadRecommendation = recommendations[0];
+
 	const inboxStatus: InboxItemStatus =
-		status === 'ready'
-			? 'pending'
-			: status === 'queued' || status === 'running'
-				? 'deciding'
-				: status === 'failed'
-					? 'blocked'
-					: 'decided';
-	const unresolvedCount =
-		typeof audit.unresolved_suggestion_count === 'number'
-			? Math.max(0, audit.unresolved_suggestion_count)
-			: null;
-	const generatedCount =
-		typeof audit.generated_suggestion_count === 'number'
-			? Math.max(0, audit.generated_suggestion_count)
-			: null;
-	const summary =
-		asString(audit.summary) ??
-		(unresolvedCount !== null
-			? `${unresolvedCount} recommended action${unresolvedCount === 1 ? '' : 's'} to review`
-			: generatedCount !== null
-				? `${generatedCount} audit recommendation${generatedCount === 1 ? '' : 's'}`
-				: null);
+		status === 'ready' ? 'pending' : status === 'failed' ? 'blocked' : 'decided';
+	const summary = auditRecommendationSummary({
+		audit,
+		recommendation: leadRecommendation,
+		additionalCount: recommendations.length - 1
+	});
 
 	return {
 		source_type: 'project_audit',
@@ -373,15 +469,17 @@ export function mapProjectAuditToInboxItem(audit: Record<string, unknown>): Inbo
 		project_id: projectId,
 		audience: 'project_members',
 		status: inboxStatus,
-		title: 'Complete project audit',
+		title: auditRecommendationTitle(leadRecommendation),
 		summary,
-		risk_tier: 2,
+		risk_tier:
+			leadRecommendation.priority === 'high'
+				? 3
+				: leadRecommendation.priority === 'low'
+					? 1
+					: 2,
 		action_kinds: ['open', 'resolve'],
 		blocked_reason: inboxStatus === 'blocked' ? 'Project audit failed' : null,
-		decided_at:
-			inboxStatus === 'pending' || inboxStatus === 'deciding'
-				? null
-				: projectAuditDecidedAt(audit),
+		decided_at: inboxStatus === 'pending' ? null : projectAuditDecidedAt(audit),
 		expires_at: reviewExpiresAt(asString(audit.created_at), inboxStatus),
 		created_at: asString(audit.created_at) ?? undefined
 	};
@@ -499,7 +597,11 @@ export async function syncInboxItemForProjectAudit(params: {
 			: null;
 	}
 	const row = mapProjectAuditToInboxItem(audit);
-	return row ? upsertInboxItem(params.supabase, row) : null;
+	if (row) return upsertInboxItem(params.supabase, row);
+	const auditId = asString(audit.id) ?? params.auditId;
+	return auditId && asString(audit.status) === 'ready'
+		? markProjectAuditInboxNoActionRequired(params.supabase, auditId)
+		: null;
 }
 
 export async function expireInboxItemsForProjectAuditChildSuggestions(params: {

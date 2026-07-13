@@ -204,4 +204,122 @@ describe('applyCompleteAuditSynthesis', () => {
 
 		expect(result).toBe(packet);
 	});
+
+	it('promotes a grounded dimension recommendation into an actionable audit recommendation', () => {
+		const packet = basePacket();
+		const result = applyCompleteAuditSynthesis(
+			packet,
+			{
+				dimension_updates: [
+					{
+						key: 'risk_decision_quality',
+						rating: 'red',
+						summary: 'The launch plan does not name a go/no-go owner.',
+						recommendations: ['Choose the launch go/no-go owner.'],
+						evidence_refs: [
+							{
+								entity_type: 'document',
+								entity_id: 'doc-1',
+								label: 'Launch plan'
+							}
+						]
+					}
+				]
+			},
+			packet.evidenceRefs
+		);
+
+		expect(result.recommendations[0]).toMatchObject({
+			title: 'Choose the launch go/no-go owner.',
+			summary: 'The launch plan does not name a go/no-go owner.',
+			role: 'decision_point',
+			priority: 'high',
+			dimension: 'risk_decision_quality'
+		});
+		expect(result.changeSummary).toMatchObject({
+			recommendation_count: 0,
+			derived_recommendation_count: 1,
+			actionable_recommendation_count: 1
+		});
+	});
+
+	it('turns a grounded open question into the decisional fallback when no action exists', () => {
+		const packet = basePacket();
+		packet.dimensions[0].recommendations = [];
+		const result = applyCompleteAuditSynthesis(
+			packet,
+			{
+				open_questions: [
+					{
+						question: 'Should the launch wait until the page task is complete?',
+						dimension: 'execution_health',
+						evidence_refs: [
+							{
+								entity_type: 'task',
+								entity_id: 'task-1',
+								label: 'Ship launch page'
+							}
+						]
+					}
+				]
+			},
+			packet.evidenceRefs
+		);
+
+		expect(result.recommendations).toEqual([
+			expect.objectContaining({
+				title: 'Should the launch wait until the page task is complete?',
+				role: 'decision_point',
+				priority: 'medium',
+				dimension: 'execution_health'
+			})
+		]);
+	});
+
+	it('clears a deterministic recommendation when grounded synthesis resolves it green', () => {
+		const packet = basePacket();
+		packet.recommendations = [
+			{
+				title: 'Name the launch decision.',
+				summary: 'No decision was visible in the deterministic scaffold.',
+				role: 'decision_point',
+				priority: 'low',
+				dimension: 'risk_decision_quality',
+				evidence_refs: [packet.evidenceRefs[1]]
+			}
+		];
+
+		const result = applyCompleteAuditSynthesis(
+			packet,
+			{
+				dimension_updates: [
+					{
+						key: 'risk_decision_quality',
+						rating: 'green',
+						summary: 'The launch plan names the go/no-go owner and criteria.',
+						evidence_refs: [
+							{
+								entity_type: 'document',
+								entity_id: 'doc-1',
+								label: 'Launch plan'
+							}
+						]
+					}
+				]
+			},
+			packet.evidenceRefs
+		);
+
+		expect(result.dimensions[0]).toMatchObject({
+			rating: 'green',
+			summary: 'The launch plan names the go/no-go owner and criteria.'
+		});
+		expect(result.dimensions[0].recommendations).toBeUndefined();
+		expect(result.recommendations).toEqual([]);
+		expect(result.topActions).toEqual([]);
+		expect(result.changeSummary).toMatchObject({
+			actionable_recommendation_count: 0,
+			cleared_deterministic_recommendation_count: 1
+		});
+	});
 });

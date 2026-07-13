@@ -49,8 +49,8 @@
 					aria-label="BuildOS brain animation"
 				>
 					<source
-						src="/onboarding-assets/animations/brain-bolt-consistent-pulse.mp4"
-						type="video/mp4"
+						src="/onboarding-assets/animations/brain-bolt-consistent-pulse-transparent.webm"
+						type="video/webm"
 					/>
 				</video>
 			</div>

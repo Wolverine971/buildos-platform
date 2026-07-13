@@ -453,3 +453,213 @@ test('@wiring modal reconciles an accepted stream that closes without done', asy
 		});
 	}
 });
+
+test('@wiring modal forwards server continuity context on the next turn', async ({ page }) => {
+	const { admin, userId, actorId } = await authenticateHarnessUser(page);
+	const firstStream = deferred<Record<string, unknown>>();
+	const secondStream = deferred<Record<string, unknown>>();
+	const continuityContext = {
+		summary: 'Reviewed the launch checklist and identified the beta email as next.',
+		entities: {
+			projects: [{ id: randomUUID(), name: 'Modal continuity fixture' }]
+		},
+		context_type: 'global',
+		data_accessed: ['onto_projects'],
+		timestamp: new Date().toISOString()
+	};
+	let streamCount = 0;
+	let sessionId: string | null = null;
+	let projectId: string | null = null;
+	let testFailed = false;
+
+	await page.route('**/api/agent/v2/stream', async (route) => {
+		streamCount += 1;
+		const body = route.request().postDataJSON() as Record<string, unknown>;
+		if (streamCount === 1) {
+			firstStream.resolve(body);
+			await route.fulfill({
+				status: 200,
+				contentType: 'text/event-stream',
+				body: [
+					`data: ${JSON.stringify({ type: 'last_turn_context', context: continuityContext })}`,
+					`data: ${JSON.stringify({ type: 'done', finished_reason: 'stop' })}`,
+					''
+				].join('\n\n')
+			});
+			return;
+		}
+		secondStream.resolve(body);
+		await route.fulfill({
+			status: 200,
+			contentType: 'text/event-stream',
+			body: `data: ${JSON.stringify({ type: 'done', finished_reason: 'stop' })}\n\n`
+		});
+	});
+
+	try {
+		projectId = await seedModalProject(admin, actorId);
+		const setup = await openPrewarmedModal(page, 'Review the launch checklist.', {
+			forceSessionBootstrap: true
+		});
+		const { dialog } = setup;
+		await dialog.getByRole('button', { name: 'Send message' }).click();
+		sessionId = await readBootstrappedSessionId(setup.sessionBootstrapResponsePromise);
+		const firstBody = await firstStream.promise;
+		expect(firstBody.lastTurnContext).toBeNull();
+
+		const composer = dialog.locator('textarea').first();
+		await expect(composer).toBeEnabled();
+		await composer.fill('What should I do next?');
+		await dialog.getByRole('button', { name: 'Send message' }).click();
+		const secondBody = await secondStream.promise;
+
+		expect(secondBody).toMatchObject({
+			session_id: sessionId,
+			message: 'What should I do next?',
+			lastTurnContext: continuityContext
+		});
+		expect(secondBody.client_turn_id).not.toBe(firstBody.client_turn_id);
+		expect(secondBody.stream_run_id).not.toBe(firstBody.stream_run_id);
+		await expect(dialog.getByRole('button', { name: 'Stop response' })).toBeHidden();
+	} catch (error) {
+		testFailed = true;
+		throw error;
+	} finally {
+		await cleanupModalFixtures({
+			admin,
+			userId,
+			actorId,
+			sessionId,
+			projectId,
+			testFailed
+		});
+	}
+});
+
+test('@wiring modal uploads a temporary image and sends its canonical attachment ref', async ({
+	page
+}) => {
+	const { admin, userId, actorId } = await authenticateHarnessUser(page);
+	const attachmentCreate = deferred<Record<string, unknown>>();
+	const streamStarted = deferred<Record<string, unknown>>();
+	const temporaryAttachmentId = randomUUID();
+	const storagePath = `users/${userId}/chat-temp/${temporaryAttachmentId}/original.png`;
+	let sessionId: string | null = null;
+	let projectId: string | null = null;
+	let testFailed = false;
+
+	await page.route('**/api/agent/chat-attachments', async (route) => {
+		attachmentCreate.resolve(route.request().postDataJSON() as Record<string, unknown>);
+		await route.fulfill({
+			status: 200,
+			contentType: 'application/json',
+			body: JSON.stringify({
+				success: true,
+				data: {
+					asset: {
+						id: temporaryAttachmentId,
+						project_id: null,
+						kind: 'temporary_file',
+						storage_bucket: 'onto-assets',
+						storage_path: storagePath,
+						original_filename: 'modal-fixture.png',
+						content_type: 'image/png',
+						file_size_bytes: 68,
+						width: 1,
+						height: 1,
+						ocr_status: 'skipped',
+						expires_at: new Date(Date.now() + 60_000).toISOString()
+					},
+					upload: {
+						signed_url: `https://storage.invalid/storage/v1/object/upload/sign/onto-assets/${storagePath}?token=fake-token`,
+						path: storagePath,
+						token: 'fake-token'
+					}
+				}
+			})
+		});
+	});
+	await page.route('**/storage/v1/object/upload/sign/**', async (route) => {
+		await route.fulfill({
+			status: 200,
+			contentType: 'application/json',
+			body: JSON.stringify({ Key: `onto-assets/${storagePath}` })
+		});
+	});
+	await page.route('**/api/agent/v2/stream', async (route) => {
+		streamStarted.resolve(route.request().postDataJSON() as Record<string, unknown>);
+		await route.fulfill({
+			status: 200,
+			contentType: 'text/event-stream',
+			body: `data: ${JSON.stringify({ type: 'done', finished_reason: 'stop' })}\n\n`
+		});
+	});
+
+	try {
+		projectId = await seedModalProject(admin, actorId);
+		const setup = await openPrewarmedModal(page, 'Describe this image.', {
+			forceSessionBootstrap: true
+		});
+		const { dialog } = setup;
+		await dialog
+			.locator('input[type="file"]')
+			.first()
+			.setInputFiles({
+				name: 'modal-fixture.png',
+				mimeType: 'image/png',
+				buffer: Buffer.from(
+					'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+					'base64'
+				)
+			});
+
+		const createBody = await attachmentCreate.promise;
+		expect(createBody).toMatchObject({
+			project_id: null,
+			file_name: 'modal-fixture.png',
+			content_type: 'image/png',
+			metadata: { source_component: 'agent_chat_composer' }
+		});
+		expect(createBody.checksum_sha256).toMatch(/^[a-f0-9]{64}$/);
+		await expect(dialog.getByText('Ready to analyze')).toBeVisible();
+
+		await dialog.getByRole('button', { name: 'Send message' }).click();
+		sessionId = await readBootstrappedSessionId(setup.sessionBootstrapResponsePromise);
+		const streamBody = await streamStarted.promise;
+		expect(streamBody).toMatchObject({
+			session_id: sessionId,
+			message: 'Describe this image.',
+			attachments: [
+				{
+					attachment_kind: 'temporary_file',
+					media_type: 'image',
+					temporary_attachment_id: temporaryAttachmentId,
+					project_id: null,
+					storage_bucket: 'onto-assets',
+					storage_path: storagePath,
+					file_name: 'modal-fixture.png',
+					content_type: 'image/png',
+					ocr_status: 'skipped',
+					role: 'analysis_target',
+					display_order: 0
+				}
+			]
+		});
+		await expect(dialog.getByTestId('agent-chat-user-message')).toContainText(
+			'Describe this image.'
+		);
+		await expect(dialog.getByRole('button', { name: 'Stop response' })).toBeHidden();
+	} catch (error) {
+		testFailed = true;
+		throw error;
+	} finally {
+		await cleanupModalFixtures({
+			admin,
+			userId,
+			actorId,
+			sessionId,
+			projectId,
+			testFailed
+		});
+	}
+});

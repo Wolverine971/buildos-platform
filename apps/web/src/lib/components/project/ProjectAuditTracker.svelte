@@ -978,16 +978,77 @@
 						</span>
 					{/if}
 				</div>
-				{#if auditDetail.summary}
-					<p class="text-sm leading-relaxed text-foreground/85">{auditDetail.summary}</p>
-				{/if}
-				{#if auditDetail.project_thesis}
-					<p class="text-xs leading-relaxed text-muted-foreground">
-						<span class="font-semibold text-foreground/75">Thesis:</span>
-						{auditDetail.project_thesis}
-					</p>
-				{/if}
 			</div>
+
+			{#if detailRecommendations.length}
+				<section class="border-t border-border pt-3">
+					<h3 class="text-xs font-semibold uppercase text-muted-foreground">
+						Bottom line
+					</h3>
+					<p class="mt-1 text-xs text-muted-foreground">
+						Decide whether to adopt, reject, or refine the direction below.
+					</p>
+					<div class="mt-2 space-y-2">
+						{#each detailRecommendations as recommendation, index (recommendation.title ?? index)}
+							<div
+								class="border-l-2 {index === 0
+									? 'border-accent'
+									: 'border-border'} pl-2"
+							>
+								<div class="flex flex-wrap items-center gap-2">
+									<p class="min-w-0 text-sm font-semibold text-foreground">
+										{compactLabel(
+											recommendation.title,
+											`Recommendation ${index + 1}`
+										)}
+									</p>
+									{#if recommendation.priority}
+										<span
+											class="inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold {chipClass(
+												recommendation.priority
+											)}"
+										>
+											{recommendation.priority}
+										</span>
+									{/if}
+								</div>
+								{#if recommendation.summary}
+									<p class="mt-1 text-xs leading-relaxed text-muted-foreground">
+										<span class="font-semibold text-foreground/75"
+											>Factors:</span
+										>
+										{recommendation.summary}
+									</p>
+								{/if}
+								{#if recommendationMeta(recommendation)}
+									<p class="mt-1 text-[10px] uppercase text-muted-foreground">
+										{recommendationMeta(recommendation)}
+									</p>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</section>
+			{/if}
+
+			{#if auditDetail.summary || auditDetail.project_thesis}
+				<section class="border-t border-border pt-3">
+					<h3 class="text-xs font-semibold uppercase text-muted-foreground">
+						Audit context
+					</h3>
+					{#if auditDetail.summary}
+						<p class="mt-2 text-sm leading-relaxed text-foreground/85">
+							{auditDetail.summary}
+						</p>
+					{/if}
+					{#if auditDetail.project_thesis}
+						<p class="mt-1 text-xs leading-relaxed text-muted-foreground">
+							<span class="font-semibold text-foreground/75">Thesis:</span>
+							{auditDetail.project_thesis}
+						</p>
+					{/if}
+				</section>
+			{/if}
 
 			{#if detailDimensions.length}
 				<section class="border-t border-border pt-3">
@@ -1035,47 +1096,6 @@
 											</li>
 										{/each}
 									</ul>
-								{/if}
-							</div>
-						{/each}
-					</div>
-				</section>
-			{/if}
-
-			{#if detailRecommendations.length}
-				<section class="border-t border-border pt-3">
-					<h3 class="text-xs font-semibold uppercase text-muted-foreground">
-						Recommendations
-					</h3>
-					<div class="mt-2 space-y-2">
-						{#each detailRecommendations as recommendation, index (recommendation.title ?? index)}
-							<div class="border-l border-border pl-2">
-								<div class="flex flex-wrap items-center gap-2">
-									<p class="min-w-0 text-sm font-semibold text-foreground">
-										{compactLabel(
-											recommendation.title,
-											`Recommendation ${index + 1}`
-										)}
-									</p>
-									{#if recommendation.priority}
-										<span
-											class="inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold {chipClass(
-												recommendation.priority
-											)}"
-										>
-											{recommendation.priority}
-										</span>
-									{/if}
-								</div>
-								{#if recommendation.summary}
-									<p class="mt-1 text-xs leading-relaxed text-muted-foreground">
-										{recommendation.summary}
-									</p>
-								{/if}
-								{#if recommendationMeta(recommendation)}
-									<p class="mt-1 text-[10px] uppercase text-muted-foreground">
-										{recommendationMeta(recommendation)}
-									</p>
 								{/if}
 							</div>
 						{/each}

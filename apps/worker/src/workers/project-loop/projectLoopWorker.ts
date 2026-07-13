@@ -927,7 +927,7 @@ function auditRecommendationRole(
 	dimensionKey: string | undefined,
 	priority: ProjectAuditRecommendation['priority']
 ): ProjectAuditSuggestionRole {
-	if (dimensionKey === 'risk_decision_quality') return 'risk_follow_up';
+	if (dimensionKey === 'risk_decision_quality') return 'decision_point';
 	if (dimensionKey === 'documentation_quality' || dimensionKey === 'evidence_freshness') {
 		return 'cleanup';
 	}
@@ -967,6 +967,28 @@ function auditEvidenceToSuggestionEvidence(
 function recommendationRiskTier(recommendation: ProjectAuditRecommendation): 1 | 2 {
 	if (recommendation.priority === 'low') return 1;
 	return 2;
+}
+
+function sortAuditRecommendationsForDecision(
+	recommendations: ProjectAuditRecommendation[]
+): ProjectAuditRecommendation[] {
+	const priorityRank = { high: 3, medium: 2, low: 1 } as const;
+	return recommendations
+		.map((recommendation, index) => ({ recommendation, index }))
+		.sort((left, right) => {
+			const leftPriority = left.recommendation.priority
+				? priorityRank[left.recommendation.priority]
+				: 0;
+			const rightPriority = right.recommendation.priority
+				? priorityRank[right.recommendation.priority]
+				: 0;
+			if (leftPriority !== rightPriority) return rightPriority - leftPriority;
+			const leftDecision = left.recommendation.role === 'decision_point' ? 1 : 0;
+			const rightDecision = right.recommendation.role === 'decision_point' ? 1 : 0;
+			if (leftDecision !== rightDecision) return rightDecision - leftDecision;
+			return left.index - right.index;
+		})
+		.map(({ recommendation }) => recommendation);
 }
 
 function recommendationMemoryKey(value: string | null | undefined): string | null {
@@ -1104,7 +1126,9 @@ function buildCompleteAuditPacket(params: {
 			recommendations:
 				ctx.goals.length || ctx.projectDescription
 					? []
-					: ['Add a short project thesis or primary goal.']
+					: [
+							"Decide the project's primary outcome and write it as a one-sentence thesis."
+						]
 		}),
 		dimension({
 			key: 'documentation_quality',
@@ -1123,7 +1147,9 @@ function buildCompleteAuditPacket(params: {
 						: 'No project documents were available in the audit context.',
 			evidence_refs: docEvidence,
 			recommendations:
-				metrics.documentCount >= 5 ? [] : ['Expand or consolidate project documentation.']
+				metrics.documentCount >= 5
+					? []
+					: ['Choose the canonical project documents, then consolidate or expand them.']
 		}),
 		dimension({
 			key: 'plan_integrity',
@@ -1142,7 +1168,7 @@ function buildCompleteAuditPacket(params: {
 			recommendations:
 				metrics.goalCount > 0 && metrics.taskCount > 0
 					? []
-					: ['Connect the project goal to concrete tasks or milestones.']
+					: ['Decide the next milestone and connect it to concrete tasks.']
 		}),
 		dimension({
 			key: 'execution_health',
@@ -1164,10 +1190,14 @@ function buildCompleteAuditPacket(params: {
 			evidence_refs: taskEvidence,
 			recommendations:
 				metrics.blockedTaskCount >= 3
-					? ['Resolve or re-scope blocked tasks before adding more work.']
+					? [
+							'Choose which blocked tasks to unblock, re-scope, or drop before adding work.'
+						]
 					: metrics.openTaskCount > 0
 						? []
-						: ['Create or refresh the next execution tasks.']
+						: [
+								'Decide the next executable outcome and create the tasks needed to reach it.'
+							]
 		}),
 		dimension({
 			key: 'drift_scope_control',
@@ -1187,7 +1217,9 @@ function buildCompleteAuditPacket(params: {
 			),
 			recommendations:
 				metrics.recentActivityCount >= 20
-					? ['Review recent changes against the current project thesis.']
+					? [
+							'Confirm which recent changes belong in the current scope and defer the rest.'
+						]
 					: []
 		}),
 		dimension({
@@ -1195,22 +1227,26 @@ function buildCompleteAuditPacket(params: {
 			name: 'Risk and decision quality',
 			rating: 'unknown',
 			summary:
-				'The basic audit packet does not yet load a dedicated risk and decision register.',
+				'The available project evidence does not name a current decision, risk, or blocker.',
 			evidence_refs: projectEvidence,
 			uncertainty:
-				'The next audit generation stage should include risks, decisions, and blockers explicitly.',
-			recommendations: ['Add explicit risks, blockers, or decision points where they exist.']
+				'A decision owner and decision criteria were not visible in the loaded project evidence.',
+			recommendations: [
+				'Name the next project decision and the risks or blockers that could change it.'
+			]
 		}),
 		dimension({
 			key: 'dependency_readiness',
 			name: 'Dependency readiness',
 			rating: 'unknown',
 			summary:
-				'The basic audit packet cannot yet verify stakeholders, handoffs, and calendar commitments.',
+				'The available project evidence does not name external owners, handoffs, or due dates.',
 			evidence_refs: projectEvidence,
 			uncertainty:
-				'Calendar and dependency context should be added to the complete audit snapshot loader.',
-			recommendations: ['Make external dependencies or handoffs visible in the project.']
+				'Dependency ownership and timing were not visible in the loaded project evidence.',
+			recommendations: [
+				'Confirm the owner, handoff, and due date for each external dependency.'
+			]
 		}),
 		dimension({
 			key: 'evidence_freshness',
@@ -1229,7 +1265,7 @@ function buildCompleteAuditPacket(params: {
 			recommendations:
 				metrics.staleDocumentCount === 0
 					? []
-					: ['Refresh stale core documents or mark them intentionally archival.']
+					: ['Decide which stale documents to refresh and which to archive.']
 		})
 	];
 
@@ -1275,21 +1311,23 @@ function buildCompleteAuditPacket(params: {
 		title: item.name,
 		summary: item.summary
 	}));
-	const recommendations = nonGreen.flatMap((item) =>
-		(item.recommendations ?? []).slice(0, 2).map((recommendation) => {
-			const priority: NonNullable<ProjectAuditRecommendation['priority']> =
-				item.rating === 'red' ? 'high' : item.rating === 'yellow' ? 'medium' : 'low';
-			return {
-				title: recommendation,
-				summary: item.summary,
-				priority,
-				role: auditRecommendationRole(item.key, priority),
-				evidence_refs: item.evidence_refs.slice(0, 4),
-				dimension: item.key
-			};
-		})
+	const recommendations = sortAuditRecommendationsForDecision(
+		nonGreen.flatMap((item) =>
+			(item.recommendations ?? []).slice(0, 2).map((recommendation) => {
+				const priority: NonNullable<ProjectAuditRecommendation['priority']> =
+					item.rating === 'red' ? 'high' : item.rating === 'yellow' ? 'medium' : 'low';
+				return {
+					title: recommendation,
+					summary: item.summary,
+					priority,
+					role: auditRecommendationRole(item.key, priority),
+					evidence_refs: item.evidence_refs.slice(0, 4),
+					dimension: item.key
+				};
+			})
+		)
 	);
-	const topActions = recommendations.slice(0, 5);
+	const topActions = recommendations.slice(0, 5) as unknown as Record<string, unknown>[];
 	const summary =
 		nonGreen.length > 0
 			? `Complete audit generated ${nonGreen.length} non-green dimension${nonGreen.length === 1 ? '' : 's'} for ${ctx.projectName}.`
@@ -1429,7 +1467,9 @@ function describeAuditScaffold(packet: CompleteAuditPacket): string {
 				priority: recommendation.priority,
 				dimension: recommendation.dimension
 			})),
-			open_questions: packet.openQuestions
+			open_questions: packet.openQuestions,
+			previously_reviewed_recommendations:
+				packet.changeSummary.suppressed_recommendations ?? []
 		},
 		null,
 		2
@@ -1616,19 +1656,96 @@ function sanitizeAuditRecommendations(
 }
 
 function mergeAuditRecommendations(
-	synthesized: ProjectAuditRecommendation[],
-	deterministic: ProjectAuditRecommendation[]
+	...sources: ProjectAuditRecommendation[][]
 ): ProjectAuditRecommendation[] {
 	const seen = new Set<string>();
 	const merged: ProjectAuditRecommendation[] = [];
-	for (const recommendation of [...synthesized, ...deterministic]) {
+	for (const recommendation of sources.flat()) {
 		const key = recommendationMemoryKey(recommendation.title);
 		if (!key || seen.has(key)) continue;
 		seen.add(key);
 		merged.push(recommendation);
 		if (merged.length >= 12) break;
 	}
-	return merged;
+	return sortAuditRecommendationsForDecision(merged);
+}
+
+function auditPriorityForRating(
+	rating: ProjectAuditDimension['rating'] | undefined
+): NonNullable<ProjectAuditRecommendation['priority']> {
+	return rating === 'red' ? 'high' : rating === 'yellow' ? 'medium' : 'low';
+}
+
+function recommendationsFromDimensionUpdates(
+	dimensionUpdates: Map<ProjectAuditDimensionKey, Partial<ProjectAuditDimension>>,
+	dimensions: ProjectAuditDimension[]
+): ProjectAuditRecommendation[] {
+	const recommendations: ProjectAuditRecommendation[] = [];
+	for (const [key, update] of dimensionUpdates) {
+		const dimensionItem = dimensions.find((item) => item.key === key);
+		const summary = compactAuditText(update.summary ?? dimensionItem?.summary ?? null, 700);
+		const evidenceRefs = update.evidence_refs ?? dimensionItem?.evidence_refs ?? [];
+		if (!summary || evidenceRefs.length === 0) continue;
+		const priority = auditPriorityForRating(update.rating ?? dimensionItem?.rating);
+		for (const title of update.recommendations ?? []) {
+			const compactTitle = compactAuditText(title, 180);
+			if (!compactTitle) continue;
+			recommendations.push({
+				title: compactTitle,
+				summary,
+				role: auditRecommendationRole(key, priority),
+				priority,
+				dimension: key,
+				evidence_refs: evidenceRefs
+			});
+		}
+	}
+	return recommendations;
+}
+
+function recommendationsFromOpenQuestions(
+	openQuestions: Record<string, unknown>[]
+): ProjectAuditRecommendation[] {
+	return openQuestions
+		.map((question): ProjectAuditRecommendation | null => {
+			const title = compactAuditText(asString(question.question), 180);
+			const evidenceRefs = asUnknownArray(question.evidence_refs).filter(
+				(ref): ref is ProjectAuditEvidenceRef => Boolean(asRecord(ref))
+			);
+			if (!title || evidenceRefs.length === 0) return null;
+			const dimension = asAuditDimensionKey(question.dimension);
+			const factorLabels = evidenceRefs
+				.map((ref) => compactAuditText(ref.label, 80))
+				.filter((label): label is string => Boolean(label))
+				.slice(0, 3);
+			return {
+				title,
+				summary: factorLabels.length
+					? `The audit could not resolve this from the current evidence. Relevant factors: ${factorLabels.join(', ')}.`
+					: 'The audit could not resolve this from the current project evidence.',
+				role: 'decision_point',
+				priority: 'medium',
+				...(dimension ? { dimension } : {}),
+				evidence_refs: evidenceRefs
+			};
+		})
+		.filter((item): item is ProjectAuditRecommendation => Boolean(item));
+}
+
+function removePreviouslyReviewedRecommendations(
+	packet: CompleteAuditPacket,
+	recommendations: ProjectAuditRecommendation[]
+): ProjectAuditRecommendation[] {
+	const suppressedKeys = new Set(
+		asUnknownArray(packet.changeSummary.suppressed_recommendations)
+			.map((item) => recommendationMemoryKey(asString(item)))
+			.filter((key): key is string => Boolean(key))
+	);
+	if (suppressedKeys.size === 0) return recommendations;
+	return recommendations.filter((recommendation) => {
+		const key = recommendationMemoryKey(recommendation.title);
+		return !key || !suppressedKeys.has(key);
+	});
 }
 
 export function applyCompleteAuditSynthesis(
@@ -1645,13 +1762,43 @@ export function applyCompleteAuditSynthesis(
 	);
 	const dimensions = packet.dimensions.map((dimensionItem) => {
 		const update = dimensionUpdates.get(dimensionItem.key);
-		return update ? { ...dimensionItem, ...update } : dimensionItem;
+		if (!update) return dimensionItem;
+		const merged = { ...dimensionItem, ...update };
+		return update.rating === 'green' && !update.recommendations?.length
+			? withoutDimensionRecommendations(merged)
+			: merged;
 	});
 
 	const topFindings = sanitizeAuditFindings(audit.top_findings, evidenceCatalog);
 	const risks = sanitizeAuditRisks(audit.risks, evidenceCatalog);
 	const openQuestions = sanitizeAuditOpenQuestions(audit.open_questions, evidenceCatalog);
-	const recommendations = sanitizeAuditRecommendations(audit.recommendations, evidenceCatalog);
+	const explicitRecommendations = sanitizeAuditRecommendations(
+		audit.recommendations,
+		evidenceCatalog
+	);
+	const dimensionRecommendations = recommendationsFromDimensionUpdates(
+		dimensionUpdates,
+		dimensions
+	);
+	const retainedDeterministicRecommendations = packet.recommendations.filter(
+		(recommendation) =>
+			!recommendation.dimension ||
+			dimensionUpdates.get(recommendation.dimension)?.rating !== 'green'
+	);
+	let recommendations = removePreviouslyReviewedRecommendations(
+		packet,
+		mergeAuditRecommendations(
+			explicitRecommendations,
+			dimensionRecommendations,
+			retainedDeterministicRecommendations
+		)
+	);
+	if (recommendations.length === 0 && openQuestions.length > 0) {
+		recommendations = removePreviouslyReviewedRecommendations(
+			packet,
+			recommendationsFromOpenQuestions(openQuestions)
+		);
+	}
 	const summary = compactAuditText(asString(audit.summary), 1000);
 	const projectThesis = compactAuditText(asString(audit.project_thesis), 700);
 	const deliveryConfidence = asDeliveryConfidence(audit.delivery_confidence);
@@ -1660,7 +1807,14 @@ export function applyCompleteAuditSynthesis(
 		dimension_update_count: dimensionUpdates.size,
 		risk_count: risks.length,
 		open_question_count: openQuestions.length,
-		recommendation_count: recommendations.length
+		recommendation_count: explicitRecommendations.length,
+		derived_recommendation_count: Math.max(
+			0,
+			recommendations.length - explicitRecommendations.length
+		),
+		actionable_recommendation_count: recommendations.length,
+		cleared_deterministic_recommendation_count:
+			packet.recommendations.length - retainedDeterministicRecommendations.length
 	};
 	const hasGroundedSynthesis =
 		synthesisCounts.finding_count +
@@ -1680,11 +1834,8 @@ export function applyCompleteAuditSynthesis(
 		dimensions,
 		risks,
 		openQuestions: openQuestions.length ? openQuestions : packet.openQuestions,
-		recommendations: mergeAuditRecommendations(recommendations, packet.recommendations),
-		topActions: mergeAuditRecommendations(recommendations, packet.recommendations).slice(
-			0,
-			5
-		) as unknown as Record<string, unknown>[],
+		recommendations,
+		topActions: recommendations.slice(0, 5) as unknown as Record<string, unknown>[],
 		changeSummary: {
 			...packet.changeSummary,
 			synthesis_model: COMPLETE_AUDIT_SYNTHESIS_MODEL_USED,
@@ -1720,7 +1871,14 @@ async function synthesizeCompleteAuditPacket(params: {
 		'Every finding, dimension update, risk, open question, and recommendation MUST cite evidence_refs from the catalog.',
 		'Focus on coherence: duplicated work, missing decisions, overloaded scope, stale evidence, blockers, and unclear dependencies.',
 		'Do not create mutation operations. Recommendations should be review follow-ups, not direct writes.',
-		'If evidence is insufficient, say so as an open question with the closest supporting evidence.',
+		'Lead with the bottom line: put the single most important user decision or action first in recommendations.',
+		'Each recommendation title must state exactly what to decide, change, update, or consider. Never use a status-only or category-only title.',
+		'Each recommendation summary must state your recommended stance and the 2-3 evidence-backed factors that should drive the decision.',
+		'Explicitly update any scaffold dimension you can resolve from evidence; use rating="green" with no dimension recommendation when the evidence shows no user action is needed.',
+		'If you raise an open question or a dimension recommendation, mirror it as a top-level recommendation; use role="decision_point" for a question that needs the user to choose or clarify.',
+		'Do not re-raise anything listed in previously_reviewed_recommendations unless materially new evidence changes the proposed action.',
+		'If the project is healthy and nothing warrants user attention, return an empty recommendations array. Do not invent work merely to create an inbox item.',
+		'If evidence is insufficient but the gap requires user attention, state the exact decision as an open question and pair it with a decision_point recommendation.',
 		'',
 		'Return ONLY JSON:',
 		'{ "audit": {',

@@ -82,7 +82,7 @@
 		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
 			<div class="flex justify-center mb-8">
 				<video
-					src="/onboarding-assets/animations/brain-bolt-electric.mp4"
+					src="/onboarding-assets/animations/brain-bolt-electric-transparent.webm"
 					class="w-16 h-16 rounded-md"
 					autoplay
 					loop

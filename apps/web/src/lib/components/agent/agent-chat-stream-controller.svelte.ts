@@ -703,6 +703,7 @@ export class AgentChatStreamController {
 						) {
 							return;
 						}
+						this.error = 'The response ended before completion. Please try again.';
 					}
 					this.isStreaming = false;
 					this.currentActivity = '';

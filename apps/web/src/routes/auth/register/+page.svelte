@@ -381,7 +381,7 @@
 					class="w-16 h-16 rounded-lg flex items-center justify-center border border-border bg-card shadow-ink tx tx-bloom tx-weak"
 				>
 					<video
-						src="/onboarding-assets/animations/brain-bolt-electric.mp4"
+						src="/onboarding-assets/animations/brain-bolt-electric-transparent.webm"
 						class="w-12 h-12"
 						autoplay={!prefersReducedMotion}
 						loop

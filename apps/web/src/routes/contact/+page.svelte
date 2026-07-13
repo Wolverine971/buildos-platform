@@ -98,7 +98,7 @@
 					>
 						<video
 							bind:this={brandVideo}
-							src="/onboarding-assets/animations/brain-bolt-electric.mp4"
+							src="/onboarding-assets/animations/brain-bolt-electric-transparent.webm"
 							poster="/brain-bolt-80.png"
 							class="h-10 w-10 motion-reduce:hidden"
 							width="40"

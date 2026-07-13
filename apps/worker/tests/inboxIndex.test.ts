@@ -148,6 +148,20 @@ describe('inbox index mappers', () => {
 			project_id: 'project-1',
 			status: 'ready',
 			summary: 'The project needs one decision and one cleanup.',
+			recommendations: [
+				{
+					title: 'Choose the launch go/no-go owner',
+					summary: 'The launch plan has work in flight but no named decision owner.',
+					role: 'decision_point',
+					priority: 'high',
+					evidence_refs: [{ label: 'Launch plan' }, { label: 'Ship launch page' }]
+				},
+				{
+					title: 'Archive the stale launch brief',
+					summary: 'The old brief conflicts with the active plan.',
+					role: 'cleanup'
+				}
+			],
 			unresolved_suggestion_count: 2,
 			generated_suggestion_count: 3,
 			created_at: '2026-07-01T12:00:00.000Z'
@@ -159,11 +173,43 @@ describe('inbox index mappers', () => {
 			project_id: 'project-1',
 			audience: 'project_members',
 			status: 'pending',
-			title: 'Complete project audit',
-			summary: 'The project needs one decision and one cleanup.',
+			title: 'Decision: Choose the launch go/no-go owner',
+			summary:
+				'Factors: The launch plan has work in flight but no named decision owner. Evidence: Launch plan, Ship launch page. 1 more recommendation in the audit.',
+			risk_tier: 3,
 			action_kinds: ['open', 'resolve'],
 			expires_at: '2026-07-31T12:00:00.000Z'
 		});
+	});
+
+	it('does not map a clean project audit into the inbox', () => {
+		expect(
+			mapProjectAuditToInboxItem({
+				id: 'audit-clean',
+				project_id: 'project-1',
+				status: 'ready',
+				summary: 'No immediate changes are recommended.',
+				recommendations: [],
+				generated_suggestion_count: 0,
+				unresolved_suggestion_count: 0
+			})
+		).toBeNull();
+	});
+
+	it('does not map an audit before its recommendations are final', () => {
+		expect(
+			mapProjectAuditToInboxItem({
+				id: 'audit-running',
+				project_id: 'project-1',
+				status: 'running',
+				recommendations: [
+					{
+						title: 'Draft recommendation',
+						summary: 'This should not surface before the audit is ready.'
+					}
+				]
+			})
+		).toBeNull();
 	});
 
 	it('writes an expired inbox row immediately when a pending source is past its review TTL', async () => {
@@ -205,6 +251,13 @@ describe('inbox index mappers', () => {
 					id: 'audit-1',
 					project_id: 'project-1',
 					status: 'ready',
+					recommendations: [
+						{
+							title: 'Decide whether to defer launch',
+							summary: 'Two launch blockers remain open.',
+							role: 'decision_point'
+						}
+					],
 					unresolved_suggestion_count: 1,
 					created_at: '2026-07-01T12:00:00.000Z'
 				}
@@ -225,8 +278,51 @@ describe('inbox index mappers', () => {
 		expect(upserts[0]).toMatchObject({
 			source_type: 'project_audit',
 			source_ref_id: 'audit-1',
-			status: 'pending'
+			status: 'pending',
+			title: 'Decision: Decide whether to defer launch'
 		});
+	});
+
+	it('expires an existing project audit inbox item when the completed audit has no action', async () => {
+		const { supabase, updates, upserts } = createSupabaseMock({
+			project_audits: [
+				{
+					id: 'audit-clean',
+					project_id: 'project-1',
+					status: 'ready',
+					recommendations: [],
+					generated_suggestion_count: 0,
+					unresolved_suggestion_count: 0
+				}
+			],
+			inbox_items: [
+				{
+					id: 'inbox-clean',
+					source_type: 'project_audit',
+					source_ref_id: 'audit-clean',
+					status: 'deciding'
+				}
+			]
+		});
+
+		const row = await syncInboxItemForProjectAudit({
+			supabase: supabase as any,
+			auditId: 'audit-clean'
+		});
+
+		expect(row).toMatchObject({
+			status: 'expired',
+			source_status: 'no_action_required',
+			blocked_reason: 'Audit completed without an actionable recommendation'
+		});
+		expect(upserts).toHaveLength(0);
+		expect(updates).toContainEqual(
+			expect.objectContaining({
+				table: 'inbox_items',
+				status: 'expired',
+				source_status: 'no_action_required'
+			})
+		);
 	});
 
 	it('expires active child suggestion inbox rows that are grouped into an audit packet', async () => {
