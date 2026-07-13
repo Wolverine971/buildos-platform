@@ -526,6 +526,9 @@ export class ChatToolExecutor {
 					this.readExecutor.getOntoTaskDetails({ task_id: taskId })
 				);
 
+			case 'move_onto_task':
+				return this.writeExecutor.moveOntoTask(args);
+
 			case 'update_onto_goal':
 				return this.writeExecutor.updateOntoGoal(args, (goalId) =>
 					this.readExecutor.getOntoGoalDetails({ goal_id: goalId })

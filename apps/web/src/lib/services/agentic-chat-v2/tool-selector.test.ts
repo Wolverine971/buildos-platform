@@ -315,6 +315,52 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('update_onto_document');
 	});
 
+	it('hot-loads the cross-project task move only for explicit transfer intent', () => {
+		const moveNames = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage:
+				'This task is in the wrong project. It needs to be moved to the Cadre project.'
+		}).map((tool) => tool.function?.name);
+		const ordinaryNames = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage: 'Move this task to in progress.'
+		}).map((tool) => tool.function?.name);
+		const globalMoveNames = selectFastChatTools({
+			contextType: 'global',
+			latestUserMessage: 'Move this task to another project.'
+		}).map((tool) => tool.function?.name);
+		const ordinaryGlobalNames = selectFastChatTools({
+			contextType: 'global',
+			latestUserMessage: 'Find my most important task.'
+		}).map((tool) => tool.function?.name);
+
+		expect(moveNames).toContain('move_onto_task');
+		expect(ordinaryNames).not.toContain('move_onto_task');
+		expect(globalMoveNames).toContain('move_onto_task');
+		expect(ordinaryGlobalNames).not.toContain('move_onto_task');
+	});
+
+	it('keeps task move loaded after the user resolves a destination clarification', () => {
+		const names = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage: 'The Cadre Content Operations one.',
+			turnIntent: {
+				version: 1,
+				requiresWrite: true,
+				action: 'organize',
+				entityKind: 'task',
+				operations: [{ action: 'organize', entityKind: 'task' }],
+				source: 'pending_continuation',
+				originalRequestText:
+					'This task is in the wrong project. Move it to the Cadre project.',
+				originatingTurnRunId: 'turn-1',
+				clearPending: false
+			}
+		}).map((tool) => tool.function?.name);
+
+		expect(names).toContain('move_onto_task');
+	});
+
 	it('routes document-heavy project turns to the document profile', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 

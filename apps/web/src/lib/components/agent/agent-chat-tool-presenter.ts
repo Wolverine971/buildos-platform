@@ -170,6 +170,7 @@ const TOOL_CATALOG: Record<string, ToolCatalogEntry> = {
 
 	// Tracked but no user-facing toast (quieter effects)
 	create_task_document: { toast: false, trackMutation: true },
+	move_onto_task: { toast: false, trackMutation: true },
 	link_onto_entities: { toast: false, trackMutation: true },
 	unlink_onto_edge: { toast: false, trackMutation: true }
 };
@@ -695,10 +696,14 @@ function genericPrefixDescriptor(
 	const name = toolName.toLowerCase();
 	const op = gatewayOp?.toLowerCase() ?? '';
 	const entity = entityNounFromToolName(name, op);
-	if (name.startsWith('create_') || op.endsWith('.create')) return { action: `Creating ${entity}` };
-	if (name.startsWith('update_') || op.endsWith('.update')) return { action: `Updating ${entity}` };
-	if (name.startsWith('delete_') || op.endsWith('.delete')) return { action: `Deleting ${entity}` };
-	if (name.startsWith('search_') || op.includes('.search')) return { action: `Searching ${entity}` };
+	if (name.startsWith('create_') || op.endsWith('.create'))
+		return { action: `Creating ${entity}` };
+	if (name.startsWith('update_') || op.endsWith('.update'))
+		return { action: `Updating ${entity}` };
+	if (name.startsWith('delete_') || op.endsWith('.delete'))
+		return { action: `Deleting ${entity}` };
+	if (name.startsWith('search_') || op.includes('.search'))
+		return { action: `Searching ${entity}` };
 	if (name.startsWith('list_') || op.includes('.list')) return { action: `Listing ${entity}` };
 	if (name.startsWith('get_') || op.includes('.read')) return { action: `Loading ${entity}` };
 	return null;
@@ -1173,6 +1178,10 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		update_onto_task: (args) => ({
 			action: 'Updating task',
 			target: buildEntityTarget(args?.task_title ?? args?.title, args?.task_id, 'task')
+		}),
+		move_onto_task: (args) => ({
+			action: 'Moving task between projects',
+			target: resolveEntityName('task', args?.task_id)
 		}),
 		delete_onto_task: (args) => ({
 			action: 'Deleting task',
@@ -1791,6 +1800,12 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		if (toolName === 'create_onto_project' && resultPayload?.clarifications?.length) {
 			return;
 		}
+		if (
+			resultPayload?.requires_user_action === true ||
+			resultPayload?.status === 'already_moved'
+		) {
+			return;
+		}
 
 		const args = safeParseArgs(argsJson);
 		const projectId = resolveProjectId(args, toolResult);
@@ -1798,6 +1813,16 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		mutationCount += 1;
 		if (projectId) {
 			mutatedProjectIds.add(projectId);
+		}
+		if (toolName === 'move_onto_task') {
+			for (const candidate of [
+				args.expected_source_project_id,
+				args.destination_project_id
+			]) {
+				if (typeof candidate === 'string' && candidate.length > 0) {
+					mutatedProjectIds.add(candidate);
+				}
+			}
 		}
 	}
 

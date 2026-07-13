@@ -1123,6 +1123,40 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 			}
 		}
 	},
+	{
+		type: 'function',
+		function: {
+			name: 'move_onto_task',
+			description: `Move one standalone task from one project to another without changing chat context first. When a project is focused, it must be the source.
+This is a purpose-built cross-project operation: it verifies write access to both projects and preserves the task ID, comments, and eligible assignees.
+Clean moves execute immediately. If project relationships or plan/goal/milestone links must be cleared, or destination-ineligible assignees removed, the tool returns an impact preview and confirmation_token. Ask the user to confirm those exact effects, then call the tool in a later turn with that token. Never confirm on the user's behalf or retry with the token in the same turn.
+Archived destinations and tasks with project assets, schedules, or recurrence are blocked in this first version because their dependent state needs an explicit transfer policy. Generic update tools remain restricted to the current project.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					task_id: {
+						type: 'string',
+						description: 'UUID of the task to move from the expected source project'
+					},
+					expected_source_project_id: {
+						type: 'string',
+						description:
+							'Current source project UUID. The task must still belong to this project.'
+					},
+					destination_project_id: {
+						type: 'string',
+						description: 'Destination project UUID. Write access is required.'
+					},
+					confirmation_token: {
+						type: 'string',
+						description:
+							'Omit on the first call. Supply only after the user explicitly confirms the returned impact preview in a later turn.'
+					}
+				},
+				required: ['task_id', 'expected_source_project_id', 'destination_project_id']
+			}
+		}
+	},
 
 	{
 		type: 'function',

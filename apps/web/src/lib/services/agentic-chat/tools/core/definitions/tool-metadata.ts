@@ -434,6 +434,19 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['project'],
 		category: 'write'
 	},
+	move_onto_task: {
+		summary: 'Move a standalone task between two writable projects.',
+		capabilities: [
+			'Preserves task identity and comments',
+			'Checks source and destination write access',
+			'Previews relationship, task-link, and assignee impact before destructive changes',
+			'Uses a stale-safe confirmation token when user approval is required'
+		],
+		// Intentionally not part of a default context surface. The fast selector
+		// hot-loads it for task-transfer intent and tool_search can discover it.
+		contexts: [],
+		category: 'write'
+	},
 	update_onto_project: {
 		summary: 'Update project headline details, state, timeline, and facets.',
 		capabilities: [

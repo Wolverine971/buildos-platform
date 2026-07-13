@@ -37,11 +37,47 @@ coverage
 .vitest
 *.lcov
 
+# Python-generated files
+__pycache__/
+*.py[cod]
+
 # Turbo
 .turbo
 
 # Vercel
 .vercel
+
+# Local raw media imports and in-progress recordings
+/wip-videos/
+/IMG_*.[Hh][Ee][Ii][Cc]
+/IMG_*.[Mm][Oo][Vv]
+/IMG_*.[Mm][Pp]4
+
+# HyperFrames-generated media and copied composition inputs. Keep authored
+# project files and named final deliverables visible to Git.
+/docs/marketing/visual-assets/**/.hyperframes/
+/docs/marketing/visual-assets/**/.thumbnails/
+/docs/marketing/visual-assets/**/.media/images/
+/docs/marketing/visual-assets/**/assets/
+/docs/marketing/visual-assets/**/capture/mobile/
+/docs/marketing/visual-assets/**/capture/screenshots/
+/docs/marketing/visual-assets/**/snapshots/*.gif
+/docs/marketing/visual-assets/**/snapshots/*.jpeg
+/docs/marketing/visual-assets/**/snapshots/*.jpg
+/docs/marketing/visual-assets/**/snapshots/*.png
+/docs/marketing/visual-assets/**/snapshots/*.webp
+/docs/marketing/visual-assets/**/delivery/qa*/
+/docs/marketing/visual-assets/**/delivery/*candidate*.jpeg
+/docs/marketing/visual-assets/**/delivery/*candidate*.jpg
+/docs/marketing/visual-assets/**/delivery/*candidate*.png
+/docs/marketing/visual-assets/**/receipt-*.jpeg
+/docs/marketing/visual-assets/**/receipt-*.jpg
+/docs/marketing/visual-assets/**/receipt-*.png
+/docs/marketing/visual-assets/**/renders/*.meta.json
+/docs/marketing/visual-assets/**/renders/*_[0-9][0-9][0-9][0-9]-*.mp4
+/docs/marketing/visual-assets/**/renders/*preview*.jpeg
+/docs/marketing/visual-assets/**/renders/*preview*.jpg
+/docs/marketing/visual-assets/**/renders/*preview*.png
 
 # Generated Supabase files
 supabase.openapi*.json

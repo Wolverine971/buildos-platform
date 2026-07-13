@@ -5,6 +5,7 @@ import type { FastToolExecution } from './shared';
 import {
 	classifyToolExecution,
 	classifyToolTraceName,
+	doesToolExecutionRequireUserAction,
 	didGatewayExecSucceed,
 	didToolExecutionReachWriteExecutor,
 	extractCanonicalOp,
@@ -111,6 +112,27 @@ describe('tool classification', () => {
 		expect(didGatewayExecSucceed(failedGatewayWrite)).toBe(false);
 		expect(isDuplicateWriteSkippedExecution(duplicate)).toBe(true);
 		expect(isWriteLedgerToolExecution(duplicate)).toBe(false);
+	});
+
+	it('records a completed task move but not its confirmation preview', () => {
+		const preview = execution({
+			name: 'move_onto_task',
+			result: { status: 'confirmation_required', requires_user_action: true }
+		});
+		const moved = execution({
+			name: 'move_onto_task',
+			result: { status: 'moved', task: { id: 'task-1' } }
+		});
+		const alreadyMoved = execution({
+			name: 'move_onto_task',
+			result: { status: 'already_moved', task: { id: 'task-1' } }
+		});
+
+		expect(isWriteLedgerToolExecution(preview)).toBe(false);
+		expect(isWriteLedgerToolExecution(moved)).toBe(true);
+		expect(isWriteLedgerToolExecution(alreadyMoved)).toBe(false);
+		expect(doesToolExecutionRequireUserAction(preview)).toBe(true);
+		expect(doesToolExecutionRequireUserAction(moved)).toBe(false);
 	});
 
 	it('distinguishes writes that reached execution from validation-only results', () => {

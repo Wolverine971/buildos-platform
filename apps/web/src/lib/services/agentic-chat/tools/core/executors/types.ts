@@ -450,6 +450,13 @@ export interface UpdateOntoTaskArgs {
 	props?: Record<string, unknown>;
 }
 
+export interface MoveOntoTaskArgs {
+	task_id: string;
+	expected_source_project_id: string;
+	destination_project_id: string;
+	confirmation_token?: string;
+}
+
 export interface TagOntoEntityArgs {
 	project_id: string;
 	entity_type: 'task' | 'goal' | 'document';

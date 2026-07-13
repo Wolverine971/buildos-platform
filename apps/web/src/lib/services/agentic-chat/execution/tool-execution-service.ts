@@ -202,7 +202,9 @@ export class ToolExecutionService implements BaseService {
 		'parent_id',
 		'parent_document_id',
 		'new_parent_id',
-		'supporting_milestone_id'
+		'supporting_milestone_id',
+		'expected_source_project_id',
+		'destination_project_id'
 	]);
 	private static readonly STRICT_UUID_ARG_KEYS = new Set([
 		'task_id',
@@ -218,7 +220,9 @@ export class ToolExecutionService implements BaseService {
 		'parent_id',
 		'parent_document_id',
 		'new_parent_id',
-		'supporting_milestone_id'
+		'supporting_milestone_id',
+		'expected_source_project_id',
+		'destination_project_id'
 	]);
 	private static readonly PROJECT_SCOPED_ID_ARG_KINDS: Record<string, ProjectScopedEntityKind> = {
 		project_id: 'project',
@@ -2950,6 +2954,44 @@ export class ToolExecutionService implements BaseService {
 		availableTools: ChatToolDefinition[],
 		toolCallId: string
 	): ToolExecutionResult | null {
+		if (toolName === 'move_onto_task') {
+			const scopedProjectId = this.resolveProjectIdFromContext(context);
+			const expectedSourceProjectId =
+				typeof args.expected_source_project_id === 'string'
+					? args.expected_source_project_id.trim()
+					: '';
+			const destinationProjectId =
+				typeof args.destination_project_id === 'string'
+					? args.destination_project_id.trim()
+					: '';
+
+			if (
+				!isValidUUID(expectedSourceProjectId) ||
+				!isValidUUID(destinationProjectId) ||
+				expectedSourceProjectId === destinationProjectId
+			) {
+				return {
+					success: false,
+					error: 'move_onto_task requires different, valid expected_source_project_id and destination_project_id UUIDs.',
+					errorType: 'validation_error',
+					toolName,
+					toolCallId
+				};
+			}
+
+			if (scopedProjectId && expectedSourceProjectId !== scopedProjectId) {
+				return {
+					success: false,
+					error: 'move_onto_task expected_source_project_id must match the current project focus. The destination may be another writable project.',
+					errorType: 'validation_error',
+					toolName,
+					toolCallId
+				};
+			}
+
+			return null;
+		}
+
 		if (!this.toolSupportsProjectId(toolName, availableTools)) {
 			return null;
 		}
@@ -3051,6 +3093,7 @@ export class ToolExecutionService implements BaseService {
 			toolName === 'create_task_document' ||
 			toolName === 'link_onto_entities' ||
 			toolName === 'move_document_in_tree' ||
+			toolName === 'move_onto_task' ||
 			toolName === 'tag_onto_entity'
 		);
 	}

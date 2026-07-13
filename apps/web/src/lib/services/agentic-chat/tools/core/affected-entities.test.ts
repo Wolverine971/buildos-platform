@@ -74,4 +74,51 @@ describe('affected entity extraction', () => {
 			})
 		).toEqual([]);
 	});
+
+	it('records only an applied task move, not its confirmation preview', () => {
+		const base = {
+			tool_name: 'move_onto_task',
+			gateway_op: 'onto.task.move',
+			arguments: {
+				task_id: 'task-1',
+				expected_source_project_id: 'project-1',
+				destination_project_id: 'project-2'
+			},
+			success: true
+		};
+
+		expect(
+			extractAffectedEntitiesFromToolExecution({
+				...base,
+				result: { status: 'confirmation_required', requires_user_action: true }
+			})
+		).toEqual([]);
+		expect(
+			extractAffectedEntitiesFromToolExecution({
+				...base,
+				result: {
+					status: 'already_moved',
+					task: { id: 'task-1', title: 'Move me', project_id: 'project-2' }
+				}
+			})
+		).toEqual([]);
+		expect(
+			extractAffectedEntitiesFromToolExecution({
+				...base,
+				result: {
+					status: 'moved',
+					task: { id: 'task-1', title: 'Move me', project_id: 'project-2' }
+				}
+			})
+		).toEqual([
+			{
+				kind: 'task',
+				id: 'task-1',
+				title: 'Move me',
+				projectId: 'project-2',
+				operation: 'moved',
+				url: '/projects/project-2?entity=task&entity_id=task-1'
+			}
+		]);
+	});
 });

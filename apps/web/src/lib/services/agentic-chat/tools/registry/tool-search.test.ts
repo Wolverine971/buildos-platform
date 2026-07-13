@@ -81,4 +81,22 @@ describe('searchToolRegistry discovery surfaces', () => {
 			'search_onto_tasks'
 		);
 	});
+
+	it('discovers the purpose-built cross-project task move operation', () => {
+		const registry = getToolRegistry();
+
+		expect(registry.ops['onto.task.move']).toMatchObject({
+			tool_name: 'move_onto_task',
+			kind: 'write',
+			chat_discoverable: true
+		});
+		expect(
+			toolNames(
+				searchToolRegistry({
+					query: 'move task between projects transfer wrong project',
+					limit: 10
+				})
+			)
+		).toContain('move_onto_task');
+	});
 });

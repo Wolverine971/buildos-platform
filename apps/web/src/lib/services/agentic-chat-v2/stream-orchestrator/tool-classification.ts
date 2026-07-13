@@ -81,6 +81,7 @@ const WRITE_TOOL_NAMES: ReadonlySet<string> = new Set([
 	'delete_calendar_event',
 	'link_onto_entities',
 	'move_document_in_tree',
+	'move_onto_task',
 	'reorganize_onto_project_graph',
 	'set_project_calendar',
 	'tag_onto_entity',
@@ -94,6 +95,7 @@ const WRITE_LEDGER_TOOL_NAMES: ReadonlySet<string> = new Set([
 	'delete_calendar_event',
 	'link_onto_entities',
 	'move_document_in_tree',
+	'move_onto_task',
 	'reorganize_onto_project_graph',
 	'set_project_calendar',
 	'tag_onto_entity',
@@ -202,12 +204,42 @@ export function isWriteLedgerToolExecution(execution: FastToolExecution): boolea
 	if (isDuplicateWriteSkippedExecution(execution)) return false;
 	const toolName = execution.toolCall.function?.name?.trim() ?? '';
 	if (!toolName) return false;
+	if (toolName === 'move_onto_task' && execution.result.success === true) {
+		const payload = unwrapResultRecord(execution.result.result);
+		if (payload?.status !== 'moved') {
+			return false;
+		}
+	}
 	return (
 		toolName.startsWith('create_onto_') ||
 		toolName.startsWith('update_onto_') ||
 		toolName.startsWith('delete_onto_') ||
 		WRITE_LEDGER_TOOL_NAMES.has(toolName)
 	);
+}
+
+export function doesToolExecutionRequireUserAction(execution: FastToolExecution): boolean {
+	if (execution.result.requires_user_action === true) return true;
+	let value: unknown = execution.result.result;
+	for (let depth = 0; depth < 4; depth += 1) {
+		if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+		const record = value as Record<string, unknown>;
+		if (record.requires_user_action === true || record.requiresUserAction === true) return true;
+		value = record.result ?? record.data ?? record.tool_result;
+	}
+	return false;
+}
+
+function unwrapResultRecord(payload: unknown): Record<string, unknown> | null {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+	const record = payload as Record<string, unknown>;
+	for (const key of ['result', 'data']) {
+		const nested = record[key];
+		if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+			return nested as Record<string, unknown>;
+		}
+	}
+	return record;
 }
 
 export function didToolExecutionReachWriteExecutor(execution: FastToolExecution): boolean {

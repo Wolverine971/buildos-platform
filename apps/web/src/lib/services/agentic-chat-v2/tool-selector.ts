@@ -35,7 +35,22 @@ export function selectFastChatTools(params: {
 	const autonomousWriteTools = params.turnIntent
 		? getAutonomousWriteToolNamesForTurnIntent(params.turnIntent)
 		: [];
-	return materializeGatewayTools(tools, autonomousWriteTools).tools;
+	const crossProjectTools = looksLikeCrossProjectTaskMove(
+		params.contextType,
+		[
+			params.latestUserMessage,
+			params.turnIntent?.source === 'pending_continuation'
+				? params.turnIntent.originalRequestText
+				: null
+		]
+			.filter(
+				(value): value is string => typeof value === 'string' && value.trim().length > 0
+			)
+			.join('\n')
+	)
+		? ['move_onto_task']
+		: [];
+	return materializeGatewayTools(tools, [...autonomousWriteTools, ...crossProjectTools]).tools;
 }
 
 export function resolveFastChatSurfaceProfileForTurn(params: {
@@ -113,5 +128,26 @@ function looksLikeProjectDocumentWriteTurn(text: string): boolean {
 function looksLikeProjectMutationTurn(text: string): boolean {
 	return /\b(?:finished|complete|completed|done|progress|update|updated|add|create|capture|save|todo|task|revise|draft|wrote|mark|marked|move|blocked|in progress)\b/i.test(
 		text
+	);
+}
+
+function looksLikeCrossProjectTaskMove(
+	contextType: ChatContextType,
+	latestUserMessage?: string | null
+): boolean {
+	if (contextType !== 'project' && contextType !== 'ontology' && contextType !== 'global') {
+		return false;
+	}
+	const text = latestUserMessage?.trim() ?? '';
+	if (!text || !/\b(?:task|todo|item)\b/i.test(text)) return false;
+
+	return (
+		/\bwrong\s+project\b/i.test(text) ||
+		/\b(?:move|moves|moved|moving|transfer|transfers|transferred|transferring|relocate|relocates|relocated|relocating)\b[\s\S]{0,100}\b(?:task|todo|item)\b[\s\S]{0,120}\b(?:to|into|between|another|different)\b[\s\S]{0,60}\bprojects?\b/i.test(
+			text
+		) ||
+		/\b(?:task|todo|item)\b[\s\S]{0,100}\b(?:move|moves|moved|moving|transfer|transfers|transferred|transferring|relocate|relocates|relocated|relocating)\b[\s\S]{0,120}\b(?:to|into|between|another|different)\b[\s\S]{0,60}\bprojects?\b/i.test(
+			text
+		)
 	);
 }

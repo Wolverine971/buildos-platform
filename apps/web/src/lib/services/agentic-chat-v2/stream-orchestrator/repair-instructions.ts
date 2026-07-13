@@ -10,6 +10,7 @@ import type { FastToolExecution, GatewayRequiredFieldFailure } from './shared';
 import type { ToolValidationIssue } from './tool-validation';
 import { looksLikeFastChatMutationRequest } from '../turn-intent';
 import {
+	doesToolExecutionRequireUserAction,
 	didGatewayExecSucceed,
 	didGatewayOpExecute,
 	didSuccessfulGatewayOpExecute,
@@ -1237,6 +1238,7 @@ function getWriteOperationName(execution: FastToolExecution): string | null {
 	const toolName = execution.toolCall.function?.name?.trim();
 	if (!toolName) return null;
 	if (isDuplicateWriteSkippedExecution(execution)) return null;
+	if (doesToolExecutionRequireUserAction(execution)) return null;
 
 	const op = getGatewayExecOp(execution) ?? toolName;
 	return isWriteLikeOperation(op) ? op : null;

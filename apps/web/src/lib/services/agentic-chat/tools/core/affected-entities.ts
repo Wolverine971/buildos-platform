@@ -71,6 +71,7 @@ function operationFromTool(toolName?: string | null, gatewayOp?: string | null):
 	if (source.includes('.create') || source.startsWith('create_')) return 'created';
 	if (source.includes('.update') || source.startsWith('update_')) return 'updated';
 	if (source.includes('.delete') || source.startsWith('delete_')) return 'deleted';
+	if (source.includes('.move') || source.startsWith('move_')) return 'moved';
 	if (source.includes('.link') || source.includes('link_') || source.includes('_link'))
 		return 'linked';
 	return null;
@@ -89,6 +90,9 @@ function normalizeOperation(value: unknown): string | null {
 		case 'delete':
 		case 'deleted':
 			return 'deleted';
+		case 'move':
+		case 'moved':
+			return 'moved';
 		case 'link':
 		case 'linked':
 			return 'linked';
@@ -102,9 +106,9 @@ function normalizeOperation(value: unknown): string | null {
 function kindFromTool(toolName?: string | null, gatewayOp?: string | null): string | null {
 	if (toolName && CREATE_TOOL_KINDS[toolName]) return CREATE_TOOL_KINDS[toolName];
 	const source = gatewayOp || toolName || '';
-	const ontoMatch = source.match(/onto\.([a-z_]+)\.(create|update|delete|link)/);
+	const ontoMatch = source.match(/onto\.([a-z_]+)\.(create|update|delete|move|link)/);
 	if (ontoMatch?.[1]) return normalizeAffectedEntityKind(ontoMatch[1]);
-	const directMatch = source.match(/(?:create|update|delete)_onto_([a-z_]+)/);
+	const directMatch = source.match(/(?:create|update|delete|move)_onto_([a-z_]+)/);
 	if (directMatch?.[1]) return normalizeAffectedEntityKind(directMatch[1]);
 	const calendarMatch = source.match(/calendar_event/);
 	if (calendarMatch) return 'event';
@@ -267,6 +271,8 @@ export function extractAffectedEntitiesFromToolExecution(
 	const persistedRefs = extractPersistedAffectedEntities(execution.affected_entities);
 	if (persistedRefs.length > 0) return persistedRefs;
 	if (execution.success === false) return [];
+	const result = unwrapPayload(execution.result);
+	if (result?.requires_user_action === true || result?.status === 'already_moved') return [];
 	const inferred = inferEntityRefFromToolExecution(execution);
 	return inferred ? [inferred] : [];
 }

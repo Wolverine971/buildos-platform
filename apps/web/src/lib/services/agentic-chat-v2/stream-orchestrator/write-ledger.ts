@@ -52,6 +52,7 @@ function extractResultObject(result: unknown): ParsedArgs | null {
 }
 
 function resolveEntityKind(toolName: string): string | null {
+	if (toolName === 'move_onto_task') return 'task';
 	const createMatch = toolName.match(/^create_onto_([a-z_]+)$/);
 	if (createMatch?.[1]) return createMatch[1];
 	const updateMatch = toolName.match(/^update_onto_([a-z_]+)$/);

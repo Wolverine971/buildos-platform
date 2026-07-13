@@ -40,6 +40,7 @@ const OP_EXCEPTIONS: Record<string, string> = {
 	get_linked_entities: 'onto.entity.links.get',
 	list_task_documents: 'onto.task.docs.list',
 	create_task_document: 'onto.task.docs.create_or_attach',
+	move_onto_task: 'onto.task.move',
 	link_onto_entities: 'onto.edge.link',
 	unlink_onto_edge: 'onto.edge.unlink',
 	reorganize_onto_project_graph: 'onto.project.graph.reorganize',

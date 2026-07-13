@@ -71,6 +71,7 @@ import {
 	hasDocumentOrganizationValidationIssue
 } from './round-analysis';
 import {
+	doesToolExecutionRequireUserAction,
 	didGatewayExecSucceed,
 	didToolExecutionReachWriteExecutor,
 	getGatewayExecOp,
@@ -1593,6 +1594,16 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			});
 			if (supervisorStopRequested) {
 				break;
+			}
+
+			if (roundExecutions.some(doesToolExecutionRequireUserAction)) {
+				messages.push({
+					role: 'system',
+					content:
+						'Supervisor note: A tool returned requires_user_action. Do not call that tool again or perform additional writes in this turn. Explain the preview or blocker, ask for the required user decision, and wait for a later user turn.'
+				});
+				forceNoToolSynthesisPass = true;
+				continue;
 			}
 
 			// Write-outcome ledger: after each tool round, surface the cumulative

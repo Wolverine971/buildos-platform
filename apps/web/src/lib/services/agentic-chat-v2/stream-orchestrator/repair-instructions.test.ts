@@ -170,6 +170,44 @@ describe('repair instruction policy', () => {
 		);
 	});
 
+	it('treats an impact preview as pending user action, not a completed move', () => {
+		const toolExecutions = [
+			createExecution({
+				name: 'move_onto_task',
+				args: {
+					task_id: 'task-1',
+					expected_source_project_id: 'project-1',
+					destination_project_id: 'project-2'
+				},
+				result: {
+					status: 'confirmation_required',
+					requires_user_action: true,
+					impact: { relationships_to_detach: 1 }
+				}
+			})
+		];
+
+		expect(
+			enforceMutationOutcomeIntegrity(
+				'I need your confirmation to detach one relationship before moving it.',
+				{
+					contextType: 'project',
+					toolExecutions,
+					latestUserText: 'Move this task to the other project.',
+					explicitMutationRequested: true
+				}
+			)
+		).toBe('I need your confirmation to detach one relationship before moving it.');
+		expect(
+			enforceMutationOutcomeIntegrity('I moved the task successfully.', {
+				contextType: 'project',
+				toolExecutions,
+				latestUserText: 'Move this task to the other project.',
+				explicitMutationRequested: true
+			})
+		).toContain('no write call ran');
+	});
+
 	it('does not repair read-only status questions with no tool executions', () => {
 		expect(
 			shouldRepairGatewayMutationNoExecution({

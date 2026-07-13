@@ -94,6 +94,7 @@ const CURRENT_SOURCE_SCORES: Record<string, number> = {
 	document_update: 1,
 	doc_tree_move: 4,
 	task_create: 1,
+	task_move: 4,
 	task_update: 1
 };
 

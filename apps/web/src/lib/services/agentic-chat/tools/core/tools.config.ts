@@ -123,6 +123,7 @@ export const TOOL_CATEGORIES = {
 			'unlink_onto_edge',
 			'reorganize_onto_project_graph',
 			'update_onto_task',
+			'move_onto_task',
 			'update_onto_project',
 			'update_onto_goal',
 			'update_onto_plan',

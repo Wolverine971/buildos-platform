@@ -457,6 +457,30 @@ describe('agent-chat-tool-presenter — mutation tracking', () => {
 		expect(summary.affectedProjectIds).toEqual(['p-context']);
 	});
 
+	it('tracks both projects only after a task move is applied', () => {
+		const presenter = createToolPresenter(h.ctx);
+		const args = {
+			task_id: 'task-1',
+			expected_source_project_id: 'p-source',
+			destination_project_id: 'p-destination'
+		};
+
+		presenter.recordDataMutation('move_onto_task', args, true, {
+			result: { status: 'confirmation_required', requires_user_action: true }
+		});
+		expect(presenter.buildMutationSummary({ hasMessagesSent: false }).totalMutations).toBe(0);
+
+		presenter.recordDataMutation('move_onto_task', args, true, {
+			result: {
+				status: 'moved',
+				task: { id: 'task-1', project_id: 'p-destination' }
+			}
+		});
+		const summary = presenter.buildMutationSummary({ hasMessagesSent: false });
+		expect(summary.totalMutations).toBe(1);
+		expect(summary.affectedProjectIds).toEqual(['p-destination', 'p-source']);
+	});
+
 	it('resets the counter via resetMutationTracking', () => {
 		const presenter = createToolPresenter(h.ctx);
 		presenter.recordDataMutation('create_onto_task', { title: 'x', project_id: 'p-1' }, true);
@@ -481,6 +505,8 @@ describe('agent-chat-tool-presenter — catalog consolidation', () => {
 		expect(presenter.DATA_MUTATION_TOOLS.has('create_task_document')).toBe(false);
 		expect(presenter.MUTATION_TRACKED_TOOLS.has('link_onto_entities')).toBe(true);
 		expect(presenter.DATA_MUTATION_TOOLS.has('link_onto_entities')).toBe(false);
+		expect(presenter.MUTATION_TRACKED_TOOLS.has('move_onto_task')).toBe(true);
+		expect(presenter.DATA_MUTATION_TOOLS.has('move_onto_task')).toBe(false);
 	});
 });
 

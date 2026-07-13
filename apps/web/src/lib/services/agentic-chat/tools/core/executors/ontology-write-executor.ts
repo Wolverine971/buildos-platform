@@ -25,6 +25,7 @@ import type {
 	CreateTaskDocumentArgs,
 	UpdateOntoProjectArgs,
 	UpdateOntoTaskArgs,
+	MoveOntoTaskArgs,
 	UpdateOntoGoalArgs,
 	UpdateOntoPlanArgs,
 	UpdateOntoDocumentArgs,
@@ -1426,6 +1427,43 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		return {
 			task: data.task,
 			message: `Updated ontology task "${data.task?.title ?? args.task_id}"`
+		};
+	}
+
+	async moveOntoTask(args: MoveOntoTaskArgs): Promise<Record<string, unknown>> {
+		const data = await this.apiRequest(`/api/onto/tasks/${args.task_id}/move`, {
+			method: 'POST',
+			body: JSON.stringify({
+				expected_source_project_id: args.expected_source_project_id,
+				destination_project_id: args.destination_project_id,
+				...(args.confirmation_token ? { confirmation_token: args.confirmation_token } : {})
+			})
+		});
+
+		const taskTitle = data.task?.title ?? args.task_id;
+		if (data.status === 'moved' || data.status === 'already_moved') {
+			const destinationName = data.destination_project?.name ?? args.destination_project_id;
+			return {
+				...data,
+				message:
+					data.status === 'already_moved'
+						? `Task "${taskTitle}" is already in "${destinationName}"`
+						: `Moved task "${taskTitle}" to "${destinationName}"`,
+				context_shift: {
+					new_context: 'project',
+					entity_id: args.destination_project_id,
+					entity_name: destinationName,
+					entity_type: 'project',
+					message: `Focused the destination project "${destinationName}" after moving the task.`
+				}
+			};
+		}
+
+		return {
+			...data,
+			requires_user_action: true,
+			message:
+				data.message ?? `The task move needs user action before anything can be changed.`
 		};
 	}
 

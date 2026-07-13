@@ -325,6 +325,96 @@ describe('ToolExecutionService', () => {
 			);
 		});
 
+		it('allows the dedicated task move to name another destination project', async () => {
+			const scopedProjectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const destinationProjectId = '972064c0-c2aa-4c74-a735-313802ffd456';
+			const taskId = 'f914f9dc-a7a7-4f9e-9a3e-477c6975f259';
+			const moveTaskDefinition: ChatToolDefinition = {
+				name: 'move_onto_task',
+				description: 'Move task between projects',
+				parameters: {
+					type: 'object',
+					properties: {
+						task_id: { type: 'string' },
+						expected_source_project_id: { type: 'string' },
+						destination_project_id: { type: 'string' }
+					},
+					required: ['task_id', 'expected_source_project_id', 'destination_project_id']
+				}
+			};
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextScope: { projectId: scopedProjectId },
+				ontologyContext: {
+					type: 'project',
+					entities: {
+						tasks: [{ id: taskId, title: 'Move me', project_id: scopedProjectId }]
+					},
+					metadata: {},
+					scope: { projectId: scopedProjectId }
+				} as any
+			};
+			const toolCall: ChatToolCall = {
+				id: 'call_move_task',
+				name: 'move_onto_task',
+				arguments: {
+					task_id: taskId,
+					expected_source_project_id: scopedProjectId,
+					destination_project_id: destinationProjectId
+				}
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ data: { status: 'moved' } });
+			const result = await service.executeTool(toolCall, scopedContext, [moveTaskDefinition]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'move_onto_task',
+				toolCall.arguments,
+				contextLike(scopedContext)
+			);
+		});
+
+		it('requires the dedicated task move source to match project focus', async () => {
+			const scopedProjectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const otherProjectId = '972064c0-c2aa-4c74-a735-313802ffd456';
+			const destinationProjectId = '31021625-1377-4715-9fb4-f93102974628';
+			const taskId = 'f914f9dc-a7a7-4f9e-9a3e-477c6975f259';
+			const definition: ChatToolDefinition = {
+				name: 'move_onto_task',
+				description: 'Move task between projects',
+				parameters: {
+					type: 'object',
+					properties: {
+						task_id: { type: 'string' },
+						expected_source_project_id: { type: 'string' },
+						destination_project_id: { type: 'string' }
+					},
+					required: ['task_id', 'expected_source_project_id', 'destination_project_id']
+				}
+			};
+			const result = await service.executeTool(
+				{
+					id: 'call_bad_move_source',
+					name: 'move_onto_task',
+					arguments: {
+						task_id: taskId,
+						expected_source_project_id: otherProjectId,
+						destination_project_id: destinationProjectId
+					}
+				},
+				{ ...mockContext, contextScope: { projectId: scopedProjectId } },
+				[definition]
+			);
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining('must match the current project focus')
+			});
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
 		it('should coerce raw string arguments for web_search into query', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_web_search',
