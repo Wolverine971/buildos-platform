@@ -28,6 +28,7 @@ import { sanitizeToolPassLeadIn } from './assistant-text-sanitization';
 import { appendRuntimeMetadataToPromptDump, writeInitialPromptDump } from './prompt-dump-debug';
 import type {
 	FastChatDebugContext,
+	FastChatOrchestrationInterventions,
 	FastToolExecution,
 	GatewayRequiredFieldFailure,
 	LLMStreamPassMetadata
@@ -138,6 +139,8 @@ type StreamFastChatParams = {
 	maxToolCalls?: number;
 	allowAutonomousRecovery?: boolean;
 	modelTiering?: FastChatModelTieringConfig | null;
+	/** Server-only eval override. When set, every pass uses this ordered model list. */
+	pinnedModels?: string[];
 	turnIntent?: FastChatTurnIntent | null;
 	debugContext?: FastChatDebugContext;
 	/**
@@ -209,6 +212,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	peakPromptTokens?: number;
 	finalContextUsage?: ContextUsageSnapshot;
 	skillGateViolationRepaired?: boolean;
+	orchestrationInterventions: FastChatOrchestrationInterventions;
 }> {
 	const { llm, userId, sessionId, contextType, entityId, history, message, signal, onDelta } =
 		params;
@@ -277,6 +281,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let toolCallsMade = 0;
 	let toolCallsExecuted = 0;
 	let consecutiveValidationIssueRounds = 0;
+	let validationRepairRounds = 0;
 	let toolLimitNotice: string | null = null;
 	let hasWriteAttempt = false;
 	let projectCreateStopRepairInjected = false;
@@ -339,6 +344,31 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 		});
 	const supervisorDecisions: TurnSupervisorDecisionRecord[] = [];
+	const buildOrchestrationInterventions = (): FastChatOrchestrationInterventions => ({
+		projectCreateStopRepair: projectCreateStopRepairInjected,
+		gatewayMutationStopRepair: gatewayMutationStopRepairInjected,
+		skillGateStopRepair: skillGateStopRepairInjected,
+		gatewaySchemaRepair: gatewaySchemaRepairInjected,
+		gatewayCreateFieldRepair: gatewayCreateFieldNoProgressRepairInjected,
+		validationRepairRounds,
+		readLoopRepairRank,
+		forcedSynthesisPasses: llmStreamPasses.filter(
+			(pass) => pass.passRole === 'forced_synthesis'
+		).length,
+		writeIntentCarveOut: writeIntentCarveOutUsed,
+		lengthContinuations: lengthContinuationCount,
+		documentOrganizationRecovery: docOrganizationRecoveryAttempted,
+		finalizationGuard: finalizationGuardResult?.applied === true,
+		supervisorRecoveryDecisions: supervisorDecisions.filter(
+			(record) =>
+				record.decision.action === 'force_synthesis' ||
+				record.decision.action === 'inject_recovery_instruction'
+		).length,
+		streamRetries: llmStreamPasses.reduce(
+			(total, pass) => total + (pass.streamRetryCount ?? 0),
+			0
+		)
+	});
 	let observeSupervisor: (
 		observation: TurnSupervisorObservation
 	) => Promise<void> = async () => {};
@@ -960,7 +990,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				noToolSynthesisPass,
 				writeIntentToolPass: Boolean(writeIntentToolPass),
 				noToolSynthesisRetryCount,
-				modelTiering: params.modelTiering ?? null
+				modelTiering: params.modelTiering ?? null,
+				pinnedModels: params.pinnedModels
 			});
 			activeAssistantBuffer = '';
 			activePendingToolCallCount = 0;
@@ -1313,6 +1344,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 								gatewayModeActive
 							)
 						);
+						validationRepairRounds += 1;
 						flushRepairInstructions();
 						continue;
 					}
@@ -1325,6 +1357,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				queueRepairInstruction(
 					buildToolValidationRepairInstruction(validationIssues, gatewayModeActive)
 				);
+				validationRepairRounds += 1;
 			} else {
 				consecutiveValidationIssueRounds = 0;
 			}
@@ -1774,7 +1807,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				cancelled: true,
 				peakPromptTokens: peakPromptTokens > 0 ? peakPromptTokens : undefined,
 				finalContextUsage: liveContextUsage,
-				skillGateViolationRepaired: skillGateStopRepairInjected
+				skillGateViolationRepaired: skillGateStopRepairInjected,
+				orchestrationInterventions: buildOrchestrationInterventions()
 			};
 		}
 		throw error;
@@ -1824,7 +1858,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		finalizationGuard: finalizationGuardResult,
 		peakPromptTokens: peakPromptTokens > 0 ? peakPromptTokens : undefined,
 		finalContextUsage: liveContextUsage,
-		skillGateViolationRepaired: skillGateStopRepairInjected
+		skillGateViolationRepaired: skillGateStopRepairInjected,
+		orchestrationInterventions: buildOrchestrationInterventions()
 	};
 }
 

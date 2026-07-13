@@ -268,6 +268,7 @@
 				<div class="flex flex-col items-end gap-1.5">
 					<!-- Message bubble -->
 					<div
+						data-testid="agent-chat-user-message"
 						class="bubble-send max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm font-medium text-foreground shadow-ink sm:max-w-[85%] sm:p-4"
 					>
 						{#if message.attachments?.length}
@@ -356,6 +357,7 @@
 			{:else if message.type === 'assistant'}
 				<!-- INKPRINT assistant message with Frame texture -->
 				<div
+					data-testid="agent-chat-assistant-message"
 					class="agent-resp-div clarity-zone min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-frame tx-weak sm:p-4"
 				>
 					<!-- BuildOS assistant avatar -->

@@ -90,6 +90,7 @@ import {
 	composeFastChatHistory,
 	normalizeFastAgentStreamRequest,
 	parseFastChatInitialPlanModels,
+	parseFastChatPinnedModels,
 	parseFastChatModelTieringMode,
 	parseFastChatModelTieringSampleRate,
 	resolveFastChatModelTieringConfig,
@@ -308,6 +309,10 @@ const FASTCHAT_INITIAL_PLAN_MODEL_TIERING_SAMPLE_RATE = parseFastChatModelTierin
 const FASTCHAT_INITIAL_PLAN_MODEL_TIERING_MODELS = parseFastChatInitialPlanModels(
 	process.env.FASTCHAT_INITIAL_PLAN_MODEL_TIERING_MODELS
 );
+const FASTCHAT_EVAL_PINNED_MODELS = parseFastChatPinnedModels(
+	process.env.FASTCHAT_EVAL_PINNED_MODELS
+);
+const FASTCHAT_EVAL_SCAFFOLD_VARIANT = process.env.FASTCHAT_EVAL_SCAFFOLD_VARIANT?.trim() || null;
 const FASTCHAT_DETACHED_TURN_MAX_DURATION_MS = parsePositiveInt(
 	process.env.FASTCHAT_DETACHED_TURN_MAX_DURATION_MS,
 	285000
@@ -2686,7 +2691,8 @@ export const POST: RequestHandler = async ({
 				cancelled,
 				peakPromptTokens,
 				finalContextUsage,
-				skillGateViolationRepaired
+				skillGateViolationRepaired,
+				orchestrationInterventions
 			} = await streamFastChat({
 				llm,
 				userId,
@@ -2705,6 +2711,7 @@ export const POST: RequestHandler = async ({
 				maxToolRounds: Math.max(1, gatewayRoundCap),
 				allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
 				modelTiering,
+				pinnedModels: FASTCHAT_EVAL_PINNED_MODELS,
 				turnIntent,
 				skillGate,
 				tools,
@@ -3462,6 +3469,11 @@ export const POST: RequestHandler = async ({
 					triggers: triggerCounts
 				} as Json);
 			}
+			observabilityWriter.recordEvent('finalize', 'orchestration_interventions', {
+				...orchestrationInterventions,
+				eval_scaffold_variant: FASTCHAT_EVAL_SCAFFOLD_VARIANT,
+				eval_pinned_models: FASTCHAT_EVAL_PINNED_MODELS
+			} as Json);
 			for (const pass of llmPasses ?? []) {
 				observabilityWriter.recordEvent('llm', 'llm_pass_completed', {
 					pass: pass.pass,
@@ -3480,6 +3492,8 @@ export const POST: RequestHandler = async ({
 					suppressed_no_tool_synthesis_tool_call_details:
 						(pass.suppressedNoToolSynthesisToolCallDetails as Json | undefined) ?? null,
 					cache_status: pass.cacheStatus ?? null,
+					stream_retry_count: pass.streamRetryCount ?? 0,
+					attempts: pass.attempts ?? 1,
 					reasoning_tokens: pass.reasoningTokens ?? null,
 					prompt_tokens: pass.promptTokens ?? null,
 					completion_tokens: pass.completionTokens ?? null,

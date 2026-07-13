@@ -13,6 +13,7 @@ import type {
 	ChatSession
 } from '@buildos/shared-types';
 import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
+import { buildFastAgentStreamRequestBody } from '$lib/services/agentic-chat-v2/stream-request-client';
 import {
 	SSEProcessor,
 	type StreamCallbacks,
@@ -597,6 +598,7 @@ export class AgentChatStreamController {
 			this.#deps.setUserHasScrolled(false);
 
 			let receivedStreamEvent = false;
+			let receivedTerminalEvent = false;
 
 			streamController = new AbortController();
 			this.#currentStreamController = streamController;
@@ -609,19 +611,21 @@ export class AgentChatStreamController {
 					'Content-Type': 'application/json'
 				},
 				signal: streamController.signal,
-				body: JSON.stringify({
-					message: trimmed,
-					session_id: sessionForTurn?.id,
-					context_type: requestContextType,
-					entity_id: requestEntityId,
-					attachments: streamAttachmentRefs,
-					projectFocus: requestProjectFocus,
-					lastTurnContext: this.#deps.getLastTurnContext(),
-					stream_run_id: transportStreamRunId,
-					client_turn_id: clientTurnId,
-					voiceNoteGroupId: activeVoiceNoteGroupId,
-					preparedPromptKey: matchingPreparedPrompt?.key ?? null
-				})
+				body: JSON.stringify(
+					buildFastAgentStreamRequestBody({
+						message: trimmed,
+						sessionId: sessionForTurn?.id,
+						contextType: requestContextType,
+						entityId: requestEntityId,
+						attachments: streamAttachmentRefs,
+						projectFocus: requestProjectFocus,
+						lastTurnContext: this.#deps.getLastTurnContext(),
+						streamRunId: transportStreamRunId,
+						clientTurnId,
+						voiceNoteGroupId: activeVoiceNoteGroupId,
+						preparedPromptKey: matchingPreparedPrompt?.key
+					})
+				)
 			});
 
 			if (!response.ok) {
@@ -649,6 +653,7 @@ export class AgentChatStreamController {
 					const event = data as AgentSSEMessage;
 					if (!this.#shouldAcceptStreamEvent(event)) return;
 					receivedStreamEvent = true;
+					if (event?.type === 'done') receivedTerminalEvent = true;
 					if (event?.type && TURN_EVIDENCE_EVENT_TYPES.has(event.type)) {
 						receivedTurnEvidence = true;
 					}
@@ -690,6 +695,15 @@ export class AgentChatStreamController {
 				},
 				onComplete: () => {
 					if (runId !== this.activeStreamRunId) return;
+					if (!receivedTerminalEvent) {
+						const reconcileRequest = this.buildTurnReconcileRequest('transport_error');
+						if (
+							reconcileRequest &&
+							this.startTurnReconciliation(runId, reconcileRequest, 'error', 'error')
+						) {
+							return;
+						}
+					}
 					this.isStreaming = false;
 					this.currentActivity = '';
 					this.#currentStreamController = null;

@@ -4,6 +4,7 @@ import {
 	parseFastChatInitialPlanModels,
 	parseFastChatModelTieringMode,
 	parseFastChatModelTieringSampleRate,
+	parseFastChatPinnedModels,
 	resolveFastChatModelTieringConfig,
 	resolveFastChatPassModelRouting
 } from './model-tiering';
@@ -28,6 +29,14 @@ describe('fast chat model tiering', () => {
 			parseFastChatInitialPlanModels(' tencent/hy3, xiaomi/mimo-v2.5, tencent/hy3 ')
 		).toEqual(['tencent/hy3', 'xiaomi/mimo-v2.5']);
 		expect(parseFastChatInitialPlanModels('', ['fallback/model'])).toEqual(['fallback/model']);
+	});
+
+	it('parses an optional pinned eval model list without a production fallback', () => {
+		expect(parseFastChatPinnedModels(undefined)).toEqual([]);
+		expect(parseFastChatPinnedModels(' model/a, model/b, model/a ')).toEqual([
+			'model/a',
+			'model/b'
+		]);
 	});
 
 	it('assigns deterministic A/B variants from the bucket key', () => {
@@ -127,6 +136,26 @@ describe('fast chat model tiering', () => {
 			passRole: 'forced_synthesis',
 			profile: 'quality',
 			modelTieringVariant: 'fast_initial_plan'
+		});
+	});
+
+	it('uses pinned eval models for every pass and disables tiering attribution', () => {
+		const routing = resolveFastChatPassModelRouting({
+			passNumber: 2,
+			hasTools: true,
+			noToolSynthesisPass: false,
+			writeIntentToolPass: false,
+			modelTiering: {
+				variant: 'fast_initial_plan',
+				initialPlanModels: ['tier/model']
+			},
+			pinnedModels: ['eval/model']
+		});
+
+		expect(routing).toEqual({
+			passRole: 'tool_followup',
+			profile: 'balanced',
+			models: ['eval/model']
 		});
 	});
 });

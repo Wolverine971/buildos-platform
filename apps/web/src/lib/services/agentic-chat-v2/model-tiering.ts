@@ -85,6 +85,17 @@ export function parseFastChatInitialPlanModels(
 	return Array.from(new Set(models));
 }
 
+export function parseFastChatPinnedModels(value: string | null | undefined): string[] {
+	return Array.from(
+		new Set(
+			(value ?? '')
+				.split(',')
+				.map((model) => model.trim())
+				.filter(Boolean)
+		)
+	);
+}
+
 export function resolveFastChatModelTieringConfig(params: {
 	mode: FastChatModelTieringMode;
 	sampleRate?: number;
@@ -123,11 +134,13 @@ export function resolveFastChatPassModelRouting(params: {
 	writeIntentToolPass: boolean;
 	noToolSynthesisRetryCount?: number;
 	modelTiering?: FastChatModelTieringConfig | null;
+	pinnedModels?: string[];
 }): FastChatPassModelRouting {
 	const passRole = resolvePassRole(params);
 	const modelTieringVariant = params.modelTiering?.variant;
 	const fastInitialPlanModels = params.modelTiering?.initialPlanModels ?? [];
 	const useFastInitialPlan =
+		!params.pinnedModels?.length &&
 		modelTieringVariant === 'fast_initial_plan' &&
 		passRole === 'initial_plan' &&
 		fastInitialPlanModels.length > 0;
@@ -140,8 +153,12 @@ export function resolveFastChatPassModelRouting(params: {
 				: useFastInitialPlan
 					? 'speed'
 					: 'balanced',
-		...(useFastInitialPlan ? { models: fastInitialPlanModels } : {}),
-		...(modelTieringVariant ? { modelTieringVariant } : {})
+		...(params.pinnedModels?.length
+			? { models: [...params.pinnedModels] }
+			: useFastInitialPlan
+				? { models: fastInitialPlanModels }
+				: {}),
+		...(modelTieringVariant && !params.pinnedModels?.length ? { modelTieringVariant } : {})
 	};
 }
 

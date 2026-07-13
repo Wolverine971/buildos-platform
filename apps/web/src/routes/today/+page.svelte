@@ -22,6 +22,7 @@
 	} from '$lib/icons/lucide';
 	import { requireApiData } from '$lib/utils/api-client-helpers';
 	import { aiInboxPerformance } from '$lib/utils/ai-inbox-performance';
+	import { isActiveFacing } from '$lib/config/project-states';
 	import { trackLoopEvent } from '$lib/services/loop-telemetry';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { CalendarItem } from '$lib/types/calendar-items';
@@ -239,6 +240,19 @@
 		agenda.allDay.length === 0 && agenda.schedule.length === 0 && agenda.anytime.length === 0
 	);
 
+	// Readiness: /today adapts to how much the user has. A brand-new (or explore/skip)
+	// user with no projects gets a first-run hero instead of a bare "Clear day ahead";
+	// a user with projects but no dated work today gets a "what's waiting" next-steps
+	// list. The project list is already on the feed, so this costs no extra query.
+	// isActiveFacing() is the canonical planning/active vs completed/cancelled/paused
+	// classifier (case-normalized), so "what's waiting" never surfaces a finished project.
+	const hasProjects = $derived((feed?.projects?.length ?? 0) > 0);
+	const waitingProjects = $derived(
+		(feed?.projects ?? [])
+			.filter((project) => isActiveFacing(project.state_key) && !!project.next_step_short)
+			.slice(0, 6)
+	);
+
 	async function refresh() {
 		if (refreshing) return;
 		refreshing = true;
@@ -335,7 +349,16 @@
 			all_day_count: agenda.allDay.length,
 			schedule_count: agenda.schedule.length,
 			anytime_count: agenda.anytime.length,
-			is_clear_day: isClearDay
+			is_clear_day: isClearDay,
+			project_count: feed?.projects.length ?? 0,
+			// Readiness state: first_run (zero projects) | waiting (projects, no dated work) | agenda
+			readiness_state: !feed
+				? 'error'
+				: !hasProjects
+					? 'first_run'
+					: isClearDay
+						? 'waiting'
+						: 'agenda'
 		});
 	});
 
@@ -563,6 +586,36 @@
 		}
 	}
 
+	// Zero-project first-run: same capture pipeline as submitCapture, but framed as
+	// "structure my first project" so the agent creates a project rather than routing an
+	// update to existing ones.
+	async function submitFirstProject() {
+		const text = captureText.trim();
+		if (!text || captureVoiceRecording) return;
+		await ensureChatModal();
+		chatConfig = {
+			contextType: 'general',
+			draft: `This is my first project — here's the messy version. Turn it into a structured project with tasks and a clear next step:\n\n${text}`,
+			autoSend: true
+		};
+		chatOpen = true;
+		captureText = '';
+		trackLoopEvent('loop_capture_submitted', 'today', {
+			source_type: 'first_project',
+			capture_length: text.length
+		});
+		trackLoopEvent('loop_chat_opened', 'today', {
+			chat_source: 'first_project'
+		});
+	}
+
+	function handleFirstProjectKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter' && !event.shiftKey) {
+			event.preventDefault();
+			void submitFirstProject();
+		}
+	}
+
 	function handleChatClose() {
 		chatOpen = false;
 		chatConfig = {};
@@ -688,37 +741,89 @@
 			</div>
 		</header>
 
-		<section class="mt-4 sm:mt-5" aria-label="Quick capture">
-			<div
-				class="wt-ghost border-dashed border-accent/40 p-2 sm:p-2.5 transition-colors focus-within:border-accent"
-				onkeydown={handleCaptureKeydown}
-				role="presentation"
-			>
-				<div class="flex items-end gap-2">
-					<div class="flex-1 min-w-0">
-						<TextareaWithVoice
-							bind:value={captureText}
-							bind:isRecording={captureVoiceRecording}
-							placeholder="What changed? Brain-dump it — messy is fine."
-							rows={1}
-							maxRows={6}
-							autoResize={true}
-							showStatusRow={false}
-							textareaClass="border-0 bg-transparent px-1 py-1 text-xs sm:text-sm shadow-none focus:ring-0"
-						/>
+		{#if feed && !hasProjects}
+			<!-- First-run: no projects yet. Lead with the relief promise and a prominent
+			     first-project brain-dump instead of the generic "what changed?" bar. -->
+			<section class="mt-6 sm:mt-10" aria-label="Start your first project">
+				<div
+					class="wt-paper tx tx-grain tx-weak flex flex-col items-center gap-4 p-5 text-center sm:p-8"
+				>
+					<div class="rounded-md border border-accent/20 bg-accent/10 p-2.5">
+						<Sparkles class="h-5 w-5 text-accent" />
 					</div>
-					<button
-						onclick={submitCapture}
-						disabled={!captureText.trim() || captureVoiceRecording}
-						class="mb-0.5 flex-shrink-0 p-1.5 sm:p-2 rounded-md text-accent hover:bg-accent/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-						title="Send update to BuildOS"
-						aria-label="Send update to BuildOS"
-					>
-						<Send class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-					</button>
+					<div class="max-w-md">
+						<h2 class="text-lg font-semibold text-foreground sm:text-xl">
+							Get it out of your head
+						</h2>
+						<p class="mt-1.5 text-sm text-muted-foreground">
+							Brain-dump whatever you're working on — messy is fine. BuildOS turns it
+							into a structured project with tasks and a clear next move.
+						</p>
+					</div>
+					<div class="w-full max-w-md">
+						<div
+							class="wt-ghost border-dashed border-accent/40 p-2 text-left transition-colors focus-within:border-accent sm:p-2.5"
+							onkeydown={handleFirstProjectKeydown}
+							role="presentation"
+						>
+							<TextareaWithVoice
+								bind:value={captureText}
+								bind:isRecording={captureVoiceRecording}
+								placeholder="What are you working on? Dump it all here…"
+								rows={3}
+								maxRows={10}
+								autoResize={true}
+								showStatusRow={false}
+								textareaClass="border-0 bg-transparent px-1 py-1 text-sm shadow-none focus:ring-0"
+							/>
+						</div>
+						<div class="mt-3 flex justify-center">
+							<Button
+								onclick={submitFirstProject}
+								variant="primary"
+								size="sm"
+								icon={Send}
+								disabled={!captureText.trim() || captureVoiceRecording}
+							>
+								Structure my first project
+							</Button>
+						</div>
+					</div>
 				</div>
-			</div>
-		</section>
+			</section>
+		{:else if hasProjects}
+			<section class="mt-4 sm:mt-5" aria-label="Quick capture">
+				<div
+					class="wt-ghost border-dashed border-accent/40 p-2 sm:p-2.5 transition-colors focus-within:border-accent"
+					onkeydown={handleCaptureKeydown}
+					role="presentation"
+				>
+					<div class="flex items-end gap-2">
+						<div class="flex-1 min-w-0">
+							<TextareaWithVoice
+								bind:value={captureText}
+								bind:isRecording={captureVoiceRecording}
+								placeholder="What changed? Brain-dump it — messy is fine."
+								rows={1}
+								maxRows={6}
+								autoResize={true}
+								showStatusRow={false}
+								textareaClass="border-0 bg-transparent px-1 py-1 text-xs sm:text-sm shadow-none focus:ring-0"
+							/>
+						</div>
+						<button
+							onclick={submitCapture}
+							disabled={!captureText.trim() || captureVoiceRecording}
+							class="mb-0.5 flex-shrink-0 p-1.5 sm:p-2 rounded-md text-accent hover:bg-accent/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							title="Send update to BuildOS"
+							aria-label="Send update to BuildOS"
+						>
+							<Send class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+						</button>
+					</div>
+				</div>
+			</section>
+		{/if}
 
 		{#if changesFeed}
 			<WhatChangedSection feed={changesFeed} onChatAboutEntry={openReceiptChat} />
@@ -868,26 +973,100 @@
 				</section>
 			{/if}
 
-			{#if isClearDay}
-				<div
-					class="mt-8 sm:mt-12 flex flex-col items-center gap-3 wt-ghost border-dashed p-6 sm:p-10 text-center"
-				>
-					<div class="p-2 sm:p-3 rounded-md bg-accent/10 border border-accent/20">
-						<Sparkles class="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
+			{#if isClearDay && hasProjects}
+				{#if waitingProjects.length > 0}
+					<!-- Nothing dated today, but there's undated work. Surface each project's
+					     next move so the day is never a dead end. -->
+					<section class="mt-6 sm:mt-8" aria-label="What's waiting">
+						<div class="wt-ghost border-dashed p-4 sm:p-6">
+							<div class="mb-3 flex items-center gap-2">
+								<Sparkles class="h-4 w-4 shrink-0 text-accent" />
+								<h2 class="text-sm sm:text-base font-semibold text-foreground">
+									{#if feed.overdueCount > 0}
+										Nothing scheduled today — here's what's waiting
+									{:else}
+										Clear schedule — here's what's waiting
+									{/if}
+								</h2>
+							</div>
+							<ul class="flex flex-col gap-1">
+								{#each waitingProjects as project (project.id)}
+									<li>
+										<a
+											href={`/projects/${project.id}`}
+											class="group flex items-start gap-2.5 rounded-md p-2 transition-colors hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											title={project.next_step_long ??
+												project.next_step_short ??
+												project.name}
+										>
+											<span
+												class="mt-0.5 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-accent"
+											>
+												Next
+											</span>
+											<span class="min-w-0 flex-1">
+												<span
+													class="block truncate text-xs text-foreground sm:text-sm"
+												>
+													{project.next_step_short}
+												</span>
+												<span
+													class="block truncate text-[11px] text-muted-foreground"
+												>
+													{project.name}
+												</span>
+											</span>
+										</a>
+									</li>
+								{/each}
+							</ul>
+							<div class="mt-3">
+								<Button
+									onclick={openDayChat}
+									variant="outline"
+									size="sm"
+									icon={MessageCircle}
+								>
+									Plan my day
+								</Button>
+							</div>
+						</div>
+					</section>
+				{:else}
+					<div
+						class="mt-8 sm:mt-12 flex flex-col items-center gap-3 wt-ghost border-dashed p-6 sm:p-10 text-center"
+					>
+						<div class="p-2 sm:p-3 rounded-md bg-accent/10 border border-accent/20">
+							<Sparkles class="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
+						</div>
+						<div>
+							<h2 class="text-sm sm:text-base font-semibold text-foreground">
+								{#if feed.overdueCount > 0}
+									Nothing due today
+								{:else}
+									Clear day ahead
+								{/if}
+							</h2>
+							<p class="mt-1 text-xs sm:text-sm text-muted-foreground">
+								{#if feed.overdueCount > 0}
+									Nothing scheduled today. You have {feed.overdueCount} overdue — triage
+									them or plan the day with a chat.
+								{:else}
+									Nothing scheduled and no tasks due. Capture what's on your mind
+									or plan the day with a chat.
+								{/if}
+							</p>
+						</div>
+						<Button
+							onclick={openDayChat}
+							variant="outline"
+							size="sm"
+							icon={MessageCircle}
+						>
+							Plan my day
+						</Button>
 					</div>
-					<div>
-						<h2 class="text-sm sm:text-base font-semibold text-foreground">
-							Clear day ahead
-						</h2>
-						<p class="mt-1 text-xs sm:text-sm text-muted-foreground">
-							Nothing scheduled and no tasks due. Capture what's on your mind or plan
-							the day with a chat.
-						</p>
-					</div>
-					<Button onclick={openDayChat} variant="outline" size="sm" icon={MessageCircle}>
-						Plan my day
-					</Button>
-				</div>
+				{/if}
 			{/if}
 		{/if}
 	</main>

@@ -46,7 +46,10 @@ export default defineConfig({
 			'**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
 			// Exclude LLM tests - they cost money and should be run separately
 			'**/lib/tests/llm/**',
-			'**/lib/tests/llm-simple/**'
+			'**/lib/tests/llm-simple/**',
+			// Exclude the agentic e2e harness - real turns, real DB writes, real
+			// judge calls; run separately via `pnpm test:agentic` against a dev server
+			'**/lib/tests/agentic-e2e/**'
 		],
 		// Suppress console output during tests for cleaner output
 		silent: false, // Set to true to suppress all console output

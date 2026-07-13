@@ -18,6 +18,15 @@ export interface TodayTask {
 	bucket: TodayTaskBucket;
 }
 
+export interface TodayProject {
+	id: string;
+	name: string;
+	state_key: string;
+	/** AI/user "next move" for the project — powers the "what's waiting" empty-agenda state */
+	next_step_short: string | null;
+	next_step_long: string | null;
+}
+
 export interface TodayFeed {
 	/** YYYY-MM-DD in the user's timezone */
 	date: string;
@@ -29,6 +38,8 @@ export interface TodayFeed {
 	overdueCount: number;
 	/** Names for every non-paused project the user can see, keyed by project id */
 	projectNames: Record<string, string>;
+	/** Non-paused projects the user can see — drives the readiness-aware empty states */
+	projects: TodayProject[];
 }
 
 export type WhatChangedActorKind = 'you' | 'member' | 'external_agent' | 'agent' | 'system';

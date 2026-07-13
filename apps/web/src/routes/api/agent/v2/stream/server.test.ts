@@ -174,6 +174,7 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 	}),
 	normalizeFastContextType: (value?: string) => value ?? 'global',
 	parseFastChatInitialPlanModels: () => null,
+	parseFastChatPinnedModels: () => [],
 	parseFastChatModelTieringMode: () => 'off',
 	parseFastChatModelTieringSampleRate: (_value?: string, fallback = 0.5) => fallback,
 	resolveFastChatModelTieringConfig: () => null,

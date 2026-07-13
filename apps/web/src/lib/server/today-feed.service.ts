@@ -10,7 +10,7 @@ import {
 	fetchProjectSummaries
 } from '$lib/services/ontology/ontology-projects.service';
 import type { CalendarItem } from '$lib/types/calendar-items';
-import type { TodayFeed, TodayTask, TodayTaskBucket } from '$lib/types/today';
+import type { TodayFeed, TodayProject, TodayTask, TodayTaskBucket } from '$lib/types/today';
 
 const ACTIVE_TASK_STATES = ['todo', 'in_progress', 'blocked'] as const;
 const EVENT_FETCH_LIMIT = 200;
@@ -40,11 +40,15 @@ async function resolveTimezone(
 	return timezone && isValidTimezone(timezone) ? timezone : 'UTC';
 }
 
-function resolveBucket(task: {
-	due_at: string | null;
-	start_at: string | null;
-	state_key: string;
-}, dayStartMs: number, dayEndMs: number): TodayTaskBucket {
+function resolveBucket(
+	task: {
+		due_at: string | null;
+		start_at: string | null;
+		state_key: string;
+	},
+	dayStartMs: number,
+	dayEndMs: number
+): TodayTaskBucket {
 	const dueMs = task.due_at ? new Date(task.due_at).getTime() : null;
 	if (dueMs !== null && dueMs >= dayStartMs && dueMs < dayEndMs) {
 		return 'due_today';
@@ -84,9 +88,9 @@ export async function getTodayFeed({
 	const dayEndIso = dayEnd.toISOString();
 
 	const actorId = await measure('today.actor', () => ensureActorId(supabase, userId));
-	const projects = (await measure('today.projects', () =>
-		fetchProjectSummaries(supabase, actorId, timing)
-	)).filter((project) => project.state_key !== 'paused');
+	const projects = (
+		await measure('today.projects', () => fetchProjectSummaries(supabase, actorId, timing))
+	).filter((project) => project.state_key !== 'paused');
 	const projectById = new Map(projects.map((project) => [project.id, project]));
 	const projectIds = Array.from(projectById.keys());
 
@@ -167,6 +171,17 @@ export async function getTodayFeed({
 		})
 		.filter((task): task is TodayTask => task !== null);
 
+	// Carry a lightweight project list (already fetched above — no extra query) so the
+	// client can render readiness-aware empty states: a first-run hero for zero-project
+	// users, and a "what's waiting" next-steps list when there's no dated work today.
+	const projectList: TodayProject[] = projects.map((project) => ({
+		id: project.id,
+		name: project.name,
+		state_key: project.state_key,
+		next_step_short: project.next_step_short ?? null,
+		next_step_long: project.next_step_long ?? null
+	}));
+
 	return {
 		date,
 		timezone,
@@ -175,6 +190,7 @@ export async function getTodayFeed({
 		events,
 		tasks,
 		overdueCount,
-		projectNames: Object.fromEntries(projects.map((project) => [project.id, project.name]))
+		projectNames: Object.fromEntries(projects.map((project) => [project.id, project.name])),
+		projects: projectList
 	};
 }

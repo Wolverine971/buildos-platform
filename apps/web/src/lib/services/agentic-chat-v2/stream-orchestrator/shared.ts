@@ -68,3 +68,20 @@ export type LLMStreamPassMetadata = {
 	durationMs?: number;
 	timeToFirstTokenMs?: number | null;
 };
+
+export type FastChatOrchestrationInterventions = {
+	projectCreateStopRepair: boolean;
+	gatewayMutationStopRepair: boolean;
+	skillGateStopRepair: boolean;
+	gatewaySchemaRepair: boolean;
+	gatewayCreateFieldRepair: boolean;
+	validationRepairRounds: number;
+	readLoopRepairRank: number;
+	forcedSynthesisPasses: number;
+	writeIntentCarveOut: boolean;
+	lengthContinuations: number;
+	documentOrganizationRecovery: boolean;
+	finalizationGuard: boolean;
+	supervisorRecoveryDecisions: number;
+	streamRetries: number;
+};

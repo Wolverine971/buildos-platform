@@ -146,8 +146,15 @@ export const load: LayoutServerLoad = async ({
 	const completedOnboarding = Boolean(user.onboarding_completed_at);
 	const nowMs = Date.now();
 	const routePath = url.pathname;
+	// Include the landing surfaces ('/', '/today') so the nav onboarding indicator is
+	// correct wherever an un-onboarded user could render the layout — the WP-2 redirect
+	// guards normally route them to /onboarding first, so this is defense-in-depth.
 	const shouldLoadOnboardingProgress =
-		!completedOnboarding && (routePath === '/dashboard' || routePath.startsWith('/onboarding'));
+		!completedOnboarding &&
+		(routePath === '/dashboard' ||
+			routePath === '/' ||
+			routePath === '/today' ||
+			routePath.startsWith('/onboarding'));
 	const shouldLoadBillingContext = stripeEnabled && !routePath.startsWith('/auth');
 
 	const webhookThrottleKey = `${user.id}:${url.origin}`;

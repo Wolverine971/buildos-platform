@@ -70,9 +70,10 @@ describe('Authenticated Pages', () => {
 			expect(result).toEqual({});
 		});
 
-		it('redirects authenticated users to /dashboard preserving the query string', async () => {
+		it('redirects an un-onboarded authenticated user into /onboarding, preserving the query string', async () => {
 			const { load } = await import('../+page.server');
 
+			// mockUser.onboarding_completed_at is null → route into the onboarding flow.
 			await expect(
 				load({
 					locals: {
@@ -82,7 +83,28 @@ describe('Authenticated Pages', () => {
 				} as any)
 			).rejects.toMatchObject({
 				status: 303,
-				location: '/dashboard?open=agent-chat'
+				location: '/onboarding?open=agent-chat'
+			});
+		});
+
+		it('redirects a completed user to /today, preserving the query string', async () => {
+			const { load } = await import('../+page.server');
+
+			await expect(
+				load({
+					locals: {
+						safeGetSession: vi.fn().mockResolvedValue({
+							user: {
+								...mockUser,
+								onboarding_completed_at: '2026-01-01T00:00:00.000Z'
+							}
+						})
+					},
+					url: new URL('https://build-os.com/?open=agent-chat')
+				} as any)
+			).rejects.toMatchObject({
+				status: 303,
+				location: '/today?open=agent-chat'
 			});
 		});
 	});

@@ -15,6 +15,14 @@ export const load: PageServerLoad = async ({
 		throw redirect(303, '/auth/login?redirect=%2Ftoday');
 	}
 
+	// Don't strand a user who hasn't finished onboarding on /today (bare-domain,
+	// logo, or bookmark). Route them into the flow; the WP-0 first-run state is a
+	// backstop, but /onboarding is where the first structured win is manufactured.
+	// Explore/skip users have onboarding_completed_at set, so they fall through.
+	if (!user.onboarding_completed_at) {
+		throw redirect(303, '/onboarding');
+	}
+
 	try {
 		const feed = await getTodayFeed({
 			supabase,

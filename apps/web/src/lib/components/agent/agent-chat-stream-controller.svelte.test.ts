@@ -682,17 +682,29 @@ describe('AgentChatStreamController', () => {
 		expect(h.restoreDraft).not.toHaveBeenCalled();
 	});
 
-	it('finalizes a normally closed empty stream as an error', async () => {
+	it('reconciles a normally closed stream that never emitted terminal done', async () => {
 		const h = createHarness();
 		const sendPromise = h.controller.sendMessage();
 		await flushMicrotasks();
 
+		const streamRunId = h.messages[0]?.metadata?.stream_run_id;
+		h.streamProcessor.runs[0]!.progress({ type: 'session', session: makeSession() });
 		h.streamProcessor.runs[0]!.complete();
 		await sendPromise;
 
-		expect(h.controller.error).toBe('BuildOS did not return a response. Please try again.');
+		expect(h.reconcileTurnFromSession).toHaveBeenCalledWith(
+			expect.objectContaining({
+				sessionId: 'session-1',
+				streamRunId,
+				reason: 'transport_error'
+			})
+		);
+		expect(h.controller.error).toBeNull();
 		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('error');
-		expect(h.thinking.finalize).toHaveBeenCalledWith('error');
+		expect(h.thinking.finalize).toHaveBeenCalledWith(
+			'interrupted',
+			'Restoring latest response'
+		);
 	});
 
 	it('surfaces the server error body when the stream POST is rejected (402 freeze)', async () => {
