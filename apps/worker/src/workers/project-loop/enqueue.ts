@@ -537,39 +537,54 @@ export async function reclaimStalledProjectLoopRuns(): Promise<{
 	const nowIso = new Date(now).toISOString();
 	const runningCutoff = new Date(now - STALE_RUNNING_RUN_MS).toISOString();
 	const queuedCutoff = new Date(now - STALE_QUEUED_RUN_MS).toISOString();
+	const reclaimPageSize = 200;
 
 	const failStuck = async (
 		status: 'running' | 'queued',
 		cutoffColumn: 'started_at' | 'created_at',
 		cutoffIso: string
 	): Promise<number> => {
-		const { data: rows, error } = await supabase
-			.from('project_loop_runs')
-			.select('id')
-			.eq('status', status)
-			.lt(cutoffColumn, cutoffIso)
-			.limit(200);
-		if (error) {
-			console.error(`[ProjectLoops] reclaim scan (${status}) failed:`, error.message);
-			return 0;
-		}
 		let failed = 0;
-		for (const row of rows ?? []) {
-			if (!row.id) continue;
-			const { data: reclaimed } = await supabase
+		let afterRunId: string | null = null;
+		while (true) {
+			let query = supabase
 				.from('project_loop_runs')
-				.update({
-					status: 'failed',
-					error_message: `Reclaimed: stuck in '${status}' past the stale threshold`,
-					finished_at: nowIso
-				})
-				.eq('id', row.id)
-				.eq('status', status)
 				.select('id')
-				.maybeSingle();
-			if (reclaimed?.id) failed += 1;
+				.eq('status', status)
+				.lt(cutoffColumn, cutoffIso)
+				.order('id', { ascending: true })
+				.limit(reclaimPageSize);
+			if (afterRunId) query = query.gt('id', afterRunId);
+			const { data: rows, error } = await query;
+			if (error) {
+				console.error(`[ProjectLoops] reclaim scan (${status}) failed:`, error.message);
+				return failed;
+			}
+
+			for (const row of rows ?? []) {
+				if (!row.id) continue;
+				const { data: reclaimed } = await supabase
+					.from('project_loop_runs')
+					.update({
+						status: 'failed',
+						error_message: `Reclaimed: stuck in '${status}' past the stale threshold`,
+						finished_at: nowIso
+					})
+					.eq('id', row.id)
+					.eq('status', status)
+					.select('id')
+					.maybeSingle();
+				if (reclaimed?.id) failed += 1;
+			}
+
+			if (!rows || rows.length < reclaimPageSize) return failed;
+			const nextCursor = rows.at(-1)?.id ?? null;
+			if (!nextCursor || nextCursor === afterRunId) {
+				console.error(`[ProjectLoops] reclaim scan (${status}) cursor did not advance`);
+				return failed;
+			}
+			afterRunId = nextCursor;
 		}
-		return failed;
 	};
 
 	const failedRunning = await failStuck('running', 'started_at', runningCutoff);
@@ -577,14 +592,24 @@ export async function reclaimStalledProjectLoopRuns(): Promise<{
 
 	// Finalize waiting_review runs with no undecided child suggestions.
 	let finalizedReview = 0;
-	const { data: reviewRuns, error: reviewError } = await supabase
-		.from('project_loop_runs')
-		.select('id')
-		.eq('status', 'waiting_review')
-		.limit(200);
-	if (reviewError) {
-		console.error('[ProjectLoops] reclaim scan (waiting_review) failed:', reviewError.message);
-	} else {
+	let afterReviewRunId: string | null = null;
+	while (true) {
+		let reviewQuery = supabase
+			.from('project_loop_runs')
+			.select('id')
+			.eq('status', 'waiting_review')
+			.order('id', { ascending: true })
+			.limit(reclaimPageSize);
+		if (afterReviewRunId) reviewQuery = reviewQuery.gt('id', afterReviewRunId);
+		const { data: reviewRuns, error: reviewError } = await reviewQuery;
+		if (reviewError) {
+			console.error(
+				'[ProjectLoops] reclaim scan (waiting_review) failed:',
+				reviewError.message
+			);
+			break;
+		}
+
 		for (const row of reviewRuns ?? []) {
 			if (!row.id) continue;
 			const { data: pending, error: pendingError } = await supabase
@@ -603,6 +628,14 @@ export async function reclaimStalledProjectLoopRuns(): Promise<{
 				.maybeSingle();
 			if (finalized?.id) finalizedReview += 1;
 		}
+
+		if (!reviewRuns || reviewRuns.length < reclaimPageSize) break;
+		const nextCursor = reviewRuns.at(-1)?.id ?? null;
+		if (!nextCursor || nextCursor === afterReviewRunId) {
+			console.error('[ProjectLoops] reclaim scan (waiting_review) cursor did not advance');
+			break;
+		}
+		afterReviewRunId = nextCursor;
 	}
 
 	return { failedRunning, failedQueued, finalizedReview };

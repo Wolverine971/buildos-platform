@@ -186,6 +186,11 @@
 	}
 
 	let subtitle = $derived(resolveSubtitle());
+	let accessibleLabel = $derived(
+		notification.type === 'agent-run'
+			? `Open ${notification.data.projectName ?? (notification.data.contextType === 'global' ? 'workspace' : 'project')} agent work: ${notification.data.activityLabel || notification.data.label}. ${notification.data.preview || notification.data.goal}`
+			: `Expand ${notification.type} notification`
+	);
 
 	// Handle click to expand
 	function handleClick() {
@@ -210,7 +215,7 @@
 <div
 	class="bg-card rounded-lg shadow-ink-strong border border-border
          cursor-pointer hover:shadow-ink-strong transition-all duration-200 w-full min-w-0 sm:min-w-[320px] sm:max-w-[400px]
-         pointer-events-auto
+         pointer-events-auto motion-reduce:transition-none
          {notification.status === 'success'
 		? 'ring-2 ring-success/50'
 		: notification.status === 'error'
@@ -220,7 +225,7 @@
 	onkeydown={handleKeyDown}
 	role="button"
 	tabindex="0"
-	aria-label="Expand {notification.type} notification"
+	aria-label={accessibleLabel}
 	aria-expanded={!notification.isMinimized}
 >
 	{#if typeSpecificComponent}

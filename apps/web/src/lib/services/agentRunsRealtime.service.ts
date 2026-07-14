@@ -24,7 +24,20 @@ import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import type { AgentRunStatus } from '@buildos/shared-types';
 
-export type AgentRunRow = Database['public']['Tables']['agent_runs']['Row'];
+type AgentRunProjectSummary = {
+	id: string;
+	name: string | null;
+};
+
+/**
+ * The list endpoint enriches run rows with their owning project so compact
+ * notification cards can identify the work at a glance. Realtime payloads are
+ * raw table rows, so `project` remains optional and is preserved while those
+ * payloads merge into the polled row.
+ */
+export type AgentRunRow = Database['public']['Tables']['agent_runs']['Row'] & {
+	project?: AgentRunProjectSummary | AgentRunProjectSummary[] | null;
+};
 
 const ACTIVE_STATUSES: ReadonlySet<AgentRunStatus> = new Set<AgentRunStatus>([
 	'queued',
@@ -183,7 +196,14 @@ export class AgentRunsRealtimeService {
 			return;
 		}
 		const row = payload.new as AgentRunRow | undefined;
-		if (row?.id) this.upsertRun(row);
+		if (row?.id) {
+			const current = get(agentRunsStore).get(row.id);
+			this.upsertRun(row);
+			// A brand-new realtime row does not carry its project relationship.
+			// Refresh immediately instead of waiting for the next poll so the
+			// incoming card gains its project name almost at once.
+			if (row.project_id && !current) void this.refresh();
+		}
 	}
 
 	private static startPolling(): void {
@@ -246,7 +266,7 @@ export class AgentRunsRealtimeService {
 			const next = new Map(current);
 			for (const run of runs) {
 				if (!run?.id) continue;
-				next.set(run.id, run);
+				next.set(run.id, this.mergeRunRow(next.get(run.id), run));
 				this.trackTerminal(run);
 			}
 			return next;
@@ -257,11 +277,25 @@ export class AgentRunsRealtimeService {
 	private static upsertRun(run: AgentRunRow): void {
 		agentRunsStore.update((current) => {
 			const next = new Map(current);
-			next.set(run.id, run);
+			next.set(run.id, this.mergeRunRow(next.get(run.id), run));
 			return next;
 		});
 		this.trackTerminal(run);
 		this.pruneTerminal();
+	}
+
+	private static mergeRunRow(
+		current: AgentRunRow | undefined,
+		incoming: AgentRunRow
+	): AgentRunRow {
+		if (!current) return incoming;
+		return {
+			...current,
+			...incoming,
+			project: Object.prototype.hasOwnProperty.call(incoming, 'project')
+				? incoming.project
+				: current.project
+		};
 	}
 
 	private static removeRun(id: string): void {

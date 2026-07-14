@@ -16,6 +16,10 @@ import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
 import { captureWorkerEvent } from '../../lib/posthog';
 import { supabase } from '../../lib/supabase';
 import { resolveProjectLoopOwnerUserIds } from './enqueue';
+import {
+	type ScheduledAuditProjectRow,
+	scanScheduledAuditProjectPages
+} from './scheduledAuditScan';
 
 type QueueProjectAuditResult = {
 	queued: boolean;
@@ -35,6 +39,10 @@ type ScheduledAuditEnqueueResult = {
 	failed: number;
 	deferred: number;
 };
+
+// Owner resolution expands each page into actor/user `.in(...)` filters. Keep
+// pages comfortably below common proxy URL limits while still scanning all rows.
+const SCHEDULED_AUDIT_PAGE_SIZE = 75;
 
 function projectAuditTriggerEvaluationDedupKey(params: {
 	projectId: string;
@@ -561,67 +569,72 @@ export async function enqueueScheduledProjectAudits(): Promise<ScheduledAuditEnq
 		};
 	}
 
-	const { data: projects, error } = await supabase
-		.from('onto_projects')
-		.select('id, created_by')
-		.in('state_key', ['active', 'planning'])
-		.is('deleted_at', null)
-		.is('archived_at', null)
-		.order('updated_at', { ascending: false })
-		.limit(500);
-
-	if (error) {
-		console.error('[ProjectAudits] scheduled scan failed:', error.message);
-		return {
-			queued: 0,
-			scanned: 0,
-			skippedInvalidOwner: 0,
-			skipped: 0,
-			failed: 0,
-			deferred: 0
-		};
-	}
-
-	const ownerUserIdsByProjectId = await resolveProjectLoopOwnerUserIds(projects ?? []);
 	let queued = 0;
 	let skipped = 0;
 	let failed = 0;
 	let deferred = 0;
 	let skippedInvalidOwner = 0;
 
-	for (const project of projects ?? []) {
-		if (!project.id) continue;
-		const userId = ownerUserIdsByProjectId.get(project.id);
-		if (!userId) {
-			skippedInvalidOwner += 1;
-			continue;
-		}
-
-		try {
-			const result = await queueProjectAuditFromWorker({
-				projectId: project.id,
-				userId,
-				triggerReason: 'scheduled'
-			});
-			if (result.queued) {
-				queued += 1;
-			} else if (result.decision === 'deferred_quiet_period') {
-				deferred += 1;
-			} else {
-				skipped += 1;
+	const scan = await scanScheduledAuditProjectPages({
+		pageSize: SCHEDULED_AUDIT_PAGE_SIZE,
+		fetchPage: async (afterProjectId, pageSize) => {
+			let query = supabase
+				.from('onto_projects')
+				.select('id, created_by')
+				.in('state_key', ['active', 'planning'])
+				.is('deleted_at', null)
+				.is('archived_at', null)
+				.order('id', { ascending: true })
+				.limit(pageSize);
+			if (afterProjectId) {
+				query = query.gt('id', afterProjectId);
 			}
-		} catch (error) {
-			failed += 1;
-			console.error(
-				`[ProjectAudits] scheduled evaluation failed for project ${project.id}:`,
+			const { data, error } = await query;
+			return {
+				data: (data ?? []) as ScheduledAuditProjectRow[],
 				error
-			);
+			};
+		},
+		processPage: async (projects) => {
+			const ownerUserIdsByProjectId = await resolveProjectLoopOwnerUserIds(projects);
+			for (const project of projects) {
+				const userId = ownerUserIdsByProjectId.get(project.id);
+				if (!userId) {
+					skippedInvalidOwner += 1;
+					continue;
+				}
+
+				try {
+					const result = await queueProjectAuditFromWorker({
+						projectId: project.id,
+						userId,
+						triggerReason: 'scheduled'
+					});
+					if (result.queued) {
+						queued += 1;
+					} else if (result.decision === 'deferred_quiet_period') {
+						deferred += 1;
+					} else {
+						skipped += 1;
+					}
+				} catch (error) {
+					failed += 1;
+					console.error(
+						`[ProjectAudits] scheduled evaluation failed for project ${project.id}:`,
+						error
+					);
+				}
+			}
+		},
+		onError: (error) => {
+			console.error('[ProjectAudits] scheduled scan failed:', error.message);
 		}
-	}
+	});
+	if (scan.scanFailed) failed += 1;
 
 	return {
 		queued,
-		scanned: projects?.length ?? 0,
+		scanned: scan.scanned,
 		skippedInvalidOwner,
 		skipped,
 		failed,

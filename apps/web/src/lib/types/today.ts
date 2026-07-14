@@ -3,6 +3,7 @@
 import type { CalendarItem } from '$lib/types/calendar-items';
 
 export type TodayTaskBucket = 'due_today' | 'starts_today' | 'in_progress';
+export type TodayFeedDegradedSection = 'events' | 'tasks' | 'overdue';
 
 export interface TodayTask {
 	id: string;
@@ -36,9 +37,11 @@ export interface TodayFeed {
 	events: CalendarItem[];
 	tasks: TodayTask[];
 	overdueCount: number;
-	/** Names for every non-paused project the user can see, keyed by project id */
+	/** Queries that failed while the rest of the feed remained usable. */
+	degradedSections: TodayFeedDegradedSection[];
+	/** Names for every project the user can see, keyed by project id */
 	projectNames: Record<string, string>;
-	/** Non-paused projects the user can see — drives the readiness-aware empty states */
+	/** Projects the user can see — drives the readiness-aware empty states */
 	projects: TodayProject[];
 }
 

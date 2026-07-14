@@ -22,6 +22,7 @@
 	} from '$lib/icons/lucide';
 	import { requireApiData } from '$lib/utils/api-client-helpers';
 	import { aiInboxPerformance } from '$lib/utils/ai-inbox-performance';
+	import { getDateOnlyCalendarDate, type DateOnlyBoundary } from '$lib/utils/date-only-semantics';
 	import { isActiveFacing } from '$lib/config/project-states';
 	import { trackLoopEvent } from '$lib/services/loop-telemetry';
 	import { toastService } from '$lib/stores/toast.store';
@@ -53,7 +54,6 @@
 	});
 
 	// Lazy-mounted modals
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let AgentChatModalComponent = $state<any>(null);
 	let chatOpen = $state(false);
 	let chatConfig = $state<{
@@ -69,10 +69,8 @@
 	let captureText = $state('');
 	let captureVoiceRecording = $state(false);
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let InboxModalComponent = $state<any>(null);
 	let inboxOpen = $state(false);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let OverdueModalComponent = $state<any>(null);
 	let overdueOpen = $state(false);
 	type TaskEditModalLazy =
@@ -90,11 +88,10 @@
 		return formatInTimeZone(new Date(iso), timezone, 'h:mm a');
 	}
 
-	function hasClockTime(iso: string): boolean {
-		// Midnight and 11:59 PM are date-only conventions ("today", "by end of day"),
-		// not real clock times — those belong in "Anytime today", not on the time rail.
-		const clock = formatInTimeZone(new Date(iso), timezone, 'HH:mm');
-		return clock !== '00:00' && clock !== '23:59';
+	function hasClockTime(iso: string, boundary: DateOnlyBoundary): boolean {
+		// UTC boundary sentinels carry a calendar date and must not be shifted into
+		// a fake local clock time.
+		return getDateOnlyCalendarDate(iso, boundary) === null;
 	}
 
 	function projectNameFor(projectId: string | null): string | null {
@@ -156,7 +153,7 @@
 		const anytime: TodayTask[] = [];
 		for (const task of feed.tasks) {
 			if (scheduledTaskIds.has(task.id)) continue;
-			if (task.bucket === 'due_today' && task.due_at && hasClockTime(task.due_at)) {
+			if (task.bucket === 'due_today' && task.due_at && hasClockTime(task.due_at, 'end')) {
 				schedule.push({
 					key: `task-${task.id}`,
 					sortMs: new Date(task.due_at).getTime(),
@@ -170,7 +167,7 @@
 			} else if (
 				task.bucket === 'starts_today' &&
 				task.start_at &&
-				hasClockTime(task.start_at)
+				hasClockTime(task.start_at, 'start')
 			) {
 				schedule.push({
 					key: `task-${task.id}`,
@@ -236,8 +233,21 @@
 		return parts.join(' · ');
 	});
 
+	const degradedSections = $derived(feed?.degradedSections ?? []);
+	const hasIncompleteFeed = $derived(degradedSections.length > 0);
+	const degradedDetail = $derived.by(() => {
+		const labels = degradedSections.map((section) => {
+			if (section === 'events') return 'calendar events';
+			if (section === 'tasks') return 'tasks';
+			return 'overdue count';
+		});
+		return labels.length > 0 ? `${labels.join(', ')} may be incomplete.` : '';
+	});
 	const isClearDay = $derived(
-		agenda.allDay.length === 0 && agenda.schedule.length === 0 && agenda.anytime.length === 0
+		!hasIncompleteFeed &&
+			agenda.allDay.length === 0 &&
+			agenda.schedule.length === 0 &&
+			agenda.anytime.length === 0
 	);
 
 	// Readiness: /today adapts to how much the user has. A brand-new (or explore/skip)
@@ -840,6 +850,28 @@
 				</Button>
 			</div>
 		{:else}
+			{#if hasIncompleteFeed}
+				<div
+					class="mt-6 flex items-center gap-3 wt-paper p-3 sm:p-4 tx tx-static tx-weak"
+					role="alert"
+				>
+					<div class="p-1.5 sm:p-2 rounded-md bg-amber-500/10">
+						<AlertCircle class="h-4 w-4 text-amber-700 dark:text-amber-300" />
+					</div>
+					<div class="min-w-0 flex-1">
+						<p class="text-xs font-medium text-foreground sm:text-sm">
+							Some of your day couldn't be loaded.
+						</p>
+						<p class="mt-0.5 text-[11px] text-muted-foreground sm:text-xs">
+							{degradedDetail}
+						</p>
+					</div>
+					<Button onclick={refresh} variant="outline" size="sm" loading={refreshing}>
+						Retry
+					</Button>
+				</div>
+			{/if}
+
 			{#if agenda.allDay.length > 0}
 				<section class="mt-5 sm:mt-6" aria-label="All-day events">
 					<div class="flex flex-wrap items-center gap-1.5 sm:gap-2">

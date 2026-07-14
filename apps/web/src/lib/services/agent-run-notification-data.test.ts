@@ -1,6 +1,9 @@
 // apps/web/src/lib/services/agent-run-notification-data.test.ts
 import { describe, expect, it } from 'vitest';
-import { buildAgentRunNotificationData } from './agent-run-notification-data';
+import {
+	buildAgentRunCardPreview,
+	buildAgentRunNotificationData
+} from './agent-run-notification-data';
 import type { AgentRunRow } from './agentRunsRealtime.service';
 
 function runRow(overrides: Partial<AgentRunRow> = {}): AgentRunRow {
@@ -50,6 +53,61 @@ describe('buildAgentRunNotificationData', () => {
 			contextType: 'project',
 			projectId: 'project-1',
 			parentSessionId: 'chat-session-1'
+		});
+	});
+
+	it('builds a project, action, target, and rationale preview from a proposed change', () => {
+		const data = buildAgentRunNotificationData(
+			runRow({
+				status: 'proposal_ready',
+				project: { id: 'project-1', name: 'Author Training' },
+				change_set: {
+					run_id: 'run-1',
+					status: 'pending',
+					created_at: '2026-07-14T12:00:00.000Z',
+					changes: [
+						{
+							id: 'change-1',
+							op: 'onto.document.update',
+							entity_type: 'document',
+							entity_id: 'document-1',
+							action: 'update',
+							before: { title: 'START HERE', project_id: 'project-1' },
+							after: { document_id: 'document-1', content: 'New orientation notes' },
+							rationale: 'Capture durable decisions and open questions from the chat.'
+						}
+					]
+				}
+			})
+		);
+
+		expect(data).toMatchObject({
+			projectName: 'Author Training',
+			activityLabel: 'Update document',
+			targetLabel: 'START HERE',
+			preview: 'Capture durable decisions and open questions from the chat.',
+			entityType: 'document'
+		});
+	});
+
+	it('identifies project audits when no entity operation is available yet', () => {
+		const preview = buildAgentRunCardPreview(
+			runRow({
+				label: 'Complete Project Audit',
+				goal: 'Inspect project health and recommend the next useful action.',
+				allowed_ops: null,
+				result: null,
+				project: { id: 'project-1', name: 'Launch Alpha' },
+				status: 'running'
+			})
+		);
+
+		expect(preview).toEqual({
+			projectName: 'Launch Alpha',
+			activityLabel: 'Project audit',
+			targetLabel: null,
+			preview: 'Inspect project health and recommend the next useful action.',
+			entityType: 'audit'
 		});
 	});
 });

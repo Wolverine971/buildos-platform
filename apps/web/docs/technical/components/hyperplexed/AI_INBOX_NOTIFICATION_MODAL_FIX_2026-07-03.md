@@ -119,3 +119,37 @@ Remaining review/QA items:
 - Run an authenticated smoke test against real inbox/project-loop data, not only the local fixture.
 - Capture light-mode screenshots. The completed visual fixture pass covered desktop and iPhone-width behavior, but the observed browser theme was dark.
 - Consider a later full `DashboardInboxModal` content audit. This pass fixed modal chrome, height, refresh/retry controls, and shared decision controls, but did not normalize every inherited small text or dense content block inside the dashboard inbox.
+
+## Minimized card context follow-up — 2026-07-14
+
+The bottom-right agent-run cards still read like lifecycle toasts instead of incoming AI Inbox
+previews: repeated cards showed `Update project START HERE` plus `Changes proposed — review`, but did
+not identify the owning project, the target entity, or what the agent wanted to change.
+
+### Shipped
+
+- The agent-runs list now includes the owning project's `id` and `name`. Raw realtime rows preserve
+  that enriched relationship during merges, and a new project-scoped row triggers an immediate
+  refresh instead of waiting for the polling interval. -> P4+P20
+- One pure card-preview builder now derives a verb-first action, entity type, target title/name, and
+  brief description from the staged change set, committed entity touches, allowed operations, or
+  audit copy—in that priority order. A START HERE proposal now reads `Update document · START HERE`;
+  an operation-free audit reads `Project audit`. -> P6
+- The minimized card now uses a fixed scan order: project name, action/target, then a two-line
+  rationale/result preview. Long project names, targets, and descriptions truncate or clamp without
+  moving the status/count columns. -> P4+P1
+- The generic bot glyph was replaced by the canonical document, task, goal, plan, milestone,
+  project, risk, output, or audit icon. All icons route through `$lib/icons/lucide.ts`, loading
+  spinners stop under reduced motion, and the card's accessible name includes the same project and
+  preview context. -> P9+P11+P13
+
+### Verification
+
+- `apps/web`: focused agent-run endpoint/data/card/modal Vitest suite — 8 tests passed.
+- `apps/web`: `NODE_OPTIONS=--max-old-space-size=8192 pnpm exec svelte-check --output human` —
+  0 errors, 0 warnings.
+- A temporary representative-data route verified the three-tier card hierarchy, long-string
+  truncation, entity icons, and two-line previews in desktop light and dark modes; the fixture was
+  removed afterward.
+- Authenticated real-data and phone-width captures remain owed. The shared stack width contract was
+  not changed in this follow-up.

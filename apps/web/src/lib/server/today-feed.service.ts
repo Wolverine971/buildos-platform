@@ -4,13 +4,21 @@
 import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 
+import { isActiveFacing } from '$lib/config/project-states';
 import type { ServerTiming } from '$lib/server/server-timing';
 import {
 	ensureActorId,
 	fetchProjectSummaries
 } from '$lib/services/ontology/ontology-projects.service';
 import type { CalendarItem } from '$lib/types/calendar-items';
-import type { TodayFeed, TodayProject, TodayTask, TodayTaskBucket } from '$lib/types/today';
+import type {
+	TodayFeed,
+	TodayFeedDegradedSection,
+	TodayProject,
+	TodayTask,
+	TodayTaskBucket
+} from '$lib/types/today';
+import { getDateOnlyCalendarDate } from '$lib/utils/date-only-semantics';
 
 const ACTIVE_TASK_STATES = ['todo', 'in_progress', 'blocked'] as const;
 const EVENT_FETCH_LIMIT = 200;
@@ -40,24 +48,33 @@ async function resolveTimezone(
 	return timezone && isValidTimezone(timezone) ? timezone : 'UTC';
 }
 
-function resolveBucket(
+export function resolveTodayTaskBucket(
 	task: {
 		due_at: string | null;
 		start_at: string | null;
 		state_key: string;
 	},
+	date: string,
 	dayStartMs: number,
 	dayEndMs: number
-): TodayTaskBucket {
-	const dueMs = task.due_at ? new Date(task.due_at).getTime() : null;
-	if (dueMs !== null && dueMs >= dayStartMs && dueMs < dayEndMs) {
+): TodayTaskBucket | null {
+	const dueDateOnly = getDateOnlyCalendarDate(task.due_at, 'end');
+	if (dueDateOnly ? dueDateOnly === date : isWithinDay(task.due_at, dayStartMs, dayEndMs)) {
 		return 'due_today';
 	}
-	const startMs = task.start_at ? new Date(task.start_at).getTime() : null;
-	if (startMs !== null && startMs >= dayStartMs && startMs < dayEndMs) {
+
+	const startDateOnly = getDateOnlyCalendarDate(task.start_at, 'start');
+	if (startDateOnly ? startDateOnly === date : isWithinDay(task.start_at, dayStartMs, dayEndMs)) {
 		return 'starts_today';
 	}
-	return 'in_progress';
+
+	return task.state_key === 'in_progress' ? 'in_progress' : null;
+}
+
+function isWithinDay(value: string | null, dayStartMs: number, dayEndMs: number): boolean {
+	if (!value) return false;
+	const valueMs = new Date(value).getTime();
+	return Number.isFinite(valueMs) && valueMs >= dayStartMs && valueMs < dayEndMs;
 }
 
 export async function getTodayFeed({
@@ -88,10 +105,11 @@ export async function getTodayFeed({
 	const dayEndIso = dayEnd.toISOString();
 
 	const actorId = await measure('today.actor', () => ensureActorId(supabase, userId));
-	const projects = (
-		await measure('today.projects', () => fetchProjectSummaries(supabase, actorId, timing))
-	).filter((project) => project.state_key !== 'paused');
-	const projectById = new Map(projects.map((project) => [project.id, project]));
+	const projects = await measure('today.projects', () =>
+		fetchProjectSummaries(supabase, actorId, timing)
+	);
+	const activeProjects = projects.filter((project) => isActiveFacing(project.state_key));
+	const projectById = new Map(activeProjects.map((project) => [project.id, project]));
 	const projectIds = Array.from(projectById.keys());
 
 	const eventsPromise = measure('today.calendar_items', async () => {
@@ -106,13 +124,13 @@ export async function getTodayFeed({
 		});
 		if (error) {
 			console.error('[TodayFeed] Failed to load calendar items:', error);
-			return [] as CalendarItem[];
+			return { data: [] as CalendarItem[], failed: true };
 		}
-		return (data ?? []) as CalendarItem[];
+		return { data: (data ?? []) as CalendarItem[], failed: false };
 	});
 
 	const tasksPromise = measure('today.tasks', async () => {
-		if (projectIds.length === 0) return [];
+		if (projectIds.length === 0) return { data: [], failed: false };
 		const { data, error } = await supabase
 			.from('onto_tasks')
 			.select(
@@ -124,19 +142,21 @@ export async function getTodayFeed({
 			.or(
 				`and(due_at.gte.${dayStartIso},due_at.lt.${dayEndIso}),` +
 					`and(start_at.gte.${dayStartIso},start_at.lt.${dayEndIso}),` +
+					`due_at.eq.${date}T23:59:59.000Z,` +
+					`start_at.eq.${date}T00:00:00.000Z,` +
 					`state_key.eq.in_progress`
 			)
 			.order('due_at', { ascending: true, nullsFirst: false })
 			.limit(TASK_FETCH_LIMIT);
 		if (error) {
 			console.error('[TodayFeed] Failed to load tasks:', error);
-			return [];
+			return { data: [], failed: true };
 		}
-		return data ?? [];
+		return { data: data ?? [], failed: false };
 	});
 
 	const overduePromise = measure('today.overdue_count', async () => {
-		if (projectIds.length === 0) return 0;
+		if (projectIds.length === 0) return { data: 0, failed: false };
 		const { count, error } = await supabase
 			.from('onto_tasks')
 			.select('id', { count: 'exact', head: true })
@@ -146,27 +166,33 @@ export async function getTodayFeed({
 			.lt('due_at', dayStartIso);
 		if (error) {
 			console.error('[TodayFeed] Failed to count overdue tasks:', error);
-			return 0;
+			return { data: 0, failed: true };
 		}
-		return count ?? 0;
+		return { data: count ?? 0, failed: false };
 	});
 
-	const [events, taskRows, overdueCount] = await Promise.all([
+	const [eventsResult, tasksResult, overdueResult] = await Promise.all([
 		eventsPromise,
 		tasksPromise,
 		overduePromise
 	]);
+	const degradedSections: TodayFeedDegradedSection[] = [];
+	if (eventsResult.failed) degradedSections.push('events');
+	if (tasksResult.failed) degradedSections.push('tasks');
+	if (overdueResult.failed) degradedSections.push('overdue');
 
 	const dayStartMs = dayStart.getTime();
 	const dayEndMs = dayEnd.getTime();
-	const tasks: TodayTask[] = taskRows
+	const tasks: TodayTask[] = tasksResult.data
 		.map((task): TodayTask | null => {
 			const project = projectById.get(task.project_id);
 			if (!project) return null;
+			const bucket = resolveTodayTaskBucket(task, date, dayStartMs, dayEndMs);
+			if (!bucket) return null;
 			return {
 				...task,
 				project_name: project.name,
-				bucket: resolveBucket(task, dayStartMs, dayEndMs)
+				bucket
 			};
 		})
 		.filter((task): task is TodayTask => task !== null);
@@ -187,9 +213,10 @@ export async function getTodayFeed({
 		timezone,
 		dayStart: dayStartIso,
 		dayEnd: dayEndIso,
-		events,
+		events: eventsResult.data,
 		tasks,
-		overdueCount,
+		overdueCount: overdueResult.data,
+		degradedSections,
 		projectNames: Object.fromEntries(projects.map((project) => [project.id, project.name])),
 		projects: projectList
 	};

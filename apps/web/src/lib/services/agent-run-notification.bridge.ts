@@ -23,6 +23,7 @@ import {
 import {
 	buildAgentRunNotificationData,
 	buildAgentRunProgress,
+	buildAgentRunCardPreview,
 	toUiAgentRunStatus,
 	parseAgentRunResult
 } from './agent-run-notification-data';
@@ -89,7 +90,11 @@ export function destroyAgentRunNotificationBridge(): void {
 function syncRunToNotification(run: AgentRunRow): void {
 	if (dismissed.has(run.id)) return;
 
-	const hash = `${run.status}|${run.updated_at}`;
+	// Project relationship hydration can arrive without changing the underlying
+	// agent_runs timestamp. Include the card context so that enrichment still
+	// refreshes an already-visible notification.
+	const cardPreview = buildAgentRunCardPreview(run);
+	const hash = `${run.status}|${run.updated_at}|${cardPreview.projectName ?? ''}|${cardPreview.activityLabel}|${cardPreview.targetLabel ?? ''}|${cardPreview.preview}`;
 	if (lastSyncedHash.get(run.id) === hash) return;
 	lastSyncedHash.set(run.id, hash);
 

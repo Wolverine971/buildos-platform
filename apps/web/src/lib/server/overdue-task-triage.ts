@@ -1,6 +1,7 @@
 // apps/web/src/lib/server/overdue-task-triage.ts
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 
+import { isActiveFacing } from '$lib/config/project-states';
 import type { ServerTiming } from '$lib/server/server-timing';
 import {
 	attachAssigneesToTasks,
@@ -45,8 +46,8 @@ export async function fetchHydratedOverdueTasks({
 		timing ? timing.measure(name, fn) : fn();
 
 	const actorId = await ensureActorId(supabase, userId);
-	const projects = (await fetchProjectSummaries(supabase, actorId, timing)).filter(
-		(project) => project.state_key !== 'paused'
+	const projects = (await fetchProjectSummaries(supabase, actorId, timing)).filter((project) =>
+		isActiveFacing(project.state_key)
 	);
 	const projectById = new Map(projects.map((project) => [project.id, project]));
 	const projectIds = Array.from(projectById.keys());

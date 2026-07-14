@@ -20,7 +20,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 	let query = supabase
 		.from('agent_runs')
-		.select('*')
+		.select('*, project:onto_projects!agent_runs_project_id_fkey(id, name)')
 		.eq('user_id', user.id)
 		.order('created_at', { ascending: false })
 		.limit(limit);

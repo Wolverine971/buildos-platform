@@ -12,20 +12,30 @@
 		Pause,
 		Bot,
 		FilePen,
-		FilePlus
-	} from 'lucide-svelte';
+		FilePlus,
+		FileText,
+		ListChecks,
+		Target,
+		Calendar,
+		Flag,
+		FolderKanban,
+		AlertTriangle,
+		ClipboardCheck,
+		Layers
+	} from '$lib/icons/lucide';
 	import type { AgentRunNotification } from '$lib/types/notification.types';
 	import type { AgentRunStatus } from '@buildos/shared-types';
 
 	let { notification }: { notification: AgentRunNotification } = $props();
 
 	let runStatus = $derived(notification.data.runStatus);
-	let message = $derived(
-		notification.progress?.type !== 'steps' && notification.progress?.message
-			? notification.progress.message
-			: notification.data.goal
-	);
 	let entityCount = $derived(notification.data.entityCount ?? 0);
+	let projectLabel = $derived(
+		notification.data.projectName ??
+			(notification.data.contextType === 'global' ? 'Workspace' : 'Project')
+	);
+	let activityLabel = $derived(notification.data.activityLabel || notification.data.label);
+	let preview = $derived(notification.data.preview || notification.data.goal);
 
 	function iconFor(status: AgentRunStatus) {
 		switch (status) {
@@ -50,41 +60,86 @@
 		}
 	}
 
+	function iconForEntity(entityType: string | null | undefined, label: string) {
+		switch (entityType) {
+			case 'document':
+				return FileText;
+			case 'task':
+				return ListChecks;
+			case 'goal':
+				return Target;
+			case 'plan':
+				return Calendar;
+			case 'milestone':
+				return Flag;
+			case 'project':
+				return FolderKanban;
+			case 'risk':
+				return AlertTriangle;
+			case 'output':
+				return Layers;
+			case 'audit':
+				return ClipboardCheck;
+			default:
+				return /\baudit\b/i.test(label) ? ClipboardCheck : Bot;
+		}
+	}
+
 	let statusIcon = $derived(iconFor(runStatus));
+	let EntityIcon = $derived(iconForEntity(notification.data.entityType, activityLabel));
 </script>
 
-<div class="p-4 flex items-center gap-3">
-	<div class="flex-shrink-0">
+<div class="flex items-start gap-3 p-4">
+	<div class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center">
 		{#if statusIcon}
 			{@const StatusIcon = statusIcon.icon}
-			<StatusIcon class="w-5 h-5 {statusIcon.cls}" />
+			<StatusIcon class="h-5 w-5 {statusIcon.cls} motion-reduce:animate-none" />
 		{/if}
 	</div>
 
-	<div class="flex-1 min-w-0">
-		<div class="flex items-center gap-1.5">
-			<Bot class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-			<span class="text-sm font-medium text-foreground truncate"
-				>{notification.data.label}</span
-			>
+	<div class="min-w-0 flex-1">
+		<div
+			class="truncate text-sm font-semibold text-foreground"
+			aria-label={notification.data.projectName
+				? `Project: ${notification.data.projectName}`
+				: projectLabel}
+		>
+			{projectLabel}
 		</div>
-		{#if message}
-			<div class="text-xs text-muted-foreground truncate mt-0.5">{message}</div>
+
+		<div class="mt-0.5 flex min-w-0 items-center gap-1.5">
+			<EntityIcon class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+			<span class="min-w-0 truncate text-xs">
+				<span class="font-medium text-foreground">{activityLabel}</span>
+				{#if notification.data.targetLabel}
+					<span class="text-muted-foreground">
+						<span aria-hidden="true"> · </span>{notification.data.targetLabel}
+					</span>
+				{/if}
+			</span>
+		</div>
+
+		{#if preview}
+			<div class="mt-1 line-clamp-2 break-words text-xs leading-4 text-muted-foreground">
+				{preview}
+			</div>
 		{/if}
 	</div>
 
 	{#if entityCount > 0}
 		<div
-			class="ml-1 flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 bg-success/10 rounded text-xs text-success"
+			class="ml-1 inline-flex shrink-0 items-center gap-1 rounded-md bg-success/10 px-2 py-1 text-xs text-success"
+			aria-label={`${entityCount} completed ${entityCount === 1 ? 'change' : 'changes'}`}
 		>
-			<FilePen class="w-3 h-3" />
+			<FilePen class="h-3 w-3" />
 			{entityCount}
 		</div>
 	{:else if runStatus === 'proposal_ready' && notification.data.result?.proposed_changes}
 		<div
-			class="ml-1 flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 bg-info/10 rounded text-xs text-info"
+			class="ml-1 inline-flex shrink-0 items-center gap-1 rounded-md bg-info/10 px-2 py-1 text-xs text-info"
+			aria-label={`${notification.data.result.proposed_changes.changes.length} proposed ${notification.data.result.proposed_changes.changes.length === 1 ? 'change' : 'changes'}`}
 		>
-			<FilePlus class="w-3 h-3" />
+			<FilePlus class="h-3 w-3" />
 			{notification.data.result.proposed_changes.changes.length}
 		</div>
 	{/if}

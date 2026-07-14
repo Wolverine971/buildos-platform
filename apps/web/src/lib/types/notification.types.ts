@@ -278,6 +278,16 @@ export interface AgentRunNotification extends BaseNotification {
 		trigger: AgentRunTrigger;
 		contextType: AgentRunContextType;
 		projectId?: string | null;
+		/** Human-readable project name enriched by the agent-runs list endpoint. */
+		projectName?: string | null;
+		/** Compact, verb-first description used by the minimized notification card. */
+		activityLabel?: string;
+		/** Entity title/name when the run targets one identifiable record. */
+		targetLabel?: string | null;
+		/** Brief proposal/result preview rather than a generic lifecycle message. */
+		preview?: string;
+		/** Normalized entity type used to choose the card's target icon. */
+		entityType?: string | null;
 		parentSessionId?: string | null;
 		scopeMode: AgentRunScopeMode;
 		reviewRequired: boolean;
