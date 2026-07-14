@@ -1,10 +1,13 @@
+// apps/web/src/lib/components/notifications/types/agent-run/AgentRunMinimizedView.test.ts
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/svelte';
 import AgentRunMinimizedView from './AgentRunMinimizedView.svelte';
 import type { AgentRunNotification } from '$lib/types/notification.types';
 
-function notification(): AgentRunNotification {
+function notification(
+	dataOverrides: Partial<AgentRunNotification['data']> = {}
+): AgentRunNotification {
 	return {
 		id: 'notification-1',
 		type: 'agent-run',
@@ -61,7 +64,8 @@ function notification(): AgentRunNotification {
 			},
 			metrics: { tokens: 0, cost_usd: 0, tool_calls: 0, duration_ms: 0 },
 			entityCount: 0,
-			error: null
+			error: null,
+			...dataOverrides
 		},
 		progress: { type: 'indeterminate', message: 'Changes proposed — review' },
 		actions: {}
@@ -81,5 +85,20 @@ describe('AgentRunMinimizedView', () => {
 			screen.getByText('Capture durable decisions and open questions from the chat.')
 		).toBeTruthy();
 		expect(screen.queryByText('Changes proposed — review')).toBeNull();
+	});
+
+	it('uses a calendar icon for calendar event work', () => {
+		const { container } = render(AgentRunMinimizedView, {
+			props: {
+				notification: notification({
+					activityLabel: 'Delete calendar event',
+					targetLabel: 'Launch review',
+					entityType: 'calendar_event'
+				})
+			}
+		});
+
+		expect(container.querySelector('.lucide-calendar-days')).toBeTruthy();
+		expect(container.querySelector('.lucide-bot')).toBeNull();
 	});
 });

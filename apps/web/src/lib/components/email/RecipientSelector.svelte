@@ -1,7 +1,6 @@
 <!-- apps/web/src/lib/components/email/RecipientSelector.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
+	import { untrack } from 'svelte';
 	import { Users, Search, Plus, X, Mail, Building, Shield, User } from 'lucide-svelte';
 	import Modal from '../ui/Modal.svelte';
 	import TextInput from '../ui/TextInput.svelte';
@@ -42,40 +41,42 @@
 	let customEmail = $state('');
 	let showCustomForm = $state(false);
 
-	onMount(() => {
-		if (isOpen) {
-			loadRecipients();
-			initializeSelection();
-		}
-	});
-
-	// Watch for open state changes
+	// Keep prop-driven selection state separate from the request lifecycle.
 	$effect(() => {
-		if (!browser) return;
-		if (isOpen) {
-			loadRecipients();
-			initializeSelection();
-		}
+		if (!isOpen) return;
+
+		const recipients = selectedRecipients;
+		untrack(() => initializeSelection(recipients));
 	});
 
-	function initializeSelection() {
+	// Opening the selector owns exactly one cancellable recipient request.
+	$effect(() => {
+		if (!isOpen) return;
+
+		const controller = new AbortController();
+		void loadRecipients(controller.signal);
+
+		return () => controller.abort();
+	});
+
+	function initializeSelection(recipients: any[]) {
 		// Initialize selection sets based on existing recipients
 		selectedUserIds = new Set(
-			selectedRecipients
+			recipients
 				.filter((r) => (r.recipient_type || r.type) === 'beta_user')
 				.map((r) => r.recipient_id || r.id)
 				.filter((id) => id) // Remove null/undefined IDs
 		);
 
 		selectedMemberIds = new Set(
-			selectedRecipients
+			recipients
 				.filter((r) => (r.recipient_type || r.type) === 'beta_member')
 				.map((r) => r.recipient_id || r.id)
 				.filter((id) => id) // Remove null/undefined IDs
 		);
 
 		// For custom recipients, use email as the ID since recipient_id is null
-		const customRecipientsList = selectedRecipients.filter(
+		const customRecipientsList = recipients.filter(
 			(r) => (r.recipient_type || r.type) === 'custom'
 		);
 
@@ -98,33 +99,41 @@
 		selectedCustomIds = new Set(customRecipients.map((r) => r.email));
 	}
 
-	async function loadRecipients() {
+	async function loadRecipients(signal: AbortSignal) {
 		isLoading = true;
 		error = null;
 
 		try {
-			// Load beta users
-			const usersResponse = await fetch(
-				'/api/admin/emails/recipients?source=beta_users&limit=100'
-			);
-			if (usersResponse.ok) {
-				const usersResult = await usersResponse.json();
-				betaUsers = usersResult.recipients || [];
+			const [usersResponse, membersResponse] = await Promise.all([
+				fetch('/api/admin/emails/recipients?source=beta_users&limit=100', { signal }),
+				fetch('/api/admin/emails/recipients?source=beta_members&limit=100', { signal })
+			]);
+
+			if (!usersResponse.ok || !membersResponse.ok) {
+				throw new Error('Failed to load recipients');
 			}
 
-			// Load beta members
-			const membersResponse = await fetch(
-				'/api/admin/emails/recipients?source=beta_members&limit=100'
-			);
-			if (membersResponse.ok) {
-				const membersResult = await membersResponse.json();
-				betaMembers = membersResult.recipients || [];
-			}
+			const [usersResult, membersResult] = await Promise.all([
+				usersResponse.json(),
+				membersResponse.json()
+			]);
+
+			if (signal.aborted) return;
+
+			betaUsers = usersResult.recipients || [];
+			betaMembers = membersResult.recipients || [];
 		} catch (err) {
+			if (signal.aborted || isAbortError(err)) return;
 			error = err instanceof Error ? err.message : 'Failed to load recipients';
 		} finally {
-			isLoading = false;
+			if (!signal.aborted) {
+				isLoading = false;
+			}
 		}
+	}
+
+	function isAbortError(error: unknown): boolean {
+		return error instanceof Error && error.name === 'AbortError';
 	}
 
 	function toggleUserSelection(userId: string) {

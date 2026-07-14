@@ -15,6 +15,8 @@ This service runs three things in the same process:
 ## Tech Stack
 
 - **Runtime** — Node.js >= 20.19 (Railway root Nixpacks currently uses `nodejs_22`)
+- **Compiler** — Native TypeScript 7 for production builds and typechecks; TypeScript 5.9 remains
+  installed for the surrounding workspace toolchain
 - **Web** — Express 4
 - **Queue** — Supabase-backed (no Redis). Atomic claiming via PostgreSQL RPCs (`add_queue_job`, `claim_pending_jobs`, `complete_queue_job`, `fail_queue_job`) using `FOR UPDATE SKIP LOCKED`.
 - **Scheduler** — `node-cron`
@@ -120,7 +122,7 @@ From `apps/worker/`:
 pnpm dev                # Full process (index.ts): API + worker + scheduler
 pnpm worker             # Worker loop only
 pnpm scheduler          # Scheduler only
-pnpm build              # tsc -> dist/
+pnpm build              # native TypeScript 7 -> dist/
 pnpm start              # node dist/index.js (production entry)
 
 pnpm typecheck
@@ -136,10 +138,15 @@ pnpm test:integration
 Configured at the repo root via `railway.toml` and `nixpacks.toml`:
 
 - Builder: Nixpacks on `nodejs_22`; the build runs pinned `pnpm@11.7.0` via `npx`.
-- Build: `npx --yes pnpm@11.7.0 install --prod=false --frozen-lockfile && npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker`.
+- Install: `npx --yes pnpm@11.7.0 install --prod=false --frozen-lockfile`.
+- Build: `npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker`.
 - Start: `node apps/worker/dist/index.js`.
 - Healthcheck: `GET /health` with a 30s timeout.
 - Restart policy: `ON_FAILURE`, up to 3 retries.
+
+Keep `--prod=false` in the Railway install phase. The native TypeScript 7 compiler and Turbo are
+development dependencies required during the image build; the compiled worker does not load the
+compiler at runtime.
 
 Set the required env vars in the Railway service dashboard — at minimum, Supabase credentials, LLM API keys, `PRIVATE_RAILWAY_WORKER_TOKEN`, and (if using SMS) Twilio credentials.
 

@@ -6,6 +6,7 @@
 
 import type {
 	AgentRunStatus,
+	AgentRunTrigger,
 	AgentRunContextType,
 	AgentRunScopeMode,
 	AgentRunMetrics,
@@ -72,17 +73,72 @@ const ENTITY_LABELS: Record<string, string> = {
 	output: 'output',
 	plan: 'plan',
 	project: 'project',
+	relationship: 'relationship',
 	risk: 'risk',
 	task: 'task'
 };
 
-type AgentRunCardPreview = {
+export type AgentRunCardPreview = {
 	projectName: string | null;
 	activityLabel: string;
 	targetLabel: string | null;
 	preview: string;
 	entityType: string | null;
 };
+
+/** Plain-language lifecycle label for customer-facing Agent Work surfaces. */
+export function agentRunStatusLabel(status: AgentRunStatus): string {
+	switch (status) {
+		case 'queued':
+			return 'Waiting to start';
+		case 'running':
+			return 'In progress';
+		case 'paused':
+			return 'Paused';
+		case 'needs_input':
+			return 'Needs your input';
+		case 'proposal_ready':
+			return 'Ready for review';
+		case 'completed':
+			return 'Complete';
+		case 'partial':
+			return 'Partly complete';
+		case 'failed':
+			return 'Needs attention';
+		case 'cancelled':
+			return 'Stopped';
+	}
+}
+
+/** Explain how the work started without exposing the database trigger enum. */
+export function agentRunTriggerLabel(trigger: AgentRunTrigger): string {
+	switch (trigger) {
+		case 'chat':
+			return 'From chat';
+		case 'manual':
+			return 'Started manually';
+		case 'scheduled':
+			return 'Scheduled';
+		case 'event':
+			return 'Started automatically';
+	}
+}
+
+/** Explain write access and approval behavior as one user-facing promise. */
+export function agentRunAccessLabel(scopeMode: AgentRunScopeMode, reviewRequired: boolean): string {
+	if (scopeMode === 'read_only') return 'Review only';
+	return reviewRequired ? 'Ask before applying' : 'Can make changes';
+}
+
+export function agentRunDisplayTitle(
+	activityLabel: string | null | undefined,
+	targetLabel: string | null | undefined,
+	fallback: string
+): string {
+	const activity = compactText(activityLabel, 120) ?? compactText(fallback, 120) ?? 'Agent work';
+	const target = compactText(targetLabel, 100);
+	return target ? `${activity} · ${target}` : activity;
+}
 
 function compactText(value: unknown, maxLength = 220): string | null {
 	if (typeof value !== 'string') return null;
@@ -131,13 +187,46 @@ function changeTargetLabel(change: ProposedChange): string | null {
 	return null;
 }
 
+const OPERATION_ACTIONS: Record<string, string> = {
+	create: 'create',
+	create_or_attach: 'update',
+	delete: 'delete',
+	get: 'review',
+	link: 'link',
+	list: 'review',
+	move: 'move',
+	search: 'review',
+	set: 'update',
+	unlink: 'unlink',
+	update: 'update'
+};
+
 function operationParts(op: string): { action: string; entityType: string } | null {
 	const parts = op.split('.').filter(Boolean);
-	if (parts.length < 3 || parts[0] !== 'onto') return null;
-	const action = parts.at(-1);
-	const entityType = normalizeEntityType(parts[1]);
-	if (!action || !entityType || !['create', 'update', 'delete'].includes(action)) return null;
+	const namespace = parts[0];
+	const resource = parts[1];
+	if (parts.length < 3 || !resource || (namespace !== 'onto' && namespace !== 'cal')) return null;
+
+	const rawAction = parts.at(-1);
+	const action = rawAction ? OPERATION_ACTIONS[rawAction] : null;
+	const entityType = normalizeEntityType(
+		namespace === 'cal' && resource === 'event'
+			? 'calendar_event'
+			: namespace === 'onto' && resource === 'edge'
+				? 'relationship'
+				: resource
+	);
+	if (!action || !entityType) return null;
 	return { action, entityType };
+}
+
+function isProjectAuditCopy(value: string): boolean {
+	return (
+		/\bproject audit\b/.test(value) ||
+		/\baudit (?:the )?project\b/.test(value) ||
+		/\bproject review\b/.test(value) ||
+		/\breconcile (?:the )?project\b/.test(value)
+	);
 }
 
 function readProjectName(run: AgentRunRow): string | null {
@@ -217,7 +306,7 @@ export function buildAgentRunCardPreview(
 	}
 
 	const runCopy = `${run.label} ${run.goal}`.toLowerCase();
-	if (!activityLabel && /\b(audit|project review|reconcile)\b/.test(runCopy)) {
+	if (!activityLabel && isProjectAuditCopy(runCopy)) {
 		activityLabel = 'Project audit';
 		entityType = 'audit';
 	}

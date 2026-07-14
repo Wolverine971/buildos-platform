@@ -35,8 +35,8 @@ buildos-platform/
 
 ### Package Manager
 
-**Always use `pnpm`**. The root `package.json` pins `pnpm@11.7.0` and requires
-Node.js `>=20.19.0`.
+**Always use `pnpm`**. The root `package.json` pins `pnpm@11.7.0`, Turborepo
+`^2.10.5`, and requires Node.js `>=20.19.0`.
 
 ### Installation
 
@@ -44,6 +44,23 @@ Node.js `>=20.19.0`.
 # Install all dependencies
 pnpm install
 ```
+
+### TypeScript Compiler Strategy
+
+The monorepo deliberately keeps TypeScript 5.9 and native TypeScript 7 side by side:
+
+| Workspace                     | Build/type pipeline                              | Typecheck compiler                 |
+| ----------------------------- | ------------------------------------------------ | ---------------------------------- |
+| `apps/web`                    | SvelteKit/Vite with TypeScript 5.9 tooling       | `svelte-check` with TypeScript 5.9 |
+| `apps/worker`                 | Native TypeScript 7                              | Native TypeScript 7                |
+| `packages/shared-types`       | `tsup`/esbuild + TypeScript 5.9 declarations     | Native TypeScript 7                |
+| `packages/buildos-mcp-server` | `tsup`/esbuild with TypeScript 5.9 compatibility | Native TypeScript 7                |
+| Other shared packages         | `tsup`/esbuild + TypeScript 5.9 declarations     | TypeScript 5.9                     |
+
+Native TypeScript 7 is declared as `@typescript/native: npm:typescript@^7.0.2` in only the
+workspaces that use it. Scripts invoke its local `bin/tsc` path explicitly. This isolates the
+performance upgrade from SvelteKit and declaration-generation integrations that still expect
+TypeScript 5.x behavior.
 
 ### Development
 
@@ -116,6 +133,10 @@ pnpm pre-push
 ```
 
 ## Turborepo Concepts
+
+The repo uses Turborepo 2.10.5. Do not downgrade below 2.9.7: older releases cannot fully parse
+pnpm 11 lockfiles with flat-string patched dependency entries, which degrades workspace-aware
+caching and dependency resolution.
 
 ### Task Configuration
 
@@ -257,6 +278,7 @@ See `/apps/web/docs/operations/deployment/` for details.
 
 ```bash
 # Railway automatically deploys from git using repo-root config.
+# The Railway service root directory must remain `/`.
 # Manual deploy via Railway CLI should run from the monorepo root:
 railway up
 ```

@@ -2,7 +2,7 @@
 
 # Web-Worker Architecture Documentation
 
-**Last Updated:** 2026-07-06
+**Last Updated:** 2026-07-14
 **Status:** Active
 **Scope:** Cross-service communication and integration patterns
 
@@ -835,10 +835,13 @@ PRIVATE_TWILIO_MESSAGING_SERVICE_SID=MGxxx
 
 1. Push to GitHub main branch
 2. Railway auto-deploys
-3. Runs `pnpm build --filter=@buildos/worker`
-4. Restarts worker process
-5. Environment variables from Railway dashboard
-6. Zero-downtime: Drains existing jobs before restart
+3. From repository root `/`, Nixpacks provisions Node 22 and installs the frozen
+   pnpm 11 lockfile with development dependencies
+4. Turbo builds `@buildos/worker` and its workspace dependencies; the worker
+   itself is compiled with native TypeScript 7
+5. Railway starts `node apps/worker/dist/index.js` and checks `/health`
+6. Environment variables come from the Railway dashboard; graceful shutdown
+   handling drains active worker jobs when Railway sends a termination signal
 
 ---
 

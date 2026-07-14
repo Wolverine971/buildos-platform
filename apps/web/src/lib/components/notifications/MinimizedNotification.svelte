@@ -135,15 +135,27 @@
 							: notification.status === 'warning'
 								? 'Time block created (no suggestions)'
 								: 'Time block'
-					: notification.type === 'generic'
-						? notification.data.title
-						: notification.type === 'chat-session'
+					: notification.type === 'agent-run'
+						? (notification.data.projectName ??
+							(notification.data.contextType === 'global' ? 'Workspace' : 'Project'))
+						: notification.type === 'generic'
 							? notification.data.title
-							: 'Processing'
+							: notification.type === 'chat-session'
+								? notification.data.title
+								: 'Processing'
 	);
 
 	// Get subtitle/progress message with type-safe handling across progress variants
 	function resolveSubtitle() {
+		if (notification.type === 'agent-run') {
+			const activity = notification.data.activityLabel || notification.data.label;
+			const target = notification.data.targetLabel
+				? `${activity} · ${notification.data.targetLabel}`
+				: activity;
+			const preview = notification.data.preview || notification.data.goal;
+			return preview ? `${target} — ${preview}` : target;
+		}
+
 		if (notification.type === 'time-block') {
 			const suggestionsState = notification.data.suggestionsState;
 			if (notification.status === 'processing') {
@@ -188,18 +200,15 @@
 	let subtitle = $derived(resolveSubtitle());
 	let accessibleLabel = $derived(
 		notification.type === 'agent-run'
-			? `Open ${notification.data.projectName ?? (notification.data.contextType === 'global' ? 'workspace' : 'project')} agent work: ${notification.data.activityLabel || notification.data.label}. ${notification.data.preview || notification.data.goal}`
-			: `Expand ${notification.type} notification`
+			? `Open ${notification.data.projectName ?? (notification.data.contextType === 'global' ? 'workspace' : 'project')} agent work: ${notification.data.activityLabel || notification.data.label}${notification.data.targetLabel ? ` — ${notification.data.targetLabel}` : ''}. ${notification.data.preview || notification.data.goal}`
+			: notification.type === 'chat-session'
+				? `Parked chat in ${notification.data.contextLabel ?? (notification.data.contextType === 'global' ? 'workspace' : 'project')}`
+				: `Expand ${notification.type} notification`
 	);
 
 	// Handle click to expand
 	function handleClick() {
-		// Chat cards reopen the real chat modal instead of expanding into the
-		// generic NotificationModal — the chat IS the expanded view.
-		if (notification.type === 'chat-session') {
-			notification.actions?.view?.();
-			return;
-		}
+		if (notification.type === 'chat-session') return;
 		notificationStore.expand(notification.id);
 	}
 
@@ -212,22 +221,7 @@
 	}
 </script>
 
-<div
-	class="bg-card rounded-lg shadow-ink-strong border border-border
-         cursor-pointer hover:shadow-ink-strong transition-all duration-200 w-full min-w-0 sm:min-w-[320px] sm:max-w-[400px]
-         pointer-events-auto motion-reduce:transition-none
-         {notification.status === 'success'
-		? 'ring-2 ring-success/50'
-		: notification.status === 'error'
-			? 'ring-2 ring-destructive/50'
-			: ''}"
-	onclick={handleClick}
-	onkeydown={handleKeyDown}
-	role="button"
-	tabindex="0"
-	aria-label={accessibleLabel}
-	aria-expanded={!notification.isMinimized}
->
+{#snippet notificationContent()}
 	{#if typeSpecificComponent}
 		<!-- Type-specific view (phase generation, calendar sync, etc.) -->
 		{@const TypeComponent = typeSpecificComponent}
@@ -239,7 +233,9 @@
 				<!-- Status Icon -->
 				<div class="flex-shrink-0">
 					{#if notification.status === 'processing'}
-						<LoaderCircle class="w-5 h-5 text-info animate-spin" />
+						<LoaderCircle
+							class="w-5 h-5 text-info animate-spin motion-reduce:animate-none"
+						/>
 					{:else if notification.status === 'success'}
 						<CheckCircle class="w-5 h-5 text-success" />
 					{:else if notification.status === 'error'}
@@ -271,11 +267,43 @@
 			{#if notification.progress?.type === 'percentage' && notification.progress.percentage !== undefined}
 				<div class="mt-3 h-1 bg-muted rounded-full overflow-hidden">
 					<div
-						class="h-full bg-info transition-all duration-300"
+						class="h-full bg-info transition-all duration-300 motion-reduce:transition-none"
 						style="width: {notification.progress.percentage}%"
 					></div>
 				</div>
 			{/if}
 		</div>
 	{/if}
-</div>
+{/snippet}
+
+{#if notification.type === 'chat-session'}
+	<div
+		class="pointer-events-auto w-full min-w-0 rounded-lg border border-border bg-card shadow-ink-strong transition-all duration-200 hover:shadow-ink-strong motion-reduce:transition-none sm:min-w-[320px] sm:max-w-[400px]
+		{notification.status === 'success'
+			? 'ring-2 ring-success/50'
+			: notification.status === 'error'
+				? 'ring-2 ring-destructive/50'
+				: ''}"
+		role="group"
+		aria-label={accessibleLabel}
+	>
+		{@render notificationContent()}
+	</div>
+{:else}
+	<div
+		class="pointer-events-auto w-full min-w-0 cursor-pointer rounded-lg border border-border bg-card shadow-ink-strong transition-all duration-200 hover:shadow-ink-strong motion-reduce:transition-none sm:min-w-[320px] sm:max-w-[400px]
+		{notification.status === 'success'
+			? 'ring-2 ring-success/50'
+			: notification.status === 'error'
+				? 'ring-2 ring-destructive/50'
+				: ''}"
+		onclick={handleClick}
+		onkeydown={handleKeyDown}
+		role="button"
+		tabindex="0"
+		aria-label={accessibleLabel}
+		aria-expanded={!notification.isMinimized}
+	>
+		{@render notificationContent()}
+	</div>
+{/if}

@@ -48,6 +48,7 @@ describe('chat-session-notification.bridge', () => {
 			sessionId: 'session-idle',
 			title: 'Morning planning',
 			contextType: 'global',
+			contextLabel: 'Workspace',
 			hasActiveTurn: false,
 			hasSentMessage: true
 		});
@@ -56,6 +57,7 @@ describe('chat-session-notification.bridge', () => {
 		expect(cards).toHaveLength(1);
 		expect(cards[0].status).toBe('idle');
 		expect(cards[0].data.title).toBe('Morning planning');
+		expect(cards[0].data.contextLabel).toBe('Workspace');
 		expect(vi.getTimerCount()).toBe(0);
 		expect(fetchMock).not.toHaveBeenCalled();
 	});

@@ -7,7 +7,7 @@
 	 * The steer box posts a `steer` signal the worker injects into the run's next
 	 * turn; the chip shows pending → applied (flips when a run.steer event lands).
 	 */
-	import { Send, Pause, Play, LoaderCircle, Check } from 'lucide-svelte';
+	import { Send, Pause, Play, LoaderCircle, Check } from '$lib/icons/lucide';
 	import Button from '$components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { AgentRunStatus } from '@buildos/shared-types';
@@ -54,13 +54,13 @@
 			});
 			if (!res.ok) {
 				const body = await res.json().catch(() => null);
-				toastService.error(body?.error || 'Could not send steer');
+				toastService.error(body?.error || 'Could not send this guidance');
 				return;
 			}
 			pending = [...pending, { id: nextId++, message }];
 			steerText = '';
 		} catch {
-			toastService.error('Could not send steer');
+			toastService.error('Could not send this guidance');
 		} finally {
 			busy = false;
 		}
@@ -73,12 +73,12 @@
 			const res = await fetch(`/api/agent-runs/${runId}/${action}`, { method: 'POST' });
 			if (!res.ok) {
 				const body = await res.json().catch(() => null);
-				toastService.error(body?.error || `Could not ${action} the run`);
+				toastService.error(body?.error || `Could not ${action} this work`);
 				return;
 			}
-			toastService.info(action === 'pause' ? 'Pausing run…' : 'Resuming run…');
+			toastService.info(action === 'pause' ? 'Pausing work…' : 'Resuming work…');
 		} catch {
-			toastService.error(`Could not ${action} the run`);
+			toastService.error(`Could not ${action} this work`);
 		} finally {
 			busy = false;
 		}
@@ -107,7 +107,7 @@
 					{#if isApplied(chip.message)}
 						<Check class="w-3 h-3" /> applied
 					{:else}
-						<LoaderCircle class="w-3 h-3 animate-spin" /> sending
+						<LoaderCircle class="w-3 h-3 animate-spin motion-reduce:animate-none" /> sending
 					{/if}
 					<span class="max-w-[140px] truncate">{chip.message}</span>
 				</span>
@@ -121,13 +121,16 @@
 			onkeydown={onKeydown}
 			rows="1"
 			disabled={!canSteer || busy}
-			placeholder={canSteer ? 'Tell the agent something…' : 'Run is not steerable'}
+			placeholder={canSteer
+				? 'Add guidance for BuildOS…'
+				: 'This work cannot be redirected now'}
 			class="flex-1 resize-none rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
 		></textarea>
 		<Button
 			onclick={sendSteer}
 			variant="primary"
-			size="sm"
+			size="md"
+			aria-label="Send guidance"
 			disabled={!canSteer || busy || !steerText.trim()}
 		>
 			<Send class="w-4 h-4" />

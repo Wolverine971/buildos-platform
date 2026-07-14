@@ -28,9 +28,11 @@ buildos-platform/
 
 ## Tech Stack
 
-- **Monorepo**: Turborepo + pnpm workspaces
+- **Monorepo**: Turborepo 2.10 + pnpm 11 workspaces
 - **Web**: SvelteKit 2 + Svelte 5 (runes) on Vercel (`nodejs22.x`)
-- **Worker**: Node.js + Express on Railway (Node 20+)
+- **Worker**: Node.js + Express on Railway (`nodejs_22`)
+- **TypeScript**: TypeScript 5.9 for SvelteKit and package build tooling; native TypeScript 7 for
+  worker compilation and selected package typechecks
 - **Queue**: Redis-free — Supabase-backed queue with PostgreSQL RPCs
 - **Database**: Supabase (PostgreSQL + Row Level Security)
 - **LLMs**: OpenRouter (primary) → OpenAI / Anthropic fallback; optional direct Moonshot for Kimi
@@ -127,7 +129,8 @@ Always use `pnpm`. Never `npm` or `yarn`.
 ## Deployment
 
 - **Web** → Vercel. Config in `vercel.json`. Cron jobs for dunning, trial reminders, billing ops, welcome sequence, reactivation sequence, and security retention run from Vercel.
-- **Worker** → Railway. Config in `railway.toml` + `nixpacks.toml`. Healthcheck at `/health`.
+- **Worker** → Railway. Deploys from repository root `/` using `railway.toml` +
+  `nixpacks.toml` on Node 22. Healthcheck at `/health`.
 
 See `docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md` for the full topology.
 

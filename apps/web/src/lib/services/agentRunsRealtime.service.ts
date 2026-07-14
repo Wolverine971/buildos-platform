@@ -39,6 +39,21 @@ export type AgentRunRow = Database['public']['Tables']['agent_runs']['Row'] & {
 	project?: AgentRunProjectSummary | AgentRunProjectSummary[] | null;
 };
 
+/** Keep endpoint-only relationship data when a raw realtime table row arrives. */
+export function mergeAgentRunRows(
+	current: AgentRunRow | undefined,
+	incoming: AgentRunRow
+): AgentRunRow {
+	if (!current) return incoming;
+	return {
+		...current,
+		...incoming,
+		project: Object.prototype.hasOwnProperty.call(incoming, 'project')
+			? incoming.project
+			: current.project
+	};
+}
+
 const ACTIVE_STATUSES: ReadonlySet<AgentRunStatus> = new Set<AgentRunStatus>([
 	'queued',
 	'running',
@@ -266,7 +281,7 @@ export class AgentRunsRealtimeService {
 			const next = new Map(current);
 			for (const run of runs) {
 				if (!run?.id) continue;
-				next.set(run.id, this.mergeRunRow(next.get(run.id), run));
+				next.set(run.id, mergeAgentRunRows(next.get(run.id), run));
 				this.trackTerminal(run);
 			}
 			return next;
@@ -277,25 +292,11 @@ export class AgentRunsRealtimeService {
 	private static upsertRun(run: AgentRunRow): void {
 		agentRunsStore.update((current) => {
 			const next = new Map(current);
-			next.set(run.id, this.mergeRunRow(next.get(run.id), run));
+			next.set(run.id, mergeAgentRunRows(next.get(run.id), run));
 			return next;
 		});
 		this.trackTerminal(run);
 		this.pruneTerminal();
-	}
-
-	private static mergeRunRow(
-		current: AgentRunRow | undefined,
-		incoming: AgentRunRow
-	): AgentRunRow {
-		if (!current) return incoming;
-		return {
-			...current,
-			...incoming,
-			project: Object.prototype.hasOwnProperty.call(incoming, 'project')
-				? incoming.project
-				: current.project
-		};
 	}
 
 	private static removeRun(id: string): void {

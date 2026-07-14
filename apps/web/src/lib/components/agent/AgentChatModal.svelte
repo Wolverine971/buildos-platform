@@ -2019,6 +2019,7 @@
 				normalizeSessionContextType(session.context_type),
 			entityId: shellRouter.selectedEntityId ?? session.entity_id ?? null,
 			projectId: resolvedProjectFocus?.projectId ?? null,
+			contextLabel: resolvedProjectFocus?.projectName ?? displayContextLabel ?? 'Workspace',
 			hasActiveTurn: stream.isStreaming || Boolean(activeRestoredTurnRunId),
 			hasSentMessage: stream.hasSentMessage
 		};

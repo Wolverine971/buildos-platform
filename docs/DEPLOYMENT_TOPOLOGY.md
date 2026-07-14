@@ -81,9 +81,15 @@ External Services:
 - Asynchronous operations offloaded from web
 - Authenticated worker API routes for enqueueing jobs, classification, status, and operations
 
-**Environment:** Long-running Node.js process  
-**URL:** Railway private URL  
-**Build Command:** `pnpm build --filter=@buildos/worker`
+- **Environment:** Long-running Node.js 22 process
+- **URL:** Railway private URL
+- **Railway Root Directory:** `/`
+- **Install Command:** `npx --yes pnpm@11.7.0 install --prod=false --frozen-lockfile`
+- **Build Command:** `npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker`
+- **Start Command:** `node apps/worker/dist/index.js`
+- **Compiler:** Native TypeScript 7 for the worker; dependency packages retain their configured
+  TypeScript 5.9/`tsup` builds
+
 **Dependencies:**
 
 - `@buildos/shared-types`

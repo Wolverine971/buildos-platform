@@ -12,7 +12,8 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { notificationStore } from '$lib/stores/notification.store';
-	import { LoaderCircle, CircleCheck, AlertCircle, XCircle } from 'lucide-svelte';
+	import { LoaderCircle, CircleCheck, AlertCircle } from '$lib/icons/lucide';
+	import { agentRunDisplayTitle } from '$lib/services/agent-run-notification-data';
 	import type { Notification } from '$lib/types/notification.types';
 
 	// Props
@@ -100,9 +101,15 @@
 				? 'Calendar Analysis'
 				: notification.type === 'generic'
 					? notification.data.title
-					: notification.type === 'time-block'
-						? 'Time Block Suggestions'
-						: 'Processing'
+					: notification.type === 'agent-run'
+						? agentRunDisplayTitle(
+								notification.data.activityLabel,
+								notification.data.targetLabel,
+								notification.data.label
+							)
+						: notification.type === 'time-block'
+							? 'Time Block Suggestions'
+							: 'Processing'
 	);
 
 	// Handle minimize (for ongoing processing)
@@ -142,22 +149,21 @@
 		onminimize={handleMinimize}
 		onclose={handleDismiss}
 		oncancel={handleDismiss}
+		onMinimize={handleMinimize}
+		onClose={handleDismiss}
+		onCancel={handleDismiss}
 	/>
 {:else}
 	<!-- Generic fallback modal -->
-	<Modal
-		isOpen={true}
-		onClose={handleMinimize}
-		title={modalTitle}
-		size="lg"
-		showCloseButton={true}
-	>
+	<Modal isOpen={true} onClose={handleClose} title={modalTitle} size="lg" showCloseButton={true}>
 		{#snippet children()}
 			<div class="px-3 sm:px-4 py-3 sm:py-4">
 				<div class="space-y-4">
 					{#if notification.status === 'processing'}
 						<div class="text-center py-8">
-							<LoaderCircle class="w-12 h-12 text-accent animate-spin mx-auto mb-4" />
+							<LoaderCircle
+								class="w-12 h-12 text-accent animate-spin motion-reduce:animate-none mx-auto mb-4"
+							/>
 							<p class="text-muted-foreground">
 								{notification.progress?.message || 'Processing...'}
 							</p>
@@ -196,7 +202,7 @@
 													<CircleCheck class="w-4 h-4 text-accent" />
 												{:else if step.status === 'processing'}
 													<LoaderCircle
-														class="w-4 h-4 text-accent animate-spin"
+														class="w-4 h-4 text-accent animate-spin motion-reduce:animate-none"
 													/>
 												{:else if step.status === 'error'}
 													<AlertCircle class="w-4 h-4 text-destructive" />

@@ -6,8 +6,39 @@ export interface EmailTemplateData {
 	trackingPixel?: string;
 }
 
-export function generateMinimalEmailHTML(data: EmailTemplateData): string {
+export interface EmailTemplateRenderOptions {
+	contentSecurityPolicy?: string;
+	referrerPolicy?: string;
+}
+
+function escapeHtmlText(value: string): string {
+	return value
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
+function escapeHtmlAttribute(value: string): string {
+	return value
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;');
+}
+
+function renderMinimalEmailHTML(
+	data: EmailTemplateData,
+	options: EmailTemplateRenderOptions = {}
+): string {
 	const { subject, content, trackingPixel = '' } = data;
+	const contentSecurityPolicy = options.contentSecurityPolicy
+		? `<meta http-equiv="Content-Security-Policy" content="${escapeHtmlAttribute(options.contentSecurityPolicy)}">`
+		: '';
+	const referrerPolicy = options.referrerPolicy
+		? `<meta name="referrer" content="${escapeHtmlAttribute(options.referrerPolicy)}">`
+		: '';
 
 	return `
 <!DOCTYPE html>
@@ -15,7 +46,9 @@ export function generateMinimalEmailHTML(data: EmailTemplateData): string {
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>${subject}</title>
+	${contentSecurityPolicy}
+	${referrerPolicy}
+	<title>${escapeHtmlText(subject)}</title>
 	<style>
 		/* Reset and base styles - Inkprint Design System */
 		* {
@@ -264,6 +297,13 @@ export function generateMinimalEmailHTML(data: EmailTemplateData): string {
 	`.trim();
 }
 
+export function generateMinimalEmailHTML(
+	data: EmailTemplateData,
+	options: EmailTemplateRenderOptions = {}
+): string {
+	return renderMinimalEmailHTML(data, options);
+}
+
 // Alternative even more minimal template (no header/footer)
 export function generatePlainEmailHTML(data: EmailTemplateData): string {
 	const { subject, content, trackingPixel = '' } = data;
@@ -274,7 +314,7 @@ export function generatePlainEmailHTML(data: EmailTemplateData): string {
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>${subject}</title>
+	<title>${escapeHtmlText(subject)}</title>
 	<style>
 		/* Inkprint Design System - Plain Email */
 		body {

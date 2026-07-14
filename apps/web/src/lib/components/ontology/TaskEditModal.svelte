@@ -19,7 +19,6 @@
 	- Create Modal: /apps/web/src/lib/components/ontology/TaskCreateModal.svelte
 -->
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import { slide } from 'svelte/transition';
 	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import {
@@ -142,6 +141,19 @@
 	let hasCalendarLink = $state(false);
 	let deleteFromCalendar = $state(true);
 	let _hasChanges = $state(false);
+	let taskLoadController: AbortController | null = null;
+	let taskLoadRequestId = 0;
+	let calendarLinkStatusController: AbortController | null = null;
+	let calendarLinkStatusRequestId = 0;
+	let taskSessionEpoch = 0;
+
+	type TaskSession = {
+		taskId: string;
+		projectId: string;
+		epoch: number;
+	};
+
+	let seriesModalSession: TaskSession | null = null;
 
 	// Form fields
 	let title = $state('');
@@ -383,19 +395,71 @@
 		};
 	});
 
-	// Load task data when modal opens
+	function captureTaskSession(): TaskSession {
+		return { taskId, projectId, epoch: taskSessionEpoch };
+	}
+
+	function isCurrentTaskSession(session: TaskSession): boolean {
+		return (
+			modalOpen &&
+			session.epoch === taskSessionEpoch &&
+			session.taskId === taskId &&
+			session.projectId === projectId
+		);
+	}
+
+	function resetTaskSessionState() {
+		cancelCalendarLinkStatusLoad();
+		isSaving = false;
+		isDeleting = false;
+		isGeneratingTitle = false;
+		titleGenerationError = '';
+		showDeleteConfirm = false;
+		hasCalendarLink = false;
+		deleteFromCalendar = true;
+		showSeriesModal = false;
+		seriesModalSession = null;
+		showSeriesDeleteConfirm = false;
+		isDeletingSeries = false;
+		seriesActionError = '';
+		documentModalOpen = false;
+		documentIdForModal = null;
+		showGoalModal = false;
+		selectedGoalIdForModal = null;
+		showPlanModal = false;
+		selectedPlanIdForModal = null;
+		showLinkedTaskModal = false;
+		selectedLinkedTaskId = null;
+		showChatModal = false;
+	}
+
+	// Load task data when the task or its project context changes.
 	$effect(() => {
-		if (!browser) return;
-		if (taskId) {
-			loadTask();
+		const requestedTaskId = taskId;
+		const requestedProjectId = projectId;
+		const isModalOpen = modalOpen;
+		taskSessionEpoch += 1;
+		resetTaskSessionState();
+
+		if (!isModalOpen || !requestedTaskId) {
+			isLoading = false;
+			return;
 		}
+
+		void loadTask(requestedTaskId, requestedProjectId);
+		return cancelTaskLoad;
 	});
 
 	$effect(() => {
-		if (!browser) return;
-		if (showDeleteConfirm) {
-			void loadCalendarLinkStatus();
+		const session = captureTaskSession();
+		if (!showDeleteConfirm) {
+			cancelCalendarLinkStatusLoad();
+			hasCalendarLink = false;
+			return;
 		}
+
+		void loadCalendarLinkStatus(session);
+		return cancelCalendarLinkStatusLoad;
 	});
 
 	function formatDateTimeForInput(date: Date | string | null): string {
@@ -411,6 +475,7 @@
 	}
 
 	async function generateTitle(): Promise<void> {
+		const session = captureTaskSession();
 		const desc = description.trim();
 		if (!desc || isGeneratingTitle) return;
 
@@ -423,6 +488,8 @@
 				body: JSON.stringify({ description: desc })
 			});
 			const result = await response.json();
+			if (!isCurrentTaskSession(session)) return;
+
 			if (!response.ok) {
 				throw new Error(result?.error || 'Failed to generate title');
 			}
@@ -433,10 +500,14 @@
 				throw new Error('Empty title returned');
 			}
 		} catch (err) {
+			if (!isCurrentTaskSession(session)) return;
+
 			console.error('Error generating task title:', err);
 			titleGenerationError = err instanceof Error ? err.message : 'Failed to generate title';
 		} finally {
-			isGeneratingTitle = false;
+			if (isCurrentTaskSession(session)) {
+				isGeneratingTitle = false;
+			}
 		}
 	}
 
@@ -452,27 +523,66 @@
 		}
 	}
 
-	async function loadTask() {
+	function cancelTaskLoad() {
+		taskLoadRequestId += 1;
+		taskLoadController?.abort();
+		taskLoadController = null;
+	}
+
+	function isCurrentTaskLoad(
+		requestId: number,
+		requestedTaskId: string,
+		requestedProjectId: string,
+		controller: AbortController
+	): boolean {
+		return (
+			modalOpen &&
+			requestId === taskLoadRequestId &&
+			requestedTaskId === taskId &&
+			requestedProjectId === projectId &&
+			taskLoadController === controller &&
+			!controller.signal.aborted
+		);
+	}
+
+	async function loadTask(
+		requestedTaskId: string = taskId,
+		requestedProjectId: string = projectId
+	) {
+		taskLoadRequestId += 1;
+		const requestId = taskLoadRequestId;
+		taskLoadController?.abort();
+		const controller = new AbortController();
+		taskLoadController = controller;
+
 		try {
 			isLoading = true;
-			const response = await fetch(`/api/onto/tasks/${taskId}/full?include_linked=false`);
+			error = '';
+			const response = await fetch(
+				`/api/onto/tasks/${requestedTaskId}/full?include_linked=false`,
+				{ signal: controller.signal }
+			);
 
 			if (!response.ok) throw new Error('Failed to load task');
 
 			const data = await response.json();
-			task = data.data?.task;
+			if (!isCurrentTaskLoad(requestId, requestedTaskId, requestedProjectId, controller))
+				return;
 
-			if (task) {
-				title = task.title || '';
-				description = task.description || '';
-				priority = task.priority || 3;
-				stateKey = task.state_key || 'todo';
-				typeKey = task.type_key || 'task.default';
-				startAt = task.start_at ? formatDateTimeForInput(task.start_at) : '';
-				dueAt = task.due_at ? formatDateTimeForInput(task.due_at) : '';
-				completedAt = task.completed_at || '';
-				assigneeActorIds = Array.isArray(task.assignees)
-					? task.assignees
+			const loadedTask = data.data?.task;
+			task = loadedTask;
+
+			if (loadedTask) {
+				title = loadedTask.title || '';
+				description = loadedTask.description || '';
+				priority = loadedTask.priority || 3;
+				stateKey = loadedTask.state_key || 'todo';
+				typeKey = loadedTask.type_key || 'task.default';
+				startAt = loadedTask.start_at ? formatDateTimeForInput(loadedTask.start_at) : '';
+				dueAt = loadedTask.due_at ? formatDateTimeForInput(loadedTask.due_at) : '';
+				completedAt = loadedTask.completed_at || '';
+				assigneeActorIds = Array.isArray(loadedTask.assignees)
+					? loadedTask.assignees
 							.map((assignee: { actor_id?: string }) => assignee.actor_id)
 							.filter((actorId: string | undefined): actorId is string =>
 								Boolean(actorId)
@@ -482,32 +592,72 @@
 				showSeriesDeleteConfirm = false;
 			}
 		} catch (err) {
+			if (
+				(err as Error)?.name === 'AbortError' ||
+				!isCurrentTaskLoad(requestId, requestedTaskId, requestedProjectId, controller)
+			) {
+				return;
+			}
+
 			console.error('Error loading task:', err);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/tasks/${taskId}/full?include_linked=false`,
+				endpoint: `/api/onto/tasks/${requestedTaskId}/full?include_linked=false`,
 				method: 'GET',
-				projectId,
+				projectId: requestedProjectId,
 				entityType: 'task',
-				entityId: taskId,
+				entityId: requestedTaskId,
 				operation: 'task_load'
 			});
 			error = 'Failed to load task';
 		} finally {
-			isLoading = false;
-			onLoaded?.();
+			if (isCurrentTaskLoad(requestId, requestedTaskId, requestedProjectId, controller)) {
+				isLoading = false;
+				taskLoadController = null;
+				onLoaded?.();
+			}
 		}
 	}
 
-	async function loadCalendarLinkStatus() {
-		if (!projectId || !taskId) {
-			hasCalendarLink = false;
+	function cancelCalendarLinkStatusLoad() {
+		calendarLinkStatusRequestId += 1;
+		calendarLinkStatusController?.abort();
+		calendarLinkStatusController = null;
+	}
+
+	function isCurrentCalendarLinkStatusLoad(
+		session: TaskSession,
+		requestId: number,
+		controller: AbortController
+	): boolean {
+		return (
+			showDeleteConfirm &&
+			isCurrentTaskSession(session) &&
+			requestId === calendarLinkStatusRequestId &&
+			calendarLinkStatusController === controller &&
+			!controller.signal.aborted
+		);
+	}
+
+	async function loadCalendarLinkStatus(session: TaskSession) {
+		calendarLinkStatusController?.abort();
+		const controller = new AbortController();
+		const requestId = ++calendarLinkStatusRequestId;
+		calendarLinkStatusController = controller;
+
+		if (!session.projectId || !session.taskId) {
+			if (isCurrentCalendarLinkStatusLoad(session, requestId, controller)) {
+				hasCalendarLink = false;
+				calendarLinkStatusController = null;
+			}
 			return;
 		}
 
 		try {
 			const response = await fetch(
-				`/api/onto/projects/${projectId}/events?owner_type=task&owner_id=${taskId}&limit=10`
+				`/api/onto/projects/${session.projectId}/events?owner_type=task&owner_id=${session.taskId}&limit=10`,
+				{ signal: controller.signal }
 			);
+			if (!isCurrentCalendarLinkStatusLoad(session, requestId, controller)) return;
 
 			if (!response.ok) {
 				hasCalendarLink = false;
@@ -515,6 +665,8 @@
 			}
 
 			const result = await response.json();
+			if (!isCurrentCalendarLinkStatusLoad(session, requestId, controller)) return;
+
 			const events = result?.data?.events ?? [];
 
 			hasCalendarLink = events.some((event: any) => {
@@ -525,12 +677,22 @@
 					Boolean(props.external_event_id || props.external_calendar_id)
 				);
 			});
-		} catch {
-			hasCalendarLink = false;
+		} catch (loadError) {
+			if (
+				(loadError as Error)?.name !== 'AbortError' &&
+				isCurrentCalendarLinkStatusLoad(session, requestId, controller)
+			) {
+				hasCalendarLink = false;
+			}
+		} finally {
+			if (isCurrentCalendarLinkStatusLoad(session, requestId, controller)) {
+				calendarLinkStatusController = null;
+			}
 		}
 	}
 
 	async function handleSave() {
+		const session = captureTaskSession();
 		if (!title.trim()) {
 			error = 'Task title is required';
 			return;
@@ -551,7 +713,7 @@
 				assignee_actor_ids: assigneeActorIds
 			};
 
-			const response = await fetch(`/api/onto/tasks/${taskId}`, {
+			const response = await fetch(`/api/onto/tasks/${session.taskId}`, {
 				method: 'PATCH',
 				headers: {
 					'Content-Type': 'application/json'
@@ -560,6 +722,7 @@
 			});
 
 			const result = await response.json();
+			if (!isCurrentTaskSession(session)) return;
 
 			if (!response.ok) {
 				throw new Error(result.error || 'Failed to update task');
@@ -573,18 +736,18 @@
 				completedAt = stateKey === 'done' ? new Date().toISOString() : '';
 			}
 
-			if (onUpdated) {
-				onUpdated();
-			}
-			onClose();
+			onUpdated?.();
+			handleClose();
 		} catch (err) {
+			if (!isCurrentTaskSession(session)) return;
+
 			console.error('Error updating task:', err);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/tasks/${taskId}`,
+				endpoint: `/api/onto/tasks/${session.taskId}`,
 				method: 'PATCH',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'task',
-				entityId: taskId,
+				entityId: session.taskId,
 				operation: 'task_update'
 			});
 			error = err instanceof Error ? err.message : 'Failed to update task';
@@ -593,34 +756,36 @@
 	}
 
 	async function handleDelete() {
+		const session = captureTaskSession();
 		isDeleting = true;
 		error = '';
 
 		try {
-			const response = await fetch(`/api/onto/tasks/${taskId}`, {
+			const response = await fetch(`/api/onto/tasks/${session.taskId}`, {
 				method: 'DELETE',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ sync_to_calendar: deleteFromCalendar })
 			});
 
 			const result = await response.json();
+			if (!isCurrentTaskSession(session)) return;
 
 			if (!response.ok) {
 				throw new Error(result.error || 'Failed to delete task');
 			}
 
-			if (onDeleted) {
-				onDeleted();
-			}
-			onClose();
+			onDeleted?.();
+			handleClose();
 		} catch (err) {
+			if (!isCurrentTaskSession(session)) return;
+
 			console.error('Error deleting task:', err);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/tasks/${taskId}`,
+				endpoint: `/api/onto/tasks/${session.taskId}`,
 				method: 'DELETE',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'task',
-				entityId: taskId,
+				entityId: session.taskId,
 				operation: 'task_delete'
 			});
 			error = err instanceof Error ? err.message : 'Failed to delete task';
@@ -630,77 +795,115 @@
 	}
 
 	async function handleSeriesCreated() {
-		await loadTask();
+		const session = seriesModalSession;
+		if (!session || !isCurrentTaskSession(session)) return;
+
+		await loadTask(session.taskId, session.projectId);
+		if (!isCurrentTaskSession(session)) return;
+
 		showSeriesModal = false;
+		seriesModalSession = null;
 		toastService.success('Task marked as recurring');
 		onUpdated?.();
 	}
 
 	async function handleDeleteSeries(force = false) {
-		if (!seriesId) return;
+		const session = captureTaskSession();
+		const requestedSeriesId = seriesId;
+		if (!requestedSeriesId) return;
+
 		seriesActionError = '';
 		isDeletingSeries = true;
 
 		try {
 			const response = await fetch(
-				`/api/onto/task-series/${seriesId}${force ? '?force=true' : ''}`,
+				`/api/onto/task-series/${requestedSeriesId}${force ? '?force=true' : ''}`,
 				{
 					method: 'DELETE'
 				}
 			);
 			const result = await response.json();
+			if (!isCurrentTaskSession(session)) return;
+
 			if (!response.ok) {
 				throw new Error(result?.error || 'Failed to delete series');
 			}
 
 			toastService.success('Series deleted');
 			showSeriesDeleteConfirm = false;
-			await loadTask();
+			await loadTask(session.taskId, session.projectId);
+			if (!isCurrentTaskSession(session)) return;
+
 			onUpdated?.();
 		} catch (err) {
+			if (!isCurrentTaskSession(session)) return;
+
 			console.error('Failed to delete task series', err);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/task-series/${seriesId}`,
+				endpoint: `/api/onto/task-series/${requestedSeriesId}`,
 				method: 'DELETE',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'task_series',
-				entityId: seriesId,
+				entityId: requestedSeriesId,
 				operation: 'task_series_delete'
 			});
 			const message = err instanceof Error ? err.message : 'Failed to delete series';
 			seriesActionError = message;
 			toastService.error(message);
 		} finally {
-			isDeletingSeries = false;
+			if (isCurrentTaskSession(session)) {
+				isDeletingSeries = false;
+			}
 		}
 	}
 
 	function handleClose() {
+		taskSessionEpoch += 1;
+		cancelTaskLoad();
+		resetTaskSessionState();
 		modalOpen = false;
 		onClose?.();
 	}
 
+	function closeSeriesModal() {
+		showSeriesModal = false;
+		seriesModalSession = null;
+	}
+
 	// Series modal handler with lazy loading
 	async function openSeriesModal() {
+		const session = captureTaskSession();
 		await loadTaskSeriesModal();
+		if (!isCurrentTaskSession(session)) return;
+
+		seriesModalSession = session;
 		showSeriesModal = true;
 	}
 
 	// Linked entity modal handlers with lazy loading
 	async function openGoalModal(id: string) {
+		const session = captureTaskSession();
 		await loadGoalEditModal();
+		if (!isCurrentTaskSession(session)) return;
+
 		selectedGoalIdForModal = id;
 		showGoalModal = true;
 	}
 
 	async function openPlanModal(id: string) {
+		const session = captureTaskSession();
 		await loadPlanEditModal();
+		if (!isCurrentTaskSession(session)) return;
+
 		selectedPlanIdForModal = id;
 		showPlanModal = true;
 	}
 
 	async function openDocumentModal(id: string) {
+		const session = captureTaskSession();
 		await loadDocumentModal();
+		if (!isCurrentTaskSession(session)) return;
+
 		documentIdForModal = id;
 		documentModalOpen = true;
 	}
@@ -752,7 +955,10 @@
 	// Chat about this task handlers
 	async function openChatAbout() {
 		if (!task || !projectId) return;
+		const session = captureTaskSession();
 		await loadAgentChatModal();
+		if (!isCurrentTaskSession(session)) return;
+
 		showChatModal = true;
 	}
 
@@ -965,7 +1171,7 @@
 													size="sm"
 													placeholder="State"
 												>
-													{#each TASK_STATES as state}
+													{#each TASK_STATES as state (state)}
 														<option value={state}>
 															{state === 'todo'
 																? 'To Do'
@@ -1436,7 +1642,7 @@
 	<SeriesModal
 		{task}
 		bind:isOpen={showSeriesModal}
-		onClose={() => (showSeriesModal = false)}
+		onClose={closeSeriesModal}
 		onSuccess={handleSeriesCreated}
 	/>
 {/if}

@@ -17,11 +17,13 @@
 		ListChecks,
 		Target,
 		Calendar,
+		CalendarDays,
 		Flag,
 		FolderKanban,
 		AlertTriangle,
 		ClipboardCheck,
-		Layers
+		Layers,
+		Link2
 	} from '$lib/icons/lucide';
 	import type { AgentRunNotification } from '$lib/types/notification.types';
 	import type { AgentRunStatus } from '@buildos/shared-types';
@@ -70,6 +72,8 @@
 				return Target;
 			case 'plan':
 				return Calendar;
+			case 'calendar_event':
+				return CalendarDays;
 			case 'milestone':
 				return Flag;
 			case 'project':
@@ -77,6 +81,10 @@
 			case 'risk':
 				return AlertTriangle;
 			case 'output':
+				return Layers;
+			case 'relationship':
+				return Link2;
+			case 'multiple':
 				return Layers;
 			case 'audit':
 				return ClipboardCheck;

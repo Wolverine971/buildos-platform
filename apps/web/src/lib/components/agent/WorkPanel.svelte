@@ -17,7 +17,7 @@
 		Pencil,
 		Play,
 		Trash2
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import { formatDistanceToNow } from 'date-fns';
 	import { toastService } from '$lib/stores/toast.store';
 	import {
@@ -40,6 +40,11 @@
 		type AgentOperativeRow
 	} from '$lib/stores/agentOperativesStore';
 	import {
+		agentRunAccessLabel,
+		agentRunDisplayTitle,
+		agentRunStatusLabel,
+		agentRunTriggerLabel,
+		buildAgentRunCardPreview,
 		synthesizeAgentRunNotification,
 		toUiAgentRunStatus
 	} from '$lib/services/agent-run-notification-data';
@@ -175,26 +180,28 @@
 			});
 			const body = await response.json().catch(() => null);
 			if (!response.ok) {
-				toastService.error(body?.message || body?.error || 'Could not run operative');
+				toastService.error(
+					body?.message || body?.error || 'Could not start this automation'
+				);
 				return;
 			}
 			const run = body?.data?.run as AgentRunRow | undefined;
 			if (run) {
 				handleRunDispatched(run);
 				activeTab = 'runs';
-				toastService.success('Agent run queued');
+				toastService.success('Work is ready to start');
 			}
 			void loadAgentOperatives();
 		} catch (error) {
 			console.warn('[WorkPanel] Failed to run operative', error);
-			toastService.error('Could not run operative');
+			toastService.error('Could not start this automation');
 		} finally {
 			runningOperativeId = null;
 		}
 	}
 	async function deleteOperative(operative: AgentOperativeRow) {
 		if (deletingOperativeId) return;
-		if (!window.confirm(`Delete "${operative.label}"?`)) return;
+		if (!window.confirm(`Delete the automation “${operative.label}”?`)) return;
 		deletingOperativeId = operative.id;
 		try {
 			const response = await fetch(`/api/agent-operatives/${operative.id}`, {
@@ -203,14 +210,16 @@
 			});
 			const body = await response.json().catch(() => null);
 			if (!response.ok) {
-				toastService.error(body?.message || body?.error || 'Could not delete operative');
+				toastService.error(
+					body?.message || body?.error || 'Could not delete this automation'
+				);
 				return;
 			}
 			removeAgentOperative(operative.id);
-			toastService.success('Operative deleted');
+			toastService.success('Automation deleted');
 		} catch (error) {
 			console.warn('[WorkPanel] Failed to delete operative', error);
-			toastService.error('Could not delete operative');
+			toastService.error('Could not delete this automation');
 		} finally {
 			deletingOperativeId = null;
 		}
@@ -231,12 +240,12 @@
 	<!-- Slide-over -->
 	<aside
 		class="fixed right-0 top-0 z-[61] flex h-full w-full max-w-md flex-col border-l border-border bg-card shadow-ink-strong sm:w-[28rem]"
-		aria-label="Work panel"
+		aria-label="Agent work panel"
 	>
 		<header class="flex items-center justify-between border-b border-border px-4 py-3">
 			<div class="flex items-center gap-2">
 				<Bot class="h-5 w-5 text-foreground" />
-				<span class="text-sm font-semibold text-foreground">Work</span>
+				<span class="text-sm font-semibold text-foreground">Agent work</span>
 				{#if activeRuns.length}
 					<span
 						class="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent"
@@ -248,9 +257,9 @@
 			<div class="flex items-center gap-1">
 				<button
 					type="button"
-					class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-					title={activeTab === 'runs' ? 'Run agent' : 'New operative'}
-					aria-label={activeTab === 'runs' ? 'Run agent' : 'New operative'}
+					class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+					title={activeTab === 'runs' ? 'Start work' : 'New automation'}
+					aria-label={activeTab === 'runs' ? 'Start work' : 'New automation'}
 					onclick={() =>
 						activeTab === 'runs' ? (dispatchOpen = true) : openNewOperative()}
 				>
@@ -258,20 +267,22 @@
 				</button>
 				<button
 					type="button"
-					class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+					class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
 					title="Refresh"
+					aria-label="Refresh agent work"
 					onclick={refreshCurrentTab}
 				>
 					{#if $workRunsLoading || $agentOperativesLoading}
-						<LoaderCircle class="h-4 w-4 animate-spin" />
+						<LoaderCircle class="h-4 w-4 animate-spin motion-reduce:animate-none" />
 					{:else}
 						<RefreshCw class="h-4 w-4" />
 					{/if}
 				</button>
 				<button
 					type="button"
-					class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+					class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
 					title="Close"
+					aria-label="Close agent work"
 					onclick={onClose}
 				>
 					<X class="h-4 w-4" />
@@ -283,7 +294,7 @@
 			<div class="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1">
 				<button
 					type="button"
-					class="inline-flex min-h-[36px] items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors {activeTab ===
+					class="inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors {activeTab ===
 					'runs'
 						? 'bg-card text-foreground shadow-ink'
 						: 'text-muted-foreground hover:bg-background hover:text-foreground'}"
@@ -291,11 +302,11 @@
 					onclick={() => (activeTab = 'runs')}
 				>
 					<Bot class="h-4 w-4" />
-					<span>Runs</span>
+					<span>Recent work</span>
 				</button>
 				<button
 					type="button"
-					class="inline-flex min-h-[36px] items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors {activeTab ===
+					class="inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors {activeTab ===
 					'operatives'
 						? 'bg-card text-foreground shadow-ink'
 						: 'text-muted-foreground hover:bg-background hover:text-foreground'}"
@@ -303,7 +314,7 @@
 					onclick={() => (activeTab = 'operatives')}
 				>
 					<CalendarClock class="h-4 w-4" />
-					<span>Operatives</span>
+					<span>Automations</span>
 				</button>
 			</div>
 		</div>
@@ -311,34 +322,51 @@
 		<div class="flex-1 overflow-y-auto px-3 py-3">
 			{#if activeTab === 'runs' && runs.length === 0}
 				<div class="px-2 py-10 text-center text-sm text-muted-foreground">
-					{$workRunsLoading ? 'Loading…' : 'No agent runs yet.'}
+					{$workRunsLoading ? 'Loading…' : 'No agent work yet.'}
 				</div>
 			{:else if activeTab === 'runs'}
 				{#snippet runRow(run: AgentRunRow)}
+					{@const display = buildAgentRunCardPreview(run)}
+					{@const title = agentRunDisplayTitle(
+						display.activityLabel,
+						display.targetLabel,
+						run.label
+					)}
+					{@const projectName =
+						display.projectName ??
+						(run.context_type === 'global' ? 'Workspace' : 'Project')}
 					<button
 						type="button"
-						class="w-full rounded-lg border border-border bg-background px-3 py-2 text-left transition-shadow hover:shadow-ink"
+						class="min-h-11 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-left transition-shadow hover:shadow-ink"
+						aria-label={`Open ${projectName}: ${title}. ${agentRunStatusLabel(run.status)}`}
 						onclick={() => (selectedRunId = run.id)}
 					>
 						<div class="flex items-center gap-2">
-							<span class="h-2 w-2 flex-shrink-0 rounded-full {dotClass(run.status)}"
+							<span
+								class="h-2 w-2 flex-shrink-0 rounded-full {dotClass(run.status)}"
+								aria-hidden="true"
 							></span>
 							<span
 								class="flex-1 min-w-0 truncate text-sm font-medium text-foreground"
-								>{run.label}</span
+								>{projectName}</span
 							>
-							{#if needsYou(run.status)}
-								<span
-									class="flex-shrink-0 rounded-full bg-warning/15 px-1.5 py-0.5 text-[0.65rem] font-medium text-warning"
-									>needs you</span
-								>
-							{/if}
+							<span
+								class="flex-shrink-0 rounded-full px-1.5 py-0.5 text-[0.65rem] font-medium {needsYou(
+									run.status
+								)
+									? 'bg-warning/15 text-warning'
+									: 'bg-muted text-muted-foreground'}"
+								>{agentRunStatusLabel(run.status)}</span
+							>
 						</div>
-						<div class="mt-0.5 truncate text-xs text-muted-foreground">{run.goal}</div>
+						<div class="mt-1 truncate text-xs font-medium text-foreground">{title}</div>
+						<div class="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+							{display.preview}
+						</div>
 						<div
 							class="mt-1 flex items-center gap-2 text-[0.7rem] text-muted-foreground"
 						>
-							<span class="capitalize">{run.trigger}</span>
+							<span>{agentRunTriggerLabel(run.trigger)}</span>
 							<span>·</span>
 							<span>{relTime(run)}</span>
 							{#if entityCount(run) > 0}
@@ -376,7 +404,7 @@
 				{/if}
 			{:else if operatives.length === 0}
 				<div class="px-2 py-10 text-center text-sm text-muted-foreground">
-					{$agentOperativesLoading ? 'Loading...' : 'No operatives yet.'}
+					{$agentOperativesLoading ? 'Loading…' : 'No automations yet.'}
 				</div>
 			{:else}
 				<div class="space-y-1.5">
@@ -408,8 +436,11 @@
 									<div
 										class="mt-1 flex min-w-0 items-center gap-2 text-[0.7rem] text-muted-foreground"
 									>
-										<span class="capitalize"
-											>{operative.scope_mode.replace('_', ' ')}</span
+										<span
+											>{agentRunAccessLabel(
+												operative.scope_mode,
+												operative.review_required
+											)}</span
 										>
 										<span>·</span>
 										<span class="truncate"
@@ -418,30 +449,32 @@
 									</div>
 									{#if operative.schedule_error}
 										<div class="mt-1 truncate text-[0.7rem] text-destructive">
-											{operative.schedule_error}
+											Schedule needs attention
 										</div>
 									{/if}
 								</button>
 								<div class="flex flex-shrink-0 items-center gap-0.5">
 									<button
 										type="button"
-										class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-										title="Run"
-										aria-label={`Run ${operative.label}`}
+										class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+										title="Start"
+										aria-label={`Start ${operative.label}`}
 										disabled={Boolean(
 											runningOperativeId || deletingOperativeId
 										)}
 										onclick={() => runOperative(operative)}
 									>
 										{#if runningOperativeId === operative.id}
-											<LoaderCircle class="h-4 w-4 animate-spin" />
+											<LoaderCircle
+												class="h-4 w-4 animate-spin motion-reduce:animate-none"
+											/>
 										{:else}
 											<Play class="h-4 w-4" />
 										{/if}
 									</button>
 									<button
 										type="button"
-										class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+										class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
 										title="Edit"
 										aria-label={`Edit ${operative.label}`}
 										onclick={() => openEditOperative(operative)}
@@ -450,7 +483,7 @@
 									</button>
 									<button
 										type="button"
-										class="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+										class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
 										title="Delete"
 										aria-label={`Delete ${operative.label}`}
 										disabled={Boolean(
@@ -459,7 +492,9 @@
 										onclick={() => deleteOperative(operative)}
 									>
 										{#if deletingOperativeId === operative.id}
-											<LoaderCircle class="h-4 w-4 animate-spin" />
+											<LoaderCircle
+												class="h-4 w-4 animate-spin motion-reduce:animate-none"
+											/>
 										{:else}
 											<Trash2 class="h-4 w-4" />
 										{/if}

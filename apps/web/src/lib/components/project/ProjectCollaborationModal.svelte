@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/project/ProjectCollaborationModal.svelte -->
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import TabNav from '$lib/components/ui/TabNav.svelte';
 	import type { Tab } from '$lib/components/ui/TabNav.svelte';
@@ -110,6 +109,14 @@
 	let settingsActionType = $state<'member' | 'project' | null>(null);
 	let isLeavingProject = $state(false);
 	let activeTab = $state<'sharing' | 'my-role'>('sharing');
+	let shareDataRequestId = 0;
+	let shareDataAbortController: AbortController | null = null;
+	let projectSessionEpoch = 0;
+
+	type ProjectSession = {
+		projectId: string;
+		epoch: number;
+	};
 
 	const tabs: Tab[] = [
 		{ id: 'sharing', label: 'Sharing', icon: Users },
@@ -120,45 +127,90 @@
 		activeTab = tabId as 'sharing' | 'my-role';
 	}
 
+	function cancelShareDataLoad() {
+		shareDataRequestId += 1;
+		shareDataAbortController?.abort();
+		shareDataAbortController = null;
+	}
+
+	function captureProjectSession(): ProjectSession {
+		return { projectId, epoch: projectSessionEpoch };
+	}
+
+	function isCurrentProjectSession(session: ProjectSession): boolean {
+		return isOpen && session.epoch === projectSessionEpoch && session.projectId === projectId;
+	}
+
+	function resetModalState() {
+		email = '';
+		role = 'editor';
+		isSending = false;
+		error = null;
+		isLoading = false;
+		canManageInvites = true;
+		members = [];
+		invites = [];
+		currentActorId = null;
+		inviteActionId = null;
+		inviteActionType = null;
+		memberActionId = null;
+		memberActionType = null;
+		roleContextInput = '';
+		roleNameInput = '';
+		roleDescriptionInput = '';
+		isEditingRoleProfile = false;
+		roleProfileActionType = null;
+		roleProfileError = null;
+		roleProfileAlternatives = [];
+		editingMemberRoleProfileId = null;
+		editingMemberRoleNameInput = '';
+		editingMemberRoleDescriptionInput = '';
+		memberRoleProfileError = null;
+		memberRoleProfileSaving = false;
+		notificationSettings = null;
+		settingsError = null;
+		settingsActionType = null;
+		isLeavingProject = false;
+		activeTab = 'sharing';
+	}
+
+	function handleClose() {
+		projectSessionEpoch += 1;
+		cancelShareDataLoad();
+		isOpen = false;
+		resetModalState();
+		onClose?.();
+	}
+
 	$effect(() => {
-		if (!browser) return;
+		const requestedProjectId = projectId;
+		projectSessionEpoch += 1;
+		resetModalState();
+
 		if (!isOpen) {
-			email = '';
-			role = 'editor';
-			error = null;
-			isLoading = false;
-			canManageInvites = true;
-			members = [];
-			invites = [];
-			currentActorId = null;
-			inviteActionId = null;
-			inviteActionType = null;
-			memberActionId = null;
-			memberActionType = null;
-			roleContextInput = '';
-			roleNameInput = '';
-			roleDescriptionInput = '';
-			isEditingRoleProfile = false;
-			roleProfileActionType = null;
-			roleProfileError = null;
-			roleProfileAlternatives = [];
-			editingMemberRoleProfileId = null;
-			editingMemberRoleNameInput = '';
-			editingMemberRoleDescriptionInput = '';
-			memberRoleProfileError = null;
-			memberRoleProfileSaving = false;
-			notificationSettings = null;
-			settingsError = null;
-			settingsActionType = null;
-			isLeavingProject = false;
-			activeTab = 'sharing';
 			return;
 		}
-		void loadShareData();
+
+		void loadShareData(requestedProjectId);
+
+		return cancelShareDataLoad;
 	});
 
-	async function loadShareData() {
-		if (!projectId) return;
+	async function loadShareData(requestedProjectId = projectId) {
+		if (!requestedProjectId || !isOpen || requestedProjectId !== projectId) return;
+
+		shareDataAbortController?.abort();
+		const abortController = new AbortController();
+		const requestId = ++shareDataRequestId;
+		shareDataAbortController = abortController;
+
+		const isCurrentRequest = () =>
+			requestId === shareDataRequestId &&
+			shareDataAbortController === abortController &&
+			!abortController.signal.aborted &&
+			isOpen &&
+			projectId === requestedProjectId;
+
 		members = [];
 		invites = [];
 		currentActorId = null;
@@ -180,17 +232,20 @@
 
 		try {
 			const [membersRes, invitesRes, settingsRes] = await Promise.all([
-				fetch(`/api/onto/projects/${projectId}/members`, {
+				fetch(`/api/onto/projects/${requestedProjectId}/members`, {
 					method: 'GET',
-					credentials: 'same-origin'
+					credentials: 'same-origin',
+					signal: abortController.signal
 				}),
-				fetch(`/api/onto/projects/${projectId}/invites`, {
+				fetch(`/api/onto/projects/${requestedProjectId}/invites`, {
 					method: 'GET',
-					credentials: 'same-origin'
+					credentials: 'same-origin',
+					signal: abortController.signal
 				}),
-				fetch(`/api/onto/projects/${projectId}/notification-settings`, {
+				fetch(`/api/onto/projects/${requestedProjectId}/notification-settings`, {
 					method: 'GET',
-					credentials: 'same-origin'
+					credentials: 'same-origin',
+					signal: abortController.signal
 				})
 			]);
 
@@ -198,18 +253,28 @@
 			invitesStatus = invitesRes.status;
 			settingsStatus = settingsRes.status;
 
+			const [membersPayload, invitesPayload, settingsPayload] = await Promise.all([
+				membersRes.ok ? membersRes.json() : membersRes.json().catch(() => null),
+				invitesRes.ok
+					? invitesRes.json()
+					: invitesRes.status === 403
+						? Promise.resolve(null)
+						: invitesRes.json().catch(() => null),
+				settingsRes.json().catch(() => null)
+			]);
+
+			if (!isCurrentRequest()) return;
+
 			if (membersRes.ok) {
-				const payload = await membersRes.json();
-				members = payload?.data?.members ?? [];
-				currentActorId = payload?.data?.actorId ?? null;
+				members = membersPayload?.data?.members ?? [];
+				currentActorId = membersPayload?.data?.actorId ?? null;
 			} else {
-				const payload = await membersRes.json().catch(() => null);
 				void logOntologyClientError(
-					new Error(payload?.error || 'Failed to load project members'),
+					new Error(membersPayload?.error || 'Failed to load project members'),
 					{
-						endpoint: `/api/onto/projects/${projectId}/members`,
+						endpoint: `/api/onto/projects/${requestedProjectId}/members`,
 						method: 'GET',
-						projectId,
+						projectId: requestedProjectId,
 						entityType: 'project_member',
 						operation: 'project_members_fetch',
 						metadata: {
@@ -223,16 +288,14 @@
 			if (invitesRes.status === 403) {
 				canManageInvites = false;
 			} else if (invitesRes.ok) {
-				const payload = await invitesRes.json();
-				invites = payload?.data?.invites ?? [];
+				invites = invitesPayload?.data?.invites ?? [];
 			} else {
-				const payload = await invitesRes.json().catch(() => null);
 				void logOntologyClientError(
-					new Error(payload?.error || 'Failed to load project invites'),
+					new Error(invitesPayload?.error || 'Failed to load project invites'),
 					{
-						endpoint: `/api/onto/projects/${projectId}/invites`,
+						endpoint: `/api/onto/projects/${requestedProjectId}/invites`,
 						method: 'GET',
-						projectId,
+						projectId: requestedProjectId,
 						entityType: 'project_invite',
 						operation: 'project_invites_fetch',
 						metadata: {
@@ -244,16 +307,14 @@
 			}
 
 			if (settingsRes.ok) {
-				const payload = await settingsRes.json().catch(() => null);
-				notificationSettings = payload?.data?.settings ?? null;
+				notificationSettings = settingsPayload?.data?.settings ?? null;
 			} else {
-				const payload = await settingsRes.json().catch(() => null);
-				const message = payload?.error || 'Failed to load notification settings';
+				const message = settingsPayload?.error || 'Failed to load notification settings';
 				settingsError = message;
 				void logOntologyClientError(new Error(message), {
-					endpoint: `/api/onto/projects/${projectId}/notification-settings`,
+					endpoint: `/api/onto/projects/${requestedProjectId}/notification-settings`,
 					method: 'GET',
-					projectId,
+					projectId: requestedProjectId,
 					entityType: 'project',
 					operation: 'project_notification_settings_get',
 					metadata: {
@@ -263,11 +324,13 @@
 				});
 			}
 		} catch (err) {
+			if (!isCurrentRequest()) return;
+
 			console.error('[ProjectCollaborationModal] Failed to load share data:', err);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/projects/${projectId}/invites`,
+				endpoint: `/api/onto/projects/${requestedProjectId}/invites`,
 				method: 'GET',
-				projectId,
+				projectId: requestedProjectId,
 				entityType: 'project_invite',
 				operation: 'project_share_load',
 				metadata: {
@@ -279,7 +342,10 @@
 			});
 			error = err instanceof Error ? err.message : 'Failed to load sharing data';
 		} finally {
-			isLoading = false;
+			if (isCurrentRequest()) {
+				isLoading = false;
+				shareDataAbortController = null;
+			}
 		}
 	}
 
@@ -332,6 +398,7 @@
 	async function handleSaveRoleProfile(event: Event) {
 		event.preventDefault();
 		if (!currentMember) return;
+		const session = captureProjectSession();
 
 		roleProfileError = null;
 
@@ -362,7 +429,7 @@
 
 		try {
 			const response = await fetch(
-				`/api/onto/projects/${projectId}/members/me/role-profile`,
+				`/api/onto/projects/${session.projectId}/members/me/role-profile`,
 				{
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
@@ -376,19 +443,23 @@
 
 			responseStatus = response.status;
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentProjectSession(session)) return;
+
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to update role profile');
 			}
 
 			toastService.success('Role profile updated');
 			isEditingRoleProfile = false;
-			await loadShareData();
+			await loadShareData(session.projectId);
 		} catch (err) {
+			if (!isCurrentProjectSession(session)) return;
+
 			console.error('[ProjectCollaborationModal] Failed to update role profile:', err);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/projects/${projectId}/members/me/role-profile`,
+				endpoint: `/api/onto/projects/${session.projectId}/members/me/role-profile`,
 				method: 'PATCH',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'project_member',
 				operation: 'project_member_role_profile_update',
 				metadata: {
@@ -399,13 +470,17 @@
 			roleProfileError = err instanceof Error ? err.message : 'Failed to update role profile';
 			toastService.error(roleProfileError);
 		} finally {
-			roleProfileActionType = null;
+			if (isCurrentProjectSession(session)) {
+				roleProfileActionType = null;
+			}
 		}
 	}
 
 	async function handleGenerateRoleProfile(event: Event) {
 		event.preventDefault();
 		if (isEditingRoleProfile) return;
+		const session = captureProjectSession();
+
 		roleProfileError = null;
 
 		const roleContext = roleContextInput.trim();
@@ -419,7 +494,7 @@
 
 		try {
 			const response = await fetch(
-				`/api/onto/projects/${projectId}/members/me/role-profile`,
+				`/api/onto/projects/${session.projectId}/members/me/role-profile`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -433,6 +508,8 @@
 
 			responseStatus = response.status;
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentProjectSession(session)) return;
+
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to generate role profile');
 			}
@@ -440,13 +517,15 @@
 			toastService.success('Role profile generated');
 			roleContextInput = '';
 			roleProfileAlternatives = [];
-			await loadShareData();
+			await loadShareData(session.projectId);
 		} catch (err) {
+			if (!isCurrentProjectSession(session)) return;
+
 			console.error('[ProjectCollaborationModal] Failed to generate role profile:', err);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/projects/${projectId}/members/me/role-profile`,
+				endpoint: `/api/onto/projects/${session.projectId}/members/me/role-profile`,
 				method: 'POST',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'project_member',
 				operation: 'project_member_role_profile_generate',
 				metadata: {
@@ -458,12 +537,16 @@
 				err instanceof Error ? err.message : 'Failed to generate role profile';
 			toastService.error(roleProfileError);
 		} finally {
-			roleProfileActionType = null;
+			if (isCurrentProjectSession(session)) {
+				roleProfileActionType = null;
+			}
 		}
 	}
 
 	async function handleGenerateRoleProfileAlternatives() {
 		if (isEditingRoleProfile) return;
+		const session = captureProjectSession();
+
 		roleProfileError = null;
 
 		const roleContext = roleContextInput.trim();
@@ -477,7 +560,7 @@
 
 		try {
 			const response = await fetch(
-				`/api/onto/projects/${projectId}/members/me/role-profile/alternatives`,
+				`/api/onto/projects/${session.projectId}/members/me/role-profile/alternatives`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -491,6 +574,8 @@
 
 			responseStatus = response.status;
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentProjectSession(session)) return;
+
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to generate role profile alternatives');
 			}
@@ -503,14 +588,16 @@
 			roleProfileAlternatives = alternatives;
 			toastService.success('Role profile alternatives generated');
 		} catch (err) {
+			if (!isCurrentProjectSession(session)) return;
+
 			console.error(
 				'[ProjectCollaborationModal] Failed to generate role profile alternatives:',
 				err
 			);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/projects/${projectId}/members/me/role-profile/alternatives`,
+				endpoint: `/api/onto/projects/${session.projectId}/members/me/role-profile/alternatives`,
 				method: 'POST',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'project_member',
 				operation: 'project_member_role_profile_alternatives_generate',
 				metadata: {
@@ -522,7 +609,9 @@
 				err instanceof Error ? err.message : 'Failed to generate role profile alternatives';
 			toastService.error(roleProfileError);
 		} finally {
-			roleProfileActionType = null;
+			if (isCurrentProjectSession(session)) {
+				roleProfileActionType = null;
+			}
 		}
 	}
 
@@ -533,21 +622,27 @@
 		if (settingsActionType) {
 			return;
 		}
+		const session = captureProjectSession();
 
 		settingsActionType = actionType;
 		settingsError = null;
 		let responseStatus: number | null = null;
 
 		try {
-			const response = await fetch(`/api/onto/projects/${projectId}/notification-settings`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				credentials: 'same-origin',
-				body: JSON.stringify(updates)
-			});
+			const response = await fetch(
+				`/api/onto/projects/${session.projectId}/notification-settings`,
+				{
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'same-origin',
+					body: JSON.stringify(updates)
+				}
+			);
 
 			responseStatus = response.status;
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentProjectSession(session)) return;
+
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to update notification settings');
 			}
@@ -573,6 +668,8 @@
 				);
 			}
 		} catch (err) {
+			if (!isCurrentProjectSession(session)) return;
+
 			console.error(
 				'[ProjectCollaborationModal] Failed to update notification settings:',
 				err
@@ -580,9 +677,9 @@
 			settingsError =
 				err instanceof Error ? err.message : 'Failed to update notification settings';
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/projects/${projectId}/notification-settings`,
+				endpoint: `/api/onto/projects/${session.projectId}/notification-settings`,
 				method: 'PATCH',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'project',
 				operation: 'project_notification_settings_update',
 				metadata: {
@@ -593,7 +690,9 @@
 			});
 			toastService.error(settingsError);
 		} finally {
-			settingsActionType = null;
+			if (isCurrentProjectSession(session)) {
+				settingsActionType = null;
+			}
 		}
 	}
 
@@ -607,6 +706,7 @@
 
 	async function handleInvite(event: Event) {
 		event.preventDefault();
+		const session = captureProjectSession();
 
 		if (!canManageInvites) {
 			return;
@@ -616,37 +716,43 @@
 			error = 'Email is required';
 			return;
 		}
+		const requestedEmail = email.trim();
+		const requestedRole = role;
 
 		isSending = true;
 		error = null;
 		let responseStatus: number | null = null;
 
 		try {
-			const response = await fetch(`/api/onto/projects/${projectId}/invites`, {
+			const response = await fetch(`/api/onto/projects/${session.projectId}/invites`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'same-origin',
 				body: JSON.stringify({
-					email,
-					role_key: role
+					email: requestedEmail,
+					role_key: requestedRole
 				})
 			});
 
 			responseStatus = response.status;
 			const payload = await response.json();
+			if (!isCurrentProjectSession(session)) return;
+
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to send invite');
 			}
 
-			toastService.success(`Invite sent to ${email}`);
+			toastService.success(`Invite sent to ${requestedEmail}`);
 			email = '';
-			await loadShareData();
+			await loadShareData(session.projectId);
 		} catch (err) {
+			if (!isCurrentProjectSession(session)) return;
+
 			console.error('[ProjectCollaborationModal] Failed to invite:', err);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/projects/${projectId}/invites`,
+				endpoint: `/api/onto/projects/${session.projectId}/invites`,
 				method: 'POST',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'project_invite',
 				operation: 'project_invite_create',
 				metadata: {
@@ -657,7 +763,9 @@
 			error = err instanceof Error ? err.message : 'Failed to send invite';
 			toastService.error(error);
 		} finally {
-			isSending = false;
+			if (isCurrentProjectSession(session)) {
+				isSending = false;
+			}
 		}
 	}
 
@@ -665,6 +773,7 @@
 		if (!canManageInvites || inviteActionId) {
 			return;
 		}
+		const session = captureProjectSession();
 
 		inviteActionId = invite.id;
 		inviteActionType = 'resend';
@@ -672,7 +781,7 @@
 
 		try {
 			const response = await fetch(
-				`/api/onto/projects/${projectId}/invites/${invite.id}/resend`,
+				`/api/onto/projects/${session.projectId}/invites/${invite.id}/resend`,
 				{
 					method: 'POST',
 					credentials: 'same-origin'
@@ -681,18 +790,22 @@
 
 			responseStatus = response.status;
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentProjectSession(session)) return;
+
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to resend invite');
 			}
 
 			toastService.success(`Invite resent to ${invite.invitee_email}`);
-			await loadShareData();
+			await loadShareData(session.projectId);
 		} catch (err) {
+			if (!isCurrentProjectSession(session)) return;
+
 			console.error('[ProjectCollaborationModal] Failed to resend invite:', err);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/projects/${projectId}/invites/${invite.id}/resend`,
+				endpoint: `/api/onto/projects/${session.projectId}/invites/${invite.id}/resend`,
 				method: 'POST',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'project_invite',
 				entityId: invite.id,
 				operation: 'project_invite_resend',
@@ -703,10 +816,12 @@
 			});
 			const message = err instanceof Error ? err.message : 'Failed to resend invite';
 			toastService.error(message);
-			await loadShareData();
+			await loadShareData(session.projectId);
 		} finally {
-			inviteActionId = null;
-			inviteActionType = null;
+			if (isCurrentProjectSession(session)) {
+				inviteActionId = null;
+				inviteActionType = null;
+			}
 		}
 	}
 
@@ -719,6 +834,7 @@
 		if (!confirmRevoke) {
 			return;
 		}
+		const session = captureProjectSession();
 
 		inviteActionId = invite.id;
 		inviteActionType = 'revoke';
@@ -726,7 +842,7 @@
 
 		try {
 			const response = await fetch(
-				`/api/onto/projects/${projectId}/invites/${invite.id}/revoke`,
+				`/api/onto/projects/${session.projectId}/invites/${invite.id}/revoke`,
 				{
 					method: 'POST',
 					credentials: 'same-origin'
@@ -735,18 +851,22 @@
 
 			responseStatus = response.status;
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentProjectSession(session)) return;
+
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to revoke invite');
 			}
 
 			toastService.success(`Invite revoked for ${invite.invitee_email}`);
-			await loadShareData();
+			await loadShareData(session.projectId);
 		} catch (err) {
+			if (!isCurrentProjectSession(session)) return;
+
 			console.error('[ProjectCollaborationModal] Failed to revoke invite:', err);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/projects/${projectId}/invites/${invite.id}/revoke`,
+				endpoint: `/api/onto/projects/${session.projectId}/invites/${invite.id}/revoke`,
 				method: 'POST',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'project_invite',
 				entityId: invite.id,
 				operation: 'project_invite_revoke',
@@ -757,10 +877,12 @@
 			});
 			const message = err instanceof Error ? err.message : 'Failed to revoke invite';
 			toastService.error(message);
-			await loadShareData();
+			await loadShareData(session.projectId);
 		} finally {
-			inviteActionId = null;
-			inviteActionType = null;
+			if (isCurrentProjectSession(session)) {
+				inviteActionId = null;
+				inviteActionType = null;
+			}
 		}
 	}
 
@@ -780,34 +902,44 @@
 		if (nextRole === member.role_key) {
 			return;
 		}
+		const session = captureProjectSession();
 
 		memberActionId = member.id;
 		memberActionType = 'role';
 
 		try {
-			const response = await fetch(`/api/onto/projects/${projectId}/members/${member.id}`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				credentials: 'same-origin',
-				body: JSON.stringify({ role_key: nextRole })
-			});
+			const response = await fetch(
+				`/api/onto/projects/${session.projectId}/members/${member.id}`,
+				{
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'same-origin',
+					body: JSON.stringify({ role_key: nextRole })
+				}
+			);
 
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentProjectSession(session)) return;
+
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to update member');
 			}
 
 			const label = getMemberLabel(member);
 			toastService.success(`Updated ${label} to ${formatRole(nextRole)}`);
-			await loadShareData();
+			await loadShareData(session.projectId);
 		} catch (err) {
+			if (!isCurrentProjectSession(session)) return;
+
 			console.error('[ProjectCollaborationModal] Failed to update member role:', err);
 			const message = err instanceof Error ? err.message : 'Failed to update member';
 			toastService.error(message);
-			await loadShareData();
+			await loadShareData(session.projectId);
 		} finally {
-			memberActionId = null;
-			memberActionType = null;
+			if (isCurrentProjectSession(session)) {
+				memberActionId = null;
+				memberActionType = null;
+			}
 		}
 	}
 
@@ -825,32 +957,44 @@
 		if (!confirmRemove) {
 			return;
 		}
+		const session = captureProjectSession();
 
 		memberActionId = member.id;
 		memberActionType = 'remove';
 
 		try {
-			const response = await fetch(`/api/onto/projects/${projectId}/members/${member.id}`, {
-				method: 'DELETE',
-				credentials: 'same-origin'
-			});
+			const response = await fetch(
+				`/api/onto/projects/${session.projectId}/members/${member.id}`,
+				{
+					method: 'DELETE',
+					credentials: 'same-origin'
+				}
+			);
 
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentProjectSession(session)) return;
+
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to remove member');
 			}
 
 			toastService.success(`Removed ${label}`);
-			await loadShareData();
+			await loadShareData(session.projectId);
+			if (!isCurrentProjectSession(session)) return;
+
 			void onMembersChanged?.();
 		} catch (err) {
+			if (!isCurrentProjectSession(session)) return;
+
 			console.error('[ProjectCollaborationModal] Failed to remove member:', err);
 			const message = err instanceof Error ? err.message : 'Failed to remove member';
 			toastService.error(message);
-			await loadShareData();
+			await loadShareData(session.projectId);
 		} finally {
-			memberActionId = null;
-			memberActionType = null;
+			if (isCurrentProjectSession(session)) {
+				memberActionId = null;
+				memberActionType = null;
+			}
 		}
 	}
 
@@ -873,6 +1017,7 @@
 	async function handleSaveMemberRoleProfile(event: Event) {
 		event.preventDefault();
 		if (!editingMemberRoleProfileId) return;
+		const session = captureProjectSession();
 
 		const targetMember = members.find((member) => member.id === editingMemberRoleProfileId);
 		if (!targetMember) {
@@ -909,7 +1054,7 @@
 
 		try {
 			const response = await fetch(
-				`/api/onto/projects/${projectId}/members/${targetMember.id}/role-profile`,
+				`/api/onto/projects/${session.projectId}/members/${targetMember.id}/role-profile`,
 				{
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
@@ -923,6 +1068,8 @@
 
 			responseStatus = response.status;
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentProjectSession(session)) return;
+
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to update member role profile');
 			}
@@ -931,13 +1078,15 @@
 			editingMemberRoleProfileId = null;
 			editingMemberRoleNameInput = '';
 			editingMemberRoleDescriptionInput = '';
-			await loadShareData();
+			await loadShareData(session.projectId);
 		} catch (err) {
+			if (!isCurrentProjectSession(session)) return;
+
 			console.error('[ProjectCollaborationModal] Failed to update member role profile:', err);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/projects/${projectId}/members/${targetMember.id}/role-profile`,
+				endpoint: `/api/onto/projects/${session.projectId}/members/${targetMember.id}/role-profile`,
 				method: 'PATCH',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'project_member',
 				entityId: targetMember.id,
 				operation: 'project_member_role_profile_admin_update',
@@ -950,7 +1099,9 @@
 				err instanceof Error ? err.message : 'Failed to update member role profile';
 			toastService.error(memberRoleProfileError);
 		} finally {
-			memberRoleProfileSaving = false;
+			if (isCurrentProjectSession(session)) {
+				memberRoleProfileSaving = false;
+			}
 		}
 	}
 
@@ -958,9 +1109,11 @@
 		if (!canLeaveProject || isLeavingProject) {
 			return;
 		}
+		const session = captureProjectSession();
+		const requestedProjectName = projectName;
 
 		const confirmLeave = confirm(
-			`Leave ${projectName || 'this project'}? You will lose access until invited again.`
+			`Leave ${requestedProjectName || 'this project'}? You will lose access until invited again.`
 		);
 		if (!confirmLeave) {
 			return;
@@ -970,27 +1123,30 @@
 		let responseStatus: number | null = null;
 
 		try {
-			const response = await fetch(`/api/onto/projects/${projectId}/members/me`, {
+			const response = await fetch(`/api/onto/projects/${session.projectId}/members/me`, {
 				method: 'DELETE',
 				credentials: 'same-origin'
 			});
 
 			responseStatus = response.status;
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentProjectSession(session)) return;
+
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to leave project');
 			}
 
 			toastService.success('You left this project');
-			isOpen = false;
-			onClose?.();
+			handleClose();
 			onLeftProject?.();
 		} catch (err) {
+			if (!isCurrentProjectSession(session)) return;
+
 			console.error('[ProjectCollaborationModal] Failed to leave project:', err);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/projects/${projectId}/members/me`,
+				endpoint: `/api/onto/projects/${session.projectId}/members/me`,
 				method: 'DELETE',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'project_member',
 				operation: 'project_member_leave',
 				metadata: {
@@ -1001,7 +1157,9 @@
 			const message = err instanceof Error ? err.message : 'Failed to leave project';
 			toastService.error(message);
 		} finally {
-			isLeavingProject = false;
+			if (isCurrentProjectSession(session)) {
+				isLeavingProject = false;
+			}
 		}
 	}
 
@@ -1019,7 +1177,7 @@
 	}
 </script>
 
-<Modal {isOpen} {onClose} title="Collaboration Settings" size="md">
+<Modal {isOpen} onClose={handleClose} title="Collaboration Settings" size="md">
 	<!-- Tab Navigation -->
 	<div class="px-3 sm:px-4 pt-2 border-b border-border">
 		<TabNav

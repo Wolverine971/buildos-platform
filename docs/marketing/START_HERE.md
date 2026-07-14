@@ -17,7 +17,20 @@ This audit is the current source of truth for where BuildOS stands on growth. Re
 
 The lead-gen operating system is the current source of truth for how to run manual campaigns while activation is being repaired.
 
-### Active Campaign: Author Workflow Teardown (April 10 -- April 17, 2026)
+### Active Campaign: Cold Manuscript Writer Pilot (July 2026)
+
+| Document                                                                                                      | What It Does                                                                            |
+| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [Creator Acquisition Operating System](social-media/creator-acquisition/README.md)                            | Canonical bridge from worldbuilding to channel distribution and activation              |
+| [30-Day Writer Pilot](social-media/creator-acquisition/01-30-day-writer-pilot.md)                             | Four-week campaign, receipts, post jobs, setup sessions, and success criteria           |
+| [Watering-Hole Map](social-media/creator-acquisition/02-watering-hole-map.md)                                 | Writer relationship system, search prompts, and research-to-action rules                |
+| [Receipt Kit](social-media/creator-acquisition/03-receipt-kit.md)                                             | Real-media capture and cross-platform asset production                                  |
+| [HyperFrames Production Lane](visual-assets/hyperframes/README.md)                                            | Repeatable real-media Reel/carousel assembly, HyperAgent setup, and publish QA          |
+| [Measurement Scorecard](social-media/creator-acquisition/04-measurement-scorecard.md)                         | Baseline, UTMs, post log, activation funnel, and experiment decisions                   |
+| [Tasker 24](../../tasker/24-creator-social-acquisition-pilot.md)                                              | Execution checklist and definition of done                                              |
+| [Cold Manuscript Reel Candidate](visual-assets/renders/author-workflow-teardown/hyperframes-pilot/PROJECT.md) | Verified 9:16 internal-example pilot with caption, music direction, and publish handoff |
+
+### Prior Campaign: Author Workflow Teardown (April 10 -- April 17, 2026)
 
 | Document                                                                                                  | What It Does                                                                         |
 | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
@@ -43,6 +56,7 @@ These define what BuildOS is, who it's for, and how to talk about it.
 | [Thinking Environment Creator Strategy](strategy/thinking-environment-creator-strategy.md) | Audience-first strategy. Authors and YouTubers as primary wedge, visual direction, demo library                   |
 | [Guerrilla Content Doctrine](strategy/buildos-guerrilla-content-doctrine.md)               | Content operating doctrine for a one-person team. Content lanes, cadence, decision rules                          |
 | [How to Explain BuildOS](strategy/how-to-explain-buildos-2026-05-11.md)                    | Spoken-word companion. 17 modular talking points, two persona flows, market story, sentences DJ can say in person |
+| [Worldbuilding Program](brand/worldbuilding/README.md)                                     | BuildOS canon plus Writer and YouTuber audience-language maps                                                     |
 
 ### Key positioning decisions (across all docs)
 
@@ -77,6 +91,8 @@ These define what BuildOS is, who it's for, and how to talk about it.
 
 | Document                                                                                                  | What It Does                                                                              |
 | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [Creator Acquisition Operating System](social-media/creator-acquisition/README.md)                        | Current Writer-first acquisition, fieldwork, real-media, and activation plan              |
+| [30-Day Writer Pilot](social-media/creator-acquisition/01-30-day-writer-pilot.md)                         | Active campaign calendar and execution checklist                                          |
 | [6-Week Guerrilla Seed Campaign](social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md) | Current cross-platform campaign. Weekly theses, hooks, demos, Instagram/X/LinkedIn angles |
 | [Week 1 Day 1 Execution](social-media/publish-kits/2026-03-12-week-1-day-1-execution.md)                  | Step-by-step first-day execution template                                                 |
 | [Do This Asset Template](social-media/publish-kits/2026-03-12-do-this-asset-template.md)                  | Template for creating hero proof assets                                                   |
@@ -137,10 +153,10 @@ These are outlined in the [Guerrilla Seed Campaign](social-media/publish-kits/20
 
 ## 7. Published Blog Content (Anti-AI Positioning)
 
-| Document                                                                                                             | What It Does                                                            |
-| -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| [Anti-AI Assistant Execution Engine](../apps/web/src/content/blogs/philosophy/anti-ai-assistant-execution-engine.md) | Published blog. "Context engineering over agent engineering" philosophy |
-| [Blog Content Strategy](../apps/web/src/content/BLOG_CONTENT_STRATEGY.md)                                            | Blog editorial strategy and pillar index                                |
+| Document                                                                                                                | What It Does                                                            |
+| ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| [Anti-AI Assistant Execution Engine](../../apps/web/src/content/blogs/philosophy/anti-ai-assistant-execution-engine.md) | Published blog. "Context engineering over agent engineering" philosophy |
+| [Blog Content Strategy](../../apps/web/src/content/BLOG_CONTENT_STRATEGY.md)                                            | Blog editorial strategy and pillar index                                |
 
 ---
 
@@ -156,13 +172,14 @@ These are outlined in the [Guerrilla Seed Campaign](social-media/publish-kits/20
 
 ---
 
-## What Needs Doing (Carousel & Instagram)
+## What Needs Doing Now
 
-1. **Finalize the Collaboration Pivot carousel** — Resolve open decisions (BIP vs polished, ADHD mention, slide count, caption length), then design in Canva
-2. **Flesh out Week 1-6 carousel seeds** into full slide-by-slide copy with visual direction and captions (same format as the Collaboration Pivot doc)
-3. **Reconcile Instagram strategy with current positioning** — The Instagram strategy doc is ADHD-heavy; the current doctrine says lead with authors/YouTubers and use ADHD as a sub-wedge
-4. **Build hero proof assets** — Product screenshots and screen recordings for the before/after demos that carousels reference
-5. **Resolve visual identity** — Instagram strategy uses blue/yellow palette; Collaboration Pivot and Inkprint system use warm amber/ink textures. Pick one
+1. **Close the account decisions** — LinkedIn identity mode; DJ-versus-BuildOS jobs; strict real-media rule; Writer campaign destination.
+2. **Complete the social baseline and Writer UTMs** — use the active measurement scorecard.
+3. **Capture and ship Week 1's real receipt** — do not begin with another general research pass.
+4. **Execute the Writer watering-hole loop** — two immediate touches, ten per campaign week, three setup sessions total.
+5. **Coordinate social with activation** — observe first real capture, recognized useful structure, and seven-day return.
+6. **Review after four weeks** — keep, iterate, narrow, or pause before starting the YouTuber pilot.
 
 ---
 
@@ -179,9 +196,11 @@ If starting from scratch, read in this order:
 7. Proof And Presence Doctrine
 8. Brand Guide 1-Pager
 9. Guerrilla Content Doctrine
-10. 6-Week Guerrilla Seed Campaign
-11. Collaboration Pivot Carousel (for format reference only)
+10. Creator Acquisition Operating System
+11. 30-Day Writer Pilot
+12. 6-Week Guerrilla Seed Campaign (background/source material)
+13. Collaboration Pivot Carousel (format reference only)
 
 ---
 
-_Last updated: 2026-04-10_
+_Last updated: 2026-07-10_

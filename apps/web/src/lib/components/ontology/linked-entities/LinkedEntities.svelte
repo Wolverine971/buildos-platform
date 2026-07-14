@@ -20,6 +20,7 @@
 	/>
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import type {
 		EntityKind,
@@ -69,32 +70,62 @@
 		defaultExpanded = true
 	}: Props = $props();
 
+	interface SourceSession {
+		sourceId: string;
+		sourceKind: EntityKind;
+		projectId: string;
+		epoch: number;
+	}
+
+	function emptyLinkedEntities(): LinkedEntitiesResult {
+		return {
+			tasks: [],
+			plans: [],
+			goals: [],
+			milestones: [],
+			documents: [],
+			risks: [],
+			events: [],
+			requirements: []
+		};
+	}
+
+	function emptyAvailableEntitiesCache(): Record<EntityKind, AvailableEntity[]> {
+		return {
+			task: [],
+			plan: [],
+			goal: [],
+			milestone: [],
+			document: [],
+			risk: [],
+			event: [],
+			requirement: []
+		};
+	}
+
+	function normalizeLinkedEntities(value: LinkedEntitiesResult): LinkedEntitiesResult {
+		return {
+			tasks: value.tasks ?? [],
+			plans: value.plans ?? [],
+			goals: value.goals ?? [],
+			milestones: value.milestones ?? [],
+			documents: value.documents ?? [],
+			risks: value.risks ?? [],
+			events: value.events ?? [],
+			requirements: value.requirements ?? []
+		};
+	}
+
 	// State
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
-	let linkedEntities = $state<LinkedEntitiesResult>({
-		tasks: [],
-		plans: [],
-		goals: [],
-		milestones: [],
-		documents: [],
-		risks: [],
-		events: [],
-		requirements: []
-	});
+	let linkedEntities = $state<LinkedEntitiesResult>(emptyLinkedEntities());
 
 	// Track which kinds have been loaded for available entities
 	let loadedAvailableKinds = $state<Set<EntityKind>>(new Set());
-	let availableEntitiesCache = $state<Record<EntityKind, AvailableEntity[]>>({
-		task: [],
-		plan: [],
-		goal: [],
-		milestone: [],
-		document: [],
-		risk: [],
-		event: [],
-		requirement: []
-	});
+	let availableEntitiesCache = $state<Record<EntityKind, AvailableEntity[]>>(
+		emptyAvailableEntitiesCache()
+	);
 	let loadingAvailableKind = $state<EntityKind | null>(null);
 	let linksEditMode = $state(false);
 	let linkExpansionOverride = $state<boolean | null>(null);
@@ -102,6 +133,14 @@
 	// Link picker modal state
 	let showLinkPicker = $state(false);
 	let linkPickerKind = $state<EntityKind>('task');
+
+	// Plain request ownership state: these values coordinate async work but are not rendered.
+	let sourceSessionEpoch = 0;
+	let linkedEntitiesLoadRequestId = 0;
+	let linkedEntitiesLoadController: AbortController | null = null;
+	let availableLoadRequestId = 0;
+	let availableLoadController: AbortController | null = null;
+	let linkPickerOpenRequestId = 0;
 
 	// Filter sections based on ALLOWED_LINKS rules and optional allowedEntityTypes prop
 	const visibleSections = $derived.by(() => {
@@ -161,74 +200,165 @@
 		return counts;
 	});
 
-	// Load data on mount and when source changes
-	$effect(() => {
-		if (sourceId && sourceKind && projectId) {
-			linksEditMode = false;
-			linkExpansionOverride = null;
-			// Reset available entities cache when source changes
-			loadedAvailableKinds = new Set();
-			availableEntitiesCache = {
-				task: [],
-				plan: [],
-				goal: [],
-				milestone: [],
-				document: [],
-				risk: [],
-				event: [],
-				requirement: []
-			};
+	function captureSourceSession(): SourceSession {
+		return { sourceId, sourceKind, projectId, epoch: sourceSessionEpoch };
+	}
 
-			// Use initial data if provided, otherwise fetch
-			if (initialLinkedEntities) {
-				// Merge with defaults to ensure all properties are arrays (not undefined)
-				linkedEntities = {
-					tasks: initialLinkedEntities.tasks ?? [],
-					plans: initialLinkedEntities.plans ?? [],
-					goals: initialLinkedEntities.goals ?? [],
-					milestones: initialLinkedEntities.milestones ?? [],
-					documents: initialLinkedEntities.documents ?? [],
-					risks: initialLinkedEntities.risks ?? [],
-					events: initialLinkedEntities.events ?? [],
-					requirements: initialLinkedEntities.requirements ?? []
-				};
-				isLoading = false;
-				error = null;
+	function hasValidSource(session: SourceSession): boolean {
+		return Boolean(session.sourceId && session.sourceKind && session.projectId);
+	}
+
+	function isCurrentSourceSession(session: SourceSession): boolean {
+		return (
+			session.epoch === sourceSessionEpoch &&
+			session.sourceId === sourceId &&
+			session.sourceKind === sourceKind &&
+			session.projectId === projectId &&
+			hasValidSource(session)
+		);
+	}
+
+	function isAbortError(value: unknown): boolean {
+		return value instanceof DOMException
+			? value.name === 'AbortError'
+			: value instanceof Error && value.name === 'AbortError';
+	}
+
+	function cancelLinkedEntitiesLoad() {
+		linkedEntitiesLoadRequestId += 1;
+		linkedEntitiesLoadController?.abort();
+		linkedEntitiesLoadController = null;
+	}
+
+	function cancelAvailableLoad() {
+		availableLoadRequestId += 1;
+		availableLoadController?.abort();
+		availableLoadController = null;
+	}
+
+	function invalidateSourceSession(session: SourceSession) {
+		if (session.epoch !== sourceSessionEpoch) return;
+		sourceSessionEpoch += 1;
+		cancelLinkedEntitiesLoad();
+		cancelAvailableLoad();
+		linkPickerOpenRequestId += 1;
+	}
+
+	function resetSourceView() {
+		isLoading = false;
+		error = null;
+		linkedEntities = emptyLinkedEntities();
+		loadedAvailableKinds = new Set();
+		availableEntitiesCache = emptyAvailableEntitiesCache();
+		loadingAvailableKind = null;
+		linksEditMode = false;
+		linkExpansionOverride = null;
+		showLinkPicker = false;
+	}
+
+	function isCurrentLinkedEntitiesLoad(
+		session: SourceSession,
+		requestId: number,
+		controller: AbortController
+	): boolean {
+		return (
+			isCurrentSourceSession(session) &&
+			requestId === linkedEntitiesLoadRequestId &&
+			controller === linkedEntitiesLoadController &&
+			!controller.signal.aborted
+		);
+	}
+
+	// Source props own the full view lifecycle. Cleanup invalidates work before the replacement
+	// effect runs, so even transports that ignore abort cannot write across source identities.
+	$effect(() => {
+		const requestedSourceId = sourceId;
+		const requestedSourceKind = sourceKind;
+		const requestedProjectId = projectId;
+		const requestedInitialLinkedEntities = initialLinkedEntities;
+
+		cancelLinkedEntitiesLoad();
+		cancelAvailableLoad();
+		linkPickerOpenRequestId += 1;
+		sourceSessionEpoch += 1;
+		const session: SourceSession = {
+			sourceId: requestedSourceId,
+			sourceKind: requestedSourceKind,
+			projectId: requestedProjectId,
+			epoch: sourceSessionEpoch
+		};
+
+		resetSourceView();
+
+		if (hasValidSource(session)) {
+			if (requestedInitialLinkedEntities) {
+				linkedEntities = normalizeLinkedEntities(requestedInitialLinkedEntities);
 			} else {
-				loadData();
+				untrack(() => void loadData(session));
 			}
 		}
+
+		return () => invalidateSourceSession(session);
 	});
 
-	async function loadData() {
+	async function loadData(session = captureSourceSession()): Promise<boolean> {
+		if (!isCurrentSourceSession(session)) return false;
+
+		cancelLinkedEntitiesLoad();
+		const requestId = linkedEntitiesLoadRequestId;
+		const controller = new AbortController();
+		linkedEntitiesLoadController = controller;
+		const onLoadedForRequest = onLoaded;
 		isLoading = true;
 		error = null;
 
 		try {
-			// Performance: skip fetching available entities on initial load
-			const result = await fetchLinkedEntities(sourceId, sourceKind, projectId, {
-				includeAvailable: false
-			});
-			linkedEntities = result.linkedEntities;
-			onLoaded?.(result.linkedEntities);
+			// Performance: skip fetching available entities on initial load.
+			const result = await fetchLinkedEntities(
+				session.sourceId,
+				session.sourceKind,
+				session.projectId,
+				{ includeAvailable: false, signal: controller.signal }
+			);
+
+			if (!isCurrentLinkedEntitiesLoad(session, requestId, controller)) return false;
+			linkedEntities = normalizeLinkedEntities(result.linkedEntities);
+			onLoadedForRequest?.(result.linkedEntities);
+			return true;
 		} catch (err) {
+			if (!isCurrentLinkedEntitiesLoad(session, requestId, controller)) return false;
+			if (isAbortError(err)) return false;
+
 			const message = err instanceof Error ? err.message : 'Failed to load linked entities';
 			error = message;
 			console.error('[LinkedEntities] Load error:', err);
+			return false;
 		} finally {
-			isLoading = false;
+			if (isCurrentLinkedEntitiesLoad(session, requestId, controller)) {
+				linkedEntitiesLoadController = null;
+				isLoading = false;
+			}
 		}
 	}
 
 	/**
 	 * Lazy-load available entities for a specific kind when user clicks "Add"
 	 */
-	async function loadAvailableForKind(kind: EntityKind): Promise<AvailableEntity[]> {
+	async function loadAvailableForKind(
+		kind: EntityKind,
+		session = captureSourceSession()
+	): Promise<AvailableEntity[] | null> {
+		if (!isCurrentSourceSession(session)) return null;
+
 		// Return cached if already loaded
 		if (loadedAvailableKinds.has(kind)) {
 			return availableEntitiesCache[kind];
 		}
 
+		cancelAvailableLoad();
+		const requestId = availableLoadRequestId;
+		const controller = new AbortController();
+		availableLoadController = controller;
 		loadingAvailableKind = kind;
 
 		try {
@@ -236,12 +366,22 @@
 			const linkedIds = entitiesByKind[kind].map((e) => e.id);
 
 			const entities = await fetchAvailableEntities(
-				sourceId,
-				sourceKind,
-				projectId,
+				session.sourceId,
+				session.sourceKind,
+				session.projectId,
 				kind,
-				linkedIds
+				linkedIds,
+				{ signal: controller.signal }
 			);
+
+			if (
+				!isCurrentSourceSession(session) ||
+				requestId !== availableLoadRequestId ||
+				controller !== availableLoadController ||
+				controller.signal.aborted
+			) {
+				return null;
+			}
 
 			// Cache the results
 			availableEntitiesCache[kind] = entities;
@@ -249,28 +389,54 @@
 
 			return entities;
 		} catch (err) {
+			if (
+				!isCurrentSourceSession(session) ||
+				requestId !== availableLoadRequestId ||
+				controller !== availableLoadController ||
+				controller.signal.aborted
+			) {
+				return null;
+			}
+			if (isAbortError(err)) return null;
+
 			const message =
 				err instanceof Error ? err.message : 'Failed to load available entities';
 			toastService.error(message);
 			console.error('[LinkedEntities] Load available error:', err);
 			return [];
 		} finally {
-			loadingAvailableKind = null;
+			if (
+				isCurrentSourceSession(session) &&
+				requestId === availableLoadRequestId &&
+				controller === availableLoadController
+			) {
+				availableLoadController = null;
+				if (loadingAvailableKind === kind) loadingAvailableKind = null;
+			}
 		}
 	}
 
 	async function handleAddClick(kind: EntityKind) {
-		linkPickerKind = kind;
+		const session = captureSourceSession();
+		if (!isCurrentSourceSession(session)) return;
+		const openRequestId = ++linkPickerOpenRequestId;
 
 		// Load available entities for this kind if not already loaded
 		if (!loadedAvailableKinds.has(kind)) {
-			await loadAvailableForKind(kind);
+			const result = await loadAvailableForKind(kind, session);
+			if (result === null) return;
 		}
 
+		if (!isCurrentSourceSession(session) || openRequestId !== linkPickerOpenRequestId) return;
+		linkPickerKind = kind;
 		showLinkPicker = true;
 	}
 
 	async function handleRemoveLink(entity: LinkedEntity, kind: EntityKind) {
+		const session = captureSourceSession();
+		if (!isCurrentSourceSession(session)) return;
+		const onLinksChangedForRequest = onLinksChanged;
+
 		// Optimistic update: find and remove the entity
 		const backup = { ...linkedEntities };
 
@@ -281,17 +447,21 @@
 
 		try {
 			await unlinkEntity({
-				sourceId,
-				sourceKind,
-				projectId,
+				sourceId: session.sourceId,
+				sourceKind: session.sourceKind,
+				projectId: session.projectId,
 				linkedEntity: entity,
 				linkedKind: kind
 			});
+			if (!isCurrentSourceSession(session)) return;
+
 			toastService.success('Link removed');
 			// Invalidate available cache since something was unlinked
 			loadedAvailableKinds = new Set();
-			onLinksChanged?.();
+			onLinksChangedForRequest?.();
 		} catch (err) {
+			if (!isCurrentSourceSession(session)) return;
+
 			// Revert on error
 			linkedEntities = backup;
 			const message = err instanceof Error ? err.message : 'Failed to remove link';
@@ -301,30 +471,42 @@
 
 	async function handleLinksAdded(targetIds: string[]) {
 		if (targetIds.length === 0) return;
+		const session = captureSourceSession();
+		if (!isCurrentSourceSession(session)) return;
+		const targetKind = linkPickerKind;
+		const onLinksChangedForRequest = onLinksChanged;
 
 		try {
 			await linkEntities({
-				sourceId,
-				sourceKind,
+				sourceId: session.sourceId,
+				sourceKind: session.sourceKind,
 				targetIds,
-				targetKind: linkPickerKind,
-				projectId
+				targetKind,
+				projectId: session.projectId
 			});
+			if (!isCurrentSourceSession(session)) return;
+
 			toastService.success(
 				`Linked ${targetIds.length} ${targetIds.length === 1 ? 'item' : 'items'}`
 			);
 
 			// Reload linked entities to get fresh data with edge IDs
-			await loadData();
+			await loadData(session);
+			if (!isCurrentSourceSession(session)) return;
+
 			// Invalidate available cache since something was linked
 			loadedAvailableKinds = new Set();
-			onLinksChanged?.();
+			onLinksChangedForRequest?.();
 		} catch (err) {
+			if (!isCurrentSourceSession(session)) return;
+
 			const message = err instanceof Error ? err.message : 'Failed to create links';
 			toastService.error(message);
+		} finally {
+			if (isCurrentSourceSession(session) && linkPickerKind === targetKind) {
+				showLinkPicker = false;
+			}
 		}
-
-		showLinkPicker = false;
 	}
 
 	// Reactive getter for available entities (used by modal)

@@ -173,10 +173,15 @@ Legend: 🔴 critical · 🟠 high · 🟡 medium · ⚪ low
 
 - `workers/brief/projectNextStepGenerator.ts` (398 LOC) — superseded by inline generation in `ontologyBriefGenerator.ts:581-614`; confirm brief prompt no longer expects seeded next steps.
 - `src/scripts/backfillStartHereDocuments.ts` + `backfill:start-here` script — delete once the prod backfill is confirmed run.
-- App-level `apps/worker/nixpacks.toml` + `railway.toml` — stale duplicates of repo-root configs (node 20 vs 22!); confirm Railway root-directory setting is `/` first.
 - `generate_brief_email` remnants in `packages/shared-types/src/queue-types.ts` (:272, :423, :564) — web may still read old rows for display.
 - `routes/email-tracking.ts` — all generated pixels point at `PUBLIC_APP_URL` (web owns `/api/email-tracking/[tracking_id]`); confirm no old emails reference the Railway origin.
 - **Tree-agent surface** — orphaned experiment carrying critical bugs; decide delete vs flag-off.
+
+**Resolved since this audit**
+
+- **2026-07-14:** App-level Railway/Nixpacks files were synchronized with the
+  repo-root Node 22 configuration. Repo-root files remain authoritative and the
+  Railway service root must remain `/`.
 
 **Looks dead but is USED — do not remove**
 

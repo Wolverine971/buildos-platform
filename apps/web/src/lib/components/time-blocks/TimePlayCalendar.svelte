@@ -1,7 +1,6 @@
 <!-- apps/web/src/lib/components/time-blocks/TimePlayCalendar.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
+	import { onMount, untrack } from 'svelte';
 	import type { TimeBlockWithProject } from '@buildos/shared-types';
 	import { resolveBlockAccentColor } from '$lib/utils/time-block-colors';
 	import type { CalendarEvent } from '$lib/services/calendar-service';
@@ -51,8 +50,9 @@
 	let dragEnd = $state<{ day: number; hour: number; minute: number } | null>(null);
 
 	// State for Google Calendar events
-	let calendarEvents = $state<CalendarEvent[]>([]);
-	let isLoadingEvents = $state(false);
+	let calendarEvents = $state.raw<CalendarEvent[]>([]);
+	let calendarEventsRequestId = 0;
+	let calendarEventsRequestController: AbortController | null = null;
 
 	// Computed properties
 	let hours = $derived(
@@ -213,12 +213,7 @@
 	}
 
 	function handleCalendarEventClick(event: CalendarEvent) {
-		if (onCalendarEventClick) {
-			// Unwrap Svelte 5 proxy to pass plain object to parent
-			// This prevents "Proxy" objects from appearing in callbacks
-			const plainEvent = $state.snapshot(event);
-			onCalendarEventClick(plainEvent);
-		}
+		onCalendarEventClick?.(event);
 	}
 
 	function handleSlotClick(slot: AvailableSlot) {
@@ -268,82 +263,94 @@
 		});
 	}
 
-	// Fetch Google Calendar events and filter out BuildOS-created events
-	async function fetchCalendarEvents() {
-		if (!isCalendarConnected) {
-			return;
-		}
+	function setCalendarEvents(events: CalendarEvent[]) {
+		calendarEvents = events;
+		calendarEventsOut = events;
+	}
+
+	function cancelCalendarEventsRequest() {
+		calendarEventsRequestId += 1;
+		calendarEventsRequestController?.abort();
+		calendarEventsRequestController = null;
+	}
+
+	function isCurrentCalendarEventsRequest(
+		requestId: number,
+		controller: AbortController
+	): boolean {
+		return (
+			requestId === calendarEventsRequestId &&
+			calendarEventsRequestController === controller &&
+			!controller.signal.aborted
+		);
+	}
+
+	// Fetch Google Calendar events and filter out BuildOS-created events.
+	// The range is captured by the effect so an obsolete response cannot adopt a newer range.
+	async function fetchCalendarEvents(timeMin: string, timeMax: string) {
+		calendarEventsRequestController?.abort();
+		const controller = new AbortController();
+		const requestId = ++calendarEventsRequestId;
+		calendarEventsRequestController = controller;
+		const isCurrentRequest = () => isCurrentCalendarEventsRequest(requestId, controller);
 
 		try {
-			isLoadingEvents = true;
-
-			// Calculate date range based on view mode
-			const startDate = days[0];
-			const endDate = days[days.length - 1];
-
-			if (!startDate || !endDate) {
-				return;
-			}
-
-			// Set time to start and end of day
-			const timeMin = new Date(startDate);
-			timeMin.setHours(0, 0, 0, 0);
-
-			const timeMax = new Date(endDate);
-			timeMax.setHours(23, 59, 59, 999);
-
-			// Fetch both Google Calendar events and task calendar event IDs in parallel
+			// Start both requests together and give them the same cancellation boundary.
 			const [calendarResponse, taskEventsResponse] = await Promise.all([
-				fetch(
-					`/api/calendar/events?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
-				),
-				fetch(
-					`/api/calendar/task-events?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
-				)
+				fetch(`/api/calendar/events?timeMin=${timeMin}&timeMax=${timeMax}`, {
+					signal: controller.signal
+				}),
+				fetch(`/api/calendar/task-events?timeMin=${timeMin}&timeMax=${timeMax}`, {
+					signal: controller.signal
+				})
 			]);
 
-			const calendarData = await requireApiData<{ events?: CalendarEvent[] }>(
+			const calendarDataPromise = requireApiData<{ events?: CalendarEvent[] }>(
 				calendarResponse,
 				'Failed to fetch calendar events'
 			);
-			const allCalendarEvents: CalendarEvent[] = calendarData.events || [];
-
-			// Collect BuildOS calendar event IDs (time blocks + tasks)
-			const buildOSEventIds = new Set<string>();
-
-			// Add time block calendar event IDs
-			blocks.forEach((block) => {
-				if (block.calendar_event_id) {
-					buildOSEventIds.add(block.calendar_event_id);
+			const taskEventsDataPromise = requireApiData<{ calendar_event_ids?: string[] }>(
+				taskEventsResponse,
+				'Failed to fetch task calendar events'
+			).catch((taskError) => {
+				if (isCurrentRequest()) {
+					console.error('Error loading task calendar events:', taskError);
 				}
+				return null;
 			});
 
-			// Add task calendar event IDs
-			try {
-				const taskEventsData = await requireApiData<{ calendar_event_ids?: string[] }>(
-					taskEventsResponse,
-					'Failed to fetch task calendar events'
-				);
-				const taskEventIds = taskEventsData.calendar_event_ids || [];
-				taskEventIds.forEach((id: string) => {
-					if (id) {
-						buildOSEventIds.add(id);
-					}
-				});
-			} catch (taskError) {
-				console.error('Error loading task calendar events:', taskError);
+			const [calendarData, taskEventsData] = await Promise.all([
+				calendarDataPromise,
+				taskEventsDataPromise
+			]);
+			if (!isCurrentRequest()) return;
+
+			// Use the latest local blocks when the response lands without making block-only
+			// changes a reason to repeat the network request.
+			const blockCalendarEventIds = untrack(() =>
+				blocks
+					.map((block) => block.calendar_event_id)
+					.filter((id): id is string => Boolean(id))
+			);
+			const buildOSEventIds = new Set(blockCalendarEventIds);
+			for (const id of taskEventsData?.calendar_event_ids ?? []) {
+				if (id) {
+					buildOSEventIds.add(id);
+				}
 			}
 
-			// Filter out BuildOS-created events - only show external calendar events in grey
-			calendarEvents = allCalendarEvents.filter(
-				(event: CalendarEvent) => !buildOSEventIds.has(event.id)
-			);
+			const allCalendarEvents = calendarData.events ?? [];
+			setCalendarEvents(allCalendarEvents.filter((event) => !buildOSEventIds.has(event.id)));
 		} catch (error) {
+			if ((error as Error)?.name === 'AbortError' || !isCurrentRequest()) return;
+
 			console.error('Error fetching calendar events:', error);
 			toastService.error('Failed to load calendar events');
-			calendarEvents = [];
+			setCalendarEvents([]);
 		} finally {
-			isLoadingEvents = false;
+			if (isCurrentRequest()) {
+				calendarEventsRequestController = null;
+			}
 		}
 	}
 
@@ -447,15 +454,23 @@
 
 	// Fetch calendar events when date range or connection status changes
 	$effect(() => {
-		if (!browser) return;
-		if (days.length > 0) {
-			fetchCalendarEvents();
-		}
-	});
+		const startDate = days[0];
+		const endDate = days[days.length - 1];
 
-	// Expose calendar events to parent component
-	$effect(() => {
-		calendarEventsOut = calendarEvents;
+		if (!isCalendarConnected || !startDate || !endDate) {
+			cancelCalendarEventsRequest();
+			setCalendarEvents([]);
+			return;
+		}
+
+		const timeMin = new Date(startDate);
+		timeMin.setHours(0, 0, 0, 0);
+
+		const timeMax = new Date(endDate);
+		timeMax.setHours(23, 59, 59, 999);
+
+		void fetchCalendarEvents(timeMin.toISOString(), timeMax.toISOString());
+		return cancelCalendarEventsRequest;
 	});
 
 	// Function to get calendar events for a specific day
@@ -748,7 +763,7 @@
 				<div class="time-labels">
 					<div class="day-header-spacer"></div>
 					<!-- Spacer for day headers -->
-					{#each hours as hour}
+					{#each hours as hour (hour)}
 						<div class="time-label" style="height: {HOUR_HEIGHT}px;">
 							<span class="time-label-text">{formatHour(hour)}</span>
 						</div>
@@ -759,7 +774,7 @@
 				<div class="days-container z-0">
 					<!-- Day headers -->
 					<div class="day-headers">
-						{#each days as day, dayIndex}
+						{#each days as day (day.getTime())}
 							<div class={`day-header ${isToday(day) ? 'is-today' : ''}`}>
 								<div class="day-header-content">
 									<div class="day-header-weekday">
@@ -777,7 +792,7 @@
 
 					<!-- Day columns with slots -->
 					<div class="day-columns">
-						{#each days as day, dayIndex}
+						{#each days as day, dayIndex (day.getTime())}
 							<div
 								class={`day-column ${isToday(day) ? 'is-today-column' : ''}`}
 								role="button"
@@ -785,8 +800,8 @@
 								onmouseup={handleSlotMouseUp}
 							>
 								<!-- Hour slots -->
-								{#each hours as hour}
-									{#each [0, 30] as minute}
+								{#each hours as hour (hour)}
+									{#each [0, 30] as minute (minute)}
 										<div
 											class="time-slot"
 											style="height: {HOUR_HEIGHT / 2}px;"
@@ -801,7 +816,7 @@
 								{/each}
 
 								<!-- Available Slots (shown in emerald) -->
-								{#each getSlotsForDay(dayIndex) as slot}
+								{#each getSlotsForDay(dayIndex) as slot (slot.id)}
 									{@const slotStyle = getSlotStyle(slot, dayIndex)}
 									{#if slotStyle}
 										<button
@@ -835,7 +850,7 @@
 
 								<!-- Google Calendar Events (shown in grey) -->
 								{#if isCalendarConnected}
-									{#each getCalendarEventsForDay(dayIndex) as event}
+									{#each getCalendarEventsForDay(dayIndex) as event (event.id)}
 										{@const style = getCalendarEventStyle(event, dayIndex)}
 										{#if style}
 											<button
@@ -863,7 +878,7 @@
 								{/if}
 
 								<!-- Time blocks -->
-								{#each getBlocksForDay(dayIndex) as block}
+								{#each getBlocksForDay(dayIndex) as block (block.id)}
 									{@const style = getBlockStyle(block, dayIndex)}
 									{#if style}
 										<button
@@ -909,14 +924,14 @@
 			<div class="month-grid">
 				<!-- Day of week headers -->
 				<div class="month-grid-header">
-					{#each ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as dayName}
+					{#each ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as dayName (dayName)}
 						<div class="month-day-name">{dayName}</div>
 					{/each}
 				</div>
 
 				<!-- Calendar grid -->
 				<div class="month-grid-days">
-					{#each getMonthCalendarGrid() as date}
+					{#each getMonthCalendarGrid() as date (date.getTime())}
 						{@const events = getEventsForDate(date)}
 						{@const isCurrentMonthDay = isCurrentMonth(date)}
 						{@const isTodayDay = isToday(date)}
@@ -946,7 +961,7 @@
 							<!-- Events preview (condensed) -->
 							{#if events.length > 0}
 								<div class="month-events">
-									{#each events.slice(0, 3) as event}
+									{#each events.slice(0, 3) as event (isTimeBlock(event) ? `block:${event.id}` : `calendar:${event.id}`)}
 										<button
 											type="button"
 											class="month-event-item"

@@ -9,21 +9,13 @@
 		CheckCircle2,
 		Share2,
 		MessageSquare,
-		Mail,
-		Smartphone,
-		Monitor,
-		Send,
 		Clock,
-		Eye,
-		MousePointer,
-		XCircle,
-		CheckCircle,
 		Calendar,
 		ListTodo,
 		AlertTriangle,
 		Sparkles,
 		Coffee
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -36,20 +28,7 @@
 		id: string;
 		created_at: string | null;
 		representative: NotificationRow;
-		rows: NotificationRow[];
-		channels: Array<{
-			channel: string;
-			row: NotificationRow;
-		}>;
 	}
-
-	const channelOrder: Record<string, number> = {
-		in_app: 0,
-		push: 1,
-		sms: 2,
-		email: 3,
-		activity_event: 4
-	};
 
 	const timestampFromValue = (value?: string | null): number => {
 		if (!value) return 0;
@@ -126,8 +105,8 @@
 				past: 'Your trial period is ending'
 			},
 			billing_ops_anomaly: {
-				action: 'Billing Ops Alert',
-				past: 'A billing operations anomaly was detected'
+				action: 'Billing needs attention',
+				past: 'We noticed an issue with billing'
 			},
 			'homework.run_completed': {
 				action: 'Homework Complete',
@@ -149,12 +128,7 @@
 		};
 		if (descriptions[eventType]) return descriptions[eventType];
 
-		// Fallback: convert event_type to readable format
-		const parts = eventType.split('.');
-		const action = parts
-			.map((p) => p.charAt(0).toUpperCase() + p.slice(1).replace(/_/g, ' '))
-			.join(' ');
-		return { action, past: action };
+		return { action: 'Update', past: 'Something changed in BuildOS' };
 	};
 
 	// Get icon for event type
@@ -176,26 +150,6 @@
 		if (eventType.includes('calendar')) return Calendar;
 		if (eventType.includes('phase')) return ListTodo;
 		return Bell;
-	};
-
-	// Get channel icon
-	const getChannelIcon = (channel?: string | null) => {
-		if (!channel) return Monitor;
-		if (channel === 'email') return Mail;
-		if (channel === 'sms') return Smartphone;
-		if (channel === 'push') return Send;
-		return Monitor; // in_app
-	};
-
-	const formatChannelLabel = (channel?: string | null): string => {
-		if (!channel || channel === 'in_app') return 'in app';
-		if (channel === 'activity_event') return 'activity event';
-		return channel.replace(/_/g, ' ');
-	};
-
-	const getNotificationChannelKey = (notification: NotificationRow): string => {
-		if (notification.feed_kind === 'activity_event') return 'activity_event';
-		return notification.channel || 'in_app';
 	};
 
 	const getNotificationRollupKey = (notification: NotificationRow): string => {
@@ -221,153 +175,6 @@
 		}
 
 		return `row:${notification.id}`;
-	};
-
-	// Get delivery status info
-	const getStatusInfo = (
-		feedKind?: string | null,
-		status?: string | null,
-		openedAt?: string | null,
-		clickedAt?: string | null,
-		failedAt?: string | null,
-		_lastError?: string | null
-	): {
-		label: string;
-		color: string;
-		bgColor: string;
-		icon: typeof CheckCircle;
-	} => {
-		if (feedKind === 'activity_event') {
-			return {
-				label: 'Activity',
-				color: 'text-muted-foreground',
-				bgColor: 'bg-muted/50',
-				icon: Bell
-			};
-		}
-		if (clickedAt) {
-			return {
-				label: 'Clicked',
-				color: 'text-success',
-				bgColor: 'bg-success/10',
-				icon: MousePointer
-			};
-		}
-		if (openedAt) {
-			return {
-				label: 'Opened',
-				color: 'text-info',
-				bgColor: 'bg-info/10',
-				icon: Eye
-			};
-		}
-		if (failedAt || status === 'failed') {
-			return {
-				label: 'Failed',
-				color: 'text-destructive',
-				bgColor: 'bg-destructive/10',
-				icon: XCircle
-			};
-		}
-		if (status === 'cancelled') {
-			return {
-				label: 'Cancelled',
-				color: 'text-warning',
-				bgColor: 'bg-warning/10',
-				icon: Clock
-			};
-		}
-		if (status === 'delivered' || status === 'sent') {
-			return {
-				label: 'Delivered',
-				color: 'text-muted-foreground',
-				bgColor: 'bg-muted/50',
-				icon: CheckCircle
-			};
-		}
-		if (status === 'pending') {
-			return {
-				label: 'Pending',
-				color: 'text-warning',
-				bgColor: 'bg-warning/10',
-				icon: Clock
-			};
-		}
-		return {
-			label: status || 'Unknown',
-			color: 'text-muted-foreground',
-			bgColor: 'bg-muted/50',
-			icon: Bell
-		};
-	};
-
-	const getStatusRank = (notification: NotificationRow): number => {
-		if (notification.clicked_at) return 600;
-		if (notification.opened_at) return 500;
-		if (notification.status === 'delivered' || notification.status === 'sent') return 400;
-		if (notification.status === 'pending') return 300;
-		if (notification.status === 'cancelled') return 200;
-		if (notification.failed_at || notification.status === 'failed') return 100;
-		return 0;
-	};
-
-	const getRollupStatusInfo = (rows: NotificationRow[]) => {
-		if (rows.length === 0) {
-			return getStatusInfo('delivery', null, null, null, null, null);
-		}
-		if (rows.length === 1) {
-			const row = rows[0];
-			if (!row) {
-				return getStatusInfo('delivery', null, null, null, null, null);
-			}
-			return getStatusInfo(
-				row.feed_kind,
-				row.status,
-				row.opened_at,
-				row.clicked_at,
-				row.failed_at,
-				row.last_error
-			);
-		}
-
-		const hasFailedRow = rows.some(
-			(row) => row.failed_at || row.status === 'failed' || row.status === 'cancelled'
-		);
-		const hasSuccessfulRow = rows.some(
-			(row) =>
-				row.clicked_at ||
-				row.opened_at ||
-				row.status === 'delivered' ||
-				row.status === 'sent'
-		);
-
-		if (hasFailedRow && hasSuccessfulRow) {
-			return {
-				label: 'Partially Delivered',
-				color: 'text-warning',
-				bgColor: 'bg-warning/10',
-				icon: AlertTriangle
-			};
-		}
-
-		const bestRow = rows.slice().sort((a, b) => {
-			const rankDelta = getStatusRank(b) - getStatusRank(a);
-			if (rankDelta !== 0) return rankDelta;
-			return compareByCreatedAtDesc(a, b);
-		})[0];
-
-		if (!bestRow) {
-			return getStatusInfo('delivery', null, null, null, null, null);
-		}
-
-		return getStatusInfo(
-			bestRow.feed_kind,
-			bestRow.status,
-			bestRow.opened_at,
-			bestRow.clicked_at,
-			bestRow.failed_at,
-			bestRow.last_error
-		);
 	};
 
 	const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -507,10 +314,7 @@
 						: 'No tasks scheduled for today';
 			}
 		} else if (eventType === 'brief.failed') {
-			const errorMsg = ep.error_message as string | undefined;
-			const retryCount = ep.retry_count as number | undefined;
-			if (retryCount !== undefined) stats.push({ label: 'Retries', value: retryCount });
-			if (errorMsg) summary = errorMsg;
+			summary = 'Your daily brief could not be prepared. Open Today to try again.';
 		} else if (eventType === 'task.due_soon') {
 			const taskTitle = ep.task_title as string | undefined;
 			const projectName = ep.project_name as string | undefined;
@@ -658,29 +462,10 @@
 			const representative = sortedRows[0];
 			if (!representative) continue;
 
-			const rowsByChannel = new Map<string, NotificationRow>();
-			for (const row of sortedRows) {
-				const channelKey = getNotificationChannelKey(row);
-				if (!rowsByChannel.has(channelKey)) {
-					rowsByChannel.set(channelKey, row);
-				}
-			}
-
-			const channels = Array.from(rowsByChannel.entries())
-				.map(([channel, row]) => ({ channel, row }))
-				.sort(
-					(a, b) =>
-						(channelOrder[a.channel] ?? Number.MAX_SAFE_INTEGER) -
-							(channelOrder[b.channel] ?? Number.MAX_SAFE_INTEGER) ||
-						a.channel.localeCompare(b.channel)
-				);
-
 			rollups.push({
 				id: rollupKey,
 				created_at: representative.created_at,
-				representative,
-				rows: sortedRows,
-				channels
+				representative
 			});
 		}
 
@@ -731,7 +516,9 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="min-h-screen bg-background rounded-md px-3 sm:px-6 py-6">
+<div
+	class="mx-auto min-h-screen w-full max-w-4xl space-y-6 rounded-md bg-background px-3 py-6 sm:px-6"
+>
 	<!-- Header -->
 	<div class="flex items-center gap-3 pb-2 border-b border-border">
 		<div class="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
@@ -739,7 +526,7 @@
 		</div>
 		<div>
 			<h1 class="text-xl font-semibold text-foreground">Notifications</h1>
-			<p class="text-sm text-muted-foreground">Activity and updates</p>
+			<p class="text-sm text-muted-foreground">What has happened across your projects</p>
 		</div>
 	</div>
 
@@ -749,7 +536,7 @@
 			class="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-3"
 		>
 			<AlertCircle class="w-4 h-4 shrink-0" />
-			<span>{errorMessage}</span>
+			<span>Notifications could not be loaded. Refresh the page to try again.</span>
 		</div>
 	{/if}
 
@@ -794,8 +581,6 @@
 								event?.payload as Record<string, unknown>,
 								event?.event_type
 							)}
-							{@const statusInfo = getRollupStatusInfo(rollup.rows)}
-							{@const StatusIcon = statusInfo.icon}
 							{@const eventDetails = extractEventDetails(
 								event?.event_type,
 								event?.payload as Record<string, unknown>
@@ -804,25 +589,7 @@
 								notification.payload as Record<string, unknown>,
 								event?.payload as Record<string, unknown>
 							)}
-							{@const erroredRow = rollup.rows.find(
-								(row) =>
-									row.feed_kind !== 'activity_event' &&
-									row.last_error &&
-									(row.status === 'failed' ||
-										row.status === 'cancelled' ||
-										row.failed_at)
-							)}
-							{@const attemptedRow = rollup.rows.find(
-								(row) =>
-									row.feed_kind !== 'activity_event' &&
-									row.attempts &&
-									row.attempts > 1
-							)}
-							{@const openedRow = rollup.rows.find(
-								(row) => row.feed_kind !== 'activity_event' && row.opened_at
-							)}
-
-							<div class="px-4 py-3 hover:bg-muted/30 transition-colors">
+							<div class="px-4 py-3">
 								<div class="flex gap-3">
 									<!-- Icon -->
 									<div class="shrink-0 pt-0.5">
@@ -860,33 +627,17 @@
 												{#if notificationLink}
 													<a
 														href={notificationLink.href}
-														class="mt-1 inline-flex max-w-full min-w-0 items-center gap-1 text-xs font-medium text-accent underline-offset-2 hover:underline"
+														class="mt-1 inline-flex min-h-11 max-w-full min-w-0 items-center text-xs font-medium text-accent underline-offset-2 hover:underline"
 													>
-														<span class="shrink-0"
-															>{notificationLink.label}</span
-														>
-														<span
-															class="text-muted-foreground truncate"
-														>
-															{notificationLink.href}
-														</span>
+														<span>{notificationLink.label}</span>
 													</a>
 												{/if}
 											</div>
-											<div
-												class="flex shrink-0 items-center gap-1.5 sm:flex-col sm:items-end sm:gap-1"
-											>
+											<div class="flex shrink-0 items-center">
 												<span
-													class="order-2 text-xs tabular-nums text-muted-foreground sm:order-1"
+													class="text-xs tabular-nums text-muted-foreground"
 												>
 													{formatRelativeTime(rollup.created_at)}
-												</span>
-												<!-- Status badge -->
-												<span
-													class="order-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium sm:order-2 {statusInfo.bgColor} {statusInfo.color}"
-												>
-													<StatusIcon class="w-2.5 h-2.5" />
-													{statusInfo.label}
 												</span>
 											</div>
 										</div>
@@ -909,57 +660,15 @@
 											</div>
 										{/if}
 
-										<!-- Error message for failed notifications -->
-										{#if erroredRow}
-											<div
-												class="mt-2 text-xs text-destructive bg-destructive/10 px-2 py-1.5 rounded border border-destructive/30"
-											>
-												{erroredRow.last_error}
-											</div>
-										{/if}
-
-										<!-- Meta row -->
-										<div class="flex items-center gap-2 mt-2 flex-wrap">
-											{#if rollup.channels.length > 1}
-												<span class="text-[11px] text-muted-foreground/70">
-													{rollup.channels.length} channels
-												</span>
-											{/if}
-											{#each rollup.channels as channelInfo}
-												{@const RollupChannelIcon = getChannelIcon(
-													channelInfo.channel
-												)}
+										{#if content.details.length > 0}
+											<div class="mt-2 flex items-center gap-2">
 												<span
-													class="inline-flex items-center gap-1 text-[11px] text-muted-foreground/80"
-												>
-													<RollupChannelIcon class="w-3 h-3" />
-													<span class="capitalize">
-														{formatChannelLabel(channelInfo.channel)}
-													</span>
-												</span>
-											{/each}
-											{#if attemptedRow}
-												<span class="text-muted-foreground/40">·</span>
-												<span class="text-[11px] text-muted-foreground/70">
-													Attempt {attemptedRow.attempts}/{attemptedRow.max_attempts ||
-														3}
-												</span>
-											{/if}
-											{#if content.details.length > 0}
-												<span class="text-muted-foreground/40">·</span>
-												<span
-													class="text-[11px] text-muted-foreground/70 truncate"
+													class="truncate text-[11px] text-muted-foreground/70"
 												>
 													{content.details.join(' · ')}
 												</span>
-											{/if}
-											{#if openedRow}
-												<span class="text-muted-foreground/40">·</span>
-												<span class="text-[11px] text-muted-foreground/70">
-													Opened {formatRelativeTime(openedRow.opened_at)}
-												</span>
-											{/if}
-										</div>
+											</div>
+										{/if}
 									</div>
 								</div>
 							</div>

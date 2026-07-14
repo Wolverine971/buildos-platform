@@ -43,6 +43,7 @@ export interface ParkChatSessionInput {
 	contextType: ChatContextType | null;
 	entityId?: string | null;
 	projectId?: string | null;
+	contextLabel?: string | null;
 	/** Whether a turn was streaming (or restored-active) when the chat was parked. */
 	hasActiveTurn: boolean;
 	hasSentMessage: boolean;
@@ -66,6 +67,7 @@ export function parkChatSession(input: ParkChatSessionInput): string {
 		contextType: input.contextType,
 		entityId: input.entityId ?? null,
 		projectId: input.projectId ?? null,
+		contextLabel: input.contextLabel?.trim() || null,
 		hasActiveTurn: input.hasActiveTurn,
 		responsePreview: null,
 		hasSentMessage: input.hasSentMessage

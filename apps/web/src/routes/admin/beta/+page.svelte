@@ -21,7 +21,6 @@
 		Download,
 		Check
 	} from 'lucide-svelte';
-	import { browser } from '$app/environment';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import AdminCard from '$lib/components/admin/AdminCard.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
@@ -34,13 +33,40 @@
 	import { requireApiData, requireApiSuccess } from '$lib/utils/api-client-helpers';
 	import type { Component } from 'svelte';
 
-	let activeTab = $state<'signups' | 'members' | 'emails' | 'dataview'>('signups');
+	type ActiveTab = 'signups' | 'members' | 'emails' | 'dataview';
+
+	interface SignupListRequest {
+		kind: 'signups';
+		page: number;
+		limit: number;
+		search: string;
+		status: string;
+		sortBy: string;
+		sortOrder: string;
+		refreshVersion: number;
+	}
+
+	interface MemberListRequest {
+		kind: 'members';
+		page: number;
+		search: string;
+		tier: string;
+		activeOnly: boolean;
+		sortBy: string;
+		sortOrder: string;
+		refreshVersion: number;
+	}
+
+	type BetaListRequest = SignupListRequest | MemberListRequest;
+
+	let activeTab = $state<ActiveTab>('signups');
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
 	let searchQuery = $state('');
 	let currentPage = $state(1);
 	let totalPages = $state(1);
 	let totalItems = $state(0);
+	let refreshVersion = $state(0);
 	let selectedItem = $state<any>(null);
 	let showModal = $state(false);
 	let showMobileFilters = $state(false);
@@ -82,9 +108,70 @@
 		sortOrder: 'desc',
 		showAllColumns: false
 	});
+	let previousRequestSearch = '';
+	let activeListRequest = $derived.by((): BetaListRequest | null => {
+		if (activeTab === 'signups') {
+			return {
+				kind: 'signups',
+				page: currentPage,
+				limit: 20,
+				search: searchQuery,
+				status: signupFilters.status,
+				sortBy: signupFilters.sortBy,
+				sortOrder: signupFilters.sortOrder,
+				refreshVersion
+			};
+		}
+
+		if (activeTab === 'dataview') {
+			return {
+				kind: 'signups',
+				page: currentPage,
+				limit: 50,
+				search: searchQuery,
+				status: dataViewFilters.status,
+				sortBy: dataViewFilters.sortBy,
+				sortOrder: dataViewFilters.sortOrder,
+				refreshVersion
+			};
+		}
+
+		if (activeTab === 'members') {
+			return {
+				kind: 'members',
+				page: currentPage,
+				search: searchQuery,
+				tier: memberFilters.tier,
+				activeOnly: memberFilters.activeOnly,
+				sortBy: memberFilters.sortBy,
+				sortOrder: memberFilters.sortOrder,
+				refreshVersion
+			};
+		}
+
+		return null;
+	});
 
 	// Actions
 	let isUpdating = $state(false);
+
+	function resetPage() {
+		currentPage = 1;
+	}
+
+	function selectTab(tab: ActiveTab) {
+		if (activeTab === tab) return;
+		activeTab = tab;
+		resetPage();
+
+		if (tab === 'emails') {
+			void loadEmailManager();
+		}
+	}
+
+	function refreshData() {
+		refreshVersion += 1;
+	}
 
 	// Add sorting functions for signups and members tables
 	function handleSignupSort(column: string) {
@@ -94,8 +181,7 @@
 			signupFilters.sortBy = column;
 			signupFilters.sortOrder = 'desc';
 		}
-		currentPage = 1;
-		loadSignups();
+		resetPage();
 	}
 
 	function handleMemberSort(column: string) {
@@ -105,8 +191,7 @@
 			memberFilters.sortBy = column;
 			memberFilters.sortOrder = 'desc';
 		}
-		currentPage = 1;
-		loadMembers();
+		resetPage();
 	}
 
 	// onMount removed - effects handle initial load
@@ -122,9 +207,7 @@
 		}
 
 		// Reset to first page when sorting changes
-		currentPage = 1;
-
-		// The reactive statement will automatically trigger loadSignups()
+		resetPage();
 	}
 
 	async function loadEmailManager() {
@@ -198,147 +281,104 @@
 		return sourceMap[source.toLowerCase()] || source;
 	}
 
-	// Load signups when on signups tab and filters change
+	// This effect is the single owner of beta signup/member list requests.
 	$effect(() => {
-		if (!browser) return;
-		if (activeTab === 'signups') {
-			searchQuery;
-			signupFilters.status;
-			signupFilters.sortBy;
-			signupFilters.sortOrder;
+		const request = activeListRequest;
+		if (!request) return;
 
-			currentPage = 1;
-			loadSignups();
-		}
+		const controller = new AbortController();
+		const debounceMs = request.search !== previousRequestSearch ? 250 : 0;
+		previousRequestSearch = request.search;
+
+		const timeoutId = window.setTimeout(() => {
+			void loadData(request, controller.signal);
+		}, debounceMs);
+
+		return () => {
+			window.clearTimeout(timeoutId);
+			controller.abort();
+		};
 	});
 
-	$effect(() => {
-		if (!browser) return;
-		if (activeTab === 'emails') {
-			void loadEmailManager();
-		}
-	});
-
-	// Load signups when on dataview tab and filters change
-	$effect(() => {
-		if (!browser) return;
-		if (activeTab === 'dataview') {
-			searchQuery;
-			dataViewFilters.status;
-			dataViewFilters.sortBy;
-			dataViewFilters.sortOrder;
-
-			currentPage = 1;
-			loadSignups();
-		}
-	});
-
-	// Load members when on members tab and filters change
-	$effect(() => {
-		if (!browser) return;
-		if (activeTab === 'members') {
-			searchQuery;
-			memberFilters.tier;
-			memberFilters.activeOnly;
-			memberFilters.sortBy;
-			memberFilters.sortOrder;
-
-			currentPage = 1;
-			loadMembers();
-		}
-	});
-
-	// Load data when tab changes
-	$effect(() => {
-		if (!browser) return;
-		activeTab; // Track tab changes
-		currentPage = 1;
-		loadData();
-	});
-
-	async function loadData() {
-		if (activeTab === 'signups' || activeTab === 'dataview') {
-			await loadSignups();
-		} else if (activeTab === 'members') {
-			await loadMembers();
-		}
-	}
-
-	async function loadSignups() {
-		if (!browser) return;
+	async function loadData(request: BetaListRequest, signal: AbortSignal) {
 		isLoading = true;
 		error = null;
 
 		try {
-			const params = new URLSearchParams({
-				page: currentPage.toString(),
-				limit: activeTab === 'dataview' ? '50' : '20',
-				search: searchQuery,
-				sort_by: activeTab === 'dataview' ? dataViewFilters.sortBy : signupFilters.sortBy,
-				sort_order:
-					activeTab === 'dataview' ? dataViewFilters.sortOrder : signupFilters.sortOrder
-			});
-
-			const statusFilter =
-				activeTab === 'dataview' ? dataViewFilters.status : signupFilters.status;
-			if (statusFilter !== 'all') {
-				params.set('status', statusFilter);
+			if (request.kind === 'signups') {
+				await loadSignups(request, signal);
+			} else {
+				await loadMembers(request, signal);
 			}
-
-			const response = await fetch(`/api/admin/beta/signups?${params}`);
-			const payload = await requireApiData<{
-				signups: any[];
-				pagination: { total_pages: number; total_items: number };
-			}>(response, 'Failed to load signups');
-
-			signups = payload.signups || [];
-			totalPages = payload.pagination?.total_pages ?? 1;
-			totalItems = payload.pagination?.total_items ?? 0;
 		} catch (err) {
-			console.error('Error loading signups:', err);
-			error = err instanceof Error ? err.message : 'Failed to load signups';
+			if (signal.aborted || isAbortError(err)) return;
+			console.error(`Error loading beta ${request.kind}:`, err);
+			error = err instanceof Error ? err.message : `Failed to load ${request.kind}`;
 		} finally {
-			isLoading = false;
+			if (!signal.aborted) {
+				isLoading = false;
+			}
 		}
 	}
 
-	async function loadMembers() {
-		if (!browser) return;
-		isLoading = true;
-		error = null;
+	async function loadSignups(request: SignupListRequest, signal: AbortSignal) {
+		const params = new URLSearchParams({
+			page: request.page.toString(),
+			limit: request.limit.toString(),
+			search: request.search,
+			sort_by: request.sortBy,
+			sort_order: request.sortOrder
+		});
 
-		try {
-			const params = new URLSearchParams({
-				page: currentPage.toString(),
-				limit: '20',
-				search: searchQuery,
-				sort_by: memberFilters.sortBy,
-				sort_order: memberFilters.sortOrder
-			});
-
-			if (memberFilters.tier !== 'all') {
-				params.set('tier', memberFilters.tier);
-			}
-
-			if (memberFilters.activeOnly) {
-				params.set('active_only', 'true');
-			}
-
-			const response = await fetch(`/api/admin/beta/members?${params}`);
-			const payload = await requireApiData<{
-				members: any[];
-				pagination: { total_pages: number; total_items: number };
-			}>(response, 'Failed to load members');
-
-			members = payload.members || [];
-			totalPages = payload.pagination?.total_pages ?? 1;
-			totalItems = payload.pagination?.total_items ?? 0;
-		} catch (err) {
-			console.error('Error loading members:', err);
-			error = err instanceof Error ? err.message : 'Failed to load members';
-		} finally {
-			isLoading = false;
+		if (request.status !== 'all') {
+			params.set('status', request.status);
 		}
+
+		const response = await fetch(`/api/admin/beta/signups?${params}`, { signal });
+		const payload = await requireApiData<{
+			signups: any[];
+			pagination: { total_pages: number; total_items: number };
+		}>(response, 'Failed to load signups');
+
+		if (signal.aborted) return;
+
+		signups = payload.signups || [];
+		totalPages = payload.pagination?.total_pages ?? 1;
+		totalItems = payload.pagination?.total_items ?? 0;
+	}
+
+	async function loadMembers(request: MemberListRequest, signal: AbortSignal) {
+		const params = new URLSearchParams({
+			page: request.page.toString(),
+			limit: '20',
+			search: request.search,
+			sort_by: request.sortBy,
+			sort_order: request.sortOrder
+		});
+
+		if (request.tier !== 'all') {
+			params.set('tier', request.tier);
+		}
+
+		if (request.activeOnly) {
+			params.set('active_only', 'true');
+		}
+
+		const response = await fetch(`/api/admin/beta/members?${params}`, { signal });
+		const payload = await requireApiData<{
+			members: any[];
+			pagination: { total_pages: number; total_items: number };
+		}>(response, 'Failed to load members');
+
+		if (signal.aborted) return;
+
+		members = payload.members || [];
+		totalPages = payload.pagination?.total_pages ?? 1;
+		totalItems = payload.pagination?.total_items ?? 0;
+	}
+
+	function isAbortError(error: unknown): boolean {
+		return error instanceof Error && error.name === 'AbortError';
 	}
 
 	// Show approval confirmation modal
@@ -369,7 +409,7 @@
 
 			await requireApiSuccess(response, 'Failed to approve signup');
 
-			await loadSignups();
+			refreshData();
 			if (selectedItem && selectedItem.id === pendingApprovalSignup.id) {
 				selectedItem.signup_status = 'approved';
 			}
@@ -412,7 +452,7 @@
 
 			await requireApiSuccess(response, 'Failed to update signup');
 
-			await loadSignups();
+			refreshData();
 			if (selectedItem && selectedItem.id === signupId) {
 				selectedItem.signup_status = status;
 			}
@@ -440,7 +480,7 @@
 
 			await requireApiSuccess(response, 'Failed to update member');
 
-			await loadMembers();
+			refreshData();
 			if (selectedItem && selectedItem.id === memberId) {
 				Object.assign(selectedItem, updates);
 			}
@@ -534,14 +574,12 @@
 	function nextPage() {
 		if (currentPage < totalPages) {
 			currentPage++;
-			loadData();
 		}
 	}
 
 	function prevPage() {
 		if (currentPage > 1) {
 			currentPage--;
-			loadData();
 		}
 	}
 </script>
@@ -584,7 +622,7 @@
 				{/if}
 				{#if activeTab !== 'emails'}
 					<Button
-						onclick={loadData}
+						onclick={refreshData}
 						disabled={isLoading}
 						variant="primary"
 						size="md"
@@ -603,7 +641,7 @@
 	<div class="border-b border-border mb-4">
 		<nav class="-mb-px flex overflow-x-auto">
 			<Button
-				onclick={() => (activeTab = 'signups')}
+				onclick={() => selectTab('signups')}
 				variant="ghost"
 				size="md"
 				class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
@@ -616,7 +654,7 @@
 				<span class="hidden xs:inline">Signups</span>
 			</Button>
 			<Button
-				onclick={() => (activeTab = 'dataview')}
+				onclick={() => selectTab('dataview')}
 				variant="ghost"
 				size="md"
 				class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
@@ -629,7 +667,7 @@
 				<span class="hidden xs:inline">Data View</span>
 			</Button>
 			<Button
-				onclick={() => (activeTab = 'members')}
+				onclick={() => selectTab('members')}
 				variant="ghost"
 				size="md"
 				class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
@@ -642,7 +680,7 @@
 				<span class="hidden xs:inline">Members</span>
 			</Button>
 			<Button
-				onclick={() => (activeTab = 'emails')}
+				onclick={() => selectTab('emails')}
 				variant="ghost"
 				size="md"
 				class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
@@ -694,6 +732,7 @@
 					<TextInput
 						type="text"
 						bind:value={searchQuery}
+						oninput={resetPage}
 						placeholder="Search by name, email, or company..."
 						size="md"
 					/>
@@ -703,7 +742,10 @@
 				<div>
 					<Select
 						bind:value={dataViewFilters.status}
-						onchange={(value) => (dataViewFilters.status = String(value))}
+						onchange={(value) => {
+							dataViewFilters.status = String(value);
+							resetPage();
+						}}
 						size="md"
 					>
 						<option value="all">All Status</option>
@@ -718,7 +760,10 @@
 				<div>
 					<Select
 						bind:value={dataViewFilters.sortBy}
-						onchange={(value) => (dataViewFilters.sortBy = String(value))}
+						onchange={(value) => {
+							dataViewFilters.sortBy = String(value);
+							resetPage();
+						}}
 						size="md"
 					>
 						<option value="created_at">Date Applied</option>
@@ -1391,6 +1436,7 @@
 						id="search"
 						type="text"
 						bind:value={searchQuery}
+						oninput={resetPage}
 						placeholder="Search by name, email..."
 						size="md"
 					/>
@@ -1402,7 +1448,10 @@
 						<div class="block text-sm font-medium text-foreground mb-1">Status</div>
 						<Select
 							bind:value={signupFilters.status}
-							onchange={(value) => (signupFilters.status = String(value))}
+							onchange={(value) => {
+								signupFilters.status = String(value);
+								resetPage();
+							}}
 							size="md"
 						>
 							<option value="all">All Status</option>
@@ -1418,7 +1467,10 @@
 						<div class="block text-sm font-medium text-foreground mb-1">Sort By</div>
 						<Select
 							bind:value={signupFilters.sortBy}
-							onchange={(value) => (signupFilters.sortBy = String(value))}
+							onchange={(value) => {
+								signupFilters.sortBy = String(value);
+								resetPage();
+							}}
 							size="md"
 						>
 							<option value="created_at">Date Applied</option>
@@ -1432,7 +1484,10 @@
 						<div class="block text-sm font-medium text-foreground mb-1">Tier</div>
 						<Select
 							bind:value={memberFilters.tier}
-							onchange={(value) => (memberFilters.tier = String(value))}
+							onchange={(value) => {
+								memberFilters.tier = String(value);
+								resetPage();
+							}}
 							size="md"
 						>
 							<option value="all">All Tiers</option>
@@ -1448,6 +1503,7 @@
 							<input
 								type="checkbox"
 								bind:checked={memberFilters.activeOnly}
+								onchange={resetPage}
 								class="rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							/>
 							<span class="text-sm text-foreground">Active Only</span>
@@ -1463,6 +1519,7 @@
 					<TextInput
 						type="text"
 						bind:value={searchQuery}
+						oninput={resetPage}
 						placeholder="Search by name, email, or company..."
 						size="md"
 					/>
@@ -1473,7 +1530,10 @@
 					<div>
 						<Select
 							bind:value={signupFilters.status}
-							onchange={(value) => (signupFilters.status = String(value))}
+							onchange={(value) => {
+								signupFilters.status = String(value);
+								resetPage();
+							}}
 							size="md"
 						>
 							<option value="all">All Status</option>
@@ -1488,7 +1548,10 @@
 					<div>
 						<Select
 							bind:value={signupFilters.sortBy}
-							onchange={(value) => (signupFilters.sortBy = String(value))}
+							onchange={(value) => {
+								signupFilters.sortBy = String(value);
+								resetPage();
+							}}
 							size="md"
 						>
 							<option value="created_at">Date Applied</option>
@@ -1501,7 +1564,10 @@
 					<div>
 						<Select
 							bind:value={memberFilters.tier}
-							onchange={(value) => (memberFilters.tier = String(value))}
+							onchange={(value) => {
+								memberFilters.tier = String(value);
+								resetPage();
+							}}
 							size="md"
 						>
 							<option value="all">All Tiers</option>
@@ -1517,6 +1583,7 @@
 							<input
 								type="checkbox"
 								bind:checked={memberFilters.activeOnly}
+								onchange={resetPage}
 								class="rounded border-border text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							/>
 							<span class="text-sm text-muted-foreground">Active Only</span>

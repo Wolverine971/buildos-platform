@@ -2,7 +2,7 @@
 
 # Worker Service Documentation
 
-Last verified against code on 2026-07-06.
+Last verified against code on 2026-07-14.
 
 This is the documentation hub for `apps/worker`, the Railway service that runs
 the worker API, Supabase queue consumer, and scheduler in one Node.js process.
@@ -23,7 +23,7 @@ The queue is PostgreSQL/Supabase based. Redis, BullMQ, `generate_phases`, and
 
 ## Current Stack
 
-- Runtime: Node.js and TypeScript
+- Runtime: Node.js 22; native TypeScript 7 for worker build and type checking
 - HTTP: Express 4 with bearer-token auth
 - Queue: `queue_jobs` plus Supabase RPCs such as `add_queue_job`,
   `claim_pending_jobs`, `complete_queue_job`, and `fail_queue_job`

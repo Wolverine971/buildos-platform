@@ -1,12 +1,16 @@
 [build]
-builder = "nixpacks"
-buildCommand = "npx --yes pnpm@11.7.0 install --prod=false --frozen-lockfile && npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker"
+builder = "NIXPACKS"
+buildCommand = "npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker"
 watchPatterns = [
   "apps/worker/**",
   "packages/**",
+  "patches/**",
   "turbo.json",
   "package.json",
-  "pnpm-lock.yaml"
+  "pnpm-lock.yaml",
+  "pnpm-workspace.yaml",
+  "railway.toml",
+  "nixpacks.toml"
 ]
 
 [deploy]

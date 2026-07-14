@@ -25,6 +25,12 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { notificationStore } from '$lib/stores/notification.store';
 	import { agentRunsStore } from '$lib/services/agentRunsRealtime.service';
+	import {
+		agentRunAccessLabel,
+		agentRunDisplayTitle,
+		agentRunStatusLabel,
+		agentRunTriggerLabel
+	} from '$lib/services/agent-run-notification-data';
 	import { renderMarkdown, getProseClasses } from '$lib/utils/markdown';
 	import AgentRunSteerControl from './AgentRunSteerControl.svelte';
 	import ChangeSetFailureSummary from './ChangeSetFailureSummary.svelte';
@@ -73,6 +79,23 @@
 			runStatus === 'needs_input' ||
 			runStatus === 'proposal_ready'
 	);
+	let displayTitle = $derived(
+		agentRunDisplayTitle(
+			notification?.data.activityLabel,
+			notification?.data.targetLabel,
+			notification?.data.label ?? 'Agent work'
+		)
+	);
+	let projectLabel = $derived(
+		notification?.data.projectName ??
+			(notification?.data.contextType === 'global' ? 'Workspace' : 'Project')
+	);
+	let sourceLabel = $derived(notification ? agentRunTriggerLabel(notification.data.trigger) : '');
+	let accessLabel = $derived(
+		notification
+			? agentRunAccessLabel(notification.data.scopeMode, notification.data.reviewRequired)
+			: ''
+	);
 
 	let events = $state<AgentRunEventRow[]>([]);
 	let loadingEvents = $state(true);
@@ -85,18 +108,6 @@
 			.map((e) => (e.payload as { message?: string } | null)?.message)
 			.filter((m): m is string => Boolean(m))
 	);
-
-	const STATUS_LABEL: Record<AgentRunStatus, string> = {
-		queued: 'Queued',
-		running: 'Running',
-		paused: 'Paused',
-		needs_input: 'Needs input',
-		proposal_ready: 'Proposal ready',
-		completed: 'Completed',
-		partial: 'Partial',
-		failed: 'Failed',
-		cancelled: 'Cancelled'
-	};
 
 	function statusIcon(status: AgentRunStatus) {
 		switch (status) {
@@ -115,9 +126,15 @@
 			case 'paused':
 				return { icon: Pause, cls: 'text-muted-foreground' };
 			case 'queued':
-				return { icon: LoaderCircle, cls: 'text-muted-foreground animate-spin' };
+				return {
+					icon: LoaderCircle,
+					cls: 'text-muted-foreground animate-spin motion-reduce:animate-none'
+				};
 			default:
-				return { icon: LoaderCircle, cls: 'text-info animate-spin' };
+				return {
+					icon: LoaderCircle,
+					cls: 'text-info animate-spin motion-reduce:animate-none'
+				};
 		}
 	}
 
@@ -304,13 +321,13 @@
 		try {
 			const response = await fetch(`/api/agent-runs/${runId}/cancel`, { method: 'POST' });
 			if (!response.ok) {
-				toastService.error('Could not cancel the run');
+				toastService.error('Could not stop this work');
 				return;
 			}
-			toastService.info('Cancelling run…');
+			toastService.info('Stopping work…');
 			onCancel?.();
 		} catch {
-			toastService.error('Could not cancel the run');
+			toastService.error('Could not stop this work');
 		}
 	}
 
@@ -336,13 +353,13 @@
 				})
 			});
 			if (!response.ok) {
-				toastService.error('Could not re-run the agent');
+				toastService.error('Could not retry this work');
 				return;
 			}
-			toastService.success('Re-dispatched the run');
+			toastService.success('Work started again');
 			handleDismiss();
 		} catch {
-			toastService.error('Could not re-run the agent');
+			toastService.error('Could not retry this work');
 		}
 	}
 
@@ -398,14 +415,14 @@
 	<Modal
 		isOpen={true}
 		onClose={handleClose}
-		title={notification.data.label}
+		title={displayTitle}
 		size={runStatus === 'proposal_ready' || failedChangeSet ? 'xl' : 'lg'}
 		variant="bottom-sheet"
 		showCloseButton={true}
 	>
 		{#snippet children()}
 			<div class="px-3 sm:px-4 py-3 sm:py-4 space-y-4">
-				<!-- Header: status + goal + meta -->
+				<!-- Header: project + friendly status/source/access + preview -->
 				<div class="flex items-start gap-3">
 					<div class="flex-shrink-0 mt-0.5">
 						{#if headIcon}
@@ -414,33 +431,34 @@
 						{/if}
 					</div>
 					<div class="flex-1 min-w-0">
+						{#if projectHref(notification.data.projectId)}
+							<a
+								href={projectHref(notification.data.projectId)}
+								class="inline-block max-w-full truncate text-sm font-semibold text-accent hover:underline"
+							>
+								{projectLabel}
+							</a>
+						{:else}
+							<div class="truncate text-sm font-semibold text-foreground">
+								{projectLabel}
+							</div>
+						{/if}
 						<div class="flex items-center gap-2 flex-wrap">
-							<span class="text-sm font-medium text-foreground"
-								>{STATUS_LABEL[runStatus]}</span
+							<span class="text-xs font-medium text-foreground"
+								>{agentRunStatusLabel(runStatus)}</span
 							>
 							<span class="text-xs text-muted-foreground">·</span>
-							<span class="text-xs text-muted-foreground capitalize"
-								>{notification.data.trigger}</span
-							>
+							<span class="text-xs text-muted-foreground">{sourceLabel}</span>
 							<span class="text-xs text-muted-foreground">·</span>
-							<span class="text-xs text-muted-foreground"
-								>{notification.data.scopeMode.replace('_', ' ')}</span
-							>
-							{#if projectHref(notification.data.projectId)}
-								<span class="text-xs text-muted-foreground">·</span>
-								<a
-									href={projectHref(notification.data.projectId)}
-									class="text-xs text-accent hover:underline"
-								>
-									Project
-								</a>
-							{/if}
+							<span class="text-xs text-muted-foreground">{accessLabel}</span>
 							{#if startedRelative}
 								<span class="text-xs text-muted-foreground">·</span>
 								<span class="text-xs text-muted-foreground">{startedRelative}</span>
 							{/if}
 						</div>
-						<p class="text-sm text-foreground mt-1">{notification.data.goal}</p>
+						<p class="mt-1 text-sm text-foreground">
+							{notification.data.preview ?? notification.data.goal}
+						</p>
 					</div>
 				</div>
 
@@ -475,8 +493,8 @@
 					<div class="space-y-2 rounded-lg border border-warning/40 bg-warning/5 p-3">
 						<div class="micro-label text-warning">
 							{runStatus === 'partial'
-								? 'Continue this partial run'
-								: 'The agent needs your input'}
+								? 'Continue this work'
+								: 'BuildOS needs your input'}
 						</div>
 						{#if result?.open_questions?.length}
 							<ul class="list-disc list-inside space-y-0.5">
@@ -491,7 +509,7 @@
 								rows="2"
 								disabled={answering}
 								placeholder={runStatus === 'partial'
-									? 'Tell the agent what to do next…'
+									? 'Tell BuildOS what to do next…'
 									: 'Type your answer…'}
 								class="min-h-[4.5rem] flex-1 resize-none rounded-md border border-border bg-background px-2.5 py-2 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50 sm:min-h-0 sm:text-sm"
 							></textarea>

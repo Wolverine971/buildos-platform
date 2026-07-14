@@ -25,7 +25,6 @@
 	import {
 		Copy,
 		CalendarRange,
-		Clock,
 		Compass,
 		FileText,
 		X,
@@ -105,6 +104,8 @@
 		onDeleted,
 		onOpenIconStudio
 	}: Props = $props();
+	const projectEditFormInstanceId = $props.id();
+	const projectEditFormId = `project-edit-form-${projectEditFormInstanceId}`;
 
 	let name = $state('');
 	let description = $state('');
@@ -191,6 +192,50 @@
 
 	const hasTags = $derived(projectTags.length > 0);
 
+	function formatDateLabel(value?: string | null, includeYear = false): string {
+		if (!value) return '';
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return '';
+
+		return date.toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			...(includeYear ? { year: 'numeric' as const } : {})
+		});
+	}
+
+	function formatDateInputLabel(value: string): string {
+		if (!value) return 'Not set';
+		const [year, month, day] = value.split('-').map(Number);
+		if (!year || !month || !day) return 'Not set';
+
+		const date = new Date(year, month - 1, day);
+		if (
+			Number.isNaN(date.getTime()) ||
+			date.getFullYear() !== year ||
+			date.getMonth() !== month - 1 ||
+			date.getDate() !== day
+		) {
+			return 'Not set';
+		}
+
+		return date.toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
+	}
+
+	const createdDateShort = $derived(formatDateLabel(project?.created_at));
+	const updatedDateShort = $derived(formatDateLabel(project?.updated_at));
+	const createdDateLong = $derived(formatDateLabel(project?.created_at, true));
+	const updatedDateLong = $derived(formatDateLabel(project?.updated_at, true));
+	const showUpdatedDate = $derived(
+		Boolean(
+			project?.updated_at && project.updated_at !== project.created_at && updatedDateShort
+		)
+	);
+
 	// Computed: has existing next step
 	const hasNextStep = $derived(!!nextStepShort.trim());
 
@@ -239,8 +284,9 @@
 
 	function parseDateInput(value: string): string | null {
 		if (!value) return null;
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
 		const date = new Date(`${value}T00:00:00Z`);
-		if (isNaN(date.getTime())) {
+		if (isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
 			return null;
 		}
 		return date.toISOString();
@@ -320,9 +366,15 @@
 		error = null;
 
 		const payload: Record<string, unknown> = {};
+		const trimmedName = name.trim();
 
-		if (name.trim() && name.trim() !== project.name) {
-			payload.name = name.trim();
+		if (!trimmedName) {
+			error = 'Project name is required.';
+			return;
+		}
+
+		if (trimmedName !== project.name) {
+			payload.name = trimmedName;
 		}
 
 		if ((description || '') !== (project.description || '')) {
@@ -348,11 +400,24 @@
 		const parsedStart = parseDateInput(startDate);
 		const parsedEnd = parseDateInput(endDate);
 
-		if (parsedStart !== (project.start_at ?? null)) {
+		if ((startDate && !parsedStart) || (endDate && !parsedEnd)) {
+			error = 'Enter valid timeline dates.';
+			return;
+		}
+
+		if (startDate && endDate && endDate < startDate) {
+			error = 'End date cannot be before the start date.';
+			return;
+		}
+
+		// Compare the calendar-day values shown in the form. Comparing the parsed
+		// midnight ISO value to the stored timestamp would turn an unchanged date
+		// into a false edit whenever the stored value includes a time component.
+		if (startDate !== toDateInput(project.start_at)) {
 			payload.start_at = parsedStart;
 		}
 
-		if (parsedEnd !== (project.end_at ?? null)) {
+		if (endDate !== toDateInput(project.end_at)) {
 			payload.end_at = parsedEnd;
 		}
 
@@ -568,7 +633,15 @@
 	}
 </script>
 
-<Modal bind:isOpen onClose={handleClose} title="" size="xl" showCloseButton={false}>
+<Modal
+	bind:isOpen
+	onClose={handleClose}
+	title=""
+	size="xl"
+	showCloseButton={false}
+	ariaLabel={name || project?.name || 'Edit project'}
+	customClasses="!h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem-var(--keyboard-height,0px))] sm:!h-auto sm:!max-h-[92dvh] lg:!max-w-7xl"
+>
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
@@ -581,18 +654,26 @@
 					>
 						{name || project?.name || 'Project Settings'}
 					</h2>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-						{#if project?.created_at}Created {new Date(
-								project.created_at
-							).toLocaleDateString(undefined, {
-								month: 'short',
-								day: 'numeric'
-							})}{/if}{#if project?.updated_at && project.updated_at !== project.created_at}
-							· Updated {new Date(project.updated_at).toLocaleDateString(undefined, {
-								month: 'short',
-								day: 'numeric'
-							})}{/if}
-					</p>
+					{#if createdDateShort || showUpdatedDate}
+						<p
+							class="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1 text-2xs leading-tight text-muted-foreground"
+						>
+							{#if createdDateShort && project?.created_at}
+								<span class="whitespace-nowrap"
+									>Created <time datetime={project.created_at}
+										>{createdDateShort}</time
+									></span
+								>
+							{/if}
+							{#if showUpdatedDate && project?.updated_at}
+								<span class="inline-flex items-center gap-1 whitespace-nowrap">
+									{#if createdDateShort}<span aria-hidden="true">·</span>{/if}
+									Updated
+									<time datetime={project.updated_at}>{updatedDateShort}</time>
+								</span>
+							{/if}
+						</p>
+					{/if}
 				</div>
 			</div>
 			<div class="flex items-center gap-1.5">
@@ -648,17 +729,19 @@
 			</div>
 		{:else}
 			<div
-				class="flex flex-col flex-1 min-h-0 space-y-4 px-4 sm:px-6 lg:px-8 py-4 overflow-y-auto"
+				class="flex min-h-0 flex-1 flex-col space-y-3 overflow-y-auto px-2 py-2 sm:space-y-4 sm:px-4 sm:py-4 lg:px-6"
 			>
 				<!-- Main Content Area -->
-				<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-5 min-h-[50vh] flex-1">
+				<div
+					class="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:gap-4 lg:min-h-[50vh] lg:grid-cols-4"
+				>
 					<!-- Content Section (Takes most space) -->
 					<div
-						class="lg:col-span-3 flex flex-col space-y-3 h-full min-h-0 bg-card rounded border border-border shadow-ink transition-all duration-200"
+						class="flex h-full min-h-0 flex-col space-y-3 rounded-lg border border-border bg-card shadow-ink transition-all duration-200 lg:col-span-3"
 					>
 						<!-- Project Name Header -->
 						<div
-							class="bg-muted p-3 sm:p-4 rounded-t border-b border-border tx tx-frame tx-weak"
+							class="rounded-t-lg border-b border-border bg-muted p-3 tx tx-frame tx-weak sm:p-4"
 						>
 							<label
 								for="project-name"
@@ -668,6 +751,7 @@
 							</label>
 							<TextInput
 								id="project-name"
+								form={projectEditFormId}
 								bind:value={name}
 								placeholder="Enter a clear, memorable project name"
 								size="lg"
@@ -684,12 +768,12 @@
 							<!-- Description -->
 							<div>
 								<div class="flex items-center justify-between mb-1.5">
-									<label
-										for="project-description"
+									<span
+										id="project-description-label"
 										class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
 									>
 										Description
-									</label>
+									</span>
 									<button
 										type="button"
 										onclick={() => (descriptionEditMode = !descriptionEditMode)}
@@ -708,6 +792,8 @@
 								<MarkdownToggleField
 									value={description}
 									onUpdate={(newValue) => (description = newValue)}
+									disabled={isSaving}
+									ariaLabelledby="project-description-label"
 									placeholder="One-line summary of what this project achieves"
 									rows={3}
 									hideToggle
@@ -781,6 +867,7 @@
 								<!-- Short version (headline) -->
 								<div class="space-y-2">
 									<TextInput
+										form={projectEditFormId}
 										bind:value={nextStepShort}
 										placeholder="What's the next concrete action for this project?"
 										disabled={isSaving || isGeneratingNextStep}
@@ -791,6 +878,7 @@
 									{#if hasNextStep || nextStepLong}
 										<div class="relative">
 											<Textarea
+												form={projectEditFormId}
 												bind:value={nextStepLong}
 												placeholder="Add more context or details about the next step (optional)"
 												rows={2}
@@ -833,12 +921,12 @@
 									<div class="flex items-center justify-between mb-1.5">
 										<div class="flex items-center gap-2">
 											<FileText class="w-4 h-4 text-accent" />
-											<label
-												for="context-document"
+											<span
+												id="context-document-label"
 												class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
 											>
 												Context Document
-											</label>
+											</span>
 										</div>
 										<div class="flex items-center gap-1">
 											<button
@@ -872,6 +960,8 @@
 											value={contextDocumentBody}
 											onUpdate={(newValue) =>
 												(contextDocumentBody = newValue)}
+											disabled={isSaving}
+											ariaLabelledby="context-document-label"
 											placeholder="## Background\nWhy this project exists and its importance\n\n## Key Notes\nImportant technical and business context\n\n## Resources\nTools, documentation, and dependencies\n\n## Challenges\nCurrent blockers or areas needing attention"
 											rows={10}
 											hideToggle
@@ -913,35 +1003,22 @@
 					<!-- Sidebar (Right column) -->
 					<div class="lg:col-span-1">
 						<Card variant="elevated" class="wt-card">
-							<CardHeader variant="muted" texture="strip">
-								<div class="flex items-center justify-between gap-3">
-									<div>
-										<p
-											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-										>
-											Controls
-										</p>
-										<h3 class="mt-1 text-sm font-semibold text-foreground">
-											Project operations
-										</h3>
-									</div>
-								</div>
+							<CardHeader variant="muted" texture="strip" padding="sm">
+								<h3 class="text-sm font-semibold text-foreground">
+									Project settings
+								</h3>
 							</CardHeader>
 							<CardBody padding="none">
 								<div class="divide-y divide-border/70">
 									<!-- Workflow -->
-									<section class="px-3 py-3 sm:px-4">
+									<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
 										<div class="flex items-center gap-2">
 											<FileText class="h-4 w-4 text-muted-foreground" />
-											<p
-												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-											>
-												Workflow
-											</p>
+											<p class="micro-label">Workflow</p>
 										</div>
 										<div class="mt-2 space-y-2">
 											<div
-												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+												class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
 											>
 												<label
 													for="project-state"
@@ -949,35 +1026,35 @@
 												>
 													Status
 												</label>
-												<Select
-													id="project-state"
-													bind:value={stateKey}
-													size="sm"
-													disabled={isSaving}
-												>
-													{#each PROJECT_STATES as state}
-														<option value={state}>
-															{formatProjectStateLabel(state)}
-														</option>
-													{/each}
-												</Select>
+												<div class="min-w-0">
+													<Select
+														id="project-state"
+														form={projectEditFormId}
+														bind:value={stateKey}
+														size="sm"
+														disabled={isSaving}
+														class="min-w-0 max-w-full"
+													>
+														{#each PROJECT_STATES as state (state)}
+															<option value={state}>
+																{formatProjectStateLabel(state)}
+															</option>
+														{/each}
+													</Select>
+												</div>
 											</div>
 										</div>
 									</section>
 
 									<!-- Facets -->
-									<section class="px-3 py-3 sm:px-4">
+									<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
 										<div class="flex items-center gap-2">
 											<Compass class="h-4 w-4 text-muted-foreground" />
-											<p
-												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-											>
-												Facets
-											</p>
+											<p class="micro-label">Facets</p>
 										</div>
 										<div class="mt-2 space-y-2">
 											<div
-												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+												class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
 											>
 												<label
 													for="facet-context"
@@ -985,22 +1062,26 @@
 												>
 													Context
 												</label>
-												<Select
-													id="facet-context"
-													bind:value={facetContext}
-													size="sm"
-													disabled={isSaving}
-												>
-													<option value="">Not set</option>
-													{#each FACET_CONTEXT_OPTIONS as option}
-														<option value={option}
-															>{facetLabel(option)}</option
-														>
-													{/each}
-												</Select>
+												<div class="min-w-0">
+													<Select
+														id="facet-context"
+														form={projectEditFormId}
+														bind:value={facetContext}
+														size="sm"
+														disabled={isSaving}
+														class="min-w-0 max-w-full"
+													>
+														<option value="">Not set</option>
+														{#each FACET_CONTEXT_OPTIONS as option (option)}
+															<option value={option}
+																>{facetLabel(option)}</option
+															>
+														{/each}
+													</Select>
+												</div>
 											</div>
 											<div
-												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+												class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
 											>
 												<label
 													for="facet-scale"
@@ -1008,22 +1089,26 @@
 												>
 													Scale
 												</label>
-												<Select
-													id="facet-scale"
-													bind:value={facetScale}
-													size="sm"
-													disabled={isSaving}
-												>
-													<option value="">Not set</option>
-													{#each FACET_SCALE_OPTIONS as option}
-														<option value={option}
-															>{facetLabel(option)}</option
-														>
-													{/each}
-												</Select>
+												<div class="min-w-0">
+													<Select
+														id="facet-scale"
+														form={projectEditFormId}
+														bind:value={facetScale}
+														size="sm"
+														disabled={isSaving}
+														class="min-w-0 max-w-full"
+													>
+														<option value="">Not set</option>
+														{#each FACET_SCALE_OPTIONS as option (option)}
+															<option value={option}
+																>{facetLabel(option)}</option
+															>
+														{/each}
+													</Select>
+												</div>
 											</div>
 											<div
-												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+												class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
 											>
 												<label
 													for="facet-stage"
@@ -1031,36 +1116,36 @@
 												>
 													Stage
 												</label>
-												<Select
-													id="facet-stage"
-													bind:value={facetStage}
-													size="sm"
-													disabled={isSaving}
-												>
-													<option value="">Not set</option>
-													{#each FACET_STAGE_OPTIONS as option}
-														<option value={option}
-															>{facetLabel(option)}</option
-														>
-													{/each}
-												</Select>
+												<div class="min-w-0">
+													<Select
+														id="facet-stage"
+														form={projectEditFormId}
+														bind:value={facetStage}
+														size="sm"
+														disabled={isSaving}
+														class="min-w-0 max-w-full"
+													>
+														<option value="">Not set</option>
+														{#each FACET_STAGE_OPTIONS as option (option)}
+															<option value={option}
+																>{facetLabel(option)}</option
+															>
+														{/each}
+													</Select>
+												</div>
 											</div>
 										</div>
 									</section>
 
 									<!-- Timeline -->
-									<section class="px-3 py-3 sm:px-4">
+									<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
 										<div class="flex items-center gap-2">
 											<CalendarRange class="h-4 w-4 text-muted-foreground" />
-											<p
-												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-											>
-												Timeline
-											</p>
+											<p class="micro-label">Timeline</p>
 										</div>
 										<div class="mt-2 grid grid-cols-1 gap-2">
 											<div
-												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+												class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
 											>
 												<label
 													for="start-date"
@@ -1068,16 +1153,40 @@
 												>
 													Start
 												</label>
-												<TextInput
-													id="start-date"
-													type="date"
-													bind:value={startDate}
-													size="sm"
-													disabled={isSaving}
-												/>
+												<div
+													class="date-field relative min-w-0 overflow-hidden rounded-lg focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 focus-within:ring-offset-background"
+												>
+													<TextInput
+														id="start-date"
+														form={projectEditFormId}
+														type="date"
+														bind:value={startDate}
+														size="sm"
+														disabled={isSaving}
+														class="min-w-0 max-w-full pr-10 text-base text-transparent caret-transparent sm:text-sm"
+													/>
+													<span
+														class={[
+															'pointer-events-none absolute left-3 top-1/2 z-20 min-w-0 max-w-[calc(100%-3.25rem)] -translate-y-1/2 truncate text-base sm:text-sm',
+															startDate
+																? 'text-foreground'
+																: 'text-muted-foreground',
+															isSaving && 'opacity-50'
+														]}
+														aria-hidden="true"
+													>
+														{formatDateInputLabel(startDate)}
+													</span>
+													<CalendarRange
+														class="pointer-events-none absolute right-3 top-1/2 z-20 h-4 w-4 -translate-y-1/2 text-muted-foreground {isSaving
+															? 'opacity-50'
+															: ''}"
+														aria-hidden="true"
+													/>
+												</div>
 											</div>
 											<div
-												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+												class="grid min-w-0 grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
 											>
 												<label
 													for="end-date"
@@ -1085,78 +1194,88 @@
 												>
 													End
 												</label>
-												<TextInput
-													id="end-date"
-													type="date"
-													bind:value={endDate}
-													min={startDate}
-													size="sm"
-													disabled={isSaving}
-												/>
+												<div
+													class="date-field relative min-w-0 overflow-hidden rounded-lg focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 focus-within:ring-offset-background"
+												>
+													<TextInput
+														id="end-date"
+														form={projectEditFormId}
+														type="date"
+														bind:value={endDate}
+														min={startDate}
+														size="sm"
+														disabled={isSaving}
+														class="min-w-0 max-w-full pr-10 text-base text-transparent caret-transparent sm:text-sm"
+													/>
+													<span
+														class={[
+															'pointer-events-none absolute left-3 top-1/2 z-20 min-w-0 max-w-[calc(100%-3.25rem)] -translate-y-1/2 truncate text-base sm:text-sm',
+															endDate
+																? 'text-foreground'
+																: 'text-muted-foreground',
+															isSaving && 'opacity-50'
+														]}
+														aria-hidden="true"
+													>
+														{formatDateInputLabel(endDate)}
+													</span>
+													<CalendarRange
+														class="pointer-events-none absolute right-3 top-1/2 z-20 h-4 w-4 -translate-y-1/2 text-muted-foreground {isSaving
+															? 'opacity-50'
+															: ''}"
+														aria-hidden="true"
+													/>
+												</div>
 											</div>
 										</div>
 									</section>
 
-									<!-- Record -->
-									<section class="px-3 py-3 sm:px-4">
-										<div class="flex items-center gap-2">
-											<Clock class="h-4 w-4 text-muted-foreground" />
-											<p
-												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-											>
-												Record
-											</p>
-										</div>
-										<div class="mt-2 space-y-1.5 text-sm">
-											{#if project.created_at}
-												<div
-													class="flex items-center justify-between gap-3"
-												>
-													<span class="text-muted-foreground"
-														>Created</span
-													>
-													<span class="text-right text-foreground">
-														{new Date(
-															project.created_at
-														).toLocaleDateString(undefined, {
-															month: 'short',
-															day: 'numeric',
-															year: 'numeric'
-														})}
-													</span>
-												</div>
-											{/if}
-											{#if project.updated_at}
-												<div
-													class="flex items-center justify-between gap-3"
-												>
-													<span class="text-muted-foreground"
-														>Updated</span
-													>
-													<span class="text-right text-foreground">
-														{new Date(
-															project.updated_at
-														).toLocaleDateString(undefined, {
-															month: 'short',
-															day: 'numeric',
-															year: 'numeric'
-														})}
-													</span>
-												</div>
-											{/if}
-										</div>
-									</section>
+									<!-- Quiet read-only metadata -->
+									{#if createdDateLong || updatedDateLong}
+										<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
+											<dl class="grid min-w-0 grid-cols-2 gap-3">
+												{#if createdDateLong && project.created_at}
+													<div class="min-w-0">
+														<dt
+															class="text-2xs font-medium text-muted-foreground"
+														>
+															Created
+														</dt>
+														<dd
+															class="mt-0.5 truncate text-xs text-foreground"
+														>
+															<time datetime={project.created_at}
+																>{createdDateLong}</time
+															>
+														</dd>
+													</div>
+												{/if}
+												{#if updatedDateLong && project.updated_at}
+													<div class="min-w-0">
+														<dt
+															class="text-2xs font-medium text-muted-foreground"
+														>
+															Updated
+														</dt>
+														<dd
+															class="mt-0.5 truncate text-xs text-foreground"
+														>
+															<time datetime={project.updated_at}
+																>{updatedDateLong}</time
+															>
+														</dd>
+													</div>
+												{/if}
+											</dl>
+										</section>
+									{/if}
 
 									<!-- Tags -->
 									{#if hasTags}
-										<section class="px-3 py-3 sm:px-4">
+										<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
 											<div class="flex items-center gap-2 mb-2">
 												<TagIcon class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Tags
-												</p>
+												<p class="micro-label">Tags</p>
 											</div>
 											<TagsDisplay
 												props={project.props}
@@ -1173,7 +1292,9 @@
 
 				{#if error}
 					<div
-						class="p-3 bg-destructive/10 border border-destructive/30 rounded tx tx-static tx-med"
+						class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 tx tx-static tx-med"
+						role="alert"
+						aria-live="polite"
 					>
 						<p class="text-sm text-destructive">{error}</p>
 					</div>
@@ -1190,9 +1311,9 @@
 
 	{#snippet footer()}
 		{#if project}
-			<form onsubmit={handleSubmit} class="contents">
+			<form id={projectEditFormId} onsubmit={handleSubmit} class="contents">
 				<div
-					class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
+					class="flex items-center justify-between gap-2 border-t border-border bg-muted/50 px-2 py-2 sm:px-4 sm:py-3"
 				>
 					<div class="flex items-center gap-1">
 						{#if canDeleteProject}
@@ -1267,3 +1388,25 @@
 		onClose={handleChatClose}
 	/>
 {/if}
+
+<style>
+	/* iOS renders its date affordance outside narrow grid tracks. Keep the native
+	   picker behavior, but let the field shrink and use the in-flow icon above. */
+	.date-field :global(input[type='date']) {
+		min-width: 0;
+		max-width: 100%;
+		-webkit-appearance: none !important;
+		appearance: none !important;
+		-webkit-text-fill-color: transparent;
+	}
+
+	.date-field :global(input[type='date']::-webkit-date-and-time-value) {
+		min-width: 0;
+		width: 100%;
+		text-align: left;
+	}
+
+	.date-field :global(input[type='date']::-webkit-calendar-picker-indicator) {
+		display: none;
+	}
+</style>

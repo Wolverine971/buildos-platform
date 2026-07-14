@@ -41,6 +41,11 @@ function notification(overrides: Partial<AgentRunNotification['data']> = {}): Ag
 			runId: 'run-1',
 			label: 'Update project START HERE',
 			goal: 'Review proposed Start Here updates captured from the completed chat.',
+			projectName: 'Author Training',
+			activityLabel: 'Update document',
+			targetLabel: 'START HERE',
+			preview: 'Capture durable decisions and open questions from the chat.',
+			entityType: 'document',
 			runStatus: 'partial',
 			trigger: 'chat',
 			contextType: 'project',
@@ -101,6 +106,35 @@ describe('AgentRunModalContent Chat bridge', () => {
 		cleanup();
 		vi.unstubAllGlobals();
 		vi.clearAllMocks();
+	});
+
+	it('keeps project, action, target, source, and access visible in the detail view', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => jsonResponse(200, { success: true, data: { events: [] } }))
+		);
+
+		render(AgentRunModalContent, {
+			props: {
+				notification: notification()
+			}
+		});
+
+		await waitFor(() =>
+			expect(
+				screen.getByRole('heading', { name: 'Update document · START HERE' })
+			).toBeInTheDocument()
+		);
+		expect(screen.getByRole('link', { name: 'Author Training' })).toHaveAttribute(
+			'href',
+			'/projects/project-1'
+		);
+		expect(screen.getByText('Partly complete')).toBeInTheDocument();
+		expect(screen.getByText('From chat')).toBeInTheDocument();
+		expect(screen.getByText('Ask before applying')).toBeInTheDocument();
+		expect(
+			screen.getByText('Capture durable decisions and open questions from the chat.')
+		).toBeInTheDocument();
 	});
 
 	it('prepares the shared run chat session without minimizing the review modal', async () => {

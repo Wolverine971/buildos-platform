@@ -52,7 +52,9 @@ pnpm --filter @buildos/mcp-server build                  # produces packages/bui
 	"mcpServers": {
 		"buildos": {
 			"command": "node",
-			"args": ["/absolute/path/to/buildos-platform/packages/buildos-mcp-server/dist/index.js"],
+			"args": [
+				"/absolute/path/to/buildos-platform/packages/buildos-mcp-server/dist/index.js"
+			],
 			"env": {
 				"BUILDOS_BASE_URL": "https://build-os.com",
 				"BUILDOS_AGENT_TOKEN": "boca_your_agent_key"
@@ -77,6 +79,10 @@ pnpm --filter @buildos/mcp-server build      # bundle dist/index.js (tsup)
 pnpm --filter @buildos/mcp-server test:run   # unit tests (SDK-free core)
 pnpm --filter @buildos/mcp-server typecheck
 ```
+
+`typecheck` uses native TypeScript 7 through the local `@typescript/native` alias. `build` remains
+on the existing `tsup`/esbuild pipeline with TypeScript 5.9 retained as its compatibility
+dependency.
 
 The SDK-free core (`config.ts`, `client.ts`) is unit-tested. The stdio entrypoint (`index.ts`)
 wires the official `@modelcontextprotocol/sdk` Server to the HTTP client and is verified by

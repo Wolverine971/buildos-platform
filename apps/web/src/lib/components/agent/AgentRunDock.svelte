@@ -18,9 +18,14 @@
 		Pause,
 		Bot,
 		ChevronRight
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import type { AgentRunStatus } from '@buildos/shared-types';
 	import type { AgentRunRow } from '$lib/services/agentRunsRealtime.service';
+	import {
+		agentRunDisplayTitle,
+		agentRunStatusLabel,
+		buildAgentRunCardPreview
+	} from '$lib/services/agent-run-notification-data';
 
 	let {
 		runs,
@@ -60,31 +65,6 @@
 				};
 		}
 	}
-
-	function statusLabel(status: AgentRunStatus): string {
-		switch (status) {
-			case 'queued':
-				return 'Queued';
-			case 'running':
-				return 'Working…';
-			case 'paused':
-				return 'Paused';
-			case 'needs_input':
-				return 'Needs input';
-			case 'proposal_ready':
-				return 'Proposal ready';
-			case 'completed':
-				return 'Done';
-			case 'partial':
-				return 'Partial';
-			case 'failed':
-				return 'Failed';
-			case 'cancelled':
-				return 'Cancelled';
-			default:
-				return status;
-		}
-	}
 </script>
 
 {#if runs.length}
@@ -93,9 +73,9 @@
 			<Bot class="w-3.5 h-3.5 text-muted-foreground" />
 			<span class="text-xs font-medium text-muted-foreground">
 				{#if activeCount > 0}
-					{activeCount} agent{activeCount === 1 ? '' : 's'} working
+					{activeCount} active item{activeCount === 1 ? '' : 's'}
 				{:else}
-					Agent runs
+					Agent work
 				{/if}
 			</span>
 		</div>
@@ -103,16 +83,36 @@
 			{#each runs as run (run.id)}
 				{@const ic = iconFor(run.status)}
 				{@const StatusIcon = ic.icon}
+				{@const display = buildAgentRunCardPreview(run)}
+				{@const title = agentRunDisplayTitle(
+					display.activityLabel,
+					display.targetLabel,
+					run.label
+				)}
+				{@const contextLabel =
+					display.projectName ??
+					(run.context_type === 'global' ? 'Workspace' : 'Project')}
 				<button
 					type="button"
-					class="w-full flex items-center gap-2 rounded-lg bg-card border border-border px-2 py-1.5 text-left shadow-ink transition pressable"
+					class="flex min-h-11 w-full items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-2 text-left shadow-ink transition pressable"
+					aria-label={`Open ${contextLabel}: ${title}. ${agentRunStatusLabel(run.status)}`}
 					onclick={() => onOpen?.(run.id)}
 				>
 					<StatusIcon class="w-4 h-4 flex-shrink-0 {ic.cls}" />
-					<span class="flex-1 min-w-0 truncate text-xs text-foreground">{run.label}</span>
-					<span class="flex-shrink-0 text-[0.7rem] text-muted-foreground"
-						>{statusLabel(run.status)}</span
-					>
+					<span class="min-w-0 flex-1">
+						<span class="flex items-center gap-1.5">
+							<span
+								class="min-w-0 flex-1 truncate text-xs font-medium text-foreground"
+								>{title}</span
+							>
+							<span class="flex-shrink-0 text-[0.7rem] text-muted-foreground"
+								>{agentRunStatusLabel(run.status)}</span
+							>
+						</span>
+						<span class="block truncate text-[0.7rem] text-muted-foreground">
+							{contextLabel} · {display.preview}
+						</span>
+					</span>
 					<ChevronRight class="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground" />
 				</button>
 			{/each}

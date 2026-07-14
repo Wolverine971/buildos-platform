@@ -41,6 +41,23 @@ pnpm gen:schema                   # Extract database schema
 pnpm gen:all                      # Full regeneration pipeline (types + schema + web assets + typecheck)
 ```
 
+### TypeScript Compiler Lanes
+
+This repository intentionally uses two TypeScript compiler generations. Do not replace the
+workspace's TypeScript 5 dependency with TypeScript 7 globally.
+
+- **TypeScript 5.9** remains the compatibility compiler for SvelteKit/Svelte tooling and `tsup`
+  declaration generation.
+- **Native TypeScript 7** is installed as the npm alias `@typescript/native` in
+  `apps/worker`, `packages/shared-types`, and `packages/buildos-mcp-server`.
+- The worker uses native TypeScript 7 for both `build` and `typecheck`. Shared types and the
+  MCP server use it for `typecheck` while retaining TypeScript 5.9-backed `tsup` builds.
+- Native scripts use `node ./node_modules/@typescript/native/bin/tsc` explicitly so the
+  aliased compiler cannot collide with the regular `typescript` binary.
+
+Turborepo is pinned at `^2.10.5`. Keep it at 2.9.7 or newer so it can parse pnpm 11's flat
+`patchedDependencies` lockfile format.
+
 ## Architecture
 
 **BuildOS** is an AI-powered productivity platform. Users write stream-of-consciousness "brain dumps" and AI extracts projects, tasks, and context. The platform includes daily brief generation, calendar integration, ontology-driven project management, and an agentic chat system.
@@ -158,7 +175,10 @@ Notable feature flags:
 ## Deployment
 
 - **Web → Vercel.** `vercel.json` defines the build (`turbo build --filter=@buildos/web...`), security headers, long-cache asset rules, and cron jobs (dunning, trial reminders, billing-ops monitoring, welcome sequence, reactivation sequence, security-events retention). Adapter: `@sveltejs/adapter-vercel` pinned to `nodejs22.x`.
-- **Worker → Railway.** `railway.toml` + `nixpacks.toml` at the repo root drive the build; start command is `node apps/worker/dist/index.js`; healthcheck `GET /health`.
+- **Worker → Railway.** Railway root directory must be `/`. Repo-root `railway.toml` +
+  `nixpacks.toml` install dev dependencies with frozen `pnpm@11.7.0`, build the worker and its
+  workspace dependencies through Turbo, and start `node apps/worker/dist/index.js` on Node 22.
+  Healthcheck: `GET /health`.
 - **CI → GitHub Actions.** `.github/workflows/ci.yml` runs `turbo typecheck`, `turbo lint`, and `turbo test:run` on pushes to `main` and all PRs, seeding placeholder env from the `.env.example` files (no real secrets in CI).
 
 ## Documentation

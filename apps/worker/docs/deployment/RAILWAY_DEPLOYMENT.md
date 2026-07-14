@@ -2,7 +2,7 @@
 
 # Railway Deployment - Worker Service
 
-Last verified against repo-root config on 2026-07-06.
+Last verified against repo-root config on 2026-07-14.
 
 The worker deploys from the monorepo root. Do not set Railway root directory to
 `apps/worker`.
@@ -28,6 +28,14 @@ node apps/worker/dist/index.js
 `pnpm@11.7.0` via `npx` for dependency installation and the worker build. Keep
 this in sync with the root `packageManager` and `engines.pnpm` values.
 
+The worker build uses native TypeScript 7 from the worker's `@typescript/native`
+development dependency. Keep `--prod=false` in the install command so Railway
+installs the compiler and Turbo before the build. The native package locks Linux
+x64 and arm64 binaries; the compiled runtime does not depend on either tool.
+
+Turborepo must remain at 2.9.7 or newer for pnpm 11 flat patched-dependency
+lockfiles. The repository currently pins Turbo `^2.10.5`.
+
 ## Watch Paths
 
 Use the root `railway.toml` watch patterns:
@@ -35,10 +43,17 @@ Use the root `railway.toml` watch patterns:
 ```text
 apps/worker/**
 packages/**
+patches/**
 turbo.json
 package.json
 pnpm-lock.yaml
+pnpm-workspace.yaml
+railway.toml
+nixpacks.toml
 ```
+
+The app-level `apps/worker/railway.toml` and `apps/worker/nixpacks.toml` are
+kept synchronized as fallbacks, but the repo-root files are authoritative.
 
 ## Required Variables
 

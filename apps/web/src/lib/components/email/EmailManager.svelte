@@ -1,7 +1,6 @@
 <!-- apps/web/src/lib/components/email/EmailManager.svelte -->
 <script lang="ts">
 	import { onMount, type Component } from 'svelte';
-	import { browser } from '$app/environment';
 	import {
 		Mail,
 		Plus,
@@ -21,6 +20,16 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
+	interface EmailListRequest {
+		page: number;
+		search: string;
+		status: string;
+		category: string;
+		sortBy: string;
+		sortOrder: string;
+		refreshVersion: number;
+	}
+
 	// Data state
 	let emails = $state<any[]>([]);
 	let isLoading = $state(true);
@@ -35,6 +44,7 @@
 	let categoryFilter = $state('all');
 	let sortBy = $state('created_at');
 	let sortOrder = $state('desc');
+	let refreshVersion = $state(0);
 
 	// UI state
 	let activeView = $state<'list' | 'compose' | 'edit' | 'preview'>('list');
@@ -52,64 +62,65 @@
 
 	let timeZone = $state(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
-	// Track previous filter values to detect changes
-	let prevSearchQuery = '';
-	let prevStatusFilter = 'all';
-	let prevCategoryFilter = 'all';
-	let prevSortBy = 'created_at';
-	let prevSortOrder = 'desc';
+	let previousRequestSearch = '';
+	const emailListRequest = $derived<EmailListRequest>({
+		page: currentPage,
+		search: searchQuery,
+		status: statusFilter,
+		category: categoryFilter,
+		sortBy,
+		sortOrder,
+		refreshVersion
+	});
 
 	onMount(() => {
 		timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-		loadEmails();
 	});
 
-	// Watch for filter changes
+	// This effect is the single owner of email-list requests.
 	$effect(() => {
-		if (!browser) return;
-		const filtersChanged =
-			searchQuery !== prevSearchQuery ||
-			statusFilter !== prevStatusFilter ||
-			categoryFilter !== prevCategoryFilter ||
-			sortBy !== prevSortBy ||
-			sortOrder !== prevSortOrder;
+		const request = emailListRequest;
+		const controller = new AbortController();
+		const debounceMs = request.search !== previousRequestSearch ? 250 : 0;
+		previousRequestSearch = request.search;
 
-		if (filtersChanged) {
-			prevSearchQuery = searchQuery;
-			prevStatusFilter = statusFilter;
-			prevCategoryFilter = categoryFilter;
-			prevSortBy = sortBy;
-			prevSortOrder = sortOrder;
-			currentPage = 1;
-			loadEmails();
-		}
+		const timeoutId = window.setTimeout(() => {
+			void loadEmails(request, controller.signal);
+		}, debounceMs);
+
+		return () => {
+			window.clearTimeout(timeoutId);
+			controller.abort();
+		};
 	});
 
-	async function loadEmails() {
+	async function loadEmails(request: EmailListRequest, signal: AbortSignal) {
 		isLoading = true;
 		error = null;
 
 		try {
 			const params = new URLSearchParams({
-				page: currentPage.toString(),
+				page: request.page.toString(),
 				limit: '20',
-				search: searchQuery,
-				sort_by: sortBy,
-				sort_order: sortOrder
+				search: request.search,
+				sort_by: request.sortBy,
+				sort_order: request.sortOrder
 			});
 
-			if (statusFilter !== 'all') {
-				params.set('status', statusFilter);
+			if (request.status !== 'all') {
+				params.set('status', request.status);
 			}
 
-			if (categoryFilter !== 'all') {
-				params.set('category', categoryFilter);
+			if (request.category !== 'all') {
+				params.set('category', request.category);
 			}
 
-			const response = await fetch(`/api/admin/emails?${params}`);
+			const response = await fetch(`/api/admin/emails?${params}`, { signal });
 			if (!response.ok) throw new Error('Failed to load emails');
 
 			const result = await response.json();
+			if (signal.aborted) return;
+
 			if (result.success) {
 				emails = result.data?.emails || [];
 				totalPages = result.data?.pagination?.total_pages || 1;
@@ -118,11 +129,26 @@
 				throw new Error(result.error || 'Failed to load emails');
 			}
 		} catch (err) {
+			if (signal.aborted || isAbortError(err)) return;
 			console.error('Error loading emails:', err);
 			error = err instanceof Error ? err.message : 'Failed to load emails';
 		} finally {
-			isLoading = false;
+			if (!signal.aborted) {
+				isLoading = false;
+			}
 		}
+	}
+
+	function isAbortError(error: unknown): boolean {
+		return error instanceof Error && error.name === 'AbortError';
+	}
+
+	function resetPage() {
+		currentPage = 1;
+	}
+
+	function refreshEmails() {
+		refreshVersion += 1;
 	}
 
 	async function loadEmailComposer() {
@@ -213,7 +239,7 @@
 
 	function handleEmailSent() {
 		// Refresh emails to get updated status
-		loadEmails();
+		refreshEmails();
 		// Return to list view
 		activeView = 'list';
 	}
@@ -226,14 +252,12 @@
 	function nextPage() {
 		if (currentPage < totalPages) {
 			currentPage++;
-			loadEmails();
 		}
 	}
 
 	function prevPage() {
 		if (currentPage > 1) {
 			currentPage--;
-			loadEmails();
 		}
 	}
 
@@ -309,7 +333,7 @@
 					{totalItems} total emails
 				</div>
 				<Button
-					onclick={loadEmails}
+					onclick={refreshEmails}
 					disabled={isLoading}
 					variant="secondary"
 					size="md"
@@ -361,6 +385,7 @@
 						<TextInput
 							id="mobile-search"
 							bind:value={searchQuery}
+							oninput={resetPage}
 							placeholder="Search emails..."
 							class="pl-10"
 							size="md"
@@ -372,7 +397,10 @@
 				<FormField label="Status" labelFor="mobile-status-filter">
 					<Select
 						bind:value={statusFilter}
-						onchange={(value) => (statusFilter = String(value))}
+						onchange={(value) => {
+							statusFilter = String(value);
+							resetPage();
+						}}
 						size="md"
 						placeholder="All Status"
 						id="mobile-status-filter"
@@ -390,7 +418,10 @@
 				<FormField label="Sort By" labelFor="mobile-sort-by">
 					<Select
 						bind:value={sortBy}
-						onchange={(value) => (sortBy = String(value))}
+						onchange={(value) => {
+							sortBy = String(value);
+							resetPage();
+						}}
 						size="md"
 						placeholder="Date Created"
 						id="mobile-sort-by"
@@ -413,6 +444,7 @@
 						/>
 						<TextInput
 							bind:value={searchQuery}
+							oninput={resetPage}
 							placeholder="Search emails by subject or content..."
 							class="pl-10"
 							size="md"
@@ -426,7 +458,10 @@
 						bind:value={statusFilter}
 						size="md"
 						placeholder="All Status"
-						onchange={(value) => (statusFilter = String(value))}
+						onchange={(value) => {
+							statusFilter = String(value);
+							resetPage();
+						}}
 					>
 						<option value="all">All Status</option>
 						<option value="draft">Draft</option>
@@ -443,7 +478,10 @@
 						bind:value={sortBy}
 						size="md"
 						placeholder="Date Created"
-						onchange={(value) => (sortBy = String(value))}
+						onchange={(value) => {
+							sortBy = String(value);
+							resetPage();
+						}}
 					>
 						<option value="created_at">Date Created</option>
 						<option value="subject">Subject</option>

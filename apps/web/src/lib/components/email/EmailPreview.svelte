@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/email/EmailPreview.svelte -->
 <script lang="ts">
-	import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate';
+	import { generateSafeEmailPreviewHTML } from '$lib/utils/emailPreview';
 	import { Eye, Calendar, Users } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { onMount } from 'svelte';
@@ -33,12 +33,24 @@
 	}
 
 	let emailHTML = $derived(
-		generateMinimalEmailHTML({
+		generateSafeEmailPreviewHTML({
 			subject: emailData.subject || 'Preview',
 			content: emailData.content || '',
 			trackingPixel: '' // No tracking pixel in preview
 		})
 	);
+
+	function openPreviewInNewWindow(): void {
+		const previewUrl = URL.createObjectURL(new Blob([emailHTML], { type: 'text/html' }));
+		const previewWindow = window.open(previewUrl, '_blank', 'noopener,noreferrer');
+
+		if (previewWindow) {
+			previewWindow.opener = null;
+		}
+
+		// The new document only needs the object URL while it is loading.
+		window.setTimeout(() => URL.revokeObjectURL(previewUrl), 60_000);
+	}
 </script>
 
 <div class="space-y-6">
@@ -117,12 +129,7 @@
 				<span class="text-sm font-medium text-foreground">Email Preview</span>
 				<div class="flex items-center space-x-2">
 					<Button
-						onclick={() => {
-							const newWindow = window.open('', '_blank');
-							if (!newWindow) return;
-							newWindow.document.write(emailHTML);
-							newWindow.document.close();
-						}}
+						onclick={openPreviewInNewWindow}
 						variant="ghost"
 						size="sm"
 						class="!text-info hover:!text-info/80"
@@ -147,11 +154,16 @@
 
 			<!-- Email Content Frame -->
 			<div class="p-4 bg-muted min-h-[600px]">
-				<div class="max-w-full mx-auto">
-					<!-- Render the email HTML -->
-					<div class="bg-card rounded-lg shadow-ink-strong overflow-hidden">
-						{@html emailHTML}
-					</div>
+				<div
+					class="max-w-full mx-auto bg-card rounded-lg shadow-ink-strong overflow-hidden"
+				>
+					<iframe
+						title={`Email preview: ${emailData.subject || 'Preview'}`}
+						srcdoc={emailHTML}
+						sandbox="allow-popups allow-popups-to-escape-sandbox"
+						referrerpolicy="no-referrer"
+						class="block h-[600px] w-full bg-card border-0"
+					></iframe>
 				</div>
 			</div>
 		</div>
@@ -168,7 +180,7 @@
 			</div>
 			<div class="max-h-64 overflow-y-auto">
 				<div class="divide-y divide-border">
-					{#each emailData.recipients as recipient}
+					{#each emailData.recipients as recipient (recipient.id ?? recipient.recipient_email)}
 						<div class="px-4 py-3 flex items-center justify-between">
 							<div class="flex items-center space-x-3">
 								<div class="flex-shrink-0">
@@ -220,43 +232,3 @@
 		</div>
 	{/if}
 </div>
-
-<style lang="postcss">
-	/* Ensure email content in preview looks good */
-	:global(.email-content img) {
-		max-width: 100%;
-		height: auto;
-		border-radius: 8px;
-		margin: 16px 0;
-	}
-
-	:global(.email-content h1) {
-		font-size: 28px;
-		font-weight: 700;
-		color: #111827;
-		margin-bottom: 16px;
-	}
-
-	:global(.email-content h2) {
-		font-size: 24px;
-		font-weight: 600;
-		color: #1f2937;
-		margin-top: 24px;
-		margin-bottom: 12px;
-	}
-
-	:global(.email-content p) {
-		font-size: 16px;
-		margin-bottom: 16px;
-		color: #4b5563;
-	}
-
-	:global(.email-content a) {
-		color: #3b82f6;
-		text-decoration: none;
-	}
-
-	:global(.email-content a:hover) {
-		text-decoration: underline;
-	}
-</style>

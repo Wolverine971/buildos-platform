@@ -16,7 +16,7 @@
 		PencilLine,
 		Save,
 		ShieldCheck
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 
 	type ContextType = 'global' | 'project';
 	type ScopeMode = 'read_only' | 'read_write';
@@ -80,7 +80,7 @@
 			!submitting &&
 			(contextType !== 'project' || !projectsLoading)
 	);
-	let title = $derived(operative ? 'Edit Operative' : 'New Operative');
+	let title = $derived(operative ? 'Edit automation' : 'New automation');
 
 	$effect(() => {
 		if (isOpen && !wasOpen) {
@@ -119,7 +119,7 @@
 
 	function segmentClass(active: boolean): string {
 		return [
-			'inline-flex min-h-[40px] items-center justify-center gap-2 rounded-md px-2.5 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+			'inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-2.5 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
 			active
 				? 'bg-card text-foreground shadow-ink'
 				: 'text-muted-foreground hover:bg-background hover:text-foreground'
@@ -216,7 +216,7 @@
 			});
 			const body = await response.json().catch(() => null);
 			if (!response.ok) {
-				const message = body?.message || body?.error || 'Could not save operative';
+				const message = body?.message || body?.error || 'Could not save this automation';
 				formError = message;
 				toastService.error(message);
 				return;
@@ -224,12 +224,12 @@
 
 			const saved = body?.data?.operative as AgentOperativeRow | undefined;
 			if (saved) onSaved?.(saved);
-			toastService.success(operative ? 'Operative updated' : 'Operative saved');
+			toastService.success(operative ? 'Automation updated' : 'Automation saved');
 			onClose();
 		} catch (error) {
 			console.warn('[AgentOperativeEditorModal] Failed to save operative', error);
-			formError = 'Could not save operative';
-			toastService.error('Could not save operative');
+			formError = 'Could not save this automation';
+			toastService.error('Could not save this automation');
 		} finally {
 			submitting = false;
 		}
@@ -250,7 +250,7 @@
 				<Bot class="mt-0.5 h-5 w-5 flex-shrink-0 text-foreground" />
 				<div class="min-w-0 flex-1">
 					<label for={`${formId}-goal`} class="text-sm font-semibold text-foreground">
-						Goal
+						What should this automation do?
 					</label>
 					<textarea
 						id={`${formId}-goal`}
@@ -258,7 +258,7 @@
 						rows="3"
 						disabled={submitting}
 						required
-						placeholder="What should the operative do?"
+						placeholder="Review this project every week and flag anything blocked…"
 						class="{inputClass()} mt-2 resize-y"
 					></textarea>
 				</div>
@@ -267,7 +267,7 @@
 			<div class="grid gap-3 sm:grid-cols-2">
 				<div class="space-y-2">
 					<label for={`${formId}-label`} class="text-sm font-medium text-foreground">
-						Label
+						Name
 					</label>
 					<input
 						id={`${formId}-label`}
@@ -279,7 +279,7 @@
 				</div>
 
 				<div class="space-y-2">
-					<div class="text-sm font-medium text-foreground">Context</div>
+					<div class="text-sm font-medium text-foreground">Work in</div>
 					<div
 						class="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1"
 					>
@@ -291,7 +291,7 @@
 							onclick={() => setContextType('global')}
 						>
 							<Globe class="h-4 w-4" />
-							<span>Global</span>
+							<span>Workspace</span>
 						</button>
 						<button
 							type="button"
@@ -316,7 +316,7 @@
 						<div
 							class="flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
 						>
-							<LoaderCircle class="h-4 w-4 animate-spin" />
+							<LoaderCircle class="h-4 w-4 animate-spin motion-reduce:animate-none" />
 							<span>Loading projects...</span>
 						</div>
 					{:else if projectsError}
@@ -346,7 +346,7 @@
 
 			<div class="grid gap-3 sm:grid-cols-2">
 				<div class="space-y-2">
-					<div class="text-sm font-medium text-foreground">Scope</div>
+					<div class="text-sm font-medium text-foreground">Access</div>
 					<div
 						class="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1"
 					>
@@ -358,7 +358,7 @@
 							onclick={() => setScopeMode('read_only')}
 						>
 							<Eye class="h-4 w-4" />
-							<span>Read</span>
+							<span>Review only</span>
 						</button>
 						<button
 							type="button"
@@ -368,7 +368,7 @@
 							onclick={() => setScopeMode('read_write')}
 						>
 							<PencilLine class="h-4 w-4" />
-							<span>Write</span>
+							<span>Can make changes</span>
 						</button>
 					</div>
 				</div>
@@ -383,10 +383,10 @@
 						<ShieldCheck class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
 						<span class="min-w-0">
 							<span class="block text-sm font-medium text-foreground"
-								>Review changes</span
+								>Ask before applying</span
 							>
 							<span class="block text-xs text-muted-foreground"
-								>Stage writes for approval</span
+								>You approve any changes first</span
 							>
 						</span>
 					</span>
@@ -556,7 +556,7 @@
 				loading={submitting}
 				disabled={!canSubmit}
 			>
-				{submitting ? 'Saving' : 'Save'}
+				{submitting ? 'Saving…' : 'Save automation'}
 			</Button>
 		</div>
 	{/snippet}

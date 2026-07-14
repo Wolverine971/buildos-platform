@@ -193,7 +193,8 @@ The Railway service should use repo-root config:
 - `nixpacks.toml`
 
 The app-level `apps/worker/railway.toml` and `apps/worker/nixpacks.toml` are
-not the documented deployment source when Railway root directory is `/`.
+kept synchronized with the root files as fallbacks. They are not the documented
+deployment source when Railway root directory is `/`.
 
 ## Tests
 

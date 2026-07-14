@@ -61,7 +61,78 @@ const PARENT_ENDPOINTS: Partial<Record<EntityKind, string>> = {
 	milestone: '/api/onto/milestones'
 };
 
-const inFlightLinkedEntityRequests = new Map<string, Promise<LinkedEntitiesApiResponse>>();
+interface InFlightLinkedEntityRequest {
+	promise: Promise<LinkedEntitiesApiResponse>;
+	controller: AbortController;
+	consumers: Set<symbol>;
+	settled: boolean;
+}
+
+const inFlightLinkedEntityRequests = new Map<string, InFlightLinkedEntityRequest>();
+
+function abortError(signal: AbortSignal): unknown {
+	return signal.reason ?? new DOMException('The operation was aborted', 'AbortError');
+}
+
+function consumeLinkedEntityRequest(
+	requestKey: string,
+	request: InFlightLinkedEntityRequest,
+	signal?: AbortSignal
+): Promise<LinkedEntitiesApiResponse> {
+	if (signal?.aborted) return Promise.reject(abortError(signal));
+
+	const consumer = Symbol(requestKey);
+	request.consumers.add(consumer);
+
+	return new Promise((resolve, reject) => {
+		let finished = false;
+
+		const release = (abortIfLast: boolean) => {
+			if (!request.consumers.delete(consumer)) return;
+
+			if (abortIfLast && request.consumers.size === 0 && !request.settled) {
+				// Remove the abandoned request before aborting. A transport may ignore abort, and a
+				// later consumer must start a fresh request rather than reuse abandoned work.
+				if (inFlightLinkedEntityRequests.get(requestKey) === request) {
+					inFlightLinkedEntityRequests.delete(requestKey);
+				}
+				request.controller.abort();
+			}
+		};
+
+		const finish = (
+			settle: (
+				value: LinkedEntitiesApiResponse | PromiseLike<LinkedEntitiesApiResponse>
+			) => void,
+			value: LinkedEntitiesApiResponse
+		) => {
+			if (finished) return;
+			finished = true;
+			signal?.removeEventListener('abort', handleAbort);
+			release(false);
+			settle(value);
+		};
+
+		const fail = (reason: unknown) => {
+			if (finished) return;
+			finished = true;
+			signal?.removeEventListener('abort', handleAbort);
+			release(false);
+			reject(reason);
+		};
+
+		const handleAbort = () => {
+			if (finished || !signal) return;
+			finished = true;
+			signal.removeEventListener('abort', handleAbort);
+			release(true);
+			reject(abortError(signal));
+		};
+
+		signal?.addEventListener('abort', handleAbort, { once: true });
+		request.promise.then((value) => finish(resolve, value), fail);
+	});
+}
 
 /**
  * Fetch linked entities for a source entity.
@@ -76,30 +147,48 @@ export async function fetchLinkedEntities(
 	sourceId: string,
 	sourceKind: EntityKind,
 	projectId: string,
-	options: { includeAvailable?: boolean } = {}
+	options: { includeAvailable?: boolean; signal?: AbortSignal } = {}
 ): Promise<LinkedEntitiesApiResponse> {
-	const { includeAvailable = false } = options;
+	const { includeAvailable = false, signal } = options;
+	if (signal?.aborted) throw abortError(signal);
+
 	const requestKey = `${projectId}:${sourceKind}:${sourceId}:${includeAvailable}`;
-	const existingRequest = inFlightLinkedEntityRequests.get(requestKey);
-	if (existingRequest) return existingRequest;
+	let request = inFlightLinkedEntityRequests.get(requestKey);
 
-	const request = fetchLinkedEntitiesUncached(sourceId, sourceKind, projectId, includeAvailable);
-	inFlightLinkedEntityRequests.set(requestKey, request);
-
-	try {
-		return await request;
-	} finally {
-		if (inFlightLinkedEntityRequests.get(requestKey) === request) {
-			inFlightLinkedEntityRequests.delete(requestKey);
-		}
+	if (!request) {
+		const controller = new AbortController();
+		const uncachedRequest = fetchLinkedEntitiesUncached(
+			sourceId,
+			sourceKind,
+			projectId,
+			includeAvailable,
+			controller.signal
+		);
+		const newRequest: InFlightLinkedEntityRequest = {
+			controller,
+			consumers: new Set(),
+			settled: false,
+			promise: uncachedRequest
+		};
+		newRequest.promise = uncachedRequest.finally(() => {
+			newRequest.settled = true;
+			if (inFlightLinkedEntityRequests.get(requestKey) === newRequest) {
+				inFlightLinkedEntityRequests.delete(requestKey);
+			}
+		});
+		request = newRequest;
+		inFlightLinkedEntityRequests.set(requestKey, newRequest);
 	}
+
+	return consumeLinkedEntityRequest(requestKey, request, signal);
 }
 
 async function fetchLinkedEntitiesUncached(
 	sourceId: string,
 	sourceKind: EntityKind,
 	projectId: string,
-	includeAvailable: boolean
+	includeAvailable: boolean,
+	signal: AbortSignal
 ): Promise<LinkedEntitiesApiResponse> {
 	const params = new URLSearchParams({
 		sourceId,
@@ -108,7 +197,7 @@ async function fetchLinkedEntitiesUncached(
 		includeAvailable: includeAvailable.toString()
 	});
 
-	const response = await fetch(`/api/onto/edges/linked?${params}`);
+	const response = await fetch(`/api/onto/edges/linked?${params}`, { signal });
 
 	if (!response.ok) {
 		const error = await response
@@ -144,7 +233,8 @@ export async function fetchAvailableEntities(
 	sourceKind: EntityKind,
 	projectId: string,
 	targetKind: EntityKind,
-	linkedIds: string[]
+	linkedIds: string[],
+	options: { signal?: AbortSignal } = {}
 ): Promise<AvailableEntity[]> {
 	const params = new URLSearchParams({
 		sourceId,
@@ -154,7 +244,9 @@ export async function fetchAvailableEntities(
 		linkedIds: linkedIds.join(',')
 	});
 
-	const response = await fetch(`/api/onto/edges/available?${params}`);
+	const response = await fetch(`/api/onto/edges/available?${params}`, {
+		signal: options.signal
+	});
 
 	if (!response.ok) {
 		const error = await response

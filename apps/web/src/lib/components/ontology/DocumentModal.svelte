@@ -119,11 +119,9 @@
 	let DocumentModalComponent = $state<DocumentModalLazy>(null);
 
 	async function loadAgentChatModal() {
-		if (!AgentChatModalComponent) {
-			const mod = await import('$lib/components/agent/AgentChatModal.svelte');
-			AgentChatModalComponent = mod.default;
-		}
-		return AgentChatModalComponent;
+		if (AgentChatModalComponent) return AgentChatModalComponent;
+		const mod = await import('$lib/components/agent/AgentChatModal.svelte');
+		return mod.default;
 	}
 
 	interface Props {
@@ -497,7 +495,28 @@
 		return 'Publishing is blocked pending admin review. Ask an admin to mark this content okay.';
 	});
 
+	type DocumentLoadContext = {
+		requestId: number;
+		documentId: string;
+		projectId: string;
+	};
+	type DocumentSession = {
+		epoch: number;
+		key: string;
+		projectId: string;
+		taskId: string | null;
+		sourceDocumentId: string | null;
+		parentDocumentId: string | null;
+	};
+
 	let lastLoadedId = $state<string | null>(null);
+	let lastLoadedProjectId = $state<string | null>(null);
+	let documentLoadController: AbortController | null = null;
+	let documentLoadRequestId = 0;
+	let documentLoadTargetKey: string | null = null;
+	let documentSessionEpoch = 0;
+	let documentSessionKey: string | null = null;
+	let liveSyncMutationId = 0;
 
 	// Modal states for linked entity navigation
 	let showTaskModal = $state(false);
@@ -509,6 +528,11 @@
 	let showDocumentModal = $state(false);
 	let selectedDocumentIdForModal = $state<string | null>(null);
 	let showChatModal = $state(false);
+	let linkedEntityModalSession: DocumentSession | null = null;
+	let chatModalSession: DocumentSession | null = null;
+	let restoreModalSession: DocumentSession | null = null;
+	let moveModalSession: DocumentSession | null = null;
+	let imageInsertModalSession: DocumentSession | null = null;
 	type MobileTab = 'details' | 'links' | 'media' | 'history' | 'comments' | null;
 	let activeMobileTab = $state<MobileTab>(null);
 	let showImageInsertModal = $state(false);
@@ -574,7 +598,88 @@
 	let cancelCommentsCountLoad = () => {};
 	let cancelPublicPageLoad = () => {};
 	let cancelDocTreeLoad = () => {};
+	let deferredDocumentLoadController: AbortController | null = null;
 	let docTreeLoadPromise: Promise<void> | null = null;
+	let docTreeLoadPromiseKey: string | null = null;
+	let docTreeLoadController: AbortController | null = null;
+
+	function getDocumentSessionKey(): string {
+		return [
+			isOpen ? 'open' : 'closed',
+			projectId,
+			taskId ?? '',
+			documentId ?? '__new__',
+			parentDocumentId ?? ''
+		].join(':');
+	}
+
+	function captureDocumentSession(): DocumentSession {
+		return {
+			epoch: documentSessionEpoch,
+			key: getDocumentSessionKey(),
+			projectId,
+			taskId,
+			sourceDocumentId: documentId,
+			parentDocumentId
+		};
+	}
+
+	function isCurrentDocumentSession(session: DocumentSession): boolean {
+		return (
+			isOpen &&
+			session.epoch === documentSessionEpoch &&
+			session.key === getDocumentSessionKey() &&
+			session.projectId === projectId &&
+			session.taskId === taskId &&
+			session.sourceDocumentId === documentId &&
+			session.parentDocumentId === parentDocumentId
+		);
+	}
+
+	function isCurrentDocumentMutation(
+		session: DocumentSession,
+		requestedDocumentId: string | null
+	): boolean {
+		return isCurrentDocumentSession(session) && requestedDocumentId === activeDocumentId;
+	}
+
+	function resetDocumentOperationState() {
+		clearAutosaveTimers();
+		saving = false;
+		blockingSave = false;
+		restoring = false;
+		deleting = false;
+		publicPageActionLoading = false;
+		autosaveQueued = false;
+		archiveModalOpen = false;
+		permanentDeleteModalOpen = false;
+		formError = null;
+		saveStatus = 'idle';
+		lastSavePublishedLive = false;
+		showTaskModal = false;
+		showPlanModal = false;
+		showGoalModal = false;
+		showDocumentModal = false;
+		selectedTaskIdForModal = null;
+		selectedPlanIdForModal = null;
+		selectedGoalIdForModal = null;
+		selectedDocumentIdForModal = null;
+		linkedEntityModalSession = null;
+		showChatModal = false;
+		chatModalSession = null;
+		showRestoreModal = false;
+		selectedVersionForRestore = null;
+		restoreModalSession = null;
+		moveModalSession = null;
+		imageInsertModalSession = null;
+		hasChanges = false;
+	}
+
+	function invalidateDocumentSession() {
+		documentSessionEpoch += 1;
+		liveSyncMutationId += 1;
+		resetDocumentOperationState();
+	}
 
 	// Build focus for chat about this document
 	const entityFocus = $derived.by((): ProjectFocus | null => {
@@ -800,6 +905,7 @@
 
 	async function handleCopyPublicPageUrl() {
 		if (!publicPageState) return;
+		const session = captureDocumentSession();
 		const absoluteUrl = buildAbsolutePublicPageUrl({
 			slug: publicPageState.slug,
 			slug_prefix: publicPageState.slug_prefix,
@@ -808,6 +914,7 @@
 		});
 		if (!absoluteUrl) return;
 		const ok = await copyTextToClipboard(absoluteUrl);
+		if (!isCurrentDocumentSession(session)) return;
 		if (ok) {
 			toastService.success('Link copied');
 		} else {
@@ -817,7 +924,10 @@
 
 	async function handleCopyDocumentPageUrl() {
 		if (!browser || !documentPageUrlPath) return;
-		const ok = await copyTextToClipboard(`${window.location.origin}${documentPageUrlPath}`);
+		const session = captureDocumentSession();
+		const requestedUrl = `${window.location.origin}${documentPageUrlPath}`;
+		const ok = await copyTextToClipboard(requestedUrl);
+		if (!isCurrentDocumentSession(session)) return;
 		if (ok) {
 			toastService.success('Document URL copied');
 		} else {
@@ -847,9 +957,49 @@
 		cancelCommentsCountLoad();
 		cancelPublicPageLoad();
 		cancelDocTreeLoad();
+		deferredDocumentLoadController?.abort();
+		docTreeLoadController?.abort();
 		cancelCommentsCountLoad = () => {};
 		cancelPublicPageLoad = () => {};
 		cancelDocTreeLoad = () => {};
+		deferredDocumentLoadController = null;
+		docTreeLoadController = null;
+		docTreeLoadPromise = null;
+		docTreeLoadPromiseKey = null;
+		treeLoading = false;
+	}
+
+	function isAbortError(error: unknown): boolean {
+		return error instanceof Error && error.name === 'AbortError';
+	}
+
+	function isCurrentDocumentView(context: DocumentLoadContext): boolean {
+		return (
+			context.requestId === documentLoadRequestId &&
+			context.documentId === activeDocumentId &&
+			context.projectId === projectId &&
+			isOpen
+		);
+	}
+
+	function isCurrentDocumentLoad(
+		context: DocumentLoadContext,
+		controller: AbortController
+	): boolean {
+		return (
+			isCurrentDocumentView(context) &&
+			documentLoadController === controller &&
+			!controller.signal.aborted
+		);
+	}
+
+	function cancelDocumentLoad() {
+		documentLoadRequestId += 1;
+		documentLoadController?.abort();
+		documentLoadController = null;
+		documentLoadTargetKey = null;
+		loading = false;
+		clearDeferredDocumentLoads();
 	}
 
 	function scheduleDeferredDocumentLoad(task: () => void, fallbackDelayMs: number): () => void {
@@ -912,65 +1062,70 @@
 		lastDocTreeLoadKey = null;
 	}
 
-	async function loadCommentsCount(documentId: string) {
+	async function loadCommentsCount(context: DocumentLoadContext, signal: AbortSignal) {
 		try {
 			const params = new URLSearchParams({
-				project_id: projectId,
+				project_id: context.projectId,
 				entity_type: 'document',
-				entity_id: documentId,
+				entity_id: context.documentId,
 				include_deleted: 'true',
 				count_only: 'true'
 			});
-			const response = await fetch(`/api/onto/comments?${params.toString()}`);
+			const response = await fetch(`/api/onto/comments?${params.toString()}`, { signal });
 			const payload = await response.json().catch(() => null);
 
+			if (!isCurrentDocumentView(context) || signal.aborted) return;
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to load comment count');
 			}
 
-			if (!isOpen || activeDocumentId !== documentId) return;
 			commentsCount = Number(payload?.data?.count ?? 0);
 		} catch (error) {
+			if (isAbortError(error) || !isCurrentDocumentView(context) || signal.aborted) return;
 			void logOntologyClientError(error, {
 				endpoint: '/api/onto/comments',
 				method: 'GET',
-				projectId,
+				projectId: context.projectId,
 				entityType: 'document',
-				entityId: documentId,
+				entityId: context.documentId,
 				operation: 'document_comments_count_load'
 			});
 		}
 	}
 
-	function queueDeferredDocumentLoads(documentId: string) {
+	function queueDeferredDocumentLoads(context: DocumentLoadContext) {
 		clearDeferredDocumentLoads();
+		const controller = new AbortController();
+		deferredDocumentLoadController = controller;
 
 		cancelCommentsCountLoad = scheduleDeferredDocumentLoad(() => {
-			if (!isOpen || activeDocumentId !== documentId) return;
-			void loadCommentsCount(documentId);
+			if (!isCurrentDocumentView(context) || controller.signal.aborted) return;
+			void loadCommentsCount(context, controller.signal);
 		}, 120);
 
 		cancelPublicPageLoad = scheduleDeferredDocumentLoad(() => {
-			if (!isOpen || activeDocumentId !== documentId) return;
-			void loadPublicPageState(documentId);
+			if (!isCurrentDocumentView(context) || controller.signal.aborted) return;
+			void loadPublicPageState(context, controller.signal);
 		}, 220);
 
 		cancelDocTreeLoad = scheduleDeferredDocumentLoad(() => {
-			if (!isOpen || activeDocumentId !== documentId) return;
-			void loadDocTree();
+			if (!isCurrentDocumentView(context) || controller.signal.aborted) return;
+			void loadDocTree(context, controller.signal);
 		}, 360);
 	}
 
-	async function loadPublicPageState(documentId: string) {
+	async function loadPublicPageState(context: DocumentLoadContext, signal: AbortSignal) {
 		try {
 			publicPageLoading = true;
 			publicPageStateLoaded = false;
-			const response = await fetch(`/api/onto/documents/${documentId}/public-page`);
+			const response = await fetch(`/api/onto/documents/${context.documentId}/public-page`, {
+				signal
+			});
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentDocumentView(context) || signal.aborted) return;
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to load public page state');
 			}
-			if (!isOpen || activeDocumentId !== documentId) return;
 			publicPageState = normalizePublicPageState(payload?.data?.publicPage);
 			latestPublicPageReview = normalizePublicPageReview(payload?.data?.latestReview);
 			// Auto-expand the publish panel only when the page is live or has a
@@ -980,19 +1135,19 @@
 				publicPageState?.is_live_public === true ||
 				(publicPageState != null && publicPageState.public_status !== 'not_public');
 		} catch (error) {
-			if (!isOpen || activeDocumentId !== documentId) return;
+			if (isAbortError(error) || !isCurrentDocumentView(context) || signal.aborted) return;
 			publicPageState = null;
 			latestPublicPageReview = null;
 			void logOntologyClientError(error, {
-				endpoint: `/api/onto/documents/${documentId}/public-page`,
+				endpoint: `/api/onto/documents/${context.documentId}/public-page`,
 				method: 'GET',
-				projectId,
+				projectId: context.projectId,
 				entityType: 'document',
-				entityId: documentId,
+				entityId: context.documentId,
 				operation: 'document_public_page_state_load'
 			});
 		} finally {
-			if (!isOpen || activeDocumentId !== documentId) return;
+			if (!isCurrentDocumentView(context) || signal.aborted) return;
 			publicPageLoading = false;
 			publicPageStateLoaded = true;
 		}
@@ -1001,6 +1156,8 @@
 	async function handleMakeDocumentPublic() {
 		if (!activeDocumentId || blockingSave || loading) return;
 		if (!validateForm()) return;
+		const session = captureDocumentSession();
+		const requestedDocumentId = activeDocumentId;
 
 		if (hasUnsavedChanges) {
 			const saved = await performSave({
@@ -1008,30 +1165,36 @@
 				forceVersion: true,
 				blockingUi: true
 			});
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 			if (!saved) {
 				toastService.error('Save failed. Resolve issues before publishing.');
 				return;
 			}
 		}
+		if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
+		const requestedTitle = title.trim();
+		const requestedDescription = description.trim();
+		const requestedPublicPageState = publicPageState;
 
 		try {
 			publicPageActionLoading = true;
 			const response = await fetch(
-				`/api/onto/documents/${activeDocumentId}/public-page/prepare`,
+				`/api/onto/documents/${requestedDocumentId}/public-page/prepare`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
-						slug_base: publicPageState?.slug_base ?? title.trim(),
-						title: title.trim() || null,
-						summary: description.trim() || null,
-						visibility: publicPageState?.visibility ?? 'public',
-						noindex: publicPageState?.noindex ?? false,
-						live_sync_enabled: publicPageState?.live_sync_enabled ?? true
+						slug_base: requestedPublicPageState?.slug_base ?? requestedTitle,
+						title: requestedTitle || null,
+						summary: requestedDescription || null,
+						visibility: requestedPublicPageState?.visibility ?? 'public',
+						noindex: requestedPublicPageState?.noindex ?? false,
+						live_sync_enabled: requestedPublicPageState?.live_sync_enabled ?? true
 					})
 				}
 			);
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to prepare public page');
 			}
@@ -1053,44 +1216,51 @@
 			};
 			showPublicPageConfirmModal = true;
 		} catch (error) {
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 			const message =
 				error instanceof Error ? error.message : 'Failed to prepare public page';
 			void logOntologyClientError(error, {
-				endpoint: `/api/onto/documents/${activeDocumentId}/public-page/prepare`,
+				endpoint: `/api/onto/documents/${requestedDocumentId}/public-page/prepare`,
 				method: 'POST',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'document',
-				entityId: activeDocumentId,
+				entityId: requestedDocumentId,
 				operation: 'document_public_page_prepare'
 			});
 			toastService.error(message);
 		} finally {
-			publicPageActionLoading = false;
+			if (isCurrentDocumentMutation(session, requestedDocumentId)) {
+				publicPageActionLoading = false;
+			}
 		}
 	}
 
 	async function handleConfirmPublicPage() {
 		if (!activeDocumentId || !publicPageDraft) return;
-		const slugBase = publicPageDraft.slug_base.trim();
+		const session = captureDocumentSession();
+		const requestedDocumentId = activeDocumentId;
+		const requestedDraft = { ...publicPageDraft };
+		const slugBase = requestedDraft.slug_base.trim();
 
 		try {
 			publicPageActionLoading = true;
 			const response = await fetch(
-				`/api/onto/documents/${activeDocumentId}/public-page/confirm`,
+				`/api/onto/documents/${requestedDocumentId}/public-page/confirm`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						slug_base: slugBase || null,
-						title: publicPageDraft.title.trim() || null,
-						summary: publicPageDraft.summary.trim() || null,
-						visibility: publicPageDraft.visibility,
-						noindex: publicPageDraft.noindex,
-						live_sync_enabled: publicPageDraft.live_sync_enabled
+						title: requestedDraft.title.trim() || null,
+						summary: requestedDraft.summary.trim() || null,
+						visibility: requestedDraft.visibility,
+						noindex: requestedDraft.noindex,
+						live_sync_enabled: requestedDraft.live_sync_enabled
 					})
 				}
 			);
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 			const review = normalizePublicPageReview(
 				payload?.data?.review ?? payload?.details?.review
 			);
@@ -1120,7 +1290,7 @@
 				}
 				if (response.status === 409 && suggestedSlugBase) {
 					publicPageDraft = {
-						...publicPageDraft,
+						...requestedDraft,
 						slug_base: suggestedSlugBase
 					};
 					if (publicPagePreview && suggestedSlug) {
@@ -1130,8 +1300,8 @@
 							slug_base: suggestedSlugBase,
 							slug_was_deduped: true,
 							url_path:
-								publicPageDraft?.slug_prefix && suggestedSlugBase
-									? `/p/${publicPageDraft.slug_prefix}/${suggestedSlugBase}`
+								requestedDraft.slug_prefix && suggestedSlugBase
+									? `/p/${requestedDraft.slug_prefix}/${suggestedSlugBase}`
 									: `/p/${suggestedSlug}`
 						};
 					}
@@ -1152,25 +1322,31 @@
 			toastService.success('Document is now public');
 			onSaved?.();
 		} catch (error) {
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 			const message =
 				error instanceof Error ? error.message : 'Failed to publish public page';
 			void logOntologyClientError(error, {
-				endpoint: `/api/onto/documents/${activeDocumentId}/public-page/confirm`,
+				endpoint: `/api/onto/documents/${requestedDocumentId}/public-page/confirm`,
 				method: 'POST',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'document',
-				entityId: activeDocumentId,
+				entityId: requestedDocumentId,
 				operation: 'document_public_page_confirm'
 			});
 			toastService.error(message);
 		} finally {
-			publicPageActionLoading = false;
+			if (isCurrentDocumentMutation(session, requestedDocumentId)) {
+				publicPageActionLoading = false;
+			}
 		}
 	}
 
 	async function handleLiveSyncToggle(nextEnabled: boolean) {
 		if (!activeDocumentId || !publicPageState) return;
 
+		const session = captureDocumentSession();
+		const requestedDocumentId = activeDocumentId;
+		const mutationId = ++liveSyncMutationId;
 		const previousState = publicPageState;
 		publicPageState = {
 			...publicPageState,
@@ -1179,7 +1355,7 @@
 
 		try {
 			const response = await fetch(
-				`/api/onto/documents/${activeDocumentId}/public-page/live-sync`,
+				`/api/onto/documents/${requestedDocumentId}/public-page/live-sync`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -1189,6 +1365,12 @@
 				}
 			);
 			const payload = await response.json().catch(() => null);
+			if (
+				!isCurrentDocumentMutation(session, requestedDocumentId) ||
+				mutationId !== liveSyncMutationId
+			) {
+				return;
+			}
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to update live sync');
 			}
@@ -1199,14 +1381,20 @@
 			}
 			toastService.success(nextEnabled ? 'Live sync enabled' : 'Live sync paused');
 		} catch (error) {
+			if (
+				!isCurrentDocumentMutation(session, requestedDocumentId) ||
+				mutationId !== liveSyncMutationId
+			) {
+				return;
+			}
 			publicPageState = previousState;
 			const message = error instanceof Error ? error.message : 'Failed to update live sync';
 			void logOntologyClientError(error, {
-				endpoint: `/api/onto/documents/${activeDocumentId}/public-page/live-sync`,
+				endpoint: `/api/onto/documents/${requestedDocumentId}/public-page/live-sync`,
 				method: 'POST',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'document',
-				entityId: activeDocumentId,
+				entityId: requestedDocumentId,
 				operation: 'document_public_page_live_sync_toggle'
 			});
 			toastService.error(message);
@@ -1216,6 +1404,8 @@
 	async function handleUnpublishPublicPage() {
 		if (!activeDocumentId || !publicPageState) return;
 		if (publicPageActionLoading) return;
+		const session = captureDocumentSession();
+		const requestedDocumentId = activeDocumentId;
 		const confirmed =
 			typeof window !== 'undefined'
 				? window.confirm(
@@ -1227,13 +1417,14 @@
 		try {
 			publicPageActionLoading = true;
 			const response = await fetch(
-				`/api/onto/documents/${activeDocumentId}/public-page/unpublish`,
+				`/api/onto/documents/${requestedDocumentId}/public-page/unpublish`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' }
 				}
 			);
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to unpublish public page');
 			}
@@ -1246,19 +1437,22 @@
 			toastService.success('Unpublished. The link will now 404.');
 			onSaved?.();
 		} catch (error) {
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 			const message =
 				error instanceof Error ? error.message : 'Failed to unpublish public page';
 			void logOntologyClientError(error, {
-				endpoint: `/api/onto/documents/${activeDocumentId}/public-page/unpublish`,
+				endpoint: `/api/onto/documents/${requestedDocumentId}/public-page/unpublish`,
 				method: 'POST',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'document',
-				entityId: activeDocumentId,
+				entityId: requestedDocumentId,
 				operation: 'document_public_page_unpublish'
 			});
 			toastService.error(message);
 		} finally {
-			publicPageActionLoading = false;
+			if (isCurrentDocumentMutation(session, requestedDocumentId)) {
+				publicPageActionLoading = false;
+			}
 		}
 	}
 
@@ -1273,6 +1467,7 @@
 		updatedAt = null;
 		documentProps = null;
 		lastLoadedId = null;
+		lastLoadedProjectId = null;
 		// Reset autosave state
 		lastSavedSnapshot = null;
 		serverUpdatedAt = null;
@@ -1303,13 +1498,29 @@
 	}
 
 	async function loadDocument(id: string) {
+		documentLoadRequestId += 1;
+		const context: DocumentLoadContext = {
+			requestId: documentLoadRequestId,
+			documentId: id,
+			projectId
+		};
+		documentLoadController?.abort();
+		clearDeferredDocumentLoads();
+		const controller = new AbortController();
+		documentLoadController = controller;
+		documentLoadTargetKey = `${context.projectId}:${context.documentId}`;
+
 		try {
 			loading = true;
 			formError = null;
 			linkedEntities = undefined;
-			const response = await fetch(`/api/onto/documents/${id}/full?include_linked=false`);
+			const response = await fetch(
+				`/api/onto/documents/${context.documentId}/full?include_linked=false`,
+				{ signal: controller.signal }
+			);
 			const payload = await response.json().catch(() => null);
 
+			if (!isCurrentDocumentLoad(context, controller)) return;
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to load document');
 			}
@@ -1328,22 +1539,24 @@
 			createdAt = document.created_at ?? null;
 			updatedAt = document.updated_at ?? null;
 			documentProps = document.props ?? null;
-			lastLoadedId = id;
+			lastLoadedId = context.documentId;
+			lastLoadedProjectId = context.projectId;
 
 			// Track server state for autosave and conflict detection
 			serverUpdatedAt = document.updated_at ?? null;
 			captureSnapshot();
 			saveStatus = 'idle';
 			lastSavePublishedLive = false;
-			queueDeferredDocumentLoads(id);
+			queueDeferredDocumentLoads(context);
 		} catch (error) {
+			if (isAbortError(error) || !isCurrentDocumentLoad(context, controller)) return;
 			const message = error instanceof Error ? error.message : 'Failed to load document';
 			void logOntologyClientError(error, {
-				endpoint: `/api/onto/documents/${id}/full?include_linked=false`,
+				endpoint: `/api/onto/documents/${context.documentId}/full?include_linked=false`,
 				method: 'GET',
-				projectId,
+				projectId: context.projectId,
 				entityType: 'document',
-				entityId: id,
+				entityId: context.documentId,
 				operation: 'document_load'
 			});
 			formError = message;
@@ -1351,8 +1564,12 @@
 			publicPageState = null;
 			latestPublicPageReview = null;
 		} finally {
-			loading = false;
-			onLoaded?.();
+			if (isCurrentDocumentLoad(context, controller)) {
+				loading = false;
+				documentLoadController = null;
+				documentLoadTargetKey = null;
+				onLoaded?.();
+			}
 		}
 	}
 
@@ -1360,24 +1577,38 @@
 		linkedEntities = value;
 	}
 
+	$effect(() => {
+		const nextSessionKey = getDocumentSessionKey();
+		if (nextSessionKey === documentSessionKey) return;
+		documentSessionKey = nextSessionKey;
+		invalidateDocumentSession();
+	});
+
 	// Watch for modal opening and load/reset form accordingly
 	// IMPORTANT: Use activeDocumentId (internal state) not documentId (prop) to avoid
 	// race condition where setting lastLoadedId triggers this effect to re-run,
 	// but documentId prop is still null, causing resetForm() to clear just-loaded data.
 	$effect(() => {
-		if (!browser) return;
 		// Track dependencies explicitly - use activeDocumentId to include internal state
 		const shouldLoad = isOpen;
 		const currentDocId = activeDocumentId;
+		const currentProjectId = projectId;
 		const lastId = lastLoadedId;
+		const lastProjectId = lastLoadedProjectId;
 
-		if (!shouldLoad) return;
+		if (!shouldLoad) {
+			cancelDocumentLoad();
+			return;
+		}
 
 		if (currentDocId) {
-			if (currentDocId !== lastId) {
-				loadDocument(currentDocId);
+			const currentLoadKey = `${currentProjectId}:${currentDocId}`;
+			const needsLoad = currentDocId !== lastId || currentProjectId !== lastProjectId;
+			if (needsLoad && currentLoadKey !== documentLoadTargetKey) {
+				void loadDocument(currentDocId);
 			}
 		} else {
+			cancelDocumentLoad();
 			resetForm();
 		}
 	});
@@ -1389,15 +1620,16 @@
 			return;
 		}
 
-		const nextKey = activeDocumentId ?? '__new__';
+		const nextKey = `${projectId}:${activeDocumentId ?? '__new__'}`;
 		if (lastDocumentViewKey === nextKey) return;
 		lastDocumentViewKey = nextKey;
 		resetDocumentAncillaryState();
 	});
 
 	function closeModal() {
+		invalidateDocumentSession();
 		clearAutosaveTimers();
-		clearDeferredDocumentLoads();
+		cancelDocumentLoad();
 		resetDocumentPanels();
 		showPublicPageConfirmModal = false;
 		discardChangesModalOpen = false;
@@ -1407,8 +1639,10 @@
 	}
 
 	onDestroy(() => {
+		documentSessionEpoch += 1;
+		liveSyncMutationId += 1;
 		clearAutosaveTimers();
-		clearDeferredDocumentLoads();
+		cancelDocumentLoad();
 	});
 
 	function handleModalBeforeClose(): boolean {
@@ -1468,10 +1702,14 @@
 		return [...ids];
 	}
 
-	async function syncInlineImageLinks(documentId: string, markdown: string): Promise<void> {
+	async function syncInlineImageLinks(
+		requestedProjectId: string,
+		documentId: string,
+		markdown: string
+	): Promise<void> {
 		const desiredIds = new Set(extractInlineAssetIds(markdown));
 		const listParams = new URLSearchParams({
-			project_id: projectId,
+			project_id: requestedProjectId,
 			entity_kind: 'document',
 			entity_id: documentId,
 			role: 'inline',
@@ -1540,6 +1778,13 @@
 		options: { silent?: boolean; forceVersion?: boolean; blockingUi?: boolean } = {}
 	): Promise<boolean> {
 		const { silent = false, forceVersion = false, blockingUi = false } = options;
+		const session = captureDocumentSession();
+		const requestedDocumentId = activeDocumentId;
+		const wasCreating = !requestedDocumentId;
+		const isSaveSessionCurrent = () =>
+			isCurrentDocumentSession(session) &&
+			(wasCreating || requestedDocumentId === activeDocumentId);
+		if (!isSaveSessionCurrent()) return false;
 		if (saving) {
 			if (isEditing && hasUnsavedChanges) {
 				autosaveQueued = true;
@@ -1552,6 +1797,9 @@
 			body,
 			stateKey
 		};
+		const requestedTypeKey = typeKey.trim();
+		const expectedUpdatedAt = serverUpdatedAt;
+		const requestedPublicPageState = publicPageState;
 
 		try {
 			saving = true;
@@ -1566,10 +1814,10 @@
 				content: snapshotAtRequest.body
 			};
 			const requestLiveSync =
-				isEditing &&
+				!wasCreating &&
 				!silent &&
-				publicPageState?.is_live_public === true &&
-				publicPageState.live_sync_enabled === true;
+				requestedPublicPageState?.is_live_public === true &&
+				requestedPublicPageState.live_sync_enabled === true;
 			if (forceVersion) {
 				payload.force_version = true;
 			}
@@ -1578,29 +1826,28 @@
 			}
 
 			// Include expected_updated_at for conflict detection (editing existing docs only)
-			if (activeDocumentId && serverUpdatedAt) {
-				payload.expected_updated_at = serverUpdatedAt;
+			if (requestedDocumentId && expectedUpdatedAt) {
+				payload.expected_updated_at = expectedUpdatedAt;
 			}
 
-			if (isEditing && typeKey.trim()) {
-				payload.type_key = typeKey.trim();
+			if (requestedDocumentId && requestedTypeKey) {
+				payload.type_key = requestedTypeKey;
 			}
 
-			if (!isEditing) {
+			if (wasCreating) {
 				payload.classification_source = 'create_modal';
 			}
 
 			let request: Response;
-			const wasCreating = !activeDocumentId;
 
-			if (activeDocumentId) {
-				request = await fetch(`/api/onto/documents/${activeDocumentId}`, {
+			if (requestedDocumentId) {
+				request = await fetch(`/api/onto/documents/${requestedDocumentId}`, {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(payload)
 				});
-			} else if (taskId) {
-				request = await fetch(`/api/onto/tasks/${taskId}/documents`, {
+			} else if (session.taskId) {
+				request = await fetch(`/api/onto/tasks/${session.taskId}/documents`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
@@ -1613,14 +1860,17 @@
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
-						project_id: projectId,
-						...(parentDocumentId ? { parent_id: parentDocumentId } : {}),
+						project_id: session.projectId,
+						...(session.parentDocumentId
+							? { parent_id: session.parentDocumentId }
+							: {}),
 						...payload
 					})
 				});
 			}
 
 			const result = await request.json().catch(() => null);
+			if (!isSaveSessionCurrent()) return false;
 
 			if (request.status === 409) {
 				// Conflict detected - server version is newer
@@ -1637,7 +1887,7 @@
 			// Update server timestamp from response
 			const updatedDoc = result?.data?.document;
 			const newDocumentId = result?.data?.document?.id ?? result?.data?.id ?? null;
-			const persistedDocumentId = updatedDoc?.id ?? activeDocumentId ?? newDocumentId;
+			const persistedDocumentId = updatedDoc?.id ?? requestedDocumentId ?? newDocumentId;
 			if (updatedDoc?.updated_at) {
 				serverUpdatedAt = updatedDoc.updated_at;
 				updatedAt = updatedDoc.updated_at;
@@ -1664,27 +1914,29 @@
 
 			// Fire-and-forget: sync inline image links in the background
 			if (persistedDocumentId) {
-				void syncInlineImageLinks(persistedDocumentId, snapshotAtRequest.body).catch(
-					(syncError) => {
-						void logOntologyClientError(syncError, {
-							endpoint: '/api/onto/assets',
-							method: 'POST',
-							projectId,
-							entityType: 'document',
-							entityId: persistedDocumentId,
-							operation: 'document_inline_image_sync',
-							metadata: {
-								inlineAssetIds: extractInlineAssetIds(snapshotAtRequest.body),
-								documentId: persistedDocumentId
-							}
-						});
-						if (!silent) {
-							toastService.warning(
-								'Document saved, but inline image links could not be fully synced'
-							);
+				void syncInlineImageLinks(
+					session.projectId,
+					persistedDocumentId,
+					snapshotAtRequest.body
+				).catch((syncError) => {
+					void logOntologyClientError(syncError, {
+						endpoint: '/api/onto/assets',
+						method: 'POST',
+						projectId: session.projectId,
+						entityType: 'document',
+						entityId: persistedDocumentId,
+						operation: 'document_inline_image_sync',
+						metadata: {
+							inlineAssetIds: extractInlineAssetIds(snapshotAtRequest.body),
+							documentId: persistedDocumentId
 						}
+					});
+					if (!silent && isSaveSessionCurrent()) {
+						toastService.warning(
+							'Document saved, but inline image links could not be fully synced'
+						);
 					}
-				);
+				});
 			}
 
 			// Capture snapshot of what we just saved
@@ -1695,7 +1947,7 @@
 			saveStatus = 'saved';
 			if (savedFeedbackTimer) clearTimeout(savedFeedbackTimer);
 			savedFeedbackTimer = setTimeout(() => {
-				if (saveStatus === 'saved') {
+				if (isSaveSessionCurrent() && saveStatus === 'saved') {
 					saveStatus = 'idle';
 				}
 			}, 2000);
@@ -1724,25 +1976,27 @@
 			if (wasCreating && newDocumentId) {
 				internalDocumentId = newDocumentId;
 				await loadDocument(newDocumentId);
+				if (!isSaveSessionCurrent()) return false;
 			}
 
 			return true;
 		} catch (error) {
+			if (!isSaveSessionCurrent()) return false;
 			const message = error instanceof Error ? error.message : 'Failed to save document';
-			const endpoint = activeDocumentId
-				? `/api/onto/documents/${activeDocumentId}`
-				: taskId
-					? `/api/onto/tasks/${taskId}/documents`
+			const endpoint = requestedDocumentId
+				? `/api/onto/documents/${requestedDocumentId}`
+				: session.taskId
+					? `/api/onto/tasks/${session.taskId}/documents`
 					: '/api/onto/documents/create';
-			const method = activeDocumentId ? 'PATCH' : 'POST';
+			const method = requestedDocumentId ? 'PATCH' : 'POST';
 			void logOntologyClientError(error, {
 				endpoint,
 				method,
-				projectId,
+				projectId: session.projectId,
 				entityType: 'document',
-				entityId: activeDocumentId ?? undefined,
-				operation: activeDocumentId ? 'document_update' : 'document_create',
-				metadata: taskId ? { taskId } : undefined
+				entityId: requestedDocumentId ?? undefined,
+				operation: requestedDocumentId ? 'document_update' : 'document_create',
+				metadata: session.taskId ? { taskId: session.taskId } : undefined
 			});
 			formError = message;
 			saveStatus = 'error';
@@ -1752,19 +2006,21 @@
 			}
 			return false;
 		} finally {
-			saving = false;
-			blockingSave = false;
-			if (autosaveQueued) {
-				autosaveQueued = false;
-				if (
-					saveStatus !== 'conflict' &&
-					saveStatus !== 'error' &&
-					isEditing &&
-					hasUnsavedChanges &&
-					!loading &&
-					title.trim()
-				) {
-					void handleAutosave();
+			if (isSaveSessionCurrent()) {
+				saving = false;
+				blockingSave = false;
+				if (autosaveQueued) {
+					autosaveQueued = false;
+					if (
+						saveStatus !== 'conflict' &&
+						saveStatus !== 'error' &&
+						isEditing &&
+						hasUnsavedChanges &&
+						!loading &&
+						title.trim()
+					) {
+						void handleAutosave();
+					}
 				}
 			}
 		}
@@ -1806,8 +2062,10 @@
 
 	async function handleArchive(mode: ArchiveMode) {
 		if (!activeDocumentId) return;
+		const session = captureDocumentSession();
+		const requestedDocumentId = activeDocumentId;
 		try {
-			const response = await fetch(`/api/onto/documents/${activeDocumentId}`, {
+			const response = await fetch(`/api/onto/documents/${requestedDocumentId}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -1816,6 +2074,7 @@
 				})
 			});
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to archive document');
 			}
@@ -1826,26 +2085,28 @@
 			onSaved?.();
 			closeModal();
 		} catch (error) {
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 			const message = error instanceof Error ? error.message : 'Failed to archive document';
 			void logOntologyClientError(error, {
-				endpoint: `/api/onto/documents/${activeDocumentId}`,
+				endpoint: `/api/onto/documents/${requestedDocumentId}`,
 				method: 'PATCH',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'document',
-				entityId: activeDocumentId,
+				entityId: requestedDocumentId,
 				operation: 'document_archive'
 			});
 			toastService.error(message);
 			throw error;
-		} finally {
 		}
 	}
 
 	async function handleRestore() {
 		if (!activeDocumentId) return;
+		const session = captureDocumentSession();
+		const requestedDocumentId = activeDocumentId;
 		try {
 			restoring = true;
-			const response = await fetch(`/api/onto/documents/${activeDocumentId}`, {
+			const response = await fetch(`/api/onto/documents/${requestedDocumentId}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -1853,6 +2114,7 @@
 				})
 			});
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to restore document');
 			}
@@ -1861,31 +2123,37 @@
 			onSaved?.();
 			closeModal();
 		} catch (error) {
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 			const message = error instanceof Error ? error.message : 'Failed to restore document';
 			void logOntologyClientError(error, {
-				endpoint: `/api/onto/documents/${activeDocumentId}`,
+				endpoint: `/api/onto/documents/${requestedDocumentId}`,
 				method: 'PATCH',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'document',
-				entityId: activeDocumentId,
+				entityId: requestedDocumentId,
 				operation: 'document_restore'
 			});
 			toastService.error(message);
 		} finally {
-			restoring = false;
+			if (isCurrentDocumentMutation(session, requestedDocumentId)) {
+				restoring = false;
+			}
 		}
 	}
 
 	async function handleDelete() {
 		if (!activeDocumentId) return;
+		const session = captureDocumentSession();
+		const requestedDocumentId = activeDocumentId;
 		try {
 			deleting = true;
-			const response = await fetch(`/api/onto/documents/${activeDocumentId}`, {
+			const response = await fetch(`/api/onto/documents/${requestedDocumentId}`, {
 				method: 'DELETE',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ permanent: true })
 			});
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to permanently delete document');
 			}
@@ -1895,19 +2163,22 @@
 			onDeleted?.();
 			closeModal();
 		} catch (error) {
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 			const message =
 				error instanceof Error ? error.message : 'Failed to permanently delete document';
 			void logOntologyClientError(error, {
-				endpoint: `/api/onto/documents/${activeDocumentId}`,
+				endpoint: `/api/onto/documents/${requestedDocumentId}`,
 				method: 'DELETE',
-				projectId,
+				projectId: session.projectId,
 				entityType: 'document',
-				entityId: activeDocumentId,
+				entityId: requestedDocumentId,
 				operation: 'document_delete_permanent'
 			});
 			toastService.error(message);
 		} finally {
-			deleting = false;
+			if (isCurrentDocumentMutation(session, requestedDocumentId)) {
+				deleting = false;
+			}
 		}
 	}
 
@@ -1995,33 +2266,53 @@
 
 	// Linked entity click handler
 	async function handleLinkedEntityClick(kind: EntityKind, id: string) {
+		const session = captureDocumentSession();
+		const requestedDocumentId = activeDocumentId;
+		if (!requestedDocumentId) return;
 		switch (kind) {
-			case 'task':
+			case 'task': {
+				const component = (await loadTaskEditModal()).default;
+				if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 				selectedTaskIdForModal = id;
-				TaskEditModalComponent = (await loadTaskEditModal()).default;
+				TaskEditModalComponent = component;
+				linkedEntityModalSession = session;
 				showTaskModal = true;
 				break;
-			case 'plan':
+			}
+			case 'plan': {
+				const component = (await loadPlanEditModal()).default;
+				if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 				selectedPlanIdForModal = id;
-				PlanEditModalComponent = (await loadPlanEditModal()).default;
+				PlanEditModalComponent = component;
+				linkedEntityModalSession = session;
 				showPlanModal = true;
 				break;
-			case 'goal':
+			}
+			case 'goal': {
+				const component = (await loadGoalEditModal()).default;
+				if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 				selectedGoalIdForModal = id;
-				GoalEditModalComponent = (await loadGoalEditModal()).default;
+				GoalEditModalComponent = component;
+				linkedEntityModalSession = session;
 				showGoalModal = true;
 				break;
-			case 'document':
+			}
+			case 'document': {
+				const component = (await loadDocumentModal()).default;
+				if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 				selectedDocumentIdForModal = id;
-				DocumentModalComponent = (await loadDocumentModal()).default;
+				DocumentModalComponent = component;
+				linkedEntityModalSession = session;
 				showDocumentModal = true;
 				break;
+			}
 			default:
 				console.warn(`Unhandled entity kind: ${kind}`);
 		}
 	}
 
-	function closeLinkedEntityModals() {
+	function closeLinkedEntityModals(session: DocumentSession | null) {
+		if (!session || !isCurrentDocumentSession(session)) return;
 		showTaskModal = false;
 		showPlanModal = false;
 		showGoalModal = false;
@@ -2030,6 +2321,7 @@
 		selectedPlanIdForModal = null;
 		selectedGoalIdForModal = null;
 		selectedDocumentIdForModal = null;
+		linkedEntityModalSession = null;
 		// Smart refresh: only reload if links were changed
 		if (hasChanges && activeDocumentId) {
 			loadDocument(activeDocumentId);
@@ -2044,33 +2336,45 @@
 	// Chat about this document handlers
 	async function openChatAbout() {
 		if (!activeDocumentId || !projectId) return;
-		await loadAgentChatModal();
+		const session = captureDocumentSession();
+		const requestedDocumentId = activeDocumentId;
+		const component = await loadAgentChatModal();
+		if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
+		AgentChatModalComponent = component;
+		chatModalSession = session;
 		showChatModal = true;
 	}
 
-	function handleChatClose() {
+	function handleChatClose(session: DocumentSession | null) {
+		if (!session || !isCurrentDocumentSession(session)) return;
 		showChatModal = false;
+		chatModalSession = null;
 	}
 
 	// Version history handlers
 	function handleRestoreRequested(version: VersionListItem, latestVersion: number) {
+		restoreModalSession = captureDocumentSession();
 		selectedVersionForRestore = version;
 		latestVersionNumber = latestVersion;
 		showRestoreModal = true;
 	}
 
-	function handleRestoreModalClose() {
+	function handleRestoreModalClose(session: DocumentSession | null) {
+		if (!session || !isCurrentDocumentSession(session)) return;
 		showRestoreModal = false;
 		selectedVersionForRestore = null;
+		restoreModalSession = null;
 	}
 
-	async function handleVersionRestored() {
+	async function handleVersionRestored(session: DocumentSession | null) {
+		if (!session || !isCurrentDocumentSession(session) || !activeDocumentId) return;
+		const requestedDocumentId = activeDocumentId;
 		showRestoreModal = false;
 		selectedVersionForRestore = null;
+		restoreModalSession = null;
 		// Reload the document to show restored content
-		if (activeDocumentId) {
-			await loadDocument(activeDocumentId);
-		}
+		await loadDocument(requestedDocumentId);
+		if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 		// Refresh version history panel
 		versionHistoryPanelRef?.refresh();
 		onSaved?.();
@@ -2174,15 +2478,17 @@
 	// Since we don't have a dedicated access check endpoint, we'll be optimistic
 	// and show the restore button. The API will enforce permissions anyway.
 	// For a production implementation, add GET /api/onto/projects/{id}/access endpoint
-	async function checkAdminAccess() {
-		if (!projectId) {
+	async function checkAdminAccess(session: DocumentSession, requestedProjectId: string) {
+		if (!requestedProjectId) {
+			if (!isCurrentDocumentSession(session)) return;
 			isAdminUser = false;
 			return;
 		}
 		try {
 			// Try to fetch project details - if user can access, they likely have write access
 			// The restore endpoint enforces admin access server-side
-			const response = await fetch(`/api/onto/projects/${projectId}`);
+			const response = await fetch(`/api/onto/projects/${requestedProjectId}`);
+			if (!isCurrentDocumentSession(session)) return;
 			if (response.ok) {
 				// User has at least read access; show restore button (server will validate)
 				// For proper implementation, the project API should return access level
@@ -2191,6 +2497,7 @@
 				isAdminUser = false;
 			}
 		} catch {
+			if (!isCurrentDocumentSession(session)) return;
 			isAdminUser = false;
 		}
 	}
@@ -2202,51 +2509,86 @@
 			return;
 		}
 		if (lastAdminAccessProjectId === projectId) return;
-		lastAdminAccessProjectId = projectId;
-		await checkAdminAccess();
+		const session = captureDocumentSession();
+		const requestedProjectId = projectId;
+		lastAdminAccessProjectId = requestedProjectId;
+		await checkAdminAccess(session, requestedProjectId);
 	}
 
 	// Load document tree for breadcrumb and move functionality
-	async function loadDocTree() {
-		if (!projectId || !activeDocumentId) return;
+	async function loadDocTree(context?: DocumentLoadContext, parentSignal?: AbortSignal) {
+		const requestedProjectId = context?.projectId ?? projectId;
+		const requestedDocumentId = context?.documentId ?? activeDocumentId;
+		if (!requestedProjectId || !requestedDocumentId) return;
 
-		const loadKey = `${projectId}:${activeDocumentId}`;
+		const requestContext: DocumentLoadContext = context ?? {
+			requestId: documentLoadRequestId,
+			documentId: requestedDocumentId,
+			projectId: requestedProjectId
+		};
+		if (!isCurrentDocumentView(requestContext) || parentSignal?.aborted) return;
+
+		const loadKey = `${requestedProjectId}:${requestedDocumentId}`;
+		const promiseKey = `${loadKey}:${requestContext.requestId}`;
 		if (lastDocTreeLoadKey === loadKey && docTreeStructure) return;
-		if (docTreeLoadPromise) {
+		if (docTreeLoadPromise && docTreeLoadPromiseKey === promiseKey) {
 			await docTreeLoadPromise;
 			return;
 		}
 
-		const requestedProjectId = projectId;
-		const requestedDocumentId = activeDocumentId;
-		docTreeLoadPromise = (async () => {
+		docTreeLoadController?.abort();
+		const controller = new AbortController();
+		docTreeLoadController = controller;
+		const abortFromParent = () => controller.abort();
+		parentSignal?.addEventListener('abort', abortFromParent, { once: true });
+
+		const requestPromise = (async () => {
 			try {
 				treeLoading = true;
 				const response = await fetch(
-					`/api/onto/projects/${requestedProjectId}/doc-tree?include_content=false`
+					`/api/onto/projects/${requestedProjectId}/doc-tree?include_content=false`,
+					{ signal: controller.signal }
 				);
 				const payload = await response.json().catch(() => null);
 
-				if (response.ok && payload?.data && projectId === requestedProjectId) {
+				if (
+					response.ok &&
+					payload?.data &&
+					isCurrentDocumentView(requestContext) &&
+					!controller.signal.aborted
+				) {
 					const treeData = payload.data as GetDocTreeResponse;
 					docTreeStructure = treeData.structure;
 					docTreeDocuments = treeData.documents;
-					if (
-						projectId === requestedProjectId &&
-						activeDocumentId === requestedDocumentId
-					) {
-						lastDocTreeLoadKey = loadKey;
-					}
+					lastDocTreeLoadKey = loadKey;
 				}
 			} catch (error) {
-				console.error('[DocumentModal] Failed to load doc tree:', error);
+				if (
+					!isAbortError(error) &&
+					isCurrentDocumentView(requestContext) &&
+					!controller.signal.aborted
+				) {
+					console.error('[DocumentModal] Failed to load doc tree:', error);
+				}
 			} finally {
-				treeLoading = false;
-				docTreeLoadPromise = null;
+				parentSignal?.removeEventListener('abort', abortFromParent);
 			}
 		})();
+		docTreeLoadPromise = requestPromise;
+		docTreeLoadPromiseKey = promiseKey;
 
-		await docTreeLoadPromise;
+		try {
+			await requestPromise;
+		} finally {
+			if (docTreeLoadPromise === requestPromise) {
+				treeLoading = false;
+				docTreeLoadPromise = null;
+				docTreeLoadPromiseKey = null;
+				if (docTreeLoadController === controller) {
+					docTreeLoadController = null;
+				}
+			}
+		}
 	}
 
 	// Compute breadcrumb path from document tree
@@ -2289,33 +2631,41 @@
 		if (onMoveRequested) {
 			onMoveRequested();
 		} else {
+			if (!activeDocumentId) return;
+			const session = captureDocumentSession();
+			const requestedDocumentId = activeDocumentId;
 			if (!docTreeStructure) {
 				await loadDocTree();
+				if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 				if (!docTreeStructure) {
 					toastService.error('Failed to load document tree');
 					return;
 				}
 			}
+			moveModalSession = session;
 			showMoveModal = true;
 		}
 	}
 
-	async function handleMove(newParentId: string | null) {
-		if (!activeDocumentId || !docTreeStructure) return;
+	async function handleMove(newParentId: string | null, session: DocumentSession | null) {
+		if (!session || !activeDocumentId || !docTreeStructure) return;
+		const requestedDocumentId = activeDocumentId;
+		if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 
 		try {
 			// Move document in tree structure
-			const response = await fetch(`/api/onto/projects/${projectId}/doc-tree/move`, {
+			const response = await fetch(`/api/onto/projects/${session.projectId}/doc-tree/move`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					document_id: activeDocumentId,
+					document_id: requestedDocumentId,
 					new_parent_id: newParentId,
 					new_position: 0
 				})
 			});
 
 			const payload = await response.json().catch(() => null);
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to move document');
@@ -2323,14 +2673,23 @@
 
 			toastService.success('Document moved');
 			showMoveModal = false;
+			moveModalSession = null;
 			// Reload tree to get updated structure
 			lastDocTreeLoadKey = null;
 			await loadDocTree();
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 			onSaved?.();
 		} catch (error) {
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 			const message = error instanceof Error ? error.message : 'Failed to move document';
 			toastService.error(message);
 		}
+	}
+
+	function closeMoveModal(session: DocumentSession | null) {
+		if (!session || !isCurrentDocumentSession(session)) return;
+		showMoveModal = false;
+		moveModalSession = null;
 	}
 
 	// Handle create child
@@ -2359,11 +2718,27 @@
 		return raw.replace(/\r?\n/g, ' ').replace(/\[/g, '\\[').replace(/\]/g, '\\]').slice(0, 120);
 	}
 
-	async function handleInsertImageAsset(asset: InsertableAsset) {
+	function openImageInsertModal() {
+		imageInsertModalSession = captureDocumentSession();
+		showImageInsertModal = true;
+	}
+
+	function closeImageInsertModal(session: DocumentSession | null) {
+		if (!session || !isCurrentDocumentSession(session)) return;
+		showImageInsertModal = false;
+		imageInsertModalSession = null;
+	}
+
+	async function handleInsertImageAsset(asset: InsertableAsset, session: DocumentSession | null) {
+		if (!session || !activeDocumentId || !isCurrentDocumentSession(session)) return;
+		const requestedDocumentId = activeDocumentId;
+		const editor = markdownEditorRef;
 		const alt = toMarkdownAltText(asset);
 		const markdown = `![${alt}](/api/onto/assets/${asset.id}/render)`;
-		await markdownEditorRef?.insertAtCursor(markdown);
+		await editor?.insertAtCursor(markdown);
+		if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
 		showImageInsertModal = false;
+		imageInsertModalSession = null;
 	}
 </script>
 
@@ -3260,8 +3635,7 @@
 											fillHeight={true}
 											bind:isRecording={editorIsRecording}
 											bind:isTranscribing={editorIsTranscribing}
-											onInsertImageRequested={() =>
-												(showImageInsertModal = true)}
+											onInsertImageRequested={openImageInsertModal}
 											voiceNoteSource="document-modal"
 											voiceNoteLinkedEntityType={activeDocumentId
 												? 'document'
@@ -3701,11 +4075,12 @@
 </ConfirmationModal>
 
 {#if activeDocumentId}
+	{@const modalSession = imageInsertModalSession}
 	<Modal
 		bind:isOpen={showImageInsertModal}
 		title="Insert Image"
 		size="lg"
-		onClose={() => (showImageInsertModal = false)}
+		onClose={() => closeImageInsertModal(modalSession)}
 	>
 		{#snippet children()}
 			<div class="p-3">
@@ -3722,7 +4097,7 @@
 					filterScope="project"
 					linkRole="inline"
 					selectLabel="Insert"
-					onSelectAsset={handleInsertImageAsset}
+					onSelectAsset={(asset) => handleInsertImageAsset(asset, modalSession)}
 				/>
 			</div>
 		{/snippet}
@@ -3978,51 +4353,56 @@
 <!-- Linked Entity Modals -->
 {#if showTaskModal && selectedTaskIdForModal && TaskEditModalComponent}
 	{@const TaskModal = TaskEditModalComponent}
+	{@const modalSession = linkedEntityModalSession}
 	<TaskModal
 		taskId={selectedTaskIdForModal}
 		{projectId}
-		onClose={closeLinkedEntityModals}
-		onUpdated={closeLinkedEntityModals}
-		onDeleted={closeLinkedEntityModals}
+		onClose={() => closeLinkedEntityModals(modalSession)}
+		onUpdated={() => closeLinkedEntityModals(modalSession)}
+		onDeleted={() => closeLinkedEntityModals(modalSession)}
 	/>
 {/if}
 
 {#if showPlanModal && selectedPlanIdForModal && PlanEditModalComponent}
 	{@const PlanModal = PlanEditModalComponent}
+	{@const modalSession = linkedEntityModalSession}
 	<PlanModal
 		planId={selectedPlanIdForModal}
 		{projectId}
-		onClose={closeLinkedEntityModals}
-		onUpdated={closeLinkedEntityModals}
-		onDeleted={closeLinkedEntityModals}
+		onClose={() => closeLinkedEntityModals(modalSession)}
+		onUpdated={() => closeLinkedEntityModals(modalSession)}
+		onDeleted={() => closeLinkedEntityModals(modalSession)}
 	/>
 {/if}
 
 {#if showGoalModal && selectedGoalIdForModal && GoalEditModalComponent}
 	{@const GoalModal = GoalEditModalComponent}
+	{@const modalSession = linkedEntityModalSession}
 	<GoalModal
 		goalId={selectedGoalIdForModal}
 		{projectId}
-		onClose={closeLinkedEntityModals}
-		onUpdated={closeLinkedEntityModals}
-		onDeleted={closeLinkedEntityModals}
+		onClose={() => closeLinkedEntityModals(modalSession)}
+		onUpdated={() => closeLinkedEntityModals(modalSession)}
+		onDeleted={() => closeLinkedEntityModals(modalSession)}
 	/>
 {/if}
 
 {#if showDocumentModal && selectedDocumentIdForModal && DocumentModalComponent}
 	{@const NestedDocumentModal = DocumentModalComponent}
+	{@const modalSession = linkedEntityModalSession}
 	<NestedDocumentModal
 		{projectId}
 		documentId={selectedDocumentIdForModal}
 		bind:isOpen={showDocumentModal}
-		onClose={closeLinkedEntityModals}
-		onSaved={closeLinkedEntityModals}
-		onDeleted={closeLinkedEntityModals}
+		onClose={() => closeLinkedEntityModals(modalSession)}
+		onSaved={() => closeLinkedEntityModals(modalSession)}
+		onDeleted={() => closeLinkedEntityModals(modalSession)}
 	/>
 {/if}
 
 <!-- Version Restore Modal -->
 {#if showRestoreModal && selectedVersionForRestore && activeDocumentId}
+	{@const modalSession = restoreModalSession}
 	<DocumentVersionRestoreModal
 		bind:isOpen={showRestoreModal}
 		documentId={activeDocumentId}
@@ -4035,19 +4415,25 @@
 			snapshot_hash: selectedVersionForRestore.snapshot_hash
 		}}
 		{latestVersionNumber}
-		onClose={handleRestoreModalClose}
-		onRestored={handleVersionRestored}
+		onClose={() => handleRestoreModalClose(modalSession)}
+		onRestored={() => handleVersionRestored(modalSession)}
 	/>
 {/if}
 
 <!-- Chat About Modal (Lazy Loaded) -->
 {#if showChatModal && AgentChatModalComponent && entityFocus}
 	{@const ChatModal = AgentChatModalComponent}
-	<ChatModal isOpen={showChatModal} initialProjectFocus={entityFocus} onClose={handleChatClose} />
+	{@const modalSession = chatModalSession}
+	<ChatModal
+		isOpen={showChatModal}
+		initialProjectFocus={entityFocus}
+		onClose={() => handleChatClose(modalSession)}
+	/>
 {/if}
 
 <!-- Move Document Modal -->
 {#if showMoveModal && activeDocumentId && docTreeStructure}
+	{@const modalSession = moveModalSession}
 	<DocMoveModal
 		bind:isOpen={showMoveModal}
 		{projectId}
@@ -4055,8 +4441,8 @@
 		documentTitle={title || 'Untitled'}
 		structure={docTreeStructure}
 		documents={docTreeDocuments}
-		onClose={() => (showMoveModal = false)}
-		onMove={handleMove}
+		onClose={() => closeMoveModal(modalSession)}
+		onMove={(newParentId) => handleMove(newParentId, modalSession)}
 	/>
 {/if}
 

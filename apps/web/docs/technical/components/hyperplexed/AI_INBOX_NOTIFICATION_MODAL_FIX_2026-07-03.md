@@ -153,3 +153,30 @@ not identify the owning project, the target entity, or what the agent wanted to 
   removed afterward.
 - Authenticated real-data and phone-width captures remain owed. The shared stack width contract was
   not changed in this follow-up.
+
+## Minimized card self-review hardening — 2026-07-14
+
+A focused post-implementation review found and fixed four edge cases without changing the card's
+three-tier layout:
+
+- Calendar and read-only operation allowlists now resolve to useful action/entity copy before a
+  result exists (`Delete calendar event`, `Review task`). Compound document/task operations and
+  relationship operations use the same normalization path. -> P6
+- Project-audit detection now requires project-specific copy. A label such as `Audit stale tasks`
+  keeps its own meaning instead of being relabeled `Project audit`. -> P6
+- Calendar events, relationships, and mixed-entity changes now use canonical Lucide glyphs instead
+  of falling through to the generic bot icon. -> P9
+- The lazy-load fallback carries the project, action, target, and preview; the accessible name now
+  includes the target record; and fallback loading/progress motion respects reduced-motion. ->
+  P4+P11+P13
+- Realtime relationship merging is now a pure tested helper, covering both raw realtime payloads
+  and later enriched endpoint rows. -> P20
+
+Verification after the hardening pass:
+
+- `apps/web`: focused endpoint/data/realtime/card/modal Vitest suite — 16 tests passed.
+- `apps/web`: `NODE_OPTIONS=--max-old-space-size=8192 pnpm exec svelte-check --output human` —
+  0 errors, 0 warnings.
+- Focused Prettier check and `git diff --check` — passed.
+- No new visual geometry was introduced, so the prior desktop light/dark fixture result still
+  applies. Authenticated real-data and phone-width captures remain owed.

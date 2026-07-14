@@ -326,6 +326,8 @@ export interface ChatSessionNotification extends BaseNotification {
 		contextType: ChatContextType | null;
 		entityId?: string | null;
 		projectId?: string | null;
+		/** Human-readable project, workspace, or focused context shown on the parked card. */
+		contextLabel?: string | null;
 		/** True while a detached server-side turn is (believed) still running. */
 		hasActiveTurn: boolean;
 		/** First ~140 chars of the assistant reply once the parked turn lands. */
