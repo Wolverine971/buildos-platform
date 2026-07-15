@@ -16,6 +16,7 @@ import {
 	fetchProjectRisk,
 	fetchProjectSnapshot,
 	fetchProjectTask,
+	fetchProjectTaskBucket,
 	generateProjectNextStep,
 	moveProjectDocument,
 	updateProjectMilestoneState,
@@ -203,6 +204,72 @@ describe('project-page-data-controller', () => {
 		);
 
 		await expect(fetchProjectEvents('project-1')).resolves.toHaveLength(1);
+	});
+
+	it('fetchProjectTaskBucket preserves the stable task-window clock', async () => {
+		(global.fetch as any).mockImplementation(() =>
+			mockJsonResponse({
+				body: successBody({
+					bucket: 'backlog',
+					tasks: [{ id: 'task-21', title: 'Task 21' }],
+					total: 21,
+					hasMore: false,
+					offset: 20,
+					nextOffset: null
+				})
+			})
+		);
+		const asOf = '2026-07-15T12:00:00.000Z';
+
+		const result = await fetchProjectTaskBucket({
+			projectId: 'project-1',
+			bucket: 'backlog',
+			offset: 20,
+			limit: 20,
+			asOf
+		});
+
+		expect(result).toMatchObject({
+			bucket: 'backlog',
+			total: 21,
+			hasMore: false,
+			offset: 20,
+			nextOffset: null
+		});
+		expect(result.tasks).toHaveLength(1);
+		const params = new URLSearchParams({
+			bucket: 'backlog',
+			offset: '20',
+			limit: '20',
+			asOf
+		});
+		expect(global.fetch).toHaveBeenCalledWith(
+			`/api/onto/projects/project-1/tasks?${params.toString()}`,
+			{ credentials: 'same-origin' }
+		);
+	});
+
+	it('fetchProjectTaskBucket rejects a mismatched bucket response', async () => {
+		(global.fetch as any).mockImplementation(() =>
+			mockJsonResponse({
+				body: successBody({
+					bucket: 'done',
+					tasks: [],
+					total: 0,
+					hasMore: false,
+					offset: 0,
+					nextOffset: null
+				})
+			})
+		);
+
+		await expect(
+			fetchProjectTaskBucket({
+				projectId: 'project-1',
+				bucket: 'backlog',
+				offset: 0
+			})
+		).rejects.toThrow('Invalid project task page response');
 	});
 
 	it('fetchProjectMembers returns members and actor id', async () => {

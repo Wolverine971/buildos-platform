@@ -147,7 +147,7 @@
 
 	function segmentClass(active: boolean): string {
 		return [
-			'inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-2.5 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+			'inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-2.5 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none',
 			active
 				? 'bg-card text-foreground shadow-ink'
 				: 'text-muted-foreground hover:bg-background hover:text-foreground'
@@ -342,7 +342,7 @@
 					</label>
 					{#if projectsLoading}
 						<div
-							class="flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
+							class="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
 						>
 							<LoaderCircle class="h-4 w-4 animate-spin motion-reduce:animate-none" />
 							<span>Loading projects...</span>

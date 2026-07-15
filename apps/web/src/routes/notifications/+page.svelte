@@ -6,12 +6,11 @@
 		Inbox,
 		Users,
 		FileText,
-		CheckCircle2,
+		ListChecks,
 		Share2,
 		MessageSquare,
 		Clock,
 		Calendar,
-		ListTodo,
 		AlertTriangle,
 		Sparkles,
 		Coffee
@@ -143,12 +142,12 @@
 		if (eventType === 'brief.completed') return Coffee;
 		if (eventType === 'brief.failed') return AlertTriangle;
 		if (eventType === 'task.due_soon') return Clock;
-		if (eventType.includes('task')) return CheckCircle2;
+		if (eventType.includes('task')) return ListChecks;
 		if (eventType.includes('comment')) return MessageSquare;
 		if (eventType.includes('document')) return FileText;
 		if (eventType.includes('user') || eventType.includes('member')) return Users;
 		if (eventType.includes('calendar')) return Calendar;
-		if (eventType.includes('phase')) return ListTodo;
+		if (eventType.includes('phase')) return Calendar;
 		return Bell;
 	};
 
@@ -521,8 +520,8 @@
 >
 	<!-- Header -->
 	<div class="flex items-center gap-3 pb-2 border-b border-border">
-		<div class="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-			<Bell class="w-5 h-5 text-accent" />
+		<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent/10">
+			<Bell class="h-5 w-5 text-accent" aria-hidden="true" />
 		</div>
 		<div>
 			<h1 class="text-xl font-semibold text-foreground">Notifications</h1>
@@ -535,7 +534,7 @@
 		<div
 			class="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-3"
 		>
-			<AlertCircle class="w-4 h-4 shrink-0" />
+			<AlertCircle class="h-4 w-4 shrink-0" aria-hidden="true" />
 			<span>Notifications could not be loaded. Refresh the page to try again.</span>
 		</div>
 	{/if}
@@ -543,10 +542,10 @@
 	<!-- Empty State -->
 	{#if rolledUpNotifications.length === 0 && !errorMessage}
 		<div
-			class="rounded-xl bg-card border border-border px-6 py-12 flex flex-col items-center text-center gap-3"
+			class="flex flex-col items-center gap-3 rounded-lg border border-border bg-card px-6 py-12 text-center"
 		>
 			<div class="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
-				<Inbox class="w-7 h-7 text-muted-foreground" />
+				<Inbox class="w-7 h-7 text-muted-foreground" aria-hidden="true" />
 			</div>
 			<div>
 				<p class="text-base font-medium text-foreground">No notifications yet</p>
@@ -559,18 +558,16 @@
 		<!-- Notification List -->
 	{:else if groupedNotifications.length > 0}
 		<div class="space-y-6">
-			{#each groupedNotifications as group}
+			{#each groupedNotifications as group (group.label)}
 				<div class="space-y-2">
 					<!-- Date Group Header -->
-					<h2
-						class="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1"
-					>
+					<h2 class="micro-label px-1 font-semibold text-muted-foreground">
 						{group.label}
 					</h2>
 
 					<!-- Notification Cards -->
 					<div
-						class="bg-card rounded-xl border border-border overflow-hidden divide-y divide-border"
+						class="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card"
 					>
 						{#each group.items as rollup (rollup.id)}
 							{@const notification = rollup.representative}
@@ -594,9 +591,12 @@
 									<!-- Icon -->
 									<div class="shrink-0 pt-0.5">
 										<div
-											class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
+											class="flex h-9 w-9 items-center justify-center rounded-md bg-accent/10"
 										>
-											<EventIcon class="w-4 h-4 text-accent" />
+											<EventIcon
+												class="h-4 w-4 text-accent"
+												aria-hidden="true"
+											/>
 										</div>
 									</div>
 
@@ -627,7 +627,7 @@
 												{#if notificationLink}
 													<a
 														href={notificationLink.href}
-														class="mt-1 inline-flex min-h-11 max-w-full min-w-0 items-center text-xs font-medium text-accent underline-offset-2 hover:underline"
+														class="mt-1 inline-flex min-h-11 max-w-full min-w-0 items-center rounded-md text-xs font-medium text-accent underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 													>
 														<span>{notificationLink.label}</span>
 													</a>
@@ -645,7 +645,7 @@
 										<!-- Event-specific stats -->
 										{#if eventDetails.stats.length > 0}
 											<div class="flex flex-wrap gap-x-3 gap-y-1 mt-2">
-												{#each eventDetails.stats as stat}
+												{#each eventDetails.stats as stat (stat.label)}
 													<span
 														class="inline-flex items-center gap-1 text-xs"
 													>
@@ -663,7 +663,7 @@
 										{#if content.details.length > 0}
 											<div class="mt-2 flex items-center gap-2">
 												<span
-													class="truncate text-[11px] text-muted-foreground/70"
+													class="truncate text-2xs text-muted-foreground/70"
 												>
 													{content.details.join(' · ')}
 												</span>

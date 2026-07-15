@@ -60,6 +60,7 @@
 		fetchProjectRisk,
 		fetchProjectSnapshot,
 		fetchProjectTask,
+		fetchProjectTaskBucket,
 		moveProjectDocument,
 		updateProjectNotificationSettings,
 		type DeferredProjectFullData,
@@ -77,6 +78,16 @@
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import { dataMutationEvents, mutationAffectsProject } from '$lib/stores/projectDataMutations';
 	import { setRecentlyCreatedContext } from '$lib/stores/recentlyCreatedContext';
+	import type {
+		ProjectActiveTaskBucketKey,
+		ProjectTasksCoverage
+	} from '$lib/types/project-full-data';
+	import {
+		getProjectTaskAsOfMs,
+		createCompleteProjectTasksCoverage,
+		getProjectTaskBoardBucket,
+		selectProjectPulseTasks
+	} from '$lib/utils/project-task-board';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -136,6 +147,17 @@
 	let tasks = $state.raw<Task[]>(
 		initialData.skeleton ? [] : ((initialData.tasks ?? []) as Task[])
 	);
+	let tasksCoverage = $state.raw<ProjectTasksCoverage>(
+		initialData.skeleton
+			? createCompleteProjectTasksCoverage([])
+			: (initialData.tasks_coverage ??
+					createCompleteProjectTasksCoverage((initialData.tasks ?? []) as Task[]))
+	);
+	let pulseTasks = $state.raw<Task[]>(
+		initialData.skeleton ? [] : ((initialData.pulse_tasks ?? initialData.tasks ?? []) as Task[])
+	);
+	const taskBucketLoadPromises = new Map<ProjectActiveTaskBucketKey, Promise<void>>();
+	let taskCoverageGeneration = 0;
 	let documents = $state.raw<Document[]>(
 		initialData.skeleton ? [] : ((initialData.documents ?? []) as Document[])
 	);
@@ -167,11 +189,24 @@
 	let canLoadSecondaryProjectRequests = $state(false);
 	let activePageDataProjectId = initialData.projectId;
 
+	function invalidateTaskWindowLoads(): number {
+		taskCoverageGeneration += 1;
+		taskBucketLoadPromises.clear();
+		return taskCoverageGeneration;
+	}
+
 	function seedCoreProjectData(sourceData: PageData) {
+		invalidateTaskWindowLoads();
 		isHydrating = sourceData.skeleton === true;
 		hydrationError = null;
 		project = projectFromPageData(sourceData);
 		tasks = sourceData.skeleton ? [] : ((sourceData.tasks ?? []) as Task[]);
+		tasksCoverage = sourceData.skeleton
+			? createCompleteProjectTasksCoverage([])
+			: (sourceData.tasks_coverage ?? createCompleteProjectTasksCoverage(tasks));
+		pulseTasks = sourceData.skeleton
+			? []
+			: ((sourceData.pulse_tasks ?? sourceData.tasks ?? []) as Task[]);
 		documents = sourceData.skeleton ? [] : ((sourceData.documents ?? []) as Document[]);
 		plans = sourceData.skeleton ? [] : ((sourceData.plans ?? []) as Plan[]);
 		goals = sourceData.skeleton ? [] : ((sourceData.goals ?? []) as Goal[]);
@@ -435,11 +470,16 @@
 	) {
 		if (!sourceData.skeleton) return;
 		const projectId = sourceData.projectId;
+		const taskWindowGeneration = invalidateTaskWindowLoads();
 		try {
 			const fullData = await resolveInitialFullData(sourceData, bypassDeferredData);
-			if (data.projectId !== projectId) return;
+			if (data.projectId !== projectId || taskCoverageGeneration !== taskWindowGeneration) {
+				return;
+			}
 			project = (fullData.project as Project) || project;
 			tasks = (fullData.tasks ?? []) as Task[];
+			tasksCoverage = fullData.tasks_coverage ?? createCompleteProjectTasksCoverage(tasks);
+			pulseTasks = (fullData.pulse_tasks ?? fullData.tasks ?? []) as Task[];
 			documents = (fullData.documents ?? []) as Document[];
 			plans = (fullData.plans ?? []) as Plan[];
 			goals = (fullData.goals ?? []) as Goal[];
@@ -469,11 +509,16 @@
 
 	async function refreshSilently() {
 		const projectId = data.projectId;
+		const taskWindowGeneration = invalidateTaskWindowLoads();
 		try {
 			const fullData = await fetchProjectSnapshot(projectId, { profile: 'v2-initial' });
-			if (data.projectId !== projectId) return;
+			if (data.projectId !== projectId || taskCoverageGeneration !== taskWindowGeneration) {
+				return;
+			}
 			project = (fullData.project as Project) || project;
 			tasks = (fullData.tasks ?? []) as Task[];
+			tasksCoverage = fullData.tasks_coverage ?? createCompleteProjectTasksCoverage(tasks);
+			pulseTasks = (fullData.pulse_tasks ?? fullData.tasks ?? []) as Task[];
 			documents = (fullData.documents ?? []) as Document[];
 			plans = (fullData.plans ?? []) as Plan[];
 			goals = (fullData.goals ?? []) as Goal[];
@@ -498,10 +543,124 @@
 		return items.map((item) => (item.id === nextItem.id ? nextItem : item));
 	}
 
-	async function refreshTaskById(taskId: string) {
+	function mergeById<T extends { id: string }>(items: T[], nextItems: T[]): T[] {
+		if (nextItems.length === 0) return items;
+		const byId = new Map(items.map((item) => [item.id, item]));
+		for (const item of nextItems) byId.set(item.id, item);
+		return [...byId.values()];
+	}
+
+	function updateTaskCoverageBucket(
+		bucket: ProjectActiveTaskBucketKey,
+		update: (
+			current: ProjectTasksCoverage['buckets'][ProjectActiveTaskBucketKey]
+		) => ProjectTasksCoverage['buckets'][ProjectActiveTaskBucketKey]
+	) {
+		const buckets = {
+			...tasksCoverage.buckets,
+			[bucket]: update(tasksCoverage.buckets[bucket])
+		};
+		const returned = Object.values(buckets).reduce((sum, item) => sum + item.returned, 0);
+		const total = Object.values(buckets).reduce((sum, item) => sum + item.total, 0);
+		tasksCoverage = {
+			...tasksCoverage,
+			buckets,
+			returned,
+			total,
+			complete: Object.values(buckets).every((item) => item.complete)
+		};
+	}
+
+	function moveLoadedTaskCoverage(previousTask: Task, nextTask: Task | null) {
+		const nowMs = getProjectTaskAsOfMs(tasksCoverage.as_of);
+		const previousBucket = getProjectTaskBoardBucket(previousTask, nowMs);
+		const nextBucket = nextTask ? getProjectTaskBoardBucket(nextTask, nowMs) : 'archived';
+		if (previousBucket === nextBucket) return;
+
+		if (previousBucket !== 'archived') {
+			updateTaskCoverageBucket(previousBucket, (current) => {
+				const total = Math.max(0, current.total - 1);
+				const returned = Math.max(0, Math.min(total, current.returned - 1));
+				return { returned, total, complete: returned === total };
+			});
+		}
+		if (nextTask && nextBucket !== 'archived') {
+			updateTaskCoverageBucket(nextBucket, (current) => {
+				const total = current.total + 1;
+				const returned = Math.min(total, current.returned + 1);
+				return { returned, total, complete: returned === total };
+			});
+		}
+	}
+
+	async function loadMoreProjectTasks(bucket: ProjectActiveTaskBucketKey) {
+		const existingRequest = taskBucketLoadPromises.get(bucket);
+		if (existingRequest) return existingRequest;
+		const bucketCoverage = tasksCoverage.buckets[bucket];
+		if (bucketCoverage.complete) return;
+		const projectId = data.projectId;
+		const taskWindowGeneration = taskCoverageGeneration;
+		const request = (async () => {
+			let page;
+			try {
+				page = await fetchProjectTaskBucket({
+					projectId,
+					bucket,
+					offset: bucketCoverage.returned,
+					limit: tasksCoverage.limit_per_bucket ?? 20,
+					asOf: tasksCoverage.as_of
+				});
+			} catch (error) {
+				if (
+					data.projectId !== projectId ||
+					taskCoverageGeneration !== taskWindowGeneration
+				) {
+					return;
+				}
+				throw error;
+			}
+			if (data.projectId !== projectId || taskCoverageGeneration !== taskWindowGeneration) {
+				return;
+			}
+			tasks = mergeById(tasks, page.tasks);
+			updateTaskCoverageBucket(bucket, () => {
+				const returned = Math.min(page.total, page.offset + page.tasks.length);
+				return {
+					returned,
+					total: page.total,
+					complete: !page.hasMore
+				};
+			});
+		})().finally(() => {
+			if (taskBucketLoadPromises.get(bucket) === request) {
+				taskBucketLoadPromises.delete(bucket);
+			}
+		});
+		taskBucketLoadPromises.set(bucket, request);
+		return request;
+	}
+
+	async function refreshTaskById(taskId: string, options: { isNew?: boolean } = {}) {
 		try {
 			const task = await fetchProjectTask(taskId);
+			const existingTask = tasks.find((item) => item.id === taskId) ?? null;
 			tasks = upsertById(tasks, task);
+			pulseTasks = selectProjectPulseTasks(tasks);
+			if (existingTask) {
+				moveLoadedTaskCoverage(existingTask, task);
+			} else {
+				const bucket = getProjectTaskBoardBucket(
+					task,
+					getProjectTaskAsOfMs(tasksCoverage.as_of)
+				);
+				if (bucket !== 'archived') {
+					updateTaskCoverageBucket(bucket, (current) => {
+						const total = current.total + (options.isNew ? 1 : 0);
+						const returned = Math.min(total, current.returned + 1);
+						return { returned, total, complete: returned === total };
+					});
+				}
+			}
 		} catch (err) {
 			console.warn('[Project v2] Failed to refresh task; falling back to snapshot:', err);
 			await refreshSilently();
@@ -1152,14 +1311,16 @@
 		toastService.success('Task created');
 		showTaskCreateModal = false;
 		editingTaskId = taskId;
-		void refreshTaskById(taskId);
+		void (tasksCoverage.complete
+			? refreshTaskById(taskId, { isNew: true })
+			: refreshSilently());
 	}
 
 	function handleTaskUpdated() {
 		const taskId = editingTaskId;
 		editingTaskId = null;
 		if (taskId) {
-			void refreshTaskById(taskId);
+			void (tasksCoverage.complete ? refreshTaskById(taskId) : refreshSilently());
 		} else {
 			void refreshSilently();
 		}
@@ -1167,18 +1328,34 @@
 
 	function handleTaskDeleted() {
 		const deletedId = editingTaskId;
-		if (deletedId) tasks = tasks.filter((t) => t.id !== deletedId);
+		if (deletedId) {
+			const deletedTask = tasks.find((task) => task.id === deletedId);
+			if (deletedTask) moveLoadedTaskCoverage(deletedTask, null);
+			tasks = tasks.filter((task) => task.id !== deletedId);
+			if (tasksCoverage.complete) {
+				pulseTasks = selectProjectPulseTasks(tasks);
+			} else {
+				void refreshSilently();
+			}
+		}
 		editingTaskId = null;
 	}
 
 	function handleTaskMoved(taskId: string, newState: Task['state_key'] | 'archived') {
 		let matchedExistingTask = false;
+		const previousTask = tasks.find((task) => task.id === taskId) ?? null;
 		if (newState === 'archived') {
 			tasks = tasks.filter((task) => {
 				const keep = task.id !== taskId;
 				if (!keep) matchedExistingTask = true;
 				return keep;
 			});
+			if (previousTask) moveLoadedTaskCoverage(previousTask, null);
+			if (tasksCoverage.complete) {
+				pulseTasks = selectProjectPulseTasks(tasks);
+			} else {
+				void refreshSilently();
+			}
 			return;
 		}
 
@@ -1194,6 +1371,13 @@
 				updated_at: new Date().toISOString()
 			};
 		});
+		const nextTask = tasks.find((task) => task.id === taskId) ?? null;
+		if (previousTask && nextTask) moveLoadedTaskCoverage(previousTask, nextTask);
+		if (tasksCoverage.complete) {
+			pulseTasks = selectProjectPulseTasks(tasks);
+		} else {
+			void refreshSilently();
+		}
 
 		if (!matchedExistingTask) {
 			void refreshSilently();
@@ -1627,7 +1811,7 @@
 			<div class="mb-2 sm:mb-3">
 				<PulseStrip
 					projectId={project.id}
-					{tasks}
+					tasks={pulseTasks}
 					{milestones}
 					{goals}
 					{events}
@@ -1741,28 +1925,36 @@
 			{#await import('$lib/components/project/v2/TaskKanbanBoard.svelte')}
 				{@render taskBoardSkeleton()}
 			{:then { default: TaskKanbanBoard }}
-				<TaskKanbanBoard
-					projectId={project.id}
-					{tasks}
-					{canEdit}
-					onEditTask={(id) => (editingTaskId = id)}
-					onCreateTask={() => (showTaskCreateModal = true)}
-					onTaskMoved={handleTaskMoved}
-				/>
+				{#key project.id}
+					<TaskKanbanBoard
+						projectId={project.id}
+						{tasks}
+						{tasksCoverage}
+						{canEdit}
+						onEditTask={(id) => (editingTaskId = id)}
+						onCreateTask={() => (showTaskCreateModal = true)}
+						onTaskMoved={handleTaskMoved}
+						onLoadMoreTasks={loadMoreProjectTasks}
+					/>
+				{/key}
 			{/await}
 		{:else}
 			{#await import('$lib/components/project/v2/MobileTaskBoard.svelte')}
 				{@render taskBoardSkeleton()}
 			{:then { default: MobileTaskBoard }}
-				<div class="mb-2" in:fade={fadeIn} out:fade={fadeOut}>
-					<MobileTaskBoard
-						projectId={project.id}
-						{tasks}
-						{canEdit}
-						onEditTask={(id) => (editingTaskId = id)}
-						onCreateTask={() => (showTaskCreateModal = true)}
-					/>
-				</div>
+				{#key project.id}
+					<div class="mb-2" in:fade={fadeIn} out:fade={fadeOut}>
+						<MobileTaskBoard
+							projectId={project.id}
+							{tasks}
+							{tasksCoverage}
+							{canEdit}
+							onEditTask={(id) => (editingTaskId = id)}
+							onCreateTask={() => (showTaskCreateModal = true)}
+							onLoadMoreTasks={loadMoreProjectTasks}
+						/>
+					</div>
+				{/key}
 			{/await}
 		{/if}
 
@@ -1810,6 +2002,7 @@
 			{contextDocument}
 			{goals}
 			{tasks}
+			tasksComplete={tasksCoverage.complete}
 			{documentTypeOptions}
 			{docTreeStructure}
 			{docTreeDocuments}

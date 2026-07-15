@@ -46,14 +46,17 @@ const KNOWN_NON_ACTIONABLE_PATHS = new Set([
 	'/magento_version',
 	'/manifest.json',
 	'/manifest.webmanifest',
+	'/meta.json',
 	'/_next/build-manifest.json',
 	'/_next/static/buildmanifest.js',
 	'/_nuxt/builds/latest.json',
 	'/_nuxt/manifest.json',
 	'/release_notes.txt',
+	'/rss.xml',
 	'/runtime-config.js',
 	'/sa.json',
 	'/security.txt',
+	'/sitemap_index.xml',
 	'/service-account.json',
 	'/serviceaccountkey.json',
 	'/settings.json',
@@ -86,6 +89,10 @@ const KNOWN_NON_ACTIONABLE_PATTERNS = [
 	/^\/(?:webpack-stats|stats)\.json$/i,
 	/^\/(?:feed|atom|index)\.xml$/i,
 	/^\/feeds\/[^/]+\.atom\.xml$/i,
+	/^\/rss(?:\/[^/]+)?\.xml$/i,
+	/^\/administrator\/manifests\/files\/[^/]+\.xml$/i,
+	/^\/language\/[a-z]{2}-[a-z]{2}\/[^/]+\.xml$/i,
+	/^\/media\/system\/js\/[^/]+\.js$/i,
 	/^\/\.well-known\/(?:ai-plugin|dnt-policy|gpc|jwks|security|trust)\.(?:json|txt)$/i
 ];
 

@@ -13,7 +13,11 @@ import type { OntologyImageAsset } from '$lib/components/ontology/image-assets/t
 import type { Database } from '@buildos/shared-types';
 import type { ProjectLogEntryWithMeta } from '@buildos/shared-types';
 import { requireApiData } from '$lib/utils/api-client-helpers';
-import type { ProjectEventsCoverage } from '$lib/types/project-full-data';
+import type {
+	ProjectActiveTaskBucketKey,
+	ProjectEventsCoverage,
+	ProjectTasksCoverage
+} from '$lib/types/project-full-data';
 
 export type OntoEventWithSync = OntoEvent & {
 	onto_event_sync?: Database['public']['Tables']['onto_event_sync']['Row'][];
@@ -48,6 +52,8 @@ export type ProjectPublicPageCounts = {
 export type ProjectFullData = {
 	project?: Project;
 	tasks?: Task[];
+	pulse_tasks?: Task[];
+	tasks_coverage?: ProjectTasksCoverage;
 	documents?: Document[];
 	images?: OntologyImageAsset[];
 	plans?: Plan[];
@@ -59,6 +65,15 @@ export type ProjectFullData = {
 	context_document?: Document | null;
 	public_page_counts?: ProjectPublicPageCounts;
 	current_actor_id?: string | null;
+};
+
+export type ProjectTaskBucketPage = {
+	bucket: ProjectActiveTaskBucketKey;
+	tasks: Task[];
+	total: number;
+	hasMore: boolean;
+	offset: number;
+	nextOffset: number | null;
 };
 
 export type DeferredProjectFullData =
@@ -250,6 +265,43 @@ export async function fetchProjectTask(taskId: string): Promise<Task> {
 	const data = await requestApiDataRecord(`/api/onto/tasks/${taskId}`, 'Failed to load task');
 	const task = requireRecord(data.task, 'Invalid task response');
 	return task as Task;
+}
+
+export async function fetchProjectTaskBucket(options: {
+	projectId: string;
+	bucket: ProjectActiveTaskBucketKey;
+	offset: number;
+	limit?: number;
+	asOf?: string;
+}): Promise<ProjectTaskBucketPage> {
+	const { projectId, bucket, offset, limit = 20, asOf } = options;
+	const params = new URLSearchParams({
+		bucket,
+		offset: String(offset),
+		limit: String(limit)
+	});
+	if (asOf) params.set('asOf', asOf);
+	const data = await requestApiDataRecord(
+		`/api/onto/projects/${projectId}/tasks?${params.toString()}`,
+		'Failed to load more tasks',
+		{ credentials: 'same-origin' }
+	);
+	const responseBucket = requireString(data.bucket, 'Invalid project task page response');
+	if (responseBucket !== bucket) {
+		throw new Error('Invalid project task page response');
+	}
+	const nextOffsetValue = data.nextOffset;
+	return {
+		bucket,
+		tasks: requireArray<Task>(data.tasks, 'Invalid project task page response'),
+		total: requireNumber(data.total, 'Invalid project task page response'),
+		hasMore: requireBoolean(data.hasMore, 'Invalid project task page response'),
+		offset: requireNumber(data.offset, 'Invalid project task page response'),
+		nextOffset:
+			nextOffsetValue === null
+				? null
+				: requireNumber(nextOffsetValue, 'Invalid project task page response')
+	};
 }
 
 export async function fetchProjectPlan(planId: string): Promise<Plan> {

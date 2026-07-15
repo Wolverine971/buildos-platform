@@ -39,17 +39,16 @@
 	import { getRecentlyCreatedContext } from '$lib/stores/recentlyCreatedContext';
 	import { handleRovingTabKeydown, slideMotion } from '$lib/components/project/v2/board-a11y';
 	import type { Task } from '$lib/types/onto';
+	import type {
+		ProjectActiveTaskBucketKey,
+		ProjectTaskBoardBucketKey,
+		ProjectTasksCoverage
+	} from '$lib/types/project-full-data';
+	import { getProjectTaskAsOfMs, groupProjectTasksByBucket } from '$lib/utils/project-task-board';
 
 	const recentlyCreated = getRecentlyCreatedContext();
 
-	type BucketKey =
-		| 'overdue'
-		| 'in_progress'
-		| 'scheduled'
-		| 'blocked'
-		| 'backlog'
-		| 'done'
-		| 'archived';
+	type BucketKey = ProjectTaskBoardBucketKey;
 
 	type BucketDef = {
 		key: BucketKey;
@@ -133,15 +132,19 @@
 	let {
 		projectId,
 		tasks,
+		tasksCoverage,
 		canEdit,
 		onEditTask,
-		onCreateTask
+		onCreateTask,
+		onLoadMoreTasks
 	}: {
 		projectId: string;
 		tasks: Task[];
+		tasksCoverage?: ProjectTasksCoverage;
 		canEdit: boolean;
 		onEditTask: (taskId: string) => void;
 		onCreateTask?: () => void;
+		onLoadMoreTasks?: (bucket: ProjectActiveTaskBucketKey) => Promise<void>;
 	} = $props();
 
 	let activeTab = $state<BucketKey>('in_progress');
@@ -197,22 +200,32 @@
 	let archivedLoading = $state(false);
 	let archivedError = $state<string | null>(null);
 	let archivedTotal = $state(0);
+	let archivedServerReturned = $state(0);
+	let archivedHasMore = $state(false);
 
-	async function loadArchived() {
+	async function loadArchived(loadMore = false) {
 		if (archivedLoading) return;
+		const activeProjectId = projectId;
+		const offset = loadMore ? archivedServerReturned : 0;
 		archivedLoading = true;
 		archivedError = null;
 		try {
 			const res = await fetch(
-				`/api/onto/projects/${projectId}/tasks/archived?limit=100&offset=0`,
+				`/api/onto/projects/${activeProjectId}/tasks/archived?limit=50&offset=${offset}`,
 				{ credentials: 'same-origin' }
 			);
 			if (!res.ok) throw new Error(`Failed (${res.status})`);
 			const body = (await res.json()) as {
-				data?: { tasks?: Task[]; total?: number };
+				data?: { tasks?: Task[]; total?: number; hasMore?: boolean };
 			};
-			archivedTasks = (body?.data?.tasks ?? []) as Task[];
+			if (projectId !== activeProjectId) return;
+			const fetched = (body?.data?.tasks ?? []) as Task[];
+			const byId = new Map((loadMore ? archivedTasks : []).map((task) => [task.id, task]));
+			for (const task of fetched) byId.set(task.id, task);
+			archivedTasks = [...byId.values()];
 			archivedTotal = body?.data?.total ?? archivedTasks.length;
+			archivedServerReturned = offset + fetched.length;
+			archivedHasMore = body?.data?.hasMore ?? archivedServerReturned < archivedTotal;
 			archivedLoaded = true;
 		} catch (err) {
 			archivedError = err instanceof Error ? err.message : 'Failed to load archived';
@@ -225,80 +238,46 @@
 	// ----------------------------------------------------------------
 	// Bucketing — mirrors TaskKanbanBoard
 	// ----------------------------------------------------------------
-	function bucketFor(t: Task): BucketKey {
-		if (t.deleted_at) return 'archived';
-		if (t.state_key === 'done') return 'done';
-		const now = Date.now();
-		const dueMs = t.due_at ? new Date(t.due_at).getTime() : null;
-		if (dueMs !== null && dueMs < now) return 'overdue';
-		if (t.state_key === 'todo') {
-			const startMs = t.start_at ? new Date(t.start_at).getTime() : null;
-			const future = (dueMs !== null && dueMs >= now) || (startMs !== null && startMs >= now);
-			return future ? 'scheduled' : 'backlog';
-		}
-		if (t.state_key === 'in_progress') return 'in_progress';
-		if (t.state_key === 'blocked') return 'blocked';
-		return 'backlog';
-	}
-
 	const tasksByBucket = $derived.by(() => {
-		const buckets: Record<BucketKey, Task[]> = {
-			overdue: [],
-			in_progress: [],
-			scheduled: [],
-			blocked: [],
-			backlog: [],
-			done: [],
-			archived: []
-		};
-		for (const t of tasks) {
-			if (t.deleted_at) {
-				buckets.archived.push(t);
-				continue;
-			}
-			buckets[bucketFor(t)]!.push(t);
+		const byId = new Map(tasks.map((task) => [task.id, task]));
+		for (const task of archivedTasks) {
+			if (!byId.has(task.id)) byId.set(task.id, task);
 		}
-		for (const t of archivedTasks) {
-			if (!buckets.archived.some((existing) => existing.id === t.id)) {
-				buckets.archived.push(t);
-			}
-		}
-
-		// Sort: priority first (lower = higher priority), then due-date
-		// (soonest first for active; latest first for done/archived).
-		for (const key of Object.keys(buckets) as BucketKey[]) {
-			const reverse = key === 'done' || key === 'archived';
-			buckets[key]!.sort((a, b) => {
-				const pa = typeof a.priority === 'number' ? a.priority : 5;
-				const pb = typeof b.priority === 'number' ? b.priority : 5;
-				if (pa !== pb) return pa - pb;
-				const da =
-					(key === 'archived' && a.deleted_at
-						? new Date(a.deleted_at).getTime()
-						: a.due_at
-							? new Date(a.due_at).getTime()
-							: a.start_at
-								? new Date(a.start_at).getTime()
-								: null) ?? Infinity;
-				const db =
-					(key === 'archived' && b.deleted_at
-						? new Date(b.deleted_at).getTime()
-						: b.due_at
-							? new Date(b.due_at).getTime()
-							: b.start_at
-								? new Date(b.start_at).getTime()
-								: null) ?? Infinity;
-				if (da !== db) return reverse ? db - da : da - db;
-				return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-			});
-		}
-		return buckets;
+		return groupProjectTasksByBucket(
+			[...byId.values()],
+			getProjectTaskAsOfMs(tasksCoverage?.as_of)
+		);
 	});
 
-	const activeCount = $derived(tasks.filter((t) => !t.deleted_at).length);
+	const activeCount = $derived(tasksCoverage?.total ?? tasks.filter((t) => !t.deleted_at).length);
+	let loadingTaskBuckets = $state<Set<ProjectActiveTaskBucketKey>>(new Set());
+	let taskBucketErrors = $state<Partial<Record<ProjectActiveTaskBucketKey, string>>>({});
+
+	async function loadMoreTasks(bucket: ProjectActiveTaskBucketKey) {
+		if (!onLoadMoreTasks || loadingTaskBuckets.has(bucket)) return;
+		loadingTaskBuckets = new Set(loadingTaskBuckets).add(bucket);
+		taskBucketErrors = { ...taskBucketErrors, [bucket]: undefined };
+		try {
+			await onLoadMoreTasks(bucket);
+		} catch (error) {
+			taskBucketErrors = {
+				...taskBucketErrors,
+				[bucket]: error instanceof Error ? error.message : 'Failed to load more tasks'
+			};
+		} finally {
+			const next = new Set(loadingTaskBuckets);
+			next.delete(bucket);
+			loadingTaskBuckets = next;
+		}
+	}
 
 	function countFor(bucket: BucketDef): number {
 		if (bucket.key === 'archived' && archivedLoaded) return archivedTotal;
+		if (bucket.key !== 'archived') {
+			return (
+				tasksCoverage?.buckets[bucket.key]?.total ?? tasksByBucket[bucket.key]?.length ?? 0
+			);
+		}
 		return tasksByBucket[bucket.key]?.length ?? 0;
 	}
 
@@ -500,6 +479,7 @@
 				{#if activeTab === bucket.key}
 					{@const items = tasksByBucket[bucket.key] ?? []}
 					{@const isArchive = bucket.key === 'archived'}
+					{@const activeBucket = bucket.key === 'archived' ? null : bucket.key}
 					<div
 						id="task-panel-{bucket.key}"
 						role="tabpanel"
@@ -602,6 +582,51 @@
 									{/if}
 								</button>
 							{/each}
+						{/if}
+
+						{#if activeBucket && tasksCoverage?.buckets[activeBucket]?.complete === false}
+							<div class="pt-1 space-y-1.5">
+								<button
+									type="button"
+									onclick={() => void loadMoreTasks(activeBucket)}
+									disabled={loadingTaskBuckets.has(activeBucket)}
+									class="w-full inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-2 text-xs font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground pressable disabled:opacity-50"
+								>
+									{#if loadingTaskBuckets.has(activeBucket)}
+										<LoaderCircle
+											class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+										/>
+										Loading…
+									{:else}
+										Load more ({items.length}/{tasksCoverage.buckets[
+											activeBucket
+										].total})
+									{/if}
+								</button>
+								{#if taskBucketErrors[activeBucket]}
+									<p class="text-xs text-destructive">
+										{taskBucketErrors[activeBucket]}
+									</p>
+								{/if}
+							</div>
+						{/if}
+
+						{#if isArchive && archivedLoaded && archivedHasMore}
+							<button
+								type="button"
+								onclick={() => void loadArchived(true)}
+								disabled={archivedLoading}
+								class="w-full inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-2 text-xs font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground pressable disabled:opacity-50"
+							>
+								{#if archivedLoading}
+									<LoaderCircle
+										class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+									/>
+									Loading…
+								{:else}
+									Load more ({archivedServerReturned}/{archivedTotal})
+								{/if}
+							</button>
 						{/if}
 					</div>
 				{/if}

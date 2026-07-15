@@ -83,8 +83,20 @@ describe('GET /api/onto/projects/[id]/full', () => {
 	it('uses the v2 full RPC as the v2 initial profile authorization boundary', async () => {
 		const event = createEvent('?profile=v2-initial');
 		const supabase = event.locals.supabase as any;
+		const tasks = Array.from({ length: 25 }, (_, index) => ({
+			id: `task-${index}`,
+			project_id: PROJECT_ID,
+			title: `Task ${index}`,
+			state_key: 'todo',
+			deleted_at: null,
+			due_at: null,
+			start_at: null,
+			completed_at: null,
+			priority: index + 1,
+			updated_at: '2026-07-15T12:00:00.000Z'
+		}));
 		supabase.rpc.mockResolvedValue({
-			data: projectFullPayload(),
+			data: projectFullPayload({ tasks }),
 			error: null
 		});
 		listProjectEventsMock
@@ -101,6 +113,19 @@ describe('GET /api/onto/projects/[id]/full', () => {
 		expect(response.status).toBe(200);
 		expect(payload.success).toBe(true);
 		expect(payload.data.current_actor_id).toBe('actor-v2');
+		expect(payload.data.tasks).toHaveLength(20);
+		expect(payload.data.tasks.map((task: { id: string }) => task.id)).not.toContain('task-24');
+		expect(payload.data.tasks_coverage).toMatchObject({
+			scope: 'initial-board',
+			complete: false,
+			returned: 20,
+			total: 25,
+			limit_per_bucket: 20,
+			buckets: {
+				backlog: { returned: 20, total: 25, complete: false }
+			}
+		});
+		expect(payload.data.pulse_tasks).toEqual([]);
 		expect(payload.data.events).toHaveLength(75);
 		expect(payload.data.events_coverage).toMatchObject({
 			scope: 'initial-window',

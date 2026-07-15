@@ -18,6 +18,7 @@
 		contextDocument,
 		goals,
 		tasks,
+		tasksComplete = true,
 		documentTypeOptions,
 		docTreeStructure,
 		docTreeDocuments,
@@ -108,6 +109,7 @@
 		contextDocument: Document | null;
 		goals: Goal[];
 		tasks: Task[];
+		tasksComplete?: boolean;
 		documentTypeOptions: string[];
 		docTreeStructure: DocStructure | null;
 		docTreeDocuments: Record<string, OntoDocument>;
@@ -378,6 +380,7 @@
 		<EventCreateModal
 			projectId={project.id}
 			{tasks}
+			{tasksComplete}
 			onClose={onCloseEventCreateModal}
 			onCreated={onEventCreated}
 		/>

@@ -28,7 +28,13 @@ import { attachLastChangedByActorToTasks } from '$lib/server/task-relevance.serv
 import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 import { pickStartHereDocument } from '$lib/services/ontology/start-here-selector';
-import type { ProjectEventsCoverage } from '$lib/types/project-full-data';
+import type { Task } from '$lib/types/onto';
+import type { ProjectEventsCoverage, ProjectTasksCoverage } from '$lib/types/project-full-data';
+import { buildInitialProjectTaskWindow } from '$lib/server/project-task-window';
+import {
+	createCompleteProjectTasksCoverage,
+	selectProjectPulseTasks
+} from '$lib/utils/project-task-board';
 
 // Type for the RPC response
 interface ProjectFullData {
@@ -38,6 +44,7 @@ interface ProjectFullData {
 	requirements?: unknown[];
 	plans?: unknown[];
 	tasks?: unknown[];
+	tasks_coverage?: ProjectTasksCoverage;
 	documents?: unknown[];
 	images?: unknown[];
 	sources?: unknown[];
@@ -373,7 +380,13 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 
 		const goals = (data.goals || []) as GoalRow[];
 		const milestones = (data.milestones || []) as MilestoneRow[];
-		const rawTasks = (data.tasks || []) as Array<{ id: string } & Record<string, unknown>>;
+		const rawTasks = (data.tasks || []) as Task[];
+		const taskWindow = isV2InitialProfile
+			? data.tasks_coverage
+				? { tasks: rawTasks, coverage: data.tasks_coverage }
+				: buildInitialProjectTaskWindow(rawTasks)
+			: { tasks: rawTasks, coverage: createCompleteProjectTasksCoverage(rawTasks) };
+		const pulseTasks = isV2InitialProfile ? selectProjectPulseTasks(rawTasks) : rawTasks;
 		const goalMilestoneEdges = (data.goal_milestone_edges ?? []) as GoalMilestoneEdge[];
 		// Task assignees and last-changed-by actor maps are now baked into the
 		// RPC response (migration 20260501000002), eliminating two extra DB
@@ -454,7 +467,7 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 
 		const sanitizedProject = sanitizeProjectForClient(data.project as Record<string, unknown>);
 
-		let tasksWithAssignees = attachAssigneesToTasks(rawTasks, assigneeMap);
+		let tasksWithAssignees = attachAssigneesToTasks(taskWindow.tasks, assigneeMap);
 		tasksWithAssignees = attachLastChangedByActorToTasks(
 			tasksWithAssignees,
 			lastChangedByActorMap
@@ -466,6 +479,8 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			goals,
 			plans: data.plans || [],
 			tasks: tasksWithAssignees,
+			tasks_coverage: taskWindow.coverage,
+			pulse_tasks: pulseTasks,
 			documents: data.documents || [],
 			milestones: decoratedMilestones,
 			risks: data.risks || [],
@@ -498,7 +513,8 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 					counts: {
 						goals: arrayLength(data.goals),
 						plans: arrayLength(data.plans),
-						tasks: arrayLength(data.tasks),
+						tasks_source: arrayLength(data.tasks),
+						tasks_returned: taskWindow.tasks.length,
 						documents: arrayLength(data.documents),
 						milestones: arrayLength(data.milestones),
 						risks: arrayLength(data.risks),

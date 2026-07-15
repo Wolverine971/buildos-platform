@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/admin/errors/+page.svelte -->
 <script lang="ts">
-	import { onMount, untrack } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
 	import type { PageData } from './$types';
 	import type {
 		ErrorLogEntry,
@@ -121,6 +121,14 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	async function reloadFromFilterChange() {
+		currentPage = 1;
+		// Select invokes onchange immediately after updating its internal value.
+		// Wait for the parent binding so loadErrors reads the newly selected filter.
+		await tick();
+		await loadErrors();
 	}
 
 	function openResolveModal(errorId: string) {
@@ -358,19 +366,6 @@
 		return error.project?.name || error.project_id || '';
 	}
 
-	// Reset page when filters change
-	$effect(() => {
-		if (
-			filterSeverity ||
-			filterType ||
-			filterResolved !== null ||
-			filterUserId ||
-			filterProjectId
-		) {
-			currentPage = 1;
-		}
-	});
-
 	// Load initial data if empty
 	onMount(() => {
 		if (errors.length === 0 && !loading) {
@@ -426,7 +421,7 @@
 			<Button
 				onclick={() => {
 					filterResolvedRaw = filterResolved === false ? 'null' : 'false';
-					loadErrors();
+					reloadFromFilterChange();
 				}}
 				variant="outline"
 				size="sm"
@@ -530,7 +525,7 @@
 				<Select
 					id="errors-filter-severity"
 					bind:value={filterSeverity}
-					onchange={loadErrors}
+					onchange={reloadFromFilterChange}
 					size="sm"
 					placeholder="All"
 				>
@@ -549,7 +544,7 @@
 				<Select
 					id="errors-filter-type"
 					bind:value={filterType}
-					onchange={loadErrors}
+					onchange={reloadFromFilterChange}
 					size="sm"
 					placeholder="All"
 				>
@@ -569,7 +564,7 @@
 				<Select
 					id="errors-filter-status"
 					bind:value={filterResolvedRaw}
-					onchange={loadErrors}
+					onchange={reloadFromFilterChange}
 					size="sm"
 				>
 					<option value="false">Unresolved</option>
@@ -586,7 +581,7 @@
 					id="errors-filter-user"
 					type="text"
 					bind:value={filterUserId}
-					onblur={loadErrors}
+					onblur={reloadFromFilterChange}
 					placeholder="Email or ID..."
 					size="sm"
 				/>
@@ -600,7 +595,7 @@
 					id="errors-filter-project"
 					type="text"
 					bind:value={filterProjectId}
-					onblur={loadErrors}
+					onblur={reloadFromFilterChange}
 					placeholder="Project ID..."
 					size="sm"
 				/>
@@ -908,10 +903,7 @@
 				</Button>
 				<Select
 					bind:value={itemsPerPage}
-					onchange={() => {
-						currentPage = 1;
-						loadErrors();
-					}}
+					onchange={reloadFromFilterChange}
 					size="sm"
 					class="w-16"
 				>

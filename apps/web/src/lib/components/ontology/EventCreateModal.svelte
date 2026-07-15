@@ -21,12 +21,21 @@
 	interface Props {
 		projectId: string;
 		tasks: Task[];
+		tasksComplete?: boolean;
 		initialTaskId?: string;
 		onClose: () => void;
 		onCreated?: (eventId: string) => void;
 	}
 
-	let { projectId, tasks, initialTaskId = '', onClose, onCreated }: Props = $props();
+	let {
+		projectId,
+		tasks,
+		tasksComplete = true,
+		initialTaskId = '',
+		onClose,
+		onCreated
+	}: Props = $props();
+	type TaskOption = Pick<Task, 'id' | 'title'>;
 
 	let title = $state('');
 	let description = $state('');
@@ -38,11 +47,79 @@
 	let syncToCalendar = $state(true);
 	let isSaving = $state(false);
 	let error = $state('');
+	let loadedTaskOptions = $state.raw<TaskOption[] | null>(null);
+	let taskOptionsLoading = $state(false);
+	let taskOptionsError = $state('');
+	const taskOptions = $derived(loadedTaskOptions ?? tasks);
 
 	$effect(() => {
 		if (hasAppliedInitialTaskId) return;
 		linkedTaskId = initialTaskId;
 		hasAppliedInitialTaskId = true;
+	});
+
+	$effect(() => {
+		if (tasksComplete) {
+			loadedTaskOptions = null;
+			taskOptionsLoading = false;
+			taskOptionsError = '';
+			return;
+		}
+		const activeProjectId = projectId;
+		const controller = new AbortController();
+		loadedTaskOptions = null;
+		taskOptionsLoading = true;
+		taskOptionsError = '';
+		void (async () => {
+			const options: TaskOption[] = [];
+			let offset = 0;
+			let hasMore = true;
+			while (hasMore && !controller.signal.aborted) {
+				const params = new URLSearchParams({ limit: '200', offset: String(offset) });
+				const response = await fetch(
+					`/api/onto/projects/${activeProjectId}/tasks/options?${params.toString()}`,
+					{
+						credentials: 'same-origin',
+						signal: controller.signal
+					}
+				);
+				const body = (await response.json().catch(() => null)) as {
+					data?: {
+						tasks?: TaskOption[];
+						hasMore?: boolean;
+						nextOffset?: number | null;
+					};
+					error?: string;
+				} | null;
+				if (!response.ok) throw new Error(body?.error || `Failed (${response.status})`);
+				options.push(...(body?.data?.tasks ?? []));
+				hasMore = body?.data?.hasMore === true;
+				if (hasMore) {
+					const nextOffset = body?.data?.nextOffset;
+					if (typeof nextOffset !== 'number' || nextOffset <= offset) {
+						throw new Error('Invalid task options response');
+					}
+					offset = nextOffset;
+				}
+			}
+			if (!controller.signal.aborted && projectId === activeProjectId) {
+				loadedTaskOptions = options;
+			}
+		})()
+			.catch((fetchError) => {
+				if (controller.signal.aborted || projectId !== activeProjectId) return;
+				taskOptionsError =
+					fetchError instanceof Error
+						? fetchError.message
+						: 'Failed to load task options';
+			})
+			.finally(() => {
+				if (!controller.signal.aborted && projectId === activeProjectId) {
+					taskOptionsLoading = false;
+				}
+			});
+
+		return () => controller.abort();
 	});
 
 	function parseDateTimeFromInput(value: string): string | null {
@@ -253,7 +330,7 @@
 					/>
 				</FormField>
 
-				{#if tasks.length > 0}
+				{#if taskOptions.length > 0}
 					<FormField label="Link to Task" labelFor="linkedTask">
 						<Select
 							id="linkedTask"
@@ -262,11 +339,24 @@
 							size="md"
 						>
 							<option value="">No linked task</option>
-							{#each tasks as task}
+							{#each taskOptions as task (task.id)}
 								<option value={task.id}>{task.title}</option>
 							{/each}
 						</Select>
+						{#if taskOptionsLoading}
+							<p class="mt-1.5 text-xs text-muted-foreground" aria-live="polite">
+								Loading all project tasks…
+							</p>
+						{:else if taskOptionsError}
+							<p class="mt-1.5 text-xs text-destructive">{taskOptionsError}</p>
+						{/if}
 					</FormField>
+				{:else if taskOptionsLoading}
+					<p class="text-xs text-muted-foreground" aria-live="polite">
+						Loading project task options…
+					</p>
+				{:else if taskOptionsError}
+					<p class="text-xs text-destructive">{taskOptionsError}</p>
 				{/if}
 
 				<!-- Calendar Sync Toggle -->

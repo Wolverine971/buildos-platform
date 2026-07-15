@@ -57,17 +57,20 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { getRecentlyCreatedContext } from '$lib/stores/recentlyCreatedContext';
 	import type { Task, TaskState } from '$lib/types/onto';
+	import type {
+		ProjectActiveTaskBucketKey,
+		ProjectTaskBoardBucketKey,
+		ProjectTasksCoverage
+	} from '$lib/types/project-full-data';
+	import {
+		getProjectTaskAsOfMs,
+		getProjectTaskBoardBucket,
+		groupProjectTasksByBucket
+	} from '$lib/utils/project-task-board';
 
 	const recentlyCreated = getRecentlyCreatedContext();
 
-	type ColumnKey =
-		| 'backlog'
-		| 'scheduled'
-		| 'overdue'
-		| 'in_progress'
-		| 'blocked'
-		| 'done'
-		| 'archived';
+	type ColumnKey = ProjectTaskBoardBucketKey;
 
 	type ColumnDef = {
 		key: ColumnKey;
@@ -155,17 +158,21 @@
 	let {
 		projectId,
 		tasks,
+		tasksCoverage,
 		canEdit,
 		onEditTask,
 		onCreateTask,
-		onTaskMoved
+		onTaskMoved,
+		onLoadMoreTasks
 	}: {
 		projectId: string;
 		tasks: Task[];
+		tasksCoverage?: ProjectTasksCoverage;
 		canEdit: boolean;
 		onEditTask: (taskId: string) => void;
 		onCreateTask?: () => void;
 		onTaskMoved?: (taskId: string, newState: TaskState | 'archived') => void;
+		onLoadMoreTasks?: (bucket: ProjectActiveTaskBucketKey) => Promise<void>;
 	} = $props();
 
 	// ----------------------------------------------------------------
@@ -195,23 +202,30 @@
 	let archivedLoading = $state(false);
 	let archivedError = $state<string | null>(null);
 	let archivedTotal = $state(0);
+	let archivedServerReturned = $state(0);
+	let archivedHasMore = $state(false);
 
-	async function loadArchived() {
+	async function loadArchived(loadMore = false) {
 		if (archivedLoading) return;
+		const activeProjectId = projectId;
+		const offset = loadMore ? archivedServerReturned : 0;
 		archivedLoading = true;
 		archivedError = null;
 		try {
 			const res = await fetch(
-				`/api/onto/projects/${projectId}/tasks/archived?limit=100&offset=0`,
+				`/api/onto/projects/${activeProjectId}/tasks/archived?limit=50&offset=${offset}`,
 				{ credentials: 'same-origin' }
 			);
 			if (!res.ok) throw new Error(`Failed (${res.status})`);
 			const body = (await res.json()) as {
-				data?: { tasks?: Task[]; total?: number };
+				data?: { tasks?: Task[]; total?: number; hasMore?: boolean };
 				success?: boolean;
 			};
+			if (projectId !== activeProjectId) return;
 			const fetched = (body?.data?.tasks ?? []) as Task[];
 			archivedTotal = body?.data?.total ?? fetched.length;
+			archivedServerReturned = offset + fetched.length;
+			archivedHasMore = body?.data?.hasMore ?? archivedServerReturned < archivedTotal;
 			// Merge: drop any local copy of these IDs, then add server rows.
 			const fetchedIds = new Set(fetched.map((t) => t.id));
 			localTasks = [
@@ -230,65 +244,29 @@
 	// Bucketing
 	// ----------------------------------------------------------------
 
-	function bucketFor(t: Task): ColumnKey {
-		if (t.deleted_at) return 'archived';
-		if (t.state_key === 'done') return 'done';
-		const now = Date.now();
-		const dueMs = t.due_at ? new Date(t.due_at).getTime() : null;
-		if (dueMs !== null && dueMs < now) return 'overdue';
-		if (t.state_key === 'todo') {
-			const startMs = t.start_at ? new Date(t.start_at).getTime() : null;
-			const future = (dueMs !== null && dueMs >= now) || (startMs !== null && startMs >= now);
-			if (future) return 'scheduled';
-			return 'backlog';
-		}
-		if (t.state_key === 'in_progress') return 'in_progress';
-		if (t.state_key === 'blocked') return 'blocked';
-		return 'backlog';
-	}
+	const tasksByColumn = $derived(
+		groupProjectTasksByBucket(localTasks, getProjectTaskAsOfMs(tasksCoverage?.as_of))
+	);
+	let loadingTaskBuckets = $state<Set<ProjectActiveTaskBucketKey>>(new Set());
+	let taskBucketErrors = $state<Partial<Record<ProjectActiveTaskBucketKey, string>>>({});
 
-	const tasksByColumn = $derived.by(() => {
-		const buckets: Record<ColumnKey, Task[]> = {
-			backlog: [],
-			scheduled: [],
-			overdue: [],
-			in_progress: [],
-			blocked: [],
-			done: [],
-			archived: []
-		};
-		for (const t of localTasks) {
-			buckets[bucketFor(t)]!.push(t);
+	async function loadMoreTasks(bucket: ProjectActiveTaskBucketKey) {
+		if (!onLoadMoreTasks || loadingTaskBuckets.has(bucket)) return;
+		loadingTaskBuckets = new Set(loadingTaskBuckets).add(bucket);
+		taskBucketErrors = { ...taskBucketErrors, [bucket]: undefined };
+		try {
+			await onLoadMoreTasks(bucket);
+		} catch (error) {
+			taskBucketErrors = {
+				...taskBucketErrors,
+				[bucket]: error instanceof Error ? error.message : 'Failed to load more tasks'
+			};
+		} finally {
+			const next = new Set(loadingTaskBuckets);
+			next.delete(bucket);
+			loadingTaskBuckets = next;
 		}
-		// Sort: priority, then due date (soonest first for active, latest first for done/archived)
-		for (const key of Object.keys(buckets) as ColumnKey[]) {
-			const reverse = key === 'done' || key === 'archived';
-			buckets[key]!.sort((a, b) => {
-				const pa = typeof a.priority === 'number' ? a.priority : 5;
-				const pb = typeof b.priority === 'number' ? b.priority : 5;
-				if (pa !== pb) return pa - pb;
-				const da =
-					(key === 'archived' && a.deleted_at
-						? new Date(a.deleted_at).getTime()
-						: a.due_at
-							? new Date(a.due_at).getTime()
-							: a.start_at
-								? new Date(a.start_at).getTime()
-								: null) ?? Infinity;
-				const db =
-					(key === 'archived' && b.deleted_at
-						? new Date(b.deleted_at).getTime()
-						: b.due_at
-							? new Date(b.due_at).getTime()
-							: b.start_at
-								? new Date(b.start_at).getTime()
-								: null) ?? Infinity;
-				if (da !== db) return reverse ? db - da : da - db;
-				return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-			});
-		}
-		return buckets;
-	});
+	}
 
 	// ----------------------------------------------------------------
 	// Drag state
@@ -366,7 +344,11 @@
 		const wasArchived = !!before.deleted_at;
 
 		// No-op guard: dropping on the column the task already lives in.
-		if (bucketFor(before) === col.key) return;
+		if (
+			getProjectTaskBoardBucket(before, getProjectTaskAsOfMs(tasksCoverage?.as_of)) ===
+			col.key
+		)
+			return;
 
 		// ----- Re-archive of an already-archived card → no-op -----
 		if (col.dropAction === 'archive' && wasArchived) return;
@@ -544,7 +526,7 @@
 	}
 
 	function activeTaskCount(): number {
-		return localTasks.filter((t) => !t.deleted_at).length;
+		return tasksCoverage?.total ?? localTasks.filter((t) => !t.deleted_at).length;
 	}
 </script>
 
@@ -587,6 +569,7 @@
 		{@const isViewOnly = col.dropAction === 'none'}
 		{@const isDanger = col.key === 'overdue'}
 		{@const isArchive = col.key === 'archived'}
+		{@const activeBucket = col.key === 'archived' ? null : col.key}
 		<div
 			class="flex flex-col rounded-md border bg-background/60 min-h-[220px] transition-colors
 				{isOver
@@ -613,7 +596,11 @@
 						{col.label}
 					</span>
 					<span class="text-[11px] text-muted-foreground shrink-0">
-						{isArchive && archivedLoaded ? archivedTotal : items.length}
+						{isArchive && archivedLoaded
+							? archivedTotal
+							: col.key !== 'archived'
+								? (tasksCoverage?.buckets[col.key]?.total ?? items.length)
+								: items.length}
 					</span>
 				</div>
 				<span
@@ -628,7 +615,7 @@
 				<div class="px-3 pt-2">
 					<button
 						type="button"
-						onclick={loadArchived}
+						onclick={() => void loadArchived()}
 						disabled={archivedLoading}
 						class="w-full inline-flex items-center justify-center gap-1.5 text-[11px] font-medium text-foreground/80 hover:text-foreground bg-muted/30 hover:bg-muted/60 border border-border/60 rounded-md px-2 py-1.5 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-50"
 					>
@@ -741,6 +728,50 @@
 							{/if}
 						</button>
 					{/each}
+				{/if}
+
+				{#if activeBucket && tasksCoverage?.buckets[activeBucket]?.complete === false}
+					<div class="pt-1 space-y-1.5">
+						<button
+							type="button"
+							onclick={() => void loadMoreTasks(activeBucket)}
+							disabled={loadingTaskBuckets.has(activeBucket)}
+							class="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-2 text-[11px] font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground pressable disabled:opacity-50"
+						>
+							{#if loadingTaskBuckets.has(activeBucket)}
+								<LoaderCircle
+									class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+								/>
+								Loading…
+							{:else}
+								Load more ({items.length}/{tasksCoverage.buckets[activeBucket]
+									.total})
+							{/if}
+						</button>
+						{#if taskBucketErrors[activeBucket]}
+							<p class="text-[10px] text-destructive">
+								{taskBucketErrors[activeBucket]}
+							</p>
+						{/if}
+					</div>
+				{/if}
+
+				{#if isArchive && archivedLoaded && archivedHasMore}
+					<button
+						type="button"
+						onclick={() => void loadArchived(true)}
+						disabled={archivedLoading}
+						class="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-2 text-[11px] font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground pressable disabled:opacity-50"
+					>
+						{#if archivedLoading}
+							<LoaderCircle
+								class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+							/>
+							Loading…
+						{:else}
+							Load more ({archivedServerReturned}/{archivedTotal})
+						{/if}
+					</button>
 				{/if}
 			</div>
 		</div>

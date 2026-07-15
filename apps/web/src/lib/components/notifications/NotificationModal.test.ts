@@ -90,4 +90,14 @@ describe('NotificationModal fallback close behavior', () => {
 		await waitFor(() => expect(minimizeMock).toHaveBeenCalledWith('notification-1'));
 		expect(removeMock).not.toHaveBeenCalled();
 	});
+
+	it('clamps percentage progress to a valid visual range', async () => {
+		const item = notification('processing');
+		item.progress = { type: 'percentage', percentage: 140, message: 'Preparing…' };
+
+		render(NotificationModal, { props: { notification: item } });
+
+		expect(await screen.findByText('100%')).toBeInTheDocument();
+		expect(document.querySelector('[style*="width: 100%"]')).toBeInTheDocument();
+	});
 });

@@ -53,9 +53,15 @@
 			case 'paused':
 				return { icon: Pause, cls: 'text-muted-foreground' };
 			case 'queued':
-				return { icon: LoaderCircle, cls: 'text-muted-foreground animate-spin' };
+				return {
+					icon: LoaderCircle,
+					cls: 'animate-spin text-muted-foreground motion-reduce:animate-none'
+				};
 			default:
-				return { icon: LoaderCircle, cls: 'text-info animate-spin' };
+				return {
+					icon: LoaderCircle,
+					cls: 'animate-spin text-info motion-reduce:animate-none'
+				};
 		}
 	}
 
@@ -98,7 +104,7 @@
 	<div class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center">
 		{#if statusIcon}
 			{@const StatusIcon = statusIcon.icon}
-			<StatusIcon class="h-5 w-5 {statusIcon.cls} motion-reduce:animate-none" />
+			<StatusIcon class="h-5 w-5 {statusIcon.cls}" aria-hidden="true" />
 		{/if}
 	</div>
 
@@ -111,7 +117,7 @@
 			class="ml-1 inline-flex shrink-0 items-center gap-1 rounded-md bg-success/10 px-2 py-1 text-xs text-success"
 			aria-label={`${entityCount} completed ${entityCount === 1 ? 'change' : 'changes'}`}
 		>
-			<FilePen class="h-3 w-3" />
+			<FilePen class="h-3 w-3" aria-hidden="true" />
 			{entityCount}
 		</div>
 	{:else if runStatus === 'proposal_ready' && notification.data.result?.proposed_changes}
@@ -119,7 +125,7 @@
 			class="ml-1 inline-flex shrink-0 items-center gap-1 rounded-md bg-info/10 px-2 py-1 text-xs text-info"
 			aria-label={`${notification.data.result.proposed_changes.changes.length} proposed ${notification.data.result.proposed_changes.changes.length === 1 ? 'change' : 'changes'}`}
 		>
-			<FilePlus class="h-3 w-3" />
+			<FilePlus class="h-3 w-3" aria-hidden="true" />
 			{notification.data.result.proposed_changes.changes.length}
 		</div>
 	{/if}

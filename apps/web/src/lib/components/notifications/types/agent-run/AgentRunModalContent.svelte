@@ -570,7 +570,7 @@
 								{#if href}
 									<a
 										{href}
-										class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs bg-card border border-border text-foreground hover:border-accent/50 hover:text-accent"
+										class="inline-flex min-h-11 items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground transition-colors hover:border-accent/50 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 										title={entity.description}
 									>
 										<span class="text-muted-foreground">{entity.action}</span>
@@ -578,7 +578,7 @@
 									</a>
 								{:else}
 									<span
-										class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs bg-card border border-border text-foreground"
+										class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground"
 										title={entity.description}
 									>
 										<span class="text-muted-foreground">{entity.action}</span>
@@ -610,7 +610,11 @@
 					>
 						{#if loadingEvents && events.length === 0}
 							<div class="flex items-center gap-2 p-3 text-xs text-muted-foreground">
-								<LoaderCircle class="w-4 h-4 animate-spin" /> Loading activity…
+								<LoaderCircle
+									class="h-4 w-4 animate-spin motion-reduce:animate-none"
+									aria-hidden="true"
+								/>
+								Loading activity…
 							</div>
 						{:else if events.length === 0}
 							<div class="p-3 text-xs text-muted-foreground">No activity yet.</div>
@@ -679,7 +683,10 @@
 							class="w-full sm:w-auto"
 						>
 							{#if openingChat}
-								<LoaderCircle class="h-4 w-4 animate-spin" />
+								<LoaderCircle
+									class="h-4 w-4 animate-spin motion-reduce:animate-none"
+									aria-hidden="true"
+								/>
 								Opening…
 							{:else}
 								<MessageSquare class="h-4 w-4" />
@@ -717,7 +724,10 @@
 							class="w-full sm:w-auto"
 						>
 							{#if openingChat}
-								<LoaderCircle class="h-4 w-4 animate-spin" />
+								<LoaderCircle
+									class="h-4 w-4 animate-spin motion-reduce:animate-none"
+									aria-hidden="true"
+								/>
 								Opening…
 							{:else}
 								<MessageSquare class="h-4 w-4" />

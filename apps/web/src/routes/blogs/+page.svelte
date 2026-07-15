@@ -87,8 +87,7 @@
 		return haystack.includes(query);
 	}
 
-	// Writable derived state stays editable locally and resets from the URL whenever navigation changes it.
-	let searchQuery = $derived(page.url.searchParams.get('q')?.trim() ?? '');
+	let searchQuery = $state('');
 	let normalizedSearchQuery = $derived(searchQuery.trim().toLowerCase());
 	let hasActiveSearch = $derived(normalizedSearchQuery.length > 0);
 
@@ -128,6 +127,12 @@
 			'</' +
 			'script>'
 	);
+
+	// URL search params are request-specific, so only read them after the prerendered page hydrates.
+	// The effect also resets a local search draft when client-side navigation changes the URL.
+	$effect(() => {
+		searchQuery = page.url.searchParams.get('q')?.trim() ?? '';
+	});
 </script>
 
 <svelte:head>

@@ -260,7 +260,7 @@
 			<div class="flex items-center gap-1">
 				<button
 					type="button"
-					class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+					class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					title={activeTab === 'runs' ? 'Start work' : 'New automation'}
 					aria-label={activeTab === 'runs' ? 'Start work' : 'New automation'}
 					onclick={() =>
@@ -270,7 +270,7 @@
 				</button>
 				<button
 					type="button"
-					class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+					class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					title="Refresh"
 					aria-label="Refresh agent work"
 					onclick={refreshCurrentTab}
@@ -283,7 +283,7 @@
 				</button>
 				<button
 					type="button"
-					class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+					class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					title="Close"
 					aria-label="Close agent work"
 					onclick={closePanel}
@@ -300,7 +300,7 @@
 				<div class="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1">
 					<button
 						type="button"
-						class="inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors {activeTab ===
+						class="inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none {activeTab ===
 						'runs'
 							? 'bg-card text-foreground shadow-ink'
 							: 'text-muted-foreground hover:bg-background hover:text-foreground'}"
@@ -312,7 +312,7 @@
 					</button>
 					<button
 						type="button"
-						class="inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors {activeTab ===
+						class="inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none {activeTab ===
 						'operatives'
 							? 'bg-card text-foreground shadow-ink'
 							: 'text-muted-foreground hover:bg-background hover:text-foreground'}"
@@ -343,7 +343,7 @@
 							(run.context_type === 'global' ? 'Workspace' : 'Project')}
 						<button
 							type="button"
-							class="min-h-11 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-left transition-shadow hover:shadow-ink"
+							class="min-h-11 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-left transition-shadow hover:shadow-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 							aria-label={`Open ${projectName}: ${title}. ${agentRunStatusLabel(run.status)}`}
 							onclick={() => (selectedRunId = run.id)}
 						>
@@ -420,12 +420,12 @@
 					<div class="space-y-1.5">
 						{#each operatives as operative (operative.id)}
 							<div
-								class="rounded-lg border border-border bg-background px-3 py-2 transition-shadow hover:shadow-ink"
+								class="rounded-lg border border-border bg-background px-3 py-2 transition-shadow hover:shadow-ink motion-reduce:transition-none"
 							>
 								<div class="flex items-start gap-2">
 									<button
 										type="button"
-										class="min-w-0 flex-1 text-left"
+										class="min-w-0 flex-1 rounded-md text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 										onclick={() => openEditOperative(operative)}
 									>
 										<div class="flex min-w-0 items-center gap-2">
@@ -466,7 +466,7 @@
 									<div class="flex flex-shrink-0 items-center gap-0.5">
 										<button
 											type="button"
-											class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+											class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 											title="Start"
 											aria-label={`Start ${operative.label}`}
 											disabled={Boolean(
@@ -484,7 +484,7 @@
 										</button>
 										<button
 											type="button"
-											class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+											class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 											title="Edit"
 											aria-label={`Edit ${operative.label}`}
 											onclick={() => openEditOperative(operative)}
@@ -493,7 +493,7 @@
 										</button>
 										<button
 											type="button"
-											class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+											class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 											title="Delete"
 											aria-label={`Delete ${operative.label}`}
 											disabled={Boolean(

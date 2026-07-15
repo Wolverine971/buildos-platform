@@ -20,6 +20,12 @@ import { generateProjectNextStep } from '$lib/services/next-step-generation.serv
 import { logOntologyApiError } from '../../../../shared/error-logging';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
+// This endpoint invokes an LLM and can legitimately take longer than the
+// adapter's 10-second default function duration.
+export const config = {
+	maxDuration: 60
+};
+
 export const POST: RequestHandler = async ({ params, locals }) => {
 	try {
 		const { user } = await locals.safeGetSession();

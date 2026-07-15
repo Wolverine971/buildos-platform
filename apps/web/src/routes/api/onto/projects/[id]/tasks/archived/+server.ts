@@ -44,6 +44,7 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			.eq('project_id', projectId)
 			.not('deleted_at', 'is', null)
 			.order('deleted_at', { ascending: false })
+			.order('id', { ascending: true })
 			.range(offset, offset + limit - 1);
 
 		if (rowsError) {

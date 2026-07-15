@@ -2,6 +2,23 @@
 	"$schema": "https://openapi.vercel.sh/vercel.json",
 	"installCommand": "pnpm install --frozen-lockfile",
 	"buildCommand": "turbo build --filter=@buildos/web...",
+	"redirects": [
+		{
+			"source": "/apple-touch-icon-120x120.png",
+			"destination": "/AppImages/ios/120.png",
+			"permanent": true
+		},
+		{
+			"source": "/apple-touch-icon-120x120-precomposed.png",
+			"destination": "/AppImages/ios/120.png",
+			"permanent": true
+		},
+		{
+			"source": "/sitemap_index.xml",
+			"destination": "/sitemap.xml",
+			"permanent": true
+		}
+	],
 	"crons": [
 		{
 			"path": "/api/cron/dunning",

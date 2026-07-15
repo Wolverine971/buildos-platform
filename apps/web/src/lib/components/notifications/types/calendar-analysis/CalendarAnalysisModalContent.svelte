@@ -4,7 +4,7 @@
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { LoaderCircle, X, ChevronDown } from 'lucide-svelte';
+	import { LoaderCircle, X, ChevronDown } from '$lib/icons/lucide';
 	import { notificationStore } from '$lib/stores/notification.store';
 	import CalendarAnalysisResults from '$lib/components/calendar/CalendarAnalysisResults.svelte';
 	import type { CalendarAnalysisNotification } from '$lib/types/notification.types';
@@ -55,7 +55,7 @@
 			<div
 				class="flex justify-between items-center px-3 py-2 border-b border-border bg-muted/50"
 			>
-				<h2 class="text-sm font-semibold text-foreground">Analyzing Calendar</h2>
+				<h2 class="text-sm font-semibold text-foreground">Analyzing calendar</h2>
 				<div class="flex items-center gap-2">
 					<Button
 						variant="ghost"
@@ -77,7 +77,10 @@
 
 		{#snippet children()}
 			<div class="flex flex-col items-center gap-3 px-4 py-6 text-center tx tx-grain tx-weak">
-				<LoaderCircle class="h-8 w-8 animate-spin text-accent" />
+				<LoaderCircle
+					class="h-8 w-8 animate-spin text-accent motion-reduce:animate-none"
+					aria-hidden="true"
+				/>
 				<p class="text-sm text-foreground">{progressMessage}</p>
 				<p class="text-sm text-muted-foreground">
 					You can minimize this window and continue working. We'll keep the results in the
@@ -102,7 +105,7 @@
 			<div
 				class="flex justify-between items-center px-3 py-2 border-b border-border bg-muted/50"
 			>
-				<h2 class="text-sm font-semibold text-foreground">Calendar Analysis Results</h2>
+				<h2 class="text-sm font-semibold text-foreground">Calendar analysis results</h2>
 				<div class="flex items-center gap-2">
 					<Button
 						variant="ghost"

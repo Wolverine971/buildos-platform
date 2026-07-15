@@ -3,7 +3,7 @@
 
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
-	import { LoaderCircle, AlertCircle, CheckCircle, Calendar, Clock, X } from 'lucide-svelte';
+	import { LoaderCircle, AlertCircle, CheckCircle, Calendar, Clock, X } from '$lib/icons/lucide';
 	import type { TimeBlockNotification } from '$lib/types/notification.types';
 	import { format } from 'date-fns';
 	import Button from '$components/ui/Button.svelte';
@@ -26,7 +26,7 @@
 
 	let formattedTime = $derived(
 		notification.data.startTime && notification.data.endTime
-			? `${format(new Date(notification.data.startTime), 'h:mm a')} - ${format(
+			? `${format(new Date(notification.data.startTime), 'h:mm a')} – ${format(
 					new Date(notification.data.endTime),
 					'h:mm a'
 				)}`
@@ -57,7 +57,7 @@
 		if (status === 'processing') {
 			return {
 				icon: LoaderCircle,
-				iconClass: 'w-6 h-6 text-accent animate-spin',
+				iconClass: 'h-6 w-6 shrink-0 animate-spin text-accent motion-reduce:animate-none',
 				message:
 					notification.data.suggestionsState?.progress ?? 'Generating AI suggestions...'
 			};
@@ -65,20 +65,27 @@
 		if (status === 'warning') {
 			return {
 				icon: AlertCircle,
-				iconClass: 'w-6 h-6 text-warning',
+				iconClass: 'h-6 w-6 shrink-0 text-warning',
 				message: 'AI suggestions unavailable. Time block created successfully.'
 			};
 		}
 		if (status === 'success') {
 			return {
 				icon: CheckCircle,
-				iconClass: 'w-6 h-6 text-success',
-				message: 'Suggestions ready!'
+				iconClass: 'h-6 w-6 shrink-0 text-success',
+				message: 'Suggestions are ready.'
+			};
+		}
+		if (status === 'error') {
+			return {
+				icon: AlertCircle,
+				iconClass: 'h-6 w-6 shrink-0 text-destructive',
+				message: 'The time block could not be created.'
 			};
 		}
 		return {
 			icon: Clock,
-			iconClass: 'w-6 h-6 text-muted-foreground',
+			iconClass: 'h-6 w-6 shrink-0 text-muted-foreground',
 			message: ''
 		};
 	});
@@ -113,20 +120,22 @@
 	onClose={handleClose}
 	size="lg"
 	showCloseButton={true}
-	title="Time Block Suggestions"
+	title="Time block suggestions"
 	closeOnBackdrop={true}
 >
 	{#snippet header()}
 		{@const StatusIcon = statusCopy.icon}
 		<div class="flex items-center gap-3 px-6 py-4 border-b">
-			{#if StatusIcon}
-				<StatusIcon class={statusCopy.iconClass} />
-			{/if}
+			<div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted/60">
+				{#if StatusIcon}
+					<StatusIcon class={statusCopy.iconClass} aria-hidden="true" />
+				{/if}
+			</div>
 			<div class="flex-1">
 				<h2 class="text-xl font-semibold text-foreground">
 					{notification.data.blockType === 'project'
-						? 'Project Time Block'
-						: 'Build Block'}
+						? 'Project time block'
+						: 'Build block'}
 				</h2>
 				{#if statusCopy.message}
 					<p class="text-sm text-muted-foreground mt-1">
@@ -139,7 +148,7 @@
 				variant="ghost"
 				size="sm"
 				icon={X}
-				class="!p-2 flex-shrink-0"
+				class="shrink-0"
 				aria-label="Close dialog"
 			/>
 		</div>
@@ -155,7 +164,7 @@
 				<div class="p-4 bg-muted rounded-lg space-y-2">
 					{#if formattedTime}
 						<div class="flex items-center text-sm text-foreground">
-							<Clock class="w-4 h-4 mr-2" />
+							<Clock class="mr-2 h-4 w-4 shrink-0" aria-hidden="true" />
 							{formattedTime}
 							{#if durationText}
 								<span class="ml-2 text-muted-foreground">({durationText})</span>
@@ -175,11 +184,11 @@
 			{#if status === 'success' && notification.data.suggestions?.length}
 				<div class="space-y-4">
 					<div>
-						<h4 class="text-sm font-medium text-foreground mb-3">AI Suggested Tasks</h4>
+						<h4 class="text-sm font-medium text-foreground mb-3">AI-suggested tasks</h4>
 
 						<div class="space-y-3">
-							{#each notification.data.suggestions as suggestion, index}
-								<div class="p-3 bg-card border border-border rounded">
+							{#each notification.data.suggestions as suggestion, index (suggestion.task_id ?? suggestion)}
+								<div class="rounded-lg border border-border bg-card p-3">
 									<div class="text-sm font-medium text-foreground">
 										{index + 1}. {suggestion.title}
 									</div>
@@ -195,7 +204,7 @@
 											<span>{suggestion.estimated_minutes} min</span>
 										{/if}
 										{#if suggestion.priority}
-											<span class="px-2 py-0.5 bg-muted rounded">
+											<span class="rounded-full bg-muted px-2 py-0.5">
 												{suggestion.priority}
 											</span>
 										{/if}
@@ -211,7 +220,9 @@
 					</div>
 
 					{#if notification.data.suggestionsSummary}
-						<div class="p-3 bg-info/10 border border-info/30 rounded text-sm text-info">
+						<div
+							class="rounded-lg border border-info/30 bg-info/10 p-3 text-sm text-info"
+						>
 							{notification.data.suggestionsSummary}
 						</div>
 					{/if}
@@ -220,7 +231,7 @@
 
 			{#if status === 'warning' && !notification.data.suggestions?.length}
 				<div class="flex items-center text-warning">
-					<AlertCircle class="w-5 h-5 mr-2" />
+					<AlertCircle class="mr-2 h-5 w-5 shrink-0" aria-hidden="true" />
 					<span class="text-sm">
 						AI suggestions unavailable. Your time block was still created successfully.
 					</span>
@@ -229,7 +240,10 @@
 
 			{#if status === 'processing'}
 				<div class="flex items-center text-accent">
-					<LoaderCircle class="w-5 h-5 mr-2 animate-spin" />
+					<LoaderCircle
+						class="mr-2 h-5 w-5 shrink-0 animate-spin motion-reduce:animate-none"
+						aria-hidden="true"
+					/>
 					<span class="text-sm">
 						{notification.data.suggestionsState?.progress ??
 							'Generating AI suggestions...'}
@@ -237,15 +251,25 @@
 				</div>
 			{/if}
 
+			{#if status === 'error'}
+				<div
+					class="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+				>
+					{notification.data.error ?? 'The time block could not be created.'}
+				</div>
+			{/if}
+
 			{#if notification.data.calendarEventLink}
 				<div class="flex gap-2 pt-2">
-					<button
+					<Button
 						onclick={handleOpenCalendar}
-						class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded hover:bg-accent/90 transition-colors"
+						variant="primary"
+						size="md"
+						icon={Calendar}
+						class="flex-1"
 					>
-						<Calendar class="w-4 h-4" />
 						Open in Google Calendar
-					</button>
+					</Button>
 				</div>
 			{/if}
 		</div>

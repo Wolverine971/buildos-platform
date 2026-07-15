@@ -40,7 +40,7 @@ describe('chat-session-notification.bridge', () => {
 		vi.useRealTimers();
 	});
 
-	it('parks an idle chat as an idle card without scheduling a probe', () => {
+	it('parks an idle chat as an idle card without scheduling a probe', async () => {
 		const fetchMock = vi.fn();
 		vi.stubGlobal('fetch', fetchMock);
 
@@ -58,7 +58,7 @@ describe('chat-session-notification.bridge', () => {
 		expect(cards[0].status).toBe('idle');
 		expect(cards[0].data.title).toBe('Morning planning');
 		expect(cards[0].data.contextLabel).toBe('Workspace');
-		expect(vi.getTimerCount()).toBe(0);
+		await vi.advanceTimersByTimeAsync(60_000);
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
 

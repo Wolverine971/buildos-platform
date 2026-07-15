@@ -190,14 +190,14 @@
 		<div class="flex flex-wrap items-center justify-end gap-1">
 			<button
 				type="button"
-				class="inline-flex min-h-[44px] items-center rounded-md px-2 text-xs font-medium text-muted-foreground underline transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60"
+				class="inline-flex min-h-11 items-center rounded-md px-2 text-xs font-medium text-muted-foreground underline transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60"
 				onclick={() => setAll('approved')}
 				disabled={applying}>{approveAllLabel} all</button
 			>
 			<span class="text-xs text-muted-foreground" aria-hidden="true">·</span>
 			<button
 				type="button"
-				class="inline-flex min-h-[44px] items-center rounded-md px-2 text-xs font-medium text-muted-foreground underline transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60"
+				class="inline-flex min-h-11 items-center rounded-md px-2 text-xs font-medium text-muted-foreground underline transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60"
 				onclick={() => setAll('rejected')}
 				disabled={applying}>{rejectAllLabel} all</button
 			>
@@ -223,14 +223,14 @@
 						>
 					</div>
 					<div
-						class="inline-flex min-h-[44px] overflow-hidden rounded-md border border-border"
+						class="inline-flex min-h-11 overflow-hidden rounded-md border border-border"
 					>
 						<button
 							type="button"
 							onclick={() => setDecision(change.id, 'approved')}
 							disabled={applying}
 							aria-pressed={!rejected}
-							class="inline-flex min-h-[44px] min-w-[44px] flex-1 items-center justify-center gap-1 px-3 text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none {rejected
+							class="inline-flex min-h-11 min-w-11 flex-1 items-center justify-center gap-1 px-3 text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none {rejected
 								? 'text-muted-foreground hover:bg-muted'
 								: 'bg-success/10 text-success'}"
 						>
@@ -242,7 +242,7 @@
 							onclick={() => setDecision(change.id, 'rejected')}
 							disabled={applying}
 							aria-pressed={rejected}
-							class="inline-flex min-h-[44px] min-w-[44px] flex-1 items-center justify-center gap-1 border-l border-border px-3 text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none {rejected
+							class="inline-flex min-h-11 min-w-11 flex-1 items-center justify-center gap-1 border-l border-border px-3 text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none {rejected
 								? 'bg-muted text-foreground'
 								: 'text-muted-foreground hover:bg-muted'}"
 						>

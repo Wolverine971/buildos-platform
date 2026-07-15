@@ -48,6 +48,12 @@ describe('error observability filters', () => {
 		expect(isIgnorableProbePath('/_nuxt/builds/latest.json')).toBe(true);
 		expect(isIgnorableProbePath('/manifest.webmanifest')).toBe(true);
 		expect(isIgnorableProbePath('/feed.xml')).toBe(true);
+		expect(isIgnorableProbePath('/sitemap_index.xml')).toBe(true);
+		expect(isIgnorableProbePath('/rss/news.xml')).toBe(true);
+		expect(isIgnorableProbePath('/meta.json')).toBe(true);
+		expect(isIgnorableProbePath('/administrator/manifests/files/joomla.xml')).toBe(true);
+		expect(isIgnorableProbePath('/language/en-GB/install.xml')).toBe(true);
+		expect(isIgnorableProbePath('/media/system/js/core.js')).toBe(true);
 		expect(isIgnorableProbePath('/.well-known/security.txt')).toBe(true);
 		expect(isIgnorableProbePath('/humans.txt')).toBe(true);
 		expect(isIgnorableProbePath('/security.txt')).toBe(true);
@@ -61,6 +67,7 @@ describe('error observability filters', () => {
 		expect(isIgnorableProbePath('/api/client_secret.json')).toBe(true);
 		expect(isIgnorableProbePath('/.openclaw/agents/main/agent/models.json')).toBe(true);
 		expect(isIgnorableProbePath('/brain-bolt-80.png')).toBe(false);
+		expect(isIgnorableProbePath('/media/system/js/core.css')).toBe(false);
 		expect(isIgnorableProbePath('/site.webmanifest')).toBe(false);
 		expect(isIgnorableProbePath('/openapi.json')).toBe(false);
 	});

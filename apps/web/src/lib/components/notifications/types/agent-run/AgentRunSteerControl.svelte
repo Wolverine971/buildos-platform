@@ -97,7 +97,7 @@
 		<div class="flex flex-wrap gap-1.5">
 			{#each pending as chip (chip.id)}
 				<span
-					class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] {isApplied(
+					class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs {isApplied(
 						chip.message
 					)
 						? 'bg-success/10 text-success'

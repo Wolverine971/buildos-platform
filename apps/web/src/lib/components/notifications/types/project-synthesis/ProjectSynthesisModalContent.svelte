@@ -146,7 +146,10 @@
 							{:else if notification.status === 'error'}
 								<AlertCircle class={`h-6 w-6 ${statusIconClasses}`} />
 							{:else}
-								<LoaderCircle class={`h-6 w-6 animate-spin ${statusIconClasses}`} />
+								<LoaderCircle
+									class={`h-6 w-6 animate-spin motion-reduce:animate-none ${statusIconClasses}`}
+									aria-hidden="true"
+								/>
 							{/if}
 						</div>
 						<div class="flex-1 min-w-[200px] space-y-1">
@@ -184,7 +187,7 @@
 				<section class="rounded-lg border border-border bg-muted/50 p-4">
 					<h3 class="micro-label mb-3 text-foreground">Configuration</h3>
 					<div class="flex flex-wrap gap-2">
-						{#each notification.data.selectedModules as module}
+						{#each notification.data.selectedModules as module (module)}
 							{@const meta = MODULE_METADATA[module]}
 							<div
 								class="flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent"
@@ -230,7 +233,10 @@
 										{#if step.status === 'completed'}
 											<CheckCircle class="h-4 w-4" />
 										{:else if step.status === 'processing'}
-											<LoaderCircle class="h-4 w-4 animate-spin" />
+											<LoaderCircle
+												class="h-4 w-4 animate-spin motion-reduce:animate-none"
+												aria-hidden="true"
+											/>
 										{:else if step.status === 'error'}
 											<AlertCircle class="h-4 w-4" />
 										{:else}
@@ -332,11 +338,11 @@
 							</h3>
 
 							<div class="space-y-3">
-								{#each result.comparison.slice(0, 3) as item}
+								{#each result.comparison.slice(0, 3) as item (item)}
 									<div class="rounded-lg border border-border bg-muted/50 p-3">
 										<div class="flex items-start gap-2 mb-2">
 											<span
-												class={`px-2 py-0.5 rounded text-xs font-medium ${
+												class={`rounded-full px-2 py-0.5 text-xs font-medium ${
 													item.type === 'consolidated'
 														? 'bg-info/10 text-info'
 														: item.type === 'suggested'

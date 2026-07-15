@@ -10,6 +10,7 @@
 	 */
 
 	import { fly } from 'svelte/transition';
+	import { prefersReducedMotion } from 'svelte/motion';
 	import type { Notification } from '$lib/types/notification.types';
 	import Button from '$lib/components/ui/Button.svelte';
 	import MinimizedNotification from './MinimizedNotification.svelte';
@@ -35,6 +36,10 @@
 	$effect(() => {
 		if (stack.length <= MAX_VISIBLE && showAll) showAll = false;
 	});
+
+	function stackMotion(): { y: number; duration: number } {
+		return prefersReducedMotion.current ? { y: 0, duration: 0 } : { y: 20, duration: 180 };
+	}
 </script>
 
 {#if visibleStack.length > 0 || hiddenCount > 0}
@@ -70,7 +75,7 @@
 		{#each visibleStack as notificationId (notificationId)}
 			{@const notification = notifications.get(notificationId)}
 			{#if notification && notificationId !== expandedId}
-				<div transition:fly={{ y: 20, duration: 300 }}>
+				<div transition:fly={stackMotion()}>
 					<MinimizedNotification {notification} />
 				</div>
 			{/if}

@@ -111,6 +111,11 @@
 							? 'Time Block Suggestions'
 							: 'Processing'
 	);
+	let progressPercentage = $derived.by(() => {
+		if (notification.progress?.type !== 'percentage') return 0;
+		const percentage = notification.progress.percentage;
+		return Number.isFinite(percentage) ? Math.min(100, Math.max(0, percentage)) : 0;
+	});
 
 	// Handle minimize (for ongoing processing)
 	function handleMinimize() {
@@ -163,6 +168,7 @@
 						<div class="text-center py-8">
 							<LoaderCircle
 								class="w-12 h-12 text-accent animate-spin motion-reduce:animate-none mx-auto mb-4"
+								aria-hidden="true"
 							/>
 							<p class="text-muted-foreground">
 								{notification.progress?.message || 'Processing...'}
@@ -173,12 +179,12 @@
 								<div class="mt-4 max-w-md mx-auto">
 									<div class="h-2 bg-muted rounded-full overflow-hidden">
 										<div
-											class="h-full bg-accent transition-all duration-300"
-											style="width: {notification.progress.percentage}%"
+											class="h-full bg-accent transition-all duration-300 motion-reduce:transition-none"
+											style="width: {progressPercentage}%"
 										></div>
 									</div>
 									<p class="text-sm text-muted-foreground mt-2">
-										{notification.progress.percentage}%
+										{progressPercentage}%
 									</p>
 								</div>
 							{/if}
@@ -186,7 +192,7 @@
 							<!-- Step-based progress -->
 							{#if notification.progress?.type === 'steps'}
 								<div class="mt-6 space-y-2 max-w-md mx-auto">
-									{#each notification.progress.steps as step, index}
+									{#each notification.progress.steps as step (step.key ?? step)}
 										<div class="flex items-center gap-3">
 											<div
 												class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center
@@ -199,13 +205,20 @@
 															: 'bg-muted'}"
 											>
 												{#if step.status === 'completed'}
-													<CircleCheck class="w-4 h-4 text-accent" />
+													<CircleCheck
+														class="w-4 h-4 text-accent"
+														aria-hidden="true"
+													/>
 												{:else if step.status === 'processing'}
 													<LoaderCircle
 														class="w-4 h-4 text-accent animate-spin motion-reduce:animate-none"
+														aria-hidden="true"
 													/>
 												{:else if step.status === 'error'}
-													<AlertCircle class="w-4 h-4 text-destructive" />
+													<AlertCircle
+														class="w-4 h-4 text-destructive"
+														aria-hidden="true"
+													/>
 												{:else}
 													<div
 														class="w-2 h-2 bg-muted-foreground rounded-full"
@@ -225,8 +238,11 @@
 						</div>
 					{:else if notification.status === 'success'}
 						<div class="text-center py-8">
-							<CircleCheck class="w-16 h-16 text-accent mx-auto mb-4" />
-							<h3 class="text-lg font-semibold text-foreground mb-2">Success!</h3>
+							<CircleCheck
+								class="w-16 h-16 text-accent mx-auto mb-4"
+								aria-hidden="true"
+							/>
+							<h3 class="text-lg font-semibold text-foreground mb-2">All set</h3>
 							<p class="text-muted-foreground">
 								{notification.type === 'calendar-analysis'
 									? 'Calendar analyzed successfully'
@@ -237,8 +253,13 @@
 						</div>
 					{:else if notification.status === 'error'}
 						<div class="text-center py-8">
-							<AlertCircle class="w-16 h-16 text-destructive mx-auto mb-4" />
-							<h3 class="text-lg font-semibold text-foreground mb-2">Error</h3>
+							<AlertCircle
+								class="w-16 h-16 text-destructive mx-auto mb-4"
+								aria-hidden="true"
+							/>
+							<h3 class="text-lg font-semibold text-foreground mb-2">
+								Something went wrong
+							</h3>
 							<p class="text-destructive">
 								{notification.type === 'calendar-analysis'
 									? notification.data?.error || 'Calendar analysis failed'
