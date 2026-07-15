@@ -98,6 +98,8 @@ describe('NotificationModal fallback close behavior', () => {
 		render(NotificationModal, { props: { notification: item } });
 
 		expect(await screen.findByText('100%')).toBeInTheDocument();
-		expect(document.querySelector('[style*="width: 100%"]')).toBeInTheDocument();
+		const progressbar = screen.getByRole('progressbar', { name: 'Progress' });
+		expect(progressbar).toHaveAttribute('aria-valuenow', '100');
+		expect(progressbar).toHaveStyle({ width: '100%' });
 	});
 });

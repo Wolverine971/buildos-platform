@@ -117,7 +117,40 @@
 			? 'text-success'
 			: notification.status === 'error'
 				? 'text-destructive'
-				: 'text-info'
+				: notification.status === 'warning'
+					? 'text-warning'
+					: notification.status === 'cancelled'
+						? 'text-muted-foreground'
+						: 'text-info'
+	);
+	const statusIconSurfaceClasses = $derived(
+		notification.status === 'success'
+			? 'bg-success/10'
+			: notification.status === 'error'
+				? 'bg-destructive/10'
+				: notification.status === 'warning'
+					? 'bg-warning/10'
+					: notification.status === 'cancelled'
+						? 'bg-muted'
+						: 'bg-info/10'
+	);
+	const statusHeading = $derived(
+		notification.status === 'success'
+			? 'Synthesis complete'
+			: notification.status === 'error'
+				? 'Synthesis failed'
+				: notification.status === 'warning'
+					? 'Synthesis completed with warnings'
+					: notification.status === 'cancelled'
+						? 'Synthesis cancelled'
+						: 'Analyzing tasks'
+	);
+	const taskCountCopy = $derived(
+		`${notification.data.taskCount} task${notification.data.taskCount === 1 ? '' : 's'} ${
+			notification.status === 'success' || notification.status === 'warning'
+				? 'analyzed'
+				: 'in this run'
+		}`
 	);
 
 	const showRetry = $derived(notification.status === 'error');
@@ -139,11 +172,11 @@
 				<section class="rounded-lg border border-border bg-card p-4 shadow-ink/70 sm:p-6">
 					<div class="flex flex-wrap items-center gap-3">
 						<div
-							class="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10"
+							class="flex h-12 w-12 items-center justify-center rounded-full {statusIconSurfaceClasses}"
 						>
 							{#if notification.status === 'success'}
 								<CheckCircle class={`h-6 w-6 ${statusIconClasses}`} />
-							{:else if notification.status === 'error'}
+							{:else if notification.status === 'error' || notification.status === 'warning' || notification.status === 'cancelled'}
 								<AlertCircle class={`h-6 w-6 ${statusIconClasses}`} />
 							{:else}
 								<LoaderCircle
@@ -152,17 +185,12 @@
 								/>
 							{/if}
 						</div>
-						<div class="flex-1 min-w-[200px] space-y-1">
+						<div class="flex-1 min-w-[200px] space-y-1" aria-live="polite">
 							<h2 class="text-lg font-semibold text-foreground">
-								{notification.status === 'success'
-									? 'Synthesis Complete'
-									: 'Analyzing Tasks'}
+								{statusHeading}
 							</h2>
 							<p class="text-sm text-muted-foreground">
-								{notification.data.taskCount} task{notification.data.taskCount === 1
-									? ''
-									: 's'}
-								analyzed
+								{taskCountCopy}
 							</p>
 						</div>
 

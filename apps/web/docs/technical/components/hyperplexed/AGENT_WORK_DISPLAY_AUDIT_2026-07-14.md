@@ -65,12 +65,14 @@ unknown event types.
 4. Replace the remaining hand-rolled Work panel overlay with the shared modal/drawer accessibility
    contract: focus trap, Escape close, scroll lock, focus restore, and inert background. (P13)
 
-## Tier 3 — polish backlog
+## Tier 3 — shipped 2026-07-15
 
 1. Route remaining touched-surface icons through `$lib/icons/lucide` and remove decorative motion when
    reduced motion is requested. (P9, P11)
 2. Normalize radius, micro-type, and compact icon-button treatment across older notification families.
    (P2, P5)
+3. Harden legacy modal states: accessible names for custom-header dialogs, accurate terminal-state
+   headings, one non-duplicated status message, and semantic percentage progress. (P4, P6, P13)
 
 ## Implementation status
 
@@ -85,10 +87,15 @@ unknown event types.
   existing non-default automation settings auto-expand. The current forms have no model selector, so
   this pass did not invent one. The Work panel now uses the shared modal stack for focus trapping,
   Escape, scroll lock, focus restoration, background inerting, and nested dialogs.
-- Tier 3: recorded for a later polish pass.
-- Verification: 41 focused tests pass across 13 suites; full web `svelte-check` reports 0 errors and
-  0 warnings; the Svelte autofixer reports no component issues; targeted Prettier and diff checks
-  are clean.
+- Tier 3: shipped. Remaining touched-surface icons use the wrapper; continuous motion and transitions
+  respect reduced motion; notification radii, micro-type, fixed icon boxes, focus rings, and 44 px
+  controls follow the Inkprint recipes. The self-review also fixed unnamed custom-header dialogs,
+  contradictory project-synthesis failure copy, duplicate time-block status content, and percentage
+  progress semantics.
+- Verification: 46 focused tests pass across 15 suites; full web `svelte-check` reports 0 errors and
+  0 warnings; touched-file ESLint, Lucide wrapper guardrails, targeted Prettier, diff checks, and the
+  Tier 3 inconsistency scan are clean. The external Svelte autofixer was not rerun for Tier 3 because
+  it requires transmitting local component source; the safe local verification path was used instead.
 - Verification owed: authenticated desktop and phone light/dark screenshots for the Work panel,
   expanded agent work, parked chat, project inbox, legacy cards, forms, and notification history.
   The 2026-07-14 regression pass tried both available local browser sessions, but neither had an

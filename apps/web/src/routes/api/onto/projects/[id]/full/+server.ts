@@ -44,6 +44,7 @@ interface ProjectFullData {
 	requirements?: unknown[];
 	plans?: unknown[];
 	tasks?: unknown[];
+	pulse_tasks?: unknown[];
 	tasks_coverage?: ProjectTasksCoverage;
 	documents?: unknown[];
 	images?: unknown[];
@@ -120,15 +121,9 @@ const CONTEXT_DOCUMENT_FALLBACK_COLUMNS = [
 ].join(',');
 
 const CONTEXT_DOCUMENT_METADATA_COLUMNS = [
-	'archived_at',
-	'children',
 	'created_at',
-	'created_by',
-	'deleted_at',
 	'description',
 	'id',
-	'project_id',
-	'props',
 	'state_key',
 	'title',
 	'type_key',
@@ -386,7 +381,11 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 				? { tasks: rawTasks, coverage: data.tasks_coverage }
 				: buildInitialProjectTaskWindow(rawTasks)
 			: { tasks: rawTasks, coverage: createCompleteProjectTasksCoverage(rawTasks) };
-		const pulseTasks = isV2InitialProfile ? selectProjectPulseTasks(rawTasks) : rawTasks;
+		const pulseTasks = isV2InitialProfile
+			? Array.isArray(data.pulse_tasks)
+				? (data.pulse_tasks as Task[])
+				: selectProjectPulseTasks(rawTasks)
+			: rawTasks;
 		const goalMilestoneEdges = (data.goal_milestone_edges ?? []) as GoalMilestoneEdge[];
 		// Task assignees and last-changed-by actor maps are now baked into the
 		// RPC response (migration 20260501000002), eliminating two extra DB
@@ -515,6 +514,8 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 						plans: arrayLength(data.plans),
 						tasks_source: arrayLength(data.tasks),
 						tasks_returned: taskWindow.tasks.length,
+						tasks_total: taskWindow.coverage.total,
+						pulse_tasks: pulseTasks.length,
 						documents: arrayLength(data.documents),
 						milestones: arrayLength(data.milestones),
 						risks: arrayLength(data.risks),

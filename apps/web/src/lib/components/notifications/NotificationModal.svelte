@@ -114,7 +114,7 @@
 	let progressPercentage = $derived.by(() => {
 		if (notification.progress?.type !== 'percentage') return 0;
 		const percentage = notification.progress.percentage;
-		return Number.isFinite(percentage) ? Math.min(100, Math.max(0, percentage)) : 0;
+		return Number.isFinite(percentage) ? Math.round(Math.min(100, Math.max(0, percentage))) : 0;
 	});
 
 	// Handle minimize (for ongoing processing)
@@ -170,7 +170,7 @@
 								class="w-12 h-12 text-accent animate-spin motion-reduce:animate-none mx-auto mb-4"
 								aria-hidden="true"
 							/>
-							<p class="text-muted-foreground">
+							<p class="text-muted-foreground" aria-live="polite">
 								{notification.progress?.message || 'Processing...'}
 							</p>
 
@@ -179,6 +179,11 @@
 								<div class="mt-4 max-w-md mx-auto">
 									<div class="h-2 bg-muted rounded-full overflow-hidden">
 										<div
+											role="progressbar"
+											aria-label="Progress"
+											aria-valuemin="0"
+											aria-valuemax="100"
+											aria-valuenow={progressPercentage}
 											class="h-full bg-accent transition-all duration-300 motion-reduce:transition-none"
 											style="width: {progressPercentage}%"
 										></div>

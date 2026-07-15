@@ -296,3 +296,23 @@ request work rather than a universal server-rendering failure.
   `#founder-story` navigation. Title, canonical, description, and JSON-LD remain present.
 - ✅ Touched-file ESLint and Prettier are clean; `pnpm check` passes with 0 errors and 0 warnings;
   the production Vite/Vercel build passes with the repository's known optional Sharp warning.
+
+## Layout integrity follow-up — home and public routes — 2026-07-15
+
+- ✅ The homepage decision-tree rails no longer paint over their `from §02A` / `from §02B`
+  landing labels. The deferred `#loop` and `#agents` wrappers now establish their stacking level
+  above the decorative rail while leaving the rail visible through the surrounding open space. This
+  preserves the measured paint containment instead of removing the performance optimization. → P21
+- ✅ Direct mobile navigation to `/#agents` now re-aligns after the deferred `#loop` section reveals
+  and changes the document geometry. The instant second alignment keeps fragment navigation exact
+  without animated motion. → P11+P21
+- ✅ A public-route layout scan covered home, About, pricing, roadmap, beta, blogs, Skills Gallery,
+  Help, Contact, investors, feedback, privacy, terms, login, and registration at 390×844 and
+  1440×900. Home and Skills Gallery also passed 320, 768, and 1024 widths. Blog clipping findings
+  were the intentional `line-clamp-*` card contracts; no other public-route overflow or fixed-height
+  clipping was found.
+- ✅ The original connector region and the mobile deep-link destination were visually verified in
+  light and dark mode. All checked widths have zero horizontal overflow. Prettier is clean and
+  `pnpm --filter @buildos/web check` reports 0 errors and 0 warnings. The standalone Svelte
+  autofixer could not run because its CLI is not installed locally and sandbox policy rejected an
+  npm download; the repository-native Svelte diagnostics passed cleanly.

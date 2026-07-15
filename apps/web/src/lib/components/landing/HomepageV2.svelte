@@ -87,11 +87,13 @@
 		if (!target) return;
 
 		// Native fragment scrolling runs before deferred sections have stable geometry.
-		// Re-apply it after hydration without introducing animated motion.
+		// Align once to reveal the path, then again after that reveal has settled.
+		const alignTarget = () =>
+			target.scrollIntoView({ block: 'start', behavior: 'instant' as ScrollBehavior });
+
 		requestAnimationFrame(() => {
-			requestAnimationFrame(() =>
-				target.scrollIntoView({ block: 'start', behavior: 'instant' as ScrollBehavior })
-			);
+			alignTarget();
+			requestAnimationFrame(() => requestAnimationFrame(alignTarget));
 		});
 	});
 
@@ -381,7 +383,7 @@
 		<!-- ─── §03 the loop — flow chart for non-AI users (rail enters from §02A above) ── -->
 		<section id="loop" class="border-b border-border">
 			<div
-				class="home-deferred home-deferred-loop mx-auto max-w-7xl space-y-8 px-2 py-12 sm:px-4 sm:py-16 lg:px-6"
+				class="home-deferred home-deferred-loop relative z-[2] mx-auto max-w-7xl space-y-8 px-2 py-12 sm:px-4 sm:py-16 lg:px-6"
 			>
 				<!--
 				  entry marker: dead-center under LEFT rail via grid-mirroring.
@@ -658,7 +660,7 @@
 		<!-- ─── §04 same context — agents at the same project (for §02B readers) ── -->
 		<section id="agents" class="relative border-b border-border bg-card/40">
 			<div
-				class="home-deferred home-deferred-agents mx-auto max-w-7xl space-y-8 px-2 py-12 sm:px-4 sm:py-16 lg:px-6"
+				class="home-deferred home-deferred-agents relative z-[2] mx-auto max-w-7xl space-y-8 px-2 py-12 sm:px-4 sm:py-16 lg:px-6"
 			>
 				<!--
 				  entry marker: lands at the RIGHT rail's terminus (x=90% on lg+).

@@ -45,6 +45,7 @@
 		isOpen={true}
 		onClose={handleClose}
 		title=""
+		ariaLabel="Analyzing calendar"
 		size="md"
 		showCloseButton={false}
 		closeOnBackdrop={true}
@@ -81,7 +82,7 @@
 					class="h-8 w-8 animate-spin text-accent motion-reduce:animate-none"
 					aria-hidden="true"
 				/>
-				<p class="text-sm text-foreground">{progressMessage}</p>
+				<p class="text-sm text-foreground" aria-live="polite">{progressMessage}</p>
 				<p class="text-sm text-muted-foreground">
 					You can minimize this window and continue working. We'll keep the results in the
 					notification tray when they're ready.
@@ -95,6 +96,7 @@
 		isOpen={true}
 		onClose={handleClose}
 		title=""
+		ariaLabel="Calendar analysis results"
 		size="xl"
 		showCloseButton={false}
 		closeOnBackdrop={true}

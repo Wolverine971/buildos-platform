@@ -370,3 +370,22 @@ Scope: Phase 1 user-first gallery shell, Phase 2 user-first skill detail templat
   background and portrait evidence can support a non-thin profile.
 - Keep the ten-name ICP framework lineage as a separate authorship audit; do not turn indirect
   framework mentions into expert profiles without a reviewed-source relationship.
+
+## Mobile Results-Grid Follow-Up — 2026-07-15
+
+### Shipped
+
+- The root gallery results track used an implicit `auto` grid column on phone widths. One card's
+  min-content width expanded the track to roughly 458px inside a 390px viewport; the shared shell
+  hid the overflow, silently clipping controls and badges. The base track now uses
+  `minmax(0, 1fr)`, and the grid, results section, cards, and sidebar carry `min-w-0`. → P1
+
+### Verification
+
+- `/skills` now has zero horizontal overflow, out-of-bounds content, or unexpected fixed-height
+  clipping at 320, 390, 768, 1024, and 1440 widths.
+- Mobile and desktop light/dark checks keep cards, expert chips, metadata, and all three actions
+  inside the result column.
+- Prettier is clean and `pnpm --filter @buildos/web check` reports 0 errors and 0 warnings. The
+  standalone Svelte autofixer was unavailable locally; its attempted npm fetch was rejected by
+  sandbox policy, so repository-native Svelte diagnostics are the validation source for this pass.

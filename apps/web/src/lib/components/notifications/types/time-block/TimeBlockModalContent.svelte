@@ -119,8 +119,8 @@
 	isOpen={true}
 	onClose={handleClose}
 	size="lg"
-	showCloseButton={true}
-	title="Time block suggestions"
+	showCloseButton={false}
+	ariaLabel="Time block suggestions"
 	closeOnBackdrop={true}
 >
 	{#snippet header()}
@@ -138,7 +138,7 @@
 						: 'Build block'}
 				</h2>
 				{#if statusCopy.message}
-					<p class="text-sm text-muted-foreground mt-1">
+					<p class="text-sm text-muted-foreground mt-1" aria-live="polite">
 						{statusCopy.message}
 					</p>
 				{/if}
@@ -226,28 +226,6 @@
 							{notification.data.suggestionsSummary}
 						</div>
 					{/if}
-				</div>
-			{/if}
-
-			{#if status === 'warning' && !notification.data.suggestions?.length}
-				<div class="flex items-center text-warning">
-					<AlertCircle class="mr-2 h-5 w-5 shrink-0" aria-hidden="true" />
-					<span class="text-sm">
-						AI suggestions unavailable. Your time block was still created successfully.
-					</span>
-				</div>
-			{/if}
-
-			{#if status === 'processing'}
-				<div class="flex items-center text-accent">
-					<LoaderCircle
-						class="mr-2 h-5 w-5 shrink-0 animate-spin motion-reduce:animate-none"
-						aria-hidden="true"
-					/>
-					<span class="text-sm">
-						{notification.data.suggestionsState?.progress ??
-							'Generating AI suggestions...'}
-					</span>
 				</div>
 			{/if}
 

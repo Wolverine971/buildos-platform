@@ -201,4 +201,61 @@ describe('GET /api/onto/projects/[id]/full', () => {
 		});
 		expect(event.locals.safeGetSession).not.toHaveBeenCalled();
 	});
+
+	it('preserves RPC-provided task and Pulse windows without recomputing them', async () => {
+		const event = createEvent('?profile=v2-initial');
+		const supabase = event.locals.supabase as any;
+		const boardTask = {
+			id: 'board-task',
+			project_id: PROJECT_ID,
+			title: 'Board task',
+			state_key: 'todo',
+			deleted_at: null,
+			due_at: null,
+			start_at: null,
+			completed_at: null,
+			priority: 1,
+			updated_at: '2026-07-15T12:00:00.000Z'
+		};
+		const pulseOnlyTask = {
+			...boardTask,
+			id: 'pulse-only-task',
+			title: 'Pulse-only task',
+			due_at: '2026-07-16T12:00:00.000Z'
+		};
+		const coverage = {
+			scope: 'initial-board',
+			as_of: '2026-07-15T12:00:00.000Z',
+			complete: false,
+			returned: 1,
+			total: 21,
+			limit_per_bucket: 20,
+			buckets: {
+				backlog: { returned: 1, total: 1, complete: true },
+				in_progress: { returned: 0, total: 0, complete: true },
+				scheduled: { returned: 0, total: 20, complete: false },
+				overdue: { returned: 0, total: 0, complete: true },
+				blocked: { returned: 0, total: 0, complete: true },
+				done: { returned: 0, total: 0, complete: true }
+			}
+		};
+		supabase.rpc.mockResolvedValue({
+			data: projectFullPayload({
+				tasks: [boardTask],
+				pulse_tasks: [pulseOnlyTask],
+				tasks_coverage: coverage
+			}),
+			error: null
+		});
+		listProjectEventsMock.mockResolvedValue([]);
+
+		const response = await GET(event);
+		const payload = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(payload.data.tasks).toHaveLength(1);
+		expect(payload.data.tasks[0]).toMatchObject(boardTask);
+		expect(payload.data.tasks_coverage).toEqual(coverage);
+		expect(payload.data.pulse_tasks).toEqual([pulseOnlyTask]);
+	});
 });

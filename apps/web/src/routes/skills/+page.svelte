@@ -998,8 +998,10 @@
 			</section>
 		{/if}
 
-		<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-			<section aria-labelledby="skill-results">
+		<div
+			class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start"
+		>
+			<section aria-labelledby="skill-results" class="min-w-0">
 				<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 					<div>
 						<p class="micro-label text-accent">Explore</p>
@@ -1013,7 +1015,7 @@
 				</div>
 
 				{#if filteredSkills.length > 0}
-					<div class="grid gap-3 xl:grid-cols-2">
+					<div class="grid min-w-0 gap-3 xl:grid-cols-2">
 						{#each filteredSkills as skill}
 							{@const post = postBySlug.get(skill.slug)}
 							{@const sourceCount = getNumericStat(skill, 'sources')}
@@ -1021,7 +1023,7 @@
 							{@const outputShapes = getOutputShapes(skill)}
 							{@const skillPeople = resolveSkillExperts(skill.lineage_people ?? [])}
 							<article
-								class="flex min-h-[19rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
+								class="flex min-h-[19rem] min-w-0 flex-col rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak"
 							>
 								<div class="flex items-start justify-between gap-3">
 									<div class="flex min-w-0 items-center gap-2">
@@ -1171,7 +1173,7 @@
 				{/if}
 			</section>
 
-			<aside class="space-y-4 lg:sticky lg:top-20">
+			<aside class="min-w-0 space-y-4 lg:sticky lg:top-20">
 				<section
 					aria-labelledby="active-rabbit-hole"
 					class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-thread tx-weak"

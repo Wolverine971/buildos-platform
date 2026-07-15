@@ -1,5 +1,5 @@
 // apps/web/src/lib/services/ontology/doc-structure.service.test.ts
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { DocTreeNode, OntoDocument } from '$lib/types/onto-api';
 import {
 	collectDocIds,
@@ -10,7 +10,8 @@ import {
 	removeNodeFromTreePromoteChildren,
 	insertNodeIntoTree,
 	reorderNodes,
-	enrichTreeNodes
+	enrichTreeNodes,
+	getDocTree
 } from './doc-structure.service';
 
 const baseTree: DocTreeNode[] = [
@@ -123,5 +124,51 @@ describe('enrichTreeNodes', () => {
 		expect(enriched[0].children?.[0].type).toBe('doc');
 		expect(enriched[0].title).toBe('Alpha');
 		expect(enriched[0].children?.[0].title).toBe('Beta');
+	});
+});
+
+describe('getDocTree', () => {
+	it('uses the lean document-tree metadata RPC when content is excluded', async () => {
+		const metadataDocument = {
+			id: 'a',
+			title: 'Alpha',
+			type_key: 'document',
+			state_key: 'draft',
+			description: null,
+			created_at: '2026-01-01T00:00:00Z',
+			updated_at: '2026-01-02T00:00:00Z',
+			has_content: true
+		};
+		const projectQuery = {
+			select: vi.fn(),
+			eq: vi.fn(),
+			single: vi.fn()
+		};
+		projectQuery.select.mockReturnValue(projectQuery);
+		projectQuery.eq.mockReturnValue(projectQuery);
+		projectQuery.single.mockResolvedValue({
+			data: { doc_structure: { version: 1, root: [{ id: 'a', order: 0 }] } },
+			error: null
+		});
+		const supabase = {
+			from: vi.fn((table: string) => {
+				if (table !== 'onto_projects') {
+					throw new Error(`Unexpected table query: ${table}`);
+				}
+				return projectQuery;
+			}),
+			rpc: vi.fn().mockResolvedValue({ data: [metadataDocument], error: null })
+		};
+
+		const result = await getDocTree(supabase as any, 'proj-1', { includeContent: false });
+
+		expect(supabase.rpc).toHaveBeenCalledWith('get_project_document_tree_metadata', {
+			p_project_id: 'proj-1'
+		});
+		expect(supabase.from).toHaveBeenCalledTimes(1);
+		expect(result.documents.a).toEqual(metadataDocument);
+		expect(result.documents.a).not.toHaveProperty('content');
+		expect(result.documents.a).not.toHaveProperty('props');
+		expect(result.documents.a).not.toHaveProperty('children');
 	});
 });

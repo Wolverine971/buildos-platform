@@ -516,16 +516,18 @@ export async function getDocTree(
 		return { structure, documents: {}, unlinked: [], archived: [] };
 	}
 
-	const documentSelect = includeContent
-		? '*'
-		: 'id, project_id, title, type_key, state_key, description, props, children, created_at, updated_at';
-
-	// Fetch all active documents for this project
-	const { data: docs, error: docsError } = await supabase
-		.from('onto_documents')
-		.select(documentSelect)
-		.eq('project_id', projectId)
-		.is('deleted_at', null);
+	// The tree only needs labels, state, timestamps, and whether a body exists.
+	// Keep legacy props/body copies off this hot path; full documents are fetched
+	// by the document endpoint when a user opens one.
+	const { data: docs, error: docsError } = includeContent
+		? await supabase
+				.from('onto_documents')
+				.select('*')
+				.eq('project_id', projectId)
+				.is('deleted_at', null)
+		: await (supabase as any).rpc('get_project_document_tree_metadata', {
+				p_project_id: projectId
+			});
 
 	if (docsError) {
 		throw new Error(`Failed to fetch documents: ${docsError.message}`);
