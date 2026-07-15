@@ -1,0 +1,7 @@
+/*
+ * Browsers normally receive app.css through SvelteKit's root `0.*.css` chunk.
+ * Keep a named, independently loadable copy for clients that block numeric asset
+ * names. The root layout imports this file only when the readiness marker from
+ * app.css is missing.
+ */
+@import './app.css';

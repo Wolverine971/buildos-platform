@@ -776,8 +776,23 @@
 		}
 	}
 
+	async function ensureGlobalStyles() {
+		const stylesReady = getComputedStyle(document.documentElement)
+			.getPropertyValue('--buildos-global-styles-ready')
+			.trim();
+
+		if (stylesReady === '1') return;
+
+		try {
+			await import('../app-fallback.css');
+		} catch (error) {
+			console.error('Failed to load the global style fallback:', error);
+		}
+	}
+
 	onMount(() => {
 		if (!browser) return;
+		void ensureGlobalStyles();
 
 		const analyticsCleanup = initializeBrowserAnalytics();
 		const handleTrackingPreferenceChange = (event: Event) => {
