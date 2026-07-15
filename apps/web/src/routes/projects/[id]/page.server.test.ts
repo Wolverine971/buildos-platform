@@ -29,6 +29,7 @@ type HarnessOptions = {
 	bundleError?: { message: string } | null;
 	access?: BundleAccess;
 	pathname?: string;
+	fullDataResponse?: Response;
 };
 
 function buildDefaultAccess(userId: string | null | undefined): BundleAccess {
@@ -103,10 +104,21 @@ function createHarness(options: HarnessOptions = {}) {
 		.mockResolvedValue(
 			userId ? { user: { id: userId, email: 'test@example.com' } } : { user: null }
 		);
+	const fetch = vi.fn(() => {
+		operations.push('fetch:project-full-v2');
+		return Promise.resolve(
+			options.fullDataResponse ??
+				Response.json({
+					success: true,
+					data: { project: { id: PROJECT_ID, name: 'Project 1' } }
+				})
+		);
+	});
 
 	const event = {
 		params: { id: PROJECT_ID },
 		url: new URL(`https://buildos.test${options.pathname ?? `/projects/${PROJECT_ID}`}`),
+		fetch,
 		locals: {
 			supabase: { rpc, from },
 			safeGetSession,
@@ -125,7 +137,8 @@ function createHarness(options: HarnessOptions = {}) {
 		timingLabels,
 		from,
 		rpc,
-		safeGetSession
+		safeGetSession,
+		fetch
 	};
 }
 
@@ -158,11 +171,34 @@ describe('projects/[id] +page.server load', () => {
 			isAuthenticated: true,
 			currentActorId: 'actor-current'
 		});
-		// New v2 hot path: exactly one count-free DB round-trip.
-		expect(operations).toEqual(['rpc:get_project_skeleton_with_access_v2']);
+		// Access stays on one count-free DB round-trip; full data starts immediately after it.
+		expect(operations).toEqual([
+			'rpc:get_project_skeleton_with_access_v2',
+			'fetch:project-full-v2'
+		]);
+		expect(await result.deferredFullData).toEqual({
+			ok: true,
+			data: { project: { id: PROJECT_ID, name: 'Project 1' } }
+		});
 		expect(from).not.toHaveBeenCalled();
 		expect(safeGetSession).not.toHaveBeenCalled();
 		expect(ensureActorIdMock).not.toHaveBeenCalled();
+	});
+
+	it('turns a deferred full-data failure into a recoverable page result', async () => {
+		const { event } = createHarness({
+			fullDataResponse: Response.json(
+				{ success: false, error: 'Project data is temporarily unavailable' },
+				{ status: 503 }
+			)
+		});
+
+		const result = await load(event);
+
+		expect(await result.deferredFullData).toEqual({
+			ok: false,
+			error: 'Project data is temporarily unavailable'
+		});
 	});
 
 	it('classic route keeps the counted skeleton RPC', async () => {
@@ -181,7 +217,10 @@ describe('projects/[id] +page.server load', () => {
 			risk_count: 6,
 			image_count: 7
 		});
-		expect(operations).toEqual(['rpc:get_project_skeleton_with_access']);
+		expect(operations).toEqual([
+			'rpc:get_project_skeleton_with_access',
+			'fetch:project-full-v2'
+		]);
 	});
 
 	it('editor access keeps invite/log visibility without admin', async () => {
@@ -249,7 +288,10 @@ describe('projects/[id] +page.server load', () => {
 			isAuthenticated: false,
 			currentActorId: null
 		});
-		expect(operations).toEqual(['rpc:get_project_skeleton_with_access_v2']);
+		expect(operations).toEqual([
+			'rpc:get_project_skeleton_with_access_v2',
+			'fetch:project-full-v2'
+		]);
 		expect(from).not.toHaveBeenCalled();
 		expect(safeGetSession).not.toHaveBeenCalled();
 		expect(ensureActorIdMock).not.toHaveBeenCalled();

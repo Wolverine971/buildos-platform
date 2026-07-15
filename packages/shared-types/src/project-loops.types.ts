@@ -39,6 +39,7 @@ export type ProjectSuggestionStatus =
 	| 'approved'
 	| 'delegated'
 	| 'applied'
+	| 'addressed'
 	| 'rejected'
 	| 'superseded'
 	| 'failed';

@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
 	chatExecutorConstructor: vi.fn(),
 	executeTool: vi.fn(),
 	createAdminSupabaseClient: vi.fn(),
+	syncInboxItemForProjectAudit: vi.fn(),
 	syncInboxItemForProjectSuggestion: vi.fn(),
 	isProjectSuggestionFresh: vi.fn(),
 	finalizeProjectLoopRunIfComplete: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock('$lib/supabase/admin', () => ({
 }));
 
 vi.mock('@buildos/shared-agent-ops', () => ({
+	syncInboxItemForProjectAudit: mocks.syncInboxItemForProjectAudit,
 	syncInboxItemForProjectSuggestion: mocks.syncInboxItemForProjectSuggestion
 }));
 
@@ -86,6 +88,7 @@ describe('decideProjectSuggestion', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.createAdminSupabaseClient.mockReturnValue({});
+		mocks.syncInboxItemForProjectAudit.mockResolvedValue(undefined);
 		mocks.syncInboxItemForProjectSuggestion.mockResolvedValue(undefined);
 		mocks.executeTool.mockResolvedValue({ success: true });
 	});
@@ -129,6 +132,60 @@ describe('decideProjectSuggestion', () => {
 		expect(mocks.isProjectSuggestionFresh).not.toHaveBeenCalled();
 	});
 
+	it('records a required one-line response as an addressed finding', async () => {
+		const { supabase, updates } = makeSupabase({
+			project_suggestions: [
+				{ data: pendingSuggestion({ kind: 'drift' }), error: null },
+				{ data: pendingSuggestion({ kind: 'drift', status: 'addressed' }), error: null }
+			]
+		});
+
+		const outcome = await decideProjectSuggestion({
+			supabase,
+			userId: 'user-1',
+			projectId: 'project-1',
+			suggestionId: 'suggestion-1',
+			action: 'address',
+			feedback: { note: 'The launch date is intentionally provisional.' }
+		});
+
+		expect(outcome.ok).toBe(true);
+		expect(updates[0]).toMatchObject({
+			table: 'project_suggestions',
+			payload: {
+				status: 'addressed',
+				user_feedback: {
+					reason: 'other',
+					note: 'The launch date is intentionally provisional.',
+					created_at: expect.any(String)
+				}
+			}
+		});
+		expect(mocks.executeTool).not.toHaveBeenCalled();
+	});
+
+	it('rejects approval when a suggestion has no executable operations', async () => {
+		const { supabase, updates } = makeSupabase({
+			project_suggestions: [{ data: pendingSuggestion({ kind: 'drift' }), error: null }]
+		});
+
+		const outcome = await decideProjectSuggestion({
+			supabase,
+			userId: 'user-1',
+			projectId: 'project-1',
+			suggestionId: 'suggestion-1',
+			action: 'approve'
+		});
+
+		expect(outcome).toMatchObject({
+			ok: false,
+			status: 422,
+			message: expect.stringContaining('finding, not an executable proposal')
+		});
+		expect(updates).toHaveLength(0);
+		expect(mocks.isProjectSuggestionFresh).not.toHaveBeenCalled();
+	});
+
 	it('refreshes linked audit follow-up counts after dismissing an audit child suggestion', async () => {
 		const { supabase, updates } = makeSupabase({
 			project_suggestions: [
@@ -168,12 +225,76 @@ describe('decideProjectSuggestion', () => {
 		});
 	});
 
-	it('supersedes stale approvals before replaying operations', async () => {
-		mocks.isProjectSuggestionFresh.mockResolvedValue(false);
+	it('closes and resyncs the parent audit after its final recommendation is decided', async () => {
+		const reviewedAudit = {
+			id: 'audit-1',
+			project_id: 'project-1',
+			status: 'reviewed',
+			recommendations: [{ title: 'Resolve the final drift finding' }]
+		};
 		const { supabase, updates } = makeSupabase({
 			project_suggestions: [
-				{ data: pendingSuggestion({ source_fingerprint: 'fp-old' }), error: null },
-				{ data: pendingSuggestion({ status: 'superseded' }), error: null }
+				{ data: pendingSuggestion({ kind: 'audit_recommendation' }), error: null },
+				{
+					data: pendingSuggestion({ kind: 'audit_recommendation', status: 'rejected' }),
+					error: null
+				}
+			],
+			project_audit_suggestions: [
+				{ data: [{ audit_id: 'audit-1' }], error: null },
+				{ data: [{ project_suggestions: { status: 'rejected' } }], error: null }
+			],
+			project_audits: [
+				{ data: null, error: null },
+				{ data: reviewedAudit, error: null }
+			]
+		});
+
+		const outcome = await decideProjectSuggestion({
+			supabase,
+			userId: 'user-1',
+			projectId: 'project-1',
+			suggestionId: 'suggestion-1',
+			action: 'dismiss'
+		});
+
+		expect(outcome.ok).toBe(true);
+		expect(updates).toContainEqual({
+			table: 'project_audits',
+			payload: {
+				generated_suggestion_count: 1,
+				unresolved_suggestion_count: 0
+			}
+		});
+		expect(updates).toContainEqual({
+			table: 'project_audits',
+			payload: {
+				status: 'reviewed',
+				reviewed_at: expect.any(String)
+			}
+		});
+		expect(mocks.syncInboxItemForProjectAudit).toHaveBeenCalledWith({
+			supabase: {},
+			audit: reviewedAudit
+		});
+	});
+
+	it('supersedes stale approvals before replaying operations', async () => {
+		mocks.isProjectSuggestionFresh.mockResolvedValue(false);
+		const operation = { tool: 'update_onto_task', args: { task_id: 'task-1' } };
+		const { supabase, updates } = makeSupabase({
+			project_suggestions: [
+				{
+					data: pendingSuggestion({
+						source_fingerprint: 'fp-old',
+						operations: [operation]
+					}),
+					error: null
+				},
+				{
+					data: pendingSuggestion({ status: 'superseded', operations: [operation] }),
+					error: null
+				}
 			]
 		});
 		const outcome = await decideProjectSuggestion({

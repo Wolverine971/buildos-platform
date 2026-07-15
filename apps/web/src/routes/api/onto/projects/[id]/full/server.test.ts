@@ -87,7 +87,13 @@ describe('GET /api/onto/projects/[id]/full', () => {
 			data: projectFullPayload(),
 			error: null
 		});
-		listProjectEventsMock.mockResolvedValue([]);
+		listProjectEventsMock
+			.mockResolvedValueOnce(
+				Array.from({ length: 26 }, (_, index) => ({ id: `recent-${index}` }))
+			)
+			.mockResolvedValueOnce(
+				Array.from({ length: 51 }, (_, index) => ({ id: `upcoming-${index}` }))
+			);
 
 		const response = await GET(event);
 		const payload = await response.json();
@@ -95,12 +101,42 @@ describe('GET /api/onto/projects/[id]/full', () => {
 		expect(response.status).toBe(200);
 		expect(payload.success).toBe(true);
 		expect(payload.data.current_actor_id).toBe('actor-v2');
+		expect(payload.data.events).toHaveLength(75);
+		expect(payload.data.events_coverage).toMatchObject({
+			scope: 'initial-window',
+			complete: false,
+			returned: 75,
+			recent_limit: 25,
+			upcoming_limit: 50,
+			recent_has_more: true,
+			upcoming_has_more: true
+		});
 		expect(requireProjectMemberAccessMock).not.toHaveBeenCalled();
 		expect(supabase.rpc).toHaveBeenCalledWith('get_project_full_v2_initial', {
 			p_project_id: PROJECT_ID,
 			p_actor_id: null
 		});
 		expect(event.locals.safeGetSession).toHaveBeenCalledOnce();
+		expect(listProjectEventsMock).toHaveBeenNthCalledWith(
+			1,
+			PROJECT_ID,
+			expect.objectContaining({
+				includeDeleted: false,
+				limit: 26,
+				orderDirection: 'descending'
+			}),
+			'user-1'
+		);
+		expect(listProjectEventsMock).toHaveBeenNthCalledWith(
+			2,
+			PROJECT_ID,
+			expect.objectContaining({
+				includeDeleted: false,
+				limit: 51,
+				orderDirection: 'ascending'
+			}),
+			'user-1'
+		);
 	});
 
 	it('keeps the explicit access helper for the classic profile', async () => {
@@ -124,6 +160,11 @@ describe('GET /api/onto/projects/[id]/full', () => {
 		expect(response.status).toBe(200);
 		expect(payload.success).toBe(true);
 		expect(payload.data.current_actor_id).toBe('actor-classic');
+		expect(payload.data.events_coverage).toEqual({
+			scope: 'all',
+			complete: true,
+			returned: 0
+		});
 		expect(requireProjectMemberAccessMock).toHaveBeenCalledWith({
 			locals: event.locals,
 			projectId: PROJECT_ID,

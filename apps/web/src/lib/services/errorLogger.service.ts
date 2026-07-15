@@ -14,6 +14,7 @@ import {
 	isPurgeablePersistedErrorNoise,
 	shouldDisplayPersistedErrorLog
 } from '$lib/utils/error-observability';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 type ErrorLogFilters = {
 	userId?: string;
@@ -469,6 +470,19 @@ export class ErrorLoggerService {
 		return combined.includes('project_id');
 	}
 
+	private normalizeProjectIdForStorage(projectId?: string): {
+		projectId?: string;
+		invalidProjectId?: string;
+	} {
+		if (!projectId || isValidUUID(projectId)) {
+			return { projectId };
+		}
+
+		return {
+			invalidProjectId: projectId.slice(0, 200)
+		};
+	}
+
 	public async logError(
 		error: any,
 		context?: ErrorContext,
@@ -478,6 +492,7 @@ export class ErrorLoggerService {
 			const errorInfo = this.extractErrorInfo(error);
 			const errorType = this.determineErrorType(error, context);
 			const finalSeverity = severity || this.determineSeverity(error, errorType);
+			const normalizedProject = this.normalizeProjectIdForStorage(context?.projectId);
 
 			const errorEntry = {
 				error_type: errorType,
@@ -487,7 +502,7 @@ export class ErrorLoggerService {
 				severity: finalSeverity,
 
 				user_id: context?.userId,
-				project_id: context?.projectId,
+				project_id: normalizedProject.projectId,
 				brain_dump_id: context?.brainDumpId,
 
 				endpoint: context?.endpoint,
@@ -512,6 +527,12 @@ export class ErrorLoggerService {
 
 				metadata: {
 					...context?.metadata,
+					...(normalizedProject.invalidProjectId
+						? {
+								invalid_context_project_id: normalizedProject.invalidProjectId,
+								project_id_omitted_reason: 'invalid_uuid'
+							}
+						: {}),
 					originalError: this.serializeErrorForStorage(error),
 					timestamp: new Date().toISOString()
 				},
@@ -687,6 +708,7 @@ export class ErrorLoggerService {
 		const finalSeverity = operation === 'delete' ? 'warning' : 'error';
 
 		try {
+			const normalizedProject = this.normalizeProjectIdForStorage(context.projectId);
 			const errorEntry = {
 				error_type: errorType,
 				error_code: errorInfo.code,
@@ -695,7 +717,7 @@ export class ErrorLoggerService {
 				severity: finalSeverity,
 
 				user_id: context.userId,
-				project_id: context.projectId,
+				project_id: normalizedProject.projectId,
 
 				endpoint: context.endpoint,
 				http_method: context.httpMethod,
@@ -707,7 +729,15 @@ export class ErrorLoggerService {
 				record_id: context.recordId,
 				operation_payload: context.operationPayload,
 
-				metadata: context.metadata,
+				metadata: {
+					...context.metadata,
+					...(normalizedProject.invalidProjectId
+						? {
+								invalid_context_project_id: normalizedProject.invalidProjectId,
+								project_id_omitted_reason: 'invalid_uuid'
+							}
+						: {})
+				},
 				environment: this.environment,
 				app_version: this.appVersion,
 				browser_info: browser ? this.getBrowserInfo() : undefined

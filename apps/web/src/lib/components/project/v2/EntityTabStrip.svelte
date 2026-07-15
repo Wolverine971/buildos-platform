@@ -44,7 +44,6 @@
 		fetchProjectBriefs,
 		type ProjectBriefSummary
 	} from '$lib/components/project/project-page-data-controller';
-	import ProjectInboxPanel from '$lib/components/project/ProjectInboxPanel.svelte';
 	import { getUpcomingEvents } from '$lib/components/project/project-event-filters';
 	import { resolveMilestoneState } from '$lib/utils/milestone-state';
 	import type { ProjectLogEntityType } from '@buildos/shared-types';
@@ -109,11 +108,34 @@
 	} = $props();
 
 	let expanded = $state<TabKey | null>(null);
+	type ProjectInboxPanelLazy =
+		| typeof import('$lib/components/project/ProjectInboxPanel.svelte').default
+		| null;
+	let ProjectInboxPanelComponent = $state<ProjectInboxPanelLazy>(null);
+	let inboxPanelLoading = $state(false);
+	let inboxPanelError = $state<string | null>(null);
+
+	async function loadInboxPanel() {
+		if (ProjectInboxPanelComponent || inboxPanelLoading) return;
+		inboxPanelLoading = true;
+		inboxPanelError = null;
+		try {
+			const mod = await import('$lib/components/project/ProjectInboxPanel.svelte');
+			ProjectInboxPanelComponent = mod.default;
+		} catch (error) {
+			inboxPanelError = error instanceof Error ? error.message : 'Failed to load inbox';
+		} finally {
+			inboxPanelLoading = false;
+		}
+	}
 
 	function toggle(key: TabKey) {
 		const nextExpanded = expanded === key ? null : key;
 		expanded = nextExpanded;
-		if (nextExpanded === 'inbox') void loadInboxCount();
+		if (nextExpanded === 'inbox') {
+			void loadInboxCount();
+			void loadInboxPanel();
+		}
 	}
 
 	// ----------------------------------------------------------------
@@ -633,14 +655,37 @@
 						</div>
 					{:else if tab.key === 'inbox'}
 						<div class="max-h-[60vh] overflow-y-auto">
-							<ProjectInboxPanel
-								{projectId}
-								{canEdit}
-								onCountChange={(count) => {
-									inboxCount = count;
-									inboxCountLoaded = true;
-								}}
-							/>
+							{#if ProjectInboxPanelComponent}
+								<ProjectInboxPanelComponent
+									{projectId}
+									{canEdit}
+									onCountChange={(count) => {
+										inboxCount = count;
+										inboxCountLoaded = true;
+									}}
+								/>
+							{:else if inboxPanelError}
+								<div class="p-4 text-center">
+									<p class="text-xs text-destructive">Unable to load inbox</p>
+									<button
+										type="button"
+										onclick={() => loadInboxPanel()}
+										class="mt-2 rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-muted/50 pressable"
+									>
+										Retry
+									</button>
+								</div>
+							{:else}
+								<div
+									class="flex min-h-32 items-center justify-center"
+									aria-live="polite"
+								>
+									<LoaderCircle
+										class="h-4 w-4 animate-spin text-muted-foreground motion-reduce:animate-none"
+									/>
+									<span class="sr-only">Loading inbox</span>
+								</div>
+							{/if}
 						</div>
 					{:else if tab.key === 'goals'}
 						<div class="p-2 sm:p-3 space-y-2 max-h-[60vh] overflow-y-auto">

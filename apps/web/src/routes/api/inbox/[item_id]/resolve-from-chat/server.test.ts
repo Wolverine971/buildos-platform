@@ -361,7 +361,7 @@ describe('POST /api/inbox/[item_id]/resolve-from-chat', () => {
 			(operation) => operation.table === 'project_suggestions'
 		);
 		expect(update?.payload).toMatchObject({
-			status: 'rejected',
+			status: 'addressed',
 			user_feedback: expect.objectContaining({
 				reason: 'other',
 				note: expect.stringContaining('Marked handled from chat')

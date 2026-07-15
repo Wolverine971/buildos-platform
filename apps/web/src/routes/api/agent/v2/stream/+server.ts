@@ -891,6 +891,7 @@ export const POST: RequestHandler = async ({
 	const requestId = getRequestIdFromHeaders(request.headers);
 	const requestUserAgent = getUserAgentFromHeaders(request.headers);
 	const requestIpAddress = getClientIpFromHeaders(request.headers);
+	const skipProjectLoopBurst = request.headers.get('X-Skip-Project-Loop-Burst') === 'true';
 
 	const logFastChatError = (params: {
 		error: unknown;
@@ -1988,7 +1989,8 @@ export const POST: RequestHandler = async ({
 							logExecutions: false,
 							// Thread the turn signal so a cancel aborts in-flight tool HTTP
 							// requests (writes) instead of letting them land after the turn ends.
-							abortSignal: turnAbortController.signal
+							abortSignal: turnAbortController.signal,
+							skipProjectLoopBurst
 						})
 					: undefined;
 			const sharedToolExecutor =
@@ -2009,7 +2011,8 @@ export const POST: RequestHandler = async ({
 							? toolExecutorInstance
 							: new ChatToolExecutor(supabase, userId, session.id, fetch, llm, {
 									logExecutions: false,
-									abortSignal: executionAbortSignal
+									abortSignal: executionAbortSignal,
+									skipProjectLoopBurst
 								});
 					const result = await executorForCall.execute(call);
 					if (!result.success) {

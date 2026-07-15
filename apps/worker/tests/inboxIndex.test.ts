@@ -142,43 +142,31 @@ describe('inbox index mappers', () => {
 		});
 	});
 
-	it('maps ready project audits to one pending packet', () => {
-		const row = mapProjectAuditToInboxItem({
-			id: 'audit-1',
+	it('keeps ready audit reports out of the inbox so recommendations surface individually', () => {
+		expect(
+			mapProjectAuditToInboxItem({
+				id: 'audit-1',
+				project_id: 'project-1',
+				status: 'ready',
+				recommendations: [{ title: 'Choose the launch go/no-go owner' }],
+				unresolved_suggestion_count: 1
+			})
+		).toBeNull();
+	});
+
+	it('maps non-mutating findings to Address and Dismiss instead of Accept', () => {
+		const row = mapProjectSuggestionToInboxItem({
+			id: 'finding-1',
 			project_id: 'project-1',
-			status: 'ready',
-			summary: 'The project needs one decision and one cleanup.',
-			recommendations: [
-				{
-					title: 'Choose the launch go/no-go owner',
-					summary: 'The launch plan has work in flight but no named decision owner.',
-					role: 'decision_point',
-					priority: 'high',
-					evidence_refs: [{ label: 'Launch plan' }, { label: 'Ship launch page' }]
-				},
-				{
-					title: 'Archive the stale launch brief',
-					summary: 'The old brief conflicts with the active plan.',
-					role: 'cleanup'
-				}
-			],
-			unresolved_suggestion_count: 2,
-			generated_suggestion_count: 3,
-			created_at: '2026-07-01T12:00:00.000Z'
+			kind: 'drift',
+			status: 'pending',
+			title: 'Launch date drifted',
+			operations: []
 		});
 
 		expect(row).toMatchObject({
-			source_type: 'project_audit',
-			source_ref_id: 'audit-1',
-			project_id: 'project-1',
-			audience: 'project_members',
 			status: 'pending',
-			title: 'Decision: Choose the launch go/no-go owner',
-			summary:
-				'Factors: The launch plan has work in flight but no named decision owner. Evidence: Launch plan, Ship launch page. 1 more recommendation in the audit.',
-			risk_tier: 3,
-			action_kinds: ['open', 'resolve'],
-			expires_at: '2026-07-31T12:00:00.000Z'
+			action_kinds: ['address', 'reject']
 		});
 	});
 
@@ -210,6 +198,26 @@ describe('inbox index mappers', () => {
 				]
 			})
 		).toBeNull();
+	});
+
+	it('maps a failed audit with partial recommendations as terminal, not blocked work', () => {
+		const row = mapProjectAuditToInboxItem({
+			id: 'audit-failed',
+			project_id: 'project-1',
+			status: 'failed',
+			recommendations: [
+				{
+					title: 'Partial recommendation',
+					summary: 'The audit failed before this could become an actionable proposal.'
+				}
+			]
+		});
+
+		expect(row).toMatchObject({
+			status: 'decided',
+			blocked_reason: null,
+			expires_at: null
+		});
 	});
 
 	it('writes an expired inbox row immediately when a pending source is past its review TTL', async () => {
@@ -244,8 +252,8 @@ describe('inbox index mappers', () => {
 		});
 	});
 
-	it('syncs a project audit row into the inbox index', async () => {
-		const { supabase, upserts } = createSupabaseMock({
+	it('expires a parent audit packet when its recommendations are indexed individually', async () => {
+		const { supabase, updates, upserts } = createSupabaseMock({
 			project_audits: [
 				{
 					id: 'audit-1',
@@ -262,7 +270,14 @@ describe('inbox index mappers', () => {
 					created_at: '2026-07-01T12:00:00.000Z'
 				}
 			],
-			inbox_items: []
+			inbox_items: [
+				{
+					id: 'inbox-audit-1',
+					source_type: 'project_audit',
+					source_ref_id: 'audit-1',
+					status: 'pending'
+				}
+			]
 		});
 
 		const row = await syncInboxItemForProjectAudit({
@@ -271,16 +286,18 @@ describe('inbox index mappers', () => {
 		});
 
 		expect(row).toMatchObject({
-			source_type: 'project_audit',
-			source_ref_id: 'audit-1',
-			status: 'pending'
+			status: 'expired',
+			source_status: 'recommendations_indexed',
+			blocked_reason: 'Audit recommendations are available as individual inbox items'
 		});
-		expect(upserts[0]).toMatchObject({
-			source_type: 'project_audit',
-			source_ref_id: 'audit-1',
-			status: 'pending',
-			title: 'Decision: Decide whether to defer launch'
-		});
+		expect(upserts).toHaveLength(0);
+		expect(updates).toContainEqual(
+			expect.objectContaining({
+				table: 'inbox_items',
+				status: 'expired',
+				source_status: 'recommendations_indexed'
+			})
+		);
 	});
 
 	it('expires an existing project audit inbox item when the completed audit has no action', async () => {
@@ -321,6 +338,46 @@ describe('inbox index mappers', () => {
 				table: 'inbox_items',
 				status: 'expired',
 				source_status: 'no_action_required'
+			})
+		);
+	});
+
+	it('expires a failed audit that produced no actionable recommendation', async () => {
+		const { supabase, updates, upserts } = createSupabaseMock({
+			project_audits: [
+				{
+					id: 'audit-failed',
+					project_id: 'project-1',
+					status: 'failed',
+					recommendations: []
+				}
+			],
+			inbox_items: [
+				{
+					id: 'inbox-failed',
+					source_type: 'project_audit',
+					source_ref_id: 'audit-failed',
+					status: 'deciding'
+				}
+			]
+		});
+
+		const row = await syncInboxItemForProjectAudit({
+			supabase: supabase as any,
+			auditId: 'audit-failed'
+		});
+
+		expect(row).toMatchObject({
+			status: 'expired',
+			source_status: 'failed',
+			blocked_reason: 'Audit failed before producing an actionable recommendation'
+		});
+		expect(upserts).toHaveLength(0);
+		expect(updates).toContainEqual(
+			expect.objectContaining({
+				table: 'inbox_items',
+				status: 'expired',
+				source_status: 'failed'
 			})
 		);
 	});

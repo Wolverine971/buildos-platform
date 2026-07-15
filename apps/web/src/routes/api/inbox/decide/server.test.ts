@@ -311,6 +311,65 @@ describe('POST /api/inbox/decide', () => {
 		expect(mocks.decideProjectSuggestionWithClarification).not.toHaveBeenCalled();
 	});
 
+	it('records a one-line response when addressing a project finding', async () => {
+		const inboxItem = {
+			...pendingProjectSuggestionItem(),
+			action_kinds: ['address', 'reject']
+		};
+		const { supabase } = createSupabaseMock(inboxItem);
+		const admin = createSupabaseMock(inboxItem);
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.supabase);
+		mocks.decideProjectSuggestion.mockResolvedValue({
+			ok: true,
+			suggestion: { id: 'suggestion-1', status: 'addressed' }
+		});
+
+		const response = await POST({
+			request: makeRequest({
+				item_id: 'inbox-1',
+				action: 'address',
+				resolution_text: 'The date is intentionally provisional.'
+			}),
+			locals: makeLocals(supabase),
+			fetch: vi.fn()
+		} as any);
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(mocks.decideProjectSuggestion).toHaveBeenCalledWith(
+			expect.objectContaining({
+				action: 'address',
+				feedback: {
+					reason: 'other',
+					note: 'The date is intentionally provisional.'
+				}
+			})
+		);
+		expect(json.data.item).toMatchObject({
+			status: 'decided',
+			source_status: 'addressed'
+		});
+	});
+
+	it('requires a response before addressing a project finding', async () => {
+		const inboxItem = {
+			...pendingProjectSuggestionItem(),
+			action_kinds: ['address', 'reject']
+		};
+		const { supabase } = createSupabaseMock(inboxItem);
+		const admin = createSupabaseMock(inboxItem);
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.supabase);
+
+		const response = await POST({
+			request: makeRequest({ item_id: 'inbox-1', action: 'address' }),
+			locals: makeLocals(supabase),
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(400);
+		expect(mocks.decideProjectSuggestion).not.toHaveBeenCalled();
+	});
+
 	it('forces the inbox row out of pending when source sync throws after a successful decision', async () => {
 		const inboxItem = pendingProjectSuggestionItem();
 		const { supabase } = createSupabaseMock(inboxItem);

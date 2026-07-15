@@ -8,7 +8,7 @@ type InboxDecisionSourceType =
 	| 'project_suggestion'
 	| 'project_audit'
 	| 'calendar_suggestion';
-type InboxDecisionAction = 'approve' | 'reject' | 'snooze';
+type InboxDecisionAction = 'approve' | 'address' | 'reject' | 'snooze';
 
 type InboxDecisionNotificationItem = {
 	id: string;
@@ -21,6 +21,7 @@ const ERROR_REMOVE_MS = 5000;
 
 function decisionVerb(item: InboxDecisionNotificationItem, action: InboxDecisionAction): string {
 	if (action === 'snooze') return 'Snoozing';
+	if (action === 'address') return 'Addressing';
 	if (action === 'reject') {
 		return item.source_type === 'calendar_suggestion' ? 'Rejecting' : 'Dismissing';
 	}

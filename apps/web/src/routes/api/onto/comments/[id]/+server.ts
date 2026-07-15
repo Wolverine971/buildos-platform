@@ -7,6 +7,7 @@ import { handleCommentMentions } from '../comment-mentions';
 import { resolveCommentEntityOwnerActorId } from '$lib/server/comment-public-access';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { parseJsonRequest } from '$lib/utils/request-validation';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 const updateCommentSchema = z
 	.object({
@@ -20,6 +21,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 	if (!session?.user) {
 		return ApiResponse.unauthorized('Authentication required');
+	}
+	if (!params.id || !isValidUUID(params.id)) {
+		return ApiResponse.badRequest('Invalid comment ID');
 	}
 
 	try {
@@ -236,6 +240,9 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 	if (!session?.user) {
 		return ApiResponse.unauthorized('Authentication required');
+	}
+	if (!params.id || !isValidUUID(params.id)) {
+		return ApiResponse.badRequest('Invalid comment ID');
 	}
 
 	try {

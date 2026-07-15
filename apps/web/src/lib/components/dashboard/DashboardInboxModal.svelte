@@ -16,6 +16,7 @@
 	import InboxChangeDetails from '$lib/components/inbox/InboxChangeDetails.svelte';
 	import InboxDecisionControls from '$lib/components/inbox/InboxDecisionControls.svelte';
 	import InboxDismissFeedbackFields from '$lib/components/inbox/InboxDismissFeedbackFields.svelte';
+	import InboxFindingControls from '$lib/components/inbox/InboxFindingControls.svelte';
 	import InboxProjectBadge from '$lib/components/inbox/InboxProjectBadge.svelte';
 	import type {
 		AgentChatResolutionAction,
@@ -155,16 +156,23 @@
 	let resolvingChatAction = $state<ChatResolutionAction | null>(null);
 	let explicitlyResolvedChatItemId = $state<string | null>(null);
 	let openingChatIds = $state<Set<string>>(new Set());
+	let addressNoteById = $state<Record<string, string>>({});
 	let dismissReasonById = $state<Record<string, string>>({});
 	let dismissNoteById = $state<Record<string, string>>({});
+	const activeChatItem = $derived(
+		chatItemId ? (items.find((item) => item.id === chatItemId) ?? null) : null
+	);
 
 	const inboxResolutionActions = $derived.by<AgentChatResolutionAction[]>(() => {
 		if (!chatItemId || !chatSessionId) return [];
 		return [
 			{
 				id: 'mark-handled-from-chat',
-				label: 'Mark handled',
-				title: 'Remove this inbox item after this chat',
+				label: activeChatItem && isFinding(activeChatItem) ? 'Address' : 'Mark handled',
+				title:
+					activeChatItem && isFinding(activeChatItem)
+						? 'Record this finding as addressed after the chat'
+						: 'Remove this inbox item after this chat',
 				intent: 'primary',
 				disabled: Boolean(resolvingChatAction),
 				loading: resolvingChatAction === 'handled',
@@ -477,6 +485,16 @@
 		return 0;
 	}
 
+	function isFinding(item: InboxItem): boolean {
+		if (item.source_type !== 'project_suggestion') return false;
+		const payload = projectSuggestion(item);
+		return (
+			payload?.kind === 'drift' ||
+			payload?.kind === 'audit_recommendation' ||
+			arrayValue(payload?.operations).length === 0
+		);
+	}
+
 	function evidenceLabel(ref: ProjectSuggestionEvidenceRef): string {
 		return `${evidenceTypeLabel[ref.entity_type] ?? 'Source'}: ${ref.title}`;
 	}
@@ -491,6 +509,9 @@
 		if (items.length !== before) {
 			totalAvailable = Math.max(items.length, totalAvailable - 1);
 			setAiInboxRemainingCount(totalAvailable);
+			addressNoteById = Object.fromEntries(
+				Object.entries(addressNoteById).filter(([id]) => id !== itemId)
+			);
 			dismissReasonById = Object.fromEntries(
 				Object.entries(dismissReasonById).filter(([id]) => id !== itemId)
 			);
@@ -499,6 +520,10 @@
 			);
 		}
 		return items.length !== before;
+	}
+
+	function updateAddressNote(item: InboxItem, note: string) {
+		addressNoteById = { ...addressNoteById, [item.id]: note };
 	}
 
 	function updateDismissReason(item: InboxItem, reason: string) {
@@ -750,7 +775,11 @@
 		}
 	}
 
-	async function decide(item: InboxItem, action: 'approve' | 'reject') {
+	async function decide(
+		item: InboxItem,
+		action: 'approve' | 'address' | 'reject',
+		resolutionText?: string
+	) {
 		if (pendingIds.has(item.id)) return;
 		const dismissReason = (dismissReasonById[item.id] ?? '').trim();
 		const dismissNote = (dismissNoteById[item.id] ?? '').trim();
@@ -765,6 +794,9 @@
 				body: JSON.stringify({
 					item_id: item.id,
 					action,
+					...(action === 'address' && resolutionText?.trim()
+						? { resolution_text: resolutionText.trim() }
+						: {}),
 					...(action === 'reject' && item.source_type === 'project_suggestion'
 						? {
 								...(dismissReason ? { reason: dismissReason } : {}),
@@ -779,8 +811,18 @@
 			const result = json.data?.result as
 				| (ProjectSuggestionResult & { inProgress?: boolean })
 				| undefined;
-			let message = action === 'approve' ? 'Review item applied.' : 'Review item dismissed.';
-			let title = action === 'approve' ? 'Review item applied' : 'Review item dismissed';
+			let message =
+				action === 'approve'
+					? 'Review item applied.'
+					: action === 'address'
+						? 'Response recorded.'
+						: 'Review item dismissed.';
+			let title =
+				action === 'approve'
+					? 'Review item applied'
+					: action === 'address'
+						? 'Finding addressed'
+						: 'Review item dismissed';
 			let toastKind: 'success' | 'info' | 'error' = 'success';
 			if (json.data?.superseded) {
 				message = 'Review item changed. Rerun Project Review.';
@@ -1354,16 +1396,34 @@
 										</div>
 
 										{#if canDecide(item) && !changeSet}
-											<InboxDecisionControls
-												pending={pendingIds.has(item.id)}
-												canChat={canChat(item)}
-												openingChat={isOpeningChat(item)}
-												layout="dashboard"
-												onApprove={() => decide(item, 'approve')}
-												onReject={() => decide(item, 'reject')}
-												onSnooze={() => snooze(item)}
-												onChat={() => openChat(item)}
-											/>
+											{#if isFinding(item)}
+												<InboxFindingControls
+													idPrefix={`dashboard-inbox-${item.id}`}
+													note={addressNoteById[item.id] ?? ''}
+													pending={pendingIds.has(item.id)}
+													canChat={canChat(item)}
+													openingChat={isOpeningChat(item)}
+													layout="dashboard"
+													onNoteChange={(note) =>
+														updateAddressNote(item, note)}
+													onAddress={(note) =>
+														decide(item, 'address', note)}
+													onReject={() => decide(item, 'reject')}
+													onSnooze={() => snooze(item)}
+													onChat={() => openChat(item)}
+												/>
+											{:else}
+												<InboxDecisionControls
+													pending={pendingIds.has(item.id)}
+													canChat={canChat(item)}
+													openingChat={isOpeningChat(item)}
+													layout="dashboard"
+													onApprove={() => decide(item, 'approve')}
+													onReject={() => decide(item, 'reject')}
+													onSnooze={() => snooze(item)}
+													onChat={() => openChat(item)}
+												/>
+											{/if}
 										{:else if canChat(item)}
 											<Button
 												variant="outline"

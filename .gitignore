@@ -91,3 +91,5 @@ supabase.openapi*.json
 # Calendar analysis prompt audits (contain user data)
 # /apps/web/docs/prompts/**/*prompt.md
 .env*.local
+
+video-projects

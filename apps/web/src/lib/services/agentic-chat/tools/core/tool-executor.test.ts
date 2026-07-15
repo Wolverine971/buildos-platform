@@ -236,6 +236,21 @@ describe('ChatToolExecutor - Update Behavior', () => {
 			expect((toolExecutor as any)._writeExecutor).toBeUndefined();
 			expect((toolExecutor as any)._utilityExecutor).toBeUndefined();
 		});
+
+		it('propagates project-loop suppression to internal ontology requests', async () => {
+			const executor = new ChatToolExecutor(
+				mockSupabase,
+				userId,
+				sessionId,
+				mockFetch,
+				mockLLMService,
+				{ skipProjectLoopBurst: true }
+			);
+
+			await expect((executor as any).getAuthHeaders()).resolves.toMatchObject({
+				'X-Skip-Project-Loop-Burst': 'true'
+			});
+		});
 	});
 
 	describe('Tool metadata alignment', () => {

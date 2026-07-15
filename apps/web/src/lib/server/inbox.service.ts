@@ -870,66 +870,6 @@ async function syncRows(params: {
 	return synced;
 }
 
-async function splitProjectSuggestionsByAuditLink(params: {
-	admin: AnySupabase;
-	rows: Record<string, unknown>[];
-}): Promise<{
-	standaloneRows: Record<string, unknown>[];
-	linkedSuggestionIds: string[];
-}> {
-	const suggestionIds = [
-		...new Set(params.rows.map((row) => asString(row.id)).filter((id): id is string => !!id))
-	];
-	if (suggestionIds.length === 0) return { standaloneRows: params.rows, linkedSuggestionIds: [] };
-
-	const { data, error } = await params.admin
-		.from('project_audit_suggestions')
-		.select('suggestion_id')
-		.in('suggestion_id', suggestionIds);
-	if (error) throw error;
-
-	const linkedSuggestionIds = [
-		...new Set(
-			((data ?? []) as Record<string, unknown>[])
-				.map((row) => asString(row.suggestion_id))
-				.filter((id): id is string => !!id)
-		)
-	];
-	if (linkedSuggestionIds.length === 0) {
-		return { standaloneRows: params.rows, linkedSuggestionIds: [] };
-	}
-
-	const linkedSet = new Set(linkedSuggestionIds);
-	return {
-		standaloneRows: params.rows.filter((row) => {
-			const id = asString(row.id);
-			return !id || !linkedSet.has(id);
-		}),
-		linkedSuggestionIds
-	};
-}
-
-async function expireAuditChildInboxRows(params: {
-	admin: AnySupabase;
-	suggestionIds: string[];
-}): Promise<number> {
-	if (params.suggestionIds.length === 0) return 0;
-	const { data, error } = await params.admin
-		.from('inbox_items')
-		.update({
-			status: 'expired',
-			source_status: 'grouped_into_project_audit',
-			decided_at: new Date().toISOString(),
-			blocked_reason: 'Grouped into the complete project audit inbox packet'
-		})
-		.eq('source_type', 'project_suggestion')
-		.in('source_ref_id', params.suggestionIds)
-		.in('status', ['pending', 'deciding', 'snoozed', 'blocked'])
-		.select('id');
-	if (error) throw error;
-	return ((data ?? []) as Record<string, unknown>[]).length;
-}
-
 function buildClarifiedSuggestionRepairResult(params: {
 	run: Record<string, unknown>;
 	finalStatus: string;
@@ -1103,18 +1043,10 @@ async function backfillVisibleSourceRows(params: {
 			admin: params.admin,
 			rows: (data ?? []) as Record<string, unknown>[]
 		});
-		const { standaloneRows, linkedSuggestionIds } = await splitProjectSuggestionsByAuditLink({
-			admin: params.admin,
-			rows
-		});
-		await expireAuditChildInboxRows({
-			admin: params.admin,
-			suggestionIds: linkedSuggestionIds
-		});
 		synced += await syncRows({
 			admin: params.admin,
 			sourceType: 'project_suggestion',
-			rows: standaloneRows
+			rows
 		});
 	}
 

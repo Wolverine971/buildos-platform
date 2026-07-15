@@ -5,6 +5,7 @@
 // project — proposed changes are replayed by the web app on user approval.
 
 import type {
+	Database,
 	Json,
 	ProjectAuditDeliveryConfidence,
 	ProjectAuditDimension,
@@ -89,7 +90,64 @@ const SUGGESTION_SUPPRESSION_LOOKBACK_DAYS = 60;
 // (pending/delegated), user dismissals (rejected), and already-applied work.
 // 'superseded' and 'failed' are intentionally excluded — the user never got to
 // act on those, so re-surfacing them after a fresh run is desirable.
-const SUGGESTION_SUPPRESSION_STATUSES = ['pending', 'delegated', 'rejected', 'applied'];
+const SUGGESTION_SUPPRESSION_STATUSES = [
+	'pending',
+	'delegated',
+	'addressed',
+	'rejected',
+	'applied'
+];
+
+type ProjectSuggestionInsert = Database['public']['Tables']['project_suggestions']['Insert'];
+type ProjectSuggestionRow = Database['public']['Tables']['project_suggestions']['Row'];
+type DatabaseErrorLike = {
+	code?: string | null;
+	message: string;
+};
+
+const PROJECT_SUGGESTION_PARENT_FK_PATTERN = /project_suggestions_(?:run_id|project_id)_fkey/;
+
+/**
+ * A project-loop run is claimed before suggestion generation starts. If either
+ * known parent FK is missing at insert time, the project/run was deleted while
+ * the LLM work was in flight. That is cancellation, not a retryable failure.
+ */
+export function isProjectLoopCancellationInsertError(
+	error: DatabaseErrorLike | null | undefined
+): boolean {
+	return error?.code === '23503' && PROJECT_SUGGESTION_PARENT_FK_PATTERN.test(error.message);
+}
+
+function createCodedDatabaseError(prefix: string, error: DatabaseErrorLike): Error {
+	const wrapped = new Error(`${prefix}: ${error.message}`) as Error & { code?: string };
+	if (error.code) wrapped.code = error.code;
+	return wrapped;
+}
+
+export async function insertProjectLoopSuggestionRows(params: {
+	rows: ProjectSuggestionInsert[];
+	runId: string;
+	projectId: string;
+	log: (message: string) => Promise<void>;
+}): Promise<{ cancelled: boolean; suggestions: ProjectSuggestionRow[] }> {
+	const { data, error } = await supabase
+		.from('project_suggestions')
+		.insert(params.rows)
+		.select('*');
+
+	if (!error) {
+		return { cancelled: false, suggestions: data ?? [] };
+	}
+
+	if (isProjectLoopCancellationInsertError(error)) {
+		await params.log(
+			`Project loop run ${params.runId} for project ${params.projectId} was deleted before suggestions were written; treating the work as cancelled.`
+		);
+		return { cancelled: true, suggestions: [] };
+	}
+
+	throw createCodedDatabaseError('Failed to insert suggestions', error);
+}
 
 function nowIso(): string {
 	return new Date().toISOString();
@@ -127,7 +185,7 @@ async function loadPriorDecisions(projectId: string): Promise<LoopPriorDecision[
 		.from('project_suggestions')
 		.select('title, kind, status, user_feedback, decided_at, updated_at')
 		.eq('project_id', projectId)
-		.in('status', ['rejected', 'applied', 'delegated', 'superseded'])
+		.in('status', ['addressed', 'rejected', 'applied', 'delegated', 'superseded'])
 		.gte('updated_at', since)
 		.order('updated_at', { ascending: false })
 		.limit(30);
@@ -798,7 +856,7 @@ async function loadAuditMemory(projectId: string): Promise<AuditMemory> {
 				.select('title, status, user_feedback, decided_at, updated_at')
 				.eq('project_id', projectId)
 				.eq('kind', 'audit_recommendation')
-				.in('status', ['rejected', 'applied'])
+				.in('status', ['addressed', 'rejected', 'applied'])
 				.gte('updated_at', since)
 				.order('updated_at', { ascending: false })
 				.limit(40),
@@ -2059,6 +2117,20 @@ async function createAuditChildSuggestions(params: {
 		throw new Error(`Failed to link audit child suggestions: ${linkError.message}`);
 	}
 
+	for (const suggestion of suggestions) {
+		try {
+			await syncInboxItemForProjectSuggestion({
+				supabase: supabase as any,
+				suggestion: suggestion as unknown as Record<string, unknown>
+			});
+		} catch (syncError) {
+			console.warn(
+				`⚠️ Failed to sync AI Inbox item for audit recommendation ${suggestion.id}:`,
+				syncError instanceof Error ? syncError.message : syncError
+			);
+		}
+	}
+
 	return {
 		generatedCount: suggestions.length,
 		unresolvedCount: suggestions.filter((suggestion) =>
@@ -2389,10 +2461,6 @@ async function processCompleteProjectAuditJob(
 				supabase: supabase as any,
 				auditId
 			});
-			await expireInboxItemsForProjectAuditChildSuggestions({
-				supabase: supabase as any,
-				auditId
-			});
 		} catch (syncError) {
 			console.warn(
 				`⚠️ Failed to sync AI Inbox item for project audit ${auditId}:`,
@@ -2538,6 +2606,11 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		return { success: true, runId, skipped: true };
 	}
 	const run = claimedRun as ProjectLoopRun;
+	if (run.project_id !== projectId) {
+		const message = `Project loop queue metadata mismatch: run ${runId} belongs to project ${run.project_id}, not ${projectId}`;
+		await failRun(runId, message);
+		throw new Error(message);
+	}
 
 	// Heartbeat touches queue_jobs.updated_at so the 5-min stall sweeper never
 	// sees this job as idle across the ~5 sequential LLM calls below. updateProgress
@@ -2787,13 +2860,16 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 				status: 'pending' as const,
 				sort_order: s.sort_order ?? index
 			}));
-			const { data: insertedSuggestions, error: insertError } = await supabase
-				.from('project_suggestions')
-				.insert(rows)
-				.select('*');
-			if (insertError)
-				throw new Error(`Failed to insert suggestions: ${insertError.message}`);
-			for (const suggestion of insertedSuggestions ?? []) {
+			const insertResult = await insertProjectLoopSuggestionRows({
+				rows,
+				runId,
+				projectId,
+				log: (message) => job.log(message)
+			});
+			if (insertResult.cancelled) {
+				return { success: true, runId, skipped: true };
+			}
+			for (const suggestion of insertResult.suggestions) {
 				try {
 					await syncInboxItemForProjectSuggestion({
 						supabase: supabase as any,

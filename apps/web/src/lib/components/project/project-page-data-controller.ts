@@ -13,6 +13,7 @@ import type { OntologyImageAsset } from '$lib/components/ontology/image-assets/t
 import type { Database } from '@buildos/shared-types';
 import type { ProjectLogEntryWithMeta } from '@buildos/shared-types';
 import { requireApiData } from '$lib/utils/api-client-helpers';
+import type { ProjectEventsCoverage } from '$lib/types/project-full-data';
 
 export type OntoEventWithSync = OntoEvent & {
 	onto_event_sync?: Database['public']['Tables']['onto_event_sync']['Row'][];
@@ -54,10 +55,15 @@ export type ProjectFullData = {
 	milestones?: Milestone[];
 	risks?: Risk[];
 	events?: OntoEventWithSync[];
+	events_coverage?: ProjectEventsCoverage;
 	context_document?: Document | null;
 	public_page_counts?: ProjectPublicPageCounts;
 	current_actor_id?: string | null;
 };
+
+export type DeferredProjectFullData =
+	| { ok: true; data: ProjectFullData }
+	| { ok: false; error: string };
 
 export type ProjectFullDataProfile = 'classic' | 'v2-initial';
 

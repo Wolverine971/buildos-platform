@@ -253,6 +253,7 @@ export class OntoEventSyncService {
 			ownerId?: string | null;
 			includeDeleted?: boolean;
 			limit?: number | null;
+			orderDirection?: 'ascending' | 'descending';
 		},
 		syncUserId?: string | null
 	): Promise<Array<OntoEventRow & { onto_event_sync?: OntoEventSyncRow[] }>> {
@@ -272,7 +273,7 @@ export class OntoEventSyncService {
 				)`
 			)
 			.eq('project_id', projectId)
-			.order('start_at', { ascending: true });
+			.order('start_at', { ascending: params.orderDirection !== 'descending' });
 
 		if (!params.includeDeleted) {
 			query = query.is('deleted_at', null);

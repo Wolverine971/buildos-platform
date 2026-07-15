@@ -48,6 +48,56 @@ function createSupabaseMock(fixtures: {
 	};
 }
 
+function createEventListSupabaseMock() {
+	const query: any = {
+		select: vi.fn(() => query),
+		eq: vi.fn(() => query),
+		order: vi.fn(() => query),
+		is: vi.fn(() => query),
+		gte: vi.fn(() => query),
+		lte: vi.fn(() => query),
+		limit: vi.fn(() => query),
+		data: [],
+		error: null
+	};
+
+	return {
+		supabase: {
+			from: vi.fn(() => query)
+		},
+		query
+	};
+}
+
+describe('OntoEventSyncService project event listing', () => {
+	it('preserves ascending order by default', async () => {
+		const { supabase, query } = createEventListSupabaseMock();
+		const service = new OntoEventSyncService(supabase as any);
+
+		await service.listProjectEvents('project-1', { includeDeleted: false });
+
+		expect(query.order).toHaveBeenCalledWith('start_at', { ascending: true });
+	});
+
+	it('supports a bounded newest-first event window', async () => {
+		const { supabase, query } = createEventListSupabaseMock();
+		const service = new OntoEventSyncService(supabase as any);
+
+		await service.listProjectEvents('project-1', {
+			timeMin: '2026-06-01T00:00:00.000Z',
+			timeMax: '2026-07-01T00:00:00.000Z',
+			includeDeleted: false,
+			limit: 26,
+			orderDirection: 'descending'
+		});
+
+		expect(query.order).toHaveBeenCalledWith('start_at', { ascending: false });
+		expect(query.gte).toHaveBeenCalledWith('start_at', '2026-06-01T00:00:00.000Z');
+		expect(query.lte).toHaveBeenCalledWith('start_at', '2026-07-01T00:00:00.000Z');
+		expect(query.limit).toHaveBeenCalledWith(26);
+	});
+});
+
 describe('OntoEventSyncService calendar descriptions', () => {
 	it('includes BuildOS task + project links and task description', async () => {
 		const supabase = createSupabaseMock({

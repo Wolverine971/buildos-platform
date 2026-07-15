@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
 	logUpdateAsync: vi.fn(async () => undefined),
 	queueProjectLoopBurstAsync: vi.fn(),
+	shouldSkipProjectLoopBurst: vi.fn(() => false),
 	captureServerEvent: vi.fn(async () => undefined)
 }));
 
@@ -14,7 +15,8 @@ vi.mock('$lib/services/async-activity-logger', () => ({
 }));
 
 vi.mock('$lib/server/project-loop-burst.service', () => ({
-	queueProjectLoopBurstAsync: mocks.queueProjectLoopBurstAsync
+	queueProjectLoopBurstAsync: mocks.queueProjectLoopBurstAsync,
+	shouldSkipProjectLoopBurst: mocks.shouldSkipProjectLoopBurst
 }));
 
 vi.mock('$lib/server/posthog', () => ({
@@ -47,6 +49,7 @@ function locals(rpcResult: { data?: unknown; error?: unknown }) {
 describe('POST /api/onto/tasks/[id]/move', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.shouldSkipProjectLoopBurst.mockReturnValue(false);
 	});
 
 	it('returns an impact preview without emitting mutation side effects', async () => {
@@ -148,6 +151,35 @@ describe('POST /api/onto/tasks/[id]/move', () => {
 			'task_moved',
 			expect.objectContaining({ task_id: TASK_ID })
 		);
+	});
+
+	it('does not enqueue burst loops when the caller suppresses them', async () => {
+		mocks.shouldSkipProjectLoopBurst.mockReturnValue(true);
+		const { POST } = await import('./+server');
+		const routeRequest = request({
+			expected_source_project_id: SOURCE_ID,
+			destination_project_id: DESTINATION_ID
+		});
+		const routeLocals = locals({
+			data: {
+				status: 'moved',
+				requires_user_action: false,
+				task: { id: TASK_ID, title: 'Move me', project_id: DESTINATION_ID },
+				source_project: { id: SOURCE_ID, name: 'Source' },
+				destination_project: { id: DESTINATION_ID, name: 'Destination' }
+			}
+		});
+
+		const response = await POST({
+			params: { id: TASK_ID },
+			request: routeRequest,
+			locals: routeLocals
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(mocks.shouldSkipProjectLoopBurst).toHaveBeenCalledWith(routeRequest);
+		expect(mocks.queueProjectLoopBurstAsync).not.toHaveBeenCalled();
+		expect(mocks.logUpdateAsync).toHaveBeenCalledTimes(2);
 	});
 
 	it('maps dual-project authorization failures to forbidden', async () => {

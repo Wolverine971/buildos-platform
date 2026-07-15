@@ -385,7 +385,7 @@ function buildWelcomeCopyOptions(
 			variantKey: 'already_created_project',
 			label: 'Email 2 - already created project',
 			description: 'Day 1 nudge after the user created a project.',
-			state: createPreviewState({ projectCount: 1, latestProjectId: 'preview-project' })
+			state: createPreviewState({ projectCount: 1 })
 		},
 		{
 			step: 'email_3',
@@ -399,7 +399,7 @@ function buildWelcomeCopyOptions(
 			variantKey: 'finish_setup',
 			label: 'Email 3 - finish setup',
 			description: 'Project exists, onboarding unfinished.',
-			state: createPreviewState({ projectCount: 1, latestProjectId: 'preview-project' })
+			state: createPreviewState({ projectCount: 1 })
 		},
 		{
 			step: 'email_3',
@@ -408,7 +408,6 @@ function buildWelcomeCopyOptions(
 			description: 'Project exists and onboarding is complete.',
 			state: createPreviewState({
 				projectCount: 1,
-				latestProjectId: 'preview-project',
 				onboardingCompleted: true
 			})
 		},
@@ -417,7 +416,7 @@ function buildWelcomeCopyOptions(
 			variantKey: 'finish_setup',
 			label: 'Email 4 - finish setup',
 			description: 'Follow-through nudge when onboarding is unfinished.',
-			state: createPreviewState({ projectCount: 1, latestProjectId: 'preview-project' })
+			state: createPreviewState({ projectCount: 1 })
 		},
 		{
 			step: 'email_4',
@@ -426,7 +425,6 @@ function buildWelcomeCopyOptions(
 			description: 'No brief, SMS, or calendar channel is active.',
 			state: createPreviewState({
 				projectCount: 1,
-				latestProjectId: 'preview-project',
 				onboardingCompleted: true
 			})
 		},
@@ -444,7 +442,6 @@ function buildWelcomeCopyOptions(
 			description: 'Personal check-in after a return session.',
 			state: createPreviewState({
 				projectCount: 1,
-				latestProjectId: 'preview-project',
 				lastVisit: '2026-03-02T02:00:00.000Z'
 			})
 		}

@@ -13,7 +13,7 @@ import { syncInboxItemForSource } from '@buildos/shared-agent-ops/inbox-index';
 import type { ChangeSetDecision } from '@buildos/shared-types';
 import type { InboxIndexRow, InboxSourceType } from '@buildos/shared-agent-ops/inbox-index';
 
-type SourceDecisionAction = 'approve' | 'reject';
+type SourceDecisionAction = 'approve' | 'address' | 'reject';
 type DecisionAction = SourceDecisionAction | 'snooze';
 type DecisionPayload = Record<string, unknown>;
 const MAX_SNOOZE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -22,6 +22,7 @@ const DELETED_PROJECT_DECISION_MESSAGE =
 
 function normalizeAction(value: unknown): DecisionAction | null {
 	if (value === 'approve' || value === 'accept' || value === 'apply') return 'approve';
+	if (value === 'address' || value === 'addressed') return 'address';
 	if (value === 'reject' || value === 'dismiss' || value === 'decline') return 'reject';
 	if (value === 'snooze') return 'snooze';
 	return null;
@@ -105,6 +106,7 @@ function fallbackSourceStatus(
 		if (suggestionStatus) return suggestionStatus;
 		if (payload.superseded === true) return 'superseded';
 		if (payload.delegated === true) return 'delegated';
+		if (action === 'address') return 'addressed';
 		if (action === 'reject') return 'rejected';
 		if (asRecord(payload.result)?.ok === false) return 'failed';
 		return 'applied';
@@ -383,6 +385,17 @@ async function decideLoadedInboxItem(params: {
 	if (action === 'snooze') {
 		return snoozeLoadedInboxItem({ item, body, locals, user, admin });
 	}
+	if (action === 'address' && item.source_type !== 'project_suggestion') {
+		return {
+			ok: false,
+			message: 'Only project findings and recommendations can be addressed',
+			response: ApiResponse.error(
+				'Only project findings and recommendations can be addressed',
+				HttpStatus.UNPROCESSABLE_ENTITY,
+				'UNSUPPORTED_ADDRESS_SOURCE'
+			)
+		};
+	}
 
 	if (item.source_type === 'agent_run') {
 		const defaultDecision: 'approved' | 'rejected' =
@@ -448,29 +461,51 @@ async function decideLoadedInboxItem(params: {
 			typeof body.clarification === 'string' && body.clarification.trim()
 				? body.clarification
 				: null;
-		const suggestionAction = action === 'approve' ? 'approve' : 'dismiss';
-		const outcome = clarification
-			? await decideProjectSuggestionWithClarification({
-					supabase: locals.supabase as any,
-					userId: user.id,
-					projectId: access.projectId,
-					suggestionId: item.source_ref_id,
-					action: suggestionAction,
-					clarification,
-					reason: typeof body.reason === 'string' ? body.reason : undefined
-				})
-			: await decideProjectSuggestion({
-					supabase: locals.supabase as any,
-					userId: user.id,
-					projectId: access.projectId,
-					suggestionId: item.source_ref_id,
-					action: suggestionAction,
-					fetchFn,
-					feedback: {
-						reason: typeof body.reason === 'string' ? body.reason : undefined,
-						note: typeof body.note === 'string' ? body.note : undefined
-					}
-				});
+		const resolutionText = asString(body.resolution_text ?? body.note);
+		if (action === 'address' && !resolutionText) {
+			return {
+				ok: false,
+				message: 'A one-line response is required to address this finding',
+				response: ApiResponse.badRequest(
+					'A one-line response is required to address this finding'
+				)
+			};
+		}
+		const outcome =
+			action === 'address'
+				? await decideProjectSuggestion({
+						supabase: locals.supabase as any,
+						userId: user.id,
+						projectId: access.projectId,
+						suggestionId: item.source_ref_id,
+						action: 'address',
+						feedback: {
+							reason: 'other',
+							note: resolutionText
+						}
+					})
+				: clarification
+					? await decideProjectSuggestionWithClarification({
+							supabase: locals.supabase as any,
+							userId: user.id,
+							projectId: access.projectId,
+							suggestionId: item.source_ref_id,
+							action: action === 'approve' ? 'approve' : 'dismiss',
+							clarification,
+							reason: typeof body.reason === 'string' ? body.reason : undefined
+						})
+					: await decideProjectSuggestion({
+							supabase: locals.supabase as any,
+							userId: user.id,
+							projectId: access.projectId,
+							suggestionId: item.source_ref_id,
+							action: action === 'approve' ? 'approve' : 'dismiss',
+							fetchFn,
+							feedback: {
+								reason: typeof body.reason === 'string' ? body.reason : undefined,
+								note: typeof body.note === 'string' ? body.note : undefined
+							}
+						});
 		if (!outcome.ok) {
 			return {
 				ok: false,
@@ -552,7 +587,7 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
 
 	const action = normalizeAction((body as { action?: unknown }).action);
 	if (!action) {
-		return ApiResponse.badRequest("action must be 'approve', 'reject', or 'snooze'");
+		return ApiResponse.badRequest("action must be 'approve', 'address', 'reject', or 'snooze'");
 	}
 
 	const sourceTypeParam = (body as { source_type?: unknown }).source_type;
@@ -569,6 +604,9 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
 	const itemIds = Array.isArray(bodyRecord.item_ids)
 		? bodyRecord.item_ids.filter((id): id is string => typeof id === 'string')
 		: [];
+	if (action === 'address' && itemIds.length > 0) {
+		return ApiResponse.badRequest('Address requires one response for one inbox item');
+	}
 
 	if (itemIds.length > 0) {
 		const results: Array<Record<string, unknown>> = [];

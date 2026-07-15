@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/project/ProjectEventsModal.svelte -->
 <script lang="ts">
-	import { CalendarClock, Clock, ExternalLink, MapPin, Plus } from 'lucide-svelte';
+	import { CalendarClock, Clock, ExternalLink, LoaderCircle, MapPin, Plus } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import {
 		getProjectEventBuckets,
@@ -15,6 +15,7 @@
 	let {
 		isOpen,
 		events,
+		loading = false,
 		canEdit,
 		onClose,
 		onAddEvent,
@@ -22,6 +23,7 @@
 	}: {
 		isOpen: boolean;
 		events: OntoEvent[];
+		loading?: boolean;
 		canEdit: boolean;
 		onClose: () => void;
 		onAddEvent?: () => void;
@@ -153,6 +155,12 @@
 					{eventBuckets.upcoming.length}
 					{eventBuckets.upcoming.length === 1 ? 'upcoming event' : 'upcoming events'}
 				</span>
+				{#if loading}
+					<span class="inline-flex items-center gap-1" aria-live="polite">
+						<LoaderCircle class="h-3 w-3 animate-spin motion-reduce:animate-none" />
+						<span>Loading full history</span>
+					</span>
+				{/if}
 			</div>
 			{#if canEdit && onAddEvent}
 				<button
@@ -188,7 +196,14 @@
 			{/each}
 		</div>
 
-		{#if events.length === 0}
+		{#if loading && events.length === 0}
+			<div
+				class="flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-8"
+			>
+				<LoaderCircle class="h-4 w-4 animate-spin text-info motion-reduce:animate-none" />
+				<p class="text-sm text-muted-foreground">Loading project events…</p>
+			</div>
+		{:else if events.length === 0}
 			<div class="rounded-lg border border-border bg-card px-3 py-8 text-center">
 				<p class="text-sm text-muted-foreground">No events scheduled.</p>
 			</div>

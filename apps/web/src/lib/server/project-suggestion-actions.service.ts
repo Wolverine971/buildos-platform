@@ -9,14 +9,17 @@ import type {
 	ProjectSuggestionResult
 } from '@buildos/shared-types';
 import type { ChatToolCall } from '@buildos/shared-types';
-import { syncInboxItemForProjectSuggestion } from '@buildos/shared-agent-ops';
+import {
+	syncInboxItemForProjectAudit,
+	syncInboxItemForProjectSuggestion
+} from '@buildos/shared-agent-ops';
 import { isProjectSuggestionFresh } from '$lib/server/project-loop-snapshot.service';
 import { finalizeProjectLoopRunIfComplete } from '$lib/server/project-loop-run.service';
 import { captureServerEvent } from '$lib/server/posthog';
 
 type AnySupabase = any;
 
-export type ProjectSuggestionDecisionAction = 'approve' | 'dismiss';
+export type ProjectSuggestionDecisionAction = 'approve' | 'address' | 'dismiss';
 
 export type ProjectSuggestionDecisionOutcome =
 	| {
@@ -41,6 +44,7 @@ function emitSuggestionDecisionEvent(
 	userId: string,
 	event:
 		| 'project_suggestion_accepted'
+		| 'project_suggestion_addressed'
 		| 'project_suggestion_dismissed'
 		| 'project_suggestion_superseded_freshness'
 		| 'project_suggestion_application_failed',
@@ -67,6 +71,21 @@ async function syncProjectSuggestionInboxItem(suggestion: Record<string, unknown
 	} catch (error) {
 		console.warn(
 			`[AI Inbox] Failed to sync project suggestion ${suggestion.id}:`,
+			error instanceof Error ? error.message : error
+		);
+	}
+}
+
+async function syncProjectAuditInboxItem(audit: Record<string, unknown>): Promise<void> {
+	try {
+		const admin = createAdminSupabaseClient();
+		await syncInboxItemForProjectAudit({
+			supabase: admin as any,
+			audit
+		});
+	} catch (error) {
+		console.warn(
+			`[AI Inbox] Failed to sync project audit ${audit.id}:`,
 			error instanceof Error ? error.message : error
 		);
 	}
@@ -210,7 +229,7 @@ function withProjectSuggestionReplayContext(
 	};
 }
 
-async function refreshLinkedAuditSuggestionCounts(params: {
+export async function refreshLinkedAuditSuggestionCounts(params: {
 	supabase: AnySupabase;
 	suggestionId: string;
 }): Promise<void> {
@@ -262,6 +281,33 @@ async function refreshLinkedAuditSuggestionCounts(params: {
 				`[ProjectSuggestions] Failed to refresh audit suggestion counts for audit ${auditId}:`,
 				updateError.message
 			);
+			continue;
+		}
+
+		// The parent audit is a packet around its child recommendations. Once every
+		// child has reached a terminal decision, close the packet automatically so
+		// users are not left with a second, meaningless "mark reviewed" chore.
+		if (rows.length > 0 && unresolvedCount === 0) {
+			const { data: reviewedAudit, error: reviewError } = await params.supabase
+				.from('project_audits')
+				.update({
+					status: 'reviewed',
+					reviewed_at: new Date().toISOString()
+				})
+				.eq('id', auditId)
+				.eq('status', 'ready')
+				.select('*')
+				.maybeSingle();
+			if (reviewError) {
+				console.warn(
+					`[ProjectSuggestions] Failed to close completed audit ${auditId}:`,
+					reviewError.message
+				);
+				continue;
+			}
+			if (reviewedAudit) {
+				await syncProjectAuditInboxItem(reviewedAudit as Record<string, unknown>);
+			}
 		}
 	}
 }
@@ -295,6 +341,52 @@ export async function decideProjectSuggestion(params: {
 	if (current.status !== 'pending') {
 		await syncProjectSuggestionInboxItem(current);
 		return { ok: true, suggestion: current, alreadyDecided: true };
+	}
+	const proposedOperations: LoopOperation[] = Array.isArray(current.operations)
+		? (current.operations as LoopOperation[])
+		: [];
+
+	if (action === 'address') {
+		const feedback = sanitizeFeedback(params.feedback);
+		if (!feedback?.note) {
+			return {
+				ok: false,
+				status: 400,
+				message: 'A one-line response is required to address this finding'
+			};
+		}
+		const addressedFeedback: ProjectSuggestionFeedback = {
+			...feedback,
+			reason: 'other',
+			created_at: nowIso
+		};
+		const { data: updated, error: updateError } = await supabase
+			.from('project_suggestions')
+			.update({
+				status: 'addressed',
+				decided_at: nowIso,
+				user_feedback: addressedFeedback as unknown as Json
+			})
+			.eq('id', suggestionId)
+			.eq('project_id', projectId)
+			.eq('status', 'pending')
+			.select('*')
+			.maybeSingle();
+		if (updateError) return { ok: false, status: 500, message: updateError.message };
+		if (!updated) {
+			const latest = await loadSuggestion({ supabase, projectId, suggestionId });
+			if (latest) await syncProjectSuggestionInboxItem(latest);
+			return latest
+				? { ok: true, suggestion: latest, alreadyDecided: true }
+				: { ok: false, status: 404, message: 'Suggestion not found' };
+		}
+		await syncProjectSuggestionInboxItem(updated);
+		await refreshLinkedAuditSuggestionCounts({ supabase, suggestionId });
+		await finalizeProjectLoopRunIfComplete(supabase, (updated as { run_id?: string }).run_id);
+		emitSuggestionDecisionEvent(userId, 'project_suggestion_addressed', updated, {
+			has_note: true
+		});
+		return { ok: true, suggestion: updated };
 	}
 
 	if (action === 'dismiss') {
@@ -334,6 +426,15 @@ export async function decideProjectSuggestion(params: {
 			has_note: Boolean(feedback.note)
 		});
 		return { ok: true, suggestion: updated };
+	}
+
+	if (proposedOperations.length === 0) {
+		return {
+			ok: false,
+			status: 422,
+			message:
+				'This item is a finding, not an executable proposal. Address it, chat about it, or dismiss it.'
+		};
 	}
 
 	const suggestionBeforeClaim = current as unknown as ProjectSuggestion;

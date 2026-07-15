@@ -7,16 +7,17 @@ import { handleCommentMentions } from './comment-mentions';
 import { canAccessPublicComments } from '$lib/server/comment-public-access';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { parseJsonRequest } from '$lib/utils/request-validation';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 
 const createCommentSchema = z
 	.object({
-		project_id: z.string().min(1),
+		project_id: z.string().uuid(),
 		entity_type: z.string().min(1),
-		entity_id: z.string().min(1),
-		parent_id: z.string().nullable().optional(),
+		entity_id: z.string().uuid(),
+		parent_id: z.string().uuid().nullable().optional(),
 		body: z.string().min(1).max(10000)
 	})
 	.strict();
@@ -41,6 +42,15 @@ export const GET: RequestHandler = async ({ request, locals }) => {
 
 	if (!projectId || !entityType || !entityId) {
 		return ApiResponse.badRequest('project_id, entity_type, and entity_id are required');
+	}
+	if (!isValidUUID(projectId)) {
+		return ApiResponse.badRequest('Invalid project_id');
+	}
+	if (!isValidUUID(entityId)) {
+		return ApiResponse.badRequest('Invalid entity_id');
+	}
+	if (rootId && !isValidUUID(rootId)) {
+		return ApiResponse.badRequest('Invalid root_id');
 	}
 
 	try {

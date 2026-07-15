@@ -325,8 +325,7 @@ function buildLocalPreviews(baseUrl: string) {
 			...buildPreview(
 				'email_2',
 				createPreviewState({
-					projectCount: 1,
-					latestProjectId: 'preview-project'
+					projectCount: 1
 				}),
 				baseUrl
 			)
@@ -342,8 +341,7 @@ function buildLocalPreviews(baseUrl: string) {
 			...buildPreview(
 				'email_3',
 				createPreviewState({
-					projectCount: 1,
-					latestProjectId: 'preview-project'
+					projectCount: 1
 				}),
 				baseUrl
 			)
@@ -355,7 +353,6 @@ function buildLocalPreviews(baseUrl: string) {
 				'email_3',
 				createPreviewState({
 					projectCount: 1,
-					latestProjectId: 'preview-project',
 					onboardingCompleted: true
 				}),
 				baseUrl
@@ -367,8 +364,7 @@ function buildLocalPreviews(baseUrl: string) {
 			...buildPreview(
 				'email_4',
 				createPreviewState({
-					projectCount: 1,
-					latestProjectId: 'preview-project'
+					projectCount: 1
 				}),
 				baseUrl
 			)
@@ -381,7 +377,6 @@ function buildLocalPreviews(baseUrl: string) {
 				'email_4',
 				createPreviewState({
 					projectCount: 1,
-					latestProjectId: 'preview-project',
 					onboardingCompleted: true
 				}),
 				baseUrl
@@ -394,7 +389,6 @@ function buildLocalPreviews(baseUrl: string) {
 				'email_4',
 				createPreviewState({
 					projectCount: 1,
-					latestProjectId: 'preview-project',
 					onboardingCompleted: true,
 					emailDailyBriefEnabled: true
 				}),
@@ -413,7 +407,6 @@ function buildLocalPreviews(baseUrl: string) {
 				'email_5',
 				createPreviewState({
 					projectCount: 1,
-					latestProjectId: 'preview-project',
 					lastVisit: '2026-03-02T02:00:00.000Z'
 				}),
 				baseUrl
@@ -468,7 +461,7 @@ function buildSandboxPreviewFromInput(
 		name: input.name,
 		onboardingIntent: input.onboardingIntent === 'none' ? null : input.onboardingIntent,
 		projectCount: input.projectCount,
-		latestProjectId: input.projectCount > 0 ? 'preview-project' : null,
+		latestProjectId: null,
 		onboardingCompleted: input.onboardingCompleted,
 		emailDailyBriefEnabled: input.emailDailyBriefEnabled,
 		smsChannelEnabled: input.smsChannelEnabled,
@@ -491,7 +484,7 @@ function buildPreviewStateFromInput(
 		name: input.name,
 		onboardingIntent: input.onboardingIntent === 'none' ? null : input.onboardingIntent,
 		projectCount: input.projectCount,
-		latestProjectId: input.projectCount > 0 ? 'preview-project' : null,
+		latestProjectId: null,
 		onboardingCompleted: input.onboardingCompleted,
 		emailDailyBriefEnabled: input.emailDailyBriefEnabled,
 		smsChannelEnabled: input.smsChannelEnabled,

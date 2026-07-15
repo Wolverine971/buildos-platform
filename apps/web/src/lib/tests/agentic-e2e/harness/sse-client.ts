@@ -147,6 +147,7 @@ export async function runTurn(params: RunTurnParams): Promise<TurnResult> {
 		headers: {
 			'Content-Type': 'application/json',
 			Accept: 'text/event-stream',
+			'X-Skip-Project-Loop-Burst': 'true',
 			Cookie: params.cookie
 		},
 		body: JSON.stringify(body)

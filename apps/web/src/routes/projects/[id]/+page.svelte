@@ -23,8 +23,8 @@
 	entity tabs wrap onto multiple pill rows) + MobileTaskBoard + shared
 	ProjectDocumentsSection.
 
-	The data loader is identical to v1 (skeleton-first + hydrate via
-	/api/onto/projects/[id]/full). Modals are rendered through
+	The data loader preserves skeleton-first rendering while the server starts
+	the full v2 payload and streams its promise to the client. Modals are rendered through
 	ProjectModalsHost so v2 has the same modal coverage as v1.
 -->
 <script lang="ts">
@@ -41,13 +41,7 @@
 		parseDocStructure
 	} from '$lib/services/ontology/doc-structure.service';
 	import ProjectHeaderCard from '$lib/components/project/ProjectHeaderCard.svelte';
-	import ProjectAuditTracker from '$lib/components/project/ProjectAuditTracker.svelte';
-	import ProjectDocumentsSection from '$lib/components/project/ProjectDocumentsSection.svelte';
-	import ProjectEventsModal from '$lib/components/project/ProjectEventsModal.svelte';
-	import RecentProjectChatsModal from '$lib/components/project/RecentProjectChatsModal.svelte';
 	import PulseStrip from '$lib/components/project/v2/PulseStrip.svelte';
-	import MobileTaskBoard from '$lib/components/project/v2/MobileTaskBoard.svelte';
-	import TaskKanbanBoard from '$lib/components/project/v2/TaskKanbanBoard.svelte';
 	import EntityTabStrip from '$lib/components/project/v2/EntityTabStrip.svelte';
 	import ProjectEntitySearchCombobox from '$lib/components/project/v2/ProjectEntitySearchCombobox.svelte';
 	import ProjectMemoryCard from '$lib/components/project/ProjectMemoryCard.svelte';
@@ -68,7 +62,9 @@
 		fetchProjectTask,
 		moveProjectDocument,
 		updateProjectNotificationSettings,
+		type DeferredProjectFullData,
 		type OntoEventWithSync,
+		type ProjectFullData,
 		type ProjectNotificationSettings
 	} from '$lib/components/project/project-page-data-controller';
 	import { resolveEntityOpenAction } from '$lib/components/project/project-page-interactions';
@@ -136,21 +132,34 @@
 	let hydrationError = $state<string | null>(null);
 	let deferredProjectDataLoad = $state<PageData | null>(null);
 
-	let project = $state<Project>(projectFromPageData(initialData));
-	let tasks = $state<Task[]>(initialData.skeleton ? [] : ((initialData.tasks ?? []) as Task[]));
-	let documents = $state<Document[]>(
+	let project = $state.raw<Project>(projectFromPageData(initialData));
+	let tasks = $state.raw<Task[]>(
+		initialData.skeleton ? [] : ((initialData.tasks ?? []) as Task[])
+	);
+	let documents = $state.raw<Document[]>(
 		initialData.skeleton ? [] : ((initialData.documents ?? []) as Document[])
 	);
-	let plans = $state<Plan[]>(initialData.skeleton ? [] : ((initialData.plans ?? []) as Plan[]));
-	let goals = $state<Goal[]>(initialData.skeleton ? [] : ((initialData.goals ?? []) as Goal[]));
-	let milestones = $state<Milestone[]>(
+	let plans = $state.raw<Plan[]>(
+		initialData.skeleton ? [] : ((initialData.plans ?? []) as Plan[])
+	);
+	let goals = $state.raw<Goal[]>(
+		initialData.skeleton ? [] : ((initialData.goals ?? []) as Goal[])
+	);
+	let milestones = $state.raw<Milestone[]>(
 		initialData.skeleton ? [] : ((initialData.milestones ?? []) as Milestone[])
 	);
-	let risks = $state<Risk[]>(initialData.skeleton ? [] : ((initialData.risks ?? []) as Risk[]));
-	let events = $state<OntoEventWithSync[]>(
+	let risks = $state.raw<Risk[]>(
+		initialData.skeleton ? [] : ((initialData.risks ?? []) as Risk[])
+	);
+	let events = $state.raw<OntoEventWithSync[]>(
 		initialData.skeleton ? [] : ((initialData.events ?? []) as OntoEventWithSync[])
 	);
-	let contextDocument = $state<Document | null>(
+	let hasCompleteProjectEvents = $state(
+		initialData.skeleton ? false : (initialData.events_coverage?.complete ?? true)
+	);
+	let isProjectEventsLoading = $state(false);
+	let projectEventsRequestId = 0;
+	let contextDocument = $state.raw<Document | null>(
 		initialData.skeleton ? null : ((initialData.context_document ?? null) as Document | null)
 	);
 	let isContextDocumentContentLoading = $state(false);
@@ -169,6 +178,11 @@
 		milestones = sourceData.skeleton ? [] : ((sourceData.milestones ?? []) as Milestone[]);
 		risks = sourceData.skeleton ? [] : ((sourceData.risks ?? []) as Risk[]);
 		events = sourceData.skeleton ? [] : ((sourceData.events ?? []) as OntoEventWithSync[]);
+		hasCompleteProjectEvents = sourceData.skeleton
+			? false
+			: (sourceData.events_coverage?.complete ?? true);
+		isProjectEventsLoading = false;
+		projectEventsRequestId += 1;
 		contextDocument = sourceData.skeleton
 			? null
 			: ((sourceData.context_document ?? null) as Document | null);
@@ -242,11 +256,19 @@
 	type AgentChatModalLazy =
 		| typeof import('$lib/components/agent/AgentChatModal.svelte').default
 		| null;
+	type ProjectEventsModalLazy =
+		| typeof import('$lib/components/project/ProjectEventsModal.svelte').default
+		| null;
+	type RecentProjectChatsModalLazy =
+		| typeof import('$lib/components/project/RecentProjectChatsModal.svelte').default
+		| null;
 	let showEventsModal = $state(false);
 	let showRecentChatsModal = $state(false);
 	let showRecentChatAgentModal = $state(false);
 	let selectedRecentChatSessionId = $state<string | null>(null);
 	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
+	let ProjectEventsModalComponent = $state<ProjectEventsModalLazy>(null);
+	let RecentProjectChatsModalComponent = $state<RecentProjectChatsModalLazy>(null);
 
 	async function loadAgentChatModal() {
 		if (!AgentChatModalComponent) {
@@ -254,6 +276,22 @@
 			AgentChatModalComponent = mod.default;
 		}
 		return AgentChatModalComponent;
+	}
+
+	async function loadProjectEventsModal() {
+		if (!ProjectEventsModalComponent) {
+			const mod = await import('$lib/components/project/ProjectEventsModal.svelte');
+			ProjectEventsModalComponent = mod.default;
+		}
+		return ProjectEventsModalComponent;
+	}
+
+	async function loadRecentProjectChatsModal() {
+		if (!RecentProjectChatsModalComponent) {
+			const mod = await import('$lib/components/project/RecentProjectChatsModal.svelte');
+			RecentProjectChatsModalComponent = mod.default;
+		}
+		return RecentProjectChatsModalComponent;
 	}
 
 	// ============================================================
@@ -378,11 +416,27 @@
 	// HYDRATION + REFRESH
 	// ============================================================
 
-	async function hydrateFullData(sourceData: PageData = data) {
+	async function resolveInitialFullData(
+		sourceData: PageData,
+		bypassDeferredData: boolean
+	): Promise<ProjectFullData> {
+		if (sourceData.skeleton && !bypassDeferredData) {
+			const result: DeferredProjectFullData = await sourceData.deferredFullData;
+			if (result.ok) return result.data;
+			throw new Error(result.error);
+		}
+
+		return fetchProjectFullData(sourceData.projectId, { profile: 'v2-initial' });
+	}
+
+	async function hydrateFullData(
+		sourceData: PageData = data,
+		{ bypassDeferredData = false }: { bypassDeferredData?: boolean } = {}
+	) {
 		if (!sourceData.skeleton) return;
 		const projectId = sourceData.projectId;
 		try {
-			const fullData = await fetchProjectFullData(projectId, { profile: 'v2-initial' });
+			const fullData = await resolveInitialFullData(sourceData, bypassDeferredData);
 			if (data.projectId !== projectId) return;
 			project = (fullData.project as Project) || project;
 			tasks = (fullData.tasks ?? []) as Task[];
@@ -392,6 +446,7 @@
 			milestones = (fullData.milestones ?? []) as Milestone[];
 			risks = (fullData.risks ?? []) as Risk[];
 			events = (fullData.events ?? []) as OntoEventWithSync[];
+			hasCompleteProjectEvents = fullData.events_coverage?.complete ?? true;
 			contextDocument = mergeContextDocumentFromPayload(fullData.context_document);
 			applyDocTreeSeed(buildDocTreeSeed(fullData.project as Project, documents));
 			isHydrating = false;
@@ -427,6 +482,7 @@
 			contextDocument = mergeContextDocumentFromPayload(fullData.context_document);
 			if (Array.isArray(fullData.events)) {
 				events = fullData.events as OntoEventWithSync[];
+				hasCompleteProjectEvents = fullData.events_coverage?.complete ?? true;
 			} else {
 				await loadProjectEvents();
 			}
@@ -562,12 +618,15 @@
 
 	async function loadProjectEvents(showToast = false, projectId = project?.id) {
 		if (!projectId) return;
+		const requestId = ++projectEventsRequestId;
+		isProjectEventsLoading = true;
 		try {
 			const loadedEvents = await fetchProjectEvents(projectId);
-			if (data.projectId !== projectId) return;
+			if (data.projectId !== projectId || requestId !== projectEventsRequestId) return;
 			events = loadedEvents;
+			hasCompleteProjectEvents = true;
 		} catch (err) {
-			if (data.projectId !== projectId) return;
+			if (data.projectId !== projectId || requestId !== projectEventsRequestId) return;
 			console.error('[Project v2] Failed to load events', err);
 			void logOntologyClientError(err, {
 				endpoint: `/api/onto/projects/${projectId}/events`,
@@ -578,6 +637,10 @@
 			});
 			if (showToast) {
 				toastService.error(err instanceof Error ? err.message : 'Failed to load events');
+			}
+		} finally {
+			if (data.projectId === projectId && requestId === projectEventsRequestId) {
+				isProjectEventsLoading = false;
 			}
 		}
 	}
@@ -1279,6 +1342,14 @@
 	}
 	function openEventsModal() {
 		showEventsModal = true;
+		if (!hasCompleteProjectEvents && !isProjectEventsLoading) {
+			void loadProjectEvents(true);
+		}
+		void loadProjectEventsModal().catch((error) => {
+			showEventsModal = false;
+			console.error('[Project v2] Failed to load events modal:', error);
+			toastService.error('Failed to open project events');
+		});
 	}
 	function closeEventsModal() {
 		showEventsModal = false;
@@ -1326,6 +1397,11 @@
 
 	function openRecentChatsModal() {
 		showRecentChatsModal = true;
+		void loadRecentProjectChatsModal().catch((error) => {
+			showRecentChatsModal = false;
+			console.error('[Project v2] Failed to load recent chats modal:', error);
+			toastService.error('Failed to open recent chats');
+		});
 	}
 	function closeRecentChatsModal() {
 		showRecentChatsModal = false;
@@ -1429,6 +1505,49 @@
 	<title>{project?.name || 'Project'} | BuildOS</title>
 </svelte:head>
 
+{#snippet taskBoardSkeleton()}
+	<div class="sm:hidden mb-2">
+		<div
+			class="min-h-[260px] bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak animate-pulse"
+		></div>
+	</div>
+	<div class="hidden sm:block">
+		<div
+			class="min-h-[300px] bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+		>
+			<div class="px-3 sm:px-4 py-2.5 border-b border-border/60">
+				<div class="h-3.5 w-24 bg-muted rounded animate-pulse"></div>
+			</div>
+			<div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 p-2 sm:p-3">
+				{#each Array(4) as _, i (i)}
+					<div class="space-y-2">
+						<div class="h-4 w-20 bg-muted rounded animate-pulse"></div>
+						<div class="h-40 bg-muted/40 rounded-md animate-pulse"></div>
+					</div>
+				{/each}
+			</div>
+		</div>
+	</div>
+{/snippet}
+
+{#snippet documentsSectionSkeleton()}
+	<div class="mt-2 sm:mt-3">
+		<div
+			class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+		>
+			<div class="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-3">
+				<div
+					class="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-muted/40 animate-pulse shrink-0"
+				></div>
+				<div class="space-y-1.5">
+					<div class="h-3.5 w-24 bg-muted rounded animate-pulse"></div>
+					<div class="h-2.5 w-16 bg-muted/40 rounded animate-pulse"></div>
+				</div>
+			</div>
+		</div>
+	</div>
+{/snippet}
+
 <div class="overflow-x-hidden">
 	<ProjectHeaderCard
 		{project}
@@ -1455,7 +1574,7 @@
 					onclick={() => {
 						hydrationError = null;
 						isHydrating = true;
-						void hydrateFullData();
+						void hydrateFullData(data, { bypassDeferredData: true });
 					}}
 					class="mt-2 text-sm font-medium text-destructive hover:text-destructive/80 pressable"
 				>
@@ -1556,7 +1675,14 @@
 		{#if PROJECT_LOOPS_ENABLED}
 			<div class="mb-2 sm:mb-3">
 				{#if canLoadSecondaryProjectRequests}
-					<ProjectAuditTracker projectId={project.id} {canEdit} />
+					{#await import('$lib/components/project/ProjectAuditTracker.svelte')}
+						<div
+							class="h-16 rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak animate-pulse"
+							aria-hidden="true"
+						></div>
+					{:then { default: ProjectAuditTracker }}
+						<ProjectAuditTracker projectId={project.id} {canEdit} />
+					{/await}
 				{:else}
 					<div
 						class="h-16 rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak animate-pulse"
@@ -1610,92 +1736,68 @@
 		<!-- Task board: keep the responsive skeleton SSR-safe, then mount only
 			 the active board once the browser viewport is known. -->
 		{#if isHydrating || !hasResolvedTaskViewport}
-			<div class="sm:hidden mb-2">
-				<div
-					class="h-32 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak animate-pulse"
-				></div>
-			</div>
-			<div class="hidden sm:block">
-				<div
-					class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
-				>
-					<div class="px-3 sm:px-4 py-2.5 border-b border-border/60">
-						<div class="h-3.5 w-24 bg-muted rounded animate-pulse"></div>
-					</div>
-					<div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 p-2 sm:p-3">
-						{#each Array(4) as _, i (i)}
-							<div class="space-y-2">
-								<div class="h-4 w-20 bg-muted rounded animate-pulse"></div>
-								<div class="h-16 bg-muted/40 rounded-md animate-pulse"></div>
-							</div>
-						{/each}
-					</div>
-				</div>
-			</div>
+			{@render taskBoardSkeleton()}
 		{:else if isDesktopTaskViewport}
-			<TaskKanbanBoard
-				projectId={project.id}
-				{tasks}
-				{canEdit}
-				onEditTask={(id) => (editingTaskId = id)}
-				onCreateTask={() => (showTaskCreateModal = true)}
-				onTaskMoved={handleTaskMoved}
-			/>
-		{:else}
-			<div class="mb-2" in:fade={fadeIn} out:fade={fadeOut}>
-				<MobileTaskBoard
+			{#await import('$lib/components/project/v2/TaskKanbanBoard.svelte')}
+				{@render taskBoardSkeleton()}
+			{:then { default: TaskKanbanBoard }}
+				<TaskKanbanBoard
 					projectId={project.id}
 					{tasks}
 					{canEdit}
 					onEditTask={(id) => (editingTaskId = id)}
 					onCreateTask={() => (showTaskCreateModal = true)}
+					onTaskMoved={handleTaskMoved}
 				/>
-			</div>
+			{/await}
+		{:else}
+			{#await import('$lib/components/project/v2/MobileTaskBoard.svelte')}
+				{@render taskBoardSkeleton()}
+			{:then { default: MobileTaskBoard }}
+				<div class="mb-2" in:fade={fadeIn} out:fade={fadeOut}>
+					<MobileTaskBoard
+						projectId={project.id}
+						{tasks}
+						{canEdit}
+						onEditTask={(id) => (editingTaskId = id)}
+						onCreateTask={() => (showTaskCreateModal = true)}
+					/>
+				</div>
+			{/await}
 		{/if}
 
 		<!-- Documents (shared mobile + desktop) -->
 		{#if !isHydrating}
-			<div class="mt-2 sm:mt-3">
-				<ProjectDocumentsSection
-					projectId={project.id}
-					{documents}
-					{canEdit}
-					{documentsExpanded}
-					{activeDocumentId}
-					onToggleExpanded={() => (documentsExpanded = !documentsExpanded)}
-					onCreateDocument={handleCreateDocument}
-					onOpenDocument={handleOpenDocument}
-					onMoveDocument={canEdit ? handleMoveDocument : undefined}
-					onDeleteDocument={canEdit ? handleDeleteDocument : undefined}
-					onDataLoaded={handleDocTreeDataLoaded}
-					initialStructure={docTreeStructure}
-					initialDocuments={docTreeDocuments}
-					initialUnlinked={docTreeUnlinked}
-					initialArchived={docTreeArchived}
-					pollInterval={canLoadSecondaryProjectRequests ? 30000 : 0}
-					onTreeRefChange={(ref) => {
-						docTreeViewRef = ref;
-					}}
-				/>
-			</div>
-		{:else}
-			<!-- Documents header skeleton so the section fades in with its
-				 siblings instead of popping into empty space (Hyperplexed S6). -->
-			<div class="mt-2 sm:mt-3">
-				<div
-					class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
-				>
-					<div class="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-3">
-						<div
-							class="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-muted/40 animate-pulse shrink-0"
-						></div>
-						<div class="space-y-1.5">
-							<div class="h-3.5 w-24 bg-muted rounded animate-pulse"></div>
-							<div class="h-2.5 w-16 bg-muted/40 rounded animate-pulse"></div>
-						</div>
-					</div>
+			{#await import('$lib/components/project/ProjectDocumentsSection.svelte')}
+				{@render documentsSectionSkeleton()}
+			{:then { default: ProjectDocumentsSection }}
+				<div class="mt-2 sm:mt-3">
+					<ProjectDocumentsSection
+						projectId={project.id}
+						{documents}
+						{canEdit}
+						{documentsExpanded}
+						{activeDocumentId}
+						onToggleExpanded={() => (documentsExpanded = !documentsExpanded)}
+						onCreateDocument={handleCreateDocument}
+						onOpenDocument={handleOpenDocument}
+						onMoveDocument={canEdit ? handleMoveDocument : undefined}
+						onDeleteDocument={canEdit ? handleDeleteDocument : undefined}
+						onDataLoaded={handleDocTreeDataLoaded}
+						initialStructure={docTreeStructure}
+						initialDocuments={docTreeDocuments}
+						initialUnlinked={docTreeUnlinked}
+						initialArchived={docTreeArchived}
+						pollInterval={canLoadSecondaryProjectRequests ? 30000 : 0}
+						onTreeRefChange={(ref) => {
+							docTreeViewRef = ref;
+						}}
+					/>
 				</div>
-			</div>
+			{/await}
+		{:else}
+			<!-- Reserve the section header while project data or its code chunk loads. -->
+			{@render documentsSectionSkeleton()}
 		{/if}
 	</div>
 </div>
@@ -1797,22 +1899,27 @@
 	{/await}
 {/if}
 
-<ProjectEventsModal
-	isOpen={showEventsModal}
-	{events}
-	{canEdit}
-	onClose={closeEventsModal}
-	onAddEvent={openEventCreateFromEventsModal}
-	onSelectEvent={openEventFromEventsModal}
-/>
+{#if ProjectEventsModalComponent}
+	<ProjectEventsModalComponent
+		isOpen={showEventsModal}
+		{events}
+		loading={isProjectEventsLoading}
+		{canEdit}
+		onClose={closeEventsModal}
+		onAddEvent={openEventCreateFromEventsModal}
+		onSelectEvent={openEventFromEventsModal}
+	/>
+{/if}
 
-<RecentProjectChatsModal
-	isOpen={showRecentChatsModal}
-	projectId={project.id}
-	projectName={project.name}
-	onClose={closeRecentChatsModal}
-	onSelectChat={handleRecentChatSelected}
-/>
+{#if RecentProjectChatsModalComponent}
+	<RecentProjectChatsModalComponent
+		isOpen={showRecentChatsModal}
+		projectId={project.id}
+		projectName={project.name}
+		onClose={closeRecentChatsModal}
+		onSelectChat={handleRecentChatSelected}
+	/>
+{/if}
 
 {#if showRecentChatAgentModal && selectedRecentChatSessionId && AgentChatModalComponent}
 	<AgentChatModalComponent

@@ -158,6 +158,52 @@ function createService(errorLogs: ErrorRow[], users: UserRow[] = []) {
 }
 
 describe('ErrorLoggerService', () => {
+	it('omits malformed project IDs without dropping the original error log', async () => {
+		const insertedEntries: Array<Record<string, any>> = [];
+		const insert = vi.fn((entry: Record<string, any>) => ({
+			select: vi.fn(() => ({
+				single: vi.fn(async () => {
+					insertedEntries.push(entry);
+					return { data: { id: 'logged-error-1' }, error: null };
+				})
+			}))
+		}));
+		const supabase = {
+			from: vi.fn((table: string) => {
+				expect(table).toBe('error_logs');
+				return { insert };
+			})
+		};
+		const service = ErrorLoggerService.getInstance(
+			supabase as unknown as SupabaseClient<Database>
+		);
+
+		const loggedId = await service.logError(
+			{
+				code: '22P02',
+				message: 'invalid input syntax for type uuid: "preview-project"'
+			},
+			{
+				projectId: 'preview-project',
+				endpoint: '/api/onto/comments',
+				httpMethod: 'GET',
+				operationType: 'comments_project_fetch'
+			}
+		);
+
+		expect(loggedId).toBe('logged-error-1');
+		expect(insertedEntries).toHaveLength(1);
+		expect(insertedEntries[0]?.project_id).toBeUndefined();
+		expect(insertedEntries[0]?.metadata).toMatchObject({
+			invalid_context_project_id: 'preview-project',
+			project_id_omitted_reason: 'invalid_uuid',
+			originalError: {
+				code: '22P02',
+				message: 'invalid input syntax for type uuid: "preview-project"'
+			}
+		});
+	});
+
 	it('scans past suppressed noise and paginates displayable errors', async () => {
 		const baseTime = Date.parse('2026-04-03T12:00:00.000Z');
 		const noise = Array.from({ length: 260 }, (_, index) =>

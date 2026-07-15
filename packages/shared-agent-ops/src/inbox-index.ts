@@ -323,15 +323,16 @@ async function markInboxItemExpired(
 
 async function markProjectAuditInboxNoActionRequired(
 	supabase: AnySupabase,
-	auditId: string
+	auditId: string,
+	params: { sourceStatus?: string; reason?: string } = {}
 ): Promise<InboxIndexRow | null> {
 	const { data, error } = await (supabase as any)
 		.from('inbox_items')
 		.update({
 			status: 'expired',
-			source_status: 'no_action_required',
+			source_status: params.sourceStatus ?? 'no_action_required',
 			decided_at: new Date().toISOString(),
-			blocked_reason: 'Audit completed without an actionable recommendation',
+			blocked_reason: params.reason ?? 'Audit completed without an actionable recommendation',
 			snoozed_until: null,
 			expires_at: null
 		})
@@ -407,6 +408,10 @@ export function mapProjectSuggestionToInboxItem(
 	if (!id || !projectId) return null;
 
 	const status = asString(suggestion.status) ?? 'pending';
+	const operations = Array.isArray(suggestion.operations) ? suggestion.operations : [];
+	const kind = asString(suggestion.kind);
+	const isFinding =
+		kind === 'drift' || kind === 'audit_recommendation' || operations.length === 0;
 	const inboxStatus: InboxItemStatus =
 		status === 'pending'
 			? 'pending'
@@ -430,7 +435,7 @@ export function mapProjectSuggestionToInboxItem(
 			typeof suggestion.risk_tier === 'number'
 				? Math.max(1, Math.min(3, suggestion.risk_tier))
 				: null,
-		action_kinds: ['approve', 'reject'],
+		action_kinds: isFinding ? ['address', 'reject'] : ['approve', 'reject'],
 		blocked_reason: inboxStatus === 'blocked' ? 'Project suggestion failed to apply' : null,
 		decided_at:
 			inboxStatus === 'pending' || inboxStatus === 'deciding'
@@ -446,15 +451,14 @@ export function mapProjectAuditToInboxItem(audit: Record<string, unknown>): Inbo
 	const projectId = asString(audit.project_id);
 	if (!id || !projectId) return null;
 	const status = asString(audit.status) ?? 'queued';
-	if (status === 'queued' || status === 'running') return null;
+	if (status === 'queued' || status === 'running' || status === 'ready') return null;
 	const recommendations = readAuditInboxRecommendations(audit);
 	// Audit reports remain useful project history, but the inbox is reserved for
 	// concrete asks. Queued/running audits and clean audits must not create noise.
 	if (recommendations.length === 0) return null;
 	const leadRecommendation = recommendations[0];
 
-	const inboxStatus: InboxItemStatus =
-		status === 'ready' ? 'pending' : status === 'failed' ? 'blocked' : 'decided';
+	const inboxStatus: InboxItemStatus = status === 'ready' ? 'pending' : 'decided';
 	const summary = auditRecommendationSummary({
 		audit,
 		recommendation: leadRecommendation,
@@ -478,7 +482,7 @@ export function mapProjectAuditToInboxItem(audit: Record<string, unknown>): Inbo
 					? 1
 					: 2,
 		action_kinds: ['open', 'resolve'],
-		blocked_reason: inboxStatus === 'blocked' ? 'Project audit failed' : null,
+		blocked_reason: null,
 		decided_at: inboxStatus === 'pending' ? null : projectAuditDecidedAt(audit),
 		expires_at: reviewExpiresAt(asString(audit.created_at), inboxStatus),
 		created_at: asString(audit.created_at) ?? undefined
@@ -599,9 +603,35 @@ export async function syncInboxItemForProjectAudit(params: {
 	const row = mapProjectAuditToInboxItem(audit);
 	if (row) return upsertInboxItem(params.supabase, row);
 	const auditId = asString(audit.id) ?? params.auditId;
-	return auditId && asString(audit.status) === 'ready'
-		? markProjectAuditInboxNoActionRequired(params.supabase, auditId)
-		: null;
+	const auditStatus = asString(audit.status);
+	if (!auditId || !auditStatus || auditStatus === 'queued' || auditStatus === 'running') {
+		return null;
+	}
+	if (auditStatus === 'failed') {
+		return markProjectAuditInboxNoActionRequired(params.supabase, auditId, {
+			sourceStatus: 'failed',
+			reason: 'Audit failed before producing an actionable recommendation'
+		});
+	}
+	if (auditStatus === 'ready') {
+		const unresolvedCount =
+			typeof audit.unresolved_suggestion_count === 'number'
+				? audit.unresolved_suggestion_count
+				: typeof audit.generated_suggestion_count === 'number'
+					? audit.generated_suggestion_count
+					: 0;
+		return markProjectAuditInboxNoActionRequired(params.supabase, auditId, {
+			sourceStatus: unresolvedCount > 0 ? 'recommendations_indexed' : 'no_action_required',
+			reason:
+				unresolvedCount > 0
+					? 'Audit recommendations are available as individual inbox items'
+					: 'Audit completed without an actionable recommendation'
+		});
+	}
+	return markProjectAuditInboxNoActionRequired(params.supabase, auditId, {
+		sourceStatus: auditStatus,
+		reason: 'Audit no longer requires an inbox action'
+	});
 }
 
 export async function expireInboxItemsForProjectAuditChildSuggestions(params: {

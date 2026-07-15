@@ -9,11 +9,11 @@ import { parseJsonRequest } from '$lib/utils/request-validation';
 
 const markCommentsReadSchema = z
 	.object({
-		project_id: z.string().min(1),
+		project_id: z.string().uuid(),
 		entity_type: z.string().min(1),
-		entity_id: z.string().min(1),
-		root_id: z.string().min(1),
-		last_read_comment_id: z.string().nullable().optional()
+		entity_id: z.string().uuid(),
+		root_id: z.string().uuid(),
+		last_read_comment_id: z.string().uuid().nullable().optional()
 	})
 	.strict();
 

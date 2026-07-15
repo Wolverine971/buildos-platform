@@ -71,6 +71,18 @@ function getErrorMessage(error: unknown): string {
 
 function inferErrorType(error: unknown, context?: WorkerErrorContext): ErrorType {
 	if (context?.errorType) return context.errorType;
+
+	// Database work can happen after a successful LLM call. Preserve SQLSTATE
+	// precedence so those failures are not mislabeled as model failures merely
+	// because provider/model metadata is attached to the operation.
+	const errorCodeClass = extractErrorInfo(error).code?.slice(0, 2);
+	if (
+		errorCodeClass &&
+		['22', '23', '24', '25', '40', '42', '53', '54', '55', '57', '58'].includes(errorCodeClass)
+	) {
+		return 'database_error';
+	}
+
 	if (context?.llmProvider || context?.llmModel) return 'llm_error';
 
 	const message = getErrorMessage(error);

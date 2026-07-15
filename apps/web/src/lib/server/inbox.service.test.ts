@@ -1000,7 +1000,7 @@ describe('inbox service', () => {
 		});
 	});
 
-	it('backfills complete audit packets without recreating linked child suggestion inbox rows', async () => {
+	it('backfills linked audit recommendations as individual inbox items', async () => {
 		mocks.syncInboxItemForSource.mockImplementation(
 			async ({ sourceType, sourceRefId }: { sourceType: string; sourceRefId: string }) => ({
 				source_type: sourceType,
@@ -1008,7 +1008,7 @@ describe('inbox service', () => {
 				status: 'pending'
 			})
 		);
-		const { supabase, state } = createSupabaseMock({
+		const { supabase } = createSupabaseMock({
 			project_suggestions: [
 				{
 					id: 'suggestion-linked',
@@ -1070,15 +1070,11 @@ describe('inbox service', () => {
 				sourceRefId: 'audit-1'
 			})
 		);
-		expect(mocks.syncInboxItemForSource).not.toHaveBeenCalledWith(
+		expect(mocks.syncInboxItemForSource).toHaveBeenCalledWith(
 			expect.objectContaining({
 				sourceType: 'project_suggestion',
 				sourceRefId: 'suggestion-linked'
 			})
 		);
-		expect(state.tables.inbox_items[0]).toMatchObject({
-			status: 'expired',
-			source_status: 'grouped_into_project_audit'
-		});
 	});
 });

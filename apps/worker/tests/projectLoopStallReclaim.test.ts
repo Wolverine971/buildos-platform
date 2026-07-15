@@ -1,43 +1,15 @@
 // apps/worker/tests/projectLoopStallReclaim.test.ts
 import { describe, expect, it } from 'vitest';
-import { resolveProjectLoopsEnabled } from '../src/config/projectLoops';
+import { PROJECT_LOOPS_ENABLED } from '../src/config/projectLoops';
 import {
 	getProjectLoopEndOfDayWindow,
 	projectLoopDedupKey,
 	selectEndOfDayProjectLoopCandidates
 } from '../src/workers/project-loop/enqueue';
 
-describe('resolveProjectLoopsEnabled', () => {
-	it('lets an explicit true win in production', () => {
-		expect(
-			resolveProjectLoopsEnabled({ ENABLE_PROJECT_LOOPS: 'true', NODE_ENV: 'production' })
-		).toBe(true);
-	});
-
-	it('lets an explicit false win in development (regression: dev no longer force-enables)', () => {
-		expect(
-			resolveProjectLoopsEnabled({ ENABLE_PROJECT_LOOPS: 'false', NODE_ENV: 'development' })
-		).toBe(false);
-	});
-
-	it('is case-insensitive and trims the explicit value', () => {
-		expect(
-			resolveProjectLoopsEnabled({ ENABLE_PROJECT_LOOPS: '  TRUE ', NODE_ENV: 'production' })
-		).toBe(true);
-		expect(
-			resolveProjectLoopsEnabled({ ENABLE_PROJECT_LOOPS: 'nope', NODE_ENV: 'development' })
-		).toBe(false);
-	});
-
-	it('falls back to the dev default when the var is unset or empty', () => {
-		expect(resolveProjectLoopsEnabled({ NODE_ENV: 'development' })).toBe(true);
-		expect(
-			resolveProjectLoopsEnabled({ ENABLE_PROJECT_LOOPS: '', NODE_ENV: 'development' })
-		).toBe(true);
-		expect(resolveProjectLoopsEnabled({ NODE_ENV: 'production' })).toBe(false);
-		expect(
-			resolveProjectLoopsEnabled({ ENABLE_PROJECT_LOOPS: null, NODE_ENV: 'production' })
-		).toBe(false);
+describe('PROJECT_LOOPS_ENABLED', () => {
+	it('is always on and does not depend on deployment env configuration', () => {
+		expect(PROJECT_LOOPS_ENABLED).toBe(true);
 	});
 });
 

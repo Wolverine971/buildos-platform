@@ -69,6 +69,7 @@ export class ChatToolExecutor {
 	private errorLogger: ErrorLoggerService;
 	private logExecutions: boolean;
 	private abortSignal?: AbortSignal;
+	private skipProjectLoopBurst: boolean;
 
 	// Cached values
 	private _actorId?: string;
@@ -87,7 +88,11 @@ export class ChatToolExecutor {
 		sessionId?: string,
 		fetchFn?: typeof fetch,
 		llmService?: SmartLLMService,
-		options?: { logExecutions?: boolean; abortSignal?: AbortSignal }
+		options?: {
+			logExecutions?: boolean;
+			abortSignal?: AbortSignal;
+			skipProjectLoopBurst?: boolean;
+		}
 	) {
 		this.sessionId = sessionId;
 		this.fetchFn = fetchFn || fetch;
@@ -95,6 +100,7 @@ export class ChatToolExecutor {
 		this.errorLogger = ErrorLoggerService.getInstance(supabase as any);
 		this.logExecutions = options?.logExecutions ?? true;
 		this.abortSignal = options?.abortSignal;
+		this.skipProjectLoopBurst = options?.skipProjectLoopBurst ?? false;
 	}
 
 	setSessionId(sessionId: string): void {
@@ -197,7 +203,8 @@ export class ChatToolExecutor {
 			'Content-Type': 'application/json',
 			Authorization: session?.access_token ? `Bearer ${session.access_token}` : '',
 			'X-Change-Source': 'chat',
-			...(this.sessionId ? { 'X-Chat-Session-Id': this.sessionId } : {})
+			...(this.sessionId ? { 'X-Chat-Session-Id': this.sessionId } : {}),
+			...(this.skipProjectLoopBurst ? { 'X-Skip-Project-Loop-Burst': 'true' } : {})
 		};
 	}
 

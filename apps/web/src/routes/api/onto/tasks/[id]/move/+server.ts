@@ -8,7 +8,10 @@ import {
 	getChatSessionIdFromRequest,
 	logUpdateAsync
 } from '$lib/services/async-activity-logger';
-import { queueProjectLoopBurstAsync } from '$lib/server/project-loop-burst.service';
+import {
+	queueProjectLoopBurstAsync,
+	shouldSkipProjectLoopBurst
+} from '$lib/server/project-loop-burst.service';
 import { captureServerEvent } from '$lib/server/posthog';
 
 type ProjectSummary = {
@@ -221,15 +224,17 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			})
 		]);
 
-		for (const projectId of [result.source_project.id, result.destination_project.id]) {
-			queueProjectLoopBurstAsync({
-				projectId,
-				userId: session.user.id,
-				source: 'task_move',
-				entityType: 'task',
-				entityId: params.id,
-				action: 'updated'
-			});
+		if (!shouldSkipProjectLoopBurst(request)) {
+			for (const projectId of [result.source_project.id, result.destination_project.id]) {
+				queueProjectLoopBurstAsync({
+					projectId,
+					userId: session.user.id,
+					source: 'task_move',
+					entityType: 'task',
+					entityId: params.id,
+					action: 'updated'
+				});
+			}
 		}
 	}
 

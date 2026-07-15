@@ -6,14 +6,14 @@
  *
  * 1. WARM NAVIGATION (from /projects or homepage):
  *    - Server returns a lightweight skeleton/access bundle
- *    - Client renders skeleton, then hydrates via /api/onto/projects/[id]/full
+ *    - Server starts the full-data request and streams its promise to the client
  *
  * 2. COLD LOAD (direct URL, refresh, external link):
  *    - No navigation store data available
  *    - Server calls a skeleton/access RPC (single round-trip that ensures the
  *      actor row and resolves access flags). The classic /old route keeps the
  *      counted skeleton RPC for its count-bearing placeholders.
- *    - Client renders skeleton, then hydrates via /api/onto/projects/[id]/full
+ *    - Server starts the full-data request while the skeleton renders
  *
  * Performance Targets:
  * - Time to first paint: <100ms (skeleton visible immediately)
@@ -39,6 +39,11 @@ import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { attachAssigneesToTasks, type TaskAssignee } from '$lib/server/task-assignment.service';
 import { attachLastChangedByActorToTasks } from '$lib/server/task-relevance.service';
 import { pickStartHereDocument } from '$lib/services/ontology/start-here-selector';
+import { requireApiData } from '$lib/utils/api-client-helpers';
+import type {
+	DeferredProjectFullData,
+	ProjectFullData
+} from '$lib/components/project/project-page-data-controller';
 
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
@@ -102,6 +107,7 @@ interface ProjectSkeletonWithAccessResponse {
 export interface ProjectSkeletonData {
 	skeleton: true;
 	projectId: string;
+	deferredFullData: Promise<DeferredProjectFullData>;
 	access: {
 		canEdit: boolean;
 		canAdmin: boolean;
@@ -138,6 +144,29 @@ export interface ProjectSkeletonData {
 	};
 }
 
+function startDeferredFullDataLoad(
+	fetch: typeof globalThis.fetch,
+	projectId: string
+): Promise<DeferredProjectFullData> {
+	const request = fetch(`/api/onto/projects/${projectId}/full?profile=v2-initial`);
+
+	return request
+		.then(async (response) => {
+			const fullData = await requireApiData<ProjectFullData>(
+				response,
+				'Failed to load project data'
+			);
+			if (!fullData.project || typeof fullData.project !== 'object') {
+				throw new Error('Invalid project data response');
+			}
+			return { ok: true, data: fullData } as const;
+		})
+		.catch((cause: unknown) => ({
+			ok: false as const,
+			error: cause instanceof Error ? cause.message : 'Failed to load project data'
+		}));
+}
+
 function normalizeAccess(
 	access: ProjectAccessPayload | null | undefined,
 	isAuthenticated: boolean
@@ -154,7 +183,7 @@ function normalizeAccess(
 	};
 }
 
-export const load: PageServerLoad = async ({ params, locals, url }) => {
+export const load: PageServerLoad = async ({ params, locals, url, fetch }) => {
 	const { id } = params;
 
 	if (!id) {
@@ -233,6 +262,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	return {
 		skeleton: true,
 		projectId: id,
+		deferredFullData: startDeferredFullDataLoad(fetch, id),
 		project: {
 			id: bundle.id,
 			name: bundle.name,

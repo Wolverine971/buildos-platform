@@ -6,6 +6,7 @@ import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import { commitChangeSet } from '@buildos/shared-agent-ops';
 import { syncInboxItemForSource } from '@buildos/shared-agent-ops/inbox-index';
 import { finalizeProjectLoopRunIfComplete } from '$lib/server/project-loop-run.service';
+import { refreshLinkedAuditSuggestionCounts } from '$lib/server/project-suggestion-actions.service';
 import type { InboxIndexRow, InboxSourceType } from '@buildos/shared-agent-ops/inbox-index';
 
 type ChatSessionRow = {
@@ -188,6 +189,10 @@ async function resolveProjectSuggestionFromChat(params: {
 	if (error) throw error;
 	const synced = updated ? await syncResolvedItem(params.admin, params.item) : null;
 	if (updated) {
+		await refreshLinkedAuditSuggestionCounts({
+			supabase: params.admin,
+			suggestionId: params.item.source_ref_id
+		});
 		await finalizeProjectLoopRunIfComplete(
 			params.admin,
 			(updated as { run_id?: string }).run_id
@@ -213,10 +218,11 @@ async function resolveProjectSuggestionExplicitlyFromChat(params: {
 	}
 
 	const now = new Date().toISOString();
+	const addressed = params.resolution.resolution === 'handled';
 	const { data: updated, error } = await params.admin
 		.from('project_suggestions')
 		.update({
-			status: 'rejected',
+			status: addressed ? 'addressed' : 'rejected',
 			decided_at: now,
 			user_feedback: {
 				reason: 'other',
@@ -234,6 +240,10 @@ async function resolveProjectSuggestionExplicitlyFromChat(params: {
 	if (error) throw error;
 	const synced = updated ? await syncResolvedItem(params.admin, params.item) : null;
 	if (updated) {
+		await refreshLinkedAuditSuggestionCounts({
+			supabase: params.admin,
+			suggestionId: params.item.source_ref_id
+		});
 		await finalizeProjectLoopRunIfComplete(
 			params.admin,
 			(updated as { run_id?: string }).run_id
