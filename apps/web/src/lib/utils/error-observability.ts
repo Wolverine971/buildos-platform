@@ -183,6 +183,7 @@ const PRIVATE_CONFIG_PROBE_PATHS = new Set([
 	'/sa-private-key.json',
 	'/secret.json',
 	'/secrets.json',
+	'/sftp-config.json',
 	'/service-account-config.json',
 	'/service-account-credentials.json',
 	'/service-account-file.json',
@@ -226,6 +227,7 @@ export type GenericErrorEventFilterInput = {
 
 export type PersistedErrorEventLike = {
 	endpoint?: string | null;
+	environment?: string | null;
 	error_message?: string | null;
 	errorMessage?: string | null;
 	metadata?: Record<string, unknown> | null;
@@ -290,6 +292,26 @@ function isPersistedClientNetworkNoise(entry: PersistedErrorEventLike): boolean 
 	}
 
 	return isGenericClientNetworkErrorMessage(entry.error_message ?? entry.errorMessage);
+}
+
+function isPersistedDevelopmentNoise(entry: PersistedErrorEventLike): boolean {
+	if (entry.environment?.trim().toLowerCase() === 'development') {
+		return true;
+	}
+
+	const metadata =
+		entry.metadata && typeof entry.metadata === 'object'
+			? (entry.metadata as Record<string, unknown>)
+			: {};
+	const clientUrl = metadata.clientUrl;
+	if (typeof clientUrl !== 'string') return false;
+
+	try {
+		const hostname = new URL(clientUrl).hostname.toLowerCase();
+		return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0';
+	} catch {
+		return false;
+	}
 }
 
 export function isPrivateConfigProbePath(pathname: string | null | undefined): boolean {
@@ -440,6 +462,10 @@ export function shouldPersistGenericErrorEvent(input: GenericErrorEventFilterInp
 }
 
 export function shouldDisplayPersistedErrorLog(entry: PersistedErrorEventLike): boolean {
+	if (isPersistedDevelopmentNoise(entry)) {
+		return false;
+	}
+
 	const metadata =
 		entry.metadata && typeof entry.metadata === 'object'
 			? (entry.metadata as Record<string, unknown>)
@@ -463,7 +489,7 @@ export function shouldDisplayPersistedErrorLog(entry: PersistedErrorEventLike): 
 }
 
 export function isPurgeablePersistedErrorNoise(entry: PersistedErrorEventLike): boolean {
-	if (isPersistedClientNetworkNoise(entry)) {
+	if (isPersistedClientNetworkNoise(entry) || isPersistedDevelopmentNoise(entry)) {
 		return true;
 	}
 

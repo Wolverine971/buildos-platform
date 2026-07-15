@@ -836,7 +836,9 @@ export class ErrorLoggerService {
 			const limit = Math.min(batchSize, maxRows - scanned);
 			let query = this.supabase
 				.from('error_logs')
-				.select('id, created_at, endpoint, error_message, metadata, operation_type')
+				.select(
+					'id, created_at, endpoint, environment, error_message, metadata, operation_type'
+				)
 				.order('created_at', { ascending: false })
 				.limit(limit);
 

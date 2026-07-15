@@ -65,6 +65,7 @@ describe('error observability filters', () => {
 		expect(isIgnorableProbePath('/google-application-credentials.json')).toBe(true);
 		expect(isIgnorableProbePath('/serviceAccountCredentials.json')).toBe(true);
 		expect(isIgnorableProbePath('/api/client_secret.json')).toBe(true);
+		expect(isIgnorableProbePath('/sftp-config.json')).toBe(true);
 		expect(isIgnorableProbePath('/.openclaw/agents/main/agent/models.json')).toBe(true);
 		expect(isIgnorableProbePath('/brain-bolt-80.png')).toBe(false);
 		expect(isIgnorableProbePath('/media/system/js/core.css')).toBe(false);
@@ -83,6 +84,7 @@ describe('error observability filters', () => {
 		expect(isPrivateConfigProbePath('/firebase-adminsdk.json')).toBe(true);
 		expect(isPrivateConfigProbePath('/gcloud-service-key.json')).toBe(true);
 		expect(isPrivateConfigProbePath('/api/client_secret.json')).toBe(true);
+		expect(isPrivateConfigProbePath('/sftp-config.json')).toBe(true);
 		expect(isPrivateConfigProbePath('/.openclaw/openclaw.json')).toBe(true);
 		expect(isPrivateConfigProbePath('/openapi.json')).toBe(false);
 		expect(isPrivateConfigProbePath('/brain-bolt-80.png')).toBe(false);
@@ -246,6 +248,32 @@ describe('error observability filters', () => {
 
 		expect(
 			shouldDisplayPersistedErrorLog({
+				environment: 'development',
+				endpoint: '/api/onto/comments',
+				error_message: 'Request failed with status 500',
+				operation_type: 'client_fetch_http',
+				metadata: {
+					status: 500,
+					clientUrl: 'http://127.0.0.1:5173/api/onto/comments?project_id=preview-project'
+				}
+			})
+		).toBe(false);
+
+		expect(
+			shouldDisplayPersistedErrorLog({
+				environment: 'production',
+				endpoint: '/api/onto/comments',
+				error_message: 'Request failed with status 500',
+				operation_type: 'client_fetch_http',
+				metadata: {
+					status: 500,
+					clientUrl: 'https://build-os.com/api/onto/comments'
+				}
+			})
+		).toBe(true);
+
+		expect(
+			shouldDisplayPersistedErrorLog({
 				endpoint: '/brain-bolt-80.png',
 				error_message: 'Not found: /brain-bolt-80.png',
 				operation_type: 'hooks.handle_error',
@@ -281,6 +309,19 @@ describe('error observability filters', () => {
 				error_message: 'Failed to fetch',
 				operation_type: 'client_fetch_network',
 				metadata: { reportKind: 'fetch_network' }
+			})
+		).toBe(true);
+
+		expect(
+			isPurgeablePersistedErrorNoise({
+				environment: 'development',
+				endpoint: '/api/onto/comments',
+				error_message: 'Request failed with status 500',
+				operation_type: 'client_fetch_http',
+				metadata: {
+					status: 500,
+					clientUrl: 'http://127.0.0.1:5173/api/onto/comments'
+				}
 			})
 		).toBe(true);
 

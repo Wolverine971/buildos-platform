@@ -541,10 +541,11 @@ export class SmartLLMService {
 		]
 			.map((model) => model?.trim())
 			.filter((model): model is string => Boolean(model));
+		const profileModels = selectJSONModels(profile, complexity, options.requirements);
 		const preferredModels =
 			requestedModels.length > 0
-				? [ACTIVE_EXPERIMENT_MODEL]
-				: selectJSONModels(profile, complexity, options.requirements);
+				? Array.from(new Set([...requestedModels, ...profileModels]))
+				: profileModels;
 
 		// Add JSON-specific instructions to system prompt
 		const enhancedSystemPrompt = enhanceSystemPromptForJSON(options.systemPrompt);
@@ -733,24 +734,9 @@ export class SmartLLMService {
 									`Retry also failed after ${retryCount} attempts:`,
 									retryError
 								);
-								// Log critical parse failure
-								if (this.errorLogger) {
-									await this.errorLogger.logAPIError(
-										retryError,
-										lastRequestApiUrl,
-										'POST',
-										options.userId,
-										{
-											operation: 'getJSONResponse_retry_parse_failure',
-											errorType: 'llm_json_parse_failure_after_retry',
-											modelRequested: baseModel,
-											retryModel,
-											retryAttempt: retryCount,
-											maxRetries,
-											responseLength: cleanedRetry.length || 0
-										}
-									);
-								}
+								// The outer model loop still has a chance to recover. Logging here created
+								// actionable incidents for intermediate failures even when a later model
+								// succeeded; terminal failures are logged by the outer catch below.
 								throw parseError;
 							}
 						} else {

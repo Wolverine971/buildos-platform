@@ -21,6 +21,36 @@ function buildSSE(payloads: string[], headers?: Record<string, string>): Respons
 	});
 }
 
+function buildJSONCompletion(params: {
+	model: string;
+	content: string | null;
+	finishReason?: string;
+	provider?: string;
+}): Response {
+	return new Response(
+		JSON.stringify({
+			id: `completion-${params.model}`,
+			model: params.model,
+			provider: params.provider,
+			choices: [
+				{
+					message: { role: 'assistant', content: params.content },
+					finish_reason: params.finishReason ?? 'stop'
+				}
+			],
+			usage: {
+				prompt_tokens: 10,
+				completion_tokens: 5,
+				total_tokens: 15
+			}
+		}),
+		{
+			status: 200,
+			headers: { 'content-type': 'application/json' }
+		}
+	);
+}
+
 function createToolDefs(): Array<{
 	type: 'function';
 	function: {
@@ -673,5 +703,120 @@ describe('SmartLLMService model failover', () => {
 				streaming: true
 			})
 		);
+	});
+});
+
+describe('SmartLLMService JSON model recovery', () => {
+	it('keeps an explicitly requested model first and retains profile fallbacks', async () => {
+		const requestBodies: Array<Record<string, unknown>> = [];
+		const errorLogger = {
+			logAPIError: vi.fn(async () => undefined)
+		};
+		const usageLogger = {
+			logUsageToDatabase: vi.fn(async () => undefined)
+		};
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+			requestBodies.push(body);
+
+			if (requestBodies.length === 1) {
+				return buildJSONCompletion({
+					model: 'custom/json-model',
+					content: null,
+					finishReason: 'error',
+					provider: 'CustomProvider'
+				});
+			}
+
+			return buildJSONCompletion({
+				model: DEEPSEEK_V4_FLASH_MODEL,
+				content: '{"ok":true}',
+				provider: 'DeepSeek'
+			});
+		});
+
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			errorLogger,
+			usageLogger,
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		const result = await llm.getJSONResponse<{ ok: boolean }>({
+			systemPrompt: 'Return JSON.',
+			userPrompt: 'Confirm the request.',
+			userId: 'user-json-fallback',
+			model: 'custom/json-model'
+		});
+
+		expect(result).toEqual({ ok: true });
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(requestBodies[0]?.model).toBe('custom/json-model');
+		expect(requestBodies[1]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
+		expect(errorLogger.logAPIError).not.toHaveBeenCalled();
+	});
+
+	it('does not report a recoverable parse retry as a terminal incident', async () => {
+		const requestBodies: Array<Record<string, unknown>> = [];
+		const errorLogger = {
+			logAPIError: vi.fn(async () => undefined)
+		};
+		const usageLogger = {
+			logUsageToDatabase: vi.fn(async () => undefined)
+		};
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+			requestBodies.push(body);
+
+			if (requestBodies.length === 1) {
+				return buildJSONCompletion({
+					model: DEEPSEEK_V4_FLASH_MODEL,
+					content: 'not valid JSON',
+					provider: 'DeepSeek'
+				});
+			}
+
+			if (requestBodies.length === 2) {
+				return buildJSONCompletion({
+					model: ACTIVE_EXPERIMENT_MODEL,
+					content: null,
+					finishReason: 'error',
+					provider: 'Alibaba'
+				});
+			}
+
+			return buildJSONCompletion({
+				model: ACTIVE_EXPERIMENT_MODEL,
+				content: '{"recovered":true}',
+				provider: 'Alibaba'
+			});
+		});
+
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			errorLogger,
+			usageLogger,
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		const result = await llm.getJSONResponse<{ recovered: boolean }>({
+			systemPrompt: 'Return JSON.',
+			userPrompt: 'Recover after a malformed response.',
+			userId: 'user-json-retry',
+			model: DEEPSEEK_V4_FLASH_MODEL,
+			validation: {
+				retryOnParseError: true,
+				maxRetries: 1
+			}
+		});
+
+		expect(result).toEqual({ recovered: true });
+		expect(fetchMock).toHaveBeenCalledTimes(3);
+		expect(requestBodies.map((body) => body.model)).toEqual([
+			DEEPSEEK_V4_FLASH_MODEL,
+			ACTIVE_EXPERIMENT_MODEL,
+			ACTIVE_EXPERIMENT_MODEL
+		]);
+		expect(errorLogger.logAPIError).not.toHaveBeenCalled();
 	});
 });
