@@ -37,7 +37,7 @@
 
 ## Verification
 
-- `pnpm --filter @buildos/web check` — final follow-up pass completed at 0 errors / 0 warnings.
+- `pnpm --filter @buildos/web check` — the modal follow-up completed at 0 errors / 0 warnings before concurrent worktree changes; the final shared-worktree rerun completed at 0 errors / 5 unrelated `non_reactive_update` warnings in the separately modified `DocumentModal.svelte`.
 - `pnpm exec vitest run src/lib/components/ontology/OntologyProjectEditModal.test.ts` — 3/3 tests pass, covering unchanged timestamp preservation, intentional date serialization, and reversed-range rejection.
 - Svelte autofixer — initial implementation pass resolved its actionable keyed-loop findings. Remaining observations were pre-existing/intentional: the explicitly escaped entity-reference preview using `{@html}`, the draft-reset `$effect`, and the named children snippet required by the modal composition. The follow-up changes were additionally compiled by Vitest/Vite and the zero-diagnostic Svelte check.
 - Local browser fixture:

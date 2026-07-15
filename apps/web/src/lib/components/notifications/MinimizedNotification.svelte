@@ -14,6 +14,7 @@
 
 	import { LoaderCircle, CheckCircle, AlertCircle, XCircle, ChevronUp } from '$lib/icons/lucide';
 	import { notificationStore } from '$lib/stores/notification.store';
+	import { getNotificationPreview, notificationPreviewAriaLabel } from './notification-preview';
 	import type { Notification } from '$lib/types/notification.types';
 
 	// Props
@@ -198,13 +199,22 @@
 	}
 
 	let subtitle = $derived(resolveSubtitle());
-	let accessibleLabel = $derived(
-		notification.type === 'agent-run'
-			? `Open ${notification.data.projectName ?? (notification.data.contextType === 'global' ? 'workspace' : 'project')} agent work: ${notification.data.activityLabel || notification.data.label}${notification.data.targetLabel ? ` — ${notification.data.targetLabel}` : ''}. ${notification.data.preview || notification.data.goal}`
-			: notification.type === 'chat-session'
-				? `Parked chat in ${notification.data.contextLabel ?? (notification.data.contextType === 'global' ? 'workspace' : 'project')}`
-				: `Expand ${notification.type} notification`
-	);
+	let accessibleLabel = $derived.by(() => {
+		if (
+			notification.type === 'agent-run' ||
+			notification.type === 'project-synthesis' ||
+			notification.type === 'time-block' ||
+			notification.type === 'calendar-analysis'
+		) {
+			return notificationPreviewAriaLabel(getNotificationPreview(notification));
+		}
+
+		if (notification.type === 'chat-session') {
+			return `Parked chat in ${notification.data.contextLabel ?? (notification.data.contextType === 'global' ? 'workspace' : 'project')}`;
+		}
+
+		return `Expand ${notification.type} notification`;
+	});
 
 	// Handle click to expand
 	function handleClick() {

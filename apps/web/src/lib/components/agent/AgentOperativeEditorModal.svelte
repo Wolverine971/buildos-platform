@@ -9,13 +9,15 @@
 	import {
 		Bot,
 		CalendarClock,
+		ChevronDown,
 		Eye,
 		FolderKanban,
 		Globe,
 		LoaderCircle,
 		PencilLine,
 		Save,
-		ShieldCheck
+		ShieldCheck,
+		SlidersHorizontal
 	} from '$lib/icons/lucide';
 
 	type ContextType = 'global' | 'project';
@@ -41,6 +43,7 @@
 
 	const propsId = $props.id();
 	const formId = `agent-operative-editor-${propsId}`;
+	const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 	const dayOptions = [
 		{ value: 0, label: 'Sun' },
 		{ value: 1, label: 'Mon' },
@@ -64,6 +67,7 @@
 	let scheduleTime = $state('09:00');
 	let scheduleDay = $state(1);
 	let scheduleTimezone = $state('UTC');
+	let showAdvanced = $state(false);
 	let submitting = $state(false);
 	let formError = $state<string | null>(null);
 	let projects = $state<ProjectOption[]>([]);
@@ -81,6 +85,27 @@
 			(contextType !== 'project' || !projectsLoading)
 	);
 	let title = $derived(operative ? 'Edit automation' : 'New automation');
+	let accessSummary = $derived(
+		scopeMode === 'read_only'
+			? 'Review only'
+			: review
+				? 'Can make changes · approval required'
+				: 'Can make changes automatically'
+	);
+	let optionalDetailCount = $derived(
+		Number(Boolean(instructions.trim())) + Number(Boolean(expectedOutput.trim()))
+	);
+	let advancedSummary = $derived(
+		[
+			accessSummary,
+			scheduleEnabled ? `Timezone: ${scheduleTimezone || 'UTC'}` : null,
+			optionalDetailCount
+				? `${optionalDetailCount} custom ${optionalDetailCount === 1 ? 'detail' : 'details'}`
+				: null
+		]
+			.filter(Boolean)
+			.join(' · ')
+	);
 
 	$effect(() => {
 		if (isOpen && !wasOpen) {
@@ -94,10 +119,6 @@
 		void loadProjects();
 	});
 
-	$effect(() => {
-		if (scopeMode === 'read_only' && review) review = false;
-	});
-
 	function resetForm(row: AgentOperativeRow | null) {
 		label = row?.label ?? '';
 		goal = row?.goal ?? '';
@@ -106,13 +127,20 @@
 		contextType = row?.context_type === 'project' ? 'project' : 'global';
 		projectId = row?.project_id ?? '';
 		scopeMode = row?.scope_mode === 'read_write' ? 'read_write' : 'read_only';
-		review = row?.review_required ?? false;
+		review = row?.scope_mode === 'read_write' ? (row.review_required ?? false) : false;
 		scheduleEnabled = row?.schedule_enabled ?? false;
 		scheduleFrequency = row?.schedule_frequency === 'weekly' ? 'weekly' : 'daily';
 		scheduleTime = (row?.schedule_time_of_day ?? '09:00:00').slice(0, 5);
 		scheduleDay = row?.schedule_day_of_week ?? 1;
-		scheduleTimezone =
-			row?.schedule_timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC';
+		scheduleTimezone = row?.schedule_timezone ?? localTimezone;
+		showAdvanced = Boolean(
+			row &&
+				(row.scope_mode === 'read_write' ||
+					row.review_required ||
+					row.instructions ||
+					row.expected_output ||
+					(scheduleEnabled && scheduleTimezone !== localTimezone))
+		);
 		submitting = false;
 		formError = null;
 	}
@@ -344,66 +372,101 @@
 				</div>
 			{/if}
 
-			<div class="grid gap-3 sm:grid-cols-2">
-				<div class="space-y-2">
-					<div class="text-sm font-medium text-foreground">Access</div>
-					<div
-						class="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1"
+			<button
+				type="button"
+				class="flex min-h-11 w-full items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-left shadow-ink transition-colors hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+				aria-expanded={showAdvanced}
+				aria-controls={`${formId}-advanced-access ${formId}-advanced-timezone ${formId}-advanced-details`}
+				disabled={submitting}
+				onclick={() => (showAdvanced = !showAdvanced)}
+			>
+				<SlidersHorizontal
+					class="h-4 w-4 shrink-0 text-muted-foreground"
+					aria-hidden="true"
+				/>
+				<span class="min-w-0 flex-1">
+					<span class="block text-sm font-medium text-foreground">Automation options</span
 					>
-						<button
-							type="button"
-							class={segmentClass(scopeMode === 'read_only')}
-							aria-pressed={scopeMode === 'read_only'}
-							disabled={submitting}
-							onclick={() => setScopeMode('read_only')}
+					<span class="block truncate text-xs text-muted-foreground"
+						>{advancedSummary}</span
+					>
+				</span>
+				<ChevronDown
+					class="h-4 w-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none {showAdvanced
+						? 'rotate-180'
+						: ''}"
+					aria-hidden="true"
+				/>
+			</button>
+
+			{#if showAdvanced}
+				<div
+					id={`${formId}-advanced-access`}
+					class="space-y-3 rounded-lg border border-border bg-muted/20 p-3"
+				>
+					<p class="micro-label font-semibold text-muted-foreground">Access policy</p>
+					<div class="grid gap-3 sm:grid-cols-2">
+						<div class="space-y-2">
+							<div class="text-sm font-medium text-foreground">Access</div>
+							<div
+								class="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1"
+							>
+								<button
+									type="button"
+									class={segmentClass(scopeMode === 'read_only')}
+									aria-pressed={scopeMode === 'read_only'}
+									disabled={submitting}
+									onclick={() => setScopeMode('read_only')}
+								>
+									<Eye class="h-4 w-4" />
+									<span>Review only</span>
+								</button>
+								<button
+									type="button"
+									class={segmentClass(scopeMode === 'read_write')}
+									aria-pressed={scopeMode === 'read_write'}
+									disabled={submitting}
+									onclick={() => setScopeMode('read_write')}
+								>
+									<PencilLine class="h-4 w-4" />
+									<span>Can make changes</span>
+								</button>
+							</div>
+						</div>
+
+						<label
+							class="flex min-h-[78px] items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 shadow-ink {scopeMode ===
+							'read_write'
+								? ''
+								: 'opacity-60'}"
 						>
-							<Eye class="h-4 w-4" />
-							<span>Review only</span>
-						</button>
-						<button
-							type="button"
-							class={segmentClass(scopeMode === 'read_write')}
-							aria-pressed={scopeMode === 'read_write'}
-							disabled={submitting}
-							onclick={() => setScopeMode('read_write')}
-						>
-							<PencilLine class="h-4 w-4" />
-							<span>Can make changes</span>
-						</button>
+							<span class="flex min-w-0 items-center gap-2">
+								<ShieldCheck class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+								<span class="min-w-0">
+									<span class="block text-sm font-medium text-foreground"
+										>Ask before applying</span
+									>
+									<span class="block text-xs text-muted-foreground"
+										>You approve any changes first</span
+									>
+								</span>
+							</span>
+							<span class="relative inline-flex flex-shrink-0 items-center">
+								<input
+									type="checkbox"
+									bind:checked={review}
+									disabled={scopeMode !== 'read_write' || submitting}
+									class="peer sr-only"
+								/>
+								<span
+									aria-hidden="true"
+									class="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-accent peer-disabled:cursor-not-allowed after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-card after:shadow-ink after:transition-transform peer-checked:after:translate-x-5 motion-reduce:transition-none motion-reduce:after:transition-none"
+								></span>
+							</span>
+						</label>
 					</div>
 				</div>
-
-				<label
-					class="flex min-h-[78px] items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 shadow-ink {scopeMode ===
-					'read_write'
-						? ''
-						: 'opacity-60'}"
-				>
-					<span class="flex min-w-0 items-center gap-2">
-						<ShieldCheck class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-						<span class="min-w-0">
-							<span class="block text-sm font-medium text-foreground"
-								>Ask before applying</span
-							>
-							<span class="block text-xs text-muted-foreground"
-								>You approve any changes first</span
-							>
-						</span>
-					</span>
-					<span class="relative inline-flex flex-shrink-0 items-center">
-						<input
-							type="checkbox"
-							bind:checked={review}
-							disabled={scopeMode !== 'read_write' || submitting}
-							class="peer sr-only"
-						/>
-						<span
-							aria-hidden="true"
-							class="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-accent peer-disabled:cursor-not-allowed after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-card after:shadow-ink after:transition-transform peer-checked:after:translate-x-5"
-						></span>
-					</span>
-				</label>
-			</div>
+			{/if}
 
 			<div class="space-y-3 rounded-lg border border-border bg-muted/35 p-3">
 				<label class="flex items-center justify-between gap-3">
@@ -420,7 +483,7 @@
 						/>
 						<span
 							aria-hidden="true"
-							class="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-accent peer-disabled:cursor-not-allowed after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-card after:shadow-ink after:transition-transform peer-checked:after:translate-x-5"
+							class="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-accent peer-disabled:cursor-not-allowed after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-card after:shadow-ink after:transition-transform peer-checked:after:translate-x-5 motion-reduce:transition-none motion-reduce:after:transition-none"
 						></span>
 					</span>
 				</label>
@@ -464,7 +527,7 @@
 
 					{#if scheduleFrequency === 'weekly'}
 						<div class="grid grid-cols-7 gap-1">
-							{#each dayOptions as day}
+							{#each dayOptions as day (day.value)}
 								<button
 									type="button"
 									class={segmentClass(scheduleDay === day.value)}
@@ -478,57 +541,67 @@
 						</div>
 					{/if}
 
-					<div class="space-y-2">
-						<label
-							for={`${formId}-timezone`}
-							class="text-sm font-medium text-foreground"
-						>
-							Timezone
-						</label>
-						<input
-							id={`${formId}-timezone`}
-							bind:value={scheduleTimezone}
-							disabled={submitting}
-							class={inputClass()}
-						/>
-					</div>
+					{#if showAdvanced}
+						<div id={`${formId}-advanced-timezone`} class="space-y-2">
+							<label
+								for={`${formId}-timezone`}
+								class="text-sm font-medium text-foreground"
+							>
+								Timezone
+							</label>
+							<input
+								id={`${formId}-timezone`}
+								bind:value={scheduleTimezone}
+								disabled={submitting}
+								class={inputClass()}
+							/>
+						</div>
+					{:else}
+						<p class="text-xs text-muted-foreground">
+							Times use <span class="font-medium text-foreground"
+								>{scheduleTimezone}</span
+							>.
+						</p>
+					{/if}
 				{/if}
 			</div>
 
-			<div class="grid gap-3 sm:grid-cols-2">
-				<div class="space-y-2">
-					<label
-						for={`${formId}-instructions`}
-						class="text-sm font-medium text-foreground"
-					>
-						Instructions
-					</label>
-					<textarea
-						id={`${formId}-instructions`}
-						bind:value={instructions}
-						rows="3"
-						disabled={submitting}
-						placeholder="Optional"
-						class="{inputClass()} resize-y"
-					></textarea>
+			{#if showAdvanced}
+				<div id={`${formId}-advanced-details`} class="grid gap-3 sm:grid-cols-2">
+					<div class="space-y-2">
+						<label
+							for={`${formId}-instructions`}
+							class="text-sm font-medium text-foreground"
+						>
+							Instructions
+						</label>
+						<textarea
+							id={`${formId}-instructions`}
+							bind:value={instructions}
+							rows="3"
+							disabled={submitting}
+							placeholder="Optional"
+							class="{inputClass()} resize-y"
+						></textarea>
+					</div>
+					<div class="space-y-2">
+						<label
+							for={`${formId}-expected-output`}
+							class="text-sm font-medium text-foreground"
+						>
+							Expected output
+						</label>
+						<textarea
+							id={`${formId}-expected-output`}
+							bind:value={expectedOutput}
+							rows="3"
+							disabled={submitting}
+							placeholder="Optional"
+							class="{inputClass()} resize-y"
+						></textarea>
+					</div>
 				</div>
-				<div class="space-y-2">
-					<label
-						for={`${formId}-expected-output`}
-						class="text-sm font-medium text-foreground"
-					>
-						Expected output
-					</label>
-					<textarea
-						id={`${formId}-expected-output`}
-						bind:value={expectedOutput}
-						rows="3"
-						disabled={submitting}
-						placeholder="Optional"
-						class="{inputClass()} resize-y"
-					></textarea>
-				</div>
-			</div>
+			{/if}
 
 			{#if formError}
 				<div

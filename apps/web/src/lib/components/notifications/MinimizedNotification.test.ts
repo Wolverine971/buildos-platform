@@ -3,7 +3,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
 import MinimizedNotification from './MinimizedNotification.svelte';
-import type { AgentRunNotification, ChatSessionNotification } from '$lib/types/notification.types';
+import type {
+	AgentRunNotification,
+	ChatSessionNotification,
+	ProjectSynthesisNotification
+} from '$lib/types/notification.types';
 
 function agentRunNotification(): AgentRunNotification {
 	return {
@@ -71,6 +75,44 @@ function chatSessionNotification(view = vi.fn(), dismiss = vi.fn()): ChatSession
 	};
 }
 
+function projectSynthesisNotification(): ProjectSynthesisNotification {
+	return {
+		id: 'synthesis-notification-1',
+		type: 'project-synthesis',
+		status: 'success',
+		createdAt: Date.now(),
+		updatedAt: Date.now(),
+		isMinimized: true,
+		isPersistent: true,
+		autoCloseMs: null,
+		data: {
+			projectId: 'project-1',
+			projectName: 'Author Training',
+			options: { selectedModules: [], config: {} },
+			requestPayload: {
+				regenerate: false,
+				includeDeleted: false,
+				options: { selectedModules: [], config: {} }
+			},
+			taskCount: 12,
+			selectedModules: ['project_analysis'],
+			result: {
+				synthesisId: 'synthesis-1',
+				operations: [],
+				insights: 'Three duplicate tasks can be combined.',
+				comparison: [],
+				summary: 'Consolidate overlapping onboarding work.',
+				operationsCount: 3,
+				consolidationCount: 2,
+				newTasksCount: 1,
+				deletionsCount: 0
+			}
+		},
+		progress: { type: 'indeterminate', message: 'Complete' },
+		actions: { reviewResults: vi.fn(), retry: vi.fn() }
+	};
+}
+
 describe('MinimizedNotification', () => {
 	afterEach(cleanup);
 
@@ -105,5 +147,17 @@ describe('MinimizedNotification', () => {
 
 		await fireEvent.click(endButton);
 		expect(dismiss).toHaveBeenCalledOnce();
+	});
+
+	it('keeps synthesis actions out of the outer button-like card', async () => {
+		render(MinimizedNotification, {
+			props: { notification: projectSynthesisNotification() }
+		});
+
+		const card = await screen.findByRole('button', {
+			name: 'Open Author Training: Review project synthesis — Analysis. Consolidate overlapping onboarding work.'
+		});
+
+		expect(card.querySelector('button')).toBeNull();
 	});
 });

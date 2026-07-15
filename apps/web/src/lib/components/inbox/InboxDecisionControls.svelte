@@ -43,7 +43,7 @@
 			loading={pending}
 			onclick={() => onApprove?.()}
 			disabled={pending}
-			class="w-full text-xs"
+			class="min-h-11 w-full text-xs"
 		>
 			Accept
 		</Button>
@@ -53,7 +53,7 @@
 			icon={X}
 			onclick={() => onReject?.()}
 			disabled={pending}
-			class="w-full text-xs"
+			class="min-h-11 w-full text-xs"
 		>
 			Dismiss
 		</Button>
@@ -68,7 +68,7 @@
 					loading={openingChat}
 					onclick={() => onChat?.()}
 					disabled={pending || openingChat}
-					class="w-full text-xs"
+					class="min-h-11 w-full text-xs"
 				>
 					Chat
 				</Button>
@@ -81,7 +81,7 @@
 					onclick={() => onSnooze?.()}
 					disabled={pending}
 					title="Snooze until tomorrow"
-					class="w-full text-xs"
+					class="min-h-11 w-full text-xs"
 				>
 					Snooze
 				</Button>

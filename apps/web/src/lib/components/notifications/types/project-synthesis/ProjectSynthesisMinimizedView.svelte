@@ -2,7 +2,9 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-	import { Sparkles, CheckCircle, AlertCircle, LoaderCircle, Lightbulb } from 'lucide-svelte';
+	import { Sparkles, CheckCircle, AlertCircle, LoaderCircle } from '$lib/icons/lucide';
+	import NotificationPreviewContent from '../../NotificationPreviewContent.svelte';
+	import { getNotificationPreview } from '../../notification-preview';
 	import type {
 		ProjectSynthesisNotification,
 		StepsProgress
@@ -10,108 +12,62 @@
 
 	let { notification }: { notification: ProjectSynthesisNotification } = $props();
 
-	// Module metadata for display
-	const MODULE_METADATA: Record<string, { name: string; shortLabel: string }> = {
-		task_synthesis: {
-			name: 'Task Synthesis',
-			shortLabel: 'Tasks'
-		},
-		project_analysis: {
-			name: 'Project Analysis',
-			shortLabel: 'Analysis'
-		},
-		completion_score: {
-			name: 'Completion Score',
-			shortLabel: 'Score'
-		},
-		thought_partner: {
-			name: 'Thought Partner',
-			shortLabel: 'Insights'
-		}
-	};
-
 	const stepsProgress = $derived(
 		notification.progress?.type === 'steps' ? (notification.progress as StepsProgress) : null
 	);
 
-	const currentStepName = $derived(
-		stepsProgress?.steps[stepsProgress.currentStep]?.name ?? 'Processing'
-	);
-
 	const progressPercentage = $derived(
-		stepsProgress
-			? Math.round(((stepsProgress.currentStep + 1) / stepsProgress.totalSteps) * 100)
+		stepsProgress && stepsProgress.totalSteps > 0
+			? Math.min(
+					100,
+					Math.max(
+						0,
+						Math.round(
+							((stepsProgress.currentStep + 1) / stepsProgress.totalSteps) * 100
+						)
+					)
+				)
 			: 0
 	);
 
-	const moduleLabels = $derived(
-		notification.data.selectedModules
-			.map((m) => MODULE_METADATA[m]?.shortLabel ?? m)
-			.join(' • ')
-	);
-
 	const result = $derived(notification.data.result);
+	const content = $derived(getNotificationPreview(notification));
 </script>
 
-<div class="flex items-start gap-3">
+<div class="flex items-start gap-3 p-4">
 	<!-- Icon -->
-	<div class="flex-shrink-0 mt-1">
+	<div class="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center">
 		{#if notification.status === 'success'}
-			<div class="flex h-8 w-8 items-center justify-center rounded-full bg-success/10">
-				<CheckCircle class="w-5 h-5 text-success" />
-			</div>
+			<CheckCircle class="h-5 w-5 text-success" aria-hidden="true" />
 		{:else if notification.status === 'error'}
-			<div class="flex h-8 w-8 items-center justify-center rounded-full bg-destructive/10">
-				<AlertCircle class="w-5 h-5 text-destructive" />
-			</div>
+			<AlertCircle class="h-5 w-5 text-destructive" aria-hidden="true" />
 		{:else}
-			<div class="flex h-8 w-8 items-center justify-center rounded-full bg-info/10">
-				<LoaderCircle class="w-5 h-5 text-info animate-spin" />
-			</div>
+			<LoaderCircle
+				class="h-5 w-5 animate-spin text-info motion-reduce:animate-none"
+				aria-hidden="true"
+			/>
 		{/if}
 	</div>
 
 	<!-- Content -->
-	<div class="flex-1 min-w-0">
-		<!-- Header -->
-		<div class="flex items-center gap-2 mb-1">
-			<Sparkles class="w-4 h-4 text-accent" />
-			<h4 class="font-medium text-sm truncate text-foreground">
-				{notification.status === 'success' ? 'Synthesis Complete' : 'Project Synthesis'}
-				<span class="text-muted-foreground">—</span>
-				<span class="text-foreground">{notification.data.projectName}</span>
-			</h4>
-		</div>
+	<div class="min-w-0 flex-1">
+		<NotificationPreviewContent {...content} icon={Sparkles} />
 
 		<!-- Processing state -->
 		{#if notification.status === 'processing'}
-			<p class="text-xs text-muted-foreground mb-2">
-				{currentStepName} • Step {stepsProgress ? stepsProgress.currentStep + 1 : 0} of {stepsProgress?.totalSteps ??
-					0}
-			</p>
-
 			<!-- Progress bar -->
-			<div class="w-full bg-muted rounded-full h-1.5 mb-2">
+			<div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
 				<div
-					class="bg-info h-1.5 rounded-full transition-all duration-300"
+					class="h-1.5 rounded-full bg-info transition-all duration-300 motion-reduce:transition-none"
 					style="width: {progressPercentage}%"
 				></div>
 			</div>
 
-			<p class="text-xs text-muted-foreground">
-				Modules: {moduleLabels}
-			</p>
-
 			<!-- Success state -->
 		{:else if notification.status === 'success' && result}
-			<p class="text-xs text-muted-foreground mb-2">
-				Found {result.operationsCount} optimization{result.operationsCount === 1 ? '' : 's'}
-				across {notification.data.taskCount} tasks
-			</p>
-
-			<div class="flex items-center gap-2 flex-wrap mb-2">
+			<div class="mt-2 flex flex-wrap items-center gap-1.5">
 				{#if result.consolidationCount > 0}
-					<span class="bg-info/10 text-info px-2 py-0.5 rounded text-xs font-medium">
+					<span class="rounded-md bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
 						{result.consolidationCount} Consolidation{result.consolidationCount === 1
 							? ''
 							: 's'}
@@ -119,57 +75,19 @@
 				{/if}
 				{#if result.newTasksCount > 0}
 					<span
-						class="bg-success/10 text-success px-2 py-0.5 rounded text-xs font-medium"
+						class="rounded-md bg-success/10 px-2 py-0.5 text-xs font-medium text-success"
 					>
 						{result.newTasksCount} New
 					</span>
 				{/if}
 				{#if result.deletionsCount > 0}
 					<span
-						class="bg-destructive/10 text-destructive px-2 py-0.5 rounded text-xs font-medium"
+						class="rounded-md bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive"
 					>
 						{result.deletionsCount} Deletion{result.deletionsCount === 1 ? '' : 's'}
 					</span>
 				{/if}
 			</div>
-
-			{#if result.insights}
-				<div class="flex items-start gap-1.5 mb-2">
-					<Lightbulb class="w-3.5 h-3.5 text-warning flex-shrink-0 mt-0.5" />
-					<p class="text-xs text-muted-foreground italic line-clamp-2">
-						{result.insights.substring(0, 100)}{result.insights.length > 100
-							? '...'
-							: ''}
-					</p>
-				</div>
-			{/if}
-
-			<button
-				type="button"
-				onclick={(e) => {
-					e.stopPropagation();
-					notification.actions.reviewResults?.();
-				}}
-				class="text-xs text-info hover:text-info/80 font-medium transition-colors"
-			>
-				Review Results →
-			</button>
-
-			<!-- Error state -->
-		{:else if notification.status === 'error'}
-			<p class="text-xs text-destructive mb-1">
-				{notification.data.error ?? 'Synthesis failed'}
-			</p>
-			<button
-				type="button"
-				onclick={(e) => {
-					e.stopPropagation();
-					notification.actions.retry?.();
-				}}
-				class="text-xs text-destructive hover:text-destructive/80 font-medium transition-colors"
-			>
-				Retry Synthesis
-			</button>
 		{/if}
 	</div>
 </div>

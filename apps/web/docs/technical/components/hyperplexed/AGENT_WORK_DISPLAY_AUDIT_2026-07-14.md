@@ -53,7 +53,7 @@ raw delivery failures. Center the history on what happened, where it happened, w
 the action to take. Keep provider/debug telemetry out of the customer card and use a safe fallback for
 unknown event types.
 
-## Tier 2 — noted, not part of this pass
+## Tier 2 — shipped 2026-07-14
 
 1. Create one shared content contract for legacy project-synthesis, time-block, and calendar-event
    minimized cards; fix the project-synthesis spacing drift at the same time. (P2, P4, P5, P6)
@@ -77,8 +77,19 @@ unknown event types.
 - Tier 1: shipped. Expanded details, Work panel, in-chat dock, parked-chat cards, notification
   overflow, fallback close behavior, customer notification history, and user-facing agent-work
   terminology now follow the same project/action/target/preview contract.
-- Tier 2 and Tier 3: recorded for a later approval pass.
-- Verification: 31 focused tests pass across 10 suites; full web `svelte-check` reports 0 errors and
-  0 warnings; targeted Prettier and diff checks are clean.
+- Tier 2: shipped. Legacy project-synthesis, time-block, calendar-analysis, and agent-run cards now
+  render through one shared context/action/target/preview contract; project synthesis has consistent
+  padding and reduced-motion progress. The project inbox now matches the dashboard's 44 px control,
+  micro-label, friendly-error, reduced-motion, and overflow behavior. Dispatch and automation forms
+  collapse access policy, instructions, expected output, and timezone behind visible summaries;
+  existing non-default automation settings auto-expand. The current forms have no model selector, so
+  this pass did not invent one. The Work panel now uses the shared modal stack for focus trapping,
+  Escape, scroll lock, focus restoration, background inerting, and nested dialogs.
+- Tier 3: recorded for a later polish pass.
+- Verification: 41 focused tests pass across 13 suites; full web `svelte-check` reports 0 errors and
+  0 warnings; the Svelte autofixer reports no component issues; targeted Prettier and diff checks
+  are clean.
 - Verification owed: authenticated desktop and phone light/dark screenshots for the Work panel,
-  expanded agent work, parked chat, and notification history.
+  expanded agent work, parked chat, project inbox, legacy cards, forms, and notification history.
+  The 2026-07-14 regression pass tried both available local browser sessions, but neither had an
+  authenticated BuildOS session.

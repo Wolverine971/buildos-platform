@@ -55,6 +55,7 @@ __pycache__/
 
 # HyperFrames-generated media and copied composition inputs. Keep authored
 # project files and named final deliverables visible to Git.
+/video-projects/**/renders/work-*/
 /docs/marketing/visual-assets/**/.hyperframes/
 /docs/marketing/visual-assets/**/.thumbnails/
 /docs/marketing/visual-assets/**/.media/images/

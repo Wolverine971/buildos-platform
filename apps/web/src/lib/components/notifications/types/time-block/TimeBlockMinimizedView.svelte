@@ -2,103 +2,57 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-	import { LoaderCircle, CheckCircle, AlertCircle, Clock } from 'lucide-svelte';
+	import { LoaderCircle, CheckCircle, AlertCircle, Clock } from '$lib/icons/lucide';
+	import NotificationPreviewContent from '../../NotificationPreviewContent.svelte';
+	import { getNotificationPreview } from '../../notification-preview';
 	import type { TimeBlockNotification } from '$lib/types/notification.types';
 
 	let { notification }: { notification: TimeBlockNotification } = $props();
 
-	let statusInfo = $derived.by(() => {
-		const status = notification.status;
-		const data = notification.data ?? {};
-		const suggestionsState = data.suggestionsState;
-
-		if (status === 'processing') {
-			const message =
-				suggestionsState?.status === 'generating'
-					? (suggestionsState?.progress ?? 'Analyzing tasks...')
-					: 'Starting suggestion generation...';
-
-			return {
-				icon: 'processing',
-				title: 'Creating time block',
-				subtitle: message
-			};
-		}
-
-		if (status === 'success') {
-			const suggestionCount = data.suggestions?.length ?? 0;
-			const subtitle =
-				suggestionCount > 0
-					? `${suggestionCount} suggestion${suggestionCount === 1 ? '' : 's'} ready`
-					: 'Time block ready';
-
-			return {
-				icon: 'completed',
-				title: 'Time block created',
-				subtitle
-			};
-		}
-
-		if (status === 'warning') {
-			return {
-				icon: 'warning',
-				title: 'Time block created',
-				subtitle: 'AI suggestions unavailable'
-			};
-		}
-
-		return {
-			icon: 'idle',
-			title: 'Time block',
-			subtitle: ''
-		};
-	});
+	let content = $derived(getNotificationPreview(notification));
 
 	let showProgressBar = $derived(
 		notification.status === 'processing' &&
 			notification.progress?.type === 'percentage' &&
 			typeof notification.progress.percentage === 'number'
 	);
+	let progressPercentage = $derived.by(() => {
+		if (notification.progress?.type !== 'percentage') return 0;
+		const percentage = notification.progress.percentage;
+		return Number.isFinite(percentage) ? Math.min(100, Math.max(0, percentage)) : 0;
+	});
 </script>
 
 <div class="relative">
 	{#if showProgressBar}
 		<div class="h-1 bg-muted rounded-t-lg">
 			<div
-				class="h-full bg-accent transition-all duration-300"
-				style="width: {notification.progress?.percentage ?? 0}%"
+				class="h-full bg-accent transition-all duration-300 motion-reduce:transition-none"
+				style="width: {progressPercentage}%"
 			></div>
 		</div>
 	{/if}
 
-	<div class="p-4 flex items-center justify-between">
-		<div class="flex-shrink-0 mr-3">
-			{#if statusInfo.icon === 'processing'}
-				<LoaderCircle class="w-5 h-5 text-accent animate-spin" />
-			{:else if statusInfo.icon === 'completed'}
-				<CheckCircle class="w-5 h-5 text-success" />
-			{:else if statusInfo.icon === 'warning'}
-				<AlertCircle class="w-5 h-5 text-warning" />
+	<div class="flex items-start gap-3 p-4">
+		<div class="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center">
+			{#if notification.status === 'processing'}
+				<LoaderCircle
+					class="h-5 w-5 animate-spin text-info motion-reduce:animate-none"
+					aria-hidden="true"
+				/>
+			{:else if notification.status === 'success'}
+				<CheckCircle class="h-5 w-5 text-success" aria-hidden="true" />
+			{:else if notification.status === 'warning'}
+				<AlertCircle class="h-5 w-5 text-warning" aria-hidden="true" />
+			{:else if notification.status === 'error'}
+				<AlertCircle class="h-5 w-5 text-destructive" aria-hidden="true" />
 			{:else}
-				<Clock class="w-5 h-5 text-muted-foreground" />
+				<Clock class="h-5 w-5 text-muted-foreground" aria-hidden="true" />
 			{/if}
 		</div>
 
-		<div class="flex-1">
-			<div class="text-sm font-medium text-foreground">
-				{statusInfo.title}
-			</div>
-			{#if statusInfo.subtitle}
-				<div class="text-xs text-muted-foreground mt-0.5">
-					{statusInfo.subtitle}
-				</div>
-			{/if}
+		<div class="min-w-0 flex-1">
+			<NotificationPreviewContent {...content} icon={Clock} />
 		</div>
-
-		{#if notification.data.projectName}
-			<div class="ml-2 px-2 py-1 bg-info/10 rounded text-xs text-info">
-				{notification.data.projectName}
-			</div>
-		{/if}
 	</div>
 </div>

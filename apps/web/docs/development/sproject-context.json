@@ -213,14 +213,14 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": ["AgentChatModal", "ProjectModalsHost"]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
@@ -1018,6 +1018,12 @@
 			]
 		},
 		{
+			"file": "src/lib/components/notifications/notification-preview.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["getNotificationPreview", "notificationPreviewAriaLabel"]
+		},
+		{
 			"file": "src/lib/components/project/project-entity-modal-loader.ts",
 			"type": "component",
 			"components": ["TaskEditModal", "DocumentModal", "GoalEditModal", "PlanEditModal"],
@@ -1462,6 +1468,7 @@
 		"src/lib/components/agent/agent-chat.types.ts",
 		"src/lib/components/agent/project-entity-browser.ts",
 		"src/lib/components/chat/project-selector-browser.ts",
+		"src/lib/components/notifications/notification-preview.ts",
 		"src/lib/components/project/project-entity-modal-loader.ts",
 		"src/lib/components/project/project-event-filters.ts",
 		"src/lib/components/project/project-page-data-controller.ts",

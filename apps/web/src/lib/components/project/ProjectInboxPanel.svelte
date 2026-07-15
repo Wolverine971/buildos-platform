@@ -1,7 +1,15 @@
 <!-- apps/web/src/lib/components/project/ProjectInboxPanel.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Check, ClipboardCheck, FileText, Inbox, RefreshCw, Sparkles } from 'lucide-svelte';
+	import {
+		AlertCircle,
+		Check,
+		ClipboardCheck,
+		FileText,
+		Inbox,
+		RefreshCw,
+		Sparkles
+	} from '$lib/icons/lucide';
 	import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
 	import { toastService } from '$lib/stores/toast.store';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -117,6 +125,7 @@
 	let items = $state<InboxItem[]>([]);
 	let latestRun = $state<ProjectLoopRun | null>(null);
 	let loading = $state(true);
+	let loadError = $state<string | null>(null);
 	let refreshing = $state(false);
 	let triggering = $state(false);
 	let pendingIds = $state<Set<string>>(new Set());
@@ -464,7 +473,8 @@
 			chatSessionId = nextChatSessionId;
 			chatItemId = item.id;
 		} catch (error) {
-			toastService.error(error instanceof Error ? error.message : 'Failed to open chat');
+			console.error('[ProjectInboxPanel] failed to open inbox chat', error);
+			toastService.error(friendlyFailure('open a chat for this review item'));
 		} finally {
 			const next = new Set(openingChatIds);
 			next.delete(item.id);
@@ -512,9 +522,7 @@
 			}
 		} catch (error) {
 			if (options.showErrors) {
-				toastService.error(
-					error instanceof Error ? error.message : 'Failed to resolve inbox item'
-				);
+				toastService.error(friendlyFailure('update this review item'));
 			}
 			console.warn('[AI Inbox] Failed to resolve inbox item from chat:', error);
 		}
@@ -563,8 +571,12 @@
 			return `Project review finished - ${itemCount} item${itemCount === 1 ? '' : 's'} ready.`;
 		}
 		if (run.status === 'completed') return run.summary ?? 'Project review finished.';
-		if (run.status === 'failed') return run.error_message ?? 'Project review failed.';
+		if (run.status === 'failed') return "Project review couldn't finish. Try running it again.";
 		return run.summary ?? 'Project review updated.';
+	}
+
+	function friendlyFailure(action: string): string {
+		return `We couldn't ${action}. Try again in a moment.`;
 	}
 
 	function notifyRunFinished(run: ProjectLoopRun, itemCount: number) {
@@ -585,9 +597,12 @@
 		};
 	}
 
-	async function load(options: { silent?: boolean } = {}): Promise<LoopPayload | null> {
+	async function load(
+		options: { silent?: boolean; showErrorToast?: boolean } = {}
+	): Promise<LoopPayload | null> {
 		if (!options.silent) loading = true;
 		else refreshing = true;
+		if (!options.silent) loadError = null;
 		try {
 			const inboxUrl = new URL('/api/inbox', window.location.origin);
 			inboxUrl.searchParams.set('project_id', projectId);
@@ -605,13 +620,17 @@
 
 			const data = (inboxJson.data ?? {}) as InboxPayload;
 			items = data.items ?? [];
+			loadError = null;
 			onCountChange?.(items.length);
 			latestRun = loopResult?.latestRun ?? null;
 			return loopResult;
 		} catch (error) {
 			console.error('[ProjectInboxPanel] load failed', error);
+			const message = friendlyFailure("load this project's review items");
 			if (!options.silent) {
-				toastService.error(error instanceof Error ? error.message : 'Failed to load inbox');
+				loadError = message;
+			} else if (options.showErrorToast) {
+				toastService.error(message);
 			}
 			return null;
 		} finally {
@@ -678,7 +697,8 @@
 			if (run && !isRunActive(run)) notifyRunFinished(run, items.length);
 			else startPolling(runId);
 		} catch (error) {
-			toastService.error(error instanceof Error ? error.message : 'Failed to start review');
+			console.error('[ProjectInboxPanel] project review failed to start', error);
+			toastService.error(friendlyFailure('start the project review'));
 		} finally {
 			triggering = false;
 		}
@@ -744,9 +764,10 @@
 			}
 			completeInboxDecisionNotification(notificationId, message, { toastKind, title });
 		} catch (error) {
+			console.error('[ProjectInboxPanel] inbox decision failed', error);
 			failInboxDecisionNotification(
 				notificationId,
-				error instanceof Error ? error.message : 'Action failed'
+				"We couldn't apply that decision. The item is back in your inbox."
 			);
 			void load({ silent: true });
 		} finally {
@@ -784,9 +805,10 @@
 				}
 			);
 		} catch (error) {
+			console.error('[ProjectInboxPanel] inbox snooze failed', error);
 			failInboxDecisionNotification(
 				notificationId,
-				error instanceof Error ? error.message : 'Snooze failed'
+				"We couldn't snooze that item. It is back in your inbox."
 			);
 			void load({ silent: true });
 		} finally {
@@ -841,9 +863,10 @@
 			}
 			completeInboxDecisionNotification(notificationId, message, { toastKind, title });
 		} catch (error) {
+			console.error('[ProjectInboxPanel] batch apply failed', error);
 			failInboxDecisionNotification(
 				notificationId,
-				error instanceof Error ? error.message : 'Batch apply failed'
+				"We couldn't apply the selected items. They are back in your inbox."
 			);
 			void load({ silent: true });
 		} finally {
@@ -861,7 +884,7 @@
 	});
 </script>
 
-<div class="space-y-0">
+<div class="min-w-0 space-y-0 overflow-x-hidden">
 	<div class="flex flex-wrap items-center justify-between gap-2 px-2 py-2 sm:px-3">
 		<div class="min-w-0">
 			<p class="text-xs font-semibold text-foreground">
@@ -872,38 +895,44 @@
 				{:else if runActive || pollingRunId}
 					Review running
 				{:else if latestRun?.status === 'failed'}
-					{latestRun.error_message ?? 'Review failed'}
+					Project review needs attention
 				{:else}
 					No pending review items
 				{/if}
 			</p>
 			{#if latestRun?.summary && !items.length && !runActive && !pollingRunId}
-				<p class="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
+				<p class="mt-0.5 line-clamp-1 text-2xs text-muted-foreground">
 					{latestRun.summary}
 				</p>
 			{/if}
 		</div>
 		<div class="flex items-center gap-1.5">
-			<button
-				type="button"
-				onclick={() => load({ silent: true })}
+			<Button
+				variant="outline"
+				size="sm"
+				onclick={() => load({ silent: true, showErrorToast: true })}
 				disabled={loading || refreshing}
-				class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:bg-muted disabled:opacity-50"
+				class="h-11 w-11 p-0"
 				title="Refresh inbox"
+				aria-label="Refresh inbox"
 			>
-				<RefreshCw class="h-3.5 w-3.5 {refreshing ? 'animate-spin' : ''}" />
-			</button>
+				<RefreshCw
+					class="h-3.5 w-3.5 {refreshing
+						? 'animate-spin motion-reduce:animate-none'
+						: ''}"
+				/>
+			</Button>
 			{#if PROJECT_LOOPS_ENABLED && canEdit}
 				<Button
 					variant="secondary"
 					size="sm"
 					onclick={runLoop}
 					disabled={triggering || runActive || Boolean(pollingRunId)}
-					class="min-h-8 px-2.5 py-1 text-xs"
+					class="min-h-11 px-3 text-xs"
 				>
 					<RefreshCw
 						class="mr-1.5 h-3.5 w-3.5 {triggering || runActive || pollingRunId
-							? 'animate-spin'
+							? 'animate-spin motion-reduce:animate-none'
 							: ''}"
 					/>
 					{runActive || pollingRunId ? 'Reviewing' : 'Run review'}
@@ -915,7 +944,7 @@
 					size="sm"
 					onclick={batchApproveSelected}
 					disabled={selectedBatchIds.some((id) => pendingIds.has(id))}
-					class="min-h-8 px-2.5 py-1 text-xs"
+					class="min-h-11 px-3 text-xs"
 				>
 					<Check class="mr-1.5 h-3.5 w-3.5" />
 					Apply {selectedBatchIds.length}
@@ -926,7 +955,7 @@
 
 	{#if latestRun?.brief}
 		<div class="border-t border-border bg-muted/20 px-3 py-3">
-			<p class="text-[10px] font-semibold uppercase text-muted-foreground">Project brief</p>
+			<p class="micro-label font-semibold text-muted-foreground">Project brief</p>
 			{#if latestRun.brief.current_goal}
 				<p class="mt-1 text-xs font-semibold text-foreground">
 					{latestRun.brief.current_goal}
@@ -935,20 +964,18 @@
 			<div class="mt-2 grid gap-2 sm:grid-cols-2">
 				{#if latestRun.brief.next_best_action}
 					<div>
-						<p class="text-[10px] font-semibold uppercase text-muted-foreground">
-							Next
-						</p>
-						<p class="mt-0.5 text-[11px] text-foreground/80">
+						<p class="micro-label font-semibold text-muted-foreground">Next</p>
+						<p class="mt-0.5 text-2xs text-foreground/80">
 							{latestRun.brief.next_best_action}
 						</p>
 					</div>
 				{/if}
 				{#if latestRun.brief.open_decisions?.length}
 					<div>
-						<p class="text-[10px] font-semibold uppercase text-muted-foreground">
+						<p class="micro-label font-semibold text-muted-foreground">
 							Open decisions
 						</p>
-						<p class="mt-0.5 line-clamp-2 text-[11px] text-foreground/80">
+						<p class="mt-0.5 line-clamp-2 text-2xs text-foreground/80">
 							{latestRun.brief.open_decisions.slice(0, 3).join(' · ')}
 						</p>
 					</div>
@@ -956,16 +983,18 @@
 			</div>
 			{#if latestRun.brief.stale_assumptions?.length || latestRun.brief.contradictions_or_drift?.length}
 				<div class="mt-2 flex flex-wrap gap-1.5">
-					{#each (latestRun.brief.stale_assumptions ?? []).slice(0, 3) as item}
+					{#each (latestRun.brief.stale_assumptions ?? []).slice(0, 3) as item, index (`stale-${index}-${item}`)}
 						<span
-							class="rounded border border-warning/30 bg-warning/10 px-1.5 py-0.5 text-[10px] text-warning"
+							class="inline-block max-w-full truncate rounded-md border border-warning/30 bg-warning/10 px-1.5 py-0.5 text-2xs text-warning"
+							title={item}
 						>
 							{item}
 						</span>
 					{/each}
-					{#each (latestRun.brief.contradictions_or_drift ?? []).slice(0, 3) as item}
+					{#each (latestRun.brief.contradictions_or_drift ?? []).slice(0, 3) as item, index (`drift-${index}-${item}`)}
 						<span
-							class="rounded border border-border bg-card px-1.5 py-0.5 text-[10px] text-muted-foreground"
+							class="inline-block max-w-full truncate rounded-md border border-border bg-card px-1.5 py-0.5 text-2xs text-muted-foreground"
+							title={item}
 						>
 							{item}
 						</span>
@@ -978,23 +1007,45 @@
 	{#if loading}
 		<div class="space-y-2 border-t border-border p-2 sm:p-3">
 			{#each Array(3) as _, index (index)}
-				<div class="h-20 rounded-md border border-border bg-muted/30 animate-pulse"></div>
+				<div
+					class="h-20 animate-pulse rounded-md border border-border bg-muted/30 motion-reduce:animate-none"
+				></div>
 			{/each}
+		</div>
+	{:else if loadError}
+		<div class="border-t border-border px-4 py-6" role="alert">
+			<div
+				class="flex items-start gap-3 rounded-md border border-destructive/25 bg-destructive/5 p-3"
+			>
+				<AlertCircle class="mt-0.5 h-5 w-5 shrink-0 text-destructive" aria-hidden="true" />
+				<div class="min-w-0 flex-1">
+					<p class="text-sm font-semibold text-foreground">
+						Review items are unavailable
+					</p>
+					<p class="mt-1 text-xs text-muted-foreground">{loadError}</p>
+					<Button
+						variant="outline"
+						size="sm"
+						onclick={() => load()}
+						class="mt-3 min-h-11"
+					>
+						Try again
+					</Button>
+				</div>
+			</div>
 		</div>
 	{:else if items.length === 0}
 		<div class="border-t border-border px-3 py-6 text-center">
 			<Inbox class="mx-auto h-5 w-5 text-muted-foreground" />
 			<p class="mt-2 text-xs font-medium text-foreground">Inbox is clear</p>
-			<p class="mt-1 text-[11px] text-muted-foreground">
+			<p class="mt-1 text-2xs text-muted-foreground">
 				New review items will appear here when an agent proposes project changes.
 			</p>
 		</div>
 	{:else}
-		<div class="border-t border-border">
+		<div class="min-w-0 overflow-x-hidden border-t border-border">
 			{#each groupedItems as group (group.key)}
-				<div
-					class="bg-muted/20 px-3 py-2 text-[10px] font-semibold uppercase text-muted-foreground"
-				>
+				<div class="micro-label bg-muted/20 px-3 py-2 font-semibold text-muted-foreground">
 					{group.label} ({group.items.length})
 				</div>
 				{#each group.items as item (item.id)}
@@ -1013,7 +1064,7 @@
 						payload?.evidence_refs
 					).slice(0, 3)}
 					{@const changes = changeCount(item)}
-					<div class="border-b border-border px-3 py-3 last:border-b-0">
+					<div class="min-w-0 border-b border-border px-3 py-3 last:border-b-0">
 						<div
 							class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 						>
@@ -1021,61 +1072,69 @@
 								<InboxProjectBadge {project} />
 								<div class="flex flex-wrap items-center gap-2">
 									{#if canBatchApprove(item)}
-										<input
-											type="checkbox"
-											class="h-3.5 w-3.5 rounded border-border"
-											checked={selectedIds.has(item.id)}
-											onchange={(event) =>
-												updateSelected(
-													item,
-													(event.currentTarget as HTMLInputElement)
-														.checked
-												)}
-											aria-label="Select review item"
-										/>
+										<label
+											class="-my-2 -ml-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 focus-within:ring-offset-background"
+										>
+											<input
+												type="checkbox"
+												class="h-5 w-5 rounded-md border-border"
+												checked={selectedIds.has(item.id)}
+												onchange={(event) =>
+													updateSelected(
+														item,
+														(event.currentTarget as HTMLInputElement)
+															.checked
+													)}
+											/>
+											<span class="sr-only"
+												>Select {item.title || 'review item'}</span
+											>
+										</label>
 									{/if}
 									<span
-										class="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold {tier.cls}"
+										class="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-2xs font-semibold {tier.cls}"
 									>
 										<Icon class="h-3 w-3" />
 										{tier.label}
 									</span>
-									<span
-										class="text-[10px] font-medium uppercase text-muted-foreground"
-									>
+									<span class="micro-label font-medium text-muted-foreground">
 										{sourceLabel(item)}
 									</span>
 									{#if payload?.kind}
-										<span
-											class="text-[10px] font-medium uppercase text-muted-foreground"
-										>
+										<span class="micro-label font-medium text-muted-foreground">
 											{kindLabel[payload.kind] ?? payload.kind}
 										</span>
 									{/if}
 									{#if reviewRunText}
 										<span
-											class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+											class="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-2xs font-medium text-muted-foreground"
 										>
 											{reviewRunText}
 										</span>
 									{/if}
 								</div>
-								<p class="mt-1.5 text-sm font-semibold text-foreground">
+								<p
+									class="mt-1.5 line-clamp-2 break-words text-sm font-semibold text-foreground"
+								>
 									{item.title || payload?.title || agent?.label || 'Review item'}
 								</p>
 								{#if payload?.why_now}
-									<p class="mt-1 text-[12px] text-foreground/80">
+									<p
+										class="mt-1 line-clamp-3 break-words text-xs text-foreground/80"
+									>
 										<span class="font-semibold">Why now:</span>
 										{payload.why_now}
 									</p>
 								{:else if item.summary || payload?.rationale || agent?.goal}
-									<p class="mt-1 text-[12px] text-muted-foreground">
+									<p
+										class="mt-1 line-clamp-3 break-words text-xs text-muted-foreground"
+									>
 										{item.summary ?? payload?.rationale ?? agent?.goal}
 									</p>
 								{/if}
 								{#if payload?.preview?.summary}
 									<p
-										class="mt-1.5 border-l-2 border-accent/30 pl-2 text-[12px] text-muted-foreground"
+										class="mt-1.5 line-clamp-3 break-words border-l-2 border-accent/30 pl-2 text-xs text-muted-foreground"
 									>
 										<span class="font-semibold text-foreground/80"
 											>Preview:</span
@@ -1087,14 +1146,14 @@
 									<div class="mt-2 flex flex-wrap gap-1.5">
 										{#if auditRecommendations}
 											<span
-												class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+												class="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
 											>
 												{auditRecommendations}
 											</span>
 										{/if}
 										{#if audit.delivery_confidence}
 											<span
-												class="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[10px] text-accent"
+												class="rounded-md border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-2xs text-accent"
 											>
 												{audit.delivery_confidence} confidence
 											</span>
@@ -1103,9 +1162,10 @@
 								{/if}
 								{#if evidence.length}
 									<div class="mt-2 flex flex-wrap gap-1.5">
-										{#each evidence as ref}
+										{#each evidence as ref, index (`${ref.entity_type}-${ref.entity_id ?? ref.title}-${index}`)}
 											<span
-												class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+												class="inline-block max-w-full truncate rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground sm:max-w-[18rem]"
+												title={evidenceLabel(ref)}
 											>
 												{evidenceLabel(ref)}
 											</span>
@@ -1118,7 +1178,7 @@
 										preview={payload?.preview ?? null}
 									/>
 								{:else if changes}
-									<p class="mt-1.5 text-[11px] text-muted-foreground">
+									<p class="mt-1.5 text-2xs text-muted-foreground">
 										{changes} proposed change{changes === 1 ? '' : 's'}
 									</p>
 								{/if}
@@ -1181,14 +1241,14 @@
 									loading={isOpeningChat(item)}
 									disabled={isOpeningChat(item)}
 									onclick={() => openChat(item)}
-									class="shrink-0"
+									class="min-h-11 w-full shrink-0 sm:w-auto"
 								>
 									<Sparkles class="mr-2 h-4 w-4" />
 									Open chat
 								</Button>
 							{:else if item.decision_disabled_reason}
 								<div
-									class="shrink-0 rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground"
+									class="w-full max-w-full shrink-0 break-words rounded-md border border-border bg-muted/30 px-2.5 py-2 text-2xs font-medium text-muted-foreground sm:w-auto sm:max-w-56"
 								>
 									{item.decision_disabled_reason}
 								</div>

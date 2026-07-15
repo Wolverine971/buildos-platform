@@ -25,6 +25,8 @@
 		Layers,
 		Link2
 	} from '$lib/icons/lucide';
+	import NotificationPreviewContent from '../../NotificationPreviewContent.svelte';
+	import { getNotificationPreview } from '../../notification-preview';
 	import type { AgentRunNotification } from '$lib/types/notification.types';
 	import type { AgentRunStatus } from '@buildos/shared-types';
 
@@ -32,12 +34,7 @@
 
 	let runStatus = $derived(notification.data.runStatus);
 	let entityCount = $derived(notification.data.entityCount ?? 0);
-	let projectLabel = $derived(
-		notification.data.projectName ??
-			(notification.data.contextType === 'global' ? 'Workspace' : 'Project')
-	);
-	let activityLabel = $derived(notification.data.activityLabel || notification.data.label);
-	let preview = $derived(notification.data.preview || notification.data.goal);
+	let content = $derived(getNotificationPreview(notification));
 
 	function iconFor(status: AgentRunStatus) {
 		switch (status) {
@@ -94,7 +91,7 @@
 	}
 
 	let statusIcon = $derived(iconFor(runStatus));
-	let EntityIcon = $derived(iconForEntity(notification.data.entityType, activityLabel));
+	let EntityIcon = $derived(iconForEntity(notification.data.entityType, content.actionLabel));
 </script>
 
 <div class="flex items-start gap-3 p-4">
@@ -106,32 +103,7 @@
 	</div>
 
 	<div class="min-w-0 flex-1">
-		<div
-			class="truncate text-sm font-semibold text-foreground"
-			aria-label={notification.data.projectName
-				? `Project: ${notification.data.projectName}`
-				: projectLabel}
-		>
-			{projectLabel}
-		</div>
-
-		<div class="mt-0.5 flex min-w-0 items-center gap-1.5">
-			<EntityIcon class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-			<span class="min-w-0 truncate text-xs">
-				<span class="font-medium text-foreground">{activityLabel}</span>
-				{#if notification.data.targetLabel}
-					<span class="text-muted-foreground">
-						<span aria-hidden="true"> · </span>{notification.data.targetLabel}
-					</span>
-				{/if}
-			</span>
-		</div>
-
-		{#if preview}
-			<div class="mt-1 line-clamp-2 break-words text-xs leading-4 text-muted-foreground">
-				{preview}
-			</div>
-		{/if}
+		<NotificationPreviewContent {...content} icon={EntityIcon} />
 	</div>
 
 	{#if entityCount > 0}

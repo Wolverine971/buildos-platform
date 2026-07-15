@@ -20,6 +20,7 @@
 	} from '$lib/icons/lucide';
 	import { formatDistanceToNow } from 'date-fns';
 	import { toastService } from '$lib/stores/toast.store';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import {
 		agentRunsStore,
 		isActiveAgentRunStatus,
@@ -146,6 +147,13 @@
 		if (activeTab === 'operatives') void loadAgentOperatives();
 		else void loadWorkRuns();
 	}
+	function closePanel() {
+		selectedRunId = null;
+		dispatchOpen = false;
+		operativeEditorOpen = false;
+		editingOperative = null;
+		onClose();
+	}
 	function openNewOperative() {
 		editingOperative = null;
 		operativeEditorOpen = true;
@@ -226,22 +234,17 @@
 	}
 </script>
 
-{#if open}
-	<!-- Backdrop -->
-	<div
-		class="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[1px]"
-		role="button"
-		tabindex="-1"
-		aria-label="Close work panel"
-		onclick={onClose}
-		onkeydown={(e) => e.key === 'Escape' && onClose()}
-	></div>
-
-	<!-- Slide-over -->
-	<aside
-		class="fixed right-0 top-0 z-[61] flex h-full w-full max-w-md flex-col border-l border-border bg-card shadow-ink-strong sm:w-[28rem]"
-		aria-label="Agent work panel"
-	>
+<Modal
+	isOpen={open}
+	onClose={closePanel}
+	size="sm"
+	ariaLabel="Agent work"
+	showCloseButton={false}
+	enableGestures={false}
+	showDragHandle={false}
+	customClasses="work-panel-drawer h-[100dvh] !max-h-[100dvh] !rounded-none border-l border-border sm:ml-auto sm:mr-0 sm:h-[calc(100dvh-1.5rem)] sm:!max-h-[calc(100dvh-1.5rem)] sm:!rounded-l-lg sm:!rounded-r-none"
+>
+	{#snippet header()}
 		<header class="flex items-center justify-between border-b border-border px-4 py-3">
 			<div class="flex items-center gap-2">
 				<Bot class="h-5 w-5 text-foreground" />
@@ -283,254 +286,262 @@
 					class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
 					title="Close"
 					aria-label="Close agent work"
-					onclick={onClose}
+					onclick={closePanel}
 				>
 					<X class="h-4 w-4" />
 				</button>
 			</div>
 		</header>
+	{/snippet}
 
-		<div class="border-b border-border px-3 py-2">
-			<div class="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1">
-				<button
-					type="button"
-					class="inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors {activeTab ===
-					'runs'
-						? 'bg-card text-foreground shadow-ink'
-						: 'text-muted-foreground hover:bg-background hover:text-foreground'}"
-					aria-pressed={activeTab === 'runs'}
-					onclick={() => (activeTab = 'runs')}
-				>
-					<Bot class="h-4 w-4" />
-					<span>Recent work</span>
-				</button>
-				<button
-					type="button"
-					class="inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors {activeTab ===
-					'operatives'
-						? 'bg-card text-foreground shadow-ink'
-						: 'text-muted-foreground hover:bg-background hover:text-foreground'}"
-					aria-pressed={activeTab === 'operatives'}
-					onclick={() => (activeTab = 'operatives')}
-				>
-					<CalendarClock class="h-4 w-4" />
-					<span>Automations</span>
-				</button>
-			</div>
-		</div>
-
-		<div class="flex-1 overflow-y-auto px-3 py-3">
-			{#if activeTab === 'runs' && runs.length === 0}
-				<div class="px-2 py-10 text-center text-sm text-muted-foreground">
-					{$workRunsLoading ? 'Loading…' : 'No agent work yet.'}
-				</div>
-			{:else if activeTab === 'runs'}
-				{#snippet runRow(run: AgentRunRow)}
-					{@const display = buildAgentRunCardPreview(run)}
-					{@const title = agentRunDisplayTitle(
-						display.activityLabel,
-						display.targetLabel,
-						run.label
-					)}
-					{@const projectName =
-						display.projectName ??
-						(run.context_type === 'global' ? 'Workspace' : 'Project')}
+	{#snippet children()}
+		<div class="flex h-full min-h-0 flex-col">
+			<div class="border-b border-border px-3 py-2">
+				<div class="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1">
 					<button
 						type="button"
-						class="min-h-11 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-left transition-shadow hover:shadow-ink"
-						aria-label={`Open ${projectName}: ${title}. ${agentRunStatusLabel(run.status)}`}
-						onclick={() => (selectedRunId = run.id)}
+						class="inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors {activeTab ===
+						'runs'
+							? 'bg-card text-foreground shadow-ink'
+							: 'text-muted-foreground hover:bg-background hover:text-foreground'}"
+						aria-pressed={activeTab === 'runs'}
+						onclick={() => (activeTab = 'runs')}
 					>
-						<div class="flex items-center gap-2">
-							<span
-								class="h-2 w-2 flex-shrink-0 rounded-full {dotClass(run.status)}"
-								aria-hidden="true"
-							></span>
-							<span
-								class="flex-1 min-w-0 truncate text-sm font-medium text-foreground"
-								>{projectName}</span
-							>
-							<span
-								class="flex-shrink-0 rounded-full px-1.5 py-0.5 text-[0.65rem] font-medium {needsYou(
-									run.status
-								)
-									? 'bg-warning/15 text-warning'
-									: 'bg-muted text-muted-foreground'}"
-								>{agentRunStatusLabel(run.status)}</span
-							>
-						</div>
-						<div class="mt-1 truncate text-xs font-medium text-foreground">{title}</div>
-						<div class="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-							{display.preview}
-						</div>
-						<div
-							class="mt-1 flex items-center gap-2 text-[0.7rem] text-muted-foreground"
-						>
-							<span>{agentRunTriggerLabel(run.trigger)}</span>
-							<span>·</span>
-							<span>{relTime(run)}</span>
-							{#if entityCount(run) > 0}
-								<span>·</span>
-								<span
-									>{entityCount(run)} change{entityCount(run) === 1
-										? ''
-										: 's'}</span
-								>
-							{/if}
-						</div>
+						<Bot class="h-4 w-4" />
+						<span>Recent work</span>
 					</button>
-				{/snippet}
-
-				{#if activeRuns.length}
-					<div class="mb-1 px-1 micro-label font-semibold text-muted-foreground">
-						Active
-					</div>
-					<div class="mb-4 space-y-1.5">
-						{#each activeRuns as run (run.id)}
-							{@render runRow(run)}
-						{/each}
-					</div>
-				{/if}
-
-				{#if historyRuns.length}
-					<div class="mb-1 px-1 micro-label font-semibold text-muted-foreground">
-						History
-					</div>
-					<div class="space-y-1.5">
-						{#each historyRuns as run (run.id)}
-							{@render runRow(run)}
-						{/each}
-					</div>
-				{/if}
-			{:else if operatives.length === 0}
-				<div class="px-2 py-10 text-center text-sm text-muted-foreground">
-					{$agentOperativesLoading ? 'Loading…' : 'No automations yet.'}
+					<button
+						type="button"
+						class="inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors {activeTab ===
+						'operatives'
+							? 'bg-card text-foreground shadow-ink'
+							: 'text-muted-foreground hover:bg-background hover:text-foreground'}"
+						aria-pressed={activeTab === 'operatives'}
+						onclick={() => (activeTab = 'operatives')}
+					>
+						<CalendarClock class="h-4 w-4" />
+						<span>Automations</span>
+					</button>
 				</div>
-			{:else}
-				<div class="space-y-1.5">
-					{#each operatives as operative (operative.id)}
-						<div
-							class="rounded-lg border border-border bg-background px-3 py-2 transition-shadow hover:shadow-ink"
+			</div>
+
+			<div class="flex-1 overflow-y-auto px-3 py-3">
+				{#if activeTab === 'runs' && runs.length === 0}
+					<div class="px-2 py-10 text-center text-sm text-muted-foreground">
+						{$workRunsLoading ? 'Loading…' : 'No agent work yet.'}
+					</div>
+				{:else if activeTab === 'runs'}
+					{#snippet runRow(run: AgentRunRow)}
+						{@const display = buildAgentRunCardPreview(run)}
+						{@const title = agentRunDisplayTitle(
+							display.activityLabel,
+							display.targetLabel,
+							run.label
+						)}
+						{@const projectName =
+							display.projectName ??
+							(run.context_type === 'global' ? 'Workspace' : 'Project')}
+						<button
+							type="button"
+							class="min-h-11 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-left transition-shadow hover:shadow-ink"
+							aria-label={`Open ${projectName}: ${title}. ${agentRunStatusLabel(run.status)}`}
+							onclick={() => (selectedRunId = run.id)}
 						>
-							<div class="flex items-start gap-2">
-								<button
-									type="button"
-									class="min-w-0 flex-1 text-left"
-									onclick={() => openEditOperative(operative)}
+							<div class="flex items-center gap-2">
+								<span
+									class="h-2 w-2 flex-shrink-0 rounded-full {dotClass(
+										run.status
+									)}"
+									aria-hidden="true"
+								></span>
+								<span
+									class="flex-1 min-w-0 truncate text-sm font-medium text-foreground"
+									>{projectName}</span
 								>
-									<div class="flex min-w-0 items-center gap-2">
-										<span
-											class="h-2 w-2 flex-shrink-0 rounded-full {operative.schedule_enabled
-												? 'bg-info'
-												: 'bg-muted-foreground'}"
-										></span>
-										<span
-											class="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
-										>
-											{operative.label}
-										</span>
-									</div>
-									<div class="mt-0.5 truncate text-xs text-muted-foreground">
-										{operative.goal}
-									</div>
-									<div
-										class="mt-1 flex min-w-0 items-center gap-2 text-[0.7rem] text-muted-foreground"
+								<span
+									class="flex-shrink-0 rounded-full px-1.5 py-0.5 text-2xs font-medium {needsYou(
+										run.status
+									)
+										? 'bg-warning/15 text-warning'
+										: 'bg-muted text-muted-foreground'}"
+									>{agentRunStatusLabel(run.status)}</span
+								>
+							</div>
+							<div class="mt-1 truncate text-xs font-medium text-foreground">
+								{title}
+							</div>
+							<div class="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+								{display.preview}
+							</div>
+							<div
+								class="mt-1 flex items-center gap-2 text-2xs text-muted-foreground"
+							>
+								<span>{agentRunTriggerLabel(run.trigger)}</span>
+								<span>·</span>
+								<span>{relTime(run)}</span>
+								{#if entityCount(run) > 0}
+									<span>·</span>
+									<span
+										>{entityCount(run)} change{entityCount(run) === 1
+											? ''
+											: 's'}</span
 									>
-										<span
-											>{agentRunAccessLabel(
-												operative.scope_mode,
-												operative.review_required
-											)}</span
-										>
-										<span>·</span>
-										<span class="truncate"
-											>{formatOperativeSchedule(operative)}</span
-										>
-									</div>
-									{#if operative.schedule_error}
-										<div class="mt-1 truncate text-[0.7rem] text-destructive">
-											Schedule needs attention
-										</div>
-									{/if}
-								</button>
-								<div class="flex flex-shrink-0 items-center gap-0.5">
+								{/if}
+							</div>
+						</button>
+					{/snippet}
+
+					{#if activeRuns.length}
+						<div class="mb-1 px-1 micro-label font-semibold text-muted-foreground">
+							Active
+						</div>
+						<div class="mb-4 space-y-1.5">
+							{#each activeRuns as run (run.id)}
+								{@render runRow(run)}
+							{/each}
+						</div>
+					{/if}
+
+					{#if historyRuns.length}
+						<div class="mb-1 px-1 micro-label font-semibold text-muted-foreground">
+							History
+						</div>
+						<div class="space-y-1.5">
+							{#each historyRuns as run (run.id)}
+								{@render runRow(run)}
+							{/each}
+						</div>
+					{/if}
+				{:else if operatives.length === 0}
+					<div class="px-2 py-10 text-center text-sm text-muted-foreground">
+						{$agentOperativesLoading ? 'Loading…' : 'No automations yet.'}
+					</div>
+				{:else}
+					<div class="space-y-1.5">
+						{#each operatives as operative (operative.id)}
+							<div
+								class="rounded-lg border border-border bg-background px-3 py-2 transition-shadow hover:shadow-ink"
+							>
+								<div class="flex items-start gap-2">
 									<button
 										type="button"
-										class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-										title="Start"
-										aria-label={`Start ${operative.label}`}
-										disabled={Boolean(
-											runningOperativeId || deletingOperativeId
-										)}
-										onclick={() => runOperative(operative)}
-									>
-										{#if runningOperativeId === operative.id}
-											<LoaderCircle
-												class="h-4 w-4 animate-spin motion-reduce:animate-none"
-											/>
-										{:else}
-											<Play class="h-4 w-4" />
-										{/if}
-									</button>
-									<button
-										type="button"
-										class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-										title="Edit"
-										aria-label={`Edit ${operative.label}`}
+										class="min-w-0 flex-1 text-left"
 										onclick={() => openEditOperative(operative)}
 									>
-										<Pencil class="h-4 w-4" />
-									</button>
-									<button
-										type="button"
-										class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-										title="Delete"
-										aria-label={`Delete ${operative.label}`}
-										disabled={Boolean(
-											runningOperativeId || deletingOperativeId
-										)}
-										onclick={() => deleteOperative(operative)}
-									>
-										{#if deletingOperativeId === operative.id}
-											<LoaderCircle
-												class="h-4 w-4 animate-spin motion-reduce:animate-none"
-											/>
-										{:else}
-											<Trash2 class="h-4 w-4" />
+										<div class="flex min-w-0 items-center gap-2">
+											<span
+												class="h-2 w-2 flex-shrink-0 rounded-full {operative.schedule_enabled
+													? 'bg-info'
+													: 'bg-muted-foreground'}"
+											></span>
+											<span
+												class="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
+											>
+												{operative.label}
+											</span>
+										</div>
+										<div class="mt-0.5 truncate text-xs text-muted-foreground">
+											{operative.goal}
+										</div>
+										<div
+											class="mt-1 flex min-w-0 items-center gap-2 text-2xs text-muted-foreground"
+										>
+											<span
+												>{agentRunAccessLabel(
+													operative.scope_mode,
+													operative.review_required
+												)}</span
+											>
+											<span>·</span>
+											<span class="truncate"
+												>{formatOperativeSchedule(operative)}</span
+											>
+										</div>
+										{#if operative.schedule_error}
+											<div class="mt-1 truncate text-2xs text-destructive">
+												Schedule needs attention
+											</div>
 										{/if}
 									</button>
+									<div class="flex flex-shrink-0 items-center gap-0.5">
+										<button
+											type="button"
+											class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+											title="Start"
+											aria-label={`Start ${operative.label}`}
+											disabled={Boolean(
+												runningOperativeId || deletingOperativeId
+											)}
+											onclick={() => runOperative(operative)}
+										>
+											{#if runningOperativeId === operative.id}
+												<LoaderCircle
+													class="h-4 w-4 animate-spin motion-reduce:animate-none"
+												/>
+											{:else}
+												<Play class="h-4 w-4" />
+											{/if}
+										</button>
+										<button
+											type="button"
+											class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+											title="Edit"
+											aria-label={`Edit ${operative.label}`}
+											onclick={() => openEditOperative(operative)}
+										>
+											<Pencil class="h-4 w-4" />
+										</button>
+										<button
+											type="button"
+											class="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+											title="Delete"
+											aria-label={`Delete ${operative.label}`}
+											disabled={Boolean(
+												runningOperativeId || deletingOperativeId
+											)}
+											onclick={() => deleteOperative(operative)}
+										>
+											{#if deletingOperativeId === operative.id}
+												<LoaderCircle
+													class="h-4 w-4 animate-spin motion-reduce:animate-none"
+												/>
+											{:else}
+												<Trash2 class="h-4 w-4" />
+											{/if}
+										</button>
+									</div>
 								</div>
 							</div>
-						</div>
-					{/each}
-				</div>
-			{/if}
+						{/each}
+					</div>
+				{/if}
+			</div>
 		</div>
-	</aside>
+	{/snippet}
+</Modal>
 
-	<!-- Detail (reuses the rich run modal, rendered above the panel) -->
-	{#if selectedNotification}
-		<AgentRunModalContent
-			notification={selectedNotification}
-			onMinimize={() => (selectedRunId = null)}
-			onClose={() => (selectedRunId = null)}
-			onCancel={() => (selectedRunId = null)}
-		/>
-	{/if}
-
-	<AgentRunDispatchModal
-		isOpen={dispatchOpen}
-		onClose={() => (dispatchOpen = false)}
-		onDispatched={handleRunDispatched}
-	/>
-
-	<AgentOperativeEditorModal
-		isOpen={operativeEditorOpen}
-		operative={editingOperative}
-		onClose={() => {
-			operativeEditorOpen = false;
-			editingOperative = null;
-		}}
-		onSaved={handleOperativeSaved}
+<!-- Detail (reuses the rich run modal, rendered above the panel) -->
+{#if open && selectedNotification}
+	<AgentRunModalContent
+		notification={selectedNotification}
+		onMinimize={() => (selectedRunId = null)}
+		onClose={() => (selectedRunId = null)}
+		onCancel={() => (selectedRunId = null)}
 	/>
 {/if}
+
+<AgentRunDispatchModal
+	isOpen={open && dispatchOpen}
+	onClose={() => (dispatchOpen = false)}
+	onDispatched={handleRunDispatched}
+/>
+
+<AgentOperativeEditorModal
+	isOpen={open && operativeEditorOpen}
+	operative={editingOperative}
+	onClose={() => {
+		operativeEditorOpen = false;
+		editingOperative = null;
+	}}
+	onSaved={handleOperativeSaved}
+/>

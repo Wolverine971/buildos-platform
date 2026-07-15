@@ -8,13 +8,15 @@
 	import type { AgentRunRow } from '$lib/services/agentRunsRealtime.service';
 	import {
 		Bot,
+		ChevronDown,
 		Eye,
 		FolderKanban,
 		Globe,
 		LoaderCircle,
 		PencilLine,
 		Send,
-		ShieldCheck
+		ShieldCheck,
+		SlidersHorizontal
 	} from '$lib/icons/lucide';
 
 	type ContextType = 'global' | 'project';
@@ -46,6 +48,7 @@
 	let projectId = $state('');
 	let scopeMode = $state<ScopeMode>('read_only');
 	let review = $state(false);
+	let showAdvanced = $state(false);
 	let submitting = $state(false);
 	let formError = $state<string | null>(null);
 	let projects = $state<ProjectOption[]>([]);
@@ -61,6 +64,16 @@
 			!submitting &&
 			(contextType !== 'project' || !projectsLoading)
 	);
+	let accessSummary = $derived(
+		scopeMode === 'read_only'
+			? 'Review only'
+			: review
+				? 'Can make changes · approval required'
+				: 'Can make changes automatically'
+	);
+	let optionalDetailCount = $derived(
+		Number(Boolean(instructions.trim())) + Number(Boolean(expectedOutput.trim()))
+	);
 
 	$effect(() => {
 		if (isOpen && !wasOpen) {
@@ -74,10 +87,6 @@
 		void loadProjects();
 	});
 
-	$effect(() => {
-		if (scopeMode === 'read_only' && review) review = false;
-	});
-
 	function resetForm() {
 		label = '';
 		goal = '';
@@ -87,6 +96,7 @@
 		projectId = '';
 		scopeMode = 'read_only';
 		review = false;
+		showAdvanced = false;
 		formError = null;
 		submitting = false;
 	}
@@ -307,101 +317,137 @@
 				</div>
 			{/if}
 
-			<div class="grid gap-3 sm:grid-cols-2">
-				<div class="space-y-2">
-					<div class="text-sm font-medium text-foreground">Access</div>
-					<div
-						class="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1"
-					>
-						<button
-							type="button"
-							class={segmentClass(scopeMode === 'read_only')}
-							aria-pressed={scopeMode === 'read_only'}
-							disabled={submitting}
-							onclick={() => setScopeMode('read_only')}
+			<button
+				type="button"
+				class="flex min-h-11 w-full items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-left shadow-ink transition-colors hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+				aria-expanded={showAdvanced}
+				aria-controls={`${formId}-advanced`}
+				disabled={submitting}
+				onclick={() => (showAdvanced = !showAdvanced)}
+			>
+				<SlidersHorizontal
+					class="h-4 w-4 shrink-0 text-muted-foreground"
+					aria-hidden="true"
+				/>
+				<span class="min-w-0 flex-1">
+					<span class="block text-sm font-medium text-foreground">Run options</span>
+					<span class="block truncate text-xs text-muted-foreground">
+						{accessSummary}{optionalDetailCount
+							? ` · ${optionalDetailCount} custom ${optionalDetailCount === 1 ? 'detail' : 'details'}`
+							: ' · No custom instructions'}
+					</span>
+				</span>
+				<ChevronDown
+					class="h-4 w-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none {showAdvanced
+						? 'rotate-180'
+						: ''}"
+					aria-hidden="true"
+				/>
+			</button>
+
+			{#if showAdvanced}
+				<div
+					id={`${formId}-advanced`}
+					class="space-y-4 rounded-lg border border-border bg-muted/20 p-3"
+				>
+					<p class="micro-label font-semibold text-muted-foreground">Advanced options</p>
+					<div class="grid gap-3 sm:grid-cols-2">
+						<div class="space-y-2">
+							<div class="text-sm font-medium text-foreground">Access</div>
+							<div
+								class="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1"
+							>
+								<button
+									type="button"
+									class={segmentClass(scopeMode === 'read_only')}
+									aria-pressed={scopeMode === 'read_only'}
+									disabled={submitting}
+									onclick={() => setScopeMode('read_only')}
+								>
+									<Eye class="h-4 w-4" />
+									<span>Review only</span>
+								</button>
+								<button
+									type="button"
+									class={segmentClass(scopeMode === 'read_write')}
+									aria-pressed={scopeMode === 'read_write'}
+									disabled={submitting}
+									onclick={() => setScopeMode('read_write')}
+								>
+									<PencilLine class="h-4 w-4" />
+									<span>Can make changes</span>
+								</button>
+							</div>
+						</div>
+
+						<label
+							class="flex min-h-[78px] items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 shadow-ink {scopeMode ===
+							'read_write'
+								? ''
+								: 'opacity-60'}"
 						>
-							<Eye class="h-4 w-4" />
-							<span>Review only</span>
-						</button>
-						<button
-							type="button"
-							class={segmentClass(scopeMode === 'read_write')}
-							aria-pressed={scopeMode === 'read_write'}
-							disabled={submitting}
-							onclick={() => setScopeMode('read_write')}
-						>
-							<PencilLine class="h-4 w-4" />
-							<span>Can make changes</span>
-						</button>
+							<span class="flex min-w-0 items-center gap-2">
+								<ShieldCheck class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+								<span class="min-w-0">
+									<span class="block text-sm font-medium text-foreground"
+										>Ask before applying</span
+									>
+									<span class="block text-xs text-muted-foreground"
+										>You approve any changes first</span
+									>
+								</span>
+							</span>
+							<span class="relative inline-flex flex-shrink-0 items-center">
+								<input
+									type="checkbox"
+									bind:checked={review}
+									disabled={scopeMode !== 'read_write' || submitting}
+									class="peer sr-only"
+								/>
+								<span
+									aria-hidden="true"
+									class="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-accent peer-disabled:cursor-not-allowed after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-card after:shadow-ink after:transition-transform peer-checked:after:translate-x-5 motion-reduce:transition-none motion-reduce:after:transition-none"
+								></span>
+							</span>
+						</label>
+					</div>
+
+					<div class="grid gap-3 sm:grid-cols-2">
+						<div class="space-y-2">
+							<label
+								for={`${formId}-instructions`}
+								class="text-sm font-medium text-foreground"
+							>
+								Instructions
+							</label>
+							<textarea
+								id={`${formId}-instructions`}
+								bind:value={instructions}
+								rows="3"
+								disabled={submitting}
+								placeholder="Optional"
+								class="{inputClass()} resize-y"
+							></textarea>
+						</div>
+						<div class="space-y-2">
+							<label
+								for={`${formId}-expected-output`}
+								class="text-sm font-medium text-foreground"
+							>
+								Expected output
+							</label>
+							<textarea
+								id={`${formId}-expected-output`}
+								bind:value={expectedOutput}
+								rows="3"
+								disabled={submitting}
+								placeholder="Optional"
+								class="{inputClass()} resize-y"
+							></textarea>
+						</div>
 					</div>
 				</div>
-
-				<label
-					class="flex min-h-[78px] items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 shadow-ink {scopeMode ===
-					'read_write'
-						? ''
-						: 'opacity-60'}"
-				>
-					<span class="flex min-w-0 items-center gap-2">
-						<ShieldCheck class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-						<span class="min-w-0">
-							<span class="block text-sm font-medium text-foreground"
-								>Ask before applying</span
-							>
-							<span class="block text-xs text-muted-foreground"
-								>You approve any changes first</span
-							>
-						</span>
-					</span>
-					<span class="relative inline-flex flex-shrink-0 items-center">
-						<input
-							type="checkbox"
-							bind:checked={review}
-							disabled={scopeMode !== 'read_write' || submitting}
-							class="peer sr-only"
-						/>
-						<span
-							aria-hidden="true"
-							class="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-accent peer-disabled:cursor-not-allowed after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-card after:shadow-ink after:transition-transform peer-checked:after:translate-x-5"
-						></span>
-					</span>
-				</label>
-			</div>
-
-			<div class="grid gap-3 sm:grid-cols-2">
-				<div class="space-y-2">
-					<label
-						for={`${formId}-instructions`}
-						class="text-sm font-medium text-foreground"
-					>
-						Instructions
-					</label>
-					<textarea
-						id={`${formId}-instructions`}
-						bind:value={instructions}
-						rows="3"
-						disabled={submitting}
-						placeholder="Optional"
-						class="{inputClass()} resize-y"
-					></textarea>
-				</div>
-				<div class="space-y-2">
-					<label
-						for={`${formId}-expected-output`}
-						class="text-sm font-medium text-foreground"
-					>
-						Expected output
-					</label>
-					<textarea
-						id={`${formId}-expected-output`}
-						bind:value={expectedOutput}
-						rows="3"
-						disabled={submitting}
-						placeholder="Optional"
-						class="{inputClass()} resize-y"
-					></textarea>
-				</div>
-			</div>
+			{/if}
 
 			{#if formError}
 				<div

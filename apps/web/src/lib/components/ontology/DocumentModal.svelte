@@ -528,11 +528,11 @@
 	let showDocumentModal = $state(false);
 	let selectedDocumentIdForModal = $state<string | null>(null);
 	let showChatModal = $state(false);
-	let linkedEntityModalSession: DocumentSession | null = null;
-	let chatModalSession: DocumentSession | null = null;
-	let restoreModalSession: DocumentSession | null = null;
-	let moveModalSession: DocumentSession | null = null;
-	let imageInsertModalSession: DocumentSession | null = null;
+	let linkedEntityModalSession = $state.raw<DocumentSession | null>(null);
+	let chatModalSession = $state.raw<DocumentSession | null>(null);
+	let restoreModalSession = $state.raw<DocumentSession | null>(null);
+	let moveModalSession = $state.raw<DocumentSession | null>(null);
+	let imageInsertModalSession = $state.raw<DocumentSession | null>(null);
 	type MobileTab = 'details' | 'links' | 'media' | 'history' | 'comments' | null;
 	let activeMobileTab = $state<MobileTab>(null);
 	let showImageInsertModal = $state(false);
@@ -2968,7 +2968,7 @@
 			{/if}
 			{#if latestPublicPageReviewReasons.length > 0}
 				<ul class="space-y-0.5 text-xs text-destructive list-disc pl-4">
-					{#each latestPublicPageReviewReasons as reason}
+					{#each latestPublicPageReviewReasons as reason (reason)}
 						<li>{reason}</li>
 					{/each}
 				</ul>
@@ -3028,7 +3028,7 @@
 						<div
 							class="flex items-center gap-1 text-xs text-muted-foreground mb-0.5 overflow-hidden"
 						>
-							{#each breadcrumbPath as crumb, i}
+							{#each breadcrumbPath as crumb, i (crumb.id)}
 								<span
 									class="truncate max-w-[100px] sm:max-w-none"
 									title={crumb.title}>{crumb.title}</span
@@ -3277,7 +3277,7 @@
 											class="w-full text-xs"
 											disabled={blockingSave || isArchivedDocument}
 										>
-											{#each stateOptions as option}
+											{#each stateOptions as option (option.value)}
 												<option value={option.value}>{option.label}</option>
 											{/each}
 										</Select>
@@ -3734,7 +3734,7 @@
 													class="w-full text-xs"
 													disabled={blockingSave || isArchivedDocument}
 												>
-													{#each stateOptions as option}
+													{#each stateOptions as option (option.value)}
 														<option value={option.value}
 															>{option.label}</option
 														>
@@ -4133,7 +4133,7 @@
 						{/if}
 						{#if latestPublicPageReviewReasons.length > 0}
 							<ul class="space-y-0.5 text-xs text-destructive list-disc pl-4">
-								{#each latestPublicPageReviewReasons as reason}
+								{#each latestPublicPageReviewReasons as reason (reason)}
 									<li>{reason}</li>
 								{/each}
 							</ul>

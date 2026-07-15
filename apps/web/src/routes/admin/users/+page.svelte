@@ -22,7 +22,6 @@
 		SlidersHorizontal,
 		X
 	} from 'lucide-svelte';
-	import { browser } from '$app/environment';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import AdminCard from '$lib/components/admin/AdminCard.svelte';
 	import UserActivityModal from '$lib/components/admin/UserActivityModal.svelte';
@@ -36,6 +35,18 @@
 	import { slide } from 'svelte/transition';
 	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 
+	interface UserListRequest {
+		clientSort: boolean;
+		page: number;
+		limit: number;
+		search: string;
+		adminFilter: string;
+		onboardingFilter: string;
+		sortBy: string;
+		sortOrder: string;
+		refreshVersion: number;
+	}
+
 	let users = $state<any[]>([]);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
@@ -43,6 +54,7 @@
 	let currentPage = $state(1);
 	let totalPages = $state(1);
 	let totalUsers = $state(0);
+	let refreshVersion = $state(0);
 	let selectedUser = $state<any>(null);
 	let showUserModal = $state(false);
 	let showActivityModal = $state(false);
@@ -63,6 +75,7 @@
 	let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	let rawUsers = $state<any[]>([]); // Store raw data for client-side sorting
 	let initialFiltersReady = $state(false);
+	let previousRequestSearch = '';
 
 	// Collapsible filter panel + admin-toggle confirmation
 	let showFilters = $state(false);
@@ -102,13 +115,27 @@
 	);
 	let isDefaultSort = $derived(sortBy === 'last_visit' && sortOrder === 'desc');
 
+	function resetPage() {
+		currentPage = 1;
+	}
+
+	function refreshUsers() {
+		refreshVersion += 1;
+	}
+
 	function clearFilters() {
 		filterByAdmin = 'all';
 		filterByOnboarding = 'all';
+		resetPage();
 	}
 
 	function toggleSortOrder() {
 		sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+		resetPage();
+
+		if (usesClientSort) {
+			sortUsersClientSide();
+		}
 	}
 
 	const clientSortableFields = [
@@ -120,6 +147,36 @@
 		'calendar_connected',
 		'ontology_entity_total'
 	];
+	let usesClientSort = $derived(clientSortableFields.includes(sortBy));
+	let userListRequest = $derived.by((): UserListRequest | null => {
+		if (!initialFiltersReady) return null;
+
+		if (usesClientSort) {
+			return {
+				clientSort: true,
+				page: 1,
+				limit: 1000,
+				search: searchQuery,
+				adminFilter: filterByAdmin,
+				onboardingFilter: filterByOnboarding,
+				sortBy: 'created_at',
+				sortOrder: 'desc',
+				refreshVersion
+			};
+		}
+
+		return {
+			clientSort: false,
+			page: currentPage,
+			limit: 20,
+			search: searchQuery,
+			adminFilter: filterByAdmin,
+			onboardingFilter: filterByOnboarding,
+			sortBy,
+			sortOrder,
+			refreshVersion
+		};
+	});
 
 	function handleSort(column: string) {
 		if (sortBy === column) {
@@ -130,13 +187,10 @@
 			sortBy = column;
 			sortOrder = 'desc';
 		}
-		currentPage = 1;
+		resetPage();
 
-		// Check if we need client-side sorting for computed fields
-		if (clientSortableFields.includes(column)) {
+		if (usesClientSort) {
 			sortUsersClientSide();
-		} else {
-			loadUsers();
 		}
 	}
 
@@ -193,53 +247,55 @@
 		initialFiltersReady = true;
 	});
 
-	// Load users on mount and when filters change
+	// This effect is the single owner of user-list requests.
 	$effect(() => {
-		if (!browser || !initialFiltersReady) return;
-		// Track all filter dependencies
-		searchQuery;
-		filterByAdmin;
-		filterByOnboarding;
-		sortBy;
-		sortOrder;
+		const request = userListRequest;
+		if (!request) return;
 
-		currentPage = 1;
-		loadUsers();
+		const controller = new AbortController();
+		const debounceMs = request.search !== previousRequestSearch ? 250 : 0;
+		previousRequestSearch = request.search;
+
+		const timeoutId = window.setTimeout(() => {
+			void loadUsers(request, controller.signal);
+		}, debounceMs);
+
+		return () => {
+			window.clearTimeout(timeoutId);
+			controller.abort();
+		};
 	});
 
-	async function loadUsers() {
-		if (!browser) {
-			return;
-		}
+	async function loadUsers(request: UserListRequest, signal: AbortSignal) {
 		isLoading = true;
 		error = null;
 
 		try {
-			// For client-side sortable fields, we need to fetch all users
-			const isClientSort = clientSortableFields.includes(sortBy);
-
 			const params = new URLSearchParams({
-				page: isClientSort ? '1' : currentPage.toString(),
-				limit: isClientSort ? '1000' : '20', // Fetch all for client-side sorting
-				search: searchQuery,
-				sort_by: isClientSort ? 'created_at' : sortBy,
-				sort_order: sortOrder
+				page: request.page.toString(),
+				limit: request.limit.toString(),
+				search: request.search,
+				sort_by: request.sortBy,
+				sort_order: request.sortOrder
 			});
 
-			if (filterByAdmin !== 'all') {
-				params.set('admin_filter', filterByAdmin);
+			if (request.adminFilter !== 'all') {
+				params.set('admin_filter', request.adminFilter);
 			}
 
-			if (filterByOnboarding !== 'all') {
-				params.set('onboarding_filter', filterByOnboarding);
+			if (request.onboardingFilter !== 'all') {
+				params.set('onboarding_filter', request.onboardingFilter);
 			}
 
-			const response = await fetch(`/api/admin/users?${params}`);
+			const response = await fetch(`/api/admin/users?${params}`, { signal });
+			if (!response.ok) throw new Error('Failed to load users');
 
 			const result = await response.json();
+			if (signal.aborted) return;
+
 			if (result.success) {
 				const normalizedUsers = normalizeAdminUsers(result.data.users);
-				if (isClientSort) {
+				if (request.clientSort) {
 					// Store all data for client-side sorting
 					rawUsers = normalizedUsers;
 					sortUsersClientSide();
@@ -253,11 +309,18 @@
 				throw new Error(result.error || 'Failed to load users');
 			}
 		} catch (err) {
+			if (signal.aborted || isAbortError(err)) return;
 			console.error('Error loading users:', err);
 			error = err instanceof Error ? err.message : 'Failed to load users';
 		} finally {
-			isLoading = false;
+			if (!signal.aborted) {
+				isLoading = false;
+			}
 		}
+	}
+
+	function isAbortError(error: unknown): boolean {
+		return error instanceof Error && error.name === 'AbortError';
 	}
 
 	async function loadUserActivity(userId: string) {
@@ -324,7 +387,7 @@
 			if (!result.success) {
 				throw new Error(result.error || 'Failed to update user');
 			}
-			await loadUsers();
+			refreshUsers();
 			toastService.success(currentStatus ? 'Admin access removed' : 'Admin access granted');
 			adminConfirm = null;
 		} catch (err) {
@@ -370,10 +433,8 @@
 	function nextPage() {
 		if (currentPage < totalPages) {
 			currentPage++;
-			if (rawUsers.length > 0) {
+			if (usesClientSort) {
 				sortUsersClientSide();
-			} else {
-				loadUsers();
 			}
 		}
 	}
@@ -381,10 +442,8 @@
 	function prevPage() {
 		if (currentPage > 1) {
 			currentPage--;
-			if (rawUsers.length > 0) {
+			if (usesClientSort) {
 				sortUsersClientSide();
-			} else {
-				loadUsers();
 			}
 		}
 	}
@@ -410,7 +469,7 @@
 					{totalUsers} total users
 				</div>
 				<Button
-					onclick={loadUsers}
+					onclick={refreshUsers}
 					disabled={isLoading}
 					variant="primary"
 					size="sm"
@@ -433,6 +492,7 @@
 				<TextInput
 					type="text"
 					bind:value={searchQuery}
+					oninput={resetPage}
 					placeholder="Search by email, name, or ID..."
 					size="md"
 				/>
@@ -468,7 +528,14 @@
 					<span class="mb-1 block text-xs font-medium text-muted-foreground"
 						>User type</span
 					>
-					<Select bind:value={filterByAdmin} size="md">
+					<Select
+						bind:value={filterByAdmin}
+						onchange={(value) => {
+							filterByAdmin = String(value);
+							resetPage();
+						}}
+						size="md"
+					>
 						<option value="all">All users</option>
 						<option value="admin">Admins only</option>
 						<option value="regular">Regular users</option>
@@ -479,7 +546,14 @@
 					<span class="mb-1 block text-xs font-medium text-muted-foreground"
 						>Onboarding</span
 					>
-					<Select bind:value={filterByOnboarding} size="md">
+					<Select
+						bind:value={filterByOnboarding}
+						onchange={(value) => {
+							filterByOnboarding = String(value);
+							resetPage();
+						}}
+						size="md"
+					>
 						<option value="all">All onboarding</option>
 						<option value="completed">Completed</option>
 						<option value="pending">Pending</option>
@@ -491,7 +565,15 @@
 					>
 					<div class="flex items-center gap-2">
 						<div class="min-w-0 flex-1">
-							<Select bind:value={sortBy} size="md">
+							<Select
+								bind:value={sortBy}
+								onchange={(value) => {
+									sortBy = String(value);
+									resetPage();
+									if (usesClientSort) sortUsersClientSide();
+								}}
+								size="md"
+							>
 								<option value="last_visit">Last Visit</option>
 								<option value="created_at">Join Date</option>
 								<option value="project_count">Projects</option>
@@ -530,7 +612,10 @@
 				{#if filterByAdmin !== 'all'}
 					<button
 						type="button"
-						onclick={() => (filterByAdmin = 'all')}
+						onclick={() => {
+							filterByAdmin = 'all';
+							resetPage();
+						}}
 						class="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground transition-colors motion-reduce:transition-none hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						{ADMIN_LABELS[filterByAdmin]}
@@ -540,7 +625,10 @@
 				{#if filterByOnboarding !== 'all'}
 					<button
 						type="button"
-						onclick={() => (filterByOnboarding = 'all')}
+						onclick={() => {
+							filterByOnboarding = 'all';
+							resetPage();
+						}}
 						class="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground transition-colors motion-reduce:transition-none hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						{ONBOARDING_LABELS[filterByOnboarding]}
@@ -553,6 +641,7 @@
 						onclick={() => {
 							sortBy = 'last_visit';
 							sortOrder = 'desc';
+							resetPage();
 						}}
 						class="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground transition-colors motion-reduce:transition-none hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
@@ -602,7 +691,7 @@
 		{:else}
 			<!-- Mobile card list (sort via the Sort dropdown above) -->
 			<ul class="divide-y divide-border lg:hidden">
-				{#each users as user}
+				{#each users as user (user.id)}
 					<li class="p-3">
 						<div class="flex items-start gap-3">
 							<div
@@ -1068,7 +1157,7 @@
 						</tr>
 					</thead>
 					<tbody class="bg-card divide-y divide-border">
-						{#each users as user}
+						{#each users as user (user.id)}
 							<tr class="hover:bg-muted/50">
 								<td class="px-3 py-2 whitespace-nowrap">
 									<div class="flex items-center gap-2">
@@ -1377,9 +1466,9 @@
 						Activity
 					</div>
 					<p class="text-xs text-foreground">
-						{selectedUser.project_count || 0} projects ·{' '}
+						{selectedUser.project_count || 0} projects ·
 						{selectedUser.chat_session_count || selectedUser.agentic_session_count || 0}
-						chat sessions ·{' '}
+						chat sessions ·
 						{selectedUser.daily_brief_count || 0} daily briefs
 					</p>
 				</div>

@@ -10,6 +10,7 @@ dist/
 build/
 .svelte-kit/
 .turbo/
+video-projects/**/renders/work-*/
 
 # Dependencies
 node_modules/

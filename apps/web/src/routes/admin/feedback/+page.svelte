@@ -18,7 +18,6 @@
 		ExternalLink,
 		Mail
 	} from 'lucide-svelte';
-	import { browser } from '$app/environment';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import AdminCard from '$lib/components/admin/AdminCard.svelte';
 	import EmailComposerModal from '$lib/components/admin/EmailComposerModal.svelte';
@@ -27,6 +26,16 @@
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+
+	interface FeedbackListRequest {
+		page: number;
+		search: string;
+		status: string;
+		category: string;
+		sortBy: string;
+		sortOrder: string;
+		refreshVersion: number;
+	}
 
 	let feedback = $state<any[]>([]);
 	let isLoading = $state(true);
@@ -48,56 +57,71 @@
 	let filterByCategory = $state('all');
 	let sortBy = $state('created_at');
 	let sortOrder = $state('desc');
+	let refreshVersion = $state(0);
 
 	// Status update
 	let isUpdating = $state(false);
 
 	let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	let previousRequestSearch = '';
+	let feedbackListRequest = $derived<FeedbackListRequest>({
+		page: currentPage,
+		search: searchQuery,
+		status: filterByStatus,
+		category: filterByCategory,
+		sortBy,
+		sortOrder,
+		refreshVersion
+	});
 
 	onMount(() => {
 		timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	});
 
-	// Load feedback on mount and when filters change
+	// This effect is the single owner of feedback-list requests.
 	$effect(() => {
-		if (!browser) return;
-		// Track all filter dependencies
-		searchQuery;
-		filterByStatus;
-		filterByCategory;
-		sortBy;
-		sortOrder;
+		const request = feedbackListRequest;
+		const controller = new AbortController();
+		const debounceMs = request.search !== previousRequestSearch ? 250 : 0;
+		previousRequestSearch = request.search;
 
-		currentPage = 1;
-		loadFeedback();
+		const timeoutId = window.setTimeout(() => {
+			void loadFeedback(request, controller.signal);
+		}, debounceMs);
+
+		return () => {
+			window.clearTimeout(timeoutId);
+			controller.abort();
+		};
 	});
 
-	async function loadFeedback() {
-		if (!browser) return;
+	async function loadFeedback(request: FeedbackListRequest, signal: AbortSignal) {
 		isLoading = true;
 		error = null;
 
 		try {
 			const params = new URLSearchParams({
-				page: currentPage.toString(),
+				page: request.page.toString(),
 				limit: '20',
-				search: searchQuery,
-				sort_by: sortBy,
-				sort_order: sortOrder
+				search: request.search,
+				sort_by: request.sortBy,
+				sort_order: request.sortOrder
 			});
 
-			if (filterByStatus !== 'all') {
-				params.set('status', filterByStatus);
+			if (request.status !== 'all') {
+				params.set('status', request.status);
 			}
 
-			if (filterByCategory !== 'all') {
-				params.set('category', filterByCategory);
+			if (request.category !== 'all') {
+				params.set('category', request.category);
 			}
 
-			const response = await fetch(`/api/admin/feedback?${params}`);
+			const response = await fetch(`/api/admin/feedback?${params}`, { signal });
 			if (!response.ok) throw new Error('Failed to load feedback');
 
 			const result = await response.json();
+			if (signal.aborted) return;
+
 			if (result.success) {
 				feedback = result.data.feedback;
 				totalPages = result.data.pagination.total_pages;
@@ -106,11 +130,26 @@
 				throw new Error(result.error || 'Failed to load feedback');
 			}
 		} catch (err) {
+			if (signal.aborted || isAbortError(err)) return;
 			console.error('Error loading feedback:', err);
 			error = err instanceof Error ? err.message : 'Failed to load feedback';
 		} finally {
-			isLoading = false;
+			if (!signal.aborted) {
+				isLoading = false;
+			}
 		}
+	}
+
+	function isAbortError(error: unknown): boolean {
+		return error instanceof Error && error.name === 'AbortError';
+	}
+
+	function resetPage() {
+		currentPage = 1;
+	}
+
+	function refreshFeedback() {
+		refreshVersion += 1;
 	}
 
 	async function updateFeedbackStatus(feedbackId: string, newStatus: string) {
@@ -129,7 +168,7 @@
 
 			const result = await response.json();
 			if (result.success) {
-				await loadFeedback();
+				refreshFeedback();
 				if (selectedFeedback && selectedFeedback.id === feedbackId) {
 					selectedFeedback.status = newStatus;
 				}
@@ -185,14 +224,12 @@
 	function nextPage() {
 		if (currentPage < totalPages) {
 			currentPage++;
-			loadFeedback();
 		}
 	}
 
 	function prevPage() {
 		if (currentPage > 1) {
 			currentPage--;
-			loadFeedback();
 		}
 	}
 </script>
@@ -217,7 +254,7 @@
 					{totalItems} total submissions
 				</div>
 				<Button
-					onclick={loadFeedback}
+					onclick={refreshFeedback}
 					disabled={isLoading}
 					variant="primary"
 					size="sm"
@@ -240,7 +277,7 @@
 				size="md"
 				class="w-full justify-between bg-muted text-foreground"
 				icon={Filter}
-				iconPosition={'right'}
+				iconPosition="right"
 			>
 				Filters & Search
 			</Button>
@@ -254,6 +291,7 @@
 					id="search"
 					type="text"
 					bind:value={searchQuery}
+					oninput={resetPage}
 					placeholder="Search feedback..."
 					size="md"
 				/>
@@ -261,7 +299,15 @@
 
 			<!-- Status Filter -->
 			<FormField label="Status" labelFor="mobile-status">
-				<Select id="mobile-status" bind:value={filterByStatus} size="md">
+				<Select
+					id="mobile-status"
+					bind:value={filterByStatus}
+					onchange={(value) => {
+						filterByStatus = String(value);
+						resetPage();
+					}}
+					size="md"
+				>
 					<option value="all">All Status</option>
 					<option value="new">New</option>
 					<option value="reviewed">Reviewed</option>
@@ -273,7 +319,15 @@
 
 			<!-- Category Filter -->
 			<FormField label="Category" labelFor="mobile-category">
-				<Select id="mobile-category" bind:value={filterByCategory} size="md">
+				<Select
+					id="mobile-category"
+					bind:value={filterByCategory}
+					onchange={(value) => {
+						filterByCategory = String(value);
+						resetPage();
+					}}
+					size="md"
+				>
 					<option value="all">All Categories</option>
 					<option value="feature">Feature Request</option>
 					<option value="bug">Bug Report</option>
@@ -284,7 +338,15 @@
 
 			<!-- Sort -->
 			<FormField label="Sort By" labelFor="mobile-sort">
-				<Select id="mobile-sort" bind:value={sortBy} size="md">
+				<Select
+					id="mobile-sort"
+					bind:value={sortBy}
+					onchange={(value) => {
+						sortBy = String(value);
+						resetPage();
+					}}
+					size="md"
+				>
 					<option value="created_at">Date Created</option>
 					<option value="rating">Rating</option>
 					<option value="status">Status</option>
@@ -300,6 +362,7 @@
 				<TextInput
 					type="text"
 					bind:value={searchQuery}
+					oninput={resetPage}
 					placeholder="Search feedback text or user email..."
 					size="md"
 				/>
@@ -307,7 +370,14 @@
 
 			<!-- Status Filter -->
 			<div class="py-2">
-				<Select bind:value={filterByStatus} size="md">
+				<Select
+					bind:value={filterByStatus}
+					onchange={(value) => {
+						filterByStatus = String(value);
+						resetPage();
+					}}
+					size="md"
+				>
 					<option value="all">All Status</option>
 					<option value="new">New</option>
 					<option value="reviewed">Reviewed</option>
@@ -319,7 +389,14 @@
 
 			<!-- Category Filter -->
 			<div class="py-2">
-				<Select bind:value={filterByCategory} size="md">
+				<Select
+					bind:value={filterByCategory}
+					onchange={(value) => {
+						filterByCategory = String(value);
+						resetPage();
+					}}
+					size="md"
+				>
 					<option value="all">All Categories</option>
 					<option value="feature">Feature Request</option>
 					<option value="bug">Bug Report</option>
@@ -330,7 +407,14 @@
 
 			<!-- Sort -->
 			<div class="py-2">
-				<Select bind:value={sortBy} size="md">
+				<Select
+					bind:value={sortBy}
+					onchange={(value) => {
+						sortBy = String(value);
+						resetPage();
+					}}
+					size="md"
+				>
 					<option value="created_at">Date Created</option>
 					<option value="rating">Rating</option>
 					<option value="status">Status</option>
@@ -370,7 +454,7 @@
 		{:else}
 			<!-- Mobile Cards View -->
 			<div class="sm:hidden">
-				{#each feedback as item}
+				{#each feedback as item (item.id)}
 					<div class="p-4 border-b border-border">
 						<div class="flex items-start justify-between mb-2">
 							<div class="flex-1 min-w-0">
@@ -508,7 +592,7 @@
 						</tr>
 					</thead>
 					<tbody class="bg-card divide-y divide-border">
-						{#each feedback as item}
+						{#each feedback as item (item.id)}
 							<tr class="hover:bg-muted">
 								<td class="px-6 py-4">
 									<div class="max-w-xs">
@@ -710,7 +794,7 @@
 						<div class="block text-sm font-medium text-foreground mb-1">Rating</div>
 						{#if selectedFeedback.rating}
 							<div class="flex items-center">
-								{#each Array(5) as _, i}
+								{#each Array(5) as _, i (i)}
 									<Star
 										class="h-4 w-4 {i < selectedFeedback.rating
 											? 'text-warning'
