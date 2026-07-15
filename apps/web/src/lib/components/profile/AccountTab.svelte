@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/profile/AccountTab.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { User, Lock, Trash2, TriangleAlert, CircleCheck, Eye, EyeOff } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -12,10 +12,31 @@
 	import SettingsCard from './_shared/SettingsCard.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 
+	type AccountUser = {
+		id?: string;
+		email?: string | null;
+		name?: string | null;
+		user_metadata?: {
+			name?: string | null;
+		} | null;
+	};
+
+	type ProfileDraft = {
+		name: string;
+		email: string;
+	};
+
 	interface Props {
-		user: any;
+		user: AccountUser;
 		onsuccess?: (event: { message: string }) => void;
 		onerror?: (event: { message: string }) => void;
+	}
+
+	function createProfileDraft(user: AccountUser): ProfileDraft {
+		return {
+			name: user.user_metadata?.name || user.name || '',
+			email: user.email || ''
+		};
 	}
 
 	let { user, onsuccess, onerror }: Props = $props();
@@ -29,15 +50,9 @@
 	let showDeleteConfirmation = $state(false);
 
 	// Profile form
-	let profileForm = $state({
-		name: '',
-		email: ''
-	});
-
-	$effect(() => {
-		profileForm.name = user?.user_metadata?.name || user?.name || '';
-		profileForm.email = user?.email || '';
-	});
+	// This component is scoped to the authenticated user for its lifetime. Initialize the editable
+	// draft once so same-user data refreshes cannot overwrite in-progress edits.
+	let profileForm = $state<ProfileDraft>(untrack(() => createProfileDraft(user)));
 
 	// Password form
 	let passwordForm = $state({
@@ -134,14 +149,18 @@
 
 		errors = [];
 		successMessage = '';
+		const submittedProfile: ProfileDraft = {
+			name: profileForm.name.trim(),
+			email: profileForm.email.trim()
+		};
 
 		// Basic validation
-		if (!profileForm.name?.trim() && !profileForm.email?.trim()) {
+		if (!submittedProfile.name && !submittedProfile.email) {
 			errors = ['Please fill in at least one field'];
 			return;
 		}
 
-		if (profileForm.email && !isValidEmail(profileForm.email)) {
+		if (submittedProfile.email && !isValidEmail(submittedProfile.email)) {
 			errors = ['Please enter a valid email address'];
 			return;
 		}
@@ -154,15 +173,14 @@
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify({
-					name: profileForm.name?.trim(),
-					email: profileForm.email?.trim()
-				})
+				body: JSON.stringify(submittedProfile)
 			});
 
 			const result = await response.json();
 
 			if (response.ok && result.success) {
+				// Successful submission is the explicit commit boundary for this local draft.
+				profileForm = submittedProfile;
 				successMessage = result.data.message;
 				toastService.success('Profile updated successfully');
 				onsuccess?.({ message: result.data.message });
@@ -329,7 +347,7 @@
 			<div class="flex items-start gap-2">
 				<TriangleAlert class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
 				<div class="text-sm text-foreground">
-					{#each errors as error}
+					{#each errors as error (error)}
 						<p>{error}</p>
 					{/each}
 				</div>
@@ -431,7 +449,7 @@
 							placeholder={derivedFallback}
 							minlength="3"
 							maxlength="24"
-							pattern={'^[a-z0-9]+(-[a-z0-9]+)*$'}
+							pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
 							class="flex-1 min-w-0 bg-transparent px-3 py-2 text-base font-mono focus:outline-none disabled:opacity-50 min-h-[44px]"
 							disabled={usernameLoading}
 							aria-label="Public username"

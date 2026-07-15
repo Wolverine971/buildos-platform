@@ -296,13 +296,32 @@
 				return;
 			}
 			const recipientId = recipient.recipient_id || recipient.id;
+			const recipientType = recipient.recipient_type || recipient.type;
+			const recipientEmail = recipient.recipient_email || recipient.email;
+			const recipientName = recipient.recipient_name || recipient.name;
 
 			// Fetch user context first
 			let userContext;
-			if (recipientId && recipientId !== 'custom') {
+			if (recipientType === 'beta_user' || recipientType === 'beta_member') {
+				const params = new URLSearchParams({ beta: 'true' });
+				if (recipientEmail) params.set('email', recipientEmail);
+				if (recipientName) params.set('name', recipientName);
+				const contextResponse = await fetch(
+					`/api/admin/users/beta-only/context?${params.toString()}`
+				);
+				if (!contextResponse.ok) {
+					throw new Error(
+						await readApiError(contextResponse, 'Failed to fetch user context')
+					);
+				}
+				const contextResult = await contextResponse.json();
+				userContext = contextResult.data;
+			} else if (recipientId && recipientId !== 'custom') {
 				const contextResponse = await fetch(`/api/admin/users/${recipientId}/context`);
 				if (!contextResponse.ok) {
-					throw new Error('Failed to fetch user context');
+					throw new Error(
+						await readApiError(contextResponse, 'Failed to fetch user context')
+					);
 				}
 				const contextResult = await contextResponse.json();
 				userContext = contextResult.data;
@@ -311,8 +330,8 @@
 				userContext = {
 					basic: {
 						id: 'custom',
-						email: recipient.recipient_email || recipient.email,
-						name: recipient.recipient_name || recipient.name,
+						email: recipientEmail,
+						name: recipientName,
 						created_at: new Date().toISOString(),
 						subscription_status: null,
 						subscription_plan_id: null,
@@ -347,7 +366,7 @@
 			});
 
 			if (!response.ok) {
-				throw new Error('Failed to generate email');
+				throw new Error(await readApiError(response, 'Failed to generate email'));
 			}
 
 			const result = await response.json();
@@ -486,7 +505,7 @@
 			});
 
 			if (!response.ok) {
-				throw new Error('Failed to save email');
+				throw new Error(await readApiError(response, 'Failed to save email'));
 			}
 
 			const result = await response.json();
@@ -533,7 +552,7 @@
 			});
 
 			if (!response.ok) {
-				throw new Error('Failed to send email');
+				throw new Error(await readApiError(response, 'Failed to send email'));
 			}
 
 			const result = await response.json();
@@ -620,6 +639,15 @@
 	function clearMessages() {
 		error = null;
 		success = null;
+	}
+
+	async function readApiError(response: Response, fallback: string): Promise<string> {
+		try {
+			const payload = await response.clone().json();
+			return payload.error || payload.message || fallback;
+		} catch {
+			return fallback;
+		}
 	}
 
 	let canSend = $derived(

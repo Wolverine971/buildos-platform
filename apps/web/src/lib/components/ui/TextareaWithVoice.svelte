@@ -149,17 +149,10 @@
 	// state on a torn-down component.
 	let abortController: AbortController | null = null;
 
-	// Internal voice state (using Svelte 5 $state)
+	// Voice implementation state that is not part of the public binding contract.
 	let isVoiceSupported = $state(false);
-	let isCurrentlyRecording = $state(false);
-	let isInitializingRecording = $state(false);
-	let _isStopping = $state(false);
-	let _isTranscribing = $state(false);
-	let _voiceError = $state('');
-	let _canUseLiveTranscript = $state(false);
 	let liveTranscriptPreview = $state('');
 	let hadLiveTranscript = $state(false);
-	let _recordingDuration = $state(0);
 
 	let microphonePermissionGranted = $state(false);
 	let hasAttemptedVoice = $state(false);
@@ -211,35 +204,6 @@
 	// Set in stopVoiceRecording before clearing liveTranscriptPreview for UI
 	let capturedTranscriptForCallback = $state('');
 	const MAX_CONCURRENT_UPLOADS = 2;
-
-	// Sync internal state with bindable props for parent component access
-	$effect(() => {
-		isRecording = isCurrentlyRecording;
-	});
-
-	$effect(() => {
-		isInitializing = isInitializingRecording;
-	});
-
-	$effect(() => {
-		isStopping = _isStopping;
-	});
-
-	$effect(() => {
-		isTranscribing = _isTranscribing;
-	});
-
-	$effect(() => {
-		voiceError = _voiceError;
-	});
-
-	$effect(() => {
-		recordingDuration = _recordingDuration;
-	});
-
-	$effect(() => {
-		canUseLiveTranscript = _canUseLiveTranscript;
-	});
 
 	// Update vocabulary terms on the voice recording service when prop changes
 	$effect(() => {
@@ -573,7 +537,7 @@
 	}
 
 	const isLiveTranscribing = $derived(
-		isCurrentlyRecording && liveTranscriptPreview.trim().length > 0 && _canUseLiveTranscript
+		isRecording && liveTranscriptPreview.trim().length > 0 && canUseLiveTranscript
 	);
 
 	const fullLiveTranscript = $derived(
@@ -584,7 +548,7 @@
 	const showVoiceActivityPanel = $derived(
 		enableVoice &&
 			showLiveTranscriptPreview &&
-			(isCurrentlyRecording || isLiveTranscribing || _isStopping || _isTranscribing)
+			(isRecording || isLiveTranscribing || isStopping || isTranscribing)
 	);
 
 	const transcribingStatusLabel = $derived(
@@ -592,9 +556,9 @@
 	);
 
 	const voiceActivityLabel = $derived.by(() => {
-		if (_isStopping) return stoppingLabel;
-		if (_isTranscribing) return transcribingStatusLabel;
-		if (isCurrentlyRecording && fullLiveTranscript.length === 0) return listeningLabel;
+		if (isStopping) return stoppingLabel;
+		if (isTranscribing) return transcribingStatusLabel;
+		if (isRecording && fullLiveTranscript.length === 0) return listeningLabel;
 		return liveTranscriptLabel;
 	});
 
@@ -602,13 +566,13 @@
 		buildVoiceButtonState({
 			enableVoice,
 			isVoiceSupported,
-			isCurrentlyRecording,
-			isInitializingRecording,
-			isStopping: _isStopping,
-			isTranscribing: _isTranscribing,
+			isRecording,
+			isInitializing,
+			isStopping: isStopping,
+			isTranscribing: isTranscribing,
 			voiceBlocked,
 			hasAttemptedVoice,
-			voiceError: _voiceError,
+			voiceError: voiceError,
 			microphonePermissionGranted,
 			disabled,
 			voiceBlockedLabel,
@@ -635,7 +599,7 @@
 			cleanupVoice();
 		}
 
-		if ((voiceBlocked || disabled) && isCurrentlyRecording) {
+		if ((voiceBlocked || disabled) && isRecording) {
 			stopRecordingInternal();
 		}
 	});
@@ -648,8 +612,8 @@
 	function buildVoiceButtonState(params: {
 		enableVoice: boolean;
 		isVoiceSupported: boolean;
-		isCurrentlyRecording: boolean;
-		isInitializingRecording: boolean;
+		isRecording: boolean;
+		isInitializing: boolean;
 		isStopping: boolean;
 		isTranscribing: boolean;
 		voiceBlocked: boolean;
@@ -663,8 +627,8 @@
 		const {
 			enableVoice,
 			isVoiceSupported,
-			isCurrentlyRecording,
-			isInitializingRecording,
+			isRecording,
+			isInitializing,
 			isStopping,
 			isTranscribing,
 			voiceBlocked,
@@ -716,7 +680,7 @@
 			};
 		}
 
-		if (isCurrentlyRecording) {
+		if (isRecording) {
 			return {
 				icon: MicOff,
 				label: 'Stop recording',
@@ -726,7 +690,7 @@
 			};
 		}
 
-		if (isInitializingRecording) {
+		if (isInitializing) {
 			return {
 				icon: LoaderCircle,
 				label: preparingLabel,
@@ -803,10 +767,10 @@
 		if (voiceInitialized) return;
 
 		isVoiceSupported = voiceRecordingService.isVoiceSupported();
-		_canUseLiveTranscript = voiceRecordingService.isLiveTranscriptSupported();
+		canUseLiveTranscript = voiceRecordingService.isLiveTranscriptSupported();
 		microphonePermissionGranted = false;
 		hasAttemptedVoice = false;
-		_voiceError = '';
+		voiceError = '';
 
 		if (!isVoiceSupported) {
 			voiceInitialized = true;
@@ -817,32 +781,32 @@
 			{
 				onTextUpdate: (text: string) => {
 					value = text;
-					_voiceError = '';
+					voiceError = '';
 				},
 				onError: (errorMessage: string) => {
-					_voiceError = errorMessage;
-					isCurrentlyRecording = false;
-					isInitializingRecording = false;
-					_isStopping = false;
+					voiceError = errorMessage;
+					isRecording = false;
+					isInitializing = false;
+					isStopping = false;
 					liveTranscriptPreview = '';
 				},
 				onPhaseChange: (phase: 'idle' | 'transcribing') => {
-					_isTranscribing = phase === 'transcribing';
+					isTranscribing = phase === 'transcribing';
 					if (phase === 'transcribing') {
-						_isStopping = false;
+						isStopping = false;
 					}
 					if (phase === 'idle') {
 						hadLiveTranscript = false;
-						_isStopping = false;
+						isStopping = false;
 						liveTranscriptPreview = '';
 					}
 				},
 				onPermissionGranted: () => {
 					microphonePermissionGranted = true;
-					_voiceError = '';
+					voiceError = '';
 				},
 				onCapabilityUpdate: (update: { canUseLiveTranscript: boolean }) => {
-					_canUseLiveTranscript = update.canUseLiveTranscript;
+					canUseLiveTranscript = update.canUseLiveTranscript;
 				},
 				onAudioCaptured: handleAudioCaptured
 			},
@@ -852,7 +816,7 @@
 
 		const durationStore = voiceRecordingService.getRecordingDuration(voiceClientId);
 		durationUnsubscribe = durationStore.subscribe((newDuration) => {
-			_recordingDuration = newDuration;
+			recordingDuration = newDuration;
 		});
 
 		transcriptUnsubscribe = liveTranscript.subscribe((text) => {
@@ -867,24 +831,24 @@
 			!enableVoice ||
 			!isVoiceSupported ||
 			voiceBlocked ||
-			isInitializingRecording ||
-			isCurrentlyRecording ||
-			_isStopping ||
-			_isTranscribing ||
+			isInitializing ||
+			isRecording ||
+			isStopping ||
+			isTranscribing ||
 			disabled
 		) {
 			return;
 		}
 
 		hasAttemptedVoice = true;
-		_voiceError = '';
-		isInitializingRecording = true;
+		voiceError = '';
+		isInitializing = true;
 		hadLiveTranscript = false;
 
 		try {
 			await voiceRecordingService.startRecording(value, voiceClientId);
-			isInitializingRecording = false;
-			isCurrentlyRecording = true;
+			isInitializing = false;
+			isRecording = true;
 			microphonePermissionGranted = true;
 			// Keep desktop keyboard shortcuts, but avoid reopening the mobile keyboard.
 			if (!isTouchDevice) {
@@ -896,15 +860,15 @@
 				error instanceof Error
 					? error.message
 					: 'Unable to access microphone. Please check permissions.';
-			_voiceError = message;
+			voiceError = message;
 			microphonePermissionGranted = false;
-			isInitializingRecording = false;
-			isCurrentlyRecording = false;
+			isInitializing = false;
+			isRecording = false;
 		}
 	}
 
 	async function stopVoiceRecording() {
-		if (!isCurrentlyRecording && !isInitializingRecording) {
+		if (!isRecording && !isInitializing) {
 			return;
 		}
 
@@ -914,9 +878,9 @@
 
 		// Move through an explicit stopping state while MediaRecorder flushes.
 		// This must happen BEFORE the await so the UI updates promptly
-		_isStopping = true;
-		isCurrentlyRecording = false;
-		isInitializingRecording = false;
+		isStopping = true;
+		isRecording = false;
+		isInitializing = false;
 
 		try {
 			await voiceRecordingService.stopRecording(value, undefined, voiceClientId);
@@ -924,21 +888,21 @@
 			console.error('Failed to stop voice recording:', error);
 			const message =
 				error instanceof Error ? error.message : 'Failed to stop recording. Try again.';
-			_voiceError = message;
+			voiceError = message;
 		} finally {
 			// Clear captured transcript after callback has had a chance to use it
-			_isStopping = false;
+			isStopping = false;
 			capturedTranscriptForCallback = '';
 		}
 	}
 
 	async function toggleVoiceRecording() {
-		if (!enableVoice || !isVoiceSupported || _isStopping) return;
+		if (!enableVoice || !isVoiceSupported || isStopping) return;
 
 		// Haptic feedback for voice toggle (mobile)
 		haptic('light');
 
-		if (isCurrentlyRecording || isInitializingRecording) {
+		if (isRecording || isInitializing) {
 			await stopVoiceRecording();
 		} else {
 			await startVoiceRecording();
@@ -946,7 +910,7 @@
 	}
 
 	async function stopRecordingInternal() {
-		if (isCurrentlyRecording || isInitializingRecording || _isStopping) {
+		if (isRecording || isInitializing || isStopping) {
 			await stopVoiceRecording();
 		}
 	}
@@ -966,11 +930,11 @@
 
 		voiceRecordingService.cleanup(voiceClientId);
 
-		isCurrentlyRecording = false;
-		isInitializingRecording = false;
-		_isStopping = false;
-		_isTranscribing = false;
-		_recordingDuration = 0;
+		isRecording = false;
+		isInitializing = false;
+		isStopping = false;
+		isTranscribing = false;
+		recordingDuration = 0;
 		liveTranscriptPreview = '';
 		hadLiveTranscript = false;
 		hasAttemptedVoice = false;
@@ -978,14 +942,9 @@
 		voiceInitialized = false;
 	}
 
-	function handleTextareaInput(event: Event) {
-		let target = event?.target as HTMLTextAreaElement;
-		value = target.value;
-	}
-
 	function handleTextareaKeyDown(event: KeyboardEvent) {
 		// Stop recording on Space or Enter when recording is active
-		if (isCurrentlyRecording && (event.key === ' ' || event.key === 'Enter')) {
+		if (isRecording && (event.key === ' ' || event.key === 'Enter')) {
 			event.preventDefault();
 			event.stopPropagation();
 			stopVoiceRecording();
@@ -997,7 +956,7 @@
 	// elsewhere on the page (otherwise voice recording silently swallows every
 	// space the user types in another field).
 	function handleGlobalKeyDown(event: KeyboardEvent) {
-		if (!isCurrentlyRecording) return;
+		if (!isRecording) return;
 		if (event.key !== ' ' && event.key !== 'Enter') return;
 
 		const active = document.activeElement;
@@ -1013,7 +972,7 @@
 
 	// Set up global keydown listener when recording starts
 	$effect(() => {
-		if (browser && isCurrentlyRecording) {
+		if (browser && isRecording) {
 			document.addEventListener('keydown', handleGlobalKeyDown);
 			return () => {
 				document.removeEventListener('keydown', handleGlobalKeyDown);
@@ -1056,9 +1015,9 @@
 					class="flex max-h-[4.5rem] min-h-[1.5rem] min-w-0 flex-1 flex-col justify-end overflow-hidden"
 				>
 					<p class="m-0 break-words text-sm leading-relaxed text-foreground">
-						{_isStopping
+						{isStopping
 							? 'Finishing capture...'
-							: _isTranscribing
+							: isTranscribing
 								? transcribingStatusLabel
 								: displayedLiveTranscript || 'Recording audio...'}
 					</p>
@@ -1081,7 +1040,6 @@
 			{error}
 			{errorMessage}
 			class={textareaClass}
-			oninput={handleTextareaInput}
 			{...restProps}
 			onkeydown={(e) => {
 				handleTextareaKeyDown(e);
@@ -1134,7 +1092,7 @@
 			<div class="flex flex-wrap items-center justify-between gap-2">
 				<!-- Left side: Status indicators and keyboard hints -->
 				<div class="flex flex-wrap items-center gap-1.5">
-					{#if enableVoice && isCurrentlyRecording}
+					{#if enableVoice && isRecording}
 						<!-- Recording indicator: destructive semantic with pulse animation -->
 						<span class="flex items-center gap-1.5 text-destructive">
 							<span class="relative flex h-2 w-2 items-center justify-center">
@@ -1147,7 +1105,7 @@
 							</span>
 							<span class="text-xs font-semibold">{listeningLabel}</span>
 							<span class="text-xs font-bold tabular-nums"
-								>{formatDuration(_recordingDuration)}</span
+								>{formatDuration(recordingDuration)}</span
 							>
 							<!-- Keyboard hint to stop recording (desktop only) -->
 							<kbd
@@ -1156,19 +1114,19 @@
 								Enter
 							</kbd>
 						</span>
-					{:else if enableVoice && isInitializingRecording}
+					{:else if enableVoice && isInitializing}
 						<!-- Initializing state: muted, processing feel -->
 						<span class="flex items-center gap-1.5 text-muted-foreground">
 							<LoaderCircle class="h-3 w-3 animate-spin" />
 							<span class="text-xs font-medium">{preparingLabel}</span>
 						</span>
-					{:else if enableVoice && _isStopping}
+					{:else if enableVoice && isStopping}
 						<!-- Stopping state: keep UI busy while MediaRecorder flushes audio -->
 						<span class="flex items-center gap-1.5 text-muted-foreground">
 							<LoaderCircle class="h-3 w-3 animate-spin" />
 							<span class="text-xs font-medium">{stoppingLabel}</span>
 						</span>
-					{:else if enableVoice && _isTranscribing}
+					{:else if enableVoice && isTranscribing}
 						<!-- Transcribing state: accent color for active processing -->
 						<span class="flex items-center gap-1.5 text-accent">
 							<LoaderCircle class="h-3 w-3 animate-spin" />
@@ -1206,7 +1164,7 @@
 					{/if}
 
 					<!-- Live transcript badge: accent styling, micro-label -->
-					{#if enableVoice && _canUseLiveTranscript && isCurrentlyRecording}
+					{#if enableVoice && canUseLiveTranscript && isRecording}
 						<span
 							class="hidden rounded-md border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-accent xs:inline-flex"
 						>
@@ -1217,23 +1175,23 @@
 
 				<!-- Right side: Errors, status snippet, and action buttons -->
 				<div class="flex items-center gap-2">
-					{#if enableVoice && _voiceError}
+					{#if enableVoice && voiceError}
 						<!-- Error badge: destructive with Inkprint static texture -->
 						<span
 							role="alert"
 							class="flex max-w-[200px] items-center gap-1 truncate rounded-md border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive tx tx-static tx-weak"
 						>
-							{_voiceError}
+							{voiceError}
 						</span>
 					{/if}
 
 					{#if status}
 						{@render status({
-							isCurrentlyRecording,
-							isStopping: _isStopping,
-							isTranscribing: _isTranscribing,
-							recordingDuration: _recordingDuration,
-							voiceError: _voiceError
+							isCurrentlyRecording: isRecording,
+							isStopping: isStopping,
+							isTranscribing: isTranscribing,
+							recordingDuration: recordingDuration,
+							voiceError: voiceError
 						})}
 					{/if}
 

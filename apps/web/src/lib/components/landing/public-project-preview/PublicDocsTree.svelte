@@ -32,8 +32,17 @@
 	// Top-level container expand/collapse
 	let isExpanded = $state(true);
 
-	// Per-folder open state. Folders default open so visitors see the whole shape.
-	let openFolders = $state<Set<string>>(new Set());
+	const initiallyOpenFolderIds = $derived(
+		parsedStructure.root
+			.filter((root) => isFolderNode(root))
+			.map((root) => root.id)
+			.join('\u0000')
+	);
+
+	// Per-folder state is locally overridable and resets only when top-level folder identity changes.
+	let openFolders = $derived(
+		new Set(initiallyOpenFolderIds ? initiallyOpenFolderIds.split('\u0000') : [])
+	);
 
 	function toggleFolder(id: string) {
 		const next = new Set(openFolders);
@@ -59,15 +68,6 @@
 		const doc = documentsById.get(node.id);
 		return doc?.description ?? null;
 	}
-
-	// Initial open state — open every top-level folder.
-	$effect(() => {
-		const initial = new Set<string>();
-		for (const root of parsedStructure.root) {
-			if (isFolderNode(root)) initial.add(root.id);
-		}
-		openFolders = initial;
-	});
 
 	const flatDocs = $derived(
 		(documents ?? [])

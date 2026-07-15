@@ -116,7 +116,9 @@
 			}
 
 			const response = await fetch(`/api/admin/emails?${params}`, { signal });
-			if (!response.ok) throw new Error('Failed to load emails');
+			if (!response.ok) {
+				throw new Error(await readApiError(response, 'Failed to load emails'));
+			}
 
 			const result = await response.json();
 			if (signal.aborted) return;
@@ -141,6 +143,15 @@
 
 	function isAbortError(error: unknown): boolean {
 		return error instanceof Error && error.name === 'AbortError';
+	}
+
+	async function readApiError(response: Response, fallback: string): Promise<string> {
+		try {
+			const payload = await response.clone().json();
+			return payload.error || payload.message || fallback;
+		} catch {
+			return fallback;
+		}
 	}
 
 	function resetPage() {
@@ -204,6 +215,9 @@
 			const response = await fetch(`/api/admin/emails/${emailToDelete.id}`, {
 				method: 'DELETE'
 			});
+			if (!response.ok) {
+				throw new Error(await readApiError(response, 'Failed to delete email'));
+			}
 
 			const result = await response.json();
 			if (result.success) {
@@ -414,6 +428,23 @@
 					</Select>
 				</FormField>
 
+				<FormField label="Category" labelFor="mobile-category-filter">
+					<Select
+						bind:value={categoryFilter}
+						onchange={(value) => {
+							categoryFilter = String(value);
+							resetPage();
+						}}
+						size="md"
+						placeholder="All Categories"
+						id="mobile-category-filter"
+					>
+						<option value="all">All Categories</option>
+						<option value="beta_reactivation">Beta reactivation</option>
+						<option value="general">General</option>
+					</Select>
+				</FormField>
+
 				<!-- Sort -->
 				<FormField label="Sort By" labelFor="mobile-sort-by">
 					<Select
@@ -435,7 +466,7 @@
 			</div>
 
 			<!-- Desktop Filters Grid -->
-			<div class="hidden sm:grid sm:grid-cols-4 gap-4">
+			<div class="hidden sm:grid sm:grid-cols-5 gap-4">
 				<!-- Search -->
 				<div class="col-span-2">
 					<div class="relative">
@@ -450,6 +481,22 @@
 							size="md"
 						/>
 					</div>
+				</div>
+
+				<div>
+					<Select
+						bind:value={categoryFilter}
+						size="md"
+						placeholder="All Categories"
+						onchange={(value) => {
+							categoryFilter = String(value);
+							resetPage();
+						}}
+					>
+						<option value="all">All Categories</option>
+						<option value="beta_reactivation">Beta reactivation</option>
+						<option value="general">General</option>
+					</Select>
 				</div>
 
 				<!-- Status Filter -->
@@ -515,7 +562,7 @@
 			{:else}
 				<!-- Mobile Cards View -->
 				<div class="sm:hidden">
-					{#each emails as email}
+					{#each emails as email (email.id)}
 						<div class="p-4 border-b border-border">
 							<div class="flex items-start justify-between mb-2">
 								<div class="flex-1 min-w-0">
@@ -620,7 +667,7 @@
 							</tr>
 						</thead>
 						<tbody class="bg-card divide-y divide-border">
-							{#each emails as email}
+							{#each emails as email (email.id)}
 								<tr class="hover:bg-muted">
 									<td class="px-6 py-4">
 										<div class="flex items-center">

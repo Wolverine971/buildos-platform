@@ -174,17 +174,20 @@ describe('RecipientSelector request lifecycle', () => {
 			const isUserRequest = request.url.includes('source=beta_users');
 			request.response.resolve(
 				jsonResponse({
-					recipients: isUserRequest
-						? [
-								{
-									id: 'current-user',
-									name: 'Current Recipient',
-									email: 'current@example.com',
-									company: 'BuildOS',
-									status: 'approved'
-								}
-							]
-						: []
+					success: true,
+					data: {
+						recipients: isUserRequest
+							? [
+									{
+										id: 'current-user',
+										name: 'Current Recipient',
+										email: 'current@example.com',
+										company: 'BuildOS',
+										status: 'approved'
+									}
+								]
+							: []
+					}
 				})
 			);
 		}
@@ -195,17 +198,20 @@ describe('RecipientSelector request lifecycle', () => {
 			const isUserRequest = request.url.includes('source=beta_users');
 			request.response.resolve(
 				jsonResponse({
-					recipients: isUserRequest
-						? [
-								{
-									id: 'stale-user',
-									name: 'Stale Recipient',
-									email: 'stale@example.com',
-									company: 'BuildOS',
-									status: 'approved'
-								}
-							]
-						: []
+					success: true,
+					data: {
+						recipients: isUserRequest
+							? [
+									{
+										id: 'stale-user',
+										name: 'Stale Recipient',
+										email: 'stale@example.com',
+										company: 'BuildOS',
+										status: 'approved'
+									}
+								]
+							: []
+					}
 				})
 			);
 		}

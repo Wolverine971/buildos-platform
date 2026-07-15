@@ -120,8 +120,8 @@
 
 			if (signal.aborted) return;
 
-			betaUsers = usersResult.recipients || [];
-			betaMembers = membersResult.recipients || [];
+			betaUsers = usersResult.data?.recipients || [];
+			betaMembers = membersResult.data?.recipients || [];
 		} catch (err) {
 			if (signal.aborted || isAbortError(err)) return;
 			error = err instanceof Error ? err.message : 'Failed to load recipients';
@@ -291,11 +291,18 @@
 	// Filter functions
 	function filterUsers(users: any[], query: string) {
 		if (!query) return users;
+		const normalizedQuery = query.toLowerCase();
 		return users.filter(
 			(user) =>
-				user.name.toLowerCase().includes(query.toLowerCase()) ||
-				user.email.toLowerCase().includes(query.toLowerCase()) ||
-				(user.company && user.company.toLowerCase().includes(query.toLowerCase()))
+				String(user.name || '')
+					.toLowerCase()
+					.includes(normalizedQuery) ||
+				String(user.email || '')
+					.toLowerCase()
+					.includes(normalizedQuery) ||
+				String(user.company || '')
+					.toLowerCase()
+					.includes(normalizedQuery)
 		);
 	}
 </script>

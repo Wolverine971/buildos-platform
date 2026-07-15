@@ -1,7 +1,32 @@
 // apps/web/src/routes/api/admin/emails/[id]/+server.ts
 
 import type { RequestHandler } from './$types';
-import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
+import { z } from 'zod';
+import { ApiResponse } from '$lib/utils/api-response';
+import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const emailRecipientSchema = z
+	.object({
+		email: z.string().email(),
+		name: z.string().nullable().optional(),
+		type: z.string().min(1).optional(),
+		id: z.string().nullable().optional()
+	})
+	.strict();
+
+const updateAdminEmailSchema = z
+	.object({
+		subject: z.string().min(1).optional(),
+		content: z.string().min(1).optional(),
+		from_email: z.string().email().optional(),
+		from_name: z.string().min(1).optional(),
+		category: z.string().min(1).optional(),
+		template_data: z.record(z.unknown()).nullable().optional(),
+		recipients: z.array(emailRecipientSchema).optional(),
+		scheduled_at: z.string().min(1).nullable().optional()
+	})
+	.strict()
+	.refine((updates) => Object.keys(updates).length > 0, 'At least one update is required');
 
 export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -72,63 +97,74 @@ export const PATCH: RequestHandler = async ({
 	}
 
 	try {
-		const updates = await parseRequestBody(request);
-
-		if (!updates) {
-			return ApiResponse.badRequest('Invalid request body');
-		}
-
+		const parsed = await parseJsonRequest(request, updateAdminEmailSchema);
+		if (!parsed.ok) return parsed.response;
+		const updates = parsed.data;
 		const { recipients } = updates;
 
-		// Remove fields that shouldn't be updated directly
-		// const { id, created_by, created_at, tracking_id, subject...allowedUpdates } = updates;
-
-		// Check if email already has a tracking_id
-		const { data: existingEmail } = await supabase
+		const { data: existingEmail, error: existingEmailError } = await supabase
 			.from('emails')
-			.select('tracking_id')
+			.select('*')
 			.eq('id', params.id)
 			.single();
 
-		const allowedUpdates = {
-			subject: updates.subject,
-			content: updates.content,
-			from_email: updates.from_email,
-			from_name: updates.from_name,
-			category: updates.category,
-			status: updates.status,
-			scheduled_at: updates.scheduled_at || null,
-			created_by: user.id,
-			// Generate tracking_id if it doesn't exist yet
-			tracking_id: updates.tracking_id || existingEmail?.tracking_id || crypto.randomUUID(),
-			tracking_enabled: true,
-			sent_at: updates.sent_at || null,
-			template_data: updates.template_data || null
-		};
+		if (existingEmailError || !existingEmail) {
+			return ApiResponse.databaseError(existingEmailError);
+		}
 
-		const { data: email, error } = await supabase
-			.from('emails')
-			.update(allowedUpdates)
-			.eq('id', params.id)
-			.select()
-			.single();
+		if (existingEmail.status === 'sent' || existingEmail.status === 'delivered') {
+			return ApiResponse.badRequest('Sent emails cannot be edited');
+		}
 
-		if (error) {
-			return ApiResponse.databaseError(error);
+		const allowedUpdates: Record<string, unknown> = {};
+		for (const field of [
+			'subject',
+			'content',
+			'from_email',
+			'from_name',
+			'category'
+		] as const) {
+			if (Object.hasOwn(updates, field)) allowedUpdates[field] = updates[field];
+		}
+		if (Object.hasOwn(updates, 'template_data')) {
+			allowedUpdates.template_data = updates.template_data;
+		}
+		if (Object.hasOwn(updates, 'scheduled_at')) {
+			allowedUpdates.scheduled_at = updates.scheduled_at;
+			allowedUpdates.status = updates.scheduled_at ? 'scheduled' : 'draft';
+		}
+		if (!existingEmail.tracking_id) {
+			allowedUpdates.tracking_id = crypto.randomUUID();
+			allowedUpdates.tracking_enabled = true;
+		}
+
+		if (Object.keys(allowedUpdates).length > 0) {
+			const { error: updateError } = await supabase
+				.from('emails')
+				.update(allowedUpdates)
+				.eq('id', params.id);
+
+			if (updateError) {
+				return ApiResponse.databaseError(updateError);
+			}
 		}
 
 		// Handle recipient updates if provided
 		if (recipients && Array.isArray(recipients)) {
-			console.log(
-				'Processing recipients:',
-				recipients.map((r) => ({ email: r.email, type: r.type }))
-			);
+			const { data: previousRecipients, error: previousRecipientsError } = await supabase
+				.from('email_recipients')
+				.select('recipient_email, recipient_name, recipient_type, recipient_id')
+				.eq('email_id', params.id);
+
+			if (previousRecipientsError) {
+				return ApiResponse.databaseError(previousRecipientsError);
+			}
 
 			// First, remove all existing recipients for this email
 			const { error: deleteError } = await supabase
 				.from('email_recipients')
 				.delete()
-				.eq('email_id', email.id);
+				.eq('email_id', params.id);
 
 			if (deleteError) {
 				console.error('Error removing existing recipients:', deleteError);
@@ -138,14 +174,8 @@ export const PATCH: RequestHandler = async ({
 			// Then add the new recipients if any
 			if (recipients.length > 0) {
 				const recipientData = recipients.map((recipient) => {
-					// Validate email format for all recipients
-					const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-					if (!emailRegex.test(recipient.email)) {
-						throw new Error(`Invalid email format: ${recipient.email}`);
-					}
-
 					return {
-						email_id: email.id,
+						email_id: params.id,
 						recipient_email: recipient.email,
 						recipient_name: recipient.name || null,
 						recipient_type: recipient.type || 'custom',
@@ -159,16 +189,32 @@ export const PATCH: RequestHandler = async ({
 
 				if (recipientError) {
 					console.error('Error adding recipients:', recipientError);
+					if (previousRecipients && previousRecipients.length > 0) {
+						await supabase.from('email_recipients').insert(
+							previousRecipients.map((recipient) => ({
+								email_id: params.id,
+								...recipient
+							}))
+						);
+					}
 					throw new Error('Failed to save recipients');
 				}
-
-				console.log(`Successfully saved ${recipientData.length} recipients`);
-			} else {
-				console.log('No recipients to add');
 			}
 		}
 
-		return ApiResponse.success({ email }, 'Email updated successfully');
+		const { data: savedEmail, error: savedEmailError } = await supabase
+			.from('emails')
+			.select(
+				`*, email_recipients (id, recipient_email, recipient_name, recipient_type, recipient_id, status, sent_at, delivered_at, opened_at, open_count)`
+			)
+			.eq('id', params.id)
+			.single();
+
+		if (savedEmailError) {
+			return ApiResponse.databaseError(savedEmailError);
+		}
+
+		return ApiResponse.success({ email: savedEmail }, 'Email updated successfully');
 	} catch (error) {
 		console.error('Error updating email:', error);
 		return ApiResponse.internalError(error, 'Failed to update email');

@@ -87,7 +87,8 @@
 		return haystack.includes(query);
 	}
 
-	let searchQuery = $state('');
+	// Writable derived state stays editable locally and resets from the URL whenever navigation changes it.
+	let searchQuery = $derived(page.url.searchParams.get('q')?.trim() ?? '');
 	let normalizedSearchQuery = $derived(searchQuery.trim().toLowerCase());
 	let hasActiveSearch = $derived(normalizedSearchQuery.length > 0);
 
@@ -120,12 +121,13 @@
 	);
 
 	let jsonLdString = $derived(generateBlogJsonLd(data.allPosts));
-
-	const urlSearchQuery = $derived(page.url.searchParams.get('q')?.trim() ?? '');
-
-	$effect(() => {
-		searchQuery = urlSearchQuery;
-	});
+	let jsonLdScriptHtml = $derived(
+		'<' +
+			'script type="application/ld+json">' +
+			escapeSerializedJsonLd(jsonLdString) +
+			'</' +
+			'script>'
+	);
 </script>
 
 <svelte:head>
@@ -177,7 +179,7 @@
 
 	<!-- JSON-LD Structured Data -->
 	{#if jsonLdString}
-		{@html `<script type="application/ld+json">${escapeSerializedJsonLd(jsonLdString)}</script>`}
+		{@html jsonLdScriptHtml}
 	{/if}
 </svelte:head>
 
@@ -226,7 +228,7 @@
 				All
 				<span class="ml-1 text-2xs opacity-80">{data.totalPosts}</span>
 			</button>
-			{#each activeCategories as [categoryKey, count]}
+			{#each activeCategories as [categoryKey, count] (categoryKey)}
 				<button
 					onclick={() => (activeCategory = categoryKey)}
 					aria-pressed={activeCategory === categoryKey}
@@ -300,7 +302,7 @@
 		{#if gridPosts.length > 0}
 			<section class="py-6">
 				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-					{#each gridPosts as post}
+					{#each gridPosts as post (post.slug)}
 						{@const categoryName =
 							data.categories[post.category as BlogCategory]?.name ?? post.category}
 

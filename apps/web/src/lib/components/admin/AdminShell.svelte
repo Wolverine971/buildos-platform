@@ -48,6 +48,7 @@
 
 	const ADMIN_SIDEBAR_COLLAPSED_KEY = 'buildos.admin.sidebar.collapsed';
 	const wideContentRoutePrefixes = [
+		'/admin/emails',
 		'/admin/email-sequences',
 		'/admin/users',
 		'/admin/errors',
@@ -103,6 +104,12 @@
 					href: '/admin/feedback',
 					icon: MessageSquare,
 					description: 'Voice of the customer'
+				},
+				{
+					title: 'Email Drafts',
+					href: '/admin/emails',
+					icon: Mail,
+					description: 'Compose, review & send'
 				},
 				{
 					title: 'Email Sequences',

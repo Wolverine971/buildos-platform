@@ -29,7 +29,20 @@ export const GET: RequestHandler = async ({
 
 		// If this is a beta member without a user account (userId is 'beta-only')
 		if (isBetaMember && userId === 'beta-only' && email) {
-			const userContext = await emailService.getBetaMemberContext(email, name);
+			const normalizedEmail = email.trim().toLowerCase();
+			const { data: matchedUser, error: matchedUserError } = await supabase
+				.from('users')
+				.select('id')
+				.eq('email', normalizedEmail)
+				.maybeSingle();
+
+			if (matchedUserError) {
+				throw new Error(`Failed to match beta signup to user: ${matchedUserError.message}`);
+			}
+
+			const userContext = matchedUser
+				? await emailService.getUserContext(matchedUser.id)
+				: await emailService.getBetaMemberContext(normalizedEmail, name);
 			return ApiResponse.success(userContext);
 		}
 

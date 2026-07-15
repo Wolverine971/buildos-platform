@@ -30,6 +30,18 @@ const createAdminEmailSchema = z
 	})
 	.strict();
 
+const EMAIL_SORT_COLUMNS = new Set(['created_at', 'subject', 'status', 'sent_at', 'updated_at']);
+
+function normalizePagination(value: string | null, fallback: number, maximum: number): number {
+	const parsed = Number.parseInt(value || '', 10);
+	if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+	return Math.min(parsed, maximum);
+}
+
+function escapePostgrestSearch(value: string): string {
+	return value.replace(/[\\%_,().]/g, ' ').trim();
+}
+
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 
@@ -38,13 +50,14 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	}
 
 	try {
-		const page = parseInt(url.searchParams.get('page') || '1');
-		const limit = parseInt(url.searchParams.get('limit') || '20');
+		const page = normalizePagination(url.searchParams.get('page'), 1, 10_000);
+		const limit = normalizePagination(url.searchParams.get('limit'), 20, 100);
 		const status = url.searchParams.get('status');
 		const category = url.searchParams.get('category');
 		const search = url.searchParams.get('search');
-		const sortBy = url.searchParams.get('sort_by') || 'created_at';
-		const sortOrder = url.searchParams.get('sort_order') || 'desc';
+		const requestedSortBy = url.searchParams.get('sort_by') || 'created_at';
+		const sortBy = EMAIL_SORT_COLUMNS.has(requestedSortBy) ? requestedSortBy : 'created_at';
+		const sortOrder = url.searchParams.get('sort_order') === 'asc' ? 'asc' : 'desc';
 
 		const offset = (page - 1) * limit;
 
@@ -56,6 +69,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					id,
 					recipient_email,
 					recipient_name,
+					recipient_type,
+					recipient_id,
 					status,
 					sent_at,
 					delivered_at,
@@ -84,8 +99,9 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			query = query.eq('category', category);
 		}
 
-		if (search) {
-			query = query.or(`subject.ilike.%${search}%,content.ilike.%${search}%`);
+		const safeSearch = search ? escapePostgrestSearch(search) : '';
+		if (safeSearch) {
+			query = query.or(`subject.ilike.%${safeSearch}%,content.ilike.%${safeSearch}%`);
 		}
 
 		// Apply sorting and pagination
@@ -133,10 +149,6 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			recipients,
 			scheduled_at
 		} = parsed.data;
-
-		if (!subject || !content) {
-			return ApiResponse.badRequest('Subject and content are required');
-		}
 
 		// Generate a unique tracking ID for this email
 		const tracking_id = crypto.randomUUID();
@@ -191,13 +203,24 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 			if (recipientError) {
 				console.error('Error adding recipients:', recipientError);
+				await supabase.from('emails').delete().eq('id', email.id);
 				throw new Error('Failed to save recipients');
 			}
 
 			console.log(`Successfully saved ${recipientData.length} recipients`);
 		}
 
-		return ApiResponse.created({ email }, 'Email created successfully');
+		const { data: savedEmail, error: savedEmailError } = await supabase
+			.from('emails')
+			.select(
+				`*, email_recipients (id, recipient_email, recipient_name, recipient_type, recipient_id, status, sent_at, delivered_at, opened_at, open_count)`
+			)
+			.eq('id', email.id)
+			.single();
+
+		if (savedEmailError) throw savedEmailError;
+
+		return ApiResponse.created({ email: savedEmail }, 'Email created successfully');
 	} catch (error) {
 		return ApiResponse.internalError(error, 'Failed to create email');
 	}

@@ -132,14 +132,10 @@
 
 	// Internal voice state
 	let isVoiceSupported = $state(false);
-	let isCurrentlyRecording = $state(false);
 	let isInitializingRecording = $state(false);
-	let _isTranscribing = $state(false);
-	let _voiceError = $state('');
 	let _canUseLiveTranscript = $state(false);
 	let liveTranscriptPreview = $state('');
 	let hadLiveTranscript = $state(false);
-	let _recordingDuration = $state(0);
 
 	let microphonePermissionGranted = $state(false);
 	let hasAttemptedVoice = $state(false);
@@ -194,7 +190,7 @@
 	// Derived State
 	// ============================================
 	const isLiveTranscribing = $derived(
-		isCurrentlyRecording && liveTranscriptPreview.trim().length > 0 && _canUseLiveTranscript
+		isRecording && liveTranscriptPreview.trim().length > 0 && _canUseLiveTranscript
 	);
 
 	const transcribingStatusLabel = $derived(
@@ -205,12 +201,12 @@
 		buildVoiceButtonState({
 			enableVoice,
 			isVoiceSupported,
-			isCurrentlyRecording,
+			isRecording,
 			isInitializingRecording,
-			isTranscribing: _isTranscribing,
+			isTranscribing,
 			voiceBlocked,
 			hasAttemptedVoice,
-			voiceError: _voiceError,
+			voiceError,
 			microphonePermissionGranted,
 			disabled,
 			voiceBlockedLabel
@@ -218,25 +214,6 @@
 	);
 
 	const voiceButtonClasses = $derived(getVoiceButtonClasses(voiceButtonState.variant));
-
-	// ============================================
-	// Sync bindable props with internal state
-	// ============================================
-	$effect(() => {
-		isRecording = isCurrentlyRecording;
-	});
-
-	$effect(() => {
-		isTranscribing = _isTranscribing;
-	});
-
-	$effect(() => {
-		voiceError = _voiceError;
-	});
-
-	$effect(() => {
-		recordingDuration = _recordingDuration;
-	});
 
 	$effect(() => {
 		if (voiceInitialized) {
@@ -250,7 +227,7 @@
 	function buildVoiceButtonState(params: {
 		enableVoice: boolean;
 		isVoiceSupported: boolean;
-		isCurrentlyRecording: boolean;
+		isRecording: boolean;
 		isInitializingRecording: boolean;
 		isTranscribing: boolean;
 		voiceBlocked: boolean;
@@ -263,7 +240,7 @@
 		const {
 			enableVoice,
 			isVoiceSupported,
-			isCurrentlyRecording,
+			isRecording,
 			isInitializingRecording,
 			isTranscribing,
 			voiceBlocked,
@@ -314,7 +291,7 @@
 			};
 		}
 
-		if (isCurrentlyRecording) {
+		if (isRecording) {
 			return {
 				icon: MicOff,
 				label: 'Stop recording',
@@ -793,7 +770,7 @@
 		_canUseLiveTranscript = voiceRecordingService.isLiveTranscriptSupported();
 		microphonePermissionGranted = false;
 		hasAttemptedVoice = false;
-		_voiceError = '';
+		voiceError = '';
 
 		if (!isVoiceSupported) {
 			voiceInitialized = true;
@@ -804,22 +781,22 @@
 			{
 				onTextUpdate: (_text: string) => {
 					// We handle text insertion ourselves via insertTranscriptionAtCursor
-					_voiceError = '';
+					voiceError = '';
 				},
 				onError: (errorMessage: string) => {
-					_voiceError = errorMessage;
-					isCurrentlyRecording = false;
+					voiceError = errorMessage;
+					isRecording = false;
 					isInitializingRecording = false;
 				},
 				onPhaseChange: (phase: 'idle' | 'transcribing') => {
-					_isTranscribing = phase === 'transcribing';
+					isTranscribing = phase === 'transcribing';
 					if (phase === 'idle') {
 						hadLiveTranscript = false;
 					}
 				},
 				onPermissionGranted: () => {
 					microphonePermissionGranted = true;
-					_voiceError = '';
+					voiceError = '';
 				},
 				onCapabilityUpdate: (update: { canUseLiveTranscript: boolean }) => {
 					_canUseLiveTranscript = update.canUseLiveTranscript;
@@ -832,7 +809,7 @@
 
 		const durationStore = voiceRecordingService.getRecordingDuration(voiceClientId);
 		durationUnsubscribe = durationStore.subscribe((newDuration) => {
-			_recordingDuration = newDuration;
+			recordingDuration = newDuration;
 		});
 
 		transcriptUnsubscribe = liveTranscript.subscribe((text) => {
@@ -848,15 +825,15 @@
 			!isVoiceSupported ||
 			voiceBlocked ||
 			isInitializingRecording ||
-			isCurrentlyRecording ||
-			_isTranscribing ||
+			isRecording ||
+			isTranscribing ||
 			disabled
 		) {
 			return;
 		}
 
 		hasAttemptedVoice = true;
-		_voiceError = '';
+		voiceError = '';
 		isInitializingRecording = true;
 		hadLiveTranscript = false;
 
@@ -872,7 +849,7 @@
 			// Pass empty string - we handle text insertion ourselves
 			await voiceRecordingService.startRecording('', voiceClientId);
 			isInitializingRecording = false;
-			isCurrentlyRecording = true;
+			isRecording = true;
 			microphonePermissionGranted = true;
 			// Focus textarea so Space/Enter can stop recording
 			textareaComponent?.focus();
@@ -882,16 +859,16 @@
 				error instanceof Error
 					? error.message
 					: 'Unable to access microphone. Please check permissions.';
-			_voiceError = message;
+			voiceError = message;
 			microphonePermissionGranted = false;
 			isInitializingRecording = false;
-			isCurrentlyRecording = false;
+			isRecording = false;
 			cursorPositionBeforeRecording = null;
 		}
 	}
 
 	async function stopVoiceRecording() {
-		if (!isCurrentlyRecording && !isInitializingRecording) {
+		if (!isRecording && !isInitializingRecording) {
 			return;
 		}
 
@@ -904,7 +881,7 @@
 
 		// Clear recording states IMMEDIATELY so transcribing state can show
 		liveTranscriptPreview = '';
-		isCurrentlyRecording = false;
+		isRecording = false;
 		isInitializingRecording = false;
 
 		try {
@@ -919,7 +896,7 @@
 			console.error('Failed to stop voice recording:', error);
 			const message =
 				error instanceof Error ? error.message : 'Failed to stop recording. Try again.';
-			_voiceError = message;
+			voiceError = message;
 		} finally {
 			capturedTranscriptForCallback = '';
 		}
@@ -930,7 +907,7 @@
 
 		haptic('light');
 
-		if (isCurrentlyRecording || isInitializingRecording) {
+		if (isRecording || isInitializingRecording) {
 			await stopVoiceRecording();
 		} else {
 			await startVoiceRecording();
@@ -938,7 +915,7 @@
 	}
 
 	async function stopRecordingInternal() {
-		if (isCurrentlyRecording || isInitializingRecording) {
+		if (isRecording || isInitializingRecording) {
 			await stopVoiceRecording();
 		}
 	}
@@ -958,10 +935,10 @@
 
 		voiceRecordingService.cleanup(voiceClientId);
 
-		isCurrentlyRecording = false;
+		isRecording = false;
 		isInitializingRecording = false;
-		_isTranscribing = false;
-		_recordingDuration = 0;
+		isTranscribing = false;
+		recordingDuration = 0;
 		liveTranscriptPreview = '';
 		hadLiveTranscript = false;
 		hasAttemptedVoice = false;
@@ -975,7 +952,7 @@
 	// ============================================
 	function handleTextareaKeyDown(event: KeyboardEvent) {
 		// Stop recording on Space or Enter when recording is active
-		if (isCurrentlyRecording && (event.key === ' ' || event.key === 'Enter')) {
+		if (isRecording && (event.key === ' ' || event.key === 'Enter')) {
 			event.preventDefault();
 			event.stopPropagation();
 			stopVoiceRecording();
@@ -986,7 +963,7 @@
 	// the user is typing in a sibling input/textarea on the page (otherwise
 	// voice recording silently swallows every space the user types elsewhere).
 	function handleGlobalKeyDown(event: KeyboardEvent) {
-		if (!isCurrentlyRecording) return;
+		if (!isRecording) return;
 		if (event.key !== ' ' && event.key !== 'Enter') return;
 
 		const active = document.activeElement;
@@ -1001,7 +978,7 @@
 	}
 
 	$effect(() => {
-		if (browser && isCurrentlyRecording) {
+		if (browser && isRecording) {
 			document.addEventListener('keydown', handleGlobalKeyDown);
 			return () => {
 				document.removeEventListener('keydown', handleGlobalKeyDown);
@@ -1029,7 +1006,7 @@
 			cleanupVoice();
 		}
 
-		if ((voiceBlocked || disabled) && isCurrentlyRecording) {
+		if ((voiceBlocked || disabled) && isRecording) {
 			stopRecordingInternal();
 		}
 	});
@@ -1038,15 +1015,6 @@
 		stopRecordingInternal();
 		cleanupVoice();
 	});
-
-	// ============================================
-	// Input Handler
-	// ============================================
-	function handleTextareaInput(event: Event) {
-		const target = event.target as HTMLTextAreaElement;
-		value = target.value;
-		oninput?.(event);
-	}
 
 	// ============================================
 	// Exported Functions
@@ -1092,12 +1060,12 @@
 		<Textarea
 			bind:this={textareaComponent}
 			{id}
-			{value}
+			bind:value
 			{placeholder}
 			{rows}
 			{disabled}
 			{size}
-			oninput={handleTextareaInput}
+			{oninput}
 			onkeydown={handleTextareaKeyDown}
 		/>
 	</div>
@@ -1106,7 +1074,7 @@
 	<div class="flex flex-wrap items-center justify-between gap-2">
 		<!-- Left side: Status indicators and hints -->
 		<div class="flex flex-wrap items-center gap-1.5 text-[0.65rem] text-muted-foreground/80">
-			{#if enableVoice && isCurrentlyRecording}
+			{#if enableVoice && isRecording}
 				<!-- Recording indicator -->
 				<span class="flex items-center gap-1.5 text-destructive">
 					<span class="relative flex h-2 w-2 items-center justify-center">
@@ -1117,7 +1085,7 @@
 						></span>
 					</span>
 					<span class="font-semibold">Listening</span>
-					<span class="font-bold tabular-nums">{formatDuration(_recordingDuration)}</span>
+					<span class="font-bold tabular-nums">{formatDuration(recordingDuration)}</span>
 					<kbd
 						class="hidden rounded border border-destructive/30 bg-destructive/10 px-1 py-0.5 font-mono text-[0.6rem] font-medium text-destructive md:inline-flex"
 					>
@@ -1130,7 +1098,7 @@
 					<LoaderCircle class="h-3 w-3 animate-spin" />
 					<span class="font-medium">Preparing...</span>
 				</span>
-			{:else if enableVoice && _isTranscribing}
+			{:else if enableVoice && isTranscribing}
 				<!-- Transcribing state -->
 				<span class="flex items-center gap-1.5 text-accent">
 					<LoaderCircle class="h-3 w-3 animate-spin" />
@@ -1139,10 +1107,10 @@
 			{:else if footer}
 				<!-- Custom footer content -->
 				{@render footer({
-					isRecording: isCurrentlyRecording,
-					isTranscribing: _isTranscribing,
-					recordingDuration: _recordingDuration,
-					voiceError: _voiceError
+					isRecording,
+					isTranscribing,
+					recordingDuration,
+					voiceError
 				})}
 			{:else}
 				<!-- Default: Mention hint -->
@@ -1152,7 +1120,7 @@
 			{/if}
 
 			<!-- Live transcript badge during recording -->
-			{#if enableVoice && _canUseLiveTranscript && isCurrentlyRecording}
+			{#if enableVoice && _canUseLiveTranscript && isRecording}
 				<span
 					class="hidden rounded-md border border-accent/30 bg-accent/10 px-1 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-accent xs:inline-flex"
 				>
@@ -1163,12 +1131,12 @@
 
 		<!-- Right side: Error, voice button, and action buttons -->
 		<div class="flex items-center gap-1.5">
-			{#if enableVoice && _voiceError}
+			{#if enableVoice && voiceError}
 				<span
 					role="alert"
 					class="max-w-[120px] truncate text-destructive text-[0.65rem] font-medium px-1.5 py-0.5 rounded bg-destructive/10 border border-destructive/20"
 				>
-					{_voiceError}
+					{voiceError}
 				</span>
 			{/if}
 
