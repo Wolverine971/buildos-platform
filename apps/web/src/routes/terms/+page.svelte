@@ -6,9 +6,9 @@
 
 <SEOHead
 	title="Terms of Service - BuildOS | Legal Terms & Conditions"
-	description="BuildOS Terms of Service: simple, fair terms for using the BuildOS thinking environment. User agreements, content ownership, and usage guidelines."
+	description="BuildOS Terms of Service: account, subscription, content, AI, integration, collaboration, acceptable-use, and service terms."
 	canonical="https://build-os.com/terms"
-	keywords="BuildOS terms of service, user agreement, legal terms, content ownership, usage guidelines, subscription terms"
+	keywords="BuildOS terms of service, user agreement, subscription terms, AI terms, content ownership, acceptable use"
 	author="BuildOS"
 />
 
@@ -25,8 +25,7 @@
 			</div>
 			<h1 class="text-4xl md:text-5xl font-bold text-foreground mb-4">Terms of Service</h1>
 			<p class="text-xl text-muted-foreground max-w-2xl mx-auto">
-				The legal terms that govern your use of BuildOS. We've tried to keep it simple and
-				fair.
+				The legal terms governing your use of BuildOS.
 			</p>
 		</div>
 
@@ -43,8 +42,10 @@
 					>
 						<Users class="w-6 h-6 text-foreground" />
 					</div>
-					<h3 class="font-semibold text-foreground mb-2">Fair Use</h3>
-					<p class="text-sm text-muted-foreground">Use BuildOS responsibly and legally</p>
+					<h3 class="font-semibold text-foreground mb-2">Responsible Use</h3>
+					<p class="text-sm text-muted-foreground">
+						Use BuildOS lawfully and respect other people
+					</p>
 				</div>
 				<div class="text-center">
 					<div
@@ -54,7 +55,7 @@
 					</div>
 					<h3 class="font-semibold text-foreground mb-2">Your Content</h3>
 					<p class="text-sm text-muted-foreground">
-						You own your data, we just help you organize it
+						You keep ownership of content you submit
 					</p>
 				</div>
 				<div class="text-center">
@@ -63,9 +64,9 @@
 					>
 						<FileText class="w-6 h-6 text-foreground" />
 					</div>
-					<h3 class="font-semibold text-foreground mb-2">AI Processing</h3>
+					<h3 class="font-semibold text-foreground mb-2">AI Assistance</h3>
 					<p class="text-sm text-muted-foreground">
-						Content sent to AI providers for insights
+						Review AI output before relying on it
 					</p>
 				</div>
 				<div class="text-center">
@@ -74,8 +75,8 @@
 					>
 						<DollarSign class="w-6 h-6 text-foreground" />
 					</div>
-					<h3 class="font-semibold text-foreground mb-2">Subscription</h3>
-					<p class="text-sm text-muted-foreground">Paid billing is not active yet</p>
+					<h3 class="font-semibold text-foreground mb-2">Monthly Subscription</h3>
+					<p class="text-sm text-muted-foreground">Paid plans renew until you cancel</p>
 				</div>
 			</div>
 		</div>
@@ -85,289 +86,537 @@
 			class="bg-card rounded border border-border p-8 md:p-12 shadow-ink tx tx-grain tx-weak space-y-8"
 		>
 			<section>
-				<h2 class="text-2xl font-bold text-foreground mb-4">1. Acceptance of Terms</h2>
-				<p class="text-muted-foreground">
-					By accessing and using BuildOS, you accept and agree to be bound by these terms
-					of service. If you do not agree to these terms, please do not use our service.
-					These terms constitute a legal agreement between you and BuildOS (operated as a
-					sole proprietorship in Glen Burnie, Maryland).
-				</p>
+				<h2 class="text-2xl font-bold text-foreground mb-4">
+					1. Agreement and Eligibility
+				</h2>
+				<div class="prose dark:prose-invert max-w-none text-muted-foreground space-y-4">
+					<p>
+						These Terms of Service (<strong class="text-foreground">Terms</strong>) are
+						a legal agreement between you and BuildOS, which is operated as a sole
+						proprietorship based in Glen Burnie, Maryland (<strong
+							class="text-foreground">BuildOS</strong
+						>,
+						<strong class="text-foreground">we</strong>,
+						<strong class="text-foreground">us</strong>, or
+						<strong class="text-foreground">our</strong>).
+					</p>
+					<p>
+						By creating an account, clicking to accept, purchasing a subscription, or
+						using the website, application, public pages, connectors, and related
+						services (collectively, the <strong class="text-foreground">Service</strong
+						>), you agree to these Terms and our
+						<a href="/privacy" class="text-accent hover:text-accent/80 underline"
+							>Privacy Policy</a
+						>. If you do not agree, do not use the Service.
+					</p>
+					<p>
+						You must be at least 13 years old. If you are under the age of legal
+						majority where you live, your parent or legal guardian must review and agree
+						to these Terms for you. You must be legally capable of entering this
+						agreement. If you use BuildOS for an organization, you represent that you
+						have authority to bind it, and “you” includes that organization.
+					</p>
+				</div>
 			</section>
 
 			<section>
-				<h2 class="text-2xl font-bold text-foreground mb-4">2. Description of Service</h2>
-				<p class="text-muted-foreground mb-4">
-					BuildOS is a thinking environment that helps you turn rough project input into
-					structured work with persistent project memory. The service includes:
-				</p>
-				<ul class="space-y-2 text-muted-foreground ml-6">
-					<li>• Brain dump capture and organization</li>
-					<li>• Project and goal management</li>
-					<li>• Task tracking and prioritization</li>
-					<li>• AI-assisted insights and recommendations</li>
-					<li>• SMS notifications (optional, opt-in only)</li>
-					<li>• Google Calendar integration (optional)</li>
-					<li>• Data export capabilities</li>
-				</ul>
+				<h2 class="text-2xl font-bold text-foreground mb-4">2. The Service</h2>
+				<div class="prose dark:prose-invert max-w-none">
+					<p class="text-muted-foreground mb-4">
+						BuildOS is an AI-assisted thinking and project environment that can include:
+					</p>
+					<ul class="space-y-2 text-muted-foreground list-disc pl-6">
+						<li>
+							Brain-dump capture, documents, project memory, and structured work
+							management;
+						</li>
+						<li>
+							Projects, goals, plans, milestones, tasks, events, contacts, and
+							collaboration;
+						</li>
+						<li>
+							AI chat, recommendations, generated content, agent actions,
+							transcription, and media features;
+						</li>
+						<li>Public pages, project sharing, comments, and invitations;</li>
+						<li>
+							Optional Google Calendar, third-party agent, and other integrations; and
+						</li>
+						<li>Optional email, push, and SMS notifications.</li>
+					</ul>
+					<p class="text-muted-foreground mt-4">
+						Features may be labeled beta, preview, experimental, or may change as the
+						Service evolves. Documentation and descriptions are informational and do not
+						guarantee that every feature will always be available.
+					</p>
+				</div>
 			</section>
 
 			<section>
-				<h2 class="text-2xl font-bold text-foreground mb-4">3. Pricing and Billing</h2>
+				<h2 class="text-2xl font-bold text-foreground mb-4">3. Accounts and Security</h2>
+				<div class="prose dark:prose-invert max-w-none">
+					<p class="text-muted-foreground mb-4">
+						You may create an account using email and password or a supported
+						third-party sign-in method such as Google. You agree to:
+					</p>
+					<ul class="space-y-2 text-muted-foreground list-disc pl-6">
+						<li>Provide accurate information and keep it current;</li>
+						<li>
+							Protect your password, connected accounts, agent keys, devices, and
+							sessions;
+						</li>
+						<li>Not share credentials or allow unauthorized access;</li>
+						<li>
+							Accept responsibility for activity performed through your account; and
+						</li>
+						<li>
+							Promptly notify us at dj@build-os.com of suspected unauthorized use.
+						</li>
+					</ul>
+					<p class="text-muted-foreground mt-4">
+						You are responsible for reviewing the scopes and permissions granted to
+						collaborators, integrations, and connected agents. BuildOS may require
+						identity, email, or phone verification to protect accounts and prevent
+						abuse.
+					</p>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="text-2xl font-bold text-foreground mb-4">
+					4. Trials, Pricing, and Billing
+				</h2>
 				<div class="bg-accent/10 border border-accent/30 rounded-lg p-6 mb-4">
-					<p class="text-foreground font-medium mb-2">Current Status: Pre-Billing</p>
+					<p class="text-foreground font-medium mb-2">Current Subscription Structure</p>
 					<p class="text-muted-foreground">
-						BuildOS is not currently charging users. Before paid plans launch, BuildOS
-						will publish the applicable pricing and require an explicit checkout. Stripe
-						will process paid subscriptions when they become available.
+						BuildOS currently offers a 14-day trial that does not require payment
+						information. The trial does not automatically convert into a paid plan. To
+						continue with paid access, you must separately complete Stripe checkout and
+						authorize a subscription.
 					</p>
 				</div>
-				<p class="text-muted-foreground mb-4">When paid subscriptions become available:</p>
-				<ul class="space-y-2 text-muted-foreground ml-6">
-					<li>• Subscriptions can be cancelled at any time</li>
-					<li>• Billing is handled securely through Stripe</li>
-					<li>
-						• Access continues until the end of the billing period after cancellation
-					</li>
-					<li>• Refund requests are reviewed case by case</li>
-				</ul>
-			</section>
-
-			<section>
-				<h2 class="text-2xl font-bold text-foreground mb-4">4. User Accounts</h2>
-				<p class="text-muted-foreground mb-4">
-					To access BuildOS, you must create an account using Google OAuth. You are
-					responsible for:
-				</p>
-				<ul class="space-y-2 text-muted-foreground ml-6">
-					<li>• Providing accurate and complete information</li>
-					<li>• Maintaining the security of your Google account</li>
-					<li>• All activities that occur under your account</li>
-					<li>• Being at least 13 years of age to use the service</li>
-					<li>• Notifying us immediately of any unauthorized use</li>
-				</ul>
+				<div class="prose dark:prose-invert max-w-none">
+					<ul class="space-y-3 text-muted-foreground list-disc pl-6">
+						<li>
+							<strong class="text-foreground">Prices:</strong> Current prices,
+							included features, and billing intervals are shown on the
+							<a href="/pricing" class="text-accent hover:text-accent/80 underline"
+								>Pricing page</a
+							> and at checkout. Applicable taxes may be added.
+						</li>
+						<li>
+							<strong class="text-foreground">Automatic renewal:</strong> Once started,
+							a paid subscription renews for successive monthly periods until cancelled.
+							You authorize Stripe to charge the payment method on file at the beginning
+							of each billing period.
+						</li>
+						<li>
+							<strong class="text-foreground">Cancellation:</strong> You may cancel at
+							any time through the subscription-management portal or by contacting us.
+							Cancellation takes effect at the end of the current paid period, and you
+							retain paid access until then.
+						</li>
+						<li>
+							<strong class="text-foreground">Failed payments and access:</strong> If a
+							trial expires or payment fails, BuildOS may provide a limited read-only grace
+							period and then restrict access until payment is completed. The current grace
+							period, if any, is shown on the Pricing page or in the application.
+						</li>
+						<li>
+							<strong class="text-foreground">Refunds:</strong> Except where required by
+							law, payments are non-refundable and we do not provide credits for partial
+							billing periods. We may grant a refund or credit in our discretion without
+							creating an obligation to do so in another case.
+						</li>
+						<li>
+							<strong class="text-foreground">Price changes:</strong> We may change prices
+							for future billing periods. We will provide advance notice as required by
+							law, and the change will apply no earlier than your next renewal after the
+							notice period.
+						</li>
+					</ul>
+				</div>
 			</section>
 
 			<section>
 				<h2 class="text-2xl font-bold text-foreground mb-4">
-					5. User Content and AI Processing
+					5. Your Content and License to BuildOS
 				</h2>
 				<div class="bg-accent/10 rounded-lg p-6 mb-4">
-					<p class="text-foreground font-medium mb-2">Your Content Belongs to You</p>
+					<p class="text-foreground font-medium mb-2">Your Content Remains Yours</p>
 					<p class="text-muted-foreground">
-						You retain all rights to the content you create in BuildOS. We claim no
-						ownership over your captured context, projects, goals, or any other content
-						you input into the service.
+						As between you and BuildOS, you retain ownership of content you submit to
+						the Service (<strong class="text-foreground">Your Content</strong>). BuildOS
+						does not claim ownership of your private projects, notes, documents, or
+						other original content.
 					</p>
 				</div>
+				<div class="prose dark:prose-invert max-w-none text-muted-foreground space-y-4">
+					<p>
+						You grant BuildOS a worldwide, non-exclusive, royalty-free license to host,
+						copy, process, transmit, display, modify solely for formatting or technical
+						operation, and otherwise use Your Content only as needed to provide, secure,
+						support, and improve the Service, comply with your instructions, and satisfy
+						legal obligations. This license lasts while the content is stored in the
+						Service and for any lawful retention period described in the Privacy Policy.
+					</p>
+					<p>
+						You represent that you own Your Content or have all permissions needed to
+						submit it and authorize the processing described in these Terms. You are
+						responsible for Your Content and for ensuring that it does not violate law,
+						these Terms, intellectual-property rights, privacy rights, confidentiality
+						obligations, or another person's rights.
+					</p>
+				</div>
+			</section>
 
+			<section>
+				<h2 class="text-2xl font-bold text-foreground mb-4">6. AI Features and Outputs</h2>
 				<div class="bg-warning/10 rounded-lg p-6 mb-4">
-					<p class="text-accent-foreground font-medium font-medium mb-2">
-						AI Processing Notice
-					</p>
+					<p class="text-foreground font-medium mb-2">AI Can Be Wrong</p>
 					<p class="text-muted-foreground">
-						To provide AI-assisted insights, your project data, tasks, captured context,
-						and onboarding responses are sent to third-party AI providers including
-						OpenAI and Anthropic. Only content necessary for organizing and enhancing
-						your productivity is processed.
+						AI-generated content may be incomplete, inaccurate, offensive, outdated, or
+						similar to content generated for someone else. Always review outputs and
+						proposed agent actions before relying on them.
 					</p>
 				</div>
-
-				<p class="text-muted-foreground mb-4">
-					By using BuildOS, you grant us a limited license to:
-				</p>
-				<ul class="space-y-2 text-muted-foreground ml-6">
-					<li>• Store and process your content to provide the service</li>
-					<li>• Send relevant content to AI providers for processing and insights</li>
-					<li>• Display your content back to you in organized formats</li>
-					<li>• Use aggregated, anonymized data to improve our features</li>
-				</ul>
-			</section>
-
-			<section>
-				<h2 class="text-2xl font-bold text-foreground mb-4">
-					6. SMS Notifications and Consent
-				</h2>
-				<div class="bg-accent/10 rounded-lg p-6 mb-4">
-					<p class="text-accent-foreground font-medium font-medium mb-2">
-						SMS Notifications Are Optional
+				<div class="prose dark:prose-invert max-w-none text-muted-foreground space-y-4">
+					<p>
+						BuildOS sends prompts and relevant context to third-party AI, model-routing,
+						transcription, media-generation, or search providers as described in the
+						Privacy Policy. You authorize that processing when you use the applicable
+						feature.
 					</p>
-					<p class="text-muted-foreground">
-						BuildOS offers optional SMS notifications to help you stay on track with
-						your tasks and schedule. You are never required to provide your phone number
-						or enable SMS notifications to use BuildOS.
+					<p>
+						Subject to applicable law and third-party rights, BuildOS does not claim
+						ownership of output generated for you. Because machine-generated content may
+						not qualify for intellectual-property protection and may not be unique, we
+						do not guarantee ownership, exclusivity, or non-infringement of any output.
+					</p>
+					<p>
+						BuildOS is a productivity tool, not a substitute for professional judgment.
+						It does not provide legal, medical, financial, tax, accounting, employment,
+						safety, or other professional advice. Do not use AI output as the sole basis
+						for high-impact decisions, emergency action, or decisions affecting another
+						person's rights or access to essential services.
 					</p>
 				</div>
-
-				<p class="text-muted-foreground mb-4">
-					By providing your phone number and verifying it, you explicitly consent to
-					receive SMS messages from BuildOS, including:
-				</p>
-				<ul class="space-y-2 text-muted-foreground ml-6">
-					<li>• Task reminders and due date notifications</li>
-					<li>• Daily brief completion notifications</li>
-					<li>• Project milestone alerts</li>
-					<li>• Other productivity-related notifications you've enabled</li>
-				</ul>
-
-				<p class="text-muted-foreground mt-4 mb-4">
-					<strong class="text-foreground">Important SMS Terms:</strong>
-				</p>
-				<ul class="space-y-2 text-muted-foreground ml-6">
-					<li>
-						• <strong>Opt-In Required:</strong> You must explicitly enable SMS notifications
-						and verify your phone number before receiving any messages
-					</li>
-					<li>
-						• <strong>Verification:</strong> We use Twilio Verify to confirm phone numbers
-						and prevent misuse
-					</li>
-					<li>
-						• <strong>Message Frequency:</strong> Message frequency varies based on your
-						notification preferences and activity
-					</li>
-					<li>
-						• <strong>Rates May Apply:</strong> Message and data rates from your mobile carrier
-						may apply
-					</li>
-					<li>
-						• <strong>Opt-Out Anytime:</strong> Reply STOP to any message to immediately
-						unsubscribe from all SMS notifications
-					</li>
-					<li>• <strong>Help:</strong> Reply HELP to any message for assistance</li>
-					<li>
-						• <strong>No Marketing:</strong> We never send promotional or marketing messages
-						via SMS
-					</li>
-					<li>
-						• <strong>Delivery Service:</strong> SMS messages are delivered via Twilio, a
-						third-party service provider
-					</li>
-				</ul>
-
-				<p class="text-muted-foreground mt-4">
-					By verifying your phone number, you confirm that you are the owner or authorized
-					user of that phone number and consent to receive SMS notifications from BuildOS
-					as described above. Your phone number will not be sold, shared, or used for any
-					purpose other than sending you the notifications you've opted into.
-				</p>
-			</section>
-
-			<section>
-				<h2 class="text-2xl font-bold text-foreground mb-4">7. Acceptable Use</h2>
-				<p class="text-muted-foreground mb-4">You agree not to use BuildOS to:</p>
-				<ul class="space-y-2 text-muted-foreground ml-6">
-					<li>• Violate any laws or regulations</li>
-					<li>• Upload illegal, harmful, or offensive content</li>
-					<li>• Infringe on others' intellectual property rights</li>
-					<li>• Upload malicious code or attempt to hack the service</li>
-					<li>• Spam, harass, or abuse other users or our support</li>
-					<li>• Use the service for any unauthorized commercial purpose</li>
-					<li>• Attempt to reverse engineer or copy the service</li>
-				</ul>
-				<p class="text-muted-foreground mt-4">
-					We reserve the right to implement content validation and flagging systems to
-					enforce these policies.
-				</p>
 			</section>
 
 			<section>
 				<h2 class="text-2xl font-bold text-foreground mb-4">
-					8. Service Availability and Beta Status
+					7. Collaboration and Public Content
 				</h2>
-				<p class="text-muted-foreground">
-					We strive to keep BuildOS available 24/7, but we do not guarantee uninterrupted
-					service. We may need to take the service down for maintenance, updates, or
-					emergency repairs. As BuildOS continues to evolve, some features may change or
-					be temporarily unavailable.
-				</p>
-			</section>
-
-			<section>
-				<h2 class="text-2xl font-bold text-foreground mb-4">9. Privacy and Data</h2>
-				<p class="text-muted-foreground">
-					Your privacy is important to us. Please review our
-					<a href="/privacy" class="text-accent hover:text-accent/80">Privacy Policy</a>
-					to understand how we collect, use, and protect your information, including our data
-					sharing with AI providers.
-				</p>
-			</section>
-
-			<section>
-				<h2 class="text-2xl font-bold text-foreground mb-4">10. Limitation of Liability</h2>
-				<p class="text-muted-foreground">
-					BuildOS is provided "as is" without warranties of any kind, express or implied.
-					To the fullest extent permitted by law, we disclaim all warranties and are not
-					liable for any indirect, incidental, special, consequential, or punitive damages
-					arising from your use of the service, including but not limited to data loss,
-					business interruption, or loss of profits.
-				</p>
-			</section>
-
-			<section>
-				<h2 class="text-2xl font-bold text-foreground mb-4">11. Indemnification</h2>
-				<p class="text-muted-foreground">
-					You agree to indemnify and hold harmless BuildOS from any claims, damages,
-					losses, or expenses (including legal fees) arising from your use of the service,
-					your content, or your violation of these terms.
-				</p>
-			</section>
-
-			<section>
-				<h2 class="text-2xl font-bold text-foreground mb-4">12. Termination</h2>
-				<p class="text-muted-foreground mb-4">
-					Either party may terminate this agreement at any time:
-				</p>
-				<ul class="space-y-2 text-muted-foreground ml-6">
-					<li>• You can delete your account and stop using BuildOS at any time</li>
-					<li>• We may suspend or terminate accounts that violate these terms</li>
-					<li>
-						• Upon termination, you can export your data through the application
-						interface
-					</li>
-					<li>
-						• Paid subscriptions can be cancelled at any time with access continuing
-						until the end of the billing period
-					</li>
-				</ul>
+				<div class="prose dark:prose-invert max-w-none text-muted-foreground space-y-4">
+					<p>
+						When you invite a collaborator, you authorize BuildOS to share the selected
+						project and activity with that person according to the permissions you
+						grant. Collaborators may view, copy, export, comment on, or change content
+						depending on their role. You are responsible for selecting appropriate
+						people and permissions.
+					</p>
+					<p>
+						If you publish content or create a public page, you grant BuildOS a license
+						to host, display, distribute, and technically reproduce that content for
+						public access until you unpublish it or the account is terminated. Public
+						content may be copied, indexed, cached, or redistributed by others, and
+						removing it from BuildOS may not remove copies outside our control.
+					</p>
+					<p>
+						We may review, restrict, unpublish, or remove content that we reasonably
+						believe violates these Terms, exposes private or illegal material, threatens
+						safety or security, or creates legal risk. We are not obligated to monitor
+						all user content.
+					</p>
+				</div>
 			</section>
 
 			<section>
 				<h2 class="text-2xl font-bold text-foreground mb-4">
-					13. Governing Law and Disputes
+					8. Connected Services and Agents
 				</h2>
-				<p class="text-muted-foreground">
-					These terms are governed by the laws of Maryland, United States. Any disputes
-					arising from these terms or your use of BuildOS will be resolved in the courts
-					of Maryland. For legal notices or disputes, contact us at dj@build-os.com.
-				</p>
+				<div class="prose dark:prose-invert max-w-none text-muted-foreground space-y-4">
+					<p>
+						The Service may let you connect Google services, external AI clients, agent
+						keys, OAuth applications, or other third-party services. You authorize
+						BuildOS to exchange information with a connected service within the scopes
+						and permissions you approve. If you grant write access, a connected agent
+						may create, change, or delete content on your behalf.
+					</p>
+					<p>
+						Third-party services are governed by their own terms and privacy policies.
+						BuildOS is not responsible for their availability, security, output, or use
+						of information. You are responsible for reviewing permissions, supervising
+						agent actions, and revoking access you no longer want. Revocation does not
+						undo actions already completed or delete data already received by the third
+						party.
+					</p>
+				</div>
 			</section>
 
 			<section>
-				<h2 class="text-2xl font-bold text-foreground mb-4">14. Changes to Terms</h2>
-				<p class="text-muted-foreground">
-					We may update these terms as BuildOS evolves. We'll notify users of significant
-					changes via email and update the "Last Updated" date below. Continued use of the
-					service after changes constitutes acceptance of the new terms.
-				</p>
+				<h2 class="text-2xl font-bold text-foreground mb-4">
+					9. SMS and Other Notifications
+				</h2>
+				<div class="prose dark:prose-invert max-w-none text-muted-foreground space-y-4">
+					<p>
+						SMS is optional and is not a condition of purchase. By enabling SMS and
+						verifying a phone number, you confirm that you are the subscriber or
+						authorized user and consent to receive the productivity notifications you
+						select. Message frequency varies; message and data rates may apply. Reply
+						STOP to opt out and HELP for assistance. Carriers are not liable for delayed
+						or undelivered messages.
+					</p>
+					<p>
+						BuildOS uses Twilio for verification and delivery. We do not send
+						third-party promotional marketing by SMS. You may manage optional email and
+						push notifications in the Service or through the unsubscribe mechanism
+						provided in a message, but we may still send transactional, security,
+						billing, or legal notices.
+					</p>
+				</div>
 			</section>
 
 			<section>
-				<h2 class="text-2xl font-bold text-foreground mb-4">15. Contact Information</h2>
+				<h2 class="text-2xl font-bold text-foreground mb-4">10. Acceptable Use</h2>
+				<div class="prose dark:prose-invert max-w-none">
+					<p class="text-muted-foreground mb-4">You may not use the Service to:</p>
+					<ul class="space-y-2 text-muted-foreground list-disc pl-6">
+						<li>
+							Violate law or another person's intellectual-property, privacy,
+							publicity, contractual, or other rights;
+						</li>
+						<li>
+							Create, upload, distribute, or facilitate illegal, fraudulent,
+							exploitative, abusive, threatening, or malicious content or activity;
+						</li>
+						<li>
+							Harass people, send spam, impersonate others, mislead recipients, or
+							collect information without authorization;
+						</li>
+						<li>
+							Upload malware, probe or bypass security, disrupt the Service, or access
+							accounts or systems without permission;
+						</li>
+						<li>
+							Use automated means that impose an unreasonable load, scrape protected
+							areas, or circumvent rate limits or access controls;
+						</li>
+						<li>
+							Reverse engineer or copy non-public portions of the Service except where
+							law expressly permits it;
+						</li>
+						<li>
+							Use BuildOS for emergency response, weapons development, unlawful
+							surveillance, or high-impact automated decisions without legally
+							required human review and safeguards;
+						</li>
+						<li>
+							Use BuildOS as a regulated medical-records system or submit protected
+							health information for a HIPAA-regulated workflow; or
+						</li>
+						<li>Help another person do any of the above.</li>
+					</ul>
+					<p class="text-muted-foreground mt-4">
+						We may use automated and human review to investigate suspected violations
+						and may apply usage, storage, or rate limits to protect the Service.
+					</p>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="text-2xl font-bold text-foreground mb-4">
+					11. BuildOS Intellectual Property and Feedback
+				</h2>
+				<div class="prose dark:prose-invert max-w-none text-muted-foreground space-y-4">
+					<p>
+						The Service, including its software, design, branding, documentation, and
+						non-user content, is owned by BuildOS or its licensors and is protected by
+						law. Subject to these Terms, BuildOS gives you a limited, non-exclusive,
+						non-transferable, revocable right to use the Service for its intended
+						purpose during your authorized access.
+					</p>
+					<p>
+						If you submit feedback or suggestions, you grant BuildOS a perpetual,
+						irrevocable, worldwide, royalty-free right to use them without restriction
+						or compensation. This does not grant BuildOS ownership of Your Content.
+					</p>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="text-2xl font-bold text-foreground mb-4">12. Privacy</h2>
 				<p class="text-muted-foreground">
-					For questions about these terms or legal matters, contact us at:
-					<br />
-					Email:
-					<a href="mailto:dj@build-os.com" class="text-accent hover:text-accent/80"
-						>dj@build-os.com</a
+					Our <a href="/privacy" class="text-accent hover:text-accent/80 underline"
+						>Privacy Policy</a
 					>
-					<br />
-					BuildOS - Glen Burnie, Maryland
+					explains how BuildOS collects, uses, shares, retains, and protects personal information,
+					including information processed by AI providers, integrations, analytics, billing,
+					and communications services.
+				</p>
+			</section>
+
+			<section>
+				<h2 class="text-2xl font-bold text-foreground mb-4">
+					13. Service Changes and Availability
+				</h2>
+				<p class="text-muted-foreground">
+					We work to keep BuildOS available, but we do not guarantee uninterrupted,
+					secure, or error-free operation. We may add, modify, limit, suspend, or
+					discontinue features for maintenance, security, legal, provider, or product
+					reasons. If we discontinue the paid Service as a whole, we will provide
+					reasonable notice and any refund required by law. You are responsible for
+					keeping copies of content you cannot afford to lose.
+				</p>
+			</section>
+
+			<section>
+				<h2 class="text-2xl font-bold text-foreground mb-4">
+					14. Suspension, Cancellation, and Account Deletion
+				</h2>
+				<div class="prose dark:prose-invert max-w-none text-muted-foreground space-y-4">
+					<p>
+						You may stop using BuildOS or cancel a paid subscription at any time.
+						Cancelling a subscription stops future renewals but does not itself delete
+						your account or content. You may separately submit an account-deletion
+						request through the Service or by email.
+					</p>
+					<p>
+						An account-deletion request initially restricts access while deletion is
+						processed. Retention, backup, legal, security, billing, and
+						de-identification practices are described in the Privacy Policy. Before
+						requesting deletion, save any content you want to keep and contact us if you
+						need assistance obtaining a copy; not all data may currently be available
+						through a self-service export.
+					</p>
+					<p>
+						We may suspend, restrict, or terminate access immediately if you materially
+						breach these Terms, create security or legal risk, fail to pay amounts due,
+						or use the Service in a manner that could harm BuildOS, our providers, or
+						other users. Where reasonable, we will provide notice and an opportunity to
+						address the issue.
+					</p>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="text-2xl font-bold text-foreground mb-4">15. Disclaimers</h2>
+				<p class="text-muted-foreground uppercase">
+					To the fullest extent permitted by law, the Service and all outputs are provided
+					“as is” and “as available.” BuildOS disclaims all express, implied, and
+					statutory warranties, including merchantability, fitness for a particular
+					purpose, title, non-infringement, accuracy, and any warranty arising from course
+					of dealing or usage of trade. BuildOS does not warrant that the Service or AI
+					output will be accurate, complete, secure, uninterrupted, or free of harmful
+					components. Some jurisdictions do not allow certain disclaimers, so some of this
+					section may not apply to you.
+				</p>
+			</section>
+
+			<section>
+				<h2 class="text-2xl font-bold text-foreground mb-4">16. Limitation of Liability</h2>
+				<div class="prose dark:prose-invert max-w-none text-muted-foreground space-y-4">
+					<p class="uppercase">
+						To the fullest extent permitted by law, BuildOS and its service providers
+						will not be liable for indirect, incidental, special, consequential,
+						exemplary, or punitive damages; loss of profits, revenue, business,
+						goodwill, use, or data; or the cost of a substitute service, arising from or
+						related to the Service or these Terms, even if advised that such damages
+						were possible.
+					</p>
+					<p class="uppercase">
+						To the fullest extent permitted by law, BuildOS's total liability for all
+						claims arising from or related to the Service or these Terms will not exceed
+						the greater of $100 or the amount you paid to BuildOS during the 12 months
+						before the event giving rise to the claim.
+					</p>
+					<p>
+						These limits do not apply where prohibited by law or to liability that
+						cannot legally be limited. The limitations reflect the allocation of risk
+						between you and BuildOS.
+					</p>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="text-2xl font-bold text-foreground mb-4">17. Indemnification</h2>
+				<p class="text-muted-foreground">
+					To the extent permitted by law, you agree to defend, indemnify, and hold
+					harmless BuildOS from third-party claims, liabilities, damages, losses, and
+					reasonable legal fees arising from Your Content, your misuse of the Service,
+					your violation of these Terms or law, or your infringement of another person's
+					rights. BuildOS will give you reasonable notice of a covered claim and may
+					control its defense and settlement. You may not settle a claim in a way that
+					admits liability for or imposes obligations on BuildOS without our written
+					consent.
+				</p>
+			</section>
+
+			<section>
+				<h2 class="text-2xl font-bold text-foreground mb-4">
+					18. Governing Law and Disputes
+				</h2>
+				<p class="text-muted-foreground">
+					These Terms are governed by the laws of Maryland, without regard to
+					conflict-of-law principles. Except where applicable consumer law permits
+					otherwise, disputes arising from these Terms or the Service will be brought in
+					the state or federal courts located in Maryland, and you and BuildOS consent to
+					their jurisdiction. Before filing a claim, please contact dj@build-os.com and
+					provide a short description so we can try to resolve it.
+				</p>
+			</section>
+
+			<section>
+				<h2 class="text-2xl font-bold text-foreground mb-4">19. Changes to These Terms</h2>
+				<p class="text-muted-foreground">
+					We may update these Terms as the Service or applicable requirements change. We
+					will post the revised Terms, update the date below, and provide additional
+					notice of material changes as required by law. Changes apply prospectively. If a
+					material change requires your consent, we will request it. Otherwise, continued
+					use after the effective date of revised Terms constitutes acceptance. If you do
+					not agree, you must stop using the Service and may cancel your subscription.
+				</p>
+			</section>
+
+			<section>
+				<h2 class="text-2xl font-bold text-foreground mb-4">20. General Terms</h2>
+				<div class="prose dark:prose-invert max-w-none text-muted-foreground space-y-4">
+					<p>
+						These Terms and the Privacy Policy are the entire agreement between you and
+						BuildOS about the Service and supersede prior agreements about it. If a
+						provision is found unenforceable, it will be limited to the minimum extent
+						necessary and the remaining provisions will remain effective. Failure to
+						enforce a provision is not a waiver.
+					</p>
+					<p>
+						You may not assign these Terms without our written consent. BuildOS may
+						assign them in connection with a reorganization, financing, merger,
+						acquisition, or sale of the Service. BuildOS is not liable for delay or
+						failure caused by circumstances beyond our reasonable control. Section
+						headings are for convenience only.
+					</p>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="text-2xl font-bold text-foreground mb-4">21. Contact</h2>
+				<p class="text-muted-foreground">
+					For support, legal notices, billing questions, or questions about these Terms:<br
+					/>
+					Email:
+					<a
+						href="mailto:dj@build-os.com"
+						class="text-accent hover:text-accent/80 underline">dj@build-os.com</a
+					><br />
+					BuildOS — Glen Burnie, Maryland, United States
 				</p>
 			</section>
 
 			<!-- Last Updated -->
 			<div class="border-t border-border pt-6">
-				<p class="text-sm text-muted-foreground">Last updated: October 6, 2025</p>
+				<p class="text-sm text-muted-foreground">
+					Effective and last updated: July 16, 2026
+				</p>
 			</div>
 		</div>
 

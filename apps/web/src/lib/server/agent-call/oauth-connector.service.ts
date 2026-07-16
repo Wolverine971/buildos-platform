@@ -1214,7 +1214,33 @@ export async function revokeOAuthToken(params: {
 	client?: AgentOAuthClientRecord | null;
 }): Promise<void> {
 	const tokenHash = hashSecret(params.token);
-	const now = new Date().toISOString();
+
+	const revokeGrantCredentials = async (credential: {
+		grant_id: string;
+		external_agent_caller_id: string;
+	}) => {
+		const now = new Date().toISOString();
+		await Promise.all([
+			params.admin
+				.from('agent_oauth_access_tokens')
+				.update({ revoked_at: now })
+				.eq('grant_id', credential.grant_id)
+				.is('revoked_at', null),
+			params.admin
+				.from('agent_oauth_refresh_tokens')
+				.update({ revoked_at: now })
+				.eq('grant_id', credential.grant_id)
+				.is('revoked_at', null),
+			params.admin
+				.from('agent_oauth_grants')
+				.update({ status: 'revoked' })
+				.eq('id', credential.grant_id),
+			params.admin
+				.from('external_agent_callers')
+				.update({ status: 'revoked' })
+				.eq('id', credential.external_agent_caller_id)
+		]);
+	};
 
 	const { data: access } = await params.admin
 		.from('agent_oauth_access_tokens')
@@ -1225,18 +1251,7 @@ export async function revokeOAuthToken(params: {
 		if (params.client && access.client_id !== params.client.client_id) {
 			return;
 		}
-		await params.admin
-			.from('agent_oauth_access_tokens')
-			.update({ revoked_at: now })
-			.eq('id', access.id);
-		await params.admin
-			.from('agent_oauth_grants')
-			.update({ status: 'revoked' })
-			.eq('id', access.grant_id);
-		await params.admin
-			.from('external_agent_callers')
-			.update({ status: 'revoked' })
-			.eq('id', access.external_agent_caller_id);
+		await revokeGrantCredentials(access);
 		return;
 	}
 
@@ -1249,18 +1264,7 @@ export async function revokeOAuthToken(params: {
 		if (params.client && refresh.client_id !== params.client.client_id) {
 			return;
 		}
-		await params.admin
-			.from('agent_oauth_refresh_tokens')
-			.update({ revoked_at: now })
-			.eq('id', refresh.id);
-		await params.admin
-			.from('agent_oauth_grants')
-			.update({ status: 'revoked' })
-			.eq('id', refresh.grant_id);
-		await params.admin
-			.from('external_agent_callers')
-			.update({ status: 'revoked' })
-			.eq('id', refresh.external_agent_caller_id);
+		await revokeGrantCredentials(refresh);
 	}
 }
 

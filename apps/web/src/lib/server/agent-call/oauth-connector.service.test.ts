@@ -10,6 +10,7 @@ import {
 	OAuthConnectorError,
 	parseOAuthScopes,
 	protectedResourceMetadataUrl,
+	revokeOAuthToken,
 	scopesForOAuthApproval,
 	scopeString
 } from './oauth-connector.service';
@@ -275,5 +276,90 @@ describe('authenticateOAuthMcpRequest scope binding', () => {
 		expect(auth.scope.mode).toBe('read_write');
 		expect(auth.scope.allowed_ops).toEqual(['onto.task.get', 'onto.task.create']);
 		expect(auth.scope.project_ids).toEqual(['project-a']);
+	});
+});
+
+function fakeRevocationAdmin(refreshToken: Record<string, unknown>) {
+	const updates: Array<{
+		table: string;
+		value: Record<string, unknown>;
+		filters: Array<[string, unknown]>;
+	}> = [];
+
+	return {
+		updates,
+		from(table: string) {
+			let updateValue: Record<string, unknown> | null = null;
+			const filters: Array<[string, unknown]> = [];
+			const builder = {
+				select: () => builder,
+				update: (value: Record<string, unknown>) => {
+					updateValue = value;
+					return builder;
+				},
+				eq: (column: string, value: unknown) => {
+					filters.push([column, value]);
+					return builder;
+				},
+				is: (column: string, value: unknown) => {
+					filters.push([column, value]);
+					return builder;
+				},
+				maybeSingle: async () => ({
+					data:
+						table === 'agent_oauth_access_tokens'
+							? null
+							: table === 'agent_oauth_refresh_tokens'
+								? refreshToken
+								: null,
+					error: null
+				}),
+				then: (resolve: (value: { data: null; error: null }) => void) => {
+					if (updateValue) updates.push({ table, value: updateValue, filters });
+					resolve({ data: null, error: null });
+				}
+			};
+			return builder;
+		}
+	};
+}
+
+describe('revokeOAuthToken', () => {
+	it('revokes every access and refresh token belonging to the grant', async () => {
+		const admin = fakeRevocationAdmin({
+			id: 'refresh-1',
+			grant_id: 'grant-1',
+			client_id: 'client-1',
+			external_agent_caller_id: 'caller-1'
+		});
+
+		await revokeOAuthToken({ admin, token: 'refresh-token' });
+
+		expect(admin.updates).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					table: 'agent_oauth_access_tokens',
+					filters: [
+						['grant_id', 'grant-1'],
+						['revoked_at', null]
+					]
+				}),
+				expect.objectContaining({
+					table: 'agent_oauth_refresh_tokens',
+					filters: [
+						['grant_id', 'grant-1'],
+						['revoked_at', null]
+					]
+				}),
+				expect.objectContaining({
+					table: 'agent_oauth_grants',
+					filters: [['id', 'grant-1']]
+				}),
+				expect.objectContaining({
+					table: 'external_agent_callers',
+					filters: [['id', 'caller-1']]
+				})
+			])
+		);
 	});
 });
