@@ -2,6 +2,11 @@
 
 # 13 — AI Inbox v1: smoke-test, apply migrations, retire legacy panel
 
+**Status: CLOSED 2026-07-11.** See the "Close-out 2026-07-11" section at the bottom —
+migrations verified live in prod, replay-suppression route tests added, both targeted
+live smokes run green, and the manual checklist executed/recorded. Residual (relocated)
+items are listed there.
+
 **Priority:** P1 — feature shipped in the last day; needs verification before user exposure
 **Type:** Engineering (QA + deploy + cleanup)
 **Sources:** `apps/web/docs/technical/architecture/agent-work/AI_INBOX_DESIGN_2026-06-24.md`, `apps/web/docs/technical/architecture/agent-work/AI_INBOX_CLARIFIED_DECISIONS_SPEC_2026-06-26.md`, `docs/testing/MANUAL_AI_INBOX_SMOKE_TESTS_2026-06-25.md`
@@ -68,6 +73,57 @@ The uncommitted worker wave hardens the loop pipeline further: `projectLoopWorke
 
 The manual smoke docs/checklists are still `Pass / Fail` placeholders with blank run headers. START HERE's prod deploy was closed 7/01, proving the migration path works — the inbox migrations' prod state should be verified the same way.
 
+## Refresh 2026-07-07 — audit packet + burst debounce hardening in progress
+
+This thread has moved the overdue-triage/complete-audit path away from one inbox item per generated child suggestion:
+
+- ✅ `project_audit` is now an `inbox_items.source_type` via
+  `20260707060000_project_audit_inbox_source.sql`; user reports the migration
+  has been applied.
+- ✅ Existing active child `project_suggestion` inbox rows linked through
+  `project_audit_suggestions` are expired by the migration as
+  `grouped_into_project_audit`, preserving decided history.
+- ✅ Worker audit completion now syncs one parent audit inbox packet and expires
+  linked active child suggestion rows, instead of surfacing every audit child as
+  a standalone dashboard inbox card.
+- ✅ Dashboard Inbox and Project Inbox render `project_audit` items as chat-first
+  audit packets with recommendation counts/confidence context, not direct
+  approve/reject cards.
+- ✅ Overdue triage backlog cleanup sends body-level
+  `project_review_context` with `review_policy:'debounced'`; the task PATCH
+  route records a coalesced `project_review_signals` row instead of immediately
+  queueing burst review work for each task.
+- ✅ Debounced review-signal worker coverage now checks not-due reschedule,
+  conditional claim loss, and exactly-one light-loop/complete-audit enqueue from
+  a claimed packet.
+- ✅ Project-suggestion replay no longer emits `X-Skip-Project-Loop-Burst` from
+  production code. Replay requests inject structured `project_review_context`
+  (`origin:'project_suggestion_replay'`, `review_policy:'suppress'`), and the
+  burst-wired mutation routes honor it. The header remains only as a legacy
+  fallback.
+
+Verification run so far:
+
+- `pnpm --filter @buildos/shared-agent-ops typecheck`
+- `pnpm --filter @buildos/shared-agent-ops build`
+- `pnpm --filter @buildos/worker typecheck`
+- `pnpm --filter @buildos/worker test:run tests/inboxIndex.test.ts tests/projectLoopDebouncedReviewSignal.test.ts`
+- `pnpm --filter @buildos/web check`
+- `pnpm --filter @buildos/web test:run src/lib/server/project-loop-burst.service.test.ts src/lib/server/project-suggestion-actions.service.test.ts 'src/routes/api/onto/tasks/[id]/task-patch-completion-sync.test.ts'`
+- `pnpm --filter @buildos/web test:run src/routes/api/onto/documents/create/server.test.ts src/routes/api/onto/tasks/create/task-create-assignment-mentions.test.ts`
+
+Still open before calling the flow done:
+
+1. Add route-level replay-suppression tests for document PATCH/archive/restore
+   and doc-tree move; the routes are wired and typechecked, but not all have
+   direct behavioral tests.
+2. Run a live smoke with overdue triage bulk backlog: confirm one pending
+   `project_review_signals` row, one delayed queue job, no immediate burst loop
+   per task, and one holistic project-audit inbox packet after processing.
+3. Run a live smoke for accepting a project suggestion that mutates a task/doc:
+   confirm the replay request body carries `project_review_context` and no new
+   recursive burst loop is queued.
+
 ## Loose ends (refreshed 2026-07-01)
 
 1. **Manual smoke tests still not run — and the debt now spans THREE checklists**, not one:
@@ -112,3 +168,128 @@ Once v1 is green, do the next architecture work in this order:
 ## Done when
 
 Smoke tests logged green, migrations live, and shared DB types regenerated.
+
+## Close-out 2026-07-11 (Claude session, DJ overnight)
+
+### 1. Prod migrations — VERIFIED LIVE
+
+All AI Inbox migrations verified applied in the production Supabase instance via
+service-role PostgREST probes (tables/columns selected directly; FKs proven via
+PostgREST relationship embeds, which only resolve when the FK exists):
+
+- `20260624010000_ai_inbox_items` — `inbox_items` + core columns ✅
+- `20260625000000_project_loop_run_brief` — `project_loop_runs.brief` ✅
+- `20260626000000_project_suggestion_chat_link` — `chat_session_id` ✅
+- `20260626010000_clarified_project_suggestion_decisions` — columns + `agent_runs` FK embed ✅
+- `20260627000000_calendar_suggestion_processing_status` — column + live `processing` rows ✅
+- `20260627001000_calendar_suggestion_created_project_fk` — embed to `onto_projects` resolves ✅
+- `20260707050000_project_review_signals` — table present ✅
+- `20260707060000_project_audit_inbox_source` — `project_audit` inbox rows + `grouped_into_project_audit` backfill rows present ✅
+
+Prod observation: 2 `calendar_project_suggestions` rows stuck in `processing`
+(user `255735ad`, updated 2026-06-27) — stale claims; the Accept retry path is designed
+to reclaim them.
+
+### 2. Replay-suppression route tests — DONE (open item #1)
+
+New behavioral tests following the `task-patch-completion-sync.test.ts` pattern
+(spy only `queueProjectLoopBurstAsync`, real decision logic via `vi.importActual`):
+
+- `apps/web/src/routes/api/onto/documents/[id]/document-patch-replay-suppression.test.ts`
+  — update, archive, and restore branches each suppress on
+  `project_review_context.review_policy='suppress'`; negative control proves the rig
+  reaches the burst site. (4 tests)
+- `apps/web/src/routes/api/onto/projects/[id]/doc-tree/move/doc-tree-move-replay-suppression.test.ts`
+  — move suppress + negative control. (2 tests)
+
+6/6 green; neighboring suites (15 tests) unaffected.
+
+### 3. Live smoke: overdue-triage debounced backlog cleanup — GREEN (open item #2)
+
+Driven through the real Project Batch Triage UI ("Move all to backlog" on a throwaway
+project with 3 overdue tasks, project `5b80b39f-c590-425c-9fcd-797936410a33`, deleted
+after):
+
+- Exactly ONE pending `project_review_signals` row — `review_policy='debounced'`,
+  `origin='overdue_triage'`, `operation_kind='bulk_backlog'`, `entity_count=3`, one
+  shared `operation_id`, `due_at = now+60s`. ✅
+- Exactly ONE delayed `buildos_project_loop` job — `metadata.mode='debounced_review_signal'`,
+  `dedup_key='project-review-signal:{projectId}'`, `scheduled_for=due_at`. ✅
+- NO immediate burst loop per task. ✅
+- Worker claimed the signal at due time and fanned out: `processed_loop_run_id` set
+  (loop enqueued) and the complete-audit trigger evaluated. ✅
+- The audit leg correctly DECLINED for the throwaway project (recorded on the signal:
+  "below complete-audit baseline: project_too_new, not_enough_activity_days, …") — the
+  4-gate evaluator working as designed; tiny projects can't produce an audit packet.
+  The one-parent-audit-packet behavior is instead evidenced in prod: 3 live
+  `source_type='project_audit'` inbox packets + expired `grouped_into_project_audit`
+  children, and the dashboard modal's "BuildOS · Audit Jul 6" group.
+- Observation (minor): the three parallel task PATCHes race the coalescing upsert, so
+  the surviving signal had `entity_ids` with 1 of 3 task ids and `signal_count=1`.
+  Correctness is unaffected (review scope is the whole project; the partial unique
+  index guarantees one pending signal), but the coalescing counters under-merge under
+  concurrency.
+
+### 4. Live smoke: suggestion accept-replay suppression — GREEN (open item #3)
+
+Accepted a pending task-mutating suggestion from the Project Inbox UI:
+
+- Source ended `applied`, `result={ok:true, applied_operations:1}`; the target task's
+  title/description actually changed (activity feed attributed it "via chat" —
+  ChatToolExecutor replay). ✅
+- Matching `inbox_items` row ended `decided`/`applied`. ✅
+- ZERO new `buildos_project_loop` jobs and ZERO new `project_review_signals` after the
+  accept — the injected `project_review_context`
+  (`origin='project_suggestion_replay'`, `review_policy='suppress'`) suppressed the
+  burst end-to-end. ✅ (Route-level tests in §2 pin the same contract per route.)
+
+### 5. Manual checklist — EXECUTED & RECORDED
+
+`docs/testing/MANUAL_AI_INBOX_SMOKE_TESTS_2026-06-25.md` now carries the full run record
+(run header + per-section results). Summary: §1, §3, §3A, §7 (repair+backfill), §8, §9
+**Pass**; §4, §4A, §3B, §10 **Partial** (details in doc); §2 agent-run, §5 calendar,
+§6 read-only **Not run** (no review-mode run on the throwaway / no pending calendar
+suggestion / no second user). Extra coverage beyond the checklist: dismiss-with-feedback
+took the clarified-decision path — child `agent_runs` row (`source_decision='dismiss'`)
+completed and settled the source to `rejected` with `user_feedback` — i.e. the
+delegated-run reconciliation debt from "Loose ends #1" was verified live.
+
+### 6. Findings / fixes shipped in this pass
+
+1. **Worker dotenv ordering bug — FIXED.** `apps/worker/src/index.ts` called
+   `dotenv.config()` in the module body, but static imports are hoisted, so every
+   module-level `process.env` read (notably `config/projectLoops.ts` →
+   `PROJECT_LOOPS_ENABLED`) evaluated BEFORE `.env` loaded. Net effect: enabling
+   project loops via `apps/worker/.env` silently did nothing (burst run failed
+   `feature_disabled` even with the flag set). Fixed by replacing it with
+   `import 'dotenv/config'` as the first import. Worker typecheck green; running dev
+   worker restarted healthy. This unblocks the loops-audit "operational flag-enable"
+   item (#9) — note the running dev worker's parent env still wins if it exports the
+   flag explicitly (dotenv never overrides).
+   Also appended `ENABLE_PROJECT_LOOPS=true` to `apps/worker/.env` (mirrors root
+   `.env`/`.env.local` intent; worker dotenv only reads its own file).
+2. **OverdueTaskTriageModal uses native `window.confirm`**
+   (`OverdueTaskTriageModal.svelte:731,738`) — blocks the renderer, undismissable by
+   automation, and part of the already-tracked native-dialogs→modals debt (admin audit).
+3. **Signal coalescing race** — see §3 observation (entity_ids/signal_count under-merge
+   on concurrent PATCHes; cosmetic).
+4. **Drift card label** — approval button says `Accept`; checklist expected
+   `Acknowledge` (§10). Either update copy or the checklist.
+5. **Inbox panel surfaces raw run error strings** (`feature_disabled`) unstyled in the
+   panel header.
+6. Dev-env only: a stale `packages/shared-agent-ops/dist` in the running Vite dev
+   server 500'd all `/projects/[id]` pages (missing `extractStartHereOrientation`
+   export) until a config-touch restart; not an app bug.
+
+### 7. Residual items (relocated, not blockers for this ticket)
+
+- §2 agent-run change-set live smoke from a live notification → stays with
+  `AGENT_RUN_CHAT_CONTEXT_BRIDGE_PLAN_2026-06-29.md` (its only open item).
+- §5 calendar suggestion decision live smoke → overlaps [[08-calendar-live-smoke]]
+  (needs a throwaway Google-connected account; also clear the 2 stale `processing` rows).
+- §6 read-only capability guard → needs a second test user with project visibility.
+- §10 task-conflict metadata semantics → covered by worker generator tests only.
+- `MANUAL_AGENT_WORK_SMOKE_TESTS_2026-06-20.md` remains unrun (separate surface, not
+  AI Inbox; track with agent-work).
+- Enabling `PROJECT_LOOPS_ENABLED` in prod remains a deliberate operational decision
+  (loops-audit #9); migrations no longer gate it.
