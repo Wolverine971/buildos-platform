@@ -7,6 +7,39 @@ import { coverageConfig } from '../../vitest.coverage';
 const sharedAgentOpsSrc = (sub: string) =>
 	fileURLToPath(new URL(`../../packages/shared-agent-ops/src/${sub}`, import.meta.url));
 
+const workspacePackageRootAliases = [
+	{
+		find: /^@buildos\/shared-agent-ops$/,
+		replacement: fileURLToPath(
+			new URL('../../packages/shared-agent-ops/src/index.ts', import.meta.url)
+		)
+	},
+	{
+		find: /^@buildos\/shared-types$/,
+		replacement: fileURLToPath(
+			new URL('../../packages/shared-types/src/index.ts', import.meta.url)
+		)
+	},
+	{
+		find: /^@buildos\/shared-utils$/,
+		replacement: fileURLToPath(
+			new URL('../../packages/shared-utils/src/index.ts', import.meta.url)
+		)
+	},
+	{
+		find: /^@buildos\/smart-llm$/,
+		replacement: fileURLToPath(
+			new URL('../../packages/smart-llm/src/index.ts', import.meta.url)
+		)
+	},
+	{
+		find: /^@buildos\/supabase-client$/,
+		replacement: fileURLToPath(
+			new URL('../../packages/supabase-client/src/index.ts', import.meta.url)
+		)
+	}
+];
+
 // Resolve the shared op-execution gateway and the dependency modules it imports
 // to @buildos/shared-agent-ops SOURCE (not the bundled dist). This lets the
 // agent-call gateway guardrail tests intercept those dependencies via vi.mock
@@ -14,13 +47,18 @@ const sharedAgentOpsSrc = (sub: string) =>
 // gateway's relative imports and the mocked subpaths dedupe to the same files.
 const sharedAgentOpsTestAliases = [
 	'gateway/op-execution-gateway',
+	'ontology/onto',
 	'ontology/ontology-projects.service',
 	'ontology/doc-structure.service',
 	'ontology/versioning.service',
 	'ontology/instantiation.service',
 	'ops/async-activity-logger',
 	'ops/entity-mention-notification.service',
-	'inbox-index'
+	'ops/tracked-in-app-notification.service',
+	'inbox-index',
+	'utils/project-props-sanitizer',
+	'utils/search-filter',
+	'utils/validation-utils'
 ].map((sub) => ({
 	find: `@buildos/shared-agent-ops/${sub}`,
 	replacement: sharedAgentOpsSrc(`${sub}.ts`)
@@ -29,7 +67,7 @@ const sharedAgentOpsTestAliases = [
 export default defineConfig({
 	plugins: [sveltekit()],
 	resolve: {
-		alias: sharedAgentOpsTestAliases,
+		alias: [...workspacePackageRootAliases, ...sharedAgentOpsTestAliases],
 		// Ensure Svelte uses browser/client exports in tests (not SSR)
 		conditions: ['browser']
 	},
