@@ -206,7 +206,7 @@
 					</div>
 
 					<ul class="mb-6 space-y-3" role="list" aria-label="Core plan features">
-						{#each coreFeatures as feature}
+						{#each coreFeatures as feature (feature)}
 							<li class="flex min-w-0 items-center gap-3">
 								<Check class="h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
 								<span class="min-w-0 text-foreground">{feature}</span>
@@ -311,8 +311,10 @@
 							What happens to my data if I cancel?
 						</h3>
 						<p class="text-muted-foreground">
-							You can export all your data at any time. After cancellation, your data
-							remains accessible for 30 days before being permanently deleted.
+							Canceling a subscription stops renewal but does not delete your account;
+							the account switches to read-only after paid access ends. If you
+							separately choose Delete Account, access ends immediately and
+							active-system account data is permanently deleted within 30 days.
 						</p>
 					</article>
 

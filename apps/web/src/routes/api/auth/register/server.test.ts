@@ -5,12 +5,14 @@ const {
 	createAuthenticatedSupabaseClientMock,
 	createAdminSupabaseClientMock,
 	logErrorMock,
-	startSequenceForUserMock
+	startSequenceForUserMock,
+	consumeLegalAcceptanceIntentMock
 } = vi.hoisted(() => ({
 	createAuthenticatedSupabaseClientMock: vi.fn(),
 	createAdminSupabaseClientMock: vi.fn(),
 	logErrorMock: vi.fn(),
-	startSequenceForUserMock: vi.fn().mockResolvedValue(undefined)
+	startSequenceForUserMock: vi.fn().mockResolvedValue(undefined),
+	consumeLegalAcceptanceIntentMock: vi.fn().mockResolvedValue(true)
 }));
 
 vi.mock('$lib/services/errorLogger.service', () => ({
@@ -33,6 +35,10 @@ vi.mock('$lib/server/welcome-sequence.service', () => ({
 	WelcomeSequenceService: class MockWelcomeSequenceService {
 		startSequenceForUser = startSequenceForUserMock;
 	}
+}));
+
+vi.mock('$lib/server/legal-acceptance', () => ({
+	consumeLegalAcceptanceIntent: consumeLegalAcceptanceIntentMock
 }));
 
 import { POST } from './+server';
@@ -108,6 +114,7 @@ function createLocals({
 describe('POST /api/auth/register', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		consumeLegalAcceptanceIntentMock.mockResolvedValue(true);
 	});
 
 	it('uses an access-token scoped client when signup returns a session', async () => {
@@ -136,7 +143,8 @@ describe('POST /api/auth/register', () => {
 				body: JSON.stringify({
 					email: 'user@example.com',
 					password: 'Password123',
-					name: 'User'
+					name: 'User',
+					legalAcceptanceToken: 'legal-token-1'
 				})
 			}),
 			locals: createLocals({
@@ -157,6 +165,11 @@ describe('POST /api/auth/register', () => {
 		expect(payload.success).toBe(true);
 		expect(payload.data.user.id).toBe('user-1');
 		expect(createAuthenticatedSupabaseClientMock).toHaveBeenCalledWith('signup-token-1');
+		expect(consumeLegalAcceptanceIntentMock).toHaveBeenCalledWith({
+			token: 'legal-token-1',
+			userId: 'user-1',
+			surface: 'email_signup'
+		});
 		expect(startSequenceForUserMock).toHaveBeenCalledWith({
 			userId: 'user-1',
 			signupMethod: 'email'
@@ -186,7 +199,8 @@ describe('POST /api/auth/register', () => {
 				body: JSON.stringify({
 					email: 'pending@example.com',
 					password: 'Password123',
-					name: 'Pending User'
+					name: 'Pending User',
+					legalAcceptanceToken: 'legal-token-2'
 				})
 			}),
 			locals: createLocals({

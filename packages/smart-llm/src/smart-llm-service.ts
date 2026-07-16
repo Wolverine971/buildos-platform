@@ -42,7 +42,11 @@ import {
 	supportsJsonMode
 } from './model-selection';
 import { OpenRouterClient } from './openrouter-client';
-import { buildOpenRouterChatCompletionBody } from './openrouter-request';
+import {
+	buildOpenRouterChatCompletionBody,
+	OPENROUTER_NO_DATA_COLLECTION_PROVIDER,
+	OPENROUTER_PRIVATE_PROVIDER
+} from './openrouter-request';
 import { MoonshotClient } from './moonshot-client';
 import {
 	cleanJSONResponse,
@@ -464,7 +468,8 @@ export class SmartLLMService {
 			timeoutMs: params.timeoutMs,
 			response_format: params.response_format,
 			stream: params.stream,
-			transforms: params.transforms
+			transforms: params.transforms,
+			provider: OPENROUTER_PRIVATE_PROVIDER
 		});
 		response.model = response.model ? this.canonicalizeModelId(response.model) : params.model;
 		return { response, route };
@@ -1613,7 +1618,8 @@ export class SmartLLMService {
 							format: audioFormat
 						},
 						temperature: 0,
-						timeoutMs
+						timeoutMs,
+						provider: OPENROUTER_NO_DATA_COLLECTION_PROVIDER
 					});
 
 					const transcript = response.text?.trim();
@@ -1939,7 +1945,8 @@ export class SmartLLMService {
 								transforms,
 								stream_options: { include_usage: true },
 								session_id: cacheAffinityKey,
-								prompt_cache_key: cacheAffinityKey
+								prompt_cache_key: cacheAffinityKey,
+								provider: OPENROUTER_PRIVATE_PROVIDER
 							})
 						: {
 								model: route.requestModel,

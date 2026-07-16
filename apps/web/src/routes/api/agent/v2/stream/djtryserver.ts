@@ -205,6 +205,10 @@ function buildOpenRouterRequest(prompt: BuiltPrompt): OpenRouterChatRequest {
 		model: privateEnv.OPENROUTER_DJTRY_MODEL || 'openrouter/auto',
 		messages: prompt.messages,
 		stream: true,
+		provider: {
+			data_collection: 'deny',
+			zdr: true
+		},
 		stream_options: {
 			include_usage: true
 		}

@@ -733,8 +733,19 @@ export class OpenRouterV2Service extends SmartLLMService {
 	): OpenRouterProviderConfig {
 		const config: OpenRouterProviderConfig =
 			lane === 'json' || lane === 'tool_calling' || lane === 'multimodal'
-				? { allow_fallbacks: true, require_parameters: true }
-				: { allow_fallbacks: true };
+				? {
+						allow_fallbacks: true,
+						require_parameters: true,
+						data_collection: 'deny'
+					}
+				: { allow_fallbacks: true, data_collection: 'deny' };
+
+		// Private workspace content defaults to Zero Data Retention. Operators can
+		// temporarily disable strict ZDR only as an explicit break-glass setting;
+		// data-collection denial remains enforced either way.
+		if (readPrivateEnv('PRIVATE_OPENROUTER_REQUIRE_ZDR') !== 'false') {
+			config.zdr = true;
+		}
 
 		// Provider steering keyed off the request's primary model — see
 		// DEFAULT_PROVIDER_ORDER_BY_MODEL. The env var remains a global

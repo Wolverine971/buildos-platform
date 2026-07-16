@@ -42,6 +42,7 @@ export type OpenRouterProviderConfig = {
 	allow_fallbacks?: boolean;
 	require_parameters?: boolean;
 	data_collection?: 'allow' | 'deny';
+	zdr?: boolean;
 	sort?: 'price' | 'throughput' | 'latency';
 	order?: string[];
 	only?: string[];

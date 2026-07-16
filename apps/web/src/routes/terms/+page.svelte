@@ -110,6 +110,11 @@
 						>. If you do not agree, do not use the Service.
 					</p>
 					<p>
+						At signup, BuildOS presents linked copies of these Terms and the Privacy
+						Policy and requires an affirmative acceptance. We record the accepted policy
+						versions and a server-generated timestamp as evidence of that agreement.
+					</p>
+					<p>
 						You must be at least 13 years old. If you are under the age of legal
 						majority where you live, your parent or legal guardian must review and agree
 						to these Terms for you. You must be legally capable of entering this
@@ -482,12 +487,16 @@
 						request through the Service or by email.
 					</p>
 					<p>
-						An account-deletion request initially restricts access while deletion is
-						processed. Retention, backup, legal, security, billing, and
-						de-identification practices are described in the Privacy Policy. Before
-						requesting deletion, save any content you want to keep and contact us if you
-						need assistance obtaining a copy; not all data may currently be available
-						through a self-service export.
+						An account-deletion request is irreversible. BuildOS disables account access
+						immediately, begins cancellation of subscription renewal, and permanently
+						deletes account data from active systems within 30 days. Projects you solely
+						own are deleted. Contributions to a project owned by someone else may remain
+						under a de-identified “Deleted user” actor so the other person's workspace
+						is not damaged. Limited backups and records retained for legal, security,
+						billing, consent, or fraud-prevention purposes are handled as described in
+						the Privacy Policy. Before requesting deletion, save any content you want to
+						keep and contact us if you need assistance obtaining a copy; not all data
+						may currently be available through a self-service export.
 					</p>
 					<p>
 						We may suspend, restrict, or terminate access immediately if you materially
@@ -615,7 +624,7 @@
 			<!-- Last Updated -->
 			<div class="border-t border-border pt-6">
 				<p class="text-sm text-muted-foreground">
-					Effective and last updated: July 16, 2026
+					Effective and last updated: July 16, 2026 (version 2026-07-16)
 				</p>
 			</div>
 		</div>

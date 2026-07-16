@@ -38,7 +38,7 @@ export class OpenRouterClient {
 		stream?: boolean;
 		transforms?: string[];
 		route?: 'fallback'; // NOTE: Not used - kept for backwards compatibility
-		provider?: any; // NOTE: Not used - kept for backwards compatibility
+		provider?: Record<string, unknown>;
 	}): Promise<OpenRouterResponse> {
 		const headers = {
 			Authorization: `Bearer ${this.apiKey}`,
@@ -55,7 +55,8 @@ export class OpenRouterClient {
 			stream: params.stream || false,
 			response_format: params.response_format,
 			models: params.models,
-			transforms: params.transforms
+			transforms: params.transforms,
+			provider: params.provider
 		});
 
 		try {
@@ -196,6 +197,7 @@ export class OpenRouterClient {
 		temperature?: number;
 		max_tokens?: number;
 		timeoutMs: number;
+		provider?: Record<string, unknown>;
 	}): Promise<OpenRouterResponse> {
 		const headers = {
 			Authorization: `Bearer ${this.apiKey}`,
@@ -209,7 +211,8 @@ export class OpenRouterClient {
 			messages: params.messages,
 			temperature: params.temperature,
 			max_tokens: params.max_tokens,
-			stream: false
+			stream: false,
+			provider: params.provider
 		});
 
 		try {
@@ -247,6 +250,7 @@ export class OpenRouterClient {
 		inputAudio: { data: string; format: string };
 		temperature?: number;
 		timeoutMs: number;
+		provider?: Record<string, unknown>;
 	}): Promise<OpenRouterTranscriptionResponse> {
 		const headers = {
 			Authorization: `Bearer ${this.apiKey}`,
@@ -266,7 +270,10 @@ export class OpenRouterClient {
 				body: JSON.stringify({
 					model: params.model,
 					input_audio: params.inputAudio,
-					...(params.temperature === undefined ? {} : { temperature: params.temperature })
+					...(params.temperature === undefined
+						? {}
+						: { temperature: params.temperature }),
+					...(params.provider ? { provider: params.provider } : {})
 				}),
 				signal: AbortSignal.timeout(params.timeoutMs)
 			});

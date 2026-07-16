@@ -373,6 +373,15 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 					return { session, user: null };
 				}
 
+				const deletionStatus = (userData as { deletion_status?: unknown }).deletion_status;
+				if (deletionStatus === 'pending' || deletionStatus === 'processing') {
+					// Deletion is distinct from billing dunning. Even if a billing webhook
+					// clears access_restricted, a scheduled deletion remains inaccessible.
+					await supabase.auth.signOut({ scope: 'local' });
+					event.locals._explicitlyCleared = true;
+					return { session: null, user: null };
+				}
+
 				return {
 					session,
 					user: userData

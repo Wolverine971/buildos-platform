@@ -180,6 +180,12 @@ describe('Auth invite flow', () => {
 		setPageUrl('http://localhost/auth/register?redirect=/invites/invite-token');
 		(global.fetch as any).mockImplementation((input: RequestInfo | URL) => {
 			const url = String(input);
+			if (url === '/api/legal/acceptance-intent') {
+				return okJson({
+					success: true,
+					data: { token: 'legal-token' }
+				});
+			}
 			if (url === '/api/auth/register') {
 				return okJson({
 					success: true,
@@ -204,6 +210,9 @@ describe('Auth invite flow', () => {
 		await fireEvent.input(screen.getByLabelText(/confirm password/i), {
 			target: { value: 'Password1' }
 		});
+		await fireEvent.click(
+			screen.getByRole('checkbox', { name: /terms of use.*privacy policy/i })
+		);
 		await fireEvent.click(screen.getByRole('button', { name: /^create account$/i }));
 
 		await waitFor(() => {

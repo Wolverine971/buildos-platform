@@ -57,8 +57,8 @@
 					</div>
 					<h3 class="font-semibold text-foreground mb-2">Deletion Requests</h3>
 					<p class="text-sm text-muted-foreground">
-						Delete individual items or request deletion of your account and associated
-						data
+						Account access ends immediately and active-system data is deleted within 30
+						days
 					</p>
 				</div>
 				<div class="text-center">
@@ -150,6 +150,11 @@
 							store full card numbers.
 						</li>
 						<li>
+							<strong class="text-foreground">Consent and agreement records:</strong> The
+							versions of the Terms and Privacy Policy you accepted, the server-recorded
+							acceptance time, acceptance method, IP address, and user agent;
+						</li>
+						<li>
 							<strong class="text-foreground">AI and agent activity:</strong> Prompts,
 							outputs, model and tool-call metadata, connected-agent scopes, hashed API
 							credentials, revocation state, audit logs, and records of proposed or completed
@@ -237,9 +242,14 @@
 					</p>
 					<p>
 						Providers process submitted data under their own agreements and privacy
-						practices. We seek to limit the context sent to what is relevant to the
-						requested feature, but you should not submit information that you are not
-						authorized to share with BuildOS and its service providers.
+						practices. For requests routed through OpenRouter, BuildOS sends a
+						provider-routing instruction that denies data collection. Private text,
+						structured-output, and tool routes also require Zero Data Retention by
+						default. Some speech or media models do not support strict zero retention;
+						those routes still deny data collection, and we may use a direct provider or
+						local processing instead. We seek to limit the context sent to what is
+						relevant to the requested feature, but you should not submit information
+						that you are not authorized to share with BuildOS and its service providers.
 					</p>
 				</div>
 			</section>
@@ -488,13 +498,27 @@
 					</p>
 					<p>
 						You may delete individual items where the feature is available or request
-						account deletion in the application or by emailing us. An account-deletion
-						request first restricts access to prevent further use while deletion is
-						processed. Some item-level deletions may remove content from normal use
-						before it is erased from active systems. Limited copies may remain in
-						backups until they are overwritten, or when retention is required for
-						security, legal, or payment reasons. We may retain de-identified information
-						that can no longer reasonably identify you.
+						account deletion in the application or by emailing us. When you request
+						account deletion, we disable account access immediately, begin cancellation
+						of subscription renewal, and permanently delete account data from active
+						systems within 30 days. This includes projects you solely own, user-scoped
+						records, stored files, integration credentials, and the authentication
+						account.
+					</p>
+					<p>
+						If you contributed to a project owned by someone else, the contribution may
+						remain so deletion does not damage that person's workspace, but your actor
+						identity is replaced with “Deleted user” and direct identifiers are removed.
+						Limited consent, security, billing, suppression, and legal records may be
+						retained where reasonably necessary for compliance, dispute resolution,
+						fraud prevention, or enforcement.
+					</p>
+					<p>
+						Encrypted backups are not part of normal product access and may retain a
+						limited copy until the applicable backup is overwritten under the hosting
+						provider's rotation schedule. If a backup is restored for disaster recovery,
+						we will reapply completed deletion requests. We may retain aggregate or
+						de-identified information that can no longer reasonably identify you.
 					</p>
 				</div>
 			</section>
@@ -605,7 +629,7 @@
 			<!-- Last Updated -->
 			<div class="border-t border-border pt-6">
 				<p class="text-sm text-muted-foreground">
-					Effective and last updated: July 16, 2026
+					Effective and last updated: July 16, 2026 (version 2026-07-16)
 				</p>
 			</div>
 		</div>

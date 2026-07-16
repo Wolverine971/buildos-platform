@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { createSupabaseServer } from '$lib/supabase/index';
 import { ApiResponse } from '$lib/utils/api-response';
 import { parseJsonRequest } from '$lib/utils/request-validation';
+import { cancelDeletionSubscriptions, scheduleAccountDeletion } from '$lib/server/account-deletion';
 
 const accountSettingsSchema = z.object({
 	name: z.string().optional(),
@@ -96,21 +97,21 @@ export const DELETE: RequestHandler = async ({ cookies, locals: { safeGetSession
 
 	try {
 		const supabase = createSupabaseServer(cookies);
+		const deletion = await scheduleAccountDeletion(user.id);
 
-		// Mark user as access restricted instead of hard delete
-		// This preserves data integrity and allows for account recovery
-		const { error: dbError } = await supabase
-			.from('users')
-			.update({
-				access_restricted: true,
-				access_restricted_at: new Date().toISOString(),
-				updated_at: new Date().toISOString()
-			})
-			.eq('id', user.id);
-
-		if (dbError) {
-			// console.error('Error marking user as restricted:', dbError);
-			return ApiResponse.error('Failed to delete account', 500);
+		try {
+			await cancelDeletionSubscriptions(
+				{
+					id: deletion.requestId,
+					user_id: user.id,
+					billing_subscription_ids: []
+				},
+				{ immediately: false }
+			);
+		} catch (billingError) {
+			// The scheduled cron retries billing cancellation independently. A
+			// vendor outage must not prevent a user from exercising deletion rights.
+			console.error('Account deletion subscription cancellation error:', billingError);
 		}
 
 		// Sign out the user
@@ -122,7 +123,9 @@ export const DELETE: RequestHandler = async ({ cookies, locals: { safeGetSession
 		}
 
 		return ApiResponse.success({
-			message: 'Account has been deleted successfully'
+			message: 'Your deletion request is scheduled and account access is disabled.',
+			requestedAt: deletion.requestedAt,
+			scheduledFor: deletion.scheduledFor
 		});
 	} catch (error) {
 		console.error('Account deletion error:', error);

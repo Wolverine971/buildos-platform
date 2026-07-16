@@ -25,6 +25,15 @@ export type OpenRouterChatCompletionBodyParams = {
 
 export const OPENROUTER_MAX_FALLBACK_MODELS = 3;
 
+export const OPENROUTER_NO_DATA_COLLECTION_PROVIDER = Object.freeze({
+	data_collection: 'deny' as const
+});
+
+export const OPENROUTER_PRIVATE_PROVIDER = Object.freeze({
+	data_collection: 'deny' as const,
+	zdr: true
+});
+
 function uniqueNonEmpty(values: string[]): string[] {
 	return Array.from(
 		new Set(values.map((value) => value.trim()).filter((value) => value.length > 0))

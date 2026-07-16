@@ -228,6 +228,8 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
 			require_parameters: true,
+			data_collection: 'deny',
+			zdr: true,
 			order: ['Baidu', 'GMICloud']
 		});
 		expect(requestBodies[1]?.model).toBe(OPENROUTER_V2_JSON_MODELS[1]);
@@ -235,7 +237,9 @@ describe('OpenRouterV2Service model routing', () => {
 		// The retry's primary model has no default order — steering is per-model.
 		expect(requestBodies[1]?.provider).toEqual({
 			allow_fallbacks: true,
-			require_parameters: true
+			require_parameters: true,
+			data_collection: 'deny',
+			zdr: true
 		});
 	});
 
@@ -275,6 +279,8 @@ describe('OpenRouterV2Service model routing', () => {
 			expect(requestBodies[0]?.provider).toEqual({
 				allow_fallbacks: true,
 				require_parameters: true,
+				data_collection: 'deny',
+				zdr: true,
 				order: ['Baidu', 'GMICloud']
 			});
 		} finally {
@@ -319,7 +325,9 @@ describe('OpenRouterV2Service model routing', () => {
 			expect(result).toEqual({ ok: true });
 			expect(requestBodies[0]?.provider).toEqual({
 				allow_fallbacks: true,
-				require_parameters: true
+				require_parameters: true,
+				data_collection: 'deny',
+				zdr: true
 			});
 		} finally {
 			vi.unstubAllEnvs();
@@ -384,6 +392,8 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
 			require_parameters: true,
+			data_collection: 'deny',
+			zdr: true,
 			order: ['Baidu', 'GMICloud']
 		});
 	});
@@ -692,6 +702,8 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
 			require_parameters: true,
+			data_collection: 'deny',
+			zdr: true,
 			order: ['Baidu', 'GMICloud']
 		});
 		expect(requestBodies[1]?.model).toBe('kimi-k2.6');
@@ -856,6 +868,8 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
 			require_parameters: true,
+			data_collection: 'deny',
+			zdr: true,
 			order: ['Baidu', 'GMICloud']
 		});
 		expect(requestBodies[OPENROUTER_V2_TOOL_MODELS.length]?.model).toBe('kimi-k2.6');
@@ -1293,7 +1307,9 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		expect(requestBodies[0]?.reasoning).toEqual({ exclude: true });
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
-			require_parameters: true
+			require_parameters: true,
+			data_collection: 'deny',
+			zdr: true
 		});
 	});
 
@@ -1390,7 +1406,9 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		expect(requestBodies[0]?.reasoning).toEqual({ exclude: true });
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
-			require_parameters: true
+			require_parameters: true,
+			data_collection: 'deny',
+			zdr: true
 		});
 		expect(toolEvent).toMatchObject({
 			type: 'tool_call',
@@ -1531,6 +1549,8 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
 			require_parameters: true,
+			data_collection: 'deny',
+			zdr: true,
 			order: ['Baidu', 'GMICloud']
 		});
 	});

@@ -43,6 +43,10 @@
 		{
 			"path": "/api/cron/security-events-retention",
 			"schedule": "30 4 * * *"
+		},
+		{
+			"path": "/api/cron/account-deletions",
+			"schedule": "0 * * * *"
 		}
 	],
 	"headers": [

@@ -14,6 +14,7 @@
 	import { logAuthClientError } from '$lib/utils/auth-client-logger';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import { getFirstTouchAttribution } from '$lib/services/posthog';
+	import { CURRENT_POLICY_VERSIONS } from '$lib/legal/policy-versions';
 
 	let loading = $state(false);
 	let googleLoading = $state(false);
@@ -21,6 +22,7 @@
 	let password = $state('');
 	let confirmPassword = $state('');
 	let name = $state('');
+	let legalAccepted = $state(false);
 	let error = $state('');
 	let showExistingAccountHint = $state(false);
 	let success = $state(false);
@@ -56,6 +58,26 @@
 		const atIndex = trimmed.lastIndexOf('@');
 		if (atIndex <= 0 || atIndex === trimmed.length - 1) return null;
 		return trimmed.slice(atIndex + 1);
+	}
+
+	async function createAcceptanceIntent(surface: 'email_signup' | 'google_signup') {
+		const response = await fetch('/api/legal/acceptance-intent', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				surface,
+				accepted: true,
+				termsVersion: CURRENT_POLICY_VERSIONS.terms,
+				privacyVersion: CURRENT_POLICY_VERSIONS.privacy
+			})
+		});
+		const payload = await response.json().catch(() => null);
+
+		if (!response.ok || !payload?.data?.token) {
+			throw new Error(payload?.error || 'Could not record policy acceptance');
+		}
+
+		return payload.data.token as string;
 	}
 
 	async function resolvePendingInviteRedirect() {
@@ -122,6 +144,10 @@
 	// Google OAuth remains the same
 	async function handleGoogleSignUp() {
 		if (googleLoading || loading) return;
+		if (!legalAccepted) {
+			error = 'Please accept the Terms of Use and Privacy Policy to continue.';
+			return;
+		}
 
 		googleLoading = true;
 		error = '';
@@ -133,25 +159,31 @@
 			return;
 		}
 
-		const redirectUri = `${$page.url.origin}/auth/google/register-callback`;
-		const state = encodeOAuthState(resolveRedirectTarget());
+		try {
+			await createAcceptanceIntent('google_signup');
+			const redirectUri = `${$page.url.origin}/auth/google/register-callback`;
+			const state = encodeOAuthState(resolveRedirectTarget());
 
-		const params = new URLSearchParams({
-			client_id: googleClientId,
-			redirect_uri: redirectUri,
-			response_type: 'code',
-			scope: 'email profile openid',
-			access_type: 'offline',
-			prompt: 'consent',
-			state,
-			include_granted_scopes: 'true'
-		});
+			const params = new URLSearchParams({
+				client_id: googleClientId,
+				redirect_uri: redirectUri,
+				response_type: 'code',
+				scope: 'email profile openid',
+				access_type: 'offline',
+				prompt: 'consent',
+				state,
+				include_granted_scopes: 'true'
+			});
 
-		// Store state for verification
-		persistOAuthState(state);
-
-		// Redirect to Google OAuth
-		window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+			persistOAuthState(state);
+			window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+		} catch (intentError) {
+			error =
+				intentError instanceof Error
+					? intentError.message
+					: 'Could not record policy acceptance';
+			googleLoading = false;
+		}
 	}
 
 	// Validate email on blur for instant feedback
@@ -179,6 +211,11 @@
 		// Basic validation
 		if (!email || !password || !confirmPassword) {
 			error = 'Email, password, and confirm password are required';
+			return false;
+		}
+
+		if (!legalAccepted) {
+			error = 'Please accept the Terms of Use and Privacy Policy to continue.';
 			return false;
 		}
 
@@ -215,6 +252,7 @@
 		success = false;
 
 		try {
+			const legalAcceptanceToken = await createAcceptanceIntent('email_signup');
 			const response = await fetch('/api/auth/register', {
 				method: 'POST',
 				headers: {
@@ -224,7 +262,8 @@
 					email: email.trim(),
 					password,
 					name: name || undefined,
-					attribution: getFirstTouchAttribution() || undefined
+					attribution: getFirstTouchAttribution() || undefined,
+					legalAcceptanceToken
 				})
 			});
 
@@ -400,12 +439,33 @@
 		<div
 			class="rounded-lg border border-border bg-card py-8 px-6 shadow-ink tx tx-grain tx-weak"
 		>
+			<label
+				class="mb-6 flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-background/60 p-3 text-sm text-muted-foreground"
+			>
+				<input
+					type="checkbox"
+					bind:checked={legalAccepted}
+					disabled={loading || googleLoading || success}
+					class="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-accent"
+				/>
+				<span>
+					I agree to the
+					<a class="font-medium text-accent underline underline-offset-2" href="/terms"
+						>Terms of Use</a
+					>
+					and acknowledge the
+					<a class="font-medium text-accent underline underline-offset-2" href="/privacy"
+						>Privacy Policy</a
+					>.
+				</span>
+			</label>
+
 			<!-- Google OAuth Button -->
 			<div class="mb-6">
 				<button
 					type="button"
 					onclick={handleGoogleSignUp}
-					disabled={googleLoading || loading || success}
+					disabled={googleLoading || loading || success || !legalAccepted}
 					class="w-full px-6 py-3 text-base flex items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-ink hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 				>
 					{#if !googleLoading}
@@ -528,7 +588,7 @@
 							{#if passwordStrength}
 								<div class="mt-2 space-y-1">
 									<div class="flex space-x-1">
-										{#each Array(4) as _, i}
+										{#each Array(4) as _, i (i)}
 											<div class="h-1 w-full rounded-full bg-muted">
 												<div
 													class="h-full rounded-full transition-colors {passwordStrength.score >
@@ -607,7 +667,7 @@
 					<div>
 						<Button
 							type="submit"
-							disabled={loading || googleLoading}
+							disabled={loading || googleLoading || !legalAccepted}
 							{loading}
 							fullWidth={true}
 							variant="primary"
@@ -616,10 +676,6 @@
 						>
 							{loading ? 'Creating account...' : 'Create account'}
 						</Button>
-					</div>
-
-					<div class="text-xs text-muted-foreground text-center">
-						By signing up, you agree to our terms of service and privacy policy.
 					</div>
 				</form>
 			{:else}

@@ -105,6 +105,7 @@ describe('OpenRouter brief audio TTS', () => {
 		expect(JSON.parse(String(init.body))).toEqual({
 			model: 'openai/gpt-audio-mini',
 			messages: [{ role: 'user', content: 'Read this brief clearly.' }],
+			provider: { data_collection: 'deny' },
 			modalities: ['text', 'audio'],
 			audio: {
 				voice: 'alloy',

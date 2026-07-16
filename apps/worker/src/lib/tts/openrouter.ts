@@ -192,7 +192,10 @@ export async function synthesizeBriefAudioWithOpenRouter(
 				voice: OPENROUTER_TTS_VOICE,
 				format: OPENROUTER_TTS_FORMAT
 			},
-			stream: true
+			stream: true,
+			provider: {
+				data_collection: 'deny'
+			}
 		};
 
 		const response = await fetch(OPENROUTER_CHAT_COMPLETIONS_URL, {

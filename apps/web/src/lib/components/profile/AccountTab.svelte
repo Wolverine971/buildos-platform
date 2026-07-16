@@ -281,8 +281,10 @@
 			const result = await response.json();
 
 			if (response.ok && result.success) {
-				toastService.success('Account deleted successfully. Redirecting...');
-				onsuccess?.({ message: 'Account deleted successfully. Redirecting...' });
+				toastService.success('Deletion scheduled. Your account is now signed out.');
+				onsuccess?.({
+					message: 'Deletion scheduled. Your account is now signed out.'
+				});
 				// Redirect will be handled by the parent component
 				setTimeout(() => {
 					window.location.href = '/';
@@ -616,7 +618,7 @@
 	{#if activeSection === 'danger'}
 		<SettingsCard
 			title="Delete Account"
-			description="Permanently remove your account and all data."
+			description="Disable access now and permanently delete account data within 30 days."
 			icon={Trash2}
 			variant="danger"
 			labelledById="delete-account-heading"
@@ -627,19 +629,23 @@
 						<TriangleAlert class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
 						<div class="text-xs sm:text-sm">
 							<p class="text-foreground font-medium mb-1">
-								This action cannot be undone
+								This request cannot be undone
 							</p>
 							<p class="text-muted-foreground">
-								Deleting your account permanently removes:
+								Account access ends immediately. Within 30 days, BuildOS deletes:
 							</p>
 							<ul
 								class="list-disc list-inside mt-1 text-muted-foreground space-y-0.5"
 							>
-								<li>All projects and tasks</li>
+								<li>Projects you solely own and their tasks</li>
 								<li>Daily briefs and project context</li>
 								<li>Calendar integration settings</li>
-								<li>Subscription and billing data</li>
+								<li>Your active subscription and account profile</li>
 							</ul>
+							<p class="mt-2 text-muted-foreground">
+								Contributions in someone else’s shared project may remain under
+								“Deleted user” so their workspace is not damaged.
+							</p>
 						</div>
 					</div>
 				</div>
@@ -673,6 +679,7 @@
 	onconfirm={deleteAccount}
 	oncancel={() => (showDeleteConfirmation = false)}
 >
-	Are you absolutely sure you want to delete your account? This action cannot be undone and will
-	permanently delete all your data.
+	Are you sure? You will be signed out immediately, subscription renewal will be canceled, and
+	your active-system account data will be permanently deleted within 30 days. This cannot be
+	undone.
 </ConfirmationModal>

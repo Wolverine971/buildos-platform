@@ -12,13 +12,16 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { WelcomeSequenceService } from '$lib/server/welcome-sequence.service';
 import { captureServerEvent } from '$lib/server/posthog';
 import { parseJsonRequest } from '$lib/utils/request-validation';
+import { consumeLegalAcceptanceIntent } from '$lib/server/legal-acceptance';
+import { inferAuthUserJustCreated } from '$lib/utils/auth-profile';
 
 const registerRequestSchema = z
 	.object({
 		email: z.string(),
 		password: z.string(),
 		name: z.string().nullable().optional(),
-		attribution: z.unknown().optional()
+		attribution: z.unknown().optional(),
+		legalAcceptanceToken: z.string().min(1)
 	})
 	.strict();
 
@@ -135,7 +138,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!parsed.ok) return parsed.response;
 	const payload = parsed.data;
 
-	const { email, password, name } = payload ?? {};
+	const { email, password, name, legalAcceptanceToken } = payload ?? {};
 	const { supabase, safeGetSession } = locals;
 	const errorLogger = ErrorLoggerService.getInstance(supabase);
 	const emailDomain = typeof email === 'string' ? getEmailDomain(email) : null;
@@ -268,6 +271,53 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				HttpStatus.BAD_REQUEST,
 				ErrorCode.OPERATION_FAILED
 			);
+		}
+
+		if (data.user) {
+			try {
+				const accepted = await consumeLegalAcceptanceIntent({
+					token: legalAcceptanceToken,
+					userId: data.user.id,
+					surface: 'email_signup'
+				});
+
+				if (!accepted) {
+					throw new Error('Policy acceptance expired or has already been used');
+				}
+			} catch (acceptanceError) {
+				console.error('Registration legal acceptance error:', acceptanceError);
+				await errorLogger.logError(acceptanceError, {
+					endpoint: '/api/auth/register',
+					httpMethod: 'POST',
+					operationType: 'auth_register_legal_acceptance',
+					metadata: {
+						emailDomain,
+						flow: 'password',
+						userId: data.user.id
+					}
+				});
+
+				try {
+					await supabase.auth.signOut({ scope: 'local' });
+					if (inferAuthUserJustCreated(data.user)) {
+						const adminClient = createAdminSupabaseClient();
+						await adminClient.auth.admin.deleteUser(data.user.id);
+					}
+				} catch (cleanupError) {
+					await errorLogger.logError(cleanupError, {
+						endpoint: '/api/auth/register',
+						httpMethod: 'POST',
+						operationType: 'auth_register_legal_acceptance_cleanup',
+						metadata: { userId: data.user.id }
+					});
+				}
+
+				return ApiResponse.error(
+					'We could not verify your policy acceptance. Please try again.',
+					HttpStatus.BAD_REQUEST,
+					ErrorCode.INVALID_REQUEST
+				);
+			}
 		}
 
 		let profileUser: any = null;

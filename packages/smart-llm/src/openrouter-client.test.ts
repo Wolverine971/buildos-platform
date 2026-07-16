@@ -25,7 +25,8 @@ describe('OpenRouterClient.callOpenRouterTranscription', () => {
 			model: 'openai/gpt-4o-mini-transcribe',
 			inputAudio: { data: 'base64-audio', format: 'webm' },
 			temperature: 0,
-			timeoutMs: 30_000
+			timeoutMs: 30_000,
+			provider: { data_collection: 'deny' }
 		});
 
 		expect(fetchMock).toHaveBeenCalledOnce();
@@ -38,7 +39,8 @@ describe('OpenRouterClient.callOpenRouterTranscription', () => {
 		expect(JSON.parse(init.body)).toEqual({
 			model: 'openai/gpt-4o-mini-transcribe',
 			input_audio: { data: 'base64-audio', format: 'webm' },
-			temperature: 0
+			temperature: 0,
+			provider: { data_collection: 'deny' }
 		});
 		expect(result).toEqual({
 			text: 'Hello BuildOS',

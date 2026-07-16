@@ -10,6 +10,7 @@ import { WelcomeSequenceService } from '$lib/server/welcome-sequence.service';
 import { getAuthUserCreatedAt, inferAuthUserJustCreated } from '$lib/utils/auth-profile';
 import { logSecurityEvent, type SecurityEventLogOptions } from '$lib/server/security-event-logger';
 import { captureServerEvent } from '$lib/server/posthog';
+import { consumeLegalAcceptanceIntent } from '$lib/server/legal-acceptance';
 
 export interface GoogleOAuthConfig {
 	redirectUri: string;
@@ -376,6 +377,7 @@ export class GoogleOAuthHandler {
 			redirectPath: string;
 			successPath: string;
 			isRegistration?: boolean;
+			legalAcceptanceToken?: string;
 		}
 	): Promise<never> {
 		const code = url.searchParams.get('code');
@@ -537,6 +539,36 @@ export class GoogleOAuthHandler {
 		}
 
 		if (config.isRegistration && authResult.isNewUser) {
+			let legalAcceptanceRecorded = false;
+			try {
+				legalAcceptanceRecorded = config.legalAcceptanceToken
+					? await consumeLegalAcceptanceIntent({
+							token: config.legalAcceptanceToken,
+							userId: authResult.user.id,
+							surface: 'google_signup'
+						})
+					: false;
+			} catch (acceptanceError) {
+				console.error('Google registration legal acceptance error:', acceptanceError);
+			}
+
+			if (!legalAcceptanceRecorded) {
+				try {
+					const adminClient = createAdminSupabaseClient();
+					await adminClient.auth.admin.deleteUser(authResult.user.id);
+				} catch (cleanupError) {
+					console.error(
+						'Failed to clean up Google account without legal acceptance:',
+						cleanupError
+					);
+				}
+				await this.clearAuthSession();
+				throw redirect(
+					303,
+					`/auth/register?error=${encodeURIComponent('We could not verify your policy acceptance. Please try again.')}`
+				);
+			}
+
 			// UTM attribution can't ride the OAuth redirect; the client-side
 			// identify() attaches first-touch person properties after login.
 			await captureServerEvent(authResult.user.id, 'signup', {
