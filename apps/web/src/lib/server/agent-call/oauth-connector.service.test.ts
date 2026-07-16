@@ -6,9 +6,11 @@ import {
 	BUILDOS_OAUTH_READ_WRITE_OPS,
 	isOAuthRedirectUriAllowed,
 	mcpResourceUrl,
+	normalizeOAuthResource,
 	OAuthConnectorError,
 	parseOAuthScopes,
 	protectedResourceMetadataUrl,
+	scopesForOAuthApproval,
 	scopeString
 } from './oauth-connector.service';
 
@@ -33,11 +35,44 @@ describe('OAuth connector helpers', () => {
 		expect(() => parseOAuthScopes('buildos.delete')).toThrow(OAuthConnectorError);
 	});
 
+	it('never adds write access when the client did not request it', () => {
+		expect(
+			scopesForOAuthApproval(['buildos.read', 'offline_access'], 'read_write')
+		).toEqual(['buildos.read', 'offline_access']);
+	});
+
+	it('removes requested write access when the user approves read-only access', () => {
+		expect(
+			scopesForOAuthApproval(
+				['buildos.read', 'buildos.write', 'offline_access'],
+				'read_only'
+			)
+		).toEqual(['buildos.read', 'offline_access']);
+	});
+
 	it('builds canonical MCP resource metadata URLs', () => {
 		expect(mcpResourceUrl('https://build-os.com')).toBe('https://build-os.com/mcp/buildos');
 		expect(protectedResourceMetadataUrl('https://build-os.com')).toBe(
 			'https://build-os.com/.well-known/oauth-protected-resource/mcp/buildos'
 		);
+	});
+
+	it('accepts the read-only ChatGPT profile resource and binds it to the canonical audience', () => {
+		expect(
+			normalizeOAuthResource(
+				'https://build-os.com/mcp/buildos?profile=chatgpt_data_app',
+				'https://build-os.com'
+			)
+		).toBe('https://build-os.com/mcp/buildos');
+	});
+
+	it('rejects unrecognized MCP resource profiles', () => {
+		expect(() =>
+			normalizeOAuthResource(
+				'https://build-os.com/mcp/buildos?profile=read_write',
+				'https://build-os.com'
+			)
+		).toThrow(OAuthConnectorError);
 	});
 
 	it('allows OAuth native-app loopback redirects to use runtime ports', () => {

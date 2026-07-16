@@ -301,6 +301,15 @@ function allowedOpsForScopes(scopes: readonly BuildosAgentOAuthScope[]): Buildos
 		: [...BUILDOS_AGENT_READ_OPS];
 }
 
+export function scopesForOAuthApproval(
+	requestedScopes: readonly BuildosAgentOAuthScope[],
+	scopeMode: AgentCallScope['mode']
+): BuildosAgentOAuthScope[] {
+	return requestedScopes.filter(
+		(scope) => scope !== 'buildos.write' || scopeMode === 'read_write'
+	);
+}
+
 export function mcpResourceUrl(origin: string): string {
 	return `${origin}${BUILDOS_MCP_PATH}`;
 }
@@ -309,14 +318,37 @@ export function protectedResourceMetadataUrl(origin: string): string {
 	return `${origin}/.well-known/oauth-protected-resource/mcp/buildos`;
 }
 
-function normalizeResource(value: string | null, origin: string): string {
+export function normalizeOAuthResource(value: string | null, origin: string): string {
 	const expected = mcpResourceUrl(origin);
 	if (!value?.trim()) {
 		return expected;
 	}
-	if (value.trim() !== expected) {
+
+	let resource: URL;
+	try {
+		resource = new URL(value.trim());
+	} catch {
 		throw new OAuthConnectorError('Unsupported OAuth resource', 400, 'invalid_target');
 	}
+
+	const queryEntries = [...resource.searchParams.entries()];
+	const [profileEntry] = queryEntries;
+	const isCanonicalResource =
+		resource.origin === origin &&
+		resource.pathname === BUILDOS_MCP_PATH &&
+		!resource.username &&
+		!resource.password &&
+		!resource.hash;
+	const isSupportedProfile =
+		queryEntries.length === 0 ||
+		(queryEntries.length === 1 &&
+			profileEntry?.[0] === 'profile' &&
+			profileEntry[1] === 'chatgpt_data_app');
+
+	if (!isCanonicalResource || !isSupportedProfile) {
+		throw new OAuthConnectorError('Unsupported OAuth resource', 400, 'invalid_target');
+	}
+
 	return expected;
 }
 
@@ -561,7 +593,7 @@ export async function loadOAuthAuthorizationRequest(
 	}
 
 	const scopes = parseOAuthScopes(url.searchParams.get('scope'), client.allowed_scopes);
-	const resource = normalizeResource(url.searchParams.get('resource'), url.origin);
+	const resource = normalizeOAuthResource(url.searchParams.get('resource'), url.origin);
 
 	return {
 		client,
@@ -750,12 +782,10 @@ export async function approveOAuthAuthorization(params: {
 	securityEventOptions?: SecurityEventLogOptions;
 	request?: Request;
 }): Promise<{ code: string; grant: AgentOAuthGrantRecord; caller: ExternalAgentCallerRecord }> {
-	const scopes =
-		params.scopeMode === 'read_write'
-			? (Array.from(
-					new Set([...params.authorizationRequest.scopes, 'buildos.write'])
-				) as BuildosAgentOAuthScope[])
-			: params.authorizationRequest.scopes.filter((scope) => scope !== 'buildos.write');
+	const scopes = scopesForOAuthApproval(
+		params.authorizationRequest.scopes,
+		params.scopeMode
+	);
 	const normalizedScopes = parseOAuthScopes(
 		scopeString(scopes),
 		params.authorizationRequest.client.allowed_scopes
@@ -1308,9 +1338,7 @@ export async function authenticateOAuthMcpRequest(params: {
 			: 'read_only';
 	const scope: AgentCallScope = {
 		mode: scopeMode,
-		allowed_ops: grant.allowed_ops.filter(
-			(op) => scopeMode === 'read_write' || !isWriteOp(op)
-		),
+		allowed_ops: grant.allowed_ops.filter((op) => scopeMode === 'read_write' || !isWriteOp(op)),
 		...(Array.isArray(grant.allowed_project_ids)
 			? { project_ids: grant.allowed_project_ids }
 			: {})
