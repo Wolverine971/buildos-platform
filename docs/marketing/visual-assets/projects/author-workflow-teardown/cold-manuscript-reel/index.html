@@ -1,0 +1,312 @@
+<!doctype html>
+<!-- docs/marketing/visual-assets/projects/author-workflow-teardown/cold-manuscript-reel/index.html -->
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>BuildOS — Cold Manuscript HyperFrames Pilot</title>
+		<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+		<style>
+			@font-face {
+				font-family: 'IBM Plex Serif';
+				src: local('IBM Plex Serif');
+				font-display: block;
+			}
+
+			:root {
+				--paper: #fbfaf7;
+				--paper-card: #f0ede8;
+				--ink: #16161a;
+				--muted: #66666e;
+				--border: #d6d0c6;
+				--accent: #b85416;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			html,
+			body {
+				margin: 0;
+				width: 100%;
+				height: 100%;
+				overflow: hidden;
+				background: var(--paper);
+			}
+
+			body {
+				font-family:
+					Inter,
+					ui-sans-serif,
+					system-ui,
+					-apple-system,
+					BlinkMacSystemFont,
+					'Segoe UI',
+					sans-serif;
+				color: var(--ink);
+			}
+
+			.composition {
+				position: relative;
+				isolation: isolate;
+				overflow: hidden;
+				background-color: var(--paper);
+				background-image:
+					linear-gradient(rgba(251, 250, 247, 0.78), rgba(251, 250, 247, 0.78)),
+					url('assets/paper.png');
+				background-size:
+					auto,
+					360px 360px;
+			}
+
+			.scene {
+				position: absolute;
+				inset: 0;
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				padding: 180px 84px 240px;
+			}
+
+			.scene::after {
+				content: '';
+				position: absolute;
+				inset: 28px;
+				border: 1px solid rgba(22, 22, 26, 0.1);
+				pointer-events: none;
+			}
+
+			.scene--dark {
+				color: #eae7e1;
+				background:
+					radial-gradient(circle at 76% 18%, rgba(238, 135, 67, 0.18), transparent 26%),
+					#1d1c1a;
+			}
+
+			.scene--dark::after {
+				border-color: rgba(234, 231, 225, 0.13);
+			}
+
+			.eyebrow {
+				margin: 0 0 48px;
+				font-size: 25px;
+				font-weight: 750;
+				letter-spacing: 0.18em;
+				text-transform: uppercase;
+				color: var(--accent);
+			}
+
+			.headline {
+				max-width: 900px;
+				margin: 0;
+				font-family: 'IBM Plex Serif', Georgia, serif;
+				font-size: 92px;
+				font-weight: 600;
+				line-height: 0.98;
+				letter-spacing: -0.045em;
+				text-wrap: balance;
+			}
+
+			.headline strong {
+				font-weight: 700;
+				color: var(--accent);
+			}
+
+			.headline--display {
+				font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+				font-size: 112px;
+				font-weight: 850;
+				line-height: 0.92;
+				letter-spacing: -0.06em;
+				text-transform: uppercase;
+			}
+
+			.support {
+				max-width: 790px;
+				margin: 56px 0 0;
+				font-size: 36px;
+				line-height: 1.34;
+				color: var(--muted);
+			}
+
+			.scene--dark .support {
+				color: #aaa69f;
+			}
+
+			.brand {
+				position: absolute;
+				right: 76px;
+				bottom: 92px;
+				font-size: 32px;
+				font-weight: 850;
+				letter-spacing: -0.04em;
+			}
+
+			.brand span {
+				color: var(--accent);
+			}
+
+			.counter {
+				position: absolute;
+				left: 76px;
+				bottom: 98px;
+				font-size: 19px;
+				font-weight: 700;
+				letter-spacing: 0.14em;
+				text-transform: uppercase;
+				color: var(--muted);
+			}
+
+			.scene--dark .counter {
+				color: #8f8b85;
+			}
+
+			.receipt-scene {
+				padding: 92px 56px 210px;
+				justify-content: flex-start;
+			}
+
+			.receipt-label {
+				position: relative;
+				z-index: 2;
+				align-self: flex-start;
+				margin-bottom: 40px;
+				padding: 13px 18px;
+				border: 1px solid var(--border);
+				background: rgba(251, 250, 247, 0.94);
+				font-size: 20px;
+				font-weight: 750;
+				letter-spacing: 0.14em;
+				text-transform: uppercase;
+				box-shadow: 0 12px 34px rgba(22, 22, 26, 0.1);
+			}
+
+			.receipt {
+				position: relative;
+				z-index: 1;
+				display: block;
+				width: 100%;
+				height: auto;
+				max-height: 1480px;
+				object-fit: contain;
+				border: 1px solid rgba(22, 22, 26, 0.12);
+				box-shadow: 0 22px 60px rgba(22, 22, 26, 0.14);
+			}
+
+			.rule {
+				width: 150px;
+				height: 10px;
+				margin: 60px 0 0;
+				background: var(--accent);
+			}
+		</style>
+	</head>
+	<body>
+		<main
+			id="buildos-cold-manuscript"
+			class="composition clip"
+			data-composition-id="buildos-cold-manuscript"
+			data-width="1080"
+			data-height="1920"
+			data-start="0"
+			data-duration="16.5"
+			data-fps="30"
+			data-bg="#fbfaf7"
+		>
+			<section
+				id="scene-cold-open"
+				class="scene clip"
+				data-start="0"
+				data-duration="3.4"
+				data-fade="out"
+				data-track-index="1"
+			>
+				<p class="eyebrow">The cold manuscript</p>
+				<h1 class="headline">You don't reopen a blank page.</h1>
+				<div class="rule"></div>
+				<p class="support">You reopen a book whose context has gone cold.</p>
+				<p class="counter">01 · Name the pain</p>
+				<p class="brand">Build<span>OS</span></p>
+			</section>
+
+			<section
+				id="scene-re-entry-tax"
+				class="scene scene--dark clip"
+				data-start="3.2"
+				data-duration="3.2"
+				data-fade="both"
+				data-track-index="2"
+			>
+				<p class="eyebrow">The re-entry tax</p>
+				<h2 class="headline headline--display">90 minutes to write.</h2>
+				<p class="support">
+					<strong style="color: #ee8743">40 disappear</strong> remembering what the book
+					was doing.
+				</p>
+				<p class="counter">02 · Make it felt</p>
+				<p class="brand">Build<span>OS</span></p>
+			</section>
+
+			<section
+				id="scene-muddy-middle"
+				class="scene receipt-scene clip"
+				data-start="6.2"
+				data-duration="4.1"
+				data-fade="both"
+				data-track-index="3"
+			>
+				<p class="receipt-label">What the writer is holding</p>
+				<img
+					class="receipt"
+					src="assets/asset2-painlist-light.png"
+					alt="Inkprint card listing the context a manuscript writer carries"
+				/>
+				<p class="counter">03 · Worldview</p>
+				<p class="brand">Build<span>OS</span></p>
+			</section>
+
+			<section
+				id="scene-real-product-receipt"
+				class="scene receipt-scene clip"
+				data-start="10.1"
+				data-duration="3.8"
+				data-fade="both"
+				data-track-index="4"
+			>
+				<p class="receipt-label">Real input → real project state</p>
+				<img
+					class="receipt"
+					src="assets/asset1-beforeafter-light.png"
+					alt="Real BuildOS before-and-after project receipt"
+				/>
+				<p class="counter">04 · Proof</p>
+				<p class="brand">Build<span>OS</span></p>
+			</section>
+
+			<section
+				id="scene-close"
+				class="scene clip"
+				data-start="13.7"
+				data-duration="2.8"
+				data-fade="in"
+				data-track-index="5"
+			>
+				<p class="eyebrow">Manuscript memory</p>
+				<h2 class="headline">The draft lives in your writing tool.</h2>
+				<p class="support">
+					BuildOS holds the project context around it — the current state, open threads,
+					decisions, and next moves.
+				</p>
+				<p class="counter">Where does your book's context live?</p>
+				<p class="brand">Build<span>OS</span></p>
+			</section>
+
+			<script>
+				const timeline = gsap.timeline({ paused: true });
+				window.__timelines = window.__timelines || {};
+				window.__timelines['buildos-cold-manuscript'] = timeline;
+			</script>
+		</main>
+	</body>
+</html>

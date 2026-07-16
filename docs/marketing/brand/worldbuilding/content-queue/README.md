@@ -20,4 +20,4 @@ Ideas generated during the 2026-07-02 worldbuilding session (DJ + Claude). One f
 | 10  | [What a thinking environment actually looks like](10-what-a-thinking-environment-actually-looks-like.md) | Blog / essay      | queued |
 | 11  | [The knots test](11-the-knots-test.md)                                                                   | Personal          | queued |
 
-Shipping path: pull into `tasker/09-linkedin-ship-list.md` / IG pipeline per the content-pillar refinement (open item, `tasker/18-worldbuilding-program.md`).
+Shipping path: use the existing demonstration/worldview/founder-proof/audience-resonance lanes through the [Creator Acquisition Operating System](../../../campaigns/creator-acquisition/README.md). The active Writer pilot lives in `tasker/24-creator-social-acquisition-pilot.md`; broad founder/brand ideas can still flow through `tasker/09-linkedin-ship-list.md` when they support the campaign rather than displacing its proof assets.

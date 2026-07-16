@@ -23,8 +23,9 @@
 ## Open — build/write
 
 - [ ] **Thinking-environment specificity spec** — write it (queue item 10 is the essay form; could double as the spec). Ties into anti-feed blog cluster (WS09 slotting).
-- [ ] **Content pillars refinement** — DJ: "we need to refine our content pillars to have this going." Without pillars/lanes the queue has nowhere to ship. Coordinate with `tasker/09` (LinkedIn ship list) + `tasker/12` (personal-brand throughline — the archetype/worldbuilding work feeds the one-sentence gate).
-- [ ] **Ship from the content queue** — 11 ideas queued; pull into LinkedIn/IG lanes once pillars exist (or just ship 02/03/04, the safest bets, sooner).
+- [x] **Content lane mapping resolved 7/10** — use the existing demonstration / worldview / founder-proof / audience-resonance lanes. Audience worldbuilding supplies the dialect; it does not create new company pillars. Operating home: `docs/marketing/campaigns/creator-acquisition/README.md`.
+- [ ] **Run the 30-day Writer acquisition pilot** — `tasker/24-creator-social-acquisition-pilot.md`; YouTuber pilot follows only after the Writer review.
+- [ ] **Ship from the content queue** — 11 broad brand/founder ideas remain queued. Use them only when they support the active Writer campaign's weekly proof; the audience-specific shipping path is now `tasker/24`.
 - [ ] **Re-mine `strategy/anti-feed-content-topic-map.md`** — DJ remembers more movement threads than the banner line; pull them into the map's anti-feed section.
 - [ ] **World bible one-pager** — cheat sheet of the ratified canon for every content session (after the DJ decisions above close).
 - [ ] **Moodboard runs** — Paper Studio / Ink Room / Workbench / the context snowball as recurring Inkprint-style visual sets (`/moodboard`; note `/moodboard` has never been run — folded into tasker 15 too).

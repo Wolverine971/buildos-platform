@@ -11,7 +11,7 @@
 **Relationship Status:** Warm
 **Audience Quality:** High
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-06-13
+**Last Reviewed:** 2026-07-10
 **Last Engaged:** ~2026-03-21 (per 2026-05-09 audit — @build.os commented "'Get real good with AI and start building' is the move..." on Greg's "AI agents could send college grad unemployment over 30%" post; mohdhamoda liked it Mar 31)
 **Source of First Discovery:** `instagram-engagement-targets.md` (Tier 2 watering holes)
 
@@ -26,7 +26,7 @@
 ## Bio Snapshot
 
 - **Bio:** CEO @latecheckout, startup founders, AI-age builders
-- **Followers:** ~121K (up from ~105K — non-trivial growth since profile creation)
+- **Followers:** 130,885 (up from ~121K — continued growth)
 - **Offer / link:** Late Checkout, startup idea content, newsletter
 - **Formats:** Carousels, Reels, idea-list posts, cross-posted X content
 - **Audience vibe:** Founder-heavy, idea-curious, high comment volume
@@ -68,6 +68,8 @@
 | 2026-06-11 | Post | NEW mining surface: `DZaOdyukb9J` "Claude Fable 5 is here!" (21h) — substantive non-CTA thread (riccardo.ragni*, jamesvayl, marcus.mcgehee, _chetan_pujari_). All 3 walked commenters FAIL the 1K floor (526f/0 posts; 95f; 799f). @jamesvayl bio is another voice-fit/audience-fail ("ambient software that improves cognition while you work"). Supersedes DZVwKs2R6tn (2d) as the mining slot. 124K. | https://www.instagram.com/gregisenberg/p/DZaOdyukb9J/ | Queued (mining slot #6, conditional) | Pending /instagram-reply | NEVER engage Greg directly. NEVER namedrop OpenClaw. Re-walk thread at reply time for a 1K+ builder; decline if none. | Pending | 2026-06-11*instagram-warmup.md |
 | 2026-06-12 | Post | Fable-5 thread `DZaOdyukb9J` re-walked (now ~2d, 475 likes / 13 cmts). New commenters: **@daptonai (SKIP LIST, 5 followers) reappeared with the best comment in the thread** ("automation opportunities are in the workflows nobody bothered to look at") — voice-fit/audience-fail now ~7-for-7 on Greg threads. @dkenger (1.9K — passes floor, FAILS lane: personal/lifestyle grid). @\_chetan_pujari* (1.1K Udemy AI-tools page — borderline listicle; conditional only). No fresher non-CTA Greg post. **Mining DECLINED today.** 124K. | https://www.instagram.com/gregisenberg/p/DZaOdyukb9J/ | Reviewed | Logged — mining declined | NEVER engage Greg directly. Structural lesson: Greg-thread mining keeps failing the floor; Perell viral writer threads outperformed it today (produced @ludwighurtado 15.5K). | Declined | 2026-06-12_instagram-warmup.md |
 | 2026-06-13 | Grid | Grid walked: freshest non-pinned AI post is STILL the same Claude Fable-5 reel (already mined 6/11 + 6/12, sub-floor commenters both times); other fresh posts are fundraising/business-shaped ("Best kept business secret," "Dirty Little Secret of Raising Money"). No fresh mineable AI surface. **Mining DECLINED again (8-for-8 floor problem).** ~124K. | https://www.instagram.com/gregisenberg/ | Reviewed | Logged — mining declined | NEVER engage Greg directly. Keep as mining target of record but stop expecting peers from the comment graph — the floor problem is structural. Prefer fresh viral Perell writer threads for author-lane discovery. | Declined | 2026-06-13_instagram-warmup.md |
+| 2026-07-09 | Reel | Mining surface SWITCHED — `Dac7neeRCVP` retired (aged 71.8h/11c, reach dead) → new on-thesis surface `DaiHmBJxlPP` "3 Claude code plugins to save you tokens" (**23.5h / 40 cmts / 701 likes**). Comments API auth-walled from CLI this run (Chrome extension down) — walk the 40-comment thread in-app at reply time for sub-15K operator commenters. 130,885f. | https://www.instagram.com/reel/DaiHmBJxlPP/ | Mining (in-app walk required) | Pending /instagram-reply — mine the thread for sub-15K operator commenters | NEVER engage Greg directly. Walk the full 40-comment thread in-app (CLI auth-walled this run) to find real builder voices. | Pending | 2026-07-09_instagram-warmup.md |
+| 2026-07-10 | Comment thread (mining) | MINING WALK EXECUTED (first in-app walk since extension outage): DaiHmBJxlPP "3 Claude code plugins" walked at 47.4h/45c — 38 top-level comments captured; 24/38 are "Send" CTA-bait. TWO floor-passing yields: @natecreates (2,302f verified CTO — queued #3 today) + @thecodewhisperer (1,744f, traced from his @jeremyknox.ai digital-twin agent's comment). Sub-floor voices noted: @ch0sbu 445f, @e.izu 1,093f/0 posts, @iamqui.ncy 954f near-floor. Greg's fresh Dal9I7KRA1L "Giant robots" (11.6h/145c/26.7K likes) is viral off-thesis — skip. 131,486f. | https://www.instagram.com/reel/DaiHmBJxlPP/ | Mining walk executed + 2 discoveries | Logged | Reply target = @natecreates comment ("Context engineering > prompt engineering."). Never Greg directly. | Pending | 2026-07-10_instagram-warmup.md |
 
 ## Open Loops
 

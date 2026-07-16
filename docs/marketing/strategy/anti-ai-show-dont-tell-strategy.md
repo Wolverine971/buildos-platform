@@ -4,7 +4,7 @@ created: 2026-03-09
 status: draft
 owner: DJ Wayne
 related_docs:
-    - /docs/marketing/recent-marketing-chat.md
+    - /docs/marketing/strategy/research/ai-fatigue-positioning-source.md
     - /docs/marketing/brand/brand-guide-1-pager.md
     - /docs/marketing/strategy/adhd-productivity-os-strategy.md
     - /docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md

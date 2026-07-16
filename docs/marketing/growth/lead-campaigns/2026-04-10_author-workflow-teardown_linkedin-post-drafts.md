@@ -4,7 +4,7 @@
 
 > **Date:** 2026-04-10
 > **Use with:** the hero asset (screen recording of author brain dump → structured revision plan) and the before/after screenshot pair.
-> **Visual assets (built 2026-07-01):** Asset 1 before/after — [`asset1-beforeafter-light.png` (4:5)](../../visual-assets/renders/author-workflow-teardown/asset1-beforeafter-light.png), [`asset1-beforeafter-square.png` (1:1)](../../visual-assets/renders/author-workflow-teardown/asset1-beforeafter-square.png); Asset 2 pain-list — [`asset2-painlist-light.png`](../../visual-assets/renders/author-workflow-teardown/asset2-painlist-light.png). Asset 3 (video) still to record. Status + remaining work: [renders HANDOFF](../../visual-assets/renders/author-workflow-teardown/HANDOFF.md).
+> **Visual assets (built 2026-07-01):** Asset 1 before/after — [`asset1-beforeafter-light.png` (4:5)](../../visual-assets/projects/author-workflow-teardown/cold-manuscript-reel/source-material/asset1-beforeafter-light.png), [`asset1-beforeafter-square.png` (1:1)](../../visual-assets/projects/author-workflow-teardown/cold-manuscript-reel/source-material/asset1-beforeafter-square.png); Asset 2 pain-list — [`asset2-painlist-light.png`](../../visual-assets/projects/author-workflow-teardown/cold-manuscript-reel/source-material/asset2-painlist-light.png). Project status and remaining work: [Cold Manuscript handoff](../../visual-assets/projects/author-workflow-teardown/cold-manuscript-reel/HANDOFF.md).
 
 ## Campaign Suite
 

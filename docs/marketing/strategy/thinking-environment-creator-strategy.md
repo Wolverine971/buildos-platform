@@ -7,7 +7,7 @@ related_docs:
     - /docs/marketing/strategy/anti-ai-show-dont-tell-strategy.md
     - /docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md
     - /docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md
-    - /docs/marketing/recent-marketing-chat.md
+    - /docs/marketing/strategy/research/ai-fatigue-positioning-source.md
     - /docs/marketing/customer-lingo-writer.md
     - /docs/philosophy/braindump-psychology.md
 path: docs/marketing/strategy/thinking-environment-creator-strategy.md

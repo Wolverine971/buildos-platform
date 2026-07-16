@@ -19,16 +19,17 @@ The lead-gen operating system is the current source of truth for how to run manu
 
 ### Active Campaign: Cold Manuscript Writer Pilot (July 2026)
 
-| Document                                                                                                      | What It Does                                                                            |
-| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| [Creator Acquisition Operating System](social-media/creator-acquisition/README.md)                            | Canonical bridge from worldbuilding to channel distribution and activation              |
-| [30-Day Writer Pilot](social-media/creator-acquisition/01-30-day-writer-pilot.md)                             | Four-week campaign, receipts, post jobs, setup sessions, and success criteria           |
-| [Watering-Hole Map](social-media/creator-acquisition/02-watering-hole-map.md)                                 | Writer relationship system, search prompts, and research-to-action rules                |
-| [Receipt Kit](social-media/creator-acquisition/03-receipt-kit.md)                                             | Real-media capture and cross-platform asset production                                  |
-| [HyperFrames Production Lane](visual-assets/hyperframes/README.md)                                            | Repeatable real-media Reel/carousel assembly, HyperAgent setup, and publish QA          |
-| [Measurement Scorecard](social-media/creator-acquisition/04-measurement-scorecard.md)                         | Baseline, UTMs, post log, activation funnel, and experiment decisions                   |
-| [Tasker 24](../../tasker/24-creator-social-acquisition-pilot.md)                                              | Execution checklist and definition of done                                              |
-| [Cold Manuscript Reel Candidate](visual-assets/renders/author-workflow-teardown/hyperframes-pilot/PROJECT.md) | Verified 9:16 internal-example pilot with caption, music direction, and publish handoff |
+| Document                                                                                                          | What It Does                                                                            |
+| ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [Creator Acquisition Operating System](campaigns/creator-acquisition/README.md)                                   | Canonical bridge from worldbuilding to channel distribution and activation              |
+| [30-Day Writer Pilot](campaigns/creator-acquisition/01-30-day-writer-pilot.md)                                    | Four-week campaign, receipts, post jobs, setup sessions, and success criteria           |
+| [Watering-Hole Map](campaigns/creator-acquisition/02-watering-hole-map.md)                                        | Writer relationship system, search prompts, and research-to-action rules                |
+| [Receipt Kit](campaigns/creator-acquisition/03-receipt-kit.md)                                                    | Real-media capture and cross-platform asset production                                  |
+| [HyperFrames Production Lane](visual-assets/hyperframes/README.md)                                                | Repeatable real-media Reel/carousel assembly, HyperAgent setup, and publish QA          |
+| [Measurement Scorecard](campaigns/creator-acquisition/04-measurement-scorecard.md)                                | Baseline, UTMs, post log, activation funnel, and experiment decisions                   |
+| [Tasker 24](../../tasker/24-creator-social-acquisition-pilot.md)                                                  | Execution checklist and definition of done                                              |
+| [Content Project Registry](visual-assets/projects/README.md)                                                      | Current compositions, masters, source packages, and publishing closeout                 |
+| [Cold Manuscript Reel Candidate](visual-assets/projects/author-workflow-teardown/cold-manuscript-reel/PROJECT.md) | Verified 9:16 internal-example pilot with caption, music direction, and publish handoff |
 
 ### Prior Campaign: Author Workflow Teardown (April 10 -- April 17, 2026)
 
@@ -91,8 +92,8 @@ These define what BuildOS is, who it's for, and how to talk about it.
 
 | Document                                                                                                  | What It Does                                                                              |
 | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| [Creator Acquisition Operating System](social-media/creator-acquisition/README.md)                        | Current Writer-first acquisition, fieldwork, real-media, and activation plan              |
-| [30-Day Writer Pilot](social-media/creator-acquisition/01-30-day-writer-pilot.md)                         | Active campaign calendar and execution checklist                                          |
+| [Creator Acquisition Operating System](campaigns/creator-acquisition/README.md)                           | Current Writer-first acquisition, fieldwork, real-media, and activation plan              |
+| [30-Day Writer Pilot](campaigns/creator-acquisition/01-30-day-writer-pilot.md)                            | Active campaign calendar and execution checklist                                          |
 | [6-Week Guerrilla Seed Campaign](social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md) | Current cross-platform campaign. Weekly theses, hooks, demos, Instagram/X/LinkedIn angles |
 | [Week 1 Day 1 Execution](social-media/publish-kits/2026-03-12-week-1-day-1-execution.md)                  | Step-by-step first-day execution template                                                 |
 | [Do This Asset Template](social-media/publish-kits/2026-03-12-do-this-asset-template.md)                  | Template for creating hero proof assets                                                   |
@@ -203,4 +204,4 @@ If starting from scratch, read in this order:
 
 ---
 
-_Last updated: 2026-07-10_
+_Last updated: 2026-07-16_

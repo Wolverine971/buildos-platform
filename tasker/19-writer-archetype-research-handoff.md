@@ -2,7 +2,9 @@
 
 # 19 — Writer Archetype Research Handoff
 
-**Created 2026-07-02.** Owner: next research agent. Home: `docs/marketing/brand/worldbuilding/`.
+**Created 2026-07-02. Completed 2026-07-06.** Home: `docs/marketing/brand/worldbuilding/`.
+
+**Completion note:** all required research files plus `CORE_SYNTHESIS.md` exist under `research/writer-archetype-2026-07-02/`. The later Writer rewrite has also been incorporated into `ARCHETYPE_WRITER.md`. Campaign execution now lives in `tasker/24-creator-social-acquisition-pilot.md`.
 
 ## Assignment
 

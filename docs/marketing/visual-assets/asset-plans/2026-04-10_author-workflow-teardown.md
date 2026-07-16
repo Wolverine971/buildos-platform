@@ -6,7 +6,7 @@
 > Asset type(s): before/after composition · Inkprint pain-list card · screen-recording storyboard
 > Source: `docs/marketing/growth/lead-campaigns/2026-04-10_author-workflow-teardown_linkedin-post-drafts.md` (+ campaign brief brain-dump)
 > Status: VISION LOCKED 2026-06-30 · **BUILD: Asset 1 (hero, 4:5 + 1:1) + Asset 2 built first-pass 2026-07-01; Asset 3 (video) pending — DJ to record.**
-> Renders + execution status: `docs/marketing/visual-assets/renders/author-workflow-teardown/HANDOFF.md` (see §1 status table, §1.1 files, §1.2 remaining work).
+> Project + execution status: `docs/marketing/visual-assets/projects/author-workflow-teardown/cold-manuscript-reel/HANDOFF.md` (see §1 status table, §1.1 files, §1.2 remaining work).
 
 ## The idea (what this says)
 

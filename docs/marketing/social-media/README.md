@@ -6,17 +6,20 @@ Use this folder for platform strategy, founder voice material, and raw interview
 
 ## Start Here
 
-1. [DJ's Founder Context](./FOUNDER_CONTEXT.md)
-2. [Why I Built BuildOS](../content/drafts/why-i-built-buildos.md)
-3. [BuildOS Real Media Policy](../brand/BUILDOS_REAL_MEDIA_POLICY.md)
-4. [BuildOS Proof And Presence Doctrine](../brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md)
-5. [Twitter Strategy](./twitter-strategy.md)
-6. [LinkedIn Strategy Notes](./linkedin-strategy-notes.md)
-7. [Instagram Strategy](./instagram-strategy.md)
+1. [Creator Acquisition Operating System](../campaigns/creator-acquisition/README.md)
+2. [DJ's Founder Context](./FOUNDER_CONTEXT.md)
+3. [Why I Built BuildOS](../content/drafts/why-i-built-buildos.md)
+4. [BuildOS Real Media Policy](../brand/BUILDOS_REAL_MEDIA_POLICY.md)
+5. [BuildOS Proof And Presence Doctrine](../brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md)
+6. [Twitter Strategy](./twitter-strategy.md)
+7. [LinkedIn Strategy Notes](./linkedin-strategy-notes.md)
+8. [Instagram Strategy](./instagram-strategy.md)
 
 If you need founder voice, start with `FOUNDER_CONTEXT.md`.
 
 If you need platform execution, start with the platform strategy docs.
+
+If you are running the Writer or YouTuber wedge, start with the Creator Acquisition Operating System. It is the current bridge from audience language to cross-platform proof, fieldwork, attribution, and activation.
 
 If you are making any visual or video asset, follow the Real Media Policy: no AI-generated images or videos; use real screenshots, real screen recordings, real founder footage, real workspace photos, or clear explanatory graphics.
 
@@ -24,6 +27,7 @@ If you are planning a social series, follow the Proof And Presence Doctrine: rec
 
 ## Execution Logs
 
+- Use [`../campaigns/creator-acquisition/`](../campaigns/creator-acquisition/README.md) for the active Writer-first campaign, watering-hole map, receipt production, and scorecard.
 - Use [`./daily-engagement/`](./daily-engagement/README.md) as the current working set for dated warmups.
 - Use [`./discovery/`](./discovery/README.md) for Stage 0 discovery queues and search terms.
 - Use [`./comment-log.md`](./comment-log.md) as the cross-run ledger for queued, drafted, posted, reacted, and converted touchpoints.

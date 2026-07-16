@@ -4,7 +4,7 @@
 
 > **Complete guide to BuildOS marketing strategy, brand development, fundraising, and customer acquisition**
 
-**New here? Read [START_HERE.md](START_HERE.md) first** — it links all positioning, carousel, and content strategy docs in reading order.
+This is the broad catalog, including historical material. Use [README.md](README.md) as the canonical folder map and [START_HERE.md](START_HERE.md) for the current operating reading order.
 
 ---
 
@@ -320,14 +320,11 @@ Personalized email templates for investor introductions:
 
 ### 🎯 Target Influencers
 
-- **[Tim Ferris Profile](growth/target-influencers/tim-ferris.md)**
-    - Outreach strategy for productivity influence
+- **[Outreach Targets Master Index](growth/target-influencers/INDEX.md)**
+    - Canonical dedup hub for profiled, candidate, creator, founder, and partner outreach lanes
 
-- **[Patrick Bet-David Profile](growth/target-influencers/patrick-bet-david.md)**
-    - Entrepreneurship and business growth influence
-
-- **[Viral Plan](growth/target-influencers/viral-plan.md)**
-    - Comprehensive influencer outreach strategy
+- **[Candidate Pipeline](growth/target-influencers/CANDIDATE-PIPELINE-2026-06-19.md)**
+    - Research backlog for potential creator and AI-builder outreach targets
 
 ---
 
@@ -410,7 +407,7 @@ Marketing Strategy 2026 (Master Strategy)
 
 ### Growth ↔ Social Media
 
-- [Viral Plan](growth/target-influencers/viral-plan.md) integrates with [Social Media Strategies](social-media/)
+- [Viral Plan Notes](growth/viral-plan-notes.md) integrate with [Social Media Strategies](social-media/)
 - [Twitter Strategy](social-media/twitter-strategy.md) supports [Growth Marketing](growth/) objectives
 
 ---

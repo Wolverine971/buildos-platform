@@ -1,0 +1,1422 @@
+<!doctype html>
+<!-- docs/marketing/visual-assets/projects/product-education/agentic-chat-save-tutorial/index.html -->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>BuildOS — Brain Dump to Shared Project</title>
+		<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+		<style>
+			:root {
+				--paper: #fbfaf9;
+				--soft: #f2f0ee;
+				--ink: #17171c;
+				--muted: #666670;
+				--rule: #d6d3cd;
+				--orange: #b85614;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+			html,
+			body {
+				margin: 0;
+				width: 100%;
+				height: 100%;
+				overflow: hidden;
+			}
+			body {
+				font-family:
+					system-ui,
+					-apple-system,
+					BlinkMacSystemFont,
+					'Segoe UI',
+					sans-serif;
+				color: var(--ink);
+				background: var(--paper);
+			}
+
+			#root {
+				position: relative;
+				width: 1080px;
+				height: 1920px;
+				overflow: hidden;
+				isolation: isolate;
+			}
+
+			.scene {
+				position: absolute;
+				inset: 0;
+				width: 1080px;
+				height: 1920px;
+				overflow: hidden;
+			}
+			#scene-1 {
+				z-index: 1;
+				opacity: 1;
+			}
+			#scene-2 {
+				z-index: 2;
+				opacity: 0;
+			}
+			#scene-3 {
+				z-index: 3;
+				opacity: 0;
+			}
+
+			.paper-field {
+				position: absolute;
+				inset: 0;
+				background-color: var(--paper);
+				background-image:
+					linear-gradient(rgba(23, 23, 28, 0.025) 1px, rgba(251, 250, 249, 0) 1px),
+					linear-gradient(90deg, rgba(23, 23, 28, 0.025) 1px, rgba(251, 250, 249, 0) 1px);
+				background-size: 28px 28px;
+			}
+			.paper-grain {
+				position: absolute;
+				inset: -42px;
+				width: 1164px;
+				height: 2004px;
+				background: url('capture/assets/brushed-alum.png') center / cover no-repeat;
+				opacity: 0.055;
+				mix-blend-mode: multiply;
+				pointer-events: none;
+			}
+			.edge-rule {
+				position: absolute;
+				left: 56px;
+				right: 56px;
+				top: 102px;
+				height: 2px;
+				background: var(--ink);
+				transform-origin: left center;
+			}
+			.meta {
+				position: absolute;
+				top: 64px;
+				font-size: 17px;
+				line-height: 1;
+				font-weight: 780;
+				letter-spacing: 0.16em;
+				text-transform: uppercase;
+			}
+			.meta-left {
+				left: 56px;
+			}
+			.meta-right {
+				right: 56px;
+				color: var(--muted);
+			}
+			.registration {
+				position: absolute;
+				width: 28px;
+				height: 28px;
+			}
+			.registration::before,
+			.registration::after {
+				content: '';
+				position: absolute;
+				background: var(--ink);
+			}
+			.registration::before {
+				left: 13px;
+				top: 0;
+				width: 2px;
+				height: 28px;
+			}
+			.registration::after {
+				left: 0;
+				top: 13px;
+				width: 28px;
+				height: 2px;
+			}
+			.reg-bl {
+				left: 56px;
+				bottom: 42px;
+			}
+			.reg-br {
+				right: 56px;
+				bottom: 42px;
+			}
+
+			.scene-content {
+				position: relative;
+				width: 100%;
+				height: 100%;
+				padding: 140px 56px 70px;
+			}
+			.eyebrow {
+				display: flex;
+				align-items: center;
+				gap: 14px;
+				margin-top: 18px;
+				color: var(--orange);
+				font-size: 20px;
+				font-weight: 820;
+				letter-spacing: 0.14em;
+				text-transform: uppercase;
+			}
+			.eyebrow::before {
+				content: '';
+				width: 46px;
+				height: 4px;
+				background: var(--orange);
+			}
+			.headline {
+				width: 920px;
+				margin: 18px 0 0;
+				font-size: 82px;
+				line-height: 0.99;
+				font-weight: 760;
+				letter-spacing: -0.055em;
+			}
+			.headline .accent {
+				color: var(--orange);
+			}
+			.support-line {
+				margin-top: 18px;
+				width: 830px;
+				font-size: 27px;
+				line-height: 1.35;
+				color: var(--muted);
+			}
+
+			.compare-stage {
+				position: absolute;
+				left: 56px;
+				right: 56px;
+				top: 455px;
+				height: 910px;
+				display: grid;
+				grid-template-columns: 390px 148px 390px;
+				align-items: start;
+			}
+			.phone-column {
+				position: relative;
+				width: 390px;
+			}
+			.phone-label {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				height: 50px;
+				padding: 0 4px;
+				font-size: 18px;
+				font-weight: 800;
+				letter-spacing: 0.13em;
+				text-transform: uppercase;
+			}
+			.phone-label span:last-child {
+				color: var(--muted);
+				font-size: 15px;
+			}
+			.phone-shell {
+				position: relative;
+				width: 390px;
+				padding: 12px;
+				border: 4px solid var(--ink);
+				border-radius: 56px;
+				background: var(--ink);
+				box-shadow:
+					0 28px 48px rgba(23, 23, 28, 0.18),
+					0 7px 0 rgba(23, 23, 28, 0.08);
+			}
+			.phone-shell::before {
+				content: '';
+				position: absolute;
+				z-index: 5;
+				left: 50%;
+				top: 10px;
+				width: 92px;
+				height: 20px;
+				transform: translateX(-50%);
+				border-radius: 0 0 13px 13px;
+				background: var(--ink);
+			}
+			.phone-screen {
+				position: relative;
+				width: 100%;
+				aspect-ratio: 393 / 852;
+				overflow: hidden;
+				border-radius: 41px;
+				background: var(--soft);
+			}
+			.phone-screen > img {
+				display: block;
+				width: 100%;
+				height: 100%;
+				object-fit: contain;
+			}
+			.project-detail-screen {
+				background: var(--soft) url('capture/mobile/project-detail-mobile.png') center /
+					contain no-repeat;
+			}
+			.composer-overlay {
+				position: absolute;
+				z-index: 4;
+				left: 4.7%;
+				top: 76.35%;
+				width: 90.6%;
+				height: 16.2%;
+				padding: 12px 14px;
+				overflow: hidden;
+				border-bottom: 2px solid var(--orange);
+				border-radius: 15px 15px 0 0;
+				background-color: #f8f5ee;
+				background-image:
+					linear-gradient(rgba(23, 23, 28, 0.055) 1px, rgba(248, 245, 238, 0) 1px),
+					linear-gradient(90deg, rgba(23, 23, 28, 0.055) 1px, rgba(248, 245, 238, 0) 1px);
+				background-size: 12px 12px;
+				box-shadow: inset 0 0 0 1px rgba(184, 86, 20, 0.22);
+			}
+			.typed-copy {
+				display: inline;
+				font-size: 15.6px;
+				line-height: 1.36;
+				font-weight: 520;
+				color: var(--ink);
+			}
+			.type-caret {
+				display: inline-block;
+				width: 2px;
+				height: 17px;
+				margin-left: 2px;
+				vertical-align: -3px;
+				background: var(--orange);
+			}
+			.route-column {
+				position: relative;
+				width: 148px;
+				height: 840px;
+			}
+			.route-label {
+				position: absolute;
+				top: 315px;
+				width: 150px;
+				text-align: center;
+				font-size: 15px;
+				line-height: 1.25;
+				font-weight: 820;
+				letter-spacing: 0.11em;
+				text-transform: uppercase;
+				color: var(--ink);
+			}
+			.route-arrow {
+				position: absolute;
+				left: 7px;
+				top: 495px;
+				width: 134px;
+				height: 110px;
+				overflow: visible;
+			}
+			.route-arrow path {
+				fill: none;
+				stroke: var(--ink);
+				stroke-width: 7;
+				stroke-linecap: round;
+				stroke-linejoin: round;
+			}
+			.processing-video {
+				position: absolute;
+				z-index: 12;
+				width: 120px;
+				height: 120px;
+				object-fit: cover;
+				border-radius: 50%;
+				opacity: 0;
+				filter: saturate(1.12) drop-shadow(0 9px 12px rgba(86, 44, 168, 0.24));
+				pointer-events: none;
+			}
+			#brain-pulse-create {
+				left: 460px;
+				top: 825px;
+			}
+			#brain-pulse-update {
+				left: 460px;
+				top: 850px;
+			}
+			.task-highlight {
+				position: absolute;
+				z-index: 6;
+				left: 2.4%;
+				top: 32.25%;
+				width: 95.2%;
+				height: 7.2%;
+				border: 3px solid var(--orange);
+				border-radius: 10px;
+				background: rgba(184, 86, 20, 0.09);
+				box-shadow: 0 0 0 8px rgba(184, 86, 20, 0.13);
+				opacity: 0;
+				transform-origin: center;
+			}
+			.task-highlight span {
+				position: absolute;
+				right: 5px;
+				top: -31px;
+				padding: 5px 9px;
+				border-radius: 8px;
+				background: var(--orange);
+				color: #fff;
+				font-size: 10px;
+				line-height: 1;
+				font-weight: 850;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				white-space: nowrap;
+			}
+
+			.receipt-panel {
+				position: absolute;
+				left: 56px;
+				right: 56px;
+				top: 1420px;
+			}
+			.receipt-header {
+				display: flex;
+				align-items: center;
+				gap: 18px;
+				margin-bottom: 18px;
+				font-size: 18px;
+				font-weight: 840;
+				letter-spacing: 0.13em;
+				text-transform: uppercase;
+			}
+			.receipt-header::after {
+				content: '';
+				flex: 1;
+				height: 2px;
+				background: var(--rule);
+			}
+			.receipt-grid {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 14px;
+			}
+			.receipt {
+				min-height: 105px;
+				display: flex;
+				align-items: center;
+				gap: 18px;
+				padding: 18px 22px;
+				border: 2px solid var(--rule);
+				border-radius: 16px;
+				background: rgba(251, 250, 249, 0.96);
+				box-shadow: 0 5px 0 rgba(23, 23, 28, 0.05);
+			}
+			.receipt-icon {
+				flex: 0 0 46px;
+				width: 46px;
+				height: 46px;
+				display: grid;
+				place-items: center;
+				border-radius: 50%;
+				background: var(--orange);
+				color: white;
+				font-size: 27px;
+				font-weight: 900;
+			}
+			.receipt-title {
+				font-size: 25px;
+				font-weight: 760;
+			}
+			.receipt-sub {
+				margin-top: 3px;
+				color: var(--muted);
+				font-size: 17px;
+			}
+			.bottom-note {
+				position: absolute;
+				left: 56px;
+				bottom: 72px;
+				font-size: 27px;
+				font-weight: 720;
+			}
+			.bottom-note strong {
+				color: var(--orange);
+			}
+
+			/* Scene 2 */
+			#scene-2 .headline {
+				font-size: 76px;
+			}
+			#scene-2 .compare-stage {
+				top: 480px;
+			}
+			.update-receipts {
+				grid-template-columns: 1fr 1fr 1fr;
+			}
+			.update-receipts .receipt {
+				min-height: 126px;
+				display: block;
+				padding: 18px;
+			}
+			.update-receipts .receipt-icon {
+				width: 38px;
+				height: 38px;
+				font-size: 22px;
+			}
+			.update-receipts .receipt-title {
+				margin-top: 12px;
+				font-size: 21px;
+				line-height: 1.15;
+			}
+			.state-stamp {
+				position: absolute;
+				right: 56px;
+				bottom: 74px;
+				padding: 14px 20px;
+				border: 3px solid var(--orange);
+				border-radius: 12px;
+				color: var(--orange);
+				background: var(--paper);
+				font-size: 19px;
+				font-weight: 850;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				transform: rotate(-2deg);
+			}
+
+			/* Scene 3 */
+			#scene-3 .headline {
+				font-size: 80px;
+				width: 940px;
+			}
+			.network-stage {
+				position: absolute;
+				left: 0;
+				top: 430px;
+				width: 1080px;
+				height: 1270px;
+			}
+			.network-svg {
+				position: absolute;
+				inset: 0;
+				width: 1080px;
+				height: 1270px;
+				overflow: visible;
+			}
+			.network-path {
+				fill: none;
+				stroke: var(--orange);
+				stroke-width: 5;
+				stroke-linecap: round;
+				stroke-linejoin: round;
+			}
+			.agent-card {
+				position: absolute;
+				top: 110px;
+				width: 260px;
+				min-height: 170px;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				gap: 12px;
+				border: 3px solid var(--ink);
+				border-radius: 22px;
+				background: rgba(251, 250, 249, 0.98);
+				box-shadow: 0 10px 0 rgba(23, 23, 28, 0.08);
+			}
+			.agent-openclaw {
+				left: 70px;
+			}
+			.agent-claude {
+				left: 410px;
+			}
+			.agent-chatgpt {
+				right: 70px;
+			}
+			.agent-logo-wrap {
+				width: 82px;
+				height: 82px;
+				display: grid;
+				place-items: center;
+				border-radius: 20px;
+				background: var(--soft);
+				border: 2px solid var(--rule);
+			}
+			.agent-logo {
+				width: 60px;
+				height: 60px;
+				object-fit: contain;
+			}
+			.agent-name {
+				font-size: 25px;
+				font-weight: 800;
+			}
+			.agent-role {
+				color: var(--muted);
+				font-size: 15px;
+				letter-spacing: 0.09em;
+				text-transform: uppercase;
+			}
+			.project-hub {
+				position: absolute;
+				left: 290px;
+				top: 515px;
+				width: 500px;
+				min-height: 340px;
+				padding: 30px;
+				border: 4px solid var(--ink);
+				border-radius: 28px;
+				background: var(--paper);
+				box-shadow:
+					0 14px 0 rgba(23, 23, 28, 0.09),
+					0 28px 50px rgba(23, 23, 28, 0.12);
+				text-align: center;
+			}
+			.hub-icon {
+				width: 138px;
+				height: 122px;
+				object-fit: contain;
+				filter: drop-shadow(0 13px 15px rgba(69, 41, 151, 0.22));
+			}
+			.hub-kicker {
+				margin-top: 8px;
+				color: var(--orange);
+				font-size: 17px;
+				font-weight: 850;
+				letter-spacing: 0.13em;
+				text-transform: uppercase;
+			}
+			.hub-title {
+				margin-top: 8px;
+				font-size: 45px;
+				line-height: 1;
+				font-weight: 820;
+				letter-spacing: -0.035em;
+			}
+			.hub-sub {
+				margin-top: 12px;
+				color: var(--muted);
+				font-size: 21px;
+			}
+			.hub-entities {
+				display: flex;
+				justify-content: center;
+				gap: 8px;
+				margin-top: 20px;
+			}
+			.hub-entity {
+				padding: 9px 12px;
+				border: 2px solid var(--rule);
+				border-radius: 999px;
+				background: var(--soft);
+				font-size: 16px;
+				font-weight: 760;
+			}
+			.final-lockup {
+				position: absolute;
+				left: 100px;
+				right: 100px;
+				top: 1000px;
+				text-align: center;
+			}
+			.final-label {
+				color: var(--orange);
+				font-size: 18px;
+				font-weight: 840;
+				letter-spacing: 0.14em;
+				text-transform: uppercase;
+			}
+			.final-title {
+				margin-top: 16px;
+				font-size: 73px;
+				line-height: 0.98;
+				font-weight: 790;
+				letter-spacing: -0.055em;
+			}
+			.final-sub {
+				margin: 18px auto 0;
+				width: 720px;
+				color: var(--muted);
+				font-size: 26px;
+				line-height: 1.35;
+			}
+			.final-pill {
+				display: inline-block;
+				margin-top: 28px;
+				padding: 16px 26px;
+				border-radius: 999px;
+				background: var(--ink);
+				color: var(--paper);
+				font-size: 20px;
+				font-weight: 780;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+			}
+		</style>
+	</head>
+	<body>
+		<div
+			data-hf-id="hf-z6y4"
+			id="root"
+			data-composition-id="main"
+			data-start="0"
+			data-width="1080"
+			data-height="1920"
+			data-duration="36"
+		>
+			<video
+				data-hf-id="hf-pulse-create"
+				id="brain-pulse-create"
+				class="clip processing-video"
+				src="assets/video/brain-bolt-consistent-pulse-alpha.webm"
+				data-start="6.7"
+				data-duration="2.1"
+				data-track-index="20"
+				muted
+				playsinline
+				aria-label="BuildOS Brain Bolt processing the brain dump"
+			></video>
+			<video
+				data-hf-id="hf-pulse-update"
+				id="brain-pulse-update"
+				class="clip processing-video"
+				src="assets/video/brain-bolt-consistent-pulse-alpha.webm"
+				data-start="19.15"
+				data-duration="2.1"
+				data-track-index="21"
+				muted
+				playsinline
+				aria-label="BuildOS Brain Bolt processing the project update"
+			></video>
+			<section
+				data-hf-id="hf-lls4"
+				id="scene-1"
+				class="clip scene"
+				data-start="0"
+				data-duration="14"
+				data-track-index="1"
+			>
+				<div data-hf-id="hf-x8ul" class="paper-field"></div>
+				<div data-hf-id="hf-d7se" class="paper-grain" aria-hidden="true"></div>
+				<div data-hf-id="hf-qige" class="meta meta-left">BUILDOS / 01</div>
+				<div data-hf-id="hf-40ce" class="meta meta-right">THOUGHT → SHARED PROJECT</div>
+				<div data-hf-id="hf-o8te" class="edge-rule"></div>
+				<div data-hf-id="hf-w2m0" class="registration reg-bl"></div>
+				<div data-hf-id="hf-bnzi" class="registration reg-br"></div>
+				<div data-hf-id="hf-cn5c" class="scene-content">
+					<div data-hf-id="hf-bnxl" class="eyebrow s1-eyebrow">
+						Start with what is in your head
+					</div>
+					<h1 data-hf-id="hf-571f" class="headline s1-headline">
+						Brain dump what’s going on with your
+						<span data-hf-id="hf-8k5a" class="accent">project.</span>
+					</h1>
+					<p data-hf-id="hf-hmlc" class="support-line s1-support">
+						Say it naturally. BuildOS turns the thinking into work you can keep building
+						on.
+					</p>
+				</div>
+				<div data-hf-id="hf-luts" class="compare-stage">
+					<div data-hf-id="hf-3jju" class="phone-column s1-input">
+						<div data-hf-id="hf-q8f5" class="phone-label">
+							<span data-hf-id="hf-3s4j">01 / Brain dump</span
+							><span data-hf-id="hf-2z2c">Agentic chat</span>
+						</div>
+						<div data-hf-id="hf-torh" class="phone-shell">
+							<div data-hf-id="hf-9o7x" class="phone-screen">
+								<img
+									data-hf-id="hf-ogf2"
+									src="capture/mobile/new-project-brain-dump-mobile.png"
+									alt="BuildOS new project agentic chat modal on an iPhone"
+								/>
+								<div data-hf-id="hf-zd5t" class="composer-overlay">
+									<span
+										data-hf-id="hf-mjht"
+										id="create-copy"
+										class="typed-copy"
+									></span
+									><span
+										data-hf-id="hf-8fm3"
+										id="create-caret"
+										class="type-caret"
+									></span>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div data-hf-id="hf-1hce" class="route-column">
+						<div data-hf-id="hf-7krn" class="route-label">
+							BuildOS<br data-hf-id="hf-x5px" />organizes it
+						</div>
+						<svg
+							data-hf-id="hf-7lt4"
+							class="route-arrow"
+							viewBox="0 0 150 110"
+							aria-hidden="true"
+						>
+							<path
+								data-hf-id="hf-hmym"
+								id="create-route"
+								d="M10 55 H126 M101 25 L136 55 L101 85"
+							/>
+						</svg>
+					</div>
+					<div data-hf-id="hf-yec1" class="phone-column s1-output">
+						<div data-hf-id="hf-7eph" class="phone-label">
+							<span data-hf-id="hf-tivu">02 / Shared project</span
+							><span data-hf-id="hf-1u2f">Lantern House</span>
+						</div>
+						<div data-hf-id="hf-4uy9" class="phone-shell">
+							<div
+								data-hf-id="hf-a9kh"
+								class="phone-screen project-detail-screen"
+								role="img"
+								aria-label="Lantern House shared project with connected entities in BuildOS on an iPhone"
+							></div>
+						</div>
+					</div>
+				</div>
+				<div data-hf-id="hf-mtdl" class="receipt-panel">
+					<div data-hf-id="hf-j4ne" class="receipt-header">
+						BuildOS created the work around it
+					</div>
+					<div data-hf-id="hf-9umt" class="receipt-grid">
+						<div data-hf-id="hf-ab53" class="receipt s1-receipt">
+							<div data-hf-id="hf-yv5z" class="receipt-icon">✓</div>
+							<div data-hf-id="hf-yeow">
+								<div data-hf-id="hf-zygd" class="receipt-title">Created tasks</div>
+								<div data-hf-id="hf-8cmc" class="receipt-sub">
+									Launch checklist + episode outline
+								</div>
+							</div>
+						</div>
+						<div data-hf-id="hf-u64n" class="receipt s1-receipt">
+							<div data-hf-id="hf-jo87" class="receipt-icon">✓</div>
+							<div data-hf-id="hf-y7yw">
+								<div data-hf-id="hf-j12n" class="receipt-title">Created a goal</div>
+								<div data-hf-id="hf-tx5o" class="receipt-sub">
+									Launch Lantern House Season 1
+								</div>
+							</div>
+						</div>
+						<div data-hf-id="hf-trtm" class="receipt s1-receipt">
+							<div data-hf-id="hf-j9x6" class="receipt-icon">✓</div>
+							<div data-hf-id="hf-x11t">
+								<div data-hf-id="hf-qf07" class="receipt-title">Created a plan</div>
+								<div data-hf-id="hf-vd5h" class="receipt-sub">
+									Season 1 launch plan
+								</div>
+							</div>
+						</div>
+						<div data-hf-id="hf-tdil" class="receipt s1-receipt">
+							<div data-hf-id="hf-ivm5" class="receipt-icon">✓</div>
+							<div data-hf-id="hf-xfcu">
+								<div data-hf-id="hf-04ud" class="receipt-title">
+									Created a document
+								</div>
+								<div data-hf-id="hf-ny5s" class="receipt-sub">
+									Lantern House context
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div data-hf-id="hf-3ifc" class="bottom-note">
+					Now you and the BuildOS agent are on the
+					<strong data-hf-id="hf-t057">same page.</strong>
+				</div>
+			</section>
+
+			<section
+				data-hf-id="hf-9b37"
+				id="scene-2"
+				class="clip scene"
+				data-start="13.4"
+				data-duration="11.6"
+				data-track-index="2"
+			>
+				<div data-hf-id="hf-9vep" class="paper-field"></div>
+				<div data-hf-id="hf-65yq" class="paper-grain" aria-hidden="true"></div>
+				<div data-hf-id="hf-qwrf" class="meta meta-left">BUILDOS / 02</div>
+				<div data-hf-id="hf-kyd0" class="meta meta-right">SAME PROJECT / NEW CONTEXT</div>
+				<div data-hf-id="hf-xcp2" class="edge-rule"></div>
+				<div data-hf-id="hf-2yvk" class="registration reg-bl"></div>
+				<div data-hf-id="hf-a8fm" class="registration reg-br"></div>
+				<div data-hf-id="hf-o0eg" class="scene-content">
+					<div data-hf-id="hf-jhdu" class="eyebrow s2-eyebrow">
+						Build on top of yesterday’s work
+					</div>
+					<h2 data-hf-id="hf-n1z3" class="headline s2-headline">
+						Tomorrow, say what changed.
+						<span data-hf-id="hf-vj2s" class="accent">BuildOS tracks it.</span>
+					</h2>
+					<p data-hf-id="hf-p4ay" class="support-line s2-support">
+						Use the same brain dump. The project keeps its context and updates in place.
+					</p>
+				</div>
+				<div data-hf-id="hf-wjzc" class="compare-stage">
+					<div data-hf-id="hf-velx" class="phone-column s2-input">
+						<div data-hf-id="hf-8lmk" class="phone-label">
+							<span data-hf-id="hf-7hyr">01 / What changed</span
+							><span data-hf-id="hf-lsfv">Lantern House chat</span>
+						</div>
+						<div data-hf-id="hf-61vc" class="phone-shell">
+							<div data-hf-id="hf-bghk" class="phone-screen">
+								<img
+									data-hf-id="hf-gtoi"
+									src="capture/mobile/brain-dump-mobile.png"
+									alt="Lantern House agentic chat modal on an iPhone"
+								/>
+								<div data-hf-id="hf-jl2t" class="composer-overlay">
+									<span
+										data-hf-id="hf-7pf4"
+										id="update-copy"
+										class="typed-copy"
+									></span
+									><span
+										data-hf-id="hf-wjyc"
+										id="update-caret"
+										class="type-caret"
+									></span>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div data-hf-id="hf-dlhu" class="route-column">
+						<div data-hf-id="hf-e4er" class="route-label">
+							BuildOS<br data-hf-id="hf-rsrt" />updates it
+						</div>
+						<svg
+							data-hf-id="hf-ktgg"
+							class="route-arrow"
+							viewBox="0 0 150 110"
+							aria-hidden="true"
+						>
+							<path
+								data-hf-id="hf-l8ex"
+								id="update-route"
+								d="M10 55 H126 M101 25 L136 55 L101 85"
+							/>
+						</svg>
+					</div>
+					<div data-hf-id="hf-016g" class="phone-column s2-output">
+						<div data-hf-id="hf-87bj" class="phone-label">
+							<span data-hf-id="hf-g3xc">02 / Project updated</span
+							><span data-hf-id="hf-3kd1">Shared state</span>
+						</div>
+						<div data-hf-id="hf-5nkb" class="phone-shell">
+							<div data-hf-id="hf-b26j" class="phone-screen">
+								<img
+									data-hf-id="hf-hltq"
+									src="capture/mobile/project-detail-mobile.png"
+									alt="Updated Lantern House shared project in BuildOS on an iPhone"
+								/>
+								<div data-hf-id="hf-task-highlight" class="task-highlight">
+									<span data-hf-id="hf-task-highlight-label">Task updated</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div data-hf-id="hf-vxn1" class="receipt-panel">
+					<div data-hf-id="hf-63l6" class="receipt-header">
+						BuildOS applied the change
+					</div>
+					<div data-hf-id="hf-cosm" class="receipt-grid update-receipts">
+						<div data-hf-id="hf-zavg" class="receipt s2-receipt">
+							<div data-hf-id="hf-lnrc" class="receipt-icon">✓</div>
+							<div data-hf-id="hf-we61" class="receipt-title">
+								Updated launch date
+							</div>
+						</div>
+						<div data-hf-id="hf-l1ic" class="receipt s2-receipt">
+							<div data-hf-id="hf-l9gb" class="receipt-icon">✓</div>
+							<div data-hf-id="hf-3ptr" class="receipt-title">Updated next tasks</div>
+						</div>
+						<div data-hf-id="hf-jul9" class="receipt s2-receipt">
+							<div data-hf-id="hf-kv5a" class="receipt-icon">✓</div>
+							<div data-hf-id="hf-o607" class="receipt-title">
+								Shared project state updated
+							</div>
+						</div>
+					</div>
+				</div>
+				<div data-hf-id="hf-xzmu" class="bottom-note">
+					The new information builds on your
+					<strong data-hf-id="hf-km2a">previous work.</strong>
+				</div>
+				<div data-hf-id="hf-cdlr" class="state-stamp">Change tracked</div>
+			</section>
+
+			<section
+				data-hf-id="hf-pcab"
+				id="scene-3"
+				class="clip scene"
+				data-start="24.4"
+				data-duration="11.6"
+				data-track-index="3"
+			>
+				<div data-hf-id="hf-b2bs" class="paper-field"></div>
+				<div data-hf-id="hf-6k9r" class="paper-grain" aria-hidden="true"></div>
+				<div data-hf-id="hf-rb2g" class="meta meta-left">BUILDOS / 03</div>
+				<div data-hf-id="hf-muzz" class="meta meta-right">AGENTS → SHARED CONTEXT</div>
+				<div data-hf-id="hf-xr03" class="edge-rule"></div>
+				<div data-hf-id="hf-1ryh" class="registration reg-bl"></div>
+				<div data-hf-id="hf-amqn" class="registration reg-br"></div>
+				<div data-hf-id="hf-mthd" class="scene-content">
+					<div data-hf-id="hf-vjtj" class="eyebrow s3-eyebrow">One project surface</div>
+					<h2 data-hf-id="hf-alm9" class="headline s3-headline">
+						Connect your agents to the
+						<span data-hf-id="hf-67x2" class="accent">Lantern House project.</span>
+					</h2>
+					<p data-hf-id="hf-dito" class="support-line s3-support">
+						OpenClaw, Claude, and ChatGPT can work from the same BuildOS project
+						context.
+					</p>
+				</div>
+				<div data-hf-id="hf-9sgb" class="network-stage">
+					<svg
+						data-hf-id="hf-g4u5"
+						class="network-svg"
+						viewBox="0 0 1080 1270"
+						aria-hidden="true"
+					>
+						<path
+							data-hf-id="hf-bbdr"
+							id="path-openclaw"
+							class="network-path"
+							d="M200 280 C200 420 410 390 540 520"
+						/>
+						<path
+							data-hf-id="hf-luko"
+							id="path-claude"
+							class="network-path"
+							d="M540 280 V520"
+						/>
+						<path
+							data-hf-id="hf-o2rb"
+							id="path-chatgpt"
+							class="network-path"
+							d="M880 280 C880 420 670 390 540 520"
+						/>
+						<path
+							data-hf-id="hf-0560"
+							id="path-forward"
+							class="network-path"
+							d="M540 855 V1010"
+						/>
+					</svg>
+					<div data-hf-id="hf-cpd7" class="agent-card agent-openclaw">
+						<div data-hf-id="hf-qb6y" class="agent-logo-wrap">
+							<img
+								data-hf-id="hf-y4mf"
+								class="agent-logo"
+								src=".media/images/logo_002.png"
+								alt="OpenClaw logo"
+							/>
+						</div>
+						<div data-hf-id="hf-kaxy" class="agent-name">OpenClaw</div>
+						<div data-hf-id="hf-bcaa" class="agent-role">Connected agent</div>
+					</div>
+					<div data-hf-id="hf-0nwg" class="agent-card agent-claude">
+						<div data-hf-id="hf-d52m" class="agent-logo-wrap">
+							<img
+								data-hf-id="hf-8518"
+								class="agent-logo"
+								src=".media/images/logo_003.svg"
+								alt="Claude logo"
+							/>
+						</div>
+						<div data-hf-id="hf-24af" class="agent-name">Claude</div>
+						<div data-hf-id="hf-7hdi" class="agent-role">Connected agent</div>
+					</div>
+					<div data-hf-id="hf-ugyf" class="agent-card agent-chatgpt">
+						<div data-hf-id="hf-djdn" class="agent-logo-wrap">
+							<img
+								data-hf-id="hf-8nu0"
+								class="agent-logo"
+								src=".media/images/logo_008.svg"
+								alt="ChatGPT logo"
+							/>
+						</div>
+						<div data-hf-id="hf-19g8" class="agent-name">ChatGPT</div>
+						<div data-hf-id="hf-7voj" class="agent-role">Connected agent</div>
+					</div>
+					<div data-hf-id="hf-mv99" class="project-hub">
+						<img
+							data-hf-id="hf-6cmn"
+							class="hub-icon"
+							src=".media/images/logo_001.png"
+							alt="BuildOS Brain Bolt"
+						/>
+						<div data-hf-id="hf-81pf" class="hub-kicker">BuildOS shared project</div>
+						<div data-hf-id="hf-mjr8" class="hub-title">Lantern House</div>
+						<div data-hf-id="hf-8d5w" class="hub-sub">
+							One source of project context
+						</div>
+						<div data-hf-id="hf-jo1f" class="hub-entities">
+							<span data-hf-id="hf-dvjw" class="hub-entity">Tasks</span
+							><span data-hf-id="hf-jdid" class="hub-entity">Goal</span
+							><span data-hf-id="hf-98s1" class="hub-entity">Plan</span
+							><span data-hf-id="hf-3c0n" class="hub-entity">Document</span>
+						</div>
+					</div>
+					<div data-hf-id="hf-gcvj" class="final-lockup">
+						<div data-hf-id="hf-ro8h" class="final-label">One shared project</div>
+						<div data-hf-id="hf-acqz" class="final-title">Keep moving forward.</div>
+						<div data-hf-id="hf-b5k4" class="final-sub">
+							You and every connected agent can read from the same work and build on
+							what happened before.
+						</div>
+						<div data-hf-id="hf-w7sl" class="final-pill">BUILDOS / PROJECT MEMORY</div>
+					</div>
+				</div>
+			</section>
+		</div>
+
+		<script>
+			window.__timelines = window.__timelines || {};
+			var tl = gsap.timeline({ paused: true });
+
+			function preparePath(selector) {
+				var path = document.querySelector(selector);
+				var length = path.getTotalLength();
+				path.style.strokeDasharray = String(length);
+				path.style.strokeDashoffset = String(length);
+				return length;
+			}
+
+			preparePath('#create-route');
+			preparePath('#update-route');
+			preparePath('#path-openclaw');
+			preparePath('#path-claude');
+			preparePath('#path-chatgpt');
+			preparePath('#path-forward');
+
+			var createText =
+				'I’m starting a small podcast called Lantern House. Six episodes, three guests, cover art, a launch date, and the first tasks.';
+			var updateText =
+				'The guest list changed. Move the launch date and update the next tasks for Lantern House.';
+			var createState = { chars: 0 };
+			var updateState = { chars: 0 };
+
+			tl.fromTo(
+				'#scene-1 .edge-rule',
+				{ scaleX: 0 },
+				{ scaleX: 1, duration: 0.75, ease: 'power3.out' },
+				0
+			);
+			tl.fromTo(
+				'.s1-eyebrow',
+				{ x: -40, opacity: 0 },
+				{ x: 0, opacity: 1, duration: 0.6, ease: 'power2.out' },
+				0.2
+			);
+			tl.fromTo(
+				'.s1-headline',
+				{ y: 55, opacity: 0 },
+				{ y: 0, opacity: 1, duration: 0.85, ease: 'power3.out' },
+				0.35
+			);
+			tl.fromTo(
+				'.s1-support',
+				{ y: 24, opacity: 0 },
+				{ y: 0, opacity: 1, duration: 0.55, ease: 'sine.out' },
+				0.75
+			);
+			tl.fromTo(
+				'.s1-input',
+				{ x: -110, opacity: 0, rotate: -2 },
+				{ x: 0, opacity: 1, rotate: 0, duration: 0.9, ease: 'back.out(1.2)' },
+				0.75
+			);
+			tl.fromTo(
+				'.s1-output',
+				{ x: 110, opacity: 0, scale: 0.94 },
+				{ x: 0, opacity: 1, scale: 1, duration: 0.75, ease: 'power3.out' },
+				8.55
+			);
+			tl.fromTo(
+				'.route-label',
+				{ y: 18, opacity: 0 },
+				{ y: 0, opacity: 1, duration: 0.45, ease: 'power2.out' },
+				6.85
+			);
+			tl.to(
+				createState,
+				{
+					chars: createText.length,
+					duration: 5.4,
+					ease: 'none',
+					onUpdate: function () {
+						document.querySelector('#create-copy').textContent = createText.slice(
+							0,
+							Math.floor(createState.chars)
+						);
+					}
+				},
+				1.45
+			);
+			tl.to(
+				'#create-caret',
+				{ opacity: 0.15, duration: 0.18, yoyo: true, repeat: 16, ease: 'none' },
+				1.45
+			);
+			tl.fromTo(
+				'#brain-pulse-create',
+				{ opacity: 0, scale: 0.62 },
+				{ opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.5)' },
+				6.7
+			);
+			tl.to(
+				'#brain-pulse-create',
+				{ opacity: 0, scale: 1.08, duration: 0.35, ease: 'power2.in' },
+				8.05
+			);
+			tl.to(
+				'#create-route',
+				{ strokeDashoffset: 0, duration: 1.05, ease: 'power2.out' },
+				8.4
+			);
+			tl.fromTo(
+				'.s1-receipt',
+				{ y: 38, opacity: 0, scale: 0.96 },
+				{
+					y: 0,
+					opacity: 1,
+					scale: 1,
+					duration: 0.55,
+					stagger: 0.28,
+					ease: 'back.out(1.35)'
+				},
+				10.0
+			);
+			tl.fromTo(
+				'#scene-1 .bottom-note',
+				{ x: -34, opacity: 0 },
+				{ x: 0, opacity: 1, duration: 0.6, ease: 'power2.out' },
+				12.0
+			);
+
+			tl.to('#scene-1', { y: -1920, duration: 0.6, ease: 'power3.inOut' }, 13.4);
+			tl.fromTo(
+				'#scene-2',
+				{ y: 1920, opacity: 1 },
+				{ y: 0, opacity: 1, duration: 0.6, ease: 'power3.inOut' },
+				13.4
+			);
+			tl.fromTo(
+				'#scene-2 .edge-rule',
+				{ scaleX: 0 },
+				{ scaleX: 1, duration: 0.65, ease: 'power3.out' },
+				13.95
+			);
+			tl.fromTo(
+				'.s2-eyebrow',
+				{ x: -34, opacity: 0 },
+				{ x: 0, opacity: 1, duration: 0.5, ease: 'power2.out' },
+				14.05
+			);
+			tl.fromTo(
+				'.s2-headline',
+				{ y: 44, opacity: 0 },
+				{ y: 0, opacity: 1, duration: 0.7, ease: 'power3.out' },
+				14.15
+			);
+			tl.fromTo(
+				'.s2-support',
+				{ y: 20, opacity: 0 },
+				{ y: 0, opacity: 1, duration: 0.45, ease: 'sine.out' },
+				14.5
+			);
+			tl.fromTo(
+				'.s2-input',
+				{ x: -90, opacity: 0 },
+				{ x: 0, opacity: 1, duration: 0.7, ease: 'power3.out' },
+				14.25
+			);
+			tl.fromTo(
+				'.s2-output',
+				{ x: 90, opacity: 0 },
+				{ x: 0, opacity: 1, duration: 0.7, ease: 'power3.out' },
+				14.55
+			);
+			tl.to(
+				updateState,
+				{
+					chars: updateText.length,
+					duration: 4.15,
+					ease: 'none',
+					onUpdate: function () {
+						document.querySelector('#update-copy').textContent = updateText.slice(
+							0,
+							Math.floor(updateState.chars)
+						);
+					}
+				},
+				15.15
+			);
+			tl.to(
+				'#update-caret',
+				{ opacity: 0.15, duration: 0.18, yoyo: true, repeat: 12, ease: 'none' },
+				15.15
+			);
+			tl.fromTo(
+				'#brain-pulse-update',
+				{ opacity: 0, scale: 0.62 },
+				{ opacity: 1, scale: 1, duration: 0.45, ease: 'back.out(1.5)' },
+				19.15
+			);
+			tl.to(
+				'#brain-pulse-update',
+				{ opacity: 0, scale: 1.08, duration: 0.35, ease: 'power2.in' },
+				20.55
+			);
+			tl.to(
+				'#update-route',
+				{ strokeDashoffset: 0, duration: 0.9, ease: 'power2.out' },
+				20.9
+			);
+			tl.fromTo(
+				'.task-highlight',
+				{ opacity: 0, boxShadow: '0 0 0 18px rgba(184, 86, 20, .22)' },
+				{
+					opacity: 1,
+					boxShadow: '0 0 0 8px rgba(184, 86, 20, .13)',
+					duration: 0.6,
+					ease: 'power2.out'
+				},
+				21.35
+			);
+			tl.fromTo(
+				'.s2-receipt',
+				{ y: 32, opacity: 0, scale: 0.95 },
+				{
+					y: 0,
+					opacity: 1,
+					scale: 1,
+					duration: 0.48,
+					stagger: 0.25,
+					ease: 'back.out(1.35)'
+				},
+				21.75
+			);
+			tl.fromTo(
+				'#scene-2 .bottom-note',
+				{ x: -30, opacity: 0 },
+				{ x: 0, opacity: 1, duration: 0.5, ease: 'power2.out' },
+				22.8
+			);
+			tl.fromTo(
+				'.state-stamp',
+				{ scale: 1.3, rotate: 3, opacity: 0 },
+				{ scale: 1, rotate: -2, opacity: 1, duration: 0.5, ease: 'back.out(1.8)' },
+				23.0
+			);
+
+			tl.to('#scene-2', { y: -1920, duration: 0.6, ease: 'power3.inOut' }, 24.4);
+			tl.fromTo(
+				'#scene-3',
+				{ y: 1920, opacity: 1 },
+				{ y: 0, opacity: 1, duration: 0.6, ease: 'power3.inOut' },
+				24.4
+			);
+			tl.fromTo(
+				'#scene-3 .edge-rule',
+				{ scaleX: 0 },
+				{ scaleX: 1, duration: 0.65, ease: 'power3.out' },
+				24.95
+			);
+			tl.fromTo(
+				'.s3-eyebrow',
+				{ x: -34, opacity: 0 },
+				{ x: 0, opacity: 1, duration: 0.5, ease: 'power2.out' },
+				25.0
+			);
+			tl.fromTo(
+				'.s3-headline',
+				{ y: 45, opacity: 0 },
+				{ y: 0, opacity: 1, duration: 0.72, ease: 'power3.out' },
+				25.15
+			);
+			tl.fromTo(
+				'.s3-support',
+				{ y: 22, opacity: 0 },
+				{ y: 0, opacity: 1, duration: 0.5, ease: 'sine.out' },
+				25.5
+			);
+			tl.fromTo(
+				'.agent-card',
+				{ y: -45, opacity: 0, scale: 0.94 },
+				{
+					y: 0,
+					opacity: 1,
+					scale: 1,
+					duration: 0.58,
+					stagger: 0.22,
+					ease: 'back.out(1.35)'
+				},
+				25.8
+			);
+			tl.fromTo(
+				'.project-hub',
+				{ scale: 0.88, opacity: 0 },
+				{ scale: 1, opacity: 1, duration: 0.75, ease: 'back.out(1.45)' },
+				26.5
+			);
+			tl.to(
+				'#path-openclaw',
+				{ strokeDashoffset: 0, duration: 0.8, ease: 'power2.out' },
+				27.0
+			);
+			tl.to(
+				'#path-claude',
+				{ strokeDashoffset: 0, duration: 0.65, ease: 'power2.out' },
+				27.2
+			);
+			tl.to(
+				'#path-chatgpt',
+				{ strokeDashoffset: 0, duration: 0.8, ease: 'power2.out' },
+				27.4
+			);
+			tl.fromTo(
+				'.hub-icon',
+				{ scale: 0.88 },
+				{ scale: 1.05, duration: 0.45, yoyo: true, repeat: 1, ease: 'sine.inOut' },
+				28.15
+			);
+			tl.to(
+				'#path-forward',
+				{ strokeDashoffset: 0, duration: 0.85, ease: 'power2.out' },
+				29.2
+			);
+			tl.fromTo(
+				'.final-label',
+				{ y: 20, opacity: 0 },
+				{ y: 0, opacity: 1, duration: 0.45, ease: 'power2.out' },
+				29.75
+			);
+			tl.fromTo(
+				'.final-title',
+				{ y: 44, opacity: 0, scale: 0.97 },
+				{ y: 0, opacity: 1, scale: 1, duration: 0.72, ease: 'power3.out' },
+				30.0
+			);
+			tl.fromTo(
+				'.final-sub',
+				{ y: 25, opacity: 0 },
+				{ y: 0, opacity: 1, duration: 0.55, ease: 'sine.out' },
+				30.45
+			);
+			tl.fromTo(
+				'.final-pill',
+				{ y: 22, opacity: 0 },
+				{ y: 0, opacity: 1, duration: 0.55, ease: 'back.out(1.25)' },
+				30.8
+			);
+
+			tl.to(
+				'#scene-1 .paper-grain, #scene-2 .paper-grain, #scene-3 .paper-grain',
+				{ x: 12, y: -10, duration: 36, ease: 'none' },
+				0
+			);
+
+			window.__timelines['main'] = tl;
+		</script>
+	</body>
+</html>
