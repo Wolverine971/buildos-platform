@@ -5,6 +5,7 @@ import {
 	ACTIVE_EXPERIMENT_MODEL,
 	AGENT_STATE_RECONCILIATION_MODEL,
 	JSON_PROFILE_MODELS,
+	KIMI_K3_MODEL,
 	OPENROUTER_V2_JSON_MODELS,
 	OPENROUTER_V2_MULTIMODAL_MODELS,
 	OPENROUTER_V2_TEXT_MODELS,
@@ -100,6 +101,30 @@ describe('resolveLaneModels', () => {
 				(model, index, models) => models.indexOf(model) === index
 			)
 		);
+	});
+
+	it('routes K3 only when the explicit maximum text profile is requested', () => {
+		expect(resolveLaneModels({ lane: 'text' })).not.toContain(KIMI_K3_MODEL);
+
+		const result = resolveLaneModels({ lane: 'text', profile: 'maximum' });
+
+		expect(result[0]).toBe(KIMI_K3_MODEL);
+		expect(result).toEqual(
+			[...TEXT_PROFILE_MODELS.maximum, ...OPENROUTER_V2_TEXT_MODELS].filter(
+				(model, index, models) => models.indexOf(model) === index
+			)
+		);
+	});
+
+	it('puts K3 first for an explicit maximum tool-calling profile', () => {
+		const result = resolveLaneModels({
+			lane: 'tool_calling',
+			profile: 'maximum',
+			exactoToolsEnabled: false
+		});
+
+		expect(result[0]).toBe(KIMI_K3_MODEL);
+		expect(result).toContain(OPENROUTER_V2_TOOL_MODELS[0]);
 	});
 
 	it('honors JSON profile hints with JSON-capable models only', () => {

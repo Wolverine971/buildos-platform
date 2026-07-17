@@ -112,7 +112,7 @@ export function validateToolCalls(
 			errors.push('Tool call did not include a function name.');
 		}
 
-		const { args, error } = parseToolArguments(toolCall.function?.arguments);
+		const { args: parsedArgs, error } = parseToolArguments(toolCall.function?.arguments);
 		if (error) {
 			errors.push(error);
 		}
@@ -122,6 +122,7 @@ export function validateToolCalls(
 			toolDef && (toolDef as any).function?.parameters
 				? (toolDef as any).function.parameters
 				: (toolDef as any)?.parameters;
+		const args = applySchemaDefaults(parsedArgs, paramSchema);
 		const requiredParams = Array.isArray(paramSchema?.required) ? paramSchema.required : [];
 		for (const required of requiredParams) {
 			const value = getValueByPath(args, required);
@@ -173,6 +174,39 @@ export function validateToolCalls(
 			op,
 			errors
 		}));
+}
+
+function applySchemaDefaults(
+	args: Record<string, any>,
+	paramSchema: Record<string, any> | undefined
+): Record<string, any> {
+	if (!paramSchema || typeof paramSchema !== 'object') return args;
+
+	const properties =
+		paramSchema.properties &&
+		typeof paramSchema.properties === 'object' &&
+		!Array.isArray(paramSchema.properties)
+			? (paramSchema.properties as Record<string, Record<string, any>>)
+			: {};
+	let resolved = args;
+
+	for (const [key, definition] of Object.entries(properties)) {
+		if (args[key] !== undefined && args[key] !== null) continue;
+		if (!definition || typeof definition !== 'object' || !('default' in definition)) {
+			continue;
+		}
+
+		const defaultValue = definition.default;
+		if (defaultValue === undefined) continue;
+		if (resolved === args) resolved = { ...args };
+		resolved[key] = Array.isArray(defaultValue)
+			? [...defaultValue]
+			: defaultValue && typeof defaultValue === 'object'
+				? { ...defaultValue }
+				: defaultValue;
+	}
+
+	return resolved;
 }
 
 function getValueByPath(value: Record<string, any>, path: string): unknown {

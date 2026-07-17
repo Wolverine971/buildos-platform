@@ -1,7 +1,7 @@
 // packages/smart-llm/src/types.ts
 
 export type JSONProfile = 'fast' | 'balanced' | 'powerful' | 'maximum' | 'custom';
-export type TextProfile = 'speed' | 'balanced' | 'quality' | 'creative' | 'custom';
+export type TextProfile = 'speed' | 'balanced' | 'quality' | 'creative' | 'maximum' | 'custom';
 
 export interface ModelCapabilities {
 	jsonMode?: boolean;

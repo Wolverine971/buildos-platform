@@ -1,10 +1,6 @@
 // apps/web/src/lib/services/next-step-generation.service.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-	ACTIVE_EXPERIMENT_MODEL,
-	DEEPSEEK_V4_FLASH_MODEL,
-	PROJECT_NEXT_STEP_MODELS
-} from '@buildos/smart-llm';
+import { DEEPSEEK_V4_FLASH_MODEL, PROJECT_NEXT_STEP_MODELS } from '@buildos/smart-llm';
 
 vi.mock('$env/static/private', () => ({
 	PRIVATE_OPENROUTER_API_KEY: 'openrouter-test-key'
@@ -21,7 +17,7 @@ describe('next-step generation model fallback', () => {
 		vi.unstubAllGlobals();
 	});
 
-	it('falls back to Qwen when the DeepSeek primary model is rate-limited', async () => {
+	it('advances through the default JSON roster when the primary is rate-limited', async () => {
 		const requestBodies: Array<Record<string, unknown>> = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			if (typeof init?.body === 'string') {
@@ -52,7 +48,7 @@ describe('next-step generation model fallback', () => {
 			return new Response(
 				JSON.stringify({
 					id: 'chatcmpl-next-step-fallback',
-					model: ACTIVE_EXPERIMENT_MODEL,
+					model: PROJECT_NEXT_STEP_MODELS[1],
 					choices: [
 						{
 							index: 0,
@@ -97,17 +93,17 @@ describe('next-step generation model fallback', () => {
 		// First request: primary candidate + an OpenRouter fallback list. The exact
 		// list is shaped by lane resolution (dedupe/capability filter), so assert the
 		// mechanism structurally rather than pinning the transformed array: it leads
-		// with the experiment model and never re-includes the rate-limited primary.
+		// with the next default model and never re-includes the rate-limited primary.
 		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
 		expect(requestBodies[0]?.model).toBe(PROJECT_NEXT_STEP_MODELS[0]);
 		expect(Array.isArray(requestBodies[0]?.models)).toBe(true);
-		expect((requestBodies[0]?.models as string[])?.[0]).toBe(ACTIVE_EXPERIMENT_MODEL);
+		expect((requestBodies[0]?.models as string[])?.[0]).toBe(PROJECT_NEXT_STEP_MODELS[1]);
 		expect(requestBodies[0]?.models).not.toContain(DEEPSEEK_V4_FLASH_MODEL);
 		// After the primary is rate-limited, the retry advances through the chain:
 		// it pins the next model and forwards the remaining fallbacks, never
 		// re-attempting the rate-limited primary or repeating the now-pinned model.
-		expect(requestBodies[1]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
+		expect(requestBodies[1]?.model).toBe(PROJECT_NEXT_STEP_MODELS[1]);
 		expect(requestBodies[1]?.models).not.toContain(DEEPSEEK_V4_FLASH_MODEL);
-		expect(requestBodies[1]?.models).not.toContain(ACTIVE_EXPERIMENT_MODEL);
+		expect(requestBodies[1]?.models).not.toContain(PROJECT_NEXT_STEP_MODELS[1]);
 	});
 });

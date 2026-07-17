@@ -43,11 +43,11 @@ export interface LLMUsageMetadata {
 
 export const DEFAULT_MIGRATION_MODEL = DEEPSEEK_V4_FLASH_MODEL;
 
-// Token costs per 1000 tokens (OpenRouter pricing checked June 2026)
+// Token costs per 1000 tokens (OpenRouter pricing checked July 2026)
 const TOKEN_COSTS: Record<string, TokenCosts> = {
-	[DEEPSEEK_V4_FLASH_MODEL]: { input: 0.00009, output: 0.00018 },
+	[DEEPSEEK_V4_FLASH_MODEL]: { input: 0.000098, output: 0.000196 },
 	[GEMINI_31_FLASH_LITE_MODEL]: { input: 0.00025, output: 0.0015 },
-	[ACTIVE_EXPERIMENT_MODEL]: { input: 0.00032, output: 0.00128 }
+	[ACTIVE_EXPERIMENT_MODEL]: { input: 0.001, output: 0.006 }
 };
 
 // Estimated tokens per entity type (based on typical prompt/response sizes)
@@ -369,7 +369,7 @@ export function getAvailableModels(): Array<{
 		},
 		{
 			id: ACTIVE_EXPERIMENT_MODEL,
-			name: 'Qwen 3.7 Plus',
+			name: 'GPT-5.6 Luna',
 			costs: TOKEN_COSTS[ACTIVE_EXPERIMENT_MODEL]!,
 			recommended: false
 		}

@@ -158,7 +158,7 @@ describe('OpenRouterV2Service model routing', () => {
 		});
 	});
 
-	it('falls back from DeepSeek JSON primary to the Qwen experiment fallback', async () => {
+	it('falls back from the DeepSeek JSON primary to the next roster model', async () => {
 		const requestBodies: any[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			if (typeof init?.body === 'string') {
@@ -169,7 +169,7 @@ describe('OpenRouterV2Service model routing', () => {
 				return new Response(
 					JSON.stringify({
 						id: 'chatcmpl-v2-fallback',
-						model: ACTIVE_EXPERIMENT_MODEL,
+						model: OPENROUTER_V2_JSON_MODELS[1],
 						choices: [
 							{
 								index: 0,

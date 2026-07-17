@@ -1,7 +1,7 @@
 // apps/web/src/lib/services/smart-llm/types.ts
 
 export type JSONProfile = 'fast' | 'balanced' | 'powerful' | 'maximum' | 'custom';
-export type TextProfile = 'speed' | 'balanced' | 'quality' | 'creative' | 'custom';
+export type TextProfile = 'speed' | 'balanced' | 'quality' | 'creative' | 'maximum' | 'custom';
 
 export interface ModelProfile {
 	id: string;

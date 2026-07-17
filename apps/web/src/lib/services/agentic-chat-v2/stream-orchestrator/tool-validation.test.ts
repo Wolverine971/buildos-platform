@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/tool-validation.test.ts
 import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
+import { ONTOLOGY_WRITE_TOOLS } from '$lib/services/agentic-chat/tools/core/definitions/ontology-write';
 import { validateToolCalls } from './tool-validation';
 
 const documentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
@@ -69,6 +70,28 @@ describe('tool validation', () => {
 				})
 			],
 			[updateDocumentTool]
+		);
+
+		expect(issues).toEqual([]);
+	});
+
+	it('applies create-project array defaults before required-parameter validation', () => {
+		const createProjectTool = ONTOLOGY_WRITE_TOOLS.find(
+			(tool) => tool.function.name === 'create_onto_project'
+		);
+		expect(createProjectTool).toBeDefined();
+
+		const issues = validateToolCalls(
+			[
+				createToolCall('create_onto_project', {
+					project: {
+						name: 'Property Interests in Procedure: Due Process Research',
+						type_key: 'project.academic.legal'
+					},
+					relationships: []
+				})
+			],
+			[createProjectTool as ChatToolDefinition]
 		);
 
 		expect(issues).toEqual([]);

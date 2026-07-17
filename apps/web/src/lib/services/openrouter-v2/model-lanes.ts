@@ -51,6 +51,9 @@ function laneProfileModels(params: {
 	}
 	if (params.lane === 'tool_calling') {
 		if (params.exactoToolsEnabled) return [];
+		// The balanced/speed tool lanes already have a deliberately curated
+		// default order. Only explicit premium profiles may broaden that set.
+		if (params.profile === 'balanced' || params.profile === 'speed') return [];
 		return ensureToolCompatibleModels(
 			selectTextModels(params.profile as TextProfile, params.estimatedLength ?? 1500)
 		);
@@ -157,10 +160,10 @@ export function resolveLaneModels(params: ResolveLaneModelsParams): string[] {
 					exactoToolsEnabled,
 					allowedModelSet
 				);
-	const merged =
-		lane === 'tool_calling'
-			? uniqueModels([...explicitModels, ...defaults, ...profileModels])
-			: uniqueModels([...explicitModels, ...profileModels, ...defaults]);
+	const keepToolDefaultsFirst = lane === 'tool_calling' && params.profile !== 'maximum';
+	const merged = keepToolDefaultsFirst
+		? uniqueModels([...explicitModels, ...defaults, ...profileModels])
+		: uniqueModels([...explicitModels, ...profileModels, ...defaults]);
 
 	if (merged.length > 0) {
 		return merged;

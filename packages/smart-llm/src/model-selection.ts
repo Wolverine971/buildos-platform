@@ -3,7 +3,6 @@
 import type { JSONProfile, ModelProfile, TextProfile } from './types';
 import {
 	EMERGENCY_TEXT_FALLBACKS,
-	ACTIVE_EXPERIMENT_MODEL,
 	JSON_MODELS,
 	JSON_PROFILE_MODELS,
 	modelSupportsCapability,
@@ -55,9 +54,6 @@ export function selectJSONModels(
 	if (complexity === 'complex' && profile === 'fast') {
 		// Upgrade to balanced for complex tasks
 		models = [...JSON_PROFILE_MODELS.balanced];
-	} else if (complexity === 'simple' && profile === 'powerful') {
-		// Can use faster models for simple tasks
-		models = [ACTIVE_EXPERIMENT_MODEL, ...models];
 	}
 
 	return Array.from(new Set(models));
@@ -87,9 +83,6 @@ export function selectTextModels(
 	if (estimatedLength > 3000 && profile === 'speed') {
 		// Need more capable models for long content
 		models = [...TEXT_PROFILE_MODELS.balanced];
-	} else if (estimatedLength < 500 && profile === 'quality') {
-		// Can use faster models for short content
-		models = [ACTIVE_EXPERIMENT_MODEL, ...models];
 	}
 
 	return Array.from(new Set(models));

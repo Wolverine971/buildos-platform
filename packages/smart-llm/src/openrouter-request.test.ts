@@ -1,5 +1,6 @@
 // packages/smart-llm/src/openrouter-request.test.ts
 import { describe, expect, it } from 'vitest';
+import { GPT_56_LUNA_MODEL, GROK_45_MODEL, KIMI_K3_MODEL } from './model-config';
 import {
 	buildOpenRouterChatCompletionBody,
 	resolveOpenRouterFallbackModels
@@ -74,5 +75,49 @@ describe('buildOpenRouterChatCompletionBody', () => {
 
 		expect((body.session_id as string).length).toBe(256);
 		expect(Object.keys(body)).not.toContain('prompt_cache_key');
+	});
+
+	it('omits K3 temperature and forces visible maximum reasoning', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: KIMI_K3_MODEL,
+			messages: [{ role: 'user', content: 'Solve this carefully.' }],
+			temperature: 0.2,
+			reasoning: { effort: 'low', exclude: true }
+		});
+
+		expect(body).not.toHaveProperty('temperature');
+		expect(body.reasoning).toEqual({ effort: 'max', exclude: false });
+	});
+
+	it('adds K3 reasoning requirements when the caller did not supply reasoning', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: KIMI_K3_MODEL,
+			messages: [{ role: 'user', content: 'Solve this carefully.' }],
+			temperature: 0.2
+		});
+
+		expect(body.reasoning).toEqual({ effort: 'max', exclude: false });
+	});
+
+	it('omits unsupported Luna temperature without changing its requested reasoning effort', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: GPT_56_LUNA_MODEL,
+			messages: [{ role: 'user', content: 'Analyze this.' }],
+			temperature: 0.4,
+			reasoning: { effort: 'low', exclude: true }
+		});
+
+		expect(body).not.toHaveProperty('temperature');
+		expect(body.reasoning).toEqual({ effort: 'low', exclude: true });
+	});
+
+	it('keeps temperature for models that support it', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: GROK_45_MODEL,
+			messages: [{ role: 'user', content: 'Analyze this.' }],
+			temperature: 0.4
+		});
+
+		expect(body.temperature).toBe(0.4);
 	});
 });

@@ -1,7 +1,14 @@
 // packages/smart-llm/src/smart-llm-service.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { SmartLLMService } from './smart-llm-service';
-import { ACTIVE_EXPERIMENT_MODEL, DEEPSEEK_V4_FLASH_MODEL } from './model-config';
+import {
+	ACTIVE_EXPERIMENT_MODEL,
+	DEEPSEEK_V4_FLASH_MODEL,
+	GLM_52_MODEL,
+	KIMI_K3_MODEL,
+	TENCENT_HY3_MODEL,
+	XIAOMI_MIMO_V25_MODEL
+} from './model-config';
 
 function buildSSE(payloads: string[], headers?: Record<string, string>): Response {
 	const encoder = new TextEncoder();
@@ -603,6 +610,45 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
 		expect(requestBodies[0]?.reasoning).toEqual({ effort: 'low', exclude: false });
 	});
+
+	it('keeps the explicit K3 maximum profile on OpenRouter with fixed request parameters', async () => {
+		const requestBodies: any[] = [];
+		const requestUrls: string[] = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			requestUrls.push(_url);
+			if (typeof init?.body === 'string') {
+				requestBodies.push(JSON.parse(init.body));
+			}
+
+			return buildJSONCompletion({
+				model: KIMI_K3_MODEL,
+				content: 'Done.',
+				provider: 'Moonshot AI'
+			});
+		});
+
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			moonshot: {
+				apiKey: 'moonshot-test-key',
+				routeKimiModelsDirect: true
+			},
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		const result = await llm.generateTextDetailed({
+			prompt: 'Do the hardest available analysis.',
+			profile: 'maximum',
+			userId: 'user-1',
+			temperature: 0.2
+		});
+
+		expect(result.text).toBe('Done.');
+		expect(requestUrls[0]).toContain('openrouter.ai/api/v1/chat/completions');
+		expect(requestBodies[0]?.model).toBe(KIMI_K3_MODEL);
+		expect(requestBodies[0]).not.toHaveProperty('temperature');
+		expect(requestBodies[0]?.reasoning).toEqual({ effort: 'max', exclude: false });
+	});
 });
 
 describe('SmartLLMService model failover', () => {
@@ -692,12 +738,12 @@ describe('SmartLLMService model failover', () => {
 
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
-		expect(requestBodies[1]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
+		expect(requestBodies[1]?.model).toBe(TENCENT_HY3_MODEL);
 		expect(events.some((event) => event.type === 'error')).toBe(false);
 		expect(events.some((event) => event.type === 'text')).toBe(true);
 		expect(usageLogger.logUsageToDatabase).toHaveBeenCalledWith(
 			expect.objectContaining({
-				modelRequested: ACTIVE_EXPERIMENT_MODEL,
+				modelRequested: TENCENT_HY3_MODEL,
 				modelUsed: ACTIVE_EXPERIMENT_MODEL,
 				status: 'success',
 				streaming: true
@@ -814,8 +860,8 @@ describe('SmartLLMService JSON model recovery', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(3);
 		expect(requestBodies.map((body) => body.model)).toEqual([
 			DEEPSEEK_V4_FLASH_MODEL,
-			ACTIVE_EXPERIMENT_MODEL,
-			ACTIVE_EXPERIMENT_MODEL
+			GLM_52_MODEL,
+			XIAOMI_MIMO_V25_MODEL
 		]);
 		expect(errorLogger.logAPIError).not.toHaveBeenCalled();
 	});

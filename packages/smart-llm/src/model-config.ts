@@ -5,7 +5,10 @@ import type { JSONProfile, ModelCapabilities, ModelProfile, TextProfile } from '
 export const KIMI_EXPERIMENT_MODEL = 'moonshotai/kimi-k2.6' as const;
 export const KIMI_CODING_MODEL = 'moonshotai/kimi-k2.7-code' as const;
 export const KIMI_EXPERIMENT_MODELS = [KIMI_EXPERIMENT_MODEL, KIMI_CODING_MODEL] as const;
+export const KIMI_K3_MODEL = 'moonshotai/kimi-k3' as const;
 export const QWEN_37_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.7-plus' as const;
+export const GPT_56_LUNA_MODEL = 'openai/gpt-5.6-luna' as const;
+export const GROK_45_MODEL = 'x-ai/grok-4.5' as const;
 export const DEEPSEEK_V4_FLASH_MODEL = 'deepseek/deepseek-v4-flash' as const;
 export const DEEPSEEK_V4_PRO_MODEL = 'deepseek/deepseek-v4-pro' as const;
 export const MINIMAX_M3_MODEL = 'minimax/minimax-m3' as const;
@@ -16,8 +19,9 @@ export const GLM_52_MODEL = 'z-ai/glm-5.2' as const;
 export const NEX_N2_MINI_MODEL = 'nex-agi/nex-n2-mini' as const;
 export const POOLSIDE_LAGUNA_XS_21_MODEL = 'poolside/laguna-xs-2.1' as const;
 export const GEMINI_31_FLASH_LITE_MODEL = 'google/gemini-3.1-flash-lite' as const;
-export const ACTIVE_EXPERIMENT_MODEL = QWEN_37_PLUS_EXPERIMENT_MODEL;
-export const ACTIVE_EXPERIMENT_MODELS = [ACTIVE_EXPERIMENT_MODEL] as const;
+export const ACTIVE_EXPERIMENT_MODEL = GPT_56_LUNA_MODEL;
+export const ACTIVE_EXPERIMENT_MODELS = [GPT_56_LUNA_MODEL, GROK_45_MODEL] as const;
+export const MAXIMUM_WORK_MODEL = KIMI_K3_MODEL;
 // Universal last-resort fallback used only when lane resolution yields no models.
 // Deliberately decoupled from ACTIVE_EXPERIMENT_MODEL so rotating the current
 // experiment never silently changes the global safety net. DeepSeek V4 Flash is a
@@ -61,8 +65,8 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 		speed: 4.6,
 		smartness: 4.85,
 		creativity: 4.3,
-		cost: 0.09,
-		outputCost: 0.18,
+		cost: 0.098,
+		outputCost: 0.196,
 		provider: 'deepseek',
 		bestFor: [
 			'low-cost-agentic-workflows',
@@ -112,8 +116,8 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 		speed: 3.1,
 		smartness: 5,
 		creativity: 4.6,
-		cost: 0.9086,
-		outputCost: 2.8556,
+		cost: 0.9226,
+		outputCost: 2.8996,
 		provider: 'z-ai',
 		bestFor: [
 			'long-horizon-agentic-workflows',
@@ -319,9 +323,113 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			'structured-output',
 			'tool-calling',
 			'1m-context',
-			'current-qwen-plus-route'
+			'historical-comparison'
 		],
-		limitations: ['reasoning-tokens-can-increase-cost'],
+		limitations: [
+			'reasoning-tokens-can-increase-cost',
+			'not-default-production-routing',
+			'demoted-after-production-evaluation'
+		],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
+	},
+	[GPT_56_LUNA_MODEL]: {
+		id: GPT_56_LUNA_MODEL,
+		name: 'GPT-5.6 Luna',
+		speed: 4,
+		smartness: 5,
+		creativity: 4.8,
+		cost: 1,
+		outputCost: 6,
+		provider: 'openai',
+		bestFor: [
+			'premium-reasoning',
+			'agentic-coding',
+			'complex-synthesis',
+			'structured-output',
+			'tool-calling',
+			'multimodal',
+			'1m-context',
+			'quality-profile'
+		],
+		limitations: [
+			'higher-cost-than-defaults',
+			'no-temperature-parameter',
+			'premium-evaluation-lane'
+		],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
+	},
+	[GROK_45_MODEL]: {
+		id: GROK_45_MODEL,
+		name: 'Grok 4.5',
+		speed: 3.8,
+		smartness: 5,
+		creativity: 4.8,
+		cost: 2,
+		outputCost: 6,
+		provider: 'x-ai',
+		bestFor: [
+			'premium-reasoning',
+			'agentic-coding',
+			'complex-synthesis',
+			'structured-output',
+			'tool-calling',
+			'multimodal',
+			'500k-context',
+			'quality-profile'
+		],
+		limitations: ['higher-cost-than-defaults', 'premium-evaluation-lane'],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
+	},
+	[KIMI_K3_MODEL]: {
+		id: KIMI_K3_MODEL,
+		name: 'Kimi K3',
+		speed: 3,
+		smartness: 5,
+		creativity: 4.9,
+		cost: 3,
+		outputCost: 15,
+		provider: 'moonshotai',
+		bestFor: [
+			'maximum-quality-reasoning',
+			'long-horizon-agentic-workflows',
+			'agentic-coding',
+			'complex-synthesis',
+			'structured-output',
+			'tool-calling',
+			'multimodal',
+			'1m-context',
+			'explicit-maximum-profile'
+		],
+		limitations: [
+			'high-cost',
+			'mandatory-max-reasoning',
+			'no-temperature-parameter',
+			'single-provider',
+			'launch-capacity-variable',
+			'requires-full-reasoning-history',
+			'not-default-production-routing'
+		],
 		capabilities: {
 			jsonMode: true,
 			structuredOutputs: true,
@@ -337,8 +445,8 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 		speed: 3.4,
 		smartness: 5,
 		creativity: 4.8,
-		cost: 0.67,
-		outputCost: 3.5,
+		cost: 0.95,
+		outputCost: 4,
 		provider: 'moonshotai',
 		bestFor: [
 			'long-horizon-coding',
@@ -365,7 +473,7 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 		speed: 3.2,
 		smartness: 5,
 		creativity: 4.7,
-		cost: 0.74,
+		cost: 0.75,
 		outputCost: 3.5,
 		provider: 'moonshotai',
 		bestFor: [
@@ -397,48 +505,48 @@ export function modelSupportsCapability(
 	return MODEL_CATALOG[modelId]?.capabilities?.[capability] === true;
 }
 
-// Reviewed 2026-07-07 against OpenRouter model pages/API. Keep models without
-// response_format out of JSON routes, and reserve expensive specialists for
-// explicit quality/maximum profiles.
+// Reviewed 2026-07-17 against OpenRouter model pages/API and production
+// telemetry. Keep models without response_format out of JSON routes, keep
+// premium candidates out of automatic lanes, and reserve K3 for an explicit
+// maximum profile.
 const OPENROUTER_TEXT_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
-	ACTIVE_EXPERIMENT_MODEL,
 	TENCENT_HY3_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
-	POOLSIDE_LAGUNA_XS_21_MODEL
+	POOLSIDE_LAGUNA_XS_21_MODEL,
+	DEEPSEEK_V4_PRO_MODEL
 ] as const;
 const OPENROUTER_JSON_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
-	ACTIVE_EXPERIMENT_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
-	MINIMAX_M3_MODEL,
 	NEX_N2_MINI_MODEL,
-	GEMINI_31_FLASH_LITE_MODEL
+	GEMINI_31_FLASH_LITE_MODEL,
+	DEEPSEEK_V4_PRO_MODEL,
+	MINIMAX_M3_MODEL
 ] as const;
 const OPENROUTER_TOOL_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
-	ACTIVE_EXPERIMENT_MODEL,
-	GLM_52_MODEL,
-	MINIMAX_M3_MODEL,
 	TENCENT_HY3_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
-	POOLSIDE_LAGUNA_XS_21_MODEL
+	POOLSIDE_LAGUNA_XS_21_MODEL,
+	DEEPSEEK_V4_PRO_MODEL,
+	GLM_52_MODEL,
+	MINIMAX_M3_MODEL
 ] as const;
 const OPENROUTER_MULTIMODAL_ROUTE = [
 	XIAOMI_MIMO_V25_MODEL,
-	MINIMAX_M3_MODEL,
-	ACTIVE_EXPERIMENT_MODEL,
+	GEMINI_31_FLASH_LITE_MODEL,
 	NEX_N2_MINI_MODEL,
-	GEMINI_31_FLASH_LITE_MODEL
+	MINIMAX_M3_MODEL
 ] as const;
 const EMERGENCY_TEXT_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
-	ACTIVE_EXPERIMENT_MODEL,
 	TENCENT_HY3_MODEL,
-	POOLSIDE_LAGUNA_XS_21_MODEL
+	POOLSIDE_LAGUNA_XS_21_MODEL,
+	DEEPSEEK_V4_PRO_MODEL
 ] as const;
 const JSON_FAST_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
@@ -449,16 +557,16 @@ const JSON_FAST_ROUTE = [
 const JSON_POWERFUL_ROUTE = [
 	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
-	ACTIVE_EXPERIMENT_MODEL,
-	MINIMAX_M3_MODEL,
+	GPT_56_LUNA_MODEL,
+	GROK_45_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL
 ] as const;
 const JSON_MAXIMUM_ROUTE = [
+	KIMI_K3_MODEL,
+	GPT_56_LUNA_MODEL,
+	GROK_45_MODEL,
 	GLM_52_MODEL,
-	DEEPSEEK_V4_PRO_MODEL,
-	ACTIVE_EXPERIMENT_MODEL,
-	KIMI_CODING_MODEL,
-	MINIMAX_M3_MODEL
+	DEEPSEEK_V4_PRO_MODEL
 ] as const;
 const TEXT_SPEED_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
@@ -466,22 +574,28 @@ const TEXT_SPEED_ROUTE = [
 	TENCENT_HY3_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
-	ACTIVE_EXPERIMENT_MODEL
+	DEEPSEEK_V4_PRO_MODEL
 ] as const;
 const TEXT_QUALITY_ROUTE = [
-	ACTIVE_EXPERIMENT_MODEL,
 	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
-	KIMI_CODING_MODEL,
+	GPT_56_LUNA_MODEL,
+	GROK_45_MODEL,
 	MINIMAX_M3_MODEL,
-	KIMI_EXPERIMENT_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL
 ] as const;
 const TEXT_CREATIVE_ROUTE = [
-	KIMI_CODING_MODEL,
-	KIMI_EXPERIMENT_MODEL,
-	ACTIVE_EXPERIMENT_MODEL,
+	GLM_52_MODEL,
+	GPT_56_LUNA_MODEL,
+	GROK_45_MODEL,
 	MINIMAX_M3_MODEL,
+	DEEPSEEK_V4_PRO_MODEL
+] as const;
+const TEXT_MAXIMUM_ROUTE = [
+	KIMI_K3_MODEL,
+	GPT_56_LUNA_MODEL,
+	GROK_45_MODEL,
+	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL
 ] as const;
 
@@ -495,7 +609,8 @@ export const ACTIVE_RUNTIME_MODEL_IDS = Array.from(
 		...JSON_POWERFUL_ROUTE,
 		...JSON_MAXIMUM_ROUTE,
 		...TEXT_QUALITY_ROUTE,
-		...TEXT_CREATIVE_ROUTE
+		...TEXT_CREATIVE_ROUTE,
+		...TEXT_MAXIMUM_ROUTE
 	])
 );
 export const ACTIVE_RUNTIME_MODEL_SET = new Set<string>(ACTIVE_RUNTIME_MODEL_IDS);
@@ -592,7 +707,8 @@ const MODEL_ROUTES = {
 		speed: TEXT_SPEED_ROUTE,
 		balanced: OPENROUTER_TEXT_ROUTE,
 		quality: TEXT_QUALITY_ROUTE,
-		creative: TEXT_CREATIVE_ROUTE
+		creative: TEXT_CREATIVE_ROUTE,
+		maximum: TEXT_MAXIMUM_ROUTE
 	}
 } as const;
 
@@ -605,7 +721,10 @@ export const PROJECT_NEXT_STEP_MODELS = [...MODEL_ROUTES.tasks.projectNextStep];
 export const AGENTIC_MODEL_RECOMMENDATIONS = MODEL_ROUTES.agentRecommendations;
 
 export const TOOL_CALLING_MODEL_ORDER = [...MODEL_ROUTES.toolCalling];
-export const TOOL_CALLING_MODEL_SET = new Set<string>(TOOL_CALLING_MODEL_ORDER);
+export const TOOL_CALLING_MODEL_SET = new Set<string>(
+	ACTIVE_RUNTIME_MODEL_IDS.filter((modelId) => modelSupportsCapability(modelId, 'tools'))
+);
+export const MAXIMUM_WORK_MODEL_ORDER = [...MODEL_ROUTES.textProfiles.maximum];
 
 export const EMPTY_CONTENT_RETRY_INSTRUCTION =
 	'Return only the final answer. Do not include analysis or reasoning.';
@@ -627,5 +746,6 @@ export const TEXT_PROFILE_MODELS: Record<TextProfile, string[]> = {
 	balanced: [...MODEL_ROUTES.textProfiles.balanced],
 	quality: [...MODEL_ROUTES.textProfiles.quality],
 	creative: [...MODEL_ROUTES.textProfiles.creative],
+	maximum: [...MODEL_ROUTES.textProfiles.maximum],
 	custom: []
 };

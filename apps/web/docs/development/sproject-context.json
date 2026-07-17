@@ -21,16 +21,6 @@
 			"components": ["AgentChatModal", "GraphControls", "OntologyGraph", "NodeDetailsPanel"]
 		},
 		{
-			"file": "src/routes/today/+page.svelte",
-			"type": "page",
-			"components": [
-				"TaskEditModal",
-				"AgentChatModal",
-				"DashboardInboxModal",
-				"OverdueTaskTriageModal"
-			]
-		},
-		{
 			"file": "src/routes/time-blocks/+page.svelte",
 			"type": "page",
 			"components": [
@@ -41,6 +31,45 @@
 				"AvailableSlotList",
 				"CalendarConnectionOverlay"
 			]
+		},
+		{
+			"file": "src/routes/today/+page.svelte",
+			"type": "page",
+			"components": [
+				"TaskEditModal",
+				"AgentChatModal",
+				"DashboardInboxModal",
+				"OverdueTaskTriageModal"
+			]
+		},
+		{
+			"file": "src/routes/admin/beta/+page.svelte",
+			"type": "page",
+			"components": ["EmailManager", "EmailComposerModal"]
+		},
+		{
+			"file": "src/routes/dashboard/calendar/+page.svelte",
+			"type": "page",
+			"components": ["TaskEditModal", "EventEditModal"]
+		},
+		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"AgentChatModal",
+				"ProjectEventsModal",
+				"RecentProjectChatsModal",
+				"ProjectModalsHost",
+				"ProjectAuditTracker",
+				"TaskKanbanBoard",
+				"MobileTaskBoard",
+				"ProjectDocumentsSection"
+			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/dashboard/AnalyticsDashboard.svelte",
@@ -74,6 +103,11 @@
 			"components": ["DashboardInboxModal", "AgentChatModal", "WorkPanel"]
 		},
 		{
+			"file": "src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
+			"type": "component",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
 			"type": "component",
 			"components": [
@@ -92,55 +126,6 @@
 				"CalendarAnalysisModalContent",
 				"TimeBlockModalContent",
 				"AgentRunModalContent"
-			]
-		},
-		{
-			"file": "src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectAuditTracker.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectCalendarSettingsModal.svelte",
-			"type": "component",
-			"components": ["TaskEditModal", "EventEditModal"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectHistorySection.svelte",
-			"type": "component",
-			"components": ["ProjectBriefsPanel", "ProjectActivityLogPanel"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectInboxPanel.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectInsightRail.svelte",
-			"type": "component",
-			"components": ["ImageAssetsPanel"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectModalsHost.svelte",
-			"type": "component",
-			"components": [
-				"TaskCreateModal",
-				"PlanCreateModal",
-				"GoalCreateModal",
-				"RiskCreateModal",
-				"RiskEditModal",
-				"MilestoneCreateModal",
-				"MilestoneEditModal",
-				"EventCreateModal",
-				"EventEditModal",
-				"ProjectCalendarSettingsModal",
-				"OntologyProjectEditModal",
-				"ProjectCollaborationModal",
-				"ProjectGraphSection"
 			]
 		},
 		{
@@ -203,43 +188,48 @@
 			]
 		},
 		{
-			"file": "src/routes/admin/beta/+page.svelte",
-			"type": "page",
-			"components": ["EmailManager", "EmailComposerModal"]
-		},
-		{
-			"file": "src/routes/dashboard/calendar/+page.svelte",
-			"type": "page",
-			"components": ["TaskEditModal", "EventEditModal"]
-		},
-		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"AgentChatModal",
-				"ProjectEventsModal",
-				"RecentProjectChatsModal",
-				"ProjectModalsHost",
-				"ProjectAuditTracker",
-				"TaskKanbanBoard",
-				"MobileTaskBoard",
-				"ProjectDocumentsSection"
-			]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
+			"file": "src/lib/components/project/ProjectAuditTracker.svelte",
+			"type": "component",
 			"components": ["AgentChatModal"]
 		},
 		{
-			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
+			"file": "src/lib/components/project/ProjectCalendarSettingsModal.svelte",
 			"type": "component",
-			"components": ["OntologyGraph", "NodeDetailsPanel"]
+			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/lib/components/project/v2/EntityTabStrip.svelte",
+			"file": "src/lib/components/project/ProjectHistorySection.svelte",
 			"type": "component",
-			"components": ["ProjectInboxPanel", "BriefChatModal"]
+			"components": ["ProjectBriefsPanel", "ProjectActivityLogPanel"]
+		},
+		{
+			"file": "src/lib/components/project/ProjectInboxPanel.svelte",
+			"type": "component",
+			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/lib/components/project/ProjectInsightRail.svelte",
+			"type": "component",
+			"components": ["ImageAssetsPanel"]
+		},
+		{
+			"file": "src/lib/components/project/ProjectModalsHost.svelte",
+			"type": "component",
+			"components": [
+				"TaskCreateModal",
+				"PlanCreateModal",
+				"GoalCreateModal",
+				"RiskCreateModal",
+				"RiskEditModal",
+				"MilestoneCreateModal",
+				"MilestoneEditModal",
+				"EventCreateModal",
+				"EventEditModal",
+				"ProjectCalendarSettingsModal",
+				"OntologyProjectEditModal",
+				"ProjectCollaborationModal",
+				"ProjectGraphSection"
+			]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -261,6 +251,16 @@
 				"ProjectInsightRail",
 				"ProjectModalsHost"
 			]
+		},
+		{
+			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
+			"type": "component",
+			"components": ["OntologyGraph", "NodeDetailsPanel"]
+		},
+		{
+			"file": "src/lib/components/project/v2/EntityTabStrip.svelte",
+			"type": "component",
+			"components": ["ProjectInboxPanel", "BriefChatModal"]
 		},
 		{
 			"file": "src/routes/projects/[id]/tasks/[task_id]/+page.svelte",
@@ -852,25 +852,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/chat/project-selector-browser.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"DEFAULT_PROJECT_SELECTOR_LIMIT",
-				"MAX_PROJECT_SELECTOR_LIMIT",
-				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
-				"normalizeProjectSelectionSearch",
-				"PROJECT_RECENCY_RECENT_MAX_DAYS",
-				"PROJECT_RECENCY_OLDER_MAX_DAYS",
-				"parseProjectUpdatedAt",
-				"formatRelativeProjectUpdate",
-				"groupProjectsByRecency",
-				"normalizeProjectSelectionLimit",
-				"clearProjectSelectionBrowserCache",
-				"fetchProjectSelectionSummaries"
-			]
-		},
-		{
 			"file": "src/lib/components/agent/agent-chat-attachments.svelte.ts",
 			"type": "component",
 			"components": [],
@@ -1027,6 +1008,25 @@
 			]
 		},
 		{
+			"file": "src/lib/components/chat/project-selector-browser.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"DEFAULT_PROJECT_SELECTOR_LIMIT",
+				"MAX_PROJECT_SELECTOR_LIMIT",
+				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
+				"normalizeProjectSelectionSearch",
+				"PROJECT_RECENCY_RECENT_MAX_DAYS",
+				"PROJECT_RECENCY_OLDER_MAX_DAYS",
+				"parseProjectUpdatedAt",
+				"formatRelativeProjectUpdate",
+				"groupProjectsByRecency",
+				"normalizeProjectSelectionLimit",
+				"clearProjectSelectionBrowserCache",
+				"fetchProjectSelectionSummaries"
+			]
+		},
+		{
 			"file": "src/lib/components/notifications/notification-preview.ts",
 			"type": "component",
 			"components": [],
@@ -1096,6 +1096,23 @@
 			]
 		},
 		{
+			"file": "src/lib/components/ui/live-transcript-preview.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["LIVE_TRANSCRIPT_PREVIEW_CHAR_LIMIT", "getLiveTranscriptPreview"]
+		},
+		{
+			"file": "src/lib/components/ui/rich-markdown-editor-voice.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"normalizeVoiceTranscript",
+				"preserveInsertedVoiceSpacing",
+				"canReplaceInsertedVoiceRange",
+				"shouldInsertCapturedVoiceFallback"
+			]
+		},
+		{
 			"file": "src/lib/components/admin/chat/session-audit-ui.ts",
 			"type": "component",
 			"components": [],
@@ -1151,23 +1168,6 @@
 				"entityGroupKey",
 				"entityGroupKeyForAggregate",
 				"entityGroupKeyForChange"
-			]
-		},
-		{
-			"file": "src/lib/components/ui/live-transcript-preview.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["LIVE_TRANSCRIPT_PREVIEW_CHAR_LIMIT", "getLiveTranscriptPreview"]
-		},
-		{
-			"file": "src/lib/components/ui/rich-markdown-editor-voice.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"normalizeVoiceTranscript",
-				"preserveInsertedVoiceSpacing",
-				"canReplaceInsertedVoiceRange",
-				"shouldInsertCapturedVoiceFallback"
 			]
 		},
 		{
@@ -1237,12 +1237,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/project/v2/board-a11y.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
-		},
-		{
 			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 			"type": "component",
 			"components": [],
@@ -1273,10 +1267,10 @@
 			]
 		},
 		{
-			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
+			"file": "src/lib/components/project/v2/board-a11y.ts",
 			"type": "component",
 			"components": [],
-			"exports": ["prepareAgentRunChatEventDetail"]
+			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
 		},
 		{
 			"file": "src/lib/components/ui/codemirror/extensions.ts",
@@ -1327,6 +1321,23 @@
 			]
 		},
 		{
+			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"PROJECT_COMMANDERS",
+				"DEFAULT_PUBLIC_PROJECT_ID",
+				"getCommander",
+				"formatTimelineYearRange"
+			]
+		},
+		{
+			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["prepareAgentRunChatEventDetail"]
+		},
+		{
 			"file": "src/lib/components/ontology/graph/lib/g6.service.ts",
 			"type": "component",
 			"components": [],
@@ -1358,17 +1369,6 @@
 			"type": "component",
 			"components": [],
 			"exports": ["SvelteFlowGraphService"]
-		},
-		{
-			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"PROJECT_COMMANDERS",
-				"DEFAULT_PUBLIC_PROJECT_ID",
-				"getCommander",
-				"formatTimelineYearRange"
-			]
 		}
 	],
 	"dependencies": {
@@ -1376,23 +1376,21 @@
 			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/dashboard/DashboardInboxModal.svelte"
 		],
+		"src/routes/admin/beta/+page.svelte": ["src/lib/components/email/EmailManager.svelte"],
+		"src/routes/dashboard/calendar/+page.svelte": [
+			"src/lib/components/ontology/TaskEditModal.svelte",
+			"src/lib/components/ontology/EventEditModal.svelte"
+		],
+		"src/routes/projects/[id]/+page.svelte": [
+			"src/lib/components/project/ProjectModalsHost.svelte",
+			"src/lib/components/project/ProjectAuditTracker.svelte"
+		],
 		"src/lib/components/dashboard/AnalyticsDashboard.svelte": [
 			"src/lib/components/project/ProjectModalsHost.svelte",
 			"src/lib/components/dashboard/DashboardInboxModal.svelte"
 		],
 		"src/lib/components/layout/Navigation.svelte": [
 			"src/lib/components/dashboard/DashboardInboxModal.svelte"
-		],
-		"src/lib/components/project/ProjectCalendarSettingsModal.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/EventEditModal.svelte"
-		],
-		"src/lib/components/project/ProjectModalsHost.svelte": [
-			"src/lib/components/ontology/RiskEditModal.svelte",
-			"src/lib/components/ontology/MilestoneEditModal.svelte",
-			"src/lib/components/ontology/EventEditModal.svelte",
-			"src/lib/components/project/ProjectCalendarSettingsModal.svelte",
-			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
 		],
 		"src/lib/components/ontology/DocumentModal.svelte": [
 			"src/lib/components/ontology/TaskEditModal.svelte",
@@ -1422,21 +1420,23 @@
 			"src/lib/components/ontology/GoalEditModal.svelte",
 			"src/lib/components/ontology/PlanEditModal.svelte"
 		],
-		"src/routes/admin/beta/+page.svelte": ["src/lib/components/email/EmailManager.svelte"],
-		"src/routes/dashboard/calendar/+page.svelte": [
+		"src/lib/components/project/ProjectCalendarSettingsModal.svelte": [
 			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/ontology/EventEditModal.svelte"
 		],
-		"src/routes/projects/[id]/+page.svelte": [
-			"src/lib/components/project/ProjectModalsHost.svelte",
-			"src/lib/components/project/ProjectAuditTracker.svelte"
-		],
-		"src/lib/components/project/v2/EntityTabStrip.svelte": [
-			"src/lib/components/project/ProjectInboxPanel.svelte"
+		"src/lib/components/project/ProjectModalsHost.svelte": [
+			"src/lib/components/ontology/RiskEditModal.svelte",
+			"src/lib/components/ontology/MilestoneEditModal.svelte",
+			"src/lib/components/ontology/EventEditModal.svelte",
+			"src/lib/components/project/ProjectCalendarSettingsModal.svelte",
+			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
 		],
 		"src/routes/projects/[id]/old/+page.svelte": [
 			"src/lib/components/project/ProjectInsightRail.svelte",
 			"src/lib/components/project/ProjectModalsHost.svelte"
+		],
+		"src/lib/components/project/v2/EntityTabStrip.svelte": [
+			"src/lib/components/project/ProjectInboxPanel.svelte"
 		],
 		"src/routes/projects/[id]/tasks/[task_id]/+page.svelte": [
 			"src/lib/components/ontology/DocumentModal.svelte",
@@ -1457,14 +1457,13 @@
 		"src/lib/components/dashboard/AnalyticsDashboard.svelte",
 		"src/lib/components/landing/HomepageV2.svelte",
 		"src/lib/components/layout/Navigation.svelte",
+		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
-		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
 		"src/lib/components/project/ProjectHistorySection.svelte",
 		"src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
 		"src/lib/components/project/v2/EntityTabStrip.svelte",
 		"src/lib/components/admin/adminRoutes.ts",
-		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/agent/agent-chat-attachments.svelte.ts",
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat-prewarm.svelte.ts",
@@ -1480,33 +1479,34 @@
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",
 		"src/lib/components/agent/project-entity-browser.ts",
+		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/notifications/notification-preview.ts",
 		"src/lib/components/project/project-entity-modal-loader.ts",
 		"src/lib/components/project/project-event-filters.ts",
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",
+		"src/lib/components/ui/live-transcript-preview.ts",
+		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/admin/chat/session-audit-ui.ts",
 		"src/lib/components/admin/chat-users/chat-user-export.ts",
 		"src/lib/components/admin/chat-users/chat-user-ui.ts",
-		"src/lib/components/ui/live-transcript-preview.ts",
-		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",
 		"src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
 		"src/lib/components/ontology/insight-panels/task-person-relevance.ts",
-		"src/lib/components/project/v2/board-a11y.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
-		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
+		"src/lib/components/project/v2/board-a11y.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",
 		"src/lib/components/ui/codemirror/voice-widget.ts",
+		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
+		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
 		"src/lib/components/ontology/graph/lib/g6.service.ts",
 		"src/lib/components/ontology/graph/lib/graph.filters.ts",
 		"src/lib/components/ontology/graph/lib/graph.service.ts",
-		"src/lib/components/ontology/graph/lib/svelteflow.service.ts",
-		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts"
+		"src/lib/components/ontology/graph/lib/svelteflow.service.ts"
 	]
 }

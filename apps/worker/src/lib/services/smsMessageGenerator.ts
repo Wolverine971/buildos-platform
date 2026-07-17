@@ -7,7 +7,7 @@
  */
 
 import { SmartLLMService } from './smart-llm-service';
-import { ACTIVE_EXPERIMENT_MODEL } from '@buildos/smart-llm';
+import { LAST_RESORT_MODEL } from '@buildos/smart-llm';
 import { addMinutes, formatDistance } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import {
@@ -120,7 +120,7 @@ export class SMSMessageGenerator {
 			return {
 				content: cleanedContent,
 				generatedVia: 'llm',
-				model: result.model || ACTIVE_EXPERIMENT_MODEL,
+				model: result.model || LAST_RESORT_MODEL,
 				...(metadata ? { metadata } : {})
 			};
 		} catch (error) {

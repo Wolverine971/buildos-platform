@@ -555,6 +555,16 @@ export class GoogleOAuthHandler {
 			if (!legalAcceptanceRecorded) {
 				try {
 					const adminClient = createAdminSupabaseClient();
+					const { error: profileCleanupError } = await adminClient
+						.from('users')
+						.delete()
+						.eq('id', authResult.user.id);
+					if (profileCleanupError) {
+						console.error(
+							'Failed to clean up Google public user without legal acceptance:',
+							profileCleanupError
+						);
+					}
 					await adminClient.auth.admin.deleteUser(authResult.user.id);
 				} catch (cleanupError) {
 					console.error(

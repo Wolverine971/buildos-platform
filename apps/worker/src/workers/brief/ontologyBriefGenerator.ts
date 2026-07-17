@@ -9,7 +9,7 @@
 import { supabase } from '../../lib/supabase.js';
 import type { BriefJobData } from '../shared/queueUtils.js';
 import type { Json } from '@buildos/shared-types';
-import { ACTIVE_EXPERIMENT_MODEL, DEEPSEEK_V4_FLASH_MODEL } from '@buildos/smart-llm';
+import { DEEPSEEK_V4_FLASH_MODEL, XIAOMI_MIMO_V25_MODEL } from '@buildos/smart-llm';
 import { format, parseISO, subDays } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { getHoliday } from '../../lib/utils/holiday-finder.js';
@@ -63,7 +63,7 @@ interface ProjectBriefLLMResponse {
 	nextStepLong?: string;
 }
 
-const PROJECT_BRIEF_MODELS = [DEEPSEEK_V4_FLASH_MODEL, ACTIVE_EXPERIMENT_MODEL] as const;
+const PROJECT_BRIEF_MODELS = [DEEPSEEK_V4_FLASH_MODEL, XIAOMI_MIMO_V25_MODEL] as const;
 const BRIEF_ENTITY_RECORDING_TIMEOUT_MS = 5_000;
 const PROJECT_BRIEF_GENERATION_CONCURRENCY = 3;
 const ACTIVE_PROJECT_STATES = ['planning', 'active'] as const;

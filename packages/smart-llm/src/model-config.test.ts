@@ -4,7 +4,10 @@ import {
 	DEEPSEEK_V4_FLASH_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GLM_52_MODEL,
+	GPT_56_LUNA_MODEL,
+	GROK_45_MODEL,
 	KIMI_CODING_MODEL,
+	KIMI_K3_MODEL,
 	MINIMAX_M3_MODEL,
 	NEX_N2_MINI_MODEL,
 	POOLSIDE_LAGUNA_XS_21_MODEL,
@@ -36,8 +39,8 @@ describe('resolveModelPricingProfile', () => {
 		const pro = resolveModelPricingProfile('deepseek/deepseek-v4-pro-20260423');
 
 		expect(flash?.modelId).toBe(DEEPSEEK_V4_FLASH_MODEL);
-		expect(flash?.profile.cost).toBe(0.09);
-		expect(flash?.profile.outputCost).toBe(0.18);
+		expect(flash?.profile.cost).toBe(0.098);
+		expect(flash?.profile.outputCost).toBe(0.196);
 		expect(pro?.modelId).toBe(DEEPSEEK_V4_PRO_MODEL);
 		expect(pro?.profile.cost).toBe(0.435);
 		expect(pro?.profile.outputCost).toBe(0.87);
@@ -53,8 +56,8 @@ describe('resolveModelPricingProfile', () => {
 		const poolside = resolveModelPricingProfile('poolside/laguna-xs-2.1-20260625');
 
 		expect(glm?.modelId).toBe(GLM_52_MODEL);
-		expect(glm?.profile.cost).toBe(0.9086);
-		expect(glm?.profile.outputCost).toBe(2.8556);
+		expect(glm?.profile.cost).toBe(0.9226);
+		expect(glm?.profile.outputCost).toBe(2.8996);
 		expect(minimax?.modelId).toBe(MINIMAX_M3_MODEL);
 		expect(minimax?.profile.cost).toBe(0.3);
 		expect(minimax?.profile.outputCost).toBe(1.2);
@@ -79,8 +82,21 @@ describe('resolveModelPricingProfile', () => {
 		const result = resolveModelPricingProfile('moonshotai/kimi-k2.7-code-20260612');
 
 		expect(result?.modelId).toBe(KIMI_CODING_MODEL);
-		expect(result?.profile.cost).toBe(0.74);
+		expect(result?.profile.cost).toBe(0.75);
 		expect(result?.profile.outputCost).toBe(3.5);
+	});
+
+	it('prices the premium evaluation and maximum-work roster', () => {
+		const luna = resolveModelPricingProfile(GPT_56_LUNA_MODEL);
+		const grok = resolveModelPricingProfile(GROK_45_MODEL);
+		const kimi = resolveModelPricingProfile(KIMI_K3_MODEL);
+
+		expect(luna?.profile.cost).toBe(1);
+		expect(luna?.profile.outputCost).toBe(6);
+		expect(grok?.profile.cost).toBe(2);
+		expect(grok?.profile.outputCost).toBe(6);
+		expect(kimi?.profile.cost).toBe(3);
+		expect(kimi?.profile.outputCost).toBe(15);
 	});
 
 	it('falls back to a requested model when the resolved model is not configured', () => {

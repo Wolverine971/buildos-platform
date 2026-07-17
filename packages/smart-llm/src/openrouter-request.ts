@@ -1,5 +1,7 @@
 // packages/smart-llm/src/openrouter-request.ts
 
+import { GPT_56_LUNA_MODEL, KIMI_K3_MODEL } from './model-config';
+
 export type OpenRouterChatCompletionBodyParams = {
 	model: string;
 	messages: unknown[];
@@ -34,6 +36,25 @@ export const OPENROUTER_PRIVATE_PROVIDER = Object.freeze({
 	zdr: true
 });
 
+export type OpenRouterModelRequestPolicy = {
+	temperature: 'supported' | 'omit';
+	requiredReasoningEffort?: 'max';
+	includeReasoningDetails?: boolean;
+};
+
+export const OPENROUTER_MODEL_REQUEST_POLICIES: Readonly<
+	Record<string, OpenRouterModelRequestPolicy>
+> = Object.freeze({
+	[KIMI_K3_MODEL]: Object.freeze({
+		temperature: 'omit' as const,
+		requiredReasoningEffort: 'max' as const,
+		includeReasoningDetails: true
+	}),
+	[GPT_56_LUNA_MODEL]: Object.freeze({
+		temperature: 'omit' as const
+	})
+});
+
 function uniqueNonEmpty(values: string[]): string[] {
 	return Array.from(
 		new Set(values.map((value) => value.trim()).filter((value) => value.length > 0))
@@ -47,19 +68,39 @@ export function resolveOpenRouterFallbackModels(model: string, models?: string[]
 		.slice(0, OPENROUTER_MAX_FALLBACK_MODELS);
 }
 
+function normalizeReasoningForModel(model: string, reasoning: unknown): unknown {
+	const policy = OPENROUTER_MODEL_REQUEST_POLICIES[model];
+	if (!policy?.requiredReasoningEffort) return reasoning;
+
+	const suppliedReasoning =
+		reasoning && typeof reasoning === 'object' && !Array.isArray(reasoning)
+			? (reasoning as Record<string, unknown>)
+			: {};
+
+	return {
+		...suppliedReasoning,
+		effort: policy.requiredReasoningEffort,
+		...(policy.includeReasoningDetails ? { exclude: false } : {})
+	};
+}
+
 export function buildOpenRouterChatCompletionBody(
 	params: OpenRouterChatCompletionBodyParams
 ): Record<string, unknown> {
+	const requestPolicy = OPENROUTER_MODEL_REQUEST_POLICIES[params.model];
 	const body: Record<string, unknown> = {
 		model: params.model,
 		messages: params.messages
 	};
 
 	if (typeof params.stream === 'boolean') body.stream = params.stream;
-	if (typeof params.temperature === 'number') body.temperature = params.temperature;
+	if (typeof params.temperature === 'number' && requestPolicy?.temperature !== 'omit') {
+		body.temperature = params.temperature;
+	}
 	if (typeof params.max_tokens === 'number') body.max_tokens = params.max_tokens;
 	if (params.response_format) body.response_format = params.response_format;
-	if (params.reasoning) body.reasoning = params.reasoning;
+	const normalizedReasoning = normalizeReasoningForModel(params.model, params.reasoning);
+	if (normalizedReasoning) body.reasoning = normalizedReasoning;
 	if (params.provider) body.provider = params.provider;
 	if (Array.isArray(params.tools) && params.tools.length > 0) body.tools = params.tools;
 	if (params.tool_choice) body.tool_choice = params.tool_choice;

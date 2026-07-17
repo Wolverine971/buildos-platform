@@ -21,9 +21,12 @@ import {
 	EMPTY_CONTENT_RETRY_MIN_TOKENS,
 	EMPTY_CONTENT_RETRY_BUFFER_TOKENS,
 	EMPTY_CONTENT_RETRY_MAX_TOKENS,
-	ACTIVE_EXPERIMENT_MODEL,
+	JSON_PROFILE_MODELS,
 	KIMI_CODING_MODEL,
 	KIMI_EXPERIMENT_MODEL,
+	KIMI_K3_MODEL,
+	LAST_RESORT_MODEL,
+	QWEN_37_PLUS_EXPERIMENT_MODEL,
 	resolveModelPricingProfile
 } from './model-config';
 import {
@@ -126,7 +129,8 @@ const CANONICAL_MODEL_ALIASES: Record<string, string> = {
 	'moonshotai/kimi-k2.7-code-20260612': KIMI_CODING_MODEL,
 	'kimi-k2.6': KIMI_EXPERIMENT_MODEL,
 	'kimi-k2-6': KIMI_EXPERIMENT_MODEL,
-	'qwen/qwen3.7-plus-20260602': ACTIVE_EXPERIMENT_MODEL
+	'kimi-k3': KIMI_K3_MODEL,
+	'qwen/qwen3.7-plus-20260602': QWEN_37_PLUS_EXPERIMENT_MODEL
 };
 
 // ============================================
@@ -308,7 +312,7 @@ export class SmartLLMService {
 	private isKimiModel(model: string | undefined): boolean {
 		if (!model) return false;
 		const normalized = model.trim().toLowerCase();
-		return normalized.startsWith('moonshotai/kimi') || normalized.startsWith('kimi-k2');
+		return normalized.startsWith('moonshotai/kimi') || normalized.startsWith('kimi-k');
 	}
 
 	private resolveMoonshotModel(model: string): string {
@@ -331,7 +335,8 @@ export class SmartLLMService {
 			!options.forceOpenRouter &&
 			this.routeKimiModelsDirectToMoonshot &&
 			!!this.moonshotClient &&
-			this.isKimiModel(model);
+			this.isKimiModel(model) &&
+			this.canonicalizeModelId(model) !== KIMI_K3_MODEL;
 		if (shouldUseMoonshot) {
 			return {
 				provider: 'moonshot',
@@ -564,7 +569,7 @@ export class SmartLLMService {
 		let retryCount = 0;
 		const maxRetries = options.validation?.maxRetries || 2;
 		const allowTruncatedJsonRecovery = options.validation?.allowTruncatedJsonRecovery === true;
-		const baseModel = preferredModels[0] || ACTIVE_EXPERIMENT_MODEL;
+		const baseModel = preferredModels[0] || LAST_RESORT_MODEL;
 		const maxAttempts = Math.max(preferredModels.length, 1);
 		const attemptedModels = new Set<string>();
 		let lastResponse: OpenRouterResponse | null = null;
@@ -678,8 +683,8 @@ export class SmartLLMService {
 							);
 
 							let cleanedRetry = ''; // Declare outside try block for error logging
-							let retryModel = ACTIVE_EXPERIMENT_MODEL;
-							const retryModels = [ACTIVE_EXPERIMENT_MODEL];
+							const retryModel = JSON_PROFILE_MODELS.powerful[0] ?? LAST_RESORT_MODEL;
+							const retryModels = [retryModel];
 							try {
 								// Try again with powerful profile
 								const retryCompletion = await this.callChatCompletions({
@@ -1029,7 +1034,7 @@ export class SmartLLMService {
 		);
 
 		// Make the OpenRouter API call with model routing
-		const baseModel = preferredModels[0] || ACTIVE_EXPERIMENT_MODEL;
+		const baseModel = preferredModels[0] || LAST_RESORT_MODEL;
 		const maxAttempts = Math.max(preferredModels.length, 1);
 		const attemptedModels = new Set<string>();
 		let lastResponse: OpenRouterResponse | null = null;
@@ -1875,7 +1880,7 @@ export class SmartLLMService {
 		if (needsToolSupport) {
 			preferredModels = ensureToolCompatibleModels(preferredModels);
 		}
-		const baseModel = preferredModels[0] || ACTIVE_EXPERIMENT_MODEL;
+		const baseModel = preferredModels[0] || LAST_RESORT_MODEL;
 		let resolvedModel = baseModel;
 		let modelResolvedFromStream = false;
 		let resolvedProvider = TEXT_MODELS[resolvedModel]?.provider;
@@ -2315,7 +2320,7 @@ export class SmartLLMService {
 						// Log usage if available
 						if (usage) {
 							const actualModel =
-								resolvedModel || preferredModels[0] || ACTIVE_EXPERIMENT_MODEL;
+								resolvedModel || preferredModels[0] || LAST_RESORT_MODEL;
 							const pricing = resolveModelPricingProfile(actualModel, [
 								requestModelForStartedStream,
 								...routingModelsForStartedStream
@@ -2733,6 +2738,8 @@ export class SmartLLMService {
 		if (!model) return false;
 		const normalized = model.toLowerCase();
 		return (
+			normalized.startsWith(KIMI_K3_MODEL) ||
+			normalized.startsWith('kimi-k3') ||
 			normalized.startsWith(KIMI_CODING_MODEL) ||
 			normalized.startsWith('kimi-k2.7-code') ||
 			normalized.startsWith('kimi-k2-7-code') ||

@@ -199,9 +199,9 @@ describe('estimateCostForEntities', () => {
 
 describe('createLLMUsageMetadata', () => {
 	it('should create metadata with correct structure', () => {
-		const metadata = createLLMUsageMetadata('qwen', ACTIVE_EXPERIMENT_MODEL, 1000, 500, 2500);
+		const metadata = createLLMUsageMetadata('openai', ACTIVE_EXPERIMENT_MODEL, 1000, 500, 2500);
 
-		expect(metadata.provider).toBe('qwen');
+		expect(metadata.provider).toBe('openai');
 		expect(metadata.model).toBe(ACTIVE_EXPERIMENT_MODEL);
 		expect(metadata.inputTokens).toBe(1000);
 		expect(metadata.outputTokens).toBe(500);
@@ -210,9 +210,9 @@ describe('createLLMUsageMetadata', () => {
 	});
 
 	it('should calculate estimated cost', () => {
-		const metadata = createLLMUsageMetadata('qwen', ACTIVE_EXPERIMENT_MODEL, 1000, 500, 1000);
+		const metadata = createLLMUsageMetadata('openai', ACTIVE_EXPERIMENT_MODEL, 1000, 500, 1000);
 
-		expect(metadata.estimatedCost).toBe(0.001);
+		expect(metadata.estimatedCost).toBe(0.004);
 	});
 });
 
@@ -245,12 +245,12 @@ describe('getAvailableModels', () => {
 	it('should include DeepSeek V4 Flash as the recommended model', () => {
 		const models = getAvailableModels();
 		const recommended = models.find((m) => m.id === DEEPSEEK_V4_FLASH_MODEL);
-		const qwen = models.find((m) => m.id === ACTIVE_EXPERIMENT_MODEL);
+		const premiumCandidate = models.find((m) => m.id === ACTIVE_EXPERIMENT_MODEL);
 
 		expect(recommended).toBeDefined();
 		expect(recommended?.recommended).toBe(true);
-		expect(qwen).toBeDefined();
-		expect(qwen?.recommended).toBe(false);
+		expect(premiumCandidate).toBeDefined();
+		expect(premiumCandidate?.recommended).toBe(false);
 	});
 });
 
