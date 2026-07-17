@@ -149,6 +149,7 @@
 			<button
 				class="btn-auto-refresh"
 				class:active={autoRefreshEnabled}
+				aria-pressed={autoRefreshEnabled}
 				onclick={toggleAutoRefresh}
 			>
 				<svg
@@ -234,6 +235,38 @@
 		max-width: 1400px;
 		margin: 0 auto;
 		padding: 2rem;
+		color: hsl(var(--foreground));
+		background: hsl(var(--background));
+		--text-primary: hsl(var(--foreground));
+		--text-secondary: hsl(var(--muted-foreground));
+		--border-color: hsl(var(--border));
+		--border-hover: hsl(var(--border-strong));
+		--bg-hover: hsl(var(--muted));
+		--bg-secondary: hsl(var(--muted));
+		--primary-50: hsl(var(--accent) / 0.1);
+		--primary-300: hsl(var(--accent) / 0.35);
+		--primary-500: hsl(var(--accent));
+		--primary-700: hsl(var(--accent));
+		--error-50: hsl(var(--destructive) / 0.1);
+		--error-100: hsl(var(--destructive) / 0.15);
+		--error-200: hsl(var(--destructive) / 0.3);
+		--error-500: hsl(var(--destructive));
+		--error-600: hsl(var(--destructive));
+		--error-700: hsl(var(--foreground));
+		--warning-50: hsl(var(--warning) / 0.1);
+		--warning-100: hsl(var(--warning) / 0.15);
+		--warning-200: hsl(var(--warning) / 0.3);
+		--warning-700: hsl(var(--foreground));
+		--success-50: hsl(var(--success) / 0.1);
+		--success-100: hsl(var(--success) / 0.15);
+		--success-200: hsl(var(--success) / 0.3);
+		--success-500: hsl(var(--success));
+		--success-600: hsl(var(--success));
+		--success-700: hsl(var(--foreground));
+		--info-50: hsl(var(--info) / 0.1);
+		--info-100: hsl(var(--info) / 0.15);
+		--info-200: hsl(var(--info) / 0.3);
+		--info-700: hsl(var(--foreground));
 	}
 
 	/* Header */
@@ -278,7 +311,9 @@
 		padding: 0.625rem 1rem;
 		border: 1px solid var(--border-color, #e5e7eb);
 		border-radius: 6px;
-		background: white;
+		min-height: 2.75rem;
+		background: hsl(var(--card));
+		color: hsl(var(--foreground));
 		cursor: pointer;
 		font-size: 0.875rem;
 		font-weight: 500;
@@ -289,6 +324,13 @@
 	.btn-auto-refresh:hover {
 		background: var(--bg-hover, #f9fafb);
 		border-color: var(--border-hover, #d1d5db);
+	}
+
+	.btn-refresh:focus-visible,
+	.btn-auto-refresh:focus-visible,
+	.btn-retry:focus-visible {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: 2px;
 	}
 
 	.btn-refresh:disabled {
@@ -437,6 +479,13 @@
 
 		.charts-row {
 			grid-template-columns: 1fr;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.icon.spinning,
+		.spinner {
+			animation: none;
 		}
 	}
 </style>

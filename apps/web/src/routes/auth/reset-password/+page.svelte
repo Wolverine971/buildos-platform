@@ -31,7 +31,7 @@
 				</div>
 			</div>
 
-			<h2 class="text-3xl font-bold text-foreground mb-2">Set your new password</h2>
+			<h1 class="text-3xl font-bold text-foreground mb-2">Set your new password</h1>
 			<p class="text-muted-foreground mb-8">
 				Choose a strong password to secure your AI thought partner.
 			</p>
@@ -54,7 +54,7 @@
 			>
 				{#if data.recoveryError}
 					<div
-						class="rounded-lg border border-destructive/50 bg-destructive/10 text-destructive px-4 py-3"
+						class="rounded-lg border border-destructive/50 bg-destructive/10 text-foreground px-4 py-3"
 					>
 						{data.recoveryError}
 					</div>
@@ -62,7 +62,7 @@
 
 				{#if !canSubmit}
 					<div
-						class="rounded-lg border border-warning/50 bg-warning/10 text-warning px-4 py-3"
+						class="rounded-lg border border-warning/50 bg-warning/10 text-foreground px-4 py-3"
 					>
 						Open the password reset link from your email to continue.
 					</div>
@@ -70,7 +70,7 @@
 
 				{#if form?.error}
 					<div
-						class="rounded-lg border border-destructive/50 bg-destructive/10 text-destructive px-4 py-3"
+						class="rounded-lg border border-destructive/50 bg-destructive/10 text-foreground px-4 py-3"
 					>
 						{form.error}
 					</div>

@@ -22,11 +22,11 @@
 				<DocsSidebar {sections} {activeSlug} />
 			</aside>
 
-			<main id="docs-main" class="order-1 lg:order-2 min-w-0">
+			<div id="docs-main" class="order-1 lg:order-2 min-w-0">
 				{#if children}
 					{@render children()}
 				{/if}
-			</main>
+			</div>
 		</div>
 	</div>
 </div>

@@ -31,7 +31,6 @@
 		"src/routes/api/onto/tasks/[id]/+server.ts",
 		"src/routes/api/onto/tasks/create/+server.ts",
 		"src/routes/api/public/projects/[id]/graph/+server.ts",
-		"src/routes/api/transcribe/+server.ts",
 		"src/routes/api/voice-notes/+server.ts",
 		"src/routes/api/webhooks/twilio/status/+server.ts",
 		"src/routes/webhooks/daily-brief-email/+server.ts"

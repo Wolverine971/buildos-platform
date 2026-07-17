@@ -47,7 +47,7 @@
 				</div>
 			</div>
 
-			<h2 class="text-3xl font-bold text-foreground mb-2">Reset your password</h2>
+			<h1 class="text-3xl font-bold text-foreground mb-2">Reset your password</h1>
 			<p class="text-muted-foreground mb-8">
 				Enter your email address and we'll send you a link to reset your password.
 			</p>
@@ -70,7 +70,7 @@
 			>
 				{#if form?.error}
 					<div
-						class="rounded-lg border border-destructive/50 bg-destructive/10 text-destructive px-4 py-3"
+						class="rounded-lg border border-destructive/50 bg-destructive/10 text-foreground px-4 py-3"
 					>
 						{form.error}
 					</div>
@@ -78,7 +78,7 @@
 
 				{#if form?.success}
 					<div
-						class="rounded-lg border border-success/50 bg-success/10 text-success px-4 py-3"
+						class="rounded-lg border border-success/50 bg-success/10 text-foreground px-4 py-3"
 					>
 						{form.message}
 					</div>

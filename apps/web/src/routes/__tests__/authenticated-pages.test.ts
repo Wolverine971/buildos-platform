@@ -175,6 +175,20 @@ describe('Authenticated Pages', () => {
 				initialView: 'week'
 			});
 		});
+
+		it('redirects unauthenticated users to login and preserves the requested URL', async () => {
+			const { load } = await import('../briefs/+page.server');
+
+			await expect(
+				load({
+					parent: vi.fn().mockResolvedValue({ user: null }),
+					url: new URL('https://build-os.com/briefs?date=2024-01-15&view=week')
+				} as any)
+			).rejects.toMatchObject({
+				status: 303,
+				location: '/auth/login?redirect=%2Fbriefs%3Fdate%3D2024-01-15%26view%3Dweek'
+			});
+		});
 	});
 
 	describe('/history page', () => {

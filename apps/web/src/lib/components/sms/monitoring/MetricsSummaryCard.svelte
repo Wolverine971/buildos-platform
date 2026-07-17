@@ -189,7 +189,7 @@
 
 <style>
 	.metrics-summary-card {
-		background: white;
+		background: hsl(var(--card));
 		border: 1px solid var(--border-color, #e5e7eb);
 		border-radius: 12px;
 		padding: 2rem;

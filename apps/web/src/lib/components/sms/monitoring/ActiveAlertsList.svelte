@@ -6,6 +6,7 @@
 	 *
 	 * Displays unresolved alerts with resolution actions
 	 */
+	import { SvelteSet } from 'svelte/reactivity';
 	import { smsMonitoringService, type Alert } from '$lib/services/smsMonitoring.service';
 
 	interface AlertsData {
@@ -19,7 +20,7 @@
 	}
 
 	let { alerts }: Props = $props();
-	let resolvingAlerts = $state<Set<string>>(new Set());
+	const resolvingAlerts = new SvelteSet<string>();
 
 	/**
 	 * Format date/time
@@ -67,7 +68,6 @@
 		if (resolvingAlerts.has(alertId)) return;
 
 		resolvingAlerts.add(alertId);
-		resolvingAlerts = new Set(resolvingAlerts); // Trigger reactivity
 
 		try {
 			await smsMonitoringService.resolveAlert(alertId);
@@ -83,7 +83,6 @@
 			alert(`Failed to resolve alert: ${error.message}`);
 		} finally {
 			resolvingAlerts.delete(alertId);
-			resolvingAlerts = new Set(resolvingAlerts); // Trigger reactivity
 		}
 	}
 </script>
@@ -177,7 +176,7 @@
 
 <style>
 	.active-alerts-list {
-		background: white;
+		background: hsl(var(--card));
 		border: 1px solid var(--border-color, #e5e7eb);
 		border-radius: 12px;
 		padding: 2rem;
@@ -364,7 +363,7 @@
 	.btn-resolve {
 		width: 100%;
 		padding: 0.625rem 1rem;
-		background: white;
+		background: hsl(var(--card));
 		border: 1px solid var(--border-color, #e5e7eb);
 		border-radius: 6px;
 		font-size: 0.875rem;
