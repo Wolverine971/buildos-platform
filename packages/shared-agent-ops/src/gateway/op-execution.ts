@@ -53,6 +53,8 @@ export interface AgentOpContext {
 	mutationMode?: AgentRunMutationMode;
 	/** Optional runtime capability for calendar reads/writes in Agent Runs. */
 	calendar?: CalendarPort;
+	/** Optional, worker-only web research capability. */
+	web?: WebResearchPort;
 }
 
 export type AgentOpErrorCode =
@@ -81,6 +83,25 @@ export interface AgentOpResult {
 	error?: { code: AgentOpErrorCode; message: string };
 }
 
+export const AGENT_OP_WEB_SEARCH = 'util.web.search' as const;
+export const AGENT_OP_WEB_VISIT = 'util.web.visit' as const;
+export const AGENT_OP_WEB_READ_CATALOG = [AGENT_OP_WEB_SEARCH, AGENT_OP_WEB_VISIT] as const;
+
+export interface WebResearchPort {
+	search?: (args: Record<string, unknown>) => Promise<unknown>;
+	visit?: (args: Record<string, unknown>) => Promise<unknown>;
+}
+
+export class WebResearchPortError extends Error {
+	constructor(
+		message: string,
+		public readonly code: 'VALIDATION_ERROR' | 'EXECUTION_ERROR' = 'EXECUTION_ERROR'
+	) {
+		super(message);
+		this.name = 'WebResearchPortError';
+	}
+}
+
 /** The read ops the worker op executor can currently run. */
 export const AGENT_OP_READ_CATALOG: readonly string[] = AGENT_OP_GATEWAY_READ_CATALOG;
 
@@ -95,6 +116,18 @@ export interface BuildAgentRunOpCatalogParams {
 	scope: AgentOpScope;
 	mutationMode?: AgentRunMutationMode;
 	calendar?: CalendarPort | null;
+	web?: WebResearchPort | null;
+}
+
+function isWebResearchOp(op: string): op is (typeof AGENT_OP_WEB_READ_CATALOG)[number] {
+	return AGENT_OP_WEB_READ_CATALOG.some((webOp) => webOp === op);
+}
+
+function webPortSupportsOp(web: WebResearchPort | null | undefined, op: string): boolean {
+	if (!web) return false;
+	if (op === AGENT_OP_WEB_SEARCH) return typeof web.search === 'function';
+	if (op === AGENT_OP_WEB_VISIT) return typeof web.visit === 'function';
+	return false;
 }
 
 /**
@@ -103,15 +136,21 @@ export interface BuildAgentRunOpCatalogParams {
  *
  * Calendar reads/writes are only included when a CalendarPort exists. Calendar
  * writes are additionally hidden from staged review runs until external
- * side-effect staging has a faithful commit representation.
+ * side-effect staging has a faithful commit representation. Worker-only web
+ * reads are part of the default surface only when their runtime methods exist;
+ * an explicit allowed_ops list remains a hard capability fence.
  */
 export function buildAgentRunOpCatalog(params: BuildAgentRunOpCatalogParams): string[] {
-	const grantedOps = params.scope.allowed_ops ?? defaultAllowedOpsForMode(params.scope.mode);
+	const grantedOps = params.scope.allowed_ops ?? [
+		...defaultAllowedOpsForMode(params.scope.mode),
+		...AGENT_OP_WEB_READ_CATALOG
+	];
 	const hasCalendar = Boolean(params.calendar);
 	const canWrite = params.scope.mode === 'read_write';
 	const canRunCalendarWrites = canWrite && hasCalendar && params.mutationMode !== 'stage';
 
 	return grantedOps.filter((op) => {
+		if (isWebResearchOp(op)) return webPortSupportsOp(params.web, op);
 		if (AGENT_OP_READ_CATALOG.includes(op)) return true;
 		if (hasCalendar && AGENT_OP_GATEWAY_CALENDAR_READ_CATALOG.includes(op)) return true;
 		if (!canWrite) return false;
@@ -280,6 +319,26 @@ export async function executeAgentOp(
 	const trimmed = typeof op === 'string' ? op.trim() : '';
 	if (!trimmed) {
 		return fail(trimmed, 'VALIDATION_ERROR', 'Missing op');
+	}
+	if (isWebResearchOp(trimmed)) {
+		if (ctx.scope.allowed_ops && !ctx.scope.allowed_ops.includes(trimmed)) {
+			return fail(trimmed, 'FORBIDDEN', `Op ${trimmed} is outside the granted scope`);
+		}
+		if (!webPortSupportsOp(ctx.web, trimmed)) {
+			return fail(trimmed, 'UNSUPPORTED', `Web op ${trimmed} is not configured for this run`);
+		}
+		try {
+			const data =
+				trimmed === AGENT_OP_WEB_SEARCH
+					? await ctx.web!.search!(args)
+					: await ctx.web!.visit!(args);
+			return { ok: true, op: trimmed, data };
+		} catch (error) {
+			const code =
+				error instanceof WebResearchPortError ? error.code : ('EXECUTION_ERROR' as const);
+			const message = error instanceof Error ? error.message : 'Web operation failed';
+			return fail(trimmed, code, message);
+		}
 	}
 	if (!isSupportedOp(trimmed)) {
 		return fail(trimmed, 'NOT_FOUND', `Unknown op: ${trimmed}`);

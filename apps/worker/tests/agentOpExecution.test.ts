@@ -4,11 +4,13 @@
 // Verifies scope/op enforcement short-circuits before any DB handler runs.
 import { describe, expect, it } from 'vitest';
 import {
+	AGENT_OP_WEB_READ_CATALOG,
 	executeAgentOp,
 	AGENT_OP_READ_CATALOG,
 	AGENT_OP_WRITE_CATALOG,
 	buildAgentRunOpCatalog,
-	type AgentOpContext
+	type AgentOpContext,
+	type WebResearchPort
 } from '@buildos/shared-agent-ops';
 import { runGatewayWriteOp } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 
@@ -314,6 +316,84 @@ describe('executeAgentOp policy + dispatch', () => {
 			'onto.task.create',
 			'cal.event.list'
 		]);
+	});
+
+	it('adds configured web reads to the default catalog without bypassing explicit allowlists', () => {
+		const web: WebResearchPort = {
+			search: async () => ({}),
+			visit: async () => ({})
+		};
+
+		const defaultCatalog = buildAgentRunOpCatalog({
+			scope: { mode: 'read_only', allowed_ops: null },
+			web
+		});
+		expect(defaultCatalog).toEqual(expect.arrayContaining([...AGENT_OP_WEB_READ_CATALOG]));
+
+		expect(
+			buildAgentRunOpCatalog({
+				scope: { mode: 'read_only', allowed_ops: ['onto.project.list'] },
+				web
+			})
+		).toEqual(['onto.project.list']);
+
+		expect(
+			buildAgentRunOpCatalog({
+				scope: { mode: 'read_only', allowed_ops: ['util.web.visit'] },
+				web
+			})
+		).toEqual(['util.web.visit']);
+	});
+
+	it('only advertises web methods that are configured', () => {
+		const web: WebResearchPort = { visit: async () => ({}) };
+		const catalog = buildAgentRunOpCatalog({
+			scope: { mode: 'read_only', allowed_ops: null },
+			web
+		});
+		expect(catalog).toContain('util.web.visit');
+		expect(catalog).not.toContain('util.web.search');
+	});
+
+	it('dispatches worker web reads through the runtime port', async () => {
+		const calls: Array<{ kind: string; args: Record<string, unknown> }> = [];
+		const web: WebResearchPort = {
+			search: async (args) => {
+				calls.push({ kind: 'search', args });
+				return { results: [{ url: 'https://example.com' }] };
+			},
+			visit: async (args) => {
+				calls.push({ kind: 'visit', args });
+				return { content: 'Example' };
+			}
+		};
+
+		const search = await executeAgentOp({ ...ctx(), web }, 'util.web.search', {
+			query: 'example'
+		});
+		const visit = await executeAgentOp({ ...ctx(), web }, 'util.web.visit', {
+			url: 'https://example.com'
+		});
+
+		expect(search).toMatchObject({ ok: true, op: 'util.web.search' });
+		expect(visit).toMatchObject({ ok: true, op: 'util.web.visit' });
+		expect(calls).toEqual([
+			{ kind: 'search', args: { query: 'example' } },
+			{ kind: 'visit', args: { url: 'https://example.com' } }
+		]);
+	});
+
+	it('keeps an explicit Agent Run allowlist as a hard fence for web reads', async () => {
+		const r = await executeAgentOp(
+			{
+				...ctx({ allowed_ops: ['onto.project.list'] }),
+				web: { visit: async () => ({ content: 'should not run' }) }
+			},
+			'util.web.visit',
+			{ url: 'https://example.com' }
+		);
+		expect(r.ok).toBe(false);
+		expect(r.error?.code).toBe('FORBIDDEN');
 	});
 
 	it('rejects a write op in a read_only run as FORBIDDEN (before any DB handler)', async () => {

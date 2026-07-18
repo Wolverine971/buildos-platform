@@ -830,6 +830,9 @@
 			completeInboxDecisionNotification(notificationId, message, { toastKind, title });
 		} catch (err) {
 			if (removed) changedCount = Math.max(0, changedCount - 1);
+			if (note) {
+				decisionNoteById = { ...decisionNoteById, [item.id]: note };
+			}
 			failInboxDecisionNotification(
 				notificationId,
 				err instanceof Error ? err.message : 'Action failed'

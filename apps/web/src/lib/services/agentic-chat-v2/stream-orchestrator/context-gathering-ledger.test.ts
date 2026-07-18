@@ -221,4 +221,41 @@ describe('ContextGatheringLedger', () => {
 		expect(repeated.status.newEvidenceThisRound).toBe(false);
 		expect(repeated.status.status).toBe('narrowing');
 	});
+
+	it('does not advance saturation for mixed web-research and internal-read rounds', () => {
+		const ledger = new ContextGatheringLedger();
+		const observations = Array.from({ length: 5 }, (_, index) =>
+			ledger.observeToolRound({
+				roundExecutions: [
+					execution(
+						'web_visit',
+						{ url: `https://example.com/source-${index}` },
+						{ content: `External evidence ${index}` },
+						`web_visit:${index}`
+					),
+					execution(
+						'get_onto_document_details',
+						{ document_id: documentId },
+						{ document: { id: documentId, title: 'Research brief' } },
+						`get_onto_document_details:${index}`
+					)
+				],
+				roundPattern: {
+					readOps: ['onto.document.get'],
+					researchOps: ['util.web.visit'],
+					hasWriteOps: false
+				},
+				toolRounds: index + 1,
+				maxToolRounds: 16,
+				modelPayloadChars: 12000
+			})
+		);
+
+		for (const observation of observations) {
+			expect(observation.status.status).toBe('open');
+			expect(observation.status.readRounds).toBe(0);
+			expect(observation.status.lowNoveltyRounds).toBe(0);
+			expect(observation.forceSynthesis).toBe(false);
+		}
+	});
 });

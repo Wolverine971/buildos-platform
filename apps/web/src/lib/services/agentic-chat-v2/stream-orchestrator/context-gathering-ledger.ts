@@ -74,7 +74,14 @@ export class ContextGatheringLedger {
 			});
 		}
 
-		if (params.roundPattern.readOps.length === 0) {
+		// Mixed web-research + internal-read rounds use the dedicated research
+		// budget in the orchestrator. Keep this defensive guard here as well so a
+		// future caller cannot accidentally feed those rounds into the
+		// low-novelty saturation ladder.
+		if (
+			params.roundPattern.readOps.length === 0 ||
+			params.roundPattern.researchOps.length > 0
+		) {
 			return this.buildObservation('open', params, {
 				newEvidenceThisRound: false,
 				reasons: []

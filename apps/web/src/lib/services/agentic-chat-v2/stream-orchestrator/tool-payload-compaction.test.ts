@@ -861,6 +861,9 @@ describe('buildToolPayloadForModel', () => {
 		expect(payload.preview).toBeUndefined();
 		expect(typeof payload.content).toBe('string');
 		expect((payload.content as string).length).toBeGreaterThan(1000);
+		expect(payload.truncated).toBe(true);
+		expect(payload.tool_result_truncated).toBe(true);
+		expect(payload.model_payload_truncated).toBe(true);
 		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
 	});
 
@@ -929,10 +932,75 @@ describe('buildToolPayloadForModel', () => {
 			parseArgs
 		) as Record<string, any>;
 
-		expect(payload.truncated).toBe(false);
+		expect(payload.truncated).toBe(true);
+		expect(payload.tool_result_truncated).toBe(false);
+		expect(payload.model_payload_truncated).toBe(true);
 		const compactedContent = payload.content as string;
 		expect(compactedContent.length).toBeGreaterThan(5000);
+		expect(compactedContent.length).toBeLessThan(content.trim().length);
 		expect(payload.info.conversion).toBe('turndown');
 		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
+	});
+
+	it('reports complete web_visit content when no truncation occurs at either layer', () => {
+		const content = 'Complete pricing evidence with three plans.';
+		const payload = buildToolPayloadForModel(
+			toolCall('web_visit'),
+			toolResult({
+				url: 'https://example.com/pricing',
+				final_url: 'https://example.com/pricing',
+				status_code: 200,
+				content_type: 'text/html',
+				title: 'Pricing',
+				content_format: 'markdown',
+				content,
+				truncated: false,
+				message: 'Web visit content fetched.',
+				info: {
+					fetched_at: '2026-07-18T00:00:00.000Z',
+					mode: 'reader',
+					parser: 'reader',
+					fetch_ms: 100,
+					bytes: 1000
+				}
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.content).toBe(content);
+		expect(payload.truncated).toBe(false);
+		expect(payload.tool_result_truncated).toBe(false);
+		expect(payload.model_payload_truncated).toBe(false);
+	});
+
+	it('preserves tool-result truncation when the returned content fits the model payload', () => {
+		const content = 'The executor already omitted the remainder of this page.';
+		const payload = buildToolPayloadForModel(
+			toolCall('web_visit'),
+			toolResult({
+				url: 'https://example.com/long-report',
+				final_url: 'https://example.com/long-report',
+				status_code: 200,
+				content_type: 'text/html',
+				title: 'Long report',
+				content_format: 'markdown',
+				content,
+				truncated: true,
+				message: 'Web visit content fetched.',
+				info: {
+					fetched_at: '2026-07-18T00:00:00.000Z',
+					mode: 'reader',
+					parser: 'reader',
+					fetch_ms: 100,
+					bytes: 100000
+				}
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.content).toBe(content);
+		expect(payload.truncated).toBe(true);
+		expect(payload.tool_result_truncated).toBe(true);
+		expect(payload.model_payload_truncated).toBe(false);
 	});
 });

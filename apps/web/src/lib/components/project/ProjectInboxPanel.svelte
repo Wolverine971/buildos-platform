@@ -773,6 +773,9 @@
 			completeInboxDecisionNotification(notificationId, message, { toastKind, title });
 		} catch (error) {
 			console.error('[ProjectInboxPanel] inbox decision failed', error);
+			if (note) {
+				decisionNoteById = { ...decisionNoteById, [item.id]: note };
+			}
 			failInboxDecisionNotification(
 				notificationId,
 				"We couldn't apply that decision. The item is back in your inbox."

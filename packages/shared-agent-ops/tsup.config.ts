@@ -34,6 +34,7 @@ export default defineConfig({
 		'src/ops/gateway-op-aliases.ts',
 		'src/ops/security-event-logger.ts',
 		'src/calendar/agent-run-calendar-port.ts',
+		'src/web/safe-fetch.ts',
 		'src/inbox-index.ts',
 		'src/project-audits.ts',
 		'src/proposal-context/index.ts',

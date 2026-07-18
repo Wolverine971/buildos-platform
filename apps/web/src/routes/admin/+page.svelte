@@ -32,6 +32,7 @@
 	import AdminStatCard from '$lib/components/admin/AdminStatCard.svelte';
 	import AdminNavCard from '$lib/components/admin/AdminNavCard.svelte';
 	import AdminCollapsibleSection from '$lib/components/admin/AdminCollapsibleSection.svelte';
+	import MobileAdminDashboard from '$lib/components/admin/MobileAdminDashboard.svelte';
 	import VisitorContributionChart from '$lib/components/analytics/VisitorContributionChart.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -984,6 +985,33 @@
 </svelte:head>
 
 <div class="admin-page" aria-busy={isLoading || detailsLoading}>
+	<div class="-mx-4 -my-6 sm:hidden">
+		<MobileAdminDashboard
+			bind:selectedTimeframe
+			bind:autoRefresh
+			{isLoading}
+			{detailsLoading}
+			{error}
+			{navCards}
+			{systemOverview}
+			{comprehensiveAnalytics}
+			{agentChatUsage}
+			{briefDelivery}
+			{systemHealth}
+			{feedbackOverview}
+			{errorsData}
+			{subscriptionData}
+			{visitorOverview}
+			{dailyActiveUsers}
+			{recentActivity}
+			{systemMetrics}
+			onRefresh={() => loadAnalytics({ fresh: true })}
+			onExport={exportAnalytics}
+		/>
+	</div>
+
+	<!-- prettier-ignore -->
+	<div class="hidden sm:contents">
 	<AdminPageHeader
 		title="Admin Dashboard"
 		description="System overview and user analytics"
@@ -1056,7 +1084,7 @@
 
 	{#if isLoading}
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
-			{#each Array(12) as _}
+			{#each Array(12) as _, index (index)}
 				<AdminCard
 					padding="lg"
 					class="animate-pulse motion-reduce:animate-none space-y-3"
@@ -1193,7 +1221,7 @@
 					>
 						{#if rows.length > 0}
 							<div class="divide-y divide-border/50">
-								{#each rows.slice(0, 5) as user, index}
+								{#each rows.slice(0, 5) as user, index (user.email)}
 									<div class="flex items-center justify-between px-2.5 py-1.5">
 										<div class="flex items-center gap-2 min-w-0">
 											<span
@@ -1240,7 +1268,7 @@
 
 							{#if rows.length > 0}
 								<div class="space-y-2">
-									{#each rows as user, index}
+									{#each rows as user, index (user.email)}
 										<div
 											class="flex items-center justify-between py-2 border-b border-border last:border-0"
 										>
@@ -1437,7 +1465,7 @@
 								>
 									Categories
 								</p>
-								{#each feedbackCategoryEntries as [category, count]}
+								{#each feedbackCategoryEntries as [category, count] (category)}
 									{@const typedCount = Number(count)}
 									<div class="flex items-center justify-between gap-2">
 										<span class="text-xs capitalize text-foreground">
@@ -1528,7 +1556,7 @@
 								<h3 class="text-sm font-semibold text-foreground">Categories</h3>
 								{#if feedbackCategoryEntries.length > 0}
 									<div class="mt-3 space-y-3">
-										{#each feedbackCategoryEntries as [category, count]}
+										{#each feedbackCategoryEntries as [category, count] (category)}
 											{@const typedCount = Number(count)}
 											<div>
 												<div
@@ -1567,7 +1595,7 @@
 								<div>
 									<h3 class="text-sm font-semibold text-foreground">Status</h3>
 									<div class="mt-3 flex flex-wrap gap-2">
-										{#each feedbackStatusEntries as [status, count]}
+										{#each feedbackStatusEntries as [status, count] (status)}
 											<span
 												class="rounded-lg border border-border px-2.5 py-1 text-xs capitalize text-muted-foreground"
 											>
@@ -1653,7 +1681,7 @@
 				>
 					{#if dailyActiveUsers.length > 0}
 						<div class="divide-y divide-border/50">
-							{#each dailyActiveUsers.slice(-7) as day}
+							{#each dailyActiveUsers.slice(-7) as day (day.date)}
 								<div class="flex items-center justify-between px-2.5 py-1.5">
 									<span class="text-[10px] text-muted-foreground">
 										{new Date(day.date).toLocaleDateString('en-US', {
@@ -1741,7 +1769,7 @@
 					</h3>
 					{#if dailyActiveUsers.length > 0}
 						<div class="space-y-2">
-							{#each dailyActiveUsers.slice(-10) as day}
+							{#each dailyActiveUsers.slice(-10) as day (day.date)}
 								<div class="flex items-center justify-between">
 									<span class="text-sm text-muted-foreground truncate">
 										{new Date(day.date).toLocaleDateString()}
@@ -1948,7 +1976,7 @@
 				>
 					{#if systemMetrics.length > 0}
 						<div class="divide-y divide-border/50">
-							{#each systemMetrics as metric}
+							{#each systemMetrics as metric (metric.metric_name)}
 								<div class="flex items-center justify-between px-2.5 py-1.5">
 									<span class="text-xs text-foreground truncate">
 										{metric.metric_description || metric.metric_name}
@@ -1983,7 +2011,7 @@
 				</h3>
 				{#if systemMetrics.length > 0}
 					<div class="space-y-4">
-						{#each systemMetrics as metric}
+						{#each systemMetrics as metric (metric.metric_name)}
 							<div class="flex items-center justify-between">
 								<div class="flex-1 min-w-0">
 									<div class="text-sm font-medium text-foreground truncate">
@@ -2079,7 +2107,7 @@
 				<div class="p-2">
 					{#if recentActivity.length > 0}
 						<div class="space-y-1.5">
-							{#each recentActivity.slice(0, 6) as activity}
+							{#each recentActivity.slice(0, 6) as activity (`${activity.created_at}-${activity.user_email}-${activity.entity_type}-${activity.action}`)}
 								{@const ActivityIcon = getActivityIcon(
 									activity.entity_type,
 									activity.action
@@ -2173,7 +2201,7 @@
 				<h3 class="text-lg font-semibold text-foreground mb-4">Recent Activity</h3>
 				{#if recentActivity.length > 0}
 					<div class="space-y-3">
-						{#each recentActivity.slice(0, 8) as activity}
+						{#each recentActivity.slice(0, 8) as activity (`${activity.created_at}-${activity.user_email}-${activity.entity_type}-${activity.action}`)}
 							{@const ActivityIcon = getActivityIcon(
 								activity.entity_type,
 								activity.action
@@ -2211,4 +2239,5 @@
 			</div>
 		</div>
 	{/if}
+	</div>
 </div>

@@ -302,6 +302,19 @@ Sort controls collapse into a reduced-motion-aware `slide` panel, with a new asc
 the panel is collapsed, plus a "Clear filters" action. Replaces the old 5-control grid that stacked into a
 tall clumsy column on phones.
 
+**Executive dashboard mobile command center (shipped 2026-07-18):** `/admin` now renders a dedicated
+mobile composition below `sm` while preserving the existing desktop analytics report. The phone hierarchy is
+status → six key signals → attention queue → searchable destinations → expandable operations → live
+activity, so urgent state and common routes stay ahead of long-form analytics. `MobileAdminDashboard` owns
+the mobile-only layout and `MobileAdminDisclosure` provides semantic `<details>` drill-downs with fixed icon
+slots, overflow-safe labels, 44px+ controls, reduced-motion transitions, Inkprint tokens, and the documented
+micro-type floor (P1/P3/P4/P5/P6/P8/P9/P11/P13). A subtle static accent bloom is the only signature
+ornament. Live fixture verification passed at 320px and 390px in light and dark inside the real `AdminShell`:
+one visible H1, no horizontal overflow, searchable route filtering, working disclosures and auto-refresh
+toggle, and all dashboard controls at least 40px with primary controls at 44px. `svelte-check` is 0/0 and the
+official Svelte autofixer reports no issues in the new components. Authenticated real-data capture remains
+owed because local protected routes redirected both browser sessions to sign-in.
+
 **Deferred (structural — flagged, logic untouched):**
 
 - **Security event-detail modal** (`security/+page.svelte:1105-1224`) — hand-rolled overlay with no ESC /

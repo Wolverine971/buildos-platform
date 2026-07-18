@@ -1010,6 +1010,8 @@ function compactWebVisitPayload(payload: unknown): unknown {
 
 	const record = payload as Record<string, any>;
 	const info = record.info && typeof record.info === 'object' ? record.info : {};
+	const sourceContent = typeof record.content === 'string' ? record.content.trim() : '';
+	const toolResultTruncated = record.truncated === true;
 	const structuredData = Array.isArray(record.structured_data)
 		? record.structured_data.slice(0, 20).map(compactStructuredDataItem)
 		: undefined;
@@ -1023,45 +1025,53 @@ function compactWebVisitPayload(payload: unknown): unknown {
 	const buildPayload = (
 		contentBudget: number,
 		includeMetadata = true
-	): Record<string, unknown> => ({
-		url: compactUrlPreview(record.url),
-		final_url: compactUrlPreview(record.final_url),
-		status_code: record.status_code,
-		content_type: record.content_type,
-		title: toTextPreview(record.title, 200),
-		canonical_url: compactUrlPreview(record.canonical_url),
-		content_format: record.content_format,
-		excerpt: toTextPreview(record.excerpt, 500),
-		content: toTextPreview(record.content, contentBudget),
-		truncated: record.truncated,
-		structured_data: includeMetadata ? structuredData : undefined,
-		structured_data_count: Array.isArray(record.structured_data)
-			? record.structured_data.length
-			: 0,
-		links: includeMetadata ? links : undefined,
-		links_omitted: includeMetadata ? undefined : Boolean(links?.length),
-		meta:
-			includeMetadata &&
-			record.meta &&
-			typeof record.meta === 'object' &&
-			!Array.isArray(record.meta)
-				? compactRecord(record.meta, 12, 220)
-				: undefined,
-		message: toTextPreview(record.message, 300),
-		info: {
-			fetched_at: info.fetched_at,
-			mode: info.mode,
-			parser: info.parser,
-			extraction_strategy: info.extraction_strategy,
-			fetch_ms: info.fetch_ms,
-			bytes: info.bytes,
-			html_chars: info.html_chars,
-			markdown_chars: info.markdown_chars,
-			conversion: info.conversion,
-			conversion_ms: info.conversion_ms,
-			cache_hit: info.cache_hit
-		}
-	});
+	): Record<string, unknown> => {
+		const modelPayloadTruncated = sourceContent.length > contentBudget;
+		return {
+			url: compactUrlPreview(record.url),
+			final_url: compactUrlPreview(record.final_url),
+			status_code: record.status_code,
+			content_type: record.content_type,
+			title: toTextPreview(record.title, 200),
+			canonical_url: compactUrlPreview(record.canonical_url),
+			content_format: record.content_format,
+			excerpt: toTextPreview(record.excerpt, 500),
+			content: toTextPreview(sourceContent, contentBudget),
+			// `truncated` describes the evidence the model actually received.
+			// Preserve the executor-level signal separately so the model can tell
+			// whether omission happened before or during payload compaction.
+			truncated: toolResultTruncated || modelPayloadTruncated,
+			tool_result_truncated: toolResultTruncated,
+			model_payload_truncated: modelPayloadTruncated,
+			structured_data: includeMetadata ? structuredData : undefined,
+			structured_data_count: Array.isArray(record.structured_data)
+				? record.structured_data.length
+				: 0,
+			links: includeMetadata ? links : undefined,
+			links_omitted: includeMetadata ? undefined : Boolean(links?.length),
+			meta:
+				includeMetadata &&
+				record.meta &&
+				typeof record.meta === 'object' &&
+				!Array.isArray(record.meta)
+					? compactRecord(record.meta, 12, 220)
+					: undefined,
+			message: toTextPreview(record.message, 300),
+			info: {
+				fetched_at: info.fetched_at,
+				mode: info.mode,
+				parser: info.parser,
+				extraction_strategy: info.extraction_strategy,
+				fetch_ms: info.fetch_ms,
+				bytes: info.bytes,
+				html_chars: info.html_chars,
+				markdown_chars: info.markdown_chars,
+				conversion: info.conversion,
+				conversion_ms: info.conversion_ms,
+				cache_hit: info.cache_hit
+			}
+		};
+	};
 
 	// Fit the page content to whatever serialized budget remains after the
 	// metadata (links, structured data, meta) so long pages shrink their

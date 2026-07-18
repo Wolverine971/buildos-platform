@@ -1652,7 +1652,12 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				researchPayloadChars += roundModelPayloadChars;
 			}
 
-			if (gatewayModeActive && !hasWriteAttempt && roundPattern.readOps.length > 0) {
+			if (
+				gatewayModeActive &&
+				!hasWriteAttempt &&
+				roundPattern.readOps.length > 0 &&
+				roundPattern.researchOps.length === 0
+			) {
 				const ledgerObservation = contextGatheringLedger.observeToolRound({
 					roundExecutions,
 					roundPattern,
@@ -1714,6 +1719,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				gatewayModeActive &&
 				!hasWriteAttempt &&
 				roundPattern.readOps.length > 0 &&
+				roundPattern.researchOps.length === 0 &&
 				repeatedReadOpSetCount >= 3
 			) {
 				if (await attemptDocOrganizationRecovery()) {

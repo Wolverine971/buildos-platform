@@ -151,6 +151,11 @@
 			"import": "./dist/calendar/agent-run-calendar-port.mjs",
 			"require": "./dist/calendar/agent-run-calendar-port.js"
 		},
+		"./web/safe-fetch": {
+			"types": "./dist/web/safe-fetch.d.ts",
+			"import": "./dist/web/safe-fetch.mjs",
+			"require": "./dist/web/safe-fetch.js"
+		},
 		"./inbox-index": {
 			"types": "./dist/inbox-index.d.ts",
 			"import": "./dist/inbox-index.mjs",
