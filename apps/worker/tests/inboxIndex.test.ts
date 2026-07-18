@@ -81,7 +81,7 @@ function createSupabaseMock(tables: Record<string, Row[]>) {
 }
 
 describe('inbox index mappers', () => {
-	it('sets a 30-day expiry on pending project suggestions', () => {
+	it('sets a 7-day expiry on pending project suggestions (tasker/28 WP-3)', () => {
 		const row = mapProjectSuggestionToInboxItem({
 			id: 'suggestion-1',
 			project_id: 'project-1',
@@ -92,11 +92,43 @@ describe('inbox index mappers', () => {
 
 		expect(row).toMatchObject({
 			status: 'pending',
-			expires_at: '2026-07-31T12:00:00.000Z'
+			expires_at: '2026-07-08T12:00:00.000Z'
 		});
 	});
 
-	it('sets a 30-day expiry on deciding source rows', () => {
+	it('extends the review window from updated_at when a loop run re-confirms a finding', () => {
+		const row = mapProjectSuggestionToInboxItem({
+			id: 'suggestion-1',
+			project_id: 'project-1',
+			status: 'pending',
+			title: 'Review task overlap',
+			created_at: '2026-07-01T12:00:00.000Z',
+			updated_at: '2026-07-05T12:00:00.000Z'
+		});
+
+		expect(row).toMatchObject({
+			status: 'pending',
+			expires_at: '2026-07-12T12:00:00.000Z'
+		});
+	});
+
+	it('gives audit recommendations the 14-day audit window, not the light-loop one', () => {
+		const row = mapProjectSuggestionToInboxItem({
+			id: 'suggestion-1',
+			project_id: 'project-1',
+			kind: 'audit_recommendation',
+			status: 'pending',
+			title: 'Decide the next milestone',
+			created_at: '2026-07-01T12:00:00.000Z'
+		});
+
+		expect(row).toMatchObject({
+			status: 'pending',
+			expires_at: '2026-07-15T12:00:00.000Z'
+		});
+	});
+
+	it('sets per-source expiries on deciding source rows (tasker/28 WP-3)', () => {
 		const agentRun = mapAgentRunToInboxItem({
 			id: 'agent-run-1',
 			user_id: 'user-1',
@@ -118,11 +150,11 @@ describe('inbox index mappers', () => {
 
 		expect(agentRun).toMatchObject({
 			status: 'deciding',
-			expires_at: '2026-07-31T12:00:00.000Z'
+			expires_at: '2026-07-15T12:00:00.000Z'
 		});
 		expect(calendarSuggestion).toMatchObject({
 			status: 'deciding',
-			expires_at: '2026-07-31T12:00:00.000Z'
+			expires_at: '2026-07-08T12:00:00.000Z'
 		});
 	});
 
@@ -241,14 +273,14 @@ describe('inbox index mappers', () => {
 
 		expect(row).toMatchObject({
 			status: 'expired',
-			expires_at: '2020-01-31T00:00:00.000Z',
+			expires_at: '2020-01-08T00:00:00.000Z',
 			blocked_reason: 'Review item expired',
 			snoozed_until: null
 		});
 		expect(row?.decided_at).toEqual(expect.any(String));
 		expect(upserts[0]).toMatchObject({
 			status: 'expired',
-			expires_at: '2020-01-31T00:00:00.000Z'
+			expires_at: '2020-01-08T00:00:00.000Z'
 		});
 	});
 

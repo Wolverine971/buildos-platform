@@ -1,0 +1,110 @@
+# Agentic Chat — Research Capability & Model Escalation Audit (2026-07-18)
+
+**Scope:** model catalog + escalation reality, web_search/web_visit quality (code review + live tests), deep-research readiness, internal parallelism.
+**Method:** 4-agent parallel code exploration + direct Tavily API smoke test + 2 live turns through the real `POST /api/agent/v2/stream` endpoint (dev server, e2e test user) + parser benchmark on real-world HTML.
+
+---
+
+## TL;DR
+
+| Question | Verdict |
+| --- | --- |
+| Do we switch to smarter models when the task calls for it? | **No.** Model choice is fixed at turn start: `balanced` profile → `deepseek-v4-flash` primary. No difficulty-based escalation exists anywhere. |
+| Does web_search work? | **Yes — Tavily works well** (2.9s, relevant results), but the tool throws away ~80% of what Tavily returns (400-char snippet cap). |
+| Does web_visit work? | **Unreliable.** Failed twice live on a mainstream page (zapier.com) via 60s tool timeout. Root cause: LLM-based HTML→markdown conversion. The deterministic parser handles the same page in **11ms**. |
+| Can it do research and report back? | **Shallow research only.** Live test produced a structured, honestly-cited report — but entirely from search snippets (0 page visits), sourced from SEO-affiliate blogs, with formatting glitches. |
+| Deep research? | **Not today.** No research skill/prompt guidance, no persistence bridge, anti-research loop tuning, sub-agents can't touch the web. |
+| Parallelism? | **Partial.** Adjacent pure reads (incl. web tools) batch at concurrency 3 — observed live. Writes sequential. `delegate_task` fans out ≤3 background runs, but those runs are one-op-per-LLM-iteration and web-blind. |
+
+---
+
+## 1. Models: what exists vs. what the chat can actually use
+
+Catalog (`packages/smart-llm/src/model-config.ts`): 15 models from Nex-N2-Mini ($0.025/M in) to Kimi K3 ($3/$15). Profiles: `fast/balanced/powerful/maximum` (JSON), `speed/balanced/quality/creative/maximum` (text).
+
+**What the chat actually uses:**
+- Lane is picked purely from message shape (`openrouter-v2-service.ts:1589` — tools present → `tool_calling`), never from task difficulty. The config itself documents this (`model-config.ts:687-691`).
+- Every pass runs profile `balanced` → tool lane order puts **deepseek-v4-flash first**. The `quality` lane (GLM 5.2, DeepSeek V4 Pro, GPT-5.6 Luna, Grok 4.5) is reachable only on a *retry of a failed forced-synthesis pass* (`model-tiering.ts:150-152`). The `maximum` lane (Kimi K3) is **unreachable from chat entirely**.
+- `FASTCHAT_INITIAL_PLAN_MODEL_TIERING` (shipped 7/08, still dark) is a **downgrade** lever (speed models for pass 1), not smart-escalation.
+- Error fallbacks go sideways/down (`EMERGENCY_TEXT_FALLBACKS` is cheap-first). The only "accidental upgrade" is provider-outage failover to direct Moonshot `kimi-k2.6`.
+- The worker `agent_run` loop is `getJSONResponse({profile:'balanced'})` every iteration (`agentRunWorker.ts:904-915`); its one real tier bump is the JSON parse-error retry → `powerful` (`smart-llm-service.ts:679-740`) — which interactive chat never uses.
+- **No agent-callable "use a smarter model" tool exists.** `delegate_task` doesn't accept a model parameter either.
+
+**Net:** the platform *has* frontier-class models configured and priced, and a per-pass routing seam (`resolveFastChatPassModelRouting`) where escalation could plug in — but no code path ever decides "this needs a smarter model."
+
+## 2. web_search (Tavily) — works, but self-throttled
+
+`tools/websearch/index.ts` → `tavily-client.ts`. Advanced depth forced, `include_answer:true`, default 5 / max 10 results, 60s tool timeout, no caching, no per-user cost caps.
+
+- **Direct API test:** 2.9s round-trip, relevant ranked results, useful synthesized answer. Tavily returns **~1,900–2,400 chars of content per result**.
+- **The tool truncates each snippet to 400 chars** (`index.ts:26-30`) before the model sees it. We pay for advanced-depth extraction and discard ~80%.
+- `include_raw_content` is hard-coded `false`; `published_date` is requested but Tavily rarely returns it outside news topic — recency judgment is weak.
+
+## 3. web_visit — good security, broken conversion pipeline
+
+`tools/webvisit/` + `external-executor.ts:126-300`.
+
+**Good:** genuinely strong SSRF defense (DNS-resolves + blocks private CIDRs, re-checks every redirect hop); global `web_page_visits` URL cache; graceful text fallback design.
+
+**Broken:** the default `markdown` output path sends up to 40KB of trimmed HTML through `SmartLLMService.generateTextDetailed` — non-streaming, `balanced` lane, 25s timeout **per model attempt**, up to 6 attempts (`performTextGeneration` walks the lane, `smart-llm-service.ts:1032-1082`), output capped at 4,096 tokens — all inside a 60s outer tool timeout.
+
+**Live evidence:** two `web_visit` calls on `zapier.com/blog/best-ai-project-management-tools` both died with `Tool execution timeout after 60000ms`; no `Text Generation Success` log ever appeared. Meanwhile: curl with the tool's own UA fetches the page in **0.28s** (1MB), and `parseHtmlToText`/`prepareHtmlForMarkdown` on that exact HTML run in **11ms / 10ms** (benchmarked). The LLM conversion is the only slow, flaky, costly stage — and it's the default.
+
+Also: plain `fetch` means JS-rendered SPAs return shell HTML; `User-Agent: BuildOS-AgenticChat/1.0` will be bot-walled on some sites (Zapier happened not to).
+
+## 4. Live research behavior (2 turns, real endpoint, real weak model)
+
+**Turn 1 — open research question** ("research AI productivity tools 2026, 4+ competitors, pricing, sources"):
+- ~41s to first tool call (dev-server caveat; includes context load + first pass).
+- Web tools were NOT on the launch surface → model spent a round on 2× `tool_search` discovery before its first `web_search`.
+- **6 web_searches, 0 web_visits.** Searches batched 2–3 at a time (the concurrency-3 read batch works live).
+- Report: structured, per-product pricing + positioning, 14 cited URLs, honest "Correction: I did not create a document link." **But** all claims rest on 400-char snippets; sources are SEO-affiliate blogs (whichisbest.ai, checkthat.ai, syncdate.app…) not primary pricing pages; comparison table markdown broken; one price truncated ("~$13.").
+- Grade: **B− for a shallow sweep, D for trustworthiness of specific facts.**
+
+**Turn 2 — targeted page read** ("fetch this Zapier article, quote it"):
+- `web_visit` failed (60s timeout) → model fell back to `web_search` → retried `web_visit` with `mode:'reader'` → failed again → gave an honest partial answer with a real quote from a search snippet, clearly flagged what it couldn't verify. 176s total, 26k prompt tokens, **$0.0009**.
+- Grade: **model behavior A− (graceful, honest), tool reliability F.**
+
+Cost is a non-issue across the board (the 7/11 audit measured $0.47 over 21 days). The constraints are latency, tool reliability, and orchestration quality — not money.
+
+## 5. Deep-research readiness — the gaps
+
+1. **No research playbook.** `capability-catalog.ts:210-227` literally says `web_research … 'No dedicated skill exists yet'` with `skillIds: []`. The 2,313-line system prompt contains **zero** guidance on web research, when to visit vs. search, or citing sources.
+2. **Anti-research loop tuning.** Read-loop escalation (`read-loop-escalation.ts`) nudges at 3 read-only rounds, forces "stop and answer" at 6, forces synthesis at 8. Deep research *is* a long read-only loop; the chat is tuned to kill it. The context-gathering saturation ledger pushes the same direction.
+3. **Context never narrows (still open per 7/07 harness audit)** — full project snapshot rebuilt per tool execution; no within-turn eviction of old tool results; a long research turn accretes context with only per-payload caps (6k chars/tool).
+4. **No persistence bridge.** Findings are ephemeral. `web_page_visits` is a global URL cache with no user/project link. No `source` entities are created; no citation instruction exists for saved documents. "Research → project knowledge" requires the model to spontaneously call `create_onto_document`.
+5. **Sub-agents are web-blind.** `delegate_task` agent runs get ontology+calendar ops only (`op-execution.ts:108` catalog) — web_search/web_visit are chat-only. So research cannot be backgrounded or parallelized at all today.
+6. **Zero test coverage.** 0 of 5 e2e scenarios and 0 LLM prompt tests touch web tools.
+7. **Security ordering constraint.** Web content is untrusted input; the platform audit's open S1 (chat writes commit with no confirmation/policy gate) means more web research = more prompt-injection surface driving same-turn mutations. Scale research *after or with* Wave 3 / ChangeSet staging.
+
+## 6. Parallelism — current state
+
+- **Within a turn:** multi-tool-call messages allowed (`tool_choice:'auto'`, provider-default parallel calls). Adjacent **pure reads** (category `read`/`search` — web tools qualify) batch via `batchExecuteTools` at concurrency 3, results re-serialized in order for SSE. **Writes and mixed rounds are strictly sequential.** Budgets: 40 calls / 16 rounds / 60s per LLM pass.
+- **Cross-unit:** `delegate_task` → ≤3 concurrent background runs per user, results injected back as `agent_run_summary`. Worker queue runs jobs concurrently (batch 5 dev / 10 prod), no per-user serialization; per-run claim prevents double-processing. Parent/depth linkage fields exist but recursion is disabled ("You cannot delegate to other agents").
+- **The worker agent-run loop is the bottleneck:** one op per LLM iteration, non-streaming JSON — no read batching, no fan-out. There is no map-reduce/orchestrator primitive anywhere.
+
+## 7. What it would take (ranked)
+
+**Tier 1 — days, high leverage, no architecture change:**
+1. `web_visit`: default to deterministic HTML→markdown (turndown/readability path already exists and benchmarks at ~10ms); keep LLM conversion as opt-in `mode:'llm_clean'`. Kills the timeout class entirely.
+2. `web_search`: raise snippet cap 400 → ~1,500–2,000 chars; consider `include_raw_content` for top-N; surface Tavily's score+domain so the model can prefer primary sources.
+3. Prompt: add a web-research section (search→visit primary sources→quote→cite; prefer vendor/primary domains; always include source URLs in saved docs).
+4. Loop tuning: exempt web-research turns from read-loop escalation (or raise thresholds when web intent detected); web tools are already on-demand — consider adding them to launch surface for global context to skip the discovery round.
+
+**Tier 2 — ~a week, model intelligence:**
+5. Escalation seam: `resolveFastChatPassModelRouting` already routes per-pass — add (a) intent-based bump (research/analysis intent → `quality` lane), and/or (b) an agent-callable `request_deep_reasoning` tool that re-runs the pass on the quality lane. Cost impact is cents.
+6. `delegate_task`: accept an optional `effort: 'standard'|'deep'` mapping to `balanced`/`powerful` in the worker.
+
+**Tier 3 — weeks, the actual deep-research feature:**
+7. Add web ops to the worker agent-run op catalog (behind `scope_mode` read-only default) so research can run as a durable background Agent Run.
+8. A `deep_research` skill/run-template: plan → fan out ≤3 parallel sub-runs (cap already exists) on sub-questions → each returns structured findings with sources → parent synthesizes → **persists a report document with a Sources section** (and optionally `source` entities). Batch the worker loop's reads while at it.
+9. Per-user web budget (calls/day) before exposing this broadly.
+
+**Tier 4 — harness:** add a research e2e scenario (fixed-domain query + judge rubric scoring citations/claim-support) so regressions are visible.
+
+---
+
+## Live-test artifacts
+- Turn transcripts: scratchpad `research_live_test.py` runs (2026-07-18, dev server :5177, e2e test user).
+- Tool-timeout evidence: dev-server log `Tool execution timeout after 60000ms` ×2 for web_visit; error IDs f1aebcb3 / 4b40a08f.
+- Parser benchmark: `parseHtmlToText` 11ms / `prepareHtmlForMarkdown` 10ms on the 1MB Zapier page that timed out live.

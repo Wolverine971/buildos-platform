@@ -332,13 +332,18 @@ export function buildTaskConflictCandidatePairs(
  * its operations target — NOT its (regenerated-every-run) title. Two runs that
  * flag the same task pair or the same document produce the same key, so a fresh
  * proposal can be matched against already-open / already-decided suggestions and
- * dropped before insert. Returns null when no deterministic key exists (drift is
- * informational and operation-free), in which case prompt suppression is the only
- * guard. See project-loops-flow-audit-2026-07-04 §3/§4.
+ * dropped before insert. Operation-free kinds (drift, audit_recommendation) fall
+ * back to their evidence-ref entities, then to normalized title tokens, so every
+ * finding that cites the same entities or regenerates the same title still keys
+ * identically across runs. Returns null only when a suggestion has no
+ * operations, no evidence, and no usable title. See
+ * project-loops-flow-audit-2026-07-04 §3/§4 and tasker/28 WP-2.
  */
 export function suggestionSuppressionKey(input: {
 	kind: string;
 	operations: LoopOperation[] | null | undefined;
+	evidence_refs?: ProjectSuggestionEvidenceRef[] | null;
+	title?: string | null;
 }): string | null {
 	const ops = Array.isArray(input.operations) ? input.operations : [];
 	switch (input.kind) {
@@ -358,7 +363,8 @@ export function suggestionSuppressionKey(input: {
 				);
 			}
 			const ids = normalizeEntityIds(taskIds);
-			return ids.length ? `task_conflict:${ids.join('|')}` : null;
+			if (ids.length) return `task_conflict:${ids.join('|')}`;
+			break;
 		}
 		case 'doc_org':
 		case 'doc_outdated': {
@@ -368,11 +374,24 @@ export function suggestionSuppressionKey(input: {
 					return typeof args.document_id === 'string' ? args.document_id : null;
 				})
 			);
-			return docIds.length ? `${input.kind}:${docIds.join('|')}` : null;
+			if (docIds.length) return `${input.kind}:${docIds.join('|')}`;
+			break;
 		}
-		default:
-			return null;
 	}
+
+	const evidenceIds = normalizeEntityIds(
+		(Array.isArray(input.evidence_refs) ? input.evidence_refs : []).map((ref) =>
+			ref && typeof ref === 'object' && typeof ref.entity_id === 'string'
+				? ref.entity_id
+				: null
+		)
+	);
+	if (evidenceIds.length) return `${input.kind}:ev:${evidenceIds.join('|')}`;
+
+	const titleTokens = tokenizeTaskText(input.title ?? null).sort();
+	if (titleTokens.length) return `${input.kind}:t:${titleTokens.join('|')}`;
+
+	return null;
 }
 
 function truncate(value: unknown, max = 240): string | undefined {

@@ -1,6 +1,8 @@
 // apps/web/src/lib/server/inbox.service.ts
 import {
+	applyProjectAttentionBudget,
 	expireInboxItemsForProject,
+	PROJECT_ATTENTION_BUDGET,
 	PROJECT_DELETED_INBOX_REASON,
 	syncInboxItemForSource,
 	type InboxIndexRow,
@@ -275,7 +277,12 @@ export function sortInboxRowsForReview<T extends InboxIndexRow>(rows: T[]): T[] 
 function shouldExpire(row: InboxIndexRow, nowMs: number): boolean {
 	const expiresAt = parseTimestamp(row.expires_at);
 	if (expiresAt === null || expiresAt > nowMs) return false;
-	return row.status === 'pending' || row.status === 'deciding' || row.status === 'snoozed';
+	return (
+		row.status === 'pending' ||
+		row.status === 'deciding' ||
+		row.status === 'snoozed' ||
+		row.status === 'deferred'
+	);
 }
 
 function shouldUnsnooze(row: InboxIndexRow, nowMs: number): boolean {
@@ -296,7 +303,8 @@ function hasActiveProjectReviewStatus(row: InboxIndexRow): boolean {
 		(row.status === 'pending' ||
 			row.status === 'deciding' ||
 			row.status === 'snoozed' ||
-			row.status === 'blocked')
+			row.status === 'blocked' ||
+			row.status === 'deferred')
 	);
 }
 
@@ -465,6 +473,75 @@ async function reconcileInboxLifecycle(params: {
 	return { rows: repairedRows, repairedCount };
 }
 
+/**
+ * Read-time enforcement of the per-project attention budget (tasker/28 WP-4).
+ * Covers projects visible in this read plus any project holding deferred rows,
+ * so a decided/expired item frees a slot and the top parked item is promoted on
+ * the next badge poll or list read — mirroring what the worker does after each
+ * loop run. Returns the affected ids so callers can patch already-loaded rows.
+ */
+async function applyAttentionBudgetForProjects(params: {
+	supabase: AnySupabase;
+	admin: AnySupabase;
+	rows: InboxIndexRow[];
+	projectId?: string | null;
+}): Promise<{ deferredIds: Set<string>; promotedIds: Set<string> }> {
+	// Only touch projects that can actually change: over budget in this read's
+	// rows, or holding parked rows that a freed slot could promote. Keeps the
+	// steady-state cost of frequent badge polls to one extra query.
+	const pendingCountByProject = new Map<string, number>();
+	for (const row of params.rows) {
+		if (row.project_id && row.audience === 'project_members' && row.status === 'pending') {
+			pendingCountByProject.set(
+				row.project_id,
+				(pendingCountByProject.get(row.project_id) ?? 0) + 1
+			);
+		}
+	}
+	const projectIds = new Set<string>();
+	for (const [projectId, count] of pendingCountByProject) {
+		if (count > PROJECT_ATTENTION_BUDGET) projectIds.add(projectId);
+	}
+
+	let deferredQuery = params.supabase
+		.from('inbox_items')
+		.select('project_id')
+		.eq('status', 'deferred')
+		.not('project_id', 'is', null)
+		.limit(200);
+	if (params.projectId) deferredQuery = deferredQuery.eq('project_id', params.projectId);
+	const { data: deferredRows, error: deferredError } = await deferredQuery;
+	if (deferredError) {
+		console.warn(
+			'[AI Inbox] Failed to load deferred projects for attention budget:',
+			deferredError.message ?? deferredError
+		);
+	} else {
+		for (const row of (deferredRows ?? []) as Array<{ project_id?: unknown }>) {
+			if (typeof row.project_id === 'string') projectIds.add(row.project_id);
+		}
+	}
+
+	const deferredIds = new Set<string>();
+	const promotedIds = new Set<string>();
+	for (const projectId of [...projectIds].slice(0, 25)) {
+		try {
+			const result = await applyProjectAttentionBudget({
+				supabase: params.admin,
+				projectId
+			});
+			result.deferredIds.forEach((id) => deferredIds.add(id));
+			result.promotedIds.forEach((id) => promotedIds.add(id));
+		} catch (budgetError) {
+			console.warn(
+				`[AI Inbox] Failed to apply attention budget for project ${projectId}:`,
+				budgetError instanceof Error ? budgetError.message : budgetError
+			);
+		}
+	}
+	return { deferredIds, promotedIds };
+}
+
 async function reconcileVisibleInboxLifecycle(params: {
 	supabase: AnySupabase;
 	admin: AnySupabase;
@@ -490,11 +567,17 @@ async function reconcileVisibleInboxLifecycle(params: {
 
 	const { data, error } = await query;
 	if (error) throw error;
-	const { repairedCount } = await reconcileInboxLifecycle({
+	const { rows: lifecycleRows, repairedCount } = await reconcileInboxLifecycle({
 		admin: params.admin,
 		rows: (data ?? []) as InboxIndexRow[]
 	});
-	return repairedCount;
+	const budget = await applyAttentionBudgetForProjects({
+		supabase: params.supabase,
+		admin: params.admin,
+		rows: lifecycleRows,
+		projectId: params.projectId
+	});
+	return repairedCount + budget.deferredIds.size + budget.promotedIds.size;
 }
 
 async function loadRowsById(params: {
@@ -1163,7 +1246,28 @@ export async function listInboxItems(params: {
 			})
 	);
 
-	const orderedRows = sortInboxRowsForReview(lifecycleRows);
+	// Rows this pass just deferred are patched in place so they drop out of the
+	// current render; rows it promoted surface on the next poll (they were not
+	// part of this pending/snoozed read).
+	const budget = shouldRepairSources
+		? await measure(params.timing, 'inbox.attention_budget', () =>
+				applyAttentionBudgetForProjects({
+					supabase: params.supabase,
+					admin: params.admin,
+					rows: lifecycleRows,
+					projectId: params.projectId
+				})
+			)
+		: { deferredIds: new Set<string>(), promotedIds: new Set<string>() };
+	const budgetedRows = budget.deferredIds.size
+		? lifecycleRows.map((row) =>
+				row.id && budget.deferredIds.has(row.id)
+					? { ...row, status: 'deferred' as InboxItemStatus }
+					: row
+			)
+		: lifecycleRows;
+
+	const orderedRows = sortInboxRowsForReview(budgetedRows);
 	const visibleRows = requestedStatus
 		? orderedRows.filter((row) => row.status === requestedStatus).slice(0, requestedLimit)
 		: orderedRows.slice(0, requestedLimit);

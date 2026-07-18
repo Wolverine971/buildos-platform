@@ -2,6 +2,10 @@
 
 export type WebVisitMode = 'auto' | 'reader' | 'raw';
 export type WebVisitContentFormat = 'text' | 'markdown';
+// Requested output format. 'markdown' converts deterministically (Turndown);
+// 'llm_markdown' opts into the slower LLM-cleaned conversion and still yields
+// content_format 'markdown' in the result.
+export type WebVisitOutputFormat = 'text' | 'markdown' | 'llm_markdown';
 export type WebVisitExtractionStrategy = 'raw' | 'article' | 'main' | 'body' | 'html';
 
 export interface WebVisitArgs {
@@ -9,7 +13,7 @@ export interface WebVisitArgs {
 	mode?: WebVisitMode;
 	max_chars?: number;
 	max_html_chars?: number;
-	output_format?: WebVisitContentFormat;
+	output_format?: WebVisitOutputFormat;
 	persist?: boolean;
 	force_refresh?: boolean;
 	include_links?: boolean;
@@ -82,6 +86,8 @@ export interface WebVisitResultPayload {
 		extraction_strategy?: WebVisitExtractionStrategy;
 		html_chars?: number;
 		markdown_chars?: number;
+		conversion?: 'turndown' | 'llm';
+		conversion_ms?: number;
 		llm_model?: string;
 		llm_ms?: number;
 		llm_prompt_tokens?: number;

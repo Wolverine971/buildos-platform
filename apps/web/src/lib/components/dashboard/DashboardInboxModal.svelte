@@ -258,6 +258,9 @@
 		groupedItems.find((group) => group.key === activeGroupKey) ?? groupedItems[0] ?? null
 	);
 	const totalActionable = $derived(items.filter(canDecide).length);
+	const pendingProjectCount = $derived(
+		new Set(items.map((item) => itemProject(item)?.id ?? item.project_id).filter(Boolean)).size
+	);
 	const hasMoreItems = $derived(items.length < totalAvailable && loadedLimit < MAX_INBOX_LIMIT);
 	const nextPageCount = $derived(
 		Math.min(
@@ -963,9 +966,16 @@
 						Loading review items
 					{:else if items.length}
 						{#if items.length < totalAvailable}
-							Showing {items.length} of {totalAvailable} pending items
+							Showing {items.length} of {totalAvailable} pending items{pendingProjectCount >
+							1
+								? ` · ${pendingProjectCount} projects`
+								: ''}
 						{:else}
-							{totalAvailable} pending item{totalAvailable === 1 ? '' : 's'}
+							{totalAvailable} pending item{totalAvailable === 1
+								? ''
+								: 's'}{pendingProjectCount > 1
+								? ` · ${pendingProjectCount} projects`
+								: ''}
 						{/if}
 					{:else}
 						Inbox is clear

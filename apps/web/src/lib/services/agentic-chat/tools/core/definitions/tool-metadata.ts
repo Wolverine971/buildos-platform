@@ -714,7 +714,7 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		summary: 'Fetch a specific URL, convert HTML to markdown, and persist metadata.',
 		capabilities: [
 			'Best for reading known pages',
-			'Converts HTML to markdown via LLM',
+			'Fast deterministic HTML-to-markdown conversion',
 			'Stores a reusable snapshot with metadata',
 			'Optional link list for related sources',
 			'Pairs with web_search for discovery'

@@ -18,7 +18,8 @@ export type InboxItemStatus =
 	| 'decided'
 	| 'blocked'
 	| 'expired'
-	| 'snoozed';
+	| 'snoozed'
+	| 'deferred';
 
 export type InboxAudience = 'user' | 'project_members';
 
@@ -44,7 +45,24 @@ export interface InboxIndexRow {
 }
 
 type AnySupabase = SupabaseClient<any, any, any>;
-const INBOX_REVIEW_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+// Per-source review TTLs (tasker/28 WP-3). Loop findings and calendar
+// suggestions go stale fast — rotation/supersede usually retires them before
+// this fires, so the TTL is the backstop, not the primary lifecycle. Agent runs
+// and audit output are user-facing work products and get more room. The gated
+// sources keep the legacy 30d until they ship a real producer.
+const INBOX_REVIEW_EXPIRY_MS_BY_SOURCE: Record<InboxSourceType, number> = {
+	agent_run: 14 * DAY_MS,
+	project_suggestion: 7 * DAY_MS,
+	project_audit: 14 * DAY_MS,
+	calendar_suggestion: 7 * DAY_MS,
+	profile_fragment: 30 * DAY_MS,
+	contact_merge_candidate: 30 * DAY_MS
+};
+// Audit children carry decisions distilled from a full audit; give them the
+// audit's window, not the light-loop one.
+const AUDIT_RECOMMENDATION_EXPIRY_MS = 14 * DAY_MS;
 export const PROJECT_DELETED_INBOX_REASON = 'Project was deleted';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -206,21 +224,41 @@ function shouldPreserveExpired(
 }
 
 function reviewExpiresAt(
-	createdAt: string | null | undefined,
-	status: InboxItemStatus
+	sourceType: InboxSourceType,
+	freshAsOf: string | null | undefined,
+	status: InboxItemStatus,
+	overrideTtlMs?: number
 ): string | null {
 	if (status !== 'pending' && status !== 'deciding') return null;
-	const created = parseTimestamp(createdAt);
-	const base = created ?? Date.now();
-	return new Date(base + INBOX_REVIEW_EXPIRY_MS).toISOString();
+	const basis = parseTimestamp(freshAsOf);
+	const base = basis ?? Date.now();
+	const ttl = overrideTtlMs ?? INBOX_REVIEW_EXPIRY_MS_BY_SOURCE[sourceType];
+	return new Date(base + ttl).toISOString();
 }
 
 function shouldExpireIncoming(row: InboxIndexRow): boolean {
-	if (row.status !== 'pending' && row.status !== 'deciding' && row.status !== 'snoozed') {
+	if (
+		row.status !== 'pending' &&
+		row.status !== 'deciding' &&
+		row.status !== 'snoozed' &&
+		row.status !== 'deferred'
+	) {
 		return false;
 	}
 	const expiresAt = parseTimestamp(row.expires_at);
 	return expiresAt !== null && expiresAt <= Date.now();
+}
+
+/**
+ * A deferred row stays deferred when its source re-syncs as plain pending —
+ * promotion back to `pending` is the attention-budget pass's job, not the
+ * sync's, so a routine re-sync can't leak a held-back item past the budget.
+ */
+function shouldPreserveDeferred(
+	existing: InboxIndexRow | null,
+	nextStatus: InboxItemStatus
+): boolean {
+	return existing?.status === 'deferred' && nextStatus === 'pending';
 }
 
 async function upsertInboxItem(
@@ -243,7 +281,10 @@ async function upsertInboxItem(
 	const existing = (existingData ?? null) as InboxIndexRow | null;
 	const preserveSnooze = shouldPreserveActiveSnooze(existing, row.status);
 	const preserveExpired = shouldPreserveExpired(existing, row.status);
-	const expireIncoming = shouldExpireIncoming(row);
+	const preserveDeferred = shouldPreserveDeferred(existing, row.status);
+	const expireIncoming = shouldExpireIncoming(
+		preserveDeferred ? { ...row, status: 'deferred' } : row
+	);
 	const finalExpired = preserveExpired || expireIncoming;
 	const payload = {
 		source_type: row.source_type,
@@ -252,7 +293,13 @@ async function upsertInboxItem(
 		user_id: row.user_id ?? null,
 		project_id: row.project_id ?? null,
 		audience: row.audience,
-		status: finalExpired ? 'expired' : preserveSnooze ? 'snoozed' : row.status,
+		status: finalExpired
+			? 'expired'
+			: preserveSnooze
+				? 'snoozed'
+				: preserveDeferred
+					? 'deferred'
+					: row.status,
 		title: row.title,
 		summary: row.summary ?? null,
 		risk_tier: row.risk_tier ?? null,
@@ -338,7 +385,7 @@ async function markProjectAuditInboxNoActionRequired(
 		})
 		.eq('source_type', 'project_audit')
 		.eq('source_ref_id', auditId)
-		.in('status', ['pending', 'deciding', 'snoozed', 'blocked'])
+		.in('status', ['pending', 'deciding', 'snoozed', 'blocked', 'deferred'])
 		.select('*')
 		.maybeSingle();
 	if (error) {
@@ -395,7 +442,7 @@ export function mapAgentRunToInboxItem(run: Record<string, unknown>): InboxIndex
 		blocked_reason: blockedReason,
 		decided_at:
 			inboxStatus === 'decided' || inboxStatus === 'blocked' ? terminalDecidedAt(run) : null,
-		expires_at: reviewExpiresAt(asString(run.created_at), inboxStatus),
+		expires_at: reviewExpiresAt('agent_run', asString(run.created_at), inboxStatus),
 		created_at: asString(run.created_at) ?? undefined
 	};
 }
@@ -441,7 +488,14 @@ export function mapProjectSuggestionToInboxItem(
 			inboxStatus === 'pending' || inboxStatus === 'deciding'
 				? null
 				: terminalDecidedAt(suggestion),
-		expires_at: reviewExpiresAt(asString(suggestion.created_at), inboxStatus),
+		// Freshness basis is updated_at: a loop run that re-confirms a still-open
+		// finding bumps it, which extends the review window (tasker/28 WP-1/WP-3).
+		expires_at: reviewExpiresAt(
+			'project_suggestion',
+			asString(suggestion.updated_at) ?? asString(suggestion.created_at),
+			inboxStatus,
+			kind === 'audit_recommendation' ? AUDIT_RECOMMENDATION_EXPIRY_MS : undefined
+		),
 		created_at: asString(suggestion.created_at) ?? undefined
 	};
 }
@@ -484,7 +538,7 @@ export function mapProjectAuditToInboxItem(audit: Record<string, unknown>): Inbo
 		action_kinds: ['open', 'resolve'],
 		blocked_reason: null,
 		decided_at: inboxStatus === 'pending' ? null : projectAuditDecidedAt(audit),
-		expires_at: reviewExpiresAt(asString(audit.created_at), inboxStatus),
+		expires_at: reviewExpiresAt('project_audit', asString(audit.created_at), inboxStatus),
 		created_at: asString(audit.created_at) ?? undefined
 	};
 }
@@ -527,7 +581,11 @@ export function mapCalendarSuggestionToInboxItem(
 			inboxStatus === 'pending' || inboxStatus === 'deciding'
 				? null
 				: terminalDecidedAt(suggestion),
-		expires_at: reviewExpiresAt(asString(suggestion.created_at), inboxStatus),
+		expires_at: reviewExpiresAt(
+			'calendar_suggestion',
+			asString(suggestion.created_at),
+			inboxStatus
+		),
 		created_at: asString(suggestion.created_at) ?? undefined
 	};
 }
@@ -664,7 +722,7 @@ export async function expireInboxItemsForProjectAuditChildSuggestions(params: {
 		})
 		.eq('source_type', 'project_suggestion')
 		.in('source_ref_id', suggestionIds)
-		.in('status', ['pending', 'deciding', 'snoozed', 'blocked'])
+		.in('status', ['pending', 'deciding', 'snoozed', 'blocked', 'deferred'])
 		.select('id');
 	if (error) throw error;
 	return (data ?? []).length;
@@ -685,7 +743,7 @@ export async function expireInboxItemsForProject(params: {
 			snoozed_until: null
 		})
 		.eq('project_id', params.projectId)
-		.in('status', ['pending', 'deciding', 'snoozed', 'blocked'])
+		.in('status', ['pending', 'deciding', 'snoozed', 'blocked', 'deferred'])
 		.select('id');
 	if (error) throw error;
 	return (data ?? []).length;
@@ -713,6 +771,81 @@ export async function syncInboxItemForCalendarSuggestion(params: {
 	}
 	const row = mapCalendarSuggestionToInboxItem(suggestion);
 	return row ? upsertInboxItem(params.supabase, row) : null;
+}
+
+// How many attention items a single project may hold `pending` at once
+// (tasker/28 WP-4). Everything admissible past the budget is parked as
+// `deferred` and promoted as slots free up. Applied to the project_members
+// audience only — a user's own agent-run proposals are asks they made
+// themselves, not loop noise.
+export const PROJECT_ATTENTION_BUDGET = 3;
+
+/**
+ * Enforce the per-project attention budget over `pending`/`deferred` rows.
+ * Ranks by risk tier (desc), then freshness (desc); the top `budget` rows are
+ * promoted to `pending`, the rest demoted to `deferred`. Rows already past
+ * their review expiry are left alone for the expiry sweep to claim. Both the
+ * worker (after a loop run) and the web read path (after reconcile/backfill)
+ * call this, so producer-side syncs and read-time backfill converge on the
+ * same admission result and neither can leak past the budget.
+ */
+export async function applyProjectAttentionBudget(params: {
+	supabase: AnySupabase;
+	projectId: string;
+	budget?: number;
+}): Promise<{ promotedIds: string[]; deferredIds: string[] }> {
+	const budget = params.budget ?? PROJECT_ATTENTION_BUDGET;
+	const none = { promotedIds: [] as string[], deferredIds: [] as string[] };
+	const { data, error } = await (params.supabase as any)
+		.from('inbox_items')
+		.select('id, status, risk_tier, created_at, updated_at, expires_at')
+		.eq('project_id', params.projectId)
+		.eq('audience', 'project_members')
+		.in('status', ['pending', 'deferred'])
+		.limit(500);
+	if (error) throw error;
+
+	const now = Date.now();
+	const candidates = ((data ?? []) as InboxIndexRow[]).filter((row) => {
+		const expiresAt = parseTimestamp(row.expires_at);
+		return expiresAt === null || expiresAt > now;
+	});
+	if (!candidates.length) return none;
+
+	const freshness = (row: InboxIndexRow): number =>
+		parseTimestamp(row.updated_at) ?? parseTimestamp(row.created_at) ?? 0;
+	const ranked = [...candidates].sort(
+		(a, b) => (b.risk_tier ?? 1) - (a.risk_tier ?? 1) || freshness(b) - freshness(a)
+	);
+
+	const admitted = new Set(ranked.slice(0, budget).map((row) => row.id));
+	const toPromote = candidates
+		.filter((row) => row.status === 'deferred' && admitted.has(row.id))
+		.map((row) => row.id)
+		.filter((id): id is string => Boolean(id));
+	const toDefer = candidates
+		.filter((row) => row.status === 'pending' && !admitted.has(row.id))
+		.map((row) => row.id)
+		.filter((id): id is string => Boolean(id));
+
+	if (toPromote.length) {
+		const { error: promoteError } = await (params.supabase as any)
+			.from('inbox_items')
+			.update({ status: 'pending' })
+			.in('id', toPromote)
+			.eq('status', 'deferred');
+		if (promoteError) throw promoteError;
+	}
+	if (toDefer.length) {
+		const { error: deferError } = await (params.supabase as any)
+			.from('inbox_items')
+			.update({ status: 'deferred' })
+			.in('id', toDefer)
+			.eq('status', 'pending');
+		if (deferError) throw deferError;
+	}
+
+	return { promotedIds: toPromote, deferredIds: toDefer };
 }
 
 export async function syncInboxItemForSource(params: {

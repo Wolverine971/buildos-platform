@@ -170,6 +170,7 @@ export type {
 	WebVisitContentFormat,
 	WebVisitFetchPayload,
 	WebVisitMode,
+	WebVisitOutputFormat,
 	WebVisitParser,
 	WebVisitResultPayload
 } from './types';

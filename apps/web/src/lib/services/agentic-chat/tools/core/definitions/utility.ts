@@ -631,8 +631,9 @@ For discovery or multiple sources, use web_search first.`,
 					},
 					output_format: {
 						type: 'string',
-						enum: ['markdown', 'text'],
-						description: 'Preferred output format for content.'
+						enum: ['markdown', 'text', 'llm_markdown'],
+						description:
+							'Output format. "markdown" (default) converts instantly and deterministically; "llm_markdown" is a slower LLM-cleaned conversion for pages where the default renders poorly.'
 					},
 					persist: {
 						type: 'boolean',

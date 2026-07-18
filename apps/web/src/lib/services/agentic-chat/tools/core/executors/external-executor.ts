@@ -43,8 +43,10 @@ import {
 	type WebVisitContentFormat,
 	type WebVisitFetchPayload,
 	type WebVisitMode,
+	type WebVisitOutputFormat,
 	type WebVisitResultPayload
 } from '$lib/services/agentic-chat/tools/webvisit';
+import { convertHtmlToMarkdown } from '$lib/services/agentic-chat/tools/webvisit/markdown';
 import type { ExecutorContext } from './types';
 import { createLogger } from '$lib/utils/logger';
 
@@ -129,7 +131,9 @@ export class ExternalExecutor extends BaseExecutor {
 		const maxChars = clampMaxChars(args.max_chars);
 		const forceRefresh = args.force_refresh ?? false;
 
-		if (persist && !forceRefresh && outputFormat === 'markdown') {
+		// Cached snapshots store markdown, so both markdown-producing formats
+		// ('markdown' and 'llm_markdown') can serve from cache.
+		if (persist && !forceRefresh && outputFormat !== 'text') {
 			const cached = await this.loadCachedVisit(args.url, maxChars, args.mode);
 			if (cached) {
 				return cached;
@@ -166,6 +170,8 @@ export class ExternalExecutor extends BaseExecutor {
 				...fetched.info,
 				html_chars: fetched.info.html_chars,
 				markdown_chars: responseContent.markdownChars,
+				conversion: responseContent.conversion,
+				conversion_ms: responseContent.conversionMs,
 				llm_model: responseContent.llmModel,
 				llm_ms: responseContent.llmMs,
 				llm_prompt_tokens: responseContent.llmPromptTokens,
@@ -194,8 +200,8 @@ export class ExternalExecutor extends BaseExecutor {
 		return getBuildosUsageGuide();
 	}
 
-	private normalizeOutputFormat(format?: WebVisitContentFormat): WebVisitContentFormat {
-		if (format === 'text' || format === 'markdown') return format;
+	private normalizeOutputFormat(format?: WebVisitOutputFormat): WebVisitOutputFormat {
+		if (format === 'text' || format === 'markdown' || format === 'llm_markdown') return format;
 		return 'markdown';
 	}
 
@@ -206,12 +212,14 @@ export class ExternalExecutor extends BaseExecutor {
 
 	private async convertToMarkdownIfNeeded(
 		fetched: WebVisitFetchPayload,
-		outputFormat: WebVisitContentFormat
+		outputFormat: WebVisitOutputFormat
 	): Promise<{
 		content: string;
 		format: WebVisitContentFormat;
 		markdown?: string;
 		markdownChars?: number;
+		conversion?: 'turndown' | 'llm';
+		conversionMs?: number;
 		llmModel?: string;
 		llmMs?: number;
 		llmPromptTokens?: number;
@@ -219,13 +227,62 @@ export class ExternalExecutor extends BaseExecutor {
 		llmTotalTokens?: number;
 		errorMessage?: string;
 	}> {
-		const shouldConvert = Boolean(fetched.trimmed_html) && outputFormat === 'markdown';
-		if (!shouldConvert || !this.llmService) {
+		if (!fetched.trimmed_html || outputFormat === 'text') {
 			return {
 				content: fetched.text,
 				format: 'text'
 			};
 		}
+
+		if (outputFormat === 'llm_markdown' && this.llmService) {
+			const llmResult = await this.convertHtmlToMarkdownViaLlm(fetched);
+			if (llmResult) {
+				return llmResult;
+			}
+			// LLM conversion failed — fall through to the deterministic path so
+			// the caller still gets markdown instead of a degraded text payload.
+		}
+
+		try {
+			const { markdown, conversionMs } = convertHtmlToMarkdown(fetched.trimmed_html);
+			if (!markdown) {
+				return { content: fetched.text, format: 'text' };
+			}
+			return {
+				content: markdown,
+				format: 'markdown',
+				markdown,
+				markdownChars: markdown.length,
+				conversion: 'turndown',
+				conversionMs
+			};
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			logger.warn('[ExternalExecutor] Deterministic markdown conversion failed', {
+				url: fetched.url,
+				error: errorMessage
+			});
+			return {
+				content: fetched.text,
+				format: 'text',
+				errorMessage
+			};
+		}
+	}
+
+	private async convertHtmlToMarkdownViaLlm(fetched: WebVisitFetchPayload): Promise<{
+		content: string;
+		format: WebVisitContentFormat;
+		markdown: string;
+		markdownChars: number;
+		conversion: 'llm';
+		llmModel?: string;
+		llmMs?: number;
+		llmPromptTokens?: number;
+		llmCompletionTokens?: number;
+		llmTotalTokens?: number;
+	} | null> {
+		if (!this.llmService) return null;
 
 		const systemPrompt =
 			'You convert HTML into clean Markdown for reading. Preserve headings, lists, tables, code blocks, and meaningful links. Remove navigation, footers, ads, and UI chrome. Return Markdown only.';
@@ -247,26 +304,26 @@ export class ExternalExecutor extends BaseExecutor {
 				timeoutMs: llmTimeoutMs
 			});
 			const markdown = result.text.trim();
-			const llmMs = Date.now() - start;
+			if (!markdown) return null;
 
 			return {
-				content: outputFormat === 'markdown' ? markdown : fetched.text,
-				format: outputFormat === 'markdown' ? 'markdown' : 'text',
+				content: markdown,
+				format: 'markdown',
 				markdown,
 				markdownChars: markdown.length,
+				conversion: 'llm',
 				llmModel: result.model,
-				llmMs,
+				llmMs: Date.now() - start,
 				llmPromptTokens: result.usage?.promptTokens,
 				llmCompletionTokens: result.usage?.completionTokens,
 				llmTotalTokens: result.usage?.totalTokens
 			};
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			return {
-				content: fetched.text,
-				format: 'text',
-				errorMessage
-			};
+			logger.warn('[ExternalExecutor] LLM markdown conversion failed; falling back', {
+				url: fetched.url,
+				error: error instanceof Error ? error.message : String(error)
+			});
+			return null;
 		}
 	}
 

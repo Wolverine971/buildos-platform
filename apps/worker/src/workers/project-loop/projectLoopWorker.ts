@@ -56,6 +56,7 @@ import {
 	syncInboxItemForProjectSuggestion
 } from '@buildos/shared-agent-ops';
 import {
+	applyProjectAttentionBudget,
 	expireInboxItemsForProjectAuditChildSuggestions,
 	syncInboxItemForProjectAudit
 } from '@buildos/shared-agent-ops/inbox-index';
@@ -97,6 +98,22 @@ const SUGGESTION_SUPPRESSION_STATUSES = [
 	'rejected',
 	'applied'
 ];
+// A successful light run is a full refresh of the project's open reconciliation
+// findings: pendings from earlier runs that the new run re-confirms stay live,
+// and pendings the new run no longer emits rotate out once they outlive the
+// grace window. The grace absorbs one nondeterministic-LLM miss (~one nightly
+// cycle) before a finding is declared stale (tasker/28 WP-1).
+const SUGGESTION_ROTATION_GRACE_MS = 72 * 60 * 60 * 1000;
+const LIGHT_LOOP_ROTATION_KINDS = ['doc_org', 'doc_outdated', 'drift', 'task_conflict'];
+// runGenerator labels → suggestion kinds, so a generator skipped by the cost
+// cap never rotates out the findings it produced on earlier runs (no evidence
+// either way this run).
+const GENERATOR_LABEL_TO_KIND: Record<string, string> = {
+	'doc organization': 'doc_org',
+	'outdated docs': 'doc_outdated',
+	drift: 'drift',
+	'task conflicts': 'task_conflict'
+};
 
 type ProjectSuggestionInsert = Database['public']['Tables']['project_suggestions']['Insert'];
 type ProjectSuggestionRow = Database['public']['Tables']['project_suggestions']['Row'];
@@ -232,7 +249,7 @@ async function loadExistingSuggestionKeys(
 	).toISOString();
 	const { data, error } = await supabase
 		.from('project_suggestions')
-		.select('kind, operations, status')
+		.select('kind, operations, evidence_refs, title, status')
 		.eq('project_id', projectId)
 		.in('status', SUGGESTION_SUPPRESSION_STATUSES)
 		.gte('created_at', since)
@@ -251,7 +268,9 @@ async function loadExistingSuggestionKeys(
 	for (const row of (data ?? []) as Record<string, unknown>[]) {
 		const key = suggestionSuppressionKey({
 			kind: asString(row.kind) ?? '',
-			operations: (row.operations as LoopOperation[] | null) ?? []
+			operations: (row.operations as LoopOperation[] | null) ?? [],
+			evidence_refs: (row.evidence_refs as ProjectSuggestionEvidenceRef[] | null) ?? null,
+			title: asString(row.title)
 		});
 		if (!key) continue;
 		all.add(key);
@@ -488,6 +507,168 @@ async function supersedePendingSuggestionsForFailedRun(params: {
 	}
 
 	return (updatedSuggestions ?? []).length;
+}
+
+/**
+ * Rotate stale light-loop findings after a successful run (tasker/28 WP-1).
+ * Prior-run pendings whose suppression key matches something this run emitted
+ * are re-confirmed (updated_at bump restarts their grace window and extends the
+ * inbox review expiry). Pendings the run did not re-confirm are superseded once
+ * older than the grace window — unless their generator was cost-cap-skipped or
+ * the user is actively engaging with them in the inbox (deciding/snoozed).
+ * Audit children are excluded; audit supersede owns their rotation.
+ */
+async function rotateUnconfirmedPendingSuggestions(params: {
+	projectId: string;
+	runId: string;
+	confirmedKeys: Set<string>;
+	skippedKinds: Set<string>;
+	log: (message: string) => Promise<unknown> | unknown;
+}): Promise<{ confirmedCount: number; rotatedCount: number }> {
+	const none = { confirmedCount: 0, rotatedCount: 0 };
+	const { data, error } = await supabase
+		.from('project_suggestions')
+		.select('id, kind, operations, evidence_refs, title, created_at, updated_at')
+		.eq('project_id', params.projectId)
+		.eq('status', 'pending')
+		.in('kind', LIGHT_LOOP_ROTATION_KINDS)
+		.neq('run_id', params.runId)
+		.limit(500);
+	if (error) {
+		console.warn(
+			`[ProjectLoops] Failed to load pending suggestions for rotation on project ${params.projectId}:`,
+			error.message
+		);
+		return none;
+	}
+	const rows = (data ?? []) as Record<string, unknown>[];
+	if (!rows.length) return none;
+
+	const rowIds = rows.map((row) => asString(row.id)).filter((id): id is string => Boolean(id));
+	const { data: engagedRows, error: engagedError } = await supabase
+		.from('inbox_items')
+		.select('source_ref_id, status')
+		.eq('source_type', 'project_suggestion')
+		.in('source_ref_id', rowIds)
+		.in('status', ['deciding', 'snoozed']);
+	if (engagedError) {
+		console.warn(
+			`[ProjectLoops] Failed to load inbox engagement for rotation on project ${params.projectId}:`,
+			engagedError.message
+		);
+		return none;
+	}
+	const userEngaged = new Set(
+		((engagedRows ?? []) as Record<string, unknown>[])
+			.map((row) => asString(row.source_ref_id))
+			.filter((id): id is string => Boolean(id))
+	);
+
+	const now = Date.now();
+	const confirmedIds: string[] = [];
+	const rotateIds: string[] = [];
+	for (const row of rows) {
+		const id = asString(row.id);
+		const kind = asString(row.kind) ?? '';
+		if (!id || userEngaged.has(id) || params.skippedKinds.has(kind)) continue;
+		const key = suggestionSuppressionKey({
+			kind,
+			operations: (row.operations as LoopOperation[] | null) ?? [],
+			evidence_refs: (row.evidence_refs as ProjectSuggestionEvidenceRef[] | null) ?? null,
+			title: asString(row.title)
+		});
+		if (key && params.confirmedKeys.has(key)) {
+			confirmedIds.push(id);
+			continue;
+		}
+		const freshBasis = asString(row.updated_at) ?? asString(row.created_at);
+		const age = freshBasis ? now - Date.parse(freshBasis) : Number.POSITIVE_INFINITY;
+		if (age > SUGGESTION_ROTATION_GRACE_MS) rotateIds.push(id);
+	}
+
+	if (confirmedIds.length) {
+		const { data: confirmedSuggestions, error: confirmError } = await supabase
+			.from('project_suggestions')
+			.update({ updated_at: nowIso() })
+			.in('id', confirmedIds)
+			.eq('status', 'pending')
+			.select('*');
+		if (confirmError) {
+			console.warn(
+				`[ProjectLoops] Failed to re-confirm pending suggestions on project ${params.projectId}:`,
+				confirmError.message
+			);
+		} else {
+			for (const suggestion of confirmedSuggestions ?? []) {
+				try {
+					await syncInboxItemForProjectSuggestion({
+						supabase: supabase as any,
+						suggestion: suggestion as unknown as Record<string, unknown>
+					});
+				} catch (syncError) {
+					console.warn(
+						`⚠️ Failed to sync AI Inbox item for re-confirmed suggestion ${suggestion.id}:`,
+						syncError instanceof Error ? syncError.message : syncError
+					);
+				}
+			}
+		}
+	}
+
+	let rotatedCount = 0;
+	if (rotateIds.length) {
+		const result = {
+			ok: false,
+			applied_operations: 0,
+			errors: [
+				{
+					tool: 'project_loop_rotation',
+					error: 'Not re-confirmed by the latest loop run.'
+				}
+			]
+		};
+		const { data: rotatedSuggestions, error: rotateError } = await supabase
+			.from('project_suggestions')
+			.update({
+				status: 'superseded',
+				decided_at: nowIso(),
+				result: result as unknown as Json
+			})
+			.in('id', rotateIds)
+			.eq('status', 'pending')
+			.select('*');
+		if (rotateError) {
+			console.warn(
+				`[ProjectLoops] Failed to rotate stale suggestions on project ${params.projectId}:`,
+				rotateError.message
+			);
+		} else {
+			rotatedCount = (rotatedSuggestions ?? []).length;
+			for (const suggestion of rotatedSuggestions ?? []) {
+				try {
+					await syncInboxItemForProjectSuggestion({
+						supabase: supabase as any,
+						suggestion: suggestion as unknown as Record<string, unknown>
+					});
+				} catch (syncError) {
+					console.warn(
+						`⚠️ Failed to sync AI Inbox item for rotated suggestion ${suggestion.id}:`,
+						syncError instanceof Error ? syncError.message : syncError
+					);
+				}
+			}
+		}
+	}
+
+	if (confirmedIds.length || rotatedCount) {
+		await params.log(
+			`Rotation: re-confirmed ${confirmedIds.length} still-open finding${
+				confirmedIds.length === 1 ? '' : 's'
+			}, rotated out ${rotatedCount} stale one${rotatedCount === 1 ? '' : 's'}.`
+		);
+	}
+
+	return { confirmedCount: confirmedIds.length, rotatedCount };
 }
 
 async function scheduleDebouncedProjectReviewSignalWakeup(params: {
@@ -2479,6 +2660,23 @@ async function processCompleteProjectAuditJob(
 			);
 		}
 
+		try {
+			const budget = await applyProjectAttentionBudget({
+				supabase: supabase as any,
+				projectId
+			});
+			if (budget.deferredIds.length || budget.promotedIds.length) {
+				await job.log(
+					`Attention budget: ${budget.deferredIds.length} deferred, ${budget.promotedIds.length} promoted.`
+				);
+			}
+		} catch (budgetError) {
+			console.warn(
+				`[ProjectAudits] Failed to apply attention budget for project ${projectId}:`,
+				budgetError instanceof Error ? budgetError.message : budgetError
+			);
+		}
+
 		const { error: runUpdateError } = await supabase
 			.from('project_loop_runs')
 			.update({
@@ -2804,6 +3002,21 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			);
 		}
 
+		// Everything the run emitted — including proposals suppressed as
+		// duplicates of already-open findings — counts as re-confirmation for
+		// rotation. A suppressed duplicate literally means "the loop still sees
+		// this," so the matching pending row must stay live (tasker/28 WP-1).
+		const confirmedKeys = new Set<string>();
+		for (const suggestion of generated) {
+			const key = suggestionSuppressionKey(suggestion);
+			if (key) confirmedKeys.add(key);
+		}
+		const skippedKinds = new Set<string>(
+			skippedGenerators
+				.map((label) => GENERATOR_LABEL_TO_KIND[label])
+				.filter((kind): kind is string => Boolean(kind))
+		);
+
 		if (proposed.length) {
 			await heartbeat('Writing suggestions');
 
@@ -2884,6 +3097,31 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			}
 		}
 
+		const rotation = await rotateUnconfirmedPendingSuggestions({
+			projectId,
+			runId,
+			confirmedKeys,
+			skippedKinds,
+			log: (message) => job.log(message)
+		});
+
+		try {
+			const budget = await applyProjectAttentionBudget({
+				supabase: supabase as any,
+				projectId
+			});
+			if (budget.deferredIds.length || budget.promotedIds.length) {
+				await job.log(
+					`Attention budget: ${budget.deferredIds.length} deferred, ${budget.promotedIds.length} promoted.`
+				);
+			}
+		} catch (budgetError) {
+			console.warn(
+				`[ProjectLoops] Failed to apply attention budget for project ${projectId}:`,
+				budgetError instanceof Error ? budgetError.message : budgetError
+			);
+		}
+
 		const countKind = (kind: ProjectSuggestionKind): number =>
 			proposed.filter((s) => s.kind === kind).length;
 		const summaryBase = proposed.length
@@ -2930,6 +3168,8 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			inserted_count: proposed.length,
 			suppressed_count: suppressedCount,
 			repeated_after_dismissal_count: repeatedAfterDismissalCount,
+			reconfirmed_count: rotation.confirmedCount,
+			rotated_out_count: rotation.rotatedCount,
 			skipped_generators: skippedGenerators,
 			doc_org_count: countKind('doc_org'),
 			doc_outdated_count: countKind('doc_outdated'),

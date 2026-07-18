@@ -89,9 +89,78 @@ describe('suggestionSuppressionKey', () => {
 		expect(outdatedKey).not.toBe('doc_org:doc-2');
 	});
 
-	it('returns null for drift (informational, operation-free) and unknown kinds', () => {
+	it('returns null only when a suggestion has no ops, no evidence, and no title', () => {
 		expect(suggestionSuppressionKey({ kind: 'drift', operations: [] })).toBeNull();
 		expect(suggestionSuppressionKey({ kind: 'something_else', operations: [] })).toBeNull();
 		expect(suggestionSuppressionKey({ kind: 'doc_org', operations: null })).toBeNull();
+	});
+
+	// tasker/28 WP-2: operation-free findings (drift, audit_recommendation) used
+	// to return null and were invisible to deterministic suppression + rotation.
+	// They now fall back to evidence entities, then normalized title tokens.
+	describe('fallback keys for operation-free findings', () => {
+		it('keys drift on its evidence entities, order-insensitively', () => {
+			const forward = suggestionSuppressionKey({
+				kind: 'drift',
+				operations: [],
+				evidence_refs: [
+					{ entity_type: 'document', entity_id: 'doc-1', title: 'Plan' },
+					{ entity_type: 'task', entity_id: 'task-9', title: 'Ship' }
+				]
+			});
+			const reordered = suggestionSuppressionKey({
+				kind: 'drift',
+				operations: [],
+				evidence_refs: [
+					{ entity_type: 'task', entity_id: 'task-9', title: 'Ship' },
+					{ entity_type: 'document', entity_id: 'doc-1', title: 'Plan' }
+				]
+			});
+			expect(forward).toBe('drift:ev:doc-1|task-9');
+			expect(reordered).toBe(forward);
+		});
+
+		it('namespaces evidence keys by kind (no cross-kind suppression)', () => {
+			const drift = suggestionSuppressionKey({
+				kind: 'drift',
+				operations: [],
+				evidence_refs: [{ entity_type: 'document', entity_id: 'doc-1', title: 'Plan' }]
+			});
+			const audit = suggestionSuppressionKey({
+				kind: 'audit_recommendation',
+				operations: [],
+				evidence_refs: [{ entity_type: 'document', entity_id: 'doc-1', title: 'Plan' }]
+			});
+			expect(drift).toBe('drift:ev:doc-1');
+			expect(audit).toBe('audit_recommendation:ev:doc-1');
+			expect(drift).not.toBe(audit);
+		});
+
+		it('falls back to normalized title tokens when there is no evidence', () => {
+			const a = suggestionSuppressionKey({
+				kind: 'audit_recommendation',
+				operations: [],
+				title: 'Record the Next Decision, and its risks!'
+			});
+			const b = suggestionSuppressionKey({
+				kind: 'audit_recommendation',
+				operations: [],
+				title: 'risks and the next decision: record its...'
+			});
+			expect(a).not.toBeNull();
+			expect(a).toBe(b);
+		});
+
+		it('prefers the operation-derived key when operations resolve', () => {
+			const key = suggestionSuppressionKey({
+				kind: 'doc_outdated',
+				operations: [
+					{ tool: 'update_onto_document', args: { document_id: 'doc-2', props: {} } }
+				],
+				evidence_refs: [{ entity_type: 'document', entity_id: 'doc-9', title: 'Other' }],
+				title: 'Looks outdated: Something'
+			});
+			expect(key).toBe('doc_outdated:doc-2');
+		});
 	});
 });
