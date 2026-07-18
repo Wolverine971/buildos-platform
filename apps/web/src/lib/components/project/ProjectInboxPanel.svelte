@@ -17,7 +17,6 @@
 	import ChangeSetReview from '$lib/components/notifications/types/agent-run/ChangeSetReview.svelte';
 	import InboxChangeDetails from '$lib/components/inbox/InboxChangeDetails.svelte';
 	import InboxDecisionControls from '$lib/components/inbox/InboxDecisionControls.svelte';
-	import InboxDismissFeedbackFields from '$lib/components/inbox/InboxDismissFeedbackFields.svelte';
 	import InboxFindingControls from '$lib/components/inbox/InboxFindingControls.svelte';
 	import InboxProjectBadge from '$lib/components/inbox/InboxProjectBadge.svelte';
 	import type {
@@ -132,9 +131,7 @@
 	let pendingIds = $state<Set<string>>(new Set());
 	let pollingRunId = $state<string | null>(null);
 	let selectedIds = $state<Set<string>>(new Set());
-	let addressNoteById = $state<Record<string, string>>({});
-	let dismissReasonById = $state<Record<string, string>>({});
-	let dismissNoteById = $state<Record<string, string>>({});
+	let decisionNoteById = $state<Record<string, string>>({});
 	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
 	let chatSessionId = $state<string | null>(null);
 	let chatItemId = $state<string | null>(null);
@@ -409,7 +406,6 @@
 
 	function canBatchApprove(item: InboxItem): boolean {
 		if (!canDecide(item) || item.source_type !== 'project_suggestion') return false;
-		if (clarificationFor(item)) return false;
 		const payload = projectSuggestion(item);
 		const riskTier = payload?.risk_tier ?? item.risk_tier ?? 3;
 		const operations = arrayValue<{ tool?: string }>(payload?.operations);
@@ -428,16 +424,8 @@
 		selectedIds = next;
 	}
 
-	function updateAddressNote(item: InboxItem, note: string) {
-		addressNoteById = { ...addressNoteById, [item.id]: note };
-	}
-
-	function updateDismissReason(item: InboxItem, reason: string) {
-		dismissReasonById = { ...dismissReasonById, [item.id]: reason };
-	}
-
-	function updateDismissNote(item: InboxItem, note: string) {
-		dismissNoteById = { ...dismissNoteById, [item.id]: note };
+	function updateDecisionNote(item: InboxItem, note: string) {
+		decisionNoteById = { ...decisionNoteById, [item.id]: note };
 	}
 
 	function removeItemsFromInbox(itemIds: Iterable<string>) {
@@ -445,22 +433,10 @@
 		if (ids.size === 0) return;
 		items = items.filter((item) => !ids.has(item.id));
 		selectedIds = new Set([...selectedIds].filter((id) => !ids.has(id)));
-		addressNoteById = Object.fromEntries(
-			Object.entries(addressNoteById).filter(([id]) => !ids.has(id))
-		);
-		dismissReasonById = Object.fromEntries(
-			Object.entries(dismissReasonById).filter(([id]) => !ids.has(id))
-		);
-		dismissNoteById = Object.fromEntries(
-			Object.entries(dismissNoteById).filter(([id]) => !ids.has(id))
+		decisionNoteById = Object.fromEntries(
+			Object.entries(decisionNoteById).filter(([id]) => !ids.has(id))
 		);
 		onCountChange?.(items.length);
-	}
-
-	function clarificationFor(item: InboxItem): string {
-		return item.source_type === 'project_suggestion'
-			? (dismissNoteById[item.id] ?? '').trim()
-			: '';
 	}
 
 	async function loadAgentChatModal(): Promise<NonNullable<AgentChatModalLazy>> {
@@ -732,12 +708,10 @@
 	async function decide(
 		item: InboxItem,
 		action: 'approve' | 'address' | 'reject',
-		resolutionText?: string
+		decisionNote?: string
 	) {
 		if (pendingIds.has(item.id)) return;
-		const dismissReason = (dismissReasonById[item.id] ?? '').trim();
-		const dismissNote = (dismissNoteById[item.id] ?? '').trim();
-		const clarification = action === 'reject' && !isFinding(item) ? dismissNote : '';
+		const note = decisionNote?.trim() ?? '';
 		pendingIds = new Set(pendingIds).add(item.id);
 		const notificationId = startInboxDecisionNotification(item, action);
 		removeItemsFromInbox([item.id]);
@@ -748,17 +722,9 @@
 				body: JSON.stringify({
 					item_id: item.id,
 					action,
-					...(action === 'address' && resolutionText?.trim()
-						? { resolution_text: resolutionText.trim() }
-						: {}),
-					...(item.source_type === 'project_suggestion' && clarification
-						? { clarification }
-						: {}),
-					...(action === 'reject' && item.source_type === 'project_suggestion'
-						? {
-								...(dismissReason ? { reason: dismissReason } : {}),
-								...(dismissNote ? { note: dismissNote } : {})
-							}
+					...(action === 'address' && note ? { resolution_text: note } : {}),
+					...(action === 'reject' && item.source_type === 'project_suggestion' && note
+						? { note }
 						: {})
 				})
 			});
@@ -1224,17 +1190,6 @@
 										{changes} proposed change{changes === 1 ? '' : 's'}
 									</p>
 								{/if}
-								{#if item.source_type === 'project_suggestion' && canDecide(item)}
-									<InboxDismissFeedbackFields
-										idPrefix={`project-inbox-${item.id}`}
-										reason={dismissReasonById[item.id] ?? ''}
-										note={dismissNoteById[item.id] ?? ''}
-										disabled={pendingIds.has(item.id)}
-										onReasonChange={(reason) =>
-											updateDismissReason(item, reason)}
-										onNoteChange={(note) => updateDismissNote(item, note)}
-									/>
-								{/if}
 								{#if changeSet && canDecide(item)}
 									<div class="mt-3">
 										<ChangeSetReview
@@ -1269,14 +1224,14 @@
 								{#if isFinding(item)}
 									<InboxFindingControls
 										idPrefix={`project-inbox-${item.id}`}
-										note={addressNoteById[item.id] ?? ''}
+										note={decisionNoteById[item.id] ?? ''}
 										pending={pendingIds.has(item.id)}
 										canChat={canChat(item)}
 										openingChat={isOpeningChat(item)}
 										layout="project"
-										onNoteChange={(note) => updateAddressNote(item, note)}
+										onNoteChange={(note) => updateDecisionNote(item, note)}
 										onAddress={(note) => decide(item, 'address', note)}
-										onReject={() => decide(item, 'reject')}
+										onReject={(note) => decide(item, 'reject', note)}
 										onSnooze={() => snooze(item)}
 										onChat={() => openChat(item)}
 									/>

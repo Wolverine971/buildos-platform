@@ -131,9 +131,11 @@ export class ExternalExecutor extends BaseExecutor {
 		const maxChars = clampMaxChars(args.max_chars);
 		const forceRefresh = args.force_refresh ?? false;
 
-		// Cached snapshots store markdown, so both markdown-producing formats
-		// ('markdown' and 'llm_markdown') can serve from cache.
-		if (persist && !forceRefresh && outputFormat !== 'text') {
+		// Only the default 'markdown' format serves from cache. 'llm_markdown'
+		// is the escape hatch for pages where the cached deterministic markdown
+		// rendered poorly — serving that same cached markdown back would make
+		// the escape hatch a no-op.
+		if (persist && !forceRefresh && outputFormat === 'markdown') {
 			const cached = await this.loadCachedVisit(args.url, maxChars, args.mode);
 			if (cached) {
 				return cached;

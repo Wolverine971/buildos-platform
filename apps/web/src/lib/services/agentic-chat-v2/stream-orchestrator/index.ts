@@ -289,6 +289,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let gatewayMutationStopRepairInjected = false;
 	let skillGateStopRepairInjected = false;
 	let readOnlyRoundCount = 0;
+	let researchRoundCount = 0;
 	let lastReadOpSetKey: string | null = null;
 	let repeatedReadOpSetCount = 0;
 	let readLoopRepairRank = 0;
@@ -1624,6 +1625,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			if (roundReachedWriteExecutor) {
 				hasWriteAttempt = true;
 				readOnlyRoundCount = 0;
+				researchRoundCount = 0;
 				lastReadOpSetKey = null;
 				repeatedReadOpSetCount = 0;
 				readLoopRepairRank = 0;
@@ -1636,6 +1638,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					repeatedReadOpSetCount = 1;
 					lastReadOpSetKey = readOpSetKey;
 				}
+			}
+			if (!roundReachedWriteExecutor && roundPattern.researchOps.length > 0) {
+				researchRoundCount += 1;
 			}
 
 			if (gatewayModeActive && !hasWriteAttempt && roundPattern.readOps.length > 0) {
@@ -1675,9 +1680,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 			// Research-only rounds (web_search/web_visit) are exempt from the
 			// read-loop escalation ladder — every call gathers new external
-			// evidence — but they still get a synthesis warning when the hard
-			// round budget is nearly exhausted, so long research turns wind
-			// down gracefully instead of hitting the cap cold.
+			// evidence — but they still wind down when the hard round budget is
+			// nearly exhausted, or after a generous research budget of their
+			// own (context balloons ~10k payload chars per round; a healthy
+			// research turn finishes in 3-4 rounds, so 8 marks a degenerate
+			// loop such as re-fetching the same page).
 			if (
 				gatewayModeActive &&
 				!hasWriteAttempt &&
@@ -1685,7 +1692,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				roundPattern.researchOps.length > 0
 			) {
 				const roundsRemaining = maxToolRounds - toolRounds;
-				if (roundsRemaining <= 2) {
+				if (roundsRemaining <= 2 || researchRoundCount >= 8) {
 					queueReadLoopRepairInstruction(
 						'must_synthesize',
 						roundPattern.researchOps,

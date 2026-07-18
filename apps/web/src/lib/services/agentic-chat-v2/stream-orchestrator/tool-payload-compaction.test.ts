@@ -783,6 +783,87 @@ describe('buildToolPayloadForModel', () => {
 		}
 	});
 
+	it('survives serialization expansion: 10 realistic results with long urls/titles stay structured', () => {
+		// Regression for the review probe: JSON escaping + long metadata pushed
+		// the estimated budget past the guard and degraded the whole payload.
+		const results = Array.from({ length: 10 }, (_, index) => ({
+			title: `Comparing the Top Enterprise Project Management Platforms in 2026 - Part ${index}`,
+			url: `https://www.example-industry-review.com/articles/2026/07/enterprise-pm-platforms-comparison-part-${index}?utm_source=tavily`,
+			snippet: `${'Asana pricing starts at $10.99 per user per month billed annually, while Monday.com "standard" tier lists $12 per seat. '.repeat(20).slice(0, 1600)}...`,
+			score: 0.987654321,
+			published_date: '2026-07-01'
+		}));
+		const payload = buildToolPayloadForModel(
+			toolCall('web_search'),
+			toolResult({
+				query: 'enterprise project management platform pricing comparison 2026',
+				answer: 'The leading enterprise project management platforms in 2026 include Asana, Monday.com, Wrike, Smartsheet, and ClickUp. '.repeat(
+					6
+				),
+				results,
+				follow_up_questions: ['a', 'b', 'c'],
+				message: 'Web search results from Tavily.',
+				info: { provider: 'tavily', search_depth: 'advanced', max_results: 10 }
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.truncated).toBeUndefined();
+		expect(payload.preview).toBeUndefined();
+		expect(payload.results).toHaveLength(10);
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
+	});
+
+	it('survives serialization expansion: newline-dense markdown page stays structured', () => {
+		const mdLine =
+			'- [Release notes](https://docs.example.com/releases/v2) covering the "July" update and `config` changes\n';
+		const payload = buildToolPayloadForModel(
+			toolCall('web_visit'),
+			toolResult({
+				url: 'https://docs.example.com/platform/releases',
+				final_url: 'https://docs.example.com/platform/releases',
+				status_code: 200,
+				content_type: 'text/html',
+				title: 'Platform Release Notes and Migration Guide',
+				content_format: 'markdown',
+				excerpt: 'Release notes covering the July update. '.repeat(15).slice(0, 490),
+				content: mdLine.repeat(200),
+				truncated: true,
+				structured_data: Array.from({ length: 20 }, (_, index) => ({
+					type: 'BreadcrumbList',
+					name: `Docs breadcrumb entry number ${index} for the release documentation`,
+					url: `https://docs.example.com/platform/releases/breadcrumb/${index}`
+				})),
+				links: Array.from({ length: 10 }, (_, index) => ({
+					url: `https://docs.example.com/platform/releases/v${index}?ref=footer-navigation`,
+					text: `Release ${index} notes with migration steps and deprecation timeline`
+				})),
+				meta: Object.fromEntries(
+					Array.from({ length: 12 }, (_, index) => [
+						`og:custom_property_${index}`,
+						'A fairly long open-graph style meta value describing the page. '.repeat(3)
+					])
+				),
+				message: 'Fetched (reader mode).',
+				info: {
+					fetched_at: '2026-07-18T12:00:00.000Z',
+					mode: 'reader',
+					parser: 'reader',
+					fetch_ms: 812,
+					bytes: 431222,
+					conversion: 'turndown',
+					conversion_ms: 12
+				}
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.preview).toBeUndefined();
+		expect(typeof payload.content).toBe('string');
+		expect((payload.content as string).length).toBeGreaterThan(1000);
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
+	});
+
 	it('gives web_visit content the enlarged budget and keeps payload structured', () => {
 		const content = 'line of page markdown content\n'.repeat(400); // ~12,000 chars
 		const payload = buildToolPayloadForModel(

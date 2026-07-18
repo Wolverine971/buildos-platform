@@ -15,7 +15,6 @@
 	import ChangeSetReview from '$lib/components/notifications/types/agent-run/ChangeSetReview.svelte';
 	import InboxChangeDetails from '$lib/components/inbox/InboxChangeDetails.svelte';
 	import InboxDecisionControls from '$lib/components/inbox/InboxDecisionControls.svelte';
-	import InboxDismissFeedbackFields from '$lib/components/inbox/InboxDismissFeedbackFields.svelte';
 	import InboxFindingControls from '$lib/components/inbox/InboxFindingControls.svelte';
 	import InboxProjectBadge from '$lib/components/inbox/InboxProjectBadge.svelte';
 	import type {
@@ -156,9 +155,7 @@
 	let resolvingChatAction = $state<ChatResolutionAction | null>(null);
 	let explicitlyResolvedChatItemId = $state<string | null>(null);
 	let openingChatIds = $state<Set<string>>(new Set());
-	let addressNoteById = $state<Record<string, string>>({});
-	let dismissReasonById = $state<Record<string, string>>({});
-	let dismissNoteById = $state<Record<string, string>>({});
+	let decisionNoteById = $state<Record<string, string>>({});
 	const activeChatItem = $derived(
 		chatItemId ? (items.find((item) => item.id === chatItemId) ?? null) : null
 	);
@@ -512,29 +509,15 @@
 		if (items.length !== before) {
 			totalAvailable = Math.max(items.length, totalAvailable - 1);
 			setAiInboxRemainingCount(totalAvailable);
-			addressNoteById = Object.fromEntries(
-				Object.entries(addressNoteById).filter(([id]) => id !== itemId)
-			);
-			dismissReasonById = Object.fromEntries(
-				Object.entries(dismissReasonById).filter(([id]) => id !== itemId)
-			);
-			dismissNoteById = Object.fromEntries(
-				Object.entries(dismissNoteById).filter(([id]) => id !== itemId)
+			decisionNoteById = Object.fromEntries(
+				Object.entries(decisionNoteById).filter(([id]) => id !== itemId)
 			);
 		}
 		return items.length !== before;
 	}
 
-	function updateAddressNote(item: InboxItem, note: string) {
-		addressNoteById = { ...addressNoteById, [item.id]: note };
-	}
-
-	function updateDismissReason(item: InboxItem, reason: string) {
-		dismissReasonById = { ...dismissReasonById, [item.id]: reason };
-	}
-
-	function updateDismissNote(item: InboxItem, note: string) {
-		dismissNoteById = { ...dismissNoteById, [item.id]: note };
+	function updateDecisionNote(item: InboxItem, note: string) {
+		decisionNoteById = { ...decisionNoteById, [item.id]: note };
 	}
 
 	function canDecide(item: InboxItem): boolean {
@@ -781,11 +764,10 @@
 	async function decide(
 		item: InboxItem,
 		action: 'approve' | 'address' | 'reject',
-		resolutionText?: string
+		decisionNote?: string
 	) {
 		if (pendingIds.has(item.id)) return;
-		const dismissReason = (dismissReasonById[item.id] ?? '').trim();
-		const dismissNote = (dismissNoteById[item.id] ?? '').trim();
+		const note = decisionNote?.trim() ?? '';
 		pendingIds = new Set(pendingIds).add(item.id);
 		const notificationId = startInboxDecisionNotification(item, action);
 		const removed = removeItemFromInbox(item);
@@ -797,14 +779,9 @@
 				body: JSON.stringify({
 					item_id: item.id,
 					action,
-					...(action === 'address' && resolutionText?.trim()
-						? { resolution_text: resolutionText.trim() }
-						: {}),
-					...(action === 'reject' && item.source_type === 'project_suggestion'
-						? {
-								...(dismissReason ? { reason: dismissReason } : {}),
-								...(dismissNote ? { note: dismissNote } : {})
-							}
+					...(action === 'address' && note ? { resolution_text: note } : {}),
+					...(action === 'reject' && item.source_type === 'project_suggestion' && note
+						? { note }
 						: {})
 				})
 			});
@@ -1361,18 +1338,6 @@
 														: 's'}
 												</p>
 											{/if}
-											{#if item.source_type === 'project_suggestion' && canDecide(item)}
-												<InboxDismissFeedbackFields
-													idPrefix={`dashboard-inbox-${item.id}`}
-													reason={dismissReasonById[item.id] ?? ''}
-													note={dismissNoteById[item.id] ?? ''}
-													disabled={pendingIds.has(item.id)}
-													onReasonChange={(reason) =>
-														updateDismissReason(item, reason)}
-													onNoteChange={(note) =>
-														updateDismissNote(item, note)}
-												/>
-											{/if}
 											{#if changeSet && canDecide(item)}
 												<div class="mt-3">
 													<ChangeSetReview
@@ -1409,16 +1374,17 @@
 											{#if isFinding(item)}
 												<InboxFindingControls
 													idPrefix={`dashboard-inbox-${item.id}`}
-													note={addressNoteById[item.id] ?? ''}
+													note={decisionNoteById[item.id] ?? ''}
 													pending={pendingIds.has(item.id)}
 													canChat={canChat(item)}
 													openingChat={isOpeningChat(item)}
 													layout="dashboard"
 													onNoteChange={(note) =>
-														updateAddressNote(item, note)}
+														updateDecisionNote(item, note)}
 													onAddress={(note) =>
 														decide(item, 'address', note)}
-													onReject={() => decide(item, 'reject')}
+													onReject={(note) =>
+														decide(item, 'reject', note)}
 													onSnooze={() => snooze(item)}
 													onChat={() => openChat(item)}
 												/>

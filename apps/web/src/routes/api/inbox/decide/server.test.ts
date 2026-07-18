@@ -311,6 +311,40 @@ describe('POST /api/inbox/decide', () => {
 		expect(mocks.decideProjectSuggestionWithClarification).not.toHaveBeenCalled();
 	});
 
+	it('passes a shared decision note through as dismissal feedback without a reason', async () => {
+		const inboxItem = pendingProjectSuggestionItem();
+		const { supabase } = createSupabaseMock(inboxItem);
+		const admin = createSupabaseMock(inboxItem);
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.supabase);
+		mocks.decideProjectSuggestion.mockResolvedValue({
+			ok: true,
+			suggestion: { id: 'suggestion-1', status: 'rejected' },
+			result: { ok: true }
+		});
+
+		const response = await POST({
+			request: makeRequest({
+				item_id: 'inbox-1',
+				action: 'reject',
+				note: 'This is intentionally out of scope.'
+			}),
+			locals: makeLocals(supabase),
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(mocks.decideProjectSuggestion).toHaveBeenCalledWith(
+			expect.objectContaining({
+				action: 'dismiss',
+				feedback: {
+					reason: undefined,
+					note: 'This is intentionally out of scope.'
+				}
+			})
+		);
+		expect(mocks.decideProjectSuggestionWithClarification).not.toHaveBeenCalled();
+	});
+
 	it('records a one-line response when addressing a project finding', async () => {
 		const inboxItem = {
 			...pendingProjectSuggestionItem(),

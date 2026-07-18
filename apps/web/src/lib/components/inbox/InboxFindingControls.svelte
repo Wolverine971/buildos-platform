@@ -26,7 +26,7 @@
 		layout?: Layout;
 		onNoteChange?: (value: string) => void;
 		onAddress?: (value: string) => void;
-		onReject?: () => void;
+		onReject?: (value: string) => void;
 		onSnooze?: () => void;
 		onChat?: () => void;
 	} = $props();
@@ -46,19 +46,23 @@
 
 <div class={containerClass}>
 	<div>
-		<label for={`${idPrefix}-address-note`} class="micro-label text-muted-foreground">
-			One-line response
+		<label for={`${idPrefix}-decision-note`} class="micro-label text-muted-foreground">
+			Decision note
 		</label>
 		<input
-			id={`${idPrefix}-address-note`}
+			id={`${idPrefix}-decision-note`}
 			type="text"
 			value={note}
 			maxlength="1000"
 			disabled={pending}
 			oninput={handleInput}
-			placeholder="Record the context that resolves this"
+			placeholder="Why are you addressing or dismissing this?"
+			aria-describedby={`${idPrefix}-note-help`}
 			class="mt-1 h-11 w-full rounded-md border border-border-strong bg-background px-3 text-xs text-foreground shadow-ink-inner outline-none transition-colors placeholder:text-muted-foreground focus:border-accent focus:ring-1 focus:ring-accent/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60"
 		/>
+		<p id={`${idPrefix}-note-help`} class="mt-1 text-[10px] text-muted-foreground">
+			Required to address; optional to dismiss.
+		</p>
 	</div>
 	<div class="grid w-full grid-cols-2 gap-2">
 		<Button
@@ -76,7 +80,7 @@
 			variant="outline"
 			size="sm"
 			icon={X}
-			onclick={() => onReject?.()}
+			onclick={() => onReject?.(note.trim())}
 			disabled={pending}
 			class="min-h-11 w-full text-xs"
 		>

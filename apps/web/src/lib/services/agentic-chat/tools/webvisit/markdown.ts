@@ -21,6 +21,17 @@ function getTurndownService(): TurndownService {
 		hr: '---'
 	});
 	service.use(gfm);
+	// Web pages are untrusted input. Image markdown (`![alt](src)`) rendered in
+	// the chat surface auto-fetches remote URLs — a zero-click exfiltration
+	// vector (S2 in the 2026-07-01 security audit). Images carry no research
+	// value as markdown, so reduce them to their alt text.
+	service.addRule('imagesToAltText', {
+		filter: 'img',
+		replacement: (_content, node) => {
+			const alt = (node as HTMLElement).getAttribute?.('alt')?.trim() ?? '';
+			return alt ? `[image: ${alt}]` : '';
+		}
+	});
 	sharedService = service;
 	return service;
 }

@@ -10,6 +10,10 @@ const MAX_MODEL_SKILL_PAYLOAD_CHARS = 20000;
 // cannot re-derive from the ontology, so they get a larger budget than
 // ordinary tool results — mirroring the existing skill-payload carve-out.
 const MAX_MODEL_WEB_PAYLOAD_CHARS = 12000;
+// Compactors must land under the web budget MINUS the security-notice wrapper
+// that addToolResultSecurityNotice adds afterwards, or the outer size guard
+// degrades the structured payload into a truncated JSON string.
+const WEB_COMPACT_TARGET_CHARS = MAX_MODEL_WEB_PAYLOAD_CHARS - 400;
 const MAX_WEB_VISIT_CONTENT_CHARS = 8000;
 const MIN_WEB_VISIT_CONTENT_CHARS = 1500;
 const MAX_WEB_SEARCH_SNIPPET_CHARS = 1600;
@@ -917,6 +921,46 @@ function compactDocumentSummary(document: any): Record<string, unknown> | null {
 	};
 }
 
+// Rebuild a payload with progressively smaller text budgets until its
+// SERIALIZED length fits the target. Char-count estimates are not enough:
+// JSON escaping expands newline/quote-dense content (markdown especially) well
+// past its raw character count, and per-result metadata (long URLs, titles)
+// varies too much to predict. Measuring the real serialization is cheap and
+// exact; three shrink passes converge for any realistic payload.
+function fitPayloadToBudget(
+	build: (textBudget: number) => Record<string, unknown>,
+	params: {
+		initial: number;
+		min: number;
+		targetChars: number;
+		/** How many text fields share the budget knob (per-result snippets → result count). */
+		fieldCount?: number;
+	}
+): Record<string, unknown> {
+	const fieldCount = Math.max(params.fieldCount ?? 1, 1);
+	let budget = Math.max(params.initial, params.min);
+	let payload = build(budget);
+	for (let attempt = 0; attempt < 3; attempt++) {
+		let serializedLength: number;
+		try {
+			serializedLength = JSON.stringify(payload).length;
+		} catch {
+			return payload;
+		}
+		if (serializedLength <= params.targetChars || budget <= params.min) {
+			return payload;
+		}
+		// Overshoot the reduction: escaping means one trimmed char can remove
+		// 2+ serialized chars, but never fewer than 1, so 1.5x + margin
+		// converges from above without collapsing further than needed. The
+		// overage is spread across every field sharing the knob.
+		const overage = serializedLength - params.targetChars;
+		budget = Math.max(params.min, budget - Math.ceil((overage * 1.5) / fieldCount) - 50);
+		payload = build(budget);
+	}
+	return payload;
+}
+
 function compactWebSearchPayload(payload: unknown): unknown {
 	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
 		return payload;
@@ -925,48 +969,38 @@ function compactWebSearchPayload(payload: unknown): unknown {
 	const record = payload as Record<string, any>;
 	const results = Array.isArray(record.results) ? record.results : [];
 	const info = record.info && typeof record.info === 'object' ? record.info : {};
-
-	// Size snippets to the web payload budget so a max_results=10 response
-	// degrades to shorter snippets instead of tripping the whole-payload guard
-	// (which would replace structured results with a truncated JSON string).
-	const overheadPerResult = 220;
-	const fixedOverhead = 1700;
 	const resultCount = Math.max(results.length, 1);
-	const snippetBudget = Math.min(
-		Math.max(
-			Math.floor(
-				(MAX_MODEL_WEB_PAYLOAD_CHARS - fixedOverhead - overheadPerResult * resultCount) /
-					resultCount
-			),
-			MIN_WEB_SEARCH_SNIPPET_CHARS
-		),
-		MAX_WEB_SEARCH_SNIPPET_CHARS
-	);
 
-	return applyToolPayloadSizeGuard(
-		{
-			query: record.query,
-			answer: toTextPreview(record.answer, 600),
-			results: results.map((result: Record<string, any>) => ({
-				title: toTextPreview(result?.title, 150),
-				url: result?.url,
-				snippet: toTextPreview(result?.snippet, snippetBudget),
-				score: typeof result?.score === 'number' ? result.score : undefined,
-				published_date: result?.published_date ?? undefined
-			})),
-			follow_up_questions: Array.isArray(record.follow_up_questions)
-				? record.follow_up_questions.slice(0, 3)
-				: undefined,
-			message: record.message,
-			info: {
-				provider: info.provider,
-				search_depth: info.search_depth,
-				max_results: info.max_results,
-				fetched_at: info.fetched_at
-			}
-		},
-		MAX_MODEL_WEB_PAYLOAD_CHARS
-	);
+	const buildPayload = (snippetBudget: number): Record<string, unknown> => ({
+		query: record.query,
+		answer: toTextPreview(record.answer, 600),
+		results: results.map((result: Record<string, any>) => ({
+			title: toTextPreview(result?.title, 150),
+			url: result?.url,
+			snippet: toTextPreview(result?.snippet, snippetBudget),
+			score: typeof result?.score === 'number' ? result.score : undefined,
+			published_date: result?.published_date ?? undefined
+		})),
+		follow_up_questions: Array.isArray(record.follow_up_questions)
+			? record.follow_up_questions.slice(0, 3)
+			: undefined,
+		message: record.message,
+		info: {
+			provider: info.provider,
+			search_depth: info.search_depth,
+			max_results: info.max_results,
+			fetched_at: info.fetched_at
+		}
+	});
+
+	const fitted = fitPayloadToBudget(buildPayload, {
+		initial: MAX_WEB_SEARCH_SNIPPET_CHARS,
+		min: MIN_WEB_SEARCH_SNIPPET_CHARS,
+		targetChars: WEB_COMPACT_TARGET_CHARS,
+		fieldCount: resultCount
+	});
+
+	return applyToolPayloadSizeGuard(fitted, MAX_MODEL_WEB_PAYLOAD_CHARS);
 }
 
 function compactWebVisitPayload(payload: unknown): unknown {
@@ -1022,21 +1056,27 @@ function compactWebVisitPayload(payload: unknown): unknown {
 		}
 	});
 
-	// Fit the page content to whatever budget remains after the metadata
-	// (links, structured data, meta) so long pages shrink their content
-	// preview instead of degrading the whole payload to a JSON-string blob.
-	let nonContentSize = MAX_MODEL_WEB_PAYLOAD_CHARS;
+	// Fit the page content to whatever serialized budget remains after the
+	// metadata (links, structured data, meta) so long pages shrink their
+	// content preview instead of degrading the whole payload to a JSON-string
+	// blob. Measured, not estimated: JSON escaping of newline-dense markdown
+	// expands well past raw character count.
+	let nonContentSize = 2000;
 	try {
 		nonContentSize = JSON.stringify(buildPayload(0)).length;
 	} catch {
 		// Fall through with the conservative default.
 	}
-	const contentBudget = Math.min(
-		Math.max(MAX_MODEL_WEB_PAYLOAD_CHARS - nonContentSize - 200, MIN_WEB_VISIT_CONTENT_CHARS),
-		MAX_WEB_VISIT_CONTENT_CHARS
-	);
+	const fitted = fitPayloadToBudget(buildPayload, {
+		initial: Math.min(
+			Math.max(WEB_COMPACT_TARGET_CHARS - nonContentSize, MIN_WEB_VISIT_CONTENT_CHARS),
+			MAX_WEB_VISIT_CONTENT_CHARS
+		),
+		min: MIN_WEB_VISIT_CONTENT_CHARS,
+		targetChars: WEB_COMPACT_TARGET_CHARS
+	});
 
-	return applyToolPayloadSizeGuard(buildPayload(contentBudget), MAX_MODEL_WEB_PAYLOAD_CHARS);
+	return applyToolPayloadSizeGuard(fitted, MAX_MODEL_WEB_PAYLOAD_CHARS);
 }
 
 function compactRecord(
