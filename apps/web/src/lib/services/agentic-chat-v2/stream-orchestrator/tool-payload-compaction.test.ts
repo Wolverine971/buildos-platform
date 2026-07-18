@@ -864,6 +864,43 @@ describe('buildToolPayloadForModel', () => {
 		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
 	});
 
+	it('drops optional metadata rather than degrading when tracking URLs bloat the payload', () => {
+		// Regression: 10 links with ~1,200-char SafeLinks-style URLs used to push
+		// non-shrinkable fields past the budget, degrading the whole payload.
+		const hugeUrl = `https://nam.safelinks.protection.example.com/?url=${'a'.repeat(1150)}`;
+		const payload = buildToolPayloadForModel(
+			toolCall('web_visit'),
+			toolResult({
+				url: 'https://example.com/article',
+				final_url: 'https://example.com/article',
+				status_code: 200,
+				content_type: 'text/html',
+				title: 'Article',
+				content_format: 'markdown',
+				content: 'useful page content here. '.repeat(300),
+				truncated: false,
+				links: Array.from({ length: 10 }, (_, index) => ({
+					url: `${hugeUrl}&i=${index}`,
+					text: `Tracked link ${index}`
+				})),
+				message: 'Fetched.',
+				info: {
+					fetched_at: '2026-07-18T00:00:00.000Z',
+					mode: 'reader',
+					parser: 'reader',
+					fetch_ms: 100,
+					bytes: 50000
+				}
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.preview).toBeUndefined();
+		expect(typeof payload.content).toBe('string');
+		expect((payload.content as string).length).toBeGreaterThan(1000);
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
+	});
+
 	it('gives web_visit content the enlarged budget and keeps payload structured', () => {
 		const content = 'line of page markdown content\n'.repeat(400); // ~12,000 chars
 		const payload = buildToolPayloadForModel(

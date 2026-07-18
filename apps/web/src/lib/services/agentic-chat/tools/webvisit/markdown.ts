@@ -49,12 +49,25 @@ export function convertHtmlToMarkdown(html: string): HtmlToMarkdownResult {
 	}
 
 	const raw = getTurndownService().turndown(trimmed);
-	// Order matters: <br> renders as trailing-spaces + newline, so trailing
-	// whitespace must be stripped before blank-line collapsing can see \n runs.
-	const markdown = raw
-		.replace(/[ \t]+$/gm, '')
-		.replace(/\n{3,}/g, '\n\n')
-		.replace(/^(\s*)-\s{3}/gm, '$1- ')
+	// Post-process PROSE segments only. Fenced code blocks must stay
+	// byte-identical: diff markers ("-   line"), YAML alignment, and trailing
+	// whitespace are content there, not formatting noise. Split keeps fences at
+	// odd indices via the capture group.
+	// Within prose, order matters: <br> renders as trailing-spaces + newline,
+	// so trailing whitespace is stripped before blank-line collapsing; the
+	// list-marker normalization uses literal spaces (not \s) so it cannot
+	// consume newlines and splice adjacent lines together.
+	const segments = raw.split(/(^```[^\n]*\n[\s\S]*?^```$)/m);
+	const markdown = segments
+		.map((segment, index) =>
+			index % 2 === 1
+				? segment
+				: segment
+						.replace(/[ \t]+$/gm, '')
+						.replace(/\n{3,}/g, '\n\n')
+						.replace(/^(\s*)- {3}/gm, '$1- ')
+		)
+		.join('')
 		.trim();
 
 	return {

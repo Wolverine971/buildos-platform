@@ -976,7 +976,7 @@ function compactWebSearchPayload(payload: unknown): unknown {
 		answer: toTextPreview(record.answer, 600),
 		results: results.map((result: Record<string, any>) => ({
 			title: toTextPreview(result?.title, 150),
-			url: result?.url,
+			url: compactUrlPreview(result?.url),
 			snippet: toTextPreview(result?.snippet, snippetBudget),
 			score: typeof result?.score === 'number' ? result.score : undefined,
 			published_date: result?.published_date ?? undefined
@@ -984,7 +984,7 @@ function compactWebSearchPayload(payload: unknown): unknown {
 		follow_up_questions: Array.isArray(record.follow_up_questions)
 			? record.follow_up_questions.slice(0, 3)
 			: undefined,
-		message: record.message,
+		message: toTextPreview(record.message, 300),
 		info: {
 			provider: info.provider,
 			search_depth: info.search_depth,
@@ -1015,32 +1015,39 @@ function compactWebVisitPayload(payload: unknown): unknown {
 		: undefined;
 	const links = Array.isArray(record.links)
 		? record.links.slice(0, 10).map((link: any) => ({
-				url: typeof link?.url === 'string' ? link.url : null,
+				url: compactUrlPreview(link?.url),
 				text: toTextPreview(link?.text, 120)
 			}))
 		: undefined;
 
-	const buildPayload = (contentBudget: number): Record<string, unknown> => ({
-		url: record.url,
-		final_url: record.final_url,
+	const buildPayload = (
+		contentBudget: number,
+		includeMetadata = true
+	): Record<string, unknown> => ({
+		url: compactUrlPreview(record.url),
+		final_url: compactUrlPreview(record.final_url),
 		status_code: record.status_code,
 		content_type: record.content_type,
-		title: record.title,
-		canonical_url: record.canonical_url,
+		title: toTextPreview(record.title, 200),
+		canonical_url: compactUrlPreview(record.canonical_url),
 		content_format: record.content_format,
 		excerpt: toTextPreview(record.excerpt, 500),
 		content: toTextPreview(record.content, contentBudget),
 		truncated: record.truncated,
-		structured_data: structuredData,
+		structured_data: includeMetadata ? structuredData : undefined,
 		structured_data_count: Array.isArray(record.structured_data)
 			? record.structured_data.length
 			: 0,
-		links,
+		links: includeMetadata ? links : undefined,
+		links_omitted: includeMetadata ? undefined : Boolean(links?.length),
 		meta:
-			record.meta && typeof record.meta === 'object' && !Array.isArray(record.meta)
+			includeMetadata &&
+			record.meta &&
+			typeof record.meta === 'object' &&
+			!Array.isArray(record.meta)
 				? compactRecord(record.meta, 12, 220)
 				: undefined,
-		message: record.message,
+		message: toTextPreview(record.message, 300),
 		info: {
 			fetched_at: info.fetched_at,
 			mode: info.mode,
@@ -1067,7 +1074,7 @@ function compactWebVisitPayload(payload: unknown): unknown {
 	} catch {
 		// Fall through with the conservative default.
 	}
-	const fitted = fitPayloadToBudget(buildPayload, {
+	let fitted = fitPayloadToBudget((budget) => buildPayload(budget), {
 		initial: Math.min(
 			Math.max(WEB_COMPACT_TARGET_CHARS - nonContentSize, MIN_WEB_VISIT_CONTENT_CHARS),
 			MAX_WEB_VISIT_CONTENT_CHARS
@@ -1076,7 +1083,36 @@ function compactWebVisitPayload(payload: unknown): unknown {
 		targetChars: WEB_COMPACT_TARGET_CHARS
 	});
 
+	// Last resort before the size guard degrades everything: drop the optional
+	// metadata blocks (links/structured data/meta) and keep the page content —
+	// the research-critical part — structured.
+	if (exceedsTarget(fitted, WEB_COMPACT_TARGET_CHARS)) {
+		fitted = fitPayloadToBudget((budget) => buildPayload(budget, false), {
+			initial: MAX_WEB_VISIT_CONTENT_CHARS,
+			min: MIN_WEB_VISIT_CONTENT_CHARS,
+			targetChars: WEB_COMPACT_TARGET_CHARS
+		});
+	}
+
 	return applyToolPayloadSizeGuard(fitted, MAX_MODEL_WEB_PAYLOAD_CHARS);
+}
+
+function exceedsTarget(payload: unknown, targetChars: number): boolean {
+	try {
+		return JSON.stringify(payload).length > targetChars;
+	} catch {
+		return false;
+	}
+}
+
+// Long tracking/redirect URLs (Outlook SafeLinks, marketing redirects) run
+// 800-1,500 chars and are pure payload waste; 300 chars keeps virtually every
+// legitimate URL intact for citation.
+function compactUrlPreview(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	if (!trimmed) return null;
+	return trimmed.length <= 300 ? trimmed : `${trimmed.slice(0, 297)}...`;
 }
 
 function compactRecord(

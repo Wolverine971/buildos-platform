@@ -66,6 +66,22 @@ describe('convertHtmlToMarkdown', () => {
 		expect(markdown).toContain('## Features');
 	});
 
+	it('leaves fenced code-block content byte-identical (diff markers, alignment, trailing spaces)', () => {
+		const { markdown } = convertHtmlToMarkdown(
+			'<pre><code>git diff output:\n-   const oldValue = 1;\n+   const newValue = 2;\nkey:   \n  -   name: alpha\n</code></pre>'
+		);
+
+		expect(markdown).toContain('-   const oldValue = 1;');
+		expect(markdown).toContain('+   const newValue = 2;');
+		expect(markdown).toContain('  -   name: alpha');
+	});
+
+	it('does not splice a lone dash line with the following indented line', () => {
+		const { markdown } = convertHtmlToMarkdown('<p>para</p><p>-</p><p>   indented start</p>');
+
+		expect(markdown).not.toContain('-  indented');
+	});
+
 	it('strips images to alt text (no remote-image markdown from untrusted pages)', () => {
 		const { markdown } = convertHtmlToMarkdown(`
 			<p>Intro</p>

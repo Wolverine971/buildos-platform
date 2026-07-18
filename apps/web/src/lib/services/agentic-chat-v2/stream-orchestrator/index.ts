@@ -290,6 +290,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let skillGateStopRepairInjected = false;
 	let readOnlyRoundCount = 0;
 	let researchRoundCount = 0;
+	let researchPayloadChars = 0;
 	let lastReadOpSetKey: string | null = null;
 	let repeatedReadOpSetCount = 0;
 	let readLoopRepairRank = 0;
@@ -455,7 +456,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	const queueReadLoopRepairInstruction = (
 		level: ReadLoopRepairEscalationLevel,
 		readOps: string[],
-		roundsRemaining: number
+		roundsRemaining: number,
+		framing: 'read_loop' | 'research_budget' = 'read_loop'
 	): void => {
 		const nextRank = readLoopEscalation.READ_LOOP_REPAIR_RANK[level];
 		if (nextRank <= readLoopRepairRank) return;
@@ -463,7 +465,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		queueRepairInstruction(
 			buildReadLoopRepairInstruction(readOps, {
 				level,
-				roundsRemaining
+				roundsRemaining,
+				framing
 			})
 		);
 		if (level === 'must_synthesize') {
@@ -1626,10 +1629,15 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				hasWriteAttempt = true;
 				readOnlyRoundCount = 0;
 				researchRoundCount = 0;
+				researchPayloadChars = 0;
 				lastReadOpSetKey = null;
 				repeatedReadOpSetCount = 0;
 				readLoopRepairRank = 0;
-			} else if (roundPattern.readOps.length > 0) {
+			} else if (roundPattern.readOps.length > 0 && roundPattern.researchOps.length === 0) {
+				// Rounds that include web research ride the research budget below
+				// instead of the stuck-read ladder — a mixed round (web_visit +
+				// read_document_section to cross-reference) is making progress,
+				// not looping.
 				readOnlyRoundCount += 1;
 				const readOpSetKey = roundPattern.readOps.join('|');
 				if (readOpSetKey && readOpSetKey === lastReadOpSetKey) {
@@ -1641,6 +1649,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 			if (!roundReachedWriteExecutor && roundPattern.researchOps.length > 0) {
 				researchRoundCount += 1;
+				researchPayloadChars += roundModelPayloadChars;
 			}
 
 			if (gatewayModeActive && !hasWriteAttempt && roundPattern.readOps.length > 0) {
@@ -1678,25 +1687,25 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				}
 			}
 
-			// Research-only rounds (web_search/web_visit) are exempt from the
-			// read-loop escalation ladder — every call gathers new external
-			// evidence — but they still wind down when the hard round budget is
-			// nearly exhausted, or after a generous research budget of their
-			// own (context balloons ~10k payload chars per round; a healthy
-			// research turn finishes in 3-4 rounds, so 8 marks a degenerate
-			// loop such as re-fetching the same page).
-			if (
-				gatewayModeActive &&
-				!hasWriteAttempt &&
-				roundPattern.readOps.length === 0 &&
-				roundPattern.researchOps.length > 0
-			) {
+			// Rounds with web research (pure or mixed with ontology reads) are
+			// exempt from the read-loop escalation ladder — every web call
+			// gathers new external evidence — but they wind down on their own
+			// research budget: near the hard round cap, after 8 research rounds
+			// (a healthy research turn finishes in 3-4; 8 marks a degenerate
+			// loop such as re-fetching the same page), or once accumulated web
+			// payloads reach 60k chars (~17k tokens of tool results).
+			if (gatewayModeActive && !hasWriteAttempt && roundPattern.researchOps.length > 0) {
 				const roundsRemaining = maxToolRounds - toolRounds;
-				if (roundsRemaining <= 2 || researchRoundCount >= 8) {
+				if (
+					roundsRemaining <= 2 ||
+					researchRoundCount >= 8 ||
+					researchPayloadChars >= 60_000
+				) {
 					queueReadLoopRepairInstruction(
 						'must_synthesize',
 						roundPattern.researchOps,
-						roundsRemaining
+						roundsRemaining,
+						'research_budget'
 					);
 				}
 			}
@@ -1790,7 +1799,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 
 			const windowedRoundRepetitionApplies =
-				!gatewayModeActive || roundPattern.readOps.length === 0;
+				!gatewayModeActive ||
+				(roundPattern.readOps.length === 0 && roundPattern.researchOps.length === 0);
 			if (
 				consecutiveRoundFingerprintCount >= repetitionLimit ||
 				(windowedRoundRepetitionApplies && recentRoundFingerprintCount >= repetitionLimit)

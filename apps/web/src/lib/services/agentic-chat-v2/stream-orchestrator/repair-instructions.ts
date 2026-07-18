@@ -845,6 +845,13 @@ export function buildReadLoopRepairInstruction(
 	options: {
 		level?: ReadLoopRepairInstructionLevel;
 		roundsRemaining?: number;
+		/**
+		 * 'research_budget' swaps the stuck-loop framing for research framing:
+		 * the turn was gathering web evidence productively and simply reached
+		 * its budget. Loop framing here makes weak models open their answer
+		 * with "I hit a read loop" — misdescribing a healthy research turn.
+		 */
+		framing?: 'read_loop' | 'research_budget';
 	} = {}
 ): string {
 	const opsLabel = readOps.length > 0 ? readOps.join(', ') : 'read-only ops';
@@ -857,6 +864,17 @@ export function buildReadLoopRepairInstruction(
 			? null
 			: `Tool rounds remaining before the safety cap: ${roundsRemaining}.`;
 	const level = options.level ?? 'nudge';
+
+	if (level === 'must_synthesize' && options.framing === 'research_budget') {
+		return [
+			'Research budget reached: you have gathered enough web evidence for this turn.',
+			roundsRemainingLine,
+			'Do not call more tools in the next response.',
+			'Write the final answer now from the pages and search results already collected, citing their source URLs; state any remaining gaps concisely.'
+		]
+			.filter((line): line is string => Boolean(line))
+			.join(' ');
+	}
 
 	if (level === 'must_synthesize') {
 		return [
