@@ -183,6 +183,20 @@ export function isPureReadToolName(toolName: string): boolean {
 	return category === 'read' || category === 'search';
 }
 
+// External web-research tools. These are reads for batching purposes, but the
+// read-loop escalation must not treat them as stuck ontology reads: each web
+// call gathers new external evidence, and a legitimate research turn is a long
+// run of exactly these calls.
+export function isWebResearchToolName(toolName: string): boolean {
+	const normalized = toolName.trim().toLowerCase();
+	return (
+		normalized === 'web_search' ||
+		normalized === 'web_visit' ||
+		normalized === 'util.web.search' ||
+		normalized === 'util.web.visit'
+	);
+}
+
 export function classifyToolExecution(execution: FastToolExecution): ToolExecutionClassification {
 	const toolName = execution.toolCall.function.name;
 	if (isDiscoveryToolName(toolName)) return 'read_discovery';

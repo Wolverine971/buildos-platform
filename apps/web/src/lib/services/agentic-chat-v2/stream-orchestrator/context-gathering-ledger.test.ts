@@ -46,7 +46,7 @@ describe('ContextGatheringLedger', () => {
 					'search_project:first'
 				)
 			],
-			roundPattern: { readOps: ['x.search.project'], hasWriteOps: false },
+			roundPattern: { readOps: ['x.search.project'], researchOps: [], hasWriteOps: false },
 			toolRounds: 1,
 			maxToolRounds: 8,
 			modelPayloadChars: 300
@@ -63,7 +63,7 @@ describe('ContextGatheringLedger', () => {
 					'get_onto_document_details:first'
 				)
 			],
-			roundPattern: { readOps: ['onto.document.get'], hasWriteOps: false },
+			roundPattern: { readOps: ['onto.document.get'], researchOps: [], hasWriteOps: false },
 			toolRounds: 2,
 			maxToolRounds: 8,
 			modelPayloadChars: 400
@@ -81,7 +81,11 @@ describe('ContextGatheringLedger', () => {
 					'search_all_projects:first'
 				)
 			],
-			roundPattern: { readOps: ['x.search.all_projects'], hasWriteOps: false },
+			roundPattern: {
+				readOps: ['x.search.all_projects'],
+				researchOps: [],
+				hasWriteOps: false
+			},
 			toolRounds: 3,
 			maxToolRounds: 8,
 			modelPayloadChars: 300
@@ -99,7 +103,7 @@ describe('ContextGatheringLedger', () => {
 					'get_onto_document_details:second'
 				)
 			],
-			roundPattern: { readOps: ['onto.document.get'], hasWriteOps: false },
+			roundPattern: { readOps: ['onto.document.get'], researchOps: [], hasWriteOps: false },
 			toolRounds: 4,
 			maxToolRounds: 8,
 			modelPayloadChars: 400
@@ -117,7 +121,7 @@ describe('ContextGatheringLedger', () => {
 					'get_onto_document_details:third'
 				)
 			],
-			roundPattern: { readOps: ['onto.document.get'], hasWriteOps: false },
+			roundPattern: { readOps: ['onto.document.get'], researchOps: [], hasWriteOps: false },
 			toolRounds: 5,
 			maxToolRounds: 8,
 			modelPayloadChars: 400
@@ -140,7 +144,7 @@ describe('ContextGatheringLedger', () => {
 					'search_project:first'
 				)
 			],
-			roundPattern: { readOps: ['x.search.project'], hasWriteOps: false },
+			roundPattern: { readOps: ['x.search.project'], researchOps: [], hasWriteOps: false },
 			toolRounds: 1,
 			maxToolRounds: 8,
 			modelPayloadChars: 300,
@@ -170,7 +174,11 @@ describe('ContextGatheringLedger', () => {
 					{ found: false, available_anchors: ['overview'] }
 				)
 			],
-			roundPattern: { readOps: ['onto.document.section.get'], hasWriteOps: false },
+			roundPattern: {
+				readOps: ['onto.document.section.get'],
+				researchOps: [],
+				hasWriteOps: false
+			},
 			toolRounds: 1,
 			maxToolRounds: 8,
 			modelPayloadChars: 200
@@ -197,7 +205,11 @@ describe('ContextGatheringLedger', () => {
 						`read:${anchor}:${toolRounds}`
 					)
 				],
-				roundPattern: { readOps: ['onto.document.section.get'], hasWriteOps: false },
+				roundPattern: {
+					readOps: ['onto.document.section.get'],
+					researchOps: [],
+					hasWriteOps: false
+				},
 				toolRounds,
 				maxToolRounds: 8,
 				modelPayloadChars: 200

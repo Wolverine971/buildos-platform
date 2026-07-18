@@ -543,6 +543,21 @@ export function mapProjectAuditToInboxItem(audit: Record<string, unknown>): Inbo
 	};
 }
 
+// A calendar suggestion proposes organizing a window of events; once that
+// window has passed the ask is moot. The 48h grace absorbs date-only end_date
+// values (parsed as UTC midnight) plus any viewer timezone west of UTC, so an
+// event never expires while it could still plausibly be running (tasker/28
+// Phase 2, calendar event-lifecycle expiry).
+const CALENDAR_EVENT_WINDOW_GRACE_MS = 48 * 60 * 60 * 1000;
+
+function calendarSuggestionEventWindowExpiry(suggestion: Record<string, unknown>): number | null {
+	const patterns = asRecord(suggestion.event_patterns);
+	const windowEnd =
+		parseTimestamp(asString(patterns?.end_date)) ??
+		parseTimestamp(asString(patterns?.start_date));
+	return windowEnd === null ? null : windowEnd + CALENDAR_EVENT_WINDOW_GRACE_MS;
+}
+
 export function mapCalendarSuggestionToInboxItem(
 	suggestion: Record<string, unknown>
 ): InboxIndexRow | null {
@@ -581,11 +596,18 @@ export function mapCalendarSuggestionToInboxItem(
 			inboxStatus === 'pending' || inboxStatus === 'deciding'
 				? null
 				: terminalDecidedAt(suggestion),
-		expires_at: reviewExpiresAt(
-			'calendar_suggestion',
-			asString(suggestion.created_at),
-			inboxStatus
-		),
+		expires_at: (() => {
+			const ttlExpiry = reviewExpiresAt(
+				'calendar_suggestion',
+				asString(suggestion.created_at),
+				inboxStatus
+			);
+			if (!ttlExpiry) return null;
+			const eventWindowExpiry = calendarSuggestionEventWindowExpiry(suggestion);
+			return eventWindowExpiry !== null && eventWindowExpiry < Date.parse(ttlExpiry)
+				? new Date(eventWindowExpiry).toISOString()
+				: ttlExpiry;
+		})(),
 		created_at: asString(suggestion.created_at) ?? undefined
 	};
 }

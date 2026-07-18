@@ -9,6 +9,10 @@ import type {
 
 const DEFAULT_MAX_RESULTS = 5;
 const MAX_RESULTS_CAP = 10;
+// Tavily's advanced-depth extraction returns ~2,000 chars of content per
+// result. The previous 400-char cap discarded ~80% of that paid signal; the
+// model-facing payload is budget-managed downstream in tool-payload-compaction.
+const SNIPPET_MAX_CHARS = 1600;
 
 function normalizeQuery(query?: string): string {
 	return query?.trim() ?? '';
@@ -26,7 +30,9 @@ function normalizeDepth(depth?: TavilySearchDepth): TavilySearchDepth {
 function summarizeContent(content?: string): string | undefined {
 	if (!content) return undefined;
 	const compact = content.replace(/\s+/g, ' ').trim();
-	return compact.length > 400 ? `${compact.slice(0, 400)}...` : compact;
+	return compact.length > SNIPPET_MAX_CHARS
+		? `${compact.slice(0, SNIPPET_MAX_CHARS)}...`
+		: compact;
 }
 
 export async function performWebSearch(

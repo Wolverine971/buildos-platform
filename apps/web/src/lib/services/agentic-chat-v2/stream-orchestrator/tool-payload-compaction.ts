@@ -6,6 +6,14 @@ type ToolArgumentParser = (rawArgs: unknown) => { args: Record<string, any>; err
 
 const MAX_MODEL_TOOL_PAYLOAD_CHARS = 6000;
 const MAX_MODEL_SKILL_PAYLOAD_CHARS = 20000;
+// Web research payloads (web_search/web_visit) carry page evidence the model
+// cannot re-derive from the ontology, so they get a larger budget than
+// ordinary tool results — mirroring the existing skill-payload carve-out.
+const MAX_MODEL_WEB_PAYLOAD_CHARS = 12000;
+const MAX_WEB_VISIT_CONTENT_CHARS = 8000;
+const MIN_WEB_VISIT_CONTENT_CHARS = 1500;
+const MAX_WEB_SEARCH_SNIPPET_CHARS = 1600;
+const MIN_WEB_SEARCH_SNIPPET_CHARS = 400;
 const MAX_SKILL_OUTPUT_CONTRACT_CHARS = 4000;
 const MAX_SKILL_MARKDOWN_CHARS = 16000;
 const MAX_SKILL_MARKDOWN_WITH_CONTRACT_CHARS = 12000;
@@ -54,17 +62,27 @@ export function buildToolPayloadForModel(
 			? compactGatewayMetaPayload(basePayload)
 			: compactDirectToolPayload(toolName ?? '', basePayload);
 
-	return addToolResultSecurityNotice(
-		toolName ?? '',
-		compacted,
-		isSkillPayloadTool(toolName ?? '')
-			? MAX_MODEL_SKILL_PAYLOAD_CHARS
-			: MAX_MODEL_TOOL_PAYLOAD_CHARS
-	);
+	return addToolResultSecurityNotice(toolName ?? '', compacted, resolvePayloadBudget(toolName));
 }
 
 function isSkillPayloadTool(toolName: string): boolean {
 	return toolName === 'skill_load' || toolName === 'skill_reference_load';
+}
+
+function isWebPayloadTool(toolName: string | undefined): boolean {
+	const normalized = toolName?.trim().toLowerCase() ?? '';
+	return (
+		normalized === 'web_search' ||
+		normalized === 'web_visit' ||
+		normalized === 'util.web.search' ||
+		normalized === 'util.web.visit'
+	);
+}
+
+function resolvePayloadBudget(toolName: string | undefined): number {
+	if (isSkillPayloadTool(toolName ?? '')) return MAX_MODEL_SKILL_PAYLOAD_CHARS;
+	if (isWebPayloadTool(toolName)) return MAX_MODEL_WEB_PAYLOAD_CHARS;
+	return MAX_MODEL_TOOL_PAYLOAD_CHARS;
 }
 
 function addToolResultSecurityNotice(
@@ -617,6 +635,9 @@ function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
 	if (normalizedToolName === 'web_visit' || normalizedToolName === 'util.web.visit') {
 		return compactWebVisitPayload(payload);
 	}
+	if (normalizedToolName === 'web_search' || normalizedToolName === 'util.web.search') {
+		return compactWebSearchPayload(payload);
+	}
 	if (
 		normalizedToolName === 'list_onto_documents' ||
 		normalizedToolName === 'search_onto_documents'
@@ -896,6 +917,58 @@ function compactDocumentSummary(document: any): Record<string, unknown> | null {
 	};
 }
 
+function compactWebSearchPayload(payload: unknown): unknown {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+		return payload;
+	}
+
+	const record = payload as Record<string, any>;
+	const results = Array.isArray(record.results) ? record.results : [];
+	const info = record.info && typeof record.info === 'object' ? record.info : {};
+
+	// Size snippets to the web payload budget so a max_results=10 response
+	// degrades to shorter snippets instead of tripping the whole-payload guard
+	// (which would replace structured results with a truncated JSON string).
+	const overheadPerResult = 220;
+	const fixedOverhead = 1700;
+	const resultCount = Math.max(results.length, 1);
+	const snippetBudget = Math.min(
+		Math.max(
+			Math.floor(
+				(MAX_MODEL_WEB_PAYLOAD_CHARS - fixedOverhead - overheadPerResult * resultCount) /
+					resultCount
+			),
+			MIN_WEB_SEARCH_SNIPPET_CHARS
+		),
+		MAX_WEB_SEARCH_SNIPPET_CHARS
+	);
+
+	return applyToolPayloadSizeGuard(
+		{
+			query: record.query,
+			answer: toTextPreview(record.answer, 600),
+			results: results.map((result: Record<string, any>) => ({
+				title: toTextPreview(result?.title, 150),
+				url: result?.url,
+				snippet: toTextPreview(result?.snippet, snippetBudget),
+				score: typeof result?.score === 'number' ? result.score : undefined,
+				published_date: result?.published_date ?? undefined
+			})),
+			follow_up_questions: Array.isArray(record.follow_up_questions)
+				? record.follow_up_questions.slice(0, 3)
+				: undefined,
+			message: record.message,
+			info: {
+				provider: info.provider,
+				search_depth: info.search_depth,
+				max_results: info.max_results,
+				fetched_at: info.fetched_at
+			}
+		},
+		MAX_MODEL_WEB_PAYLOAD_CHARS
+	);
+}
+
 function compactWebVisitPayload(payload: unknown): unknown {
 	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
 		return payload;
@@ -913,7 +986,7 @@ function compactWebVisitPayload(payload: unknown): unknown {
 			}))
 		: undefined;
 
-	return applyToolPayloadSizeGuard({
+	const buildPayload = (contentBudget: number): Record<string, unknown> => ({
 		url: record.url,
 		final_url: record.final_url,
 		status_code: record.status_code,
@@ -922,7 +995,7 @@ function compactWebVisitPayload(payload: unknown): unknown {
 		canonical_url: record.canonical_url,
 		content_format: record.content_format,
 		excerpt: toTextPreview(record.excerpt, 500),
-		content: toTextPreview(record.content, 3500),
+		content: toTextPreview(record.content, contentBudget),
 		truncated: record.truncated,
 		structured_data: structuredData,
 		structured_data_count: Array.isArray(record.structured_data)
@@ -943,9 +1016,27 @@ function compactWebVisitPayload(payload: unknown): unknown {
 			bytes: info.bytes,
 			html_chars: info.html_chars,
 			markdown_chars: info.markdown_chars,
+			conversion: info.conversion,
+			conversion_ms: info.conversion_ms,
 			cache_hit: info.cache_hit
 		}
 	});
+
+	// Fit the page content to whatever budget remains after the metadata
+	// (links, structured data, meta) so long pages shrink their content
+	// preview instead of degrading the whole payload to a JSON-string blob.
+	let nonContentSize = MAX_MODEL_WEB_PAYLOAD_CHARS;
+	try {
+		nonContentSize = JSON.stringify(buildPayload(0)).length;
+	} catch {
+		// Fall through with the conservative default.
+	}
+	const contentBudget = Math.min(
+		Math.max(MAX_MODEL_WEB_PAYLOAD_CHARS - nonContentSize - 200, MIN_WEB_VISIT_CONTENT_CHARS),
+		MAX_WEB_VISIT_CONTENT_CHARS
+	);
+
+	return applyToolPayloadSizeGuard(buildPayload(contentBudget), MAX_MODEL_WEB_PAYLOAD_CHARS);
 }
 
 function compactRecord(

@@ -725,4 +725,96 @@ describe('buildToolPayloadForModel', () => {
 		expect(payload.message).toContain('indexed for routing');
 		expect(JSON.stringify(payload)).not.toContain('extra_large_field');
 	});
+
+	it('preserves long web_search snippets under the web payload budget', () => {
+		const snippet = 'evidence '.repeat(190).trim(); // ~1,700 chars pre-cap
+		const payload = buildToolPayloadForModel(
+			toolCall('web_search'),
+			toolResult({
+				query: 'ai productivity tools pricing',
+				answer: 'Short synthesized answer.',
+				results: Array.from({ length: 5 }, (_, index) => ({
+					title: `Result ${index}`,
+					url: `https://example.com/${index}`,
+					snippet,
+					score: 0.9 - index * 0.1
+				})),
+				follow_up_questions: ['a', 'b', 'c', 'd'],
+				message: 'Web search results from Tavily.',
+				info: { provider: 'tavily', search_depth: 'advanced', max_results: 5 }
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		// Payload must stay structured (not degraded to a truncated JSON string).
+		expect(payload.truncated).toBeUndefined();
+		expect(payload.results).toHaveLength(5);
+		const firstSnippet = payload.results[0].snippet as string;
+		expect(firstSnippet.length).toBeGreaterThan(1200);
+		expect(payload.follow_up_questions).toHaveLength(3);
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
+	});
+
+	it('shrinks web_search snippets instead of degrading at max_results=10', () => {
+		const snippet = 'evidence '.repeat(190).trim();
+		const payload = buildToolPayloadForModel(
+			toolCall('web_search'),
+			toolResult({
+				query: 'broad sweep',
+				answer: 'Answer.',
+				results: Array.from({ length: 10 }, (_, index) => ({
+					title: `Result ${index}`,
+					url: `https://example.com/${index}`,
+					snippet,
+					score: 0.9
+				})),
+				message: 'Web search results from Tavily.',
+				info: { provider: 'tavily', search_depth: 'advanced', max_results: 10 }
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.truncated).toBeUndefined();
+		expect(payload.results).toHaveLength(10);
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
+		for (const result of payload.results) {
+			expect(typeof result.snippet).toBe('string');
+			expect(result.url).toMatch(/^https:\/\/example\.com\//);
+		}
+	});
+
+	it('gives web_visit content the enlarged budget and keeps payload structured', () => {
+		const content = 'line of page markdown content\n'.repeat(400); // ~12,000 chars
+		const payload = buildToolPayloadForModel(
+			toolCall('web_visit'),
+			toolResult({
+				url: 'https://example.com/pricing',
+				final_url: 'https://example.com/pricing',
+				status_code: 200,
+				content_type: 'text/html',
+				title: 'Pricing',
+				content_format: 'markdown',
+				excerpt: content.slice(0, 200),
+				content,
+				truncated: false,
+				message: 'Web visit content fetched.',
+				info: {
+					fetched_at: '2026-07-18T00:00:00.000Z',
+					mode: 'reader',
+					parser: 'reader',
+					fetch_ms: 300,
+					bytes: 100000,
+					conversion: 'turndown',
+					conversion_ms: 15
+				}
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.truncated).toBe(false);
+		const compactedContent = payload.content as string;
+		expect(compactedContent.length).toBeGreaterThan(5000);
+		expect(payload.info.conversion).toBe('turndown');
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
+	});
 });

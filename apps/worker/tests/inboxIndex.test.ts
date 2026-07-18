@@ -158,6 +158,61 @@ describe('inbox index mappers', () => {
 		});
 	});
 
+	it('expires a calendar suggestion when its event window has passed (48h grace)', () => {
+		const row = mapCalendarSuggestionToInboxItem({
+			id: 'calendar-1',
+			user_id: 'user-1',
+			status: 'pending',
+			suggested_name: 'Launch planning',
+			created_at: '2026-07-01T12:00:00.000Z',
+			event_patterns: {
+				start_date: '2026-07-01',
+				end_date: '2026-07-02'
+			}
+		});
+
+		// Event window end (7/02 UTC midnight) + 48h beats the 7d TTL.
+		expect(row).toMatchObject({
+			status: 'pending',
+			expires_at: '2026-07-04T00:00:00.000Z'
+		});
+	});
+
+	it('keeps the TTL expiry when the event window extends beyond it', () => {
+		const row = mapCalendarSuggestionToInboxItem({
+			id: 'calendar-1',
+			user_id: 'user-1',
+			status: 'pending',
+			suggested_name: 'Conference series',
+			created_at: '2026-07-01T12:00:00.000Z',
+			event_patterns: {
+				start_date: '2026-07-01',
+				end_date: '2026-09-30'
+			}
+		});
+
+		expect(row).toMatchObject({
+			status: 'pending',
+			expires_at: '2026-07-08T12:00:00.000Z'
+		});
+	});
+
+	it('falls back to the TTL when a calendar suggestion has no event dates', () => {
+		const row = mapCalendarSuggestionToInboxItem({
+			id: 'calendar-1',
+			user_id: 'user-1',
+			status: 'pending',
+			suggested_name: 'Untimed suggestion',
+			created_at: '2026-07-01T12:00:00.000Z',
+			event_patterns: { tags: ['work'] }
+		});
+
+		expect(row).toMatchObject({
+			status: 'pending',
+			expires_at: '2026-07-08T12:00:00.000Z'
+		});
+	});
+
 	it('clears expiry when the source is terminal', () => {
 		const row = mapProjectSuggestionToInboxItem({
 			id: 'suggestion-1',

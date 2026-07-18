@@ -10,6 +10,7 @@ import {
 	isDiscoveryToolName,
 	isLikelyReadToolName,
 	isLikelyWriteToolName,
+	isWebResearchToolName,
 	resolveToolOperationName
 } from './tool-classification';
 export type { GatewayExecResultData } from './tool-classification';
@@ -26,6 +27,10 @@ export {
 
 export type RoundToolPattern = {
 	readOps: string[];
+	// Web research ops (web_search/web_visit) tracked separately from readOps:
+	// they gather new external evidence each call, so they must not feed the
+	// stuck-ontology-read escalation or the repeated-read-set guard.
+	researchOps: string[];
 	hasWriteOps: boolean;
 };
 
@@ -83,6 +88,7 @@ export function hasDocumentOrganizationValidationIssue(issues: ToolValidationIss
 
 export function buildRoundToolPattern(toolCalls: ChatToolCall[]): RoundToolPattern {
 	const readOps = new Set<string>();
+	const researchOps = new Set<string>();
 	let hasWriteOps = false;
 
 	for (const toolCall of toolCalls) {
@@ -106,6 +112,16 @@ export function buildRoundToolPattern(toolCalls: ChatToolCall[]): RoundToolPatte
 			continue;
 		}
 
+		// Web research calls fetch new external evidence every time, unlike
+		// ontology reads which saturate. Rounds of only web research must not
+		// advance the read-loop escalation (2026-07-18 research-capability
+		// audit: the nudge→must_synthesize ladder was killing legitimate
+		// multi-round research turns at 3/6/8 read-only rounds).
+		if (isWebResearchToolName(toolName) || isWebResearchToolName(operationName)) {
+			researchOps.add(operationName.toLowerCase());
+			continue;
+		}
+
 		if (isLikelyReadToolName(toolName)) {
 			readOps.add(operationName.toLowerCase());
 		}
@@ -113,6 +129,7 @@ export function buildRoundToolPattern(toolCalls: ChatToolCall[]): RoundToolPatte
 
 	return {
 		readOps: Array.from(readOps).sort(),
+		researchOps: Array.from(researchOps).sort(),
 		hasWriteOps
 	};
 }

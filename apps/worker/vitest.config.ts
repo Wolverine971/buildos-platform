@@ -1,6 +1,40 @@
 // apps/worker/vitest.config.ts
 import { defineConfig } from 'vitest/config';
+import { fileURLToPath } from 'node:url';
 import { coverageConfig } from '../../vitest.coverage';
+
+const workspacePackageAliases = [
+	{
+		find: /^@buildos\/shared-agent-ops$/,
+		replacement: fileURLToPath(
+			new URL('../../packages/shared-agent-ops/src/index.ts', import.meta.url)
+		)
+	},
+	{
+		find: /^@buildos\/shared-agent-ops\/inbox-index$/,
+		replacement: fileURLToPath(
+			new URL('../../packages/shared-agent-ops/src/inbox-index.ts', import.meta.url)
+		)
+	},
+	{
+		find: /^@buildos\/shared-types$/,
+		replacement: fileURLToPath(
+			new URL('../../packages/shared-types/src/index.ts', import.meta.url)
+		)
+	},
+	{
+		find: /^@buildos\/shared-utils$/,
+		replacement: fileURLToPath(
+			new URL('../../packages/shared-utils/src/index.ts', import.meta.url)
+		)
+	},
+	{
+		find: /^@buildos\/supabase-client$/,
+		replacement: fileURLToPath(
+			new URL('../../packages/supabase-client/src/index.ts', import.meta.url)
+		)
+	}
+];
 
 export default defineConfig({
 	test: {
@@ -17,8 +51,6 @@ export default defineConfig({
 		coverage: coverageConfig(['src/**/*.ts'])
 	},
 	resolve: {
-		alias: {
-			'@': './src'
-		}
+		alias: [{ find: '@', replacement: './src' }, ...workspacePackageAliases]
 	}
 });

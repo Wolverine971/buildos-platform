@@ -1673,6 +1673,27 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				}
 			}
 
+			// Research-only rounds (web_search/web_visit) are exempt from the
+			// read-loop escalation ladder — every call gathers new external
+			// evidence — but they still get a synthesis warning when the hard
+			// round budget is nearly exhausted, so long research turns wind
+			// down gracefully instead of hitting the cap cold.
+			if (
+				gatewayModeActive &&
+				!hasWriteAttempt &&
+				roundPattern.readOps.length === 0 &&
+				roundPattern.researchOps.length > 0
+			) {
+				const roundsRemaining = maxToolRounds - toolRounds;
+				if (roundsRemaining <= 2) {
+					queueReadLoopRepairInstruction(
+						'must_synthesize',
+						roundPattern.researchOps,
+						roundsRemaining
+					);
+				}
+			}
+
 			if (
 				gatewayModeActive &&
 				!hasWriteAttempt &&

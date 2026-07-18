@@ -2,9 +2,13 @@
 
 # Beta Reactivation — Rewritten Emails
 
-_Exemplars proving the doctrine in [FRAMEWORK.md](FRAMEWORK.md) §5, plus the templates the remaining drafts generate from. Status: awaiting DJ's blessing before mass-regenerating the 81 drafts in `/admin/emails`._
+_Exemplars proving the doctrine in [FRAMEWORK.md](FRAMEWORK.md) §5, plus the templates the remaining drafts generate from. Status: v2 (2026-07-17) — DJ's decisions locked (concierge yes, founding-beta angle yes, Looms no, data-respect touch dropped, typo trio in). Next: mass-regenerate the 83 drafts in `/admin/emails`._
 
-**Mechanics for all emails:** from DJ's real address, plain-text-looking. Account-holders (S1/S2) link `https://build-os.com/welcome-back?...`; never-entered (S3) link `https://build-os.com/auth/register?...`. Keep the existing UTM scheme (`utm_source=founder_email&utm_medium=email&utm_campaign=beta-reactivation-tailored-2026-07`). One link in the body max; demo link goes in a P.S. once the demo exists.
+**Mechanics for all emails:** from DJ's real address, plain-text-looking. Links are **short links**: account-holders (S1/S2) get `https://build-os.com/s/welcome-back`, never-entered (S3) get `https://build-os.com/s/start`. The `/s/[slug]` route (`apps/web/src/routes/s/[slug]/+server.ts`, registry in `$lib/config/short-links.ts`) 302-redirects and re-attaches the full UTM payload (`utm_source=founder_email&utm_medium=email&utm_campaign=beta-reactivation-tailored-2026-07`), so PostHog funnels are unchanged. **The `/s` route must be deployed to production before any send.** One link in the body max; demo link goes in a P.S. once the demo exists.
+
+**Privacy rule (FRAMEWORK §5.3):** their signup answers are quotable with attribution. Their product data appears as project **titles and existence only** — no contents, no brain-dump counts, no login history. If a sentence implies we looked inside their account, cut it.
+
+**Founding-beta P.S. (optional, any segment):** _"P.S. You were one of the first ~100 people to sign up for BuildOS. It was in a rough state when you found it — it's actually worth beta testing now, and I'd genuinely value an early tester's eyes on it."_ Use where the body didn't already carry the founding angle; never alongside a demo P.S. (one P.S. max).
 
 ---
 
@@ -14,7 +18,7 @@ _Exemplars proving the doctrine in [FRAMEWORK.md](FRAMEWORK.md) §5, plus the te
 
 > Hi Joris,
 >
-> You tried BuildOS last September — you started a project for your Matrix server, dropped two brain dumps in, and I'm guessing it didn't give you enough back to stay. That was fair. It wasn't ready.
+> You tried BuildOS last September — you started a project for your Matrix server, and I'm guessing it didn't give you enough back to stay. That was fair. It wasn't ready.
 >
 > I spent the year fixing that. The part you'll care about: BuildOS actually works your context now — an agent that knows the project, keeps tasks and docs straight, and plans next steps with you. And projects can be shared now, which is the thing you actually asked for when you told me your collective ran on WhatsApp threads and your private Obsidian vault.
 >
@@ -38,15 +42,15 @@ _Exemplars proving the doctrine in [FRAMEWORK.md](FRAMEWORK.md) §5, plus the te
 >
 > DJ
 
-### Michael McCulley — S1-A, has revisited · `OntoLogix`
+### Michael McCulley — S1-A · `OntoLogix`
 
 > Hi Michael,
 >
-> I noticed you've poked your head back into BuildOS a few times since the beta — most recently in March. So you already know it's changed; this is me closing the loop properly.
+> You tried BuildOS back in the beta and started a project called OntoLogix. At signup you wrote that you'd "lost as much as you've created" across repos, prompts, and notes. That line stuck with me, because it's the exact problem I've been building against since: one place where project context accumulates instead of scattering, with an agent that works inside it.
 >
-> At signup you wrote that you'd "lost as much as you've created" across repos, prompts, and notes. That line stuck with me, because it's the exact problem I've been building against: one place where project context accumulates instead of scattering, with an agent that works inside it.
+> The beta wasn't that yet. It is now.
 >
-> You build AI tooling yourself, so you'll size this up faster than most. Your six projects — OntoLogix included — are still there: **[Open BuildOS]**
+> You build AI tooling yourself, so you'll size this up faster than most. Your projects are still in your account: **[Open BuildOS]**
 >
 > If you look and it's still not right, I'd honestly value the reply telling me why.
 >
@@ -56,7 +60,7 @@ _Exemplars proving the doctrine in [FRAMEWORK.md](FRAMEWORK.md) §5, plus the te
 
 > Hi Luis,
 >
-> When you signed up for the beta you said if BuildOS works, you're a case study. Then the product wasn't good enough to prove it — you dropped one brain dump on Lucien CLI and that was that. That one's on me.
+> When you signed up for the beta you said if BuildOS works, you're a case study. Then the product wasn't good enough to prove it — you started a project for Lucien CLI and that was that. That one's on me.
 >
 > A year later, I'm ready to collect. BuildOS now takes the mess — typed or spoken — and hands back a project that stays organized without you doing the organizing. Your Lucien project is still sitting there.
 >
@@ -84,7 +88,7 @@ _Exemplars proving the doctrine in [FRAMEWORK.md](FRAMEWORK.md) §5, plus the te
 
 > Hi Victoria,
 >
-> You told me exactly what you wanted from BuildOS: "relax my messy mind with doing brain dumps and have it organize and structure my productivity." You made an account, and the version you found couldn't really do that yet. I'm guessing that's why there's nothing in it.
+> You told me exactly what you wanted from BuildOS: "relax my messy mind with doing brain dumps and have it organize and structure my productivity." You made an account, and the version you found couldn't really do that yet. I'm guessing it never earned a real try.
 >
 > The sentence you wrote is now literally the product. You dump — typed or out loud — it organizes. And when you're juggling multiple entities, it tells you each morning what actually needs you first. Task paralysis hates a short list.
 >
@@ -96,7 +100,7 @@ _Exemplars proving the doctrine in [FRAMEWORK.md](FRAMEWORK.md) §5, plus the te
 
 > Hi Ian,
 >
-> You made a BuildOS account last August to collect writing ideas, and I'm confident the product you saw didn't earn a second visit. It was mostly a brain-dump box back then.
+> You made a BuildOS account last August to collect writing ideas, and I'm confident the product you found didn't earn much of your time. It was mostly a brain-dump box back then.
 >
 > A year of building later: dumps become projects with context that sticks around, an agent that works inside that context, voice capture for ideas mid-generation. The difference between a box and a desk.
 >
@@ -218,14 +222,34 @@ _Exemplars proving the doctrine in [FRAMEWORK.md](FRAMEWORK.md) §5, plus the te
 >
 > DJ
 
+### T-S3T (typo cohort — probably never received a single email from us)
+
+The typo IS the opener: it explains a year of total silence, it's disarming, and it proves a human is writing. Confirm-don't-blame tone.
+
+> **Subject:** `your buildos signup (finally)`
+>
+> Hi {first},
+>
+> You signed up for the BuildOS beta last {month} — and then, I suspect, never heard a single word from us. I just found out why: the email on your signup was one letter off ({typo'd address}), so nothing we sent ever reached you. This is me finally reaching the real you. Sorry it took a year.
+>
+> {If they wrote a real answer: mirror it, attributed.}
+>
+> Honest upside to the delay: the BuildOS you signed up for barely worked. The one you'd walk into today actually does the thing — messy thinking in, organized projects with real next steps out.
+>
+> Your invitation, one year late: **[register]**
+>
+> If it's no longer relevant, reply "done" and I'll leave you be.
+>
+> DJ
+
+**Exemplar — Ryan Bessling** (`ryanbesslings72@aol.com`, subject `your buildos signup (finally)`): use T-S3T, mirror his lines — "You told me you've been beta testing since '95, and that you live in Maryland too. As a fellow Marylander I'm embarrassed it took a typo and a year to get you a working invite." Then the founding-beta P.S. — a '95-era beta tester is exactly whose eyes DJ wants.
+
 ---
 
-## Follow-up touches (sketches, pending Phase 1 decisions)
+## Follow-up touches (sketches)
 
 **Touch 2 (day 4–6, non-responders) — "the receipt":** subject `what a brain dump looks like after`. One image or 30s clip: messy dump on the left, organized project on the right. Two sentences max: "This is the whole product in one picture. Five minutes gets you your own: [link]." Alternative for S1/rich-S3: the concierge offer if touch 1 didn't carry it.
 
-**Touch 3 (day 12–14) — pick per DJ's Phase 1 decisions:**
-- *Data-respect close (S1/S2):* "I'm tidying up old beta accounts. Want me to keep your project or wipe it? Either is one click." Only if cleanup is real.
-- *Founding-member close (S3):* "Last one from me. You were one of the first ~100 people to sign up, so your account keeps {founding offer} whenever you claim it."
+**Touch 3 (day 12–14) — founding-beta close (all segments):** "Last one from me. You were one of the first ~100 people to sign up for BuildOS. It was in a rough state when you found it — it's genuinely worth beta testing now, and early-tester eyes are the ones I trust most. If you ever want back in, the door's open: [link]. Otherwise, thanks for believing early, and I'll stop emailing." No pricing promises; the role is the offer.
 
 **Stop rules:** any reply → out of sequence, DJ replies personally. "done" / negative → suppress across all campaigns (`email_suppressions`).

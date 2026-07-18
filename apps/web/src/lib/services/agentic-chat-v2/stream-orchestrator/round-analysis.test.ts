@@ -49,17 +49,36 @@ describe('round analysis helpers', () => {
 
 		expect(pattern).toEqual({
 			readOps: ['onto.task.list'],
+			researchOps: [],
 			hasWriteOps: true
 		});
 	});
 
-	it('treats web visits as read-like operations for repeated-read detection', () => {
+	it('routes web research tools to researchOps, not readOps (escalation exemption)', () => {
 		const pattern = buildRoundToolPattern([
-			createToolCall('web_visit', { url: 'https://example.com/classes' })
+			createToolCall('web_visit', { url: 'https://example.com/classes' }),
+			createToolCall('web_search', { query: 'ai productivity tools pricing' })
 		]);
 
 		expect(pattern).toEqual({
-			readOps: ['util.web.visit'],
+			readOps: [],
+			researchOps: ['util.web.search', 'util.web.visit'],
+			hasWriteOps: false
+		});
+	});
+
+	it('keeps ontology reads in readOps when a round mixes research and reads', () => {
+		const pattern = buildRoundToolPattern([
+			createToolCall('web_search', { query: 'competitor pricing' }),
+			createToolCall('search_project', {
+				project_id: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
+				query: 'Rod Chamberlin'
+			})
+		]);
+
+		expect(pattern).toEqual({
+			readOps: ['x.search.project'],
+			researchOps: ['util.web.search'],
 			hasWriteOps: false
 		});
 	});
@@ -74,6 +93,7 @@ describe('round analysis helpers', () => {
 
 		expect(pattern).toEqual({
 			readOps: ['x.search.project'],
+			researchOps: [],
 			hasWriteOps: false
 		});
 	});
@@ -108,6 +128,7 @@ describe('round analysis helpers', () => {
 
 		expect(pattern).toEqual({
 			readOps: [],
+			researchOps: [],
 			hasWriteOps: false
 		});
 	});
@@ -123,6 +144,7 @@ describe('round analysis helpers', () => {
 
 		expect(pattern).toEqual({
 			readOps: ['x.search.project'],
+			researchOps: [],
 			hasWriteOps: false
 		});
 	});
