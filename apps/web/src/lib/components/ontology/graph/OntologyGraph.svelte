@@ -25,6 +25,7 @@
 	import cola from 'cytoscape-cola';
 	import coseBilkent from 'cytoscape-cose-bilkent';
 	import { OntologyGraphService, GRAPH_COLORS } from './lib/graph.service';
+	import { getGraphLayoutOptions } from './lib/graph.layout';
 	import type {
 		GraphNode,
 		GraphSourceData,
@@ -59,8 +60,9 @@
 
 	let container: HTMLElement;
 	let cy: cytoscape.Core | null = null;
-	let currentLayout = $state('dagre');
+	let currentLayout = 'dagre';
 	let highlightTimeouts: Array<ReturnType<typeof setTimeout>> = [];
+	let layoutFitTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	// Dark mode detection
 	let isDark = $state(false);
@@ -102,6 +104,10 @@
 	function destroyGraph() {
 		highlightTimeouts.forEach((timeout) => clearTimeout(timeout));
 		highlightTimeouts = [];
+		if (layoutFitTimeout !== null) {
+			clearTimeout(layoutFitTimeout);
+			layoutFitTimeout = null;
+		}
 
 		if (cy) {
 			cy.destroy();
@@ -357,7 +363,7 @@
 			container,
 			elements: [...graphData.nodes, ...graphData.edges],
 			style: getCytoscapeStyles() as any,
-			layout: getLayoutOptions(currentLayout),
+			layout: getGraphLayoutOptions(currentLayout),
 			minZoom: 0.1,
 			maxZoom: 4,
 			wheelSensitivity: 0.35
@@ -400,6 +406,30 @@
 		graphInstance = buildGraphInstance();
 	}
 
+	function runLayout(layoutName: string) {
+		if (!cy) return;
+
+		const options = getGraphLayoutOptions(layoutName);
+		const animationDuration = (
+			options as cytoscape.LayoutOptions & { animationDuration?: number }
+		).animationDuration;
+
+		if (layoutFitTimeout !== null) clearTimeout(layoutFitTimeout);
+		cy.layout(options).run();
+
+		// cytoscape-cose-bilkent can emit layoutstop before compound bounds are ready.
+		// Refit once after its configured end animation so switching from a very wide
+		// hierarchy cannot leave the spring graph off-canvas.
+		layoutFitTimeout = setTimeout(
+			() => {
+				cy?.resize();
+				cy?.fit(undefined, 50);
+				layoutFitTimeout = null;
+			},
+			(animationDuration ?? 500) + 100
+		);
+	}
+
 	function buildGraphInstance(): OntologyGraphInstance | null {
 		if (!cy) return null;
 
@@ -408,8 +438,7 @@
 			changeLayout: (layoutName: string) => {
 				if (!cy) return;
 				currentLayout = layoutName;
-				const layout = cy.layout(getLayoutOptions(layoutName));
-				layout.run();
+				runLayout(layoutName);
 			},
 			fitToView: () => {
 				if (!cy) return;
@@ -481,41 +510,6 @@
 		return api;
 	}
 
-	function getLayoutOptions(layoutName: string): cytoscape.LayoutOptions {
-		const defaultLayout: cytoscape.LayoutOptions = {
-			name: 'dagre',
-			rankDir: 'TB',
-			nodeSep: 78,
-			edgeSep: 24,
-			rankSep: 112,
-			animate: true,
-			animationDuration: 400
-		} as any;
-
-		const layouts: Record<string, cytoscape.LayoutOptions> = {
-			dagre: defaultLayout,
-			cola: {
-				name: 'cola',
-				animate: true,
-				nodeSpacing: 60,
-				flow: { axis: 'y' }
-			} as any,
-			'cose-bilkent': {
-				name: 'cose-bilkent',
-				animate: true,
-				idealEdgeLength: 120,
-				nodeOverlap: 25,
-				nodeRepulsion: 6000
-			} as any,
-			circle: {
-				name: 'circle',
-				animate: true
-			}
-		};
-
-		return layouts[layoutName] || defaultLayout;
-	}
-
 	// React to data/viewMode changes
 	$effect(() => {
 		if (!cy) return;
@@ -526,7 +520,7 @@
 			cy!.add([...graphData.nodes, ...graphData.edges]);
 		});
 
-		cy!.layout(getLayoutOptions(currentLayout)).run();
+		runLayout(currentLayout);
 		graphInstance?.resetFilters();
 		selectedNode = null;
 	});

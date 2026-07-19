@@ -19,15 +19,19 @@
 </script>
 
 <div class="space-y-1 py-2 px-2">
-	{#each items as item, i}
+	{#each items as item, i (i)}
 		<div class="flex items-center gap-2 py-1.5" style="padding-left: {item.indent * 16 + 8}px">
 			<!-- Chevron placeholder -->
-			<div class="w-4 h-4 rounded bg-muted/50 animate-pulse"></div>
+			<div
+				class="h-4 w-4 animate-pulse rounded-md bg-muted/50 motion-reduce:animate-none"
+			></div>
 			<!-- Icon placeholder -->
-			<div class="w-4 h-4 rounded bg-muted/50 animate-pulse"></div>
+			<div
+				class="h-4 w-4 animate-pulse rounded-md bg-muted/50 motion-reduce:animate-none"
+			></div>
 			<!-- Title placeholder -->
 			<div
-				class="h-4 rounded bg-muted/50 animate-pulse"
+				class="h-4 animate-pulse rounded-md bg-muted/50 motion-reduce:animate-none"
 				style="width: {item.width}%; animation-delay: {i * 50}ms"
 			></div>
 		</div>

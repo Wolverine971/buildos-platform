@@ -1,7 +1,8 @@
 // apps/web/src/lib/components/project/v2/PulseStrip.test.ts
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import type { ProjectLogEntryWithMeta } from '@buildos/shared-types';
 import type { OntoEvent } from '$lib/types/onto';
 import PulseStrip from './PulseStrip.svelte';
 
@@ -48,7 +49,25 @@ function createEvent(overrides: Partial<OntoEvent>): OntoEvent {
 	};
 }
 
-function renderPulseStrip(events: OntoEvent[]) {
+function createLog(overrides: Partial<ProjectLogEntryWithMeta> = {}): ProjectLogEntryWithMeta {
+	return {
+		id: crypto.randomUUID(),
+		project_id: '11111111-1111-4111-8111-111111111111',
+		entity_type: 'task',
+		entity_id: crypto.randomUUID(),
+		action: 'updated',
+		before_data: null,
+		after_data: null,
+		changed_by: '22222222-2222-4222-8222-222222222222',
+		change_source: 'user',
+		chat_session_id: null,
+		created_at: '2026-05-09T15:00:00.000Z',
+		entity_name: 'Changed task',
+		...overrides
+	};
+}
+
+function renderPulseStrip(events: OntoEvent[], options: { mode?: 'pulse' | 'workspace' } = {}) {
 	render(PulseStrip, {
 		props: {
 			projectId: '11111111-1111-4111-8111-111111111111',
@@ -56,6 +75,7 @@ function renderPulseStrip(events: OntoEvent[]) {
 			milestones: [],
 			goals: [],
 			events,
+			mode: options.mode,
 			onOpenEntity: vi.fn()
 		}
 	});
@@ -65,7 +85,7 @@ describe('PulseStrip', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 		vi.setSystemTime(NOW);
-		fetchProjectLogsMock.mockResolvedValue({ logs: [] });
+		fetchProjectLogsMock.mockResolvedValue({ logs: [], total: 0, hasMore: false });
 	});
 
 	afterEach(() => {
@@ -74,8 +94,8 @@ describe('PulseStrip', () => {
 	});
 
 	// Both mobile (tabbed) and desktop (two-column) layouts are in the DOM,
-	// gated only by CSS. The mobile tab defaults to "Up next" with its panel
-	// rendered, so an upcoming item appears in both layouts.
+	// gated only by CSS. The mobile tab defaults to History, while upcoming
+	// items remain present in the desktop layout.
 	it('does not show events that have already ended in Up next', () => {
 		renderPulseStrip([
 			createEvent({
@@ -106,5 +126,44 @@ describe('PulseStrip', () => {
 		expect(screen.getAllByText('Live planning session').length).toBeGreaterThan(0);
 		expect(screen.getAllByText('now').length).toBeGreaterThan(0);
 		expect(screen.queryByText(/late/i)).not.toBeInTheDocument();
+	});
+
+	it('loads complete history pages in workspace mode', async () => {
+		vi.useRealTimers();
+		fetchProjectLogsMock
+			.mockResolvedValueOnce({
+				logs: [createLog({ id: 'log-1', entity_name: 'First change' })],
+				total: 2,
+				hasMore: true
+			})
+			.mockResolvedValueOnce({
+				logs: [createLog({ id: 'log-2', entity_name: 'Second change' })],
+				total: 2,
+				hasMore: false
+			});
+
+		renderPulseStrip([], { mode: 'workspace' });
+
+		const loadMoreButtons = await screen.findAllByRole('button', {
+			name: 'Load more activity (1/2)'
+		});
+		await fireEvent.click(loadMoreButtons[0]!);
+
+		await waitFor(() => {
+			expect(fetchProjectLogsMock).toHaveBeenLastCalledWith({
+				projectId: '11111111-1111-4111-8111-111111111111',
+				limit: 20,
+				offset: 1
+			});
+			expect(screen.getAllByText('Second change').length).toBeGreaterThan(0);
+		});
+	});
+
+	it('names workspace activity regions and tabs for assistive technology', async () => {
+		vi.useRealTimers();
+		renderPulseStrip([], { mode: 'workspace' });
+
+		expect(screen.getAllByRole('region', { name: 'Project activity' })).toHaveLength(2);
+		expect(screen.getByRole('tablist', { name: 'Project activity views' })).toBeInTheDocument();
 	});
 });

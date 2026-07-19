@@ -14,7 +14,7 @@
 		Search,
 		Target,
 		X
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import type { ProjectLogEntityType } from '@buildos/shared-types';
 
 	type SearchResultEntityType =
@@ -356,7 +356,7 @@
 				aria-expanded={showPanel}
 				aria-activedescendant={highlightedResultId}
 				placeholder="Search docs, tasks, goals, plans, events..."
-				class="h-10 w-full rounded-lg border border-border bg-background pl-9 pr-10 text-sm text-foreground shadow-ink-inner transition-colors placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+				class="h-11 w-full rounded-lg border border-border-strong bg-background pl-9 pr-12 text-base text-foreground shadow-ink-inner transition-colors placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none sm:text-sm"
 				bind:value={query}
 				{disabled}
 				onfocus={handleFocus}
@@ -370,7 +370,7 @@
 			{:else if normalizedQuery}
 				<button
 					type="button"
-					class="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="absolute right-0 top-1/2 inline-flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 					aria-label="Clear project search"
 					onclick={clearSearch}
 				>
@@ -410,7 +410,7 @@
 							id={`${listboxId}-${result.type}-${result.id}`}
 							role="option"
 							aria-selected={index === highlightedIndex}
-							class="group flex w-full items-start gap-2.5 px-3 py-2.5 text-left transition-colors pressable {index ===
+							class="group flex min-h-[44px] w-full items-start gap-2.5 px-3 py-2.5 text-left transition-colors focus:outline-none motion-reduce:transition-none pressable {index ===
 							highlightedIndex
 								? 'bg-muted'
 								: 'hover:bg-muted/60'}"
@@ -432,7 +432,7 @@
 										{resultTitle(result)}
 									</span>
 									<span
-										class="inline-flex shrink-0 items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase {config.badgeClass}"
+										class="inline-flex shrink-0 items-center rounded-md border px-1.5 py-0.5 text-2xs font-semibold uppercase {config.badgeClass}"
 									>
 										{config.label}
 									</span>
@@ -444,11 +444,11 @@
 								{/if}
 								{#if stateLabel || result.type_key}
 									<div
-										class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground"
+										class="mt-1.5 flex flex-wrap items-center gap-1.5 text-2xs text-muted-foreground"
 									>
 										{#if stateLabel}
 											<span
-												class="rounded border border-border bg-muted/40 px-1.5 py-0.5 capitalize"
+												class="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 capitalize"
 											>
 												{stateLabel}
 											</span>

@@ -19,7 +19,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { onMount, onDestroy } from 'svelte';
-	import { Archive, FileText, RefreshCw, Plus } from 'lucide-svelte';
+	import { Archive, ChevronDown, FileText, Plus, RefreshCw, X } from '$lib/icons/lucide';
 	import { toastService } from '$lib/stores/toast.store';
 	import {
 		buildAbsolutePublicPageUrl,
@@ -47,6 +47,7 @@
 
 	interface Props {
 		projectId: string;
+		canEdit?: boolean;
 		onOpenDocument: (id: string) => void;
 		onCreateDocument: (parentId?: string | null) => void;
 		onMoveDocument?: (id: string) => void;
@@ -69,6 +70,7 @@
 
 	let {
 		projectId,
+		canEdit = true,
 		onOpenDocument,
 		onCreateDocument,
 		onMoveDocument,
@@ -623,7 +625,7 @@
 			<button
 				type="button"
 				onclick={() => fetchTree()}
-				class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-accent hover:text-accent/80 transition-colors"
+				class="inline-flex min-h-[44px] items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/10 hover:text-accent/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
 			>
 				<RefreshCw class="w-3.5 h-3.5" />
 				Retry
@@ -639,14 +641,16 @@
 				<p class="text-sm text-foreground">No documents yet</p>
 				<p class="text-xs text-muted-foreground">Add notes, research, or drafts</p>
 			</div>
-			<button
-				type="button"
-				onclick={() => onCreateDocument(null)}
-				class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-accent text-accent-foreground rounded-md hover:bg-accent/90 transition-colors pressable"
-			>
-				<Plus class="w-3.5 h-3.5" />
-				Create Document
-			</button>
+			{#if canEdit}
+				<button
+					type="button"
+					onclick={() => onCreateDocument(null)}
+					class="inline-flex min-h-[44px] items-center gap-1.5 rounded-md bg-accent px-3 py-2 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable"
+				>
+					<Plus class="w-3.5 h-3.5" />
+					Create document
+				</button>
+			{/if}
 		</div>
 	{:else}
 		<!-- Tree view -->
@@ -675,11 +679,6 @@
 			<UnlinkedDocuments
 				documents={unlinked}
 				{onOpenDocument}
-				onLinkDocument={(id) => {
-					// For now, just open the document
-					// TODO: Implement drag-to-link or move modal
-					onOpenDocument(id);
-				}}
 				enableDrag={enableDragDrop}
 				onDragStart={enableDragDrop ? handleDragStart : undefined}
 				onTouchStart={enableDragDrop ? handleTouchStart : undefined}
@@ -693,26 +692,26 @@
 				<button
 					type="button"
 					onclick={() => (archivedExpanded = !archivedExpanded)}
-					class="w-full flex items-center gap-2 px-2 py-1.5 text-left text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+					class="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
+					aria-expanded={archivedExpanded}
+					aria-controls="archived-document-list"
 				>
 					<Archive class="w-3.5 h-3.5" />
-					<span>Archived Documents ({archived.length})</span>
-					<span
-						class="ml-auto text-[10px] transform transition-transform {archivedExpanded
+					<span>Archived documents ({archived.length})</span>
+					<ChevronDown
+						class="ml-auto h-3.5 w-3.5 shrink-0 transition-transform motion-reduce:transition-none {archivedExpanded
 							? 'rotate-180'
 							: ''}"
-					>
-						▼
-					</span>
+					/>
 				</button>
 
 				{#if archivedExpanded}
-					<div class="mt-1 space-y-0.5 pl-2">
+					<div id="archived-document-list" class="mt-1 space-y-0.5 pl-2">
 						{#each archived as doc (doc.id)}
 							<button
 								type="button"
 								onclick={() => onOpenDocument(doc.id)}
-								class="w-full flex items-center gap-2 px-2 py-1.5 text-left text-sm text-muted-foreground hover:text-foreground hover:bg-accent/5 rounded-md transition-colors"
+								class="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent/5 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
 							>
 								<Archive class="w-3.5 h-3.5 text-muted-foreground" />
 								<span class="truncate">{doc.title}</span>
@@ -726,20 +725,24 @@
 		<!-- Cut indicator -->
 		{#if dragDrop?.state.cutNode}
 			<div
-				class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-card border border-border rounded-lg shadow-ink-strong text-sm flex items-center gap-2"
+				class="fixed bottom-20 left-1/2 z-50 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-ink-strong"
+				role="status"
+				aria-live="polite"
 			>
 				<span class="text-muted-foreground">Cut:</span>
-				<span class="font-medium text-foreground">{dragDrop.state.cutNode.title}</span>
-				<span class="text-xs text-muted-foreground ml-2">
+				<span class="min-w-0 truncate font-medium text-foreground">
+					{dragDrop.state.cutNode.title}
+				</span>
+				<span class="ml-2 hidden shrink-0 text-xs text-muted-foreground sm:inline">
 					{navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? '⌘V' : 'Ctrl+V'} to paste
 				</span>
 				<button
 					type="button"
 					onclick={() => dragDrop?.clearCut()}
-					class="ml-2 text-muted-foreground hover:text-foreground"
+					class="ml-1 inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
 					aria-label="Cancel cut"
 				>
-					✕
+					<X class="h-4 w-4" />
 				</button>
 			</div>
 		{/if}
@@ -747,13 +750,15 @@
 		<!-- Undo hint -->
 		{#if showUndoHint}
 			<div
-				class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-accent/10 border border-accent/30 rounded-lg text-sm text-accent flex items-center gap-2 animate-fade-in"
+				class="undo-hint fixed bottom-4 left-1/2 z-50 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-foreground shadow-ink"
+				role="status"
+				aria-live="polite"
 			>
 				<span>Document moved.</span>
 				<button
 					type="button"
 					onclick={() => dragDrop?.undo()}
-					class="font-medium underline underline-offset-2 hover:text-accent/80"
+					class="inline-flex min-h-[44px] shrink-0 items-center rounded-md px-2 font-medium text-accent underline underline-offset-2 transition-colors hover:bg-accent/10 hover:text-accent/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
 				>
 					Undo ({navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? '⌘Z' : 'Ctrl+Z'})
 				</button>
@@ -766,6 +771,7 @@
 		<DocTreeContextMenu
 			position={contextMenuPosition}
 			node={contextMenuNode}
+			{canEdit}
 			onAction={handleContextAction}
 			onClose={closeContextMenu}
 		/>
@@ -788,7 +794,9 @@
 		}
 	}
 
-	:global(.animate-fade-in) {
-		animation: fade-in 0.2s ease-out;
+	@media (prefers-reduced-motion: no-preference) {
+		.undo-hint {
+			animation: fade-in 180ms ease-out;
+		}
 	}
 </style>

@@ -53,7 +53,7 @@
 		Plus,
 		RefreshCw,
 		User
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import { toastService } from '$lib/stores/toast.store';
 	import { getRecentlyCreatedContext } from '$lib/stores/recentlyCreatedContext';
 	import type { Task, TaskState } from '$lib/types/onto';
@@ -545,9 +545,9 @@
 			</div>
 			<div>
 				<p class="text-xs sm:text-sm font-semibold text-foreground">Tasks</p>
-				<p class="text-[10px] sm:text-xs text-muted-foreground">
+				<p class="text-2xs sm:text-xs text-muted-foreground">
 					{activeTaskCount()}
-					active · drag to move
+					project tasks · drag to move
 				</p>
 			</div>
 		</div>
@@ -555,7 +555,7 @@
 			<button
 				type="button"
 				onclick={onCreateTask}
-				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-foreground text-background text-xs font-medium hover:opacity-90 transition pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+				class="inline-flex min-h-[44px] items-center gap-1.5 rounded-md bg-foreground px-2.5 py-1.5 text-xs font-medium text-background transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable"
 			>
 				<Plus class="w-3.5 h-3.5" />
 				New task
@@ -571,6 +571,8 @@
 		{@const isArchive = col.key === 'archived'}
 		{@const activeBucket = col.key === 'archived' ? null : col.key}
 		<div
+			id="task-bucket-{col.key}"
+			tabindex="-1"
 			class="flex flex-col rounded-md border bg-background/60 min-h-[220px] transition-colors
 				{isOver
 				? 'border-foreground/60 bg-foreground/[0.06] ring-1 ring-foreground/20'
@@ -595,7 +597,7 @@
 					<span class="text-sm font-semibold text-foreground truncate">
 						{col.label}
 					</span>
-					<span class="text-[11px] text-muted-foreground shrink-0">
+					<span class="text-2xs shrink-0 text-muted-foreground">
 						{isArchive && archivedLoaded
 							? archivedTotal
 							: col.key !== 'archived'
@@ -603,9 +605,7 @@
 								: items.length}
 					</span>
 				</div>
-				<span
-					class="text-[10px] uppercase tracking-widest text-muted-foreground/60 shrink-0 hidden md:inline"
-				>
+				<span class="micro-label hidden shrink-0 text-muted-foreground/60 md:inline">
 					{col.hint}
 				</span>
 			</div>
@@ -617,7 +617,7 @@
 						type="button"
 						onclick={() => void loadArchived()}
 						disabled={archivedLoading}
-						class="w-full inline-flex items-center justify-center gap-1.5 text-[11px] font-medium text-foreground/80 hover:text-foreground bg-muted/30 hover:bg-muted/60 border border-border/60 rounded-md px-2 py-1.5 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-50"
+						class="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-1.5 text-2xs font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-50 motion-reduce:transition-none pressable"
 					>
 						{#if archivedLoading}
 							<LoaderCircle
@@ -628,7 +628,7 @@
 						{/if}
 					</button>
 					{#if archivedError}
-						<p class="text-[10px] text-destructive mt-1">{archivedError}</p>
+						<p class="mt-1 text-xs text-destructive">{archivedError}</p>
 					{/if}
 				</div>
 			{/if}
@@ -666,7 +666,7 @@
 							ondragend={handleDragEnd}
 							onclick={() => onEditTask(task.id)}
 							title={isArchivedCard ? 'Drag to a state column to restore' : undefined}
-							class="group w-full text-left bg-card border border-border rounded-md px-3 py-2.5 shadow-sm hover:shadow-ink hover:border-foreground/20 transition-all pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset
+							class="group min-h-[44px] w-full rounded-md border border-border bg-card px-3 py-2.5 text-left shadow-ink transition-all hover:border-foreground/20 hover:shadow-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable
 								{isDragging ? 'opacity-40' : ''}
 								{isPending ? 'opacity-70' : ''}
 								{isArchivedCard ? 'opacity-70' : ''}
@@ -690,13 +690,13 @@
 							{#if prio || due || assignee || archivedAt}
 								<div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-2.5">
 									{#if prio && !isArchivedCard}
-										<span class="text-[11px] font-semibold {prio.className}"
+										<span class="text-2xs font-semibold {prio.className}"
 											>{prio.label}</span
 										>
 									{/if}
 									{#if due}
 										<span
-											class="text-[11px] font-medium inline-flex items-center gap-1 {due.isOverdue
+											class="inline-flex items-center gap-1 text-2xs font-medium {due.isOverdue
 												? 'text-destructive'
 												: 'text-muted-foreground'}"
 										>
@@ -710,7 +710,7 @@
 									{/if}
 									{#if assignee && !isArchivedCard}
 										<span
-											class="inline-flex items-center gap-1 text-[11px] text-muted-foreground"
+											class="inline-flex items-center gap-1 text-2xs text-muted-foreground"
 										>
 											<User class="w-3 h-3" />
 											{assignee}
@@ -718,7 +718,7 @@
 									{/if}
 									{#if archivedAt}
 										<span
-											class="inline-flex items-center gap-1 text-[11px] text-muted-foreground/80 italic"
+											class="inline-flex items-center gap-1 text-2xs italic text-muted-foreground/80"
 										>
 											<Clock class="w-3 h-3" />
 											{archivedAt}
@@ -736,7 +736,7 @@
 							type="button"
 							onclick={() => void loadMoreTasks(activeBucket)}
 							disabled={loadingTaskBuckets.has(activeBucket)}
-							class="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-2 text-[11px] font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground pressable disabled:opacity-50"
+							class="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-2 text-2xs font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-50 motion-reduce:transition-none pressable"
 						>
 							{#if loadingTaskBuckets.has(activeBucket)}
 								<LoaderCircle
@@ -749,7 +749,7 @@
 							{/if}
 						</button>
 						{#if taskBucketErrors[activeBucket]}
-							<p class="text-[10px] text-destructive">
+							<p class="text-xs text-destructive">
 								{taskBucketErrors[activeBucket]}
 							</p>
 						{/if}
@@ -761,7 +761,7 @@
 						type="button"
 						onclick={() => void loadArchived(true)}
 						disabled={archivedLoading}
-						class="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-2 text-[11px] font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground pressable disabled:opacity-50"
+						class="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-2 text-2xs font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-50 motion-reduce:transition-none pressable"
 					>
 						{#if archivedLoading}
 							<LoaderCircle
@@ -816,5 +816,10 @@
 	}
 	.task-just-completed {
 		animation: task-completed-pulse 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.task-just-completed {
+			animation: none;
+		}
 	}
 </style>

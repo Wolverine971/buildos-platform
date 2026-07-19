@@ -18,7 +18,14 @@
 -->
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { ChevronRight, FileText, Folder, FolderOpen, Globe, GripVertical } from 'lucide-svelte';
+	import {
+		ChevronRight,
+		FileText,
+		Folder,
+		FolderOpen,
+		Globe,
+		GripVertical
+	} from '$lib/icons/lucide';
 	import type { EnrichedDocTreeNode } from '$lib/types/onto-api';
 	import DocTreeNode from './DocTreeNode.svelte';
 	import type { DragState } from './useDragDrop.svelte';
@@ -141,6 +148,20 @@
 		onContextMenu(e, node);
 	}
 
+	function handleContentKeydown(e: KeyboardEvent) {
+		if (e.key !== 'ContextMenu' && !(e.shiftKey && e.key === 'F10')) return;
+		e.preventDefault();
+		e.stopPropagation();
+		const rect = nodeElement?.getBoundingClientRect();
+		onContextMenu(
+			new MouseEvent('contextmenu', {
+				clientX: rect ? rect.left + Math.min(rect.width / 2, 160) : 0,
+				clientY: rect ? rect.top + rect.height / 2 : 0
+			}),
+			node
+		);
+	}
+
 	// Long-press fallback for touch: oncontextmenu does not fire reliably on iOS/Android.
 	// We listen for pointerdown on touch only, start a 500ms timer, and fire the same
 	// context-menu handler on completion. Movement > 8px or pointerup cancels.
@@ -228,7 +249,6 @@
 	{/if}
 
 	<!-- Node row -->
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		bind:this={nodeElement}
 		data-node-id={node.id}
@@ -254,57 +274,51 @@
 	>
 		<!-- Drag handle (left side only) -->
 		{#if canDrag}
-			<div
-				role="button"
+			<button
+				type="button"
 				tabindex="-1"
 				onmousedown={handleDragHandleMouseDown}
 				ontouchstart={handleDragHandleTouchStart}
-				class="doc-tree-drag-handle flex-shrink-0 flex items-center justify-center w-5 h-7 rounded-sm transition-colors
+				class="doc-tree-drag-handle flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md transition-colors motion-reduce:transition-none
 					{dragState?.isDragging ? 'cursor-grabbing' : 'cursor-grab'}
 					hover:bg-accent/10"
 				aria-label="Drag to reorder"
 				draggable="false"
 			>
 				<GripVertical class="w-3.5 h-3.5 text-muted-foreground/50" />
-			</div>
+			</button>
+		{/if}
+
+		<!-- Expand/collapse is a sibling control so interactive elements never nest. -->
+		{#if isFolder}
+			<button
+				type="button"
+				class="doc-tree-chevron flex min-h-[44px] min-w-[44px] flex-shrink-0 touch-manipulation items-center justify-center rounded-md transition-colors hover:bg-accent/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
+				aria-label={isExpanded ? `Collapse ${node.title}` : `Expand ${node.title}`}
+				aria-expanded={isExpanded}
+				onclick={handleChevronClick}
+			>
+				<ChevronRight
+					class="h-3.5 w-3.5 text-muted-foreground transition-transform duration-150 motion-reduce:transition-none {isExpanded
+						? 'rotate-90'
+						: ''}"
+				/>
+			</button>
+		{:else}
+			<span class="h-11 w-11 flex-shrink-0" aria-hidden="true"></span>
 		{/if}
 
 		<!-- Clickable content area -->
 		<button
 			type="button"
 			onclick={handleClick}
+			onkeydown={handleContentKeydown}
 			onfocus={() => onFocus?.(node.id)}
-			class="doc-tree-node-button flex-1 min-w-0 flex items-center gap-1.5 py-1.5 pr-2 text-left cursor-pointer pressable"
+			class="doc-tree-node-button flex min-h-[44px] min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md pr-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset pressable"
 			draggable="false"
 		>
-			<!-- Expand/collapse chevron (only for folders) -->
-			{#if isFolder}
-				<div
-					role="button"
-					tabindex="0"
-					onclick={handleChevronClick}
-					onkeydown={(e) => {
-						if (e.key === 'Enter' || e.key === ' ') {
-							e.preventDefault();
-							handleChevronClick(e);
-						}
-					}}
-					class="doc-tree-chevron w-6 h-6 sm:w-4 sm:h-4 -m-1 sm:m-0 flex items-center justify-center rounded hover:bg-accent/10 transition-colors flex-shrink-0 cursor-pointer touch-manipulation"
-					aria-label={isExpanded ? 'Collapse' : 'Expand'}
-				>
-					<ChevronRight
-						class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-150 {isExpanded
-							? 'rotate-90'
-							: ''}"
-					/>
-				</div>
-			{:else}
-				<!-- Spacer for alignment when not a folder -->
-				<span class="w-4 h-4 flex-shrink-0"></span>
-			{/if}
-
 			<!-- Icon -->
-			<span class="w-4 h-4 flex items-center justify-center flex-shrink-0">
+			<span class="flex h-4 w-4 flex-shrink-0 items-center justify-center">
 				{#if isFolder}
 					{#if isExpanded}
 						<FolderOpen class="w-4 h-4 text-accent" />
@@ -317,23 +331,20 @@
 			</span>
 
 			<!-- Title -->
-			<span class="truncate text-sm flex-1 min-w-0">
+			<span class="min-w-0 flex-1 truncate text-sm">
 				{node.title}
 			</span>
 
-			<!-- Content indicator - more visible -->
+			<!-- Content indicator -->
 			{#if !isFolder && node.has_content}
-				<span
-					class="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-accent/10 text-accent flex-shrink-0"
-					title="Has content"
-				>
-					<span class="w-1 h-1 rounded-full bg-accent"></span>
+				<span class="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-accent" title="Has content">
+					<span class="sr-only">Has content</span>
 				</span>
 			{/if}
 
 			<!-- Converting indicator -->
 			{#if isConverting}
-				<span class="text-xs text-accent font-medium flex-shrink-0">Drop here</span>
+				<span class="flex-shrink-0 text-xs font-medium text-accent">Drop here</span>
 			{/if}
 		</button>
 
@@ -344,7 +355,7 @@
 				onclick={handleCopyPublicLink}
 				onmousedown={(e) => e.stopPropagation()}
 				ontouchstart={(e) => e.stopPropagation()}
-				class="mr-2 inline-flex min-h-[24px] items-center gap-1 flex-shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold bg-success/10 text-success hover:bg-success/20 transition-colors pressable"
+				class="mr-1 inline-flex min-h-[44px] flex-shrink-0 items-center gap-1 rounded-md bg-success/10 px-2 py-1 text-2xs font-semibold text-success transition-colors hover:bg-success/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
 				aria-label={node.public_slug
 					? `Copy public link for ${node.title}`
 					: 'Copy public link'}
@@ -441,7 +452,6 @@
 		background: hsl(var(--accent));
 		border-radius: 1px;
 		box-shadow: 0 0 6px hsl(var(--accent) / 0.5);
-		animation: pulse-line 0.8s ease-in-out infinite alternate;
 	}
 
 	@keyframes pulse-line {
@@ -498,5 +508,18 @@
 		bottom: 0;
 		width: 1px;
 		background: hsl(var(--card));
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		.doc-tree-insertion-line {
+			animation: pulse-line 0.8s ease-in-out infinite alternate;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.doc-tree-node-row,
+		.doc-tree-drag-handle {
+			transition: none;
+		}
 	}
 </style>

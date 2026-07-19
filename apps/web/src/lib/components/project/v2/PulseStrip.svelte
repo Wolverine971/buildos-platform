@@ -26,7 +26,7 @@
 		ListChecks,
 		Sparkles,
 		Target
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import type { ProjectLogEntityType, ProjectLogEntryWithMeta } from '@buildos/shared-types';
 	import type { Goal, Milestone, OntoEvent, Task } from '$lib/types/onto';
 	import { fetchProjectLogs } from '$lib/components/project/project-page-data-controller';
@@ -51,6 +51,7 @@
 		goals,
 		events,
 		loadActivity = true,
+		mode = 'pulse',
 		onOpenEntity
 	}: {
 		projectId: string;
@@ -59,13 +60,18 @@
 		goals: Goal[];
 		events: OntoEvent[];
 		loadActivity?: boolean;
+		mode?: 'pulse' | 'workspace';
 		onOpenEntity: (kind: ProjectLogEntityType, id: string) => void;
 	} = $props();
 
-	let logs = $state<ProjectLogEntryWithMeta[]>([]);
+	let logs = $state.raw<ProjectLogEntryWithMeta[]>([]);
 	let logsLoading = $state(true);
+	let logsLoadingMore = $state(false);
 	let logsError = $state<string | null>(null);
-	let loadedLogsProjectId = $state<string | null>(null);
+	let logsTotal = $state(0);
+	let logsHasMore = $state(false);
+	let loadedLogsSignature = $state<string | null>(null);
+	let showAllUpcoming = $state(false);
 
 	let mobileTab = $state<'next' | 'recent'>('recent');
 
@@ -83,24 +89,46 @@
 		);
 	}
 
-	async function loadLogs(requestProjectId = projectId) {
-		logsLoading = true;
+	const currentLogsSignature = $derived(`${projectId}:${mode}`);
+	const surfaceLabel = $derived(mode === 'workspace' ? 'Project activity' : 'Project pulse');
+	const viewsLabel = $derived(
+		mode === 'workspace' ? 'Project activity views' : 'Project pulse views'
+	);
+
+	async function loadLogs(
+		requestProjectId = projectId,
+		append = false,
+		requestMode: 'pulse' | 'workspace' = mode
+	) {
+		const requestSignature = `${requestProjectId}:${requestMode}`;
+		if (append) {
+			if (logsLoadingMore || !logsHasMore) return;
+			logsLoadingMore = true;
+		} else {
+			logsLoading = true;
+		}
 		logsError = null;
 		try {
 			const page = await fetchProjectLogs({
 				projectId: requestProjectId,
-				limit: 12,
-				offset: 0
+				limit: requestMode === 'workspace' ? 20 : 12,
+				offset: append ? logs.length : 0
 			});
-			if (projectId !== requestProjectId) return;
-			logs = page.logs;
-			loadedLogsProjectId = requestProjectId;
+			if (currentLogsSignature !== requestSignature) return;
+			logs = append ? [...logs, ...page.logs] : page.logs;
+			logsTotal = page.total;
+			logsHasMore = page.hasMore;
+			loadedLogsSignature = requestSignature;
 		} catch (err) {
-			if (projectId !== requestProjectId) return;
+			if (currentLogsSignature !== requestSignature) return;
 			logsError = err instanceof Error ? err.message : 'Failed to load activity';
 		} finally {
-			if (projectId === requestProjectId) {
-				logsLoading = false;
+			if (currentLogsSignature === requestSignature) {
+				if (append) {
+					logsLoadingMore = false;
+				} else {
+					logsLoading = false;
+				}
 			}
 		}
 	}
@@ -109,13 +137,18 @@
 	// only after the page lets secondary requests start.
 	$effect(() => {
 		const currentProjectId = projectId;
-		if (loadedLogsProjectId !== currentProjectId) {
+		const signature = currentLogsSignature;
+		if (loadedLogsSignature !== signature) {
 			logs = [];
 			logsError = null;
 			logsLoading = true;
+			logsLoadingMore = false;
+			logsTotal = 0;
+			logsHasMore = false;
+			showAllUpcoming = false;
 		}
-		if (!loadActivity || loadedLogsProjectId === currentProjectId) return;
-		void loadLogs(currentProjectId);
+		if (!loadActivity || loadedLogsSignature === signature) return;
+		void loadLogs(currentProjectId, false, mode);
 	});
 
 	// ----------------------------------------------------------------
@@ -137,9 +170,11 @@
 		const seen = new Set<string>();
 		const out: RecentTile[] = [];
 		for (const log of logs) {
-			const key = `${log.entity_type}:${log.entity_id}`;
-			if (seen.has(key)) continue;
-			seen.add(key);
+			const key = mode === 'workspace' ? log.id : `${log.entity_type}:${log.entity_id}`;
+			if (mode === 'pulse') {
+				if (seen.has(key)) continue;
+				seen.add(key);
+			}
 			out.push({
 				key,
 				entityType: log.entity_type,
@@ -150,7 +185,7 @@
 				actor: log.actor_display_name ?? log.changed_by_name ?? null,
 				source: log.change_source ?? null
 			});
-			if (out.length >= 6) break;
+			if (mode === 'pulse' && out.length >= 6) break;
 		}
 		return out;
 	});
@@ -159,7 +194,7 @@
 	// Up Next — upcoming dated work
 	// ----------------------------------------------------------------
 
-	const upcomingItems = $derived.by<UpcomingItem[]>(() => {
+	const allUpcomingItems = $derived.by<UpcomingItem[]>(() => {
 		const items: UpcomingItem[] = [];
 		const nowMs = Date.now();
 
@@ -235,8 +270,15 @@
 			return a.date.getTime() - b.date.getTime();
 		});
 
-		return items.slice(0, 6);
+		return items;
 	});
+	const upcomingItems = $derived(
+		mode === 'workspace'
+			? showAllUpcoming
+				? allUpcomingItems
+				: allUpcomingItems.slice(0, 12)
+			: allUpcomingItems.slice(0, 6)
+	);
 
 	// ----------------------------------------------------------------
 	// Display helpers
@@ -362,9 +404,9 @@
 <!-- Mobile layout (< sm): segmented tabs, one list visible at a time -->
 <section
 	class="sm:hidden bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
-	aria-label="Project pulse"
+	aria-label={surfaceLabel}
 >
-	<div role="tablist" aria-label="Project pulse views" class="flex border-b border-border/60">
+	<div role="tablist" aria-label={viewsLabel} class="flex border-b border-border/60">
 		<button
 			bind:this={mobileTabButtons[0]}
 			role="tab"
@@ -375,7 +417,7 @@
 			tabindex={mobileTab === 'recent' ? 0 : -1}
 			onclick={() => (mobileTab = 'recent')}
 			onkeydown={(e) => onMobileTabKeydown(e, 0)}
-			class="flex-1 px-3 py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {mobileTab ===
+			class="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable {mobileTab ===
 			'recent'
 				? 'text-foreground bg-muted/40 border-b-2 border-accent -mb-px'
 				: 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-b-2 border-transparent'}"
@@ -385,9 +427,11 @@
 					? 'text-foreground'
 					: 'text-muted-foreground'}"
 			/>
-			<span>Recent</span>
-			{#if !logsLoading && recentTiles.length > 0}
-				<span class="text-[10px] text-muted-foreground/80">({recentTiles.length})</span>
+			<span>{mode === 'workspace' ? 'History' : 'Recent'}</span>
+			{#if !logsLoading && (mode === 'workspace' ? logsTotal : recentTiles.length) > 0}
+				<span class="text-2xs text-muted-foreground/80">
+					({mode === 'workspace' ? logsTotal : recentTiles.length})
+				</span>
 			{/if}
 		</button>
 		<button
@@ -400,7 +444,7 @@
 			tabindex={mobileTab === 'next' ? 0 : -1}
 			onclick={() => (mobileTab = 'next')}
 			onkeydown={(e) => onMobileTabKeydown(e, 1)}
-			class="flex-1 px-3 py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {mobileTab ===
+			class="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable {mobileTab ===
 			'next'
 				? 'text-foreground bg-muted/40 border-b-2 border-accent -mb-px'
 				: 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-b-2 border-transparent'}"
@@ -412,7 +456,9 @@
 			/>
 			<span>Up next</span>
 			{#if upcomingItems.length > 0}
-				<span class="text-[10px] text-muted-foreground/80">({upcomingItems.length})</span>
+				<span class="text-2xs text-muted-foreground/80">
+					({mode === 'workspace' ? allUpcomingItems.length : upcomingItems.length})
+				</span>
 			{/if}
 		</button>
 	</div>
@@ -436,7 +482,7 @@
 					<button
 						type="button"
 						onclick={() => onOpenEntity(item.kind, item.id)}
-						class="w-full text-left bg-background hover:bg-muted/50 active:bg-muted border border-border/60 rounded-md px-3 py-2.5 transition-colors pressable min-h-[44px]"
+						class="min-h-[44px] w-full rounded-md border border-border/60 bg-background px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted motion-reduce:transition-none pressable"
 					>
 						<div class="flex items-start gap-2.5 min-w-0">
 							<Icon class="w-4 h-4 mt-0.5 shrink-0 {entityAccent(item.kind)}" />
@@ -444,7 +490,7 @@
 								<p class="text-sm font-medium text-foreground line-clamp-1">
 									{item.title}
 								</p>
-								<p class="text-[11px] mt-0.5 flex items-center gap-1.5 flex-wrap">
+								<p class="mt-0.5 flex flex-wrap items-center gap-1.5 text-2xs">
 									<span class="capitalize text-muted-foreground">{item.kind}</span
 									>
 									<span class="text-muted-foreground/50">·</span>
@@ -468,6 +514,18 @@
 						</div>
 					</button>
 				{/each}
+				{#if mode === 'workspace' && allUpcomingItems.length > 12}
+					<button
+						type="button"
+						class="workspace-list-action"
+						aria-expanded={showAllUpcoming}
+						onclick={() => (showAllUpcoming = !showAllUpcoming)}
+					>
+						{showAllUpcoming
+							? 'Show fewer upcoming items'
+							: `Show all ${allUpcomingItems.length} upcoming items`}
+					</button>
+				{/if}
 			{/if}
 		</div>
 	{:else}
@@ -480,7 +538,7 @@
 			{#if logsLoading}
 				{#each Array(3) as _, i (i)}
 					<div
-						class="h-14 bg-muted/40 border border-border/60 rounded-md animate-pulse"
+						class="h-14 animate-pulse rounded-md border border-border/60 bg-muted/40 motion-reduce:animate-none"
 					></div>
 				{/each}
 			{:else if logsError}
@@ -495,7 +553,7 @@
 					<button
 						type="button"
 						onclick={() => onOpenEntity(tile.entityType, tile.entityId)}
-						class="w-full text-left bg-background hover:bg-muted/50 active:bg-muted border border-border/60 rounded-md px-3 py-2.5 transition-colors pressable min-h-[44px]"
+						class="min-h-[44px] w-full rounded-md border border-border/60 bg-background px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted motion-reduce:transition-none pressable"
 					>
 						<div class="flex items-start gap-2.5 min-w-0">
 							<Icon class="w-4 h-4 mt-0.5 shrink-0 {entityAccent(tile.entityType)}" />
@@ -503,7 +561,7 @@
 								<p class="text-sm font-medium text-foreground line-clamp-1">
 									{tile.name}
 								</p>
-								<p class="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
+								<p class="mt-0.5 line-clamp-1 text-2xs text-muted-foreground">
 									<span>{activityActorPhrase(tile)}</span>
 									<span class="mx-1 text-muted-foreground/50">·</span>
 									<span class="capitalize">{tile.entityType}</span>
@@ -514,16 +572,25 @@
 						</div>
 					</button>
 				{/each}
+				{#if mode === 'workspace' && logsHasMore}
+					<button
+						type="button"
+						class="workspace-list-action"
+						disabled={logsLoadingMore}
+						onclick={() => void loadLogs(projectId, true, mode)}
+					>
+						{logsLoadingMore
+							? 'Loading more activity…'
+							: `Load more activity (${logs.length}/${logsTotal})`}
+					</button>
+				{/if}
 			{/if}
 		</div>
 	{/if}
 </section>
 
 <!-- Desktop layout (sm+): side-by-side at md+, stacked at sm -->
-<section
-	class="hidden sm:grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4"
-	aria-label="Project pulse"
->
+<section class="hidden sm:grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4" aria-label={surfaceLabel}>
 	<!-- Recently Done -->
 	<div
 		class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
@@ -536,15 +603,19 @@
 					<History class="w-3.5 h-3.5 text-muted-foreground" />
 				</div>
 				<div>
-					<p class="text-xs sm:text-sm font-semibold text-foreground">Recent activity</p>
-					<p class="text-[10px] sm:text-xs text-muted-foreground">
-						What's moved in the last few days
+					<p class="text-xs sm:text-sm font-semibold text-foreground">
+						{mode === 'workspace' ? 'Change history' : 'Recent activity'}
+					</p>
+					<p class="text-2xs text-muted-foreground sm:text-xs">
+						{mode === 'workspace'
+							? 'Recorded changes across this project'
+							: "What's moved in the last few days"}
 					</p>
 				</div>
 			</div>
 			{#if !logsLoading}
-				<span class="text-[10px] uppercase tracking-widest text-muted-foreground/70">
-					{recentTiles.length}
+				<span class="micro-label text-muted-foreground/70">
+					{mode === 'workspace' ? logsTotal : recentTiles.length}
 				</span>
 			{/if}
 		</header>
@@ -553,7 +624,7 @@
 			{#if logsLoading}
 				{#each Array(3) as _, i (i)}
 					<div
-						class="h-12 bg-muted/40 border border-border/60 rounded-md animate-pulse"
+						class="h-12 animate-pulse rounded-md border border-border/60 bg-muted/40 motion-reduce:animate-none"
 					></div>
 				{/each}
 			{:else if logsError}
@@ -568,7 +639,7 @@
 					<button
 						type="button"
 						onclick={() => onOpenEntity(tile.entityType, tile.entityId)}
-						class="group w-full text-left bg-background hover:bg-muted/50 border border-border/60 hover:border-border rounded-md px-2.5 py-2 transition-colors pressable"
+						class="group min-h-[44px] w-full rounded-md border border-border/60 bg-background px-2.5 py-2 text-left transition-colors hover:border-border hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
 					>
 						<div class="flex items-start gap-2 min-w-0">
 							<Icon
@@ -581,7 +652,7 @@
 									{tile.name}
 								</p>
 								<p
-									class="text-[10px] sm:text-xs text-muted-foreground mt-0.5 line-clamp-1"
+									class="mt-0.5 line-clamp-1 text-2xs text-muted-foreground sm:text-xs"
 								>
 									<span>{activityActorPhrase(tile)}</span>
 									<span class="mx-1 text-muted-foreground/50">·</span>
@@ -599,6 +670,18 @@
 						</div>
 					</button>
 				{/each}
+				{#if mode === 'workspace' && logsHasMore}
+					<button
+						type="button"
+						class="workspace-list-action"
+						disabled={logsLoadingMore}
+						onclick={() => void loadLogs(projectId, true, mode)}
+					>
+						{logsLoadingMore
+							? 'Loading more activity…'
+							: `Load more activity (${logs.length}/${logsTotal})`}
+					</button>
+				{/if}
 			{/if}
 		</div>
 	</div>
@@ -616,14 +699,14 @@
 				</div>
 				<div>
 					<p class="text-xs sm:text-sm font-semibold text-foreground">Up next</p>
-					<p class="text-[10px] sm:text-xs text-muted-foreground">
+					<p class="text-2xs text-muted-foreground sm:text-xs">
 						Scheduled tasks, milestones, goals &amp; events
 					</p>
 				</div>
 			</div>
 			{#if upcomingItems.length > 0}
-				<span class="text-[10px] uppercase tracking-widest text-muted-foreground/70">
-					{upcomingItems.length}
+				<span class="micro-label text-muted-foreground/70">
+					{mode === 'workspace' ? allUpcomingItems.length : upcomingItems.length}
 				</span>
 			{/if}
 		</header>
@@ -641,7 +724,7 @@
 					<button
 						type="button"
 						onclick={() => onOpenEntity(item.kind, item.id)}
-						class="group w-full text-left bg-background hover:bg-muted/50 border border-border/60 hover:border-border rounded-md px-2.5 py-2 transition-colors pressable"
+						class="group min-h-[44px] w-full rounded-md border border-border/60 bg-background px-2.5 py-2 text-left transition-colors hover:border-border hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
 					>
 						<div class="flex items-start gap-2 min-w-0">
 							<Icon class="w-3.5 h-3.5 mt-0.5 shrink-0 {entityAccent(item.kind)}" />
@@ -651,7 +734,7 @@
 								>
 									{item.title}
 								</p>
-								<p class="text-[10px] sm:text-xs mt-0.5 flex items-center gap-1.5">
+								<p class="mt-0.5 flex items-center gap-1.5 text-2xs sm:text-xs">
 									<span class="capitalize text-muted-foreground">{item.kind}</span
 									>
 									<span class="text-muted-foreground/50">·</span>
@@ -679,7 +762,57 @@
 						</div>
 					</button>
 				{/each}
+				{#if mode === 'workspace' && allUpcomingItems.length > 12}
+					<button
+						type="button"
+						class="workspace-list-action"
+						aria-expanded={showAllUpcoming}
+						onclick={() => (showAllUpcoming = !showAllUpcoming)}
+					>
+						{showAllUpcoming
+							? 'Show fewer upcoming items'
+							: `Show all ${allUpcomingItems.length} upcoming items`}
+					</button>
+				{/if}
 			{/if}
 		</div>
 	</div>
 </section>
+
+<style>
+	.workspace-list-action {
+		display: inline-flex;
+		min-height: 44px;
+		width: 100%;
+		align-items: center;
+		justify-content: center;
+		border-radius: 0.5rem;
+		padding: 0.5rem 0.75rem;
+		color: hsl(var(--accent));
+		font-size: 0.75rem;
+		font-weight: 600;
+		transition:
+			background-color 120ms ease,
+			color 120ms ease;
+	}
+
+	.workspace-list-action:hover:not(:disabled) {
+		background: hsl(var(--accent) / 0.08);
+	}
+
+	.workspace-list-action:focus-visible {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: -2px;
+	}
+
+	.workspace-list-action:disabled {
+		cursor: wait;
+		opacity: 0.6;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.workspace-list-action {
+			transition: none;
+		}
+	}
+</style>

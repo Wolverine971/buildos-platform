@@ -4,7 +4,7 @@
 	updated externally (detected via polling)
 -->
 <script lang="ts">
-	import { RefreshCw, X } from 'lucide-svelte';
+	import { RefreshCw, X } from '$lib/icons/lucide';
 
 	interface Props {
 		onRefresh: () => void;
@@ -15,23 +15,25 @@
 </script>
 
 <div
-	class="flex items-center gap-3 px-3 py-2 mb-2 bg-accent/10 border border-accent/30 rounded-lg text-sm"
+	class="mb-2 flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-sm"
+	role="status"
+	aria-live="polite"
 >
 	<RefreshCw class="w-4 h-4 text-accent flex-shrink-0" />
-	<span class="flex-1 text-foreground">Document tree has been updated.</span>
+	<span class="min-w-0 flex-1 text-foreground">Document tree has been updated.</span>
 	<div class="flex items-center gap-1">
 		<button
 			type="button"
 			onclick={onRefresh}
-			class="px-2 py-1 text-xs font-medium text-accent hover:text-accent/80 hover:bg-accent/10 rounded transition-colors"
+			class="inline-flex min-h-[44px] items-center rounded-md px-2 text-xs font-medium text-accent transition-colors hover:bg-accent/10 hover:text-accent/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
 		>
 			Refresh
 		</button>
 		<button
 			type="button"
 			onclick={onDismiss}
-			class="p-1 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded transition-colors"
-			aria-label="Dismiss"
+			class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
+			aria-label="Dismiss document tree update"
 		>
 			<X class="w-3.5 h-3.5" />
 		</button>
