@@ -45,6 +45,16 @@ export interface JSONRequestOptions<T = unknown> {
 	timeoutMs?: number;
 	/** Provider-supported reasoning controls (for example OpenRouter `reasoning.effort`). */
 	reasoning?: ReasoningOptions;
+	/**
+	 * Hardens a single paid request against in-flight overshoot. SmartLLM chooses
+	 * one catalog-priced model, conservatively reserves prompt cost, caps output
+	 * tokens, and disables model/parse retries for this request.
+	 */
+	spendLimit?: {
+		maxCostUsd: number;
+		minOutputTokens?: number;
+		safetyMultiplier?: number;
+	};
 	validation?: {
 		retryOnParseError?: boolean;
 		validateSchema?: boolean;

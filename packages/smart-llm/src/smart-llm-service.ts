@@ -58,6 +58,7 @@ import {
 	normalizeStreamingContent,
 	repairTruncatedJSONResponse
 } from './response-parsing';
+import { planJSONRequestSpend } from './spend-guard';
 import { ToolCallAssembler, resolveToolCallAssemblerProfile } from './tool-call-assembler';
 import {
 	coerceAudioInput,
@@ -437,6 +438,7 @@ export class SmartLLMService {
 		reasoning?: unknown;
 		stream?: boolean;
 		transforms?: string[];
+		providerMaxPrice?: { prompt: number; completion: number };
 	}): Promise<{
 		response: OpenRouterResponse;
 		route: ProviderRoute;
@@ -476,7 +478,12 @@ export class SmartLLMService {
 			reasoning: params.reasoning,
 			stream: params.stream,
 			transforms: params.transforms,
-			provider: OPENROUTER_PRIVATE_PROVIDER
+			provider: params.providerMaxPrice
+				? {
+						...OPENROUTER_PRIVATE_PROVIDER,
+						max_price: params.providerMaxPrice
+					}
+				: OPENROUTER_PRIVATE_PROVIDER
 		});
 		response.model = response.model ? this.canonicalizeModelId(response.model) : params.model;
 		return { response, route };
@@ -554,7 +561,7 @@ export class SmartLLMService {
 			.map((model) => model?.trim())
 			.filter((model): model is string => Boolean(model));
 		const profileModels = selectJSONModels(profile, complexity, options.requirements);
-		const preferredModels =
+		let preferredModels =
 			requestedModels.length > 0
 				? Array.from(new Set([...requestedModels, ...profileModels]))
 				: profileModels;
@@ -566,6 +573,22 @@ export class SmartLLMService {
 			{ role: 'user', content: options.userPrompt }
 		];
 		const transforms = this.resolveTransforms(messages);
+		const spendPlan = options.spendLimit
+			? planJSONRequestSpend({
+					models: preferredModels,
+					systemPrompt: enhancedSystemPrompt,
+					userPrompt: options.userPrompt,
+					requestedMaxTokens: options.maxTokens ?? 8192,
+					maxCostUsd: options.spendLimit.maxCostUsd,
+					minOutputTokens: options.spendLimit.minOutputTokens,
+					safetyMultiplier: options.spendLimit.safetyMultiplier
+				})
+			: null;
+		if (spendPlan) {
+			// A budgeted request is one reserved attempt. Fallbacks and repair
+			// retries would be separate paid calls without separate reservations.
+			preferredModels = [spendPlan.model];
+		}
 
 		let lastError: Error | null = null;
 		let retryCount = 0;
@@ -577,7 +600,8 @@ export class SmartLLMService {
 		let lastResponse: OpenRouterResponse | null = null;
 		let lastRequestedModel = baseModel;
 		let lastRequestApiUrl = this.apiUrl;
-		const maxTokens = options.maxTokens ?? 8192;
+		let usageReported = false;
+		const maxTokens = spendPlan?.maxTokens ?? options.maxTokens ?? 8192;
 
 		// Make the OpenRouter API call with model routing + local fallbacks
 		try {
@@ -609,7 +633,8 @@ export class SmartLLMService {
 						reasoning: options.reasoning,
 						max_tokens: maxTokens,
 						timeoutMs: options.timeoutMs ?? this.defaultTimeoutMs,
-						transforms
+						transforms,
+						providerMaxPrice: spendPlan?.providerMaxPrice
 					});
 					const response = completion.response;
 					lastRequestApiUrl = completion.route.apiUrl;
@@ -679,7 +704,11 @@ export class SmartLLMService {
 						}
 
 						// If validation is enabled and parse failed, we can retry with a more powerful model
-						if (options.validation?.retryOnParseError && retryCount < maxRetries) {
+						if (
+							!spendPlan &&
+							options.validation?.retryOnParseError &&
+							retryCount < maxRetries
+						) {
 							retryCount++;
 							console.log(
 								`Retrying with powerful model (attempt ${retryCount}/${maxRetries})`
@@ -794,6 +823,13 @@ export class SmartLLMService {
 						? ((responseForLogging.usage?.completion_tokens || 0) / 1_000_000) *
 							modelConfig.outputCost
 						: 0;
+					const reportedTotalCost =
+						typeof responseForLogging.usage?.cost === 'number' &&
+						Number.isFinite(responseForLogging.usage.cost) &&
+						responseForLogging.usage.cost >= 0
+							? responseForLogging.usage.cost
+							: null;
+					const totalCost = reportedTotalCost ?? inputCost + outputCost;
 
 					console.log(`JSON Response Success:
 				Model: ${actualModel}
@@ -809,10 +845,11 @@ export class SmartLLMService {
 						totalTokens: responseForLogging.usage?.total_tokens || 0,
 						inputCost,
 						outputCost,
-						totalCost: inputCost + outputCost
+						totalCost
 					};
 
 					if (typeof options.onUsage === 'function') {
+						usageReported = true;
 						await options.onUsage(usageEvent);
 					}
 
@@ -842,7 +879,7 @@ export class SmartLLMService {
 							totalTokens: responseForLogging.usage?.total_tokens || 0,
 							inputCost,
 							outputCost,
-							totalCost: inputCost + outputCost,
+							totalCost,
 							responseTimeMs: Math.round(duration),
 							requestStartedAt,
 							requestCompletedAt,
@@ -920,6 +957,57 @@ export class SmartLLMService {
 			const requestCompletedAt = new Date();
 			const modelsAttempted = Array.from(attemptedModels);
 			const lastModel = lastResponse?.model || lastRequestedModel || baseModel;
+			const failurePricing = resolveModelPricingProfile(lastModel, [
+				lastRequestedModel,
+				baseModel
+			]);
+			const failurePromptTokens =
+				lastResponse?.usage?.prompt_tokens ??
+				(spendPlan ? spendPlan.estimatedInputTokens : 0);
+			const failureCompletionTokens =
+				lastResponse?.usage?.completion_tokens ?? (spendPlan ? spendPlan.maxTokens : 0);
+			const failureTotalTokens =
+				lastResponse?.usage?.total_tokens ?? failurePromptTokens + failureCompletionTokens;
+			const hasFailureTokenUsage =
+				typeof lastResponse?.usage?.prompt_tokens === 'number' &&
+				typeof lastResponse.usage.completion_tokens === 'number';
+			const failureInputCost =
+				hasFailureTokenUsage && failurePricing
+					? (failurePromptTokens / 1_000_000) * failurePricing.profile.cost
+					: 0;
+			const failureOutputCost =
+				hasFailureTokenUsage && failurePricing
+					? (failureCompletionTokens / 1_000_000) * failurePricing.profile.outputCost
+					: 0;
+			const failureReportedCost =
+				typeof lastResponse?.usage?.cost === 'number' &&
+				Number.isFinite(lastResponse.usage.cost) &&
+				lastResponse.usage.cost >= 0
+					? lastResponse.usage.cost
+					: null;
+			const failureTotalCost =
+				hasFailureTokenUsage && failurePricing
+					? (failureReportedCost ?? failureInputCost + failureOutputCost)
+					: (spendPlan?.reservedCostUsd ?? 0);
+			const accountedFailureInputCost =
+				hasFailureTokenUsage && failurePricing ? failureInputCost : failureTotalCost;
+			const accountedFailureOutputCost =
+				hasFailureTokenUsage && failurePricing ? failureOutputCost : 0;
+			if (spendPlan && !usageReported && typeof options.onUsage === 'function') {
+				// A strict-budget call has no unreserved retry. If the provider
+				// returned usage, settle to it; otherwise charge the full reservation
+				// because a lost/timeout response may still have been accepted.
+				usageReported = true;
+				await options.onUsage({
+					model: lastModel,
+					promptTokens: failurePromptTokens,
+					completionTokens: failureCompletionTokens,
+					totalTokens: failureTotalTokens,
+					inputCost: accountedFailureInputCost,
+					outputCost: accountedFailureOutputCost,
+					totalCost: failureTotalCost
+				});
+			}
 			const emptyContentDetails =
 				error instanceof OpenRouterEmptyContentError ? error.details : undefined;
 			const openrouterErrorDetails =
@@ -965,12 +1053,12 @@ export class SmartLLMService {
 					operationType: options.operationType || 'other',
 					modelRequested: baseModel,
 					modelUsed: lastModel,
-					promptTokens: 0,
-					completionTokens: 0,
-					totalTokens: 0,
-					inputCost: 0,
-					outputCost: 0,
-					totalCost: 0,
+					promptTokens: failurePromptTokens,
+					completionTokens: failureCompletionTokens,
+					totalTokens: failureTotalTokens,
+					inputCost: accountedFailureInputCost,
+					outputCost: accountedFailureOutputCost,
+					totalCost: failureTotalCost,
 					responseTimeMs: Math.round(duration),
 					requestStartedAt,
 					requestCompletedAt,

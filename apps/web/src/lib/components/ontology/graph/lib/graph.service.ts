@@ -390,13 +390,16 @@ const GRAPH_NODE_ICON_PATHS: Record<GraphNodeIcon, string[]> = {
 };
 
 /**
- * Inline canonical entity glyphs as fully encoded data URIs. Cytoscape paints
- * these inside the semantic node silhouettes without adding DOM overlays.
+ * Inline canonical entity glyphs as fully encoded data URIs. The explicit
+ * square dimensions give Cytoscape a stable intrinsic aspect ratio, while the
+ * translated 24px drawing leaves 4px of transparent padding on every side.
  */
 function buildNodeIconDataUri(icon: GraphNodeIcon, stroke: string): string {
 	const svg = [
-		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`,
+		`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`,
+		'<g transform="translate(4 4)">',
 		...GRAPH_NODE_ICON_PATHS[icon],
+		'</g>',
 		'</svg>'
 	].join('');
 
@@ -790,7 +793,6 @@ export class OntologyGraphService {
 					size: config.baseWidth,
 					shape: config.shape,
 					iconImage,
-					iconSize: 28,
 					fontSize: config.fontSize,
 					fontWeight: config.fontWeight ?? 400,
 					labelValign: config.labelValign,
@@ -836,7 +838,6 @@ export class OntologyGraphService {
 					size: config.baseWidth,
 					shape: config.shape,
 					iconImage,
-					iconSize: 16,
 					fontSize: config.fontSize,
 					fontWeight: config.fontWeight ?? 400,
 					labelValign: config.labelValign,
@@ -919,7 +920,6 @@ export class OntologyGraphService {
 					size: config.baseWidth,
 					shape: config.shape,
 					iconImage,
-					iconSize: 16,
 					fontSize: config.fontSize,
 					fontWeight: config.fontWeight ?? 400,
 					labelValign: config.labelValign,
@@ -960,7 +960,6 @@ export class OntologyGraphService {
 					size: config.baseWidth,
 					shape: config.shape,
 					iconImage,
-					iconSize: 17,
 					fontSize: config.fontSize,
 					fontWeight: config.fontWeight ?? 400,
 					labelValign: config.labelValign,
@@ -1012,7 +1011,6 @@ export class OntologyGraphService {
 					size: config.baseWidth,
 					shape: config.shape,
 					iconImage,
-					iconSize: 17,
 					fontSize: config.fontSize,
 					fontWeight: config.fontWeight ?? 400,
 					labelValign: config.labelValign,

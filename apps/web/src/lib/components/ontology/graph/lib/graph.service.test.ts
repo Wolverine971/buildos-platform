@@ -68,7 +68,7 @@ describe('OntologyGraphService label display data', () => {
 		expect(displayLines.every((line) => line.length <= 18)).toBe(true);
 		expect(displayLines.at(-1)).toMatch(/…$/);
 		expect(taskNode?.data.labelBackgroundOpacity).toBeGreaterThan(0);
-		expect(taskNode?.data.iconSize).toBeGreaterThan(0);
+		expect(taskNode?.data.iconImage).toMatch(/^data:image\/svg\+xml,/);
 	});
 
 	it('sizes centered plan nodes to contain multi-line labels without label backgrounds', () => {
@@ -127,10 +127,10 @@ describe('OntologyGraphService label display data', () => {
 
 		expect(iconImage).toMatch(/^data:image\/svg\+xml,%3Csvg/);
 		expect(iconImage).not.toMatch(/[<>"'\s]/);
-		expect(decodeURIComponent(iconImage.replace(/^data:image\/svg\+xml,/, ''))).toContain(
-			'xmlns="http://www.w3.org/2000/svg"'
-		);
-		expect(goalNode?.data.iconSize).toBeLessThan(goalNode?.data.width ?? 0);
+		const decodedIcon = decodeURIComponent(iconImage.replace(/^data:image\/svg\+xml,/, ''));
+		expect(decodedIcon).toContain('xmlns="http://www.w3.org/2000/svg"');
+		expect(decodedIcon).toContain('width="32" height="32" viewBox="0 0 32 32"');
+		expect(decodedIcon).toContain('<g transform="translate(4 4)">');
 	});
 
 	it('keeps every entity label at the readable graph type floor', () => {
@@ -165,8 +165,10 @@ describe('OntologyGraphService label display data', () => {
 
 		for (const node of [milestone, risk]) {
 			expect(node?.data.iconImage).toMatch(/^data:image\/svg\+xml,/);
-			expect(node?.data.iconSize).toBeGreaterThan(0);
-			expect(node?.data.iconSize).toBeLessThan(node?.data.width ?? 0);
+			const decodedIcon = decodeURIComponent(
+				(node?.data.iconImage ?? '').replace(/^data:image\/svg\+xml,/, '')
+			);
+			expect(decodedIcon).toContain('width="32" height="32"');
 		}
 	});
 

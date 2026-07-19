@@ -33,6 +33,7 @@ function buildJSONCompletion(params: {
 	content: string | null;
 	finishReason?: string;
 	provider?: string;
+	cost?: number;
 }): Response {
 	return new Response(
 		JSON.stringify({
@@ -48,7 +49,8 @@ function buildJSONCompletion(params: {
 			usage: {
 				prompt_tokens: 10,
 				completion_tokens: 5,
-				total_tokens: 15
+				total_tokens: 15,
+				...(params.cost === undefined ? {} : { cost: params.cost })
 			}
 		}),
 		{
@@ -783,6 +785,89 @@ describe('SmartLLMService model failover', () => {
 });
 
 describe('SmartLLMService JSON model recovery', () => {
+	it('uses one priced attempt with a bounded output when a spend limit is supplied', async () => {
+		const requestBodies: Array<Record<string, unknown>> = [];
+		const onUsage = vi.fn();
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+			requestBodies.push(body);
+			return buildJSONCompletion({
+				model: GLM_52_MODEL,
+				content: 'not valid JSON',
+				provider: 'Z.AI',
+				cost: 0.003
+			});
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await expect(
+			llm.getJSONResponse({
+				systemPrompt: 'Return JSON.',
+				userPrompt: 'Analyze within the reserved envelope.',
+				userId: 'user-budgeted-json',
+				profile: 'powerful',
+				maxTokens: 100_000,
+				spendLimit: { maxCostUsd: 0.01, minOutputTokens: 128 },
+				validation: { retryOnParseError: true, maxRetries: 5 },
+				onUsage
+			})
+		).rejects.toThrow();
+
+		expect(fetchMock).toHaveBeenCalledOnce();
+		expect(requestBodies[0]?.model).toBe(GLM_52_MODEL);
+		expect(requestBodies[0]).not.toHaveProperty('models');
+		expect(requestBodies[0]?.max_tokens).toEqual(expect.any(Number));
+		expect(requestBodies[0]?.max_tokens).toBeLessThan(100_000);
+		expect(requestBodies[0]?.provider).toMatchObject({
+			max_price: expect.objectContaining({
+				prompt: expect.any(Number),
+				completion: expect.any(Number)
+			})
+		});
+		expect(onUsage).toHaveBeenCalledOnce();
+		expect(onUsage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				model: GLM_52_MODEL,
+				totalTokens: 15,
+				totalCost: expect.any(Number)
+			})
+		);
+		expect(onUsage.mock.calls[0]?.[0]?.totalCost).toBe(0.003);
+	});
+
+	it('charges the reservation when a strict-budget response is lost', async () => {
+		const onUsage = vi.fn();
+		const fetchMock = vi.fn(async () => {
+			return new Response(JSON.stringify({ error: { message: 'upstream timeout' } }), {
+				status: 504,
+				headers: { 'content-type': 'application/json' }
+			});
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await expect(
+			llm.getJSONResponse({
+				systemPrompt: 'Return JSON.',
+				userPrompt: 'Use one bounded attempt.',
+				userId: 'user-lost-response',
+				profile: 'powerful',
+				spendLimit: { maxCostUsd: 0.01 },
+				onUsage
+			})
+		).rejects.toThrow();
+
+		expect(fetchMock).toHaveBeenCalledOnce();
+		expect(onUsage).toHaveBeenCalledOnce();
+		expect(onUsage.mock.calls[0]?.[0]?.totalCost).toBeGreaterThan(0);
+		expect(onUsage.mock.calls[0]?.[0]?.totalCost).toBeLessThanOrEqual(0.01);
+	});
+
 	it('keeps an explicitly requested model first and retains profile fallbacks', async () => {
 		const requestBodies: Array<Record<string, unknown>> = [];
 		const errorLogger = {

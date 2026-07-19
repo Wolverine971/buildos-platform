@@ -20,6 +20,9 @@ const MIN_TOTAL_TOOL_CALLS = DEEP_RESEARCH_CHILD_COUNT * 2;
 const MIN_SYNTHESIS_BUDGET_USD = 0.02;
 const MIN_CHILD_BUDGET_USD = 0.02;
 const CHILD_RESULT_MAX_CHARS = 14_000;
+const PLANNER_BUDGET_FRACTION = 0.15;
+const MIN_PLANNER_OUTPUT_TOKENS = 256;
+const MIN_SYNTHESIS_OUTPUT_TOKENS = 512;
 
 const SETTLED_CHILD_STATUSES = new Set<AgentRunStatus>([
 	'completed',
@@ -63,6 +66,9 @@ export type UsageSnapshot = {
 	tokens: number;
 	cost: number;
 	toolCalls: number;
+	llmCost?: number;
+	paidToolCost?: number;
+	tavilyCredits?: number;
 };
 
 export type ChildEvidence = Pick<
@@ -380,7 +386,20 @@ function childMetrics(child: ChildEvidence): UsageSnapshot {
 		toolCalls:
 			typeof metrics?.tool_calls === 'number' && Number.isFinite(metrics.tool_calls)
 				? metrics.tool_calls
-				: 0
+				: 0,
+		llmCost:
+			typeof metrics?.llm_cost_usd === 'number' && Number.isFinite(metrics.llm_cost_usd)
+				? metrics.llm_cost_usd
+				: undefined,
+		paidToolCost:
+			typeof metrics?.paid_tool_cost_usd === 'number' &&
+			Number.isFinite(metrics.paid_tool_cost_usd)
+				? metrics.paid_tool_cost_usd
+				: undefined,
+		tavilyCredits:
+			typeof metrics?.tavily_credits === 'number' && Number.isFinite(metrics.tavily_credits)
+				? metrics.tavily_credits
+				: undefined
 	};
 }
 
@@ -439,6 +458,9 @@ async function persistState(
 		patch.metrics = {
 			tokens: usage.tokens,
 			cost_usd: usage.cost,
+			llm_cost_usd: usage.llmCost ?? usage.cost,
+			paid_tool_cost_usd: usage.paidToolCost ?? 0,
+			tavily_credits: usage.tavilyCredits ?? 0,
 			tool_calls: usage.toolCalls
 		};
 	}
@@ -667,6 +689,15 @@ export async function processDeepResearchCoordinator(params: {
 
 		let rawPlan: PlannerResponse;
 		try {
+			const plannerSpendLimitUsd = Math.min(
+				budget.maxCostUsd * PLANNER_BUDGET_FRACTION,
+				Math.max(
+					0,
+					budget.maxCostUsd -
+						MIN_SYNTHESIS_BUDGET_USD -
+						DEEP_RESEARCH_CHILD_COUNT * MIN_CHILD_BUDGET_USD
+				)
+			);
 			rawPlan = await params.llm.getJSONResponse<PlannerResponse>({
 				systemPrompt: [
 					'You are the coordinator for a bounded deep-research run.',
@@ -688,6 +719,10 @@ export async function processDeepResearchCoordinator(params: {
 				profile: 'powerful',
 				reasoning: { effort: 'high', exclude: false },
 				maxTokens: 2500,
+				spendLimit: {
+					maxCostUsd: plannerSpendLimitUsd,
+					minOutputTokens: MIN_PLANNER_OUTPUT_TOKENS
+				},
 				validation: { retryOnParseError: true, maxRetries: 1 },
 				operationType: 'agent_run_deep_research_plan',
 				metadata: { agent_run_id: params.run.id, stage: 'planning' },
@@ -695,7 +730,8 @@ export async function processDeepResearchCoordinator(params: {
 					params.addUsage({
 						tokens: usage?.totalTokens ?? 0,
 						cost: usage?.totalCost ?? 0,
-						toolCalls: 0
+						toolCalls: 0,
+						llmCost: usage?.totalCost ?? 0
 					});
 				}
 			});
@@ -844,6 +880,10 @@ export async function processDeepResearchCoordinator(params: {
 			profile: 'powerful',
 			reasoning: { effort: 'high', exclude: false },
 			maxTokens: 6000,
+			spendLimit: {
+				maxCostUsd: remainingBudget,
+				minOutputTokens: MIN_SYNTHESIS_OUTPUT_TOKENS
+			},
 			validation: { retryOnParseError: true, maxRetries: 1 },
 			operationType: 'agent_run_deep_research_synthesis',
 			metadata: {
@@ -855,7 +895,8 @@ export async function processDeepResearchCoordinator(params: {
 				params.addUsage({
 					tokens: usage?.totalTokens ?? 0,
 					cost: usage?.totalCost ?? 0,
-					toolCalls: 0
+					toolCalls: 0,
+					llmCost: usage?.totalCost ?? 0
 				});
 			}
 		});

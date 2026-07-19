@@ -171,8 +171,31 @@ simultaneous child inserts, unsafe permissions/budgets, capacity reservation, co
 exactly-once synthesis wakeup, and the fast-child race.
 
 Still open: deployed Tavily-backed end-to-end smoke, typed claim/source evidence, report-document
-persistence, paid web-tool accounting and atomic spend reservations, per-user daily limits,
-stranded-run reconciliation, worker read batching, and research quality/citation evals.
+persistence, a durable atomic/provider-reconciled cost ledger, per-user daily limits, stranded-run
+reconciliation, worker read batching, and research quality/citation evals.
+
+## ADDENDUM 2026-07-19: Paid-search accounting and in-flight LLM bounds implemented
+
+The first application-level cost hardening pass is now implemented locally:
+
+- Tavily's response `usage.credits` is counted at no less than the current public PAYG price of
+  `$0.008/credit`. Missing/malformed usage falls back conservatively to the documented Search
+  charge (basic = 1 credit, advanced = 2 credits).
+- Search cost is reserved before dispatch. Once dispatched, the reservation is charged even when
+  the response times out/fails because response failure is not evidence that Tavily did not bill.
+- Child metrics expose paid-tool cost and credits; the coordinator includes each child's total in
+  the root's `$0.50` default ceiling.
+- Every budgeted Agent Run JSON call is converted to one priced attempt. The shared LLM layer uses
+  a conservative prompt reservation, caps `max_tokens` to the per-call remaining envelope, removes
+  model fallbacks and parse retries, and adds OpenRouter provider `max_price` filtering.
+- Planner and synthesis calls receive stage-specific remaining-budget envelopes; ordinary child
+  loop calls may reserve at most `$0.04` each.
+
+This prevents one normal in-flight request or retry chain from spending drastically beyond the
+application budget. It is deliberately not described as an absolute provider-billing guarantee:
+durable reservations, request-id settlement/reconciliation, daily/global quotas, price-drift
+monitoring, and circuit breakers remain in
+[tasker 29](../../../../../tasker/29-deep-research-cost-ledger-and-hard-budgets.md).
 
 ## Live-test artifacts
 

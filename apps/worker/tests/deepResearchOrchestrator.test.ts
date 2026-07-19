@@ -423,6 +423,10 @@ describe('deep research coordinator lifecycle contract', () => {
 		expect(llm.getJSONResponse.mock.calls[0]?.[0]).toMatchObject({
 			profile: 'powerful',
 			reasoning: { effort: 'high', exclude: false },
+			spendLimit: {
+				maxCostUsd: expect.any(Number),
+				minOutputTokens: expect.any(Number)
+			},
 			operationType: 'agent_run_deep_research_plan'
 		});
 		expect(harness.runtime.dispatchChildren).toHaveBeenCalledOnce();
@@ -496,6 +500,10 @@ describe('deep research coordinator lifecycle contract', () => {
 			profile: 'powerful',
 			reasoning: { effort: 'high', exclude: false },
 			maxTokens: 6000,
+			spendLimit: {
+				maxCostUsd: 0.38,
+				minOutputTokens: expect.any(Number)
+			},
 			operationType: 'agent_run_deep_research_synthesis'
 		});
 		expect(harness.getUsage()).toEqual({

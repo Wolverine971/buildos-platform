@@ -45,8 +45,14 @@ import {
 	maybeQueueDeepResearchParent,
 	processDeepResearchCoordinator
 } from './deepResearchOrchestrator';
+import { canReservePaidToolCost, resolveAgentRunLlmSpendLimit } from './agentRunCostPolicy';
 import { resolveAgentRunCancellationSource, resolveAgentRunModelPolicy } from './agentRunPolicy';
-import { createAgentRunWebResearchPort } from './webResearchPort';
+import {
+	createAgentRunWebResearchPort,
+	estimateTavilySearchCharge,
+	readPaidToolCharge,
+	resolveTavilyCreditCostUsd
+} from './webResearchPort';
 
 type AgentRunRow = Database['public']['Tables']['agent_runs']['Row'];
 type AgentRunProcessorResult = {
@@ -716,10 +722,12 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 	const mutationMode: AgentRunMutationMode =
 		run.review_required && scope.mode === 'read_write' ? 'stage' : 'commit';
 	const calendar = await createCalendarPortForRun(run.user_id);
+	const tavilyCreditCostUsd = resolveTavilyCreditCostUsd();
 	const web = createAgentRunWebResearchPort({
 		searchTimeoutMs: positiveIntegerEnv('AGENT_RUN_WEB_SEARCH_TIMEOUT_MS'),
 		visitTimeoutMs: positiveIntegerEnv('AGENT_RUN_WEB_VISIT_TIMEOUT_MS'),
-		visitMaxBytes: positiveIntegerEnv('AGENT_RUN_WEB_VISIT_MAX_BYTES')
+		visitMaxBytes: positiveIntegerEnv('AGENT_RUN_WEB_VISIT_MAX_BYTES'),
+		tavilyCreditCostUsd
 	});
 	const runnableOps = buildAgentRunOpCatalog({
 		scope,
@@ -748,6 +756,9 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 	const transcript: string[] = [];
 	let tokensTotal = 0;
 	let costTotal = 0;
+	let llmCostTotal = 0;
+	let paidToolCostTotal = 0;
+	let tavilyCreditsTotal = 0;
 	let toolCalls = 0;
 	const committedEntityTouches: EntityTouch[] = [];
 
@@ -763,12 +774,27 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		toolCalls = prior.toolCalls;
 		tokensTotal = prior.tokens;
 		costTotal = prior.cost;
+		const priorMetrics =
+			run.metrics && typeof run.metrics === 'object' && !Array.isArray(run.metrics)
+				? (run.metrics as Record<string, unknown>)
+				: {};
+		llmCostTotal =
+			typeof priorMetrics.llm_cost_usd === 'number' ? priorMetrics.llm_cost_usd : 0;
+		paidToolCostTotal =
+			typeof priorMetrics.paid_tool_cost_usd === 'number'
+				? priorMetrics.paid_tool_cost_usd
+				: 0;
+		tavilyCreditsTotal =
+			typeof priorMetrics.tavily_credits === 'number' ? priorMetrics.tavily_credits : 0;
 		await emitEvent(runId, 'run.narration', { note: 'resumed' });
 	}
 
 	const onUsage = (usage: { totalTokens?: number; totalCost?: number } | undefined) => {
 		if (usage?.totalTokens) tokensTotal += usage.totalTokens;
-		if (usage?.totalCost) costTotal += usage.totalCost;
+		if (usage?.totalCost) {
+			costTotal += usage.totalCost;
+			llmCostTotal += usage.totalCost;
+		}
 	};
 
 	const finalize = async (
@@ -778,6 +804,9 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		const metrics = {
 			tokens: tokensTotal,
 			cost_usd: costTotal,
+			llm_cost_usd: llmCostTotal,
+			paid_tool_cost_usd: paidToolCostTotal,
+			tavily_credits: tavilyCreditsTotal,
 			tool_calls: toolCalls,
 			duration_ms: Date.now() - startedAtMs
 		};
@@ -983,6 +1012,9 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 					metrics: {
 						tokens: tokensTotal,
 						cost_usd: costTotal,
+						llm_cost_usd: llmCostTotal,
+						paid_tool_cost_usd: paidToolCostTotal,
+						tavily_credits: tavilyCreditsTotal,
 						tool_calls: toolCalls,
 						duration_ms: Date.now() - startedAtMs
 					} as never
@@ -1019,12 +1051,18 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 				getUsage: () => ({
 					tokens: tokensTotal,
 					cost: costTotal,
-					toolCalls
+					toolCalls,
+					llmCost: llmCostTotal,
+					paidToolCost: paidToolCostTotal,
+					tavilyCredits: tavilyCreditsTotal
 				}),
 				addUsage: (usage) => {
 					tokensTotal += usage.tokens;
 					costTotal += usage.cost;
 					toolCalls += usage.toolCalls;
+					llmCostTotal += usage.llmCost ?? usage.cost;
+					paidToolCostTotal += usage.paidToolCost ?? 0;
+					tavilyCreditsTotal += usage.tavilyCredits ?? 0;
 				},
 				emit: (eventType, payload) => emitEvent(runId, eventType, payload)
 			});
@@ -1065,6 +1103,10 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 
 		let turn: AgentTurn;
 		try {
+			const spendLimit = resolveAgentRunLlmSpendLimit(maxCostUsd, costTotal);
+			if (spendLimit === null) {
+				return finalizeBudgetExhausted('cost budget exhausted');
+			}
 			turn = await llm.getJSONResponse<AgentTurn>({
 				systemPrompt,
 				userPrompt: buildUserPrompt(run, transcript, {
@@ -1073,6 +1115,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 				userId: run.user_id,
 				profile: modelPolicy.profile,
 				reasoning: modelPolicy.reasoning,
+				...(spendLimit === undefined ? {} : { spendLimit }),
 				validation: { retryOnParseError: true, maxRetries: 2 },
 				operationType: run.effort === 'deep' ? 'agent_run_deep' : 'other',
 				metadata: { agent_run_id: runId, effort: run.effort },
@@ -1140,6 +1183,20 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			string,
 			unknown
 		>;
+		const reservedPaidToolCharge =
+			op === AGENT_OP_WEB_SEARCH
+				? estimateTavilySearchCharge(args, tavilyCreditCostUsd)
+				: null;
+		if (
+			reservedPaidToolCharge &&
+			!canReservePaidToolCost({
+				maxCostUsd,
+				currentCostUsd: costTotal,
+				reservationCostUsd: reservedPaidToolCharge.cost_usd
+			})
+		) {
+			return finalizeBudgetExhausted('paid-tool cost reservation exceeds remaining budget');
+		}
 		toolCalls += 1;
 		await emitEvent(runId, 'run.tool_call', { op, args });
 
@@ -1161,6 +1218,22 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			args
 		);
 		const durationMs = Date.now() - opStart;
+		if (reservedPaidToolCharge) {
+			// A dispatched search may be billable even if its response times out or
+			// cannot be parsed. Charge the reservation, replacing it with provider-
+			// reported credits when a successful response includes them.
+			const paidCharge =
+				(result.ok && readPaidToolCharge(result.data)) || reservedPaidToolCharge;
+			costTotal += paidCharge.cost_usd;
+			paidToolCostTotal += paidCharge.cost_usd;
+			tavilyCreditsTotal += paidCharge.credits;
+			await emitEvent(runId, 'run.cost', {
+				provider: paidCharge.provider,
+				credits: paidCharge.credits,
+				cost_usd: paidCharge.cost_usd,
+				source: paidCharge.source
+			});
+		}
 
 		// A staged write returns a ProposedChange (no mutation). Assign a
 		// stable id, accumulate it into the run's Change Set, and key telemetry to

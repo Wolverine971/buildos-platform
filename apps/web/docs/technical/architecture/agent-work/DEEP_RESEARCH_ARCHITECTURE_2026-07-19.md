@@ -24,7 +24,7 @@ The first vertical slice now implements concern 1 and a deliberately narrow vers
 
 - `delegate_task` accepts `effort: "standard" | "deep"`.
 - Deep runs use the `powerful` JSON profile and explicit `reasoning.effort: "high"`.
-- Deep delegated runs default to a `$0.50` observed LLM-cost ceiling and reject requests above `$1`.
+- Deep delegated runs default to a `$0.50` tracked-cost ceiling and reject requests above `$1`.
 - Single-agent deep runs default to 12 tool calls. The deep-research template defaults to 10 tool
   calls; both use 60,000 observed tokens and a 10-minute wall-clock budget.
 - Agent Run cost accounting now reads the shared LLM layer's actual `totalCost` field. Previously it
@@ -40,33 +40,39 @@ The first vertical slice now implements concern 1 and a deliberately narrow vers
   a parent cancel signal or the parent's durable terminal status.
 - PostgreSQL guards enforce the root/child shapes, a two-child cap under concurrent inserts, root
   and child budget envelopes, and an atomic per-user capacity reservation.
+- Tavily Search credits are counted in leaf and root cost. A search is reserved before dispatch at
+  basic = 1 credit / advanced = 2 credits and at no less than the public `$0.008/credit` PAYG
+  price; provider-reported credits settle the estimate when available.
+- Budgeted LLM calls now use one catalog-priced model/attempt, conservatively reserve prompt cost,
+  cap output tokens to the remaining call envelope, and disable unreserved fallback/parse retries.
 
 This is a working V0.1 control flow, not a finished research product. It returns a sourced report to
 chat, but does not yet persist a report document or a typed claim-to-source manifest.
 
 ## What BuildOS already has
 
-| Capability                   | Current state                                                          |
-| ---------------------------- | ---------------------------------------------------------------------- |
-| Durable background execution | `agent_runs` + `queue_jobs` + Railway worker                           |
-| Progress and control         | Events, Realtime, steer, pause, resume, cancel                         |
-| Parent/child identity        | `parent_run_id` and DB-enforced depth `0..1`                           |
-| Parallel capacity            | Two concurrent children plus their root; DB-enforced per-user reserve  |
-| Web evidence                 | Worker-safe Tavily search and SSRF-safe page visit                     |
-| Tool security                | `scope_mode` + `allowed_ops`; child runs can remain read-only          |
-| Result bridge                | Terminal run result is injected back into the originating chat         |
-| Model tiers                  | `balanced`, `powerful`, and `maximum` JSON profiles                    |
-| Usage telemetry              | Per-model tokens and LLM cost, now correctly accumulated by Agent Runs |
+| Capability                   | Current state                                                           |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| Durable background execution | `agent_runs` + `queue_jobs` + Railway worker                            |
+| Progress and control         | Events, Realtime, steer, pause, resume, cancel                          |
+| Parent/child identity        | `parent_run_id` and DB-enforced depth `0..1`                            |
+| Parallel capacity            | Two concurrent children plus their root; DB-enforced per-user reserve   |
+| Web evidence                 | Worker-safe Tavily search and SSRF-safe page visit                      |
+| Tool security                | `scope_mode` + `allowed_ops`; child runs can remain read-only           |
+| Result bridge                | Terminal run result is injected back into the originating chat          |
+| Model tiers                  | `balanced`, `powerful`, and `maximum` JSON profiles                     |
+| Usage telemetry              | Per-model tokens plus LLM/Tavily cost, accumulated through the run tree |
 
 Important remaining gaps:
 
 - Child evidence is constrained Markdown, not yet a validated claim-to-source JSON contract.
 - The synthesized report is injected into chat but is not yet persisted as a BuildOS document.
 - V0.1 uses two children so root + children fit the existing three-active-run ceiling.
-- `max_cost_usd` currently covers provider-reported **LLM inference cost**, not Tavily or other tool
-  charges.
-- The ceiling is checked between model calls. One in-flight call or an unreported failed-provider
-  attempt can overshoot slightly.
+- `max_cost_usd` now covers observed LLM inference plus conservatively priced Tavily credits, but
+  it is not yet backed by a durable provider-reconciled reservation ledger.
+- In-flight LLM exposure is bounded by conservative prompt/output reservation and single-attempt
+  routing. A provider billing discrepancy, catalog-price drift, or process crash before metrics
+  persistence can still make observed totals differ from the provider bill.
 - No `max_web_searches`, per-domain policy, per-user daily research budget, or research eval.
 
 ## Current provider capabilities and why they do not replace the BuildOS substrate
@@ -237,16 +243,18 @@ Starting `$0.50` allocation is dynamic:
 Use the stronger model for planning and synthesis. Child researchers should default to the cheaper
 standard lane because their task is narrow and evidence-oriented.
 
-Before calling this a hard total-cost guarantee, BuildOS still needs:
+The local V0.1 now covers items 1–2 for LLM + Tavily in run metrics: it reserves each paid call
+before dispatch, bounds LLM output, and counts failed/unknown Tavily responses conservatively. The
+remaining step before calling this a hard total-cost guarantee is a durable atomic ledger:
 
-1. a unified cost ledger containing LLM inference, Tavily/search, and any paid fetch/parser tools;
-2. pre-call worst-case reservation based on selected model, input estimate, and maximum output;
-3. atomic reservation/refund updates so parallel children cannot each spend the remaining balance;
-4. cancellation when the root reservation or wall-clock deadline is exhausted;
-5. accounting for failed/fallback provider attempts when the provider reports them late or not at
-   all.
+1. persist every reservation before provider dispatch and settle/release it idempotently;
+2. atomically check leaf, root, user-daily, and platform balances under concurrency;
+3. reconcile accepted calls whose response/usage was lost using provider request records;
+4. version/monitor provider prices and fail closed on unknown pricing;
+5. alert and trip a circuit breaker when actual provider billing exceeds reservation.
 
-Until then, `max_cost_usd` is an observed LLM-cost loop ceiling, not a prepaid guarantee.
+Until that ledger lands, `max_cost_usd` is a tightly bounded application ceiling, not a prepaid or
+provider-guaranteed balance.
 
 ## Security and “do not go rogue” controls
 
@@ -310,8 +318,12 @@ services are deployed.
 ### Slice C — budget and evidence correctness
 
 - Add `max_web_searches` and `max_web_visits`.
-- Add a unified root/child cost ledger and atomic reservations.
-- Include search-provider/tool charges.
+- **Implemented locally:** include Tavily credits in leaf/root totals and reserve paid search
+  before dispatch.
+- **Implemented locally:** pre-call LLM spend envelope with conservative prompt estimate, output
+  cap, one priced model, no unreserved retries, and OpenRouter provider-price filtering.
+- Add a **durable** unified root/child cost ledger with atomic reservation and provider
+  reconciliation ([tasker 29](../../../../../../tasker/29-deep-research-cost-ledger-and-hard-budgets.md)).
 - Add a per-user daily research allowance.
 - Replace Markdown evidence packets with a typed claim/source/support contract.
 - Persist the final report and normalized source manifest.
@@ -333,8 +345,8 @@ services are deployed.
 - Whether two children remain the quality/cost optimum under a `$0.50` ceiling.
 - Whether 10 minutes is enough for the default or should be an initial soft deadline with a
   user-visible extension.
-- Tavily's effective per-search cost in the deployed account and whether advanced search should be
-  reserved for the root-selected questions.
+- Tavily's effective per-search cost in the deployed account (the guard currently uses the public
+  PAYG ceiling) and whether advanced search should be reserved for root-selected questions.
 - Whether reports should persist automatically or ask the user after the summary is delivered.
 - Whether hosted GPT-5.6 Multi-agent exposes sufficient aggregate usage/cancellation behavior in a
   live API smoke to satisfy the budget ledger.

@@ -1,10 +1,28 @@
 // apps/worker/tests/agentRunWebResearch.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import { createAgentRunWebResearchPort } from '../src/workers/agent-run/webResearchPort';
+import {
+	createAgentRunWebResearchPort,
+	estimateTavilySearchCharge,
+	readPaidToolCharge
+} from '../src/workers/agent-run/webResearchPort';
 
 const NOW = new Date('2026-07-18T12:00:00.000Z');
 
 describe('Agent Run web research port', () => {
+	it('reserves the full Tavily charge before dispatch and reads it back safely', () => {
+		const advanced = estimateTavilySearchCharge({});
+		const basic = estimateTavilySearchCharge({ search_depth: 'basic' });
+
+		expect(advanced).toMatchObject({ credits: 2, cost_usd: 0.016 });
+		expect(basic).toMatchObject({ credits: 1, cost_usd: 0.008 });
+		expect(
+			readPaidToolCharge({
+				info: { billing: { ...advanced, cost_usd: Number.POSITIVE_INFINITY } }
+			})
+		).toBeNull();
+		expect(readPaidToolCharge({ info: { billing: advanced } })).toEqual(advanced);
+	});
+
 	it('exposes search only when a Tavily key is configured', () => {
 		const withoutSearch = createAgentRunWebResearchPort({
 			apiKey: null,
@@ -33,6 +51,7 @@ describe('Agent Run web research port', () => {
 			return new Response(
 				JSON.stringify({
 					answer: 'A'.repeat(2_500),
+					usage: { credits: 2 },
 					results: [
 						{
 							title: 'Primary source',
@@ -59,7 +78,16 @@ describe('Agent Run web research port', () => {
 			answer: string;
 			results: Array<{ title: string; url: string; snippet: string }>;
 			security_notice: string;
-			info: { fetched_at: string };
+			info: {
+				fetched_at: string;
+				billing: {
+					provider: string;
+					credits: number;
+					unit_cost_usd: number;
+					cost_usd: number;
+					source: string;
+				};
+			};
 		};
 
 		expect(result.answer.length).toBeLessThanOrEqual(2_003);
@@ -70,6 +98,52 @@ describe('Agent Run web research port', () => {
 		expect(result.results[0]?.snippet.length).toBeLessThanOrEqual(1_603);
 		expect(result.security_notice).toContain('untrusted');
 		expect(result.info.fetched_at).toBe(NOW.toISOString());
+		expect(result.info.billing).toEqual({
+			provider: 'tavily',
+			credits: 2,
+			unit_cost_usd: 0.008,
+			cost_usd: 0.016,
+			source: 'provider_reported'
+		});
+	});
+
+	it('conservatively prices Tavily from search depth when provider usage is absent', async () => {
+		const fetchFn = vi.fn(async () => {
+			return new Response(JSON.stringify({ results: [] }), {
+				status: 200,
+				headers: { 'content-type': 'application/json' }
+			});
+		});
+		const port = createAgentRunWebResearchPort({
+			apiKey: 'test-key',
+			fetchFn: fetchFn as typeof fetch,
+			now: () => NOW,
+			tavilyCreditCostUsd: 0.001
+		});
+
+		const advanced = (await port.search!({ query: 'advanced' })) as {
+			info: { billing: Record<string, unknown> };
+		};
+		const basic = (await port.search!({
+			query: 'basic',
+			search_depth: 'basic'
+		})) as {
+			info: { billing: Record<string, unknown> };
+		};
+
+		// Configuration may raise the conservative public PAYG price, but cannot
+		// lower it and silently undercount a paid request.
+		expect(advanced.info.billing).toMatchObject({
+			credits: 2,
+			unit_cost_usd: 0.008,
+			cost_usd: 0.016,
+			source: 'search_depth_fallback'
+		});
+		expect(basic.info.billing).toMatchObject({
+			credits: 1,
+			cost_usd: 0.008,
+			source: 'search_depth_fallback'
+		});
 	});
 
 	it('visits a public page and strips executable HTML from the model payload', async () => {

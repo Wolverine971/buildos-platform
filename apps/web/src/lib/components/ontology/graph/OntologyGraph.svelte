@@ -73,7 +73,10 @@
 	let highlightTimeouts: Array<ReturnType<typeof setTimeout>> = [];
 	let layoutFitTimeout: ReturnType<typeof setTimeout> | null = null;
 	let resizeFitTimeout: ReturnType<typeof setTimeout> | null = null;
+	let compactGlyphsHidden: boolean | null = null;
 	const reducedMotion = new MediaQuery('prefers-reduced-motion: reduce', false);
+	const GRAPH_MAX_ZOOM = 2.5;
+	const COMPACT_GLYPH_ZOOM_THRESHOLD = 0.65;
 
 	// Dark mode detection
 	let isDark = $state(false);
@@ -142,6 +145,7 @@
 		renderedData = null;
 		renderedViewMode = null;
 		renderedIsDark = null;
+		compactGlyphsHidden = null;
 
 		graphInstance = null;
 	}
@@ -186,26 +190,27 @@
 					color: labelColor
 				}
 			},
-			// Canonical entity glyphs sit in a fixed, explicitly centered box. Keeping
-			// image geometry independent from the node silhouette prevents circles,
-			// portrait documents, and triangles from nudging their glyphs off-axis.
+			// Each encoded SVG owns its square canvas and transparent padding. Letting
+			// Cytoscape contain that complete image avoids zoom-dependent width/height
+			// overrides that can shift or crop vector art at high magnification.
 			{
 				selector: 'node[iconImage]',
 				style: {
 					'background-image': 'data(iconImage)' as any,
 					'background-fit': 'contain',
 					'background-repeat': 'no-repeat',
-					'background-position-x': '50%',
-					'background-position-y': '50%',
-					'background-offset-x': 0,
-					'background-offset-y': 0,
-					'background-width': 'data(iconSize)' as any,
-					'background-height': 'data(iconSize)' as any,
-					'background-width-relative-to': 'inner',
-					'background-height-relative-to': 'inner',
 					'background-image-containment': 'inside',
 					'background-image-opacity': 0.96,
 					'background-clip': 'node'
+				}
+			},
+			// Below this zoom, detailed glyphs inside compact nodes alias into stray
+			// crescents and dots. Their semantic silhouettes remain visible; goals
+			// retain the target because it is the graph's highest-salience marker.
+			{
+				selector: 'node.compact-glyph-hidden',
+				style: {
+					'background-image-opacity': 0
 				}
 			},
 			// Draft state - dotted border
@@ -412,8 +417,11 @@
 			// node at (0, 0) makes Cola converge into an unnecessarily narrow column.
 			layout: { name: 'random', fit: false, animate: false },
 			minZoom: 0.1,
-			maxZoom: 4
+			maxZoom: GRAPH_MAX_ZOOM
 		});
+
+		cy.on('zoom', syncCompactGlyphVisibility);
+		syncCompactGlyphVisibility();
 
 		cy.on('select', 'node', (evt) => {
 			cy?.edges().removeClass('connected');
@@ -470,6 +478,19 @@
 
 		graphInstance = buildGraphInstance();
 		runLayout(currentLayout);
+	}
+
+	function syncCompactGlyphVisibility() {
+		if (!cy) return;
+
+		const shouldHide = cy.zoom() < COMPACT_GLYPH_ZOOM_THRESHOLD;
+		if (compactGlyphsHidden === shouldHide) return;
+
+		compactGlyphsHidden = shouldHide;
+		cy.nodes('[iconImage]').forEach((node) => {
+			if (node.data('type') === 'goal') return;
+			node.toggleClass('compact-glyph-hidden', shouldHide);
+		});
 	}
 
 	function scheduleFit(delay: number, layoutName?: string) {

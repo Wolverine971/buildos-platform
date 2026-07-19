@@ -10,6 +10,7 @@ export * from './model-selection';
 export * from './errors';
 export * from './openrouter-client';
 export * from './openrouter-request';
+export * from './spend-guard';
 export * from './moonshot-client';
 export * from './response-parsing';
 export * from './transcription-utils';

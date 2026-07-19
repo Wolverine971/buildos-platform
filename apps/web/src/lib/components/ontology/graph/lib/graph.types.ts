@@ -74,8 +74,6 @@ export interface CytoscapeNode {
 		shape: string;
 		/** Optional encoded SVG painted inside the node for quick entity recognition. */
 		iconImage?: string;
-		/** Icon size in graph-space pixels; separate from node size for precise centering. */
-		iconSize?: number;
 		fontSize?: number;
 		fontWeight?: number;
 		labelValign?: 'top' | 'center' | 'bottom';
