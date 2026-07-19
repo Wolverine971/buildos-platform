@@ -43,8 +43,10 @@ import {
 	type PreparedPromptSurface
 } from '$lib/services/agentic-chat-v2/prepared-prompt-cache';
 import { parseJsonRequest } from '$lib/utils/request-validation';
+import { resolveFastChatScaffoldConfigFromEnv } from '$lib/services/agentic-chat-v2/scaffold-variant';
 
 const logger = createLogger('API:AgentPrewarmV2');
+const FASTCHAT_SCAFFOLD = resolveFastChatScaffoldConfigFromEnv(process.env);
 const fastAgentPrewarmRequestSchema = z
 	.object({
 		context_type: z.string().optional(),
@@ -204,14 +206,16 @@ async function buildPreparedPrompt(params: {
 	for (const surfaceProfile of resolvePreparedSurfaceProfiles(params.contextType)) {
 		const tools = selectFastChatTools({
 			contextType: params.contextType,
-			surfaceProfile
+			surfaceProfile,
+			leanDiscovery: FASTCHAT_SCAFFOLD.routing.leanDiscovery
 		});
 		const envelope = buildLitePromptEnvelope({
 			...promptContext,
 			tools,
 			productSurface: '/api/agent/v2/prewarm',
 			conversationPosition: `prepared prompt ${rowId}`,
-			domainSensingResult: null
+			domainSensingResult: null,
+			scaffold: FASTCHAT_SCAFFOLD.prompt
 		});
 		preparedSurfaces[surfaceProfile] = buildPreparedPromptSurface({
 			surfaceProfile,
@@ -220,6 +224,7 @@ async function buildPreparedPrompt(params: {
 			conversationSummary,
 			tools,
 			envelope,
+			scaffold: FASTCHAT_SCAFFOLD.prompt,
 			createdAt: createdAt.toISOString()
 		});
 	}

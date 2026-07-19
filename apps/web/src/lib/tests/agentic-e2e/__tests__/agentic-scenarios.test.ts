@@ -121,6 +121,47 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 										`[agentic-e2e] missing model/provider/intervention attribution for ${result.streamRunId}`
 									);
 								}
+								if (process.env.AGENTIC_ASSERT_TELEMETRY === 'true') {
+									const interventions = attribution.interventions;
+									const expectedVariant =
+										process.env.AGENTIC_EXPECT_SCAFFOLD_VARIANT?.trim();
+									const expectedFingerprint =
+										process.env.AGENTIC_EXPECT_SCAFFOLD_FINGERPRINT?.trim();
+									if (
+										!interventions?.evalScaffoldVariant ||
+										!interventions.evalScaffoldFingerprint ||
+										!interventions.evalScaffoldConfig
+									) {
+										throw new Error(
+											`[agentic-e2e] missing computed scaffold attribution for ${result.streamRunId}`
+										);
+									}
+									if (
+										interventions.evalScaffoldConfig.variant !==
+										interventions.evalScaffoldVariant
+									) {
+										throw new Error(
+											`[agentic-e2e] scaffold label/config mismatch for ${result.streamRunId}`
+										);
+									}
+									if (
+										expectedVariant &&
+										interventions.evalScaffoldVariant !== expectedVariant
+									) {
+										throw new Error(
+											`[agentic-e2e] expected scaffold ${expectedVariant}, received ${interventions.evalScaffoldVariant}`
+										);
+									}
+									if (
+										expectedFingerprint &&
+										interventions.evalScaffoldFingerprint !==
+											expectedFingerprint
+									) {
+										throw new Error(
+											`[agentic-e2e] expected scaffold fingerprint ${expectedFingerprint}, received ${interventions.evalScaffoldFingerprint}`
+										);
+									}
+								}
 							},
 							judgeTurn: turn.judge
 								? async () => {

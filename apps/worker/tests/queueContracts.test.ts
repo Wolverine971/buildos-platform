@@ -228,10 +228,63 @@ describe('agent_run job metadata contract', () => {
 			run_id: RUN_ID,
 			trigger: 'manual',
 			context_type: 'global',
+			effort: 'deep',
 			allowed_ops: ['onto.project.list'],
-			budgets: { wall_clock_ms: 1000, max_tokens: 2000, max_tool_calls: 3 }
+			budgets: {
+				wall_clock_ms: 1000,
+				max_tokens: 2000,
+				max_tool_calls: 3,
+				max_cost_usd: 0.5
+			}
 		});
 		expect(meta.budgets?.max_tool_calls).toBe(3);
+		expect(meta.budgets?.max_cost_usd).toBe(0.5);
+		expect(meta.effort).toBe('deep');
+
+		const researchContinuation = validateAgentRunMetadata({
+			run_id: RUN_ID,
+			trigger: 'chat',
+			context_type: 'global',
+			scope_mode: 'read_only',
+			effort: 'deep',
+			run_template: 'deep_research',
+			continuation_from: 'children'
+		});
+		expect(researchContinuation.continuation_from).toBe('children');
+
+		expect(() =>
+			validateAgentRunMetadata({
+				run_id: RUN_ID,
+				trigger: 'chat',
+				context_type: 'global',
+				scope_mode: 'read_only',
+				effort: 'standard',
+				run_template: 'agent',
+				depth: 1
+			})
+		).toThrow();
+		expect(() =>
+			validateAgentRunMetadata({
+				run_id: RUN_ID,
+				trigger: 'chat',
+				context_type: 'global',
+				scope_mode: 'read_only',
+				effort: 'standard',
+				run_template: 'agent',
+				depth: 1,
+				parent_run_id: 'not-a-uuid'
+			})
+		).toThrow();
+		expect(() =>
+			validateAgentRunMetadata({
+				run_id: RUN_ID,
+				trigger: 'chat',
+				context_type: 'global',
+				scope_mode: 'read_write',
+				effort: 'deep',
+				run_template: 'deep_research'
+			})
+		).toThrow();
 	});
 
 	it('accepts valid continuation markers and rejects invalid ones', () => {

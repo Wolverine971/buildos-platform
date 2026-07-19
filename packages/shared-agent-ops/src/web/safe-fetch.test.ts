@@ -19,6 +19,17 @@ describe('fetchPublicUrl', () => {
 		expect(fetchFn).not.toHaveBeenCalled();
 	});
 
+	it('rejects IPv4-mapped IPv6 private addresses before making a request', async () => {
+		const fetchFn = vi.fn();
+
+		await expect(
+			fetchPublicUrl('http://[::ffff:127.0.0.1]/metadata', {
+				fetchFn: fetchFn as typeof fetch
+			})
+		).rejects.toThrow('Blocked private or reserved IP address');
+		expect(fetchFn).not.toHaveBeenCalled();
+	});
+
 	it('allows a public DNS answer and enforces the streamed response size limit', async () => {
 		const dnsLookup = vi.fn(async () => [{ address: '93.184.216.34', family: 4 }]);
 		const fetchFn = vi.fn(async () => {

@@ -16,9 +16,10 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Maximize2, LoaderCircle } from 'lucide-svelte';
 	import OntologyGraph from './graph/OntologyGraph.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import { LoaderCircle, Maximize2, ZoomIn, ZoomOut } from '$lib/icons/lucide';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import type {
 		GraphNode,
@@ -48,7 +49,6 @@
 
 	// Graph instance
 	let graphInstance = $state<OntologyGraphInstance | null>(null);
-	let selectedNode = $state<GraphNode | null>(null);
 
 	// View mode (always 'full' for single project)
 	const viewMode: ViewMode = 'full';
@@ -56,7 +56,7 @@
 	// Layout options
 	const layouts = [
 		{ value: 'cose-bilkent', label: 'Spring' },
-		{ value: 'dagre', label: 'Hierarchical' }
+		{ value: 'cola', label: 'Flow' }
 	];
 
 	onMount(() => {
@@ -76,23 +76,6 @@
 	$effect(() => {
 		if (typeof localStorage !== 'undefined' && selectedLayout) {
 			localStorage.setItem(STORAGE_KEY_LAYOUT, selectedLayout);
-		}
-	});
-
-	// Apply layout when graph instance or layout changes
-	$effect(() => {
-		if (graphInstance && selectedLayout) {
-			graphInstance.changeLayout(selectedLayout);
-		}
-	});
-
-	// Handle node selection - trigger callback
-	$effect(() => {
-		if (selectedNode && onNodeClick) {
-			// Clear before calling back so a throw won't cause repeated callbacks
-			const node = selectedNode;
-			selectedNode = null;
-			onNodeClick(node);
 		}
 	});
 
@@ -133,6 +116,18 @@
 		graphInstance?.fitToView();
 	}
 
+	function handleZoomIn() {
+		graphInstance?.zoomIn();
+	}
+
+	function handleZoomOut() {
+		graphInstance?.zoomOut();
+	}
+
+	function handleNodeSelect(node: GraphNode) {
+		onNodeClick?.(node);
+	}
+
 	function handleRetry() {
 		graphData = null;
 		loadError = null;
@@ -143,30 +138,54 @@
 <div class="flex flex-col h-full">
 	<!-- Controls Row -->
 	<div
-		class="flex items-center gap-2 px-3 sm:px-4 py-2 bg-muted border-b border-border tx tx-grain tx-weak shrink-0"
+		class="flex min-w-0 shrink-0 items-center gap-2 border-b border-border bg-muted px-3 py-2 tx tx-grain tx-weak sm:px-4"
 	>
 		<Select
 			bind:value={selectedLayout}
 			size="sm"
 			placeholder="Layout"
-			class="!min-h-[26px] sm:!min-h-[28px] !py-0 !pl-2 !pr-6 sm:!pr-8 !text-base sm:!text-xs w-[90px] sm:w-[110px]"
+			class="w-24 min-w-0 sm:w-36"
 			aria-label="Graph layout"
 		>
-			{#each layouts as layout}
+			{#each layouts as layout (layout.value)}
 				<option value={layout.value}>{layout.label}</option>
 			{/each}
 		</Select>
 
-		<button
-			type="button"
-			onclick={handleFitToView}
-			disabled={!graphInstance}
-			class="flex items-center justify-center gap-1 sm:gap-1.5 h-[26px] sm:h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-medium rounded-md border border-border bg-card text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition pressable"
-			aria-label="Fit to view"
-		>
-			<Maximize2 class="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-			<span class="hidden sm:inline">Fit</span>
-		</button>
+		<div class="ml-auto flex shrink-0 items-center gap-1" role="group" aria-label="Graph view">
+			<Button
+				variant="outline"
+				size="sm"
+				icon={ZoomOut}
+				onclick={handleZoomOut}
+				disabled={!graphInstance}
+				class="h-11 w-11 shrink-0 rounded-md p-0"
+				aria-label="Zoom out"
+				title="Zoom out"
+			/>
+			<Button
+				variant="outline"
+				size="sm"
+				icon={ZoomIn}
+				onclick={handleZoomIn}
+				disabled={!graphInstance}
+				class="h-11 w-11 shrink-0 rounded-md p-0"
+				aria-label="Zoom in"
+				title="Zoom in"
+			/>
+			<Button
+				variant="outline"
+				size="sm"
+				onclick={handleFitToView}
+				disabled={!graphInstance}
+				class="h-11 w-11 shrink-0 rounded-md p-0 sm:w-auto sm:px-3"
+				aria-label="Fit graph to view"
+				title="Fit graph to view"
+			>
+				<Maximize2 class="h-4 w-4 shrink-0" />
+				<span class="hidden sm:inline">Fit</span>
+			</Button>
+		</div>
 	</div>
 
 	<!-- Graph Container - fills remaining space -->
@@ -176,25 +195,29 @@
 				class="absolute inset-0 flex items-center justify-center bg-muted tx tx-pulse tx-weak"
 			>
 				<div class="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-					<LoaderCircle class="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
-					<span>Loading graph...</span>
+					<LoaderCircle
+						class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none sm:h-4 sm:w-4"
+					/>
+					<span>Loading graph…</span>
 				</div>
 			</div>
 		{:else if loadError}
 			<div
 				class="absolute inset-0 flex flex-col items-center justify-center gap-2 sm:gap-3 p-3 sm:p-4 text-center tx tx-static tx-weak"
 			>
-				<p class="text-xs sm:text-sm text-muted-foreground">{loadError}</p>
-				<button
-					type="button"
-					onclick={handleRetry}
-					class="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium rounded-md bg-accent text-accent-foreground hover:bg-accent/90 transition pressable"
-				>
-					Try again
-				</button>
+				<p class="max-w-md break-words text-xs text-muted-foreground sm:text-sm">
+					{loadError}
+				</p>
+				<Button variant="primary" size="sm" onclick={handleRetry}>Try again</Button>
 			</div>
 		{:else if graphData}
-			<OntologyGraph data={graphData} {viewMode} bind:selectedNode bind:graphInstance />
+			<OntologyGraph
+				data={graphData}
+				{viewMode}
+				layoutName={selectedLayout}
+				onNodeSelect={handleNodeSelect}
+				bind:graphInstance
+			/>
 		{:else}
 			<div class="absolute inset-0 flex items-center justify-center tx tx-bloom tx-weak">
 				<p class="text-xs sm:text-sm text-muted-foreground">No graph data available</p>

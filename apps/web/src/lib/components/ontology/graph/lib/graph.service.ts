@@ -219,115 +219,115 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		borderStyle: 'solid'
 	},
 	goal: {
-		// Ellipse + Lucide Target SVG painted as background-image (see goalsToNodes below)
-		// keeps Goals visually consistent with the Target icon used everywhere else
-		// (NodeDetailsPanel, legend, Inkprint canonical icon table).
+		// The Target glyph is painted into this circle in OntologyGraph.svelte.
 		shape: 'ellipse',
-		baseWidth: 44,
-		baseHeight: 44,
-		fontSize: 10,
+		baseWidth: 48,
+		baseHeight: 48,
+		fontSize: 11,
 		fontWeight: 700,
 		labelValign: 'bottom',
-		labelMarginY: 8,
-		labelMaxWidth: 100,
+		labelMarginY: 9,
+		labelMaxWidth: 112,
 		labelMaxLines: 3,
-		labelMaxCharsPerLine: 16,
+		labelMaxCharsPerLine: 18,
 		borderWidth: 2,
 		borderStyle: 'solid'
 	},
 	task: {
 		shape: 'ellipse',
-		baseWidth: 26,
-		baseHeight: 26,
-		fontSize: 10,
+		baseWidth: 30,
+		baseHeight: 30,
+		fontSize: 11,
 		fontWeight: 600,
 		labelValign: 'bottom',
-		labelMarginY: 6,
-		labelMaxWidth: 98,
+		labelMarginY: 8,
+		labelMaxWidth: 112,
 		labelMaxLines: 3,
-		labelMaxCharsPerLine: 16,
+		labelMaxCharsPerLine: 18,
 		borderWidth: 2,
 		borderStyle: 'solid'
 	},
 	plan: {
 		shape: 'round-rectangle',
-		baseWidth: 88,
-		baseHeight: 50,
+		baseWidth: 96,
+		baseHeight: 54,
 		fontSize: 11,
 		fontWeight: 700,
 		labelValign: 'center',
 		labelHalign: 'center',
-		labelMaxWidth: 84,
+		labelMaxWidth: 90,
 		labelMaxLines: 3,
-		labelMaxCharsPerLine: 16,
+		labelMaxCharsPerLine: 18,
 		borderWidth: 2,
 		borderStyle: 'dashed'
 	},
 	document: {
 		shape: 'rectangle',
-		baseWidth: 22,
-		baseHeight: 28,
-		fontSize: 10,
+		baseWidth: 28,
+		baseHeight: 34,
+		fontSize: 11,
 		fontWeight: 600,
 		labelValign: 'bottom',
-		labelMarginY: 4,
-		labelMaxWidth: 98,
+		labelMarginY: 7,
+		labelMaxWidth: 112,
 		labelMaxLines: 3,
-		labelMaxCharsPerLine: 16,
-		borderWidth: 1,
+		labelMaxCharsPerLine: 18,
+		borderWidth: 1.5,
 		borderStyle: 'solid'
 	},
 	milestone: {
 		shape: 'triangle',
-		baseWidth: 26,
-		baseHeight: 30,
-		fontSize: 10,
+		baseWidth: 32,
+		baseHeight: 34,
+		fontSize: 11,
 		fontWeight: 600,
 		labelValign: 'bottom',
-		labelMarginY: 6,
-		labelMaxWidth: 100,
+		labelMarginY: 8,
+		labelMaxWidth: 112,
 		labelMaxLines: 3,
-		labelMaxCharsPerLine: 16,
+		labelMaxCharsPerLine: 18,
 		borderWidth: 2,
 		borderStyle: 'solid'
 	},
 	risk: {
 		shape: 'octagon',
-		baseWidth: 28,
-		baseHeight: 28,
-		fontSize: 10,
+		baseWidth: 32,
+		baseHeight: 32,
+		fontSize: 11,
 		fontWeight: 600,
 		labelValign: 'bottom',
-		labelMarginY: 6,
-		labelMaxWidth: 98,
+		labelMarginY: 8,
+		labelMaxWidth: 112,
 		labelMaxLines: 3,
-		labelMaxCharsPerLine: 16,
+		labelMaxCharsPerLine: 18,
 		borderWidth: 2,
 		borderStyle: 'solid'
 	},
 	note: {
 		shape: 'rectangle',
-		baseWidth: 22,
-		baseHeight: 28,
-		fontSize: 8,
+		baseWidth: 28,
+		baseHeight: 34,
+		fontSize: 11,
+		fontWeight: 600,
 		labelValign: 'bottom',
-		labelMarginY: 4,
-		labelMaxWidth: 88,
+		labelMarginY: 7,
+		labelMaxWidth: 104,
 		labelMaxLines: 3,
-		labelMaxCharsPerLine: 15,
-		borderWidth: 1,
+		labelMaxCharsPerLine: 18,
+		borderWidth: 1.5,
 		borderStyle: 'dashed'
 	},
 	event: {
 		shape: 'diamond',
-		baseWidth: 30,
-		baseHeight: 30,
-		fontSize: 9,
+		baseWidth: 34,
+		baseHeight: 34,
+		fontSize: 11,
+		fontWeight: 600,
 		labelValign: 'bottom',
-		labelMarginY: 6,
-		labelMaxWidth: 88,
+		labelMarginY: 8,
+		labelMaxWidth: 104,
 		labelMaxLines: 3,
-		labelMaxCharsPerLine: 15,
+		labelMaxCharsPerLine: 18,
 		borderWidth: 2,
 		borderStyle: 'solid'
 	}
@@ -345,7 +345,7 @@ const SCALE_MULTIPLIERS: Record<string, number> = {
 };
 
 const FALLBACK_LABEL = 'Untitled';
-const LABEL_OVERFLOW_MARKER = '...';
+const LABEL_OVERFLOW_MARKER = '…';
 const PROJECT_CONTAINER_RELS = new Set([
 	'project_contains',
 	'contains',
@@ -359,17 +359,44 @@ const PROJECT_CONTAINER_RELS = new Set([
 	'has_risk'
 ]);
 
-/**
- * Inline Lucide Target SVG as a data URI. Painted onto goal nodes as
- * `background-image` so Goals carry the same icon used in NodeDetailsPanel,
- * the legend, and the Inkprint canonical icon table.
- */
-function buildTargetIconDataUri(stroke: string): string {
-	const svg = [
-		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`,
+type GraphNodeIcon = 'goal' | 'task' | 'document' | 'milestone' | 'risk';
+
+const GRAPH_NODE_ICON_PATHS: Record<GraphNodeIcon, string[]> = {
+	goal: [
 		'<circle cx="12" cy="12" r="10"/>',
 		'<circle cx="12" cy="12" r="6"/>',
-		'<circle cx="12" cy="12" r="2"/>',
+		'<circle cx="12" cy="12" r="2"/>'
+	],
+	task: [
+		'<path d="m3 6 1 1 2-2"/>',
+		'<path d="M10 6h11"/>',
+		'<path d="m3 12 1 1 2-2"/>',
+		'<path d="M10 12h11"/>',
+		'<path d="m3 18 1 1 2-2"/>',
+		'<path d="M10 18h11"/>'
+	],
+	document: [
+		'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>',
+		'<path d="M14 2v6h6"/>',
+		'<path d="M16 13H8"/>',
+		'<path d="M16 17H8"/>'
+	],
+	milestone: ['<path d="M5 22V4"/>', '<path d="M5 4h12l-2 4 2 4H5"/>'],
+	risk: [
+		'<path d="M10.3 3.5 2.4 18a2 2 0 0 0 1.8 3h15.6a2 2 0 0 0 1.8-3L13.7 3.5a2 2 0 0 0-3.4 0Z"/>',
+		'<path d="M12 9v4"/>',
+		'<path d="M12 17h.01"/>'
+	]
+};
+
+/**
+ * Inline canonical entity glyphs as fully encoded data URIs. Cytoscape paints
+ * these inside the semantic node silhouettes without adding DOM overlays.
+ */
+function buildNodeIconDataUri(icon: GraphNodeIcon, stroke: string): string {
+	const svg = [
+		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`,
+		...GRAPH_NODE_ICON_PATHS[icon],
 		'</svg>'
 	].join('');
 
@@ -741,7 +768,7 @@ export class OntologyGraphService {
 
 			// Target icon stroke matches the node border so the icon reads as
 			// "this goal" rather than a foreign UI element.
-			const iconImage = buildTargetIconDataUri(colors.border);
+			const iconImage = buildNodeIconDataUri('goal', colors.border);
 
 			return {
 				data: {
@@ -763,6 +790,7 @@ export class OntologyGraphService {
 					size: config.baseWidth,
 					shape: config.shape,
 					iconImage,
+					iconSize: 28,
 					fontSize: config.fontSize,
 					fontWeight: config.fontWeight ?? 400,
 					labelValign: config.labelValign,
@@ -774,6 +802,7 @@ export class OntologyGraphService {
 
 	static tasksToNodes(tasks: OntoTask[], isDark = false): CytoscapeNode[] {
 		const config = NODE_STYLE_CONFIG.task;
+		const iconStroke = isDark ? '#cbd5e1' : '#475569';
 
 		return tasks.map((task) => {
 			const state = normalizeState(task.state_key);
@@ -781,6 +810,9 @@ export class OntologyGraphService {
 			const borderStyle = getStateBorderStyle(state);
 			const borderMod = getStateBorderWidthModifier(state);
 			const labelVisual = getLabelVisualData(task.title, config);
+			// Keep the task glyph neutral and high-contrast; state remains encoded by
+			// fill and border, so amber/green/red tasks retain one stable silhouette.
+			const iconImage = buildNodeIconDataUri('task', iconStroke);
 
 			return {
 				data: {
@@ -803,6 +835,8 @@ export class OntologyGraphService {
 					height: config.baseHeight,
 					size: config.baseWidth,
 					shape: config.shape,
+					iconImage,
+					iconSize: 16,
 					fontSize: config.fontSize,
 					fontWeight: config.fontWeight ?? 400,
 					labelValign: config.labelValign,
@@ -862,6 +896,7 @@ export class OntologyGraphService {
 		return documents.map((document) => {
 			const state = normalizeState(document.state_key);
 			const labelVisual = getLabelVisualData(document.title, config);
+			const iconImage = buildNodeIconDataUri('document', baseColors.border);
 
 			return {
 				data: {
@@ -883,6 +918,8 @@ export class OntologyGraphService {
 					height: config.baseHeight,
 					size: config.baseWidth,
 					shape: config.shape,
+					iconImage,
+					iconSize: 16,
 					fontSize: config.fontSize,
 					fontWeight: config.fontWeight ?? 400,
 					labelValign: config.labelValign,
@@ -901,6 +938,7 @@ export class OntologyGraphService {
 			const state = normalizeState((propsState as string) ?? 'pending');
 			const colors = getStateColors(state, isDark);
 			const labelVisual = getLabelVisualData(milestone.title, config);
+			const iconImage = buildNodeIconDataUri('milestone', colors.border);
 
 			return {
 				data: {
@@ -921,6 +959,8 @@ export class OntologyGraphService {
 					height: config.baseHeight,
 					size: config.baseWidth,
 					shape: config.shape,
+					iconImage,
+					iconSize: 17,
 					fontSize: config.fontSize,
 					fontWeight: config.fontWeight ?? 400,
 					labelValign: config.labelValign,
@@ -945,6 +985,7 @@ export class OntologyGraphService {
 			} else if (state === 'occurred') {
 				colors = getStateColors('blocked', isDark);
 			}
+			const iconImage = buildNodeIconDataUri('risk', colors.border);
 
 			return {
 				data: {
@@ -970,6 +1011,8 @@ export class OntologyGraphService {
 					height: config.baseHeight,
 					size: config.baseWidth,
 					shape: config.shape,
+					iconImage,
+					iconSize: 17,
 					fontSize: config.fontSize,
 					fontWeight: config.fontWeight ?? 400,
 					labelValign: config.labelValign,

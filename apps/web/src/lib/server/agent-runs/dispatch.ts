@@ -4,6 +4,17 @@ import { HttpStatus } from '$lib/utils/api-response';
 import { validateAgentRunMetadata, type AgentRunStatus, type Json } from '@buildos/shared-types';
 
 export const MAX_CONCURRENT_AGENT_RUNS = 3;
+export const DEFAULT_DEEP_AGENT_RUN_COST_USD = 0.5;
+export const MAX_DEEP_AGENT_RUN_COST_USD = 1;
+export const MIN_DEEP_RESEARCH_COST_USD = 0.25;
+export const DEFAULT_DEEP_RESEARCH_TOOL_CALLS = 10;
+export const MIN_DEEP_RESEARCH_TOOL_CALLS = 4;
+export const MAX_DEEP_RESEARCH_TOOL_CALLS = 40;
+export const DEFAULT_DEEP_RESEARCH_TOKENS = 60_000;
+export const MIN_DEEP_RESEARCH_TOKENS = 12_000;
+export const MAX_DEEP_RESEARCH_TOKENS = 100_000;
+export const MAX_DEEP_RESEARCH_WALL_CLOCK_MS = 20 * 60 * 1000;
+export const MAX_AGENT_RUN_COST_USD = 10;
 
 export const ACTIVE_AGENT_RUN_STATUSES: AgentRunStatus[] = [
 	'queued',
@@ -22,6 +33,8 @@ export type DispatchAgentRunParams = {
 	contextType?: 'project' | 'global';
 	projectId?: string | null;
 	scopeMode?: 'read_only' | 'read_write';
+	effort?: 'standard' | 'deep';
+	runTemplate?: 'agent' | 'deep_research';
 	reviewRequired?: boolean;
 	allowedOps?: string[] | null;
 	budgets?: Record<string, number>;
@@ -66,7 +79,12 @@ export function normalizeAgentRunBudgets(input: unknown): {
 	}
 
 	const source = input as Record<string, unknown>;
-	for (const field of ['wall_clock_ms', 'max_tokens', 'max_tool_calls'] as const) {
+	for (const field of [
+		'wall_clock_ms',
+		'max_tokens',
+		'max_tool_calls',
+		'max_cost_usd'
+	] as const) {
 		const value = source[field];
 		if (value === undefined) continue;
 		if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
@@ -75,9 +93,85 @@ export function normalizeAgentRunBudgets(input: unknown): {
 		if ((field === 'max_tokens' || field === 'max_tool_calls') && !Number.isInteger(value)) {
 			return { budgets: out, error: `budgets.${field} must be an integer` };
 		}
+		if (field === 'max_cost_usd' && value > MAX_AGENT_RUN_COST_USD) {
+			return {
+				budgets: out,
+				error: `budgets.max_cost_usd cannot exceed $${MAX_AGENT_RUN_COST_USD}`
+			};
+		}
 		out[field] = value;
 	}
 	return { budgets: out };
+}
+
+export function resolveAgentRunEffortBudgets(
+	effort: 'standard' | 'deep',
+	input: Record<string, number> | undefined,
+	runTemplate: 'agent' | 'deep_research' = 'agent'
+): { budgets: Record<string, number>; error?: string } {
+	const budgets = { ...(input ?? {}) };
+	if (effort !== 'deep') return { budgets };
+
+	if (budgets.max_cost_usd === undefined) {
+		budgets.max_cost_usd = DEFAULT_DEEP_AGENT_RUN_COST_USD;
+	}
+	if (budgets.max_cost_usd > MAX_DEEP_AGENT_RUN_COST_USD) {
+		return {
+			budgets,
+			error: `Deep agent runs cannot exceed a $${MAX_DEEP_AGENT_RUN_COST_USD} cost budget`
+		};
+	}
+	if (
+		runTemplate === 'deep_research' &&
+		(budgets.max_cost_usd ?? 0) < MIN_DEEP_RESEARCH_COST_USD
+	) {
+		return {
+			budgets,
+			error: `Deep research requires at least a $${MIN_DEEP_RESEARCH_COST_USD} cost budget`
+		};
+	}
+	if (runTemplate === 'deep_research') {
+		budgets.wall_clock_ms ??= 10 * 60 * 1000;
+		budgets.max_tokens ??= DEFAULT_DEEP_RESEARCH_TOKENS;
+		budgets.max_tool_calls ??= DEFAULT_DEEP_RESEARCH_TOOL_CALLS;
+		if (budgets.max_tool_calls < MIN_DEEP_RESEARCH_TOOL_CALLS) {
+			return {
+				budgets,
+				error: `Deep research requires at least ${MIN_DEEP_RESEARCH_TOOL_CALLS} tool calls`
+			};
+		}
+		if (budgets.max_tool_calls > MAX_DEEP_RESEARCH_TOOL_CALLS) {
+			return {
+				budgets,
+				error: `Deep research cannot exceed ${MAX_DEEP_RESEARCH_TOOL_CALLS} tool calls`
+			};
+		}
+		if (budgets.max_tokens < MIN_DEEP_RESEARCH_TOKENS) {
+			return {
+				budgets,
+				error: `Deep research requires at least ${MIN_DEEP_RESEARCH_TOKENS} tokens`
+			};
+		}
+		if (budgets.max_tokens > MAX_DEEP_RESEARCH_TOKENS) {
+			return {
+				budgets,
+				error: `Deep research cannot exceed ${MAX_DEEP_RESEARCH_TOKENS} tokens`
+			};
+		}
+		if (budgets.wall_clock_ms < 1) {
+			return {
+				budgets,
+				error: 'Deep research requires a positive wall-clock budget'
+			};
+		}
+		if (budgets.wall_clock_ms > MAX_DEEP_RESEARCH_WALL_CLOCK_MS) {
+			return {
+				budgets,
+				error: `Deep research cannot exceed ${MAX_DEEP_RESEARCH_WALL_CLOCK_MS}ms`
+			};
+		}
+	}
+	return { budgets };
 }
 
 export function normalizeAgentRunAllowedOps(input: unknown): {
@@ -176,11 +270,40 @@ export async function dispatchAgentRun(
 
 	const contextType = params.contextType === 'project' ? 'project' : 'global';
 	const scopeMode = params.scopeMode === 'read_write' ? 'read_write' : 'read_only';
+	const runTemplate = params.runTemplate === 'deep_research' ? 'deep_research' : 'agent';
+	const effort =
+		runTemplate === 'deep_research' || params.effort === 'deep' ? 'deep' : 'standard';
 	const reviewRequired = params.reviewRequired === true;
 	const projectId = params.projectId?.trim() || null;
 	const trigger = params.trigger ?? 'manual';
 	const admin = params.admin ?? createAdminSupabaseClient();
+	const effortBudgets = resolveAgentRunEffortBudgets(effort, params.budgets, runTemplate);
+	if (effortBudgets.error) {
+		return {
+			ok: false,
+			status: HttpStatus.BAD_REQUEST,
+			code: 'INVALID_REQUEST',
+			message: effortBudgets.error
+		};
+	}
+	const budgets = effortBudgets.budgets;
 
+	if (runTemplate === 'deep_research' && scopeMode !== 'read_only') {
+		return {
+			ok: false,
+			status: HttpStatus.BAD_REQUEST,
+			code: 'INVALID_REQUEST',
+			message: 'Deep research runs must use read-only scope'
+		};
+	}
+	if (runTemplate === 'deep_research' && (params.depth ?? 0) !== 0) {
+		return {
+			ok: false,
+			status: HttpStatus.BAD_REQUEST,
+			code: 'INVALID_REQUEST',
+			message: 'Deep research can only be dispatched as a top-level run'
+		};
+	}
 	if (contextType === 'project' && !projectId) {
 		return {
 			ok: false,
@@ -212,6 +335,15 @@ export async function dispatchAgentRun(
 
 	const active = await countActiveAgentRuns({ admin, userId: params.userId });
 	if (!active.ok) return active;
+	if (runTemplate === 'deep_research' && active.count > 0) {
+		return {
+			ok: false,
+			status: HttpStatus.TOO_MANY_REQUESTS,
+			code: 'RATE_LIMITED',
+			message:
+				'Deep research needs the three Agent Run slots free for its coordinator and researchers.'
+		};
+	}
 	if (active.count >= MAX_CONCURRENT_AGENT_RUNS) {
 		return {
 			ok: false,
@@ -238,9 +370,11 @@ export async function dispatchAgentRun(
 		parent_run_id: params.parentRunId ?? null,
 		depth: params.depth ?? 0,
 		scope_mode: scopeMode,
+		effort,
+		run_template: runTemplate,
 		allowed_ops: params.allowedOps ?? null,
 		review_required: reviewRequired,
-		budgets: params.budgets ?? {}
+		budgets
 	};
 
 	const { data: run, error: runError } = await (admin as any)
@@ -255,10 +389,12 @@ export async function dispatchAgentRun(
 			context_type: contextType,
 			project_id: projectId,
 			scope_mode: scopeMode,
+			effort,
+			run_template: runTemplate,
 			allowed_ops: params.allowedOps ?? null,
 			review_required: reviewRequired,
 			status: 'queued',
-			budgets: (params.budgets ?? {}) as Json,
+			budgets: budgets as Json,
 			parent_run_id: params.parentRunId ?? null,
 			parent_session_id: params.parentSessionId ?? null,
 			parent_message_id: params.parentMessageId ?? null,

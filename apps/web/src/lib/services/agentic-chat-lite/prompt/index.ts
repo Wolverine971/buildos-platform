@@ -12,6 +12,7 @@ export type {
 	LitePromptInput,
 	LitePromptRetrievalMap,
 	LitePromptRetrievalMapInput,
+	LitePromptScaffoldOptions,
 	LitePromptSection,
 	LitePromptSectionId,
 	LitePromptSectionKind,

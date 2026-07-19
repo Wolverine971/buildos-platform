@@ -18,19 +18,28 @@ export function selectFastChatTools(params: {
 	surfaceProfile?: GatewaySurfaceProfileName;
 	latestUserMessage?: string | null;
 	turnIntent?: FastChatTurnIntent | null;
+	leanDiscovery?: boolean;
+	allowLegacySurfaceFallback?: boolean;
 }): ChatToolDefinition[] {
 	let tools: ChatToolDefinition[];
 	if (params.surfaceProfile) {
-		tools = getGatewaySurfaceForProfile(params.surfaceProfile);
+		tools = getGatewaySurfaceForProfile(params.surfaceProfile, {
+			leanDiscovery: params.leanDiscovery
+		});
 	} else {
 		const routedProfile = resolveFastChatSurfaceProfileForTurn({
 			contextType: params.contextType,
 			latestUserMessage: params.latestUserMessage,
-			turnIntent: params.turnIntent
+			turnIntent: params.turnIntent,
+			allowLegacySurfaceFallback: params.allowLegacySurfaceFallback
 		});
 		tools = routedProfile
-			? getGatewaySurfaceForProfile(routedProfile)
-			: getGatewaySurfaceForContextType(params.contextType);
+			? getGatewaySurfaceForProfile(routedProfile, {
+					leanDiscovery: params.leanDiscovery
+				})
+			: getGatewaySurfaceForContextType(params.contextType, {
+					leanDiscovery: params.leanDiscovery
+				});
 	}
 	const autonomousWriteTools = params.turnIntent
 		? getAutonomousWriteToolNamesForTurnIntent(params.turnIntent)
@@ -50,20 +59,39 @@ export function selectFastChatTools(params: {
 	)
 		? ['move_onto_task']
 		: [];
-	return materializeGatewayTools(tools, [...autonomousWriteTools, ...crossProjectTools]).tools;
+	const delegatedResearchTools = looksLikeDelegatedResearchTurn(
+		[
+			params.latestUserMessage,
+			params.turnIntent?.source === 'pending_continuation'
+				? params.turnIntent.originalRequestText
+				: null
+		]
+			.filter(
+				(value): value is string => typeof value === 'string' && value.trim().length > 0
+			)
+			.join('\n')
+	)
+		? ['delegate_task']
+		: [];
+	return materializeGatewayTools(tools, [
+		...autonomousWriteTools,
+		...crossProjectTools,
+		...delegatedResearchTools
+	]).tools;
 }
 
 export function resolveFastChatSurfaceProfileForTurn(params: {
 	contextType: ChatContextType;
 	latestUserMessage?: string | null;
 	turnIntent?: FastChatTurnIntent | null;
+	allowLegacySurfaceFallback?: boolean;
 }): GatewaySurfaceProfileName {
 	const intentProfile = resolveSurfaceProfileForTurnIntent(params.contextType, params.turnIntent);
 	if (intentProfile) return intentProfile;
-	const routedProfile = resolveProjectSurfaceProfileForTurn(
-		params.contextType,
-		params.latestUserMessage
-	);
+	const routedProfile =
+		params.allowLegacySurfaceFallback === false
+			? null
+			: resolveProjectSurfaceProfileForTurn(params.contextType, params.latestUserMessage);
 	return routedProfile ?? resolveGatewaySurfaceProfileForContextType(params.contextType);
 }
 
@@ -147,6 +175,18 @@ function looksLikeCrossProjectTaskMove(
 			text
 		) ||
 		/\b(?:task|todo|item)\b[\s\S]{0,100}\b(?:move|moves|moved|moving|transfer|transfers|transferred|transferring|relocate|relocates|relocated|relocating)\b[\s\S]{0,120}\b(?:to|into|between|another|different)\b[\s\S]{0,60}\bprojects?\b/i.test(
+			text
+		)
+	);
+}
+
+function looksLikeDelegatedResearchTurn(latestUserMessage?: string | null): boolean {
+	const text = latestUserMessage?.trim() ?? '';
+	if (!text) return false;
+	return (
+		/\bdeep[-\s]?research\b/i.test(text) ||
+		/\b(?:delegate|delegation|sub-?agents?|background agent|research swarm)\b/i.test(text) ||
+		/\b(?:research|investigate|analy[sz]e)\b[\s\S]{0,100}\b(?:in the background|take your time|get back to me|report back)\b/i.test(
 			text
 		)
 	);

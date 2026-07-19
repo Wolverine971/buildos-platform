@@ -747,7 +747,13 @@ export interface DelegateTaskArgs {
 	project_id?: string;
 	/** 'read_only' (analyze/summarize) or 'read_write' (may mutate). Defaults to read_only. */
 	scope_mode?: 'read_only' | 'read_write';
+	/** Use a higher-quality model lane with high reasoning. */
+	effort?: 'standard' | 'deep';
+	/** Use bounded plan/fan-out/synthesize orchestration for multi-source research. */
+	run_template?: 'agent' | 'deep_research';
 	max_tool_calls?: number;
+	/** Observed LLM-cost ceiling. Paid web-tool charges are not yet included. */
+	max_cost_usd?: number;
 	/**
 	 * Opt-in review-before-commit (02). When true on a read_write run, the agent
 	 * STAGES its changes into a proposal instead of committing; you present the

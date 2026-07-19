@@ -47,8 +47,9 @@ controls. This audit is the deferred content-body pass.
 - **Decision action grouping** - final decisions (`Accept`, `Dismiss`) are grouped separately from
   assistive/delay actions (`Chat`, `Snooze`) in both project-suggestion controls and embedded change
   review controls. `Later` was renamed to `Snooze`. -> P4+P6
-- **Dismiss feedback reveal** - dismiss feedback fields now sit behind an explicit disclosure that
-  opens by default only when feedback already exists. -> P7+P13
+- **Dismiss feedback reveal (superseded 2026-07-18)** - dismiss feedback fields originally sat
+  behind an explicit disclosure that opened by default only when feedback already existed. The
+  decision-note consolidation below removed this duplicate path. -> P7+P13
 
 ## Tier 3 - Shipped
 
@@ -77,6 +78,37 @@ controls. This audit is the deferred content-body pass.
 Live authenticated visual verification is still owed. The in-app browser loaded the public landing page
 with a `Log in` CTA and no AI Inbox, so this pass did not capture real AI Inbox desktop/iPhone,
 light/dark screenshots.
+
+## Decision-note consolidation - 2026-07-18
+
+Authenticated screenshots exposed two competing text-entry paths on each project finding: a one-line
+response next to `Address`/`Dismiss`, plus a separate dismiss-reason disclosure and note.
+
+### Shipped
+
+- Findings now have one neutral `Decision note` field beside their actions. The same trimmed value is
+  submitted as resolution context when the user selects `Address` and as feedback when they select
+  `Dismiss`. The helper text makes the contract explicit: a note is required to address and optional
+  to dismiss. -> P6
+- The separate dismiss-feedback disclosure, reason selector, textarea, per-item state, and component
+  were removed from both Dashboard AI Inbox and Project Inbox. Executable proposals retain their
+  direct `Accept`/`Dismiss` controls; findings retain `Address`/`Dismiss` because there is no proposed
+  mutation to accept. -> P6
+- The feedback-memory path remains intact. A dismissal with text stores the note; a bare dismissal
+  continues to receive the server-side `dismissed_without_note` fallback. The Project Inbox no longer
+  treats text entered into a field labeled as dismissal feedback as a hidden clarification/delegation
+  request. -> P6+P13
+- Failed Address/Dismiss requests restore the optimistic card with its decision note intact, so users
+  do not have to retype context after a transient error. -> P13
+
+### Verification
+
+- Focused component, inbox-decision API, and feedback-persistence suites: 21 tests passed.
+- `pnpm --filter @buildos/web check`: 0 errors and 0 warnings.
+- Official Svelte autofixer: shared finding control clean; targeted Prettier and `git diff --check`
+  passed.
+- The supplied authenticated desktop screenshots verified the before-state. A matching after-state
+  capture remains owed.
 
 ## Mobile follow-up - 2026-07-09
 

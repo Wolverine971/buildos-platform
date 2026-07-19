@@ -149,6 +149,13 @@ export type LitePromptEnvelope = {
 	toolsSummary: LitePromptToolsSummary;
 };
 
+export type LitePromptScaffoldOptions = {
+	staticSkillCatalog?: boolean;
+	skillRoutingCoaching?: boolean;
+	retiredModelCoaching?: boolean;
+	domainSensing?: boolean;
+};
+
 export type LitePromptInput = MasterPromptContext & {
 	now?: Date | string | null;
 	timezone?: string | null;
@@ -163,4 +170,5 @@ export type LitePromptInput = MasterPromptContext & {
 	skillGatePreload?: SkillGatePreload | null;
 	retrievalMap?: LitePromptRetrievalMapInput | null;
 	tools?: ChatToolDefinition[] | null;
+	scaffold?: LitePromptScaffoldOptions | null;
 };

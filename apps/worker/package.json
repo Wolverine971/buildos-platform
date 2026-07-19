@@ -20,6 +20,7 @@
 		"test:coverage": "vitest run --coverage",
 		"test:scheduler": "vitest run tests/scheduler.test.ts",
 		"test:integration": "vitest run tests/integration",
+		"test:deep-research:integration": "vitest run --config vitest.integration.config.ts",
 		"guardrails:http-modules": "node ./scripts/check-worker-http-module-size.cjs",
 		"backfill:start-here": "tsx src/scripts/backfillStartHereDocuments.ts"
 	},

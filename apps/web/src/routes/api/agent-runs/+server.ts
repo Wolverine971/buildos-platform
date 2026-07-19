@@ -52,6 +52,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 	const goal = payload.goal.trim();
 	const contextType = payload.context_type === 'project' ? 'project' : 'global';
 	const scopeMode = payload.scope_mode === 'read_write' ? 'read_write' : 'read_only';
+	const effort = payload.effort === 'deep' ? 'deep' : 'standard';
+	const runTemplate = payload.run_template === 'deep_research' ? 'deep_research' : 'agent';
 	const reviewRequired = payload.review === true;
 	const projectId =
 		typeof payload.project_id === 'string' && payload.project_id.trim()
@@ -83,6 +85,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		contextType,
 		projectId,
 		scopeMode,
+		effort,
+		runTemplate,
 		reviewRequired,
 		allowedOps,
 		budgets,

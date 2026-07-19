@@ -34,6 +34,10 @@ export type AgentRunTrigger = 'chat' | 'manual' | 'scheduled' | 'event';
 
 export type AgentRunContextType = 'project' | 'global';
 
+export type AgentRunEffort = 'standard' | 'deep';
+
+export type AgentRunTemplate = 'agent' | 'deep_research';
+
 /** Default = direct commit; 'stage' is engaged only when a run is dispatched with review. */
 export type AgentRunMutationMode = 'commit' | 'stage';
 
@@ -64,6 +68,10 @@ export interface AgentBrief {
 	 * the registry/policy layer — not arbitrary strings.
 	 */
 	allowed_ops?: string[] | null;
+	/** Higher-reasoning model routing. Defaults to 'standard'. */
+	effort?: AgentRunEffort;
+	/** Durable orchestration shape. Defaults to a single autonomous agent. */
+	run_template?: AgentRunTemplate;
 	/** Opt-in: stage mutations for review instead of committing directly (02). */
 	review?: boolean;
 }
@@ -72,6 +80,11 @@ export interface AgentRunBudgets {
 	wall_clock_ms?: number;
 	max_tokens?: number;
 	max_tool_calls?: number;
+	/**
+	 * Observed LLM-usage ceiling checked between model calls. Paid tools are not
+	 * included, and an in-flight provider request can overshoot slightly.
+	 */
+	max_cost_usd?: number;
 }
 
 export interface AgentRunMetrics {

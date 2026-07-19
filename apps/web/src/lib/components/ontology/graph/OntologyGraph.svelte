@@ -12,20 +12,21 @@
 
 	Shape Reference:
 	- Project: round-rectangle (container)
-	- Goal: star (north star)
+	- Goal: target-in-circle (north star)
 	- Task: ellipse (atomic work)
 	- Plan: round-rectangle dashed (temporal scaffolding)
 	- Document: rectangle (knowledge page)
 	- Milestone: triangle (checkpoint)
 -->
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
+	import { onMount } from 'svelte';
+	import { MediaQuery } from 'svelte/reactivity';
 	import cytoscape from 'cytoscape';
 	import dagre from 'cytoscape-dagre';
 	import cola from 'cytoscape-cola';
 	import coseBilkent from 'cytoscape-cose-bilkent';
 	import { OntologyGraphService, GRAPH_COLORS } from './lib/graph.service';
-	import { getGraphLayoutOptions } from './lib/graph.layout';
+	import { getGraphLayoutOptions, GRAPH_FIT_PADDING } from './lib/graph.layout';
 	import type {
 		GraphNode,
 		GraphSourceData,
@@ -49,20 +50,30 @@
 	let {
 		data,
 		viewMode,
+		layoutName = 'cose-bilkent',
+		onNodeSelect,
 		selectedNode = $bindable<GraphNode | null>(),
 		graphInstance = $bindable<OntologyGraphInstance | null>()
 	}: {
 		data: GraphSourceData;
 		viewMode: ViewMode;
-		selectedNode: GraphNode | null;
-		graphInstance: OntologyGraphInstance | null;
+		layoutName?: string;
+		onNodeSelect?: (node: GraphNode) => void;
+		selectedNode?: GraphNode | null;
+		graphInstance?: OntologyGraphInstance | null;
 	} = $props();
 
 	let container: HTMLElement;
 	let cy: cytoscape.Core | null = null;
-	let currentLayout = 'dagre';
+	let activeLayout: cytoscape.Layouts | null = null;
+	let currentLayout = 'cose-bilkent';
+	let renderedData: GraphSourceData | null = null;
+	let renderedViewMode: ViewMode | null = null;
+	let renderedIsDark: boolean | null = null;
 	let highlightTimeouts: Array<ReturnType<typeof setTimeout>> = [];
 	let layoutFitTimeout: ReturnType<typeof setTimeout> | null = null;
+	let resizeFitTimeout: ReturnType<typeof setTimeout> | null = null;
+	const reducedMotion = new MediaQuery('prefers-reduced-motion: reduce', false);
 
 	// Dark mode detection
 	let isDark = $state(false);
@@ -91,14 +102,22 @@
 
 		initializeGraph();
 
+		let resizeFrame: number | null = null;
+		const resizeObserver = new ResizeObserver(() => {
+			if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
+			resizeFrame = requestAnimationFrame(() => {
+				scheduleResizeFit(reducedMotion.current ? 0 : 80);
+				resizeFrame = null;
+			});
+		});
+		resizeObserver.observe(container);
+
 		return () => {
 			observer.disconnect();
+			resizeObserver.disconnect();
+			if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
 			destroyGraph();
 		};
-	});
-
-	onDestroy(() => {
-		destroyGraph();
 	});
 
 	function destroyGraph() {
@@ -108,11 +127,21 @@
 			clearTimeout(layoutFitTimeout);
 			layoutFitTimeout = null;
 		}
+		if (resizeFitTimeout !== null) {
+			clearTimeout(resizeFitTimeout);
+			resizeFitTimeout = null;
+		}
+		const previousLayout = activeLayout;
+		activeLayout = null;
+		previousLayout?.stop();
 
 		if (cy) {
 			cy.destroy();
 			cy = null;
 		}
+		renderedData = null;
+		renderedViewMode = null;
+		renderedIsDark = null;
 
 		graphInstance = null;
 	}
@@ -155,6 +184,28 @@
 					'text-background-padding': 'data(labelBackgroundPadding)' as any,
 					'text-background-shape': 'roundrectangle',
 					color: labelColor
+				}
+			},
+			// Canonical entity glyphs sit in a fixed, explicitly centered box. Keeping
+			// image geometry independent from the node silhouette prevents circles,
+			// portrait documents, and triangles from nudging their glyphs off-axis.
+			{
+				selector: 'node[iconImage]',
+				style: {
+					'background-image': 'data(iconImage)' as any,
+					'background-fit': 'contain',
+					'background-repeat': 'no-repeat',
+					'background-position-x': '50%',
+					'background-position-y': '50%',
+					'background-offset-x': 0,
+					'background-offset-y': 0,
+					'background-width': 'data(iconSize)' as any,
+					'background-height': 'data(iconSize)' as any,
+					'background-width-relative-to': 'inner',
+					'background-height-relative-to': 'inner',
+					'background-image-containment': 'inside',
+					'background-image-opacity': 0.96,
+					'background-clip': 'node'
 				}
 			},
 			// Draft state - dotted border
@@ -207,19 +258,6 @@
 					'font-weight': 800,
 					'text-background-opacity': 0,
 					'underlay-opacity': 0
-				}
-			},
-			// Goals carry the Lucide Target SVG painted as background-image,
-			// keeping the icon consistent with the legend, NodeDetailsPanel, and Inkprint.
-			{
-				selector: 'node[type = "goal"]',
-				style: {
-					'background-image': 'data(iconImage)' as any,
-					'background-fit': 'contain',
-					'background-image-opacity': 1,
-					'background-clip': 'node',
-					'background-width': '70%',
-					'background-height': '70%'
 				}
 			},
 			// Blocked state - thick red border, attention-grabbing
@@ -299,7 +337,7 @@
 			},
 			// Connected edges of selected node
 			{
-				selector: 'node:selected ~ edge',
+				selector: 'edge.connected',
 				style: {
 					'line-color': accent,
 					'target-arrow-color': accent,
@@ -331,6 +369,9 @@
 		if (!cy) return;
 
 		const graphData = OntologyGraphService.buildGraphData(data, viewMode, isDark);
+		renderedData = data;
+		renderedViewMode = viewMode;
+		renderedIsDark = isDark;
 
 		cy.batch(() => {
 			// Update node data
@@ -356,33 +397,53 @@
 
 	function initializeGraph() {
 		destroyGraph();
+		currentLayout = layoutName;
 
 		const graphData = OntologyGraphService.buildGraphData(data, viewMode, isDark);
+		renderedData = data;
+		renderedViewMode = viewMode;
+		renderedIsDark = isDark;
 
 		cy = cytoscape({
 			container,
 			elements: [...graphData.nodes, ...graphData.edges],
 			style: getCytoscapeStyles() as any,
-			layout: getGraphLayoutOptions(currentLayout),
+			// Seed iterative layouts with non-overlapping positions. Starting every
+			// node at (0, 0) makes Cola converge into an unnecessarily narrow column.
+			layout: { name: 'random', fit: false, animate: false },
 			minZoom: 0.1,
-			maxZoom: 4,
-			wheelSensitivity: 0.35
+			maxZoom: 4
+		});
+
+		cy.on('select', 'node', (evt) => {
+			cy?.edges().removeClass('connected');
+			evt.target.connectedEdges().addClass('connected');
+		});
+
+		cy.on('unselect', 'node', () => {
+			if (!cy) return;
+			cy.edges().removeClass('connected');
+			cy.nodes(':selected').connectedEdges().addClass('connected');
 		});
 
 		// Node tap - select
 		cy.on('tap', 'node', (evt) => {
 			const node = evt.target;
-			selectedNode = {
+			const graphNode = {
 				...(node.data() as GraphNode),
 				connectedEdges: node.connectedEdges().length,
 				neighbors: node.neighborhood().nodes().length
 			};
+			selectedNode = graphNode;
+			onNodeSelect?.(graphNode);
 		});
 
 		// Background tap - deselect
 		cy.on('tap', (evt) => {
 			if (evt.target === cy) {
 				selectedNode = null;
+				cy?.nodes(':selected').unselect();
+				cy?.edges().removeClass('connected');
 			}
 		});
 
@@ -392,7 +453,9 @@
 			node.addClass('hover');
 
 			// Show edge labels on connected edges
-			node.connectedEdges().style({ label: 'data(label)' });
+			node.connectedEdges().forEach((edge: cytoscape.EdgeSingular) => {
+				edge.style('label', String(edge.data('label') ?? ''));
+			});
 		});
 
 		cy.on('mouseout', 'node', (evt) => {
@@ -400,34 +463,81 @@
 			node.removeClass('hover');
 
 			// Hide edge labels
-			node.connectedEdges().style({ label: '' });
+			node.connectedEdges().forEach((edge: cytoscape.EdgeSingular) =>
+				edge.removeStyle('label')
+			);
 		});
 
 		graphInstance = buildGraphInstance();
+		runLayout(currentLayout);
+	}
+
+	function scheduleFit(delay: number, layoutName?: string) {
+		if (layoutFitTimeout !== null) clearTimeout(layoutFitTimeout);
+		layoutFitTimeout = setTimeout(() => {
+			if (layoutName && currentLayout !== layoutName) {
+				layoutFitTimeout = null;
+				return;
+			}
+			cy?.resize();
+			cy?.fit(undefined, GRAPH_FIT_PADDING);
+			layoutFitTimeout = null;
+		}, delay);
+	}
+
+	function scheduleResizeFit(delay: number) {
+		if (resizeFitTimeout !== null) clearTimeout(resizeFitTimeout);
+		resizeFitTimeout = setTimeout(() => {
+			cy?.resize();
+			cy?.fit(undefined, GRAPH_FIT_PADDING);
+			resizeFitTimeout = null;
+		}, delay);
 	}
 
 	function runLayout(layoutName: string) {
 		if (!cy) return;
 
-		const options = getGraphLayoutOptions(layoutName);
+		const options = getGraphLayoutOptions(layoutName, reducedMotion.current);
 		const animationDuration = (
 			options as cytoscape.LayoutOptions & { animationDuration?: number }
 		).animationDuration;
+		const previousLayout = activeLayout;
+		activeLayout = null;
+		previousLayout?.stop();
+		const layout = cy.layout(options);
+		activeLayout = layout;
 
 		if (layoutFitTimeout !== null) clearTimeout(layoutFitTimeout);
-		cy.layout(options).run();
+		layout.one('layoutstop', () => {
+			if (activeLayout !== layout) return;
+			activeLayout = null;
+		});
+		layout.run();
 
-		// cytoscape-cose-bilkent can emit layoutstop before compound bounds are ready.
-		// Refit once after its configured end animation so switching from a very wide
-		// hierarchy cannot leave the spring graph off-canvas.
-		layoutFitTimeout = setTimeout(
-			() => {
-				cy?.resize();
-				cy?.fit(undefined, 50);
-				layoutFitTimeout = null;
-			},
-			(animationDuration ?? 500) + 100
-		);
+		// Layout plugins do not agree on when compound bounds are final. A single
+		// guarded post-animation pass keeps both initial opens and later switches
+		// deterministic.
+		scheduleFit((animationDuration ?? 0) + (reducedMotion.current ? 0 : 100), layoutName);
+	}
+
+	function zoomBy(factor: number) {
+		if (!cy) return;
+
+		const level = Math.min(cy.maxZoom(), Math.max(cy.minZoom(), cy.zoom() * factor));
+		const zoom = {
+			level,
+			renderedPosition: {
+				x: container.clientWidth / 2,
+				y: container.clientHeight / 2
+			}
+		};
+
+		if (reducedMotion.current) {
+			cy.zoom(zoom);
+			return;
+		}
+
+		cy.animate({ zoom }, { duration: 160 });
 	}
 
 	function buildGraphInstance(): OntologyGraphInstance | null {
@@ -442,12 +552,19 @@
 			},
 			fitToView: () => {
 				if (!cy) return;
-				cy.fit(undefined, 50);
+				cy.fit(undefined, GRAPH_FIT_PADDING);
 			},
+			zoomIn: () => zoomBy(1.25),
+			zoomOut: () => zoomBy(0.8),
 			centerOnNode: (nodeId: string) => {
 				if (!cy) return;
 				const node = cy.getElementById(nodeId);
 				if (node && node.length > 0) {
+					if (reducedMotion.current) {
+						cy.center(node);
+						cy.zoom({ level: 2, position: node.position() });
+						return;
+					}
 					cy.animate(
 						{
 							center: { eles: node },
@@ -510,10 +627,32 @@
 		return api;
 	}
 
+	$effect(() => {
+		const nextLayout = layoutName;
+		if (!cy || nextLayout === currentLayout) return;
+
+		currentLayout = nextLayout;
+		runLayout(nextLayout);
+	});
+
 	// React to data/viewMode changes
 	$effect(() => {
+		const nextData = data;
+		const nextViewMode = viewMode;
+		const nextIsDark = isDark;
 		if (!cy) return;
-		const graphData = OntologyGraphService.buildGraphData(data, viewMode, isDark);
+		if (
+			nextData === renderedData &&
+			nextViewMode === renderedViewMode &&
+			nextIsDark === renderedIsDark
+		) {
+			return;
+		}
+
+		const graphData = OntologyGraphService.buildGraphData(nextData, nextViewMode, nextIsDark);
+		renderedData = nextData;
+		renderedViewMode = nextViewMode;
+		renderedIsDark = nextIsDark;
 
 		cy.batch(() => {
 			cy!.elements().remove();
@@ -533,7 +672,7 @@
 
 <style>
 	.graph-container {
-		touch-action: pan-x pan-y pinch-zoom;
+		touch-action: none;
 		-webkit-user-select: none;
 		user-select: none;
 		-webkit-overflow-scrolling: touch;

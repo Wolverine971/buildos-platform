@@ -470,7 +470,7 @@
 	function selectTab(tab: WorkspaceTab, updateUrl = true) {
 		activeTab = tab;
 		if (!browser || !updateUrl) return;
-		const url = new URL(page.url);
+		const url = new URL(window.location.href);
 		url.searchParams.set('view', tab);
 		replaceState(url, { ...page.state });
 	}
@@ -535,7 +535,9 @@
 		entityClosePending = false;
 
 		if (browser) {
-			const url = new URL(page.url);
+			// `page.url` can lag a same-tick tab replacement. The address bar is the
+			// authoritative source here so opening a modal preserves the visible view.
+			const url = new URL(window.location.href);
 			const replacingExistingEntity = url.searchParams.has('entity');
 			url.searchParams.set('entity', resolution.action.kind);
 			url.searchParams.set('entity_id', resolution.action.entityId);
@@ -566,7 +568,7 @@
 			return;
 		}
 
-		const url = new URL(page.url);
+		const url = new URL(window.location.href);
 		if (url.searchParams.has('entity') || url.searchParams.has('entity_id')) {
 			url.searchParams.delete('entity');
 			url.searchParams.delete('entity_id');
@@ -1188,7 +1190,7 @@
 				tabindex="0"
 			>
 				<div class="grid gap-3 lg:grid-cols-[minmax(0,1.65fr)_minmax(18rem,0.8fr)]">
-					<div class="space-y-3">
+					<div class="min-w-0 space-y-3">
 						<article class="workspace-card p-4 sm:p-5">
 							<div class="flex items-center justify-between gap-3">
 								<div>
@@ -1395,7 +1397,7 @@
 						{/if}
 					</div>
 
-					<aside class="space-y-3">
+					<aside class="min-w-0 space-y-3">
 						<article class="workspace-card overflow-hidden">
 							<header
 								class="flex items-center gap-3 border-b border-border px-4 py-3"
@@ -1980,13 +1982,6 @@
 		z-index: 1;
 	}
 
-	.signal-glow-grid:hover .signal-glow-card::before,
-	.signal-glow-grid:hover .signal-glow-card::after,
-	.signal-glow-grid:focus-within .signal-glow-card::before,
-	.signal-glow-grid:focus-within .signal-glow-card::after {
-		opacity: 1;
-	}
-
 	.signal-card-action {
 		width: 100%;
 		cursor: pointer;
@@ -2160,6 +2155,15 @@
 	@media (prefers-reduced-motion: no-preference) {
 		.workspace-panel {
 			animation: workspace-panel-in 180ms cubic-bezier(0.4, 0, 0.2, 1);
+		}
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.signal-glow-grid:hover .signal-glow-card::before,
+		.signal-glow-grid:hover .signal-glow-card::after,
+		.signal-glow-grid:focus-within .signal-glow-card::before,
+		.signal-glow-grid:focus-within .signal-glow-card::after {
+			opacity: 1;
 		}
 	}
 

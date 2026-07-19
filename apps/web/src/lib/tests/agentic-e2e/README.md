@@ -74,8 +74,9 @@ stream and is paid.
 
 Per turn, up to three surfaces:
 
-1. **SSE stream** (authoritative) — no `error` events, a terminal `done`, the
-   expected tool(s) were called, no scaffolding leakage in assistant text.
+1. **SSE stream** (authoritative) — strict JSON decoding, exact stream/turn
+   identity, contiguous sequence/event IDs, no duplicates or post-terminal
+   events, one terminal `done`, expected tool calls, and no scaffolding leakage.
 2. **Ground truth** (authoritative) — the actual `onto_documents` / `onto_tasks`
    / `onto_edges` rows changed as intended (written synchronously during tool
    execution, independent of observability).
@@ -83,8 +84,9 @@ Per turn, up to three surfaces:
    `chat_tool_executions` for the expected tool, joined by the `stream_run_id`
    the harness mints.
 4. **Attribution** — each turn prints actual model, provider, pass role/profile,
-   pinned-model/scaffold variant, and a `native`, `self_repaired`,
-   `supervisor_rescued`, or `unattributed` outcome classification.
+   pinned-model/scaffold variant, resolved scaffold configuration and
+   fingerprint, and a `native`, `self_repaired`, `supervisor_rescued`, or
+   `unattributed` outcome classification.
 
 Fuzzy scenarios (e.g. "get organized") add an **LLM judge** (strong `powerful`
 JSON route) that scores the outcome 1–5 against a rubric; the turn fails below
@@ -101,10 +103,29 @@ FASTCHAT_EVAL_SCAFFOLD_VARIANT=baseline \
 pnpm dev --filter=@buildos/web
 ```
 
-Change the scaffold feature flags and `FASTCHAT_EVAL_SCAFFOLD_VARIANT` together
-for each ablation. The label does not alter runtime behavior by itself. Strict
-telemetry mode (`AGENTIC_ASSERT_TELEMETRY=true`) fails turns whose persisted
-events do not identify every pass model/provider/role and intervention summary.
+`FASTCHAT_EVAL_SCAFFOLD_VARIANT` is executable and rejects unknown values at
+server launch. Valid IDs are:
+
+- `baseline`
+- `lean-discovery`
+- `no-static-catalog`
+- `no-retired-model-coaching`
+- `no-legacy-surface-fallback`
+- `model-led-skill-discovery`
+- `no-server-skill-routing`
+- `no-soft-forced-synthesis`
+- `no-autonomous-recovery`
+
+`baseline` preserves the normal `FASTCHAT_LEAN_DISCOVERY` and
+`FASTCHAT_ENABLE_AUTONOMOUS_RECOVERY` settings; the resolved booleans are part
+of the fingerprint. Hard tool-budget and requires-user-action finalization
+remain enabled in every variant because they enforce runtime safety rather than
+model behavior.
+
+Strict telemetry mode (`AGENTIC_ASSERT_TELEMETRY=true`) fails turns whose events
+omit model/provider/role, resolved scaffold configuration, or fingerprint. Set
+`AGENTIC_EXPECT_SCAFFOLD_VARIANT` and optionally
+`AGENTIC_EXPECT_SCAFFOLD_FINGERPRINT` to reject an unexpected launch.
 
 ## Local dev caveats
 

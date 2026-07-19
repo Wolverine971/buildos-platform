@@ -14,6 +14,7 @@ import type {
 } from '@buildos/shared-types';
 import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { buildFastAgentStreamRequestBody } from '$lib/services/agentic-chat-v2/stream-request-client';
+import { AgentStreamEventGuard } from '$lib/services/agentic-chat-v2/stream-protocol';
 import {
 	SSEProcessor,
 	type StreamCallbacks,
@@ -186,30 +187,6 @@ function diffMs(start: number | null, end: number | null): number | null {
 	return Math.max(0, end - start);
 }
 
-function normalizeStreamMetaString(value: unknown): string | null {
-	return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
-}
-
-function normalizeStreamSequenceIndex(value: unknown): number | null {
-	if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) return null;
-	return value;
-}
-
-function buildStreamEventKey(
-	event: AgentSSEMessage,
-	activeStreamRunId: string | null
-): string | null {
-	const metadata = event as unknown as Record<string, unknown>;
-	const eventId = normalizeStreamMetaString(metadata.event_id);
-	if (eventId) return `event:${eventId}`;
-
-	const sequenceIndex = normalizeStreamSequenceIndex(metadata.sequence_index);
-	if (sequenceIndex === null) return null;
-
-	const streamRunId = normalizeStreamMetaString(metadata.stream_run_id) ?? activeStreamRunId;
-	return streamRunId ? `sequence:${streamRunId}:${sequenceIndex}` : null;
-}
-
 function summarizeClientStreamTiming(timing: ClientStreamTimingState) {
 	return {
 		runId: timing.runId,
@@ -248,7 +225,7 @@ export class AgentChatStreamController {
 	#deps: StreamControllerDeps;
 	#fetch: typeof fetch;
 	#streamProcessor: StreamProcessorLike;
-	#processedStreamEventKeys = new Set<string>();
+	#streamEventGuard = new AgentStreamEventGuard();
 
 	constructor(deps: StreamControllerDeps) {
 		this.#deps = deps;
@@ -285,43 +262,25 @@ export class AgentChatStreamController {
 	}
 
 	#clearStreamEventOrderingState(): void {
-		this.#processedStreamEventKeys.clear();
+		this.#streamEventGuard.reset();
 	}
 
 	#shouldAcceptStreamEvent(event: AgentSSEMessage): boolean {
-		const metadata = event as unknown as Record<string, unknown>;
-		const eventStreamRunId = normalizeStreamMetaString(metadata.stream_run_id);
-		if (eventStreamRunId && eventStreamRunId !== this.activeTransportStreamRunId) {
-			this.#deps.logDebug?.('[AgentChat] Dropping stale stream event', {
-				type: event.type,
-				eventStreamRunId,
-				activeStreamRunId: this.activeTransportStreamRunId
-			});
-			return false;
-		}
-
-		const eventClientTurnId = normalizeStreamMetaString(metadata.client_turn_id);
-		if (eventClientTurnId && eventClientTurnId !== this.activeClientTurnId) {
-			this.#deps.logDebug?.('[AgentChat] Dropping stale client turn event', {
-				type: event.type,
-				eventClientTurnId,
-				activeClientTurnId: this.activeClientTurnId
-			});
-			return false;
-		}
-
-		const eventKey = buildStreamEventKey(event, this.activeTransportStreamRunId);
-		if (!eventKey) return true;
-		if (this.#processedStreamEventKeys.has(eventKey)) {
-			this.#deps.logDebug?.('[AgentChat] Dropping duplicate stream event', {
-				type: event.type,
-				eventKey
-			});
-			return false;
-		}
-
-		this.#processedStreamEventKeys.add(eventKey);
-		return true;
+		const decision = this.#streamEventGuard.inspect(event, {
+			streamRunId: this.activeTransportStreamRunId,
+			clientTurnId: this.activeClientTurnId
+		});
+		if (decision.accepted) return true;
+		this.#deps.logDebug?.('[AgentChat] Dropping rejected stream event', {
+			type: event.type,
+			reason: decision.reason,
+			eventKey: decision.eventKey,
+			eventStreamRunId: decision.eventStreamRunId,
+			activeStreamRunId: this.activeTransportStreamRunId,
+			eventClientTurnId: decision.eventClientTurnId,
+			activeClientTurnId: this.activeClientTurnId
+		});
+		return false;
 	}
 
 	finalizeClientStreamTiming(

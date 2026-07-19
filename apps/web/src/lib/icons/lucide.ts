@@ -153,6 +153,8 @@ export { default as Mail } from 'lucide-svelte/icons/mail';
 export { default as Map } from 'lucide-svelte/icons/map';
 export { default as MapPin } from 'lucide-svelte/icons/map-pin';
 export { default as Maximize2 } from 'lucide-svelte/icons/maximize-2';
+export { default as ZoomIn } from 'lucide-svelte/icons/zoom-in';
+export { default as ZoomOut } from 'lucide-svelte/icons/zoom-out';
 export { default as Menu } from 'lucide-svelte/icons/menu';
 export { default as MessageCircle } from 'lucide-svelte/icons/message-circle';
 export { default as MessageSquare } from 'lucide-svelte/icons/message-square';

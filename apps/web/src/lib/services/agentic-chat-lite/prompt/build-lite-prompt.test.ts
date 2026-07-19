@@ -17,6 +17,35 @@ function extractLoadedJson(prompt: string): Record<string, unknown> {
 }
 
 describe('buildLitePromptEnvelope', () => {
+	it('executes prompt scaffold ablations instead of treating them as labels', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project',
+			entityId: 'project-1',
+			currentUserMessage: 'Help me grow a YouTube channel.',
+			scaffold: {
+				staticSkillCatalog: false,
+				skillRoutingCoaching: false,
+				retiredModelCoaching: false,
+				domainSensing: false
+			}
+		});
+		const capabilities = envelope.sections.find(
+			(section) => section.id === 'capabilities_skills_tools'
+		);
+		const strategy = envelope.sections.find((section) => section.id === 'operating_strategy');
+		const safety = envelope.sections.find((section) => section.id === 'safety_data_rules');
+
+		expect(capabilities?.content).not.toContain('Root skill catalog');
+		expect(strategy?.content).not.toContain('Call skill_load before answering');
+		expect(strategy?.content).not.toContain('1-2 sentence lead-in');
+		expect(safety?.content).not.toContain('internal machinery');
+		expect(envelope.systemPrompt).not.toContain('project_audit');
+		expect(envelope.systemPrompt).not.toContain('Pre-tool lead-ins');
+		expect(envelope.sections.some((section) => section.id === 'active_domain_signals')).toBe(
+			false
+		);
+	});
+
 	it('renders the global seed as inspectable sections with canonical tool names', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
 

@@ -6,6 +6,15 @@
 **Scope:** Agent chat modal, API/runtime E2E harness, model routing, system prompt, skills, tools, orchestration, telemetry, and scenario quality.
 **Principle:** Re-evaluate the harness at every model launch. Remove scaffolding when measured model behavior no longer needs it; retain hard product-integrity controls.
 
+> **Current verdicts:** The 2026-07-19 independent re-review supersedes this
+> tracker's severity and current-state claims. It retracts the alleged
+> preload/finalization mismatch, confirms that the modal now has a real browser
+> integration lane, narrows the regex-removal target to the legacy fallback,
+> and identifies non-executable scaffold labels as the primary evaluation gap.
+> See
+> `apps/web/docs/technical/audits/AGENTIC_CHAT_HARNESS_INDEPENDENT_REVIEW_2026-07-19.md`.
+> This file remains as the implementation history of the July 12 audit.
+
 ## Status Legend
 
 - `OPEN` - confirmed issue, not started
@@ -15,19 +24,19 @@
 
 ## Findings
 
-| Priority | Status      | Finding                                                                                                             | Required outcome                                                                                                                                                 |
-| -------- | ----------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P1       | DONE        | The API harness called `releaseTurn()` before assertions and could rewrite `running` telemetry to `completed`.      | Assertions and judging run first; only a checked intermediate turn is explicitly cancelled to unlock a follow-up, with ordering covered by unit tests.           |
-| P1       | IN PROGRESS | The paid suite is endpoint E2E, not modal E2E. Its custom client omits modal request and lifecycle behavior.        | Keep an explicitly named API/runtime lane, share the production wire-request builder, and add a browser lane through the real modal.                             |
-| P1       | DONE        | Harness results were not attributed to actual model/provider/pass role or native-versus-rescued behavior.           | Structured per-turn attribution now records every pass and classifies factual intervention telemetry; eval launches support pinned models and scaffold labels.   |
-| P1       | DONE        | Scenario assertions were weaker than their titles and rubrics.                                                      | Deterministic oracles now verify task priority/date, requested document sections/bullets, targeted edits, canonical tree organization, and content preservation. |
-| P1       | DONE        | The calendar stub could mutate an unseeded external event when enabled by an environment flag.                      | The stub is unconditionally skipped with regression coverage; re-enable only after owned event seed/readback/delete exists.                                      |
-| P2       | OPEN        | The custom SSE parser silently drops malformed frames and does not enforce production identity/deduplication rules. | Reuse the production SSE processor/protocol utilities or test exact parity.                                                                                      |
-| P2       | OPEN        | Skill steering is duplicated across the static catalog, domain sensing, preload, and post-hoc repair.               | Build model-specific ablations, then remove layers that do not improve success.                                                                                  |
-| P2       | OPEN        | Regex intent and tool-surface routing remain unmeasured pre-model crutches.                                         | Compare against lean discovery and model-led routing by pinned model.                                                                                            |
-| P2       | OPEN        | Telemetry reads often ignore database errors and telemetry is soft locally.                                         | Distinguish unavailable, query failure, running, and terminal states; make CI telemetry authoritative.                                                           |
-| P2       | IN PROGRESS | New harness helpers have incomplete isolated unit coverage.                                                         | Release ordering has isolated coverage; add parser, assertion, cleanup, and judge-boundary tests.                                                                |
-| P2       | OPEN        | `AgentChatModal.svelte` remains a 2,958-line composition boundary without a direct integration test.                | Cover modal composition in the browser lane while continuing controller extraction.                                                                              |
+| Priority | Status      | Finding                                                                                                              | Required outcome                                                                                                                                                 |
+| -------- | ----------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1       | DONE        | The API harness called `releaseTurn()` before assertions and could rewrite `running` telemetry to `completed`.       | Assertions and judging run first; only a checked intermediate turn is explicitly cancelled to unlock a follow-up, with ordering covered by unit tests.           |
+| P1       | IN PROGRESS | The paid suite is endpoint E2E, not modal E2E. Its custom client omits modal request and lifecycle behavior.         | Keep an explicitly named API/runtime lane, share the production wire-request builder, and add a browser lane through the real modal.                             |
+| P1       | DONE        | Harness results were not attributed to actual model/provider/pass role or native-versus-rescued behavior.            | Structured per-turn attribution now records every pass, interventions, executable scaffold configuration, and computed prompt/tool fingerprint.                  |
+| P1       | DONE        | Scenario assertions were weaker than their titles and rubrics.                                                       | Deterministic oracles now verify task priority/date, requested document sections/bullets, targeted edits, canonical tree organization, and content preservation. |
+| P1       | DONE        | The calendar stub could mutate an unseeded external event when enabled by an environment flag.                       | The stub is unconditionally skipped with regression coverage; re-enable only after owned event seed/readback/delete exists.                                      |
+| P2       | DONE        | The custom SSE parser silently dropped malformed frames and did not enforce production identity/deduplication rules. | Both evaluator clients now use the shared SSE decoder and strict identity/order/deduplication/terminal validator; malformed streams hard-fail.                   |
+| P2       | OPEN        | Skill steering is duplicated across the static catalog, domain sensing, preload, and post-hoc repair.                | Build model-specific ablations, then remove layers that do not improve success.                                                                                  |
+| P2       | OPEN        | Regex intent and tool-surface routing remain unmeasured pre-model crutches.                                          | Compare against lean discovery and model-led routing by pinned model.                                                                                            |
+| P2       | OPEN        | Telemetry reads often ignore database errors and telemetry is soft locally.                                          | Distinguish unavailable, query failure, running, and terminal states; make CI telemetry authoritative.                                                           |
+| P2       | IN PROGRESS | New harness helpers have incomplete isolated unit coverage.                                                          | Release ordering has isolated coverage; add parser, assertion, cleanup, and judge-boundary tests.                                                                |
+| P2       | OPEN        | `AgentChatModal.svelte` remains a 2,958-line composition boundary without a direct integration test.                 | Cover modal composition in the browser lane while continuing controller extraction.                                                                              |
 
 ## P1-1: Turn Completion Truthfulness
 
@@ -134,9 +143,10 @@ classifies the outcome as `native`, `self_repaired`, `supervisor_rescued`, or
 `unattributed`. Strict telemetry mode rejects unattributed results.
 
 Server-only `FASTCHAT_EVAL_PINNED_MODELS` pins every pass to an ordered model
-list, while `FASTCHAT_EVAL_SCAFFOLD_VARIANT` records the scaffold ablation label.
-Both are inert when unset; the label is attribution only and never changes
-runtime behavior.
+list. As of 2026-07-19, `FASTCHAT_EVAL_SCAFFOLD_VARIANT` resolves a typed,
+executable prompt/routing/recovery policy and rejects unknown IDs. Telemetry and
+prompt snapshots persist the resolved configuration plus a fingerprint over the
+actual system prompt sections and initial tool definitions.
 
 ## P1-4: Deterministic Scenario Oracles
 

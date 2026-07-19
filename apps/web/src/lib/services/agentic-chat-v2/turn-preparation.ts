@@ -26,6 +26,7 @@ import {
 	type FastChatPendingTurnIntent,
 	type FastChatTurnIntent
 } from './turn-intent';
+import type { FastChatScaffoldConfig } from './scaffold-variant';
 
 export type FastChatTurnPreparation = {
 	sessionMetadata: Record<string, unknown>;
@@ -56,6 +57,7 @@ type ResolveFastChatTurnPreparationParams = {
 	contextShiftHintTtlMs: number;
 	nowMs?: number;
 	measureNow?: () => number;
+	scaffold?: FastChatScaffoldConfig;
 };
 
 function readMetadataRecord(value: unknown): Record<string, unknown> {
@@ -100,7 +102,8 @@ export function resolveFastChatTurnPreparation({
 	agentMetadata,
 	contextShiftHintTtlMs,
 	nowMs = Date.now(),
-	measureNow = Date.now
+	measureNow = Date.now,
+	scaffold
 }: ResolveFastChatTurnPreparationParams): FastChatTurnPreparation {
 	const sessionMetadata = readMetadataRecord(agentMetadata);
 	const pendingTurnIntent = readFastChatPendingTurnIntent(
@@ -119,7 +122,9 @@ export function resolveFastChatTurnPreparation({
 
 	// Native BuildOS mutations use the write surface and supervisor directly;
 	// generic mutation words must not activate unrelated subject-matter skills.
-	const domainSensingBypassed = shouldBypassDomainSensingForTurnIntent(turnIntent);
+	const domainSensingBypassed =
+		scaffold?.routing.domainSensing === false ||
+		shouldBypassDomainSensingForTurnIntent(turnIntent);
 	const turnDomainSensing = domainSensingBypassed
 		? null
 		: senseDomains({
@@ -149,12 +154,14 @@ export function resolveFastChatTurnPreparation({
 	const selectedSurfaceProfile = resolveFastChatSurfaceProfileForTurn({
 		contextType,
 		latestUserMessage,
-		turnIntent
+		turnIntent,
+		allowLegacySurfaceFallback: scaffold?.routing.legacySurfaceFallback
 	});
 	const tools = selectFastChatTools({
 		contextType,
 		surfaceProfile: selectedSurfaceProfile,
-		turnIntent
+		turnIntent,
+		leanDiscovery: scaffold?.routing.leanDiscovery
 	});
 	const toolSelectionMs = Math.max(0, measureNow() - toolSelectionStartedAtMs);
 

@@ -34,6 +34,8 @@ const clean: HarnessInterventions = {
 	supervisorRecoveryDecisions: 0,
 	streamRetries: 0,
 	evalScaffoldVariant: null,
+	evalScaffoldFingerprint: null,
+	evalScaffoldConfig: null,
 	evalPinnedModels: []
 };
 
@@ -76,6 +78,11 @@ describe('buildTurnAttributionFromEvents', () => {
 				payload: {
 					...clean,
 					eval_scaffold_variant: 'no-static-catalog',
+					eval_scaffold_fingerprint: 'scaffold-sha',
+					eval_scaffold_config: {
+						version: 1,
+						variant: 'no-static-catalog'
+					},
 					eval_pinned_models: ['provider/model']
 				}
 			},
@@ -103,6 +110,11 @@ describe('buildTurnAttributionFromEvents', () => {
 		});
 		expect(result.interventions).toMatchObject({
 			evalScaffoldVariant: 'no-static-catalog',
+			evalScaffoldFingerprint: 'scaffold-sha',
+			evalScaffoldConfig: {
+				version: 1,
+				variant: 'no-static-catalog'
+			},
 			evalPinnedModels: ['provider/model']
 		});
 	});

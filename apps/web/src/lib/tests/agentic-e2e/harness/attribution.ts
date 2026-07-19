@@ -34,6 +34,8 @@ export interface HarnessInterventions {
 	supervisorRecoveryDecisions: number;
 	streamRetries: number;
 	evalScaffoldVariant: string | null;
+	evalScaffoldFingerprint: string | null;
+	evalScaffoldConfig: Record<string, unknown> | null;
 	evalPinnedModels: string[];
 }
 
@@ -165,6 +167,8 @@ function parseInterventions(payload: unknown): HarnessInterventions {
 		supervisorRecoveryDecisions: asNumber(value.supervisorRecoveryDecisions),
 		streamRetries: asNumber(value.streamRetries),
 		evalScaffoldVariant: asString(value.eval_scaffold_variant),
+		evalScaffoldFingerprint: asString(value.eval_scaffold_fingerprint),
+		evalScaffoldConfig: asOptionalRecord(value.eval_scaffold_config),
 		evalPinnedModels: asStringArray(value.eval_pinned_models)
 	};
 }
@@ -177,6 +181,11 @@ function asRecord(value: unknown): Record<string, unknown> {
 	return value && typeof value === 'object' && !Array.isArray(value)
 		? (value as Record<string, unknown>)
 		: {};
+}
+
+function asOptionalRecord(value: unknown): Record<string, unknown> | null {
+	const record = asRecord(value);
+	return Object.keys(record).length > 0 ? record : null;
 }
 
 function asString(value: unknown): string | null {

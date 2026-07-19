@@ -3,7 +3,7 @@ import type cytoscape from 'cytoscape';
 
 export type GraphLayoutName = 'dagre' | 'cola' | 'cose-bilkent' | 'circle';
 
-const FIT_PADDING = 50;
+export const GRAPH_FIT_PADDING = 50;
 
 /**
  * Keep the layout engine's collision model aligned with what users actually see.
@@ -12,7 +12,10 @@ const FIT_PADDING = 50;
  * Including labels in node dimensions prevents those labels from collapsing into one
  * another even when the node shapes themselves do not overlap.
  */
-export function getGraphLayoutOptions(layoutName: string): cytoscape.LayoutOptions {
+export function getGraphLayoutOptions(
+	layoutName: string,
+	reducedMotion = false
+): cytoscape.LayoutOptions {
 	const defaultLayout = {
 		name: 'dagre',
 		rankDir: 'TB',
@@ -20,18 +23,18 @@ export function getGraphLayoutOptions(layoutName: string): cytoscape.LayoutOptio
 		edgeSep: 24,
 		rankSep: 104,
 		nodeDimensionsIncludeLabels: true,
-		padding: FIT_PADDING,
-		animate: true,
-		animationDuration: 400
+		padding: GRAPH_FIT_PADDING,
+		animate: !reducedMotion,
+		animationDuration: reducedMotion ? 0 : 400
 	} as cytoscape.LayoutOptions;
 
 	const layouts: Record<GraphLayoutName, cytoscape.LayoutOptions> = {
 		dagre: defaultLayout,
 		cola: {
 			name: 'cola',
-			animate: true,
+			animate: !reducedMotion,
 			fit: true,
-			padding: FIT_PADDING,
+			padding: GRAPH_FIT_PADDING,
 			nodeDimensionsIncludeLabels: true,
 			avoidOverlap: true,
 			handleDisconnected: true,
@@ -43,10 +46,10 @@ export function getGraphLayoutOptions(layoutName: string): cytoscape.LayoutOptio
 			quality: 'default',
 			nodeDimensionsIncludeLabels: true,
 			fit: true,
-			padding: FIT_PADDING,
+			padding: GRAPH_FIT_PADDING,
 			randomize: true,
-			animate: 'end',
-			animationDuration: 450,
+			animate: reducedMotion ? false : 'end',
+			animationDuration: reducedMotion ? 0 : 450,
 			idealEdgeLength: 140,
 			edgeElasticity: 0.35,
 			nodeRepulsion: 8000,
@@ -58,8 +61,9 @@ export function getGraphLayoutOptions(layoutName: string): cytoscape.LayoutOptio
 		circle: {
 			name: 'circle',
 			nodeDimensionsIncludeLabels: true,
-			padding: FIT_PADDING,
-			animate: true
+			padding: GRAPH_FIT_PADDING,
+			animate: !reducedMotion,
+			animationDuration: reducedMotion ? 0 : 400
 		} as cytoscape.LayoutOptions
 	};
 

@@ -7,7 +7,7 @@ import {
 	materializeGatewayTools
 } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { GATEWAY_TOOL_DEFINITIONS } from '$lib/services/agentic-chat/tools/core/definitions/gateway';
-import { selectFastChatTools } from './tool-selector';
+import { resolveFastChatSurfaceProfileForTurn, selectFastChatTools } from './tool-selector';
 import { resolveFastChatTurnIntent } from './turn-intent';
 
 afterEach(() => {
@@ -15,6 +15,34 @@ afterEach(() => {
 });
 
 describe('selectFastChatTools', () => {
+	it('can disable the legacy message-regex surface fallback', () => {
+		expect(
+			resolveFastChatSurfaceProfileForTurn({
+				contextType: 'project',
+				latestUserMessage: 'Finished Chapter 2 today.'
+			})
+		).toBe('project_write');
+		expect(
+			resolveFastChatSurfaceProfileForTurn({
+				contextType: 'project',
+				latestUserMessage: 'Finished Chapter 2 today.',
+				allowLegacySurfaceFallback: false
+			})
+		).toBe('project_basic');
+	});
+
+	it('can force lean discovery independently of process environment', () => {
+		const names = selectFastChatTools({
+			contextType: 'global',
+			leanDiscovery: true
+		}).map((tool) => tool.function?.name);
+
+		expect(names).toContain('skill_search');
+		expect(names).toContain('domain_search');
+		expect(names).not.toContain('tool_search');
+		expect(names).not.toContain('skill_load');
+	});
+
 	it('returns a lean global gateway surface with discovery tools', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 
@@ -73,6 +101,25 @@ describe('selectFastChatTools', () => {
 			'delegate_task',
 			'commit_change_set'
 		]);
+	});
+
+	it('mounts delegate_task directly for explicit deep-research or background-agent requests', () => {
+		const deepResearchNames = selectFastChatTools({
+			contextType: 'global',
+			latestUserMessage:
+				'Do deep research on this market with subagents and report back with sources.'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+		const quickLookupNames = selectFastChatTools({
+			contextType: 'global',
+			latestUserMessage: 'Search the web for the current price and summarize it.'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(deepResearchNames).toContain('delegate_task');
+		expect(quickLookupNames).not.toContain('delegate_task');
 	});
 
 	it('mounts only skill_search + domain_search at launch under FASTCHAT_LEAN_DISCOVERY', () => {

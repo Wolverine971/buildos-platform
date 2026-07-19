@@ -139,6 +139,8 @@ type StreamFastChatParams = {
 	maxToolRounds?: number;
 	maxToolCalls?: number;
 	allowAutonomousRecovery?: boolean;
+	/** Disable soft supervisor/read-loop forced-synthesis interventions for ablation runs. */
+	allowForcedSynthesis?: boolean;
 	modelTiering?: FastChatModelTieringConfig | null;
 	/** Server-only eval override. When set, every pass uses this ordered model list. */
 	pinnedModels?: string[];
@@ -278,6 +280,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	const maxToolCalls = Math.max(1, params.maxToolCalls ?? FASTCHAT_LIMITS.MAX_TOOL_CALLS);
 	const maxValidationRepairRounds = gatewayModeActive ? 3 : 2;
 	const allowAutonomousRecovery = Boolean(params.allowAutonomousRecovery);
+	const allowForcedSynthesis = params.allowForcedSynthesis !== false;
 	let toolRounds = 0;
 	let toolCallsMade = 0;
 	let toolCallsExecuted = 0;
@@ -459,6 +462,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		roundsRemaining: number,
 		framing: 'read_loop' | 'research_budget' = 'read_loop'
 	): void => {
+		if (level === 'must_synthesize' && !allowForcedSynthesis) return;
 		const nextRank = readLoopEscalation.READ_LOOP_REPAIR_RANK[level];
 		if (nextRank <= readLoopRepairRank) return;
 		readLoopRepairRank = nextRank;
@@ -873,6 +877,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 		const { decision } = record;
 		if (decision.action === 'force_synthesis') {
+			if (!allowForcedSynthesis) return;
 			const writeIntentToolPass = buildNearBudgetWriteIntentToolPass();
 			if (writeIntentToolPass) {
 				writeIntentCarveOutUsed = true;

@@ -72,8 +72,10 @@ export interface CytoscapeNode {
 		height?: number;
 		size: number;
 		shape: string;
-		/** Optional data URI painted as Cytoscape `background-image` (currently used for the Target icon on goals). */
+		/** Optional encoded SVG painted inside the node for quick entity recognition. */
 		iconImage?: string;
+		/** Icon size in graph-space pixels; separate from node size for precise centering. */
+		iconSize?: number;
 		fontSize?: number;
 		fontWeight?: number;
 		labelValign?: 'top' | 'center' | 'bottom';
@@ -136,6 +138,8 @@ export interface OntologyGraphInstance {
 	cy: CytoscapeCore;
 	changeLayout: (layoutName: string) => void;
 	fitToView: () => void;
+	zoomIn: () => void;
+	zoomOut: () => void;
 	centerOnNode: (nodeId: string) => void;
 	filterByType: (type: string) => void;
 	resetFilters: () => void;

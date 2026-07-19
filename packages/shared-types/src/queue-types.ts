@@ -178,14 +178,17 @@ export interface AgentRunJobMetadata {
 	project_id?: string | null;
 	parent_run_id?: string | null;
 	depth?: number;
-	continuation_from?: 'paused' | 'needs_input' | 'partial';
+	continuation_from?: 'paused' | 'needs_input' | 'partial' | 'children';
 	scope_mode?: 'read_only' | 'read_write';
+	effort?: 'standard' | 'deep';
+	run_template?: 'agent' | 'deep_research';
 	allowed_ops?: string[] | null;
 	review_required?: boolean;
 	budgets?: {
 		wall_clock_ms?: number;
 		max_tokens?: number;
 		max_tool_calls?: number;
+		max_cost_usd?: number;
 	};
 }
 

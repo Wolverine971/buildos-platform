@@ -2,6 +2,13 @@
 
 export type JSONProfile = 'fast' | 'balanced' | 'powerful' | 'maximum' | 'custom';
 export type TextProfile = 'speed' | 'balanced' | 'quality' | 'creative' | 'maximum' | 'custom';
+export type ReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+
+export interface ReasoningOptions {
+	effort?: ReasoningEffort;
+	/** Keep reasoning details available to providers/models that support them. */
+	exclude?: boolean;
+}
 
 export interface ModelCapabilities {
 	jsonMode?: boolean;
@@ -36,6 +43,8 @@ export interface JSONRequestOptions<T = unknown> {
 	temperature?: number;
 	maxTokens?: number;
 	timeoutMs?: number;
+	/** Provider-supported reasoning controls (for example OpenRouter `reasoning.effort`). */
+	reasoning?: ReasoningOptions;
 	validation?: {
 		retryOnParseError?: boolean;
 		validateSchema?: boolean;

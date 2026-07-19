@@ -82,6 +82,10 @@ function isPrivateIpv4(ip: string): boolean {
 	return IPV4_BLOCKED_CIDRS.some(([base, prefix]) => inIpv4Cidr(ipInt, ipv4ToInt(base), prefix));
 }
 
+function ipv4IntToString(ip: number): string {
+	return [(ip >>> 24) & 255, (ip >>> 16) & 255, (ip >>> 8) & 255, ip & 255].join('.');
+}
+
 function ipv6ToBigInt(ip: string): bigint | null {
 	let address = ip.toLowerCase();
 	const zoneIndex = address.indexOf('%');
@@ -131,6 +135,9 @@ function isPrivateIpv6(ip: string): boolean {
 
 	const ipBig = ipv6ToBigInt(ip);
 	if (ipBig === null) return true;
+	if (ipBig >> 32n === 0xffffn) {
+		return isPrivateIpv4(ipv4IntToString(Number(ipBig & 0xffffffffn)));
+	}
 	return IPV6_BLOCKED_CIDRS.some(([base, prefix]) => {
 		const baseBig = ipv6ToBigInt(base);
 		return baseBig === null || inIpv6Cidr(ipBig, baseBig, prefix);

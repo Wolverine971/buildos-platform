@@ -7,6 +7,7 @@
 import { randomUUID } from 'node:crypto';
 import type { ChatToolCall, LastTurnContext } from '@buildos/shared-types';
 import { buildFastAgentStreamRequestBody } from '$lib/services/agentic-chat-v2/stream-request-client';
+import { collectStrictAgentSse } from '$lib/services/agentic-chat-v2/strict-agent-sse';
 import type { HarnessContextType, TurnResult } from './types';
 
 const STREAM_PATH = '/api/agent/v2/stream';
@@ -58,7 +59,6 @@ function emptyResult(streamRunId: string, clientTurnId: string): TurnResult {
 
 function applyEvent(result: TurnResult, ev: Record<string, unknown>): void {
 	result.rawEvents.push(ev);
-	if (typeof ev.stream_run_id === 'string') result.streamRunId = ev.stream_run_id;
 
 	switch (ev.type) {
 		case 'session': {
@@ -106,26 +106,10 @@ function applyEvent(result: TurnResult, ev: Record<string, unknown>): void {
 	}
 }
 
-/** Parse a raw SSE frame (may hold multiple `data:` lines) into one JSON object. */
-function parseFrame(frame: string): Record<string, unknown> | null {
-	const dataLines: string[] = [];
-	for (const line of frame.split('\n')) {
-		if (line.startsWith('data:')) dataLines.push(line.slice(5).trimStart());
-		// `id:` lines and `:` heartbeat comments are ignored.
-	}
-	if (dataLines.length === 0) return null;
-	const payload = dataLines.join('\n');
-	try {
-		return JSON.parse(payload) as Record<string, unknown>;
-	} catch {
-		return null;
-	}
-}
-
 /**
  * POST a message and drive the turn to completion. Resolves once a `done` event
- * arrives (or the stream closes). Never throws on model/tool errors — those are
- * captured in `result.errors` for assertions to inspect.
+ * arrives and the stream closes. Model/tool errors are captured in
+ * `result.errors`; malformed or incoherent protocol events throw.
  */
 export async function runTurn(params: RunTurnParams): Promise<TurnResult> {
 	const streamRunId = randomUUID();
@@ -161,49 +145,11 @@ export async function runTurn(params: RunTurnParams): Promise<TurnResult> {
 		return result;
 	}
 
-	const reader = response.body.getReader();
-	const decoder = new TextDecoder();
-	let buffer = '';
-
-	// IMPORTANT: do not cancel the reader on `done`. The server emits `done` and
-	// THEN finalizes the turn (writing chat_turn_runs.status = 'completed').
-	// Cancelling aborts the HTTP request mid-finalization and leaves the row
-	// stuck at 'running'. Instead we read until the server closes the stream
-	// naturally, with a short grace timeout after `done` as a safety net in case
-	// it lingers on heartbeats.
-	const POST_DONE_GRACE_MS = 5000;
-	for (;;) {
-		const readPromise = reader.read();
-		const raced = result.completed
-			? await Promise.race([
-					readPromise,
-					new Promise<'grace-timeout'>((r) =>
-						setTimeout(() => r('grace-timeout'), POST_DONE_GRACE_MS)
-					)
-				])
-			: await readPromise;
-
-		if (raced === 'grace-timeout') {
-			await reader.cancel().catch(() => {});
-			break;
-		}
-
-		const { done, value } = raced;
-		if (done) break;
-		buffer += decoder.decode(value, { stream: true });
-
-		let sep: number;
-		while ((sep = buffer.indexOf('\n\n')) !== -1) {
-			const frame = buffer.slice(0, sep);
-			buffer = buffer.slice(sep + 2);
-			const ev = parseFrame(frame);
-			if (ev) applyEvent(result, ev);
-		}
-	}
-
-	// Flush any trailing frame without a terminator.
-	const tail = parseFrame(buffer);
-	if (tail) applyEvent(result, tail);
+	await collectStrictAgentSse(response, {
+		streamRunId,
+		clientTurnId,
+		onEvent: (event) => applyEvent(result, event)
+	});
 
 	return result;
 }

@@ -224,8 +224,13 @@ export function getGatewayDirectToolNamesForContextType(contextType: ChatContext
 	);
 }
 
-function getGatewayDiscoveryTools(): ChatToolDefinition[] {
-	const names = isLeanDiscoveryEnabled()
+type GatewaySurfaceOptions = {
+	leanDiscovery?: boolean;
+};
+
+function getGatewayDiscoveryTools(options: GatewaySurfaceOptions = {}): ChatToolDefinition[] {
+	const leanDiscovery = options.leanDiscovery ?? isLeanDiscoveryEnabled();
+	const names = leanDiscovery
 		? GATEWAY_LAUNCH_DISCOVERY_TOOL_NAMES
 		: GATEWAY_DISCOVERY_TOOL_NAMES;
 	return names
@@ -234,20 +239,25 @@ function getGatewayDiscoveryTools(): ChatToolDefinition[] {
 }
 
 export function getGatewaySurfaceForContextType(
-	contextType: ChatContextType
+	contextType: ChatContextType,
+	options: GatewaySurfaceOptions = {}
 ): ChatToolDefinition[] {
-	return getGatewaySurfaceForProfile(resolveGatewaySurfaceProfileForContextType(contextType));
+	return getGatewaySurfaceForProfile(
+		resolveGatewaySurfaceProfileForContextType(contextType),
+		options
+	);
 }
 
 export function getGatewaySurfaceForProfile(
-	profileName: GatewaySurfaceProfileName
+	profileName: GatewaySurfaceProfileName,
+	options: GatewaySurfaceOptions = {}
 ): ChatToolDefinition[] {
 	if (profileName === 'project_create_minimal') {
 		return materializeGatewayTools([], [...PROJECT_CREATE_MINIMAL_DIRECT_TOOL_NAMES]).tools;
 	}
 
 	const names = [
-		...extractToolNamesFromDefinitions(getGatewayDiscoveryTools()),
+		...extractToolNamesFromDefinitions(getGatewayDiscoveryTools(options)),
 		...resolveGatewayDirectToolNamesForProfile(profileName)
 	].filter(isGatewayToolEnabled);
 	return materializeGatewayTools([], names).tools;

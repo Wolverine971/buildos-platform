@@ -1,7 +1,7 @@
 // apps/web/src/lib/components/ontology/graph/lib/graph.service.test.ts
 import { describe, expect, it } from 'vitest';
 
-import { OntologyGraphService } from './graph.service';
+import { NODE_STYLE_CONFIG, OntologyGraphService } from './graph.service';
 import type { GraphSourceData } from './graph.types';
 
 const now = '2026-04-12T17:00:00.000Z';
@@ -65,9 +65,10 @@ describe('OntologyGraphService label display data', () => {
 		expect(taskNode?.data.label).toBe(longTaskTitle);
 		expect(taskNode?.data.displayLabel).not.toBe(longTaskTitle);
 		expect(displayLines).toHaveLength(3);
-		expect(displayLines.every((line) => line.length <= 15)).toBe(true);
-		expect(displayLines.at(-1)).toMatch(/\.\.\.$/);
+		expect(displayLines.every((line) => line.length <= 18)).toBe(true);
+		expect(displayLines.at(-1)).toMatch(/…$/);
 		expect(taskNode?.data.labelBackgroundOpacity).toBeGreaterThan(0);
+		expect(taskNode?.data.iconSize).toBeGreaterThan(0);
 	});
 
 	it('sizes centered plan nodes to contain multi-line labels without label backgrounds', () => {
@@ -94,7 +95,7 @@ describe('OntologyGraphService label display data', () => {
 
 		const planNode = graph.nodes.find((node) => node.data.id === 'plan-1');
 
-		expect(planNode?.data.displayLabel).toBe('Episode\nProduction\nPipeline');
+		expect(planNode?.data.displayLabel).toBe('Episode Production\nPipeline');
 		expect(planNode?.data.width).toBeGreaterThan(planNode?.data.labelMaxWidth ?? 0);
 		expect(planNode?.data.height).toBeGreaterThan(40);
 		expect(planNode?.data.labelBackgroundOpacity).toBe(0);
@@ -129,6 +130,44 @@ describe('OntologyGraphService label display data', () => {
 		expect(decodeURIComponent(iconImage.replace(/^data:image\/svg\+xml,/, ''))).toContain(
 			'xmlns="http://www.w3.org/2000/svg"'
 		);
+		expect(goalNode?.data.iconSize).toBeLessThan(goalNode?.data.width ?? 0);
+	});
+
+	it('keeps every entity label at the readable graph type floor', () => {
+		expect(Object.values(NODE_STYLE_CONFIG).every((config) => config.fontSize >= 11)).toBe(
+			true
+		);
+	});
+
+	it('adds canonical glyph metadata to milestone and risk silhouettes', () => {
+		const milestone = OntologyGraphService.milestonesToNodes([
+			{
+				id: 'milestone-1',
+				project_id: 'project-1',
+				title: 'Launch checkpoint',
+				state_key: 'pending',
+				props: {},
+				created_by: 'actor-1',
+				created_at: now
+			}
+		])[0];
+		const risk = OntologyGraphService.risksToNodes([
+			{
+				id: 'risk-1',
+				project_id: 'project-1',
+				title: 'Launch delay',
+				state_key: 'identified',
+				props: {},
+				created_by: 'actor-1',
+				created_at: now
+			}
+		])[0];
+
+		for (const node of [milestone, risk]) {
+			expect(node?.data.iconImage).toMatch(/^data:image\/svg\+xml,/);
+			expect(node?.data.iconSize).toBeGreaterThan(0);
+			expect(node?.data.iconSize).toBeLessThan(node?.data.width ?? 0);
+		}
 	});
 
 	it('places project-owned entities inside the project compound node', () => {
@@ -175,6 +214,9 @@ describe('OntologyGraphService label display data', () => {
 			'project-1'
 		);
 		expect(graph.nodes.find((node) => node.data.id === 'doc-1')?.data.parent).toBe('project-1');
+		expect(graph.nodes.find((node) => node.data.id === 'doc-1')?.data.iconImage).toMatch(
+			/^data:image\/svg\+xml,/
+		);
 	});
 
 	it('derives document hierarchy edges from project doc_structure', () => {

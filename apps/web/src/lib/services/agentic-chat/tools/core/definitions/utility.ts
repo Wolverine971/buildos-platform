@@ -699,6 +699,8 @@ It responds with a structured guide that walks through onboarding, planning, aut
 Use this when the user asks you to "go do X in the background", "have an agent handle X", "research/analyze X and get back to me", or for any self-contained task that is better run on its own than answered inline right now (e.g. "review this whole project and summarize the risks", "go through my projects and find stale tasks").
 The tool returns immediately with { run_ids }; tell the user you've dispatched it and that you'll surface the result here. The agent's summary will be posted back into this thread automatically on completion — do not poll.
 Prefer scope_mode "read_only" for analysis/summaries. Only use "read_write" when the user explicitly wants the agent to make changes. For a project task, pass context_type "project" + the project_id; otherwise use "global".
+Use effort "deep" only for genuinely difficult analysis that benefits from a higher-reasoning model. For multi-source research with independent workstreams, set run_template "deep_research"; it uses a high-reasoning coordinator, two bounded read-only web researchers, and a final synthesis pass.
+Deep runs execute durably in the worker, default to a $0.50 observed LLM-cost ceiling, and cannot request more than $1. Deep research requires at least $0.25 and must be read-only.
 Do NOT use this for something you can answer directly in one turn.`,
 			parameters: {
 				type: 'object',
@@ -738,10 +740,27 @@ Do NOT use this for something you can answer directly in one turn.`,
 						description:
 							"'read_only' (analyze/summarize, default) or 'read_write' (may make changes — only when the user explicitly asks)."
 					},
+					effort: {
+						type: 'string',
+						enum: ['standard', 'deep'],
+						description:
+							"'standard' (default) or 'deep' for a higher-quality model lane with high reasoning."
+					},
+					run_template: {
+						type: 'string',
+						enum: ['agent', 'deep_research'],
+						description:
+							"'agent' (default) for one autonomous loop; 'deep_research' for bounded plan → two parallel web researchers → synthesis."
+					},
 					max_tool_calls: {
 						type: 'number',
 						description:
 							'Optional budget cap on the number of operations the agent may run.'
+					},
+					max_cost_usd: {
+						type: 'number',
+						description:
+							'Optional observed LLM-usage ceiling in USD. Deep runs default to $0.50 and cannot exceed $1; paid web-tool charges are not yet included.'
 					},
 					review: {
 						type: 'boolean',

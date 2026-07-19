@@ -39,6 +39,13 @@ import {
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
+import {
+	isDeepResearchCoordinator,
+	isRetryableDeepResearchState,
+	maybeQueueDeepResearchParent,
+	processDeepResearchCoordinator
+} from './deepResearchOrchestrator';
+import { resolveAgentRunCancellationSource, resolveAgentRunModelPolicy } from './agentRunPolicy';
 import { createAgentRunWebResearchPort } from './webResearchPort';
 
 type AgentRunRow = Database['public']['Tables']['agent_runs']['Row'];
@@ -67,10 +74,10 @@ interface RunBudgets {
 	wall_clock_ms?: number;
 	max_tokens?: number;
 	max_tool_calls?: number;
+	max_cost_usd?: number;
 }
 
 const DEFAULT_MAX_TOOL_CALLS = 20;
-const DEFAULT_WALL_CLOCK_MS = 5 * 60 * 1000;
 const TRANSCRIPT_RESULT_CHARS = 4000;
 const WEB_TRANSCRIPT_RESULT_CHARS = 10_000;
 
@@ -116,17 +123,30 @@ function mergeEntityTouches(...groups: EntityTouch[][]): EntityTouch[] {
 function isContinuationFrom(
 	value: unknown
 ): value is NonNullable<AgentRunJobMetadata['continuation_from']> {
-	return value === 'paused' || value === 'needs_input' || value === 'partial';
+	return (
+		value === 'paused' || value === 'needs_input' || value === 'partial' || value === 'children'
+	);
 }
 
 function isClaimableStatus(
-	status: AgentRunRow['status'],
+	run: AgentRunRow,
 	continuationFrom?: NonNullable<AgentRunJobMetadata['continuation_from']>
 ): boolean {
-	if (continuationFrom === 'paused') return status === 'queued' || status === 'paused';
-	if (continuationFrom === 'needs_input') return status === 'queued' || status === 'needs_input';
-	if (continuationFrom === 'partial') return status === 'queued' || status === 'partial';
-	return status === 'queued';
+	if (continuationFrom === 'paused') return run.status === 'queued' || run.status === 'paused';
+	if (continuationFrom === 'needs_input')
+		return run.status === 'queued' || run.status === 'needs_input';
+	if (continuationFrom === 'partial') return run.status === 'queued' || run.status === 'partial';
+	if (continuationFrom === 'children') {
+		return isDeepResearchCoordinator(run) && run.status === 'running';
+	}
+	if (
+		isDeepResearchCoordinator(run) &&
+		run.status === 'running' &&
+		isRetryableDeepResearchState(run.orchestration_state)
+	) {
+		return true;
+	}
+	return run.status === 'queued';
 }
 
 async function emitEvent(
@@ -488,7 +508,8 @@ function parseBudgets(value: unknown): RunBudgets {
 	return {
 		wall_clock_ms: numberBudget(b.wall_clock_ms),
 		max_tokens: numberBudget(b.max_tokens),
-		max_tool_calls: numberBudget(b.max_tool_calls)
+		max_tool_calls: numberBudget(b.max_tool_calls),
+		max_cost_usd: numberBudget(b.max_cost_usd)
 	};
 }
 
@@ -539,7 +560,7 @@ async function createCalendarPortForRun(userId: string) {
 	});
 }
 
-function buildSystemPrompt(runnableOps: string[]): string {
+function buildSystemPrompt(runnableOps: string[], effort: 'standard' | 'deep'): string {
 	const hasWriteOps = runnableOps.some((op) => isWriteOp(op));
 	const hasWebSearch = runnableOps.includes(AGENT_OP_WEB_SEARCH);
 	const hasWebVisit = runnableOps.includes(AGENT_OP_WEB_VISIT);
@@ -548,6 +569,9 @@ function buildSystemPrompt(runnableOps: string[]): string {
 	return [
 		'You are a focused background agent (an "Agent Run") inside BuildOS.',
 		'You work autonomously to accomplish a single goal, then report back. You cannot delegate to other agents.',
+		effort === 'deep'
+			? 'This run requested deep effort. Spend extra reasoning on source quality, contradictions, and synthesis; do not add work merely to consume the budget.'
+			: '',
 		'',
 		'Each turn you MUST respond with JSON only, in exactly one of these two shapes:',
 		'1) Call an operation:',
@@ -634,9 +658,11 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 	const continuationFrom = isContinuationFrom(job.data.continuation_from)
 		? job.data.continuation_from
 		: undefined;
-	const isResume = Boolean(continuationFrom);
+	const isResume =
+		Boolean(continuationFrom) ||
+		(isDeepResearchCoordinator(initialRun) && initialRun.status === 'running');
 
-	if (!isClaimableStatus(initialRun.status, continuationFrom)) {
+	if (!isClaimableStatus(initialRun, continuationFrom)) {
 		await job.log?.(`Agent Run ${runId} skipped; status is ${initialRun.status}`);
 		return {
 			success: true,
@@ -704,16 +730,21 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 	const proposedChanges: ProposedChange[] = [];
 
 	const budgets = parseBudgets(run.budgets);
+	const modelPolicy = resolveAgentRunModelPolicy(run.effort);
 	const maxToolCalls = budgets.max_tool_calls ?? DEFAULT_MAX_TOOL_CALLS;
 	const maxTokens = budgets.max_tokens;
-	const deadlineMs = startedAtMs + (budgets.wall_clock_ms ?? DEFAULT_WALL_CLOCK_MS);
+	const maxCostUsd = budgets.max_cost_usd;
+	const deadlineMs = startedAtMs + (budgets.wall_clock_ms ?? modelPolicy.defaultWallClockMs);
 
 	const llm = new SmartLLMService({
 		httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
 		appName: 'BuildOS Agent Run'
 	});
 
-	const systemPrompt = buildSystemPrompt(runnableOps);
+	const systemPrompt = buildSystemPrompt(
+		runnableOps,
+		run.effort === 'deep' ? 'deep' : 'standard'
+	);
 	const transcript: string[] = [];
 	let tokensTotal = 0;
 	let costTotal = 0;
@@ -735,9 +766,9 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		await emitEvent(runId, 'run.narration', { note: 'resumed' });
 	}
 
-	const onUsage = (usage: { totalTokens?: number; costUsd?: number } | undefined) => {
+	const onUsage = (usage: { totalTokens?: number; totalCost?: number } | undefined) => {
 		if (usage?.totalTokens) tokensTotal += usage.totalTokens;
-		if (usage?.costUsd) costTotal += usage.costUsd;
+		if (usage?.totalCost) costTotal += usage.totalCost;
 	};
 
 	const finalize = async (
@@ -797,6 +828,16 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 				completed_at: completedAt
 			})
 			.eq('id', runId);
+		if (run.parent_run_id) {
+			try {
+				await maybeQueueDeepResearchParent(run.parent_run_id);
+			} catch (error) {
+				console.warn(
+					`⚠️ Failed to resume deep-research parent ${run.parent_run_id}:`,
+					error instanceof Error ? error.message : error
+				);
+			}
+		}
 		await reconcileSourceProjectSuggestion({
 			run,
 			finalStatus,
@@ -833,6 +874,9 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 	const hardBudgetExhaustionReason = (): string | null => {
 		if (Date.now() > deadlineMs) return 'wall-clock budget exhausted';
 		if (maxTokens !== undefined && tokensTotal >= maxTokens) return 'token budget exhausted';
+		if (maxCostUsd !== undefined && costTotal >= maxCostUsd) {
+			return 'cost budget exhausted';
+		}
 		return null;
 	};
 	const toolCallBudgetReached = () => toolCalls >= maxToolCalls;
@@ -844,7 +888,9 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			toolCalls,
 			maxToolCalls,
 			tokens: tokensTotal,
-			maxTokens
+			maxTokens,
+			costUsd: costTotal,
+			maxCostUsd
 		});
 		return finalize('partial', {
 			summary: `Stopped: ${reason} before submitting a result.`,
@@ -865,6 +911,22 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			.eq('run_id', runId)
 			.is('consumed_at', null)
 			.order('created_at', { ascending: true });
+		const { data: parentCancelSignals } = run.parent_run_id
+			? await supabase
+					.from('agent_run_signals')
+					.select('id')
+					.eq('run_id', run.parent_run_id)
+					.eq('kind', 'cancel')
+					.is('consumed_at', null)
+					.limit(1)
+			: { data: null };
+		const { data: parentRunState } = run.parent_run_id
+			? await supabase
+					.from('agent_runs')
+					.select('status')
+					.eq('id', run.parent_run_id)
+					.maybeSingle()
+			: { data: null };
 
 		const consumeAllSignals = () =>
 			supabase
@@ -873,13 +935,27 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 				.eq('run_id', runId)
 				.is('consumed_at', null);
 
-		if (pendingSignals?.some((s) => s.kind === 'cancel')) {
+		const cancellationSource = resolveAgentRunCancellationSource({
+			pendingSignalKinds: (pendingSignals ?? []).map((signal) => signal.kind),
+			parentRunId: run.parent_run_id,
+			parentCancelSignalCount: parentCancelSignals?.length ?? 0,
+			parentStatus: parentRunState?.status
+		});
+		if (cancellationSource) {
 			await consumeAllSignals();
-			await emitEvent(runId, 'run.narration', { note: 'cancelled by user' });
+			await emitEvent(runId, 'run.narration', {
+				note:
+					cancellationSource === 'parent'
+						? 'stopped with parent run'
+						: 'cancelled by user'
+			});
 			return {
 				kind: 'return',
 				result: await finalize('cancelled', {
-					summary: 'Run cancelled by user.',
+					summary:
+						cancellationSource === 'parent'
+							? 'Run stopped because its parent became terminal.'
+							: 'Run cancelled by user.',
 					answer: transcript.slice(-1)[0] ?? ''
 				})
 			};
@@ -927,6 +1003,54 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		return { kind: appliedSteer ? 'steered' : 'none' };
 	};
 
+	if (isDeepResearchCoordinator(run)) {
+		const signalDrain = await drainControlSignals();
+		if (signalDrain.kind === 'return') {
+			return signalDrain.result;
+		}
+		const exhaustedBeforeStage = hardBudgetExhaustionReason();
+		if (exhaustedBeforeStage) {
+			return finalizeBudgetExhausted(exhaustedBeforeStage);
+		}
+		try {
+			const outcome = await processDeepResearchCoordinator({
+				run,
+				llm,
+				getUsage: () => ({
+					tokens: tokensTotal,
+					cost: costTotal,
+					toolCalls
+				}),
+				addUsage: (usage) => {
+					tokensTotal += usage.tokens;
+					costTotal += usage.cost;
+					toolCalls += usage.toolCalls;
+				},
+				emit: (eventType, payload) => emitEvent(runId, eventType, payload)
+			});
+			if (outcome.kind === 'waiting') {
+				await job.log?.(`Agent Run ${runId}: ${outcome.message}`);
+				return {
+					success: true,
+					run_id: runId,
+					status: 'running' as const,
+					message: outcome.message
+				};
+			}
+			return finalize(outcome.status, outcome.result);
+		} catch (error) {
+			await emitEvent(runId, 'run.narration', {
+				note: 'deep research orchestration failed',
+				error: error instanceof Error ? error.message : String(error)
+			});
+			return finalize('failed', {
+				summary: 'Deep research orchestration failed.',
+				answer: '',
+				error: error instanceof Error ? error.message : String(error)
+			});
+		}
+	}
+
 	// Main JSON action-loop.
 	for (let iteration = 0; ; iteration++) {
 		const signalDrain = await drainControlSignals();
@@ -947,10 +1071,11 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 					forceSubmitResult: toolCallBudgetReached()
 				}),
 				userId: run.user_id,
-				profile: 'balanced',
+				profile: modelPolicy.profile,
+				reasoning: modelPolicy.reasoning,
 				validation: { retryOnParseError: true, maxRetries: 2 },
-				operationType: 'other',
-				metadata: { agent_run_id: runId },
+				operationType: run.effort === 'deep' ? 'agent_run_deep' : 'other',
+				metadata: { agent_run_id: runId, effort: run.effort },
 				onUsage
 			});
 		} catch (error) {
@@ -981,15 +1106,17 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 				.filter((q) => typeof q === 'string' && q.trim())
 				.map((q) => q.trim());
 			const status: AgentRunRow['status'] =
-				turn.status === 'needs_input' ||
-				((turn.status === undefined || turn.status === 'completed') &&
-					openQuestions.length > 0)
-					? 'needs_input'
-					: turn.status === 'partial'
-						? 'partial'
-						: turn.status === 'failed'
-							? 'failed'
-							: 'completed';
+				run.depth === 1 && (turn.status === 'needs_input' || openQuestions.length > 0)
+					? 'partial'
+					: turn.status === 'needs_input' ||
+						  ((turn.status === undefined || turn.status === 'completed') &&
+								openQuestions.length > 0)
+						? 'needs_input'
+						: turn.status === 'partial'
+							? 'partial'
+							: turn.status === 'failed'
+								? 'failed'
+								: 'completed';
 			return finalize(status, {
 				summary: turn.summary ?? '',
 				answer: turn.answer ?? turn.summary ?? '',

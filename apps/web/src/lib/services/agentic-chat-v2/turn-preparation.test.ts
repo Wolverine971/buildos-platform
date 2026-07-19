@@ -4,6 +4,7 @@ import {
 	readRecentFastChatContextShiftHint,
 	resolveFastChatTurnPreparation
 } from './turn-preparation';
+import { resolveFastChatScaffoldConfig } from './scaffold-variant';
 
 const NOW_MS = Date.parse('2026-07-09T16:00:00.000Z');
 
@@ -55,6 +56,23 @@ describe('resolveFastChatTurnPreparation', () => {
 		expect(result.turnIntent.requiresWrite).toBe(false);
 		expect(result.domainSensingBypassed).toBe(false);
 		expect(result.turnDomainSensing?.active_domains[0]?.id).toBe('marketing.youtube_growth');
+	});
+
+	it('disables server skill routing under the typed scaffold variant', () => {
+		const result = resolveFastChatTurnPreparation({
+			contextType: 'project',
+			entityId: 'project-1',
+			projectId: 'project-1',
+			latestUserMessage: 'I want to grow my YouTube audience and plan the next videos.',
+			conversationSummary: null,
+			agentMetadata: {},
+			contextShiftHintTtlMs: 120_000,
+			nowMs: NOW_MS,
+			scaffold: resolveFastChatScaffoldConfig('no-server-skill-routing')
+		});
+
+		expect(result.domainSensingBypassed).toBe(true);
+		expect(result.turnDomainSensing).toBeNull();
 	});
 
 	it('returns cache-routing inputs from recent context-shift metadata', () => {

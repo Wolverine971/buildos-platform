@@ -130,6 +130,33 @@ describe('prepared-prompt-cache', () => {
 		).toBe(true);
 	});
 
+	it('rejects a prepared surface built for a different scaffold configuration', () => {
+		const tools = [tool('get_workspace_overview', 'Get a workspace overview.')];
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			tools
+		});
+		const surface = buildPreparedPromptSurface({
+			surfaceProfile: 'global_basic',
+			contextType: 'global',
+			contextPayload: { contextType: 'global' },
+			conversationSummary: null,
+			tools,
+			envelope
+		});
+
+		expect(
+			isPreparedPromptSurfaceCurrent({
+				surface,
+				contextType: 'global',
+				contextPayload: { contextType: 'global' },
+				conversationSummary: null,
+				tools,
+				scaffold: { staticSkillCatalog: false }
+			})
+		).toBe(false);
+	});
+
 	it('rejects a prepared surface when a tool definition changes without a tool-name change', () => {
 		const preparedTools = [tool('get_workspace_overview', 'Old description.')];
 		const currentTools = [tool('get_workspace_overview', 'New description.')];

@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-07-19T04:26:04.887Z
+// Generated on: 2026-07-19T19:30:43.410Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -253,6 +253,7 @@ export type DatabaseSchema = {
 		context_type: string;
 		created_at: string;
 		depth: number;
+		effort: string;
 		error: string | null;
 		expected_output: string | null;
 		goal: string;
@@ -261,12 +262,14 @@ export type DatabaseSchema = {
 		label: string;
 		metrics: Json | null;
 		operative_id: string | null;
+		orchestration_state: Json;
 		parent_message_id: string | null;
 		parent_run_id: string | null;
 		parent_session_id: string | null;
 		project_id: string | null;
 		result: Json | null;
 		review_required: boolean;
+		run_template: string;
 		scope_mode: string;
 		source_decision: string | null;
 		source_suggestion_id: string | null;

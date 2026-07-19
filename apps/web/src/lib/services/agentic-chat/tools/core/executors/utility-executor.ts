@@ -73,6 +73,15 @@ type ProfileDocStructure = {
 };
 
 const PROFILE_SUMMARY_EXCERPT_MAX_CHARS = 180;
+const DEFAULT_DEEP_AGENT_COST_USD = 0.5;
+const MAX_DELEGATED_AGENT_COST_USD = 1;
+const MIN_DEEP_RESEARCH_COST_USD = 0.25;
+const DEFAULT_DEEP_AGENT_TOOL_CALLS = 12;
+const DEFAULT_DEEP_RESEARCH_TOOL_CALLS = 10;
+const MIN_DEEP_RESEARCH_TOOL_CALLS = 4;
+const MAX_DELEGATED_AGENT_TOOL_CALLS = 40;
+const DEFAULT_DEEP_AGENT_TOKENS = 60_000;
+const DEFAULT_DEEP_AGENT_WALL_CLOCK_MS = 10 * 60 * 1000;
 
 function mapProjectSummaryToOverviewRow(summary: {
 	id: string;
@@ -1263,6 +1272,13 @@ export class UtilityExecutor extends BaseExecutor {
 		}
 		const scopeMode: 'read_only' | 'read_write' =
 			args.scope_mode === 'read_write' ? 'read_write' : 'read_only';
+		const runTemplate: 'agent' | 'deep_research' =
+			args.run_template === 'deep_research' ? 'deep_research' : 'agent';
+		const effort: 'standard' | 'deep' =
+			runTemplate === 'deep_research' || args.effort === 'deep' ? 'deep' : 'standard';
+		if (runTemplate === 'deep_research' && scopeMode !== 'read_only') {
+			throw new Error('Deep research must use `scope_mode: "read_only"`.');
+		}
 		// Review-before-commit only applies to read_write runs (nothing to stage
 		// on a read-only run). Silently ignore review on read-only.
 		const reviewRequired = args.review === true && scopeMode === 'read_write';
@@ -1289,6 +1305,12 @@ export class UtilityExecutor extends BaseExecutor {
 		if (countError) {
 			throw new Error(`Failed to check active runs: ${countError.message}`);
 		}
+		if (runTemplate === 'deep_research' && (count ?? 0) > 0) {
+			return {
+				ok: false,
+				error: 'Deep research needs all three Agent Run slots free for its coordinator and two researchers.'
+			};
+		}
 		if ((count ?? 0) >= MAX_CONCURRENT_RUNS) {
 			return {
 				ok: false,
@@ -1302,7 +1324,46 @@ export class UtilityExecutor extends BaseExecutor {
 				: goal.slice(0, 80);
 		const budgets: Record<string, number> = {};
 		if (typeof args.max_tool_calls === 'number' && args.max_tool_calls > 0) {
-			budgets.max_tool_calls = Math.floor(args.max_tool_calls);
+			budgets.max_tool_calls = Math.min(
+				Math.floor(args.max_tool_calls),
+				MAX_DELEGATED_AGENT_TOOL_CALLS
+			);
+		}
+		if (typeof args.max_cost_usd === 'number') {
+			if (
+				!Number.isFinite(args.max_cost_usd) ||
+				args.max_cost_usd <= 0 ||
+				args.max_cost_usd > MAX_DELEGATED_AGENT_COST_USD
+			) {
+				throw new Error(
+					`\`max_cost_usd\` must be greater than 0 and no more than $${MAX_DELEGATED_AGENT_COST_USD}.`
+				);
+			}
+			budgets.max_cost_usd = args.max_cost_usd;
+		}
+		if (effort === 'deep') {
+			budgets.max_cost_usd ??= DEFAULT_DEEP_AGENT_COST_USD;
+			budgets.max_tool_calls ??= DEFAULT_DEEP_AGENT_TOOL_CALLS;
+			budgets.max_tokens = DEFAULT_DEEP_AGENT_TOKENS;
+			budgets.wall_clock_ms = DEFAULT_DEEP_AGENT_WALL_CLOCK_MS;
+		}
+		if (
+			runTemplate === 'deep_research' &&
+			(budgets.max_cost_usd ?? 0) < MIN_DEEP_RESEARCH_COST_USD
+		) {
+			throw new Error(
+				`Deep research requires \`max_cost_usd\` to be at least $${MIN_DEEP_RESEARCH_COST_USD}.`
+			);
+		}
+		if (runTemplate === 'deep_research') {
+			if (args.max_tool_calls === undefined) {
+				budgets.max_tool_calls = DEFAULT_DEEP_RESEARCH_TOOL_CALLS;
+			}
+			if ((budgets.max_tool_calls ?? 0) < MIN_DEEP_RESEARCH_TOOL_CALLS) {
+				throw new Error(
+					`Deep research requires \`max_tool_calls\` to be at least ${MIN_DEEP_RESEARCH_TOOL_CALLS}.`
+				);
+			}
 		}
 
 		// Phase 1: insert the run row (trigger='chat', attached to this session).
@@ -1319,6 +1380,8 @@ export class UtilityExecutor extends BaseExecutor {
 				context_type: contextType,
 				project_id: projectId,
 				scope_mode: scopeMode,
+				effort,
+				run_template: runTemplate,
 				review_required: reviewRequired,
 				status: 'queued',
 				budgets,
@@ -1341,6 +1404,8 @@ export class UtilityExecutor extends BaseExecutor {
 			context_type: contextType,
 			project_id: projectId,
 			scope_mode: scopeMode,
+			effort,
+			run_template: runTemplate,
 			allowed_ops: null,
 			review_required: reviewRequired,
 			budgets
@@ -1380,6 +1445,9 @@ export class UtilityExecutor extends BaseExecutor {
 			context_type: contextType,
 			project_id: projectId,
 			scope_mode: scopeMode,
+			effort,
+			run_template: runTemplate,
+			max_cost_usd: budgets.max_cost_usd ?? null,
 			review: reviewRequired,
 			message: `Dispatched background agent "${label}".${reviewRequired ? ' It will STAGE its changes for your review (call commit_change_set after the user approves).' : ' It will work on this autonomously and post its result back into this conversation when done.'}`
 		};

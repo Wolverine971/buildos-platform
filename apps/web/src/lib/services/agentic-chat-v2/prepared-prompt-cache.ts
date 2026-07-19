@@ -5,6 +5,7 @@ import type {
 	LitePromptEnvelope,
 	LitePromptSection,
 	LitePromptContextInventory,
+	LitePromptScaffoldOptions,
 	LitePromptToolsSummary
 } from '$lib/services/agentic-chat-lite/prompt';
 import { buildLitePromptEnvelope } from '$lib/services/agentic-chat-lite/prompt';
@@ -213,6 +214,7 @@ function buildPreparedPromptHarnessSha(params: {
 	contextPayload: Record<string, unknown>;
 	conversationSummary?: string | null;
 	tools: ChatToolDefinition[];
+	scaffold?: LitePromptScaffoldOptions | null;
 }): string {
 	const canonicalEnvelope = buildLitePromptEnvelope({
 		...params.contextPayload,
@@ -222,7 +224,8 @@ function buildPreparedPromptHarnessSha(params: {
 		now: '2026-01-01T00:00:00.000Z',
 		timezone: 'UTC',
 		productSurface: '__prepared_prompt_canonical__',
-		conversationPosition: 'prepared prompt canonical'
+		conversationPosition: 'prepared prompt canonical',
+		scaffold: params.scaffold
 	});
 
 	return sha256Text(
@@ -289,6 +292,7 @@ export function buildPreparedPromptSurface(params: {
 	conversationSummary?: string | null;
 	tools: ChatToolDefinition[];
 	envelope: LitePromptEnvelope;
+	scaffold?: LitePromptScaffoldOptions | null;
 	createdAt?: string;
 }): PreparedPromptSurface {
 	const toolNames = params.tools
@@ -303,7 +307,8 @@ export function buildPreparedPromptSurface(params: {
 			contextType: params.contextType,
 			contextPayload: params.contextPayload,
 			conversationSummary: params.conversationSummary ?? null,
-			tools: params.tools
+			tools: params.tools,
+			scaffold: params.scaffold
 		}),
 		system_prompt: params.envelope.systemPrompt,
 		system_prompt_sha256: sha256Text(params.envelope.systemPrompt),
@@ -329,6 +334,7 @@ export function isPreparedPromptSurfaceCurrent(params: {
 	contextPayload: Record<string, unknown>;
 	conversationSummary?: string | null;
 	tools: ChatToolDefinition[];
+	scaffold?: LitePromptScaffoldOptions | null;
 }): boolean {
 	return inspectPreparedPromptSurfaceCurrent(params).current;
 }
@@ -339,6 +345,7 @@ export function inspectPreparedPromptSurfaceCurrent(params: {
 	contextPayload: Record<string, unknown>;
 	conversationSummary?: string | null;
 	tools: ChatToolDefinition[];
+	scaffold?: LitePromptScaffoldOptions | null;
 }): PreparedPromptSurfaceCurrentInspection {
 	const actualToolNames = params.tools
 		.map((tool) => tool.function?.name)
@@ -347,7 +354,8 @@ export function inspectPreparedPromptSurfaceCurrent(params: {
 		contextType: params.contextType,
 		contextPayload: params.contextPayload,
 		conversationSummary: params.conversationSummary ?? null,
-		tools: params.tools
+		tools: params.tools,
+		scaffold: params.scaffold
 	});
 	return {
 		current: params.surface.harness_sha256 === actualHarnessSha256,

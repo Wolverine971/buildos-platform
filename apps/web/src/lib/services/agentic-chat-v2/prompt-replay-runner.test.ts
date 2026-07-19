@@ -213,11 +213,11 @@ describe('prompt replay runner', () => {
 		const fetchMock = vi.fn().mockResolvedValue(
 			new Response(
 				[
-					'data: {"type":"session","session":{"id":"session-1"}}',
+					'data: {"type":"session","session":{"id":"session-1"},"stream_run_id":"stream-run-1","client_turn_id":"admin_replay:project.named_status:client-turn-suffix-1","event_id":"stream-run-1:1","sequence_index":1}',
 					'',
-					'data: {"type":"text_delta","content":"I checked 9takes. "}',
+					'data: {"type":"text_delta","content":"I checked 9takes. ","stream_run_id":"stream-run-1","client_turn_id":"admin_replay:project.named_status:client-turn-suffix-1","event_id":"stream-run-1:2","sequence_index":2}',
 					'',
-					'data: {"type":"done","finished_reason":"stop"}',
+					'data: {"type":"done","finished_reason":"stop","stream_run_id":"stream-run-1","client_turn_id":"admin_replay:project.named_status:client-turn-suffix-1","event_id":"stream-run-1:3","sequence_index":3}',
 					''
 				].join('\n'),
 				{

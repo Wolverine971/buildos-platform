@@ -35,6 +35,7 @@ export class OpenRouterClient {
 		max_tokens?: number;
 		timeoutMs?: number;
 		response_format?: { type: string };
+		reasoning?: unknown;
 		stream?: boolean;
 		transforms?: string[];
 		route?: 'fallback'; // NOTE: Not used - kept for backwards compatibility
@@ -54,6 +55,7 @@ export class OpenRouterClient {
 			max_tokens: params.max_tokens,
 			stream: params.stream || false,
 			response_format: params.response_format,
+			reasoning: params.reasoning,
 			models: params.models,
 			transforms: params.transforms,
 			provider: params.provider

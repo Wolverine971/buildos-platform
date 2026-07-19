@@ -749,6 +749,8 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		capabilities: [
 			'Creates and queues an agent run without blocking the chat turn',
 			'Supports read-only or explicitly requested read-write scope',
+			'Can request a higher-reasoning deep lane with a bounded observed-cost budget',
+			'Supports a bounded two-researcher deep-research template',
 			'Can stage read-write changes for later review before commit'
 		],
 		contexts: ['global', 'project'],

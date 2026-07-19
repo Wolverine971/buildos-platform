@@ -652,6 +652,36 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 });
 
 describe('SmartLLMService model failover', () => {
+	it('forwards explicit reasoning effort for non-streaming JSON requests', async () => {
+		const requestBodies: any[] = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			if (typeof init?.body === 'string') {
+				requestBodies.push(JSON.parse(init.body));
+			}
+			return buildJSONCompletion({
+				model: GLM_52_MODEL,
+				content: '{"ok":true}',
+				provider: 'Z.AI'
+			});
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		const result = await llm.getJSONResponse<{ ok: boolean }>({
+			systemPrompt: 'Return JSON.',
+			userPrompt: 'Analyze this carefully.',
+			profile: 'powerful',
+			reasoning: { effort: 'high', exclude: false },
+			userId: 'user-1'
+		});
+
+		expect(result).toEqual({ ok: true });
+		expect(requestBodies[0]?.model).toBe(GLM_52_MODEL);
+		expect(requestBodies[0]?.reasoning).toEqual({ effort: 'high', exclude: false });
+	});
+
 	it('fails over from the primary text model to the next text fallback', async () => {
 		const requestBodies: any[] = [];
 		const usageLogger = {

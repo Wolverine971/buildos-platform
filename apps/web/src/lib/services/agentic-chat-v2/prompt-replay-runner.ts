@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { ChatContextType, Database } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { FastAgentStreamRequest } from './types';
+import { collectStrictAgentSse } from './strict-agent-sse';
 import {
 	evaluateAndPersistPromptEval,
 	normalizePromptEvalRunnerType,
@@ -75,84 +76,49 @@ function normalizeReplayRequest(params: {
 	};
 }
 
-async function parseReplayStream(response: Response): Promise<ReplayEventSummary> {
-	if (!response.body) {
-		throw new Error('Replay stream response did not include a body.');
-	}
-
-	const reader = response.body.getReader();
-	const decoder = new TextDecoder();
-	let buffer = '';
+async function parseReplayStream(
+	response: Response,
+	expected: { streamRunId: string; clientTurnId: string }
+): Promise<ReplayEventSummary> {
 	const eventTypes: string[] = [];
 	const errorMessages: string[] = [];
 	let sessionId: string | null = null;
 	let assistantText = '';
 	let finishedReason: string | null = null;
 
-	const processBlock = (block: string) => {
-		const lines = block
-			.split('\n')
-			.map((line) => line.trimEnd())
-			.filter(Boolean);
-		if (lines.length === 0) return;
-		const dataPayload = lines
-			.filter((line) => line.startsWith('data:'))
-			.map((line) => line.slice(5).trimStart())
-			.join('\n');
-		if (!dataPayload) return;
-		let parsed: Record<string, unknown>;
-		try {
-			parsed = JSON.parse(dataPayload) as Record<string, unknown>;
-		} catch {
-			return;
+	await collectStrictAgentSse(response, {
+		...expected,
+		onEvent: (parsed) => {
+			const type = typeof parsed.type === 'string' ? parsed.type : null;
+			if (type) {
+				eventTypes.push(type);
+			}
+			if (type === 'session') {
+				const session =
+					parsed.session &&
+					typeof parsed.session === 'object' &&
+					!Array.isArray(parsed.session)
+						? (parsed.session as Record<string, unknown>)
+						: null;
+				sessionId = typeof session?.id === 'string' ? session.id : sessionId;
+				return;
+			}
+			if (type === 'text_delta') {
+				assistantText += typeof parsed.content === 'string' ? parsed.content : '';
+				return;
+			}
+			if (type === 'error' && typeof parsed.error === 'string') {
+				errorMessages.push(parsed.error);
+				return;
+			}
+			if (type === 'done') {
+				finishedReason =
+					typeof parsed.finished_reason === 'string'
+						? parsed.finished_reason
+						: finishedReason;
+			}
 		}
-		const type = typeof parsed.type === 'string' ? parsed.type : null;
-		if (type) {
-			eventTypes.push(type);
-		}
-		if (type === 'session') {
-			const session =
-				parsed.session &&
-				typeof parsed.session === 'object' &&
-				!Array.isArray(parsed.session)
-					? (parsed.session as Record<string, unknown>)
-					: null;
-			sessionId = typeof session?.id === 'string' ? session.id : sessionId;
-			return;
-		}
-		if (type === 'text_delta') {
-			assistantText += typeof parsed.content === 'string' ? parsed.content : '';
-			return;
-		}
-		if (type === 'error' && typeof parsed.error === 'string') {
-			errorMessages.push(parsed.error);
-			return;
-		}
-		if (type === 'done') {
-			finishedReason =
-				typeof parsed.finished_reason === 'string'
-					? parsed.finished_reason
-					: finishedReason;
-		}
-	};
-
-	while (true) {
-		const { value, done } = await reader.read();
-		buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
-		let separatorIndex = buffer.indexOf('\n\n');
-		while (separatorIndex >= 0) {
-			const block = buffer.slice(0, separatorIndex);
-			buffer = buffer.slice(separatorIndex + 2);
-			processBlock(block);
-			separatorIndex = buffer.indexOf('\n\n');
-		}
-		if (done) break;
-	}
-
-	const trailing = buffer.trim();
-	if (trailing) {
-		processBlock(trailing);
-	}
+	});
 
 	return {
 		sessionId,
@@ -281,7 +247,7 @@ export async function replayAndEvaluatePromptScenario(params: {
 		body: JSON.stringify(requestPayload)
 	});
 	await ensureSseOk(response);
-	const streamSummary = await parseReplayStream(response);
+	const streamSummary = await parseReplayStream(response, { streamRunId, clientTurnId });
 	const turnRun = await waitForTurnRunByStreamRunId({
 		supabase: params.supabase,
 		streamRunId

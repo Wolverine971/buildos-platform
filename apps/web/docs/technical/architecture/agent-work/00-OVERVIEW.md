@@ -92,15 +92,16 @@ Detail in the per-area specs below.
 
 ## Doc map
 
-| Doc                                     | Covers                                                                                                                           |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| **START-HERE.md**                       | Plain-English entry point — what we're building, why, and how it plugs into the chat. Read first.                                |
-| **00-OVERVIEW.md** (this)               | North star, pivot, glossary, decisions, roadmap, open questions index                                                            |
-| **01-EXECUTION-SUBSTRATE.md**           | `agent_runs` schema, worker runner, the headless loop, envelope, entities capture, triggers, guardrails, async message injection |
-| **02-STAGED-MUTATIONS.md**              | Change Sets, write-tool dry-run/stage mode, approval flows, atomic commit, audit                                                 |
-| **03-MONITORING-UI.md**                 | Run Stack (extend notification stack) + Work Panel (inbox/detail/proposal review) + realtime wiring                              |
-| **SHARED_AGENT_OPS_EXTRACTION_PLAN.md** | Execution bible — wave-by-wave extraction status, gateway carve seam, runner spec                                                |
-| **HANDOFF_2026-06-18.md**               | Current implementation state + next steps + landmines. **Pick-up point for a new agent.**                                        |
+| Doc                                          | Covers                                                                                                                           |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **START-HERE.md**                            | Plain-English entry point — what we're building, why, and how it plugs into the chat. Read first.                                |
+| **00-OVERVIEW.md** (this)                    | North star, pivot, glossary, decisions, roadmap, open questions index                                                            |
+| **01-EXECUTION-SUBSTRATE.md**                | `agent_runs` schema, worker runner, the headless loop, envelope, entities capture, triggers, guardrails, async message injection |
+| **02-STAGED-MUTATIONS.md**                   | Change Sets, write-tool dry-run/stage mode, approval flows, atomic commit, audit                                                 |
+| **03-MONITORING-UI.md**                      | Run Stack (extend notification stack) + Work Panel (inbox/detail/proposal review) + realtime wiring                              |
+| **SHARED_AGENT_OPS_EXTRACTION_PLAN.md**      | Execution bible — wave-by-wave extraction status, gateway carve seam, runner spec                                                |
+| **DEEP_RESEARCH_ARCHITECTURE_2026-07-19.md** | Deep-effort routing shipped slice plus the bounded plan → fan-out → synthesis design and cost/security gates                     |
+| **HANDOFF_2026-06-18.md**                    | Current implementation state + next steps + landmines. **Pick-up point for a new agent.**                                        |
 
 ---
 

@@ -182,6 +182,8 @@ import {
 	resolveCacheAgeSeconds
 } from '$lib/services/agentic-chat-v2/context-cache-routing';
 import {
+	sha256Json,
+	sha256Text,
 	type PreparedPromptCacheMissReason,
 	type PreparedPromptSectionSummary
 } from '$lib/services/agentic-chat-v2/prepared-prompt-cache';
@@ -202,6 +204,7 @@ import {
 import { parseFastAgentStreamRequestBody } from '$lib/services/agentic-chat-v2/stream-request';
 import { admitFastChatTurn } from '$lib/services/agentic-chat-v2/turn-admission';
 import { resolveFastChatTurnPreparation } from '$lib/services/agentic-chat-v2/turn-preparation';
+import { resolveFastChatScaffoldConfigFromEnv } from '$lib/services/agentic-chat-v2/scaffold-variant';
 import { TurnObservabilityWriter } from '$lib/services/agentic-chat-v2/turn-observability-writer';
 import { sanitizeAssistantFinalText } from '$lib/services/agentic-chat-v2/stream-orchestrator/assistant-text-sanitization';
 import { buildRoundToolPattern } from '$lib/services/agentic-chat-v2/stream-orchestrator/round-analysis';
@@ -295,10 +298,6 @@ const FASTCHAT_CANCEL_REASON_RETRY_DELAY_MS = parsePositiveInt(
 	process.env.FASTCHAT_CANCEL_REASON_RETRY_DELAY_MS,
 	70
 );
-const FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED = parseBooleanFlag(
-	process.env.FASTCHAT_ENABLE_AUTONOMOUS_RECOVERY,
-	false
-);
 const FASTCHAT_INITIAL_PLAN_MODEL_TIERING_MODE = parseFastChatModelTieringMode(
 	process.env.FASTCHAT_INITIAL_PLAN_MODEL_TIERING
 );
@@ -312,7 +311,7 @@ const FASTCHAT_INITIAL_PLAN_MODEL_TIERING_MODELS = parseFastChatInitialPlanModel
 const FASTCHAT_EVAL_PINNED_MODELS = parseFastChatPinnedModels(
 	process.env.FASTCHAT_EVAL_PINNED_MODELS
 );
-const FASTCHAT_EVAL_SCAFFOLD_VARIANT = process.env.FASTCHAT_EVAL_SCAFFOLD_VARIANT?.trim() || null;
+const FASTCHAT_SCAFFOLD = resolveFastChatScaffoldConfigFromEnv(process.env);
 const FASTCHAT_DETACHED_TURN_MAX_DURATION_MS = parsePositiveInt(
 	process.env.FASTCHAT_DETACHED_TURN_MAX_DURATION_MS,
 	285000
@@ -1086,6 +1085,7 @@ export const POST: RequestHandler = async ({
 	let preparedSurfaceProfile: string | null = null;
 	let turnRunId: string | null = null;
 	let promptSnapshotId: string | null = null;
+	let evalScaffoldFingerprint: string | null = null;
 	let persistPromptSnapshotAfterFirstResponse: (() => void) | null = null;
 	const scheduleDeferredPromptSnapshotPersistence = (): void => {
 		const schedule = persistPromptSnapshotAfterFirstResponse;
@@ -1634,7 +1634,8 @@ export const POST: RequestHandler = async ({
 				latestUserMessage: messageForModel,
 				conversationSummary,
 				agentMetadata: session.agent_metadata,
-				contextShiftHintTtlMs: FASTCHAT_CONTEXT_SHIFT_HINT_TTL_MS
+				contextShiftHintTtlMs: FASTCHAT_CONTEXT_SHIFT_HINT_TTL_MS,
+				scaffold: FASTCHAT_SCAFFOLD
 			});
 			const {
 				sessionMetadata,
@@ -1686,7 +1687,8 @@ export const POST: RequestHandler = async ({
 				cacheKey,
 				surfaceProfile: selectedSurfaceProfile,
 				contextType,
-				tools
+				tools,
+				scaffold: FASTCHAT_SCAFFOLD.prompt
 			});
 			preparedPromptConsumeMs = Math.max(0, Date.now() - preparedPromptConsumeStartedAtMs);
 			if (!preparedPromptForTurn.hit) {
@@ -1828,9 +1830,11 @@ export const POST: RequestHandler = async ({
 			const historyLoadedSkillIdsForTurn = turnDomainSensing
 				? extractLoadedSkillIdsFromHistory(historyForModel)
 				: [];
-			const skillGatePreload = resolveSkillGatePreload(turnDomainSensing, {
-				alreadyLoadedSkillIds: historyLoadedSkillIdsForTurn
-			});
+			const skillGatePreload = FASTCHAT_SCAFFOLD.routing.skillPreload
+				? resolveSkillGatePreload(turnDomainSensing, {
+						alreadyLoadedSkillIds: historyLoadedSkillIdsForTurn
+					})
+				: null;
 			if (skillGatePreload && skillGatePreload.materializedToolNames.length > 0) {
 				tools = materializeGatewayTools(
 					tools,
@@ -2198,7 +2202,8 @@ export const POST: RequestHandler = async ({
 						tools,
 						productSurface: FASTCHAT_STREAM_ENDPOINT,
 						conversationPosition: `live stream turn ${streamRunId}`,
-						domainSensingResult: null
+						domainSensingResult: null,
+						scaffold: FASTCHAT_SCAFFOLD.prompt
 					});
 					systemPrompt = litePromptEnvelope.systemPrompt;
 				}
@@ -2209,7 +2214,8 @@ export const POST: RequestHandler = async ({
 						tools,
 						productSurface: FASTCHAT_STREAM_ENDPOINT,
 						conversationPosition: `live stream turn ${streamRunId}`,
-						domainSensingResult: null
+						domainSensingResult: null,
+						scaffold: FASTCHAT_SCAFFOLD.prompt
 					});
 				}
 
@@ -2220,7 +2226,8 @@ export const POST: RequestHandler = async ({
 						priorDomainIds,
 						priorOutcomeCardIds,
 						domainSensingResult: turnDomainSensing,
-						skillGatePreload
+						skillGatePreload,
+						scaffold: FASTCHAT_SCAFFOLD.prompt
 					});
 					systemPrompt = litePromptEnvelope.systemPrompt;
 				}
@@ -2333,6 +2340,27 @@ export const POST: RequestHandler = async ({
 					} as Json);
 				}
 
+				const scaffoldPromptSections =
+					litePromptEnvelope?.sections ?? preparedPromptSectionSummaries;
+				evalScaffoldFingerprint = sha256Json({
+					version: 1,
+					config: FASTCHAT_SCAFFOLD,
+					prompt: {
+						system_prompt_sha256: sha256Text(systemPrompt),
+						sections: (scaffoldPromptSections ?? []).map((section) => ({
+							id: section.id,
+							source: section.source,
+							content_sha256:
+								'content' in section
+									? sha256Text(section.content)
+									: section.content_sha256
+						}))
+					},
+					tools: {
+						names: extractToolNamesFromDefinitions(tools),
+						definitions_sha256: sha256Json(tools)
+					}
+				});
 				const usageSnapshot = buildFastContextUsageSnapshot({
 					systemPrompt,
 					history: historyForModel,
@@ -2426,7 +2454,10 @@ export const POST: RequestHandler = async ({
 						prepared_prompt_miss_reason: preparedPromptMissReason,
 						prepared_prompt_miss_diagnostics:
 							(preparedPromptMissDiagnostics as Json | null) ?? null,
-						prepared_surface_profile: preparedSurfaceProfile
+						prepared_surface_profile: preparedSurfaceProfile,
+						eval_scaffold_variant: FASTCHAT_SCAFFOLD.variant,
+						eval_scaffold_fingerprint: evalScaffoldFingerprint,
+						eval_scaffold_config: FASTCHAT_SCAFFOLD
 					};
 					persistPromptSnapshotAfterFirstResponse = () => {
 						const snapshotId = uuidv4();
@@ -2518,7 +2549,10 @@ export const POST: RequestHandler = async ({
 												approx_prompt_tokens:
 													promptSnapshotRow.approx_prompt_tokens,
 												prompt_snapshot_insert_ms: promptSnapshotInsertMs,
-												prompt_cost_breakdown: promptCostBreakdown
+												prompt_cost_breakdown: promptCostBreakdown,
+												eval_scaffold_variant: FASTCHAT_SCAFFOLD.variant,
+												eval_scaffold_fingerprint: evalScaffoldFingerprint,
+												eval_scaffold_config: FASTCHAT_SCAFFOLD
 											} as Json
 										);
 									} catch (error) {
@@ -2664,7 +2698,9 @@ export const POST: RequestHandler = async ({
 			const turnToolSurfaceHasSkillLoad =
 				extractToolNamesFromDefinitions(tools).includes('skill_load');
 			const skillGate =
-				turnDomainSensing && turnToolSurfaceHasSkillLoad
+				FASTCHAT_SCAFFOLD.routing.skillGateRepair &&
+				turnDomainSensing &&
+				turnToolSurfaceHasSkillLoad
 					? {
 							required: turnDomainSensing.skill_load_required === true,
 							recommendedSkillIds: skillGateExpectedSkillIds,
@@ -2712,7 +2748,8 @@ export const POST: RequestHandler = async ({
 				signal: turnAbortController.signal,
 				systemPrompt,
 				maxToolRounds: Math.max(1, gatewayRoundCap),
-				allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
+				allowAutonomousRecovery: FASTCHAT_SCAFFOLD.recovery.autonomousRecovery,
+				allowForcedSynthesis: FASTCHAT_SCAFFOLD.recovery.softForcedSynthesis,
 				modelTiering,
 				pinnedModels: FASTCHAT_EVAL_PINNED_MODELS,
 				turnIntent,
@@ -3474,7 +3511,9 @@ export const POST: RequestHandler = async ({
 			}
 			observabilityWriter.recordEvent('finalize', 'orchestration_interventions', {
 				...orchestrationInterventions,
-				eval_scaffold_variant: FASTCHAT_EVAL_SCAFFOLD_VARIANT,
+				eval_scaffold_variant: FASTCHAT_SCAFFOLD.variant,
+				eval_scaffold_fingerprint: evalScaffoldFingerprint,
+				eval_scaffold_config: FASTCHAT_SCAFFOLD,
 				eval_pinned_models: FASTCHAT_EVAL_PINNED_MODELS
 			} as Json);
 			for (const pass of llmPasses ?? []) {

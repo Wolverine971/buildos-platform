@@ -779,6 +779,34 @@ export function validateAgentRunMetadata(metadata: unknown): AgentRunJobMetadata
 	) {
 		throw new ValidationError('scope_mode', meta.scope_mode, 'read_only | read_write');
 	}
+	if (meta.effort !== undefined && meta.effort !== 'standard' && meta.effort !== 'deep') {
+		throw new ValidationError('effort', meta.effort, 'standard | deep');
+	}
+	if (
+		meta.run_template !== undefined &&
+		meta.run_template !== 'agent' &&
+		meta.run_template !== 'deep_research'
+	) {
+		throw new ValidationError('run_template', meta.run_template, 'agent | deep_research');
+	}
+	if (meta.run_template === 'deep_research') {
+		if ((meta.depth ?? 0) !== 0) {
+			throw new ValidationError('depth', meta.depth, '0 for deep_research');
+		}
+		if (meta.scope_mode !== 'read_only') {
+			throw new ValidationError('scope_mode', meta.scope_mode, 'read_only for deep_research');
+		}
+		if (meta.effort !== 'deep') {
+			throw new ValidationError('effort', meta.effort, 'deep for deep_research');
+		}
+		if (meta.parent_run_id !== undefined && meta.parent_run_id !== null) {
+			throw new ValidationError(
+				'parent_run_id',
+				meta.parent_run_id,
+				'null for deep_research'
+			);
+		}
+	}
 
 	// review on a read-only run is contradictory — there is nothing to stage (02 §3a).
 	if (meta.review_required === true && meta.scope_mode === 'read_only') {
@@ -811,7 +839,12 @@ export function validateAgentRunMetadata(metadata: unknown): AgentRunJobMetadata
 	}
 	if (meta.budgets && typeof meta.budgets === 'object' && !Array.isArray(meta.budgets)) {
 		const budgets = meta.budgets as Record<string, unknown>;
-		for (const field of ['wall_clock_ms', 'max_tokens', 'max_tool_calls'] as const) {
+		for (const field of [
+			'wall_clock_ms',
+			'max_tokens',
+			'max_tool_calls',
+			'max_cost_usd'
+		] as const) {
 			const value = budgets[field];
 			if (value === undefined) continue;
 			if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
@@ -832,17 +865,51 @@ export function validateAgentRunMetadata(metadata: unknown): AgentRunJobMetadata
 	) {
 		throw new ValidationError('depth', meta.depth, '0 or 1');
 	}
+	if (
+		meta.parent_run_id !== undefined &&
+		meta.parent_run_id !== null &&
+		(typeof meta.parent_run_id !== 'string' || !isValidUUID(meta.parent_run_id))
+	) {
+		throw new ValidationError('parent_run_id', meta.parent_run_id, 'valid UUID | null');
+	}
+	if (
+		meta.depth === 1 &&
+		(typeof meta.parent_run_id !== 'string' || !isValidUUID(meta.parent_run_id))
+	) {
+		throw new ValidationError('parent_run_id', meta.parent_run_id, 'valid UUID for depth 1');
+	}
 
 	if (
 		meta.continuation_from !== undefined &&
 		meta.continuation_from !== 'paused' &&
 		meta.continuation_from !== 'needs_input' &&
-		meta.continuation_from !== 'partial'
+		meta.continuation_from !== 'partial' &&
+		meta.continuation_from !== 'children'
 	) {
 		throw new ValidationError(
 			'continuation_from',
 			meta.continuation_from,
-			'paused | needs_input | partial'
+			'paused | needs_input | partial | children'
+		);
+	}
+	if (meta.continuation_from === 'children' && meta.run_template !== 'deep_research') {
+		throw new ValidationError(
+			'run_template',
+			meta.run_template,
+			'deep_research for continuation_from=children'
+		);
+	}
+	if (
+		meta.continuation_from === 'children' &&
+		((meta.depth ?? 0) !== 0 ||
+			meta.scope_mode !== 'read_only' ||
+			meta.effort !== 'deep' ||
+			(meta.parent_run_id !== undefined && meta.parent_run_id !== null))
+	) {
+		throw new ValidationError(
+			'continuation_from',
+			meta.continuation_from,
+			'depth-0 read-only deep root continuation'
 		);
 	}
 

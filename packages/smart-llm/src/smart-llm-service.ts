@@ -434,6 +434,7 @@ export class SmartLLMService {
 		max_tokens?: number;
 		timeoutMs?: number;
 		response_format?: { type: string };
+		reasoning?: unknown;
 		stream?: boolean;
 		transforms?: string[];
 	}): Promise<{
@@ -472,6 +473,7 @@ export class SmartLLMService {
 			max_tokens: params.max_tokens,
 			timeoutMs: params.timeoutMs,
 			response_format: params.response_format,
+			reasoning: params.reasoning,
 			stream: params.stream,
 			transforms: params.transforms,
 			provider: OPENROUTER_PRIVATE_PROVIDER
@@ -604,6 +606,7 @@ export class SmartLLMService {
 						messages,
 						temperature: options.temperature || 0.2,
 						response_format: useJsonMode ? { type: 'json_object' } : undefined,
+						reasoning: options.reasoning,
 						max_tokens: maxTokens,
 						timeoutMs: options.timeoutMs ?? this.defaultTimeoutMs,
 						transforms
@@ -695,6 +698,7 @@ export class SmartLLMService {
 									response_format: supportsJsonMode(retryModel)
 										? { type: 'json_object' }
 										: undefined,
+									reasoning: options.reasoning,
 									max_tokens: maxTokens,
 									timeoutMs: options.timeoutMs ?? this.defaultTimeoutMs,
 									transforms

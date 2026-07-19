@@ -210,8 +210,13 @@ manual loop on a flooded project, watch pendings rotate instead of accumulate.
 - **Global attention broker**: dashboard shows top-3 packets across projects (rank by
   urgency/importance separated from risk_tier); the rest reachable per-project. This is where
   DJ's "you don't ping the CEO with a million small details" lands globally.
-- **Calendar event-lifecycle revalidation**: expire when the referenced event has passed /
-  been cancelled; minutes-level freshness for calendar items.
+- **Calendar event-lifecycle revalidation**: ✅ **BUILT 2026-07-18 (second pass, uncommitted)**
+  — `mapCalendarSuggestionToInboxItem` now caps `expires_at` at the suggestion's
+  `event_patterns.end_date` (falling back to `start_date`) + 48h grace (date-only values parse
+  as UTC midnight; grace covers the full day in any timezone). Enforced by the existing
+  read-time reconcile — a passed event window expires on the next badge poll. Tests in
+  `inboxIndex.test.ts`. Remaining refinement (later): event _cancellation_ detection would
+  need a live Google Calendar lookup — deferred; TTL + window expiry cover the common case.
 - **Review trigger**: crossing the budget triggers a compaction pass (DJ's ">3 items → review
   layer kicks in" framing) rather than a scheduled job.
 - LLM merges are reversible (members preserved); **LLM never hard-dismisses** — deterministic
@@ -263,26 +268,38 @@ back into generator prompts + broker ranking. Only after Phase 3 gives a baselin
       only touches over-budget or deferred-holding projects; deferred rows excluded from
       pending counts automatically (`.eq status` filters).
 - [x] **WP-5 — EXECUTED against live DB 2026-07-18** (migration applied by DJ, then cleanup
-  script ran the shared-package sync + budget): **50 pending → 25 pending + 23 deferred**,
-  every project ≤ 3, both stale audit packets expired, 0 errors. Note: the 7/07 rows were
-  deferred rather than TTL-expired — their source `updated_at` is recent, and the expiry basis
-  is `updated_at ?? created_at`; rotation retires them post-deploy. TTL is the backstop, not
-  the primary lifecycle, as designed.
+      script ran the shared-package sync + budget): **50 pending → 25 pending + 23 deferred**,
+      every project ≤ 3, both stale audit packets expired, 0 errors. Note: the 7/07 rows were
+      deferred rather than TTL-expired — their source `updated_at` is recent, and the expiry basis
+      is `updated_at ?? created_at`; rotation retires them post-deploy. TTL is the backstop, not
+      the primary lifecycle, as designed.
 - [x] **WP-6 badge copy** — modal header now appends "· K projects" when items span more than
-  one project (`DashboardInboxModal.svelte`, `pendingProjectCount`).
+      one project (`DashboardInboxModal.svelte`, `pendingProjectCount`).
 - [x] Tests: worker 366/366 (incl. new `inboxAttentionBudget.test.ts`, suppression fallback
       cases, updated `inboxIndex.test.ts` TTL expectations); web inbox tests 28/28; typecheck
       green on shared-agent-ops, worker (tsgo), web (svelte-check).
 - [ ] Live smoke: manual loop run on a flooded project (e.g. `2dcdb7d3`, 11 pending) →
       verify rotation supersedes, budget defers to 3, badge drops.
 
-**⚠️ Deploy ordering:** migration `20260718010000` applied to prod 2026-07-18 (DJ). ✅
+**Ship log:**
+
+- Migration `20260718010000` applied to prod 2026-07-18 (DJ). ✅
+- Phase 1 code committed in `292b61d8` + tasker doc in `2388613c`, pushed 2026-07-18 —
+  Vercel/Railway deploys triggered. ✅ Post-commit verify: worker 366/366, live inbox held
+  (25 pending + 23 deferred, no project over 3).
+- WP-5 cleanup executed against live DB 2026-07-18 (see above). ✅
+- Calendar event-window expiry built 2026-07-18 second pass (uncommitted): worker 369/369,
+  svelte-check clean. ⏳ needs commit.
+- **Next check-back:** after the first post-deploy nightly (2026-07-19), confirm rotation via
+  `reconfirmed_count` / `rotated_out_count` on the `project_suggestion_generated` PostHog
+  event (or `queue_jobs` logs), and confirm pending stays ≤3/project without manual cleanup.
 
 **⚠️ Until the web + worker deploy ships this code:**
+
 - The DEPLOYED web app's read-time reconcile predates `shouldPreserveDeferred` — opening the
   inbox on prod will flip today's 23 `deferred` rows back to `pending` (backfill re-syncs open
   sources and the old upsert has no deferred preservation). Self-heals after deploy; harmless
   but the badge count regresses.
 - Tonight's prod worker runs OLD code: no rotation, no post-run budget. New suggestions land
   as pending and wait for a NEW-code read to be budgeted.
-→ **Commit + deploy is the single remaining step to make Phase 1 hold on its own.**
+  → **Commit + deploy is the single remaining step to make Phase 1 hold on its own.**

@@ -1183,6 +1183,7 @@ export type Database = {
           context_type: string
           created_at: string
           depth: number
+          effort: string
           error: string | null
           expected_output: string | null
           goal: string
@@ -1191,12 +1192,14 @@ export type Database = {
           label: string
           metrics: Json | null
           operative_id: string | null
+          orchestration_state: Json
           parent_message_id: string | null
           parent_run_id: string | null
           parent_session_id: string | null
           project_id: string | null
           result: Json | null
           review_required: boolean
+          run_template: string
           scope_mode: string
           source_decision: string | null
           source_suggestion_id: string | null
@@ -1214,6 +1217,7 @@ export type Database = {
           context_type: string
           created_at?: string
           depth?: number
+          effort?: string
           error?: string | null
           expected_output?: string | null
           goal: string
@@ -1222,12 +1226,14 @@ export type Database = {
           label: string
           metrics?: Json | null
           operative_id?: string | null
+          orchestration_state?: Json
           parent_message_id?: string | null
           parent_run_id?: string | null
           parent_session_id?: string | null
           project_id?: string | null
           result?: Json | null
           review_required?: boolean
+          run_template?: string
           scope_mode?: string
           source_decision?: string | null
           source_suggestion_id?: string | null
@@ -1245,6 +1251,7 @@ export type Database = {
           context_type?: string
           created_at?: string
           depth?: number
+          effort?: string
           error?: string | null
           expected_output?: string | null
           goal?: string
@@ -1253,12 +1260,14 @@ export type Database = {
           label?: string
           metrics?: Json | null
           operative_id?: string | null
+          orchestration_state?: Json
           parent_message_id?: string | null
           parent_run_id?: string | null
           parent_session_id?: string | null
           project_id?: string | null
           result?: Json | null
           review_required?: boolean
+          run_template?: string
           scope_mode?: string
           source_decision?: string | null
           source_suggestion_id?: string | null

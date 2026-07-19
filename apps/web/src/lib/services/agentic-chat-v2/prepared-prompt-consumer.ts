@@ -2,6 +2,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChatContextType, ChatToolDefinition, Database } from '@buildos/shared-types';
 import type { GatewaySurfaceProfileName } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import type { LitePromptScaffoldOptions } from '$lib/services/agentic-chat-lite/prompt';
 import { resolveCacheAgeSeconds } from './context-cache-routing';
 import {
 	getPreparedPromptSurface,
@@ -61,6 +62,7 @@ export async function consumePreparedPrompt(params: {
 	surfaceProfile: GatewaySurfaceProfileName;
 	contextType: ChatContextType;
 	tools: ChatToolDefinition[];
+	scaffold?: LitePromptScaffoldOptions | null;
 }): Promise<PreparedPromptConsumeResult> {
 	if (!params.key) {
 		return { hit: false, reason: 'missing_key' };
@@ -120,7 +122,8 @@ export async function consumePreparedPrompt(params: {
 		contextType: params.contextType,
 		contextPayload: row.context_payload,
 		conversationSummary: row.conversation_summary ?? null,
-		tools: params.tools
+		tools: params.tools,
+		scaffold: params.scaffold
 	});
 	if (!surfaceInspection.current) {
 		return {
