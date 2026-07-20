@@ -69,11 +69,6 @@
 			"components": ["Modal", "PublicProjectView"]
 		},
 		{
-			"file": "src/lib/components/layout/Navigation.svelte",
-			"type": "component",
-			"components": ["DashboardInboxModal", "AgentChatModal", "WorkPanel"]
-		},
-		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
 			"type": "component",
 			"components": [
@@ -98,6 +93,55 @@
 			"file": "src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
 			"type": "component",
 			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/lib/components/layout/Navigation.svelte",
+			"type": "component",
+			"components": ["DashboardInboxModal", "AgentChatModal", "WorkPanel"]
+		},
+		{
+			"file": "src/lib/components/project/ProjectAuditTracker.svelte",
+			"type": "component",
+			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/lib/components/project/ProjectCalendarSettingsModal.svelte",
+			"type": "component",
+			"components": ["TaskEditModal", "EventEditModal"]
+		},
+		{
+			"file": "src/lib/components/project/ProjectHistorySection.svelte",
+			"type": "component",
+			"components": ["ProjectBriefsPanel", "ProjectActivityLogPanel"]
+		},
+		{
+			"file": "src/lib/components/project/ProjectInboxPanel.svelte",
+			"type": "component",
+			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/lib/components/project/ProjectInsightRail.svelte",
+			"type": "component",
+			"components": ["ImageAssetsPanel"]
+		},
+		{
+			"file": "src/lib/components/project/ProjectModalsHost.svelte",
+			"type": "component",
+			"components": [
+				"TaskCreateModal",
+				"PlanCreateModal",
+				"GoalCreateModal",
+				"RiskCreateModal",
+				"RiskEditModal",
+				"MilestoneCreateModal",
+				"MilestoneEditModal",
+				"EventCreateModal",
+				"EventEditModal",
+				"ProjectCalendarSettingsModal",
+				"OntologyProjectEditModal",
+				"ProjectCollaborationModal",
+				"ProjectGraphSection"
+			]
 		},
 		{
 			"file": "src/lib/components/ontology/DocumentModal.svelte",
@@ -159,50 +203,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/project/ProjectAuditTracker.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectCalendarSettingsModal.svelte",
-			"type": "component",
-			"components": ["TaskEditModal", "EventEditModal"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectHistorySection.svelte",
-			"type": "component",
-			"components": ["ProjectBriefsPanel", "ProjectActivityLogPanel"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectInboxPanel.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectInsightRail.svelte",
-			"type": "component",
-			"components": ["ImageAssetsPanel"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectModalsHost.svelte",
-			"type": "component",
-			"components": [
-				"TaskCreateModal",
-				"PlanCreateModal",
-				"GoalCreateModal",
-				"RiskCreateModal",
-				"RiskEditModal",
-				"MilestoneCreateModal",
-				"MilestoneEditModal",
-				"EventCreateModal",
-				"EventEditModal",
-				"ProjectCalendarSettingsModal",
-				"OntologyProjectEditModal",
-				"ProjectCollaborationModal",
-				"ProjectGraphSection"
-			]
-		},
-		{
 			"file": "src/routes/admin/beta/+page.svelte",
 			"type": "page",
 			"components": ["EmailManager", "EmailComposerModal"]
@@ -211,25 +211,6 @@
 			"file": "src/routes/dashboard/calendar/+page.svelte",
 			"type": "page",
 			"components": ["TaskEditModal", "EventEditModal"]
-		},
-		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"AgentChatModal",
-				"ProjectEventsModal",
-				"RecentProjectChatsModal",
-				"ProjectModalsHost",
-				"ProjectAuditTracker",
-				"TaskKanbanBoard",
-				"MobileTaskBoard",
-				"ProjectDocumentsSection"
-			]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte",
@@ -261,6 +242,25 @@
 				"ProjectGraphSection",
 				"AgentChatModal"
 			]
+		},
+		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"AgentChatModal",
+				"ProjectEventsModal",
+				"RecentProjectChatsModal",
+				"ProjectModalsHost",
+				"ProjectAuditTracker",
+				"TaskKanbanBoard",
+				"MobileTaskBoard",
+				"ProjectDocumentsSection"
+			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
@@ -1431,6 +1431,17 @@
 		"src/lib/components/layout/Navigation.svelte": [
 			"src/lib/components/dashboard/DashboardInboxModal.svelte"
 		],
+		"src/lib/components/project/ProjectCalendarSettingsModal.svelte": [
+			"src/lib/components/ontology/TaskEditModal.svelte",
+			"src/lib/components/ontology/EventEditModal.svelte"
+		],
+		"src/lib/components/project/ProjectModalsHost.svelte": [
+			"src/lib/components/ontology/RiskEditModal.svelte",
+			"src/lib/components/ontology/MilestoneEditModal.svelte",
+			"src/lib/components/ontology/EventEditModal.svelte",
+			"src/lib/components/project/ProjectCalendarSettingsModal.svelte",
+			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
+		],
 		"src/lib/components/ontology/DocumentModal.svelte": [
 			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/ontology/PlanEditModal.svelte",
@@ -1459,25 +1470,10 @@
 			"src/lib/components/ontology/GoalEditModal.svelte",
 			"src/lib/components/ontology/PlanEditModal.svelte"
 		],
-		"src/lib/components/project/ProjectCalendarSettingsModal.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/EventEditModal.svelte"
-		],
-		"src/lib/components/project/ProjectModalsHost.svelte": [
-			"src/lib/components/ontology/RiskEditModal.svelte",
-			"src/lib/components/ontology/MilestoneEditModal.svelte",
-			"src/lib/components/ontology/EventEditModal.svelte",
-			"src/lib/components/project/ProjectCalendarSettingsModal.svelte",
-			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
-		],
 		"src/routes/admin/beta/+page.svelte": ["src/lib/components/email/EmailManager.svelte"],
 		"src/routes/dashboard/calendar/+page.svelte": [
 			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/ontology/EventEditModal.svelte"
-		],
-		"src/routes/projects/[id]/+page.svelte": [
-			"src/lib/components/project/ProjectModalsHost.svelte",
-			"src/lib/components/project/ProjectAuditTracker.svelte"
 		],
 		"src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte": [
 			"src/lib/components/ontology/PlanEditModal.svelte",
@@ -1490,6 +1486,10 @@
 		"src/routes/projects-v2/[id]/ProjectWorkspacePrototype.svelte": [
 			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/ontology/DocumentModal.svelte"
+		],
+		"src/routes/projects/[id]/+page.svelte": [
+			"src/lib/components/project/ProjectModalsHost.svelte",
+			"src/lib/components/project/ProjectAuditTracker.svelte"
 		],
 		"src/lib/components/project/v2/EntityTabStrip.svelte": [
 			"src/lib/components/project/ProjectInboxPanel.svelte"
@@ -1519,10 +1519,10 @@
 	"unusedComponents": [
 		"src/lib/components/dashboard/AnalyticsDashboard.svelte",
 		"src/lib/components/landing/HomepageV2.svelte",
-		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
 		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
+		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/project/ProjectHistorySection.svelte",
 		"src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte",
 		"src/routes/projects-v2/[id]/ProjectWorkspacePrototype.svelte",

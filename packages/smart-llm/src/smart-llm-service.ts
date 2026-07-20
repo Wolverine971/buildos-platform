@@ -6,6 +6,8 @@ import type {
 	ErrorLogger,
 	JSONProfile,
 	JSONRequestOptions,
+	JSONSpendReservationEvent,
+	JSONUsageEvent,
 	OpenRouterResponse,
 	TextGenerationOptions,
 	TextGenerationResult,
@@ -75,6 +77,8 @@ export type {
 	JSONProfile,
 	ModelProfile,
 	JSONRequestOptions,
+	JSONSpendReservationEvent,
+	JSONUsageEvent,
 	TextGenerationOptions,
 	TextGenerationUsage,
 	TextGenerationResult,
@@ -438,7 +442,7 @@ export class SmartLLMService {
 		reasoning?: unknown;
 		stream?: boolean;
 		transforms?: string[];
-		providerMaxPrice?: { prompt: number; completion: number };
+		providerMaxPrice?: { prompt: number; completion: number; request: 0 };
 	}): Promise<{
 		response: OpenRouterResponse;
 		route: ProviderRoute;
@@ -588,6 +592,15 @@ export class SmartLLMService {
 			// A budgeted request is one reserved attempt. Fallbacks and repair
 			// retries would be separate paid calls without separate reservations.
 			preferredModels = [spendPlan.model];
+			const spendRoute = this.resolveProviderRoute(spendPlan.model);
+			await options.onSpendReservation?.({
+				model: spendPlan.model,
+				provider: spendRoute.provider,
+				maxTokens: spendPlan.maxTokens,
+				estimatedInputTokens: spendPlan.estimatedInputTokens,
+				reservedCostUsd: spendPlan.reservedCostUsd,
+				providerMaxPrice: spendPlan.providerMaxPrice
+			});
 		}
 
 		let lastError: Error | null = null;
@@ -600,6 +613,8 @@ export class SmartLLMService {
 		let lastResponse: OpenRouterResponse | null = null;
 		let lastRequestedModel = baseModel;
 		let lastRequestApiUrl = this.apiUrl;
+		let lastProvider: string | undefined;
+		let lastBillingProvider: string | undefined;
 		let usageReported = false;
 		const maxTokens = spendPlan?.maxTokens ?? options.maxTokens ?? 8192;
 
@@ -638,6 +653,8 @@ export class SmartLLMService {
 					});
 					const response = completion.response;
 					lastRequestApiUrl = completion.route.apiUrl;
+					lastProvider = response.provider || completion.route.provider;
+					lastBillingProvider = completion.route.provider;
 
 					lastResponse = response;
 
@@ -734,6 +751,9 @@ export class SmartLLMService {
 								});
 								const retryResponse = retryCompletion.response;
 								lastRequestApiUrl = retryCompletion.route.apiUrl;
+								lastProvider =
+									retryResponse.provider || retryCompletion.route.provider;
+								lastBillingProvider = retryCompletion.route.provider;
 
 								// Guard against malformed retry response
 								if (!retryResponse.choices || retryResponse.choices.length === 0) {
@@ -830,6 +850,8 @@ export class SmartLLMService {
 							? responseForLogging.usage.cost
 							: null;
 					const totalCost = reportedTotalCost ?? inputCost + outputCost;
+					const costSource: JSONUsageEvent['costSource'] =
+						reportedTotalCost === null ? 'catalog_estimate' : 'provider_reported';
 
 					console.log(`JSON Response Success:
 				Model: ${actualModel}
@@ -840,13 +862,17 @@ export class SmartLLMService {
 
 					const usageEvent = {
 						model: actualModel,
+						billingProvider: lastBillingProvider,
+						provider: responseForLogging.provider || lastProvider,
+						providerRequestId: responseForLogging.id,
 						promptTokens: responseForLogging.usage?.prompt_tokens || 0,
 						completionTokens: responseForLogging.usage?.completion_tokens || 0,
 						totalTokens: responseForLogging.usage?.total_tokens || 0,
 						inputCost,
 						outputCost,
-						totalCost
-					};
+						totalCost,
+						costSource
+					} satisfies JSONUsageEvent;
 
 					if (typeof options.onUsage === 'function') {
 						usageReported = true;
@@ -955,6 +981,15 @@ export class SmartLLMService {
 			lastError = error as Error;
 			const duration = performance.now() - startTime;
 			const requestCompletedAt = new Date();
+			const openrouterErrorDetails =
+				(error as any)?.openrouter && typeof (error as any).openrouter === 'object'
+					? (error as any).openrouter
+					: undefined;
+			const failureProviderRequestId =
+				lastResponse?.id ||
+				(typeof openrouterErrorDetails?.generationId === 'string'
+					? openrouterErrorDetails.generationId
+					: undefined);
 			const modelsAttempted = Array.from(attemptedModels);
 			const lastModel = lastResponse?.model || lastRequestedModel || baseModel;
 			const failurePricing = resolveModelPricingProfile(lastModel, [
@@ -989,6 +1024,12 @@ export class SmartLLMService {
 				hasFailureTokenUsage && failurePricing
 					? (failureReportedCost ?? failureInputCost + failureOutputCost)
 					: (spendPlan?.reservedCostUsd ?? 0);
+			const failureCostSource: JSONUsageEvent['costSource'] =
+				failureReportedCost !== null
+					? 'provider_reported'
+					: hasFailureTokenUsage && failurePricing
+						? 'catalog_estimate'
+						: 'reservation';
 			const accountedFailureInputCost =
 				hasFailureTokenUsage && failurePricing ? failureInputCost : failureTotalCost;
 			const accountedFailureOutputCost =
@@ -1000,20 +1041,20 @@ export class SmartLLMService {
 				usageReported = true;
 				await options.onUsage({
 					model: lastModel,
+					billingProvider: lastBillingProvider,
+					provider: lastResponse?.provider || lastProvider,
+					providerRequestId: failureProviderRequestId,
 					promptTokens: failurePromptTokens,
 					completionTokens: failureCompletionTokens,
 					totalTokens: failureTotalTokens,
 					inputCost: accountedFailureInputCost,
 					outputCost: accountedFailureOutputCost,
-					totalCost: failureTotalCost
+					totalCost: failureTotalCost,
+					costSource: failureCostSource
 				});
 			}
 			const emptyContentDetails =
 				error instanceof OpenRouterEmptyContentError ? error.details : undefined;
-			const openrouterErrorDetails =
-				(error as any)?.openrouter && typeof (error as any).openrouter === 'object'
-					? (error as any).openrouter
-					: undefined;
 
 			console.error(`OpenRouter request failed:`, error);
 
@@ -1038,7 +1079,7 @@ export class SmartLLMService {
 						modelsAttempted,
 						lastRequestedModel,
 						lastModel,
-						openrouterRequestId: lastResponse?.id,
+						openrouterRequestId: failureProviderRequestId,
 						openrouterProvider: lastResponse?.provider,
 						openrouterErrorDetails: openrouterErrorDetails ?? null,
 						emptyContentDetails: emptyContentDetails ?? null
@@ -1087,7 +1128,7 @@ export class SmartLLMService {
 						modelsAttempted,
 						lastRequestedModel,
 						lastModel,
-						openrouterRequestId: lastResponse?.id,
+						openrouterRequestId: failureProviderRequestId,
 						openrouterProvider: lastResponse?.provider,
 						openrouterErrorDetails: openrouterErrorDetails ?? null,
 						emptyContentDetails: emptyContentDetails ?? null

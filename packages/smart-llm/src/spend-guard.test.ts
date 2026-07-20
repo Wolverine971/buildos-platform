@@ -1,7 +1,7 @@
 // packages/smart-llm/src/spend-guard.test.ts
 import { describe, expect, it } from 'vitest';
 import { GLM_52_MODEL } from './model-config';
-import { planJSONRequestSpend } from './spend-guard';
+import { LLMSpendLimitError, planJSONRequestSpend } from './spend-guard';
 
 describe('JSON request spend guard', () => {
 	it('reserves conservatively for input and caps output inside the call budget', () => {
@@ -24,15 +24,20 @@ describe('JSON request spend guard', () => {
 	});
 
 	it('rejects an unpriced model instead of making an unbounded request', () => {
-		expect(() =>
+		let error: unknown;
+		try {
 			planJSONRequestSpend({
 				models: ['unknown/expensive-model'],
 				systemPrompt: 'Return JSON.',
 				userPrompt: 'Do work.',
 				requestedMaxTokens: 1000,
 				maxCostUsd: 0.01
-			})
-		).toThrow('No priced model can satisfy');
+			});
+		} catch (caught) {
+			error = caught;
+		}
+		expect(error).toBeInstanceOf(LLMSpendLimitError);
+		expect((error as Error).message).toContain('No priced model can satisfy');
 	});
 
 	it('rejects a request whose prompt reservation leaves no useful output budget', () => {
@@ -46,5 +51,18 @@ describe('JSON request spend guard', () => {
 				minOutputTokens: 128
 			})
 		).toThrow('No priced model can satisfy');
+	});
+
+	it('keeps the requested model id while using its normalized catalog pricing', () => {
+		const versionedModel = `${GLM_52_MODEL}-20270101`;
+		const plan = planJSONRequestSpend({
+			models: [versionedModel],
+			systemPrompt: 'Return JSON.',
+			userPrompt: 'Analyze this.',
+			requestedMaxTokens: 1000,
+			maxCostUsd: 0.01
+		});
+
+		expect(plan.model).toBe(versionedModel);
 	});
 });

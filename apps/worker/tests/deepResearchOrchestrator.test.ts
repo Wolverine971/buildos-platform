@@ -110,8 +110,11 @@ function childEvidence(
 	};
 }
 
-function coordinatorHarness(children: ChildEvidence[]) {
-	let usage: UsageSnapshot = { tokens: 500, cost: 0.02, toolCalls: 0 };
+function coordinatorHarness(
+	children: ChildEvidence[],
+	initialUsage: UsageSnapshot = { tokens: 500, cost: 0.02, toolCalls: 0 }
+) {
+	let usage: UsageSnapshot = initialUsage;
 	const runtime: DeepResearchCoordinatorRuntime = {
 		persistState: vi.fn(async () => undefined),
 		dispatchChildren: vi.fn(async () => []),
@@ -395,9 +398,32 @@ describe('deep research coordinator lifecycle contract', () => {
 
 	it('plans with high reasoning, checkpoints each stage, then dispatches only through the bounded runtime', async () => {
 		const harness = coordinatorHarness([]);
+		const onSpendReservation = vi.fn(async () => undefined);
+		const onAccountedUsage = vi.fn(async () => undefined);
+		const llmAccounting = vi.fn(() => ({
+			onSpendReservation,
+			onUsage: onAccountedUsage
+		}));
 		const llm = {
 			getJSONResponse: vi.fn(async (options: Record<string, any>) => {
-				options.onUsage?.({ totalTokens: 400, totalCost: 0.01 });
+				await options.onSpendReservation?.({
+					model: 'planner-model',
+					provider: 'openrouter',
+					maxTokens: 1000,
+					estimatedInputTokens: 500,
+					reservedCostUsd: 0.02,
+					providerMaxPrice: { prompt: 1, completion: 2, request: 0 }
+				});
+				await options.onUsage?.({
+					model: 'planner-model',
+					promptTokens: 300,
+					completionTokens: 100,
+					totalTokens: 400,
+					inputCost: 0.005,
+					outputCost: 0.005,
+					totalCost: 0.01,
+					costSource: 'provider_reported'
+				});
 				return {
 					objective: 'Assess demand and downside',
 					workstreams: [
@@ -414,12 +440,16 @@ describe('deep research coordinator lifecycle contract', () => {
 			llm: llm as never,
 			getUsage: harness.getUsage,
 			addUsage: harness.addUsage,
+			llmAccounting,
 			emit: vi.fn(async () => undefined),
 			runtime: harness.runtime
 		});
 
 		expect(outcome).toMatchObject({ kind: 'waiting' });
 		expect(llm.getJSONResponse).toHaveBeenCalledOnce();
+		expect(llmAccounting).toHaveBeenCalledWith('plan');
+		expect(onSpendReservation).toHaveBeenCalledOnce();
+		expect(onAccountedUsage).toHaveBeenCalledOnce();
 		expect(llm.getJSONResponse.mock.calls[0]?.[0]).toMatchObject({
 			profile: 'powerful',
 			reasoning: { effort: 'high', exclude: false },
@@ -513,8 +543,75 @@ describe('deep research coordinator lifecycle contract', () => {
 		});
 		expect(harness.runtime.persistState).toHaveBeenCalledWith(
 			ROOT_ID,
-			expect.objectContaining({ stage: 'synthesizing' })
+			expect.objectContaining({
+				stage: 'synthesizing',
+				child_usage: expect.objectContaining({
+					tokens: 2000,
+					cost: 0.1,
+					toolCalls: 4
+				})
+			}),
+			expect.objectContaining({
+				tokens: 2500,
+				cost: expect.closeTo(0.12, 10),
+				toolCalls: 4
+			})
 		);
+	});
+
+	it('does not double-count checkpointed child usage after a synthesis-stage restart', async () => {
+		const children = [
+			childEvidence(CHILD_IDS[0], 'completed'),
+			childEvidence(CHILD_IDS[1], 'completed')
+		];
+		const checkpointedChildUsage: UsageSnapshot = {
+			tokens: 2000,
+			cost: 0.1,
+			toolCalls: 4,
+			llmCost: 0.068,
+			paidToolCost: 0.032,
+			tavilyCredits: 4
+		};
+		const harness = coordinatorHarness(children, {
+			tokens: 2500,
+			cost: 0.12,
+			toolCalls: 4,
+			llmCost: 0.088,
+			paidToolCost: 0.032,
+			tavilyCredits: 4
+		});
+		const state = {
+			...researchState('synthesizing'),
+			child_usage: checkpointedChildUsage
+		};
+		const llm = {
+			getJSONResponse: vi.fn(async (options: Record<string, any>) => {
+				options.onUsage?.({ totalTokens: 900, totalCost: 0.04 });
+				return {
+					summary: 'Restarted synthesis.',
+					report_markdown: '# Report\nRecovered without double counting.',
+					confidence: 0.8
+				};
+			})
+		};
+
+		await processDeepResearchCoordinator({
+			run: coordinatorRun(state),
+			llm: llm as never,
+			getUsage: harness.getUsage,
+			addUsage: harness.addUsage,
+			emit: vi.fn(async () => undefined),
+			runtime: harness.runtime
+		});
+
+		expect(llm.getJSONResponse.mock.calls[0]?.[0]?.spendLimit).toMatchObject({
+			maxCostUsd: 0.38
+		});
+		expect(harness.getUsage()).toEqual({
+			tokens: 3400,
+			cost: 0.16,
+			toolCalls: 4
+		});
 	});
 
 	it('returns a partial synthesis when any expected child settles incompletely', async () => {
@@ -556,7 +653,7 @@ describe('deep research coordinator lifecycle contract', () => {
 				wall_clock_ms: 600_000
 			},
 			childMetrics: { tokens: 1000, cost_usd: 0.24, tool_calls: 2 },
-			expected: '$0.50 LLM budget was exhausted'
+			expected: '$0.50 total cost budget was exhausted'
 		},
 		{
 			name: 'tokens',

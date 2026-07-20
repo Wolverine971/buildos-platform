@@ -1,3 +1,4 @@
+// packages/smart-llm/src/openrouter-client.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { OpenRouterClient } from './openrouter-client';
 
@@ -10,6 +11,29 @@ function createClient(fetchImpl: typeof fetch) {
 		fetchImpl
 	});
 }
+
+describe('OpenRouterClient.callOpenRouter', () => {
+	it('preserves the generation id when the response body is lost', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response('not-json', {
+				status: 200,
+				headers: { 'x-generation-id': 'gen-lost-body' }
+			})
+		);
+		const client = createClient(fetchMock as unknown as typeof fetch);
+
+		await expect(
+			client.callOpenRouter({
+				model: 'openai/gpt-5-mini',
+				messages: [{ role: 'user', content: 'Return JSON.' }]
+			})
+		).rejects.toMatchObject({
+			openrouter: {
+				generationId: 'gen-lost-body'
+			}
+		});
+	});
+});
 
 describe('OpenRouterClient.callOpenRouterTranscription', () => {
 	it('uses the dedicated OpenRouter transcription endpoint and request shape', async () => {

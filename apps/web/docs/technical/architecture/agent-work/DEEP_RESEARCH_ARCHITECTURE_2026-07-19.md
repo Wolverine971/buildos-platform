@@ -3,7 +3,7 @@
 # Agentic Chat Deep Research — Architecture Direction
 
 **Date:** 2026-07-19  
-**Status:** First bounded orchestration slice and focused safety suite implemented in code; migration and deployment pending
+**Status:** Bounded orchestration, durable paid-attempt ledger, and OpenRouter reconciliation implemented in code; migrations and deployment pending
 
 **Builds on:** `AGENTIC_CHAT_RESEARCH_CAPABILITY_AUDIT_2026-07-18.md` and the durable Agent Work
 substrate
@@ -36,43 +36,63 @@ The first vertical slice now implements concern 1 and a deliberately narrow vers
   researchers, releases its worker slot, and resumes for high-reasoning synthesis.
 - Child IDs, queue deduplication, and a persisted `dispatching` checkpoint make fan-out retryable.
 - A database trigger queues synthesis in the same transaction that settles the final child.
+- The root checkpoints aggregated child usage with its synthesis state, making restart accounting
+  idempotent before the synthesis provider call.
 - Children receive only `util.web.search` and `util.web.visit`, cannot delegate, and stop on either
   a parent cancel signal or the parent's durable terminal status.
 - PostgreSQL guards enforce the root/child shapes, a two-child cap under concurrent inserts, root
   and child budget envelopes, and an atomic per-user capacity reservation.
 - Tavily Search credits are counted in leaf and root cost. A search is reserved before dispatch at
   basic = 1 credit / advanced = 2 credits and at no less than the public `$0.008/credit` PAYG
-  price; provider-reported credits settle the estimate when available.
+  price; the request explicitly asks for usage and provider-reported credits settle the estimate
+  when available. Local validation failures are not charged.
 - Budgeted LLM calls now use one catalog-priced model/attempt, conservatively reserve prompt cost,
   cap output tokens to the remaining call envelope, and disable unreserved fallback/parse retries.
+- `agent_run_cost_entries` now durably records every budgeted deep-research LLM and Tavily attempt
+  before provider dispatch. A `SECURITY DEFINER` reservation function locks the root, checks leaf
+  and root exposure atomically, and rejects an over-budget or conflicting attempt key.
+- Settlement is idempotent. Successful calls record actual cost/units and provider request IDs;
+  missing usage, lost responses, and reservation overruns remain
+  `reconciliation_required`. Direct table writes are rejected.
+- `20260719040000_agent_run_cost_reconciliation.sql` adds bounded `SKIP LOCKED` claims, expiring
+  lease tokens, retry limits, and an operator-needed state for unresolved exposure. A disabled-by-
+  default five-minute scheduler queries the authoritative
+  [OpenRouter generation endpoint](https://openrouter.ai/docs/api/api-reference/generations/get-generation)
+  and settles returned `total_cost`.
+- SmartLLM preserves OpenRouter's `X-Generation-Id` even when the response body is lost. That
+  closes the correlation gap between a conservative reservation and the later provider lookup.
 
 This is a working V0.1 control flow, not a finished research product. It returns a sourced report to
 chat, but does not yet persist a report document or a typed claim-to-source manifest.
 
 ## What BuildOS already has
 
-| Capability                   | Current state                                                           |
-| ---------------------------- | ----------------------------------------------------------------------- |
-| Durable background execution | `agent_runs` + `queue_jobs` + Railway worker                            |
-| Progress and control         | Events, Realtime, steer, pause, resume, cancel                          |
-| Parent/child identity        | `parent_run_id` and DB-enforced depth `0..1`                            |
-| Parallel capacity            | Two concurrent children plus their root; DB-enforced per-user reserve   |
-| Web evidence                 | Worker-safe Tavily search and SSRF-safe page visit                      |
-| Tool security                | `scope_mode` + `allowed_ops`; child runs can remain read-only           |
-| Result bridge                | Terminal run result is injected back into the originating chat          |
-| Model tiers                  | `balanced`, `powerful`, and `maximum` JSON profiles                     |
-| Usage telemetry              | Per-model tokens plus LLM/Tavily cost, accumulated through the run tree |
+| Capability                   | Current state                                                         |
+| ---------------------------- | --------------------------------------------------------------------- |
+| Durable background execution | `agent_runs` + `queue_jobs` + Railway worker                          |
+| Progress and control         | Events, Realtime, steer, pause, resume, cancel                        |
+| Parent/child identity        | `parent_run_id` and DB-enforced depth `0..1`                          |
+| Parallel capacity            | Two concurrent children plus their root; DB-enforced per-user reserve |
+| Web evidence                 | Worker-safe Tavily search and SSRF-safe page visit                    |
+| Tool security                | `scope_mode` + `allowed_ops`; child runs can remain read-only         |
+| Result bridge                | Terminal run result is injected back into the originating chat        |
+| Model tiers                  | `balanced`, `powerful`, and `maximum` JSON profiles                   |
+| Usage telemetry              | Run metrics plus durable LLM/Tavily reservation and settlement rows   |
 
 Important remaining gaps:
 
 - Child evidence is constrained Markdown, not yet a validated claim-to-source JSON contract.
 - The synthesized report is injected into chat but is not yet persisted as a BuildOS document.
 - V0.1 uses two children so root + children fit the existing three-active-run ceiling.
-- `max_cost_usd` now covers observed LLM inference plus conservatively priced Tavily credits, but
-  it is not yet backed by a durable provider-reconciled reservation ledger.
-- In-flight LLM exposure is bounded by conservative prompt/output reservation and single-attempt
-  routing. A provider billing discrepancy, catalog-price drift, or process crash before metrics
-  persistence can still make observed totals differ from the provider bill.
+- `max_cost_usd` now has a durable, atomic leaf/root reservation ledger and automatic OpenRouter
+  lookup. Moonshot direct calls and Tavily Search still lack an implemented authoritative
+  per-request lookup.
+- A process crash after provider acceptance leaves a conservative inspectable reservation and the
+  same logical attempt key cannot dispatch again. OpenRouter rows with a captured generation ID
+  self-reconcile; missing IDs and unsupported providers retain exposure and are marked for
+  operator action.
+- Provider billing discrepancies and catalog-price drift are recorded conservatively but do not
+  yet trigger automated alerts or a circuit breaker.
 - No `max_web_searches`, per-domain policy, per-user daily research budget, or research eval.
 
 ## Current provider capabilities and why they do not replace the BuildOS substrate
@@ -243,18 +263,23 @@ Starting `$0.50` allocation is dynamic:
 Use the stronger model for planning and synthesis. Child researchers should default to the cheaper
 standard lane because their task is narrow and evidence-oriented.
 
-The local V0.1 now covers items 1–2 for LLM + Tavily in run metrics: it reserves each paid call
-before dispatch, bounds LLM output, and counts failed/unknown Tavily responses conservatively. The
-remaining step before calling this a hard total-cost guarantee is a durable atomic ledger:
+The local V0.1 now persists every budgeted deep-research LLM and Tavily reservation before provider
+dispatch and settles it idempotently. The database serializes sibling reservations on the root row
+and atomically enforces both the leaf allocation and root `max_cost_usd`. Caller-stable attempt keys
+make a retry inspect the existing exposure instead of paying for a duplicate request.
 
-1. persist every reservation before provider dispatch and settle/release it idempotently;
-2. atomically check leaf, root, user-daily, and platform balances under concurrency;
-3. reconcile accepted calls whose response/usage was lost using provider request records;
-4. version/monitor provider prices and fail closed on unknown pricing;
+The remaining accounting work is:
+
+1. deploy and live-smoke the OpenRouter reconciler, then add an operator report for missing
+   generation IDs and unsupported Moonshot/Tavily rows;
+2. identify a documented per-request audit path for Tavily Search or reconcile those rows through
+   a separately tracked project/account delta without pretending aggregate usage proves one call;
+3. add atomic user-daily and platform balances beyond the existing per-leaf/per-root limits;
+4. version/monitor provider prices and fail closed on unknown or stale pricing;
 5. alert and trip a circuit breaker when actual provider billing exceeds reservation.
 
-Until that ledger lands, `max_cost_usd` is a tightly bounded application ceiling, not a prepaid or
-provider-guaranteed balance.
+`max_cost_usd` is now a durable BuildOS dispatch boundary. It is still not a prepaid balance or a
+guarantee that an external provider will bill exactly what it reported.
 
 ## Security and “do not go rogue” controls
 
@@ -305,15 +330,18 @@ project knowledge should use the existing staged Change Set review path.
   fan-out, retries, waiting, synthesis, partial results, and budget exhaustion.
 - Web dispatch budget policy: 4 passing tests.
 - Shared queue metadata validation: 5 passing tests.
-- Disposable PostgreSQL migration suite: 8 passing tests, including three simultaneous child
+- Disposable PostgreSQL migration suite: 16 passing tests, including three simultaneous child
   inserts, unsafe child rejection, active-slot reservation, coordinator reclaim, exactly-once
-  synthesis wakeup, and the fast-child race.
+  synthesis wakeup, the fast-child race, atomic root-cost oversubscription, reconciliation leases,
+  lease-token fencing, crashed-final-lease recovery, authoritative overrun settlement, and the
+  response-settlement/provider-lookup race.
 - The PostgreSQL suite has its own command,
   `pnpm --filter @buildos/worker test:deep-research:integration`; it does not replace the older
   externally configured worker integration suite.
 
-This code becomes live only after both Agent Run migrations are applied and the web and worker
-services are deployed.
+This code becomes live only after all four Agent Run/deep-research migrations are applied and the
+web and worker services are deployed. Cost reconciliation additionally requires
+`AGENT_RUN_COST_RECONCILIATION_ENABLED=true`; it remains off by default.
 
 ### Slice C — budget and evidence correctness
 
@@ -322,8 +350,10 @@ services are deployed.
   before dispatch.
 - **Implemented locally:** pre-call LLM spend envelope with conservative prompt estimate, output
   cap, one priced model, no unreserved retries, and OpenRouter provider-price filtering.
-- Add a **durable** unified root/child cost ledger with atomic reservation and provider
-  reconciliation ([tasker 29](../../../../../../tasker/29-deep-research-cost-ledger-and-hard-budgets.md)).
+- **Implemented locally:** durable unified root/child cost ledger with atomic reservation,
+  idempotent settlement, lease-based stale-row claims, and authoritative OpenRouter generation
+  reconciliation
+  ([tasker 29](../../../../../../tasker/29-deep-research-cost-ledger-and-hard-budgets.md)).
 - Add a per-user daily research allowance.
 - Replace Markdown evidence packets with a typed claim/source/support contract.
 - Persist the final report and normalized source manifest.

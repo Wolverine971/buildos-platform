@@ -33,6 +33,35 @@ export interface ModelProfile {
 	capabilities?: ModelCapabilities;
 }
 
+export interface JSONSpendReservationEvent {
+	model: string;
+	/** Billing gateway that will receive the request (for example openrouter). */
+	provider: string;
+	maxTokens: number;
+	estimatedInputTokens: number;
+	reservedCostUsd: number;
+	providerMaxPrice: {
+		prompt: number;
+		completion: number;
+		request: 0;
+	};
+}
+
+export interface JSONUsageEvent {
+	model: string;
+	billingProvider?: string;
+	/** Upstream inference provider reported in the response, when available. */
+	provider?: string;
+	providerRequestId?: string;
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+	inputCost: number;
+	outputCost: number;
+	totalCost: number;
+	costSource: 'provider_reported' | 'catalog_estimate' | 'reservation';
+}
+
 export interface JSONRequestOptions<T = unknown> {
 	systemPrompt: string;
 	userPrompt: string;
@@ -80,15 +109,9 @@ export interface JSONRequestOptions<T = unknown> {
 	streamRunId?: string;
 	clientTurnId?: string;
 	metadata?: Record<string, unknown>;
-	onUsage?: (event: {
-		model: string;
-		promptTokens: number;
-		completionTokens: number;
-		totalTokens: number;
-		inputCost: number;
-		outputCost: number;
-		totalCost: number;
-	}) => void | Promise<void>;
+	/** Called after a strict spend plan exists and before provider dispatch. */
+	onSpendReservation?: (event: JSONSpendReservationEvent) => void | Promise<void>;
+	onUsage?: (event: JSONUsageEvent) => void | Promise<void>;
 }
 
 export interface TextGenerationOptions {

@@ -1,5 +1,7 @@
 -- apps/worker/tests/integration/fixtures/deep-research-base.sql
 CREATE ROLE service_role;
+CREATE ROLE anon;
+CREATE ROLE authenticated;
 
 CREATE TYPE public.agent_run_status AS ENUM (
 	'queued',

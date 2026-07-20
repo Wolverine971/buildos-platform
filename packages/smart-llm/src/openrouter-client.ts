@@ -95,6 +95,7 @@ export class OpenRouterClient {
 					response.headers.get('x-request-id') ||
 					response.headers.get('x-openrouter-request-id') ||
 					response.headers.get('openrouter-request-id');
+				const generationIdHeader = response.headers.get('x-generation-id');
 				const errorMetadata =
 					errorObject?.metadata && typeof errorObject.metadata === 'object'
 						? (errorObject.metadata as Record<string, unknown>)
@@ -114,6 +115,7 @@ export class OpenRouterClient {
 				enrichedError.openrouter = {
 					httpStatus: response.status,
 					requestId: requestIdHeader ?? null,
+					generationId: generationIdHeader ?? null,
 					errorType: errorObject?.type ?? null,
 					errorCode: errorObject?.code ?? null,
 					errorParam: errorObject?.param ?? null,
@@ -124,7 +126,22 @@ export class OpenRouterClient {
 				throw enrichedError;
 			}
 
-			const data = (await response.json()) as OpenRouterResponse;
+			const generationIdHeader = response.headers.get('x-generation-id');
+			let data: OpenRouterResponse;
+			try {
+				data = (await response.json()) as OpenRouterResponse;
+			} catch (error) {
+				const enrichedError =
+					error instanceof Error ? error : new Error('OpenRouter returned invalid JSON');
+				(
+					enrichedError as Error & {
+						openrouter?: Record<string, unknown>;
+					}
+				).openrouter = {
+					generationId: generationIdHeader ?? null
+				};
+				throw enrichedError;
+			}
 			if (data.error && typeof data.error.message === 'string' && data.error.message.trim()) {
 				const errorMetadata =
 					data.error.metadata && typeof data.error.metadata === 'object'
@@ -142,7 +159,8 @@ export class OpenRouterClient {
 				enrichedError.openrouter = {
 					error: data.error,
 					metadata: errorMetadata,
-					providerName
+					providerName,
+					generationId: data.id || generationIdHeader || null
 				};
 				throw enrichedError;
 			}

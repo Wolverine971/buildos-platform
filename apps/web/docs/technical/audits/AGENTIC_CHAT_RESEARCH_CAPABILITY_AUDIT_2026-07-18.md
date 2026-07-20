@@ -181,8 +181,10 @@ The first application-level cost hardening pass is now implemented locally:
 - Tavily's response `usage.credits` is counted at no less than the current public PAYG price of
   `$0.008/credit`. Missing/malformed usage falls back conservatively to the documented Search
   charge (basic = 1 credit, advanced = 2 credits).
-- Search cost is reserved before dispatch. Once dispatched, the reservation is charged even when
-  the response times out/fails because response failure is not evidence that Tavily did not bill.
+- Search explicitly requests provider usage. Cost is reserved after local validation and
+  immediately before network dispatch; locally rejected arguments are free. Once dispatched, the
+  reservation is retained on timeout/failure because response failure is not evidence that Tavily
+  did not bill.
 - Child metrics expose paid-tool cost and credits; the coordinator includes each child's total in
   the root's `$0.50` default ceiling.
 - Every budgeted Agent Run JSON call is converted to one priced attempt. The shared LLM layer uses
@@ -190,12 +192,53 @@ The first application-level cost hardening pass is now implemented locally:
   model fallbacks and parse retries, and adds OpenRouter provider `max_price` filtering.
 - Planner and synthesis calls receive stage-specific remaining-budget envelopes; ordinary child
   loop calls may reserve at most `$0.04` each.
+- Settled child usage is checkpointed with the root's synthesis state, so a coordinator restart
+  cannot forget it or add it twice.
 
 This prevents one normal in-flight request or retry chain from spending drastically beyond the
 application budget. It is deliberately not described as an absolute provider-billing guarantee:
 durable reservations, request-id settlement/reconciliation, daily/global quotas, price-drift
 monitoring, and circuit breakers remain in
 [tasker 29](../../../../../tasker/29-deep-research-cost-ledger-and-hard-budgets.md).
+
+## ADDENDUM 2026-07-19: Durable Agent Run cost ledger implemented locally
+
+The first database-authoritative accounting slice is now implemented in code:
+
+- `20260719030000_agent_run_cost_ledger.sql` creates protected
+  `agent_run_cost_entries` lifecycle rows with root/leaf identity, a caller-stable attempt key,
+  provider/resource, reserved and actual units/USD, provider request ID, status, and metadata.
+- `reserve_agent_run_cost` locks the root row before inserting. Concurrent siblings cannot reserve
+  past the root ceiling, and each leaf's own allocation is checked in the same transaction.
+- Identical reservation and settlement retries are idempotent. Reusing an attempt key with changed
+  economics is rejected, and the worker refuses to redispatch any existing logical paid attempt.
+- Strict SmartLLM calls invoke the durable reservation callback after local spend planning but
+  before fetch. Tavily reserves after argument validation but before fetch.
+- Successful calls settle from provider-reported usage/request IDs when available. Missing usage,
+  lost responses, and actual cost above reservation remain `reconciliation_required`; an explicit
+  reconciliation path can later acknowledge and settle a reviewed overrun.
+- Direct table mutation is blocked; service code writes only through the
+  `SECURITY DEFINER` lifecycle and reconciliation functions.
+- `20260719040000_agent_run_cost_reconciliation.sql` adds bounded, lease-fenced stale-row claims.
+  Multiple scheduler replicas cannot own the same lookup, retries back off and stop at a fixed
+  attempt count, and unresolved rows retain their budget exposure.
+- OpenRouter rows with a generation ID settle automatically from the provider's generation
+  `total_cost`. SmartLLM now captures `X-Generation-Id` on lost/error bodies so those calls remain
+  auditable. Tavily Search and direct Moonshot rows are conservatively marked for operator action
+  because no authoritative per-request lookup is implemented for them.
+- The scheduler path is guarded by `AGENT_RUN_COST_RECONCILIATION_ENABLED=false` until the new
+  migrations and provider smoke have passed in staging.
+
+**Focused verification:** the ledger/reconciler adapter suite has 11 passing tests, the shared
+SmartLLM suite has 62 passing tests, and 16 disposable-PostgreSQL migration tests pass. Database
+cases include concurrent root
+oversubscription, idempotent retries, changed-payload conflicts, terminal conflicts, overrun
+reconciliation, direct-write rejection, bounded claims, lease fencing, crashed-final-lease
+recovery, authoritative provider settlement, and the response-settlement/provider-lookup race.
+
+Still open: apply/regenerate types in staging, real-provider smoke, an operator reconciliation
+report, authoritative handling for unsupported Moonshot/Tavily rows, daily/global quotas,
+price-registry drift monitoring, alerts/circuit breakers, and rollout controls.
 
 ## Live-test artifacts
 

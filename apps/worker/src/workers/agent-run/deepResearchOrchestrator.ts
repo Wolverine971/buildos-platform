@@ -4,7 +4,12 @@ import type { Database, Json } from '@buildos/shared-types';
 import { validateAgentRunMetadata } from '@buildos/shared-types';
 import { AGENT_OP_WEB_SEARCH, AGENT_OP_WEB_VISIT } from '@buildos/shared-agent-ops';
 import { supabase } from '../../lib/supabase';
-import type { SmartLLMService } from '../../lib/services/smart-llm-service';
+import type {
+	JSONSpendReservationEvent,
+	JSONUsageEvent,
+	SmartLLMService
+} from '../../lib/services/smart-llm-service';
+import { AgentRunCostLedgerError } from './agentRunCostLedger';
 
 type AgentRunRow = Database['public']['Tables']['agent_runs']['Row'];
 type AgentRunStatus = AgentRunRow['status'];
@@ -60,6 +65,7 @@ export interface DeepResearchState {
 	synthesis_criteria?: string[];
 	planner_cost_usd?: number;
 	planner_tokens?: number;
+	child_usage?: UsageSnapshot;
 }
 
 export type UsageSnapshot = {
@@ -150,6 +156,11 @@ export interface DeepResearchCoordinatorRuntime {
 	}): Promise<DeepResearchChildDispatch[]>;
 	loadChildren(parentRunId: string): Promise<ChildEvidence[]>;
 	queueParent(parentRunId: string): Promise<void>;
+}
+
+export interface DeepResearchLlmAccountingHooks {
+	onSpendReservation: (reservation: JSONSpendReservationEvent) => void | Promise<void>;
+	onUsage: (usage: JSONUsageEvent) => void | Promise<void>;
 }
 
 export type DeepResearchOutcome =
@@ -403,6 +414,55 @@ function childMetrics(child: ChildEvidence): UsageSnapshot {
 	};
 }
 
+function readUsageSnapshot(value: unknown): UsageSnapshot | null {
+	const record = readRecord(value);
+	if (!record) return null;
+	const tokens = record.tokens;
+	const cost = record.cost;
+	const toolCalls = record.toolCalls;
+	if (
+		typeof tokens !== 'number' ||
+		!Number.isFinite(tokens) ||
+		tokens < 0 ||
+		typeof cost !== 'number' ||
+		!Number.isFinite(cost) ||
+		cost < 0 ||
+		typeof toolCalls !== 'number' ||
+		!Number.isFinite(toolCalls) ||
+		toolCalls < 0
+	) {
+		return null;
+	}
+	const optionalMetric = (key: 'llmCost' | 'paidToolCost' | 'tavilyCredits') => {
+		const metric = record[key];
+		return typeof metric === 'number' && Number.isFinite(metric) && metric >= 0
+			? metric
+			: undefined;
+	};
+	return {
+		tokens,
+		cost,
+		toolCalls,
+		llmCost: optionalMetric('llmCost'),
+		paidToolCost: optionalMetric('paidToolCost'),
+		tavilyCredits: optionalMetric('tavilyCredits')
+	};
+}
+
+function aggregateUsage(snapshots: UsageSnapshot[]): UsageSnapshot {
+	return snapshots.reduce<UsageSnapshot>(
+		(total, usage) => ({
+			tokens: total.tokens + usage.tokens,
+			cost: total.cost + usage.cost,
+			toolCalls: total.toolCalls + usage.toolCalls,
+			llmCost: (total.llmCost ?? 0) + (usage.llmCost ?? usage.cost),
+			paidToolCost: (total.paidToolCost ?? 0) + (usage.paidToolCost ?? 0),
+			tavilyCredits: (total.tavilyCredits ?? 0) + (usage.tavilyCredits ?? 0)
+		}),
+		{ tokens: 0, cost: 0, toolCalls: 0, llmCost: 0, paidToolCost: 0, tavilyCredits: 0 }
+	);
+}
+
 function childAnswer(child: ChildEvidence): string {
 	const result = readRecord(child.result);
 	return (
@@ -653,6 +713,7 @@ export async function processDeepResearchCoordinator(params: {
 	getUsage: () => UsageSnapshot;
 	addUsage: (usage: UsageSnapshot) => void;
 	emit: (eventType: string, payload: Record<string, unknown>) => Promise<void>;
+	llmAccounting?: (stage: 'plan' | 'synthesis') => DeepResearchLlmAccountingHooks;
 	runtime?: DeepResearchCoordinatorRuntime;
 }): Promise<DeepResearchOutcome> {
 	const runtime: DeepResearchCoordinatorRuntime = params.runtime ?? {
@@ -698,6 +759,7 @@ export async function processDeepResearchCoordinator(params: {
 						DEEP_RESEARCH_CHILD_COUNT * MIN_CHILD_BUDGET_USD
 				)
 			);
+			const accounting = params.llmAccounting?.('plan');
 			rawPlan = await params.llm.getJSONResponse<PlannerResponse>({
 				systemPrompt: [
 					'You are the coordinator for a bounded deep-research run.',
@@ -723,19 +785,22 @@ export async function processDeepResearchCoordinator(params: {
 					maxCostUsd: plannerSpendLimitUsd,
 					minOutputTokens: MIN_PLANNER_OUTPUT_TOKENS
 				},
+				onSpendReservation: accounting?.onSpendReservation,
 				validation: { retryOnParseError: true, maxRetries: 1 },
 				operationType: 'agent_run_deep_research_plan',
 				metadata: { agent_run_id: params.run.id, stage: 'planning' },
-				onUsage: (usage) => {
+				onUsage: async (usage) => {
 					params.addUsage({
 						tokens: usage?.totalTokens ?? 0,
 						cost: usage?.totalCost ?? 0,
 						toolCalls: 0,
 						llmCost: usage?.totalCost ?? 0
 					});
+					await accounting?.onUsage(usage);
 				}
 			});
 		} catch (error) {
+			if (error instanceof AgentRunCostLedgerError) throw error;
 			rawPlan = {};
 			await params.emit('run.narration', {
 				note: 'planner fallback',
@@ -818,8 +883,11 @@ export async function processDeepResearchCoordinator(params: {
 		};
 	}
 
-	for (const child of children) {
-		params.addUsage(childMetrics(child));
+	let checkpointedChildUsage = readUsageSnapshot(state.child_usage);
+	if (!checkpointedChildUsage) {
+		checkpointedChildUsage = aggregateUsage(children.map(childMetrics));
+		params.addUsage(checkpointedChildUsage);
+		state = { ...state, child_usage: checkpointedChildUsage };
 	}
 	const usageBeforeSynthesis = params.getUsage();
 	const remainingBudget = budget.maxCostUsd - usageBeforeSynthesis.cost;
@@ -839,7 +907,7 @@ export async function processDeepResearchCoordinator(params: {
 				? `the ${budget.maxToolCalls}-tool-call budget was exceeded`
 				: wallClockBudgetExhausted
 					? 'the wall-clock budget was exhausted'
-					: `the $${budget.maxCostUsd.toFixed(2)} LLM budget was exhausted`;
+					: `the $${budget.maxCostUsd.toFixed(2)} total cost budget was exhausted`;
 		return {
 			kind: 'finalize',
 			status: 'partial',
@@ -848,13 +916,14 @@ export async function processDeepResearchCoordinator(params: {
 	}
 
 	state = { ...state, stage: 'synthesizing' };
-	await runtime.persistState(params.run.id, state);
+	await runtime.persistState(params.run.id, state, usageBeforeSynthesis);
 	await params.emit('run.research_synthesizing', {
 		child_run_ids: children.map((child) => child.id),
 		remaining_cost_budget_usd: remainingBudget
 	});
 
 	let synthesis: SynthesisResponse;
+	const accounting = params.llmAccounting?.('synthesis');
 	try {
 		synthesis = await params.llm.getJSONResponse<SynthesisResponse>({
 			systemPrompt: [
@@ -884,6 +953,7 @@ export async function processDeepResearchCoordinator(params: {
 				maxCostUsd: remainingBudget,
 				minOutputTokens: MIN_SYNTHESIS_OUTPUT_TOKENS
 			},
+			onSpendReservation: accounting?.onSpendReservation,
 			validation: { retryOnParseError: true, maxRetries: 1 },
 			operationType: 'agent_run_deep_research_synthesis',
 			metadata: {
@@ -891,13 +961,14 @@ export async function processDeepResearchCoordinator(params: {
 				stage: 'synthesis',
 				child_run_ids: children.map((child) => child.id)
 			},
-			onUsage: (usage) => {
+			onUsage: async (usage) => {
 				params.addUsage({
 					tokens: usage?.totalTokens ?? 0,
 					cost: usage?.totalCost ?? 0,
 					toolCalls: 0,
 					llmCost: usage?.totalCost ?? 0
 				});
+				await accounting?.onUsage(usage);
 			}
 		});
 	} catch (error) {

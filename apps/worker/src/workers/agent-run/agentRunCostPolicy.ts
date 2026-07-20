@@ -1,4 +1,6 @@
 // apps/worker/src/workers/agent-run/agentRunCostPolicy.ts
+import type { PaidToolCharge } from './webResearchPort';
+
 const MAX_LLM_CALL_RESERVATION_USD = 0.04;
 const MIN_LLM_OUTPUT_TOKENS = 128;
 const USD_EPSILON = 1e-12;
@@ -28,4 +30,20 @@ export function canReservePaidToolCost(params: {
 }): boolean {
 	if (params.maxCostUsd === undefined) return true;
 	return params.currentCostUsd + params.reservationCostUsd <= params.maxCostUsd + USD_EPSILON;
+}
+
+export function settlePaidToolReservation(
+	reserved: PaidToolCharge,
+	providerReported: PaidToolCharge | null
+): {
+	charge: PaidToolCharge;
+	costAdjustmentUsd: number;
+	creditAdjustment: number;
+} {
+	const charge = providerReported ?? reserved;
+	return {
+		charge,
+		costAdjustmentUsd: charge.cost_usd - reserved.cost_usd,
+		creditAdjustment: charge.credits - reserved.credits
+	};
 }

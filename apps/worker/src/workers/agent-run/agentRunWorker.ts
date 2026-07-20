@@ -38,16 +38,31 @@ import {
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
-import { SmartLLMService } from '../../lib/services/smart-llm-service';
+import {
+	type JSONSpendReservationEvent,
+	type JSONUsageEvent,
+	LLMSpendLimitError,
+	SmartLLMService
+} from '../../lib/services/smart-llm-service';
 import {
 	isDeepResearchCoordinator,
 	isRetryableDeepResearchState,
 	maybeQueueDeepResearchParent,
 	processDeepResearchCoordinator
 } from './deepResearchOrchestrator';
-import { canReservePaidToolCost, resolveAgentRunLlmSpendLimit } from './agentRunCostPolicy';
+import {
+	canReservePaidToolCost,
+	resolveAgentRunLlmSpendLimit,
+	settlePaidToolReservation
+} from './agentRunCostPolicy';
+import {
+	AgentRunCostLedgerError,
+	reserveAgentRunCost,
+	settleAgentRunCost
+} from './agentRunCostLedger';
 import { resolveAgentRunCancellationSource, resolveAgentRunModelPolicy } from './agentRunPolicy';
 import {
+	type PaidToolCharge,
 	createAgentRunWebResearchPort,
 	estimateTavilySearchCharge,
 	readPaidToolCharge,
@@ -721,13 +736,157 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 	// committing. Read-only runs never stage (dispatch rejects review+read_only).
 	const mutationMode: AgentRunMutationMode =
 		run.review_required && scope.mode === 'read_write' ? 'stage' : 'commit';
+
+	const budgets = parseBudgets(run.budgets);
+	const modelPolicy = resolveAgentRunModelPolicy(run.effort);
+	const maxToolCalls = budgets.max_tool_calls ?? DEFAULT_MAX_TOOL_CALLS;
+	const maxTokens = budgets.max_tokens;
+	const maxCostUsd = budgets.max_cost_usd;
+	const deadlineMs = startedAtMs + (budgets.wall_clock_ms ?? modelPolicy.defaultWallClockMs);
+
+	const transcript: string[] = [];
+	let tokensTotal = 0;
+	let costTotal = 0;
+	let llmCostTotal = 0;
+	let paidToolCostTotal = 0;
+	let tavilyCreditsTotal = 0;
+	let toolCalls = 0;
+	const paidToolDispatches: Array<{ attemptKey: string; charge: PaidToolCharge }> = [];
+	let activePaidToolAttemptKey: string | null = null;
+	let paidToolAccountingFailure: AgentRunCostLedgerError | null = null;
+
+	const addLlmUsage = (usage: Pick<JSONUsageEvent, 'totalTokens' | 'totalCost'>) => {
+		if (usage.totalTokens) tokensTotal += usage.totalTokens;
+		if (usage.totalCost) {
+			costTotal += usage.totalCost;
+			llmCostTotal += usage.totalCost;
+		}
+	};
+
+	const createLlmAccountingHooks = (
+		attemptKey: string,
+		operation: string,
+		recordUsage = true
+	) => ({
+		onSpendReservation: async (reservation: JSONSpendReservationEvent) => {
+			const entry = await reserveAgentRunCost({
+				leafRunId: runId,
+				attemptKey,
+				provider: reservation.provider,
+				operation,
+				resource: reservation.model,
+				reservedCostUsd: reservation.reservedCostUsd,
+				reservedUnits: reservation.estimatedInputTokens + reservation.maxTokens,
+				unitType: 'tokens',
+				metadata: {
+					job_id: job.id,
+					model: reservation.model,
+					estimated_input_tokens: reservation.estimatedInputTokens,
+					max_output_tokens: reservation.maxTokens,
+					provider_max_price: reservation.providerMaxPrice
+				},
+				requireNewAttempt: true
+			});
+			await emitEvent(runId, 'run.cost', {
+				phase: 'reserved',
+				ledger_entry_id: entry.id,
+				attempt_key: attemptKey,
+				provider: entry.provider,
+				operation,
+				cost_usd: entry.reserved_cost_usd
+			});
+		},
+		onUsage: async (usage: JSONUsageEvent) => {
+			// Metrics retain the provider outcome even if settlement persistence
+			// fails; the durable reservation remains conservative in that case.
+			if (recordUsage) addLlmUsage(usage);
+			const requestedStatus =
+				usage.costSource === 'reservation' ? 'reconciliation_required' : 'settled';
+			const entry = await settleAgentRunCost({
+				leafRunId: runId,
+				attemptKey,
+				status: requestedStatus,
+				actualCostUsd: usage.totalCost,
+				actualUnits: usage.totalTokens,
+				providerRequestId: usage.providerRequestId,
+				metadata: {
+					cost_source: usage.costSource,
+					actual_provider: usage.provider ?? null,
+					billing_provider: usage.billingProvider ?? null,
+					actual_model: usage.model
+				}
+			});
+			await emitEvent(runId, 'run.cost', {
+				phase: entry.status,
+				ledger_entry_id: entry.id,
+				attempt_key: attemptKey,
+				provider: entry.provider,
+				operation,
+				reserved_cost_usd: entry.reserved_cost_usd,
+				actual_cost_usd: entry.actual_cost_usd,
+				cost_source: usage.costSource
+			});
+		}
+	});
+
 	const calendar = await createCalendarPortForRun(run.user_id);
 	const tavilyCreditCostUsd = resolveTavilyCreditCostUsd();
 	const web = createAgentRunWebResearchPort({
 		searchTimeoutMs: positiveIntegerEnv('AGENT_RUN_WEB_SEARCH_TIMEOUT_MS'),
 		visitTimeoutMs: positiveIntegerEnv('AGENT_RUN_WEB_VISIT_TIMEOUT_MS'),
 		visitMaxBytes: positiveIntegerEnv('AGENT_RUN_WEB_VISIT_MAX_BYTES'),
-		tavilyCreditCostUsd
+		tavilyCreditCostUsd,
+		onSearchDispatched: async (charge) => {
+			if (!activePaidToolAttemptKey) {
+				throw new AgentRunCostLedgerError(
+					'Tavily dispatch has no active cost attempt key.',
+					'rpc_error'
+				);
+			}
+			try {
+				const entry = await reserveAgentRunCost({
+					leafRunId: runId,
+					attemptKey: activePaidToolAttemptKey,
+					provider: charge.provider,
+					operation: AGENT_OP_WEB_SEARCH,
+					resource: charge.credits === 1 ? 'basic' : 'advanced',
+					reservedCostUsd: charge.cost_usd,
+					reservedUnits: charge.credits,
+					unitType: 'credits',
+					metadata: {
+						job_id: job.id,
+						unit_cost_usd: charge.unit_cost_usd,
+						source: charge.source
+					},
+					requireNewAttempt: true
+				});
+				paidToolDispatches.push({
+					attemptKey: activePaidToolAttemptKey,
+					charge
+				});
+				costTotal += charge.cost_usd;
+				paidToolCostTotal += charge.cost_usd;
+				tavilyCreditsTotal += charge.credits;
+				await emitEvent(runId, 'run.cost', {
+					phase: 'reserved',
+					ledger_entry_id: entry.id,
+					attempt_key: activePaidToolAttemptKey,
+					provider: charge.provider,
+					credits: charge.credits,
+					cost_usd: charge.cost_usd,
+					source: charge.source
+				});
+			} catch (error) {
+				paidToolAccountingFailure =
+					error instanceof AgentRunCostLedgerError
+						? error
+						: new AgentRunCostLedgerError(
+								error instanceof Error ? error.message : String(error),
+								'rpc_error'
+							);
+				throw paidToolAccountingFailure;
+			}
+		}
 	});
 	const runnableOps = buildAgentRunOpCatalog({
 		scope,
@@ -736,13 +895,6 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		web
 	});
 	const proposedChanges: ProposedChange[] = [];
-
-	const budgets = parseBudgets(run.budgets);
-	const modelPolicy = resolveAgentRunModelPolicy(run.effort);
-	const maxToolCalls = budgets.max_tool_calls ?? DEFAULT_MAX_TOOL_CALLS;
-	const maxTokens = budgets.max_tokens;
-	const maxCostUsd = budgets.max_cost_usd;
-	const deadlineMs = startedAtMs + (budgets.wall_clock_ms ?? modelPolicy.defaultWallClockMs);
 
 	const llm = new SmartLLMService({
 		httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
@@ -753,13 +905,6 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		runnableOps,
 		run.effort === 'deep' ? 'deep' : 'standard'
 	);
-	const transcript: string[] = [];
-	let tokensTotal = 0;
-	let costTotal = 0;
-	let llmCostTotal = 0;
-	let paidToolCostTotal = 0;
-	let tavilyCreditsTotal = 0;
-	let toolCalls = 0;
 	const committedEntityTouches: EntityTouch[] = [];
 
 	if (isResume) {
@@ -788,14 +933,6 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			typeof priorMetrics.tavily_credits === 'number' ? priorMetrics.tavily_credits : 0;
 		await emitEvent(runId, 'run.narration', { note: 'resumed' });
 	}
-
-	const onUsage = (usage: { totalTokens?: number; totalCost?: number } | undefined) => {
-		if (usage?.totalTokens) tokensTotal += usage.totalTokens;
-		if (usage?.totalCost) {
-			costTotal += usage.totalCost;
-			llmCostTotal += usage.totalCost;
-		}
-	};
 
 	const finalize = async (
 		status: AgentRunRow['status'],
@@ -1064,6 +1201,12 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 					paidToolCostTotal += usage.paidToolCost ?? 0;
 					tavilyCreditsTotal += usage.tavilyCredits ?? 0;
 				},
+				llmAccounting: (stage) =>
+					createLlmAccountingHooks(
+						`llm:${job.id}:deep-research:${stage}`,
+						`deep_research.${stage}`,
+						false
+					),
 				emit: (eventType, payload) => emitEvent(runId, eventType, payload)
 			});
 			if (outcome.kind === 'waiting') {
@@ -1077,6 +1220,16 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			}
 			return finalize(outcome.status, outcome.result);
 		} catch (error) {
+			if (error instanceof AgentRunCostLedgerError) {
+				const budgetBlocked = error.code === 'budget_exceeded';
+				return finalize(budgetBlocked ? 'partial' : 'failed', {
+					summary: budgetBlocked
+						? 'Deep research stopped at its durable cost boundary.'
+						: 'Deep research stopped because accounting could not safely authorize a paid attempt.',
+					answer: '',
+					error: `cost_ledger_${error.code}`
+				});
+			}
 			await emitEvent(runId, 'run.narration', {
 				note: 'deep research orchestration failed',
 				error: error instanceof Error ? error.message : String(error)
@@ -1107,6 +1260,13 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			if (spendLimit === null) {
 				return finalizeBudgetExhausted('cost budget exhausted');
 			}
+			const accounting =
+				spendLimit === undefined
+					? null
+					: createLlmAccountingHooks(
+							`llm:${job.id}:turn:${iteration}`,
+							run.effort === 'deep' ? 'agent_run.deep_turn' : 'agent_run.turn'
+						);
 			turn = await llm.getJSONResponse<AgentTurn>({
 				systemPrompt,
 				userPrompt: buildUserPrompt(run, transcript, {
@@ -1116,12 +1276,31 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 				profile: modelPolicy.profile,
 				reasoning: modelPolicy.reasoning,
 				...(spendLimit === undefined ? {} : { spendLimit }),
+				onSpendReservation: accounting?.onSpendReservation,
 				validation: { retryOnParseError: true, maxRetries: 2 },
 				operationType: run.effort === 'deep' ? 'agent_run_deep' : 'other',
 				metadata: { agent_run_id: runId, effort: run.effort },
-				onUsage
+				onUsage: accounting?.onUsage ?? ((usage) => addLlmUsage(usage))
 			});
 		} catch (error) {
+			if (error instanceof AgentRunCostLedgerError) {
+				if (error.code === 'budget_exceeded') {
+					return finalizeBudgetExhausted(
+						'durable cost reservation exceeds remaining budget'
+					);
+				}
+				return finalize('partial', {
+					summary:
+						'The agent stopped before another paid call could be safely authorized.',
+					answer: '',
+					error: `cost_ledger_${error.code}`
+				});
+			}
+			if (error instanceof LLMSpendLimitError) {
+				return finalizeBudgetExhausted(
+					'remaining cost budget cannot fund another bounded model response'
+				);
+			}
 			await emitEvent(runId, 'run.narration', {
 				error: error instanceof Error ? error.message : String(error)
 			});
@@ -1183,8 +1362,10 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			string,
 			unknown
 		>;
+		const searchIsPermitted =
+			!scope.allowed_ops || scope.allowed_ops.includes(AGENT_OP_WEB_SEARCH);
 		const reservedPaidToolCharge =
-			op === AGENT_OP_WEB_SEARCH
+			op === AGENT_OP_WEB_SEARCH && searchIsPermitted && typeof web.search === 'function'
 				? estimateTavilySearchCharge(args, tavilyCreditCostUsd)
 				: null;
 		if (
@@ -1201,38 +1382,80 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		await emitEvent(runId, 'run.tool_call', { op, args });
 
 		const opStart = Date.now();
-		const result = await executeAgentOp(
-			{
-				admin: supabase as SupabaseClient<Database>,
-				userId: run.user_id,
-				scope,
-				runContext: {
-					context_type: run.context_type === 'project' ? 'project' : 'global',
-					project_id: run.project_id
+		paidToolDispatches.length = 0;
+		paidToolAccountingFailure = null;
+		activePaidToolAttemptKey =
+			op === AGENT_OP_WEB_SEARCH ? `tool:${job.id}:${toolCalls}:${op}` : null;
+		let result: Awaited<ReturnType<typeof executeAgentOp>>;
+		try {
+			result = await executeAgentOp(
+				{
+					admin: supabase as SupabaseClient<Database>,
+					userId: run.user_id,
+					scope,
+					runContext: {
+						context_type: run.context_type === 'project' ? 'project' : 'global',
+						project_id: run.project_id
+					},
+					mutationMode,
+					calendar: calendar ?? undefined,
+					web
 				},
-				mutationMode,
-				calendar: calendar ?? undefined,
-				web
-			},
-			op,
-			args
-		);
+				op,
+				args
+			);
+		} finally {
+			activePaidToolAttemptKey = null;
+		}
 		const durationMs = Date.now() - opStart;
-		if (reservedPaidToolCharge) {
-			// A dispatched search may be billable even if its response times out or
-			// cannot be parsed. Charge the reservation, replacing it with provider-
-			// reported credits when a successful response includes them.
-			const paidCharge =
-				(result.ok && readPaidToolCharge(result.data)) || reservedPaidToolCharge;
-			costTotal += paidCharge.cost_usd;
-			paidToolCostTotal += paidCharge.cost_usd;
-			tavilyCreditsTotal += paidCharge.credits;
-			await emitEvent(runId, 'run.cost', {
-				provider: paidCharge.provider,
-				credits: paidCharge.credits,
-				cost_usd: paidCharge.cost_usd,
-				source: paidCharge.source
-			});
+		const dispatchedPaidTool = paidToolDispatches.at(-1);
+		if (dispatchedPaidTool) {
+			// The dispatch hook already charged the reservation immediately before
+			// network I/O. Settle to provider-reported credits on success; retain the
+			// reservation when the response/usage is unavailable.
+			const settlement = settlePaidToolReservation(
+				dispatchedPaidTool.charge,
+				(result.ok && readPaidToolCharge(result.data)) || null
+			);
+			costTotal += settlement.costAdjustmentUsd;
+			paidToolCostTotal += settlement.costAdjustmentUsd;
+			tavilyCreditsTotal += settlement.creditAdjustment;
+			const ledgerStatus =
+				result.ok && settlement.charge.source === 'provider_reported'
+					? 'settled'
+					: 'reconciliation_required';
+			try {
+				const entry = await settleAgentRunCost({
+					leafRunId: runId,
+					attemptKey: dispatchedPaidTool.attemptKey,
+					status: ledgerStatus,
+					actualCostUsd: result.ok ? settlement.charge.cost_usd : undefined,
+					actualUnits: result.ok ? settlement.charge.credits : undefined,
+					providerRequestId: settlement.charge.provider_request_id,
+					metadata: {
+						source: settlement.charge.source,
+						tool_succeeded: result.ok
+					}
+				});
+				await emitEvent(runId, 'run.cost', {
+					phase: entry.status,
+					ledger_entry_id: entry.id,
+					attempt_key: dispatchedPaidTool.attemptKey,
+					provider: settlement.charge.provider,
+					credits: settlement.charge.credits,
+					cost_usd: settlement.charge.cost_usd,
+					source: settlement.charge.source,
+					cost_adjustment_usd: settlement.costAdjustmentUsd
+				});
+			} catch (error) {
+				paidToolAccountingFailure =
+					error instanceof AgentRunCostLedgerError
+						? error
+						: new AgentRunCostLedgerError(
+								error instanceof Error ? error.message : String(error),
+								'rpc_error'
+							);
+			}
 		}
 
 		// A staged write returns a ProposedChange (no mutation). Assign a
@@ -1290,5 +1513,17 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			? JSON.stringify(result.data).slice(0, transcriptResultCharsForOp(op))
 			: `ERROR ${result.error?.code}: ${result.error?.message}`;
 		transcript.push(`OP ${op} ${JSON.stringify(args)} -> ${resultText}`);
+		if (paidToolAccountingFailure) {
+			if (paidToolAccountingFailure.code === 'budget_exceeded') {
+				return finalizeBudgetExhausted(
+					'durable paid-tool reservation exceeds remaining budget'
+				);
+			}
+			return finalize('partial', {
+				summary: 'The agent stopped because paid-tool accounting requires reconciliation.',
+				answer: '',
+				error: `cost_ledger_${paidToolAccountingFailure.code}`
+			});
+		}
 	}
 }

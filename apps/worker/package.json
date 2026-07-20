@@ -22,7 +22,8 @@
 		"test:integration": "vitest run tests/integration",
 		"test:deep-research:integration": "vitest run --config vitest.integration.config.ts",
 		"guardrails:http-modules": "node ./scripts/check-worker-http-module-size.cjs",
-		"backfill:start-here": "tsx src/scripts/backfillStartHereDocuments.ts"
+		"backfill:start-here": "tsx src/scripts/backfillStartHereDocuments.ts",
+		"cost-reconciliation:report": "tsx src/scripts/reportAgentRunCostReconciliation.ts"
 	},
 	"dependencies": {
 		"@breezystack/lamejs": "^1.2.7",

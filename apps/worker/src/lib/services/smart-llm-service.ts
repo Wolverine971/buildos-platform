@@ -2,6 +2,7 @@
 
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import { SmartLLMService as SharedSmartLLMService, type SmartLLMConfig } from '@buildos/smart-llm';
+export { LLMSpendLimitError } from '@buildos/smart-llm';
 import type { Json } from '@buildos/shared-types';
 import { supabase as defaultSupabase } from '../supabase';
 import { logWorkerError } from '../errorLogger';
@@ -14,6 +15,8 @@ export type {
 	ErrorLogger,
 	JSONProfile,
 	JSONRequestOptions,
+	JSONSpendReservationEvent,
+	JSONUsageEvent,
 	ModelProfile,
 	OpenRouterResponse,
 	TextGenerationOptions,

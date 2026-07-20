@@ -24,15 +24,19 @@ import {
 } from './workers/project-loop/enqueue';
 import { enqueueScheduledProjectAudits } from './workers/project-loop/auditEnqueue';
 import {
-	validateAgentRunMetadata,
 	type AgentOperativeRowShape,
 	type DailyBriefJobMetadata,
 	type Database,
-	type Json
+	type Json,
+	validateAgentRunMetadata
 } from '@buildos/shared-types';
 import { BriefBackoffCalculator } from './lib/briefBackoffCalculator';
 import { type Alert, smsAlertsService, smsMetricsService } from '@buildos/shared-utils';
 import { resolveScheduledBriefDate } from './workers/brief/briefDateGuard';
+import {
+	agentRunCostReconciliationEnabled,
+	runAgentRunCostReconciliation
+} from './workers/agent-run/agentRunCostReconciler';
 
 export type UserBriefPreference = Database['public']['Tables']['user_brief_preferences']['Row'];
 type AgentOperativeRow = AgentOperativeRowShape;
@@ -46,6 +50,29 @@ const GENERATION_BUFFER_MS = 2 * 60 * 1000; // 2 minutes
 
 // Initialize backoff calculator
 const backoffCalculator = new BriefBackoffCalculator();
+let agentRunCostReconciliationInFlight: Promise<void> | null = null;
+
+export async function runScheduledAgentRunCostReconciliation(): Promise<boolean> {
+	if (agentRunCostReconciliationInFlight) return false;
+
+	agentRunCostReconciliationInFlight = (async () => {
+		const summary = await runAgentRunCostReconciliation();
+		if (summary.claimed > 0 || summary.errors > 0 || summary.leaseConflicts > 0) {
+			console.log(
+				`💰 Agent Run cost reconciliation: claimed=${summary.claimed}, settled=${summary.settled}, retry=${summary.retryScheduled}, operator=${summary.needsOperator}, lease conflicts=${summary.leaseConflicts}, errors=${summary.errors}`
+			);
+		}
+	})()
+		.catch((error) => {
+			console.error('💰 Agent Run cost reconciliation failed:', error);
+		})
+		.finally(() => {
+			agentRunCostReconciliationInFlight = null;
+		});
+
+	await agentRunCostReconciliationInFlight;
+	return true;
+}
 
 /**
  * Queue brief generation using Supabase queue
@@ -260,6 +287,15 @@ export function startScheduler() {
 		await checkAndScheduleAgentOperatives();
 	});
 
+	// Cost reconciliation is opt-in until both ledger migrations have been
+	// deployed. Database leases make this safe across scheduler replicas.
+	if (agentRunCostReconciliationEnabled()) {
+		cron.schedule('*/5 * * * *', async () => {
+			await runScheduledAgentRunCostReconciliation();
+		});
+		console.log('💰 Agent Run cost reconciliation scheduled (every 5 minutes)');
+	}
+
 	// Run queue retention cleanup on a cron schedule
 	if (queueConfig.enableRetentionCleanup) {
 		if (cron.validate(queueConfig.retentionCleanupCron)) {
@@ -283,6 +319,11 @@ export function startScheduler() {
 	setTimeout(() => {
 		checkAndScheduleAgentOperatives();
 	}, 8000);
+	if (agentRunCostReconciliationEnabled()) {
+		setTimeout(() => {
+			void runScheduledAgentRunCostReconciliation();
+		}, 15_000);
+	}
 
 	console.log(
 		'⏰ Scheduler started - checking every hour (briefs, SMS alerts), every 5 minutes (Operatives), and midnight (SMS scheduling)'

@@ -9,7 +9,8 @@ import {
 	KIMI_EXPERIMENT_MODEL,
 	resolveModelPricingProfile,
 	repairTruncatedJSONResponse,
-	shouldFailoverToNextOpenRouterModel
+	shouldFailoverToNextOpenRouterModel,
+	type JSONUsageEvent
 } from '@buildos/smart-llm';
 import {
 	SmartLLMService,
@@ -514,6 +515,10 @@ function buildOpenRouterUsageMetadata(
 	}
 
 	return metadata;
+}
+
+function resolveJSONUsageCostSource(costSource: string): JSONUsageEvent['costSource'] {
+	return costSource === 'openrouter_usage' ? 'provider_reported' : 'catalog_estimate';
 }
 
 function mapUsage(usage: OpenRouterUsage | undefined): TextGenerationUsage | undefined {
@@ -1218,12 +1223,16 @@ export class OpenRouterV2Service extends SmartLLMService {
 				if (typeof options.onUsage === 'function') {
 					await options.onUsage({
 						model: actualModel,
+						billingProvider: 'openrouter',
+						provider: response.provider,
+						providerRequestId: response.id,
 						promptTokens: response.usage?.prompt_tokens || 0,
 						completionTokens: response.usage?.completion_tokens || 0,
 						totalTokens: response.usage?.total_tokens || 0,
 						inputCost: usageCost.inputCost,
 						outputCost: usageCost.outputCost,
-						totalCost: usageCost.totalCost
+						totalCost: usageCost.totalCost,
+						costSource: resolveJSONUsageCostSource(usageCost.costSource)
 					});
 				}
 				this.logOpenRouterV2Usage({
@@ -1298,12 +1307,16 @@ export class OpenRouterV2Service extends SmartLLMService {
 					if (typeof options.onUsage === 'function') {
 						await options.onUsage({
 							model: actualModel,
+							billingProvider: route.provider,
+							provider: response.provider || route.providerName,
+							providerRequestId: response.id,
 							promptTokens: response.usage?.prompt_tokens || 0,
 							completionTokens: response.usage?.completion_tokens || 0,
 							totalTokens: response.usage?.total_tokens || 0,
 							inputCost: usageCost.inputCost,
 							outputCost: usageCost.outputCost,
-							totalCost: usageCost.totalCost
+							totalCost: usageCost.totalCost,
+							costSource: resolveJSONUsageCostSource(usageCost.costSource)
 						});
 					}
 					this.logOpenRouterV2Usage({

@@ -39,18 +39,22 @@ describe('Agent Run web research port', () => {
 	});
 
 	it('normalizes Tavily search results into bounded, source-bearing evidence', async () => {
+		const dispatchOrder: string[] = [];
 		const fetchFn = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+			dispatchOrder.push('fetch');
 			const request = JSON.parse(String(init?.body)) as Record<string, unknown>;
 			expect(request).toMatchObject({
 				query: 'BuildOS research',
 				api_key: 'test-key',
 				search_depth: 'advanced',
 				max_results: 2,
-				include_raw_content: false
+				include_raw_content: false,
+				include_usage: true
 			});
 			return new Response(
 				JSON.stringify({
 					answer: 'A'.repeat(2_500),
+					request_id: 'tavily-request-1',
 					usage: { credits: 2 },
 					results: [
 						{
@@ -68,7 +72,10 @@ describe('Agent Run web research port', () => {
 		const port = createAgentRunWebResearchPort({
 			apiKey: 'test-key',
 			fetchFn: fetchFn as typeof fetch,
-			now: () => NOW
+			now: () => NOW,
+			onSearchDispatched: (charge) => {
+				dispatchOrder.push(`reserved:${charge.cost_usd}`);
+			}
 		});
 
 		const result = (await port.search!({
@@ -98,13 +105,29 @@ describe('Agent Run web research port', () => {
 		expect(result.results[0]?.snippet.length).toBeLessThanOrEqual(1_603);
 		expect(result.security_notice).toContain('untrusted');
 		expect(result.info.fetched_at).toBe(NOW.toISOString());
+		expect(dispatchOrder).toEqual(['reserved:0.016', 'fetch']);
 		expect(result.info.billing).toEqual({
 			provider: 'tavily',
 			credits: 2,
 			unit_cost_usd: 0.008,
 			cost_usd: 0.016,
-			source: 'provider_reported'
+			source: 'provider_reported',
+			provider_request_id: 'tavily-request-1'
 		});
+	});
+
+	it('does not reserve Tavily cost when local validation rejects the request', async () => {
+		const onSearchDispatched = vi.fn();
+		const fetchFn = vi.fn();
+		const port = createAgentRunWebResearchPort({
+			apiKey: 'test-key',
+			fetchFn: fetchFn as typeof fetch,
+			onSearchDispatched
+		});
+
+		await expect(port.search!({ query: '' })).rejects.toThrow('query is required');
+		expect(onSearchDispatched).not.toHaveBeenCalled();
+		expect(fetchFn).not.toHaveBeenCalled();
 	});
 
 	it('conservatively prices Tavily from search depth when provider usage is absent', async () => {

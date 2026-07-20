@@ -25,6 +25,7 @@ interface CreateWebResearchPortOptions {
 	visitTimeoutMs?: number;
 	visitMaxBytes?: number;
 	tavilyCreditCostUsd?: number;
+	onSearchDispatched?: (charge: PaidToolCharge) => void | Promise<void>;
 }
 
 interface TavilyResult {
@@ -37,6 +38,7 @@ interface TavilyResult {
 }
 
 interface TavilyResponse {
+	request_id?: unknown;
 	answer?: unknown;
 	results?: unknown;
 	follow_up_questions?: unknown;
@@ -51,6 +53,7 @@ export interface PaidToolCharge {
 	unit_cost_usd: number;
 	cost_usd: number;
 	source: 'provider_reported' | 'search_depth_fallback';
+	provider_request_id?: string;
 }
 
 export function resolveTavilyCreditCostUsd(value?: number): number {
@@ -112,7 +115,11 @@ export function readPaidToolCharge(value: unknown): PaidToolCharge | null {
 		unit_cost_usd: charge.unit_cost_usd,
 		cost_usd: charge.cost_usd,
 		source:
-			charge.source === 'provider_reported' ? 'provider_reported' : 'search_depth_fallback'
+			charge.source === 'provider_reported' ? 'provider_reported' : 'search_depth_fallback',
+		...(typeof charge.provider_request_id === 'string' &&
+		charge.provider_request_id.trim().length > 0
+			? { provider_request_id: charge.provider_request_id.trim().slice(0, 300) }
+			: {})
 	};
 }
 
@@ -183,7 +190,12 @@ async function performSearch(
 	options: Required<
 		Pick<
 			CreateWebResearchPortOptions,
-			'apiKey' | 'fetchFn' | 'now' | 'searchTimeoutMs' | 'tavilyCreditCostUsd'
+			| 'apiKey'
+			| 'fetchFn'
+			| 'now'
+			| 'searchTimeoutMs'
+			| 'tavilyCreditCostUsd'
+			| 'onSearchDispatched'
 		>
 	>
 ): Promise<unknown> {
@@ -193,6 +205,14 @@ async function performSearch(
 	const includeAnswer = readOptionalBoolean(args.include_answer, true);
 	const includeDomains = normalizeDomainFilters(args.include_domains, 'include_domains');
 	const excludeDomains = normalizeDomainFilters(args.exclude_domains, 'exclude_domains');
+	const reservedCharge = estimateTavilySearchCharge(args, options.tavilyCreditCostUsd);
+
+	try {
+		await options.onSearchDispatched(reservedCharge);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		throw new WebResearchPortError(`Tavily search reservation failed: ${message}`);
+	}
 
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), options.searchTimeoutMs);
@@ -210,7 +230,8 @@ async function performSearch(
 				include_domains: includeDomains,
 				exclude_domains: excludeDomains,
 				include_raw_content: false,
-				include_images: false
+				include_images: false,
+				include_usage: true
 			}),
 			signal: controller.signal
 		});
@@ -269,15 +290,23 @@ async function performSearch(
 		payload.usage.credits > 0
 			? payload.usage.credits
 			: null;
+	const providerRequestId =
+		typeof payload.request_id === 'string' && payload.request_id.trim()
+			? payload.request_id.trim().slice(0, 300)
+			: undefined;
 	const billing: PaidToolCharge = providerCredits
 		? {
 				provider: 'tavily',
 				credits: providerCredits,
 				unit_cost_usd: options.tavilyCreditCostUsd,
 				cost_usd: providerCredits * options.tavilyCreditCostUsd,
-				source: 'provider_reported'
+				source: 'provider_reported',
+				...(providerRequestId ? { provider_request_id: providerRequestId } : {})
 			}
-		: estimateTavilySearchCharge(args, options.tavilyCreditCostUsd);
+		: {
+				...reservedCharge,
+				...(providerRequestId ? { provider_request_id: providerRequestId } : {})
+			};
 
 	return {
 		query,
@@ -473,7 +502,8 @@ export function createAgentRunWebResearchPort(
 				fetchFn,
 				now,
 				searchTimeoutMs: options.searchTimeoutMs ?? DEFAULT_SEARCH_TIMEOUT_MS,
-				tavilyCreditCostUsd
+				tavilyCreditCostUsd,
+				onSearchDispatched: options.onSearchDispatched ?? (() => undefined)
 			});
 	}
 	return port;

@@ -787,8 +787,13 @@ describe('SmartLLMService model failover', () => {
 describe('SmartLLMService JSON model recovery', () => {
 	it('uses one priced attempt with a bounded output when a spend limit is supplied', async () => {
 		const requestBodies: Array<Record<string, unknown>> = [];
+		const dispatchOrder: string[] = [];
 		const onUsage = vi.fn();
+		const onSpendReservation = vi.fn(async () => {
+			dispatchOrder.push('reserved');
+		});
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			dispatchOrder.push('fetch');
 			const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
 			requestBodies.push(body);
 			return buildJSONCompletion({
@@ -812,11 +817,21 @@ describe('SmartLLMService JSON model recovery', () => {
 				maxTokens: 100_000,
 				spendLimit: { maxCostUsd: 0.01, minOutputTokens: 128 },
 				validation: { retryOnParseError: true, maxRetries: 5 },
+				onSpendReservation,
 				onUsage
 			})
 		).rejects.toThrow();
 
 		expect(fetchMock).toHaveBeenCalledOnce();
+		expect(dispatchOrder).toEqual(['reserved', 'fetch']);
+		expect(onSpendReservation).toHaveBeenCalledWith(
+			expect.objectContaining({
+				model: GLM_52_MODEL,
+				maxTokens: expect.any(Number),
+				estimatedInputTokens: expect.any(Number),
+				reservedCostUsd: expect.any(Number)
+			})
+		);
 		expect(requestBodies[0]?.model).toBe(GLM_52_MODEL);
 		expect(requestBodies[0]).not.toHaveProperty('models');
 		expect(requestBodies[0]?.max_tokens).toEqual(expect.any(Number));
@@ -824,7 +839,8 @@ describe('SmartLLMService JSON model recovery', () => {
 		expect(requestBodies[0]?.provider).toMatchObject({
 			max_price: expect.objectContaining({
 				prompt: expect.any(Number),
-				completion: expect.any(Number)
+				completion: expect.any(Number),
+				request: 0
 			})
 		});
 		expect(onUsage).toHaveBeenCalledOnce();
@@ -836,6 +852,30 @@ describe('SmartLLMService JSON model recovery', () => {
 			})
 		);
 		expect(onUsage.mock.calls[0]?.[0]?.totalCost).toBe(0.003);
+		expect(onUsage.mock.calls[0]?.[0]?.costSource).toBe('provider_reported');
+	});
+
+	it('does not dispatch a strict request when durable reservation fails', async () => {
+		const fetchMock = vi.fn();
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await expect(
+			llm.getJSONResponse({
+				systemPrompt: 'Return JSON.',
+				userPrompt: 'Do not dispatch without a reservation.',
+				userId: 'user-budget-reservation-failure',
+				profile: 'powerful',
+				spendLimit: { maxCostUsd: 0.01 },
+				onSpendReservation: async () => {
+					throw new Error('ledger unavailable');
+				}
+			})
+		).rejects.toThrow('ledger unavailable');
+
+		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
 	it('charges the reservation when a strict-budget response is lost', async () => {
@@ -843,7 +883,10 @@ describe('SmartLLMService JSON model recovery', () => {
 		const fetchMock = vi.fn(async () => {
 			return new Response(JSON.stringify({ error: { message: 'upstream timeout' } }), {
 				status: 504,
-				headers: { 'content-type': 'application/json' }
+				headers: {
+					'content-type': 'application/json',
+					'x-generation-id': 'gen-lost-response'
+				}
 			});
 		});
 		const llm = new SmartLLMService({
@@ -866,6 +909,8 @@ describe('SmartLLMService JSON model recovery', () => {
 		expect(onUsage).toHaveBeenCalledOnce();
 		expect(onUsage.mock.calls[0]?.[0]?.totalCost).toBeGreaterThan(0);
 		expect(onUsage.mock.calls[0]?.[0]?.totalCost).toBeLessThanOrEqual(0.01);
+		expect(onUsage.mock.calls[0]?.[0]?.costSource).toBe('reservation');
+		expect(onUsage.mock.calls[0]?.[0]?.providerRequestId).toBe('gen-lost-response');
 	});
 
 	it('keeps an explicitly requested model first and retains profile fallbacks', async () => {

@@ -6,7 +6,9 @@ import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 const schedulerMocks = vi.hoisted(() => ({
 	cleanupStaleJobs: vi.fn(),
 	supabaseFrom: vi.fn(),
-	supabaseRpc: vi.fn()
+	supabaseRpc: vi.fn(),
+	runAgentRunCostReconciliation: vi.fn(),
+	agentRunCostReconciliationEnabled: vi.fn(() => false)
 }));
 
 // Mock the imports
@@ -19,6 +21,11 @@ vi.mock('../src/lib/supabase', () => ({
 
 vi.mock('../src/lib/utils/queueCleanup', () => ({
 	cleanupStaleJobs: schedulerMocks.cleanupStaleJobs
+}));
+
+vi.mock('../src/workers/agent-run/agentRunCostReconciler', () => ({
+	runAgentRunCostReconciliation: schedulerMocks.runAgentRunCostReconciliation,
+	agentRunCostReconciliationEnabled: schedulerMocks.agentRunCostReconciliationEnabled
 }));
 
 vi.mock('../src/lib/queue', () => ({
@@ -36,6 +43,7 @@ import {
 	calculateNextOperativeRunTime,
 	calculateNextRunTime,
 	runQueueRetentionCleanup,
+	runScheduledAgentRunCostReconciliation,
 	UserBriefPreference,
 	validateUserPreference
 } from '../src/scheduler';
@@ -50,6 +58,14 @@ describe('Brief Scheduler', () => {
 			errors: []
 		});
 		schedulerMocks.supabaseRpc.mockResolvedValue({ data: 2, error: null });
+		schedulerMocks.runAgentRunCostReconciliation.mockResolvedValue({
+			claimed: 0,
+			settled: 0,
+			retryScheduled: 0,
+			needsOperator: 0,
+			leaseConflicts: 0,
+			errors: 0
+		});
 	});
 
 	describe('calculateNextRunTime', () => {
@@ -232,6 +248,34 @@ describe('Brief Scheduler', () => {
 			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
 				'cleanup_expired_agentic_chat_prepared_prompts'
 			);
+		});
+	});
+
+	describe('runScheduledAgentRunCostReconciliation', () => {
+		it('coalesces overlapping scheduler ticks in one process', async () => {
+			let finish!: () => void;
+			schedulerMocks.runAgentRunCostReconciliation.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						finish = () =>
+							resolve({
+								claimed: 1,
+								settled: 1,
+								retryScheduled: 0,
+								needsOperator: 0,
+								leaseConflicts: 0,
+								errors: 0
+							});
+					})
+			);
+
+			const first = runScheduledAgentRunCostReconciliation();
+			const overlapping = await runScheduledAgentRunCostReconciliation();
+			expect(overlapping).toBe(false);
+			expect(schedulerMocks.runAgentRunCostReconciliation).toHaveBeenCalledOnce();
+
+			finish();
+			await expect(first).resolves.toBe(true);
 		});
 	});
 });

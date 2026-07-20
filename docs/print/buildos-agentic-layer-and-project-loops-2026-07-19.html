@@ -1,0 +1,1984 @@
+<!-- docs/print/buildos-agentic-layer-and-project-loops-2026-07-19.html -->
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>BuildOS Agentic Layer, Agentic Chat &amp; Project Loops — Print Packet</title>
+		<style>
+			:root {
+				--ink: #17212b;
+				--muted: #52606d;
+				--line: #b8c1c8;
+				--paper: #fffefb;
+				--screen: #e7e5df;
+				--navy: #173a5e;
+				--blue-wash: #eaf2f8;
+				--orange: #a84f21;
+				--orange-wash: #fbefe7;
+				--green: #315f4c;
+				--green-wash: #eaf3ee;
+				--gray-wash: #f2f3f3;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			html {
+				background: var(--screen);
+			}
+
+			body {
+				margin: 0;
+				color: var(--ink);
+				background: var(--screen);
+				font-family:
+					Inter,
+					ui-sans-serif,
+					-apple-system,
+					BlinkMacSystemFont,
+					'Segoe UI',
+					sans-serif;
+				font-size: 10pt;
+				line-height: 1.28;
+			}
+
+			.print-controls {
+				position: sticky;
+				z-index: 20;
+				top: 0;
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.45rem;
+				align-items: center;
+				justify-content: center;
+				padding: 0.65rem;
+				color: white;
+				background: #17212bea;
+				backdrop-filter: blur(8px);
+				box-shadow: 0 2px 12px #0003;
+			}
+
+			.print-controls strong {
+				margin-right: 0.35rem;
+				letter-spacing: 0.02em;
+			}
+
+			button {
+				padding: 0.45rem 0.65rem;
+				border: 1px solid #ffffff55;
+				border-radius: 0.3rem;
+				color: white;
+				background: #ffffff12;
+				font: inherit;
+				font-weight: 650;
+				cursor: pointer;
+			}
+
+			button:hover {
+				background: #ffffff25;
+			}
+
+			.packet {
+				display: grid;
+				gap: 0.35in;
+				justify-content: center;
+				padding: 0.35in 0 0.7in;
+			}
+
+			.page {
+				position: relative;
+				display: flex;
+				flex-direction: column;
+				width: 8.5in;
+				min-height: 11in;
+				padding: 0.42in 0.46in 0.34in;
+				overflow: hidden;
+				background: var(--paper);
+				box-shadow: 0 7px 30px #0002;
+			}
+
+			.page.agentic {
+				border-top: 0.08in solid var(--navy);
+			}
+
+			.page.loops {
+				border-top: 0.08in solid var(--orange);
+			}
+
+			.kicker {
+				margin: 0 0 0.07in;
+				color: var(--navy);
+				font-size: 8pt;
+				font-weight: 800;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+			}
+
+			.loops .kicker {
+				color: var(--orange);
+			}
+
+			h1,
+			h2,
+			h3,
+			p {
+				margin-top: 0;
+			}
+
+			h1 {
+				max-width: 7.15in;
+				margin-bottom: 0.08in;
+				font-family: Georgia, 'Times New Roman', serif;
+				font-size: 27pt;
+				font-weight: 700;
+				line-height: 1.02;
+				letter-spacing: -0.025em;
+			}
+
+			h2 {
+				margin: 0 0 0.09in;
+				font-family: Georgia, 'Times New Roman', serif;
+				font-size: 18pt;
+				line-height: 1.08;
+			}
+
+			h3 {
+				margin: 0 0 0.05in;
+				color: var(--navy);
+				font-size: 10.5pt;
+				line-height: 1.16;
+			}
+
+			.loops h3 {
+				color: var(--orange);
+			}
+
+			p {
+				margin-bottom: 0.08in;
+			}
+
+			.deck {
+				max-width: 7.2in;
+				margin-bottom: 0.16in;
+				color: var(--muted);
+				font-size: 11.5pt;
+				line-height: 1.3;
+			}
+
+			.rule {
+				height: 1px;
+				margin: 0.03in 0 0.13in;
+				background: var(--line);
+			}
+
+			.cols-2,
+			.cols-3,
+			.cols-4 {
+				display: grid;
+				gap: 0.13in;
+				align-items: start;
+			}
+
+			.cols-2 {
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+			}
+
+			.cols-3 {
+				grid-template-columns: repeat(3, minmax(0, 1fr));
+			}
+
+			.cols-4 {
+				grid-template-columns: repeat(4, minmax(0, 1fr));
+			}
+
+			.split-60 {
+				display: grid;
+				grid-template-columns: 1.43fr 1fr;
+				gap: 0.14in;
+				align-items: start;
+			}
+
+			.split-40 {
+				display: grid;
+				grid-template-columns: 0.95fr 1.45fr;
+				gap: 0.14in;
+				align-items: start;
+			}
+
+			.card {
+				padding: 0.11in 0.12in;
+				border: 1px solid var(--line);
+				border-radius: 0.06in;
+				background: #fff;
+			}
+
+			.card.blue {
+				border-color: #9ab3c9;
+				background: var(--blue-wash);
+			}
+
+			.card.orange {
+				border-color: #d6ab92;
+				background: var(--orange-wash);
+			}
+
+			.card.green {
+				border-color: #a5c0b4;
+				background: var(--green-wash);
+			}
+
+			.card.gray {
+				background: var(--gray-wash);
+			}
+
+			.callout {
+				margin-bottom: 0.11in;
+				padding: 0.1in 0.12in;
+				border-left: 0.05in solid var(--navy);
+				background: var(--blue-wash);
+			}
+
+			.loops .callout {
+				border-left-color: var(--orange);
+				background: var(--orange-wash);
+			}
+
+			.callout p:last-child,
+			.card p:last-child {
+				margin-bottom: 0;
+			}
+
+			.label {
+				display: inline-block;
+				margin-bottom: 0.04in;
+				padding: 0.018in 0.06in;
+				border-radius: 99px;
+				color: white;
+				background: var(--navy);
+				font-size: 7pt;
+				font-weight: 800;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+			}
+
+			.loops .label {
+				background: var(--orange);
+			}
+
+			ul,
+			ol {
+				margin: 0.03in 0 0.07in;
+				padding-left: 0.18in;
+			}
+
+			li {
+				margin-bottom: 0.025in;
+			}
+
+			.tight li {
+				margin-bottom: 0.012in;
+			}
+
+			strong {
+				font-weight: 750;
+			}
+
+			code,
+			.mono {
+				font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+				font-size: 0.92em;
+			}
+
+			pre {
+				margin: 0 0 0.11in;
+				padding: 0.09in 0.11in;
+				overflow: hidden;
+				border: 1px solid #aeb8c1;
+				border-radius: 0.045in;
+				color: #12202e;
+				background: #f7f8f8;
+				font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+				font-size: 7.15pt;
+				font-weight: 520;
+				line-height: 1.23;
+				white-space: pre;
+			}
+
+			.loops pre {
+				border-color: #c9aa98;
+				background: #fcf7f3;
+			}
+
+			table {
+				width: 100%;
+				margin: 0 0 0.11in;
+				border-collapse: collapse;
+				font-size: 8.35pt;
+				line-height: 1.18;
+			}
+
+			th,
+			td {
+				padding: 0.045in 0.052in;
+				border: 1px solid var(--line);
+				vertical-align: top;
+				text-align: left;
+			}
+
+			th {
+				color: #fff;
+				background: var(--navy);
+				font-weight: 760;
+			}
+
+			.loops th {
+				background: var(--orange);
+			}
+
+			tr:nth-child(even) td {
+				background: #f6f6f4;
+			}
+
+			.small {
+				font-size: 8.4pt;
+				line-height: 1.2;
+			}
+
+			.micro {
+				font-size: 7.35pt;
+				line-height: 1.18;
+			}
+
+			.page.compact {
+				font-size: 9.25pt;
+				line-height: 1.2;
+			}
+
+			.page.compact .deck {
+				margin-bottom: 0.1in;
+				font-size: 10.5pt;
+				line-height: 1.23;
+			}
+
+			.page.compact pre {
+				margin-bottom: 0.07in;
+				padding: 0.07in 0.09in;
+				font-size: 6.65pt;
+				line-height: 1.13;
+			}
+
+			.page.compact table {
+				margin-bottom: 0.07in;
+				font-size: 7.7pt;
+			}
+
+			.page.compact .card {
+				padding: 0.075in 0.095in;
+			}
+
+			.page.compact .small {
+				font-size: 7.8pt;
+				line-height: 1.16;
+			}
+
+			.page.compact .cols-3 {
+				gap: 0.09in;
+			}
+
+			.stat {
+				margin-bottom: 0.02in;
+				color: var(--navy);
+				font-family: Georgia, 'Times New Roman', serif;
+				font-size: 18pt;
+				font-weight: 700;
+				line-height: 1;
+			}
+
+			.loops .stat {
+				color: var(--orange);
+			}
+
+			.footer {
+				display: grid;
+				grid-template-columns: 1fr auto;
+				gap: 0.1in;
+				align-items: end;
+				margin-top: auto;
+				padding-top: 0.08in;
+				border-top: 1px solid var(--line);
+				color: #69747e;
+				font-size: 6.7pt;
+				line-height: 1.15;
+			}
+
+			.footer .sources {
+				max-width: 6.65in;
+			}
+
+			.page-number {
+				color: var(--ink);
+				font-size: 8pt;
+				font-weight: 800;
+			}
+
+			.keep {
+				break-inside: avoid;
+			}
+
+			a {
+				color: inherit;
+			}
+
+			@page {
+				size: Letter portrait;
+				margin: 0.38in 0.42in;
+			}
+
+			@media print {
+				html,
+				body {
+					background: white !important;
+				}
+
+				body {
+					-webkit-print-color-adjust: exact;
+					print-color-adjust: exact;
+				}
+
+				.print-controls {
+					display: none !important;
+				}
+
+				.packet {
+					display: block;
+					padding: 0;
+				}
+
+				.page {
+					width: auto;
+					height: 10.24in;
+					min-height: 10.24in;
+					padding: 0;
+					overflow: hidden;
+					box-shadow: none;
+					break-after: page;
+					page-break-after: always;
+				}
+
+				.page:last-child {
+					break-after: auto;
+					page-break-after: auto;
+				}
+
+				.page.agentic,
+				.page.loops {
+					border-top-width: 0.055in;
+					padding-top: 0.08in;
+				}
+
+				body[data-print-group='agentic-one'] .page:not([data-group='agentic-one']),
+				body[data-print-group='agentic-deep'] .page:not([data-group='agentic-deep']),
+				body[data-print-group='loops-one'] .page:not([data-group='loops-one']),
+				body[data-print-group='loops-deep'] .page:not([data-group='loops-deep']) {
+					display: none;
+				}
+			}
+		</style>
+	</head>
+	<body data-print-group="all">
+		<nav class="print-controls" aria-label="Print packet controls">
+			<strong>Print:</strong>
+			<button type="button" onclick="printGroup('all')">Full 10-page packet</button>
+			<button type="button" onclick="printGroup('agentic-one')">Agentic one-pager</button>
+			<button type="button" onclick="printGroup('agentic-deep')">
+				Agentic deep dive (4)
+			</button>
+			<button type="button" onclick="printGroup('loops-one')">Loops one-pager</button>
+			<button type="button" onclick="printGroup('loops-deep')">Loops deep dive (4)</button>
+		</nav>
+
+		<main class="packet">
+			<section class="page agentic" data-group="agentic-one">
+				<p class="kicker">BuildOS Core Infrastructure / Executive Map / 19 July 2026</p>
+				<h1>The Agentic Layer &amp; Agentic Chat</h1>
+				<p class="deck">
+					BuildOS has two AI execution tempos on one project-data backbone:
+					<strong>Agentic Chat handles a bounded foreground turn</strong>; durable
+					<strong>Agent Runs continue in the background</strong>. Project Loops are a
+					third, maintenance-oriented producer that sends reviewable work into the AI
+					Inbox.
+				</p>
+
+				<pre>
+ USER
+   |
+   +-- asks in chat ----------------------------------------------+
+   |                                                              |
+   v                                                              v
+ AGENTIC CHAT (Vercel, request-scoped)                    PROJECT CONTEXT
+ prewarm -> scope -> prompt -> model/tool loop            tasks / docs / goals /
+   |             |                                        events / people / history
+   |             +--> direct read/write tools -------------------+
+   |
+   +-- delegate_task ---------------------------------------------+
+                                                                 |
+                                                                 v
+                                                        queue_jobs (Supabase)
+                                                                 |
+                                                                 v
+                                                  AGENT RUN (Railway worker)
+                                                  action -> op -> observe -> repeat
+                                                                 |
+                                            status / events / result / proposal
+                                                                 |
+                            +------------------------------------+------------------+
+                            v                                                       v
+                 Run Stack / Work Panel                                  message back to chat
+
+ Project activity / cron / manual -> PROJECT LOOPS -> suggestions -> AI INBOX
+                                                                  -> accept / address / dismiss
+                                                                  -> apply ops or delegate run</pre
+				>
+
+				<div class="cols-3">
+					<div class="card blue">
+						<span class="label">Foreground</span>
+						<h3>Agentic Chat</h3>
+						<p>
+							A live, streamed LLM/tool loop inside one web request. It is best for
+							conversation, retrieval, quick mutations, and supervising longer work.
+						</p>
+					</div>
+					<div class="card green">
+						<span class="label">Background</span>
+						<h3>Agent Runs</h3>
+						<p>
+							Durable worker jobs with budgets, scoped ops, progress events, steering,
+							pause/resume, results, and optional review-before-commit.
+						</p>
+					</div>
+					<div class="card orange">
+						<span class="label">Maintenance</span>
+						<h3>Project Loops</h3>
+						<p>
+							Scheduled or event-triggered project reconciliation. They generate
+							bounded, fresh suggestions and complete-audit follow-ups for human
+							review.
+						</p>
+					</div>
+				</div>
+
+				<div class="rule"></div>
+				<div class="split-60">
+					<div>
+						<h3>The five rules that make the architecture click</h3>
+						<ol class="tight">
+							<li>
+								<strong
+									>Chat is a supervisor, not the container for all work.</strong
+								>
+								A turn may do work inline or dispatch a durable run.
+							</li>
+							<li>
+								<strong>Supabase owns durable truth.</strong> Streams and UI cards
+								are views over sessions, turns, runs, events, tools, suggestions,
+								and inbox rows.
+							</li>
+							<li>
+								<strong>Tools are progressively disclosed.</strong> The model starts
+								with contextual tools plus discovery; more exact tools materialize
+								as needed.
+							</li>
+							<li>
+								<strong>Writes are concrete and audited.</strong> Chat writes
+								execute through validated tool handlers. Agent Runs commit by
+								default or stage when <code>review_required</code>.
+							</li>
+							<li>
+								<strong>Every loop is bounded.</strong> Tool rounds, calls, tokens,
+								time, cost, concurrency, deduplication, and stale-run recovery
+								prevent runaway work.
+							</li>
+						</ol>
+					</div>
+					<div class="card gray">
+						<h3>Choose the primitive</h3>
+						<table>
+							<tr>
+								<th>Need</th>
+								<th>Use</th>
+							</tr>
+							<tr>
+								<td>Answer or quick update now</td>
+								<td>Chat turn</td>
+							</tr>
+							<tr>
+								<td>Long, interruptible work</td>
+								<td>Agent Run</td>
+							</tr>
+							<tr>
+								<td>Repeatable scheduled work</td>
+								<td>Operative -&gt; Agent Run</td>
+							</tr>
+							<tr>
+								<td>Project self-maintenance</td>
+								<td>Project Loop</td>
+							</tr>
+							<tr>
+								<td>Human trust boundary</td>
+								<td>AI Inbox / proposal review</td>
+							</tr>
+						</table>
+					</div>
+				</div>
+
+				<div class="callout small">
+					<strong>Status note.</strong> This packet reflects the current working-tree code
+					on 19 July 2026. It explains the implemented paths; it is not a new
+					live-production smoke test. Project Loops are now always-on in code via
+					compatibility shims.
+				</div>
+
+				<footer class="footer">
+					<div class="sources">
+						Source anchors: <span class="mono">agent-work/START-HERE.md</span>;
+						<span class="mono">agentic-chat/README.md</span>;
+						<span class="mono">DEPLOYMENT_TOPOLOGY.md</span>.
+					</div>
+					<div class="page-number">A0 / 1</div>
+				</footer>
+			</section>
+
+			<section class="page agentic" data-group="agentic-deep">
+				<p class="kicker">Agentic Deep Dive / Page 1 of 4</p>
+				<h2>Runtime boundaries: who owns what?</h2>
+				<p class="deck">
+					The fastest way to reason about BuildOS is by runtime and state ownership.
+					Vercel handles interactive requests, Railway handles durable work, and Supabase
+					is the coordination and persistence spine shared by both.
+				</p>
+
+				<div class="split-60">
+					<pre>
+ BROWSER
+    |
+    v
+ +---------------- VERCEL / SVELTEKIT ----------------+
+ | UI shell, auth, access checks, API routes          |
+ |                                                    |
+ | Agentic Chat: /prewarm -> /stream -> SSE           |
+ | Manual dispatch: /api/agent-runs                   |
+ | Loop/audit triggers and inbox decisions            |
+ +-------------------------+--------------------------+
+                           |
+             reads/writes  |  queue jobs / realtime
+                           v
+ +--------------------- SUPABASE ----------------------+
+ | Auth + RLS + ontology + durable state              |
+ | chat_* | agent_runs/events/signals | queue_jobs     |
+ | project_loop_runs | suggestions | audits | inbox    |
+ +-------------------------+--------------------------+
+                           |
+                    worker claims jobs
+                           v
+ +---------------- RAILWAY / WORKER -------------------+
+ | Agent Run loop | Project Loop | Complete Audit      |
+ | schedulers     | cleanup/reclaim | notifications    |
+ +-------------------------+--------------------------+
+                           |
+                           v
+               Smart LLM / providers / external APIs</pre
+					>
+					<div class="card blue">
+						<h3>One backbone, distinct executors</h3>
+						<p>
+							Chat and Agent Runs share canonical operations and ontology policy, but
+							they do not share the same lifecycle.
+						</p>
+						<ul class="tight">
+							<li><strong>Chat:</strong> request + SSE + chat tool executor.</li>
+							<li>
+								<strong>Agent Run:</strong> queue + worker-safe shared op gateway.
+							</li>
+							<li><strong>Project Loop:</strong> specialized worker generators.</li>
+							<li>
+								<strong>Inbox:</strong> denormalized review index over source rows.
+							</li>
+						</ul>
+					</div>
+				</div>
+
+				<h3>State ownership map</h3>
+				<table>
+					<tr>
+						<th>Object</th>
+						<th>Durable source of truth</th>
+						<th>What the UI is showing</th>
+					</tr>
+					<tr>
+						<td>Conversation</td>
+						<td><code>chat_sessions</code>, <code>chat_messages</code></td>
+						<td>Modal transcript; resumed/reloaded from stored messages</td>
+					</tr>
+					<tr>
+						<td>One chat turn</td>
+						<td><code>chat_turn_runs</code>, checkpoints, events, prompt snapshots</td>
+						<td>Streaming text, thinking/tool activity, final outcome</td>
+					</tr>
+					<tr>
+						<td>Background work</td>
+						<td><code>agent_runs</code>, events, signals, tool executions</td>
+						<td>Run Stack, Work Panel, in-chat run dock</td>
+					</tr>
+					<tr>
+						<td>Project maintenance</td>
+						<td><code>project_loop_runs</code>, suggestions, audits</td>
+						<td>Project Review/Audit surfaces and AI Inbox</td>
+					</tr>
+					<tr>
+						<td>Human attention</td>
+						<td><code>inbox_items</code> plus the original source row</td>
+						<td>Pending/deciding/deferred/decided review cards</td>
+					</tr>
+					<tr>
+						<td>Project knowledge</td>
+						<td>Ontology project, task, document, goal, event, edge tables</td>
+						<td>Context assembled for chat, runs, loops, and audits</td>
+					</tr>
+				</table>
+
+				<div class="cols-2">
+					<div class="card">
+						<h3>What is deliberately coupled</h3>
+						<ul class="tight">
+							<li>Web and worker use shared types and shared agent operations.</li>
+							<li>Chat-triggered runs link to their parent session/message.</li>
+							<li>
+								Completion can inject a durable assistant message back into chat.
+							</li>
+							<li>Proposals and loop findings converge in the AI Inbox.</li>
+						</ul>
+					</div>
+					<div class="card">
+						<h3>What is deliberately independent</h3>
+						<ul class="tight">
+							<li>An Agent Run does not need a chat session.</li>
+							<li>Closing chat does not cancel background work.</li>
+							<li>
+								Manual/scheduled Operatives can dispatch the same run substrate.
+							</li>
+							<li>
+								Loops do not recurse when applying their own accepted mutations.
+							</li>
+						</ul>
+					</div>
+				</div>
+
+				<div class="callout small">
+					<strong>Architectural consequence:</strong> if an interface disconnects, the
+					durable row still matters. Realtime and SSE improve feel; they are not the
+					authority.
+				</div>
+
+				<footer class="footer">
+					<div class="sources">
+						Source anchors: <span class="mono">docs/DEPLOYMENT_TOPOLOGY.md</span>;
+						<span class="mono">apps/worker/src/worker.ts</span>;
+						<span class="mono">packages/shared-agent-ops/src/</span>.
+					</div>
+					<div class="page-number">A1 / 2</div>
+				</footer>
+			</section>
+
+			<section class="page agentic" data-group="agentic-deep">
+				<p class="kicker">Agentic Deep Dive / Page 2 of 4</p>
+				<h2>Inside one Agentic Chat turn</h2>
+				<p class="deck">
+					A turn is not “send the transcript to a model.” It is an admitted,
+					access-checked, context-assembled, observable model/tool loop with a durable
+					finish path.
+				</p>
+
+				<pre>
+ 0. MODAL OPENS
+    POST /api/agent/v2/prewarm
+    -> warm context cache; optionally create session; prepare one-shot prompt row
+
+ 1. USER SENDS
+    optimistic local message + stream_run_id + client_turn_id
+    -> POST /api/agent/v2/stream
+
+ 2. ADMIT + AUTHORIZE
+    authenticate -> project/daily-brief access -> one-running-turn/session lock
+    -> resolve/create chat session -> persist/idempotently identify user turn
+
+ 3. BUILD MODEL INPUT
+    prepared prompt (preferred) OR 2-minute session cache OR fresh context load
+    + recent/compressed history + last-turn continuity + current domain signals
+    + contextual direct tools + discovery surface
+
+ 4. RUN CONTROL LOOP
+    model pass -> text and/or tool calls -> validate/enrich -> execute -> observe
+         ^                                                        |
+         +---------------- next model pass ------------------------+
+    supervisor watches repetition, validation failures, reads, writes, and silence
+
+ 5. FINISH
+    sanitize final text -> persist assistant + tool trace + turn outcome
+    -> emit timing + last_turn_context + done -> reconcile session agent_state
+
+ 6. CLEANUP / RECOVERY
+    batch turn events; write metrics/snapshots; preserve interruption reason;
+    checkpoint a user-question stop so the next turn can resume with structured state</pre
+				>
+
+				<div class="cols-3">
+					<div class="card blue">
+						<div class="stat">300s</div>
+						<p>
+							Maximum Vercel stream duration. Long work should become an Agent Run
+							rather than stretching the request.
+						</p>
+					</div>
+					<div class="card blue">
+						<div class="stat">12 / 9</div>
+						<p>
+							Default gateway tool-round cap; reduced to 9 when prompt context is near
+							or over its budget.
+						</p>
+					</div>
+					<div class="card blue">
+						<div class="stat">40</div>
+						<p>
+							Default tool-call ceiling. Repetition and supervisor synthesis guards
+							often stop the loop earlier.
+						</p>
+					</div>
+				</div>
+
+				<div class="split-60">
+					<div>
+						<h3>Context composition</h3>
+						<table>
+							<tr>
+								<th>Layer</th>
+								<th>What it answers</th>
+							</tr>
+							<tr>
+								<td>Scope</td>
+								<td>
+									Global, project/audit/forecast, ontology focus, or daily brief?
+								</td>
+							</tr>
+							<tr>
+								<td>Working set</td>
+								<td>
+									Which tasks, documents, events, goals, and summary matter now?
+								</td>
+							</tr>
+							<tr>
+								<td>History</td>
+								<td>Recent raw turns plus compressed earlier context</td>
+							</tr>
+							<tr>
+								<td>Continuity</td>
+								<td>
+									Which exact entities and unfinished intent survived the last
+									turn?
+								</td>
+							</tr>
+							<tr>
+								<td>Runtime</td>
+								<td>
+									Current tool results, cancellation, cache freshness, domain
+									signals
+								</td>
+							</tr>
+						</table>
+					</div>
+					<div class="card gray small">
+						<h3>Current history/cache defaults</h3>
+						<ul class="tight">
+							<li>History lookback: last 10 messages.</li>
+							<li>Compression threshold: 8 messages.</li>
+							<li>Compressed tail retained: 4 messages.</li>
+							<li>Summary cap: 420 characters.</li>
+							<li>Per-message compressed cap: 1,200 characters.</li>
+							<li>Session context cache TTL: 2 minutes.</li>
+							<li>Prepared prompts: server-owned, nonce-protected, one-shot.</li>
+						</ul>
+					</div>
+				</div>
+
+				<h3>Stream contract: what the browser sees</h3>
+				<p class="small">
+					<code>agent_state</code> -&gt; <code>session</code> -&gt;
+					<code>context_usage</code> -&gt; repeated <code>text_delta</code> /
+					<code>tool_call</code> / <code>tool_result</code> -&gt; optional
+					<code>context_shift</code> -&gt; <code>timing</code> -&gt;
+					<code>last_turn_context</code> -&gt; <code>done</code> (or terminal
+					<code>error</code>). The client uses run IDs to reject stale events.
+				</p>
+
+				<div class="callout small">
+					<strong>Concurrency rule:</strong> the database admits one running turn per chat
+					session. A recent turn blocks a second; a stale detached turn is cancelled
+					before a new row attempts to acquire the lock.
+				</div>
+
+				<footer class="footer">
+					<div class="sources">
+						Source anchors:
+						<span class="mono">routes/api/agent/v2/stream/+server.ts</span>;
+						<span class="mono">agentic-chat-v2/turn-admission.ts</span>;
+						<span class="mono">history-composer.ts</span>.
+					</div>
+					<div class="page-number">A2 / 3</div>
+				</footer>
+			</section>
+
+			<section class="page agentic" data-group="agentic-deep">
+				<p class="kicker">Agentic Deep Dive / Page 3 of 4</p>
+				<h2>Capability surface, tool loop &amp; guardrails</h2>
+				<p class="deck">
+					The model sees a small conceptual ladder. The runtime owns the messy parts:
+					discovery, argument enrichment, permissions, execution, receipts, recovery, and
+					stopping rules.
+				</p>
+
+				<pre>
+ CAPABILITIES              SKILLS / DOMAINS           TOOLS
+ "What kind of job?"  ->  "How should I do it?"  ->  "What exact action?"
+ broad prompt-time         loaded on demand           concrete schema + args
+ orientation               workflow guidance          executable read/write
+
+                           if exact tool unknown
+                                  |
+                                  v
+                      search/discover -> schema/load
+                                  |
+                                  v
+                         direct tool materializes
+                                  |
+                                  v
+                  normalize -> scope -> validate -> execute
+                                  |
+                     result + entity IDs + receipt
+                                  |
+                                  v
+                           next model decision</pre
+				>
+
+				<div class="split-40">
+					<div class="card blue">
+						<h3>The model-facing rule</h3>
+						<p>
+							Capabilities orient. Skills teach. Tool search finds. Tool schema
+							specifies. Direct tools execute.
+						</p>
+						<p class="small">
+							Simple reads can skip skill loading. Multi-step, stateful, or risky work
+							should load workflow guidance before mutation.
+						</p>
+					</div>
+					<div>
+						<h3>What the execution layer does before a call runs</h3>
+						<ul class="tight">
+							<li>Maps aliases to the canonical operation and direct tool.</li>
+							<li>Injects context-derived <code>project_id</code> when valid.</li>
+							<li>
+								Normalizes UUID fields, defaults, and supported argument aliases.
+							</li>
+							<li>
+								Checks user/project/entity scope and validates the exact schema.
+							</li>
+							<li>Applies timeouts and the active abort signal.</li>
+							<li>Returns affected entities and a durable tool-execution receipt.</li>
+						</ul>
+					</div>
+				</div>
+
+				<h3>Deterministic runtime brakes</h3>
+				<table>
+					<tr>
+						<th>Failure mode</th>
+						<th>Runtime response</th>
+						<th>Why it matters</th>
+					</tr>
+					<tr>
+						<td>Repeated identical reads</td>
+						<td>Within-turn read memo + novelty/repetition tracking</td>
+						<td>Prevents a “search forever” loop</td>
+					</tr>
+					<tr>
+						<td>Missing/invalid arguments</td>
+						<td>Bounded validation repairs; then ask user or stop</td>
+						<td>No guessing IDs or fields</td>
+					</tr>
+					<tr>
+						<td>Pending write near limit</td>
+						<td>One restricted write-only pass when safe</td>
+						<td>Stops reads from consuming the entire turn</td>
+					</tr>
+					<tr>
+						<td>Duplicate successful write</td>
+						<td>Stable in-turn write dedup key; skip repeat execution</td>
+						<td>A retry cannot double-create/update</td>
+					</tr>
+					<tr>
+						<td>Too many read rounds / calls</td>
+						<td>Supervisor forces no-tool synthesis</td>
+						<td>User gets an answer instead of a timeout</td>
+					</tr>
+					<tr>
+						<td>Output hits length cap</td>
+						<td>Up to two bounded continuation passes</td>
+						<td>Does not present a cut-off answer as complete</td>
+					</tr>
+					<tr>
+						<td>User stops or supersedes</td>
+						<td>Abort plus persisted interruption reason</td>
+						<td>Partial output remains auditable</td>
+					</tr>
+					<tr>
+						<td>Supervisor asks user</td>
+						<td>Checkpoint digest + resume context</td>
+						<td>Next turn continues structurally, not from guesswork</td>
+					</tr>
+				</table>
+
+				<div class="cols-2">
+					<div class="card">
+						<h3>Write integrity</h3>
+						<ul class="tight small">
+							<li>
+								Reads are re-derivable; writes persist incrementally for crash
+								recovery.
+							</li>
+							<li>
+								Successful writes are tracked from executor receipts, not model
+								claims.
+							</li>
+							<li>
+								Destructive or under-specified operations do not get autonomous
+								recovery.
+							</li>
+							<li>
+								Finalization checks requested intent against actual tool outcomes.
+							</li>
+						</ul>
+					</div>
+					<div class="card">
+						<h3>Observability</h3>
+						<ul class="tight small">
+							<li>Turn run, ordered turn events, tool trace, and timing metrics.</li>
+							<li>Prompt snapshots and cost breakdowns for evaluation/debugging.</li>
+							<li>
+								Context-usage tracking has separate UI and orchestration budgets.
+							</li>
+							<li>
+								Search telemetry records result counts and zero-result outcomes.
+							</li>
+						</ul>
+					</div>
+				</div>
+
+				<div class="callout small">
+					<strong>The design center:</strong> keep the model-facing concepts small while
+					the runtime spine—state, guardrails, memory, events, persistence, and
+					observability—does the enforcement.
+				</div>
+
+				<footer class="footer">
+					<div class="sources">
+						Source anchors: <span class="mono">agentic-chat-operating-model.md</span>;
+						<span class="mono">stream-orchestrator/index.ts</span>;
+						<span class="mono">tool-execution-service.ts</span>.
+					</div>
+					<div class="page-number">A3 / 4</div>
+				</footer>
+			</section>
+
+			<section class="page agentic" data-group="agentic-deep">
+				<p class="kicker">Agentic Deep Dive / Page 4 of 4</p>
+				<h2>Durable Agent Runs: the background action loop</h2>
+				<p class="deck">
+					An Agent Run is a first-class work object—not a long chat request. It can be
+					triggered by chat, a person, a schedule, or an event; it survives UI closure and
+					reports back through durable state.
+				</p>
+
+				<div class="split-60">
+					<pre>
+ TRIGGER
+ chat / manual / scheduled operative / event
+    |
+    v
+ dispatch validation
+ access + concurrency + scope + budgets
+    |
+    v
+ agent_runs row + queue_jobs(agent_run)
+    |
+    v
+ WORKER CLAIMS status atomically
+    |
+    +--> drain signals: cancel / steer / pause / answer
+    |
+    +--> model emits JSON action
+    |       |
+    |       +-- call_op -> scoped operation -> event/telemetry
+    |       |                  |
+    |       +------------------+ (repeat)
+    |
+    +--> submit_result
+            |
+            +-- commit mode: writes already applied
+            |
+            +-- stage mode: proposal_ready + Change Set
+            |
+            +-- completed / partial / needs_input / failed
+                    |
+                    +--> Run Stack / Work Panel / AI Inbox
+                    +--> assistant message into parent chat</pre
+					>
+					<div>
+						<h3>Hard platform boundaries</h3>
+						<ul class="tight">
+							<li><strong>3 active runs</strong> per user at dispatch.</li>
+							<li>
+								<strong>Depth cap 1:</strong> delegated runs cannot delegate again.
+							</li>
+							<li><strong>Default 20 op calls</strong> in the worker loop.</li>
+							<li>
+								<strong>Standard:</strong> balanced model, 5-minute default wall
+								clock.
+							</li>
+							<li>
+								<strong>Deep:</strong> powerful/high-reasoning model, 10-minute
+								default.
+							</li>
+							<li>Budget fields can cap wall clock, tokens, tool calls, and cost.</li>
+							<li>
+								Deep runs are capped at $1 dispatch budget; global run budget max is
+								$10.
+							</li>
+						</ul>
+					</div>
+				</div>
+
+				<h3>Lifecycle and user control</h3>
+				<table>
+					<tr>
+						<th>Status</th>
+						<th>Meaning</th>
+						<th>Next transition</th>
+					</tr>
+					<tr>
+						<td><code>queued</code></td>
+						<td>Durable row exists; worker has not claimed it</td>
+						<td><code>running</code> or cancel/fail</td>
+					</tr>
+					<tr>
+						<td><code>running</code></td>
+						<td>Worker action loop is active</td>
+						<td>steer, pause, result, cancel, budget stop</td>
+					</tr>
+					<tr>
+						<td><code>paused</code></td>
+						<td>Checkpointed; worker slot released</td>
+						<td>resume re-enqueues a continuation</td>
+					</tr>
+					<tr>
+						<td><code>needs_input</code></td>
+						<td>Agent cannot proceed without an answer</td>
+						<td>answer signal + continuation job</td>
+					</tr>
+					<tr>
+						<td><code>proposal_ready</code></td>
+						<td>Review run staged one or more writes</td>
+						<td>approve/reject Change Set</td>
+					</tr>
+					<tr>
+						<td><code>partial</code></td>
+						<td>Useful result, but not fully complete</td>
+						<td>continue if open questions exist</td>
+					</tr>
+					<tr>
+						<td><code>completed / failed / cancelled</code></td>
+						<td>Terminal outcome with result/error/metrics</td>
+						<td>inspect, retry, or start a new run</td>
+					</tr>
+				</table>
+
+				<div class="cols-3">
+					<div class="card green">
+						<h3>Direct commit</h3>
+						<p class="small">
+							Default for <code>read_write</code>. The operation gateway applies
+							writes, and entity touches come from execution telemetry.
+						</p>
+					</div>
+					<div class="card orange">
+						<h3>Review first</h3>
+						<p class="small">
+							<code>review_required</code> turns write ops into proposed changes. The
+							run ends at <code>proposal_ready</code> until a human commits the Change
+							Set.
+						</p>
+					</div>
+					<div class="card blue">
+						<h3>Steer mid-flight</h3>
+						<p class="small">
+							Signals are drained between iterations. A steer becomes transcript
+							context; pause checkpoints; cancel finalizes gracefully.
+						</p>
+					</div>
+				</div>
+
+				<div class="callout small">
+					<strong>Conditional capabilities:</strong> calendar operations appear only when
+					the worker has Google credentials and the user has stored tokens. Review-mode
+					calendar runs expose reads only. Web research treats fetched content as
+					untrusted evidence and uses durable paid-tool cost reservations.
+				</div>
+
+				<footer class="footer">
+					<div class="sources">
+						Source anchors: <span class="mono">agentRunWorker.ts</span>;
+						<span class="mono">agent-runs/dispatch.ts</span>;
+						<span class="mono">agent-work/01-EXECUTION-SUBSTRATE.md</span>.
+					</div>
+					<div class="page-number">A4 / 5</div>
+				</footer>
+			</section>
+
+			<section class="page loops" data-group="loops-one">
+				<p class="kicker">BuildOS Core Infrastructure / Executive Map / 19 July 2026</p>
+				<h1>Project Loops</h1>
+				<p class="deck">
+					Project Loops are BuildOS’s self-maintenance system. They periodically or
+					eventually re-read a project, generate bounded review items, keep only fresh
+					findings, and route the few highest-priority asks through the AI Inbox.
+				</p>
+
+				<pre>
+ TRIGGERS
+ manual review | local end-of-day | mutation burst | 60s debounced bulk signal
+      \                  |                |                    /
+       +-----------------+----------------+-------------------+
+                              |
+                              v
+                 LIGHT PROJECT LOOP (worker)
+      load bounded context -> brief -> 4 generators -> suppress duplicates
+                              |
+              +---------------+----------------+
+              |                                |
+              v                                v
+   executable proposals                  informational findings
+   doc move / stale flag /               drift or no-op recommendation
+   conflict metadata                     address / discuss / dismiss
+              |                                |
+              +---------------+----------------+
+                              v
+          freshness stamp -> rotate old findings -> attention budget (3)
+                              |
+                              v
+                         AI INBOX
+                accept | address | clarify | dismiss
+                    |         |         |        |
+                    v         v         v        v
+                  apply     record    Agent    feedback memory
+                   ops      outcome     Run
+
+ SLOWER PARALLEL LOOP
+ manual / daily scan / qualified burst -> COMPLETE PROJECT AUDIT
+ deterministic evidence scaffold -> LLM synthesis -> up to 8 child follow-ups
+ -> older audit superseded -> actionable children share the same inbox budget</pre
+				>
+
+				<div class="cols-4">
+					<div class="card orange">
+						<div class="stat">$0.35</div>
+						<p class="small">Light-loop cost cap checked between generators.</p>
+					</div>
+					<div class="card orange">
+						<div class="stat">25</div>
+						<p class="small">Maximum new suggestions inserted by a light run.</p>
+					</div>
+					<div class="card orange">
+						<div class="stat">72h</div>
+						<p class="small">Grace before an unconfirmed light finding rotates out.</p>
+					</div>
+					<div class="card orange">
+						<div class="stat">3</div>
+						<p class="small">Pending AI Inbox items admitted per project.</p>
+					</div>
+				</div>
+
+				<div class="rule"></div>
+				<div class="cols-2">
+					<div>
+						<h3>What a light loop looks for</h3>
+						<ul class="tight">
+							<li>
+								<strong>Document organization:</strong> misplaced or structurally
+								weak docs.
+							</li>
+							<li>
+								<strong>Outdated documents:</strong> stale content worth flagging.
+							</li>
+							<li>
+								<strong>Project drift:</strong> evidence that execution diverged
+								from intent.
+							</li>
+							<li>
+								<strong>Task conflicts:</strong> duplicate, contradictory, or
+								blocking task pairs.
+							</li>
+						</ul>
+					</div>
+					<div>
+						<h3>What a complete audit adds</h3>
+						<ul class="tight">
+							<li>Project thesis and delivery confidence.</li>
+							<li>Dimension ratings, top findings, risks, and open questions.</li>
+							<li>Evidence-linked recommendations and a durable report.</li>
+							<li>Up to eight individual, actionable follow-up suggestions.</li>
+						</ul>
+					</div>
+				</div>
+
+				<div class="callout">
+					<strong>The key mental model:</strong> source tables are the candidate/history
+					ledger; <code>inbox_items</code> is the attention surface. Rotation, TTLs, and
+					the per-project budget decide what deserves to interrupt the user now.
+				</div>
+
+				<div class="card gray small">
+					<h3>Current code status</h3>
+					<p>
+						Web and worker feature switches are now always-on compatibility exports. The
+						worker registers the project-loop processor, checks light loops hourly
+						against each owner’s local midnight window, scans complete audits daily, and
+						runs stale lifecycle repair every 30 minutes.
+					</p>
+				</div>
+
+				<footer class="footer">
+					<div class="sources">
+						Source anchors: <span class="mono">tasker/28-loop-inbox-freshness.md</span>;
+						<span class="mono">projectLoopWorker.ts</span>;
+						<span class="mono">project-loops.ts</span>.
+					</div>
+					<div class="page-number">L0 / 6</div>
+				</footer>
+			</section>
+
+			<section class="page loops" data-group="loops-deep">
+				<p class="kicker">Project Loops Deep Dive / Page 1 of 4</p>
+				<h2>Triggering: when does a loop actually run?</h2>
+				<p class="deck">
+					Triggers propose work; admission rules decide whether a job is created. The
+					system uses active-run checks, cooldowns, stable dedup keys, quiet periods, and
+					audit eligibility to collapse noisy triggers into bounded work.
+				</p>
+
+				<table>
+					<tr>
+						<th>Trigger</th>
+						<th>When it fires</th>
+						<th>What it tries to enqueue</th>
+						<th>Main brakes</th>
+					</tr>
+					<tr>
+						<td><strong>Manual review</strong></td>
+						<td>User POSTs the project loops route</td>
+						<td>Light loop immediately</td>
+						<td>No active queued/running run; queue dedup still applies</td>
+					</tr>
+					<tr>
+						<td><strong>Local end-of-day</strong></td>
+						<td>
+							Hourly worker check; owner is in local hour 00 and project changed
+							during the completed local day
+						</td>
+						<td>Light loop with <code>end_of_day</code> reason</td>
+						<td>
+							Active/planning only; 30m cooldown; newest 10 projects/user by default
+						</td>
+					</tr>
+					<tr>
+						<td><strong>Mutation burst</strong></td>
+						<td>
+							Wired task/document/tree mutations plus last 30m activity score reach 4
+						</td>
+						<td>Light loop; also evaluates a complete audit</td>
+						<td>30m cooldown; active run; review-replay recursion suppression</td>
+					</tr>
+					<tr>
+						<td><strong>Debounced bulk signal</strong></td>
+						<td>Bulk overdue/backlog operations coalesce for 60 seconds</td>
+						<td>One wakeup evaluates light loop + audit in parallel</td>
+						<td>
+							One pending signal/project; due time is extended as activity arrives
+						</td>
+					</tr>
+					<tr>
+						<td><strong>Scheduled audit</strong></td>
+						<td>Daily 04:00 worker-clock scan</td>
+						<td>Complete audit for eligible medium+ projects</td>
+						<td>14d cadence, 7d cooldown, activity thresholds, active audit</td>
+					</tr>
+					<tr>
+						<td><strong>Manual audit</strong></td>
+						<td>User runs standard or deep audit</td>
+						<td>Complete audit</td>
+						<td>Bypasses maturity baseline; active audit/dedup still applies</td>
+					</tr>
+				</table>
+
+				<div class="split-60">
+					<pre>
+ ANY LIGHT-LOOP TRIGGER
+          |
+          v
+ loops always-on? ---------------- no -> stop
+          |
+         yes
+          |
+ active queued/running run? ------ yes -> return existing/skip
+          |
+          no
+          |
+ automated + last finish &lt; 30m? -- yes -> cooldown skip
+          |
+          no
+          |
+ create loop chat session + run row
+          |
+ add_queue_job with project/day key
+          |
+ returned metadata owns new run? - no -> fail loser row
+          |
+         yes
+          v
+ worker status-fenced claim -> execute exactly once</pre
+					>
+					<div class="card orange small">
+						<h3>Burst source weights</h3>
+						<ul class="tight">
+							<li>Project update: 5</li>
+							<li>Goal or milestone: 5</li>
+							<li>Risk: 4</li>
+							<li>Document archive/restore/delete: 4</li>
+							<li>Task move: 4</li>
+							<li>Document create: 2</li>
+							<li>Task create/update or document update: 1</li>
+						</ul>
+						<p>
+							Repeated updates to the same entity are counted once in the
+							recent-activity score.
+						</p>
+					</div>
+				</div>
+
+				<div class="callout small">
+					<strong>Dedup nuance:</strong> the stable project/day queue key collapses
+					producers that race while a job is pending/processing. Sequential same-day runs
+					may still proceed after the queue job is terminal; active-run and cooldown
+					checks are separate guards.
+				</div>
+
+				<div class="card gray small">
+					<h3>Dormant trigger contract</h3>
+					<p>
+						<code>critical_change</code> is supported by the complete-audit evaluator
+						and bypasses the normal cooldown when at least two major changes occurred in
+						72 hours, but current source search shows no producer calling it.
+					</p>
+				</div>
+
+				<footer class="footer">
+					<div class="sources">
+						Source anchors: <span class="mono">scheduler.ts</span>;
+						<span class="mono">project-loop-burst.service.ts</span>;
+						<span class="mono">project-loop/enqueue.ts</span>.
+					</div>
+					<div class="page-number">L1 / 7</div>
+				</footer>
+			</section>
+
+			<section class="page loops" data-group="loops-deep">
+				<p class="kicker">Project Loops Deep Dive / Page 2 of 4</p>
+				<h2>The light loop: reconcile, suppress, rotate</h2>
+				<p class="deck">
+					The light loop is a bounded reconciliation pass. Its output is not a free-form
+					report: it is a brief plus typed suggestions with evidence, previews,
+					operations, undo data, risk, and freshness metadata.
+				</p>
+
+				<pre>
+ 1  CLAIM RUN         queued -> running (status-fenced; duplicate workers lose)
+ 2  LOAD CONTEXT      active project + graph + bounded docs/tasks + prior decisions
+ 3  BUILD BRIEF       LLM brief; heuristic fallback if cost path is unavailable
+ 4  RUN GENERATORS    doc organization -> outdated docs -> drift -> task conflicts
+ 5  CAP + SUPPRESS    max 25; semantic keys; 60-day open/decided lookback
+ 6  STAMP FRESHNESS   fingerprint only the task/doc entities an operation mutates
+ 7  INSERT + INDEX    project_suggestions -> inbox_items
+ 8  ROTATE            reconfirm matching old findings; supersede unconfirmed >72h
+ 9  ADMIT ATTENTION   rank risk then freshness; pending top 3; defer overflow
+ 10 FINISH RUN        waiting_review when new suggestions exist; else completed</pre
+				>
+
+				<h3>The four generators</h3>
+				<table>
+					<tr>
+						<th>Kind</th>
+						<th>Question</th>
+						<th>Typical result</th>
+						<th>Safety shape</th>
+					</tr>
+					<tr>
+						<td><code>doc_org</code></td>
+						<td>Is a document misplaced or the tree confusing?</td>
+						<td>Document move proposal</td>
+						<td>Reversible operation + prior parent for undo</td>
+					</tr>
+					<tr>
+						<td><code>doc_outdated</code></td>
+						<td>Does a document conflict with newer project state?</td>
+						<td>Outdated metadata flag</td>
+						<td>Scoped doc fingerprint + reversible props update</td>
+					</tr>
+					<tr>
+						<td><code>drift</code></td>
+						<td>Is the project diverging from its goal or plan?</td>
+						<td>Informational finding</td>
+						<td>No direct mutation; address/discuss/dismiss</td>
+					</tr>
+					<tr>
+						<td><code>task_conflict</code></td>
+						<td>Are two tasks duplicate, contradictory, or blocking?</td>
+						<td>Conflict metadata proposal</td>
+						<td>Deterministic candidate pairs + IDs validated</td>
+					</tr>
+				</table>
+
+				<div class="cols-2">
+					<div class="card orange">
+						<h3>Duplicate suppression</h3>
+						<p class="small">
+							Keys are based on operation targets: order-independent task pairs,
+							document ID sets, evidence IDs, or a normalized-title fallback. They are
+							kind-namespaced and checked against open/recently decided suggestions
+							for 60 days plus duplicates in the current run.
+						</p>
+					</div>
+					<div class="card green">
+						<h3>Scoped freshness</h3>
+						<p class="small">
+							Executable proposals hash only the entities they will mutate. At
+							approval, the web recomputes that subset. If it changed, the suggestion
+							becomes
+							<code>superseded</code> instead of replaying stale operations.
+						</p>
+					</div>
+				</div>
+
+				<div class="split-60">
+					<div>
+						<h3>Rotation: refresh, do not append forever</h3>
+						<ol class="tight small">
+							<li>
+								A new matching finding counts as reconfirmation—even if insertion
+								was suppressed.
+							</li>
+							<li>
+								Reconfirmation bumps <code>updated_at</code> and extends review
+								expiry.
+							</li>
+							<li>
+								An unconfirmed prior light finding survives a 72-hour grace window.
+							</li>
+							<li>
+								After grace, it is superseded as “not reconfirmed by latest run.”
+							</li>
+							<li>
+								Items the user is deciding/snoozing and generator kinds skipped by
+								cost are protected.
+							</li>
+						</ol>
+					</div>
+					<div class="card gray small">
+						<h3>Cost behavior</h3>
+						<p>
+							The light-run cap is $0.35. It is checked before the brief and each
+							generator, so later generators are skipped after the threshold is
+							reached. A single in-flight call can still take the measured total past
+							the cap; the cap is a between-call gate, not a provider-side hard
+							reservation.
+						</p>
+					</div>
+				</div>
+
+				<footer class="footer">
+					<div class="sources">
+						Source anchors: <span class="mono">projectLoopWorker.ts</span>;
+						<span class="mono">generators.ts</span>;
+						<span class="mono">shared-agent-ops/project-loops.ts</span>.
+					</div>
+					<div class="page-number">L2 / 8</div>
+				</footer>
+			</section>
+
+			<section class="page loops" data-group="loops-deep">
+				<p class="kicker">Project Loops Deep Dive / Page 3 of 4</p>
+				<h2>Complete Project Audit: the slower strategic loop</h2>
+				<p class="deck">
+					A complete audit is evidence-grounded synthesis over a mature-enough project. It
+					keeps a deterministic scaffold as a fallback, then uses an LLM to sharpen the
+					thesis, confidence, findings, dimensions, risks, questions, and recommendations.
+				</p>
+
+				<div class="split-40">
+					<div class="card orange small">
+						<h3>Automated baseline</h3>
+						<p>An automated audit requires all of:</p>
+						<ul class="tight">
+							<li>Project active or planning.</li>
+							<li>At least 7 days old.</li>
+							<li>Activity on at least 2 distinct days.</li>
+							<li>A goal or an 80+ word project description.</li>
+							<li>At least 3 of 5 content threshold groups.</li>
+						</ul>
+						<p>
+							Manual audits bypass these baseline gates, but still respect
+							active-audit and queue ownership controls.
+						</p>
+					</div>
+					<div>
+						<h3>Content threshold groups (need 3)</h3>
+						<table>
+							<tr>
+								<th>Group</th>
+								<th>Threshold</th>
+							</tr>
+							<tr>
+								<td>Documents</td>
+								<td>5 active docs or one 1,500+ word substantial doc</td>
+							</tr>
+							<tr>
+								<td>Tasks</td>
+								<td>5 non-deleted tasks</td>
+							</tr>
+							<tr>
+								<td>Direction</td>
+								<td>At least 2 goals + milestones</td>
+							</tr>
+							<tr>
+								<td>Commitment</td>
+								<td>Any project/task/milestone/event date</td>
+							</tr>
+							<tr>
+								<td>Graph size</td>
+								<td>At least 10 total entities</td>
+							</tr>
+						</table>
+					</div>
+				</div>
+
+				<h3>Automated trigger logic</h3>
+				<table class="micro">
+					<tr>
+						<th>Size class</th>
+						<th>Scheduled rule</th>
+						<th>Burst rule</th>
+					</tr>
+					<tr>
+						<td>Small eligible</td>
+						<td>Manual only</td>
+						<td>72h score >=10 and at least 25% of entities touched</td>
+					</tr>
+					<tr>
+						<td>Medium</td>
+						<td>14d cadence; at least 3 changed entities or a major change</td>
+						<td>72h score >=16 or 12 changed entities in 7d</td>
+					</tr>
+					<tr>
+						<td>Large</td>
+						<td>14d cadence; at least 6 changed entities or a major change</td>
+						<td>7d score >=24 or at least 15% of entities touched</td>
+					</tr>
+					<tr>
+						<td>Strategic</td>
+						<td>Same scheduled gate as large</td>
+						<td>Large rule or at least 2 major changes in 72h</td>
+					</tr>
+				</table>
+
+				<pre>
+ AUDIT JOB (6 progress stages)
+   1. claim audit + paired loop run atomically enough to detect inconsistency
+   2. load project context, recent activity, and 90-day audit memory
+   3. build deterministic packet and evidence catalog
+   4. synthesize with evidence-constrained LLM (fallback keeps scaffold)
+   5. create &lt;= 8 audit_recommendation child suggestions
+   6. persist report -> mark ready -> index children -> supersede older audit
+                                      |
+                                      v
+                           apply per-project inbox budget</pre
+				>
+
+				<div class="cols-3">
+					<div class="card">
+						<h3>Audit memory</h3>
+						<p class="small">
+							Uses prior audit recommendation decisions and light-loop decisions to
+							avoid repeating already reviewed asks.
+						</p>
+					</div>
+					<div class="card">
+						<h3>Cost</h3>
+						<p class="small">
+							LLM synthesis has a $0.35 soft cap. Failure logs a warning and falls
+							back to the deterministic audit packet.
+						</p>
+					</div>
+					<div class="card">
+						<h3>Inbox shape</h3>
+						<p class="small">
+							The parent report remains project history; individual actionable
+							children enter the Inbox and share its budget.
+						</p>
+					</div>
+				</div>
+
+				<div class="callout small">
+					<strong>Quiet period:</strong> a qualifying burst waits until two hours after
+					the last major mutation, then a scheduled trigger-evaluation job rechecks the
+					project. This avoids auditing while a restructuring burst is still underway.
+				</div>
+
+				<footer class="footer">
+					<div class="sources">
+						Source anchors:
+						<span class="mono">shared-agent-ops/project-audits.ts</span>;
+						<span class="mono">project-audit-trigger.service.ts</span>;
+						<span class="mono">projectLoopWorker.ts</span>.
+					</div>
+					<div class="page-number">L3 / 9</div>
+				</footer>
+			</section>
+
+			<section class="page loops compact" data-group="loops-deep">
+				<p class="kicker">Project Loops Deep Dive / Page 4 of 4</p>
+				<h2>Inbox closure, freshness, failure recovery &amp; what to read next</h2>
+				<p class="deck">
+					The loop is only complete when a human decision changes durable state and
+					informs the next run. The Inbox is a repairable index, not the original work
+					object.
+				</p>
+
+				<div class="split-60">
+					<pre>
+ SOURCE ROW                         INBOX INDEX
+ project_suggestion  ------------> inbox_items
+ project_audit       ------------> (parent hidden when
+ agent_run proposal  ------------>  actionable children exist)
+ calendar suggestion ------------>
+       |                                  |
+       | source status                    | attention status
+       | pending/approved/etc.             | pending/deferred/
+       |                                  | deciding/decided/expired
+       +------------------+---------------+
+                          |
+                    HUMAN DECISION
+                          |
+     +--------------------+----------------------+
+     |                    |                      |
+ executable approve    finding address       dismiss
+ freshness check       requires one line     feedback always stored
+ -> replay ops          -> addressed          -> rejected
+     |
+ clarification supplied?
+     +-- yes -> delegate a seeded Agent Run
+     +-- no  -> execute stored operations directly
+                          |
+                          v
+     sync inbox -> refresh audit counts -> finalize parent run
+                          |
+                          v
+           prior-decision memory shapes later loops</pre
+					>
+					<div>
+						<h3>Attention and expiry policy</h3>
+						<table class="micro">
+							<tr>
+								<th>Source</th>
+								<th>TTL</th>
+							</tr>
+							<tr>
+								<td>Light-loop finding</td>
+								<td>7 days</td>
+							</tr>
+							<tr>
+								<td>Audit recommendation</td>
+								<td>14 days</td>
+							</tr>
+							<tr>
+								<td>Audit parent</td>
+								<td>14 days</td>
+							</tr>
+							<tr>
+								<td>Agent Run proposal</td>
+								<td>14 days</td>
+							</tr>
+							<tr>
+								<td>Calendar suggestion</td>
+								<td>7 days or event window +48h, whichever is sooner</td>
+							</tr>
+						</table>
+						<p class="small">
+							Per project, the top three project-member items are pending; overflow is
+							<code>deferred</code>. Ranking is risk tier, then freshness. A freed
+							slot promotes the next deferred row.
+						</p>
+					</div>
+				</div>
+
+				<h3>Operational failure controls</h3>
+				<div class="cols-3 small">
+					<div class="card">
+						<strong>Duplicate execution</strong>
+						<p>
+							Queue dedup + returned-metadata ownership + status-fenced claims prevent
+							two workers from inserting the same run’s suggestions.
+						</p>
+					</div>
+					<div class="card">
+						<strong>Stalled lifecycle</strong>
+						<p>
+							Every 30 minutes: fail running rows older than 1h, queued rows older
+							than 6h, and finish review runs whose children are all decided.
+						</p>
+					</div>
+					<div class="card">
+						<strong>Failed parent</strong>
+						<p>
+							Pending children from a failed loop are superseded and re-indexed so the
+							Inbox does not present orphan work.
+						</p>
+					</div>
+					<div class="card">
+						<strong>Recursive trigger</strong>
+						<p>
+							Accepted suggestion replay carries structured review context that
+							suppresses a new mutation-burst loop.
+						</p>
+					</div>
+					<div class="card">
+						<strong>Stale proposal</strong>
+						<p>
+							A changed scoped fingerprint supersedes the item with zero applied
+							operations and asks for a fresh review.
+						</p>
+					</div>
+					<div class="card">
+						<strong>Index drift</strong>
+						<p>
+							Read-time reconciliation and source backfill re-sync Inbox rows; shared
+							admission policy prevents backfill from bypassing the budget.
+						</p>
+					</div>
+				</div>
+
+				<div class="split-60">
+					<div class="card orange small">
+						<h3>Known edges to keep in mind</h3>
+						<ul class="tight">
+							<li>
+								Complete-audit daily scanning is worker-clock, not per-user local
+								time.
+							</li>
+							<li>
+								<code>critical_change</code> is modeled but has no current producer.
+							</li>
+							<li>
+								Informational/no-op findings rely on rotation and memory, not entity
+								fingerprints.
+							</li>
+							<li>
+								Generator quality is still empirical: dismissal/repeat telemetry
+								matters.
+							</li>
+							<li>
+								Source-state stalls can need source-specific repair even when the
+								index is correct.
+							</li>
+						</ul>
+					</div>
+					<div class="card gray small">
+						<h3>Recommended next reading</h3>
+						<ol class="tight">
+							<li>
+								<strong>Ontology / knowledge layer:</strong>
+								<span class="mono"
+									>PROJECT_KNOWLEDGE_LAYER_HANDOFF_2026-06-19.md</span
+								>
+							</li>
+							<li>
+								<strong>Human review boundary:</strong>
+								<span class="mono">agent-work/AI_INBOX_DESIGN_2026-06-24.md</span>
+							</li>
+							<li>
+								<strong>Agent operations:</strong>
+								<span class="mono"
+									>agent-work/SHARED_AGENT_OPS_EXTRACTION_PLAN.md</span
+								>
+							</li>
+							<li>
+								<strong>Background specialization:</strong>
+								<span class="mono"
+									>agent-work/DEEP_RESEARCH_ARCHITECTURE_2026-07-19.md</span
+								>
+							</li>
+							<li>
+								<strong>Runtime topology:</strong>
+								<span class="mono">docs/DEPLOYMENT_TOPOLOGY.md</span>
+							</li>
+							<li>
+								<strong>Product loop model:</strong>
+								<span class="mono"
+									>docs/product/thinking-loop-capture-structure-surface-decide-update-2026-07-07.md</span
+								>
+							</li>
+						</ol>
+					</div>
+				</div>
+
+				<footer class="footer">
+					<div class="sources">
+						Source anchors: <span class="mono">shared-agent-ops/inbox-index.ts</span>;
+						<span class="mono">project-suggestion-actions.service.ts</span>;
+						<span class="mono">project-loop-run.service.ts</span>.
+					</div>
+					<div class="page-number">L4 / 10</div>
+				</footer>
+			</section>
+		</main>
+
+		<script>
+			function printGroup(group) {
+				document.body.dataset.printGroup = group;
+				window.setTimeout(() => window.print(), 30);
+			}
+
+			window.addEventListener('afterprint', () => {
+				document.body.dataset.printGroup = 'all';
+			});
+		</script>
+	</body>
+</html>

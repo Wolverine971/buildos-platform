@@ -687,15 +687,29 @@ describe('OpenRouterV2Service model routing', () => {
 		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
 
 		const service = createServiceWithDirectFallbacks();
+		const onUsage = vi.fn();
 		const result = await service.getJSONResponse<{ ok: boolean; provider: string }>({
 			systemPrompt: 'Return valid JSON.',
 			userPrompt: 'Respond with {"ok":true}.',
 			model: DEEPSEEK_V4_FLASH_MODEL,
 			models: [DEEPSEEK_V4_FLASH_MODEL],
-			includeDefaultModels: false
+			includeDefaultModels: false,
+			onUsage
 		});
 
 		expect(result).toEqual({ ok: true, provider: 'moonshot' });
+		expect(onUsage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				model: KIMI_EXPERIMENT_MODEL,
+				billingProvider: 'moonshot',
+				provider: 'moonshotai',
+				providerRequestId: 'moonshot-json-fallback',
+				promptTokens: 10,
+				completionTokens: 4,
+				totalTokens: 14,
+				costSource: 'catalog_estimate'
+			})
+		);
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(requestUrls[0]).toContain('openrouter.ai/api/v1/chat/completions');
 		expect(requestUrls[1]).toBe('https://api.moonshot.ai/v1/chat/completions');

@@ -5,6 +5,15 @@ const DEFAULT_SAFETY_MULTIPLIER = 1.25;
 const DEFAULT_MIN_OUTPUT_TOKENS = 128;
 const PROMPT_TOKEN_OVERHEAD = 1_024;
 
+export class LLMSpendLimitError extends Error {
+	readonly code = 'LLM_SPEND_LIMIT_EXCEEDED';
+
+	constructor(message: string) {
+		super(message);
+		this.name = 'LLMSpendLimitError';
+	}
+}
+
 export interface JSONRequestSpendPlan {
 	model: string;
 	maxTokens: number;
@@ -13,6 +22,7 @@ export interface JSONRequestSpendPlan {
 	providerMaxPrice: {
 		prompt: number;
 		completion: number;
+		request: 0;
 	};
 }
 
@@ -54,10 +64,15 @@ export function estimatePromptTokensForReservation(
 export function planJSONRequestSpend(options: PlanJSONRequestSpendOptions): JSONRequestSpendPlan {
 	const maxCostUsd = finitePositive(options.maxCostUsd, 0);
 	if (maxCostUsd <= 0) {
-		throw new Error('A positive maxCostUsd is required for a budgeted LLM request.');
+		throw new LLMSpendLimitError(
+			'A positive maxCostUsd is required for a budgeted LLM request.'
+		);
 	}
 
-	const requestedMaxTokens = Math.max(1, Math.floor(options.requestedMaxTokens));
+	const requestedMaxTokens = Math.max(
+		1,
+		Math.floor(finitePositive(options.requestedMaxTokens, 8192))
+	);
 	const minOutputTokens = Math.max(
 		1,
 		Math.min(
@@ -92,18 +107,19 @@ export function planJSONRequestSpend(options: PlanJSONRequestSpendOptions): JSON
 			((estimatedInputTokens * inputRate + maxTokens * outputRate) / 1_000_000) *
 			safetyMultiplier;
 		return {
-			model: pricing.modelId,
+			model: candidate,
 			maxTokens,
 			estimatedInputTokens,
 			reservedCostUsd,
 			providerMaxPrice: {
 				prompt: inputRate,
-				completion: outputRate
+				completion: outputRate,
+				request: 0
 			}
 		};
 	}
 
-	throw new Error(
+	throw new LLMSpendLimitError(
 		`No priced model can satisfy the $${maxCostUsd.toFixed(4)} request reservation.`
 	);
 }

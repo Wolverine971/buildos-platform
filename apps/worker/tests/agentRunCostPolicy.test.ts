@@ -2,7 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import {
 	canReservePaidToolCost,
-	resolveAgentRunLlmSpendLimit
+	resolveAgentRunLlmSpendLimit,
+	settlePaidToolReservation
 } from '../src/workers/agent-run/agentRunCostPolicy';
 
 describe('Agent Run cost policy', () => {
@@ -40,5 +41,32 @@ describe('Agent Run cost policy', () => {
 				reservationCostUsd: 0.016
 			})
 		).toBe(true);
+	});
+
+	it('settles provider usage as an adjustment instead of double-charging the reservation', () => {
+		const reserved = {
+			provider: 'tavily' as const,
+			credits: 2,
+			unit_cost_usd: 0.008,
+			cost_usd: 0.016,
+			source: 'search_depth_fallback' as const
+		};
+		const providerReported = {
+			...reserved,
+			credits: 1,
+			cost_usd: 0.008,
+			source: 'provider_reported' as const
+		};
+
+		expect(settlePaidToolReservation(reserved, providerReported)).toEqual({
+			charge: providerReported,
+			costAdjustmentUsd: -0.008,
+			creditAdjustment: -1
+		});
+		expect(settlePaidToolReservation(reserved, null)).toEqual({
+			charge: reserved,
+			costAdjustmentUsd: 0,
+			creditAdjustment: 0
+		});
 	});
 });
