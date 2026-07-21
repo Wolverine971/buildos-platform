@@ -47,6 +47,7 @@ import {
 	type WebVisitResultPayload
 } from '$lib/services/agentic-chat/tools/webvisit';
 import { convertHtmlToMarkdown } from '$lib/services/agentic-chat/tools/webvisit/markdown';
+import { isSameRegistrableDomain } from '$lib/services/agentic-chat/tools/webvisit/parser';
 import type { ExecutorContext } from './types';
 import { createLogger } from '$lib/utils/logger';
 
@@ -464,8 +465,18 @@ export class ExternalExecutor extends BaseExecutor {
 		}
 	): Promise<{ id?: string; stored: boolean } | undefined> {
 		const admin = this.getAdminSupabase();
-		const canonicalUrl = fetched.canonical_url ?? fetched.final_url;
-		const normalizedUrl = this.normalizeUrlForStorage(canonicalUrl);
+		// SECURITY: web_page_visits is a GLOBAL cross-user cache keyed by
+		// normalized_url. Only key/store by the page's declared canonical_url when
+		// it shares the final_url's registrable domain; otherwise a page could
+		// claim another site's canonical and poison that URL's cache entry for
+		// every user. (parser.ts already strips cross-site canonicals — this is
+		// defense-in-depth at the cache-key boundary.)
+		const cacheKeyUrl =
+			fetched.canonical_url &&
+			isSameRegistrableDomain(fetched.canonical_url, fetched.final_url)
+				? fetched.canonical_url
+				: fetched.final_url;
+		const normalizedUrl = this.normalizeUrlForStorage(cacheKeyUrl);
 		const markdown = responseContent.markdown ?? fetched.text;
 		const excerpt = buildExcerpt(markdown ?? '');
 		const contentHash = markdown

@@ -30,6 +30,8 @@ async function availablePort(): Promise<number> {
 const postgresAvailable = hasCommand('initdb') && hasCommand('pg_ctl') && hasCommand('psql');
 const describePostgres = postgresAvailable ? describe : describe.skip;
 
+const delay = (ms: number): Promise<void> => new Promise((resolveDelay) => setTimeout(resolveDelay, ms));
+
 describePostgres('deep research PostgreSQL guardrails', () => {
 	let tempDir = '';
 	let dataDir = '';
@@ -54,6 +56,16 @@ describePostgres('deep research PostgreSQL guardrails', () => {
 			],
 			{ encoding: 'utf8' }
 		).trim();
+
+	const psqlError = (sql: string): string => {
+		try {
+			psql(sql);
+		} catch (error) {
+			const failure = error as { stderr?: string; message?: string };
+			return `${failure.stderr ?? ''}\n${failure.message ?? ''}`;
+		}
+		throw new Error('Expected the SQL statement to fail, but it succeeded.');
+	};
 
 	const psqlAsync = (sql: string): Promise<string> =>
 		new Promise((resolveSql, rejectSql) => {
@@ -194,6 +206,7 @@ describePostgres('deep research PostgreSQL guardrails', () => {
 		applyMigration('20260719030000_agent_run_cost_ledger.sql');
 		applyMigration('20260719040000_agent_run_cost_reconciliation.sql');
 		applyMigration('20260719050000_agent_run_cost_rpc_privileges.sql');
+		applyMigration('20260720010000_deep_research_hardening.sql');
 	});
 
 	afterAll(() => {
@@ -332,13 +345,24 @@ describePostgres('deep research PostgreSQL guardrails', () => {
 		insertChild('25000000-0000-4000-8000-000000000001', rootId);
 		insertChild('25000000-0000-4000-8000-000000000002', rootId);
 
-		psql(`
-			UPDATE public.agent_runs
-			SET status = 'running', started_at = NOW()
-			WHERE id = '${rootId}' AND status = 'running'
+		const reclaimedRows = psql(`
+			WITH reclaimed AS (
+				UPDATE public.agent_runs
+				SET status = 'running', started_at = NOW()
+				WHERE id = '${rootId}' AND status = 'running'
+				RETURNING id
+			)
+			SELECT COUNT(*) FROM reclaimed
 		`);
 
-		expect(psql(`SELECT status FROM public.agent_runs WHERE id = '${rootId}'`)).toBe('running');
+		expect(reclaimedRows).toBe('1');
+		expect(
+			psql(`
+				SELECT status::TEXT || ':' || (started_at IS NOT NULL)::TEXT
+				FROM public.agent_runs
+				WHERE id = '${rootId}'
+			`)
+		).toBe('running:true');
 	});
 
 	it('queues synthesis exactly once when the final child settles', () => {
@@ -413,6 +437,91 @@ describePostgres('deep research PostgreSQL guardrails', () => {
 				`SELECT orchestration_state->>'stage' FROM public.agent_runs WHERE id = '${rootId}'`
 			)
 		).toBe('researching');
+		expect(psql('SELECT COUNT(*) FROM public.queue_jobs')).toBe('0');
+	});
+
+	it('fails closed without enqueueing when the coordinator checkpoint is missing its stage', () => {
+		const rootId = '10000000-0000-4000-8000-000000000014';
+		const childOne = '28000000-0000-4000-8000-000000000001';
+		const childTwo = '28000000-0000-4000-8000-000000000002';
+		insertRoot(rootId, 'researching', [childOne, childTwo]);
+		insertChild(childOne, rootId);
+		insertChild(childTwo, rootId);
+		psql(`
+			UPDATE public.agent_runs
+			SET orchestration_state = '{}'::jsonb
+			WHERE id = '${rootId}'
+		`);
+
+		// The settle-time wake trigger exercises the same guard and must also
+		// fail closed instead of enqueueing repeatedly.
+		psql(
+			`UPDATE public.agent_runs SET status = 'completed' WHERE id IN ('${childOne}', '${childTwo}')`
+		);
+
+		expect(psql(`SELECT public.queue_deep_research_synthesis('${rootId}')`)).toBe('');
+		expect(psql('SELECT COUNT(*) FROM public.queue_jobs')).toBe('0');
+		expect(
+			psql(`SELECT orchestration_state::TEXT FROM public.agent_runs WHERE id = '${rootId}'`)
+		).toBe('{}');
+	});
+
+	it('does not re-enqueue synthesis after the queued continuation has completed', () => {
+		const rootId = '10000000-0000-4000-8000-000000000015';
+		const childOne = '29000000-0000-4000-8000-000000000001';
+		const childTwo = '29000000-0000-4000-8000-000000000002';
+		insertRoot(rootId, 'researching', [childOne, childTwo]);
+		insertChild(childOne, rootId);
+		insertChild(childTwo, rootId);
+		psql(
+			`UPDATE public.agent_runs SET status = 'completed' WHERE id IN ('${childOne}', '${childTwo}')`
+		);
+
+		expect(
+			psql(
+				`SELECT orchestration_state->>'stage' FROM public.agent_runs WHERE id = '${rootId}'`
+			)
+		).toBe('synthesis_queued');
+		expect(psql('SELECT COUNT(*) FROM public.queue_jobs')).toBe('1');
+
+		psql(`UPDATE public.queue_jobs SET status = 'completed'`);
+
+		// With production dedup semantics a terminal job no longer blocks the
+		// dedup key, so only the stage checkpoint prevents a duplicate dispatch.
+		expect(psql(`SELECT public.queue_deep_research_synthesis('${rootId}')`)).toBe('');
+		expect(psql('SELECT COUNT(*) FROM public.queue_jobs')).toBe('1');
+	});
+
+	it('does not invoke synthesis for children of ordinary agent runs', () => {
+		const parentId = '30000000-0000-4000-8000-000000000002';
+		const childId = '30000000-0000-4000-8000-000000000003';
+		psql(`
+			INSERT INTO public.agent_runs (
+				id, user_id, trigger, label, goal, context_type, scope_mode,
+				status, depth, effort, run_template, orchestration_state
+			) VALUES (
+				'${parentId}', '90000000-0000-4000-8000-000000000001', 'chat',
+				'Parent', 'Ordinary work', 'global', 'read_only', 'running', 0,
+				'standard', 'agent', '{}'
+			)
+		`);
+		psql(`
+			INSERT INTO public.agent_runs (
+				id, user_id, trigger, parent_run_id, depth, label, goal,
+				context_type, scope_mode, effort, run_template, status,
+				orchestration_state
+			) VALUES (
+				'${childId}', '90000000-0000-4000-8000-000000000001', 'chat',
+				'${parentId}', 1, 'Child', 'Subtask', 'global', 'read_only',
+				'standard', 'agent', 'queued', '{}'
+			)
+		`);
+
+		psql(`UPDATE public.agent_runs SET status = 'completed' WHERE id = '${childId}'`);
+
+		expect(psql(`SELECT status FROM public.agent_runs WHERE id = '${childId}'`)).toBe(
+			'completed'
+		);
 		expect(psql('SELECT COUNT(*) FROM public.queue_jobs')).toBe('0');
 	});
 
@@ -531,6 +640,169 @@ describePostgres('deep research PostgreSQL guardrails', () => {
 		).toThrow();
 	});
 
+	it('treats byte-identical ledger replays beyond column precision as idempotent', () => {
+		const rootId = '10000000-0000-4000-8000-000000000016';
+		insertRoot(rootId, 'dispatching');
+
+		const reserve = (): { idempotent: boolean; reserved_cost_usd: number } =>
+			JSON.parse(
+				psql(`
+					SELECT public.reserve_agent_run_cost(
+						'${rootId}', 'probe', 'tavily', 'util.web.search',
+						'advanced', 0.000215950000000004, 2, 'credits', '{}'
+					)
+				`)
+			);
+
+		const reserved = reserve();
+		const reservedReplay = reserve();
+		expect(reserved).toMatchObject({ idempotent: false, reserved_cost_usd: 0.00021595 });
+		expect(reservedReplay).toMatchObject({ idempotent: true, reserved_cost_usd: 0.00021595 });
+		expect(psql('SELECT COUNT(*) FROM public.agent_run_cost_entries')).toBe('1');
+
+		psql(`
+			SELECT public.reserve_agent_run_cost(
+				'${rootId}', 'synthesis', 'smart-llm', 'deep_research.synthesis',
+				'synthesis-model', 0.02, 1000, 'tokens', '{}'
+			)
+		`);
+		const settle = (): { idempotent: boolean; status: string; actual_cost_usd: number } =>
+			JSON.parse(
+				psql(`
+					SELECT public.settle_agent_run_cost(
+						'${rootId}', 'synthesis', 'settled', 0.01234567890123, 900,
+						'provider-precision', '{}'
+					)
+				`)
+			);
+
+		const settled = settle();
+		const settledReplay = settle();
+		expect(settled).toMatchObject({
+			idempotent: false,
+			status: 'settled',
+			actual_cost_usd: 0.01234568
+		});
+		expect(settledReplay).toMatchObject({ idempotent: true, status: 'settled' });
+	});
+
+	it('preserves recorded overrun actuals through uncertain re-settles and keeps them in exposure', () => {
+		const rootId = '10000000-0000-4000-8000-000000000017';
+		insertRoot(rootId, 'dispatching');
+		psql(`
+			SELECT public.reserve_agent_run_cost(
+				'${rootId}', 'overrun', 'smart-llm', 'deep_research.synthesis',
+				'synthesis-model', 0.02, 1000, 'tokens', '{}'
+			)
+		`);
+
+		const recorded = JSON.parse(
+			psql(`
+				SELECT public.settle_agent_run_cost(
+					'${rootId}', 'overrun', 'reconciliation_required', 0.03, 900,
+					'provider-overrun', '{}'
+				)
+			`)
+		) as { status: string; actual_cost_usd: number };
+		expect(recorded).toMatchObject({
+			status: 'reconciliation_required',
+			actual_cost_usd: 0.03
+		});
+
+		const uncertainReplay = JSON.parse(
+			psql(`
+				SELECT public.settle_agent_run_cost(
+					'${rootId}', 'overrun', 'reconciliation_required'
+				)
+			`)
+		) as { idempotent: boolean; status: string; actual_cost_usd: number };
+		expect(uncertainReplay).toMatchObject({
+			idempotent: true,
+			status: 'reconciliation_required',
+			actual_cost_usd: 0.03
+		});
+		expect(
+			psql(`
+				SELECT actual_cost_usd
+				FROM public.agent_run_cost_entries
+				WHERE leaf_run_id = '${rootId}' AND attempt_key = 'overrun'
+			`)
+		).toBe('0.03000000');
+
+		// Exposure must still count the recorded 0.03 actual: on the 0.50 budget
+		// a 0.48 reservation fits only if exposure had shrunk back to the 0.02
+		// reservation the NULL-actual re-settle previously restored.
+		expect(
+			psqlError(`
+				SELECT public.reserve_agent_run_cost(
+					'${rootId}', 'followup', 'smart-llm', 'deep_research.plan',
+					'planner-model', 0.48, 1000, 'tokens', '{}'
+				)
+			`)
+		).toContain('AGENT_RUN_COST_BUDGET_EXCEEDED');
+	});
+
+	it('does not deadlock when a reservation races the final child settlement', async () => {
+		const rootId = '10000000-0000-4000-8000-000000000018';
+		const childOne = '2a000000-0000-4000-8000-000000000001';
+		const childTwo = '2a000000-0000-4000-8000-000000000002';
+		insertRoot(rootId, 'researching', [childOne, childTwo]);
+		insertChild(childOne, rootId);
+		insertChild(childTwo, rootId);
+		psql(`UPDATE public.agent_runs SET status = 'completed' WHERE id = '${childTwo}'`);
+		psql(`UPDATE public.agent_runs SET status = 'running' WHERE id = '${childOne}'`);
+
+		const reserveSession = psqlAsync(`
+			BEGIN;
+			SELECT public.reserve_agent_run_cost(
+				'${childOne}', 'race', 'tavily', 'util.web.search',
+				'advanced', 0.05, 1, 'credits', '{}'
+			);
+			SELECT pg_sleep(1.5);
+			COMMIT;
+		`);
+		await delay(400);
+
+		// The open reservation transaction must hold the root lock...
+		expect(
+			psqlError(`SELECT id FROM public.agent_runs WHERE id = '${rootId}' FOR UPDATE NOWAIT`)
+		).toContain('could not obtain lock');
+		// ...but no FOR UPDATE lock on the child row: only the ledger insert's FK
+		// KEY SHARE remains, which no longer blocks the settle path's status
+		// UPDATE (the reserve half of the old child-settle deadlock pair).
+		expect(
+			psql(
+				`SELECT id FROM public.agent_runs WHERE id = '${childOne}' FOR NO KEY UPDATE NOWAIT`
+			)
+		).toBe(childOne);
+
+		const settleSession = psqlAsync(
+			`UPDATE public.agent_runs SET status = 'completed' WHERE id = '${childOne}'`
+		);
+		const outcomes = await Promise.allSettled([reserveSession, settleSession]);
+		const failures = outcomes.filter(
+			(outcome): outcome is PromiseRejectedResult => outcome.status === 'rejected'
+		);
+
+		expect(failures.map((failure) => String(failure.reason))).toEqual([]);
+		expect(
+			psql(`
+				SELECT status || ':' || reserved_cost_usd
+				FROM public.agent_run_cost_entries
+				WHERE root_run_id = '${rootId}'
+			`)
+		).toBe('reserved:0.05000000');
+		expect(psql(`SELECT status FROM public.agent_runs WHERE id = '${childOne}'`)).toBe(
+			'completed'
+		);
+		expect(
+			psql(
+				`SELECT orchestration_state->>'stage' FROM public.agent_runs WHERE id = '${rootId}'`
+			)
+		).toBe('synthesis_queued');
+		expect(psql('SELECT COUNT(*) FROM public.queue_jobs')).toBe('1');
+	});
+
 	it('retains uncertain exposure and flags provider cost above reservation', () => {
 		const rootId = '10000000-0000-4000-8000-000000000008';
 		insertRoot(rootId, 'dispatching');
@@ -582,8 +854,12 @@ describePostgres('deep research PostgreSQL guardrails', () => {
 				)
 			`)
 		).toThrow();
-		psql(`DELETE FROM public.agent_runs WHERE id = '${rootId}'`);
-		expect(psql('SELECT COUNT(*) FROM public.agent_run_cost_entries')).toBe('0');
+		// Money records must outlive runs: deleting a run with ledger entries is
+		// blocked by the ON DELETE RESTRICT foreign keys.
+		expect(psqlError(`DELETE FROM public.agent_runs WHERE id = '${rootId}'`)).toContain(
+			'violates foreign key constraint'
+		);
+		expect(psql('SELECT COUNT(*) FROM public.agent_run_cost_entries')).toBe('1');
 	});
 
 	it('claims stale cost rows once with bounded lease ownership', () => {
@@ -854,6 +1130,7 @@ describePostgres('deep research PostgreSQL guardrails', () => {
 
 	it('allows only the service role to read the ledger and execute cost RPCs', () => {
 		const functionSignatures = [
+			'public.queue_deep_research_synthesis(uuid)',
 			'public.reserve_agent_run_cost(uuid,text,text,text,text,numeric,numeric,text,jsonb)',
 			'public.settle_agent_run_cost(uuid,text,text,numeric,numeric,text,jsonb,boolean)',
 			'public.claim_agent_run_cost_reconciliation(timestamp with time zone,integer,integer,integer)',
@@ -901,5 +1178,35 @@ describePostgres('deep research PostgreSQL guardrails', () => {
 				`)
 			).toThrow();
 		}
+	});
+
+	it('denies anon and authenticated execution of queue_deep_research_synthesis', () => {
+		const signature = 'public.queue_deep_research_synthesis(uuid)';
+		expect(psql(`SELECT has_function_privilege('anon', '${signature}', 'EXECUTE')`)).toBe('f');
+		expect(
+			psql(`SELECT has_function_privilege('authenticated', '${signature}', 'EXECUTE')`)
+		).toBe('f');
+		expect(
+			psql(`SELECT has_function_privilege('service_role', '${signature}', 'EXECUTE')`)
+		).toBe('t');
+
+		for (const role of ['anon', 'authenticated']) {
+			expect(
+				psqlError(`
+					SET ROLE ${role};
+					SELECT public.queue_deep_research_synthesis(
+						'00000000-0000-4000-8000-000000000000'
+					)
+				`)
+			).toContain('permission denied');
+		}
+		expect(() =>
+			psql(`
+				SET ROLE service_role;
+				SELECT public.queue_deep_research_synthesis(
+					'00000000-0000-4000-8000-000000000000'
+				)
+			`)
+		).not.toThrow();
 	});
 });

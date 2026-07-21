@@ -849,9 +849,22 @@ export class SmartLLMService {
 						responseForLogging.usage.cost >= 0
 							? responseForLogging.usage.cost
 							: null;
-					const totalCost = reportedTotalCost ?? inputCost + outputCost;
-					const costSource: JSONUsageEvent['costSource'] =
-						reportedTotalCost === null ? 'catalog_estimate' : 'provider_reported';
+					const hasSuccessTokenUsage =
+						typeof responseForLogging.usage?.prompt_tokens === 'number' &&
+						typeof responseForLogging.usage?.completion_tokens === 'number';
+					// A 200 without a usage object is not proof the call was free.
+					// Budgeted calls keep their conservative reservation instead of
+					// settling at $0; the reconciler resolves the true cost later.
+					const missingBudgetedUsage =
+						Boolean(spendPlan) && !hasSuccessTokenUsage && reportedTotalCost === null;
+					const totalCost = missingBudgetedUsage
+						? (spendPlan?.reservedCostUsd ?? 0)
+						: (reportedTotalCost ?? inputCost + outputCost);
+					const costSource: JSONUsageEvent['costSource'] = missingBudgetedUsage
+						? 'reservation'
+						: reportedTotalCost === null
+							? 'catalog_estimate'
+							: 'provider_reported';
 
 					console.log(`JSON Response Success:
 				Model: ${actualModel}
@@ -868,8 +881,8 @@ export class SmartLLMService {
 						promptTokens: responseForLogging.usage?.prompt_tokens || 0,
 						completionTokens: responseForLogging.usage?.completion_tokens || 0,
 						totalTokens: responseForLogging.usage?.total_tokens || 0,
-						inputCost,
-						outputCost,
+						inputCost: missingBudgetedUsage ? totalCost : inputCost,
+						outputCost: missingBudgetedUsage ? 0 : outputCost,
 						totalCost,
 						costSource
 					} satisfies JSONUsageEvent;

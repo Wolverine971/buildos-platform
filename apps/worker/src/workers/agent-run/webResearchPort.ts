@@ -355,24 +355,25 @@ function decodeHtmlEntities(value: string): string {
 function stripHtmlToText(html: string): { title?: string; content: string } {
 	const titleMatch = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
 	const title = titleMatch
-		? compactText(decodeHtmlEntities(sanitizeHtml(titleMatch[1], { allowedTags: [] })), 500)
+		? compactText(decodeHtmlEntities(sanitizeHtml(titleMatch[1] ?? '', { allowedTags: [] })), 500)
 		: undefined;
 	const body = html.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)?.[1] ?? html;
-	const withoutNoise = body
-		.replace(
-			/<(?:script|style|noscript|svg|canvas|iframe|form)\b[^>]*>[\s\S]*?<\/(?:script|style|noscript|svg|canvas|iframe|form)>/gi,
-			' '
-		)
-		.replace(/<!--[\s\S]*?-->/g, ' ')
-		.replace(
-			/<\/?(?:article|aside|blockquote|br|dd|div|dl|dt|figcaption|figure|footer|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|table|td|th|tr|ul)\b[^>]*>/gi,
-			'\n'
-		);
+	// Convert block-level boundaries to newlines first (a linear single-tag
+	// pass) so adjacent blocks don't run together after flattening.
+	const withBreaks = body.replace(
+		/<\/?(?:article|aside|blockquote|br|dd|div|dl|dt|figcaption|figure|footer|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|table|td|th|tr|ul)\b[^>]*>/gi,
+		'\n'
+	);
+	// sanitize-html strips ALL remaining tags and, via nonTextTags, discards the
+	// CONTENT of executable/embedded tags. This replaces a `<tag>[\s\S]*?</tag>`
+	// regex that backtracked quadratically (~35s on a 2MB page of unclosed
+	// <script> tags); sanitize-html tokenizes linearly instead.
 	const content = normalizePlainText(
 		decodeHtmlEntities(
-			sanitizeHtml(withoutNoise, {
+			sanitizeHtml(withBreaks, {
 				allowedTags: [],
-				allowedAttributes: {}
+				allowedAttributes: {},
+				nonTextTags: ['script', 'style', 'noscript', 'svg', 'canvas', 'iframe', 'form']
 			})
 		)
 	);

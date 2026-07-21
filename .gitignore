@@ -99,3 +99,6 @@ supabase.openapi*.json
 .env*.local
 
 video-projects
+
+tmp
+output

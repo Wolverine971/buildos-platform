@@ -1971,6 +1971,18 @@
 		</main>
 
 		<script>
+			const requestedPrintGroup = new URLSearchParams(window.location.search).get("print");
+			const allowedPrintGroups = new Set([
+				"all",
+				"agentic-one",
+				"agentic-deep",
+				"loops-one",
+				"loops-deep"
+			]);
+			if (requestedPrintGroup && allowedPrintGroups.has(requestedPrintGroup)) {
+				document.body.dataset.printGroup = requestedPrintGroup;
+			}
+
 			function printGroup(group) {
 				document.body.dataset.printGroup = group;
 				window.setTimeout(() => window.print(), 30);

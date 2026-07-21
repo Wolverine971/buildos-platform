@@ -38,6 +38,7 @@ import {
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
+import { LLMUsageLogger } from '@buildos/smart-llm';
 import {
 	type JSONSpendReservationEvent,
 	type JSONUsageEvent,
@@ -100,12 +101,42 @@ interface RunBudgets {
 
 const DEFAULT_MAX_TOOL_CALLS = 20;
 const TRANSCRIPT_RESULT_CHARS = 4000;
-const WEB_TRANSCRIPT_RESULT_CHARS = 10_000;
+const WEB_TRANSCRIPT_RESULT_CHARS = 12_500;
+
+// Analytics bridge: paid research tool spend must appear in the same
+// llm_usage_logs pane admin cost dashboards already read. The cost ledger
+// (agent_run_cost_entries) remains the enforcement record.
+const paidToolUsageLogger = new LLMUsageLogger({ supabase });
 
 function transcriptResultCharsForOp(op: string): number {
 	return AGENT_OP_WEB_READ_CATALOG.some((webOp) => webOp === op)
 		? WEB_TRANSCRIPT_RESULT_CHARS
 		: TRANSCRIPT_RESULT_CHARS;
+}
+
+// Budgeted-reservation attempt keys MUST include the job's retry ordinal. A queue
+// retry re-runs the SAME job (same queue_job_id) with an incremented `attempts`
+// count. Without the ordinal, a retry reuses the prior attempt's key and the cost
+// ledger rejects it as a duplicate attempt, which kills the run. Including the
+// ordinal makes a retry reserve FRESH budget (the prior attempt's exposure stays
+// counted in the ledger and is settled by the reconciler); the retry either gets
+// fresh budget or fails closed on budget_exceeded. The iteration/stage/toolCalls
+// components keep keys stable WITHIN a single job run.
+export function deepResearchAttemptKey(jobId: string, jobAttempts: number, stage: string): string {
+	return `llm:${jobId}:a${jobAttempts}:deep-research:${stage}`;
+}
+
+export function turnAttemptKey(jobId: string, jobAttempts: number, iteration: number): string {
+	return `llm:${jobId}:a${jobAttempts}:turn:${iteration}`;
+}
+
+export function toolAttemptKey(
+	jobId: string,
+	jobAttempts: number,
+	toolCalls: number,
+	op: string
+): string {
+	return `tool:${jobId}:a${jobAttempts}:${toolCalls}:${op}`;
 }
 
 function isEntityAction(value: unknown): value is EntityAction {
@@ -655,6 +686,10 @@ function buildUserPrompt(
 
 export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>) {
 	const runId = job.data.run_id;
+	// The queue exposes this job's retry ordinal (0 on first execution, then
+	// incremented by fail_queue_job/reset_stalled_jobs). Every paid-attempt key
+	// includes it so a retry reserves fresh budget instead of hitting duplicate_attempt.
+	const jobAttempts = job.attempts ?? 0;
 	const startedAtMs = Date.now();
 	await job.log?.(`Agent Run ${runId} started`);
 
@@ -984,7 +1019,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		// session run go terminal, so the injected message must already exist.
 		await injectChatCompletionMessage(run, finalStatus, resultWithProposal);
 		const completedAt = new Date().toISOString();
-		await supabase
+		const { error: finalizeError } = await supabase
 			.from('agent_runs')
 			.update({
 				status: finalStatus,
@@ -994,6 +1029,14 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 				completed_at: completedAt
 			})
 			.eq('id', runId);
+		if (finalizeError) {
+			// Completing the queue job while the run row is still `running`
+			// strands the run (and, for deep research, the user's capacity).
+			// Fail the job so the queue retries the terminal transition.
+			throw new Error(
+				`Failed to finalize agent run ${runId} as ${finalStatus}: ${finalizeError.message}`
+			);
+		}
 		if (run.parent_run_id) {
 			try {
 				await maybeQueueDeepResearchParent(run.parent_run_id);
@@ -1181,6 +1224,24 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		if (exhaustedBeforeStage) {
 			return finalizeBudgetExhausted(exhaustedBeforeStage);
 		}
+		// Cheap read-only cancel probe the coordinator runs before its two paid
+		// irreversible actions (fan-out, synthesis). A root has no parent, so this
+		// resolves to "an unconsumed cancel signal exists for this run".
+		const probeCancellation = async (): Promise<boolean> => {
+			const { data: pendingSignals } = await supabase
+				.from('agent_run_signals')
+				.select('kind')
+				.eq('run_id', runId)
+				.is('consumed_at', null);
+			return (
+				resolveAgentRunCancellationSource({
+					pendingSignalKinds: (pendingSignals ?? []).map((signal) => signal.kind),
+					parentRunId: run.parent_run_id,
+					parentCancelSignalCount: 0,
+					parentStatus: null
+				}) !== null
+			);
+		};
 		try {
 			const outcome = await processDeepResearchCoordinator({
 				run,
@@ -1203,11 +1264,12 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 				},
 				llmAccounting: (stage) =>
 					createLlmAccountingHooks(
-						`llm:${job.id}:deep-research:${stage}`,
+						deepResearchAttemptKey(job.id, jobAttempts, stage),
 						`deep_research.${stage}`,
 						false
 					),
-				emit: (eventType, payload) => emitEvent(runId, eventType, payload)
+				emit: (eventType, payload) => emitEvent(runId, eventType, payload),
+				checkCancellation: probeCancellation
 			});
 			if (outcome.kind === 'waiting') {
 				await job.log?.(`Agent Run ${runId}: ${outcome.message}`);
@@ -1264,7 +1326,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 				spendLimit === undefined
 					? null
 					: createLlmAccountingHooks(
-							`llm:${job.id}:turn:${iteration}`,
+							turnAttemptKey(job.id, jobAttempts, iteration),
 							run.effort === 'deep' ? 'agent_run.deep_turn' : 'agent_run.turn'
 						);
 			turn = await llm.getJSONResponse<AgentTurn>({
@@ -1385,7 +1447,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		paidToolDispatches.length = 0;
 		paidToolAccountingFailure = null;
 		activePaidToolAttemptKey =
-			op === AGENT_OP_WEB_SEARCH ? `tool:${job.id}:${toolCalls}:${op}` : null;
+			op === AGENT_OP_WEB_SEARCH ? toolAttemptKey(job.id, jobAttempts, toolCalls, op) : null;
 		let result: Awaited<ReturnType<typeof executeAgentOp>>;
 		try {
 			result = await executeAgentOp(
@@ -1455,6 +1517,39 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 								error instanceof Error ? error.message : String(error),
 								'rpc_error'
 							);
+			}
+			try {
+				const tavilyResource = settlement.charge.credits === 1 ? 'basic' : 'advanced';
+				await paidToolUsageLogger.logUsageToDatabase({
+					userId: run.user_id,
+					operationType: 'agent_run_web_search',
+					modelRequested: `tavily/search-${tavilyResource}`,
+					modelUsed: `tavily/search-${tavilyResource}`,
+					provider: 'tavily',
+					promptTokens: 0,
+					completionTokens: 0,
+					totalTokens: 0,
+					inputCost: 0,
+					outputCost: 0,
+					totalCost: settlement.charge.cost_usd,
+					responseTimeMs: durationMs,
+					requestStartedAt: new Date(opStart),
+					requestCompletedAt: new Date(opStart + durationMs),
+					status: result.ok ? 'success' : 'failure',
+					metadata: {
+						agent_run_id: runId,
+						attempt_key: dispatchedPaidTool.attemptKey,
+						tavily_credits: settlement.charge.credits,
+						provider_request_id: settlement.charge.provider_request_id ?? null,
+						charge_source: settlement.charge.source,
+						project_id: run.project_id ?? null
+					}
+				});
+			} catch (error) {
+				console.warn(
+					'[agentRunWorker] failed to log web-search usage row:',
+					error instanceof Error ? error.message : error
+				);
 			}
 		}
 

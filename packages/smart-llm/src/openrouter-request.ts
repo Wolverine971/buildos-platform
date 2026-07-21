@@ -115,6 +115,11 @@ export function buildOpenRouterChatCompletionBody(
 		body.prompt_cache_key = params.prompt_cache_key.trim();
 	}
 
+	// Opt in to OpenRouter usage accounting so responses carry authoritative
+	// usage.cost. Settlement then records provider-reported spend instead of a
+	// catalog estimate, and budgeted-call reconciliation traffic shrinks.
+	body.usage = { include: true };
+
 	const fallbackModels = resolveOpenRouterFallbackModels(params.model, params.models);
 	if (fallbackModels.length > 0) {
 		body.models = fallbackModels;

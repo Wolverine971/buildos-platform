@@ -63,13 +63,119 @@ const MARKDOWN_ALLOWED_ATTRIBUTES: Record<string, string[]> = {
 const BLOCK_TAG_REGEX =
 	/(<\/?(p|div|section|article|main|header|footer|nav|aside|li|ul|ol|h[1-6]|tr|td|th|table|blockquote|pre)\b[^>]*>)/gi;
 
+/**
+ * Remove the given tag blocks (opening tag, contents, and closing tag) while
+ * preserving the surrounding HTML structure that the reader-mode block
+ * extraction relies on.
+ *
+ * This is a single-pass linear scan. The previous implementation built a
+ * `<tag>[\s\S]*?</tag>` regex per tag, which backtracks quadratically on
+ * adversarial input (e.g. a 2MB page of unclosed `<script>` tags stalled the
+ * event loop for tens of seconds). A `sanitize-html` pass cannot substitute
+ * here because it would flatten the markup to plain text and destroy the tag
+ * structure that `selectReaderHtml`/`extractBlocks` depend on.
+ */
 function stripTagBlocks(html: string, tags: string[]): string {
-	let output = html;
-	for (const tag of tags) {
-		const regex = new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?<\\/${tag}>`, 'gi');
-		output = output.replace(regex, ' ');
+	if (tags.length === 0) return html;
+	const tagSet = new Set(tags.map((tag) => tag.toLowerCase()));
+	const lower = html.toLowerCase();
+	let result = '';
+	let cursor = 0;
+	let searchFrom = 0;
+
+	while (searchFrom < html.length) {
+		const open = lower.indexOf('<', searchFrom);
+		if (open === -1) break;
+
+		const nameStart = open + 1;
+		// Skip closing tags — only opening tags anchor a block to remove.
+		if (lower.charCodeAt(nameStart) === 47 /* '/' */) {
+			searchFrom = open + 1;
+			continue;
+		}
+
+		let nameEnd = nameStart;
+		while (nameEnd < lower.length) {
+			const code = lower.charCodeAt(nameEnd);
+			const isLower = code >= 97 && code <= 122;
+			const isDigit = code >= 48 && code <= 57;
+			if (!isLower && !isDigit) break;
+			nameEnd += 1;
+		}
+
+		const name = lower.slice(nameStart, nameEnd);
+		if (nameEnd === nameStart || !tagSet.has(name)) {
+			searchFrom = open + 1;
+			continue;
+		}
+
+		const openTagEnd = lower.indexOf('>', nameEnd);
+		if (openTagEnd === -1) break; // Malformed opening tag — leave the tail intact.
+
+		result += html.slice(cursor, open) + ' ';
+
+		const closeSeq = `</${name}>`;
+		const closeIdx = lower.indexOf(closeSeq, openTagEnd + 1);
+		if (closeIdx === -1) {
+			// Unclosed block: drop everything from here to the end, matching the
+			// lazy regex's "no closing tag ⇒ no readable content" behavior.
+			cursor = html.length;
+			break;
+		}
+
+		cursor = closeIdx + closeSeq.length;
+		searchFrom = cursor;
 	}
-	return output;
+
+	result += html.slice(cursor);
+	return result;
+}
+
+/**
+ * Registrable domain (approximate eTLD+1) for a hostname. Dependency-free: uses
+ * the last two labels, extended to three when the second-to-last label is a
+ * common second-level public suffix (e.g. `example.co.uk`). Good enough to
+ * distinguish unrelated sites (`evil.com` vs `nytimes.com`); it is a
+ * same-site guard, not a full Public Suffix List.
+ */
+const COMMON_SECOND_LEVEL_SUFFIXES = new Set([
+	'co',
+	'com',
+	'org',
+	'net',
+	'gov',
+	'edu',
+	'ac',
+	'mil'
+]);
+
+function registrableDomain(hostname: string): string {
+	const labels = hostname
+		.toLowerCase()
+		.replace(/\.$/, '')
+		.split('.')
+		.filter(Boolean);
+	if (labels.length <= 2) return labels.join('.');
+	const secondLevel = labels[labels.length - 2];
+	if (secondLevel && COMMON_SECOND_LEVEL_SUFFIXES.has(secondLevel)) {
+		return labels.slice(-3).join('.');
+	}
+	return labels.slice(-2).join('.');
+}
+
+/**
+ * True when both URLs share a registrable domain. Used to reject cross-site
+ * `<link rel=canonical>` values that would otherwise poison the shared
+ * `web_page_visits` cache key for another site.
+ */
+export function isSameRegistrableDomain(urlA: string, urlB: string): boolean {
+	try {
+		const a = registrableDomain(new URL(urlA).hostname);
+		const b = registrableDomain(new URL(urlB).hostname);
+		return a.length > 0 && a === b;
+	} catch {
+		return false;
+	}
 }
 
 type HtmlBlock = {
@@ -387,9 +493,14 @@ function extractCanonicalUrl(html: string, baseUrl: string): string | undefined 
 		if (!rel || !rel.split(/\s+/).includes('canonical')) continue;
 		if (!attrs.href) continue;
 		const resolved = normalizeUrlAttribute(attrs.href, baseUrl);
-		if (resolved && resolved.startsWith('http')) {
-			return resolved;
-		}
+		if (!resolved || !resolved.startsWith('http')) continue;
+		// SECURITY: only honor a canonical URL within the page's own
+		// registrable domain. A cross-site canonical (e.g. evil.com declaring
+		// <link rel=canonical href="https://nytimes.com/x">) must be ignored —
+		// otherwise it poisons the shared web_page_visits cache key for another
+		// site and serves attacker content to every later visitor of that URL.
+		if (!isSameRegistrableDomain(resolved, baseUrl)) continue;
+		return resolved;
 	}
 	return undefined;
 }

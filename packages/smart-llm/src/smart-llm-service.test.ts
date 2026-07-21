@@ -913,6 +913,100 @@ describe('SmartLLMService JSON model recovery', () => {
 		expect(onUsage.mock.calls[0]?.[0]?.providerRequestId).toBe('gen-lost-response');
 	});
 
+	it('settles a budgeted call to the spend-plan reservation when a 200 response omits usage', async () => {
+		const onUsage = vi.fn();
+		const onSpendReservation = vi.fn(async () => {});
+		const fetchMock = vi.fn(async () => {
+			return new Response(
+				JSON.stringify({
+					id: 'completion-no-usage-budgeted',
+					model: GLM_52_MODEL,
+					provider: 'Z.AI',
+					choices: [
+						{
+							message: { role: 'assistant', content: '{"result":"ok"}' },
+							finish_reason: 'stop'
+						}
+					]
+					// usage intentionally omitted — a 200 without usage is not proof the call was free.
+				}),
+				{ status: 200, headers: { 'content-type': 'application/json' } }
+			);
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		const result = await llm.getJSONResponse<{ result: string }>({
+			systemPrompt: 'Return JSON.',
+			userPrompt: 'Analyze within the reserved envelope.',
+			userId: 'user-budgeted-no-usage',
+			profile: 'powerful',
+			spendLimit: { maxCostUsd: 0.01 },
+			onSpendReservation,
+			onUsage
+		});
+
+		expect(result).toEqual({ result: 'ok' });
+		expect(onSpendReservation).toHaveBeenCalledOnce();
+		const reservedCostUsd = onSpendReservation.mock.calls[0]?.[0]?.reservedCostUsd as number;
+		expect(reservedCostUsd).toEqual(expect.any(Number));
+
+		expect(onUsage).toHaveBeenCalledOnce();
+		expect(onUsage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				costSource: 'reservation',
+				totalCost: reservedCostUsd,
+				inputCost: reservedCostUsd,
+				outputCost: 0
+			})
+		);
+	});
+
+	it('keeps reporting the $0 catalog estimate for unbudgeted calls when a 200 response omits usage', async () => {
+		const onUsage = vi.fn();
+		const fetchMock = vi.fn(async () => {
+			return new Response(
+				JSON.stringify({
+					id: 'completion-no-usage-unbudgeted',
+					model: GLM_52_MODEL,
+					provider: 'Z.AI',
+					choices: [
+						{
+							message: { role: 'assistant', content: '{"result":"ok"}' },
+							finish_reason: 'stop'
+						}
+					]
+				}),
+				{ status: 200, headers: { 'content-type': 'application/json' } }
+			);
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		const result = await llm.getJSONResponse<{ result: string }>({
+			systemPrompt: 'Return JSON.',
+			userPrompt: 'No spend limit, no usage object.',
+			userId: 'user-unbudgeted-no-usage',
+			profile: 'powerful',
+			onUsage
+		});
+
+		expect(result).toEqual({ result: 'ok' });
+		expect(onUsage).toHaveBeenCalledOnce();
+		expect(onUsage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				costSource: 'catalog_estimate',
+				totalCost: 0,
+				inputCost: 0,
+				outputCost: 0
+			})
+		);
+	});
+
 	it('keeps an explicitly requested model first and retains profile fallbacks', async () => {
 		const requestBodies: Array<Record<string, unknown>> = [];
 		const errorLogger = {

@@ -230,15 +230,45 @@ The first database-authoritative accounting slice is now implemented in code:
   migrations and provider smoke have passed in staging.
 
 **Focused verification:** the ledger/reconciler adapter suite has 11 passing tests, the shared
-SmartLLM suite has 62 passing tests, and 16 disposable-PostgreSQL migration tests pass. Database
+SmartLLM suite has 62 passing tests, and 17 disposable-PostgreSQL migration tests pass. Database
 cases include concurrent root
 oversubscription, idempotent retries, changed-payload conflicts, terminal conflicts, overrun
 reconciliation, direct-write rejection, bounded claims, lease fencing, crashed-final-lease
-recovery, authoritative provider settlement, and the response-settlement/provider-lookup race.
+recovery, authoritative provider settlement, the response-settlement/provider-lookup race, and
+explicit `anon`/`authenticated` ledger and RPC denial.
 
-Still open: apply/regenerate types in staging, real-provider smoke, an operator reconciliation
+Still open: regenerate deployed types, real-provider smoke, alert delivery around the operator
 report, authoritative handling for unsupported Moonshot/Tavily rows, daily/global quotas,
-price-registry drift monitoring, alerts/circuit breakers, and rollout controls.
+price-registry drift monitoring, circuit breakers, and rollout controls.
+
+## ADDENDUM 2026-07-19: Deployed ledger verified and operator report added
+
+The four deep-research migrations are now deployed on the configured production Supabase project.
+Read-only verification confirmed the reconciliation columns and all five cost RPC routes. An
+invalid future-dated claim returned `AGENT_RUN_COST_INVALID_RECONCILIATION_CLAIM`, confirming the
+function is reachable without claiming a row.
+
+A bounded operator report is now available through:
+
+```bash
+pnpm --filter @buildos/worker cost-reconciliation:report -- --min-age-minutes=10 --limit=200
+```
+
+It reports conservative exposure, provider totals, operator-required rows, automatic retries,
+active leases, malformed rows, and truncation without mutating the ledger or contacting a
+provider. The first production read found zero unresolved rows older than ten minutes.
+
+Type regeneration remains blocked because this workspace has neither `SUPABASE_ACCESS_TOKEN` nor a
+database connection string. The paid smoke also remains intentionally unrun: the configured target
+is production, not staging, and Tavily is not configured in the worker environment.
+
+The same role-boundary check found a release blocker: the production anonymous API role can
+currently execute the claim RPC and reach its input validation. The original migrations revoked
+`PUBLIC`, but this project has direct function grants to `anon` and `authenticated`.
+`20260719050000_agent_run_cost_rpc_privileges.sql` now explicitly removes table and cost-RPC access
+from those roles and preserves only `service_role` access. Its disposable-PostgreSQL regression
+test passes, but the migration still needs deployment and a repeated production role probe.
+`AGENT_RUN_COST_RECONCILIATION_ENABLED` must remain false until then.
 
 ## Live-test artifacts
 

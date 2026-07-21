@@ -37,6 +37,10 @@ import {
 	agentRunCostReconciliationEnabled,
 	runAgentRunCostReconciliation
 } from './workers/agent-run/agentRunCostReconciler';
+import {
+	agentRunStrandedSweepEnabled,
+	runAgentRunStrandedSweep
+} from './workers/agent-run/agentRunStrandedSweep';
 
 export type UserBriefPreference = Database['public']['Tables']['user_brief_preferences']['Row'];
 type AgentOperativeRow = AgentOperativeRowShape;
@@ -51,6 +55,7 @@ const GENERATION_BUFFER_MS = 2 * 60 * 1000; // 2 minutes
 // Initialize backoff calculator
 const backoffCalculator = new BriefBackoffCalculator();
 let agentRunCostReconciliationInFlight: Promise<void> | null = null;
+let agentRunStrandedSweepInFlight: Promise<void> | null = null;
 
 export async function runScheduledAgentRunCostReconciliation(): Promise<boolean> {
 	if (agentRunCostReconciliationInFlight) return false;
@@ -71,6 +76,35 @@ export async function runScheduledAgentRunCostReconciliation(): Promise<boolean>
 		});
 
 	await agentRunCostReconciliationInFlight;
+	return true;
+}
+
+export async function runScheduledAgentRunStrandedSweep(): Promise<boolean> {
+	if (agentRunStrandedSweepInFlight) return false;
+
+	agentRunStrandedSweepInFlight = (async () => {
+		const summary = await runAgentRunStrandedSweep();
+		if (
+			summary.requeuedContinuations > 0 ||
+			summary.synthesisWoken > 0 ||
+			summary.childrenCancelled > 0 ||
+			summary.finalizedFailed > 0 ||
+			summary.finalizedPartial > 0 ||
+			summary.errors > 0
+		) {
+			console.log(
+				`🩺 Agent Run stranded sweep: scanned=${summary.scanned}, requeued=${summary.requeuedContinuations}, synthesisWoken=${summary.synthesisWoken}, childrenCancelled=${summary.childrenCancelled}, finalizedFailed=${summary.finalizedFailed}, finalizedPartial=${summary.finalizedPartial}, errors=${summary.errors}`
+			);
+		}
+	})()
+		.catch((error) => {
+			console.error('🩺 Agent Run stranded sweep failed:', error);
+		})
+		.finally(() => {
+			agentRunStrandedSweepInFlight = null;
+		});
+
+	await agentRunStrandedSweepInFlight;
 	return true;
 }
 
@@ -296,6 +330,16 @@ export function startScheduler() {
 		console.log('💰 Agent Run cost reconciliation scheduled (every 5 minutes)');
 	}
 
+	// Stranded-run liveness recovery. Every action is idempotent/bounded and
+	// guarded against live workers, so it is safe to run across replicas. Default
+	// ON; set AGENT_RUN_STRANDED_SWEEP_ENABLED=false to disable.
+	if (agentRunStrandedSweepEnabled()) {
+		cron.schedule('*/2 * * * *', async () => {
+			await runScheduledAgentRunStrandedSweep();
+		});
+		console.log('🩺 Agent Run stranded sweep scheduled (every 2 minutes)');
+	}
+
 	// Run queue retention cleanup on a cron schedule
 	if (queueConfig.enableRetentionCleanup) {
 		if (cron.validate(queueConfig.retentionCleanupCron)) {
@@ -323,6 +367,11 @@ export function startScheduler() {
 		setTimeout(() => {
 			void runScheduledAgentRunCostReconciliation();
 		}, 15_000);
+	}
+	if (agentRunStrandedSweepEnabled()) {
+		setTimeout(() => {
+			void runScheduledAgentRunStrandedSweep();
+		}, 12_000);
 	}
 
 	console.log(

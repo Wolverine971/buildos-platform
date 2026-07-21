@@ -1,6 +1,7 @@
 // packages/shared-agent-ops/src/web/safe-fetch.ts
 import { lookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
+import { isIP, type LookupFunction } from 'node:net';
+import { Agent } from 'undici';
 
 const DEFAULT_TIMEOUT_MS = 12_000;
 const DEFAULT_MAX_BYTES = 2_000_000;
@@ -156,7 +157,20 @@ function isBlockedHostname(hostname: string): boolean {
 	return BLOCKED_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
 }
 
-async function assertPublicUrl(url: URL, dnsLookup: DnsLookup): Promise<void> {
+interface VettedTarget {
+	/** Normalized (lower-cased, bracket/trailing-dot stripped) hostname. */
+	hostname: string;
+	/** Addresses that passed the private/reserved-range checks. */
+	addresses: Array<{ address: string; family: number }>;
+	/**
+	 * True when the target is a DNS name whose connection must be pinned to the
+	 * vetted addresses. False when the URL already used an IP literal (there is
+	 * no second resolution to defend against).
+	 */
+	pinnable: boolean;
+}
+
+async function assertPublicUrl(url: URL, dnsLookup: DnsLookup): Promise<VettedTarget> {
 	if (!['http:', 'https:'].includes(url.protocol)) {
 		throw new Error('Only http/https URLs are supported.');
 	}
@@ -172,11 +186,16 @@ async function assertPublicUrl(url: URL, dnsLookup: DnsLookup): Promise<void> {
 	if (!hostname) throw new Error('Invalid URL hostname.');
 	if (isBlockedHostname(hostname)) throw new Error('Blocked hostname.');
 
-	if (isIP(hostname)) {
+	const literalType = isIP(hostname);
+	if (literalType) {
 		if (isPrivateIp(hostname)) {
 			throw new Error('Blocked private or reserved IP address.');
 		}
-		return;
+		return {
+			hostname,
+			addresses: [{ address: hostname, family: literalType }],
+			pinnable: false
+		};
 	}
 
 	const records = await dnsLookup(hostname, { all: true, verbatim: true });
@@ -186,6 +205,45 @@ async function assertPublicUrl(url: URL, dnsLookup: DnsLookup): Promise<void> {
 			throw new Error('Blocked private or reserved IP address.');
 		}
 	}
+	return {
+		hostname,
+		addresses: records.map((record) => ({ address: record.address, family: record.family })),
+		pinnable: true
+	};
+}
+
+/**
+ * Build an undici dispatcher that pins the connection to the already-vetted IP
+ * addresses for exactly one hostname.
+ *
+ * Without this, the platform's global `fetch` performs its OWN second DNS
+ * resolution after {@link assertPublicUrl} has vetted the hostname. A
+ * DNS-rebinding attacker serving a TTL≈0 record can answer with a public IP
+ * for the validation lookup and a private IP (127.0.0.1, 10.x, link-local,
+ * etc.) for the fetch, defeating every IP check. Pinning the connect step to
+ * the addresses we already vetted closes that TOCTOU gap: no second resolution
+ * can reach the network. The lookup fails closed for any hostname other than
+ * the one we vetted.
+ */
+function createPinnedDispatcher(target: VettedTarget): Agent {
+	const pinned = target.addresses.map((entry) => ({
+		address: entry.address,
+		family: entry.family
+	}));
+	const lookup: LookupFunction = (host, options, callback) => {
+		const requested = host.replace(/\.$/, '').toLowerCase();
+		if (requested !== target.hostname) {
+			callback(new Error(`Blocked unexpected DNS resolution for "${host}".`), []);
+			return;
+		}
+		if (options.all) {
+			callback(null, pinned);
+			return;
+		}
+		const first = pinned[0];
+		callback(null, first.address, first.family);
+	};
+	return new Agent({ connect: { lookup } });
 }
 
 function buildHeaders(options: FetchPublicUrlOptions): Record<string, string> {
@@ -254,7 +312,11 @@ export async function fetchPublicUrl(
 	let redirectCount = 0;
 
 	while (true) {
-		await assertPublicUrl(currentUrl, dnsLookup);
+		// Each hop is independently vetted AND independently pinned: the vetted
+		// addresses feed a dedicated dispatcher so the connection cannot resolve
+		// to anything other than what we just checked (see createPinnedDispatcher).
+		const vetted = await assertPublicUrl(currentUrl, dnsLookup);
+		const dispatcher = vetted.pinnable ? createPinnedDispatcher(vetted) : undefined;
 
 		const controller = new AbortController();
 		const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -264,16 +326,19 @@ export async function fetchPublicUrl(
 				method: 'GET',
 				redirect: 'manual',
 				headers: buildHeaders(options),
-				signal: controller.signal
+				signal: controller.signal,
+				...(dispatcher ? { dispatcher } : {})
 			});
 		} catch (error) {
 			clearTimeout(timeout);
+			await dispatcher?.close();
 			const message = error instanceof Error ? error.message : String(error);
 			throw new Error(`Fetch failed: ${message}`);
 		}
 
 		if (response.status >= 300 && response.status < 400) {
 			clearTimeout(timeout);
+			await dispatcher?.close();
 			if (!allowRedirects) throw new Error('Redirect blocked by policy.');
 			const location = response.headers.get('location');
 			if (!location) throw new Error('Redirect location missing.');
@@ -285,6 +350,7 @@ export async function fetchPublicUrl(
 
 		if (response.status < 200 || response.status >= 400) {
 			clearTimeout(timeout);
+			await dispatcher?.close();
 			throw new Error(`Request failed (${response.status} ${response.statusText}).`);
 		}
 
@@ -301,6 +367,7 @@ export async function fetchPublicUrl(
 			};
 		} finally {
 			clearTimeout(timeout);
+			await dispatcher?.close();
 		}
 	}
 }

@@ -57,6 +57,43 @@
 		<!-- iOS splash screens (optional but recommended) -->
 		<meta name="apple-touch-fullscreen" content="yes" />
 
+		<!--
+			Recover tabs that are still running a previous deployment. Vercel removes
+			old hashed chunks, so a client-side navigation can otherwise fail when
+			Vite tries to import an asset that no longer exists.
+		-->
+		<script>
+			(() => {
+				const reloadKey = 'buildos:preload-error-reload';
+				const reloadCooldownMs = 60_000;
+
+				window.addEventListener('vite:preloadError', (event) => {
+					let lastReloadAt = 0;
+
+					try {
+						lastReloadAt = Number(window.sessionStorage.getItem(reloadKey) ?? 0);
+					} catch {
+						// Without a persisted guard, reloading could create a loop.
+						return;
+					}
+
+					const reloadAt = Date.now();
+					if (reloadAt - lastReloadAt < reloadCooldownMs) {
+						return;
+					}
+
+					try {
+						window.sessionStorage.setItem(reloadKey, String(reloadAt));
+					} catch {
+						return;
+					}
+
+					event.preventDefault();
+					window.location.reload();
+				});
+			})();
+		</script>
+
 		%sveltekit.head%
 	</head>
 

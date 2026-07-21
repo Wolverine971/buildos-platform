@@ -1,6 +1,11 @@
 // apps/web/src/lib/services/agentic-chat/tools/webvisit/parser.test.ts
 import { describe, expect, it } from 'vitest';
-import { extractStructuredData, parseHtmlToText } from './parser';
+import {
+	extractPageMetadata,
+	extractStructuredData,
+	isSameRegistrableDomain,
+	parseHtmlToText
+} from './parser';
 
 describe('web visit parser', () => {
 	it('keeps multi-card pages together by preferring main over a single article card', () => {
@@ -91,5 +96,54 @@ describe('web visit parser', () => {
 			type: 'Offer',
 			availability: 'https://schema.org/InStock'
 		});
+	});
+
+	it('ignores a cross-site canonical URL that would poison another site cache', () => {
+		const html = `
+			<html>
+				<head>
+					<link rel="canonical" href="https://nytimes.com/real-story" />
+				</head>
+				<body><main><p>Attacker-controlled content.</p></main></body>
+			</html>
+		`;
+
+		const metadata = extractPageMetadata(html, 'https://evil.example/post');
+
+		expect(metadata.canonical_url).toBeUndefined();
+		expect(metadata.meta.canonical_url).toBeUndefined();
+	});
+
+	it('honors a same-site canonical URL', () => {
+		const html = `
+			<html>
+				<head>
+					<link rel="canonical" href="https://www.example.com/story" />
+				</head>
+				<body><main><p>Legit content.</p></main></body>
+			</html>
+		`;
+
+		const metadata = extractPageMetadata(html, 'https://example.com/story?utm=1');
+
+		expect(metadata.canonical_url).toBe('https://www.example.com/story');
+	});
+
+	it('compares registrable domains for same-site checks', () => {
+		expect(isSameRegistrableDomain('https://a.example.com/x', 'https://example.com/y')).toBe(true);
+		expect(isSameRegistrableDomain('https://evil.com/x', 'https://nytimes.com/y')).toBe(false);
+		expect(isSameRegistrableDomain('https://shop.example.co.uk', 'https://example.co.uk')).toBe(
+			true
+		);
+		expect(isSameRegistrableDomain('https://a.co.uk', 'https://b.co.uk')).toBe(false);
+	});
+
+	it('flattens a 2MB page of unclosed <script> tags well under 500ms', () => {
+		const pathological = `<html><body>${'<script>x'.repeat(240_000)}<p>done</p></body></html>`;
+		expect(pathological.length).toBeGreaterThan(2_000_000);
+
+		const start = Date.now();
+		parseHtmlToText(pathological, { mode: 'reader', baseUrl: 'https://example.com/' });
+		expect(Date.now() - start).toBeLessThan(500);
 	});
 });

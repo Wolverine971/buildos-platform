@@ -16,6 +16,15 @@ export const MAX_DEEP_RESEARCH_TOKENS = 100_000;
 export const MAX_DEEP_RESEARCH_WALL_CLOCK_MS = 20 * 60 * 1000;
 export const MAX_AGENT_RUN_COST_USD = 10;
 
+// Global budget ceilings applied to every run, so the raw dispatch API cannot
+// create a run that loops for days or spends without a ledger-enforced cap.
+export const MAX_AGENT_RUN_WALL_CLOCK_MS = 20 * 60 * 1000;
+export const MAX_AGENT_RUN_TOOL_CALLS = 40;
+export const MAX_AGENT_RUN_TOKENS = 100_000;
+// Standard-effort runs get a default cost budget so the cost ledger engages for
+// every run (deep runs already default via resolveAgentRunEffortBudgets).
+export const DEFAULT_STANDARD_AGENT_RUN_COST_USD = 0.5;
+
 export const ACTIVE_AGENT_RUN_STATUSES: AgentRunStatus[] = [
 	'queued',
 	'running',
@@ -99,6 +108,24 @@ export function normalizeAgentRunBudgets(input: unknown): {
 				error: `budgets.max_cost_usd cannot exceed $${MAX_AGENT_RUN_COST_USD}`
 			};
 		}
+		if (field === 'wall_clock_ms' && value > MAX_AGENT_RUN_WALL_CLOCK_MS) {
+			return {
+				budgets: out,
+				error: `budgets.wall_clock_ms cannot exceed ${MAX_AGENT_RUN_WALL_CLOCK_MS}ms`
+			};
+		}
+		if (field === 'max_tool_calls' && value > MAX_AGENT_RUN_TOOL_CALLS) {
+			return {
+				budgets: out,
+				error: `budgets.max_tool_calls cannot exceed ${MAX_AGENT_RUN_TOOL_CALLS}`
+			};
+		}
+		if (field === 'max_tokens' && value > MAX_AGENT_RUN_TOKENS) {
+			return {
+				budgets: out,
+				error: `budgets.max_tokens cannot exceed ${MAX_AGENT_RUN_TOKENS}`
+			};
+		}
 		out[field] = value;
 	}
 	return { budgets: out };
@@ -110,7 +137,14 @@ export function resolveAgentRunEffortBudgets(
 	runTemplate: 'agent' | 'deep_research' = 'agent'
 ): { budgets: Record<string, number>; error?: string } {
 	const budgets = { ...(input ?? {}) };
-	if (effort !== 'deep') return { budgets };
+	if (effort !== 'deep') {
+		// Every run must carry a cost ceiling so the worker's ledger engages;
+		// an unbudgeted standard run would otherwise make unreserved LLM calls.
+		if (budgets.max_cost_usd === undefined) {
+			budgets.max_cost_usd = DEFAULT_STANDARD_AGENT_RUN_COST_USD;
+		}
+		return { budgets };
+	}
 
 	if (budgets.max_cost_usd === undefined) {
 		budgets.max_cost_usd = DEFAULT_DEEP_AGENT_RUN_COST_USD;

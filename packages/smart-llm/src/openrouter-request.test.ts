@@ -120,4 +120,13 @@ describe('buildOpenRouterChatCompletionBody', () => {
 
 		expect(body.temperature).toBe(0.4);
 	});
+
+	it('always opts in to OpenRouter usage accounting', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: 'qwen/qwen3.7-plus',
+			messages: [{ role: 'user', content: 'Return JSON.' }]
+		});
+
+		expect(body.usage).toEqual({ include: true });
+	});
 });

@@ -118,8 +118,7 @@ function coordinatorHarness(
 	const runtime: DeepResearchCoordinatorRuntime = {
 		persistState: vi.fn(async () => undefined),
 		dispatchChildren: vi.fn(async () => []),
-		loadChildren: vi.fn(async () => children),
-		queueParent: vi.fn(async () => undefined)
+		loadChildren: vi.fn(async () => children)
 	};
 	const addUsage = (increment: UsageSnapshot) => {
 		usage = {
@@ -466,7 +465,45 @@ describe('deep research coordinator lifecycle contract', () => {
 		expect(
 			vi.mocked(harness.runtime.persistState).mock.calls.map((call) => call[1].stage)
 		).toEqual(['planning', 'dispatching', 'researching']);
-		expect(harness.runtime.queueParent).toHaveBeenCalledWith(ROOT_ID);
+	});
+
+	it('short-circuits to a cancelled finalize before dispatching children when cancelled', async () => {
+		const harness = coordinatorHarness([]);
+		const llm = { getJSONResponse: vi.fn() };
+
+		const outcome = await processDeepResearchCoordinator({
+			run: coordinatorRun(dispatchingState()),
+			llm: llm as never,
+			getUsage: harness.getUsage,
+			addUsage: harness.addUsage,
+			emit: vi.fn(async () => undefined),
+			runtime: harness.runtime,
+			checkCancellation: vi.fn(async () => true)
+		});
+
+		expect(outcome).toMatchObject({ kind: 'finalize', status: 'cancelled' });
+		expect(harness.runtime.dispatchChildren).not.toHaveBeenCalled();
+	});
+
+	it('short-circuits to a cancelled finalize before the synthesis call when cancelled', async () => {
+		const harness = coordinatorHarness([
+			childEvidence(CHILD_IDS[0], 'completed'),
+			childEvidence(CHILD_IDS[1], 'completed')
+		]);
+		const llm = { getJSONResponse: vi.fn() };
+
+		const outcome = await processDeepResearchCoordinator({
+			run: coordinatorRun(researchState('synthesis_queued')),
+			llm: llm as never,
+			getUsage: harness.getUsage,
+			addUsage: harness.addUsage,
+			emit: vi.fn(async () => undefined),
+			runtime: harness.runtime,
+			checkCancellation: vi.fn(async () => true)
+		});
+
+		expect(outcome).toMatchObject({ kind: 'finalize', status: 'cancelled' });
+		expect(llm.getJSONResponse).not.toHaveBeenCalled();
 	});
 
 	it('waits without synthesizing until both checkpointed researchers settle', async () => {

@@ -2,8 +2,13 @@
 
 # Agentic Chat Deep Research — Architecture Direction
 
-**Date:** 2026-07-19  
-**Status:** Bounded orchestration, durable paid-attempt ledger, and OpenRouter reconciliation implemented in code; migrations and deployment pending
+**Date:** 2026-07-19 (updated 2026-07-20)  
+**Status:** All five base migrations (`20260719010000`–`050000`) **and** the
+`20260720010000` audit-hardening migration are deployed and role-verified in production;
+bounded worker orchestration, accounting, cost bridge, and OpenRouter reconciliation implemented;
+worker/provider live smoke still pending (worker has no Tavily credential; Railway-worker/local-worker
+claim race must be resolved for a controlled run). See the 2026-07-20 audit
+(`../../audits/DEEP_RESEARCH_V01_AUDIT_2026-07-20.md`) for the remediation record.
 
 **Builds on:** `AGENTIC_CHAT_RESEARCH_CAPABILITY_AUDIT_2026-07-18.md` and the durable Agent Work
 substrate
@@ -64,6 +69,29 @@ The first vertical slice now implements concern 1 and a deliberately narrow vers
 
 This is a working V0.1 control flow, not a finished research product. It returns a sourced report to
 chat, but does not yet persist a report document or a typed claim-to-source manifest.
+
+Deployment checkpoint on 2026-07-19, updated 2026-07-20:
+
+- The configured production PostgREST endpoint returns the cost ledger with all reconciliation
+  columns through the service role.
+- All reservation, settlement, claim, release, reconciliation, and synthesis RPC routes are exposed
+  to `service_role` and **denied to `anon`/`authenticated`** (re-probed live 2026-07-20: 42501).
+- `20260719050000_agent_run_cost_rpc_privileges.sql` **is deployed** (the 2026-07-19 note calling it
+  "not yet deployed" was stale). The 2026-07-20 audit found it had missed
+  `queue_deep_research_synthesis(UUID)`, which was verified anon-callable (HTTP 200) in production.
+- `20260720010000_deep_research_hardening.sql` **is deployed** (2026-07-20, atomic transaction,
+  preconditions verified: ledger empty, FK names present). It revokes `queue_deep_research_synthesis`
+  from anon/authenticated (re-probed: now 42501), fails the synthesis stage-guard closed on a missing
+  `stage` key, rounds ledger idempotency comparisons to column scale, preserves recorded overrun
+  actuals, restricts ledger-run deletion, and removes two reproduced lock-order deadlocks.
+- Cost bridge landed: OpenRouter requests now send `usage: {include: true}` (provider-reported
+  settlement instead of catalog estimate), a 200 with missing usage on a budgeted call settles
+  `reconciliation_required` (not `$0`), and settled Tavily charges now also write `llm_usage_logs`
+  (`agent_run_web_search`) so research spend appears in admin analytics.
+- Database type regeneration still blocked on a missing `SUPABASE_ACCESS_TOKEN`; the deployed schema
+  is verified, but generated `database.types.ts` remains stale.
+- No paid provider smoke has run yet: the worker environment has no Tavily credential and the live
+  Railway worker would race a local worker for the queued jobs (see the audit's smoke plan).
 
 ## What BuildOS already has
 
@@ -270,8 +298,9 @@ make a retry inspect the existing exposure instead of paying for a duplicate req
 
 The remaining accounting work is:
 
-1. deploy and live-smoke the OpenRouter reconciler, then add an operator report for missing
-   generation IDs and unsupported Moonshot/Tavily rows;
+1. deploy `20260719050000_agent_run_cost_rpc_privileges.sql`, repeat anonymous/authenticated and
+   service-role probes, then deploy/live-smoke the worker reconciler and enable its flag after a
+   clearly scoped environment decision; the read-only operator report is implemented;
 2. identify a documented per-request audit path for Tavily Search or reconcile those rows through
    a separately tracked project/account delta without pretending aggregate usage proves one call;
 3. add atomic user-daily and platform balances beyond the existing per-leaf/per-root limits;
@@ -330,18 +359,20 @@ project knowledge should use the existing staged Change Set review path.
   fan-out, retries, waiting, synthesis, partial results, and budget exhaustion.
 - Web dispatch budget policy: 4 passing tests.
 - Shared queue metadata validation: 5 passing tests.
-- Disposable PostgreSQL migration suite: 16 passing tests, including three simultaneous child
+- Disposable PostgreSQL migration suite: 17 passing tests, including three simultaneous child
   inserts, unsafe child rejection, active-slot reservation, coordinator reclaim, exactly-once
   synthesis wakeup, the fast-child race, atomic root-cost oversubscription, reconciliation leases,
   lease-token fencing, crashed-final-lease recovery, authoritative overrun settlement, and the
-  response-settlement/provider-lookup race.
+  response-settlement/provider-lookup race, plus explicit denial of ledger/RPC access to
+  `anon`/`authenticated`.
 - The PostgreSQL suite has its own command,
   `pnpm --filter @buildos/worker test:deep-research:integration`; it does not replace the older
   externally configured worker integration suite.
 
-This code becomes live only after all four Agent Run/deep-research migrations are applied and the
-web and worker services are deployed. Cost reconciliation additionally requires
-`AGENT_RUN_COST_RECONCILIATION_ENABLED=true`; it remains off by default.
+The first four Agent Run/deep-research migrations are deployed. The fifth privilege-hardening
+migration must be deployed and role-probed before worker rollout. Cost reconciliation additionally
+requires `AGENT_RUN_COST_RECONCILIATION_ENABLED=true`; it remains off by default and must stay off
+until that check passes.
 
 ### Slice C — budget and evidence correctness
 

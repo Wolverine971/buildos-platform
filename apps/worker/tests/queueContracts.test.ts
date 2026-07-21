@@ -132,6 +132,28 @@ describe('agent_run worker steering boundary', () => {
 	});
 });
 
+describe('agent_run worker Tavily cost-ledger bridge', () => {
+	// The module imports a live Supabase client at load time
+	// (`const paidToolUsageLogger = new LLMUsageLogger({ supabase })`), so this
+	// settlement site is exercised as a source contract rather than invoked
+	// directly — see agentRunWebResearch.test.ts for the paid-tool port itself.
+	it('logs settled Tavily web-search charges into llm_usage_logs alongside the cost ledger', () => {
+		const source = readRepoFile('apps/worker/src/workers/agent-run/agentRunWorker.ts');
+
+		expect(source).toContain('const paidToolUsageLogger = new LLMUsageLogger({ supabase });');
+		expect(source).toContain('await paidToolUsageLogger.logUsageToDatabase({');
+		expect(source).toContain("operationType: 'agent_run_web_search'");
+		expect(source).toContain("provider: 'tavily'");
+		expect(source).toContain('promptTokens: 0,');
+		expect(source).toContain('completionTokens: 0,');
+		expect(source).toContain('totalTokens: 0,');
+		expect(source).toContain('totalCost: settlement.charge.cost_usd,');
+		expect(source).toContain('agent_run_id: runId,');
+		expect(source).toContain('attempt_key: dispatchedPaidTool.attemptKey,');
+		expect(source).toContain('tavily_credits: settlement.charge.credits,');
+	});
+});
+
 // Agent Work (Phase 0.5): the agent_run job payload contract. Exercises the shared
 // validator directly — independent of `gen:types` adding 'agent_run' to QueueJobType.
 describe('agent_run job metadata contract', () => {

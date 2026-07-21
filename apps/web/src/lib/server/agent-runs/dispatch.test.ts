@@ -2,16 +2,46 @@
 import { describe, expect, it } from 'vitest';
 import {
 	MAX_AGENT_RUN_COST_USD,
+	MAX_AGENT_RUN_TOKENS,
+	MAX_AGENT_RUN_TOOL_CALLS,
+	MAX_AGENT_RUN_WALL_CLOCK_MS,
 	normalizeAgentRunBudgets,
 	resolveAgentRunEffortBudgets
 } from './dispatch';
 
 describe('agent run effort and cost budgets', () => {
-	it('defaults deep runs to $0.50 without changing standard runs', () => {
+	it('defaults deep runs to $0.50 and gives standard runs a default cost ceiling', () => {
 		expect(resolveAgentRunEffortBudgets('deep', undefined)).toEqual({
 			budgets: { max_cost_usd: 0.5 }
 		});
-		expect(resolveAgentRunEffortBudgets('standard', undefined)).toEqual({ budgets: {} });
+		// Every run must carry a cost ceiling so the worker ledger engages.
+		expect(resolveAgentRunEffortBudgets('standard', undefined)).toEqual({
+			budgets: { max_cost_usd: 0.5 }
+		});
+		// An explicit standard budget is preserved, not overridden.
+		expect(resolveAgentRunEffortBudgets('standard', { max_cost_usd: 2 })).toEqual({
+			budgets: { max_cost_usd: 2 }
+		});
+	});
+
+	it('clamps unbounded manual budget fields on every run', () => {
+		expect(
+			normalizeAgentRunBudgets({ wall_clock_ms: MAX_AGENT_RUN_WALL_CLOCK_MS + 1 }).error
+		).toContain('wall_clock_ms cannot exceed');
+		expect(
+			normalizeAgentRunBudgets({ max_tool_calls: MAX_AGENT_RUN_TOOL_CALLS + 1 }).error
+		).toContain('max_tool_calls cannot exceed');
+		expect(normalizeAgentRunBudgets({ max_tokens: MAX_AGENT_RUN_TOKENS + 1 }).error).toContain(
+			'max_tokens cannot exceed'
+		);
+		// At-ceiling values are accepted.
+		expect(
+			normalizeAgentRunBudgets({
+				wall_clock_ms: MAX_AGENT_RUN_WALL_CLOCK_MS,
+				max_tool_calls: MAX_AGENT_RUN_TOOL_CALLS,
+				max_tokens: MAX_AGENT_RUN_TOKENS
+			}).error
+		).toBeUndefined();
 	});
 
 	it('accepts a lower explicit deep budget and rejects budgets over $1', () => {

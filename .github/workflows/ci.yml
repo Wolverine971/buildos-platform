@@ -46,6 +46,17 @@ jobs:
             - name: Test coverage
               run: pnpm turbo test:coverage
 
+            # Disposable-PostgreSQL suite proving the deep-research DB guarantees
+            # (budget races, privilege fences, synthesis wakeup). Runner images
+            # ship postgres binaries outside PATH; the suite skips gracefully if
+            # none are found, so surface the bin dir explicitly.
+            - name: Deep-research DB integration tests
+              run: |
+                  PG_BIN="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -n 1)"
+                  if [ -n "$PG_BIN" ]; then export PATH="$PG_BIN:$PATH"; fi
+                  command -v initdb >/dev/null || { echo "::error::no postgres binaries on runner"; exit 1; }
+                  pnpm --filter @buildos/worker test:deep-research:integration
+
             - name: Upload coverage artifacts
               if: always()
               uses: actions/upload-artifact@v4

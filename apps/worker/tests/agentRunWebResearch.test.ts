@@ -208,6 +208,30 @@ describe('Agent Run web research port', () => {
 		expect(result.security_notice).toContain('untrusted');
 	});
 
+	it('flattens a 2MB adversarial HTML page well under 500ms', async () => {
+		const pathological = `<!doctype html><html><body><main><p>Real evidence.</p></main>${'<script>x'.repeat(
+			240_000
+		)}</body></html>`;
+		expect(pathological.length).toBeGreaterThan(2_000_000);
+
+		const fetchFn = vi.fn(async () => {
+			return new Response(pathological, {
+				status: 200,
+				headers: { 'content-type': 'text/html; charset=utf-8' }
+			});
+		});
+		const port = createAgentRunWebResearchPort({
+			apiKey: null,
+			fetchFn: fetchFn as typeof fetch,
+			now: () => NOW,
+			visitMaxBytes: 5_000_000
+		});
+
+		const start = Date.now();
+		await port.visit!({ url: 'https://93.184.216.34/adversarial', max_chars: 6_000 });
+		expect(Date.now() - start).toBeLessThan(500);
+	});
+
 	it('blocks private targets before fetch and re-checks redirect destinations', async () => {
 		const privateFetch = vi.fn();
 		const privatePort = createAgentRunWebResearchPort({
