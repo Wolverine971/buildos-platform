@@ -46,11 +46,18 @@ import {
 	SmartLLMService
 } from '../../lib/services/smart-llm-service';
 import {
+	DEEP_RESEARCH_CHILD_ROLE,
 	isDeepResearchCoordinator,
 	isRetryableDeepResearchState,
 	maybeQueueDeepResearchParent,
 	processDeepResearchCoordinator
 } from './deepResearchOrchestrator';
+import {
+	type DeepResearchObservations,
+	mergeDeepResearchObservations,
+	normalizeDeepResearchEvidencePacket,
+	observeDeepResearchToolResult
+} from './deepResearchEvidence';
 import {
 	canReservePaidToolCost,
 	resolveAgentRunLlmSpendLimit,
@@ -90,6 +97,7 @@ interface AgentTurn {
 	answer?: string;
 	open_questions?: string[];
 	confidence?: number;
+	evidence_packet?: unknown;
 }
 
 interface RunBudgets {
@@ -432,7 +440,7 @@ async function recordToolExecution(params: {
 	entityId?: string | null;
 	mutationMode?: AgentRunMutationMode;
 	proposedChangeId?: string;
-}): Promise<void> {
+}): Promise<boolean> {
 	const isWrite = isWriteOp(params.op);
 	// Reads are never staged; a staged write records mutation_mode='stage' + its
 	// proposed_change_id. mutation_mode is null for reads (semantically n/a).
@@ -455,7 +463,9 @@ async function recordToolExecution(params: {
 	});
 	if (error) {
 		console.error('[agentRunWorker] failed to record tool execution', error.message);
+		return false;
 	}
+	return true;
 }
 
 /**
@@ -475,6 +485,7 @@ async function reconstructPriorState(
 	toolCalls: number;
 	tokens: number;
 	cost: number;
+	researchObservations: DeepResearchObservations;
 }> {
 	const [{ data: execs }, { data: steers }] = await Promise.all([
 		supabase
@@ -491,6 +502,10 @@ async function reconstructPriorState(
 	]);
 
 	const items: Array<{ at: string; line: string }> = [];
+	let researchObservations: DeepResearchObservations = {
+		searchQueries: [],
+		visitedSources: []
+	};
 	let toolCalls = 0;
 	for (const e of execs ?? []) {
 		toolCalls += 1;
@@ -502,6 +517,17 @@ async function reconstructPriorState(
 			at: e.created_at,
 			line: `OP ${op} ${JSON.stringify(e.arguments ?? {})} -> ${resultText}`
 		});
+		if (e.success) {
+			researchObservations = mergeDeepResearchObservations(
+				researchObservations,
+				observeDeepResearchToolResult({
+					op,
+					args: (e.arguments ?? {}) as Record<string, unknown>,
+					result: e.result,
+					observedAt: e.created_at
+				})
+			);
+		}
 	}
 	for (const s of steers ?? []) {
 		const message = (s.payload as { message?: string } | null)?.message;
@@ -548,7 +574,8 @@ async function reconstructPriorState(
 		transcript: items.map((i) => i.line),
 		toolCalls,
 		tokens: typeof m?.tokens === 'number' ? m.tokens : 0,
-		cost: typeof m?.cost_usd === 'number' ? m.cost_usd : 0
+		cost: typeof m?.cost_usd === 'number' ? m.cost_usd : 0,
+		researchObservations
 	};
 }
 
@@ -627,12 +654,61 @@ async function createCalendarPortForRun(userId: string) {
 	});
 }
 
-function buildSystemPrompt(runnableOps: string[], effort: 'standard' | 'deep'): string {
+function buildSystemPrompt(
+	runnableOps: string[],
+	effort: 'standard' | 'deep',
+	researchEvidenceQuestionId?: string
+): string {
 	const hasWriteOps = runnableOps.some((op) => isWriteOp(op));
 	const hasWebSearch = runnableOps.includes(AGENT_OP_WEB_SEARCH);
 	const hasWebVisit = runnableOps.includes(AGENT_OP_WEB_VISIT);
 	const hasWebOps = hasWebSearch || hasWebVisit;
 	const surfaceLabel = hasWriteOps ? 'read + write' : 'read-only';
+	const researchFinishExample = researchEvidenceQuestionId
+		? JSON.stringify({
+				thought: '<short reasoning>',
+				action: 'submit_result',
+				status: 'completed',
+				summary: '<what you did>',
+				answer: '<brief readable finding>',
+				evidence_packet: {
+					version: 1,
+					question_id: researchEvidenceQuestionId,
+					claims: [
+						{
+							id: 'claim-1',
+							claim: '<supported claim>',
+							kind: 'fact',
+							confidence: 0.8,
+							evidence: [
+								{
+									source_id: 'source-1',
+									support: 'direct',
+									supporting_excerpt: '<short exact excerpt>',
+									location: '<section or paragraph>'
+								}
+							]
+						}
+					],
+					sources: [
+						{
+							id: 'source-1',
+							url: 'https://example.com/source',
+							title: '<source title>',
+							publisher: '<publisher>',
+							published_at: '<ISO date when known>',
+							source_type: 'primary'
+						}
+					],
+					contradictions: [],
+					limitations: [],
+					unanswered_questions: [],
+					search_coverage: { notes: '<coverage note>' },
+					confidence: 0.8
+				},
+				open_questions: []
+			})
+		: null;
 	return [
 		'You are a focused background agent (an "Agent Run") inside BuildOS.',
 		'You work autonomously to accomplish a single goal, then report back. You cannot delegate to other agents.',
@@ -644,7 +720,9 @@ function buildSystemPrompt(runnableOps: string[], effort: 'standard' | 'deep'): 
 		'1) Call an operation:',
 		'   { "thought": "<short reasoning>", "action": "call_op", "op": "<op name>", "args": { ... } }',
 		'2) Finish and report:',
-		'   { "thought": "<short reasoning>", "action": "submit_result", "status": "completed" | "partial" | "needs_input", "summary": "<what you did>", "answer": "<the finding/response>", "open_questions": ["..."] }',
+		researchEvidenceQuestionId
+			? `   ${researchFinishExample}`
+			: '   { "thought": "<short reasoning>", "action": "submit_result", "status": "completed" | "partial" | "needs_input", "summary": "<what you did>", "answer": "<the finding/response>", "open_questions": ["..."] }',
 		'',
 		`Available operations (${surfaceLabel}): ${runnableOps.length ? runnableOps.join(', ') : '(none in scope)'}`,
 		'Most ops accept { "project_id": "<uuid>" }. Use onto.project.list first to discover projects.',
@@ -662,6 +740,15 @@ function buildSystemPrompt(runnableOps: string[], effort: 'standard' | 'deep'): 
 			: '',
 		hasWebSearch && hasWebVisit
 			? '- For current facts, search first, then visit relevant primary sources. Cite the final source URLs in your answer.'
+			: '',
+		researchEvidenceQuestionId
+			? '- This is a deep-research child. Every factual claim must link directly to a source URL you successfully opened with util.web.visit. The worker rejects invented, search-only, or unvisited URLs and unknown source ids.'
+			: '',
+		researchEvidenceQuestionId
+			? '- Keep supporting excerpts short and exact. Use inference/opinion honestly, record contradictions and limitations, and return useful partial evidence when direct support is unavailable.'
+			: '',
+		researchEvidenceQuestionId
+			? '- Evidence enums: claim kind = fact | inference | opinion; support = direct | inferred | conflicting; source_type = primary | secondary | reference | community | other.'
 			: '',
 		'',
 		'Rules:',
@@ -781,6 +868,27 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		mode: run.scope_mode === 'read_write' ? 'read_write' : 'read_only',
 		allowed_ops: run.allowed_ops
 	};
+	// The evidence-packet contract is applied only when the dispatcher explicitly
+	// marked this run as a deep-research child. The read-only web-only shape is
+	// kept as a defense-in-depth assertion, but is no longer the trigger: an
+	// unrelated future depth-1 read-only web child without the marker is left as
+	// an ordinary agent run instead of being forced to emit (and downgraded for
+	// lacking) an evidence packet.
+	const orchestrationState =
+		run.orchestration_state &&
+		typeof run.orchestration_state === 'object' &&
+		!Array.isArray(run.orchestration_state)
+			? (run.orchestration_state as Record<string, unknown>)
+			: null;
+	const isResearchEvidenceChild = Boolean(
+		run.parent_run_id &&
+			run.depth === 1 &&
+			run.scope_mode === 'read_only' &&
+			orchestrationState?.role === DEEP_RESEARCH_CHILD_ROLE &&
+			Array.isArray(run.allowed_ops) &&
+			run.allowed_ops.length > 0 &&
+			run.allowed_ops.every((op) => op === AGENT_OP_WEB_SEARCH || op === AGENT_OP_WEB_VISIT)
+	);
 
 	// review_required runs STAGE writes into a Change Set instead of
 	// committing. Read-only runs never stage (dispatch rejects review+read_only).
@@ -801,6 +909,10 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 	let paidToolCostTotal = 0;
 	let tavilyCreditsTotal = 0;
 	let toolCalls = 0;
+	let researchObservations: DeepResearchObservations = {
+		searchQueries: [],
+		visitedSources: []
+	};
 	const paidToolDispatches: Array<{ attemptKey: string; charge: PaidToolCharge }> = [];
 	let activePaidToolAttemptKey: string | null = null;
 	let paidToolAccountingFailure: AgentRunCostLedgerError | null = null;
@@ -953,7 +1065,8 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 
 	const systemPrompt = buildSystemPrompt(
 		runnableOps,
-		run.effort === 'deep' ? 'deep' : 'standard'
+		run.effort === 'deep' ? 'deep' : 'standard',
+		isResearchEvidenceChild ? run.id : undefined
 	);
 	const committedEntityTouches: EntityTouch[] = [];
 
@@ -969,6 +1082,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		toolCalls = prior.toolCalls;
 		tokensTotal = prior.tokens;
 		costTotal = prior.cost;
+		researchObservations = prior.researchObservations;
 		const priorMetrics =
 			run.metrics && typeof run.metrics === 'object' && !Array.isArray(run.metrics)
 				? (run.metrics as Record<string, unknown>)
@@ -1419,7 +1533,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			const openQuestions = (turn.open_questions ?? [])
 				.filter((q) => typeof q === 'string' && q.trim())
 				.map((q) => q.trim());
-			const status: AgentRunRow['status'] =
+			let status: AgentRunRow['status'] =
 				run.depth === 1 && (turn.status === 'needs_input' || openQuestions.length > 0)
 					? 'partial'
 					: turn.status === 'needs_input' ||
@@ -1431,12 +1545,36 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 							: turn.status === 'failed'
 								? 'failed'
 								: 'completed';
-			return finalize(status, {
+			const terminalResult: Record<string, unknown> = {
 				summary: turn.summary ?? '',
 				answer: turn.answer ?? turn.summary ?? '',
 				open_questions: openQuestions,
 				confidence: turn.confidence
-			});
+			};
+			if (isResearchEvidenceChild) {
+				const validation = normalizeDeepResearchEvidencePacket({
+					raw: turn.evidence_packet,
+					questionId: run.id,
+					observations: researchObservations
+				});
+				terminalResult.evidence_packet = validation.packet;
+				terminalResult.evidence_validation = {
+					valid_for_completion: validation.validForCompletion,
+					issues: validation.issues
+				};
+				terminalResult.confidence = validation.packet.confidence;
+				if (status === 'completed' && !validation.validForCompletion) {
+					status = 'partial';
+				}
+				if (validation.issues.length > 0) {
+					await emitEvent(runId, 'run.narration', {
+						note: 'evidence packet validated with issues',
+						valid_for_completion: validation.validForCompletion,
+						issues: validation.issues
+					});
+				}
+			}
+			return finalize(status, terminalResult);
 		}
 
 		if (toolCallBudgetReached()) {
@@ -1614,7 +1752,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			});
 		}
 
-		await recordToolExecution({
+		const executionRecorded = await recordToolExecution({
 			runId,
 			userId: run.user_id,
 			op,
@@ -1628,6 +1766,17 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			mutationMode,
 			proposedChangeId
 		});
+		if (result.ok && executionRecorded) {
+			researchObservations = mergeDeepResearchObservations(
+				researchObservations,
+				observeDeepResearchToolResult({
+					op,
+					args,
+					result: result.data,
+					observedAt: new Date(opStart + durationMs).toISOString()
+				})
+			);
+		}
 		await emitEvent(runId, 'run.tool_result', {
 			op,
 			ok: result.ok,

@@ -109,6 +109,62 @@ async function findSentEmailForDelivery(
 	return firstRecord ?? null;
 }
 
+async function claimNotificationEmail(
+	supabase: ReturnType<typeof createAdminSupabaseClient>,
+	emailRecordId: string
+): Promise<{ claimed: boolean; error: { message: string } | null }> {
+	const updatedAt = new Date().toISOString();
+	const reclaimBefore = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+	const update = { status: 'sending', updated_at: updatedAt };
+
+	// PostgREST's OR filter generates invalid qualified-column SQL for PATCH
+	// requests in production. Keep each claim as a simple atomic UPDATE instead.
+	// Concurrent updates are safe: PostgreSQL rechecks each predicate after
+	// waiting for the row lock, so only one sender can match a given state.
+	const availableClaim = await (supabase.from('emails') as any)
+		.update(update)
+		.eq('id', emailRecordId)
+		.not('status', 'in', '(sent,delivered,opened,clicked)')
+		.neq('status', 'sending')
+		.select('id')
+		.maybeSingle();
+
+	if (availableClaim.error || availableClaim.data) {
+		return {
+			claimed: !!availableClaim.data,
+			error: availableClaim.error
+		};
+	}
+
+	const staleClaim = await (supabase.from('emails') as any)
+		.update(update)
+		.eq('id', emailRecordId)
+		.eq('status', 'sending')
+		.lt('updated_at', reclaimBefore)
+		.select('id')
+		.maybeSingle();
+
+	if (staleClaim.error || staleClaim.data) {
+		return {
+			claimed: !!staleClaim.data,
+			error: staleClaim.error
+		};
+	}
+
+	const undatedClaim = await (supabase.from('emails') as any)
+		.update(update)
+		.eq('id', emailRecordId)
+		.eq('status', 'sending')
+		.is('updated_at', null)
+		.select('id')
+		.maybeSingle();
+
+	return {
+		claimed: !!undatedClaim.data,
+		error: undatedClaim.error
+	};
+}
+
 export const POST: RequestHandler = async ({ request }) => {
 	const startTime = Date.now();
 
@@ -218,15 +274,10 @@ export const POST: RequestHandler = async ({ request }) => {
 		// 5-minute reclaim window; failed sends reset the status below.
 		let claimedEmailRecord = false;
 		if (body.emailRecordId) {
-			const nowIso = new Date().toISOString();
-			const reclaimBefore = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-			const { data: claimed, error: claimError } = await (supabase.from('emails') as any)
-				.update({ status: 'sending', updated_at: nowIso })
-				.eq('id', body.emailRecordId)
-				.not('status', 'in', '(sent,delivered,opened,clicked)')
-				.or(`status.neq.sending,updated_at.lt.${reclaimBefore},updated_at.is.null`)
-				.select('id')
-				.maybeSingle();
+			const { claimed, error: claimError } = await claimNotificationEmail(
+				supabase,
+				body.emailRecordId
+			);
 
 			if (claimError) {
 				// Fail open (previous behavior) — the SELECT-based idempotency check

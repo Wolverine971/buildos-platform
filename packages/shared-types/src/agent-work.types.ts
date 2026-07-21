@@ -120,6 +120,99 @@ export interface RunResultArtifact {
 	title?: string;
 }
 
+// ============================================================================
+// Deep Research evidence (versioned child-result contract)
+// ============================================================================
+
+export type DeepResearchClaimKind = 'fact' | 'inference' | 'opinion';
+
+export type DeepResearchEvidenceSupport = 'direct' | 'inferred' | 'conflicting';
+
+export type DeepResearchSourceType =
+	| 'primary'
+	| 'secondary'
+	| 'reference'
+	| 'community'
+	| 'other';
+
+export interface DeepResearchEvidenceSource {
+	id: string;
+	url: string;
+	title?: string;
+	publisher?: string;
+	published_at?: string;
+	/** Worker-recorded fetch time, never trusted from model output. */
+	accessed_at: string;
+	source_type: DeepResearchSourceType;
+}
+
+export interface DeepResearchClaimSourceLink {
+	source_id: string;
+	support: DeepResearchEvidenceSupport;
+	/** Bounded source text retained only to make the evidence link auditable. */
+	supporting_excerpt?: string;
+	/** Optional section, heading, paragraph, page, or other source-local locator. */
+	location?: string;
+}
+
+export interface DeepResearchEvidenceClaim {
+	id: string;
+	claim: string;
+	kind: DeepResearchClaimKind;
+	confidence: number;
+	evidence: DeepResearchClaimSourceLink[];
+}
+
+export interface DeepResearchEvidenceContradiction {
+	description: string;
+	claim_ids: string[];
+	source_ids: string[];
+}
+
+export interface DeepResearchSearchCoverage {
+	/** Worker-observed queries, not a model-authored activity claim. */
+	queries: string[];
+	/** Canonical final URLs successfully fetched by util.web.visit. */
+	visited_urls: string[];
+	notes?: string;
+}
+
+/**
+ * Durable output contract for one bounded depth-1 research child.
+ *
+ * The worker validates all ids and claim/source links, and accepts source URLs
+ * only when the same child successfully visited them. A malformed packet may
+ * still be persisted as partial evidence, but it cannot produce a completed
+ * child status.
+ */
+export interface DeepResearchEvidencePacketV1 {
+	version: 1;
+	question_id: string;
+	claims: DeepResearchEvidenceClaim[];
+	sources: DeepResearchEvidenceSource[];
+	contradictions: DeepResearchEvidenceContradiction[];
+	limitations: string[];
+	unanswered_questions: string[];
+	search_coverage: DeepResearchSearchCoverage;
+	confidence: number;
+}
+
+export type DeepResearchEvidencePacket = DeepResearchEvidencePacketV1;
+
+/** Candidate shape requested from the model before worker-authored provenance is attached. */
+export type DeepResearchEvidencePacketCandidate = Omit<
+	DeepResearchEvidencePacketV1,
+	'sources' | 'search_coverage'
+> & {
+	sources: Array<Omit<DeepResearchEvidenceSource, 'accessed_at'>>;
+	search_coverage?: Pick<DeepResearchSearchCoverage, 'notes'>;
+};
+
+export interface DeepResearchEvidenceValidationResult {
+	valid_for_completion: boolean;
+	issues: string[];
+}
+
 export interface RunResult {
 	run_id: string;
 	label: string;
@@ -133,6 +226,9 @@ export interface RunResult {
 	/** Staged changes awaiting approval (present only for review runs). */
 	proposed_changes?: ChangeSet;
 	artifacts?: RunResultArtifact[];
+	/** Present on depth-1 children in a deep-research orchestration tree. */
+	evidence_packet?: DeepResearchEvidencePacket;
+	evidence_validation?: DeepResearchEvidenceValidationResult;
 	open_questions?: string[];
 	confidence?: number; // 0..1
 	metrics: AgentRunMetrics;
@@ -147,6 +243,8 @@ export interface SubmitResultPayload {
 	status: RunResult['status'];
 	summary: string;
 	answer: string;
+	/** Model-authored candidate; the worker validates and normalizes it before storage. */
+	evidence_packet?: DeepResearchEvidencePacketCandidate;
 	open_questions?: string[];
 	confidence?: number;
 }

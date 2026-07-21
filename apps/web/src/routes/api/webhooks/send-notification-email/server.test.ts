@@ -128,7 +128,9 @@ describe('/api/webhooks/send-notification-email', () => {
 					update: vi.fn(() => query),
 					eq: vi.fn(() => query),
 					not: vi.fn(() => query),
-					or: vi.fn(() => query),
+					neq: vi.fn(() => query),
+					lt: vi.fn(() => query),
+					is: vi.fn(() => query),
 					in: vi.fn(() => query),
 					order: vi.fn(() => query),
 					limit: vi.fn(() => query),
@@ -163,7 +165,10 @@ describe('/api/webhooks/send-notification-email', () => {
 			emails: [
 				{ data: { id: 'email-1', status: 'scheduled', tracking_id: 't', sent_at: null } },
 				{ data: [], error: null },
-				// claim update matches no row — a concurrent sender owns it
+				// Available, stale, and undated claim updates all miss — a
+				// concurrent sender owns a fresh, timestamped claim.
+				{ data: null, error: null },
+				{ data: null, error: null },
 				{ data: null, error: null }
 			],
 			user_notification_preferences: [
@@ -181,7 +186,9 @@ describe('/api/webhooks/send-notification-email', () => {
 					update: vi.fn(() => query),
 					eq: vi.fn(() => query),
 					not: vi.fn(() => query),
-					or: vi.fn(() => query),
+					neq: vi.fn(() => query),
+					lt: vi.fn(() => query),
+					is: vi.fn(() => query),
 					in: vi.fn(() => query),
 					order: vi.fn(() => query),
 					limit: vi.fn(() => query),
@@ -204,5 +211,54 @@ describe('/api/webhooks/send-notification-email', () => {
 			skipped: 'claimed_by_other_sender'
 		});
 		expect(sendEmailMock).not.toHaveBeenCalled();
+	});
+
+	it('reclaims a stale sending row without using an OR update filter', async () => {
+		const responsesByTable: Record<string, any[]> = {
+			emails: [
+				{ data: { id: 'email-1', status: 'sending', tracking_id: 't', sent_at: null } },
+				{ data: [], error: null },
+				// The normal claim misses, then the timestamped stale claim wins.
+				{ data: null, error: null },
+				{ data: { id: 'email-1' }, error: null }
+			],
+			user_notification_preferences: [
+				{ data: { email_enabled: true, should_email_daily_brief: true }, error: null }
+			]
+		};
+
+		createAdminSupabaseClientMock.mockReturnValue({
+			from: vi.fn((table: string) => {
+				fromCalls.push(table);
+				const response = responsesByTable[table]?.shift();
+				if (!response) throw new Error(`Unexpected query on table: ${table}`);
+				const query: any = {
+					select: vi.fn(() => query),
+					update: vi.fn(() => query),
+					eq: vi.fn(() => query),
+					not: vi.fn(() => query),
+					neq: vi.fn(() => query),
+					lt: vi.fn(() => query),
+					is: vi.fn(() => query),
+					in: vi.fn(() => query),
+					order: vi.fn(() => query),
+					limit: vi.fn(() => query),
+					maybeSingle: vi.fn().mockResolvedValue(response),
+					then: (resolve: any, reject: any) =>
+						Promise.resolve(response).then(resolve, reject)
+				};
+				return query;
+			})
+		});
+		sendEmailMock.mockResolvedValue({ success: true, messageId: 'msg-stale' });
+
+		const response = await POST({
+			request: createWebhookRequest({})
+		} as any);
+
+		expect(response.status).toBe(200);
+		const payload = await response.json();
+		expect(payload.data).toMatchObject({ success: true, messageId: 'msg-stale' });
+		expect(sendEmailMock).toHaveBeenCalledTimes(1);
 	});
 });
