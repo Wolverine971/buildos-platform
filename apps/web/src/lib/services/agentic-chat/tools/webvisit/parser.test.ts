@@ -130,12 +130,20 @@ describe('web visit parser', () => {
 	});
 
 	it('compares registrable domains for same-site checks', () => {
-		expect(isSameRegistrableDomain('https://a.example.com/x', 'https://example.com/y')).toBe(true);
+		expect(isSameRegistrableDomain('https://a.example.com/x', 'https://example.com/y')).toBe(
+			true
+		);
 		expect(isSameRegistrableDomain('https://evil.com/x', 'https://nytimes.com/y')).toBe(false);
 		expect(isSameRegistrableDomain('https://shop.example.co.uk', 'https://example.co.uk')).toBe(
 			true
 		);
 		expect(isSameRegistrableDomain('https://a.co.uk', 'https://b.co.uk')).toBe(false);
+		expect(isSameRegistrableDomain('https://a.example.com/x', 'https://b.example.com/y')).toBe(
+			false
+		);
+		expect(
+			isSameRegistrableDomain('https://victim.github.io/x', 'https://evil.github.io/y')
+		).toBe(false);
 	});
 
 	it('flattens a 2MB page of unclosed <script> tags well under 500ms', () => {

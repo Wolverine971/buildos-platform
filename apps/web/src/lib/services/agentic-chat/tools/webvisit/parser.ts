@@ -131,48 +131,26 @@ function stripTagBlocks(html: string, tags: string[]): string {
 	return result;
 }
 
-/**
- * Registrable domain (approximate eTLD+1) for a hostname. Dependency-free: uses
- * the last two labels, extended to three when the second-to-last label is a
- * common second-level public suffix (e.g. `example.co.uk`). Good enough to
- * distinguish unrelated sites (`evil.com` vs `nytimes.com`); it is a
- * same-site guard, not a full Public Suffix List.
- */
-const COMMON_SECOND_LEVEL_SUFFIXES = new Set([
-	'co',
-	'com',
-	'org',
-	'net',
-	'gov',
-	'edu',
-	'ac',
-	'mil'
-]);
+function normalizeHostname(hostname: string): string {
+	return hostname.toLowerCase().replace(/\.$/, '');
+}
 
-function registrableDomain(hostname: string): string {
-	const labels = hostname
-		.toLowerCase()
-		.replace(/\.$/, '')
-		.split('.')
-		.filter(Boolean);
-	if (labels.length <= 2) return labels.join('.');
-	const secondLevel = labels[labels.length - 2];
-	if (secondLevel && COMMON_SECOND_LEVEL_SUFFIXES.has(secondLevel)) {
-		return labels.slice(-3).join('.');
-	}
-	return labels.slice(-2).join('.');
+function isSameHostOrSubdomain(hostA: string, hostB: string): boolean {
+	const a = normalizeHostname(hostA);
+	const b = normalizeHostname(hostB);
+	if (!a || !b) return false;
+	return a === b || a.endsWith(`.${b}`) || b.endsWith(`.${a}`);
 }
 
 /**
- * True when both URLs share a registrable domain. Used to reject cross-site
- * `<link rel=canonical>` values that would otherwise poison the shared
- * `web_page_visits` cache key for another site.
+ * True when both URLs share an exact host hierarchy. This is intentionally
+ * stricter than an approximate eTLD+1 comparison: the web_page_visits cache is
+ * global, and sibling tenants on private suffixes like github.io must not be
+ * allowed to canonicalize into each other's cache keys.
  */
 export function isSameRegistrableDomain(urlA: string, urlB: string): boolean {
 	try {
-		const a = registrableDomain(new URL(urlA).hostname);
-		const b = registrableDomain(new URL(urlB).hostname);
-		return a.length > 0 && a === b;
+		return isSameHostOrSubdomain(new URL(urlA).hostname, new URL(urlB).hostname);
 	} catch {
 		return false;
 	}

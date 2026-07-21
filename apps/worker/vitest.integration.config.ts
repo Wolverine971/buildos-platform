@@ -10,7 +10,8 @@ export default defineConfig({
 		// excludes older integration suites that depend on external credentials.
 		include: [
 			'tests/integration/deepResearchMigration.test.ts',
-			'tests/integration/agentRunStrandedSweep.test.ts'
+			'tests/integration/agentRunStrandedSweep.test.ts',
+			'tests/integration/agentRunCostWiring.test.ts'
 		],
 		exclude: ['**/node_modules/**', '**/dist/**']
 	}

@@ -1,7 +1,14 @@
 // packages/smart-llm/src/spend-guard.ts
 import { resolveModelPricingProfile } from './model-config';
 
-const DEFAULT_SAFETY_MULTIPLIER = 1.25;
+// The safety multiplier pads the reservation for token-count estimation error
+// AND now backs the OpenRouter `max_price` headroom (see providerMaxPrice below).
+// Catalog prices can lag real endpoint prices — a live probe found `z-ai/glm-5.2`
+// costs ~1.5x its catalog rate, so `max_price` set to the raw catalog rate
+// returned 404 "No endpoints found that satisfy the max price". 2.0 clears that
+// with margin while keeping actual cost <= the reserved amount for any accepted
+// endpoint (an endpoint priced above the multiple is rejected, not billed).
+const DEFAULT_SAFETY_MULTIPLIER = 2.0;
 const DEFAULT_MIN_OUTPUT_TOKENS = 128;
 const PROMPT_TOKEN_OVERHEAD = 1_024;
 
@@ -111,9 +118,13 @@ export function planJSONRequestSpend(options: PlanJSONRequestSpendOptions): JSON
 			maxTokens,
 			estimatedInputTokens,
 			reservedCostUsd,
+			// max_price uses the SAME multiplier as the reservation so any endpoint
+			// OpenRouter routes to (price <= these caps) keeps actual cost <=
+			// reservedCostUsd, while still rejecting endpoints priced egregiously
+			// above catalog. Raw catalog rates here caused live 404s.
 			providerMaxPrice: {
-				prompt: inputRate,
-				completion: outputRate,
+				prompt: inputRate * safetyMultiplier,
+				completion: outputRate * safetyMultiplier,
 				request: 0
 			}
 		};

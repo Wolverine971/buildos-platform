@@ -552,11 +552,26 @@ async function reconstructPriorState(
 	};
 }
 
-function parseBudgets(value: unknown): RunBudgets {
+export function parseBudgets(value: unknown): RunBudgets {
 	if (!value || typeof value !== 'object') return {};
 	const b = value as Record<string, unknown>;
-	const numberBudget = (budget: unknown) =>
-		typeof budget === 'number' && Number.isFinite(budget) && budget >= 0 ? budget : undefined;
+	// Budgets are read back from a JSONB column. A finite, non-negative budget
+	// must be honored whether the row stores it as a JSON number OR a numeric
+	// string. The previous `typeof === 'number'` check silently dropped a
+	// stringified `max_cost_usd` (e.g. "0.156"), which made
+	// resolveAgentRunLlmSpendLimit() return `undefined`; the turn loop then made
+	// an UNRESERVED, unbudgeted paid LLM call while still recording spend through
+	// the onUsage fallback (zero `agent_run_cost_entries` rows despite the run
+	// carrying a budget). Mirrors finiteNumber() in agentRunCostLedger.ts.
+	const numberBudget = (budget: unknown): number | undefined => {
+		const numeric =
+			typeof budget === 'number'
+				? budget
+				: typeof budget === 'string' && budget.trim() !== ''
+					? Number(budget)
+					: Number.NaN;
+		return Number.isFinite(numeric) && numeric >= 0 ? numeric : undefined;
+	};
 	return {
 		wall_clock_ms: numberBudget(b.wall_clock_ms),
 		max_tokens: numberBudget(b.max_tokens),
@@ -1322,13 +1337,28 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			if (spendLimit === null) {
 				return finalizeBudgetExhausted('cost budget exhausted');
 			}
-			const accounting =
-				spendLimit === undefined
-					? null
-					: createLlmAccountingHooks(
-							turnAttemptKey(job.id, jobAttempts, iteration),
-							run.effort === 'deep' ? 'agent_run.deep_turn' : 'agent_run.turn'
-						);
+			if (spendLimit === undefined) {
+				// The run carries no numeric cost budget, so the durable ledger
+				// cannot reserve this call. Fail closed instead of making an
+				// UNRESERVED, unbudgeted paid LLM call — the prior behavior only
+				// tracked spend through the onUsage fallback and reserved nothing.
+				// Dispatch always assigns a cost budget; reaching here means the
+				// run was created outside that path or with a malformed budget.
+				await emitEvent(runId, 'run.narration', {
+					note: 'missing cost budget',
+					maxCostUsd: maxCostUsd ?? null
+				});
+				return finalize('failed', {
+					summary:
+						'The run has no cost budget, so no paid model call could be safely authorized.',
+					answer: '',
+					error: 'cost_budget_required'
+				});
+			}
+			const accounting = createLlmAccountingHooks(
+				turnAttemptKey(job.id, jobAttempts, iteration),
+				run.effort === 'deep' ? 'agent_run.deep_turn' : 'agent_run.turn'
+			);
 			turn = await llm.getJSONResponse<AgentTurn>({
 				systemPrompt,
 				userPrompt: buildUserPrompt(run, transcript, {
@@ -1337,12 +1367,12 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 				userId: run.user_id,
 				profile: modelPolicy.profile,
 				reasoning: modelPolicy.reasoning,
-				...(spendLimit === undefined ? {} : { spendLimit }),
-				onSpendReservation: accounting?.onSpendReservation,
+				spendLimit,
+				onSpendReservation: accounting.onSpendReservation,
 				validation: { retryOnParseError: true, maxRetries: 2 },
 				operationType: run.effort === 'deep' ? 'agent_run_deep' : 'other',
 				metadata: { agent_run_id: runId, effort: run.effort },
-				onUsage: accounting?.onUsage ?? ((usage) => addLlmUsage(usage))
+				onUsage: accounting.onUsage
 			});
 		} catch (error) {
 			if (error instanceof AgentRunCostLedgerError) {

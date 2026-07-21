@@ -9,10 +9,31 @@ import type {
 	JSONUsageEvent,
 	SmartLLMService
 } from '../../lib/services/smart-llm-service';
+import { LLMSpendLimitError } from '../../lib/services/smart-llm-service';
 import { AgentRunCostLedgerError } from './agentRunCostLedger';
 
 type AgentRunRow = Database['public']['Tables']['agent_runs']['Row'];
 type AgentRunStatus = AgentRunRow['status'];
+
+/**
+ * Categorize a budgeted-LLM failure so planner/synthesis degradations are
+ * visible instead of collapsing into an indistinguishable "call failed". A
+ * reservation that cannot fit a priced model and a provider rejecting our
+ * `max_price` are operationally very different from a generic model error.
+ */
+type DeepResearchLlmFailureReason =
+	| 'reservation_infeasible'
+	| 'provider_price_rejected'
+	| 'model_error';
+
+export function categorizeLlmFailure(error: unknown): DeepResearchLlmFailureReason {
+	if (error instanceof LLMSpendLimitError) return 'reservation_infeasible';
+	const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+	if (message.includes('satisfy the max price') || message.includes('max price')) {
+		return 'provider_price_rejected';
+	}
+	return 'model_error';
+}
 
 export const DEEP_RESEARCH_CHILD_COUNT = 2;
 export const DEEP_RESEARCH_ALLOWED_OPS = [AGENT_OP_WEB_SEARCH, AGENT_OP_WEB_VISIT] as const;
@@ -767,17 +788,18 @@ export async function processDeepResearchCoordinator(params: {
 			max_cost_usd: budget.maxCostUsd
 		});
 
+		// Declared outside the try so the catch can report it in the failure signal.
+		const plannerSpendLimitUsd = Math.min(
+			budget.maxCostUsd * PLANNER_BUDGET_FRACTION,
+			Math.max(
+				0,
+				budget.maxCostUsd -
+					MIN_SYNTHESIS_BUDGET_USD -
+					DEEP_RESEARCH_CHILD_COUNT * MIN_CHILD_BUDGET_USD
+			)
+		);
 		let rawPlan: PlannerResponse;
 		try {
-			const plannerSpendLimitUsd = Math.min(
-				budget.maxCostUsd * PLANNER_BUDGET_FRACTION,
-				Math.max(
-					0,
-					budget.maxCostUsd -
-						MIN_SYNTHESIS_BUDGET_USD -
-						DEEP_RESEARCH_CHILD_COUNT * MIN_CHILD_BUDGET_USD
-				)
-			);
 			const accounting = params.llmAccounting?.('plan');
 			rawPlan = await params.llm.getJSONResponse<PlannerResponse>({
 				systemPrompt: [
@@ -821,8 +843,13 @@ export async function processDeepResearchCoordinator(params: {
 		} catch (error) {
 			if (error instanceof AgentRunCostLedgerError) throw error;
 			rawPlan = {};
+			// Loud, categorized degradation: a silent "planner fallback" hid a
+			// reservation-infeasible budget and a provider max_price rejection as
+			// if they were ordinary failures. Surface which one it was.
 			await params.emit('run.narration', {
-				note: 'planner fallback',
+				note: 'planner_failed',
+				reason: categorizeLlmFailure(error),
+				planner_budget_usd: plannerSpendLimitUsd,
 				error: error instanceof Error ? error.message : String(error)
 			});
 		}
@@ -1011,13 +1038,20 @@ export async function processDeepResearchCoordinator(params: {
 			}
 		});
 	} catch (error) {
+		if (error instanceof AgentRunCostLedgerError) throw error;
+		const reason = categorizeLlmFailure(error);
+		await params.emit('run.narration', {
+			note: 'synthesis_failed',
+			reason,
+			error: error instanceof Error ? error.message : String(error)
+		});
 		return {
 			kind: 'finalize',
 			status: 'partial',
 			result: aggregateWithoutSynthesis(
 				params.run,
 				children,
-				`the synthesis call failed: ${error instanceof Error ? error.message : String(error)}`
+				`synthesis failed (${reason}): ${error instanceof Error ? error.message : String(error)}`
 			)
 		};
 	}
