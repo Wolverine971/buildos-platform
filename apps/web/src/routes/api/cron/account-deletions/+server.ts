@@ -1,3 +1,4 @@
+// apps/web/src/routes/api/cron/account-deletions/+server.ts
 export const config = {
 	maxDuration: 300
 };
@@ -30,7 +31,7 @@ export const GET: RequestHandler = async ({ request }) => {
 		await admin.from('cron_logs').insert({
 			job_name: 'account_deletions',
 			status: 'success',
-			message: `Claimed ${deletion.claimed}; completed ${deletion.completed}; failed ${deletion.failed}; removed ${deletion.storageObjectsRemoved} storage object(s); retried ${billing.processed} billing cancellation(s); deleted ${expiredAcceptanceIntents} expired acceptance intent(s).`,
+			message: `Claimed ${deletion.claimed}; completed ${deletion.completed}; failed ${deletion.failed}; removed ${deletion.storageObjectsRemoved} storage object(s) and ${deletion.gmailConnectionsDeleted} Gmail connection(s); confirmed ${deletion.gmailRemoteRevocationsSucceeded} Gmail revocation(s), ${deletion.gmailRemoteRevocationsUnconfirmed} unconfirmed; retried ${billing.processed} billing cancellation(s); deleted ${expiredAcceptanceIntents} expired acceptance intent(s).`,
 			executed_at: executedAt
 		});
 

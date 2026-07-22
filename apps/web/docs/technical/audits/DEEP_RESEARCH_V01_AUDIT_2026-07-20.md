@@ -2,7 +2,7 @@
 
 # Deep Research V0.1 — Implementation & Plan Audit
 
-**Date:** 2026-07-20
+**Date:** 2026-07-20 (updated 2026-07-22)
 **Scope:** `DEEP_RESEARCH_ARCHITECTURE_2026-07-19.md`, tasker/29–33, and the implementation
 committed across `d78acab2..7444fdc3` (~21k lines: 5 migrations, orchestrator, cost ledger,
 reconciler, web dispatch, safe-fetch, tests).
@@ -10,6 +10,233 @@ reconciler, web dispatch, safe-fetch, tests).
 cost ledger + smart-llm spend path, web dispatch + SSRF), a full test-suite verification run, and
 live production probes of the RPC privilege surface. The migrations reviewer stood up a scratch
 PostgreSQL 16, applied the real migrations, and reproduced every `[verified]` finding live.
+
+## Live $2 bake-off + smoke (2026-07-20 evening)
+
+Ran four real deep-research runs against production Supabase using a **local scoped worker** built
+from HEAD + the uncommitted fix waves (Railway paused to avoid a claim race; worker registered
+`agent_run` only). Two questions × two modes; each capped at `$0.50`. **Total actual spend: $0.23.**
+
+| Run                     | Result        | Cost   | Tokens | Time | Ledger rows | Note                                                            |
+| ----------------------- | ------------- | ------ | ------ | ---- | ----------- | --------------------------------------------------------------- |
+| Q1 fan-out (2 children) | partial       | $0.015 | 28.7k  | 62s  | 0           | children hit Exa 429 / Brave 404 and gave up                    |
+| Q1 single deep run      | **completed** | $0.073 | 64.0k  | 148s | 0           | all pricing cited; **adapted** — pulled Exa via Wayback Machine |
+| Q2 fan-out              | partial       | $0.062 | 72.8k  | —    | 2           | planner + synthesis both 404'd on `max_price`                   |
+| Q2 single deep run      | partial       | $0.077 | 84.6k  | 299s | 0           | exhausted the 12-tool-call budget before finishing              |
+
+### Findings (from live evidence, not code inference)
+
+1. **Cost is a non-issue.** Four full runs = 23 cents. The `$0.50`/run budget is 3–30× over
+   the actual `$0.015–0.077` spend. Budget is not the binding constraint; reliability and source
+   reachability are.
+2. **Single deep run > 2-child fan-out (early signal).** Only 1 of 4 runs `completed`, and it was
+   a single deep run. Fan-out went `partial` every time. On Q1 the single agent kept one context
+   and _pivoted_ (Wayback when Exa 429'd); the two children each got a narrow slice, hit a wall,
+   and quit at confidence 0.35. Parallelism did not buy quality here and added a fragile synthesis
+   hop. This is the first tasker/33 WP-4 data point: **fan-out does not yet earn its complexity at
+   a `$0.50` ceiling.**
+3. **BLOCKER — `max_price` breaks the powerful lane.** Q2 fan-out's ledger shows the reserve→settle
+   lifecycle working correctly (planner + synthesis both reserved on `z-ai/glm-5.2`, then settled
+   `reconciliation_required` on failure), but **both powerful-lane calls failed with OpenRouter
+   `404 — No endpoints found that satisfy the max price`.** `planJSONRequestSpend`
+   (`packages/smart-llm/src/spend-guard.ts`) sets `max_price` to the model's **catalog** rate, which
+   for `z-ai/glm-5.2` is below its real OpenRouter endpoint price, so every endpoint is rejected.
+   Planner and synthesis both run on the powerful lane, so **every fan-out run's synthesis fails**.
+4. **Silent degradation hides it.** Two distinct failure modes both collapse to `partial` with no
+   surfaced reason: (a) `planJSONRequestSpend` _throws_ `LLMSpendLimitError` when a stage budget
+   can't fit a priced model — uncaught at `smart-llm-service.ts:580`, then swallowed by the
+   orchestrator planner/synthesis `catch` into `fallbackWorkstreams`/`aggregateWithoutSynthesis`;
+   (b) the `max_price` 404 is likewise swallowed. This is why Q1 fan-out (throw path, 0 ledger rows)
+   and Q2 fan-out (plan-built-then-404, 2 rows) present identically as `partial`.
+5. **Ledger coverage is partial live.** Only the coordinator's planner/synthesis ever reserved, and
+   only when the plan built. **Child and single-run turn calls produced zero ledger rows** in every
+   run despite carrying budgets and the per-call `$0.04` cap wiring — so the tasker/31 WP-2 goal
+   ("one reserved→settled lifecycle per paid call") is NOT met live. Needs a focused code pass to
+   determine whether child budgets reach the DB row / whether the `$0.04` per-call cap + large
+   accumulated child prompts push `planJSONRequestSpend` into a throw. (A parallel diagnosis pass
+   attributed the zero-ledger symptom to a Railway deploy-lag; that is a valid _separate_
+   operational check but does NOT explain this bake-off, which ran on a local HEAD worker.)
+
+### Fix list (ordered) — status 2026-07-21
+
+- ✅ **(1) `max_price` calibration — FIXED.** Direct OpenRouter probe confirmed `z-ai/glm-5.2`'s
+  real price is ~1.5× its catalog rate; `max_price` was set to the raw catalog rate (zero headroom),
+  so every endpoint was rejected. Fix (`packages/smart-llm/src/spend-guard.ts`): `max_price` now uses
+  the reservation's safety multiplier (raised 1.25→2.0), so accepted endpoints keep actual ≤ reserved.
+  Verified live that 2× clears the 404. Test added.
+- ✅ **(2) Loud failures — FIXED.** `deepResearchOrchestrator.ts` planner/synthesis catches now emit
+  categorized `planner_failed`/`synthesis_failed` narrations (`reservation_infeasible` /
+  `provider_price_rejected` / `model_error`) and rethrow genuine ledger errors. Test added.
+- ✅ **(3) Child/single-run ledger gap — FIXED (real bug found).** Root cause: `agentRunWorker.ts`
+  `parseBudgets` used strict `typeof === 'number'`, but Supabase returns JSONB `max_cost_usd` as a
+  numeric **string** (`"0.156"`) for child runs → `undefined` budget → unreserved paid calls. The
+  coordinator was immune because its root budget defaults to `0.5`. Fix: coerce numeric strings AND
+  fail closed (`cost_budget_required`) when no numeric budget resolves. (`planJSONRequestSpend` was
+  exonerated — it never throws for the cheap child lane.)
+- ✅ **(4) Live-wiring smoke — ADDED.** New `apps/worker/tests/integration/agentRunCostWiring.test.ts`
+  drives the full deployed path (getJSONResponse → onSpendReservation → real `reserve_agent_run_cost`
+  RPC) and asserts a durable `agent_run_cost_entries` row is written; plus a unit repro. Both fail on
+  pre-fix code.
+- ⏳ **(5) Operational** — still open: confirm the Railway worker image is ≥ `7444fdc3`.
+
+Verification after fixes: worker 454 unit + 31 integration, smart-llm 66, shared-agent-ops 27,
+typechecks + lint clean. **At this 2026-07-21 checkpoint, a re-run was still needed**; its result and
+the next remediation wave are recorded below.
+
+## Second capped smoke (2026-07-22)
+
+The same four cases were rerun after the 2026-07-21 fix wave, again through the scoped local worker
+with Railway paused. The session stayed comfortably inside its guard: **`$0.17764437` known actual
+spend; `$0.21764436` conservative exposure** including one unresolved `$0.04` reservation.
+
+| Run                     | Result  | Conservative cost | Tokens | Tool calls | Live outcome                                                      |
+| ----------------------- | ------- | ----------------: | -----: | ---------: | ----------------------------------------------------------------- |
+| Q1 fan-out (2 children) | partial |     `$0.06018084` | 49,707 |          7 | both children reached the token target before evidence submission |
+| Q1 single deep run      | failed  |     `$0.07952669` | 43,162 |          2 | primary route returned ZDR/no-endpoint 404                        |
+| Q2 fan-out (2 children) | partial |      `$0.0770357` | 54,025 |          7 | both children reached the token target before evidence submission |
+| Q2 single deep run      | failed  |     `$0.00090113` |    916 |          0 | OpenRouter returned `200` with null content                       |
+
+### What the rerun proved
+
+1. **Paid-attempt coverage is now complete.** The batch created 35 ledger rows; 34 settled. Root,
+   child, and paid-search attempts were represented, closing the first smoke's wiring gap.
+2. **The remaining unresolved row was false-conservative, not a missing charge.** The Q1 single
+   primary call was rejected before generation with a 404 and no generation id, but the worker kept
+   the full `$0.04` reservation as `reconciliation_required`.
+3. **The typed evidence gate failed safely.** No fan-out child supplied an unvalidated prose packet.
+   Both fan-out roots returned partial because all four children exhausted their 20,000-token target
+   before `submit_result`; this is correct integrity behavior but unusable product behavior.
+4. **Provider failure handling was too brittle.** A definitive route rejection and a null-content
+   success each ended a single run instead of taking one bounded alternative route.
+5. **Queue ownership needed a heartbeat.** One slow provider call crossed the 120-second stalled-job
+   threshold and was reclaimed while its original worker was still executing.
+6. **Successful-tool telemetry could still be lost.** One successful web visit failed the Supabase
+   insert with `Empty or invalid json`. The exact offending scalar was not retained, so a NUL or
+   another JSON-hostile value is a hypothesis, not a proven root cause.
+7. **There is still no valid fan-out-vs-single quality result.** The modes failed for different
+   runtime/provider reasons. The first smoke's apparent single-run win must remain provisional.
+
+### Local remediation after the rerun (2026-07-22)
+
+- Deep-research child `max_tokens=20,000` is now a target with a modest 22,000 hard ceiling. The
+  worker projects one more research turn plus a compact final evidence turn and forces submission
+  while that final turn still fits. Normal research output is capped at 2,048 tokens and final
+  evidence output at 4,096.
+- Finalization replays bounded, durably recorded observations rather than every large tool response.
+  Successful tool output is normalized to PostgreSQL-safe JSON before persistence, and evidence
+  provenance is derived from exactly that persisted value. A failed insert makes the result
+  explicitly non-citable.
+- Deep/evidence runs may make at most one caller-level provider fallback for empty content,
+  transient failure, or model unavailability. It has a distinct attempt key and a fresh durable
+  reservation; this does not weaken SmartLLM's no-unreserved-retry rule.
+- Definitive pre-generation 404/410 route rejection without a generation id now releases its
+  reservation. Timeouts, 5xx responses, missing usage, and accepted/lost responses remain
+  `reconciliation_required`.
+- The shared queue heartbeats processing jobs at one-third of the stalled timeout, bounded to
+  5–60 seconds, and fences the update by the exact processing token.
+
+Verification after the final local remediation: worker **502/502**, SmartLLM **68/68**, shared
+agent ops **27/27**, disposable-PostgreSQL deep-research integration **31/31**, worker + SmartLLM
+builds/typechecks, worker lint with zero errors, and `git diff --check`.
+
+## Third capped remediation smoke (2026-07-22)
+
+### Environment correction
+
+The first Q2 attempt in this wave exposed an operational mistake in the smoke setup: the local
+dispatch server had been started through repo-wide Turbo `pnpm dev`, which also launched the normal
+worker. That full worker raced the scoped worker and claimed coordinator/single jobs with a stale
+module instance. Those hybrid artifacts were preserved under `*-competing-worker` labels and are
+not used as the final comparison. The environment was corrected to:
+
+- `pnpm --filter @buildos/web dev` (web only);
+- exactly one `bakeoffAgentRunWorker.ts` process;
+- zero `tsx watch src/index.ts` full workers;
+- Railway still paused and health-confirmed by its edge 404.
+
+The runbook now makes this process audit explicit.
+
+### Clean final batch
+
+| Run        | Result    |           Cost | Tokens | Tool calls | End-to-end | Quality outcome                                     |
+| ---------- | --------- | -------------: | -----: | ---------: | ---------: | --------------------------------------------------- |
+| Q1 fan-out | partial   | `$0.073876935` | 35,924 |          8 |      ~112s | typed child packets; synthesis returned `...`       |
+| Q1 single  | completed | `$0.060169079` | 52,976 |          5 |       ~92s | polished, but cites search candidates never visited |
+| Q2 fan-out | partial   | `$0.071425954` | 39,912 |          8 |      ~275s | cautious sourced report; incomplete packet coverage |
+| Q2 single  | completed | `$0.062322631` | 54,560 |          6 |      ~122s | falsely says OpenRouter `max_price` is unavailable  |
+
+Clean-batch exposure was **`$0.267794599`**. Its **55** paid rows were all terminal: **50 settled,
+5 released, 0 unresolved**. The complete session retained every diagnostic/retry run in its budget
+set and closed at **`$1.0041 / $2`**.
+
+### What passed
+
+1. Children completed their evidence turn below the 20,000-token target and 22,000 hard ceiling.
+   Direct deep runs stayed below their 62,500 hard ceiling.
+2. Typed packets were produced live. Invalid/incomplete packets downgraded child/root completion
+   instead of leaking unvalidated prose.
+3. Every clean-batch paid attempt reached `settled` or `released`; definitive pre-generation ZDR
+   route 404s released before the separately reserved fallback.
+4. Calls lasting longer than the old 120-second reclaim threshold stayed owned; no duplicate paid
+   attempt appeared.
+5. The OpenRouter limits visit followed its 308 redirect and returned the large destination page;
+   the previous per-hop dispatcher-close hang is gone.
+
+### What failed the quality gate
+
+1. **Root synthesis accepted placeholder content.** Q1 fan-out persisted `answer: "..."`,
+   `summary: "..."`, and `open_questions: ["..."]`. Local remediation now requires a substantive
+   report body and returns the typed evidence-only fallback plus `synthesis_invalid` narration.
+2. **Direct single is not provenance-bound.** Q1 visited only Tavily and Exa pricing pages but cited
+   Brave and several third-party candidate URLs from search results. Q2 visited the limits and
+   parameters pages but cited authentication/management/FAQ candidates it never opened.
+3. **Completion did not imply correctness.** Q2 single confidently concluded that OpenRouter has no
+   `max_price`; the runtime's live probe and production request path already prove that provider
+   routing control exists. Q2 fan-out was more cautious but also failed to find it.
+4. **The head-to-head has no winner.** Single was cheaper and more complete, but not trustworthy;
+   fan-out was provenance-constrained, but incomplete and synthesis-fragile. Runtime readiness and
+   research quality are separate gates.
+
+### Additional defects fixed during recovery
+
+- `safe-fetch.ts` awaited `dispatcher.close()` before consuming a redirect response; a 308 with a
+  large unread body could hang indefinitely. Per-hop cleanup now uses `destroy()`. The exact
+  OpenRouter limits URL went from an outer 20-second timeout to a 692,346-byte response in 442ms.
+- A queue retry could reclaim a job at attempt 1 while the Agent Run row still said `running`, then
+  skip it and complete the queue job. Genuine retry ordinals can now reclaim `running`, and resume
+  reconstructs observed tokens, uncertain exposure, cost breakdown, and Tavily credits from the
+  durable ledger.
+- Budget/cancel fallbacks no longer publish the last raw tool transcript as the user-facing answer;
+  research fallbacks list only durably visited URLs.
+
+### Revised next step
+
+Do **not** run another ad-hoc four-case batch. Build task-33 WP-1/WP-2 first: a versioned corpus,
+visited-source citation scoring for both modes, known-fact coverage checks, and a pinned model route.
+Then rerun the architecture comparison. In parallel, deploy the safety/runtime fixes and finish
+task-31 operational proof; report persistence and chat UX remain gated on the quality result.
+
+1. **Fix `max_price` calibration (P0, unblocks fan-out).** Either add headroom to the guard's
+   `providerMaxPrice` (e.g. `catalog_rate × 1.5–2`, keeping a real ceiling while tolerating provider
+   price spread) or update the powerful-lane catalog prices to current OpenRouter endpoint prices.
+   Re-run the smoke and confirm synthesis completes. Note this also informs the audit's open
+   question — **pin a specific model for research** rather than routing the powerful lane, for
+   reproducibility and a known price.
+2. **Make reservation-infeasible loud, not silent (P0).** Catch `LLMSpendLimitError` distinctly in
+   the orchestrator planner/synthesis handlers and emit a `reservation_infeasible` signal +
+   terminal reason instead of a generic `partial`; surface the `max_price` 404 as a distinct
+   failure too.
+3. **Close the child/single-run ledger gap (P1).** Determine why child + single-run turn calls
+   reserve nothing and fix so budget enforcement actually covers them.
+4. **Add a live-wiring smoke to CI/boot (P1).** A budgeted `getJSONResponse` against the live
+   `MODEL_CATALOG` must insert an `agent_run_cost_entries` row — the 24 disposable-Postgres tests
+   pass but never exercised the deployed worker path.
+5. **Operational (P1):** confirm the Railway worker image is ≥ `7444fdc3` and all cost migrations
+   applied before relying on production deep research.
+
+The state machine, DB triggers, synthesis wakeup, honest partial-on-failure, and evidence quality
+all worked well end-to-end; the blockers are the `max_price` miscalibration and the silent
+degradation that hid it.
 
 ## Remediation status (updated 2026-07-20, same day)
 
@@ -36,9 +263,10 @@ Fix waves executed after this audit:
 - **CI** — the 24-case disposable-Postgres integration suite is now wired into `ci.yml` (blocker 10),
   with fixture fidelity fixes (Supabase default-privilege tripwire, prod dedup semantics, prod FK).
 
-Still open: the live provider smoke (worker Tavily credential + Railway-vs-local claim race) and the
-fan-out-vs-single bake-off. Strategic items (per-user daily quota before the chat tool, report
-persistence) remain sequenced as below.
+Updated 2026-07-22: two live provider batches have now run under the scoped-worker procedure. A
+**passing** smoke and a fair fan-out-vs-single bakeoff remain open after the latest local remediation.
+Strategic items (per-user daily quota before the chat tool, report persistence) remain sequenced as
+below.
 
 ## Verdict
 
@@ -51,7 +279,7 @@ production), a DNS-rebinding SSRF bypass, and a cross-user web-visit cache-poiso
 
 Strategically, the effort is inverted: ~21k lines of control/cost plane, zero evidence yet that
 the research output is good. The plan's own open question — whether 2 fan-out children beat a
-single deep run at a $0.50 budget — should be answered *before* more orchestration hardening.
+single deep run at a $0.50 budget — should be answered _before_ more orchestration hardening.
 
 ## Verified state (live probes + test runs, 2026-07-20)
 
@@ -90,7 +318,7 @@ operator SQL recovers. Related stranding paths:
   transient DB error leaves the run `running` while the job completes.
 - Child/synthesis queue job exhausting `max_attempts` (3) with the run row still `running`.
 
-**Fix:** the tasker/31 WP-3 stranded-run reconciliation sweep must be pulled forward to *before*
+**Fix:** the tasker/31 WP-3 stranded-run reconciliation sweep must be pulled forward to _before_
 rollout, not after. It also subsumes the two app-level `queueParent` backstops (one of which can
 kill a healthy run — see P2 list) and simplifies the wake-path story from three mechanisms to
 two.
@@ -101,7 +329,7 @@ Any anon/authenticated PostgREST caller can invoke this SECURITY DEFINER functio
 arbitrary run UUIDs. Internal guards bound the damage (requires running deep-research root,
 stage `researching`, two settled children), but it takes `FOR UPDATE` locks on other users' rows
 and can insert `queue_jobs` — and it compounds with the fail-open stage guard (blocker 5).
-One-line follow-up migration. Also verified: `CREATE OR REPLACE` does *not* re-grant, so the
+One-line follow-up migration. Also verified: `CREATE OR REPLACE` does _not_ re-grant, so the
 050000 revokes are durable for the functions it covers.
 
 ### 3. DNS-rebinding TOCTOU in shared `safe-fetch` — P1 (web/worker)
@@ -128,7 +356,7 @@ user's later `web_visit`. Fix: honor canonical only on the same registrable doma
 ### 5. Fail-open synthesis guard + unrepairable stage — P1, verified (DB)
 
 `20260719020000:285`: with `stage` absent from `orchestration_state`, the NULL comparison makes
-the early-return *not* fire (three-valued logic inverts fail-closed to fail-open), and
+the early-return _not_ fire (three-valued logic inverts fail-closed to fail-open), and
 `jsonb_set(..., create_missing => FALSE)` at :318-324 silently never writes the checkpoint.
 Reproduced: a root with `{}` state + two settled children enqueues synthesis on every wake;
 production `add_queue_job` dedup only spans `pending`/`processing`, so once the first synthesis
@@ -199,7 +427,7 @@ advisory lock.
 
 - **Settle can wipe recorded overrun actuals** (`030000:386-430`): a later NULL-actual
   `reconciliation_required` settle overwrites a recorded 0.03 actual with NULL → exposure
-  shrinks below already-spent money. `COALESCE`-protect actuals. *(verified)*
+  shrinks below already-spent money. `COALESCE`-protect actuals. _(verified)_
 - **200-with-missing-usage settles at $0** (`smart-llm-service.ts:838-855`) — the one silent
   release hole; should become `reconciliation_required`.
 - **`usage: {include: true}` is never sent to OpenRouter**, so the `provider_reported` settle

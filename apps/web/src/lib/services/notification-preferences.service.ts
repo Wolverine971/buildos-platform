@@ -17,11 +17,20 @@ import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$env/static/publi
 import { browser } from '$app/environment';
 
 class NotificationPreferencesService {
-	private supabase: SupabaseClient;
+	private supabase: SupabaseClient | null;
 
-	constructor(supabase?: SupabaseClient) {
-		this.supabase =
-			supabase || createSupabaseBrowser(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
+	constructor(supabase: SupabaseClient | null = null) {
+		this.supabase = supabase;
+	}
+
+	private getSupabase(): SupabaseClient {
+		if (!this.supabase) {
+			if (!browser) {
+				throw new Error('NotificationPreferencesService is only available in the browser');
+			}
+			this.supabase = createSupabaseBrowser(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
+		}
+		return this.supabase;
 	}
 
 	/**
@@ -29,17 +38,18 @@ class NotificationPreferencesService {
 	 * Returns global user preferences or defaults if not set
 	 */
 	async get(): Promise<UserNotificationPreferences> {
+		const supabase = this.getSupabase();
 		// Get current user ID
 		const {
 			data: { user },
 			error: authError
-		} = await this.supabase.auth.getUser();
+		} = await supabase.auth.getUser();
 
 		if (authError || !user) {
 			throw new Error('User not authenticated');
 		}
 
-		const { data, error } = await this.supabase
+		const { data, error } = await supabase
 			.from('user_notification_preferences')
 			.select('*')
 			.eq('user_id', user.id)
@@ -120,17 +130,18 @@ class NotificationPreferencesService {
 		}
 
 		// Server-side fallback (used only in non-browser contexts)
+		const supabase = this.getSupabase();
 		// Get current user ID
 		const {
 			data: { user },
 			error: authError
-		} = await this.supabase.auth.getUser();
+		} = await supabase.auth.getUser();
 
 		if (authError || !user) {
 			throw new Error('User not authenticated');
 		}
 
-		const { error } = await this.supabase.from('user_notification_preferences').upsert(
+		const { error } = await supabase.from('user_notification_preferences').upsert(
 			{
 				user_id: user.id,
 				...updates,
@@ -150,17 +161,18 @@ class NotificationPreferencesService {
 	 * Subscribe to an event type
 	 */
 	async subscribe(eventType: EventType, filters?: Record<string, any>): Promise<void> {
+		const supabase = this.getSupabase();
 		// Get current user ID
 		const {
 			data: { user },
 			error: authError
-		} = await this.supabase.auth.getUser();
+		} = await supabase.auth.getUser();
 
 		if (authError || !user) {
 			throw new Error('User not authenticated');
 		}
 
-		const { error } = await this.supabase.from('notification_subscriptions').upsert(
+		const { error } = await supabase.from('notification_subscriptions').upsert(
 			{
 				user_id: user.id,
 				event_type: eventType,
@@ -184,17 +196,18 @@ class NotificationPreferencesService {
 	 * Unsubscribe from an event type
 	 */
 	async unsubscribe(eventType: EventType): Promise<void> {
+		const supabase = this.getSupabase();
 		// Get current user ID
 		const {
 			data: { user },
 			error: authError
-		} = await this.supabase.auth.getUser();
+		} = await supabase.auth.getUser();
 
 		if (authError || !user) {
 			throw new Error('User not authenticated');
 		}
 
-		const { error } = await this.supabase
+		const { error } = await supabase
 			.from('notification_subscriptions')
 			.update({ is_active: false, updated_at: new Date().toISOString() })
 			.eq('user_id', user.id)
@@ -209,17 +222,18 @@ class NotificationPreferencesService {
 	 * Get all subscriptions for current user
 	 */
 	async getSubscriptions(): Promise<NotificationSubscription[]> {
+		const supabase = this.getSupabase();
 		// Get current user ID
 		const {
 			data: { user },
 			error: authError
-		} = await this.supabase.auth.getUser();
+		} = await supabase.auth.getUser();
 
 		if (authError || !user) {
 			throw new Error('User not authenticated');
 		}
 
-		const { data, error } = await this.supabase
+		const { data, error } = await supabase
 			.from('notification_subscriptions')
 			.select('*')
 			.eq('user_id', user.id)
@@ -236,17 +250,18 @@ class NotificationPreferencesService {
 	 * Check if user is subscribed to an event type
 	 */
 	async isSubscribed(eventType: EventType): Promise<boolean> {
+		const supabase = this.getSupabase();
 		// Get current user ID
 		const {
 			data: { user },
 			error: authError
-		} = await this.supabase.auth.getUser();
+		} = await supabase.auth.getUser();
 
 		if (authError || !user) {
 			return false;
 		}
 
-		const { data, error } = await this.supabase
+		const { data, error } = await supabase
 			.from('notification_subscriptions')
 			.select('is_active')
 			.eq('user_id', user.id)

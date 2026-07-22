@@ -183,6 +183,43 @@ export function shouldFailoverToNextOpenRouterModel(error: unknown): boolean {
 	return isRetryableOpenRouterError(error) || isOpenRouterModelAvailabilityError(error);
 }
 
+/** True when OpenRouter returned a generation id, meaning paid work may have started. */
+export function hasOpenRouterGenerationId(error: unknown): boolean {
+	if (!error || typeof error !== 'object') return false;
+	const generationId = (error as { openrouter?: Record<string, unknown> }).openrouter
+		?.generationId;
+	return typeof generationId === 'string' && generationId.trim().length > 0;
+}
+
+/**
+ * A 404/410 model-route rejection without a generation id happened before any
+ * provider accepted paid work, so a strict reservation can be safely released.
+ * Timeouts, 5xx responses, and errors carrying a generation id remain uncertain.
+ */
+export function isOpenRouterDefinitivePreGenerationRejection(error: unknown): boolean {
+	if (!error || typeof error !== 'object') return false;
+	const candidate = error as {
+		status?: number;
+		openrouter?: Record<string, unknown>;
+	};
+	const status =
+		typeof candidate.status === 'number'
+			? candidate.status
+			: typeof candidate.openrouter?.httpStatus === 'number'
+				? candidate.openrouter.httpStatus
+				: undefined;
+	const generationId = candidate.openrouter?.generationId;
+	const message = parseOpenRouterErrorMetadata(error).message ?? '';
+	const explicitlyRouteRejected = MODEL_FAILOVER_MESSAGE_PATTERNS.some((pattern) =>
+		pattern.test(message)
+	);
+	return (
+		(status === 404 || status === 410) &&
+		(typeof generationId !== 'string' || generationId.trim().length === 0) &&
+		explicitlyRouteRejected
+	);
+}
+
 export function summarizeOpenRouterMessageContent(
 	content: unknown
 ): OpenRouterMessageContentSummary {

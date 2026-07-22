@@ -38,7 +38,13 @@ import {
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
-import { LLMUsageLogger } from '@buildos/smart-llm';
+import {
+	DEEPSEEK_V4_FLASH_MODEL,
+	LLMUsageLogger,
+	OpenRouterEmptyContentError,
+	hasOpenRouterGenerationId,
+	shouldFailoverToNextOpenRouterModel
+} from '@buildos/smart-llm';
 import {
 	type JSONSpendReservationEvent,
 	type JSONUsageEvent,
@@ -59,9 +65,20 @@ import {
 	observeDeepResearchToolResult
 } from './deepResearchEvidence';
 import {
+	classifyAgentRunTokenUsage,
+	renderDeepResearchFinalizationContext,
+	renderDeepResearchInterruptedAnswer,
+	renderDeepResearchWorkingContext,
+	resolveAgentRunHardTokenLimit,
+	resolveAgentRunTokenPlan,
+	sanitizeAgentRunTelemetryJson
+} from './agentRunRuntimePolicy';
+import {
 	canReservePaidToolCost,
+	resolveAgentRunLlmLedgerSettlement,
 	resolveAgentRunLlmSpendLimit,
-	settlePaidToolReservation
+	settlePaidToolReservation,
+	summarizeAgentRunRetryLedger
 } from './agentRunCostPolicy';
 import {
 	AgentRunCostLedgerError,
@@ -134,8 +151,39 @@ export function deepResearchAttemptKey(jobId: string, jobAttempts: number, stage
 	return `llm:${jobId}:a${jobAttempts}:deep-research:${stage}`;
 }
 
-export function turnAttemptKey(jobId: string, jobAttempts: number, iteration: number): string {
-	return `llm:${jobId}:a${jobAttempts}:turn:${iteration}`;
+export function turnAttemptKey(
+	jobId: string,
+	jobAttempts: number,
+	iteration: number,
+	providerAttempt = 0
+): string {
+	const base = `llm:${jobId}:a${jobAttempts}:turn:${iteration}`;
+	return providerAttempt > 0 ? `${base}:fallback:${providerAttempt}` : base;
+}
+
+export function shouldRetryAgentRunLlmTurn(error: unknown): boolean {
+	const chain: unknown[] = [];
+	const seen = new Set<unknown>();
+	let current: unknown = error;
+	while (current && !seen.has(current)) {
+		seen.add(current);
+		chain.push(current);
+		current =
+			typeof current === 'object' && current !== null && 'cause' in current
+				? (current as { cause?: unknown }).cause
+				: undefined;
+	}
+	// A generation id proves OpenRouter accepted the request. Retrying that
+	// uncertain request could pay for duplicate work even when the response was
+	// merely lost after acceptance.
+	if (chain.some((item) => hasOpenRouterGenerationId(item))) return false;
+	return chain.some(
+		(item) =>
+			item instanceof OpenRouterEmptyContentError ||
+			(item instanceof Error &&
+				item.message.toLowerCase().includes('openrouter returned empty content')) ||
+			shouldFailoverToNextOpenRouterModel(item)
+	);
 }
 
 export function toolAttemptKey(
@@ -190,7 +238,8 @@ function isContinuationFrom(
 
 function isClaimableStatus(
 	run: AgentRunRow,
-	continuationFrom?: NonNullable<AgentRunJobMetadata['continuation_from']>
+	continuationFrom?: NonNullable<AgentRunJobMetadata['continuation_from']>,
+	jobAttempts = 0
 ): boolean {
 	if (continuationFrom === 'paused') return run.status === 'queued' || run.status === 'paused';
 	if (continuationFrom === 'needs_input')
@@ -206,7 +255,12 @@ function isClaimableStatus(
 	) {
 		return true;
 	}
+	if (isAgentRunQueueRetryResume(jobAttempts, run.status)) return true;
 	return run.status === 'queued';
+}
+
+export function isAgentRunQueueRetryResume(jobAttempts: number, runStatus: string): boolean {
+	return Number.isInteger(jobAttempts) && jobAttempts > 0 && runStatus === 'running';
 }
 
 async function emitEvent(
@@ -440,19 +494,24 @@ async function recordToolExecution(params: {
 	entityId?: string | null;
 	mutationMode?: AgentRunMutationMode;
 	proposedChangeId?: string;
-}): Promise<boolean> {
+}): Promise<{
+	recorded: boolean;
+	persistedResult: ReturnType<typeof sanitizeAgentRunTelemetryJson>;
+}> {
 	const isWrite = isWriteOp(params.op);
 	// Reads are never staged; a staged write records mutation_mode='stage' + its
 	// proposed_change_id. mutation_mode is null for reads (semantically n/a).
 	const mutationMode = isWrite ? (params.mutationMode ?? 'commit') : null;
+	const persistedArgs = sanitizeAgentRunTelemetryJson(params.args);
+	const persistedResult = sanitizeAgentRunTelemetryJson(params.result);
 	const { error } = await supabase.from('agent_tool_executions').insert({
 		agent_run_id: params.runId,
 		user_id: params.userId,
 		tool_name: params.op,
 		gateway_op: params.op,
 		tool_category: isWrite ? 'write' : 'read',
-		arguments: params.args as never,
-		result: (params.ok ? params.result : null) as never,
+		arguments: persistedArgs as never,
+		result: (params.ok ? persistedResult : null) as never,
 		success: params.ok,
 		error_message: params.errorMessage ?? null,
 		mutation_mode: mutationMode,
@@ -463,9 +522,9 @@ async function recordToolExecution(params: {
 	});
 	if (error) {
 		console.error('[agentRunWorker] failed to record tool execution', error.message);
-		return false;
+		return { recorded: false, persistedResult };
 	}
-	return true;
+	return { recorded: true, persistedResult };
 }
 
 /**
@@ -485,9 +544,26 @@ async function reconstructPriorState(
 	toolCalls: number;
 	tokens: number;
 	cost: number;
+	llmCost: number;
+	paidToolCost: number;
+	tavilyCredits: number;
+	uncertainTokenExposure: number;
 	researchObservations: DeepResearchObservations;
 }> {
-	const [{ data: execs }, { data: steers }] = await Promise.all([
+	type RetryLedgerClient = {
+		from(table: 'agent_run_cost_entries'): {
+			select(columns: string): {
+				eq(
+					column: 'leaf_run_id',
+					value: string
+				): PromiseLike<{
+					data: Array<Record<string, unknown>> | null;
+					error: { message: string } | null;
+				}>;
+			};
+		};
+	};
+	const [{ data: execs }, { data: steers }, ledgerResult] = await Promise.all([
 		supabase
 			.from('agent_tool_executions')
 			.select('gateway_op, tool_name, arguments, result, success, error_message, created_at')
@@ -498,12 +574,25 @@ async function reconstructPriorState(
 			.select('payload, created_at')
 			.eq('run_id', runId)
 			.eq('event_type', 'run.steer')
-			.order('created_at', { ascending: true })
+			.order('created_at', { ascending: true }),
+		(supabase as unknown as RetryLedgerClient)
+			.from('agent_run_cost_entries')
+			.select(
+				'provider, status, reserved_units, actual_units, unit_type, reserved_cost_usd, actual_cost_usd'
+			)
+			.eq('leaf_run_id', runId)
 	]);
+	if (ledgerResult.error) {
+		throw new Error(
+			`Failed to reconstruct Agent Run ${runId} cost ledger: ${ledgerResult.error.message}`
+		);
+	}
+	const ledger = summarizeAgentRunRetryLedger(ledgerResult.data ?? []);
 
 	const items: Array<{ at: string; line: string }> = [];
 	let researchObservations: DeepResearchObservations = {
 		searchQueries: [],
+		searchResults: [],
 		visitedSources: []
 	};
 	let toolCalls = 0;
@@ -573,8 +662,12 @@ async function reconstructPriorState(
 	return {
 		transcript: items.map((i) => i.line),
 		toolCalls,
-		tokens: typeof m?.tokens === 'number' ? m.tokens : 0,
-		cost: typeof m?.cost_usd === 'number' ? m.cost_usd : 0,
+		tokens: Math.max(typeof m?.tokens === 'number' ? m.tokens : 0, ledger.observedTokens),
+		cost: Math.max(typeof m?.cost_usd === 'number' ? m.cost_usd : 0, ledger.costUsd),
+		llmCost: ledger.llmCostUsd,
+		paidToolCost: ledger.paidToolCostUsd,
+		tavilyCredits: ledger.tavilyCredits,
+		uncertainTokenExposure: ledger.uncertainTokenExposure,
 		researchObservations
 	};
 }
@@ -766,24 +859,70 @@ function buildSystemPrompt(
 function buildUserPrompt(
 	run: AgentRunRow,
 	transcript: string[],
-	options: { forceSubmitResult?: boolean } = {}
+	options: {
+		forceSubmitResult?: boolean;
+		finalizationReason?: 'tool_budget' | 'token_headroom';
+		researchContext?: string;
+	} = {}
 ): string {
+	const history = options.researchContext
+		? options.forceSubmitResult
+			? `Durably recorded, verified research material for finalization:\n${options.researchContext}`
+			: `Compact durable research state:\n${options.researchContext}\nCandidate URLs are leads only; claims require a URL in verified_visited_sources.`
+		: transcript.length
+			? `Operation history so far:\n${transcript.join('\n\n')}`
+			: 'No operations run yet.';
+	const finalizationMessage =
+		options.finalizationReason === 'token_headroom'
+			? 'TOKEN TARGET HEADROOM REACHED: Do not call another operation. Submit the best supported final result now. A useful honest partial result is preferable to consuming the hard ceiling.'
+			: 'TOOL CALL BUDGET EXHAUSTED: Do not call another operation. Submit your final result now using the operation history above.';
 	const parts = [
 		`GOAL: ${run.goal}`,
 		run.instructions ? `INSTRUCTIONS: ${run.instructions}` : '',
 		run.expected_output ? `EXPECTED OUTPUT: ${run.expected_output}` : '',
 		`CONTEXT: ${run.context_type}${run.project_id ? ` (project_id: ${run.project_id})` : ''}`,
 		'',
-		transcript.length
-			? `Operation history so far:\n${transcript.join('\n\n')}`
-			: 'No operations run yet.',
+		history,
 		'',
-		options.forceSubmitResult
-			? 'TOOL CALL BUDGET EXHAUSTED: Do not call another operation. Submit your final result now using the operation history above.'
-			: '',
+		options.forceSubmitResult ? finalizationMessage : '',
 		'Respond with your next action as JSON.'
 	];
 	return parts.filter(Boolean).join('\n');
+}
+
+export function buildForcedFinalSystemPrompt(
+	systemPrompt: string,
+	usesDurableResearchContext: boolean
+): string {
+	return [
+		systemPrompt,
+		'',
+		'FINAL TURN OVERRIDE: The only valid action is "submit_result". Do not call or request another operation.',
+		'Return the best honest completed or partial deliverable that the recorded evidence supports now.',
+		usesDurableResearchContext
+			? 'For factual web claims, rely only on verified_visited_sources and cite their exact URLs. Candidate search results are not evidence.'
+			: ''
+	]
+		.filter(Boolean)
+		.join('\n');
+}
+
+export function shouldUseDurableResearchContext(params: {
+	isResearchEvidenceChild: boolean;
+	effort: 'standard' | 'deep';
+	scopeMode: 'read_only' | 'read_write';
+	allowedOps: string[] | null;
+}): boolean {
+	return Boolean(
+		params.isResearchEvidenceChild ||
+			(params.effort === 'deep' &&
+				params.scopeMode === 'read_only' &&
+				Array.isArray(params.allowedOps) &&
+				params.allowedOps.length > 0 &&
+				params.allowedOps.every(
+					(op) => op === AGENT_OP_WEB_SEARCH || op === AGENT_OP_WEB_VISIT
+				))
+	);
 }
 
 export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>) {
@@ -818,9 +957,10 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		: undefined;
 	const isResume =
 		Boolean(continuationFrom) ||
-		(isDeepResearchCoordinator(initialRun) && initialRun.status === 'running');
+		(isDeepResearchCoordinator(initialRun) && initialRun.status === 'running') ||
+		isAgentRunQueueRetryResume(jobAttempts, initialRun.status);
 
-	if (!isClaimableStatus(initialRun, continuationFrom)) {
+	if (!isClaimableStatus(initialRun, continuationFrom, jobAttempts)) {
 		await job.log?.(`Agent Run ${runId} skipped; status is ${initialRun.status}`);
 		return {
 			success: true,
@@ -889,6 +1029,12 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			run.allowed_ops.length > 0 &&
 			run.allowed_ops.every((op) => op === AGENT_OP_WEB_SEARCH || op === AGENT_OP_WEB_VISIT)
 	);
+	const usesDurableResearchContext = shouldUseDurableResearchContext({
+		isResearchEvidenceChild,
+		effort: run.effort === 'deep' ? 'deep' : 'standard',
+		scopeMode: run.scope_mode === 'read_write' ? 'read_write' : 'read_only',
+		allowedOps: run.allowed_ops
+	});
 
 	// review_required runs STAGE writes into a Change Set instead of
 	// committing. Read-only runs never stage (dispatch rejects review+read_only).
@@ -899,6 +1045,10 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 	const modelPolicy = resolveAgentRunModelPolicy(run.effort);
 	const maxToolCalls = budgets.max_tool_calls ?? DEFAULT_MAX_TOOL_CALLS;
 	const maxTokens = budgets.max_tokens;
+	const hardTokenLimit = resolveAgentRunHardTokenLimit(
+		maxTokens,
+		isResearchEvidenceChild || run.effort === 'deep'
+	);
 	const maxCostUsd = budgets.max_cost_usd;
 	const deadlineMs = startedAtMs + (budgets.wall_clock_ms ?? modelPolicy.defaultWallClockMs);
 
@@ -908,17 +1058,26 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 	let llmCostTotal = 0;
 	let paidToolCostTotal = 0;
 	let tavilyCreditsTotal = 0;
+	let uncertainTokenExposureTotal = 0;
 	let toolCalls = 0;
 	let researchObservations: DeepResearchObservations = {
 		searchQueries: [],
+		searchResults: [],
 		visitedSources: []
 	};
 	const paidToolDispatches: Array<{ attemptKey: string; charge: PaidToolCharge }> = [];
 	let activePaidToolAttemptKey: string | null = null;
 	let paidToolAccountingFailure: AgentRunCostLedgerError | null = null;
 
-	const addLlmUsage = (usage: Pick<JSONUsageEvent, 'totalTokens' | 'totalCost'>) => {
-		if (usage.totalTokens) tokensTotal += usage.totalTokens;
+	const addLlmUsage = (
+		usage: Pick<
+			JSONUsageEvent,
+			'totalTokens' | 'totalCost' | 'costSource' | 'billingDisposition'
+		>
+	) => {
+		const tokenCharge = classifyAgentRunTokenUsage(usage);
+		tokensTotal += tokenCharge.observedTokens;
+		uncertainTokenExposureTotal += tokenCharge.uncertainTokenExposure;
 		if (usage.totalCost) {
 			costTotal += usage.totalCost;
 			llmCostTotal += usage.totalCost;
@@ -962,20 +1121,20 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			// Metrics retain the provider outcome even if settlement persistence
 			// fails; the durable reservation remains conservative in that case.
 			if (recordUsage) addLlmUsage(usage);
-			const requestedStatus =
-				usage.costSource === 'reservation' ? 'reconciliation_required' : 'settled';
+			const settlement = resolveAgentRunLlmLedgerSettlement(usage);
 			const entry = await settleAgentRunCost({
 				leafRunId: runId,
 				attemptKey,
-				status: requestedStatus,
-				actualCostUsd: usage.totalCost,
-				actualUnits: usage.totalTokens,
+				status: settlement.status,
+				actualCostUsd: settlement.actualCostUsd,
+				actualUnits: settlement.actualUnits,
 				providerRequestId: usage.providerRequestId,
 				metadata: {
 					cost_source: usage.costSource,
 					actual_provider: usage.provider ?? null,
 					billing_provider: usage.billingProvider ?? null,
-					actual_model: usage.model
+					actual_model: usage.model,
+					billing_disposition: usage.billingDisposition ?? null
 				}
 			});
 			await emitEvent(runId, 'run.cost', {
@@ -1068,6 +1227,10 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		run.effort === 'deep' ? 'deep' : 'standard',
 		isResearchEvidenceChild ? run.id : undefined
 	);
+	const finalSystemPrompt = buildForcedFinalSystemPrompt(
+		systemPrompt,
+		usesDurableResearchContext
+	);
 	const committedEntityTouches: EntityTouch[] = [];
 
 	if (isResume) {
@@ -1087,14 +1250,26 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			run.metrics && typeof run.metrics === 'object' && !Array.isArray(run.metrics)
 				? (run.metrics as Record<string, unknown>)
 				: {};
-		llmCostTotal =
-			typeof priorMetrics.llm_cost_usd === 'number' ? priorMetrics.llm_cost_usd : 0;
-		paidToolCostTotal =
+		llmCostTotal = Math.max(
+			typeof priorMetrics.llm_cost_usd === 'number' ? priorMetrics.llm_cost_usd : 0,
+			prior.llmCost
+		);
+		paidToolCostTotal = Math.max(
 			typeof priorMetrics.paid_tool_cost_usd === 'number'
 				? priorMetrics.paid_tool_cost_usd
-				: 0;
-		tavilyCreditsTotal =
-			typeof priorMetrics.tavily_credits === 'number' ? priorMetrics.tavily_credits : 0;
+				: 0,
+			prior.paidToolCost
+		);
+		tavilyCreditsTotal = Math.max(
+			typeof priorMetrics.tavily_credits === 'number' ? priorMetrics.tavily_credits : 0,
+			prior.tavilyCredits
+		);
+		uncertainTokenExposureTotal = Math.max(
+			typeof priorMetrics.uncertain_token_exposure === 'number'
+				? priorMetrics.uncertain_token_exposure
+				: 0,
+			prior.uncertainTokenExposure
+		);
 		await emitEvent(runId, 'run.narration', { note: 'resumed' });
 	}
 
@@ -1104,6 +1279,10 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 	): Promise<AgentRunProcessorResult> => {
 		const metrics = {
 			tokens: tokensTotal,
+			uncertain_token_exposure: uncertainTokenExposureTotal,
+			token_target: maxTokens ?? null,
+			token_hard_limit: hardTokenLimit ?? null,
+			token_target_exceeded: maxTokens !== undefined && tokensTotal > maxTokens,
 			cost_usd: costTotal,
 			llm_cost_usd: llmCostTotal,
 			paid_tool_cost_usd: paidToolCostTotal,
@@ -1211,7 +1390,9 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 
 	const hardBudgetExhaustionReason = (): string | null => {
 		if (Date.now() > deadlineMs) return 'wall-clock budget exhausted';
-		if (maxTokens !== undefined && tokensTotal >= maxTokens) return 'token budget exhausted';
+		if (hardTokenLimit !== undefined && tokensTotal >= hardTokenLimit) {
+			return 'token hard ceiling exhausted';
+		}
 		if (maxCostUsd !== undefined && costTotal >= maxCostUsd) {
 			return 'cost budget exhausted';
 		}
@@ -1227,12 +1408,15 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			maxToolCalls,
 			tokens: tokensTotal,
 			maxTokens,
+			hardTokenLimit,
 			costUsd: costTotal,
 			maxCostUsd
 		});
 		return finalize('partial', {
 			summary: `Stopped: ${reason} before submitting a result.`,
-			answer: transcript.slice(-1)[0] ?? '',
+			answer: usesDurableResearchContext
+				? renderDeepResearchInterruptedAnswer(researchObservations)
+				: '',
 			open_questions: ['Run did not finish within budget.']
 		});
 	};
@@ -1294,7 +1478,9 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 						cancellationSource === 'parent'
 							? 'Run stopped because its parent became terminal.'
 							: 'Run cancelled by user.',
-					answer: transcript.slice(-1)[0] ?? ''
+					answer: usesDurableResearchContext
+						? renderDeepResearchInterruptedAnswer(researchObservations)
+						: ''
 				})
 			};
 		}
@@ -1324,6 +1510,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 						llm_cost_usd: llmCostTotal,
 						paid_tool_cost_usd: paidToolCostTotal,
 						tavily_credits: tavilyCreditsTotal,
+						uncertain_token_exposure: uncertainTokenExposureTotal,
 						tool_calls: toolCalls,
 						duration_ms: Date.now() - startedAtMs
 					} as never
@@ -1381,7 +1568,8 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 					toolCalls,
 					llmCost: llmCostTotal,
 					paidToolCost: paidToolCostTotal,
-					tavilyCredits: tavilyCreditsTotal
+					tavilyCredits: tavilyCreditsTotal,
+					uncertainTokenExposure: uncertainTokenExposureTotal
 				}),
 				addUsage: (usage) => {
 					tokensTotal += usage.tokens;
@@ -1390,6 +1578,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 					llmCostTotal += usage.llmCost ?? usage.cost;
 					paidToolCostTotal += usage.paidToolCost ?? 0;
 					tavilyCreditsTotal += usage.tavilyCredits ?? 0;
+					uncertainTokenExposureTotal += usage.uncertainTokenExposure ?? 0;
 				},
 				llmAccounting: (stage) =>
 					createLlmAccountingHooks(
@@ -1445,49 +1634,123 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			return finalizeBudgetExhausted(exhaustedBeforeTurn);
 		}
 
-		let turn: AgentTurn;
+		let turn!: AgentTurn;
+		let turnTokenPlan: ReturnType<typeof resolveAgentRunTokenPlan> | null = null;
 		try {
-			const spendLimit = resolveAgentRunLlmSpendLimit(maxCostUsd, costTotal);
-			if (spendLimit === null) {
-				return finalizeBudgetExhausted('cost budget exhausted');
-			}
-			if (spendLimit === undefined) {
-				// The run carries no numeric cost budget, so the durable ledger
-				// cannot reserve this call. Fail closed instead of making an
-				// UNRESERVED, unbudgeted paid LLM call — the prior behavior only
-				// tracked spend through the onUsage fallback and reserved nothing.
-				// Dispatch always assigns a cost budget; reaching here means the
-				// run was created outside that path or with a malformed budget.
-				await emitEvent(runId, 'run.narration', {
-					note: 'missing cost budget',
-					maxCostUsd: maxCostUsd ?? null
-				});
-				return finalize('failed', {
-					summary:
-						'The run has no cost budget, so no paid model call could be safely authorized.',
-					answer: '',
-					error: 'cost_budget_required'
-				});
-			}
-			const accounting = createLlmAccountingHooks(
-				turnAttemptKey(job.id, jobAttempts, iteration),
-				run.effort === 'deep' ? 'agent_run.deep_turn' : 'agent_run.turn'
-			);
-			turn = await llm.getJSONResponse<AgentTurn>({
-				systemPrompt,
-				userPrompt: buildUserPrompt(run, transcript, {
-					forceSubmitResult: toolCallBudgetReached()
-				}),
-				userId: run.user_id,
-				profile: modelPolicy.profile,
-				reasoning: modelPolicy.reasoning,
-				spendLimit,
-				onSpendReservation: accounting.onSpendReservation,
-				validation: { retryOnParseError: true, maxRetries: 2 },
-				operationType: run.effort === 'deep' ? 'agent_run_deep' : 'other',
-				metadata: { agent_run_id: runId, effort: run.effort },
-				onUsage: accounting.onUsage
+			const researchWorkingContext = usesDurableResearchContext
+				? renderDeepResearchWorkingContext(researchObservations)
+				: undefined;
+			const normalUserPrompt = buildUserPrompt(run, transcript, {
+				researchContext: researchWorkingContext
 			});
+			const researchFinalizationContext = usesDurableResearchContext
+				? renderDeepResearchFinalizationContext(researchObservations)
+				: undefined;
+			const finalUserPrompt = buildUserPrompt(run, transcript, {
+				forceSubmitResult: true,
+				finalizationReason: toolCallBudgetReached() ? 'tool_budget' : 'token_headroom',
+				researchContext: researchFinalizationContext
+			});
+			let providerAttempt = 0;
+			for (;;) {
+				const spendLimit = resolveAgentRunLlmSpendLimit(maxCostUsd, costTotal);
+				if (spendLimit === null) {
+					return finalizeBudgetExhausted('cost budget exhausted');
+				}
+				if (spendLimit === undefined) {
+					// Dispatch always assigns a cost budget. Never make an unreserved
+					// paid call when a malformed/out-of-band run omits it.
+					await emitEvent(runId, 'run.narration', {
+						note: 'missing cost budget',
+						maxCostUsd: maxCostUsd ?? null
+					});
+					return finalize('failed', {
+						summary:
+							'The run has no cost budget, so no paid model call could be safely authorized.',
+						answer: '',
+						error: 'cost_budget_required'
+					});
+				}
+
+				turnTokenPlan = resolveAgentRunTokenPlan({
+					maxTokens,
+					tokensUsed: tokensTotal,
+					isResearchEvidenceChild,
+					isDeepRun: run.effort === 'deep',
+					toolCallBudgetReached: toolCallBudgetReached(),
+					systemPrompt,
+					finalSystemPrompt,
+					normalUserPrompt,
+					finalUserPrompt
+				});
+				if (turnTokenPlan.cannotFitFinalTurn) {
+					return finalizeBudgetExhausted(
+						'token hard ceiling cannot safely fit the final evidence turn'
+					);
+				}
+				if (turnTokenPlan.reason === 'token_headroom') {
+					await emitEvent(runId, 'run.narration', {
+						note: 'finalizing before token hard ceiling',
+						tokens: tokensTotal,
+						tokenTarget: turnTokenPlan.softTarget,
+						tokenHardLimit: turnTokenPlan.hardLimit,
+						estimatedFinalPromptTokens: turnTokenPlan.estimatedPromptTokens,
+						maxOutputTokens: turnTokenPlan.maxOutputTokens,
+						providerAttempt
+					});
+				}
+
+				const accounting = createLlmAccountingHooks(
+					turnAttemptKey(job.id, jobAttempts, iteration, providerAttempt),
+					run.effort === 'deep' ? 'agent_run.deep_turn' : 'agent_run.turn'
+				);
+				try {
+					turn = await llm.getJSONResponse<AgentTurn>({
+						systemPrompt: turnTokenPlan.forceSubmitResult
+							? finalSystemPrompt
+							: systemPrompt,
+						userPrompt: turnTokenPlan.forceSubmitResult
+							? finalUserPrompt
+							: normalUserPrompt,
+						userId: run.user_id,
+						profile: modelPolicy.profile,
+						model: providerAttempt > 0 ? DEEPSEEK_V4_FLASH_MODEL : undefined,
+						reasoning: modelPolicy.reasoning,
+						maxTokens: turnTokenPlan.maxOutputTokens,
+						spendLimit,
+						onSpendReservation: accounting.onSpendReservation,
+						validation: { retryOnParseError: true, maxRetries: 2 },
+						operationType: run.effort === 'deep' ? 'agent_run_deep' : 'other',
+						metadata: {
+							agent_run_id: runId,
+							effort: run.effort,
+							provider_fallback_attempt: providerAttempt
+						},
+						onUsage: accounting.onUsage
+					});
+					break;
+				} catch (error) {
+					const exhaustedAfterProviderFailure = hardBudgetExhaustionReason();
+					if (exhaustedAfterProviderFailure) {
+						return finalizeBudgetExhausted(exhaustedAfterProviderFailure);
+					}
+					const fallbackAllowed = isResearchEvidenceChild || run.effort === 'deep';
+					if (
+						providerAttempt === 0 &&
+						fallbackAllowed &&
+						shouldRetryAgentRunLlmTurn(error)
+					) {
+						providerAttempt = 1;
+						await emitEvent(runId, 'run.narration', {
+							note: 'retrying model turn with bounded fallback',
+							fallbackModel: DEEPSEEK_V4_FLASH_MODEL,
+							error: error instanceof Error ? error.message : String(error)
+						});
+						continue;
+					}
+					throw error;
+				}
+			}
 		} catch (error) {
 			if (error instanceof AgentRunCostLedgerError) {
 				if (error.code === 'budget_exceeded') {
@@ -1506,6 +1769,29 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 				return finalizeBudgetExhausted(
 					'remaining cost budget cannot fund another bounded model response'
 				);
+			}
+			if (isResearchEvidenceChild && researchObservations.visitedSources.length > 0) {
+				const validation = normalizeDeepResearchEvidencePacket({
+					raw: null,
+					questionId: run.id,
+					observations: researchObservations
+				});
+				await emitEvent(runId, 'run.narration', {
+					note: 'preserving verified research observations after model failure',
+					visited_sources: researchObservations.visitedSources.length,
+					search_results: researchObservations.searchResults.length
+				});
+				return finalize('partial', {
+					summary:
+						'The research provider failed after source collection; verified source coverage was preserved for synthesis.',
+					answer: '',
+					error: error instanceof Error ? error.message : String(error),
+					evidence_packet: validation.packet,
+					evidence_validation: {
+						valid_for_completion: false,
+						issues: validation.issues
+					}
+				});
 			}
 			await emitEvent(runId, 'run.narration', {
 				error: error instanceof Error ? error.message : String(error)
@@ -1575,6 +1861,14 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 				}
 			}
 			return finalize(status, terminalResult);
+		}
+
+		if (turnTokenPlan?.forceSubmitResult) {
+			return finalizeBudgetExhausted(
+				turnTokenPlan.reason === 'token_headroom'
+					? 'model requested another operation during token-headroom finalization'
+					: 'model requested another operation after the tool-call budget was exhausted'
+			);
 		}
 
 		if (toolCallBudgetReached()) {
@@ -1752,7 +2046,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			});
 		}
 
-		const executionRecorded = await recordToolExecution({
+		const execution = await recordToolExecution({
 			runId,
 			userId: run.user_id,
 			op,
@@ -1766,13 +2060,13 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			mutationMode,
 			proposedChangeId
 		});
-		if (result.ok && executionRecorded) {
+		if (result.ok && execution.recorded) {
 			researchObservations = mergeDeepResearchObservations(
 				researchObservations,
 				observeDeepResearchToolResult({
 					op,
 					args,
-					result: result.data,
+					result: execution.persistedResult,
 					observedAt: new Date(opStart + durationMs).toISOString()
 				})
 			);
@@ -1784,7 +2078,9 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		});
 
 		const resultText = result.ok
-			? JSON.stringify(result.data).slice(0, transcriptResultCharsForOp(op))
+			? execution.recorded
+				? JSON.stringify(execution.persistedResult).slice(0, transcriptResultCharsForOp(op))
+				: 'RESULT NOT DURABLY RECORDED: do not cite or rely on this operation result.'
 			: `ERROR ${result.error?.code}: ${result.error?.message}`;
 		transcript.push(`OP ${op} ${JSON.stringify(args)} -> ${resultText}`);
 		if (paidToolAccountingFailure) {

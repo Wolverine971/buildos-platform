@@ -8,6 +8,7 @@
 
 import { createSupabaseBrowser } from '@buildos/supabase-client';
 import type { CreatePushSubscriptionRequest } from '@buildos/shared-types';
+import { browser } from '$app/environment';
 import {
 	PUBLIC_SUPABASE_ANON_KEY,
 	PUBLIC_SUPABASE_URL,
@@ -32,8 +33,18 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 class BrowserPushService {
-	private supabase = createSupabaseBrowser(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
+	private supabase: ReturnType<typeof createSupabaseBrowser> | null = null;
 	private registration: ServiceWorkerRegistration | null = null;
+
+	private getSupabase(): ReturnType<typeof createSupabaseBrowser> {
+		if (!browser) {
+			throw new Error('BrowserPushService is only available in the browser');
+		}
+		if (!this.supabase) {
+			this.supabase = createSupabaseBrowser(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
+		}
+		return this.supabase;
+	}
 
 	private isIOSDevice(): boolean {
 		const userAgent = navigator.userAgent || '';
@@ -129,6 +140,7 @@ class BrowserPushService {
 		}
 
 		try {
+			const supabase = this.getSupabase();
 			// Register service worker
 			const registration = await this.registerServiceWorker();
 
@@ -158,13 +170,13 @@ class BrowserPushService {
 			// Get current user ID
 			const {
 				data: { user }
-			} = await this.supabase.auth.getUser();
+			} = await supabase.auth.getUser();
 
 			if (!user) {
 				throw new Error('User not authenticated');
 			}
 
-			const { error } = await this.supabase.from('push_subscriptions').upsert(
+			const { error } = await supabase.from('push_subscriptions').upsert(
 				{
 					user_id: user.id, // Explicitly set user_id
 					endpoint: request.endpoint,
@@ -197,6 +209,7 @@ class BrowserPushService {
 	 */
 	async unsubscribe(): Promise<void> {
 		try {
+			const supabase = this.getSupabase();
 			const registration = await navigator.serviceWorker.ready;
 			const subscription = await registration.pushManager.getSubscription();
 
@@ -205,7 +218,7 @@ class BrowserPushService {
 				await subscription.unsubscribe();
 
 				// Deactivate in database
-				const { error } = await this.supabase
+				const { error } = await supabase
 					.from('push_subscriptions')
 					.update({ is_active: false })
 					.eq('endpoint', subscription.endpoint);

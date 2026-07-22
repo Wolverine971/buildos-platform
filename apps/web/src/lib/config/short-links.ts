@@ -18,7 +18,11 @@ export const SHORT_LINKS: Record<string, string> = {
 	// Beta reactivation campaign (2026-07) — docs/marketing/campaigns/beta-reactivation/
 	'welcome-back':
 		'/welcome-back?utm_source=founder_email&utm_medium=email&utm_campaign=beta-reactivation-tailored-2026-07',
-	start: '/auth/register?utm_source=founder_email&utm_medium=email&utm_campaign=beta-reactivation-tailored-2026-07'
+	start: '/auth/register?utm_source=founder_email&utm_medium=email&utm_campaign=beta-reactivation-tailored-2026-07',
+
+	// Writer memory campaign (2026-07) — LinkedIn re-entry receipt
+	reentry:
+		'/?utm_source=linkedin&utm_medium=organic_social&utm_campaign=writer_memory_2026_07&utm_content=w1_reentry_receipt_dj'
 };
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

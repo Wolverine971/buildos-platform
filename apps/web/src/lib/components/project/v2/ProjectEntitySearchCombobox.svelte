@@ -26,6 +26,8 @@
 		| 'milestone'
 		| 'risk'
 		| 'event';
+	type SearchScope = 'all' | 'work' | 'overview' | 'docs' | 'activity';
+	type SearchVariant = 'framed' | 'toolbar';
 
 	type ProjectEntitySearchResult = {
 		type: SearchResultEntityType;
@@ -42,24 +44,28 @@
 	let {
 		projectId,
 		disabled = false,
+		scope = 'all',
+		variant = 'framed',
+		placeholder = 'Search docs, tasks, goals, plans, events...',
 		onSelectEntity
 	}: {
 		projectId: string;
 		disabled?: boolean;
+		scope?: SearchScope;
+		variant?: SearchVariant;
+		placeholder?: string;
 		onSelectEntity: (entityType: ProjectLogEntityType, entityId: string) => void;
 	} = $props();
 
 	const listboxId = 'project-entity-search-results';
-	const searchTypes: SearchResultEntityType[] = [
-		'project',
-		'document',
-		'task',
-		'plan',
-		'goal',
-		'milestone',
-		'risk',
-		'event'
-	];
+	const SEARCH_TYPES: Record<SearchScope, SearchResultEntityType[]> = {
+		all: ['project', 'document', 'task', 'plan', 'goal', 'milestone', 'risk', 'event'],
+		work: ['task'],
+		overview: ['project', 'plan', 'goal', 'milestone', 'risk', 'event'],
+		docs: ['document'],
+		activity: ['project', 'document', 'task', 'plan', 'goal', 'milestone', 'risk', 'event']
+	};
+	const searchTypes = $derived(SEARCH_TYPES[scope]);
 
 	const entityConfig: Record<
 		SearchResultEntityType,
@@ -341,7 +347,9 @@
 
 <section class="relative z-30" aria-label="Project search">
 	<div
-		class="rounded-lg border border-border bg-card p-2 shadow-ink tx tx-frame tx-weak sm:p-2.5"
+		class={variant === 'toolbar'
+			? ''
+			: 'rounded-lg border border-border bg-card p-2 shadow-ink tx tx-frame tx-weak sm:p-2.5'}
 	>
 		<div class="relative">
 			<Search
@@ -355,8 +363,11 @@
 				aria-controls={listboxId}
 				aria-expanded={showPanel}
 				aria-activedescendant={highlightedResultId}
-				placeholder="Search docs, tasks, goals, plans, events..."
-				class="h-11 w-full rounded-lg border border-border-strong bg-background pl-9 pr-12 text-base text-foreground shadow-ink-inner transition-colors placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none sm:text-sm"
+				{placeholder}
+				class="h-11 w-full rounded-lg border border-border-strong pl-9 pr-12 text-base text-foreground transition-colors placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none sm:text-sm {variant ===
+				'toolbar'
+					? 'bg-card shadow-none'
+					: 'bg-background shadow-ink-inner'}"
 				bind:value={query}
 				{disabled}
 				onfocus={handleFocus}

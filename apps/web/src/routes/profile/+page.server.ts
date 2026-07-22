@@ -51,6 +51,7 @@ function getActiveProfileTab(requestedTab: string | null, stripeEnabled: boolean
 		'preferences',
 		'briefs',
 		'calendar',
+		'email',
 		'notifications',
 		'agent-keys',
 		...(stripeEnabled ? ['billing'] : [])

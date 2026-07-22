@@ -18,6 +18,7 @@ const MAX_CONTRADICTIONS = 20;
 const MAX_LIST_ITEMS = 20;
 const MAX_PACKET_JSON_CHARS = 24_000;
 const MAX_OBSERVED_VISITS = 50;
+const MAX_OBSERVED_SEARCH_RESULTS = 50;
 
 export interface ObservedResearchSource {
 	requestedUrl: string;
@@ -28,8 +29,16 @@ export interface ObservedResearchSource {
 	content?: string;
 }
 
+export interface ObservedResearchSearchResult {
+	query: string;
+	title: string;
+	url: string;
+	snippet?: string;
+}
+
 export interface DeepResearchObservations {
 	searchQueries: string[];
+	searchResults: ObservedResearchSearchResult[];
 	visitedSources: ObservedResearchSource[];
 }
 
@@ -125,20 +134,41 @@ export function observeDeepResearchToolResult(params: {
 }): DeepResearchObservations {
 	if (params.op === AGENT_OP_WEB_SEARCH) {
 		const query = readText(params.args.query, 1_000);
-		return { searchQueries: query ? [query] : [], visitedSources: [] };
+		const result = readRecord(params.result);
+		const rawResults = Array.isArray(result?.results) ? result.results : [];
+		const searchResults = rawResults.slice(0, 20).flatMap((value) => {
+			const candidate = readRecord(value);
+			const url = canonicalizeResearchUrl(candidate?.url);
+			const title = readText(candidate?.title, 500);
+			if (!query || !url || !title) return [];
+			return [
+				{
+					query,
+					title,
+					url,
+					snippet: readText(candidate?.snippet, 600) ?? undefined
+				}
+			];
+		});
+		return {
+			searchQueries: query ? [query] : [],
+			searchResults,
+			visitedSources: []
+		};
 	}
 	if (params.op !== AGENT_OP_WEB_VISIT) {
-		return { searchQueries: [], visitedSources: [] };
+		return { searchQueries: [], searchResults: [], visitedSources: [] };
 	}
 	const result = readRecord(params.result);
 	const requestedUrl = canonicalizeResearchUrl(result?.url ?? params.args.url);
 	const finalUrl = canonicalizeResearchUrl(result?.final_url ?? requestedUrl);
 	if (!requestedUrl || !finalUrl) {
-		return { searchQueries: [], visitedSources: [] };
+		return { searchQueries: [], searchResults: [], visitedSources: [] };
 	}
 	const info = readRecord(result?.info);
 	return {
 		searchQueries: [],
+		searchResults: [],
 		visitedSources: [
 			{
 				requestedUrl,
@@ -155,7 +185,11 @@ export function mergeDeepResearchObservations(
 	...observations: DeepResearchObservations[]
 ): DeepResearchObservations {
 	const sourceByVisit = new Map<string, ObservedResearchSource>();
+	const searchResultByUrl = new Map<string, ObservedResearchSearchResult>();
 	for (const observation of observations) {
+		for (const searchResult of observation.searchResults) {
+			searchResultByUrl.set(searchResult.url, searchResult);
+		}
 		for (const source of observation.visitedSources) {
 			// Preserve every requested URL alias. Two inputs may redirect to the
 			// same final URL, and either input is legitimate provenance for a later
@@ -168,6 +202,7 @@ export function mergeDeepResearchObservations(
 			observations.flatMap((observation) => observation.searchQueries),
 			50
 		),
+		searchResults: Array.from(searchResultByUrl.values()).slice(0, MAX_OBSERVED_SEARCH_RESULTS),
 		visitedSources: Array.from(sourceByVisit.values()).slice(0, MAX_OBSERVED_VISITS)
 	};
 }

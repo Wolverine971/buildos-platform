@@ -2,8 +2,10 @@
 import { describe, expect, it } from 'vitest';
 import {
 	canReservePaidToolCost,
+	resolveAgentRunLlmLedgerSettlement,
 	resolveAgentRunLlmSpendLimit,
-	settlePaidToolReservation
+	settlePaidToolReservation,
+	summarizeAgentRunRetryLedger
 } from '../src/workers/agent-run/agentRunCostPolicy';
 
 describe('Agent Run cost policy', () => {
@@ -67,6 +69,79 @@ describe('Agent Run cost policy', () => {
 			charge: reserved,
 			costAdjustmentUsd: 0,
 			creditAdjustment: 0
+		});
+	});
+
+	it('releases definitive pre-generation rejection and reconciles uncertain exposure', () => {
+		expect(
+			resolveAgentRunLlmLedgerSettlement({
+				billingDisposition: 'released',
+				costSource: 'reservation',
+				totalCost: 0.04,
+				totalTokens: 9_000
+			})
+		).toEqual({ status: 'released', actualCostUsd: 0, actualUnits: 0 });
+		expect(
+			resolveAgentRunLlmLedgerSettlement({
+				billingDisposition: 'uncertain',
+				costSource: 'reservation',
+				totalCost: 0.04,
+				totalTokens: 9_000
+			})
+		).toEqual({
+			status: 'reconciliation_required',
+			actualCostUsd: 0.04,
+			actualUnits: 9_000
+		});
+	});
+
+	it('reconstructs conservative retry usage from settled and uncertain ledger rows', () => {
+		expect(
+			summarizeAgentRunRetryLedger([
+				{
+					provider: 'openrouter',
+					status: 'settled',
+					reserved_units: '12000',
+					actual_units: '1000',
+					unit_type: 'tokens',
+					reserved_cost_usd: '0.04',
+					actual_cost_usd: '0.01'
+				},
+				{
+					provider: 'openrouter',
+					status: 'reconciliation_required',
+					reserved_units: '17000',
+					actual_units: '16000',
+					unit_type: 'tokens',
+					reserved_cost_usd: '0.04',
+					actual_cost_usd: '0.035'
+				},
+				{
+					provider: 'tavily',
+					status: 'settled',
+					reserved_units: '2',
+					actual_units: '1',
+					unit_type: 'credits',
+					reserved_cost_usd: '0.016',
+					actual_cost_usd: '0.008'
+				},
+				{
+					provider: 'openrouter',
+					status: 'released',
+					reserved_units: '9000',
+					actual_units: '0',
+					unit_type: 'tokens',
+					reserved_cost_usd: '0.04',
+					actual_cost_usd: '0'
+				}
+			])
+		).toEqual({
+			observedTokens: 1000,
+			uncertainTokenExposure: 17000,
+			costUsd: 0.058,
+			llmCostUsd: 0.05,
+			paidToolCostUsd: 0.008,
+			tavilyCredits: 1
 		});
 	});
 });

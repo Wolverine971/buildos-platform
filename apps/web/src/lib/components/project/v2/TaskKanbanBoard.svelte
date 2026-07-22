@@ -530,22 +530,13 @@
 	}
 </script>
 
-<section
-	class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
-	aria-label="Task kanban board"
->
-	<header
-		class="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-3 border-b border-border/60"
-	>
+<section class="overflow-hidden border-y border-border/70" aria-label="Task kanban board">
+	<header class="flex items-center justify-between gap-2 border-b border-border/60 px-1 py-2.5">
 		<div class="flex items-center gap-2">
-			<div
-				class="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-muted/60 flex items-center justify-center"
-			>
-				<ListChecks class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground" />
-			</div>
+			<ListChecks class="h-4 w-4 shrink-0 text-muted-foreground" />
 			<div>
-				<p class="text-xs sm:text-sm font-semibold text-foreground">Tasks</p>
-				<p class="text-2xs sm:text-xs text-muted-foreground">
+				<p class="text-sm font-semibold text-foreground">Task board</p>
+				<p class="text-xs text-muted-foreground">
 					{activeTaskCount()}
 					project tasks · drag to move
 				</p>
@@ -555,9 +546,9 @@
 			<button
 				type="button"
 				onclick={onCreateTask}
-				class="inline-flex min-h-[44px] items-center gap-1.5 rounded-md bg-foreground px-2.5 py-1.5 text-xs font-medium text-background transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable"
+				class="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-accent hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable"
 			>
-				<Plus class="w-3.5 h-3.5" />
+				<Plus class="h-3.5 w-3.5" />
 				New task
 			</button>
 		{/if}
@@ -572,8 +563,9 @@
 		{@const activeBucket = col.key === 'archived' ? null : col.key}
 		<div
 			id="task-bucket-{col.key}"
+			data-column-key={col.key}
 			tabindex="-1"
-			class="flex flex-col rounded-md border bg-background/60 min-h-[220px] transition-colors
+			class="kanban-column flex min-h-[220px] flex-col rounded-md border bg-card/45 transition-colors
 				{isOver
 				? 'border-foreground/60 bg-foreground/[0.06] ring-1 ring-foreground/20'
 				: 'border-border/60'}
@@ -666,8 +658,8 @@
 							ondragend={handleDragEnd}
 							onclick={() => onEditTask(task.id)}
 							title={isArchivedCard ? 'Drag to a state column to restore' : undefined}
-							class="group min-h-[44px] w-full rounded-md border border-border bg-card px-3 py-2.5 text-left shadow-ink transition-all hover:border-foreground/20 hover:shadow-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable
-								{isDragging ? 'opacity-40' : ''}
+							class="group min-h-[44px] w-full rounded-md border border-border bg-card px-3 py-2.5 text-left shadow-none transition-all hover:border-foreground/20 hover:shadow-ink focus:outline-none focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable
+								{isDragging ? 'opacity-40 shadow-ink-strong' : ''}
 								{isPending ? 'opacity-70' : ''}
 								{isArchivedCard ? 'opacity-70' : ''}
 								{justCreated ? 'entity-just-created' : ''}
@@ -782,15 +774,15 @@
 	     right-edge fade makes "more columns" obvious when macOS hides the
 	     scrollbar (Hyperplexed: make scrollability visible). -->
 	<div class="relative">
-		<div class="overflow-x-auto p-3 sm:p-4">
-			<div class="grid grid-flow-col auto-cols-[300px] gap-3 sm:gap-4">
+		<div class="kanban-scroll overflow-x-auto py-3">
+			<div class="grid grid-flow-col auto-cols-[300px] gap-3">
 				{#each COLUMNS as col (col.key)}
 					{@render columnView(col)}
 				{/each}
 			</div>
 		</div>
 		<div
-			class="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card to-transparent"
+			class="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent"
 			aria-hidden="true"
 		></div>
 	</div>
@@ -817,6 +809,45 @@
 	.task-just-completed {
 		animation: task-completed-pulse 0.7s cubic-bezier(0.22, 1, 0.36, 1);
 	}
+
+	@media (max-width: 639px) {
+		.kanban-scroll {
+			scroll-snap-type: x mandatory;
+		}
+
+		.kanban-column {
+			scroll-snap-align: start;
+		}
+
+		.kanban-column[data-column-key='in_progress'] {
+			order: 1;
+		}
+
+		.kanban-column[data-column-key='scheduled'] {
+			order: 2;
+		}
+
+		.kanban-column[data-column-key='overdue'] {
+			order: 3;
+		}
+
+		.kanban-column[data-column-key='backlog'] {
+			order: 4;
+		}
+
+		.kanban-column[data-column-key='blocked'] {
+			order: 5;
+		}
+
+		.kanban-column[data-column-key='done'] {
+			order: 6;
+		}
+
+		.kanban-column[data-column-key='archived'] {
+			order: 7;
+		}
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.task-just-completed {
 			animation: none;

@@ -14,6 +14,7 @@ const ACCESSED_AT = '2026-07-21T12:00:00.000Z';
 function observations() {
 	return {
 		searchQueries: ['current primary evidence'],
+		searchResults: [],
 		visitedSources: [
 			{
 				requestedUrl: 'https://example.com/start',
@@ -240,6 +241,7 @@ describe('deep research evidence contract', () => {
 	it('preserves multiple requested URL aliases that redirect to one final source', () => {
 		const merged = mergeDeepResearchObservations(observations(), {
 			searchQueries: [],
+			searchResults: [],
 			visitedSources: [
 				{
 					...observations().visitedSources[0]!,
@@ -307,6 +309,33 @@ describe('deep research evidence contract', () => {
 		});
 
 		expect(mergeDeepResearchObservations(search, visit)).toEqual(observations());
+	});
+
+	it('retains bounded canonical search candidates for compact working context', () => {
+		const observed = observeDeepResearchToolResult({
+			op: 'util.web.search',
+			args: { query: 'current primary evidence' },
+			result: {
+				results: [
+					{
+						title: 'Primary report',
+						url: 'https://example.com/report#findings',
+						snippet: 'A concise result snippet.'
+					},
+					{ title: 'Unsafe', url: 'javascript:alert(1)', snippet: 'discard me' }
+				]
+			},
+			observedAt: ACCESSED_AT
+		});
+
+		expect(observed.searchResults).toEqual([
+			{
+				query: 'current primary evidence',
+				title: 'Primary report',
+				url: 'https://example.com/report',
+				snippet: 'A concise result snippet.'
+			}
+		]);
 	});
 
 	it('bounds oversized packets without discarding all usable evidence', () => {

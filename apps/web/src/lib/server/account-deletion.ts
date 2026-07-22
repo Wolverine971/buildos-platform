@@ -1,5 +1,7 @@
+// apps/web/src/lib/server/account-deletion.ts
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { StripeService } from '$lib/services/stripe-service';
+import { GmailOAuthError, GmailReadOAuthService } from '$lib/server/gmail-read-oauth.service';
 
 type DeletionRequestRow = {
 	id: string;
@@ -15,6 +17,20 @@ type DeletionRequestRow = {
 type StorageObjectRef = {
 	bucket_id: string;
 	object_name: string;
+};
+
+type GmailDeletionCleanupResult = {
+	connectionsFound: number;
+	connectionsDeleted: number;
+	remoteRevocationsSucceeded: number;
+	remoteRevocationsUnconfirmed: number;
+};
+
+const EMPTY_GMAIL_CLEANUP: GmailDeletionCleanupResult = {
+	connectionsFound: 0,
+	connectionsDeleted: 0,
+	remoteRevocationsSucceeded: 0,
+	remoteRevocationsUnconfirmed: 0
 };
 
 const ACTIVE_SUBSCRIPTION_STATUSES = [
@@ -49,6 +65,25 @@ function isMissingAuthUser(error: unknown): boolean {
 	return value.status === 404 || value.message?.toLowerCase().includes('user not found') === true;
 }
 
+async function removeGmailConnectionsForAccountDeletion(
+	userId: string
+): Promise<GmailDeletionCleanupResult> {
+	const admin = createAdminSupabaseClient();
+	try {
+		return await new GmailReadOAuthService(
+			admin as any
+		).disconnectAllConnectionsForAccountDeletion(userId);
+	} catch (error) {
+		// Account deletion must proceed even if Google or the integration tables are unavailable.
+		// The database purge remains the final local credential deletion boundary.
+		console.error(
+			'Account deletion Gmail cleanup could not be completed:',
+			error instanceof GmailOAuthError ? error.code : 'unknown_error'
+		);
+		return EMPTY_GMAIL_CLEANUP;
+	}
+}
+
 export async function scheduleAccountDeletion(userId: string): Promise<{
 	requestId: string;
 	requestedAt: string;
@@ -66,6 +101,10 @@ export async function scheduleAccountDeletion(userId: string): Promise<{
 	if (!row?.request_id || !row.requested_at || !row.scheduled_for) {
 		throw new Error('Account deletion request was not created');
 	}
+
+	// Revoke and remove integrations immediately when access to BuildOS is disabled, rather than
+	// retaining usable Gmail credentials during the 30-day deletion window.
+	await removeGmailConnectionsForAccountDeletion(userId);
 
 	return {
 		requestId: row.request_id,
@@ -172,7 +211,10 @@ async function removeAccountStorage(userId: string): Promise<number> {
 	return removed;
 }
 
-async function purgeAccount(request: DeletionRequestRow): Promise<{ storageObjects: number }> {
+async function purgeAccount(request: DeletionRequestRow): Promise<{
+	storageObjects: number;
+	gmailCleanup: GmailDeletionCleanupResult;
+}> {
 	const admin = createAdminSupabaseClient();
 	await (admin as any)
 		.from('users')
@@ -186,6 +228,9 @@ async function purgeAccount(request: DeletionRequestRow): Promise<{ storageObjec
 	} catch (error) {
 		console.error('Account deletion billing cancellation retry failed:', error);
 	}
+
+	// Defense in depth for older requests or an integration outage at scheduling time.
+	const gmailCleanup = await removeGmailConnectionsForAccountDeletion(request.user_id);
 
 	const storageObjects = await removeAccountStorage(request.user_id);
 	const { error: databaseError } = await (admin as any).rpc(
@@ -211,7 +256,7 @@ async function purgeAccount(request: DeletionRequestRow): Promise<{ storageObjec
 		.eq('id', request.id);
 	if (completionError) throw completionError;
 
-	return { storageObjects };
+	return { storageObjects, gmailCleanup };
 }
 
 export async function retryPendingDeletionSubscriptionCancellations(limit = 25): Promise<{
@@ -241,6 +286,9 @@ export async function processDueAccountDeletions(limit = 5): Promise<{
 	completed: number;
 	failed: number;
 	storageObjectsRemoved: number;
+	gmailConnectionsDeleted: number;
+	gmailRemoteRevocationsSucceeded: number;
+	gmailRemoteRevocationsUnconfirmed: number;
 }> {
 	const admin = createAdminSupabaseClient();
 	const { data, error } = await (admin as any).rpc('claim_due_account_deletions', {
@@ -253,12 +301,18 @@ export async function processDueAccountDeletions(limit = 5): Promise<{
 	let completed = 0;
 	let failed = 0;
 	let storageObjectsRemoved = 0;
+	let gmailConnectionsDeleted = 0;
+	let gmailRemoteRevocationsSucceeded = 0;
+	let gmailRemoteRevocationsUnconfirmed = 0;
 
 	for (const request of requests) {
 		try {
 			const result = await purgeAccount(request);
 			completed += 1;
 			storageObjectsRemoved += result.storageObjects;
+			gmailConnectionsDeleted += result.gmailCleanup.connectionsDeleted;
+			gmailRemoteRevocationsSucceeded += result.gmailCleanup.remoteRevocationsSucceeded;
+			gmailRemoteRevocationsUnconfirmed += result.gmailCleanup.remoteRevocationsUnconfirmed;
 		} catch (requestError) {
 			failed += 1;
 			const message =
@@ -282,6 +336,9 @@ export async function processDueAccountDeletions(limit = 5): Promise<{
 		claimed: requests.length,
 		completed,
 		failed,
-		storageObjectsRemoved
+		storageObjectsRemoved,
+		gmailConnectionsDeleted,
+		gmailRemoteRevocationsSucceeded,
+		gmailRemoteRevocationsUnconfirmed
 	};
 }

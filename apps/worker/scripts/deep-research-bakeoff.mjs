@@ -60,7 +60,11 @@ const RUNS = {
 	},
 	'q1-single': {
 		goal: Q1,
-		body: { effort: 'deep', budgets: { max_tool_calls: 12 } },
+		body: {
+			effort: 'deep',
+			allowed_ops: ['util.web.search', 'util.web.visit'],
+			budgets: { max_tool_calls: 12, max_tokens: 60_000, wall_clock_ms: 600_000 }
+		},
 		label: 'Q1 search-API single-deep'
 	},
 	'q2-fanout': {
@@ -70,7 +74,11 @@ const RUNS = {
 	},
 	'q2-single': {
 		goal: Q2,
-		body: { effort: 'deep', budgets: { max_tool_calls: 12 } },
+		body: {
+			effort: 'deep',
+			allowed_ops: ['util.web.search', 'util.web.visit'],
+			budgets: { max_tool_calls: 12, max_tokens: 60_000, wall_clock_ms: 600_000 }
+		},
 		label: 'Q2 openrouter-limits single-deep'
 	}
 };

@@ -37,6 +37,11 @@ export interface ProcessingJob<T = unknown> {
 	log: (message: string) => Promise<void>;
 }
 
+export function resolveQueueHeartbeatInterval(stalledTimeoutMs: number): number {
+	const finiteTimeout = Number.isFinite(stalledTimeoutMs) ? stalledTimeoutMs : 300_000;
+	return Math.max(5_000, Math.min(60_000, Math.floor(finiteTimeout / 3)));
+}
+
 export class SupabaseQueue {
 	private processors: Map<JobType, JobProcessor> = new Map();
 	private processingInterval: NodeJS.Timeout | null = null;
@@ -338,6 +343,7 @@ export class SupabaseQueue {
 		processor: JobProcessor,
 		startTime: number
 	): Promise<void> {
+		const stopHeartbeat = this.startJobHeartbeat(job);
 		try {
 			// Create processing job wrapper
 			const processingJob: ProcessingJob = {
@@ -422,7 +428,54 @@ export class SupabaseQueue {
 					`⚠️ Failure ignored for job ${job.queue_job_id}; processing token no longer owns this job`
 				);
 			}
+		} finally {
+			stopHeartbeat();
 		}
+	}
+
+	/**
+	 * Keep ownership fresh while a processor is blocked on slow provider I/O.
+	 * The processing-token predicate prevents an old worker from reviving a claim
+	 * that the stalled-job recovery path has already reassigned.
+	 */
+	private startJobHeartbeat(job: ClaimedQueueJob): () => void {
+		if (!job.processing_token) return () => undefined;
+		const intervalMs = resolveQueueHeartbeatInterval(this.stalledTimeout);
+		let stopped = false;
+		let updateInFlight = false;
+
+		const update = async () => {
+			if (stopped || updateInFlight) return;
+			updateInFlight = true;
+			try {
+				const { error } = await supabase
+					.from('queue_jobs')
+					.update({ updated_at: new Date().toISOString() })
+					.eq('id', job.id)
+					.eq('status', 'processing')
+					.eq('processing_token', job.processing_token!);
+				if (error) {
+					console.warn(
+						`⚠️ Queue heartbeat failed for job ${job.queue_job_id}: ${error.message}`
+					);
+				}
+			} catch (error) {
+				console.warn(
+					`⚠️ Queue heartbeat crashed for job ${job.queue_job_id}:`,
+					error instanceof Error ? error.message : error
+				);
+			} finally {
+				updateInFlight = false;
+			}
+		};
+
+		const interval = setInterval(() => {
+			void update();
+		}, intervalMs);
+		return () => {
+			stopped = true;
+			clearInterval(interval);
+		};
 	}
 
 	private async withWorkerTimeout<T>(

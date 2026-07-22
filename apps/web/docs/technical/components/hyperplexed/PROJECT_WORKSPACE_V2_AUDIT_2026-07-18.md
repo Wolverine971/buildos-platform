@@ -186,9 +186,9 @@ the classic project page:
 The polish pass adds one restrained signature interaction, then spends the rest of its budget on
 control quality:
 
-- Added a cursor-lit accent edge and low-opacity radial wash to the three Work signal cards
-  (**P14**). One pointer listener updates CSS custom properties for the group; touch input and
-  reduced-motion preferences bypass the effect.
+- Added a cursor-lit accent edge and low-opacity radial wash to the three Work signal cards at the
+  time (**P14**). The 2026-07-22 Tilda reassessment below supersedes this choice and removes the
+  signal-card layer entirely.
 - Completed the tab contract with stable tab/panel IDs, `aria-labelledby`, focusable panels, visible
   focus, and a 180ms reduced-motion-gated panel entry (**P11 / P13**).
 - Reworked document-tree rows so drag, expand, open, and public-link actions are sibling controls
@@ -208,11 +208,9 @@ control quality:
 
 ### Deliberate trade-offs
 
-- The signature effect is limited to the three decision cards. There is no cursor trailer, gradient
-  headline, animated app chrome, or competing effect elsewhere; hierarchy remains the visual
-  signature.
-- Neighbor cards share the cursor position so the signal row feels like one instrument panel. The
-  accent is intentionally low contrast and does not communicate state.
+- The signature effect was initially limited to the three decision cards. The later reassessment
+  found that even this restrained flourish strengthened the wrong layer, so hierarchy and the
+  Kanban now provide the surface's signature instead.
 - Reusing the production document tree means these control improvements also benefit its classic
   consumers. The cost is slightly taller rows, which trades some desktop density for reliable
   keyboard and touch targets.
@@ -222,6 +220,106 @@ control quality:
 - The Kanban remains horizontally scrollable on narrow screens. Collapsing six task states into a
   single column would make the board fit, but would remove the cross-state spatial model users
   already understand.
+
+## Tilda principles reassessment — 2026-07-22
+
+The follow-up audit applies Tilda's proximity, Fitts's Law, emphasis, whitespace, palette,
+primitives, consistency, modularity, anchor-object, and reading-pattern principles to the
+authenticated live workspace. The complete evidence, scorecard, layout, and trade-offs are in
+[`PROJECT_WORKSPACE_V2_TILDA_REASSESSMENT_2026-07-22.md`](./PROJECT_WORKSPACE_V2_TILDA_REASSESSMENT_2026-07-22.md).
+
+Tier 1 shipped as a hierarchy correction:
+
+- `Active now` is derived from the real in-progress task bucket and opens the actual task.
+  `Recommended next` remains project guidance and has an explicit `Plan` action through the
+  project-aware BuildOS chat.
+- The persistent shell now uses one compact identity row, a flat focus band, and a concise status
+  line instead of a large identity block, next-move card, and four-cell summary.
+- Search vocabulary and adjacent actions change with Work, Overview, Docs, and Activity. Duplicate
+  Work, Overview, and Docs create/edit actions were removed from their content shells.
+- The three Work signal cards and cursor glow were removed. The Kanban is now the anchor object,
+  bounded by lines and whitespace rather than another elevated card.
+- Task cards have no visible resting elevation; hover, keyboard focus, drag, and completion own the
+  elevation feedback.
+- Narrow screens start with `In progress`, then Scheduled and Overdue, with horizontal snap points.
+  Desktop preserves the familiar Backlog-first order.
+- Workspace micro-labels use neutral muted foreground instead of small accent text, clearing the
+  contrast concern while reserving accent for state and progress.
+
+### Measured result
+
+- At 1801 × 831, the project header bottom moved from approximately **409 px to 329 px** and the
+  Kanban top from approximately **619 px to 421 px**.
+- At the audited 520 × 1125 CSS viewport, the header bottom moved from approximately **583 px to
+  379 px** and the Kanban top from approximately **939 px to 459 px**.
+- The mobile page has no viewport-level horizontal overflow. The internal Kanban remains
+  horizontally scrollable, uses `x mandatory` snap behavior, and begins visually with
+  `In progress`.
+- The live populated project showed different strings for the actual active task and the
+  recommended next move, confirming that the new labels expose rather than conceal that semantic
+  distinction.
+
+## Tilda Tier 2 follow-up — 2026-07-22
+
+The second Tilda pass applies the same hierarchy correction inside Overview, Docs, and Activity:
+
+- **Overview** now leads with one full-width project brief and a quiet semantic metadata rail.
+  Direction, Milestones, Watchlist, Coming up, and Project memory are flat chapters separated by
+  rules and whitespace rather than a dashboard of nested cards.
+- **Project memory** has a flat workspace variant and no longer repeats the recommended next step
+  already owned by the persistent focus band.
+- **Docs** presents recent documents before the tree on phones as a horizontally snapping quick-
+  access rail. Desktop keeps the tree primary and uses a quiet ruled recent-context sidebar.
+- **Activity** presents history as a continuous timeline and upcoming work as a sibling due-next
+  list. Mobile retains the History / Up next switch, while workspace rows keep 44 px-plus targets,
+  aligned time cues, and bounded loading.
+
+### Measured result
+
+- The 1440 × 900 Overview panel contains **zero shadowed descendants**; its leading brief measured
+  approximately **113 px** high.
+- At 390 × 844, Overview's brief measured approximately **230 px** with no page overflow. Project
+  memory has no shadow or radius and no duplicated `Next step` label.
+- At the same phone viewport, Docs places recent context at approximately **559 px** and the tree at
+  approximately **671 px**. The recent rail reports `x mandatory` snapping and no page overflow.
+- At 1440 × 900, the Docs recent-context sidebar has a 1 px left rule and no shadow. Its rows retain
+  focusable targets without card elevation.
+- Activity's workspace shell has no radius or shadow. Mobile upcoming rows measured approximately
+  **58 px** high and produced no viewport overflow.
+
+### Deliberate trade-offs
+
+- The production document tree stays hierarchical because that hierarchy is content, not
+  decorative containment.
+- Desktop Activity keeps history and upcoming work in separate columns; they answer different
+  questions and should not be merged into one misleading chronology.
+- The implementation keeps accessible target height even where visual chrome is removed, so the
+  result is quieter without becoming harder to operate.
+- The final Tier 2 visual pass used the production components with representative fixture data
+  after the local authenticated session expired. Populated history remains covered by focused
+  component tests; persistence smoke still belongs on a disposable authenticated project.
+
+## Edge-state hardening follow-up — 2026-07-22
+
+The next audit pass closed the remaining visual-extreme work without changing the workspace data
+contract:
+
+- Long project names now stay inside a shrink-safe header path and truncate before displacing the
+  adjacent status and actions. The document title uses the finished product name rather than the
+  internal prototype label.
+- Long, multiline project briefs use progressive disclosure: five lines initially, then a 44 px
+  `Read full brief` / `Show less` control. The full source text remains in the document.
+- Direction labels and totals now match the entities actually rendered in that chapter.
+- Empty Overview chapters are flat 44 px rows rather than bordered placeholder cards.
+- Empty Docs workspaces hide the redundant recent-document region and let the production tree own
+  the single empty state.
+- Focused tests now cover long, dense, and empty workspace fixtures. At 390 × 844, the empty
+  Overview had no viewport overflow, all five flat placeholders measured 44 px, and the panel had
+  zero shadowed descendants.
+
+The trade-off remains deliberate: empty chapters stay visible for orientation, dense direction
+lists retain their five-item initial limit, and long briefs remain one explicit action away instead
+of consuming the entire first viewport.
 
 ## Verification
 
@@ -254,6 +352,6 @@ control quality:
 
 - Live persistence smoke for Kanban moves, document reordering, and entity saves should use a
   disposable test project; the audit intentionally did not mutate the populated BuildOS project.
-- Visual tuning is still worth repeating against the remaining extremes: an empty workspace, an
-  unusually long project name, and projects with many simultaneous risks or milestones. The current
-  pass already covered a large board and a deep document tree.
+- A future authenticated smoke pass should repeat these edge states with disposable persisted data.
+  The component-level long, dense, and empty cases are now covered; this remaining check is about
+  persistence and production session integration rather than layout discovery.

@@ -7,7 +7,7 @@
 	a second persistent surface. /today keeps ownership of event-level "what
 	changed" receipts. -->
 <script lang="ts">
-	import { BookOpen, Compass, MessageSquare } from 'lucide-svelte';
+	import { BookOpen, Compass, MessageSquare } from '$lib/icons/lucide';
 	import {
 		extractStartHereOrientation,
 		parseStartHereStatusRegion
@@ -19,6 +19,8 @@
 		document,
 		contentLoading = false,
 		nextStepShort = null,
+		showNextStep = true,
+		variant = 'card',
 		canEdit = false,
 		onOpenStartHere,
 		onUpdateProject,
@@ -27,6 +29,8 @@
 		document: Document | null;
 		contentLoading?: boolean;
 		nextStepShort?: string | null;
+		showNextStep?: boolean;
+		variant?: 'card' | 'flat';
 		canEdit?: boolean;
 		onOpenStartHere: (docId: string) => void;
 		onUpdateProject?: (() => void) | undefined;
@@ -44,7 +48,7 @@
 	});
 	const status = $derived(content ? parseStartHereStatusRegion(content) : null);
 	const orientation = $derived(content ? extractStartHereOrientation(content, 220) : null);
-	const nextStep = $derived(status?.nextStep ?? nextStepShort ?? null);
+	const nextStep = $derived(showNextStep ? (status?.nextStep ?? nextStepShort ?? null) : null);
 	const rendered = $derived(status?.rendered === true);
 
 	// Freshness favors authored activity over managed-refresh noise: a doc
@@ -87,10 +91,16 @@
 
 {#if document}
 	<section
-		class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+		class={variant === 'flat'
+			? 'border-t border-border pt-4'
+			: 'overflow-hidden rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak'}
 		aria-label="Project memory"
 	>
-		<div class="flex items-start justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3">
+		<div
+			class="flex items-start justify-between gap-2 sm:gap-3 {variant === 'flat'
+				? 'px-0 py-0'
+				: 'px-3 py-2 sm:px-4 sm:py-3'}"
+		>
 			<div class="flex items-start gap-2 min-w-0">
 				<div
 					class="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-accent/10 flex items-center justify-center shrink-0"
@@ -98,11 +108,11 @@
 					<Compass class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
 				</div>
 				<div class="min-w-0">
-					<div class="flex items-baseline gap-2 flex-wrap">
+					<div class="flex flex-wrap items-baseline gap-2">
 						<p class="text-xs sm:text-sm font-semibold text-foreground">Start here</p>
-						<p class="text-[10px] sm:text-xs text-muted-foreground">{freshnessLabel}</p>
+						<p class="text-2xs text-muted-foreground sm:text-xs">{freshnessLabel}</p>
 					</div>
-					<p class="text-[10px] sm:text-xs text-muted-foreground">
+					<p class="text-2xs text-muted-foreground sm:text-xs">
 						What BuildOS remembers about this project
 					</p>
 				</div>
@@ -110,8 +120,9 @@
 			<div class="flex items-center gap-1 sm:gap-2 shrink-0">
 				{#if canEdit && onUpdateProject}
 					<button
+						type="button"
 						onclick={onUpdateProject}
-						class="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-medium text-accent hover:bg-accent/10 transition-colors pressable"
+						class="flex min-h-[44px] items-center gap-1.5 rounded-md px-2 text-2xs font-medium text-accent transition-colors hover:bg-accent/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none sm:px-2.5 sm:text-xs pressable"
 					>
 						<MessageSquare class="w-3.5 h-3.5" />
 						<span class="hidden sm:inline">Update project</span>
@@ -119,8 +130,9 @@
 					</button>
 				{/if}
 				<button
+					type="button"
 					onclick={() => onOpenStartHere(document.id)}
-					class="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-medium text-foreground border border-border hover:bg-muted transition-colors pressable"
+					class="flex min-h-[44px] items-center gap-1.5 rounded-md border border-border px-2 text-2xs font-medium text-foreground transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none sm:px-2.5 sm:text-xs pressable"
 				>
 					<BookOpen class="w-3.5 h-3.5" />
 					<span class="hidden sm:inline">Open Start Here</span>
@@ -130,12 +142,22 @@
 		</div>
 
 		{#if content === null && contentLoading}
-			<div class="px-3 sm:px-4 pb-2.5 sm:pb-3 space-y-1.5">
-				<div class="h-3 w-3/4 bg-muted/40 rounded animate-pulse"></div>
-				<div class="h-3 w-1/2 bg-muted/40 rounded animate-pulse"></div>
+			<div
+				class="space-y-1.5 {variant === 'flat'
+					? 'px-0 pt-3'
+					: 'px-3 pb-2.5 sm:px-4 sm:pb-3'}"
+			>
+				<div
+					class="h-3 w-3/4 animate-pulse rounded bg-muted/40 motion-reduce:animate-none"
+				></div>
+				<div
+					class="h-3 w-1/2 animate-pulse rounded bg-muted/40 motion-reduce:animate-none"
+				></div>
 			</div>
 		{:else if content !== null}
-			<div class="px-3 sm:px-4 pb-2.5 sm:pb-3 space-y-1">
+			<div
+				class="space-y-1 {variant === 'flat' ? 'px-0 pt-3' : 'px-3 pb-2.5 sm:px-4 sm:pb-3'}"
+			>
 				{#if rendered && status?.now}
 					<p class="text-xs sm:text-sm text-foreground">
 						<span class="font-medium text-muted-foreground">Now:</span>
@@ -149,12 +171,12 @@
 					</p>
 				{/if}
 				{#if orientation}
-					<p class="text-[11px] sm:text-xs text-muted-foreground line-clamp-2">
+					<p class="line-clamp-2 text-2xs text-muted-foreground sm:text-xs">
 						{orientation}
 					</p>
 				{/if}
 				{#if !rendered && !nextStep && !orientation}
-					<p class="text-[11px] sm:text-xs text-muted-foreground">
+					<p class="text-2xs text-muted-foreground sm:text-xs">
 						This project's memory hasn't been refreshed yet — it fills in as you work.
 					</p>
 				{/if}

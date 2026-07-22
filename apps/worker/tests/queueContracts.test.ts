@@ -71,6 +71,15 @@ describe('queue processor timeout', () => {
 		expect(source).toContain('Promise.allSettled(');
 		expect(source).toContain('jobs.map((job) => this.processJob(job as ClaimedQueueJob))');
 	});
+
+	it('heartbeats active claims with processing-token ownership', () => {
+		const source = readRepoFile('apps/worker/src/lib/supabaseQueue.ts');
+
+		expect(source).toContain('const stopHeartbeat = this.startJobHeartbeat(job);');
+		expect(source).toContain(".eq('status', 'processing')");
+		expect(source).toContain(".eq('processing_token', job.processing_token!)");
+		expect(source).toContain('stopHeartbeat();');
+	});
 });
 
 describe('daily brief reactivation email contracts', () => {
@@ -117,8 +126,29 @@ describe('agent_run worker budget behavior', () => {
 		const source = readRepoFile('apps/worker/src/workers/agent-run/agentRunWorker.ts');
 
 		expect(source).toContain('TOOL CALL BUDGET EXHAUSTED');
-		expect(source).toContain('forceSubmitResult: toolCallBudgetReached()');
+		expect(source).toContain('toolCallBudgetReached: toolCallBudgetReached()');
+		expect(source).toContain('userPrompt: turnTokenPlan.forceSubmitResult');
 		expect(source).toContain("return finalizeBudgetExhausted('tool-call budget exhausted')");
+	});
+
+	it('uses a finalization turn before the deep-research token hard ceiling', () => {
+		const source = readRepoFile('apps/worker/src/workers/agent-run/agentRunWorker.ts');
+
+		expect(source).toContain('resolveAgentRunTokenPlan({');
+		expect(source).toContain("note: 'finalizing before token hard ceiling'");
+		expect(source).toContain('maxTokens: turnTokenPlan.maxOutputTokens');
+		expect(source).toContain('renderDeepResearchFinalizationContext(researchObservations)');
+	});
+
+	it('gives one deep-research provider fallback a separate reservation', () => {
+		const source = readRepoFile('apps/worker/src/workers/agent-run/agentRunWorker.ts');
+
+		expect(source).toContain('turnAttemptKey(job.id, jobAttempts, iteration, providerAttempt)');
+		expect(source).toContain('providerAttempt === 0');
+		expect(source).toContain('providerAttempt = 1');
+		expect(source).toContain(
+			'model: providerAttempt > 0 ? DEEPSEEK_V4_FLASH_MODEL : undefined'
+		);
 	});
 });
 

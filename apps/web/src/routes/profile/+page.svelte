@@ -33,6 +33,7 @@
 	// Import the new components
 	import BriefsTab from '$lib/components/profile/BriefsTab.svelte';
 	import CalendarTab from '$lib/components/profile/CalendarTab.svelte';
+	import EmailTab from '$lib/components/profile/EmailTab.svelte';
 	import AccountTab from '$lib/components/profile/AccountTab.svelte';
 	import ContactsTab from '$lib/components/profile/ContactsTab.svelte';
 	import NotificationsTab from '$lib/components/profile/NotificationsTab.svelte';
@@ -81,6 +82,7 @@
 		'preferences',
 		'briefs',
 		'calendar',
+		'email',
 		'notifications',
 		'agent-keys'
 	];
@@ -129,6 +131,7 @@
 		{ id: 'preferences', label: 'AI Preferences', icon: Sparkles },
 		{ id: 'briefs', label: 'Brief Settings', icon: Bell },
 		{ id: 'calendar', label: 'Calendar', icon: Calendar },
+		{ id: 'email', label: 'Email', icon: Mail },
 		{ id: 'notifications', label: 'Notifications', icon: Bell },
 		{ id: 'agent-keys', label: 'Agents', icon: Key },
 		...(data.stripeEnabled ? [{ id: 'billing', label: 'Billing', icon: CreditCard }] : [])
@@ -419,6 +422,8 @@
 				onsuccess={handleComponentSuccess}
 				onerror={handleComponentError}
 			/>
+		{:else if activeTab === 'email'}
+			<EmailTab onsuccess={handleComponentSuccess} onerror={handleComponentError} />
 		{:else if activeTab === 'notifications'}
 			<!-- Use the new NotificationsTab component -->
 			<NotificationsTab userId={data.user.id} />

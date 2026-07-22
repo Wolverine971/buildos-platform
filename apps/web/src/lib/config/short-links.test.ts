@@ -25,6 +25,12 @@ describe('resolveShortLink', () => {
 		);
 	});
 
+	it('resolves the LinkedIn re-entry campaign with its full attribution payload', () => {
+		expect(resolveShortLink('reentry')).toBe(
+			'/?utm_source=linkedin&utm_medium=organic_social&utm_campaign=writer_memory_2026_07&utm_content=w1_reentry_receipt_dj'
+		);
+	});
+
 	it('returns null for unknown slugs', () => {
 		expect(resolveShortLink('nope-not-real')).toBeNull();
 	});

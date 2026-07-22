@@ -331,14 +331,17 @@ export async function fetchPublicUrl(
 			});
 		} catch (error) {
 			clearTimeout(timeout);
-			await dispatcher?.close();
+			// This agent is scoped to one hop. Destroy it instead of waiting for a
+			// graceful close: redirect/error responses can carry unread bodies, and
+			// Agent.close() waits indefinitely for that active stream to finish.
+			await dispatcher?.destroy();
 			const message = error instanceof Error ? error.message : String(error);
 			throw new Error(`Fetch failed: ${message}`);
 		}
 
 		if (response.status >= 300 && response.status < 400) {
 			clearTimeout(timeout);
-			await dispatcher?.close();
+			await dispatcher?.destroy();
 			if (!allowRedirects) throw new Error('Redirect blocked by policy.');
 			const location = response.headers.get('location');
 			if (!location) throw new Error('Redirect location missing.');
@@ -350,7 +353,7 @@ export async function fetchPublicUrl(
 
 		if (response.status < 200 || response.status >= 400) {
 			clearTimeout(timeout);
-			await dispatcher?.close();
+			await dispatcher?.destroy();
 			throw new Error(`Request failed (${response.status} ${response.statusText}).`);
 		}
 
@@ -367,7 +370,7 @@ export async function fetchPublicUrl(
 			};
 		} finally {
 			clearTimeout(timeout);
-			await dispatcher?.close();
+			await dispatcher?.destroy();
 		}
 	}
 }

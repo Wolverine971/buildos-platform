@@ -403,7 +403,9 @@
 
 <!-- Mobile layout (< sm): segmented tabs, one list visible at a time -->
 <section
-	class="sm:hidden bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+	class="overflow-hidden sm:hidden {mode === 'workspace'
+		? 'activity-workspace-mobile border-y border-border'
+		: 'rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak'}"
 	aria-label={surfaceLabel}
 >
 	<div role="tablist" aria-label={viewsLabel} class="flex border-b border-border/60">
@@ -468,7 +470,7 @@
 			id="pulse-panel-next"
 			role="tabpanel"
 			aria-labelledby="pulse-tab-next"
-			class="p-2 space-y-1.5"
+			class={mode === 'workspace' ? 'activity-workspace-list' : 'space-y-1.5 p-2'}
 		>
 			{#if upcomingItems.length === 0}
 				<p class="text-xs text-muted-foreground px-2 py-4 text-center italic">
@@ -482,26 +484,41 @@
 					<button
 						type="button"
 						onclick={() => onOpenEntity(item.kind, item.id)}
-						class="min-h-[44px] w-full rounded-md border border-border/60 bg-background px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted motion-reduce:transition-none pressable"
+						class={mode === 'workspace'
+							? 'activity-upcoming-row group'
+							: 'min-h-[44px] w-full rounded-md border border-border/60 bg-background px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted motion-reduce:transition-none pressable'}
 					>
 						<div class="flex items-start gap-2.5 min-w-0">
 							<Icon class="w-4 h-4 mt-0.5 shrink-0 {entityAccent(item.kind)}" />
 							<div class="min-w-0 flex-1">
-								<p class="text-sm font-medium text-foreground line-clamp-1">
-									{item.title}
-								</p>
+								<div class="flex min-w-0 items-baseline justify-between gap-2">
+									<p class="line-clamp-1 text-sm font-medium text-foreground">
+										{item.title}
+									</p>
+									{#if mode === 'workspace'}
+										<span
+											class="shrink-0 text-2xs {future.isOverdue
+												? 'font-medium text-destructive'
+												: 'text-muted-foreground'}"
+										>
+											{future.label}
+										</span>
+									{/if}
+								</div>
 								<p class="mt-0.5 flex flex-wrap items-center gap-1.5 text-2xs">
 									<span class="capitalize text-muted-foreground">{item.kind}</span
 									>
-									<span class="text-muted-foreground/50">·</span>
-									<span
-										class="inline-flex items-center gap-1 {future.isOverdue
-											? 'text-destructive font-medium'
-											: 'text-muted-foreground'}"
-									>
-										<Clock class="w-3 h-3 shrink-0" />
-										{future.label}
-									</span>
+									{#if mode !== 'workspace'}
+										<span class="text-muted-foreground/50">·</span>
+										<span
+											class="inline-flex items-center gap-1 {future.isOverdue
+												? 'text-destructive font-medium'
+												: 'text-muted-foreground'}"
+										>
+											<Clock class="w-3 h-3 shrink-0" />
+											{future.label}
+										</span>
+									{/if}
 									{#if item.kind === 'task' && item.state === 'in_progress'}
 										<span class="text-muted-foreground/50">·</span>
 										<span class="text-info font-medium">in progress</span>
@@ -533,7 +550,9 @@
 			id="pulse-panel-recent"
 			role="tabpanel"
 			aria-labelledby="pulse-tab-recent"
-			class="p-2 space-y-1.5"
+			class={mode === 'workspace'
+				? 'activity-timeline-list activity-workspace-list'
+				: 'space-y-1.5 p-2'}
 		>
 			{#if logsLoading}
 				{#each Array(3) as _, i (i)}
@@ -553,20 +572,34 @@
 					<button
 						type="button"
 						onclick={() => onOpenEntity(tile.entityType, tile.entityId)}
-						class="min-h-[44px] w-full rounded-md border border-border/60 bg-background px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted motion-reduce:transition-none pressable"
+						class={mode === 'workspace'
+							? 'activity-timeline-row group'
+							: 'min-h-[44px] w-full rounded-md border border-border/60 bg-background px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted motion-reduce:transition-none pressable'}
 					>
 						<div class="flex items-start gap-2.5 min-w-0">
 							<Icon class="w-4 h-4 mt-0.5 shrink-0 {entityAccent(tile.entityType)}" />
 							<div class="min-w-0 flex-1">
-								<p class="text-sm font-medium text-foreground line-clamp-1">
-									{tile.name}
-								</p>
+								<div class="flex min-w-0 items-baseline justify-between gap-2">
+									<p class="line-clamp-1 text-sm font-medium text-foreground">
+										{tile.name}
+									</p>
+									{#if mode === 'workspace'}
+										<time
+											datetime={tile.when.toISOString()}
+											class="shrink-0 text-2xs text-muted-foreground"
+										>
+											{relativeTime(tile.when)}
+										</time>
+									{/if}
+								</div>
 								<p class="mt-0.5 line-clamp-1 text-2xs text-muted-foreground">
 									<span>{activityActorPhrase(tile)}</span>
 									<span class="mx-1 text-muted-foreground/50">·</span>
 									<span class="capitalize">{tile.entityType}</span>
-									<span class="mx-1 text-muted-foreground/50">·</span>
-									<span>{relativeTime(tile.when)}</span>
+									{#if mode !== 'workspace'}
+										<span class="mx-1 text-muted-foreground/50">·</span>
+										<span>{relativeTime(tile.when)}</span>
+									{/if}
 								</p>
 							</div>
 						</div>
@@ -590,13 +623,23 @@
 </section>
 
 <!-- Desktop layout (sm+): side-by-side at md+, stacked at sm -->
-<section class="hidden sm:grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4" aria-label={surfaceLabel}>
+<section
+	class="hidden grid-cols-1 sm:grid {mode === 'workspace'
+		? 'gap-6 md:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.8fr)]'
+		: 'gap-3 sm:gap-4 md:grid-cols-2'}"
+	aria-label={surfaceLabel}
+>
 	<!-- Recently Done -->
 	<div
-		class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+		class={mode === 'workspace'
+			? 'activity-workspace-section min-w-0'
+			: 'overflow-hidden rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak'}
 	>
 		<header
-			class="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-3 border-b border-border/60"
+			class="flex items-center justify-between gap-2 border-b border-border/60 {mode ===
+			'workspace'
+				? 'pb-3'
+				: 'px-3 py-2 sm:px-4 sm:py-3'}"
 		>
 			<div class="flex items-center gap-2">
 				<div class="w-7 h-7 rounded-md bg-muted/60 flex items-center justify-center">
@@ -620,7 +663,11 @@
 			{/if}
 		</header>
 
-		<div class="p-2 sm:p-3 space-y-1.5">
+		<div
+			class={mode === 'workspace'
+				? 'activity-timeline-list activity-workspace-list'
+				: 'space-y-1.5 p-2 sm:p-3'}
+		>
 			{#if logsLoading}
 				{#each Array(3) as _, i (i)}
 					<div
@@ -639,26 +686,40 @@
 					<button
 						type="button"
 						onclick={() => onOpenEntity(tile.entityType, tile.entityId)}
-						class="group min-h-[44px] w-full rounded-md border border-border/60 bg-background px-2.5 py-2 text-left transition-colors hover:border-border hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
+						class={mode === 'workspace'
+							? 'activity-timeline-row group'
+							: 'group min-h-[44px] w-full rounded-md border border-border/60 bg-background px-2.5 py-2 text-left transition-colors hover:border-border hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable'}
 					>
 						<div class="flex items-start gap-2 min-w-0">
 							<Icon
 								class="w-3.5 h-3.5 mt-0.5 shrink-0 {entityAccent(tile.entityType)}"
 							/>
 							<div class="min-w-0 flex-1">
-								<p
-									class="text-xs sm:text-sm font-medium text-foreground line-clamp-1"
-								>
-									{tile.name}
-								</p>
+								<div class="flex min-w-0 items-baseline justify-between gap-2">
+									<p
+										class="line-clamp-1 text-xs font-medium text-foreground sm:text-sm"
+									>
+										{tile.name}
+									</p>
+									{#if mode === 'workspace'}
+										<time
+											datetime={tile.when.toISOString()}
+											class="shrink-0 text-2xs text-muted-foreground"
+										>
+											{relativeTime(tile.when)}
+										</time>
+									{/if}
+								</div>
 								<p
 									class="mt-0.5 line-clamp-1 text-2xs text-muted-foreground sm:text-xs"
 								>
 									<span>{activityActorPhrase(tile)}</span>
 									<span class="mx-1 text-muted-foreground/50">·</span>
 									<span class="capitalize">{tile.entityType}</span>
-									<span class="mx-1 text-muted-foreground/50">·</span>
-									<span>{relativeTime(tile.when)}</span>
+									{#if mode !== 'workspace'}
+										<span class="mx-1 text-muted-foreground/50">·</span>
+										<span>{relativeTime(tile.when)}</span>
+									{/if}
 									{#if tile.source && sourceLabel(tile.source)}
 										<span class="mx-1 text-muted-foreground/50">·</span>
 										<span class="text-muted-foreground/80"
@@ -688,10 +749,15 @@
 
 	<!-- Up Next -->
 	<div
-		class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+		class={mode === 'workspace'
+			? 'activity-workspace-section min-w-0'
+			: 'overflow-hidden rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak'}
 	>
 		<header
-			class="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-3 border-b border-border/60"
+			class="flex items-center justify-between gap-2 border-b border-border/60 {mode ===
+			'workspace'
+				? 'pb-3'
+				: 'px-3 py-2 sm:px-4 sm:py-3'}"
 		>
 			<div class="flex items-center gap-2">
 				<div class="w-7 h-7 rounded-md bg-warning/10 flex items-center justify-center">
@@ -711,7 +777,7 @@
 			{/if}
 		</header>
 
-		<div class="p-2 sm:p-3 space-y-1.5">
+		<div class={mode === 'workspace' ? 'activity-workspace-list' : 'space-y-1.5 p-2 sm:p-3'}>
 			{#if upcomingItems.length === 0}
 				<p class="text-xs text-muted-foreground px-1 py-3 italic">
 					Nothing scheduled. Add a date to a task, milestone, goal, or event to see it
@@ -724,32 +790,47 @@
 					<button
 						type="button"
 						onclick={() => onOpenEntity(item.kind, item.id)}
-						class="group min-h-[44px] w-full rounded-md border border-border/60 bg-background px-2.5 py-2 text-left transition-colors hover:border-border hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
+						class={mode === 'workspace'
+							? 'activity-upcoming-row group'
+							: 'group min-h-[44px] w-full rounded-md border border-border/60 bg-background px-2.5 py-2 text-left transition-colors hover:border-border hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable'}
 					>
 						<div class="flex items-start gap-2 min-w-0">
 							<Icon class="w-3.5 h-3.5 mt-0.5 shrink-0 {entityAccent(item.kind)}" />
 							<div class="min-w-0 flex-1">
-								<p
-									class="text-xs sm:text-sm font-medium text-foreground line-clamp-1"
-								>
-									{item.title}
-								</p>
+								<div class="flex min-w-0 items-baseline justify-between gap-2">
+									<p
+										class="line-clamp-1 text-xs font-medium text-foreground sm:text-sm"
+									>
+										{item.title}
+									</p>
+									{#if mode === 'workspace'}
+										<span
+											class="shrink-0 text-2xs {future.isOverdue
+												? 'font-medium text-destructive'
+												: 'text-muted-foreground'}"
+										>
+											{future.label}
+										</span>
+									{/if}
+								</div>
 								<p class="mt-0.5 flex items-center gap-1.5 text-2xs sm:text-xs">
 									<span class="capitalize text-muted-foreground">{item.kind}</span
 									>
-									<span class="text-muted-foreground/50">·</span>
-									<Clock
-										class="w-3 h-3 shrink-0 {future.isOverdue
-											? 'text-destructive'
-											: 'text-muted-foreground'}"
-									/>
-									<span
-										class={future.isOverdue
-											? 'text-destructive font-medium'
-											: 'text-muted-foreground'}
-									>
-										{future.label}
-									</span>
+									{#if mode !== 'workspace'}
+										<span class="text-muted-foreground/50">·</span>
+										<Clock
+											class="w-3 h-3 shrink-0 {future.isOverdue
+												? 'text-destructive'
+												: 'text-muted-foreground'}"
+										/>
+										<span
+											class={future.isOverdue
+												? 'text-destructive font-medium'
+												: 'text-muted-foreground'}
+										>
+											{future.label}
+										</span>
+									{/if}
 									{#if item.kind === 'task' && item.state === 'in_progress'}
 										<span class="text-muted-foreground/50">·</span>
 										<span class="text-info font-medium">in progress</span>
@@ -780,6 +861,72 @@
 </section>
 
 <style>
+	.activity-workspace-mobile {
+		background: transparent;
+	}
+
+	.activity-workspace-list {
+		min-width: 0;
+		padding: 0.25rem 0;
+	}
+
+	.activity-timeline-list {
+		position: relative;
+	}
+
+	.activity-timeline-list::before {
+		position: absolute;
+		top: 1rem;
+		bottom: 1rem;
+		left: 1.125rem;
+		width: 1px;
+		background: hsl(var(--border));
+		content: '';
+	}
+
+	.activity-timeline-row,
+	.activity-upcoming-row {
+		position: relative;
+		display: block;
+		min-height: 52px;
+		width: 100%;
+		min-width: 0;
+		border-radius: 0.5rem;
+		padding: 0.625rem;
+		text-align: left;
+		transition:
+			background-color 120ms ease,
+			color 120ms ease;
+	}
+
+	.activity-timeline-row:hover,
+	.activity-upcoming-row:hover {
+		background: hsl(var(--muted) / 0.55);
+	}
+
+	.activity-timeline-row:focus-visible,
+	.activity-upcoming-row:focus-visible {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: -2px;
+	}
+
+	.activity-timeline-row > div > :global(svg) {
+		position: relative;
+		z-index: 1;
+		border-radius: 999px;
+		background: hsl(var(--background));
+		box-shadow: 0 0 0 5px hsl(var(--background));
+	}
+
+	.activity-upcoming-row {
+		border-bottom: 1px solid hsl(var(--border) / 0.7);
+		border-radius: 0;
+	}
+
+	.activity-upcoming-row:last-of-type {
+		border-bottom-color: transparent;
+	}
+
 	.workspace-list-action {
 		display: inline-flex;
 		min-height: 44px;
@@ -811,7 +958,9 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.workspace-list-action {
+		.workspace-list-action,
+		.activity-timeline-row,
+		.activity-upcoming-row {
 			transition: none;
 		}
 	}

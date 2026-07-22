@@ -22,6 +22,12 @@ Database documentation including schema definitions, migration strategies, Row L
 
 Service layer documentation covering business logic services like brain dump processing, project management, calendar integration, and AI prompt management.
 
+### `/email/`
+
+Gmail integration planning, including multi-account read access, OAuth and data-security boundaries,
+explicitly authorized email actions, Google verification, and phased rollout gates. Start with the
+[Gmail integration master plan](email/README.md).
+
 ### `/components/`
 
 Component documentation including Svelte 5 patterns, brain dump components, project components, and design system guidelines.

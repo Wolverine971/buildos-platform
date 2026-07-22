@@ -7,6 +7,7 @@ import {
 	allocateDeepResearchChildBudget,
 	buildDeepResearchChildDispatches,
 	dispatchDeepResearchChildren,
+	isSubstantiveDeepResearchReport,
 	normalizeDeepResearchPlan,
 	parseDeepResearchState,
 	processDeepResearchCoordinator,
@@ -152,10 +153,13 @@ function coordinatorHarness(
 		loadChildren: vi.fn(async () => children)
 	};
 	const addUsage = (increment: UsageSnapshot) => {
+		const uncertainTokenExposure =
+			(usage.uncertainTokenExposure ?? 0) + (increment.uncertainTokenExposure ?? 0);
 		usage = {
 			tokens: usage.tokens + increment.tokens,
 			cost: usage.cost + increment.cost,
-			toolCalls: usage.toolCalls + increment.toolCalls
+			toolCalls: usage.toolCalls + increment.toolCalls,
+			...(uncertainTokenExposure > 0 ? { uncertainTokenExposure } : {})
 		};
 	};
 	return {
@@ -166,6 +170,16 @@ function coordinatorHarness(
 }
 
 describe('deep research planning contract', () => {
+	it('rejects placeholder synthesis while accepting a real report body', () => {
+		expect(isSubstantiveDeepResearchReport('...')).toBe(false);
+		expect(isSubstantiveDeepResearchReport('# Report\nTBD')).toBe(false);
+		expect(
+			isSubstantiveDeepResearchReport(
+				'# Recommendation\n\nThe available primary evidence supports a cautious launch, but the demand estimate remains uncertain. Validate conversion with a bounded pilot, monitor the named risk indicators, and revisit the decision when the missing cohort data is available.\n\n## Sources\n- https://example.com/source'
+			)
+		).toBe(true);
+	});
+
 	it('keeps exactly two bounded, distinct workstreams from a planner response', () => {
 		const plan = normalizeDeepResearchPlan(
 			{
@@ -576,7 +590,7 @@ describe('deep research coordinator lifecycle contract', () => {
 				return {
 					summary: 'Demand exists with material caveats.',
 					report_markdown:
-						'# Recommendation\nProceed carefully.\n\n## Sources\n- https://example.com',
+						'# Recommendation\n\nThe available primary evidence supports a cautious launch, but the demand estimate remains uncertain. Validate conversion with a bounded pilot, monitor the named risk indicators, and revisit the decision when the missing cohort data is available.\n\n## Sources\n- https://example.com',
 					open_questions: ['How quickly will demand convert?'],
 					confidence: 1.4
 				};
@@ -605,6 +619,7 @@ describe('deep research coordinator lifecycle contract', () => {
 			profile: 'powerful',
 			reasoning: { effort: 'high', exclude: false },
 			maxTokens: 6000,
+			timeoutMs: 180_000,
 			spendLimit: {
 				maxCostUsd: 0.38,
 				minOutputTokens: expect.any(Number)
@@ -1002,5 +1017,73 @@ describe('deep research coordinator lifecycle contract', () => {
 		expect(outcome.kind === 'finalize' ? outcome.result.answer : '').toContain(
 			'Deep research evidence packets'
 		);
+	});
+
+	it('falls back to evidence packets when synthesis returns a placeholder', async () => {
+		const harness = coordinatorHarness([
+			childEvidence(CHILD_IDS[0], 'completed'),
+			childEvidence(CHILD_IDS[1], 'completed')
+		]);
+		const emit = vi.fn(async () => undefined);
+		const llm = {
+			getJSONResponse: vi.fn(async () => ({
+				summary: '...',
+				report_markdown: '...',
+				open_questions: ['...'],
+				confidence: 0
+			}))
+		};
+
+		const outcome = await processDeepResearchCoordinator({
+			run: coordinatorRun(researchState()),
+			llm: llm as never,
+			getUsage: harness.getUsage,
+			addUsage: harness.addUsage,
+			emit,
+			runtime: harness.runtime
+		});
+
+		expect(outcome).toMatchObject({ kind: 'finalize', status: 'partial' });
+		expect(outcome.kind === 'finalize' ? outcome.result.answer : '').toContain(
+			'Deep research evidence packets'
+		);
+		expect(emit).toHaveBeenCalledWith('run.narration', {
+			note: 'synthesis_invalid',
+			reason: 'non_substantive_report',
+			report_chars: 3
+		});
+	});
+
+	it('records an uncertain synthesis reservation separately from observed tokens', async () => {
+		const harness = coordinatorHarness([
+			childEvidence(CHILD_IDS[0], 'completed'),
+			childEvidence(CHILD_IDS[1], 'completed')
+		]);
+		const llm = {
+			getJSONResponse: vi.fn(async (options: Record<string, any>) => {
+				await options.onUsage?.({
+					totalTokens: 17_000,
+					totalCost: 0.04,
+					costSource: 'reservation',
+					billingDisposition: 'uncertain'
+				});
+				throw new Error('accepted response was lost');
+			})
+		};
+
+		const outcome = await processDeepResearchCoordinator({
+			run: coordinatorRun(researchState()),
+			llm: llm as never,
+			getUsage: harness.getUsage,
+			addUsage: harness.addUsage,
+			emit: vi.fn(async () => undefined),
+			runtime: harness.runtime
+		});
+
+		expect(outcome).toMatchObject({ kind: 'finalize', status: 'partial' });
+		expect(harness.getUsage()).toMatchObject({
+			tokens: 2_500,
+			uncertainTokenExposure: 17_000
+		});
 	});
 });

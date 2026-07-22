@@ -34,6 +34,8 @@ import {
 import {
 	OpenRouterEmptyContentError,
 	buildOpenRouterEmptyContentError,
+	hasOpenRouterGenerationId,
+	isOpenRouterDefinitivePreGenerationRejection,
 	shouldFailoverToNextOpenRouterModel
 } from './errors';
 import {
@@ -884,7 +886,8 @@ export class SmartLLMService {
 						inputCost: missingBudgetedUsage ? totalCost : inputCost,
 						outputCost: missingBudgetedUsage ? 0 : outputCost,
 						totalCost,
-						costSource
+						costSource,
+						billingDisposition: missingBudgetedUsage ? 'uncertain' : 'settled'
 					} satisfies JSONUsageEvent;
 
 					if (typeof options.onUsage === 'function') {
@@ -971,9 +974,10 @@ export class SmartLLMService {
 					lastError = error as Error;
 					attemptedModels.add(requestedModel);
 					const shouldRetry =
-						error instanceof OpenRouterEmptyContentError ||
-						error instanceof SyntaxError ||
-						shouldFailoverToNextOpenRouterModel(error);
+						!hasOpenRouterGenerationId(error) &&
+						(error instanceof OpenRouterEmptyContentError ||
+							error instanceof SyntaxError ||
+							shouldFailoverToNextOpenRouterModel(error));
 
 					if (attempt < maxAttempts - 1 && shouldRetry) {
 						console.warn('OpenRouter JSON response retrying after failure', {
@@ -1005,6 +1009,8 @@ export class SmartLLMService {
 					: undefined);
 			const modelsAttempted = Array.from(attemptedModels);
 			const lastModel = lastResponse?.model || lastRequestedModel || baseModel;
+			const definitivePreGenerationRejection =
+				isOpenRouterDefinitivePreGenerationRejection(error);
 			const failurePricing = resolveModelPricingProfile(lastModel, [
 				lastRequestedModel,
 				baseModel
@@ -1033,8 +1039,9 @@ export class SmartLLMService {
 				lastResponse.usage.cost >= 0
 					? lastResponse.usage.cost
 					: null;
-			const failureTotalCost =
-				hasFailureTokenUsage && failurePricing
+			const failureTotalCost = definitivePreGenerationRejection
+				? 0
+				: hasFailureTokenUsage && failurePricing
 					? (failureReportedCost ?? failureInputCost + failureOutputCost)
 					: (spendPlan?.reservedCostUsd ?? 0);
 			const failureCostSource: JSONUsageEvent['costSource'] =
@@ -1043,10 +1050,30 @@ export class SmartLLMService {
 					: hasFailureTokenUsage && failurePricing
 						? 'catalog_estimate'
 						: 'reservation';
-			const accountedFailureInputCost =
-				hasFailureTokenUsage && failurePricing ? failureInputCost : failureTotalCost;
+			const accountedFailureInputCost = definitivePreGenerationRejection
+				? 0
+				: hasFailureTokenUsage && failurePricing
+					? failureInputCost
+					: failureTotalCost;
 			const accountedFailureOutputCost =
-				hasFailureTokenUsage && failurePricing ? failureOutputCost : 0;
+				!definitivePreGenerationRejection && hasFailureTokenUsage && failurePricing
+					? failureOutputCost
+					: 0;
+			const accountedFailurePromptTokens = definitivePreGenerationRejection
+				? 0
+				: failurePromptTokens;
+			const accountedFailureCompletionTokens = definitivePreGenerationRejection
+				? 0
+				: failureCompletionTokens;
+			const accountedFailureTotalTokens = definitivePreGenerationRejection
+				? 0
+				: failureTotalTokens;
+			const billingDisposition: JSONUsageEvent['billingDisposition'] =
+				definitivePreGenerationRejection
+					? 'released'
+					: failureReportedCost !== null || hasFailureTokenUsage
+						? 'settled'
+						: 'uncertain';
 			if (spendPlan && !usageReported && typeof options.onUsage === 'function') {
 				// A strict-budget call has no unreserved retry. If the provider
 				// returned usage, settle to it; otherwise charge the full reservation
@@ -1057,13 +1084,14 @@ export class SmartLLMService {
 					billingProvider: lastBillingProvider,
 					provider: lastResponse?.provider || lastProvider,
 					providerRequestId: failureProviderRequestId,
-					promptTokens: failurePromptTokens,
-					completionTokens: failureCompletionTokens,
-					totalTokens: failureTotalTokens,
+					promptTokens: accountedFailurePromptTokens,
+					completionTokens: accountedFailureCompletionTokens,
+					totalTokens: accountedFailureTotalTokens,
 					inputCost: accountedFailureInputCost,
 					outputCost: accountedFailureOutputCost,
 					totalCost: failureTotalCost,
-					costSource: failureCostSource
+					costSource: failureCostSource,
+					billingDisposition
 				});
 			}
 			const emptyContentDetails =
@@ -1107,9 +1135,9 @@ export class SmartLLMService {
 					operationType: options.operationType || 'other',
 					modelRequested: baseModel,
 					modelUsed: lastModel,
-					promptTokens: failurePromptTokens,
-					completionTokens: failureCompletionTokens,
-					totalTokens: failureTotalTokens,
+					promptTokens: accountedFailurePromptTokens,
+					completionTokens: accountedFailureCompletionTokens,
+					totalTokens: accountedFailureTotalTokens,
 					inputCost: accountedFailureInputCost,
 					outputCost: accountedFailureOutputCost,
 					totalCost: failureTotalCost,
@@ -1141,6 +1169,7 @@ export class SmartLLMService {
 						modelsAttempted,
 						lastRequestedModel,
 						lastModel,
+						billingDisposition,
 						openrouterRequestId: failureProviderRequestId,
 						openrouterProvider: lastResponse?.provider,
 						openrouterErrorDetails: openrouterErrorDetails ?? null,
@@ -1149,7 +1178,9 @@ export class SmartLLMService {
 				})
 				.catch((err) => console.error('Failed to log error:', err));
 
-			throw new Error(`Failed to generate valid JSON: ${lastError?.message}`);
+			const wrappedError = new Error(`Failed to generate valid JSON: ${lastError?.message}`);
+			(wrappedError as Error & { cause?: unknown }).cause = lastError;
+			throw wrappedError;
 		}
 	}
 

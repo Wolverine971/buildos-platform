@@ -60,6 +60,8 @@ export interface JSONUsageEvent {
 	outputCost: number;
 	totalCost: number;
 	costSource: 'provider_reported' | 'catalog_estimate' | 'reservation';
+	/** How a strict reservation should terminate in the durable cost ledger. */
+	billingDisposition?: 'settled' | 'released' | 'uncertain';
 }
 
 export interface JSONRequestOptions<T = unknown> {

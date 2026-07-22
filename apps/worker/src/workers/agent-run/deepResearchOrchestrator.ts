@@ -11,6 +11,7 @@ import type {
 } from '../../lib/services/smart-llm-service';
 import { LLMSpendLimitError } from '../../lib/services/smart-llm-service';
 import { AgentRunCostLedgerError } from './agentRunCostLedger';
+import { classifyAgentRunTokenUsage } from './agentRunRuntimePolicy';
 import {
 	canonicalizeResearchUrl,
 	isDeepResearchEvidencePacketCompletionReady,
@@ -20,6 +21,8 @@ import {
 
 type AgentRunRow = Database['public']['Tables']['agent_runs']['Row'];
 type AgentRunStatus = AgentRunRow['status'];
+
+const DEEP_RESEARCH_SYNTHESIS_TIMEOUT_MS = 180_000;
 
 /**
  * Categorize a budgeted-LLM failure so planner/synthesis degradations are
@@ -105,6 +108,7 @@ export type UsageSnapshot = {
 	tokens: number;
 	cost: number;
 	toolCalls: number;
+	uncertainTokenExposure?: number;
 	llmCost?: number;
 	paidToolCost?: number;
 	tavilyCredits?: number;
@@ -222,6 +226,14 @@ function readStringArray(value: unknown, limit: number, maxChars: number): strin
 		.map((item) => readNonEmptyString(item, maxChars))
 		.filter((item): item is string => Boolean(item))
 		.slice(0, limit);
+}
+
+export function isSubstantiveDeepResearchReport(value: unknown): boolean {
+	if (typeof value !== 'string') return false;
+	const trimmed = value.trim();
+	if (trimmed.length < 120) return false;
+	const words = trimmed.match(/[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu) ?? [];
+	return words.length >= 20;
 }
 
 export function parseDeepResearchState(value: unknown): DeepResearchState | null {
@@ -448,6 +460,11 @@ function childMetrics(child: ChildEvidence): UsageSnapshot {
 		tavilyCredits:
 			typeof metrics?.tavily_credits === 'number' && Number.isFinite(metrics.tavily_credits)
 				? metrics.tavily_credits
+				: undefined,
+		uncertainTokenExposure:
+			typeof metrics?.uncertain_token_exposure === 'number' &&
+			Number.isFinite(metrics.uncertain_token_exposure)
+				? metrics.uncertain_token_exposure
 				: undefined
 	};
 }
@@ -471,7 +488,9 @@ function readUsageSnapshot(value: unknown): UsageSnapshot | null {
 	) {
 		return null;
 	}
-	const optionalMetric = (key: 'llmCost' | 'paidToolCost' | 'tavilyCredits') => {
+	const optionalMetric = (
+		key: 'llmCost' | 'paidToolCost' | 'tavilyCredits' | 'uncertainTokenExposure'
+	) => {
 		const metric = record[key];
 		return typeof metric === 'number' && Number.isFinite(metric) && metric >= 0
 			? metric
@@ -483,7 +502,8 @@ function readUsageSnapshot(value: unknown): UsageSnapshot | null {
 		toolCalls,
 		llmCost: optionalMetric('llmCost'),
 		paidToolCost: optionalMetric('paidToolCost'),
-		tavilyCredits: optionalMetric('tavilyCredits')
+		tavilyCredits: optionalMetric('tavilyCredits'),
+		uncertainTokenExposure: optionalMetric('uncertainTokenExposure')
 	};
 }
 
@@ -495,9 +515,19 @@ function aggregateUsage(snapshots: UsageSnapshot[]): UsageSnapshot {
 			toolCalls: total.toolCalls + usage.toolCalls,
 			llmCost: (total.llmCost ?? 0) + (usage.llmCost ?? usage.cost),
 			paidToolCost: (total.paidToolCost ?? 0) + (usage.paidToolCost ?? 0),
-			tavilyCredits: (total.tavilyCredits ?? 0) + (usage.tavilyCredits ?? 0)
+			tavilyCredits: (total.tavilyCredits ?? 0) + (usage.tavilyCredits ?? 0),
+			uncertainTokenExposure:
+				(total.uncertainTokenExposure ?? 0) + (usage.uncertainTokenExposure ?? 0)
 		}),
-		{ tokens: 0, cost: 0, toolCalls: 0, llmCost: 0, paidToolCost: 0, tavilyCredits: 0 }
+		{
+			tokens: 0,
+			cost: 0,
+			toolCalls: 0,
+			llmCost: 0,
+			paidToolCost: 0,
+			tavilyCredits: 0,
+			uncertainTokenExposure: 0
+		}
 	);
 }
 
@@ -565,6 +595,9 @@ function aggregateWithoutSynthesis(
 	children: ChildEvidence[],
 	reason: string
 ): Record<string, unknown> {
+	const incompleteChildren = children.filter(
+		(child) => child.status !== 'completed' || !hasCompletionReadyEvidence(child)
+	);
 	return {
 		summary: `Research workstreams finished, but the coordinator could not run a full synthesis: ${reason}.`,
 		answer: [
@@ -579,7 +612,8 @@ function aggregateWithoutSynthesis(
 		].join('\n\n'),
 		open_questions: ['A final cross-source synthesis is still needed.'],
 		confidence: 0.35,
-		research_child_run_ids: children.map((child) => child.id)
+		research_child_run_ids: children.map((child) => child.id),
+		incomplete_child_run_ids: incompleteChildren.map((child) => child.id)
 	};
 }
 
@@ -882,8 +916,10 @@ export async function processDeepResearchCoordinator(params: {
 				operationType: 'agent_run_deep_research_plan',
 				metadata: { agent_run_id: params.run.id, stage: 'planning' },
 				onUsage: async (usage) => {
+					const tokenCharge = classifyAgentRunTokenUsage(usage);
 					params.addUsage({
-						tokens: usage?.totalTokens ?? 0,
+						tokens: tokenCharge.observedTokens,
+						uncertainTokenExposure: tokenCharge.uncertainTokenExposure,
 						cost: usage?.totalCost ?? 0,
 						toolCalls: 0,
 						llmCost: usage?.totalCost ?? 0
@@ -1068,6 +1104,7 @@ export async function processDeepResearchCoordinator(params: {
 			profile: 'powerful',
 			reasoning: { effort: 'high', exclude: false },
 			maxTokens: 6000,
+			timeoutMs: DEEP_RESEARCH_SYNTHESIS_TIMEOUT_MS,
 			spendLimit: {
 				maxCostUsd: remainingBudget,
 				minOutputTokens: MIN_SYNTHESIS_OUTPUT_TOKENS
@@ -1081,8 +1118,10 @@ export async function processDeepResearchCoordinator(params: {
 				child_run_ids: children.map((child) => child.id)
 			},
 			onUsage: async (usage) => {
+				const tokenCharge = classifyAgentRunTokenUsage(usage);
 				params.addUsage({
-					tokens: usage?.totalTokens ?? 0,
+					tokens: tokenCharge.observedTokens,
+					uncertainTokenExposure: tokenCharge.uncertainTokenExposure,
 					cost: usage?.totalCost ?? 0,
 					toolCalls: 0,
 					llmCost: usage?.totalCost ?? 0
@@ -1110,14 +1149,21 @@ export async function processDeepResearchCoordinator(params: {
 	}
 
 	const answer = readNonEmptyString(synthesis.report_markdown, 60_000);
-	if (!answer) {
+	if (!isSubstantiveDeepResearchReport(answer)) {
+		await params.emit('run.narration', {
+			note: 'synthesis_invalid',
+			reason: answer ? 'non_substantive_report' : 'missing_report',
+			report_chars: answer?.length ?? 0
+		});
 		return {
 			kind: 'finalize',
 			status: 'partial',
 			result: aggregateWithoutSynthesis(
 				params.run,
 				children,
-				'the synthesizer returned no report'
+				answer
+					? 'the synthesizer returned a non-substantive report'
+					: 'the synthesizer returned no report'
 			)
 		};
 	}

@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import { ErrorLoggerService } from './errorLogger.service';
 import { createSupabaseBrowser } from '$lib/supabase';
+import { browser } from '$app/environment';
 
 export interface SendSMSParams {
 	userId: string;
@@ -18,26 +19,47 @@ export interface SendSMSParams {
 
 export class SMSService extends ApiService {
 	private static instance: SMSService;
-	private supabase: SupabaseClient<Database>;
-	protected errorLogger: ErrorLoggerService;
+	private supabase: SupabaseClient<Database> | null;
+	protected errorLogger: ErrorLoggerService | null;
 
-	private constructor(supabase: SupabaseClient<Database>) {
+	private constructor(supabase: SupabaseClient<Database> | null = null) {
 		super('');
 		this.supabase = supabase;
-		this.errorLogger = ErrorLoggerService.getInstance(supabase);
+		this.errorLogger = supabase ? ErrorLoggerService.getInstance(supabase) : null;
 	}
 
-	public static getInstance(supabase: SupabaseClient<Database>): SMSService {
+	public static getInstance(supabase: SupabaseClient<Database> | null = null): SMSService {
 		if (!SMSService.instance) {
 			SMSService.instance = new SMSService(supabase);
+		} else if (supabase && !SMSService.instance.supabase) {
+			SMSService.instance.supabase = supabase;
+			SMSService.instance.errorLogger = ErrorLoggerService.getInstance(supabase);
 		}
 		return SMSService.instance;
 	}
 
+	private getSupabase(): SupabaseClient<Database> {
+		if (!browser) {
+			throw new Error('SMSService is only available in the browser');
+		}
+		if (!this.supabase) {
+			this.supabase = createSupabaseBrowser();
+		}
+		return this.supabase;
+	}
+
+	private getErrorLogger(): ErrorLoggerService {
+		if (!this.errorLogger) {
+			this.errorLogger = ErrorLoggerService.getInstance(this.getSupabase());
+		}
+		return this.errorLogger;
+	}
+
 	async sendSMS(params: SendSMSParams): Promise<ServiceResponse<{ messageId: string }>> {
 		try {
+			const supabase = this.getSupabase();
 			// Check user SMS preferences
-			const { data: prefs } = await this.supabase
+			const { data: prefs } = await supabase
 				.from('user_sms_preferences')
 				.select('*')
 				.eq('user_id', params.userId)
@@ -60,7 +82,7 @@ export class SMSService extends ApiService {
 			}
 
 			// Queue the SMS message
-			const { data, error } = await this.supabase.rpc('queue_sms_message', {
+			const { data, error } = await supabase.rpc('queue_sms_message', {
 				p_user_id: params.userId,
 				p_phone_number: params.phoneNumber || prefs.phone_number || '',
 				p_message: params.message,
@@ -79,7 +101,7 @@ export class SMSService extends ApiService {
 			};
 		} catch (error: any) {
 			console.error('Failed to send SMS:', error);
-			await this.errorLogger.logAPIError(error, '/api/sms/send', 'POST', params.userId, {
+			await this.getErrorLogger().logAPIError(error, '/api/sms/send', 'POST', params.userId, {
 				operation: 'sendSMS',
 				errorType: 'sms_delivery_failure',
 				phoneNumber: params.phoneNumber ? 'provided' : 'from_preferences',
@@ -116,7 +138,7 @@ export class SMSService extends ApiService {
 			const response = await this.post('/api/sms/verify', { phoneNumber });
 			return response;
 		} catch (error: any) {
-			await this.errorLogger.logAPIError(error, '/api/sms/verify', 'POST', undefined, {
+			await this.getErrorLogger().logAPIError(error, '/api/sms/verify', 'POST', undefined, {
 				operation: 'verifyPhoneNumber',
 				errorType: 'sms_verification_send_failure',
 				hasPhoneNumber: !!phoneNumber
@@ -133,6 +155,7 @@ export class SMSService extends ApiService {
 		code: string
 	): Promise<ServiceResponse<{ verified: boolean }>> {
 		try {
+			const supabase = this.getSupabase();
 			const response = await this.post('/api/sms/verify/confirm', {
 				phoneNumber,
 				code
@@ -142,9 +165,9 @@ export class SMSService extends ApiService {
 				// Update user preferences
 				const {
 					data: { user }
-				} = await this.supabase.auth.getUser();
+				} = await supabase.auth.getUser();
 				if (user) {
-					await this.supabase.from('user_sms_preferences').upsert(
+					await supabase.from('user_sms_preferences').upsert(
 						{
 							user_id: user.id,
 							phone_number: phoneNumber,
@@ -160,7 +183,7 @@ export class SMSService extends ApiService {
 
 			return response;
 		} catch (error: any) {
-			await this.errorLogger.logAPIError(
+			await this.getErrorLogger().logAPIError(
 				error,
 				'/api/sms/verify/confirm',
 				'POST',
@@ -181,7 +204,7 @@ export class SMSService extends ApiService {
 
 	async getSMSMessages(userId: string): Promise<ServiceResponse<{ messages: any[] }>> {
 		try {
-			const { data: messages, error } = await this.supabase
+			const { data: messages, error } = await this.getSupabase()
 				.from('sms_messages')
 				.select('*')
 				.eq('user_id', userId)
@@ -196,7 +219,7 @@ export class SMSService extends ApiService {
 			};
 		} catch (error: any) {
 			console.error('Failed to get SMS messages:', error);
-			await this.errorLogger.logDatabaseError(error, 'SELECT', 'sms_messages', userId, {
+			await this.getErrorLogger().logDatabaseError(error, 'SELECT', 'sms_messages', userId, {
 				operation: 'getSMSMessages'
 			});
 			return {
@@ -208,7 +231,7 @@ export class SMSService extends ApiService {
 
 	async getSMSPreferences(userId: string): Promise<ServiceResponse<{ preferences: any }>> {
 		try {
-			const { data: prefs, error } = await this.supabase
+			const { data: prefs, error } = await this.getSupabase()
 				.from('user_sms_preferences')
 				.select('*')
 				.eq('user_id', userId)
@@ -222,7 +245,7 @@ export class SMSService extends ApiService {
 			};
 		} catch (error: any) {
 			console.error('Failed to get SMS preferences:', error);
-			await this.errorLogger.logDatabaseError(
+			await this.getErrorLogger().logDatabaseError(
 				error,
 				'SELECT',
 				'user_sms_preferences',
@@ -252,16 +275,18 @@ export class SMSService extends ApiService {
 		}>
 	): Promise<ServiceResponse<{ updated: boolean }>> {
 		try {
-			const { error } = await this.supabase.from('user_sms_preferences').upsert(
-				{
-					user_id: userId,
-					...preferences,
-					updated_at: new Date().toISOString()
-				},
-				{
-					onConflict: 'user_id'
-				}
-			);
+			const { error } = await this.getSupabase()
+				.from('user_sms_preferences')
+				.upsert(
+					{
+						user_id: userId,
+						...preferences,
+						updated_at: new Date().toISOString()
+					},
+					{
+						onConflict: 'user_id'
+					}
+				);
 
 			if (error) throw error;
 
@@ -271,7 +296,7 @@ export class SMSService extends ApiService {
 			};
 		} catch (error: any) {
 			console.error('Failed to update SMS preferences:', error);
-			await this.errorLogger.logDatabaseError(
+			await this.getErrorLogger().logDatabaseError(
 				error,
 				'UPSERT',
 				'user_sms_preferences',
@@ -290,7 +315,7 @@ export class SMSService extends ApiService {
 
 	async optOut(userId: string): Promise<ServiceResponse<{ optedOut: boolean }>> {
 		try {
-			const { error } = await this.supabase.from('user_sms_preferences').upsert(
+			const { error } = await this.getSupabase().from('user_sms_preferences').upsert(
 				{
 					user_id: userId,
 					opted_out: true,
@@ -309,7 +334,7 @@ export class SMSService extends ApiService {
 			};
 		} catch (error: any) {
 			console.error('Failed to opt out:', error);
-			await this.errorLogger.logDatabaseError(
+			await this.getErrorLogger().logDatabaseError(
 				error,
 				'UPSERT',
 				'user_sms_preferences',
@@ -329,7 +354,6 @@ export class SMSService extends ApiService {
 	}
 }
 
-// Export singleton instance (for browser contexts only)
-// Note: This creates a new Supabase client instance. For more control,
-// use SMSService.getInstance(supabaseClient) directly in your components.
-export const smsService = SMSService.getInstance(createSupabaseBrowser());
+// Creating the singleton is SSR-safe. Its browser Supabase client is allocated only
+// when a browser-only method actually needs it.
+export const smsService = SMSService.getInstance();

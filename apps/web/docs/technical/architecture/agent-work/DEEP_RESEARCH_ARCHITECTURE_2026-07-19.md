@@ -2,12 +2,16 @@
 
 # Agentic Chat Deep Research — Architecture Direction
 
-**Date:** 2026-07-19 (updated 2026-07-20)  
+**Date:** 2026-07-19 (updated 2026-07-22)
 **Status:** All five base migrations (`20260719010000`–`050000`) **and** the
 `20260720010000` audit-hardening migration are deployed and role-verified in production;
-bounded worker orchestration, accounting, cost bridge, and OpenRouter reconciliation implemented;
-worker/provider live smoke still pending (worker has no Tavily credential; Railway-worker/local-worker
-claim race must be resolved for a controlled run). See the 2026-07-20 audit
+bounded worker orchestration, accounting, cost bridge, and OpenRouter reconciliation are implemented.
+Three capped production-backed smoke waves have run. The final controlled four-case batch passed
+the runtime/cost envelope (55/55 terminal paid rows) and live-produced typed evidence packets, but
+failed the product-quality gate: one fan-out synthesis returned `...`, while completed single runs
+cited unvisited search candidates and one made a known-false `max_price` conclusion. The local
+coordinator now rejects non-substantive synthesis; deployment and corpus-based quality evaluation
+remain open. See the 2026-07-20 audit, updated with the 2026-07-22 remediation smoke
 (`../../audits/DEEP_RESEARCH_V01_AUDIT_2026-07-20.md`) for the remediation record.
 
 **Builds on:** `AGENTIC_CHAT_RESEARCH_CAPABILITY_AUDIT_2026-07-18.md` and the durable Agent Work
@@ -51,8 +55,11 @@ The first vertical slice now implements concern 1 and a deliberately narrow vers
   basic = 1 credit / advanced = 2 credits and at no less than the public `$0.008/credit` PAYG
   price; the request explicitly asks for usage and provider-reported credits settle the estimate
   when available. Local validation failures are not charged.
-- Budgeted LLM calls now use one catalog-priced model/attempt, conservatively reserve prompt cost,
-  cap output tokens to the remaining call envelope, and disable unreserved fallback/parse retries.
+- Budgeted LLM calls now use one catalog-priced model per reserved attempt, conservatively reserve
+  prompt cost, cap output tokens to the remaining call envelope, and disable unreserved
+  fallback/parse retries. Deep/evidence Agent Runs may make one caller-level fallback after an
+  empty/transient/unavailable-model failure, but that fallback has its own durable reservation and
+  attempt key.
 - `agent_run_cost_entries` now durably records every budgeted deep-research LLM and Tavily attempt
   before provider dispatch. A `SECURITY DEFINER` reservation function locks the root, checks leaf
   and root exposure atomically, and rejects an over-budget or conflicting attempt key.
@@ -67,10 +74,12 @@ The first vertical slice now implements concern 1 and a deliberately narrow vers
 - SmartLLM preserves OpenRouter's `X-Generation-Id` even when the response body is lost. That
   closes the correlation gap between a conservative reservation and the later provider lookup.
 
-This is a working V0.1 control flow, not a finished research product. It returns a sourced report to
-chat, but does not yet persist a report document or a typed claim-to-source manifest.
+This is a working V0.1 control flow, not a finished research product. It returns a report to chat.
+A versioned child claim-to-source evidence contract is implemented and live-proved inside the
+20,000-token target / 22,000-token hard ceiling. Root synthesis and direct-single reports are not
+yet fully provenance-bound, and the report is not persisted as a document or normalized manifest.
 
-Deployment checkpoint on 2026-07-19, updated 2026-07-20:
+Deployment checkpoint on 2026-07-19, updated 2026-07-22:
 
 - The configured production PostgREST endpoint returns the cost ledger with all reconciliation
   columns through the service role.
@@ -90,8 +99,10 @@ Deployment checkpoint on 2026-07-19, updated 2026-07-20:
   (`agent_run_web_search`) so research spend appears in admin analytics.
 - Database type regeneration still blocked on a missing `SUPABASE_ACCESS_TOKEN`; the deployed schema
   is verified, but generated `database.types.ts` remains stale.
-- No paid provider smoke has run yet: the worker environment has no Tavily credential and the live
-  Railway worker would race a local worker for the queued jobs (see the audit's smoke plan).
+- The final paid, capped batch ran with Railway paused, one web-only server, and one scoped
+  `agent_run` worker. It created 55 terminal ledger rows (50 settled, 5 released), stayed at
+  `$0.267794599`, produced typed child packets, and respected token ceilings. The broader diagnostic
+  session stayed at `$1.0041 / $2`. The code revision still needs production deployment proof.
 
 ## What BuildOS already has
 
@@ -109,7 +120,23 @@ Deployment checkpoint on 2026-07-19, updated 2026-07-20:
 
 Important remaining gaps:
 
-- Child evidence is constrained Markdown, not yet a validated claim-to-source JSON contract.
+- Child evidence now has a locally implemented version-1 JSON contract with worker validation,
+  visited-URL provenance, redirect-aware source deduplication, strict enum/confidence validation,
+  and completion downgrade for unsupported factual claims. Excerpt verification is source-checked
+  but **non-blocking** (2026-07-21): a quote that isn't an exact substring of the visited page is
+  dropped and recorded as an issue, but does not force `partial`, because the "source was actually
+  visited" and "a `fact` needs a `direct` link" gates already prevent fabricated citations — an
+  exact substring match is too brittle against ordinary model paraphrase to gate completion on.
+  The evidence-packet contract is applied only when the dispatcher explicitly marks the child
+  (`orchestration_state.role = "deep_research_child"`), not by inferring it from row shape.
+  Missing/invalid packets still do not fall back to unvalidated child **prose** during synthesis,
+  but the coordinator now surfaces the child's **worker-observed visited URLs** so covered ground
+  isn't invisible. It still needs live-provider evaluation and a migration path for legacy
+  prose-only child results. The final 2026-07-22 remediation smoke produced typed packets before the
+  ceiling, proving the compact evidence finalization path. It also showed the next boundary: some
+  packets remained invalid/coverage-poor, a schema-valid root synthesis returned `...`, and direct
+  single runs cited search candidates they never visited. Non-substantive root synthesis now falls
+  back to evidence packets locally; report-level citation and objective-coverage validation remain.
 - The synthesized report is injected into chat but is not yet persisted as a BuildOS document.
 - V0.1 uses two children so root + children fit the existing three-active-run ceiling.
 - `max_cost_usd` now has a durable, atomic leaf/root reservation ledger and automatic OpenRouter
@@ -217,6 +244,15 @@ type ResearchFinding = {
 };
 ```
 
+> **Shipped contract (updated 2026-07-21):** the illustrative `ResearchPlan` and
+> `ResearchFinding` shapes above are superseded by the richer, worker-validated
+> `DeepResearchEvidencePacketV1` in `packages/shared-types/src/agent-work.types.ts`
+> (claim `kind`, claim→source links with `support` + optional excerpt/location,
+> contradictions, worker-authored `search_coverage`, and per-claim + packet
+> confidence). Validation/normalization lives in
+> `apps/worker/src/workers/agent-run/deepResearchEvidence.ts`. Treat the code as the
+> source of truth; these snippets are directional only.
+
 The root synthesizer receives these compact contracts, not every child transcript. Full transcripts
 remain in run events for audit/debugging.
 
@@ -298,9 +334,9 @@ make a retry inspect the existing exposure instead of paying for a duplicate req
 
 The remaining accounting work is:
 
-1. deploy `20260719050000_agent_run_cost_rpc_privileges.sql`, repeat anonymous/authenticated and
-   service-role probes, then deploy/live-smoke the worker reconciler and enable its flag after a
-   clearly scoped environment decision; the read-only operator report is implemented;
+1. deploy/live-smoke the worker reconciler and enable its flag after a clearly scoped environment
+   decision; the RPC privilege migration is already deployed and role-probed, and the read-only
+   operator report is implemented;
 2. identify a documented per-request audit path for Tavily Search or reconcile those rows through
    a separately tracked project/account delta without pretending aggregate usage proves one call;
 3. add atomic user-daily and platform balances beyond the existing per-leaf/per-root limits;
@@ -369,10 +405,14 @@ project knowledge should use the existing staged Change Set review path.
   `pnpm --filter @buildos/worker test:deep-research:integration`; it does not replace the older
   externally configured worker integration suite.
 
-The first four Agent Run/deep-research migrations are deployed. The fifth privilege-hardening
-migration must be deployed and role-probed before worker rollout. Cost reconciliation additionally
-requires `AGENT_RUN_COST_RECONCILIATION_ENABLED=true`; it remains off by default and must stay off
-until that check passes.
+Current local verification (2026-07-22): worker **502/502**, SmartLLM **68/68**, shared agent ops
+**27/27**, and disposable PostgreSQL deep-research integration **31/31**; worker + SmartLLM
+builds/typechecks pass, and worker lint reports zero errors (existing warnings remain).
+`git diff --check` also passes.
+
+All Agent Run/deep-research migrations, including privilege hardening, are deployed and role-probed.
+Cost reconciliation additionally requires `AGENT_RUN_COST_RECONCILIATION_ENABLED=true`; it remains
+off by default until its live-provider path is deliberately enabled and observed.
 
 ### Slice C — budget and evidence correctness
 
@@ -386,9 +426,12 @@ until that check passes.
   reconciliation
   ([tasker 29](../../../../../../tasker/29-deep-research-cost-ledger-and-hard-budgets.md)).
 - Add a per-user daily research allowance.
-- Replace Markdown evidence packets with a typed claim/source/support contract.
+- **Implemented locally:** typed, worker-validated claim/source/support evidence packets; compact
+  pre-ceiling finalization and successful-tool telemetry sanitation were added after the 2026-07-22
+  smoke produced zero packets.
 - Persist the final report and normalized source manifest.
-- Add reconciliation for stranded `dispatching` or `researching` roots.
+- **Implemented locally:** bounded, idempotent reconciliation for stranded roots/children and
+  terminal-parent cleanup; still needs deployed duplicate-delivery/restart proof.
 
 ### Slice D — product and evaluation
 
@@ -401,9 +444,19 @@ until that check passes.
 
 ## Decisions still requiring evidence
 
+> The final controlled four-case batch passed runtime safety but still did **not** produce a quality
+> winner; see the audit and [bake-off runbook](DEEP_RESEARCH_BAKEOFF_RUNBOOK.md). Fan-out used fewer
+> tokens and enforced typed provenance, but both roots were partial and one synthesizer returned the
+> placeholder `...`. Single runs completed and cost slightly less, but cited unvisited search
+> candidates; Q2 falsely said OpenRouter has no `max_price` even though the runtime uses and live-
+> probed that control. The architecture decision remains open until both modes share report-level
+> provenance/coverage gates and are scored on a versioned corpus with a pinned model route.
+
 - Whether `powerful` should remain a routed model lane or pin a model for reproducible research
-  evals.
-- Whether two children remain the quality/cost optimum under a `$0.50` ceiling.
+  evals. The local runtime now has one separately reserved pinned fallback, but the primary-lane
+  policy remains an eval question.
+- Whether two children remain the quality/cost optimum under a `$0.50` ceiling. The clean batch
+  showed a trust/completeness tradeoff, not a winner.
 - Whether 10 minutes is enough for the default or should be an initial soft deadline with a
   user-visible extension.
 - Tavily's effective per-search cost in the deployed account (the guard currently uses the public

@@ -1,6 +1,7 @@
 // packages/smart-llm/src/errors.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	isOpenRouterDefinitivePreGenerationRejection,
 	isOpenRouterModelAvailabilityError,
 	isRetryableOpenRouterError,
 	shouldFailoverToNextOpenRouterModel
@@ -47,5 +48,36 @@ describe('isRetryableOpenRouterError', () => {
 
 		expect(isOpenRouterModelAvailabilityError(error)).toBe(true);
 		expect(shouldFailoverToNextOpenRouterModel(error)).toBe(true);
+	});
+
+	it('only releases definitive route rejection without a generation id', () => {
+		expect(
+			isOpenRouterDefinitivePreGenerationRejection({
+				status: 404,
+				message: 'OpenRouter API error: 404 - No endpoints found for this model',
+				openrouter: { httpStatus: 404, generationId: null }
+			})
+		).toBe(true);
+		expect(
+			isOpenRouterDefinitivePreGenerationRejection({
+				status: 404,
+				message: 'OpenRouter API error: 404 - No endpoints found for this model',
+				openrouter: { httpStatus: 404, generationId: 'gen-accepted' }
+			})
+		).toBe(false);
+		expect(
+			isOpenRouterDefinitivePreGenerationRejection({
+				status: 504,
+				message: 'upstream timeout',
+				openrouter: { httpStatus: 504, generationId: null }
+			})
+		).toBe(false);
+		expect(
+			isOpenRouterDefinitivePreGenerationRejection({
+				status: 404,
+				message: 'unrelated resource was not found',
+				openrouter: { httpStatus: 404, generationId: null }
+			})
+		).toBe(false);
 	});
 });

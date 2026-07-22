@@ -3,7 +3,7 @@
 	Project workspace prototype body
 
 	Information architecture:
-	- Work is the default operating surface: immediate signals + the real Kanban board.
+	- Work is the default operating surface: current focus + the real Kanban board.
 	- Overview answers why/where: memory, goals, milestones, plans, risks, and dates.
 	- Docs gives the real document tree a dedicated, full-width workspace.
 	- Activity owns change history and upcoming events.
@@ -13,7 +13,6 @@
 -->
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import type { Attachment } from 'svelte/attachments';
 	import { browser } from '$app/environment';
 	import { pushState, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
@@ -58,7 +57,6 @@
 		AlertTriangle,
 		ArrowLeft,
 		ArrowRight,
-		BookOpen,
 		Calendar,
 		CalendarClock,
 		CheckCircle2,
@@ -69,7 +67,6 @@
 		LayoutDashboard,
 		ListChecks,
 		LoaderCircle,
-		MessageCircle,
 		Network,
 		Pencil,
 		Plus,
@@ -105,22 +102,6 @@
 	};
 
 	const TAB_ORDER: WorkspaceTab[] = ['work', 'overview', 'docs', 'activity'];
-
-	const signalGlow: Attachment<HTMLElement> = (wrapper) => {
-		const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-
-		function updateGlow(event: PointerEvent) {
-			if (reducedMotion.matches || event.pointerType === 'touch') return;
-			for (const card of wrapper.querySelectorAll<HTMLElement>('[data-signal-glow-card]')) {
-				const rect = card.getBoundingClientRect();
-				card.style.setProperty('--signal-glow-x', `${event.clientX - rect.left}px`);
-				card.style.setProperty('--signal-glow-y', `${event.clientY - rect.top}px`);
-			}
-		}
-
-		wrapper.addEventListener('pointermove', updateGlow, { passive: true });
-		return () => wrapper.removeEventListener('pointermove', updateGlow);
-	};
 
 	let { data }: { data: PageData } = $props();
 	const initialData = untrack(() => data);
@@ -240,6 +221,7 @@
 	let showAllMilestones = $state(false);
 	let showAllRisks = $state(false);
 	let showAllEvents = $state(false);
+	let showFullBrief = $state(false);
 	let entityHistoryOwned = false;
 	let entityClosePending = false;
 
@@ -332,11 +314,16 @@
 	);
 
 	const nextMilestone = $derived(upcomingMilestones[0] ?? null);
-	const primaryGoal = $derived(activeGoals[0] ?? null);
-	const primaryRisk = $derived(
-		openRisks.slice().sort((a, b) => riskWeight(b) - riskWeight(a))[0] ?? null
-	);
+	const activeTask = $derived(taskBuckets.in_progress[0] ?? null);
 	const projectStatusLabel = $derived(humanize(project.state_key || 'planning'));
+	const projectDescription = $derived(
+		project.description?.trim() ||
+			'Add a concise description so collaborators can orient in seconds.'
+	);
+	const projectDescriptionNeedsDisclosure = $derived(
+		(project.description?.trim().length ?? 0) > 320 ||
+			(project.description?.match(/\n/g)?.length ?? 0) >= 4
+	);
 	const visibleGoals = $derived(showAllGoals ? activeGoals : activeGoals.slice(0, 5));
 	const visiblePlans = $derived(showAllPlans ? activePlans : activePlans.slice(0, 5));
 	const visibleMilestones = $derived(
@@ -350,11 +337,6 @@
 		return value
 			.replace(/[._-]+/g, ' ')
 			.replace(/\b\w/g, (character) => character.toUpperCase());
-	}
-
-	function riskWeight(risk: Risk): number {
-		const impactWeight = { low: 1, medium: 2, high: 3, critical: 4 }[risk.impact] ?? 0;
-		return impactWeight * (risk.probability ?? 0.5);
 	}
 
 	function statusClass(state: string): string {
@@ -636,6 +618,12 @@
 		});
 	}
 
+	function openTaskBucket(bucket: ProjectTaskBoardBucketKey) {
+		selectTab('work');
+		if (!browser) return;
+		requestAnimationFrame(() => focusTaskBucket(bucket));
+	}
+
 	function createDocument(parentId: string | null = null) {
 		activeDocumentId = null;
 		parentDocumentId = parentId;
@@ -784,7 +772,7 @@
 <svelte:window onpopstate={handleWorkspacePopState} />
 
 <svelte:head>
-	<title>{project.name || 'Project'} · Workspace prototype | BuildOS</title>
+	<title>{project.name || 'Project'} · BuildOS</title>
 	<meta
 		name="description"
 		content="A focused BuildOS project workspace for work, direction, documents, and activity."
@@ -793,146 +781,158 @@
 
 <div class="min-h-screen bg-background text-foreground">
 	<header class="border-b border-border bg-card tx tx-frame tx-weak">
-		<div class="mx-auto max-w-7xl px-2 pt-3 sm:px-4 sm:pt-5 lg:px-6 lg:pt-6">
-			<div class="flex items-center justify-between gap-3">
-				<a
-					href="/projects"
-					class="inline-flex min-h-[44px] items-center gap-2 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
-				>
-					<ArrowLeft class="h-4 w-4 shrink-0" />
-					<span class="hidden sm:inline">All projects</span>
-					<span class="sm:hidden">Projects</span>
-				</a>
-
-				<div class="flex items-center gap-2">
-					<Button
-						variant="outline"
-						size="sm"
-						icon={Network}
-						onclick={() => (showGraphModal = true)}
+		<div class="mx-auto max-w-7xl px-2 pt-2 sm:px-4 sm:pt-3 lg:px-6">
+			<div class="flex min-w-0 items-start justify-between gap-2">
+				<div class="flex min-w-0 flex-1 items-start gap-1 sm:gap-2">
+					<a
+						href="/projects"
+						class="inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+						aria-label="All projects"
 					>
-						<span class="hidden sm:inline">Graph</span>
-						<span class="sr-only sm:hidden">Open project graph</span>
-					</Button>
-					<Button
-						variant="primary"
-						size="sm"
-						icon={Sparkles}
-						onclick={() => (showAgentChatModal = true)}
-					>
-						<span class="hidden sm:inline">Ask BuildOS</span>
-						<span class="sm:hidden">Ask</span>
-					</Button>
+						<ArrowLeft class="h-4 w-4 shrink-0" />
+						<span class="hidden lg:inline">All projects</span>
+					</a>
+					<div class="flex min-w-0 flex-1 items-start gap-2 py-1">
+						<ProjectIcon
+							svg={project.icon_svg ?? null}
+							concept={project.icon_concept ?? null}
+							size="md"
+						/>
+						<div class="min-w-0 flex-1">
+							<div class="flex min-w-0 items-center gap-2">
+								<h1
+									class="min-w-0 flex-1 truncate text-xl font-semibold leading-tight tracking-tight text-foreground sm:text-2xl"
+									style:view-transition-name="project-title-{project.id}"
+									style:view-transition-class="project-title"
+								>
+									{project.name || 'Untitled project'}
+								</h1>
+								<span
+									class="inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-2xs font-semibold {statusClass(
+										project.state_key
+									)}"
+								>
+									{projectStatusLabel}
+								</span>
+							</div>
+							<p
+								class="mt-0.5 hidden max-w-3xl truncate text-sm text-muted-foreground sm:block"
+							>
+								{project.description || 'No project description yet.'}
+							</p>
+						</div>
+					</div>
 				</div>
+
+				<Button
+					variant="outline"
+					size="sm"
+					icon={Network}
+					onclick={() => (showGraphModal = true)}
+				>
+					<span class="hidden sm:inline">Graph</span>
+					<span class="sr-only sm:hidden">Open project graph</span>
+				</Button>
 			</div>
 
-			<div class="mt-3 grid gap-4 pb-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
-				<div class="flex min-w-0 items-start gap-3 sm:gap-4">
-					<ProjectIcon
-						svg={project.icon_svg ?? null}
-						concept={project.icon_concept ?? null}
-						size="lg"
+			<div
+				class="mt-2 grid border-y border-border bg-background/55 sm:grid-cols-2"
+				aria-label="Project focus"
+			>
+				<button
+					type="button"
+					class="operating-focus group border-b border-border sm:border-b-0 sm:border-r"
+					aria-label={activeTask
+						? `Open active task ${activeTask.title}`
+						: 'Jump to the in progress task column'}
+					onclick={() =>
+						activeTask
+							? openEntity('task', activeTask.id)
+							: openTaskBucket('in_progress')}
+				>
+					<div class="focus-icon bg-info/10">
+						<ListChecks class="h-4 w-4 text-info" />
+					</div>
+					<div class="min-w-0 flex-1">
+						<p class="micro-label">ACTIVE NOW</p>
+						<p class="truncate text-sm font-semibold text-foreground">
+							{activeTask?.title || 'No task is marked in progress'}
+						</p>
+						<p class="truncate text-xs text-muted-foreground">
+							{taskStateSignals.inProgress > 1
+								? `${taskStateSignals.inProgress}${taskStateCountsMayBePartial ? '+' : ''} active tasks`
+								: activeTask
+									? 'Open the task to continue'
+									: 'Move one task into In progress to set focus'}
+						</p>
+					</div>
+					<ArrowRight
+						class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
 					/>
-					<div class="min-w-0">
-						<div class="flex min-w-0 flex-wrap items-center gap-2">
-							<h1
-								class="min-w-0 text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl"
-								style:view-transition-name="project-title-{project.id}"
-								style:view-transition-class="project-title"
-							>
-								{project.name || 'Untitled project'}
-							</h1>
-							<span
-								class="inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-2xs font-semibold {statusClass(
-									project.state_key
-								)}"
-							>
-								{projectStatusLabel}
-							</span>
-						</div>
-						{#if project.description}
-							<p
-								class="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base"
-							>
-								{project.description}
-							</p>
-						{:else}
-							<p class="mt-1 text-sm text-muted-foreground">
-								No project description yet.
-							</p>
-						{/if}
-					</div>
-				</div>
+				</button>
 
-				<div class="rounded-lg border border-accent/25 bg-accent/5 p-3 shadow-ink-inner">
-					<div class="flex items-center gap-2">
-						<div
-							class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent/10"
-						>
-							<ArrowRight class="h-4 w-4 text-accent" />
-						</div>
-						<div class="min-w-0">
-							<p class="micro-label text-accent">NEXT MOVE</p>
-							<p class="line-clamp-2 text-sm font-medium text-foreground">
-								{project.next_step_short ||
-									'Choose the next concrete move for this project.'}
-							</p>
-						</div>
+				<div class="operating-focus">
+					<div class="focus-icon bg-accent/10">
+						<Sparkles class="h-4 w-4 text-accent" />
 					</div>
+					<div class="min-w-0 flex-1">
+						<p class="micro-label">RECOMMENDED NEXT</p>
+						<p class="line-clamp-2 text-sm font-medium text-foreground">
+							{project.next_step_short ||
+								'Choose the next concrete move for this project.'}
+						</p>
+					</div>
+					<button
+						type="button"
+						class="plan-next-action"
+						onclick={() => (showAgentChatModal = true)}
+					>
+						Plan
+					</button>
 				</div>
 			</div>
 
 			<div
-				class="grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-background/70 sm:grid-cols-4"
-				aria-label="Project summary"
+				class="flex min-h-[44px] flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"
+				aria-label="Project status summary"
 			>
-				<div class="border-b border-r border-border p-3 sm:border-b-0">
-					<p class="micro-label">TASK COMPLETION</p>
-					<div class="mt-1 flex items-end justify-between gap-2">
-						<p class="text-lg font-semibold tabular-nums">{taskSignals.completion}%</p>
-						<p class="text-2xs text-muted-foreground">
-							{taskSignals.done}/{taskSignals.total} tasks
-						</p>
-					</div>
-					<div class="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-						<div
-							class="h-full rounded-full bg-accent transition-[width] duration-300 motion-reduce:transition-none"
-							style:width={`${taskSignals.completion}%`}
-						></div>
-					</div>
-				</div>
-				<div class="border-b border-border p-3 sm:border-b-0 sm:border-r">
-					<p class="micro-label">IN PROGRESS</p>
-					<p class="mt-1 text-lg font-semibold tabular-nums">
-						{taskStateSignals.inProgress}{taskStateCountsMayBePartial ? '+' : ''}
-					</p>
-					<p class="text-2xs text-muted-foreground">
-						{taskStateCountsMayBePartial
-							? 'loaded tasks marked active'
-							: 'tasks marked active'}
-					</p>
-				</div>
-				<div class="border-r border-border p-3">
-					<p class="micro-label">KNOWLEDGE</p>
-					<p class="mt-1 text-lg font-semibold tabular-nums">
-						{isHydrating ? initialCounts.document_count : documents.length}
-					</p>
-					<p class="text-2xs text-muted-foreground">project documents</p>
-				</div>
-				<div class="p-3">
-					<p class="micro-label">WATCHLIST</p>
-					<p
-						class="mt-1 text-lg font-semibold tabular-nums {openRisks.length > 0
-							? 'text-destructive'
-							: 'text-foreground'}"
+				<span>
+					<strong class="font-semibold tabular-nums text-foreground"
+						>{taskSignals.completion}%</strong
 					>
-						{isHydrating ? initialCounts.risk_count : openRisks.length}
-					</p>
-					<p class="text-2xs text-muted-foreground">open risks</p>
-				</div>
+					complete
+				</span>
+				{#if taskSignals.overdue > 0}
+					<button
+						type="button"
+						class="summary-link text-destructive"
+						onclick={() => openTaskBucket('overdue')}
+					>
+						{taskSignals.overdue} overdue
+					</button>
+				{/if}
+				{#if taskStateSignals.blocked > 0}
+					<button
+						type="button"
+						class="summary-link text-foreground"
+						onclick={() => openTaskBucket('blocked')}
+					>
+						{taskStateSignals.blocked}{taskStateCountsMayBePartial ? '+' : ''} blocked
+					</button>
+				{/if}
+				{#if nextMilestone}
+					<button
+						type="button"
+						class="summary-link"
+						aria-label="Open next checkpoint {nextMilestone.title}"
+						onclick={() => openEntity('milestone', nextMilestone.id)}
+					>
+						Checkpoint {formatDate(nextMilestone.due_at)}
+					</button>
+				{/if}
 			</div>
 
-			<nav class="-mb-px mt-4 overflow-x-auto" aria-label="Project workspace views">
+			<nav class="-mb-px overflow-x-auto" aria-label="Project workspace views">
 				<div class="flex min-w-max gap-1" role="tablist" aria-orientation="horizontal">
 					<button
 						bind:this={tabButtons[0]}
@@ -1033,17 +1033,54 @@
 			</div>
 		{/if}
 
-		<div class="mb-3">
+		<div class="workspace-toolbar mb-3">
 			{#if isHydrating}
 				<div
-					class="h-[62px] animate-pulse rounded-lg border border-border bg-card shadow-ink motion-reduce:animate-none"
+					class="h-11 flex-1 animate-pulse rounded-lg border border-border bg-card motion-reduce:animate-none"
 					aria-label="Loading project search"
 				></div>
 			{:else}
-				<ProjectEntitySearchCombobox
-					projectId={project.id}
-					onSelectEntity={(type, id) => openEntity(type, id)}
-				/>
+				<div class="min-w-0 flex-1">
+					<ProjectEntitySearchCombobox
+						projectId={project.id}
+						scope={activeTab}
+						variant="toolbar"
+						placeholder={activeTab === 'work'
+							? 'Search tasks...'
+							: activeTab === 'overview'
+								? 'Search goals, plans, milestones...'
+								: activeTab === 'docs'
+									? 'Search documents...'
+									: 'Find a project entity...'}
+						onSelectEntity={(type, id) => openEntity(type, id)}
+					/>
+				</div>
+			{/if}
+			{#if canEdit && activeTab === 'work'}
+				<Button
+					variant="outline"
+					size="sm"
+					icon={Plus}
+					onclick={() => (showTaskCreateModal = true)}
+				>
+					<span class="hidden sm:inline">New task</span>
+					<span class="sr-only sm:hidden">New task</span>
+				</Button>
+			{:else if canEdit && activeTab === 'overview'}
+				<Button
+					variant="outline"
+					size="sm"
+					icon={Pencil}
+					onclick={() => openEntity('project', project.id)}
+				>
+					<span class="hidden sm:inline">Edit project</span>
+					<span class="sr-only sm:hidden">Edit project</span>
+				</Button>
+			{:else if canEdit && activeTab === 'docs'}
+				<Button variant="outline" size="sm" icon={Plus} onclick={() => createDocument()}>
+					<span class="hidden sm:inline">New document</span>
+					<span class="sr-only sm:hidden">New document</span>
+				</Button>
 			{/if}
 		</div>
 
@@ -1055,108 +1092,15 @@
 				aria-labelledby="workspace-tab-work"
 				tabindex="0"
 			>
-				<div class="signal-glow-grid mb-3 grid gap-2 sm:grid-cols-3" {@attach signalGlow}>
-					<button
-						type="button"
-						class="signal-card signal-card-action signal-glow-card"
-						data-signal-glow-card
-						aria-label="Jump to in progress tasks"
-						onclick={() => focusTaskBucket('in_progress')}
-					>
-						<div class="signal-icon bg-info/10">
-							<ListChecks class="h-4 w-4 text-info" />
-						</div>
-						<div class="min-w-0">
-							<p class="micro-label">NOW</p>
-							<p class="truncate text-sm font-semibold text-foreground">
-								{taskStateSignals.inProgress > 0
-									? `${taskStateSignals.inProgress}${taskStateCountsMayBePartial ? '+' : ''} task${taskStateSignals.inProgress === 1 ? '' : 's'} moving`
-									: 'Nothing marked in progress'}
-							</p>
-							<p class="truncate text-xs text-muted-foreground">
-								{project.next_step_short || 'Set a next move to create focus'}
-							</p>
-						</div>
-					</button>
-					<article
-						class="signal-card signal-glow-card {taskStateSignals.blocked +
-							taskSignals.overdue >
-						0
-							? 'border-destructive/30'
-							: ''}"
-						data-signal-glow-card
-					>
-						<div class="signal-icon bg-destructive/10">
-							<AlertTriangle class="h-4 w-4 text-destructive" />
-						</div>
-						<div class="min-w-0">
-							<p class="micro-label">NEEDS ATTENTION</p>
-							<div class="flex flex-wrap gap-1">
-								<button
-									type="button"
-									class="signal-action text-destructive"
-									aria-label="Jump to {taskSignals.overdue} overdue tasks"
-									onclick={() => focusTaskBucket('overdue')}
-								>
-									{taskSignals.overdue} overdue
-								</button>
-								<button
-									type="button"
-									class="signal-action text-warning"
-									aria-label="Jump to {taskStateSignals.blocked}{taskStateCountsMayBePartial
-										? ' or more'
-										: ''} blocked tasks"
-									onclick={() => focusTaskBucket('blocked')}
-								>
-									{taskStateSignals.blocked}{taskStateCountsMayBePartial
-										? '+'
-										: ''}
-									blocked
-								</button>
-							</div>
-							<p class="truncate text-xs text-muted-foreground">
-								{primaryRisk?.title || 'No critical risk is surfaced'}
-							</p>
-						</div>
-					</article>
-					<button
-						type="button"
-						class="signal-card signal-card-action signal-glow-card"
-						data-signal-glow-card
-						aria-label={nextMilestone
-							? `Open milestone ${nextMilestone.title}`
-							: 'Open project overview'}
-						onclick={() =>
-							nextMilestone
-								? openEntity('milestone', nextMilestone.id)
-								: selectTab('overview')}
-					>
-						<div class="signal-icon bg-accent/10">
-							<Flag class="h-4 w-4 text-accent" />
-						</div>
-						<div class="min-w-0">
-							<p class="micro-label">NEXT CHECKPOINT</p>
-							<p class="truncate text-sm font-semibold text-foreground">
-								{nextMilestone?.title || 'No milestone scheduled'}
-							</p>
-							<p class="truncate text-xs text-muted-foreground">
-								{nextMilestone?.due_at
-									? `Due ${formatDate(nextMilestone.due_at)}`
-									: 'Add a checkpoint from Overview'}
-							</p>
-						</div>
-					</button>
-				</div>
-
 				{#if isHydrating}
 					<div
-						class="min-h-[430px] animate-pulse rounded-lg border border-border bg-card shadow-ink motion-reduce:animate-none"
+						class="min-h-[430px] animate-pulse border-y border-border bg-card motion-reduce:animate-none"
 						aria-label="Loading task board"
 					></div>
 				{:else}
 					{#await import('$lib/components/project/v2/TaskKanbanBoard.svelte')}
 						<div
-							class="min-h-[430px] animate-pulse rounded-lg border border-border bg-card shadow-ink motion-reduce:animate-none"
+							class="min-h-[430px] animate-pulse border-y border-border bg-card motion-reduce:animate-none"
 							aria-label="Loading task board"
 						></div>
 					{:then { default: TaskKanbanBoard }}
@@ -1166,7 +1110,6 @@
 							{tasksCoverage}
 							{canEdit}
 							onEditTask={(id) => openEntity('task', id)}
-							onCreateTask={() => (showTaskCreateModal = true)}
 							onTaskMoved={() => void refreshProject()}
 							onLoadMoreTasks={loadMoreTasks}
 						/>
@@ -1189,411 +1132,446 @@
 				aria-labelledby="workspace-tab-overview"
 				tabindex="0"
 			>
-				<div class="grid gap-3 lg:grid-cols-[minmax(0,1.65fr)_minmax(18rem,0.8fr)]">
-					<div class="min-w-0 space-y-3">
-						<article class="workspace-card p-4 sm:p-5">
-							<div class="flex items-center justify-between gap-3">
-								<div>
-									<p class="micro-label text-accent">PROJECT BRIEF</p>
-									<h2 class="mt-1 text-lg font-semibold">
-										What this project is doing
-									</h2>
+				<div class="space-y-6">
+					<section class="overview-brief" aria-labelledby="overview-brief-title">
+						<div class="min-w-0">
+							<p class="micro-label">PROJECT BRIEF</p>
+							<h2 id="overview-brief-title" class="sr-only">Project brief</h2>
+							<p
+								class="mt-2 max-w-4xl whitespace-pre-line text-base leading-relaxed text-foreground sm:text-lg {projectDescriptionNeedsDisclosure &&
+								!showFullBrief
+									? 'line-clamp-5'
+									: ''}"
+							>
+								{projectDescription}
+							</p>
+							{#if projectDescriptionNeedsDisclosure}
+								<button
+									type="button"
+									class="brief-toggle"
+									aria-expanded={showFullBrief}
+									onclick={() => (showFullBrief = !showFullBrief)}
+								>
+									{showFullBrief ? 'Show less' : 'Read full brief'}
+								</button>
+							{/if}
+						</div>
+						<dl class="overview-meta" aria-label="Project dates and status">
+							<div class="overview-meta-item">
+								<dt class="micro-label">STATUS</dt>
+								<dd class="mt-1 text-sm font-semibold">{projectStatusLabel}</dd>
+							</div>
+							<div class="overview-meta-item">
+								<dt class="micro-label">START</dt>
+								<dd class="mt-1 text-sm font-semibold">
+									{formatDate(project.start_at, true)}
+								</dd>
+							</div>
+							<div class="overview-meta-item">
+								<dt class="micro-label">TARGET</dt>
+								<dd class="mt-1 text-sm font-semibold">
+									{formatDate(project.end_at, true)}
+								</dd>
+							</div>
+						</dl>
+					</section>
+
+					<div
+						class="grid gap-x-8 gap-y-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(18rem,0.8fr)]"
+					>
+						<div class="min-w-0 space-y-6">
+							<section
+								class="overview-section"
+								aria-labelledby="overview-direction-title"
+							>
+								<header class="overview-section-header">
+									<div class="flex min-w-0 items-center gap-3">
+										<div class="section-icon bg-warning/10">
+											<Target class="h-4 w-4 text-warning" />
+										</div>
+										<div class="min-w-0">
+											<h2
+												id="overview-direction-title"
+												class="text-sm font-semibold"
+											>
+												Direction
+											</h2>
+											<p class="text-xs text-muted-foreground">
+												Goals and the plans that connect them
+											</p>
+										</div>
+									</div>
+									<span
+										class="shrink-0 text-2xs font-medium text-muted-foreground"
+									>
+										{activeGoals.length} goals · {activePlans.length} plans
+									</span>
+								</header>
+								<div
+									class="grid gap-0 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0"
+								>
+									<div class="p-3 sm:p-4">
+										<p class="micro-label mb-2">GOALS</p>
+										<div class="space-y-2">
+											{#each visibleGoals as goal (goal.id)}
+												{@const goalMilestones = milestones.filter(
+													(milestone) => milestone.goal_id === goal.id
+												)}
+												<button
+													type="button"
+													class="entity-row"
+													onclick={() => openEntity('goal', goal.id)}
+												>
+													<div class="min-w-0 flex-1">
+														<p class="truncate text-sm font-semibold">
+															{goal.name}
+														</p>
+														<p
+															class="truncate text-xs text-muted-foreground"
+														>
+															{goalMilestones.length} milestone{goalMilestones.length ===
+															1
+																? ''
+																: 's'}
+															{goal.target_date
+																? ` · target ${formatDate(goal.target_date)}`
+																: ''}
+														</p>
+													</div>
+													<ChevronRight
+														class="h-4 w-4 shrink-0 text-muted-foreground"
+													/>
+												</button>
+											{:else}
+												<div class="empty-row">
+													<Target class="h-5 w-5" />
+													<p>No active goals yet</p>
+												</div>
+											{/each}
+											{#if activeGoals.length > 5}
+												<button
+													type="button"
+													class="view-all-row"
+													aria-expanded={showAllGoals}
+													onclick={() => (showAllGoals = !showAllGoals)}
+												>
+													{showAllGoals
+														? 'Show fewer goals'
+														: `Show all ${activeGoals.length} goals`}
+												</button>
+											{/if}
+											{#if canEdit}
+												<button
+													type="button"
+													class="entity-create-row"
+													onclick={() => createWorkspaceEntity('goal')}
+												>
+													<Plus class="h-3.5 w-3.5" />
+													Add goal
+												</button>
+											{/if}
+										</div>
+									</div>
+									<div class="p-3 sm:p-4">
+										<p class="micro-label mb-2">PLANS</p>
+										<div class="space-y-2">
+											{#each visiblePlans as plan (plan.id)}
+												<button
+													type="button"
+													class="entity-row"
+													onclick={() => openEntity('plan', plan.id)}
+												>
+													<div class="min-w-0 flex-1">
+														<p class="truncate text-sm font-semibold">
+															{plan.name}
+														</p>
+														<p
+															class="truncate text-xs text-muted-foreground"
+														>
+															{humanize(plan.state_key)}
+															{plan.description
+																? ` · ${plan.description}`
+																: ''}
+														</p>
+													</div>
+													<ChevronRight
+														class="h-4 w-4 shrink-0 text-muted-foreground"
+													/>
+												</button>
+											{:else}
+												<div class="empty-row">
+													<Workflow class="h-5 w-5" />
+													<p>No active plans yet</p>
+												</div>
+											{/each}
+											{#if activePlans.length > 5}
+												<button
+													type="button"
+													class="view-all-row"
+													aria-expanded={showAllPlans}
+													onclick={() => (showAllPlans = !showAllPlans)}
+												>
+													{showAllPlans
+														? 'Show fewer plans'
+														: `Show all ${activePlans.length} plans`}
+												</button>
+											{/if}
+											{#if canEdit}
+												<button
+													type="button"
+													class="entity-create-row"
+													onclick={() => createWorkspaceEntity('plan')}
+												>
+													<Plus class="h-3.5 w-3.5" />
+													Add plan
+												</button>
+											{/if}
+										</div>
+									</div>
 								</div>
-								<div class="flex items-center gap-2">
-									<BookOpen
-										class="hidden h-5 w-5 text-muted-foreground sm:block"
+							</section>
+
+							{#if contextDocument}
+								{#await import('$lib/components/project/ProjectMemoryCard.svelte') then { default: ProjectMemoryCard }}
+									<ProjectMemoryCard
+										document={contextDocument}
+										nextStepShort={null}
+										showNextStep={false}
+										variant="flat"
+										{canEdit}
+										onOpenStartHere={(id) => openEntity('document', id)}
+										onUpdateProject={() => (showAgentChatModal = true)}
 									/>
-									{#if canEdit}
-										<Button
-											variant="outline"
-											size="sm"
-											icon={Pencil}
-											onclick={() => openEntity('project', project.id)}
+								{/await}
+							{/if}
+						</div>
+
+						<aside class="min-w-0 space-y-6">
+							<section
+								class="overview-section"
+								aria-labelledby="overview-milestones-title"
+							>
+								<header class="overview-section-header">
+									<div class="flex min-w-0 items-center gap-3">
+										<div class="section-icon bg-accent/10">
+											<Flag class="h-4 w-4 text-accent" />
+										</div>
+										<div class="min-w-0">
+											<h2
+												id="overview-milestones-title"
+												class="text-sm font-semibold"
+											>
+												Milestones
+											</h2>
+											<p class="text-xs text-muted-foreground">
+												Upcoming checkpoints
+											</p>
+										</div>
+									</div>
+								</header>
+								<div class="pt-2">
+									{#each visibleMilestones as milestone (milestone.id)}
+										<button
+											type="button"
+											class="entity-row"
+											onclick={() => openEntity('milestone', milestone.id)}
 										>
-											Edit project
-										</Button>
+											<div
+												class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent/10"
+											>
+												<Flag class="h-3.5 w-3.5 text-accent" />
+											</div>
+											<div class="min-w-0 flex-1">
+												<p class="truncate text-sm font-semibold">
+													{milestone.title}
+												</p>
+												<p class="truncate text-xs text-muted-foreground">
+													{milestone.due_at
+														? formatDate(milestone.due_at, true)
+														: 'No target date'}
+												</p>
+											</div>
+										</button>
+									{:else}
+										<div class="empty-row">
+											<Flag class="h-5 w-5" />
+											<p>No upcoming milestones</p>
+										</div>
+									{/each}
+									{#if upcomingMilestones.length > 5}
+										<button
+											type="button"
+											class="view-all-row"
+											aria-expanded={showAllMilestones}
+											onclick={() => (showAllMilestones = !showAllMilestones)}
+										>
+											{showAllMilestones
+												? 'Show fewer milestones'
+												: `Show all ${upcomingMilestones.length} milestones`}
+										</button>
+									{/if}
+									{#if canEdit}
+										<button
+											type="button"
+											class="entity-create-row"
+											onclick={() => createWorkspaceEntity('milestone')}
+										>
+											<Plus class="h-3.5 w-3.5" />
+											Add milestone
+										</button>
 									{/if}
 								</div>
-							</div>
-							<p
-								class="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base"
-							>
-								{project.description ||
-									'Add a concise description so collaborators can orient in seconds.'}
-							</p>
-							<div class="mt-4 grid gap-2 sm:grid-cols-3">
-								<div class="brief-field">
-									<p class="micro-label">STATUS</p>
-									<p class="mt-1 text-sm font-semibold">{projectStatusLabel}</p>
-								</div>
-								<div class="brief-field">
-									<p class="micro-label">START</p>
-									<p class="mt-1 text-sm font-semibold">
-										{formatDate(project.start_at, true)}
-									</p>
-								</div>
-								<div class="brief-field">
-									<p class="micro-label">TARGET</p>
-									<p class="mt-1 text-sm font-semibold">
-										{formatDate(project.end_at, true)}
-									</p>
-								</div>
-							</div>
-						</article>
+							</section>
 
-						<article class="workspace-card overflow-hidden">
-							<header
-								class="flex items-center justify-between gap-3 border-b border-border px-4 py-3"
+							<section
+								class="overview-section"
+								aria-labelledby="overview-watchlist-title"
 							>
-								<div class="flex min-w-0 items-center gap-3">
-									<div class="section-icon bg-warning/10">
-										<Target class="h-4 w-4 text-warning" />
-									</div>
-									<div class="min-w-0">
-										<h2 class="text-sm font-semibold">Direction</h2>
-										<p class="text-xs text-muted-foreground">
-											Goals, milestones, and the plans that connect them
-										</p>
-									</div>
-								</div>
-								<span class="text-2xs font-medium text-muted-foreground">
-									{activeGoals.length} active
-								</span>
-							</header>
-							<div
-								class="grid gap-0 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0"
-							>
-								<div class="p-3 sm:p-4">
-									<p class="micro-label mb-2">GOALS</p>
-									<div class="space-y-2">
-										{#each visibleGoals as goal (goal.id)}
-											{@const goalMilestones = milestones.filter(
-												(milestone) => milestone.goal_id === goal.id
-											)}
-											<button
-												type="button"
-												class="entity-row"
-												onclick={() => openEntity('goal', goal.id)}
+								<header class="overview-section-header">
+									<div class="flex min-w-0 items-center gap-3">
+										<div class="section-icon bg-destructive/10">
+											<AlertTriangle class="h-4 w-4 text-destructive" />
+										</div>
+										<div class="min-w-0">
+											<h2
+												id="overview-watchlist-title"
+												class="text-sm font-semibold"
 											>
-												<div class="min-w-0 flex-1">
-													<p class="truncate text-sm font-semibold">
-														{goal.name}
-													</p>
-													<p
-														class="truncate text-xs text-muted-foreground"
-													>
-														{goalMilestones.length} milestone{goalMilestones.length ===
-														1
-															? ''
-															: 's'}
-														{goal.target_date
-															? ` · target ${formatDate(goal.target_date)}`
-															: ''}
-													</p>
-												</div>
-												<ChevronRight
-													class="h-4 w-4 shrink-0 text-muted-foreground"
-												/>
-											</button>
-										{:else}
-											<div class="empty-compact">
-												<Target class="h-5 w-5" />
-												<p>No active goals yet</p>
+												Watchlist
+											</h2>
+											<p class="text-xs text-muted-foreground">
+												Open project risks
+											</p>
+										</div>
+									</div>
+								</header>
+								<div class="pt-2">
+									{#each visibleRisks as risk (risk.id)}
+										<button
+											type="button"
+											class="entity-row"
+											onclick={() => openEntity('risk', risk.id)}
+										>
+											<div class="min-w-0 flex-1">
+												<p class="truncate text-sm font-semibold">
+													{risk.title}
+												</p>
+												<p class="truncate text-xs text-muted-foreground">
+													{humanize(risk.impact)} impact
+													{risk.probability !== null &&
+													risk.probability !== undefined
+														? ` · ${Math.round(risk.probability * 100)}% likelihood`
+														: ''}
+												</p>
 											</div>
-										{/each}
-										{#if activeGoals.length > 5}
-											<button
-												type="button"
-												class="view-all-row"
-												aria-expanded={showAllGoals}
-												onclick={() => (showAllGoals = !showAllGoals)}
+											<span
+												class="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-2xs font-semibold text-destructive"
 											>
-												{showAllGoals
-													? 'Show fewer goals'
-													: `Show all ${activeGoals.length} goals`}
-											</button>
-										{/if}
-										{#if canEdit}
-											<button
-												type="button"
-												class="entity-create-row"
-												onclick={() => createWorkspaceEntity('goal')}
-											>
-												<Plus class="h-3.5 w-3.5" />
-												Add goal
-											</button>
-										{/if}
-									</div>
+												{humanize(risk.state_key)}
+											</span>
+										</button>
+									{:else}
+										<div class="empty-row">
+											<CheckCircle2 class="h-5 w-5 text-success" />
+											<p>No open risks</p>
+										</div>
+									{/each}
+									{#if openRisks.length > 5}
+										<button
+											type="button"
+											class="view-all-row"
+											aria-expanded={showAllRisks}
+											onclick={() => (showAllRisks = !showAllRisks)}
+										>
+											{showAllRisks
+												? 'Show fewer risks'
+												: `Show all ${openRisks.length} risks`}
+										</button>
+									{/if}
+									{#if canEdit}
+										<button
+											type="button"
+											class="entity-create-row"
+											onclick={() => createWorkspaceEntity('risk')}
+										>
+											<Plus class="h-3.5 w-3.5" />
+											Add risk
+										</button>
+									{/if}
 								</div>
-								<div class="p-3 sm:p-4">
-									<p class="micro-label mb-2">PLANS</p>
-									<div class="space-y-2">
-										{#each visiblePlans as plan (plan.id)}
-											<button
-												type="button"
-												class="entity-row"
-												onclick={() => openEntity('plan', plan.id)}
-											>
-												<div class="min-w-0 flex-1">
-													<p class="truncate text-sm font-semibold">
-														{plan.name}
-													</p>
-													<p
-														class="truncate text-xs text-muted-foreground"
-													>
-														{humanize(plan.state_key)}
-														{plan.description
-															? ` · ${plan.description}`
-															: ''}
-													</p>
-												</div>
-												<ChevronRight
-													class="h-4 w-4 shrink-0 text-muted-foreground"
-												/>
-											</button>
-										{:else}
-											<div class="empty-compact">
-												<Workflow class="h-5 w-5" />
-												<p>No active plans yet</p>
-											</div>
-										{/each}
-										{#if activePlans.length > 5}
-											<button
-												type="button"
-												class="view-all-row"
-												aria-expanded={showAllPlans}
-												onclick={() => (showAllPlans = !showAllPlans)}
-											>
-												{showAllPlans
-													? 'Show fewer plans'
-													: `Show all ${activePlans.length} plans`}
-											</button>
-										{/if}
-										{#if canEdit}
-											<button
-												type="button"
-												class="entity-create-row"
-												onclick={() => createWorkspaceEntity('plan')}
-											>
-												<Plus class="h-3.5 w-3.5" />
-												Add plan
-											</button>
-										{/if}
-									</div>
-								</div>
-							</div>
-						</article>
+							</section>
 
-						{#if contextDocument}
-							{#await import('$lib/components/project/ProjectMemoryCard.svelte') then { default: ProjectMemoryCard }}
-								<ProjectMemoryCard
-									document={contextDocument}
-									nextStepShort={project.next_step_short ?? null}
-									{canEdit}
-									onOpenStartHere={(id) => openEntity('document', id)}
-									onUpdateProject={() => (showAgentChatModal = true)}
-								/>
-							{/await}
-						{/if}
+							<section
+								class="overview-section"
+								aria-labelledby="overview-events-title"
+							>
+								<header class="overview-section-header">
+									<div class="flex min-w-0 items-center gap-3">
+										<div class="section-icon bg-info/10">
+											<CalendarClock class="h-4 w-4 text-info" />
+										</div>
+										<div class="min-w-0">
+											<h2
+												id="overview-events-title"
+												class="text-sm font-semibold"
+											>
+												Coming up
+											</h2>
+											<p class="text-xs text-muted-foreground">
+												Project calendar
+											</p>
+										</div>
+									</div>
+								</header>
+								<div class="pt-2">
+									{#each visibleEvents as event (event.id)}
+										<button
+											type="button"
+											class="entity-row"
+											onclick={() => openEntity('event', event.id)}
+										>
+											<Calendar class="h-4 w-4 shrink-0 text-info" />
+											<div class="min-w-0 flex-1">
+												<p class="truncate text-sm font-semibold">
+													{event.title}
+												</p>
+												<p class="truncate text-xs text-muted-foreground">
+													{formatEventDate(event)}
+												</p>
+											</div>
+										</button>
+									{:else}
+										<div class="empty-row">
+											<Calendar class="h-5 w-5" />
+											<p>No upcoming events</p>
+										</div>
+									{/each}
+									{#if upcomingEvents.length > 4}
+										<button
+											type="button"
+											class="view-all-row"
+											aria-expanded={showAllEvents}
+											onclick={() => (showAllEvents = !showAllEvents)}
+										>
+											{showAllEvents
+												? 'Show fewer events'
+												: `Show all ${upcomingEvents.length} events`}
+										</button>
+									{/if}
+									{#if canEdit}
+										<button
+											type="button"
+											class="entity-create-row"
+											onclick={() => createWorkspaceEntity('event')}
+										>
+											<Plus class="h-3.5 w-3.5" />
+											Add event
+										</button>
+									{/if}
+								</div>
+							</section>
+						</aside>
 					</div>
-
-					<aside class="min-w-0 space-y-3">
-						<article class="workspace-card overflow-hidden">
-							<header
-								class="flex items-center gap-3 border-b border-border px-4 py-3"
-							>
-								<div class="section-icon bg-accent/10">
-									<Flag class="h-4 w-4 text-accent" />
-								</div>
-								<div>
-									<h2 class="text-sm font-semibold">Milestones</h2>
-									<p class="text-xs text-muted-foreground">
-										Upcoming checkpoints
-									</p>
-								</div>
-							</header>
-							<div class="p-2">
-								{#each visibleMilestones as milestone (milestone.id)}
-									<button
-										type="button"
-										class="entity-row"
-										onclick={() => openEntity('milestone', milestone.id)}
-									>
-										<div
-											class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent/10"
-										>
-											<Flag class="h-3.5 w-3.5 text-accent" />
-										</div>
-										<div class="min-w-0 flex-1">
-											<p class="truncate text-sm font-semibold">
-												{milestone.title}
-											</p>
-											<p class="truncate text-xs text-muted-foreground">
-												{milestone.due_at
-													? formatDate(milestone.due_at, true)
-													: 'No target date'}
-											</p>
-										</div>
-									</button>
-								{:else}
-									<div class="empty-compact m-2">
-										<Flag class="h-5 w-5" />
-										<p>No upcoming milestones</p>
-									</div>
-								{/each}
-								{#if upcomingMilestones.length > 5}
-									<button
-										type="button"
-										class="view-all-row"
-										aria-expanded={showAllMilestones}
-										onclick={() => (showAllMilestones = !showAllMilestones)}
-									>
-										{showAllMilestones
-											? 'Show fewer milestones'
-											: `Show all ${upcomingMilestones.length} milestones`}
-									</button>
-								{/if}
-								{#if canEdit}
-									<button
-										type="button"
-										class="entity-create-row"
-										onclick={() => createWorkspaceEntity('milestone')}
-									>
-										<Plus class="h-3.5 w-3.5" />
-										Add milestone
-									</button>
-								{/if}
-							</div>
-						</article>
-
-						<article class="workspace-card overflow-hidden">
-							<header
-								class="flex items-center gap-3 border-b border-border px-4 py-3"
-							>
-								<div class="section-icon bg-destructive/10">
-									<AlertTriangle class="h-4 w-4 text-destructive" />
-								</div>
-								<div>
-									<h2 class="text-sm font-semibold">Watchlist</h2>
-									<p class="text-xs text-muted-foreground">Open project risks</p>
-								</div>
-							</header>
-							<div class="p-2">
-								{#each visibleRisks as risk (risk.id)}
-									<button
-										type="button"
-										class="entity-row"
-										onclick={() => openEntity('risk', risk.id)}
-									>
-										<div class="min-w-0 flex-1">
-											<p class="truncate text-sm font-semibold">
-												{risk.title}
-											</p>
-											<p class="truncate text-xs text-muted-foreground">
-												{humanize(risk.impact)} impact
-												{risk.probability !== null &&
-												risk.probability !== undefined
-													? ` · ${Math.round(risk.probability * 100)}% likelihood`
-													: ''}
-											</p>
-										</div>
-										<span
-											class="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-2xs font-semibold text-destructive"
-										>
-											{humanize(risk.state_key)}
-										</span>
-									</button>
-								{:else}
-									<div class="empty-compact m-2">
-										<CheckCircle2 class="h-5 w-5 text-success" />
-										<p>No open risks</p>
-									</div>
-								{/each}
-								{#if openRisks.length > 5}
-									<button
-										type="button"
-										class="view-all-row"
-										aria-expanded={showAllRisks}
-										onclick={() => (showAllRisks = !showAllRisks)}
-									>
-										{showAllRisks
-											? 'Show fewer risks'
-											: `Show all ${openRisks.length} risks`}
-									</button>
-								{/if}
-								{#if canEdit}
-									<button
-										type="button"
-										class="entity-create-row"
-										onclick={() => createWorkspaceEntity('risk')}
-									>
-										<Plus class="h-3.5 w-3.5" />
-										Add risk
-									</button>
-								{/if}
-							</div>
-						</article>
-
-						<article class="workspace-card overflow-hidden">
-							<header
-								class="flex items-center gap-3 border-b border-border px-4 py-3"
-							>
-								<div class="section-icon bg-info/10">
-									<CalendarClock class="h-4 w-4 text-info" />
-								</div>
-								<div>
-									<h2 class="text-sm font-semibold">Coming up</h2>
-									<p class="text-xs text-muted-foreground">Project calendar</p>
-								</div>
-							</header>
-							<div class="p-2">
-								{#each visibleEvents as event (event.id)}
-									<button
-										type="button"
-										class="entity-row"
-										onclick={() => openEntity('event', event.id)}
-									>
-										<Calendar class="h-4 w-4 shrink-0 text-info" />
-										<div class="min-w-0 flex-1">
-											<p class="truncate text-sm font-semibold">
-												{event.title}
-											</p>
-											<p class="truncate text-xs text-muted-foreground">
-												{formatEventDate(event)}
-											</p>
-										</div>
-									</button>
-								{:else}
-									<div class="empty-compact m-2">
-										<Calendar class="h-5 w-5" />
-										<p>No upcoming events</p>
-									</div>
-								{/each}
-								{#if upcomingEvents.length > 4}
-									<button
-										type="button"
-										class="view-all-row"
-										aria-expanded={showAllEvents}
-										onclick={() => (showAllEvents = !showAllEvents)}
-									>
-										{showAllEvents
-											? 'Show fewer events'
-											: `Show all ${upcomingEvents.length} events`}
-									</button>
-								{/if}
-								{#if canEdit}
-									<button
-										type="button"
-										class="entity-create-row"
-										onclick={() => createWorkspaceEntity('event')}
-									>
-										<Plus class="h-3.5 w-3.5" />
-										Add event
-									</button>
-								{/if}
-							</div>
-						</article>
-					</aside>
 				</div>
 			</div>
 		{:else if activeTab === 'docs'}
@@ -1604,9 +1582,7 @@
 				aria-labelledby="workspace-tab-docs"
 				tabindex="0"
 			>
-				<div
-					class="mb-3 flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-ink sm:flex-row sm:items-center sm:justify-between"
-				>
+				<div class="mb-3 flex items-center gap-3 px-1 py-1">
 					<div class="flex min-w-0 items-center gap-3">
 						<div class="section-icon bg-info/10">
 							<FileText class="h-4 w-4 text-info" />
@@ -1619,20 +1595,14 @@
 							</p>
 						</div>
 					</div>
-					{#if canEdit}
-						<Button
-							variant="primary"
-							size="sm"
-							icon={Plus}
-							onclick={() => createDocument()}
-						>
-							New document
-						</Button>
-					{/if}
 				</div>
 
-				<div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_18rem]">
-					<div>
+				<div
+					class="grid gap-5 lg:gap-6 {recentDocuments.length > 0
+						? 'lg:grid-cols-[minmax(0,1fr)_18rem]'
+						: ''}"
+				>
+					<div class="min-w-0">
 						{#if isHydrating}
 							<div
 								class="min-h-[420px] animate-pulse rounded-lg border border-border bg-card shadow-ink motion-reduce:animate-none"
@@ -1667,35 +1637,35 @@
 						{/if}
 					</div>
 
-					<aside class="workspace-card h-fit overflow-hidden">
-						<header class="border-b border-border px-4 py-3">
-							<p class="micro-label">RECENTLY UPDATED</p>
-						</header>
-						<div class="p-2">
-							{#each recentDocuments as document (document.id)}
-								<button
-									type="button"
-									class="entity-row"
-									onclick={() => openEntity('document', document.id)}
-								>
-									<FileText class="h-4 w-4 shrink-0 text-info" />
-									<div class="min-w-0 flex-1">
-										<p class="truncate text-sm font-semibold">
-											{document.title}
-										</p>
-										<p class="truncate text-xs text-muted-foreground">
-											Updated {formatRelativeTime(document.updated_at)}
-										</p>
-									</div>
-								</button>
-							{:else}
-								<div class="empty-compact m-2">
-									<FileText class="h-5 w-5" />
-									<p>No documents yet</p>
-								</div>
-							{/each}
-						</div>
-					</aside>
+					{#if recentDocuments.length > 0}
+						<aside class="docs-recent-context order-first h-fit min-w-0 lg:order-last">
+							<header class="mb-2 flex items-end justify-between gap-3">
+								<p class="micro-label">RECENTLY UPDATED</p>
+								<p class="hidden text-xs text-muted-foreground lg:block">
+									Quick access
+								</p>
+							</header>
+							<div class="docs-recent-list">
+								{#each recentDocuments as document (document.id)}
+									<button
+										type="button"
+										class="entity-row docs-recent-row"
+										onclick={() => openEntity('document', document.id)}
+									>
+										<FileText class="h-4 w-4 shrink-0 text-info" />
+										<div class="min-w-0 flex-1">
+											<p class="truncate text-sm font-semibold">
+												{document.title}
+											</p>
+											<p class="truncate text-xs text-muted-foreground">
+												Updated {formatRelativeTime(document.updated_at)}
+											</p>
+										</div>
+									</button>
+								{/each}
+							</div>
+						</aside>
+					{/if}
 				</div>
 			</div>
 		{:else}
@@ -1922,105 +1892,42 @@
 		font-variant-numeric: tabular-nums;
 	}
 
-	.signal-card {
-		--signal-glow-x: 50%;
-		--signal-glow-y: 50%;
+	.workspace-toolbar {
 		display: flex;
-		position: relative;
-		isolation: isolate;
-		overflow: hidden;
+		align-items: flex-start;
+		gap: 0.5rem;
+		border-bottom: 1px solid hsl(var(--border) / 0.7);
+		padding-bottom: 0.75rem;
+	}
+
+	.operating-focus {
+		display: flex;
 		min-width: 0;
+		min-height: 76px;
 		align-items: center;
 		gap: 0.75rem;
-		border: 1px solid hsl(var(--border));
-		border-radius: 0.75rem;
-		background: hsl(var(--card));
-		padding: 0.75rem;
-		box-shadow: var(--shadow-ink);
-	}
-
-	.signal-glow-card::before,
-	.signal-glow-card::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		border-radius: inherit;
-		opacity: 0;
-		pointer-events: none;
-		transition: opacity 180ms ease;
-	}
-
-	.signal-glow-card::before {
-		z-index: 0;
-		background: radial-gradient(
-			280px circle at var(--signal-glow-x) var(--signal-glow-y),
-			hsl(var(--accent) / 0.055),
-			transparent 48%
-		);
-	}
-
-	.signal-glow-card::after {
-		z-index: 2;
-		padding: 1px;
-		background: radial-gradient(
-			240px circle at var(--signal-glow-x) var(--signal-glow-y),
-			hsl(var(--accent) / 0.5),
-			transparent 50%
-		);
-		mask:
-			linear-gradient(#fff 0 0) content-box,
-			linear-gradient(#fff 0 0);
-		-webkit-mask:
-			linear-gradient(#fff 0 0) content-box,
-			linear-gradient(#fff 0 0);
-		-webkit-mask-composite: xor;
-		mask-composite: exclude;
-	}
-
-	.signal-glow-card > * {
-		position: relative;
-		z-index: 1;
-	}
-
-	.signal-card-action {
-		width: 100%;
-		cursor: pointer;
+		padding: 0.625rem 0.75rem;
 		text-align: left;
-		transition:
-			border-color 120ms ease,
-			background-color 120ms ease,
-			box-shadow 120ms ease;
 	}
 
-	.signal-card-action:hover {
-		border-color: hsl(var(--accent) / 0.4);
-		background: hsl(var(--accent) / 0.04);
-		box-shadow: var(--shadow-ink-strong);
+	button.operating-focus {
+		cursor: pointer;
+		transition: background-color 120ms ease;
 	}
 
-	.signal-card-action:focus-visible,
-	.signal-action:focus-visible,
+	button.operating-focus:hover {
+		background: hsl(var(--muted) / 0.5);
+	}
+
+	button.operating-focus:focus-visible,
+	.plan-next-action:focus-visible,
+	.summary-link:focus-visible,
 	.view-all-row:focus-visible {
 		outline: 2px solid hsl(var(--ring));
 		outline-offset: -2px;
 	}
 
-	.signal-action {
-		display: inline-flex;
-		min-height: 44px;
-		align-items: center;
-		border-radius: 0.5rem;
-		padding: 0 0.5rem;
-		font-size: 0.75rem;
-		font-weight: 600;
-		transition: background-color 120ms ease;
-	}
-
-	.signal-action:hover {
-		background: hsl(var(--muted) / 0.65);
-	}
-
-	.signal-icon,
+	.focus-icon,
 	.section-icon {
 		display: flex;
 		height: 2.25rem;
@@ -2031,18 +1938,134 @@
 		border-radius: 0.5rem;
 	}
 
-	.workspace-card {
-		border: 1px solid hsl(var(--border));
-		border-radius: 0.75rem;
-		background: hsl(var(--card));
-		box-shadow: var(--shadow-ink);
-	}
-
-	.brief-field {
+	.plan-next-action {
+		display: inline-flex;
+		min-height: 44px;
+		flex-shrink: 0;
+		align-items: center;
+		justify-content: center;
 		border: 1px solid hsl(var(--border));
 		border-radius: 0.5rem;
-		background: hsl(var(--background) / 0.65);
-		padding: 0.75rem;
+		background: hsl(var(--card));
+		padding: 0 0.75rem;
+		color: hsl(var(--foreground));
+		font-size: 0.75rem;
+		font-weight: 650;
+		transition: background-color 120ms ease;
+	}
+
+	.plan-next-action:hover,
+	.summary-link:hover {
+		background: hsl(var(--muted) / 0.65);
+	}
+
+	.plan-next-action:hover {
+		border-color: hsl(var(--accent) / 0.45);
+	}
+
+	.brief-toggle {
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		border-radius: 0.5rem;
+		padding: 0 0.5rem;
+		color: hsl(var(--accent));
+		font-size: 0.75rem;
+		font-weight: 600;
+		transition:
+			background-color 120ms ease,
+			color 120ms ease;
+	}
+
+	.brief-toggle:hover {
+		background: hsl(var(--accent) / 0.08);
+	}
+
+	.brief-toggle:focus-visible {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: -2px;
+	}
+
+	.summary-link {
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		border-radius: 0.5rem;
+		padding: 0 0.5rem;
+		font-weight: 600;
+		transition: background-color 120ms ease;
+	}
+
+	.micro-label {
+		color: hsl(var(--muted-foreground));
+		font-weight: 600;
+	}
+
+	.overview-brief {
+		display: grid;
+		min-width: 0;
+		gap: 1rem;
+		border-top: 1px solid hsl(var(--border));
+		border-bottom: 1px solid hsl(var(--border));
+		padding: 1rem 0.25rem 1.25rem;
+	}
+
+	.overview-meta {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		border-top: 1px solid hsl(var(--border));
+		padding-top: 1rem;
+	}
+
+	.overview-meta-item {
+		min-width: 0;
+		padding: 0 0.75rem;
+	}
+
+	.overview-meta-item:first-child {
+		padding-left: 0;
+	}
+
+	.overview-meta-item + .overview-meta-item {
+		border-left: 1px solid hsl(var(--border));
+	}
+
+	.overview-section {
+		min-width: 0;
+		border-top: 1px solid hsl(var(--border));
+		padding-top: 1rem;
+	}
+
+	.overview-section-header {
+		display: flex;
+		min-width: 0;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		padding: 0 0.25rem 0.75rem;
+	}
+
+	.docs-recent-context {
+		border-top: 1px solid hsl(var(--border));
+		padding-top: 0.75rem;
+	}
+
+	.docs-recent-list {
+		display: flex;
+		min-width: 0;
+		gap: 0.5rem;
+		overflow-x: auto;
+		overscroll-behavior-x: contain;
+		padding-bottom: 0.375rem;
+		scroll-padding-inline: 0.125rem;
+		scroll-snap-type: x mandatory;
+	}
+
+	.docs-recent-row {
+		flex: 0 0 min(16rem, 78vw);
+		border: 1px solid hsl(var(--border));
+		background: hsl(var(--card));
+		scroll-snap-align: start;
 	}
 
 	.entity-row {
@@ -2119,14 +2142,12 @@
 		outline-offset: -2px;
 	}
 
-	.empty-compact {
+	.empty-row {
 		display: flex;
-		min-height: 5rem;
+		min-height: 44px;
 		align-items: center;
-		justify-content: center;
 		gap: 0.5rem;
-		border: 1px dashed hsl(var(--border));
-		border-radius: 0.5rem;
+		padding: 0.5rem 0.625rem;
 		color: hsl(var(--muted-foreground));
 		font-size: 0.75rem;
 	}
@@ -2158,25 +2179,47 @@
 		}
 	}
 
-	@media (hover: hover) and (pointer: fine) {
-		.signal-glow-grid:hover .signal-glow-card::before,
-		.signal-glow-grid:hover .signal-glow-card::after,
-		.signal-glow-grid:focus-within .signal-glow-card::before,
-		.signal-glow-grid:focus-within .signal-glow-card::after {
-			opacity: 1;
+	@media (min-width: 768px) {
+		.overview-brief {
+			grid-template-columns: minmax(0, 1fr) minmax(21rem, auto);
+			align-items: end;
+			gap: 2rem;
+		}
+
+		.overview-meta {
+			border-top: 0;
+			padding-top: 0;
+		}
+	}
+
+	@media (min-width: 1024px) {
+		.docs-recent-context {
+			border-top: 0;
+			border-left: 1px solid hsl(var(--border));
+			padding-top: 0;
+			padding-left: 1rem;
+		}
+
+		.docs-recent-list {
+			display: block;
+			overflow: visible;
+			padding-bottom: 0;
+		}
+
+		.docs-recent-row {
+			width: 100%;
+			border: 0;
+			background: transparent;
 		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.signal-glow-card::before,
-		.signal-glow-card::after {
-			display: none;
-		}
-
 		.workspace-tab,
 		.entity-row,
-		.signal-card-action,
-		.signal-action,
+		.operating-focus,
+		.plan-next-action,
+		.brief-toggle,
+		.summary-link,
 		.view-all-row,
 		.entity-create-row {
 			transition: none;

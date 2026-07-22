@@ -894,23 +894,70 @@ describe('SmartLLMService JSON model recovery', () => {
 			fetch: fetchMock as unknown as typeof fetch
 		});
 
-		await expect(
-			llm.getJSONResponse({
+		let thrown: unknown;
+		try {
+			await llm.getJSONResponse({
 				systemPrompt: 'Return JSON.',
 				userPrompt: 'Use one bounded attempt.',
 				userId: 'user-lost-response',
 				profile: 'powerful',
 				spendLimit: { maxCostUsd: 0.01 },
 				onUsage
-			})
-		).rejects.toThrow();
+			});
+		} catch (error) {
+			thrown = error;
+		}
 
 		expect(fetchMock).toHaveBeenCalledOnce();
+		expect(thrown).toBeInstanceOf(Error);
+		expect((thrown as Error & { cause?: unknown }).cause).toMatchObject({
+			openrouter: { generationId: 'gen-lost-response' }
+		});
 		expect(onUsage).toHaveBeenCalledOnce();
 		expect(onUsage.mock.calls[0]?.[0]?.totalCost).toBeGreaterThan(0);
 		expect(onUsage.mock.calls[0]?.[0]?.totalCost).toBeLessThanOrEqual(0.01);
 		expect(onUsage.mock.calls[0]?.[0]?.costSource).toBe('reservation');
 		expect(onUsage.mock.calls[0]?.[0]?.providerRequestId).toBe('gen-lost-response');
+	});
+
+	it('releases a strict reservation when routing is rejected before generation', async () => {
+		const onUsage = vi.fn();
+		const fetchMock = vi.fn(async () => {
+			return new Response(
+				JSON.stringify({
+					error: { message: 'No endpoints found that satisfy Zero Data Retention' }
+				}),
+				{
+					status: 404,
+					headers: { 'content-type': 'application/json' }
+				}
+			);
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await expect(
+			llm.getJSONResponse({
+				systemPrompt: 'Return JSON.',
+				userPrompt: 'Use one bounded attempt.',
+				userId: 'user-route-rejected',
+				profile: 'powerful',
+				spendLimit: { maxCostUsd: 0.01 },
+				onUsage
+			})
+		).rejects.toThrow('No endpoints found');
+
+		expect(fetchMock).toHaveBeenCalledOnce();
+		expect(onUsage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				billingDisposition: 'released',
+				totalCost: 0,
+				totalTokens: 0,
+				providerRequestId: undefined
+			})
+		);
 	});
 
 	it('settles a budgeted call to the spend-plan reservation when a 200 response omits usage', async () => {
