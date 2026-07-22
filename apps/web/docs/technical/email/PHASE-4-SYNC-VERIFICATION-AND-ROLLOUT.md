@@ -19,6 +19,9 @@ email or BuildOS actions.
 Start with measured Phase 2 evidence. Add sync only if on-demand search cannot meet a validated user
 need such as daily briefs or low-latency inbox awareness.
 
+The detailed decision and delivery design is in
+[Gmail ingestion and project relevance architecture](GMAIL-INGESTION-AND-PROJECT-RELEVANCE-ARCHITECTURE.md).
+
 The decision record must compare:
 
 - user value and expected query frequency;

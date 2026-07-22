@@ -8,7 +8,13 @@ import {
 	type TokenPayload
 } from 'google-auth-library';
 import { createHash, randomBytes } from 'node:crypto';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import type {
+	ConsumedEmailOauthState,
+	EmailConnectionCredentialRow,
+	GmailSchemaClient,
+	UserEmailConnectionRow
+} from './gmail-database.types';
 import {
 	decryptGmailToken,
 	encryptGmailToken,
@@ -48,36 +54,18 @@ type GmailReadOAuthServiceOptions = {
 	randomToken?: () => string;
 };
 
-type OAuthStateRow = {
-	state_id: string;
-	redirect_path: string;
-	nonce: string;
-	code_verifier: string;
-	connection_id: string | null;
-};
+type OAuthStateRow = ConsumedEmailOauthState;
 
-type EmailConnectionRow = {
-	id: string;
-	user_id: string;
-	provider: string;
-	provider_account_id: string;
-	email_address: string;
-	display_name: string | null;
-	account_label: string;
-	status: 'active' | 'reconnect_required' | 'disabled' | 'error';
-	read_enabled: boolean;
-	connected_at: string;
-	last_verified_at: string | null;
-	last_used_at: string | null;
-};
+type EmailConnectionRow = UserEmailConnectionRow;
 
-type EmailCredentialRow = {
-	access_token_ciphertext: string;
-	refresh_token_ciphertext: string;
-	access_token_expires_at: string | null;
-	token_type: string;
-	granted_scopes: string[];
-};
+type EmailCredentialRow = Pick<
+	EmailConnectionCredentialRow,
+	| 'access_token_ciphertext'
+	| 'refresh_token_ciphertext'
+	| 'access_token_expires_at'
+	| 'token_type'
+	| 'granted_scopes'
+>;
 
 export class GmailOAuthError extends Error {
 	constructor(
@@ -188,15 +176,20 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
 }
 
 export class GmailReadOAuthService {
-	private readonly admin: SupabaseClient<any>;
+	private readonly admin: GmailSchemaClient;
 	private readonly clientId: string;
 	private readonly clientSecret: string;
 	private readonly createOAuthClient: (redirectUri?: string) => GmailOAuthClient;
 	private readonly now: () => Date;
 	private readonly randomToken: () => string;
 
-	constructor(admin: SupabaseClient<any>, options: GmailReadOAuthServiceOptions = {}) {
-		this.admin = admin;
+	constructor(
+		admin: TypedSupabaseClient | GmailSchemaClient,
+		options: GmailReadOAuthServiceOptions = {}
+	) {
+		// The Gmail tables are not in the generated Database types yet; every query in this class
+		// is typed against the hand-authored schema in gmail-database.types.ts.
+		this.admin = admin as GmailSchemaClient;
 		this.clientId = options.clientId ?? getPrivateEnv('PRIVATE_GMAIL_READ_CLIENT_ID') ?? '';
 		this.clientSecret =
 			options.clientSecret ?? getPrivateEnv('PRIVATE_GMAIL_READ_CLIENT_SECRET') ?? '';

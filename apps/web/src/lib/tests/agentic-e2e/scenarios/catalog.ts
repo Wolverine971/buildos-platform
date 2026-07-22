@@ -7,11 +7,13 @@ import { documentEditContextScenario } from './document-edit-context.scenario';
 import { projectOrganizeScenario } from './project-organize.scenario';
 import { taskCreateScenario } from './task-create.scenario';
 import { calendarMoveScenario } from './calendar-move.scenario';
+import { emailReadScenario } from './email-read.scenario';
 
 export const scenarioCatalog: Scenario[] = [
 	documentCreateScenario,
 	documentEditContextScenario,
 	projectOrganizeScenario,
 	taskCreateScenario,
-	calendarMoveScenario
+	calendarMoveScenario,
+	emailReadScenario
 ];

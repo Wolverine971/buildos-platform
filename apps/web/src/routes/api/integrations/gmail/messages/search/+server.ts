@@ -12,12 +12,17 @@ const searchRequestSchema = z
 	.object({
 		connectionIds: z.array(z.string().uuid()).min(1).max(5),
 		query: z.string().trim().min(1).max(300),
-		maxResults: z.number().int().min(1).max(20).optional()
+		maxResults: z.number().int().min(1).max(20).optional(),
+		cursor: z.string().min(1).max(8_192).optional()
 	})
 	.strict()
 	.refine((value) => new Set(value.connectionIds).size === value.connectionIds.length, {
 		message: 'Select unique Gmail accounts',
 		path: ['connectionIds']
+	})
+	.refine((value) => !value.cursor || value.connectionIds.length === 1, {
+		message: 'A pagination cursor can continue exactly one Gmail account',
+		path: ['cursor']
 	});
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -48,7 +53,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			userId: user.id,
 			connectionIds: parsed.data.connectionIds,
 			query: parsed.data.query,
-			maxResults: parsed.data.maxResults
+			maxResults: parsed.data.maxResults,
+			cursor: parsed.data.cursor
 		});
 		return noStore(ApiResponse.success(result), rateLimit.headers);
 	} catch (error) {

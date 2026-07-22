@@ -58,9 +58,10 @@ The unifying idea: **clarified decisions = seeded agents; Chat = seeded conversa
 
 v1 clarified-decision scope: `project_suggestion` items (rich rationale/evidence + replayable operations — the user's exact use case). `agent_run` clarified-decision convergence is designed but deferred. v1 Chat scope is broader: writable `project_suggestion`, user-owned `agent_run`, and user-owned `calendar_suggestion`.
 
-### 3.1 Alignment With Project Loops, Inbox, And Audit Packets
+### 3.1 Alignment With Project Reviews, Inbox, And Audit Packets
 
-This spec sits under the broader AI Inbox / Project Loop architecture:
+This spec sits under the broader AI Inbox / Project Review architecture (legacy/internal
+tables and workers retain `project_loop_*` names):
 
 ```text
 project_loop_runs

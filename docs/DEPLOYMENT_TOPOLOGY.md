@@ -125,7 +125,7 @@ Key types:
 ### @buildos/shared-agent-ops
 
 **Location:** `/packages/shared-agent-ops/`  
-**Purpose:** Agent operation, ontology, gateway, inbox, and project loop helpers shared across runtimes  
+**Purpose:** Agent operation, ontology, gateway, inbox, and Project Review helpers shared across runtimes (legacy code uses `project-loop`)
 **Used By:** Web, Worker
 
 ### @buildos/shared-utils

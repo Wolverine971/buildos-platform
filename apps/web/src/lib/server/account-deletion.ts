@@ -70,9 +70,9 @@ async function removeGmailConnectionsForAccountDeletion(
 ): Promise<GmailDeletionCleanupResult> {
 	const admin = createAdminSupabaseClient();
 	try {
-		return await new GmailReadOAuthService(
-			admin as any
-		).disconnectAllConnectionsForAccountDeletion(userId);
+		return await new GmailReadOAuthService(admin).disconnectAllConnectionsForAccountDeletion(
+			userId
+		);
 	} catch (error) {
 		// Account deletion must proceed even if Google or the integration tables are unavailable.
 		// The database purge remains the final local credential deletion boundary.

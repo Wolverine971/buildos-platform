@@ -93,7 +93,7 @@ export interface TurnSpec {
 export interface Scenario {
 	id: string;
 	title: string;
-	category: 'document' | 'task' | 'organization' | 'calendar';
+	category: 'document' | 'task' | 'organization' | 'calendar' | 'email';
 	/** Return true to skip (e.g. calendar without a connected test calendar). */
 	skip?: () => boolean;
 	/** Create fixtures. Omit for global/project_create scenarios. */

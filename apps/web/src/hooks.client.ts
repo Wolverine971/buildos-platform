@@ -8,6 +8,10 @@ import {
 	reportClientHttpError,
 	shouldTrackFailedClientResponse
 } from '$lib/utils/client-error-reporting';
+import {
+	isRecoverableRouteLoadError,
+	recoverFromRouteLoadError
+} from '$lib/utils/client-route-recovery';
 
 let rawBrowserFetch: typeof window.fetch | null = null;
 
@@ -46,10 +50,64 @@ function resolveRequestDetails(input: RequestInfo | URL): {
 	}
 }
 
+function recoverRouteLoad(error: unknown): boolean {
+	if (!browser) return false;
+
+	try {
+		return recoverFromRouteLoadError(error, {
+			route: `${window.location.pathname}${window.location.search}`,
+			storage: window.sessionStorage,
+			reload: () => window.location.reload(),
+			refreshModule: async (moduleUrl) => {
+				const assetUrl = new URL(moduleUrl, window.location.href);
+				if (
+					assetUrl.origin !== window.location.origin ||
+					!assetUrl.pathname.startsWith('/_app/immutable/')
+				) {
+					return;
+				}
+
+				const response = await (rawBrowserFetch ?? window.fetch)(assetUrl, {
+					cache: 'reload',
+					credentials: 'same-origin'
+				});
+				if (!response.ok) {
+					throw new Error(`Failed to refresh route module (${response.status})`);
+				}
+				await response.arrayBuffer();
+			}
+		});
+	} catch {
+		return false;
+	}
+}
+
 // CSRF token handling remains the same
 if (browser) {
 	const originalFetch = window.fetch.bind(window);
 	rawBrowserFetch = originalFetch;
+
+	window.addEventListener('vite:preloadError', (event) => {
+		const error = (event as Event & { payload?: unknown }).payload;
+		if (!isRecoverableRouteLoadError(error)) return;
+
+		event.preventDefault();
+		void reportClientError(
+			{
+				kind: 'runtime',
+				error,
+				endpoint: window.location.pathname,
+				method: 'CLIENT',
+				url: window.location.href,
+				metadata: {
+					source: 'hooks.client.vitePreloadError',
+					recovery: 'reload'
+				}
+			},
+			originalFetch
+		);
+		recoverRouteLoad(error);
+	});
 
 	window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
 		const request = resolveRequestDetails(input);
@@ -132,6 +190,8 @@ if (browser) {
 export const handleError: HandleClientError = ({ error, event }) => {
 	const errorId = Math.random().toString(36).substr(2, 9);
 	const errorMessage = error instanceof Error ? error.message : String(error);
+	const shouldRecoverRoute = browser && isRecoverableRouteLoadError(error);
+	let didStartRouteRecovery = false;
 
 	console.error(`[${errorId}] Client error:`, {
 		message: errorMessage,
@@ -156,8 +216,12 @@ export const handleError: HandleClientError = ({ error, event }) => {
 		);
 	}
 
+	if (shouldRecoverRoute) {
+		didStartRouteRecovery = recoverRouteLoad(error);
+	}
+
 	return {
-		message: 'Something went wrong',
+		message: didStartRouteRecovery ? 'Updating BuildOS…' : 'Something went wrong',
 		errorId
 	};
 };

@@ -26,6 +26,10 @@ Implemented and deployed to `build-os.com`:
   tracking attributes, and provider HTML removed before browser rendering;
 - attachment references detected but never downloaded;
 - explicit account selection and visible account provenance on every result and opened message;
+- independent per-account pagination with encrypted 15-minute cursors bound to the authenticated
+  user, connection, and normalized search query;
+- a ten-page provider ceiling per account and a 100-message UI ceiling to prevent pagination from
+  becoming an accidental mailbox sync;
 - per-user and per-connection rate limits, `no-store` responses, bounded provider timeouts, and
   content-free audit metadata;
 - focused tenant-isolation, mixed-account, sanitization, attachment, response-size, and GET-only
@@ -43,7 +47,6 @@ Production validation:
 
 Still pending for Phase 2:
 
-- pagination with account-bound cursors;
 - thread reading, if approved;
 - the fail-closed zero-data-retention AI interpretation lane and read-only agent tools;
 - the remaining prompt-injection, log-leak, rate-limit, delegated-agent, and production-like tests.

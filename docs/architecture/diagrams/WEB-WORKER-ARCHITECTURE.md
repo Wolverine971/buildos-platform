@@ -138,24 +138,24 @@ sequenceDiagram
 The live source of truth is `queue.process(...)` registration in
 `apps/worker/src/worker.ts`.
 
-| Job Type                         | Created By                       | Processed By             | Purpose                              |
-| -------------------------------- | -------------------------------- | ------------------------ | ------------------------------------ |
-| `generate_daily_brief`           | Scheduler or worker API          | Brief worker             | Generate ontology daily brief        |
-| `generate_brief_audio`           | Brief worker or web audio flow   | Brief audio worker       | Generate brief narration             |
-| `onboarding_analysis`            | Worker API / web service         | Onboarding worker        | Analyze onboarding input             |
-| `send_notification`              | Notification event fanout        | Notification worker      | Deliver email, SMS, push, in-app     |
-| `project_activity_batch_flush`   | Project activity batching        | Notification worker      | Flush project activity notifications |
-| `schedule_daily_sms`             | Scheduler                        | Daily SMS worker         | Schedule SMS reminders               |
-| `send_sms`                       | SMS scheduler / notification SMS | SMS worker               | Send SMS via Twilio                  |
-| `classify_chat_session`          | Worker API / web service         | Chat classifier          | Classify chat sessions               |
-| `process_onto_braindump`         | Worker API / web service         | Braindump processor      | Process ontology braindumps          |
-| `transcribe_voice_note`          | Voice note upload flow           | Voice note worker        | Transcribe voice notes               |
-| `extract_onto_asset_ocr`         | Ontology asset flow              | Asset OCR worker         | Extract OCR from assets              |
-| `agent_run`                      | Chat/manual/scheduled Operatives | Agent-run worker         | Run scheduled or manual Operatives   |
-| `build_project_context_snapshot` | Web project context service      | Ontology snapshot worker | Build project context snapshots      |
-| `generate_project_icon`          | Project icon/snapshot flow       | Project icon worker      | Generate project icons               |
-| `buildos_project_loop`           | Project loop services/scheduler  | Project loop worker      | Generate project loop suggestions    |
-| `sync_calendar`                  | Calendar projection services     | Calendar sync worker     | Sync calendar projection work        |
+| Job Type                         | Created By                        | Processed By             | Purpose                              |
+| -------------------------------- | --------------------------------- | ------------------------ | ------------------------------------ |
+| `generate_daily_brief`           | Scheduler or worker API           | Brief worker             | Generate ontology daily brief        |
+| `generate_brief_audio`           | Brief worker or web audio flow    | Brief audio worker       | Generate brief narration             |
+| `onboarding_analysis`            | Worker API / web service          | Onboarding worker        | Analyze onboarding input             |
+| `send_notification`              | Notification event fanout         | Notification worker      | Deliver email, SMS, push, in-app     |
+| `project_activity_batch_flush`   | Project activity batching         | Notification worker      | Flush project activity notifications |
+| `schedule_daily_sms`             | Scheduler                         | Daily SMS worker         | Schedule SMS reminders               |
+| `send_sms`                       | SMS scheduler / notification SMS  | SMS worker               | Send SMS via Twilio                  |
+| `classify_chat_session`          | Worker API / web service          | Chat classifier          | Classify chat sessions               |
+| `process_onto_braindump`         | Worker API / web service          | Braindump processor      | Process ontology braindumps          |
+| `transcribe_voice_note`          | Voice note upload flow            | Voice note worker        | Transcribe voice notes               |
+| `extract_onto_asset_ocr`         | Ontology asset flow               | Asset OCR worker         | Extract OCR from assets              |
+| `agent_run`                      | Chat/manual/scheduled Operatives  | Agent-run worker         | Run scheduled or manual Operatives   |
+| `build_project_context_snapshot` | Web project context service       | Ontology snapshot worker | Build project context snapshots      |
+| `generate_project_icon`          | Project icon/snapshot flow        | Project icon worker      | Generate project icons               |
+| `buildos_project_loop`           | Project Review services/scheduler | Project Review worker    | Generate Project Review suggestions  |
+| `sync_calendar`                  | Calendar projection services      | Calendar sync worker     | Sync calendar projection work        |
 
 ### 2. Real-Time Updates (Worker → Web)
 

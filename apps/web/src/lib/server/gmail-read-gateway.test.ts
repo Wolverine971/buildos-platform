@@ -135,7 +135,7 @@ describe('GmailReadGateway', () => {
 		expect(auditInsert).toHaveBeenCalledWith(
 			expect.objectContaining({
 				operation: 'gmail.messages.search',
-				metadata: { resultCount: 1, hasMore: false }
+				metadata: { resultCount: 1, hasMore: false, page: 0 }
 			})
 		);
 	});
@@ -171,7 +171,122 @@ describe('GmailReadGateway', () => {
 			expect.objectContaining({
 				operation: 'gmail.messages.search',
 				outcome: 'success',
-				metadata: { resultCount: 0, hasMore: false }
+				metadata: { resultCount: 0, hasMore: false, page: 0 }
+			})
+		);
+	});
+
+	it('continues one account with a bound cursor and returns only the next account cursor', async () => {
+		const connectionId = '11111111-1111-4111-8111-111111111111';
+		const { admin, auditInsert } = createAdmin([
+			{
+				id: connectionId,
+				email_address: 'buildos@example.com',
+				account_label: 'BuildOS',
+				status: 'active',
+				read_enabled: true
+			}
+		]);
+		const consume = vi.fn().mockReturnValue({ pageToken: 'provider-page-2', page: 1 });
+		const issue = vi.fn().mockReturnValue('encrypted-page-3');
+		const providerFetch = vi.fn(async (input: URL | RequestInfo) => {
+			const url = new URL(String(input));
+			if (url.pathname.endsWith('/messages')) {
+				expect(url.searchParams.get('pageToken')).toBe('provider-page-2');
+				return jsonResponse({
+					messages: [{ id: 'm2', threadId: 't2' }],
+					nextPageToken: 'provider-page-3'
+				});
+			}
+			return jsonResponse(metadataMessage('m2', 't2', 1_754_000_000_000));
+		});
+		const gateway = new GmailReadGateway(admin, {
+			oauthService: { getAuthorizedReadAccessToken: vi.fn().mockResolvedValue('token') },
+			providerFetch,
+			cursorCodec: { consume, issue } as any,
+			now: () => new Date('2026-07-22T20:00:00.000Z')
+		});
+
+		const result = await gateway.searchMessages({
+			userId: 'user-1',
+			connectionIds: [connectionId],
+			query: 'newer_than:7d',
+			cursor: 'encrypted-page-2'
+		});
+
+		expect(consume).toHaveBeenCalledWith(
+			expect.objectContaining({
+				cursor: 'encrypted-page-2',
+				userId: 'user-1',
+				connectionId,
+				query: 'newer_than:7d'
+			})
+		);
+		expect(issue).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userId: 'user-1',
+				connectionId,
+				query: 'newer_than:7d',
+				pageToken: 'provider-page-3',
+				page: 2
+			})
+		);
+		expect(result.accounts).toEqual([
+			expect.objectContaining({
+				connectionId,
+				messageCount: 1,
+				hasMore: true,
+				nextCursor: 'encrypted-page-3'
+			})
+		]);
+		expect(auditInsert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				operation: 'gmail.messages.search',
+				metadata: { resultCount: 1, hasMore: true, page: 1 }
+			})
+		);
+	});
+
+	it('blocks an invalid account cursor before requesting an access token or calling Google', async () => {
+		const connectionId = '11111111-1111-4111-8111-111111111111';
+		const { admin, auditInsert } = createAdmin([
+			{
+				id: connectionId,
+				email_address: 'buildos@example.com',
+				account_label: 'BuildOS',
+				status: 'active',
+				read_enabled: true
+			}
+		]);
+		const oauthService = { getAuthorizedReadAccessToken: vi.fn() };
+		const providerFetch = vi.fn();
+		const gateway = new GmailReadGateway(admin, {
+			oauthService,
+			providerFetch,
+			cursorCodec: {
+				consume: vi.fn(() => {
+					throw new Error('invalid cursor');
+				}),
+				issue: vi.fn()
+			} as any
+		});
+
+		await expect(
+			gateway.searchMessages({
+				userId: 'user-1',
+				connectionIds: [connectionId],
+				query: 'newer_than:7d',
+				cursor: 'forged-cursor'
+			})
+		).rejects.toMatchObject<GmailReadGatewayError>({ code: 'invalid_request' });
+		expect(oauthService.getAuthorizedReadAccessToken).not.toHaveBeenCalled();
+		expect(providerFetch).not.toHaveBeenCalled();
+		expect(auditInsert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				connection_id: connectionId,
+				operation: 'gmail.messages.paginate',
+				outcome: 'blocked',
+				reason_code: 'invalid_cursor'
 			})
 		);
 	});

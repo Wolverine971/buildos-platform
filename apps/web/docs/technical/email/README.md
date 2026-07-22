@@ -28,6 +28,18 @@ sufficient** to perform an action: the user must also authorize the exact action
 | 3     | [Explicitly authorized email actions](PHASE-3-EXPLICITLY-AUTHORIZED-EMAIL-ACTIONS.md)     | Add separately enabled send/compose/modify capabilities with exact, one-time UI confirmation      |
 | 4     | [Sync, verification, and rollout](PHASE-4-SYNC-VERIFICATION-AND-ROLLOUT.md)               | Optionally add minimal background sync, complete Restricted-scope verification, and launch safely |
 
+Detailed Phase 4 research:
+
+- [Gmail ingestion and project relevance architecture](GMAIL-INGESTION-AND-PROJECT-RELEVANCE-ARCHITECTURE.md) — compares polling with Gmail Pub/Sub, specifies bounded initial ingestion, designs the project-relevance and review pipeline, and maps the work onto the existing BuildOS queue and daily-brief architecture.
+
+Parallel build track (shares the Phase 2 gateway; neither blocks the other):
+
+- [Agentic chat Gmail tools specification](AGENT-CHAT-GMAIL-TOOLS-SPEC.md) — read tools plus
+  local draft proposals for the chat agent, mapped onto the existing tool registry; no send,
+  Gmail-draft, or modify tool in any tier. Tracker: `tasker/35-agentic-chat-gmail-tools.md`.
+- [Tier 1 build handoff](HANDOFF-TIER1-GMAIL-CHAT-TOOLS.md) — implementation handoff for the
+  three read tools: state of the world, reading list, build order, landmines, definition of done.
+
 Phase 3 does not block the read-only product. It is deliberately later and can remain disabled
 indefinitely.
 
@@ -48,7 +60,9 @@ testing-mode refresh-token lifetime remain rollout constraints.
 The first Phase 2 vertical slice is deployed to production: a GET-only Gmail provider gateway,
 explicit account selection, bounded multi-account search, on-demand message retrieval,
 deterministic HTML-to-text sanitization, attachment blocking, rate limits, no-store API responses,
-metadata-only auditing, and a read-only message UI. It has no Gmail action method or agent tool. A
+metadata-only auditing, encrypted account-bound pagination, and a read-only message UI. Pagination
+continues one selected account at a time with a 15-minute cursor bound to the user, connection, and
+query, plus hard page and visible-result ceilings. It has no Gmail action method or agent tool. A
 content-free production smoke test selected all three accounts and produced three successful audit
 outcomes with zero results; no real message body, attachment, or search result was opened during
 validation.

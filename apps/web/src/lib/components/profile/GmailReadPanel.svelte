@@ -8,7 +8,8 @@
 		GmailConnectionSummary,
 		GmailMessageDetail,
 		GmailMessageSearchPayload,
-		GmailMessageSummary
+		GmailMessageSummary,
+		GmailReadAccountResult
 	} from '$lib/types/gmail-integration';
 	import SettingsCard from './_shared/SettingsCard.svelte';
 
@@ -21,8 +22,11 @@
 	let selectedConnectionIds = $state<string[]>([]);
 	let query = $state('');
 	let searching = $state(false);
+	let loadingMoreConnectionId = $state<string | null>(null);
 	let searchError = $state<string | null>(null);
+	let loadMoreError = $state<string | null>(null);
 	let searchResult = $state.raw<GmailMessageSearchPayload | null>(null);
+	let lastSearchQuery = $state('');
 	let openingMessageKey = $state<string | null>(null);
 	let messageError = $state<string | null>(null);
 	let selectedMessage = $state.raw<GmailMessageDetail | null>(null);
@@ -35,8 +39,12 @@
 			readableConnections.some((connection) => connection.id === connectionId)
 		)
 	);
+	const MAX_VISIBLE_MESSAGES = 100;
 	const canSearch = $derived(
-		selectedReadableIds.length > 0 && query.trim().length > 0 && !searching
+		selectedReadableIds.length > 0 &&
+			query.trim().length > 0 &&
+			!searching &&
+			loadingMoreConnectionId === null
 	);
 
 	function unwrapPayload<T>(payload: unknown): T {
@@ -59,24 +67,30 @@
 			? selectedConnectionIds.filter((id) => id !== connectionId)
 			: [...selectedConnectionIds, connectionId];
 		searchResult = null;
+		lastSearchQuery = '';
 		selectedMessage = null;
 		searchError = null;
+		loadMoreError = null;
 		messageError = null;
 	}
 
 	function selectAllAccounts() {
 		selectedConnectionIds = readableConnections.map((connection) => connection.id);
 		searchResult = null;
+		lastSearchQuery = '';
 		selectedMessage = null;
 		searchError = null;
+		loadMoreError = null;
 		messageError = null;
 	}
 
 	function clearAccounts() {
 		selectedConnectionIds = [];
 		searchResult = null;
+		lastSearchQuery = '';
 		selectedMessage = null;
 		searchError = null;
+		loadMoreError = null;
 		messageError = null;
 	}
 
@@ -86,6 +100,7 @@
 
 		searching = true;
 		searchError = null;
+		loadMoreError = null;
 		messageError = null;
 		selectedMessage = null;
 		try {
@@ -103,11 +118,88 @@
 				throw new Error(getErrorMessage(payload, 'Unable to search Gmail'));
 			}
 			searchResult = unwrapPayload<GmailMessageSearchPayload>(payload);
+			lastSearchQuery = query.trim();
 		} catch (error) {
 			searchResult = null;
+			lastSearchQuery = '';
 			searchError = error instanceof Error ? error.message : 'Unable to search Gmail';
 		} finally {
 			searching = false;
+		}
+	}
+
+	function mergeMessagePages(
+		current: GmailMessageSummary[],
+		incoming: GmailMessageSummary[]
+	): GmailMessageSummary[] {
+		const byMessage = new Map(
+			current.map((message) => [`${message.connectionId}:${message.messageId}`, message])
+		);
+		for (const message of incoming) {
+			byMessage.set(`${message.connectionId}:${message.messageId}`, message);
+		}
+		return Array.from(byMessage.values())
+			.sort(
+				(left, right) =>
+					right.internalDate.localeCompare(left.internalDate) ||
+					left.connectionId.localeCompare(right.connectionId) ||
+					left.messageId.localeCompare(right.messageId)
+			)
+			.slice(0, MAX_VISIBLE_MESSAGES);
+	}
+
+	async function loadMore(account: GmailReadAccountResult) {
+		if (
+			!searchResult ||
+			!account.nextCursor ||
+			!lastSearchQuery ||
+			loadingMoreConnectionId ||
+			searchResult.messages.length >= MAX_VISIBLE_MESSAGES
+		) {
+			return;
+		}
+
+		loadingMoreConnectionId = account.connectionId;
+		loadMoreError = null;
+		try {
+			const response = await fetch('/api/integrations/gmail/messages/search', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					connectionIds: [account.connectionId],
+					query: lastSearchQuery,
+					maxResults: 10,
+					cursor: account.nextCursor
+				})
+			});
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(getErrorMessage(payload, 'Unable to load more Gmail messages'));
+			}
+
+			const page = unwrapPayload<GmailMessageSearchPayload>(payload);
+			const pageAccount = page.accounts[0];
+			if (!pageAccount || pageAccount.connectionId !== account.connectionId) {
+				throw new Error('Gmail returned an invalid account page');
+			}
+			searchResult = {
+				...searchResult,
+				accounts: searchResult.accounts.map((currentAccount) =>
+					currentAccount.connectionId === account.connectionId
+						? {
+								...pageAccount,
+								messageCount: currentAccount.messageCount + pageAccount.messageCount
+							}
+						: currentAccount
+				),
+				messages: mergeMessagePages(searchResult.messages, page.messages),
+				fetchedAt: page.fetchedAt
+			};
+		} catch (error) {
+			loadMoreError =
+				error instanceof Error ? error.message : 'Unable to load more Gmail messages';
+		} finally {
+			loadingMoreConnectionId = null;
 		}
 	}
 
@@ -255,6 +347,9 @@
 			{@const unavailableAccounts = searchResult.accounts.filter(
 				(account) => account.status !== 'success'
 			)}
+			{@const pageableAccounts = searchResult.accounts.filter(
+				(account) => account.status === 'success' && account.nextCursor
+			)}
 			<div class="space-y-3" aria-live="polite">
 				<div class="flex flex-wrap items-center justify-between gap-2">
 					<p class="text-sm font-medium text-foreground">
@@ -319,6 +414,34 @@
 						{/each}
 					</div>
 				{/if}
+
+				{#if searchResult.messages.length >= MAX_VISIBLE_MESSAGES}
+					<p class="text-xs text-muted-foreground">
+						Showing the first {MAX_VISIBLE_MESSAGES} messages for this search. Refine the
+						query to continue safely.
+					</p>
+				{:else if pageableAccounts.length > 0}
+					<div class="flex flex-wrap gap-2">
+						{#each pageableAccounts as account (account.connectionId)}
+							<button
+								type="button"
+								class="rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground hover:border-accent/40 hover:bg-muted/50 disabled:cursor-wait disabled:opacity-60"
+								disabled={loadingMoreConnectionId !== null || searching}
+								onclick={() => loadMore(account)}
+							>
+								{loadingMoreConnectionId === account.connectionId
+									? `Loading more from ${account.accountLabel}…`
+									: `Load more from ${account.accountLabel}`}
+							</button>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		{/if}
+
+		{#if loadMoreError}
+			<div class="rounded-lg border border-destructive/30 bg-destructive/5 p-3" role="alert">
+				<p class="text-sm text-foreground">{loadMoreError}</p>
 			</div>
 		{/if}
 

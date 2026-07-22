@@ -317,6 +317,45 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	},
 
 	// ============================================
+	// EMAIL (GMAIL) READ TOOLS — Tier 1, read-only
+	// Gated behind EMAIL_CHAT_TOOLS_ENABLED (default off).
+	// ============================================
+
+	list_email_accounts: {
+		summary: 'List connected Gmail accounts BuildOS can read (read-only, no Gmail call).',
+		capabilities: [
+			'Returns connection_id, label, address, and status per account',
+			'Call first to obtain the connection_ids other email tools require',
+			'Surfaces accounts needing reconnection'
+		],
+		contexts: ['global', 'project'],
+		category: 'read'
+	},
+	search_email_messages: {
+		summary:
+			'Search connected Gmail accounts (read-only) with account provenance and deep links.',
+		capabilities: [
+			'Requires explicit connection_ids from list_email_accounts',
+			'Bounded multi-account Gmail search with per-account status',
+			'Returns untrusted-content-wrapped snippets, never raw HTML'
+		],
+		contexts: ['global', 'project'],
+		timeoutMs: 30000,
+		category: 'read'
+	},
+	get_email_message: {
+		summary: 'Read one sanitized Gmail message by connection_id + message_id (read-only).',
+		capabilities: [
+			'Returns sanitized plain text wrapped as untrusted external data',
+			'Includes account provenance and an Open-in-Gmail deep link',
+			'Bounded body length; never returns raw MIME'
+		],
+		contexts: ['global', 'project'],
+		timeoutMs: 30000,
+		category: 'read'
+	},
+
+	// ============================================
 	// ONTOLOGY WRITE TOOLS
 	// ============================================
 

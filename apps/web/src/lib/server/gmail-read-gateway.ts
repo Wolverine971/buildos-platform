@@ -1,6 +1,12 @@
 // apps/web/src/lib/server/gmail-read-gateway.ts
 import sanitizeHtml from 'sanitize-html';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import type { GmailSchemaClient, UserEmailConnectionRow } from './gmail-database.types';
+import {
+	consumeGmailReadCursor,
+	issueGmailReadCursor,
+	MAX_GMAIL_READ_CURSOR_PAGE
+} from './gmail-read-cursor';
 import { GmailOAuthError, GmailReadOAuthService } from './gmail-read-oauth.service';
 import type {
 	GmailMessageDetail,
@@ -25,6 +31,11 @@ const PROVIDER_TIMEOUT_MS = 10_000;
 
 type ProviderFetch = typeof fetch;
 
+type GmailReadCursorCodec = {
+	issue: typeof issueGmailReadCursor;
+	consume: typeof consumeGmailReadCursor;
+};
+
 type GmailProviderDiagnosticCode =
 	| 'fetch_rejected'
 	| 'fetch_timeout'
@@ -34,16 +45,14 @@ type GmailProviderDiagnosticCode =
 type GmailReadGatewayOptions = {
 	oauthService?: Pick<GmailReadOAuthService, 'getAuthorizedReadAccessToken'>;
 	providerFetch?: ProviderFetch;
+	cursorCodec?: GmailReadCursorCodec;
 	now?: () => Date;
 };
 
-type ConnectionRow = {
-	id: string;
-	email_address: string;
-	account_label: string;
-	status: 'active' | 'reconnect_required' | 'disabled' | 'error';
-	read_enabled: boolean;
-};
+type ConnectionRow = Pick<
+	UserEmailConnectionRow,
+	'id' | 'email_address' | 'account_label' | 'status' | 'read_enabled'
+>;
 
 type GmailHeader = { name?: unknown; value?: unknown };
 type GmailMessagePart = {
@@ -309,15 +318,25 @@ async function mapWithConcurrency<T, R>(
 }
 
 export class GmailReadGateway {
-	private readonly admin: SupabaseClient<any>;
+	private readonly admin: GmailSchemaClient;
 	private readonly oauthService: Pick<GmailReadOAuthService, 'getAuthorizedReadAccessToken'>;
 	private readonly providerFetch: ProviderFetch;
+	private readonly cursorCodec: GmailReadCursorCodec;
 	private readonly now: () => Date;
 
-	constructor(admin: SupabaseClient<any>, options: GmailReadGatewayOptions = {}) {
-		this.admin = admin;
+	constructor(
+		admin: TypedSupabaseClient | GmailSchemaClient,
+		options: GmailReadGatewayOptions = {}
+	) {
+		// The Gmail tables are not in the generated Database types yet; queries in this class are
+		// typed against the hand-authored schema in gmail-database.types.ts.
+		this.admin = admin as GmailSchemaClient;
 		this.oauthService = options.oauthService ?? new GmailReadOAuthService(admin);
 		this.providerFetch = options.providerFetch ?? fetch;
+		this.cursorCodec = options.cursorCodec ?? {
+			issue: issueGmailReadCursor,
+			consume: consumeGmailReadCursor
+		};
 		this.now = options.now ?? (() => new Date());
 	}
 
@@ -476,8 +495,10 @@ export class GmailReadGateway {
 		connection: ConnectionRow;
 		query: string;
 		maxResults: number;
+		pageToken?: string;
+		page: number;
 	}): Promise<{ account: GmailReadAccountResult; messages: GmailMessageSummary[] }> {
-		const { userId, connection, query, maxResults } = params;
+		const { userId, connection, query, maxResults, pageToken, page } = params;
 		if (connection.status !== 'active' || !connection.read_enabled) {
 			return {
 				account: {
@@ -489,7 +510,8 @@ export class GmailReadGateway {
 							? 'reconnect_required'
 							: 'unavailable',
 					messageCount: 0,
-					hasMore: false
+					hasMore: false,
+					nextCursor: null
 				},
 				messages: []
 			};
@@ -508,6 +530,7 @@ export class GmailReadGateway {
 				includeSpamTrash: 'false',
 				fields: 'messages(id,threadId),nextPageToken'
 			});
+			if (pageToken) listParams.set('pageToken', pageToken);
 			const listPayload = await this.providerGet(
 				'/gmail/v1/users/me/messages',
 				accessToken,
@@ -550,6 +573,22 @@ export class GmailReadGateway {
 			const messages = providerMessages.map((message) =>
 				this.summaryFromProvider(connection, message)
 			);
+			const providerNextPageToken =
+				typeof listResponse.nextPageToken === 'string' &&
+				listResponse.nextPageToken.length > 0
+					? listResponse.nextPageToken
+					: null;
+			const nextCursor =
+				providerNextPageToken && page < MAX_GMAIL_READ_CURSOR_PAGE
+					? this.cursorCodec.issue({
+							userId,
+							connectionId: connection.id,
+							query,
+							pageToken: providerNextPageToken,
+							page: page + 1,
+							now: this.now()
+						})
+					: null;
 
 			await this.audit({
 				userId,
@@ -558,7 +597,8 @@ export class GmailReadGateway {
 				outcome: 'success',
 				metadata: {
 					resultCount: messages.length,
-					hasMore: typeof listResponse.nextPageToken === 'string'
+					hasMore: nextCursor !== null,
+					page
 				}
 			});
 			return {
@@ -568,7 +608,8 @@ export class GmailReadGateway {
 					emailAddress: connection.email_address,
 					status: 'success',
 					messageCount: messages.length,
-					hasMore: typeof listResponse.nextPageToken === 'string'
+					hasMore: nextCursor !== null,
+					nextCursor
 				},
 				messages
 			};
@@ -602,7 +643,8 @@ export class GmailReadGateway {
 					emailAddress: connection.email_address,
 					status: reconnectRequired ? 'reconnect_required' : 'unavailable',
 					messageCount: 0,
-					hasMore: false
+					hasMore: false,
+					nextCursor: null
 				},
 				messages: []
 			};
@@ -614,6 +656,7 @@ export class GmailReadGateway {
 		connectionIds: string[];
 		query: string;
 		maxResults?: number;
+		cursor?: string;
 	}): Promise<GmailMessageSearchPayload> {
 		const query = params.query.trim();
 		if (
@@ -630,7 +673,44 @@ export class GmailReadGateway {
 			1,
 			Math.min(Math.floor(params.maxResults ?? 12), MAX_MESSAGES_PER_REQUEST)
 		);
+		if (params.cursor && params.connectionIds.length !== 1) {
+			throw new GmailReadGatewayError(
+				'invalid_request',
+				'A Gmail pagination cursor can continue exactly one account'
+			);
+		}
 		const connections = await this.loadOwnedConnections(params.userId, params.connectionIds);
+		let pagination: { pageToken?: string; page: number } = { page: 0 };
+		if (params.cursor) {
+			const connection = connections[0];
+			if (!connection) {
+				throw new GmailReadGatewayError(
+					'connection_not_found',
+					'Gmail account was not found'
+				);
+			}
+			try {
+				pagination = this.cursorCodec.consume({
+					cursor: params.cursor,
+					userId: params.userId,
+					connectionId: connection.id,
+					query,
+					now: this.now()
+				});
+			} catch {
+				await this.audit({
+					userId: params.userId,
+					connectionId: connection.id,
+					operation: 'gmail.messages.paginate',
+					outcome: 'blocked',
+					reasonCode: 'invalid_cursor'
+				});
+				throw new GmailReadGatewayError(
+					'invalid_request',
+					'Invalid or expired Gmail pagination cursor'
+				);
+			}
+		}
 		const perAccountLimit = Math.min(
 			MAX_MESSAGES_PER_ACCOUNT,
 			Math.ceil(maxResults / connections.length)
@@ -640,7 +720,9 @@ export class GmailReadGateway {
 				userId: params.userId,
 				connection,
 				query,
-				maxResults: perAccountLimit
+				maxResults: perAccountLimit,
+				pageToken: connections.length === 1 ? pagination.pageToken : undefined,
+				page: connections.length === 1 ? pagination.page : 0
 			})
 		);
 		const messages = accountResults

@@ -33,6 +33,7 @@ export type GmailReadAccountResult = {
 	status: 'success' | 'reconnect_required' | 'unavailable';
 	messageCount: number;
 	hasMore: boolean;
+	nextCursor: string | null;
 };
 
 export type GmailMessageSummary = {

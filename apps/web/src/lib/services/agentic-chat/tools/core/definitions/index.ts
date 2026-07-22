@@ -22,6 +22,7 @@ export { ONTOLOGY_READ_TOOLS } from './ontology-read';
 export { ONTOLOGY_WRITE_TOOLS } from './ontology-write';
 export { UTILITY_TOOL_DEFINITIONS } from './utility';
 export { CALENDAR_TOOL_DEFINITIONS } from './calendar';
+export { EMAIL_TOOL_DEFINITIONS } from './email';
 export { GATEWAY_TOOL_DEFINITIONS } from './gateway';
 
 // Import for combination
@@ -29,14 +30,20 @@ import { ONTOLOGY_READ_TOOLS } from './ontology-read';
 import { ONTOLOGY_WRITE_TOOLS } from './ontology-write';
 import { UTILITY_TOOL_DEFINITIONS } from './utility';
 import { CALENDAR_TOOL_DEFINITIONS } from './calendar';
+import { EMAIL_TOOL_DEFINITIONS } from './email';
 
 /**
  * Complete set of tools available to the chat system.
  * Tools are organized by category for the progressive disclosure pattern.
+ *
+ * Email tools are gated behind the EMAIL_CHAT_TOOLS_ENABLED flag; the registry
+ * builder (buildToolRegistry) and tools.config (isToolEnabled) skip them when the
+ * flag is off, so their presence in this array is inert until the flag is set.
  */
 export const CHAT_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 	...ONTOLOGY_READ_TOOLS,
 	...ONTOLOGY_WRITE_TOOLS,
 	...UTILITY_TOOL_DEFINITIONS,
-	...CALENDAR_TOOL_DEFINITIONS
+	...CALENDAR_TOOL_DEFINITIONS,
+	...EMAIL_TOOL_DEFINITIONS
 ];

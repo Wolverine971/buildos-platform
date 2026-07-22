@@ -16,6 +16,7 @@ import {
 	type ToolMetadata
 } from './tool-definitions';
 import { isLibriIntegrationEnabled, isLibriToolName } from '$lib/services/agentic-chat/tools/libri';
+import { isEmailChatToolsEnabled, isEmailToolName } from '$lib/services/agentic-chat/tools/email';
 
 export { ENTITY_FIELD_INFO } from './tool-definitions';
 export { CHAT_TOOL_DEFINITIONS as CHAT_TOOLS } from './tool-definitions';
@@ -192,6 +193,11 @@ export const TOOL_CATEGORIES = {
 		],
 		averageTokens: 350,
 		costTier: 'medium'
+	},
+	email: {
+		tools: ['list_email_accounts', 'search_email_messages', 'get_email_message'],
+		averageTokens: 400,
+		costTier: 'low'
 	}
 };
 
@@ -388,7 +394,9 @@ export function isWriteToolName(toolName: string): boolean {
 }
 
 function isToolEnabled(toolName: string): boolean {
-	return !isLibriToolName(toolName) || isLibriIntegrationEnabled();
+	if (isLibriToolName(toolName) && !isLibriIntegrationEnabled()) return false;
+	if (isEmailToolName(toolName) && !isEmailChatToolsEnabled()) return false;
+	return true;
 }
 
 function isToolEnabledForContext(toolName: string, contextType: ChatContextType): boolean {

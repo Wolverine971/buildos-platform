@@ -9,6 +9,7 @@ import type { ChatToolDefinition } from '@buildos/shared-types';
 import type { ToolMetadata, ToolContextScope } from '../core/definitions/types';
 import { CHAT_TOOL_DEFINITIONS, TOOL_METADATA } from '../core/definitions';
 import { isLibriIntegrationEnabled, isLibriToolName } from '../libri';
+import { isEmailChatToolsEnabled, isEmailToolName } from '../email';
 
 export type RegistryOp = {
 	op: string;
@@ -79,6 +80,15 @@ const CALENDAR_OPS: Record<string, string> = {
 	set_project_calendar: 'cal.project.set'
 };
 
+// Read-only Gmail ops. There is no email write/send/modify/draft op in any tier —
+// this map only ever contains reads, and registry tests assert no email-write op
+// name resolves to anything.
+const EMAIL_OPS: Record<string, string> = {
+	list_email_accounts: 'email.accounts.list',
+	search_email_messages: 'email.messages.search',
+	get_email_message: 'email.messages.get'
+};
+
 const ENTITY_ALIASES: Record<string, string> = {
 	project: 'project',
 	projects: 'project',
@@ -132,6 +142,7 @@ export function buildToolRegistry(
 		const toolName = tool.function?.name;
 		if (!toolName) continue;
 		if (isLibriToolName(toolName) && !isLibriIntegrationEnabled()) continue;
+		if (isEmailToolName(toolName) && !isEmailChatToolsEnabled()) continue;
 
 		const op = deriveOpFromToolName(toolName) ?? `x.misc.${toolName}`;
 		opMap[op] = toolName;
@@ -172,6 +183,7 @@ function deriveOpFromToolName(toolName: string): string | null {
 	if (OP_EXCEPTIONS[toolName]) return OP_EXCEPTIONS[toolName];
 	if (UTIL_OPS[toolName]) return UTIL_OPS[toolName];
 	if (CALENDAR_OPS[toolName]) return CALENDAR_OPS[toolName];
+	if (EMAIL_OPS[toolName]) return EMAIL_OPS[toolName];
 
 	const match = toolName.match(/^(list|search|get|create|update|delete)_(onto_)?(.+)$/);
 	if (!match) return null;

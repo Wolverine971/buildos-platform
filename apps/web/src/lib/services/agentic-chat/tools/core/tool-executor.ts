@@ -39,6 +39,7 @@ import {
 	UtilityExecutor,
 	ExternalExecutor,
 	CalendarExecutor,
+	EmailExecutor,
 	type ExecutorContext
 } from './executors';
 
@@ -81,6 +82,7 @@ export class ChatToolExecutor {
 	private _utilityExecutor?: UtilityExecutor;
 	private _externalExecutor?: ExternalExecutor;
 	private _calendarExecutor?: CalendarExecutor;
+	private _emailExecutor?: EmailExecutor;
 
 	constructor(
 		private supabase: SupabaseClient,
@@ -121,6 +123,7 @@ export class ChatToolExecutor {
 		this._utilityExecutor = undefined;
 		this._externalExecutor = undefined;
 		this._calendarExecutor = undefined;
+		this._emailExecutor = undefined;
 	}
 
 	// ============================================
@@ -174,6 +177,13 @@ export class ChatToolExecutor {
 			this._calendarExecutor = new CalendarExecutor(this.getExecutorContext());
 		}
 		return this._calendarExecutor;
+	}
+
+	private get emailExecutor(): EmailExecutor {
+		if (!this._emailExecutor) {
+			this._emailExecutor = new EmailExecutor(this.getExecutorContext());
+		}
+		return this._emailExecutor;
 	}
 
 	// ============================================
@@ -389,6 +399,18 @@ export class ChatToolExecutor {
 
 			case 'set_project_calendar':
 				return this.calendarExecutor.setProjectCalendar(args);
+
+			// ==================
+			// EMAIL (GMAIL) READ TOOLS — read-only, flag-gated
+			// ==================
+			case 'list_email_accounts':
+				return this.emailExecutor.listEmailAccounts();
+
+			case 'search_email_messages':
+				return this.emailExecutor.searchEmailMessages(args);
+
+			case 'get_email_message':
+				return this.emailExecutor.getEmailMessage(args);
 
 			// ==================
 			// ONTOLOGY READ TOOLS

@@ -2,13 +2,15 @@
 
 # SPEC - Complete Project Audit Tracker
 
-**Status:** Draft product/architecture spec. No migration has been written yet.
+**Status:** Core implemented; retained as the product/architecture contract. Current
+verification work lives in `tasker/14-complete-project-audit-build.md`.
 **Date:** 2026-07-01
 **Owner:** DJ + Codex
 **Related:**
 
 - `AI_INBOX_DESIGN_2026-06-24.md`
 - `AI_INBOX_CLARIFIED_DECISIONS_SPEC_2026-06-26.md`
+- `docs/product/PROJECT_REVIEW_TAXONOMY.md`
 - `docs/research/project-review-loop-audit-suggestion-families-2026-06-25.md`
 - Former Tasker project-loop tracker; residual work now lives in `tasker/13-ai-inbox-verify-and-cleanup.md` and `tasker/14-complete-project-audit-build.md`.
 
@@ -21,9 +23,10 @@ project deserves a full consultant-style review, generating that review, storing
 it as a readable audit packet, and tracking the follow-up items that come out of
 it.
 
-This is different from the current light project loop.
+This is different from the current light project review pass. Existing
+`project_loop_*` names below are legacy/internal schema and worker vocabulary.
 
-- The light loop produces small reviewable findings, stored as
+- The light review pass produces small reviewable findings, stored as
   `project_suggestions`, then indexed into `inbox_items`.
 - The complete audit produces a durable report packet, stored as
   `project_audits`, which can optionally generate child `project_suggestions`
@@ -46,7 +49,7 @@ Current implemented substrate:
 - `inbox_items` is a repairable decision index across sources.
 - AI Inbox Chat can open context-rich conversations for project suggestions,
   agent runs, and calendar suggestions.
-- Burst-trigger hardening now gates light loop review work using current
+- Burst-trigger hardening now gates light review work using current
   mutation metadata plus recent `onto_project_logs` activity.
 
 Current gap:
@@ -56,7 +59,7 @@ Current gap:
   skipped.
 - There is no UI that tracks audit health, audit history, unresolved audit
   recommendations, or next eligible audit timing.
-- The current light loop cannot answer "is this whole project on track?" in a
+- The current light review pass cannot answer "is this whole project on track?" in a
   report-quality way.
 
 ---
@@ -83,7 +86,7 @@ Current gap:
 
 ## 4. Non-Goals
 
-- Do not replace the existing light project loop families.
+- Do not replace the existing light Project Review families.
 - Do not model a full audit as only another `project_suggestions.kind`.
 - Do not force audit packets through `agent_runs.change_set`.
 - Do not create approval buttons for every audit paragraph.
@@ -160,7 +163,7 @@ Every non-green dimension must cite evidence or state why evidence is missing.
 
 The tracker uses two related but separate trigger systems:
 
-1. **Light loop trigger:** already exists. It keeps day-to-day hygiene running.
+1. **Light review trigger:** already exists. It keeps day-to-day hygiene running.
 2. **Complete audit trigger:** future work. It runs only when a full audit is
    valuable.
 
@@ -295,7 +298,7 @@ Cooldown:
 
 - Do not run another complete audit within 7 days unless
   `critical_change` fires.
-- If cooldown blocks a full audit, keep the light loop available.
+- If cooldown blocks a full audit, keep the light review pass available.
 
 ### 6.7 Trigger evaluation result
 
@@ -482,7 +485,7 @@ metadata identifies `mode: 'complete_audit'`, but a dedicated job type
 
 ### 8.2 Snapshot loading
 
-Complete audits need broader context than light loops:
+Complete audits need broader context than light review passes:
 
 - Project record and Start Here/current summary.
 - Active docs, archived docs summary, and doc tree.
@@ -526,7 +529,7 @@ The audit worker should run in stages:
 
 Defaults:
 
-- Standard audit cost cap: higher than light loop, for example `$1.50`.
+- Standard audit cost cap: higher than a light review pass, for example `$1.50`.
 - Deep audit cost cap: project-size dependent, for example `$3.00`.
 - Max dimensions: 8.
 - Max top findings: 5.
