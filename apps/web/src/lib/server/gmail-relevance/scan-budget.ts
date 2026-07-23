@@ -11,6 +11,10 @@ export const EMAIL_RELEVANCE_SCAN_BUDGET_POLICY = {
 		messages_list: 5,
 		messages_get: 20
 	},
+	operation_runtime_ms: {
+		list_page: 15_000,
+		metadata_batch: 60_000
+	},
 	// Twenty bounded metadata steps at no more than sixty seconds each.
 	runtime_ms_per_connection: 1_200_000,
 	gmail_quota_units_per_connection: 20_050,
@@ -18,6 +22,21 @@ export const EMAIL_RELEVANCE_SCAN_BUDGET_POLICY = {
 	model_tokens_per_connection: 0,
 	model_cost_micros_per_connection: 0
 } as const;
+
+export const EMAIL_RELEVANCE_SCAN_OPERATION_CODES = [
+	'synthetic_step',
+	'list_page',
+	'metadata_batch'
+] as const;
+
+export type EmailRelevanceScanOperationCode = (typeof EMAIL_RELEVANCE_SCAN_OPERATION_CODES)[number];
+
+export type EmailRelevanceScanOperationReservation = {
+	operation_code: 'list_page' | 'metadata_batch';
+	gmail_quota_units: number;
+	runtime_ms: number;
+	message_count: number;
+};
 
 export const EMAIL_RELEVANCE_SCAN_RESOURCE_KINDS = [
 	'gmail_quota',
@@ -91,6 +110,32 @@ export function estimateEmailRelevanceGmailQuotaUnits(
 	}
 
 	return operation.message_count * EMAIL_RELEVANCE_SCAN_BUDGET_POLICY.gmail_units.messages_get;
+}
+
+export function priceEmailRelevanceScanOperation(
+	operation:
+		| { operation_code: 'list_page' }
+		| { operation_code: 'metadata_batch'; message_count: number }
+): EmailRelevanceScanOperationReservation | null {
+	if (operation.operation_code === 'list_page') {
+		return {
+			operation_code: 'list_page',
+			gmail_quota_units: EMAIL_RELEVANCE_SCAN_BUDGET_POLICY.gmail_units.messages_list,
+			runtime_ms: EMAIL_RELEVANCE_SCAN_BUDGET_POLICY.operation_runtime_ms.list_page,
+			message_count: 0
+		};
+	}
+	const gmailQuotaUnits = estimateEmailRelevanceGmailQuotaUnits({
+		kind: 'metadata_batch',
+		message_count: operation.message_count
+	});
+	if (gmailQuotaUnits === null) return null;
+	return {
+		operation_code: 'metadata_batch',
+		gmail_quota_units: gmailQuotaUnits,
+		runtime_ms: EMAIL_RELEVANCE_SCAN_BUDGET_POLICY.operation_runtime_ms.metadata_batch,
+		message_count: operation.message_count
+	};
 }
 
 export function reserveEmailRelevanceScanBudget(input: {

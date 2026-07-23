@@ -109,6 +109,51 @@ describe('EmailRelevanceScanControlPlane', () => {
 		expect(JSON.stringify(parameters)).not.toContain(processingToken);
 	});
 
+	it('claims a real metadata batch by operation code without application-supplied pricing', async () => {
+		const { rpcClient, rpc } = rpcClientWith({
+			data: [
+				{
+					claimed: true,
+					operation_id: '80000000-0000-4000-8000-000000000002',
+					checkpoint_version: 4,
+					scope_state: 'leased',
+					error_code: null
+				}
+			],
+			error: null
+		});
+		const controlPlane = new EmailRelevanceScanControlPlane({
+			rpcClient,
+			environment: ENABLED_ENVIRONMENT
+		});
+		const result = await controlPlane.claimOperation({
+			user_id: SYNTHETIC_SCAN_USER_IDS.primary,
+			run_id: '50000000-0000-4000-8000-000000000001',
+			connection_scope_id: '60000000-0000-4000-8000-000000000001',
+			expected_checkpoint: 4,
+			processing_token: '70000000-0000-4000-8000-000000000002',
+			lease_owner: 'metadata_driver_v1',
+			operation: { operation_code: 'metadata_batch', message_count: 37 }
+		});
+
+		expect(result.reservation).toEqual({
+			operation_code: 'metadata_batch',
+			gmail_quota_units: 740,
+			runtime_ms: 60_000,
+			message_count: 37
+		});
+		expect(rpc).toHaveBeenCalledWith(
+			'claim_email_relevance_scan_operation',
+			expect.objectContaining({
+				p_operation_code: 'metadata_batch',
+				p_message_count: 37
+			})
+		);
+		const parameters = rpc.mock.calls[0]?.[1] as Record<string, unknown>;
+		expect(parameters).not.toHaveProperty('p_gmail_quota_units');
+		expect(parameters).not.toHaveProperty('p_runtime_ms');
+	});
+
 	it('maps database failures to fixed content-free codes', async () => {
 		const { rpcClient } = rpcClientWith({
 			data: null,

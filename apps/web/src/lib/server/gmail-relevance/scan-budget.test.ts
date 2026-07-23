@@ -4,6 +4,7 @@ import {
 	EMAIL_RELEVANCE_SCAN_BUDGET_POLICY,
 	EMAIL_RELEVANCE_SCAN_QUOTA_POLICY_VERSION,
 	estimateEmailRelevanceGmailQuotaUnits,
+	priceEmailRelevanceScanOperation,
 	reserveEmailRelevanceScanBudget,
 	settleEmailRelevanceScanBudget
 } from './scan-budget';
@@ -18,6 +19,32 @@ describe('email relevance scan budget policy', () => {
 			estimateEmailRelevanceGmailQuotaUnits({ kind: 'metadata_batch', message_count: 51 })
 		).toBeNull();
 		expect(EMAIL_RELEVANCE_SCAN_BUDGET_POLICY.gmail_quota_units_per_connection).toBe(20_050);
+	});
+
+	it('prices real provider operations from the versioned allowlist', () => {
+		expect(priceEmailRelevanceScanOperation({ operation_code: 'list_page' })).toEqual({
+			operation_code: 'list_page',
+			gmail_quota_units: 5,
+			runtime_ms: 15_000,
+			message_count: 0
+		});
+		expect(
+			priceEmailRelevanceScanOperation({
+				operation_code: 'metadata_batch',
+				message_count: 50
+			})
+		).toEqual({
+			operation_code: 'metadata_batch',
+			gmail_quota_units: 1_000,
+			runtime_ms: 60_000,
+			message_count: 50
+		});
+		expect(
+			priceEmailRelevanceScanOperation({
+				operation_code: 'metadata_batch',
+				message_count: 51
+			})
+		).toBeNull();
 	});
 
 	it('reserves before execution and stops before a ceiling would be exceeded', () => {

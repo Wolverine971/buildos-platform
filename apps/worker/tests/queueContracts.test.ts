@@ -72,11 +72,12 @@ describe('queue processor timeout', () => {
 		expect(source).toContain('abortController.abort(');
 	});
 
-	it('processes claimed queue jobs concurrently within each batch', () => {
+	it('refills open concurrency slots without waiting for the original claim to settle', () => {
 		const source = readRepoFile('apps/worker/src/lib/supabaseQueue.ts');
 
-		expect(source).toContain('Promise.allSettled(');
-		expect(source).toContain('jobs.map((job) => this.processJob(job as ClaimedQueueJob))');
+		expect(source).toContain('this.batchSize - this.activeJobs.size');
+		expect(source).toContain('this.releaseJobSlot(job.id)');
+		expect(source).toContain('void this.processJobs()');
 	});
 
 	it('heartbeats active claims with processing-token ownership', () => {

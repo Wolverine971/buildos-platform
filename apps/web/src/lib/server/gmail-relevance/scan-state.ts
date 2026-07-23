@@ -46,6 +46,10 @@ export const EMAIL_RELEVANCE_SCAN_SAFE_ERROR_CODES = [
 	'retry_exhausted',
 	'connection_disconnected',
 	'project_unavailable',
+	'provider_timeout',
+	'provider_rejected',
+	'provider_response_too_large',
+	'invalid_provider_response',
 	'internal_error'
 ] as const;
 

@@ -5297,6 +5297,210 @@ export type Database = {
           },
         ]
       }
+      email_relevance_message_observations: {
+        Row: {
+          connection_scope_id: string
+          created_at: string
+          discovery_page: number
+          evidence_fingerprints: string[]
+          id: string
+          internal_date: string | null
+          key_version: number
+          mailbox_inbox: boolean | null
+          mailbox_sent: boolean | null
+          processed_at: string | null
+          processing_state: string
+          provider_message_id_ciphertext: string
+          provider_message_id_hash: string
+          provider_thread_id_ciphertext: string
+          provider_thread_id_hash: string
+          retention_expires_at: string
+          run_id: string
+          user_id: string
+        }
+        Insert: {
+          connection_scope_id: string
+          created_at?: string
+          discovery_page: number
+          evidence_fingerprints: string[]
+          id?: string
+          internal_date?: string | null
+          key_version: number
+          mailbox_inbox?: boolean | null
+          mailbox_sent?: boolean | null
+          processed_at?: string | null
+          processing_state?: string
+          provider_message_id_ciphertext: string
+          provider_message_id_hash: string
+          provider_thread_id_ciphertext: string
+          provider_thread_id_hash: string
+          retention_expires_at: string
+          run_id: string
+          user_id: string
+        }
+        Update: {
+          connection_scope_id?: string
+          created_at?: string
+          discovery_page?: number
+          evidence_fingerprints?: string[]
+          id?: string
+          internal_date?: string | null
+          key_version?: number
+          mailbox_inbox?: boolean | null
+          mailbox_sent?: boolean | null
+          processed_at?: string | null
+          processing_state?: string
+          provider_message_id_ciphertext?: string
+          provider_message_id_hash?: string
+          provider_thread_id_ciphertext?: string
+          provider_thread_id_hash?: string
+          retention_expires_at?: string
+          run_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_relevance_message_observations_connection_scope_id_fkey"
+            columns: ["connection_scope_id"]
+            isOneToOne: false
+            referencedRelation: "email_relevance_scan_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_relevance_message_observations_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "email_relevance_scan_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_relevance_message_observations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_relevance_project_candidates: {
+        Row: {
+          actor_overlap: boolean
+          actor_overlap_count: number
+          artifact_overlap: boolean
+          artifact_overlap_count: number
+          candidate_state: string
+          confidence: number
+          confirmed_thread: boolean
+          created_at: string
+          domain_overlap: boolean
+          domain_overlap_count: number
+          explicit_rule: boolean
+          id: string
+          identifier_overlap: boolean
+          identifier_overlap_count: number
+          lexical_overlap: boolean
+          lexical_overlap_count: number
+          negative_evidence: boolean
+          negative_evidence_count: number
+          observation_id: string
+          policy_version: string
+          profile_version_id: string
+          project_id: string
+          retention_expires_at: string
+          score: number
+          scorer_version: string
+          user_id: string
+          variant: string
+        }
+        Insert: {
+          actor_overlap?: boolean
+          actor_overlap_count?: number
+          artifact_overlap?: boolean
+          artifact_overlap_count?: number
+          candidate_state?: string
+          confidence: number
+          confirmed_thread?: boolean
+          created_at?: string
+          domain_overlap?: boolean
+          domain_overlap_count?: number
+          explicit_rule?: boolean
+          id?: string
+          identifier_overlap?: boolean
+          identifier_overlap_count?: number
+          lexical_overlap?: boolean
+          lexical_overlap_count?: number
+          negative_evidence?: boolean
+          negative_evidence_count?: number
+          observation_id: string
+          policy_version: string
+          profile_version_id: string
+          project_id: string
+          retention_expires_at: string
+          score: number
+          scorer_version: string
+          user_id: string
+          variant: string
+        }
+        Update: {
+          actor_overlap?: boolean
+          actor_overlap_count?: number
+          artifact_overlap?: boolean
+          artifact_overlap_count?: number
+          candidate_state?: string
+          confidence?: number
+          confirmed_thread?: boolean
+          created_at?: string
+          domain_overlap?: boolean
+          domain_overlap_count?: number
+          explicit_rule?: boolean
+          id?: string
+          identifier_overlap?: boolean
+          identifier_overlap_count?: number
+          lexical_overlap?: boolean
+          lexical_overlap_count?: number
+          negative_evidence?: boolean
+          negative_evidence_count?: number
+          observation_id?: string
+          policy_version?: string
+          profile_version_id?: string
+          project_id?: string
+          retention_expires_at?: string
+          score?: number
+          scorer_version?: string
+          user_id?: string
+          variant?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_relevance_project_candidates_observation_id_fkey"
+            columns: ["observation_id"]
+            isOneToOne: false
+            referencedRelation: "email_relevance_message_observations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_relevance_project_candidates_profile_version_id_fkey"
+            columns: ["profile_version_id"]
+            isOneToOne: false
+            referencedRelation: "email_project_profile_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_relevance_project_candidates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_relevance_project_candidates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_relevance_scan_connections: {
         Row: {
           checkpoint_attempts: number
@@ -5304,6 +5508,8 @@ export type Database = {
           completed_at: string | null
           connection_id: string | null
           created_at: string
+          cursor_envelope: string | null
+          cursor_key_version: number | null
           gmail_quota_budget: number
           gmail_quota_reserved: number
           gmail_quota_used: number
@@ -5312,6 +5518,7 @@ export type Database = {
           lease_expires_at: string | null
           lease_owner: string | null
           lease_token_hash: string | null
+          list_pages_completed: number
           max_attempts: number
           message_cap: number
           messages_seen: number
@@ -5319,6 +5526,11 @@ export type Database = {
           model_cost_budget_micros: number
           model_token_budget: number
           next_attempt_at: string | null
+          observations_discovered: number
+          observations_processed: number
+          pending_cursor_envelope: string | null
+          pending_cursor_key_version: number | null
+          pending_page_is_final: boolean | null
           raw_content_byte_budget: number
           run_id: string
           runtime_ms_budget: number
@@ -5338,6 +5550,8 @@ export type Database = {
           completed_at?: string | null
           connection_id?: string | null
           created_at?: string
+          cursor_envelope?: string | null
+          cursor_key_version?: number | null
           gmail_quota_budget: number
           gmail_quota_reserved?: number
           gmail_quota_used?: number
@@ -5346,6 +5560,7 @@ export type Database = {
           lease_expires_at?: string | null
           lease_owner?: string | null
           lease_token_hash?: string | null
+          list_pages_completed?: number
           max_attempts?: number
           message_cap: number
           messages_seen?: number
@@ -5353,6 +5568,11 @@ export type Database = {
           model_cost_budget_micros?: number
           model_token_budget?: number
           next_attempt_at?: string | null
+          observations_discovered?: number
+          observations_processed?: number
+          pending_cursor_envelope?: string | null
+          pending_cursor_key_version?: number | null
+          pending_page_is_final?: boolean | null
           raw_content_byte_budget?: number
           run_id: string
           runtime_ms_budget: number
@@ -5372,6 +5592,8 @@ export type Database = {
           completed_at?: string | null
           connection_id?: string | null
           created_at?: string
+          cursor_envelope?: string | null
+          cursor_key_version?: number | null
           gmail_quota_budget?: number
           gmail_quota_reserved?: number
           gmail_quota_used?: number
@@ -5380,6 +5602,7 @@ export type Database = {
           lease_expires_at?: string | null
           lease_owner?: string | null
           lease_token_hash?: string | null
+          list_pages_completed?: number
           max_attempts?: number
           message_cap?: number
           messages_seen?: number
@@ -5387,6 +5610,11 @@ export type Database = {
           model_cost_budget_micros?: number
           model_token_budget?: number
           next_attempt_at?: string | null
+          observations_discovered?: number
+          observations_processed?: number
+          pending_cursor_envelope?: string | null
+          pending_cursor_key_version?: number | null
+          pending_page_is_final?: boolean | null
           raw_content_byte_budget?: number
           run_id?: string
           runtime_ms_budget?: number
@@ -16770,6 +16998,19 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_email_relevance_scan_operation: {
+        Args: {
+          p_connection_scope_id: string
+          p_expected_checkpoint: number
+          p_lease_owner: string
+          p_message_count?: number
+          p_operation_code: string
+          p_processing_token_hash: string
+          p_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       claim_email_relevance_scan_step: {
         Args: {
           p_connection_scope_id: string
@@ -17069,6 +17310,24 @@ export type Database = {
       delete_onto_project: {
         Args: { p_project_id: string }
         Returns: undefined
+      }
+      email_relevance_discovery_batch_is_valid: {
+        Args: {
+          p_batch: Json
+        }
+        Returns: Json
+      }
+      email_relevance_hash_array_is_valid: {
+        Args: {
+          p_hashes: string[]
+        }
+        Returns: Json
+      }
+      email_relevance_metadata_batch_is_valid: {
+        Args: {
+          p_batch: Json
+        }
+        Returns: Json
       }
       email_relevance_refresh_scan_run_state: {
         Args: {
@@ -18127,6 +18386,12 @@ export type Database = {
         Args: { p_older_than_days?: number }
         Returns: number
       }
+      purge_expired_email_relevance_metadata: {
+        Args: {
+          p_limit?: number
+        }
+        Returns: Json
+      }
       queue_deep_research_synthesis: {
         Args: { p_parent_run_id: string }
         Returns: string
@@ -18421,6 +18686,48 @@ export type Database = {
             }
             Returns: Json
           }
+      settle_email_relevance_list_page: {
+        Args: {
+          p_actual_runtime_ms: number
+          p_connection_scope_id: string
+          p_expected_checkpoint: number
+          p_next_cursor_envelope?: string
+          p_next_cursor_key_version?: number
+          p_observations: Json
+          p_operation_id: string
+          p_processing_token_hash: string
+          p_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      settle_email_relevance_metadata_batch: {
+        Args: {
+          p_actual_runtime_ms: number
+          p_connection_scope_id: string
+          p_expected_checkpoint: number
+          p_operation_id: string
+          p_processing_token_hash: string
+          p_results: Json
+          p_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      settle_email_relevance_operation_failure: {
+        Args: {
+          p_actual_runtime_ms: number
+          p_connection_scope_id: string
+          p_error_code: string
+          p_expected_checkpoint: number
+          p_operation_id: string
+          p_processing_token_hash: string
+          p_provider_calls_started: number
+          p_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       settle_email_relevance_scan_step: {
         Args: {
           p_actual_gmail_quota_units: number

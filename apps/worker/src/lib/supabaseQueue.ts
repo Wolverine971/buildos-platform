@@ -54,7 +54,8 @@ export class SupabaseQueue {
 	private processors: Map<JobType, JobProcessor> = new Map();
 	private processingInterval: NodeJS.Timeout | null = null;
 	private stalledJobInterval: NodeJS.Timeout | null = null;
-	private isProcessing = false;
+	private isClaiming = false;
+	private acceptingWork = false;
 	private pollInterval: number;
 	private batchSize: number;
 	private stalledTimeout: number;
@@ -68,7 +69,11 @@ export class SupabaseQueue {
 	private lastPollSuccessAtMs: number | null = null;
 	private consecutiveClaimFailures = 0;
 
-	// Graceful-shutdown drain tracking
+	// Per-slot concurrency + graceful-shutdown drain tracking. Jobs remain in
+	// this map independently, so one completion can refill its slot without
+	// waiting for unrelated long-running jobs.
+	private activeJobs = new Map<string, { jobType: string; promise: Promise<void> }>();
+	private inFlightClaim: Promise<void> | null = null;
 	private inFlightBatch: Promise<void> | null = null;
 	private inFlightJobTypes: string[] = [];
 	private drainTimeout: number;
@@ -155,7 +160,7 @@ export class SupabaseQueue {
 	 * Start processing jobs
 	 */
 	async start(): Promise<void> {
-		if (this.processingInterval) {
+		if (this.acceptingWork || this.processingInterval || this.stopping) {
 			console.warn('⚠️ Queue already started');
 			return;
 		}
@@ -168,15 +173,18 @@ export class SupabaseQueue {
 
 		this.started = true;
 		this.startedAtMs = Date.now();
+		this.acceptingWork = true;
 
 		// Process immediately on start
 		await this.processJobs();
+		if (!this.acceptingWork) {
+			// stop() may have begun while the initial claim was in flight.
+			return;
+		}
 
 		// Set up polling interval
 		this.processingInterval = setInterval(async () => {
-			if (!this.isProcessing) {
-				await this.processJobs();
-			}
+			await this.processJobs();
 		}, this.pollInterval);
 
 		// Set up stalled job recovery (every minute)
@@ -205,6 +213,7 @@ export class SupabaseQueue {
 
 	private async drain(): Promise<void> {
 		// Stop accepting new work first so no fresh batch is claimed while draining.
+		this.acceptingWork = false;
 		if (this.processingInterval) {
 			clearInterval(this.processingInterval);
 			this.processingInterval = null;
@@ -214,11 +223,12 @@ export class SupabaseQueue {
 			this.stalledJobInterval = null;
 		}
 
-		const inFlight = this.inFlightBatch;
-		if (inFlight) {
+		const hasInFlightWork = this.inFlightClaim !== null || this.inFlightBatch !== null;
+		if (hasInFlightWork) {
 			console.log(
 				`🛑 Queue stopping — draining in-flight jobs (timeout ${this.drainTimeout}ms)`
 			);
+			const inFlight = this.waitForInFlightWork();
 
 			let timer: NodeJS.Timeout | null = null;
 			const timedOut = Symbol('drain-timeout');
@@ -255,20 +265,49 @@ export class SupabaseQueue {
 		console.log('🛑 Queue processor stopped');
 	}
 
-	/**
-	 * Process pending jobs
-	 */
-	private async processJobs(): Promise<void> {
-		if (this.isProcessing) return;
+	private async waitForInFlightWork(): Promise<void> {
+		// A claim already sent before shutdown may still return jobs. Let that
+		// claim finish and register its work, then drain the latest active set.
+		const claim = this.inFlightClaim;
+		if (claim) {
+			await claim;
+		}
 
-		this.isProcessing = true;
+		const active = this.inFlightBatch;
+		if (active) {
+			await active;
+		}
+	}
+
+	/**
+	 * Claim enough pending jobs to fill the currently open worker slots.
+	 * Processing continues independently after this method returns.
+	 */
+	private processJobs(): Promise<void> {
+		if (!this.acceptingWork || this.isClaiming) return Promise.resolve();
+
+		const availableSlots = this.batchSize - this.activeJobs.size;
+		if (availableSlots <= 0) return Promise.resolve();
+
+		this.isClaiming = true;
+		const claim = this.claimAndStartJobs(availableSlots).finally(() => {
+			this.isClaiming = false;
+			if (this.inFlightClaim === claim) {
+				this.inFlightClaim = null;
+			}
+		});
+		this.inFlightClaim = claim;
+		return claim;
+	}
+
+	private async claimAndStartJobs(availableSlots: number): Promise<void> {
 		try {
 			// Claim jobs atomically using the database function
 			const jobTypes = Array.from(this.processors.keys());
 
 			const { data: jobs, error } = await supabase.rpc('claim_pending_jobs', {
 				p_job_types: jobTypes,
-				p_batch_size: this.batchSize
+				p_batch_size: availableSlots
 			});
 
 			if (error) {
@@ -288,44 +327,46 @@ export class SupabaseQueue {
 			}
 
 			console.log(`🎯 Claimed ${jobs.length} job(s) for processing`);
-
-			// Track the in-flight batch so graceful shutdown can drain it.
-			this.inFlightJobTypes = jobs.map((job) => job.job_type);
-
-			// Process jobs concurrently with proper error isolation
-			const batch = Promise.allSettled(
-				jobs.map((job) => this.processJob(job as ClaimedQueueJob))
-			);
-			this.inFlightBatch = batch.then(() => undefined);
-			const results = await batch;
-
-			// Log any failed job results for monitoring
-			const failedJobs = results
-				.map((result, index) => ({ result, index }))
-				.filter(({ result }) => result.status === 'rejected')
-				.map(({ result, index }) => ({
-					jobId: jobs[index].queue_job_id,
-					reason: (result as PromiseRejectedResult).reason
-				}));
-
-			if (failedJobs.length > 0) {
-				console.warn(`⚠️ ${failedJobs.length} job(s) failed during processing:`);
-				failedJobs.forEach(({ jobId, reason }) => {
-					console.warn(`   - Job ${jobId}: ${reason}`);
-				});
-			}
-
-			const successfulJobs = results.filter((result) => result.status === 'fulfilled').length;
-			if (successfulJobs > 0) {
-				console.log(`✅ Successfully processed ${successfulJobs} job(s)`);
+			for (const job of jobs) {
+				this.startClaimedJob(job as ClaimedQueueJob);
 			}
 		} catch (error) {
 			console.error('❌ Error in job processing loop:', error);
-		} finally {
-			this.isProcessing = false;
-			this.inFlightBatch = null;
-			this.inFlightJobTypes = [];
 		}
+	}
+
+	private startClaimedJob(job: ClaimedQueueJob): void {
+		const promise = this.processJob(job).catch((error) => {
+			// processJob already isolates expected failures. Keep a final guard so
+			// an unexpected rejection cannot become an unhandled worker error.
+			console.error(`❌ Unhandled rejection processing job ${job.queue_job_id}:`, error);
+		});
+		this.activeJobs.set(job.id, { jobType: job.job_type, promise });
+		this.refreshInFlightBatch();
+
+		void promise.then(() => {
+			this.releaseJobSlot(job.id);
+		});
+	}
+
+	private releaseJobSlot(jobId: string): void {
+		if (!this.activeJobs.delete(jobId)) return;
+		this.refreshInFlightBatch();
+
+		// Refill immediately instead of waiting for every job from the original
+		// claim to settle. The isClaiming guard serializes concurrent completions.
+		if (this.acceptingWork) {
+			void this.processJobs();
+		}
+	}
+
+	private refreshInFlightBatch(): void {
+		const active = Array.from(this.activeJobs.values());
+		this.inFlightJobTypes = active.map(({ jobType }) => jobType);
+		this.inFlightBatch =
+			active.length > 0
+				? Promise.allSettled(active.map(({ promise }) => promise)).then(() => undefined)
+				: null;
 	}
 
 	/**
@@ -647,9 +688,9 @@ export class SupabaseQueue {
 
 	/**
 	 * Liveness snapshot for /health. Unhealthy when the claim RPC keeps
-	 * failing or the poll loop has silently stopped ticking. A long-running
-	 * batch is NOT unhealthy — polling legitimately pauses while a batch is
-	 * in flight, so `processingBatch` suspends the staleness check.
+	 * failing or the poll loop has silently stopped ticking. Poll staleness is
+	 * only suspended while every worker slot is occupied; with an open slot,
+	 * per-slot refill should continue polling even while other jobs run.
 	 */
 	getHealth(): {
 		healthy: boolean;
@@ -666,7 +707,7 @@ export class SupabaseQueue {
 				? new Date(this.lastPollSuccessAtMs).toISOString()
 				: null,
 			consecutiveClaimFailures: this.consecutiveClaimFailures,
-			processingBatch: this.isProcessing,
+			processingBatch: this.activeJobs.size > 0,
 			draining: this.stopping !== null
 		};
 
@@ -683,7 +724,7 @@ export class SupabaseQueue {
 
 		const staleThresholdMs = Math.max(5 * this.pollInterval, 60_000);
 		const referenceMs = this.lastPollSuccessAtMs ?? this.startedAtMs!;
-		if (!this.isProcessing && Date.now() - referenceMs > staleThresholdMs) {
+		if (this.activeJobs.size < this.batchSize && Date.now() - referenceMs > staleThresholdMs) {
 			return {
 				healthy: false,
 				reason: this.lastPollSuccessAtMs ? 'poll_loop_stalled' : 'no_successful_poll',

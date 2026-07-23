@@ -3,8 +3,10 @@
 # Handoff — Gmail Relevance Phase A, Slice 3 Metadata-Only A/B Retrieval
 
 **Created:** 2026-07-23  
-**Status:** Ready for separate review and implementation. Slice 2 is complete; no provider read is
-authorized by that completion alone.
+**Status:** Local implementation checkpoint complete on 2026-07-23. Migration
+`20260723223402` is authored and disposable-tested but is not applied to production; generated
+production types are intentionally unchanged, both flags remain off, and no real Gmail call has
+been run.
 
 **Tracker:** `tasker/36-gmail-project-relevance-phase-a.md`  
 **Slice 2 receipt:**
@@ -26,6 +28,40 @@ records per bounded operation, and evaluate two deterministic, model-free retrie
 The result is a set of explainable, content-free observation/candidate rows suitable for the
 separate Slice 4 review build. Subject, snippet, participant addresses, and provider responses are
 request-lifetime values only. No model or Gmail mutation is reachable.
+
+## Assessment and implementation checkpoint — 2026-07-23
+
+The Slice 2 prerequisites and production migration ledger were reassessed before implementation.
+Local and linked history remain aligned through `20260723211500`, with no later production
+migration present. The handoff's security and lifecycle design is implementable without a queue or
+new public route. Four contracts needed to be made concrete and are now versioned in code: scorer
+weights/thresholds, purpose-specific provider request shapes, encryption/hash contexts, and
+database-owned operation pricing.
+
+The local checkpoint includes:
+
+- a pure metadata normalizer and deterministic A/B scorer with fixed evidence categories;
+- a purpose-specific Gmail gateway limited to one 100-message list page or at most 50
+  metadata-format gets, re-authorizing immediately before each provider call;
+- domain-separated AES-256-GCM envelopes and per-user keyed hashes for provider IDs, cursors,
+  rule values, and evidence fingerprints;
+- a direct one-operation driver through the existing claim/reserve/settle boundary, with no queue,
+  model, Gmail mutation, watch, or recurring trigger;
+- transactional migration `20260723223402_gmail_relevance_metadata_retrieval.sql` for encrypted
+  observations, content-free candidates, database-priced list/metadata operations, cursor
+  promotion after page drain, retention, RLS, and disconnect cleanup; and
+- invented-fixture unit, gateway, driver, leak/static-boundary, and disposable PostgreSQL tests.
+
+Verification at this checkpoint: 83 focused Gmail/Phase A tests pass across 19 files; focused lint
+passes; the web check passes with zero errors and zero warnings; the Slice 3 SQL harness returns
+`gmail_relevance_metadata_retrieval_ok`; and the existing Slice 2 SQL lifecycle harness still
+returns `gmail_relevance_scan_control_plane_ok` after the Slice 3 migration.
+
+This is not the Slice 3 production exit receipt. Before production apply, review the exact
+migration, run the remaining complete synthetic three-connection lifecycle, apply only the reviewed
+file through the forward protocol, regenerate types from production, wire the reviewed exact-user
+private invocation, and then run the explicitly authorized pilot with flags otherwise remaining
+off.
 
 ## Proven prerequisite
 

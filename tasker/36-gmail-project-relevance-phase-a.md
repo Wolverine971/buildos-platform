@@ -4,11 +4,11 @@
 
 **Created 2026-07-22.** Owner: Email relevance / product engineer.  
 **Type:** bounded internal evaluation build.  
-**Status:** A0, Slice 1, and the synthetic Slice 2 control plane are complete. The profile schema is
-live and its exact ledger version is reconciled. Slice 2 migration `20260723211500` is live,
-ledger-aligned, and verified; generated production types are fresh. The exact-user-gated server
-control plane and provider-free synthetic executor are implemented and tested. Both Phase A flags
-remain default off, no scan queue is registered, and no Gmail or model call was added.
+**Status:** A0, Slice 1, and the synthetic Slice 2 control plane are complete. Slice 3 now has a
+local, tested metadata-only gateway, deterministic A/B scorer, direct bounded driver, and exact-file
+migration `20260723223402`. That migration is not applied to production and production types are
+intentionally unchanged. Both Phase A flags remain default off, no scan queue is registered, and no
+real Gmail or model call has been run.
 
 **Handoff:** `apps/web/docs/technical/email/HANDOFF-PHASE-A-PROJECT-RELEVANCE.md`  
 **Slice 2 handoff:**
@@ -84,11 +84,15 @@ and cost whether daily-brief ingestion is warranted.
 
 ## Slice 3 — Metadata-only A/B retrieval
 
-- [ ] Implement bounded inbox+sent scan; exclude spam/trash/drafts.
-- [ ] Implement A: rules/threads/actors/domains/artifacts/identifiers.
-- [ ] Implement B: structured-profile lexical score plus negative evidence.
-- [ ] Store evidence/hashes/provenance only; never body or attachment content.
-- [ ] Add wrong-user/account, budget, retry, disconnect, and content-leak tests.
+- [x] Implement bounded inbox+sent scan; exclude spam/trash/drafts.
+- [x] Implement A: rules/threads/actors/domains/artifacts/identifiers.
+- [x] Implement B: structured-profile lexical score plus negative evidence.
+- [x] Store evidence/hashes/provenance only; never body or attachment content.
+- [x] Add wrong-user/account, budget, retry, disconnect, and content-leak tests.
+- [ ] Complete the synthetic three-connection lifecycle and exact-file migration review.
+- [ ] Apply the reviewed migration through the forward protocol, regenerate production types, and
+      wire the private invocation before recording the explicitly authorized exact-user pilot
+      receipt with flags otherwise off.
 
 ## Slice 4 — Review and evaluation
 
@@ -118,9 +122,11 @@ and cost whether daily-brief ingestion is warranted.
 
 ## Immediate next task
 
-Begin only the separately reviewed Slice 3 metadata-only A/B retrieval handoff. Keep provider reads
-behind the existing exact-user gate and Slice 2 reservation/checkpoint RPCs. Do not add a model,
-mailbox body/attachment read, watch, recurring poll, or Gmail mutation.
+Review the exact Slice 3 migration and complete the synthetic three-connection lifecycle before any
+production apply. Then use the forward protocol, regenerate production types, wire the reviewed
+exact-user private invocation, and separately authorize a pilot. Keep both flags off by default; do
+not add a model, mailbox body/attachment read, watch, recurring poll, queue secret, or Gmail
+mutation.
 
 ## Current verification
 
@@ -136,3 +142,10 @@ mailbox body/attachment read, watch, recurring poll, or Gmail mutation.
 - Full `@buildos/web` check: zero errors and zero warnings after post-apply type generation.
 - Focused Gmail plus Phase A suites: 65/65 passing across 13 files.
 - Focused lint for the Slice 2 server/runtime files: passing.
+- Slice 3 linked-ledger assessment: local/remote aligned through `20260723211500`; new local version
+  `20260723223402` is reserved and remains unapplied.
+- Slice 3 migration: clean transactional apply in disposable PostgreSQL; Slice 3 harness returns
+  `gmail_relevance_metadata_retrieval_ok`, and the prior Slice 2 lifecycle harness still returns
+  `gmail_relevance_scan_control_plane_ok` on the extended schema.
+- Slice 3 focused Gmail plus Phase A suites: 83/83 passing across 19 files; focused lint passing.
+- Full `@buildos/web` check: zero errors and zero warnings at the local Slice 3 checkpoint.

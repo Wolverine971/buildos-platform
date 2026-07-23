@@ -6,7 +6,7 @@
 
 **Status:** Verified audit. Companion to [Queue and Workflow Architecture Assessment (2026-07-23)](./queue-and-workflow-architecture-assessment-2026-07-23.md).
 
-**Fix status (2026-07-23, same day):** P0 items 2–4 and P1 items 5–11 implemented (SMS intentionally left dormant per founder decision — entry points carry DORMANT comments listing the pre-integration fix list). Four migrations pending prod apply: `20260723010000` (stalled backoff + retry jitter + in-app delivery unique), `20260723020000` (agent_runs execution_generation), `20260723030000` (trigger-enforced run cap + atomic dispatch RPC), `20260723040000` (chat message idempotency unique index). ⚠️ Apply migrations BEFORE deploying worker/web — the new code references the column/RPC. Run `pnpm gen:types` after applying.
+**Fix status (2026-07-23, same day):** P0 items 2–4 and P1 items 5–11 implemented (SMS intentionally left dormant per founder decision — entry points carry DORMANT comments listing the pre-integration fix list). Migrations `20260723010000` (stalled backoff + retry jitter + in-app delivery unique), `20260723020000` (agent_runs execution_generation), `20260723030000` (trigger-enforced run cap + atomic dispatch RPC), and `20260723040000` (chat message idempotency unique index) are applied in production; generated database types are current; worker/web deployment and the post-deploy health, Agent Run, notification, and chat smokes completed successfully.
 
 **Method:** Five parallel verification agents ran the assessment's claims against source with file:line evidence (queue core, Agent Runs, notifications, chat stream, plus a fresh-eyes sweep of areas the assessment skipped), and production `queue_jobs` was queried directly for depth, age, duration percentiles, and failure history.
 
@@ -114,7 +114,7 @@ Re-weighted from the assessment using production data. Ordering principle: **use
 
 ### P2 — Architecture (when usage justifies)
 
-12. **Replace the batch barrier with per-slot refill + per-type concurrency caps** — this is the 20%-effort version of "split worker pools" that fixes the observed 2-minute notification waits without new deployments. Full pool separation and dedicated interactive workers can wait for real load.
+12. **Per-slot refill implemented locally 2026-07-23; per-type concurrency caps remain** — the queue now claims against open slots and refills each completed slot without waiting for slow siblings from the original claim. This removes the observed batch barrier without new deployments; add per-type caps only if production mix shows one job type monopolizing all slots. Full pool separation and dedicated interactive workers can wait for real load.
 13. Typed error classification + jitter (assessment P1/P2) — fold into #5's contract change.
 14. Retention/cleanup expansion (N18) and correlation IDs web→queue→worker (F12).
 15. Durable chat-turn execution (assessment P2): keep as the eventual direction; the 285s in-process bound + reconcile path is acceptable at current scale.

@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-07-23T22:30:21.067Z
+// Generated on: 2026-07-23T23:28:49.620Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1274,12 +1274,63 @@ export type DatabaseSchema = {
 		status: string;
 		updated_at: string | null;
 	};
+	email_relevance_message_observations: {
+		connection_scope_id: string;
+		created_at: string;
+		discovery_page: number;
+		evidence_fingerprints: string[];
+		id: string;
+		internal_date: string | null;
+		key_version: number;
+		mailbox_inbox: boolean | null;
+		mailbox_sent: boolean | null;
+		processed_at: string | null;
+		processing_state: string;
+		provider_message_id_ciphertext: string;
+		provider_message_id_hash: string;
+		provider_thread_id_ciphertext: string;
+		provider_thread_id_hash: string;
+		retention_expires_at: string;
+		run_id: string;
+		user_id: string;
+	};
+	email_relevance_project_candidates: {
+		actor_overlap: boolean;
+		actor_overlap_count: number;
+		artifact_overlap: boolean;
+		artifact_overlap_count: number;
+		candidate_state: string;
+		confidence: number;
+		confirmed_thread: boolean;
+		created_at: string;
+		domain_overlap: boolean;
+		domain_overlap_count: number;
+		explicit_rule: boolean;
+		id: string;
+		identifier_overlap: boolean;
+		identifier_overlap_count: number;
+		lexical_overlap: boolean;
+		lexical_overlap_count: number;
+		negative_evidence: boolean;
+		negative_evidence_count: number;
+		observation_id: string;
+		policy_version: string;
+		profile_version_id: string;
+		project_id: string;
+		retention_expires_at: string;
+		score: number;
+		scorer_version: string;
+		user_id: string;
+		variant: string;
+	};
 	email_relevance_scan_connections: {
 		checkpoint_attempts: number;
 		checkpoint_version: number;
 		completed_at: string | null;
 		connection_id: string | null;
 		created_at: string;
+		cursor_envelope: string | null;
+		cursor_key_version: number | null;
 		gmail_quota_budget: number;
 		gmail_quota_reserved: number;
 		gmail_quota_used: number;
@@ -1288,6 +1339,7 @@ export type DatabaseSchema = {
 		lease_expires_at: string | null;
 		lease_owner: string | null;
 		lease_token_hash: string | null;
+		list_pages_completed: number;
 		max_attempts: number;
 		message_cap: number;
 		messages_seen: number;
@@ -1295,6 +1347,11 @@ export type DatabaseSchema = {
 		model_cost_budget_micros: number;
 		model_token_budget: number;
 		next_attempt_at: string | null;
+		observations_discovered: number;
+		observations_processed: number;
+		pending_cursor_envelope: string | null;
+		pending_cursor_key_version: number | null;
+		pending_page_is_final: boolean | null;
 		raw_content_byte_budget: number;
 		run_id: string;
 		runtime_ms_budget: number;
@@ -4016,6 +4073,8 @@ export const tableNames = [
 	'email_project_profiles',
 	'email_project_rules',
 	'email_recipients',
+	'email_relevance_message_observations',
+	'email_relevance_project_candidates',
 	'email_relevance_scan_connections',
 	'email_relevance_scan_projects',
 	'email_relevance_scan_reservations',
