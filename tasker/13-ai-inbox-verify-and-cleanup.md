@@ -19,7 +19,7 @@ The unified mutation-review queue is built and wired end-to-end:
 - ✅ Endpoints `GET /api/inbox`, `GET /api/inbox/count`, `POST /api/inbox/decide` (with batch + stale-row reconciliation)
 - ✅ Project Inbox tab (`ProjectInboxPanel.svelte`) + Dashboard modal (`DashboardInboxModal.svelte`), grouped by project/account
 - ✅ `project-suggestion-actions.service.ts` (freshness guard, feedback, idempotent claim) + passing unit tests
-- ✅ All producers call `syncInboxItem…` (agent runs, project loops, Start Here capture, calendar)
+- ✅ All producers call `syncInboxItem…` (agent runs, Project Reviews, Start Here capture, calendar)
 - ✅ First loop-parent context slice: `/api/inbox?include_payload=1` now returns
   `source_context.project_loop_run` for project-loop items, and Project
   Inbox/Dashboard Inbox render the originating review run metadata.
@@ -260,7 +260,7 @@ delegated-run reconciliation debt from "Loose ends #1" was verified live.
    `dotenv.config()` in the module body, but static imports are hoisted, so every
    module-level `process.env` read (notably `config/projectLoops.ts` →
    `PROJECT_LOOPS_ENABLED`) evaluated BEFORE `.env` loaded. Net effect: enabling
-   project loops via `apps/worker/.env` silently did nothing (burst run failed
+   Project Reviews via `apps/worker/.env` silently did nothing (burst run failed
    `feature_disabled` even with the flag set). Fixed by replacing it with
    `import 'dotenv/config'` as the first import. Worker typecheck green; running dev
    worker restarted healthy. This unblocks the loops-audit "operational flag-enable"

@@ -3,35 +3,44 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
+		<title>BuildOS — From revision brain dump to structured project</title>
 		<style>
-			@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600&display=swap');
+			@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 			:root {
 				--paper: #fbfaf7;
 				--ink: #16161a;
 				--muted: #66666e;
 				--border: #d6d0c6;
+				--soft: #f1eee8;
 				--accent: #b85416;
-			}
-			* {
-				margin: 0;
-				padding: 0;
-				box-sizing: border-box;
-			}
-			html,
-			body {
-				background: #2a2a2a;
+				--accent-soft: #fff5ed;
 			}
 
-			/* 1:1 — 1080 x 1080 */
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+
+			html,
+			body {
+				width: 1080px;
+				height: 1080px;
+				overflow: hidden;
+				background: var(--paper);
+			}
+
 			.card {
 				position: relative;
 				width: 1080px;
 				height: 1080px;
-				background: var(--paper);
 				overflow: hidden;
+				background: var(--paper);
+				color: var(--ink);
 				padding: 40px 44px;
 			}
+
 			.grain {
 				position: absolute;
 				inset: 0;
@@ -41,17 +50,17 @@
 			}
 
 			.eyebrow {
-				font-family: 'Inter', sans-serif;
-				font-weight: 600;
-				font-size: 19px;
-				letter-spacing: 0.16em;
-				text-transform: uppercase;
-				color: var(--muted);
 				display: flex;
 				align-items: center;
 				gap: 12px;
-				margin-bottom: 14px;
+				font-family: 'Inter', sans-serif;
+				font-size: 19px;
+				font-weight: 600;
+				letter-spacing: 0.16em;
+				text-transform: uppercase;
+				color: var(--muted);
 			}
+
 			.eyebrow .dot {
 				width: 6px;
 				height: 6px;
@@ -59,79 +68,299 @@
 				background: var(--border);
 			}
 
-			/* after project — dominant, fills lower area */
+			.before {
+				position: absolute;
+				left: 44px;
+				right: 44px;
+				top: 74px;
+				min-height: 176px;
+				padding: 14px 18px 13px;
+				background: #fff;
+				border: 1px solid var(--border);
+				border-radius: 14px;
+				box-shadow: 0 14px 34px -20px rgba(22, 22, 26, 0.36);
+				z-index: 3;
+			}
+
+			.before-header {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-bottom: 10px;
+				font-family: 'Inter', sans-serif;
+			}
+
+			.before-tag {
+				font-size: 15px;
+				font-weight: 700;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: var(--accent);
+			}
+
+			.source-chip {
+				padding: 5px 8px;
+				border-radius: 999px;
+				background: var(--soft);
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.07em;
+				text-transform: uppercase;
+				color: var(--muted);
+			}
+
+			.brain-text {
+				padding: 12px 14px;
+				border: 2px solid rgba(184, 84, 22, 0.62);
+				border-radius: 10px;
+				background: #fffdfa;
+				font-family: 'Inter', sans-serif;
+				font-size: 16.5px;
+				font-weight: 500;
+				line-height: 1.36;
+				color: #29292e;
+			}
+
+			.brain-foot {
+				margin-top: 8px;
+				font-family: 'Inter', sans-serif;
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--muted);
+			}
+
+			.transform-arrow {
+				position: absolute;
+				left: 490px;
+				top: 251px;
+				width: 100px;
+				height: 62px;
+				z-index: 4;
+			}
+
+			.transform-label {
+				position: absolute;
+				left: 587px;
+				top: 268px;
+				padding: 7px 11px;
+				border: 1px solid rgba(184, 84, 22, 0.28);
+				border-radius: 999px;
+				background: var(--accent-soft);
+				font-family: 'Inter', sans-serif;
+				font-size: 12px;
+				font-weight: 700;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+				color: var(--accent);
+				z-index: 4;
+			}
+
 			.after {
 				position: absolute;
 				left: 44px;
 				right: 44px;
+				top: 310px;
 				bottom: 40px;
-				top: 250px;
+				overflow: hidden;
+				background: #fff;
 				border: 1px solid var(--border);
 				border-radius: 16px;
-				overflow: hidden;
-				background: #fff;
 				box-shadow: 0 20px 50px -26px rgba(22, 22, 26, 0.32);
 			}
-			.after img {
-				display: block;
-				width: 100%;
-				margin-top: -2px;
-			}
 
-			/* before — small inset card, top, overlapping */
-			.before {
+			.browser-bar {
 				position: absolute;
-				left: 44px;
-				top: 74px;
-				width: 720px;
-				border: 1px solid var(--border);
-				border-radius: 12px;
-				overflow: hidden;
-				background: #fff;
-				box-shadow: 0 14px 34px -18px rgba(22, 22, 26, 0.34);
+				left: 0;
+				right: 0;
+				top: 0;
+				height: 50px;
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				padding: 0 18px;
+				background: rgba(251, 250, 247, 0.98);
+				border-bottom: 1px solid var(--border);
+				font-family: 'Inter', sans-serif;
 				z-index: 3;
 			}
-			.before img {
+
+			.browser-dots {
+				display: flex;
+				gap: 5px;
+			}
+
+			.browser-dots span {
+				width: 7px;
+				height: 7px;
+				border-radius: 50%;
+				background: #c8c2b8;
+			}
+
+			.page-kind {
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--accent);
+			}
+
+			.url {
+				flex: 1;
+				padding: 7px 12px;
+				border: 1px solid #ded8cf;
+				border-radius: 9px;
+				background: #fff;
+				font-size: 13px;
+				font-weight: 500;
+				color: #44444b;
+			}
+
+			.after-shot {
+				position: absolute;
+				left: 0;
+				top: 50px;
 				display: block;
 				width: 100%;
+				height: auto;
 			}
 
-			.before-tag {
-				font-family: 'Inter', sans-serif;
-				font-weight: 600;
-				font-size: 16px;
-				letter-spacing: 0.1em;
-				text-transform: uppercase;
-				color: var(--muted);
-				margin-bottom: 8px;
-			}
-
-			/* orange arrow from before into after */
-			.arrow {
+			.highlight {
 				position: absolute;
-				left: 792px;
-				top: 150px;
+				left: 134px;
+				width: 350px;
+				height: 34px;
+				border: 2px solid rgba(184, 84, 22, 0.68);
+				border-radius: 7px;
+				background: rgba(255, 245, 237, 0.12);
 				z-index: 4;
 			}
 
-			.wordmark {
+			.highlight.project-row {
+				top: 265px;
+			}
+
+			.highlight.goal-row {
+				top: 301px;
+			}
+
+			.highlight.task-row {
+				top: 338px;
+			}
+
+			.callout,
+			.kanban-callout {
 				position: absolute;
-				bottom: 60px;
-				right: 66px;
+				padding: 11px 14px;
+				border: 1px solid rgba(214, 208, 198, 0.98);
+				border-left: 4px solid var(--accent);
+				border-radius: 10px;
+				background: rgba(251, 250, 247, 0.97);
+				box-shadow: 0 10px 24px -17px rgba(22, 22, 26, 0.55);
 				font-family: 'Inter', sans-serif;
+				z-index: 5;
+			}
+
+			.callout {
+				left: 535px;
+				width: 415px;
+			}
+
+			.callout.project {
+				top: 222px;
+			}
+
+			.callout.goal {
+				top: 294px;
+			}
+
+			.callout.task {
+				top: 374px;
+			}
+
+			.callout-label {
+				font-size: 12px;
+				font-weight: 700;
+				letter-spacing: 0.09em;
+				text-transform: uppercase;
+				color: var(--accent);
+			}
+
+			.callout-detail {
+				margin-top: 3px;
+				font-size: 14px;
 				font-weight: 600;
+				line-height: 1.24;
+				color: var(--ink);
+			}
+
+			.annotation-lines {
+				position: absolute;
+				inset: 0;
+				width: 100%;
+				height: 100%;
+				pointer-events: none;
+				z-index: 4;
+			}
+
+			.kanban-highlight {
+				position: absolute;
+				left: 134px;
+				top: 565px;
+				width: 720px;
+				height: 148px;
+				border: 2px solid rgba(184, 84, 22, 0.5);
+				border-radius: 12px;
+				z-index: 4;
+				pointer-events: none;
+			}
+
+			.kanban-callout {
+				left: 680px;
+				top: 523px;
+				width: 214px;
+				z-index: 6;
+			}
+
+			.brand-lockup {
+				position: absolute;
+				bottom: 46px;
+				right: 48px;
+				display: flex;
+				align-items: center;
+				gap: 9px;
+				padding: 8px 12px 8px 9px;
+				background: rgba(251, 250, 247, 0.97);
+				border: 1px solid rgba(214, 208, 198, 0.95);
+				border-radius: 12px;
+				box-shadow:
+					0 12px 28px -18px rgba(22, 22, 26, 0.5),
+					0 1px 0 rgba(255, 255, 255, 0.85) inset;
+				z-index: 10;
+			}
+
+			.brain-bolt {
+				display: block;
+				width: 38px;
+				height: auto;
+			}
+
+			.wordmark {
+				font-family: 'Inter', sans-serif;
 				font-size: 21px;
+				font-weight: 600;
 				letter-spacing: 0.02em;
 				color: var(--ink);
-				opacity: 0.92;
-				z-index: 5;
-				text-shadow: 0 1px 8px rgba(251, 250, 247, 0.9);
 			}
 		</style>
 	</head>
 	<body>
-		<div class="card">
-			<svg class="grain" width="1080" height="1080">
+		<main
+			class="card"
+			aria-label="A revision brain dump transformed into a structured Novel Revision Project in BuildOS"
+		>
+			<svg class="grain" width="1080" height="1080" aria-hidden="true">
 				<filter id="g">
 					<feTurbulence
 						type="fractalNoise"
@@ -148,28 +377,121 @@
 				<span>Before</span><span class="dot"></span><span>After</span>
 			</div>
 
-			<div class="before">
-				<div style="padding: 12px 14px 0"><div class="before-tag">The brain dump</div></div>
-				<img src="asset1-before-crop.png" alt="messy brain dump" />
-			</div>
+			<section class="before" aria-label="Raw revision brain dump">
+				<div class="before-header">
+					<div class="before-tag">The revision brain dump</div>
+					<div class="source-chip">One messy note</div>
+				</div>
+				<p class="brain-text">
+					Chapter 7 needs a complete rewrite. The pacing is off after the reveal in
+					chapter 5. Sarah's motivation doesn't connect to chapter 12 anymore. I have
+					notes in my Google Doc but I also wrote something on my phone about the
+					timeline. The beta reader said the middle drags. I think I need to move the
+					confrontation earlier but that breaks the subplot with Marcus. Also I changed
+					the warehouse scene and need to check if it contradicts chapters 3 and 4.
+				</p>
+				<div class="brain-foot">Unstructured context · no cleanup first</div>
+			</section>
 
-			<div class="arrow">
-				<svg width="60" height="150" viewBox="0 0 60 150" fill="none">
+			<svg class="transform-arrow" viewBox="0 0 100 62" fill="none" aria-hidden="true">
+				<path
+					d="M50 3 C 50 20, 50 35, 50 49 M39 39 L50 51 L61 39"
+					stroke="#b85416"
+					stroke-width="4"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				/>
+			</svg>
+			<div class="transform-label">BuildOS structures the project</div>
+
+			<section class="after" aria-label="Structured Novel Revision Project">
+				<div class="browser-bar">
+					<div class="browser-dots" aria-hidden="true">
+						<span></span><span></span><span></span>
+					</div>
+					<div class="page-kind">Project page</div>
+					<div class="url">build-os.com/project/novelrevisionproject</div>
+				</div>
+
+				<img
+					class="after-shot"
+					src="asset1-after-fullpage.png"
+					alt="Novel Revision Project in BuildOS"
+				/>
+
+				<div class="highlight project-row" aria-hidden="true"></div>
+				<div class="highlight goal-row" aria-hidden="true"></div>
+				<div class="highlight task-row" aria-hidden="true"></div>
+
+				<div class="callout project">
+					<div class="callout-label">Project updated</div>
+					<div class="callout-detail">Novel Revision Project</div>
+				</div>
+				<div class="callout goal">
+					<div class="callout-label">Goal created</div>
+					<div class="callout-detail">
+						Complete novel revision — pacing, motivation, and plot consistency
+					</div>
+				</div>
+				<div class="callout task">
+					<div class="callout-label">Task created</div>
+					<div class="callout-detail">Rewrite Chapter 7</div>
+				</div>
+
+				<div class="kanban-highlight" aria-hidden="true"></div>
+				<div class="kanban-callout">
+					<div class="callout-label">Task Kanban Board</div>
+				</div>
+
+				<svg class="annotation-lines" viewBox="0 0 990 730" aria-hidden="true">
+					<defs>
+						<marker
+							id="arrowhead"
+							markerWidth="8"
+							markerHeight="8"
+							refX="6"
+							refY="3"
+							orient="auto"
+							markerUnits="strokeWidth"
+						>
+							<path d="M0,0 L0,6 L7,3 z" fill="#b85416" />
+						</marker>
+					</defs>
 					<path
-						d="M30 4 C 30 60, 30 90, 30 132 M14 116 L30 134 L46 116"
+						d="M535 248 C 515 252, 503 269, 486 282"
 						stroke="#b85416"
-						stroke-width="6"
-						stroke-linecap="round"
-						stroke-linejoin="round"
+						stroke-width="2.5"
+						fill="none"
+						marker-end="url(#arrowhead)"
+					/>
+					<path
+						d="M535 326 C 515 326, 503 320, 486 318"
+						stroke="#b85416"
+						stroke-width="2.5"
+						fill="none"
+						marker-end="url(#arrowhead)"
+					/>
+					<path
+						d="M535 400 C 515 394, 503 368, 486 355"
+						stroke="#b85416"
+						stroke-width="2.5"
+						fill="none"
+						marker-end="url(#arrowhead)"
+					/>
+					<path
+						d="M760 561 C 720 572, 670 580, 620 586"
+						stroke="#b85416"
+						stroke-width="2.5"
+						fill="none"
+						marker-end="url(#arrowhead)"
 					/>
 				</svg>
-			</div>
+			</section>
 
-			<div class="after">
-				<img src="asset1-after-fullpage.png" alt="structured revision plan in BuildOS" />
+			<div class="brand-lockup" aria-label="BuildOS">
+				<img class="brain-bolt" src="brain-bolt.png" alt="" />
+				<div class="wordmark">BuildOS</div>
 			</div>
-
-			<div class="wordmark">BuildOS</div>
-		</div>
+		</main>
 	</body>
 </html>

@@ -11,7 +11,7 @@
 **Relationship Status:** Prospect
 **Audience Quality:** High (writers, podcasters, creator-educators)
 **Profile Created:** 2026-05-07
-**Last Reviewed:** 2026-07-14
+**Last Reviewed:** 2026-07-20
 **Last Engaged:** Never
 **Source of First Discovery:** `instagram-engagement-targets.md` (Author lane — sweet-spot for direct engagement; "writer-creator-founder bridge" — IG underleveraged vs his X 474K)
 
@@ -92,6 +92,7 @@
 | 2026-07-13 | Reel | QUEUED #1. Fresh TRUE FCW: `DasguJFjhZK` "Biggest Advance vs. Right Publisher" (David Shelley, CEO Hachette) — 0c/26.6h. ALT: Ferriss `DaqHneugU_f` 48.9h/1c. AVOID Housel `DanUhUFka5j` 74.9h/142c (ratio'd). | https://www.instagram.com/reel/DasguJFjhZK/ | Queued | Pending /instagram-reply | One reader-builder line on the advance-vs-right-publisher tradeoff; reader register, no pitch. | Pending | 2026-07-13_instagram-warmup.md |
 | 2026-07-14 | Reel | QUEUED #3 — fresh near-FCW: `Davn7WpAeo-` "You Control What Success Looks Like" (Ryan Holiday) 17.5h/1c/53l — freshest Perell surface. On-thesis writing reel `DavFktNk66q` "Write For 15 Minutes" (Michael Connelly) 22.5h/13c is a strong ALT. Publisher-advance `DasguJFjhZK` aged to 46.5h/1c. Housel comedians reel now PINNED — still avoid. 79,267f (+793 since 7/13, fastest-growing in rotation). | https://www.instagram.com/reel/Davn7WpAeo-/ | Queued | Pending /instagram-reply | One reader-builder line on the Ryan Holiday "you define what success looks like" point (watch clip); reader register, no pitch. | Pending | 2026-07-14_instagram-warmup.md |
 | 2026-07-14 | Reel | Drafted reply on `Davn7WpAeo-` "You Control What Success Looks Like — Ryan Holiday." **No relationship — first-ever touch; reader/craft register, NOT founder-voice.** Fit 1, no product name. **⚠️ WATCH THE CLIP — confirm against Holiday's actual point.** 3 options: **Opt 1 (insight, reader):** "what holiday's describing is borrowing your definition of success from people who'd never actually want your life. writing my own version down was harder than it sounds."; **Opt 2 (energy, clip-safe):** "holiday's one of the few who can say 'define success for yourself' and not have it collapse into a motivational poster."; **Opt 3 (question, REC):** "does he get into how you actually pick your own definition, or just that you should? the 'that you should' part is easy — the choosing is where everyone i know gets stuck." Don't reuse 7/11 Shafak "bracing for the usual" shape. ALT surface: writing reel `DavFktNk66q`. Post via @djwayne3. | https://www.instagram.com/reel/Davn7WpAeo-/ | Drafted | Drafted - Pending Posting | See options (REC: Opt 3 — clip-safe; Opt 1 if clip confirms). | Pending | 2026-07-14_instagram-warmup.md → 2026-07-14_instagram-replies.md |
+| 2026-07-20 | Reel | QUEUED #1. Fresh low-comp: `Da-01yYD7nN` "Write To Rediscover Curiosity — Anne Lamott" **19.8h/4c/458l**. ALTs: `Da51nMZAhF5` Dana Gioia "How He Studied George Orwell" 66.3h/**0c** TRUE FCW; `Da_SJS2gZub` Lamott storytelling formula 15.6h/20c (crowded). Housel comedians reel still PINNED — avoid. **84,209f (+4,942 since 7/14 — surging).** | https://www.instagram.com/reel/Da-01yYD7nN/ | Comment | Queued | One reader-builder line reacting to the specific Lamott curiosity claim (WATCH CLIP); reader register, not founder-voice, no pitch. | Pending | 2026-07-20_instagram-warmup.md |
 
 ## Open Loops
 

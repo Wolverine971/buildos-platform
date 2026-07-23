@@ -1,6 +1,6 @@
 <!-- tasker/28-loop-inbox-freshness.md -->
 
-# 28 - Loop/Inbox Freshness: Attention Budget + Rotation
+# 28 - Project Review/Inbox Freshness: Attention Budget + Rotation
 
 **Created 2026-07-18.** Owner: product/engineering agent.
 **Type:** audit + phased build plan. Supersedes the analysis in `loop-freshness.md` (root, DJ's
@@ -9,10 +9,10 @@ are stale or wrong, see §2).
 
 ## The problem, in one paragraph
 
-Loops are live and nightly. Every active project gets a light loop (~daily, end-of-day local
-time) and scheduled complete audits (04:00 cron + triggers). Each run inserts new
+Project Reviews are live and nightly. Every active project gets a light review pass (~daily,
+end-of-day local time) and scheduled Complete Project Audits (04:00 cron + triggers). Each pass inserts new
 `project_suggestions` and syncs them into `inbox_items` — but **nothing ever retires the previous
-run's still-pending suggestions**, every source shares one uniform 30-day TTL, and the badge
+pass's still-pending suggestions**, every source shares one uniform 30-day TTL, and the badge
 counts raw rows. Result on 2026-07-18: **50 pending inbox items** across 10 projects (11 on one
 project), items from 7/07 still pending, and near-duplicate paraphrases sitting side by side. DJ
 decides ~items daily (64 decided in the recent window) but producers outpace him. The fix is a
@@ -21,9 +21,9 @@ LLM reviewer (that's Phase 2 polish, not the containment).
 
 ## 1. Verified system map (2026-07-18)
 
-Two loop job types in `apps/worker/src/workers/project-loop/projectLoopWorker.ts`:
+Two Project Review job types in `apps/worker/src/workers/project-loop/projectLoopWorker.ts`:
 
-- **Light loop** (`processProjectLoopJob`, :2528) — generators for `doc_outdated`,
+- **Light review pass** (`processProjectLoopJob`, :2528) — generators for `doc_outdated`,
   `task_conflict`, `doc_org`, `drift`; concatenated and capped at `MAX_SUGGESTIONS = 25` (:79,
   enforced :2783). Cost cap $0.35.
 - **Complete audit** (`processCompleteProjectAuditJob`, :2272) — writes `project_audits` +
@@ -46,10 +46,10 @@ upsert on `UNIQUE (source_type, source_ref_id)`). Key mechanics:
   60-day lookback against `['pending','delegated','addressed','rejected','applied']`
   (projectLoopWorker.ts:88-99, applied :2782-2794). **Returns `null` for `drift` and
   `audit_recommendation`** — those kinds have zero deterministic dedup (prompt-only).
-- **Supersede exists but only for audits + failed runs**: `supersedeOlderReadyAudits` (:2142)
+- **Supersede exists but only for audits + failed passes**: `supersedeOlderReadyAudits` (:2142)
   retires the previous audit + its pending children when a new audit goes ready;
-  `supersedePendingSuggestionsForFailedRun` (:444). **Light-loop suggestions are never
-  superseded across runs — they accumulate.**
+  `supersedePendingSuggestionsForFailedRun` (:444). **Light-review suggestions are never
+  superseded across passes — they accumulate.**
 - **Scheduling has no pending-awareness**: `enqueueProjectLoop` guards on active runs and a
   30-min cooldown, never on how many undecided suggestions already exist.
 - **Audit surface has flip-flopped 3×**: children as individual items (7/03, `399d9a11`) →
@@ -82,8 +82,8 @@ TTL" direction.
    packet card couldn't be actioned. Re-reverting without fixing packet actionability recreates
    the "non-actionable, stale audit packet" it itself observed. Also, today only 2 of 50 pending
    items are audit packets — audit fan-out is not the live fire.
-2. **It missed the dominant mechanism: cross-run accumulation of light-loop suggestions.**
-   Nightly runs + no supersede + 30d TTL is the arithmetic that produced 35→50. Its plan has no
+2. **It missed the dominant mechanism: cross-pass accumulation of light-review suggestions.**
+   Nightly passes + no supersede + 30d TTL is the arithmetic that produced 35→50. Its plan has no
    rotation concept.
 3. **It missed the existing machinery**: entity-keyed suppression (and its `drift`/
    `audit_recommendation` null-key hole), audit supersede, failed-run supersede, the approve-time
@@ -93,12 +93,12 @@ TTL" direction.
    What's missing is policy between them, enforced where backfill can't bypass it.
 4. **It missed that expiry is read-time only** (no sweep) and that scheduling has no
    pending-count awareness.
-5. Counts stale (28 → 50); source mix shifted from audit children to accumulated loop findings.
+5. Counts stale (28 → 50); source mix shifted from audit children to accumulated review findings.
 
 ## 3. Target model
 
 ```
-Generators (light loop / audit / calendar / agent runs)
+Generators (review pass / audit / calendar / agent runs)
    → project_suggestions etc.        (candidate ledger — already exists)
    → ROTATION at run completion      (new: each run refreshes, not appends)
    → ADMISSION in shared sync layer  (new: per-project budget, per-source TTL)
@@ -108,7 +108,7 @@ Generators (light loop / audit / calendar / agent runs)
 
 Invariants after Phase 1:
 
-- A light-loop finding older than the project's last two successful runs cannot sit `pending`.
+- A light-review finding older than the project's last two successful passes cannot sit `pending`.
 - No project shows more than **3** pending inbox items; overflow is `deferred`, auto-promoted
   when a slot frees.
 - Every source type has its own TTL; calendar ≤ 7d.
@@ -120,11 +120,11 @@ Invariants after Phase 1:
 
 No LLM calls anywhere in this phase. All in `shared-agent-ops` + worker + one migration.
 
-### WP-1: Run rotation for light-loop suggestions
+### WP-1: Pass rotation for light-review suggestions
 
-At successful light-run completion (where suggestions are inserted, projectLoopWorker.ts):
+At successful light-review completion (where suggestions are inserted, projectLoopWorker.ts):
 
-1. Load the project's still-`pending` light-loop suggestions (`doc_org`, `doc_outdated`,
+1. Load the project's still-`pending` light-review suggestions (`doc_org`, `doc_outdated`,
    `drift`, `task_conflict` — NOT `audit_recommendation`, audits already rotate).
 2. A new proposal suppressed by an existing pending row = **re-confirmation**: update that row's
    `updated_at` (and new column `last_confirmed_run_id`), keep it pending, refresh inbox row.
@@ -157,7 +157,7 @@ in `reviewExpiresAt`:
 | source_type                                   | TTL                                             |
 | --------------------------------------------- | ----------------------------------------------- |
 | `calendar_suggestion`                         | 7d (Phase 2 adds event-date awareness)          |
-| `project_suggestion` (light-loop kinds)       | 7d (rotation usually beats this)                |
+| `project_suggestion` (light-review kinds)     | 7d (rotation usually beats this)                |
 | `project_suggestion` (`audit_recommendation`) | 14d (audit supersede usually beats this)        |
 | `project_audit`                               | 14d                                             |
 | `agent_run`                                   | 14d (user-initiated work product, give it room) |
@@ -199,13 +199,19 @@ title show `N items · K projects`. No store rewrite needed in Phase 1.
 
 **Phase 1 verification:** worker tests for rotation (confirm/rotate/grace/user-touched),
 admission tests (cap, promote-on-decide, backfill parity), TTL mapper tests; live smoke: run a
-manual loop on a flooded project, watch pendings rotate instead of accumulate.
+manual Project Review on a flooded project, watch pendings rotate instead of accumulate.
 
 ## 5. Phase 2 — synthesis + review layer (LLM-assisted)
 
-- **Per-project synthesis pass** at loop completion when candidates > budget: cluster
+The per-project synthesis work has been extracted into
+[`34-project-review-holistic-synthesis.md`](34-project-review-holistic-synthesis.md) so the
+holistic review outcome does not remain buried behind Phase 1 containment. The global
+cross-project broker remains in this tracker.
+
+- **Per-project synthesis pass (task 34)** after a materially useful review pass; attention-budget
+  overflow is one required trigger. Cluster
   overlapping candidates (cross-kind), merge into a single decision item with the members as
-  evidence; disposition recorded per candidate (`merged_into:<id>`). Reuses the loop's existing
+  evidence; disposition recorded per candidate (`merged_into:<id>`). Reuses the review pass's existing
   LLM budget/cost-cap plumbing.
 - **Global attention broker**: dashboard shows top-3 packets across projects (rank by
   urgency/importance separated from risk_tier); the rest reachable per-project. This is where
@@ -258,7 +264,7 @@ back into generator prompts + broker ranking. Only after Phase 3 gives a baselin
 - [x] **WP-2 suppression keys** — `suggestionSuppressionKey` evidence/title fallbacks
       (`generators.ts`); `loadExistingSuggestionKeys` selects + passes `evidence_refs, title`.
 - [x] **WP-3 per-source TTLs** — `INBOX_REVIEW_EXPIRY_MS_BY_SOURCE` in `inbox-index.ts`
-      (7d loop findings + calendar, 14d agent_run + audit + audit children); project_suggestion
+      (7d review findings + calendar, 14d agent_run + audit + audit children); project_suggestion
       expiry basis is `updated_at ?? created_at` so re-confirmation extends the window.
 - [x] **WP-4 admission budget** — migration `20260718010000_inbox_items_deferred_status.sql`
       ('deferred' in CHECK); `applyProjectAttentionBudget` + `PROJECT_ATTENTION_BUDGET = 3` in
@@ -278,7 +284,7 @@ back into generator prompts + broker ranking. Only after Phase 3 gives a baselin
 - [x] Tests: worker 366/366 (incl. new `inboxAttentionBudget.test.ts`, suppression fallback
       cases, updated `inboxIndex.test.ts` TTL expectations); web inbox tests 28/28; typecheck
       green on shared-agent-ops, worker (tsgo), web (svelte-check).
-- [ ] Live smoke: manual loop run on a flooded project (e.g. `2dcdb7d3`, 11 pending) →
+- [ ] Live smoke: manual review pass on a flooded project (e.g. `2dcdb7d3`, 11 pending) →
       verify rotation supersedes, budget defers to 3, badge drops.
 
 **Ship log:**
@@ -300,6 +306,6 @@ back into generator prompts + broker ranking. Only after Phase 3 gives a baselin
   inbox on prod will flip today's 23 `deferred` rows back to `pending` (backfill re-syncs open
   sources and the old upsert has no deferred preservation). Self-heals after deploy; harmless
   but the badge count regresses.
-- Tonight's prod worker runs OLD code: no rotation, no post-run budget. New suggestions land
+- Tonight's prod worker runs OLD code: no rotation, no post-pass budget. New suggestions land
   as pending and wait for a NEW-code read to be budgeted.
   → **Commit + deploy is the single remaining step to make Phase 1 hold on its own.**

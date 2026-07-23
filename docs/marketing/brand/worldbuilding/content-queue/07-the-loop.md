@@ -2,6 +2,10 @@
 
 # The Loop
 
+**Terminology guardrail:** "The Loop" here names the **human practice** of capturing,
+acting, and returning with new context. It is not the background Project Review worker and
+not an agent-execution loop. See `docs/product/PROJECT_REVIEW_TAXONOMY.md`.
+
 **Lane:** Brand / product · **Format:** carousel or short screen-demo video (the loop is inherently visual/sequential) · **Status:** queued
 
 **Hook:** "BuildOS isn't an app you check. It's a loop you run."

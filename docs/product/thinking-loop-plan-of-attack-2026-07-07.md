@@ -6,6 +6,10 @@ Date: 2026-07-07
 Status: Execution roadmap
 Source assessment: `docs/product/thinking-loop-capture-structure-surface-decide-update-2026-07-07.md`
 
+**Terminology:** "Thinking loop" in this roadmap is the human/product feedback lifecycle.
+The background capability is **Project Review**; one execution is a **project review pass**.
+See `docs/product/PROJECT_REVIEW_TAXONOMY.md`.
+
 ## Operating Thesis
 
 Complete one end-to-end loop before widening the product surface.
@@ -35,7 +39,7 @@ Goal: avoid building the next layer on unclear activation definitions, unverifie
 
 2. Verify the already-built decision loop.
     - Finish the open AI Inbox / Project Inbox live smokes in `tasker/13-ai-inbox-verify-and-cleanup.md`.
-    - Verify project audit packet flow from `tasker/14-complete-project-audit-build.md` before broadening Project Loops exposure.
+    - Verify project audit packet flow from `tasker/14-complete-project-audit-build.md` before broadening Project Review exposure.
     - Confirm migrations and feature flags before any production enablement.
 
 3. Define the minimum analytics baseline.
@@ -54,7 +58,7 @@ Goal: avoid building the next layer on unclear activation definitions, unverifie
 - Activation is defined beyond onboarding completion.
 - Day-30 context compounding has a concrete product ladder.
 - AI Inbox / Project Inbox smoke results are known.
-- Project Loops / audit flag and migration state are known.
+- Project Review / audit flag and migration state are known.
 - Memory and receipt roles are chosen.
 - The first implementation phase can be scoped without re-litigating product goals.
 
@@ -183,7 +187,7 @@ Goal: make Decide a BuildOS-wide behavior without dumping everything into AI Inb
     - Use it for pending decisions and reviewable mutations.
     - Do not route every informational insight into inbox.
 
-3. Harden Project Loops exposure.
+3. Harden Project Review exposure.
     - Finish live smoke results.
     - Enable only after suggestion quality, stale suppression, and audit packet behavior are verified.
     - Track clarity delivered, not just run completion.
@@ -195,7 +199,7 @@ Goal: make Decide a BuildOS-wide behavior without dumping everything into AI Inb
 ### Exit Criteria
 
 - New recommendations can be classified as informational, reviewable, capture, or receipt.
-- Project Loops are either enabled with evidence or explicitly held behind a flag with blockers.
+- Project Reviews are either enabled with evidence or explicitly held behind a flag with blockers.
 - The product has one decision vocabulary across dashboard, project, brief, and inbox.
 
 ## Phase 5 - Capture Source Completion
@@ -306,7 +310,7 @@ Goal: make BuildOS meaningfully better than a fresh prompt because the project h
 - New broad agent capabilities that do not improve activation, receipts, or restart clarity.
 - Public-page expansion that does not feed feedback back into project memory.
 - Additional dashboard surfaces that do not answer "what changed," "what matters," or "what needs my call."
-- Project Loop production exposure before live smoke and migration state are verified.
+- Project Review production exposure before live smoke and migration state are verified.
 - More capture inputs unless they have a structure/surface/update path.
 
 ## First Five Concrete Tickets
@@ -321,7 +325,7 @@ Goal: make BuildOS meaningfully better than a fresh prompt because the project h
 
 3. AI Inbox / Project Inbox live smoke closure.
     - Source: `tasker/13-ai-inbox-verify-and-cleanup.md`
-    - Output: logged smoke results and go/no-go for Project Loops exposure.
+    - Output: logged smoke results and go/no-go for Project Review exposure.
 
 4. Onboarding first-brain-dump activation slice.
     - Reuse project-create chat, then fetch and show a transformation + Start Here result packet.
@@ -353,7 +357,7 @@ Goal: make BuildOS meaningfully better than a fresh prompt because the project h
 
 - Returning users can restart projects without rereading everything.
 - Project-log coverage makes native chat, inbox, daily brief, external-agent, and public-feedback changes visible.
-- Project Loops or audits are validated in production or deliberately held with known blockers.
+- Project Reviews or audits are validated in production or deliberately held with known blockers.
 - BuildOS has measurable context compounding: repeated updates, faster restart, higher acted-on brief rate, and durable project activity.
 
 ## Key Decisions For DJ

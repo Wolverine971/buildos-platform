@@ -1,0 +1,219 @@
+<!-- docs/marketing/visual-assets/projects/author-workflow-teardown/linkedin-reentry-receipt/reentry-tax-cover.html -->
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>BuildOS — The Writer Re-entry Tax</title>
+		<style>
+			@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap');
+
+			:root {
+				--paper: #fbfaf7;
+				--ink: #16161a;
+				--muted: #66666e;
+				--border: #d6d0c6;
+				--soft: #ebe7e0;
+				--accent: #b85416;
+			}
+
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+
+			html,
+			body {
+				width: 1080px;
+				height: 1080px;
+				overflow: hidden;
+				background: var(--paper);
+			}
+
+			.card {
+				position: relative;
+				width: 1080px;
+				height: 1080px;
+				padding: 72px 76px 60px;
+				background: var(--paper);
+				color: var(--ink);
+				overflow: hidden;
+			}
+
+			.grain {
+				position: absolute;
+				inset: 0;
+				opacity: 0.045;
+				pointer-events: none;
+				mix-blend-mode: multiply;
+			}
+
+			.eyebrow {
+				font-family: 'Inter', sans-serif;
+				font-size: 22px;
+				font-weight: 600;
+				letter-spacing: 0.18em;
+				text-transform: uppercase;
+				color: var(--accent);
+			}
+
+			h1 {
+				max-width: 850px;
+				margin-top: 34px;
+				font-family: 'IBM Plex Serif', Georgia, serif;
+				font-size: 82px;
+				font-weight: 500;
+				line-height: 1.03;
+				letter-spacing: -0.035em;
+			}
+
+			.subhead {
+				margin-top: 24px;
+				font-family: 'Inter', sans-serif;
+				font-size: 31px;
+				line-height: 1.35;
+				color: var(--muted);
+			}
+
+			.timeline-wrap {
+				margin-top: 74px;
+			}
+
+			.timeline-labels {
+				display: flex;
+				justify-content: space-between;
+				margin-bottom: 13px;
+				font-family: 'Inter', sans-serif;
+				font-size: 17px;
+				font-weight: 600;
+				letter-spacing: 0.11em;
+				text-transform: uppercase;
+				color: var(--muted);
+			}
+
+			.timeline {
+				display: grid;
+				grid-template-columns: 4fr 5fr;
+				height: 182px;
+				border: 1px solid var(--border);
+				border-radius: 16px;
+				overflow: hidden;
+				box-shadow: 0 20px 55px -34px rgba(22, 22, 26, 0.35);
+			}
+
+			.segment {
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				padding: 28px 32px;
+				font-family: 'Inter', sans-serif;
+			}
+
+			.segment.reentry {
+				background: var(--accent);
+				color: var(--paper);
+			}
+
+			.segment.writing {
+				background: var(--soft);
+				color: var(--ink);
+			}
+
+			.segment strong {
+				font-size: 25px;
+				font-weight: 600;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+			}
+
+			.segment span {
+				margin-top: 12px;
+				font-size: 22px;
+				line-height: 1.3;
+			}
+
+			.closing {
+				margin-top: 64px;
+				font-family: 'IBM Plex Serif', Georgia, serif;
+				font-size: 48px;
+				font-style: italic;
+				line-height: 1.22;
+			}
+
+			.meta {
+				position: absolute;
+				left: 76px;
+				bottom: 60px;
+				font-family: 'Inter', sans-serif;
+				font-size: 17px;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--muted);
+			}
+
+			.brand-lockup {
+				position: absolute;
+				right: 76px;
+				bottom: 46px;
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+
+			.brain-bolt {
+				display: block;
+				width: 48px;
+				height: auto;
+			}
+
+			.wordmark {
+				font-family: 'Inter', sans-serif;
+				font-size: 26px;
+				font-weight: 600;
+				letter-spacing: -0.02em;
+			}
+		</style>
+	</head>
+	<body>
+		<main class="card" aria-label="A 90-minute writing session showing the writer re-entry tax">
+			<svg class="grain" width="1080" height="1080" aria-hidden="true">
+				<filter id="grain-filter">
+					<feTurbulence
+						type="fractalNoise"
+						baseFrequency="0.9"
+						numOctaves="3"
+						stitchTiles="stitch"
+					/>
+					<feColorMatrix type="saturate" values="0" />
+				</filter>
+				<rect width="100%" height="100%" filter="url(#grain-filter)" />
+			</svg>
+
+			<div class="eyebrow">The re-entry tax</div>
+			<h1>You finally get 90 minutes to write.</h1>
+			<p class="subhead">Forty disappear remembering what the book was doing.</p>
+
+			<section class="timeline-wrap" aria-label="Example writing-session timeline">
+				<div class="timeline-labels"><span>0 min</span><span>90 min</span></div>
+				<div class="timeline">
+					<div class="segment reentry">
+						<strong>0–40 · Re-entry</strong>
+						<span>Reread · hunt · reconstruct</span>
+					</div>
+					<div class="segment writing">
+						<strong>40–90 · Writing</strong>
+						<span>The work you sat down to do</span>
+					</div>
+				</div>
+			</section>
+
+			<p class="closing">The draft was saved.<br />The context wasn’t.</p>
+			<div class="meta">What starting cold costs</div>
+			<div class="brand-lockup" aria-label="BuildOS">
+				<img class="brain-bolt" src="brain-bolt.png" alt="" />
+				<div class="wordmark">BuildOS</div>
+			</div>
+		</main>
+	</body>
+</html>

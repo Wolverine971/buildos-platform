@@ -246,7 +246,7 @@ Exit: Daily Brief is a Decide/Update surface, not a generated report with a chat
 
 ### Phase 4 — verification, safety, and distribution
 
-1. Close AI Inbox, Project Loop, Complete Project Audit, Agent Run, and calendar live smokes.
+1. Close AI Inbox, Project Review, Complete Project Audit, Agent Run, and calendar live smokes.
 2. Close the critical agentic-chat external-content/write security chain before broader automation
    exposure.
 3. Run the Writer acquisition pilot through the repaired first-session and return flow.

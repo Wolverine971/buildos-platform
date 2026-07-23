@@ -1,18 +1,19 @@
 ---
 date: 2026-06-25
-topic: project-review-loops
+topic: project-reviews
 status: research-spec
 path: docs/research/project-review-loop-audit-suggestion-families-2026-06-25.md
 related:
+    - docs/product/PROJECT_REVIEW_TAXONOMY.md
     - docs/specs/PROJECT_REVIEW_LOOPS_SCOPE_2026-06-13.md
     - docs/brainstorms/2026-06-12-project-loops-brainstorm.md
 ---
 
-# Project Review Loops: Suggestion Families And Complete Project Audit
+# Project Reviews: Suggestion Families And Complete Project Audit
 
 ## Purpose
 
-Project Review Loops currently do a light reconciliation pass: organize docs,
+Project Reviews currently use a light review pass to organize docs,
 flag outdated docs, identify drift, and flag task conflicts. This document
 sketches the next product layer: a broader, consultant-style project audit that
 reviews the whole project and tells the user whether the project is healthy,
@@ -24,7 +25,7 @@ technical design.
 
 ## Implementation Alignment As Of 2026-06-26
 
-The AI Inbox / Project Loops substrate now supports clarified project-suggestion
+The AI Inbox / Project Review substrate now supports clarified project-suggestion
 decisions before this broader audit work begins:
 
 - `project_loop_runs` remains the parent review event.
@@ -485,7 +486,7 @@ Use this product algorithm:
 ## Recommendation
 
 Treat Complete Project Audit as the fourth product family, distinct from the
-current light review families. The light loop keeps projects tidy day to day.
+current light review families. The light review pass keeps projects tidy day to day.
 The full audit should run only when the project has enough substance and either
 enough time or enough change has accumulated.
 

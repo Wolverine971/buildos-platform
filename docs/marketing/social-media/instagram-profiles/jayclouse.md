@@ -17,7 +17,7 @@
 **Next Best Action:** Direct peer-tier comment on the "quality vs. quantity" Reel (DYCuMKlAlxT, 4.9h, 5 cmts at queue time); fresh first-commenter window
 **Earliest Next Touch:** Now (Course lane fill — promoted from Stage 0 candidates queue this evening)
 **Profile Created:** 2026-05-07
-**Last Reviewed:** 2026-07-13
+**Last Reviewed:** 2026-07-20
 **Last Engaged:** Never
 **Source of First Discovery:** instagram-engagement-targets.md (Solo + Course lanes); 2026-05-06 Lane C #22
 
@@ -100,6 +100,7 @@
 | 2026-07-12 | Post | Durable carry: `DalDfUNjZSe` "June was the best month (financially)…" still 1c at 68.1h. Fresh `Danawo3lqTq` "Do you need this reminder too?" 46.1h/11c (crowded, lighter). No fresh low-comp surface. 12,316f. | https://www.instagram.com/p/DalDfUNjZSe/ | Queued (optional #7 today) | Pending /instagram-reply | Congrats + the mechanic: best month while the Lab was CLOSED — the compounding was already in the room. Never type a funnel keyword. | Pending | 2026-07-12_instagram-warmup.md |
 | 2026-07-13 | Feed Post | QUEUED optional #8 — `DalDfUNjZSe` "June was the best month (financially)" still 1c at 96.1h (durable). Fresher `Danawo3lqTq` reminder (74h/12c) is lifestyle chatter (walked this run — Shawn cameo + cruise/parenting accounts, no builder discovery). | https://www.instagram.com/p/DalDfUNjZSe/ | Queued | Pending /instagram-reply | Congrats + the mechanic: best month while the Lab was CLOSED = compounding was already in the room. Never type a funnel keyword. | Pending | 2026-07-13_instagram-warmup.md |
 | 2026-07-14 | Feed Post | Drafted reply on `DalDfUNjZSe` "June was the best month… despite The Lab being closed" (optional #8). **Some relationship (light — inbound likes on @build.os cmts); proven peer-graph node.** Fit 1, **NEVER type a funnel keyword**, no product name. 3 options: **Opt 1 (energy/congrats, REC):** "best month while the lab was closed means the work was already in the room before you shut the doors. congrats man, that's a good problem to have."; **Opt 2 (insight):** "revenue that lands while you're not even selling is the compounding cashing in the work you did months ago. the lab being closed just makes that visible in a way an open month never would."; **Opt 3 (question):** "did the closed month make it obvious what's actually driving the revenue? seems like the kind of thing that'd either reassure you or freak you out about reopening." Don't reuse Monday-morning-amnesia / tool-comparison / "marketing turns to slop" frames. Post via @djwayne3. | https://www.instagram.com/p/DalDfUNjZSe/ | Drafted | Drafted - Pending Posting | See options (REC: Opt 1). | Pending | 2026-07-14_instagram-warmup.md → 2026-07-14_instagram-replies.md |
+| 2026-07-20 | Feed Post | QUEUED #4. `Da3StWCjSnU` "If content is the highest-leverage thing you do, it shouldn't be what you squeeze into the gaps between meetings" **90.1h/4c/24l** — on-thesis (attention/structure). ALT: `Da3k9HBv_Cf` "Email: somehow still underrated" 87.4h/4c. Best-month post `DalDfUNjZSe` aged out of top-7. 12,340f. | https://www.instagram.com/p/Da3StWCjSnU/ | Comment | Queued | One lived line on protecting maker time for the highest-leverage work; NEVER a funnel keyword, no product name. | Pending | 2026-07-20_instagram-warmup.md |
 
 ## Ledger Links
 

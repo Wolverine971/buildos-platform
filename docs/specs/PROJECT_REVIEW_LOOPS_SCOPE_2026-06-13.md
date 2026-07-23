@@ -1,15 +1,20 @@
 ---
 date: 2026-06-13
-topic: project-review-loops
+topic: project-review-passes
 status: phase-1-complete-phase-2-wedge
 path: docs/specs/PROJECT_REVIEW_LOOPS_SCOPE_2026-06-13.md
 ---
 
-# Project Review Loops
+# Project Review Passes
+
+**Terminology:** This is the active product scope for **Project Reviews**. One worker
+execution is a **project review pass**; the later review/decision/feedback lifecycle is the
+**project review cycle**. See `docs/product/PROJECT_REVIEW_TAXONOMY.md`. The filename and
+internal `project_loop_*` identifiers remain for historical/code compatibility.
 
 ## Experience Target
 
-Project Loops should feel less like an AI inbox and more like a project catching
+Project Reviews should feel less like an AI inbox and more like a project catching
 itself up.
 
 When the user returns to a project, they should see a concise review of what
@@ -30,12 +35,12 @@ The first screen should answer:
 
 Microsoft's HAX Toolkit frames human-AI UX as system behavior across the whole
 interaction lifecycle: initial understanding, in-use support, failure handling,
-and behavior over time. That maps directly to Loops: the first version cannot be
+and behavior over time. That maps directly to the Project Review cycle: the first version cannot be
 just a card list because trust depends on visible evidence, repair paths, and
 learning from correction.
 
 The HAX guidelines paper argues for generally applicable interaction guidelines
-validated with practitioners across AI-infused products. For Loops, the relevant
+validated with practitioners across AI-infused products. For Project Reviews, the relevant
 lessons are: communicate what the system can do, make uncertainty visible,
 support efficient correction, and adapt from user feedback.
 
@@ -109,7 +114,7 @@ destructive task de-confliction yet.
 
 The Phase 1 safety work and a narrow Phase 2 wedge are now implemented:
 
-- Project Loops now create a dedicated `chat_sessions` row for each run and
+- Project Review passes now create a dedicated `chat_sessions` row for each run and
   link it to the project through `chat_sessions_projects`.
 - The worker persists a compact `project_loop_runs.brief` with current goal,
   recent changes, open decisions, stale assumptions, drift/contradictions, and
@@ -124,11 +129,11 @@ The Phase 1 safety work and a narrow Phase 2 wedge are now implemented:
 - Doc organization and outdated-doc suggestions now include undo operations.
 - Approval replay re-checks a stable project fingerprint and marks stale items
   `superseded` before any operation runs.
-- Approval replay uses the loop run chat session and sends
+- Approval replay uses the review pass's chat session and sends
   `X-Skip-Project-Loop-Burst: true` through the normal ontology write APIs so
   applying a suggestion does not enqueue a recursive burst review.
 - The unified inbox decision endpoint supports single-item and capped batch
-  decisions for project-loop suggestions. Batch apply is limited in the UI to
+  decisions for Project Review suggestions. Batch apply is limited in the UI to
   selected low/medium reversible items and excludes document-tree moves.
 - Dismissal feedback (`reason`, `note`) is persisted to
   `project_suggestions.user_feedback`.
@@ -152,7 +157,7 @@ environment before turning the feature flag on outside local/dev.
 - `undo_operations jsonb`: optional ordered reverse operations.
 - `source_fingerprint text`: hash/fingerprint of the input snapshot used to
   produce the item.
-- `user_feedback jsonb`: dismissal/correction signal to feed later loops.
+- `user_feedback jsonb`: dismissal/correction signal to feed later reviews.
 
 The approval endpoint re-checks freshness before replaying operations. If the
 project changed materially, it marks the item `superseded` and asks the user to
@@ -189,7 +194,7 @@ The expanded review should show:
 3. **Freshness guard**: implemented. Approval rejects materially changed
    snapshots by marking suggestions `superseded`.
 4. **Correction feedback**: implemented for dismissal reason/note. Future work
-   can feed this signal back into project-specific loop preferences.
+   can feed this signal back into project-specific review preferences.
 5. **Project brief**: implemented. The run brief is persisted and rendered at
    the top of Project Inbox.
 6. **Drift**: implemented as informational no-op review items.
@@ -201,5 +206,5 @@ The expanded review should show:
 
 The user should never wonder "why did the AI say this?" Every claim should be
 attached to project evidence. The system should ask for judgment when unsure
-instead of manufacturing certainty. The best loop run produces fewer items than
+instead of manufacturing certainty. The best review pass produces fewer items than
 expected, but each one feels obvious once seen.

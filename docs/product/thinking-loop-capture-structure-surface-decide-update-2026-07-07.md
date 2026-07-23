@@ -6,6 +6,10 @@ Date: 2026-07-07
 Status: Research synthesis and product-flow assessment
 Scope: Capture -> Structure -> Surface -> Decide -> Update across current BuildOS surfaces
 
+**Terminology:** "Thinking loop" here means the human/product feedback lifecycle across
+time. The background maintenance capability is **Project Review**, and one execution is a
+**project review pass**. See `docs/product/PROJECT_REVIEW_TAXONOMY.md`.
+
 ## Executive Finding
 
 BuildOS is already closest to its category promise when rough input becomes durable project memory and then returns as a concrete next move. The strongest current examples are AI Inbox, Project Inbox, calendar project suggestions, and the project detail workspace. Those surfaces have real object state, review actions, mutation paths, and visible project context.
@@ -114,7 +118,7 @@ Healthy state: the user can answer "What changed, why did it change, and where d
 | Voice notes                             | Audio and transcription are captured; notes can link to entities/groups.                                                    | Transcription gives text, but there is no default project update or proposal path.                      | Voice notes page/history and chat-session voice-note panels.                                                           | No native accept/dismiss/convert decision.                                                                     | No canonical update unless routed through another workflow.                                                  | Valuable capture mode, weak loop. It should either become an update composer source or be clearly parked with a next action.                                                               |
 | Daily brief dashboard/email/page        | No direct capture from the brief itself. It reads existing project memory.                                                  | Worker generates project briefs, priority actions, and updates project next-step fields.                | Dashboard widget now ensures today's brief on app open; modal/page/email show brief content.                           | "Chat about Brief" exists, but there is no per-item decision, "quick update," or "what changed?" CTA.          | Project next-step fields can be updated implicitly; brief chat mutations can refresh data.                   | Strong Surface, weak Decide and visible Update. The brief should restart the loop, not just report on it.                                                                                  |
 | Dashboard AI Inbox                      | Proposals come from agent runs, project suggestions, calendar suggestions, and related sources.                             | `inbox_items` indexes source truth and loads payload/context/capabilities.                              | Dashboard modal groups items with rationale, evidence, risk, project/audit context.                                    | Accept, dismiss, snooze, chat. Project suggestions collect dismissal reason/note.                              | Source state and inbox index sync; optimistic removal, notification-stack progress, fallback status repair.  | Best canonical Decide/Update example. The pattern should inform other surfaced recommendations, but not every item should become inbox noise.                                              |
-| Project Inbox and Project Loops         | Project loop runs and audits produce project suggestions and audit packets.                                                 | Suggestions include scoped operations, evidence, risk, feedback memory, and freshness checks.           | Project page can show audit tracker, Project Inbox groups, latest run brief, and review status when flags are enabled. | Accept, dismiss with feedback, snooze, batch approve eligible low-risk suggestions, chat.                      | Applies suggested operations, syncs status, stores feedback/suppression memory.                              | Architecturally strong but product value is not yet validated in production. Recent audit says flags were off and production clarity delivered was effectively zero at the time of review. |
+| Project Inbox and Project Reviews       | Project review passes and audits produce project suggestions and audit packets.                                             | Suggestions include scoped operations, evidence, risk, feedback memory, and freshness checks.           | Project page can show audit tracker, Project Inbox groups, latest run brief, and review status when flags are enabled. | Accept, dismiss with feedback, snooze, batch approve eligible low-risk suggestions, chat.                      | Applies suggested operations, syncs status, stores feedback/suppression memory.                              | Architecturally strong but product value is not yet validated in production. Recent audit says flags were off and production clarity delivered was effectively zero at the time of review. |
 | Calendar analysis                       | Calendar events are the raw source.                                                                                         | Service turns patterns into project suggestions with tasks, confidence, event IDs, reasoning, keywords. | Modal/notification surface shows found projects and task details; suggestions can also route through inbox.            | User selects, edits project names/descriptions/tasks, accepts or rejects.                                      | Accepted suggestions create projects/tasks and update suggestion status.                                     | Strong source-specific Capture -> Structure -> Decide -> Update loop. Needs better connection to the canonical loop metrics and recurring dashboard follow-up.                             |
 | Project detail workspace                | Manual project edits, task moves, document edits, goals/risks/events, and resumed chats.                                    | Canonical ontology state lives here.                                                                    | Header next step, pulse strip, entity tabs, task board, docs, activity, graph, recent chats, project inbox.            | Direct edits, task status changes, entity modals, inbox decisions.                                             | Immediate canonical state updates and refreshes.                                                             | Best destination surface for project memory. It should be the place every capture/update can return to with a visible receipt.                                                             |
 | External agent / MCP / OpenClaw gateway | External agents can read project context and call scoped tools.                                                             | Tool registry exposes project/task/calendar operations with auth, scopes, dry-run/idempotency support.  | Context surfaces to external agents through resources/tools; user-facing surfacing is less clear.                      | Policy/scope decides allowed operations. Some writes may be direct rather than human-reviewed.                 | Gateway writes can update BuildOS state and activity context.                                                | Good harness foundation, weak owner-visible return path. External writes need "what changed because an outside agent acted" surfacing.                                                     |
@@ -132,7 +136,7 @@ Healthy state: the user can answer "What changed, why did it change, and where d
 ### Structure -> Surface
 
 - Daily brief surfaces project memory, but prior audits found it can become a large wall of text. Even with app-open ensure behavior now present, quality and acted-upon measurement remain open.
-- Project Loops and Project Inbox have the strongest structure, but recent production review said flags were off/unvalidated.
+- Project Reviews and Project Inbox have the strongest structure, but recent production review said flags were off/unvalidated.
 - Raw braindumps and voice notes do not reliably return to the user as structured project prompts.
 - External agent writes can update state without a clear owner-facing "what changed" surface.
 - Public-page comments are tied to project documents but do not appear to feed into the owner's project review loop.
@@ -321,7 +325,7 @@ Avoid storing sensitive content in analytics. Store IDs, counts, stage transitio
     - Reuse why-now, evidence, decision capability, feedback, and notification-stack behavior where recommendations need action.
     - Keep informational surfaces out of inbox unless a decision is required.
 
-6. Enable and validate Project Loops in production.
+6. Enable and validate Project Reviews in production.
     - Confirm feature flags, source/status sync, telemetry, and suggestion quality.
     - Measure clarity delivered, not only run completion.
 
@@ -387,7 +391,7 @@ Onboarding, brain dump, and chat:
 - `apps/worker/src/workers/braindump/braindumpProcessor.ts`
 - `docs/specs/AGENTIC_CHAT_TIMELINE_TABS_BRAINDUMP_ARCHITECTURE_2026-06-20.md`
 
-Inbox, project loops, and daily brief:
+Inbox, Project Reviews, and daily brief:
 
 - `apps/web/docs/technical/architecture/agent-work/AI_INBOX_DESIGN_2026-06-24.md`
 - `apps/web/docs/technical/architecture/agent-work/AI_INBOX_CLARIFIED_DECISIONS_SPEC_2026-06-26.md`

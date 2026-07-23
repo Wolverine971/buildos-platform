@@ -43,7 +43,7 @@ docs an agent can run autonomously, and both directly shape the Phase 1 onboardi
 ### 2. AI Inbox / Project Inbox live smoke closure (standing verification debt)
 
 `tasker/13-ai-inbox-verify-and-cleanup.md` — the thinking-loop plan's Phase 0 lists this as the
-gate for broadening Project Loops exposure. Still open.
+gate for broadening Project Review exposure. Still open.
 
 ### 3. Loop telemetry on /today (nothing is instrumented)
 

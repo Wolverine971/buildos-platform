@@ -5,11 +5,17 @@ status: brainstorm
 path: docs/brainstorms/2026-06-12-project-loops-brainstorm.md
 ---
 
-# Project Loops
+# Project Review Passes (Originally "Project Loops")
+
+> **Historical terminology note (2026-07-22):** This brainstorm introduced the
+> "Project Loops" name. The canonical term is now **Project Review**; one execution is a
+> **project review pass**, not an agent loop. The shipped light path is a bounded worker
+> pipeline with fixed review families, rather than a model-directed tool loop. Legacy code
+> identifiers retain `project_loop`. See `docs/product/PROJECT_REVIEW_TAXONOMY.md`.
 
 ## 2026-06-13 Direction Shift
 
-Project Loops should orient around **Project Review**, not an "AI Suggestions"
+Project Reviews should orient around **Project Review**, not an "AI Suggestions"
 inbox. The user-facing promise is: the project catches itself up while the user
 is away, then asks for judgment only where judgment is actually needed.
 
@@ -27,14 +33,14 @@ Detailed scope: `docs/specs/PROJECT_REVIEW_LOOPS_SCOPE_2026-06-13.md`.
 
 ## What We're Building
 
-A **loop** is a per-project synthesis/reconciliation pass. After a burst of
+A **project review pass** is a bounded per-project assessment. After a burst of
 activity on a project (brain dumps, new tasks, new documents) — or on an
-end-of-day schedule — a focused agent reviews the project and emits a ranked
+end-of-day schedule — a focused worker reviews the project and emits a ranked
 set of **review items** the user reviews and approves in a "Project Review"
 panel on the project page (styled like the homepage overdue-task triage).
 
-The loop agent never mutates the project directly. It investigates with
-**read tools**, then proposes changes as **deferred tool calls**. Approving a
+The review worker never mutates the project directly. It loads bounded project context,
+runs focused review generators, then proposes changes as **deferred tool calls**. Approving a
 suggestion **replays its stored operations through the same `ChatToolExecutor`
 the agentic chat uses** — so it acts "as if the user prompted the agent," but
 gated by a risk tier.
@@ -67,7 +73,7 @@ v1 covers four reconciliation jobs:
 
 - **Trigger (chosen): end-of-day per active project + activity burst.**
   Both converge on enqueuing one job, `buildos_project_loop`, with a
-  `dedup_key` per project. A **manual "Run loop" button** is added for free
+  `dedup_key` per project. A **manual "Run review" button** is added for free
   (essential for dogfooding) even though it wasn't explicitly requested.
     - End-of-day: scheduler enqueues for projects with activity since last run.
     - Burst: debounced — N changes within a window enqueue a loop after a quiet
@@ -81,9 +87,9 @@ v1 covers four reconciliation jobs:
       explicit, one-by-one approval.** This is the "big restructuring requires
       user approval" rule.
 
-- **Engine (chosen): a new focused loop pass, NOT homework/tree-agent.**
+- **Engine (chosen): a new focused review pass, NOT homework/tree-agent.**
     - New worker job `buildos_project_loop`.
-    - Loop agent gets **read tools** + one new meta-tool
+    - The original proposal gave the review worker **read tools** + one new meta-tool
       `propose_suggestion(kind, risk_tier, title, rationale, operations[])`.
     - `operations[]` = exact write tool-calls (e.g. `move_document_in_tree`,
       `update_onto_task`, `delete_onto_task`, `link_onto_entities`).

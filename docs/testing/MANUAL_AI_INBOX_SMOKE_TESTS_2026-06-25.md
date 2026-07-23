@@ -96,12 +96,12 @@ Notes: No review-mode agent run was staged against the throwaway project (loop L
 execution was disabled in the dev worker env). This overlaps the one open item from
 `AGENT_RUN_CHAT_CONTEXT_BRIDGE_PLAN_2026-06-29.md` (live-notification smoke) — still open.
 
-## 3. Project Loop Suggestion
+## 3. Project Review Suggestion
 
 Goal: project-loop suggestions are indexed and handled as whole-item decisions
 with brief, evidence, feedback, and freshness behavior.
 
-Prerequisite: enable Project Loops for the test environment if it is behind a feature flag.
+Prerequisite: enable Project Reviews for the test environment if they are behind a feature flag.
 
 Steps:
 
@@ -328,7 +328,7 @@ re-stamps `expires_at` (+30d) for still-pending sources, so the manual value is
 overwritten before the expiry sweep sees it. Expiry itself is exercised in prod by the
 `20260707060000` grouped-audit migration (expired child rows verified present).
 
-## 8. Project Loop Freshness Guard
+## 8. Project Review Freshness Guard
 
 Goal: stale project-loop suggestions are superseded instead of replayed.
 
@@ -353,7 +353,7 @@ Notes: S5 seeded with a bogus `source_fingerprint` and applied from the Project 
 ended `superseded` / `freshness_state='changed'` / `result.errors[0].tool='freshness_guard'`
 with `applied_operations: 0`; the referenced task's priority was untouched.
 
-## 9. Project Loop Batch Apply
+## 9. Project Review Batch Apply
 
 Goal: low/medium reversible project-loop items can be applied in a safe batch.
 
@@ -377,7 +377,7 @@ Result: **Pass** (2026-07-11)
 Notes: Selected S2 + S6 via card checkboxes; button read "Apply 2"; both sources ended
 `applied` with `applied_operations: 1` and both target tasks were actually mutated.
 
-## 10. Project Loop Drift And Task Conflict Items
+## 10. Project Review Drift And Task Conflict Items
 
 Goal: deferred project-loop families behave conservatively.
 

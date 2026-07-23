@@ -11,7 +11,7 @@
 **Relationship Status:** Prospect (first discovery)
 **Audience Quality:** Unverified — appears real (healthy follow ratio, 183 posts)
 **Profile Created:** 2026-06-28
-**Last Reviewed:** 2026-07-14
+**Last Reviewed:** 2026-07-20
 **Last Engaged:** Never
 **Candidate State (candidates.md):** `monitor` (demoted 2026-07-06 — on-thesis AI surface decayed two runs running; re-promote only on a fresh AI/writing-workflow post)
 **Source of First Discovery:** #amwriting Recent walk (2026-06-28 warmup) — reel "I'm writing a book with Claude"
@@ -68,6 +68,7 @@
 | 2026-07-13 | Reel | QUEUED #5 (Stage 0 pull) — `DaqAgcUoA_g` app/trademark reel still live, now 49.9h/4c. NO delete-repost since 7/12 (2 prior confirmed — shortcodes unstable, verify permalink in-app before drafting). 1,992f climbing. | https://www.instagram.com/reel/DaqAgcUoA_g/ | Queued | Pending /instagram-reply | Relationship-START — lived reaction to naming/trademark scramble; one peer line, guaranteed-visible on 2K account. No pitch. Watch for reply → promote to engaged. | Pending | 2026-07-13_instagram-warmup.md |
 | 2026-07-14 | Reel | QUEUED #5 (Stage 0 pull) — `DaqAgcUoA_g` app/trademark reel STILL live, now 69.9h/4c. No delete-repost since 7/12 (3rd clean run — but shortcodes historically unstable; verify permalink in-app before drafting). No fresh post this run. 1,997f climbing. | https://www.instagram.com/reel/DaqAgcUoA_g/ | Queued | Pending /instagram-reply | Relationship-START — lived reaction to the naming/trademark scramble; guaranteed-visible on a 2K account. No pitch. Watch for reply → promote candidates.md to engaged. | Pending | 2026-07-14_instagram-warmup.md |
 | 2026-07-14 | Reel | Drafted reply on `DaqAgcUoA_g` "app name too close to a trademark" (carries the never-posted 7/11 drafts — same post). **No relationship — Stage 0 relationship-START.** Fit 1, NO product name, no thesis-dump. **⚠️ Verify permalink is live (he delete-reposts) before posting.** 3 options: **Opt 1 (energy/lived, REC):** "the name-too-close-to-a-trademark gut punch is a rite of passage. found out three names deep that the one i loved was already taken — the search alone ate a week i hadn't planned for."; **Opt 2 (question):** "how far into building were you when you found out? that's the line between a quick rename and repainting everything."; **Opt 3 (energy):** "'nearing completion' is the actual headline here. the trademark thing's annoying but it's a good problem — means you built something worth naming." Reaction → promote candidates.md to `engaged`. Post via @djwayne3. | https://www.instagram.com/reel/DaqAgcUoA_g/ | Drafted | Drafted - Pending Posting | See options (REC: Opt 1). | Pending | 2026-07-14_instagram-warmup.md → 2026-07-14_instagram-replies.md |
+| 2026-07-20 | Grid sweep | **DEMOTED queued_for_warmup → monitor — on-thesis surface decayed (standing 7/06 rule re-fires).** Trademark reel `DaqAgcUoA_g` now **213.9h**/4c; both fresh posts personal/off-thesis (NYC Muji `Da5dZTMoKdZ` 69.9h/1c, kittens `Da3LImvoode` 91.2h/0c). Queued 9+ runs, never executed. Re-promote ONLY on a fresh AI/writing-workflow surface. 2,021f climbing. | — | Reviewed | Demoted to monitor | — | — | 2026-07-20_instagram-warmup.md |
 
 ## Open Loops
 

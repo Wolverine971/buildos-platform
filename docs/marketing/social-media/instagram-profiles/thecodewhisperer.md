@@ -17,7 +17,7 @@
 **Next Best Action:** Watch for a fresh substantive post on HIS grid (not the twin's) and queue a first touch there; decide the human-vs-twin engagement question first
 **Earliest Next Touch:** Next fresh on-thesis post on @thecodewhisperer
 **Profile Created:** 2026-07-10
-**Last Reviewed:** 2026-07-10
+**Last Reviewed:** 2026-07-20
 **Last Engaged:** Never
 **Source of First Discovery:** 2026-07-10_instagram-warmup.md — traced from @jeremyknox.ai's comment in @gregisenberg `DaiHmBJxlPP` (the commenting account is his "digital twin" agent; this is the human behind it)
 
@@ -52,9 +52,10 @@
 
 ## Relationship History
 
-| Date       | Surface        | Topic                                                                                                         | Post Link                                   | Action                | Status | What We Said / Planned                                                                                                                                    | Outcome | Source                         |
-| ---------- | -------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | --------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------ |
-| 2026-07-10 | Comment thread | Twin account @jeremyknox.ai commented on-thesis in Greg's Claude Code plugins thread; traced + profiled human | https://www.instagram.com/reel/DaiHmBJxlPP/ | Discovered + profiled | Logged | No touch queued yet — first decide human-vs-twin engagement, then queue a first touch on a fresh @thecodewhisperer post. Stage 0 row added as `profiled`. | Pending | 2026-07-10_instagram-warmup.md |
+| Date       | Surface         | Topic                                                                                                                                                                                                                                                                              | Post Link                                   | Action                | Status      | What We Said / Planned                                                                                                                                    | Outcome | Source                         |
+| ---------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | --------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------ |
+| 2026-07-10 | Comment thread  | Twin account @jeremyknox.ai commented on-thesis in Greg's Claude Code plugins thread; traced + profiled human                                                                                                                                                                      | https://www.instagram.com/reel/DaiHmBJxlPP/ | Discovered + profiled | Logged      | No touch queued yet — first decide human-vs-twin engagement, then queue a first touch on a fresh @thecodewhisperer post. Stage 0 row added as `profiled`. | Pending | 2026-07-10_instagram-warmup.md |
+| 2026-07-20 | Reel (own grid) | **PROMOTED profiled → queued_for_warmup — promote trigger met (first fresh on-thesis OWN-grid post since profiling).** `Da3JVeUy1yd` "the people winning with AI aren't smarter than you. they changed 5 habits" **91.4h/5c/78l**. Reply to the HUMAN, not @jeremyknox.ai. 1,755f. | https://www.instagram.com/reel/Da3JVeUy1yd/ | Comment               | Queued (#5) | Relationship-START — agree via ONE lived habit (context discipline beats raw model IQ); terse engineer register, no product name.                         | Pending | 2026-07-20_instagram-warmup.md |
 
 ## Ledger Links
 

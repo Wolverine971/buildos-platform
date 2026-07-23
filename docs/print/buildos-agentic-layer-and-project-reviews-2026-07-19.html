@@ -1,10 +1,10 @@
-<!-- docs/print/buildos-agentic-layer-and-project-loops-2026-07-19.html -->
+<!-- docs/print/buildos-agentic-layer-and-project-reviews-2026-07-19.html -->
 <!doctype html>
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>BuildOS Agentic Layer, Agentic Chat &amp; Project Loops — Print Packet</title>
+		<title>BuildOS Agentic Layer, Agentic Chat &amp; Project Reviews — Print Packet</title>
 		<style>
 			:root {
 				--ink: #17212b;
@@ -495,8 +495,12 @@
 			<button type="button" onclick="printGroup('agentic-deep')">
 				Agentic deep dive (4)
 			</button>
-			<button type="button" onclick="printGroup('loops-one')">Loops one-pager</button>
-			<button type="button" onclick="printGroup('loops-deep')">Loops deep dive (4)</button>
+			<button type="button" onclick="printGroup('loops-one')">
+				Project Review one-pager
+			</button>
+			<button type="button" onclick="printGroup('loops-deep')">
+				Project Review deep dive (4)
+			</button>
 		</nav>
 
 		<main class="packet">
@@ -506,7 +510,7 @@
 				<p class="deck">
 					BuildOS has two AI execution tempos on one project-data backbone:
 					<strong>Agentic Chat handles a bounded foreground turn</strong>; durable
-					<strong>Agent Runs continue in the background</strong>. Project Loops are a
+					<strong>Agent Runs continue in the background</strong>. Project Reviews are a
 					third, maintenance-oriented producer that sends reviewable work into the AI
 					Inbox.
 				</p>
@@ -537,7 +541,7 @@
                             v                                                       v
                  Run Stack / Work Panel                                  message back to chat
 
- Project activity / cron / manual -> PROJECT LOOPS -> suggestions -> AI INBOX
+ Project activity / cron / manual -> PROJECT REVIEW PASS -> suggestions -> AI INBOX
                                                                   -> accept / address / dismiss
                                                                   -> apply ops or delegate run</pre
 				>
@@ -561,11 +565,11 @@
 					</div>
 					<div class="card orange">
 						<span class="label">Maintenance</span>
-						<h3>Project Loops</h3>
+						<h3>Project Reviews</h3>
 						<p>
-							Scheduled or event-triggered project reconciliation. They generate
-							bounded, fresh suggestions and complete-audit follow-ups for human
-							review.
+							Scheduled or event-triggered, bounded project review passes. They
+							generate bounded, fresh suggestions and complete-audit follow-ups for
+							human review.
 						</p>
 					</div>
 				</div>
@@ -597,9 +601,9 @@
 								default or stage when <code>review_required</code>.
 							</li>
 							<li>
-								<strong>Every loop is bounded.</strong> Tool rounds, calls, tokens,
-								time, cost, concurrency, deduplication, and stale-run recovery
-								prevent runaway work.
+								<strong>Every agent execution is bounded.</strong> Tool rounds,
+								calls, tokens, time, cost, concurrency, deduplication, and stale-run
+								recovery prevent runaway work.
 							</li>
 						</ol>
 					</div>
@@ -624,7 +628,7 @@
 							</tr>
 							<tr>
 								<td>Project self-maintenance</td>
-								<td>Project Loop</td>
+								<td>Project Review pass</td>
 							</tr>
 							<tr>
 								<td>Human trust boundary</td>
@@ -637,7 +641,7 @@
 				<div class="callout small">
 					<strong>Status note.</strong> This packet reflects the current working-tree code
 					on 19 July 2026. It explains the implemented paths; it is not a new
-					live-production smoke test. Project Loops are now always-on in code via
+					live-production smoke test. Project Reviews are now always-on in code via
 					compatibility shims.
 				</div>
 
@@ -670,7 +674,7 @@
  |                                                    |
  | Agentic Chat: /prewarm -> /stream -> SSE           |
  | Manual dispatch: /api/agent-runs                   |
- | Loop/audit triggers and inbox decisions            |
+ | Review/audit triggers and inbox decisions          |
  +-------------------------+--------------------------+
                            |
              reads/writes  |  queue jobs / realtime
@@ -684,7 +688,7 @@
                     worker claims jobs
                            v
  +---------------- RAILWAY / WORKER -------------------+
- | Agent Run loop | Project Loop | Complete Audit      |
+ | Agent Run loop | Review pass | Complete Audit       |
  | schedulers     | cleanup/reclaim | notifications    |
  +-------------------------+--------------------------+
                            |
@@ -702,7 +706,10 @@
 							<li>
 								<strong>Agent Run:</strong> queue + worker-safe shared op gateway.
 							</li>
-							<li><strong>Project Loop:</strong> specialized worker generators.</li>
+							<li>
+								<strong>Project Review pass:</strong> specialized worker generators
+								(<code>buildos_project_loop</code> internally).
+							</li>
 							<li>
 								<strong>Inbox:</strong> denormalized review index over source rows.
 							</li>
@@ -758,7 +765,7 @@
 							<li>
 								Completion can inject a durable assistant message back into chat.
 							</li>
-							<li>Proposals and loop findings converge in the AI Inbox.</li>
+							<li>Proposals and review findings converge in the AI Inbox.</li>
 						</ul>
 					</div>
 					<div class="card">
@@ -770,7 +777,8 @@
 								Manual/scheduled Operatives can dispatch the same run substrate.
 							</li>
 							<li>
-								Loops do not recurse when applying their own accepted mutations.
+								Project Reviews do not recurse when applying their own accepted
+								mutations.
 							</li>
 						</ul>
 					</div>
@@ -1257,11 +1265,11 @@
 
 			<section class="page loops" data-group="loops-one">
 				<p class="kicker">BuildOS Core Infrastructure / Executive Map / 19 July 2026</p>
-				<h1>Project Loops</h1>
+				<h1>Project Reviews</h1>
 				<p class="deck">
-					Project Loops are BuildOS’s self-maintenance system. They periodically or
-					eventually re-read a project, generate bounded review items, keep only fresh
-					findings, and route the few highest-priority asks through the AI Inbox.
+					Project Reviews are BuildOS’s self-maintenance system. They periodically or
+					eventually run a bounded pass over a project, generate review items, keep only
+					fresh findings, and route the few highest-priority asks through the AI Inbox.
 				</p>
 
 				<pre>
@@ -1271,7 +1279,7 @@
        +-----------------+----------------+-------------------+
                               |
                               v
-                 LIGHT PROJECT LOOP (worker)
+			 LIGHT PROJECT REVIEW PASS (worker)
       load bounded context -> brief -> 4 generators -> suppress duplicates
                               |
               +---------------+----------------+
@@ -1293,7 +1301,7 @@
                   apply     record    Agent    feedback memory
                    ops      outcome     Run
 
- SLOWER PARALLEL LOOP
+ DEEPER PARALLEL REVIEW
  manual / daily scan / qualified burst -> COMPLETE PROJECT AUDIT
  deterministic evidence scaffold -> LLM synthesis -> up to 8 child follow-ups
  -> older audit superseded -> actionable children share the same inbox budget</pre
@@ -1302,7 +1310,7 @@
 				<div class="cols-4">
 					<div class="card orange">
 						<div class="stat">$0.35</div>
-						<p class="small">Light-loop cost cap checked between generators.</p>
+						<p class="small">Review-pass cost cap checked between generators.</p>
 					</div>
 					<div class="card orange">
 						<div class="stat">25</div>
@@ -1321,7 +1329,7 @@
 				<div class="rule"></div>
 				<div class="cols-2">
 					<div>
-						<h3>What a light loop looks for</h3>
+						<h3>What a light review pass looks for</h3>
 						<ul class="tight">
 							<li>
 								<strong>Document organization:</strong> misplaced or structurally
@@ -1357,13 +1365,21 @@
 					the per-project budget decide what deserves to interrupt the user now.
 				</div>
 
+				<div class="callout small">
+					<strong>Terminology:</strong> one bounded worker execution is a
+					<strong>project review pass</strong>. The larger activity → review → human
+					decision → feedback lifecycle is the <strong>project review cycle</strong>.
+					Neither is an agent loop; the existing <code>project_loop_*</code> names are
+					legacy implementation identifiers.
+				</div>
+
 				<div class="card gray small">
 					<h3>Current code status</h3>
 					<p>
 						Web and worker feature switches are now always-on compatibility exports. The
-						worker registers the project-loop processor, checks light loops hourly
-						against each owner’s local midnight window, scans complete audits daily, and
-						runs stale lifecycle repair every 30 minutes.
+						worker registers the legacy project-loop processor, checks Project Review
+						eligibility hourly against each owner’s local midnight window, scans
+						complete audits daily, and runs stale lifecycle repair every 30 minutes.
 					</p>
 				</div>
 
@@ -1378,8 +1394,8 @@
 			</section>
 
 			<section class="page loops" data-group="loops-deep">
-				<p class="kicker">Project Loops Deep Dive / Page 1 of 4</p>
-				<h2>Triggering: when does a loop actually run?</h2>
+				<p class="kicker">Project Reviews Deep Dive / Page 1 of 4</p>
+				<h2>Triggering: when does a review pass run?</h2>
 				<p class="deck">
 					Triggers propose work; admission rules decide whether a job is created. The
 					system uses active-run checks, cooldowns, stable dedup keys, quiet periods, and
@@ -1395,8 +1411,8 @@
 					</tr>
 					<tr>
 						<td><strong>Manual review</strong></td>
-						<td>User POSTs the project loops route</td>
-						<td>Light loop immediately</td>
+						<td>User POSTs the legacy project-loops review route</td>
+						<td>Light review pass immediately</td>
 						<td>No active queued/running run; queue dedup still applies</td>
 					</tr>
 					<tr>
@@ -1405,7 +1421,7 @@
 							Hourly worker check; owner is in local hour 00 and project changed
 							during the completed local day
 						</td>
-						<td>Light loop with <code>end_of_day</code> reason</td>
+						<td>Light review pass with <code>end_of_day</code> reason</td>
 						<td>
 							Active/planning only; 30m cooldown; newest 10 projects/user by default
 						</td>
@@ -1415,13 +1431,13 @@
 						<td>
 							Wired task/document/tree mutations plus last 30m activity score reach 4
 						</td>
-						<td>Light loop; also evaluates a complete audit</td>
+						<td>Light review pass; also evaluates a complete audit</td>
 						<td>30m cooldown; active run; review-replay recursion suppression</td>
 					</tr>
 					<tr>
 						<td><strong>Debounced bulk signal</strong></td>
 						<td>Bulk overdue/backlog operations coalesce for 60 seconds</td>
-						<td>One wakeup evaluates light loop + audit in parallel</td>
+						<td>One wakeup evaluates a light review pass + audit in parallel</td>
 						<td>
 							One pending signal/project; due time is extended as activity arrives
 						</td>
@@ -1442,7 +1458,7 @@
 
 				<div class="split-60">
 					<pre>
- ANY LIGHT-LOOP TRIGGER
+	 ANY REVIEW-PASS TRIGGER
           |
           v
  loops always-on? ---------------- no -> stop
@@ -1457,7 +1473,7 @@
           |
           no
           |
- create loop chat session + run row
+	 create review chat session + project_loop_runs row
           |
  add_queue_job with project/day key
           |
@@ -1512,11 +1528,11 @@
 			</section>
 
 			<section class="page loops" data-group="loops-deep">
-				<p class="kicker">Project Loops Deep Dive / Page 2 of 4</p>
-				<h2>The light loop: reconcile, suppress, rotate</h2>
+				<p class="kicker">Project Reviews Deep Dive / Page 2 of 4</p>
+				<h2>The light review pass: reconcile, suppress, rotate</h2>
 				<p class="deck">
-					The light loop is a bounded reconciliation pass. Its output is not a free-form
-					report: it is a brief plus typed suggestions with evidence, previews,
+					The light review pass is a bounded reconciliation pipeline. Its output is not a
+					free-form report: it is a brief plus typed suggestions with evidence, previews,
 					operations, undo data, risk, and freshness metadata.
 				</p>
 
@@ -1635,7 +1651,7 @@
 			</section>
 
 			<section class="page loops" data-group="loops-deep">
-				<p class="kicker">Project Loops Deep Dive / Page 3 of 4</p>
+				<p class="kicker">Project Reviews Deep Dive / Page 3 of 4</p>
 				<h2>Complete Project Audit: the slower strategic loop</h2>
 				<p class="deck">
 					A complete audit is evidence-grounded synthesis over a mature-enough project. It
@@ -1721,7 +1737,7 @@
 
 				<pre>
  AUDIT JOB (6 progress stages)
-   1. claim audit + paired loop run atomically enough to detect inconsistency
+   1. claim audit + paired project_loop_runs row atomically enough to detect inconsistency
    2. load project context, recent activity, and 90-day audit memory
    3. build deterministic packet and evidence catalog
    4. synthesize with evidence-constrained LLM (fallback keeps scaffold)
@@ -1736,7 +1752,7 @@
 					<div class="card">
 						<h3>Audit memory</h3>
 						<p class="small">
-							Uses prior audit recommendation decisions and light-loop decisions to
+							Uses prior audit recommendation decisions and light-review decisions to
 							avoid repeating already reviewed asks.
 						</p>
 					</div>
@@ -1774,11 +1790,11 @@
 			</section>
 
 			<section class="page loops compact" data-group="loops-deep">
-				<p class="kicker">Project Loops Deep Dive / Page 4 of 4</p>
+				<p class="kicker">Project Reviews Deep Dive / Page 4 of 4</p>
 				<h2>Inbox closure, freshness, failure recovery &amp; what to read next</h2>
 				<p class="deck">
-					The loop is only complete when a human decision changes durable state and
-					informs the next run. The Inbox is a repairable index, not the original work
+					The project review cycle closes when a human decision changes durable state and
+					informs a future review. The Inbox is a repairable index, not the original work
 					object.
 				</p>
 
@@ -1811,7 +1827,7 @@
      sync inbox -> refresh audit counts -> finalize parent run
                           |
                           v
-           prior-decision memory shapes later loops</pre
+	           prior-decision memory shapes later reviews</pre
 					>
 					<div>
 						<h3>Attention and expiry policy</h3>
@@ -1821,7 +1837,7 @@
 								<th>TTL</th>
 							</tr>
 							<tr>
-								<td>Light-loop finding</td>
+								<td>Review-pass finding</td>
 								<td>7 days</td>
 							</tr>
 							<tr>
@@ -1971,13 +1987,13 @@
 		</main>
 
 		<script>
-			const requestedPrintGroup = new URLSearchParams(window.location.search).get("print");
+			const requestedPrintGroup = new URLSearchParams(window.location.search).get('print');
 			const allowedPrintGroups = new Set([
-				"all",
-				"agentic-one",
-				"agentic-deep",
-				"loops-one",
-				"loops-deep"
+				'all',
+				'agentic-one',
+				'agentic-deep',
+				'loops-one',
+				'loops-deep'
 			]);
 			if (requestedPrintGroup && allowedPrintGroups.has(requestedPrintGroup)) {
 				document.body.dataset.printGroup = requestedPrintGroup;

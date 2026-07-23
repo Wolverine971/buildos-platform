@@ -2,13 +2,13 @@
 
 # 14 — Complete Project Audit tracker: core build through Phase 4
 
-**Priority:** P2 — next major loops build track (behind verifying what's already shipped)
+**Priority:** P2 — next major Project Review/audit build track (behind verifying what's already shipped)
 **Type:** Engineering (new feature)
 **Source:** `apps/web/docs/technical/architecture/agent-work/COMPLETE_PROJECT_AUDIT_TRACKER_SPEC_2026-07-01.md` (staged 2026-07-01, uncommitted)
 
 ## State
 
-The spec formalizes what tasker/04 item 6 sketched: Complete Project Audit as a separate `project_audits` track (a report artifact, NOT another generic project loop suggestion). The core build is now in place:
+The spec formalizes what tasker/04 item 6 sketched: Complete Project Audit as a separate `project_audits` track (a report artifact, NOT another generic Project Review suggestion). The core build is now in place:
 
 - Schema/types exist for `project_audits`, `project_audit_trigger_evaluations`, and `project_audit_suggestions`.
 - Manual and scheduled audit queueing run through the project-loop worker path.
