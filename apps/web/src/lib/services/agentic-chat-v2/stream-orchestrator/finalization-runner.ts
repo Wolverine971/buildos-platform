@@ -288,6 +288,7 @@ export async function runTerminalFinalization(params: {
 	latestUserText: string;
 	mutationRequested?: boolean;
 	expectedWriteToolNames?: string[];
+	synthesisTransportFailure?: boolean;
 	toolExecutions: FastToolExecution[];
 	emitAssistantDelta: (content: string) => Promise<void>;
 	emitAssistantRemainder: (content: string) => Promise<void>;
@@ -311,7 +312,8 @@ export async function runTerminalFinalization(params: {
 			assistantText: '',
 			toolExecutions: params.toolExecutions,
 			mutationRequested,
-			expectedWriteToolNames: params.expectedWriteToolNames
+			expectedWriteToolNames: params.expectedWriteToolNames,
+			synthesisTransportFailure: params.synthesisTransportFailure
 		});
 		const finalToolLimitText = toolLimitFinalizationGuard.applied
 			? toolLimitFinalizationGuard.text
@@ -342,7 +344,8 @@ export async function runTerminalFinalization(params: {
 			assistantText,
 			toolExecutions: params.toolExecutions,
 			mutationRequested,
-			expectedWriteToolNames: params.expectedWriteToolNames
+			expectedWriteToolNames: params.expectedWriteToolNames,
+			synthesisTransportFailure: params.synthesisTransportFailure
 		});
 		if (candidateFinalizationGuard.applied) {
 			finalizationGuardResult = candidateFinalizationGuard;

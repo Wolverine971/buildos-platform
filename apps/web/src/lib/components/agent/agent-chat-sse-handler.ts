@@ -190,7 +190,11 @@ export function sanitizeToolResultForActivityMetadata(
 	return sanitized;
 }
 
-export function resolveDoneFinalization(finishedReason: string | null | undefined): {
+export function resolveDoneFinalization(
+	finishedReason: string | null | undefined,
+	completionStatus?: 'completed' | 'completed_degraded',
+	answerSource?: 'model' | 'partial_model' | 'deterministic_evidence' | 'precise_no_evidence'
+): {
 	status?: 'completed' | 'interrupted' | 'cancelled' | 'error';
 	note?: string;
 } {
@@ -206,9 +210,84 @@ export function resolveDoneFinalization(finishedReason: string | null | undefine
 			return { status: 'interrupted', note: 'Response truncated' };
 		case 'error':
 			return { status: 'error' };
-		default:
-			return {};
 	}
+	if (completionStatus === 'completed_degraded') {
+		if (answerSource === 'partial_model') {
+			return { status: 'interrupted', note: 'Recovered partial response' };
+		}
+		if (answerSource === 'precise_no_evidence') {
+			return { status: 'interrupted', note: 'No safe evidence summary available' };
+		}
+		return { status: 'completed', note: 'Recovered from collected evidence' };
+	}
+	return {};
+}
+
+type TurnPhaseEvent = Extract<AgentSSEMessage, { type: 'turn_phase' }>;
+type DoneEvent = Extract<AgentSSEMessage, { type: 'done' }>;
+
+export function upsertTurnPhaseActivity(
+	activities: ActivityEntry[],
+	event: TurnPhaseEvent
+): ActivityEntry[] {
+	const existingIndex = activities.findIndex(
+		(activity) => activity.metadata?.turnPhaseActivity === true
+	);
+	const existing = existingIndex >= 0 ? activities[existingIndex] : undefined;
+	const nextActivity: ActivityEntry = {
+		id: existing?.id ?? crypto.randomUUID(),
+		content: event.message,
+		timestamp: existing?.timestamp ?? new Date(),
+		activityType: 'state_change',
+		status: 'pending',
+		metadata: {
+			...existing?.metadata,
+			turnPhaseActivity: true,
+			turnPhase: event.turn_phase,
+			eventId: event.event_id,
+			streamRunId: event.stream_run_id,
+			clientTurnId: event.client_turn_id,
+			turnRunId: event.turn_run_id,
+			streamSequenceIndex: event.sequence_index
+		}
+	};
+	if (existingIndex < 0) return [...activities, nextActivity];
+	const nextActivities = [...activities];
+	nextActivities[existingIndex] = nextActivity;
+	return nextActivities;
+}
+
+export function finalizeTurnPhaseActivity(
+	activities: ActivityEntry[],
+	event: DoneEvent
+): ActivityEntry[] {
+	const existingIndex = activities.findIndex(
+		(activity) => activity.metadata?.turnPhaseActivity === true
+	);
+	if (existingIndex < 0) return activities;
+	const existing = activities[existingIndex];
+	if (!existing) return activities;
+	const degraded = event.completion_status === 'completed_degraded';
+	const content = !degraded
+		? 'Response ready'
+		: event.answer_source === 'partial_model'
+			? 'Recovered a partial response after synthesis stalled'
+			: event.answer_source === 'precise_no_evidence'
+				? 'Synthesis stalled; no safe evidence summary was available'
+				: 'Recovered an answer from the collected evidence';
+	const nextActivities = [...activities];
+	nextActivities[existingIndex] = {
+		...existing,
+		content,
+		status: event.answer_source === 'precise_no_evidence' ? 'failed' : 'completed',
+		metadata: {
+			...existing.metadata,
+			turnPhase: 'finalizing',
+			completionStatus: event.completion_status ?? 'completed',
+			answerSource: event.answer_source ?? 'model'
+		}
+	};
+	return nextActivities;
 }
 
 // ---------------------------------------------------------------------------
@@ -297,6 +376,10 @@ export interface SSEHandlerDeps {
 	// Assistant text streaming
 	bufferAssistantText(content: unknown): void;
 	flushAssistantText(): void;
+	markAssistantCompletion(
+		completionStatus?: 'completed' | 'completed_degraded',
+		answerSource?: 'model' | 'partial_model' | 'deterministic_evidence' | 'precise_no_evidence'
+	): void;
 	finalizeAssistantMessage(): void;
 
 	// Pending tool state (mutable, owned by caller)
@@ -535,8 +618,18 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 	}
 
 	function handleDone(event: Extract<AgentSSEMessage, { type: 'done' }>): void {
-		const finalization = resolveDoneFinalization(event.finished_reason);
+		const finalization = resolveDoneFinalization(
+			event.finished_reason,
+			event.completion_status,
+			event.answer_source
+		);
 		state.setCurrentActivity('');
+		const blockId = thinking.getCurrentBlockId();
+		thinking.update(blockId, (block) => ({
+			...block,
+			activities: finalizeTurnPhaseActivity(block.activities, event)
+		}));
+		deps.markAssistantCompletion(event.completion_status, event.answer_source);
 		deps.finalizeAssistantMessage();
 		thinking.finalize(finalization.status, finalization.note);
 		// Surface any entities created this turn as inline chips, then reset.
@@ -633,6 +726,17 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 					});
 				}
 				state.setCurrentActivity(computeAgentStateActivity(agentState, event.details));
+				return;
+			}
+
+			case 'turn_phase': {
+				const blockId = thinking.ensure();
+				thinking.update(blockId, (block) => ({
+					...block,
+					activities: upsertTurnPhaseActivity(block.activities, event)
+				}));
+				thinking.updateState('thinking', event.message);
+				state.setCurrentActivity(event.message);
 				return;
 			}
 

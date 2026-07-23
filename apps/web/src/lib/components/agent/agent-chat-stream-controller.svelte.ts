@@ -166,8 +166,9 @@ const STREAM_INACTIVITY_TIMEOUT_MS = 45_000;
 
 // Event types that prove the server started the turn proper (they are only
 // emitted after turn admission + user-message persistence). The initial
-// `agent_state` and `session` events fire BEFORE the deny checks, so they
-// don't count. Used as a SAFETY CHECK on the deny-rollback in sendMessage's
+// The acknowledgement `turn_phase` and `session` events can fire BEFORE the
+// deny checks, so turn_phase intentionally does not count. Used as a SAFETY
+// CHECK on the deny-rollback in sendMessage's
 // onComplete — the rollback trigger itself is the server's explicit
 // `turn_rejected` flag on the error event.
 const TURN_EVIDENCE_EVENT_TYPES = new Set<string>([

@@ -36,6 +36,7 @@ type ApplyFinalizationGuardParams = {
 	// completed answer and is the root of the "did you update it?" complaint pattern.
 	mutationRequested?: boolean;
 	expectedWriteToolNames?: string[];
+	synthesisTransportFailure?: boolean;
 };
 
 type EvidenceItem = {
@@ -81,6 +82,7 @@ function buildGuardText(params: {
 	otherSuccesses: number;
 	otherFailures: number;
 	mutationIncomplete?: boolean;
+	synthesisTransportFailure?: boolean;
 	toolExecutions?: FastToolExecution[] | null;
 }): {
 	text: string;
@@ -94,7 +96,8 @@ function buildGuardText(params: {
 		failedReads,
 		otherSuccesses,
 		otherFailures,
-		mutationIncomplete
+		mutationIncomplete,
+		synthesisTransportFailure
 	} = params;
 
 	// A write was requested but none was even attempted — the turn ran out of room
@@ -159,7 +162,9 @@ function buildGuardText(params: {
 			};
 		}
 		return {
-			text: `I gathered the requested context, but the turn ended before a final response was produced.${failureSuffix}`,
+			text: synthesisTransportFailure
+				? `I completed ${successfulReads} read ${plural(successfulReads, 'call')}, but the synthesis stream failed before it could turn those results into an answer, and no safe deterministic evidence summary was available. Please retry.${failureSuffix}`
+				: `I gathered the requested context, but the turn ended before a final response was produced.${failureSuffix}`,
 			reason: 'empty_after_reads',
 			finishedReason: 'synthesis_empty'
 		};
@@ -510,6 +515,7 @@ export function applyFinalizationGuard(
 		otherSuccesses,
 		otherFailures,
 		mutationIncomplete,
+		synthesisTransportFailure: params.synthesisTransportFailure,
 		toolExecutions
 	});
 

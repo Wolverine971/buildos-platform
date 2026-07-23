@@ -2,7 +2,7 @@
 
 # Phase 2 — Read-Only Gmail Experience
 
-**Status:** In progress — first read-only search/retrieval vertical slice deployed to production
+**Status:** Core read experience deployed; Tier 1 chat reads are in a DJ-only production pilot
 **Depends on:** Phase 1 complete and Phase 0 AI/data controls approved
 **Does not include:** Gmail sending, Gmail drafts, modifying messages, attachments, full mailbox
 sync, or email-triggered autonomous work
@@ -33,23 +33,37 @@ Implemented and deployed to `build-os.com`:
 - per-user and per-connection rate limits, `no-store` responses, bounded provider timeouts, and
   content-free audit metadata;
 - focused tenant-isolation, mixed-account, sanitization, attachment, response-size, and GET-only
-  provider tests.
+  provider tests;
+- three chat tools (`list_email_accounts`, `search_email_messages`, `get_email_message`) with
+  explicit connection IDs, per-turn call/character budgets, untrusted-content delimiters, and no
+  Gmail mutation method;
+- a dual production gate: a default-off global kill switch and an exact BuildOS user-ID allowlist;
+- Gmail-specific durable trace redaction that persists only counts/booleans and a generic error;
+  and
+- Email-tab state reconstruction on connection-set/status changes so prior results and opened
+  bodies are cleared after disconnect or reconnect.
 
 Production validation:
 
-- all three configured Gmail/Workspace connections completed a multi-account read-only search;
-- the smoke query was deliberately guaranteed to return no messages, so validation read no real
-  message body, attachment, or result content;
-- the UI reported zero results without a partial-account warning;
-- metadata-only audit rows recorded three successes with `resultCount: 0` and `hasMore: false`;
-- the deployed gateway tolerates Google's successful empty partial-response shape while continuing
-  to reject malformed non-empty payloads.
+- all three configured Gmail/Workspace connections appeared active and read-only in production;
+- a live bounded search returned results from all three accounts and one sanitized message was
+  opened on demand;
+- the opened-message surface exposed no send, reply, forward, draft, archive, label, delete, or
+  mark-read control;
+- the chat pilot discovered and executed only account-list/search read operations and returned
+  Gmail deep links without a Gmail write tool being mounted;
+- automated Gmail/tool/trace coverage and the full agentic tools tree pass, and `svelte-check`
+  reports zero errors or warnings.
 
 Still pending for Phase 2:
 
 - thread reading, if approved;
-- the fail-closed zero-data-retention AI interpretation lane and read-only agent tools;
-- the remaining prompt-injection, log-leak, rate-limit, delegated-agent, and production-like tests.
+- an explicitly enforced zero-data-retention model route before expanding beyond the internal
+  pilot;
+- a true seeded malicious-email live fixture run (the current live run verified the instruction
+  boundary without creating or sending a fixture email);
+- local draft proposals, which remain separate from Gmail drafts and are not required for the read
+  pilot.
 
 ## Initial product surface
 

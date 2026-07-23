@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts
 import type {
+	AgentTurnPhase,
 	ChatContextType,
 	ChatToolCall,
 	ChatToolDefinition,
@@ -10,7 +11,12 @@ import type { OpenRouterContentPart } from '$lib/services/openrouter-v2/types';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
 import type { FastChatHistoryMessage, FastAgentStreamUsage } from '../types';
 import { normalizeFastContextType } from '../scope';
-import { resolveFastChatPassModelRouting, type FastChatModelTieringConfig } from '../model-tiering';
+import {
+	resolveFastChatPassModelRouting,
+	type FastChatForcedSynthesisRoutingConfig,
+	type FastChatModelTieringConfig,
+	type FastChatPassModelRouting
+} from '../model-tiering';
 import { buildLitePromptEnvelope } from '$lib/services/agentic-chat-lite/prompt';
 import { FASTCHAT_LIMITS } from '../limits';
 import { buildLiveSnapshotFromTokens, FASTCHAT_TOKEN_BUDGETS } from '../context-usage';
@@ -24,10 +30,11 @@ import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registr
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import { dev } from '$app/environment';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
-import { sanitizeToolPassLeadIn } from './assistant-text-sanitization';
+import { sanitizeAssistantFinalText, sanitizeToolPassLeadIn } from './assistant-text-sanitization';
 import { appendRuntimeMetadataToPromptDump, writeInitialPromptDump } from './prompt-dump-debug';
 import type {
 	FastChatDebugContext,
+	FastChatCompletionOutcome,
 	FastChatOrchestrationInterventions,
 	FastToolExecution,
 	GatewayRequiredFieldFailure,
@@ -93,7 +100,11 @@ import {
 	prepareToolRound,
 	recordToolExecutionForRound
 } from './tool-round-runner';
-import { runLlmStreamPass, type FastChatModelMessage } from './llm-pass-runner';
+import {
+	LlmStreamPassTerminalError,
+	runLlmStreamPass,
+	type FastChatModelMessage
+} from './llm-pass-runner';
 import {
 	resolveLengthContinuation,
 	runCancellationFinalization,
@@ -135,6 +146,9 @@ type StreamFastChatParams = {
 	turnSupervisor?: TurnSupervisor;
 	supervisorContextData?: Record<string, unknown> | string | null;
 	onSupervisorDecision?: (record: TurnSupervisorDecisionRecord) => Promise<void> | void;
+	onPhase?: (
+		phase: Extract<AgentTurnPhase, 'planning' | 'gathering' | 'synthesizing' | 'recovering'>
+	) => Promise<void> | void;
 	orchestrationTokenBudget?: number;
 	maxToolRounds?: number;
 	maxToolCalls?: number;
@@ -142,6 +156,7 @@ type StreamFastChatParams = {
 	/** Disable soft supervisor/read-loop forced-synthesis interventions for ablation runs. */
 	allowForcedSynthesis?: boolean;
 	modelTiering?: FastChatModelTieringConfig | null;
+	forcedSynthesisRouting?: FastChatForcedSynthesisRoutingConfig | null;
 	/** Server-only eval override. When set, every pass uses this ordered model list. */
 	pinnedModels?: string[];
 	turnIntent?: FastChatTurnIntent | null;
@@ -215,6 +230,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	peakPromptTokens?: number;
 	finalContextUsage?: ContextUsageSnapshot;
 	skillGateViolationRepaired?: boolean;
+	completionOutcome?: FastChatCompletionOutcome;
 	orchestrationInterventions: FastChatOrchestrationInterventions;
 }> {
 	const { llm, userId, sessionId, contextType, entityId, history, message, signal, onDelta } =
@@ -327,6 +343,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let supervisorStopRequested = false;
 	const supervisorBlockedToolCallIds = new Set<string>();
 	let finalizationGuardResult: FinalizationGuardResult | undefined;
+	let synthesisTransportRecovery: FastChatCompletionOutcome['recovery'] | undefined;
+	let currentTurnPhase: AgentTurnPhase | null = null;
 	const pendingRepairInstructions: string[] = [];
 	const pendingMaterializationNotices: string[] = [];
 	const contextGatheringLedger = new ContextGatheringLedger();
@@ -373,11 +391,24 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		streamRetries: llmStreamPasses.reduce(
 			(total, pass) => total + (pass.streamRetryCount ?? 0),
 			0
-		)
+		),
+		synthesisTransportRecovery: synthesisTransportRecovery !== undefined
 	});
 	let observeSupervisor: (
 		observation: TurnSupervisorObservation
 	) => Promise<void> = async () => {};
+	const notifyTurnPhase = async (
+		phase: Extract<AgentTurnPhase, 'planning' | 'gathering' | 'synthesizing' | 'recovering'>
+	): Promise<void> => {
+		if (currentTurnPhase === phase) return;
+		currentTurnPhase = phase;
+		if (!params.onPhase) return;
+		try {
+			await params.onPhase(phase);
+		} catch {
+			// Progress reporting must not crash orchestration.
+		}
+	};
 
 	// Live context-usage snapshot. Updated after every LLM `done` event using
 	// the provider-reported prompt_tokens (ground truth) so saturation logic
@@ -967,6 +998,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	};
 
 	try {
+		await notifyTurnPhase('planning');
 		await observeSupervisor({ type: 'turn_started' });
 		while (true) {
 			if (signal?.aborted) {
@@ -1001,6 +1033,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				writeIntentToolPass: Boolean(writeIntentToolPass),
 				noToolSynthesisRetryCount,
 				modelTiering: params.modelTiering ?? null,
+				forcedSynthesisRouting: params.forcedSynthesisRouting ?? null,
 				pinnedModels: params.pinnedModels
 			});
 			activeAssistantBuffer = '';
@@ -1023,37 +1056,74 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						runtimeBudgetMessage
 					})
 				: [...messages, { role: 'system', content: runtimeBudgetMessage }];
+			if (noToolSynthesisPass) {
+				await notifyTurnPhase('synthesizing');
+			}
 
-			const llmPassResult = await runLlmStreamPass({
-				llm,
-				passMessages,
-				tools: passTools,
-				hasTools: passTools.length > 0,
-				noToolSynthesisPass,
-				passNumber,
-				usage,
-				userId,
-				sessionId,
-				turnRunId: params.turnRunId,
-				streamRunId: params.streamRunId,
-				clientTurnId: params.clientTurnId,
-				normalizedContext,
-				entityId,
-				projectId: params.projectId,
-				signal,
-				onAssistantBufferChange: (nextBuffer) => {
-					activeAssistantBuffer = nextBuffer;
-				},
-				onPendingToolCallCountChange: (count) => {
-					activePendingToolCallCount = count;
-				},
-				tryEmitEarlyAssistantLeadIn,
-				updateLiveContextUsage,
-				startLlmHeartbeat: () => startLongRunningOperationHeartbeat('llm_stream'),
-				observeSupervisor,
-				onToolCall: params.onToolCall,
-				modelRouting
-			});
+			let llmPassResult;
+			try {
+				llmPassResult = await runLlmStreamPass({
+					llm,
+					passMessages,
+					tools: passTools,
+					hasTools: passTools.length > 0,
+					noToolSynthesisPass,
+					passNumber,
+					usage,
+					userId,
+					sessionId,
+					turnRunId: params.turnRunId,
+					streamRunId: params.streamRunId,
+					clientTurnId: params.clientTurnId,
+					normalizedContext,
+					entityId,
+					projectId: params.projectId,
+					signal,
+					onAssistantBufferChange: (nextBuffer) => {
+						activeAssistantBuffer = nextBuffer;
+					},
+					onPendingToolCallCountChange: (count) => {
+						activePendingToolCallCount = count;
+					},
+					tryEmitEarlyAssistantLeadIn,
+					updateLiveContextUsage,
+					startLlmHeartbeat: () => startLongRunningOperationHeartbeat('llm_stream'),
+					observeSupervisor,
+					onToolCall: params.onToolCall,
+					onStreamRetry: noToolSynthesisPass
+						? async () => notifyTurnPhase('recovering')
+						: undefined,
+					modelRouting
+				});
+			} catch (error) {
+				if (
+					!(error instanceof LlmStreamPassTerminalError) ||
+					!noToolSynthesisPass ||
+					error.outcome === 'aborted'
+				) {
+					throw error;
+				}
+
+				const recoveredPartialCandidate = sanitizeAssistantFinalText(
+					error.partialAssistantText || activeAssistantBuffer
+				).trim();
+				const recoveredPartialText = isUsableSynthesisPartial(recoveredPartialCandidate)
+					? recoveredPartialCandidate
+					: '';
+				activeAssistantBuffer = recoveredPartialText;
+				if (recoveredPartialText) {
+					finalAssistantText = recoveredPartialText;
+				}
+				finishedReason = undefined;
+				await notifyTurnPhase('recovering');
+				synthesisTransportRecovery = {
+					outcome: error.outcome,
+					measurements: error.measurements,
+					evidenceToolExecutionCount: toolExecutions.length
+				};
+				llmStreamPasses.push(buildRecoveredSynthesisPassMetadata({ error, modelRouting }));
+				break;
+			}
 			const {
 				assistantBuffer,
 				assistantReasoningForReplay,
@@ -1217,6 +1287,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			if (!params.toolExecutor) {
 				throw new Error('Tool executor is not configured');
 			}
+			await notifyTurnPhase('gathering');
 
 			toolRounds += 1;
 			if (toolRounds > maxToolRounds) {
@@ -1885,6 +1956,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		expectedWriteToolNames: getWriteToolNamesForTurnIntent(
 			params.turnIntent ?? emptyTurnIntent
 		),
+		synthesisTransportFailure: synthesisTransportRecovery !== undefined,
 		toolExecutions,
 		emitAssistantDelta,
 		emitAssistantRemainder,
@@ -1894,6 +1966,36 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	finishedReason = terminalFinalization.finishedReason;
 	finalizationGuardResult =
 		terminalFinalization.finalizationGuardResult ?? finalizationGuardResult;
+
+	let completionOutcome: FastChatCompletionOutcome = {
+		status: 'completed',
+		answerSource: 'model'
+	};
+	if (synthesisTransportRecovery) {
+		if (!finalAssistantText.trim()) {
+			finalAssistantText =
+				'The response stalled before I could produce an answer, and I did not collect usable evidence for this request. Please retry.';
+			await emitAssistantRemainder(finalAssistantText);
+			finishedReason = 'synthesis_empty';
+		} else if (finalAssistantText !== assistantText.trim()) {
+			await emitAssistantRemainder(finalAssistantText);
+		}
+
+		const answerSource: FastChatCompletionOutcome['answerSource'] =
+			finalizationGuardResult?.applied === true
+				? finalizationGuardResult.finishedReason === 'synthesis_empty'
+					? 'precise_no_evidence'
+					: 'deterministic_evidence'
+				: finalAssistantText.trim()
+					? 'partial_model'
+					: 'precise_no_evidence';
+		completionOutcome = {
+			status: 'completed_degraded',
+			answerSource,
+			recovery: synthesisTransportRecovery
+		};
+		finishedReason = finishedReason ?? 'synthesis_recovered';
+	}
 
 	if (dev) {
 		appendRuntimeMetadataToPromptDump(promptDumpPath, {
@@ -1919,8 +2021,64 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		peakPromptTokens: peakPromptTokens > 0 ? peakPromptTokens : undefined,
 		finalContextUsage: liveContextUsage,
 		skillGateViolationRepaired: skillGateStopRepairInjected,
+		completionOutcome,
 		orchestrationInterventions: buildOrchestrationInterventions()
 	};
+}
+
+function buildRecoveredSynthesisPassMetadata(params: {
+	error: LlmStreamPassTerminalError;
+	modelRouting: FastChatPassModelRouting;
+}): LLMStreamPassMetadata {
+	const { error, modelRouting } = params;
+	const measurements = error.measurements;
+	return {
+		pass: measurements.pass,
+		passRole: measurements.passRole ?? modelRouting.passRole,
+		requestedProfile: modelRouting.profile,
+		...(modelRouting.models?.length ? { requestedModels: [...modelRouting.models] } : {}),
+		...(modelRouting.modelTieringVariant
+			? { modelTieringVariant: modelRouting.modelTieringVariant }
+			: {}),
+		...(modelRouting.forcedSynthesisRoutingVariant
+			? { forcedSynthesisRoutingVariant: modelRouting.forcedSynthesisRoutingVariant }
+			: {}),
+		...(modelRouting.ignoredProviderSlugs?.length
+			? { ignoredProviderSlugs: [...modelRouting.ignoredProviderSlugs] }
+			: {}),
+		...(modelRouting.maxTokens !== undefined ? { maxTokens: modelRouting.maxTokens } : {}),
+		...(modelRouting.retryModelRotation === true ? { retryModelRotation: true } : {}),
+		...(measurements.attemptRoutes?.length
+			? {
+					attemptRoutes: measurements.attemptRoutes.map((route) => ({
+						...route,
+						...(route.models ? { models: [...route.models] } : {}),
+						...(route.ignoredProviderSlugs
+							? { ignoredProviderSlugs: [...route.ignoredProviderSlugs] }
+							: {})
+					}))
+				}
+			: {}),
+		forcedNoToolSynthesis: measurements.forcedNoToolSynthesis,
+		attempts: measurements.attempts,
+		streamRetryCount: measurements.retryCount,
+		lastStreamRetryError: measurements.lastErrorMessage,
+		startedAtMs: Math.max(0, Date.now() - measurements.durationMs),
+		durationMs: measurements.durationMs,
+		terminalOutcome: error.outcome,
+		terminalEventReceived: measurements.terminalEventReceived,
+		assistantTextCharsReceived: measurements.assistantTextCharsReceived,
+		reasoningCharsReceived: measurements.reasoningCharsReceived,
+		toolCallsReceived: measurements.toolCallsReceived,
+		attemptsExhausted: measurements.attemptsExhausted,
+		recoveredAsDegradedCompletion: true
+	};
+}
+
+function isUsableSynthesisPartial(text: string): boolean {
+	const normalized = text.replace(/\s+/g, ' ').trim();
+	if (normalized.length < 20) return false;
+	return normalized.split(' ').filter(Boolean).length >= 3;
 }
 
 const emptyTurnIntent: FastChatTurnIntent = {

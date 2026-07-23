@@ -306,12 +306,7 @@ export class CalendarWebhookService {
 			);
 
 			newSyncToken = syncTokenResponse.data.nextSyncToken || undefined;
-			console.log(
-				'[RESYNC] New sync token obtained:',
-				newSyncToken
-					? `${newSyncToken.substring(0, Math.min(20, newSyncToken.length))}...`
-					: 'NONE'
-			);
+			console.log('[RESYNC] New sync token obtained:', Boolean(newSyncToken));
 
 			// Process batch of events that might be linked to our tasks
 			console.log('[RESYNC] Processing events to find task-related changes...');
@@ -347,7 +342,7 @@ export class CalendarWebhookService {
 				} else {
 					console.log(`[RESYNC] SUCCESS - Full resync completed for user ${userId}:`, {
 						processedEvents: processedCount,
-						newSyncToken: `${newSyncToken.substring(0, Math.min(20, newSyncToken.length))}...`,
+						newSyncTokenStored: true,
 						timestamp: new Date().toISOString()
 					});
 				}
@@ -402,7 +397,7 @@ export class CalendarWebhookService {
 		console.log('[WEBHOOK] Received notification:', {
 			channelId,
 			resourceId,
-			token: token ? `${token.substring(0, 10)}...` : 'null',
+			tokenPresent: Boolean(token),
 			headers: {
 				'x-goog-resource-state': headers['x-goog-resource-state'],
 				'x-goog-message-number': headers['x-goog-message-number'],
@@ -436,19 +431,14 @@ export class CalendarWebhookService {
 				calendarId: channel.calendar_id,
 				expiration: new Date(channel.expiration).toISOString(),
 				hasToken: !!channel.webhook_token,
-				hasSyncToken: !!channel.sync_token,
-				syncTokenPreview: channel.sync_token
-					? `${channel.sync_token.substring(0, 20)}...`
-					: 'null'
+				hasSyncToken: !!channel.sync_token
 			});
 
 			// Verify security token
 			if (channel.webhook_token !== token) {
 				console.error('[WEBHOOK] Token mismatch:', {
-					expected: channel.webhook_token
-						? `${channel.webhook_token.substring(0, 10)}...`
-						: 'null',
-					received: token ? `${token.substring(0, 10)}...` : 'null'
+					expectedTokenPresent: Boolean(channel.webhook_token),
+					receivedTokenPresent: Boolean(token)
 				});
 				return { success: false, processed: 0, error: 'Invalid token' };
 			}
@@ -578,9 +568,7 @@ export class CalendarWebhookService {
 
 		console.log(`[SYNC] Starting syncCalendarChanges for user ${userId}`, {
 			calendarId,
-			syncToken: syncToken
-				? `${syncToken.substring(0, Math.min(20, syncToken.length))}...`
-				: 'null',
+			syncTokenPresent: Boolean(syncToken),
 			syncTokenLength: syncToken?.length || 0,
 			isRetry
 		});
@@ -618,9 +606,7 @@ export class CalendarWebhookService {
 
 				console.log(`[SYNC] Making calendar.events.list request #${requestCount}`, {
 					calendarId,
-					syncToken: pageToken
-						? `${pageToken.substring(0, Math.min(20, pageToken.length))}...`
-						: 'undefined',
+					hasSyncOrPageToken: Boolean(pageToken),
 					showDeleted: true,
 					maxResults: 100,
 					timeMin: userCreatedAt?.toISOString() || undefined
@@ -701,9 +687,7 @@ export class CalendarWebhookService {
 				pageToken = response.data.nextPageToken || null;
 				if (!pageToken && response.data.nextSyncToken) {
 					newSyncToken = response.data.nextSyncToken;
-					console.log(
-						`[SYNC] No more pages, got new sync token: ${newSyncToken ? `${newSyncToken.substring(0, Math.min(20, newSyncToken.length))}...` : 'none'}`
-					);
+					console.log('[SYNC] No more pages; received new sync token');
 				}
 			} while (pageToken);
 
@@ -734,9 +718,7 @@ export class CalendarWebhookService {
 
 			// Update sync token
 			if (newSyncToken && typeof newSyncToken === 'string') {
-				console.log(
-					`[SYNC] Updating sync token in database: ${newSyncToken.substring(0, Math.min(20, newSyncToken.length))}...`
-				);
+				console.log('[SYNC] Updating sync token in database');
 				const { error: updateError } = await this.supabase
 					.from('calendar_webhook_channels')
 					.update({
@@ -789,9 +771,7 @@ export class CalendarWebhookService {
 				console.log('[SYNC] *** SYNC TOKEN EXPIRED ***', {
 					userId,
 					calendarId,
-					oldSyncToken: syncToken
-						? `${syncToken.substring(0, Math.min(20, syncToken.length))}...`
-						: 'null',
+					oldSyncTokenPresent: Boolean(syncToken),
 					isRetry,
 					errorCode: error.code,
 					errorMessage: error.message,

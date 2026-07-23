@@ -15,6 +15,7 @@ import {
 	shouldDisplayPersistedErrorLog
 } from '$lib/utils/error-observability';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import { sanitizeLogData, sanitizeLogText } from '$lib/utils/logging-helpers';
 
 type ErrorLogFilters = {
 	userId?: string;
@@ -489,10 +490,40 @@ export class ErrorLoggerService {
 		severity?: ErrorSeverity
 	): Promise<string | null> {
 		try {
-			const errorInfo = this.extractErrorInfo(error);
-			const errorType = this.determineErrorType(error, context);
-			const finalSeverity = severity || this.determineSeverity(error, errorType);
-			const normalizedProject = this.normalizeProjectIdForStorage(context?.projectId);
+			const sanitizedError = sanitizeLogData(error, {
+				maxStringLength: 2000,
+				maxDepth: 5,
+				maxEntries: 50
+			}) as any;
+			// Plain provider error objects commonly use `message`/`stack` keys. Those
+			// are diagnostic fields, not user-message payloads, so retain a redacted
+			// version even though generic metadata redacts keys named `message`.
+			if (
+				error &&
+				typeof error === 'object' &&
+				sanitizedError &&
+				typeof sanitizedError === 'object'
+			) {
+				if (typeof error.message === 'string') {
+					sanitizedError.message = sanitizeLogText(error.message, 2000);
+				}
+				if (typeof error.stack === 'string') {
+					sanitizedError.stack = sanitizeLogText(error.stack, 8000);
+				}
+			}
+			const sanitizedContext = context
+				? (sanitizeLogData(context, {
+						maxStringLength: 2000,
+						maxDepth: 5,
+						maxEntries: 50
+					}) as ErrorContext)
+				: undefined;
+			const errorInfo = this.extractErrorInfo(sanitizedError);
+			const errorType = this.determineErrorType(sanitizedError, sanitizedContext);
+			const finalSeverity = severity || this.determineSeverity(sanitizedError, errorType);
+			const normalizedProject = this.normalizeProjectIdForStorage(
+				sanitizedContext?.projectId
+			);
 
 			const errorEntry = {
 				error_type: errorType,
@@ -501,44 +532,44 @@ export class ErrorLoggerService {
 				error_stack: errorInfo.stack,
 				severity: finalSeverity,
 
-				user_id: context?.userId,
+				user_id: sanitizedContext?.userId,
 				project_id: normalizedProject.projectId,
-				brain_dump_id: context?.brainDumpId,
+				brain_dump_id: sanitizedContext?.brainDumpId,
 
-				endpoint: context?.endpoint,
-				http_method: context?.httpMethod,
-				request_id: context?.requestId || this.generateRequestId(),
-				user_agent: browser ? navigator.userAgent : context?.userAgent,
-				ip_address: context?.ipAddress ?? null,
+				endpoint: sanitizedContext?.endpoint,
+				http_method: sanitizedContext?.httpMethod,
+				request_id: sanitizedContext?.requestId || this.generateRequestId(),
+				user_agent: browser ? navigator.userAgent : sanitizedContext?.userAgent,
+				ip_address: sanitizedContext?.ipAddress ?? null,
 
-				llm_provider: context?.llmMetadata?.provider,
-				llm_model: context?.llmMetadata?.model,
-				prompt_tokens: context?.llmMetadata?.promptTokens,
-				completion_tokens: context?.llmMetadata?.completionTokens,
-				total_tokens: context?.llmMetadata?.totalTokens,
-				response_time_ms: context?.llmMetadata?.responseTimeMs,
-				llm_temperature: context?.llmMetadata?.temperature,
-				llm_max_tokens: context?.llmMetadata?.maxTokens,
+				llm_provider: sanitizedContext?.llmMetadata?.provider,
+				llm_model: sanitizedContext?.llmMetadata?.model,
+				prompt_tokens: sanitizedContext?.llmMetadata?.promptTokens,
+				completion_tokens: sanitizedContext?.llmMetadata?.completionTokens,
+				total_tokens: sanitizedContext?.llmMetadata?.totalTokens,
+				response_time_ms: sanitizedContext?.llmMetadata?.responseTimeMs,
+				llm_temperature: sanitizedContext?.llmMetadata?.temperature,
+				llm_max_tokens: sanitizedContext?.llmMetadata?.maxTokens,
 
-				operation_type: context?.operationType,
-				table_name: context?.tableName,
-				record_id: context?.recordId,
-				operation_payload: context?.operationPayload,
+				operation_type: sanitizedContext?.operationType,
+				table_name: sanitizedContext?.tableName,
+				record_id: sanitizedContext?.recordId,
+				operation_payload: sanitizedContext?.operationPayload,
 
 				metadata: {
-					...context?.metadata,
+					...sanitizedContext?.metadata,
 					...(normalizedProject.invalidProjectId
 						? {
 								invalid_context_project_id: normalizedProject.invalidProjectId,
 								project_id_omitted_reason: 'invalid_uuid'
 							}
 						: {}),
-					originalError: this.serializeErrorForStorage(error),
+					originalError: this.serializeErrorForStorage(sanitizedError),
 					timestamp: new Date().toISOString()
 				},
 				environment: this.environment,
 				app_version: this.appVersion,
-				browser_info: browser ? this.getBrowserInfo() : context?.browserInfo
+				browser_info: browser ? this.getBrowserInfo() : sanitizedContext?.browserInfo
 			};
 
 			const { data, error: insertError } = await this.supabase
@@ -574,7 +605,7 @@ export class ErrorLoggerService {
 
 					if (retryError) {
 						console.error('Failed to log error to database:', retryError);
-						this.logToConsole(retryEntry, error);
+						this.logToConsole(retryEntry, sanitizedError);
 						return null;
 					}
 
@@ -585,7 +616,7 @@ export class ErrorLoggerService {
 				}
 
 				console.error('Failed to log error to database:', insertError);
-				this.logToConsole(errorEntry, error);
+				this.logToConsole(errorEntry, sanitizedError);
 				return null;
 			}
 
@@ -597,7 +628,10 @@ export class ErrorLoggerService {
 			return null;
 		} catch (loggingError) {
 			console.error('Error logger failed:', loggingError);
-			this.logToConsole({ error, context }, error);
+			this.logToConsole(
+				sanitizeLogData({ error, context }, { maxStringLength: 2000 }),
+				sanitizeLogData(error, { maxStringLength: 2000 })
+			);
 			return null;
 		}
 	}

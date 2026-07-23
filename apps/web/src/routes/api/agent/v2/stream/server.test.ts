@@ -130,6 +130,10 @@ vi.mock('$lib/services/agentic-chat-v2/tool-surface-size-report', () => ({
 }));
 
 vi.mock('$lib/services/agentic-chat-v2', () => ({
+	FASTCHAT_LIMITS: {
+		SYNTHESIS_MAX_TOKENS: 8000,
+		FORCED_SYNTHESIS_MAX_TOKENS: 6000
+	},
 	FASTCHAT_PENDING_TURN_INTENT_METADATA_KEY: 'fastchat_pending_turn_intent',
 	appendAttachmentContextToMessage: (message: string) => message,
 	assessLiveVisionImageEligibility: () => ({ eligible: false, reason: 'disabled' }),
@@ -174,10 +178,14 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 	}),
 	normalizeFastContextType: (value?: string) => value ?? 'global',
 	parseFastChatInitialPlanModels: () => null,
+	parseFastChatForcedSynthesisIgnoredProviderSlugs: () => ['digitalocean'],
+	parseFastChatForcedSynthesisModels: () => ['synthesis/model'],
+	parseFastChatForcedSynthesisRoutingMode: () => 'off',
 	parseFastChatPinnedModels: () => [],
 	parseFastChatModelTieringMode: () => 'off',
 	parseFastChatModelTieringSampleRate: (_value?: string, fallback = 0.5) => fallback,
 	resolveFastChatModelTieringConfig: () => null,
+	resolveFastChatForcedSynthesisRoutingConfig: () => null,
 	resolveFastChatTurnOutcome: mocks.resolveFastChatTurnOutcome,
 	sanitizeAttachmentRefsForMetadata: () => [],
 	shouldUseLiveVisionForTurn: () => false,
@@ -781,6 +789,199 @@ describe('/api/agent/v2/stream', () => {
 					})
 				})
 			}
+		});
+	});
+
+	it('emits and persists a degraded synthesis recovery with its failed pass and read evidence', async () => {
+		const recoveredText =
+			'I gathered context before the turn ended. Found: person_mention "Brian Hicks" (candidate).';
+		mocks.streamFastChat.mockImplementationOnce(async ({ onDelta, onPhase }: Row) => {
+			await onPhase('planning');
+			await onPhase('gathering');
+			await onPhase('synthesizing');
+			await onPhase('recovering');
+			await onDelta(recoveredText);
+			return {
+				assistantText: recoveredText,
+				finalAssistantText: recoveredText,
+				finishedReason: 'synthesis_recovered',
+				toolExecutions: [
+					{
+						toolCall: {
+							id: 'read-1',
+							type: 'function',
+							function: {
+								name: 'search_project',
+								arguments: JSON.stringify({ query: 'Brian Hicks' })
+							}
+						},
+						result: {
+							tool_call_id: 'read-1',
+							success: true,
+							result: {
+								results: [
+									{
+										id: 'person-1',
+										type: 'person_mention',
+										title: 'Brian Hicks'
+									}
+								]
+							}
+						}
+					}
+				],
+				llmPasses: [
+					{
+						pass: 4,
+						passRole: 'forced_synthesis',
+						forcedNoToolSynthesis: true,
+						attempts: 2,
+						streamRetryCount: 1,
+						durationMs: 120_000,
+						terminalOutcome: 'timed_out',
+						terminalEventReceived: false,
+						assistantTextCharsReceived: 0,
+						reasoningCharsReceived: 0,
+						toolCallsReceived: 0,
+						attemptsExhausted: true,
+						recoveredAsDegradedCompletion: true
+					}
+				],
+				toolRounds: 1,
+				toolCallsMade: 1,
+				supervisorDecisions: [],
+				finalizationGuard: {
+					text: recoveredText,
+					applied: true,
+					reason: 'empty_after_reads'
+				},
+				completionOutcome: {
+					status: 'completed_degraded',
+					answerSource: 'deterministic_evidence',
+					recovery: {
+						outcome: 'timed_out',
+						measurements: {
+							pass: 4,
+							passRole: 'forced_synthesis',
+							forcedNoToolSynthesis: true,
+							attempts: 2,
+							maxAttempts: 2,
+							retryCount: 1,
+							timeoutMs: 60_000,
+							durationMs: 120_000,
+							terminalEventReceived: false,
+							assistantTextCharsReceived: 0,
+							reasoningCharsReceived: 0,
+							toolCallsReceived: 0,
+							retryable: true,
+							attemptsExhausted: true
+						},
+						evidenceToolExecutionCount: 1
+					}
+				},
+				orchestrationInterventions: {
+					projectCreateStopRepair: false,
+					gatewayMutationStopRepair: false,
+					skillGateStopRepair: false,
+					gatewaySchemaRepair: false,
+					gatewayCreateFieldRepair: false,
+					validationRepairRounds: 0,
+					readLoopRepairRank: 3,
+					forcedSynthesisPasses: 1,
+					writeIntentCarveOut: false,
+					lengthContinuations: 0,
+					documentOrganizationRecovery: false,
+					finalizationGuard: true,
+					supervisorRecoveryDecisions: 1,
+					streamRetries: 1,
+					synthesisTransportRecovery: true
+				}
+			};
+		});
+		const supabase = createStreamingSupabase();
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Who are the people in this project?',
+					context_type: 'global',
+					stream_run_id: 'stream-run-degraded',
+					client_turn_id: 'client-turn-degraded'
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		const events = parseSseEvents(await response.text());
+		expect(events[0]).toMatchObject({
+			type: 'turn_phase',
+			turn_phase: 'acknowledged',
+			message: 'Request received. Preparing the workspace context...',
+			durable: false
+		});
+		expect(events.find((event) => event.type === 'done')).toMatchObject({
+			finished_reason: 'synthesis_recovered',
+			completion_status: 'completed_degraded',
+			answer_source: 'deterministic_evidence'
+		});
+		expect(
+			events.filter((event) => event.type === 'turn_phase').map((event) => event.turn_phase)
+		).toEqual([
+			'acknowledged',
+			'planning',
+			'gathering',
+			'synthesizing',
+			'recovering',
+			'finalizing'
+		]);
+		const textIndex = events.findIndex((event) => event.type === 'text_delta');
+		const finalizingIndex = events.findIndex(
+			(event) => event.type === 'turn_phase' && event.turn_phase === 'finalizing'
+		);
+		expect(textIndex).toBeGreaterThan(0);
+		expect(finalizingIndex).toBeGreaterThan(textIndex);
+
+		const assistantPersistCall = mocks.persistMessage.mock.calls.find(
+			([params]) => params.role === 'assistant'
+		)?.[0];
+		expect(assistantPersistCall?.metadata).toMatchObject({
+			completion_status: 'completed_degraded',
+			answer_source: 'deterministic_evidence',
+			completion_outcome: {
+				status: 'completed_degraded',
+				answerSource: 'deterministic_evidence',
+				recovery: { outcome: 'timed_out', evidenceToolExecutionCount: 1 }
+			},
+			llm_pass_count: 1,
+			llm_passes: [
+				expect.objectContaining({
+					terminal_outcome: 'timed_out',
+					attempts_exhausted: true,
+					recovered_as_degraded_completion: true
+				})
+			]
+		});
+
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(
+			supabase.insertedRows.chat_turn_events?.find(
+				(row) => row.event_type === 'synthesis_transport_recovered'
+			)?.payload
+		).toMatchObject({
+			completion_status: 'completed_degraded',
+			answer_source: 'deterministic_evidence',
+			recovery_outcome: 'timed_out',
+			evidence_tool_execution_count: 1
+		});
+		expect(supabase.insertedRows.chat_tool_executions?.[0]).toMatchObject({
+			tool_name: 'search_project',
+			sequence_index: 1
 		});
 	});
 

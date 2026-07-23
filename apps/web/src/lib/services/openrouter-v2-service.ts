@@ -31,6 +31,12 @@ import {
 	isValidJsonObject,
 	ToolCallAssembler
 } from '$lib/services/openrouter-v2/tool-call-assembler';
+import {
+	mergeOpenRouterRequestProviderRouting,
+	normalizeOpenRouterProviderSlug,
+	normalizeOpenRouterProviderSlugList,
+	type OpenRouterRequestProviderRouting
+} from '$lib/services/openrouter-v2/provider-routing';
 import type {
 	ModelLane,
 	OpenRouterChatMessage,
@@ -106,11 +112,7 @@ function readPrivateEnv(name: string): string | undefined {
 
 function parseOpenRouterProviderOrder(value: string | undefined): string[] {
 	if (!value) return [];
-	return value
-		.split(',')
-		.map((entry) => entry.trim())
-		.filter((entry) => entry.length > 0)
-		.slice(0, 8);
+	return normalizeOpenRouterProviderSlugList(value.split(',')).slice(0, 8);
 }
 
 // Default provider steering (2026-07-09 speed audit WP-4): OpenRouter's price
@@ -123,7 +125,7 @@ function parseOpenRouterProviderOrder(value: string | undefined): string[] {
 // setting it to "off"/"none"/"default" disables steering entirely (the
 // no-deploy kill switch if a preferred host degrades).
 const DEFAULT_PROVIDER_ORDER_BY_MODEL: Record<string, string[]> = {
-	'deepseek/deepseek-v4-flash': ['Baidu', 'GMICloud']
+	'deepseek/deepseek-v4-flash': ['baidu', 'gmicloud']
 };
 
 const PROVIDER_ORDER_DISABLED_VALUES = new Set(['off', 'none', 'default', 'disabled']);
@@ -734,7 +736,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 
 	private resolveOpenRouterProviderConfig(
 		lane: ModelLane,
-		model?: string
+		model?: string,
+		requestRouting?: OpenRouterRequestProviderRouting
 	): OpenRouterProviderConfig {
 		const config: OpenRouterProviderConfig =
 			lane === 'json' || lane === 'tool_calling' || lane === 'multimodal'
@@ -763,7 +766,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 			config.order = providerOrder;
 		}
 
-		return config;
+		return mergeOpenRouterRequestProviderRouting(config, requestRouting);
 	}
 
 	private isKimiDirectModel(model: string): boolean {
@@ -1593,6 +1596,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		clientTurnId?: string;
 		model?: string;
 		models?: string[];
+		providerRouting?: OpenRouterRequestProviderRouting;
 		signal?: AbortSignal;
 		operationType?: string;
 		contextType?: string;
@@ -1621,6 +1625,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		let streamResponse: Response | null = null;
 		let resolvedModel = laneModels[0] || LAST_RESORT_MODEL;
 		let resolvedProvider: string | undefined;
+		let resolvedProviderSlug: string | undefined;
 		let requestModelForStartedStream = resolvedModel;
 		let routingModelsForStartedStream = [...laneModels];
 		let startedStreamAttempt = 0;
@@ -1655,7 +1660,11 @@ export class OpenRouterV2Service extends SmartLLMService {
 					temperature: options.temperature ?? (needsTools ? 0.2 : 0.7),
 					max_tokens: options.maxTokens ?? 2000,
 					reasoning: resolveLaneReasoning(lane),
-					provider: this.resolveOpenRouterProviderConfig(lane, model),
+					provider: this.resolveOpenRouterProviderConfig(
+						lane,
+						model,
+						options.providerRouting
+					),
 					timeoutMs: this.resolveTimeout(undefined),
 					signal: options.signal,
 					// Restore cache affinity on the primary streaming path (D9). OpenRouter's
@@ -1715,7 +1724,11 @@ export class OpenRouterV2Service extends SmartLLMService {
 						temperature: options.temperature ?? (needsTools ? 0.2 : 0.7),
 						max_tokens: options.maxTokens ?? 2000,
 						reasoning: resolveLaneReasoning(fallbackLane),
-						provider: this.resolveOpenRouterProviderConfig(fallbackLane, model),
+						provider: this.resolveOpenRouterProviderConfig(
+							fallbackLane,
+							model,
+							options.providerRouting
+						),
 						timeoutMs: this.resolveTimeout(undefined),
 						signal: options.signal
 					});
@@ -1767,6 +1780,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 					startedStreamAttempt = maxAttempts + providersAttempted.size - 1;
 					resolvedModel = route.canonicalModel;
 					resolvedProvider = route.providerName;
+					resolvedProviderSlug = route.providerName;
 					break;
 				} catch (error) {
 					if (isAbortError(error)) {
@@ -1814,6 +1828,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		}
 		if (responseProvider && responseProvider.trim().length > 0) {
 			resolvedProvider = responseProvider.trim();
+			resolvedProviderSlug = normalizeOpenRouterProviderSlug(resolvedProvider);
 		}
 
 		const reader = streamResponse.body?.getReader();
@@ -1873,7 +1888,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 				operationType: options.operationType || 'agentic_chat_v2_stream',
 				modelRequested: requestModelForStartedStream,
 				modelUsed: actualModel,
-				provider: resolvedProvider ?? modelConfig?.provider,
+				provider: resolvedProviderSlug ?? resolvedProvider ?? modelConfig?.provider,
 				promptTokens: usageForLog.prompt_tokens || 0,
 				completionTokens: usageForLog.completion_tokens || 0,
 				totalTokens: usageForLog.total_tokens || 0,
@@ -1923,6 +1938,11 @@ export class OpenRouterV2Service extends SmartLLMService {
 					openRouterModelsAttempted: Array.from(openRouterModelsAttempted),
 					attempts: startedStreamAttempt || 1,
 					providerRoute,
+					providerRaw: resolvedProvider ?? null,
+					providerSlug: resolvedProviderSlug ?? null,
+					requestedProviderIgnore: normalizeOpenRouterProviderSlugList(
+						options.providerRouting?.ignore
+					),
 					fallbackFrom: providerRoute === 'direct' ? 'openrouter' : undefined,
 					fallbackProvider,
 					fallbackReason: fallbackReason ?? null,
@@ -1982,6 +2002,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 							finished_reason: terminalFinishReason ?? 'stop',
 							model: resolvedModel,
 							provider: resolvedProvider,
+							provider_raw: resolvedProvider,
+							provider_slug: resolvedProviderSlug,
 							request_id: streamRequestId,
 							requestId: streamRequestId,
 							system_fingerprint: streamSystemFingerprint,
@@ -2038,6 +2060,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 					}
 					if (typeof chunk?.provider === 'string' && chunk.provider.trim().length > 0) {
 						resolvedProvider = chunk.provider.trim();
+						resolvedProviderSlug = normalizeOpenRouterProviderSlug(resolvedProvider);
 					}
 					if (chunk?.usage && typeof chunk.usage === 'object') {
 						usage = chunk.usage as OpenRouterUsage;
@@ -2125,6 +2148,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 				finished_reason: terminalFinishReason ?? 'stop',
 				model: resolvedModel,
 				provider: resolvedProvider,
+				provider_raw: resolvedProvider,
+				provider_slug: resolvedProviderSlug,
 				request_id: streamRequestId,
 				requestId: streamRequestId,
 				system_fingerprint: streamSystemFingerprint,

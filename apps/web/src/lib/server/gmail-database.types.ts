@@ -1,26 +1,21 @@
 // apps/web/src/lib/server/gmail-database.types.ts
 /**
- * Hand-authored schema types for the Gmail read tables and RPCs created by
- * `supabase/migrations/20260722000000_gmail_read_connections.sql`.
+ * Gmail-specific domain narrowings over the canonical generated Supabase types.
  *
- * The generated `Database` type in `@buildos/shared-types` does not include these tables yet:
- * regeneration requires an authenticated Supabase CLI (`supabase login` or
- * `SUPABASE_ACCESS_TOKEN`). Until `pnpm gen:all` picks the tables up, this module is the single
- * typing boundary: the Gmail server modules narrow the canonical admin client to
- * `GmailSchemaClient` in their constructors and type every query against these shapes.
- *
- * When the generated types include these tables, replace the table shapes with re-exports (or
- * `satisfies` checks) against the generated definitions. The status/kind unions are deliberate
- * domain narrowings of the migration's CHECK constraints and should survive that swap.
+ * The database tables and RPCs come from `@buildos/shared-types`. This module keeps
+ * CHECK-constrained string fields narrow and compensates for nullable Postgres RPC
+ * arguments/returns that the Supabase generator cannot infer from function bodies.
+ * It must not duplicate table columns or become an independent schema mirror.
  */
 
+import type { Database, Json } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
 	GmailConnectionCapability,
 	GmailConnectionStatus
 } from '$lib/types/gmail-integration';
 
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+export type { Json } from '@buildos/shared-types';
 
 export type GmailGrantKind = 'read' | 'send' | 'compose' | 'modify';
 export type GmailOauthClientKind = 'gmail_read' | 'gmail_actions';
@@ -28,261 +23,126 @@ export type GmailCapability = GmailConnectionCapability['capability'];
 export type GmailCapabilityStatus = GmailConnectionCapability['status'];
 export type GmailAuditOutcome = 'success' | 'failure' | 'blocked';
 
-export type UserEmailConnectionRow = {
-	account_label: string;
-	connected_at: string;
-	created_at: string;
-	deleted_at: string | null;
-	display_name: string | null;
-	email_address: string;
-	id: string;
-	last_used_at: string | null;
-	last_verified_at: string | null;
-	provider: string;
-	provider_account_id: string;
-	read_enabled: boolean;
+type PublicSchema = Database['public'];
+type Table<Name extends keyof PublicSchema['Tables']> = PublicSchema['Tables'][Name];
+type Function<Name extends keyof PublicSchema['Functions']> = PublicSchema['Functions'][Name];
+type FunctionArgs<Name extends keyof PublicSchema['Functions']> = Function<Name>['Args'];
+type NullableArgs<Args, Keys extends keyof Args> = Omit<Args, Keys> & {
+	[Key in Keys]: Args[Key] | null;
+};
+
+export type UserEmailConnectionRow = Omit<
+	Table<'user_email_connections'>['Row'],
+	'status'
+> & {
 	status: GmailConnectionStatus;
-	updated_at: string;
-	user_id: string;
 };
 
-type UserEmailConnectionInsert = {
-	account_label: string;
-	connected_at?: string;
-	created_at?: string;
-	deleted_at?: string | null;
-	display_name?: string | null;
-	email_address: string;
-	id?: string;
-	last_used_at?: string | null;
-	last_verified_at?: string | null;
-	provider?: string;
-	provider_account_id: string;
-	read_enabled?: boolean;
-	status?: GmailConnectionStatus;
-	updated_at?: string;
-	user_id: string;
-};
-
-type UserEmailConnectionUpdate = Partial<UserEmailConnectionInsert>;
-
-export type EmailConnectionCredentialRow = {
-	access_token_ciphertext: string;
-	access_token_expires_at: string | null;
-	connection_id: string;
-	created_at: string;
+export type EmailConnectionCredentialRow = Omit<
+	Table<'email_connection_credentials'>['Row'],
+	'grant_kind' | 'oauth_client_kind'
+> & {
 	grant_kind: GmailGrantKind;
-	granted_scopes: string[];
-	id: string;
-	key_version: number;
-	last_refreshed_at: string | null;
 	oauth_client_kind: GmailOauthClientKind;
-	refresh_token_ciphertext: string;
-	revoked_at: string | null;
-	token_type: string;
-	updated_at: string;
 };
 
-type EmailConnectionCredentialInsert = {
-	access_token_ciphertext: string;
-	access_token_expires_at?: string | null;
-	connection_id: string;
-	created_at?: string;
-	grant_kind: GmailGrantKind;
-	granted_scopes?: string[];
-	id?: string;
-	key_version?: number;
-	last_refreshed_at?: string | null;
-	oauth_client_kind: GmailOauthClientKind;
-	refresh_token_ciphertext: string;
-	revoked_at?: string | null;
-	token_type?: string;
-	updated_at?: string;
-};
-
-type EmailConnectionCredentialUpdate = Partial<EmailConnectionCredentialInsert>;
-
-export type EmailCapabilityGrantRow = {
+export type EmailCapabilityGrantRow = Omit<
+	Table<'email_capability_grants'>['Row'],
+	'capability' | 'status'
+> & {
 	capability: GmailCapability;
-	connection_id: string;
-	consent_policy_version: string;
-	created_at: string;
-	disabled_at: string | null;
-	enabled_at: string | null;
-	enabled_by_user_id: string | null;
-	granted_scopes: string[];
-	id: string;
 	status: GmailCapabilityStatus;
-	updated_at: string;
 };
 
-type EmailCapabilityGrantInsert = {
-	capability: GmailCapability;
-	connection_id: string;
-	consent_policy_version: string;
-	created_at?: string;
-	disabled_at?: string | null;
-	enabled_at?: string | null;
-	enabled_by_user_id?: string | null;
-	granted_scopes?: string[];
-	id?: string;
-	status?: GmailCapabilityStatus;
-	updated_at?: string;
-};
-
-type EmailCapabilityGrantUpdate = Partial<EmailCapabilityGrantInsert>;
-
-export type EmailOauthStateRow = {
-	code_verifier: string;
-	connection_id: string | null;
-	consumed_at: string | null;
-	created_at: string;
-	expires_at: string;
-	id: string;
-	nonce: string;
+export type EmailOauthStateRow = Omit<
+	Table<'email_oauth_states'>['Row'],
+	'oauth_client_kind'
+> & {
 	oauth_client_kind: 'gmail_read';
-	redirect_path: string;
-	state_hash: string;
-	user_id: string;
 };
 
-type EmailOauthStateInsert = {
-	code_verifier: string;
-	connection_id?: string | null;
-	consumed_at?: string | null;
-	created_at?: string;
-	expires_at?: string;
-	id?: string;
-	nonce: string;
-	oauth_client_kind: 'gmail_read';
-	redirect_path?: string;
-	state_hash: string;
-	user_id: string;
-};
-
-type EmailOauthStateUpdate = Partial<EmailOauthStateInsert>;
-
-export type EmailAccessAuditEventRow = {
-	connection_id: string | null;
-	created_at: string;
-	id: string;
+export type EmailAccessAuditEventRow = Omit<
+	Table<'email_access_audit_events'>['Row'],
+	'outcome'
+> & {
 	metadata: Json;
-	operation: string;
 	outcome: GmailAuditOutcome;
-	reason_code: string | null;
-	user_id: string;
 };
 
-type EmailAccessAuditEventInsert = {
-	connection_id?: string | null;
-	created_at?: string;
-	id?: string;
-	metadata?: Json;
-	operation: string;
-	outcome: GmailAuditOutcome;
-	reason_code?: string | null;
-	user_id: string;
-};
-
-type EmailAccessAuditEventUpdate = Partial<EmailAccessAuditEventInsert>;
+type GeneratedConsumedEmailOauthState =
+	Function<'consume_email_oauth_state'>['Returns'][number];
 
 /** Row shape returned by the `consume_email_oauth_state` RPC. */
-export type ConsumedEmailOauthState = {
-	code_verifier: string;
+export type ConsumedEmailOauthState = Omit<
+	GeneratedConsumedEmailOauthState,
+	'connection_id'
+> & {
 	connection_id: string | null;
-	nonce: string;
-	redirect_path: string;
-	state_id: string;
 };
 
+type UpsertGmailReadConnectionArgs = NullableArgs<
+	FunctionArgs<'upsert_gmail_read_connection'>,
+	| 'p_access_token_expires_at'
+	| 'p_default_account_label'
+	| 'p_display_name'
+	| 'p_expected_connection_id'
+	| 'p_token_type'
+>;
+
+type RotateGmailReadCredentialsArgs = NullableArgs<
+	FunctionArgs<'rotate_gmail_read_credentials'>,
+	'p_access_token_expires_at' | 'p_token_type'
+>;
+
 export type GmailReadDatabase = {
-	__InternalSupabase: {
-		PostgrestVersion: '12.2.3 (519615d)';
-	};
+	__InternalSupabase: Database['__InternalSupabase'];
 	public: {
 		Tables: {
-			user_email_connections: {
+			user_email_connections: Omit<Table<'user_email_connections'>, 'Row'> & {
 				Row: UserEmailConnectionRow;
-				Insert: UserEmailConnectionInsert;
-				Update: UserEmailConnectionUpdate;
-				Relationships: [];
 			};
-			email_connection_credentials: {
+			email_connection_credentials: Omit<
+				Table<'email_connection_credentials'>,
+				'Row'
+			> & {
 				Row: EmailConnectionCredentialRow;
-				Insert: EmailConnectionCredentialInsert;
-				Update: EmailConnectionCredentialUpdate;
-				Relationships: [];
 			};
-			email_capability_grants: {
+			email_capability_grants: Omit<Table<'email_capability_grants'>, 'Row'> & {
 				Row: EmailCapabilityGrantRow;
-				Insert: EmailCapabilityGrantInsert;
-				Update: EmailCapabilityGrantUpdate;
-				Relationships: [];
 			};
-			email_oauth_states: {
+			email_oauth_states: Omit<Table<'email_oauth_states'>, 'Row'> & {
 				Row: EmailOauthStateRow;
-				Insert: EmailOauthStateInsert;
-				Update: EmailOauthStateUpdate;
-				Relationships: [];
 			};
-			email_access_audit_events: {
+			email_access_audit_events: Omit<Table<'email_access_audit_events'>, 'Row'> & {
 				Row: EmailAccessAuditEventRow;
-				Insert: EmailAccessAuditEventInsert;
-				Update: EmailAccessAuditEventUpdate;
-				Relationships: [];
 			};
 		};
-		Views: { [_ in never]: never };
+		Views: PublicSchema['Views'];
 		Functions: {
-			consume_email_oauth_state: {
-				Args: {
-					p_oauth_client_kind: string;
-					p_state_hash: string;
-					p_user_id: string;
-				};
+			consume_email_oauth_state: Omit<
+				Function<'consume_email_oauth_state'>,
+				'Returns'
+			> & {
 				Returns: ConsumedEmailOauthState[];
 			};
-			upsert_gmail_read_connection: {
-				Args: {
-					p_access_token_ciphertext: string;
-					p_access_token_expires_at: string | null;
-					p_consent_policy_version: string;
-					p_default_account_label: string | null;
-					p_display_name: string | null;
-					p_email_address: string;
-					p_expected_connection_id: string | null;
-					p_granted_scopes: string[];
-					p_key_version: number;
-					p_provider_account_id: string;
-					p_refresh_token_ciphertext: string;
-					p_token_type: string | null;
-					p_user_id: string;
-				};
+			upsert_gmail_read_connection: Omit<
+				Function<'upsert_gmail_read_connection'>,
+				'Args' | 'Returns'
+			> & {
+				Args: UpsertGmailReadConnectionArgs;
 				Returns: UserEmailConnectionRow[];
 			};
-			rotate_gmail_read_credentials: {
-				Args: {
-					p_access_token_ciphertext: string;
-					p_access_token_expires_at: string | null;
-					p_connection_id: string;
-					p_granted_scopes: string[];
-					p_key_version: number;
-					p_refresh_token_ciphertext: string;
-					p_token_type: string | null;
-					p_user_id: string;
-				};
+			rotate_gmail_read_credentials: Omit<
+				Function<'rotate_gmail_read_credentials'>,
+				'Args' | 'Returns'
+			> & {
+				Args: RotateGmailReadCredentialsArgs;
 				Returns: UserEmailConnectionRow[];
 			};
-			mark_gmail_read_connection_reconnect_required: {
-				Args: {
-					p_connection_id: string;
-					p_user_id: string;
-				};
-				Returns: undefined;
-			};
+			mark_gmail_read_connection_reconnect_required: Function<'mark_gmail_read_connection_reconnect_required'>;
 		};
-		Enums: { [_ in never]: never };
-		CompositeTypes: { [_ in never]: never };
+		Enums: PublicSchema['Enums'];
+		CompositeTypes: PublicSchema['CompositeTypes'];
 	};
 };
 

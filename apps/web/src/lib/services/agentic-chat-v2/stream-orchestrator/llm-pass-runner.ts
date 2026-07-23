@@ -3,11 +3,16 @@ import type { ChatContextType, ChatToolCall, ChatToolDefinition } from '@buildos
 import type { OpenRouterContentPart } from '$lib/services/openrouter-v2/types';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
 import { FASTCHAT_LIMITS } from '../limits';
-import type { FastChatPassModelRouting } from '../model-tiering';
+import type { FastChatLlmPassRole, FastChatPassModelRouting } from '../model-tiering';
 import type { FastAgentStreamUsage, FastChatHistoryMessage } from '../types';
 import type { TurnSupervisorObservation } from '../turn-supervisor';
 import { parseToolArguments as parseSupervisorToolArguments } from '../turn-supervisor/digest';
-import type { LLMStreamPassMetadata } from './shared';
+import type {
+	LLMStreamAttemptRoute,
+	LLMStreamPassMetadata,
+	LLMStreamPassTerminalMeasurements,
+	LLMStreamPassTerminalOutcome
+} from './shared';
 import { normalizeToolCallDefaults } from './tool-arguments';
 
 export type FastChatModelMessage = Omit<FastChatHistoryMessage, 'content'> & {
@@ -36,7 +41,35 @@ export type LlmStreamPassResult = {
 	metadata: LLMStreamPassMetadata;
 	usage?: FastAgentStreamUsage;
 	finishedReason?: string;
+	terminal: LlmStreamPassTerminal;
 };
+
+export type LlmStreamPassTerminalOutcome = LLMStreamPassTerminalOutcome;
+export type LlmStreamPassTerminalMeasurements = LLMStreamPassTerminalMeasurements;
+
+export type LlmStreamPassTerminal = {
+	outcome: LlmStreamPassTerminalOutcome;
+	measurements: LlmStreamPassTerminalMeasurements;
+};
+
+/**
+ * Typed terminal failure for a logical LLM pass. The phase-1 recovery boundary
+ * can inspect this value without parsing provider/error prose, while the
+ * original message remains intact for existing logs and cancellation handling.
+ */
+export class LlmStreamPassTerminalError extends Error {
+	override name = 'LlmStreamPassTerminalError';
+
+	constructor(
+		message: string,
+		readonly outcome: Exclude<LlmStreamPassTerminalOutcome, 'completed'>,
+		readonly measurements: LlmStreamPassTerminalMeasurements,
+		readonly originalError?: Error,
+		readonly partialAssistantText = ''
+	) {
+		super(message);
+	}
+}
 
 export async function runLlmStreamPass(params: {
 	llm: SmartLLMService;
@@ -62,6 +95,7 @@ export async function runLlmStreamPass(params: {
 	startLlmHeartbeat: () => () => void;
 	observeSupervisor: (observation: TurnSupervisorObservation) => Promise<void>;
 	onToolCall?: (toolCall: ChatToolCall) => Promise<void> | void;
+	onStreamRetry?: (error: Error, attempt: number) => Promise<void> | void;
 	retryDelayMs?: (attempt: number) => number;
 	passTimeoutMs?: number;
 	modelRouting?: FastChatPassModelRouting;
@@ -73,9 +107,17 @@ export async function runLlmStreamPass(params: {
 		params.modelRouting?.models && params.modelRouting.models.length > 0
 			? params.modelRouting.models
 			: undefined;
+	const maxTokens = params.modelRouting?.maxTokens ?? FASTCHAT_LIMITS.SYNTHESIS_MAX_TOKENS;
 	const startedAtMs = Date.now();
+	let attemptsStarted = 0;
+	let assistantTextCharsReceived = 0;
+	let reasoningCharsReceived = 0;
+	let toolCallsReceived = 0;
+	let bestPartialAssistantText = '';
+	const attemptRoutes: LLMStreamAttemptRoute[] = [];
 
 	for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+		attemptsStarted = attempt;
 		let assistantBuffer = '';
 		let assistantReasoningForReplay = '';
 		const assistantReasoningDetailsForReplay: unknown[] = [];
@@ -94,6 +136,20 @@ export async function runLlmStreamPass(params: {
 			params.noToolSynthesisPass,
 			params.modelRouting
 		);
+		const attemptModelCandidates = resolveAttemptModelCandidates(
+			modelCandidates,
+			attempt,
+			params.modelRouting?.retryModelRotation === true
+		);
+		attemptRoutes.push({
+			attempt,
+			...(attemptModelCandidates?.length ? { models: [...attemptModelCandidates] } : {}),
+			...(params.modelRouting?.ignoredProviderSlugs?.length
+				? { ignoredProviderSlugs: [...params.modelRouting.ignoredProviderSlugs] }
+				: {}),
+			maxTokens
+		});
+		metadata.attemptRoutes = cloneAttemptRoutes(attemptRoutes);
 		metadata.startedAtMs = startedAtMs;
 		if (attempt > 1) {
 			metadata.attempts = attempt;
@@ -135,10 +191,13 @@ export async function runLlmStreamPass(params: {
 				streamRunId: params.streamRunId ?? undefined,
 				clientTurnId: params.clientTurnId ?? undefined,
 				profile: modelProfile,
-				models: modelCandidates,
+				models: attemptModelCandidates,
+				providerRouting: params.modelRouting?.ignoredProviderSlugs?.length
+					? { ignore: params.modelRouting.ignoredProviderSlugs }
+					: undefined,
 				// Keep the per-pass output cap above the service default so long
 				// answers and tool-call argument payloads are not cut mid-stream.
-				maxTokens: FASTCHAT_LIMITS.SYNTHESIS_MAX_TOKENS,
+				maxTokens,
 				operationType: 'agentic_chat_v2_stream',
 				contextType: params.normalizedContext,
 				entityId: params.entityId ?? undefined,
@@ -146,11 +205,21 @@ export async function runLlmStreamPass(params: {
 				signal: passAbortSignal.signal
 			})) {
 				if (event.type === 'text' && event.content) {
+					assistantTextCharsReceived += event.content.length;
 					if (firstTokenAtMs === null) firstTokenAtMs = Date.now();
 					assistantBuffer += event.content;
+					if (assistantBuffer.trim().length >= bestPartialAssistantText.trim().length) {
+						bestPartialAssistantText = assistantBuffer;
+					}
 					params.onAssistantBufferChange(assistantBuffer);
-					await params.tryEmitEarlyAssistantLeadIn(assistantBuffer);
+					// Forced synthesis may be retried. Do not expose a complete-looking
+					// sentence from an attempt that can still fail and be replaced by a
+					// different retry; terminal finalization emits the chosen buffer once.
+					if (!params.noToolSynthesisPass) {
+						await params.tryEmitEarlyAssistantLeadIn(assistantBuffer);
+					}
 				} else if (event.type === 'reasoning') {
+					reasoningCharsReceived += measureReasoningEventChars(event);
 					if (firstTokenAtMs === null) firstTokenAtMs = Date.now();
 					const reasoningEvent = event as SmartLlmStreamEvent & {
 						reasoning?: string;
@@ -179,6 +248,7 @@ export async function runLlmStreamPass(params: {
 					metadata.reasoningChannelChars =
 						(metadata.reasoningChannelChars ?? 0) + reasoningLen;
 				} else if (event.type === 'tool_call' && event.tool_call) {
+					toolCallsReceived += 1;
 					if (firstTokenAtMs === null) firstTokenAtMs = Date.now();
 					const normalizedToolCall = normalizeToolCallDefaults(
 						event.tool_call,
@@ -243,7 +313,19 @@ export async function runLlmStreamPass(params: {
 				await prepareForStreamRetry(params, attempt, maxAttempts, normalizedError);
 				continue;
 			}
-			throw normalizedError;
+			throw createLlmStreamPassTerminalError({
+				error: normalizedError,
+				params,
+				attemptsStarted,
+				maxAttempts,
+				startedAtMs,
+				terminalEventReceived: llmDoneReceived,
+				assistantTextCharsReceived,
+				reasoningCharsReceived,
+				toolCallsReceived,
+				partialAssistantText: bestPartialAssistantText,
+				attemptRoutes
+			});
 		} finally {
 			passAbortSignal.dispose();
 			clearLlmHeartbeatOnce();
@@ -262,12 +344,31 @@ export async function runLlmStreamPass(params: {
 				await prepareForStreamRetry(params, attempt, maxAttempts, missingDoneError);
 				continue;
 			}
-			throw missingDoneError;
+			throw createLlmStreamPassTerminalError({
+				error: missingDoneError,
+				params,
+				attemptsStarted,
+				maxAttempts,
+				startedAtMs,
+				terminalEventReceived: false,
+				assistantTextCharsReceived,
+				reasoningCharsReceived,
+				toolCallsReceived,
+				partialAssistantText: bestPartialAssistantText,
+				attemptRoutes
+			});
 		}
 
 		metadata.firstTokenAtMs = firstTokenAtMs;
 		metadata.timeToFirstTokenMs = firstTokenAtMs !== null ? firstTokenAtMs - startedAtMs : null;
 		metadata.durationMs = Date.now() - startedAtMs;
+		metadata.terminalOutcome = 'completed';
+		metadata.terminalEventReceived = true;
+		metadata.assistantTextCharsReceived = assistantTextCharsReceived;
+		metadata.reasoningCharsReceived = reasoningCharsReceived;
+		metadata.toolCallsReceived = toolCallsReceived;
+		metadata.attemptsExhausted = false;
+		metadata.attemptRoutes = cloneAttemptRoutes(attemptRoutes);
 
 		await params.observeSupervisor({
 			type: 'llm_pass_completed',
@@ -293,11 +394,128 @@ export async function runLlmStreamPass(params: {
 			suppressedNoToolSynthesisToolCallCount,
 			metadata,
 			usage,
-			finishedReason
+			finishedReason,
+			terminal: {
+				outcome: 'completed',
+				measurements: buildTerminalMeasurements({
+					params,
+					attemptsStarted,
+					maxAttempts,
+					startedAtMs,
+					terminalEventReceived: true,
+					assistantTextCharsReceived,
+					reasoningCharsReceived,
+					toolCallsReceived,
+					retryable: false,
+					attemptsExhausted: false,
+					lastError: lastRetryError,
+					attemptRoutes
+				})
+			}
 		};
 	}
 
 	throw lastRetryError ?? new Error('LLM stream failed');
+}
+
+function createLlmStreamPassTerminalError(params: {
+	error: Error;
+	params: Parameters<typeof runLlmStreamPass>[0];
+	attemptsStarted: number;
+	maxAttempts: number;
+	startedAtMs: number;
+	terminalEventReceived: boolean;
+	assistantTextCharsReceived: number;
+	reasoningCharsReceived: number;
+	toolCallsReceived: number;
+	partialAssistantText: string;
+	attemptRoutes: LLMStreamAttemptRoute[];
+}): LlmStreamPassTerminalError {
+	const outcome = classifyTerminalOutcome(params.error, params.params.signal);
+	return new LlmStreamPassTerminalError(
+		params.error.message,
+		outcome,
+		buildTerminalMeasurements({
+			params: params.params,
+			attemptsStarted: params.attemptsStarted,
+			maxAttempts: params.maxAttempts,
+			startedAtMs: params.startedAtMs,
+			terminalEventReceived: params.terminalEventReceived,
+			assistantTextCharsReceived: params.assistantTextCharsReceived,
+			reasoningCharsReceived: params.reasoningCharsReceived,
+			toolCallsReceived: params.toolCallsReceived,
+			retryable: outcome !== 'aborted' && isRetryableLlmStreamError(params.error),
+			attemptsExhausted: params.attemptsStarted >= params.maxAttempts,
+			lastError: params.error,
+			attemptRoutes: params.attemptRoutes
+		}),
+		params.error,
+		params.partialAssistantText
+	);
+}
+
+function buildTerminalMeasurements(params: {
+	params: Parameters<typeof runLlmStreamPass>[0];
+	attemptsStarted: number;
+	maxAttempts: number;
+	startedAtMs: number;
+	terminalEventReceived: boolean;
+	assistantTextCharsReceived: number;
+	reasoningCharsReceived: number;
+	toolCallsReceived: number;
+	retryable: boolean;
+	attemptsExhausted: boolean;
+	lastError?: Error | null;
+	attemptRoutes: LLMStreamAttemptRoute[];
+}): LlmStreamPassTerminalMeasurements {
+	return {
+		pass: params.params.passNumber,
+		...(params.params.modelRouting?.passRole
+			? { passRole: params.params.modelRouting.passRole }
+			: {}),
+		forcedNoToolSynthesis: params.params.noToolSynthesisPass,
+		attempts: params.attemptsStarted,
+		maxAttempts: params.maxAttempts,
+		retryCount: Math.max(0, params.attemptsStarted - 1),
+		timeoutMs: params.params.passTimeoutMs ?? LLM_PASS_TIMEOUT_MS,
+		durationMs: Math.max(0, Date.now() - params.startedAtMs),
+		terminalEventReceived: params.terminalEventReceived,
+		assistantTextCharsReceived: params.assistantTextCharsReceived,
+		reasoningCharsReceived: params.reasoningCharsReceived,
+		toolCallsReceived: params.toolCallsReceived,
+		retryable: params.retryable,
+		attemptsExhausted: params.attemptsExhausted,
+		attemptRoutes: cloneAttemptRoutes(params.attemptRoutes),
+		...(params.lastError
+			? { lastErrorMessage: truncateRetryError(params.lastError.message) }
+			: {})
+	};
+}
+
+function classifyTerminalOutcome(
+	error: Error,
+	parentSignal: AbortSignal | undefined
+): Exclude<LlmStreamPassTerminalOutcome, 'completed'> {
+	if (parentSignal?.aborted || /^Request aborted$/i.test(error.message)) return 'aborted';
+	if (/timed out|timeout/i.test(error.message)) return 'timed_out';
+	if (/without a completion event/i.test(error.message)) return 'missing_completion_event';
+	if (/OpenRouter|provider|upstream|HTTP\s*[45]\d\d|\b[45]\d\d\b/i.test(error.message)) {
+		return 'provider_error';
+	}
+	return 'stream_error';
+}
+
+function measureReasoningEventChars(event: SmartLlmStreamEvent): number {
+	if (event.type !== 'reasoning') return 0;
+	const reasoningChars = typeof event.reasoning === 'string' ? event.reasoning.length : 0;
+	const detailChars = Array.isArray(event.reasoning_details)
+		? event.reasoning_details.reduce<number>((total: number, detail: unknown) => {
+				if (!detail || typeof detail !== 'object') return total;
+				const text = (detail as { text?: unknown }).text;
+				return total + (typeof text === 'string' ? text.length : 0);
+			}, 0)
+		: 0;
+	return reasoningChars + detailChars;
 }
 
 class LlmStreamPassAttemptError extends Error {
@@ -381,6 +599,18 @@ function createPassMetadata(
 		}
 		if (modelRouting.modelTieringVariant) {
 			metadata.modelTieringVariant = modelRouting.modelTieringVariant;
+		}
+		if (modelRouting.forcedSynthesisRoutingVariant) {
+			metadata.forcedSynthesisRoutingVariant = modelRouting.forcedSynthesisRoutingVariant;
+		}
+		if (modelRouting.ignoredProviderSlugs?.length) {
+			metadata.ignoredProviderSlugs = [...modelRouting.ignoredProviderSlugs];
+		}
+		if (modelRouting.maxTokens !== undefined) {
+			metadata.maxTokens = modelRouting.maxTokens;
+		}
+		if (modelRouting.retryModelRotation === true) {
+			metadata.retryModelRotation = true;
 		}
 	}
 	if (noToolSynthesisPass) {
@@ -500,12 +730,20 @@ async function prepareForStreamRetry(
 		onPendingToolCallCountChange: (count: number) => void;
 		signal?: AbortSignal;
 		retryDelayMs?: (attempt: number) => number;
+		onStreamRetry?: (error: Error, attempt: number) => Promise<void> | void;
 		passNumber: number;
 	},
 	attempt: number,
 	maxAttempts: number,
 	error: Error
 ): Promise<void> {
+	if (params.onStreamRetry) {
+		try {
+			await params.onStreamRetry(error, attempt);
+		} catch {
+			// Progress callbacks must not interfere with transport recovery.
+		}
+	}
 	params.onAssistantBufferChange('');
 	params.onPendingToolCallCountChange(0);
 	console.warn('[llm-pass-runner] retrying LLM stream pass after transient error', {
@@ -620,6 +858,8 @@ function populateDoneEventMetadata(
 	const eventRecord = event as Record<string, unknown>;
 	const model = readStringMeta(eventRecord.model);
 	const provider = readStringMeta(eventRecord.provider);
+	const providerRaw = readStringMeta(eventRecord.provider_raw);
+	const providerSlug = readStringMeta(eventRecord.provider_slug);
 	const requestId =
 		readStringMeta(eventRecord.request_id) ?? readStringMeta(eventRecord.requestId);
 	const systemFingerprint =
@@ -632,12 +872,35 @@ function populateDoneEventMetadata(
 
 	if (model) metadata.model = model;
 	if (provider) metadata.provider = provider;
+	if (providerRaw) metadata.providerRaw = providerRaw;
+	if (providerSlug) metadata.providerSlug = providerSlug;
 	if (requestId) metadata.requestId = requestId;
 	if (systemFingerprint) metadata.systemFingerprint = systemFingerprint;
 	if (cacheStatus) metadata.cacheStatus = cacheStatus;
 	if (typeof reasoningTokens === 'number') {
 		metadata.reasoningTokens = reasoningTokens;
 	}
+}
+
+function resolveAttemptModelCandidates(
+	models: string[] | undefined,
+	attempt: number,
+	rotateOnRetry: boolean
+): string[] | undefined {
+	if (!models?.length) return undefined;
+	if (!rotateOnRetry || attempt <= 1 || models.length <= 1) return [...models];
+	const offset = (attempt - 1) % models.length;
+	return [...models.slice(offset), ...models.slice(0, offset)];
+}
+
+function cloneAttemptRoutes(routes: LLMStreamAttemptRoute[]): LLMStreamAttemptRoute[] {
+	return routes.map((route) => ({
+		...route,
+		...(route.models ? { models: [...route.models] } : {}),
+		...(route.ignoredProviderSlugs
+			? { ignoredProviderSlugs: [...route.ignoredProviderSlugs] }
+			: {})
+	}));
 }
 
 function readStringMeta(value: unknown): string | undefined {

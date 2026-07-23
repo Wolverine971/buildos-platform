@@ -204,6 +204,38 @@ describe('ErrorLoggerService', () => {
 		});
 	});
 
+	it('redacts credentials from provider errors before persistence', async () => {
+		const insertedEntries: Array<Record<string, any>> = [];
+		const supabase = {
+			from: vi.fn(() => ({
+				insert: vi.fn((entry: Record<string, any>) => ({
+					select: vi.fn(() => ({
+						single: vi.fn(async () => {
+							insertedEntries.push(entry);
+							return { data: { id: 'logged-error-redacted' }, error: null };
+						})
+					}))
+				}))
+			}))
+		};
+		const service = ErrorLoggerService.getInstance(
+			supabase as unknown as SupabaseClient<Database>
+		);
+
+		await service.logError({
+			message: 'Request failed with Authorization: Bearer provider-secret',
+			config: {
+				headers: { authorization: 'Bearer provider-secret' },
+				access_token: 'access-secret'
+			}
+		});
+
+		const serialized = JSON.stringify(insertedEntries[0]);
+		expect(serialized).not.toContain('provider-secret');
+		expect(serialized).not.toContain('access-secret');
+		expect(insertedEntries[0]?.error_message).toContain('[redacted]');
+	});
+
 	it('scans past suppressed noise and paginates displayable errors', async () => {
 		const baseTime = Date.parse('2026-04-03T12:00:00.000Z');
 		const noise = Array.from({ length: 260 }, (_, index) =>

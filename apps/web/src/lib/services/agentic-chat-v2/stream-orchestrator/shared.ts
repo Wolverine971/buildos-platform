@@ -1,6 +1,54 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/shared.ts
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
-import type { FastChatLlmPassRole, FastChatModelTieringVariant } from '../model-tiering';
+import type {
+	FastChatForcedSynthesisRoutingVariant,
+	FastChatLlmPassRole,
+	FastChatModelTieringVariant
+} from '../model-tiering';
+
+export type LLMStreamAttemptRoute = {
+	attempt: number;
+	models?: string[];
+	ignoredProviderSlugs?: string[];
+	maxTokens: number;
+};
+
+export type LLMStreamPassTerminalOutcome =
+	| 'completed'
+	| 'timed_out'
+	| 'missing_completion_event'
+	| 'provider_error'
+	| 'aborted'
+	| 'stream_error';
+
+export type LLMStreamPassTerminalMeasurements = {
+	pass: number;
+	passRole?: FastChatLlmPassRole;
+	forcedNoToolSynthesis: boolean;
+	attempts: number;
+	maxAttempts: number;
+	retryCount: number;
+	timeoutMs: number;
+	durationMs: number;
+	terminalEventReceived: boolean;
+	assistantTextCharsReceived: number;
+	reasoningCharsReceived: number;
+	toolCallsReceived: number;
+	retryable: boolean;
+	attemptsExhausted: boolean;
+	attemptRoutes?: LLMStreamAttemptRoute[];
+	lastErrorMessage?: string;
+};
+
+export type FastChatCompletionOutcome = {
+	status: 'completed' | 'completed_degraded';
+	answerSource: 'model' | 'partial_model' | 'deterministic_evidence' | 'precise_no_evidence';
+	recovery?: {
+		outcome: Exclude<LLMStreamPassTerminalOutcome, 'completed' | 'aborted'>;
+		measurements: LLMStreamPassTerminalMeasurements;
+		evidenceToolExecutionCount: number;
+	};
+};
 
 export type FastToolExecution = {
 	toolCall: ChatToolCall;
@@ -34,9 +82,16 @@ export type LLMStreamPassMetadata = {
 	requestedProfile?: string;
 	requestedModels?: string[];
 	modelTieringVariant?: FastChatModelTieringVariant;
+	forcedSynthesisRoutingVariant?: FastChatForcedSynthesisRoutingVariant;
+	ignoredProviderSlugs?: string[];
+	maxTokens?: number;
+	retryModelRotation?: boolean;
+	attemptRoutes?: LLMStreamAttemptRoute[];
 	finishedReason?: string;
 	model?: string;
 	provider?: string;
+	providerRaw?: string;
+	providerSlug?: string;
 	requestId?: string;
 	systemFingerprint?: string;
 	cacheStatus?: string;
@@ -67,6 +122,15 @@ export type LLMStreamPassMetadata = {
 	firstTokenAtMs?: number | null;
 	durationMs?: number;
 	timeToFirstTokenMs?: number | null;
+	// Terminal transport state is present on both cleanly completed passes and
+	// failed passes that the orchestrator recovered as a degraded completion.
+	terminalOutcome?: LLMStreamPassTerminalOutcome;
+	terminalEventReceived?: boolean;
+	assistantTextCharsReceived?: number;
+	reasoningCharsReceived?: number;
+	toolCallsReceived?: number;
+	attemptsExhausted?: boolean;
+	recoveredAsDegradedCompletion?: boolean;
 };
 
 export type FastChatOrchestrationInterventions = {
@@ -84,4 +148,5 @@ export type FastChatOrchestrationInterventions = {
 	finalizationGuard: boolean;
 	supervisorRecoveryDecisions: number;
 	streamRetries: number;
+	synthesisTransportRecovery: boolean;
 };

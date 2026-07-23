@@ -373,8 +373,18 @@ export function buildLLMPassSummary(llmPasses: LLMStreamPassMetadata[] | undefin
 		if (pass.requestedModels !== undefined) entry.requested_models = pass.requestedModels;
 		if (pass.modelTieringVariant !== undefined)
 			entry.model_tiering_variant = pass.modelTieringVariant;
+		if (pass.forcedSynthesisRoutingVariant !== undefined)
+			entry.forced_synthesis_routing_variant = pass.forcedSynthesisRoutingVariant;
+		if (pass.ignoredProviderSlugs !== undefined)
+			entry.ignored_provider_slugs = pass.ignoredProviderSlugs;
+		if (pass.maxTokens !== undefined) entry.max_tokens = pass.maxTokens;
+		if (pass.retryModelRotation !== undefined)
+			entry.retry_model_rotation = pass.retryModelRotation;
+		if (pass.attemptRoutes !== undefined) entry.attempt_routes = pass.attemptRoutes as Json;
 		if (pass.model !== undefined) entry.model = pass.model;
 		if (pass.provider !== undefined) entry.provider = pass.provider;
+		if (pass.providerRaw !== undefined) entry.provider_raw = pass.providerRaw;
+		if (pass.providerSlug !== undefined) entry.provider_slug = pass.providerSlug;
 		if (pass.requestId !== undefined) entry.request_id = pass.requestId;
 		if (pass.systemFingerprint !== undefined) entry.system_fingerprint = pass.systemFingerprint;
 		if (pass.cacheStatus !== undefined) entry.cache_status = pass.cacheStatus;
@@ -395,6 +405,19 @@ export function buildLLMPassSummary(llmPasses: LLMStreamPassMetadata[] | undefin
 		if (typeof pass.durationMs === 'number') entry.duration_ms = pass.durationMs;
 		if (typeof pass.timeToFirstTokenMs === 'number' || pass.timeToFirstTokenMs === null)
 			entry.time_to_first_token_ms = pass.timeToFirstTokenMs;
+		if (pass.terminalOutcome !== undefined) entry.terminal_outcome = pass.terminalOutcome;
+		if (typeof pass.terminalEventReceived === 'boolean')
+			entry.terminal_event_received = pass.terminalEventReceived;
+		if (typeof pass.assistantTextCharsReceived === 'number')
+			entry.assistant_text_chars_received = pass.assistantTextCharsReceived;
+		if (typeof pass.reasoningCharsReceived === 'number')
+			entry.reasoning_chars_received = pass.reasoningCharsReceived;
+		if (typeof pass.toolCallsReceived === 'number')
+			entry.tool_calls_received = pass.toolCallsReceived;
+		if (typeof pass.attemptsExhausted === 'boolean')
+			entry.attempts_exhausted = pass.attemptsExhausted;
+		if (pass.recoveredAsDegradedCompletion === true)
+			entry.recovered_as_degraded_completion = true;
 		return entry;
 	});
 

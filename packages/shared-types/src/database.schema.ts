@@ -1,9 +1,27 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-07-22T21:25:06.555Z
+// Generated on: 2026-07-23T04:42:27.867Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type DatabaseSchema = {
+	account_deletion_requests: {
+		attempt_count: number;
+		billing_cancellation_error: string | null;
+		billing_cancellation_status: string;
+		billing_subscription_ids: string[];
+		completed_at: string | null;
+		created_at: string;
+		id: string;
+		last_error: string | null;
+		lease_expires_at: string | null;
+		next_attempt_at: string | null;
+		processing_started_at: string | null;
+		requested_at: string;
+		scheduled_for: string;
+		status: string;
+		updated_at: string;
+		user_id: string;
+	};
 	admin_analytics: {
 		created_at: string;
 		date: string;
@@ -214,6 +232,32 @@ export type DatabaseSchema = {
 		used_at: string | null;
 		user_id: string;
 	};
+	agent_operatives: {
+		allowed_ops: string[] | null;
+		budgets: Json;
+		context_type: string;
+		created_at: string;
+		expected_output: string | null;
+		goal: string;
+		id: string;
+		instructions: string | null;
+		label: string;
+		last_run_at: string | null;
+		last_run_id: string | null;
+		next_run_at: string | null;
+		project_id: string | null;
+		review_required: boolean;
+		schedule_day_of_week: number | null;
+		schedule_enabled: boolean;
+		schedule_error: string | null;
+		schedule_frequency: string | null;
+		schedule_locked_at: string | null;
+		schedule_time_of_day: string | null;
+		schedule_timezone: string;
+		scope_mode: string;
+		updated_at: string;
+		user_id: string;
+	};
 	agent_plans: {
 		completed_at: string | null;
 		created_at: string;
@@ -227,6 +271,34 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 		user_message: string;
+	};
+	agent_run_cost_entries: {
+		actual_cost_usd: number | null;
+		actual_units: number | null;
+		attempt_key: string;
+		id: string;
+		leaf_run_id: string;
+		metadata: Json;
+		operation: string;
+		provider: string;
+		provider_request_id: string | null;
+		reconciliation_attempts: number;
+		reconciliation_completed_token: string | null;
+		reconciliation_last_error: string | null;
+		reconciliation_lock_expires_at: string | null;
+		reconciliation_lock_token: string | null;
+		reconciliation_locked_at: string | null;
+		reconciliation_needs_operator_at: string | null;
+		reconciliation_next_attempt_at: string | null;
+		reserved_at: string;
+		reserved_cost_usd: number;
+		reserved_units: number | null;
+		resource: string;
+		root_run_id: string;
+		settled_at: string | null;
+		status: string;
+		unit_type: string | null;
+		updated_at: string;
 	};
 	agent_run_events: {
 		created_at: string;
@@ -249,6 +321,7 @@ export type DatabaseSchema = {
 		allowed_ops: string[] | null;
 		budgets: Json;
 		change_set: Json | null;
+		commit_started_at: string | null;
 		completed_at: string | null;
 		context_type: string;
 		created_at: string;
@@ -918,6 +991,7 @@ export type DatabaseSchema = {
 		history_for_model_count: number | null;
 		history_strategy: string | null;
 		id: string;
+		last_progress_at: string | null;
 		llm_pass_count: number;
 		prepared_prompt_hit: boolean | null;
 		prepared_prompt_id: string | null;
@@ -1059,6 +1133,16 @@ export type DatabaseSchema = {
 		updated_at: string | null;
 		user_id: string;
 	};
+	email_access_audit_events: {
+		connection_id: string | null;
+		created_at: string;
+		id: string;
+		metadata: Json;
+		operation: string;
+		outcome: string;
+		reason_code: string | null;
+		user_id: string;
+	};
 	email_attachments: {
 		cid: string | null;
 		content_type: string;
@@ -1077,6 +1161,35 @@ export type DatabaseSchema = {
 		storage_bucket: string;
 		storage_path: string;
 	};
+	email_capability_grants: {
+		capability: string;
+		connection_id: string;
+		consent_policy_version: string;
+		created_at: string;
+		disabled_at: string | null;
+		enabled_at: string | null;
+		enabled_by_user_id: string | null;
+		granted_scopes: string[];
+		id: string;
+		status: string;
+		updated_at: string;
+	};
+	email_connection_credentials: {
+		access_token_ciphertext: string;
+		access_token_expires_at: string | null;
+		connection_id: string;
+		created_at: string;
+		grant_kind: string;
+		granted_scopes: string[];
+		id: string;
+		key_version: number;
+		last_refreshed_at: string | null;
+		oauth_client_kind: string;
+		refresh_token_ciphertext: string;
+		revoked_at: string | null;
+		token_type: string;
+		updated_at: string;
+	};
 	email_logs: {
 		bcc: string[] | null;
 		body: string;
@@ -1091,6 +1204,57 @@ export type DatabaseSchema = {
 		subject: string;
 		to_email: string;
 		user_id: string | null;
+	};
+	email_oauth_states: {
+		code_verifier: string;
+		connection_id: string | null;
+		consumed_at: string | null;
+		created_at: string;
+		expires_at: string;
+		id: string;
+		nonce: string;
+		oauth_client_kind: string;
+		redirect_path: string;
+		state_hash: string;
+		user_id: string;
+	};
+	email_project_profile_versions: {
+		compiler_version: string;
+		created_at: string;
+		diff: Json;
+		groups: Json;
+		id: string;
+		omitted: Json;
+		profile_hash: string;
+		profile_id: string;
+		profile_version: number;
+		source_snapshot_at: string;
+	};
+	email_project_profiles: {
+		compiler_version: string | null;
+		created_at: string;
+		current_profile_hash: string | null;
+		current_version: number;
+		deleted_at: string | null;
+		id: string;
+		project_id: string;
+		source_snapshot_at: string | null;
+		updated_at: string;
+		user_id: string;
+	};
+	email_project_rules: {
+		connection_id: string | null;
+		created_at: string;
+		disabled_at: string | null;
+		id: string;
+		key_version: number;
+		match_value_ciphertext: string;
+		match_value_hash: string;
+		project_id: string;
+		rule_kind: string;
+		source_decision_id: string | null;
+		updated_at: string;
+		user_id: string;
 	};
 	email_recipients: {
 		created_at: string | null;
@@ -1409,6 +1573,32 @@ export type DatabaseSchema = {
 		migrated_at: string;
 		onto_id: string;
 		onto_table: string;
+	};
+	legal_acceptance_intents: {
+		accepted_at: string;
+		client_ip: unknown;
+		created_at: string;
+		expires_at: string;
+		id: string;
+		intended_surface: string;
+		privacy_version: string;
+		terms_version: string;
+		token_hash: string;
+		used_at: string | null;
+		used_by_user_id: string | null;
+		user_agent: string | null;
+	};
+	legal_acceptances: {
+		acceptance_surface: string;
+		accepted_at: string;
+		client_ip: unknown;
+		created_at: string;
+		id: string;
+		intent_id: string;
+		privacy_version: string;
+		terms_version: string;
+		user_agent: string | null;
+		user_id: string;
 	};
 	llm_prompts: {
 		id: string;
@@ -2164,6 +2354,7 @@ export type DatabaseSchema = {
 		due_at: string | null;
 		facet_scale: string | null;
 		id: string;
+		idempotency_key: string | null;
 		priority: number | null;
 		project_id: string;
 		props: Json;
@@ -2327,6 +2518,70 @@ export type DatabaseSchema = {
 		suggested_chapter_id: string | null;
 		suggested_chapter_title: string | null;
 	};
+	project_audit_suggestions: {
+		audit_id: string;
+		created_at: string;
+		id: string;
+		role: string;
+		suggestion_id: string;
+	};
+	project_audit_trigger_evaluations: {
+		burst_score: number | null;
+		changed_entity_count: number | null;
+		cooldown_until: string | null;
+		created_at: string;
+		created_audit_id: string | null;
+		created_loop_run_id: string | null;
+		decision: string;
+		eligible: boolean;
+		evaluated_at: string;
+		id: string;
+		last_audit_id: string | null;
+		major_change_count: number | null;
+		maturity_snapshot: Json;
+		project_id: string;
+		project_size_class: string;
+		quiet_until: string | null;
+		reason_summary: string;
+		trigger_reason: string;
+		user_id: string;
+	};
+	project_audits: {
+		archived_at: string | null;
+		audit_depth: string;
+		change_summary: Json;
+		chat_session_id: string | null;
+		cost_usd: number | null;
+		created_at: string;
+		delivery_confidence: string;
+		dimensions: Json;
+		error_message: string | null;
+		evidence_refs: Json;
+		finished_at: string | null;
+		generated_suggestion_count: number;
+		id: string;
+		loop_run_id: string | null;
+		model_used: string | null;
+		open_questions: Json;
+		project_id: string;
+		project_size_class: string;
+		project_snapshot_fingerprint: string | null;
+		project_thesis: string | null;
+		recommendations: Json;
+		reviewed_at: string | null;
+		risks: Json;
+		started_at: string | null;
+		status: string;
+		summary: string;
+		superseded_by: string | null;
+		top_actions: Json;
+		top_findings: Json;
+		trigger_reason: string;
+		trigger_snapshot: Json;
+		unresolved_suggestion_count: number;
+		updated_at: string;
+		user_id: string;
+	};
 	project_brief_templates: {
 		context_snapshot: Json | null;
 		created_at: string | null;
@@ -2430,70 +2685,6 @@ export type DatabaseSchema = {
 		updated_at: string | null;
 		user_id: string;
 	};
-	project_audit_suggestions: {
-		audit_id: string;
-		created_at: string;
-		id: string;
-		role: string;
-		suggestion_id: string;
-	};
-	project_audit_trigger_evaluations: {
-		burst_score: number | null;
-		changed_entity_count: number | null;
-		cooldown_until: string | null;
-		created_at: string;
-		created_audit_id: string | null;
-		created_loop_run_id: string | null;
-		decision: string;
-		eligible: boolean;
-		evaluated_at: string;
-		id: string;
-		last_audit_id: string | null;
-		major_change_count: number | null;
-		maturity_snapshot: Json;
-		project_id: string;
-		project_size_class: string;
-		quiet_until: string | null;
-		reason_summary: string;
-		trigger_reason: string;
-		user_id: string;
-	};
-	project_audits: {
-		archived_at: string | null;
-		audit_depth: string;
-		change_summary: Json;
-		chat_session_id: string | null;
-		cost_usd: number | null;
-		created_at: string;
-		delivery_confidence: string;
-		dimensions: Json;
-		error_message: string | null;
-		evidence_refs: Json;
-		finished_at: string | null;
-		generated_suggestion_count: number;
-		id: string;
-		loop_run_id: string | null;
-		model_used: string | null;
-		open_questions: Json;
-		project_id: string;
-		project_size_class: string;
-		project_snapshot_fingerprint: string | null;
-		project_thesis: string | null;
-		recommendations: Json;
-		reviewed_at: string | null;
-		risks: Json;
-		started_at: string | null;
-		status: string;
-		summary: string;
-		superseded_by: string | null;
-		top_actions: Json;
-		top_findings: Json;
-		trigger_reason: string;
-		trigger_snapshot: Json;
-		unresolved_suggestion_count: number;
-		updated_at: string;
-		user_id: string;
-	};
 	project_loop_runs: {
 		brief: Json | null;
 		chat_session_id: string | null;
@@ -2548,6 +2739,33 @@ export type DatabaseSchema = {
 		source_field: string | null;
 		status: string | null;
 		triggers: Json | null;
+		updated_at: string;
+		user_id: string;
+	};
+	project_review_signals: {
+		activity_score: number;
+		created_at: string;
+		due_at: string;
+		entity_count: number;
+		entity_ids: string[];
+		entity_type: string | null;
+		error_message: string | null;
+		finished_at: string | null;
+		id: string;
+		last_seen_at: string;
+		metadata: Json;
+		operation_ids: string[];
+		operation_kind: string | null;
+		origin: string | null;
+		processed_audit_id: string | null;
+		processed_loop_run_id: string | null;
+		project_id: string;
+		queue_job_id: string | null;
+		review_policy: string;
+		signal_count: number;
+		source: string;
+		started_at: string | null;
+		status: string;
 		updated_at: string;
 		user_id: string;
 	};
@@ -3360,6 +3578,23 @@ export type DatabaseSchema = {
 		stripe_subscription_id: string | null;
 		user_id: string;
 	};
+	user_email_connections: {
+		account_label: string;
+		connected_at: string;
+		created_at: string;
+		deleted_at: string | null;
+		display_name: string | null;
+		email_address: string;
+		id: string;
+		last_used_at: string | null;
+		last_verified_at: string | null;
+		provider: string;
+		provider_account_id: string;
+		read_enabled: boolean;
+		status: string;
+		updated_at: string;
+		user_id: string;
+	};
 	user_notification_preferences: {
 		batch_enabled: boolean;
 		batch_interval_minutes: number | null;
@@ -3471,6 +3706,9 @@ export type DatabaseSchema = {
 		access_restricted_at: string | null;
 		bio: string | null;
 		created_at: string;
+		deletion_requested_at: string | null;
+		deletion_scheduled_for: string | null;
+		deletion_status: string | null;
 		email: string;
 		id: string;
 		is_admin: boolean;
@@ -3484,6 +3722,8 @@ export type DatabaseSchema = {
 		onboarding_v2_skipped_sms: boolean | null;
 		preferences: Json | null;
 		productivity_challenges: Json | null;
+		referrer: string | null;
+		signup_source: string | null;
 		stripe_customer_id: string | null;
 		subscription_plan_id: string | null;
 		subscription_status: string | null;
@@ -3492,6 +3732,9 @@ export type DatabaseSchema = {
 		updated_at: string;
 		usage_archetype: string | null;
 		username: string | null;
+		utm_campaign: string | null;
+		utm_medium: string | null;
+		utm_source: string | null;
 		voice_narration_enabled: boolean;
 	};
 	visitors: {
@@ -3600,6 +3843,7 @@ export type DatabaseSchema = {
 };
 
 export const tableNames = [
+	'account_deletion_requests',
 	'admin_analytics',
 	'admin_users',
 	'agent_call_bootstrap_links',
@@ -3614,7 +3858,9 @@ export const tableNames = [
 	'agent_oauth_clients',
 	'agent_oauth_grants',
 	'agent_oauth_refresh_tokens',
+	'agent_operatives',
 	'agent_plans',
+	'agent_run_cost_entries',
 	'agent_run_events',
 	'agent_run_signals',
 	'agent_runs',
@@ -3663,8 +3909,15 @@ export const tableNames = [
 	'discount_codes',
 	'domain_research_queue',
 	'draft_tasks',
+	'email_access_audit_events',
 	'email_attachments',
+	'email_capability_grants',
+	'email_connection_credentials',
 	'email_logs',
+	'email_oauth_states',
+	'email_project_profile_versions',
+	'email_project_profiles',
+	'email_project_rules',
 	'email_recipients',
 	'email_sequence_copy_overrides',
 	'email_sequence_enrollments',
@@ -3686,6 +3939,8 @@ export const tableNames = [
 	'inbox_items',
 	'invoices',
 	'legacy_entity_mappings',
+	'legal_acceptance_intents',
+	'legal_acceptances',
 	'llm_prompts',
 	'llm_usage_logs',
 	'llm_usage_summary',
@@ -3750,18 +4005,19 @@ export const tableNames = [
 	'profile_document_versions',
 	'profile_documents',
 	'profile_fragments',
+	'project_audit_suggestions',
+	'project_audit_trigger_evaluations',
+	'project_audits',
 	'project_brief_templates',
 	'project_calendars',
 	'project_context_snapshot',
 	'project_context_snapshot_metrics',
 	'project_daily_briefs',
 	'project_drafts',
-	'project_audit_suggestions',
-	'project_audit_trigger_evaluations',
-	'project_audits',
 	'project_loop_runs',
 	'project_notification_batches',
 	'project_questions',
+	'project_review_signals',
 	'project_suggestions',
 	'project_synthesis',
 	'projects',
@@ -3810,6 +4066,7 @@ export const tableNames = [
 	'user_contacts',
 	'user_context',
 	'user_discounts',
+	'user_email_connections',
 	'user_notification_preferences',
 	'user_notification_preferences_backup',
 	'user_notifications',

@@ -31,6 +31,7 @@ import {
 import { OpenRouterV2Service } from '$lib/services/openrouter-v2-service';
 import type { OpenRouterContentPart } from '$lib/services/openrouter-v2/types';
 import type {
+	AgentTurnPhase,
 	ChatContextType,
 	ChatToolCall,
 	ChatToolResult,
@@ -90,10 +91,14 @@ import {
 	composeFastChatHistory,
 	normalizeFastAgentStreamRequest,
 	parseFastChatInitialPlanModels,
+	parseFastChatForcedSynthesisIgnoredProviderSlugs,
+	parseFastChatForcedSynthesisModels,
+	parseFastChatForcedSynthesisRoutingMode,
 	parseFastChatPinnedModels,
 	parseFastChatModelTieringMode,
 	parseFastChatModelTieringSampleRate,
 	resolveFastChatModelTieringConfig,
+	resolveFastChatForcedSynthesisRoutingConfig,
 	buildFastChatPendingTurnIntent,
 	buildPendingTurnIntentSystemMessage,
 	resolveFastChatTurnOutcome,
@@ -101,6 +106,7 @@ import {
 	sanitizeAttachmentRefsForMetadata,
 	shouldUseLiveVisionForTurn,
 	streamFastChat,
+	FASTCHAT_LIMITS,
 	type FastAgentStreamRequest,
 	type FastChatHistoryMessage
 } from '$lib/services/agentic-chat-v2';
@@ -235,6 +241,13 @@ type FastChatSupabaseClient = SupabaseClient<Database>;
 const FASTCHAT_STREAM_ENDPOINT = '/api/agent/v2/stream';
 const FASTCHAT_STREAM_METHOD = 'POST';
 const FASTCHAT_FIRST_TOOL_CALL_PLANNING_CUE = 'Planning the first step...';
+const FASTCHAT_TURN_PHASE_MESSAGES: Record<Exclude<AgentTurnPhase, 'acknowledged'>, string> = {
+	planning: 'Planning the best way to handle this request...',
+	gathering: 'Gathering the relevant project context...',
+	synthesizing: 'Turning the collected context into an answer...',
+	recovering: 'The answer stream stalled. Recovering from the context already collected...',
+	finalizing: 'Finalizing the response...'
+};
 const FASTCHAT_CLEAN_RESPONSE_FALLBACK =
 	'I hit an issue producing a clean final response for that turn. Please try again and I can continue from the project state.';
 
@@ -311,6 +324,20 @@ const FASTCHAT_INITIAL_PLAN_MODEL_TIERING_MODELS = parseFastChatInitialPlanModel
 const FASTCHAT_EVAL_PINNED_MODELS = parseFastChatPinnedModels(
 	process.env.FASTCHAT_EVAL_PINNED_MODELS
 );
+const FASTCHAT_FORCED_SYNTHESIS_ROUTING_MODE = parseFastChatForcedSynthesisRoutingMode(
+	process.env.FASTCHAT_FORCED_SYNTHESIS_ROUTING
+);
+const FASTCHAT_FORCED_SYNTHESIS_ROUTING_SAMPLE_RATE = parseFastChatModelTieringSampleRate(
+	process.env.FASTCHAT_FORCED_SYNTHESIS_ROUTING_SAMPLE_RATE,
+	0.1
+);
+const FASTCHAT_FORCED_SYNTHESIS_MODELS = parseFastChatForcedSynthesisModels(
+	process.env.FASTCHAT_FORCED_SYNTHESIS_MODELS
+);
+const FASTCHAT_FORCED_SYNTHESIS_IGNORED_PROVIDER_SLUGS =
+	parseFastChatForcedSynthesisIgnoredProviderSlugs(
+		process.env.FASTCHAT_FORCED_SYNTHESIS_IGNORE_PROVIDERS
+	);
 const FASTCHAT_SCAFFOLD = resolveFastChatScaffoldConfigFromEnv(process.env);
 const FASTCHAT_DETACHED_TURN_MAX_DURATION_MS = parsePositiveInt(
 	process.env.FASTCHAT_DETACHED_TURN_MAX_DURATION_MS,
@@ -1223,15 +1250,21 @@ export const POST: RequestHandler = async ({
 		});
 	};
 
+	const acknowledgementContext = normalizeFastContextType(streamRequest.context_type);
+	const acknowledgementScope = isProjectScopedContext(acknowledgementContext)
+		? 'project'
+		: isDailyBriefContext(acknowledgementContext)
+			? 'brief'
+			: 'workspace';
 	sendTimedMessageDetached(
 		{
-			type: 'agent_state',
-			state: 'thinking',
-			details: 'BuildOS is processing your request...'
+			type: 'turn_phase',
+			turn_phase: 'acknowledged',
+			message: `Request received. Preparing the ${acknowledgementScope} context...`
 		},
 		{
-			operationType: 'fastchat_stream_emit_agent_state',
-			metadata: { streamStage: 'initial_thinking_state' }
+			operationType: 'fastchat_stream_emit_turn_phase',
+			metadata: { streamStage: 'acknowledged', contextType: acknowledgementContext }
 		}
 	);
 
@@ -2715,6 +2748,14 @@ export const POST: RequestHandler = async ({
 				bucketKey: clientTurnId ?? streamRunId ?? turnRunId ?? session.id,
 				initialPlanModels: FASTCHAT_INITIAL_PLAN_MODEL_TIERING_MODELS
 			});
+			const forcedSynthesisRouting = resolveFastChatForcedSynthesisRoutingConfig({
+				mode: FASTCHAT_FORCED_SYNTHESIS_ROUTING_MODE,
+				sampleRate: FASTCHAT_FORCED_SYNTHESIS_ROUTING_SAMPLE_RATE,
+				bucketKey: clientTurnId ?? streamRunId ?? turnRunId ?? session.id,
+				models: FASTCHAT_FORCED_SYNTHESIS_MODELS,
+				ignoredProviderSlugs: FASTCHAT_FORCED_SYNTHESIS_IGNORED_PROVIDER_SLUGS,
+				maxTokens: FASTCHAT_LIMITS.FORCED_SYNTHESIS_MAX_TOKENS
+			});
 
 			const {
 				assistantText,
@@ -2731,6 +2772,7 @@ export const POST: RequestHandler = async ({
 				peakPromptTokens,
 				finalContextUsage,
 				skillGateViolationRepaired,
+				completionOutcome,
 				orchestrationInterventions
 			} = await streamFastChat({
 				llm,
@@ -2751,6 +2793,7 @@ export const POST: RequestHandler = async ({
 				allowAutonomousRecovery: FASTCHAT_SCAFFOLD.recovery.autonomousRecovery,
 				allowForcedSynthesis: FASTCHAT_SCAFFOLD.recovery.softForcedSynthesis,
 				modelTiering,
+				forcedSynthesisRouting,
 				pinnedModels: FASTCHAT_EVAL_PINNED_MODELS,
 				turnIntent,
 				skillGate,
@@ -2761,6 +2804,30 @@ export const POST: RequestHandler = async ({
 				// mislead the user. See docs/specs/agent-token-tracking-
 				// investigation-2026-05-12.md for the two-budget design.
 				onContextUsageUpdate: undefined,
+				onPhase: async (turnPhase) => {
+					const phaseMessage = FASTCHAT_TURN_PHASE_MESSAGES[turnPhase];
+					const phaseSent = await sendTimedMessage(
+						{
+							type: 'turn_phase',
+							turn_phase: turnPhase,
+							message: phaseMessage
+						},
+						{
+							operationType: 'fastchat_stream_emit_turn_phase',
+							projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+							metadata: {
+								sessionId: session.id,
+								contextType: effectiveContextType,
+								turnPhase
+							}
+						}
+					);
+					if (phaseSent) {
+						observabilityWriter.recordEvent('stream', 'turn_phase_changed', {
+							turn_phase: turnPhase
+						} as Json);
+					}
+				},
 				supervisorContextData: promptContext?.data ?? null,
 				debugContext: {
 					promptVariant: LITE_PROMPT_VARIANT,
@@ -3340,6 +3407,29 @@ export const POST: RequestHandler = async ({
 				}
 			});
 			scheduleDeferredPromptSnapshotPersistence();
+			if (!cancelled) {
+				const finalizingSent = await sendTimedMessage(
+					{
+						type: 'turn_phase',
+						turn_phase: 'finalizing',
+						message: FASTCHAT_TURN_PHASE_MESSAGES.finalizing
+					},
+					{
+						operationType: 'fastchat_stream_emit_turn_phase',
+						projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+						metadata: {
+							sessionId: session.id,
+							contextType: effectiveContextType,
+							turnPhase: 'finalizing'
+						}
+					}
+				);
+				if (finalizingSent) {
+					observabilityWriter.recordEvent('stream', 'turn_phase_changed', {
+						turn_phase: 'finalizing'
+					} as Json);
+				}
+			}
 			const normalizedExecutions = toolExecutions ?? [];
 			const turnOutcome = resolveFastChatTurnOutcome({
 				intent: turnIntent,
@@ -3374,6 +3464,8 @@ export const POST: RequestHandler = async ({
 			}
 			observabilityWriter.recordEvent('finalize', 'turn_outcome_resolved', {
 				outcome_status: turnOutcomeStatus,
+				completion_status: completionOutcome?.status ?? 'completed',
+				answer_source: completionOutcome?.answerSource ?? 'model',
 				intent_requires_write: turnIntent.requiresWrite,
 				intent_fulfilled: turnIntentFulfilled,
 				expected_write_tools: Array.from(expectedIntentWriteToolNames),
@@ -3493,6 +3585,17 @@ export const POST: RequestHandler = async ({
 					} as Json
 				);
 			}
+			if (completionOutcome?.status === 'completed_degraded') {
+				observabilityWriter.recordEvent('finalize', 'synthesis_transport_recovered', {
+					completion_status: completionOutcome.status,
+					answer_source: completionOutcome.answerSource,
+					recovery_outcome: completionOutcome.recovery?.outcome ?? null,
+					recovery_measurements:
+						(completionOutcome.recovery?.measurements as Json | undefined) ?? null,
+					evidence_tool_execution_count:
+						completionOutcome.recovery?.evidenceToolExecutionCount ?? 0
+				} as Json);
+			}
 			if (supervisorDecisions?.length) {
 				const sourceCounts = countBy(
 					supervisorDecisions.map((record) => record.source ?? 'monitor')
@@ -3514,7 +3617,12 @@ export const POST: RequestHandler = async ({
 				eval_scaffold_variant: FASTCHAT_SCAFFOLD.variant,
 				eval_scaffold_fingerprint: evalScaffoldFingerprint,
 				eval_scaffold_config: FASTCHAT_SCAFFOLD,
-				eval_pinned_models: FASTCHAT_EVAL_PINNED_MODELS
+				eval_pinned_models: FASTCHAT_EVAL_PINNED_MODELS,
+				forced_synthesis_routing_variant: forcedSynthesisRouting?.variant ?? 'off',
+				forced_synthesis_routing_models: forcedSynthesisRouting?.models ?? null,
+				forced_synthesis_ignored_provider_slugs:
+					forcedSynthesisRouting?.ignoredProviderSlugs ?? null,
+				forced_synthesis_max_tokens: forcedSynthesisRouting?.maxTokens ?? null
 			} as Json);
 			for (const pass of llmPasses ?? []) {
 				observabilityWriter.recordEvent('llm', 'llm_pass_completed', {
@@ -3523,8 +3631,15 @@ export const POST: RequestHandler = async ({
 					requested_profile: pass.requestedProfile ?? null,
 					requested_models: pass.requestedModels ?? null,
 					model_tiering_variant: pass.modelTieringVariant ?? null,
+					forced_synthesis_routing_variant: pass.forcedSynthesisRoutingVariant ?? null,
+					ignored_provider_slugs: pass.ignoredProviderSlugs ?? null,
+					max_tokens: pass.maxTokens ?? FASTCHAT_LIMITS.SYNTHESIS_MAX_TOKENS,
+					retry_model_rotation: pass.retryModelRotation === true,
+					attempt_routes: (pass.attemptRoutes as Json | undefined) ?? null,
 					model: pass.model ?? null,
 					provider: pass.provider ?? null,
+					provider_raw: pass.providerRaw ?? null,
+					provider_slug: pass.providerSlug ?? null,
 					request_id: pass.requestId ?? null,
 					system_fingerprint: pass.systemFingerprint ?? null,
 					finished_reason: pass.finishedReason ?? null,
@@ -3542,7 +3657,14 @@ export const POST: RequestHandler = async ({
 					total_tokens: pass.totalTokens ?? null,
 					started_at_ms: pass.startedAtMs ?? null,
 					duration_ms: pass.durationMs ?? null,
-					time_to_first_token_ms: pass.timeToFirstTokenMs ?? null
+					time_to_first_token_ms: pass.timeToFirstTokenMs ?? null,
+					terminal_outcome: pass.terminalOutcome ?? null,
+					terminal_event_received: pass.terminalEventReceived ?? null,
+					assistant_text_chars_received: pass.assistantTextCharsReceived ?? null,
+					reasoning_chars_received: pass.reasoningCharsReceived ?? null,
+					tool_calls_received: pass.toolCallsReceived ?? null,
+					attempts_exhausted: pass.attemptsExhausted ?? null,
+					recovered_as_degraded_completion: pass.recoveredAsDegradedCompletion === true
 				} as Json);
 			}
 			const persistedUserMessagePromise = userMessagePromise.catch((error) => {
@@ -3784,6 +3906,19 @@ export const POST: RequestHandler = async ({
 				FASTCHAT_CLEAN_RESPONSE_FALLBACK;
 			const assistantPersistMetadata: Record<string, Json | undefined> = {};
 			assistantPersistMetadata.outcome_status = turnOutcomeStatus;
+			assistantPersistMetadata.completion_outcome = (completionOutcome ?? {
+				status: 'completed',
+				answerSource: 'model'
+			}) as unknown as Json;
+			assistantPersistMetadata.completion_status = completionOutcome?.status ?? 'completed';
+			assistantPersistMetadata.answer_source = completionOutcome?.answerSource ?? 'model';
+			if (
+				completionOutcome?.status === 'completed_degraded' &&
+				completionOutcome.answerSource === 'partial_model'
+			) {
+				assistantPersistMetadata.interrupted = true;
+				assistantPersistMetadata.interrupted_reason = 'synthesis_recovered';
+			}
 			assistantPersistMetadata.turn_intent = turnIntent as unknown as Json;
 			if (persistedToolTrace.length > 0) {
 				assistantPersistMetadata.fastchat_tool_trace_v1 = persistedToolTrace as Json;
@@ -4004,7 +4139,9 @@ export const POST: RequestHandler = async ({
 				{
 					type: 'done',
 					usage,
-					finished_reason: finishedReason
+					finished_reason: finishedReason,
+					completion_status: completionOutcome?.status ?? 'completed',
+					answer_source: completionOutcome?.answerSource ?? 'model'
 				},
 				{
 					operationType: 'fastchat_stream_emit_done',
@@ -4015,6 +4152,8 @@ export const POST: RequestHandler = async ({
 			doneEmittedAtMs = Date.now();
 			observabilityWriter.recordEvent('finalize', 'done_emitted', {
 				finished_reason: finishedReason ?? null,
+				completion_status: completionOutcome?.status ?? 'completed',
+				answer_source: completionOutcome?.answerSource ?? 'model',
 				total_tokens: usage?.total_tokens ?? null
 			} as Json);
 			observabilityWriter.queueTimingMetric(finishedReason);

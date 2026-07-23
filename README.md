@@ -119,7 +119,7 @@ pnpm build --filter=@buildos/web
 pnpm build --filter=@buildos/worker
 
 # Generation
-pnpm gen:types                    # Regenerate Supabase types
+pnpm gen:types                    # Regenerate Supabase types from local URL + service key
 pnpm gen:schema                   # Extract DB schema
 pnpm gen:all                      # Full regen: types + schema + web assets + typecheck
 ```

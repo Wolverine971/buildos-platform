@@ -88,6 +88,8 @@ __pycache__/
 
 # Generated Supabase files
 supabase.openapi*.json
+# Supabase CLI link/cache state. Existing tracked snapshots remain tracked.
+supabase/.temp/
 
 # Misc
 *.pem

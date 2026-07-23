@@ -2254,6 +2254,7 @@
 		attachServerTiming: (runId, timing) => stream.attachServerTiming(runId, timing),
 		bufferAssistantText,
 		flushAssistantText,
+		markAssistantCompletion,
 		finalizeAssistantMessage,
 		pendingToolResults,
 		processedToolCallIds,
@@ -2438,6 +2439,31 @@
 		}
 		currentAssistantMessageId = null;
 		currentAssistantMessageIndex = null;
+	}
+
+	function markAssistantCompletion(
+		completionStatus?: 'completed' | 'completed_degraded',
+		answerSource?: 'model' | 'partial_model' | 'deterministic_evidence' | 'precise_no_evidence'
+	) {
+		if (!currentAssistantMessageId || completionStatus !== 'completed_degraded') return;
+		messages = messages.map((msg) =>
+			msg.id === currentAssistantMessageId
+				? {
+						...msg,
+						metadata: {
+							...msg.metadata,
+							completion_status: completionStatus,
+							answer_source: answerSource ?? 'deterministic_evidence',
+							...(answerSource === 'partial_model'
+								? {
+										interrupted: true,
+										interrupted_reason: 'synthesis_recovered'
+									}
+								: {})
+						}
+					}
+				: msg
+		);
 	}
 
 	function markAssistantInterrupted(

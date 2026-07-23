@@ -1391,6 +1391,8 @@
 						<iframe
 							title="Email copy preview"
 							srcdoc={modalCopy.previewHtml}
+							sandbox="allow-popups allow-popups-to-escape-sandbox"
+							referrerpolicy="no-referrer"
 							class="h-[760px] w-full rounded-md border border-border bg-white"
 						></iframe>
 					</div>

@@ -25,6 +25,68 @@ function toolResult(result: unknown): ChatToolResult {
 const parseArgs = () => ({ args: {} });
 
 describe('buildToolPayloadForModel', () => {
+	it('keeps the authoritative Gmail account-link map structured under the model budget', () => {
+		const accountLinks = ['one@example.com', 'two@example.com', 'three@example.com'].map(
+			(email, index) => ({
+				account_label: `Account ${index + 1}`,
+				email_address: email,
+				status: 'success',
+				message_found: true,
+				gmail_url: `https://mail.google.com/mail/?authuser=${encodeURIComponent(email)}#all/thread-${index + 1}`
+			})
+		);
+		const messages = Array.from({ length: 12 }, (_, index) => {
+			const link = accountLinks[index % accountLinks.length]!;
+			return {
+				connection_id: `connection-${index % accountLinks.length}`,
+				account_label: link.account_label,
+				email_address: link.email_address,
+				message_id: `message-${index}`,
+				thread_id: `thread-${index + 1}`,
+				subject: 'Quarterly planning update '.repeat(20),
+				from: 'Project collaborator <collaborator@example.com>',
+				date: '2026-07-22T12:00:00.000Z',
+				gmail_url:
+					index < accountLinks.length
+						? accountLinks[index]!.gmail_url
+						: `https://mail.google.com/mail/?authuser=${encodeURIComponent(link.email_address)}#all/thread-extra-${index}`,
+				snippet: '[BEGIN UNTRUSTED EMAIL CONTENT]\n' + 'untrusted body '.repeat(200),
+				snippet_truncated: false
+			};
+		});
+		const payload = buildToolPayloadForModel(
+			toolCall('search_email_messages'),
+			toolResult({
+				result_contract_version: 'gmail-read-v2',
+				read_only: true,
+				query: 'newer_than:2d',
+				account_message_links: accountLinks,
+				accounts: accountLinks.map((link, index) => ({
+					connection_id: `connection-${index}`,
+					...link,
+					message_count: 4,
+					has_more: true
+				})),
+				messages,
+				message_count: messages.length,
+				reconnect_required_accounts: [],
+				fetched_at: '2026-07-22T12:00:00.000Z',
+				notice: 'Use account_message_links directly.'
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.preview).toBeUndefined();
+		expect(payload.result_contract_version).toBe('gmail-read-v2');
+		expect(payload.account_message_links).toEqual(accountLinks);
+		expect(payload.messages).toHaveLength(5);
+		expect(payload.messages.slice(0, 3).map((message: any) => message.gmail_url)).toEqual(
+			accountLinks.map((link) => link.gmail_url)
+		);
+		expect(payload.messages_omitted_from_model).toBe(7);
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(6000);
+	});
+
 	it('compacts ontology search results and strips internal fields', () => {
 		const payload = buildToolPayloadForModel(
 			toolCall('search_project'),

@@ -9,6 +9,7 @@ import {
 	getSecurityRequestContext,
 	logSecurityEvent
 } from '$lib/server/security-event-logger';
+import { getSafeLocalRedirect } from '$lib/server/safe-redirect';
 
 export const POST: RequestHandler = async (event) => {
 	const {
@@ -18,7 +19,11 @@ export const POST: RequestHandler = async (event) => {
 		platform,
 		request
 	} = event;
-	const redirectTo = url.searchParams.get('redirect') || '/auth/login';
+	const redirectTo = getSafeLocalRedirect(
+		url.searchParams.get('redirect'),
+		url.origin,
+		'/auth/login'
+	);
 	const isApiCall = url.searchParams.get('api') === 'true';
 	const { user } = await safeGetSession();
 	const userId = user?.id;

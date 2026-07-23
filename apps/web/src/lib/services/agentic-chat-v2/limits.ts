@@ -5,6 +5,11 @@ const DEFAULT_FASTCHAT_MAX_TOOL_ROUNDS = 16;
 // which silently truncates real answers and half-built tool-call arguments. The
 // orchestrator passes this explicit, higher cap on every LLM pass.
 const DEFAULT_FASTCHAT_SYNTHESIS_MAX_TOKENS = 8000;
+// Phase 3 canary: dedicated forced-synthesis passes should be large enough for
+// substantive list/report answers without inheriting the tool-call payload cap.
+// This only applies to the dedicated route; control/off traffic remains at the
+// existing 8k cap so the experiment has an honest baseline.
+const DEFAULT_FASTCHAT_FORCED_SYNTHESIS_MAX_TOKENS = 6000;
 // D8: how many times we ask the model to continue a `finish_reason: 'length'`
 // answer before we give up and flag the turn as truncated. Bounded so a model
 // that keeps hitting the cap can never spin the turn forever.
@@ -29,6 +34,10 @@ export const FASTCHAT_LIMITS = {
 	SYNTHESIS_MAX_TOKENS: parsePositiveInt(
 		process.env.FASTCHAT_SYNTHESIS_MAX_TOKENS,
 		DEFAULT_FASTCHAT_SYNTHESIS_MAX_TOKENS
+	),
+	FORCED_SYNTHESIS_MAX_TOKENS: parsePositiveInt(
+		process.env.FASTCHAT_FORCED_SYNTHESIS_MAX_TOKENS,
+		DEFAULT_FASTCHAT_FORCED_SYNTHESIS_MAX_TOKENS
 	),
 	MAX_LENGTH_CONTINUATIONS: parsePositiveInt(
 		process.env.FASTCHAT_MAX_LENGTH_CONTINUATIONS,

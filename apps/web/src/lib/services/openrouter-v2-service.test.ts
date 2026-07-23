@@ -230,7 +230,7 @@ describe('OpenRouterV2Service model routing', () => {
 			require_parameters: true,
 			data_collection: 'deny',
 			zdr: true,
-			order: ['Baidu', 'GMICloud']
+			order: ['baidu', 'gmicloud']
 		});
 		expect(requestBodies[1]?.model).toBe(OPENROUTER_V2_JSON_MODELS[1]);
 		expect(requestBodies[1]?.models).toEqual(OPENROUTER_V2_JSON_MODELS.slice(2, 5));
@@ -281,7 +281,7 @@ describe('OpenRouterV2Service model routing', () => {
 				require_parameters: true,
 				data_collection: 'deny',
 				zdr: true,
-				order: ['Baidu', 'GMICloud']
+				order: ['baidu', 'gmicloud']
 			});
 		} finally {
 			vi.unstubAllEnvs();
@@ -394,7 +394,7 @@ describe('OpenRouterV2Service model routing', () => {
 			require_parameters: true,
 			data_collection: 'deny',
 			zdr: true,
-			order: ['Baidu', 'GMICloud']
+			order: ['baidu', 'gmicloud']
 		});
 	});
 
@@ -718,7 +718,7 @@ describe('OpenRouterV2Service model routing', () => {
 			require_parameters: true,
 			data_collection: 'deny',
 			zdr: true,
-			order: ['Baidu', 'GMICloud']
+			order: ['baidu', 'gmicloud']
 		});
 		expect(requestBodies[1]?.model).toBe('kimi-k2.6');
 		expect(requestBodies[1]?.temperature).toBe(1);
@@ -884,7 +884,7 @@ describe('OpenRouterV2Service model routing', () => {
 			require_parameters: true,
 			data_collection: 'deny',
 			zdr: true,
-			order: ['Baidu', 'GMICloud']
+			order: ['baidu', 'gmicloud']
 		});
 		expect(requestBodies[OPENROUTER_V2_TOOL_MODELS.length]?.model).toBe('kimi-k2.6');
 		expect(requestBodies[OPENROUTER_V2_TOOL_MODELS.length]?.tools).toHaveLength(1);
@@ -1565,7 +1565,63 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			require_parameters: true,
 			data_collection: 'deny',
 			zdr: true,
-			order: ['Baidu', 'GMICloud']
+			order: ['baidu', 'gmicloud']
+		});
+	});
+
+	it('applies a request-scoped provider exclusion and reports the normalized provider slug', async () => {
+		const requestBodies: any[] = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			if (typeof init?.body === 'string') {
+				requestBodies.push(JSON.parse(init.body));
+			}
+			return createSseResponse(
+				[
+					JSON.stringify({
+						id: 'stream-synthesis-route',
+						model: DEEPSEEK_V4_FLASH_MODEL,
+						choices: [{ delta: { content: 'Synthesis answer' } }]
+					}),
+					JSON.stringify({
+						provider: 'DigitalOcean',
+						choices: [{ delta: {}, finish_reason: 'stop' }],
+						usage: { prompt_tokens: 20, completion_tokens: 4, total_tokens: 24 }
+					}),
+					'[DONE]'
+				],
+				{ 'x-openrouter-provider': 'DigitalOcean' }
+			);
+		});
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createService();
+		const events = [];
+		for await (const event of service.streamText({
+			messages: [{ role: 'user', content: 'Synthesize the evidence.' }],
+			userId: 'user_1',
+			models: [DEEPSEEK_V4_FLASH_MODEL],
+			providerRouting: { ignore: ['DigitalOcean'] },
+			maxTokens: 6000
+		})) {
+			events.push(event);
+		}
+
+		expect(requestBodies[0]).toMatchObject({
+			model: DEEPSEEK_V4_FLASH_MODEL,
+			max_tokens: 6000,
+			provider: {
+				allow_fallbacks: true,
+				data_collection: 'deny',
+				zdr: true,
+				order: ['baidu', 'gmicloud'],
+				ignore: ['digitalocean']
+			}
+		});
+		expect(events.find((event) => event.type === 'done')).toMatchObject({
+			type: 'done',
+			provider: 'DigitalOcean',
+			provider_raw: 'DigitalOcean',
+			provider_slug: 'digitalocean'
 		});
 	});
 

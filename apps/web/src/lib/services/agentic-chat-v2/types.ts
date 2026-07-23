@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/types.ts
 import type {
+	AgentTurnPhase,
 	ChatContextType,
 	ChatSession,
 	ChatAttachmentRef,
@@ -140,13 +141,24 @@ export type FastAgentStreamEvent =
 			details?: string;
 			activity_visibility?: 'activity_log';
 	  }
+	| { type: 'turn_phase'; turn_phase: AgentTurnPhase; message: string }
 	| { type: 'text_delta'; content: string }
 	// `turn_rejected` marks pre-persistence denies (access denied, active turn
 	// running, turn-run insert failed): those turns never persisted the user
 	// message, so the client rolls back its optimistic bubble ONLY when this
 	// flag is set. Mid-turn errors omit it.
 	| { type: 'error'; error: string; turn_rejected?: boolean }
-	| { type: 'done'; usage?: FastAgentStreamUsage; finished_reason?: string };
+	| {
+			type: 'done';
+			usage?: FastAgentStreamUsage;
+			finished_reason?: string;
+			completion_status?: 'completed' | 'completed_degraded';
+			answer_source?:
+				| 'model'
+				| 'partial_model'
+				| 'deterministic_evidence'
+				| 'precise_no_evidence';
+	  };
 
 export type FastChatHistoryMessage = {
 	role: 'user' | 'assistant' | 'system' | 'tool';

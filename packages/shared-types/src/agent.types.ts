@@ -482,6 +482,14 @@ export interface AgentStreamEventMeta {
 	durable?: boolean;
 }
 
+export type AgentTurnPhase =
+	| 'acknowledged'
+	| 'planning'
+	| 'gathering'
+	| 'synthesizing'
+	| 'recovering'
+	| 'finalizing';
+
 export type AgentSSEMessage = AgentStreamEventMeta &
 	(
 		| { type: 'context_usage'; usage: ContextUsageSnapshot }
@@ -497,6 +505,7 @@ export type AgentSSEMessage = AgentStreamEventMeta &
 				details?: string;
 				activity_visibility?: 'activity_log';
 		  }
+		| { type: 'turn_phase'; turn_phase: AgentTurnPhase; message: string }
 		| { type: 'clarifying_questions'; questions: string[] }
 		| { type: 'text'; content: string }
 		| { type: 'text_delta'; content: string }
@@ -515,6 +524,12 @@ export type AgentSSEMessage = AgentStreamEventMeta &
 					completion_tokens?: number;
 				};
 				finished_reason?: string;
+				completion_status?: 'completed' | 'completed_degraded';
+				answer_source?:
+					| 'model'
+					| 'partial_model'
+					| 'deterministic_evidence'
+					| 'precise_no_evidence';
 		  }
 		| LegacyAgentSSEMessage
 	);

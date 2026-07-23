@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_deletion_requests: {
+        Row: {
+          attempt_count: number
+          billing_cancellation_error: string | null
+          billing_cancellation_status: string
+          billing_subscription_ids: string[]
+          completed_at: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          lease_expires_at: string | null
+          next_attempt_at: string | null
+          processing_started_at: string | null
+          requested_at: string
+          scheduled_for: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempt_count?: number
+          billing_cancellation_error?: string | null
+          billing_cancellation_status?: string
+          billing_subscription_ids?: string[]
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          lease_expires_at?: string | null
+          next_attempt_at?: string | null
+          processing_started_at?: string | null
+          requested_at?: string
+          scheduled_for?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempt_count?: number
+          billing_cancellation_error?: string | null
+          billing_cancellation_status?: string
+          billing_subscription_ids?: string[]
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          lease_expires_at?: string | null
+          next_attempt_at?: string | null
+          processing_started_at?: string | null
+          requested_at?: string
+          scheduled_for?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       admin_analytics: {
         Row: {
           created_at: string
@@ -1027,6 +1084,109 @@ export type Database = {
           },
         ]
       }
+      agent_operatives: {
+        Row: {
+          allowed_ops: string[] | null
+          budgets: Json
+          context_type: string
+          created_at: string
+          expected_output: string | null
+          goal: string
+          id: string
+          instructions: string | null
+          label: string
+          last_run_at: string | null
+          last_run_id: string | null
+          next_run_at: string | null
+          project_id: string | null
+          review_required: boolean
+          schedule_day_of_week: number | null
+          schedule_enabled: boolean
+          schedule_error: string | null
+          schedule_frequency: string | null
+          schedule_locked_at: string | null
+          schedule_time_of_day: string | null
+          schedule_timezone: string
+          scope_mode: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allowed_ops?: string[] | null
+          budgets?: Json
+          context_type?: string
+          created_at?: string
+          expected_output?: string | null
+          goal: string
+          id?: string
+          instructions?: string | null
+          label: string
+          last_run_at?: string | null
+          last_run_id?: string | null
+          next_run_at?: string | null
+          project_id?: string | null
+          review_required?: boolean
+          schedule_day_of_week?: number | null
+          schedule_enabled?: boolean
+          schedule_error?: string | null
+          schedule_frequency?: string | null
+          schedule_locked_at?: string | null
+          schedule_time_of_day?: string | null
+          schedule_timezone?: string
+          scope_mode?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allowed_ops?: string[] | null
+          budgets?: Json
+          context_type?: string
+          created_at?: string
+          expected_output?: string | null
+          goal?: string
+          id?: string
+          instructions?: string | null
+          label?: string
+          last_run_at?: string | null
+          last_run_id?: string | null
+          next_run_at?: string | null
+          project_id?: string | null
+          review_required?: boolean
+          schedule_day_of_week?: number | null
+          schedule_enabled?: boolean
+          schedule_error?: string | null
+          schedule_frequency?: string | null
+          schedule_locked_at?: string | null
+          schedule_time_of_day?: string | null
+          schedule_timezone?: string
+          scope_mode?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_operatives_last_run_id_fkey"
+            columns: ["last_run_id"]
+            isOneToOne: false
+            referencedRelation: "agent_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_operatives_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_operatives_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       agent_plans: {
         Row: {
           completed_at: string | null
@@ -1097,6 +1257,108 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_run_cost_entries: {
+        Row: {
+          actual_cost_usd: number | null
+          actual_units: number | null
+          attempt_key: string
+          id: string
+          leaf_run_id: string
+          metadata: Json
+          operation: string
+          provider: string
+          provider_request_id: string | null
+          reconciliation_attempts: number
+          reconciliation_completed_token: string | null
+          reconciliation_last_error: string | null
+          reconciliation_lock_expires_at: string | null
+          reconciliation_lock_token: string | null
+          reconciliation_locked_at: string | null
+          reconciliation_needs_operator_at: string | null
+          reconciliation_next_attempt_at: string | null
+          reserved_at: string
+          reserved_cost_usd: number
+          reserved_units: number | null
+          resource: string
+          root_run_id: string
+          settled_at: string | null
+          status: string
+          unit_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual_cost_usd?: number | null
+          actual_units?: number | null
+          attempt_key: string
+          id?: string
+          leaf_run_id: string
+          metadata?: Json
+          operation: string
+          provider: string
+          provider_request_id?: string | null
+          reconciliation_attempts?: number
+          reconciliation_completed_token?: string | null
+          reconciliation_last_error?: string | null
+          reconciliation_lock_expires_at?: string | null
+          reconciliation_lock_token?: string | null
+          reconciliation_locked_at?: string | null
+          reconciliation_needs_operator_at?: string | null
+          reconciliation_next_attempt_at?: string | null
+          reserved_at?: string
+          reserved_cost_usd: number
+          reserved_units?: number | null
+          resource: string
+          root_run_id: string
+          settled_at?: string | null
+          status?: string
+          unit_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual_cost_usd?: number | null
+          actual_units?: number | null
+          attempt_key?: string
+          id?: string
+          leaf_run_id?: string
+          metadata?: Json
+          operation?: string
+          provider?: string
+          provider_request_id?: string | null
+          reconciliation_attempts?: number
+          reconciliation_completed_token?: string | null
+          reconciliation_last_error?: string | null
+          reconciliation_lock_expires_at?: string | null
+          reconciliation_lock_token?: string | null
+          reconciliation_locked_at?: string | null
+          reconciliation_needs_operator_at?: string | null
+          reconciliation_next_attempt_at?: string | null
+          reserved_at?: string
+          reserved_cost_usd?: number
+          reserved_units?: number | null
+          resource?: string
+          root_run_id?: string
+          settled_at?: string | null
+          status?: string
+          unit_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_run_cost_entries_leaf_run_id_fkey"
+            columns: ["leaf_run_id"]
+            isOneToOne: false
+            referencedRelation: "agent_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_run_cost_entries_root_run_id_fkey"
+            columns: ["root_run_id"]
+            isOneToOne: false
+            referencedRelation: "agent_runs"
             referencedColumns: ["id"]
           },
         ]
@@ -1179,6 +1441,7 @@ export type Database = {
           allowed_ops: string[] | null
           budgets: Json
           change_set: Json | null
+          commit_started_at: string | null
           completed_at: string | null
           context_type: string
           created_at: string
@@ -1213,6 +1476,7 @@ export type Database = {
           allowed_ops?: string[] | null
           budgets?: Json
           change_set?: Json | null
+          commit_started_at?: string | null
           completed_at?: string | null
           context_type: string
           created_at?: string
@@ -1247,6 +1511,7 @@ export type Database = {
           allowed_ops?: string[] | null
           budgets?: Json
           change_set?: Json | null
+          commit_started_at?: string | null
           completed_at?: string | null
           context_type?: string
           created_at?: string
@@ -1278,6 +1543,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "agent_runs_operative_id_fkey"
+            columns: ["operative_id"]
+            isOneToOne: false
+            referencedRelation: "agent_operatives"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "agent_runs_parent_run_id_fkey"
             columns: ["parent_run_id"]
@@ -3864,6 +4136,7 @@ export type Database = {
           history_for_model_count: number | null
           history_strategy: string | null
           id: string
+          last_progress_at: string | null
           llm_pass_count: number
           prepared_prompt_hit: boolean | null
           prepared_prompt_id: string | null
@@ -3906,6 +4179,7 @@ export type Database = {
           history_for_model_count?: number | null
           history_strategy?: string | null
           id?: string
+          last_progress_at?: string | null
           llm_pass_count?: number
           prepared_prompt_hit?: boolean | null
           prepared_prompt_id?: string | null
@@ -3948,6 +4222,7 @@ export type Database = {
           history_for_model_count?: number | null
           history_strategy?: string | null
           id?: string
+          last_progress_at?: string | null
           llm_pass_count?: number
           prepared_prompt_hit?: boolean | null
           prepared_prompt_id?: string | null
@@ -4447,6 +4722,47 @@ export type Database = {
           },
         ]
       }
+      email_access_audit_events: {
+        Row: {
+          connection_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          operation: string
+          outcome: string
+          reason_code: string | null
+          user_id: string
+        }
+        Insert: {
+          connection_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          operation: string
+          outcome: string
+          reason_code?: string | null
+          user_id: string
+        }
+        Update: {
+          connection_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          operation?: string
+          outcome?: string
+          reason_code?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_access_audit_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_attachments: {
         Row: {
           cid: string | null
@@ -4519,6 +4835,122 @@ export type Database = {
           },
         ]
       }
+      email_capability_grants: {
+        Row: {
+          capability: string
+          connection_id: string
+          consent_policy_version: string
+          created_at: string
+          disabled_at: string | null
+          enabled_at: string | null
+          enabled_by_user_id: string | null
+          granted_scopes: string[]
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          capability: string
+          connection_id: string
+          consent_policy_version: string
+          created_at?: string
+          disabled_at?: string | null
+          enabled_at?: string | null
+          enabled_by_user_id?: string | null
+          granted_scopes?: string[]
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          capability?: string
+          connection_id?: string
+          consent_policy_version?: string
+          created_at?: string
+          disabled_at?: string | null
+          enabled_at?: string | null
+          enabled_by_user_id?: string | null
+          granted_scopes?: string[]
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_capability_grants_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "user_email_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_capability_grants_enabled_by_user_id_fkey"
+            columns: ["enabled_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_connection_credentials: {
+        Row: {
+          access_token_ciphertext: string
+          access_token_expires_at: string | null
+          connection_id: string
+          created_at: string
+          grant_kind: string
+          granted_scopes: string[]
+          id: string
+          key_version: number
+          last_refreshed_at: string | null
+          oauth_client_kind: string
+          refresh_token_ciphertext: string
+          revoked_at: string | null
+          token_type: string
+          updated_at: string
+        }
+        Insert: {
+          access_token_ciphertext: string
+          access_token_expires_at?: string | null
+          connection_id: string
+          created_at?: string
+          grant_kind: string
+          granted_scopes?: string[]
+          id?: string
+          key_version?: number
+          last_refreshed_at?: string | null
+          oauth_client_kind: string
+          refresh_token_ciphertext: string
+          revoked_at?: string | null
+          token_type?: string
+          updated_at?: string
+        }
+        Update: {
+          access_token_ciphertext?: string
+          access_token_expires_at?: string | null
+          connection_id?: string
+          created_at?: string
+          grant_kind?: string
+          granted_scopes?: string[]
+          id?: string
+          key_version?: number
+          last_refreshed_at?: string | null
+          oauth_client_kind?: string
+          refresh_token_ciphertext?: string
+          revoked_at?: string | null
+          token_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_connection_credentials_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "user_email_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_logs: {
         Row: {
           bcc: string[] | null
@@ -4568,6 +5000,231 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "email_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_oauth_states: {
+        Row: {
+          code_verifier: string
+          connection_id: string | null
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          nonce: string
+          oauth_client_kind: string
+          redirect_path: string
+          state_hash: string
+          user_id: string
+        }
+        Insert: {
+          code_verifier: string
+          connection_id?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          nonce: string
+          oauth_client_kind: string
+          redirect_path?: string
+          state_hash: string
+          user_id: string
+        }
+        Update: {
+          code_verifier?: string
+          connection_id?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          nonce?: string
+          oauth_client_kind?: string
+          redirect_path?: string
+          state_hash?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_oauth_states_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "user_email_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_oauth_states_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_project_profile_versions: {
+        Row: {
+          compiler_version: string
+          created_at: string
+          diff: Json
+          groups: Json
+          id: string
+          omitted: Json
+          profile_hash: string
+          profile_id: string
+          profile_version: number
+          source_snapshot_at: string
+        }
+        Insert: {
+          compiler_version: string
+          created_at?: string
+          diff: Json
+          groups: Json
+          id?: string
+          omitted: Json
+          profile_hash: string
+          profile_id: string
+          profile_version: number
+          source_snapshot_at: string
+        }
+        Update: {
+          compiler_version?: string
+          created_at?: string
+          diff?: Json
+          groups?: Json
+          id?: string
+          omitted?: Json
+          profile_hash?: string
+          profile_id?: string
+          profile_version?: number
+          source_snapshot_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_project_profile_versions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "email_project_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_project_profiles: {
+        Row: {
+          compiler_version: string | null
+          created_at: string
+          current_profile_hash: string | null
+          current_version: number
+          deleted_at: string | null
+          id: string
+          project_id: string
+          source_snapshot_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          compiler_version?: string | null
+          created_at?: string
+          current_profile_hash?: string | null
+          current_version?: number
+          deleted_at?: string | null
+          id?: string
+          project_id: string
+          source_snapshot_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          compiler_version?: string | null
+          created_at?: string
+          current_profile_hash?: string | null
+          current_version?: number
+          deleted_at?: string | null
+          id?: string
+          project_id?: string
+          source_snapshot_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_project_profiles_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_project_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_project_rules: {
+        Row: {
+          connection_id: string | null
+          created_at: string
+          disabled_at: string | null
+          id: string
+          key_version: number
+          match_value_ciphertext: string
+          match_value_hash: string
+          project_id: string
+          rule_kind: string
+          source_decision_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connection_id?: string | null
+          created_at?: string
+          disabled_at?: string | null
+          id?: string
+          key_version?: number
+          match_value_ciphertext: string
+          match_value_hash: string
+          project_id: string
+          rule_kind: string
+          source_decision_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connection_id?: string | null
+          created_at?: string
+          disabled_at?: string | null
+          id?: string
+          key_version?: number
+          match_value_ciphertext?: string
+          match_value_hash?: string
+          project_id?: string
+          rule_kind?: string
+          source_decision_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_project_rules_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "user_email_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_project_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_project_rules_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -5749,6 +6406,13 @@ export type Database = {
             foreignKeyName: "inbox_items_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "inbox_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -5846,6 +6510,98 @@ export type Database = {
           onto_table?: string
         }
         Relationships: []
+      }
+      legal_acceptance_intents: {
+        Row: {
+          accepted_at: string
+          client_ip: unknown
+          created_at: string
+          expires_at: string
+          id: string
+          intended_surface: string
+          privacy_version: string
+          terms_version: string
+          token_hash: string
+          used_at: string | null
+          used_by_user_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          accepted_at?: string
+          client_ip?: unknown
+          created_at?: string
+          expires_at?: string
+          id?: string
+          intended_surface: string
+          privacy_version: string
+          terms_version: string
+          token_hash: string
+          used_at?: string | null
+          used_by_user_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          accepted_at?: string
+          client_ip?: unknown
+          created_at?: string
+          expires_at?: string
+          id?: string
+          intended_surface?: string
+          privacy_version?: string
+          terms_version?: string
+          token_hash?: string
+          used_at?: string | null
+          used_by_user_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      legal_acceptances: {
+        Row: {
+          acceptance_surface: string
+          accepted_at: string
+          client_ip: unknown
+          created_at: string
+          id: string
+          intent_id: string
+          privacy_version: string
+          terms_version: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          acceptance_surface: string
+          accepted_at: string
+          client_ip?: unknown
+          created_at?: string
+          id?: string
+          intent_id: string
+          privacy_version: string
+          terms_version: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          acceptance_surface?: string
+          accepted_at?: string
+          client_ip?: unknown
+          created_at?: string
+          id?: string
+          intent_id?: string
+          privacy_version?: string
+          terms_version?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_acceptances_intent_id_fkey"
+            columns: ["intent_id"]
+            isOneToOne: true
+            referencedRelation: "legal_acceptance_intents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       llm_prompts: {
         Row: {
@@ -9056,6 +9812,7 @@ export type Database = {
           due_at: string | null
           facet_scale: string | null
           id: string
+          idempotency_key: string | null
           priority: number | null
           project_id: string
           props: Json
@@ -9076,6 +9833,7 @@ export type Database = {
           due_at?: string | null
           facet_scale?: string | null
           id?: string
+          idempotency_key?: string | null
           priority?: number | null
           project_id: string
           props?: Json
@@ -9096,6 +9854,7 @@ export type Database = {
           due_at?: string | null
           facet_scale?: string | null
           id?: string
+          idempotency_key?: string | null
           priority?: number | null
           project_id?: string
           props?: Json
@@ -9780,6 +10539,308 @@ export type Database = {
           },
         ]
       }
+      project_audit_suggestions: {
+        Row: {
+          audit_id: string
+          created_at: string
+          id: string
+          role: string
+          suggestion_id: string
+        }
+        Insert: {
+          audit_id: string
+          created_at?: string
+          id?: string
+          role: string
+          suggestion_id: string
+        }
+        Update: {
+          audit_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          suggestion_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_audit_suggestions_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "project_audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audit_suggestions_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "project_suggestions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_audit_trigger_evaluations: {
+        Row: {
+          burst_score: number | null
+          changed_entity_count: number | null
+          cooldown_until: string | null
+          created_at: string
+          created_audit_id: string | null
+          created_loop_run_id: string | null
+          decision: string
+          eligible: boolean
+          evaluated_at: string
+          id: string
+          last_audit_id: string | null
+          major_change_count: number | null
+          maturity_snapshot: Json
+          project_id: string
+          project_size_class: string
+          quiet_until: string | null
+          reason_summary: string
+          trigger_reason: string
+          user_id: string
+        }
+        Insert: {
+          burst_score?: number | null
+          changed_entity_count?: number | null
+          cooldown_until?: string | null
+          created_at?: string
+          created_audit_id?: string | null
+          created_loop_run_id?: string | null
+          decision: string
+          eligible?: boolean
+          evaluated_at?: string
+          id?: string
+          last_audit_id?: string | null
+          major_change_count?: number | null
+          maturity_snapshot?: Json
+          project_id: string
+          project_size_class?: string
+          quiet_until?: string | null
+          reason_summary?: string
+          trigger_reason: string
+          user_id: string
+        }
+        Update: {
+          burst_score?: number | null
+          changed_entity_count?: number | null
+          cooldown_until?: string | null
+          created_at?: string
+          created_audit_id?: string | null
+          created_loop_run_id?: string | null
+          decision?: string
+          eligible?: boolean
+          evaluated_at?: string
+          id?: string
+          last_audit_id?: string | null
+          major_change_count?: number | null
+          maturity_snapshot?: Json
+          project_id?: string
+          project_size_class?: string
+          quiet_until?: string | null
+          reason_summary?: string
+          trigger_reason?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_audit_trigger_evaluations_created_audit_id_fkey"
+            columns: ["created_audit_id"]
+            isOneToOne: false
+            referencedRelation: "project_audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audit_trigger_evaluations_created_loop_run_id_fkey"
+            columns: ["created_loop_run_id"]
+            isOneToOne: false
+            referencedRelation: "project_loop_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audit_trigger_evaluations_last_audit_id_fkey"
+            columns: ["last_audit_id"]
+            isOneToOne: false
+            referencedRelation: "project_audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audit_trigger_evaluations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audit_trigger_evaluations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "project_audit_trigger_evaluations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_audits: {
+        Row: {
+          archived_at: string | null
+          audit_depth: string
+          change_summary: Json
+          chat_session_id: string | null
+          cost_usd: number | null
+          created_at: string
+          delivery_confidence: string
+          dimensions: Json
+          error_message: string | null
+          evidence_refs: Json
+          finished_at: string | null
+          generated_suggestion_count: number
+          id: string
+          loop_run_id: string | null
+          model_used: string | null
+          open_questions: Json
+          project_id: string
+          project_size_class: string
+          project_snapshot_fingerprint: string | null
+          project_thesis: string | null
+          recommendations: Json
+          reviewed_at: string | null
+          risks: Json
+          started_at: string | null
+          status: string
+          summary: string
+          superseded_by: string | null
+          top_actions: Json
+          top_findings: Json
+          trigger_reason: string
+          trigger_snapshot: Json
+          unresolved_suggestion_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          audit_depth?: string
+          change_summary?: Json
+          chat_session_id?: string | null
+          cost_usd?: number | null
+          created_at?: string
+          delivery_confidence?: string
+          dimensions?: Json
+          error_message?: string | null
+          evidence_refs?: Json
+          finished_at?: string | null
+          generated_suggestion_count?: number
+          id?: string
+          loop_run_id?: string | null
+          model_used?: string | null
+          open_questions?: Json
+          project_id: string
+          project_size_class?: string
+          project_snapshot_fingerprint?: string | null
+          project_thesis?: string | null
+          recommendations?: Json
+          reviewed_at?: string | null
+          risks?: Json
+          started_at?: string | null
+          status?: string
+          summary?: string
+          superseded_by?: string | null
+          top_actions?: Json
+          top_findings?: Json
+          trigger_reason: string
+          trigger_snapshot?: Json
+          unresolved_suggestion_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          audit_depth?: string
+          change_summary?: Json
+          chat_session_id?: string | null
+          cost_usd?: number | null
+          created_at?: string
+          delivery_confidence?: string
+          dimensions?: Json
+          error_message?: string | null
+          evidence_refs?: Json
+          finished_at?: string | null
+          generated_suggestion_count?: number
+          id?: string
+          loop_run_id?: string | null
+          model_used?: string | null
+          open_questions?: Json
+          project_id?: string
+          project_size_class?: string
+          project_snapshot_fingerprint?: string | null
+          project_thesis?: string | null
+          recommendations?: Json
+          reviewed_at?: string | null
+          risks?: Json
+          started_at?: string | null
+          status?: string
+          summary?: string
+          superseded_by?: string | null
+          top_actions?: Json
+          top_findings?: Json
+          trigger_reason?: string
+          trigger_snapshot?: Json
+          unresolved_suggestion_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_audits_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audits_loop_run_id_fkey"
+            columns: ["loop_run_id"]
+            isOneToOne: false
+            referencedRelation: "project_loop_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audits_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audits_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "project_audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_audits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "project_audits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_brief_templates: {
         Row: {
           context_snapshot: Json | null
@@ -10203,294 +11264,6 @@ export type Database = {
           },
         ]
       }
-      project_audit_suggestions: {
-        Row: {
-          audit_id: string
-          created_at: string
-          id: string
-          role: string
-          suggestion_id: string
-        }
-        Insert: {
-          audit_id: string
-          created_at?: string
-          id?: string
-          role: string
-          suggestion_id: string
-        }
-        Update: {
-          audit_id?: string
-          created_at?: string
-          id?: string
-          role?: string
-          suggestion_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_audit_suggestions_audit_id_fkey"
-            columns: ["audit_id"]
-            isOneToOne: false
-            referencedRelation: "project_audits"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_audit_suggestions_suggestion_id_fkey"
-            columns: ["suggestion_id"]
-            isOneToOne: false
-            referencedRelation: "project_suggestions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      project_audit_trigger_evaluations: {
-        Row: {
-          burst_score: number | null
-          changed_entity_count: number | null
-          cooldown_until: string | null
-          created_at: string
-          created_audit_id: string | null
-          created_loop_run_id: string | null
-          decision: string
-          eligible: boolean
-          evaluated_at: string
-          id: string
-          last_audit_id: string | null
-          major_change_count: number | null
-          maturity_snapshot: Json
-          project_id: string
-          project_size_class: string
-          quiet_until: string | null
-          reason_summary: string
-          trigger_reason: string
-          user_id: string
-        }
-        Insert: {
-          burst_score?: number | null
-          changed_entity_count?: number | null
-          cooldown_until?: string | null
-          created_at?: string
-          created_audit_id?: string | null
-          created_loop_run_id?: string | null
-          decision: string
-          eligible?: boolean
-          evaluated_at?: string
-          id?: string
-          last_audit_id?: string | null
-          major_change_count?: number | null
-          maturity_snapshot?: Json
-          project_id: string
-          project_size_class?: string
-          quiet_until?: string | null
-          reason_summary?: string
-          trigger_reason: string
-          user_id: string
-        }
-        Update: {
-          burst_score?: number | null
-          changed_entity_count?: number | null
-          cooldown_until?: string | null
-          created_at?: string
-          created_audit_id?: string | null
-          created_loop_run_id?: string | null
-          decision?: string
-          eligible?: boolean
-          evaluated_at?: string
-          id?: string
-          last_audit_id?: string | null
-          major_change_count?: number | null
-          maturity_snapshot?: Json
-          project_id?: string
-          project_size_class?: string
-          quiet_until?: string | null
-          reason_summary?: string
-          trigger_reason?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_audit_trigger_evaluations_created_audit_id_fkey"
-            columns: ["created_audit_id"]
-            isOneToOne: false
-            referencedRelation: "project_audits"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_audit_trigger_evaluations_created_loop_run_id_fkey"
-            columns: ["created_loop_run_id"]
-            isOneToOne: false
-            referencedRelation: "project_loop_runs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_audit_trigger_evaluations_last_audit_id_fkey"
-            columns: ["last_audit_id"]
-            isOneToOne: false
-            referencedRelation: "project_audits"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_audit_trigger_evaluations_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "onto_projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_audit_trigger_evaluations_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      project_audits: {
-        Row: {
-          archived_at: string | null
-          audit_depth: string
-          change_summary: Json
-          chat_session_id: string | null
-          cost_usd: number | null
-          created_at: string
-          delivery_confidence: string
-          dimensions: Json
-          error_message: string | null
-          evidence_refs: Json
-          finished_at: string | null
-          generated_suggestion_count: number
-          id: string
-          loop_run_id: string | null
-          model_used: string | null
-          open_questions: Json
-          project_id: string
-          project_size_class: string
-          project_snapshot_fingerprint: string | null
-          project_thesis: string | null
-          recommendations: Json
-          reviewed_at: string | null
-          risks: Json
-          started_at: string | null
-          status: string
-          summary: string
-          superseded_by: string | null
-          top_actions: Json
-          top_findings: Json
-          trigger_reason: string
-          trigger_snapshot: Json
-          unresolved_suggestion_count: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          archived_at?: string | null
-          audit_depth?: string
-          change_summary?: Json
-          chat_session_id?: string | null
-          cost_usd?: number | null
-          created_at?: string
-          delivery_confidence?: string
-          dimensions?: Json
-          error_message?: string | null
-          evidence_refs?: Json
-          finished_at?: string | null
-          generated_suggestion_count?: number
-          id?: string
-          loop_run_id?: string | null
-          model_used?: string | null
-          open_questions?: Json
-          project_id: string
-          project_size_class?: string
-          project_snapshot_fingerprint?: string | null
-          project_thesis?: string | null
-          recommendations?: Json
-          reviewed_at?: string | null
-          risks?: Json
-          started_at?: string | null
-          status?: string
-          summary?: string
-          superseded_by?: string | null
-          top_actions?: Json
-          top_findings?: Json
-          trigger_reason: string
-          trigger_snapshot?: Json
-          unresolved_suggestion_count?: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          archived_at?: string | null
-          audit_depth?: string
-          change_summary?: Json
-          chat_session_id?: string | null
-          cost_usd?: number | null
-          created_at?: string
-          delivery_confidence?: string
-          dimensions?: Json
-          error_message?: string | null
-          evidence_refs?: Json
-          finished_at?: string | null
-          generated_suggestion_count?: number
-          id?: string
-          loop_run_id?: string | null
-          model_used?: string | null
-          open_questions?: Json
-          project_id?: string
-          project_size_class?: string
-          project_snapshot_fingerprint?: string | null
-          project_thesis?: string | null
-          recommendations?: Json
-          reviewed_at?: string | null
-          risks?: Json
-          started_at?: string | null
-          status?: string
-          summary?: string
-          superseded_by?: string | null
-          top_actions?: Json
-          top_findings?: Json
-          trigger_reason?: string
-          trigger_snapshot?: Json
-          unresolved_suggestion_count?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_audits_chat_session_id_fkey"
-            columns: ["chat_session_id"]
-            isOneToOne: false
-            referencedRelation: "chat_sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_audits_loop_run_id_fkey"
-            columns: ["loop_run_id"]
-            isOneToOne: false
-            referencedRelation: "project_loop_runs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_audits_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "onto_projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_audits_superseded_by_fkey"
-            columns: ["superseded_by"]
-            isOneToOne: false
-            referencedRelation: "project_audits"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_audits_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       project_loop_runs: {
         Row: {
           brief: Json | null
@@ -10723,6 +11496,119 @@ export type Database = {
           },
         ]
       }
+      project_review_signals: {
+        Row: {
+          activity_score: number
+          created_at: string
+          due_at: string
+          entity_count: number
+          entity_ids: string[]
+          entity_type: string | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          last_seen_at: string
+          metadata: Json
+          operation_ids: string[]
+          operation_kind: string | null
+          origin: string | null
+          processed_audit_id: string | null
+          processed_loop_run_id: string | null
+          project_id: string
+          queue_job_id: string | null
+          review_policy: string
+          signal_count: number
+          source: string
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_score?: number
+          created_at?: string
+          due_at: string
+          entity_count?: number
+          entity_ids?: string[]
+          entity_type?: string | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          last_seen_at?: string
+          metadata?: Json
+          operation_ids?: string[]
+          operation_kind?: string | null
+          origin?: string | null
+          processed_audit_id?: string | null
+          processed_loop_run_id?: string | null
+          project_id: string
+          queue_job_id?: string | null
+          review_policy?: string
+          signal_count?: number
+          source?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_score?: number
+          created_at?: string
+          due_at?: string
+          entity_count?: number
+          entity_ids?: string[]
+          entity_type?: string | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          last_seen_at?: string
+          metadata?: Json
+          operation_ids?: string[]
+          operation_kind?: string | null
+          origin?: string | null
+          processed_audit_id?: string | null
+          processed_loop_run_id?: string | null
+          project_id?: string
+          queue_job_id?: string | null
+          review_policy?: string
+          signal_count?: number
+          source?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_review_signals_processed_audit_id_fkey"
+            columns: ["processed_audit_id"]
+            isOneToOne: false
+            referencedRelation: "project_audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_review_signals_processed_loop_run_id_fkey"
+            columns: ["processed_loop_run_id"]
+            isOneToOne: false
+            referencedRelation: "project_loop_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_review_signals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_review_signals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       project_suggestions: {
         Row: {
           agent_run_id: string | null
@@ -10820,6 +11706,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "project_suggestions_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "project_suggestions_depends_on_fkey"
             columns: ["depends_on"]
             isOneToOne: false
@@ -10831,13 +11724,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onto_projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_suggestions_chat_session_id_fkey"
-            columns: ["chat_session_id"]
-            isOneToOne: false
-            referencedRelation: "chat_sessions"
             referencedColumns: ["id"]
           },
           {
@@ -14074,6 +14960,68 @@ export type Database = {
           },
         ]
       }
+      user_email_connections: {
+        Row: {
+          account_label: string
+          connected_at: string
+          created_at: string
+          deleted_at: string | null
+          display_name: string | null
+          email_address: string
+          id: string
+          last_used_at: string | null
+          last_verified_at: string | null
+          provider: string
+          provider_account_id: string
+          read_enabled: boolean
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_label: string
+          connected_at?: string
+          created_at?: string
+          deleted_at?: string | null
+          display_name?: string | null
+          email_address: string
+          id?: string
+          last_used_at?: string | null
+          last_verified_at?: string | null
+          provider?: string
+          provider_account_id: string
+          read_enabled?: boolean
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_label?: string
+          connected_at?: string
+          created_at?: string
+          deleted_at?: string | null
+          display_name?: string | null
+          email_address?: string
+          id?: string
+          last_used_at?: string | null
+          last_verified_at?: string | null
+          provider?: string
+          provider_account_id?: string
+          read_enabled?: boolean
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_email_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_notification_preferences: {
         Row: {
           batch_enabled: boolean
@@ -14491,6 +15439,9 @@ export type Database = {
           access_restricted_at: string | null
           bio: string | null
           created_at: string
+          deletion_requested_at: string | null
+          deletion_scheduled_for: string | null
+          deletion_status: string | null
           email: string
           id: string
           is_admin: boolean
@@ -14504,6 +15455,8 @@ export type Database = {
           onboarding_v2_skipped_sms: boolean | null
           preferences: Json | null
           productivity_challenges: Json | null
+          referrer: string | null
+          signup_source: string | null
           stripe_customer_id: string | null
           subscription_plan_id: string | null
           subscription_status: string | null
@@ -14512,6 +15465,9 @@ export type Database = {
           updated_at: string
           usage_archetype: string | null
           username: string | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
           voice_narration_enabled: boolean
         }
         Insert: {
@@ -14519,6 +15475,9 @@ export type Database = {
           access_restricted_at?: string | null
           bio?: string | null
           created_at?: string
+          deletion_requested_at?: string | null
+          deletion_scheduled_for?: string | null
+          deletion_status?: string | null
           email: string
           id: string
           is_admin?: boolean
@@ -14532,6 +15491,8 @@ export type Database = {
           onboarding_v2_skipped_sms?: boolean | null
           preferences?: Json | null
           productivity_challenges?: Json | null
+          referrer?: string | null
+          signup_source?: string | null
           stripe_customer_id?: string | null
           subscription_plan_id?: string | null
           subscription_status?: string | null
@@ -14540,6 +15501,9 @@ export type Database = {
           updated_at?: string
           usage_archetype?: string | null
           username?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
           voice_narration_enabled?: boolean
         }
         Update: {
@@ -14547,6 +15511,9 @@ export type Database = {
           access_restricted_at?: string | null
           bio?: string | null
           created_at?: string
+          deletion_requested_at?: string | null
+          deletion_scheduled_for?: string | null
+          deletion_status?: string | null
           email?: string
           id?: string
           is_admin?: boolean
@@ -14560,6 +15527,8 @@ export type Database = {
           onboarding_v2_skipped_sms?: boolean | null
           preferences?: Json | null
           productivity_challenges?: Json | null
+          referrer?: string | null
+          signup_source?: string | null
           stripe_customer_id?: string | null
           subscription_plan_id?: string | null
           subscription_status?: string | null
@@ -14568,6 +15537,9 @@ export type Database = {
           updated_at?: string
           usage_archetype?: string | null
           username?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
           voice_narration_enabled?: boolean
         }
         Relationships: [
@@ -15002,6 +15974,20 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_brief_engagement_weekly_metrics: {
+        Row: {
+          click_rate: number | null
+          clicks: number | null
+          engagement_stage: string | null
+          open_rate: number | null
+          opens: number | null
+          reactivated_7d: number | null
+          reactivation_rate_7d: number | null
+          sends: number | null
+          week_start: string | null
+        }
+        Relationships: []
+      }
       error_summary: {
         Row: {
           affected_projects: number | null
@@ -15366,6 +16352,75 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: boolean
       }
+      claim_agent_run_cost_reconciliation: {
+        Args: {
+          p_lease_seconds?: number
+          p_limit?: number
+          p_max_attempts?: number
+          p_stale_before: string
+        }
+        Returns: {
+          actual_cost_usd: number | null
+          actual_units: number | null
+          attempt_key: string
+          id: string
+          leaf_run_id: string
+          metadata: Json
+          operation: string
+          provider: string
+          provider_request_id: string | null
+          reconciliation_attempts: number
+          reconciliation_completed_token: string | null
+          reconciliation_last_error: string | null
+          reconciliation_lock_expires_at: string | null
+          reconciliation_lock_token: string | null
+          reconciliation_locked_at: string | null
+          reconciliation_needs_operator_at: string | null
+          reconciliation_next_attempt_at: string | null
+          reserved_at: string
+          reserved_cost_usd: number
+          reserved_units: number | null
+          resource: string
+          root_run_id: string
+          settled_at: string | null
+          status: string
+          unit_type: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "agent_run_cost_entries"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      claim_due_account_deletions: {
+        Args: { p_lease_minutes?: number; p_limit?: number }
+        Returns: {
+          attempt_count: number
+          billing_cancellation_error: string | null
+          billing_cancellation_status: string
+          billing_subscription_ids: string[]
+          completed_at: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          lease_expires_at: string | null
+          next_attempt_at: string | null
+          processing_started_at: string | null
+          requested_at: string
+          scheduled_for: string
+          status: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "account_deletion_requests"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_pending_email_sequence_sends: {
         Args: { p_limit?: number; p_sequence_key: string }
         Returns: {
@@ -15443,6 +16498,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      cleanup_agentic_chat_prompt_artifacts: {
+        Args: {
+          p_batch_size?: number
+          p_prompt_snapshot_retention_days?: number
+          p_rendered_dump_retention_days?: number
+        }
+        Returns: Json
+      }
       cleanup_expired_agentic_chat_prepared_prompts: {
         Args: never
         Returns: number
@@ -15514,6 +16577,28 @@ export type Database = {
       }
       complete_recurring_instance: {
         Args: { p_instance_date: string; p_task_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      consume_email_oauth_state: {
+        Args: {
+          p_oauth_client_kind: string
+          p_state_hash: string
+          p_user_id: string
+        }
+        Returns: {
+          code_verifier: string
+          connection_id: string
+          nonce: string
+          redirect_path: string
+          state_id: string
+        }[]
+      }
+      consume_legal_acceptance_intent: {
+        Args: {
+          p_surface: string
+          p_token_hash: string
+          p_user_id: string
+        }
         Returns: boolean
       }
       create_manual_project_version: {
@@ -15597,6 +16682,13 @@ export type Database = {
       delete_onto_project: {
         Args: { p_project_id: string }
         Returns: undefined
+      }
+      email_relevance_user_owns_project: {
+        Args: {
+          p_project_id: string
+          p_user_id: string
+        }
+        Returns: Json
       }
       emit_notification_event: {
         Args: {
@@ -15689,6 +16781,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      finalize_account_deletion_database: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       finalize_draft_project: {
         Args: { p_draft_id: string; p_user_id: string }
         Returns: string
@@ -15774,6 +16870,24 @@ export type Database = {
           total_sessions: number
           total_tokens: number
           unique_users: number
+        }[]
+      }
+      get_admin_dashboard_comprehensive_analytics: {
+        Args: { end_ts: string; last_24h_ts: string; start_ts: string }
+        Returns: {
+          agent_chat_messages: number
+          agent_chat_sessions: number
+          agent_chat_unique_users: number
+          calendar_connections: number
+          leaderboards: Json
+          new_beta_signups_last_24h: number
+          new_projects: number
+          new_users_last_24h: number
+          project_unique_users: number
+          top_active_users: Json
+          total_beta_users: number
+          total_users: number
+          updated_projects: number
         }[]
       }
       get_admin_model_breakdown: {
@@ -15892,6 +17006,19 @@ export type Database = {
           date: string
           visitor_count: number
         }[]
+      }
+      get_history_page_v1: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_selected_id?: string
+          p_selected_type?: string
+          p_status?: string
+          p_type_filter?: string
+          p_user_id: string
+        }
+        Returns: Json
       }
       get_latest_ontology_daily_briefs: {
         Args: { user_ids: string[] }
@@ -16043,11 +17170,28 @@ export type Database = {
           project_name: string
         }[]
       }
+      get_project_document_tree_metadata: {
+        Args: { p_project_id: string }
+        Returns: {
+          created_at: string
+          description: string
+          has_content: boolean
+          id: string
+          state_key: string
+          title: string
+          type_key: string
+          updated_at: string
+        }[]
+      }
       get_project_full: {
         Args: { p_actor_id: string; p_project_id: string }
         Returns: Json
       }
       get_project_full_legacy_public_20260514: {
+        Args: { p_actor_id: string; p_project_id: string }
+        Returns: Json
+      }
+      get_project_full_v2_initial: {
         Args: { p_actor_id: string; p_project_id: string }
         Returns: Json
       }
@@ -16092,6 +17236,10 @@ export type Database = {
         Args: { p_project_id: string; p_user_id?: string }
         Returns: Json
       }
+      get_project_route_access_state: {
+        Args: { p_project_id: string }
+        Returns: string
+      }
       get_project_skeleton: {
         Args: { p_actor_id: string; p_project_id: string }
         Returns: Json
@@ -16105,6 +17253,10 @@ export type Database = {
         Returns: Json
       }
       get_project_skeleton_with_access_legacy_public_20260514: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
+      get_project_skeleton_with_access_v2: {
         Args: { p_project_id: string }
         Returns: Json
       }
@@ -16356,9 +17508,7 @@ export type Database = {
         Args: { question_ids: string[] }
         Returns: undefined
       }
-      is_admin:
-        | { Args: never; Returns: boolean }
-        | { Args: { user_id: string }; Returns: boolean }
+      is_admin: { Args: never; Returns: boolean } | { Args: { user_id: string }; Returns: boolean }
       is_email_suppressed: {
         Args: { p_email: string; p_scope: string }
         Returns: boolean
@@ -16370,6 +17520,13 @@ export type Database = {
       jsonb_increment_counter: {
         Args: { p_counts: Json; p_increment?: number; p_key: string }
         Returns: Json
+      }
+      list_account_deletion_storage_objects: {
+        Args: { p_user_id: string }
+        Returns: {
+          bucket_id: string
+          object_name: string
+        }[]
       }
       list_calendar_items: {
         Args: {
@@ -16467,6 +17624,10 @@ export type Database = {
         }
         Returns: string
       }
+      mark_gmail_read_connection_reconnect_required: {
+        Args: { p_connection_id: string; p_user_id: string }
+        Returns: undefined
+      }
       merge_chat_session_agent_metadata: {
         Args: { p_patch?: Json; p_session_id: string }
         Returns: Json
@@ -16519,6 +17680,26 @@ export type Database = {
           type_key: string
         }[]
       }
+      onto_task_create_atomic: {
+        Args: {
+          p_assigned_by_actor_id?: string
+          p_assignee_actor_ids?: string[]
+          p_idempotency_key?: string
+          p_source?: string
+          p_sync_assignees?: boolean
+          p_task: Json
+        }
+        Returns: Json
+      }
+      onto_task_move_atomic: {
+        Args: {
+          p_confirmation_token?: string
+          p_destination_project_id: string
+          p_expected_source_project_id: string
+          p_task_id: string
+        }
+        Returns: Json
+      }
       onto_task_update_atomic: {
         Args: {
           p_assigned_by_actor_id: string
@@ -16533,6 +17714,10 @@ export type Database = {
       prune_stale_profile_fragments: {
         Args: { p_older_than_days?: number }
         Returns: number
+      }
+      queue_deep_research_synthesis: {
+        Args: { p_parent_run_id: string }
+        Returns: string
       }
       queue_project_activity_notification_batch: {
         Args: {
@@ -16556,6 +17741,17 @@ export type Database = {
         }
         Returns: string
       }
+      reconcile_agent_run_cost: {
+        Args: {
+          p_actual_cost_usd: number
+          p_actual_units?: number
+          p_entry_id: string
+          p_lock_token: string
+          p_metadata?: Json
+          p_provider_request_id?: string
+        }
+        Returns: Json
+      }
       record_sms_metric: {
         Args: {
           p_metadata?: Json
@@ -16577,6 +17773,16 @@ export type Database = {
           row_count: number
         }[]
       }
+      release_agent_run_cost_reconciliation: {
+        Args: {
+          p_entry_id: string
+          p_error: string
+          p_lock_token: string
+          p_retry_after?: string
+          p_retryable: boolean
+        }
+        Returns: Json
+      }
       release_migration_platform_lock: {
         Args: { p_run_id: string }
         Returns: boolean
@@ -16587,6 +17793,29 @@ export type Database = {
           p_clear_task_dates?: boolean
           p_phase_updates: Json
           p_project_id: string
+        }
+        Returns: Json
+      }
+      request_account_deletion: {
+        Args: { p_user_id: string }
+        Returns: {
+          request_id: string
+          requested_at: string
+          scheduled_for: string
+          status: string
+        }[]
+      }
+      reserve_agent_run_cost: {
+        Args: {
+          p_attempt_key: string
+          p_leaf_run_id: string
+          p_metadata?: Json
+          p_operation: string
+          p_provider: string
+          p_reserved_cost_usd: number
+          p_reserved_units?: number
+          p_resource: string
+          p_unit_type?: string
         }
         Returns: Json
       }
@@ -16634,6 +17863,41 @@ export type Database = {
           summary_end_date: string
           summary_start_date: string
         }[]
+      }
+      rotate_gmail_read_credentials: {
+        Args: {
+          p_access_token_ciphertext: string
+          p_access_token_expires_at: string
+          p_connection_id: string
+          p_granted_scopes: string[]
+          p_key_version: number
+          p_refresh_token_ciphertext: string
+          p_token_type: string
+          p_user_id: string
+        }
+        Returns: {
+          account_label: string
+          connected_at: string
+          created_at: string
+          deleted_at: string | null
+          display_name: string | null
+          email_address: string
+          id: string
+          last_used_at: string | null
+          last_verified_at: string | null
+          provider: string
+          provider_account_id: string
+          read_enabled: boolean
+          status: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "user_email_connections"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       search_all_content: {
         Args: {
@@ -16719,6 +17983,32 @@ export type Database = {
           project_id: string
         }[]
       }
+      settle_agent_run_cost:
+        | {
+            Args: {
+              p_actual_cost_usd?: number
+              p_actual_units?: number
+              p_attempt_key: string
+              p_leaf_run_id: string
+              p_metadata?: Json
+              p_provider_request_id?: string
+              p_terminal_status: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_actual_cost_usd?: number
+              p_actual_units?: number
+              p_allow_overrun?: boolean
+              p_attempt_key: string
+              p_leaf_run_id: string
+              p_metadata?: Json
+              p_provider_request_id?: string
+              p_terminal_status: string
+            }
+            Returns: Json
+          }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       skip_email_sequence_step: {
@@ -16769,6 +18059,10 @@ export type Database = {
           message: string
           started: boolean
         }[]
+      }
+      strip_start_here_managed_regions: {
+        Args: { p_content: string }
+        Returns: string
       }
       suggest_onto_public_page_slug: {
         Args: {
@@ -16838,6 +18132,46 @@ export type Database = {
           p_source: string
         }
         Returns: string
+      }
+      upsert_gmail_read_connection: {
+        Args: {
+          p_access_token_ciphertext: string
+          p_access_token_expires_at: string
+          p_consent_policy_version: string
+          p_default_account_label: string
+          p_display_name: string
+          p_email_address: string
+          p_expected_connection_id: string
+          p_granted_scopes: string[]
+          p_key_version: number
+          p_provider_account_id: string
+          p_refresh_token_ciphertext: string
+          p_token_type: string
+          p_user_id: string
+        }
+        Returns: {
+          account_label: string
+          connected_at: string
+          created_at: string
+          deleted_at: string | null
+          display_name: string | null
+          email_address: string
+          id: string
+          last_used_at: string | null
+          last_verified_at: string | null
+          provider: string
+          provider_account_id: string
+          read_enabled: boolean
+          status: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "user_email_connections"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       upsert_legacy_entity_mapping: {
         Args: {

@@ -123,18 +123,19 @@ export const load: PageLoad = async ({ params, fetch, parent }) => {
 - Want code to run on both server and client
 - Don't need database access or sensitive env vars
 
-**Example - External API:**
+**Example - Credentialed external API:**
 
 ```typescript
-// src/routes/weather/+page.ts
-import type { PageLoad } from './$types';
+// src/routes/weather/+page.server.ts
+import { PRIVATE_WEATHER_API_KEY } from '$env/static/private';
+import type { PageServerLoad } from './$types';
 
-export const load: PageLoad = async ({ fetch, url }) => {
+export const load: PageServerLoad = async ({ fetch, url }) => {
 	const city = url.searchParams.get('city') ?? 'London';
 
-	// ✅ External API - perfect for universal load
+	// Keep provider credentials in a server-only load function.
 	const response = await fetch(
-		`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${PUBLIC_WEATHER_API_KEY}`
+		`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${PRIVATE_WEATHER_API_KEY}`
 	);
 
 	const weather = await response.json();

@@ -6,6 +6,7 @@ import { PRIVATE_OPENROUTER_API_KEY } from '$env/static/private';
 import { env as dynamicEnv } from '$env/dynamic/private';
 import { ErrorLoggerService } from './errorLogger.service';
 import { SmartLLMService as SharedSmartLLMService, type SmartLLMConfig } from '@buildos/smart-llm';
+import type { OpenRouterRequestProviderRouting } from './openrouter-v2/provider-routing';
 
 const DEFAULT_HTTP_REFERER = 'https://build-os.com';
 const DEFAULT_APP_NAME = 'BuildOS Web';
@@ -40,6 +41,7 @@ type SharedStreamTextOptions = Parameters<SharedSmartLLMService['streamText']>[0
 type WebStreamTextOptions = SharedStreamTextOptions & {
 	model?: string;
 	models?: string[];
+	providerRouting?: OpenRouterRequestProviderRouting;
 };
 type SharedStreamTextResult = ReturnType<SharedSmartLLMService['streamText']>;
 

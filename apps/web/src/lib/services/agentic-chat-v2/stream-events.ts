@@ -40,6 +40,7 @@ export function resolveAgentStreamEventPhase(eventType: string): AgentStreamEven
 		case 'focus_active':
 		case 'focus_changed':
 		case 'agent_state':
+		case 'turn_phase':
 		case 'draft_update':
 		case 'dimension_update':
 		case 'phase_update':

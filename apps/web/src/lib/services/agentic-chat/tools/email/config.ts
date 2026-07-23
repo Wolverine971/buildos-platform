@@ -8,6 +8,7 @@
 // everywhere (registry, tool_search, discovery, direct-call materialization).
 
 export const EMAIL_CHAT_TOOLS_ENABLED_ENV = 'EMAIL_CHAT_TOOLS_ENABLED';
+export const EMAIL_CHAT_TOOLS_USER_IDS_ENV = 'EMAIL_CHAT_TOOLS_USER_IDS';
 
 type EnvLike = Record<string, string | undefined>;
 type EnvSource = EnvLike | (() => EnvLike);
@@ -40,6 +41,24 @@ export function isEmailChatToolsEnabled(source: EnvLike = getRuntimeEnv()): bool
 	const raw = source[EMAIL_CHAT_TOOLS_ENABLED_ENV];
 	if (!raw) return false;
 	return ['1', 'true', 'yes', 'on'].includes(String(raw).trim().toLowerCase());
+}
+
+/**
+ * Execution allowlist for the internal Gmail-chat pilot. The global flag makes
+ * the tools discoverable; this second, fail-closed boundary decides whether a
+ * particular BuildOS user may execute them. There is intentionally no wildcard.
+ */
+export function isEmailChatUserAllowed(userId: string, source: EnvLike = getRuntimeEnv()): boolean {
+	if (!isEmailChatToolsEnabled(source)) return false;
+	const normalizedUserId = userId.trim();
+	if (!normalizedUserId) return false;
+	const rawAllowlist = source[EMAIL_CHAT_TOOLS_USER_IDS_ENV];
+	if (!rawAllowlist) return false;
+	return rawAllowlist
+		.split(',')
+		.map((value) => value.trim())
+		.filter(Boolean)
+		.includes(normalizedUserId);
 }
 
 const EMAIL_TOOL_NAMES = new Set([

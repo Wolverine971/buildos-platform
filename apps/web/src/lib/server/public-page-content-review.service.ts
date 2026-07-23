@@ -3,7 +3,7 @@ import { SmartLLMService } from '$lib/services/smart-llm-service';
 
 type SupabaseLike = any;
 
-export const PUBLIC_PAGE_CONTENT_POLICY_VERSION = 'public_page_policy_v1';
+export const PUBLIC_PAGE_CONTENT_POLICY_VERSION = 'public_page_policy_v2';
 
 export type PublicPageReviewSource = 'publish_confirm' | 'live_sync' | 'manual_retry';
 export type PublicPageReviewStatus = 'passed' | 'flagged' | 'error';
@@ -121,13 +121,21 @@ const POLICY_RULES: RegexRule[] = [
 		patterns: [/-----BEGIN(?: [A-Z0-9]+)? PRIVATE KEY-----/i]
 	},
 	{
-		code: 'secret_openai_key',
+		code: 'secret_api_token',
 		category: 'credentials',
 		severity: 'high',
 		message: 'Possible API key detected.',
 		recommendation: 'Remove keys and rotate any exposed credentials.',
 		source: 'both',
-		patterns: [/\bsk-[a-zA-Z0-9]{20,}\b/i, /\bxox[baprs]-[a-zA-Z0-9-]{16,}\b/i]
+		patterns: [
+			/\bsk-(?:proj-)?[a-zA-Z0-9_-]{20,}\b/i,
+			/\bsk_(?:live|test)_[a-zA-Z0-9]{16,}\b/i,
+			/\bSG\.[a-zA-Z0-9_-]{16,}\.[a-zA-Z0-9_-]{16,}\b/i,
+			/\bAKIA[0-9A-Z]{16}\b/,
+			/\b(?:gh[pousr]_[a-zA-Z0-9]{36,}|github_pat_[a-zA-Z0-9_]{50,})\b/i,
+			/\bxox[baprs]-[a-zA-Z0-9-]{16,}\b/i,
+			/\bAIza[0-9a-zA-Z_-]{35}\b/
+		]
 	},
 	{
 		code: 'pii_ssn',
@@ -224,10 +232,25 @@ function extractInlineAssetIds(markdown: string): string[] {
 	return [...ids];
 }
 
+function redactCredentialMatches(value: string): string {
+	let redacted = value;
+	for (const rule of POLICY_RULES) {
+		if (rule.category !== 'credentials') continue;
+		for (const pattern of rule.patterns) {
+			const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+			redacted = redacted.replace(new RegExp(pattern.source, flags), '[redacted-credential]');
+		}
+	}
+	return redacted;
+}
+
 function excerptAround(value: string, startIndex: number, matchLength: number): string {
 	const safeStart = Math.max(0, startIndex - 60);
 	const safeEnd = Math.min(value.length, startIndex + matchLength + 80);
-	return normalizeWhitespace(value.slice(safeStart, safeEnd)).slice(0, 220);
+	return normalizeWhitespace(redactCredentialMatches(value.slice(safeStart, safeEnd))).slice(
+		0,
+		220
+	);
 }
 
 function toAssetLabel(asset: AssetLike): string | null {
@@ -703,7 +726,14 @@ export async function runPublicPageContentReview(
 	);
 
 	const baseFindings = dedupeFindings([...textFindings, ...imageFindings]);
-	const llmResult = await runLlmReview(supabase, document, assets, baseFindings, actorUserId);
+	const hasDeterministicCredentialFinding = baseFindings.some(
+		(finding) => finding.category === 'credentials'
+	);
+	// A deterministic credential match already blocks publication. Do not copy
+	// the document or OCR text to an external model after that point.
+	const llmResult = hasDeterministicCredentialFinding
+		? null
+		: await runLlmReview(supabase, document, assets, baseFindings, actorUserId);
 	const mergedFindings = dedupeFindings([
 		...baseFindings,
 		...(llmResult?.status === 'flagged' ? llmResult.findings : [])
@@ -727,6 +757,9 @@ export async function runPublicPageContentReview(
 
 	const reviewMetadata = {
 		provider: llmResult ? 'rule_engine+smart_llm' : 'rule_engine',
+		llm_review_skipped_reason: hasDeterministicCredentialFinding
+			? 'deterministic_credential_finding'
+			: null,
 		document_updated_at: getDocumentUpdatedAt(document),
 		scanned: {
 			content_char_count: content.length,

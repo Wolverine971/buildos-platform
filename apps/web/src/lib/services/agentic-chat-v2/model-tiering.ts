@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/model-tiering.ts
 import type { TextProfile } from '$lib/services/smart-llm-service';
+import { DEEPSEEK_V4_PRO_MODEL, GLM_52_MODEL, MINIMAX_M3_MODEL } from '@buildos/smart-llm';
 
 export const FASTCHAT_INITIAL_PLAN_FAST_MODELS = [
 	'tencent/hy3',
@@ -8,8 +9,17 @@ export const FASTCHAT_INITIAL_PLAN_FAST_MODELS = [
 	'deepseek/deepseek-v4-flash'
 ] as const;
 
+export const FASTCHAT_FORCED_SYNTHESIS_MODELS = [
+	GLM_52_MODEL,
+	DEEPSEEK_V4_PRO_MODEL,
+	MINIMAX_M3_MODEL
+] as const;
+export const FASTCHAT_FORCED_SYNTHESIS_IGNORED_PROVIDER_SLUGS = ['digitalocean'] as const;
+
 export type FastChatModelTieringMode = 'off' | 'control' | 'fast_initial_plan' | 'ab';
 export type FastChatModelTieringVariant = 'control' | 'fast_initial_plan';
+export type FastChatForcedSynthesisRoutingMode = 'off' | 'control' | 'dedicated' | 'ab';
+export type FastChatForcedSynthesisRoutingVariant = 'control' | 'dedicated';
 export type FastChatLlmPassRole =
 	| 'initial_plan'
 	| 'tool_followup'
@@ -22,12 +32,51 @@ export type FastChatModelTieringConfig = {
 	initialPlanModels: string[];
 };
 
+export type FastChatForcedSynthesisRoutingConfig = {
+	variant: FastChatForcedSynthesisRoutingVariant;
+	models: string[];
+	ignoredProviderSlugs: string[];
+	maxTokens: number;
+};
+
 export type FastChatPassModelRouting = {
 	passRole: FastChatLlmPassRole;
 	profile: TextProfile;
 	models?: string[];
 	modelTieringVariant?: FastChatModelTieringVariant;
+	forcedSynthesisRoutingVariant?: FastChatForcedSynthesisRoutingVariant;
+	ignoredProviderSlugs?: string[];
+	maxTokens?: number;
+	retryModelRotation?: boolean;
 };
+
+export function parseFastChatForcedSynthesisRoutingMode(
+	value: string | null | undefined
+): FastChatForcedSynthesisRoutingMode {
+	const normalized = value?.trim().toLowerCase();
+	if (!normalized || normalized === 'false' || normalized === '0' || normalized === 'off') {
+		return 'off';
+	}
+	if (normalized === 'control') return 'control';
+	if (
+		normalized === 'ab' ||
+		normalized === 'a/b' ||
+		normalized === 'experiment' ||
+		normalized === 'canary'
+	) {
+		return 'ab';
+	}
+	if (
+		normalized === 'true' ||
+		normalized === '1' ||
+		normalized === 'on' ||
+		normalized === 'enabled' ||
+		normalized === 'dedicated'
+	) {
+		return 'dedicated';
+	}
+	return 'off';
+}
 
 export function parseFastChatModelTieringMode(
 	value: string | null | undefined
@@ -85,6 +134,22 @@ export function parseFastChatInitialPlanModels(
 	return Array.from(new Set(models));
 }
 
+export function parseFastChatForcedSynthesisModels(
+	value: string | null | undefined,
+	fallback: readonly string[] = FASTCHAT_FORCED_SYNTHESIS_MODELS
+): string[] {
+	return parseUniqueCsv(value, fallback);
+}
+
+export function parseFastChatForcedSynthesisIgnoredProviderSlugs(
+	value: string | null | undefined,
+	fallback: readonly string[] = FASTCHAT_FORCED_SYNTHESIS_IGNORED_PROVIDER_SLUGS
+): string[] {
+	return Array.from(
+		new Set(parseUniqueCsv(value, fallback).map((provider) => provider.toLowerCase()))
+	);
+}
+
 export function parseFastChatPinnedModels(value: string | null | undefined): string[] {
 	return Array.from(
 		new Set(
@@ -127,6 +192,50 @@ export function resolveFastChatModelTieringConfig(params: {
 	};
 }
 
+export function resolveFastChatForcedSynthesisRoutingConfig(params: {
+	mode: FastChatForcedSynthesisRoutingMode;
+	sampleRate?: number;
+	bucketKey?: string | null;
+	models?: string[];
+	ignoredProviderSlugs?: string[];
+	maxTokens: number;
+}): FastChatForcedSynthesisRoutingConfig | null {
+	if (params.mode === 'off') return null;
+
+	const models = params.models?.length
+		? Array.from(new Set(params.models.map((model) => model.trim()).filter(Boolean)))
+		: [...FASTCHAT_FORCED_SYNTHESIS_MODELS];
+	const ignoredProviderSlugs = params.ignoredProviderSlugs?.length
+		? Array.from(
+				new Set(
+					params.ignoredProviderSlugs
+						.map((provider) => provider.trim().toLowerCase())
+						.filter(Boolean)
+				)
+			)
+		: [...FASTCHAT_FORCED_SYNTHESIS_IGNORED_PROVIDER_SLUGS];
+	const maxTokens = Math.max(1, Math.floor(params.maxTokens));
+
+	if (params.mode === 'control') {
+		return { variant: 'control', models, ignoredProviderSlugs, maxTokens };
+	}
+	if (params.mode === 'dedicated') {
+		return { variant: 'dedicated', models, ignoredProviderSlugs, maxTokens };
+	}
+
+	const sampleRate = clampSampleRate(params.sampleRate ?? 0.1);
+	const bucket =
+		typeof params.bucketKey === 'string' && params.bucketKey.trim()
+			? stableBucket(params.bucketKey)
+			: 1;
+	return {
+		variant: bucket < sampleRate ? 'dedicated' : 'control',
+		models,
+		ignoredProviderSlugs,
+		maxTokens
+	};
+}
+
 export function resolveFastChatPassModelRouting(params: {
 	passNumber: number;
 	hasTools: boolean;
@@ -134,32 +243,59 @@ export function resolveFastChatPassModelRouting(params: {
 	writeIntentToolPass: boolean;
 	noToolSynthesisRetryCount?: number;
 	modelTiering?: FastChatModelTieringConfig | null;
+	forcedSynthesisRouting?: FastChatForcedSynthesisRoutingConfig | null;
 	pinnedModels?: string[];
 }): FastChatPassModelRouting {
 	const passRole = resolvePassRole(params);
 	const modelTieringVariant = params.modelTiering?.variant;
 	const fastInitialPlanModels = params.modelTiering?.initialPlanModels ?? [];
+	const forcedSynthesisRouting = params.forcedSynthesisRouting;
 	const useFastInitialPlan =
 		!params.pinnedModels?.length &&
 		modelTieringVariant === 'fast_initial_plan' &&
 		passRole === 'initial_plan' &&
 		fastInitialPlanModels.length > 0;
+	const useDedicatedForcedSynthesis =
+		!params.pinnedModels?.length &&
+		params.noToolSynthesisPass &&
+		forcedSynthesisRouting?.variant === 'dedicated';
 
 	return {
 		passRole,
 		profile:
-			params.noToolSynthesisPass && (params.noToolSynthesisRetryCount ?? 0) > 0
+			useDedicatedForcedSynthesis ||
+			(params.noToolSynthesisPass && (params.noToolSynthesisRetryCount ?? 0) > 0)
 				? 'quality'
 				: useFastInitialPlan
 					? 'speed'
 					: 'balanced',
 		...(params.pinnedModels?.length
 			? { models: [...params.pinnedModels] }
-			: useFastInitialPlan
-				? { models: fastInitialPlanModels }
-				: {}),
-		...(modelTieringVariant && !params.pinnedModels?.length ? { modelTieringVariant } : {})
+			: useDedicatedForcedSynthesis
+				? { models: [...forcedSynthesisRouting.models] }
+				: useFastInitialPlan
+					? { models: fastInitialPlanModels }
+					: {}),
+		...(modelTieringVariant && !params.pinnedModels?.length ? { modelTieringVariant } : {}),
+		...(params.noToolSynthesisPass && forcedSynthesisRouting && !params.pinnedModels?.length
+			? { forcedSynthesisRoutingVariant: forcedSynthesisRouting.variant }
+			: {}),
+		...(useDedicatedForcedSynthesis
+			? {
+					ignoredProviderSlugs: [...forcedSynthesisRouting.ignoredProviderSlugs],
+					maxTokens: forcedSynthesisRouting.maxTokens,
+					retryModelRotation: true
+				}
+			: {})
 	};
+}
+
+function parseUniqueCsv(value: string | null | undefined, fallback: readonly string[]): string[] {
+	const parsed = (value ?? '')
+		.split(',')
+		.map((entry) => entry.trim())
+		.filter(Boolean);
+	return Array.from(new Set(parsed.length > 0 ? parsed : [...fallback]));
 }
 
 function resolvePassRole(params: {

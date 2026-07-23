@@ -86,6 +86,10 @@ describe('error observability filters', () => {
 		expect(isPrivateConfigProbePath('/api/client_secret.json')).toBe(true);
 		expect(isPrivateConfigProbePath('/sftp-config.json')).toBe(true);
 		expect(isPrivateConfigProbePath('/.openclaw/openclaw.json')).toBe(true);
+		expect(isPrivateConfigProbePath('/%252fconfig/sendgrid.json')).toBe(true);
+		expect(isPrivateConfigProbePath('/..%252fconfig%252fproduction.json')).toBe(true);
+		expect(isPrivateConfigProbePath('/..%5capp%5cetc%5clocal.xml')).toBe(true);
+		expect(isPrivateConfigProbePath('/%2fapp/etc/local.xml')).toBe(true);
 		expect(isPrivateConfigProbePath('/openapi.json')).toBe(false);
 		expect(isPrivateConfigProbePath('/brain-bolt-80.png')).toBe(false);
 	});

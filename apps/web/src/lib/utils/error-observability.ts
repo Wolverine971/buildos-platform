@@ -152,6 +152,7 @@ const PRIVATE_CONFIG_PROBE_PATHS = new Set([
 	'/appsettings.production.json',
 	'/appsettings.json',
 	'/application_default_credentials.json',
+	'/app/etc/local.xml',
 	'/client_secret.json',
 	'/client_secrets.json',
 	'/config.json',
@@ -251,6 +252,36 @@ function normalizePathname(pathname: string | null | undefined): string | null {
 	}
 }
 
+function normalizePrivateProbePathname(pathname: string | null | undefined): string | null {
+	let normalized = normalizePathname(pathname);
+	if (!normalized) return null;
+
+	// Probe scanners commonly mix single/double percent encoding with Windows
+	// separators. Decode at most twice, then classify a slash-normalized path.
+	for (let pass = 0; pass < 2; pass += 1) {
+		try {
+			const decoded = decodeURIComponent(normalized);
+			if (decoded === normalized) break;
+			normalized = decoded;
+		} catch {
+			break;
+		}
+	}
+
+	normalized = normalized.replace(/\\/g, '/').replace(/\/{2,}/g, '/');
+	const segments: string[] = [];
+	for (const segment of normalized.split('/')) {
+		if (!segment || segment === '.') continue;
+		if (segment === '..') {
+			segments.pop();
+			continue;
+		}
+		segments.push(segment);
+	}
+
+	return `/${segments.join('/')}`;
+}
+
 function getPathExtension(pathname: string): string | null {
 	const lastSegment = pathname.split('/').pop();
 	if (!lastSegment) return null;
@@ -315,7 +346,7 @@ function isPersistedDevelopmentNoise(entry: PersistedErrorEventLike): boolean {
 }
 
 export function isPrivateConfigProbePath(pathname: string | null | undefined): boolean {
-	const normalizedPath = normalizePathname(pathname);
+	const normalizedPath = normalizePrivateProbePathname(pathname);
 	if (!normalizedPath) return false;
 
 	const lowerPath = normalizedPath.toLowerCase();

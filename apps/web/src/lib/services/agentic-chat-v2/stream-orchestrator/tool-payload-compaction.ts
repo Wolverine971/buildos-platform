@@ -18,6 +18,8 @@ const MAX_WEB_VISIT_CONTENT_CHARS = 8000;
 const MIN_WEB_VISIT_CONTENT_CHARS = 1500;
 const MAX_WEB_SEARCH_SNIPPET_CHARS = 1600;
 const MIN_WEB_SEARCH_SNIPPET_CHARS = 400;
+const MAX_EMAIL_MODEL_MESSAGES = 5;
+const MAX_EMAIL_SNIPPET_CHARS = 260;
 const MAX_SKILL_OUTPUT_CONTRACT_CHARS = 4000;
 const MAX_SKILL_MARKDOWN_CHARS = 16000;
 const MAX_SKILL_MARKDOWN_WITH_CONTRACT_CHARS = 12000;
@@ -620,6 +622,9 @@ function compactSkillLinkedResources(value: unknown): Array<Record<string, unkno
 
 function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
 	const normalizedToolName = toolName.trim().toLowerCase();
+	if (normalizedToolName === 'search_email_messages') {
+		return compactEmailSearchPayload(payload);
+	}
 	if (
 		normalizedToolName === 'search_project' ||
 		normalizedToolName === 'search_all_projects' ||
@@ -649,6 +654,88 @@ function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
 		return compactDocumentCollectionGatewayPayload(payload);
 	}
 	return applyToolPayloadSizeGuard(payload);
+}
+
+function compactEmailSearchPayload(payload: unknown): unknown {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+		return payload;
+	}
+
+	const record = payload as Record<string, any>;
+	const sourceLinks = Array.isArray(record.account_message_links)
+		? record.account_message_links.slice(0, 5)
+		: [];
+	const accountMessageLinks = sourceLinks.map((link: Record<string, any>) => ({
+		account_label: link.account_label,
+		email_address: link.email_address,
+		status: link.status,
+		message_found: link.message_found === true,
+		gmail_url: typeof link.gmail_url === 'string' ? link.gmail_url : null
+	}));
+	const sourceMessages = Array.isArray(record.messages) ? record.messages : [];
+	const selectedMessages: Record<string, any>[] = [];
+	const selectedUrls = new Set<string>();
+
+	// Preserve the message backing each authoritative per-account link before
+	// filling the remaining model budget with the newest mixed-account results.
+	for (const link of accountMessageLinks) {
+		if (typeof link.gmail_url !== 'string') continue;
+		const message = sourceMessages.find(
+			(candidate: Record<string, any>) => candidate?.gmail_url === link.gmail_url
+		);
+		if (!message || selectedUrls.has(link.gmail_url)) continue;
+		selectedMessages.push(message);
+		selectedUrls.add(link.gmail_url);
+	}
+	for (const message of sourceMessages) {
+		if (selectedMessages.length >= MAX_EMAIL_MODEL_MESSAGES) break;
+		const gmailUrl = typeof message?.gmail_url === 'string' ? message.gmail_url : '';
+		if (gmailUrl && selectedUrls.has(gmailUrl)) continue;
+		selectedMessages.push(message);
+		if (gmailUrl) selectedUrls.add(gmailUrl);
+	}
+
+	return {
+		result_contract_version: record.result_contract_version,
+		read_only: record.read_only === true,
+		query: record.query,
+		account_message_links: accountMessageLinks,
+		accounts: Array.isArray(record.accounts)
+			? record.accounts.slice(0, 5).map((account: Record<string, any>) => ({
+					connection_id: account.connection_id,
+					account_label: account.account_label,
+					email_address: account.email_address,
+					status: account.status,
+					message_count: account.message_count,
+					has_more: account.has_more,
+					next_cursor: account.next_cursor
+				}))
+			: [],
+		messages: selectedMessages.map((message) => ({
+			connection_id: message.connection_id,
+			account_label: message.account_label,
+			email_address: message.email_address,
+			message_id: message.message_id,
+			thread_id: message.thread_id,
+			subject: toTextPreview(message.subject, 180),
+			from: toTextPreview(message.from, 180),
+			date: message.date,
+			gmail_url: message.gmail_url,
+			snippet: toTextPreview(message.snippet, MAX_EMAIL_SNIPPET_CHARS),
+			snippet_truncated:
+				message.snippet_truncated === true ||
+				(typeof message.snippet === 'string' &&
+					message.snippet.length > MAX_EMAIL_SNIPPET_CHARS)
+		})),
+		message_count: record.message_count,
+		messages_returned_to_model: selectedMessages.length,
+		messages_omitted_from_model: Math.max(0, sourceMessages.length - selectedMessages.length),
+		reconnect_required_accounts: Array.isArray(record.reconnect_required_accounts)
+			? record.reconnect_required_accounts.slice(0, 5)
+			: [],
+		fetched_at: record.fetched_at,
+		notice: record.notice
+	};
 }
 
 function stripInternalPayloadFields(value: unknown): unknown {

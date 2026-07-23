@@ -684,11 +684,11 @@ const MODEL_ROUTES = {
 			taskExtraction: OPENROUTER_JSON_ROUTE,
 			clarification: OPENROUTER_TEXT_ROUTE
 		},
-		// NOTE: there is intentionally no `agentChat` recommendation here. The live
-		// agentic chat path (agentic-chat-v2 stream orchestrator) selects a lane purely
-		// from message shape (tools present -> tool_calling, etc.), not from a
-		// planner/executor/synthesis split. A descriptive split was removed 2026-06-15
-		// because it described routing that does not exist and misled readers.
+		// The live agentic-chat path still selects its ordinary lane from message
+		// shape. Its forced-synthesis recovery route is now an explicit, feature-
+		// flagged policy in apps/web/agentic-chat-v2/model-tiering.ts rather than a
+		// static recommendation here, so rollout/control attribution stays attached
+		// to the pass that actually used it.
 		dailyBriefs: {
 			projectBrief: OPENROUTER_TEXT_ROUTE,
 			generation: OPENROUTER_TEXT_ROUTE,

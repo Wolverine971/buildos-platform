@@ -3,7 +3,9 @@
 # BuildOS Gmail Integration — Master Plan
 
 **Created:** 2026-07-22
-**Status:** Approved direction; Phase 1 is live and Phase 2 read-only retrieval is in progress
+**Status:** Phase 1 and Phase 2 read surfaces are live; Tier 1 chat reads are in a DJ-only
+production pilot; Project Relevance Phase A Slice 1 is implemented locally and pending its exact-file
+profile/rule migration apply; the Slice 2 synthetic scan-control-plane handoff is ready
 **Primary product rule:** Gmail is read-only by default. An agent may propose an email, but it may
 not send, draft in Gmail, or modify Gmail state without separate account permission and an explicit
 user confirmation in the UI for the exact action.
@@ -34,11 +36,22 @@ Detailed Phase 4 research:
 
 Parallel build track (shares the Phase 2 gateway; neither blocks the other):
 
-- [Agentic chat Gmail tools specification](AGENT-CHAT-GMAIL-TOOLS-SPEC.md) — read tools plus
-  local draft proposals for the chat agent, mapped onto the existing tool registry; no send,
-  Gmail-draft, or modify tool in any tier. Tracker: `tasker/35-agentic-chat-gmail-tools.md`.
+- [Agentic chat Gmail tools specification](AGENT-CHAT-GMAIL-TOOLS-SPEC.md) — the three Tier 1 read
+  tools are deployed behind a global kill switch plus an exact user allowlist. Local draft
+  proposals remain deferred; no send, Gmail-draft, or modify tool exists. Tracker:
+  `tasker/35-agentic-chat-gmail-tools.md`.
 - [Tier 1 build handoff](HANDOFF-TIER1-GMAIL-CHAT-TOOLS.md) — implementation handoff for the
   three read tools: state of the world, reading list, build order, landmines, definition of done.
+- [Project Relevance Phase A handoff](HANDOFF-PHASE-A-PROJECT-RELEVANCE.md) — locked pilot
+  defaults, five build slices, evaluation gates, and the first-PR boundary. Tracker:
+  `tasker/36-gmail-project-relevance-phase-a.md`.
+- [Phase A Slice 2 scan-control-plane handoff](HANDOFF-PHASE-A-SLICE-2-SCAN-CONTROL-PLANE.md) —
+  implementation contract for immutable manifests, per-account leases/checkpoints, fail-closed
+  budgets, cancellation, terminal states, and a synthetic three-account proof before any Gmail
+  scan.
+- [Gmail relevance migration-ledger baseline](SUPABASE-MIGRATION-LEDGER-BASELINE.md) — production
+  physical-baseline decision and exact-file forward-apply protocol; repository-wide `db push` is
+  prohibited while the legacy ledger remains sparse and locally duplicated.
 
 Phase 3 does not block the read-only product. It is deliberately later and can remain disabled
 indefinitely.
@@ -62,10 +75,24 @@ explicit account selection, bounded multi-account search, on-demand message retr
 deterministic HTML-to-text sanitization, attachment blocking, rate limits, no-store API responses,
 metadata-only auditing, encrypted account-bound pagination, and a read-only message UI. Pagination
 continues one selected account at a time with a 15-minute cursor bound to the user, connection, and
-query, plus hard page and visible-result ceilings. It has no Gmail action method or agent tool. A
-content-free production smoke test selected all three accounts and produced three successful audit
-outcomes with zero results; no real message body, attachment, or search result was opened during
-validation.
+query, plus hard page and visible-result ceilings. The three Tier 1 chat tools now expose account
+listing, bounded search, and one-message retrieval through that same gateway. They are gated by
+`EMAIL_CHAT_TOOLS_ENABLED` and the exact-user `EMAIL_CHAT_TOOLS_USER_IDS` allowlist. Durable Gmail
+tool traces are content-free: counts and booleans only, with no queries, account IDs, addresses,
+subjects, snippets, bodies, cursors, or deep links.
+
+The production pilot is enabled only for DJ's BuildOS user. Live validation confirmed all three
+accounts in the profile, a bounded three-account search, on-demand read of one sanitized message,
+and the absence of any message-detail write action. A fresh agentic-chat validation returned the
+versioned `gmail-read-v2` result, rendered exactly one **Open in Gmail** link for every selected
+account, and resolved all three links to the intended signed-in mailboxes. Browser-held search and
+opened-message state is reconstructed whenever the connection set changes so disconnected-account
+data cannot remain in the Email tab. Project-relevance Gmail ingestion has not started. Slice 1's
+model-free compiler and exact-user read-only preview are implemented locally, and the profile/rule
+migration is disposable-database verified but not applied to production. The scan queue, classifier,
+and review UI remain later Phase A work. Slice 2 is now specified as a content-free synthetic
+control-plane build and explicitly cannot call Gmail or a model. Phase A's global flag, exact-user
+allowlist, and model flag are documented and default off.
 
 ## Non-negotiable invariants
 

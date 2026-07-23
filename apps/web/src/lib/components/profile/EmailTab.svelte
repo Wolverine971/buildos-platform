@@ -48,6 +48,14 @@
 	const canAddConnection = $derived(
 		Boolean(gmailData?.available) && connections.length < (gmailData?.maxConnections ?? 0)
 	);
+	const gmailReadPanelKey = $derived(
+		connections
+			.map(
+				(connection) =>
+					`${connection.id}:${connection.status}:${connection.readEnabled}:${connection.lastVerifiedAt ?? ''}`
+			)
+			.join('|')
+	);
 
 	function unwrapPayload<T>(payload: unknown): T {
 		if (payload && typeof payload === 'object' && 'success' in payload && 'data' in payload) {
@@ -494,7 +502,9 @@
 		{/if}
 	</SettingsCard>
 
-	<GmailReadPanel {connections} />
+	{#key gmailReadPanelKey}
+		<GmailReadPanel {connections} />
+	{/key}
 </div>
 
 <ConfirmationModal

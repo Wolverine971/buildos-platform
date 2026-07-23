@@ -837,6 +837,8 @@
 						<iframe
 							title="Welcome email HTML preview"
 							srcdoc={sandbox.preview.content.html}
+							sandbox="allow-popups allow-popups-to-escape-sandbox"
+							referrerpolicy="no-referrer"
 							class="h-[520px] w-full rounded-md border border-border bg-white"
 						></iframe>
 					</div>
@@ -958,6 +960,8 @@
 							<iframe
 								title={`${preview.label} HTML preview`}
 								srcdoc={preview.content.html}
+								sandbox="allow-popups allow-popups-to-escape-sandbox"
+								referrerpolicy="no-referrer"
 								class="mt-3 h-96 w-full rounded-md border border-border bg-white"
 							></iframe>
 						{/if}

@@ -3,7 +3,8 @@
 # Agentic Chat Gmail Tools — Specification
 
 **Created:** 2026-07-22
-**Status:** Proposed for build; tracker in `tasker/35-agentic-chat-gmail-tools.md`
+**Status:** Tier 1 reads built and deployed as a DJ-only production pilot; Tier 2 local proposals
+deferred. Tracker: `tasker/35-agentic-chat-gmail-tools.md`
 **Depends on:** Phase 2 read gateway (deployed), Phase 0 AI-lane decisions
 **Hard rule:** the chat agent can read selected mailboxes and create local draft proposals. No
 tool sends, saves to Gmail, or modifies Gmail state — those capabilities do not exist in the tool
@@ -85,8 +86,10 @@ Every message result includes:
 - **Capability catalog:** new `email_context` entry in `registry/capability-catalog.ts`
   (`directPaths: ['email.accounts', 'email.messages', 'email.draft']`) so discovery, skill routing,
   and the tool-policy layers see it like calendar.
-- **Feature flag:** gate the whole capability behind an internal flag (default off) so it can be
-  enabled for the pilot accounts only and killed independently of the profile-tab UI.
+- **Feature flags:** discovery is gated behind `EMAIL_CHAT_TOOLS_ENABLED` (default off). Execution
+  additionally requires the authenticated BuildOS user ID to appear exactly in
+  `EMAIL_CHAT_TOOLS_USER_IDS`. Missing/empty allowlists and wildcard values fail closed. The global
+  flag remains the immediate kill switch and is independent of the profile-tab UI.
 
 ## Account selection policy
 
@@ -125,9 +128,10 @@ the Shortwave-style pattern: `get_email_message` returns only a no-tools-lane su
 into the loop instead of body text. Keep that as the designed fallback, not the V1 default.
 
 **Chat-history retention:** durable chat history must not become an accidental mailbox archive.
-Persist tool results to chat storage as provenance + capped snippet (≤500 chars); the full
-sanitized body is turn-scoped context only. This mirrors the Phase 2 “prefer request-lifetime use”
-rule and needs an explicit implementation decision in the chat persistence layer.
+The implemented Gmail trace sanitizer stores only operation counts/booleans and a fixed generic
+failure message. It does not persist query text, connection/message/thread IDs, account labels or
+addresses, sender/recipient data, subjects, snippets, bodies, cursors, or Gmail links. Detailed
+tool results remain turn-scoped context only.
 
 **Model lane:** email content in chat flows through the same approved zero-data-retention provider
 policy as the rest of the Gmail lane, fail-closed. If the session's model route is not
@@ -142,6 +146,22 @@ the chat model reads the bounded results directly, so cost scales with normal ch
 email tool calls per turn (suggested: 8) so a confused loop cannot spin against the API.
 
 ## Testing
+
+Current pilot checkpoint (2026-07-22): focused Gmail executor/registry/trace/compaction tests pass,
+the full agentic tools tree passes, and production validation exercised connection listing,
+three-account search, one-message retrieval, and chat discovery/search. The first live chat run
+exposed a multi-account result-limit ambiguity; the executor now reserves at least one result slot
+per explicitly selected account. Search results use the versioned `gmail-read-v2` contract and an
+authoritative `account_message_links` map. The email-specific model-payload compactor preserves
+that map and its backing message from each selected account before adding mixed-account results.
+
+A fresh-session production validation after the forced deployment returned `gmail-read-v2`,
+rendered exactly one account-specific Gmail link for each of DJ's three mailboxes, and resolved all
+three links to the intended signed-in accounts. The run created zero BuildOS changes and exposed no
+Gmail write tool. A pre-existing browser session initially observed the prior payload contract;
+reloading onto the new deployment removed that stale-session ambiguity. A true seeded malicious
+email fixture remains pending because this work did not create or send email merely to manufacture
+test data.
 
 - Executor unit tests: ownership, wrong-user connection ID, disabled/reconnect-required account,
   scope mismatch, rate-limit, result bounding, deep-link shape.

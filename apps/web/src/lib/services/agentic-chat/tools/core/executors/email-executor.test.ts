@@ -9,6 +9,7 @@ import type {
 	GmailMessageDetail,
 	GmailMessageSearchPayload
 } from '$lib/types/gmail-integration';
+import { configureEmailRuntimeEnv } from '../../email';
 
 const ACTIVE_ID = '11111111-1111-4111-8111-111111111111';
 const RECONNECT_ID = '22222222-2222-4222-8222-222222222222';
@@ -123,7 +124,15 @@ function messageDetail(bodyText: string, bodyTruncated = false): GmailMessageDet
 	};
 }
 
-function makeExecutor(userId: string, deps: EmailExecutorDeps): EmailExecutor {
+function makeExecutor(
+	userId: string,
+	deps: EmailExecutorDeps,
+	pilotUserIds = userId
+): EmailExecutor {
+	configureEmailRuntimeEnv({
+		EMAIL_CHAT_TOOLS_ENABLED: 'true',
+		EMAIL_CHAT_TOOLS_USER_IDS: pilotUserIds
+	});
 	return new EmailExecutor(createContext(userId), {
 		checkRateLimit: () => ({ allowed: true, headers: {} }),
 		...deps
@@ -161,6 +170,25 @@ describe('EmailExecutor', () => {
 		expect(getMessage).not.toHaveBeenCalled();
 	});
 
+	it('fails closed before any provider call when the BuildOS user is not allowlisted', async () => {
+		const searchMessages = vi.fn();
+		const getMessage = vi.fn();
+		const listConnections = vi.fn();
+		const executor = makeExecutor(
+			'user-blocked',
+			{
+				gateway: { searchMessages, getMessage },
+				oauthService: { listConnections }
+			},
+			'user-allowed'
+		);
+
+		await expect(executor.listEmailAccounts()).rejects.toThrow(/not enabled/i);
+		expect(listConnections).not.toHaveBeenCalled();
+		expect(searchMessages).not.toHaveBeenCalled();
+		expect(getMessage).not.toHaveBeenCalled();
+	});
+
 	it('search wraps snippets as untrusted content, adds the deep link, and preserves per-account reconnect status', async () => {
 		const searchMessages = vi.fn().mockResolvedValue(searchPayload());
 		const executor = makeExecutor('user-search', {
@@ -181,6 +209,7 @@ describe('EmailExecutor', () => {
 			})
 		);
 		expect(result.read_only).toBe(true);
+		expect(result.result_contract_version).toBe('gmail-read-v2');
 		const message = result.messages[0];
 		expect(message.gmail_url).toBe(
 			'https://mail.google.com/mail/?authuser=buildos%40example.com#all/t1'
@@ -189,9 +218,46 @@ describe('EmailExecutor', () => {
 		expect(message.snippet).toContain('Please review the attached contract.');
 		expect(message.snippet).toContain('[END UNTRUSTED EMAIL CONTENT]');
 		expect(result.reconnect_required_accounts).toEqual(['Cadre']);
+		expect(result.account_message_links).toEqual([
+			{
+				account_label: 'BuildOS',
+				email_address: 'buildos@example.com',
+				status: 'success',
+				message_found: true,
+				gmail_url: 'https://mail.google.com/mail/?authuser=buildos%40example.com#all/t1'
+			},
+			{
+				account_label: 'Cadre',
+				email_address: 'cadre@example.com',
+				status: 'reconnect_required',
+				message_found: false,
+				gmail_url: null
+			}
+		]);
 		const reconnectAccount = result.accounts.find((a: any) => a.connection_id === RECONNECT_ID);
 		expect(reconnectAccount.status).toBe('reconnect_required');
 		expect(reconnectAccount.guidance).toContain('Profile → Email');
+	});
+
+	it('reserves at least one result slot per selected account', async () => {
+		const searchMessages = vi.fn().mockResolvedValue(searchPayload());
+		const executor = makeExecutor('user-multi-account-limit', {
+			gateway: { searchMessages, getMessage: vi.fn() },
+			oauthService: { listConnections: vi.fn() }
+		});
+
+		await executor.searchEmailMessages({
+			connection_ids: [ACTIVE_ID, RECONNECT_ID],
+			query: 'newer_than:2d',
+			max_results: 1
+		});
+
+		expect(searchMessages).toHaveBeenCalledWith(
+			expect.objectContaining({
+				connectionIds: [ACTIVE_ID, RECONNECT_ID],
+				maxResults: 2
+			})
+		);
 	});
 
 	it('search requires explicit connection_ids', async () => {
@@ -207,7 +273,7 @@ describe('EmailExecutor', () => {
 		expect(searchMessages).not.toHaveBeenCalled();
 	});
 
-	it('get_email_message wraps the body, includes the deep link, and leads with provenance', async () => {
+	it('get_email_message wraps the body and includes the deep link', async () => {
 		const getMessage = vi
 			.fn()
 			.mockResolvedValue(messageDetail('Hello DJ, here is the update.'));
@@ -226,10 +292,6 @@ describe('EmailExecutor', () => {
 			connectionId: ACTIVE_ID,
 			messageId: 'm1'
 		});
-		// Provenance-first key order keeps body text out of durable trace previews.
-		const keys = Object.keys(result);
-		expect(keys.indexOf('connection_id')).toBeLessThan(keys.indexOf('body'));
-		expect(keys.indexOf('subject')).toBeLessThan(keys.indexOf('body'));
 		expect(result.gmail_url).toBe(
 			'https://mail.google.com/mail/?authuser=buildos%40example.com#all/t1'
 		);

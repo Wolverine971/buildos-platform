@@ -137,6 +137,21 @@ describe('runLlmStreamPass', () => {
 		expect(result.metadata.firstTokenAtMs).toBe(
 			result.metadata.startedAtMs! + result.metadata.timeToFirstTokenMs!
 		);
+		expect(result.terminal).toMatchObject({
+			outcome: 'completed',
+			measurements: {
+				pass: 1,
+				forcedNoToolSynthesis: false,
+				attempts: 1,
+				retryCount: 0,
+				terminalEventReceived: true,
+				assistantTextCharsReceived: 'Thinking out loud.'.length,
+				reasoningCharsReceived: 'hidden chain'.length + 'hidden details'.length,
+				toolCallsReceived: 1,
+				retryable: false,
+				attemptsExhausted: false
+			}
+		});
 		expect(params.onAssistantBufferChange).toHaveBeenCalledWith('Thinking out loud.');
 		expect(params.tryEmitEarlyAssistantLeadIn).toHaveBeenCalledWith('Thinking out loud.');
 		expect(params.onPendingToolCallCountChange).toHaveBeenCalledWith(1);
@@ -258,6 +273,8 @@ describe('runLlmStreamPass', () => {
 			} as any,
 			retryDelayMs: () => 0
 		});
+		const onStreamRetry = vi.fn(async () => {});
+		params.onStreamRetry = onStreamRetry;
 
 		const result = await runLlmStreamPass(params);
 
@@ -275,6 +292,7 @@ describe('runLlmStreamPass', () => {
 		});
 		expect(params.onAssistantBufferChange).toHaveBeenCalledWith('');
 		expect(params.onPendingToolCallCountChange).toHaveBeenCalledWith(0);
+		expect(onStreamRetry).toHaveBeenCalledTimes(1);
 		expect(clearHeartbeat).toHaveBeenCalledTimes(2);
 		expect(typeof result.metadata.startedAtMs).toBe('number');
 		expect(typeof result.metadata.durationMs).toBe('number');
@@ -284,6 +302,71 @@ describe('runLlmStreamPass', () => {
 		expect(result.metadata.firstTokenAtMs).toBe(
 			result.metadata.startedAtMs! + result.metadata.timeToFirstTokenMs!
 		);
+	});
+
+	it('rotates the dedicated synthesis model route and carries provider policy across retries', async () => {
+		let invocation = 0;
+		const streamText = vi.fn(async function* (_options?: Record<string, unknown>) {
+			invocation += 1;
+			if (invocation === 1) {
+				yield { type: 'error', error: 'OpenRouter upstream 503' };
+				return;
+			}
+			yield { type: 'text', content: 'Recovered synthesis.' };
+			yield {
+				type: 'done',
+				finished_reason: 'stop',
+				model: 'family-b/model',
+				provider: 'DigitalOcean',
+				provider_raw: 'DigitalOcean',
+				provider_slug: 'digitalocean'
+			};
+		});
+		const { params } = baseParams({
+			llm: { streamText } as any,
+			noToolSynthesisPass: true,
+			modelRouting: {
+				passRole: 'forced_synthesis',
+				profile: 'quality',
+				models: ['family-a/model', 'family-b/model', 'family-c/model'],
+				forcedSynthesisRoutingVariant: 'dedicated',
+				ignoredProviderSlugs: ['digitalocean'],
+				maxTokens: 6000,
+				retryModelRotation: true
+			},
+			retryDelayMs: () => 0
+		});
+
+		const result = await runLlmStreamPass(params);
+
+		expect(streamText.mock.calls[0]?.[0]).toMatchObject({
+			models: ['family-a/model', 'family-b/model', 'family-c/model'],
+			providerRouting: { ignore: ['digitalocean'] },
+			maxTokens: 6000
+		});
+		expect(streamText.mock.calls[1]?.[0]).toMatchObject({
+			models: ['family-b/model', 'family-c/model', 'family-a/model'],
+			providerRouting: { ignore: ['digitalocean'] },
+			maxTokens: 6000
+		});
+		expect(result.metadata).toMatchObject({
+			forcedSynthesisRoutingVariant: 'dedicated',
+			ignoredProviderSlugs: ['digitalocean'],
+			maxTokens: 6000,
+			retryModelRotation: true,
+			providerRaw: 'DigitalOcean',
+			providerSlug: 'digitalocean',
+			attemptRoutes: [
+				{
+					attempt: 1,
+					models: ['family-a/model', 'family-b/model', 'family-c/model']
+				},
+				{
+					attempt: 2,
+					models: ['family-b/model', 'family-c/model', 'family-a/model']
+				}
+			]
+		});
 	});
 
 	it('does not retry non-transient stream errors', async () => {
@@ -296,9 +379,17 @@ describe('runLlmStreamPass', () => {
 			retryDelayMs: () => 0
 		});
 
-		await expect(runLlmStreamPass(params)).rejects.toThrow(
-			'OpenRouter API error: 400 invalid request'
-		);
+		await expect(runLlmStreamPass(params)).rejects.toMatchObject({
+			message: 'OpenRouter API error: 400 invalid request',
+			outcome: 'provider_error',
+			measurements: {
+				attempts: 1,
+				retryCount: 0,
+				terminalEventReceived: false,
+				retryable: false,
+				attemptsExhausted: false
+			}
+		});
 		expect(params.llm.streamText).toHaveBeenCalledTimes(1);
 		expect(clearHeartbeat).toHaveBeenCalledTimes(1);
 	});
@@ -315,11 +406,69 @@ describe('runLlmStreamPass', () => {
 			retryDelayMs: () => 0
 		});
 
-		await expect(runLlmStreamPass(params)).rejects.toThrow(
-			'LLM stream ended without a completion event'
-		);
+		await expect(runLlmStreamPass(params)).rejects.toMatchObject({
+			message: 'LLM stream ended without a completion event',
+			outcome: 'missing_completion_event',
+			measurements: {
+				attempts: 2,
+				retryCount: 1,
+				terminalEventReceived: false,
+				assistantTextCharsReceived: 'partialpartial'.length,
+				retryable: true,
+				attemptsExhausted: true
+			}
+		});
 		expect(params.llm.streamText).toHaveBeenCalledTimes(2);
 		expect(clearHeartbeat).toHaveBeenCalledTimes(2);
+	});
+
+	it('classifies a no-byte stream close without inventing visible progress', async () => {
+		const { params } = baseParams({
+			llm: {
+				streamText: vi.fn(async function* () {
+					return;
+				})
+			} as any,
+			retryDelayMs: () => 0
+		});
+
+		await expect(runLlmStreamPass(params)).rejects.toMatchObject({
+			outcome: 'missing_completion_event',
+			measurements: {
+				attempts: 2,
+				terminalEventReceived: false,
+				assistantTextCharsReceived: 0,
+				reasoningCharsReceived: 0,
+				toolCallsReceived: 0,
+				attemptsExhausted: true
+			}
+		});
+	});
+
+	it('counts reasoning-only streams as incomplete rather than visible answers', async () => {
+		const { params } = baseParams({
+			llm: {
+				streamText: vi.fn(async function* () {
+					yield {
+						type: 'reasoning',
+						reasoning: 'internal analysis',
+						reasoning_details: [{ text: 'more detail' }]
+					};
+				})
+			} as any,
+			retryDelayMs: () => 0
+		});
+
+		await expect(runLlmStreamPass(params)).rejects.toMatchObject({
+			outcome: 'missing_completion_event',
+			measurements: {
+				attempts: 2,
+				terminalEventReceived: false,
+				assistantTextCharsReceived: 0,
+				reasoningCharsReceived: 2 * ('internal analysis'.length + 'more detail'.length),
+				toolCallsReceived: 0
+			}
+		});
 	});
 
 	it('retries after a per-pass stream timeout and returns the recovered attempt', async () => {
@@ -348,6 +497,8 @@ describe('runLlmStreamPass', () => {
 			passTimeoutMs: 25,
 			retryDelayMs: () => 0
 		});
+		const onStreamRetry = vi.fn(async () => {});
+		params.onStreamRetry = onStreamRetry;
 
 		const resultPromise = runLlmStreamPass(params);
 		await vi.advanceTimersByTimeAsync(25);
@@ -364,6 +515,66 @@ describe('runLlmStreamPass', () => {
 			completionTokens: 4,
 			totalTokens: 13
 		});
+		expect(result.terminal).toMatchObject({
+			outcome: 'completed',
+			measurements: {
+				attempts: 2,
+				retryCount: 1,
+				terminalEventReceived: true,
+				assistantTextCharsReceived: 'Recovered after timeout.'.length
+			}
+		});
+		expect(onStreamRetry).toHaveBeenCalledTimes(1);
+		expect(clearHeartbeat).toHaveBeenCalledTimes(2);
+	});
+
+	it('classifies exhausted timeouts and retains partial-output measurements', async () => {
+		vi.useFakeTimers();
+		let invocation = 0;
+		const { params, clearHeartbeat } = baseParams({
+			llm: {
+				streamText: vi.fn(async function* (options: { signal?: AbortSignal }) {
+					invocation += 1;
+					yield { type: 'text', content: `partial-${invocation}` };
+					await waitForAbort(options.signal);
+				})
+			} as any,
+			noToolSynthesisPass: true,
+			modelRouting: { passRole: 'forced_synthesis', profile: 'balanced' },
+			passTimeoutMs: 25,
+			retryDelayMs: () => 0
+		});
+		const onStreamRetry = vi.fn(async () => {});
+		params.onStreamRetry = onStreamRetry;
+
+		const resultPromise = runLlmStreamPass(params);
+		const rejection = expect(resultPromise).rejects.toMatchObject({
+			message: 'LLM stream pass timed out after 25ms',
+			outcome: 'timed_out',
+			partialAssistantText: 'partial-2',
+			measurements: {
+				passRole: 'forced_synthesis',
+				forcedNoToolSynthesis: true,
+				attempts: 2,
+				maxAttempts: 2,
+				retryCount: 1,
+				timeoutMs: 25,
+				terminalEventReceived: false,
+				assistantTextCharsReceived: 'partial-1partial-2'.length,
+				reasoningCharsReceived: 0,
+				toolCallsReceived: 0,
+				retryable: true,
+				attemptsExhausted: true
+			}
+		});
+
+		await vi.advanceTimersByTimeAsync(25);
+		await vi.advanceTimersByTimeAsync(25);
+		await rejection;
+
+		expect(params.llm.streamText).toHaveBeenCalledTimes(2);
+		expect(params.tryEmitEarlyAssistantLeadIn).not.toHaveBeenCalled();
+		expect(onStreamRetry).toHaveBeenCalledTimes(1);
 		expect(clearHeartbeat).toHaveBeenCalledTimes(2);
 	});
 
@@ -420,7 +631,16 @@ describe('runLlmStreamPass', () => {
 		});
 
 		const resultPromise = runLlmStreamPass(params);
-		const rejectionExpectation = expect(resultPromise).rejects.toThrow('Request aborted');
+		const rejectionExpectation = expect(resultPromise).rejects.toMatchObject({
+			message: 'Request aborted',
+			outcome: 'aborted',
+			measurements: {
+				attempts: 1,
+				terminalEventReceived: false,
+				retryable: false,
+				attemptsExhausted: false
+			}
+		});
 		setTimeout(() => controller.abort(), 10);
 		await vi.advanceTimersByTimeAsync(10);
 

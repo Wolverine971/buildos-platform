@@ -34,6 +34,8 @@ import {
 	buildEncryptedCalendarTokenPatch,
 	decodeStoredCalendarTokens
 } from '$lib/server/calendar-token-crypto';
+import { createCrossSiteFormPostResponse } from '$lib/server/csrf';
+import { sanitizeLogData, sanitizeLogText } from '$lib/utils/logging-helpers';
 // import { rateLimits } from '$lib/middleware/rate-limiter';
 
 configureLibriRuntimeEnv(() => privateEnv);
@@ -54,42 +56,6 @@ const LEGACY_PATH_REDIRECTS = new Map<string, string>([
 	]
 ]);
 const LEGACY_BLOG_MARKDOWN_PATH = /^\/src\/content\/blogs\/([^/]+)\/([^/]+?)(?:\.md)?\/?$/;
-const CROSS_ORIGIN_FORM_POST_ALLOWED_PATHS = new Set(['/oauth/token', '/oauth/revoke']);
-
-function isFormContentType(contentType: string | null): boolean {
-	if (!contentType) return false;
-	const normalized = contentType.split(';', 1)[0]?.trim().toLowerCase();
-	return (
-		normalized === 'application/x-www-form-urlencoded' ||
-		normalized === 'multipart/form-data' ||
-		normalized === 'text/plain'
-	);
-}
-
-function createCrossSiteFormPostResponse(event: RequestEvent): Response | null {
-	const method = event.request.method.toUpperCase();
-	if (method !== 'POST' && method !== 'PUT' && method !== 'PATCH' && method !== 'DELETE') {
-		return null;
-	}
-
-	if (!isFormContentType(event.request.headers.get('content-type'))) {
-		return null;
-	}
-
-	if (CROSS_ORIGIN_FORM_POST_ALLOWED_PATHS.has(event.url.pathname)) {
-		return null;
-	}
-
-	const origin = event.request.headers.get('origin');
-	if (!origin || origin === event.url.origin) {
-		return null;
-	}
-
-	return json(
-		{ message: `Cross-site ${method} form submissions are forbidden` },
-		{ status: 403 }
-	);
-}
 
 function getLegacyRedirectPath(pathname: string): string | null {
 	const redirectedPath = LEGACY_PATH_REDIRECTS.get(pathname);
@@ -202,17 +168,17 @@ function logHookError(
 		}).catch((logError) => {
 			console.error(
 				`[hooks.server] error-logger failed while reporting ${operation}`,
-				logError,
+				sanitizeLogData(logError),
 				'original error:',
-				error
+				sanitizeLogData(error)
 			);
 		});
 	} catch (logError) {
 		console.error(
 			`[hooks.server] error-logger threw synchronously while reporting ${operation}`,
-			logError,
+			sanitizeLogData(logError),
 			'original error:',
-			error
+			sanitizeLogData(error)
 		);
 		return Promise.resolve();
 	}
@@ -387,7 +353,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 					user: userData
 				};
 			} catch (error) {
-				console.error('Error in safeGetSession:', error);
+				console.error('Error in safeGetSession:', sanitizeLogData(error));
 				void logHookError(event, error, 'hooks.safe_get_session', {
 					severity: 'error'
 				});
@@ -473,7 +439,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 				needsRefresh
 			};
 		} catch (error) {
-			console.error('Error fetching calendar tokens:', error);
+			console.error('Error fetching calendar tokens:', sanitizeLogData(error));
 			void logHookError(event, error, 'hooks.get_calendar_tokens', {
 				severity: 'warning'
 			});
@@ -504,7 +470,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 				event.locals.user = sessionData.user;
 			}
 		} catch (error) {
-			console.error('Error loading session in hooks:', error);
+			console.error('Error loading session in hooks:', sanitizeLogData(error));
 			void logHookError(event, error, 'hooks.load_session', {
 				severity: 'error'
 			});
@@ -620,7 +586,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			if (gateResult?.error) {
 				console.error(
 					'Failed to evaluate consumption billing gate (post):',
-					gateResult.error
+					sanitizeLogData(gateResult.error)
 				);
 				void logHookError(event, gateResult.error, 'hooks.consumption_gate_post', {
 					userId: mutationGuardUserId,
@@ -633,7 +599,10 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 				}
 			}
 		} catch (error) {
-			console.error('Failed to evaluate consumption billing gate (post):', error);
+			console.error(
+				'Failed to evaluate consumption billing gate (post):',
+				sanitizeLogData(error)
+			);
 			void logHookError(event, error, 'hooks.consumption_gate_post', {
 				userId: mutationGuardUserId,
 				severity: 'warning'
@@ -679,7 +648,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 					);
 				}
 			} catch (error) {
-				console.error('Failed auto-upgrade check (Pro -> Power):', error);
+				console.error('Failed auto-upgrade check (Pro -> Power):', sanitizeLogData(error));
 				void logHookError(event, error, 'hooks.billing_auto_upgrade', {
 					userId: mutationGuardUserId,
 					severity: 'warning'
@@ -803,7 +772,10 @@ export const handleError: HandleServerError = async ({ error, event }) => {
 		});
 	} else if (shouldLogToConsole) {
 		// Minimal logging in production
-		console.error(`[${errorId}] Error on ${event.url.pathname}:`, errorMessage);
+		console.error(
+			`[${errorId}] Error on ${event.url.pathname}:`,
+			sanitizeLogText(errorMessage, 2000)
+		);
 	}
 
 	return {

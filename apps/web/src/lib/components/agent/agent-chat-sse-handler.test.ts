@@ -7,9 +7,11 @@ import {
 	computeAgentStateActivity,
 	computeToolResultInfo,
 	createSSEHandler,
+	finalizeTurnPhaseActivity,
 	normalizeContextShiftContext,
 	resolveDoneFinalization,
 	sanitizeToolResultForActivityMetadata,
+	upsertTurnPhaseActivity,
 	type ActivityUpdateResult,
 	type PendingToolStatus,
 	type SSEHandlerDeps,
@@ -251,6 +253,71 @@ describe('resolveDoneFinalization', () => {
 		expect(resolveDoneFinalization('supervisor_question')).toEqual({});
 		expect(resolveDoneFinalization(undefined)).toEqual({});
 	});
+
+	it('marks degraded partial and no-evidence completions as interrupted', () => {
+		expect(
+			resolveDoneFinalization('synthesis_recovered', 'completed_degraded', 'partial_model')
+		).toEqual({ status: 'interrupted', note: 'Recovered partial response' });
+		expect(
+			resolveDoneFinalization('synthesis_empty', 'completed_degraded', 'precise_no_evidence')
+		).toEqual({ status: 'interrupted', note: 'No safe evidence summary available' });
+	});
+
+	it('treats deterministic degraded recovery as a completed answer', () => {
+		expect(
+			resolveDoneFinalization(
+				'synthesis_recovered',
+				'completed_degraded',
+				'deterministic_evidence'
+			)
+		).toEqual({ status: 'completed', note: 'Recovered from collected evidence' });
+	});
+});
+
+describe('turn phase activity', () => {
+	it('updates one stable activity as phases advance', () => {
+		const acknowledged = upsertTurnPhaseActivity([], {
+			type: 'turn_phase',
+			turn_phase: 'acknowledged',
+			message: 'Request received.'
+		});
+		const planning = upsertTurnPhaseActivity(acknowledged, {
+			type: 'turn_phase',
+			turn_phase: 'planning',
+			message: 'Planning the response.'
+		});
+
+		expect(planning).toHaveLength(1);
+		expect(planning[0]?.id).toBe(acknowledged[0]?.id);
+		expect(planning[0]).toMatchObject({
+			content: 'Planning the response.',
+			status: 'pending',
+			metadata: { turnPhaseActivity: true, turnPhase: 'planning' }
+		});
+	});
+
+	it('finalizes the phase activity with degraded completion details', () => {
+		const activities = upsertTurnPhaseActivity([], {
+			type: 'turn_phase',
+			turn_phase: 'recovering',
+			message: 'Recovering.'
+		});
+		const finalized = finalizeTurnPhaseActivity(activities, {
+			type: 'done',
+			completion_status: 'completed_degraded',
+			answer_source: 'partial_model'
+		});
+
+		expect(finalized).toHaveLength(1);
+		expect(finalized[0]).toMatchObject({
+			content: 'Recovered a partial response after synthesis stalled',
+			status: 'completed',
+			metadata: {
+				completionStatus: 'completed_degraded',
+				answerSource: 'partial_model'
+			}
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -282,6 +349,10 @@ interface HandlerHarness {
 		flushAssistantText: number;
 		bufferAssistantText: string[];
 		finalizeAssistantMessage: number;
+		markAssistantCompletion: Array<{
+			completionStatus?: string;
+			answerSource?: string;
+		}>;
 		addCreatedEntitiesMessage: CreatedEntityRef[][];
 		updateBlocks: ThinkingBlockMessage[];
 	};
@@ -345,6 +416,7 @@ function createHarness(
 		flushAssistantText: 0,
 		bufferAssistantText: [],
 		finalizeAssistantMessage: 0,
+		markAssistantCompletion: [],
 		addCreatedEntitiesMessage: [],
 		updateBlocks: []
 	};
@@ -481,6 +553,9 @@ function createHarness(
 		},
 		flushAssistantText: () => {
 			calls.flushAssistantText += 1;
+		},
+		markAssistantCompletion: (completionStatus, answerSource) => {
+			calls.markAssistantCompletion.push({ completionStatus, answerSource });
 		},
 		finalizeAssistantMessage: () => {
 			calls.finalizeAssistantMessage += 1;
@@ -627,6 +702,23 @@ describe('createSSEHandler — routing', () => {
 		h.handler({ type: 'agent_state', state: 'waiting_on_user', contextType: 'global' as any });
 		expect(h.snapshot.currentActivity).toBe('Waiting on your direction...');
 		expect(h.calls.addActivity).toEqual([]);
+	});
+
+	it('routes turn phases through one thinking-block activity update', () => {
+		const h = createHarness();
+		h.handler({
+			type: 'turn_phase',
+			turn_phase: 'gathering',
+			message: 'Gathering the relevant project context...'
+		});
+		expect(h.calls.updateState).toEqual([
+			{ state: 'thinking', details: 'Gathering the relevant project context...' }
+		]);
+		expect(h.snapshot.currentActivity).toBe('Gathering the relevant project context...');
+		expect(h.calls.updateBlocks.at(-1)?.activities[0]).toMatchObject({
+			content: 'Gathering the relevant project context...',
+			metadata: { turnPhaseActivity: true, turnPhase: 'gathering' }
+		});
 	});
 });
 
@@ -939,6 +1031,24 @@ describe('createSSEHandler — done + error', () => {
 		expect(truncated.calls.finalize[0]).toEqual({
 			status: 'interrupted',
 			note: 'Response truncated'
+		});
+	});
+
+	it('marks a degraded partial assistant response and thinking block as interrupted', () => {
+		const h = createHarness();
+		h.handler({
+			type: 'done',
+			finished_reason: 'synthesis_recovered',
+			completion_status: 'completed_degraded',
+			answer_source: 'partial_model'
+		});
+
+		expect(h.calls.markAssistantCompletion).toEqual([
+			{ completionStatus: 'completed_degraded', answerSource: 'partial_model' }
+		]);
+		expect(h.calls.finalize[0]).toEqual({
+			status: 'interrupted',
+			note: 'Recovered partial response'
 		});
 	});
 

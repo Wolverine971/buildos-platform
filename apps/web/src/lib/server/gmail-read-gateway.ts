@@ -328,8 +328,7 @@ export class GmailReadGateway {
 		admin: TypedSupabaseClient | GmailSchemaClient,
 		options: GmailReadGatewayOptions = {}
 	) {
-		// The Gmail tables are not in the generated Database types yet; queries in this class are
-		// typed against the hand-authored schema in gmail-database.types.ts.
+		// The thin Gmail schema type narrows generated CHECK-constrained strings and RPC nullability.
 		this.admin = admin as GmailSchemaClient;
 		this.oauthService = options.oauthService ?? new GmailReadOAuthService(admin);
 		this.providerFetch = options.providerFetch ?? fetch;

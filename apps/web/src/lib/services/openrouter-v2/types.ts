@@ -155,6 +155,8 @@ export type OpenRouterStreamEvent =
 			finished_reason?: string;
 			model?: string;
 			provider?: string;
+			provider_raw?: string;
+			provider_slug?: string;
 			request_id?: string;
 			requestId?: string;
 			system_fingerprint?: string;

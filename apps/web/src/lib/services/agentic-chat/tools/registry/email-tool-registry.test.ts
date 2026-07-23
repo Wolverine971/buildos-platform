@@ -4,7 +4,7 @@ import { BUILDOS_AGENT_SUPPORTED_OPS } from '@buildos/shared-types';
 import { buildToolRegistry } from './tool-registry';
 import { getCapabilityByPath, listCapabilities } from './capability-catalog';
 import { CHAT_TOOL_DEFINITIONS, TOOL_METADATA } from '../core/definitions';
-import { configureEmailRuntimeEnv } from '../email';
+import { configureEmailRuntimeEnv, isEmailChatUserAllowed } from '../email';
 import { getAllEnabledTools, extractTools } from '../core/tools.config';
 
 const EMAIL_TOOL_NAMES = ['list_email_accounts', 'search_email_messages', 'get_email_message'];
@@ -103,6 +103,26 @@ describe('email tools — registry gating', () => {
 			expect(enabledNames).toContain(name);
 			expect(extractTools([name])).toHaveLength(1);
 		}
+	});
+
+	it('requires an exact, non-wildcard user allowlist match for execution', () => {
+		configureEmailRuntimeEnv({
+			EMAIL_CHAT_TOOLS_ENABLED: 'true',
+			EMAIL_CHAT_TOOLS_USER_IDS: ' user-a, user-b '
+		});
+		expect(isEmailChatUserAllowed('user-a')).toBe(true);
+		expect(isEmailChatUserAllowed('user-b')).toBe(true);
+		expect(isEmailChatUserAllowed('user-c')).toBe(false);
+		expect(isEmailChatUserAllowed('*')).toBe(false);
+
+		configureEmailRuntimeEnv({ EMAIL_CHAT_TOOLS_ENABLED: 'true' });
+		expect(isEmailChatUserAllowed('user-a')).toBe(false);
+
+		configureEmailRuntimeEnv({
+			EMAIL_CHAT_TOOLS_ENABLED: '',
+			EMAIL_CHAT_TOOLS_USER_IDS: 'user-a'
+		});
+		expect(isEmailChatUserAllowed('user-a')).toBe(false);
 	});
 
 	it('flag gates the email capability-catalog entry (discovery)', () => {

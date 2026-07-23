@@ -3,8 +3,8 @@
 # Gmail Ingestion and Project Relevance Architecture
 
 **Created:** 2026-07-22  
-**Status:** Research complete; audited 2026-07-22 against the deployed Phase 1/2 implementation and
-the live Gmail API quota page  
+**Status:** Research complete and Phase A kickoff-ready; audited 2026-07-22 against the deployed
+Phase 1/2 implementation, DJ-only chat pilot, and live Gmail API quota page
 **Scope:** Read-only discovery, project relevance, daily-brief inputs, and user-reviewed update
 proposals  
 **Out of scope:** Sending email, modifying Gmail, downloading attachments, autonomous project
@@ -59,10 +59,15 @@ This design builds on what is already deployed, not on a blank slate.
   per-user/per-connection rate limits.
 - UI: the profile Email tab with connect/label/reconnect/disconnect and bounded multi-account
   search/read.
+- Agentic chat: three Tier 1 read tools behind a global kill switch and exact-user allowlist, with
+  content-free durable traces and no Gmail write operation. The production `gmail-read-v2` result
+  contract and its authoritative per-account Gmail-link map are live-verified across DJ's three
+  connections.
 
 **Not yet built (the subject of this document):** Gmail queue job types, sync-state/observation/
 candidate/rule/proposal tables, the Pub/Sub webhook, watch registration, project email profiles,
-the classifier lane, the review surface, and agent chat email tools.
+the classifier lane, and the review surface. The Phase A and model-lane environment flags exist in
+the root/web examples and default off; no production relevance runtime is enabled.
 
 **Hygiene status (2026-07-22):** the Gmail modules are typed against a hand-authored schema
 mirror (`apps/web/src/lib/server/gmail-database.types.ts`) that matches migration
@@ -746,25 +751,28 @@ Initial quality targets:
 - zero message content in logs, analytics, queue metadata, or audit rows; and
 - p95 continuous-sync freshness under five minutes during working hours.
 
-## Decisions required before implementation
+## Phase A pilot decisions locked for implementation
 
-1. Is the default opt-in mode `manual`, `brief_only`, or `continuous`? Recommendation: `manual` for
-   external users, `continuous` only for the internal pilot.
-2. Which initial scan preset is appropriate? Recommendation: 7 days/250 messages for the public
-   default, 30 days/up to 1,000 per account for the internal evaluation, and an explicit 90-day
-   expansion only after showing the first scan's cost and results.
-3. May temporary encrypted subject/snippet data be stored for a review queue, and for how long?
-   Recommendation: avoid it in Phase A if on-demand display performs adequately; otherwise seven
-   days maximum.
-4. Are sent messages included? Recommendation: include them in the bounded initial scan and in
-   already-linked threads, but prioritize newly received messages during continuous sync.
-5. Can a user-authored sender/domain rule auto-link an email reference? Recommendation: yes, but it
-   still cannot create a project entity.
-6. Which accepted project entity types survive Gmail disconnect? Recommendation: user-accepted
-   project records remain, while provider links and transient email data are deleted; disclose this
-   choice during acceptance and disconnect.
-7. Which zero-data-retention model route is approved for unsolicited email content? No model lane
-   ships until this is explicit and fail-closed.
+1. Opt-in is `manual`; Phase A does not register Gmail watches or perform continuous ingestion.
+2. DJ's pilot preset is 30 days and up to 1,000 messages per account. A scan manifest records the
+   exact account/project selection and limits before any provider read begins.
+3. Raw bodies and attachments are never stored. Phase A starts metadata-only; if review UX proves
+   impossible without it, encrypted subject/snippet retention may be added behind a separate flag
+   with a seven-day maximum and deletion job.
+4. Sent mail is included because it contains relationship and thread evidence.
+5. User-authored sender/domain/label rules may auto-link an email reference, but cannot create or
+   update a project entity.
+6. User-accepted project records survive disconnect; transient provider links, observations, and
+   unaccepted candidates are deleted.
+7. The model lane is disabled until a specific zero-data-retention route is approved and enforced.
+   Variants A/B therefore ship before C/D and provide a complete no-model evaluation baseline.
+
+Implementation details and the first-PR boundary live in
+[HANDOFF-PHASE-A-PROJECT-RELEVANCE.md](HANDOFF-PHASE-A-PROJECT-RELEVANCE.md).
+
+The next implementation boundary—immutable manifests, per-account checkpoints, leases,
+fail-closed budgets, and synthetic lifecycle proof before any Gmail scan—lives in
+[HANDOFF-PHASE-A-SLICE-2-SCAN-CONTROL-PLANE.md](HANDOFF-PHASE-A-SLICE-2-SCAN-CONTROL-PLANE.md).
 
 ## Definition of done
 

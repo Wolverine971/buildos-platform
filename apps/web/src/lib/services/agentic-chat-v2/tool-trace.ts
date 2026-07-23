@@ -33,6 +33,97 @@ const MAX_PERSISTED_TOOL_ERROR_CHARS = 180;
 const MAX_PERSISTED_TOOL_ARGUMENT_PREVIEW_CHARS = 420;
 const MAX_PERSISTED_TOOL_RESULT_PREVIEW_CHARS = 600;
 
+const EMAIL_TOOL_NAMES = new Set([
+	'list_email_accounts',
+	'search_email_messages',
+	'get_email_message'
+]);
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	return value as Record<string, unknown>;
+}
+
+function parseToolValue(value: unknown): unknown {
+	if (typeof value !== 'string') return value;
+	try {
+		return JSON.parse(value);
+	} catch {
+		return null;
+	}
+}
+
+function arrayLength(value: unknown): number {
+	return Array.isArray(value) ? value.length : 0;
+}
+
+/**
+ * Gmail traces are deliberately content-free. The durable trace records only
+ * booleans and counts; it never serializes queries, connection/message IDs,
+ * addresses, subjects, snippets, bodies, cursors, or deep links.
+ */
+function buildEmailArgumentsPreview(toolName: string, raw: unknown): string {
+	const args = asRecord(parseToolValue(raw)) ?? {};
+	if (toolName === 'list_email_accounts') {
+		return '{"read_only":true}';
+	}
+	if (toolName === 'search_email_messages') {
+		const connectionIds = args.connection_ids ?? args.connectionIds;
+		const query = args.query;
+		const cursor = args.cursor;
+		const requestedMaxResults = args.max_results ?? args.maxResults ?? args.limit;
+		return JSON.stringify({
+			read_only: true,
+			connection_count: arrayLength(connectionIds),
+			has_query: typeof query === 'string' && query.trim().length > 0,
+			has_cursor: typeof cursor === 'string' && cursor.trim().length > 0,
+			requested_max_results:
+				typeof requestedMaxResults === 'number' && Number.isFinite(requestedMaxResults)
+					? requestedMaxResults
+					: undefined
+		});
+	}
+	return JSON.stringify({
+		read_only: true,
+		connection_id_present: typeof (args.connection_id ?? args.connectionId) === 'string',
+		message_id_present: typeof (args.message_id ?? args.messageId) === 'string'
+	});
+}
+
+function buildEmailResultPreview(toolName: string, raw: unknown): string {
+	const result = asRecord(raw) ?? {};
+	if (toolName === 'list_email_accounts') {
+		const accounts = Array.isArray(result.accounts) ? result.accounts : [];
+		return JSON.stringify({
+			read_only: true,
+			account_count: typeof result.count === 'number' ? result.count : accounts.length,
+			readable_count:
+				typeof result.readable_count === 'number' ? result.readable_count : undefined,
+			reconnect_required_count: accounts.filter(
+				(account) => asRecord(account)?.reconnect_required === true
+			).length
+		});
+	}
+	if (toolName === 'search_email_messages') {
+		const accounts = Array.isArray(result.accounts) ? result.accounts : [];
+		const messages = Array.isArray(result.messages) ? result.messages : [];
+		return JSON.stringify({
+			read_only: true,
+			account_count: accounts.length,
+			message_count:
+				typeof result.message_count === 'number' ? result.message_count : messages.length,
+			reconnect_required_count: arrayLength(result.reconnect_required_accounts),
+			has_more: accounts.some((account) => asRecord(account)?.has_more === true)
+		});
+	}
+	return JSON.stringify({
+		read_only: true,
+		body_returned: typeof result.body === 'string' && result.body.length > 0,
+		body_truncated: result.body_truncated === true,
+		has_unsupported_attachments: result.has_unsupported_attachments === true
+	});
+}
+
 export function previewToolArguments(raw: unknown, maxChars = 280): string {
 	if (raw === undefined || raw === null) {
 		return 'null';
@@ -71,15 +162,25 @@ export function buildPersistedToolTrace(
 	if (!Array.isArray(executions) || executions.length === 0) return [];
 	return executions.slice(0, MAX_PERSISTED_TOOL_TRACE_ITEMS).map(({ toolCall, result }) => {
 		const op = extractToolOpFromToolCall(toolCall);
-		const rawError = typeof result.error === 'string' ? result.error : '';
-		const argumentsPreview = previewToolArguments(
-			toolCall.function.arguments,
-			MAX_PERSISTED_TOOL_ARGUMENT_PREVIEW_CHARS
-		);
+		const isEmailTool = EMAIL_TOOL_NAMES.has(toolCall.function.name);
+		const rawError =
+			typeof result.error === 'string'
+				? isEmailTool
+					? 'Gmail read tool failed.'
+					: result.error
+				: '';
+		const argumentsPreview = isEmailTool
+			? buildEmailArgumentsPreview(toolCall.function.name, toolCall.function.arguments)
+			: previewToolArguments(
+					toolCall.function.arguments,
+					MAX_PERSISTED_TOOL_ARGUMENT_PREVIEW_CHARS
+				);
 		const resultPreview =
 			result.result === undefined
 				? undefined
-				: previewToolArguments(result.result, MAX_PERSISTED_TOOL_RESULT_PREVIEW_CHARS);
+				: isEmailTool
+					? buildEmailResultPreview(toolCall.function.name, result.result)
+					: previewToolArguments(result.result, MAX_PERSISTED_TOOL_RESULT_PREVIEW_CHARS);
 		const durationMs =
 			typeof result.duration_ms === 'number' && Number.isFinite(result.duration_ms)
 				? result.duration_ms

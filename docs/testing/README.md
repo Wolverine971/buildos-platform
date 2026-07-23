@@ -124,7 +124,7 @@ All packages under `packages/` now have `test` and `test:run` scripts. The `shar
 - CI now runs typecheck, lint, and `test:run` for pull requests.
 - Web has broad server, route, agentic-chat, admin analytics, utility, and component test coverage by file count.
 - Web LLM tests are isolated behind an explicit `test:llm` command.
-- Worker has dedicated scheduler, brief, queue contract, project loop, HTTP utility, and integration test areas.
+- Worker has dedicated scheduler, brief, queue contract, Project Review, HTTP utility, and integration test areas.
 - Package tests cover the shared LLM package, shared agent ops utilities, shared type validation, Supabase client factories, Twilio service, shared utilities, and MCP client/config behavior.
 - Web setup centralizes `$env/dynamic/public`, `matchMedia`, and console-noise handling.
 - The old webhook `server.ts.spec` implementation sketch has been moved out of the route tree to documentation so it is no longer mistaken for a runnable test.
