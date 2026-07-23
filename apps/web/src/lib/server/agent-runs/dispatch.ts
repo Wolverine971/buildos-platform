@@ -411,54 +411,14 @@ export async function dispatchAgentRun(
 		budgets
 	};
 
-	const { data: run, error: runError } = await (admin as any)
-		.from('agent_runs')
-		.insert({
-			user_id: params.userId,
-			trigger,
-			label: params.label?.trim() || goal.slice(0, 80),
-			goal,
-			instructions: params.instructions?.trim() || null,
-			expected_output: params.expectedOutput?.trim() || null,
-			context_type: contextType,
-			project_id: projectId,
-			scope_mode: scopeMode,
-			effort,
-			run_template: runTemplate,
-			allowed_ops: params.allowedOps ?? null,
-			review_required: reviewRequired,
-			status: 'queued',
-			budgets: budgets as Json,
-			parent_run_id: params.parentRunId ?? null,
-			parent_session_id: params.parentSessionId ?? null,
-			parent_message_id: params.parentMessageId ?? null,
-			depth: params.depth ?? 0,
-			source_suggestion_id: params.sourceSuggestionId ?? null,
-			source_decision: params.sourceDecision ?? null
-		})
-		.select('*')
-		.single();
-
-	if (runError || !run) {
-		return {
-			ok: false,
-			status: HttpStatus.INTERNAL_SERVER_ERROR,
-			code: 'DATABASE_ERROR',
-			message: `Failed to create agent run${runError?.message ? `: ${runError.message}` : ''}`
-		};
-	}
-
-	const jobMetadata = {
-		...metadata,
-		run_id: run.id
-	};
+	// Validate metadata shape BEFORE any write. The RPC fills in the real
+	// run_id server-side; a placeholder UUID stands in for shape validation.
 	try {
-		validateAgentRunMetadata(jobMetadata);
+		validateAgentRunMetadata({
+			...metadata,
+			run_id: '00000000-0000-4000-8000-000000000000'
+		});
 	} catch (error) {
-		await admin
-			.from('agent_runs')
-			.update({ status: 'failed', error: 'Invalid job metadata' })
-			.eq('id', run.id);
 		return {
 			ok: false,
 			status: HttpStatus.BAD_REQUEST,
@@ -467,27 +427,66 @@ export async function dispatchAgentRun(
 		};
 	}
 
-	const { error: jobError } = await admin.rpc('add_queue_job', {
-		p_user_id: params.userId,
-		p_job_type: 'agent_run',
-		p_metadata: jobMetadata,
-		p_priority: 7,
-		p_scheduled_for: new Date().toISOString(),
-		p_dedup_key: `agent-run:${run.id}`
-	});
+	// Atomic admission (2026-07-23 audit): the run row and its queue job are
+	// created in ONE transaction, so a process death here can no longer strand
+	// a queued run with no job. The capacity trigger enforces the max-3 cap
+	// under a per-user advisory lock inside the same transaction — the
+	// countActiveAgentRuns pre-check above is just the friendly fast path.
+	const { data: created, error: createError } = await (admin as any).rpc(
+		'create_agent_run_with_job',
+		{
+			p_run: {
+				user_id: params.userId,
+				trigger,
+				label: params.label?.trim() || goal.slice(0, 80),
+				goal,
+				instructions: params.instructions?.trim() || null,
+				expected_output: params.expectedOutput?.trim() || null,
+				context_type: contextType,
+				project_id: projectId,
+				scope_mode: scopeMode,
+				effort,
+				run_template: runTemplate,
+				allowed_ops: params.allowedOps ?? null,
+				review_required: reviewRequired,
+				budgets: budgets as Json,
+				parent_run_id: params.parentRunId ?? null,
+				parent_session_id: params.parentSessionId ?? null,
+				parent_message_id: params.parentMessageId ?? null,
+				depth: params.depth ?? 0,
+				source_suggestion_id: params.sourceSuggestionId ?? null,
+				source_decision: params.sourceDecision ?? null
+			},
+			p_job_metadata: metadata,
+			p_priority: 7
+		}
+	);
 
-	if (jobError) {
-		await admin
-			.from('agent_runs')
-			.update({ status: 'failed', error: `queue_error: ${jobError.message}` })
-			.eq('id', run.id);
+	if (createError || !created?.run) {
+		const message = createError?.message ?? 'Unknown error';
+		// Capacity raises from the trigger surface as generic Postgres errors —
+		// map them to the same 429s the fast-path pre-check produces.
+		if (
+			message.includes('agent_run_limit_exceeded') ||
+			message.includes('Deep research requires') ||
+			message.includes('Agent Run slots are reserved')
+		) {
+			return {
+				ok: false,
+				status: HttpStatus.TOO_MANY_REQUESTS,
+				code: 'RATE_LIMITED',
+				message: message.includes('agent_run_limit_exceeded')
+					? `You already have ${MAX_CONCURRENT_AGENT_RUNS} active agent runs.`
+					: message
+			};
+		}
 		return {
 			ok: false,
 			status: HttpStatus.INTERNAL_SERVER_ERROR,
 			code: 'DATABASE_ERROR',
-			message: `Failed to queue agent run: ${jobError.message}`
+			message: `Failed to create agent run: ${message}`
 		};
 	}
 
-	return { ok: true, run };
+	return { ok: true, run: created.run };
 }

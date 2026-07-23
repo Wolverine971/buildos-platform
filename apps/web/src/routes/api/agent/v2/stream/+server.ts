@@ -1199,6 +1199,17 @@ export const POST: RequestHandler = async ({
 			preparedSurfaceProfile
 		})
 	});
+	// Interval progress heartbeat: the per-tool-execution heartbeat goes silent
+	// during long no-tool LLM generations, which made `last_progress_at` unusable
+	// for distinguishing a dead turn from a slow one. A 30s wall-clock beat means
+	// admission's stale-progress reclaim (turn-admission.ts) can free a dead
+	// session in ~2 minutes instead of the full detached-turn max duration.
+	const progressHeartbeatId = setInterval(() => {
+		observabilityWriter.queueTurnRunUpdate(
+			{ last_progress_at: new Date().toISOString() },
+			'turn_progress_heartbeat'
+		);
+	}, 30_000);
 	const sendTimedMessage = async (
 		payload: Record<string, unknown> & { type: string },
 		errorContext: {
@@ -3987,7 +3998,13 @@ export const POST: RequestHandler = async ({
 			});
 			assistantPersistedAtMs = Date.now();
 
-			if (!assistantMessage) {
+			// Honesty guard (2026-07-23 audit N14): if the final assistant message
+			// failed to persist, the turn must NOT report completed — the client
+			// saw streamed text that will vanish on snapshot reload. Downgrade the
+			// done event and the turn run's terminal state so reconcile paths see
+			// a failed turn instead of a "successful" one with a missing reply.
+			const assistantPersistFailed = !assistantMessage;
+			if (assistantPersistFailed) {
 				logFastChatError({
 					error: new Error('Failed to persist assistant message'),
 					operationType: 'fastchat_persist_message',
@@ -4135,12 +4152,17 @@ export const POST: RequestHandler = async ({
 					}
 				);
 			}
+			const effectiveCompletionStatus = assistantPersistFailed
+				? 'failed'
+				: (completionOutcome?.status ?? 'completed');
 			await sendTimedMessage(
 				{
 					type: 'done',
 					usage,
-					finished_reason: finishedReason,
-					completion_status: completionOutcome?.status ?? 'completed',
+					finished_reason: assistantPersistFailed
+						? 'assistant_persist_failed'
+						: finishedReason,
+					completion_status: effectiveCompletionStatus,
 					answer_source: completionOutcome?.answerSource ?? 'model'
 				},
 				{
@@ -4152,7 +4174,7 @@ export const POST: RequestHandler = async ({
 			doneEmittedAtMs = Date.now();
 			observabilityWriter.recordEvent('finalize', 'done_emitted', {
 				finished_reason: finishedReason ?? null,
-				completion_status: completionOutcome?.status ?? 'completed',
+				completion_status: effectiveCompletionStatus,
 				answer_source: completionOutcome?.answerSource ?? 'model',
 				total_tokens: usage?.total_tokens ?? null
 			} as Json);
@@ -4160,8 +4182,10 @@ export const POST: RequestHandler = async ({
 			await observabilityWriter.persistFinalState(
 				{
 					assistant_message_id: assistantMessage?.id ?? null,
-					status: 'completed',
-					finished_reason: finishedReason ?? null,
+					status: assistantPersistFailed ? 'failed' : 'completed',
+					finished_reason: assistantPersistFailed
+						? 'assistant_persist_failed'
+						: (finishedReason ?? null),
 					tool_round_count: toolRounds ?? 0,
 					tool_call_count: normalizedToolCallCount,
 					validation_failure_count: observabilityWriter.getValidationFailureCount(),
@@ -4173,7 +4197,7 @@ export const POST: RequestHandler = async ({
 					cache_age_seconds: contextCacheAgeSecondsForTiming,
 					finished_at: new Date().toISOString()
 				},
-				'completed'
+				assistantPersistFailed ? 'failed' : 'completed'
 			);
 			if (resumingSupervisorCheckpoint && shouldResolveResumingCheckpoint) {
 				const checkpointId = resumingSupervisorCheckpoint.id;
@@ -4351,6 +4375,7 @@ export const POST: RequestHandler = async ({
 			await restoreResumingSupervisorCheckpoint('error');
 		} finally {
 			clearTimeout(turnTimeoutId);
+			clearInterval(progressHeartbeatId);
 			stopCancelWatcher?.();
 			// D4c: flush the detached persistence set (chat_tool_executions,
 			// timing_metrics, chat_turn_runs patches, agent_state, attachment links)

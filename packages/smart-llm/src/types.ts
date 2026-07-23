@@ -74,6 +74,11 @@ export interface JSONRequestOptions<T = unknown> {
 	temperature?: number;
 	maxTokens?: number;
 	timeoutMs?: number;
+	/**
+	 * Caller-owned cancellation (e.g. worker timeout/shutdown). An aborted
+	 * signal cancels the in-flight provider request and suppresses retries.
+	 */
+	signal?: AbortSignal;
 	/** Provider-supported reasoning controls (for example OpenRouter `reasoning.effort`). */
 	reasoning?: ReasoningOptions;
 	/**

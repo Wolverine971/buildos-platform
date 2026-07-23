@@ -31,8 +31,12 @@ BEGIN
       attempts = stalled_jobs.current_attempts + 1,
       processing_token = NULL,
       started_at = NULL,
+      -- Exponential backoff (capped at 16 minutes) plus up to 60s of jitter.
       scheduled_for = CASE
-        WHEN stalled_jobs.current_attempts + 1 < stalled_jobs.allowed_attempts THEN NOW()
+        WHEN stalled_jobs.current_attempts + 1 < stalled_jobs.allowed_attempts THEN
+          NOW()
+            + (LEAST(POWER(2, stalled_jobs.current_attempts), 16) || ' minutes')::INTERVAL
+            + (random() * INTERVAL '60 seconds')
         ELSE q.scheduled_for
       END,
       completed_at = CASE

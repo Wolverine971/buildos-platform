@@ -440,6 +440,7 @@ export class SmartLLMService {
 		temperature?: number;
 		max_tokens?: number;
 		timeoutMs?: number;
+		signal?: AbortSignal;
 		response_format?: { type: string };
 		reasoning?: unknown;
 		stream?: boolean;
@@ -480,6 +481,7 @@ export class SmartLLMService {
 			temperature,
 			max_tokens: params.max_tokens,
 			timeoutMs: params.timeoutMs,
+			signal: params.signal,
 			response_format: params.response_format,
 			reasoning: params.reasoning,
 			stream: params.stream,
@@ -623,6 +625,17 @@ export class SmartLLMService {
 		// Make the OpenRouter API call with model routing + local fallbacks
 		try {
 			for (let attempt = 0; attempt < maxAttempts; attempt++) {
+				// Caller cancellation (worker timeout/shutdown): stop immediately,
+				// never burn another paid attempt on work nobody owns anymore.
+				if (options.signal?.aborted) {
+					throw new Error(
+						`LLM request aborted: ${
+							options.signal.reason instanceof Error
+								? options.signal.reason.message
+								: 'caller cancelled'
+						}`
+					);
+				}
 				const remainingModels = preferredModels.filter(
 					(model) => !attemptedModels.has(model)
 				);
@@ -650,6 +663,7 @@ export class SmartLLMService {
 						reasoning: options.reasoning,
 						max_tokens: maxTokens,
 						timeoutMs: options.timeoutMs ?? this.defaultTimeoutMs,
+						signal: options.signal,
 						transforms,
 						providerMaxPrice: spendPlan?.providerMaxPrice
 					});
@@ -738,6 +752,11 @@ export class SmartLLMService {
 							const retryModels = [retryModel];
 							try {
 								// Try again with powerful profile
+								if (options.signal?.aborted) {
+									throw new Error(
+										'LLM validation retry aborted: caller cancelled'
+									);
+								}
 								const retryCompletion = await this.callChatCompletions({
 									model: retryModel,
 									models: retryModels,
@@ -749,6 +768,7 @@ export class SmartLLMService {
 									reasoning: options.reasoning,
 									max_tokens: maxTokens,
 									timeoutMs: options.timeoutMs ?? this.defaultTimeoutMs,
+									signal: options.signal,
 									transforms
 								});
 								const retryResponse = retryCompletion.response;

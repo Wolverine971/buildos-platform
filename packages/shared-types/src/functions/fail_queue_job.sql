@@ -27,7 +27,8 @@ BEGIN
 
   -- Determine if we should retry
   IF p_retry AND (COALESCE(v_job.attempts, 0) + 1 < COALESCE(v_job.max_attempts, 3)) THEN
-    -- Retry: increment attempts and schedule for later
+    -- Retry: increment attempts and schedule for later. Jitter (up to 60s)
+    -- prevents a provider outage from creating a synchronized retry wave.
     UPDATE queue_jobs
     SET
       status = 'pending',
@@ -37,7 +38,9 @@ BEGIN
       attempts = COALESCE(attempts, 0) + 1,
       error_message = p_error_message,
       updated_at = NOW(),
-      scheduled_for = NOW() + (v_retry_delay || ' minutes')::INTERVAL
+      scheduled_for = NOW()
+        + (v_retry_delay || ' minutes')::INTERVAL
+        + (random() * INTERVAL '60 seconds')
     WHERE id = p_job_id
       AND status IN ('processing', 'failed')
       AND (p_processing_token IS NULL OR processing_token = p_processing_token);

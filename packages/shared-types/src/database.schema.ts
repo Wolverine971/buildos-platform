@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-07-23T12:36:51.380Z
+// Generated on: 2026-07-23T22:30:21.067Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -328,6 +328,7 @@ export type DatabaseSchema = {
 		depth: number;
 		effort: string;
 		error: string | null;
+		execution_generation: number;
 		expected_output: string | null;
 		goal: string;
 		id: string;
@@ -1272,6 +1273,102 @@ export type DatabaseSchema = {
 		sent_at: string | null;
 		status: string;
 		updated_at: string | null;
+	};
+	email_relevance_scan_connections: {
+		checkpoint_attempts: number;
+		checkpoint_version: number;
+		completed_at: string | null;
+		connection_id: string | null;
+		created_at: string;
+		gmail_quota_budget: number;
+		gmail_quota_reserved: number;
+		gmail_quota_used: number;
+		id: string;
+		last_error_code: string | null;
+		lease_expires_at: string | null;
+		lease_owner: string | null;
+		lease_token_hash: string | null;
+		max_attempts: number;
+		message_cap: number;
+		messages_seen: number;
+		metadata_batch_ceiling: number;
+		model_cost_budget_micros: number;
+		model_token_budget: number;
+		next_attempt_at: string | null;
+		raw_content_byte_budget: number;
+		run_id: string;
+		runtime_ms_budget: number;
+		runtime_ms_reserved: number;
+		runtime_ms_used: number;
+		started_at: string | null;
+		state: string;
+		steps_completed: number;
+		synthetic_step: number;
+		terminal_reason_code: string | null;
+		total_attempts: number;
+		updated_at: string;
+	};
+	email_relevance_scan_projects: {
+		created_at: string;
+		invalidated_at: string | null;
+		invalidation_reason_code: string | null;
+		profile_hash: string;
+		profile_id: string;
+		profile_version: number;
+		project_id: string;
+		run_id: string;
+	};
+	email_relevance_scan_reservations: {
+		attempt: number;
+		checkpoint_version: number;
+		connection_scope_id: string;
+		created_at: string;
+		id: string;
+		operation_code: string;
+		operation_id: string;
+		policy_version: string;
+		reserved_quantity: number;
+		resource_kind: string;
+		run_id: string;
+		settled_at: string | null;
+		settled_quantity: number | null;
+		state: string;
+	};
+	email_relevance_scan_runs: {
+		cancel_requested_at: string | null;
+		completed_at: string | null;
+		configuration: Json;
+		connection_count: number;
+		control_plane_version: string;
+		created_at: string;
+		expires_at: string;
+		gmail_quota_budget: number;
+		gmail_quota_reserved: number;
+		gmail_quota_used: number;
+		id: string;
+		idempotency_key_hash: string;
+		manifest_hash: string;
+		message_cap_per_connection: number;
+		messages_seen: number;
+		model_cost_budget_micros: number;
+		model_token_budget: number;
+		pause_requested_at: string | null;
+		project_count: number;
+		query_policy_version: string;
+		quota_policy_version: string;
+		raw_content_byte_budget: number;
+		runtime_ms_budget: number;
+		runtime_ms_reserved: number;
+		runtime_ms_used: number;
+		serializer_version: string;
+		started_at: string | null;
+		state: string;
+		steps_completed: number;
+		terminal_reason_code: string | null;
+		updated_at: string;
+		user_id: string;
+		window_end: string;
+		window_start: string;
 	};
 	email_sequence_copy_overrides: {
 		body: string;
@@ -3919,6 +4016,10 @@ export const tableNames = [
 	'email_project_profiles',
 	'email_project_rules',
 	'email_recipients',
+	'email_relevance_scan_connections',
+	'email_relevance_scan_projects',
+	'email_relevance_scan_reservations',
+	'email_relevance_scan_runs',
 	'email_sequence_copy_overrides',
 	'email_sequence_enrollments',
 	'email_sequence_events',

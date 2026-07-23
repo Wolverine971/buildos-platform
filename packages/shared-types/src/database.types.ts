@@ -1448,6 +1448,7 @@ export type Database = {
           depth: number
           effort: string
           error: string | null
+          execution_generation: number
           expected_output: string | null
           goal: string
           id: string
@@ -1483,6 +1484,7 @@ export type Database = {
           depth?: number
           effort?: string
           error?: string | null
+          execution_generation?: number
           expected_output?: string | null
           goal: string
           id?: string
@@ -1518,6 +1520,7 @@ export type Database = {
           depth?: number
           effort?: string
           error?: string | null
+          execution_generation?: number
           expected_output?: string | null
           goal?: string
           id?: string
@@ -5290,6 +5293,352 @@ export type Database = {
             columns: ["email_id"]
             isOneToOne: false
             referencedRelation: "emails"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_relevance_scan_connections: {
+        Row: {
+          checkpoint_attempts: number
+          checkpoint_version: number
+          completed_at: string | null
+          connection_id: string | null
+          created_at: string
+          gmail_quota_budget: number
+          gmail_quota_reserved: number
+          gmail_quota_used: number
+          id: string
+          last_error_code: string | null
+          lease_expires_at: string | null
+          lease_owner: string | null
+          lease_token_hash: string | null
+          max_attempts: number
+          message_cap: number
+          messages_seen: number
+          metadata_batch_ceiling: number
+          model_cost_budget_micros: number
+          model_token_budget: number
+          next_attempt_at: string | null
+          raw_content_byte_budget: number
+          run_id: string
+          runtime_ms_budget: number
+          runtime_ms_reserved: number
+          runtime_ms_used: number
+          started_at: string | null
+          state: string
+          steps_completed: number
+          synthetic_step: number
+          terminal_reason_code: string | null
+          total_attempts: number
+          updated_at: string
+        }
+        Insert: {
+          checkpoint_attempts?: number
+          checkpoint_version?: number
+          completed_at?: string | null
+          connection_id?: string | null
+          created_at?: string
+          gmail_quota_budget: number
+          gmail_quota_reserved?: number
+          gmail_quota_used?: number
+          id?: string
+          last_error_code?: string | null
+          lease_expires_at?: string | null
+          lease_owner?: string | null
+          lease_token_hash?: string | null
+          max_attempts?: number
+          message_cap: number
+          messages_seen?: number
+          metadata_batch_ceiling: number
+          model_cost_budget_micros?: number
+          model_token_budget?: number
+          next_attempt_at?: string | null
+          raw_content_byte_budget?: number
+          run_id: string
+          runtime_ms_budget: number
+          runtime_ms_reserved?: number
+          runtime_ms_used?: number
+          started_at?: string | null
+          state?: string
+          steps_completed?: number
+          synthetic_step?: number
+          terminal_reason_code?: string | null
+          total_attempts?: number
+          updated_at?: string
+        }
+        Update: {
+          checkpoint_attempts?: number
+          checkpoint_version?: number
+          completed_at?: string | null
+          connection_id?: string | null
+          created_at?: string
+          gmail_quota_budget?: number
+          gmail_quota_reserved?: number
+          gmail_quota_used?: number
+          id?: string
+          last_error_code?: string | null
+          lease_expires_at?: string | null
+          lease_owner?: string | null
+          lease_token_hash?: string | null
+          max_attempts?: number
+          message_cap?: number
+          messages_seen?: number
+          metadata_batch_ceiling?: number
+          model_cost_budget_micros?: number
+          model_token_budget?: number
+          next_attempt_at?: string | null
+          raw_content_byte_budget?: number
+          run_id?: string
+          runtime_ms_budget?: number
+          runtime_ms_reserved?: number
+          runtime_ms_used?: number
+          started_at?: string | null
+          state?: string
+          steps_completed?: number
+          synthetic_step?: number
+          terminal_reason_code?: string | null
+          total_attempts?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_relevance_scan_connections_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "user_email_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_relevance_scan_connections_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "email_relevance_scan_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_relevance_scan_projects: {
+        Row: {
+          created_at: string
+          invalidated_at: string | null
+          invalidation_reason_code: string | null
+          profile_hash: string
+          profile_id: string
+          profile_version: number
+          project_id: string
+          run_id: string
+        }
+        Insert: {
+          created_at?: string
+          invalidated_at?: string | null
+          invalidation_reason_code?: string | null
+          profile_hash: string
+          profile_id: string
+          profile_version: number
+          project_id: string
+          run_id: string
+        }
+        Update: {
+          created_at?: string
+          invalidated_at?: string | null
+          invalidation_reason_code?: string | null
+          profile_hash?: string
+          profile_id?: string
+          profile_version?: number
+          project_id?: string
+          run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_relevance_scan_projects_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "email_relevance_scan_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_relevance_scan_reservations: {
+        Row: {
+          attempt: number
+          checkpoint_version: number
+          connection_scope_id: string
+          created_at: string
+          id: string
+          operation_code: string
+          operation_id: string
+          policy_version: string
+          reserved_quantity: number
+          resource_kind: string
+          run_id: string
+          settled_at: string | null
+          settled_quantity: number | null
+          state: string
+        }
+        Insert: {
+          attempt: number
+          checkpoint_version: number
+          connection_scope_id: string
+          created_at?: string
+          id?: string
+          operation_code: string
+          operation_id: string
+          policy_version: string
+          reserved_quantity: number
+          resource_kind: string
+          run_id: string
+          settled_at?: string | null
+          settled_quantity?: number | null
+          state?: string
+        }
+        Update: {
+          attempt?: number
+          checkpoint_version?: number
+          connection_scope_id?: string
+          created_at?: string
+          id?: string
+          operation_code?: string
+          operation_id?: string
+          policy_version?: string
+          reserved_quantity?: number
+          resource_kind?: string
+          run_id?: string
+          settled_at?: string | null
+          settled_quantity?: number | null
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_relevance_scan_reservations_connection_scope_id_fkey"
+            columns: ["connection_scope_id"]
+            isOneToOne: false
+            referencedRelation: "email_relevance_scan_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_relevance_scan_reservations_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "email_relevance_scan_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_relevance_scan_runs: {
+        Row: {
+          cancel_requested_at: string | null
+          completed_at: string | null
+          configuration: Json
+          connection_count: number
+          control_plane_version: string
+          created_at: string
+          expires_at: string
+          gmail_quota_budget: number
+          gmail_quota_reserved: number
+          gmail_quota_used: number
+          id: string
+          idempotency_key_hash: string
+          manifest_hash: string
+          message_cap_per_connection: number
+          messages_seen: number
+          model_cost_budget_micros: number
+          model_token_budget: number
+          pause_requested_at: string | null
+          project_count: number
+          query_policy_version: string
+          quota_policy_version: string
+          raw_content_byte_budget: number
+          runtime_ms_budget: number
+          runtime_ms_reserved: number
+          runtime_ms_used: number
+          serializer_version: string
+          started_at: string | null
+          state: string
+          steps_completed: number
+          terminal_reason_code: string | null
+          updated_at: string
+          user_id: string
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          cancel_requested_at?: string | null
+          completed_at?: string | null
+          configuration: Json
+          connection_count: number
+          control_plane_version: string
+          created_at?: string
+          expires_at: string
+          gmail_quota_budget: number
+          gmail_quota_reserved?: number
+          gmail_quota_used?: number
+          id?: string
+          idempotency_key_hash: string
+          manifest_hash: string
+          message_cap_per_connection: number
+          messages_seen?: number
+          model_cost_budget_micros?: number
+          model_token_budget?: number
+          pause_requested_at?: string | null
+          project_count: number
+          query_policy_version: string
+          quota_policy_version: string
+          raw_content_byte_budget?: number
+          runtime_ms_budget: number
+          runtime_ms_reserved?: number
+          runtime_ms_used?: number
+          serializer_version: string
+          started_at?: string | null
+          state?: string
+          steps_completed?: number
+          terminal_reason_code?: string | null
+          updated_at?: string
+          user_id: string
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          cancel_requested_at?: string | null
+          completed_at?: string | null
+          configuration?: Json
+          connection_count?: number
+          control_plane_version?: string
+          created_at?: string
+          expires_at?: string
+          gmail_quota_budget?: number
+          gmail_quota_reserved?: number
+          gmail_quota_used?: number
+          id?: string
+          idempotency_key_hash?: string
+          manifest_hash?: string
+          message_cap_per_connection?: number
+          messages_seen?: number
+          model_cost_budget_micros?: number
+          model_token_budget?: number
+          pause_requested_at?: string | null
+          project_count?: number
+          query_policy_version?: string
+          quota_policy_version?: string
+          raw_content_byte_budget?: number
+          runtime_ms_budget?: number
+          runtime_ms_reserved?: number
+          runtime_ms_used?: number
+          serializer_version?: string
+          started_at?: string | null
+          state?: string
+          steps_completed?: number
+          terminal_reason_code?: string | null
+          updated_at?: string
+          user_id?: string
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_relevance_scan_runs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -16421,6 +16770,19 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_email_relevance_scan_step: {
+        Args: {
+          p_connection_scope_id: string
+          p_expected_checkpoint: number
+          p_gmail_quota_units: number
+          p_lease_owner: string
+          p_processing_token_hash: string
+          p_run_id: string
+          p_runtime_ms: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
       claim_pending_email_sequence_sends: {
         Args: { p_limit?: number; p_sequence_key: string }
         Returns: {
@@ -16601,6 +16963,31 @@ export type Database = {
         }
         Returns: boolean
       }
+      control_email_relevance_scan_run: {
+        Args: {
+          p_action: string
+          p_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      create_agent_run_with_job: {
+        Args: {
+          p_job_metadata: Json
+          p_priority?: number
+          p_run: Json
+        }
+        Returns: Json
+      }
+      create_email_relevance_scan_run: {
+        Args: {
+          p_configuration: Json
+          p_idempotency_key_hash: string
+          p_manifest_hash: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       create_manual_project_version: {
         Args: { created_by_user?: string; target_project_id: string }
         Returns: number
@@ -16682,6 +17069,24 @@ export type Database = {
       delete_onto_project: {
         Args: { p_project_id: string }
         Returns: undefined
+      }
+      email_relevance_refresh_scan_run_state: {
+        Args: {
+          p_run_id: string
+        }
+        Returns: Json
+      }
+      email_relevance_release_scope_reservations: {
+        Args: {
+          p_scope_id: string
+        }
+        Returns: Json
+      }
+      email_relevance_scan_configuration_is_valid: {
+        Args: {
+          p_configuration: Json
+        }
+        Returns: Json
       }
       email_relevance_user_owns_project: {
         Args: {
@@ -16771,6 +17176,13 @@ export type Database = {
       exit_user_from_email_sequence: {
         Args: { p_reason?: string; p_sequence_key: string; p_user_id: string }
         Returns: number
+      }
+      expire_email_relevance_scan_run: {
+        Args: {
+          p_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
       }
       fail_queue_job: {
         Args: {
@@ -18009,6 +18421,21 @@ export type Database = {
             }
             Returns: Json
           }
+      settle_email_relevance_scan_step: {
+        Args: {
+          p_actual_gmail_quota_units: number
+          p_actual_runtime_ms: number
+          p_connection_scope_id: string
+          p_error_code?: string
+          p_expected_checkpoint: number
+          p_operation_id: string
+          p_processing_token_hash: string
+          p_result: string
+          p_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       skip_email_sequence_step: {

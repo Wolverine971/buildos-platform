@@ -34,6 +34,7 @@ export class OpenRouterClient {
 		temperature?: number;
 		max_tokens?: number;
 		timeoutMs?: number;
+		signal?: AbortSignal; // Caller cancellation, combined with the timeout signal
 		response_format?: { type: string };
 		reasoning?: unknown;
 		stream?: boolean;
@@ -63,11 +64,15 @@ export class OpenRouterClient {
 
 		try {
 			const timeoutMs = params.timeoutMs ?? 120000;
+			const timeoutSignal = AbortSignal.timeout(timeoutMs);
+			const requestSignal = params.signal
+				? AbortSignal.any([timeoutSignal, params.signal])
+				: timeoutSignal;
 			const response = await this.fetchImpl(this.apiUrl, {
 				method: 'POST',
 				headers,
 				body: JSON.stringify(body),
-				signal: AbortSignal.timeout(timeoutMs)
+				signal: requestSignal
 			});
 
 			if (!response.ok) {

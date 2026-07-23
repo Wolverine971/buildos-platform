@@ -932,6 +932,23 @@ export function createFastChatSessionService(
 			.select('*')
 			.single();
 
+		// Unique violation on uq_chat_messages_session_idempotency_key: a
+		// concurrent call (or a retry after a degraded-open lookup) already
+		// inserted this message — return the existing row instead of failing.
+		if (error && error.code === '23505' && idempotencyKey) {
+			const { data: winner } = await supabase
+				.from('chat_messages')
+				.select('*')
+				.eq('session_id', sessionId)
+				.eq('metadata->>idempotency_key', idempotencyKey)
+				.order('created_at', { ascending: true })
+				.limit(1)
+				.maybeSingle();
+			if (winner) {
+				return winner;
+			}
+		}
+
 		if (error) {
 			logger.warn('Failed to persist chat message', { error, sessionId, role });
 			logFastChatSessionError({

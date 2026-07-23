@@ -121,12 +121,16 @@ app.use((req, res, next) => {
 // Register SMS management routes
 app.use('/sms/scheduled', smsScheduledRoutes);
 
-// Health check endpoint
+// Health check endpoint — reflects queue liveness, not just Express liveness.
+// Railway restarts the process on repeated 503s, which is exactly what we
+// want when the claim loop is wedged or DB credentials have died.
 app.get('/health', (_req, res) => {
-	res.json({
-		status: 'healthy',
+	const queueHealth = queue.getHealth();
+	res.status(queueHealth.healthy ? 200 : 503).json({
+		status: queueHealth.healthy ? 'healthy' : 'unhealthy',
 		timestamp: new Date().toISOString(),
-		service: 'daily-brief-worker'
+		service: 'daily-brief-worker',
+		queue: queueHealth
 	});
 });
 
@@ -801,7 +805,21 @@ app.post('/queue/cleanup', async (req, res) => {
 // Start the server
 async function start() {
 	try {
-		// Add global error handlers FIRST to prevent process crashes
+		// Add global error handlers FIRST to prevent process crashes.
+		// Give the queue a short, bounded drain before exiting — the old
+		// fire-and-forget `void queue.stop(); process.exit(1)` killed every
+		// in-flight job mid-write, silently charging each one a retry attempt.
+		const crashExit = async (label: string) => {
+			try {
+				const timer = new Promise((resolve) => setTimeout(resolve, 5000));
+				await Promise.race([queue.stop(), timer]);
+			} catch (e) {
+				console.error(`Failed to stop queue during ${label} shutdown:`, e);
+			} finally {
+				process.exit(1);
+			}
+		};
+
 		process.on('uncaughtException', (error) => {
 			console.error('🚨 CRITICAL: Uncaught Exception', error);
 			console.error('Stack:', error.stack);
@@ -812,14 +830,7 @@ async function start() {
 					source: 'process.on'
 				}
 			}).finally(() => {
-				// Gracefully shutdown queue (fire-and-forget; we exit right after)
-				try {
-					void queue.stop();
-				} catch (e) {
-					console.error('Failed to stop queue:', e);
-				}
-				// Exit to allow restart
-				process.exit(1);
+				void crashExit('uncaughtException');
 			});
 		});
 
@@ -834,14 +845,7 @@ async function start() {
 					source: 'process.on'
 				}
 			}).finally(() => {
-				// Gracefully shutdown queue (fire-and-forget; we exit right after)
-				try {
-					void queue.stop();
-				} catch (e) {
-					console.error('Failed to stop queue:', e);
-				}
-				// Exit to allow restart
-				process.exit(1);
+				void crashExit('unhandledRejection');
 			});
 		});
 

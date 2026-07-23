@@ -1,4 +1,17 @@
 // apps/worker/src/workers/smsWorker.ts
+/**
+ * ⚠️ DORMANT CHANNEL — SMS is staged but NOT integrated (2026-07-23 audit).
+ *
+ * No send_sms job has ever completed in production (220/220 failed all-time).
+ * Known blocker to fix BEFORE enabling: the `queue_sms_message` SQL function
+ * (migration 20260421000000_notification_risk_cleanup.sql) builds job metadata
+ * WITHOUT `user_id`, while `validateSMSJobData` requires it — every job fails
+ * validation. Other pre-launch findings are documented in
+ * docs/operations/worker/queue-architecture-audit-verification-2026-07-23.md
+ * (N1–N3, N21): daily-SMS timezone day-boundary bug, non-idempotent retries,
+ * no Twilio idempotency, and notification status reporting 'sent' on queue.
+ * Keep this code staged; do not delete.
+ */
 import type { Json } from '@buildos/shared-types';
 import type { LegacyJob } from './shared/jobAdapter';
 import { SMSService, TwilioClient } from '@buildos/twilio-service';

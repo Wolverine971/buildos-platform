@@ -1,5 +1,12 @@
 // apps/worker/src/workers/notification/smsAdapter.ts
 /**
+ * ⚠️ DORMANT CHANNEL — SMS is staged but NOT integrated (2026-07-23 audit).
+ * `queue_sms_message` (SQL) omits `user_id` from the send_sms job metadata, so
+ * every queued SMS fails worker validation — this adapter's "success" only
+ * means "queued", never "delivered". Fix list before enabling:
+ * docs/operations/worker/queue-architecture-audit-verification-2026-07-23.md
+ * (N1, N21). Keep staged; do not delete.
+ *
  * SMS Adapter for Notification System
  *
  * Sends notification SMS messages via existing Twilio infrastructure

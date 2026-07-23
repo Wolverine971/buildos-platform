@@ -98,7 +98,9 @@ type AgentRunRow = Database['public']['Tables']['agent_runs']['Row'];
 type AgentRunProcessorResult = {
 	success: boolean;
 	run_id: string;
-	status: AgentRunRow['status'];
+	// 'superseded': this executor was fenced out by a newer claim generation
+	// and intentionally wrote nothing — the queue job result records why.
+	status: AgentRunRow['status'] | 'superseded';
 	message?: string;
 };
 
@@ -354,6 +356,23 @@ async function injectChatCompletionMessage(
 	result: Record<string, unknown>
 ): Promise<void> {
 	if (!run.parent_session_id) return;
+
+	// Idempotent under finalize retries: the insert runs BEFORE the terminal
+	// status update, so a failed finalize used to re-inject a duplicate summary
+	// on the queue retry. The idempotency_key is also covered by the unique
+	// chat-message index (migration 20260723040000) — 23505 means a prior
+	// attempt already delivered it.
+	const idempotencyKey = `agent-run:${run.id}:completion`;
+	const { data: existing } = await supabase
+		.from('chat_messages')
+		.select('id')
+		.eq('session_id', run.parent_session_id)
+		.eq('role', 'assistant')
+		.contains('metadata', { idempotency_key: idempotencyKey })
+		.limit(1)
+		.maybeSingle();
+	if (existing) return;
+
 	const { error } = await supabase.from('chat_messages').insert({
 		session_id: run.parent_session_id,
 		user_id: run.user_id,
@@ -364,10 +383,11 @@ async function injectChatCompletionMessage(
 			agent_run_id: run.id,
 			source: 'agent_run',
 			run_status: status,
-			parent_message_id: run.parent_message_id ?? null
+			parent_message_id: run.parent_message_id ?? null,
+			idempotency_key: idempotencyKey
 		} as never
 	});
-	if (error) {
+	if (error && error.code !== '23505') {
 		console.error('[agentRunWorker] failed to inject chat completion message', error.message);
 	}
 }
@@ -970,15 +990,30 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		};
 	}
 
+	// Execution fencing (2026-07-23 audit): claim by compare-and-swap on
+	// (status, execution_generation). Concurrent claimers read the same
+	// generation; only one CAS wins. Every critical run update below is
+	// predicated on OUR generation so a zombie executor (timed-out but still
+	// running) can no longer finalize or pause a run a newer executor owns.
+	// NOTE: `execution_generation` casts can drop once migration
+	// 20260723020000 is applied and types are regenerated (pnpm gen:types).
+	const previousGeneration =
+		typeof (initialRun as Record<string, unknown>).execution_generation === 'number'
+			? ((initialRun as Record<string, unknown>).execution_generation as number)
+			: 0;
+	const executionGeneration = previousGeneration + 1;
+
 	const { data: claimedRun, error: claimError } = await supabase
 		.from('agent_runs')
 		.update({
 			status: 'running',
 			started_at: initialRun.started_at ?? new Date().toISOString(),
-			completed_at: null
-		})
+			completed_at: null,
+			execution_generation: executionGeneration
+		} as never)
 		.eq('id', runId)
 		.eq('status', initialRun.status)
+		.eq('execution_generation', previousGeneration)
 		.select('*')
 		.maybeSingle();
 
@@ -992,16 +1027,42 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		};
 	}
 	if (!claimedRun) {
-		await job.log?.(`Agent Run ${runId} skipped; another job claimed it`);
+		await job.log?.(`Agent Run ${runId} skipped; another executor claimed it`);
 		return {
 			success: true,
 			run_id: runId,
 			status: 'skipped' as const,
-			message: 'Run was already claimed by another job'
+			message: 'Run was already claimed by another executor'
 		};
 	}
 
 	const run = claimedRun as AgentRunRow;
+
+	// Fenced writer for critical run-state transitions. Returns false when this
+	// executor has been superseded (a newer claim bumped the generation) — the
+	// caller must stop, not throw: the run legitimately belongs to someone else.
+	const fencedRunUpdate = async (
+		payload: Record<string, unknown>,
+		label: string
+	): Promise<boolean> => {
+		const { data, error } = await supabase
+			.from('agent_runs')
+			.update(payload as never)
+			.eq('id', runId)
+			.eq('execution_generation', executionGeneration)
+			.select('id')
+			.maybeSingle();
+		if (error) {
+			throw new Error(`Failed to ${label} agent run ${runId}: ${error.message}`);
+		}
+		if (!data) {
+			console.warn(
+				`⚠️ [agentRunWorker] ${label} fenced out for run ${runId} (generation ${executionGeneration} superseded)`
+			);
+			return false;
+		}
+		return true;
+	};
 	await emitEvent(runId, 'run.status', { status: 'running' });
 
 	const scope: AgentOpScope = {
@@ -1327,23 +1388,26 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		// session run go terminal, so the injected message must already exist.
 		await injectChatCompletionMessage(run, finalStatus, resultWithProposal);
 		const completedAt = new Date().toISOString();
-		const { error: finalizeError } = await supabase
-			.from('agent_runs')
-			.update({
+		// Fenced: a DB error still throws (queue retries the terminal
+		// transition), but a superseded generation returns quietly — a newer
+		// executor owns this run and will write its own terminal state.
+		const finalized = await fencedRunUpdate(
+			{
 				status: finalStatus,
 				result: resultWithProposal as never,
 				metrics: metrics as never,
 				change_set: (changeSet ?? null) as never,
 				completed_at: completedAt
-			})
-			.eq('id', runId);
-		if (finalizeError) {
-			// Completing the queue job while the run row is still `running`
-			// strands the run (and, for deep research, the user's capacity).
-			// Fail the job so the queue retries the terminal transition.
-			throw new Error(
-				`Failed to finalize agent run ${runId} as ${finalStatus}: ${finalizeError.message}`
-			);
+			},
+			`finalize as ${finalStatus}`
+		);
+		if (!finalized) {
+			return {
+				success: false,
+				run_id: runId,
+				status: 'superseded' as const,
+				message: 'Finalize skipped: superseded by a newer executor'
+			};
 		}
 		if (run.parent_run_id) {
 			try {
@@ -1500,9 +1564,8 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 
 		if (pendingSignals?.some((s) => s.kind === 'pause')) {
 			await consumeAllSignals();
-			await supabase
-				.from('agent_runs')
-				.update({
+			const paused = await fencedRunUpdate(
+				{
 					status: 'paused',
 					metrics: {
 						tokens: tokensTotal,
@@ -1514,9 +1577,12 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 						tool_calls: toolCalls,
 						duration_ms: Date.now() - startedAtMs
 					} as never
-				})
-				.eq('id', runId);
-			await emitEvent(runId, 'run.status', { status: 'paused' });
+				},
+				'pause'
+			);
+			if (paused) {
+				await emitEvent(runId, 'run.status', { status: 'paused' });
+			}
 			return {
 				kind: 'return',
 				result: { success: false, run_id: runId, status: 'paused' as const }
@@ -1624,6 +1690,19 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 
 	// Main JSON action-loop.
 	for (let iteration = 0; ; iteration++) {
+		// Infrastructure cancellation (queue timeout/shutdown): stop dead. The
+		// queue row is being retried or reclaimed — another executor may already
+		// own this run, so no further LLM calls or domain writes from here.
+		if (job.signal?.aborted) {
+			throw new Error(
+				`Agent run executor aborted: ${
+					job.signal.reason instanceof Error
+						? job.signal.reason.message
+						: 'queue timeout or shutdown'
+				}`
+			);
+		}
+
 		const signalDrain = await drainControlSignals();
 		if (signalDrain.kind === 'return') {
 			return signalDrain.result;
@@ -1717,6 +1796,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 						model: providerAttempt > 0 ? DEEPSEEK_V4_FLASH_MODEL : undefined,
 						reasoning: modelPolicy.reasoning,
 						maxTokens: turnTokenPlan.maxOutputTokens,
+						signal: job.signal,
 						spendLimit,
 						onSpendReservation: accounting.onSpendReservation,
 						validation: { retryOnParseError: true, maxRetries: 2 },

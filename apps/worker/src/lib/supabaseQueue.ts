@@ -1,6 +1,6 @@
 // apps/worker/src/lib/supabaseQueue.ts
 import type { Database, Json, QueueJobStatus, QueueJobType } from '@buildos/shared-types';
-import { queueConfig } from '../config/queueConfig';
+import { queueConfig, resolveWorkerTimeout } from '../config/queueConfig';
 import { updateJobProgress } from './progressTracker';
 import { supabase } from './supabase';
 
@@ -32,6 +32,14 @@ export interface ProcessingJob<T = unknown> {
 	data: T;
 	attempts: number;
 
+	/**
+	 * Aborted when the job's worker timeout fires or the queue shuts down.
+	 * Processors MUST treat an aborted signal as "you no longer own this work":
+	 * stop LLM/provider calls and skip further domain writes — a retry may
+	 * already be executing on another worker.
+	 */
+	signal: AbortSignal;
+
 	// Methods for job control
 	updateProgress: (progress: JobProgress) => Promise<void>;
 	log: (message: string) => Promise<void>;
@@ -53,11 +61,22 @@ export class SupabaseQueue {
 	private stalledJobRetryCount = 0;
 	private readonly MAX_STALLED_RETRIES = 3;
 
+	// Liveness tracking — lets /health detect a wedged poll loop or dead DB
+	// credentials instead of reporting a static 200 forever.
+	private started = false;
+	private startedAtMs: number | null = null;
+	private lastPollSuccessAtMs: number | null = null;
+	private consecutiveClaimFailures = 0;
+
 	// Graceful-shutdown drain tracking
 	private inFlightBatch: Promise<void> | null = null;
 	private inFlightJobTypes: string[] = [];
 	private drainTimeout: number;
 	private stopping: Promise<void> | null = null;
+
+	// One AbortController per in-flight job so timeout/shutdown can actually
+	// cancel processor work instead of just abandoning the promise.
+	private activeJobControllers = new Set<AbortController>();
 
 	constructor(options?: {
 		pollInterval?: number;
@@ -147,6 +166,9 @@ export class SupabaseQueue {
 		console.log(`   - Stalled timeout: ${this.stalledTimeout}ms`);
 		console.log(`   - Job types: ${Array.from(this.processors.keys()).join(', ')}`);
 
+		this.started = true;
+		this.startedAtMs = Date.now();
+
 		// Process immediately on start
 		await this.processJobs();
 
@@ -213,8 +235,13 @@ export class SupabaseQueue {
 				if (outcome === timedOut) {
 					const stillRunning = this.inFlightJobTypes.join(', ') || 'unknown';
 					console.warn(
-						`⚠️ Queue drain timed out after ${this.drainTimeout}ms; still running: ${stillRunning}`
+						`⚠️ Queue drain timed out after ${this.drainTimeout}ms; still running: ${stillRunning}. Aborting in-flight jobs.`
 					);
+					// Signal survivors to stop before SIGKILL lands — gives
+					// processors a chance to skip further domain writes.
+					for (const controller of this.activeJobControllers) {
+						controller.abort(new Error('Queue shutdown: drain timeout reached'));
+					}
 				} else {
 					console.log('✅ Queue drained in-flight jobs');
 				}
@@ -245,9 +272,16 @@ export class SupabaseQueue {
 			});
 
 			if (error) {
-				console.error('❌ Error claiming jobs:', error);
+				this.consecutiveClaimFailures++;
+				console.error(
+					`❌ Error claiming jobs (${this.consecutiveClaimFailures} consecutive):`,
+					error
+				);
 				return;
 			}
+
+			this.consecutiveClaimFailures = 0;
+			this.lastPollSuccessAtMs = Date.now();
 
 			if (!jobs || jobs.length === 0) {
 				return; // No jobs to process
@@ -344,6 +378,8 @@ export class SupabaseQueue {
 		startTime: number
 	): Promise<void> {
 		const stopHeartbeat = this.startJobHeartbeat(job);
+		const abortController = new AbortController();
+		this.activeJobControllers.add(abortController);
 		try {
 			// Create processing job wrapper
 			const processingJob: ProcessingJob = {
@@ -352,6 +388,7 @@ export class SupabaseQueue {
 				userId: job.user_id!,
 				data: job.metadata,
 				attempts: job.attempts || 0,
+				signal: abortController.signal,
 
 				updateProgress: async (progress: JobProgress) => {
 					const success = await updateJobProgress(
@@ -377,10 +414,15 @@ export class SupabaseQueue {
 			const result = await this.withWorkerTimeout(
 				processor(processingJob),
 				job.queue_job_id,
-				job.job_type
+				job.job_type,
+				abortController
 			);
 
-			// Mark as completed
+			// Mark as completed. IMPORTANT: a completion-RPC failure must NOT fall
+			// into the processor-failure path — the work already succeeded, and
+			// requeueing it would re-run every side effect. Retry the RPC briefly;
+			// if it still fails, leave the row for stalled-job recovery (an
+			// at-least-once tradeoff, but never an immediate guaranteed re-run).
 			const completeArgs: {
 				p_job_id: string;
 				p_result: Json;
@@ -392,13 +434,25 @@ export class SupabaseQueue {
 			if (job.processing_token) {
 				completeArgs.p_processing_token = job.processing_token;
 			}
-			const { data: completed, error } = await supabase.rpc(
-				'complete_queue_job',
-				completeArgs
-			);
 
-			if (error) {
-				throw new Error(`Failed to mark job as completed: ${error.message}`);
+			let completed: boolean | null = null;
+			let completeError: { message: string } | null = null;
+			for (let attempt = 0; attempt < 3; attempt++) {
+				if (attempt > 0) {
+					await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+				}
+				const { data, error } = await supabase.rpc('complete_queue_job', completeArgs);
+				completed = data;
+				completeError = error;
+				if (!error) break;
+			}
+
+			if (completeError) {
+				console.error(
+					`❌ CRITICAL: could not mark job ${job.queue_job_id} completed after retries: ${completeError.message}. ` +
+						`Job succeeded but remains 'processing'; stalled recovery may re-run it.`
+				);
+				return;
 			}
 
 			if (completed !== true) {
@@ -430,6 +484,7 @@ export class SupabaseQueue {
 			}
 		} finally {
 			stopHeartbeat();
+			this.activeJobControllers.delete(abortController);
 		}
 	}
 
@@ -481,17 +536,25 @@ export class SupabaseQueue {
 	private async withWorkerTimeout<T>(
 		promise: Promise<T>,
 		queueJobId: string,
-		jobType: string
+		jobType: string,
+		abortController: AbortController
 	): Promise<T> {
+		const timeoutMs = resolveWorkerTimeout(jobType);
 		let timeout: NodeJS.Timeout | null = null;
 		const timeoutPromise = new Promise<T>((_, reject) => {
 			timeout = setTimeout(() => {
+				// Abort FIRST so the processor's in-flight I/O is cancelled — the
+				// queue row is about to be retried and a second executor may
+				// claim it; the old one must stop doing domain work.
+				abortController.abort(
+					new Error(`Worker timeout after ${timeoutMs}ms for ${jobType}`)
+				);
 				reject(
 					new Error(
-						`Worker timed out after ${queueConfig.workerTimeout}ms for ${jobType} job ${queueJobId}`
+						`Worker timed out after ${timeoutMs}ms for ${jobType} job ${queueJobId}`
 					)
 				);
-			}, queueConfig.workerTimeout);
+			}, timeoutMs);
 		});
 
 		try {
@@ -580,6 +643,55 @@ export class SupabaseQueue {
 				this.stalledJobRetryCount = 0;
 			}
 		}
+	}
+
+	/**
+	 * Liveness snapshot for /health. Unhealthy when the claim RPC keeps
+	 * failing or the poll loop has silently stopped ticking. A long-running
+	 * batch is NOT unhealthy — polling legitimately pauses while a batch is
+	 * in flight, so `processingBatch` suspends the staleness check.
+	 */
+	getHealth(): {
+		healthy: boolean;
+		reason?: string;
+		startedAt: string | null;
+		lastPollSuccessAt: string | null;
+		consecutiveClaimFailures: number;
+		processingBatch: boolean;
+		draining: boolean;
+	} {
+		const snapshot = {
+			startedAt: this.startedAtMs ? new Date(this.startedAtMs).toISOString() : null,
+			lastPollSuccessAt: this.lastPollSuccessAtMs
+				? new Date(this.lastPollSuccessAtMs).toISOString()
+				: null,
+			consecutiveClaimFailures: this.consecutiveClaimFailures,
+			processingBatch: this.isProcessing,
+			draining: this.stopping !== null
+		};
+
+		if (!this.started) {
+			return { healthy: false, reason: 'queue_not_started', ...snapshot };
+		}
+		if (this.stopping) {
+			// Shutting down on purpose — don't trigger a restart mid-drain.
+			return { healthy: true, reason: 'draining', ...snapshot };
+		}
+		if (this.consecutiveClaimFailures >= 3) {
+			return { healthy: false, reason: 'repeated_claim_failures', ...snapshot };
+		}
+
+		const staleThresholdMs = Math.max(5 * this.pollInterval, 60_000);
+		const referenceMs = this.lastPollSuccessAtMs ?? this.startedAtMs!;
+		if (!this.isProcessing && Date.now() - referenceMs > staleThresholdMs) {
+			return {
+				healthy: false,
+				reason: this.lastPollSuccessAtMs ? 'poll_loop_stalled' : 'no_successful_poll',
+				...snapshot
+			};
+		}
+
+		return { healthy: true, ...snapshot };
 	}
 
 	/**

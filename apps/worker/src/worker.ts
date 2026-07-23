@@ -38,6 +38,8 @@ import { processBriefAudio as processBriefAudioJob } from './workers/briefAudio/
 import { createLegacyJob } from './workers/shared/jobAdapter';
 import { validateEnvironment } from './config/queueConfig';
 import { cleanupStaleJobs } from './lib/utils/queueCleanup';
+import { checkQueueAlerts, emitQueueAlerts } from './lib/queueAlerts';
+import { supabase } from './lib/supabase';
 import { queueRuntimeConfig as config, queue } from './lib/queue';
 
 // Validate environment before starting
@@ -475,6 +477,17 @@ export async function startWorker() {
 						`   ${String(stat.job_type)} - ${String(stat.status)}: ${String(stat.count)}`
 					);
 				});
+			}
+
+			// Alert tripwires: failed-job spikes + oldest runnable pending age.
+			try {
+				const alerts = await checkQueueAlerts(supabase);
+				await emitQueueAlerts(alerts);
+			} catch (error) {
+				console.error(
+					'⚠️ Queue alert check crashed:',
+					error instanceof Error ? error.message : error
+				);
 			}
 		}, config.statsUpdateInterval);
 

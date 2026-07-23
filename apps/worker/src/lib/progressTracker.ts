@@ -332,7 +332,6 @@ export class ProgressTracker {
 // Default global progress tracker instance using configuration
 export const progressTracker = new ProgressTracker({
 	maxRetries: queueConfig.progressUpdateRetries,
-	retryDelayMs: queueConfig.retryBackoffBase,
 	enableAuditLog: queueConfig.enableProgressTracking && process.env.NODE_ENV !== 'production'
 });
 

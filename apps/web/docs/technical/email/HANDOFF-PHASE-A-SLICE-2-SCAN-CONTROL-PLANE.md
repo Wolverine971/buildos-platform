@@ -3,9 +3,11 @@
 # Handoff — Gmail Relevance Phase A, Slice 2 Scan Control Plane
 
 **Created:** 2026-07-23  
-**Status:** Ready to implement after the Slice 1 profile/rule migration receives its exact-file
-production verification receipt. Slice 2 is a synthetic control-plane build: it must not call Gmail
-or a model.  
+**Status:** Complete on 2026-07-23. The schema/RPC migration is live and ledger-aligned, the gated
+server control plane and deterministic synthetic executor are implemented, and the disposable SQL
+plus focused application suites pass. No Gmail/model call or queue registration was added; both
+Phase A flags remain default off.
+
 **Tracker:** `tasker/36-gmail-project-relevance-phase-a.md`  
 **Parent handoff:**
 [HANDOFF-PHASE-A-PROJECT-RELEVANCE.md](HANDOFF-PHASE-A-PROJECT-RELEVANCE.md)  
@@ -42,15 +44,79 @@ flowchart LR
 
 - Three independent read-only Gmail/Workspace connections already exist for DJ's BuildOS user.
 - Slice 1's deterministic project-profile compiler and exact-user read-only preview are implemented
-  and tested locally.
-- `20260723000000_gmail_relevance_project_profiles.sql` is transactional and disposable-database
-  verified, but it has not been applied to production.
-- Focused Gmail plus Phase A tests pass 104/104, and shared generated database types build.
+  and tested. Its physical production schema was found already present; exact ledger version
+  `20260723000000` was reconciled and verified before Slice 2.
+- `20260723211500_gmail_relevance_scan_control_plane.sql` is transactionally verified, applied to
+  production through the exact-file protocol, and aligned in the local/remote ledgers.
+- Focused Gmail plus Phase A tests pass 65/65 across 13 files, the full web check passes with zero
+  errors/warnings, and freshly generated shared database types build.
 - `GMAIL_RELEVANCE_PHASE_A_ENABLED` and `GMAIL_RELEVANCE_MODEL_ENABLED` remain default off. The
   Phase A surface also requires an exact match in `GMAIL_RELEVANCE_PHASE_A_USER_IDS`.
-- No Phase A scan queue, provider read, classifier, observation, candidate, or review UI exists.
+- No Phase A scan queue registration, provider read, classifier, observation, candidate, or review
+  UI exists.
 - The production migration ledger remains intentionally sparse. Repository-wide `db push`, bulk
   repair, and opportunistic legacy migration cleanup are prohibited.
+
+## Implementation checkpoint — 2026-07-23
+
+The first content-free contract slice is implemented locally:
+
+- `scan-manifest.ts` strictly validates the manual pilot input, normalizes timestamps, rejects
+  duplicate scopes, sorts connection/project IDs, hashes the plaintext idempotency key with domain
+  separation, and hashes an immutable canonical configuration;
+- `scan-budget.ts` locks Gmail quota policy v1 at 20 units per future `messages.get`, 5 per future
+  `messages.list`, at most 50 metadata gets per bounded operation, and a conservative 20,050-unit
+  per-connection ceiling (1,000 gets plus at most 10 list pages);
+- Slice 2 raw-content, model-token, and model-cost budgets are zero and reject positive reservation
+  or settlement;
+- `scan-state.ts` locks run/connection transitions, aggregate terminal derivation, bounded synthetic
+  retry behavior, stale-delivery no-ops, and expired-lease recovery;
+- `scan-job.ts` accepts exactly `run_id`, `connection_scope_id`, `checkpoint_version`, and an opaque
+  `processing_token`; and
+- five focused suites pass 21/21, including canonical order/offset tests, altered-input idempotency
+  detection, forbidden-field scanning, and a source/import test proving these contracts have no
+  provider or model dependency.
+
+At that checkpoint no migration, queue type, endpoint, provider call, model call, deployment flag,
+or production state had changed. The full web check and focused lint for the new files passed. A wider
+legacy Gmail run also exposed a pre-existing nondeterministic tamper assertion in
+`gmail-read-cursor.test.ts`: mutating only the final base64url padding bits can decode to the same
+bytes. That existing test/path is outside Slice 2 and remains a separate follow-up; the new suites
+are green.
+
+The reviewed implementation plan is:
+
+1. Obtain and record the Slice 1 exact-file production apply/verification receipt. This is a
+   separate production action and is not implied by local Slice 2 work.
+2. Immediately re-check local and remote migration version ledgers, then choose one unique UTC
+   version for the transactional Slice 2 migration. Do not preselect a version or use `db push`.
+3. Add run, project-scope, connection-scope, and reservation-ledger tables with exact-shape JSON,
+   byte ceilings, immutable-column triggers, owner-read RLS, and browser write denial.
+4. Put manifest creation, lease/reserve, checkpoint/settle, pause/resume/cancel, expiry, and
+   disconnect cleanup behind narrowly granted atomic RPCs. Any `SECURITY DEFINER` function must use
+   an empty `search_path`, schema-qualified relations, and explicit execute revocation/grants.
+5. Verify the migration in disposable PostgreSQL with two users, three connections, concurrent
+   claims, stale replay, budget exhaustion, ownership failures, immutable-field failures, RLS, and
+   disconnect isolation before any production apply decision.
+6. Implement the ownership-checked server control plane and deterministic synthetic executor. Drive
+   it directly in integration tests first; add `queue_jobs` transport only if the lifecycle proof
+   needs it, and never make that queue the source of truth.
+7. Run the three-account lifecycle/leak suite, update exact receipts here, and stop for the separate
+   Slice 3 metadata-only retrieval handoff.
+
+Research checked for this plan: Google's current
+[Gmail quota documentation](https://developers.google.com/workspace/gmail/api/reference/quota)
+confirms the 20/5 unit costs and 6,000-unit per-user/project minute limit; the
+[Gmail list reference](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/list)
+confirms a 500-result request maximum; PostgreSQL documents
+[row locks](https://www.postgresql.org/docs/current/sql-select.html#SQL-FOR-UPDATE-SHARE) and
+[`UPDATE ... RETURNING`](https://www.postgresql.org/docs/current/sql-update.html) for atomic
+claims/CAS; Supabase recommends
+[owner-scoped RLS](https://supabase.com/docs/guides/database/postgres/row-level-security) and
+requires a fixed `search_path` plus explicit privileges for
+[`SECURITY DEFINER` functions](https://supabase.com/docs/guides/database/functions); and
+[RFC 8785](https://www.rfc-editor.org/info/rfc8785/) supports deterministic JSON canonicalization
+before hashing.
 
 ## Hard boundary for this slice
 
@@ -265,6 +331,60 @@ control plane, not the reverse.
    counts and migration receipt.
 7. Stop. Write the Slice 3 metadata-only A/B retrieval handoff before importing or calling the Gmail
    gateway.
+
+## Completion receipt — 2026-07-23
+
+Slice 2 is complete.
+
+### Slice 1 prerequisite reconciliation
+
+- The linked production ledger initially lacked `20260723000000`, while fresh generated types and
+  read-only table inspection showed all three Slice 1 tables already live.
+- An isolated exact-file apply stopped on its first `CREATE TABLE` because
+  `email_project_profiles` already existed. Because the migration is wrapped in one transaction,
+  that attempt made no production change.
+- Only version `20260723000000` was repaired to `applied`. A second ledger read showed the local and
+  remote versions aligned. Production types were regenerated and shared types built successfully.
+
+### Slice 2 migration receipt
+
+- Unique version: `20260723211500`.
+- Exact file: `supabase/migrations/20260723211500_gmail_relevance_scan_control_plane.sql`.
+- Disposable PostgreSQL verification applied Slice 1 then Slice 2 from zero and ended with
+  `gmail_relevance_scan_control_plane_ok`.
+- The permanent SQL harness covers two users, three connections, two projects, idempotent creation,
+  altered-input conflict, foreign scopes, immutable manifests, one live-lease winner, stale replay,
+  60 exactly-once successful checkpoints, pause/resume, expired-lease recovery, retry exhaustion,
+  fail-closed quota stop, cancellation before and during work, run/scope binding, disconnect
+  isolation, disabled content/model resources, project invalidation, owner RLS, browser write/RPC
+  denial, and manifest expiry.
+- The isolated production dry-run listed only
+  `20260723211500_gmail_relevance_scan_control_plane.sql`; the exact apply completed successfully.
+- Post-apply ledger output showed `20260723211500` aligned locally/remotely. Read-only production
+  table inspection showed `email_relevance_scan_runs`, `email_relevance_scan_projects`,
+  `email_relevance_scan_connections`, and `email_relevance_scan_reservations` live with zero rows.
+- Fresh generated types contain all four tables and the eight Slice 2 RPCs (241 tables and 14 views
+  total). `@buildos/shared-types` builds successfully.
+
+### Runtime and verification receipt
+
+- `scan-control-plane.ts` applies the default-off exact-user gate to create, claim, settle, control,
+  and expiry calls; builds canonical manifests; hashes processing tokens before persistence; binds
+  both run and connection-scope IDs; and maps database failures to fixed content-free codes.
+- `scan-synthetic-executor.ts` reserves 1,000 simulated Gmail units and 60,000 simulated runtime
+  milliseconds before each deterministic step, settles through the CAS RPC, and treats rejected or
+  replayed work as a no-op. Its source has no provider/model import path.
+- Focused Gmail plus Phase A result: 65/65 tests passing across 13 files.
+- Focused Slice 2 lint: passing.
+- Full `@buildos/web` check after production type generation: zero errors and zero warnings.
+- Explicit runtime/SQL leak scan found no mailbox value or content-bearing durable column. The only
+  forbidden terms in the SQL harness are the column-name denylist used by the assertion itself.
+- `GMAIL_RELEVANCE_PHASE_A_ENABLED` and `GMAIL_RELEVANCE_MODEL_ENABLED` were not changed. Their code
+  defaults remain off. No queue, cron, watch, provider operation, model operation, or Gmail mutation
+  was registered.
+
+The next boundary is the separate
+[Slice 3 metadata-only A/B retrieval handoff](HANDOFF-PHASE-A-SLICE-3-METADATA-RETRIEVAL.md).
 
 ## Required test matrix
 

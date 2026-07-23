@@ -1,5 +1,13 @@
 // apps/worker/src/workers/dailySmsWorker.ts
 /**
+ * ⚠️ DORMANT CHANNEL — SMS is staged but NOT integrated (2026-07-23 audit).
+ * Before enabling, fix the findings in
+ * docs/operations/worker/queue-architecture-audit-verification-2026-07-23.md:
+ * N2 (schedules the WRONG local day — cron fires 00:00 UTC and computes "today"
+ * in the user's timezone at that instant, so US users only get post-8PM
+ * reminders) and N3 (non-idempotent on retry — a queue retry re-runs LLM
+ * generation and inserts a duplicate set of scheduled messages + send jobs).
+ *
  * Daily SMS Worker - Phase 2 with LLM Message Generation
  *
  * Processes daily SMS scheduling jobs for calendar event reminders.

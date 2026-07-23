@@ -57,12 +57,19 @@ describe('SMS retry ownership', () => {
 });
 
 describe('queue processor timeout', () => {
-	it('enforces the configured worker timeout around job processors', () => {
+	it('enforces the configured per-type worker timeout around job processors', () => {
 		const source = readRepoFile('apps/worker/src/lib/supabaseQueue.ts');
 
-		expect(source).toContain('queueConfig.workerTimeout');
+		expect(source).toContain('resolveWorkerTimeout(jobType)');
 		expect(source).toContain('Promise.race');
 		expect(source).toContain('Worker timed out after');
+	});
+
+	it('aborts the processor signal when the worker timeout fires', () => {
+		const source = readRepoFile('apps/worker/src/lib/supabaseQueue.ts');
+
+		expect(source).toContain('signal: abortController.signal');
+		expect(source).toContain('abortController.abort(');
 	});
 
 	it('processes claimed queue jobs concurrently within each batch', () => {

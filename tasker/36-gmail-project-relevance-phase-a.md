@@ -4,11 +4,12 @@
 
 **Created 2026-07-22.** Owner: Email relevance / product engineer.  
 **Type:** bounded internal evaluation build.  
-**Status:** A0 is complete for authoring and Slice 1 is implemented locally. Production is linked,
-the Gmail migration is reconciled, generated database types are fresh, and the deterministic
-profile compiler/read-only preview are tested. The Phase A profile/rule migration is locally
-verified but not applied to production. Slice 2 is fully specified and ready to implement after
-that exact-file production verification receipt.  
+**Status:** A0, Slice 1, and the synthetic Slice 2 control plane are complete. The profile schema is
+live and its exact ledger version is reconciled. Slice 2 migration `20260723211500` is live,
+ledger-aligned, and verified; generated production types are fresh. The exact-user-gated server
+control plane and provider-free synthetic executor are implemented and tested. Both Phase A flags
+remain default off, no scan queue is registered, and no Gmail or model call was added.
+
 **Handoff:** `apps/web/docs/technical/email/HANDOFF-PHASE-A-PROJECT-RELEVANCE.md`  
 **Slice 2 handoff:**
 `apps/web/docs/technical/email/HANDOFF-PHASE-A-SLICE-2-SCAN-CONTROL-PLANE.md`  
@@ -45,10 +46,13 @@ and cost whether daily-brief ingestion is warranted.
       `BUILDOS_SUPABASE_CLI_VERSION=2.90.0`; replace the hand-authored Gmail column mirror with a
       generated compatibility/narrowing layer.
 - [x] Add default-off Phase A and model flags to root/web env examples.
-- [ ] Keep both Phase A flags disabled in deployment policy until their respective gates pass.
+- [x] Keep both Phase A flags disabled in deployment policy through Slice 2. They were not changed
+      during either production migration and remain fail-closed by default.
 - [x] Lock the retention/deletion matrix, observability allowlist, and synthetic-fixture contract in
       the Phase A handoff.
-- [ ] Encode those boundaries in schema constraints, queue serializers, and leak tests.
+- [x] Encode Slice 2 boundaries in schema constraints, the strict four-field job serializer, and
+      durable-field/source import leak tests. Queue registration remains deferred to Slice 3 or
+      later if it is actually needed.
 - [x] Add synthetic profile/message fixtures that contain no real mailbox content.
 
 ## Slice 1 — Profile compiler and preview
@@ -56,7 +60,8 @@ and cost whether daily-brief ingestion is warranted.
 - [x] Lock the TypeScript field contract for versioned profiles and explicit rules.
 - [x] Author `20260723000000_gmail_relevance_project_profiles.sql` with owner-scoped profiles,
       immutable sequential versions, encrypted exact-match rules, RLS, and service-role-only writes.
-- [ ] Apply that exact migration to production and regenerate types only after final SQL review.
+- [x] Reconcile the already-live physical schema to exact ledger version `20260723000000`, verify
+      the three tables, regenerate production types, and build shared types.
 - [x] Implement deterministic compiler with field-level provenance, negative evidence, TTLs,
       bounded fields, stable hashes, and explainable diffs.
 - [x] Add ownership, determinism, normalization, bounds, TTL, diff, source-deletion, and synthetic
@@ -70,11 +75,12 @@ and cost whether daily-brief ingestion is warranted.
 - [x] Lock the synthetic-only implementation contract, storage responsibilities, state machine,
       atomic reservation/settlement rules, access boundary, test matrix, and exit criteria in the
       Slice 2 handoff.
-- [ ] Add immutable scan manifests and configuration hashes.
-- [ ] Add per-account resumable checkpoints and idempotency constraints.
-- [ ] Add Gmail quota/time counters and fail-closed budget reservation.
-- [ ] Define partial/cancelled/quota-stopped/failed/expired behavior.
-- [ ] Prove synthetic three-account pause/resume/cancel without duplicates.
+- [x] Add immutable scan manifests and configuration hashes.
+- [x] Add per-account resumable checkpoints and idempotency constraints.
+- [x] Add Gmail quota/time counters and fail-closed reservation/settlement accounting.
+- [x] Define and database-enforce partial/cancelled/quota-stopped/failed/expired behavior.
+- [x] Prove a synthetic three-account pause/resume lifecycle, cancellation, replay no-ops, lease
+      recovery, retry exhaustion, quota stop, disconnect isolation, expiry, RLS, and leak safety.
 
 ## Slice 3 — Metadata-only A/B retrieval
 
@@ -112,20 +118,21 @@ and cost whether daily-brief ingestion is warranted.
 
 ## Immediate next task
 
-Complete final review and exact-file production verification for the profile/rule migration, then
-implement Slice 2's TypeScript manifest/state/budget contracts and synthetic tests before its
-database migration or executor. Do not combine the first Gmail scan, queue rollout, or any model
-call with either migration.
+Begin only the separately reviewed Slice 3 metadata-only A/B retrieval handoff. Keep provider reads
+behind the existing exact-user gate and Slice 2 reservation/checkpoint RPCs. Do not add a model,
+mailbox body/attachment read, watch, recurring poll, or Gmail mutation.
 
 ## Current verification
 
-- Phase A compiler/source/config suites: 14/14 passing.
-- Existing focused Gmail suites: 90/90 passing (104/104 combined).
-- `@buildos/shared-types` build: passing after fresh production type generation.
-- Phase A profile/rule migration: clean transactional apply in a disposable PostgreSQL 16 database;
-  positive insert/sync path and negative owner, version-sequence, immutability, and rule-scope paths
-  verified. It has not been applied to production.
+- Production ledger: `20260723000000` and `20260723211500` aligned locally/remotely.
+- Production schema: four Slice 2 tables live with zero rows immediately after apply; fresh types
+  contain all four tables and eight Slice 2 RPCs (241 tables and 14 views total).
+- `@buildos/shared-types` build: passing after fresh post-apply production type generation.
+- Phase A profile/rule schema: three tables live; exact ledger version reconciled after the physical
+  schema was found pre-existing.
+- Slice 2 migration: clean transactional apply plus full lifecycle/RLS verification in disposable
+  PostgreSQL, followed by isolated exact-file production dry-run and apply.
 - Svelte autofixer for `/admin/gmail-relevance`: zero issues or suggestions.
-- Full `@buildos/web` check: Phase A/Gmail diagnostics are clear; the worktree currently has two
-  unrelated `ActivityEntry` narrowing errors in `agent-chat-sse-handler.ts` from a separate
-  in-progress agent-chat change.
+- Full `@buildos/web` check: zero errors and zero warnings after post-apply type generation.
+- Focused Gmail plus Phase A suites: 65/65 passing across 13 files.
+- Focused lint for the Slice 2 server/runtime files: passing.

@@ -52,6 +52,21 @@ const ENGAGEMENT_BACKOFF_ENABLED = process.env.ENGAGEMENT_BACKOFF_ENABLED === 't
 // Start generating briefs 2 minutes before the user's scheduled time
 const GENERATION_BUFFER_MS = 2 * 60 * 1000; // 2 minutes
 
+// If the hourly tick that should have scheduled a brief was missed (e.g. the
+// worker was down for a deploy/restart), backfill it instead of silently
+// rolling the user's run time to the next cycle. Bounded so an outage longer
+// than this doesn't dump a backlog of stale briefs.
+export const MISSED_BRIEF_LOOKBACK_MS = 60 * 60 * 1000; // 1 hour
+
+export function isMissedRunSchedulable(
+	runTime: Date,
+	now: Date,
+	lookbackMs: number = MISSED_BRIEF_LOOKBACK_MS
+): boolean {
+	const ageMs = now.getTime() - runTime.getTime();
+	return ageMs > 0 && ageMs <= lookbackMs;
+}
+
 // Initialize backoff calculator
 const backoffCalculator = new BriefBackoffCalculator();
 let agentRunCostReconciliationInFlight: Promise<void> | null = null;
@@ -441,6 +456,22 @@ export function calculateNextOperativeRunTime(
 	return fromZonedTime(targetInTz, timezone);
 }
 
+// A worker that crashes between locking an Operative and clearing the lock
+// leaves schedule_locked_at set forever, permanently excluding it from the
+// due-scan. Treat locks older than this as abandoned and reclaimable.
+export const STALE_OPERATIVE_LOCK_MS = 15 * 60 * 1000;
+
+export function isOperativeScheduleLockClaimable(
+	scheduleLockedAt: string | null,
+	now: Date = new Date(),
+	staleLockMs: number = STALE_OPERATIVE_LOCK_MS
+): boolean {
+	if (!scheduleLockedAt) return true;
+	const lockedAtMs = new Date(scheduleLockedAt).getTime();
+	if (!Number.isFinite(lockedAtMs)) return true;
+	return now.getTime() - lockedAtMs >= staleLockMs;
+}
+
 async function deferOperativeSchedule(
 	operativeId: string,
 	message: string,
@@ -539,11 +570,12 @@ async function enqueueScheduledOperativeRun(
 
 export async function checkAndScheduleAgentOperatives(now: Date = new Date()): Promise<void> {
 	const dueThrough = addMinutes(now, 5);
+	const staleLockThreshold = new Date(now.getTime() - STALE_OPERATIVE_LOCK_MS);
 	const { data: operatives, error } = await (supabase as any)
 		.from('agent_operatives')
 		.select('*')
 		.eq('schedule_enabled', true)
-		.is('schedule_locked_at', null)
+		.or(`schedule_locked_at.is.null,schedule_locked_at.lt.${staleLockThreshold.toISOString()}`)
 		.not('next_run_at', 'is', null)
 		.lte('next_run_at', dueThrough.toISOString())
 		.order('next_run_at', { ascending: true })
@@ -571,19 +603,30 @@ export async function checkAndScheduleAgentOperatives(now: Date = new Date()): P
 			continue;
 		}
 
-		const { data: locked, error: lockError } = await (supabase as any)
+		// Match on the schedule_locked_at value we just observed (null or a stale
+		// timestamp) so two scheduler replicas can't both win the claim.
+		const observedLockedAt = candidate.schedule_locked_at;
+		let lockUpdate = (supabase as any)
 			.from('agent_operatives')
 			.update({ schedule_locked_at: now.toISOString(), schedule_error: null })
 			.eq('id', candidate.id)
-			.eq('next_run_at', candidate.next_run_at)
-			.is('schedule_locked_at', null)
-			.select('*')
-			.maybeSingle();
+			.eq('next_run_at', candidate.next_run_at);
+		lockUpdate = observedLockedAt
+			? lockUpdate.eq('schedule_locked_at', observedLockedAt)
+			: lockUpdate.is('schedule_locked_at', null);
+
+		const { data: locked, error: lockError } = await lockUpdate.select('*').maybeSingle();
 		if (lockError) {
 			console.error(`🧭 Failed to lock Operative ${candidate.id}:`, lockError);
 			continue;
 		}
 		if (!locked) continue;
+
+		if (observedLockedAt) {
+			console.warn(
+				`🧭 Reclaimed stale schedule lock for Operative ${candidate.id} (was locked at ${observedLockedAt})`
+			);
+		}
 
 		const { count: activeCount, error: activeError } = await supabase
 			.from('agent_runs')
@@ -883,18 +926,42 @@ async function checkAndScheduleBriefs() {
 				continue;
 			}
 
-			// Calculate when to START generation (buffer before notification time)
-			const generationStartTime = new Date(nextRunTime.getTime() - GENERATION_BUFFER_MS);
-
 			// Check if the next run time is within the next hour
-			if (isAfter(nextRunTime, now) && isBefore(nextRunTime, oneHourFromNow)) {
-				usersToSchedule.push({
-					preference,
-					nextRunTime, // User's scheduled notification time
-					generationStartTime, // When to start generating
-					engagementMetadata
-				});
+			let scheduledRunTime = nextRunTime;
+			let isMissedRunBackfill = false;
+
+			if (!(isAfter(nextRunTime, now) && isBefore(nextRunTime, oneHourFromNow))) {
+				// Outside the forward window means nextRunTime already rolled to the
+				// next cycle, which would silently swallow a run that was due within
+				// the last hour (e.g. the worker was down for a deploy/restart).
+				// Recover the occurrence that was actually due and, if it's still
+				// within the bounded lookback, backfill it now instead of losing it.
+				const intervalDays = preference.frequency === 'weekly' ? 7 : 1;
+				const missedRunTime = addDays(nextRunTime, -intervalDays);
+
+				if (isMissedRunSchedulable(missedRunTime, now)) {
+					scheduledRunTime = missedRunTime;
+					isMissedRunBackfill = true;
+				} else {
+					continue;
+				}
 			}
+
+			// Calculate when to START generation (buffer before notification time)
+			const generationStartTime = new Date(scheduledRunTime.getTime() - GENERATION_BUFFER_MS);
+
+			if (isMissedRunBackfill) {
+				console.warn(
+					`⏮️ Backfilling missed brief for user ${preference.user_id}: original run time ${scheduledRunTime.toISOString()}`
+				);
+			}
+
+			usersToSchedule.push({
+				preference,
+				nextRunTime: scheduledRunTime, // User's scheduled notification time
+				generationStartTime, // When to start generating
+				engagementMetadata
+			});
 		}
 
 		if (usersToSchedule.length === 0) {

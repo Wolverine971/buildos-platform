@@ -5,7 +5,10 @@ import { isRunningTurnUniqueViolation } from './turn-run-conflicts';
 
 type ChatTurnRunRow = Database['public']['Tables']['chat_turn_runs']['Row'];
 
-export type ActiveFastChatTurn = Pick<ChatTurnRunRow, 'id' | 'stream_run_id' | 'started_at'>;
+export type ActiveFastChatTurn = Pick<
+	ChatTurnRunRow,
+	'id' | 'stream_run_id' | 'started_at' | 'last_progress_at'
+>;
 
 type TurnAdmissionDiagnostics = {
 	activeTurn: ActiveFastChatTurn | null;
@@ -44,9 +47,50 @@ type AdmitFastChatTurnParams = {
 	requestMessage: string;
 	requestStartedAtMs: number;
 	detachedTurnMaxDurationMs: number;
+	/**
+	 * Reclaim a running turn early when its progress heartbeat
+	 * (`last_progress_at`, written every ~30s by the stream route) has been
+	 * silent this long — a dead turn frees the session in ~2 minutes instead
+	 * of locking it for the full detached-turn max duration.
+	 */
+	progressStaleReclaimMs?: number;
+	/**
+	 * Conversely, NEVER cancel a turn whose heartbeat is this fresh, even past
+	 * the max duration — it is demonstrably alive and probably finalizing.
+	 */
+	recentProgressGraceMs?: number;
 	createTurnRunId: () => string;
 	now?: () => number;
 };
+
+export const DEFAULT_PROGRESS_STALE_RECLAIM_MS = 120_000;
+export const DEFAULT_RECENT_PROGRESS_GRACE_MS = 60_000;
+
+/**
+ * Pure reclaim rule for a running turn (exported for tests):
+ * - progress silent >= progressStaleReclaimMs → reclaim (dead turn);
+ * - past max duration AND progress not fresh → reclaim (bounded lock);
+ * - otherwise the turn keeps its lock. `last_progress_at` may be null for
+ *   turns started before the heartbeat existed; started_at stands in.
+ */
+export function shouldReclaimRunningTurn(params: {
+	nowMs: number;
+	startedAtMs: number;
+	lastProgressAtMs: number | null;
+	detachedTurnMaxDurationMs: number;
+	progressStaleReclaimMs?: number;
+	recentProgressGraceMs?: number;
+}): boolean {
+	const progressStaleReclaimMs =
+		params.progressStaleReclaimMs ?? DEFAULT_PROGRESS_STALE_RECLAIM_MS;
+	const recentProgressGraceMs = params.recentProgressGraceMs ?? DEFAULT_RECENT_PROGRESS_GRACE_MS;
+	const ageMs = Math.max(0, params.nowMs - params.startedAtMs);
+	const progressReferenceMs = params.lastProgressAtMs ?? params.startedAtMs;
+	const progressAgeMs = Math.max(0, params.nowMs - progressReferenceMs);
+
+	if (progressAgeMs >= progressStaleReclaimMs) return true;
+	return ageMs >= params.detachedTurnMaxDurationMs && progressAgeMs >= recentProgressGraceMs;
+}
 
 function elapsedMs(startedAtMs: number, now: () => number): number {
 	return Math.max(0, now() - startedAtMs);
@@ -72,13 +116,15 @@ export async function admitFastChatTurn({
 	requestMessage,
 	requestStartedAtMs,
 	detachedTurnMaxDurationMs,
+	progressStaleReclaimMs,
+	recentProgressGraceMs,
 	createTurnRunId,
 	now = Date.now
 }: AdmitFastChatTurnParams): Promise<FastChatTurnAdmissionResult> {
 	const activeTurnLookupStartedAtMs = now();
 	const { data: activeTurnRows, error: activeTurnLookupError } = await supabase
 		.from('chat_turn_runs')
-		.select('id, stream_run_id, started_at')
+		.select('id, stream_run_id, started_at, last_progress_at')
 		.eq('session_id', sessionId)
 		.eq('user_id', userId)
 		.eq('status', 'running')
@@ -90,11 +136,20 @@ export async function admitFastChatTurn({
 
 	if (activeTurn) {
 		const activeStartedAtMs = Date.parse(activeTurn.started_at);
-		const activeTurnAgeMs = Number.isFinite(activeStartedAtMs)
-			? Math.max(0, now() - activeStartedAtMs)
-			: 0;
+		const lastProgressAtMs = activeTurn.last_progress_at
+			? Date.parse(activeTurn.last_progress_at)
+			: NaN;
 
-		if (activeTurnAgeMs < detachedTurnMaxDurationMs) {
+		const reclaim = shouldReclaimRunningTurn({
+			nowMs: now(),
+			startedAtMs: Number.isFinite(activeStartedAtMs) ? activeStartedAtMs : 0,
+			lastProgressAtMs: Number.isFinite(lastProgressAtMs) ? lastProgressAtMs : null,
+			detachedTurnMaxDurationMs,
+			progressStaleReclaimMs,
+			recentProgressGraceMs
+		});
+
+		if (!reclaim) {
 			return {
 				status: 'active_turn_running',
 				activeTurn,

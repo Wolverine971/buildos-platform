@@ -527,6 +527,15 @@ async function sendInAppNotification(
 		});
 
 		if (error) {
+			// Unique violation on uq_user_notifications_delivery_id: a prior
+			// attempt already inserted this notification (crash-after-insert
+			// retry). The notification exists — treat as success.
+			if (error.code === '23505') {
+				inAppLogger.info('In-app notification already exists for delivery, skipping', {
+					notificationDeliveryId: delivery.id
+				});
+				return { success: true };
+			}
 			throw error;
 		}
 
@@ -674,6 +683,10 @@ export async function processNotification(
 		attempts: job.attempts
 	});
 
+	// True once this run has written the delivery outcome (attempt count + status).
+	// The catch-path cleanup must not write a second time or attempts double-count.
+	let deliveryOutcomeRecorded = false;
+
 	try {
 		// Get delivery record
 		const { data: delivery, error: fetchError } = await supabase
@@ -689,14 +702,16 @@ export async function processNotification(
 			throw new Error(`Delivery ${delivery_id} not found: ${fetchError?.message}`);
 		}
 
-		// Define final states that should not be retried
+		// Define final states that should not be retried.
+		// 'failed' is terminal-only: retryable failures return the delivery to
+		// 'pending' so a queue retry actually re-sends.
 		const FINAL_STATES: NotificationStatus[] = [
 			'cancelled',
 			'sent',
 			'delivered',
 			'clicked',
 			'opened', // User already saw it
-			'failed', // Already failed max attempts
+			'failed', // Attempts exhausted (or terminally failed by an adapter)
 			'bounced' // Hard bounce, don't retry
 		];
 
@@ -958,9 +973,15 @@ export async function processNotification(
 		const result = await sendNotification(channel, typedDelivery, jobLogger);
 		const durationMs = Date.now() - startTime;
 
-		// Update delivery record with final status
+		// Update delivery record with the outcome of this attempt.
+		// Retry policy: the QUEUE owns retry scheduling. A retryable failure puts
+		// the delivery back to 'pending' (so the queue retry re-sends); 'failed'
+		// is reserved for the final exhausted attempt.
+		const nextAttempts = currentAttempts + 1;
+		const attemptsExhausted = nextAttempts >= maxAttempts;
+
 		const updateData: any = {
-			attempts: (delivery.attempts || 0) + 1,
+			attempts: nextAttempts,
 			updated_at: new Date().toISOString()
 		};
 
@@ -975,25 +996,35 @@ export async function processNotification(
 				durationMs,
 				externalId: result.external_id
 			});
-		} else {
+		} else if (attemptsExhausted) {
 			updateData.status = 'failed';
 			updateData.failed_at = new Date().toISOString();
 			updateData.last_error = result.error;
 
-			jobLogger.error('Notification send failed', undefined, {
+			jobLogger.error('Notification send failed; attempts exhausted', undefined, {
 				durationMs,
-				error: result.error
+				error: result.error,
+				attempts: nextAttempts,
+				maxAttempts
+			});
+		} else {
+			updateData.status = 'pending';
+			updateData.last_error = result.error;
+
+			jobLogger.warn('Notification send failed; queue retry will re-send', {
+				durationMs,
+				error: result.error,
+				attempts: nextAttempts,
+				maxAttempts
 			});
 		}
 
-		// Always update status, even if there's an error
 		// Use optimistic locking to prevent race conditions
 		const currentStatus = delivery.status;
-		// Reuse currentAttempts declared earlier (line 519)
 
 		const { error: updateError, count } = await supabase
 			.from('notification_deliveries')
-			.update(updateData)
+			.update(updateData, { count: 'exact' })
 			.eq('id', delivery_id)
 			.eq('status', currentStatus) // Optimistic lock - ensure status hasn't changed
 			.eq('attempts', currentAttempts); // Verify attempts match
@@ -1017,13 +1048,17 @@ export async function processNotification(
 			return;
 		}
 
+		deliveryOutcomeRecorded = true;
+
 		jobLogger.debug('Updated delivery status', {
 			newStatus: updateData.status,
 			attempts: updateData.attempts
 		});
 
-		// If failed and can retry, throw error to trigger retry
-		if (!result.success && (delivery.attempts || 0) + 1 < (delivery.max_attempts || 3)) {
+		// Throw on failure so the queue schedules a retry (with backoff). If this
+		// was the final attempt the delivery is already terminal 'failed'; any
+		// residual queue retry short-circuits at FINAL_STATES.
+		if (!result.success) {
 			throw new Error(result.error);
 		}
 
@@ -1031,261 +1066,78 @@ export async function processNotification(
 	} catch (error: any) {
 		jobLogger.error('Error processing notification job', error);
 
-		// Try to mark delivery as failed if not already updated to a final state
-		try {
-			const { data: currentDelivery } = await supabase
-				.from('notification_deliveries')
-				.select('status, attempts')
-				.eq('id', delivery_id)
-				.single();
-
-			// Define states that should NOT be updated (successful or bounced deliveries)
-			// We DO want to update "failed" deliveries to capture latest error info
-			const CLEANUP_EXCLUDED_STATES: NotificationStatus[] = [
-				'cancelled',
-				'sent',
-				'delivered',
-				'clicked',
-				'opened', // User already saw it
-				'bounced' // Hard bounce, don't update
-			];
-
-			// Update delivery if not in an excluded state (includes "pending" and "failed")
-			if (
-				currentDelivery &&
-				!CLEANUP_EXCLUDED_STATES.includes(currentDelivery.status as NotificationStatus)
-			) {
-				const currentAttempts = currentDelivery.attempts || 0;
-
-				const { error: updateError, count } = await supabase
+		// Record the failed attempt ONLY if this run didn't already write the
+		// delivery outcome (e.g. the adapter threw before the main update ran).
+		// The main path already counted the attempt for provider failures —
+		// writing again here is what used to double-increment `attempts`.
+		if (!deliveryOutcomeRecorded) {
+			try {
+				const { data: currentDelivery } = await supabase
 					.from('notification_deliveries')
-					.update({
-						status: 'failed',
-						failed_at: new Date().toISOString(),
-						last_error: error.message,
-						attempts: currentAttempts + 1,
-						updated_at: new Date().toISOString()
-					})
+					.select('status, attempts, max_attempts')
 					.eq('id', delivery_id)
-					.eq('status', currentDelivery.status); // Optimistic lock
+					.single();
 
-				if (updateError) {
-					jobLogger.error('Could not mark delivery as failed', updateError);
-				} else if (count === 0) {
-					jobLogger.warn('Optimistic lock failed in cleanup - delivery state changed', {
-						deliveryId: delivery_id,
-						expectedStatus: currentDelivery.status
-					});
-				} else {
-					jobLogger.info('Marked delivery as failed after error', {
-						attemptNumber: currentAttempts + 1
-					});
+				// Never touch terminal deliveries; 'failed' is terminal now.
+				const CLEANUP_EXCLUDED_STATES: NotificationStatus[] = [
+					'cancelled',
+					'sent',
+					'delivered',
+					'clicked',
+					'opened', // User already saw it
+					'failed', // Terminal - another writer already exhausted it
+					'bounced' // Hard bounce, don't update
+				];
+
+				if (
+					currentDelivery &&
+					!CLEANUP_EXCLUDED_STATES.includes(currentDelivery.status as NotificationStatus)
+				) {
+					const cleanupAttempts = currentDelivery.attempts || 0;
+					const cleanupMax = currentDelivery.max_attempts || 3;
+					const cleanupNext = cleanupAttempts + 1;
+					const cleanupExhausted = cleanupNext >= cleanupMax;
+
+					const { error: updateError, count } = await supabase
+						.from('notification_deliveries')
+						.update(
+							{
+								status: cleanupExhausted ? 'failed' : 'pending',
+								...(cleanupExhausted
+									? { failed_at: new Date().toISOString() }
+									: {}),
+								last_error: error.message,
+								attempts: cleanupNext,
+								updated_at: new Date().toISOString()
+							},
+							{ count: 'exact' }
+						)
+						.eq('id', delivery_id)
+						.eq('status', currentDelivery.status) // Optimistic lock
+						.eq('attempts', cleanupAttempts);
+
+					if (updateError) {
+						jobLogger.error('Could not record failed attempt', updateError);
+					} else if (count === 0) {
+						jobLogger.warn(
+							'Optimistic lock failed in cleanup - delivery state changed',
+							{
+								deliveryId: delivery_id,
+								expectedStatus: currentDelivery.status
+							}
+						);
+					} else {
+						jobLogger.info('Recorded failed attempt after error', {
+							attemptNumber: cleanupNext,
+							terminal: cleanupExhausted
+						});
+					}
 				}
+			} catch (cleanupError) {
+				jobLogger.error('Could not record failed attempt', cleanupError);
 			}
-		} catch (cleanupError) {
-			jobLogger.error('Could not mark delivery as failed', cleanupError);
 		}
 
 		throw error;
 	}
 }
-
-/**
- * Process notification jobs from queue
- * Uses atomic claim_pending_jobs RPC to prevent race conditions
- */
-export async function processNotificationJobs(): Promise<void> {
-	const batchLogger = logger.child('batch');
-
-	try {
-		// Atomically claim pending notification jobs
-		// This uses FOR UPDATE SKIP LOCKED to prevent multiple workers from claiming the same job
-		const { data: jobs, error } = await supabase.rpc('claim_pending_jobs', {
-			p_job_types: ['send_notification'],
-			p_batch_size: 10
-		});
-
-		if (error) {
-			batchLogger.error('Error claiming jobs', error);
-			return;
-		}
-
-		if (!jobs || jobs.length === 0) {
-			return;
-		}
-
-		batchLogger.info('Claimed notification jobs for processing', {
-			jobCount: jobs.length
-		});
-
-		// Process jobs in parallel with proper error isolation
-		const results = await Promise.allSettled(
-			jobs.map(async (job) => {
-				// Create per-job logger
-				const jobBatchLogger = batchLogger.child('job', {
-					jobId: job.queue_job_id,
-					dbJobId: job.id,
-					userId: job.user_id
-				});
-
-				try {
-					// Type the job - convert database 'metadata' to ProcessingJob 'data'
-					const typedJob: ProcessingJob<NotificationJobMetadata> = {
-						id: job.queue_job_id,
-						userId: job.user_id,
-						data: job.metadata as unknown as NotificationJobMetadata,
-						processingToken: job.processing_token,
-						attempts: job.attempts || 0,
-						updateProgress: () => Promise.resolve(), // Stub - not used in direct processing
-						log: (message: string) => {
-							jobBatchLogger.debug('Job progress update', { message });
-							return Promise.resolve();
-						}
-					};
-
-					// Process notification
-					await processNotification(typedJob);
-
-					// Mark as completed using atomic RPC
-					// IDEMPOTENCY RISK: If notification sends successfully but both status update
-					// and job completion fail, the job will be retried and may cause duplicate sends.
-					// This is mitigated by:
-					// 1. Status check at start of processNotification (FINAL_STATES)
-					// 2. Optimistic locking on delivery status updates
-					// 3. Idempotency in channel adapters (email message-ids, SMS deduplication)
-					// 4. Short stale job timeout to minimize retry window
-					const { data: completed, error: completeError } = await supabase.rpc(
-						'complete_queue_job',
-						{
-							p_job_id: job.id,
-							p_result: null,
-							p_processing_token: job.processing_token
-						}
-					);
-
-					if (completeError) {
-						jobBatchLogger.error(
-							'CRITICAL: Failed to mark job as completed after successful send',
-							completeError,
-							{
-								warning: 'Job may be retried, causing duplicate notification',
-								mitigation: 'Status check should prevent duplicate sends'
-							}
-						);
-						throw new Error(
-							`Failed to mark job as completed: ${completeError.message}`
-						);
-					}
-
-					if (!completed) {
-						jobBatchLogger.warn(
-							'Skipped completion because this worker no longer owns the queue job',
-							{ processingToken: job.processing_token }
-						);
-						return;
-					}
-
-					jobBatchLogger.info('Job completed successfully');
-				} catch (error: any) {
-					jobBatchLogger.error('Job processing failed', error, {
-						attempts: job.attempts || 0
-					});
-
-					// Mark as failed using atomic RPC (with retry logic)
-					const currentAttempts = job.attempts || 0;
-					const maxAttempts = job.max_attempts || 3;
-					const shouldRetry = currentAttempts + 1 < maxAttempts;
-
-					const { data: failed, error: failError } = await supabase.rpc(
-						'fail_queue_job',
-						{
-							p_job_id: job.id,
-							p_error_message: error.message || 'Unknown error',
-							p_retry: shouldRetry,
-							p_processing_token: job.processing_token
-						}
-					);
-
-					if (failError) {
-						jobBatchLogger.error(
-							'Failed to mark job as failed via RPC, attempting direct update',
-							failError
-						);
-
-						// Fallback: Direct database update, still guarded by claim ownership.
-						let directUpdate = supabase
-							.from('queue_jobs')
-							.update({
-								status: shouldRetry ? 'pending' : 'failed',
-								error_message: error.message,
-								processing_token: null,
-								attempts: currentAttempts + 1,
-								updated_at: new Date().toISOString()
-							})
-							.eq('id', job.id)
-							.eq('status', 'processing');
-
-						if (job.processing_token) {
-							directUpdate = directUpdate.eq(
-								'processing_token',
-								job.processing_token
-							);
-						}
-
-						const { error: directUpdateError } = await directUpdate;
-
-						if (directUpdateError) {
-							jobBatchLogger.fatal(
-								'CRITICAL: Could not mark job as failed via RPC or direct update',
-								directUpdateError,
-								{
-									jobId: job.id,
-									warning:
-										'Job stuck in limbo - manual intervention may be required'
-								}
-							);
-						}
-					} else if (!failed) {
-						jobBatchLogger.warn(
-							'Skipped failure update because this worker no longer owns the queue job',
-							{ processingToken: job.processing_token }
-						);
-						return;
-					}
-
-					throw error;
-				}
-			})
-		);
-
-		// Log summary
-		const successfulJobs = results.filter((result) => result.status === 'fulfilled').length;
-		const failedJobs = results.filter((result) => result.status === 'rejected').length;
-
-		if (failedJobs > 0) {
-			batchLogger.warn('Some jobs failed during processing', {
-				failedCount: failedJobs,
-				successfulCount: successfulJobs,
-				totalCount: jobs.length
-			});
-		}
-		if (successfulJobs > 0) {
-			batchLogger.info('Batch processing completed', {
-				successfulCount: successfulJobs,
-				failedCount: failedJobs,
-				totalCount: jobs.length
-			});
-		}
-	} catch (error) {
-		batchLogger.fatal('Fatal error in processNotificationJobs', error);
-	}
-}
-
-// =====================================================
-// EXPORTS
-// =====================================================
-
-export const notificationWorker = {
-	processNotification,
-	processNotificationJobs
-};

@@ -224,6 +224,10 @@ export function validateSMSJobData(data: unknown): SMSJobData {
 	}
 
 	if (!d.user_id || typeof d.user_id !== 'string') {
+		// KNOWN MISMATCH (SMS is dormant): the `queue_sms_message` SQL function
+		// never puts user_id in the job metadata, so every job it enqueues dies
+		// here. When integrating SMS, add user_id to that function's
+		// jsonb_build_object (or fall back to the queue row's user_id column).
 		throw new Error('Invalid SMS job data: user_id is required and must be string');
 	}
 

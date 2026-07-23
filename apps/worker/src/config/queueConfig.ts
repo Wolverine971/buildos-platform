@@ -1,6 +1,11 @@
 // apps/worker/src/config/queueConfig.ts
-// Queue configuration management with environment variable support
-// This addresses Moderate Issue #6 in QUEUE_FIXES_DESIGN.md
+// Queue configuration management with environment variable support.
+//
+// Resolution order (highest wins): explicit env var > environment profile
+// (production/development defaults) > base default. The exported `queueConfig`
+// is THE resolved runtime configuration — every consumer (queue instance,
+// stranded sweep, progress tracker, scheduler) must read this same object so
+// grace-period math and timeouts can never diverge between components.
 
 import dotenv from 'dotenv';
 import { DEFAULT_VAPID_SUBJECT, validateVapidDetails } from './vapid';
@@ -16,7 +21,6 @@ export interface QueueConfiguration {
 
 	// Retry settings
 	maxRetries: number; // Default max retry attempts
-	retryBackoffBase: number; // Base delay for exponential backoff (ms)
 
 	// Progress tracking
 	enableProgressTracking: boolean;
@@ -27,8 +31,8 @@ export interface QueueConfiguration {
 	enableHealthChecks: boolean;
 
 	// Performance tuning
-	workerTimeout: number; // Max time for a single job (ms)
-	enableConcurrentProcessing: boolean;
+	workerTimeout: number; // Max time for a single job (ms), unless overridden per type
+	workerTimeoutByType: Record<string, number>; // Per-job-type timeout overrides (ms)
 
 	// Queue data retention
 	enableRetentionCleanup: boolean; // Enable scheduled retention cleanup
@@ -40,49 +44,89 @@ export interface QueueConfiguration {
 }
 
 /**
- * Parse environment variable as integer with fallback
+ * Parse environment variable as integer; undefined when unset so profile
+ * defaults can apply.
  */
-function parseEnvInt(envVar: string, defaultValue: number): number {
+function envInt(envVar: string): number | undefined {
 	const value = process.env[envVar];
-	if (!value) return defaultValue;
+	if (!value) return undefined;
 
 	const parsed = parseInt(value, 10);
 	if (isNaN(parsed)) {
-		console.warn(
-			`⚠️ Invalid integer value for ${envVar}: "${value}", using default: ${defaultValue}`
-		);
-		return defaultValue;
+		console.warn(`⚠️ Invalid integer value for ${envVar}: "${value}", ignoring`);
+		return undefined;
 	}
 
 	return parsed;
 }
 
 /**
- * Parse environment variable as boolean with fallback
+ * Parse environment variable as boolean; undefined when unset.
  */
-function parseEnvBool(envVar: string, defaultValue: boolean): boolean {
+function envBool(envVar: string): boolean | undefined {
 	const value = process.env[envVar];
-	if (!value) return defaultValue;
+	if (!value) return undefined;
 
 	const normalizedValue = value.toLowerCase();
 	if (normalizedValue === 'true' || normalizedValue === '1') return true;
 	if (normalizedValue === 'false' || normalizedValue === '0') return false;
 
-	console.warn(
-		`⚠️ Invalid boolean value for ${envVar}: "${value}", using default: ${defaultValue}`
-	);
-	return defaultValue;
+	console.warn(`⚠️ Invalid boolean value for ${envVar}: "${value}", ignoring`);
+	return undefined;
 }
 
 /**
- * Parse environment variable as string with fallback
+ * Parse environment variable as string; undefined when unset/blank.
  */
-function parseEnvString(envVar: string, defaultValue: string): string {
+function envString(envVar: string): string | undefined {
 	const value = process.env[envVar];
-	if (!value) return defaultValue;
+	if (!value) return undefined;
 
 	const trimmed = value.trim();
-	return trimmed.length > 0 ? trimmed : defaultValue;
+	return trimmed.length > 0 ? trimmed : undefined;
+}
+
+// Environment profiles supply per-environment DEFAULTS. Explicit env vars
+// always override them (the pre-2026-07-23 merge order was the reverse, which
+// made QUEUE_BATCH_SIZE etc. silently dead in production).
+export const developmentConfig: Partial<QueueConfiguration> = {
+	pollInterval: 2000, // Faster polling in development
+	batchSize: 2, // Smaller batches for easier debugging
+	stalledTimeout: 120000, // Shorter timeout for faster feedback
+	statsUpdateInterval: 30000 // More frequent stats
+};
+
+export const productionConfig: Partial<QueueConfiguration> = {
+	pollInterval: 5000, // Standard polling
+	batchSize: 10, // Larger batches for better throughput
+	stalledTimeout: 600000, // Longer timeout for complex jobs
+	statsUpdateInterval: 300000 // Less frequent stats (5 minutes)
+};
+
+// Built-in per-job-type timeout defaults. agent_run wall-clock budgets go up
+// to 20 minutes (MAX_AGENT_RUN_WALL_CLOCK_MS) — the queue wrapper must sit
+// ABOVE the domain budget plus cleanup margin, or a legitimate run outlives
+// its own claim and a retry can attach while it still executes.
+const DEFAULT_WORKER_TIMEOUT_BY_TYPE: Record<string, number> = {
+	agent_run: 23 * 60 * 1000 // 20 min max budget + 3 min finalize margin
+};
+
+/**
+ * Per-type env overrides: QUEUE_WORKER_TIMEOUT_<JOB_TYPE> (job type
+ * uppercased), e.g. QUEUE_WORKER_TIMEOUT_AGENT_RUN=1500000.
+ */
+function loadWorkerTimeoutByType(): Record<string, number> {
+	const result: Record<string, number> = { ...DEFAULT_WORKER_TIMEOUT_BY_TYPE };
+	const prefix = 'QUEUE_WORKER_TIMEOUT_';
+	for (const key of Object.keys(process.env)) {
+		if (!key.startsWith(prefix) || key === 'QUEUE_WORKER_TIMEOUT') continue;
+		const jobType = key.slice(prefix.length).toLowerCase();
+		const parsed = envInt(key);
+		if (parsed !== undefined) {
+			result[jobType] = parsed;
+		}
+	}
+	return result;
 }
 
 /**
@@ -96,9 +140,14 @@ function validateConfig(config: QueueConfiguration): QueueConfiguration {
 	validated.batchSize = Math.max(1, Math.min(20, validated.batchSize)); // 1-20 jobs
 	validated.stalledTimeout = Math.max(30000, validated.stalledTimeout); // Min 30 seconds
 	validated.maxRetries = Math.max(0, Math.min(10, validated.maxRetries)); // 0-10 retries
-	validated.retryBackoffBase = Math.max(100, validated.retryBackoffBase); // Min 100ms
 	validated.statsUpdateInterval = Math.max(10000, validated.statsUpdateInterval); // Min 10 seconds
 	validated.workerTimeout = Math.max(10000, validated.workerTimeout); // Min 10 seconds
+	validated.workerTimeoutByType = Object.fromEntries(
+		Object.entries(validated.workerTimeoutByType).map(([type, timeout]) => [
+			type,
+			Math.max(10000, timeout)
+		])
+	);
 	validated.staleJobThresholdHours = Math.max(1, validated.staleJobThresholdHours);
 	validated.oldFailedJobsDays = Math.max(0, validated.oldFailedJobsDays);
 	validated.completedJobsRetentionDays = Math.max(0, validated.completedJobsRetentionDays);
@@ -108,112 +157,104 @@ function validateConfig(config: QueueConfiguration): QueueConfiguration {
 }
 
 /**
- * Load queue configuration from environment variables
+ * Resolve the runtime configuration: env var > profile default > base default.
  */
 function loadQueueConfig(): QueueConfiguration {
-	const config: QueueConfiguration = {
-		// Core settings
-		pollInterval: parseEnvInt('QUEUE_POLL_INTERVAL', 5000),
-		batchSize: parseEnvInt('QUEUE_BATCH_SIZE', 5),
-		stalledTimeout: parseEnvInt('QUEUE_STALLED_TIMEOUT', 300000),
+	const env = (process.env.NODE_ENV || 'development').toLowerCase();
 
-		// Retry settings
-		maxRetries: parseEnvInt('QUEUE_MAX_RETRIES', 3),
-		retryBackoffBase: parseEnvInt('QUEUE_RETRY_BACKOFF_BASE', 1000),
-
-		// Progress tracking
-		enableProgressTracking: parseEnvBool('QUEUE_ENABLE_PROGRESS_TRACKING', true),
-		progressUpdateRetries: parseEnvInt('QUEUE_PROGRESS_UPDATE_RETRIES', 3),
-
-		// Health and monitoring
-		statsUpdateInterval: parseEnvInt('QUEUE_STATS_UPDATE_INTERVAL', 60000),
-		enableHealthChecks: parseEnvBool('QUEUE_ENABLE_HEALTH_CHECKS', true),
-
-		// Performance tuning
-		workerTimeout: parseEnvInt('QUEUE_WORKER_TIMEOUT', 600000), // 10 minutes default
-		enableConcurrentProcessing: parseEnvBool('QUEUE_ENABLE_CONCURRENT_PROCESSING', true),
-
-		// Data retention
-		enableRetentionCleanup: parseEnvBool('QUEUE_RETENTION_CLEANUP_ENABLED', true),
-		retentionCleanupCron: parseEnvString('QUEUE_RETENTION_CLEANUP_CRON', '30 3 * * *'),
-		staleJobThresholdHours: parseEnvInt('QUEUE_STALE_THRESHOLD_HOURS', 24),
-		oldFailedJobsDays: parseEnvInt('QUEUE_OLD_FAILED_RETENTION_DAYS', 0),
-		completedJobsRetentionDays: parseEnvInt('QUEUE_COMPLETED_RETENTION_DAYS', 30),
-		cleanupBatchSize: parseEnvInt('QUEUE_CLEANUP_BATCH_SIZE', 500)
-	};
-
-	return validateConfig(config);
-}
-
-// Export the configuration
-export const queueConfig = loadQueueConfig();
-
-// Development configuration profile
-export const developmentConfig: Partial<QueueConfiguration> = {
-	pollInterval: 2000, // Faster polling in development
-	batchSize: 2, // Smaller batches for easier debugging
-	stalledTimeout: 120000, // Shorter timeout for faster feedback
-	statsUpdateInterval: 30000, // More frequent stats
-	enableProgressTracking: true,
-	enableHealthChecks: true
-};
-
-// Production configuration profile
-export const productionConfig: Partial<QueueConfiguration> = {
-	pollInterval: 5000, // Standard polling
-	batchSize: 10, // Larger batches for better throughput
-	stalledTimeout: 600000, // Longer timeout for complex jobs
-	statsUpdateInterval: 300000, // Less frequent stats (5 minutes)
-	enableProgressTracking: true,
-	enableHealthChecks: true
-};
-
-/**
- * Get configuration based on environment
- */
-export function getEnvironmentConfig(): QueueConfiguration {
-	const baseConfig = loadQueueConfig();
-	const env = process.env.NODE_ENV || 'development';
-
-	let profileConfig: Partial<QueueConfiguration> = {};
-
-	switch (env.toLowerCase()) {
-		case 'production':
-			profileConfig = productionConfig;
-			console.log('🏭 Using production queue configuration profile');
-			break;
-		case 'development':
-		case 'dev':
-			profileConfig = developmentConfig;
-			console.log('🔧 Using development queue configuration profile');
-			break;
-		default:
-			console.log('⚙️ Using default queue configuration');
-			break;
+	let profile: Partial<QueueConfiguration> = {};
+	if (env === 'production') {
+		profile = productionConfig;
+		console.log('🏭 Using production queue configuration profile');
+	} else if (env === 'development' || env === 'dev') {
+		profile = developmentConfig;
+		console.log('🔧 Using development queue configuration profile');
 	}
 
-	// Merge base config with profile config
-	const mergedConfig = { ...baseConfig, ...profileConfig };
+	const config: QueueConfiguration = {
+		// Core settings
+		pollInterval: envInt('QUEUE_POLL_INTERVAL') ?? profile.pollInterval ?? 5000,
+		batchSize: envInt('QUEUE_BATCH_SIZE') ?? profile.batchSize ?? 5,
+		stalledTimeout: envInt('QUEUE_STALLED_TIMEOUT') ?? profile.stalledTimeout ?? 300000,
 
-	// Log the final configuration (without sensitive data)
-	console.log('📋 Queue Configuration:');
-	console.log(`   - Poll interval: ${mergedConfig.pollInterval}ms`);
-	console.log(`   - Batch size: ${mergedConfig.batchSize}`);
-	console.log(`   - Stalled timeout: ${mergedConfig.stalledTimeout}ms`);
-	console.log(`   - Max retries: ${mergedConfig.maxRetries}`);
-	console.log(`   - Worker timeout: ${mergedConfig.workerTimeout}ms`);
+		// Retry settings
+		maxRetries: envInt('QUEUE_MAX_RETRIES') ?? profile.maxRetries ?? 3,
+
+		// Progress tracking
+		enableProgressTracking:
+			envBool('QUEUE_ENABLE_PROGRESS_TRACKING') ?? profile.enableProgressTracking ?? true,
+		progressUpdateRetries:
+			envInt('QUEUE_PROGRESS_UPDATE_RETRIES') ?? profile.progressUpdateRetries ?? 3,
+
+		// Health and monitoring
+		statsUpdateInterval:
+			envInt('QUEUE_STATS_UPDATE_INTERVAL') ?? profile.statsUpdateInterval ?? 60000,
+		enableHealthChecks:
+			envBool('QUEUE_ENABLE_HEALTH_CHECKS') ?? profile.enableHealthChecks ?? true,
+
+		// Performance tuning
+		workerTimeout: envInt('QUEUE_WORKER_TIMEOUT') ?? profile.workerTimeout ?? 600000, // 10 minutes default
+		workerTimeoutByType: loadWorkerTimeoutByType(),
+
+		// Data retention
+		enableRetentionCleanup:
+			envBool('QUEUE_RETENTION_CLEANUP_ENABLED') ?? profile.enableRetentionCleanup ?? true,
+		retentionCleanupCron:
+			envString('QUEUE_RETENTION_CLEANUP_CRON') ??
+			profile.retentionCleanupCron ??
+			'30 3 * * *',
+		staleJobThresholdHours:
+			envInt('QUEUE_STALE_THRESHOLD_HOURS') ?? profile.staleJobThresholdHours ?? 24,
+		oldFailedJobsDays:
+			envInt('QUEUE_OLD_FAILED_RETENTION_DAYS') ?? profile.oldFailedJobsDays ?? 0,
+		completedJobsRetentionDays:
+			envInt('QUEUE_COMPLETED_RETENTION_DAYS') ?? profile.completedJobsRetentionDays ?? 30,
+		cleanupBatchSize: envInt('QUEUE_CLEANUP_BATCH_SIZE') ?? profile.cleanupBatchSize ?? 500
+	};
+
+	const validated = validateConfig(config);
+
+	console.log('📋 Queue Configuration (resolved):');
+	console.log(`   - Poll interval: ${validated.pollInterval}ms`);
+	console.log(`   - Batch size: ${validated.batchSize}`);
+	console.log(`   - Stalled timeout: ${validated.stalledTimeout}ms`);
+	console.log(`   - Max retries: ${validated.maxRetries}`);
+	console.log(`   - Worker timeout: ${validated.workerTimeout}ms`);
 	console.log(
-		`   - Concurrent processing: ${mergedConfig.enableConcurrentProcessing ? 'enabled' : 'disabled'}`
+		`   - Per-type timeouts: ${
+			Object.entries(validated.workerTimeoutByType)
+				.map(([type, ms]) => `${type}=${ms}ms`)
+				.join(', ') || 'none'
+		}`
 	);
 	console.log(
-		`   - Retention cleanup: ${mergedConfig.enableRetentionCleanup ? 'enabled' : 'disabled'}`
+		`   - Retention cleanup: ${validated.enableRetentionCleanup ? 'enabled' : 'disabled'}`
 	);
-	console.log(`   - Retention cron: ${mergedConfig.retentionCleanupCron}`);
-	console.log(`   - Stale threshold: ${mergedConfig.staleJobThresholdHours}h`);
-	console.log(`   - Completed retention: ${mergedConfig.completedJobsRetentionDays}d`);
-	console.log(`   - Cleanup batch size: ${mergedConfig.cleanupBatchSize}`);
+	console.log(`   - Retention cron: ${validated.retentionCleanupCron}`);
+	console.log(`   - Stale threshold: ${validated.staleJobThresholdHours}h`);
+	console.log(`   - Completed retention: ${validated.completedJobsRetentionDays}d`);
+	console.log(`   - Cleanup batch size: ${validated.cleanupBatchSize}`);
 
-	return validateConfig(mergedConfig);
+	return validated;
+}
+
+// THE resolved runtime configuration. Import this everywhere.
+export const queueConfig = loadQueueConfig();
+
+/**
+ * Worker timeout for a specific job type (per-type override or global default).
+ */
+export function resolveWorkerTimeout(jobType: string): number {
+	return queueConfig.workerTimeoutByType[jobType] ?? queueConfig.workerTimeout;
+}
+
+/**
+ * Back-compat accessor: returns the same resolved configuration object.
+ * (Historically this re-merged profiles over env vars, which silently ignored
+ * env overrides in production.)
+ */
+export function getEnvironmentConfig(): QueueConfiguration {
+	return queueConfig;
 }
 
 /**
@@ -281,16 +322,13 @@ export function validateEnvironment(): { valid: boolean; errors: string[] } {
 	);
 
 	// Check for common configuration mistakes
-	const pollInterval = parseEnvInt('QUEUE_POLL_INTERVAL', 5000);
-	const batchSize = parseEnvInt('QUEUE_BATCH_SIZE', 5);
-
-	if (pollInterval < 1000) {
+	if (queueConfig.pollInterval < 1000) {
 		errors.push(
 			'QUEUE_POLL_INTERVAL should be at least 1000ms to avoid overwhelming the database'
 		);
 	}
 
-	if (batchSize > 20) {
+	if (queueConfig.batchSize > 20) {
 		errors.push('QUEUE_BATCH_SIZE should be 20 or less to prevent resource exhaustion');
 	}
 
