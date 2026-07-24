@@ -3,10 +3,10 @@
 # Handoff — Gmail Relevance Phase A, Slice 3 Metadata-Only A/B Retrieval
 
 **Created:** 2026-07-23  
-**Status:** Local implementation checkpoint complete on 2026-07-23. Migration
-`20260723223402` is authored and disposable-tested but is not applied to production; generated
-production types are intentionally unchanged, both flags remain off, and no real Gmail call has
-been run.
+**Status:** Schema/runtime checkpoint deployed on 2026-07-23. Migration `20260723223402` is
+physically verified, ledger-aligned, and reflected in regenerated production types. Both flags
+remain off, the direct driver has no production invocation route, and no real Gmail call has been
+run.
 
 **Tracker:** `tasker/36-gmail-project-relevance-phase-a.md`  
 **Slice 2 receipt:**
@@ -15,6 +15,9 @@ been run.
 [GMAIL-INGESTION-AND-PROJECT-RELEVANCE-ARCHITECTURE.md](GMAIL-INGESTION-AND-PROJECT-RELEVANCE-ARCHITECTURE.md)  
 **Migration protocol:**
 [SUPABASE-MIGRATION-LEDGER-BASELINE.md](SUPABASE-MIGRATION-LEDGER-BASELINE.md)
+
+**Continuation:**
+[HANDOFF-PHASE-A-SLICE-3-PILOT-COMPLETION.md](HANDOFF-PHASE-A-SLICE-3-PILOT-COMPLETION.md)
 
 ## Objective
 
@@ -32,11 +35,11 @@ request-lifetime values only. No model or Gmail mutation is reachable.
 ## Assessment and implementation checkpoint — 2026-07-23
 
 The Slice 2 prerequisites and production migration ledger were reassessed before implementation.
-Local and linked history remain aligned through `20260723211500`, with no later production
-migration present. The handoff's security and lifecycle design is implementable without a queue or
-new public route. Four contracts needed to be made concrete and are now versioned in code: scorer
-weights/thresholds, purpose-specific provider request shapes, encryption/hash contexts, and
-database-owned operation pricing.
+At authoring time local and linked history were aligned through `20260723211500`. The handoff's
+security and lifecycle design is implementable without a queue or new public route. Four contracts
+needed to be made concrete and are now versioned in code: scorer weights/thresholds,
+purpose-specific provider request shapes, encryption/hash contexts, and database-owned operation
+pricing.
 
 The local checkpoint includes:
 
@@ -57,11 +60,22 @@ passes; the web check passes with zero errors and zero warnings; the Slice 3 SQL
 `gmail_relevance_metadata_retrieval_ok`; and the existing Slice 2 SQL lifecycle harness still
 returns `gmail_relevance_scan_control_plane_ok` after the Slice 3 migration.
 
-This is not the Slice 3 production exit receipt. Before production apply, review the exact
-migration, run the remaining complete synthetic three-connection lifecycle, apply only the reviewed
-file through the forward protocol, regenerate types from production, wire the reviewed exact-user
-private invocation, and then run the explicitly authorized pilot with flags otherwise remaining
-off.
+Production schema receipt: the exact migration was applied through the direct transactional path;
+the read-only linked verification reports all 15 physical/security checks `ok`; only version
+`20260723223402` was repaired to `applied`; local/remote history now aligns for that version; and
+public types were regenerated from project `iwifjtlebphefldmwbkh` without `--allow-stale` (243
+tables and 14 views), followed by a successful shared-types build. A read-only lookup of every
+invented fixture ID used by the mistakenly attempted SQL-editor runs returned zero rows.
+
+The fixture-heavy `20260723223402_gmail_relevance_metadata_retrieval.test.sql` file is psql-only and
+disposable-database-only. It must never be pasted into the Supabase SQL editor because it creates
+invented auth/project fixtures before rolling them back. Use the matching
+`20260723223402_gmail_relevance_metadata_retrieval.production_verify.sql` file for read-only linked
+verification.
+
+This is not the full Slice 3 pilot exit receipt. The remaining work is the complete synthetic
+three-connection lifecycle, the reviewed exact-user private invocation, and the explicitly
+authorized pilot with flags otherwise remaining off.
 
 ## Proven prerequisite
 

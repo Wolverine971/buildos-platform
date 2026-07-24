@@ -2,6 +2,7 @@
 import type { Database, Json, QueueJobStatus, QueueJobType } from '@buildos/shared-types';
 import { queueConfig, resolveWorkerTimeout } from '../config/queueConfig';
 import { updateJobProgress } from './progressTracker';
+import { classifyQueueError } from './queueErrors';
 import { supabase } from './supabase';
 
 type QueueJob = Database['public']['Tables']['queue_jobs']['Row'];
@@ -506,15 +507,20 @@ export class SupabaseQueue {
 			const duration = Date.now() - startTime;
 			console.log(`✅ Completed ${job.job_type} job ${job.queue_job_id} in ${duration}ms`);
 		} catch (error: unknown) {
-			console.error(`❌ Job ${job.queue_job_id} failed:`, error);
+			const failure = classifyQueueError(error);
+			console.error(
+				`❌ Job ${job.queue_job_id} failed (${failure.kind}:${failure.code}):`,
+				error
+			);
 
-			// Determine if we should retry - use configuration instead of hardcoded value
+			// Permanent failures cannot succeed with the same input. Unknown errors
+			// deliberately remain transient for backward compatibility.
 			const maxRetries = job.max_attempts || queueConfig.maxRetries;
-			const shouldRetry = (job.attempts || 0) + 1 < maxRetries;
-			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+			const hasAttemptsRemaining = (job.attempts || 0) + 1 < maxRetries;
+			const shouldRetry = failure.kind === 'transient' && hasAttemptsRemaining;
 			const failed = await this.failJob(
 				job.id,
-				errorMessage,
+				failure.message,
 				shouldRetry,
 				job.processing_token ?? null
 			);

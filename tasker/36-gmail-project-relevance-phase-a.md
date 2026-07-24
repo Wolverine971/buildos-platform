@@ -5,14 +5,19 @@
 **Created 2026-07-22.** Owner: Email relevance / product engineer.  
 **Type:** bounded internal evaluation build.  
 **Status:** A0, Slice 1, and the synthetic Slice 2 control plane are complete. Slice 3 now has a
-local, tested metadata-only gateway, deterministic A/B scorer, direct bounded driver, and exact-file
-migration `20260723223402`. That migration is not applied to production and production types are
-intentionally unchanged. Both Phase A flags remain default off, no scan queue is registered, and no
-real Gmail or model call has been run.
+tested metadata-only gateway, deterministic A/B scorer, direct bounded driver, and deployed
+exact-file migration `20260723223402`. The physical schema passes its read-only production checks,
+the migration ledger is aligned, and production types are regenerated. Both Phase A flags remain
+default off, no scan queue or production invocation route is registered, and no real Gmail or model
+call has been run.
 
 **Handoff:** `apps/web/docs/technical/email/HANDOFF-PHASE-A-PROJECT-RELEVANCE.md`  
 **Slice 2 handoff:**
-`apps/web/docs/technical/email/HANDOFF-PHASE-A-SLICE-2-SCAN-CONTROL-PLANE.md`  
+`apps/web/docs/technical/email/HANDOFF-PHASE-A-SLICE-2-SCAN-CONTROL-PLANE.md`
+
+**Slice 3 completion handoff:**
+`apps/web/docs/technical/email/HANDOFF-PHASE-A-SLICE-3-PILOT-COMPLETION.md`
+
 **Architecture:**
 `apps/web/docs/technical/email/GMAIL-INGESTION-AND-PROJECT-RELEVANCE-ARCHITECTURE.md`
 
@@ -89,10 +94,11 @@ and cost whether daily-brief ingestion is warranted.
 - [x] Implement B: structured-profile lexical score plus negative evidence.
 - [x] Store evidence/hashes/provenance only; never body or attachment content.
 - [x] Add wrong-user/account, budget, retry, disconnect, and content-leak tests.
-- [ ] Complete the synthetic three-connection lifecycle and exact-file migration review.
-- [ ] Apply the reviewed migration through the forward protocol, regenerate production types, and
-      wire the private invocation before recording the explicitly authorized exact-user pilot
-      receipt with flags otherwise off.
+- [ ] Complete the synthetic three-connection lifecycle.
+- [x] Apply the reviewed exact-file migration through the forward protocol, verify the physical
+      schema read-only, align only its ledger version, and regenerate production types.
+- [ ] Wire the reviewed private invocation before recording the explicitly authorized exact-user
+      pilot receipt with flags otherwise off.
 
 ## Slice 4 — Review and evaluation
 
@@ -122,11 +128,10 @@ and cost whether daily-brief ingestion is warranted.
 
 ## Immediate next task
 
-Review the exact Slice 3 migration and complete the synthetic three-connection lifecycle before any
-production apply. Then use the forward protocol, regenerate production types, wire the reviewed
-exact-user private invocation, and separately authorize a pilot. Keep both flags off by default; do
-not add a model, mailbox body/attachment read, watch, recurring poll, queue secret, or Gmail
-mutation.
+Execute `HANDOFF-PHASE-A-SLICE-3-PILOT-COMPLETION.md`: complete the synthetic three-connection
+lifecycle, then wire the reviewed exact-user private invocation and separately authorize a pilot.
+Keep both flags off by default; do not add a model, mailbox body/attachment read, watch, recurring
+poll, queue secret, or Gmail mutation.
 
 ## Current verification
 
@@ -142,8 +147,12 @@ mutation.
 - Full `@buildos/web` check: zero errors and zero warnings after post-apply type generation.
 - Focused Gmail plus Phase A suites: 65/65 passing across 13 files.
 - Focused lint for the Slice 2 server/runtime files: passing.
-- Slice 3 linked-ledger assessment: local/remote aligned through `20260723211500`; new local version
-  `20260723223402` is reserved and remains unapplied.
+- Slice 3 production schema: all 15 read-only physical/security checks pass; exact version
+  `20260723223402` is aligned locally/remotely after repairing only that already-installed version.
+- Read-only post-incident lookup: zero synthetic fixture rows remain in users, actors, projects,
+  Gmail connections, profiles, or profile versions.
+- Production public types regenerated without `--allow-stale`: 243 tables and 14 views; derived
+  schema and `@buildos/shared-types` build pass.
 - Slice 3 migration: clean transactional apply in disposable PostgreSQL; Slice 3 harness returns
   `gmail_relevance_metadata_retrieval_ok`, and the prior Slice 2 lifecycle harness still returns
   `gmail_relevance_scan_control_plane_ok` on the extended schema.

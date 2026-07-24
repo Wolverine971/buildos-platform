@@ -2,6 +2,7 @@
 // Utility functions for queue operations (Redis-free version)
 
 import type { DailyBriefJobMetadata, Database, QueueJobStatus } from '@buildos/shared-types';
+import { PermanentQueueError } from '../../lib/queueErrors';
 import { supabase } from '../../lib/supabase';
 
 type QueueJobUpdate = Database['public']['Tables']['queue_jobs']['Update'];
@@ -152,25 +153,30 @@ export async function broadcastUserEvent(
  */
 export function validateBriefJobData(data: unknown): BriefJobData {
 	if (!data || typeof data !== 'object') {
-		throw new Error('Invalid job data: expected object');
+		throw new PermanentQueueError('invalid_job_payload', 'Invalid job data: expected object');
 	}
 	const d = data as Record<string, unknown>;
 
 	// Check userId
 	if (!d.userId || typeof d.userId !== 'string') {
-		throw new Error('Invalid job data: userId is required and must be string');
+		throw new PermanentQueueError(
+			'invalid_job_payload',
+			'Invalid job data: userId is required and must be string'
+		);
 	}
 
 	// Validate briefDate if provided
 	if (d.briefDate !== undefined && d.briefDate !== null) {
 		if (typeof d.briefDate !== 'string') {
-			throw new Error(
+			throw new PermanentQueueError(
+				'invalid_job_payload',
 				`Invalid job data: briefDate must be YYYY-MM-DD string, got ${typeof d.briefDate}`
 			);
 		}
 		const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 		if (!dateRegex.test(d.briefDate)) {
-			throw new Error(
+			throw new PermanentQueueError(
+				'invalid_job_payload',
 				`Invalid job data: briefDate must be YYYY-MM-DD format, got "${d.briefDate}"`
 			);
 		}
@@ -181,19 +187,28 @@ export function validateBriefJobData(data: unknown): BriefJobData {
 		maxFuture.setDate(maxFuture.getDate() + 30);
 
 		if (jobDate > maxFuture) {
-			throw new Error(`Invalid job data: briefDate too far in future`);
+			throw new PermanentQueueError(
+				'invalid_job_payload',
+				'Invalid job data: briefDate too far in future'
+			);
 		}
 	}
 
 	// Validate timezone if provided
 	if (d.timezone !== undefined && d.timezone !== null) {
 		if (typeof d.timezone !== 'string') {
-			throw new Error(`Invalid job data: timezone must be string`);
+			throw new PermanentQueueError(
+				'invalid_job_payload',
+				'Invalid job data: timezone must be string'
+			);
 		}
 		try {
 			new Intl.DateTimeFormat('en-US', { timeZone: d.timezone });
 		} catch {
-			throw new Error(`Invalid job data: timezone "${d.timezone}" is not valid`);
+			throw new PermanentQueueError(
+				'invalid_job_payload',
+				`Invalid job data: timezone "${d.timezone}" is not valid`
+			);
 		}
 	}
 
@@ -206,21 +221,33 @@ export function validateBriefJobData(data: unknown): BriefJobData {
  */
 export function validateSMSJobData(data: unknown): SMSJobData {
 	if (!data || typeof data !== 'object') {
-		throw new Error('Invalid SMS job data: expected object');
+		throw new PermanentQueueError(
+			'invalid_job_payload',
+			'Invalid SMS job data: expected object'
+		);
 	}
 	const d = data as Record<string, unknown>;
 
 	// Check required fields
 	if (!d.message_id || typeof d.message_id !== 'string') {
-		throw new Error('Invalid SMS job data: message_id is required and must be string');
+		throw new PermanentQueueError(
+			'invalid_job_payload',
+			'Invalid SMS job data: message_id is required and must be string'
+		);
 	}
 
 	if (!d.phone_number || typeof d.phone_number !== 'string') {
-		throw new Error('Invalid SMS job data: phone_number is required and must be string');
+		throw new PermanentQueueError(
+			'invalid_job_payload',
+			'Invalid SMS job data: phone_number is required and must be string'
+		);
 	}
 
 	if (!d.message || typeof d.message !== 'string') {
-		throw new Error('Invalid SMS job data: message is required and must be string');
+		throw new PermanentQueueError(
+			'invalid_job_payload',
+			'Invalid SMS job data: message is required and must be string'
+		);
 	}
 
 	if (!d.user_id || typeof d.user_id !== 'string') {
@@ -228,27 +255,33 @@ export function validateSMSJobData(data: unknown): SMSJobData {
 		// never puts user_id in the job metadata, so every job it enqueues dies
 		// here. When integrating SMS, add user_id to that function's
 		// jsonb_build_object (or fall back to the queue row's user_id column).
-		throw new Error('Invalid SMS job data: user_id is required and must be string');
+		throw new PermanentQueueError(
+			'invalid_job_payload',
+			'Invalid SMS job data: user_id is required and must be string'
+		);
 	}
 
 	// Validate phone number format (E.164)
 	const e164Regex = /^\+[1-9]\d{1,14}$/;
 	if (!e164Regex.test(d.phone_number)) {
-		throw new Error(
+		throw new PermanentQueueError(
+			'invalid_job_payload',
 			`Invalid SMS job data: phone_number must be in E.164 format (+1234567890), got "${d.phone_number}"`
 		);
 	}
 
 	// Validate message length (Twilio SMS limit is 1600 characters for concatenated messages)
 	if (d.message.length > 1600) {
-		throw new Error(
+		throw new PermanentQueueError(
+			'invalid_job_payload',
 			`Invalid SMS job data: message exceeds maximum length of 1600 characters (got ${d.message.length})`
 		);
 	}
 
 	// Validate priority if provided
 	if (d.priority !== undefined && d.priority !== 'normal' && d.priority !== 'urgent') {
-		throw new Error(
+		throw new PermanentQueueError(
+			'invalid_job_payload',
 			`Invalid SMS job data: priority must be "normal" or "urgent", got "${String(d.priority)}"`
 		);
 	}
@@ -262,13 +295,17 @@ export function validateSMSJobData(data: unknown): SMSJobData {
  */
 export function validateChatClassificationJobData(data: unknown): ChatClassificationJobData {
 	if (!data || typeof data !== 'object') {
-		throw new Error('Invalid chat classification job data: expected object');
+		throw new PermanentQueueError(
+			'invalid_job_payload',
+			'Invalid chat classification job data: expected object'
+		);
 	}
 	const d = data as Record<string, unknown>;
 
 	// Check sessionId
 	if (!d.sessionId || typeof d.sessionId !== 'string') {
-		throw new Error(
+		throw new PermanentQueueError(
+			'invalid_job_payload',
 			'Invalid chat classification job data: sessionId is required and must be string'
 		);
 	}
@@ -276,21 +313,24 @@ export function validateChatClassificationJobData(data: unknown): ChatClassifica
 	// Validate UUID format for sessionId
 	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 	if (!uuidRegex.test(d.sessionId)) {
-		throw new Error(
+		throw new PermanentQueueError(
+			'invalid_job_payload',
 			`Invalid chat classification job data: sessionId must be a valid UUID, got "${d.sessionId}"`
 		);
 	}
 
 	// Check userId
 	if (!d.userId || typeof d.userId !== 'string') {
-		throw new Error(
+		throw new PermanentQueueError(
+			'invalid_job_payload',
 			'Invalid chat classification job data: userId is required and must be string'
 		);
 	}
 
 	// Validate UUID format for userId
 	if (!uuidRegex.test(d.userId)) {
-		throw new Error(
+		throw new PermanentQueueError(
+			'invalid_job_payload',
 			`Invalid chat classification job data: userId must be a valid UUID, got "${d.userId}"`
 		);
 	}
@@ -304,13 +344,17 @@ export function validateChatClassificationJobData(data: unknown): ChatClassifica
  */
 export function validateBraindumpProcessingJobData(data: unknown): BraindumpProcessingJobData {
 	if (!data || typeof data !== 'object') {
-		throw new Error('Invalid braindump processing job data: expected object');
+		throw new PermanentQueueError(
+			'invalid_job_payload',
+			'Invalid braindump processing job data: expected object'
+		);
 	}
 	const d = data as Record<string, unknown>;
 
 	// Check braindumpId
 	if (!d.braindumpId || typeof d.braindumpId !== 'string') {
-		throw new Error(
+		throw new PermanentQueueError(
+			'invalid_job_payload',
 			'Invalid braindump processing job data: braindumpId is required and must be string'
 		);
 	}
@@ -318,21 +362,24 @@ export function validateBraindumpProcessingJobData(data: unknown): BraindumpProc
 	// Validate UUID format for braindumpId
 	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 	if (!uuidRegex.test(d.braindumpId)) {
-		throw new Error(
+		throw new PermanentQueueError(
+			'invalid_job_payload',
 			`Invalid braindump processing job data: braindumpId must be a valid UUID, got "${d.braindumpId}"`
 		);
 	}
 
 	// Check userId
 	if (!d.userId || typeof d.userId !== 'string') {
-		throw new Error(
+		throw new PermanentQueueError(
+			'invalid_job_payload',
 			'Invalid braindump processing job data: userId is required and must be string'
 		);
 	}
 
 	// Validate UUID format for userId
 	if (!uuidRegex.test(d.userId)) {
-		throw new Error(
+		throw new PermanentQueueError(
+			'invalid_job_payload',
 			`Invalid braindump processing job data: userId must be a valid UUID, got "${d.userId}"`
 		);
 	}
