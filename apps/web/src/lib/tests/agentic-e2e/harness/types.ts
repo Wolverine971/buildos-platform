@@ -7,6 +7,16 @@ import type { TypedSupabaseClient } from '@buildos/supabase-client';
 /** A chat context mode accepted by POST /api/agent/v2/stream. */
 export type HarnessContextType = 'global' | 'project' | 'project_create' | 'daily_brief';
 
+/** Client-observed stream timing; durations are relative to the fetch start. */
+export interface TurnTiming {
+	requestStartedAt: string;
+	responseHeadersMs: number | null;
+	firstSseEventMs: number | null;
+	ttftMs: number | null;
+	terminalEventMs: number | null;
+	totalDurationMs: number | null;
+}
+
 /** Everything captured from driving a single chat turn over SSE. */
 export interface TurnResult {
 	/** Session id assigned by the server (from the `session` event). */
@@ -35,6 +45,8 @@ export interface TurnResult {
 	completed: boolean;
 	/** Every parsed SSE event (envelope + payload), in order, for debugging. */
 	rawEvents: Array<Record<string, unknown>>;
+	/** Client-side timings, including TTFT at the first SSE text/text_delta event. */
+	timing: TurnTiming;
 }
 
 /** Result of seeding a scenario's fixtures. */

@@ -1,0 +1,223 @@
+{
+	"schema_version": 1,
+	"snapshot_id": "phase-a-project-alpha-v1",
+	"source": {
+		"kind": "anonymized_production_project",
+		"project_ref_hash": "12679d2971f2a2476d7de62a2ef56203062dec10809b993e74455a952b17501e",
+		"captured_at": "2026-07-24T16:30:00.000Z",
+		"anonymization_notes": [
+			"Replaced the project and operator names with stable fixture aliases.",
+			"Replaced third-party people, organizations, and precise location details with role descriptions.",
+			"Replaced every production entity UUID with a deterministic fixture UUID.",
+			"Condensed document bodies while retaining facts needed by the proposed acceptance checks."
+		]
+	},
+	"as_of": "2026-07-13T04:16:04.162Z",
+	"project": {
+		"id": "10000000-0000-4000-8000-000000000001",
+		"name": "Project Alpha — Response-Speed Training",
+		"description": "A personal training program for faster, clearer decisions across executive communication, a precision skill domain, and general reaction time. The program has three layers: hardware, domain-specific software, and pressure plus feedback.",
+		"state": "active",
+		"stage": "execution",
+		"next_step": "Ship the training equipment to the specialist workshop for setup."
+	},
+	"tasks": [
+		{
+			"id": "40000000-0000-4000-8000-000000000001",
+			"title": "Complete the daily core-stability routine",
+			"description": "Ten minutes of the prescribed curl-up, side-plank, and bird-dog sequence to protect training consistency.",
+			"state": "done",
+			"priority": 5,
+			"start_at": "2026-07-09T12:00:00.000Z",
+			"due_at": null,
+			"pillar": "hardware"
+		},
+		{
+			"id": "40000000-0000-4000-8000-000000000002",
+			"title": "Ship training equipment to the specialist workshop for setup",
+			"description": "This is the gateway task for the precision-skill domain. Until setup is complete, live practice and match preparation cannot begin; knowledge preparation may continue.",
+			"state": "todo",
+			"priority": 4,
+			"start_at": null,
+			"due_at": null,
+			"pillar": "software"
+		},
+		{
+			"id": "40000000-0000-4000-8000-000000000003",
+			"title": "Watch long-range precision training material",
+			"description": "Build the mental model for environmental reading, position fundamentals, and ballistics before the equipment is ready.",
+			"state": "todo",
+			"priority": 3,
+			"start_at": null,
+			"due_at": null,
+			"pillar": "software"
+		},
+		{
+			"id": "40000000-0000-4000-8000-000000000004",
+			"title": "Review the existing processing-speed course material",
+			"description": "Capture drills and mental models relevant to the precision-skill domain.",
+			"state": "todo",
+			"priority": 3,
+			"start_at": null,
+			"due_at": null,
+			"pillar": "software"
+		},
+		{
+			"id": "40000000-0000-4000-8000-000000000005",
+			"title": "Buy creatine monohydrate and L-theanine",
+			"description": "Use the documented daily doses and treat supplements as secondary to sleep and caffeine consistency.",
+			"state": "done",
+			"priority": 4,
+			"start_at": null,
+			"due_at": "2026-07-11T21:00:00.000Z",
+			"pillar": "hardware"
+		},
+		{
+			"id": "40000000-0000-4000-8000-000000000006",
+			"title": "Start the caffeine protocol",
+			"description": "Take the first dose 60–90 minutes after waking, stop at noon, and keep the daily total at or below 300 mg.",
+			"state": "done",
+			"priority": 5,
+			"start_at": null,
+			"due_at": "2026-07-10T21:00:00.000Z",
+			"pillar": "hardware"
+		},
+		{
+			"id": "40000000-0000-4000-8000-000000000007",
+			"title": "Enroll in a full improv class series",
+			"description": "Practice spontaneous structured speech under social pressure and gain a group-flow training stimulus.",
+			"state": "todo",
+			"priority": 3,
+			"start_at": null,
+			"due_at": "2026-07-14T21:00:00.000Z",
+			"pillar": "software"
+		},
+		{
+			"id": "40000000-0000-4000-8000-000000000008",
+			"title": "Run the first submaximal hinge session",
+			"description": "Rebuild hinge tolerance gradually after the core-stability warmup and stop if symptoms flare.",
+			"state": "todo",
+			"priority": 3,
+			"start_at": null,
+			"due_at": "2026-07-15T21:00:00.000Z",
+			"pillar": "hardware"
+		},
+		{
+			"id": "40000000-0000-4000-8000-000000000009",
+			"title": "Run the first hostile-pitch dry-fire session",
+			"description": "Answer rapid objections aloud for 15 minutes, record the session, and log an after-action review with time-to-first-word and filler count.",
+			"state": "todo",
+			"priority": 5,
+			"start_at": null,
+			"due_at": "2026-07-11T21:00:00.000Z",
+			"pillar": "software"
+		},
+		{
+			"id": "40000000-0000-4000-8000-000000000010",
+			"title": "Choose a PVT reaction-time app and log a baseline",
+			"description": "Use a psychomotor vigilance task app on an iPhone, test at the same time of day each week, and record the baseline before changing the caffeine protocol.",
+			"state": "todo",
+			"priority": 4,
+			"start_at": null,
+			"due_at": "2026-07-12T21:00:00.000Z",
+			"pillar": "pressure_feedback"
+		},
+		{
+			"id": "40000000-0000-4000-8000-000000000011",
+			"title": "Complete the weekly telemetry review",
+			"description": "Log PVT median reaction time, pitch time-to-first-word, filler count, sprint and practice times, resting metrics when available, and the subjective in-sync score.",
+			"state": "todo",
+			"priority": 4,
+			"start_at": null,
+			"due_at": "2026-07-13T14:00:00.000Z",
+			"pillar": "pressure_feedback"
+		}
+	],
+	"documents": [
+		{
+			"id": "50000000-0000-4000-8000-000000000001",
+			"title": "Training Program — Full Synthesis & Weekly Template",
+			"state": "ready",
+			"content": "The program treats processing speed as a compressed perception-to-decision-to-action loop built through chunking and automaticity. Its three layers are Hardware (sleep, aerobic capacity, regulation, physical consistency), Software (domain-specific practice such as pitch dry fire and precision-skill reps), and Pressure + Feedback (timers, stress exposure, and after-action reviews). The week-one launch list is: begin the noon caffeine cutoff, complete daily core stability, run the first hostile-pitch session, enroll in improv, obtain the documented supplements, and log a PVT baseline."
+		},
+		{
+			"id": "50000000-0000-4000-8000-000000000002",
+			"title": "Caffeine & Supplement Protocol",
+			"state": "ready",
+			"content": "The current high daily caffeine dose is likely maintaining tolerance while later intake reduces sleep quality. The protocol is: first dose 60–90 minutes after waking, a hard cutoff at noon, and no more than 300 mg total per day. Creatine and L-theanine are optional supporting interventions; the document explicitly treats sleep consistency and caffeine timing as higher-leverage than supplements."
+		},
+		{
+			"id": "50000000-0000-4000-8000-000000000003",
+			"title": "Measurement & Telemetry Protocol",
+			"state": "ready",
+			"content": "The weekly Sunday review logs PVT median reaction time, pitch time-to-first-word, filler count, sprint time, fixed practice par time, resting heart rate or HRV when available, sleep, and an in-sync score. The in-sync score is a subjective 1–10 rating of how coordinated and mentally sharp the operator felt. It is not a clinical measure; its value is in tracking correlations with the objective metrics under consistent conditions. A baseline should be captured before the caffeine reset."
+		},
+		{
+			"id": "50000000-0000-4000-8000-000000000004",
+			"title": "Research Notes — What Works and What Doesn't",
+			"state": "ready",
+			"content": "Commercial brain-training games can improve performance on their own games but have weak evidence for transfer to unrelated real-world skills. Dual n-back and generic sports-vision training have similar transfer limitations. A psychomotor vigilance task is retained as a measurement tool, not a broad training claim. The program favors aerobic work, sleep consistency, domain-specific deliberate practice, timers, and feedback loops."
+		},
+		{
+			"id": "50000000-0000-4000-8000-000000000005",
+			"title": "Project Alpha — Program Context",
+			"state": "draft",
+			"content": "State: active. Stage: execution. Snapshot status: eight open tasks and two overdue tasks. Next step: ship the training equipment to the specialist workshop for setup. The equipment setup is the hard gate for live precision-skill practice. Knowledge preparation can continue before setup. The program's operating rules are: protect consistency, time and review meaningful practice, train each target domain directly, and treat external task capture as a way to reduce working-memory load."
+		}
+	],
+	"goals": [
+		{
+			"id": "20000000-0000-4000-8000-000000000001",
+			"name": "Improve measurable response speed across communication, precision skills, and reaction time",
+			"description": "Success is a visible trend in PVT reaction time, pitch time-to-first-word, fixed practice times, and the in-sync score, plus qualitative improvement under pressure without sacrificing physical consistency.",
+			"state": "draft",
+			"target_date": null
+		}
+	],
+	"plans": [
+		{
+			"id": "30000000-0000-4000-8000-000000000001",
+			"name": "Hardware — sleep, caffeine, aerobic base, and physical consistency",
+			"description": "Protect the substrate with a fixed wake time, noon caffeine cutoff, daily core stability, gradual strength work, aerobic work, and a daily downregulation block.",
+			"state": "draft"
+		},
+		{
+			"id": "30000000-0000-4000-8000-000000000002",
+			"name": "Software — domain practice and automaticity",
+			"description": "Build separate pattern libraries through hostile-pitch practice, precision-skill preparation, improv, and bounded deliberate gaming.",
+			"state": "draft"
+		},
+		{
+			"id": "30000000-0000-4000-8000-000000000003",
+			"name": "Pressure & Feedback — measurement, stress exposure, and reviews",
+			"description": "Track PVT, pitch, physical, and subjective metrics; use one meaningful high-consequence practice event per week; and review correlations monthly.",
+			"state": "draft"
+		}
+	],
+	"edges": [
+		{
+			"id": "60000000-0000-4000-8000-000000000001",
+			"source_id": "20000000-0000-4000-8000-000000000001",
+			"source_kind": "goal",
+			"target_id": "40000000-0000-4000-8000-000000000002",
+			"target_kind": "task",
+			"relationship": "has_task"
+		},
+		{
+			"id": "60000000-0000-4000-8000-000000000002",
+			"source_id": "20000000-0000-4000-8000-000000000001",
+			"source_kind": "goal",
+			"target_id": "40000000-0000-4000-8000-000000000003",
+			"target_kind": "task",
+			"relationship": "has_task"
+		},
+		{
+			"id": "60000000-0000-4000-8000-000000000003",
+			"source_id": "20000000-0000-4000-8000-000000000001",
+			"source_kind": "goal",
+			"target_id": "40000000-0000-4000-8000-000000000004",
+			"target_kind": "task",
+			"relationship": "has_task"
+		}
+	]
+}

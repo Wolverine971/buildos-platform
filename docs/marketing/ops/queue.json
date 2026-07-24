@@ -1,146 +1,224 @@
 {
-  "_comment": "REAL anti-feed track state, seeded 2026-07-24 from WS09/WS10 + published blogs + the archived T35 publish kit. Edited only via the /marketing skill. Deliverable statuses: pending (not drafted) | drafted | scheduled | posted | skipped. Item status: idea | drafted | scheduled | published.",
-  "items": [
-    {
-      "id": "opener",
-      "track": "anti-feed",
-      "type": "blog",
-      "title": "You're Not Choosing What You Think About Anymore",
-      "slug": "your-morning-without-the-algorithm",
-      "path": "apps/web/src/content/blogs/philosophy/your-morning-without-the-algorithm.md",
-      "status": "published",
-      "rank": 0,
-      "published_at": "2026-04-16",
-      "note": "Cluster opener (introduces 'chosen input' / direction-of-the-arrow). Never had a publish kit — extractions never drafted.",
-      "deliverables": []
-    },
-    {
-      "id": "T34",
-      "track": "anti-feed",
-      "type": "blog",
-      "title": "Social Media Is Dead. What You're Using Is Interest Media.",
-      "slug": "social-media-is-dead-interest-media",
-      "path": "apps/web/src/content/blogs/philosophy/social-media-is-dead-interest-media.md",
-      "status": "published",
-      "rank": 1,
-      "published_at": "2026-04-17",
-      "note": "Cluster manifesto/anchor. No publish kit found — all extractions still pending (overdue).",
-      "deliverables": [
-        { "kind": "twitter-thread", "status": "pending" },
-        { "kind": "linkedin-post", "status": "pending" },
-        { "kind": "instagram-carousel", "status": "pending", "asset_needs": ["carousel-9-slides"], "assets": [] },
-        { "kind": "tiktok-30s", "status": "pending" },
-        { "kind": "tiktok-90s", "status": "pending" }
-      ]
-    },
-    {
-      "id": "T36",
-      "track": "anti-feed",
-      "type": "blog",
-      "title": "What a Thinking Environment Actually Is",
-      "slug": "what-a-thinking-environment-actually-is",
-      "path": "apps/web/src/content/blogs/philosophy/what-a-thinking-environment-actually-is.md",
-      "status": "published",
-      "rank": 3,
-      "published_at": "2026-04-18",
-      "note": "Live but UNVERIFIED — never tracked; verify cross-links + JSON-LD, reconcile with WS04-T15. No publish kit — extractions pending.",
-      "deliverables": [
-        { "kind": "twitter-thread", "status": "pending" },
-        { "kind": "linkedin-post", "status": "pending" },
-        { "kind": "instagram-carousel", "status": "pending", "asset_needs": ["carousel-9-slides"], "assets": [] },
-        { "kind": "tiktok-30s", "status": "pending" },
-        { "kind": "tiktok-90s", "status": "pending" }
-      ]
-    },
-    {
-      "id": "T35",
-      "track": "anti-feed",
-      "type": "blog",
-      "title": "You Stopped Choosing What You Think About",
-      "slug": "you-stopped-choosing-what-you-think-about",
-      "path": "apps/web/src/content/blogs/philosophy/you-stopped-choosing-what-you-think-about.md",
-      "status": "published",
-      "rank": 2,
-      "published_at": "2026-04-27",
-      "note": "Newest published cluster blog. Full publish kit drafted (all 5 lanes) but NOTHING was ever posted. Kit: docs/archive/marketing/social-media/publish-kits/2026-04-27-you-stopped-choosing-what-you-think-about-kit.md",
-      "deliverables": [
-        { "kind": "twitter-thread", "status": "drafted", "posted_at": null, "url": null },
-        { "kind": "linkedin-post", "status": "drafted", "posted_at": null, "url": null },
-        { "kind": "instagram-carousel", "status": "drafted", "posted_at": null, "url": null, "asset_needs": ["carousel-9-slides"], "assets": [] },
-        { "kind": "tiktok-30s", "status": "drafted", "posted_at": null, "url": null, "asset_needs": ["screen-recording"], "assets": [] },
-        { "kind": "tiktok-90s", "status": "drafted", "posted_at": null, "url": null, "asset_needs": ["screen-recording"], "assets": [] }
-      ]
-    },
-    {
-      "id": "T37",
-      "track": "anti-feed",
-      "type": "blog",
-      "title": "The Three-Minute Morning That Fixes Your Day",
-      "slug": "three-minute-morning",
-      "status": "idea",
-      "rank": 4,
-      "published_at": null,
-      "note": "Next draftable blog per WS09 ranking (practical cluster). Draft via /draft-anti-feed-blog."
-    },
-    {
-      "id": "T38",
-      "track": "anti-feed",
-      "type": "blog",
-      "title": "Why Most Productivity Tools Are Feeds in Disguise",
-      "slug": "productivity-tools-are-feeds",
-      "status": "idea",
-      "rank": 5,
-      "published_at": null
-    },
-    {
-      "id": "T39",
-      "track": "anti-feed",
-      "type": "blog",
-      "title": "The Quiet Half of the Internet",
-      "slug": "the-quiet-half-of-the-internet",
-      "status": "idea",
-      "rank": 6,
-      "published_at": null
-    },
-    {
-      "id": "T40",
-      "track": "anti-feed",
-      "type": "blog",
-      "title": "Why AI Will Collapse the Clipping Economy by 2028",
-      "slug": "clipping-economy-2028",
-      "status": "idea",
-      "rank": 7,
-      "published_at": null
-    },
-    {
-      "id": "T41",
-      "track": "anti-feed",
-      "type": "blog",
-      "title": "Authenticity Is the Only Moat Left",
-      "slug": "authenticity-is-the-only-moat",
-      "status": "idea",
-      "rank": 8,
-      "published_at": null
-    },
-    {
-      "id": "T42",
-      "track": "anti-feed",
-      "type": "blog",
-      "title": "The Three Feelings You Don't Have Words For Yet",
-      "slug": "three-feelings-no-words",
-      "status": "idea",
-      "rank": 9,
-      "published_at": null
-    },
-    {
-      "id": "T43",
-      "track": "anti-feed",
-      "type": "blog",
-      "title": "Writing Is Thinking. Scrolling Is Receiving.",
-      "slug": "writing-is-thinking-scrolling-is-receiving",
-      "status": "idea",
-      "rank": 10,
-      "published_at": null
-    }
-  ]
+	"_comment": "REAL anti-feed track state, seeded 2026-07-24 from WS09/WS10 + published blogs + the archived T35 publish kit. Edited only via the /marketing skill. Deliverable statuses: pending (not drafted) | drafted | scheduled | posted | skipped. Item status: idea | drafted | scheduled | published.",
+	"items": [
+		{
+			"id": "atom-2026-07-24",
+			"track": "founder-proof",
+			"type": "atom",
+			"title": "18 projects, one shared context",
+			"slug": "eighteen-projects",
+			"brief_path": "docs/marketing/proof-content-harness/atoms/2026-07-24-eighteen-projects/BRIEF.md",
+			"status": "drafted",
+			"rank": 0,
+			"published_at": null,
+			"note": "First atom of the founder-proof weekly engine. Demonstration = DJ running 18 real projects; the bottleneck was never ideas, it's holding context between them. LinkedIn + X drafted & ready to post; reel + brand-proof waiting on DJ's 15s hook + screen capture. PRIVACY: blur client names + job-search project on camera.",
+			"deliverables": [
+				{
+					"kind": "linkedin-post",
+					"channel_role": "primary",
+					"account": "DJ (founder)",
+					"status": "drafted",
+					"posted_at": null,
+					"url": null
+				},
+				{
+					"kind": "x-post",
+					"account": "DJ (founder)",
+					"status": "drafted",
+					"posted_at": null,
+					"url": null
+				},
+				{
+					"kind": "instagram-reel",
+					"account": "@djwayne3",
+					"status": "drafted",
+					"posted_at": null,
+					"url": null,
+					"asset_needs": ["hook-video-15s", "screen-capture"],
+					"assets": []
+				},
+				{
+					"kind": "brand-proof",
+					"account": "@build.os",
+					"status": "drafted",
+					"posted_at": null,
+					"url": null,
+					"asset_needs": ["screen-capture"],
+					"assets": []
+				}
+			]
+		},
+		{
+			"id": "opener",
+			"track": "anti-feed",
+			"type": "blog",
+			"title": "You're Not Choosing What You Think About Anymore",
+			"slug": "your-morning-without-the-algorithm",
+			"path": "apps/web/src/content/blogs/philosophy/your-morning-without-the-algorithm.md",
+			"status": "published",
+			"rank": 0,
+			"published_at": "2026-04-16",
+			"note": "Cluster opener (introduces 'chosen input' / direction-of-the-arrow). Never had a publish kit — extractions never drafted.",
+			"deliverables": []
+		},
+		{
+			"id": "T34",
+			"track": "anti-feed",
+			"type": "blog",
+			"title": "Social Media Is Dead. What You're Using Is Interest Media.",
+			"slug": "social-media-is-dead-interest-media",
+			"path": "apps/web/src/content/blogs/philosophy/social-media-is-dead-interest-media.md",
+			"status": "published",
+			"rank": 1,
+			"published_at": "2026-04-17",
+			"note": "Cluster manifesto/anchor. No publish kit found — all extractions still pending (overdue).",
+			"deliverables": [
+				{ "kind": "twitter-thread", "status": "pending" },
+				{ "kind": "linkedin-post", "status": "pending" },
+				{
+					"kind": "instagram-carousel",
+					"status": "pending",
+					"asset_needs": ["carousel-9-slides"],
+					"assets": []
+				},
+				{ "kind": "tiktok-30s", "status": "pending" },
+				{ "kind": "tiktok-90s", "status": "pending" }
+			]
+		},
+		{
+			"id": "T36",
+			"track": "anti-feed",
+			"type": "blog",
+			"title": "What a Thinking Environment Actually Is",
+			"slug": "what-a-thinking-environment-actually-is",
+			"path": "apps/web/src/content/blogs/philosophy/what-a-thinking-environment-actually-is.md",
+			"status": "published",
+			"rank": 3,
+			"published_at": "2026-04-18",
+			"note": "Live but UNVERIFIED — never tracked; verify cross-links + JSON-LD, reconcile with WS04-T15. No publish kit — extractions pending.",
+			"deliverables": [
+				{ "kind": "twitter-thread", "status": "pending" },
+				{ "kind": "linkedin-post", "status": "pending" },
+				{
+					"kind": "instagram-carousel",
+					"status": "pending",
+					"asset_needs": ["carousel-9-slides"],
+					"assets": []
+				},
+				{ "kind": "tiktok-30s", "status": "pending" },
+				{ "kind": "tiktok-90s", "status": "pending" }
+			]
+		},
+		{
+			"id": "T35",
+			"track": "anti-feed",
+			"type": "blog",
+			"title": "You Stopped Choosing What You Think About",
+			"slug": "you-stopped-choosing-what-you-think-about",
+			"path": "apps/web/src/content/blogs/philosophy/you-stopped-choosing-what-you-think-about.md",
+			"status": "published",
+			"rank": 2,
+			"published_at": "2026-04-27",
+			"note": "Newest published cluster blog. Full publish kit drafted (all 5 lanes) but NOTHING was ever posted. Kit: docs/archive/marketing/social-media/publish-kits/2026-04-27-you-stopped-choosing-what-you-think-about-kit.md",
+			"deliverables": [
+				{ "kind": "twitter-thread", "status": "drafted", "posted_at": null, "url": null },
+				{ "kind": "linkedin-post", "status": "drafted", "posted_at": null, "url": null },
+				{
+					"kind": "instagram-carousel",
+					"status": "drafted",
+					"posted_at": null,
+					"url": null,
+					"asset_needs": ["carousel-9-slides"],
+					"assets": []
+				},
+				{
+					"kind": "tiktok-30s",
+					"status": "drafted",
+					"posted_at": null,
+					"url": null,
+					"asset_needs": ["screen-recording"],
+					"assets": []
+				},
+				{
+					"kind": "tiktok-90s",
+					"status": "drafted",
+					"posted_at": null,
+					"url": null,
+					"asset_needs": ["screen-recording"],
+					"assets": []
+				}
+			]
+		},
+		{
+			"id": "T37",
+			"track": "anti-feed",
+			"type": "blog",
+			"title": "The Three-Minute Morning That Fixes Your Day",
+			"slug": "three-minute-morning",
+			"status": "idea",
+			"rank": 4,
+			"published_at": null,
+			"note": "Next draftable blog per WS09 ranking (practical cluster). Draft via /draft-anti-feed-blog."
+		},
+		{
+			"id": "T38",
+			"track": "anti-feed",
+			"type": "blog",
+			"title": "Why Most Productivity Tools Are Feeds in Disguise",
+			"slug": "productivity-tools-are-feeds",
+			"status": "idea",
+			"rank": 5,
+			"published_at": null
+		},
+		{
+			"id": "T39",
+			"track": "anti-feed",
+			"type": "blog",
+			"title": "The Quiet Half of the Internet",
+			"slug": "the-quiet-half-of-the-internet",
+			"status": "idea",
+			"rank": 6,
+			"published_at": null
+		},
+		{
+			"id": "T40",
+			"track": "anti-feed",
+			"type": "blog",
+			"title": "Why AI Will Collapse the Clipping Economy by 2028",
+			"slug": "clipping-economy-2028",
+			"status": "idea",
+			"rank": 7,
+			"published_at": null
+		},
+		{
+			"id": "T41",
+			"track": "anti-feed",
+			"type": "blog",
+			"title": "Authenticity Is the Only Moat Left",
+			"slug": "authenticity-is-the-only-moat",
+			"status": "idea",
+			"rank": 8,
+			"published_at": null
+		},
+		{
+			"id": "T42",
+			"track": "anti-feed",
+			"type": "blog",
+			"title": "The Three Feelings You Don't Have Words For Yet",
+			"slug": "three-feelings-no-words",
+			"status": "idea",
+			"rank": 9,
+			"published_at": null
+		},
+		{
+			"id": "T43",
+			"track": "anti-feed",
+			"type": "blog",
+			"title": "Writing Is Thinking. Scrolling Is Receiving.",
+			"slug": "writing-is-thinking-scrolling-is-receiving",
+			"status": "idea",
+			"rank": 10,
+			"published_at": null
+		}
+	]
 }

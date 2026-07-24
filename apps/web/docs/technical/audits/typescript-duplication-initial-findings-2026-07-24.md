@@ -1,0 +1,99 @@
+<!-- apps/web/docs/technical/audits/typescript-duplication-initial-findings-2026-07-24.md -->
+
+# TypeScript Duplication: Initial Findings
+
+Date: 2026-07-24
+
+This is the first review of the AST-based inventory produced by `pnpm --filter @buildos/web analyze:codebase`. The default pass covered authored TypeScript in `src/lib` and `scripts`, while excluding Svelte components, Svelte modules, and SvelteKit routes.
+
+The first run indexed 1,010 files and roughly 16,600 runtime functions. It found 179 cross-file clone families after tests and generated code were removed from similarity scoring. The exact totals can move slightly as the analyzer indexes its own implementation.
+
+These findings are leads, not refactoring decisions. Each consolidation needs a behavior-preserving test boundary and an owner.
+
+## Strong consolidation candidates
+
+### Unknown-value parsing helpers
+
+The largest exact-body family contains 30 copies of `isRecord` or `isPlainRecord`. Several additional families repeatedly implement nullable or trimmed-string parsing under names such as `readString`, `stringValue`, `asString`, `normalizeOptionalText`, and `toNonEmptyString`.
+
+This is real duplication, but a single catch-all utilities file would become a junk drawer. A better split is:
+
+- environment-neutral unknown-value guards that are safe in browser and server code;
+- domain-specific readers that preserve meaningful differences such as `null` versus `undefined`, trimming policy, or accepted JSON types.
+
+The repeated guards are a good low-risk first extraction because their contracts are small and easily tested.
+
+### Chat-session seed formatting
+
+`agent-run-chat-session.service.ts`, `inbox-chat-session.service.ts`, and `project-audit-chat-session.service.ts` repeat a recognizable server-side toolkit:
+
+- `isRecord`, `readString`, and `readNumber`;
+- `compactText`;
+- `appendSection` and `normalizeArray`;
+- in some pairs, additional loaders and formatting helpers.
+
+The report correctly distinguishes an important detail: the inbox version of `compactText` does not call `trimEnd()` after slicing, while the other two do. That difference should be resolved intentionally before extraction. A focused `chat-session-seed-formatters` module is more appropriate than a global string utility.
+
+### Admin analytics primitives
+
+The admin dashboard, user analytics, LLM-usage analytics, and chat-cost analytics code repeats exact or near-exact implementations of:
+
+- numeric and text coercion;
+- percentile and average calculations;
+- date parsing;
+- model-cost and cache-hit helpers;
+- paginated row fetching.
+
+This is both duplication and consistency risk: small changes to percentile boundaries or coercion behavior can make dashboards disagree. Shared, pure analytics primitives plus focused tests would establish one definition for each metric.
+
+### Gmail response and concurrency infrastructure
+
+`gmail-read-gateway.ts` and `gmail-relevance/metadata-gateway.ts` have near-duplicate `readJsonBounded` implementations and closely related `mapWithConcurrency` implementations.
+
+The response reader differs in domain error types and the value returned for an empty body. The concurrency mapper in the metadata gateway also accepts an abort signal. The reusable seam is therefore a lower-level bounded-body reader and concurrency scheduler with injected error mapping and optional cancellation—not directly moving either function unchanged.
+
+### Ontology migration state resolution
+
+Two `determinePhaseState` methods have 93% structural overlap. One treats a phase with `order === 1` as active when dates do not decide the state; the other returns draft.
+
+This is exactly the kind of duplication that can hide policy drift. Before consolidating, decide whether that fallback difference is deliberate. If it is, extract the date-based state resolver and keep the fallback policy explicit at each caller.
+
+### Task-to-goal edge mapping
+
+`next-step-generation.service.ts` and `next-step-seeding.service.ts` contain near-identical `buildTaskGoalLinks` flows and matching relationship-direction logic. This appears suitable for a shared ontology edge-mapping primitive, provided the `EdgeData` and `EdgeSummary` contracts can be represented by one narrow structural type.
+
+## Smaller utility families
+
+The clone-family report also found repeated implementations of:
+
+- SHA-256 token/text hashing;
+- array chunking;
+- HTML/XML escaping;
+- boolean environment parsing;
+- stable JSON stringification;
+- date-to-millisecond parsing;
+- word tokenization.
+
+These are worth consolidating when ownership is obvious. They should be grouped by cohesive responsibility—crypto, parsing, concurrency, or text encoding—rather than collected in a generic `utils.ts`.
+
+## Likely intentional similarities
+
+Several high-scoring pairs look like sibling behaviors rather than debt:
+
+- `differenceInDays` and `differenceInHours`;
+- project, task, goal, and plan badge-class functions;
+- provider-specific model normalization functions;
+- task, goal, and plan state-bucketing functions.
+
+Parameterization may reduce line count but could make the domain policy harder to read. These should be marked “keep separate” unless the implementations are already drifting or changes routinely need to be repeated across siblings.
+
+## Suggested cleanup order
+
+1. Extract and test the exact unknown-value guards with an explicit `null`/`undefined` policy.
+2. Consolidate the three chat-session seed-formatting toolkits inside the server boundary.
+3. Establish shared admin analytics primitives, especially percentile and paginated fetching.
+4. Extract Gmail bounded-response and concurrency infrastructure while preserving domain errors.
+5. Resolve the ontology phase-state policy discrepancy, then consolidate the shared portion.
+6. Move task-goal edge interpretation behind one narrow ontology helper.
+
+After each focused change, regenerate the inventory and record whether the family disappeared, intentionally remained, or split into clearer domain-specific behavior.

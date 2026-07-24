@@ -26,6 +26,33 @@ export interface ToolExecutionRow {
 	affected_entities: AffectedEntity[];
 }
 
+export interface LlmUsageLogRow {
+	id: string;
+	model_requested: string;
+	model_used: string;
+	provider: string | null;
+	profile: string | null;
+	operation_type: string;
+	prompt_tokens: number;
+	completion_tokens: number;
+	total_tokens: number;
+	total_cost_usd: number;
+	request_started_at: string;
+	request_completed_at: string;
+}
+
+export interface StreamUsageSummary {
+	requestCount: number;
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+	totalCostUsd: number;
+	models: string[];
+	providers: string[];
+	profiles: string[];
+	operations: string[];
+}
+
 export interface AffectedEntity {
 	kind?: string;
 	id?: string;
@@ -178,6 +205,73 @@ export async function getToolExecutions(
 			? (row.affected_entities as AffectedEntity[])
 			: []
 	}));
+}
+
+/** All model-usage rows attributable to one streamed turn. */
+export async function getUsageLogsForStreamRun(
+	admin: TypedSupabaseClient,
+	streamRunId: string
+): Promise<LlmUsageLogRow[]> {
+	const { data, error } = await admin
+		.from('llm_usage_logs')
+		.select(
+			'id, model_requested, model_used, provider, profile, operation_type, prompt_tokens, completion_tokens, total_tokens, total_cost_usd, request_started_at, request_completed_at'
+		)
+		.eq('stream_run_id', streamRunId)
+		.order('request_started_at', { ascending: true });
+	if (error) {
+		throw new Error(`[agentic-e2e] failed to read usage for ${streamRunId}: ${error.message}`);
+	}
+	return (data as LlmUsageLogRow[] | null) ?? [];
+}
+
+export function summarizeUsageLogs(rows: LlmUsageLogRow[]): StreamUsageSummary {
+	const unique = (values: Array<string | null>) =>
+		Array.from(new Set(values.filter((value): value is string => Boolean(value))));
+	return {
+		requestCount: rows.length,
+		promptTokens: rows.reduce((total, row) => total + row.prompt_tokens, 0),
+		completionTokens: rows.reduce((total, row) => total + row.completion_tokens, 0),
+		totalTokens: rows.reduce((total, row) => total + row.total_tokens, 0),
+		totalCostUsd: rows.reduce((total, row) => total + row.total_cost_usd, 0),
+		models: unique(rows.map((row) => row.model_used)),
+		providers: unique(rows.map((row) => row.provider)),
+		profiles: unique(rows.map((row) => row.profile)),
+		operations: unique(rows.map((row) => row.operation_type))
+	};
+}
+
+/**
+ * Usage logging is asynchronous to the SSE response. Wait until at least one row
+ * exists and the row set has remained unchanged for a quiet period.
+ */
+export async function waitForUsageSummary(
+	admin: TypedSupabaseClient,
+	streamRunId: string,
+	options: { timeoutMs?: number; intervalMs?: number; quietPeriodMs?: number } = {}
+): Promise<StreamUsageSummary> {
+	const timeoutMs = options.timeoutMs ?? 10_000;
+	const intervalMs = options.intervalMs ?? 250;
+	const quietPeriodMs = options.quietPeriodMs ?? 2_000;
+	const deadline = Date.now() + timeoutMs;
+	let lastSignature = '';
+	let stableSince = Date.now();
+	let lastRows: LlmUsageLogRow[] = [];
+
+	while (Date.now() < deadline) {
+		lastRows = await getUsageLogsForStreamRun(admin, streamRunId);
+		const signature = lastRows.map((row) => row.id).join(',');
+		if (signature !== lastSignature) {
+			lastSignature = signature;
+			stableSince = Date.now();
+		}
+		if (lastRows.length > 0 && Date.now() - stableSince >= quietPeriodMs) {
+			return summarizeUsageLogs(lastRows);
+		}
+		await new Promise((resolve) => setTimeout(resolve, intervalMs));
+	}
+
+	return summarizeUsageLogs(lastRows);
 }
 
 /** All live (non-deleted) documents under a project. */

@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import type { ChatToolCall, LastTurnContext } from '@buildos/shared-types';
 import { buildFastAgentStreamRequestBody } from '$lib/services/agentic-chat-v2/stream-request-client';
 import { collectStrictAgentSse } from '$lib/services/agentic-chat-v2/strict-agent-sse';
-import type { HarnessContextType, TurnResult } from './types';
+import type { HarnessContextType, TurnResult, TurnTiming } from './types';
 
 const STREAM_PATH = '/api/agent/v2/stream';
 
@@ -39,7 +39,34 @@ export async function warmupPing(params: { baseUrl: string; cookie: string }): P
 	}
 }
 
-function emptyResult(streamRunId: string, clientTurnId: string): TurnResult {
+export function createTurnTiming(requestStartedAt = new Date().toISOString()): TurnTiming {
+	return {
+		requestStartedAt,
+		responseHeadersMs: null,
+		firstSseEventMs: null,
+		ttftMs: null,
+		terminalEventMs: null,
+		totalDurationMs: null
+	};
+}
+
+/** Record one event against the request start; the first text event defines TTFT. */
+export function recordTurnEventTiming(
+	timing: TurnTiming,
+	eventType: unknown,
+	elapsedMs: number
+): void {
+	const observedMs = Math.max(0, elapsedMs);
+	timing.firstSseEventMs ??= observedMs;
+	if ((eventType === 'text' || eventType === 'text_delta') && timing.ttftMs === null) {
+		timing.ttftMs = observedMs;
+	}
+	if (eventType === 'done' && timing.terminalEventMs === null) {
+		timing.terminalEventMs = observedMs;
+	}
+}
+
+function emptyResult(streamRunId: string, clientTurnId: string, timing: TurnTiming): TurnResult {
 	return {
 		sessionId: null,
 		streamRunId,
@@ -53,7 +80,8 @@ function emptyResult(streamRunId: string, clientTurnId: string): TurnResult {
 		finishedReason: null,
 		usage: null,
 		completed: false,
-		rawEvents: []
+		rawEvents: [],
+		timing
 	};
 }
 
@@ -112,9 +140,11 @@ function applyEvent(result: TurnResult, ev: Record<string, unknown>): void {
  * `result.errors`; malformed or incoherent protocol events throw.
  */
 export async function runTurn(params: RunTurnParams): Promise<TurnResult> {
+	const requestStartedAt = new Date().toISOString();
+	const requestStartedMs = performance.now();
 	const streamRunId = randomUUID();
 	const clientTurnId = randomUUID();
-	const result = emptyResult(streamRunId, clientTurnId);
+	const result = emptyResult(streamRunId, clientTurnId, createTurnTiming(requestStartedAt));
 	const body = buildFastAgentStreamRequestBody({
 		message: params.message,
 		sessionId: params.sessionId,
@@ -136,20 +166,26 @@ export async function runTurn(params: RunTurnParams): Promise<TurnResult> {
 		},
 		body: JSON.stringify(body)
 	});
+	result.timing.responseHeadersMs = performance.now() - requestStartedMs;
 
 	if (!response.ok || !response.body) {
 		const text = await response.text().catch(() => '');
 		result.errors.push({
 			error: `stream request failed (${response.status}): ${text.slice(0, 300)}`
 		});
+		result.timing.totalDurationMs = performance.now() - requestStartedMs;
 		return result;
 	}
 
 	await collectStrictAgentSse(response, {
 		streamRunId,
 		clientTurnId,
-		onEvent: (event) => applyEvent(result, event)
+		onEvent: (event) => {
+			recordTurnEventTiming(result.timing, event.type, performance.now() - requestStartedMs);
+			applyEvent(result, event);
+		}
 	});
+	result.timing.totalDurationMs = performance.now() - requestStartedMs;
 
 	return result;
 }

@@ -164,6 +164,7 @@ start-mistral.ps1
 # Build artifacts
 build-logs.log
 build-analysis.html
+.codebase-inventory/
 .tsbuildinfo
 *.gz
 *.br

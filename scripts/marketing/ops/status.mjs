@@ -188,12 +188,97 @@ function computeStatus(today) {
 		}
 	}
 
+	// 3b) WEEKLY ATOM — the founder-proof cadence. One demonstration atom/week,
+	// distributed LinkedIn-primary + X + IG reel + brand-proof. Mirrors the blog
+	// cadence nag so the weekly engine can't silently rot like the last pipeline did.
+	if (cadence.weekly_atom) {
+		const { min, max } = cadence.weekly_atom.interval_days;
+		const atoms = items.filter((i) => i.type === 'atom');
+		const publishedAtoms = atoms
+			.filter((i) => i.status === 'published' && i.published_at)
+			.sort(
+				(a, b) => parseDate(b.published_at).getTime() - parseDate(a.published_at).getTime()
+			);
+		const inFlight = atoms
+			.filter(
+				(i) => i.status === 'idea' || i.status === 'drafted' || i.status === 'scheduled'
+			)
+			.sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
+
+		// a) cadence — how stale is the last shipped atom, and is the next due?
+		if (publishedAtoms.length > 0) {
+			const newest = publishedAtoms[0];
+			const age = daysBetween(today, parseDate(newest.published_at));
+			const next = inFlight[0];
+			if (next) {
+				if (age > max) {
+					findings.push({
+						severity: 'overdue',
+						item: next.id,
+						title: next.title,
+						what: `Weekly atom overdue — ${age}d since last shipped (${newest.id}), cadence every ${min}-${max}d`,
+						days: age - max
+					});
+				} else if (age >= min) {
+					findings.push({
+						severity: 'due',
+						item: next.id,
+						title: next.title,
+						what: `Weekly atom due now — ${age}d since last (window ${min}-${max}d)`,
+						days: 0
+					});
+				} else {
+					findings.push({
+						severity: 'next',
+						item: next.id,
+						title: next.title,
+						what: `Next weekly atom due in ${min - age}d`,
+						days: min - age
+					});
+				}
+			}
+		} else if (inFlight.length > 0) {
+			findings.push({
+				severity: 'due',
+				item: inFlight[0].id,
+				title: inFlight[0].title,
+				what: `First weekly atom — ship it to start the founder-proof engine`,
+				days: 0
+			});
+		}
+
+		// b) posting — an in-flight atom's surfaces whose copy is drafted AND assets are
+		// resolved are ready to post now. Surfaces still missing assets fall through to
+		// ASSET GAPS below, so a surface is never counted as both at once.
+		for (const atom of inFlight) {
+			for (const d of atom.deliverables ?? []) {
+				if (d.status !== 'drafted' && d.status !== 'scheduled') continue;
+				const needs = d.asset_needs ?? [];
+				const have = d.assets ?? [];
+				if (needs.length > 0 && have.length === 0) continue; // shown under ASSET GAPS
+				const surface = d.kind + (d.account ? ` (${d.account})` : '');
+				findings.push({
+					severity: 'ready',
+					item: atom.id,
+					title: atom.title,
+					what: `${surface} drafted — ready to post`,
+					days: 0
+				});
+			}
+		}
+	}
+
 	// 4) ASSET GAPS — deliverables that declared an asset need but have no resolved asset.
 	for (const item of items) {
 		for (const d of item.deliverables ?? []) {
 			const needs = d.asset_needs ?? [];
 			const have = d.assets ?? [];
-			if (needs.length > 0 && have.length === 0 && d.status !== 'posted' && d.status !== 'skipped') {
+			if (
+				needs.length > 0 &&
+				have.length === 0 &&
+				d.status !== 'posted' &&
+				d.status !== 'skipped'
+			) {
 				findings.push({
 					severity: 'asset-gap',
 					item: item.id,
@@ -206,7 +291,7 @@ function computeStatus(today) {
 
 	// 5) BACKLOG — ideas/drafts not yet scheduled or published.
 	const backlog = items
-		.filter((i) => i.status === 'idea' || i.status === 'drafted')
+		.filter((i) => (i.status === 'idea' || i.status === 'drafted') && i.type !== 'atom')
 		.sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
 	for (const b of backlog) {
 		findings.push({
@@ -217,7 +302,12 @@ function computeStatus(today) {
 		});
 	}
 
-	return { findings, tracks, backlogCount: backlog.length, publishedCount: publishedBlogs.length };
+	return {
+		findings,
+		tracks,
+		backlogCount: backlog.length,
+		publishedCount: publishedBlogs.length
+	};
 }
 
 function render(today) {
@@ -275,7 +365,9 @@ function render(today) {
 	if (ready.length) {
 		line('');
 		line(`  🟢 READY TO POST (${ready.length})`);
-		ready.sort((a, b) => (a.days ?? 0) - (b.days ?? 0)).forEach((f) => line(`     ${f.item}  ${f.what}`));
+		ready
+			.sort((a, b) => (a.days ?? 0) - (b.days ?? 0))
+			.forEach((f) => line(`     ${f.item}  ${f.what}`));
 	}
 	if (next.length) {
 		line('');

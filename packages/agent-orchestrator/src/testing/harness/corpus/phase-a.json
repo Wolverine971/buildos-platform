@@ -1,0 +1,335 @@
+{
+	"schema_version": 1,
+	"corpus_version": "phase-a-frozen-v1",
+	"status": "frozen",
+	"approved_by": "DJ",
+	"approved_at": "2026-07-24T17:06:00.000Z",
+	"snapshot_ref": "../fixtures/project-alpha.snapshot.json",
+	"snapshot_sha256": "be9feaeade4134285f891f857ca02aad0a74cd1c890ba774c2b9ea1fa398af6c",
+	"scenarios": [
+		{
+			"scenario_id": "a0-c01-in-sync-explanation",
+			"selection_status": "frozen",
+			"class": "simple_read",
+			"source": {
+				"kind": "production_chat_turn",
+				"turn_ref_hash": "45579072825e",
+				"captured_on": "2026-07-13",
+				"transformations": []
+			},
+			"request_text": "Okay, what is this in sync score referring to? Please explain this to me.",
+			"context_type": "project",
+			"snapshot_ref": "../fixtures/project-alpha.snapshot.json",
+			"expected_route": "direct",
+			"expected_reason_code": "simple_read",
+			"acceptance_checks": [
+				{
+					"validator_id": "answer.contains_all",
+					"description": "Explain the score using the frozen telemetry definition.",
+					"required": true,
+					"config": {
+						"terms": ["subjective", "1–10", "weekly", "correlation"]
+					}
+				},
+				{
+					"validator_id": "answer.excludes_all",
+					"description": "Do not turn the subjective score into an unsupported clinical claim.",
+					"required": true,
+					"config": {
+						"terms": ["diagnosis", "clinically validated"]
+					}
+				}
+			],
+			"notes": "A production simple-read request tied directly to the retained Measurement & Telemetry facts."
+		},
+		{
+			"scenario_id": "a0-c02-next-actions",
+			"selection_status": "frozen",
+			"class": "simple_read",
+			"source": {
+				"kind": "production_chat_turn",
+				"turn_ref_hash": "684079fa8901",
+				"captured_on": "2026-06-22",
+				"transformations": []
+			},
+			"request_text": "What tasks need action next in this project?",
+			"context_type": "project",
+			"snapshot_ref": "../fixtures/project-alpha.snapshot.json",
+			"expected_route": "direct",
+			"expected_reason_code": "simple_read",
+			"acceptance_checks": [
+				{
+					"validator_id": "answer.contains_all",
+					"description": "Name the hard-gate task and the two overdue tasks at the frozen as-of time.",
+					"required": true,
+					"config": {
+						"terms": [
+							"Ship training equipment",
+							"hostile-pitch",
+							"PVT reaction-time app"
+						]
+					}
+				},
+				{
+					"validator_id": "answer.excludes_all",
+					"description": "A read-only answer must not claim task mutations.",
+					"required": true,
+					"config": {
+						"terms": ["I updated", "I rescheduled", "marked complete"]
+					}
+				}
+			],
+			"notes": "The wording is unchanged; only the backing project is the shared anonymized snapshot."
+		},
+		{
+			"scenario_id": "a0-c04-five-bullet-status",
+			"selection_status": "frozen",
+			"class": "status_summary",
+			"source": {
+				"kind": "production_chat_turn",
+				"turn_ref_hash": "090da0440827",
+				"captured_on": "2026-06-22",
+				"transformations": []
+			},
+			"request_text": "Summarize this project in 5 bullets. Include the names of documents you used.",
+			"context_type": "project",
+			"snapshot_ref": "../fixtures/project-alpha.snapshot.json",
+			"expected_route": "direct",
+			"expected_reason_code": "status_summary",
+			"acceptance_checks": [
+				{
+					"validator_id": "answer.bullet_count",
+					"description": "Return exactly five top-level bullets.",
+					"required": true,
+					"config": {
+						"count": 5
+					}
+				},
+				{
+					"validator_id": "answer.contains_all",
+					"description": "Name the core source documents and the three-layer program structure.",
+					"required": true,
+					"config": {
+						"terms": [
+							"Training Program — Full Synthesis & Weekly Template",
+							"Measurement & Telemetry Protocol",
+							"Hardware",
+							"Software",
+							"Pressure & Feedback"
+						]
+					}
+				}
+			],
+			"notes": "An alternative status candidate with a machine-checkable output shape."
+		},
+		{
+			"scenario_id": "a0-c06-single-source-article",
+			"selection_status": "frozen",
+			"class": "single_source_lookup",
+			"source": {
+				"kind": "production_chat_turn",
+				"turn_ref_hash": "3dfd3bc359a4",
+				"captured_on": "2026-05-08",
+				"transformations": []
+			},
+			"request_text": "Amazing. Now here are some specific video ideas that I want to do. First idea is about what snipers in the future are going to look like. What skill sets do they need? What mission sets will they do? What is the team structure going to look like. Also this article is highly relevant: https://taskandpurpose.com/news/marines-scouts-primary-pmos/ I also did some heavy research and I have a growing list of YouTube ideas.",
+			"context_type": "project",
+			"snapshot_ref": "../fixtures/project-alpha.snapshot.json",
+			"expected_route": "workflow",
+			"expected_reason_code": "single_source_research",
+			"acceptance_checks": [
+				{
+					"validator_id": "artifact.citations.include_url",
+					"description": "Use and cite the supplied article.",
+					"required": true,
+					"config": {
+						"url": "https://taskandpurpose.com/news/marines-scouts-primary-pmos/"
+					}
+				},
+				{
+					"validator_id": "answer.contains_all",
+					"description": "Address all three requested dimensions.",
+					"required": true,
+					"config": {
+						"terms": ["skill", "mission", "team structure"]
+					}
+				},
+				{
+					"validator_id": "artifact.claims.cited",
+					"description": "Distinguish source-backed facts from forward-looking inference.",
+					"required": true,
+					"config": {
+						"required_for_external_claims": true
+					}
+				}
+			],
+			"notes": "One supplied external source plus a bounded synthesis; expected to use one researcher."
+		},
+		{
+			"scenario_id": "a0-c07-campaign-workflow-research",
+			"selection_status": "frozen",
+			"class": "multi_source_research",
+			"source": {
+				"kind": "production_chat_turn",
+				"turn_ref_hash": "3c366e3f5c49",
+				"captured_on": "2026-05-15",
+				"transformations": []
+			},
+			"request_text": "We are building a Cold Email Campaign. Goal: let a user describe their offer, ICP, proof, and target segment, then have the agent create a campaign brief, research plan, first-touch email, follow-up sequence, deliverability checklist, and reply-handling plan. Review the proposed experience as both a cold-email outreach workflow and a UI/UX product workflow inside agentic chat. Identify the information the chat needs to collect, design the minimum useful workflow, point out UI/UX risks, suggest screens and states, define outputs at each step, include accessibility and usability issues, and identify what should be tested with users before building more.",
+			"context_type": "project",
+			"snapshot_ref": "../fixtures/project-alpha.snapshot.json",
+			"expected_route": "workflow",
+			"expected_reason_code": "multi_source_research",
+			"acceptance_checks": [
+				{
+					"validator_id": "answer.contains_all",
+					"description": "Cover the required product and outreach deliverables.",
+					"required": true,
+					"config": {
+						"terms": [
+							"offer",
+							"ICP",
+							"proof",
+							"deliverability",
+							"accessibility",
+							"user testing"
+						]
+					}
+				},
+				{
+					"validator_id": "answer.has_sections",
+					"description": "Separate workflow design, interface states, risks, and validation plan.",
+					"required": true,
+					"config": {
+						"sections": ["workflow", "interface", "risks", "testing"]
+					}
+				},
+				{
+					"validator_id": "artifact.citations.resolve",
+					"description": "Resolve citations used for current deliverability or accessibility claims.",
+					"required": true,
+					"config": {
+						"allow_zero_citations_for_original_design": true
+					}
+				}
+			],
+			"notes": "A fan-out candidate: outreach constraints, product workflow, accessibility, and validation can be researched independently before synthesis."
+		},
+		{
+			"scenario_id": "a0-c08-context-app-recommendation",
+			"selection_status": "frozen",
+			"class": "context_research_recommendation",
+			"source": {
+				"kind": "production_chat_turn",
+				"turn_ref_hash": "597728c48da3",
+				"captured_on": "2026-07-09",
+				"transformations": []
+			},
+			"request_text": "I have an iPhone. Can you research which app I should download for this?",
+			"context_type": "project",
+			"snapshot_ref": "../fixtures/project-alpha.snapshot.json",
+			"expected_route": "workflow",
+			"expected_reason_code": "context_research_recommendation",
+			"acceptance_checks": [
+				{
+					"validator_id": "answer.contains_all",
+					"description": "Use project context to resolve that the requested app is a PVT measurement app for iPhone.",
+					"required": true,
+					"config": {
+						"terms": ["iPhone", "PVT", "psychomotor vigilance", "baseline"]
+					}
+				},
+				{
+					"validator_id": "answer.excludes_all",
+					"description": "Do not recommend generic commercial brain-training as if it had broad transfer.",
+					"required": true,
+					"config": {
+						"terms": ["brain-training games improve all cognitive skills"]
+					}
+				},
+				{
+					"validator_id": "artifact.citations.resolve",
+					"description": "Resolve the selected app's availability and measurement claims.",
+					"required": true,
+					"config": {
+						"minimum_citations": 2
+					}
+				}
+			],
+			"notes": "The canonical sequential case: librarian resolves 'this' from the snapshot, researcher compares current iPhone options, CEO recommends one."
+		},
+		{
+			"scenario_id": "a0-c09-missing-content-scope",
+			"selection_status": "frozen",
+			"class": "ambiguous",
+			"source": {
+				"kind": "production_chat_turn",
+				"turn_ref_hash": "3d1648f85e9e",
+				"captured_on": "2026-04-15",
+				"transformations": []
+			},
+			"request_text": "I need to batch some content production for today or this week. Are there any tasks or information on what I have planned, or what I should have planned? Please research this and let me know.",
+			"context_type": "project",
+			"snapshot_ref": "../fixtures/project-alpha.snapshot.json",
+			"expected_route": "clarify",
+			"expected_reason_code": "missing_required_context",
+			"acceptance_checks": [
+				{
+					"validator_id": "route.asks_question",
+					"description": "Ask which content project or production scope the user means because the frozen project has no content-production entities.",
+					"required": true,
+					"config": {
+						"terms": ["which project", "content"]
+					}
+				},
+				{
+					"validator_id": "answer.excludes_all",
+					"description": "Do not fabricate a content backlog from the unrelated project snapshot.",
+					"required": true,
+					"config": {
+						"terms": ["your planned articles are", "your content calendar shows"]
+					}
+				}
+			],
+			"notes": "Tests whether the router notices that the resolved project scope does not match the requested work."
+		},
+		{
+			"scenario_id": "a0-c12-email-capability-gap",
+			"selection_status": "frozen",
+			"class": "unsupported_capability",
+			"source": {
+				"kind": "production_chat_turn",
+				"turn_ref_hash": "0650583add27",
+				"captured_on": "2026-07-22",
+				"transformations": [
+					"Removed the mailbox identifier and replaced the third-party organization name with Project Alpha."
+				]
+			},
+			"request_text": "Can you check my connected email inbox and see if there are any emails related to Project Alpha?",
+			"context_type": "project",
+			"snapshot_ref": "../fixtures/project-alpha.snapshot.json",
+			"expected_route": "capability_gap",
+			"expected_reason_code": "unsupported_capability",
+			"acceptance_checks": [
+				{
+					"validator_id": "route.reports_gap",
+					"description": "Report that the Phase A agent catalog has no email connector or email-search agent.",
+					"required": true,
+					"config": {
+						"gap_type": "tool",
+						"capability": "email.search"
+					}
+				},
+				{
+					"validator_id": "answer.excludes_all",
+					"description": "Do not claim mailbox access or fabricated results.",
+					"required": true,
+					"config": {
+						"terms": ["I checked your inbox", "I found emails"]
+					}
+				}
+			],
+			"notes": "Read-only but unsupported by the V0 CEO/librarian/researcher catalog, so this should fail honestly at routing."
+		}
+	]
+}
