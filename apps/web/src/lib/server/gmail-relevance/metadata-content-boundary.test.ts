@@ -49,4 +49,36 @@ describe('Slice 3 metadata content boundary', () => {
 			/(?:subject|snippet|participant|provider_message_id|provider_thread_id|header|label_id|query|cursor)/i
 		);
 	});
+
+	it('keeps the manual invocation path one-operation, form-action-only, and queue/model free', async () => {
+		const manualPilot = await source('manual-pilot.ts');
+		const actionRoute = await readFile(
+			fileURLToPath(
+				new URL(
+					'../../../routes/admin/gmail-relevance/pilot/+page.server.ts',
+					import.meta.url
+				)
+			),
+			'utf8'
+		);
+		expect(manualPilot).toContain("driver.runOneOperation(parsed.data)");
+		expect(manualPilot).not.toMatch(
+			/queue_jobs|add_queue_job|setInterval|setTimeout|users\.watch|pubsub|smart-llm|openrouter|openai|embedding/i
+		);
+		expect(actionRoute).toContain('runOne: async');
+		expect(actionRoute).not.toContain('while (');
+		expect(actionRoute).not.toContain('for (;;)');
+		for (const forbiddenField of [
+			'provider_message_id',
+			'provider_thread_id',
+			'page_token',
+			'gmail_query',
+			'subject',
+			'snippet',
+			'metadata'
+		]) {
+			expect(actionRoute).not.toContain(`form.get('${forbiddenField}')`);
+			expect(actionRoute).not.toContain(`form.getAll('${forbiddenField}')`);
+		}
+	});
 });

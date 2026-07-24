@@ -141,6 +141,15 @@ function sha256(value: string): string {
 	return createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
+export function hashEmailRelevanceScanIdempotencyKey(
+	userId: string,
+	idempotencyKey: string
+): string {
+	return sha256(
+		`email-relevance-scan-idempotency-v1\u0000${userId}\u0000${idempotencyKey}`
+	);
+}
+
 function compareAscii(left: string, right: string): number {
 	return left < right ? -1 : left > right ? 1 : 0;
 }
@@ -254,8 +263,9 @@ export function buildEmailRelevanceScanManifest(
 	}
 
 	return deepFreeze({
-		idempotency_key_hash: sha256(
-			`email-relevance-scan-idempotency-v1\u0000${parsed.data.user_id}\u0000${parsed.data.idempotency_key}`
+		idempotency_key_hash: hashEmailRelevanceScanIdempotencyKey(
+			parsed.data.user_id,
+			parsed.data.idempotency_key
 		),
 		manifest_hash: sha256(canonicalConfiguration),
 		configuration
