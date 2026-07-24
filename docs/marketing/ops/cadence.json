@@ -1,0 +1,28 @@
+{
+  "_comment": "Cadence rules for the marketing ops pipeline. SINGLE SOURCE OF TRUTH for timing — both the status engine (scripts/marketing/ops/status.mjs) and the /marketing skill read this file, so they never disagree. Mirrors docs/marketing/distribution/RECURRING.md; if RECURRING.md changes a cadence, mirror it here in the same commit.",
+  "blog": {
+    "interval_days": { "min": 7, "max": 10 },
+    "at_risk_after_days": 10,
+    "description": "One anti-feed cluster blog every 7-10 days. The cluster only compounds if posts cross-link within weeks, so Google/LLMs read rapid clustering as topical authority."
+  },
+  "extractions": {
+    "within_hours_of_publish": 48,
+    "required": ["twitter-thread", "linkedin-post", "instagram-carousel", "tiktok-30s", "tiktok-90s"],
+    "description": "Every published cluster blog needs 5 social extractions drafted within 48h of publish. All five live in one publish kit."
+  },
+  "tiktok": {
+    "post_within_days_of_publish": 7,
+    "count_per_blog": 2,
+    "description": "2 TikTok scripts per blog (30-45s + 60-90s), recorded AND posted within 7 days of the blog going live. Each repeats the term-to-own >= 2x."
+  },
+  "reddit_karma": {
+    "cadence": "daily",
+    "max_comments_per_day": 5,
+    "description": "15-20 min/day of honest value, no BuildOS mention. Gate that unlocks T27 (first promotional post)."
+  },
+  "content_freshness_sweep": {
+    "cadence": "weekly",
+    "day": "monday",
+    "description": "Verify dateModified bumped on recently edited blogs, spot-check changelog, flag canonical comparison pages older than 13 weeks (LLM freshness signal degrades past that)."
+  }
+}

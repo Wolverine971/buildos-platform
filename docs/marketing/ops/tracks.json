@@ -1,0 +1,18 @@
+{
+  "_comment": "Content tracks. A track is a coordinated content stream with its own voice and cadence. 'ramping' tracks phase in over weeks (start -> full) so a strategy pivot is never a cold switch — the writers/book track ramps in alongside anti-feed rather than replacing it.",
+  "tracks": [
+    {
+      "id": "anti-feed",
+      "name": "Anti-Feed / Thinking Environment",
+      "state": "active",
+      "note": "The live cluster (WS09/WS10). Owns the current blog + social + TikTok cadence."
+    },
+    {
+      "id": "writers",
+      "name": "Writers / Book Content",
+      "state": "idea",
+      "ramp": { "start": "TBD", "full": "TBD", "note": "Ramp dates pending — DJ wants a warm-up period, not a cold pivot. Set via /marketing once the writers research is queued." },
+      "note": "Research done; not yet publishing. Will ramp in as a second track alongside anti-feed."
+    }
+  ]
+}
