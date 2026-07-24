@@ -60,14 +60,27 @@ This is exactly the kind of duplication that can hide policy drift. Before conso
 
 ### Task-to-goal edge mapping
 
-`next-step-generation.service.ts` and `next-step-seeding.service.ts` contain near-identical `buildTaskGoalLinks` flows and matching relationship-direction logic. This appears suitable for a shared ontology edge-mapping primitive, provided the `EdgeData` and `EdgeSummary` contracts can be represented by one narrow structural type.
+Resolved on 2026-07-24. `next-step-generation.service.ts` and `next-step-seeding.service.ts` now use the same pure task-goal edge interpreter from the shared ontology package. The helper owns the supported relationship tokens, identifies task and goal IDs by entity kind in either stored orientation, ignores unrelated edges, and deduplicates repeated task/goal pairs while preserving the first relationship returned by the existing queries.
+
+Focused tests cover all three supported relationships (`supports_goal`, `has_task`, and the legacy `achieved_by`) in both orientations, invalid edges, and duplicate suppression. Regenerating the inventory removed the two service-local `extractTaskGoalLink` and `buildTaskGoalLinks` implementations from the clone report.
+
+## Completed low-risk cleanup batch
+
+Resolved on 2026-07-24:
+
+- Three prompt evaluation and observability JSON converters now use one `toJsonValue` helper inside `agentic-chat-v2`.
+- Domain, skill, resource, and outcome-card search now share tokenization and score-to-confidence primitives. Domain search keeps its intentional underscore-splitting mode, and each search surface still owns its scoring weights.
+- Agent-run and operative request handling now use one canonical `normalizeAgentRunAllowedOps` implementation. Both previous module paths re-export it for compatibility.
+- Seven authored non-route array-chunking implementations now use one `chunkArray` utility that rejects non-positive or non-integer sizes instead of risking an invalid loop.
+
+The focused regression suite passed 75 tests. The regenerated inventory moved from 178 to 173 clone families, removing the expected JSON conversion, tokenization, confidence mapping, allowed-op normalization, and chunking families.
 
 ## Smaller utility families
 
 The clone-family report also found repeated implementations of:
 
 - SHA-256 token/text hashing;
-- array chunking;
+- array chunking (resolved in the low-risk cleanup batch above);
 - HTML/XML escaping;
 - boolean environment parsing;
 - stable JSON stringification;
@@ -94,6 +107,6 @@ Parameterization may reduce line count but could make the domain policy harder t
 3. Establish shared admin analytics primitives, especially percentile and paginated fetching.
 4. Extract Gmail bounded-response and concurrency infrastructure while preserving domain errors.
 5. Resolve the ontology phase-state policy discrepancy, then consolidate the shared portion.
-6. Move task-goal edge interpretation behind one narrow ontology helper.
+6. Completed: move task-goal edge interpretation behind one narrow ontology helper.
 
 After each focused change, regenerate the inventory and record whether the family disappeared, intentionally remained, or split into clearer domain-specific behavior.

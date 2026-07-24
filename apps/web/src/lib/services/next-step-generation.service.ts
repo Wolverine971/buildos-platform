@@ -19,6 +19,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import { parseOpenRouterErrorMetadata, PROJECT_NEXT_STEP_MODELS } from '@buildos/smart-llm';
+import {
+	buildTaskGoalLinks,
+	TASK_GOAL_RELATIONSHIPS,
+	type TaskGoalEdge,
+	type TaskGoalLink
+} from '$lib/services/ontology/edge-direction';
 import { OpenRouterV2Service } from '$lib/services/openrouter-v2-service';
 import { createEntityReference } from '$lib/utils/entity-reference-parser';
 
@@ -72,20 +78,6 @@ interface ActivityLogData {
 	created_at: string;
 	before_data: Record<string, unknown> | null;
 	after_data: Record<string, unknown> | null;
-}
-
-interface EdgeData {
-	src_id: string;
-	src_kind: string;
-	dst_id: string;
-	dst_kind: string;
-	rel: string;
-}
-
-interface TaskGoalLink {
-	taskId: string;
-	goalId: string;
-	rel: string;
 }
 
 interface GenerationContext {
@@ -705,20 +697,19 @@ async function fetchTaskGoalLinks(
 	taskIds: string[]
 ): Promise<TaskGoalLink[]> {
 	if (taskIds.length === 0) return [];
-	const rels = ['supports_goal', 'has_task', 'achieved_by'];
 
 	const [srcResult, dstResult] = await Promise.all([
 		supabase
 			.from('onto_edges')
 			.select('src_id, src_kind, dst_id, dst_kind, rel')
 			.eq('project_id', projectId)
-			.in('rel', rels)
+			.in('rel', [...TASK_GOAL_RELATIONSHIPS])
 			.in('src_id', taskIds),
 		supabase
 			.from('onto_edges')
 			.select('src_id, src_kind, dst_id, dst_kind, rel')
 			.eq('project_id', projectId)
-			.in('rel', rels)
+			.in('rel', [...TASK_GOAL_RELATIONSHIPS])
 			.in('dst_id', taskIds)
 	]);
 
@@ -730,58 +721,11 @@ async function fetchTaskGoalLinks(
 	}
 
 	const edges = [
-		...((srcResult.data ?? []) as EdgeData[]),
-		...((dstResult.data ?? []) as EdgeData[])
+		...((srcResult.data ?? []) as TaskGoalEdge[]),
+		...((dstResult.data ?? []) as TaskGoalEdge[])
 	];
 
 	return buildTaskGoalLinks(edges);
-}
-
-function buildTaskGoalLinks(edges: EdgeData[]): TaskGoalLink[] {
-	const links: TaskGoalLink[] = [];
-	const seen = new Set<string>();
-
-	for (const edge of edges) {
-		const mapping = extractTaskGoalLink(edge);
-		if (!mapping) continue;
-		const key = `${mapping.taskId}:${mapping.goalId}`;
-		if (seen.has(key)) continue;
-		seen.add(key);
-		links.push({ taskId: mapping.taskId, goalId: mapping.goalId, rel: edge.rel });
-	}
-
-	return links;
-}
-
-function extractTaskGoalLink(edge: EdgeData): { taskId: string; goalId: string } | null {
-	if (edge.rel === 'supports_goal') {
-		if (edge.src_kind === 'task' && edge.dst_kind === 'goal') {
-			return { taskId: edge.src_id, goalId: edge.dst_id };
-		}
-		if (edge.src_kind === 'goal' && edge.dst_kind === 'task') {
-			return { taskId: edge.dst_id, goalId: edge.src_id };
-		}
-	}
-
-	if (edge.rel === 'has_task') {
-		if (edge.src_kind === 'goal' && edge.dst_kind === 'task') {
-			return { taskId: edge.dst_id, goalId: edge.src_id };
-		}
-		if (edge.src_kind === 'task' && edge.dst_kind === 'goal') {
-			return { taskId: edge.src_id, goalId: edge.dst_id };
-		}
-	}
-
-	if (edge.rel === 'achieved_by') {
-		if (edge.src_kind === 'goal' && edge.dst_kind === 'task') {
-			return { taskId: edge.dst_id, goalId: edge.src_id };
-		}
-		if (edge.src_kind === 'task' && edge.dst_kind === 'goal') {
-			return { taskId: edge.src_id, goalId: edge.dst_id };
-		}
-	}
-
-	return null;
 }
 
 function formatState(state: string): string {

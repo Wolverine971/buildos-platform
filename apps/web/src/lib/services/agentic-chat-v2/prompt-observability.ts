@@ -11,6 +11,7 @@ import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registr
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import { estimateTokensFromText } from './context-usage';
 import { buildPromptCostBreakdown, type PromptCostBreakdown } from './prompt-cost-breakdown';
+import { toJsonValue } from './prompt-json';
 import { FASTCHAT_PROMPT_VARIANT, type FastChatPromptVariant } from './prompt-variant';
 import type { FastChatHistoryMessage } from './types';
 
@@ -101,22 +102,6 @@ function truncateRenderedPromptDump(value: string): string {
 	);
 	if (value.length <= maxChars) return value;
 	return `${value.slice(0, maxChars)}\n\n[rendered_dump_text truncated at ${maxChars} chars]`;
-}
-
-function toJsonValue(value: unknown): Json | null {
-	if (value === undefined) return null;
-	if (
-		value === null ||
-		typeof value === 'string' ||
-		typeof value === 'number' ||
-		typeof value === 'boolean'
-	) {
-		return value as Json;
-	}
-	if (Array.isArray(value) || typeof value === 'object') {
-		return JSON.parse(JSON.stringify(value)) as Json;
-	}
-	return String(value) as Json;
 }
 
 function toJsonRecord(value: Record<string, unknown>): Json {

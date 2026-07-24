@@ -1,6 +1,7 @@
 // apps/web/src/lib/server/admin-chat-dashboard-analytics.ts
 import { resolveModelPricingProfile } from '@buildos/smart-llm';
 import { resolveUsageLogCostBreakdown } from '$lib/services/admin/llm-usage-costs';
+import { chunkArray } from '$lib/utils/chunk-array';
 
 export type ChatDashboardTimeframe = '24h' | '7d' | '30d' | '90d' | '365d';
 
@@ -1135,20 +1136,12 @@ function uniqueStrings(values: Array<string | null | undefined>): string[] {
 	return Array.from(new Set(values.filter((value): value is string => Boolean(value))));
 }
 
-function chunk<T>(values: T[], size: number): T[][] {
-	const chunks: T[][] = [];
-	for (let index = 0; index < values.length; index += size) {
-		chunks.push(values.slice(index, index + size));
-	}
-	return chunks;
-}
-
 async function fetchSessionsByIds(
 	supabase: any,
 	sessionIds: string[]
 ): Promise<ChatDashboardSessionRow[]> {
 	const rows: ChatDashboardSessionRow[] = [];
-	for (const idChunk of chunk(sessionIds, ID_CHUNK_SIZE)) {
+	for (const idChunk of chunkArray(sessionIds, ID_CHUNK_SIZE)) {
 		const { data, error } = await supabase
 			.from('chat_sessions')
 			.select(
@@ -1163,7 +1156,7 @@ async function fetchSessionsByIds(
 
 async function fetchUsersByIds(supabase: any, userIds: string[]): Promise<ChatDashboardUserRow[]> {
 	const rows: ChatDashboardUserRow[] = [];
-	for (const idChunk of chunk(userIds, ID_CHUNK_SIZE)) {
+	for (const idChunk of chunkArray(userIds, ID_CHUNK_SIZE)) {
 		const { data, error } = await supabase
 			.from('users')
 			.select('id, email, name')

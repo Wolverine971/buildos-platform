@@ -7,6 +7,7 @@ import type {
 	DomainSearchPayload
 } from './types';
 import { listOutcomeCardsForDomain } from '../outcome-cards';
+import { confidenceFromScore, tokenizeSearchText } from '../search-ranking';
 
 export type DomainSearchOptions = {
 	query?: string;
@@ -68,10 +69,7 @@ const QUERY_STOP_WORDS = new Set([
 ]);
 
 function tokenizeRaw(value: string): string[] {
-	return normalize(value)
-		.split(/[^a-z0-9]+/)
-		.map((token) => token.trim())
-		.filter((token) => token.length >= 2);
+	return tokenizeSearchText(value, { preserveUnderscores: false });
 }
 
 function tokenizeQuery(value: string): string[] {
@@ -153,11 +151,6 @@ function normalizeTokenForMatch(token: string): string {
 	if (token.length > 4 && token.endsWith('es')) return token.slice(0, -2);
 	if (token.length > 3 && token.endsWith('s')) return token.slice(0, -1);
 	return token;
-}
-
-function confidenceFromScore(score: number): number {
-	if (score <= 0) return 0;
-	return Math.min(0.95, Math.max(0.35, Number((score / 220).toFixed(2))));
 }
 
 function nextStepForDomain(domain: DomainDefinition): string {

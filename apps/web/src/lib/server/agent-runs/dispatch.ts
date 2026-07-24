@@ -4,6 +4,8 @@ import { withQueueCorrelationMetadata } from '$lib/server/queue-job-id';
 import { HttpStatus } from '$lib/utils/api-response';
 import { validateAgentRunMetadata, type AgentRunStatus, type Json } from '@buildos/shared-types';
 
+export { normalizeAgentRunAllowedOps } from './normalization';
+
 export const MAX_CONCURRENT_AGENT_RUNS = 3;
 export const DEFAULT_DEEP_AGENT_RUN_COST_USD = 0.5;
 export const MAX_DEEP_AGENT_RUN_COST_USD = 1;
@@ -207,24 +209,6 @@ export function resolveAgentRunEffortBudgets(
 		}
 	}
 	return { budgets };
-}
-
-export function normalizeAgentRunAllowedOps(input: unknown): {
-	allowedOps: string[] | null;
-	error?: string;
-} {
-	if (input === undefined || input === null) return { allowedOps: null };
-	if (!Array.isArray(input)) {
-		return { allowedOps: null, error: '`allowed_ops` must be an array of strings' };
-	}
-	const allowedOps: string[] = [];
-	for (const op of input) {
-		if (typeof op !== 'string' || !op.trim()) {
-			return { allowedOps: null, error: '`allowed_ops` must contain only non-empty strings' };
-		}
-		allowedOps.push(op.trim());
-	}
-	return { allowedOps };
 }
 
 export async function countActiveAgentRuns(params: {

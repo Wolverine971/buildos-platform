@@ -1,6 +1,7 @@
 // apps/web/src/lib/server/admin-chat-user-analytics.ts
 import { resolveUsageLogCostBreakdown } from '$lib/services/admin/llm-usage-costs';
 import { resolveBillableTokenTotal } from '$lib/services/admin/chat-session-metrics';
+import { chunkArray } from '$lib/utils/chunk-array';
 import type {
 	AdminChatClassificationJobRow,
 	AdminChatClassificationJobSummary,
@@ -618,14 +619,6 @@ async function fetchPagedRows<T>(
 	return { rows, truncated };
 }
 
-function chunks<T>(items: T[], size: number): T[][] {
-	const result: T[][] = [];
-	for (let index = 0; index < items.length; index += size) {
-		result.push(items.slice(index, index + size));
-	}
-	return result;
-}
-
 async function fetchChunkedRows<T>(
 	ids: string[],
 	createQuery: (chunk: string[]) => any,
@@ -633,7 +626,7 @@ async function fetchChunkedRows<T>(
 ): Promise<FetchResult<T>> {
 	const rows: T[] = [];
 	let truncated = false;
-	for (const chunk of chunks([...new Set(ids)].filter(Boolean), ID_CHUNK_SIZE)) {
+	for (const chunk of chunkArray([...new Set(ids)].filter(Boolean), ID_CHUNK_SIZE)) {
 		if (rows.length >= maxRows) {
 			truncated = true;
 			break;

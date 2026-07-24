@@ -3,8 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type {
 	ChatPromptEvalAssertionInsert,
 	ChatPromptEvalRunInsert,
-	Database,
-	Json
+	Database
 } from '@buildos/shared-types';
 import {
 	evaluatePromptScenario,
@@ -20,6 +19,7 @@ import {
 	readPromptEvalAssertionCounts,
 	type PromptEvalVariantEvidence
 } from './prompt-eval-comparison';
+import { toJsonValue } from './prompt-json';
 
 type TurnRunRow = Database['public']['Tables']['chat_turn_runs']['Row'];
 type PromptSnapshotRow = Database['public']['Tables']['chat_prompt_snapshots']['Row'];
@@ -56,22 +56,6 @@ export type PromptEvalEvidenceRun = {
 	started_at?: string | null;
 	completed_at?: string | null;
 };
-
-function toJson(value: unknown): Json | null {
-	if (value === undefined) return null;
-	if (
-		value === null ||
-		typeof value === 'string' ||
-		typeof value === 'number' ||
-		typeof value === 'boolean'
-	) {
-		return value as Json;
-	}
-	if (Array.isArray(value) || typeof value === 'object') {
-		return JSON.parse(JSON.stringify(value)) as Json;
-	}
-	return String(value) as Json;
-}
 
 export function listAvailablePromptEvalScenarios(): PromptEvalScenario[] {
 	return listPromptEvalScenarios();
@@ -264,8 +248,8 @@ export async function evaluateAndPersistPromptEval(params: {
 		eval_run_id: evalRunId,
 		assertion_key: assertion.assertionKey,
 		status: assertion.status,
-		expected: toJson(assertion.expected),
-		actual: toJson(assertion.actual),
+		expected: toJsonValue(assertion.expected),
+		actual: toJsonValue(assertion.actual),
 		details: assertion.details,
 		created_at: nowIso
 	}));

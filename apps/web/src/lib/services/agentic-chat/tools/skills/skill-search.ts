@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat/tools/skills/skill-search.ts
 import { loadDomain } from '../domains/domain-load';
+import { confidenceFromScore, tokenizeSearchText } from '../search-ranking';
 import { listAllSkills } from './registry';
 import { getRecommendedSkillLoadFormat } from './skill-load';
 import type { SkillDefinition, SkillLoadFormat } from './types';
@@ -30,13 +31,6 @@ type SkillSearchMatch = {
 
 function normalize(value: string): string {
 	return value.trim().toLowerCase();
-}
-
-function tokenize(value: string): string[] {
-	return normalize(value)
-		.split(/[^a-z0-9_]+/)
-		.map((token) => token.trim())
-		.filter((token) => token.length >= 2);
 }
 
 function unique(items: string[]): string[] {
@@ -91,7 +85,7 @@ function skillMatchesCapability(skill: SkillDefinition, capability?: string): bo
 function computeScore(skill: SkillDefinition, query: string): number {
 	if (!query) return 1;
 	const normalizedQuery = normalize(query);
-	const tokens = tokenize(query);
+	const tokens = tokenizeSearchText(query);
 	const haystack = [
 		skill.id,
 		skill.name,
@@ -124,11 +118,6 @@ function computeScore(skill: SkillDefinition, query: string): number {
 	}
 
 	return score;
-}
-
-function confidenceFromScore(score: number): number {
-	if (score <= 0) return 0;
-	return Math.min(0.95, Math.max(0.35, Number((score / 220).toFixed(2))));
 }
 
 function toMatch(skill: SkillDefinition, score: number): SkillSearchMatch {

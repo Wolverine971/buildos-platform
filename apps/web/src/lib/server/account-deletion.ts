@@ -2,6 +2,7 @@
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { StripeService } from '$lib/services/stripe-service';
 import { GmailOAuthError, GmailReadOAuthService } from '$lib/server/gmail-read-oauth.service';
+import { chunkArray } from '$lib/utils/chunk-array';
 
 type DeletionRequestRow = {
 	id: string;
@@ -41,14 +42,6 @@ const ACTIVE_SUBSCRIPTION_STATUSES = [
 	'incomplete',
 	'paused'
 ];
-
-function chunk<T>(values: T[], size: number): T[][] {
-	const chunks: T[][] = [];
-	for (let index = 0; index < values.length; index += size) {
-		chunks.push(values.slice(index, index + size));
-	}
-	return chunks;
-}
 
 function isMissingStripeResource(error: unknown): boolean {
 	return (
@@ -201,7 +194,7 @@ async function removeAccountStorage(userId: string): Promise<number> {
 
 	let removed = 0;
 	for (const [bucket, paths] of byBucket) {
-		for (const pathBatch of chunk([...paths], 1000)) {
+		for (const pathBatch of chunkArray([...paths], 1000)) {
 			const { error: removeError } = await admin.storage.from(bucket).remove(pathBatch);
 			if (removeError) throw removeError;
 			removed += pathBatch.length;

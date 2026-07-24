@@ -2,6 +2,9 @@
 import { addDays, isBefore, setHours, setMinutes, setSeconds } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { validateAgentRunMetadata, type AgentOperativeRowShape } from '@buildos/shared-types';
+import { normalizeAgentRunAllowedOps } from './agent-runs/normalization';
+
+export { normalizeAgentRunAllowedOps };
 
 type AdminClient = any;
 
@@ -69,24 +72,6 @@ export function normalizeAgentRunBudgets(input: unknown): {
 		out[field] = value;
 	}
 	return { budgets: out };
-}
-
-export function normalizeAgentRunAllowedOps(input: unknown): {
-	allowedOps: string[] | null;
-	error?: string;
-} {
-	if (input === undefined || input === null) return { allowedOps: null };
-	if (!Array.isArray(input)) {
-		return { allowedOps: null, error: '`allowed_ops` must be an array of strings' };
-	}
-	const allowedOps: string[] = [];
-	for (const op of input) {
-		if (typeof op !== 'string' || !op.trim()) {
-			return { allowedOps: null, error: '`allowed_ops` must contain only non-empty strings' };
-		}
-		allowedOps.push(op.trim());
-	}
-	return { allowedOps };
 }
 
 function parseTimeOfDay(value: unknown): { time: string | null; error?: string } {

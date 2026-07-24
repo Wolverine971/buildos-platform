@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat/tools/outcome-cards/outcome-card-search.ts
 import { listOutcomeCards } from './catalog';
+import { confidenceFromScore, tokenizeSearchText } from '../search-ranking';
 import { getSkillById } from '../skills/registry';
 import { getRecommendedSkillLoadFormat } from '../skills/skill-load';
 import type { SkillLoadFormat } from '../skills/types';
@@ -20,13 +21,6 @@ function normalize(value: string): string {
 	return value.trim().toLowerCase();
 }
 
-function tokenize(value: string): string[] {
-	return normalize(value)
-		.split(/[^a-z0-9_]+/)
-		.map((token) => token.trim())
-		.filter((token) => token.length >= 2);
-}
-
 function matchesDomain(capability: OutcomeCardDefinition, domain?: string): boolean {
 	if (!domain?.trim()) return true;
 	return capability.domainIds.includes(normalize(domain));
@@ -44,7 +38,7 @@ function matchesBuildOSCapability(
 function computeScore(capability: OutcomeCardDefinition, query: string): number {
 	if (!query) return 1;
 	const normalizedQuery = normalize(query);
-	const tokens = tokenize(query);
+	const tokens = tokenizeSearchText(query);
 	const haystack = [
 		capability.id,
 		capability.name,
@@ -81,11 +75,6 @@ function computeScore(capability: OutcomeCardDefinition, query: string): number 
 	}
 
 	return score;
-}
-
-function confidenceFromScore(score: number): number {
-	if (score <= 0) return 0;
-	return Math.min(0.95, Math.max(0.35, Number((score / 220).toFixed(2))));
 }
 
 function loadHintFor(capability: OutcomeCardDefinition): string {

@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat/tools/resources/resource-registry.ts
 import { listDomains } from '../domains/catalog';
+import { confidenceFromScore, tokenizeSearchText } from '../search-ranking';
 import { listAllSkills } from '../skills/registry';
 import { loadSkillReference } from '../skills/skill-reference-load';
 import {
@@ -46,13 +47,6 @@ function unique(items: string[]): string[] {
 
 function normalize(value: string): string {
 	return value.trim().toLowerCase();
-}
-
-function tokenize(value: string): string[] {
-	return normalize(value)
-		.split(/[^a-z0-9_]+/)
-		.map((token) => token.trim())
-		.filter((token) => token.length >= 2);
 }
 
 function buildSkillDomainMap(): Map<string, string[]> {
@@ -106,7 +100,7 @@ export function listResources(options: ResourceListOptions = {}): ResourceDefini
 function computeScore(resource: ResourceDefinition, query: string): number {
 	if (!query) return 1;
 	const normalizedQuery = normalize(query);
-	const tokens = tokenize(query);
+	const tokens = tokenizeSearchText(query);
 	const haystack = [
 		resource.id,
 		resource.title,
@@ -131,11 +125,6 @@ function computeScore(resource: ResourceDefinition, query: string): number {
 		if (haystack.includes(token)) score += 16;
 	}
 	return score;
-}
-
-function confidenceFromScore(score: number): number {
-	if (score <= 0) return 0;
-	return Math.min(0.95, Math.max(0.35, Number((score / 220).toFixed(2))));
 }
 
 export function searchResources(options: ResourceSearchOptions = {}): Record<string, unknown> {

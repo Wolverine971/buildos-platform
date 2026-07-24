@@ -16,6 +16,7 @@ import {
 	isMigrationDualWriteEnabledForOrg,
 	isMigrationDualWriteEnabledForUser
 } from '$lib/utils/feature-flags';
+import { chunkArray } from '$lib/utils/chunk-array';
 import {
 	ProjectMigrationService,
 	type ProjectMigrationResult,
@@ -249,17 +250,6 @@ export class OntologyMigrationOrchestrator {
 		return cache;
 	}
 
-	/**
-	 * Chunk an array into smaller arrays of specified size
-	 */
-	private chunkArray<T>(array: T[], size: number): T[][] {
-		const chunks: T[][] = [];
-		for (let i = 0; i < array.length; i += size) {
-			chunks.push(array.slice(i, i + size));
-		}
-		return chunks;
-	}
-
 	async analyze(
 		options: MigrationAnalysisOptions,
 		initiatedBy: string
@@ -358,7 +348,7 @@ export class OntologyMigrationOrchestrator {
 
 		// Process projects in parallel batches
 		const projectConcurrency = context.projectConcurrency ?? 3;
-		const projectBatches = this.chunkArray(candidates, projectConcurrency);
+		const projectBatches = chunkArray(candidates, projectConcurrency);
 
 		for (const batch of projectBatches) {
 			const batchResults = await Promise.all(
@@ -711,7 +701,7 @@ export class OntologyMigrationOrchestrator {
 
 		// Process previews in parallel batches
 		const projectConcurrency = options.projectConcurrency ?? 3;
-		const projectBatches = this.chunkArray(candidates, projectConcurrency);
+		const projectBatches = chunkArray(candidates, projectConcurrency);
 		const previews: MigrationPreviewPayload[] = [];
 
 		for (const batch of projectBatches) {

@@ -35,7 +35,7 @@
 		"test:llm": "vitest run --config vitest.config.llm.ts",
 		"test:llm:watch": "vitest --config vitest.config.llm.ts",
 		"test:agentic": "vitest run --config vitest.config.agentic.ts",
-		"test:agentic:phase-a-control": "AGENTIC_PHASE_A_CONTROL=true vitest run --config vitest.config.agentic.ts src/lib/tests/agentic-e2e/phase-a/phase-a-control.test.ts",
+		"test:agentic:phase-a-control": "AGENTIC_PHASE_A_CONTROL=true AGENTIC_E2E_BASE_URL=http://127.0.0.1:5173 vitest run --config vitest.config.agentic.ts src/lib/tests/agentic-e2e/phase-a/phase-a-control.test.ts",
 		"test:agentic:watch": "vitest --config vitest.config.agentic.ts",
 		"test:agentic:modal": "playwright test --config playwright.config.agentic.ts",
 		"test:agentic:modal:wiring": "playwright test --config playwright.config.agentic.ts --grep @wiring",

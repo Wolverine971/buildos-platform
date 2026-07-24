@@ -11,6 +11,7 @@
  */
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database } from '@buildos/shared-types';
+import { chunkArray } from '$lib/utils/chunk-array';
 import type {
 	MigrationServiceContext,
 	MigrationStatus,
@@ -41,17 +42,6 @@ const DEFAULT_EVENT_CONCURRENCY = 10;
 
 export class CalendarMigrationService {
 	constructor(private readonly client: TypedSupabaseClient) {}
-
-	/**
-	 * Chunk an array into smaller arrays of specified size
-	 */
-	private chunkArray<T>(array: T[], size: number): T[][] {
-		const chunks: T[][] = [];
-		for (let i = 0; i < array.length; i += size) {
-			chunks.push(array.slice(i, i + size));
-		}
-		return chunks;
-	}
 
 	async migrateCalendarData(
 		projectId: string,
@@ -93,7 +83,7 @@ export class CalendarMigrationService {
 
 			// Process events in parallel batches for better performance
 			const eventConcurrency = context.eventConcurrency ?? DEFAULT_EVENT_CONCURRENCY;
-			const eventBatches = this.chunkArray(events, eventConcurrency);
+			const eventBatches = chunkArray(events, eventConcurrency);
 
 			for (const batch of eventBatches) {
 				const batchResults = await Promise.all(

@@ -30,6 +30,7 @@
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database, Json } from '@buildos/shared-types';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
+import { chunkArray } from '$lib/utils/chunk-array';
 import type { MigrationContext, LegacyTask } from './migration/enhanced-migration.types';
 import { upsertLegacyMapping, getLegacyMappingsBatch } from './legacy-mapping.service';
 
@@ -286,7 +287,7 @@ export class BatchTaskMigrationService {
 		}
 
 		// Split into batches
-		const batches = this.chunkArray(activeTasks, batchSize);
+		const batches = chunkArray(activeTasks, batchSize);
 		const allClassifications: TaskClassification[] = [];
 		const allExtractions: TaskExtraction[] = [];
 
@@ -1183,14 +1184,6 @@ IMPORTANT:
 			timing,
 			errors: []
 		};
-	}
-
-	private chunkArray<T>(array: T[], size: number): T[][] {
-		const chunks: T[][] = [];
-		for (let i = 0; i < array.length; i += size) {
-			chunks.push(array.slice(i, i + size));
-		}
-		return chunks;
 	}
 
 	private groupBy<T, K extends string>(array: T[], keyFn: (item: T) => K): Record<K, T[]> {

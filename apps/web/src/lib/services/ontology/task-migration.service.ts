@@ -24,6 +24,7 @@ import type {
 import { getLegacyMapping, upsertLegacyMapping } from './legacy-mapping.service';
 import { EnhancedTaskMigrator } from './migration/enhanced-task-migrator';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
+import { chunkArray } from '$lib/utils/chunk-array';
 import type { MigrationContext } from './migration/enhanced-migration.types';
 import {
 	BatchTaskMigrationService,
@@ -230,7 +231,7 @@ export class TaskMigrationService {
 
 		// Process tasks in parallel batches for better performance
 		const concurrency = context.taskConcurrency ?? 5;
-		const taskBatches = this.chunkArray(tasks, concurrency);
+		const taskBatches = chunkArray(tasks, concurrency);
 
 		for (const batch of taskBatches) {
 			const batchResults = await Promise.all(
@@ -729,17 +730,6 @@ export class TaskMigrationService {
 			summary,
 			preview: context.dryRun ? this.buildPreview(summary, results) : undefined
 		};
-	}
-
-	/**
-	 * Split an array into chunks of specified size for batch processing
-	 */
-	private chunkArray<T>(array: T[], size: number): T[][] {
-		const chunks: T[][] = [];
-		for (let i = 0; i < array.length; i += size) {
-			chunks.push(array.slice(i, i + size));
-		}
-		return chunks;
 	}
 
 	/**

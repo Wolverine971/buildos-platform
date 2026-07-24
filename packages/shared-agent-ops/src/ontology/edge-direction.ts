@@ -120,6 +120,15 @@ export const RELATIONSHIP_DIRECTIONS = {
 
 export type RelationshipType = keyof typeof RELATIONSHIP_DIRECTIONS;
 
+/** Relationship tokens that can represent a task-to-goal association. */
+export const TASK_GOAL_RELATIONSHIPS = [
+	'supports_goal',
+	'has_task',
+	'achieved_by'
+] as const satisfies readonly RelationshipType[];
+
+export type TaskGoalRelationship = (typeof TASK_GOAL_RELATIONSHIPS)[number];
+
 /**
  * Deprecated relationship types that have canonical replacements
  * Maps deprecated rel → canonical rel with swapped direction
@@ -159,6 +168,64 @@ export interface EdgeInput {
 	dst_id: string;
 	rel: string;
 	props?: Record<string, unknown>;
+}
+
+/** The narrow edge shape needed to interpret a task-to-goal association. */
+export type TaskGoalEdge = Pick<EdgeInput, 'src_kind' | 'src_id' | 'dst_kind' | 'dst_id' | 'rel'>;
+
+export interface TaskGoalLink {
+	taskId: string;
+	goalId: string;
+	rel: TaskGoalRelationship;
+}
+
+/**
+ * Interpret a task/goal edge independently of which endpoint was queried.
+ *
+ * New writes use canonical directions, but readers query both endpoints and can
+ * encounter legacy rows stored in the opposite direction. Entity kinds, rather
+ * than endpoint position alone, determine the task and goal IDs.
+ */
+export function interpretTaskGoalEdge(edge: TaskGoalEdge): TaskGoalLink | null {
+	if (!isTaskGoalRelationship(edge.rel)) return null;
+
+	if (edge.src_kind === 'task' && edge.dst_kind === 'goal') {
+		return { taskId: edge.src_id, goalId: edge.dst_id, rel: edge.rel };
+	}
+
+	if (edge.src_kind === 'goal' && edge.dst_kind === 'task') {
+		return { taskId: edge.dst_id, goalId: edge.src_id, rel: edge.rel };
+	}
+
+	return null;
+}
+
+/**
+ * Build unique task-to-goal links while preserving the first edge encountered
+ * for each task/goal pair. This matches the order returned by callers that
+ * combine source-endpoint and destination-endpoint queries.
+ */
+export function buildTaskGoalLinks(edges: readonly TaskGoalEdge[]): TaskGoalLink[] {
+	const links: TaskGoalLink[] = [];
+	const goalIdsByTask = new Map<string, Set<string>>();
+
+	for (const edge of edges) {
+		const link = interpretTaskGoalEdge(edge);
+		if (!link) continue;
+
+		const seenGoalIds = goalIdsByTask.get(link.taskId) ?? new Set<string>();
+		if (seenGoalIds.has(link.goalId)) continue;
+
+		seenGoalIds.add(link.goalId);
+		goalIdsByTask.set(link.taskId, seenGoalIds);
+		links.push(link);
+	}
+
+	return links;
+}
+
+function isTaskGoalRelationship(rel: string): rel is TaskGoalRelationship {
+	return (TASK_GOAL_RELATIONSHIPS as readonly string[]).includes(rel);
 }
 
 /**

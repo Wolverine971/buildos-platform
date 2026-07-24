@@ -2,6 +2,7 @@
 import type { Json } from '@buildos/shared-types';
 import { getSkillByReference } from '$lib/services/agentic-chat/tools/skills/registry';
 import type { PromptEvalScenario } from './prompt-eval-scenarios';
+import { toJsonValue } from './prompt-json';
 
 export type PromptEvalAssertionStatus = 'passed' | 'failed' | 'skipped';
 
@@ -56,22 +57,6 @@ export type PromptEvalResult = {
 	assertions: PromptEvalAssertion[];
 };
 
-function toJson(value: unknown): Json | null {
-	if (value === undefined) return null;
-	if (
-		value === null ||
-		typeof value === 'string' ||
-		typeof value === 'number' ||
-		typeof value === 'boolean'
-	) {
-		return value as Json;
-	}
-	if (Array.isArray(value) || typeof value === 'object') {
-		return JSON.parse(JSON.stringify(value)) as Json;
-	}
-	return String(value) as Json;
-}
-
 function pushAssertion(
 	assertions: PromptEvalAssertion[],
 	params: {
@@ -85,8 +70,8 @@ function pushAssertion(
 	assertions.push({
 		assertionKey: params.assertionKey,
 		status: params.passed ? 'passed' : 'failed',
-		expected: toJson(params.expected),
-		actual: toJson(params.actual),
+		expected: toJsonValue(params.expected),
+		actual: toJsonValue(params.actual),
 		details: params.details ?? null
 	});
 }
