@@ -1,1580 +1,1844 @@
 {
-	"components": [
-		{
-			"file": "src/routes/+layout.svelte",
-			"type": "page",
-			"components": [
-				"OnboardingModal",
-				"ToastContainer",
-				"PaymentWarning",
-				"NotificationStackManager"
-			]
-		},
-		{
-			"file": "src/routes/briefs/+page.svelte",
-			"type": "page",
-			"components": ["BriefAnalyticsDashboard", "BriefsSettingsModal", "BriefChatModal"]
-		},
-		{
-			"file": "src/routes/projects/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal", "GraphControls", "OntologyGraph", "NodeDetailsPanel"]
-		},
-		{
-			"file": "src/routes/time-blocks/+page.svelte",
-			"type": "page",
-			"components": [
-				"TimeBlockCreateModal",
-				"TimeBlockDetailModal",
-				"CalendarEventDetailModal",
-				"TimeBlockList",
-				"AvailableSlotList",
-				"CalendarConnectionOverlay"
-			]
-		},
-		{
-			"file": "src/routes/today/+page.svelte",
-			"type": "page",
-			"components": [
-				"TaskEditModal",
-				"AgentChatModal",
-				"DashboardInboxModal",
-				"OverdueTaskTriageModal"
-			]
-		},
-		{
-			"file": "src/lib/components/dashboard/AnalyticsDashboard.svelte",
-			"type": "component",
-			"components": [
-				"ProjectModalsHost",
-				"DailyBriefModal",
-				"BriefChatModal",
-				"OverdueTaskTriageModal",
-				"DashboardInboxModal"
-			]
-		},
-		{
-			"file": "src/lib/components/dashboard/DashboardInboxModal.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/email/EmailManager.svelte",
-			"type": "component",
-			"components": ["EmailComposer", "EmailPreview"]
-		},
-		{
-			"file": "src/lib/components/landing/HomepageV2.svelte",
-			"type": "component",
-			"components": ["Modal", "PublicProjectView"]
-		},
-		{
-			"file": "src/lib/components/layout/Navigation.svelte",
-			"type": "component",
-			"components": ["DashboardInboxModal", "AgentChatModal", "WorkPanel"]
-		},
-		{
-			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
-			"type": "component",
-			"components": [
-				"ProjectSynthesisMinimizedView",
-				"CalendarAnalysisMinimizedView",
-				"TimeBlockMinimizedView",
-				"AgentRunMinimizedView",
-				"ChatSessionMinimizedView"
-			]
-		},
-		{
-			"file": "src/lib/components/notifications/NotificationModal.svelte",
-			"type": "component",
-			"components": [
-				"ProjectSynthesisModalContent",
-				"CalendarAnalysisModalContent",
-				"TimeBlockModalContent",
-				"AgentRunModalContent"
-			]
-		},
-		{
-			"file": "src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/ontology/DocumentModal.svelte",
-			"type": "component",
-			"components": [
-				"AgentChatModal",
-				"TaskEditModal",
-				"PlanEditModal",
-				"GoalEditModal",
-				"DocumentModal"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/EventEditModal.svelte",
-			"type": "component",
-			"components": ["TaskEditModal", "GoalEditModal", "PlanEditModal", "DocumentModal"]
-		},
-		{
-			"file": "src/lib/components/ontology/GoalEditModal.svelte",
-			"type": "component",
-			"components": [
-				"AgentChatModal",
-				"TaskEditModal",
-				"PlanEditModal",
-				"DocumentModal",
-				"MilestoneCreateModal",
-				"MilestoneEditModal"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/MilestoneEditModal.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/ontology/OntologyProjectEditModal.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/ontology/PlanEditModal.svelte",
-			"type": "component",
-			"components": ["AgentChatModal", "GoalEditModal", "TaskEditModal", "DocumentModal"]
-		},
-		{
-			"file": "src/lib/components/ontology/RiskEditModal.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/ontology/TaskEditModal.svelte",
-			"type": "component",
-			"components": [
-				"TaskSeriesModal",
-				"DocumentModal",
-				"GoalEditModal",
-				"PlanEditModal",
-				"AgentChatModal"
-			]
-		},
-		{
-			"file": "src/lib/components/project/ProjectAuditTracker.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectCalendarSettingsModal.svelte",
-			"type": "component",
-			"components": ["TaskEditModal", "EventEditModal"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectHistorySection.svelte",
-			"type": "component",
-			"components": ["ProjectBriefsPanel", "ProjectActivityLogPanel"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectInboxPanel.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectInsightRail.svelte",
-			"type": "component",
-			"components": ["ImageAssetsPanel"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectModalsHost.svelte",
-			"type": "component",
-			"components": [
-				"TaskCreateModal",
-				"PlanCreateModal",
-				"GoalCreateModal",
-				"RiskCreateModal",
-				"RiskEditModal",
-				"MilestoneCreateModal",
-				"MilestoneEditModal",
-				"EventCreateModal",
-				"EventEditModal",
-				"ProjectCalendarSettingsModal",
-				"OntologyProjectEditModal",
-				"ProjectCollaborationModal",
-				"ProjectGraphSection"
-			]
-		},
-		{
-			"file": "src/routes/admin/beta/+page.svelte",
-			"type": "page",
-			"components": ["EmailManager", "EmailComposerModal"]
-		},
-		{
-			"file": "src/routes/dashboard/calendar/+page.svelte",
-			"type": "page",
-			"components": ["TaskEditModal", "EventEditModal"]
-		},
-		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"AgentChatModal",
-				"ProjectEventsModal",
-				"RecentProjectChatsModal",
-				"ProjectModalsHost",
-				"ProjectAuditTracker",
-				"TaskKanbanBoard",
-				"MobileTaskBoard",
-				"ProjectDocumentsSection"
-			]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte",
-			"type": "component",
-			"components": [
-				"PlanCreateModal",
-				"GoalCreateModal",
-				"RiskCreateModal",
-				"MilestoneCreateModal",
-				"EventCreateModal",
-				"PlanEditModal",
-				"GoalEditModal",
-				"RiskEditModal",
-				"MilestoneEditModal",
-				"EventEditModal",
-				"OntologyProjectEditModal"
-			]
-		},
-		{
-			"file": "src/routes/projects-v2/[id]/ProjectWorkspacePrototype.svelte",
-			"type": "component",
-			"components": [
-				"TaskKanbanBoard",
-				"ProjectMemoryCard",
-				"ProjectDocumentsSection",
-				"TaskCreateModal",
-				"TaskEditModal",
-				"DocumentModal",
-				"ProjectGraphSection",
-				"AgentChatModal"
-			]
-		},
-		{
-			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
-			"type": "component",
-			"components": ["OntologyGraph", "NodeDetailsPanel"]
-		},
-		{
-			"file": "src/lib/components/project/v2/EntityTabStrip.svelte",
-			"type": "component",
-			"components": ["ProjectInboxPanel", "BriefChatModal"]
-		},
-		{
-			"file": "src/routes/admin/ontology/graph/+page.svelte",
-			"type": "page",
-			"components": [
-				"OntologyGraph",
-				"SvelteFlowGraph",
-				"G6Graph",
-				"GraphControls",
-				"NodeDetailsPanel"
-			]
-		},
-		{
-			"file": "src/routes/projects/[id]/old/+page.svelte",
-			"type": "page",
-			"components": [
-				"MobileCommandCenter",
-				"ProjectDocumentsSection",
-				"ProjectInsightRail",
-				"ProjectModalsHost"
-			]
-		},
-		{
-			"file": "src/routes/projects/[id]/tasks/[task_id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"RichMarkdownEditor",
-				"DocumentModal",
-				"GoalEditModal",
-				"PlanEditModal",
-				"MilestoneEditModal",
-				"EventCreateModal",
-				"EventEditModal",
-				"TaskEditModal"
-			]
-		},
-		{
-			"file": "src/lib/services/agent-run-notification-data.ts",
-			"type": "service",
-			"components": [],
-			"exports": [
-				"parseAgentRunResult",
-				"parseAgentRunMetrics",
-				"agentRunStatusLabel",
-				"agentRunTriggerLabel",
-				"agentRunAccessLabel",
-				"agentRunDisplayTitle",
-				"buildAgentRunCardPreview",
-				"toUiAgentRunStatus",
-				"agentRunStatusMessage",
-				"buildAgentRunNotificationData",
-				"buildAgentRunProgress",
-				"synthesizeAgentRunNotification"
-			]
-		},
-		{
-			"file": "src/lib/services/agent-run-notification.bridge.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["initAgentRunNotificationBridge", "destroyAgentRunNotificationBridge"]
-		},
-		{
-			"file": "src/lib/services/agentRunsRealtime.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": [
-				"mergeAgentRunRows",
-				"isActiveAgentRunStatus",
-				"agentRunsStore",
-				"activeAgentRunCount",
-				"workingAgentRunCount",
-				"agentRunNeedsInputCount",
-				"agentWorkAttentionCount",
-				"AgentRunsRealtimeService"
-			]
-		},
-		{
-			"file": "src/lib/services/async-activity-logger.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["getChangeSourceFromRequest", "getChatSessionIdFromRequest"]
-		},
-		{
-			"file": "src/lib/services/briefClient.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["BriefClientService"]
-		},
-		{
-			"file": "src/lib/services/browser-analytics.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["initializeBrowserAnalytics", "trackMetaPageView"]
-		},
-		{
-			"file": "src/lib/services/browser-push.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["browserPushService"]
-		},
-		{
-			"file": "src/lib/services/calendar-analysis-notification.bridge.ts",
-			"type": "service",
-			"components": [],
-			"exports": [
-				"initCalendarAnalysisNotificationBridge",
-				"cleanupCalendarAnalysisNotificationBridge",
-				"startCalendarAnalysis",
-				"restartCalendarAnalysis"
-			]
-		},
-		{
-			"file": "src/lib/services/calendar-analysis.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["CalendarAnalysisService"]
-		},
-		{
-			"file": "src/lib/services/calendar-disconnect-service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["CalendarDisconnectService"]
-		},
-		{
-			"file": "src/lib/services/calendar-items.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["fetchCalendarItems"]
-		},
-		{
-			"file": "src/lib/services/calendar-service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["CalendarService"]
-		},
-		{
-			"file": "src/lib/services/calendar-webhook-check.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["checkAndRegisterWebhookIfNeeded", "batchCheckAndRegisterWebhooks"]
-		},
-		{
-			"file": "src/lib/services/calendar-webhook-service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["CalendarWebhookService"]
-		},
-		{
-			"file": "src/lib/services/chat-compression-service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["CHAT_COMPRESSION_DEFAULTS", "ChatCompressionService"]
-		},
-		{
-			"file": "src/lib/services/chat-session-notification.bridge.ts",
-			"type": "service",
-			"components": [],
-			"exports": [
-				"parkChatSession",
-				"resolveParkedChatSession",
-				"initChatSessionNotificationBridge",
-				"destroyChatSessionNotificationBridge"
-			]
-		},
-		{
-			"file": "src/lib/services/dunning-service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["DunningService"]
-		},
-		{
-			"file": "src/lib/services/email-generation-service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["EmailGenerationService"]
-		},
-		{
-			"file": "src/lib/services/email-service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["EmailService"]
-		},
-		{
-			"file": "src/lib/services/errorLogger.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["ErrorLoggerService"]
-		},
-		{
-			"file": "src/lib/services/google-oauth-service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["GoogleOAuthConnectionError", "GoogleOAuthService"]
-		},
-		{
-			"file": "src/lib/services/inbox-decision-notification.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": [
-				"startInboxDecisionNotification",
-				"startInboxBatchDecisionNotification",
-				"completeInboxDecisionNotification",
-				"failInboxDecisionNotification"
-			]
-		},
-		{
-			"file": "src/lib/services/linked-entity-context-formatter.ts",
-			"type": "service",
-			"components": [],
-			"exports": [
-				"formatLinkedEntitiesForSystemPrompt",
-				"formatLinkedEntitiesFullDetail",
-				"hasLinkedEntities",
-				"getLinkedEntitiesSummary"
-			]
-		},
-		{
-			"file": "src/lib/services/llm-usage.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["LLMUsageService"]
-		},
-		{
-			"file": "src/lib/services/loop-telemetry.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["trackLoopEvent"]
-		},
-		{
-			"file": "src/lib/services/next-step-generation.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["generateProjectNextStep", "generateNextStepRecommendationFromPrompt"]
-		},
-		{
-			"file": "src/lib/services/next-step-seeding.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": [
-				"NextStepSeedingService",
-				"createNextStepSeedingService",
-				"seedProjectNextSteps"
-			]
-		},
-		{
-			"file": "src/lib/services/notification-analytics.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["NotificationAnalyticsService", "notificationAnalyticsService"]
-		},
-		{
-			"file": "src/lib/services/notification-preferences.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["notificationPreferencesService"]
-		},
-		{
-			"file": "src/lib/services/notification-real-data.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["NotificationRealDataService", "notificationRealDataService"]
-		},
-		{
-			"file": "src/lib/services/notification-test.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["NotificationTestService", "notificationTestService"]
-		},
-		{
-			"file": "src/lib/services/onboardingClient.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["OnboardingClientService"]
-		},
-		{
-			"file": "src/lib/services/onboardingProgress.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["OnboardingProgressService"]
-		},
-		{
-			"file": "src/lib/services/ontology-context-loader.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["OntologyContextLoader"]
-		},
-		{
-			"file": "src/lib/services/openrouter-v2-service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["OpenRouterV2Service"]
-		},
-		{
-			"file": "src/lib/services/overdue-task-reschedule.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["OverdueTaskRescheduleService"]
-		},
-		{
-			"file": "src/lib/services/posthog.ts",
-			"type": "service",
-			"components": [],
-			"exports": [
-				"initPostHog",
-				"identifyUser",
-				"resetPostHogUser",
-				"disablePostHog",
-				"captureEvent",
-				"getFirstTouchAttribution"
-			]
-		},
-		{
-			"file": "src/lib/services/project-calendar.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["ProjectCalendarService"]
-		},
-		{
-			"file": "src/lib/services/project-synthesis-notification.bridge.ts",
-			"type": "service",
-			"components": [],
-			"exports": [
-				"startProjectSynthesis",
-				"initProjectSynthesisNotificationBridge",
-				"cleanupProjectSynthesisNotificationBridge"
-			]
-		},
-		{
-			"file": "src/lib/services/projectBriefTemplateGenerator.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["ProjectBriefTemplateGeneratorService"]
-		},
-		{
-			"file": "src/lib/services/promptTemplate.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": [
-				"PromptTemplateService",
-				"buildPhaseGenerationSystemPromptCall1",
-				"buildPhaseGenerationUserPromptCall1",
-				"buildTaskOrderingSystemPromptCall2",
-				"buildTaskOrderingUserPromptCall2"
-			]
-		},
-		{
-			"file": "src/lib/services/railwayWorker.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["RailwayWorkerService"]
-		},
-		{
-			"file": "src/lib/services/realtimeBrief.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["briefNotificationStatus", "RealtimeBriefService"]
-		},
-		{
-			"file": "src/lib/services/recurrence-pattern.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["RecurrencePatternBuilder", "recurrencePatternBuilder"]
-		},
-		{
-			"file": "src/lib/services/scheduledSmsUpdate.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["ScheduledSmsUpdateService"]
-		},
-		{
-			"file": "src/lib/services/smart-llm-service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["SmartLLMService"]
-		},
-		{
-			"file": "src/lib/services/sms.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["SMSService", "smsService"]
-		},
-		{
-			"file": "src/lib/services/smsMonitoring.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["SMSMonitoringService", "smsMonitoringService"]
-		},
-		{
-			"file": "src/lib/services/stripe-service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["StripeService"]
-		},
-		{
-			"file": "src/lib/services/task-series.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["enableTaskSeries", "deleteTaskSeries"]
-		},
-		{
-			"file": "src/lib/services/task-time-slot-finder.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["TaskTimeSlotFinder"]
-		},
-		{
-			"file": "src/lib/services/time-block-notification.bridge.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["initTimeBlockNotificationBridge", "destroyTimeBlockNotificationBridge"]
-		},
-		{
-			"file": "src/lib/services/time-block-suggestion.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["TimeBlockSuggestionService"]
-		},
-		{
-			"file": "src/lib/services/time-block.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["TimeBlockService"]
-		},
-		{
-			"file": "src/lib/services/tracking-consent.ts",
-			"type": "service",
-			"components": [],
-			"exports": [
-				"TRACKING_PREFERENCES_STORAGE_KEY",
-				"TRACKING_PREFERENCES_CHANGED_EVENT",
-				"TRACKING_PREFERENCES_OPEN_EVENT",
-				"parseTrackingPreferences",
-				"detectBrowserPrivacySignal",
-				"getBrowserPrivacySignal",
-				"getStoredTrackingPreferences",
-				"getEffectiveTrackingPreferences",
-				"hasAnalyticsConsent",
-				"hasMarketingConsent",
-				"saveTrackingPreferences",
-				"requestTrackingPreferences"
-			]
-		},
-		{
-			"file": "src/lib/services/visitor.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["VisitorService", "visitorService"]
-		},
-		{
-			"file": "src/lib/services/voice-note-groups.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["createVoiceNoteGroup", "attachVoiceNoteGroup", "cleanupVoiceNoteGroups"]
-		},
-		{
-			"file": "src/lib/services/voice-notes.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": [
-				"uploadVoiceNote",
-				"listVoiceNotes",
-				"getVoiceNotePlaybackUrl",
-				"updateVoiceNote",
-				"deleteVoiceNote"
-			]
-		},
-		{
-			"file": "src/lib/services/voiceRecording.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["VoiceRecordingService", "voiceRecordingService"]
-		},
-		{
-			"file": "src/lib/stores/agentOperativesStore.ts",
-			"type": "store",
-			"components": [],
-			"exports": [
-				"agentOperativesStore",
-				"agentOperativesLoading",
-				"loadAgentOperatives",
-				"mergeAgentOperatives",
-				"removeAgentOperative"
-			]
-		},
-		{
-			"file": "src/lib/stores/aiInboxCount.store.ts",
-			"type": "store",
-			"components": [],
-			"exports": [
-				"aiInboxCountStore",
-				"resetAiInboxCount",
-				"setAiInboxRemainingCount",
-				"loadAiInboxCount"
-			]
-		},
-		{
-			"file": "src/lib/stores/briefChatSession.store.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["briefChatSessionStore"]
-		},
-		{
-			"file": "src/lib/stores/briefPreferences.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["briefPreferencesStore"]
-		},
-		{
-			"file": "src/lib/stores/navigation.store.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["navigationStore"]
-		},
-		{
-			"file": "src/lib/stores/notification.store.ts",
-			"type": "store",
-			"components": [],
-			"exports": [
-				"registerNotificationAction",
-				"unregisterNotificationAction",
-				"createNotificationStore",
-				"notificationStore",
-				"notificationsArray",
-				"expandedNotification",
-				"processingCount",
-				"visibleStack",
-				"hiddenCount"
-			]
-		},
-		{
-			"file": "src/lib/stores/notificationPreferences.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["notificationPreferencesStore"]
-		},
-		{
-			"file": "src/lib/stores/ontology-graph.store.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["createOntologyGraphStore", "ontologyGraphStore"]
-		},
-		{
-			"file": "src/lib/stores/project-navigation.store.ts",
-			"type": "store",
-			"components": [],
-			"exports": [
-				"setNavigationData",
-				"getNavigationData",
-				"hasNavigationData",
-				"clearNavigationData"
-			]
-		},
-		{
-			"file": "src/lib/stores/projectDataMutations.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["dataMutationEvents", "notifyDataMutation", "mutationAffectsProject"]
-		},
-		{
-			"file": "src/lib/stores/recentlyCreatedContext.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["setRecentlyCreatedContext", "getRecentlyCreatedContext"]
-		},
-		{
-			"file": "src/lib/stores/timeBlocksStore.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["timeBlocksStore"]
-		},
-		{
-			"file": "src/lib/stores/toast.store.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["TOAST_DURATION", "toasts", "toastService"]
-		},
-		{
-			"file": "src/lib/stores/unifiedBriefGeneration.store.ts",
-			"type": "store",
-			"components": [],
-			"exports": [
-				"unifiedBriefGenerationStore",
-				"streamingStatus",
-				"streamingBriefData",
-				"briefGenerationCompletedWritable",
-				"briefGenerationCompleted"
-			]
-		},
-		{
-			"file": "src/lib/stores/userContext.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["userContextStore"]
-		},
-		{
-			"file": "src/lib/stores/workRunsStore.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["workRunsStore", "workRunsLoading", "loadWorkRuns", "mergeWorkRuns"]
-		},
-		{
-			"file": "src/lib/components/admin/adminRoutes.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"CHAT_ADMIN_ROOT",
-				"CHAT_ADMIN_TITLE",
-				"CHAT_ADMIN_NAV_ITEMS",
-				"isChatAdminSubpath"
-			]
-		},
-		{
-			"file": "src/lib/components/agent/agent-chat-attachments.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"AGENT_CHAT_MAX_IMAGE_ATTACHMENTS",
-				"AGENT_CHAT_OCR_POLL_INITIAL_DELAY_MS",
-				"AGENT_CHAT_OCR_POLL_MAX_DELAY_MS",
-				"AGENT_CHAT_OCR_POLL_MAX_ATTEMPTS",
-				"shouldPollOcrStatus",
-				"describeAttachmentOcrStatus",
-				"hasDuplicateAttachmentChecksum",
-				"imageAttachmentToRef",
-				"AttachmentController",
-				"createAttachmentController"
-			]
-		},
-		{
-			"file": "src/lib/components/agent/agent-chat-formatters.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"DEFAULT_AGENT_CHAT_TOKEN_BUDGET",
-				"formatTime",
-				"formatElapsedDuration",
-				"formatTokensEstimate",
-				"estimateTokensFromText",
-				"estimateConversationTokens",
-				"deriveContextOverheadTokens",
-				"buildLiveContextUsageSnapshot",
-				"shouldRenderAsMarkdown"
-			]
-		},
-		{
-			"file": "src/lib/components/agent/agent-chat-prewarm.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["PrewarmController", "createPrewarmController"]
-		},
-		{
-			"file": "src/lib/components/agent/agent-chat-session.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"isProjectContext",
-				"normalizeSessionContextType",
-				"buildProjectWideFocus",
-				"deriveSessionTitle",
-				"AgentRequestError",
-				"buildAgentRequestError",
-				"prewarmAgentContext",
-				"probeActiveTurnRun",
-				"warmAgentChatStreamTransport",
-				"buildAgentChatSessionSnapshot",
-				"loadAgentChatSessionSnapshot"
-			]
-		},
-		{
-			"file": "src/lib/components/agent/agent-chat-shell-router.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["AgentChatShellRouter", "createAgentChatShellRouter"]
-		},
-		{
-			"file": "src/lib/components/agent/agent-chat-skill-activity.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"extractSkillPathFromSkillLoadArgs",
-				"buildSkillLoadActivityEvent",
-				"formatSkillActivityContent",
-				"upsertSkillActivityEntries"
-			]
-		},
-		{
-			"file": "src/lib/components/agent/agent-chat-sse-handler.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"computeAgentStateActivity",
-				"normalizeContextShiftContext",
-				"buildToolCallActivity",
-				"computeToolResultInfo",
-				"sanitizeToolResultForActivityMetadata",
-				"resolveDoneFinalization",
-				"upsertTurnPhaseActivity",
-				"finalizeTurnPhaseActivity",
-				"createSSEHandler"
-			]
-		},
-		{
-			"file": "src/lib/components/agent/agent-chat-step-export.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"buildAgentChatStepsMarkdown",
-				"buildAgentChatStepsFilename",
-				"buildAgentChatSupportPacketMarkdown",
-				"buildAgentChatSupportPacketFilename",
-				"downloadAgentChatSupportPacketMarkdown",
-				"downloadAgentChatStepsMarkdown"
-			]
-		},
-		{
-			"file": "src/lib/components/agent/agent-chat-stream-controller.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["AgentChatStreamController", "createAgentChatStreamController"]
-		},
-		{
-			"file": "src/lib/components/agent/agent-chat-timeline.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"buildAgentTimeline",
-				"mergeAgentTimelineItems",
-				"buildTimelineItemQuestionDraft",
-				"timelineItemsFromMessages"
-			]
-		},
-		{
-			"file": "src/lib/components/agent/agent-chat-tool-presenter.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["extractCreatedEntityFromResult", "createToolPresenter"]
-		},
-		{
-			"file": "src/lib/components/agent/agent-chat-voice.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["VoiceAdapter", "createVoiceAdapter"]
-		},
-		{
-			"file": "src/lib/components/agent/agent-chat.constants.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["PREPARED_PROMPT_SEND_WAIT_MS", "CONTEXT_DESCRIPTORS"]
-		},
-		{
-			"file": "src/lib/components/agent/agent-chat.types.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["isThinkingBlockMessage", "findThinkingBlockById"]
-		},
-		{
-			"file": "src/lib/components/agent/project-entity-browser.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"DEFAULT_PROJECT_ENTITY_RESULT_LIMIT",
-				"MAX_PROJECT_ENTITY_RESULT_LIMIT",
-				"PROJECT_ENTITY_SEARCH_DEBOUNCE_MS",
-				"clearProjectEntityBrowserCache",
-				"fetchProjectEntities",
-				"normalizeEntitySearch",
-				"normalizeEntityLimit"
-			]
-		},
-		{
-			"file": "src/lib/components/chat/project-selector-browser.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"DEFAULT_PROJECT_SELECTOR_LIMIT",
-				"MAX_PROJECT_SELECTOR_LIMIT",
-				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
-				"normalizeProjectSelectionSearch",
-				"PROJECT_RECENCY_RECENT_MAX_DAYS",
-				"PROJECT_RECENCY_OLDER_MAX_DAYS",
-				"parseProjectUpdatedAt",
-				"formatRelativeProjectUpdate",
-				"groupProjectsByRecency",
-				"normalizeProjectSelectionLimit",
-				"clearProjectSelectionBrowserCache",
-				"fetchProjectSelectionSummaries"
-			]
-		},
-		{
-			"file": "src/lib/components/notifications/notification-preview.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["getNotificationPreview", "notificationPreviewAriaLabel"]
-		},
-		{
-			"file": "src/lib/components/project/project-entity-modal-loader.ts",
-			"type": "component",
-			"components": [
-				"TaskEditModal",
-				"DocumentModal",
-				"GoalEditModal",
-				"PlanEditModal",
-				"MilestoneEditModal",
-				"RiskEditModal",
-				"EventEditModal"
-			],
-			"exports": [
-				"loadTaskEditModal",
-				"loadDocumentModal",
-				"loadGoalEditModal",
-				"loadPlanEditModal",
-				"loadMilestoneEditModal",
-				"loadRiskEditModal",
-				"loadEventEditModal",
-				"preloadProjectEntityModal"
-			]
-		},
-		{
-			"file": "src/lib/components/project/project-event-filters.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"getEventStartMs",
-				"getEventEndMs",
-				"isEventPast",
-				"getUpcomingEvents",
-				"getProjectEventBuckets"
-			]
-		},
-		{
-			"file": "src/lib/components/project/project-page-data-controller.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"fetchProjectFullData",
-				"fetchProjectSnapshot",
-				"fetchProjectDocument",
-				"fetchProjectTask",
-				"fetchProjectTaskBucket",
-				"fetchProjectPlan",
-				"fetchProjectGoal",
-				"fetchProjectRisk",
-				"fetchProjectMilestone",
-				"fetchProjectMembers",
-				"fetchProjectEvents",
-				"fetchProjectNotificationSettings",
-				"updateProjectNotificationSettings",
-				"fetchProjectLogs",
-				"fetchProjectBriefs",
-				"fetchProjectRecentChats",
-				"generateProjectNextStep",
-				"moveProjectDocument",
-				"archiveProjectDocument",
-				"updateProjectMilestoneState",
-				"deleteProject"
-			]
-		},
-		{
-			"file": "src/lib/components/project/project-page-interactions.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"requestImageUploadOpen",
-				"flushPendingImageUploadOpen",
-				"buildProjectEntityOpenHref",
-				"resolveEntityOpenAction"
-			]
-		},
-		{
-			"file": "src/lib/components/admin/chat/session-audit-ui.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"eventIcon",
-				"eventSeverityClasses",
-				"timelineDotClasses",
-				"statusBadge",
-				"libriStatusClasses"
-			]
-		},
-		{
-			"file": "src/lib/components/admin/chat-users/chat-user-export.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"exportTimestamp",
-				"csvCell",
-				"csvRows",
-				"buildChatUsersCsvFile",
-				"buildChatUsersJsonFile",
-				"buildChatUserDetailJsonFile",
-				"downloadTextFile"
-			]
-		},
-		{
-			"file": "src/lib/components/admin/chat-users/chat-user-ui.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"formatNumber",
-				"formatAverageNumber",
-				"formatRate",
-				"formatMs",
-				"formatDate",
-				"formatDay",
-				"eventTypeLabel",
-				"severityClass",
-				"comparisonToneClass",
-				"comparisonDeltaClass",
-				"alertBadgeClass",
-				"classificationJobStatusLabel",
-				"classificationJobStatusClass",
-				"finiteNumber",
-				"averageMetric",
-				"userErrorLoad",
-				"buildUserComparison",
-				"buildUserAlertBadges",
-				"buildSessionAlertBadges",
-				"buildIssueClusters",
-				"projectHref",
-				"entityHref",
-				"entityGroupKey",
-				"entityGroupKeyForAggregate",
-				"entityGroupKeyForChange"
-			]
-		},
-		{
-			"file": "src/lib/components/ui/live-transcript-preview.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["LIVE_TRANSCRIPT_PREVIEW_CHAR_LIMIT", "getLiveTranscriptPreview"]
-		},
-		{
-			"file": "src/lib/components/ui/rich-markdown-editor-voice.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"normalizeVoiceTranscript",
-				"preserveInsertedVoiceSpacing",
-				"canReplaceInsertedVoiceRange",
-				"shouldInsertCapturedVoiceFallback"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["createDragDropState"]
-		},
-		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"fetchLinkedEntities",
-				"fetchAvailableEntities",
-				"createEdges",
-				"linkEntities",
-				"deleteEdge",
-				"unlinkEntity",
-				"filterEntities"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"ALLOWED_LINKS",
-				"canLink",
-				"RELATIONSHIP_MAP",
-				"getRelationship",
-				"getAllowedTargetKinds",
-				"ENTITY_SECTIONS",
-				"getEntityDisplayName",
-				"formatRelationshipLabel",
-				"getFilteredSections"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/insight-panels/insight-panel-config.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"ASSIGNEE_FILTER_UNASSIGNED",
-				"ASSIGNEE_FILTER_ME",
-				"PERSON_FILTER_ME",
-				"TASK_CONFIG",
-				"PLAN_CONFIG",
-				"GOAL_CONFIG",
-				"MILESTONE_CONFIG",
-				"RISK_CONFIG",
-				"EVENT_CONFIG",
-				"IMAGE_CONFIG",
-				"PANEL_CONFIGS",
-				"getPriorityGroup",
-				"getImpactWeight",
-				"calculateRiskScore",
-				"isWithinTimeframe",
-				"STAGE_ORDER",
-				"IMPACT_ORDER",
-				"getSortValueDisplay",
-				"createDefaultPanelState",
-				"createDefaultPanelStates"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/insight-panels/panel-data-controller.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"buildTaskFilterGroups",
-				"getTaskRelevanceScoreForSort",
-				"filterInsightEntity",
-				"sortInsightEntities",
-				"filterAndSortInsightEntities",
-				"updateInsightPanelFilters",
-				"updateInsightPanelSort",
-				"updateInsightPanelToggle",
-				"calculateInsightPanelCounts"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["taskMatchesAssigneeFilter"]
-		},
-		{
-			"file": "src/lib/components/ontology/insight-panels/task-person-relevance.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"resolveTaskPersonFocusActorId",
-				"getTaskPersonRelevanceScore",
-				"taskMatchesPersonFocusFilter",
-				"getTaskPersonRelevanceLabel"
-			]
-		},
-		{
-			"file": "src/lib/components/ui/codemirror/extensions.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"toggleBold",
-				"toggleItalic",
-				"insertH1",
-				"insertH2",
-				"insertBulletList",
-				"insertOrderedList",
-				"insertBlockquote",
-				"insertCodeBlock",
-				"insertLink",
-				"formattingKeymap",
-				"buildExtensions"
-			]
-		},
-		{
-			"file": "src/lib/components/ui/codemirror/inkprint-theme.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["inkprintEditorTheme", "inkprintHighlightStyle", "inkprintTheme"]
-		},
-		{
-			"file": "src/lib/components/ui/codemirror/sticky-scroll.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"buildHeadingIndex",
-				"findActiveHeadingIndex",
-				"getActivePath",
-				"stickyScroll"
-			]
-		},
-		{
-			"file": "src/lib/components/ui/codemirror/voice-widget.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"showVoiceWidget",
-				"showVoiceInsertHint",
-				"updateVoicePreview",
-				"hideVoiceWidget",
-				"hideVoiceInsertHint",
-				"voiceWidgetExtension"
-			]
-		},
-		{
-			"file": "src/lib/components/project/v2/board-a11y.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
-		},
-		{
-			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"PROJECT_COMMANDERS",
-				"DEFAULT_PUBLIC_PROJECT_ID",
-				"getCommander",
-				"formatTimelineYearRange"
-			]
-		},
-		{
-			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["prepareAgentRunChatEventDetail"]
-		},
-		{
-			"file": "src/lib/components/ontology/graph/lib/g6.service.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["G6GraphService"]
-		},
-		{
-			"file": "src/lib/components/ontology/graph/lib/graph.filters.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"GRAPH_REQUEST_SCOPE_VERSION",
-				"DEFAULT_GRAPH_SCOPE_FILTERS",
-				"GRAPH_SCOPE_FILTER_KEYS",
-				"normalizeGraphScopeFilters",
-				"parseGraphScopeFilters",
-				"appendGraphScopeFilterParams",
-				"buildGraphScopeFilterKey",
-				"buildGraphRequestKey"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/graph/lib/graph.layout.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["GRAPH_FIT_PADDING", "getGraphLayoutOptions"]
-		},
-		{
-			"file": "src/lib/components/ontology/graph/lib/graph.service.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["GRAPH_COLORS", "NODE_STYLE_CONFIG", "OntologyGraphService"]
-		},
-		{
-			"file": "src/lib/components/ontology/graph/lib/svelteflow.service.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["SvelteFlowGraphService"]
-		}
-	],
-	"dependencies": {
-		"src/routes/today/+page.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/dashboard/DashboardInboxModal.svelte"
-		],
-		"src/lib/components/dashboard/AnalyticsDashboard.svelte": [
-			"src/lib/components/project/ProjectModalsHost.svelte",
-			"src/lib/components/dashboard/DashboardInboxModal.svelte"
-		],
-		"src/lib/components/layout/Navigation.svelte": [
-			"src/lib/components/dashboard/DashboardInboxModal.svelte"
-		],
-		"src/lib/components/ontology/DocumentModal.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/PlanEditModal.svelte",
-			"src/lib/components/ontology/GoalEditModal.svelte",
-			"src/lib/components/ontology/DocumentModal.svelte"
-		],
-		"src/lib/components/ontology/EventEditModal.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/GoalEditModal.svelte",
-			"src/lib/components/ontology/PlanEditModal.svelte",
-			"src/lib/components/ontology/DocumentModal.svelte"
-		],
-		"src/lib/components/ontology/GoalEditModal.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/PlanEditModal.svelte",
-			"src/lib/components/ontology/DocumentModal.svelte",
-			"src/lib/components/ontology/MilestoneEditModal.svelte"
-		],
-		"src/lib/components/ontology/PlanEditModal.svelte": [
-			"src/lib/components/ontology/GoalEditModal.svelte",
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/DocumentModal.svelte"
-		],
-		"src/lib/components/ontology/TaskEditModal.svelte": [
-			"src/lib/components/ontology/DocumentModal.svelte",
-			"src/lib/components/ontology/GoalEditModal.svelte",
-			"src/lib/components/ontology/PlanEditModal.svelte"
-		],
-		"src/lib/components/project/ProjectCalendarSettingsModal.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/EventEditModal.svelte"
-		],
-		"src/lib/components/project/ProjectModalsHost.svelte": [
-			"src/lib/components/ontology/RiskEditModal.svelte",
-			"src/lib/components/ontology/MilestoneEditModal.svelte",
-			"src/lib/components/ontology/EventEditModal.svelte",
-			"src/lib/components/project/ProjectCalendarSettingsModal.svelte",
-			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
-		],
-		"src/routes/admin/beta/+page.svelte": ["src/lib/components/email/EmailManager.svelte"],
-		"src/routes/dashboard/calendar/+page.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/EventEditModal.svelte"
-		],
-		"src/routes/projects/[id]/+page.svelte": [
-			"src/lib/components/project/ProjectModalsHost.svelte",
-			"src/lib/components/project/ProjectAuditTracker.svelte"
-		],
-		"src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte": [
-			"src/lib/components/ontology/PlanEditModal.svelte",
-			"src/lib/components/ontology/GoalEditModal.svelte",
-			"src/lib/components/ontology/RiskEditModal.svelte",
-			"src/lib/components/ontology/MilestoneEditModal.svelte",
-			"src/lib/components/ontology/EventEditModal.svelte",
-			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
-		],
-		"src/routes/projects-v2/[id]/ProjectWorkspacePrototype.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/DocumentModal.svelte"
-		],
-		"src/lib/components/project/v2/EntityTabStrip.svelte": [
-			"src/lib/components/project/ProjectInboxPanel.svelte"
-		],
-		"src/routes/projects/[id]/old/+page.svelte": [
-			"src/lib/components/project/ProjectInsightRail.svelte",
-			"src/lib/components/project/ProjectModalsHost.svelte"
-		],
-		"src/routes/projects/[id]/tasks/[task_id]/+page.svelte": [
-			"src/lib/components/ontology/DocumentModal.svelte",
-			"src/lib/components/ontology/GoalEditModal.svelte",
-			"src/lib/components/ontology/PlanEditModal.svelte",
-			"src/lib/components/ontology/MilestoneEditModal.svelte",
-			"src/lib/components/ontology/EventEditModal.svelte",
-			"src/lib/components/ontology/TaskEditModal.svelte"
-		],
-		"src/lib/components/project/project-entity-modal-loader.ts": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/DocumentModal.svelte",
-			"src/lib/components/ontology/GoalEditModal.svelte",
-			"src/lib/components/ontology/PlanEditModal.svelte",
-			"src/lib/components/ontology/MilestoneEditModal.svelte",
-			"src/lib/components/ontology/RiskEditModal.svelte",
-			"src/lib/components/ontology/EventEditModal.svelte"
-		]
-	},
-	"unusedComponents": [
-		"src/lib/components/dashboard/AnalyticsDashboard.svelte",
-		"src/lib/components/landing/HomepageV2.svelte",
-		"src/lib/components/layout/Navigation.svelte",
-		"src/lib/components/notifications/MinimizedNotification.svelte",
-		"src/lib/components/notifications/NotificationModal.svelte",
-		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
-		"src/lib/components/project/ProjectHistorySection.svelte",
-		"src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte",
-		"src/routes/projects-v2/[id]/ProjectWorkspacePrototype.svelte",
-		"src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
-		"src/lib/components/project/v2/EntityTabStrip.svelte",
-		"src/lib/components/admin/adminRoutes.ts",
-		"src/lib/components/agent/agent-chat-attachments.svelte.ts",
-		"src/lib/components/agent/agent-chat-formatters.ts",
-		"src/lib/components/agent/agent-chat-prewarm.svelte.ts",
-		"src/lib/components/agent/agent-chat-session.ts",
-		"src/lib/components/agent/agent-chat-shell-router.svelte.ts",
-		"src/lib/components/agent/agent-chat-skill-activity.ts",
-		"src/lib/components/agent/agent-chat-sse-handler.ts",
-		"src/lib/components/agent/agent-chat-step-export.ts",
-		"src/lib/components/agent/agent-chat-stream-controller.svelte.ts",
-		"src/lib/components/agent/agent-chat-timeline.ts",
-		"src/lib/components/agent/agent-chat-tool-presenter.ts",
-		"src/lib/components/agent/agent-chat-voice.svelte.ts",
-		"src/lib/components/agent/agent-chat.constants.ts",
-		"src/lib/components/agent/agent-chat.types.ts",
-		"src/lib/components/agent/project-entity-browser.ts",
-		"src/lib/components/chat/project-selector-browser.ts",
-		"src/lib/components/notifications/notification-preview.ts",
-		"src/lib/components/project/project-entity-modal-loader.ts",
-		"src/lib/components/project/project-event-filters.ts",
-		"src/lib/components/project/project-page-data-controller.ts",
-		"src/lib/components/project/project-page-interactions.ts",
-		"src/lib/components/admin/chat/session-audit-ui.ts",
-		"src/lib/components/admin/chat-users/chat-user-export.ts",
-		"src/lib/components/admin/chat-users/chat-user-ui.ts",
-		"src/lib/components/ui/live-transcript-preview.ts",
-		"src/lib/components/ui/rich-markdown-editor-voice.ts",
-		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
-		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
-		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",
-		"src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
-		"src/lib/components/ontology/insight-panels/task-person-relevance.ts",
-		"src/lib/components/ui/codemirror/extensions.ts",
-		"src/lib/components/ui/codemirror/inkprint-theme.ts",
-		"src/lib/components/ui/codemirror/sticky-scroll.ts",
-		"src/lib/components/ui/codemirror/voice-widget.ts",
-		"src/lib/components/project/v2/board-a11y.ts",
-		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
-		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
-		"src/lib/components/ontology/graph/lib/g6.service.ts",
-		"src/lib/components/ontology/graph/lib/graph.filters.ts",
-		"src/lib/components/ontology/graph/lib/graph.layout.ts",
-		"src/lib/components/ontology/graph/lib/graph.service.ts",
-		"src/lib/components/ontology/graph/lib/svelteflow.service.ts"
-	]
+  "components": [
+    {
+      "file": "src/routes/+layout.svelte",
+      "type": "page",
+      "components": [
+        "OnboardingModal",
+        "ToastContainer",
+        "PaymentWarning",
+        "NotificationStackManager"
+      ]
+    },
+    {
+      "file": "src/routes/briefs/+page.svelte",
+      "type": "page",
+      "components": [
+        "BriefAnalyticsDashboard",
+        "BriefsSettingsModal",
+        "BriefChatModal"
+      ]
+    },
+    {
+      "file": "src/routes/projects/+page.svelte",
+      "type": "page",
+      "components": [
+        "AgentChatModal",
+        "GraphControls",
+        "OntologyGraph",
+        "NodeDetailsPanel"
+      ]
+    },
+    {
+      "file": "src/routes/today/+page.svelte",
+      "type": "page",
+      "components": [
+        "TaskEditModal",
+        "AgentChatModal",
+        "DashboardInboxModal",
+        "OverdueTaskTriageModal"
+      ]
+    },
+    {
+      "file": "src/routes/time-blocks/+page.svelte",
+      "type": "page",
+      "components": [
+        "TimeBlockCreateModal",
+        "TimeBlockDetailModal",
+        "CalendarEventDetailModal",
+        "TimeBlockList",
+        "AvailableSlotList",
+        "CalendarConnectionOverlay"
+      ]
+    },
+    {
+      "file": "src/lib/components/dashboard/AnalyticsDashboard.svelte",
+      "type": "component",
+      "components": [
+        "ProjectModalsHost",
+        "DailyBriefModal",
+        "BriefChatModal",
+        "OverdueTaskTriageModal",
+        "DashboardInboxModal"
+      ]
+    },
+    {
+      "file": "src/lib/components/dashboard/DashboardInboxModal.svelte",
+      "type": "component",
+      "components": [
+        "AgentChatModal"
+      ]
+    },
+    {
+      "file": "src/lib/components/landing/HomepageV2.svelte",
+      "type": "component",
+      "components": [
+        "Modal",
+        "PublicProjectView"
+      ]
+    },
+    {
+      "file": "src/lib/components/email/EmailManager.svelte",
+      "type": "component",
+      "components": [
+        "EmailComposer",
+        "EmailPreview"
+      ]
+    },
+    {
+      "file": "src/lib/components/layout/Navigation.svelte",
+      "type": "component",
+      "components": [
+        "DashboardInboxModal",
+        "AgentChatModal",
+        "WorkPanel"
+      ]
+    },
+    {
+      "file": "src/lib/components/notifications/MinimizedNotification.svelte",
+      "type": "component",
+      "components": [
+        "ProjectSynthesisMinimizedView",
+        "CalendarAnalysisMinimizedView",
+        "TimeBlockMinimizedView",
+        "AgentRunMinimizedView",
+        "ChatSessionMinimizedView"
+      ]
+    },
+    {
+      "file": "src/lib/components/notifications/NotificationModal.svelte",
+      "type": "component",
+      "components": [
+        "ProjectSynthesisModalContent",
+        "CalendarAnalysisModalContent",
+        "TimeBlockModalContent",
+        "AgentRunModalContent"
+      ]
+    },
+    {
+      "file": "src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
+      "type": "component",
+      "components": [
+        "AgentChatModal"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/DocumentModal.svelte",
+      "type": "component",
+      "components": [
+        "AgentChatModal",
+        "TaskEditModal",
+        "PlanEditModal",
+        "GoalEditModal",
+        "DocumentModal"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/EventEditModal.svelte",
+      "type": "component",
+      "components": [
+        "TaskEditModal",
+        "GoalEditModal",
+        "PlanEditModal",
+        "DocumentModal"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/GoalEditModal.svelte",
+      "type": "component",
+      "components": [
+        "AgentChatModal",
+        "TaskEditModal",
+        "PlanEditModal",
+        "DocumentModal",
+        "MilestoneCreateModal",
+        "MilestoneEditModal"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/MilestoneEditModal.svelte",
+      "type": "component",
+      "components": [
+        "AgentChatModal"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/OntologyProjectEditModal.svelte",
+      "type": "component",
+      "components": [
+        "AgentChatModal"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/PlanEditModal.svelte",
+      "type": "component",
+      "components": [
+        "AgentChatModal",
+        "GoalEditModal",
+        "TaskEditModal",
+        "DocumentModal"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/RiskEditModal.svelte",
+      "type": "component",
+      "components": [
+        "AgentChatModal"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/TaskEditModal.svelte",
+      "type": "component",
+      "components": [
+        "TaskSeriesModal",
+        "DocumentModal",
+        "GoalEditModal",
+        "PlanEditModal",
+        "AgentChatModal"
+      ]
+    },
+    {
+      "file": "src/lib/components/project/ProjectAuditTracker.svelte",
+      "type": "component",
+      "components": [
+        "AgentChatModal"
+      ]
+    },
+    {
+      "file": "src/lib/components/project/ProjectCalendarSettingsModal.svelte",
+      "type": "component",
+      "components": [
+        "TaskEditModal",
+        "EventEditModal"
+      ]
+    },
+    {
+      "file": "src/lib/components/project/ProjectHistorySection.svelte",
+      "type": "component",
+      "components": [
+        "ProjectBriefsPanel",
+        "ProjectActivityLogPanel"
+      ]
+    },
+    {
+      "file": "src/lib/components/project/ProjectInboxPanel.svelte",
+      "type": "component",
+      "components": [
+        "AgentChatModal"
+      ]
+    },
+    {
+      "file": "src/lib/components/project/ProjectInsightRail.svelte",
+      "type": "component",
+      "components": [
+        "ImageAssetsPanel"
+      ]
+    },
+    {
+      "file": "src/lib/components/project/ProjectModalsHost.svelte",
+      "type": "component",
+      "components": [
+        "TaskCreateModal",
+        "PlanCreateModal",
+        "GoalCreateModal",
+        "RiskCreateModal",
+        "RiskEditModal",
+        "MilestoneCreateModal",
+        "MilestoneEditModal",
+        "EventCreateModal",
+        "EventEditModal",
+        "ProjectCalendarSettingsModal",
+        "OntologyProjectEditModal",
+        "ProjectCollaborationModal",
+        "ProjectGraphSection"
+      ]
+    },
+    {
+      "file": "src/routes/admin/beta/+page.svelte",
+      "type": "page",
+      "components": [
+        "EmailManager",
+        "EmailComposerModal"
+      ]
+    },
+    {
+      "file": "src/routes/dashboard/calendar/+page.svelte",
+      "type": "page",
+      "components": [
+        "TaskEditModal",
+        "EventEditModal"
+      ]
+    },
+    {
+      "file": "src/routes/projects/create/+page.svelte",
+      "type": "page",
+      "components": [
+        "AgentChatModal"
+      ]
+    },
+    {
+      "file": "src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte",
+      "type": "component",
+      "components": [
+        "PlanCreateModal",
+        "GoalCreateModal",
+        "RiskCreateModal",
+        "MilestoneCreateModal",
+        "EventCreateModal",
+        "PlanEditModal",
+        "GoalEditModal",
+        "RiskEditModal",
+        "MilestoneEditModal",
+        "EventEditModal",
+        "OntologyProjectEditModal"
+      ]
+    },
+    {
+      "file": "src/routes/projects-v2/[id]/ProjectWorkspacePrototype.svelte",
+      "type": "component",
+      "components": [
+        "TaskKanbanBoard",
+        "ProjectMemoryCard",
+        "ProjectDocumentsSection",
+        "TaskCreateModal",
+        "TaskEditModal",
+        "DocumentModal",
+        "ProjectGraphSection",
+        "AgentChatModal"
+      ]
+    },
+    {
+      "file": "src/routes/projects/[id]/+page.svelte",
+      "type": "page",
+      "components": [
+        "AgentChatModal",
+        "ProjectEventsModal",
+        "RecentProjectChatsModal",
+        "ProjectModalsHost",
+        "ProjectAuditTracker",
+        "TaskKanbanBoard",
+        "MobileTaskBoard",
+        "ProjectDocumentsSection"
+      ]
+    },
+    {
+      "file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
+      "type": "component",
+      "components": [
+        "OntologyGraph",
+        "NodeDetailsPanel"
+      ]
+    },
+    {
+      "file": "src/lib/components/project/v2/EntityTabStrip.svelte",
+      "type": "component",
+      "components": [
+        "ProjectInboxPanel",
+        "BriefChatModal"
+      ]
+    },
+    {
+      "file": "src/routes/admin/ontology/graph/+page.svelte",
+      "type": "page",
+      "components": [
+        "OntologyGraph",
+        "SvelteFlowGraph",
+        "G6Graph",
+        "GraphControls",
+        "NodeDetailsPanel"
+      ]
+    },
+    {
+      "file": "src/routes/projects/[id]/old/+page.svelte",
+      "type": "page",
+      "components": [
+        "MobileCommandCenter",
+        "ProjectDocumentsSection",
+        "ProjectInsightRail",
+        "ProjectModalsHost"
+      ]
+    },
+    {
+      "file": "src/routes/projects/[id]/tasks/[task_id]/+page.svelte",
+      "type": "page",
+      "components": [
+        "RichMarkdownEditor",
+        "DocumentModal",
+        "GoalEditModal",
+        "PlanEditModal",
+        "MilestoneEditModal",
+        "EventCreateModal",
+        "EventEditModal",
+        "TaskEditModal"
+      ]
+    },
+    {
+      "file": "src/lib/services/agent-run-notification-data.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "parseAgentRunResult",
+        "parseAgentRunMetrics",
+        "agentRunStatusLabel",
+        "agentRunTriggerLabel",
+        "agentRunAccessLabel",
+        "agentRunDisplayTitle",
+        "buildAgentRunCardPreview",
+        "toUiAgentRunStatus",
+        "agentRunStatusMessage",
+        "buildAgentRunNotificationData",
+        "buildAgentRunProgress",
+        "synthesizeAgentRunNotification"
+      ]
+    },
+    {
+      "file": "src/lib/services/agent-run-notification.bridge.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "initAgentRunNotificationBridge",
+        "destroyAgentRunNotificationBridge"
+      ]
+    },
+    {
+      "file": "src/lib/services/agentRunsRealtime.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "mergeAgentRunRows",
+        "isActiveAgentRunStatus",
+        "agentRunsStore",
+        "activeAgentRunCount",
+        "workingAgentRunCount",
+        "agentRunNeedsInputCount",
+        "agentWorkAttentionCount",
+        "AgentRunsRealtimeService"
+      ]
+    },
+    {
+      "file": "src/lib/services/async-activity-logger.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "getChangeSourceFromRequest",
+        "getChatSessionIdFromRequest"
+      ]
+    },
+    {
+      "file": "src/lib/services/briefClient.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "BriefClientService"
+      ]
+    },
+    {
+      "file": "src/lib/services/browser-analytics.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "initializeBrowserAnalytics",
+        "trackMetaPageView"
+      ]
+    },
+    {
+      "file": "src/lib/services/browser-push.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "browserPushService"
+      ]
+    },
+    {
+      "file": "src/lib/services/calendar-analysis-notification.bridge.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "initCalendarAnalysisNotificationBridge",
+        "cleanupCalendarAnalysisNotificationBridge",
+        "startCalendarAnalysis",
+        "restartCalendarAnalysis"
+      ]
+    },
+    {
+      "file": "src/lib/services/calendar-analysis.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "CalendarAnalysisService"
+      ]
+    },
+    {
+      "file": "src/lib/services/calendar-disconnect-service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "CalendarDisconnectService"
+      ]
+    },
+    {
+      "file": "src/lib/services/calendar-items.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "fetchCalendarItems"
+      ]
+    },
+    {
+      "file": "src/lib/services/calendar-service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "CalendarService"
+      ]
+    },
+    {
+      "file": "src/lib/services/calendar-webhook-check.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "checkAndRegisterWebhookIfNeeded",
+        "batchCheckAndRegisterWebhooks"
+      ]
+    },
+    {
+      "file": "src/lib/services/calendar-webhook-service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "CalendarWebhookService"
+      ]
+    },
+    {
+      "file": "src/lib/services/chat-compression-service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "CHAT_COMPRESSION_DEFAULTS",
+        "ChatCompressionService"
+      ]
+    },
+    {
+      "file": "src/lib/services/chat-session-notification.bridge.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "parkChatSession",
+        "resolveParkedChatSession",
+        "initChatSessionNotificationBridge",
+        "destroyChatSessionNotificationBridge"
+      ]
+    },
+    {
+      "file": "src/lib/services/dunning-service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "DunningService"
+      ]
+    },
+    {
+      "file": "src/lib/services/email-generation-service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "EmailGenerationService"
+      ]
+    },
+    {
+      "file": "src/lib/services/email-service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "EmailService"
+      ]
+    },
+    {
+      "file": "src/lib/services/errorLogger.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "ErrorLoggerService"
+      ]
+    },
+    {
+      "file": "src/lib/services/google-oauth-service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "GoogleOAuthConnectionError",
+        "GoogleOAuthService"
+      ]
+    },
+    {
+      "file": "src/lib/services/inbox-decision-notification.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "startInboxDecisionNotification",
+        "startInboxBatchDecisionNotification",
+        "completeInboxDecisionNotification",
+        "failInboxDecisionNotification"
+      ]
+    },
+    {
+      "file": "src/lib/services/linked-entity-context-formatter.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "formatLinkedEntitiesForSystemPrompt",
+        "formatLinkedEntitiesFullDetail",
+        "hasLinkedEntities",
+        "getLinkedEntitiesSummary"
+      ]
+    },
+    {
+      "file": "src/lib/services/llm-usage.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "LLMUsageService"
+      ]
+    },
+    {
+      "file": "src/lib/services/loop-telemetry.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "trackLoopEvent"
+      ]
+    },
+    {
+      "file": "src/lib/services/next-step-generation.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "generateProjectNextStep",
+        "generateNextStepRecommendationFromPrompt"
+      ]
+    },
+    {
+      "file": "src/lib/services/next-step-seeding.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "NextStepSeedingService",
+        "createNextStepSeedingService",
+        "seedProjectNextSteps"
+      ]
+    },
+    {
+      "file": "src/lib/services/notification-analytics.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "NotificationAnalyticsService",
+        "notificationAnalyticsService"
+      ]
+    },
+    {
+      "file": "src/lib/services/notification-preferences.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "notificationPreferencesService"
+      ]
+    },
+    {
+      "file": "src/lib/services/notification-real-data.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "NotificationRealDataService",
+        "notificationRealDataService"
+      ]
+    },
+    {
+      "file": "src/lib/services/notification-test.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "NotificationTestService",
+        "notificationTestService"
+      ]
+    },
+    {
+      "file": "src/lib/services/onboardingClient.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "OnboardingClientService"
+      ]
+    },
+    {
+      "file": "src/lib/services/onboardingProgress.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "OnboardingProgressService"
+      ]
+    },
+    {
+      "file": "src/lib/services/ontology-context-loader.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "OntologyContextLoader"
+      ]
+    },
+    {
+      "file": "src/lib/services/openrouter-v2-service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "OpenRouterV2Service"
+      ]
+    },
+    {
+      "file": "src/lib/services/overdue-task-reschedule.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "OverdueTaskRescheduleService"
+      ]
+    },
+    {
+      "file": "src/lib/services/posthog.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "initPostHog",
+        "identifyUser",
+        "resetPostHogUser",
+        "disablePostHog",
+        "captureEvent",
+        "getFirstTouchAttribution"
+      ]
+    },
+    {
+      "file": "src/lib/services/project-calendar.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "ProjectCalendarService"
+      ]
+    },
+    {
+      "file": "src/lib/services/project-synthesis-notification.bridge.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "startProjectSynthesis",
+        "initProjectSynthesisNotificationBridge",
+        "cleanupProjectSynthesisNotificationBridge"
+      ]
+    },
+    {
+      "file": "src/lib/services/projectBriefTemplateGenerator.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "ProjectBriefTemplateGeneratorService"
+      ]
+    },
+    {
+      "file": "src/lib/services/promptTemplate.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "PromptTemplateService",
+        "buildPhaseGenerationSystemPromptCall1",
+        "buildPhaseGenerationUserPromptCall1",
+        "buildTaskOrderingSystemPromptCall2",
+        "buildTaskOrderingUserPromptCall2"
+      ]
+    },
+    {
+      "file": "src/lib/services/railwayWorker.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "RailwayWorkerService"
+      ]
+    },
+    {
+      "file": "src/lib/services/realtimeBrief.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "briefNotificationStatus",
+        "RealtimeBriefService"
+      ]
+    },
+    {
+      "file": "src/lib/services/recurrence-pattern.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "RecurrencePatternBuilder",
+        "recurrencePatternBuilder"
+      ]
+    },
+    {
+      "file": "src/lib/services/scheduledSmsUpdate.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "ScheduledSmsUpdateService"
+      ]
+    },
+    {
+      "file": "src/lib/services/smart-llm-service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "SmartLLMService"
+      ]
+    },
+    {
+      "file": "src/lib/services/sms.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "SMSService",
+        "smsService"
+      ]
+    },
+    {
+      "file": "src/lib/services/smsMonitoring.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "SMSMonitoringService",
+        "smsMonitoringService"
+      ]
+    },
+    {
+      "file": "src/lib/services/stripe-service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "StripeService"
+      ]
+    },
+    {
+      "file": "src/lib/services/task-series.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "enableTaskSeries",
+        "deleteTaskSeries"
+      ]
+    },
+    {
+      "file": "src/lib/services/task-time-slot-finder.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "TaskTimeSlotFinder"
+      ]
+    },
+    {
+      "file": "src/lib/services/time-block-notification.bridge.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "initTimeBlockNotificationBridge",
+        "destroyTimeBlockNotificationBridge"
+      ]
+    },
+    {
+      "file": "src/lib/services/time-block-suggestion.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "TimeBlockSuggestionService"
+      ]
+    },
+    {
+      "file": "src/lib/services/time-block.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "TimeBlockService"
+      ]
+    },
+    {
+      "file": "src/lib/services/tracking-consent.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "TRACKING_PREFERENCES_STORAGE_KEY",
+        "TRACKING_PREFERENCES_CHANGED_EVENT",
+        "TRACKING_PREFERENCES_OPEN_EVENT",
+        "parseTrackingPreferences",
+        "detectBrowserPrivacySignal",
+        "getBrowserPrivacySignal",
+        "getStoredTrackingPreferences",
+        "getEffectiveTrackingPreferences",
+        "hasAnalyticsConsent",
+        "hasMarketingConsent",
+        "saveTrackingPreferences",
+        "requestTrackingPreferences"
+      ]
+    },
+    {
+      "file": "src/lib/services/visitor.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "VisitorService",
+        "visitorService"
+      ]
+    },
+    {
+      "file": "src/lib/services/voice-note-groups.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "createVoiceNoteGroup",
+        "attachVoiceNoteGroup",
+        "cleanupVoiceNoteGroups"
+      ]
+    },
+    {
+      "file": "src/lib/services/voice-notes.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "uploadVoiceNote",
+        "listVoiceNotes",
+        "getVoiceNotePlaybackUrl",
+        "updateVoiceNote",
+        "deleteVoiceNote"
+      ]
+    },
+    {
+      "file": "src/lib/services/voiceRecording.service.ts",
+      "type": "service",
+      "components": [],
+      "exports": [
+        "VoiceRecordingService",
+        "voiceRecordingService"
+      ]
+    },
+    {
+      "file": "src/lib/stores/agentOperativesStore.ts",
+      "type": "store",
+      "components": [],
+      "exports": [
+        "agentOperativesStore",
+        "agentOperativesLoading",
+        "loadAgentOperatives",
+        "mergeAgentOperatives",
+        "removeAgentOperative"
+      ]
+    },
+    {
+      "file": "src/lib/stores/aiInboxCount.store.ts",
+      "type": "store",
+      "components": [],
+      "exports": [
+        "aiInboxCountStore",
+        "resetAiInboxCount",
+        "setAiInboxRemainingCount",
+        "loadAiInboxCount"
+      ]
+    },
+    {
+      "file": "src/lib/stores/briefChatSession.store.ts",
+      "type": "store",
+      "components": [],
+      "exports": [
+        "briefChatSessionStore"
+      ]
+    },
+    {
+      "file": "src/lib/stores/briefPreferences.ts",
+      "type": "store",
+      "components": [],
+      "exports": [
+        "briefPreferencesStore"
+      ]
+    },
+    {
+      "file": "src/lib/stores/navigation.store.ts",
+      "type": "store",
+      "components": [],
+      "exports": [
+        "navigationStore"
+      ]
+    },
+    {
+      "file": "src/lib/stores/notification.store.ts",
+      "type": "store",
+      "components": [],
+      "exports": [
+        "registerNotificationAction",
+        "unregisterNotificationAction",
+        "createNotificationStore",
+        "notificationStore",
+        "notificationsArray",
+        "expandedNotification",
+        "processingCount",
+        "visibleStack",
+        "hiddenCount"
+      ]
+    },
+    {
+      "file": "src/lib/stores/notificationPreferences.ts",
+      "type": "store",
+      "components": [],
+      "exports": [
+        "notificationPreferencesStore"
+      ]
+    },
+    {
+      "file": "src/lib/stores/ontology-graph.store.ts",
+      "type": "store",
+      "components": [],
+      "exports": [
+        "createOntologyGraphStore",
+        "ontologyGraphStore"
+      ]
+    },
+    {
+      "file": "src/lib/stores/project-navigation.store.ts",
+      "type": "store",
+      "components": [],
+      "exports": [
+        "setNavigationData",
+        "getNavigationData",
+        "hasNavigationData",
+        "clearNavigationData"
+      ]
+    },
+    {
+      "file": "src/lib/stores/projectDataMutations.ts",
+      "type": "store",
+      "components": [],
+      "exports": [
+        "dataMutationEvents",
+        "notifyDataMutation",
+        "mutationAffectsProject"
+      ]
+    },
+    {
+      "file": "src/lib/stores/recentlyCreatedContext.ts",
+      "type": "store",
+      "components": [],
+      "exports": [
+        "setRecentlyCreatedContext",
+        "getRecentlyCreatedContext"
+      ]
+    },
+    {
+      "file": "src/lib/stores/timeBlocksStore.ts",
+      "type": "store",
+      "components": [],
+      "exports": [
+        "timeBlocksStore"
+      ]
+    },
+    {
+      "file": "src/lib/stores/toast.store.ts",
+      "type": "store",
+      "components": [],
+      "exports": [
+        "TOAST_DURATION",
+        "toasts",
+        "toastService"
+      ]
+    },
+    {
+      "file": "src/lib/stores/unifiedBriefGeneration.store.ts",
+      "type": "store",
+      "components": [],
+      "exports": [
+        "unifiedBriefGenerationStore",
+        "streamingStatus",
+        "streamingBriefData",
+        "briefGenerationCompletedWritable",
+        "briefGenerationCompleted"
+      ]
+    },
+    {
+      "file": "src/lib/stores/userContext.ts",
+      "type": "store",
+      "components": [],
+      "exports": [
+        "userContextStore"
+      ]
+    },
+    {
+      "file": "src/lib/stores/workRunsStore.ts",
+      "type": "store",
+      "components": [],
+      "exports": [
+        "workRunsStore",
+        "workRunsLoading",
+        "loadWorkRuns",
+        "mergeWorkRuns"
+      ]
+    },
+    {
+      "file": "src/lib/components/admin/adminRoutes.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "CHAT_ADMIN_ROOT",
+        "CHAT_ADMIN_TITLE",
+        "CHAT_ADMIN_NAV_ITEMS",
+        "isChatAdminSubpath"
+      ]
+    },
+    {
+      "file": "src/lib/components/agent/agent-chat-attachments.svelte.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "AGENT_CHAT_MAX_IMAGE_ATTACHMENTS",
+        "AGENT_CHAT_OCR_POLL_INITIAL_DELAY_MS",
+        "AGENT_CHAT_OCR_POLL_MAX_DELAY_MS",
+        "AGENT_CHAT_OCR_POLL_MAX_ATTEMPTS",
+        "shouldPollOcrStatus",
+        "describeAttachmentOcrStatus",
+        "hasDuplicateAttachmentChecksum",
+        "imageAttachmentToRef",
+        "AttachmentController",
+        "createAttachmentController"
+      ]
+    },
+    {
+      "file": "src/lib/components/agent/agent-chat-formatters.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "DEFAULT_AGENT_CHAT_TOKEN_BUDGET",
+        "formatTime",
+        "formatElapsedDuration",
+        "formatTokensEstimate",
+        "estimateTokensFromText",
+        "estimateConversationTokens",
+        "deriveContextOverheadTokens",
+        "buildLiveContextUsageSnapshot",
+        "shouldRenderAsMarkdown"
+      ]
+    },
+    {
+      "file": "src/lib/components/agent/agent-chat-prewarm.svelte.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "PrewarmController",
+        "createPrewarmController"
+      ]
+    },
+    {
+      "file": "src/lib/components/agent/agent-chat-session.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "isProjectContext",
+        "normalizeSessionContextType",
+        "buildProjectWideFocus",
+        "deriveSessionTitle",
+        "AgentRequestError",
+        "buildAgentRequestError",
+        "prewarmAgentContext",
+        "probeActiveTurnRun",
+        "warmAgentChatStreamTransport",
+        "buildAgentChatSessionSnapshot",
+        "loadAgentChatSessionSnapshot"
+      ]
+    },
+    {
+      "file": "src/lib/components/agent/agent-chat-shell-router.svelte.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "AgentChatShellRouter",
+        "createAgentChatShellRouter"
+      ]
+    },
+    {
+      "file": "src/lib/components/agent/agent-chat-skill-activity.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "extractSkillPathFromSkillLoadArgs",
+        "buildSkillLoadActivityEvent",
+        "formatSkillActivityContent",
+        "upsertSkillActivityEntries"
+      ]
+    },
+    {
+      "file": "src/lib/components/agent/agent-chat-sse-handler.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "computeAgentStateActivity",
+        "normalizeContextShiftContext",
+        "buildToolCallActivity",
+        "computeToolResultInfo",
+        "sanitizeToolResultForActivityMetadata",
+        "resolveDoneFinalization",
+        "upsertTurnPhaseActivity",
+        "finalizeTurnPhaseActivity",
+        "createSSEHandler"
+      ]
+    },
+    {
+      "file": "src/lib/components/agent/agent-chat-step-export.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "buildAgentChatStepsMarkdown",
+        "buildAgentChatStepsFilename",
+        "buildAgentChatSupportPacketMarkdown",
+        "buildAgentChatSupportPacketFilename",
+        "downloadAgentChatSupportPacketMarkdown",
+        "downloadAgentChatStepsMarkdown"
+      ]
+    },
+    {
+      "file": "src/lib/components/agent/agent-chat-stream-controller.svelte.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "AgentChatStreamController",
+        "createAgentChatStreamController"
+      ]
+    },
+    {
+      "file": "src/lib/components/agent/agent-chat-timeline.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "buildAgentTimeline",
+        "mergeAgentTimelineItems",
+        "buildTimelineItemQuestionDraft",
+        "timelineItemsFromMessages"
+      ]
+    },
+    {
+      "file": "src/lib/components/agent/agent-chat-tool-presenter.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "extractCreatedEntityFromResult",
+        "createToolPresenter"
+      ]
+    },
+    {
+      "file": "src/lib/components/agent/agent-chat-voice.svelte.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "VoiceAdapter",
+        "createVoiceAdapter"
+      ]
+    },
+    {
+      "file": "src/lib/components/agent/agent-chat.constants.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "PREPARED_PROMPT_SEND_WAIT_MS",
+        "CONTEXT_DESCRIPTORS"
+      ]
+    },
+    {
+      "file": "src/lib/components/agent/agent-chat.types.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "isThinkingBlockMessage",
+        "findThinkingBlockById"
+      ]
+    },
+    {
+      "file": "src/lib/components/agent/project-entity-browser.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "DEFAULT_PROJECT_ENTITY_RESULT_LIMIT",
+        "MAX_PROJECT_ENTITY_RESULT_LIMIT",
+        "PROJECT_ENTITY_SEARCH_DEBOUNCE_MS",
+        "clearProjectEntityBrowserCache",
+        "fetchProjectEntities",
+        "normalizeEntitySearch",
+        "normalizeEntityLimit"
+      ]
+    },
+    {
+      "file": "src/lib/components/chat/project-selector-browser.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "DEFAULT_PROJECT_SELECTOR_LIMIT",
+        "MAX_PROJECT_SELECTOR_LIMIT",
+        "PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
+        "normalizeProjectSelectionSearch",
+        "PROJECT_RECENCY_RECENT_MAX_DAYS",
+        "PROJECT_RECENCY_OLDER_MAX_DAYS",
+        "parseProjectUpdatedAt",
+        "formatRelativeProjectUpdate",
+        "groupProjectsByRecency",
+        "normalizeProjectSelectionLimit",
+        "clearProjectSelectionBrowserCache",
+        "fetchProjectSelectionSummaries"
+      ]
+    },
+    {
+      "file": "src/lib/components/notifications/notification-preview.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "getNotificationPreview",
+        "notificationPreviewAriaLabel"
+      ]
+    },
+    {
+      "file": "src/lib/components/project/project-entity-modal-loader.ts",
+      "type": "component",
+      "components": [
+        "TaskEditModal",
+        "DocumentModal",
+        "GoalEditModal",
+        "PlanEditModal",
+        "MilestoneEditModal",
+        "RiskEditModal",
+        "EventEditModal"
+      ],
+      "exports": [
+        "loadTaskEditModal",
+        "loadDocumentModal",
+        "loadGoalEditModal",
+        "loadPlanEditModal",
+        "loadMilestoneEditModal",
+        "loadRiskEditModal",
+        "loadEventEditModal",
+        "preloadProjectEntityModal"
+      ]
+    },
+    {
+      "file": "src/lib/components/project/project-event-filters.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "getEventStartMs",
+        "getEventEndMs",
+        "isEventPast",
+        "getUpcomingEvents",
+        "getProjectEventBuckets"
+      ]
+    },
+    {
+      "file": "src/lib/components/project/project-page-data-controller.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "fetchProjectFullData",
+        "fetchProjectSnapshot",
+        "fetchProjectDocument",
+        "fetchProjectTask",
+        "fetchProjectTaskBucket",
+        "fetchProjectPlan",
+        "fetchProjectGoal",
+        "fetchProjectRisk",
+        "fetchProjectMilestone",
+        "fetchProjectMembers",
+        "fetchProjectEvents",
+        "fetchProjectNotificationSettings",
+        "updateProjectNotificationSettings",
+        "fetchProjectLogs",
+        "fetchProjectBriefs",
+        "fetchProjectRecentChats",
+        "generateProjectNextStep",
+        "moveProjectDocument",
+        "archiveProjectDocument",
+        "updateProjectMilestoneState",
+        "deleteProject"
+      ]
+    },
+    {
+      "file": "src/lib/components/project/project-page-interactions.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "requestImageUploadOpen",
+        "flushPendingImageUploadOpen",
+        "buildProjectEntityOpenHref",
+        "resolveEntityOpenAction"
+      ]
+    },
+    {
+      "file": "src/lib/components/ui/live-transcript-preview.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "LIVE_TRANSCRIPT_PREVIEW_CHAR_LIMIT",
+        "getLiveTranscriptPreview"
+      ]
+    },
+    {
+      "file": "src/lib/components/ui/rich-markdown-editor-voice.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "normalizeVoiceTranscript",
+        "preserveInsertedVoiceSpacing",
+        "canReplaceInsertedVoiceRange",
+        "shouldInsertCapturedVoiceFallback"
+      ]
+    },
+    {
+      "file": "src/lib/components/admin/chat/session-audit-ui.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "eventIcon",
+        "eventSeverityClasses",
+        "timelineDotClasses",
+        "statusBadge",
+        "libriStatusClasses"
+      ]
+    },
+    {
+      "file": "src/lib/components/admin/chat-users/chat-user-export.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "exportTimestamp",
+        "csvCell",
+        "csvRows",
+        "buildChatUsersCsvFile",
+        "buildChatUsersJsonFile",
+        "buildChatUserDetailJsonFile",
+        "downloadTextFile"
+      ]
+    },
+    {
+      "file": "src/lib/components/admin/chat-users/chat-user-ui.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "formatNumber",
+        "formatAverageNumber",
+        "formatRate",
+        "formatMs",
+        "formatDate",
+        "formatDay",
+        "eventTypeLabel",
+        "severityClass",
+        "comparisonToneClass",
+        "comparisonDeltaClass",
+        "alertBadgeClass",
+        "classificationJobStatusLabel",
+        "classificationJobStatusClass",
+        "finiteNumber",
+        "averageMetric",
+        "userErrorLoad",
+        "buildUserComparison",
+        "buildUserAlertBadges",
+        "buildSessionAlertBadges",
+        "buildIssueClusters",
+        "projectHref",
+        "entityHref",
+        "entityGroupKey",
+        "entityGroupKeyForAggregate",
+        "entityGroupKeyForChange"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "createDragDropState"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/insight-panels/insight-panel-config.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "ASSIGNEE_FILTER_UNASSIGNED",
+        "ASSIGNEE_FILTER_ME",
+        "PERSON_FILTER_ME",
+        "TASK_CONFIG",
+        "PLAN_CONFIG",
+        "GOAL_CONFIG",
+        "MILESTONE_CONFIG",
+        "RISK_CONFIG",
+        "EVENT_CONFIG",
+        "IMAGE_CONFIG",
+        "PANEL_CONFIGS",
+        "getPriorityGroup",
+        "getImpactWeight",
+        "calculateRiskScore",
+        "isWithinTimeframe",
+        "STAGE_ORDER",
+        "IMPACT_ORDER",
+        "getSortValueDisplay",
+        "createDefaultPanelState",
+        "createDefaultPanelStates"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/insight-panels/panel-data-controller.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "buildTaskFilterGroups",
+        "getTaskRelevanceScoreForSort",
+        "filterInsightEntity",
+        "sortInsightEntities",
+        "filterAndSortInsightEntities",
+        "updateInsightPanelFilters",
+        "updateInsightPanelSort",
+        "updateInsightPanelToggle",
+        "calculateInsightPanelCounts"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "taskMatchesAssigneeFilter"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/insight-panels/task-person-relevance.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "resolveTaskPersonFocusActorId",
+        "getTaskPersonRelevanceScore",
+        "taskMatchesPersonFocusFilter",
+        "getTaskPersonRelevanceLabel"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "fetchLinkedEntities",
+        "fetchAvailableEntities",
+        "createEdges",
+        "linkEntities",
+        "deleteEdge",
+        "unlinkEntity",
+        "filterEntities"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "ALLOWED_LINKS",
+        "canLink",
+        "RELATIONSHIP_MAP",
+        "getRelationship",
+        "getAllowedTargetKinds",
+        "ENTITY_SECTIONS",
+        "getEntityDisplayName",
+        "formatRelationshipLabel",
+        "getFilteredSections"
+      ]
+    },
+    {
+      "file": "src/lib/components/project/v2/board-a11y.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "handleRovingTabKeydown",
+        "slideMotion",
+        "fadeMotion"
+      ]
+    },
+    {
+      "file": "src/lib/components/ui/codemirror/extensions.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "toggleBold",
+        "toggleItalic",
+        "insertH1",
+        "insertH2",
+        "insertBulletList",
+        "insertOrderedList",
+        "insertBlockquote",
+        "insertCodeBlock",
+        "insertLink",
+        "formattingKeymap",
+        "buildExtensions"
+      ]
+    },
+    {
+      "file": "src/lib/components/ui/codemirror/inkprint-theme.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "inkprintEditorTheme",
+        "inkprintHighlightStyle",
+        "inkprintTheme"
+      ]
+    },
+    {
+      "file": "src/lib/components/ui/codemirror/sticky-scroll.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "buildHeadingIndex",
+        "findActiveHeadingIndex",
+        "getActivePath",
+        "stickyScroll"
+      ]
+    },
+    {
+      "file": "src/lib/components/ui/codemirror/voice-widget.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "showVoiceWidget",
+        "showVoiceInsertHint",
+        "updateVoicePreview",
+        "hideVoiceWidget",
+        "hideVoiceInsertHint",
+        "voiceWidgetExtension"
+      ]
+    },
+    {
+      "file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "PROJECT_COMMANDERS",
+        "DEFAULT_PUBLIC_PROJECT_ID",
+        "getCommander",
+        "formatTimelineYearRange"
+      ]
+    },
+    {
+      "file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "prepareAgentRunChatEventDetail"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/graph/lib/g6.service.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "G6GraphService"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/graph/lib/graph.filters.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "GRAPH_REQUEST_SCOPE_VERSION",
+        "DEFAULT_GRAPH_SCOPE_FILTERS",
+        "GRAPH_SCOPE_FILTER_KEYS",
+        "normalizeGraphScopeFilters",
+        "parseGraphScopeFilters",
+        "appendGraphScopeFilterParams",
+        "buildGraphScopeFilterKey",
+        "buildGraphRequestKey"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/graph/lib/graph.layout.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "GRAPH_FIT_PADDING",
+        "getGraphLayoutOptions"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/graph/lib/graph.service.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "GRAPH_COLORS",
+        "NODE_STYLE_CONFIG",
+        "OntologyGraphService"
+      ]
+    },
+    {
+      "file": "src/lib/components/ontology/graph/lib/svelteflow.service.ts",
+      "type": "component",
+      "components": [],
+      "exports": [
+        "SvelteFlowGraphService"
+      ]
+    }
+  ],
+  "dependencies": {
+    "src/routes/today/+page.svelte": [
+      "src/lib/components/ontology/TaskEditModal.svelte",
+      "src/lib/components/dashboard/DashboardInboxModal.svelte"
+    ],
+    "src/lib/components/dashboard/AnalyticsDashboard.svelte": [
+      "src/lib/components/project/ProjectModalsHost.svelte",
+      "src/lib/components/dashboard/DashboardInboxModal.svelte"
+    ],
+    "src/lib/components/layout/Navigation.svelte": [
+      "src/lib/components/dashboard/DashboardInboxModal.svelte"
+    ],
+    "src/lib/components/ontology/DocumentModal.svelte": [
+      "src/lib/components/ontology/TaskEditModal.svelte",
+      "src/lib/components/ontology/PlanEditModal.svelte",
+      "src/lib/components/ontology/GoalEditModal.svelte",
+      "src/lib/components/ontology/DocumentModal.svelte"
+    ],
+    "src/lib/components/ontology/EventEditModal.svelte": [
+      "src/lib/components/ontology/TaskEditModal.svelte",
+      "src/lib/components/ontology/GoalEditModal.svelte",
+      "src/lib/components/ontology/PlanEditModal.svelte",
+      "src/lib/components/ontology/DocumentModal.svelte"
+    ],
+    "src/lib/components/ontology/GoalEditModal.svelte": [
+      "src/lib/components/ontology/TaskEditModal.svelte",
+      "src/lib/components/ontology/PlanEditModal.svelte",
+      "src/lib/components/ontology/DocumentModal.svelte",
+      "src/lib/components/ontology/MilestoneEditModal.svelte"
+    ],
+    "src/lib/components/ontology/PlanEditModal.svelte": [
+      "src/lib/components/ontology/GoalEditModal.svelte",
+      "src/lib/components/ontology/TaskEditModal.svelte",
+      "src/lib/components/ontology/DocumentModal.svelte"
+    ],
+    "src/lib/components/ontology/TaskEditModal.svelte": [
+      "src/lib/components/ontology/DocumentModal.svelte",
+      "src/lib/components/ontology/GoalEditModal.svelte",
+      "src/lib/components/ontology/PlanEditModal.svelte"
+    ],
+    "src/lib/components/project/ProjectCalendarSettingsModal.svelte": [
+      "src/lib/components/ontology/TaskEditModal.svelte",
+      "src/lib/components/ontology/EventEditModal.svelte"
+    ],
+    "src/lib/components/project/ProjectModalsHost.svelte": [
+      "src/lib/components/ontology/RiskEditModal.svelte",
+      "src/lib/components/ontology/MilestoneEditModal.svelte",
+      "src/lib/components/ontology/EventEditModal.svelte",
+      "src/lib/components/project/ProjectCalendarSettingsModal.svelte",
+      "src/lib/components/ontology/OntologyProjectEditModal.svelte"
+    ],
+    "src/routes/admin/beta/+page.svelte": [
+      "src/lib/components/email/EmailManager.svelte"
+    ],
+    "src/routes/dashboard/calendar/+page.svelte": [
+      "src/lib/components/ontology/TaskEditModal.svelte",
+      "src/lib/components/ontology/EventEditModal.svelte"
+    ],
+    "src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte": [
+      "src/lib/components/ontology/PlanEditModal.svelte",
+      "src/lib/components/ontology/GoalEditModal.svelte",
+      "src/lib/components/ontology/RiskEditModal.svelte",
+      "src/lib/components/ontology/MilestoneEditModal.svelte",
+      "src/lib/components/ontology/EventEditModal.svelte",
+      "src/lib/components/ontology/OntologyProjectEditModal.svelte"
+    ],
+    "src/routes/projects-v2/[id]/ProjectWorkspacePrototype.svelte": [
+      "src/lib/components/ontology/TaskEditModal.svelte",
+      "src/lib/components/ontology/DocumentModal.svelte"
+    ],
+    "src/routes/projects/[id]/+page.svelte": [
+      "src/lib/components/project/ProjectModalsHost.svelte",
+      "src/lib/components/project/ProjectAuditTracker.svelte"
+    ],
+    "src/lib/components/project/v2/EntityTabStrip.svelte": [
+      "src/lib/components/project/ProjectInboxPanel.svelte"
+    ],
+    "src/routes/projects/[id]/old/+page.svelte": [
+      "src/lib/components/project/ProjectInsightRail.svelte",
+      "src/lib/components/project/ProjectModalsHost.svelte"
+    ],
+    "src/routes/projects/[id]/tasks/[task_id]/+page.svelte": [
+      "src/lib/components/ontology/DocumentModal.svelte",
+      "src/lib/components/ontology/GoalEditModal.svelte",
+      "src/lib/components/ontology/PlanEditModal.svelte",
+      "src/lib/components/ontology/MilestoneEditModal.svelte",
+      "src/lib/components/ontology/EventEditModal.svelte",
+      "src/lib/components/ontology/TaskEditModal.svelte"
+    ],
+    "src/lib/components/project/project-entity-modal-loader.ts": [
+      "src/lib/components/ontology/TaskEditModal.svelte",
+      "src/lib/components/ontology/DocumentModal.svelte",
+      "src/lib/components/ontology/GoalEditModal.svelte",
+      "src/lib/components/ontology/PlanEditModal.svelte",
+      "src/lib/components/ontology/MilestoneEditModal.svelte",
+      "src/lib/components/ontology/RiskEditModal.svelte",
+      "src/lib/components/ontology/EventEditModal.svelte"
+    ]
+  },
+  "unusedComponents": [
+    "src/lib/components/dashboard/AnalyticsDashboard.svelte",
+    "src/lib/components/landing/HomepageV2.svelte",
+    "src/lib/components/layout/Navigation.svelte",
+    "src/lib/components/notifications/MinimizedNotification.svelte",
+    "src/lib/components/notifications/NotificationModal.svelte",
+    "src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
+    "src/lib/components/project/ProjectHistorySection.svelte",
+    "src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte",
+    "src/routes/projects-v2/[id]/ProjectWorkspacePrototype.svelte",
+    "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
+    "src/lib/components/project/v2/EntityTabStrip.svelte",
+    "src/lib/components/admin/adminRoutes.ts",
+    "src/lib/components/agent/agent-chat-attachments.svelte.ts",
+    "src/lib/components/agent/agent-chat-formatters.ts",
+    "src/lib/components/agent/agent-chat-prewarm.svelte.ts",
+    "src/lib/components/agent/agent-chat-session.ts",
+    "src/lib/components/agent/agent-chat-shell-router.svelte.ts",
+    "src/lib/components/agent/agent-chat-skill-activity.ts",
+    "src/lib/components/agent/agent-chat-sse-handler.ts",
+    "src/lib/components/agent/agent-chat-step-export.ts",
+    "src/lib/components/agent/agent-chat-stream-controller.svelte.ts",
+    "src/lib/components/agent/agent-chat-timeline.ts",
+    "src/lib/components/agent/agent-chat-tool-presenter.ts",
+    "src/lib/components/agent/agent-chat-voice.svelte.ts",
+    "src/lib/components/agent/agent-chat.constants.ts",
+    "src/lib/components/agent/agent-chat.types.ts",
+    "src/lib/components/agent/project-entity-browser.ts",
+    "src/lib/components/chat/project-selector-browser.ts",
+    "src/lib/components/notifications/notification-preview.ts",
+    "src/lib/components/project/project-entity-modal-loader.ts",
+    "src/lib/components/project/project-event-filters.ts",
+    "src/lib/components/project/project-page-data-controller.ts",
+    "src/lib/components/project/project-page-interactions.ts",
+    "src/lib/components/ui/live-transcript-preview.ts",
+    "src/lib/components/ui/rich-markdown-editor-voice.ts",
+    "src/lib/components/admin/chat/session-audit-ui.ts",
+    "src/lib/components/admin/chat-users/chat-user-export.ts",
+    "src/lib/components/admin/chat-users/chat-user-ui.ts",
+    "src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
+    "src/lib/components/ontology/insight-panels/insight-panel-config.ts",
+    "src/lib/components/ontology/insight-panels/panel-data-controller.ts",
+    "src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
+    "src/lib/components/ontology/insight-panels/task-person-relevance.ts",
+    "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+    "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
+    "src/lib/components/project/v2/board-a11y.ts",
+    "src/lib/components/ui/codemirror/extensions.ts",
+    "src/lib/components/ui/codemirror/inkprint-theme.ts",
+    "src/lib/components/ui/codemirror/sticky-scroll.ts",
+    "src/lib/components/ui/codemirror/voice-widget.ts",
+    "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
+    "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
+    "src/lib/components/ontology/graph/lib/g6.service.ts",
+    "src/lib/components/ontology/graph/lib/graph.filters.ts",
+    "src/lib/components/ontology/graph/lib/graph.layout.ts",
+    "src/lib/components/ontology/graph/lib/graph.service.ts",
+    "src/lib/components/ontology/graph/lib/svelteflow.service.ts"
+  ]
 }

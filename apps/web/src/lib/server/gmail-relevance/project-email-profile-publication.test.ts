@@ -1,3 +1,4 @@
+// apps/web/src/lib/server/gmail-relevance/project-email-profile-publication.test.ts
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Json } from '@buildos/shared-types';
@@ -115,8 +116,13 @@ class FakePublicationStore implements ProjectEmailProfilePublicationStore {
 			diff: input.compiled.diff as unknown as Json,
 			omitted: input.compiled.omitted as unknown as Json
 		};
-		this.versions.set(input.profile_id, [...(this.versions.get(input.profile_id) ?? []), version]);
-		const profile = [...this.profiles.values()].find((candidate) => candidate.id === input.profile_id)!;
+		this.versions.set(input.profile_id, [
+			...(this.versions.get(input.profile_id) ?? []),
+			version
+		]);
+		const profile = [...this.profiles.values()].find(
+			(candidate) => candidate.id === input.profile_id
+		)!;
 		profile.current_version = version.profile_version;
 		profile.current_profile_hash = version.profile_hash;
 		profile.compiler_version = version.compiler_version;
@@ -125,20 +131,14 @@ class FakePublicationStore implements ProjectEmailProfilePublicationStore {
 		return version;
 	}
 
-	async appendVersion(input: {
-		profile_id: string;
-		compiled: CompiledProjectEmailProfile;
-	}) {
+	async appendVersion(input: { profile_id: string; compiled: CompiledProjectEmailProfile }) {
 		this.appendAttempts += 1;
 		const overridden = await this.onAppend?.(input);
 		if (overridden) return overridden;
 		return this.persistVersion(input);
 	}
 
-	persistConcurrentWinner(input: {
-		profile_id: string;
-		compiled: CompiledProjectEmailProfile;
-	}) {
+	persistConcurrentWinner(input: { profile_id: string; compiled: CompiledProjectEmailProfile }) {
 		return this.persistVersion(input);
 	}
 }
@@ -171,10 +171,9 @@ describe('ProjectEmailProfilePublicationService', () => {
 		]);
 		expect(first.every((selection) => selection.profile_version === 1)).toBe(true);
 		expect(store.appendAttempts).toBe(2);
-		expect([...store.versions.values()].flat().map((version) => version.source_snapshot_at)).toEqual([
-			SNAPSHOT_AT,
-			SNAPSHOT_AT
-		]);
+		expect(
+			[...store.versions.values()].flat().map((version) => version.source_snapshot_at)
+		).toEqual([SNAPSHOT_AT, SNAPSHOT_AT]);
 	});
 
 	it('appends exactly one new version when one project source changes', async () => {
@@ -257,8 +256,36 @@ describe('ProjectEmailProfilePublicationService', () => {
 		expect(String(failure)).not.toContain(restrictedTerm);
 		expect(String(failure)).not.toContain(PROJECT_ALPHA_ID);
 
-		const source = readFileSync(new URL('./project-email-profile-publication.ts', import.meta.url), 'utf8');
+		const source = readFileSync(
+			new URL('./project-email-profile-publication.ts', import.meta.url),
+			'utf8'
+		);
 		expect(source).not.toMatch(/from\('onto_[^']+'\)[\s\S]{0,120}\.update\(/);
 		expect(source).not.toMatch(/from\('onto_[^']+'\)[\s\S]{0,120}\.insert\(/);
+	});
+
+	it('applies the immutable snapshot boundary to every mutable source query', () => {
+		const source = readFileSync(
+			new URL('./project-email-profile-publication.ts', import.meta.url),
+			'utf8'
+		);
+		for (const table of [
+			'onto_projects',
+			'onto_tasks',
+			'onto_documents',
+			'onto_goals',
+			'onto_milestones',
+			'onto_events'
+		]) {
+			const queryStart = source.indexOf(`.from('${table}')`);
+			expect(queryStart, table).toBeGreaterThan(-1);
+			expect(source.slice(queryStart, queryStart + 650), table).toContain(
+				".lte('updated_at', input.source_snapshot_at)"
+			);
+		}
+		const memberQueryStart = source.lastIndexOf(".from('onto_project_members')");
+		expect(source.slice(memberQueryStart, memberQueryStart + 650)).toContain(
+			".lte('created_at', input.source_snapshot_at)"
+		);
 	});
 });

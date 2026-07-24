@@ -4,21 +4,24 @@ import {
 	PUBLIC_RAILWAY_WORKER_URL
 } from '$lib/server/railway-worker-env';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
-import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
+import { addQueueJobWithPublicId, createQueueCorrelationId } from '$lib/server/queue-job-id';
 
 const WORKER_URL = PUBLIC_RAILWAY_WORKER_URL;
 const REQUEST_TIMEOUT_MS = 8000;
 
-async function queueBraindumpProcessingDirect(params: {
-	braindumpId: string;
-	userId: string;
-}): Promise<{ queued: boolean; jobId?: string; reason?: string }> {
+async function queueBraindumpProcessingDirect(
+	params: {
+		braindumpId: string;
+		userId: string;
+	},
+	correlationId: string
+): Promise<{ queued: boolean; jobId?: string; reason?: string }> {
 	try {
 		const supabase = createAdminSupabaseClient();
 		const { queueJobId } = await addQueueJobWithPublicId(supabase, {
 			p_user_id: params.userId,
 			p_job_type: 'process_onto_braindump',
-			p_metadata: { braindumpId: params.braindumpId, userId: params.userId },
+			p_metadata: { braindumpId: params.braindumpId, userId: params.userId, correlationId },
 			p_priority: 7,
 			p_scheduled_for: new Date().toISOString(),
 			p_dedup_key: `process-onto-braindump-${params.braindumpId}`
@@ -35,15 +38,17 @@ export async function queueBraindumpProcessing(params: {
 	braindumpId: string;
 	userId: string;
 }): Promise<{ queued: boolean; jobId?: string; reason?: string }> {
+	const correlationId = createQueueCorrelationId();
 	if (!WORKER_URL) {
 		console.warn(
 			'[Braindump Processing] Worker URL not configured. Falling back to direct queue.'
 		);
-		return queueBraindumpProcessingDirect(params);
+		return queueBraindumpProcessingDirect(params, correlationId);
 	}
 
 	const headers: Record<string, string> = {
-		'Content-Type': 'application/json'
+		'Content-Type': 'application/json',
+		'X-Correlation-ID': correlationId
 	};
 
 	if (PRIVATE_RAILWAY_WORKER_TOKEN) {
@@ -84,7 +89,7 @@ export async function queueBraindumpProcessing(params: {
 				'[Braindump Processing] Failed to parse worker success response; falling back to direct queue',
 				parseError
 			);
-			return queueBraindumpProcessingDirect(params);
+			return queueBraindumpProcessingDirect(params, correlationId);
 		}
 		return { queued: true, jobId: result?.jobId };
 	} catch (error) {
@@ -92,6 +97,6 @@ export async function queueBraindumpProcessing(params: {
 			'[Braindump Processing] Worker unreachable. Falling back to direct queue.',
 			error
 		);
-		return queueBraindumpProcessingDirect(params);
+		return queueBraindumpProcessingDirect(params, correlationId);
 	}
 }

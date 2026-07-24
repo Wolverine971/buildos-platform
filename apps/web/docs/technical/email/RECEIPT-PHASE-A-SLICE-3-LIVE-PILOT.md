@@ -27,12 +27,12 @@ header, label, Gmail URL, or message metadata.
 
 ## Content-free result
 
-| Scope | Terminal state | Checkpoint / operations | List pages | Observations discovered / processed | A candidates | B candidates | Provider calls | Gmail units | Runtime ms |
-| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | completed | 5 / 5 | 2 | 148 / 148 | 43 | 35 | 150 | 2,970 | 22,628 |
-| 2 | completed | 30 / 30 | 10 | 1,000 / 1,000 | 1,000 | 15 | 1,010 | 20,050 | 154,356 |
-| 3 | completed | 30 / 30 | 10 | 1,000 / 1,000 | 681 | 681 | 1,010 | 20,050 | 120,595 |
-| **Total** | **completed** | **65 / 65** | **22** | **2,148 / 2,148** | **1,724** | **731** | **2,170** | **43,070** | **297,579** |
+|     Scope | Terminal state | Checkpoint / operations | List pages | Observations discovered / processed | A candidates | B candidates | Provider calls | Gmail units |  Runtime ms |
+| --------: | -------------- | ----------------------: | ---------: | ----------------------------------: | -----------: | -----------: | -------------: | ----------: | ----------: |
+|         1 | completed      |                   5 / 5 |          2 |                           148 / 148 |           43 |           35 |            150 |       2,970 |      22,628 |
+|         2 | completed      |                 30 / 30 |         10 |                       1,000 / 1,000 |        1,000 |           15 |          1,010 |      20,050 |     154,356 |
+|         3 | completed      |                 30 / 30 |         10 |                       1,000 / 1,000 |          681 |          681 |          1,010 |      20,050 |     120,595 |
+| **Total** | **completed**  |             **65 / 65** |     **22** |                   **2,148 / 2,148** |    **1,724** |      **731** |      **2,170** |  **43,070** | **297,579** |
 
 Global ceilings were 3,000 observations, 30 list pages, 60,150 Gmail units, and 3,600,000
 milliseconds. Every metadata reservation was at most 1,000 Gmail units, equivalent to the approved
@@ -77,8 +77,9 @@ remained four.
 
 The temporary production values for `GMAIL_RELEVANCE_PHASE_A_ENABLED`,
 `GMAIL_RELEVANCE_PHASE_A_USER_IDS`, and `GMAIL_RELEVANCE_MODEL_ENABLED` were removed after the run.
-The follow-up production redeploy restores the code-defined default-off, empty-allowlist, model-off
-posture. Confirm the redeploy is `Ready` before treating this receipt as closed.
+The follow-up production redeploy completed `Ready` and was assigned to `build-os.com`. A fresh
+authenticated request to the private pilot route returned 404 with no pilot controls, confirming
+the code-defined default-off, empty-allowlist, model-off posture is restored.
 
 ## Verification commands retained from implementation
 

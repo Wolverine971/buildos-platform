@@ -4,7 +4,7 @@ import {
 	PUBLIC_RAILWAY_WORKER_URL
 } from '$lib/server/railway-worker-env';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
-import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
+import { addQueueJobWithPublicId, createQueueCorrelationId } from '$lib/server/queue-job-id';
 
 const WORKER_URL = PUBLIC_RAILWAY_WORKER_URL;
 const REQUEST_TIMEOUT_MS = 8000;
@@ -21,11 +21,14 @@ type OnboardingAnalysisOptions = {
 	maxQuestions?: number;
 };
 
-async function queueOnboardingAnalysisDirect(params: {
-	userId: string;
-	userContext?: OnboardingAnalysisContext;
-	options?: OnboardingAnalysisOptions;
-}): Promise<{ queued: boolean; jobId?: string; reason?: string }> {
+async function queueOnboardingAnalysisDirect(
+	params: {
+		userId: string;
+		userContext?: OnboardingAnalysisContext;
+		options?: OnboardingAnalysisOptions;
+	},
+	correlationId: string
+): Promise<{ queued: boolean; jobId?: string; reason?: string }> {
 	try {
 		const supabase = createAdminSupabaseClient();
 		const dedupKey = params.options?.forceRegenerate
@@ -37,7 +40,8 @@ async function queueOnboardingAnalysisDirect(params: {
 			p_metadata: {
 				userId: params.userId,
 				userContext: params.userContext ?? {},
-				options: params.options
+				options: params.options,
+				correlationId
 			},
 			p_priority: 1,
 			p_scheduled_for: new Date().toISOString(),
@@ -56,15 +60,17 @@ export async function queueOnboardingAnalysis(params: {
 	userContext?: OnboardingAnalysisContext;
 	options?: OnboardingAnalysisOptions;
 }): Promise<{ queued: boolean; jobId?: string; reason?: string }> {
+	const correlationId = createQueueCorrelationId();
 	if (!WORKER_URL) {
 		console.warn(
 			'[Onboarding Analysis] Worker URL not configured. Falling back to direct queue.'
 		);
-		return queueOnboardingAnalysisDirect(params);
+		return queueOnboardingAnalysisDirect(params, correlationId);
 	}
 
 	const headers: Record<string, string> = {
-		'Content-Type': 'application/json'
+		'Content-Type': 'application/json',
+		'X-Correlation-ID': correlationId
 	};
 
 	if (PRIVATE_RAILWAY_WORKER_TOKEN) {
@@ -106,7 +112,7 @@ export async function queueOnboardingAnalysis(params: {
 				'[Onboarding Analysis] Failed to parse worker success response; falling back to direct queue',
 				parseError
 			);
-			return queueOnboardingAnalysisDirect(params);
+			return queueOnboardingAnalysisDirect(params, correlationId);
 		}
 		return { queued: true, jobId: result?.jobId };
 	} catch (error) {
@@ -114,6 +120,6 @@ export async function queueOnboardingAnalysis(params: {
 			'[Onboarding Analysis] Worker unreachable. Falling back to direct queue.',
 			error
 		);
-		return queueOnboardingAnalysisDirect(params);
+		return queueOnboardingAnalysisDirect(params, correlationId);
 	}
 }

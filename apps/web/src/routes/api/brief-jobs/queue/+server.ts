@@ -5,6 +5,7 @@ import {
 	PRIVATE_RAILWAY_WORKER_TOKEN,
 	PUBLIC_RAILWAY_WORKER_URL
 } from '$lib/server/railway-worker-env';
+import { createQueueCorrelationId } from '$lib/server/queue-job-id';
 
 export const POST: RequestHandler = async ({ request, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -35,9 +36,11 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 			forceRegenerate,
 			forceImmediate
 		} = body ?? {};
+		const correlationId = createQueueCorrelationId(request.headers);
 
 		const headers: Record<string, string> = {
-			'Content-Type': 'application/json'
+			'Content-Type': 'application/json',
+			'X-Correlation-ID': correlationId
 		};
 
 		if (PRIVATE_RAILWAY_WORKER_TOKEN) {

@@ -135,6 +135,84 @@ describe('GmailRelevanceMetadataGateway', () => {
 		expect(providerFetch).not.toHaveBeenCalled();
 	});
 
+	it('stops starting metadata calls when the whole-operation deadline expires', async () => {
+		const oauthService = { getAuthorizedReadAccessToken: vi.fn().mockResolvedValue('token') };
+		const providerFetch = vi.fn((_input: URL | RequestInfo, init?: RequestInit) => {
+			return new Promise<Response>((_resolve, reject) => {
+				const rejectForAbort = () =>
+					reject(new DOMException('Synthetic operation deadline', 'AbortError'));
+				if (init?.signal?.aborted) rejectForAbort();
+				else init?.signal?.addEventListener('abort', rejectForAbort, { once: true });
+			});
+		});
+		const gateway = new GmailRelevanceMetadataGateway({} as never, {
+			oauthService,
+			providerFetch,
+			metadataBatchTimeoutMs: 20
+		});
+
+		await expect(
+			gateway.getMetadataBatch({
+				user_id: USER_ID,
+				connection_id: CONNECTION_ID,
+				provider_message_ids: Array.from(
+					{ length: 12 },
+					(_, index) => `synthetic_deadline_${index + 1}`
+				)
+			})
+		).rejects.toMatchObject<GmailRelevanceMetadataGatewayError>({
+			code: 'provider_timeout',
+			providerCallsStarted: 4
+		});
+		expect(providerFetch).toHaveBeenCalledTimes(4);
+		expect(oauthService.getAuthorizedReadAccessToken).toHaveBeenCalledTimes(4);
+	});
+
+	it('fails closed when provider calls resolve at the same moment the batch deadline expires', async () => {
+		const oauthService = { getAuthorizedReadAccessToken: vi.fn().mockResolvedValue('token') };
+		const providerFetch = vi.fn((input: URL | RequestInfo, init?: RequestInit) => {
+			return new Promise<Response>((resolve) => {
+				const url = new URL(String(input));
+				const id = decodeURIComponent(url.pathname.split('/').at(-1)!);
+				init?.signal?.addEventListener(
+					'abort',
+					() =>
+						resolve(
+							jsonResponse({
+								id,
+								threadId: `thread_${id}`,
+								internalDate: '1784592000000',
+								labelIds: ['INBOX'],
+								snippet: 'synthetic',
+								payload: { headers: [] }
+							})
+						),
+					{ once: true }
+				);
+			});
+		});
+		const gateway = new GmailRelevanceMetadataGateway({} as never, {
+			oauthService,
+			providerFetch,
+			metadataBatchTimeoutMs: 20
+		});
+
+		await expect(
+			gateway.getMetadataBatch({
+				user_id: USER_ID,
+				connection_id: CONNECTION_ID,
+				provider_message_ids: Array.from(
+					{ length: 12 },
+					(_, index) => `synthetic_race_${index + 1}`
+				)
+			})
+		).rejects.toMatchObject<GmailRelevanceMetadataGatewayError>({
+			code: 'provider_timeout',
+			providerCallsStarted: 4
+		});
+		expect(providerFetch).toHaveBeenCalledTimes(4);
+	});
+
 	it('rejects oversized batches, duplicate IDs, malformed cursors, and large responses', async () => {
 		const oauthService = { getAuthorizedReadAccessToken: vi.fn().mockResolvedValue('token') };
 		const gateway = new GmailRelevanceMetadataGateway({} as never, {

@@ -45,6 +45,10 @@
 			"schedule": "30 4 * * *"
 		},
 		{
+			"path": "/api/cron/gmail-relevance-retention",
+			"schedule": "15 * * * *"
+		},
+		{
 			"path": "/api/cron/account-deletions",
 			"schedule": "0 * * * *"
 		}

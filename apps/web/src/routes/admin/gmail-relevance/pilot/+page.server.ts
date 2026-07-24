@@ -1,3 +1,4 @@
+// apps/web/src/routes/admin/gmail-relevance/pilot/+page.server.ts
 import { env as privateEnv } from '$env/dynamic/private';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
@@ -6,6 +7,10 @@ import {
 	createGmailRelevancePilotService,
 	GmailRelevancePilotServiceError
 } from '$lib/server/gmail-relevance/manual-pilot';
+
+export const config = {
+	maxDuration: 60
+};
 
 type SafeSession = () => Promise<{ user: { id: string } | null }>;
 

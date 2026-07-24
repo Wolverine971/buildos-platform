@@ -204,6 +204,72 @@ describe('ErrorLoggerService', () => {
 		});
 	});
 
+	it('preserves valid UUID record IDs that contain phone-like digit runs', async () => {
+		const insertedEntries: Array<Record<string, any>> = [];
+		const supabase = {
+			from: vi.fn(() => ({
+				insert: vi.fn((entry: Record<string, any>) => ({
+					select: vi.fn(() => ({
+						single: vi.fn(async () => {
+							insertedEntries.push(entry);
+							return { data: { id: 'logged-error-uuid' }, error: null };
+						})
+					}))
+				}))
+			}))
+		};
+		const service = ErrorLoggerService.getInstance(
+			supabase as unknown as SupabaseClient<Database>
+		);
+		const taskId = 'f544b10d-c28f-4309-8952-18cefc33be8a';
+
+		const loggedId = await service.logError(
+			{ code: 'PGRST116', message: 'The result contains 0 rows' },
+			{
+				recordId: taskId,
+				endpoint: `/api/onto/tasks/${taskId}`,
+				httpMethod: 'GET',
+				operationType: 'task_fetch'
+			}
+		);
+
+		expect(loggedId).toBe('logged-error-uuid');
+		expect(insertedEntries).toHaveLength(1);
+		expect(insertedEntries[0]?.record_id).toBe(taskId);
+		expect(insertedEntries[0]?.metadata).not.toHaveProperty('invalid_context_record_id');
+	});
+
+	it('omits malformed record IDs without dropping the original error log', async () => {
+		const insertedEntries: Array<Record<string, any>> = [];
+		const supabase = {
+			from: vi.fn(() => ({
+				insert: vi.fn((entry: Record<string, any>) => ({
+					select: vi.fn(() => ({
+						single: vi.fn(async () => {
+							insertedEntries.push(entry);
+							return { data: { id: 'logged-error-invalid-record' }, error: null };
+						})
+					}))
+				}))
+			}))
+		};
+		const service = ErrorLoggerService.getInstance(
+			supabase as unknown as SupabaseClient<Database>
+		);
+
+		const loggedId = await service.logError(new Error('Task lookup failed'), {
+			recordId: 'not-a-task-uuid',
+			operationType: 'task_fetch'
+		});
+
+		expect(loggedId).toBe('logged-error-invalid-record');
+		expect(insertedEntries[0]?.record_id).toBeUndefined();
+		expect(insertedEntries[0]?.metadata).toMatchObject({
+			invalid_context_record_id: 'not-a-task-uuid',
+			record_id_omitted_reason: 'invalid_uuid'
+		});
+	});
+
 	it('redacts credentials from provider errors before persistence', async () => {
 		const insertedEntries: Array<Record<string, any>> = [];
 		const supabase = {

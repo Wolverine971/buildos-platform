@@ -1,5 +1,6 @@
 // apps/web/src/lib/server/agent-runs/dispatch.ts
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { withQueueCorrelationMetadata } from '$lib/server/queue-job-id';
 import { HttpStatus } from '$lib/utils/api-response';
 import { validateAgentRunMetadata, type AgentRunStatus, type Json } from '@buildos/shared-types';
 
@@ -410,6 +411,7 @@ export async function dispatchAgentRun(
 		review_required: reviewRequired,
 		budgets
 	};
+	const correlatedMetadata = withQueueCorrelationMetadata(metadata as Json);
 
 	// Validate metadata shape BEFORE any write. The RPC fills in the real
 	// run_id server-side; a placeholder UUID stands in for shape validation.
@@ -457,7 +459,7 @@ export async function dispatchAgentRun(
 				source_suggestion_id: params.sourceSuggestionId ?? null,
 				source_decision: params.sourceDecision ?? null
 			},
-			p_job_metadata: metadata,
+			p_job_metadata: correlatedMetadata.metadata,
 			p_priority: 7
 		}
 	);
@@ -487,6 +489,12 @@ export async function dispatchAgentRun(
 			message: `Failed to create agent run: ${message}`
 		};
 	}
+
+	console.info('[agent-run.dispatch]', {
+		runId: created.run.id,
+		queueRecordId: created.job_id,
+		correlationId: correlatedMetadata.correlationId
+	});
 
 	return { ok: true, run: created.run };
 }

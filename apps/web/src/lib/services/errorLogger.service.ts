@@ -471,16 +471,21 @@ export class ErrorLoggerService {
 		return combined.includes('project_id');
 	}
 
-	private normalizeProjectIdForStorage(projectId?: string): {
-		projectId?: string;
-		invalidProjectId?: string;
+	private normalizeUuidForStorage(value?: string): {
+		uuid?: string;
+		invalidValue?: string;
 	} {
-		if (!projectId || isValidUUID(projectId)) {
-			return { projectId };
+		const trimmedValue = value?.trim();
+		if (!trimmedValue) {
+			return {};
+		}
+
+		if (isValidUUID(trimmedValue)) {
+			return { uuid: trimmedValue };
 		}
 
 		return {
-			invalidProjectId: projectId.slice(0, 200)
+			invalidValue: sanitizeLogText(trimmedValue, 200)
 		};
 	}
 
@@ -521,9 +526,14 @@ export class ErrorLoggerService {
 			const errorInfo = this.extractErrorInfo(sanitizedError);
 			const errorType = this.determineErrorType(sanitizedError, sanitizedContext);
 			const finalSeverity = severity || this.determineSeverity(sanitizedError, errorType);
-			const normalizedProject = this.normalizeProjectIdForStorage(
-				sanitizedContext?.projectId
-			);
+			// UUID-looking strings can contain digit runs that the text sanitizer
+			// intentionally treats as phone numbers. Normalize database UUID fields
+			// from the original context so redaction cannot turn a valid UUID into an
+			// invalid value such as "[redacted-phone]" before insertion.
+			const normalizedUser = this.normalizeUuidForStorage(context?.userId);
+			const normalizedProject = this.normalizeUuidForStorage(context?.projectId);
+			const normalizedBrainDump = this.normalizeUuidForStorage(context?.brainDumpId);
+			const normalizedRecord = this.normalizeUuidForStorage(context?.recordId);
 
 			const errorEntry = {
 				error_type: errorType,
@@ -532,9 +542,9 @@ export class ErrorLoggerService {
 				error_stack: errorInfo.stack,
 				severity: finalSeverity,
 
-				user_id: sanitizedContext?.userId,
-				project_id: normalizedProject.projectId,
-				brain_dump_id: sanitizedContext?.brainDumpId,
+				user_id: normalizedUser.uuid,
+				project_id: normalizedProject.uuid,
+				brain_dump_id: normalizedBrainDump.uuid,
 
 				endpoint: sanitizedContext?.endpoint,
 				http_method: sanitizedContext?.httpMethod,
@@ -553,15 +563,33 @@ export class ErrorLoggerService {
 
 				operation_type: sanitizedContext?.operationType,
 				table_name: sanitizedContext?.tableName,
-				record_id: sanitizedContext?.recordId,
+				record_id: normalizedRecord.uuid,
 				operation_payload: sanitizedContext?.operationPayload,
 
 				metadata: {
 					...sanitizedContext?.metadata,
-					...(normalizedProject.invalidProjectId
+					...(normalizedUser.invalidValue
 						? {
-								invalid_context_project_id: normalizedProject.invalidProjectId,
+								invalid_context_user_id: normalizedUser.invalidValue,
+								user_id_omitted_reason: 'invalid_uuid'
+							}
+						: {}),
+					...(normalizedProject.invalidValue
+						? {
+								invalid_context_project_id: normalizedProject.invalidValue,
 								project_id_omitted_reason: 'invalid_uuid'
+							}
+						: {}),
+					...(normalizedBrainDump.invalidValue
+						? {
+								invalid_context_brain_dump_id: normalizedBrainDump.invalidValue,
+								brain_dump_id_omitted_reason: 'invalid_uuid'
+							}
+						: {}),
+					...(normalizedRecord.invalidValue
+						? {
+								invalid_context_record_id: normalizedRecord.invalidValue,
+								record_id_omitted_reason: 'invalid_uuid'
 							}
 						: {}),
 					originalError: this.serializeErrorForStorage(sanitizedError),
@@ -742,7 +770,9 @@ export class ErrorLoggerService {
 		const finalSeverity = operation === 'delete' ? 'warning' : 'error';
 
 		try {
-			const normalizedProject = this.normalizeProjectIdForStorage(context.projectId);
+			const normalizedUser = this.normalizeUuidForStorage(context.userId);
+			const normalizedProject = this.normalizeUuidForStorage(context.projectId);
+			const normalizedRecord = this.normalizeUuidForStorage(context.recordId);
 			const errorEntry = {
 				error_type: errorType,
 				error_code: errorInfo.code,
@@ -750,8 +780,8 @@ export class ErrorLoggerService {
 				error_stack: errorInfo.stack,
 				severity: finalSeverity,
 
-				user_id: context.userId,
-				project_id: normalizedProject.projectId,
+				user_id: normalizedUser.uuid,
+				project_id: normalizedProject.uuid,
 
 				endpoint: context.endpoint,
 				http_method: context.httpMethod,
@@ -760,15 +790,27 @@ export class ErrorLoggerService {
 
 				operation_type: context.operationType,
 				table_name: context.tableName,
-				record_id: context.recordId,
+				record_id: normalizedRecord.uuid,
 				operation_payload: context.operationPayload,
 
 				metadata: {
 					...context.metadata,
-					...(normalizedProject.invalidProjectId
+					...(normalizedUser.invalidValue
 						? {
-								invalid_context_project_id: normalizedProject.invalidProjectId,
+								invalid_context_user_id: normalizedUser.invalidValue,
+								user_id_omitted_reason: 'invalid_uuid'
+							}
+						: {}),
+					...(normalizedProject.invalidValue
+						? {
+								invalid_context_project_id: normalizedProject.invalidValue,
 								project_id_omitted_reason: 'invalid_uuid'
+							}
+						: {}),
+					...(normalizedRecord.invalidValue
+						? {
+								invalid_context_record_id: normalizedRecord.invalidValue,
+								record_id_omitted_reason: 'invalid_uuid'
 							}
 						: {})
 				},

@@ -16,6 +16,7 @@ const MAX_PROVIDER_METADATA_BYTES = 256 * 1024;
 const LIST_PAGE_SIZE = 100;
 const METADATA_BATCH_CEILING = 50;
 const METADATA_CONCURRENCY = 4;
+const METADATA_BATCH_TIMEOUT_MS = 45_000;
 const MAX_PAGE_TOKEN_CHARACTERS = 4_096;
 const WINDOW_MILLISECONDS = 30 * 24 * 60 * 60 * 1_000;
 const METADATA_HEADERS = ['From', 'To', 'Cc', 'Bcc', 'Subject'] as const;
@@ -29,6 +30,7 @@ type ProviderFetch = typeof fetch;
 type GmailRelevanceMetadataGatewayOptions = {
 	oauthService?: Pick<GmailReadOAuthService, 'getAuthorizedReadAccessToken'>;
 	providerFetch?: ProviderFetch;
+	metadataBatchTimeoutMs?: number;
 };
 
 type GmailProviderList = {
@@ -117,18 +119,29 @@ async function readJsonBounded(response: Response, maxBytes: number): Promise<un
 async function mapWithConcurrency<T, R>(
 	items: T[],
 	concurrency: number,
-	mapper: (item: T) => Promise<R>
+	mapper: (item: T) => Promise<R>,
+	signal?: AbortSignal
 ): Promise<R[]> {
 	const results = new Array<R>(items.length);
 	let nextIndex = 0;
 	const workers = Array.from({ length: Math.min(items.length, concurrency) }, async () => {
 		while (nextIndex < items.length) {
+			if (signal?.aborted) break;
 			const index = nextIndex++;
 			results[index] = await mapper(items[index]!);
 		}
 	});
 	await Promise.all(workers);
 	return results;
+}
+
+async function awaitWithAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+	if (signal.aborted) throw new GmailRelevanceMetadataGatewayError('provider_timeout');
+	return new Promise<T>((resolve, reject) => {
+		const onAbort = () => reject(new GmailRelevanceMetadataGatewayError('provider_timeout'));
+		signal.addEventListener('abort', onAbort, { once: true });
+		promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+	});
 }
 
 function isConnectionFailure(error: unknown): boolean {
@@ -147,6 +160,7 @@ function isConnectionFailure(error: unknown): boolean {
 export class GmailRelevanceMetadataGateway {
 	private readonly oauthService: Pick<GmailReadOAuthService, 'getAuthorizedReadAccessToken'>;
 	private readonly providerFetch: ProviderFetch;
+	private readonly metadataBatchTimeoutMs: number;
 
 	constructor(
 		admin: TypedSupabaseClient | GmailSchemaClient,
@@ -154,6 +168,7 @@ export class GmailRelevanceMetadataGateway {
 	) {
 		this.oauthService = options.oauthService ?? new GmailReadOAuthService(admin);
 		this.providerFetch = options.providerFetch ?? fetch;
+		this.metadataBatchTimeoutMs = options.metadataBatchTimeoutMs ?? METADATA_BATCH_TIMEOUT_MS;
 	}
 
 	private async accessToken(userId: string, connectionId: string): Promise<string> {
@@ -170,7 +185,8 @@ export class GmailRelevanceMetadataGateway {
 		path: string,
 		accessToken: string,
 		parameters: URLSearchParams,
-		maxBytes: number
+		maxBytes: number,
+		operationSignal?: AbortSignal
 	): Promise<unknown> {
 		const url = new URL(path, GMAIL_API_ORIGIN);
 		if (
@@ -181,6 +197,9 @@ export class GmailRelevanceMetadataGateway {
 		}
 		url.search = parameters.toString();
 		const controller = new AbortController();
+		const abortForOperation = () => controller.abort();
+		if (operationSignal?.aborted) controller.abort();
+		else operationSignal?.addEventListener('abort', abortForOperation, { once: true });
 		const timeout = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
 		try {
 			const response = await this.providerFetch(url, {
@@ -189,6 +208,9 @@ export class GmailRelevanceMetadataGateway {
 				redirect: 'error',
 				signal: controller.signal
 			});
+			if (controller.signal.aborted) {
+				throw new GmailRelevanceMetadataGatewayError('provider_timeout');
+			}
 			if (!response.ok) throw new GmailRelevanceMetadataGatewayError('provider_rejected');
 			return await readJsonBounded(response, maxBytes);
 		} catch (error) {
@@ -200,6 +222,7 @@ export class GmailRelevanceMetadataGateway {
 			);
 		} finally {
 			clearTimeout(timeout);
+			operationSignal?.removeEventListener('abort', abortForOperation);
 		}
 	}
 
@@ -307,56 +330,79 @@ export class GmailRelevanceMetadataGateway {
 
 		let providerCallsStarted = 0;
 		let firstFailure: GmailRelevanceMetadataGatewayError | null = null;
-		const messages = await mapWithConcurrency(
-			parsed.data.provider_message_ids,
-			METADATA_CONCURRENCY,
-			async (messageId) => {
-				try {
-					// Re-authorize immediately before every provider call. The OAuth service re-checks
-					// owner, connection state, read capability, and stored read-only scopes.
-					const accessToken = await this.accessToken(
-						parsed.data.user_id,
-						parsed.data.connection_id
-					);
-					providerCallsStarted += 1;
-					const parameters = new URLSearchParams({
-						format: 'metadata',
-						fields: 'id,threadId,internalDate,labelIds,snippet,payload/headers'
-					});
-					for (const header of METADATA_HEADERS)
-						parameters.append('metadataHeaders', header);
-					const provider = (await this.providerGet(
-						`/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}`,
-						accessToken,
-						parameters,
-						MAX_PROVIDER_METADATA_BYTES
-					)) as EmailRelevanceProviderMetadata;
-					const normalized = normalizeEmailRelevanceMetadata(provider);
-					if (normalized.provider_message_id !== messageId) {
-						throw new GmailRelevanceMetadataGatewayError('invalid_provider_response');
-					}
-					return normalized;
-				} catch (error) {
-					firstFailure ??= new GmailRelevanceMetadataGatewayError(
-						error instanceof GmailRelevanceMetadataGatewayError
-							? error.code
-							: 'invalid_provider_response'
-					);
-					return null;
-				}
-			}
+		const operationController = new AbortController();
+		const operationTimeout = setTimeout(
+			() => operationController.abort(),
+			this.metadataBatchTimeoutMs
 		);
+		let messages: Array<NormalizedEmailRelevanceMetadata | null>;
+		try {
+			messages = await mapWithConcurrency(
+				parsed.data.provider_message_ids,
+				METADATA_CONCURRENCY,
+				async (messageId) => {
+					try {
+						// Re-authorize immediately before every provider call. The OAuth service re-checks
+						// owner, connection state, read capability, and stored read-only scopes.
+						const accessToken = await awaitWithAbort(
+							this.accessToken(parsed.data.user_id, parsed.data.connection_id),
+							operationController.signal
+						);
+						if (operationController.signal.aborted) {
+							throw new GmailRelevanceMetadataGatewayError('provider_timeout');
+						}
+						providerCallsStarted += 1;
+						const parameters = new URLSearchParams({
+							format: 'metadata',
+							fields: 'id,threadId,internalDate,labelIds,snippet,payload/headers'
+						});
+						for (const header of METADATA_HEADERS)
+							parameters.append('metadataHeaders', header);
+						const provider = (await this.providerGet(
+							`/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}`,
+							accessToken,
+							parameters,
+							MAX_PROVIDER_METADATA_BYTES,
+							operationController.signal
+						)) as EmailRelevanceProviderMetadata;
+						const normalized = normalizeEmailRelevanceMetadata(provider);
+						if (normalized.provider_message_id !== messageId) {
+							throw new GmailRelevanceMetadataGatewayError(
+								'invalid_provider_response'
+							);
+						}
+						return normalized;
+					} catch (error) {
+						firstFailure ??= new GmailRelevanceMetadataGatewayError(
+							error instanceof GmailRelevanceMetadataGatewayError
+								? error.code
+								: 'invalid_provider_response'
+						);
+						return null;
+					}
+				},
+				operationController.signal
+			);
+		} finally {
+			clearTimeout(operationTimeout);
+		}
 		const completedFailure = firstFailure as GmailRelevanceMetadataGatewayError | null;
-		if (completedFailure) {
+		const completedMessages = messages.filter(
+			(message): message is NormalizedEmailRelevanceMetadata => message !== null
+		);
+		if (
+			completedFailure ||
+			operationController.signal.aborted ||
+			completedMessages.length !== parsed.data.provider_message_ids.length
+		) {
 			throw new GmailRelevanceMetadataGatewayError(
-				completedFailure.code,
+				completedFailure?.code ??
+					(operationController.signal.aborted
+						? 'provider_timeout'
+						: 'invalid_provider_response'),
 				providerCallsStarted
 			);
 		}
-		return {
-			messages: messages.filter(
-				(message): message is NormalizedEmailRelevanceMetadata => message !== null
-			)
-		};
+		return { messages: completedMessages };
 	}
 }

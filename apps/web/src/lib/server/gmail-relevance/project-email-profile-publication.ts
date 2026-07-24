@@ -1,3 +1,4 @@
+// apps/web/src/lib/server/gmail-relevance/project-email-profile-publication.ts
 import type { Json } from '@buildos/shared-types';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import { z } from 'zod';
@@ -71,9 +72,7 @@ export type ProjectEmailProfilePublicationStore = {
 		user_id: string;
 		project_ids: string[];
 	}): Promise<ProfilePointer[]>;
-	loadProfileVersions(input: {
-		profile_ids: string[];
-	}): Promise<StoredProfileVersion[]>;
+	loadProfileVersions(input: { profile_ids: string[] }): Promise<StoredProfileVersion[]>;
 	createProfile(input: { user_id: string; project_id: string }): Promise<ProfilePointer>;
 	appendVersion(input: {
 		profile_id: string;
@@ -150,9 +149,7 @@ function isMatchingVersion(
 	);
 }
 
-class SupabaseProjectEmailProfilePublicationStore
-	implements ProjectEmailProfilePublicationStore
-{
+class SupabaseProjectEmailProfilePublicationStore implements ProjectEmailProfilePublicationStore {
 	constructor(private readonly client: TypedSupabaseClient = createAdminSupabaseClient()) {}
 
 	async loadOwnedSourceInputs(input: {
@@ -168,24 +165,26 @@ class SupabaseProjectEmailProfilePublicationStore
 		if (actorError) throwStorageError(actorError);
 		if (!actor) throw new ProjectEmailProfilePublicationError('project_unavailable');
 
-		const [{ data: memberships, error: membershipError }, { data: projectRows, error: projectError }] =
-			await Promise.all([
-				this.client
-					.from('onto_project_members')
-					.select('project_id')
-					.eq('actor_id', actor.id)
-					.eq('role_key', 'owner')
-					.is('removed_at', null),
-				this.client
-					.from('onto_projects')
-					.select(
-						'id, name, description, next_step_short, next_step_long, props, updated_at, created_by'
-					)
-					.is('deleted_at', null)
-					.lte('updated_at', input.source_snapshot_at)
-					.order('updated_at', { ascending: false })
-					.limit(1000)
-			]);
+		const [
+			{ data: memberships, error: membershipError },
+			{ data: projectRows, error: projectError }
+		] = await Promise.all([
+			this.client
+				.from('onto_project_members')
+				.select('project_id')
+				.eq('actor_id', actor.id)
+				.eq('role_key', 'owner')
+				.is('removed_at', null),
+			this.client
+				.from('onto_projects')
+				.select(
+					'id, name, description, next_step_short, next_step_long, props, updated_at, created_by'
+				)
+				.is('deleted_at', null)
+				.lte('updated_at', input.source_snapshot_at)
+				.order('updated_at', { ascending: false })
+				.limit(1000)
+		]);
 		if (membershipError || projectError) throwStorageError(membershipError ?? projectError);
 
 		const memberProjectIds = new Set((memberships ?? []).map((row) => row.project_id));
@@ -220,6 +219,7 @@ class SupabaseProjectEmailProfilePublicationStore
 				.select('id, project_id, name, description, goal, updated_at')
 				.in('project_id', selectedIds)
 				.is('deleted_at', null)
+				.lte('updated_at', input.source_snapshot_at)
 				.order('updated_at', { ascending: false })
 				.limit(selectedIds.length * 30),
 			this.client
@@ -227,6 +227,7 @@ class SupabaseProjectEmailProfilePublicationStore
 				.select('id, project_id, title, description, milestone, updated_at')
 				.in('project_id', selectedIds)
 				.is('deleted_at', null)
+				.lte('updated_at', input.source_snapshot_at)
 				.order('updated_at', { ascending: false })
 				.limit(selectedIds.length * 30),
 			this.client
@@ -244,6 +245,7 @@ class SupabaseProjectEmailProfilePublicationStore
 				)
 				.in('project_id', selectedIds)
 				.is('removed_at', null)
+				.lte('created_at', input.source_snapshot_at)
 				.limit(selectedIds.length * 50)
 		]);
 		const results = [tasks, documents, goals, milestones, events, members];
@@ -253,8 +255,7 @@ class SupabaseProjectEmailProfilePublicationStore
 		const byProject = <T extends { project_id: string | null }>(
 			rows: T[] | null,
 			projectId: string
-		) =>
-			(rows ?? []).filter((row) => row.project_id === projectId);
+		) => (rows ?? []).filter((row) => row.project_id === projectId);
 		const nearbyProjects = ownedProjects
 			.map(({ id, name, updated_at }) => ({ id, name, updated_at }))
 			.sort((left, right) => compareAscii(left.id, right.id));
@@ -265,13 +266,12 @@ class SupabaseProjectEmailProfilePublicationStore
 			tasks: byProject(tasks.data, projectId) as ProjectEmailProfileTaskRow[],
 			documents: byProject(documents.data, projectId) as ProjectEmailProfileDocumentRow[],
 			goals: byProject(goals.data, projectId) as ProjectEmailProfileGoalRow[],
-			milestones: byProject(
-				milestones.data,
-				projectId
-			) as ProjectEmailProfileMilestoneRow[],
+			milestones: byProject(milestones.data, projectId) as ProjectEmailProfileMilestoneRow[],
 			events: byProject(events.data, projectId) as ProjectEmailProfileEventRow[],
 			members: byProject(
-				members.data as unknown as Array<ProjectEmailProfileMemberRow & { project_id: string }>,
+				members.data as unknown as Array<
+					ProjectEmailProfileMemberRow & { project_id: string }
+				>,
 				projectId
 			) as ProjectEmailProfileMemberRow[],
 			nearby_projects: nearbyProjects
@@ -381,7 +381,10 @@ export class ProjectEmailProfilePublicationService {
 		project_ids: string[];
 	}): Promise<EmailRelevanceScanProjectSelection[]> {
 		const parsed = PUBLICATION_INPUT_SCHEMA.safeParse(input);
-		if (!parsed.success || new Set(parsed.data.project_ids).size !== parsed.data.project_ids.length) {
+		if (
+			!parsed.success ||
+			new Set(parsed.data.project_ids).size !== parsed.data.project_ids.length
+		) {
 			throw new ProjectEmailProfilePublicationError('invalid_input');
 		}
 
@@ -510,7 +513,9 @@ export class ProjectEmailProfilePublicationService {
 							'concurrent_publication_conflict'
 						);
 					}
-					selections.push(selectionFrom(projectId, concurrent.profile, concurrent.version));
+					selections.push(
+						selectionFrom(projectId, concurrent.profile, concurrent.version)
+					);
 				}
 			}
 

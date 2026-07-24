@@ -9,7 +9,24 @@ AS $function$
     v_job_id UUID;
     v_queue_job_id TEXT;
     v_attempt INTEGER := 0;
+    v_correlation_id TEXT;
+    v_metadata JSONB;
   BEGIN
+    IF jsonb_typeof(COALESCE(p_metadata, '{}'::jsonb)) = 'object' THEN
+      v_correlation_id := NULLIF(BTRIM(p_metadata->>'correlationId'), '');
+      IF v_correlation_id IS NULL OR v_correlation_id !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
+        v_correlation_id := gen_random_uuid()::text;
+      END IF;
+      v_metadata := COALESCE(p_metadata, '{}'::jsonb)
+        || jsonb_build_object('correlationId', v_correlation_id);
+    ELSE
+      v_correlation_id := gen_random_uuid()::text;
+      v_metadata := jsonb_build_object(
+        'payload', p_metadata,
+        'correlationId', v_correlation_id
+      );
+    END IF;
+
     LOOP
       v_attempt := v_attempt + 1;
       v_queue_job_id := p_job_type || '_' || gen_random_uuid()::text;
@@ -21,7 +38,7 @@ AS $function$
       ) VALUES (
         p_user_id,
         p_job_type::queue_type,
-        p_metadata,
+        v_metadata,
         p_priority,
         p_scheduled_for,
         p_dedup_key,

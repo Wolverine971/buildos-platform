@@ -15,6 +15,14 @@ function readRepoFile(path: string): string {
 }
 
 describe('queue SQL contracts', () => {
+	it('guarantees a correlation ID in every newly inserted job metadata object', () => {
+		const sql = readRepoFile('packages/shared-types/src/functions/add_queue_job.sql');
+
+		expect(sql).toContain("p_metadata->>'correlationId'");
+		expect(sql).toContain("jsonb_build_object('correlationId', v_correlation_id)");
+		expect(sql).toContain('v_metadata');
+	});
+
 	it('claims lower numeric priority jobs first and assigns a processing token', () => {
 		const sql = readRepoFile('packages/shared-types/src/functions/claim_pending_jobs.sql');
 

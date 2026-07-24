@@ -5083,10 +5083,10 @@ export type Database = {
         Insert: {
           compiler_version: string
           created_at?: string
-          diff: Json
+          diff?: Json
           groups: Json
           id?: string
-          omitted: Json
+          omitted?: Json
           profile_hash: string
           profile_id: string
           profile_version: number
@@ -5297,6 +5297,86 @@ export type Database = {
           },
         ]
       }
+      email_relevance_adjudications: {
+        Row: {
+          corrected_project_id: string | null
+          correction_reason: string | null
+          created_at: string
+          decision: string
+          decision_hash: string
+          id: string
+          idempotency_key_hash: string
+          review_contract_version: string
+          reviewer_user_id: string
+          rule_proposal: string | null
+          run_id: string
+          sample_id: string
+          user_id: string
+          variant_blinded: boolean
+        }
+        Insert: {
+          corrected_project_id?: string | null
+          correction_reason?: string | null
+          created_at?: string
+          decision: string
+          decision_hash: string
+          id?: string
+          idempotency_key_hash: string
+          review_contract_version?: string
+          reviewer_user_id: string
+          rule_proposal?: string | null
+          run_id: string
+          sample_id: string
+          user_id: string
+          variant_blinded?: boolean
+        }
+        Update: {
+          corrected_project_id?: string | null
+          correction_reason?: string | null
+          created_at?: string
+          decision?: string
+          decision_hash?: string
+          id?: string
+          idempotency_key_hash?: string
+          review_contract_version?: string
+          reviewer_user_id?: string
+          rule_proposal?: string | null
+          run_id?: string
+          sample_id?: string
+          user_id?: string
+          variant_blinded?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_relevance_adjudications_reviewer_user_id_fkey"
+            columns: ["reviewer_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_relevance_adjudications_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "email_relevance_scan_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_relevance_adjudications_sample_id_fkey"
+            columns: ["sample_id"]
+            isOneToOne: true
+            referencedRelation: "email_relevance_review_samples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_relevance_adjudications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_relevance_message_observations: {
         Row: {
           connection_scope_id: string
@@ -5322,7 +5402,7 @@ export type Database = {
           connection_scope_id: string
           created_at?: string
           discovery_page: number
-          evidence_fingerprints: string[]
+          evidence_fingerprints?: string[]
           id?: string
           internal_date?: string | null
           key_version: number
@@ -5494,6 +5574,171 @@ export type Database = {
           },
           {
             foreignKeyName: "email_relevance_project_candidates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_relevance_review_samples: {
+        Row: {
+          a_actor_overlap: boolean
+          a_artifact_overlap: boolean
+          a_confidence: number | null
+          a_confirmed_thread: boolean
+          a_domain_overlap: boolean
+          a_explicit_rule: boolean
+          a_identifier_overlap: boolean
+          a_lexical_overlap: boolean
+          a_negative_evidence: boolean
+          a_score: number | null
+          b_actor_overlap: boolean
+          b_artifact_overlap: boolean
+          b_confidence: number | null
+          b_confirmed_thread: boolean
+          b_domain_overlap: boolean
+          b_explicit_rule: boolean
+          b_identifier_overlap: boolean
+          b_lexical_overlap: boolean
+          b_negative_evidence: boolean
+          b_score: number | null
+          candidate_a_id: string | null
+          candidate_b_id: string | null
+          connection_scope_id: string
+          created_at: string
+          id: string
+          profile_version_id: string
+          project_id: string
+          reviewed_at: string | null
+          run_id: string
+          sample_key_hash: string
+          sample_order: number
+          sampling_stratum: string
+          sampling_version: string
+          sampling_weight: number
+          source_observation_id: string
+          source_retention_expires_at: string
+          state: string
+          stratum_population_size: number
+          stratum_sample_size: number
+          user_id: string
+        }
+        Insert: {
+          a_actor_overlap?: boolean
+          a_artifact_overlap?: boolean
+          a_confidence?: number | null
+          a_confirmed_thread?: boolean
+          a_domain_overlap?: boolean
+          a_explicit_rule?: boolean
+          a_identifier_overlap?: boolean
+          a_lexical_overlap?: boolean
+          a_negative_evidence?: boolean
+          a_score?: number | null
+          b_actor_overlap?: boolean
+          b_artifact_overlap?: boolean
+          b_confidence?: number | null
+          b_confirmed_thread?: boolean
+          b_domain_overlap?: boolean
+          b_explicit_rule?: boolean
+          b_identifier_overlap?: boolean
+          b_lexical_overlap?: boolean
+          b_negative_evidence?: boolean
+          b_score?: number | null
+          candidate_a_id?: string | null
+          candidate_b_id?: string | null
+          connection_scope_id: string
+          created_at?: string
+          id?: string
+          profile_version_id: string
+          project_id: string
+          reviewed_at?: string | null
+          run_id: string
+          sample_key_hash: string
+          sample_order: number
+          sampling_stratum: string
+          sampling_version?: string
+          sampling_weight: number
+          source_observation_id: string
+          source_retention_expires_at: string
+          state?: string
+          stratum_population_size: number
+          stratum_sample_size: number
+          user_id: string
+        }
+        Update: {
+          a_actor_overlap?: boolean
+          a_artifact_overlap?: boolean
+          a_confidence?: number | null
+          a_confirmed_thread?: boolean
+          a_domain_overlap?: boolean
+          a_explicit_rule?: boolean
+          a_identifier_overlap?: boolean
+          a_lexical_overlap?: boolean
+          a_negative_evidence?: boolean
+          a_score?: number | null
+          b_actor_overlap?: boolean
+          b_artifact_overlap?: boolean
+          b_confidence?: number | null
+          b_confirmed_thread?: boolean
+          b_domain_overlap?: boolean
+          b_explicit_rule?: boolean
+          b_identifier_overlap?: boolean
+          b_lexical_overlap?: boolean
+          b_negative_evidence?: boolean
+          b_score?: number | null
+          candidate_a_id?: string | null
+          candidate_b_id?: string | null
+          connection_scope_id?: string
+          created_at?: string
+          id?: string
+          profile_version_id?: string
+          project_id?: string
+          reviewed_at?: string | null
+          run_id?: string
+          sample_key_hash?: string
+          sample_order?: number
+          sampling_stratum?: string
+          sampling_version?: string
+          sampling_weight?: number
+          source_observation_id?: string
+          source_retention_expires_at?: string
+          state?: string
+          stratum_population_size?: number
+          stratum_sample_size?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_relevance_review_samples_connection_scope_id_fkey"
+            columns: ["connection_scope_id"]
+            isOneToOne: false
+            referencedRelation: "email_relevance_scan_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_relevance_review_samples_profile_version_id_fkey"
+            columns: ["profile_version_id"]
+            isOneToOne: false
+            referencedRelation: "email_project_profile_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_relevance_review_samples_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_relevance_review_samples_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "email_relevance_scan_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_relevance_review_samples_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -6985,13 +7230,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "user_migration_stats"
             referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "inbox_items_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -11255,13 +11493,6 @@ export type Database = {
             referencedRelation: "user_migration_stats"
             referencedColumns: ["user_id"]
           },
-          {
-            foreignKeyName: "project_audit_trigger_evaluations_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
         ]
       }
       project_audits: {
@@ -11408,13 +11639,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "user_migration_stats"
             referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "project_audits_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -17009,7 +17233,13 @@ export type Database = {
           p_run_id: string
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          checkpoint_version: number
+          claimed: boolean
+          error_code: string
+          operation_id: string
+          scope_state: string
+        }[]
       }
       claim_email_relevance_scan_step: {
         Args: {
@@ -17022,7 +17252,13 @@ export type Database = {
           p_runtime_ms: number
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          checkpoint_version: number
+          claimed: boolean
+          error_code: string
+          operation_id: string
+          scope_state: string
+        }[]
       }
       claim_pending_email_sequence_sends: {
         Args: { p_limit?: number; p_sequence_key: string }
@@ -17197,27 +17433,15 @@ export type Database = {
         }[]
       }
       consume_legal_acceptance_intent: {
-        Args: {
-          p_surface: string
-          p_token_hash: string
-          p_user_id: string
-        }
+        Args: { p_surface: string; p_token_hash: string; p_user_id: string }
         Returns: boolean
       }
       control_email_relevance_scan_run: {
-        Args: {
-          p_action: string
-          p_run_id: string
-          p_user_id: string
-        }
-        Returns: Json
+        Args: { p_action: string; p_run_id: string; p_user_id: string }
+        Returns: string
       }
       create_agent_run_with_job: {
-        Args: {
-          p_job_metadata: Json
-          p_priority?: number
-          p_run: Json
-        }
+        Args: { p_job_metadata: Json; p_priority?: number; p_run: Json }
         Returns: Json
       }
       create_email_relevance_scan_run: {
@@ -17227,7 +17451,10 @@ export type Database = {
           p_manifest_hash: string
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          created: boolean
+          run_id: string
+        }[]
       }
       create_manual_project_version: {
         Args: { created_by_user?: string; target_project_id: string }
@@ -17312,47 +17539,32 @@ export type Database = {
         Returns: undefined
       }
       email_relevance_discovery_batch_is_valid: {
-        Args: {
-          p_batch: Json
-        }
-        Returns: Json
+        Args: { p_batch: Json }
+        Returns: boolean
       }
       email_relevance_hash_array_is_valid: {
-        Args: {
-          p_hashes: string[]
-        }
-        Returns: Json
+        Args: { p_hashes: string[] }
+        Returns: boolean
       }
       email_relevance_metadata_batch_is_valid: {
-        Args: {
-          p_batch: Json
-        }
-        Returns: Json
+        Args: { p_batch: Json }
+        Returns: boolean
       }
       email_relevance_refresh_scan_run_state: {
-        Args: {
-          p_run_id: string
-        }
-        Returns: Json
+        Args: { p_run_id: string }
+        Returns: string
       }
       email_relevance_release_scope_reservations: {
-        Args: {
-          p_scope_id: string
-        }
-        Returns: Json
+        Args: { p_scope_id: string }
+        Returns: undefined
       }
       email_relevance_scan_configuration_is_valid: {
-        Args: {
-          p_configuration: Json
-        }
-        Returns: Json
+        Args: { p_configuration: Json }
+        Returns: boolean
       }
       email_relevance_user_owns_project: {
-        Args: {
-          p_project_id: string
-          p_user_id: string
-        }
-        Returns: Json
+        Args: { p_project_id: string; p_user_id: string }
+        Returns: boolean
       }
       emit_notification_event: {
         Args: {
@@ -17436,12 +17648,13 @@ export type Database = {
         Args: { p_reason?: string; p_sequence_key: string; p_user_id: string }
         Returns: number
       }
+      expire_email_relevance_review_samples: {
+        Args: { p_run_id: string; p_user_id: string }
+        Returns: number
+      }
       expire_email_relevance_scan_run: {
-        Args: {
-          p_run_id: string
-          p_user_id: string
-        }
-        Returns: Json
+        Args: { p_run_id: string; p_user_id: string }
+        Returns: string
       }
       fail_queue_job: {
         Args: {
@@ -18179,7 +18392,9 @@ export type Database = {
         Args: { question_ids: string[] }
         Returns: undefined
       }
-      is_admin: { Args: never; Returns: boolean } | { Args: { user_id: string }; Returns: boolean }
+      is_admin:
+        | { Args: never; Returns: boolean }
+        | { Args: { user_id: string }; Returns: boolean }
       is_email_suppressed: {
         Args: { p_email: string; p_scope: string }
         Returns: boolean
@@ -18382,15 +18597,27 @@ export type Database = {
         }
         Returns: Json
       }
+      prepare_email_relevance_review_sample: {
+        Args: {
+          p_run_id: string
+          p_target_per_scope?: number
+          p_user_id: string
+        }
+        Returns: {
+          scope_count: number
+          total_samples: number
+        }[]
+      }
       prune_stale_profile_fragments: {
         Args: { p_older_than_days?: number }
         Returns: number
       }
       purge_expired_email_relevance_metadata: {
-        Args: {
-          p_limit?: number
-        }
-        Returns: Json
+        Args: { p_limit?: number }
+        Returns: {
+          candidates_deleted: number
+          observations_deleted: number
+        }[]
       }
       queue_deep_research_synthesis: {
         Args: { p_parent_run_id: string }
@@ -18428,6 +18655,24 @@ export type Database = {
           p_provider_request_id?: string
         }
         Returns: Json
+      }
+      record_email_relevance_adjudication: {
+        Args: {
+          p_corrected_project_id: string
+          p_correction_reason: string
+          p_decision: string
+          p_decision_hash: string
+          p_idempotency_key_hash: string
+          p_reviewer_user_id: string
+          p_rule_proposal: string
+          p_run_id: string
+          p_sample_id: string
+          p_user_id: string
+        }
+        Returns: {
+          adjudication_id: string
+          replayed: boolean
+        }[]
       }
       record_sms_metric: {
         Args: {
@@ -18699,7 +18944,12 @@ export type Database = {
           p_run_id: string
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          checkpoint_version: number
+          committed: boolean
+          error_code: string
+          scope_state: string
+        }[]
       }
       settle_email_relevance_metadata_batch: {
         Args: {
@@ -18712,7 +18962,12 @@ export type Database = {
           p_run_id: string
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          checkpoint_version: number
+          committed: boolean
+          error_code: string
+          scope_state: string
+        }[]
       }
       settle_email_relevance_operation_failure: {
         Args: {
@@ -18726,7 +18981,12 @@ export type Database = {
           p_run_id: string
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          checkpoint_version: number
+          committed: boolean
+          error_code: string
+          scope_state: string
+        }[]
       }
       settle_email_relevance_scan_step: {
         Args: {
@@ -18741,7 +19001,12 @@ export type Database = {
           p_run_id: string
           p_user_id: string
         }
-        Returns: Json
+        Returns: {
+          checkpoint_version: number
+          committed: boolean
+          error_code: string
+          scope_state: string
+        }[]
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }

@@ -27,7 +27,7 @@ vi.mock('$lib/server/gmail-relevance/manual-pilot', async (importOriginal) => ({
 	createGmailRelevancePilotService: state.factory
 }));
 
-import { actions, load } from './+page.server';
+import { actions, config, load } from './+page.server';
 
 function event(input: { userId?: string | null; form?: FormData } = {}) {
 	return {
@@ -82,8 +82,14 @@ beforeEach(() => {
 });
 
 describe('/admin/gmail-relevance/pilot actions', () => {
+	it('reserves enough serverless time for one bounded metadata operation to settle', () => {
+		expect(config).toEqual({ maxDuration: 60 });
+	});
+
 	it('redirects unauthenticated requests before constructing a service', async () => {
-		await expect((actions.createRun as never as Function)(event({ userId: null, form: createForm() }))).rejects.toMatchObject({
+		await expect(
+			(actions.createRun as never as Function)(event({ userId: null, form: createForm() }))
+		).rejects.toMatchObject({
 			status: 303,
 			location: '/auth/login'
 		});
@@ -94,14 +100,18 @@ describe('/admin/gmail-relevance/pilot actions', () => {
 		state.env.GMAIL_RELEVANCE_PHASE_A_ENABLED = 'false';
 		await expect((load as never as Function)(event())).rejects.toMatchObject({ status: 404 });
 		state.env.GMAIL_RELEVANCE_PHASE_A_ENABLED = 'true';
-		await expect((load as never as Function)(event({ userId: OTHER_USER_ID }))).rejects.toMatchObject({
+		await expect(
+			(load as never as Function)(event({ userId: OTHER_USER_ID }))
+		).rejects.toMatchObject({
 			status: 404
 		});
 		expect(state.factory).not.toHaveBeenCalled();
 	});
 
 	it('accepts only the create allowlist and derives user_id from the session', async () => {
-		const result = await (actions.createRun as never as Function)(event({ form: createForm() }));
+		const result = await (actions.createRun as never as Function)(
+			event({ form: createForm() })
+		);
 		expect(result).toEqual({
 			run_id: RUN_ID,
 			created: true,

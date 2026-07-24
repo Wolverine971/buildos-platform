@@ -6,6 +6,7 @@ import {
 	PRIVATE_RAILWAY_WORKER_TOKEN,
 	PUBLIC_RAILWAY_WORKER_URL
 } from '$lib/server/railway-worker-env';
+import { createQueueCorrelationId } from '$lib/server/queue-job-id';
 import { mapOntologyDailyBriefRow } from '$lib/services/dailyBrief/ontology-mappers';
 
 type EnsureTodayState =
@@ -152,7 +153,12 @@ async function findActiveBriefJob(supabase: any, userId: string, briefDate: stri
 	return data ?? null;
 }
 
-async function queueTodayBrief(params: { userId: string; briefDate: string; timezone: string }) {
+async function queueTodayBrief(params: {
+	userId: string;
+	briefDate: string;
+	timezone: string;
+	correlationId: string;
+}) {
 	if (!PUBLIC_RAILWAY_WORKER_URL) {
 		return {
 			error: ApiResponse.error('Worker URL not configured', HttpStatus.SERVICE_UNAVAILABLE)
@@ -160,7 +166,8 @@ async function queueTodayBrief(params: { userId: string; briefDate: string; time
 	}
 
 	const headers: Record<string, string> = {
-		'Content-Type': 'application/json'
+		'Content-Type': 'application/json',
+		'X-Correlation-ID': params.correlationId
 	};
 
 	if (PRIVATE_RAILWAY_WORKER_TOKEN) {
@@ -212,7 +219,7 @@ async function queueTodayBrief(params: { userId: string; briefDate: string; time
 	};
 }
 
-export const POST: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
+export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -305,7 +312,8 @@ export const POST: RequestHandler = async ({ locals: { supabase, safeGetSession 
 		const queued = await queueTodayBrief({
 			userId: user.id,
 			briefDate,
-			timezone
+			timezone,
+			correlationId: createQueueCorrelationId(request?.headers)
 		});
 
 		if (queued.error) return queued.error;

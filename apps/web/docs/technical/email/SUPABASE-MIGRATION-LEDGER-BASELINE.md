@@ -74,6 +74,16 @@ The legacy ledger should be normalized outside Gmail relevance:
 Until that project is complete, the exact-file forward protocol above is the production rule for
 new Gmail relevance migrations.
 
+## Subsequent forward receipt
+
+On 2026-07-24, Gmail relevance Slice 4 versions `20260724020000`, `20260724030000`, and
+`20260724040000` were confirmed aligned locally/remotely after a zero-row production-draft
+reconciliation. The final read-only verifier returned `ok` for all 16 physical/security checks and
+the aggregate installation check. Production types were regenerated with pinned CLI `2.90.0`
+without a stale-types fallback and the derived schema reported 245 tables and 14 views. The detailed
+evidence and reviewed file hashes are in
+`RECEIPT-PHASE-A-SLICE-4-REVIEW-IMPLEMENTATION.md`.
+
 ## Known duplicate version keys
 
 - `20260116` (2 files)

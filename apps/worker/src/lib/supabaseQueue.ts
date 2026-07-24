@@ -2,6 +2,7 @@
 import type { Database, Json, QueueJobStatus, QueueJobType } from '@buildos/shared-types';
 import { queueConfig, resolveWorkerTimeout } from '../config/queueConfig';
 import { updateJobProgress } from './progressTracker';
+import { ensureQueueCorrelationMetadata, getQueueCorrelationId } from './queueCorrelation';
 import { classifyQueueError } from './queueErrors';
 import { supabase } from './supabase';
 
@@ -29,6 +30,7 @@ export type JobProcessor<T = unknown> = (job: ProcessingJob<T>) => Promise<unkno
 export interface ProcessingJob<T = unknown> {
 	id: string;
 	processingToken?: string | null;
+	correlationId: string | null;
 	userId: string;
 	data: T;
 	attempts: number;
@@ -108,6 +110,7 @@ export class SupabaseQueue {
 		data: Record<string, Json | undefined>,
 		options?: JobOptions
 	): Promise<QueueJob> {
+		const correlated = ensureQueueCorrelationMetadata(data);
 		const dedupKey =
 			options?.dedupKey ??
 			`${jobType}-${userId}-${options?.scheduledFor?.toISOString() ?? Date.now()}`;
@@ -116,7 +119,7 @@ export class SupabaseQueue {
 		const { data: jobId, error } = await supabase.rpc('add_queue_job', {
 			p_user_id: userId,
 			p_job_type: jobType,
-			p_metadata: data,
+			p_metadata: correlated.metadata,
 			p_priority: options?.priority ?? 10,
 			p_scheduled_for: options?.scheduledFor?.toISOString() ?? new Date().toISOString(),
 			p_dedup_key: dedupKey
@@ -137,7 +140,10 @@ export class SupabaseQueue {
 			throw new Error(`Failed to fetch created job: ${fetchError?.message}`);
 		}
 
-		console.log(`📝 Added ${jobType} job ${job.queue_job_id} for user ${userId}`);
+		const jobCorrelationId = getQueueCorrelationId(job.metadata) ?? correlated.correlationId;
+		console.log(
+			`📝 Added ${jobType} job ${job.queue_job_id} for user ${userId} [correlation=${jobCorrelationId}]`
+		);
 		return job;
 	}
 
@@ -340,7 +346,10 @@ export class SupabaseQueue {
 		const promise = this.processJob(job).catch((error) => {
 			// processJob already isolates expected failures. Keep a final guard so
 			// an unexpected rejection cannot become an unhandled worker error.
-			console.error(`❌ Unhandled rejection processing job ${job.queue_job_id}:`, error);
+			console.error(
+				`❌ Unhandled rejection processing job ${job.queue_job_id} [correlation=${getQueueCorrelationId(job.metadata) ?? 'missing'}]:`,
+				error
+			);
 		});
 		this.activeJobs.set(job.id, { jobType: job.job_type, promise });
 		this.refreshInFlightBatch();
@@ -374,11 +383,13 @@ export class SupabaseQueue {
 	 * Process a single job with comprehensive error isolation
 	 */
 	private async processJob(job: ClaimedQueueJob): Promise<void> {
+		const correlationId = getQueueCorrelationId(job.metadata);
+		const trace = `[correlation=${correlationId ?? 'missing'}]`;
 		// Wrap the entire method to ensure no errors escape and crash other jobs
 		try {
 			const processor = this.processors.get(job.job_type as JobType);
 			if (!processor) {
-				console.error(`❌ No processor registered for job type: ${job.job_type}`);
+				console.error(`❌ No processor registered for job type: ${job.job_type} ${trace}`);
 				await this.failJob(
 					job.id,
 					`No processor for job type: ${job.job_type}`,
@@ -389,13 +400,16 @@ export class SupabaseQueue {
 			}
 
 			const startTime = Date.now();
-			console.log(`🏃 Processing ${job.job_type} job ${job.queue_job_id}`);
+			console.log(`🏃 Processing ${job.job_type} job ${job.queue_job_id} ${trace}`);
 
 			// Process the job with proper error handling
 			await this.executeJobProcessor(job, processor, startTime);
 		} catch (error) {
 			// This is a catch-all for any unexpected errors in job setup or processing
-			console.error(`❌ Unexpected error processing job ${job.queue_job_id}:`, error);
+			console.error(
+				`❌ Unexpected error processing job ${job.queue_job_id} ${trace}:`,
+				error
+			);
 
 			try {
 				// Attempt to mark the job as failed, but don't let this error crash the system
@@ -406,7 +420,10 @@ export class SupabaseQueue {
 					job.processing_token ?? null
 				);
 			} catch (failError) {
-				console.error(`❌ Failed to mark job ${job.queue_job_id} as failed:`, failError);
+				console.error(
+					`❌ Failed to mark job ${job.queue_job_id} as failed ${trace}:`,
+					failError
+				);
 			}
 		}
 	}
@@ -421,12 +438,15 @@ export class SupabaseQueue {
 	): Promise<void> {
 		const stopHeartbeat = this.startJobHeartbeat(job);
 		const abortController = new AbortController();
+		const correlationId = getQueueCorrelationId(job.metadata);
+		const trace = `[correlation=${correlationId ?? 'missing'}]`;
 		this.activeJobControllers.add(abortController);
 		try {
 			// Create processing job wrapper
 			const processingJob: ProcessingJob = {
 				id: job.queue_job_id,
 				processingToken: job.processing_token ?? null,
+				correlationId,
 				userId: job.user_id!,
 				data: job.metadata,
 				attempts: job.attempts || 0,
@@ -441,13 +461,15 @@ export class SupabaseQueue {
 					if (!success) {
 						// Log the failure but don't throw - progress updates should not crash jobs
 						console.warn(
-							`⚠️ Progress update failed for job ${job.queue_job_id}, continuing with job execution`
+							`⚠️ Progress update failed for job ${job.queue_job_id} ${trace}, continuing with job execution`
 						);
 					}
 				},
 
 				log: (message: string): Promise<void> => {
-					console.log(`   📝 [${job.queue_job_id}] ${message}`);
+					console.log(
+						`   📝 [${job.queue_job_id}][correlation=${correlationId ?? 'missing'}] ${message}`
+					);
 					return Promise.resolve();
 				}
 			};
@@ -491,7 +513,7 @@ export class SupabaseQueue {
 
 			if (completeError) {
 				console.error(
-					`❌ CRITICAL: could not mark job ${job.queue_job_id} completed after retries: ${completeError.message}. ` +
+					`❌ CRITICAL: could not mark job ${job.queue_job_id} completed after retries ${trace}: ${completeError.message}. ` +
 						`Job succeeded but remains 'processing'; stalled recovery may re-run it.`
 				);
 				return;
@@ -499,17 +521,19 @@ export class SupabaseQueue {
 
 			if (completed !== true) {
 				console.warn(
-					`⚠️ Completion ignored for job ${job.queue_job_id}; processing token no longer owns this job`
+					`⚠️ Completion ignored for job ${job.queue_job_id} ${trace}; processing token no longer owns this job`
 				);
 				return;
 			}
 
 			const duration = Date.now() - startTime;
-			console.log(`✅ Completed ${job.job_type} job ${job.queue_job_id} in ${duration}ms`);
+			console.log(
+				`✅ Completed ${job.job_type} job ${job.queue_job_id} in ${duration}ms ${trace}`
+			);
 		} catch (error: unknown) {
 			const failure = classifyQueueError(error);
 			console.error(
-				`❌ Job ${job.queue_job_id} failed (${failure.kind}:${failure.code}):`,
+				`❌ Job ${job.queue_job_id} failed (${failure.kind}:${failure.code}) [correlation=${correlationId ?? 'missing'}]:`,
 				error
 			);
 
@@ -526,7 +550,7 @@ export class SupabaseQueue {
 			);
 			if (!failed) {
 				console.warn(
-					`⚠️ Failure ignored for job ${job.queue_job_id}; processing token no longer owns this job`
+					`⚠️ Failure ignored for job ${job.queue_job_id} ${trace}; processing token no longer owns this job`
 				);
 			}
 		} finally {
@@ -542,6 +566,7 @@ export class SupabaseQueue {
 	 */
 	private startJobHeartbeat(job: ClaimedQueueJob): () => void {
 		if (!job.processing_token) return () => undefined;
+		const trace = `[correlation=${getQueueCorrelationId(job.metadata) ?? 'missing'}]`;
 		const intervalMs = resolveQueueHeartbeatInterval(this.stalledTimeout);
 		let stopped = false;
 		let updateInFlight = false;
@@ -558,12 +583,12 @@ export class SupabaseQueue {
 					.eq('processing_token', job.processing_token!);
 				if (error) {
 					console.warn(
-						`⚠️ Queue heartbeat failed for job ${job.queue_job_id}: ${error.message}`
+						`⚠️ Queue heartbeat failed for job ${job.queue_job_id} ${trace}: ${error.message}`
 					);
 				}
 			} catch (error) {
 				console.warn(
-					`⚠️ Queue heartbeat crashed for job ${job.queue_job_id}:`,
+					`⚠️ Queue heartbeat crashed for job ${job.queue_job_id} ${trace}:`,
 					error instanceof Error ? error.message : error
 				);
 			} finally {

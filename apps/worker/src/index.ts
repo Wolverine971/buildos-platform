@@ -12,6 +12,11 @@ import express from 'express';
 import { supabase } from './lib/supabase';
 import { logWorkerError } from './lib/errorLogger';
 import { shutdownPostHog } from './lib/posthog';
+import {
+	createRequestCorrelationId,
+	getQueueCorrelationId,
+	runWithRequestCorrelation
+} from './lib/queueCorrelation';
 import { isWorkerAuthorized } from './http/auth';
 import { getErrorMessage } from './http/errors';
 import { getSafeTimezone } from './http/timezone';
@@ -72,6 +77,15 @@ app.use(
 
 app.use(express.json());
 app.use(jsonParseErrorHandler);
+
+// Carry a caller-provided trace ID through HTTP enqueue handlers into
+// queue.add(). If the caller did not provide one, originate it here and expose
+// it on the response so the web tier can join its logs to the queue/worker.
+app.use((req, res, next) => {
+	const correlationId = createRequestCorrelationId(req.headers['x-correlation-id']);
+	res.setHeader('x-correlation-id', correlationId);
+	return runWithRequestCorrelation(correlationId, next);
+});
 
 registerEmailTrackingRoute(app);
 
@@ -363,6 +377,7 @@ app.post('/queue/brief', async (req, res) => {
 		return res.json({
 			success: true,
 			jobId: job.queue_job_id,
+			correlationId: getQueueCorrelationId(job.metadata),
 			scheduledFor: new Date(job.scheduled_for).toISOString(),
 			briefDate
 		});
@@ -437,7 +452,8 @@ app.post('/queue/onboarding', async (req, res) => {
 
 		return res.json({
 			success: true,
-			jobId: job.queue_job_id
+			jobId: job.queue_job_id,
+			correlationId: getQueueCorrelationId(job.metadata)
 		});
 	} catch (error) {
 		console.error('Error queueing onboarding analysis:', error);
@@ -515,6 +531,7 @@ app.post('/queue/chat/classify', async (req, res) => {
 		return res.json({
 			success: true,
 			jobId: job.queue_job_id,
+			correlationId: getQueueCorrelationId(job.metadata),
 			sessionId,
 			message: 'Chat session classification queued'
 		});
@@ -594,6 +611,7 @@ app.post('/queue/braindump/process', async (req, res) => {
 		return res.json({
 			success: true,
 			jobId: job.queue_job_id,
+			correlationId: getQueueCorrelationId(job.metadata),
 			braindumpId,
 			message: 'Braindump processing queued'
 		});

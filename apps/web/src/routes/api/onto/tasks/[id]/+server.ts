@@ -114,7 +114,7 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
 				)
 				.eq('id', params.id)
 				.is('deleted_at', null) // Exclude soft-deleted tasks
-				.single()
+				.maybeSingle()
 		]);
 
 		const { data: actorId, error: actorError } = actorResult;
@@ -140,23 +140,24 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
 			);
 		}
 
-		if (error || !task) {
-			if (error) {
-				console.error('[Task GET] Failed to fetch task:', error);
-				await logOntologyApiError({
-					supabase,
-					error,
-					endpoint: `/api/onto/tasks/${params.id}`,
-					method: 'GET',
-					userId: session.user.id,
-					projectId,
-					entityType: 'task',
-					entityId: params.id,
-					operation: 'task_fetch',
-					tableName: 'onto_tasks'
-				});
-				return ApiResponse.databaseError(error);
-			}
+		if (error) {
+			console.error('[Task GET] Failed to fetch task:', error);
+			await logOntologyApiError({
+				supabase,
+				error,
+				endpoint: `/api/onto/tasks/${params.id}`,
+				method: 'GET',
+				userId: session.user.id,
+				projectId,
+				entityType: 'task',
+				entityId: params.id,
+				operation: 'task_fetch',
+				tableName: 'onto_tasks'
+			});
+			return ApiResponse.databaseError(error);
+		}
+
+		if (!task) {
 			return ApiResponse.notFound('Task');
 		}
 

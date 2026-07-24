@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-07-24T03:44:44.548Z
+// Generated on: 2026-07-24T05:12:38.602Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1274,6 +1274,22 @@ export type DatabaseSchema = {
 		status: string;
 		updated_at: string | null;
 	};
+	email_relevance_adjudications: {
+		corrected_project_id: string | null;
+		correction_reason: string | null;
+		created_at: string;
+		decision: string;
+		decision_hash: string;
+		id: string;
+		idempotency_key_hash: string;
+		review_contract_version: string;
+		reviewer_user_id: string;
+		rule_proposal: string | null;
+		run_id: string;
+		sample_id: string;
+		user_id: string;
+		variant_blinded: boolean;
+	};
 	email_relevance_message_observations: {
 		connection_scope_id: string;
 		created_at: string;
@@ -1322,6 +1338,48 @@ export type DatabaseSchema = {
 		scorer_version: string;
 		user_id: string;
 		variant: string;
+	};
+	email_relevance_review_samples: {
+		a_actor_overlap: boolean;
+		a_artifact_overlap: boolean;
+		a_confidence: number | null;
+		a_confirmed_thread: boolean;
+		a_domain_overlap: boolean;
+		a_explicit_rule: boolean;
+		a_identifier_overlap: boolean;
+		a_lexical_overlap: boolean;
+		a_negative_evidence: boolean;
+		a_score: number | null;
+		b_actor_overlap: boolean;
+		b_artifact_overlap: boolean;
+		b_confidence: number | null;
+		b_confirmed_thread: boolean;
+		b_domain_overlap: boolean;
+		b_explicit_rule: boolean;
+		b_identifier_overlap: boolean;
+		b_lexical_overlap: boolean;
+		b_negative_evidence: boolean;
+		b_score: number | null;
+		candidate_a_id: string | null;
+		candidate_b_id: string | null;
+		connection_scope_id: string;
+		created_at: string;
+		id: string;
+		profile_version_id: string;
+		project_id: string;
+		reviewed_at: string | null;
+		run_id: string;
+		sample_key_hash: string;
+		sample_order: number;
+		sampling_stratum: string;
+		sampling_version: string;
+		sampling_weight: number;
+		source_observation_id: string;
+		source_retention_expires_at: string;
+		state: string;
+		stratum_population_size: number;
+		stratum_sample_size: number;
+		user_id: string;
 	};
 	email_relevance_scan_connections: {
 		checkpoint_attempts: number;
@@ -4073,8 +4131,10 @@ export const tableNames = [
 	'email_project_profiles',
 	'email_project_rules',
 	'email_recipients',
+	'email_relevance_adjudications',
 	'email_relevance_message_observations',
 	'email_relevance_project_candidates',
+	'email_relevance_review_samples',
 	'email_relevance_scan_connections',
 	'email_relevance_scan_projects',
 	'email_relevance_scan_reservations',

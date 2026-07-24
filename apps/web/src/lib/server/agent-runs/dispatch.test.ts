@@ -171,8 +171,12 @@ describe('dispatchAgentRun atomic admission', () => {
 		const createCall = rpcCalls.find((call) => call.fn === 'create_agent_run_with_job');
 		expect(createCall).toBeDefined();
 		const runPayload = createCall!.args.p_run as Record<string, unknown>;
+		const jobMetadata = createCall!.args.p_job_metadata as Record<string, unknown>;
 		expect(runPayload.user_id).toBe('00000000-0000-4000-8000-000000000001');
 		expect(runPayload.goal).toBe('Summarize project state');
+		expect(jobMetadata.correlationId).toMatch(
+			/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+		);
 		// No separate add_queue_job call — atomicity lives in the RPC
 		expect(rpcCalls.some((call) => call.fn === 'add_queue_job')).toBe(false);
 	});

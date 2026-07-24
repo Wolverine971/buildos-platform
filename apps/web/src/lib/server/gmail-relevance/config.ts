@@ -2,6 +2,9 @@
 
 export const GMAIL_RELEVANCE_PHASE_A_ENABLED_ENV = 'GMAIL_RELEVANCE_PHASE_A_ENABLED';
 export const GMAIL_RELEVANCE_PHASE_A_USER_IDS_ENV = 'GMAIL_RELEVANCE_PHASE_A_USER_IDS';
+export const GMAIL_RELEVANCE_PHASE_A_REVIEW_ENABLED_ENV = 'GMAIL_RELEVANCE_PHASE_A_REVIEW_ENABLED';
+export const GMAIL_RELEVANCE_PHASE_A_REVIEW_USER_IDS_ENV =
+	'GMAIL_RELEVANCE_PHASE_A_REVIEW_USER_IDS';
 
 type EnvLike = Record<string, string | undefined>;
 
@@ -25,6 +28,26 @@ export function isGmailRelevancePhaseAUserAllowed(userId: string, source: EnvLik
 	if (!rawAllowlist) return false;
 
 	return rawAllowlist
+		.split(',')
+		.map((value) => value.trim())
+		.filter((value) => value.length > 0 && value !== '*')
+		.includes(normalizedUserId);
+}
+
+/**
+ * Slice 4 uses a separate default-off gate so enabling human review cannot make
+ * the Slice 3 mailbox scan controls reachable again.
+ */
+export function isGmailRelevancePhaseAReviewUserAllowed(userId: string, source: EnvLike): boolean {
+	const enabled = source[GMAIL_RELEVANCE_PHASE_A_REVIEW_ENABLED_ENV];
+	if (!enabled || !['1', 'true', 'yes', 'on'].includes(enabled.trim().toLowerCase())) {
+		return false;
+	}
+	const normalizedUserId = userId.trim();
+	if (!normalizedUserId) return false;
+	const allowlist = source[GMAIL_RELEVANCE_PHASE_A_REVIEW_USER_IDS_ENV];
+	if (!allowlist) return false;
+	return allowlist
 		.split(',')
 		.map((value) => value.trim())
 		.filter((value) => value.length > 0 && value !== '*')

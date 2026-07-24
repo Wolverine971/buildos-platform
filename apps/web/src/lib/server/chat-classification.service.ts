@@ -4,21 +4,24 @@ import {
 	PUBLIC_RAILWAY_WORKER_URL
 } from '$lib/server/railway-worker-env';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
-import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
+import { addQueueJobWithPublicId, createQueueCorrelationId } from '$lib/server/queue-job-id';
 
 const WORKER_URL = PUBLIC_RAILWAY_WORKER_URL;
 const REQUEST_TIMEOUT_MS = 8000;
 
-async function queueChatSessionClassificationDirect(params: {
-	sessionId: string;
-	userId: string;
-}): Promise<{ queued: boolean; jobId?: string; reason?: string }> {
+async function queueChatSessionClassificationDirect(
+	params: {
+		sessionId: string;
+		userId: string;
+	},
+	correlationId: string
+): Promise<{ queued: boolean; jobId?: string; reason?: string }> {
 	try {
 		const supabase = createAdminSupabaseClient();
 		const { queueJobId } = await addQueueJobWithPublicId(supabase, {
 			p_user_id: params.userId,
 			p_job_type: 'classify_chat_session',
-			p_metadata: { sessionId: params.sessionId, userId: params.userId },
+			p_metadata: { sessionId: params.sessionId, userId: params.userId, correlationId },
 			p_priority: 8,
 			p_scheduled_for: new Date().toISOString(),
 			p_dedup_key: `classify-session-${params.sessionId}`
@@ -35,15 +38,17 @@ export async function queueChatSessionClassification(params: {
 	sessionId: string;
 	userId: string;
 }): Promise<{ queued: boolean; jobId?: string; reason?: string }> {
+	const correlationId = createQueueCorrelationId();
 	if (!WORKER_URL) {
 		console.warn(
 			'[Chat Classification] Worker URL not configured. Falling back to direct queue.'
 		);
-		return queueChatSessionClassificationDirect(params);
+		return queueChatSessionClassificationDirect(params, correlationId);
 	}
 
 	const headers: Record<string, string> = {
-		'Content-Type': 'application/json'
+		'Content-Type': 'application/json',
+		'X-Correlation-ID': correlationId
 	};
 
 	if (PRIVATE_RAILWAY_WORKER_TOKEN) {
@@ -84,7 +89,7 @@ export async function queueChatSessionClassification(params: {
 				'[Chat Classification] Failed to parse worker success response; falling back to direct queue',
 				parseError
 			);
-			return queueChatSessionClassificationDirect(params);
+			return queueChatSessionClassificationDirect(params, correlationId);
 		}
 		return { queued: true, jobId: result?.jobId };
 	} catch (error) {
@@ -92,6 +97,6 @@ export async function queueChatSessionClassification(params: {
 			'[Chat Classification] Worker unreachable. Falling back to direct queue.',
 			error
 		);
-		return queueChatSessionClassificationDirect(params);
+		return queueChatSessionClassificationDirect(params, correlationId);
 	}
 }

@@ -4,8 +4,9 @@
 
 **Created:** 2026-07-22
 **Status:** Phase 1 and Phase 2 read surfaces are live; Tier 1 chat reads are in a DJ-only
-production pilot; Project Relevance Phase A Slice 1 is implemented locally and pending its exact-file
-profile/rule migration apply; the Slice 2 synthetic scan-control-plane handoff is ready
+production pilot; Project Relevance Phase A completed its bounded three-account Slice 3 pilot; the
+Slice 4 schema is installed and verified in production, while the default-off web deployment and
+300 adjudications remain.
 **Primary product rule:** Gmail is read-only by default. An agent may propose an email, but it may
 not send, draft in Gmail, or modify Gmail state without separate account permission and an explicit
 user confirmation in the UI for the exact action.
@@ -49,6 +50,17 @@ Parallel build track (shares the Phase 2 gateway; neither blocks the other):
   implementation contract for immutable manifests, per-account leases/checkpoints, fail-closed
   budgets, cancellation, terminal states, and a synthetic three-account proof before any Gmail
   scan.
+- [Phase A Slice 3 live-pilot receipt](RECEIPT-PHASE-A-SLICE-3-LIVE-PILOT.md) — content-free
+  production receipt for the completed bounded three-account run and restored default-off posture.
+- [Phase A Slice 4 review/evaluation handoff](HANDOFF-PHASE-A-SLICE-4-REVIEW-EVALUATION.md) —
+  request-lifetime one-message review, deterministic account-balanced sampling, bounded human
+  decisions, aggregate metrics, retention enforcement, and the remaining deployment/review order.
+- [Phase A Slice 4 review-context decision](DECISION-PHASE-A-SLICE-4-REVIEW-CONTEXT.md) — permits
+  one explicitly opened request-lifetime metadata view and rejects a durable review cache or body
+  path.
+- [Phase A Slice 4 implementation receipt](RECEIPT-PHASE-A-SLICE-4-REVIEW-IMPLEMENTATION.md) —
+  records the schema, service, UI, metrics, retention, production reconciliation, and verification
+  boundary without claiming web activation or completed adjudications.
 - [Gmail relevance migration-ledger baseline](SUPABASE-MIGRATION-LEDGER-BASELINE.md) — production
   physical-baseline decision and exact-file forward-apply protocol; repository-wide `db push` is
   prohibited while the legacy ledger remains sparse and locally duplicated.
@@ -87,12 +99,18 @@ and the absence of any message-detail write action. A fresh agentic-chat validat
 versioned `gmail-read-v2` result, rendered exactly one **Open in Gmail** link for every selected
 account, and resolved all three links to the intended signed-in mailboxes. Browser-held search and
 opened-message state is reconstructed whenever the connection set changes so disconnected-account
-data cannot remain in the Email tab. Project-relevance Gmail ingestion has not started. Slice 1's
-model-free compiler and exact-user read-only preview are implemented locally, and the profile/rule
-migration is disposable-database verified but not applied to production. The scan queue, classifier,
-and review UI remain later Phase A work. Slice 2 is now specified as a content-free synthetic
-control-plane build and explicitly cannot call Gmail or a model. Phase A's global flag, exact-user
-allowlist, and model flag are documented and default off.
+data cannot remain in the Email tab.
+
+Project-relevance Phase A has now completed one manually authorized, metadata-only production pilot
+over three connected accounts and three captured project profiles. The run processed 2,148 messages
+without a model, body/attachment read, queue, watch, polling loop, Gmail mutation, or project
+mutation; its content-free receipt is linked above. The temporary scan environment values were
+removed afterward. Slice 4 uses one request-lifetime metadata re-fetch per explicitly opened
+sample, a deterministic 100-item-per-account blinded sample, bounded human decisions, and
+content-free metrics. Its production schema and retention enforcement are installed, verified, and
+ledger-aligned through `20260724040000`; fresh production types and shared-types build pass. The
+review gate remains separate and default off. Web deployment with review off, 300 decisions, the
+A/B decision, and the physical deletion receipt are still required.
 
 ## Non-negotiable invariants
 
