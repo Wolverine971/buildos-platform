@@ -207,9 +207,7 @@
 							{authorInitials(root.author)}
 						</span>
 						<div class="min-w-0 flex-1">
-							<div
-								class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs"
-							>
+							<div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs">
 								<span class="font-semibold text-foreground">
 									{root.author?.name || 'Someone'}
 								</span>

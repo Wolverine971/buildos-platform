@@ -1,12 +1,12 @@
 ---
-title: "Building RefactoringUI.com with Tailwind CSS"
+title: 'Building RefactoringUI.com with Tailwind CSS'
 source_type: youtube_transcript
 video_id: 17OBlxY2C_0
-url: "https://www.youtube.com/watch?v=17OBlxY2C_0"
+url: 'https://www.youtube.com/watch?v=17OBlxY2C_0'
 channel: Adam Wathan
-channel_url: "https://www.youtube.com/@AdamWathan"
+channel_url: 'https://www.youtube.com/@AdamWathan'
 upload_date: 2018-05-24
-duration: "01:00:05"
+duration: '01:00:05'
 views: 34355
 library_category: product-and-design
 library_status: transcript, analysis
@@ -22,39 +22,40 @@ public_article: ''
 indexed_date: '2026-06-11'
 last_reviewed: '2026-06-12'
 timestamps:
-  - time: "0:00"
-    label: "Intro"
-  - time: "5:00"
-    label: "Header"
-  - time: "10:00"
-    label: "Logo"
-  - time: "15:00"
-    label: "Input"
-  - time: "21:00"
-    label: "Bottom Section"
-  - time: "26:00"
-    label: "Negative Margin"
-  - time: "27:10"
-    label: "Cards"
-  - time: "31:10"
-    label: "Twitter"
-  - time: "34:20"
-    label: "FillCurrent"
-  - time: "39:00"
-    label: "FlexContainer"
-  - time: "41:30"
-    label: "Changing Content"
-  - time: "48:40"
-    label: "Mobile"
-  - time: "56:00"
-    label: "Content Card"
-transcribed_date: "2026-06-11"
+    - time: '0:00'
+      label: 'Intro'
+    - time: '5:00'
+      label: 'Header'
+    - time: '10:00'
+      label: 'Logo'
+    - time: '15:00'
+      label: 'Input'
+    - time: '21:00'
+      label: 'Bottom Section'
+    - time: '26:00'
+      label: 'Negative Margin'
+    - time: '27:10'
+      label: 'Cards'
+    - time: '31:10'
+      label: 'Twitter'
+    - time: '34:20'
+      label: 'FillCurrent'
+    - time: '39:00'
+      label: 'FlexContainer'
+    - time: '41:30'
+      label: 'Changing Content'
+    - time: '48:40'
+      label: 'Mobile'
+    - time: '56:00'
+      label: 'Content Card'
+transcribed_date: '2026-06-11'
 path: docs/research/youtube-library/transcripts/2026-06-11_adam-wathan_building-refactoringui-with-tailwind.md
 ---
 
 # Building RefactoringUI.com with Tailwind CSS
 
 ## Metadata
+
 - **Channel**: [Adam Wathan](https://www.youtube.com/@AdamWathan)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=17OBlxY2C_0)
 - **Duration**: 01:00:05
@@ -64,6 +65,7 @@ path: docs/research/youtube-library/transcripts/2026-06-11_adam-wathan_building-
 > **Analysis:** [2026-06-11_adam-wathan_building-refactoringui-with-tailwind_analysis.md](../analyses/2026-06-11_adam-wathan_building-refactoringui-with-tailwind_analysis.md)
 
 ## Timestamps
+
 - 0:00 — Intro
 - 5:00 — Header
 - 10:00 — Logo

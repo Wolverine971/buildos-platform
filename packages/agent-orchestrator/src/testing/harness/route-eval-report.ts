@@ -1,4 +1,27 @@
 // packages/agent-orchestrator/src/testing/harness/route-eval-report.ts
+
+/**
+ * The three scenarios that feed the A2 blind comparison. Their reason-code distribution remains
+ * reported for historical comparison, but observable request features now select the workflow
+ * topology. See PHASE_A_AUDIT_2026-07-25.md B1 and amendment 2 in the falsification plan.
+ */
+export const PLAN_CRITICAL_SCENARIO_IDS = [
+	'a0-c06-single-source-article',
+	'a0-c07-campaign-workflow-research',
+	'a0-c08-context-app-recommendation'
+] as const;
+
+/**
+ * Smallest discrete result at or above the 90% architecture target over 27 plan-critical calls
+ * (3 scenarios x 9), derived the same way as the frozen 65/72 route bound.
+ */
+export const PLAN_CRITICAL_REASON_BOUND = 25;
+export const PLAN_CRITICAL_CALL_COUNT = 27;
+
+export function isPlanCriticalScenario(scenarioId: string): boolean {
+	return (PLAN_CRITICAL_SCENARIO_IDS as readonly string[]).includes(scenarioId);
+}
+
 export interface RouteEvalUsageEvent {
 	model: string;
 	provider: string | null;
@@ -7,6 +30,13 @@ export interface RouteEvalUsageEvent {
 	totalTokens: number;
 	totalCostUsd: number;
 	billingDisposition: string | null;
+	/**
+	 * Which pinned role produced this call. Per-role pin verification (audit S4) rejects an untagged
+	 * event, so this is load-bearing for run validity — it was previously set and read as untyped
+	 * JS because the paid harness was outside every typecheck.
+	 * See research/09_INTERNAL_GROUND_TRUTH_MAP.md D2.
+	 */
+	role?: 'route_primary' | 'route_reviewer' | null;
 }
 
 export interface RouteEvalRun {
@@ -24,6 +54,11 @@ export interface RouteEvalRun {
 	scored: boolean;
 	infrastructureInvalidReason: string | null;
 	repaired: boolean;
+	/** True for one of the three A2 comparison scenarios. */
+	planCritical: boolean;
+	/** Whether the bounded GLM reviewer was invoked, and why. Null under single-model strategies. */
+	reviewed: boolean | null;
+	reviewReason: string | null;
 	modelCallCount: number;
 	durationMs: number;
 	usage: RouteEvalUsageEvent[];
@@ -41,6 +76,10 @@ export interface RouteEvalAggregate {
 	reasonCodeAccuracy: number;
 	decisionAccuracy: number;
 	repairCount: number;
+	reviewedCount: number;
+	planCriticalRunCount: number;
+	planCriticalReasonMatchCount: number;
+	planCriticalReasonAccuracy: number;
 	latencyP50Ms: number | null;
 	latencyP95Ms: number | null;
 	meanCostUsd: number;
@@ -61,6 +100,8 @@ export interface PhaseARouteEvalReport {
 	routing_strategy: 'single_model' | 'fast_then_review';
 	review_model_pin: string | null;
 	review_policy_version: string | null;
+	review_prompt_version: string | null;
+	review_prompt_sha256: string | null;
 	runs: RouteEvalRun[];
 	summary: {
 		overall: RouteEvalAggregate;
@@ -68,7 +109,19 @@ export interface PhaseARouteEvalReport {
 		byClass: Record<string, RouteEvalAggregate>;
 		models: string[];
 		providers: string[];
-		decision: 'go_candidate' | 'change' | 'stop';
+		routeAccuracyBoundPassed: boolean;
+		/** Null when the run did not cover all 27 plan-critical calls. */
+		planCriticalReasonBoundPassed: boolean | null;
+		planCriticalReasonGateApplied: boolean;
+		/**
+		 * Derived from ROUTE ACCURACY ALONE. This is not the pre-registered Phase A decision, which
+		 * also depends on direct-path latency bounds, cost, blind wins, and safety. Two artifacts
+		 * carry `go_candidate` here while the docs correctly record Change (route-eval-v4, which
+		 * failed latency) or "reported only" (route-eval-holdout-v1, a non-gating set).
+		 * Named explicitly so a reader of the JSON alone cannot mistake it for the real verdict.
+		 * See research/09_INTERNAL_GROUND_TRUTH_MAP.md D4.
+		 */
+		routeAccuracyDecision: 'go_candidate' | 'change' | 'stop';
 	};
 }
 
@@ -86,6 +139,9 @@ export function routeEvalPercentile(values: number[], percentile: number): numbe
 
 export function aggregateRouteEvalRuns(runs: RouteEvalRun[]): RouteEvalAggregate {
 	const scored = runs.filter((run) => run.scored);
+	const planCritical = scored.filter(
+		(run) => run.planCritical ?? isPlanCriticalScenario(run.scenarioId)
+	);
 	const allCosts = runs.map((run) =>
 		run.usage.reduce((total, event) => total + event.totalCostUsd, 0)
 	);
@@ -114,6 +170,16 @@ export function aggregateRouteEvalRuns(runs: RouteEvalRun[]): RouteEvalAggregate
 				? round(scored.filter((run) => run.strictMatch).length / scored.length)
 				: 0,
 		repairCount: scored.filter((run) => run.repaired).length,
+		reviewedCount: scored.filter((run) => run.reviewed === true).length,
+		planCriticalRunCount: planCritical.length,
+		planCriticalReasonMatchCount: planCritical.filter((run) => run.reasonCodeMatch).length,
+		planCriticalReasonAccuracy:
+			planCritical.length > 0
+				? round(
+						planCritical.filter((run) => run.reasonCodeMatch).length /
+							planCritical.length
+					)
+				: 0,
 		latencyP50Ms: routeEvalPercentile(
 			scored.map((run) => run.durationMs),
 			0.5
@@ -155,12 +221,23 @@ export function buildRouteEvalReport(params: {
 	routingStrategy?: PhaseARouteEvalReport['routing_strategy'];
 	reviewModelPin?: string | null;
 	reviewPolicyVersion?: string | null;
+	reviewPromptVersion?: string | null;
+	reviewPromptSha256?: string | null;
+	gatePlanCriticalReasons?: boolean;
 	runs: RouteEvalRun[];
 	generatedAt?: string;
 }): PhaseARouteEvalReport {
 	const overall = aggregateRouteEvalRuns(params.runs);
-	const decision =
-		overall.routeAccuracy >= 0.9
+	const routeAccuracyBoundPassed = overall.routeAccuracy >= 0.9;
+	const planCriticalReasonGateApplied = params.gatePlanCriticalReasons ?? false;
+	// The historical reason bound is applicable only while a model reason label selects topology.
+	// Once plan selection is feature-derived, the same metric remains diagnostic and reports null.
+	const planCriticalReasonBoundPassed =
+		planCriticalReasonGateApplied && overall.planCriticalRunCount >= PLAN_CRITICAL_CALL_COUNT
+			? overall.planCriticalReasonMatchCount >= PLAN_CRITICAL_REASON_BOUND
+			: null;
+	const routeAccuracyDecision =
+		routeAccuracyBoundPassed && planCriticalReasonBoundPassed !== false
 			? 'go_candidate'
 			: overall.routeAccuracy >= 0.75
 				? 'change'
@@ -180,6 +257,8 @@ export function buildRouteEvalReport(params: {
 		routing_strategy: params.routingStrategy ?? 'single_model',
 		review_model_pin: params.reviewModelPin ?? null,
 		review_policy_version: params.reviewPolicyVersion ?? null,
+		review_prompt_version: params.reviewPromptVersion ?? null,
+		review_prompt_sha256: params.reviewPromptSha256 ?? null,
 		runs: params.runs,
 		summary: {
 			overall,
@@ -195,7 +274,10 @@ export function buildRouteEvalReport(params: {
 					)
 				)
 			).sort(),
-			decision
+			routeAccuracyBoundPassed,
+			planCriticalReasonBoundPassed,
+			planCriticalReasonGateApplied,
+			routeAccuracyDecision
 		}
 	};
 }

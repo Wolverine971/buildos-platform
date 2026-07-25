@@ -1,12 +1,12 @@
 ---
-title: "Brendan Kane Interview | Author of Hook Point & One Million Followers | Podcast"
+title: 'Brendan Kane Interview | Author of Hook Point & One Million Followers | Podcast'
 source_type: youtube_transcript
 video_id: pGXiK8b7d-E
-url: "https://www.youtube.com/watch?v=pGXiK8b7d-E"
+url: 'https://www.youtube.com/watch?v=pGXiK8b7d-E'
 channel: bestbookbits
-channel_url: "https://www.youtube.com/@BestBookBits"
+channel_url: 'https://www.youtube.com/@BestBookBits'
 upload_date: 2021-09-29
-duration: "28:54"
+duration: '28:54'
 views: 364
 library_category: marketing-and-content
 library_status: transcript, analysis
@@ -22,113 +22,114 @@ public_article: ''
 indexed_date: '2026-06-11'
 last_reviewed: '2026-06-12'
 tags:
-  - brendan kane
-  - social media
-  - one million followers
-  - brendan kane one million followers
-  - social media marketing
-  - growth hacking
-  - hook point brendan kane
-  - one million followers book review
-  - hook point book
-  - brendan kane hook point
-  - brendan kane one million followers summary
-  - one million followers book
-  - brendan kane interview
-  - hook point
-  - how to grow your business online
-  - brendan kane book
-  - brendan kane facebook
+    - brendan kane
+    - social media
+    - one million followers
+    - brendan kane one million followers
+    - social media marketing
+    - growth hacking
+    - hook point brendan kane
+    - one million followers book review
+    - hook point book
+    - brendan kane hook point
+    - brendan kane one million followers summary
+    - one million followers book
+    - brendan kane interview
+    - hook point
+    - how to grow your business online
+    - brendan kane book
+    - brendan kane facebook
 timestamps:
-  - time: "0:00"
-    label: "Intro"
-  - time: "0:35"
-    label: "First Job"
-  - time: "3:42"
-    label: "Taylor Swift"
-  - time: "5:47"
-    label: "Paid Advertising"
-  - time: "11:28"
-    label: "How Much Does It Cost"
-  - time: "13:21"
-    label: "Social Media"
-  - time: "17:47"
-    label: "Micro Attention"
-  - time: "22:13"
-    label: "Hook Point"
-  - time: "24:35"
-    label: "Current Projects"
-  - time: "26:59"
-    label: "Outro"
+    - time: '0:00'
+      label: 'Intro'
+    - time: '0:35'
+      label: 'First Job'
+    - time: '3:42'
+      label: 'Taylor Swift'
+    - time: '5:47'
+      label: 'Paid Advertising'
+    - time: '11:28'
+      label: 'How Much Does It Cost'
+    - time: '13:21'
+      label: 'Social Media'
+    - time: '17:47'
+      label: 'Micro Attention'
+    - time: '22:13'
+      label: 'Hook Point'
+    - time: '24:35'
+      label: 'Current Projects'
+    - time: '26:59'
+      label: 'Outro'
 description: |
-  👉 JOIN THE BEST BOOK CLUB NOW BELOW
-  https://go.bestbookbits.com/bestbookclub
-  
-  Brendan Kane Interview | Author of Hook Point & One Million Followers | Podcast
-  
-  https://brendanjkane.com/
-  https://www.amazon.com.au/Hook-Point-Stand-3-Second-World/dp/1949001008
-  https://www.amazon.com/One-Million-Followers-Massive-Following/dp/1946885371
-  
-  --------------------------------------------------
-  
-  👉 HIRE ME FOR COACHING & MENTORING
-  https://go.bestbookbits.com/mentoring
-  
-  👉 GET A COPY OF MY NEW BOOK HERE
-  https://www.xlibris.com/en/bookstore/bookdetails/806947-success-in-50-steps
-  
-  👉 DOWNLOAD 150 SUMMARIES BELOW 
-  https://go.bestbookbits.com/150
-  
-  👉 DOWNLOAD MY COURSE
-  https://go.bestbookbits.com/coaching
-  
-  --------------------------------------------------
-  
-  -----Subscribe to our BestBookBits Channel For more Videos-----
-  https://www.youtube.com/bestbookbits/?sub_confirmation=1
-  
-  -----WHERE TO FOLLOW US-----
-  Website: https://bestbookbits.com
-  Instagram: https://www.instagram.com/bestbookbits
-  Spotify: https://open.spotify.com/show/0q8OW3dNrLISzyRSEovTBy
-  Facebook: https://www.facebook.com/michaelbestbookbits
-  Book Club: https://bestbookbits.com/bookclub/
-  Mailing List: https://mailchi.mp/d1dfc1907cdb/bestbookbits
-  
-  -----Watch More BestBookBits Channel Videos-----
-  
-  The Secret | Rhonda Byrne | Book Summary
-  https://youtu.be/zy0LQIPvSzU
-  
-  No Excuses | Brian Tracy | Book Summary
-  https://youtu.be/KZ56Oh1_H-M
-  
-  Unlimited Power | Tony Robbins | Book Summary
-  https://youtu.be/Ees6TPCNIjE
-  
-  Maximum Achievement | Brian Tracy | Book Summary
-  https://youtu.be/87aYeCXrKm0
-  
-  Value Investing | From Graham to Buffett and Beyond | Book Summary
-  https://youtu.be/RFv6F64IM1E
-  
-  --------------------------------------------------
-  
-  🤲 BESTBOOKBITS ON PATREON
-  https://www.patreon.com/bestbookbits
-  
-  --------------------------------------------------
-  
-  #bestbookbits #brendankane #booksummary #hookpoint #audiobook #onemillionfollowers
-transcribed_date: "2026-06-11"
+    👉 JOIN THE BEST BOOK CLUB NOW BELOW
+    https://go.bestbookbits.com/bestbookclub
+
+    Brendan Kane Interview | Author of Hook Point & One Million Followers | Podcast
+
+    https://brendanjkane.com/
+    https://www.amazon.com.au/Hook-Point-Stand-3-Second-World/dp/1949001008
+    https://www.amazon.com/One-Million-Followers-Massive-Following/dp/1946885371
+
+    --------------------------------------------------
+
+    👉 HIRE ME FOR COACHING & MENTORING
+    https://go.bestbookbits.com/mentoring
+
+    👉 GET A COPY OF MY NEW BOOK HERE
+    https://www.xlibris.com/en/bookstore/bookdetails/806947-success-in-50-steps
+
+    👉 DOWNLOAD 150 SUMMARIES BELOW 
+    https://go.bestbookbits.com/150
+
+    👉 DOWNLOAD MY COURSE
+    https://go.bestbookbits.com/coaching
+
+    --------------------------------------------------
+
+    -----Subscribe to our BestBookBits Channel For more Videos-----
+    https://www.youtube.com/bestbookbits/?sub_confirmation=1
+
+    -----WHERE TO FOLLOW US-----
+    Website: https://bestbookbits.com
+    Instagram: https://www.instagram.com/bestbookbits
+    Spotify: https://open.spotify.com/show/0q8OW3dNrLISzyRSEovTBy
+    Facebook: https://www.facebook.com/michaelbestbookbits
+    Book Club: https://bestbookbits.com/bookclub/
+    Mailing List: https://mailchi.mp/d1dfc1907cdb/bestbookbits
+
+    -----Watch More BestBookBits Channel Videos-----
+
+    The Secret | Rhonda Byrne | Book Summary
+    https://youtu.be/zy0LQIPvSzU
+
+    No Excuses | Brian Tracy | Book Summary
+    https://youtu.be/KZ56Oh1_H-M
+
+    Unlimited Power | Tony Robbins | Book Summary
+    https://youtu.be/Ees6TPCNIjE
+
+    Maximum Achievement | Brian Tracy | Book Summary
+    https://youtu.be/87aYeCXrKm0
+
+    Value Investing | From Graham to Buffett and Beyond | Book Summary
+    https://youtu.be/RFv6F64IM1E
+
+    --------------------------------------------------
+
+    🤲 BESTBOOKBITS ON PATREON
+    https://www.patreon.com/bestbookbits
+
+    --------------------------------------------------
+
+    #bestbookbits #brendankane #booksummary #hookpoint #audiobook #onemillionfollowers
+transcribed_date: '2026-06-11'
 path: docs/research/youtube-library/transcripts/2026-06-11_brendan-kane_hook-point-interview.md
 ---
 
 # Brendan Kane Interview | Author of Hook Point & One Million Followers | Podcast
 
 ## Metadata
+
 - **Channel**: [bestbookbits](https://www.youtube.com/@BestBookBits)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=pGXiK8b7d-E)
 - **Duration**: 28:54
@@ -140,6 +141,7 @@ path: docs/research/youtube-library/transcripts/2026-06-11_brendan-kane_hook-poi
 **Analysis:** `docs/research/youtube-library/analyses/2026-06-11_brendan-kane_hook-point-three-second-world_analysis.md`
 
 ## Timestamps
+
 - 0:00 — Intro
 - 0:35 — First Job
 - 3:42 — Taylor Swift

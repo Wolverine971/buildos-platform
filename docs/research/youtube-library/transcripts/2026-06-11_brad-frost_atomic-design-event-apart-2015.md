@@ -1,12 +1,12 @@
 ---
-title: "“Atomic Design” by Brad Frost—An Event Apart Austin 2015"
+title: '“Atomic Design” by Brad Frost—An Event Apart Austin 2015'
 source_type: youtube_transcript
 video_id: W-h1FtNYim4
-url: "https://www.youtube.com/watch?v=W-h1FtNYim4"
+url: 'https://www.youtube.com/watch?v=W-h1FtNYim4'
 channel: An Event Apart
-channel_url: "https://www.youtube.com/@AnEventApartLive"
+channel_url: 'https://www.youtube.com/@AnEventApartLive'
 upload_date: 2018-11-08
-duration: "01:02:33"
+duration: '01:02:33'
 views: 61623
 library_category: product-and-design
 library_status: transcript, analysis
@@ -22,103 +22,104 @@ public_article: ''
 indexed_date: '2026-06-11'
 last_reviewed: '2026-06-12'
 tags:
-  - atomic design
-  - user experience design
-  - frontend
-  - user experience
-  - UX
-  - aea
-  - web developer
-  - web designer
-  - design
-  - conference
-  - talk
-  - an event apart
-  - CSS
-  - web design conference
-  - UX Design
-  - AEA
-  - developer
-  - webdev
-  - An Event Apart
-  - web development
+    - atomic design
+    - user experience design
+    - frontend
+    - user experience
+    - UX
+    - aea
+    - web developer
+    - web designer
+    - design
+    - conference
+    - talk
+    - an event apart
+    - CSS
+    - web design conference
+    - UX Design
+    - AEA
+    - developer
+    - webdev
+    - An Event Apart
+    - web development
 timestamps:
-  - time: "0:00"
-    label: "Introduction"
-  - time: "2:52"
-    label: "Systems of Components"
-  - time: "9:46"
-    label: "Style Guide Co"
-  - time: "10:15"
-    label: "Pattern Libraries"
-  - time: "12:07"
-    label: "Atomic Design"
-  - time: "12:59"
-    label: "Human Being"
-  - time: "15:02"
-    label: "Atoms"
-  - time: "15:25"
-    label: "Molecules"
-  - time: "15:52"
-    label: "Organism"
-  - time: "16:43"
-    label: "Template"
-  - time: "17:30"
-    label: "Page"
-  - time: "22:15"
-    label: "Pattern Lab"
-  - time: "24:37"
-    label: "Elements"
-  - time: "25:38"
-    label: "Patterns"
-  - time: "27:46"
-    label: "Header"
-  - time: "29:04"
-    label: "Template Stage"
-  - time: "29:58"
-    label: "Page Stage"
-  - time: "32:37"
-    label: "Pattern"
-  - time: "33:08"
-    label: "Pseudo Patterns"
-  - time: "34:09"
-    label: "Ich Viewer"
-  - time: "36:11"
-    label: "Pattern List"
-  - time: "36:38"
-    label: "Lineage"
-  - time: "39:48"
-    label: "Resetting Expectations"
-  - time: "40:51"
-    label: "The Waterfall Process"
-  - time: "46:22"
-    label: "The Pattern Library"
-  - time: "47:12"
-    label: "Interface Inventory"
-  - time: "49:12"
-    label: "Sharing Vocabulary"
-  - time: "50:41"
-    label: "Establishing Design Direction"
-  - time: "56:48"
-    label: "Wireframe"
+    - time: '0:00'
+      label: 'Introduction'
+    - time: '2:52'
+      label: 'Systems of Components'
+    - time: '9:46'
+      label: 'Style Guide Co'
+    - time: '10:15'
+      label: 'Pattern Libraries'
+    - time: '12:07'
+      label: 'Atomic Design'
+    - time: '12:59'
+      label: 'Human Being'
+    - time: '15:02'
+      label: 'Atoms'
+    - time: '15:25'
+      label: 'Molecules'
+    - time: '15:52'
+      label: 'Organism'
+    - time: '16:43'
+      label: 'Template'
+    - time: '17:30'
+      label: 'Page'
+    - time: '22:15'
+      label: 'Pattern Lab'
+    - time: '24:37'
+      label: 'Elements'
+    - time: '25:38'
+      label: 'Patterns'
+    - time: '27:46'
+      label: 'Header'
+    - time: '29:04'
+      label: 'Template Stage'
+    - time: '29:58'
+      label: 'Page Stage'
+    - time: '32:37'
+      label: 'Pattern'
+    - time: '33:08'
+      label: 'Pseudo Patterns'
+    - time: '34:09'
+      label: 'Ich Viewer'
+    - time: '36:11'
+      label: 'Pattern List'
+    - time: '36:38'
+      label: 'Lineage'
+    - time: '39:48'
+      label: 'Resetting Expectations'
+    - time: '40:51'
+      label: 'The Waterfall Process'
+    - time: '46:22'
+      label: 'The Pattern Library'
+    - time: '47:12'
+      label: 'Interface Inventory'
+    - time: '49:12'
+      label: 'Sharing Vocabulary'
+    - time: '50:41'
+      label: 'Establishing Design Direction'
+    - time: '56:48'
+      label: 'Wireframe'
 description: |
-  We’ve seen the web community create style tiles, element collages, style guides, pattern libraries, and a slew of other tools in order to break interfaces down to their atomic elements. Our interfaces are going more places than ever before, so this shift is essential to help us better understand what our websites consist of in order for us create smart, scalable, maintainable designs. Brad Frost introduces atomic design, a methodology for creating robust design systems. Brad covers how to apply atomic design to implement your very own design system in order to set you, your organization, and your clients up for success.
-  
-  Learn more about AEA ► https://aneventapart.com/
-  Join us at AEA ► https://aneventapart.com/events
-  AEA on Twitter ► https://twitter.com/aneventapart SUBSCRIBE to the AEA YouTube channel ► https://bit.ly/AEA-YT-SUBSCRIBE
-  
-  Next event: Online Together–Human-Centered Design, Monday, July 20.
-  Spanning the spectrum from good design principles to novel content strategy, to improving load times to emotional considerations, this single-day online web design conference will focus on how to best serve our users as they face unprecedented challenges and stress.
-  
-  See the full agenda and register now: https://aneventapart.com/event/online-0720
-transcribed_date: "2026-06-11"
+    We’ve seen the web community create style tiles, element collages, style guides, pattern libraries, and a slew of other tools in order to break interfaces down to their atomic elements. Our interfaces are going more places than ever before, so this shift is essential to help us better understand what our websites consist of in order for us create smart, scalable, maintainable designs. Brad Frost introduces atomic design, a methodology for creating robust design systems. Brad covers how to apply atomic design to implement your very own design system in order to set you, your organization, and your clients up for success.
+
+    Learn more about AEA ► https://aneventapart.com/
+    Join us at AEA ► https://aneventapart.com/events
+    AEA on Twitter ► https://twitter.com/aneventapart SUBSCRIBE to the AEA YouTube channel ► https://bit.ly/AEA-YT-SUBSCRIBE
+
+    Next event: Online Together–Human-Centered Design, Monday, July 20.
+    Spanning the spectrum from good design principles to novel content strategy, to improving load times to emotional considerations, this single-day online web design conference will focus on how to best serve our users as they face unprecedented challenges and stress.
+
+    See the full agenda and register now: https://aneventapart.com/event/online-0720
+transcribed_date: '2026-06-11'
 path: docs/research/youtube-library/transcripts/2026-06-11_brad-frost_atomic-design-event-apart-2015.md
 ---
 
 # “Atomic Design” by Brad Frost—An Event Apart Austin 2015
 
 ## Metadata
+
 - **Channel**: [An Event Apart](https://www.youtube.com/@AnEventApartLive)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=W-h1FtNYim4)
 - **Duration**: 01:02:33
@@ -127,6 +128,7 @@ path: docs/research/youtube-library/transcripts/2026-06-11_brad-frost_atomic-des
 - **Analysis:** `docs/research/youtube-library/analyses/2026-06-11_brad-frost_atomic-design_analysis.md` (atomic-design taxonomy + process; paired with the 2024 "Is Atomic Design Dead?" retrospective)
 
 ## Timestamps
+
 - 0:00 — Introduction
 - 2:52 — Systems of Components
 - 9:46 — Style Guide Co

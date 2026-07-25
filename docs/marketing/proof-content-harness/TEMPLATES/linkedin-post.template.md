@@ -1,3 +1,4 @@
+<!-- docs/marketing/proof-content-harness/TEMPLATES/linkedin-post.template.md -->
 <!-- LinkedIn post — PRIMARY surface. Posted from DJ's personal (founder) profile. -->
 <!-- Voice: first-person, professional-but-real, receipts over vibes. Lead with relief, not AI.
      2-5 short paragraphs. Hook line stands alone. End with one honest question OR the send-this idea.

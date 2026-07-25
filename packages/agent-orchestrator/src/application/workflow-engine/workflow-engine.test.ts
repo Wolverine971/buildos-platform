@@ -1,3 +1,4 @@
+// packages/agent-orchestrator/src/application/workflow-engine/workflow-engine.test.ts
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -7,11 +8,7 @@ import {
 	type ModelUsageEvent,
 	type WorkflowStageSpec
 } from '../../contracts';
-import type {
-	AgentExecutorPort,
-	SynthesisModelPort,
-	TransitionModelPort
-} from '../../ports';
+import type { AgentExecutorPort, SynthesisModelPort, TransitionModelPort } from '../../ports';
 import { executeWorkflow, WorkflowSafetyViolation } from './workflow-engine';
 
 const projectId = '11111111-1111-4111-8111-111111111111';
@@ -211,7 +208,8 @@ describe('in-memory Phase A workflow engine', () => {
 									schema_version: 1,
 									action: 'append_research',
 									reason_code: 'more_research_required',
-									rationale: 'The reference is resolved; current evidence is still needed.'
+									rationale:
+										'The reference is resolved; current evidence is still needed.'
 								}
 							: {
 									schema_version: 1,
@@ -235,9 +233,62 @@ describe('in-memory Phase A workflow engine', () => {
 		});
 		expect(workflow.status).toBe('completed');
 		expect(workflow.stageCount).toBe(2);
-		expect(transitionCalls).toBe(2);
+		// Both gates on this path leave exactly one legal action, so neither reaches the model.
+		// See PHASE_A_AUDIT_2026-07-25.md S1.
+		expect(transitionCalls).toBe(0);
+		expect(workflow.transitionModelCalls).toBe(0);
+		expect(workflow.forcedTransitions).toBe(2);
+		expect(workflow.transitions.map((decision) => decision.action)).toEqual([
+			'append_stage',
+			'complete'
+		]);
 		expect(researcherSawContext).toBe(true);
 		expect(workflow.replanCount).toBe(0);
+	});
+
+	it('reaches the transition model only when the gate has more than one legal action', async () => {
+		// A partial stage may legally complete_partial or fail, so this gate is a real decision and
+		// must not be decided in code. See PHASE_A_AUDIT_2026-07-25.md S1.
+		let transitionCalls = 0;
+		const partialResult = AgentResultSchema.parse({
+			...result('research_packet'),
+			status: 'partial',
+			summary: 'Partial research.'
+		});
+		const workflow = await executeWorkflow({
+			routeDecision: route(stage(['researcher.v0'])),
+			permissionGrant,
+			projectScope,
+			agentExecutor: {
+				execute: async () => ({
+					result: partialResult,
+					usage: [],
+					toolCostUsd: 0,
+					toolCalls: []
+				})
+			},
+			transitionModel: {
+				generateJson: async () => {
+					transitionCalls += 1;
+					return {
+						value: {
+							schema_version: 1,
+							action: 'complete_partial',
+							reason_code: 'partial_objective_satisfied',
+							rationale: 'The evidence is incomplete but usable.'
+						},
+						usage: usage(0.0005)
+					};
+				}
+			},
+			synthesisModel: synthesisModel(),
+			runId
+		});
+
+		expect(transitionCalls).toBe(1);
+		expect(workflow.transitionModelCalls).toBe(1);
+		expect(workflow.forcedTransitions).toBe(0);
+		expect(workflow.status).toBe('partial');
 	});
 
 	it('stops immediately when an agent reports a write tool call', async () => {
@@ -247,7 +298,12 @@ describe('in-memory Phase A workflow engine', () => {
 				usage: [],
 				toolCostUsd: 0,
 				toolCalls: [
-					{ operation: 'ontology.task.update', effect: 'write', succeeded: true, error: null }
+					{
+						operation: 'ontology.task.update',
+						effect: 'write',
+						succeeded: true,
+						error: null
+					}
 				]
 			})
 		};

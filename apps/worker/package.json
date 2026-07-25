@@ -12,6 +12,7 @@
 		"lint": "eslint \"src/**/*.ts\" && pnpm run guardrails:http-modules",
 		"lint:fix": "eslint \"src/**/*.ts\" --fix && pnpm run guardrails:http-modules",
 		"typecheck": "node ./node_modules/@typescript/native/bin/tsc --noEmit",
+		"typecheck:phase-a": "node ./node_modules/@typescript/native/bin/tsc -p tsconfig.phase-a.json --noEmit",
 		"check": "pnpm run lint && pnpm run typecheck",
 		"clean": "rm -rf dist",
 		"test": "vitest run",

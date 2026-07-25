@@ -50,21 +50,21 @@ Virality on Shorts is a controllable, measurable craft, not luck. Jenny Hoyos's 
 
 ## TL;DR Frameworks & Thresholds Table
 
-| #   | Framework / rule                       | Concrete threshold or definition                                                                                                                                       |
-| --- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Scroll-through rate (view vs. swipe)   | Average creator ≈ **70%**. Her average ≈ **85%**. One cited short hit **92%**.                                                                                          |
-| 2   | Retention benchmark                    | **90% is the bare minimum** for a short to "blow up." Her average ≈ **95%** (sustained on ~10M-view scale, which she stresses is much harder than at low view counts). |
-| 3   | Looping / rewatch mechanic             | If only ~85% watch but retention reads ~95%, the gap = people **rewatching**. Sub-30s shorts "need over 100% retention or it won't take off."                          |
-| 4   | Optimal short length (her channel)     | **Exactly 34 seconds** — derived from analyzing her own most-popular videos. Not universal; everyone must analyze their own.                                            |
-| 5   | "Every second counts" math             | On a 30s short, losing 1s ≈ 3% of retention; 2s ≈ 6%. A bad final second compounds. Worked example below: trimming 1s raised retention 83% → 88% and the video flew.   |
-| 6   | Script readability target              | **5th grade or under** (readabilityformulas.com). Mr. Beast's shorts scrape to ~**1st grade**. One jargon word ("business," "finance," "profit") can spike it to 8th.  |
-| 7   | Hook = title+thumbnail test            | A good short hook would still get clicks **if used as a long-form title/thumbnail**. Must be visual, understandable muted, and explainable to a 5-year-old.             |
-| 8   | Structure (every video)                | **Hook → Foreshadow → pacing-break transition → but/therefore (or problem/solution) story → abrupt close on the payoff.**                                               |
-| 9   | Hook + foreshadow budget               | Hook and foreshadow = **two lines, ~3 seconds or less**, spoken (VO), in every video.                                                                                   |
-| 10  | Idea funnel                            | ~**1,000 ideas** in a Google doc → makes ~**10**. Narrows 100 → 25 (her) → 10 (editor/strategist).                                                                      |
-| 11  | Mechanism                              | A visible device that pulls the viewer to the end (Mr. Beast's closing circle; "there are 3 steps"). Sets a clear end-expectation.                                      |
-| 12  | Platform-specific length/pacing        | YouTube: slower, more story, ~30–34s. TikTok: **10–20s**, dense info, few jokes, dislikes >30s. Instagram Reels: visual, subtitles every second, share-optimized.      |
-| 13  | Share-to-view ratio (hunch metric)     | One short cited at **~20% shares-to-views** (called "extremely high") alongside a 92% scroll-through. Sharability flagged as unverified hunch.                          |
+| #   | Framework / rule                        | Concrete threshold or definition                                                                                                                                       |
+| --- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Scroll-through rate (view vs. swipe)    | Average creator ≈ **70%**. Her average ≈ **85%**. One cited short hit **92%**.                                                                                         |
+| 2   | Retention benchmark                     | **90% is the bare minimum** for a short to "blow up." Her average ≈ **95%** (sustained on ~10M-view scale, which she stresses is much harder than at low view counts). |
+| 3   | Looping / rewatch mechanic              | If only ~85% watch but retention reads ~95%, the gap = people **rewatching**. Sub-30s shorts "need over 100% retention or it won't take off."                          |
+| 4   | Optimal short length (her channel)      | **Exactly 34 seconds** — derived from analyzing her own most-popular videos. Not universal; everyone must analyze their own.                                           |
+| 5   | "Every second counts" math              | On a 30s short, losing 1s ≈ 3% of retention; 2s ≈ 6%. A bad final second compounds. Worked example below: trimming 1s raised retention 83% → 88% and the video flew.   |
+| 6   | Script readability target               | **5th grade or under** (readabilityformulas.com). Mr. Beast's shorts scrape to ~**1st grade**. One jargon word ("business," "finance," "profit") can spike it to 8th.  |
+| 7   | Hook = title+thumbnail test             | A good short hook would still get clicks **if used as a long-form title/thumbnail**. Must be visual, understandable muted, and explainable to a 5-year-old.            |
+| 8   | Structure (every video)                 | **Hook → Foreshadow → pacing-break transition → but/therefore (or problem/solution) story → abrupt close on the payoff.**                                              |
+| 9   | Hook + foreshadow budget                | Hook and foreshadow = **two lines, ~3 seconds or less**, spoken (VO), in every video.                                                                                  |
+| 10  | Idea funnel                             | ~**1,000 ideas** in a Google doc → makes ~**10**. Narrows 100 → 25 (her) → 10 (editor/strategist).                                                                     |
+| 11  | Mechanism                               | A visible device that pulls the viewer to the end (Mr. Beast's closing circle; "there are 3 steps"). Sets a clear end-expectation.                                     |
+| 12  | Platform-specific length/pacing         | YouTube: slower, more story, ~30–34s. TikTok: **10–20s**, dense info, few jokes, dislikes >30s. Instagram Reels: visual, subtitles every second, share-optimized.      |
+| 13  | Share-to-view ratio (hunch metric)      | One short cited at **~20% shares-to-views** (called "extremely high") alongside a 92% scroll-through. Sharability flagged as unverified hunch.                         |
 | 14  | Long-form baseline (transition reality) | She averages ~**10M** on shorts vs. ~**50k** on long-form — used to argue most "YouTube killed my long-form" complaints are creator-fault, not algorithm.              |
 
 ## Operating Lessons
@@ -115,7 +115,7 @@ Every video, in order:
 4. **Story via but/therefore** (or problem/solution).
 5. **Abrupt close on the payoff** (see below).
 
-**Writing order:** ideas → pick one → write the **hook** → write the **last line** first (so she knows where she's filming toward) → write foreshadow → fill the middle as a rough script or bullet points → film → revise/finalize script → edit. The last line is left partly blank for the live reaction: "then I surprised my mom and ___."
+**Writing order:** ideas → pick one → write the **hook** → write the **last line** first (so she knows where she's filming toward) → write foreshadow → fill the middle as a rough script or bullet points → film → revise/finalize script → edit. The last line is left partly blank for the live reaction: "then I surprised my mom and \_\_\_."
 
 ### Mechanism (end-expectation device)
 
@@ -177,7 +177,9 @@ Her closing **hot take directly tensions the rest of the interview**: she says _
 ## BuildOS Application
 
 1. **Hook/foreshadow structure maps to BuildOS short-form scripts:** the hook → foreshadow (≤3s, 2 lines) → pacing-break → but/therefore → abrupt payoff skeleton is directly reusable for the anti-feed TikTok scripts and demo loops; the "write the last line first" rule is a clean scripting constraint.
-- 2. **Readability discipline (5th grade or under)** aligns with BuildOS's "lead with relief, not jargon" stance — a concrete, testable bar (readabilityformulas.com) for marketing copy, not just shorts.
+
+-   2. **Readability discipline (5th grade or under)** aligns with BuildOS's "lead with relief, not jargon" stance — a concrete, testable bar (readabilityformulas.com) for marketing copy, not just shorts.
+
 3. **Mechanism = visible progress device:** the "there are 3 steps" mechanic is the content analog of a product progress indicator; useful for both scripts and onboarding UX framing.
 4. **Channel-specific calibration:** her insistence that 34s/85%/90% are _her_ numbers is the right epistemics for any BuildOS short-form metric target — derive, don't borrow.
 

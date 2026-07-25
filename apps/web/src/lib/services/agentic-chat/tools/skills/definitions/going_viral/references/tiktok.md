@@ -54,16 +54,16 @@ The sibling skill `hook_craft_short_form` covers the six hook archetypes in dept
 
 ## Hoyos primary thresholds (her channel — re-derive per channel)
 
-| Metric / rule                  | Hoyos PRIMARY value                                                                  |
-| ------------------------------ | ----------------------------------------------------------------------------------- |
-| Optimal length                 | **34 seconds** (her YouTube channel; derived from her own top videos). TikTok prefers **10–20s**, dense, fewer jokes, dislikes >30s. |
-| Retention floor                | **90% bare minimum**; team avg **95%+**; **sub-30s needs >100%** (looping).          |
-| Scroll-through rate            | avg ≈ **70%**; hers ≈ **80–85%**; one short **92%**.                                 |
-| Script readability             | **5th grade or under** (readabilityformulas.com). MrBeast scripts scrape to ~**1st grade**. One jargon word ("business/finance/profit") can spike it to 8th. |
-| "Every second counts" math     | On a 30s short, losing 1s ≈ 3% retention. Worked example: trimming the last 1s raised retention **83% → 88%** and "the video went flying." Never end on a drop. |
-| Structure (every video)        | **Hook → foreshadow (≤3s) → pacing-break transition → but/therefore story → abrupt close on the payoff.** |
-| Storytelling = change          | "Stories can't be stories without change." Use **but / so / therefore** (South Park rule) instead of "and then… and then." |
-| Peak-end close                 | Keep the payoff to the last second(s); **abrupt but satisfying** (not confusing). Twists drive rewatchability. |
+| Metric / rule              | Hoyos PRIMARY value                                                                                                                                             |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Optimal length             | **34 seconds** (her YouTube channel; derived from her own top videos). TikTok prefers **10–20s**, dense, fewer jokes, dislikes >30s.                            |
+| Retention floor            | **90% bare minimum**; team avg **95%+**; **sub-30s needs >100%** (looping).                                                                                     |
+| Scroll-through rate        | avg ≈ **70%**; hers ≈ **80–85%**; one short **92%**.                                                                                                            |
+| Script readability         | **5th grade or under** (readabilityformulas.com). MrBeast scripts scrape to ~**1st grade**. One jargon word ("business/finance/profit") can spike it to 8th.    |
+| "Every second counts" math | On a 30s short, losing 1s ≈ 3% retention. Worked example: trimming the last 1s raised retention **83% → 88%** and "the video went flying." Never end on a drop. |
+| Structure (every video)    | **Hook → foreshadow (≤3s) → pacing-break transition → but/therefore story → abrupt close on the payoff.**                                                       |
+| Storytelling = change      | "Stories can't be stories without change." Use **but / so / therefore** (South Park rule) instead of "and then… and then."                                      |
+| Peak-end close             | Keep the payoff to the last second(s); **abrupt but satisfying** (not confusing). Twists drive rewatchability.                                                  |
 
 ## The visual → audio → visual sandwich (Kallaway)
 

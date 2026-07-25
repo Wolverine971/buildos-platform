@@ -397,11 +397,11 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				.from('onto_documents')
 				.select(CONTEXT_DOCUMENT_COLUMNS)
 				.eq('project_id', id)
-					.eq('type_key', 'document.context.project')
-					.is('deleted_at', null)
-					.order('updated_at', { ascending: false })
-					.limit(20)
-			]);
+				.eq('type_key', 'document.context.project')
+				.is('deleted_at', null)
+				.order('updated_at', { ascending: false })
+				.limit(20)
+		]);
 
 		// Log any errors (non-fatal)
 		if (goalsResult.error) {
@@ -423,9 +423,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			console.error('[Project API] Failed to fetch images:', imagesResult.error);
 		}
 
-			const contextDocument: Document | null = pickStartHereDocument(
-				(contextDocResult.data ?? []) as unknown as Document[]
-			);
+		const contextDocument: Document | null = pickStartHereDocument(
+			(contextDocResult.data ?? []) as unknown as Document[]
+		);
 
 		const { milestones: decoratedMilestones } = await decorateMilestonesWithGoals(
 			supabase,

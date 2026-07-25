@@ -142,15 +142,15 @@ expecting runtime effect edits dead code. **Left as-is for now.**
   and `google_calendar`~~ — **RESOLVED 2026-06-15.** Correction: both were already
   reachable via `skill_search` (it indexes all registered skills) — "undiscoverable"
   was an overstatement; they were just not in _domain_ routing.
-  - `google_calendar` is **intentionally** search-only: it backs a published
-    agent-skill blog (`resolveRuntimeSkillForPost`) and is the portable/external
-    calendar skill; `calendar_management` is the native chat default. Left
-    registered; documented.
-  - `context_engineering_for_agent_work` was a genuine orphan (no domain, no
-    published blog) → wired into a new minimal `agent_engineering` domain
-    (`domains/catalog.ts`).
-  - Added `skill-discoverability.test.ts` to catch future accidental orphans (with
-    `google_calendar`/`libri_knowledge` allow-listed as deliberately search-only).
+    - `google_calendar` is **intentionally** search-only: it backs a published
+      agent-skill blog (`resolveRuntimeSkillForPost`) and is the portable/external
+      calendar skill; `calendar_management` is the native chat default. Left
+      registered; documented.
+    - `context_engineering_for_agent_work` was a genuine orphan (no domain, no
+      published blog) → wired into a new minimal `agent_engineering` domain
+      (`domains/catalog.ts`).
+    - Added `skill-discoverability.test.ts` to catch future accidental orphans (with
+      `google_calendar`/`libri_knowledge` allow-listed as deliberately search-only).
 - **Content gap (systemic):** ~~the 7 BuildOS-native procedural skills lacked
   `## Output` contracts~~ — **FIXED 2026-06-15.** All 7 (`task_management`,
   `plan_management`, `project_audit`, `calendar_management`, `document_workspace`,

@@ -146,7 +146,8 @@ export async function enrichLogsForDisplay<T extends ProjectLogRowForEnrich>(
 				.then(({ data }: { data: any[] | null }) => {
 					entityNames[entityType] = {};
 					for (const entity of data || []) {
-						entityNames[entityType][entity.id] = entity[mapping.nameField] || 'Untitled';
+						entityNames[entityType][entity.id] =
+							entity[mapping.nameField] || 'Untitled';
 					}
 				})
 		);

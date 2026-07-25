@@ -101,17 +101,17 @@ Notes:
 ### 2026-06-12 — Task 2 — BLIND A/B (the owed pair; prior wave-2 entry was a with-skill self-check) — performer (with/without) + blind judge: claude-opus-4-8 (workflow subagents)
 
 | Marker | without | with |
-| --- | --- | --- |
-| M1 | miss | hit |
-| M2 | miss | hit |
-| M3 | miss | hit |
-| M4 | hit | hit |
-| M5 | miss | hit |
-| M6 | miss | hit |
-| M7 | miss | hit |
-| M8 | hit | hit |
-| M9 | miss | hit |
-| M10 | miss | hit |
+| ------ | ------- | ---- |
+| M1     | miss    | hit  |
+| M2     | miss    | hit  |
+| M3     | miss    | hit  |
+| M4     | hit     | hit  |
+| M5     | miss    | hit  |
+| M6     | miss    | hit  |
+| M7     | miss    | hit  |
+| M8     | hit     | hit  |
+| M9     | miss    | hit  |
+| M10    | miss    | hit  |
 
 Verdict: **STRONG DELTA**. With-skill hit 10/10 markers; gap over no-skill = 8 markers. Refusal missed by skill run: False.
 Load path (expected, not re-tested this run): skill_load(hook_craft_short_form, full) — audit workflow, diagnostic, and the verbatim LLM prompt are all outside short-format sections; zero reference loads; must NOT load story_driven_content_craft or viral_video_script_structure (body structure is out of scope for a hook audit).

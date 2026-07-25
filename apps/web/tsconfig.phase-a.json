@@ -1,0 +1,36 @@
+{
+	// Typechecks the Phase A paid harness, which the main tsconfig excludes via `**/*.test.ts`.
+	// These are the files in the repo that spend real money on a pre-registered experiment;
+	// leaving them outside every typecheck hid two real errors (a `role` field that did not exist
+	// on RouteEvalUsageEvent). See research/09_INTERNAL_GROUND_TRUTH_MAP.md D2.
+	//
+	// `include` must re-list SvelteKit's generated ambient declarations, because overriding
+	// `include` replaces the inherited list rather than extending it — without them the virtual
+	// `$env/*` and `$app/*` modules do not resolve.
+	//
+	// The orchestrator package's own tests are excluded: they are typechecked by that package under
+	// its own compiler options, and apps/web adds stricter flags (noUncheckedIndexedAccess) that
+	// the package does not opt into.
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"incremental": false
+	},
+	"include": [
+		".svelte-kit/ambient.d.ts",
+		".svelte-kit/non-ambient.d.ts",
+		"src/lib/tests/agentic-e2e/**/*.ts",
+		"../../packages/agent-orchestrator/src/**/*.ts"
+	],
+	"exclude": [
+		"node_modules",
+		"build",
+		".svelte-kit/output",
+		".svelte-kit/generated",
+		"coverage",
+		"../../packages/agent-orchestrator/src/**/*.test.ts",
+		"scripts/**/*.js",
+		"*.config.js",
+		"*.config.ts"
+	]
+}

@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/tools/work-capabilities/types.ts
 // Compatibility type aliases for the former work-capability payloads.
 // New code should import from ../outcome-cards/types.
 export type {
@@ -7,4 +8,3 @@ export type {
 	OutcomeCardSearchMatch as WorkCapabilitySearchMatch,
 	OutcomeCardSearchPayload as WorkCapabilitySearchPayload
 } from '../outcome-cards/types';
-

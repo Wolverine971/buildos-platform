@@ -28,12 +28,12 @@ screen for the proof, captions burned in, real media only (no AI-generated image
 
 ## The four surfaces (one atom → four posts)
 
-| Surface | Account | Role | Voice |
-| --- | --- | --- | --- |
-| **LinkedIn post** | DJ (founder) | **PRIMARY** — where the buyer is | first-person, professional-but-real, receipts |
-| **X post** | DJ (founder) | quick-take version of the same insight | lowercase, punchy, one move |
-| **Instagram Reel** | **@djwayne3** (founder) | reach + story; ends on a *send-this* line | warm, personal, first-person confession |
-| **Brand proof** | **@build.os** (brand) | clean product cut for the repository | second-person observational, product-forward |
+| Surface            | Account                 | Role                                      | Voice                                         |
+| ------------------ | ----------------------- | ----------------------------------------- | --------------------------------------------- |
+| **LinkedIn post**  | DJ (founder)            | **PRIMARY** — where the buyer is          | first-person, professional-but-real, receipts |
+| **X post**         | DJ (founder)            | quick-take version of the same insight    | lowercase, punchy, one move                   |
+| **Instagram Reel** | **@djwayne3** (founder) | reach + story; ends on a _send-this_ line | warm, personal, first-person confession       |
+| **Brand proof**    | **@build.os** (brand)   | clean product cut for the repository      | second-person observational, product-forward  |
 
 Why this split: for a B2B founder tool the buyer lives on LinkedIn / YouTube / X, so
 **LinkedIn is primary and IG is repurpose** — not the other way around. See
@@ -85,7 +85,7 @@ proof-content-harness/
 ## The rules (so atoms stay on-strategy)
 
 1. **Real input only.** The messy input is a real BuildOS project or a real DJ brain dump. Never staged.
-2. **Lead with relief, not AI.** AI is the engine, not the headline. Sell the *before → after* feeling.
+2. **Lead with relief, not AI.** AI is the engine, not the headline. Sell the _before → after_ feeling.
 3. **Real media only.** Screen recordings, founder footage, product screenshots. No AI-generated images/video.
 4. **One topic lane.** Stay on "thinking environment / holding context across complex work" for 10+ atoms so IG/LLMs can classify the account. No topic whiplash.
 5. **Engineer for sends.** Every IG/X post ends on a line worth DM-ing to one specific person.

@@ -110,17 +110,17 @@ Notes: The user-instinct trap (deck + call ask) pulled hard toward two CTAs; the
 ### 2026-06-12 — Task 1 — BLIND A/B (the owed pair; prior wave-2 entry was a with-skill self-check) — performer (with/without) + blind judge: claude-opus-4-8 (workflow subagents)
 
 | Marker | without | with |
-| --- | --- | --- |
-| M1 | miss | hit |
-| M2 | miss | hit |
-| M3 | miss | hit |
-| M4 | hit | hit |
-| M5 | hit | hit |
-| M6 | miss | hit |
-| M7 | miss | hit |
-| M8 | hit | hit |
-| M9 | miss | hit |
-| M10 | miss | hit |
+| ------ | ------- | ---- |
+| M1     | miss    | hit  |
+| M2     | miss    | hit  |
+| M3     | miss    | hit  |
+| M4     | hit     | hit  |
+| M5     | hit     | hit  |
+| M6     | miss    | hit  |
+| M7     | miss    | hit  |
+| M8     | hit     | hit  |
+| M9     | miss    | hit  |
+| M10    | miss    | hit  |
 
 Verdict: **STRONG DELTA**. With-skill hit 10/10 markers; gap over no-skill = 7 markers. Refusal missed by skill run: False.
 Load path (expected, not re-tested this run): skill_load(cold_email_reply_os, full) for the taxonomy table, SLA matrix, and Output Contract; load the objection_routes reference ONLY (for the route row + calibrated question); must NOT load fork_library (no silence to revive) or tactical_empathy_routes (reply is neither tense nor ambiguous) — loading either is an over-load failure even if the answer is correct.

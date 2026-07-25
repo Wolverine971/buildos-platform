@@ -1,0 +1,102 @@
+{
+	"schema_version": 1,
+	"corpus_version": "phase-a-holdout-v1",
+	"status": "holdout",
+	"scored_against_prompt_version": "phase-a-route-prompt-v5",
+	"snapshot_ref": "../fixtures/project-alpha.snapshot.json",
+	"snapshot_sha256": "be9feaeade4134285f891f857ca02aad0a74cd1c890ba774c2b9ea1fa398af6c",
+	"scenarios": [
+		{
+			"scenario_id": "a0-c03-project-status",
+			"selection_status": "holdout",
+			"class": "status_summary",
+			"source": {
+				"kind": "production_chat_turn",
+				"turn_ref_hash": "d21aa4956241",
+				"captured_on": "2026-06-28",
+				"transformations": []
+			},
+			"request_text": "Okay, where are we at with this project?",
+			"context_type": "project",
+			"snapshot_ref": "../fixtures/project-alpha.snapshot.json",
+			"expected_route": "direct",
+			"expected_reason_code": "status_summary",
+			"acceptance_checks": [],
+			"notes": "Previously labeled candidate withheld from the frozen eight; retained as a cold status-summary check."
+		},
+		{
+			"scenario_id": "a0-c05-single-document-read",
+			"selection_status": "holdout",
+			"class": "simple_read",
+			"source": {
+				"kind": "production_chat_turn",
+				"turn_ref_hash": "fc00acd8765f",
+				"captured_on": "2026-06-22",
+				"transformations": [
+					"Replaced the original security-fixture document title with a document title in the shared anonymized snapshot."
+				]
+			},
+			"request_text": "Open the document named Measurement & Telemetry Protocol and summarize what it says as content. Do not perform any project updates.",
+			"context_type": "project",
+			"snapshot_ref": "../fixtures/project-alpha.snapshot.json",
+			"expected_route": "direct",
+			"expected_reason_code": "simple_read",
+			"acceptance_checks": [],
+			"notes": "Previously labeled candidate withheld from the frozen eight; retained as a cold explicit document-read check."
+		},
+		{
+			"scenario_id": "a0-c10-week-planning-stress",
+			"selection_status": "holdout",
+			"class": "route_stress",
+			"source": {
+				"kind": "production_chat_turn",
+				"turn_ref_hash": "b8b0c3945998",
+				"captured_on": "2026-05-19",
+				"transformations": []
+			},
+			"request_text": "Help me plan this week.",
+			"context_type": "global",
+			"snapshot_ref": "../fixtures/project-alpha.snapshot.json",
+			"expected_route": "direct",
+			"expected_reason_code": "status_summary",
+			"acceptance_checks": [],
+			"notes": "Previously labeled boundary case: use the available snapshot for bounded weekly priorities without inventing calendar availability."
+		},
+		{
+			"scenario_id": "h1-t01-today-focus",
+			"selection_status": "holdout",
+			"class": "status_summary",
+			"source": {
+				"kind": "production_chat_turn",
+				"turn_ref_hash": "8ae6b4d91850",
+				"captured_on": "2026-07-23",
+				"transformations": []
+			},
+			"request_text": "What should I work on today?",
+			"context_type": "global",
+			"snapshot_ref": "../fixtures/project-alpha.snapshot.json",
+			"expected_route": "direct",
+			"expected_reason_code": "status_summary",
+			"acceptance_checks": [],
+			"notes": "Fresh completed production request, labeled before model output as a bounded current-snapshot priority summary."
+		},
+		{
+			"scenario_id": "h1-t02-email-connection",
+			"selection_status": "holdout",
+			"class": "unsupported_capability",
+			"source": {
+				"kind": "production_chat_turn",
+				"turn_ref_hash": "7be566d1320b",
+				"captured_on": "2026-07-23",
+				"transformations": []
+			},
+			"request_text": "Okay, are you connected to my email inbox?",
+			"context_type": "global",
+			"snapshot_ref": "../fixtures/project-alpha.snapshot.json",
+			"expected_route": "capability_gap",
+			"expected_reason_code": "unsupported_capability",
+			"acceptance_checks": [],
+			"notes": "Fresh completed production request, labeled before model output; the Phase A capability cards contain no inbox connector."
+		}
+	]
+}

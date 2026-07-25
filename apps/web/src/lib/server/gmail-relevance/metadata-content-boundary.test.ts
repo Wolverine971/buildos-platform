@@ -61,7 +61,7 @@ describe('Slice 3 metadata content boundary', () => {
 			),
 			'utf8'
 		);
-		expect(manualPilot).toContain("driver.runOneOperation(parsed.data)");
+		expect(manualPilot).toContain('driver.runOneOperation(parsed.data)');
 		expect(manualPilot).not.toMatch(
 			/queue_jobs|add_queue_job|setInterval|setTimeout|users\.watch|pubsub|smart-llm|openrouter|openai|embedding/i
 		);

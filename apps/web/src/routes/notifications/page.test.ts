@@ -1,107 +1,249 @@
 // apps/web/src/routes/notifications/page.test.ts
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/svelte';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import NotificationsPage from './+page.svelte';
+import type { ActivityEntry, ActivityTimelinePage } from '$lib/types/activity-timeline';
 
-function deliveryRow(overrides: Record<string, unknown> = {}) {
+function entry(overrides: Partial<ActivityEntry> = {}): ActivityEntry {
 	return {
-		id: 'delivery-1',
-		event_id: 'event-1',
-		correlation_id: 'correlation-1',
-		feed_kind: 'delivery',
-		channel: 'email',
-		status: 'failed',
-		attempts: 2,
-		max_attempts: 3,
-		opened_at: new Date().toISOString(),
-		clicked_at: null,
-		failed_at: new Date().toISOString(),
-		last_error: 'SMTP 550 mailbox provider rejected recipient',
-		created_at: new Date().toISOString(),
-		payload: {
-			title: 'Task assigned',
-			body: 'You own Draft launch plan',
-			action_url: '/projects/project-1/tasks/task-1'
-		},
-		notification_events: {
-			id: 'event-record-1',
-			event_type: 'task.assigned',
-			payload: {
-				task_name: 'Draft launch plan',
-				project_name: 'Author Training',
-				project_id: 'project-1',
-				task_id: 'task-1'
-			}
-		},
+		id: 'entry-1',
+		lane: 'agent',
+		kind: 'project_audit',
+		occurred_at: new Date().toISOString(),
+		title: 'Project audit — BuildOS',
+		body: 'Docs are drifting from the plan.',
+		project_id: 'project-1',
+		project_name: 'BuildOS',
+		actor: 'agent',
+		actor_label: 'Audit agent · scheduled pass',
+		status: 'warn',
+		stats: [{ label: 'Unresolved', value: 3 }],
+		href: '/projects/project-1',
+		children: [],
+		count: 1,
 		...overrides
 	};
 }
 
-describe('/notifications', () => {
-	afterEach(cleanup);
+function page(overrides: Partial<ActivityTimelinePage> = {}): ActivityTimelinePage {
+	return { entries: [entry()], nextCursor: null, hasMore: false, degraded: [], ...overrides };
+}
 
-	it('shows the activity and action without delivery telemetry or raw identifiers', () => {
-		render(NotificationsPage, {
-			props: { data: { notifications: [deliveryRow()], error: null } as never }
-		});
+beforeEach(() => {
+	// jsdom has no IntersectionObserver; the sentinel effect needs one to exist.
+	vi.stubGlobal(
+		'IntersectionObserver',
+		class {
+			observe() {}
+			disconnect() {}
+			unobserve() {}
+		}
+	);
+});
 
-		expect(screen.getByText('Task assigned')).toBeInTheDocument();
-		expect(screen.getByText('You own Draft launch plan')).toBeInTheDocument();
-		expect(screen.getByRole('link', { name: 'Open task' })).toHaveAttribute(
+afterEach(() => {
+	cleanup();
+	vi.unstubAllGlobals();
+	vi.restoreAllMocks();
+});
+
+describe('/notifications activity timeline', () => {
+	it('renders an entry with its actor, body, stats, and link', () => {
+		render(NotificationsPage, { props: { data: { page: page(), error: null } } });
+
+		expect(screen.getByText('Project audit — BuildOS')).toBeInTheDocument();
+		expect(screen.getByText('Audit agent · scheduled pass')).toBeInTheDocument();
+		expect(screen.getByText('Docs are drifting from the plan.')).toBeInTheDocument();
+		expect(screen.getByText('Unresolved')).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Open BuildOS' })).toHaveAttribute(
 			'href',
-			'/projects/project-1/tasks/task-1'
+			'/projects/project-1'
 		);
-		expect(screen.queryByText('/projects/project-1/tasks/task-1')).not.toBeInTheDocument();
-		expect(screen.queryByText('Failed')).not.toBeInTheDocument();
-		expect(screen.queryByText('email')).not.toBeInTheDocument();
-		expect(screen.queryByText(/Attempt 2\/3/)).not.toBeInTheDocument();
-		expect(screen.queryByText(/Opened/)).not.toBeInTheDocument();
-		expect(
-			screen.queryByText('SMTP 550 mailbox provider rejected recipient')
-		).not.toBeInTheDocument();
 	});
 
-	it('uses safe copy for unknown event types and brief failures', () => {
-		const unknown = deliveryRow({
-			id: 'delivery-unknown',
-			event_id: 'event-unknown',
-			correlation_id: 'correlation-unknown',
-			payload: {},
-			notification_events: {
-				id: 'event-record-unknown',
-				event_type: 'agent.internal_state_changed',
-				payload: {}
-			}
-		});
-		const briefFailure = deliveryRow({
-			id: 'delivery-brief',
-			event_id: 'event-brief',
-			correlation_id: 'correlation-brief',
-			payload: {},
-			notification_events: {
-				id: 'event-record-brief',
-				event_type: 'brief.failed',
-				payload: {
-					error_message: 'DB_TIMEOUT relation notification_events missing',
-					retry_count: 4
+	it('separates entries into day headings', () => {
+		const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000).toISOString();
+		render(NotificationsPage, {
+			props: {
+				data: {
+					page: page({
+						entries: [
+							entry({ id: 'today-1' }),
+							entry({ id: 'old-1', occurred_at: twoDaysAgo })
+						]
+					}),
+					error: null
 				}
 			}
 		});
 
+		expect(screen.getByText('Today')).toBeInTheDocument();
+		// Anything older than yesterday is labelled by weekday or date, never "Today".
+		expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(2);
+	});
+
+	it('hides grouped details until the entry is expanded', async () => {
 		render(NotificationsPage, {
-			props: { data: { notifications: [unknown, briefFailure], error: null } as never }
+			props: {
+				data: {
+					page: page({
+						entries: [
+							entry({
+								kind: 'entity_changes',
+								lane: 'you',
+								title: 'Updated 2 tasks in BuildOS',
+								children: [
+									{
+										id: 'child-1',
+										label: 'Ship the timeline',
+										detail: 'Updated · task',
+										at: new Date().toISOString(),
+										entity_type: 'task',
+										entity_id: 'task-1',
+										project_id: 'project-1'
+									}
+								]
+							})
+						]
+					}),
+					error: null
+				}
+			}
 		});
 
-		expect(screen.getByText('Update')).toBeInTheDocument();
-		expect(screen.getByText('Something changed in BuildOS')).toBeInTheDocument();
-		expect(
-			screen.getByText('Your daily brief could not be prepared. Open Today to try again.')
-		).toBeInTheDocument();
-		expect(screen.queryByText(/agent.internal_state_changed/)).not.toBeInTheDocument();
-		expect(
-			screen.queryByText('DB_TIMEOUT relation notification_events missing')
-		).not.toBeInTheDocument();
-		expect(screen.queryByText('Retries:')).not.toBeInTheDocument();
+		expect(screen.queryByText('Ship the timeline')).not.toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: /1 detail/ }));
+
+		expect(screen.getByText('Ship the timeline')).toBeInTheDocument();
+	});
+
+	it('shows the empty state when there is no activity', () => {
+		render(NotificationsPage, {
+			props: { data: { page: page({ entries: [] }), error: null } }
+		});
+
+		expect(screen.getByText('Nothing here yet')).toBeInTheDocument();
+	});
+
+	it('surfaces a load error from the server', () => {
+		render(NotificationsPage, {
+			props: { data: { page: page({ entries: [] }), error: 'Failed to load activity.' } }
+		});
+
+		expect(screen.getByText('Failed to load activity.')).toBeInTheDocument();
+	});
+
+	it('names the sources that failed so a partial page is not read as complete', () => {
+		render(NotificationsPage, {
+			props: { data: { page: page({ degraded: ['audits', 'chats'] }), error: null } }
+		});
+
+		expect(screen.getByText(/audits, chats/)).toBeInTheDocument();
+	});
+
+	it('refetches scoped to a lane when a filter is chosen', async () => {
+		const fetchMock = vi.fn(async () => ({
+			ok: true,
+			json: async () => ({
+				success: true,
+				data: page({
+					entries: [entry({ id: 'ping-1', lane: 'ping', title: 'Brief ready' })]
+				})
+			})
+		}));
+		vi.stubGlobal('fetch', fetchMock);
+
+		render(NotificationsPage, { props: { data: { page: page(), error: null } } });
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+		expect(String(fetchMock.mock.calls[0][0])).toContain('lanes=ping');
+		await waitFor(() => expect(screen.getByText('Brief ready')).toBeInTheDocument());
+		expect(screen.queryByText('Project audit — BuildOS')).not.toBeInTheDocument();
+	});
+
+	it('appends the next page and drops entries already on screen', async () => {
+		const fetchMock = vi.fn(async () => ({
+			ok: true,
+			json: async () => ({
+				success: true,
+				data: page({
+					// `entry-1` is already rendered: the inclusive cursor can repeat a
+					// boundary entry, and it must not render twice.
+					entries: [entry(), entry({ id: 'entry-2', title: 'Older audit' })],
+					nextCursor: null,
+					hasMore: false
+				})
+			})
+		}));
+		vi.stubGlobal('fetch', fetchMock);
+
+		render(NotificationsPage, {
+			props: {
+				data: {
+					page: page({ nextCursor: '2026-07-20T00:00:00.000Z', hasMore: true }),
+					error: null
+				}
+			}
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+
+		await waitFor(() => expect(screen.getByText('Older audit')).toBeInTheDocument());
+		expect(screen.getAllByText('Project audit — BuildOS')).toHaveLength(1);
+	});
+
+	it('stops paging when the feed stops advancing', async () => {
+		const stuckCursor = '2026-07-20T00:00:00.000Z';
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => ({
+				ok: true,
+				json: async () => ({
+					success: true,
+					// Same entry, same cursor: the feed cannot make progress.
+					data: page({ entries: [entry()], nextCursor: stuckCursor, hasMore: true })
+				})
+			}))
+		);
+
+		render(NotificationsPage, {
+			props: { data: { page: page({ nextCursor: stuckCursor, hasMore: true }), error: null } }
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+
+		await waitFor(() =>
+			expect(screen.getByText("That's the whole timeline.")).toBeInTheDocument()
+		);
+		expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
+	});
+
+	it('reports a failed page fetch instead of spinning', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => ({
+				ok: false,
+				json: async () => ({ success: false, error: 'nope' })
+			}))
+		);
+
+		render(NotificationsPage, {
+			props: {
+				data: {
+					page: page({ nextCursor: '2026-07-20T00:00:00.000Z', hasMore: true }),
+					error: null
+				}
+			}
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+
+		await waitFor(() =>
+			expect(screen.getByText('Could not load more activity.')).toBeInTheDocument()
+		);
 	});
 });

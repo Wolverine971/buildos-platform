@@ -167,6 +167,7 @@ path: docs/research/youtube-library/transcripts/2026-06-11_jenny-hoyos_shorts-ge
 # Shorts Genius Shares Everything She Knows (Jenny Hoyos Interview)
 
 ## Metadata
+
 - **Channel**: [Jay Clouse](https://www.youtube.com/@jay)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=As7abwNhG7Y)
 - **Duration**: 38:13
@@ -178,6 +179,7 @@ path: docs/research/youtube-library/transcripts/2026-06-11_jenny-hoyos_shorts-ge
 **Analysis:** `docs/research/youtube-library/analyses/2026-06-11_jenny-hoyos_shorts-genius-jay-clouse_analysis.md`
 
 ## Timestamps
+
 - 0:00 — The YouTuber Who Solved Shorts
 - 1:05 — How to Make Anything Go Viral
 - 2:19 — What Makes a Good Short?

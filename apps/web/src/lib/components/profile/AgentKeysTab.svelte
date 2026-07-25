@@ -1660,9 +1660,7 @@
 												<div class="text-xs font-semibold text-foreground">
 													{periodLabel(period)}
 												</div>
-												<div
-													class="mt-1 text-2xs text-muted-foreground"
-												>
+												<div class="mt-1 text-2xs text-muted-foreground">
 													{trend?.session_count ?? 0} sessions
 												</div>
 												<div class="text-2xs text-muted-foreground">

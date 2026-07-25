@@ -1,12 +1,12 @@
 ---
-title: "Joe Rogan Experience #1309 - Naval Ravikant"
+title: 'Joe Rogan Experience #1309 - Naval Ravikant'
 source_type: youtube_transcript
 video_id: 3qHkcs3kG44
-url: "https://www.youtube.com/watch?v=3qHkcs3kG44"
+url: 'https://www.youtube.com/watch?v=3qHkcs3kG44'
 channel: PowerfulJRE
-channel_url: "https://www.youtube.com/@joerogan"
+channel_url: 'https://www.youtube.com/@joerogan'
 upload_date: 2019-06-05
-duration: "02:11:56"
+duration: '02:11:56'
 views: 14498686
 library_category: psychology-agency-and-philosophy
 library_status: transcript, analysis
@@ -22,48 +22,49 @@ public_article: ''
 indexed_date: '2026-06-11'
 last_reviewed: '2026-06-12'
 tags:
-  - Joe Rogan Experience
-  - JRE
-  - Joe
-  - Rogan
-  - podcast
-  - MMA
-  - comedy
-  - stand
-  - up
-  - funny
-  - Freak
-  - Party
-  - Joe Rogan
-  - JRE #1309
-  - 1309
-  - Naval
-  - Naval Ravikant
-  - meditation
-  - venture capital
-  - Silicon Valley
+    - Joe Rogan Experience
+    - JRE
+    - Joe
+    - Rogan
+    - podcast
+    - MMA
+    - comedy
+    - stand
+    - up
+    - funny
+    - Freak
+    - Party
+    - Joe Rogan
+    - JRE #1309
+    - 1309
+    - Naval
+    - Naval Ravikant
+    - meditation
+    - venture capital
+    - Silicon Valley
 timestamps:
-  - time: "0:00"
-    label: "<Untitled Chapter 1>"
-  - time: "20:23"
-    label: "operate at peak performance"
-  - time: "1:00:20"
-    label: "writing the algorithms for twitter and facebook"
-  - time: "1:03:44"
-    label: "right wing eventually becomes left wing"
-  - time: "1:04:18"
-    label: "start creating decentralized media"
-  - time: "1:29:11"
-    label: "convert plastic waste into fuel"
+    - time: '0:00'
+      label: '<Untitled Chapter 1>'
+    - time: '20:23'
+      label: 'operate at peak performance'
+    - time: '1:00:20'
+      label: 'writing the algorithms for twitter and facebook'
+    - time: '1:03:44'
+      label: 'right wing eventually becomes left wing'
+    - time: '1:04:18'
+      label: 'start creating decentralized media'
+    - time: '1:29:11'
+      label: 'convert plastic waste into fuel'
 description: |
-  Naval Ravikant is an entrepreneur and angel investor, a co-author of Venture Hacks, and a co-maintainer of AngelList.
-transcribed_date: "2026-06-11"
+    Naval Ravikant is an entrepreneur and angel investor, a co-author of Venture Hacks, and a co-maintainer of AngelList.
+transcribed_date: '2026-06-11'
 path: docs/research/youtube-library/transcripts/2026-06-11_naval-ravikant_jre-1309.md
 ---
 
 # Joe Rogan Experience #1309 - Naval Ravikant
 
 ## Metadata
+
 - **Channel**: [PowerfulJRE](https://www.youtube.com/@joerogan)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=3qHkcs3kG44)
 - **Duration**: 02:11:56
@@ -72,6 +73,7 @@ path: docs/research/youtube-library/transcripts/2026-06-11_naval-ravikant_jre-13
 - **Analysis:** `docs/research/youtube-library/analyses/2026-06-11_naval-ravikant_clear-thinking-leverage-writing_analysis.md`
 
 ## Timestamps
+
 - 0:00 — <Untitled Chapter 1>
 - 20:23 — operate at peak performance
 - 1:00:20 — writing the algorithms for twitter and facebook

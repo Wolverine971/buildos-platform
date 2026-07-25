@@ -1302,9 +1302,7 @@
 											class="w-1.5 h-1.5 rounded-full {status.color} shrink-0 mt-1"
 										></span>
 									</div>
-									<div
-										class="flex items-center gap-2 font-mono text-2xs mb-1.5"
-									>
+									<div class="flex items-center gap-2 font-mono text-2xs mb-1.5">
 										<span class="text-red-500 uppercase"
 											>{risk.impact} impact</span
 										>
@@ -1314,8 +1312,7 @@
 										>
 									</div>
 									<div class="text-2xs text-muted-foreground">
-										<span
-											class="font-mono uppercase text-2xs tracking-wider"
+										<span class="font-mono uppercase text-2xs tracking-wider"
 											>Mitigation:</span
 										>
 										{risk.mitigation}

@@ -112,20 +112,20 @@ Notes: the ads question is the load-bearing part of the fixture — without the 
 ### 2026-06-12 — Task 1 — BLIND A/B (the owed pair; prior wave-2 entry was a with-skill self-check) — performer (with/without) + blind judge: claude-opus-4-8 (workflow subagents)
 
 | Marker | without | with |
-| --- | --- | --- |
-| M1 | miss | hit |
-| M2 | miss | hit |
-| M3 | miss | hit |
-| M4 | miss | hit |
-| M5 | miss | hit |
-| M6 | miss | hit |
-| M7 | miss | hit |
-| M8 | miss | hit |
-| M9 | miss | hit |
-| M10 | miss | hit |
-| M11 | miss | hit |
-| M12 | miss | hit |
-| M13 | hit | hit |
+| ------ | ------- | ---- |
+| M1     | miss    | hit  |
+| M2     | miss    | hit  |
+| M3     | miss    | hit  |
+| M4     | miss    | hit  |
+| M5     | miss    | hit  |
+| M6     | miss    | hit  |
+| M7     | miss    | hit  |
+| M8     | miss    | hit  |
+| M9     | miss    | hit  |
+| M10    | miss    | hit  |
+| M11    | miss    | hit  |
+| M12    | miss    | hit  |
+| M13    | hit     | hit  |
 
 Verdict: **STRONG DELTA**. With-skill hit 13/13 markers; gap over no-skill = 12 markers. Refusal missed by skill run: False.
 Load path (expected, not re-tested this run): skill_load(landing_page_scorecard_funnel, full) plus reference landing_page_scorecard_funnel.funnel_build_specs only (sections, questionnaire, results page, routing, and the KPI/scale-gate layer); must NOT load landing_page_scorecard_funnel.setup_layer_positioning — mode lands standalone, so loading it is an over-load failure.

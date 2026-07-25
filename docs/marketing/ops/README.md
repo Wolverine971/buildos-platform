@@ -36,12 +36,12 @@ Nothing is ever "lost" — the queue records the exact state of every deliverabl
 
 ## Files
 
-| File | Role |
-| --- | --- |
-| `queue.json` | **Single source of truth.** Every content item + its per-platform deliverables, statuses, assets, and metrics. |
-| `cadence.json` | Timing rules (blog interval, 48h extractions, 7-day TikToks…). Mirrors `../distribution/RECURRING.md`. |
-| `tracks.json` | Content tracks + ramp schedules. `anti-feed` = active; `writers` = ramps in later (warm-up, not cold pivot). |
-| `../../../scripts/marketing/ops/status.mjs` | The deterministic status engine. Prints a report or `--json` for the daily ping. |
+| File                                        | Role                                                                                                           |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `queue.json`                                | **Single source of truth.** Every content item + its per-platform deliverables, statuses, assets, and metrics. |
+| `cadence.json`                              | Timing rules (blog interval, 48h extractions, 7-day TikToks…). Mirrors `../distribution/RECURRING.md`.         |
+| `tracks.json`                               | Content tracks + ramp schedules. `anti-feed` = active; `writers` = ramps in later (warm-up, not cold pivot).   |
+| `../../../scripts/marketing/ops/status.mjs` | The deterministic status engine. Prints a report or `--json` for the daily ping.                               |
 
 ## The queue schema
 
@@ -49,28 +49,29 @@ Each item is a piece of source content (today: a blog) plus the deliverables it 
 
 ```jsonc
 {
-  "id": "T35",                         // ranked-post id from the WS09 topic map
-  "track": "anti-feed",
-  "type": "blog",
-  "title": "You Stopped Choosing What You Think About",
-  "slug": "you-stopped-choosing-...",
-  "path": "apps/web/src/content/blogs/philosophy/....md",
-  "status": "idea | drafted | scheduled | published",
-  "rank": 2,                            // ordering in the backlog (lower = sooner)
-  "published_at": "2026-04-27",         // null until live
-  "deliverables": [
-    {
-      "kind": "instagram-carousel",     // twitter-thread | linkedin-post | instagram-carousel | tiktok-30s | tiktok-90s | reddit-angle
-      "status": "pending | drafted | scheduled | posted | skipped",
-      "posted_at": null,
-      "url": null,
-      "asset_needs": ["carousel-6-slides"],   // what visuals this needs
-      "assets": []                            // resolved asset file paths (fills in at stage ②)
-    }
-  ],
-  "metrics": [                          // stage ④ writes here
-    { "platform": "linkedin", "posted_at": "...", "impressions": 1200, "engagements": 45 }
-  ]
+	"id": "T35", // ranked-post id from the WS09 topic map
+	"track": "anti-feed",
+	"type": "blog",
+	"title": "You Stopped Choosing What You Think About",
+	"slug": "you-stopped-choosing-...",
+	"path": "apps/web/src/content/blogs/philosophy/....md",
+	"status": "idea | drafted | scheduled | published",
+	"rank": 2, // ordering in the backlog (lower = sooner)
+	"published_at": "2026-04-27", // null until live
+	"deliverables": [
+		{
+			"kind": "instagram-carousel", // twitter-thread | linkedin-post | instagram-carousel | tiktok-30s | tiktok-90s | reddit-angle
+			"status": "pending | drafted | scheduled | posted | skipped",
+			"posted_at": null,
+			"url": null,
+			"asset_needs": ["carousel-6-slides"], // what visuals this needs
+			"assets": [] // resolved asset file paths (fills in at stage ②)
+		}
+	],
+	"metrics": [
+		// stage ④ writes here
+		{ "platform": "linkedin", "posted_at": "...", "impressions": 1200, "engagements": 45 }
+	]
 }
 ```
 

@@ -119,15 +119,11 @@
 		<div class="relative max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 			<!-- Spec label -->
 			<div class="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
-				<span
-					class="font-mono text-2xs uppercase tracking-[0.15em] text-muted-foreground"
-				>
+				<span class="font-mono text-2xs uppercase tracking-[0.15em] text-muted-foreground">
 					DOC-DS-001 • Rev 1.0
 				</span>
 				<span class="w-1 h-1 rounded-full bg-muted-foreground/50 hidden sm:block"></span>
-				<span
-					class="font-mono text-2xs uppercase tracking-[0.15em] text-muted-foreground"
-				>
+				<span class="font-mono text-2xs uppercase tracking-[0.15em] text-muted-foreground">
 					Design System Reference
 				</span>
 			</div>
@@ -156,9 +152,7 @@
 		<!-- Pattern Overview -->
 		<section>
 			<div class="flex items-center gap-2 mb-4">
-				<span
-					class="font-mono text-2xs uppercase tracking-[0.15em] text-accent"
-				>
+				<span class="font-mono text-2xs uppercase tracking-[0.15em] text-accent">
 					Overview
 				</span>
 				<div class="flex-1 h-px bg-border"></div>
@@ -199,9 +193,7 @@
 		<!-- Section 1: System Status Panel -->
 		<section>
 			<div class="flex items-center gap-2 mb-4">
-				<span
-					class="font-mono text-2xs uppercase tracking-[0.15em] text-accent"
-				>
+				<span class="font-mono text-2xs uppercase tracking-[0.15em] text-accent">
 					Section 01
 				</span>
 				<div class="flex-1 h-px bg-border"></div>
@@ -310,9 +302,7 @@
 								METRICS
 							</span>
 						</div>
-						<span class="font-mono text-2xs text-muted-foreground"
-							>Last 24h</span
-						>
+						<span class="font-mono text-2xs text-muted-foreground">Last 24h</span>
 					</div>
 
 					<div class="p-4 grid grid-cols-2 gap-4">
@@ -364,9 +354,7 @@
 		<!-- Section 2: Entity Reference Table -->
 		<section>
 			<div class="flex items-center gap-2 mb-4">
-				<span
-					class="font-mono text-2xs uppercase tracking-[0.15em] text-accent"
-				>
+				<span class="font-mono text-2xs uppercase tracking-[0.15em] text-accent">
 					Section 02
 				</span>
 				<div class="flex-1 h-px bg-border"></div>
@@ -529,9 +517,7 @@
 				<div
 					class="px-4 py-2 bg-muted/30 border-t border-border flex items-center justify-between"
 				>
-					<span
-						class="font-mono text-2xs text-muted-foreground uppercase tracking-wider"
-					>
+					<span class="font-mono text-2xs text-muted-foreground uppercase tracking-wider">
 						{entities.length} entities indexed
 					</span>
 					<button
@@ -546,9 +532,7 @@
 		<!-- Section 3: Dependency Graph -->
 		<section>
 			<div class="flex items-center gap-2 mb-4">
-				<span
-					class="font-mono text-2xs uppercase tracking-[0.15em] text-accent"
-				>
+				<span class="font-mono text-2xs uppercase tracking-[0.15em] text-accent">
 					Section 03
 				</span>
 				<div class="flex-1 h-px bg-border"></div>
@@ -631,8 +615,7 @@
 							></div>
 							<div>
 								<span class="font-mono text-xs text-foreground block">blocks</span>
-								<span class="text-2xs text-muted-foreground"
-									>Prevents progress</span
+								<span class="text-2xs text-muted-foreground">Prevents progress</span
 								>
 							</div>
 						</div>
@@ -657,9 +640,7 @@
 								<span class="font-mono text-xs text-foreground block"
 									>threatens</span
 								>
-								<span class="text-2xs text-muted-foreground"
-									>Risk association</span
-								>
+								<span class="text-2xs text-muted-foreground">Risk association</span>
 							</div>
 						</div>
 						<div class="flex items-center gap-3">
@@ -681,9 +662,7 @@
 		<!-- Section 4: Changelog / Version History -->
 		<section>
 			<div class="flex items-center gap-2 mb-4">
-				<span
-					class="font-mono text-2xs uppercase tracking-[0.15em] text-accent"
-				>
+				<span class="font-mono text-2xs uppercase tracking-[0.15em] text-accent">
 					Section 04
 				</span>
 				<div class="flex-1 h-px bg-border"></div>
@@ -757,9 +736,7 @@
 		<!-- Section 5: Technical Callouts -->
 		<section>
 			<div class="flex items-center gap-2 mb-4">
-				<span
-					class="font-mono text-2xs uppercase tracking-[0.15em] text-accent"
-				>
+				<span class="font-mono text-2xs uppercase tracking-[0.15em] text-accent">
 					Section 05
 				</span>
 				<div class="flex-1 h-px bg-border"></div>
@@ -787,9 +764,7 @@
 							Tech spec callouts use left-border annotations with semantic coloring to
 							indicate information type.
 						</p>
-						<span
-							class="font-mono text-2xs text-muted-foreground mt-2 block"
-						>
+						<span class="font-mono text-2xs text-muted-foreground mt-2 block">
 							Ref: DS-ANNOT-001
 						</span>
 					</div>
@@ -812,9 +787,7 @@
 							Amber callouts indicate caution areas or deprecated patterns that
 							require attention.
 						</p>
-						<span
-							class="font-mono text-2xs text-muted-foreground mt-2 block"
-						>
+						<span class="font-mono text-2xs text-muted-foreground mt-2 block">
 							Ref: DS-ANNOT-002
 						</span>
 					</div>
@@ -837,9 +810,7 @@
 							Green callouts highlight best practices and recommended patterns for
 							optimal results.
 						</p>
-						<span
-							class="font-mono text-2xs text-muted-foreground mt-2 block"
-						>
+						<span class="font-mono text-2xs text-muted-foreground mt-2 block">
 							Ref: DS-ANNOT-003
 						</span>
 					</div>
@@ -862,9 +833,7 @@
 							Purple callouts contain implementation details, code references, or
 							system specifications.
 						</p>
-						<span
-							class="font-mono text-2xs text-muted-foreground mt-2 block"
-						>
+						<span class="font-mono text-2xs text-muted-foreground mt-2 block">
 							Ref: DS-ANNOT-004
 						</span>
 					</div>
@@ -875,9 +844,7 @@
 		<!-- Section 6: Code Block Pattern -->
 		<section>
 			<div class="flex items-center gap-2 mb-4">
-				<span
-					class="font-mono text-2xs uppercase tracking-[0.15em] text-accent"
-				>
+				<span class="font-mono text-2xs uppercase tracking-[0.15em] text-accent">
 					Section 06
 				</span>
 				<div class="flex-1 h-px bg-border"></div>
@@ -895,8 +862,7 @@
 					<div class="flex items-center gap-2 sm:gap-3 min-w-0">
 						<FileText class="w-4 h-4 text-muted-foreground shrink-0" />
 						<span class="font-mono text-xs text-foreground truncate">inkprint.css</span>
-						<span class="font-mono text-2xs text-muted-foreground shrink-0"
-							>:42-58</span
+						<span class="font-mono text-2xs text-muted-foreground shrink-0">:42-58</span
 						>
 					</div>
 					<button
@@ -945,9 +911,7 @@
 		<!-- Section 7: Terminal Output Pattern -->
 		<section>
 			<div class="flex items-center gap-2 mb-4">
-				<span
-					class="font-mono text-2xs uppercase tracking-[0.15em] text-accent"
-				>
+				<span class="font-mono text-2xs uppercase tracking-[0.15em] text-accent">
 					Section 07
 				</span>
 				<div class="flex-1 h-px bg-border"></div>

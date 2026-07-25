@@ -310,7 +310,10 @@ async function checkAuthenticatedFlow() {
 			fail('tools/call reachable', String(error));
 		}
 	} else {
-		skip('tools/call', '(no read-only tool exposed by this grant; refusing to call a write tool)');
+		skip(
+			'tools/call',
+			'(no read-only tool exposed by this grant; refusing to call a write tool)'
+		);
 	}
 
 	// Authenticated GET → 405: v1 offers no server→client SSE stream.

@@ -46,12 +46,12 @@ Consequence, stated plainly: **Instagram is a repurpose/support channel, not the
 One **atom** per week — a real demonstration (`messy input → BuildOS structures it → relief`) — shot once, cut four ways. Full mechanics + templates + scaffold script live in
 [`../proof-content-harness/README.md`](../proof-content-harness/README.md).
 
-| # | Surface | Account | Role |
-| --- | --- | --- | --- |
-| 1 | **LinkedIn post** (+ native video) | DJ founder | **PRIMARY** — the buyer channel |
-| 2 | **X post** | DJ founder | quick-take of the same insight |
-| 3 | **Instagram Reel** | @djwayne3 | reach; ends on a *send-this* line; collab-tag @build.os |
-| 4 | **Brand proof** | @build.os | clean product cut for the repository |
+| #   | Surface                            | Account    | Role                                                    |
+| --- | ---------------------------------- | ---------- | ------------------------------------------------------- |
+| 1   | **LinkedIn post** (+ native video) | DJ founder | **PRIMARY** — the buyer channel                         |
+| 2   | **X post**                         | DJ founder | quick-take of the same insight                          |
+| 3   | **Instagram Reel**                 | @djwayne3  | reach; ends on a _send-this_ line; collab-tag @build.os |
+| 4   | **Brand proof**                    | @build.os  | clean product cut for the repository                    |
 
 **Cadence:** every **7–9 days**, enforced by the ops status engine (`weekly_atom` block in
 `../ops/cadence.json`). The engine flags it 🔴 overdue / 🟡 due / 🔵 next in the same report as the
@@ -66,13 +66,13 @@ blog cadence — so it can't silently rot again. Track id in the queue: **`found
 For the first **3–4 weeks**, post the **same atom** to IG (founder reel) **and** LinkedIn (founder post).
 Record per surface, from Insights/analytics:
 
-| Metric | IG reel (@djwayne3) | LinkedIn (founder) |
-| --- | --- | --- |
-| Reach / impressions | | |
-| % non-follower reach | | |
-| Profile visits / clicks | | |
-| Saves + sends/shares | | |
-| Qualified signups (UTM) | | |
+| Metric                  | IG reel (@djwayne3) | LinkedIn (founder) |
+| ----------------------- | ------------------- | ------------------ |
+| Reach / impressions     |                     |                    |
+| % non-follower reach    |                     |                    |
+| Profile visits / clicks |                     |                    |
+| Saves + sends/shares    |                     |                    |
+| Qualified signups (UTM) |                     |                    |
 
 **Decision rule:** after 4 atoms, weight the next month's effort toward whichever surface produced
 more **qualified reach** (profile visits + signups), not raw likes. Data decides the split, not opinion.
@@ -87,6 +87,6 @@ Metrics flow back into each atom's `metrics[]` in the ops queue (stage ④ ENGAG
 ## What did NOT change
 
 - The **anti-feed blog cluster** track is still real and still tracked — it's just been dormant. The
-  weekly atom is a *second* track (`founder-proof`) that ramps in alongside it, not a replacement.
+  weekly atom is a _second_ track (`founder-proof`) that ramps in alongside it, not a replacement.
 - **Anti-AI stance, real-media policy, receipts doctrine** all still apply to every atom.
 - The daily **commenting/warmup** stays — but it's relationship-seeding, not a growth engine on its own.

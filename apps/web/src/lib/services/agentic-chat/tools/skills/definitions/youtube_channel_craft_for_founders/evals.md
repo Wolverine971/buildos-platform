@@ -18,7 +18,7 @@ Golden tasks per `../../EVALS_GUIDE.md`. This skill has no reference modules —
 >
 > 1. "Quarterly reconciliation workflow update" — screenshot of the app's ledger screen
 > 2. "New invoice tagging feature demo" — app UI with an arrow
-> 3. "I left my accounting firm to build software for freelancers (8 months in)" — my face + "8 MONTHS" text — *this is the 3.4K one*
+> 3. "I left my accounting firm to build software for freelancers (8 months in)" — my face + "8 MONTHS" text — _this is the 3.4K one_
 > 4. "Webhooks + Stripe payout matching explained" — a flow diagram
 > 5. "Freelancer tax categories deep dive" — a spreadsheet
 >
@@ -27,7 +27,7 @@ Golden tasks per `../../EVALS_GUIDE.md`. This skill has no reference modules —
 ### Delta markers
 
 1. **M1 (phase classification):** Explicitly classifies the channel as **Phase 1 — Establishment**, citing the 30–50 video threshold against the 11 published (and/or the sub-weekly cadence).
-2. **M2 (phase-gate refusal):** Declines the requested CTR/retention optimization program *because of the phase*, names the gate, and substitutes phase-appropriate work (consistency + packaging checklist). Building the requested benchmark/optimization plan anyway is a guardrail miss — record it explicitly.
+2. **M2 (phase-gate refusal):** Declines the requested CTR/retention optimization program _because of the phase_, names the gate, and substitutes phase-appropriate work (consistency + packaging checklist). Building the requested benchmark/optimization plan anyway is a guardrail miss — record it explicitly.
 3. **M3 (unsourced-benchmark guardrail):** Does NOT assert absolute CTR or AVD target bands as fact; any absolute number given is labeled an internal default / unsourced, with channel-relative comparison (vs channel median / outlier method) offered instead.
 4. **M4 (first-hour CTR rule):** States that lifetime CTR (the 2.9%) is not the metric to read — CTR is predictive only in the first hour/first 24 hours and decays as impressions broaden.
 5. **M5 (CCN tagging):** Tags the listed videos for CCN fit, identifying videos 1, 2, 4, 5 as Core-only and video 3 as the CCN-fit outlier, and states the Core-only ratio caps the ceiling at the existing niche audience.
@@ -113,19 +113,19 @@ Notes:
 ### 2026-06-12 — Task 1 — BLIND A/B (the owed pair; prior wave-2 entry was a with-skill self-check) — performer (with/without) + blind judge: claude-opus-4-8 (workflow subagents)
 
 | Marker | without | with |
-| --- | --- | --- |
-| M1 | miss | hit |
-| M2 | miss | hit |
-| M3 | miss | hit |
-| M4 | miss | hit |
-| M5 | miss | hit |
-| M6 | miss | hit |
-| M7 | hit | hit |
-| M8 | miss | hit |
-| M9 | miss | hit |
-| M10 | miss | hit |
-| M11 | miss | hit |
-| M12 | miss | hit |
+| ------ | ------- | ---- |
+| M1     | miss    | hit  |
+| M2     | miss    | hit  |
+| M3     | miss    | hit  |
+| M4     | miss    | hit  |
+| M5     | miss    | hit  |
+| M6     | miss    | hit  |
+| M7     | hit     | hit  |
+| M8     | miss    | hit  |
+| M9     | miss    | hit  |
+| M10    | miss    | hit  |
+| M11    | miss    | hit  |
+| M12    | miss    | hit  |
 
 Verdict: **STRONG DELTA**. With-skill hit 12/12 markers; gap over no-skill = 11 markers. Refusal missed by skill run: False.
 Load path (expected, not re-tested this run): skill_load(youtube_channel_craft_for_founders, full) — the phase table, 8-point packaging checklist, analytics rules, and Worked Example live outside the short-format parsed sections; short loses the phase gate and the checklist. References: none exist; zero skill_reference_load calls. Should NOT load: hook_craft_short_form, viral_video_script_structure, algorithm_aware_publishing — the ask is channel-level diagnosis.

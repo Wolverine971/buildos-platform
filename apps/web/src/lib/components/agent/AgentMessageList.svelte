@@ -296,9 +296,7 @@
 											<p class="truncate text-xs font-semibold">
 												{attachment.file_name ?? 'Attached image'}
 											</p>
-											<p
-												class="mt-1 truncate text-2xs text-muted-foreground"
-											>
+											<p class="mt-1 truncate text-2xs text-muted-foreground">
 												{attachment.attachment_kind === 'temporary_file'
 													? 'Ready for visual analysis'
 													: attachment.ocr_status === 'complete'

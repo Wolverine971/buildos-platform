@@ -1,3 +1,4 @@
+// apps/web/src/routes/api/admin/subscriptions/admin-query.server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { createAdminSupabaseClientMock, getSubscriptionOverviewMock } = vi.hoisted(() => ({
@@ -94,7 +95,9 @@ describe('admin subscription query routes', () => {
 		const requestSupabase = createRequestSupabase();
 
 		const response = await usersGET({
-			url: new URL('http://localhost/api/admin/subscriptions/users?status=active&page=1&limit=1'),
+			url: new URL(
+				'http://localhost/api/admin/subscriptions/users?status=active&page=1&limit=1'
+			),
 			locals: {
 				supabase: requestSupabase,
 				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'admin-1' } })
@@ -135,7 +138,9 @@ describe('admin subscription query routes', () => {
 		createAdminSupabaseClientMock.mockReturnValue(adminSupabase);
 
 		const response = await usersGET({
-			url: new URL('http://localhost/api/admin/subscriptions/users?status=none&page=1&limit=10'),
+			url: new URL(
+				'http://localhost/api/admin/subscriptions/users?status=none&page=1&limit=10'
+			),
 			locals: {
 				supabase: createRequestSupabase(),
 				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'admin-1' } })

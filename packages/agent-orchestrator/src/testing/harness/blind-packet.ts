@@ -1,3 +1,4 @@
+// packages/agent-orchestrator/src/testing/harness/blind-packet.ts
 import {
 	BLIND_JUDGE_MECHANIC_SHA256,
 	BLIND_JUDGE_POLICY_VERSION,
@@ -42,10 +43,7 @@ export interface BlindMappingPacket {
 	mappings: BlindPacketMappingEntry[];
 }
 
-function scoredByPair(
-	lane: string,
-	runs: ComparableOutputRun[]
-): Map<string, ComparableOutputRun> {
+function scoredByPair(lane: string, runs: ComparableOutputRun[]): Map<string, ComparableOutputRun> {
 	const result = new Map<string, ComparableOutputRun>();
 	for (const run of runs.filter((candidate) => candidate.scored !== false)) {
 		const key = `${run.scenarioId}-r${run.runIndex}`;
@@ -79,6 +77,7 @@ export function buildBlindComparisonPackets(params: {
 			}
 			const mapping = createBlindMapping({
 				corpusVersion: params.corpusVersion,
+				scenarioIds: params.scenarios.map((entry) => entry.scenarioId),
 				scenarioId: scenario.scenarioId,
 				runIndex
 			});
@@ -88,9 +87,11 @@ export function buildBlindComparisonPackets(params: {
 					requestText: scenario.requestText,
 					acceptanceCriteria: scenario.acceptanceCriteria,
 					workflowResponse:
-						workflowRun.assistantText.trim() || '[No user-visible response was captured.]',
+						workflowRun.assistantText.trim() ||
+						'[No user-visible response was captured.]',
 					controlResponse:
-						controlRun.assistantText.trim() || '[No user-visible response was captured.]'
+						controlRun.assistantText.trim() ||
+						'[No user-visible response was captured.]'
 				})
 			);
 			mappings.push({
@@ -147,7 +148,8 @@ ${pair.response_b}
 Winner: \`A\` / \`B\` / \`tie\`
 
 Notes (optional):
-`);
+`
+	);
 
 	return `# Phase A A2 — DJ blind scoring packet
 

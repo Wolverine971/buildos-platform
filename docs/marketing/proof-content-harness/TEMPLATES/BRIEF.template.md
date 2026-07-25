@@ -1,3 +1,4 @@
+<!-- docs/marketing/proof-content-harness/TEMPLATES/BRIEF.template.md -->
 <!-- Atom brief. Fill this FIRST — the four surface files are derived from it. -->
 
 # Atom Brief — {{TITLE}}
@@ -9,11 +10,11 @@
 
 ## The demonstration (the spine of every surface)
 
-| Beat | This atom |
-| --- | --- |
-| **The messy input** (before) | _[what the chaos actually is]_ |
+| Beat                                 | This atom                       |
+| ------------------------------------ | ------------------------------- |
+| **The messy input** (before)         | _[what the chaos actually is]_  |
 | **BuildOS structures it** (the turn) | _[what the product does to it]_ |
-| **The relief** (after) | _[the feeling / the outcome]_ |
+| **The relief** (after)               | _[the feeling / the outcome]_   |
 
 ## The hook (first 3 seconds — decides the whole thing)
 
@@ -36,9 +37,9 @@
 
 ## Distribution
 
-| Surface | Account | Status | URL |
-| --- | --- | --- | --- |
-| LinkedIn (primary) | DJ | pending | |
-| X | DJ | pending | |
-| Instagram Reel | @djwayne3 | pending | |
-| Brand proof | @build.os | pending | |
+| Surface            | Account   | Status  | URL |
+| ------------------ | --------- | ------- | --- |
+| LinkedIn (primary) | DJ        | pending |     |
+| X                  | DJ        | pending |     |
+| Instagram Reel     | @djwayne3 | pending |     |
+| Brand proof        | @build.os | pending |     |

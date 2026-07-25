@@ -124,7 +124,7 @@ Execution tracker: [`../../../../tasker/24-creator-social-acquisition-pilot.md`]
 - [`../../brand/BUILDOS_REAL_MEDIA_POLICY.md`](../../brand/BUILDOS_REAL_MEDIA_POLICY.md) — media guardrails.
 - [`../../brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md`](../../brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md) — proof doctrine and receipt formats.
 - [`../../visual-assets/references/inkprint-card-system.md`](../../visual-assets/references/inkprint-card-system.md) — visual production system.
-- [`../../../../tasker/22-activation-as-strategy-assessment.md`](../../../../tasker/22-activation-as-strategy-assessment.md) — product activation assessment handoff.
+- [`../../../product/activation-as-strategy-assessment-2026-07-07.md`](../../../product/activation-as-strategy-assessment-2026-07-07.md) — product activation assessment.
 
 ## Start Here
 

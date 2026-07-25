@@ -197,9 +197,7 @@
 											{entry.entity_name}
 										</span>
 									{/if}
-									<span
-										class="flex-shrink-0 text-2xs text-muted-foreground"
-									>
+									<span class="flex-shrink-0 text-2xs text-muted-foreground">
 										{entityLabel(entry)}
 										{#if entry.occurrences > 1}
 											· ×{entry.occurrences}

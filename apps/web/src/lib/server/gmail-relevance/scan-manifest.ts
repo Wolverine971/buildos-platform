@@ -145,9 +145,7 @@ export function hashEmailRelevanceScanIdempotencyKey(
 	userId: string,
 	idempotencyKey: string
 ): string {
-	return sha256(
-		`email-relevance-scan-idempotency-v1\u0000${userId}\u0000${idempotencyKey}`
-	);
+	return sha256(`email-relevance-scan-idempotency-v1\u0000${userId}\u0000${idempotencyKey}`);
 }
 
 function compareAscii(left: string, right: string): number {

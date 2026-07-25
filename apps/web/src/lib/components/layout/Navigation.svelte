@@ -20,6 +20,7 @@
 		Clock,
 		Sun,
 		Moon,
+		Activity,
 		Bell,
 		Inbox,
 		Bot,
@@ -1154,8 +1155,8 @@
 										class="flex items-center w-full px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors
 										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 									>
-										<Bell class="w-4 h-4 mr-3" />
-										Notifications
+										<Activity class="w-4 h-4 mr-3" />
+										Activity
 									</a>
 
 									{#if showAgentConnectionCta}
@@ -1440,8 +1441,8 @@
 							class="flex items-center px-3 py-1.5 text-base font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 						>
-							<Bell class="w-5 h-5 mr-3" />
-							Notifications
+							<Activity class="w-5 h-5 mr-3" />
+							Activity
 						</a>
 
 						<button

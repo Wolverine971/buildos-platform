@@ -1,3 +1,4 @@
+// packages/agent-orchestrator/src/agents/researcher/researcher.test.ts
 import { describe, expect, it } from 'vitest';
 
 import type { ResearchModelPort, WebResearchPort } from '../../ports';
@@ -38,6 +39,98 @@ describe('bounded researcher', () => {
 		expect(execution.citedUrls).toEqual([sourceUrl]);
 	});
 
+	it('accepts a final redirected URL as the citation for a supplied source', async () => {
+		const suppliedUrl = 'https://example.com/source';
+		const finalUrl = 'https://example.com/final';
+		const execution = await runResearcher({
+			objective: `Use ${suppliedUrl} to research the topic.`,
+			web: {
+				visit: async () => ({
+					url: suppliedUrl,
+					final_url: finalUrl,
+					title: 'Redirected Source',
+					content: 'Final source-backed evidence.'
+				})
+			},
+			model: {
+				generateText: async () => ({
+					text: `The redirected source has usable evidence [Source](${finalUrl}).`,
+					...emptyUsage
+				})
+			}
+		});
+
+		expect(execution.result.status).toBe('completed');
+		expect(execution.citedUrls).toEqual([finalUrl]);
+	});
+
+	it('derives its evidence bounds from the assignment, not from a scenario identity', async () => {
+		// Supplied sources: visit exactly those and cite all of them.
+		const supplied = ['https://example.com/a', 'https://example.com/b'];
+		const visited: string[] = [];
+		const suppliedRun = await runResearcher({
+			objective: `Compare ${supplied[0]} and ${supplied[1]}.`,
+			web: {
+				search: async () => {
+					throw new Error('search must not run when the request supplies its sources');
+				},
+				visit: async (args) => {
+					const url = String((args as { url: string }).url);
+					visited.push(url);
+					return { url, final_url: url, title: url, content: 'Observed content.' };
+				}
+			},
+			model: {
+				generateText: async () => ({
+					text: `Both sources agree [a](${supplied[0]}) and [b](${supplied[1]}).`,
+					...emptyUsage
+				})
+			}
+		});
+		expect(visited).toEqual(supplied);
+		expect(suppliedRun.result.status).toBe('completed');
+
+		// Citing only one of two supplied sources is not complete evidence.
+		const partialRun = await runResearcher({
+			objective: `Compare ${supplied[0]} and ${supplied[1]}.`,
+			web: {
+				visit: async (args) => {
+					const url = String((args as { url: string }).url);
+					return { url, final_url: url, title: url, content: 'Observed content.' };
+				}
+			},
+			model: {
+				generateText: async () => ({
+					text: `Only one source is cited [a](${supplied[0]}).`,
+					...emptyUsage
+				})
+			}
+		});
+		expect(partialRun.result.status).toBe('partial');
+
+		// Discovered sources require corroboration from at least two of them.
+		const discovered = 'https://example.com/only';
+		const discoveredRun = await runResearcher({
+			objective: 'Research the current options and recommend one.',
+			web: {
+				search: async () => ({ results: [{ url: discovered }] }),
+				visit: async () => ({
+					url: discovered,
+					final_url: discovered,
+					title: 'Only',
+					content: 'A single observed source.'
+				})
+			},
+			model: {
+				generateText: async () => ({
+					text: `One option looks best [only](${discovered}).`,
+					...emptyUsage
+				})
+			}
+		});
+		expect(discoveredRun.result.status).toBe('partial');
+	});
+
 	it('marks a memo partial when the model invents a citation', async () => {
 		const observed = 'https://example.com/observed';
 		const execution = await runResearcher({
@@ -71,7 +164,8 @@ describe('bounded researcher', () => {
 			facts: [
 				{
 					fact_id: '77777777-7777-4777-8777-777777777777',
-					statement: 'Choose a PVT psychomotor vigilance task app for iPhone and log a baseline.',
+					statement:
+						'Choose a PVT psychomotor vigilance task app for iPhone and log a baseline.',
 					source: {
 						source_type: 'buildos_entity' as const,
 						source_id: 'task:test',
@@ -102,7 +196,10 @@ describe('bounded researcher', () => {
 				visit: async () => ({ url: source, title: 'PVT', content: 'iPhone PVT evidence.' })
 			},
 			model: {
-				generateText: async () => ({ text: `Use the evidence [PVT](${source}).`, ...emptyUsage })
+				generateText: async () => ({
+					text: `Use the evidence [PVT](${source}).`,
+					...emptyUsage
+				})
 			}
 		});
 

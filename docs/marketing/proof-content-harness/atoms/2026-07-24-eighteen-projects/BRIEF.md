@@ -1,3 +1,4 @@
+<!-- docs/marketing/proof-content-harness/atoms/2026-07-24-eighteen-projects/BRIEF.md -->
 <!-- Atom brief. Fill this FIRST — the four surface files are derived from it. -->
 
 # Atom Brief — 18 projects, one shared context
@@ -9,11 +10,11 @@
 
 ## The demonstration (the spine of every surface)
 
-| Beat | This atom |
-| --- | --- |
-| **The messy input** (before) | 18 open projects, wildly different. Every switch used to cost the thread — the first 20 min of any work block went to remembering where I left off. |
+| Beat                                 | This atom                                                                                                                                                          |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **The messy input** (before)         | 18 open projects, wildly different. Every switch used to cost the thread — the first 20 min of any work block went to remembering where I left off.                |
 | **BuildOS structures it** (the turn) | Each project keeps its own living context — tasks, decisions, docs, loose ends. Brain-dump in, it sorts to the right project. Drop back in and it's already there. |
-| **The relief** (after) | I can touch a project for 20 minutes and actually move it, because I'm not rebuilding the mental model first. Context switching stops being expensive. |
+| **The relief** (after)               | I can touch a project for 20 minutes and actually move it, because I'm not rebuilding the mental model first. Context switching stops being expensive.             |
 
 ## The hook (first 3 seconds — decides the whole thing)
 
@@ -37,9 +38,9 @@
 
 ## Distribution
 
-| Surface | Account | Status | URL |
-| --- | --- | --- | --- |
-| LinkedIn (primary) | DJ | drafted | |
-| X | DJ | drafted | |
-| Instagram Reel | @djwayne3 | drafted (needs assets) | |
-| Brand proof | @build.os | drafted (needs assets) | |
+| Surface            | Account   | Status                 | URL |
+| ------------------ | --------- | ---------------------- | --- |
+| LinkedIn (primary) | DJ        | drafted                |     |
+| X                  | DJ        | drafted                |     |
+| Instagram Reel     | @djwayne3 | drafted (needs assets) |     |
+| Brand proof        | @build.os | drafted (needs assets) |     |

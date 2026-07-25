@@ -1,12 +1,12 @@
 ---
-title: "Sahil Bloom’s Content Empire Playbook | How I Write Podcast"
+title: 'Sahil Bloom’s Content Empire Playbook | How I Write Podcast'
 source_type: youtube_transcript
 video_id: f-s22uCixMw
-url: "https://www.youtube.com/watch?v=f-s22uCixMw"
+url: 'https://www.youtube.com/watch?v=f-s22uCixMw'
 channel: David Perell
-channel_url: "https://www.youtube.com/@DavidPerellChannel"
+channel_url: 'https://www.youtube.com/@DavidPerellChannel'
 upload_date: 2023-12-20
-duration: "01:25:27"
+duration: '01:25:27'
 views: 12248
 library_category: writing
 library_status: transcript, analysis
@@ -22,104 +22,105 @@ public_article: ''
 indexed_date: '2026-06-11'
 last_reviewed: '2026-06-12'
 timestamps:
-  - time: "0:00"
-    label: "Intro"
-  - time: "1:00"
-    label: "Early Writing"
-  - time: "7:50"
-    label: "Creative Cliff"
-  - time: "9:20"
-    label: "Forced Constraints"
-  - time: "13:55"
-    label: "Impacting 1 Billion"
-  - time: "20:00"
-    label: "Certainty vs Non-Consensus"
-  - time: "23:10"
-    label: "Asking Better Questions"
-  - time: "24:50"
-    label: "Epiphanies"
-  - time: "27:28"
-    label: "Writing Process"
-  - time: "31:00"
-    label: "Systems"
-  - time: "32:20"
-    label: "Relationships"
-  - time: "36:30"
-    label: "Speaking with smart people"
-  - time: "42:42"
-    label: "Newsletter Growth"
-  - time: "44:50"
-    label: "Sahil's Team"
-  - time: "48:55"
-    label: "Distribution"
-  - time: "50:55"
-    label: "Twitter (X) Changes"
-  - time: "53:00"
-    label: "Twitter Threads"
-  - time: "1:00:50"
-    label: "Writing a book"
-  - time: "1:09:08"
-    label: "Editing Process"
-  - time: "1:12:00"
-    label: "Centipede Dilemma"
-  - time: "1:13:50"
-    label: "Sahil's Notebook"
-  - time: "1:17:00"
-    label: "Writing from conversation"
+    - time: '0:00'
+      label: 'Intro'
+    - time: '1:00'
+      label: 'Early Writing'
+    - time: '7:50'
+      label: 'Creative Cliff'
+    - time: '9:20'
+      label: 'Forced Constraints'
+    - time: '13:55'
+      label: 'Impacting 1 Billion'
+    - time: '20:00'
+      label: 'Certainty vs Non-Consensus'
+    - time: '23:10'
+      label: 'Asking Better Questions'
+    - time: '24:50'
+      label: 'Epiphanies'
+    - time: '27:28'
+      label: 'Writing Process'
+    - time: '31:00'
+      label: 'Systems'
+    - time: '32:20'
+      label: 'Relationships'
+    - time: '36:30'
+      label: 'Speaking with smart people'
+    - time: '42:42'
+      label: 'Newsletter Growth'
+    - time: '44:50'
+      label: "Sahil's Team"
+    - time: '48:55'
+      label: 'Distribution'
+    - time: '50:55'
+      label: 'Twitter (X) Changes'
+    - time: '53:00'
+      label: 'Twitter Threads'
+    - time: '1:00:50'
+      label: 'Writing a book'
+    - time: '1:09:08'
+      label: 'Editing Process'
+    - time: '1:12:00'
+      label: 'Centipede Dilemma'
+    - time: '1:13:50'
+      label: "Sahil's Notebook"
+    - time: '1:17:00'
+      label: 'Writing from conversation'
 description: |
-  Sign Up for "Writing Examples" and Learn From The Best Writing of All Time: https://www.writingexamples.com
-  
-  Sahil Bloom once believed working in finance was the only way to make money; then, he started writing online and proved himself wrong. Come learn how he turned Twitter threads into 1 million followers by writing with soul.
-  
-  SPEAKER LINKS:
-  Website: https://www.sahilbloom.com
-  Twitter: https://twitter.com/SahilBloom
-  Newsletter: https://www.sahilbloom.com/newsletter
-  
-  WRITE OF PASSAGE: 
-  Want to learn more about the next class for Write of Passage?
-  Click here: https://writeofpassage.school
-  
-  TIMESTAMPS:
-  00:00:00 Intro
-  00:01:00 Early Writing
-  00:07:50 Creative Cliff
-  00:09:20 Forced Constraints
-  00:13:55 Impacting 1 Billion
-  00:20:00 Certainty vs Non-Consensus
-  00:23:10 Asking Better Questions
-  00:24:50 Epiphanies
-  00:27:28 Writing Process
-  00:31:00 Systems
-  00:32:20 Relationships
-  00:36:30 Speaking with smart people
-  00:42:42 Newsletter Growth
-  00:44:50 Sahil's Team
-  00:48:55 Distribution
-  00:50:55 Twitter (X) Changes
-  00:53:00 Twitter Threads
-  01:00:50 Writing a book
-  01:09:08 Editing Process
-  01:12:00 Centipede Dilemma
-  01:13:50 Sahil's Notebook
-  01:17:00 Writing from conversation
-  
-  PODCAST LINKS: 
-  Website: https://writeofpassage.school/how-i-write/
-  Apple: https://podcasts.apple.com/us/podcast/how-i-write/id1700171470
-  Spotify: https://open.spotify.com/show/2DjMSboniFAeGA8v9NpoPv
-  
-  ABOUT THE HOST: 
-  I’m David Perell and I’m a writer, teacher, and podcaster. I believe writing online is one of the biggest opportunities in the world today. For the first time in human history, everybody can freely share their ideas with a global audience. I seek to help as many people publish their writing online as possible.
-  
-  How I Write is a podcast by Write of Passage // Production by Adam Soccolich
-transcribed_date: "2026-06-11"
+    Sign Up for "Writing Examples" and Learn From The Best Writing of All Time: https://www.writingexamples.com
+
+    Sahil Bloom once believed working in finance was the only way to make money; then, he started writing online and proved himself wrong. Come learn how he turned Twitter threads into 1 million followers by writing with soul.
+
+    SPEAKER LINKS:
+    Website: https://www.sahilbloom.com
+    Twitter: https://twitter.com/SahilBloom
+    Newsletter: https://www.sahilbloom.com/newsletter
+
+    WRITE OF PASSAGE: 
+    Want to learn more about the next class for Write of Passage?
+    Click here: https://writeofpassage.school
+
+    TIMESTAMPS:
+    00:00:00 Intro
+    00:01:00 Early Writing
+    00:07:50 Creative Cliff
+    00:09:20 Forced Constraints
+    00:13:55 Impacting 1 Billion
+    00:20:00 Certainty vs Non-Consensus
+    00:23:10 Asking Better Questions
+    00:24:50 Epiphanies
+    00:27:28 Writing Process
+    00:31:00 Systems
+    00:32:20 Relationships
+    00:36:30 Speaking with smart people
+    00:42:42 Newsletter Growth
+    00:44:50 Sahil's Team
+    00:48:55 Distribution
+    00:50:55 Twitter (X) Changes
+    00:53:00 Twitter Threads
+    01:00:50 Writing a book
+    01:09:08 Editing Process
+    01:12:00 Centipede Dilemma
+    01:13:50 Sahil's Notebook
+    01:17:00 Writing from conversation
+
+    PODCAST LINKS: 
+    Website: https://writeofpassage.school/how-i-write/
+    Apple: https://podcasts.apple.com/us/podcast/how-i-write/id1700171470
+    Spotify: https://open.spotify.com/show/2DjMSboniFAeGA8v9NpoPv
+
+    ABOUT THE HOST: 
+    I’m David Perell and I’m a writer, teacher, and podcaster. I believe writing online is one of the biggest opportunities in the world today. For the first time in human history, everybody can freely share their ideas with a global audience. I seek to help as many people publish their writing online as possible.
+
+    How I Write is a podcast by Write of Passage // Production by Adam Soccolich
+transcribed_date: '2026-06-11'
 path: docs/research/youtube-library/transcripts/2026-06-11_sahil-bloom_how-i-write-content-empire.md
 ---
 
 # Sahil Bloom’s Content Empire Playbook | How I Write Podcast
 
 ## Metadata
+
 - **Channel**: [David Perell](https://www.youtube.com/@DavidPerellChannel)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=f-s22uCixMw)
 - **Duration**: 01:25:27
@@ -128,6 +129,7 @@ path: docs/research/youtube-library/transcripts/2026-06-11_sahil-bloom_how-i-wri
 - **Analysis:** `docs/research/youtube-library/analyses/2026-06-11_sahil-bloom_content-empire-writing-system_analysis.md`
 
 ## Timestamps
+
 - 0:00 — Intro
 - 1:00 — Early Writing
 - 7:50 — Creative Cliff

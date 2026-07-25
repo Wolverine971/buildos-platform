@@ -1,3 +1,4 @@
+<!-- docs/marketing/proof-content-harness/TEMPLATES/brand-proof.template.md -->
 <!-- Brand-proof cut — @build.os (brand / repository). The clean product version. -->
 <!-- Voice: second-person observational (brand voice), product-forward, calm. This is the credibility
      destination, NOT a reach play. Low cadence, high signal. -->

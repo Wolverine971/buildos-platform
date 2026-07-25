@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/architecture/AGENTIC_CHAT_SUBAGENTS_DESIGN_2026-06-15.md -->
+
 # Agentic Chat — Subagents / Orchestrator Design
 
 > **⚠️ SUPERSEDED (2026-06-15).** This was the v1 in-process plan. We pivoted to the more ambitious **durable Work substrate** — see the canonical doc set in
@@ -26,31 +28,31 @@ Inspiration: Claude Code's `Task` tool. Same ergonomics — the orchestrator "aw
 
 ### Decisions locked (2026-06-15)
 
-1. **Execution substrate (v1):** *In-process fast path.* Subagents run synchronously inside the orchestrator's streaming request. Durable worker path is a future add-on behind the same contract.
-2. **Runner:** *Dedicated chat-subagent runner.* New lightweight runner + `chat_subagent_runs` table, sharing the result-envelope shape and event patterns with `buildos_tree_agent` but **not** its recursive planning machinery. (Chat subagents are flat single-goal executors; the orchestrator is the planner.)
+1. **Execution substrate (v1):** _In-process fast path._ Subagents run synchronously inside the orchestrator's streaming request. Durable worker path is a future add-on behind the same contract.
+2. **Runner:** _Dedicated chat-subagent runner._ New lightweight runner + `chat_subagent_runs` table, sharing the result-envelope shape and event patterns with `buildos_tree_agent` but **not** its recursive planning machinery. (Chat subagents are flat single-goal executors; the orchestrator is the planner.)
 
 ---
 
 ## 2. Why this is mostly an integration, not a from-scratch build
 
-| Need | Already exists | File |
-|---|---|---|
-| Tool-calling loop + dispatch | `streamFastChat` orchestrator + `ChatToolExecutor` | `apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts`, `.../agentic-chat/tools/core/tool-executor.ts` |
-| "Almost everything" tool surface | lean-discovery gateway (`domain_search` / `skill_load` / `tool_search` …) | `.../agentic-chat/tools/core/gateway-surface.ts` |
-| Entity-touched ground truth | write-tool payloads return entity IDs + messages; every call logged | `.../tools/core/executors/ontology-write-executor.ts`, `chat_tool_executions` table |
-| Result envelope precedent | `TreeAgentResult` (summary, successAssessment, artifactIds…) | `apps/worker/src/workers/tree-agent/treeAgentWorker.ts` |
-| Autonomous loop + budgets + event log | `buildos_tree_agent` (durable-path precedent for v2) | same |
-| 5-min request budget | `maxDuration: 300` on the stream route | `apps/web/src/routes/api/agent/v2/stream/+server.ts:14` |
-| SSE event union to extend | `AgentSSEMessage` | `packages/shared-types/src/agent.types.ts:461` |
+| Need                                  | Already exists                                                            | File                                                                                                                     |
+| ------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Tool-calling loop + dispatch          | `streamFastChat` orchestrator + `ChatToolExecutor`                        | `apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts`, `.../agentic-chat/tools/core/tool-executor.ts` |
+| "Almost everything" tool surface      | lean-discovery gateway (`domain_search` / `skill_load` / `tool_search` …) | `.../agentic-chat/tools/core/gateway-surface.ts`                                                                         |
+| Entity-touched ground truth           | write-tool payloads return entity IDs + messages; every call logged       | `.../tools/core/executors/ontology-write-executor.ts`, `chat_tool_executions` table                                      |
+| Result envelope precedent             | `TreeAgentResult` (summary, successAssessment, artifactIds…)              | `apps/worker/src/workers/tree-agent/treeAgentWorker.ts`                                                                  |
+| Autonomous loop + budgets + event log | `buildos_tree_agent` (durable-path precedent for v2)                      | same                                                                                                                     |
+| 5-min request budget                  | `maxDuration: 300` on the stream route                                    | `apps/web/src/routes/api/agent/v2/stream/+server.ts:14`                                                                  |
+| SSE event union to extend             | `AgentSSEMessage`                                                         | `packages/shared-types/src/agent.types.ts:461`                                                                           |
 
 ---
 
 ## 3. Core abstraction: a **Subagent Run** = a headless sub-session
 
-A subagent run is the *same harness* as a chat turn, but:
+A subagent run is the _same harness_ as a chat turn, but:
 
 - **Driven by a structured task brief** instead of conversational human messages.
-- **No human-streaming contract.** It streams *to the orchestrator* (surfaced nested in the UI for transparency), and it **terminates by submitting a structured result**.
+- **No human-streaming contract.** It streams _to the orchestrator_ (surfaced nested in the UI for transparency), and it **terminates by submitting a structured result**.
 - **Tool surface = orchestrator's surface minus `delegate_task`** (this is how depth is capped — see §7).
 
 ```
@@ -71,7 +73,7 @@ Human ──chat──▶ Orchestrator turn (streamFastChat)
 
 ```ts
 interface SubagentRunner {
-  run(brief: SubagentBrief, ctx: SubagentRunContext): Promise<SubagentResult>;
+	run(brief: SubagentBrief, ctx: SubagentRunContext): Promise<SubagentResult>;
 }
 ```
 
@@ -117,24 +119,24 @@ Every agent loop has **two output channels**:
 
 ```ts
 interface SubagentResult {
-  run_id: string;
-  label: string;
-  status: 'completed' | 'partial' | 'failed' | 'needs_input';
-  summary: string;          // "showing its work" — narrative of what it did
-  answer: string;           // the actual response/finding (may equal summary)
-  entities_touched: EntityTouch[];
-  artifacts?: { kind: 'document' | 'json'; id: string; title?: string }[];
-  open_questions?: string[];   // populated when status = needs_input / partial
-  confidence?: number;         // 0..1, self-reported
-  metrics: { tokens: number; cost_usd: number; tool_calls: number; duration_ms: number };
-  error?: string;              // when status = failed
+	run_id: string;
+	label: string;
+	status: 'completed' | 'partial' | 'failed' | 'needs_input';
+	summary: string; // "showing its work" — narrative of what it did
+	answer: string; // the actual response/finding (may equal summary)
+	entities_touched: EntityTouch[];
+	artifacts?: { kind: 'document' | 'json'; id: string; title?: string }[];
+	open_questions?: string[]; // populated when status = needs_input / partial
+	confidence?: number; // 0..1, self-reported
+	metrics: { tokens: number; cost_usd: number; tool_calls: number; duration_ms: number };
+	error?: string; // when status = failed
 }
 
 interface EntityTouch {
-  type: 'task' | 'project' | 'document' | 'goal' | 'plan' | 'calendar_event' | string;
-  id: string;
-  action: 'created' | 'updated' | 'deleted';
-  description: string;   // LLM-annotated; e.g. "rescheduled to Friday to unblock launch"
+	type: 'task' | 'project' | 'document' | 'goal' | 'plan' | 'calendar_event' | string;
+	id: string;
+	action: 'created' | 'updated' | 'deleted';
+	description: string; // LLM-annotated; e.g. "rescheduled to Friday to unblock launch"
 }
 ```
 
@@ -236,27 +238,33 @@ After `delegate_task` returns, the orchestrator LLM sees the envelopes and decid
 ## 11. Phased implementation plan
 
 **Phase 0 — Contracts & scaffolding**
+
 - Add `SubagentBrief`, `SubagentResult`, `EntityTouch` to `packages/shared-types`.
 - Extend `AgentSSEMessage` with the four subagent events.
 - `chat_subagent_runs` migration; add `subagent_run_id` to `chat_tool_executions`.
 
 **Phase 1 — Headless runner (single subagent, in-process)**
+
 - `runSubagentLoop` reusing tool surface + `ChatToolExecutor` + LLM call.
 - `submit_result` terminal tool; telemetry-based `entities_touched` capture.
 - `InProcessSubagentRunner` implementing the `SubagentRunner` seam.
 
 **Phase 2 — `delegate_task` tool + fan-out**
+
 - Orchestrator-only tool; batch `tasks[]`; `Promise.all` with the cap.
 - Guardrails: depth check, fan-out cap, budgets.
 
 **Phase 3 — Streaming & UI**
+
 - Emit/forward subagent SSE events; nested subagent card with live narration + entity chips + status.
 
 **Phase 4 — Evaluation polish & docs**
+
 - Prompt the orchestrator on how/when to delegate, evaluate, retry.
 - Eval prompts; update agentic-chat docs.
 
 **Future (v2) — Durable path**
+
 - `DurableSubagentRunner` (worker job + realtime resolution) behind the same `SubagentRunner` interface, for long tasks (e.g. multi-minute web research) that exceed the request budget.
 
 ---

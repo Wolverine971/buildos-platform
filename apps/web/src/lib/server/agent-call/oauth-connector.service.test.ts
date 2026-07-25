@@ -37,17 +37,15 @@ describe('OAuth connector helpers', () => {
 	});
 
 	it('never adds write access when the client did not request it', () => {
-		expect(
-			scopesForOAuthApproval(['buildos.read', 'offline_access'], 'read_write')
-		).toEqual(['buildos.read', 'offline_access']);
+		expect(scopesForOAuthApproval(['buildos.read', 'offline_access'], 'read_write')).toEqual([
+			'buildos.read',
+			'offline_access'
+		]);
 	});
 
 	it('removes requested write access when the user approves read-only access', () => {
 		expect(
-			scopesForOAuthApproval(
-				['buildos.read', 'buildos.write', 'offline_access'],
-				'read_only'
-			)
+			scopesForOAuthApproval(['buildos.read', 'buildos.write', 'offline_access'], 'read_only')
 		).toEqual(['buildos.read', 'offline_access']);
 	});
 

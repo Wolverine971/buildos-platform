@@ -69,7 +69,7 @@ Everything below is deployed or committed-in-working-tree and verified — do no
    wrapping, deep-link shape), registry tests (email ops resolve as reads; **no**
    send/modify/execute/draft op name resolves to anything; flag-off hides all email tools;
    delegated agents get none by default), and one e2e agentic harness scenario (`pnpm
-   test:agentic`) that searches + opens a message and asserts zero Gmail writes.
+test:agentic`) that searches + opens a message and asserts zero Gmail writes.
 
 ## Landmines
 

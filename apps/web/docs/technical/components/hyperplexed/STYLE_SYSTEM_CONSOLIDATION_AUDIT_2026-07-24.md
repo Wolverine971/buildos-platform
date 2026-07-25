@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/hyperplexed/STYLE_SYSTEM_CONSOLIDATION_AUDIT_2026-07-24.md -->
+
 # Style System Consolidation Audit — 2026-07-24
 
 ## Outcome
@@ -9,15 +11,15 @@ No confirmed Tier 1–3 regression remains in the implemented scope.
 
 ## Audited regions
 
-| Region | Drift or duplication found | Resolution |
-| --- | --- | --- |
-| Inkprint runtime and public library | Runtime and downloadable CSS could evolve independently | Added a deterministic sync/check workflow; runtime CSS is authoritative |
-| Type scale | Repeated 8–13px arbitrary utilities and duplicated responsive sizes | Mapped all Svelte typography to the canonical Tailwind/Inkprint scale; `micro-label` and `text-2xs` resolve to 11px |
-| Modal shells | Agent and Brief chat repeated presentation behavior; non-scroll content lost flex sizing | Consolidated on `Modal` immersive presentation and restored the min-height-aware flex column contract |
-| Modal touch and overflow | Small close targets and shrink-unsafe Brief header/panes | Raised shared and Brief close targets to 44px; added `min-w-0` and responsive divider ownership |
-| PWA chrome | Theme hex values were duplicated in TypeScript; the installed body hid its scrollbar | `app.html` now owns browser theme colors; script reads the matching meta tag; page scrollbar remains visible |
-| Semantic surfaces | Time blocks, SMS monitoring, graph controls, and docs mixed literal/palette styling with semantic tokens | Moved themed UI to Inkprint semantic colors and contrast-aware foreground selection |
-| Design-system reference | Mobile comparison matrix scrolled without an affordance | Added a labeled, keyboard-focusable scroll region, mobile cue, and retained scrollbar styling |
+| Region                              | Drift or duplication found                                                                               | Resolution                                                                                                          |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Inkprint runtime and public library | Runtime and downloadable CSS could evolve independently                                                  | Added a deterministic sync/check workflow; runtime CSS is authoritative                                             |
+| Type scale                          | Repeated 8–13px arbitrary utilities and duplicated responsive sizes                                      | Mapped all Svelte typography to the canonical Tailwind/Inkprint scale; `micro-label` and `text-2xs` resolve to 11px |
+| Modal shells                        | Agent and Brief chat repeated presentation behavior; non-scroll content lost flex sizing                 | Consolidated on `Modal` immersive presentation and restored the min-height-aware flex column contract               |
+| Modal touch and overflow            | Small close targets and shrink-unsafe Brief header/panes                                                 | Raised shared and Brief close targets to 44px; added `min-w-0` and responsive divider ownership                     |
+| PWA chrome                          | Theme hex values were duplicated in TypeScript; the installed body hid its scrollbar                     | `app.html` now owns browser theme colors; script reads the matching meta tag; page scrollbar remains visible        |
+| Semantic surfaces                   | Time blocks, SMS monitoring, graph controls, and docs mixed literal/palette styling with semantic tokens | Moved themed UI to Inkprint semantic colors and contrast-aware foreground selection                                 |
+| Design-system reference             | Mobile comparison matrix scrolled without an affordance                                                  | Added a labeled, keyboard-focusable scroll region, mobile cue, and retained scrollbar styling                       |
 
 ## Guardrails
 

@@ -57,18 +57,18 @@ Two governing reframes: _"how much did you spend to acquire followers"_ is **the
 
 ## TL;DR Frameworks & Thresholds Table
 
-| #   | Framework / rule                  | Concrete threshold or definition                                                                                                                                                                          |
-| --- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | The 3-second hook point           | You have **less than 3 seconds** to grab attention and stop the scroll before the viewer is gone. The "hook point" is the device that earns the rest of the content.                                       |
-| 2   | Grab → Hold → Monetize            | Three sequential pillars. (1) Grab attention or you're lost in the noise. (2) Hold/retain it — "attention with no substance doesn't mean anything." (3) Monetize against an explicit business strategy.   |
-| 3   | Algorithm surface ratio           | On app-open there are ~1,000+ candidate posts; the algorithm shows the **top ~15** it predicts will retain attention. So **~985 of ~1,000 posts (~98.5%) get de-prioritized** and are never seen.         |
-| 4   | ROI-per-follower, not follower #  | Reframe: never ask cost-per-follower; ask **return on investment per follower.** Some accounts with millions of followers make $0; some with **10–20K followers make millions.** Followers ≠ revenue.     |
-| 5   | Retention graph as the real test  | Even if you stop the scroll, watch-time/retention "completely tanking" is why most accounts don't grow. The algorithm now weighs **retention**, not just stop-scroll + click. "End of the clickbait days." |
-| 6   | Content-as-market-research        | Push content at scale on Facebook/Instagram ad platforms as a **market-research tool, not a media-buying tool** — learn which formats/themes/trends/hooks work _before_ over-investing.                    |
-| 7   | The 5-second pre-trailer          | Studios (Screen Gems / Sony first, ~7–8 yrs prior to 2021) run a **~5-second teaser before the trailer** — flashing visuals, a celebrity, an explosion — purely to stop the scroll. Hook-before-content.   |
-| 8   | Hold is not the hard part         | Once grabbed, attention holds long: a **90-minute movie**, a **weekend binge** of a series, a **2.5-hour Joe Rogan podcast.** The bottleneck is the first few seconds, not duration.                       |
-| 9   | Hooks aren't only words           | A hook can be delivered via **text, colors, on-screen action, facial expressions** — conscious or subconscious. Words are one channel among several.                                                      |
-| 10  | Long-haul mindset gate            | "Social media is no different than any business." 17 years in, still working it daily. Expecting fast/easy results from one button-press is the #1 predictor of failure.                                   |
+| #   | Framework / rule                 | Concrete threshold or definition                                                                                                                                                                           |
+| --- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | The 3-second hook point          | You have **less than 3 seconds** to grab attention and stop the scroll before the viewer is gone. The "hook point" is the device that earns the rest of the content.                                       |
+| 2   | Grab → Hold → Monetize           | Three sequential pillars. (1) Grab attention or you're lost in the noise. (2) Hold/retain it — "attention with no substance doesn't mean anything." (3) Monetize against an explicit business strategy.    |
+| 3   | Algorithm surface ratio          | On app-open there are ~1,000+ candidate posts; the algorithm shows the **top ~15** it predicts will retain attention. So **~985 of ~1,000 posts (~98.5%) get de-prioritized** and are never seen.          |
+| 4   | ROI-per-follower, not follower # | Reframe: never ask cost-per-follower; ask **return on investment per follower.** Some accounts with millions of followers make $0; some with **10–20K followers make millions.** Followers ≠ revenue.      |
+| 5   | Retention graph as the real test | Even if you stop the scroll, watch-time/retention "completely tanking" is why most accounts don't grow. The algorithm now weighs **retention**, not just stop-scroll + click. "End of the clickbait days." |
+| 6   | Content-as-market-research       | Push content at scale on Facebook/Instagram ad platforms as a **market-research tool, not a media-buying tool** — learn which formats/themes/trends/hooks work _before_ over-investing.                    |
+| 7   | The 5-second pre-trailer         | Studios (Screen Gems / Sony first, ~7–8 yrs prior to 2021) run a **~5-second teaser before the trailer** — flashing visuals, a celebrity, an explosion — purely to stop the scroll. Hook-before-content.   |
+| 8   | Hold is not the hard part        | Once grabbed, attention holds long: a **90-minute movie**, a **weekend binge** of a series, a **2.5-hour Joe Rogan podcast.** The bottleneck is the first few seconds, not duration.                       |
+| 9   | Hooks aren't only words          | A hook can be delivered via **text, colors, on-screen action, facial expressions** — conscious or subconscious. Words are one channel among several.                                                       |
+| 10  | Long-haul mindset gate           | "Social media is no different than any business." 17 years in, still working it daily. Expecting fast/easy results from one button-press is the #1 predictor of failure.                                   |
 
 ## Operating Lessons
 

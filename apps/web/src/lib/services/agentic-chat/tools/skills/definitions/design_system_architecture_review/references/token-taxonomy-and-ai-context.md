@@ -1,4 +1,4 @@
-<!-- references/token-taxonomy-and-ai-context.md -->
+<!-- apps/web/src/lib/services/agentic-chat/tools/skills/definitions/design_system_architecture_review/references/token-taxonomy-and-ai-context.md -->
 
 # Token Taxonomy, Tiering & AI-on-Grain Context
 
@@ -16,13 +16,14 @@ In BuildOS terms the token layer is Inkprint: `bg-card`, `text-foreground`, `sha
 
 Every token must sit in exactly one tier. If you can't name the tier, the token is mis-scoped.
 
-| Tier | Role | Naming shape | Example | Rule |
-| --- | --- | --- | --- | --- |
-| **Option / core** | Raw, brand-agnostic values | `{property}-{scale}` | `gray-700`, `space-4`, `blue-500` | No component or intent in the name. Never referenced directly by components. |
-| **Semantic / decision** | Intent-mapped, theme-aware | `{role}-{property}` | `text-foreground`, `bg-card`, `border-default` | Components consume THESE, not core. Re-points per theme (light/dark). |
-| **Component / recipe** | Per-component overrides | `{component}-{part}-{property}` | `button-primary-bg`, `card-shadow` | Optional. Only when a component needs a value the semantic tier can't express. Resolves to a semantic token, not a raw core value. |
+| Tier                    | Role                       | Naming shape                    | Example                                        | Rule                                                                                                                               |
+| ----------------------- | -------------------------- | ------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Option / core**       | Raw, brand-agnostic values | `{property}-{scale}`            | `gray-700`, `space-4`, `blue-500`              | No component or intent in the name. Never referenced directly by components.                                                       |
+| **Semantic / decision** | Intent-mapped, theme-aware | `{role}-{property}`             | `text-foreground`, `bg-card`, `border-default` | Components consume THESE, not core. Re-points per theme (light/dark).                                                              |
+| **Component / recipe**  | Per-component overrides    | `{component}-{part}-{property}` | `button-primary-bg`, `card-shadow`             | Optional. Only when a component needs a value the semantic tier can't express. Resolves to a semantic token, not a raw core value. |
 
 Agent-checkable failures:
+
 - A component referencing a **core** token directly (skips the semantic tier) → naming/tiering violation.
 - A component token resolving to a **raw core value** instead of a semantic token → broken indirection.
 - A semantic token with a literal value baked in (`text-foreground: #111`) instead of pointing at a core token → no theme portability.
@@ -33,6 +34,7 @@ Agent-checkable failures:
 Scale without one-size-fits-all: a **core** design system plus **child / recipe** systems that are product-specific and **build on the core** (they consume core tokens + components, never fork them).
 
 Agent-checkable:
+
 - A child/recipe system that **redefines core values** instead of theming via tokens → it has forked, not extended. Flag.
 - A child system the core team can't ship a token change through (the change doesn't propagate) → broken inheritance.
 

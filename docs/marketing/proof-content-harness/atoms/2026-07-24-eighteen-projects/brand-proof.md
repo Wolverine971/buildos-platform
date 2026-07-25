@@ -1,3 +1,4 @@
+<!-- docs/marketing/proof-content-harness/atoms/2026-07-24-eighteen-projects/brand-proof.md -->
 <!-- Brand-proof cut — @build.os (brand / repository). The clean product version. -->
 
 # Brand Proof (@build.os) — 18 projects, one shared context

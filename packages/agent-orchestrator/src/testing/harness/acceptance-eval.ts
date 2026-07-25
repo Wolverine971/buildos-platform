@@ -1,3 +1,17 @@
+// packages/agent-orchestrator/src/testing/harness/acceptance-eval.ts
+//
+// SINGLE SOURCE OF TRUTH for corpus acceptance validators.
+//
+// Both comparison lanes must score identically or the comparison is meaningless. This module owns
+// every validator id used by `corpus/phase-a.json`; the control lane
+// (`apps/web/src/lib/tests/agentic-e2e/phase-a/acceptance.ts`) delegates here rather than keeping a
+// parallel implementation. `acceptance-eval.parity.test.ts` fails if the corpus ever introduces a
+// validator id this file does not implement.
+//
+// History: a second implementation lived in the control lane and this one silently returned
+// `passed: false` for `answer.bullet_count`, `route.asks_question`, and `route.reports_gap`. Because
+// a required-check failure vetoes a workflow blind win regardless of judge preference, that
+// divergence could have zeroed the workflow lane. See research/09_INTERNAL_GROUND_TRUTH_MAP.md D12.
 export interface HarnessAcceptanceCheck {
 	validator_id: string;
 	description: string;
@@ -46,16 +60,29 @@ export async function evaluateHarnessAcceptance(params: {
 						(term) => !haystack.includes(term.toLocaleLowerCase())
 					);
 					passed = missing.length === 0;
-					detail = passed ? `found all ${terms.length} terms` : `missing: ${missing.join(', ')}`;
+					detail = passed
+						? `found all ${terms.length} terms`
+						: `missing: ${missing.join(', ')}`;
 					break;
 				}
 				case 'answer.excludes_all': {
 					const terms = stringArray(check.config, 'terms');
-					const present = terms.filter((term) => haystack.includes(term.toLocaleLowerCase()));
+					const present = terms.filter((term) =>
+						haystack.includes(term.toLocaleLowerCase())
+					);
 					passed = present.length === 0;
 					detail = passed
 						? `excluded all ${terms.length} terms`
 						: `unexpected: ${present.join(', ')}`;
+					break;
+				}
+				case 'answer.bullet_count': {
+					const expected = Number(check.config.count);
+					const count = params.text
+						.split('\n')
+						.filter((line) => /^(?:[-*+] |\d+\. )/.test(line)).length;
+					passed = Number.isInteger(expected) && count === expected;
+					detail = `expected ${expected}, found ${count} top-level bullets`;
 					break;
 				}
 				case 'answer.has_sections': {
@@ -76,13 +103,16 @@ export async function evaluateHarnessAcceptance(params: {
 				case 'artifact.claims.cited': {
 					const urls = extractAnswerUrls(params.text);
 					passed = urls.length > 0;
-					detail = passed ? `${urls.length} external URL(s) cited` : 'no external citation found';
+					detail = passed
+						? `${urls.length} external URL(s) cited`
+						: 'no external citation found';
 					break;
 				}
 				case 'artifact.citations.resolve': {
 					const urls = extractAnswerUrls(params.text);
 					const minimum = Number(check.config.minimum_citations ?? 0);
-					const allowZero = check.config.allow_zero_citations_for_original_design === true;
+					const allowZero =
+						check.config.allow_zero_citations_for_original_design === true;
 					if (urls.length === 0 && allowZero) {
 						passed = true;
 						detail = 'no citations used; original-design allowance applied';
@@ -101,8 +131,44 @@ export async function evaluateHarnessAcceptance(params: {
 						: `${resolutions.filter(Boolean).length}/${urls.length} citation URL(s) resolved`;
 					break;
 				}
+				case 'route.asks_question': {
+					const terms = stringArray(check.config, 'terms');
+					const missing = terms.filter(
+						(term) => !haystack.includes(term.toLocaleLowerCase())
+					);
+					passed = params.text.includes('?') && missing.length === 0;
+					detail = passed
+						? 'asked the required clarifying question'
+						: `question=${params.text.includes('?')}; missing: ${
+								missing.join(', ') || '(none)'
+							}`;
+					break;
+				}
+				case 'route.reports_gap': {
+					const capability =
+						typeof check.config.capability === 'string'
+							? check.config.capability.split('.')[0]
+							: '';
+					const gapLanguage =
+						/(?:cannot|can't|unable|don't have|do not have|not connected|no access)/i.test(
+							params.text
+						);
+					passed =
+						gapLanguage &&
+						(!capability || haystack.includes(capability.toLocaleLowerCase()));
+					detail = passed
+						? 'reported the capability gap'
+						: 'missing explicit capability-gap language';
+					break;
+				}
 				default:
-					detail = `unsupported A2 workflow validator: ${check.validator_id}`;
+					// Never silently fail an unknown validator: an unimplemented id is a harness bug,
+					// and scoring it as a content failure is how a lane gets zeroed by accident.
+					throw new Error(
+						`Unimplemented acceptance validator "${check.validator_id}". ` +
+							'Implement it in packages/agent-orchestrator/src/testing/harness/acceptance-eval.ts ' +
+							'— both comparison lanes score through this module.'
+					);
 			}
 			return {
 				validatorId: check.validator_id,

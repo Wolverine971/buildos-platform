@@ -1,3 +1,4 @@
+// packages/agent-orchestrator/src/agents/librarian/deterministic-librarian.test.ts
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -11,7 +12,10 @@ const snapshot = ProjectSnapshotSchema.parse(
 	JSON.parse(
 		readFileSync(
 			fileURLToPath(
-				new URL('../../testing/harness/fixtures/project-alpha.snapshot.json', import.meta.url)
+				new URL(
+					'../../testing/harness/fixtures/project-alpha.snapshot.json',
+					import.meta.url
+				)
 			),
 			'utf8'
 		)

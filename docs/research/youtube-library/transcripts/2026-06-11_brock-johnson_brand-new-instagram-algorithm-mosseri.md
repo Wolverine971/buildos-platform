@@ -1,12 +1,12 @@
 ---
-title: "The BRAND NEW Instagram Algorithm | Direct From Instagram CEO"
+title: 'The BRAND NEW Instagram Algorithm | Direct From Instagram CEO'
 source_type: youtube_transcript
 video_id: -Qi9-ZT1_GE
-url: "https://www.youtube.com/watch?v=-Qi9-ZT1_GE"
+url: 'https://www.youtube.com/watch?v=-Qi9-ZT1_GE'
 channel: Build Your Tribe
-channel_url: "https://www.youtube.com/@BuildYourTribePodcast"
+channel_url: 'https://www.youtube.com/@BuildYourTribePodcast'
 upload_date: 2025-10-06
-duration: "23:26"
+duration: '23:26'
 views: 68996
 library_category: marketing-and-content
 library_status: 'transcript, analysis'
@@ -22,66 +22,66 @@ public_article: ''
 indexed_date: '2026-06-11'
 last_reviewed: '2026-06-12'
 tags:
-  - Brock Johnson
-  - Build Your Tribe Podcast
-  - new instagram update
-  - instagram algorithm 2025
-  - instagram algorithm changes
-  - instagram algorithm
-  - how to grow instagram
-  - instagram seo tips
-  - how to get more followers
-  - how to grow on instagram
-  - how to go viral on instagram
-  - instagram ceo interview
-  - ceo of instagram
-  - instagram ceo adam mosseri
-  - adam mosseri
-  - instagram reels algorithm
-  - instagram dm automation
-  - instagram story hacks
-  - instagram reels
-  - how to grow on instagram fast
+    - Brock Johnson
+    - Build Your Tribe Podcast
+    - new instagram update
+    - instagram algorithm 2025
+    - instagram algorithm changes
+    - instagram algorithm
+    - how to grow instagram
+    - instagram seo tips
+    - how to get more followers
+    - how to grow on instagram
+    - how to go viral on instagram
+    - instagram ceo interview
+    - ceo of instagram
+    - instagram ceo adam mosseri
+    - adam mosseri
+    - instagram reels algorithm
+    - instagram dm automation
+    - instagram story hacks
+    - instagram reels
+    - how to grow on instagram fast
 description: |
-  In this episode, Brock Johnson breaks down the brand new Instagram algorithm directly from Instagram CEO Adam Mosseri. He’ll cover the latest updates, including customizable feeds, TikTok-style recommendations, and how Instagram is prioritizing Reels, messaging, and niche targeting in 2025.
-  
-  Brock explains how these changes affect reach for Reels, Stories, and non-followers, as well as the impact of trial Reels limits and Meta Verified features on content discovery. This episode also provides actionable tips on how to rank in interest categories, leverage DM automation, and grow your Instagram effectively under the new algorithm.
-  
-  Check The Brock Bot 👉https://www.thebrockbot.com/
-  
-  🎯Check out InstaClubHub!!  For $7! Plus Ultimate B-Roll Bundle  👉https://instaclubhub.com/flash-sale-7/
-  
-  💥Subscribe to the InstaClubHub Newsletter For weekly top trending audios and meme templates to help you grow on Instagram! https://instaclubhub.com/newsletter/
-  
-  🤓Related Episode:
-  ▶️  Complete Guide To Shareworthy Content | How To Beat The Instagram Algorithm
-  https://youtu.be/pWNDkFuV0RY?si=ObJXH6QWd4C-E6qV
-  
-  ▶️  How To Use Manychat Instagram Automation: Send DMs & Boost Engagement
-  https://youtu.be/YnepkAEC12I?si=t96PS8pkpOrScrnf
-  
-  ▶️  Head of INSTAGRAM reveals secrets to GROWING in 2025
-  https://youtu.be/b_MGyd8TKdQ?si=MUaG-6egjEYauE7a
-  
-  ▶️  How To Get MORE Instagram Story Views | New Instagram Algorithm 2025
-  https://youtu.be/TffPultwD5E?si=ARwKLzLO10kUWeyE
-  
-  Subscribe: https://www.youtube.com/@BuildYourTribePodcast?sub_confirmation=1
-  
-  ------------------------------------------------------------------
-  
-  🎯Check out InstaClubHub!!  For $7! Plus Ultimate B-Roll Bundle  
-  👉 https://instaclubhub.com/flash-sale-7/
-  
-  ▶ Be sure to check out the Build Your Tribe Playlist for other great episodes
-  ➜ https://www.chalene.com/byt
-  
-  🔗 Let’s Connect!
-  Brock Instagram:
-  ➜ https://www.instagram.com/brock11johnson/?hl=en
-  TikTok:
-  ➜ https://www.tiktok.com/@brock11johnson/video/7115837515713547566
-transcribed_date: "2026-06-11"
+    In this episode, Brock Johnson breaks down the brand new Instagram algorithm directly from Instagram CEO Adam Mosseri. He’ll cover the latest updates, including customizable feeds, TikTok-style recommendations, and how Instagram is prioritizing Reels, messaging, and niche targeting in 2025.
+
+    Brock explains how these changes affect reach for Reels, Stories, and non-followers, as well as the impact of trial Reels limits and Meta Verified features on content discovery. This episode also provides actionable tips on how to rank in interest categories, leverage DM automation, and grow your Instagram effectively under the new algorithm.
+
+    Check The Brock Bot 👉https://www.thebrockbot.com/
+
+    🎯Check out InstaClubHub!!  For $7! Plus Ultimate B-Roll Bundle  👉https://instaclubhub.com/flash-sale-7/
+
+    💥Subscribe to the InstaClubHub Newsletter For weekly top trending audios and meme templates to help you grow on Instagram! https://instaclubhub.com/newsletter/
+
+    🤓Related Episode:
+    ▶️  Complete Guide To Shareworthy Content | How To Beat The Instagram Algorithm
+    https://youtu.be/pWNDkFuV0RY?si=ObJXH6QWd4C-E6qV
+
+    ▶️  How To Use Manychat Instagram Automation: Send DMs & Boost Engagement
+    https://youtu.be/YnepkAEC12I?si=t96PS8pkpOrScrnf
+
+    ▶️  Head of INSTAGRAM reveals secrets to GROWING in 2025
+    https://youtu.be/b_MGyd8TKdQ?si=MUaG-6egjEYauE7a
+
+    ▶️  How To Get MORE Instagram Story Views | New Instagram Algorithm 2025
+    https://youtu.be/TffPultwD5E?si=ARwKLzLO10kUWeyE
+
+    Subscribe: https://www.youtube.com/@BuildYourTribePodcast?sub_confirmation=1
+
+    ------------------------------------------------------------------
+
+    🎯Check out InstaClubHub!!  For $7! Plus Ultimate B-Roll Bundle  
+    👉 https://instaclubhub.com/flash-sale-7/
+
+    ▶ Be sure to check out the Build Your Tribe Playlist for other great episodes
+    ➜ https://www.chalene.com/byt
+
+    🔗 Let’s Connect!
+    Brock Instagram:
+    ➜ https://www.instagram.com/brock11johnson/?hl=en
+    TikTok:
+    ➜ https://www.tiktok.com/@brock11johnson/video/7115837515713547566
+transcribed_date: '2026-06-11'
 path: docs/research/youtube-library/transcripts/2026-06-11_brock-johnson_brand-new-instagram-algorithm-mosseri.md
 ---
 
@@ -90,6 +90,7 @@ path: docs/research/youtube-library/transcripts/2026-06-11_brock-johnson_brand-n
 > **Analysis:** [2026-06-11_brock-johnson_brand-new-instagram-algorithm_analysis.md](../analyses/2026-06-11_brock-johnson_brand-new-instagram-algorithm_analysis.md)
 
 ## Metadata
+
 - **Channel**: [Build Your Tribe](https://www.youtube.com/@BuildYourTribePodcast)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=-Qi9-ZT1_GE)
 - **Duration**: 23:26

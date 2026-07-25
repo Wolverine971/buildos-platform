@@ -197,14 +197,16 @@ async function loadContextDocument(
 		return null;
 	}
 
-	const document = pickStartHereDocument((documents ?? []) as Array<{
-		id: string;
-		title: string | null;
-		content: string | null;
-		props: unknown;
-		created_at: string | null;
-		updated_at: string | null;
-	}>);
+	const document = pickStartHereDocument(
+		(documents ?? []) as Array<{
+			id: string;
+			title: string | null;
+			content: string | null;
+			props: unknown;
+			created_at: string | null;
+			updated_at: string | null;
+		}>
+	);
 	const contextDocumentId = document?.id || null;
 
 	if (!contextDocumentId) {

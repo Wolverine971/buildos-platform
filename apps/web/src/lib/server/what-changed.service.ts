@@ -80,9 +80,9 @@ export async function getWhatChangedFeed({
 	const sinceIso = clampSince(since, now);
 
 	const actorId = await measure('changes.actor', () => ensureActorId(supabase, userId));
-	const projects = (await measure('changes.projects', () =>
-		fetchProjectSummaries(supabase, actorId, timing)
-	)).filter((project) => project.state_key !== 'paused');
+	const projects = (
+		await measure('changes.projects', () => fetchProjectSummaries(supabase, actorId, timing))
+	).filter((project) => project.state_key !== 'paused');
 	const projectNameById = new Map(projects.map((project) => [project.id, project.name]));
 	const projectIds = Array.from(projectNameById.keys());
 

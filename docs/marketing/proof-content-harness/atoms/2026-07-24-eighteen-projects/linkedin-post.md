@@ -1,3 +1,4 @@
+<!-- docs/marketing/proof-content-harness/atoms/2026-07-24-eighteen-projects/linkedin-post.md -->
 <!-- LinkedIn post — PRIMARY surface. Posted from DJ's personal (founder) profile. -->
 
 # LinkedIn — 18 projects, one shared context

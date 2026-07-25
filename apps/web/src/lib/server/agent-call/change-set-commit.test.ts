@@ -65,7 +65,12 @@ function createSupabaseMock(
 					in: vi.fn(() => chain),
 					maybeSingle: vi.fn(async () => {
 						const next = results[table]?.shift();
-						if (!next || !next.data || typeof next.data !== 'object' || !selectedColumns) {
+						if (
+							!next ||
+							!next.data ||
+							typeof next.data !== 'object' ||
+							!selectedColumns
+						) {
 							return next ?? { data: null, error: null };
 						}
 						const projected = Object.fromEntries(

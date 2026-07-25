@@ -40,11 +40,11 @@ If the signal is Trigger-based, identify which sub-type:
 
 For Bridgebound triggers, identify which family:
 
-| Family             | What it is                             | Example                                                                                                                            |
-| ------------------ | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| A — Awareness      | They learned something new.            | Recently downloaded a category guide, attended a relevant event.                                                                   |
+| Family             | What it is                             | Example                                                                                                                                                        |
+| ------------------ | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A — Awareness      | They learned something new.            | Recently downloaded a category guide, attended a relevant event.                                                                                               |
 | B — Bad experience | Their current solution broke.          | Incumbent vendor lawsuit, salesperson change at the vendor (drives 28-33% of vendor changes — Elias, practitioner-grade), product end-of-life, public failure. |
-| C — Change         | Internal change in the prospect's org. | New decision maker (highest leverage), new location, new priority, M&A, funding round.                                             |
+| C — Change         | Internal change in the prospect's org. | New decision maker (highest leverage), new location, new priority, M&A, funding round.                                                                         |
 
 Notes:
 

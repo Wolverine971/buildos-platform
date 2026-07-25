@@ -102,18 +102,18 @@ Notes: the fixture is seeded so the ceiling math lands exactly on the current cu
 ### 2026-06-12 — Task 1 — BLIND A/B (the owed pair; prior wave-2 entry was a with-skill self-check) — performer (with/without) + blind judge: claude-opus-4-8 (workflow subagents)
 
 | Marker | without | with |
-| --- | --- | --- |
-| M1 | hit | hit |
-| M2 | miss | hit |
-| M3 | hit | hit |
-| M4 | miss | hit |
-| M5 | miss | hit |
-| M6 | miss | hit |
-| M7 | miss | hit |
-| M8 | hit | hit |
-| M9 | miss | hit |
-| M10 | hit | hit |
-| M11 | miss | hit |
+| ------ | ------- | ---- |
+| M1     | hit     | hit  |
+| M2     | miss    | hit  |
+| M3     | hit     | hit  |
+| M4     | miss    | hit  |
+| M5     | miss    | hit  |
+| M6     | miss    | hit  |
+| M7     | miss    | hit  |
+| M8     | hit     | hit  |
+| M9     | miss    | hit  |
+| M10    | hit     | hit  |
+| M11    | miss    | hit  |
 
 Verdict: **STRONG DELTA**. With-skill hit 11/11 markers; gap over no-skill = 7 markers. Refusal missed by skill run: False.
 Load path (expected, not re-tested this run): skill_load(growth_diagnostics_for_stalled_products, full); then load reference growth_diagnostics_for_stalled_products.diagnostic_layers exactly once at workflow step 2, before producing any layer finding; should NOT load anything else (one reference only — a second load of any kind is an over-load).

@@ -12,10 +12,12 @@ type RpcResult = { data: unknown; error: unknown };
  * Minimal supabase double: `rpc(name, args)` resolves from a per-name queue,
  * and `.from().select().eq().eq().maybeSingle()` resolves a configured result.
  */
-function createSupabase(opts: {
-	rpc?: Record<string, RpcResult | (() => RpcResult)>;
-	brief?: RpcResult;
-} = {}) {
+function createSupabase(
+	opts: {
+		rpc?: Record<string, RpcResult | (() => RpcResult)>;
+		brief?: RpcResult;
+	} = {}
+) {
 	const rpc = vi.fn(async (name: string) => {
 		const entry = opts.rpc?.[name];
 		if (typeof entry === 'function') return entry();
@@ -93,10 +95,15 @@ describe('checkProjectAccess', () => {
 		const supabase = createSupabase({
 			rpc: {
 				ensure_actor_for_user: { data: 'actor-1', error: null },
-				current_actor_has_project_member_access: { data: null, error: { message: 'rpc down' } }
+				current_actor_has_project_member_access: {
+					data: null,
+					error: { message: 'rpc down' }
+				}
 			}
 		});
-		const result = await checkProjectAccess(supabase as any, 'p1', errorLogger, { userId: 'u1' });
+		const result = await checkProjectAccess(supabase as any, 'p1', errorLogger, {
+			userId: 'u1'
+		});
 		expect(result).toEqual({ allowed: false, reason: 'rpc_unavailable_fail_closed' });
 		// logged once for the rpc error + once inside the fallback
 		expect(errorLogger.logError).toHaveBeenCalledTimes(2);

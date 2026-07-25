@@ -1,3 +1,4 @@
+// apps/web/src/lib/server/gmail-relevance/metadata-driver-lifecycle.test.ts
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decryptEmailRelevanceValue } from './metadata-crypto';
 import {
@@ -20,10 +21,7 @@ import type {
 	EmailRelevanceScanControlPlane
 } from './scan-control-plane';
 import type { ProjectEmailProfileGroups } from './project-email-profile';
-import type {
-	EmailRelevanceScoringProfile,
-	EmailRelevanceScoringRule
-} from './metadata-scorer';
+import type { EmailRelevanceScoringProfile, EmailRelevanceScoringRule } from './metadata-scorer';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const OTHER_USER_ID = '10000000-0000-4000-8000-000000000002';
@@ -337,7 +335,8 @@ class SyntheticGateway {
 		return {
 			messages: input.provider_message_ids.map((providerId) => {
 				const item = byId.get(providerId);
-				if (!item) throw new GmailRelevanceMetadataGatewayError('invalid_provider_response', 1);
+				if (!item)
+					throw new GmailRelevanceMetadataGatewayError('invalid_provider_response', 1);
 				return normalizeEmailRelevanceMetadata({
 					id: item.id,
 					threadId: item.threadId,
@@ -369,9 +368,7 @@ class InMemoryLifecycle implements EmailRelevanceMetadataRepository {
 	private readonly rules: EmailRelevanceScoringRule[];
 
 	constructor(input: { reverseProfileOrder?: boolean } = {}) {
-		this.profiles = input.reverseProfileOrder
-			? scoringProfiles().reverse()
-			: scoringProfiles();
+		this.profiles = input.reverseProfileOrder ? scoringProfiles().reverse() : scoringProfiles();
 		this.rules = input.reverseProfileOrder ? scoringRules().reverse() : scoringRules();
 		SCOPE_IDS.forEach((scopeId, index) => {
 			this.scopes.set(scopeId, {
@@ -441,7 +438,9 @@ class InMemoryLifecycle implements EmailRelevanceMetadataRepository {
 		connection_scope_id: string;
 		expected_checkpoint: number;
 		processing_token: string;
-		operation: { operation_code: 'list_page' } | { operation_code: 'metadata_batch'; message_count: number };
+		operation:
+			| { operation_code: 'list_page' }
+			| { operation_code: 'metadata_batch'; message_count: number };
 	}) {
 		const scope = this.scope(input);
 		const operationCode = input.operation.operation_code;
@@ -470,7 +469,8 @@ class InMemoryLifecycle implements EmailRelevanceMetadataRepository {
 		if (
 			(operationCode === 'list_page' && pendingCount > 0) ||
 			(operationCode === 'metadata_batch' &&
-				(input.operation.message_count < 1 || input.operation.message_count > Math.min(50, pendingCount)))
+				(input.operation.message_count < 1 ||
+					input.operation.message_count > Math.min(50, pendingCount)))
 		) {
 			return this.denied(scope, 'invalid_operation');
 		}
@@ -629,7 +629,8 @@ class InMemoryLifecycle implements EmailRelevanceMetadataRepository {
 		results: EmailRelevanceMetadataSettlementInput[];
 	}) {
 		const { scope, operation } = this.active(input);
-		if (!operation || operation.operation_code !== 'metadata_batch') return this.settleNoOp(scope);
+		if (!operation || operation.operation_code !== 'metadata_batch')
+			return this.settleNoOp(scope);
 		for (const result of input.results) {
 			const observation = [...scope.observations.values()].find(
 				(candidate) => candidate.id === result.observation_id
@@ -646,7 +647,8 @@ class InMemoryLifecycle implements EmailRelevanceMetadataRepository {
 						existing.project_id === candidate.project_id &&
 						existing.variant === candidate.variant
 				);
-				if (!duplicate) scope.candidates.push({ observation_id: observation.id, ...candidate });
+				if (!duplicate)
+					scope.candidates.push({ observation_id: observation.id, ...candidate });
 			}
 		}
 		scope.provider_calls += input.results.length;
@@ -732,10 +734,7 @@ class InMemoryLifecycle implements EmailRelevanceMetadataRepository {
 	}
 }
 
-function driver(input: {
-	lifecycle: InMemoryLifecycle;
-	gateway: SyntheticGateway;
-}) {
+function driver(input: { lifecycle: InMemoryLifecycle; gateway: SyntheticGateway }) {
 	let tokenCounter = 0;
 	let clock = 1_000;
 	return new EmailRelevanceMetadataDriver({
@@ -753,10 +752,7 @@ function driver(input: {
 	});
 }
 
-async function runToTerminal(input: {
-	lifecycle: InMemoryLifecycle;
-	gateway: SyntheticGateway;
-}) {
+async function runToTerminal(input: { lifecycle: InMemoryLifecycle; gateway: SyntheticGateway }) {
 	const executor = driver(input);
 	for (let pass = 0; pass < 30; pass += 1) {
 		for (const scopeId of SCOPE_IDS) {
@@ -808,17 +804,19 @@ describe('EmailRelevanceMetadataDriver three-connection lifecycle', () => {
 		});
 		expect(receipt.slice(1).map((scope) => scope.list_pages_completed)).toEqual([1, 1]);
 		expect(gateway.events.filter((event) => event.kind === 'metadata')[0]?.count).toBe(50);
-		expect(gateway.events.every((event) => event.count <= (event.kind === 'list' ? 1 : 50))).toBe(
-			true
-		);
+		expect(
+			gateway.events.every((event) => event.count <= (event.kind === 'list' ? 1 : 50))
+		).toBe(true);
 
 		for (const scope of receipt) {
 			expect(scope.list_pages_completed).toBeLessThanOrEqual(10);
 			expect(scope.observations_discovered).toBeLessThanOrEqual(1_000);
 			expect(scope.observations_processed).toBe(scope.observations_discovered);
-			expect(scope.observations.every((observation) => observation.processing_state === 'processed')).toBe(
-				true
-			);
+			expect(
+				scope.observations.every(
+					(observation) => observation.processing_state === 'processed'
+				)
+			).toBe(true);
 			expect(
 				scope.observations.every(
 					(observation) =>
@@ -869,12 +867,16 @@ describe('EmailRelevanceMetadataDriver three-connection lifecycle', () => {
 		).toEqual(new Set([PROJECT_ALPHA_ID, PROJECT_BETA_ID]));
 		expect(candidatesForProvider('suppressed')).toEqual([]);
 		expect(candidatesForProvider('no_match')).toEqual([]);
-		expect(alphaCandidates.some((candidate) => candidate.variant === 'a' && candidate.identifier_overlap)).toBe(
-			true
-		);
-		expect(alphaCandidates.some((candidate) => candidate.variant === 'b' && candidate.lexical_overlap)).toBe(
-			true
-		);
+		expect(
+			alphaCandidates.some(
+				(candidate) => candidate.variant === 'a' && candidate.identifier_overlap
+			)
+		).toBe(true);
+		expect(
+			alphaCandidates.some(
+				(candidate) => candidate.variant === 'b' && candidate.lexical_overlap
+			)
+		).toBe(true);
 		expect(
 			alphaCandidates.some(
 				(candidate) => candidate.variant === 'a' && candidate.confirmed_thread
@@ -886,7 +888,9 @@ describe('EmailRelevanceMetadataDriver three-connection lifecycle', () => {
 			)
 		).toBe(false);
 
-		const eventKinds = lifecycle.events.map((event) => `${event.scope_id}:${event.kind}:${event.operation_code}`);
+		const eventKinds = lifecycle.events.map(
+			(event) => `${event.scope_id}:${event.kind}:${event.operation_code}`
+		);
 		for (const gatewayEvent of gateway.events) {
 			const scopeId = SCOPE_IDS[CONNECTION_IDS.indexOf(gatewayEvent.connection_id as never)]!;
 			const operationCode = gatewayEvent.kind === 'list' ? 'list_page' : 'metadata_batch';
@@ -943,7 +947,10 @@ describe('EmailRelevanceMetadataDriver three-connection lifecycle', () => {
 	it('produces identical candidates and evidence when provider/profile input ordering changes', async () => {
 		const forward = new InMemoryLifecycle();
 		const reversed = new InMemoryLifecycle({ reverseProfileOrder: true });
-		await runToTerminal({ lifecycle: forward, gateway: new SyntheticGateway(lifecyclePages()) });
+		await runToTerminal({
+			lifecycle: forward,
+			gateway: new SyntheticGateway(lifecyclePages())
+		});
 		await runToTerminal({
 			lifecycle: reversed,
 			gateway: new SyntheticGateway(lifecyclePages(true))
@@ -964,7 +971,9 @@ describe('EmailRelevanceMetadataDriver three-connection lifecycle', () => {
 				connection_scope_id: SCOPE_IDS[0]
 			})
 		).rejects.toEqual(
-			expect.objectContaining<EmailRelevanceMetadataDriverError>({ code: 'scope_unavailable' })
+			expect.objectContaining<EmailRelevanceMetadataDriverError>({
+				code: 'scope_unavailable'
+			})
 		);
 		const scope = lifecycle.scopes.get(SCOPE_IDS[0])!;
 		scope.pause_requested = true;
@@ -1066,7 +1075,10 @@ describe('EmailRelevanceMetadataDriver three-connection lifecycle', () => {
 		const quotaLifecycle = new InMemoryLifecycle();
 		const quotaGateway = new SyntheticGateway(lifecyclePages());
 		quotaLifecycle.scopes.get(SCOPE_IDS[0])!.gmail_quota_units = 20_050;
-		const denied = await driver({ lifecycle: quotaLifecycle, gateway: quotaGateway }).runOneOperation({
+		const denied = await driver({
+			lifecycle: quotaLifecycle,
+			gateway: quotaGateway
+		}).runOneOperation({
 			user_id: USER_ID,
 			run_id: RUN_ID,
 			connection_scope_id: SCOPE_IDS[0]

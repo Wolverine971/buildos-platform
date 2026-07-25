@@ -50,23 +50,23 @@ A viral short is engineered by stacking five controllable layers — **idea (jui
 
 ## TL;DR Frameworks & Thresholds Table
 
-| #   | Framework / rule                       | Concrete threshold or definition                                                                                                                           |
-| --- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | 4 criteria of a good idea              | **Novelty, uncertainty, knowledge gaps, complexity.** Use to "juice" any mundane idea.                                                                      |
-| 2   | View-vs-swipe-away % (idea+hook metric) | Average ≈ **70%**; her "pretty good" = **80%+**; **excellent = 85%+**; her channel averages **80–85%**. (She says Mr. Beast ≈ **75%**, "so I've heard.")    |
-| 3   | Retention % (overall metric)           | Target **≥90%**, length-dependent; her team aims **95%+**. (Claims "most people" sit ~**15%** — asserted, unsourced.)                                        |
-| 4   | Three virality levers (ranked)         | (1) hook, (2) overall retention / video progression, (3) **rewatchability**.                                                                                |
-| 5   | Hook = 3 parts in one sentence         | **Power word + action (progression, not a stale statement) + foreshadow** (setup + conflict + resolution-to-come, all in one line).                         |
-| 6   | Power words                            | Open with a strong word: **free, $0, stole** (or any "crazy" word). Avoid stale "This is…" openers.                                                         |
-| 7   | Foreshadow / "Amazon gift card at end" | Tell the viewer there's a payoff at the end. Best when **implied within the hook**; stronger with a visible **mechanism**.                                   |
-| 8   | Mechanism                              | A visible progress device (e.g., "$10 budget" counting down: $2 → $5 → …) so the viewer always feels the video progressing toward a known end.              |
-| 9   | Storytelling = "change"                | One word: **change** (= progression + character development). Start the character at one point, end at another.                                             |
-| 10  | But & Therefore rule                   | Replace "and then… and then…" with **but / so / therefore** to inject constant conflict (from the South Park method).                                       |
-| 11  | Escalating stakes (+ a "why")          | Stakes should **rise over the video**; prefer **real** personal stakes over artificial. Low/personal stakes beat life-or-death because audiences are numb.  |
-| 12  | Peak-end close                         | **Peak-end theory:** viewers judge the whole by the ending. Keep the close as short as possible but always deliver a payoff; twists = rewatchability.       |
-| 13  | First-frame visual spec                | **Little-to-no focus points, high brightness, high saturation;** clean/rotoscoped backgrounds; VFX to exaggerate (artificial fire, fake bigger holes).      |
-| 14  | Outlier method                         | A video is a good _concept_ only if it beats the channel's **baseline** (e.g., creator avg 10M, this one 30M = outlier). Mine outliers, not raw view counts. |
-| 15  | Subscriber-conversion finding (tooled) | Family/wholesome content = **2× subscriber conversion** but **10× fewer views** → malicious/prank content nets **~5× more subscribers** at regular conversion + 10× views. |
+| #   | Framework / rule                        | Concrete threshold or definition                                                                                                                                           |
+| --- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 4 criteria of a good idea               | **Novelty, uncertainty, knowledge gaps, complexity.** Use to "juice" any mundane idea.                                                                                     |
+| 2   | View-vs-swipe-away % (idea+hook metric) | Average ≈ **70%**; her "pretty good" = **80%+**; **excellent = 85%+**; her channel averages **80–85%**. (She says Mr. Beast ≈ **75%**, "so I've heard.")                   |
+| 3   | Retention % (overall metric)            | Target **≥90%**, length-dependent; her team aims **95%+**. (Claims "most people" sit ~**15%** — asserted, unsourced.)                                                      |
+| 4   | Three virality levers (ranked)          | (1) hook, (2) overall retention / video progression, (3) **rewatchability**.                                                                                               |
+| 5   | Hook = 3 parts in one sentence          | **Power word + action (progression, not a stale statement) + foreshadow** (setup + conflict + resolution-to-come, all in one line).                                        |
+| 6   | Power words                             | Open with a strong word: **free, $0, stole** (or any "crazy" word). Avoid stale "This is…" openers.                                                                        |
+| 7   | Foreshadow / "Amazon gift card at end"  | Tell the viewer there's a payoff at the end. Best when **implied within the hook**; stronger with a visible **mechanism**.                                                 |
+| 8   | Mechanism                               | A visible progress device (e.g., "$10 budget" counting down: $2 → $5 → …) so the viewer always feels the video progressing toward a known end.                             |
+| 9   | Storytelling = "change"                 | One word: **change** (= progression + character development). Start the character at one point, end at another.                                                            |
+| 10  | But & Therefore rule                    | Replace "and then… and then…" with **but / so / therefore** to inject constant conflict (from the South Park method).                                                      |
+| 11  | Escalating stakes (+ a "why")           | Stakes should **rise over the video**; prefer **real** personal stakes over artificial. Low/personal stakes beat life-or-death because audiences are numb.                 |
+| 12  | Peak-end close                          | **Peak-end theory:** viewers judge the whole by the ending. Keep the close as short as possible but always deliver a payoff; twists = rewatchability.                      |
+| 13  | First-frame visual spec                 | **Little-to-no focus points, high brightness, high saturation;** clean/rotoscoped backgrounds; VFX to exaggerate (artificial fire, fake bigger holes).                     |
+| 14  | Outlier method                          | A video is a good _concept_ only if it beats the channel's **baseline** (e.g., creator avg 10M, this one 30M = outlier). Mine outliers, not raw view counts.               |
+| 15  | Subscriber-conversion finding (tooled)  | Family/wholesome content = **2× subscriber conversion** but **10× fewer views** → malicious/prank content nets **~5× more subscribers** at regular conversion + 10× views. |
 
 ## Operating Lessons
 

@@ -1,3 +1,4 @@
+<!-- apps/web/src/routes/admin/gmail-relevance/pilot/+page.svelte -->
 <script lang="ts">
 	import type { PageProps } from './$types';
 
@@ -31,7 +32,9 @@
 		aria-label="Operational gate"
 	>
 		<strong>Live-call gate:</strong>
-		<span class="ml-1">Do not submit Run one operation without explicit pilot authorization.</span>
+		<span class="ml-1"
+			>Do not submit Run one operation without explicit pilot authorization.</span
+		>
 	</section>
 
 	{#if form}
@@ -40,11 +43,12 @@
 			aria-live="polite"
 		>
 			<h2 class="font-semibold text-slate-950 dark:text-white">Last content-free result</h2>
-			<pre class="mt-3 overflow-auto text-xs text-slate-700 dark:text-slate-200">{JSON.stringify(
-				form,
-				null,
-				2
-			)}</pre>
+			<pre
+				class="mt-3 overflow-auto text-xs text-slate-700 dark:text-slate-200">{JSON.stringify(
+					form,
+					null,
+					2
+				)}</pre>
 		</section>
 	{/if}
 
@@ -72,7 +76,9 @@
 					Eligible connections (maximum 3)
 				</legend>
 				{#each data.connections as connection (connection.id)}
-					<label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+					<label
+						class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"
+					>
 						<input type="checkbox" name="connection_id" value={connection.id} />
 						{connection.label}
 					</label>
@@ -86,7 +92,9 @@
 					Owned projects (maximum 25)
 				</legend>
 				{#each data.projects as project (project.id)}
-					<label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+					<label
+						class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"
+					>
 						<input type="checkbox" name="project_id" value={project.id} />
 						{project.label}
 					</label>
@@ -151,16 +159,32 @@
 					/>
 				</label>
 				<div class="flex flex-wrap gap-2">
-					<button formaction="?/pause" class="rounded-lg border px-3 py-2 text-sm" type="submit">
+					<button
+						formaction="?/pause"
+						class="rounded-lg border px-3 py-2 text-sm"
+						type="submit"
+					>
 						Pause
 					</button>
-					<button formaction="?/resume" class="rounded-lg border px-3 py-2 text-sm" type="submit">
+					<button
+						formaction="?/resume"
+						class="rounded-lg border px-3 py-2 text-sm"
+						type="submit"
+					>
 						Resume
 					</button>
-					<button formaction="?/cancel" class="rounded-lg border px-3 py-2 text-sm" type="submit">
+					<button
+						formaction="?/cancel"
+						class="rounded-lg border px-3 py-2 text-sm"
+						type="submit"
+					>
 						Cancel
 					</button>
-					<button formaction="?/expire" class="rounded-lg border px-3 py-2 text-sm" type="submit">
+					<button
+						formaction="?/expire"
+						class="rounded-lg border px-3 py-2 text-sm"
+						type="submit"
+					>
 						Expire
 					</button>
 				</div>

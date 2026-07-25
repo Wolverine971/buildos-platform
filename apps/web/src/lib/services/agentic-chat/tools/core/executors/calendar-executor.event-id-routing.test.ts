@@ -36,7 +36,9 @@ describe('CalendarExecutor event-id routing', () => {
 			getAuthHeaders: async () => ({})
 		});
 		getEventSpy = vi.fn().mockResolvedValue({ id: ONTO_EVENT_UUID, title: 'Onto event' });
-		getCalendarEventSpy = vi.fn().mockResolvedValue({ id: GOOGLE_EVENT_ID, summary: 'Google event' });
+		getCalendarEventSpy = vi
+			.fn()
+			.mockResolvedValue({ id: GOOGLE_EVENT_ID, summary: 'Google event' });
 		(executor as any).eventSyncService = { getEvent: getEventSpy };
 		(executor as any).calendarService = { getCalendarEvent: getCalendarEventSpy };
 		(executor as any).resolveCalendarIdForScope = async () => 'primary';

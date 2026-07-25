@@ -1,12 +1,12 @@
 ---
-title: "Is Atomic Design Dead? with BRAD FROST — SmashingConf New York 2024"
+title: 'Is Atomic Design Dead? with BRAD FROST — SmashingConf New York 2024'
 source_type: youtube_transcript
 video_id: -3Pji_frbII
-url: "https://www.youtube.com/watch?v=-3Pji_frbII"
+url: 'https://www.youtube.com/watch?v=-3Pji_frbII'
 channel: Smashing Magazine
-channel_url: "https://www.youtube.com/@SmashingMagazineVideos"
+channel_url: 'https://www.youtube.com/@SmashingMagazineVideos'
 upload_date: 2024-12-02
-duration: "48:44"
+duration: '48:44'
 views: 2441
 library_category: product-and-design
 library_status: transcript, analysis
@@ -22,17 +22,18 @@ public_article: ''
 indexed_date: '2026-06-11'
 last_reviewed: '2026-06-12'
 description: |
-  Over the last decade, design systems have taken the world of digital design and development by storm, and Brad's helped dozens of organizations create and evolve their design systems. 
-  Along the way, he invented a methodology for creating design systems called Atomic Design. 
-  
-  In this talk, Brad reflects on the past, present, and future of design systems, sharing bumps, bruises, and best practices along the way.
-transcribed_date: "2026-06-11"
+    Over the last decade, design systems have taken the world of digital design and development by storm, and Brad's helped dozens of organizations create and evolve their design systems. 
+    Along the way, he invented a methodology for creating design systems called Atomic Design. 
+
+    In this talk, Brad reflects on the past, present, and future of design systems, sharing bumps, bruises, and best practices along the way.
+transcribed_date: '2026-06-11'
 path: docs/research/youtube-library/transcripts/2026-06-11_brad-frost_is-atomic-design-dead-smashingconf-2024.md
 ---
 
 # Is Atomic Design Dead? with BRAD FROST — SmashingConf New York 2024
 
 ## Metadata
+
 - **Channel**: [Smashing Magazine](https://www.youtube.com/@SmashingMagazineVideos)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=-3Pji_frbII)
 - **Duration**: 48:44

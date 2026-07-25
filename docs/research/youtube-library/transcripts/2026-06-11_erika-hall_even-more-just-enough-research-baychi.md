@@ -1,12 +1,12 @@
 ---
-title: "Even More Just Enough Research: Erika Hall, BayCHI Program"
+title: 'Even More Just Enough Research: Erika Hall, BayCHI Program'
 source_type: youtube_transcript
 video_id: PpQKr2jhA_8
-url: "https://www.youtube.com/watch?v=PpQKr2jhA_8"
+url: 'https://www.youtube.com/watch?v=PpQKr2jhA_8'
 channel: BayCHI, San Francisco Bay Area ACM SIGCHI
-channel_url: "https://www.youtube.com/@baychisanfranciscobayareaa767"
+channel_url: 'https://www.youtube.com/@baychisanfranciscobayareaa767'
 upload_date: 2022-06-18
-duration: "01:22:44"
+duration: '01:22:44'
 views: 2745
 library_category: product-and-design
 library_status: transcript, analysis
@@ -22,57 +22,58 @@ public_article: ''
 indexed_date: '2026-06-11'
 last_reviewed: '2026-06-12'
 timestamps:
-  - time: "0:00"
-    label: "<Untitled Chapter 1>"
-  - time: "3:42"
-    label: "Surveys"
-  - time: "9:37"
-    label: "Resistance to Doing Research"
-  - time: "13:44"
-    label: "Uncertainty Is Uncomfortable"
-  - time: "15:40"
-    label: "Why People Are So Resistant to Research"
-  - time: "17:13"
-    label: "Jared Spool Commemorative Example"
-  - time: "21:18"
-    label: "Conversational Design"
-  - time: "23:21"
-    label: "3d Tvs"
-  - time: "26:02"
-    label: "What Is Design"
-  - time: "37:25"
-    label: "Objections to Research"
-  - time: "38:34"
-    label: "Objections"
-  - time: "44:09"
-    label: "Forming the Questions"
-  - time: "45:53"
-    label: "Skeptical Mindset"
-  - time: "48:49"
-    label: "Research Questions"
-  - time: "1:05:30"
-    label: "Types of Data"
-  - time: "1:09:35"
-    label: "Non-Response Bias"
-  - time: "1:11:38"
-    label: "Self-Driving Taxis"
-  - time: "1:12:12"
-    label: "What Problem Are We Solving"
-  - time: "1:18:01"
-    label: "Do Not Define the Output of Research as a Document"
+    - time: '0:00'
+      label: '<Untitled Chapter 1>'
+    - time: '3:42'
+      label: 'Surveys'
+    - time: '9:37'
+      label: 'Resistance to Doing Research'
+    - time: '13:44'
+      label: 'Uncertainty Is Uncomfortable'
+    - time: '15:40'
+      label: 'Why People Are So Resistant to Research'
+    - time: '17:13'
+      label: 'Jared Spool Commemorative Example'
+    - time: '21:18'
+      label: 'Conversational Design'
+    - time: '23:21'
+      label: '3d Tvs'
+    - time: '26:02'
+      label: 'What Is Design'
+    - time: '37:25'
+      label: 'Objections to Research'
+    - time: '38:34'
+      label: 'Objections'
+    - time: '44:09'
+      label: 'Forming the Questions'
+    - time: '45:53'
+      label: 'Skeptical Mindset'
+    - time: '48:49'
+      label: 'Research Questions'
+    - time: '1:05:30'
+      label: 'Types of Data'
+    - time: '1:09:35'
+      label: 'Non-Response Bias'
+    - time: '1:11:38'
+      label: 'Self-Driving Taxis'
+    - time: '1:12:12'
+      label: 'What Problem Are We Solving'
+    - time: '1:18:01'
+      label: 'Do Not Define the Output of Research as a Document'
 description: |
-  November 12, 2019
-  https://baychi.org/calendar/20191112/
-  Erika Hall of MuleDesign Studio brought her ideas for "Just Enough Research" to BayCHI in March 2013, just before the publication of her book by that name.
-  
-  Just about two weeks ago, she released a second edition, which offers updated examples, a new chapter on surveys, and lots more. Fans of the first edition will want to hear what's new. Designers and researchers: Bring product managers and engineering colleagues to remind the whole team that it's about asking more and better questions and thinking critically about the answers.
-transcribed_date: "2026-06-11"
+    November 12, 2019
+    https://baychi.org/calendar/20191112/
+    Erika Hall of MuleDesign Studio brought her ideas for "Just Enough Research" to BayCHI in March 2013, just before the publication of her book by that name.
+
+    Just about two weeks ago, she released a second edition, which offers updated examples, a new chapter on surveys, and lots more. Fans of the first edition will want to hear what's new. Designers and researchers: Bring product managers and engineering colleagues to remind the whole team that it's about asking more and better questions and thinking critically about the answers.
+transcribed_date: '2026-06-11'
 path: docs/research/youtube-library/transcripts/2026-06-11_erika-hall_even-more-just-enough-research-baychi.md
 ---
 
 # Even More Just Enough Research: Erika Hall, BayCHI Program
 
 ## Metadata
+
 - **Channel**: [BayCHI, San Francisco Bay Area ACM SIGCHI](https://www.youtube.com/@baychisanfranciscobayareaa767)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=PpQKr2jhA_8)
 - **Duration**: 01:22:44
@@ -82,6 +83,7 @@ path: docs/research/youtube-library/transcripts/2026-06-11_erika-hall_even-more-
 > **Analysis:** [2026-06-11_erika-hall_even-more-just-enough-research_analysis.md](../analyses/2026-06-11_erika-hall_even-more-just-enough-research_analysis.md)
 
 ## Timestamps
+
 - 0:00 — <Untitled Chapter 1>
 - 3:42 — Surveys
 - 9:37 — Resistance to Doing Research

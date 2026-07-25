@@ -1,3 +1,4 @@
+// apps/web/src/routes/agent-skills/[slug]/skill.md/+server.ts
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getAgentSkillMarkdown } from '$lib/server/agent-skills';
@@ -16,7 +17,9 @@ export const GET: RequestHandler = async ({ params }) => {
 			'content-type': 'text/markdown; charset=utf-8',
 			'cache-control': 'public, max-age=300',
 			'x-buildos-skill-source': result.source,
-			...(result.runtimeSkillId ? { 'x-buildos-runtime-skill-id': result.runtimeSkillId } : {})
+			...(result.runtimeSkillId
+				? { 'x-buildos-runtime-skill-id': result.runtimeSkillId }
+				: {})
 		}
 	});
 };

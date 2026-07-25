@@ -53,7 +53,7 @@ path: docs/research/youtube-library/analyses/2026-06-11_naval-ravikant_clear-thi
 Three durable operating ideas run through the actionable parts of the conversation:
 
 1. **Writing (and speaking) is the forcing function for clear thinking.** You cannot tell whether you understand something until you compress it for someone else; the compression exposes the gaps your private mind skips over. This is the through-line that makes the episode a writing source at all.
-2. **Understand from the basics; never memorize.** Memorization is the symptom of *not* understanding. A clear thinker can re-derive anything on the spot. Jargon you can't follow is usually a tell that the speaker can't either.
+2. **Understand from the basics; never memorize.** Memorization is the symptom of _not_ understanding. A clear thinker can re-derive anything on the spot. Jargon you can't follow is usually a tell that the speaker can't either.
 3. **Wealth and happiness are learnable via leverage + specific knowledge + a tamed mind** — and the same instinct that wrecks your writing (performing to "sound smart") is the instinct that wrecks your peace.
 
 Two governing maxims worth lifting verbatim:
@@ -63,21 +63,21 @@ Two governing maxims worth lifting verbatim:
 
 ## TL;DR Frameworks & Rules Table
 
-| #   | Framework / rule                       | Concrete definition or threshold                                                                                                                                                                |
-| --- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Writing-as-forcing-function            | Private thought tolerates logical leaps ("you're kind to yourself"). Writing it down / saying it aloud forces you to close the gaps into a proper logical chain. This is *why* he tweets.        |
-| 2   | Re-derive, don't memorize              | Memorization = a sign you don't understand. Test: can you re-derive it on the spot? Feynman counting-to-calculus in four pages as the model of ground-up understanding.                          |
-| 3   | Basics > jargon                        | Master arithmetic cold before calculus; basics from the ground up beat a "scaffolding" of memorized advanced concepts. Unfollowable jargon ≈ the speaker doesn't understand it either.          |
-| 4   | The TL;DR ladder                       | "Don't give me the lecture, give me the book; don't give me the book, give me the blog post; the blog post, give me the tweet; the tweet, I already know." Compression ladder for distribution. |
+| #   | Framework / rule                       | Concrete definition or threshold                                                                                                                                                                                           |
+| --- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Writing-as-forcing-function            | Private thought tolerates logical leaps ("you're kind to yourself"). Writing it down / saying it aloud forces you to close the gaps into a proper logical chain. This is _why_ he tweets.                                  |
+| 2   | Re-derive, don't memorize              | Memorization = a sign you don't understand. Test: can you re-derive it on the spot? Feynman counting-to-calculus in four pages as the model of ground-up understanding.                                                    |
+| 3   | Basics > jargon                        | Master arithmetic cold before calculus; basics from the ground up beat a "scaffolding" of memorized advanced concepts. Unfollowable jargon ≈ the speaker doesn't understand it either.                                     |
+| 4   | The TL;DR ladder                       | "Don't give me the lecture, give me the book; don't give me the book, give me the blog post; the blog post, give me the tweet; the tweet, I already know." Compression ladder for distribution.                            |
 | 5   | The status razor (do-it-anonymously)   | Would you still do / learn / buy this if you could **never tell anyone**? If no, it's a status game, not utility. Naval's version: _"would I still be interested in learning this thing if I couldn't ever tell anybody?"_ |
-| 6   | Information-dense content spec         | His "How to Get Rich" podcast spec: information-dense, concise, high-impact, timeless. "I don't like to say the same thing twice… if you have something original to say, say it; otherwise it's been said better." |
-| 7   | Desire = a contract to be unhappy      | "Desire is a contract you make with yourself to be unhappy until you get what you want." Decision rule: pick **one** overwhelming desire; let the rest go to stay calm and perform better.       |
-| 8   | Specific knowledge                     | Knowledge you can't be trained for, that comes from pursuing genuine curiosity — "the knowledge of being Joe Rogan." It's un-substitutable, so there's no competition and no commodity pricing. |
-| 9   | Leverage (age of infinite leverage)    | Four multipliers of a single decision: **media/broadcast, code, capital, labor (people).** First three are "permissionless" — they work while you sleep. Good judgment now scales 1000x.         |
-| 10  | Authenticity as anti-competition       | "The way to get out of the competition trap is to be authentic." Do what you love better than anyone, map it to what society wants, apply leverage, put your name on it (accountability/equity). |
-| 11  | Aspirational hourly rate               | Pick a slightly ludicrous hourly rate; refuse any "work" (= things you have to do but don't want to) below it; delegate or discard tasks cheaper than the rate. Kill non-urgent meetings.       |
-| 12  | Meditation = inbox-zero for the mind   | Unprocessed life events pile up like unanswered email. Sit (no app, no technique) and let them surface one by one. ~1 hr/day for ~60 days to clear the backlog; then real silence appears.       |
-| 13  | Read for understanding, not completion | Books-read is a vanity/signaling metric. Read the best 100 over and over; flip through, chase ideas, drop when bored. Keeps 50–70 books open at once.                                            |
+| 6   | Information-dense content spec         | His "How to Get Rich" podcast spec: information-dense, concise, high-impact, timeless. "I don't like to say the same thing twice… if you have something original to say, say it; otherwise it's been said better."         |
+| 7   | Desire = a contract to be unhappy      | "Desire is a contract you make with yourself to be unhappy until you get what you want." Decision rule: pick **one** overwhelming desire; let the rest go to stay calm and perform better.                                 |
+| 8   | Specific knowledge                     | Knowledge you can't be trained for, that comes from pursuing genuine curiosity — "the knowledge of being Joe Rogan." It's un-substitutable, so there's no competition and no commodity pricing.                            |
+| 9   | Leverage (age of infinite leverage)    | Four multipliers of a single decision: **media/broadcast, code, capital, labor (people).** First three are "permissionless" — they work while you sleep. Good judgment now scales 1000x.                                   |
+| 10  | Authenticity as anti-competition       | "The way to get out of the competition trap is to be authentic." Do what you love better than anyone, map it to what society wants, apply leverage, put your name on it (accountability/equity).                           |
+| 11  | Aspirational hourly rate               | Pick a slightly ludicrous hourly rate; refuse any "work" (= things you have to do but don't want to) below it; delegate or discard tasks cheaper than the rate. Kill non-urgent meetings.                                  |
+| 12  | Meditation = inbox-zero for the mind   | Unprocessed life events pile up like unanswered email. Sit (no app, no technique) and let them surface one by one. ~1 hr/day for ~60 days to clear the backlog; then real silence appears.                                 |
+| 13  | Read for understanding, not completion | Books-read is a vanity/signaling metric. Read the best 100 over and over; flip through, chase ideas, drop when bored. Keeps 50–70 books open at once.                                                                      |
 
 ## Operating Lessons
 
@@ -101,9 +101,9 @@ This is the spine for any writing skill drawn from this source.
 
 This is the most useful psychology-meets-writing material in the episode.
 
-- Origin story: a poor kid in Queens, the survival skill was *sounding* smart, not *being* smart — "that was the skill I perfected, so I am hardwired to always rehearse things so I will sound smart. It's a disease. It keeps me from being happy."
+- Origin story: a poor kid in Queens, the survival skill was _sounding_ smart, not _being_ smart — "that was the skill I perfected, so I am hardwired to always rehearse things so I will sound smart. It's a disease. It keeps me from being happy."
 - The cure is the status razor (#5): test whether you'd still want the knowledge / do the thing if you could never tell anyone. "That's how I know it's real, that's how I know it's something I actually want to know."
-- **Direct convergence with Sahil Bloom** (separate source, same library batch): Sahil's writing status razor — "are you writing that word because you want people to think you're smart, or because it adds incremental utility?" — is the *same test* applied to word choice. The two sources reinforce a single rule: posturing degrades both clarity and contentment. Strong candidate for a combined skill thread.
+- **Direct convergence with Sahil Bloom** (separate source, same library batch): Sahil's writing status razor — "are you writing that word because you want people to think you're smart, or because it adds incremental utility?" — is the _same test_ applied to word choice. The two sources reinforce a single rule: posturing degrades both clarity and contentment. Strong candidate for a combined skill thread.
 
 ### 4 — Leverage, specific knowledge, authenticity (content-angle material)
 
@@ -162,7 +162,7 @@ This is the most useful psychology-meets-writing material in the episode.
 
 These are **claims as stated by Naval in 2019**, not verified facts. T5 may use them as platform-dynamics raw material; verify before any public use.
 
-- **Algorithm power claim:** "The most powerful people in the world today are the people writing the algorithms for Twitter and Facebook and Instagram… they're controlling the spread of information, rewriting people's brains, programming the culture." (Useful as an editorial *frame* about feed-ranking power; not a sourced fact.)
+- **Algorithm power claim:** "The most powerful people in the world today are the people writing the algorithms for Twitter and Facebook and Instagram… they're controlling the spread of information, rewriting people's brains, programming the culture." (Useful as an editorial _frame_ about feed-ranking power; not a sourced fact.)
 - **Aggregator + long-tail thesis:** the internet collapses every category into "one hegemon and millions of individuals," killing the mid-sized middle (e.g. studios → Netflix; e-commerce → Amazon + small brands). Implication for creators: build the individual brand, don't aim for the middle.
 - **Decentralized-media prediction:** suppression causes the "organism to metastasize" toward new, un-shut-down-able, decentralized platforms — "it's going to take 10–20 years." (Prediction, not fact; partially aged.)
 - **Broadcast-power claim:** "Any human can broadcast any other human on the planet at any time" — the leverage of media is now universal and permissionless.

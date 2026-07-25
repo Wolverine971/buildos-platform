@@ -327,7 +327,7 @@ Carried from the 9takes process + new flags from the 2026-06-11 answers. **Nothi
 ## 5. Discrepancies to Resolve (minor, flag when convenient)
 
 1. **Marine Corps dates.** FOUNDER_CONTEXT says 2012–2017; R2 says enlisted "around 24 years old"; 9takes dump says he's 36 in 2026 (born ~1989/90) — age 24 would mean enlisting ~2013/14, which strains the 2012 start and the 2013/14 first deployment. Likely enlisted ~22–23 or the 2012 date is right and "24" is wrong.
-2. **Sibling ages.** LIFE_STORY says brother _and_ sister are each "18 months younger than me"; 9takes says brother 34, sister ~32. Use: brother ~18 months younger, sister ~2 years behind him.
+2. **Sibling ages.** LIFE*STORY says brother \_and* sister are each "18 months younger than me"; 9takes says brother 34, sister ~32. Use: brother ~18 months younger, sister ~2 years behind him.
 3. ~~Mentor spelling~~ — **resolved 2026-06-11: Mayman.**
 4. ~~Band name~~ — **resolved 2026-06-11: Bring Me The Horizon.**
 5. **Curri start year:** FOUNDER_CONTEXT says ~2023; DJ says "three years," ending March 2025 → ~2022.

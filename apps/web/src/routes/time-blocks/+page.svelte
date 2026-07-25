@@ -465,7 +465,8 @@
 						<TimeBlockListComponent
 							blocks={$timeBlocksStore.blocks}
 							regeneratingIds={$timeBlocksStore.regeneratingIds}
-							ondelete={(event: { blockId: string }) => handleDeleteBlock(event.blockId)}
+							ondelete={(event: { blockId: string }) =>
+								handleDeleteBlock(event.blockId)}
 							onregenerate={(event: { blockId: string }) =>
 								handleRegenerateBlock(event.blockId)}
 						/>

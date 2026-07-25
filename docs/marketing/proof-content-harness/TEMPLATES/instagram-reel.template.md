@@ -1,3 +1,4 @@
+<!-- docs/marketing/proof-content-harness/TEMPLATES/instagram-reel.template.md -->
 <!-- Instagram Reel — @djwayne3 (founder / reach). Collab-tag @build.os so reach flows to the brand. -->
 <!-- Format rules (2026 reach mechanics): hook in first 3s, captions burned in, <20s, tight loop,
      end on a send-this line. Reels are the discovery engine — this is the reach vehicle. -->
@@ -8,12 +9,12 @@
 
 ### On-screen beats (burn captions in)
 
-| Time | On screen | What's showing |
-| --- | --- | --- |
-| 0–3s | _[hook text overlay]_ | DJ to camera, says the hook |
-| 3–8s | _[the messy input]_ | screen: the chaos (client names blurred) |
-| 8–15s | _[the turn]_ | screen: BuildOS structuring it |
-| 15–20s | _[the relief]_ | DJ to camera / product, the payoff |
+| Time   | On screen             | What's showing                           |
+| ------ | --------------------- | ---------------------------------------- |
+| 0–3s   | _[hook text overlay]_ | DJ to camera, says the hook              |
+| 3–8s   | _[the messy input]_   | screen: the chaos (client names blurred) |
+| 8–15s  | _[the turn]_          | screen: BuildOS structuring it           |
+| 15–20s | _[the relief]_        | DJ to camera / product, the payoff       |
 
 ### Caption
 

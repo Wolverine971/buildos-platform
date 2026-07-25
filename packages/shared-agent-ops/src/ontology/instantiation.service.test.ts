@@ -47,9 +47,10 @@ function createMockClient(options: { failOn?: FailRule } = {}) {
 		}),
 		from: vi.fn((table: string) => ({
 			insert(payload: unknown) {
-				const rows = (
-					Array.isArray(payload) ? payload : [payload]
-				) as Record<string, unknown>[];
+				const rows = (Array.isArray(payload) ? payload : [payload]) as Record<
+					string,
+					unknown
+				>[];
 				const failure =
 					rows.map((row) => options.failOn?.(table, row) ?? null).find(Boolean) ?? null;
 				if (!failure) {

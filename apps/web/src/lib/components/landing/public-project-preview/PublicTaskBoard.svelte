@@ -332,9 +332,7 @@
 									<div
 										class="bg-card border border-border/60 rounded-md px-2.5 py-2 shadow-sm"
 									>
-										<p
-											class="text-xs font-medium text-foreground line-clamp-2"
-										>
+										<p class="text-xs font-medium text-foreground line-clamp-2">
 											{t.title}
 										</p>
 										{#if due || t.priority !== null}

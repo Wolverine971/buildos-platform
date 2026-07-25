@@ -136,18 +136,18 @@ Notes: Both runs reached the correct do-not-send verdict and flagged the same of
 ### 2026-06-12 — Task 2 — BLIND A/B (the owed pair; prior wave-2 entry was a with-skill self-check) — performer (with/without) + blind judge: claude-opus-4-8 (workflow subagents)
 
 | Marker | without | with |
-| --- | --- | --- |
-| M1 | miss | hit |
-| M2 | miss | hit |
-| M3 | miss | miss |
-| M4 | miss | hit |
-| M5 | miss | hit |
-| M6 | miss | hit |
-| M7 | miss | hit |
-| M8 | miss | hit |
-| M9 | miss | hit |
-| M10 | miss | hit |
-| M11 | miss | hit |
+| ------ | ------- | ---- |
+| M1     | miss    | hit  |
+| M2     | miss    | hit  |
+| M3     | miss    | miss |
+| M4     | miss    | hit  |
+| M5     | miss    | hit  |
+| M6     | miss    | hit  |
+| M7     | miss    | hit  |
+| M8     | miss    | hit  |
+| M9     | miss    | hit  |
+| M10    | miss    | hit  |
+| M11    | miss    | hit  |
 
 Verdict: **STRONG DELTA**. With-skill hit 10/11 markers; gap over no-skill = 10 markers. Refusal missed by skill run: False.
 Load path (expected, not re-tested this run): skill_load(cold_email_taste_review, full); taste scorecard is inline in the shell (no scorecard reference load); fake_warmth_and_rewrites loads conditionally, justified for the named rewrite moves (feature-first -> progress-first, meeting-first -> artifact-first); should NOT load anything from cold_email_outreach_compiler (rebuild is routed, not performed).

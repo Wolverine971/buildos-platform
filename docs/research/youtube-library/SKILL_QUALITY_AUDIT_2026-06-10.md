@@ -111,6 +111,7 @@ Full evaluation: `SKILL_ARCHITECTURE_EVALUATION_2026-06-10.md`. Headlines: (1) *
 **Worked examples — all 10 priority skills now have them** (each backed by a new/updated `evals.md` with embedded fixtures, binary markers incl. honest-negatives and trap tasks, expected load paths): hook_craft, ui_ux_quality_review, taste_review, compiler (×2 incl. refusal), reply_os (10/10), learning_review (11/11), viral_video_script_structure (12/12 after fix pass), story_driven_content_craft (12/12 after fix pass), landing_page_scorecard_funnel (13/13), growth_diagnostics (11/11). Caveat logged everywhere: manufacturing runs are with-skill self-checks; blind A/B pairs still owed for new tasks.
 
 **Specced artifacts built:**
+
 - [x] `cold_email_research_anchors` 2.4KB → 11.8KB: 0–5 specificity ladder w/ per-level examples (canonical; compiler stays consistent), bridge test + semantic-fit guard, 6-mode surface map, privacy fair-game/forbidden lists ("privacy beats specificity")
 - [x] `cold_email_icp_signal_design`: scoring rubric (≥5 threshold) + 25-question kill-list + persona×signal×reason-now schema inline; committee role map + 30MPC multithreading rules extend the conditional reference; 3-hop primary job → 1-hop
 
@@ -135,10 +136,12 @@ All 13 `2026-06-11_*` transcripts analyzed (one analysis each, Priestley templat
 New analyses: IG set (`adam-mosseri_instagram-algorithm`, `brock-johnson_brand-new-instagram-algorithm`, `brock-johnson_solved-instagram-algorithm`); Shorts (`jenny-hoyos_shorts-genius-jay-clouse`, `jenny-hoyos_mfm-viral-shorts-formula`, `mrbeast_youtube-production-doctrine`); hooks (`brendan-kane_hook-point-three-second-world`); design (`brad-frost_atomic-design`, `brad-frost_is-atomic-design-dead`, `erika-hall_even-more-just-enough-research`, `adam-wathan_building-refactoringui-with-tailwind`); writing/psych (`naval-ravikant_clear-thinking-leverage-writing`, `sahil-bloom_content-empire-writing-system`).
 
 **⚠️ CORRECTIONS FOUND (T5 preview — fabricated content in shipped `going_viral/references/instagram.md`):**
+
 1. The headline "three top ranking signals (watch time, likes-per-reach, DM shares), Mosseri Jan 2025" + "first 3 seconds critical" is **NOT supported by the primary Mosseri transcript** — Mosseri gives no ranked top-3, no watch-time figure, no 3-second number. Asserted/unsourced.
-2. A claimed "December 2025 raw-human / anti-AI suppression memo" has **no basis** — the Nov-2025 primary shows Mosseri *pro*-AI-features. Unverified/fabricated.
+2. A claimed "December 2025 raw-human / anti-AI suppression memo" has **no basis** — the Nov-2025 primary shows Mosseri _pro_-AI-features. Unverified/fabricated.
 3. Source mis-attribution: instagram.md cites Brock's `N1ozk6TTdwU` as "Creator Science #243"; it is actually the **Brian Ellwood** interview.
 4. Single-story-reach rule is time-evolved (2024 advice → mostly removed by 2025) and should be presented as evolution, not a flat rule.
+
 - Other downstream highlights: Hoyos Shorts thresholds (≥90% retention floor / 95%+ team avg, sub-30s needs >100% looping, ~80–85% scroll-through, 34s optimal, 5th-grade readability); MrBeast doctrine (thumbnail→first-5s→first-30s order, autoplay hook, salesman-window, no longer reads retention charts); Brad Frost 2015→2024 (tokens/web-components/adoption-distance/AI-as-light-context); Hall lets `usability_quick_research` drop its "derived" caveat; Wathan RefactoringUI layout recipes for `visual_craft_fundamentals`; Brendan Kane ~85% duplicate of existing hook content (attribution-only, no new rules); Naval+Sahil converge on the "sound smart" / status-razor rule (→ `nonfiction_writing_from_lived_conviction`).
 
 ### ✅ Done — 2026-06-12: P1/T5–T6 — analyses applied to live skills (tests 51/51 green)
@@ -153,18 +156,18 @@ New analyses: IG set (`adam-mosseri_instagram-algorithm`, `brock-johnson_brand-n
 
 Ran the full EVALS_GUIDE blind protocol on 10 tasks via a 3-stage workflow (extract clean task → performer-without [repo-blind] ∥ performer-with → blind judge scoring X/Y, all claude-opus-4-8 workflow subagents). **Result: 10/10 STRONG DELTA, zero refusal-compliance failures.** Every result logged in its skill's `evals.md` Results log with the un-blinded per-marker table.
 
-| Skill | Task | Verdict | with hits | gap |
-| --- | --- | --- | --- | --- |
-| cold_email_reply_os | 1 | STRONG DELTA | 10/10 | 7 |
-| cold_email_learning_review | 1 | STRONG DELTA | 11/11 | 11 |
-| viral_video_script_structure | 1 | STRONG DELTA | 12/12 | 10 |
-| story_driven_content_craft | 1 | STRONG DELTA | 12/12 | 12 |
-| landing_page_scorecard_funnel | 1 | STRONG DELTA | 13/13 | 12 |
-| growth_diagnostics_for_stalled_products | 1 | STRONG DELTA | 11/11 | 7 |
-| ui_ux_quality_review | 2 (targeted typography) | STRONG DELTA | 10/10 | 5 |
-| cold_email_taste_review | 2 | STRONG DELTA | 10/11 | 10 |
-| hook_craft_short_form | 2 (audit) | STRONG DELTA | 10/10 | 8 |
-| youtube_channel_craft_for_founders | 1 | STRONG DELTA | 12/12 | 11 |
+| Skill                                   | Task                    | Verdict      | with hits | gap |
+| --------------------------------------- | ----------------------- | ------------ | --------- | --- |
+| cold_email_reply_os                     | 1                       | STRONG DELTA | 10/10     | 7   |
+| cold_email_learning_review              | 1                       | STRONG DELTA | 11/11     | 11  |
+| viral_video_script_structure            | 1                       | STRONG DELTA | 12/12     | 10  |
+| story_driven_content_craft              | 1                       | STRONG DELTA | 12/12     | 12  |
+| landing_page_scorecard_funnel           | 1                       | STRONG DELTA | 13/13     | 12  |
+| growth_diagnostics_for_stalled_products | 1                       | STRONG DELTA | 11/11     | 7   |
+| ui_ux_quality_review                    | 2 (targeted typography) | STRONG DELTA | 10/10     | 5   |
+| cold_email_taste_review                 | 2                       | STRONG DELTA | 10/11     | 10  |
+| hook_craft_short_form                   | 2 (audit)               | STRONG DELTA | 10/10     | 8   |
+| youtube_channel_craft_for_founders      | 1                       | STRONG DELTA | 12/12     | 11  |
 
 Notable no-skill near-misses (frontier model gets a few markers by accident, as expected — verdict is about the gap): the without runs independently rejected scaling-on-opens (learning_review), kept the locked hook (viral_video), refused to ship a weak hook (hook_craft), and read a viral video as signal-not-luck (youtube_channel) — but none in the skills' named-rule/threshold/contract form. Two guardrail wins worth noting: landing_page's no-skill run endorsed "honest capacity-based scarcity" (failed the scarcity-reject guardrail) where the skill cut it by rule; youtube_channel's no-skill run handed over absolute CTR/AVD benchmarks as fact where the skill's phase-gate + no-absolute-bands guardrails declined.
 

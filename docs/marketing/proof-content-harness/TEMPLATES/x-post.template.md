@@ -1,3 +1,4 @@
+<!-- docs/marketing/proof-content-harness/TEMPLATES/x-post.template.md -->
 <!-- X post — the quick-take version of the same insight. -->
 <!-- Voice: lowercase, punchy, one move. No wind-up. Optional short thread if the demo needs it. -->
 

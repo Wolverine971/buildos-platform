@@ -104,6 +104,11 @@ export type SmartLLMConfig = {
 		transforms?: string[];
 		middleOutEnabled?: boolean;
 		middleOutMinChars?: number;
+		/**
+		 * Evaluation-only escape hatch for anonymized fixtures whose frozen model pin has no ZDR
+		 * endpoint. Production callers must leave this false so requests retain `zdr: true`.
+		 */
+		evaluationOnlyAllowNonZdr?: boolean;
 	};
 	moonshot?: {
 		apiKey?: string;
@@ -161,6 +166,10 @@ export class SmartLLMService {
 	private middleOutMinChars: number;
 	private baseTransforms: string[];
 	private defaultTimeoutMs?: number;
+	private openRouterProviderPolicy: Readonly<{
+		data_collection: 'deny';
+		zdr?: true;
+	}>;
 	private routeKimiModelsDirectToMoonshot: boolean;
 	private moonshotModelMap: Record<string, string>;
 	private moonshotStreamIncludeUsage: boolean;
@@ -187,6 +196,9 @@ export class SmartLLMService {
 		this.middleOutMinChars = config.openrouter?.middleOutMinChars ?? 60000;
 		this.baseTransforms = config.openrouter?.transforms ?? [];
 		this.defaultTimeoutMs = config.openrouter?.timeoutMs;
+		this.openRouterProviderPolicy = config.openrouter?.evaluationOnlyAllowNonZdr
+			? OPENROUTER_NO_DATA_COLLECTION_PROVIDER
+			: OPENROUTER_PRIVATE_PROVIDER;
 		this.routeKimiModelsDirectToMoonshot = config.moonshot?.routeKimiModelsDirect ?? false;
 		this.moonshotModelMap = {
 			...DEFAULT_MOONSHOT_MODEL_MAP,
@@ -488,10 +500,10 @@ export class SmartLLMService {
 			transforms: params.transforms,
 			provider: params.providerMaxPrice
 				? {
-						...OPENROUTER_PRIVATE_PROVIDER,
+						...this.openRouterProviderPolicy,
 						max_price: params.providerMaxPrice
 					}
-				: OPENROUTER_PRIVATE_PROVIDER
+				: this.openRouterProviderPolicy
 		});
 		response.model = response.model ? this.canonicalizeModelId(response.model) : params.model;
 		return { response, route };
@@ -2148,7 +2160,7 @@ export class SmartLLMService {
 								stream_options: { include_usage: true },
 								session_id: cacheAffinityKey,
 								prompt_cache_key: cacheAffinityKey,
-								provider: OPENROUTER_PRIVATE_PROVIDER
+								provider: this.openRouterProviderPolicy
 							})
 						: {
 								model: route.requestModel,

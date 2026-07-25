@@ -1,3 +1,4 @@
+// packages/agent-orchestrator/src/testing/harness/workflow-eval-report.test.ts
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -24,6 +25,8 @@ function run(index: number, scored = true): WorkflowEvalRun {
 		totalDurationMs: index * 1_000,
 		stageCount: 1,
 		replanCount: 0,
+		transitionModelCalls: 0,
+		forcedTransitions: 1,
 		usage: [],
 		modelCostUsd: 0.001,
 		toolCostUsd: 0.008,

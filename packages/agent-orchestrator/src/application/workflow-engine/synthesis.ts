@@ -1,3 +1,4 @@
+// packages/agent-orchestrator/src/application/workflow-engine/synthesis.ts
 import type { StoredArtifact } from '../../domain';
 
 export const SYNTHESIS_PROMPT_VERSION = 'phase-a-synthesis-v1' as const;
@@ -14,7 +15,8 @@ function boundedPayload(artifact: StoredArtifact): unknown {
 		artifact_id: artifact.artifactId,
 		artifact_type: artifact.envelope.artifact_type,
 		summary: artifact.envelope.summary,
-		payload: payload.length <= 20_000 ? artifact.envelope.payload : `${payload.slice(0, 19_999)}…`
+		payload:
+			payload.length <= 20_000 ? artifact.envelope.payload : `${payload.slice(0, 19_999)}…`
 	};
 }
 

@@ -62,26 +62,26 @@ Two attribution cautions: many of the view/spend numbers are MrBeast's own asser
 
 ## TL;DR Frameworks & Thresholds Table
 
-| #   | Framework / rule                         | Concrete threshold or definition                                                                                                                                                                          |
-| --- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Pre-production order (mechanic)          | Decide in order: **thumbnail → video concept → first 5 seconds → first 30 seconds.** The first 5 seconds must look like the thumbnail.                                                                     |
-| 2   | Autoplay hook (mechanic)                 | YouTube autoplays the video on the homepage, so for a known channel **the thumbnail is "irrelevant" — the first 5 seconds must visually convince the click.** The 5-sec hook now drives CTR, not just the thumbnail. |
-| 3   | Captions in the hook (mechanic)          | Assume autoplay is muted; the first 5 seconds must work with **captions** because people aren't watching with sound. ("Everything" gets subtitled.)                                                       |
-| 4   | Salesman window (mechanic)               | Treat the opening as a sales pitch: **"you're a salesman, you're a salesman"** until **~the 1-minute mark**; after that the viewer has "bought with their eyeballs" — stop selling, deliver the payoff.    |
-| 5   | Retention target (asserted, contextual)  | Prior podcast benchmark widely repeated: **~70% retention.** In this interview he says he now **doesn't look at retention %** at all and optimizes on craft judgment instead.                              |
-| 6   | "Can I not look away?" test (mechanic)   | A good video passes two questions at **every step**: (a) **Am I entertained — can I not look away?** (b) **Does this make sense / can people follow it?** New location or twist must still pass both.       |
+| #   | Framework / rule                         | Concrete threshold or definition                                                                                                                                                                                                                                           |
+| --- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Pre-production order (mechanic)          | Decide in order: **thumbnail → video concept → first 5 seconds → first 30 seconds.** The first 5 seconds must look like the thumbnail.                                                                                                                                     |
+| 2   | Autoplay hook (mechanic)                 | YouTube autoplays the video on the homepage, so for a known channel **the thumbnail is "irrelevant" — the first 5 seconds must visually convince the click.** The 5-sec hook now drives CTR, not just the thumbnail.                                                       |
+| 3   | Captions in the hook (mechanic)          | Assume autoplay is muted; the first 5 seconds must work with **captions** because people aren't watching with sound. ("Everything" gets subtitled.)                                                                                                                        |
+| 4   | Salesman window (mechanic)               | Treat the opening as a sales pitch: **"you're a salesman, you're a salesman"** until **~the 1-minute mark**; after that the viewer has "bought with their eyeballs" — stop selling, deliver the payoff.                                                                    |
+| 5   | Retention target (asserted, contextual)  | Prior podcast benchmark widely repeated: **~70% retention.** In this interview he says he now **doesn't look at retention %** at all and optimizes on craft judgment instead.                                                                                              |
+| 6   | "Can I not look away?" test (mechanic)   | A good video passes two questions at **every step**: (a) **Am I entertained — can I not look away?** (b) **Does this make sense / can people follow it?** New location or twist must still pass both.                                                                      |
 | 7   | Permission vs. interruption (framework)  | **Interruption** = feed platforms (YouTube/TikTok): the thumbnail interrupts the scroll, so you must hook hard in the first 30 seconds. **Permission** = paid/streaming (movie, Netflix): the audience pre-committed, so content can "breathe" and you don't hook as hard. |
-| 8   | Storytelling-per-format rule (framework) | Don't run one fixed structure. **Match story type to content type:** high-contestant videos (1–100) reward character-building; experiential videos ($1 vs $1B yacht) reward "our experience," not character arcs. |
-| 9   | Complexity gate (mechanic)               | He abandoned the "keep it dead-simple for 400M people" rule and tested more complex challenges; validated by showing a rough cut to **~40 people of all ages** — if attentive viewers get it, ship it.    |
-| 10  | Format-iteration ratchet (mechanic)      | Re-shoot the **same format repeatedly** and change *how* you film it. Example: $1-vs-$1B hotel → yacht went **"B → A++"** with identical filming by **unleashing talent to explore** instead of a guided tour. |
-| 11  | Over-filming penalty (mechanic)          | Early in a format you over-film (10 hrs in a hotel) because you don't know what to keep; once the format is learned you pre-know the beats and shoot tighter — over-filming is a sign the format isn't mastered yet. |
-| 12  | Short-form = one cross-platform craft    | Master short-form once and the **same clip can go viral on YouTube Shorts, TikTok, Instagram Reels, Facebook, Reddit, Twitter** simultaneously. "Never before in history" could one craft grow you on every platform. |
-| 13  | Short-form first-frame = thumbnail       | In a vertical swipe feed the **first frame is the thumbnail.** Often **remove yourself from the frame** to focus on one person's reaction (vertical can't fit many subjects).                              |
-| 14  | Clips are distribution, not theft        | Encourage reuploads/reactions/clips: a viral 2-min clip (cited: **~40M views on TikTok**) is "a funnel to your content" / "free billboards." Striking clippers is "undervaluing your brand."               |
-| 15  | Transform, don't plagiarize (rule)       | Inspiration is fine: **"How can I do that 100x better?"** Plagiarism = same thumbnail/words/concept verbatim. Transformation = take the format and out-execute it 100x.                                     |
-| 16  | "Just make the best video" doctrine      | His one repeated piece of advice: **"Just focus on making the best videos and the whole world will open up."** The algorithm "rewards great content very well right now"; views are proportional to quality.  |
-| 17  | Mastery horizon (philosophy)             | Rejects the 10,000-hour cliché: aims for **10,000 *days* (~30 years)** in the craft; says he is ~halfway (~15 years in). Frames views as the output of compounding learning, not talent.                   |
-| 18  | Coachability hiring filter (rule)        | #1 hiring trait is **coachability.** New hires are "useless for the first 6 months" and that's expected; people who think they know better (esp. from traditional media) don't fit because the work isn't scripted. |
+| 8   | Storytelling-per-format rule (framework) | Don't run one fixed structure. **Match story type to content type:** high-contestant videos (1–100) reward character-building; experiential videos ($1 vs $1B yacht) reward "our experience," not character arcs.                                                          |
+| 9   | Complexity gate (mechanic)               | He abandoned the "keep it dead-simple for 400M people" rule and tested more complex challenges; validated by showing a rough cut to **~40 people of all ages** — if attentive viewers get it, ship it.                                                                     |
+| 10  | Format-iteration ratchet (mechanic)      | Re-shoot the **same format repeatedly** and change _how_ you film it. Example: $1-vs-$1B hotel → yacht went **"B → A++"** with identical filming by **unleashing talent to explore** instead of a guided tour.                                                             |
+| 11  | Over-filming penalty (mechanic)          | Early in a format you over-film (10 hrs in a hotel) because you don't know what to keep; once the format is learned you pre-know the beats and shoot tighter — over-filming is a sign the format isn't mastered yet.                                                       |
+| 12  | Short-form = one cross-platform craft    | Master short-form once and the **same clip can go viral on YouTube Shorts, TikTok, Instagram Reels, Facebook, Reddit, Twitter** simultaneously. "Never before in history" could one craft grow you on every platform.                                                      |
+| 13  | Short-form first-frame = thumbnail       | In a vertical swipe feed the **first frame is the thumbnail.** Often **remove yourself from the frame** to focus on one person's reaction (vertical can't fit many subjects).                                                                                              |
+| 14  | Clips are distribution, not theft        | Encourage reuploads/reactions/clips: a viral 2-min clip (cited: **~40M views on TikTok**) is "a funnel to your content" / "free billboards." Striking clippers is "undervaluing your brand."                                                                               |
+| 15  | Transform, don't plagiarize (rule)       | Inspiration is fine: **"How can I do that 100x better?"** Plagiarism = same thumbnail/words/concept verbatim. Transformation = take the format and out-execute it 100x.                                                                                                    |
+| 16  | "Just make the best video" doctrine      | His one repeated piece of advice: **"Just focus on making the best videos and the whole world will open up."** The algorithm "rewards great content very well right now"; views are proportional to quality.                                                               |
+| 17  | Mastery horizon (philosophy)             | Rejects the 10,000-hour cliché: aims for **10,000 _days_ (~30 years)** in the craft; says he is ~halfway (~15 years in). Frames views as the output of compounding learning, not talent.                                                                                   |
+| 18  | Coachability hiring filter (rule)        | #1 hiring trait is **coachability.** New hires are "useless for the first 6 months" and that's expected; people who think they know better (esp. from traditional media) don't fit because the work isn't scripted.                                                        |
 
 ## Operating Lessons
 
@@ -90,7 +90,7 @@ Two attribution cautions: many of the view/spend numbers are MrBeast's own asser
 The production sequence is fixed and explicit: **thumbnail → concept → first 5 seconds → first 30 seconds.** The novel update versus older MrBeast advice is the **autoplay hook**. Because YouTube now autoplays a preview on the homepage, and because a heavy subscriber base means his upload is first on the feed, viewers often "don't even see the thumbnail" — it auto-plays too fast. Therefore:
 
 - The **first 5 seconds must look like the thumbnail** (he showed a fully-rendered 5-second intro on his phone built specifically as the autoplay frame).
-- The 5-second hook is now a **CTR driver**, not merely a retention device: "before, you had to convince people to watch; now you have to convince people to click *and* watch at the same time."
+- The 5-second hook is now a **CTR driver**, not merely a retention device: "before, you had to convince people to watch; now you have to convince people to click _and_ watch at the same time."
 - Assume **muted autoplay** → the hook must read with **captions** on.
 - Decision rule he states bluntly: he "roasts the hell out of" people with **boring first five seconds.**
 
@@ -104,7 +104,7 @@ The previous Colin-and-Samir interview popularized **~70% retention** as a targe
 
 ### Permission vs. interruption (the platform-environment framework)
 
-A reusable model for *why* hook intensity should vary by platform:
+A reusable model for _why_ hook intensity should vary by platform:
 
 - **Interruption platforms** (YouTube feed, TikTok): the thumbnail/first frame interrupts a scroll. The viewer gave no commitment, so you must **hook hard in the first 30 seconds** and justify the watch.
 - **Permission platforms** (a movie ticket, a Netflix series): the audience **pre-committed** (bought a ticket, started episode 1). Content can **"breathe"**; you "don't have to be screaming at the start." Once they're invested in characters, the hook pressure drops.
@@ -117,7 +117,7 @@ The key correction to "always simplify / always go fast":
 
 - **Don't run one structure.** Different videos demand different story modes. A **1-through-100 / many-contestant** video rewards **character-building** (the daughter's-birthday moment made him cry watching the cut, and viewers cited it as a reason they loved the video). An **experiential** video ($1 vs $1B yacht) is **not** about characters — "it's about my experience on these boats," and forcing character arcs would be wrong.
 - **Surprise the impact, don't repeat it.** If you hit the same emotional beat every time, the audience **desensitizes**; switch the lever (this episode = character-building you follow throughout) to keep it landing.
-- **Three-act structure is a tool, not a template.** Traditional "break it into three acts" advice mostly failed for him on YouTube; he treats screenwriting structure as an ingredient to "throw in the pot," keep what scores ("oh that's a 10/10"), discard what bombs. Short-form *does* map cleanly to act structure (hook = question, exposition = concept, then payoff) because sub-minute stories are "barebones storytelling."
+- **Three-act structure is a tool, not a template.** Traditional "break it into three acts" advice mostly failed for him on YouTube; he treats screenwriting structure as an ingredient to "throw in the pot," keep what scores ("oh that's a 10/10"), discard what bombs. Short-form _does_ map cleanly to act structure (hook = question, exposition = concept, then payoff) because sub-minute stories are "barebones storytelling."
 
 ### The complexity gate (worked example)
 
@@ -125,7 +125,7 @@ He long believed challenges must be **dead-simple** because "300–400 million p
 
 ### Format-iteration ratchet (worked example)
 
-The clearest reusable production rule. **Re-shoot the same format and change *how* you film, not *what* you film.** The $1-vs-$1B series went from the **hotel video (a "B")** to the **yacht video (an "A++")** with the same filming approach — the only change was: instead of a guided tour where a host points out features (low energy, "boring"), he **clears the set and unleashes the talent to explore** ("boys go be stupid"), captures real reactions, then has the owner walk through afterward to catch anything missed. "All we did, we filmed it differently." Corollary (Rule 11): **over-filming is a sign the format isn't mastered** — early on he shot 10 hours per hotel "because we don't know what we want to put in"; once the beats are known, he shoots tighter.
+The clearest reusable production rule. **Re-shoot the same format and change _how_ you film, not _what_ you film.** The $1-vs-$1B series went from the **hotel video (a "B")** to the **yacht video (an "A++")** with the same filming approach — the only change was: instead of a guided tour where a host points out features (low energy, "boring"), he **clears the set and unleashes the talent to explore** ("boys go be stupid"), captures real reactions, then has the owner walk through afterward to catch anything missed. "All we did, we filmed it differently." Corollary (Rule 11): **over-filming is a sign the format isn't mastered** — early on he shot 10 hours per hotel "because we don't know what we want to put in"; once the beats are known, he shoots tighter.
 
 ### Short-form: one craft, every platform, first-frame-as-thumbnail
 
@@ -134,7 +134,7 @@ Short-form's strategic value: **master it once and grow everywhere.** The same c
 - **First frame = thumbnail.** In a vertical swipe feed there's no separate thumbnail; the opening frame is the thumbnail.
 - **Vertical can't fit many subjects**, so often **remove yourself from the frame** to focus on one person's reaction and get a stronger close-up.
 - **Old long-form is now short-form.** Concepts that were entire videos ("can 10,000 fans push a car") are now a **1-minute segment or a Short**. His current full videos are "literally 10 of my old videos put together."
-- **POV / hand-and-voice** framing works well in shorts because it makes the piece about the *situation*, not the host.
+- **POV / hand-and-voice** framing works well in shorts because it makes the piece about the _situation_, not the host.
 - Economics caveat (asserted, unsourced): his **shorts lose money** (he flew someone to Paris for a one-minute short) — short-form is a growth/funnel play, not a revenue play.
 
 ### Clips and reuploads are distribution
@@ -159,7 +159,7 @@ Strong, repeated stance: **do not strike clippers.** A 2-minute clip of a video 
 - "Just focus on making the best videos and the whole world will open up to you."
 - "It is simply knowledge… if you knew what I knew you could get 10 million views a video within six months."
 - "Permission… the audience has given you permission… on YouTube or TikTok it's kind of interruption."
-- "I'm going to put 10,000 *days* into this." (rejecting 10,000 hours)
+- "I'm going to put 10,000 _days_ into this." (rejecting 10,000 hours)
 - "Am I entertained — can I not look away? And does this make sense?"
 
 ## Failure Modes
@@ -179,10 +179,12 @@ Strong, repeated stance: **do not strike clippers.** A 2-minute clip of a video 
 ## BuildOS Application
 
 1. **Anti-feed cluster cadence + hooks:** the autoplay-hook and salesman-window rules sharpen the seed-campaign's short-form scripts — the first 5 seconds (muted, captioned, thumbnail-matched) is the single highest-leverage edit, and the "stop selling at ~1 minute" rule is a clean structural beat for TikTok/Reels.
-- The permission-vs-interruption framework explains *why* BuildOS blog/long-form (permission) can breathe while social hooks (interruption) must front-load tension — a useful split for the guerrilla content doctrine.
+
+- The permission-vs-interruption framework explains _why_ BuildOS blog/long-form (permission) can breathe while social hooks (interruption) must front-load tension — a useful split for the guerrilla content doctrine.
+
 2. **"Best artifact wins" parallels BuildOS positioning:** "just make the best video" maps to the anti-AI "lead with relief, show don't tell" stance — the proof asset (a great brain-dump-to-structure demo) is the distribution.
 3. **Clips-as-distribution** validates encouraging founder/creator reuploads of BuildOS demo moments rather than gating them.
-4. **Format-iteration ratchet** is a content-ops rule for BuildOS social: re-run a working format and change *how* it's shot/written, rather than chasing novelty every post.
+4. **Format-iteration ratchet** is a content-ops rule for BuildOS social: re-run a working format and change _how_ it's shot/written, rather than chasing novelty every post.
 
 ## Downstream enrichment targets
 
@@ -209,7 +211,7 @@ For **T5/T6** — which thresholds/rules route to which skill (note only; do not
 ### → `youtube_channel_craft_for_founders`
 
 - **Permission vs. interruption** framework for choosing platform + hook intensity (Rule 7).
-- **Format-iteration ratchet** (B → A++ by changing *how* you film) + **over-filming penalty** (Rules 10–11).
+- **Format-iteration ratchet** (B → A++ by changing _how_ you film) + **over-filming penalty** (Rules 10–11).
 - **"Just make the best video" + algorithm rewards quality proportionally** + **mastery = knowledge, not budget/luck** (Rules 16–17).
 - **70% retention as legacy benchmark; "can't look away" as the operating proxy** (Rules 5–6).
 - **Owned product > brand-deal ceiling** (Feastables logic) for creator-led monetization.

@@ -19,11 +19,14 @@ import {
 	ROUTE_REVIEW_POLICY_VERSION,
 	ROUTE_SYSTEM_PROMPT,
 	serializeWorldCard,
+	WORKFLOW_SCOPE_PROMPT_VERSION,
+	WORKFLOW_SCOPE_SYSTEM_PROMPT,
 	type RouteModelCall,
 	type RouteModelPort
 } from '../../../../../../../packages/agent-orchestrator/src';
 import {
 	buildRouteEvalReport,
+	isPlanCriticalScenario,
 	type RouteEvalRun,
 	type RouteEvalUsageEvent
 } from '../../../../../../../packages/agent-orchestrator/src/testing/harness/route-eval-report';
@@ -76,15 +79,23 @@ function sha256(value: string): string {
 	return createHash('sha256').update(value).digest('hex');
 }
 
-function isPinnedModel(actual: string): boolean {
-	const allowed =
-		ROUTE_EVAL_STRATEGY === 'fast_then_review'
-			? [ROUTE_EVAL_MODEL, ROUTE_REVIEW_MODEL]
-			: [ROUTE_EVAL_MODEL];
-	return allowed.some((model) => actual === model || actual.startsWith(`${model}-`));
+/**
+ * Per-role pin verification. The union check this replaces would have accepted a primary call
+ * that silently resolved to the reviewer pin. See PHASE_A_AUDIT_2026-07-25.md S4.
+ */
+function pinForRole(role: RouteEvalUsageEvent['role']): string {
+	return role === 'route_reviewer' ? ROUTE_REVIEW_MODEL : ROUTE_EVAL_MODEL;
 }
 
-function toUsageEvent(event: JSONUsageEvent): RouteEvalUsageEvent {
+function isPinnedModel(actual: string, role: RouteEvalUsageEvent['role']): boolean {
+	const pin = pinForRole(role);
+	return actual === pin || actual.startsWith(`${pin}-`);
+}
+
+function toUsageEvent(
+	event: JSONUsageEvent,
+	role: 'route_primary' | 'route_reviewer'
+): RouteEvalUsageEvent {
 	return {
 		model: event.model,
 		provider: event.provider ?? event.billingProvider ?? null,
@@ -92,15 +103,39 @@ function toUsageEvent(event: JSONUsageEvent): RouteEvalUsageEvent {
 		completionTokens: event.completionTokens,
 		totalTokens: event.totalTokens,
 		totalCostUsd: event.totalCost,
-		billingDisposition: event.billingDisposition ?? null
+		billingDisposition: event.billingDisposition ?? null,
+		role
 	};
+}
+
+/**
+ * A completion truncated by the output-token cap never produced a routing decision to score.
+ * The frozen validity rule classes a harness failure as infrastructure-invalid, and a max_tokens
+ * value that cuts a reasoning model off before it emits any JSON is a harness failure — not the
+ * model choosing the wrong route.
+ *
+ * This fired four times in route-eval-mitigation-v2.json (`finish_reason=length` on z-ai/glm-5.2
+ * against a 900-token cap), and each was scored as a wrong answer with
+ * `infrastructureInvalidCount: 0`. See research/09_INTERNAL_GROUND_TRUTH_MAP.md and
+ * research/10_ROUTING_FAILURE_FORENSICS.md §5A.2.
+ */
+function truncationInvalidReason(error: unknown): string | null {
+	const message = error instanceof Error ? error.message : String(error ?? '');
+	if (!message) return null;
+	return /finish_reason=length|cause=null_content/i.test(message)
+		? `Model output was truncated by the token cap before a decision was emitted: ${message.slice(0, 300)}`
+		: null;
 }
 
 function infrastructureInvalidReason(usage: RouteEvalUsageEvent[]): string | null {
 	if (usage.length === 0) return 'No model usage event was observed.';
-	const mismatched = usage.find((event) => !isPinnedModel(event.model));
+	const untagged = usage.find((event) => !event.role);
+	if (untagged) {
+		return `Usage event for ${untagged.model} carried no role, so its pin cannot be verified.`;
+	}
+	const mismatched = usage.find((event) => !isPinnedModel(event.model, event.role));
 	if (mismatched) {
-		return `Actual model ${mismatched.model} is outside the pinned route strategy.`;
+		return `Role ${mismatched.role} returned ${mismatched.model}, which is not its pin.`;
 	}
 	if (
 		usage.some(
@@ -167,7 +202,12 @@ function createPinnedModelPort(params: {
 					replacementIndex: params.replacementIndex
 				},
 				onUsage: async (event) => {
-					params.usage.push(toUsageEvent(event));
+					params.usage.push(
+						toUsageEvent(
+							event,
+							params.modelRole === 'review' ? 'route_reviewer' : 'route_primary'
+						)
+					);
 				}
 			});
 		}
@@ -186,6 +226,8 @@ async function executeRun(params: {
 	let actualRoute: string | null = null;
 	let actualReasonCode: string | null = null;
 	let repaired = false;
+	let reviewed: boolean | null = ROUTE_EVAL_STRATEGY === 'fast_then_review' ? false : null;
+	let reviewReason: string | null = null;
 	let error: string | null = null;
 
 	try {
@@ -224,12 +266,16 @@ async function executeRun(params: {
 		actualRoute = result.decision.route;
 		actualReasonCode = result.decision.reason_code;
 		repaired = result.repaired;
+		if ('reviewed' in result) {
+			reviewed = result.reviewed;
+			reviewReason = result.reviewReason;
+		}
 	} catch (caught) {
 		error = caught instanceof Error ? caught.message : String(caught);
 		repaired = usage.length > 1;
 	}
 
-	const invalidReason = infrastructureInvalidReason(usage);
+	const invalidReason = infrastructureInvalidReason(usage) ?? truncationInvalidReason(error);
 	const routeMatch = actualRoute === params.scenario.expected_route;
 	const reasonCodeMatch = actualReasonCode === params.scenario.expected_reason_code;
 	return {
@@ -247,6 +293,9 @@ async function executeRun(params: {
 		scored: invalidReason === null,
 		infrastructureInvalidReason: invalidReason,
 		repaired,
+		planCritical: isPlanCriticalScenario(params.scenario.scenario_id),
+		reviewed,
+		reviewReason,
 		modelCallCount: usage.length,
 		durationMs: Date.now() - startedAt,
 		usage,
@@ -333,6 +382,15 @@ routeDescribe('Phase A pinned CEO route evaluation (paid)', () => {
 					ROUTE_EVAL_STRATEGY === 'fast_then_review' ? ROUTE_REVIEW_MODEL : null,
 				reviewPolicyVersion:
 					ROUTE_EVAL_STRATEGY === 'fast_then_review' ? ROUTE_REVIEW_POLICY_VERSION : null,
+				reviewPromptVersion:
+					ROUTE_EVAL_STRATEGY === 'fast_then_review'
+						? WORKFLOW_SCOPE_PROMPT_VERSION
+						: null,
+				reviewPromptSha256:
+					ROUTE_EVAL_STRATEGY === 'fast_then_review'
+						? sha256(WORKFLOW_SCOPE_SYSTEM_PROMPT)
+						: null,
+				gatePlanCriticalReasons: false,
 				runs
 			});
 			writeFileSync(ROUTE_EVAL_OUTPUT_PATH, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
@@ -342,7 +400,10 @@ routeDescribe('Phase A pinned CEO route evaluation (paid)', () => {
 			);
 
 			expect(report.summary.overall.scoredRunCount).toBe(EXPECTED_LOGICAL_RUNS);
-			expect(report.summary.overall.routeAccuracy).toBeGreaterThanOrEqual(0.75);
+			if (frozenPhaseACorpus.status === 'frozen') {
+				expect(report.summary.overall.routeAccuracy).toBeGreaterThanOrEqual(0.75);
+			}
+			expect(report.summary.planCriticalReasonGateApplied).toBe(false);
 		}
 	);
 });

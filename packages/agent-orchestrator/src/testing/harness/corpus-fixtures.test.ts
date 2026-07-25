@@ -5,7 +5,12 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { CandidateCorpusSchema, FrozenCorpusSchema, ProjectSnapshotSchema } from './corpus-schema';
+import {
+	CandidateCorpusSchema,
+	FrozenCorpusSchema,
+	HoldoutCorpusSchema,
+	ProjectSnapshotSchema
+} from './corpus-schema';
 
 function readJson(relativePath: string): unknown {
 	return JSON.parse(readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8'));
@@ -14,6 +19,7 @@ function readJson(relativePath: string): unknown {
 describe('Phase A corpus candidate fixtures', () => {
 	const corpus = CandidateCorpusSchema.parse(readJson('./candidates/candidates.json'));
 	const frozen = FrozenCorpusSchema.parse(readJson('./corpus/phase-a.json'));
+	const holdout = HoldoutCorpusSchema.parse(readJson('./corpus/phase-a-holdout.json'));
 	const snapshot = ProjectSnapshotSchema.parse(
 		readJson('./fixtures/project-alpha.snapshot.json')
 	);
@@ -100,6 +106,43 @@ describe('Phase A corpus candidate fixtures', () => {
 				acceptance_checks: candidate!.acceptance_checks,
 				notes: candidate!.notes
 			});
+		}
+	});
+
+	it('freezes the held-out labels independently of model output', () => {
+		expect(holdout.scored_against_prompt_version).toBe('phase-a-route-prompt-v5');
+		expect(holdout.scenarios).toHaveLength(5);
+		expect(holdout.scenarios.map((scenario) => scenario.scenario_id)).toEqual([
+			'a0-c03-project-status',
+			'a0-c05-single-document-read',
+			'a0-c10-week-planning-stress',
+			'h1-t01-today-focus',
+			'h1-t02-email-connection'
+		]);
+		expect(
+			holdout.scenarios.map((scenario) => [
+				scenario.expected_route,
+				scenario.expected_reason_code
+			])
+		).toEqual([
+			['direct', 'status_summary'],
+			['direct', 'simple_read'],
+			['direct', 'status_summary'],
+			['direct', 'status_summary'],
+			['capability_gap', 'unsupported_capability']
+		]);
+	});
+
+	it('copies the three pre-labeled alternatives without request or label drift', () => {
+		for (const scenario of holdout.scenarios.slice(0, 3)) {
+			const candidate = corpus.candidates.find(
+				(item) => item.candidate_id === scenario.scenario_id
+			);
+			expect(candidate).toBeDefined();
+			expect(scenario.request_text).toBe(candidate!.request_text);
+			expect(scenario.expected_route).toBe(candidate!.proposed_route);
+			expect(scenario.expected_reason_code).toBe(candidate!.proposed_reason_code);
+			expect(scenario.source).toEqual(candidate!.source);
 		}
 	});
 

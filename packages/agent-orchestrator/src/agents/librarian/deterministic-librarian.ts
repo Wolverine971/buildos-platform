@@ -1,3 +1,4 @@
+// packages/agent-orchestrator/src/agents/librarian/deterministic-librarian.ts
 import { createHash } from 'node:crypto';
 
 import {
@@ -56,7 +57,17 @@ export interface DeterministicLibrarianInput {
 	snapshot: LibrarianProjectSnapshot;
 	maxFacts?: number;
 	maxExcerpts?: number;
+	/**
+	 * Criterion ids declared by the step being executed. A self-report keyed to an id the step never
+	 * declared cannot be reconciled with the plan, so callers should pass
+	 * `step.acceptance_criteria.map((criterion) => criterion.criterion_id)`.
+	 * Defaults to the agent's own id when the caller supplies none.
+	 * See research/09_INTERNAL_GROUND_TRUTH_MAP.md D10.
+	 */
+	acceptanceCriterionIds?: readonly string[];
 }
+
+const LIBRARIAN_DEFAULT_CRITERION_ID = 'context.packet.valid';
 
 const STOP_WORDS = new Set([
 	'a',
@@ -137,7 +148,9 @@ function rank<T extends { id: string }>(
 ): Array<{ item: T; score: number }> {
 	return items
 		.map((item) => ({ item, score: relevance(queryTokens, text(item)) }))
-		.sort((left, right) => right.score - left.score || left.item.id.localeCompare(right.item.id));
+		.sort(
+			(left, right) => right.score - left.score || left.item.id.localeCompare(right.item.id)
+		);
 }
 
 function truncate(value: string, maxCharacters: number): string {
@@ -161,7 +174,9 @@ export function buildContextPacket(input: DeterministicLibrarianInput): ContextP
 	const expandedTokens = tokens(
 		[
 			input.objective,
-			...selectedTasks.filter((entry) => entry.score > 0).map(({ item }) => `${item.title} ${item.description}`)
+			...selectedTasks
+				.filter((entry) => entry.score > 0)
+				.map(({ item }) => `${item.title} ${item.description}`)
 		].join(' ')
 	);
 	const rankedDocuments = rank(
@@ -274,16 +289,17 @@ export function runDeterministicLibrarian(input: DeterministicLibrarianInput): A
 				]
 			}
 		],
-		acceptance_results: [
-			{
-				criterion_id: 'context.packet.valid',
-				status: 'passed',
-				evaluation_source: 'runtime',
-				validator_id: 'context.packet.schema',
-				details: 'The deterministic ContextPacket passed the frozen contract schema.',
-				evidence_artifact_ids: []
-			}
-		],
+		acceptance_results: (input.acceptanceCriterionIds?.length
+			? input.acceptanceCriterionIds
+			: [LIBRARIAN_DEFAULT_CRITERION_ID]
+		).map((criterionId) => ({
+			criterion_id: criterionId,
+			status: 'passed',
+			evaluation_source: 'runtime',
+			validator_id: 'context.packet.schema',
+			details: 'The deterministic ContextPacket passed the frozen contract schema.',
+			evidence_artifact_ids: []
+		})),
 		open_questions: [],
 		assumptions: [],
 		residual_risks: [

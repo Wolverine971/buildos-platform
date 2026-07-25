@@ -1,3 +1,4 @@
+// apps/web/src/lib/server/gmail-relevance/manual-pilot.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import type { Json } from '@buildos/shared-types';
 import {
@@ -31,11 +32,13 @@ function repository(overrides: Partial<GmailRelevancePilotRepository> = {}) {
 	} satisfies GmailRelevancePilotRepository;
 }
 
-function dependencies(input: {
-	repository?: GmailRelevancePilotRepository;
-	existing?: { id: string; configuration: Json } | null;
-	profileFailure?: Error;
-} = {}) {
+function dependencies(
+	input: {
+		repository?: GmailRelevancePilotRepository;
+		existing?: { id: string; configuration: Json } | null;
+		profileFailure?: Error;
+	} = {}
+) {
 	const repo =
 		input.repository ??
 		repository(
@@ -174,9 +177,7 @@ describe('GmailRelevancePilotService', () => {
 				connection_ids: [CONNECTION_ID],
 				project_ids: [PROJECT_ID]
 			})
-		).rejects.toEqual(
-			expect.objectContaining({ code: 'project_unavailable' })
-		);
+		).rejects.toEqual(expect.objectContaining({ code: 'project_unavailable' }));
 		expect(inaccessible.controlPlane.createRun).not.toHaveBeenCalled();
 	});
 

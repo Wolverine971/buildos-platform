@@ -19,7 +19,8 @@
 		"typecheck": "tsc --noEmit",
 		"test": "vitest",
 		"test:run": "vitest run",
-		"test:coverage": "vitest run --coverage"
+		"test:coverage": "vitest run --coverage",
+		"reanalyze:routes": "tsx scripts/reanalyze-route-results.ts"
 	},
 	"dependencies": {
 		"zod": "^3.23.0"

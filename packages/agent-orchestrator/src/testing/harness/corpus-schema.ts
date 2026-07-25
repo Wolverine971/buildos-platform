@@ -291,8 +291,89 @@ export const ProjectSnapshotSchema = z
 		}
 	});
 
+/**
+ * A route-only held-out set. The frozen eight were used for four prompt passes and two model
+ * pilots, so accuracy measured on them is a training-set score. A held-out corpus is scored once,
+ * cold, with an already-frozen prompt, and is never used for tuning.
+ * See PHASE_A_AUDIT_2026-07-25.md B4.
+ */
+export const HoldoutCorpusScenarioSchema = FrozenCorpusScenarioSchema.innerType()
+	.omit({ selection_status: true, acceptance_checks: true })
+	.extend({
+		selection_status: z.literal('holdout'),
+		class: z.enum([
+			'simple_read',
+			'status_summary',
+			'single_source_lookup',
+			'multi_source_research',
+			'context_research_recommendation',
+			'ambiguous',
+			'unsupported_capability',
+			'route_stress'
+		]),
+		/** Route-only scoring; acceptance checks are a comparison concern, not a routing one. */
+		acceptance_checks: z.array(AcceptanceCheckSchema).max(20).default([])
+	})
+	.strict()
+	.superRefine((scenario, context) => {
+		const reasonSchemas = {
+			direct: DirectRouteReasonCodeSchema,
+			workflow: WorkflowRouteReasonCodeSchema,
+			clarify: ClarifyRouteReasonCodeSchema,
+			capability_gap: CapabilityGapRouteReasonCodeSchema
+		};
+		if (
+			!reasonSchemas[scenario.expected_route].safeParse(scenario.expected_reason_code).success
+		) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['expected_reason_code'],
+				message: 'Expected reason code must be compatible with the expected route'
+			});
+		}
+	});
+
+export const HoldoutCorpusSchema = z
+	.object({
+		schema_version: z.literal(1),
+		corpus_version: z.string().regex(/^phase-a-holdout-v\d+$/),
+		status: z.literal('holdout'),
+		/** The prompt version this set is scored against. It must already be frozen. */
+		scored_against_prompt_version: NonEmptyStringSchema.max(120),
+		snapshot_ref: NonEmptyStringSchema.max(300),
+		snapshot_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+		scenarios: z.array(HoldoutCorpusScenarioSchema).min(3).max(8)
+	})
+	.strict()
+	.superRefine((corpus, context) => {
+		const scenarioIds = corpus.scenarios.map((scenario) => scenario.scenario_id);
+		const sourceRefs = corpus.scenarios.map((scenario) => scenario.source.turn_ref_hash);
+		if (new Set(scenarioIds).size !== scenarioIds.length) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['scenarios'],
+				message: 'Held-out scenario ids must be unique'
+			});
+		}
+		if (new Set(sourceRefs).size !== sourceRefs.length) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['scenarios'],
+				message: 'Held-out source turn refs must be unique'
+			});
+		}
+		if (!corpus.scenarios.every((scenario) => scenario.snapshot_ref === corpus.snapshot_ref)) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['snapshot_ref'],
+				message: 'Every held-out scenario must use the corpus snapshot'
+			});
+		}
+	});
+
 export type CorpusCandidate = z.infer<typeof CorpusCandidateSchema>;
 export type CandidateCorpus = z.infer<typeof CandidateCorpusSchema>;
 export type FrozenCorpusScenario = z.infer<typeof FrozenCorpusScenarioSchema>;
 export type FrozenCorpus = z.infer<typeof FrozenCorpusSchema>;
+export type HoldoutCorpus = z.infer<typeof HoldoutCorpusSchema>;
 export type ProjectSnapshot = z.infer<typeof ProjectSnapshotSchema>;

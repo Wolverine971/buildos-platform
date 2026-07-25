@@ -1240,9 +1240,7 @@
 													Resolution: {error.resolution_notes}
 												</p>
 											{/if}
-											<p class="text-2xs text-accent mt-1">
-												Open details
-											</p>
+											<p class="text-2xs text-accent mt-1">Open details</p>
 										</div>
 										<div class="text-2xs text-muted-foreground shrink-0">
 											{formatRelativeDate(error.created_at)}

@@ -130,12 +130,12 @@ Brock's diagnostic: **5+ checked boxes → consider a fresh account.** (1) more 
 
 ## Reels vs. carousels — when to choose what
 
-| Format                                 | Best for                                                    | Hook physics                                      | Engagement weight                              |
-| -------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------- |
-| **Reels (vertical video, 15–60s)**     | Personality, storytelling, demos, humor, motion-heavy ideas | Hook fast; visual sandwich applies                | Interaction rate (likes/impression) + DM sends |
-| **Carousels (1:1 multi-slide images)** | Frameworks, education, before/after, deep dives             | Slide 1 is the hook (4–6 word title-card)         | Saves + shares + dwell time per slide          |
-| **Single image**                       | Aesthetics, branded statement, photo journalism             | Image as standalone composition                   | Likes + saves; lower reach ceiling             |
-| **Stories**                            | Behind-the-scenes, polls, link drops, casual community      | First frame is the hook                           | Replies + DMs (highest signal); 24-hour window |
+| Format                                 | Best for                                                    | Hook physics                              | Engagement weight                              |
+| -------------------------------------- | ----------------------------------------------------------- | ----------------------------------------- | ---------------------------------------------- |
+| **Reels (vertical video, 15–60s)**     | Personality, storytelling, demos, humor, motion-heavy ideas | Hook fast; visual sandwich applies        | Interaction rate (likes/impression) + DM sends |
+| **Carousels (1:1 multi-slide images)** | Frameworks, education, before/after, deep dives             | Slide 1 is the hook (4–6 word title-card) | Saves + shares + dwell time per slide          |
+| **Single image**                       | Aesthetics, branded statement, photo journalism             | Image as standalone composition           | Likes + saves; lower reach ceiling             |
+| **Stories**                            | Behind-the-scenes, polls, link drops, casual community      | First frame is the hook                   | Replies + DMs (highest signal); 24-hour window |
 
 > Note: the "first 3 seconds critical" figure that was previously in this table has been removed — **no "3-second" threshold appears in the primary Mosseri source.** Hooking fast is sound craft (see `references/tiktok.md` + `hook_craft_short_form`), but the specific 3-second number was unsourced. **Format is per-account, not a fixed hierarchy** (Mosseri, PRIMARY).
 

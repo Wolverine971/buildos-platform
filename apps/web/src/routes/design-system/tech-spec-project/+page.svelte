@@ -260,9 +260,7 @@
 					<div class="min-w-0">
 						<!-- Spec reference line -->
 						<div class="flex items-center gap-1.5 sm:gap-2 mb-0.5">
-							<span
-								class="font-mono text-2xs uppercase tracking-[0.1em] text-accent"
-							>
+							<span class="font-mono text-2xs uppercase tracking-[0.1em] text-accent">
 								{project.id}
 							</span>
 							<span class="text-muted-foreground/40 hidden sm:inline">•</span>
@@ -381,9 +379,7 @@
 							<Zap class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
 						</div>
 						<div class="min-w-0">
-							<p
-								class="font-mono text-2xs uppercase tracking-wider text-accent"
-							>
+							<p class="font-mono text-2xs uppercase tracking-wider text-accent">
 								Next Action
 							</p>
 							<p class="text-xs sm:text-sm text-foreground truncate">

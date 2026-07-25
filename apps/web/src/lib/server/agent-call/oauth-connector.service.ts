@@ -782,10 +782,7 @@ export async function approveOAuthAuthorization(params: {
 	securityEventOptions?: SecurityEventLogOptions;
 	request?: Request;
 }): Promise<{ code: string; grant: AgentOAuthGrantRecord; caller: ExternalAgentCallerRecord }> {
-	const scopes = scopesForOAuthApproval(
-		params.authorizationRequest.scopes,
-		params.scopeMode
-	);
+	const scopes = scopesForOAuthApproval(params.authorizationRequest.scopes, params.scopeMode);
 	const normalizedScopes = parseOAuthScopes(
 		scopeString(scopes),
 		params.authorizationRequest.client.allowed_scopes

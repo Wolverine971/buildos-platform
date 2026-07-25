@@ -128,7 +128,8 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		type: 'function',
 		function: {
 			name: 'work_capability_load',
-			description: 'Legacy alias for outcome_card_load. Prefer outcome_card_load for new calls.',
+			description:
+				'Legacy alias for outcome_card_load. Prefer outcome_card_load for new calls.',
 			parameters: {
 				type: 'object',
 				properties: {

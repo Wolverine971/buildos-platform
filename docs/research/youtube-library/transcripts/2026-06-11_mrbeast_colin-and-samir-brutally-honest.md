@@ -1,12 +1,12 @@
 ---
-title: "A Brutally Honest Conversation with MrBeast"
+title: 'A Brutally Honest Conversation with MrBeast'
 source_type: youtube_transcript
 video_id: 9IQ_ldV9z_A
-url: "https://www.youtube.com/watch?v=9IQ_ldV9z_A"
+url: 'https://www.youtube.com/watch?v=9IQ_ldV9z_A'
 channel: Colin and Samir
-channel_url: "https://www.youtube.com/@ColinandSamir"
+channel_url: 'https://www.youtube.com/@ColinandSamir'
 upload_date: 2023-06-27
-duration: "02:06:14"
+duration: '02:06:14'
 views: 8602638
 library_category: marketing-and-content
 library_status: transcript, analysis
@@ -22,180 +22,181 @@ public_article: ''
 indexed_date: '2026-06-11'
 last_reviewed: '2026-06-12'
 tags:
-  - colin samir
-  - Colin and Samir Videos
-  - colin and samir show
-  - Amazon FBA
-  - Here's Why Mr Beast is a GENIUS
-  - How much does Mr Beast make on youtube
-  - jimmy donaldson
-  - mrbeast
-  - 7 Days Stranded On An Island
-  - $10000 Every Day You Survive In The Wilderness
-  - Worlds deadliest obstacle course!
-  - Survive 100 days in nuclear bunker win $500000
-  - MrBeast Logan Paul & KSI on Launching Lunchly Fighting Jake Paul Ronaldo’s YouTube Takeover 429
-  - Mr. Beast's Response
+    - colin samir
+    - Colin and Samir Videos
+    - colin and samir show
+    - Amazon FBA
+    - Here's Why Mr Beast is a GENIUS
+    - How much does Mr Beast make on youtube
+    - jimmy donaldson
+    - mrbeast
+    - 7 Days Stranded On An Island
+    - $10000 Every Day You Survive In The Wilderness
+    - Worlds deadliest obstacle course!
+    - Survive 100 days in nuclear bunker win $500000
+    - MrBeast Logan Paul & KSI on Launching Lunchly Fighting Jake Paul Ronaldo’s YouTube Takeover 429
+    - Mr. Beast's Response
 timestamps:
-  - time: "0:00"
-    label: "Intro"
-  - time: "0:44"
-    label: "Fame"
-  - time: "9:56"
-    label: "MrBeasts Most Viral Video Ever"
-  - time: "11:22"
-    label: "Focus"
-  - time: "12:11"
-    label: "Fitness"
-  - time: "14:18"
-    label: "Stress"
-  - time: "15:46"
-    label: "Belief in YouTube"
-  - time: "17:10"
-    label: "Messages from MrBeast's Past"
-  - time: "19:22"
-    label: "Improving on YouTube"
-  - time: "22:01"
-    label: "Pete Davidson and Tom Brady"
-  - time: "25:02"
-    label: "Social Experiments"
-  - time: "27:50"
-    label: "Storytelling"
-  - time: "32:19"
-    label: "MrBeast vs Netflix"
-  - time: "38:15"
-    label: "Problem with YouTube, Beastification"
-  - time: "43:18"
-    label: "Work Life Balance and the New MrBeast"
-  - time: "45:32"
-    label: "Competition"
-  - time: "48:22"
-    label: "Secret to Short Form Content"
-  - time: "55:51"
-    label: "MrBeast of TikTok"
-  - time: "57:25"
-    label: "Feastables"
-  - time: "1:07:56"
-    label: "Money and Creativity"
-  - time: "1:09:25"
-    label: "Artificial Intelligence"
-  - time: "1:12:15"
-    label: "Voice Dubbing"
-  - time: "1:14:25"
-    label: "Next YouTube Icon"
-  - time: "1:15:42"
-    label: "Ryan Trahan"
-  - time: "1:17:27"
-    label: "Stress and Innovation"
-  - time: "1:24:08"
-    label: "Leaving the Creator World"
-  - time: "1:28:53"
-    label: "MrBeast the Mega Billionaire"
-  - time: "1:30:22"
-    label: "Marriage"
-  - time: "1:31:40"
-    label: "Growing Up"
-  - time: "1:37:03"
-    label: "What MrBeast Watches on TV"
-  - time: "1:41:30"
-    label: "Performance Anxiety"
-  - time: "1:45:54"
-    label: "YouTube's Next Chapter"
-  - time: "1:50:58"
-    label: "MrBeast Burger and documenting life"
+    - time: '0:00'
+      label: 'Intro'
+    - time: '0:44'
+      label: 'Fame'
+    - time: '9:56'
+      label: 'MrBeasts Most Viral Video Ever'
+    - time: '11:22'
+      label: 'Focus'
+    - time: '12:11'
+      label: 'Fitness'
+    - time: '14:18'
+      label: 'Stress'
+    - time: '15:46'
+      label: 'Belief in YouTube'
+    - time: '17:10'
+      label: "Messages from MrBeast's Past"
+    - time: '19:22'
+      label: 'Improving on YouTube'
+    - time: '22:01'
+      label: 'Pete Davidson and Tom Brady'
+    - time: '25:02'
+      label: 'Social Experiments'
+    - time: '27:50'
+      label: 'Storytelling'
+    - time: '32:19'
+      label: 'MrBeast vs Netflix'
+    - time: '38:15'
+      label: 'Problem with YouTube, Beastification'
+    - time: '43:18'
+      label: 'Work Life Balance and the New MrBeast'
+    - time: '45:32'
+      label: 'Competition'
+    - time: '48:22'
+      label: 'Secret to Short Form Content'
+    - time: '55:51'
+      label: 'MrBeast of TikTok'
+    - time: '57:25'
+      label: 'Feastables'
+    - time: '1:07:56'
+      label: 'Money and Creativity'
+    - time: '1:09:25'
+      label: 'Artificial Intelligence'
+    - time: '1:12:15'
+      label: 'Voice Dubbing'
+    - time: '1:14:25'
+      label: 'Next YouTube Icon'
+    - time: '1:15:42'
+      label: 'Ryan Trahan'
+    - time: '1:17:27'
+      label: 'Stress and Innovation'
+    - time: '1:24:08'
+      label: 'Leaving the Creator World'
+    - time: '1:28:53'
+      label: 'MrBeast the Mega Billionaire'
+    - time: '1:30:22'
+      label: 'Marriage'
+    - time: '1:31:40'
+      label: 'Growing Up'
+    - time: '1:37:03'
+      label: 'What MrBeast Watches on TV'
+    - time: '1:41:30'
+      label: 'Performance Anxiety'
+    - time: '1:45:54'
+      label: "YouTube's Next Chapter"
+    - time: '1:50:58'
+      label: 'MrBeast Burger and documenting life'
 description: |
-  Our conversation with MrBeast talking fame, burnout, marriage, Netflix, YouTube business, and the future. 
-  
-  00:00 Intro
-  00:44 Fame
-  09:56 MrBeasts Most Viral Video Ever
-  11:22 Focus
-  12:11 Fitness
-  14:18 Stress
-  15:46 Belief in YouTube
-  17:10 Messages from MrBeast's Past
-  19:22 Improving on YouTube
-  22:01 Pete Davidson and Tom Brady
-  25:02 Social Experiments
-  27:50 Storytelling
-  32:19 MrBeast vs Netflix
-  38:15 Problem with YouTube, Beastification
-  43:18 Work Life Balance and the New MrBeast
-  45:32 Competition
-  48:22 Secret to Short Form Content
-  55:51 MrBeast of TikTok
-  57:25 Feastables
-  1:07:56 Money and Creativity
-  1:09:25 Artificial Intelligence
-  1:12:15 Voice Dubbing
-  1:14:25 Next YouTube Icon
-  1:15:42 Ryan Trahan
-  1:17:27 Stress and Innovation
-  1:24:08 Leaving the Creator World
-  1:28:53 MrBeast the Mega Billionaire
-  1:30:22 Marriage
-  1:31:40 Growing Up
-  1:37:03 What MrBeast Watches on TV
-  1:41:30 Performance Anxiety
-  1:45:54 YouTube's Next Chapter
-  1:50:58 MrBeast Burger and documenting life
-  
-  Face Your Biggest Fear To Win $800,000
-  https://youtu.be/KOEfDvr4DcQ?si=xJJ7NpcGWlWvgloK
-  
-  $1 vs $250000 Private Island!
-  https://youtu.be/krsBRQbOPQ4?si=iocd5kvzjmvf52_5
-  
-  $10,000 Every Day You Survive In A Grocery Store
-  https://youtu.be/tnTPaLOaHz8?si=l5c3etBQliOkanuD
-  
-  I Spent 7 Days Buried Alive
-  https://youtu.be/7dYTw-jAYkY?si=avHSyyE7Baki-2Uo
-  
-  I Built 100 Wells In Africa
-  https://youtu.be/mwKJfNYwvm8?si=2ZD2dOEYGt2hIpka
-  
-  World’s Deadliest Laser Maze!
-  https://youtu.be/QjvpjXdgugA?si=0cC-ALq74Ypm7grn
-  
-  Lamborghini Vs Shredder
-  https://youtu.be/vBpQ1SlfVtU?si=tqIQl7S_p9Gf5ZbN
-  
-  Watch The Full Story of MrBeast
-  https://www.youtube.com/watch?v=c8VcUnz3nVc
-  
-  $10000 Every Day You Survive In The Wilderness
-  
-  
-  COLIN AND SAMIR’S NEWSLETTER
-  📫 90,000+ read our free newsletter that breaks down the business of creators. Sign up: https://bit.ly/publish-press 
-  
-  ASK US A QUESTION
-  ❔ We answer questions from creators every Sunday in our newsletter. Submit yours here: https://bit.ly/publish-creator-support 
-  
-  LISTEN TO THE SHOW
-  iTunes: https://apple.co/2K1pYhu 
-  Spotify: https://spoti.fi/2OnTmBC 
-  
-  GET IN TOUCH
-  🌍 Our website: www.colinandsamir.com     
-  🌍 Work with us:  ColinandSamirTeam@unitedtalent.com 
-  
-  JOIN OUR COMMUNITY
-  📡 Discord: https://discord.com/invite/colinandsamir
-  📸 Instagram: https://instagram.com/colinandsamir 
-  🐦 Twitter: https://twitter.com/ColinandSamir 
-  🎵 TikTok: https://www.tiktok.com/@colinandsamir 
-  
-  ABOUT US
-  We’re Colin and Samir, creators based out of Los Angeles California. We make videos about the creator economy, and the lessons we’ve learned over 10 years of being on YouTube. We also interview creators and try to get to the bottom of what’s working on YouTube and where the creator economy is headed.
-transcribed_date: "2026-06-11"
+    Our conversation with MrBeast talking fame, burnout, marriage, Netflix, YouTube business, and the future. 
+
+    00:00 Intro
+    00:44 Fame
+    09:56 MrBeasts Most Viral Video Ever
+    11:22 Focus
+    12:11 Fitness
+    14:18 Stress
+    15:46 Belief in YouTube
+    17:10 Messages from MrBeast's Past
+    19:22 Improving on YouTube
+    22:01 Pete Davidson and Tom Brady
+    25:02 Social Experiments
+    27:50 Storytelling
+    32:19 MrBeast vs Netflix
+    38:15 Problem with YouTube, Beastification
+    43:18 Work Life Balance and the New MrBeast
+    45:32 Competition
+    48:22 Secret to Short Form Content
+    55:51 MrBeast of TikTok
+    57:25 Feastables
+    1:07:56 Money and Creativity
+    1:09:25 Artificial Intelligence
+    1:12:15 Voice Dubbing
+    1:14:25 Next YouTube Icon
+    1:15:42 Ryan Trahan
+    1:17:27 Stress and Innovation
+    1:24:08 Leaving the Creator World
+    1:28:53 MrBeast the Mega Billionaire
+    1:30:22 Marriage
+    1:31:40 Growing Up
+    1:37:03 What MrBeast Watches on TV
+    1:41:30 Performance Anxiety
+    1:45:54 YouTube's Next Chapter
+    1:50:58 MrBeast Burger and documenting life
+
+    Face Your Biggest Fear To Win $800,000
+    https://youtu.be/KOEfDvr4DcQ?si=xJJ7NpcGWlWvgloK
+
+    $1 vs $250000 Private Island!
+    https://youtu.be/krsBRQbOPQ4?si=iocd5kvzjmvf52_5
+
+    $10,000 Every Day You Survive In A Grocery Store
+    https://youtu.be/tnTPaLOaHz8?si=l5c3etBQliOkanuD
+
+    I Spent 7 Days Buried Alive
+    https://youtu.be/7dYTw-jAYkY?si=avHSyyE7Baki-2Uo
+
+    I Built 100 Wells In Africa
+    https://youtu.be/mwKJfNYwvm8?si=2ZD2dOEYGt2hIpka
+
+    World’s Deadliest Laser Maze!
+    https://youtu.be/QjvpjXdgugA?si=0cC-ALq74Ypm7grn
+
+    Lamborghini Vs Shredder
+    https://youtu.be/vBpQ1SlfVtU?si=tqIQl7S_p9Gf5ZbN
+
+    Watch The Full Story of MrBeast
+    https://www.youtube.com/watch?v=c8VcUnz3nVc
+
+    $10000 Every Day You Survive In The Wilderness
+
+
+    COLIN AND SAMIR’S NEWSLETTER
+    📫 90,000+ read our free newsletter that breaks down the business of creators. Sign up: https://bit.ly/publish-press 
+
+    ASK US A QUESTION
+    ❔ We answer questions from creators every Sunday in our newsletter. Submit yours here: https://bit.ly/publish-creator-support 
+
+    LISTEN TO THE SHOW
+    iTunes: https://apple.co/2K1pYhu 
+    Spotify: https://spoti.fi/2OnTmBC 
+
+    GET IN TOUCH
+    🌍 Our website: www.colinandsamir.com     
+    🌍 Work with us:  ColinandSamirTeam@unitedtalent.com 
+
+    JOIN OUR COMMUNITY
+    📡 Discord: https://discord.com/invite/colinandsamir
+    📸 Instagram: https://instagram.com/colinandsamir 
+    🐦 Twitter: https://twitter.com/ColinandSamir 
+    🎵 TikTok: https://www.tiktok.com/@colinandsamir 
+
+    ABOUT US
+    We’re Colin and Samir, creators based out of Los Angeles California. We make videos about the creator economy, and the lessons we’ve learned over 10 years of being on YouTube. We also interview creators and try to get to the bottom of what’s working on YouTube and where the creator economy is headed.
+transcribed_date: '2026-06-11'
 path: docs/research/youtube-library/transcripts/2026-06-11_mrbeast_colin-and-samir-brutally-honest.md
 ---
 
 # A Brutally Honest Conversation with MrBeast
 
 ## Metadata
+
 - **Channel**: [Colin and Samir](https://www.youtube.com/@ColinandSamir)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=9IQ_ldV9z_A)
 - **Duration**: 02:06:14
@@ -205,6 +206,7 @@ path: docs/research/youtube-library/transcripts/2026-06-11_mrbeast_colin-and-sam
 > **Analysis:** [2026-06-11_mrbeast_youtube-production-doctrine_analysis.md](../analyses/2026-06-11_mrbeast_youtube-production-doctrine_analysis.md)
 
 ## Timestamps
+
 - 0:00 — Intro
 - 0:44 — Fame
 - 9:56 — MrBeasts Most Viral Video Ever

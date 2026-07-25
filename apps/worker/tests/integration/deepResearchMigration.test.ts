@@ -30,7 +30,8 @@ async function availablePort(): Promise<number> {
 const postgresAvailable = hasCommand('initdb') && hasCommand('pg_ctl') && hasCommand('psql');
 const describePostgres = postgresAvailable ? describe : describe.skip;
 
-const delay = (ms: number): Promise<void> => new Promise((resolveDelay) => setTimeout(resolveDelay, ms));
+const delay = (ms: number): Promise<void> =>
+	new Promise((resolveDelay) => setTimeout(resolveDelay, ms));
 
 describePostgres('deep research PostgreSQL guardrails', () => {
 	let tempDir = '';

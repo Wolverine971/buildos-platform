@@ -73,9 +73,7 @@ export function percentile(values: number[], percentileValue: number): number | 
 
 export function aggregateControlRuns(runs: PhaseAControlRun[]): BaselineAggregate {
 	const scored = runs.filter((run) => run.scored !== false);
-	const ttft = scored.flatMap((run) =>
-		run.timing.ttftMs === null ? [] : [run.timing.ttftMs]
-	);
+	const ttft = scored.flatMap((run) => (run.timing.ttftMs === null ? [] : [run.timing.ttftMs]));
 	const durations = scored.flatMap((run) =>
 		run.timing.totalDurationMs === null ? [] : [run.timing.totalDurationMs]
 	);

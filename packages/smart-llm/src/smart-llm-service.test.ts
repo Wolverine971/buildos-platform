@@ -653,6 +653,56 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 	});
 });
 
+describe('SmartLLMService OpenRouter data policy', () => {
+	async function captureJsonRequestBody(evaluationOnlyAllowNonZdr?: boolean) {
+		const requestBodies: Array<Record<string, unknown>> = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+			return buildJSONCompletion({
+				model: GLM_52_MODEL,
+				content: '{"ok":true}',
+				provider: 'Z.AI'
+			});
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch,
+			openrouter: { evaluationOnlyAllowNonZdr }
+		});
+
+		await llm.getJSONResponse({
+			systemPrompt: 'Return JSON.',
+			userPrompt: 'Exercise the configured data policy.',
+			model: GLM_52_MODEL,
+			models: [],
+			spendLimit: { maxCostUsd: 0.01 },
+			userId: 'data-policy-test'
+		});
+
+		return requestBodies[0];
+	}
+
+	it('keeps data collection denied and requires ZDR by default', async () => {
+		const body = await captureJsonRequestBody();
+
+		expect(body?.provider).toMatchObject({
+			data_collection: 'deny',
+			zdr: true,
+			max_price: expect.any(Object)
+		});
+	});
+
+	it('omits only the ZDR requirement when the evaluation-only opt-in is explicit', async () => {
+		const body = await captureJsonRequestBody(true);
+
+		expect(body?.provider).toMatchObject({
+			data_collection: 'deny',
+			max_price: expect.any(Object)
+		});
+		expect(body?.provider).not.toHaveProperty('zdr');
+	});
+});
+
 describe('SmartLLMService model failover', () => {
 	it('forwards explicit reasoning effort for non-streaming JSON requests', async () => {
 		const requestBodies: any[] = [];

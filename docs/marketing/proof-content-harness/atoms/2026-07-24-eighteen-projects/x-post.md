@@ -1,3 +1,4 @@
+<!-- docs/marketing/proof-content-harness/atoms/2026-07-24-eighteen-projects/x-post.md -->
 <!-- X post — the quick-take version of the same insight. -->
 
 # X — 18 projects, one shared context

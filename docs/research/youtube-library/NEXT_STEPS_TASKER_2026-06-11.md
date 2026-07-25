@@ -37,6 +37,7 @@ Self-contained work order for the next agent/session. Execute top-to-bottom with
 These checkable rules were extracted on 2026-06-11 from existing analyses and verified ABSENT from the target runtime skills. Apply them where they belong (inline vs reference per the skill's current structure); cite the source analysis; run tests.
 
 **→ `definitions/visual_craft_fundamentals/`** (source: `analyses/2026-04-29_erik-kennedy_7-rules-gorgeous-ui_analysis.md`):
+
 1. Grayscale-first sequencing rule — design the screen in B&W first, add ONE accent hue only after structure/spacing/hierarchy pass ("if a screen looks bad in B&W, color cannot fix it"). Fits as a workflow preflight check.
 2. Four-cue button lighting recipe — dark bottom edge + slightly brighter top + subtle under-shadow + pressed state overall darker. Extends the inset/outset taxonomy in `references/depth-color-surfaces.md`.
 3. Brightness-as-elevation for flat systems — higher surfaces are brighter; convey elevation by surface brightness when shadows are minimal. Directly relevant to Inkprint's low-shadow texture language; same reference.
@@ -44,6 +45,7 @@ These checkable rules were extracted on 2026-06-11 from existing analyses and ve
 5. Pre-design imitation step ("the Mobbin test") — pull 5+ real references per pattern before designing; copy moves not screens; never mimic AI output. Workflow step or `ai-slop-corrections.md` bullet.
 
 **→ `definitions/ai_era_craft_and_quality_moat/`** (source: `analyses/2026-04-29_karri-saarinen-linear_craft-and-calm-software_analysis.md`):
+
 1. Leadership-commitment rubric line — a quality posture must name a leadership owner + implementation plan + business rationale, else it's aspiration not strategy (Coinbase example). → `references/hiring-and-roadmap-rubrics.md` or core-thesis ref.
 2. Organic-mentions qualitative north star — success = the product appearing in organic conversations about quality (the positive replacement for the banned per-feature-WAU metric).
 3. Principles-over-process — values + judgment freedom within a defined standard; design review as cadence (weekly + pre-release), not checkpoint queues.
@@ -51,6 +53,7 @@ These checkable rules were extracted on 2026-06-11 from existing analyses and ve
 5. Quality-is-a-daily-individual-choice framing + craft-cycle stage as a positioning diagnostic (deeper in the speed-focus stage = higher rarity premium on craft).
 
 **→ `definitions/calm_software_design_review/`** (same Saarinen source):
+
 1. Org red flag: quality-as-aspiration (no owner/plan/rationale) → `references/operations-and-roadmap.md`.
 2. Principles-over-process as a calm-operations checklist item (rigid checkpoint queues = red flag).
 3. Makers-in-direct-user-contact as its own ops item (shared customer Slack, founder-handled support — the compensating mechanism that makes no-A/B safe).

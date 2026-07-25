@@ -42,3 +42,12 @@ delete/
 
 # Scripts (one-off migrations)
 *.sh
+
+# Phase A evaluation evidence — these are hashed artifacts, not source.
+# Reformatting them silently voids the SHA-256 values the experiment's provenance rests on
+# (it already happened once to control-a2-v1.json and workflow-eval-invalid-zdr-v1.json).
+# results-manifest.test.ts fails if any recorded hash stops reproducing.
+packages/agent-orchestrator/src/testing/harness/results/*.json
+packages/agent-orchestrator/src/testing/harness/results/analysis/
+packages/agent-orchestrator/src/testing/harness/corpus/*.json
+packages/agent-orchestrator/src/testing/harness/fixtures/*.json

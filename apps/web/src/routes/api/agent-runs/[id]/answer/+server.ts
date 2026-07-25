@@ -65,7 +65,9 @@ export const POST: RequestHandler = async ({ params, request, locals: { safeGetS
 	}
 	if (!run) return ApiResponse.notFound('Agent run');
 	if (!isContinuableAnswerStatus(run.status)) {
-		return ApiResponse.badRequest(`Run is ${run.status} and cannot be continued with an answer`);
+		return ApiResponse.badRequest(
+			`Run is ${run.status} and cannot be continued with an answer`
+		);
 	}
 	const continuationFrom = run.status;
 

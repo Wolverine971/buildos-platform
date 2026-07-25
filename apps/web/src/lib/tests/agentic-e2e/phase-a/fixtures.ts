@@ -84,7 +84,7 @@ interface PhaseAProjectSnapshot {
 
 interface FrozenPhaseACorpus {
 	corpus_version: string;
-	status: 'frozen';
+	status: 'frozen' | 'holdout';
 	snapshot_sha256: string;
 	scenarios: FrozenPhaseAScenario[];
 }
@@ -100,7 +100,14 @@ function readFixture<T>(relativePath: string): T {
 	) as T;
 }
 
-export const frozenPhaseACorpus = readFixture<FrozenPhaseACorpus>('corpus/phase-a.json');
+/**
+ * The frozen eight. `PHASE_A_ROUTE_CORPUS` selects a different corpus file under the same
+ * directory so a held-out set can be scored with the frozen prompt without touching this one.
+ * See PHASE_A_AUDIT_2026-07-25.md B4.
+ */
+const ROUTE_CORPUS_FILE = process.env.PHASE_A_ROUTE_CORPUS?.trim() || 'phase-a.json';
+
+export const frozenPhaseACorpus = readFixture<FrozenPhaseACorpus>(`corpus/${ROUTE_CORPUS_FILE}`);
 export const phaseAProjectSnapshot = readFixture<PhaseAProjectSnapshot>(
 	'fixtures/project-alpha.snapshot.json'
 );

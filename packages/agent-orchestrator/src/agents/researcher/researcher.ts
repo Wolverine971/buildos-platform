@@ -1,3 +1,4 @@
+// packages/agent-orchestrator/src/agents/researcher/researcher.ts
 import { z } from 'zod';
 
 import {
@@ -57,12 +58,24 @@ export interface ResearcherInput {
 	focus?: string;
 	contextPacket?: ContextPacket | null;
 	suppliedUrls?: string[];
+	/** Defaults to the supplied-URL count, or 2 when sources must be discovered. */
 	minimumCitations?: number;
+	/** Ignored when the request supplies its own URLs; otherwise defaults to 3, capped at 5. */
 	maxVisits?: number;
+	/**
+	 * Criterion ids declared by the step being executed. A self-report keyed to an id the step never
+	 * declared cannot be reconciled with the plan, so callers should pass
+	 * `step.acceptance_criteria.map((criterion) => criterion.criterion_id)`.
+	 * Defaults to the agent's own id when the caller supplies none.
+	 * See research/09_INTERNAL_GROUND_TRUTH_MAP.md D10.
+	 */
+	acceptanceCriterionIds?: readonly string[];
 	maxModelCostUsd?: number;
 	web: WebResearchPort;
 	model: ResearchModelPort;
 }
+
+const RESEARCHER_DEFAULT_CRITERION_ID = 'research.citations.valid';
 
 export interface ResearcherWebCall {
 	operation: 'search' | 'visit';
@@ -94,7 +107,8 @@ function errorMessage(error: unknown): string {
 function canonicalUrl(value: string): string | null {
 	try {
 		const url = new URL(value.trim());
-		if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return null;
+		if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password)
+			return null;
 		url.hash = '';
 		for (const key of Array.from(url.searchParams.keys())) {
 			if (/^(utm_|fbclid$|gclid$)/i.test(key)) url.searchParams.delete(key);
@@ -140,7 +154,10 @@ function searchQuery(params: {
 				.join(' ')
 				.slice(0, 800)
 		: '';
-	return bounded(`${params.objective} ${params.focus} ${contextTerms}`.replace(/\s+/g, ' ').trim(), 1_000);
+	return bounded(
+		`${params.objective} ${params.focus} ${contextTerms}`.replace(/\s+/g, ' ').trim(),
+		1_000
+	);
 }
 
 function failedResult(params: {
@@ -176,12 +193,18 @@ export async function runResearcher(input: ResearcherInput): Promise<ResearcherE
 		? ContextPacketSchema.parse(input.contextPacket)
 		: null;
 	const focus = input.focus?.trim() || input.objective;
-	const maxVisits = Math.max(1, Math.min(input.maxVisits ?? 3, 5));
-	const minimumCitations = Math.max(1, Math.min(input.minimumCitations ?? 1, maxVisits));
 	const suppliedUrls = deduplicateUrls([
 		...(input.suppliedUrls ?? []),
 		...extractHttpUrls(input.objective)
 	]);
+	// Evidence bounds are derived from the assignment, never from a scenario identity. When the
+	// request hands over its sources, use exactly those and cite all of them. When sources must be
+	// discovered, require corroboration from at least two of them.
+	const visitBudget = suppliedUrls.length > 0 ? suppliedUrls.length : (input.maxVisits ?? 3);
+	const maxVisits = Math.max(1, Math.min(visitBudget, 5));
+	const citationFloor =
+		input.minimumCitations ?? (suppliedUrls.length > 0 ? suppliedUrls.length : 2);
+	const minimumCitations = Math.max(1, Math.min(citationFloor, maxVisits));
 	const webCalls: ResearcherWebCall[] = [];
 	let toolCostUsd = 0;
 	let urlsToVisit = suppliedUrls;
@@ -209,7 +232,12 @@ export async function runResearcher(input: ResearcherInput): Promise<ResearcherE
 		};
 		try {
 			const raw = await input.web.search(arguments_);
-			webCalls.push({ operation: 'search', arguments: arguments_, succeeded: true, error: null });
+			webCalls.push({
+				operation: 'search',
+				arguments: arguments_,
+				succeeded: true,
+				error: null
+			});
 			const search = SearchResponseSchema.parse(raw);
 			toolCostUsd += search.info?.billing?.cost_usd ?? 0;
 			urlsToVisit = deduplicateUrls(search.results.map((result) => result.url));
@@ -229,7 +257,12 @@ export async function runResearcher(input: ResearcherInput): Promise<ResearcherE
 			const arguments_ = { url, max_chars: 8_000 };
 			try {
 				const visited = VisitResponseSchema.parse(await input.web.visit(arguments_));
-				webCalls.push({ operation: 'visit', arguments: arguments_, succeeded: true, error: null });
+				webCalls.push({
+					operation: 'visit',
+					arguments: arguments_,
+					succeeded: true,
+					error: null
+				});
 				const finalUrl = canonicalUrl(visited.final_url ?? visited.url) ?? url;
 				evidence.push({
 					title: visited.title?.trim() || new URL(finalUrl).hostname,
@@ -252,7 +285,8 @@ export async function runResearcher(input: ResearcherInput): Promise<ResearcherE
 		return {
 			result: failedResult({
 				summary: 'External research produced no visitable evidence.',
-				details: 'No web source was successfully visited, so a cited memo was not generated.',
+				details:
+					'No web source was successfully visited, so a cited memo was not generated.',
 				residualRisks: webCalls.flatMap((call) => (call.error ? [call.error] : []))
 			}),
 			usage: [],
@@ -281,9 +315,13 @@ export async function runResearcher(input: ResearcherInput): Promise<ResearcherE
 	const observedUrls = new Set(evidence.flatMap((item) => [item.url, ...item.aliases]));
 	const unknownCitations = citedUrls.filter((url) => !observedUrls.has(url));
 	const validCitations = citedUrls.filter((url) => observedUrls.has(url));
-	const requiredSuppliedUrlsMissing = suppliedUrls.filter(
-		(url) => !validCitations.includes(url) && !evidence.some((item) => item.url === url && validCitations.includes(item.url))
-	);
+	const requiredSuppliedUrlsMissing = suppliedUrls.filter((url) => {
+		const sourceEvidence = evidence.find((item) => [item.url, ...item.aliases].includes(url));
+		if (!sourceEvidence) return true;
+		return ![sourceEvidence.url, ...sourceEvidence.aliases].some((sourceUrl) =>
+			validCitations.includes(sourceUrl)
+		);
+	});
 	const citationChecksPassed =
 		memo.length > 0 &&
 		validCitations.length >= minimumCitations &&
@@ -325,22 +363,27 @@ export async function runResearcher(input: ResearcherInput): Promise<ResearcherE
 				}))
 			}
 		],
-		acceptance_results: [
-			{
-				criterion_id: 'research.citations.valid',
-				status: citationChecksPassed ? 'passed' : 'failed',
-				evaluation_source: 'runtime',
-				validator_id: 'research.citations.observed_urls',
-				details: citationDetails,
-				evidence_artifact_ids: []
-			}
-		],
+		acceptance_results: (input.acceptanceCriterionIds?.length
+			? input.acceptanceCriterionIds
+			: [RESEARCHER_DEFAULT_CRITERION_ID]
+		).map((criterionId) => ({
+			criterion_id: criterionId,
+			status: citationChecksPassed ? 'passed' : 'failed',
+			evaluation_source: 'runtime',
+			validator_id: 'research.citations.observed_urls',
+			details: citationDetails,
+			evidence_artifact_ids: []
+		})),
 		open_questions: [],
 		assumptions: [],
 		residual_risks: [
 			...unknownCitations.map((url) => `The model cited an unobserved URL: ${url}`),
-			...requiredSuppliedUrlsMissing.map((url) => `The supplied source was not cited: ${url}`),
-			...webCalls.flatMap((call) => (call.error ? [`Web ${call.operation} failed: ${call.error}`] : []))
+			...requiredSuppliedUrlsMissing.map(
+				(url) => `The supplied source was not cited: ${url}`
+			),
+			...webCalls.flatMap((call) =>
+				call.error ? [`Web ${call.operation} failed: ${call.error}`] : []
+			)
 		].slice(0, 50),
 		confidence: citationChecksPassed ? 0.85 : 0.45,
 		capability_gaps: []

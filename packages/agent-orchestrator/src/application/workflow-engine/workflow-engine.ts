@@ -1,3 +1,4 @@
+// packages/agent-orchestrator/src/application/workflow-engine/workflow-engine.ts
 import { createHash, randomUUID } from 'node:crypto';
 
 import {
@@ -16,17 +17,8 @@ import {
 	type TransitionDecision,
 	type WorkflowStageSpec
 } from '../../contracts';
-import type {
-	ExecutedStage,
-	ExecutedStep,
-	StoredArtifact,
-	WorkflowToolCall
-} from '../../domain';
-import type {
-	AgentExecutorPort,
-	SynthesisModelPort,
-	TransitionModelPort
-} from '../../ports';
+import type { ExecutedStage, ExecutedStep, StoredArtifact, WorkflowToolCall } from '../../domain';
+import type { AgentExecutorPort, SynthesisModelPort, TransitionModelPort } from '../../ports';
 import { buildWorkflowStateDigest, type WorkflowBudgetState } from './digest';
 import {
 	buildSynthesisPrompt,
@@ -37,6 +29,7 @@ import {
 } from './synthesis';
 import {
 	compileTransitionDecision,
+	forcedTransitionProposal,
 	requestTransitionProposal,
 	type TransitionProposal
 } from './transition';
@@ -87,6 +80,10 @@ export interface WorkflowRunResult {
 	durationMs: number;
 	stageCount: number;
 	replanCount: number;
+	/** Gates that reached the transition model because more than one action was legal. */
+	transitionModelCalls: number;
+	/** Gates decided in code because the policy left exactly one legal action. */
+	forcedTransitions: number;
 	budgetExceeded: boolean;
 }
 
@@ -156,10 +153,7 @@ function finalIds(decision: TransitionDecision): string[] {
 		: [];
 }
 
-function transitionPolicy(params: {
-	stage: ExecutedStage;
-	artifacts: StoredArtifact[];
-}): {
+function transitionPolicy(params: { stage: ExecutedStage; artifacts: StoredArtifact[] }): {
 	proposalActions: TransitionProposal['action'][];
 	contractActions: TransitionAction[];
 } {
@@ -171,7 +165,10 @@ function transitionPolicy(params: {
 	);
 	if (params.stage.status === 'failed') {
 		return params.artifacts.length > 0
-			? { proposalActions: ['complete_partial', 'fail'], contractActions: ['complete_partial', 'fail'] }
+			? {
+					proposalActions: ['complete_partial', 'fail'],
+					contractActions: ['complete_partial', 'fail']
+				}
 			: { proposalActions: ['fail'], contractActions: ['fail'] };
 	}
 	if (params.stage.status === 'partial') {
@@ -216,7 +213,9 @@ async function executeStage(params: {
 			step.depends_on_step_keys.every((dependency) => completedByKey.has(dependency))
 		);
 		if (ready.length === 0) {
-			throw new Error(`No executable dependency wave in stage ${params.stage.client_stage_key}`);
+			throw new Error(
+				`No executable dependency wave in stage ${params.stage.client_stage_key}`
+			);
 		}
 		const allocation = remainingBudget(params.budget) / ready.length;
 		const wave = await Promise.all(
@@ -272,7 +271,9 @@ async function executeStage(params: {
 			})
 		);
 
-		const writeCalls = wave.flatMap((step) => step.toolCalls).filter((call) => call.effect === 'write');
+		const writeCalls = wave
+			.flatMap((step) => step.toolCalls)
+			.filter((call) => call.effect === 'write');
 		if (writeCalls.length > 0) throw new WorkflowSafetyViolation(writeCalls);
 
 		for (const step of wave) {
@@ -319,7 +320,9 @@ async function executeStage(params: {
 export async function executeWorkflow(input: WorkflowEngineInput): Promise<WorkflowRunResult> {
 	const routeDecision = RouteDecisionSchema.parse(input.routeDecision);
 	if (routeDecision.route !== 'workflow') {
-		throw new Error(`Workflow engine requires a workflow route, received ${routeDecision.route}`);
+		throw new Error(
+			`Workflow engine requires a workflow route, received ${routeDecision.route}`
+		);
 	}
 	const permissionGrant = assertReadOnlyPermission(input.permissionGrant);
 	const projectScope = input.projectScope.map((scope) => ProjectScopeSchema.parse(scope));
@@ -341,6 +344,8 @@ export async function executeWorkflow(input: WorkflowEngineInput): Promise<Workf
 	const usage: ModelUsageEvent[] = initialUsage;
 	let stageSpec = routeDecision.initial_stage;
 	let replanCount = 0;
+	let transitionModelCalls = 0;
+	let forcedTransitions = 0;
 	let terminalDecision: TransitionDecision | null = null;
 
 	while (!terminalDecision) {
@@ -385,12 +390,21 @@ export async function executeWorkflow(input: WorkflowEngineInput): Promise<Workf
 			allowedTransitions: policy.contractActions,
 			nowMs: now()
 		});
-		const transitionResponse = await requestTransitionProposal({
-			digest,
-			allowedProposalActions: policy.proposalActions,
-			model: input.transitionModel,
-			maxCostUsd: remainingBudget(budget)
-		});
+		// A gate with one legal action is not a decision; skip the model and record it as forced.
+		const transitionResponse =
+			policy.proposalActions.length > 1
+				? await requestTransitionProposal({
+						digest,
+						allowedProposalActions: policy.proposalActions,
+						model: input.transitionModel,
+						maxCostUsd: remainingBudget(budget)
+					})
+				: {
+						proposal: forcedTransitionProposal(policy.proposalActions[0]!),
+						usage: [] as ModelUsageEvent[]
+					};
+		if (transitionResponse.usage.length > 0) transitionModelCalls += 1;
+		else forcedTransitions += 1;
 		usage.push(...transitionResponse.usage);
 		budget.spentUsd += usageCost(transitionResponse.usage);
 		if (budget.spentUsd > budget.maxUsd) {
@@ -431,12 +445,15 @@ export async function executeWorkflow(input: WorkflowEngineInput): Promise<Workf
 
 	let output = '';
 	if (
-		(terminalDecision.action === 'complete' || terminalDecision.action === 'complete_partial') &&
+		(terminalDecision.action === 'complete' ||
+			terminalDecision.action === 'complete_partial') &&
 		terminalDecision.final_artifact_ids.length > 0 &&
 		remainingBudget(budget) > 0
 	) {
 		const selected = new Set(finalIds(terminalDecision));
-		const synthesisArtifacts = artifacts.filter((artifact) => selected.has(artifact.artifactId));
+		const synthesisArtifacts = artifacts.filter((artifact) =>
+			selected.has(artifact.artifactId)
+		);
 		const synthesis = await input.synthesisModel.generateText({
 			promptVersion: SYNTHESIS_PROMPT_VERSION,
 			systemPrompt: SYNTHESIS_SYSTEM_PROMPT,
@@ -459,7 +476,8 @@ export async function executeWorkflow(input: WorkflowEngineInput): Promise<Workf
 		initialToolCostUsd +
 		stages.reduce(
 			(stageTotal, stage) =>
-				stageTotal + stage.steps.reduce((stepTotal, step) => stepTotal + step.toolCostUsd, 0),
+				stageTotal +
+				stage.steps.reduce((stepTotal, step) => stepTotal + step.toolCostUsd, 0),
 			0
 		);
 	const modelCostUsd = usageCost(usage);
@@ -481,6 +499,8 @@ export async function executeWorkflow(input: WorkflowEngineInput): Promise<Workf
 		durationMs: Math.max(0, now() - startedAtMs),
 		stageCount: stages.length,
 		replanCount,
+		transitionModelCalls,
+		forcedTransitions,
 		budgetExceeded
 	};
 }

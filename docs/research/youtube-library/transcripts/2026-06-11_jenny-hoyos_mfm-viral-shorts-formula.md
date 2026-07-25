@@ -1,12 +1,12 @@
 ---
-title: "Her Viral Formula Breaks 100 Million Views On YouTube Shorts (ft. Jenny Hoyos)"
+title: 'Her Viral Formula Breaks 100 Million Views On YouTube Shorts (ft. Jenny Hoyos)'
 source_type: youtube_transcript
 video_id: ZpjGGbrcC8E
-url: "https://www.youtube.com/watch?v=ZpjGGbrcC8E"
+url: 'https://www.youtube.com/watch?v=ZpjGGbrcC8E'
 channel: My First Million
-channel_url: "https://www.youtube.com/@MyFirstMillionPod"
+channel_url: 'https://www.youtube.com/@MyFirstMillionPod'
 upload_date: 2024-05-03
-duration: "44:49"
+duration: '44:49'
 views: 63948
 library_category: marketing-and-content
 library_status: transcript, analysis
@@ -22,113 +22,114 @@ public_article: ''
 indexed_date: '2026-06-11'
 last_reviewed: '2026-06-12'
 tags:
-  - my first million
-  - my first million podcast
-  - my first million podcast episodes
-  - the hustle
-  - the hustle daily
-  - the hustle trends
-  - shaan puri
-  - sam parr
-  - sam parr the hustle
-  - the hustle podcast
-  - the hustle podcast my first million
-  - startup podcast
-  - entrepreneurship podcast
-  - business entrepreneurship podcast
-  - business
-  - podcast
-  - entrepreneurship
+    - my first million
+    - my first million podcast
+    - my first million podcast episodes
+    - the hustle
+    - the hustle daily
+    - the hustle trends
+    - shaan puri
+    - sam parr
+    - sam parr the hustle
+    - the hustle podcast
+    - the hustle podcast my first million
+    - startup podcast
+    - entrepreneurship podcast
+    - business entrepreneurship podcast
+    - business
+    - podcast
+    - entrepreneurship
 timestamps:
-  - time: "0:00"
-    label: "Intro"
-  - time: "2:14"
-    label: "How to build charisma"
-  - time: "6:35"
-    label: "The 4 criteria of a great idea (jumpcut)"
-  - time: "8:48"
-    label: "Make it personal"
-  - time: "15:20"
-    label: "Mastering the hook"
-  - time: "18:04"
-    label: "Metrics"
-  - time: "19:27"
-    label: "The first frame"
-  - time: "21:44"
-    label: "Foreshadowing"
-  - time: "23:12"
-    label: "Storytelling in one word is “change”"
-  - time: "25:47"
-    label: "The But & Therefore Rule"
-  - time: "27:56"
-    label: "Building the stakes"
-  - time: "31:18"
-    label: "Craft the close"
-  - time: "32:49"
-    label: "Steal like an artist"
-  - time: "34:50"
-    label: "Figure out who's watching"
-  - time: "37:21"
-    label: "Study the channel for outliers"
-  - time: "40:03"
-    label: "Where is the puck going?"
+    - time: '0:00'
+      label: 'Intro'
+    - time: '2:14'
+      label: 'How to build charisma'
+    - time: '6:35'
+      label: 'The 4 criteria of a great idea (jumpcut)'
+    - time: '8:48'
+      label: 'Make it personal'
+    - time: '15:20'
+      label: 'Mastering the hook'
+    - time: '18:04'
+      label: 'Metrics'
+    - time: '19:27'
+      label: 'The first frame'
+    - time: '21:44'
+      label: 'Foreshadowing'
+    - time: '23:12'
+      label: 'Storytelling in one word is “change”'
+    - time: '25:47'
+      label: 'The But & Therefore Rule'
+    - time: '27:56'
+      label: 'Building the stakes'
+    - time: '31:18'
+      label: 'Craft the close'
+    - time: '32:49'
+      label: 'Steal like an artist'
+    - time: '34:50'
+      label: "Figure out who's watching"
+    - time: '37:21'
+      label: 'Study the channel for outliers'
+    - time: '40:03'
+      label: 'Where is the puck going?'
 description: |
-  Get our business idea database here ➡️ https://clickhubspot.com/zyl
-  
-  Episode 580:  Shaan Puri (https://twitter.com/ShaanVP) talks to Jenny Hoyos, the 18-year-old who has mastered the recipe of viral shorts. They break down her step-by-step process for creating content that pulls in over a 100M views. 
-  
-  —
-  Show Notes:
-  (0:00) Intro
-  (2:14) How to build charisma
-  (6:35) The 4 criteria of a great idea (jumpcut)
-  (8:48) Make it personal
-  (15:20) Mastering the hook
-  (18:04) Metrics 
-  (19:27) The first frame
-  (21:44) Foreshadowing
-  (23:12) Storytelling in one word is “change”
-  (25:47) The But & Therefore Rule
-  (27:56) Building the stakes
-  (31:18) Craft the close
-  (32:49) Steal like an artist
-  (34:50) Figure out who's watching
-  (37:21) Study the channel for outliers
-  (40:03) Where is the puck going?
-  
-  —
-  Links:
-  • Jenny Hoyos YouTube - ​​https://www.youtube.com/@JennyHoyosLOL
-  • Charisma on Command - https://www.youtube.com/@Charismaoncommand
-  • Miss Excel - https://www.miss-excel.com/
-  • Infinite Ratatouille Glitch - https://www.youtube.com/watch?v=tskvmb0HPDU
-  • Steal Like An Artist - https://austinkleon.com/steal/
-  
-  —
-  Check Out Shaan's Stuff:
-  • Shaan's weekly email - https://www.shaanpuri.com
-  • Visit https://www.somewhere.com/mfm to hire global talent (like Shaan does) and get $500 off for being an MFM listener. Hire developers, assistants, marketing pros, sales teams and more for 80% less than their US equivalents.
-  
-  —
-  Check Out Sam's Stuff:
-  • Hampton - https://www.joinhampton.com/
-  • Ideation Bootcamp - https://www.ideationbootcamp.co/
-  • Copy That - https://copythat.com
-  • Hampton Wealth Survey - https://joinhampton.com/wealth
-  💰 Pitch your startup for a shot at a $1M investment with Sam Parr as the MC https://clickhubspot.com/pitch
-  
-  
-  
-  
-  
-  My First Million is a HubSpot Original Podcast // Brought to you by The HubSpot Podcast Network // Production by Arie Desormeaux // Editing by Ezra Bakker Trupiano
-transcribed_date: "2026-06-11"
+    Get our business idea database here ➡️ https://clickhubspot.com/zyl
+
+    Episode 580:  Shaan Puri (https://twitter.com/ShaanVP) talks to Jenny Hoyos, the 18-year-old who has mastered the recipe of viral shorts. They break down her step-by-step process for creating content that pulls in over a 100M views. 
+
+    —
+    Show Notes:
+    (0:00) Intro
+    (2:14) How to build charisma
+    (6:35) The 4 criteria of a great idea (jumpcut)
+    (8:48) Make it personal
+    (15:20) Mastering the hook
+    (18:04) Metrics 
+    (19:27) The first frame
+    (21:44) Foreshadowing
+    (23:12) Storytelling in one word is “change”
+    (25:47) The But & Therefore Rule
+    (27:56) Building the stakes
+    (31:18) Craft the close
+    (32:49) Steal like an artist
+    (34:50) Figure out who's watching
+    (37:21) Study the channel for outliers
+    (40:03) Where is the puck going?
+
+    —
+    Links:
+    • Jenny Hoyos YouTube - ​​https://www.youtube.com/@JennyHoyosLOL
+    • Charisma on Command - https://www.youtube.com/@Charismaoncommand
+    • Miss Excel - https://www.miss-excel.com/
+    • Infinite Ratatouille Glitch - https://www.youtube.com/watch?v=tskvmb0HPDU
+    • Steal Like An Artist - https://austinkleon.com/steal/
+
+    —
+    Check Out Shaan's Stuff:
+    • Shaan's weekly email - https://www.shaanpuri.com
+    • Visit https://www.somewhere.com/mfm to hire global talent (like Shaan does) and get $500 off for being an MFM listener. Hire developers, assistants, marketing pros, sales teams and more for 80% less than their US equivalents.
+
+    —
+    Check Out Sam's Stuff:
+    • Hampton - https://www.joinhampton.com/
+    • Ideation Bootcamp - https://www.ideationbootcamp.co/
+    • Copy That - https://copythat.com
+    • Hampton Wealth Survey - https://joinhampton.com/wealth
+    💰 Pitch your startup for a shot at a $1M investment with Sam Parr as the MC https://clickhubspot.com/pitch
+
+
+
+
+
+    My First Million is a HubSpot Original Podcast // Brought to you by The HubSpot Podcast Network // Production by Arie Desormeaux // Editing by Ezra Bakker Trupiano
+transcribed_date: '2026-06-11'
 path: docs/research/youtube-library/transcripts/2026-06-11_jenny-hoyos_mfm-viral-shorts-formula.md
 ---
 
 # Her Viral Formula Breaks 100 Million Views On YouTube Shorts (ft. Jenny Hoyos)
 
 ## Metadata
+
 - **Channel**: [My First Million](https://www.youtube.com/@MyFirstMillionPod)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=ZpjGGbrcC8E)
 - **Duration**: 44:49
@@ -140,6 +141,7 @@ path: docs/research/youtube-library/transcripts/2026-06-11_jenny-hoyos_mfm-viral
 **Analysis:** `docs/research/youtube-library/analyses/2026-06-11_jenny-hoyos_mfm-viral-shorts-formula_analysis.md`
 
 ## Timestamps
+
 - 0:00 — Intro
 - 2:14 — How to build charisma
 - 6:35 — The 4 criteria of a great idea (jumpcut)

@@ -1,0 +1,18 @@
+{
+	// Typechecks the Phase A paid workflow harness, which the main tsconfig excludes because it
+	// includes only `src/**/*`. This is the harness that spends real money running the workflow
+	// lane; leaving it outside every typecheck is how a broken field reference survives.
+	// See research/09_INTERNAL_GROUND_TRUTH_MAP.md D2.
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"rootDir": "../..",
+		"types": ["node"],
+		// The harness runs under Vitest as ESM and uses `import.meta.url`; the worker's build
+		// config targets CommonJS, which rejects it. Typecheck it the way it actually executes.
+		"module": "ESNext",
+		"moduleResolution": "bundler"
+	},
+	"include": ["tests/phase-a/**/*.ts", "../../packages/agent-orchestrator/src/**/*.ts"],
+	"exclude": ["node_modules", "dist", "../../packages/agent-orchestrator/src/**/*.test.ts"]
+}

@@ -1,8 +1,9 @@
+// packages/agent-orchestrator/src/testing/harness/blind-judge.ts
 import { createHash } from 'node:crypto';
 
 import { z } from 'zod';
 
-export const BLIND_JUDGE_POLICY_VERSION = 'phase-a-a2-blind-v1' as const;
+export const BLIND_JUDGE_POLICY_VERSION = 'phase-a-a2-blind-v2' as const;
 
 export const BLIND_JUDGE_MODELS = [
 	'openai/gpt-5.6-luna',
@@ -126,7 +127,7 @@ export const BLIND_JUDGE_JSON_SCHEMA = {
 } as const;
 
 export const BLIND_MAPPING_ALGORITHM =
-	'sha256(policy_version + newline + corpus_version + newline + scenario_id + newline + run_index); even first byte => workflow is A, odd first byte => workflow is B';
+	'counterbalanced: sort the scenario ids; rotation = first byte of sha256(policy_version + newline + corpus_version) mod 2; for the scenario at sorted index i, workflow takes side A on odd run indexes when (i + rotation) is even and on even run indexes otherwise. Guarantees every scenario is split 2:1 or 1:2 across sides, that adjacent scenarios invert so run index does not correlate with lane, and an overall 4:5 or 5:4 split.';
 
 export const BLIND_AGGREGATION_POLICY =
 	'exactly three pinned judgments; two matching choices form the winner; otherwise tie; ties are non-wins; a required machine-check failure cannot count as a workflow win';
@@ -170,30 +171,43 @@ export interface BlindMapping {
 	digest: string;
 }
 
+/**
+ * Counterbalanced A/B assignment.
+ *
+ * The v1 mapping hashed each (scenario, run) pair independently, which left the split to chance:
+ * on the real corpus it put workflow on side A for all three C07 pairs, so any position bias in a
+ * judge or in DJ could sweep the scenario with the weakest control. This version uses the hash
+ * only to choose a rotation, then assigns sides structurally. See PHASE_A_AUDIT_2026-07-25.md S3.
+ */
 export function createBlindMapping(params: {
 	corpusVersion: string;
+	/** Every scenario in the comparison; used to place this scenario in a stable sorted order. */
+	scenarioIds: readonly string[];
 	scenarioId: string;
 	runIndex: number;
 }): BlindMapping {
 	if (!Number.isInteger(params.runIndex) || params.runIndex < 1 || params.runIndex > 3) {
 		throw new Error('Blind comparison runIndex must be an integer from 1 through 3');
 	}
+	const sorted = Array.from(new Set(params.scenarioIds)).sort();
+	const scenarioIndex = sorted.indexOf(params.scenarioId);
+	if (scenarioIndex < 0) {
+		throw new Error(`Scenario ${params.scenarioId} is not part of the blind comparison set`);
+	}
 
 	const digest = createHash('sha256')
-		.update(
-			[
-				BLIND_JUDGE_POLICY_VERSION,
-				params.corpusVersion,
-				params.scenarioId,
-				String(params.runIndex)
-			].join('\n')
-		)
+		.update([BLIND_JUDGE_POLICY_VERSION, params.corpusVersion].join('\n'))
 		.digest('hex');
-	const workflowSide: BlindSide = Number.parseInt(digest.slice(0, 2), 16) % 2 === 0 ? 'A' : 'B';
+	const rotation = Number.parseInt(digest.slice(0, 2), 16) % 2;
+	const workflowIsAOnOddRuns = (scenarioIndex + rotation) % 2 === 0;
+	const runIsOdd = params.runIndex % 2 === 1;
+	const workflowSide: BlindSide = runIsOdd === workflowIsAOnOddRuns ? 'A' : 'B';
 
 	return {
 		pairId: `${params.scenarioId}-r${params.runIndex}`,
-		...params,
+		corpusVersion: params.corpusVersion,
+		scenarioId: params.scenarioId,
+		runIndex: params.runIndex,
 		workflowSide,
 		controlSide: workflowSide === 'A' ? 'B' : 'A',
 		digest
@@ -314,9 +328,7 @@ export function validatePanelAgainstDj(params: {
 		}
 		return { panel: panelLabel, dj: djLabel };
 	});
-	const agreementCount = joined.filter(
-		({ panel, dj }) => panel.winner === dj.winner
-	).length;
+	const agreementCount = joined.filter(({ panel, dj }) => panel.winner === dj.winner).length;
 	const scenarioIds = Array.from(new Set(joined.map(({ panel }) => panel.scenarioId))).sort();
 	if (scenarioIds.length !== 3) {
 		throw new Error('Gate 4 validation requires exactly three scenarios');

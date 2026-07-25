@@ -1,13 +1,14 @@
+// apps/web/src/lib/server/gmail-relevance/manual-pilot.ts
 import type { Json } from '@buildos/shared-types';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import { z } from 'zod';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { GMAIL_READ_SCOPE } from '../gmail-read-oauth.service';
-import { EmailRelevanceMetadataDriver, type EmailRelevanceMetadataDriverResult } from './metadata-driver';
 import {
-	isGmailRelevancePhaseAEnabled,
-	isGmailRelevancePhaseAUserAllowed
-} from './config';
+	EmailRelevanceMetadataDriver,
+	type EmailRelevanceMetadataDriverResult
+} from './metadata-driver';
+import { isGmailRelevancePhaseAEnabled, isGmailRelevancePhaseAUserAllowed } from './config';
 import {
 	ProjectEmailProfilePublicationService,
 	type ProjectEmailProfilePublicationStore
@@ -52,7 +53,10 @@ type ExistingRun = {
 export type GmailRelevancePilotRepository = {
 	listEligibleConnectionIds(userId: string): Promise<string[]>;
 	listOwnedProjectIds(userId: string): Promise<string[]>;
-	loadExistingRun(input: { user_id: string; idempotency_key_hash: string }): Promise<ExistingRun | null>;
+	loadExistingRun(input: {
+		user_id: string;
+		idempotency_key_hash: string;
+	}): Promise<ExistingRun | null>;
 	loadConnectionScopeIds(input: { user_id: string; run_id: string }): Promise<string[]>;
 };
 
@@ -153,20 +157,22 @@ class SupabaseGmailRelevancePilotRepository implements GmailRelevancePilotReposi
 			.maybeSingle();
 		if (actorError) storageFailure();
 		if (!actor) return [];
-		const [{ data: memberships, error: membershipError }, { data: projects, error: projectError }] =
-			await Promise.all([
-				this.client
-					.from('onto_project_members')
-					.select('project_id')
-					.eq('actor_id', actor.id)
-					.eq('role_key', 'owner')
-					.is('removed_at', null),
-				this.client
-					.from('onto_projects')
-					.select('id, created_by')
-					.is('deleted_at', null)
-					.limit(1000)
-			]);
+		const [
+			{ data: memberships, error: membershipError },
+			{ data: projects, error: projectError }
+		] = await Promise.all([
+			this.client
+				.from('onto_project_members')
+				.select('project_id')
+				.eq('actor_id', actor.id)
+				.eq('role_key', 'owner')
+				.is('removed_at', null),
+			this.client
+				.from('onto_projects')
+				.select('id, created_by')
+				.is('deleted_at', null)
+				.limit(1000)
+		]);
 		if (membershipError || projectError) storageFailure();
 		const memberIds = new Set((memberships ?? []).map((row) => row.project_id));
 		return (projects ?? [])
@@ -189,10 +195,7 @@ class SupabaseGmailRelevancePilotRepository implements GmailRelevancePilotReposi
 		return data;
 	}
 
-	async loadConnectionScopeIds(input: {
-		user_id: string;
-		run_id: string;
-	}): Promise<string[]> {
+	async loadConnectionScopeIds(input: { user_id: string; run_id: string }): Promise<string[]> {
 		const { data, error } = await this.client
 			.from('email_relevance_scan_connections')
 			.select('id, email_relevance_scan_runs!inner(user_id)')
@@ -230,10 +233,7 @@ type GmailRelevancePilotServiceDependencies = {
 	repository?: GmailRelevancePilotRepository;
 	publicationStore?: ProjectEmailProfilePublicationStore;
 	profilePublisher?: Pick<ProjectEmailProfilePublicationService, 'captureProfiles'>;
-	controlPlane?: Pick<
-		EmailRelevanceScanControlPlane,
-		'createRun' | 'controlRun' | 'expireRun'
-	>;
+	controlPlane?: Pick<EmailRelevanceScanControlPlane, 'createRun' | 'controlRun' | 'expireRun'>;
 	driver?: Pick<EmailRelevanceMetadataDriver, 'runOneOperation'>;
 	now?: () => Date;
 	environment?: Record<string, string | undefined>;

@@ -1,3 +1,4 @@
+// packages/agent-orchestrator/src/application/workflow-engine/transition.ts
 import { z } from 'zod';
 
 import {
@@ -36,12 +37,13 @@ export const TransitionProposalSchema = z
 		const expected = {
 			append_research: ['more_research_required'],
 			complete: ['objective_satisfied'],
-			complete_partial: [
-				'partial_objective_satisfied',
+			complete_partial: ['partial_objective_satisfied', 'stage_failed', 'acceptance_failed'],
+			fail: [
 				'stage_failed',
-				'acceptance_failed'
-			],
-			fail: ['stage_failed', 'budget_exhausted', 'policy_limit_reached', 'unrecoverable_failure']
+				'budget_exhausted',
+				'policy_limit_reached',
+				'unrecoverable_failure'
+			]
 		} as const;
 		if (!(expected[proposal.action] as readonly string[]).includes(proposal.reason_code)) {
 			context.addIssue({
@@ -75,6 +77,29 @@ function validationIssues(candidate: unknown, allowed: TransitionProposal['actio
 	return allowed.includes(parsed.data.action)
 		? []
 		: [`action: ${parsed.data.action} is not currently allowed`];
+}
+
+const FORCED_REASON_CODE = {
+	append_research: 'more_research_required',
+	complete: 'objective_satisfied',
+	complete_partial: 'partial_objective_satisfied',
+	fail: 'stage_failed'
+} as const satisfies Record<TransitionProposal['action'], TransitionProposal['reason_code']>;
+
+/**
+ * When the deterministic transition policy leaves exactly one legal action, there is no decision
+ * for a model to make. Phase A used to spend a `powerful` JSON call rubber-stamping that single
+ * option; the call is now skipped and the proposal is constructed in code. Only genuinely
+ * branching gates reach the model, which is also the only place a wrong choice is observable.
+ * See PHASE_A_AUDIT_2026-07-25.md S1.
+ */
+export function forcedTransitionProposal(action: TransitionProposal['action']): TransitionProposal {
+	return TransitionProposalSchema.parse({
+		schema_version: 1,
+		action,
+		reason_code: FORCED_REASON_CODE[action],
+		rationale: `Only ${action} was legal at this gate, so the transition was decided deterministically.`
+	});
 }
 
 export async function requestTransitionProposal(params: {
@@ -114,7 +139,8 @@ export async function requestTransitionProposal(params: {
 
 	const firstCost = usage.reduce((total, event) => total + event.totalCostUsd, 0);
 	const remaining = Math.max(0, params.maxCostUsd - firstCost);
-	if (remaining === 0) throw new Error(`Transition repair has no budget: ${firstIssues.join('; ')}`);
+	if (remaining === 0)
+		throw new Error(`Transition repair has no budget: ${firstIssues.join('; ')}`);
 	const repair = await params.model.generateJson({
 		promptVersion: TRANSITION_PROMPT_VERSION,
 		attempt: 2,

@@ -1,3 +1,4 @@
+// apps/worker/tests/phase-a/phaseAWorkflowEval.test.ts
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -24,6 +25,7 @@ import {
 	WorkflowSafetyViolation,
 	type AgentExecutorPort,
 	type ModelUsageEvent,
+	type ModelUsageRole,
 	type ResearchModelCall,
 	type ResearchModelPort,
 	type RouteModelCall,
@@ -48,11 +50,9 @@ import {
 } from '../../../../packages/agent-orchestrator/src/testing/harness/workflow-eval-report';
 import { createAgentRunWebResearchPort } from '../../src/workers/agent-run/webResearchPort';
 
-const evalDescribe =
-	process.env.AGENTIC_PHASE_A_WORKFLOW === 'true' ? describe : describe.skip;
+const evalDescribe = process.env.AGENTIC_PHASE_A_WORKFLOW === 'true' ? describe : describe.skip;
 const OUTPUT_PATH =
-	process.env.PHASE_A_WORKFLOW_OUTPUT_PATH?.trim() ||
-	'/tmp/buildos-phase-a-workflow-eval.json';
+	process.env.PHASE_A_WORKFLOW_OUTPUT_PATH?.trim() || '/tmp/buildos-phase-a-workflow-eval.json';
 const USER_ID = 'phase-a-workflow-eval';
 const COMPLEX_SCENARIO_IDS = [
 	'a0-c06-single-source-article',
@@ -95,7 +95,7 @@ function requiredEnvironment(name: string): string {
 	return value;
 }
 
-function toUsage(event: JSONUsageEvent): ModelUsageEvent {
+function toUsage(event: JSONUsageEvent, role: ModelUsageRole): ModelUsageEvent {
 	return {
 		model: event.model,
 		provider: event.provider ?? event.billingProvider ?? null,
@@ -103,18 +103,19 @@ function toUsage(event: JSONUsageEvent): ModelUsageEvent {
 		completionTokens: event.completionTokens,
 		totalTokens: event.totalTokens,
 		totalCostUsd: event.totalCost,
-		billingDisposition: event.billingDisposition ?? null
+		billingDisposition: event.billingDisposition ?? null,
+		role
 	};
 }
 
-function createLlm(apiKey: string): SmartLLMService {
+function createLlm(apiKey: string, evaluationOnlyAllowNonZdr = false): SmartLLMService {
 	return new SmartLLMService({
 		apiKey,
 		enforceUserId: true,
 		usageLogger: {
 			logUsageToDatabase: async (_event: UsageLogParams) => undefined
 		},
-		openrouter: { timeoutMs: 120_000 }
+		openrouter: { timeoutMs: 120_000, evaluationOnlyAllowNonZdr }
 	});
 }
 
@@ -133,7 +134,7 @@ function createRoutePort(params: {
 	apiKey: string;
 	model: string;
 	profile: JSONProfile;
-	role: 'route_primary' | 'route_reviewer';
+	role: Extract<ModelUsageRole, 'route_primary' | 'route_reviewer'>;
 	observedUsage: ModelUsageEvent[];
 	scenarioId: string;
 	runIndex: number;
@@ -169,7 +170,7 @@ function createRoutePort(params: {
 					promptVersion: call.promptVersion
 				},
 				onUsage: async (event) => {
-					params.observedUsage.push(toUsage(event));
+					params.observedUsage.push(toUsage(event, params.role));
 				}
 			});
 		}
@@ -180,12 +181,13 @@ function createJsonTextPort(params: {
 	apiKey: string;
 	model: string;
 	profile: JSONProfile;
-	role: 'researcher' | 'synthesis';
+	role: Extract<ModelUsageRole, 'researcher' | 'synthesis'>;
 	observedUsage: ModelUsageEvent[];
 	scenarioId: string;
 	runIndex: number;
+	evaluationOnlyAllowNonZdr?: boolean;
 }): ResearchModelPort & SynthesisModelPort {
-	const llm = createLlm(params.apiKey);
+	const llm = createLlm(params.apiKey, params.evaluationOnlyAllowNonZdr);
 	return {
 		async generateText(call: ResearchModelCall | SynthesisModelCall) {
 			const usage: ModelUsageEvent[] = [];
@@ -198,7 +200,10 @@ function createJsonTextPort(params: {
 				temperature: call.temperature,
 				maxTokens: call.maxTokens,
 				timeoutMs: 120_000,
-				reasoning: { effort: params.role === 'synthesis' ? 'medium' : 'low', exclude: true },
+				reasoning: {
+					effort: params.role === 'synthesis' ? 'medium' : 'low',
+					exclude: true
+				},
 				spendLimit: {
 					maxCostUsd: call.maxCostUsd,
 					minOutputTokens: 512,
@@ -219,7 +224,7 @@ function createJsonTextPort(params: {
 					promptVersion: call.promptVersion
 				},
 				onUsage: async (event) => {
-					const normalized = toUsage(event);
+					const normalized = toUsage(event, params.role);
 					usage.push(normalized);
 					params.observedUsage.push(normalized);
 				}
@@ -270,7 +275,7 @@ function createTransitionPort(params: {
 					attempt: call.attempt
 				},
 				onUsage: async (event) => {
-					const normalized = toUsage(event);
+					const normalized = toUsage(event, 'transition');
 					usage.push(normalized);
 					params.observedUsage.push(normalized);
 				}
@@ -290,9 +295,19 @@ function createAgentExecutor(params: {
 }): AgentExecutorPort {
 	return {
 		async execute(request) {
+			// Agents self-report against the criterion ids the step actually declares; a hardcoded
+			// id cannot be reconciled with the plan. See research/09_INTERNAL_GROUND_TRUTH_MAP.md D10.
+			const declaredCriterionIds = request.step.acceptance_criteria.map(
+				(criterion) => criterion.criterion_id
+			);
+
 			if (request.step.agent_id === 'librarian.v0') {
 				return {
-					result: runDeterministicLibrarian({ objective: params.scenario.request_text, snapshot }),
+					result: runDeterministicLibrarian({
+						objective: params.scenario.request_text,
+						snapshot,
+						acceptanceCriterionIds: declaredCriterionIds
+					}),
 					usage: [],
 					toolCostUsd: 0,
 					toolCalls: []
@@ -318,14 +333,14 @@ function createAgentExecutor(params: {
 					params.toolCharges.push(charge.cost_usd);
 				}
 			});
+			// No scenario-keyed knobs. `runResearcher` derives its visit budget and citation floor
+			// from whether the request supplied its own sources. See
+			// PHASE_A_AUDIT_2026-07-25.md S2.
 			const researcher = await runResearcher({
 				objective: params.scenario.request_text,
 				focus: request.step.goal,
 				contextPacket,
-				minimumCitations:
-					params.scenario.scenario_id === 'a0-c08-context-app-recommendation' ? 2 : 1,
-				maxVisits:
-					params.scenario.scenario_id === 'a0-c06-single-source-article' ? 1 : 3,
+				acceptanceCriterionIds: declaredCriterionIds,
 				maxModelCostUsd: Math.max(0.001, request.maxCostUsd - reservedToolCost),
 				web,
 				model: createJsonTextPort({
@@ -335,7 +350,10 @@ function createAgentExecutor(params: {
 					role: 'researcher',
 					observedUsage: params.observedUsage,
 					scenarioId: params.scenario.scenario_id,
-					runIndex: params.runIndex
+					runIndex: params.runIndex,
+					// DJ approved non-ZDR transport only for the anonymized Phase A DeepSeek
+					// researcher input. Every other role keeps SmartLLM's ZDR-safe default.
+					evaluationOnlyAllowNonZdr: true
 				})
 			});
 			return {
@@ -377,16 +395,30 @@ function modelCost(usage: ModelUsageEvent[]): number {
 	return usage.reduce((total, event) => total + event.totalCostUsd, 0);
 }
 
+/**
+ * ADR 0001 promises that a run whose actual model differs from its role's pin is
+ * infrastructure-invalid. Checking every event against the union of all five pins does not
+ * deliver that: a researcher call that silently fell back to GLM 5.2 would pass, because GLM 5.2
+ * is the transition and synthesis pin. The check is therefore per role.
+ * See PHASE_A_AUDIT_2026-07-25.md S4.
+ */
+function matchesPin(actual: string, pin: string): boolean {
+	return actual === pin || actual.startsWith(`${pin}-`);
+}
+
 function infrastructureInvalidReason(usage: ModelUsageEvent[]): string | null {
 	if (usage.length === 0) return 'No model usage event was observed.';
-	const pins = new Set(Object.values(MODEL_PINS));
-	const mismatch = usage.find(
-		(event) =>
-			!Array.from(pins).some(
-				(pin) => event.model === pin || event.model.startsWith(`${pin}-`)
-			)
-	);
-	if (mismatch) return `Actual model ${mismatch.model} is outside the frozen A2 pins.`;
+	const untagged = usage.find((event) => !event.role);
+	if (untagged) {
+		return `Usage event for ${untagged.model} carried no role, so its pin cannot be verified.`;
+	}
+	const mismatch = usage.find((event) => {
+		const pin = MODEL_PINS[event.role as keyof typeof MODEL_PINS];
+		return !pin || !matchesPin(event.model, pin);
+	});
+	if (mismatch) {
+		return `Role ${mismatch.role} returned ${mismatch.model}, which is not its frozen A2 pin.`;
+	}
 	if (
 		usage.some(
 			(event) =>
@@ -446,7 +478,9 @@ async function executeRun(params: {
 		actualReasonCode = routeResult.decision.reason_code;
 		routeDurationMs = routeResult.durationMs;
 		if (routeResult.decision.route !== 'workflow') {
-			throw new Error(`Route selected ${routeResult.decision.route}; workflow lane did not execute.`);
+			throw new Error(
+				`Route selected ${routeResult.decision.route}; workflow lane did not execute.`
+			);
 		}
 		const routeUsage = [...observedUsage];
 		workflow = await executeWorkflow({
@@ -454,7 +488,12 @@ async function executeRun(params: {
 			permissionGrant: {
 				mode: 'read_only',
 				project_ids: [snapshot.project.id],
-				operations: ['ontology.project.read', 'ontology.entity.read', 'web.search', 'web.visit'],
+				operations: [
+					'ontology.project.read',
+					'ontology.entity.read',
+					'web.search',
+					'web.visit'
+				],
 				network: 'web_read',
 				artifact_types_read: ['context_packet', 'research_packet'],
 				artifact_types_write: ['context_packet', 'research_packet'],
@@ -530,6 +569,8 @@ async function executeRun(params: {
 		totalDurationMs: Date.now() - startedAtMs,
 		stageCount: workflow?.stageCount ?? 0,
 		replanCount: workflow?.replanCount ?? 0,
+		transitionModelCalls: workflow?.transitionModelCalls ?? 0,
+		forcedTransitions: workflow?.forcedTransitions ?? 0,
 		usage: observedUsage,
 		modelCostUsd: actualModelCost,
 		toolCostUsd,

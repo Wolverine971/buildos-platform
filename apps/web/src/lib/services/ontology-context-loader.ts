@@ -1228,12 +1228,12 @@ export class OntologyContextLoader {
 				edge.rel === 'has_context_document' &&
 				edge.dst_kind === 'document'
 		);
-			const contextDocument =
-				pickStartHereDocument(
-					graphData.documents.filter((doc) => doc.type_key === 'document.context.project')
-				) ??
-				graphData.documents.find((doc) => doc.id === contextEdge?.dst_id) ??
-				null;
+		const contextDocument =
+			pickStartHereDocument(
+				graphData.documents.filter((doc) => doc.type_key === 'document.context.project')
+			) ??
+			graphData.documents.find((doc) => doc.id === contextEdge?.dst_id) ??
+			null;
 		const contextDocumentId = contextDocument?.id ?? null;
 		const contextDocumentTitle = contextDocument?.title;
 

@@ -1,4 +1,4 @@
-<!-- references/adoption-diagnosis.md -->
+<!-- apps/web/src/lib/services/agentic-chat/tools/skills/definitions/design_system_architecture_review/references/adoption-diagnosis.md -->
 
 # Adoption Diagnosis: Distance, Virtuous Circle & Interface Inventory
 
@@ -11,6 +11,7 @@ The #1 thing teams struggle with "the world over" is adoption. Root cause: the d
 Reframe the team's job (Frost 2024): "The job of design-system designers is **not** to go inward and futz with border-radius values. It is to go **outwards**, be a service to the product organization — what do you need? How can we serve you?" Close the distance at the **tool level and above all at a real human level.**
 
 Agent-checkable distance signals (each one is a flag):
+
 - The system team has **no product surfaces it ships into** itself.
 - No intake path from product teams back into the system (no contribution channel).
 - The system's own roadmap is internal-only (border-radius, tokens, refactors) with **no product-driven items**.
@@ -21,6 +22,7 @@ Agent-checkable distance signals (each one is a flag):
 The governing model is the **virtuous circle / yin-yang**: the system **informs and influences products**, AND products **inform and influence the system**. Both directions, continuously. Get the loop right and adoption follows.
 
 Binary check: does the loop run in **both** directions?
+
 - **System → product** present? (teams build with the system)
 - **Product → system** present? (teams contribute back, the system absorbs product reality)
 
@@ -28,10 +30,10 @@ If only one direction runs, the system is in one of the two failure poles below.
 
 ## The two failure poles (name which one)
 
-| Pole | Definition | Tell |
-| --- | --- | --- |
-| **Pattern police** | System team enforces "you're not design-system compliant!" on the product. | Loop runs system→product only; compliance language; no contribution path. |
-| **Product capture** | "You're mine now" — system swept up in whatever one product is doing. | Loop runs product→system only; system has no reusable independent value; changes serve one product's whims. |
+| Pole                | Definition                                                                 | Tell                                                                                                        |
+| ------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| **Pattern police**  | System team enforces "you're not design-system compliant!" on the product. | Loop runs system→product only; compliance language; no contribution path.                                   |
+| **Product capture** | "You're mine now" — system swept up in whatever one product is doing.      | Loop runs product→system only; system has no reusable independent value; changes serve one product's whims. |
 
 Agent rule: a healthy review names **neither** pole present. If you observe one, name it explicitly and prescribe the missing loop direction. Don't recommend more governance theater to a pattern-police system — recommend service-orientation (go outward) instead.
 
@@ -40,6 +42,7 @@ Agent rule: a healthy review names **neither** pole present. If you observe one,
 The first concrete audit move, and the buy-in device.
 
 Protocol:
+
 1. **Catalog every unique instance** of each pattern — screenshot **all** buttons, all form fields, all icons, all cards across the product(s).
 2. **Surface the inconsistency** — the wall of mismatched buttons makes the problem visible without a designer explaining why it's a problem.
 3. **Scope the refactor** — the inventory IS the merge/kill worklist (which variants collapse into one).
@@ -60,12 +63,14 @@ Agent-checkable: a review that recommends standardizing components **without fir
 Use this to date a system's maturity and spot what it's missing.
 
 **Holds (still true, "maybe more relevant"):**
+
 - atoms→molecules→organisms→templates→pages taxonomy; straight-line traversal system→product page/state.
 - Build through real production frontend (Pattern Lab → Storybook; same principle).
 - Solve-once-and-reuse / DRY (includes → web components → Global Design System: same idea at three scales).
 - Collaboration over silos; vocabulary is optional, the system isn't.
 
 **New since 2015 (a system lacking these is dated):**
+
 - the **"design system"** umbrella term (vs 2015 "pattern libraries / tiny Bootstraps").
 - **design tokens** as a first-class layer (see token-taxonomy reference).
 - **web components** as cross-framework single source of truth.
@@ -74,6 +79,7 @@ Use this to date a system's maturity and spot what it's missing.
 - **AI as two-way tooling** (see token-taxonomy reference).
 
 **Corrects (what Frost would push back on now):**
+
 - the **inward turn** — the very success of "design systems as a fundable thing" produced isolated teams; correction is outward service + adoption via the virtuous circle.
 - **set-and-forget** governance — now explicitly a "recipe for disaster."
 - **pattern-police rigidity** — softened to "you have agency."

@@ -355,7 +355,10 @@ function decodeHtmlEntities(value: string): string {
 function stripHtmlToText(html: string): { title?: string; content: string } {
 	const titleMatch = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
 	const title = titleMatch
-		? compactText(decodeHtmlEntities(sanitizeHtml(titleMatch[1] ?? '', { allowedTags: [] })), 500)
+		? compactText(
+				decodeHtmlEntities(sanitizeHtml(titleMatch[1] ?? '', { allowedTags: [] })),
+				500
+			)
 		: undefined;
 	const body = html.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)?.[1] ?? html;
 	// Convert block-level boundaries to newlines first (a linear single-tag

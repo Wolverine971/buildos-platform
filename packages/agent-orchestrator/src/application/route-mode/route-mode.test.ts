@@ -10,6 +10,7 @@ import { ROUTE_PROMPT_VERSION, ROUTE_SYSTEM_PROMPT } from './prompts';
 import { routeRequest } from './route-mode';
 import { routeRequestWithReview } from './route-mode-with-review';
 import type { RouteProposal } from './route-proposal';
+import type { WorkflowScopeFact } from './workflow-scope';
 import {
 	buildPhaseAWorldCard,
 	estimateWorldCardTokens,
@@ -56,6 +57,13 @@ function modelReturning(
 	return { generateJson };
 }
 
+function scopeFact(
+	classification: WorkflowScopeFact['classification'],
+	confidence = 0.95
+): WorkflowScopeFact {
+	return { schema_version: 1, classification, confidence };
+}
+
 describe('Phase A world card', () => {
 	it('is deterministic, bounded, and contains only lightweight project identity', () => {
 		const second = buildPhaseAWorldCard(snapshot);
@@ -77,11 +85,26 @@ describe('Phase A world card', () => {
 });
 
 describe('Phase A route mode', () => {
-	it('versions the post-first-pass scope policy without changing the world card', () => {
-		expect(ROUTE_PROMPT_VERSION).toBe('phase-a-route-prompt-v4');
+	it('states the scope policy as general tests rather than corpus-shaped rules', () => {
+		expect(ROUTE_PROMPT_VERSION).toBe('phase-a-route-prompt-v5');
+		expect(ROUTE_SYSTEM_PROMPT).toContain('UNRESOLVED PROJECT REFERENT');
+		expect(ROUTE_SYSTEM_PROMPT).toContain('SELF-CONTAINED');
+		expect(ROUTE_SYSTEM_PROMPT).toContain('OUT OF SCOPE');
 		expect(ROUTE_SYSTEM_PROMPT).toContain('project.read may retrieve records');
-		expect(ROUTE_SYSTEM_PROMPT).toContain('current_project makes a phrase');
-		expect(ROUTE_SYSTEM_PROMPT).toContain('work domain absent from');
+	});
+
+	it('makes the workflow reason code an ordered plan-selection test', () => {
+		// A2 compiles the execution plan from `reason_code`, so the prompt has to select it with
+		// a deterministic first-match procedure. See PHASE_A_AUDIT_2026-07-25.md B1.
+		const procedure = ROUTE_SYSTEM_PROMPT.slice(ROUTE_SYSTEM_PROMPT.indexOf('Step 3'));
+		for (const [order, code] of [
+			'single_source_research',
+			'context_research_recommendation',
+			'multi_source_research',
+			'multi_step_synthesis'
+		].entries()) {
+			expect(procedure).toContain(`${order + 1}. ${code}`);
+		}
 	});
 
 	it('compiles a valid direct RouteDecision in one model call', async () => {
@@ -132,6 +155,50 @@ describe('Phase A route mode', () => {
 		}
 	});
 
+	it('compiles workflow topology from request features instead of the reason label', async () => {
+		const cases = [
+			{
+				request: 'Analyze https://example.com/report for the decision.',
+				reasonCode: 'context_research_recommendation' as const,
+				stageKey: 'research',
+				stepCount: 1
+			},
+			{
+				request: 'Research which service is best for this project.',
+				reasonCode: 'multi_source_research' as const,
+				stageKey: 'gather-project-context',
+				stepCount: 1
+			},
+			{
+				request:
+					'Compare onboarding practice, accessibility risks, and validation methods.',
+				reasonCode: 'context_research_recommendation' as const,
+				stageKey: 'research',
+				stepCount: 2
+			}
+		];
+
+		for (const testCase of cases) {
+			const result = await routeRequest({
+				worldCard,
+				request: testCase.request,
+				model: modelReturning(
+					proposal({
+						route: 'workflow',
+						reason_code: testCase.reasonCode,
+						objective: 'Collect relevant external evidence.'
+					})
+				)
+			});
+
+			if (result.decision.route !== 'workflow') {
+				throw new Error(`Expected workflow decision, received ${result.decision.route}`);
+			}
+			expect(result.decision.initial_stage.client_stage_key).toBe(testCase.stageKey);
+			expect(result.decision.initial_stage.steps).toHaveLength(testCase.stepCount);
+		}
+	});
+
 	it('makes exactly one bounded repair after invalid model output', async () => {
 		const model = modelReturning(
 			{ ...proposal(), reason_code: 'multi_source_research' },
@@ -176,7 +243,30 @@ describe('Phase A fast-first route review', () => {
 		expect(reviewModel.generateJson).not.toHaveBeenCalled();
 	});
 
-	it('reviews a direct or clarify result that conflicts with explicit research intent', async () => {
+	it('compiles an observable supplied source without invoking the scope model', async () => {
+		const reviewModel = modelReturning(scopeFact('missing_required_scope'));
+		const result = await routeRequestWithReview({
+			worldCard,
+			request: 'Analyze https://example.com/report for this decision.',
+			primaryModel: modelReturning(
+				proposal({
+					route: 'clarify',
+					reason_code: 'ambiguous_scope',
+					questions: ['Scope?']
+				})
+			),
+			reviewModel
+		});
+
+		expect(result.decision).toMatchObject({
+			route: 'workflow',
+			reason_code: 'single_source_research'
+		});
+		expect(result.reviewed).toBe(false);
+		expect(reviewModel.generateJson).not.toHaveBeenCalled();
+	});
+
+	it('uses a narrow scope fact to compile conflicting research requests', async () => {
 		for (const primary of [
 			proposal(),
 			proposal({
@@ -189,17 +279,75 @@ describe('Phase A fast-first route review', () => {
 				worldCard,
 				request: 'Please research which app I should use for this project.',
 				primaryModel: modelReturning(primary),
-				reviewModel: modelReturning(
-					proposal({
-						route: 'workflow',
-						reason_code: 'context_research_recommendation'
-					})
-				)
+				reviewModel: modelReturning(scopeFact('current_project_then_research'))
 			});
 
 			expect(result.decision.route).toBe('workflow');
-			expect(result.reviewReason).toBe('research_intent_conflict');
+			expect(result.decision.reason_code).toBe('context_research_recommendation');
+			expect(result.reviewReason).toBe('workflow_scope_resolution');
+			expect(result.reviewResult).toBeNull();
+			expect(result.scopeResult?.fact.classification).toBe('current_project_then_research');
 		}
+	});
+
+	it('reviews primary workflow proposals and compiles missing scope to clarify', async () => {
+		const result = await routeRequestWithReview({
+			worldCard,
+			request: 'Please research this and let me know.',
+			primaryModel: modelReturning(
+				proposal({ route: 'workflow', reason_code: 'multi_source_research' })
+			),
+			reviewModel: modelReturning(scopeFact('missing_required_scope'))
+		});
+
+		expect(result.decision).toMatchObject({
+			route: 'clarify',
+			reason_code: 'missing_required_context'
+		});
+		if (result.decision.route !== 'clarify') throw new Error('Expected clarify decision');
+		expect(result.decision.questions).toHaveLength(1);
+	});
+
+	it('leaves genuine non-research multi-step proposals outside the research classifier', async () => {
+		const reviewModel = modelReturning(scopeFact('bounded_project_read'));
+		const result = await routeRequestWithReview({
+			worldCard,
+			request: 'Turn this supplied specification into a dependency-ordered explanation.',
+			primaryModel: modelReturning(
+				proposal({ route: 'workflow', reason_code: 'multi_step_synthesis' })
+			),
+			reviewModel
+		});
+
+		expect(result.decision).toMatchObject({
+			route: 'workflow',
+			reason_code: 'multi_step_synthesis'
+		});
+		expect(result.reviewed).toBe(false);
+		expect(reviewModel.generateJson).not.toHaveBeenCalled();
+	});
+
+	it('keeps capability gaps outside the scope classifier', async () => {
+		const reviewModel = modelReturning(scopeFact('self_contained_research'));
+		const result = await routeRequestWithReview({
+			worldCard,
+			request: 'Research my connected inbox.',
+			primaryModel: modelReturning(
+				proposal({
+					route: 'capability_gap',
+					reason_code: 'unsupported_capability',
+					gap: {
+						capability: 'email.search',
+						description: 'No inbox tool is available.',
+						suggested_resolution: null
+					}
+				})
+			),
+			reviewModel
+		});
+
+		expect(result.decision.route).toBe('capability_gap');
+		expect(reviewModel.generateJson).not.toHaveBeenCalled();
 	});
 
 	it('uses the reviewer when the primary exhausts its bounded repair', async () => {

@@ -1,12 +1,12 @@
 ---
-title: "Secrets of the Algorithm with the PRESIDENT OF Instagram Adam Mosseri"
+title: 'Secrets of the Algorithm with the PRESIDENT OF Instagram Adam Mosseri'
 source_type: youtube_transcript
 video_id: 96iwtsFbvpg
-url: "https://www.youtube.com/watch?v=96iwtsFbvpg"
+url: 'https://www.youtube.com/watch?v=96iwtsFbvpg'
 channel: Josh Peck
-channel_url: "https://www.youtube.com/@joshpeck"
+channel_url: 'https://www.youtube.com/@joshpeck'
 upload_date: 2025-11-17
-duration: "01:14:32"
+duration: '01:14:32'
 views: 7386
 library_category: marketing-and-content
 library_status: 'transcript, analysis'
@@ -22,119 +22,119 @@ public_article: ''
 indexed_date: '2026-06-11'
 last_reviewed: '2026-06-12'
 tags:
-  - josh peck
-  - drake and josh
-  - nickelodeon
-  - ben soffer
-  - good guys
-  - good guys podcast
-  - josh peck pod
-  - josh peck podcast
-  - podcast
-  - Good Guys Podcast
-  - Adam Mosseri
-  - Instagram algorithm
-  - IG shadowban
-  - Instagram reach
-  - Reels tips
-  - social media growth
-  - creator advice
-  - funny content
-  - Instagram CEO
-  - Mark Zuckerberg
+    - josh peck
+    - drake and josh
+    - nickelodeon
+    - ben soffer
+    - good guys
+    - good guys podcast
+    - josh peck pod
+    - josh peck podcast
+    - podcast
+    - Good Guys Podcast
+    - Adam Mosseri
+    - Instagram algorithm
+    - IG shadowban
+    - Instagram reach
+    - Reels tips
+    - social media growth
+    - creator advice
+    - funny content
+    - Instagram CEO
+    - Mark Zuckerberg
 timestamps:
-  - time: "0:00"
-    label: "Introduction and Guest Welcome"
-  - time: "0:47"
-    label: "Discussing Instagram's Algorithm"
-  - time: "2:44"
-    label: "Adam's Journey at Instagram"
-  - time: "3:27"
-    label: "The Social Network Movie Experience"
-  - time: "5:21"
-    label: "Content Strategies and Algorithm Insights"
-  - time: "12:17"
-    label: "Instagram's Global Reach and Features"
-  - time: "14:12"
-    label: "Perks of Working at Instagram"
-  - time: "23:53"
-    label: "Future of Instagram and AI"
-  - time: "29:43"
-    label: "Instagram Rings and Recognizing Creators"
-  - time: "31:52"
-    label: "Celebrating Small Creators"
-  - time: "33:00"
-    label: "Instagram President's Screen Time"
-  - time: "34:35"
-    label: "A Day in the Life of Instagram's President"
-  - time: "37:58"
-    label: "Handling High-Profile Accounts"
-  - time: "48:28"
-    label: "Parenting and Social Media Boundaries"
-  - time: "51:50"
-    label: "Shadow Banning Explained"
-  - time: "56:05"
-    label: "What Are You Nuts?"
-  - time: "1:02:16"
-    label: "Final Thoughts and Farewell"
+    - time: '0:00'
+      label: 'Introduction and Guest Welcome'
+    - time: '0:47'
+      label: "Discussing Instagram's Algorithm"
+    - time: '2:44'
+      label: "Adam's Journey at Instagram"
+    - time: '3:27'
+      label: 'The Social Network Movie Experience'
+    - time: '5:21'
+      label: 'Content Strategies and Algorithm Insights'
+    - time: '12:17'
+      label: "Instagram's Global Reach and Features"
+    - time: '14:12'
+      label: 'Perks of Working at Instagram'
+    - time: '23:53'
+      label: 'Future of Instagram and AI'
+    - time: '29:43'
+      label: 'Instagram Rings and Recognizing Creators'
+    - time: '31:52'
+      label: 'Celebrating Small Creators'
+    - time: '33:00'
+      label: "Instagram President's Screen Time"
+    - time: '34:35'
+      label: "A Day in the Life of Instagram's President"
+    - time: '37:58'
+      label: 'Handling High-Profile Accounts'
+    - time: '48:28'
+      label: 'Parenting and Social Media Boundaries'
+    - time: '51:50'
+      label: 'Shadow Banning Explained'
+    - time: '56:05'
+      label: 'What Are You Nuts?'
+    - time: '1:02:16'
+      label: 'Final Thoughts and Farewell'
 description: |
-  Mazel morons! This week, we’re joined by the President of Instagram himself, Adam Mosseri, for a revealing, hilarious, and surprisingly heartfelt breakdown of how IG actually works. We ask every question you’ve ever yelled into the void: Is shadow banning real? Why did your reach plummet overnight? Does the algorithm have feelings? And yes- where the hell is it even stored? 
-  
-  Adam explains the truth about Reels, why funny content still crushes, how political posts tank engagement, and what keeps him up at night running a platform with 3 billion users. We also get into parenting, screen-time drama, spy-theory paranoia between social platforms, creator perks, Zuckerberg’s chain era, and MORE. If you’ve ever posted, doom-scrolled, obsessed over insights, or cursed the algorithm… this episode is for you. If not… what are ya, nuts? Love ya!
-  
-  Chapters:
-  00:00 Introduction and Guest Welcome
-  00:47 Discussing Instagram's Algorithm
-  02:44 Adam's Journey at Instagram
-  03:27 The Social Network Movie Experience
-  05:21 Content Strategies and Algorithm Insights
-  12:17 Instagram's Global Reach and Features
-  14:12 Perks of Working at Instagram
-  23:53 Future of Instagram and AI
-  29:43 Instagram Rings and Recognizing Creators
-  31:52 Celebrating Small Creators
-  33:00 Instagram President's Screen Time
-  34:35 A Day in the Life of Instagram's President
-  37:58 Handling High-Profile Accounts
-  48:28 Parenting and Social Media Boundaries
-  51:50 Shadow Banning Explained
-  56:05 What Are You Nuts?
-  01:02:16 Final Thoughts and Farewell
-  
-  
-  Leave us a voicemail here:
-  https://www.speakpipe.com/goodguys
-  
-  For more of the Good Guys, follow along at:
-  
-  Josh:
-  Instagram: https://www.instagram.com/shuapeck
-  TikTok: https://www.tiktok.com/@joshpeck
-  YouTube: https://www.youtube.com/@joshpeck
-  
-  Ben:
-  Instagram: https://www.instagram.com/boywithnojob
-  TikTok: https://www.tiktok.com/@boywithnojob_
-  
-  Good Guys Podcast:
-  https://podcasts.apple.com/us/podcast/good-guys/id1640156422
-  https://open.spotify.com/show/6bcrqJ6ziTaiLbIgcDXOV7
-  
-  
-  Produced by Dear Media.
-  
-  Follow Dear Media:
-  Listen: https://dearmedia.com/shows/
-  Instagram: https://www.instagram.com/dearmediastudio/
-  TikTok: https://www.tiktok.com/@dearmedia
-  Linkedin: https://www.linkedin.com/company/dear-media
-  
-  Shop Dear Media:
-  https://shop.dearmedia.com/
-  
-  ABOUT DEAR MEDIA
-  Dear Media is the largest podcast network focused on amplifying women’s voices and audiences. Founded in 2018, DM hosts 80+ podcasts fronted by top-tier talent and has a following of more than 60M across social channels. DM is building the podcast incubator of the future through a 360-degree business model, providing unparalleled support from concept to editorial, production, distribution, and commerce extensions. Due to its highly engaged and vast consumer audience, the network attracts global brands and digital savvy partners.
-transcribed_date: "2026-06-11"
+    Mazel morons! This week, we’re joined by the President of Instagram himself, Adam Mosseri, for a revealing, hilarious, and surprisingly heartfelt breakdown of how IG actually works. We ask every question you’ve ever yelled into the void: Is shadow banning real? Why did your reach plummet overnight? Does the algorithm have feelings? And yes- where the hell is it even stored? 
+
+    Adam explains the truth about Reels, why funny content still crushes, how political posts tank engagement, and what keeps him up at night running a platform with 3 billion users. We also get into parenting, screen-time drama, spy-theory paranoia between social platforms, creator perks, Zuckerberg’s chain era, and MORE. If you’ve ever posted, doom-scrolled, obsessed over insights, or cursed the algorithm… this episode is for you. If not… what are ya, nuts? Love ya!
+
+    Chapters:
+    00:00 Introduction and Guest Welcome
+    00:47 Discussing Instagram's Algorithm
+    02:44 Adam's Journey at Instagram
+    03:27 The Social Network Movie Experience
+    05:21 Content Strategies and Algorithm Insights
+    12:17 Instagram's Global Reach and Features
+    14:12 Perks of Working at Instagram
+    23:53 Future of Instagram and AI
+    29:43 Instagram Rings and Recognizing Creators
+    31:52 Celebrating Small Creators
+    33:00 Instagram President's Screen Time
+    34:35 A Day in the Life of Instagram's President
+    37:58 Handling High-Profile Accounts
+    48:28 Parenting and Social Media Boundaries
+    51:50 Shadow Banning Explained
+    56:05 What Are You Nuts?
+    01:02:16 Final Thoughts and Farewell
+
+
+    Leave us a voicemail here:
+    https://www.speakpipe.com/goodguys
+
+    For more of the Good Guys, follow along at:
+
+    Josh:
+    Instagram: https://www.instagram.com/shuapeck
+    TikTok: https://www.tiktok.com/@joshpeck
+    YouTube: https://www.youtube.com/@joshpeck
+
+    Ben:
+    Instagram: https://www.instagram.com/boywithnojob
+    TikTok: https://www.tiktok.com/@boywithnojob_
+
+    Good Guys Podcast:
+    https://podcasts.apple.com/us/podcast/good-guys/id1640156422
+    https://open.spotify.com/show/6bcrqJ6ziTaiLbIgcDXOV7
+
+
+    Produced by Dear Media.
+
+    Follow Dear Media:
+    Listen: https://dearmedia.com/shows/
+    Instagram: https://www.instagram.com/dearmediastudio/
+    TikTok: https://www.tiktok.com/@dearmedia
+    Linkedin: https://www.linkedin.com/company/dear-media
+
+    Shop Dear Media:
+    https://shop.dearmedia.com/
+
+    ABOUT DEAR MEDIA
+    Dear Media is the largest podcast network focused on amplifying women’s voices and audiences. Founded in 2018, DM hosts 80+ podcasts fronted by top-tier talent and has a following of more than 60M across social channels. DM is building the podcast incubator of the future through a 360-degree business model, providing unparalleled support from concept to editorial, production, distribution, and commerce extensions. Due to its highly engaged and vast consumer audience, the network attracts global brands and digital savvy partners.
+transcribed_date: '2026-06-11'
 path: docs/research/youtube-library/transcripts/2026-06-11_adam-mosseri_secrets-of-the-instagram-algorithm.md
 ---
 
@@ -143,6 +143,7 @@ path: docs/research/youtube-library/transcripts/2026-06-11_adam-mosseri_secrets-
 > **Analysis:** [2026-06-11_adam-mosseri_instagram-algorithm_analysis.md](../analyses/2026-06-11_adam-mosseri_instagram-algorithm_analysis.md)
 
 ## Metadata
+
 - **Channel**: [Josh Peck](https://www.youtube.com/@joshpeck)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=96iwtsFbvpg)
 - **Duration**: 01:14:32
@@ -150,6 +151,7 @@ path: docs/research/youtube-library/transcripts/2026-06-11_adam-mosseri_secrets-
 - **Views**: 7,386
 
 ## Timestamps
+
 - 0:00 — Introduction and Guest Welcome
 - 0:47 — Discussing Instagram's Algorithm
 - 2:44 — Adam's Journey at Instagram

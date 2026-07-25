@@ -13,7 +13,9 @@ describe('categorizeLlmFailure', () => {
 	it('flags an OpenRouter max_price rejection distinctly', () => {
 		expect(
 			categorizeLlmFailure(
-				new Error('OpenRouter API error: 404 - No endpoints found that satisfy the max price')
+				new Error(
+					'OpenRouter API error: 404 - No endpoints found that satisfy the max price'
+				)
 			)
 		).toBe('provider_price_rejected');
 	});

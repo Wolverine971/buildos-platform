@@ -120,6 +120,7 @@ path: docs/research/youtube-library/transcripts/2026-06-11_brock-johnson_solved-
 > **Analysis:** [2026-06-11_brock-johnson_solved-instagram-algorithm_analysis.md](../analyses/2026-06-11_brock-johnson_solved-instagram-algorithm_analysis.md)
 
 ## Metadata
+
 - **Channel**: [Brian Ellwood](https://www.youtube.com/@BrianEllwood)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=N1ozk6TTdwU)
 - **Duration**: 55:02
@@ -127,6 +128,7 @@ path: docs/research/youtube-library/transcripts/2026-06-11_brock-johnson_solved-
 - **Views**: 90,511
 
 ## Timestamps
+
 - 0:00 — <Untitled Chapter 1>
 - 1:46 — Brock's Journey into Instagram Coaching
 - 8:22 — The Importance of Instagram Stories for Business

@@ -2,6 +2,33 @@
 
 # Phase A evaluation results
 
+> **Integrity note, 2026-07-25 (evening).** Every SHA-256 below reproduces — but two of them
+> briefly did not. `control-a2-v1.json` and `workflow-eval-invalid-zdr-v1.json` were reformatted
+> from 2-space to tab indentation by a Prettier run, which left the parsed content identical and
+> silently voided both recorded hashes while this file went on claiming they reproduced. Both have
+> been restored to their exact original bytes and now hash to their recorded values again.
+>
+> Two guards were added so this cannot recur silently: this directory (plus `corpus/` and
+> `fixtures/`) is in `.prettierignore`, and `results-manifest.test.ts` fails if any recorded hash
+> stops reproducing. Never fix a hash mismatch by updating the recorded value — restore the file,
+> unless the artifact is genuinely being replaced by a new run.
+>
+> **Derived analysis.** `pnpm --filter @buildos/agent-orchestrator reanalyze:routes` regenerates
+> `analysis/ROUTE_REANALYSIS.md` — item accuracy, `pass@k`, `pass^k`, self-consistency, and a 4×4
+> confusion matrix over the reports here. It reads only; it never modifies an artifact.
+
+> **Policy note, 2026-07-25.** Every report below remains canonical for what it measured. Two policy
+> changes made after the last of them mean some are no longer the current basis for a decision:
+>
+> - `route-eval-*.json` were produced under route prompt v4. Prompt v5 replaced v4's corpus-shaped
+>   scope rules and added an ordered reason-code procedure, so the A1 confirmation must be rerun as
+>   `route-eval-v5.json` before A2 proceeds.
+> - The blind mechanic is now `phase-a-a2-blind-v2` (counterbalanced, hash
+>   `ba2602e89290f76688b61ffc957f58591405de01547be0e493c657059ca774d2`). It was amended before any
+>   pair was generated, so nothing here is affected.
+>
+> See [`PHASE_A_AUDIT_2026-07-25.md`](../../../../../../docs/architecture/agent-first-orchestration/PHASE_A_AUDIT_2026-07-25.md).
+
 `control-baseline-v1.json` is the canonical A0 control-lane baseline for
 `phase-a-frozen-v1`.
 
@@ -115,3 +142,94 @@ strategy.
 - Mutation/write calls: 0
 - A1 route-slice decision: **Go**
 - SHA-256: `ab886492a6a788eede2bc64c3c8692bc9fd362ef492ecab69930d217eb78d378`
+
+### Prompt-v5 audited rerun
+
+`route-eval-v5.json` is the canonical audited rerun under prompt v5. It is a **Change** result and
+supersedes the earlier route-slice Go.
+
+- Generated: 2026-07-25T15:03:09.666Z
+- Primary/reviewer: Gemini 3.1 Flash Lite `fast` / GLM 5.2 `powerful`
+- Correct top-level route: 58/72 (80.6%; bound 65/72)
+- Comparison-scenario reason codes: 22/27 (81.5%; then-applicable bound 25/27)
+- Direct route p50/p95: 1,016/1,174 ms
+- Projected direct TTFT p50/p95: 9,876/11,023 ms (both pass)
+- Reviewed calls / repairs: 19/17
+- Mean/total model cost: $0.001167/$0.084033
+- Infrastructure-invalid runs: 0
+- Pre-registered decision: **Change**
+- SHA-256: `f36419724637bddb5a11ae3a64fc4ddbbb200b36ef716b4bafe06cb95b5a4e20`
+
+Prompt tuning against the frozen eight stopped after this result. The prescribed architectural
+fallback now selects workflow topology from observable request features, so reason-code agreement
+is diagnostic prospectively. The 58/72 top-level route score remains unchanged and blocks A2.
+
+### Routing mitigation v2 and cold holdout
+
+`route-eval-mitigation-v2.json` is the one-shot full confirmation of
+`phase-a-route-review-v2`. `route-eval-holdout-v1.json` immediately follows it with no code,
+prompt, corpus, label, model, or threshold edit.
+
+- Frozen confirmation: 61/72 routes (84.7%), 25/27 comparison reasons, 23 reviewed calls,
+  1,221/21,269 ms overall p50/p95, $0.082816 total, 0 infrastructure-invalid; **Change**.
+- Cold holdout: 15/15 routes and reasons, 0 reviewed calls, 938/1,572 ms p50/p95, $0.008147 total,
+  0 infrastructure-invalid; reported only.
+- C09 remained 0/9. Six results were `direct/status_summary`, one was context research, and two
+  model-matched scope calls produced no output after exhausting their budget.
+- The holdout validates only the fast direct/capability path; it did not exercise the scope
+  classifier.
+- Mitigation report SHA-256:
+  `07b78b69c5eb285bc5ce344ca8cdc93afa0376193632ab61a8fadfee87abbdd3`.
+- Holdout report SHA-256:
+  `32c0f21fd770d4c293ddcf2679c399af8243e1210fc4b7784e7905ec24d55b87`.
+
+No tuning or rerun is authorized from these corpora. A2 remains blocked.
+
+## A2 fresh control cohort
+
+`control-a2-v1.json` is the canonical fresh nine-run control cohort used for the A2 blind
+comparison. It contains three runs each for C06, C07, and C08.
+
+- Generated: 2026-07-25T04:59:28.538Z
+- Scored runs: 9/9
+- Infrastructure-invalid runs / replacements: 0/0
+- Clean completions: 6/9
+- Required-check passes: 0/9
+- TTFT p50/p95: 6,556/14,744 ms
+- Total-duration p50/p95: 105,109/198,425 ms
+- Mean/total cost: $0.007787 / $0.070084
+- Mutation/write calls: 0
+- SHA-256: `735a445023a62c37ceec538349f5c77499da3e5dc04cb9a7d7207f5f36ee2338`
+
+All three C07 runs ended with `finishedReason: "error"` — `"An error occurred while streaming."`
+after only `skill_load` / `skill_reference_load` calls, producing 73–173 characters of assistant
+text. **This is a crashed turn, not a timeout.** An earlier revision of this file called it "the
+production lane's model-matched timeout after its internal retry"; `A2_PROGRESS.md` retracted that
+characterization and the artifact agrees with the retraction — there is no timeout in it.
+
+Per amendment 4 of the falsification plan, C07 is therefore **excluded from the primary blind-win
+denominator** and reported separately: a crashed control arm is a harness failure under the frozen
+invalid-run rule, and three near-certain workflow wins against it say nothing about architecture.
+It can re-enter the primary set only after a control cohort for C07 completes normally.
+
+C06 and C08 completed cleanly but failed their frozen citation checks.
+
+## A2 workflow ZDR-invalid attempts
+
+`workflow-eval-invalid-zdr-v1.json` preserves the first C06 workflow attempt and its one
+permitted replacement. Both are infrastructure-invalid because OpenRouter has no
+`deepseek/deepseek-v4-pro` endpoint matching SmartLLM's zero-data-retention request. Neither
+attempt produced a DeepSeek completion or entered the score.
+
+- Generated: 2026-07-25T04:40:32.511Z
+- Attempts / scored runs: 2/0
+- Scored workflow outputs: 0
+- Total operational cost: $0.023824
+- Mutation/write calls: 0
+- SHA-256: `25576e641bf8db1e9527b65e02ec15041038155739128eee921d88bbc15d60ca`
+
+DJ approved non-ZDR provider handling for the anonymized Phase A inputs on 2026-07-25. The
+evaluation-only transport opt-in is implemented and locally verified. The workflow cohort and
+blind packet remain ungenerated because the later routing-mitigation-v2 confirmation also returned
+Change at 61/72. See
+[`A2_PROGRESS.md`](../../../../../../docs/architecture/agent-first-orchestration/A2_PROGRESS.md).
